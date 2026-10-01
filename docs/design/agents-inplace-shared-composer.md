@@ -523,25 +523,22 @@ it would not, and § 3.3 settles both.
 
    **The box's text — the fourth write, and M5's decision: (a), keep
    `conversationId`.** The composer owns the box's text, so the run's text and its
-   attachments live in `useConversationInputStore` **keyed by the run composer's own
-   id** — a client-minted `agents-config` — ONE CONSTANT for the app's whole life, not a
-   uuid per launch (UX exploration, U2 and its review: the draft lives under this
-   key in the composer's persisted store, so a key that died with the mount took
-   the draft with it; and `useConversationInputStore` sweeps no rows, so a uuid
-   per launch would orphan one row per launch and still lose an unsent draft at
-   relaunch while chat's drafts survived — a constant key makes relaunch behave
-   like leaving and returning, and cannot collide with a conversation id) (code review round 1, m2: this note said "the run id", but the
-   composer refuses to submit without a key and must not MOVE when the create answers,
-   so the key is the BOX's identity rather than the wire's session id) — and that is
-   deliberate rather than an oversight. What this bends is named: the second of
+   attachments live in `useConversationInputStore` **keyed by the box's own
+   constant** — a client-minted `agents-config`, ONE CONSTANT for the app's whole
+   life rather than a uuid per launch (UX exploration, U2 and its review: the draft
+   lives under this key in the composer's persisted store, so a key that died with
+   the mount took the draft with it; and `useConversationInputStore` sweeps no
+   rows, so a uuid per launch would orphan a row per launch and still lose an
+   unsent draft at relaunch, while chat's drafts survived — a constant makes
+   relaunch behave like leaving and returning, and it cannot collide with a
+   conversation id) — and that is deliberate rather than an oversight. What this bends is named: the second of
    the three mechanisms in `use-config-run.ts:12-16` reads "nothing about it reaches
    the canonical session store, **the draft store** or the chat route" — mechanism 2
    is amended to **"the canonical session store or the chat route"**, because the
    run id *is* now a key in the input store. The invariant that must not bend is the
    one the constraint exists for: the run never becomes a **canonical session row** —
    absent from `lop sessions`, the sidebar and search, never a route, never
-   `upsertSession`ed. A stale `inputByConversation[agents-config]` entry (the
-   box's own key, § 3.3.1) may outlive the
+   `upsertSession`ed. A stale `inputByConversation[<run id>]` entry may outlive the
    run (the id is never re-created, so it can never be shown again); that is the
    tolerated residue, and § 3.7's test gains it as a row it must *expect* alongside
    the rows it must never see.
@@ -698,7 +695,7 @@ also keeps the chat unaffected if step 3 slips.
   `admitChatDraft`). Watch, after a send from the new box: the run id is absent from
   `lop sessions`, from the sidebar, from search and from the chat route, and no
   canonical session row exists for it. **One row the test must EXPECT rather than
-  forbid:** `inputByConversation[agents-config]` (the box's own key, § 3.3.1) in the persisted
+  forbid:** `inputByConversation[agents-config]` in the persisted
   `conversation-input-store` (the box's text, § 3.3.1's (a)) — its presence is the
   designed bend, its *visibility anywhere* is not.
 - **The strip's reads returning nothing** for a no-draft session, leaving a strip

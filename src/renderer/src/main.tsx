@@ -9,6 +9,7 @@ import { ThemedToastContainer } from "./shared/components/common";
 import "@assets/fonts/fonts.css";
 import "@renderer/styles/index.css";
 import { config, telemetryEnabled } from "@shared/config";
+import { installScrollbarActivity } from "@shared/lib/scrollbar-activity";
 import type { PostHogConfig } from "posthog-js";
 import App from "./app";
 import { installDevDriver } from "./dev-driver/install";
@@ -37,6 +38,34 @@ const posthogOptions: Partial<PostHogConfig> = {
  * A no-op in every normal launch; `docs/agent-driver.md` is the contract.
  */
 installDevDriver();
+
+/*
+ * THE SCROLLBAR FADE'S DOM HALF, installed once for the whole app. Its CSS half
+ * is `<GlobalScrollbarStyles />` below, and the pair is deliberately split: the
+ * paint keys on an attribute this module writes, so no component has to know
+ * anything about activity and a theme switch never re-renders either of them.
+ *
+ * At module scope rather than in the render tree for the same reason as the
+ * driver above: the listeners belong to the document, not to a mounted
+ * component, and they must cover the first screen — a render-triggered install
+ * would miss a scroll that happens before the effect runs.
+ *
+ * THE UNINSTALL IS KEPT ON `window` RATHER THAN DISCARDED (review round 1, Min4).
+ * A hot reload that REPLACES this module re-runs the line once and the old
+ * listeners belong to a document that outlives the module, so without the handle
+ * the document accumulates a second set of them. The module cannot see the
+ * first set; the global is the only place it can be found from. This is a
+ * development-time ring, not a product decision — a launch still installs once,
+ * and nothing else reads the key.
+ */
+declare global {
+	interface Window {
+		/** The outstanding install, so a hot-reloaded entry can take it back off. */
+		__loSbUninstall?: () => void;
+	}
+}
+window.__loSbUninstall?.();
+window.__loSbUninstall = installScrollbarActivity();
 
 /*
  * The draft store's cross-document sync (risk R5): the mini view's document is

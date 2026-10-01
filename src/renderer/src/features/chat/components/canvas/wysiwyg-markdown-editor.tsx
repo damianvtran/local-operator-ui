@@ -2060,6 +2060,22 @@ const WysiwygMarkdownEditorComponent: FC<WysiwygMarkdownEditorProps> = ({
 				>
 					<div
 						ref={editorRef}
+						/*
+						 * THE SCOPE MARKER. This element is what the undo manager is connected to
+						 * (`getOrCreateManager(document.id, editorRef.current, …)` below), and the
+						 * manager counts an attribute mutation anywhere in its subtree as a
+						 * content change — so anything that writes an attribute in here has
+						 * manufactured an undo step. The scrollbar fade's activity module is one
+						 * such writer (it marks the scroller it is revealing), and it skips any
+						 * element with this marker on the way up. The marker is `contenteditable`
+						 * plus a name rather than `contenteditable` alone because this root stops
+						 * being editable in review state while the manager stays connected, and
+						 * because the diff bodies injected into it carry
+						 * `contenteditable="false"` on purpose: a document the reader is
+						 * reviewing is exactly the one whose undo stack must not move.
+						 * Value and name: `UNDO_SCOPE_ATTRIBUTE` in `@shared/lib/scrollbar-activity`.
+						 */
+						data-undo-scope="true"
 						contentEditable={!reviewState}
 						onInput={handleContentChange}
 						onKeyDown={handleKeyDown}

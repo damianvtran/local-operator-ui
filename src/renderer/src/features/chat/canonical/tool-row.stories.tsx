@@ -3521,3 +3521,249 @@ export const UserAttachments: Story = {
 		/>
 	),
 };
+
+/* ------------------------------------------------------- send deliveries */
+
+/**
+ * A tool-call-only assistant record, for spacing rows without prose.
+ *
+ * Prose between two `send` rows is load-bearing here: a run of three or more
+ * consecutive actions FOLDS (branding § 7), so a column of four sends would come
+ * out as one `4 calls` bar and photograph nothing. The prose is also the honest
+ * shape — a model hands work out one message at a time, saying why between them.
+ */
+const prose = (id: string, text: string): TranscriptRecord => ({
+	kind: "assistant",
+	id,
+	ts: TS,
+	text,
+	streaming: false,
+	complete: true,
+	stopReason: null,
+	error: false,
+});
+
+/**
+ * The four `send` delivery states, as the core states them in
+ * `details.delivery.state`, with the result text §A.5 fixes for each.
+ *
+ * ONE builder, four stories: the collapsed, expanded, narrow and light frames
+ * must be the same four rows or a difference between two of them is the fixture
+ * rather than the design. The result strings are the core's own (the incident's
+ * `mailbox` sentence, the retry-exhausted `unconfirmed` hedge, the refusal), so
+ * the expansion shows what the row will carry once the core PR lands; the
+ * durations are the real ones the design measured (0.4s a steered delivery,
+ * 5.1s the incident's single 5s window, 16.2s the retry budget's worst case,
+ * 0.1s a refusal).
+ *
+ * WHAT TO LOOK FOR, because this is the design review:
+ *
+ * - `delivered` is silent, exactly as it was: the ledger's success draws nothing.
+ * - `mailbox` and `unconfirmed` wear the WARNING word and a mark of their own
+ *   (`mailbox` / `MailQuestion`, an envelope carrying a question) on the PLAIN
+ *   ground — never the danger wash, and never the silent tick, which is the
+ *   incident's own complaint.
+ * - The four states are distinguishable with the colour turned off: four
+ *   different leading words and, for the two partials, two different shapes.
+ * - `failed` keeps the danger pathway and the word `not delivered`, which is the
+ *   fact; its settled verb is `Attempted`, because `Sent … not delivered` is the
+ *   row contradicting itself (UX round 1, U8).
+ * - The word never truncates and never wraps: the summary above it is the half
+ *   that goes first, and below 19rem the partial words drop whole while their
+ *   marks and spoken sentences stay (UX round 1, U7).
+ */
+const sendDeliveryRows = (): TranscriptRecord[] => [
+	prose("send:prose:0", "Handing the version bump to the release owner."),
+	tool({
+		id: "send:delivered",
+		toolName: "send",
+		args: {
+			target: "release-owner",
+			message: "v0.31.26 is cut — tag it once CI is green.",
+			wake: true,
+		},
+		output: "→ release-owner (pid 48213): delivered mid-turn (steered)",
+		durationS: 0.4,
+		delivery: "delivered",
+	}),
+	prose("send:prose:1", "Now the one that sat in a busy terminal."),
+	tool({
+		id: "send:mailbox",
+		toolName: "send",
+		args: {
+			target: "night-audit",
+			message: "Re-run the flaky shard before you promote.",
+			wake: true,
+		},
+		output:
+			"→ night-audit (pid 51120): delivered to its mailbox (id peer-9c1f2ab30d4e4f0a8b7c6d5e4f3a2b10) — the wake was not acknowledged within 5s after 3 attempts. It will read the message on its next turn; do not send it again.",
+		durationS: 5.1,
+		delivery: "mailbox",
+	}),
+	prose("send:prose:2", "And the send whose loop never turned at all."),
+	tool({
+		id: "send:unconfirmed",
+		toolName: "send",
+		args: {
+			target: "night-audit",
+			message: "Second copy, in case the first one never landed.",
+			wake: true,
+		},
+		output:
+			'→ night-audit (pid 51120): delivery UNCONFIRMED (id peer-1a2b3c4d5e6f708192a3b4c5d6e7f809) — no answer within 5s after 3 attempts and the message is not yet in its transcript. It may still arrive once its loop turns. Check with sessions(op="peek", …) before resending; sending again may deliver it twice.',
+		durationS: 16.2,
+		delivery: "unconfirmed",
+	}),
+	prose("send:prose:3", "This one cannot receive peer messages at all."),
+	tool({
+		id: "send:failed",
+		toolName: "send",
+		args: {
+			target: "ghost-session",
+			message: "Ping when the audit finishes.",
+			wake: true,
+		},
+		output:
+			"could not deliver to ghost-session (pid 37321): this session cannot receive peer messages. Nothing was delivered (id peer-5f4e3d2c1b0a99887766554433221100) — fix the cause or retry the send.",
+		durationS: 0.1,
+		isError: true,
+		delivery: "failed",
+	}),
+];
+
+/** The four delivery states on one column, collapsed: the row the operator
+ * actually saw during the incident, beside the three it now has to be told
+ * apart from. */
+export const SendDeliveries: Story = {
+	render: () => <Frame height={420} records={sendDeliveryRows()} />,
+};
+
+/**
+ * The incident's own expansion — the mailbox state — with the other three rows
+ * collapsed.
+ *
+ * ONE EXPANSION PER FRAME, and that is the round-1 fix to this story rather than
+ * a preference (design round 1, D1): at four expansions the column is ~590px
+ * tall against a 500px box, so the second one was clipped mid-argument and the
+ * frame did not show what its docstring said it did. A capture rig photographs
+ * the top of an over-tall frame and cannot scroll a story's own box, so each
+ * expansion now has a frame that holds it whole — and the ROWS stay in the same
+ * order, with the same prose, in every one of them, which is what makes the four
+ * frames comparable.
+ *
+ * `keepClosed` names the positions left shut, in paint order (the receipt
+ * stories use the same pair): here the delivered row (0), the `unconfirmed` row
+ * (2) and the refusal (3).
+ */
+export const SendDeliveriesOpen: Story = {
+	render: () => (
+		<Frame
+			height={460}
+			openRows
+			keepClosed={[0, 2, 3]}
+			records={sendDeliveryRows()}
+		/>
+	),
+};
+
+/**
+ * The retry-exhausted state expanded — the one whose instruction the reader
+ * cannot act on twice without duplicating a delivery.
+ *
+ * This frame is the U1 measurement in picture form: the wrapped delivery
+ * sentence follows the arguments (the line order the card renders is
+ * `[target][message][wake][note][label][machine line]`, agent review round 2,
+ * D3 — an earlier version of this docstring said the note sat above them), and
+ * the machine line under it (the one that continues off the right edge) is no
+ * longer the only carrier of what to do.
+ */
+export const SendDeliveriesUnconfirmedOpen: Story = {
+	render: () => (
+		<Frame
+			height={460}
+			openRows
+			keepClosed={[0, 1, 3]}
+			records={sendDeliveryRows()}
+		/>
+	),
+};
+
+/**
+ * The refusal expanded: the danger pathway kept, and the only one of the four
+ * whose result renders as an `Error` block.
+ *
+ * Note the verb: the settled row reads `Attempted`, not `Sent` (UX round 1, U8),
+ * because `Sent … not delivered` is the row contradicting itself.
+ *
+ * ONE ROW IN ITS OWN PROSE, and the box is sized to it (design round 2, D1): with
+ * all four rows above it the expanded card ran past the frame and the `Error`
+ * block this frame is CITED for - the label "Error", the cause line naming the
+ * refusal - fell outside the pixels (a whole-frame ink scan found nothing below
+ * the cut). A frame that does not contain the thing it is offered as evidence of
+ * is not evidence, so this one carries the prose around the refusal and the
+ * refusal alone, and the reader can see the block.
+ */
+export const SendDeliveriesFailureOpen: Story = {
+	render: () => (
+		<Frame
+			height={420}
+			openRows
+			records={sendDeliveryRows().filter(
+				(record) => record.id === "send:prose:3" || record.id === "send:failed",
+			)}
+		/>
+	),
+};
+
+/** The same four at 390px, where the word and the summary compete for the row:
+ * the summary truncates first and the word is never cut. */
+export const SendDeliveriesNarrow: Story = {
+	render: () => (
+		<Frame width="390px" height={420} records={sendDeliveryRows()} />
+	),
+};
+
+/**
+ * BELOW the width that holds the word whole — the other half of the narrow rule
+ * (design note §3(b) Narrow; UX round 1, U7, measured at 320px as a 22px row
+ * overflow before this).
+ *
+ * What to look for: the amber pair keeps its MARK and its spoken sentence and
+ * sheds only the word, so the state is still carried with the colour off; the
+ * refusal, which has no mark, keeps its word — a failure never relies on the
+ * wash alone. The two frames together are the rule the suite can only pin as a
+ * mechanism (`scripts/tool-row.test.mjs`).
+ */
+export const SendDeliveriesTooNarrow: Story = {
+	render: () => (
+		<Frame width="320px" height={420} records={sendDeliveryRows()} />
+	),
+};
+
+/** The same four under a light palette, where `warning` is the closer call. */
+export const SendDeliveriesLight: Story = {
+	args: { theme: "localOperatorLight" },
+	render: () => <Frame height={420} records={sendDeliveryRows()} />,
+};
+
+/**
+ * A folded run of sends — the case no other frame here can show (UX round 1,
+ * U6).
+ *
+ * The other stories insert prose between the four sends precisely so they do NOT
+ * fold (a run of three or more consecutive actions condenses behind one bar,
+ * `FOLD_MIN_ACTIONS`), and the round-1 disposition is to record the folded case
+ * rather than to invent a tally for it: the fold's `· N failed` chip was retired
+ * by the operator on 2026-09-29, and a partial result is deliberately not a
+ * failure there. So this frame shows what the caveat costs — four sends, one of
+ * them a `mailbox`, condensed to a neutral count line with no amber anywhere —
+ * and it is evidence about the GAP, not a proposal to change it.
+ */
+export const SendDeliveriesFolded: Story = {
+	render: () => (
+		<Frame
+			height={300}
+			records={sendDeliveryRows().filter((record) => record.kind === "tool")}
+		/>
+	),
+};

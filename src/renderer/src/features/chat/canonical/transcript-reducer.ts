@@ -39,7 +39,9 @@ import {
 	wakeIsCatchup,
 } from "../components/trace/receipt-row-model";
 import {
+	type SendDeliveryState,
 	diffFromDetails,
+	preferDeliveryState,
 	preferDiff,
 	preferDiffCounts,
 } from "../components/trace/tool-row-model";
@@ -386,6 +388,17 @@ export type TranscriptRecord =
 			 * user's own decision.
 			 */
 			stopped: boolean;
+			/**
+			 * How a `send` call's delivery ended (`details.delivery.state`), or
+			 * `null`/absent when the result states none - an old transcript, an old
+			 * core, an unknown state, or any other tool.
+			 *
+			 * Separate from `isError` on purpose: the core flags `is_error` for
+			 * `failed` alone, and `mailbox`/`unconfirmed` are settled, non-failure
+			 * results the row paints amber. Optional so hand-built records (fixtures,
+			 * stories) need not state it; absent reads exactly as `null`.
+			 */
+			delivery?: SendDeliveryState | null;
 	  }
 	| {
 			kind: "notice";
@@ -2372,6 +2385,13 @@ function durableRecord(
 			// stopped or a steering redirect dropped. Every other end keeps `false`
 			// here.
 			stopped: interrupted,
+			// Replay parity: the durable row carries the same `details.delivery` the
+			// live end event did, so a reloaded transcript paints the state the live
+			// one painted. A page row with no `details` keeps what the row held.
+			delivery: preferDeliveryState(
+				providerPayload.details,
+				previous?.kind === "tool" ? previous.delivery : null,
+			),
 		};
 	}
 	return null;
@@ -3972,6 +3992,10 @@ export function applyEvent(
 				// the wire's own; `isError` is cleared beside both because the row's
 				// outcome ladder reads `isError` first.
 				stopped: base.stopped || killedByUserStop || interruptedFault,
+				// Same absent-vs-stated guard as the diff above: a seed end whose
+				// `details` the live-event budget stripped must not blank a state the
+				// durable row already carried.
+				delivery: preferDeliveryState(result.details, base.delivery),
 			});
 		}
 		case "notice": {

@@ -66,6 +66,7 @@ const {
 	labelOfSegment,
 	partitionRun,
 	paintsSomething,
+	reportsCompletedThought,
 	runsOf,
 	segmentIsCompleted,
 	staysVisibleWhileCollapsed,
@@ -78,12 +79,21 @@ const {
 const TS = 1_000_000;
 
 /**
- * Tokens: U user, T tool, N narration (settled assistant text), A the same
- * (spelled differently so a fixture reads as "the answer is here"), S a STREAMING
- * assistant, E an assistant that paints nothing (tool calls only), W wake, P peer,
- * J job_result, H hub_message, X monitor_prompt, M terminal notice (Stopped with an
- * error), K closed receipt (complete notice, info), I session_incident, C
- * compaction, O an info notice (no completion), Q a quiet custom (mcp).
+ * Tokens: U user, T tool, N narration (settled assistant text, NO `stopReason`),
+ * A a settled assistant the provider DECLARED finished (`stopReason: "stop"`),
+ * L the lead-in shape (settled text carried with its own `tool_calls`, so
+ * `stopReason: "toolUse"`), S a STREAMING assistant, E an assistant that paints
+ * nothing (tool calls only), W wake, P peer, J job_result, H hub_message,
+ * X monitor_prompt, M terminal notice (Stopped with an error), K closed receipt
+ * (complete notice, info), I session_incident, C compaction, O an info notice (no
+ * completion), Q a quiet custom (mcp).
+ *
+ * `A` AND `L` CARRY THE PROVIDER'S PHASE DECLARATION, because the V4 rule reads it
+ * (design note §1 and §2.2): `stop_reason: "stop"` is the model saying it had
+ * FINISHED, and the durable reducer keeps exactly that field on a text-bearing row
+ * (`transcript-reducer.ts:2264`). `N` deliberately carries no `stopReason` at all,
+ * so the compat rule (an unknown phase is treated as absent) is asserted rather
+ * than assumed.
  */
 const RECORDS = {
 	U: (id, i) => ({ kind: "user", id, ts: TS + i, text: "hi" }),
@@ -105,6 +115,22 @@ const RECORDS = {
 		ts: TS + i,
 		text: "text",
 		streaming: false,
+	}),
+	A: (id, i) => ({
+		kind: "assistant",
+		id,
+		ts: TS + i,
+		text: "text",
+		streaming: false,
+		stopReason: "stop",
+	}),
+	L: (id, i) => ({
+		kind: "assistant",
+		id,
+		ts: TS + i,
+		text: "text",
+		streaming: false,
+		stopReason: "toolUse",
 	}),
 	S: (id, i) => ({
 		kind: "assistant",
@@ -152,7 +178,6 @@ const RECORDS = {
 	O: (id, i) => ({ kind: "notice", id, ts: TS + i, text: "n", level: "info" }),
 	C: (id, i) => ({ kind: "compaction", id, ts: TS + i, text: "Context" }),
 };
-RECORDS.A = RECORDS.N;
 
 function custom(id, i, customType, level = "info") {
 	return { kind: "custom", id, ts: TS + i, customType, level, text: "t" };
@@ -184,6 +209,14 @@ const hiddenIds = ({ records, result }) =>
 		records.slice(span.from, span.to + 1).map((r) => r.id),
 	);
 
+/** The visible rows of a partition, in row order, by id. */
+const visibleIds = ({ records, result }) =>
+	[...result.visible].sort((a, b) => a - b).map((index) => records[index].id);
+
+/** `repeat("T", 88)` -> "T T T ...": the operator's 90-action span, as a spec. */
+const repeat = (token, count) =>
+	Array.from({ length: count }, () => token).join(" ");
+
 const answerId = ({ records, result }) =>
 	result.answer === null ? null : records[result.answer.closeIndex].id;
 
@@ -208,9 +241,10 @@ test("single response: one cycle, nothing to hide", () => {
 	sound(p);
 });
 
-test("response-actions-response: the LAST response cycle is the answer, the first is one segment", () => {
+test("response-actions-response: the LAST response cycle is the answer, and BOTH of its closes stay visible", () => {
 	// A steer (`U` inside the run) starts a second user-driven response cycle, so
-	// the later close wins and the first cycle is the one segment.
+	// the later close wins the answer - and the first cycle's close is visible in
+	// its own right (V1), with the steer row between them (V3).
 	const p = partition("U T A U T A");
 	assert.equal(p.result.cycles.length, 2);
 	assert.deepEqual(
@@ -221,7 +255,8 @@ test("response-actions-response: the LAST response cycle is the answer, the firs
 		],
 	);
 	assert.equal(answerId(p), "A5");
-	assert.deepEqual(hiddenIds(p), [["T1", "A2", "U3", "T4"]]);
+	assert.deepEqual(visibleIds(p), ["A2", "U3", "A5"]);
+	assert.deepEqual(hiddenIds(p), [["T1"], ["T4"]]);
 	sound(p);
 });
 
@@ -233,11 +268,15 @@ test("narration is not a close: text followed by a step belongs to the cycle it 
 	sound(p);
 });
 
-test("three-cycle: E is the last close and every earlier cycle hides in one span", () => {
+test("three-cycle: the last close is the answer and every close of a RESPONSE cycle stays visible", () => {
 	const p = partition("U A T A T A");
 	assert.equal(answerId(p), "A5");
-	assert.equal(p.result.segments.length, 1, "no visible row splits them");
-	assert.deepEqual(hiddenIds(p), [["A1", "T2", "A3", "T4"]]);
+	assert.equal(
+		p.result.segments.length,
+		2,
+		"each step span is its own bar, with the closes between them visible",
+	);
+	assert.deepEqual(hiddenIds(p), [["T2"], ["T4"]]);
 	sound(p);
 });
 
@@ -282,8 +321,9 @@ test("wake-after-answer WITH a terminal marker is post-terminal commentary: the 
 	);
 	assert.equal(answerId(p), "A2", "the answer is the one before the marker");
 	// The marker stays where it happened; the follow-up is its own segment AFTER
-	// the answer.
-	assert.deepEqual(hiddenIds(p), [["T1"], ["W4", "T5", "A6"]]);
+	// the answer - and the commentary close at A6 is the run's LAST close, so it
+	// stays visible too (V2: the reader is owed the last word).
+	assert.deepEqual(hiddenIds(p), [["T1"], ["W4", "T5"]]);
 	sound(p);
 });
 
@@ -358,7 +398,12 @@ test("two closers with no work between: the later one wins (identical text is no
 	const p = partition("U A A");
 	assert.equal(p.result.cycles.length, 2);
 	assert.equal(answerId(p), "A2");
-	assert.deepEqual(hiddenIds(p), [["A1"]]);
+	assert.deepEqual(
+		hiddenIds(p),
+		[],
+		"both closes are responses, so neither is hidden: no bar, no work",
+	);
+	assert.deepEqual(visibleIds(p), ["A1", "A2"]);
 	sound(p);
 });
 
@@ -479,19 +524,18 @@ test("labels: one noun per trigger, whatever side of the answer it lands on (D2/
 	assert.deepEqual(labelsOf("U T A M X T A"), [null, "Wake"]);
 });
 
-test("labels: a wake or peer cycle BEFORE the answer carries the same word", () => {
-	// `W` opens the second cycle and inherits its class, so the segment spans both
-	// cycles and is named by the LAST one it ends in - the wake.
-	assert.deepEqual(labelsOf("U T A W T A"), ["Wake"]);
-	assert.deepEqual(labelsOf("U T A P T A"), ["Peer message"]);
-	assert.deepEqual(labelsOf("U T A J T A"), ["Job result"]);
-	// A hidden cycle opened by a wake:
-	const p = partition("U W T N P T A");
-	assert.equal(
-		p.result.segments.map((span) =>
-			labelOfSegment(p.records, p.result.cycles, span),
-		).length,
-		1,
+test("labels: a cycle before the answer carries the same word as one after it", () => {
+	// `W` opens the second cycle and inherits its class, so the span it opens is
+	// named by the LAST initiator of the cycle it ends in - the wake. The earlier
+	// close is visible (V1), so the run now has a bar on either side of it.
+	assert.deepEqual(labelsOf("U T A W T A"), [null, "Wake"]);
+	assert.deepEqual(labelsOf("U T A P T A"), [null, "Peer message"]);
+	assert.deepEqual(labelsOf("U T A J T A"), [null, "Job result"]);
+	// One hidden span per earlier cycle, each named by what opened it.
+	assert.deepEqual(
+		labelsOf("U W T N P T A"),
+		["Wake", "Peer message"],
+		"a wake-opened span and a peer-opened span",
 	);
 });
 
@@ -527,27 +571,34 @@ test("a receipt in the middle of user-opened work does not name the bar", () => 
 	assert.deepEqual(labelsOf("U T J T J T A"), [null]);
 });
 
-test("R1-2: a mid-turn steer hidden inside a span makes the bar SAY so", () => {
+test("R1-2: a mid-turn steer is never inside a span, so no bar has to say `Steered` (V3)", () => {
 	/*
-	 * `U T A U T A`: the second user row is a steer inside the run. The partition
-	 * still hides it (pinning it would split every steered turn in two - the
-	 * decision was to label, not to reshape), so the bar that holds it must name
-	 * it or the reader's own message vanishes behind an unlabelled bar.
+	 * `U T A U T A`: the second user row is a steer inside the run - the run did
+	 * not close, so it is not a new run. The arm this test used to pin (the
+	 * partition hides the steer and `labelOfSegment` says `Steered` to admit it)
+	 * was the answer to "the reader's own message must not vanish behind an
+	 * unlabelled bar"; V3 supersedes it by keeping the message itself, and the
+	 * word stays in `labelOfSegment` as the backstop for any span that DOES hold a
+	 * user row (asserted below, on a hand-made span).
 	 */
 	const p = partition("U T A U T A");
 	assert.deepEqual(
 		p.result.segments.map((span) =>
 			p.records.slice(span.from, span.to + 1).map((r) => r.id),
 		),
-		[["T1", "A2", "U3", "T4"]],
-		"the steer is inside the span",
+		[["T1"], ["T4"]],
+		"the steer is between the two bars, not inside one",
 	);
-	assert.deepEqual(labelsOf("U T A U T A"), ["Steered"]);
-	// It outranks the trigger word: the steer is the one row in the span the
-	// reader wrote.
-	assert.deepEqual(labelsOf("U T A U T A M W T A"), ["Steered", "Wake"]);
+	assert.deepEqual(labelsOf("U T A U T A"), [null, null]);
+	assert.deepEqual(labelsOf("U T A U T A M W T A"), [null, null, "Wake"]);
 	// No user row inside, no word.
 	assert.deepEqual(labelsOf("U T T A"), [null]);
+	// The backstop itself: a span a caller hands in that DOES hold a user row is
+	// still named, so the promise survives a span this module did not build.
+	assert.equal(
+		labelOfSegment(p.records, p.result.cycles, { from: 1, to: 3 }),
+		"Steered",
+	);
 });
 
 test("completed: a real closer, on a section of the turn, that was not cut off", () => {
@@ -556,9 +607,10 @@ test("completed: a real closer, on a section of the turn, that was not cut off",
 	// The ordinary unlabelled bar directly under the answer: never (the answer
 	// says it finished, and a constant mark carries nothing).
 	assert.deepEqual(completedOf("U T A"), [false]);
-	// D4 symmetry: a LABELLED bar before the answer is a section too.
-	assert.deepEqual(completedOf("U T A W T A"), [true]);
-	assert.deepEqual(completedOf("U T A P T A"), [true]);
+	// D4 symmetry: a LABELLED bar before the answer is a section too. The earlier
+	// close is visible now (V1), so the turn has a bar on either side of it.
+	assert.deepEqual(completedOf("U T A W T A"), [false, true]);
+	assert.deepEqual(completedOf("U T A P T A"), [false, true]);
 });
 
 test("completed: a bar the disposal cut off carries no false receipt (D4)", () => {
@@ -706,8 +758,9 @@ test("every fixture is sound AND non-vacuous: literal hidden-row counts, not der
 	const table = [
 		["U T A", 1, 1],
 		["U T C T A", 2, 2],
-		// T1 | (answer A2, marker M3 stay) | W4 T5 A6 - the follow-up is its own span.
-		["U T A M W T A", 4, 2],
+		// T1 | (answer A2, marker M3 stay) | W4 T5 | A6 - the last close is visible
+		// (V2), so the follow-up's receipt span ends above it.
+		["U T A M W T A", 3, 2],
 		["U N T N T A", 4, 1],
 		["U T M T A", 2, 2],
 		["U T T", 2, 1],
@@ -724,6 +777,222 @@ test("every fixture is sound AND non-vacuous: literal hidden-row counts, not der
 		assert.equal(hidden, rows, `${spec}: rows hidden`);
 		assert.equal(p.result.segments.length, segments, `${spec}: segments`);
 	}
+});
+
+/* ------- the never-folded rows: a declared finish, and the reader's own ------ */
+
+/**
+ * PR-2 of the completion-visibility lane (design note §0 case 1, §0 case 3, §1,
+ * §2.2, §5, §9.1). The invariant, in row-list terms:
+ *
+ *   A settled, text-bearing assistant row stays VISIBLE unless it is a lead-in to
+ *   the call that follows it, and a `user` row is never hidden by a collapsed span.
+ *
+ * The clauses `partitionRun` now carries beyond the shipped answer/pinned/trailing
+ * set: V1 the close of a RESPONSE cycle, V2 the run's LAST close, V3 a `user` row,
+ * V4 a settled row whose own provider declaration is `stopReason === "stop"`.
+ *
+ * V4 IS A PHASE DECLARATION, NOT A LENGTH HEURISTIC. The model said it had
+ * finished; the harness then continued past it (the todo guardrail re-enters the
+ * loop after a no-tool-call yield), so the row sits above the next call and the old
+ * rule folded the substantive report into the bar. `null`/`undefined` keeps the
+ * shipped behaviour exactly, which is what makes the change opt-in on positive
+ * evidence.
+ */
+test("F1: a row the provider DECLARED finished stays visible even as a lead-in (V4)", () => {
+	// U T A T T T A: A2 is narration (a step follows it), so it is not a close;
+	// only its own `stop` declaration keeps the substantive report on screen.
+	const p = partition("U T A T T T A");
+	assert.equal(p.result.cycles.length, 1, "one close: a step follows A2");
+	assert.deepEqual(visibleIds(p), ["A2", "A6"], "the stop row and the answer");
+	assert.deepEqual(
+		hiddenIds(p),
+		[["T1"], ["T3", "T4", "T5"]],
+		"the tool spans either side of it are the only hidden rows",
+	);
+	assert.equal(answerId(p), "A6");
+	sound(p);
+});
+
+test("F1b: an earlier response close survives a job result (V1), and there is still ONE elected answer", () => {
+	// The brief's case 1: user -> work -> answer A -> job result -> answer B.
+	const p = partition("U T T A J T A");
+	assert.deepEqual(
+		p.result.cycles.map((c) => [c.class, c.why]),
+		[
+			["response", "user"],
+			["response", "continuation"],
+		],
+	);
+	assert.deepEqual(visibleIds(p), ["A3", "A6"], "both closes stay");
+	assert.deepEqual(hiddenIds(p), [
+		["T1", "T2"],
+		["J4", "T5"],
+	]);
+	assert.equal(
+		answerId(p),
+		"A6",
+		"the LAST response cycle is still the answer",
+	);
+	assert.deepEqual(
+		[...closingAnswerIds(p.records)],
+		["A6"],
+		"one foot and one stamp: `closesTurn` is unchanged, so only B carries them",
+	);
+	sound(p);
+});
+
+test("F1c: the wake shape - a fulsome close before a wake is never folded", () => {
+	// The operator's screenshot shape, with the wake directly after the fulsome
+	// close: the wake inherits the response class, so BOTH closes are responses and
+	// the fulsome one is visible by V1 as well as by V2.
+	const p = partition("U T T T A W T A");
+	assert.deepEqual(
+		p.result.cycles.map((c) => [c.class, c.why]),
+		[
+			["response", "user"],
+			["response", "continuation"],
+		],
+	);
+	assert.equal(answerId(p), "A7", "the short close is the answer, as shipped");
+	assert.deepEqual(
+		visibleIds(p),
+		["A4", "A7"],
+		"the fulsome completion must NOT be folded",
+	);
+	assert.deepEqual(hiddenIds(p), [
+		["T1", "T2", "T3"],
+		["W5", "T6"],
+	]);
+	sound(p);
+});
+
+test("F2: the operator's 9:50 PM row list - the fulsome close above its own bar, the stamp still on the last close", () => {
+	// The journal's own shape (§8): a long turn, a fulsome close, THREE more calls,
+	// then the short close. The fulsome row is a lead-in (tools follow it), so only
+	// V4 keeps it out of the bar - which is the operator's primary complaint.
+	const p = partition("U T T T A T T T A K");
+	assert.equal(
+		p.result.cycles.length,
+		1,
+		"A4 is narration: three steps follow it",
+	);
+	assert.deepEqual(visibleIds(p), ["A4", "A8", "K9"]);
+	assert.deepEqual(
+		hiddenIds(p),
+		[
+			["T1", "T2", "T3"],
+			["T5", "T6", "T7"],
+		],
+		"two bars, and the completion between them is no longer swallowed",
+	);
+	assert.equal(answerId(p), "A8", "the short close is the answer, as shipped");
+	assert.deepEqual(
+		[...closingAnswerIds(p.records)],
+		["A8"],
+		"two bars, one stamp: the foot and the stamp stay on the last close",
+	);
+	sound(p);
+
+	// The same tail from the REAL row list: 88 calls before the fulsome close.
+	const long = partition(`U ${repeat("T", 88)} A T T T A K`);
+	assert.equal(answerId(long), "A93");
+	assert.ok(
+		long.result.visible.has(89),
+		"the fulsome close at row 89 stays visible above its own bar",
+	);
+	assert.equal(long.result.segments.length, 2, "T1-T88 | T90-T92");
+	sound(long);
+});
+
+test("F4: an absent `stopReason` keeps today's behaviour exactly (the compat rule)", () => {
+	// `N` carries no phase field at all, and `L` carries the lead-in phase: both
+	// hide exactly as they did before this rule existed.
+	const p = partition("U T N T A");
+	assert.equal(p.result.cycles.length, 1);
+	assert.deepEqual(visibleIds(p), ["A4"]);
+	assert.deepEqual(hiddenIds(p), [["T1", "N2", "T3"]]);
+	sound(p);
+	const leadIn = partition("U T L T A");
+	assert.deepEqual(
+		visibleIds(leadIn),
+		["A4"],
+		"`toolUse` is the lead-in shape",
+	);
+	sound(leadIn);
+	// Explicit null and undefined are the same absent field.
+	for (const value of [null, undefined]) {
+		const records = seq("U T L T A");
+		records[2] = { ...records[2], stopReason: value };
+		const result = partitionRun(records, { ...OPTS, from: 1, pinned: PINNED });
+		assert.equal(result.visible.has(2), false, `stopReason: ${String(value)}`);
+	}
+});
+
+test("F5: no declared-finished row and no reader row ever leaves the visible set as rows arrive", () => {
+	/*
+	 * Monotonicity, asserted over every prefix of each fixture: the two clauses that
+	 * protect a row are index-local, so a row that is visible at one prefix cannot
+	 * disappear when the next row lands. The only class that may leave `visible` is a
+	 * non-final COMMENTARY close (`cyclesOf` reclassifies it when a later close
+	 * arrives), which is the shipped intent, so the guard covers V3 and V4 rows.
+	 */
+	const specs = [
+		"U T A T T T A",
+		"U T T A J T A",
+		"U T T T A T T T A K",
+		"U T T T A W T A",
+		"U T T U T A",
+	];
+	for (const spec of specs) {
+		const records = seq(spec);
+		for (let n = 1; n <= records.length; n += 1) {
+			const slice = records.slice(0, n);
+			const result = partitionRun(slice, { ...OPTS, from: 1, pinned: PINNED });
+			slice.forEach((record, index) => {
+				if (index < 1) return;
+				const mustStay =
+					record.kind === "user" || reportsCompletedThought(record);
+				if (!mustStay) return;
+				assert.ok(
+					result.visible.has(index),
+					`${spec} @${index}: a reader row or a declared-finished row left the visible set`,
+				);
+			});
+		}
+	}
+});
+
+test("F3c: a genuine mid-work steer stays in place, and `Steered` becomes a backstop", () => {
+	// U T T U T A: the second user row is a steer inside the run (nothing that
+	// ended, so it is not a new run). V3 keeps the one row the reader wrote out of
+	// the hidden span entirely - so the bar under it needs no word.
+	const p = partition("U T T U T A");
+	assert.deepEqual(
+		visibleIds(p),
+		["U3", "A5"],
+		"the reader's own message stays",
+	);
+	assert.deepEqual(
+		hiddenIds(p),
+		[["T1", "T2"], ["T4"]],
+		"the steer splits the span: one extra bar, which is the accepted cost",
+	);
+	assert.equal(
+		labelOfSegment(p.records, p.result.cycles, p.result.segments[0]),
+		null,
+		"a bar under a visible message names itself",
+	);
+	sound(p);
+	// The backstop is now unreachable in practice: no bar over a steer can exist.
+	const words = ["U T A U T A", "U T T U T A", "U T A U T A M W T A"].flatMap(
+		(spec) => labelsOf(spec),
+	);
+	assert.equal(
+		words.includes("Steered"),
+		false,
+		"V3 keeps every user row out of every bar",
+	);
 });
 
 test("the boundary vocabulary is one function: pin list and terminal test cannot disagree", () => {
