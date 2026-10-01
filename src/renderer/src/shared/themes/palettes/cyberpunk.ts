@@ -156,6 +156,9 @@ export const cyberpunk: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 5.63.
 		 */
 		hairline: "#3D3250",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.54:1 there against `hairline`'s 1.43:1.
+		hairlineStrong: "#423756",
 		// The TUI `edge-hi` 3D2F54 lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the

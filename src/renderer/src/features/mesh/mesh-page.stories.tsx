@@ -63,6 +63,7 @@ const member = (
 		reason: string;
 		last_seen_at: number | null;
 		endpoints: string[];
+		scope: string;
 	}> = {},
 ) => ({
 	device_id,
@@ -75,6 +76,9 @@ const member = (
 	last_seen_at: null,
 	reachable: true,
 	reason: "",
+	// No backend sends a declared scope yet: `""` is every real install's value, and the
+	// `declared` tier needs one to render at all (`mesh-scope.ts`).
+	scope: "",
 	...fields,
 });
 
@@ -272,20 +276,32 @@ export default meta;
 
 type Story = StoryObj;
 
+/**
+ * The S=1 fixture, shared by the canvas frame and the panel's null-stamp frame.
+ *
+ * `member()` leaves `last_seen_at` at `null`, which is what the panel's `Last status
+ * frame` reads as `never` - a state the wire produces (a device whose rotation stamp
+ * has never been written) and that no committed frame carried until the panel pass
+ * below asked for it (design review round 1, D6).
+ */
+function singleDeviceFixture() {
+	return {
+		networks: {
+			self_device_id: DEVICE_SELF,
+			networks: [
+				network(NET_HOME, "damian-mesh", [
+					member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
+				]),
+			],
+		},
+		peers: { self_device_id: DEVICE_SELF, peers: [], degraded: [] },
+	};
+}
+
 /** This device alone in one network: the state a first `lop network init` gives. */
 export const SingleDevice: Story = {
 	render: () => {
-		installBridge({
-			networks: {
-				self_device_id: DEVICE_SELF,
-				networks: [
-					network(NET_HOME, "damian-mesh", [
-						member(DEVICE_SELF, { name: "damians-MacBook-Pro", role: "admin" }),
-					]),
-				],
-			},
-			peers: { self_device_id: DEVICE_SELF, peers: [], degraded: [] },
-		});
+		installBridge(singleDeviceFixture());
 		return <MeshPage />;
 	},
 };
@@ -640,6 +656,422 @@ export const DevicePanel: Story = {
 };
 
 /**
+ * THE PANEL'S `never`, PHOTOGRAPHED (design review round 1, D6).
+ *
+ * The panel's `Last status frame` row has a null case - `never` rather than a date
+ * computed from zero - and it appeared in NO committed frame, because every fixture
+ * that opened a panel carried a stamp. This is `singleDeviceFixture()` (its self
+ * member was never seen by a rotation frame) with the panel open, so the frame carries
+ * `Last status frame / never` beside a null conversation count. Nothing else about
+ * the state is staged: `openPanel` presses the node's own button.
+ */
+export const SingleDevicePanel: Story = {
+	render: () => {
+		installBridge(singleDeviceFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SELF);
+		await screen.findByText("Last status frame");
+		await screen.findByText("never");
+	},
+};
+
+/**
+ * THE FIVE REACH STATES ON ONE CANVAS, plus the one device that is working.
+ *
+ * THIS STORY EXISTS BECAUSE NO SHIPPED FIXTURE CAN PRODUCE THREE OF ITS SIX DEVICES, and
+ * that is a measurement rather than an oversight: the shipped bridge is all-or-nothing, so
+ * `NOT_ATTEMPTED_REASON` had never been on screen; no fixture had `live_state: "busy"` on a
+ * remote row, so `working` had never been rendered; and no fixture left a drawn device
+ * unnamed by the peer catalogue, so `conversations not reported` had never been rendered
+ * either. The sentences below are the relay's own - the not-attempted one copied from
+ * `relay.NOT_ATTEMPTED_REASON` through `resume.peer_reason_words`, which is what a member
+ * row actually carries - and NOT invented for the frame.
+ *
+ * What the frame is for: `build-box` was the defect this redesign exists to fix. Its stripe
+ * used to be the amber of `unreachable` while its words said `not asked`, because the relay
+ * flattens "we never dialled it" and "it did not answer" into one boolean. The stripe is
+ * keyed on reach now, and this is the frame where the two channels agree.
+ *
+ * THE LIST PASS SHARES THIS FIXTURE (agent review round 1, M1/D1/U1/U2): the
+ * `list-view` story's members could produce neither half of the list-ink defect (no
+ * not-attempted member, no suspect member), while this fixture's `build-box`
+ * (not-attempted) and `old-laptop` (suspect) are exactly those two devices.
+ * `ReachStatesList` below is this canvas, one press on `List`, so both are visible on
+ * the list presentation in a committed frame.
+ */
+function reachStatesFixture() {
+	return {
+		networks: {
+			self_device_id: DEVICE_SELF,
+			networks: [
+				network(NET_HOME, "damian-mesh", [
+					member(DEVICE_SELF, {
+						name: "damians-MacBook-Pro",
+						role: "admin",
+						endpoints: ["192.168.1.10:4097"],
+					}),
+					member(DEVICE_PEER, {
+						name: "build-box",
+						endpoints: ["10.88.0.7:4097"],
+						reachable: false,
+						reason: "the listing budget ran out before this member was probed",
+					}),
+					member(DEVICE_THIRD, {
+						name: "cloud-node-1",
+						endpoints: ["10.88.0.4:4097"],
+						last_seen_at: seenMinutesAgo(9),
+					}),
+					/*
+					 * NO READ NAMED THIS DEVICE: a membership with an empty reason and no peer
+					 * row is `unknown`, and the node says so rather than drawing a zero.
+					 */
+					member(DEVICE_FOURTH, {
+						name: "ghost",
+						endpoints: [],
+						reachable: false,
+						reason: "",
+					}),
+					member(DEVICE_FIFTH, {
+						name: "old-laptop",
+						endpoints: ["192.168.1.40:4097"],
+						suspect: true,
+						reachable: false,
+						reason: "no route to it",
+					}),
+					member(`d_${"f".repeat(32)}`, {
+						name: "workshop-mini",
+						endpoints: ["203.0.113.9:4097"],
+						reachable: false,
+						reason: "it did not answer",
+					}),
+				]),
+			],
+		},
+		peers: {
+			self_device_id: DEVICE_SELF,
+			peers: [
+				peer(DEVICE_PEER, {
+					name: "build-box",
+					reachable: false,
+					unreachable_reason:
+						"the listing budget ran out before this member was probed",
+					session_count: 3,
+				}),
+				peer(DEVICE_THIRD, {
+					name: "cloud-node-1",
+					session_count: 4,
+					last_seen_at: seenMinutesAgo(9),
+				}),
+				peer(DEVICE_FIFTH, {
+					name: "old-laptop",
+					reachable: false,
+					unreachable_reason: "no route to it",
+					session_count: 2,
+					last_seen_at: seenMinutesAgo(9),
+				}),
+				peer(`d_${"f".repeat(32)}`, {
+					name: "workshop-mini",
+					reachable: false,
+					unreachable_reason: "it did not answer",
+					session_count: 1,
+				}),
+			],
+			degraded: [],
+		},
+		sessions: [
+			/*
+			 * THE ONE POSITIVE-LOUD STATE. `busy` is the backend's own word for a turn in
+			 * flight, and it is the only activity this wire can report: there is no heartbeat,
+			 * which is why `last_seen_at` is a rotation stamp and is labelled as one.
+			 */
+			sessionRow(`s_${"1".repeat(12)}`, "Sweep 011", {
+				locality: "remote",
+				owner_device: DEVICE_PEER,
+				owner_device_name: "build-box",
+				live_state: "busy",
+			}),
+		],
+	};
+}
+
+export const ReachStates: Story = {
+	render: () => {
+		installBridge(reachStatesFixture());
+		return <MeshPage />;
+	},
+};
+
+/**
+ * THE SAME REACH FIXTURE, READ IN THE LIST: the frame the list-ink fix asked for.
+ *
+ * Both faces of the round's M1/D1 finding live here and ONLY here: `build-box` (a
+ * device nothing dialled) must read `not asked` with NO hue, and `old-laptop` (suspect)
+ * must read its reach word with the `ShieldAlert` and the badge beside it - where the
+ * list used to paint the first in the failure amber and the second as a bare
+ * `identity suspect` in colour alone. The press is the real toggle, the same one
+ * `list-view` drives.
+ */
+export const ReachStatesList: Story = {
+	render: () => {
+		installBridge(reachStatesFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await screen.findByText(/networks? · /i);
+		(await screen.findByRole("button", { name: "List" })).click();
+		await screen.findByText("Sort devices by");
+	},
+};
+
+/**
+ * THE THREE DRAWN TIERS OF THE SCOPE LAYER, and the two that are not drawn at all.
+ *
+ * `aws-node-1` and `aws-node-2` share `10.88.0.0/24`, which is WIREGUARD'S DEFAULT and
+ * collides across unrelated installs - so they get the DASHED enclosure and the words
+ * `same prefix`, which name the test rather than claiming a path. `backup-nas` shares
+ * `192.168.1.0/24` with THIS device, which is a statement about the machine the reader is
+ * sitting at, so it gets the SOLID one. `cold-storage` and `edge-proxy` get nothing: the
+ * first publishes an address the classifier refuses to group, the second a public address
+ * that shares a prefix with nobody here - and the internet is not a container to draw.
+ *
+ * THE ADDRESSES ARE ALSO IN THE PANEL, which is what keeps the drawing checkable: the
+ * canvas's boundaries are arithmetic on the strings the panel lists in full.
+ */
+export const Scopes: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+							endpoints: ["192.168.1.10:4097"],
+						}),
+						member(DEVICE_PEER, {
+							name: "aws-node-1",
+							endpoints: ["10.88.0.7:4097"],
+						}),
+						member(DEVICE_THIRD, {
+							name: "aws-node-2",
+							endpoints: ["10.88.0.4:4097"],
+						}),
+						member(DEVICE_FOURTH, {
+							name: "backup-nas",
+							endpoints: ["192.168.1.40:4097"],
+						}),
+						member(DEVICE_FIFTH, {
+							name: "cold-storage",
+							endpoints: ["0.0.0.0:4097"],
+						}),
+						member(`d_${"f".repeat(32)}`, {
+							name: "edge-proxy",
+							endpoints: ["203.0.113.9:4097"],
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, { name: "aws-node-1", session_count: 4 }),
+					peer(DEVICE_THIRD, { name: "aws-node-2", session_count: 2 }),
+					peer(DEVICE_FOURTH, { name: "backup-nas", session_count: 0 }),
+					peer(DEVICE_FIFTH, { name: "cold-storage", session_count: 0 }),
+					peer(`d_${"f".repeat(32)}`, {
+						name: "edge-proxy",
+						session_count: 7,
+					}),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * THE DECLARED TIER, PHOTOGRAPHED (design review round 1, D6) - AND WHAT THIS FRAME
+ * CANNOT PROVE, stated before a reader asks.
+ *
+ * `declared` is the third drawn tier, and NO BACKEND SENDS IT YET: the field is read
+ * client-side (`mesh-scope.ts`'s `declaredScope`, off a membership's `scope`), so no
+ * live install can render this boundary - the design round's judgment of it could not
+ * be checked against any frame. This story sets the field the client half reads, which
+ * is the same instrument the tier's own unit test uses, so the SHIPPED STYLING (a
+ * solid frame, the operator's word and `· declared` in the label, and its difference
+ * from the dashed probable tier beside it) is verifiable; whether an install shows it
+ * is the backend's question, and the set's README carries that caveat.
+ */
+export const ScopesDeclared: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+							endpoints: ["192.168.1.10:4097"],
+						}),
+						member(DEVICE_PEER, {
+							name: "rack-node",
+							endpoints: ["10.44.0.9:4097"],
+							scope: "sim-lab",
+						}),
+						member(DEVICE_THIRD, {
+							name: "lab-a",
+							endpoints: ["10.88.0.5:4097"],
+						}),
+						member(DEVICE_FOURTH, {
+							name: "lab-b",
+							endpoints: ["10.88.0.6:4097"],
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, { name: "rack-node", session_count: 0 }),
+					peer(DEVICE_THIRD, { name: "lab-a", session_count: 2 }),
+					peer(DEVICE_FOURTH, { name: "lab-b", session_count: 1 }),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * TWO ENCLOSURES SHARING THEIR TOPMOST DEVICE (agent review round 2, M4): the frame the
+ * collision case never had.
+ *
+ * `build-box` publishes a tunnel address (`10.88.0.5`) AND a LAN one (`192.168.1.40`),
+ * so it sits in TWO groups - the dashed probable one with `lab-a` and the solid shared
+ * one with `lab-b` - and it is TOPMOST in both. Before the nesting rule both frames'
+ * tops landed on one anchor and their labels overprinted at one point (the reviewer's
+ * repro measured both at (428, 140) - no frame showed it). This frame is where the
+ * staircase can be checked: two rings 26 px apart, the shared frame (reaching further
+ * down, to `lab-b`) the outer one, labels one pitch apart and never on top of each
+ * other.
+ */
+export const ScopesSharedTop: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+							endpoints: ["192.168.1.10:4097"],
+						}),
+						member(DEVICE_PEER, {
+							name: "build-box",
+							endpoints: ["10.88.0.5:4097", "192.168.1.40:4097"],
+						}),
+						member(DEVICE_THIRD, {
+							name: "lab-a",
+							endpoints: ["10.88.0.6:4097"],
+						}),
+						member(DEVICE_FOURTH, {
+							name: "lab-b",
+							endpoints: ["192.168.1.41:4097"],
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, { name: "build-box", session_count: 3 }),
+					peer(DEVICE_THIRD, { name: "lab-a", session_count: 1 }),
+					peer(DEVICE_FOURTH, { name: "lab-b", session_count: 0 }),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * THREE LEVELS ON ONE OPENER (the design ruling's "n = 3 if cheap"): three INFERRED
+ * groups hanging off one row.
+ *
+ * `build-box` publishes three addresses on three prefixes - a LAN one (`192.168.1.40`,
+ * shared with this device) and two tunnel ones (`10.88.0.5` with `lab-a`, `10.44.0.9`
+ * with `lab-c`) - and it is topmost in all three, so the staircase draws at its full
+ * pitch: three labels 26 px apart, each frame 4 px wider than the one inside it, the
+ * layout clearing 84 px above the row. The order is the ruling's larger-bottom rule
+ * rather than a special case: `lab-c` reaches furthest down, so its probable frame is
+ * outermost.
+ *
+ * THE DECLARED TIER CANNOT APPEAR IN A STACK, which is why this story uses a third
+ * inferred prefix where an earlier draft put a `scope`: `prefixGroups` excludes a
+ * device with an authored scope from the prefix arithmetic entirely ("one machine is
+ * never inside two boundaries that disagree about why it is there"), so a declared
+ * group never shares an opener with an inferred one. `ScopesDeclared` stays the
+ * declared tier's own frame; this one is the stack at depth three.
+ */
+export const ScopesNested: Story = {
+	render: () => {
+		installBridge({
+			networks: {
+				self_device_id: DEVICE_SELF,
+				networks: [
+					network(NET_HOME, "damian-mesh", [
+						member(DEVICE_SELF, {
+							name: "damians-MacBook-Pro",
+							role: "admin",
+							endpoints: ["192.168.1.10:4097"],
+						}),
+						member(DEVICE_PEER, {
+							name: "build-box",
+							endpoints: [
+								"10.88.0.5:4097",
+								"192.168.1.40:4097",
+								"10.44.0.9:4097",
+							],
+						}),
+						member(DEVICE_THIRD, {
+							name: "lab-a",
+							endpoints: ["10.88.0.6:4097"],
+						}),
+						member(DEVICE_FOURTH, {
+							name: "lab-b",
+							endpoints: ["192.168.1.41:4097"],
+						}),
+						member(DEVICE_FIFTH, {
+							name: "lab-c",
+							endpoints: ["10.44.0.7:4097"],
+						}),
+					]),
+				],
+			},
+			peers: {
+				self_device_id: DEVICE_SELF,
+				peers: [
+					peer(DEVICE_PEER, { name: "build-box", session_count: 3 }),
+					peer(DEVICE_THIRD, { name: "lab-a", session_count: 1 }),
+					peer(DEVICE_FOURTH, { name: "lab-b", session_count: 0 }),
+					peer(DEVICE_FIFTH, { name: "lab-c", session_count: 2 }),
+				],
+				degraded: [],
+			},
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
  * A chip in the air over a VALID target: the transient state, mid-drag.
  *
  * THE GESTURE IS DRIVEN BY THE RIG, NOT BY THIS STORY, and that is a measurement rather
@@ -944,8 +1376,22 @@ export const MoveBusyWaited: Story = {
 /** The reversible half, and the undo it leaves: a `--keep` copy that can be erased. */
 export const MoveCopyWithUndo: Story = {
 	render: () => {
+		/*
+		 * THE UNDO ANSWERS WITH ITS OWN WORLD AND ITS OWN RECEIPT (agent review round 1,
+		 * Q2). The chain was provable before this - the button, the confirm dialog, the
+		 * `sessions.transfer` and both re-reads - but EVERY transfer answered the same
+		 * keep-mode payload, so the recall the undo sends produced byte-identical words
+		 * and a later round could not photograph it. `afterTransfer` runs before each
+		 * answer, so the first call rewrites the world AND the next answer: the copy
+		 * lands on the peer (this device keeps the original), and the undo's own recall
+		 * answers with `mode: "move"` back to this device, the shape the page renders as
+		 * its own receipt. The committed frame still photographs the COPY receipt + the
+		 * undo affordance; the chain's second half is now renderable rather than fixed.
+		 */
+		let transfers = 0;
+		const base = actionFixture();
 		installBridge({
-			...actionFixture(),
+			...base,
 			transfer: {
 				locality: "remote",
 				owner_device: DEVICE_PEER,
@@ -954,6 +1400,51 @@ export const MoveCopyWithUndo: Story = {
 				new_session_id: "0123456789f1",
 				mode: "keep",
 				phases: [],
+			},
+			afterTransfer: (world) => {
+				transfers += 1;
+				if (transfers === 1) {
+					/*
+					 * The reads that follow the copy show the world the notice CLAIMS: cloud-node-1
+					 * holds the new id beside the original's row, and its count moves with it.
+					 * A static fixture here would re-answer the pre-copy world under a receipt
+					 * that says a copy exists - design review round 3's D13, one story along.
+					 */
+					world.sessions = [
+						...base.sessions,
+						sessionRow("0123456789f1", "Rewrite the importer", {
+							locality: "remote",
+							owner_device: DEVICE_PEER,
+							owner_device_name: "cloud-node-1",
+						}),
+					];
+					world.peers = {
+						self_device_id: DEVICE_SELF,
+						peers: [
+							peer(DEVICE_PEER, {
+								name: "cloud-node-1",
+								last_seen_at: seenMinutesAgo(9),
+								session_count: 4,
+							}),
+						],
+						degraded: [],
+					};
+					/* And the NEXT transfer - the undo's recall - is not a copy: it moves the
+					 * copy back to this device, which the page renders as a move receipt. */
+					world.transfer = {
+						locality: "local",
+						owner_device: DEVICE_SELF,
+						source_retired: true,
+						session_id: "0123456789f1",
+						new_session_id: "0123456789ef",
+						mode: "move",
+						phases: [],
+					};
+					return;
+				}
+				/* The recall landed: the peer's copy is gone and the original is back alone. */
+				world.sessions = base.sessions;
+				world.peers = base.peers;
 			},
 		});
 		return <MeshPage />;

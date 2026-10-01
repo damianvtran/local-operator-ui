@@ -358,11 +358,80 @@ test("a changed create body gets a fresh at-most-once key, and only before a ses
 	);
 });
 
+test("a changed DESTINATION gets a fresh at-most-once key too, and a same-value pick does not", () => {
+	/*
+	 * Agent review round 2, R2-2, and it is the rule directly above one field over:
+	 * `peer` rides the create body (`desktop-contract.ts`), and the server keys its
+	 * receipt on a hash of that WHOLE body. Two mesh refusals KEEP the claim rather
+	 * than releasing it (`relay_unavailable`, `peer_unreachable`), so a destination
+	 * change after one of them used to re-send the same `createRequestId` with a
+	 * different body - a `ReceiptConflict` for the life of that pane, against the
+	 * app's own advice to retry with the same draft. This is the action's test; the
+	 * call site is pinned in `chat-device-model.test.mjs`.
+	 */
+	const store = useCanonicalSessionsStore.getState();
+	const key = store.stageDraft();
+	const unpicked = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(unpicked.peer, undefined);
+	store.setDraftPeer(key, "d_build");
+	const aimed = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(aimed.peer, "d_build");
+	assert.notEqual(aimed.createRequestId, unpicked.createRequestId);
+	// The admission id addresses the message, not the destination: it must not move.
+	assert.equal(aimed.admissionRequestId, unpicked.admissionRequestId);
+
+	/*
+	 * THE WARM INTENT GOES WITH THE KEY: the mint engaged a runtime on THIS device
+	 * (`sessions.draft`) and v1 does not re-aim one at a peer, so a stale `warmId`
+	 * would have the next send adopt a draft for the destination the row just left.
+	 */
+	store.updateDraft(key, { warmId: "w_1", draftRequestId: "d_req" });
+	store.setDraftPeer(key, "d_pixel");
+	const reaimed = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(reaimed.peer, "d_pixel");
+	assert.equal(reaimed.warmId, undefined);
+	assert.notEqual(reaimed.draftRequestId, "d_req");
+
+	/*
+	 * THE SAME DESTINATION IS NOT A CHANGE. The self row is a real press that means
+	 * "this device", so a guard is what keeps a press that picked nothing new from
+	 * re-minting the id and dropping a warm intent for a request that has not changed.
+	 */
+	const settled = reaimed.createRequestId;
+	store.setDraftPeer(key, "d_pixel");
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].createRequestId,
+		settled,
+	);
+
+	// Clearing it IS a change: this device is a different body.
+	store.setDraftPeer(key, null);
+	const home = useCanonicalSessionsStore.getState().drafts[key];
+	assert.equal(home.peer, undefined);
+	assert.notEqual(home.createRequestId, settled);
+
+	// And once a session exists the create is behind us: its id stays pinned.
+	store.updateDraft(key, { sessionId: "abcdef123456" });
+	const pinned =
+		useCanonicalSessionsStore.getState().drafts[key].createRequestId;
+	store.setDraftPeer(key, "d_build");
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].peer,
+		"d_build",
+	);
+	assert.equal(
+		useCanonicalSessionsStore.getState().drafts[key].createRequestId,
+		pinned,
+	);
+});
+
 test("a pick on a discarded pane records nothing, and never resurrects the row", () => {
 	const store = useCanonicalSessionsStore.getState();
 	const gone = "draft:00000000-0000-4000-8000-000000000000";
 	assert.equal(useCanonicalSessionsStore.getState().drafts[gone], undefined);
 	store.setDraftModel(gone, PICKED);
+	assert.equal(useCanonicalSessionsStore.getState().drafts[gone], undefined);
+	store.setDraftPeer(gone, "d_build");
 	assert.equal(useCanonicalSessionsStore.getState().drafts[gone], undefined);
 });
 

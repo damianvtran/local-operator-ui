@@ -5,7 +5,15 @@ narrow one. The tab still ships **dark** - mounted only when the backend adverti
 `features.peers`, with no call at all on a machine in no mesh - and this set is slice 2's:
 the canvas became interactive (pan, zoom, hover, the device panel, the drag and its
 transient states, the two dialogs, the busy refusal, and the **receipt** the remedy
-produces), so the set grew from slice 1's nine states to the **nineteen** below.
+produces), so the set grew from slice 1's nine states to the **nineteen** - and the
+redesign's round-1 remediation added the six that bring it to the **twenty-five** below:
+the two states the redesign's own model needed on the CANVAS (`reach-states`, `scopes`),
+their list and narrow counterparts (`reach-states-list`, `scopes-narrow`), and the two
+shipped renderings no earlier frame carried (`single-device-panel`'s `never`,
+`scopes-declared`'s declared tier). **The round-2 remediation adds the four the stack
+needed** - `scopes-shared-top` and `scopes-nested` with their narrow passes, two and
+three enclosures hanging off one opener - which brings the set to the **twenty-nine**
+below.
 
 **The remedy's own row proves the move, because round 4 fixed the reason it could not**
 (design review rounds 3 D13 and 4 D18). `move-busy-waited` photographs the receipt *and* the world
@@ -48,9 +56,11 @@ node scripts/capture-evidence.mjs --only=mesh-tab \
   --themes=localOperatorLight,localOperatorDark --allow-backend
 ```
 
-38 frames, 19 states x 2 palettes, written through the repo's own sweep (a private
+58 frames, 29 states x 2 palettes, written through the repo's own sweep (a private
 headless Chrome, `Page.captureScreenshot` at deviceScaleFactor 2, `assertFramePaints`
-on every frame). `manifest.json` records this as a **partial** capture
+on every frame) - the round-2 pass re-shot the set whole, then narrowed once
+(`--dirs=scopes-nested,scopes-nested-narrow`) to re-take the four frames whose fixture
+changed. `manifest.json` records this as a **partial** capture
 (`partialCapture`), which is what it is: the set is the tab's own states, not a
 sweep of the tree.
 
@@ -181,11 +191,21 @@ missing row proves nothing a reader could check.
 | `two-devices/…` | a healthy two-device mesh | the design target: two nodes, one edge, the peer's chat count |
 | `two-devices-narrow/…` | the same screen at 1024x768 | a narrow case: the canvas fits the world into a smaller box rather than scrolling it. The app's own floor is **800x600** (`WINDOW_MIN_WIDTH`/`WINDOW_MIN_HEIGHT` in `src/main/window-mode.ts`), and the design round captured four states there without committing them - all hold, and the node's ellipsis is a world-space cut rather than a responsive one |
 | `overlapping-networks/…` | five devices across two networks, one device in both | THE claim of the model: a device in two networks is ONE node with TWO edges |
+| `reach-states/…` | the five reach states on one canvas, plus the working device | `not asked` no longer wears a failure's hue: each stripe and word is keyed on `deviceReach`, `unknown` says so with no hue, and a suspect device carries the shield as the non-colour channel |
+| `reach-states-list/…` | the same fixture in the list presentation | THE two faces of the round-1 list-ink finding: `not asked` with no hue, and `no answer` + the shield + an `identity suspect` badge on the suspect row - neither was visible on the list in any committed frame before |
+| `scopes/…` | the drawn boundary tiers at 1380x900 | two peers agreeing on WireGuard's default subnet draw dashed; `backup-nas` sharing this device's prefix draws solid; a duplicated address draws nothing |
+| `scopes-narrow/…` | the same tiers at 1024x768 | the label band's second cause, and round 2's second fix: the topmost label was STILL sliced flat by the canvas's own top edge at the fit's floor (k = 0.8 put a 563 px world in a 559 px well), so the floor-bound fit now TOP-ALIGNS rather than centres and the top clearance scales with the stack - this frame is where the corrected behaviour is checkable, and the label sits ~10 px inside at this width |
+| `scopes-declared/…` | the `declared` tier, from a fixture | the third drawn tier's shipped styling (solid frame, the operator's word, `· declared`) - **buildable client-side, not reachable from any backend yet**: `scope` is `""` in every install, so this frame is a styling proof rather than a live state, and `mesh-scope.ts`'s backend ask is where it lands |
+| `scopes-shared-top/…` | two enclosures sharing their topmost device | THE M4 collision, photographed: `build-box` publishes a LAN and a tunnel address, is topmost in both groups, and before the nesting rule both labels anchored at one point - now one nested pair of rings, labels 26 px apart, the shared frame (reaching further down) the outer one |
+| `scopes-shared-top-narrow/…` | the same pair at 1024x768 | the collision at the width where the fit's floor binds, so the staircase and the top-aligned fit can be read together |
+| `scopes-nested/…` | three levels on one opener | the staircase at its full pitch: `build-box` is topmost in three INFERRED groups, so three labels stand 26 px apart and each frame is 4 px wider than the one inside it. A declared tier cannot appear in a stack - an authored scope excludes the device from the prefix arithmetic - which is why this fixture uses a third inferred prefix |
+| `scopes-nested-narrow/…` | the same three levels at 1024x768 | the depth case at the narrow width, where the 84 px row reservation and the top-aligned fit are both visible |
 | `misconfigured/…` | a suspect device, an unreachable device, a revoked membership | each misconfiguration is a named state with its own reason, and the revoked edge draws dashed |
 | `virgin-device/…` | no network at all | the page's own first-run state: the sentence and the command that changes it |
 | `reads-failed/…` | both reads refused | the relay's own sentence, verbatim, and the control that asks again |
 | `loading/…` | the first paint | a skeleton, not a spinner over a blank world |
 | `list-view/…` | the same mesh in the list presentation | the sortable list, which is the other way in and the reason a graph is not the only presentation |
+| `single-device-panel/…` | the panel's `never` | a null `Last status frame` reads `never` rather than a date computed from zero - the D4 fix's own null case, which no earlier frame carried |
 | `device-panel/…` | a device's panel, open | the node's detail and its actions: memberships, the session list, and the two affordances the canvas cannot offer |
 | `device-panel-narrow/…` | the same panel at 1024x768 | the clicked node stays whole while the panel takes a third of the width - the clamp that keeps it visible solves against the canvas's *clip* box, so nothing sits under the border (round 3, Q-1) |
 | `cap-at-four/…` | four conversations on one peer | the cap's own case: two chips and the `+N` control, with the chip's label truncated from the LEFT so the end that distinguishes series-named conversations survives |
@@ -210,10 +230,12 @@ looked at; each is quoted in the source beside the decision it decides.
   1.23, "a border nobody can see"; re-measured with the repo's own `deltaE` it is
   **9.19 / 4.80**, so the hairline is visible and the edge was chosen for the ratio
   above. `scripts/contrast-contract.mjs` carries a `mesh device node` row asserting
-  that triple, and the gate reports **29,293 assertions across 59 themes** with 0
-  consulted exceptions — re-derived at this head (design review round 3, D17: this
-  sentence said 28,524, which was true when it was written and moved as the contract
-  gained rows; the number is a reading, not a constant).
+  that triple, and the gate reports **29,476 assertions across 59 themes** with 0
+  consulted exceptions — re-derived at this head (agent review round 1, m1/D5: this
+  sentence has moved with the contract before - round 3's D17 recorded 28,524, and the
+  round-1 remediation measured 29,417 on its own tree - and the number is a reading,
+  not a constant: it last moved when the fold onto `ee5611a2e4` brought main's
+  `CONTROLS` rows in).
 - **Selection needs more than a fill.** `rowSelected` against this node's own
   `elevated` fill measures ΔE00 7.00 on the light brand palette but only 2.19 on the
   dark one - at the field floor, not above it - so a selected node takes the ink edge
@@ -232,5 +254,7 @@ node scripts/capture-evidence.mjs --only=mesh-tab \
   --themes=localOperatorLight,localOperatorDark --allow-backend
 ```
 
-The frames are `.webp` at 1380x900 (and 1024x768 for the narrow row), written by
-the sweep's own Chrome profile, which it removes on exit.
+The frames are `.webp` at 1380x900 (and 1024x768 for the narrow rows -
+`two-devices-narrow`, `device-panel-narrow`, `scopes-narrow`, `scopes-shared-top-narrow`,
+`scopes-nested-narrow`), written by the sweep's
+own Chrome profile, which it removes on exit.

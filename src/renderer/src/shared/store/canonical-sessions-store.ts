@@ -480,6 +480,24 @@ export type ChatDraft = {
 	 * that the row states the intent rather than the absence of a key.
 	 */
 	model?: DesktopModelSelection | null;
+	/**
+	 * The DEVICE this draft's conversation will be created on, when the user picked a
+	 * peer from the chat header's device control (`features.peers`). Absent means this
+	 * device, which is the only shape every backend has ever served.
+	 *
+	 * DRAFT state, like `model` above and for the same reason: choosing a machine for
+	 * one conversation must not move any machine's default. The header's chip reads it
+	 * to answer "where WILL this be created" before any runtime exists - the state the
+	 * operator's own screenshot was in - and `sessions.create` sends the same value as
+	 * the wire's `peer` (`desktop-contract.ts`).
+	 *
+	 * THE DIRECTORY FACT THAT RIDES WITH IT: a remote create carries an explicit `cwd`,
+	 * and an EMPTY one resolves to the peer's home rather than to this project (the
+	 * peer's own resolver, `relay._resolve_peer_cwd`), so a pane with a peer
+	 * destination must name the directory it will use rather than implying the one on
+	 * screen.
+	 */
+	peer?: string;
 	pending?: boolean;
 	error?: string;
 	errorCode?: string;
@@ -2439,6 +2457,10 @@ export async function admitChatDraft(
 					// send before the mint answered — and the create then mints fresh
 					// exactly as it always did.
 					draft.warmId,
+					// The device the pane's own control picked, if it picked one. `undefined`
+					// for every draft nobody aimed at a peer, which is what keeps the body
+					// of an ordinary create byte-identical to what it was before the control.
+					draft.peer,
 				)) ?? undefined;
 			if (!id)
 				throw new UserFacingError(
@@ -3707,6 +3729,12 @@ type CanonicalSessionsState = {
 		 * rather than failing the send (see `ensureDraftWarm`).
 		 */
 		draftId?: string,
+		/**
+		 * The device to create the conversation ON, when the pane's device control
+		 * picked a peer (`features.peers`). Omitted otherwise, and the request body
+		 * then carries no `peer` at all - see the implementation's own note.
+		 */
+		peer?: string,
 	) => Promise<string | null>;
 	/**
 	 * The turns THIS WINDOW stopped, by session id, stamped in wall-clock ms.
@@ -3982,6 +4010,22 @@ type CanonicalSessionsState = {
 	 * fresh and the send (if it beats that mint) creates without a draft id.
 	 */
 	setDraftModel: (key: string, model: DesktopModelSelection | null) => void;
+	/**
+	 * Record — or clear — the DEVICE a NEW conversation will be created on.
+	 *
+	 * A dedicated action rather than a bare `updateDraft("peer")` for exactly the
+	 * reason `setDraftModel` above gives, one field over: `peer` rides the create
+	 * body (`desktop-contract.ts`), and the server keys its at-most-once receipt on a
+	 * hash of that WHOLE body (`desktop_receipts.py`), so re-sending the same
+	 * `createRequestId` after the destination changed is a `ReceiptConflict` forever.
+	 * Two mesh refusals KEEP the claim rather than releasing it
+	 * (`_CREATE_UNCONFIRMED_CODES`: `relay_unavailable`, `peer_unreachable`), and a
+	 * device that answered the last read and stopped answering at send time is
+	 * exactly that case — the refusal this control ships a notice for. A changed
+	 * destination is a changed intent, so it gets a fresh create id. `null` means
+	 * this device, and choosing this device after picking a peer is a change too.
+	 */
+	setDraftPeer: (key: string, peer: string | null) => void;
 	finishDraft: (key: string, sessionId: string) => void;
 	/**
 	 * Abandon a stuck send. The retained payload is the user's own text, so the
@@ -5788,6 +5832,16 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * mints fresh rather than refusing the send.
 				 */
 				draftId?: string,
+				/**
+				 * The device to create the conversation ON, when the pane's device control
+				 * picked a peer (`features.peers`; `CreateSession.peer` on the wire).
+				 *
+				 * OMITTED WHEN NOTHING WAS PICKED, the same omission rule as `model` and
+				 * `draftId`: the body then stays byte-for-byte the one this app sent before
+				 * the control existed, which is what makes the field additive for every
+				 * caller and every older daemon.
+				 */
+				peer?: string,
 			) => {
 				try {
 					const result = await desktopResult<{
@@ -5809,6 +5863,9 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						// absent leaves this request byte-for-byte what it was before drafts
 						// could be warmed. The draft row's own note explains the lifecycle.
 						...(draftId ? { draftId } : {}),
+						// And the third: a pane that never picked a device sends no `peer`, so its
+						// create is exactly what it always was.
+						...(peer ? { peer } : {}),
 					});
 					get().upsertSession({
 						session_id: result.session_id,
@@ -6201,6 +6258,54 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						},
 					};
 				}),
+			setDraftPeer: (key, peer) =>
+				set((state) => {
+					/*
+					 * A pick on a pane whose row is gone records nothing: the pane was
+					 * discarded while the picker was open, and this must not resurrect it
+					 * (the same rule `updateDraft` and `setDraftModel` state).
+					 */
+					const present = state.drafts[key];
+					if (!present) return {};
+					const next = peer ?? undefined;
+					/*
+					 * AN UNCHANGED DESTINATION IS NOT A CHANGE. The self row is a real press
+					 * that means "this device", so without this guard a press that picked
+					 * nothing new would re-mint the create id and drop a warm intent for a
+					 * request that is still the same one.
+					 */
+					if ((present.peer ?? undefined) === next) return {};
+					return {
+						drafts: {
+							...state.drafts,
+							[key]: {
+								...present,
+								peer: next,
+								/*
+								 * THE SAME REWRITE `setDraftModel` MAKES, on the same condition: only while
+								 * there is still no session. Once one exists the create has already been
+								 * made and its id must stay pinned so a replay of that request stays an
+								 * idempotent replay. The admission id is NOT re-minted — it addresses the
+								 * message, not the create body.
+								 */
+								...(present.sessionId
+									? {}
+									: {
+											createRequestId: crypto.randomUUID(),
+											/*
+											 * AND THE WARM INTENT GOES WITH IT: the mint engaged a runtime on THIS
+											 * device (`sessions.draft`) and v1 does not re-aim one at a peer. The
+											 * mint's own request id is dropped for the reason `setDraftModel` gives:
+											 * a receipt replays the FIRST answer, so re-asking under the old key
+											 * would hand the pane back a draft id for the old destination.
+											 */
+											warmId: undefined,
+											draftRequestId: crypto.randomUUID(),
+										}),
+							},
+						},
+					};
+				}),
 			setDraftModel: (key, model) =>
 				set((state) => {
 					/*
@@ -6279,6 +6384,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				if (!state.draftWarmable) return;
 				const draft = state.drafts[key];
 				if (!draft || draft.sessionId || draft.warmId || !state.cwd) return;
+				/*
+				 * A DRAFT DESTINED FOR A PEER IS NOT WARMED HERE, and there would be nothing to
+				 * warm: `sessions.draft` registers an id on THIS daemon's registry while the
+				 * create that adopts it runs on the PEER (the header's control sets the pane's
+				 * `peer`, and `sessions.create` sends it). Minting would spend a runtime here
+				 * for a conversation that is born on another machine.
+				 */
+				if (draft.peer) return;
 				/*
 				 * A STABLE request id, generated lazily and stored BEFORE the request
 				 * goes out: two keystrokes landing before the first answer must be one
