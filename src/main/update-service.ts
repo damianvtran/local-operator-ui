@@ -7989,8 +7989,11 @@ export class UpdateService {
 	 * compare against) sends the caller to the liveness fallback; the failure is
 	 * logged here, where the transport error is still in hand. The read is
 	 * deliberately per-call rather than cached: it is the one reading whose whole
-	 * point is that it moves as runtimes roll, so every completion and every
-	 * re-read asks the machine again.
+	 * point is that it moves as runtimes roll, so every completion asks the
+	 * machine again. A notice-reopen re-read is NOT wired (review round 1's A1):
+	 * no renderer->main census channel exists yet, so the count travels with the
+	 * completion it was measured for - recorded as deferred on the PR rather
+	 * than claimed here.
 	 */
 	private async readRuntimeCensus(
 		backend: BackendServiceManager,
@@ -8034,11 +8037,13 @@ export class UpdateService {
 	 * answers null/null, which the notice renders as the numberless sentence: a
 	 * count that cannot be measured is not a zero.
 	 *
-	 * The source travels with the count because the notice's WORDS depend on it
-	 * ("N runtimes still on the old version" for a build count, "N sessions still
-	 * running the old build" for the liveness one) - a liveness count is a
-	 * session-level reading with a documented over-count and may not be printed
-	 * as a runtime census.
+	 * The source travels with the count for the RECORD, and for any later reader
+	 * that needs to know how it was measured - it does not choose the notice's
+	 * words. The notice keeps ONE session-family sentence for both sources
+	 * (designer copy consult, 2026-09-30: the producer's vocabulary belongs in
+	 * the payload field, never in the reader's sentence), so a build count is not
+	 * printed as "N runtimes" and the liveness reading's documented over-count
+	 * rides the field beside the count instead of changing the sentence.
 	 */
 	private async readStragglerCensus(input: {
 		backend: BackendServiceManager;
