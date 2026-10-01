@@ -1,9 +1,13 @@
 import { BrowserHostError } from "../errors";
 import type { TabRecord } from "../registry";
 import { SCRIPTING_DEADLINE_MS, deadline } from "../vendor/driver/deadline";
-import * as geometryDriver from "../vendor/driver/geometry-read";
 import { type BrowserActionContext, numberParam, stringParam } from "./context";
 import { pageOf } from "./gate";
+import {
+	ANCESTORS_SOURCE,
+	HIT_TEST_SOURCE,
+	READ_STYLES_SOURCE,
+} from "./geometry-sources.gen";
 import { INVALID_SELECTOR, ISOLATED_WORLD_ID } from "./page";
 
 /**
@@ -18,12 +22,22 @@ import { INVALID_SELECTOR, ISOLATED_WORLD_ID } from "./page";
  * implementation, vendored into `vendor/driver/` under the PROVENANCE pin, and
  * this module only carries the function across the world boundary.
  *
- * WHY `({fn}.toString())(...)` AND NEVER A BUILT STRING: Electron's scripting
- * primitive takes source, not a function reference (the extension passes
- * `chrome.scripting.executeScript({func})`), so the function travels as its own
- * source and every argument is JSON-encoded data. Nothing call-supplied — a
- * selector with quotes in it, a number, a property list — is ever concatenated
- * into executable code; the same posture `read` states for its selector.
+ * HOW THE PAGE FUNCTIONS TRAVEL, and why NOT `({fn}.toString())(...)` as first
+ * written: Electron's scripting primitive takes source, not a function
+ * reference — but this app's built main is V8 BYTECODE, and its loader runs the
+ * script against a dummy source string, so `Function.prototype.toString()`
+ * returns that dummy text in the built app (measured — the first built-app
+ * proof run answered `Script failed to execute`, and a bare probe shows the
+ * loader's dummy text coming back from `toString()`). The page functions'
+ * source is therefore captured at GENERATION time from the vendored driver by
+ * `scripts/generate-geometry-sources.mjs` and committed as the constants in
+ * `geometry-sources.gen.ts`; the freshness test re-derives them, and the test
+ * bundle pins each constant byte-equal to the same function's `toString()`
+ * there. The extension host injects the functions themselves from the same
+ * driver file — one implementation, two transports. Arguments remain
+ * JSON-encoded data: nothing call-supplied — a selector with quotes in it, a
+ * number, a property list — is ever concatenated into executable code; the same
+ * posture `read` states for its selector.
  *
  * WHY THE SAME ISOLATED WORLD AS `read`: these read the page the way `read`
  * does, and the main world would let the page observe the agent's reads and
@@ -40,11 +54,6 @@ import { INVALID_SELECTOR, ISOLATED_WORLD_ID } from "./page";
  * the authority for all of it and re-checks each bound.
  */
 
-/** One of the vendored page functions. Its source is what crosses the boundary,
- * so the signature here is deliberately the loosest one the functions compose
- * with: the real request/response detail lives in the vendored file. */
-type PageFunction = (...args: never[]) => unknown;
-
 /** A wire-shape-checked argument, JSON-encoded on its way into the page. */
 type Arg = string | number | string[];
 
@@ -59,19 +68,19 @@ const DEFAULT_DEPTH = 12;
 const MAX_DEPTH = 16;
 
 /**
- * Run one fixed function in the tab's isolated world, with arguments passed as
- * JSON data.
+ * Run one fixed page function — its source, from the generated constants — in
+ * the tab's isolated world, with arguments passed as JSON data.
  *
  * The deadline is `read`'s: these run page script through the same primitive,
  * so they share its risk profile and its 20 s daemon budget.
  */
 async function runFixed(
 	record: TabRecord,
-	fn: PageFunction,
+	source: string,
 	args: Arg[],
 	label: string,
 ): Promise<unknown> {
-	const code = `(${fn.toString()})(${args
+	const code = `(${source})(${args
 		.map((arg) => JSON.stringify(arg))
 		.join(", ")})`;
 	return await deadline(
@@ -152,7 +161,7 @@ export async function styles(
 	try {
 		result = await runFixed(
 			record,
-			geometryDriver.readStyles,
+			READ_STYLES_SOURCE,
 			[selector, properties],
 			`styles(${selector})`,
 		);
@@ -189,7 +198,7 @@ export async function hitTest(
 	}
 	const result = await runFixed(
 		record,
-		geometryDriver.hitTest,
+		HIT_TEST_SOURCE,
 		[x, y],
 		`hit_test(${x}, ${y})`,
 	);
@@ -225,7 +234,7 @@ export async function ancestors(
 	try {
 		result = await runFixed(
 			record,
-			geometryDriver.ancestors,
+			ANCESTORS_SOURCE,
 			[selector, depth],
 			`ancestors(${selector})`,
 		);
