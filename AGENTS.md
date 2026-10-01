@@ -288,7 +288,7 @@ the reasoning, probe costs and constants are in
 `scripts/desktop-test-memory-guard.mjs`).
 
 - **What a kill looks like.** One line on stderr, `desktop tests: MEMORY LIMIT
-  EXCEEDED - killed process group <pid> (<n> processes): <X> owned (...) >=
+  EXCEEDED — killed process group <pid> (<n> processes): <X> owned (...) >=
   budget <Y>`, and exit status **137**. It means the whole group was SIGKILLed
   (including grandchildren such as an app or backend a test launched) because a
   successful reading was at or over the budget. Read the figure first: a test
