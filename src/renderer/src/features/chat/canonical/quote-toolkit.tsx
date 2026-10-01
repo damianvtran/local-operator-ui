@@ -5,11 +5,23 @@
  * WHAT IT IS, AND WHAT IT DELIBERATELY IS NOT. One control, the same visual
  * object as `message-controls.tsx`'s strip on the legacy transcript, because two
  * floating toolbars that look different is a defect rather than a style choice.
- * Copy and Speak deliberately do NOT ride along: both already exist on
- * `MessageControls`, and that component couples them to its own timestamp in one
- * strip. Reusing it here would drag the timestamp (out of scope for this change)
- * onto the canonical rows, and writing a second copy button would be the second
- * implementation § 9 of `docs/branding.md` refuses.
+ *
+ * SPEAK NOW RIDES ALONG (the speak-aloud round), and the reason the old ruling
+ * fell is the thing that changed rather than the ruling: the selection is the
+ * second surface the operator asked to hear, and when the shared
+ * `useSpeakControl`/`SpeakButton` (`@shared/components/common/speak-control.tsx`)
+ * landed, reusing it here stopped being the second implementation § 9 of
+ * `docs/branding.md` refuses. The press reads
+ * `quoteSelectionIn(turnRef.current)?.text` AT PRESS TIME - the same clipped
+ * range Quote stages and nothing else, never a timestamp or the turn's body -
+ * and the store keys it `sel:<conversationId>:<fnv1a(text)>`, so two different
+ * highlights cannot claim each other's busy or playing state.
+ *
+ * COPY STILL DOES NOT. The message strip's copy is per-message and this
+ * control's subject is a Range, not a record; the selection's own copy gesture
+ * is the platform's (Cmd/Ctrl+C), and inlining a second semantics here - which
+ * of html/text/flavors the write carries - is the second implementation the
+ * same § 9 refuses. The operator's ask for this surface was speech.
  *
  * THE TRIGGER IS THE HIGHLIGHT, AND NOTHING ELSE (the operator's first ask:
  * "The quote button should only show up when highlighting a section, not just
@@ -53,13 +65,25 @@
  * what a press that leaves focus behind costs.
  */
 
+import {
+	SpeakButton,
+	useSpeakControl,
+	useSpeakDismissal,
+} from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { clipForSpeech } from "@shared/lib/speech-clip";
 import { cn } from "@shared/lib/utils";
+import {
+	fetchAgentSpeech,
+	selectionSpeechKey,
+	useSpeechStore,
+} from "@shared/store/speech-store";
 import { Quote } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { QUOTE_TOOLKIT_ATTR, quoteSelectionIn } from "./quote-model";
 import { useFloatingControl } from "./use-floating-control";
+import { useHighlightText } from "./use-highlight-text";
 import { useQuotePress } from "./use-quote-press";
 
 type QuoteToolkitProps = {
@@ -95,14 +119,16 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	turnRef,
 }) => {
 	/*
-	 * The gate, and deliberately a boolean rather than the highlight itself: it
-	 * changes only when the highlight moves to another turn, so a scroll - which
-	 * fires many times a second - cannot re-render this row's markdown through
-	 * the position. The highlight is re-read at press time, which is also what
-	 * keeps the staged text honest if the reader drags a second time before
-	 * pressing.
+	 * The reader's highlight of this turn, through the shared gate
+	 * (`use-highlight-text.ts`): TEXT rather than the boolean this used to store,
+	 * because the Speak control's store key is built from the words - and the
+	 * equality that protected the re-render still holds, since an unchanged
+	 * highlight maps to an unchanged string. The highlight is re-read at press
+	 * time by BOTH presses (Quote stages it, Speak speaks it), which is what
+	 * keeps either honest if the reader drags a second time before pressing.
 	 */
-	const [owns, setOwns] = useState(false);
+	const { text: highlight, clear: clearHighlight } = useHighlightText(turnRef);
+	const owns = highlight !== null;
 	const handleQuote = useQuotePress(conversationId, turnRef);
 	const { controlRef, placement } = useFloatingControl({
 		turnRef,
@@ -112,22 +138,33 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 		// the first line anchors the control and the last one decides the flip.
 		lines: () => quoteSelectionIn(turnRef.current)?.lines ?? null,
 	});
-
 	/*
-	 * THE GATE, and the only event that fires for every way a highlight is made
-	 * or unmade: a drag, a double-click, shift+arrows, shift+click, and the click
-	 * that clears it. Escape is the one dismissal that fires nothing and is
-	 * handled below.
-	 *
-	 * The mount-time read is not ceremony: this pane is windowed, so a row can
-	 * mount under a highlight that already exists.
+	 * The selection's Speak, through the ONE control every speech surface renders
+	 * (`speak-control.tsx`). The key is this highlight's own words, clipped first
+	 * so the key, the cache entry and the request all describe the same
+	 * characters; the press re-reads the highlight (`getText`) for the same
+	 * reason Quote does - the strip can outlive the drag that raised it.
 	 */
-	useEffect(() => {
-		const read = () => setOwns(quoteSelectionIn(turnRef.current) !== null);
-		read();
-		document.addEventListener("selectionchange", read);
-		return () => document.removeEventListener("selectionchange", read);
-	}, [turnRef]);
+	const { speak } = useSpeechStore();
+	const speakKey =
+		highlight === null
+			? null
+			: selectionSpeechKey(conversationId, clipForSpeech(highlight).text);
+	/*
+	 * The dismissal contract (UX round 1, U1): when this highlight goes away -
+	 * cleared, superseded by a re-drag, or this row windowed out - the audio its
+	 * key owns goes with it, because this toolbar is that audio's only Stop.
+	 */
+	useSpeakDismissal(speakKey);
+	const speakControl = useSpeakControl({
+		key: speakKey,
+		getText: () => quoteSelectionIn(turnRef.current)?.text ?? null,
+		play: ({ text }) =>
+			speak(
+				selectionSpeechKey(conversationId, text),
+				fetchAgentSpeech(conversationId, text),
+			),
+	});
 
 	/*
 	 * ESCAPE DISMISSES, and it CLEARS the highlight rather than hiding the control
@@ -155,11 +192,11 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 			 * highlight it has just dropped, whatever the engine does with the
 			 * event.
 			 */
-			setOwns(false);
+			clearHighlight();
 		};
 		document.addEventListener("keydown", onKeyDown);
 		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [owns]);
+	}, [owns, clearHighlight]);
 
 	// Absent, not hidden: with no highlight of this turn's there is nothing to
 	// operate, so the control leaves the DOM and with it the tab order.
@@ -184,7 +221,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 				// whether or not the control is up. The `elevated` ground plus a
 				// hairline is what makes it read as floating over the prose - § 2
 				// keeps the one shadow for objects that genuinely leave the flow.
-				"absolute z-10 flex h-8 items-center rounded-md border border-hairline bg-elevated px-1",
+				"absolute z-10 flex h-8 items-center gap-0.5 rounded-md border border-hairline bg-elevated px-1",
 				!placement && "invisible",
 			)}
 			style={
@@ -212,6 +249,16 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 					<Quote />
 				</Button>
 			</Tooltip>
+			{/*
+			 * Speak rides BESIDE Quote rather than after the strip's other content:
+			 * the two act on the same subject (the highlight), and the pair reads as
+			 * one group of "do something with the selection" controls - the same
+			 * pairing the link toolbar uses.
+			 */}
+			<SpeakButton
+				control={speakControl}
+				side={placement?.placement === "below" ? "bottom" : "top"}
+			/>
 		</div>
 	);
 };

@@ -23,6 +23,15 @@
  * link's own text when there is nothing highlighted. A highlight inside the link
  * still wins over the whole-link text: the press reads the selection first.
  *
+ * SPEAK RIDES BESIDE QUOTE, through the same shared control the other speech
+ * surfaces render (`speak-control.tsx`; the speak-aloud round). This toolbar is
+ * where "read this highlight aloud" lives when the highlight lies wholly inside
+ * a link - the turn's own `QuoteToolkit` does not mount for that state (the row's
+ * one-control rule), so without a Speak here the state would have no speech
+ * affordance at all. It speaks what a Quote press would stage, read at press
+ * time for the same reasons: the highlight when there is one, the link's own
+ * text on the hover arm (`use-quote-press.ts` documents that fallback).
+ *
  * ONE OBJECT, TWO TOOLBARS, ONE LOOK. The shell is deliberately the same one the
  * turn's Quote control wears - the same `bg-elevated` ground, `border-hairline`
  * edge, `rounded-md` radius, `h-8` height, `px-1` padding, the same
@@ -70,12 +79,23 @@
  * filed under - and publishing it here as well would be two sources of one value.
  */
 
+import {
+	SpeakButton,
+	useSpeakControl,
+	useSpeakDismissal,
+} from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { clipForSpeech } from "@shared/lib/speech-clip";
 import { cn } from "@shared/lib/utils";
+import {
+	fetchAgentSpeech,
+	selectionSpeechKey,
+	useSpeechStore,
+} from "@shared/store/speech-store";
 import {
 	AppWindow,
 	Check,
-	ClipboardCopy,
+	Copy,
 	ExternalLink,
 	File as FileIcon,
 	FolderOpen,
@@ -83,7 +103,7 @@ import {
 	Quote,
 } from "lucide-react";
 import type { FC } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import { useCanvasPane } from "../utils/canvas-pane";
 import {
 	LINK_TARGET_PATH_ATTR,
@@ -102,8 +122,9 @@ import {
 	revealLocalTarget,
 } from "../utils/link-open";
 import { opensInCanvas } from "../utils/open-in-canvas";
-import { QUOTE_TOOLKIT_ATTR } from "./quote-model";
+import { QUOTE_TOOLKIT_ATTR, quoteSelectionIn } from "./quote-model";
 import { useFloatingControl } from "./use-floating-control";
+import { useHighlightText } from "./use-highlight-text";
 import { LINK_TOOLBAR_ATTR } from "./use-link-subject";
 import { useQuotePress } from "./use-quote-press";
 
@@ -149,6 +170,36 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 		[subject],
 	);
 	const handleQuote = useQuotePress(conversationId, turnRef, linkText);
+	/*
+	 * The selection's Speak control, offered beside Quote in both states. The key
+	 * is the text the press would act on - the highlight when one is inside this
+	 * link, the link's own text otherwise - clipped before it is hashed, so the
+	 * key, the cache entry and the request describe the same characters. The
+	 * press re-reads the highlight (`getText`), keeping a re-drag honest.
+	 */
+	const { text: highlight } = useHighlightText(turnRef);
+	const { speak } = useSpeechStore();
+	const speakText = highlight ?? linkText();
+	const speakKey =
+		speakText === null
+			? null
+			: selectionSpeechKey(conversationId, clipForSpeech(speakText).text);
+	/*
+	 * The dismissal contract (UX round 1, U1): when this key goes away - the
+	 * highlight cleared (the subject falls back to the link's own text), or the
+	 * whole toolbar unmounted - the audio that key owns goes with it; this
+	 * toolbar is that audio's only Stop.
+	 */
+	useSpeakDismissal(speakKey);
+	const speakControl = useSpeakControl({
+		key: speakKey,
+		getText: () => quoteSelectionIn(turnRef.current)?.text ?? linkText(),
+		play: ({ text }) =>
+			speak(
+				selectionSpeechKey(conversationId, text),
+				fetchAgentSpeech(conversationId, text),
+			),
+	});
 	const [copied, setCopied] = useState(false);
 	/*
 	 * The probe's answer, or `null` while nothing is known. Seeded from the cache
@@ -309,7 +360,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	 */
 	const icons: Record<LinkActionId, React.ReactNode> = {
 		quote: <Quote />,
-		copy: copied ? <Check /> : <ClipboardCopy />,
+		copy: copied ? <Check /> : <Copy />,
 		/*
 		 * The canvas mark is the PANEL the document opens into - the right-hand dock
 		 * is this app's canvas, and `PanelRightOpen` is that panel with its content
@@ -410,29 +461,42 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 			}}
 		>
 			{model.actions.map((action) => (
-				<Tooltip
-					key={action.id}
-					/*
-					 * "Copied" is the press's own answer, and it replaces the label rather
-					 * than sitting beside it: the transcript's Copy control does the same,
-					 * and a pressed control that looks identical to an unpressed one is how
-					 * a reader presses it twice.
-					 */
-					content={action.id === "copy" && copied ? "Copied" : action.label}
-					side={placement?.placement === "below" ? "bottom" : "top"}
-				>
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						aria-label={
-							action.id === "copy" && copied ? "Copied" : action.label
-						}
-						className="text-ink-dim hover:bg-accent-wash hover:text-accent"
-						onClick={presses[action.id]}
+				<Fragment key={action.id}>
+					<Tooltip
+						/*
+						 * "Copied" is the press's own answer, and it replaces the label rather
+						 * than sitting beside it: the transcript's Copy control does the same,
+						 * and a pressed control that looks identical to an unpressed one is how
+						 * a reader presses it twice.
+						 */
+						content={action.id === "copy" && copied ? "Copied" : action.label}
+						side={placement?.placement === "below" ? "bottom" : "top"}
 					>
-						{icons[action.id]}
-					</Button>
-				</Tooltip>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							aria-label={
+								action.id === "copy" && copied ? "Copied" : action.label
+							}
+							className="text-ink-dim hover:bg-accent-wash hover:text-accent"
+							onClick={presses[action.id]}
+						>
+							{icons[action.id]}
+						</Button>
+					</Tooltip>
+					{/*
+					 * Speak rides immediately after Quote, wherever the model put it:
+					 * with a highlight the pair leads the strip (both act on the
+					 * selection), without one they trail together (both act on the
+					 * link).
+					 */}
+					{action.id === "quote" && (
+						<SpeakButton
+							control={speakControl}
+							side={placement?.placement === "below" ? "bottom" : "top"}
+						/>
+					)}
+				</Fragment>
 			))}
 			{/*
 			 * The reason, when there is one, in the strip rather than behind a
