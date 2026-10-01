@@ -32,6 +32,11 @@
  * - `TeamMenuBusy` holds the receipt for six seconds so the trigger's busy
  *   spinner is photographable; `NarrowFold` is the operator's own 49-char
  *   title at the 560 band, where the identity folds onto the clipped line.
+ * - `LongLabel` and `LongLabelMinWidth` are the width BOUND's two frames
+ *   (design round 1, D1): a team whose label sits at the eighty-character
+ *   ceiling the core contract allows, at the 560 band and at the app's own
+ *   800 minimum, so the chip's cap - truncating, with the whole label and the
+ *   slug in the tooltip - is photographed at both ends of the row's budget.
  *
  * The bridge is installed from `render`, synchronously, before the header
  * mounts - the pattern `session-archive.stories.tsx` documents - because a
@@ -122,9 +127,16 @@ const SEEDED_RECENTS = {
 
 const SESSION = "2d5ad5da0025";
 
+/**
+ * One LABELLED team and one plain slug, so the frames cover the control's
+ * label-first reading and the fallback a label-less backend produces. Rows the
+ * gate resolves: `teams.list` and the same catalogue over `commands.entities`
+ * (the menu), both carrying `label` where there is one.
+ */
 const TEAMS = [
 	{
 		name: "lopdev",
+		label: "Local Operator Dev",
 		manager: "manager",
 		description: "Builds and ships local-operator itself.",
 	},
@@ -133,6 +145,31 @@ const TEAMS = [
 		manager: "ops-lead",
 		description: "The Minerva platform's own roster.",
 	},
+];
+
+/**
+ * A label at the OUTER EDGE of what the core contract allows: exactly eighty
+ * characters.
+ *
+ * WHY THIS ROSTER EXISTS (design round 1, D1). The chip's box is `shrink-0`,
+ * and before the cap an eighty-character label beside the agent chip pushed
+ * the identity past the header block's clip - a control present but not
+ * painted. The two `LongLabel` stories render this roster at the 560 band and
+ * at the app's own 800 minimum so the remedy (truncation here, the whole
+ * label and the slug in the tooltip) has frames at both widths rather than an
+ * argument.
+ */
+const LONG_LABEL =
+	"Data Quality, Sanctions Screening and Regulatory Reporting (Global Markets Desk)";
+
+const LONG_LABEL_TEAMS = [
+	{
+		name: "data-quality",
+		label: LONG_LABEL,
+		manager: "manager",
+		description: "Sanctions and regulatory data work.",
+	},
+	...TEAMS,
 ];
 
 const AGENTS = [
@@ -172,6 +209,12 @@ type BridgeOptions = {
 	 */
 	agents?: typeof AGENTS;
 	/**
+	 * The team roster this story's bridge answers with, the same contract as
+	 * `agents` above: the long-label stories pass `LONG_LABEL_TEAMS` so an
+	 * eighty-character label is what the chip resolves.
+	 */
+	teams?: typeof TEAMS;
+	/**
 	 * How long `sessions.command` stays in flight. The busy state the rig
 	 * photographs needs the receipt UNSETTLED at shutter time, and the story
 	 * owes the frame that rather than a promise that races it.
@@ -198,6 +241,7 @@ const installBridge = ({
 	entities = "rows",
 	holdCommandMs = 0,
 	agents = AGENTS,
+	teams = TEAMS,
 	onRename,
 }: BridgeOptions = {}) => {
 	const ok = <T,>(result: T) => ({ status: 200, body: { result } });
@@ -208,7 +252,7 @@ const installBridge = ({
 	}) => {
 		switch (request.op) {
 			case "teams.list":
-				return ok({ teams: TEAMS });
+				return ok({ teams });
 			case "commands.entities":
 				if (entities === "refused") {
 					return {
@@ -222,7 +266,7 @@ const installBridge = ({
 						entities === "rows"
 							? request.command === "agent"
 								? agents
-								: TEAMS.map((team) => ({ ...team, value: team.name }))
+								: teams.map((team) => ({ ...team, value: team.name }))
 							: [],
 					current: null,
 				});
@@ -537,6 +581,52 @@ export const NarrowFold: Story = {
 					agentName="Redesign local-operator-ui installer loading panel"
 					description="manager · lopdev"
 					identity={identity({ activeTeam: "lopdev" })}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The eighty-character label at the 560 band, the width the header's frames
+ * are priced against (design round 1, D1).
+ *
+ * WHAT THE FRAME IS FOR: the chip's cap does the truncating while the title
+ * carries the whole label and the slug, and the row keeps the agent chip and
+ * the controls painted - the state the uncapped chip broke at this width.
+ */
+export const LongLabel: Story = {
+	render: () => {
+		installBridge({ teams: LONG_LABEL_TEAMS });
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Redesign local-operator-ui installer loading panel"
+					description="manager · data-quality"
+					identity={identity({ activeTeam: "data-quality" })}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The same eighty-character label at the app's own 800 minimum width (D1):
+ * the wider budget the cap must still leave the title and the controls.
+ */
+export const LongLabelMinWidth: Story = {
+	render: () => {
+		installBridge({ teams: LONG_LABEL_TEAMS });
+		return (
+			<Band width={800}>
+				<ChatHeader
+					agentName="Redesign local-operator-ui installer loading panel"
+					description="manager · data-quality"
+					identity={identity({ activeTeam: "data-quality" })}
 					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>
