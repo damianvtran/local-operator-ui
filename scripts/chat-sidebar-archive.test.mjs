@@ -294,18 +294,20 @@ test("the list the panel draws is the page minus the archived rows, and the sear
 	);
 	assert.match(source, /forgotten: new Set\(Object\.keys\(forgottenFacts\)\)/);
 	/*
-	 * `bindingOfHit` is the sixth argument: the client's own knowledge of what a
-	 * search hit the store does not hold is bound to (round 1, Q2). The pin is
-	 * widened rather than loosened - the five arguments it already named are still
-	 * named in order, so a call that dropped one still fails here.
+	 * `bindingOfHit` is the sixth argument and `teamLabelFor` the seventh: the
+	 * label resolver is the same one the row slots render with (round 1,
+	 * R1-3c), so a conversation drawn under a team's label is found by that
+	 * label's words. The pin is widened rather than loosened - the arguments it
+	 * already named are still named in order, so a call that dropped one still
+	 * fails here.
 	 */
 	assert.match(
 		source,
-		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*query,\s*hits,\s*pinFactValues,\s*archiveView,\s*bindingOfHit,?\s*\)/,
+		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*query,\s*hits,\s*pinFactValues,\s*archiveView,\s*bindingOfHit,\s*teamLabelFor,?\s*\)/,
 	);
 	assert.match(
 		source,
-		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*search\.data\.query,\s*search\.data\.sessions,\s*pinFactValues,\s*archiveView,\s*bindingOfHit,?\s*\)/,
+		/searchChats\(\s*\[\.\.\.listed, \.\.\.heldRows\],\s*search\.data\.query,\s*search\.data\.sessions,\s*pinFactValues,\s*archiveView,\s*bindingOfHit,\s*teamLabelFor,?\s*\)/,
 	);
 });
 
