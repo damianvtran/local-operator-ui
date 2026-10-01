@@ -202,6 +202,7 @@ import {
 	initialAlignWalkState,
 	snapWindowToRunBoundary,
 	widenTarget,
+	windowTopRun,
 } from "./turn-collapse-model";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
@@ -2578,6 +2579,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * snaps again, and the snapshot's own arrival snaps the first non-empty
 	 * window without an effect.
 	 */
+	/*
+	 * The run under the RAW window edge, computed ONCE (agent review round 2,
+	 * R2-2): `windowTopRun` is a whole-store partition, and both the snap below and
+	 * the walk's store confirmation read the same run — this is the one partition
+	 * per render they share, rather than one each.
+	 */
+	const storeTopRun = useMemo(
+		() => windowTopRun(rows, windowSize),
+		[rows, windowSize],
+	);
 	const alignSize = useMemo(
 		() =>
 			snapWindowToRunBoundary(
@@ -2594,8 +2605,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				// collapse reads, so a turn still being written keeps the ordinary reach and
 				// cannot mount its whole streaming prefix (see the snap's own note).
 				paneIsLive,
+				storeTopRun,
 			),
-		[rows, windowSize, paneIsLive],
+		[rows, windowSize, paneIsLive, storeTopRun],
 	);
 	const visible = useMemo(
 		() => (total > alignSize ? rows.slice(total - alignSize) : rows),
@@ -2934,26 +2946,31 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// because `/clear` replaces the transcript without changing the session, and
 	// a latch held against rows that are gone would refuse the first gesture in
 	// the transcript that replaced them.
-	const { slotState, requestOlder, mayAutoWalk, acknowledgeOwnWrite } =
-		useScrollPaging({
-			containerRef,
-			sessionKey: sessionId,
-			hiddenRows: hidden,
-			hasMore: Boolean(transcript.hasMore),
-			onWiden: widen,
-			onLoadOlder,
-			onLoadOlderOutcome,
-			olderFailed,
-			loadingOlder,
-			// The content node exists only once the transcript is non-empty; this is
-			// what re-runs the observer effect at that moment.
-			contentKey: collapsed ? "empty" : "filled",
-			// The MOUNTED count, not the total: a local widen reveals rows the
-			// transcript already had, so `rows.length` does not change and the
-			// pre-paint correction would skip exactly the reveal that displaces the
-			// reader furthest. `visible.length` changes on both growth paths.
-			rowCount: visible.length,
-		});
+	const {
+		slotState,
+		requestOlder,
+		mayAutoWalk,
+		followingTail,
+		acknowledgeOwnWrite,
+	} = useScrollPaging({
+		containerRef,
+		sessionKey: sessionId,
+		hiddenRows: hidden,
+		hasMore: Boolean(transcript.hasMore),
+		onWiden: widen,
+		onLoadOlder,
+		onLoadOlderOutcome,
+		olderFailed,
+		loadingOlder,
+		// The content node exists only once the transcript is non-empty; this is
+		// what re-runs the observer effect at that moment.
+		contentKey: collapsed ? "empty" : "filled",
+		// The MOUNTED count, not the total: a local widen reveals rows the
+		// transcript already had, so `rows.length` does not change and the
+		// pre-paint correction would skip exactly the reveal that displaces the
+		// reader furthest. `visible.length` changes on both growth paths.
+		rowCount: visible.length,
+	});
 	/*
 	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
 	 *
@@ -3356,8 +3373,8 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * otherwise), which is exactly when the walk has something to decide.
 	 */
 	const alignWalkKey = useMemo(
-		() => alignWalkRunKeyConfirmed(collapse, rows, alignSize, openRuns),
-		[collapse, rows, alignSize, openRuns],
+		() => alignWalkRunKeyConfirmed(collapse, storeTopRun, openRuns),
+		[collapse, storeTopRun, openRuns],
 	);
 	/*
 	 * The walk's clock wake (agent review round 1, R2): `mayAutoWalk` is a stable
@@ -3452,6 +3469,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				!loadingOlder &&
 				!state.halted &&
 				!mayWalk &&
+				/*
+				 * …AND THE TAIL, not just the clock (agent review round 2, R2-1).
+				 * `mayWalk` is false for TWO reasons — the debounce is still running OR the
+				 * reader is off the tail — and only the first is a clock this wake can
+				 * change. Arming on `!mayWalk` alone re-armed the timer forever for an
+				 * off-tail reader while a cut bar was painted: nothing would ever satisfy
+				 * it, and `spent` never grew (no fetch), so the loop could not even bound
+				 * itself. Off the tail the walk waits for a real transition, as it did
+				 * before this wake existed.
+				 */
+				followingTail() &&
 				alignWalk.current.spent < ALIGN_WALK_MAX_PAGES;
 			if (!clockOnlyRefusal) return;
 			const wake = window.setTimeout(
@@ -3485,6 +3513,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		transcript.hasMore,
 		walkLoadOlder,
 		mayAutoWalk,
+		followingTail,
 		walkClockTick,
 	]);
 

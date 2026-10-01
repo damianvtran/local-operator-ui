@@ -480,11 +480,18 @@ export function snapWindowToRunBoundary(
 	maxExtra: number,
 	completedRunMaxExtra = 0,
 	live = false,
+	/*
+	 * The run under the window's top edge, PRE-COMPUTED when the caller already
+	 * has it (agent review round 2, R2-2). `windowTopRun` is a whole-store
+	 * partition, and the walk's store confirmation reads the SAME run — so the
+	 * render computes it once and hands it here rather than each consumer paying
+	 * its own partition per render. Defaulted for every other caller.
+	 */
+	enclosing: TurnRun | null = windowTopRun(rows, windowSize),
 ): number {
 	const total = rows.length;
 	if (total <= windowSize) return windowSize;
 	const top = total - windowSize;
-	const enclosing = windowTopRun(rows, windowSize);
 	if (enclosing === null) return windowSize;
 	const extra = top - enclosing.openingIndex;
 	/*
@@ -626,9 +633,12 @@ export function alignWalkRunFromPlan(
  * whole. The walk's own question is "a run whose opening user row is not in the
  * STORE", and only the store can answer it. So the plan's key stands only when
  * the store's run under the SAME edge (the plan's window top) is head-cut too,
- * and names the same run. `windowTopRun` returns null when the window covers the
- * whole list, and then the plan IS the store's own view - it needs no second
- * opinion.
+ * and names the same run. A null `storeTopRun` means the window covers the whole
+ * list, and then the plan IS the store's own view - it needs no second opinion.
+ *
+ * The caller passes the run rather than the rows on purpose (review round 2,
+ * R2-2): the snap above needs the same run, so one `windowTopRun` serves both and
+ * the render pays no second whole-store partition.
  *
  * Without this the walk fetched up to `ALIGN_WALK_MAX_PAGES` pages for a run it
  * could never help: a prepend shifts the edge and the run's opening row equally,
@@ -637,15 +647,15 @@ export function alignWalkRunFromPlan(
  */
 export function alignWalkRunKeyConfirmed(
 	plan: CollapsePlan,
-	rows: Row[],
-	windowSize: number,
+	/** The store's run under the window's top edge (`windowTopRun`), or null when
+	 * the window covers the whole list. */
+	storeTopRun: TurnRun | null,
 	openRuns?: ReadonlySet<string>,
 ): string | null {
 	const key = alignWalkRunFromPlan(plan, openRuns);
 	if (key === null) return null;
-	const storeTop = windowTopRun(rows, windowSize);
-	if (storeTop === null) return key;
-	return !storeTop.opensWithUserRow && storeTop.key === key ? key : null;
+	if (storeTopRun === null) return key;
+	return !storeTopRun.opensWithUserRow && storeTopRun.key === key ? key : null;
 }
 
 /**
