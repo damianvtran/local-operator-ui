@@ -2894,6 +2894,17 @@ const BRANCH_RECORDS = [
 	"sttRecordingDisplayFoldSixNote",
 	"sttRecordingDisplayFoldSevenNote",
 	/*
+	 * And by the TEAM LABELS lane (2026-09-30): its re-stamp is the branch's
+	 * newest top-level record, holding the two stamps this branch's delta moved
+	 * (the whole label read path under `src/` - the new `team-display.ts` and
+	 * its readers - and the three source-anchor tests plus three new cases
+	 * under `scripts/`). Listed for the reason this list exists: a fold that
+	 * started from main's copy would drop it first, and with it the only
+	 * statement of what the re-stamp read. The note spells its pair as bare
+	 * SHAs, so it adds no name to the quoting ledger.
+	 */
+	"teamLabelsRestampNote",
+	/*
 	 * AND THIS BRANCH'S OWN (feat/mesh-canvas-redesign, 2026-09-30): the two records
 	 * of the mesh canvas redesign - `meshCanvasRedesignRestampNote` (the pass: the
 	 * whole mesh-tab set re-captured at 42 frames through the repo's own sweep, the
@@ -2934,6 +2945,17 @@ const BRANCH_RECORDS = [
 	 * name to the quoting ledger.
 	 */
 	"partialCaptureContinuityRestampNote",
+	/*
+	 * AND BY THE FOLD ITSELF, once - which is the list earning its keep. The
+	 * vocabulary round's note moves `scripts/` only and takes no frame, and the
+	 * fold onto `origin/main` (443ad13c70) took main's manifest whole exactly as
+	 * the entry above predicts: the note was gone from the tree and nothing else
+	 * noticed. Re-adding it is not enough on its own - the point of naming it here
+	 * is that the NEXT fold cannot drop it in silence - so the registration lands
+	 * as its own `scripts/` commit, and the docs-only re-stamp that follows derives
+	 * the pair from the tree that includes it.
+	 */
+	"runClosureVocabularyRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
