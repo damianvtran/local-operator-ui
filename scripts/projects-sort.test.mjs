@@ -35,6 +35,7 @@ const { sort } = await import(
 const {
 	DEFAULT_SORT_LABEL,
 	PROJECTS_SORT_STORAGE_KEY,
+	clearAllAnnouncement,
 	compareProjects,
 	firstSortDirection,
 	isSortKey,
@@ -168,6 +169,29 @@ test("the direction words, first directions and announcement copy are the design
 		"Sorted by Target, latest first.",
 	);
 	assert.equal(sortAnnouncement(null), "Sort cleared.");
+});
+
+/*
+ * U15/U16/U17's copy, pinned whole rather than sampled: the sentence names
+ * exactly what was cleared, in the doors' own order - and CAPITALISED in
+ * every branch (U17; the facet- and sort-led sentences used to read
+ * `filters cleared.` / `sort cleared.` beside this file's `Sort cleared.`).
+ * A branch that loses its capital, or a fragment that moves, fails here as a
+ * string rather than as a screen-reader silence nobody can see.
+ */
+test("the clear-all announcement names what cleared, capitalised in every branch", () => {
+	const clear = (search, filters, sort) =>
+		clearAllAnnouncement({ search, filters, sort });
+	assert.equal(clear(true, false, false), "Search cleared.");
+	assert.equal(clear(false, true, false), "Filters cleared.");
+	assert.equal(clear(false, false, true), "Sort cleared.");
+	assert.equal(clear(false, true, true), "Filters and sort cleared.");
+	assert.equal(clear(true, false, true), "Search and sort cleared.");
+	assert.equal(clear(true, true, false), "Search and filters cleared.");
+	assert.equal(clear(true, true, true), "Search, filters and sort cleared.");
+	/* Nothing cleared announces nothing (the doors only offer Clear all when
+	 * there is something to clear, but the composer is total). */
+	assert.equal(clear(false, false, false), "");
 });
 
 /* ------------------------------------------------------------ comparators -- */

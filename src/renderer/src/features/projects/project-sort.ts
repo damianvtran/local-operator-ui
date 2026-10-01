@@ -178,14 +178,24 @@ export function clearAllAnnouncement(cleared: {
 	sort: boolean;
 }): string {
 	const parts = [
-		cleared.search ? "Search" : null,
+		cleared.search ? "search" : null,
 		cleared.filters ? "filters" : null,
 		cleared.sort ? "sort" : null,
 	].filter((part): part is string => part !== null);
 	if (parts.length === 0) return "";
-	if (parts.length === 1) return `${parts[0]} cleared.`;
-	const last = parts[parts.length - 1];
-	return `${parts.slice(0, -1).join(", ")} and ${last} cleared.`;
+	const sentence =
+		parts.length === 1
+			? `${parts[0]} cleared.`
+			: `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]} cleared.`;
+	/*
+	 * U17: the capital belongs to the SENTENCE, not to any fragment. These
+	 * used to be spelled `Search`/`filters`/`sort`, which read correctly only
+	 * while `Search` was guaranteed to lead; a clear whose sentence starts
+	 * with a facet or the sort came out `filters cleared.` / `sort cleared.`
+	 * beside round 2's `Sort cleared.` - the same fact in two voices. Applied
+	 * once, after composition, so every branch capitalises.
+	 */
+	return sentence.charAt(0).toUpperCase() + sentence.slice(1);
 }
 
 /** Whether the key ranks a row with no value of that kind last (both directions). */
