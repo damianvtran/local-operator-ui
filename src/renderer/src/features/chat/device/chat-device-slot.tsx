@@ -142,6 +142,9 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const settleMove = useChatDeviceStore((state) => state.settleMove);
 	const refuseMove = useChatDeviceStore((state) => state.refuseMove);
 	const setDraftPeer = useCanonicalSessionsStore((state) => state.setDraftPeer);
+	const settlePlacement = useCanonicalSessionsStore(
+		(state) => state.settlePlacement,
+	);
 
 	const networkList = networks.data?.networks ?? [];
 	const peerList: PeerRow[] = peers.data?.peers ?? [];
@@ -319,6 +322,13 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 				{
 					onSuccess: (outcome) => {
 						if (outcome.kind === "moved") {
+							/*
+							 * THE ROW IS SETTLED WITH THE CHIP (agent review F1): the receipt is
+							 * what the conversation's own row is corrected from, so the placement
+							 * survives this pane's move record being dismissed. See
+							 * `settlePlacement` for the chain it closes.
+							 */
+							settlePlacement(sessionId, outcome.receipt);
 							settleMove(key, {
 								kind: "moved",
 								deviceId: to,
@@ -366,6 +376,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			sessionId,
 			setDraftPeer,
 			settleMove,
+			settlePlacement,
 			transfer,
 		],
 	);

@@ -87,6 +87,7 @@ const bundle = await build({
 				admitChatDraft,
 				useCanonicalSessionsStore,
 			} from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { panePlacement } from "./src/renderer/src/features/chat/device/chat-device-model";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		resolveDir: process.cwd(),
@@ -130,6 +131,7 @@ const {
 	errorText,
 	fetchDraftPreview,
 	modelSelector,
+	panePlacement,
 	selectionFromModel,
 	selectionSelector,
 	specUnresolved,
@@ -485,6 +487,75 @@ test("a create that named a peer stamps the peer on the session row; a local cre
 		"a local create's row carries no locality",
 	);
 	assert.ok(!("owner_device" in plainRow), "...and no owner");
+});
+
+test("a move's receipt settles the row it lands on, so a dismissal cannot resurrect the old placement", () => {
+	/*
+	 * AGENT REVIEW ROUND 1, F1 - the reproducing chain, at the seam that missed
+	 * it: pick a peer, send, RECALL the conversation home, dismiss the arrival
+	 * notice. The dismissal drops the pane's move record; what the chip falls to
+	 * is this row, and before `settlePlacement` nothing ever rewrote the create
+	 * stamp - so the chip claimed `On cloud-node-1` over a conversation already
+	 * back on this device. The store half is asserted here; the call sites are
+	 * the two `moved` branches (`chat-device-slot.tsx`, `chat-device-notice.tsx`)
+	 * and the chain itself is driven end to end by the evidence rig.
+	 */
+	const store = useCanonicalSessionsStore.getState();
+	const rowOf = (id) =>
+		useCanonicalSessionsStore
+			.getState()
+			.sessions.find((row) => row.session_id === id);
+	/* The slot's own gate, rebuilt from the code it runs (`chat-device-slot.tsx`). */
+	const slotHost = (row) =>
+		row?.locality === "remote" &&
+		typeof row.owner_device === "string" &&
+		row.owner_device
+			? { deviceId: row.owner_device, name: "build-box" }
+			: null;
+	const placementFor = (row) =>
+		panePlacement({
+			draft: null,
+			host: slotHost(row),
+			move: undefined,
+			reachableFor: () => true,
+		}).kind;
+
+	// A conversation born on the peer, exactly as the create stamp writes it.
+	store.upsertSession({
+		session_id: "5e771ed0001",
+		title: "a recalled conversation",
+		locality: "remote",
+		owner_device: "d_build",
+	});
+	assert.equal(placementFor(rowOf("5e771ed0001")), "remote");
+
+	// The RECALL's receipt - the wire's own "where it lives NOW" - settles it.
+	store.settlePlacement("5e771ed0001", {
+		locality: "local",
+		owner_device: "d_self0001",
+	});
+	const home = rowOf("5e771ed0001");
+	assert.equal(home?.locality, "local");
+	assert.equal(home?.owner_device, "d_self0001");
+	// ...with the dismissal (no move record) the chip now reads home, not the stale mark.
+	assert.equal(placementFor(home), "local");
+	// The settle is a SETTLE: the row's other facts are its own.
+	assert.equal(home?.title, "a recalled conversation");
+
+	// A MOVE-OUT settles the other way: same action, opposite receipt.
+	store.settlePlacement("5e771ed0001", {
+		locality: "remote",
+		owner_device: "d_build",
+	});
+	assert.equal(placementFor(rowOf("5e771ed0001")), "remote");
+
+	// A ROW THE LIST DOES NOT CARRY IS NOT INVENTED by a receipt.
+	const before = useCanonicalSessionsStore.getState().sessions.length;
+	store.settlePlacement("n0t0nth3l1st", {
+		locality: "local",
+		owner_device: "d_self0001",
+	});
+	assert.equal(useCanonicalSessionsStore.getState().sessions.length, before);
 });
 
 test("a pick on a discarded pane records nothing, and never resurrects the row", () => {
