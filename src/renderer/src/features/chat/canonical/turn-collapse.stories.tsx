@@ -983,12 +983,20 @@ export const Expanded: Story = {
 	),
 };
 
-/** §5 case 5: the steer is part of the run it interrupted. */
+/**
+ * §5 case 5: the steer is part of the run it interrupted.
+ *
+ * Changed by the completion-visibility invariant (V3: a `user` row is never
+ * hidden by a collapsed span). Before it, one `Steered` bar hid the reader's
+ * second message; now that message stays visible in place with a bar on each
+ * side and no bar is labelled `Steered`. The committed `steering` before/after
+ * frames under `docs/evidence/chat-turn-collapse*` predate this and are stale.
+ */
 export const Steering: Story = {
 	render: () => (
 		<Frame
 			transcript={steeredTurn()}
-			caption="A turn steered mid-run — the second question arrived while the first answer was being written."
+			caption="A turn steered mid-run — the second question stays visible where it arrived, with a bar of work on each side."
 		/>
 	),
 };
@@ -1044,12 +1052,22 @@ export const Running: Story = {
 	),
 };
 
-/** §5 case 3, named by design round 1 (D4a): narration only, no calls. */
+/**
+ * §5 case 3, named by design round 1 (D4a): narration only, no calls.
+ *
+ * Changed by the completion-visibility invariant (V1): the narration (`n1`)
+ * and the answer (`a1`) are both closes of a response cycle, so both stay
+ * visible and this cell now renders NO bar - there is no span left to condense.
+ * The committed `narration` before/after frames under
+ * `docs/evidence/chat-turn-collapse*` show the old one-bar screen and are stale.
+ * The shape that still folds a narration-only span (a commentary close that is
+ * not the run's last) is covered by `scripts/turn-collapse-model.test.mjs`.
+ */
 export const Narration: Story = {
 	render: () => (
 		<Frame
 			transcript={narrationTurn()}
-			caption="Narration between the question and the answer — no calls, so the bar is the span alone."
+			caption="Narration between the question and the answer — no calls, so there is nothing to condense: both stay visible and no bar is drawn."
 		/>
 	),
 };
