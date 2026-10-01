@@ -118,6 +118,9 @@ export const tokyoNightStorm: ThemeDefinition = {
 		// The sibling's rule lightened by the same step the ground took, so it still holds
 		// ΔE00 4.3 from every ground and 1.22-1.74:1 against them.
 		hairline: "#3F4662",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.88:1 there against `hairline`'s 1.73:1.
+		hairlineStrong: "#444B68",
 		// Upstream fg_gutter 3B4261 is 1.36:1 against the grounds — a decorative value
 		// in a structural role. Walked to 3.1:1 on the lightest ground, the value every
 		// shipped palette's structural edge sits at.

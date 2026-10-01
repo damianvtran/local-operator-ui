@@ -282,7 +282,12 @@ test("a warm mount does not ratchet the refcount (R1)", async () => {
 	const holder = mountImage(durable(digest));
 	settleLast();
 	await tick();
-	const url = holder.value;
+	assert.equal(
+		holder.value.state,
+		"ready",
+		"the holder resolved through the cache",
+	);
+	const url = holder.value.url;
 	assert.equal(blobs.live.size, 1, "the holder is showing one blob");
 
 	// Five scroll-throughs of an already-cached screenshot. Each mount finds the
@@ -290,7 +295,7 @@ test("a warm mount does not ratchet the refcount (R1)", async () => {
 	for (let i = 0; i < 5; i++) {
 		const row = mountImage(durable(digest));
 		assert.equal(
-			row.value,
+			row.value.url,
 			url,
 			"a warm mount paints on its first frame rather than flashing empty",
 		);
@@ -303,12 +308,52 @@ test("a warm mount does not ratchet the refcount (R1)", async () => {
 	// must drop the count to zero and revoke. Before the fix the initializer had
 	// added one ref per warm mount (refs=6) and this blob lived forever.
 	holder.unmount();
+	// The revoke is deferred to the end of the task now (rule 3) so a handover
+	// can cancel it; one tick is past that point.
+	await tick();
 	assert.equal(
 		blobs.live.size,
 		0,
 		"five warm cycles net zero — the pre-fix code stranded this blob at refs=5",
 	);
 	assert.equal(blobs.revoked, 1, "the blob is actually revoked");
+});
+
+test("a handover inside one task re-reads nothing and creates nothing (M1/Q1)", async () => {
+	reset();
+	const digest = digestFor(6);
+	/*
+	 * The fold swap, in miniature: the outgoing holder unmounts and the next one
+	 * mounts before the task yields, which is one React commit's effect flush
+	 * (`trace-fold.tsx` / `turn-summary.tsx` hand the strip to the rows in
+	 * exactly this order). The deferred release must cancel and hand the blob
+	 * over - one read, one blob - where the synchronous revoke it replaces
+	 * meant a second IPC read of bytes that were on screen a moment ago
+	 * (agent review round 1, M1; QA's Q1: one digest, three reads across
+	 * condense -> open -> close).
+	 */
+	const first = mountImage(durable(digest));
+	settleLast();
+	await tick();
+	assert.equal(requests.length, 0, "the first holder's read is done");
+	const url = first.value.url;
+
+	first.unmount();
+	const second = mountImage(durable(digest));
+	assert.equal(
+		second.value.url,
+		url,
+		"the next holder paints the SAME blob on its first frame",
+	);
+	await tick();
+	assert.equal(requests.length, 0, "the handover re-read nothing");
+	assert.equal(blobs.created, 1, "and created no second blob");
+	assert.equal(blobs.revoked, 0, "nothing was revoked in the handover");
+
+	second.unmount();
+	await tick();
+	assert.equal(blobs.revoked, 1, "and the last holder leaving still revokes");
+	assert.equal(blobs.live.size, 0, "with no blob left behind");
 });
 
 test("StrictMode's double-invoked initializer takes no reference (R1)", async () => {
@@ -322,7 +367,11 @@ test("StrictMode's double-invoked initializer takes no reference (R1)", async ()
 	// and the effect mounts/cleans/mounts. A `retain()` in the initializer added
 	// a phantom reference here that no unmount could ever pay back.
 	const strict = mountImage(durable(digest), { strict: true });
-	assert.equal(strict.value, holder.value, "it paints the cached picture");
+	assert.equal(
+		strict.value.url,
+		holder.value.url,
+		"it paints the cached picture",
+	);
 	strict.unmount();
 	assert.equal(
 		blobs.live.size,
@@ -331,6 +380,7 @@ test("StrictMode's double-invoked initializer takes no reference (R1)", async ()
 	);
 
 	holder.unmount();
+	await tick();
 	assert.equal(blobs.live.size, 0, "no blob outlives its last holder");
 });
 
@@ -371,9 +421,10 @@ test("a requester that stays gets its bytes even when others leave (R2)", async 
 	settleLast();
 	await tick();
 
-	assert.ok(c.value?.startsWith("blob:"), "the survivor is handed its URL");
+	assert.ok(c.value.url?.startsWith("blob:"), "the survivor is handed its URL");
 	assert.equal(blobs.live.size, 1, "the blob it is showing is alive");
 	c.unmount();
+	await tick();
 	assert.equal(blobs.live.size, 0, "and dies with it");
 });
 
@@ -390,9 +441,9 @@ test("a departed row does not starve one still waiting on the same digest (R1/r2
 	requests.pop().resolve({ kind: "error", message: "transient relay failure" });
 	await tick();
 	assert.equal(
-		stale.value,
-		null,
-		"the first row is left showing BrokenAttachment",
+		stale.value.state,
+		"missing",
+		"the first row is left on the unavailable receipt",
 	);
 
 	// A second row asks for the same digest and gets a FRESH inflight record.
@@ -406,7 +457,7 @@ test("a departed row does not starve one still waiting on the same digest (R1/r2
 	await tick();
 
 	assert.ok(
-		waiting.value?.startsWith("blob:"),
+		waiting.value.url?.startsWith("blob:"),
 		"the row still on screen is handed the bytes that arrived for it",
 	);
 	assert.equal(
@@ -415,6 +466,7 @@ test("a departed row does not starve one still waiting on the same digest (R1/r2
 		"and they are not revoked out from under it",
 	);
 	waiting.unmount();
+	await tick();
 	assert.equal(blobs.live.size, 0, "the last holder leaving still revokes");
 });
 
@@ -426,18 +478,22 @@ test("an inline image never touches the cache or the network", () => {
 		attachment: null,
 		mimeType: "image/png",
 	});
-	assert.equal(row.value, "data:image/png;base64,aGVsbG8=");
+	assert.equal(row.value.url, "data:image/png;base64,aGVsbG8=");
 	assert.equal(requests.length, 0, "a live image is already in memory");
 	assert.equal(blobs.created, 0, "and needs no blob");
 	row.unmount();
 });
 
-test("an image that fails to resolve reports null rather than throwing", async () => {
+test("an image that fails to resolve reports `missing` rather than throwing", async () => {
 	reset();
 	const row = mountImage(durable(digestFor(4)));
 	requests.pop().resolve({ kind: "error", message: "gone" });
 	await tick();
-	assert.equal(row.value, null, "the view renders BrokenAttachment from this");
+	assert.equal(
+		row.value.state,
+		"missing",
+		"the view renders the unavailable receipt from this",
+	);
 	assert.equal(blobs.created, 0, "a failure creates no blob");
 	row.unmount();
 });
@@ -464,7 +520,44 @@ test("a child's row fetches through the child-scoped op, with both ids", async (
 	});
 	settleLast();
 	await tick();
-	assert.equal(typeof row.value, "string", "and the picture paints");
+	assert.equal(row.value.state, "ready", "and the picture paints");
+	row.unmount();
+});
+
+test("a cold digest is `resolving` before it is `missing`, so a caller can reserve the box", async () => {
+	/*
+	 * Agent review round 1, P3. The hook used to answer `null` for "still
+	 * resolving" and "failed" alike, so the condensed group's tile painted the
+	 * unavailable receipt and swapped to a picture a frame later - in the one
+	 * surface whose whole point is that the artifact is on screen. The cold path
+	 * is the NORMAL path there (a collapsed fold unmounts the rows that would have
+	 * warmed the cache), which is why the first paint is the state that matters.
+	 */
+	reset();
+	const row = mountImage(durable(digestFor(8)));
+	assert.equal(
+		row.value.state,
+		"resolving",
+		"the first paint says the bytes are coming rather than that they are gone",
+	);
+	assert.equal(requests.length, 1, "and a fetch is what it is waiting on");
+	settleLast();
+	await tick();
+	assert.equal(row.value.state, "ready", "and it settles to the URL");
+	row.unmount();
+});
+
+test("a digest whose attempt came back empty is `missing`, and that is the only path to it", async () => {
+	reset();
+	const row = mountImage(durable(digestFor(9)));
+	assert.equal(row.value.state, "resolving", "not missing before the attempt");
+	requests.pop().resolve({ kind: "error", message: "gone" });
+	await tick();
+	assert.equal(
+		row.value.state,
+		"missing",
+		"the receipt is for an attempt that came back empty",
+	);
 	row.unmount();
 });
 
@@ -490,6 +583,10 @@ test("a null scope issues no request at all", async () => {
 	const row = mountImage(durable(digestFor(7)), undefined, null);
 	await tick();
 	assert.equal(requests.length, 0, "no request without a scope");
-	assert.equal(row.value, null, "and the row renders the unavailable note");
+	assert.equal(
+		row.value.state,
+		"missing",
+		"and the row renders the unavailable note",
+	);
 	row.unmount();
 });

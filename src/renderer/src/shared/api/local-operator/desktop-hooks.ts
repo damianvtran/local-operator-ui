@@ -11,6 +11,7 @@
  * action rather than an unauthenticated legacy fallback.
  */
 
+import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { useQuery } from "@tanstack/react-query";
 import { retryDesktopQuery } from "./backend-error";
 import { desktopResult } from "./desktop-api";
@@ -127,50 +128,67 @@ export function desktopPlaneOpen(
  * controls stay hidden/disabled rather than falling back to an open route.
  */
 export function useDesktopCapabilities() {
-	return useQuery({
-		queryKey: desktopKeys.capabilities,
-		queryFn: async () => {
-			try {
-				return await desktopResult<DesktopCapabilities>({ op: "capabilities" });
-			} catch (error) {
-				// Collapsing every failure to `null` made the banner assert "this
-				// backend is older than the app expects" for four different
-				// situations, three of which an "Update backend" button cannot fix
-				// (UX, design and QA all hit this). Fail-closed is about what we
-				// ENABLE, not about how much we are allowed to know: the surfaces
-				// stay gated either way (`desktopFeatureEnabled` still sees no
-				// capabilities), and the reason is preserved so the banner can say
-				// what actually happened and offer the action that matches.
-				throw error instanceof Error ? error : new Error(String(error));
-			}
+	const { client, provided } = useOptionalQueryClient();
+	return useQuery(
+		{
+			/*
+			 * THE PROVIDER GATE. `useQuery` cannot be called at all without a client
+			 * (it throws "No QueryClient set" before any option is read), so a document
+			 * with no `QueryClientProvider` - the mini view mounts none - reads this
+			 * hook through `useOptionalQueryClient` and must NOT fetch from its private
+			 * fallback: with no provider there is no capabilities answer, and every
+			 * gate downstream already reads absence as "feature off"
+			 * (`desktopFeatureEnabled` and `desktopPlaneOpen` both take `undefined`).
+			 * In the app `provided` is always true, so this is a no-op there.
+			 */
+			enabled: provided,
+			queryKey: desktopKeys.capabilities,
+			queryFn: async () => {
+				try {
+					return await desktopResult<DesktopCapabilities>({
+						op: "capabilities",
+					});
+				} catch (error) {
+					// Collapsing every failure to `null` made the banner assert "this
+					// backend is older than the app expects" for four different
+					// situations, three of which an "Update backend" button cannot fix
+					// (UX, design and QA all hit this). Fail-closed is about what we
+					// ENABLE, not about how much we are allowed to know: the surfaces
+					// stay gated either way (`desktopFeatureEnabled` still sees no
+					// capabilities), and the reason is preserved so the banner can say
+					// what actually happened and offer the action that matches.
+					throw error instanceof Error ? error : new Error(String(error));
+				}
+			},
+			staleTime: 60_000,
+			retry: false,
+			/*
+			 * The re-negotiation, and both of its cadences. While the plane is SHUT the
+			 * interval is `CAPABILITY_RENEGOTIATE_MS`, the operator's own wait, and it ends
+			 * the moment an answer opens the plane. While it is OPEN the interval is the
+			 * slower `CAPABILITY_WATCH_MS`, because a withdrawal is announced by nothing
+			 * else this renderer can see - see that constant for the measurement that made
+			 * the single-cadence version wrong. `refetchInterval` fires whether or not the
+			 * last answer was an error, which is deliberate: the failing arm is the other
+			 * half of the same freeze, and `retry: false` above says only that React Query
+			 * will not back off on its own.
+			 */
+			refetchInterval: (query) =>
+				desktopPlaneOpen(query.state.data)
+					? CAPABILITY_WATCH_MS
+					: CAPABILITY_RENEGOTIATE_MS,
+			/*
+			 * The one poll in this app that runs while the window is in the background,
+			 * and the exception is the whole requirement. "After sitting a while they
+			 * come back on their own" is a recovery that needs the operator to come back
+			 * and wave the mouse at the window; a gate that heals on attention is the bug
+			 * rather than the cure, so this cadence deliberately does NOT pause when
+			 * nothing is focused. One local IPC call per interval.
+			 */
+			refetchIntervalInBackground: true,
 		},
-		staleTime: 60_000,
-		retry: false,
-		/*
-		 * The re-negotiation, and both of its cadences. While the plane is SHUT the
-		 * interval is `CAPABILITY_RENEGOTIATE_MS`, the operator's own wait, and it ends
-		 * the moment an answer opens the plane. While it is OPEN the interval is the
-		 * slower `CAPABILITY_WATCH_MS`, because a withdrawal is announced by nothing
-		 * else this renderer can see - see that constant for the measurement that made
-		 * the single-cadence version wrong. `refetchInterval` fires whether or not the
-		 * last answer was an error, which is deliberate: the failing arm is the other
-		 * half of the same freeze, and `retry: false` above says only that React Query
-		 * will not back off on its own.
-		 */
-		refetchInterval: (query) =>
-			desktopPlaneOpen(query.state.data)
-				? CAPABILITY_WATCH_MS
-				: CAPABILITY_RENEGOTIATE_MS,
-		/*
-		 * The one poll in this app that runs while the window is in the background,
-		 * and the exception is the whole requirement. "After sitting a while they
-		 * come back on their own" is a recovery that needs the operator to come back
-		 * and wave the mouse at the window; a gate that heals on attention is the bug
-		 * rather than the cure, so this cadence deliberately does NOT pause when
-		 * nothing is focused. One local IPC call per interval.
-		 */
-		refetchIntervalInBackground: true,
-	});
+		client,
+	);
 }
 
 export type DesktopFeature =
@@ -337,6 +355,21 @@ export type DesktopFeature =
 	 * falling back to something that ends the session.
 	 */
 	| "session_interrupt"
+	/**
+	 * Conversational configuration: `sessions.create` accepting a `purpose`
+	 * (`agents-config`), which makes the backend start a SUPERVISED BACKGROUND
+	 * RUN that edits this device's agent and team registries without ever
+	 * entering the operator's conversation.
+	 *
+	 * ITS OWN KEY, for the reason every key in this union is: a backend that
+	 * predates the field validates the create body with `extra="forbid"` and
+	 * answers a masked 422, so an un-gated composer would report a malformed
+	 * request for a request the app deliberately made — and could not tell
+	 * "update the backend" from "the app is broken". Absent here means the
+	 * composer is not rendered at all and the structured editor is the only
+	 * path, with one honest line saying why (the `session_interrupt` precedent).
+	 */
+	| "agents_config"
 	/**
 	 * `input_mode` on `sessions.message`: the harness carries the composer's own
 	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see

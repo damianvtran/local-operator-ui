@@ -1,0 +1,790 @@
+#!/usr/bin/env node
+/**
+ * Measures the condensed action group's height, from the live DOM.
+ *
+ *     node scripts/condensed-group-media-geometry.mjs [storybook-origin] [--json]
+ *
+ * WHY THIS FILE EXISTS. The change it measures makes one trade and states it as
+ * a number: a condensed group now shows the pictures its run produced, at the
+ * smallest size this system draws a picture, instead of hiding them behind the
+ * disclosure. "A thumbnail is small" is not a number, and a still cannot produce
+ * one — a 64px tile and a 240px figure look equally plausible in a screenshot of
+ * two different states. So the numbers come from `getBoundingClientRect` in the
+ * same rendered state `docs/evidence/chat-trace-fold-*` are taken from, and this
+ * file is the command that produces them: a reviewer re-runs it rather than
+ * trusting a table in a pull request.
+ *
+ * The claim it is here to test, in the order the numbers read:
+ *
+ *  - a run with NO pictures is the height it was (the strip is not rendered at
+ *    all, so the group is its header);
+ *  - ONE picture costs the same as THREE, because the strip is a row of 64px
+ *    tiles and a transcript's column holds four or more of them;
+ *  - the thumbnail is at the frame's own 64px floor, never at the row's 240px
+ *    ceiling, which is the ceiling the EXPANDED state draws its picture at — so
+ *    the two heights either side of the reader's press are both in the table;
+ *  - eight pictures are one capped row like any other: the fifth slot is the
+ *    `+N` count rather than a fifth picture (`FOLD_MEDIA_LIMIT`), so the height
+ *    does not grow with the count - the earlier claim here ("where the row
+ *    wraps") described the pre-cap strip, and the rig's `tileRows` reading is
+ *    what refused it;
+ *  - THE TILE'S EDGE IS A HOVER/FOCUS STATE NOW, and a still cannot state a state
+ *    (`--arms=hover`): the rig moves a real pointer over a tile and reads the
+ *    frame's computed border colour and the picture's transform, so "the ring is
+ *    gone at rest and back on hover, with the zoom" is a reading rather than a
+ *    claim. `--arms=reduced-motion-hover` repeats it with
+ *    `prefers-reduced-motion: reduce` emulated, where the edge must still be
+ *    there and the zoom must NOT (the cue that always reads is a state, not a
+ *    movement);
+ *  - THE KEYBOARD ARM (`--arms=focus`), which is the state a still cannot reach
+ *    either: the rig presses REAL Tab keys (`Input.dispatchKeyEvent`) until the
+ *    first tile's button holds `:focus-visible`, then reads the frame's border,
+ *    the ring's colour/width/offset and the button's radius. It exists because
+ *    with the resting edge gone this ring is the ONLY control boundary a
+ *    keyboard reader gets at rest, so "the ring follows the frame's 6px radius"
+ *    is a claim that has to be measured rather than asserted from a class name;
+ *  - THE ROW'S ARITHMETIC, which is what the tile's size was derived from: the
+ *    tiles, the gutter, the `+N` control's own width and the row's total, against
+ *    the strip's available width - and the `+N`'s width at the counts a run can
+ *    print (41.4px at `+99`, 49.2px at `+999`, against the 118.9px the old
+ *    full-noun label reached), because the row must fit at every digit count, not
+ *    only the fixture's. A four-digit remainder is NOT measured and is NOT
+ *    covered by that bound: nothing clamps the printed digits, so a 1004-picture
+ *    run's `+1000` is expected to wrap (reviewer round 1, R1-7).
+ *
+ * Raw CDP against a private headless Chrome, deliberately the same approach as
+ * `capture-evidence.mjs` and `chat-alignment-geometry.mjs` (fresh user-data-dir
+ * under the machine's temp directory, killed on exit, routed through the shared
+ * mock-keychain helper so a scratch profile never asks macOS for a login keychain, and no
+ * browser-automation dependency added to the repo). Duplicating that driver here
+ * rather than importing it is the smaller evil, for the reason
+ * `chat-alignment-geometry.mjs` gives: the evidence sweep is the one script in
+ * this repo that must stay boring.
+ */
+
+import { spawn } from "node:child_process";
+import { mkdirSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { withMockKeychain } from "./chrome-keychain.mjs";
+
+const ARGS = process.argv.slice(2);
+
+/** A `--name=value` flag's value, or null when the run did not pass it. */
+const flag = (name) =>
+	ARGS.find((a) => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? null;
+const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:6017";
+
+/**
+ * The palette under measurement. An argument rather than a constant because D2's
+ * reading is a claim about BOTH brand palettes and the light one is the palette
+ * the finding is about; the dark one is where nothing depends on the tile's edge.
+ */
+const THEME =
+	process.argv.find((arg) => arg.startsWith("--theme="))?.slice(8) ??
+	"localOperatorDark";
+const AS_JSON = ARGS.includes("--json");
+
+/**
+ * Which extra STATE arms to measure, comma-separated (`--arms=hover,reduced-motion-hover`).
+ *
+ * The default is `rest` alone, so the shipped reading and every existing
+ * invocation are unchanged; the arms are opt-in because each one costs a second
+ * pass over every story in the list above.
+ */
+const ARMS = (flag("arms") ?? "rest").split(",").filter(Boolean);
+
+const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
+
+/* Top-level (biome's `useTopLevelRegex`): Chrome's own readiness line, matched
+   once per boot and never against page content. */
+const DEVTOOLS_LINE = /DevTools listening on (ws:\/\/[^\s]+)/;
+
+/**
+ * The states, with the viewport each is judged at — the same ids and widths
+ * `capture-evidence.mjs` sweeps for this surface, so a number here and a frame
+ * there describe one layout rather than two.
+ *
+ * `press` is the state that only exists after a reader acts: the expanded frame
+ * is REACHED by pressing the fold's own trigger, never by a story that hand-opens
+ * it, because the press is the thing being priced against the strip.
+ */
+const STORIES = [
+	["chat-trace-fold--finished", 1280, 200],
+	["chat-trace-fold--image-hidden", 1280, 200],
+	["chat-trace-fold--image-shown", 1280, 200],
+	["chat-trace-fold--images-three", 1280, 200],
+	["chat-trace-fold--images-many", 1280, 200],
+	["chat-trace-fold--image-live", 1280, 200],
+	/* Round 1's states: the similar pair, a real screenshot, the page-toned
+	   canvases and the compact receipt. */
+	["chat-trace-fold--image-similar", 1280, 200],
+	["chat-trace-fold--image-screenshot", 1280, 200],
+	["chat-trace-fold--image-tones", 1280, 200],
+	["chat-trace-fold--image-unavailable", 1280, 200],
+	/* The narrow column, where the CAP is the thing that has to hold, and the sum
+	   has moved with the tile: FIVE 117px tiles and their four 8px gutters are
+	   617px, past this rig's own 556px of strip at a 640px window - which is the
+	   sum the cap is derived from - while the six-tile figure this comment used
+	   to quote (628px) was the 98px tile's own arithmetic. FOUR tiles, their four
+	   gutters and the `+N` control are the row that has to fit: 533.6px measured
+	   with `+4`, 541.4px at `+99`. */
+	["chat-trace-fold--images-many", 640, 200],
+	["chat-trace-fold--images-three", 640, 200],
+	[
+		"chat-trace-fold--image-expanded",
+		1280,
+		420,
+		'[data-fold-ids] button[aria-expanded="false"]',
+	],
+];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+class Cdp {
+	constructor(ws) {
+		this.ws = ws;
+		this.next = 0;
+		this.pending = new Map();
+		ws.addEventListener("message", (ev) => {
+			const msg = JSON.parse(ev.data);
+			if (msg.id !== undefined && this.pending.has(msg.id)) {
+				const { resolve, reject } = this.pending.get(msg.id);
+				this.pending.delete(msg.id);
+				msg.error ? reject(new Error(msg.error.message)) : resolve(msg.result);
+			}
+		});
+	}
+	send(method, params = {}) {
+		const id = ++this.next;
+		this.ws.send(JSON.stringify({ id, method, params }));
+		return new Promise((resolve, reject) =>
+			this.pending.set(id, { resolve, reject }),
+		);
+	}
+}
+
+let chrome = null;
+let dataDir = null;
+
+const teardown = () => {
+	if (chrome) {
+		chrome.kill("SIGKILL");
+		chrome = null;
+	}
+	if (dataDir) {
+		/* `maxRetries` for the reason `chat-alignment-geometry.mjs` states: SIGKILL
+		   returns before the profile has stopped being written to, so a plain
+		   recursive remove loses the race and throws ENOTEMPTY over a run that
+		   measured perfectly well. */
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 10,
+			retryDelay: 100,
+		});
+		dataDir = null;
+	}
+};
+
+/**
+ * The measurement, evaluated in the page.
+ *
+ * Written as a string handed to `Runtime.evaluate` rather than as a function
+ * serialised across, so what runs in the browser is exactly what is read here.
+ * No backticks below: the whole thing is a template literal.
+ */
+const PROBE = `(() => {
+	const round = (n) => Math.round(n * 10) / 10;
+	/* WCAG 2.x relative luminance, so the boundary reading is the standard's
+	   number rather than a hue comparison. */
+	const luminance = (rgb) => {
+		const [r, g, b] = rgb.match(/[\\d.]+/g).slice(0, 3).map(Number).map((c) => {
+			const v = c / 255;
+			return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+		});
+		return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+	};
+	const contrast = (a, b) => {
+		const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+		return round((hi + 0.05) / (lo + 0.05));
+	};
+	const box = (el) => {
+		if (!el) return null;
+		const r = el.getBoundingClientRect();
+		return { top: round(r.top), height: round(r.height), width: round(r.width) };
+	};
+
+	const fold = document.querySelector("[data-fold-ids]");
+	if (!fold) return null;
+	/* The disclosure's own trigger, which is the fold's header row. */
+	const header = fold.querySelector("button");
+	const media = fold.querySelector("[data-fold-media]");
+	const tiles = media ? [...media.querySelectorAll("li")] : [];
+	const pictures = media ? [...media.querySelectorAll("img")] : [];
+	/* The rows the fold is holding OPEN. Zero in every condensed state, and the
+	   count is what says the expanded frame really is expanded. */
+	const rows = fold.querySelectorAll('[data-testid="tool-row"], [class*="toolrow"]');
+
+	/*
+	 * One row of tiles or several: top is what decides it, not a width
+	 * threshold. The strip's own height is compared against a single tile's, so
+	 * the number is a fact about the render rather than a re-derivation of the
+	 * wrap rule.
+	 */
+	const topLines = new Set(tiles.map((tile) => round(tile.getBoundingClientRect().top)));
+
+	return {
+		fold: box(fold),
+		header: box(header),
+		media: box(media),
+		tileCount: tiles.length,
+		/*
+		 * Rows by HEIGHT, not by counting distinct tops: the strip aligns its items
+		 * with items-center, so the +N more slot's top differs from the tiles' by
+		 * design and a top-set would report one row as two. The strip is a whole
+		 * number of tile rows tall, and that is the fact the budget is about.
+		 */
+		tileRows:
+			media && tiles[0]
+				? Math.max(
+						1,
+						Math.round(
+							media.getBoundingClientRect().height /
+								Math.max(tiles[0].getBoundingClientRect().height, 1),
+						),
+					)
+				: 0,
+		tile: box(tiles[0]),
+		/* The tallest picture, which on a mixed-aspect strip is the tall capture. */
+		pictureMaxHeight: pictures.length
+			? round(Math.max(...pictures.map((p) => p.getBoundingClientRect().height)))
+			: null,
+		/*
+		 * The three boxes a tile is made of, because the CEILING is the claim and
+		 * the tile's own height is the consequence: the picture is capped at the
+		 * frame's 64px floor, the frame adds its border, and the strip is the row.
+		 * A number that only reported the list item could be 6px wrong about the
+		 * picture and still look plausible.
+		 */
+		picture: box(pictures[0]),
+		/* Decoded AND painted are two different facts: a picture whose load event
+		   never fired keeps its reserved box and paints nothing, which a frame of
+		   an empty tile is the evidence of. */
+		pictureState: pictures[0]
+			? {
+					complete: pictures[0].complete,
+					naturalWidth: pictures[0].naturalWidth,
+					opacity: getComputedStyle(pictures[0]).opacity,
+				}
+			: null,
+		frame: box(media ? media.querySelector('[class*="min-h-16"]') : null),
+		/* The item's display, because the gap between the frame and the item IS
+		   the line box's leading and this is the property that removes it. */
+		tileDisplay: tiles[0] ? getComputedStyle(tiles[0]).display : null,
+		/* The tile's OWN class string, because the slot's contract is a rule about
+		   classes and a 2px difference between two states of it is what a class
+		   assertion catches and a box measurement can round away. */
+		frameClass: tiles[0]?.querySelector('[class*="min-h-16"], [class*="h-16"]')
+			? tiles[0]
+					.querySelector('[class*="min-h-16"], [class*="h-16"]')
+					.getAttribute("class")
+			: null,
+		/*
+		 * THE EDGE AT REST, read off the render: "none" is the operator's ask and
+		 * the state a frame can show; the hover arm below is what reads the edge
+		 * that returns. A border colour of "rgba(0, 0, 0, 0)" is the reserved,
+		 * invisible 1px.
+		 */
+		restEdge: (() => {
+			const tileFrame = media && tiles[0]
+				? tiles[0].querySelector('[class*="min-h-16"]')
+				: null;
+			if (!tileFrame) return null;
+			const colour = getComputedStyle(tileFrame).borderTopColor;
+			/* The alpha channel is the fact: a zero-alpha colour is the reserved,
+			   invisible 1px, and every serialisation of "no edge" - a named
+			   transparent, a zero alpha - has to read as invisible too. */
+			const channels = colour.match(/-?[\\d.]+/g) ?? [];
+			const alpha = channels.length > 3 ? Number(channels[3]) : 1;
+			return {
+				colour,
+				reserved: getComputedStyle(tileFrame).borderTopWidth,
+				visible: alpha > 0,
+			};
+		})(),
+		/*
+		 * THE ROW'S ARITHMETIC ("--json" readers and the size decision): the tiles'
+		 * own boxes, the gutter between them, the "+N" control's box, and the strip
+		 * they have to fit in. "rowWidth" sums the LAYOUT boxes (the border box a
+		 * neighbour sees), which is what the one-row invariant is about.
+		 */
+		row: media
+			? (() => {
+					const items = [...media.children];
+					const tileBoxes = items
+						.filter((el) => el.querySelector('img, [role="img"]'))
+						.map((el) => Math.round(el.getBoundingClientRect().width * 10) / 10);
+					const control = items.find((el) => el.querySelector("button[aria-label$='image'], button[aria-label$='images']"));
+					const controlBox = control
+						? Math.round(control.getBoundingClientRect().width * 10) / 10
+						: 0;
+					const strip = media.getBoundingClientRect();
+					const gap = parseFloat(getComputedStyle(media).columnGap || "0");
+					/* A gutter sits between EVERY adjacent slot, the +N control
+					   included: four tiles and the control is FOUR 8px gutters, not
+					   three. The reviewer's arithmetic (4w + 4g + control) is this sum. */
+					const gaps = Math.max(tileBoxes.length - 1 + (controlBox > 0 ? 1 : 0), 0);
+					const rowWidth =
+						Math.round(
+							(tileBoxes.reduce((a, b) => a + b, 0) + gaps * gap + controlBox) * 10,
+						) / 10;
+					/*
+					 * THE WORST CASE, measured rather than assumed: the control's box is a
+					 * function of its digit count, so the row is sized on a CLONE of the same
+					 * control carrying the widest label a run can print. The clone is the
+					 * shipped button with its own classes and font, positioned off-flow so it
+					 * cannot disturb the layout it is being measured against, and removed
+					 * immediately - the same technique the design round used, kept here so the
+					 * number is re-runnable rather than quoted.
+					 */
+					const widened = (text) => {
+						const button = control?.querySelector("button");
+						if (!button) return 0;
+						const clone = button.cloneNode(true);
+						clone.textContent = text;
+						clone.style.position = "absolute";
+						clone.style.visibility = "hidden";
+						clone.style.left = "-9999px";
+						document.body.append(clone);
+						const width = Math.round(clone.getBoundingClientRect().width * 10) / 10;
+						clone.remove();
+						return width;
+					};
+					const worstControl = widened("+99");
+					const widestControl = widened("+999");
+					return {
+						available: Math.round(strip.width * 10) / 10,
+						tile: tileBoxes[0] ?? null,
+						tiles: tileBoxes,
+						control: controlBox,
+						worstControl,
+						widestControl,
+						gap,
+						/* The tiles' border boxes plus their gutters plus the control: the
+						   row a reader sees, and the number the one-row invariant is stated
+						   on. slack is what is left of the column - the D2 reading. */
+						rowWidth,
+						slack: Math.round((strip.width - rowWidth) * 10) / 10,
+						/* The row re-summed with the widest labels: what the one-row
+						   invariant has to hold at for ANY count, not for the fixture's. */
+						worstCaseRow:
+							Math.round(
+								(tileBoxes.reduce((a, b) => a + b, 0) +
+									gaps * gap +
+									worstControl) *
+									10,
+							) / 10,
+						worstCaseSlack: Math.round(
+							(strip.width -
+								(tileBoxes.reduce((a, b) => a + b, 0) + gaps * gap + worstControl)) *
+								10,
+						) / 10,
+						/* The widest count control this rig sizes the row on: three
+						   digits. Four digits are not measured and not covered - nothing
+						   clamps the printed remainder. */
+						widestCaseRow:
+							Math.round(
+								(tileBoxes.reduce((a, b) => a + b, 0) + gaps * gap + widestControl) * 10,
+							) / 10,
+						widestCaseSlack: Math.round(
+							(strip.width -
+								(tileBoxes.reduce((a, b) => a + b, 0) + gaps * gap + widestControl)) *
+								10,
+						) / 10,
+					};
+				})()
+			: null,
+		tileChild: box(tiles[0] && tiles[0].firstElementChild),
+		tileGrandchild: box(
+			tiles[0] && tiles[0].firstElementChild && tiles[0].firstElementChild.firstElementChild,
+		),
+		openRows: rows.length,
+		headerText: header ? header.innerText.replace(/\\s+/g, " ").trim() : null,
+		/*
+		 * D2's reading, taken off the RENDER rather than off the tokens: the tile's
+		 * own boundary colour against the ground it sits on, as WCAG's non-text
+		 * ratio. The palette rows in contrast-contract.mjs prove the PAIR is legal
+		 * on every ground; this is the shipped pixels agreeing with them, which is
+		 * what the design round asked for and what a still cannot state.
+		 */
+		boundary: media && tiles[0]
+			? (() => {
+					const tileFrame = tiles[0].querySelector('[class*="min-h-16"]');
+					if (!tileFrame) return null;
+					const border = getComputedStyle(tileFrame).borderTopColor;
+					const ground = getComputedStyle(document.body).backgroundColor;
+					return { border, ground, ratio: contrast(border, ground) };
+				})()
+			: null,
+	};
+})()`;
+
+/**
+ * The state arm's own probe: what a still cannot state.
+ *
+ * `edge` is the frame's computed border colour with the pointer ON the tile and
+ * the picture's transform matrix (the zoom, as the engine resolved it) - so
+ * "borderless at rest, edged on hover, zoomed on hover, and edge-only under
+ * reduced motion" is three readings rather than three claims.
+ */
+const STATE_PROBE = `(() => {
+	const round = (n) => Math.round(n * 1000) / 1000;
+	const media = document.querySelector("[data-fold-media]");
+	const tile = media && media.querySelector("li");
+	const frame = tile && tile.querySelector('[class*="min-h-16"]');
+	const picture = tile && tile.querySelector("img");
+	const parse = (matrix) => {
+		const m = matrix && matrix.match(/matrix\(([^)]+)\)/);
+		return m ? round(Number(m[1].split(",")[0])) : 1;
+	};
+	return {
+		hovered: Boolean(tile && tile.querySelector("button:hover")),
+		edge: frame ? getComputedStyle(frame).borderTopColor : null,
+		edgeWidth: frame ? getComputedStyle(frame).borderTopWidth : null,
+		pictureWidth: picture ? round(picture.getBoundingClientRect().width) : null,
+		transform: picture ? getComputedStyle(picture).transform : null,
+		/* Tailwind v4 writes the scale utility as the standalone scale property, not
+		   as a transform matrix - a probe that only read transform reported "no
+		   zoom" for a zoom that was really there. Read both. */
+		scaleProperty: picture ? getComputedStyle(picture).scale : null,
+		scale: picture ? parse(getComputedStyle(picture).transform) : null,
+		transition: picture ? getComputedStyle(picture).transitionProperty : null,
+		transitionMs: picture ? getComputedStyle(picture).transitionDuration : null,
+		/*
+		 * The keyboard arm's own readings: the button that takes focus, the state
+		 * the tile's edge is keyed to, and the ring the app draws on it. The
+		 * outline readings are the global 2px accent ring, and the radii are what
+		 * design round 1's D4 changed - a square ring around a 6px tile was the
+		 * defect, and with the resting edge gone this ring is the only control
+		 * boundary a keyboard reader gets.
+		 */
+		focus: (() => {
+			const button = tile ? tile.querySelector("button") : null;
+			if (!button) return null;
+			const style = getComputedStyle(button);
+			return {
+				tag: button.tagName,
+				label: button.getAttribute("aria-label"),
+				active: document.activeElement === button,
+				focusVisible: button.matches(":focus-visible"),
+				radius: style.borderRadius,
+				outlineWidth: style.outlineWidth,
+				outlineStyle: style.outlineStyle,
+				outlineColor: style.outlineColor,
+				outlineOffset: style.outlineOffset,
+				frameBorder: frame ? getComputedStyle(frame).borderTopColor : null,
+				frameRadius: frame ? getComputedStyle(frame).borderRadius : null,
+			};
+		})(),
+	};
+})()`;
+
+const main = async () => {
+	dataDir = join(tmpdir(), `lo-fold-geometry-${process.pid}`);
+	mkdirSync(dataDir, { recursive: true });
+
+	chrome = spawn(
+		CHROME,
+		withMockKeychain([
+			"--headless=new",
+			"--no-sandbox",
+			"--disable-gpu",
+			"--hide-scrollbars",
+			`--user-data-dir=${dataDir}`,
+			"--remote-debugging-port=0",
+			"about:blank",
+		]),
+	);
+
+	const wsUrl = await new Promise((resolve, reject) => {
+		let buf = "";
+		const t = setTimeout(
+			() => reject(new Error("Chrome did not report a debug port")),
+			30_000,
+		);
+		chrome.stderr.on("data", (d) => {
+			buf += d.toString();
+			const m = buf.match(DEVTOOLS_LINE);
+			if (m) {
+				clearTimeout(t);
+				resolve(m[1]);
+			}
+		});
+		chrome.on("exit", (code) =>
+			reject(new Error(`Chrome exited early (${code})`)),
+		);
+	});
+
+	const { host } = new URL(wsUrl);
+	const list = await fetch(`http://${host}/json`).then((r) => r.json());
+	const target = list.find((t) => t.type === "page");
+	const ws = new WebSocket(target.webSocketDebuggerUrl);
+	await new Promise((resolve, reject) => {
+		ws.addEventListener("open", resolve, { once: true });
+		ws.addEventListener("error", reject, { once: true });
+	});
+	const cdp = new Cdp(ws);
+	await cdp.send("Page.enable");
+
+	const results = [];
+	for (const [story, width, height, press] of STORIES) {
+		await cdp.send("Emulation.setDeviceMetricsOverride", {
+			width,
+			height,
+			deviceScaleFactor: 1,
+			mobile: false,
+		});
+		await cdp.send("Page.navigate", { url: "about:blank" });
+		await sleep(120);
+		await cdp.send("Page.navigate", {
+			url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${THEME}`,
+		});
+		/*
+		 * Measurable is three conditions, not one: Storybook's own loader gone,
+		 * fonts resolved (a height measured against the fallback face is a number
+		 * about this machine), and the fold itself in the DOM. Polled rather than
+		 * slept on, for the reason the sibling rig states.
+		 */
+		let ready = false;
+		for (let i = 0; i < 240 && !ready; i++) {
+			const { result } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `(() => {
+					const loading = [...document.querySelectorAll(
+						".sb-preparing-story, .sb-preparing-docs, .sb-nopreview, .sb-loader",
+					)].some((el) => el.getBoundingClientRect().height > 0);
+					if (loading) return false;
+					if (document.fonts.status !== "loaded") return false;
+					return !!document.querySelector("[data-fold-ids]");
+				})()`,
+			});
+			ready = result.value === true;
+			if (!ready) await sleep(250);
+		}
+		if (!ready) {
+			throw new Error(
+				`${story} @ ${width}x${height}: story never became measurable`,
+			);
+		}
+		if (press) {
+			/*
+			 * The reader's press, delivered to the fold's own control — the same
+			 * element `capture-evidence.mjs` presses for this frame, so the measured
+			 * state and the photographed one are reached the same way.
+			 */
+			const pressed = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `(() => {
+					const el = document.querySelector(${JSON.stringify(press)});
+					if (!el) return false;
+					el.click();
+					return true;
+				})()`,
+			});
+			if (pressed.result.value !== true) {
+				throw new Error(`${story}: nothing to press at ${press}`);
+			}
+		}
+		/* One settled frame after layout, so the rects are post-reflow. */
+		await cdp.send("Runtime.evaluate", {
+			awaitPromise: true,
+			expression:
+				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+		});
+		const { result } = await cdp.send("Runtime.evaluate", {
+			returnByValue: true,
+			expression: PROBE,
+		});
+		if (!result.value) {
+			throw new Error(
+				`${story} @ ${width}x${height}: no fold rendered ${JSON.stringify(result)}`,
+			);
+		}
+		const measured = { story, viewport: `${width}x${height}`, ...result.value };
+		/*
+		 * THE STATE ARMS. A pointer position is not a style, so the rig moves a real
+		 * one (`Input.dispatchMouseEvent`), waits for the 120ms transition to land,
+		 * and reads what the engine computed - the same mechanism `capture-evidence.mjs`
+		 * uses for its own hover frames, so a reading here and a frame there describe
+		 * one state.
+		 */
+		/**
+		 * A real Tab press through the input pipeline.
+		 *
+		 * A programmatic `element.focus()` does NOT set `:focus-visible` - the
+		 * modality is part of the state - so the keyboard arm has to press keys
+		 * the way the frame's other keyboard states do, and stop when the tile's
+		 * own button reports the focus it is looking for.
+		 */
+		const pressTab = async () => {
+			for (const type of ["rawKeyDown", "keyUp"]) {
+				await cdp.send("Input.dispatchKeyEvent", {
+					type,
+					key: "Tab",
+					code: "Tab",
+					windowsVirtualKeyCode: 9,
+					nativeVirtualKeyCode: 9,
+				});
+			}
+		};
+		const tabToTile = async () => {
+			for (let press = 0; press < 15; press += 1) {
+				const reached = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `(() => {
+						const tile = document.querySelector("[data-fold-media] li");
+						const button = tile && tile.querySelector("button");
+						return Boolean(button && document.activeElement === button && button.matches(":focus-visible"));
+					})()`,
+				});
+				if (reached.result.value === true) return press;
+				await pressTab();
+				await sleep(60);
+			}
+			return -1;
+		};
+
+		const armProbe = async (arm) => {
+			if (arm === "focus") {
+				/* A state with no strip has no tile to focus (`finished`,
+				   `image-hidden`): the arm is skipped there rather than failed, on
+				   the same rule the hover arm uses. A state that HAS a tile and
+				   never focuses it is a failure, not a skip. */
+				const hasTile = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: `Boolean(document.querySelector("[data-fold-media] li button"))`,
+				});
+				if (hasTile.result.value !== true) return null;
+				const presses = await tabToTile();
+				if (presses < 0) {
+					throw new Error(
+						`${story} @ ${width}x${height}: the first tile never took :focus-visible within 15 Tab presses`,
+					);
+				}
+			}
+			if (arm === "reduced-motion-hover") {
+				await cdp.send("Emulation.setEmulatedMedia", {
+					features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+				});
+			}
+			const centre = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `(() => {
+					const tile = document.querySelector("[data-fold-media] li");
+					if (!tile) return null;
+					const r = tile.getBoundingClientRect();
+					return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+				})()`,
+			});
+			if (!centre.result.value) return null;
+			const { x, y } = centre.result.value;
+			await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y });
+			await sleep(200);
+			await cdp.send("Runtime.evaluate", {
+				awaitPromise: true,
+				expression:
+					"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+			});
+			const read = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: STATE_PROBE,
+			});
+			return read.result.value;
+		};
+		measured.arms = {};
+		for (const arm of ARMS) {
+			if (arm === "rest") continue;
+			measured.arms[arm] = await armProbe(arm);
+		}
+		if (ARMS.some((arm) => arm.startsWith("reduced-motion"))) {
+			await cdp.send("Emulation.setEmulatedMedia", { features: [] });
+		}
+		results.push(measured);
+	}
+
+	if (AS_JSON) {
+		console.log(JSON.stringify({ origin: ORIGIN, results }, null, 2));
+		return;
+	}
+	for (const r of results) {
+		console.log(`\n${r.story}  @ ${r.viewport}  (${THEME})`);
+		console.log(`  header         "${r.headerText}"`);
+		console.log(
+			`  fold height    ${r.fold.height}   (header ${r.header.height} + media ${r.media ? r.media.height : 0})`,
+		);
+		console.log(
+			`  strip          tiles=${r.tileCount}  rows=${r.tileRows}  tile=${r.tile ? `${r.tile.width}x${r.tile.height}` : "none"}`,
+		);
+		console.log(
+			`  tallest picture ${r.pictureMaxHeight === null ? "none" : `${r.pictureMaxHeight}px`}   rows mounted open=${r.openRows}`,
+		);
+		if (r.frameClass) {
+			console.log(`  tile frame   ${r.frameClass}`);
+		}
+		if (r.row) {
+			console.log(
+				`  row          ${r.row.rowWidth}px in ${r.row.available}px (slack ${r.row.slack})  tile=${r.row.tile}  control=${r.row.control}  gap=${r.row.gap}`,
+			);
+			console.log(
+				`  worst case   \`+99\` control (${r.row.worstControl}px) -> row ${r.row.worstCaseRow}px, slack ${r.row.worstCaseSlack};  \`+999\` (${r.row.widestControl}px) -> row ${r.row.widestCaseRow}px, slack ${r.row.widestCaseSlack}`,
+			);
+		}
+		if (r.frame) {
+			console.log(
+				`  frame        ${r.frame.width}x${r.frame.height}   list item ${r.tile ? `${r.tile.width}x${r.tile.height}` : "none"}`,
+			);
+		}
+		if (r.restEdge) {
+			console.log(
+				`  edge at rest ${r.restEdge.visible ? `${r.restEdge.colour} (VISIBLE)` : `none (a ${r.restEdge.reserved} reserved transparent border)`}`,
+			);
+		}
+		if (r.boundary && r.restEdge?.visible) {
+			console.log(
+				`  boundary     ${r.boundary.border} on ${r.boundary.ground} = ${r.boundary.ratio}:1`,
+			);
+		} else if (r.boundary) {
+			console.log(
+				`  boundary     none at rest (no edge to measure); the ${r.boundary.ground} ground is what the picture sits on`,
+			);
+		}
+		for (const [arm, read] of Object.entries(r.arms ?? {})) {
+			if (!read) continue;
+			if (arm === "focus" && read.focus) {
+				console.log(
+					`  ${arm.padEnd(20)} active=${read.focus.active} focus-visible=${read.focus.focusVisible} name="${read.focus.label}" button radius=${read.focus.radius} ring=${read.focus.outlineWidth} ${read.focus.outlineStyle} ${read.focus.outlineColor} offset=${read.focus.outlineOffset} frame border=${read.focus.frameBorder} radius=${read.focus.frameRadius}`,
+				);
+				continue;
+			}
+			console.log(
+				`  ${arm.padEnd(20)} hovered=${read.hovered} edge=${read.edge} scale=${read.scaleProperty} ${read.transition} ${read.transitionMs}`,
+			);
+		}
+	}
+};
+
+for (const signal of ["SIGINT", "SIGTERM"]) {
+	process.on(signal, () => {
+		teardown();
+		process.exit(1);
+	});
+}
+
+main()
+	.then(() => teardown())
+	.catch((error) => {
+		teardown();
+		console.error(error);
+		process.exit(1);
+	});

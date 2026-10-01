@@ -94,7 +94,7 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"retry.usageAwareAccountPick": "advanced",
 	"retry.usageReservePercent": "advanced",
 	"retry.fallbackChains": "advanced",
-	// appearance (13)
+	// appearance (14)
 	/*
 	 * `tui.theme` is `advanced`, and the reason is the authoring rule above
 	 * rather than taste. Its label is "Theme", which in the DESKTOP surface
@@ -117,6 +117,8 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	"display.notification_session_name": "advanced",
 	"display.time_format": "advanced",
 	"display.dock": "advanced",
+	"display.hide_cross_session": "advanced",
+	"display.turn_answer_rail": "advanced",
 	"tui.sidebar_visible": "advanced",
 	"tui.sidebar_position": "advanced",
 	// keymap (3)

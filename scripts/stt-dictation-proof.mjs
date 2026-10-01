@@ -61,6 +61,9 @@ import { join } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
 import { withTelemetryOff } from "./telemetry-off.mjs";
 
+/* The frame suffix the sweep walks by; hoisted so the pattern is compiled once (useTopLevelRegex). */
+const WEBP_SUFFIX = /\.webp$/;
+
 const OUT = process.argv[2] ?? join(tmpdir(), "lo-stt-proof");
 const BACKEND = process.env.LO_PROOF_BACKEND ?? "http://127.0.0.1:1131";
 const TOKEN = process.env.LO_PROOF_TOKEN ?? "";
@@ -68,6 +71,31 @@ const PROXY_PORT = Number(process.env.LO_PROOF_PROXY_PORT ?? 8080);
 const RADIENT_PORT = Number(process.env.LO_PROOF_RADIENT_PORT ?? 8799);
 const WIDTH = Number(process.env.LO_PROOF_WIDTH ?? 1380);
 const HEIGHT = 900;
+/*
+ * AN OPTIONAL INPUT, for a run that wants the microphone to carry a signal
+ * with DYNAMICS (the recording-display pair photographs both gain regimes in
+ * one strip): the path to the WAV `scripts/stt-recording-display-audio.mjs`
+ * writes, which the capture leg plays into a PAGE-SIDE synthetic microphone
+ * (`installSyntheticMicrophone`) rather than through Chromium's
+ * `--use-file-for-fake-audio-capture` - that flag delivers SILENCE under this
+ * Electron (measured 2026-09-29 on 44.3.0: RMS 0.00000 from the flag's file,
+ * against the plain synthetic device's own ~0.001). The launch carries
+ * `--autoplay-policy=no-user-gesture-required` when this is set, so the
+ * page-side element may start; the plain device does not need it. Unset,
+ * nothing changes.
+ */
+const AUDIO_FILE = process.env.LO_PROOF_AUDIO_FILE ?? "";
+/*
+ * THE CAPTURE-ONLY MODE, for a caller that wants the recording-display leg
+ * and nothing else (the redesign's before/after pair): the run stops after
+ * session G by throwing `CaptureOnlyStop`, and the catch records that as the
+ * clean stop it is. The gauntlet's own sessions (B-F) are the stt set's
+ * evidence, not this mode's, and every one of them is a live network surface
+ * on a loaded host - two full runs on 2026-09-29 were cut short in the C-to-D
+ * transition by fetch-level stalls, which is exactly the exposure this mode
+ * lets a narrow capture skip.
+ */
+const CAPTURE_ONLY = process.env.LO_PROOF_CAPTURE_ONLY === "1";
 const DEADLINE_MS = 120_000;
 /** The one path whose bodies this rig records: the message send. */
 const MESSAGES_POST = /\/messages$/;
@@ -389,8 +417,24 @@ const proxy = createServer((req, res) => {
 				responseHeaders[key] = value;
 			}
 			res.writeHead(upstream.status, responseHeaders);
-			if (upstream.body) Readable.fromWeb(upstream.body).pipe(res);
-			else res.end();
+			if (upstream.body) {
+				/*
+				 * A SOURCE STREAM'S 'error' IS NOT FORWARDED BY `.pipe`, and an
+				 * unhandled one takes the whole RIG down with it - measured
+				 * 2026-09-29: a body timeout on a long-quiet relayed stream (undici's
+				 * 300 s default) killed a capture run mid-session with a raw stack,
+				 * after the frames it had already taken. Let the failure end THIS
+				 * response instead; the app's own stream machinery reconnects, and
+				 * the run survives.
+				 */
+				const relay = Readable.fromWeb(upstream.body);
+				relay.on("error", (error) => {
+					console.error(`proxy relay error: ${error?.message ?? error}`);
+					res.end();
+				});
+				res.on("close", () => relay.destroy());
+				relay.pipe(res);
+			} else res.end();
 		} catch (error) {
 			res.writeHead(502, { "content-type": "application/json" });
 			res.end(
@@ -459,6 +503,7 @@ const app = spawn(
 		"--window-mode=headless",
 		`--window-size=${WIDTH}x${HEIGHT}`,
 		"--use-fake-device-for-media-stream",
+		...(AUDIO_FILE ? ["--autoplay-policy=no-user-gesture-required"] : []),
 	],
 	{
 		env: spawnEnv,
@@ -508,9 +553,22 @@ class Cdp {
 	}
 	async shot(name) {
 		const { data } = await this.send("Page.captureScreenshot", {
-			format: "png",
+			format: "webp",
+			quality: 88,
 		});
-		writeFileSync(join(OUT, name), Buffer.from(data, "base64"));
+		/*
+		 * The sweep derives the theme from the FRAME'S OWN basename, so a flat
+		 * `<stem>.webp` fails `no palette named <stem>` however the set is
+		 * declared (see `paletteStemRenameNote`). Write the canonical
+		 * `<stem>/<theme>.webp` shape; the app under this rig runs the brand
+		 * dark theme, which is also what the committed frames measure.
+		 */
+		const stem = name.replace(WEBP_SUFFIX, "");
+		mkdirSync(join(OUT, stem), { recursive: true });
+		writeFileSync(
+			join(OUT, stem, "localOperatorDark.webp"),
+			Buffer.from(data, "base64"),
+		);
 	}
 }
 
@@ -566,6 +624,13 @@ const target = async () => {
 };
 
 let cdp = null;
+
+/*
+ * The sentinel a `LO_PROOF_CAPTURE_ONLY` run throws once the recording-display
+ * leg is done; the catch below treats it as a clean stop rather than a failure.
+ */
+class CaptureOnlyStop extends Error {}
+
 try {
 	let page = null;
 	const bootDeadline = Date.now() + DEADLINE_MS;
@@ -596,6 +661,11 @@ try {
 	if (!bridged)
 		throw new Error(`the preload bridge never appeared:\n${appLog.join("")}`);
 	record("bridge", { present: true });
+	record("rig.mode", {
+		role: ROLE,
+		captureOnly: CAPTURE_ONLY,
+		audioFile: AUDIO_FILE || null,
+	});
 
 	// First-run pin, unconditional, then reload into a settled composer.
 	await cdp.evaluate(`(() => {
@@ -793,6 +863,20 @@ try {
 		windowsVirtualKeyCode: 13,
 		nativeVirtualKeyCode: 36,
 	};
+	/*
+	 * The Escape two legs of the run press: the recording-display captures cancel
+	 * their takes with it (rung 4 of the interrupt ladder), and session E's abort
+	 * probe presses it against a live turn. Shared rather than spelled twice - it
+	 * was session E's local until the capture leg moved ahead of E and hit its
+	 * temporal dead zone (measured 2026-09-29: `Cannot access 'ESC' before
+	 * initialization`, after the leg's first frame had already been taken).
+	 */
+	const ESC = {
+		key: "Escape",
+		code: "Escape",
+		windowsVirtualKeyCode: 27,
+		nativeVirtualKeyCode: 53,
+	};
 
 	const pressKey = async (def) => {
 		await key("keyDown", def);
@@ -922,7 +1006,7 @@ try {
 	const draftText = "review the stt overhaul";
 	const typedA = await typeIntoComposer(draftText);
 	verify("sessionA.draftTyped", typedA === draftText, { draft: typedA });
-	await cdp.shot("01-idle-draft.png");
+	await cdp.shot("01-idle-draft.webp");
 	record("sessionA.idle", await composerBox());
 	/*
 	 * THE TOOLTIP NAMES THE BINDING (design round 1, D1). Hovered through the
@@ -948,7 +1032,7 @@ try {
 			y: micHover.y,
 		});
 		await sleep(1400);
-		await cdp.shot("14-mic-tooltip.png");
+		await cdp.shot("14-mic-tooltip.webp");
 		record("sessionA.micTooltip", {
 			text: await cdp.evaluate(
 				`(() => document.body.innerText.match(/Start recording[^\\n]*/) ?? "")()`,
@@ -1052,13 +1136,13 @@ try {
 		 * a pass that FLIPPED.
 		 */
 		await sleep(450);
-		await cdp.shot("02-recording-combo.png");
+		await cdp.shot("02-recording-combo.webp");
 		record("sessionA.recordingTreatment", await composerBox());
 		// The release is what stops it; the transcription then leaves, is held on
 		// screen by the upstream delay, and lands in the composer.
 		await releaseHold(ALT_RIGHT);
 		const transcribing = await awaitTranscriptLanding("sessionA.combo");
-		if (transcribing) await cdp.shot("03-transcribing.png");
+		if (transcribing) await cdp.shot("03-transcribing.webp");
 		const landed = await waitForDraft(
 			(d) => d.includes("fake upstream"),
 			20_000,
@@ -1067,7 +1151,7 @@ try {
 			transcribingSeen: transcribing,
 			draft: landed,
 		});
-		await cdp.shot("04-dictated-landed.png");
+		await cdp.shot("04-dictated-landed.webp");
 	} else {
 		await releaseHold(ALT_RIGHT, { holdExtraMs: 0 });
 		note(
@@ -1093,17 +1177,17 @@ try {
 	if (space.detail.flipped) {
 		// Same settled-lane wait as the combo frame above (design round 1, D4).
 		await sleep(450);
-		await cdp.shot("05-recording-space.png");
+		await cdp.shot("05-recording-space.webp");
 		record("sessionA.recordingTreatmentSpace", await composerBox());
 		await releaseHold(SPACE);
 		await awaitTranscriptLanding("sessionA.space");
-		await cdp.shot("06-transcribing-space.png");
+		await cdp.shot("06-transcribing-space.webp");
 		const landed = await waitForDraft(
 			(d) => d.includes("fake upstream"),
 			20_000,
 		);
 		record("sessionA.transcriptLandedSpace", { draft: landed });
-		await cdp.shot("07-dictated-landed-space.png");
+		await cdp.shot("07-dictated-landed-space.webp");
 	} else {
 		await releaseHold(SPACE, { holdExtraMs: 0 });
 	}
@@ -1131,7 +1215,188 @@ try {
 		`document.body.innerText.includes("review the stt overhaul")`,
 		10_000,
 	);
-	await cdp.shot("08-mixed-row.png");
+	await cdp.shot("08-mixed-row.webp");
+
+	/* --------- session G: the recording display's settled states ------------ */
+
+	/*
+	 * THE CAPTURE LEG'S OWN MICROPHONE, built PAGE-SIDE when `LO_PROOF_AUDIO_FILE`
+	 * is set: the WAV decoded into an `AudioBuffer` and looped through an
+	 * `AudioBufferSourceNode` into a `MediaStreamAudioDestinationNode`, with
+	 * `getUserMedia` overridden to answer the app's audio requests with a FRESH
+	 * destination stream per call - a stopped stream cannot restart, and the app
+	 * stops its stream when a take ends, so one shared stream would go silent
+	 * after the first frame.
+	 *
+	 * THE ROUTE IS WEBAUDIO RATHER THAN AN `<audio>` ELEMENT (measured
+	 * 2026-09-29): this leg used to loop a blob-URL element, and on a renderer
+	 * that cannot open an OUTPUT device its `element.play()` promise never
+	 * settled - Chromium logged "The AudioContext encountered an error from the
+	 * audio device or the WebAudio renderer", the app's first `getUserMedia`
+	 * never resolved, and the one-recorder-at-a-time guard refused every later
+	 * press, which is exactly how three consecutive capture runs failed with
+	 * zero flips. A destination node needs no output device: the samples go to
+	 * the stream, not to the speakers. (A blob URL, not a `data:` URI, was the
+	 * old route's CSP constraint - `media-src` allows `blob:` and not `data:` -
+	 * and the old route's element is no longer needed at all.)
+	 */
+	const installSyntheticMicrophone = async (filePath) => {
+		const base64 = readFileSync(filePath).toString("base64");
+		return cdp.evaluate(
+			`(() => {
+				try {
+					const media = navigator.mediaDevices;
+					window.__loProofRealGetUserMedia =
+						window.__loProofRealGetUserMedia ?? media.getUserMedia.bind(media);
+					const bytes = Uint8Array.from(atob(${JSON.stringify(base64)}), (c) =>
+						c.charCodeAt(0),
+					);
+					media.getUserMedia = async (constraints) => {
+						if (!constraints || !constraints.audio)
+							return window.__loProofRealGetUserMedia(constraints);
+						try {
+							const context = new AudioContext();
+							if (context.state === "suspended") await context.resume();
+							/*
+							 * THE WAV IS DECODED AND ROUTED IN WEBAUDIO, NOT PLAYED
+							 * THROUGH AN AUDIO ELEMENT (measured 2026-09-29, three
+							 * consecutive runs on this host): element.play() never
+							 * settled - its promise stayed pending for the whole run -
+							 * whenever the renderer could not open an OUTPUT device
+							 * (Chromium's "The AudioContext encountered an error from the
+							 * audio device or the WebAudio renderer"), which took the
+							 * first engage down with it and left every later press
+							 * refused by the app's one-recorder-at-a-time guard. A
+							 * MediaStreamAudioDestinationNode needs no output device -
+							 * the samples go to the stream, not to the speakers - and a
+							 * decoded AudioBufferSourceNode loops the same bytes the
+							 * element played before, so the recording gets the same input.
+							 */
+							const buffer = await context.decodeAudioData(bytes.buffer.slice(0));
+							const destination = context.createMediaStreamDestination();
+							const source = context.createBufferSource();
+							source.buffer = buffer;
+							source.loop = true;
+							source.connect(destination);
+							source.start();
+							return destination.stream;
+						} catch (error) {
+							window.__loProofMicError = String(error);
+							throw error;
+						}
+					};
+					return "installed";
+				} catch (error) {
+					return "failed: " + String(error);
+				}
+			})()`,
+		);
+	};
+
+	/*
+	 * TWO FRAMES FOR THE RECORDING-DISPLAY REDESIGN (operator feedback via Aida,
+	 * 2026-09-29): the lane below the field, SETTLED, once with an empty field
+	 * and once with a draft - the states the redesign's before/after pair is read
+	 * against. They are taken HERE, right after session A and before the
+	 * gauntlet's long tail, so the pair a run exists for cannot be lost to a
+	 * later phase's stall (measured 2026-09-29: a body timeout killed a run past
+	 * its thirteenth minute with these frames unwritten at the end).
+	 *
+	 * The geometry recorded beside each frame is read from the same box the
+	 * composer's own measure names (`data-lo-composer-measure`), so the pair's
+	 * width and height claims can be checked without re-counting pixels: the
+	 * lane's own box is the thing the redesign moves.
+	 */
+	const sessionG = await openSession();
+	report.sessionG = sessionG;
+	const focusForG = await clickSelector(TEXTAREA);
+	record("sessionG.focus", { pressed: focusForG?.pressed ?? false });
+	if (AUDIO_FILE) {
+		record("sessionG.microphone", {
+			input: AUDIO_FILE,
+			install: await installSyntheticMicrophone(AUDIO_FILE),
+		});
+	}
+
+	const recordingGeometry = async () => {
+		const geometry = await cdp.evaluate(
+			`(() => {
+				const rect = (el) => {
+					if (!el) return null;
+					const r = el.getBoundingClientRect();
+					return { x: Math.round(r.x), w: Math.round(r.width), h: Math.round(r.height) };
+				};
+				return JSON.stringify({
+					box: rect(document.querySelector("[data-lo-composer-measure]")),
+					row: rect(document.querySelector("[data-recording-indicator]")),
+					lane: rect(document.querySelector("[data-recording-indicator] canvas")),
+					field: rect(document.querySelector(${JSON.stringify(TEXTAREA)})),
+				});
+			})()`,
+		);
+		// Parsed HERE, not recorded raw: `record` spreads its value, and a JSON
+		// string spread into the record is a dict of single characters - the
+		// first pair of this leg's runs recorded exactly that (2026-09-29),
+		// which is why this reads as one value a reader can use.
+		return geometry ? JSON.parse(geometry) : null;
+	};
+
+	const captureRecordingDisplay = async (name) => {
+		await key("keyDown", ALT_RIGHT);
+		const flipped = await waitFor(
+			`!!document.querySelector("[data-recording-indicator]")`,
+			9000,
+		);
+		record(`sessionG.${name}.engage`, { flipped });
+		if (!flipped) {
+			// The page-side reason a refusal would otherwise hide: the synthetic
+			// microphone stores its own failure where the app's catch cannot.
+			record(`sessionG.${name}.micError`, {
+				error: await cdp.evaluate("window.__loProofMicError ?? null"),
+			});
+		}
+		if (flipped) {
+			/*
+			 * THE SETTLED-LANE WAIT, LONGER THAN SESSION A'S. Design round 1's D4 wait
+			 * (450 ms) fixed a first-draw race; this pass buys the whole history: the
+			 * lane is a 120-bar ring buffer of roughly an 8 s window, so ~8.5 s leaves
+			 * it full instead of a few bars - and, under a speech-shaped
+			 * `LO_PROOF_AUDIO_FILE`, one frame then carries both gain regimes (a loud
+			 * phrase and a quiet one) rather than a single moment of the input.
+			 */
+			await sleep(8500);
+			await cdp.shot(`${name}.webp`);
+			record(`sessionG.${name}.recording`, await composerBox());
+			record(`sessionG.${name}.geometry`, await recordingGeometry());
+		}
+		// Esc cancels the take (rung 4 of the interrupt ladder): the frame is
+		// taken, the microphone stops, and the field is left as it was.
+		await pressKey(ESC);
+		await sleep(600);
+		return flipped;
+	};
+
+	const gEmptyFlipped = await captureRecordingDisplay(
+		"17-recording-display-empty",
+	);
+	verify("sessionG.emptyEngages", gEmptyFlipped === true, {});
+
+	const gDraft = "the draft stays while recording";
+	const gTyped = await typeIntoComposer(gDraft);
+	verify("sessionG.draftTyped", gTyped === gDraft, { draft: gTyped });
+	const gDraftFlipped = await captureRecordingDisplay(
+		"18-recording-display-draft",
+	);
+	verify("sessionG.draftEngages", gDraftFlipped === true, {});
+	record("sessionG.draftAfterCancel", {
+		draft: (await composerBox()).draft,
+	});
+
+	if (CAPTURE_ONLY) {
+		throw new CaptureOnlyStop(
+			"capture-only run: the recording-display leg is done",
+		);
+	}
 
 	/* ---------------------------------- session B: mid-turn dictation + steer */
 
@@ -1188,7 +1453,7 @@ try {
 		),
 	});
 	record("sessionB.streamingSamples", { samples: streamingSamples });
-	await cdp.shot("09-typed-row-mid-turn.png");
+	await cdp.shot("09-typed-row-mid-turn.webp");
 
 	// The steady mid-turn state: the turn IS streaming, the transcript shows the
 	// bash row. WAITED FOR rather than assumed - the sampling above measured the
@@ -1245,7 +1510,7 @@ try {
 		attempts: midAttempts,
 	});
 	if (mid.detail.flipped) {
-		await cdp.shot("10-dictating-mid-turn.png");
+		await cdp.shot("10-dictating-mid-turn.webp");
 		await releaseHold(ALT_RIGHT);
 		const transcribing = await awaitTranscriptLanding("sessionB.midTurn");
 		record("sessionB.midTurnTranscribing", { transcribing });
@@ -1254,7 +1519,7 @@ try {
 			20_000,
 		);
 		record("sessionB.midTurnTranscriptLanded", { draft: landed });
-		await cdp.shot("11-dictated-mid-turn.png");
+		await cdp.shot("11-dictated-mid-turn.webp");
 		const rowShape = async (needle) =>
 			JSON.parse(
 				await cdp.evaluate(`(() => {
@@ -1324,7 +1589,7 @@ try {
 			`document.body.innerText.includes(${JSON.stringify("dictated steer probe from the fake upstream.")})`,
 			5000,
 		);
-		await cdp.shot("12-sent-mid-turn-steer.png");
+		await cdp.shot("12-sent-mid-turn-steer.webp");
 		/*
 		 * THE ROW-IDENTITY COMPARISON, SAMPLED HERE WHERE THE TEXT IS PROVEN
 		 * PRESENT - the `waitFor` above just found it in `document.body.innerText`.
@@ -1643,7 +1908,7 @@ try {
 	note(
 		"session C could not land inside the ~8 ms press-to-echo window this rig measures (its release plumbing costs ~17 ms); the transcript rode the fresh-append path, asserted above, and the composed-clear path is covered by reading, not by this run",
 	);
-	await cdp.shot("13-transcript-in-echo-window.png");
+	await cdp.shot("13-transcript-in-echo-window.webp");
 
 	/* -------------- session D: the resolve-window takes (review round 1) */
 
@@ -1743,7 +2008,7 @@ try {
 		{ draft: landedD },
 	);
 	record("sessionD.joinedDraft", { draft: landedD });
-	await cdp.shot("15-edge-takes-settled.png");
+	await cdp.shot("15-edge-takes-settled.webp");
 
 	/* -------------- session E: Esc on the PTT door claims the take, not the turn */
 
@@ -1778,12 +2043,6 @@ try {
 		9000,
 	);
 	record("sessionE.stripUp", { stripUp });
-	const ESC = {
-		key: "Escape",
-		code: "Escape",
-		windowsVirtualKeyCode: 27,
-		nativeVirtualKeyCode: 53,
-	};
 	await key("keyDown", ESC);
 	await key("keyUp", ESC);
 	await sleep(1200);
@@ -1814,7 +2073,7 @@ try {
 		transcribing: boxE.transcribing,
 		draft: boxE.draft,
 	});
-	await cdp.shot("16-esc-ptt-cancels-take-not-turn.png");
+	await cdp.shot("16-esc-ptt-cancels-take-not-turn.webp");
 	// The hold's key still has to come up cleanly even though the abort already
 	// ended the take; the release is a no-op then (the manager cleared `engaged`).
 	await key("keyUp", ALT_RIGHT);
@@ -1952,8 +2211,15 @@ try {
 	// Whether this build carries the new inline treatment at all is read where it
 	// can be true - while a recording exists; see `composerBox().indicator`.
 } catch (error) {
-	report.failure = String(error?.stack ?? error);
-	record("failure", { message: String(error?.message ?? error) });
+	/*
+	 * The capture-only sentinel is a clean STOP, not a failure: the mode's whole
+	 * point is that sessions B-F were never this run's to take, and a record
+	 * that called their absence a failure would lie about the run.
+	 */
+	if (!(error instanceof CaptureOnlyStop)) {
+		report.failure = String(error?.stack ?? error);
+		record("failure", { message: String(error?.message ?? error) });
+	}
 } finally {
 	await finish(cdp);
 }

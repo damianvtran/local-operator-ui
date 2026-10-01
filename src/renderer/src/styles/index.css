@@ -454,18 +454,34 @@
 }
 
 /*
- * The chat column's shipped content measure.
+ * The chat column's shared content measure.
  *
- * THIS IS THE ONLY PLACE THE NUMBER IS WRITTEN. `CHAT_MEASURE` in
- * `features/chat/chat-measure.ts` reads the property rather than restating the
- * value, so the transcript, the composer band and every story that renders
- * them resolve against one number and cannot drift apart.
+ * THIS IS THE ONLY PLACE THE SHIPPED NUMBER IS WRITTEN. `CHAT_MEASURE` in
+ * `features/chat/chat-measure.ts` reads `--lo-chat-measure` rather than
+ * restating a value, so the transcript, the composer band and every story that
+ * renders them resolve against one number and cannot drift apart.
  *
  * It is a custom property rather than a Tailwind `max-w-[810px]` literal in the
  * class string because a class can only carry a literal: the value has to be
  * addressable by name for a runtime change to reach the transcript and the
  * composer together, and a second copy of the number in a class string is the
  * drift this file's sibling comment (in `chat-measure.ts`) exists to prevent.
+ *
+ * ## Two properties, because a drag needs two questions answered
+ *
+ * `--lo-chat-measure-shipped` is what the column is for a reader who has never
+ * touched it - 810px, and the measurement behind that value is below.
+ * `--lo-chat-measure` is what it renders as, and it resolves the reader's own
+ * width FIRST and falls back to the shipped one. That is the whole of the
+ * precedence rule: an override REPLACES the shipped default rather than
+ * sitting beside it, and there is no window size below which it stops applying.
+ * The pattern is `deepseek-harness`'s (`--dsh-chat-content-width: var(
+ * --dsh-chat-user-width, clamp(...))`), adopted here with this app's own shape.
+ *
+ * A chain of properties rather than one property rewritten by the store, for the
+ * reason the reset path exists: with the shipped value still declared, "put it
+ * back" is `removeProperty` on the override, which cannot restore the wrong
+ * number and does not need the number to be carried around in JavaScript.
  *
  * ## Why 810, and not 640
  *
@@ -498,6 +514,29 @@
  * explicitly "narrow the constraint just a bit", so the step is deliberately
  * well above 640 and does not re-open the redesign.
  *
+ * ## The override is the CAP, and a resize never rewrites it
+ *
+ * The column is responsive: `max-width` gives way to a narrow pane. So a reader
+ * who chooses 1100px on a wide window and then shrinks it sees a narrower
+ * column, and gets 1100px back when they widen it again - the stored width is
+ * never rewritten by a resize, because the RENDER clamps and the preference does
+ * not (`chatSidebarListHeight`'s note in `ui-preferences-store.ts` states the
+ * same rule for the sidebar's list height, and it is the rule this repo already
+ * holds).
+ *
+ * The honest limit, stated rather than discovered later: on a pane narrower than
+ * the chosen width the column takes the pane, and the handle can then only narrow
+ * it further. That is the seat the shipped cap is in too, so the override does
+ * not fight the layout - it is the layout's own ceiling, raised or lowered. An
+ * override that pinned a fixed width would fight the layout exactly where the app
+ * is narrowest, which is why it is not what this does.
+ *
+ * The bounds and the drag arithmetic live in `features/chat/chat-measure-drag.ts`
+ * rather than in the component's handlers: `pnpm test:desktop` bundles the
+ * shipped TypeScript in memory instead of rendering it, so a clamp written into
+ * a JSX handler is a decision nothing can reach. `scripts/chat-measure-drag.test.mjs`
+ * drives that module directly.
+ *
  * The class still gates the cap behind `@min-[750px]/chatcol:`, and the two do
  * not fight: at a 750px container the content box is 750 - 48 = 702px, so a
  * 810px cap can only bind above an 858px container. The gate is therefore inert
@@ -505,7 +544,17 @@
  * intent (a narrow column takes the full width) that the number alone does not.
  */
 :root {
-	--lo-chat-measure: 810px;
+	/* The shipped default: the number, written once. */
+	--lo-chat-measure-shipped: 810px;
+	/*
+	 * The measure as rendered. The override wins outright when the reader has
+	 * set one; the shipped default is the fallback term, so a removed override
+	 * restores it with no JavaScript involved.
+	 */
+	--lo-chat-measure: var(
+		--lo-chat-measure-override,
+		var(--lo-chat-measure-shipped)
+	);
 }
 
 /*
@@ -547,6 +596,13 @@
 	--color-ink-disabled: var(--lo-ink-disabled);
 
 	--color-hairline: var(--lo-hairline);
+	/* The decorative line ONE STEP ABOVE `hairline`, for textures and rules that have to
+	   read on a light palette as well as a dark one. Decoration only, so it has no contrast
+	   floor - the moment it bounds or fills a control it is `control` and takes that role's
+	   3:1, which is a `CONTROLS` row in `scripts/contrast-contract.mjs` rather than a claim
+	   made here. See `hairlineStrong` in the palette contract for the per-palette
+	   derivation and `.mesh-ground` below for the first surface that spends it. */
+	--color-hairline-strong: var(--lo-hairline-strong);
 	--color-control: var(--lo-border-control);
 
 	--color-accent: var(--lo-accent);
@@ -613,6 +669,14 @@
 
 	--text-meta: 0.75rem;
 	--text-meta--line-height: 1.45;
+
+	/* One step below `meta`, for the counted mark: a numeral inside a 16px circle
+	   needs the air this step buys, or the digit fills the ring (the "janky
+	   bubble" the operator reported, 2026-09-30). `ink-dim` is the register it
+	   pairs with (its own doc: captions, metadata, 11-13px), so the pair is the
+	   quiet count family rather than a fourth weight of attention. */
+	--text-meta-sm: 0.6875rem;
+	--text-meta-sm--line-height: 1.45;
 
 	/* Machine voice: paths, code, counts, timestamps, trace labels. The one
 	   place monospace is permitted, and the reason it reads as machine output
@@ -744,15 +808,44 @@
 	 * would look like the window repainting, and neither property can move a
 	 * sibling.
 	 *
-	 * `sweep` is the indeterminate progress segment. It travels a segment across
-	 * the track rather than sizing or fading one, so the bar reads as "work is
-	 * happening" without stating a fraction - and at its final keyframe the
-	 * segment sits at the left edge, which is a quiet determinate-looking bar.
-	 * The static width and the animation are split across the query below: read
-	 * that rule before moving either half back in.
+	 * `turn` is the panel's two working marks - the rail's head mark, and the
+	 * running step's own marker - and it is the APP'S OWN indeterminate grammar
+	 * (`Spinner`'s ring with a single `accent` quadrant, where the gap is what
+	 * makes a rotation legible) rather than a cadence invented here. Three
+	 * properties of it are deliberate and load-bearing:
+	 *
+	 *   - 1.8s per turn, not `Spinner`'s 1s. This mark turns for the minutes an
+	 *     install takes rather than for the length of a request, and it is the one
+	 *     animation on this screen a user may sit and watch.
+	 *   - `linear` and `infinite`: an eased turn would imply an end the mark does
+	 *     not know.
+	 *   - it animates `transform` ALONE. An opacity breath spends contrast, and in
+	 *     the light themes its trough took the running ring below the waiting rings
+	 *     it has to be told apart from (design D3, measured at 2.88:1 against
+	 *     3.51:1). A turn spends no contrast: the accent quadrant is at full
+	 *     strength in every phase and the ring's other three sides are the `control`
+	 *     the waiting rings carry (design round 2, D7 - under `hairline` the
+	 *     running ring measured 1.22:1 against their 3.13-3.42:1), so the mark that
+	 *     says "working" is never the faintest thing in the column - and
+	 *     `transform`, unlike a width, cannot move a sibling.
+	 *
+	 * THERE IS NO SWEEP KEYFRAME HERE ANY MORE, deliberately. A travelling segment
+	 * used to carry the state where no step has been announced, and that state's own
+	 * reduced-motion parking is what retired it: parked anywhere on the rail it spans
+	 * a marker on each side of itself, and an accent rule joining two steps is a
+	 * determinate claim about them (measured in the frame). The unannounced state is
+	 * now the same ring the running step draws, at the rail's head, so this window
+	 * needs no third keyframe.
 	 */
 	--animate-install-enter: install-enter var(--duration-slow) ease-out-quart
 		both;
+	--animate-install-turn: install-turn 1.8s linear infinite;
+
+	@keyframes install-turn {
+		to {
+			transform: rotate(360deg);
+		}
+	}
 
 	@keyframes install-enter {
 		from {
@@ -762,20 +855,6 @@
 		to {
 			opacity: 1;
 			transform: none;
-		}
-	}
-
-	@keyframes install-sweep {
-		/*
-		 * Off-track at BOTH ends, so the segment enters and leaves rather than staging
-		 * at a plausible fraction: 0% -> 100% spends its first visible moment flush at
-		 * the track's left edge, which is where a determinate fill sits (design D9).
-		 */
-		from {
-			margin-left: -35%;
-		}
-		to {
-			margin-left: 100%;
 		}
 	}
 
@@ -799,53 +878,13 @@
 
 @layer base {
 	/*
-	 * The installer's indeterminate progress segment. THE WIDTH IS OUTSIDE THE
-	 * QUERY AND ONLY THE ANIMATION IS INSIDE IT (design D4, review R1-8).
-	 *
-	 * Declining an animation is not the same as declining the STATE. This element
-	 * gets no width from the panel in the states that use it, so a reduced-motion
-	 * user who saw only the `animation` declined got a 0%-wide fill on a `sunken`
-	 * track - measured #1d1b19 on #22201c, 1.06:1, deltaE 2.07 - which is the empty
-	 * bar the paragraph below says an indeterminate state must never look like, held
-	 * for the whole pre-marker window. A static 35% segment says work is happening
-	 * without claiming how much.
-	 *
-	 * WHY A PLAIN CLASS RATHER THAN A TAILWIND UTILITY: there is no utility for
-	 * "this element's width follows a keyframe", and the panel sets a real width for
-	 * every state that has one (0%, 25%, 50%, 100%).
-	 */
-	.lo-install-sweep {
-		width: 35% !important;
-		/*
-		 * Mid-track when it is not moving. Parked at the left edge, a static segment is
-		 * indistinguishable from a determinate fill that has stopped there - measured
-		 * at 34.5% of the track in a still, exactly where a 35% determinate fill sits
-		 * (design D9).
-		 */
-		margin-left: 33%;
-	}
-
-	/*
-	 * And the motion, where the document has not asked for less of it. This is not
-	 * the global reduced-motion cap doing its work by accident: the cap truncates an
-	 * animation to 0.01ms, which would land this keyframe on `margin-left: 100%` - a
-	 * 35%-wide segment pushed off the end of its track, which is empty again.
-	 */
-	@media (prefers-reduced-motion: no-preference) {
-		.lo-install-sweep {
-			animation: install-sweep 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-		}
-	}
-
-	/*
 	 * The checkpoint jump's landing wash (`reveal-record.ts`, design §D7): the
 	 * row the reader jumped to holds a transient `accentWash` ground for
 	 * `JUMP_HIGHLIGHT_MS`, so "the row you asked for" is not left to the scroll
 	 * position alone on a surface where every row looks alike.
 	 *
 	 * WHY THE ANIMATION IS GATED ON `no-preference` AND A STATIC WASH SITS
-	 * OUTSIDE IT - the split `.lo-install-sweep` above documents, one state
-	 * over. The global cap truncates an animation to 0.01 ms and lands it on
+	 * OUTSIDE IT. The global cap truncates an animation to 0.01 ms and lands it on
 	 * the END keyframe, so a reduced-motion reader of a fade-to-nothing would
 	 * get no cue AT ALL; here the state that must survive is the wash itself,
 	 * so reduced motion holds it still for the attribute's lifetime and the
@@ -1123,6 +1162,32 @@ html .Mui-focusVisible {
 }
 
 /*
+ * The device chip's ring is drawn INSIDE its own box, and the reason is that its
+ * box is exactly as tall as the clip that contains it.
+ *
+ * The chip sits in the chat header's title block, which is `h-5` (20px, the
+ * block's own line height) with `overflow-clip` - and `clip` is there on purpose:
+ * an outline is ink overflow, so an ancestor's clip trims it exactly as it trims
+ * an outset shadow (the rule above records that). With the global 2px/2px outset
+ * ring the chip therefore wore two 2px BARS down its left and right edges with the
+ * top and bottom segments cut away - measured on the design round's own frames as
+ * 308 changed pixels on every pick, identical in both brand themes and in
+ * dracula, and stable for as long as the pane lived (design review round 1, D2).
+ *
+ * Moving the ring inside the box is the remedy that keeps both facts: focus is
+ * still drawn as a FULL ring (the design's grammar - hover is a colour step, focus
+ * is a ring), and the ancestor's clip has nothing left to trim. The selector is
+ * the attribute the control already carries for its own rigs, so this cannot
+ * reach a control that has not been looked at.
+ *
+ * Unlayered, like the rule above and for the same reason: a utility in Tailwind's
+ * `utilities` layer loses to this block whatever its specificity.
+ */
+html [data-device-chip]:focus-visible {
+	outline-offset: -2px;
+}
+
+/*
  * `outline-none` is deliberately NOT reversed here.
  *
  * The tempting fix for Tailwind v4's `outline-none` (which pins
@@ -1225,4 +1290,38 @@ html .Mui-focusVisible {
  */
 .slash-run-bold {
 	-webkit-text-stroke: 0.5px currentColor;
+}
+
+/*
+ * The canvas's ground: the 24 px dot field from `local_operator/callback_page.py`.
+ *
+ * A PLAIN RULE RATHER THAN A UTILITY CLASS, for the reason `.caret-ink` is one: the
+ * reference is `radial-gradient(circle at 1px 1px, var(--hairline-strong) 1px,
+ * transparent 0)` with `background-size: 24px 24px`, and a 200-character arbitrary-value
+ * className is not where a role mapping belongs.
+ *
+ * THE SIZE DOES NOT SCALE WITH THE CANVAS ZOOM, and that property is the whole of the
+ * ground's design. The element is a SIBLING of the transformed world layer rather than a
+ * child of it, so this is a length in the viewport's own units: measured off the pixels at
+ * k = 1.0 and k = 0.61 the pitch is 24.0 px at both (thirty dot columns centre-to-centre)
+ * and each dot is 2 px wide. A texture inside the world would be scaled with the content -
+ * sub-pixel mush that aliases into grey noise at k = 0.25, and 3 px blobs that read as a
+ * RULER the graph is supposed to align to at k = 3.
+ *
+ * IT PANS WITH THE WORLD ANYWAY, because a field that stayed put while the nodes moved
+ * would read as content sliding under a sticker rather than as a place; the offset comes
+ * from the same style write the pan already performs (`backgroundPosition`), so this costs
+ * no extra frame.
+ *
+ * THE INK IS THE STRONG HAIRLINE, not `hairline`: on three of the twelve themes the plain
+ * role measured 1.15-1.23 : 1 against the well and the field was effectively invisible.
+ * See `hairlineStrong` in the palette contract.
+ */
+.mesh-ground {
+	background-image: radial-gradient(
+		circle at 1px 1px,
+		var(--lo-hairline-strong) 1px,
+		transparent 0
+	);
+	background-size: 24px 24px;
 }

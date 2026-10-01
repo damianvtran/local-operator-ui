@@ -11,6 +11,7 @@
 
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
+import { cyclesOf, electAnswer, isCompletionMarker } from "./turn-segments";
 
 /**
  * A notice's body split into the line its row paints and the rest of it, if any.
@@ -142,18 +143,39 @@ function walkTurns<T>(
 	let last: TranscriptRecord | null = null;
 	let sawMarker = false;
 
-	const closed = (): boolean =>
-		sawMarker ||
-		(last !== null && last.kind === "assistant" && !last.streaming);
-	const closing = (): string | null =>
-		last !== null && last.kind === "assistant" && !last.streaming
-			? last.id
-			: null;
+	const closed = (): boolean => sawMarker || settledTail();
+	/** Whether the open run's tail is a settled answer (the OLD closure test). */
+	const settledTail = (): boolean =>
+		last !== null && last.kind === "assistant" && !last.streaming;
+	/*
+	 * THE RUN'S ANSWER IS ELECTED, NOT "THE LAST SETTLED ASSISTANT" (issue #665).
+	 *
+	 * The old rule handed the turn's closing to whatever assistant row came last,
+	 * so a short reply to a peer note written after the session was disposed took
+	 * the answer's place and the bar swallowed the real one. `electAnswer` (the
+	 * turn-segments module) picks the last RESPONSE cycle's close instead, and is
+	 * null under the same gate the old rule had - a run that ends on a tool row or
+	 * a streaming answer has not handed anything over.
+	 *
+	 * The RUN BOUNDARY below (`closed()`, the user-row test) deliberately keeps the
+	 * old closure test: where a run ends is a fact about what the NEXT user row
+	 * saw, and changing the partition would move every consumer keyed by it. Only
+	 * WHICH row of the run is its answer changes.
+	 */
+	const closing = (from: number, to: number): string | null => {
+		const records: TranscriptRecord[] = [];
+		for (let i = from; i <= to; i += 1) records.push(recordOf(items[i]));
+		const answer = electAnswer(records, cyclesOf(records, paintsSomething), {
+			paints: paintsSomething,
+			isStatement: isStatementRow,
+		});
+		return answer === null ? null : records[answer.closeIndex].id;
+	};
 	const flush = (boundary: TurnSpan["boundary"], endIndex: number) => {
 		if (open === null) return;
 		open.endIndex = endIndex;
 		open.boundary = boundary;
-		open.closingAnswerId = closing();
+		open.closingAnswerId = closing(open.openingIndex, endIndex);
 		spans.push(open);
 		open = null;
 	};
@@ -168,7 +190,7 @@ function walkTurns<T>(
 				 * hand the reader; a completion marker only when there is no answer.
 				 */
 				if (open !== null) {
-					flush(closing() !== null ? "answer" : "marker", index - 1);
+					flush(settledTail() ? "answer" : "marker", index - 1);
 				}
 				open = {
 					openingIndex: index,
@@ -204,7 +226,7 @@ function walkTurns<T>(
 			};
 		}
 		if (paintsSomething(record) && !isStatementRow(record)) last = record;
-		if (record.kind === "notice" && record.complete === true) sawMarker = true;
+		if (isCompletionMarker(record)) sawMarker = true;
 		open.endIndex = index;
 	});
 	flush("end", items.length - 1);
@@ -221,16 +243,26 @@ function walkTurns<T>(
  */
 export type TurnRun = {
 	/**
-	 * Stable identity: the opening user row's record id, or the first row's id
-	 * for a run whose head is cut off (which can never collapse — see
-	 * `opensWithUserRow`).
+	 * Stable identity ACROSS THE HEAD ARRIVING LATER: the closing answer's
+	 * record id when the run has one (the row the bar and the caption already
+	 * speak through), else the run's LAST row's id.
+	 *
+	 * WHY NOT THE OPENING USER ROW (the pre-fix identity): a run whose head the
+	 * fetched rows cut off keys off whatever it does have — that used to be its
+	 * first row — so the day a page landed the head, the key changed and every
+	 * consumer keyed by it (the reader's expansion on the bar, the bar's own
+	 * React key) silently started over. Rows only ever arrive ABOVE a run's
+	 * head, so its tail is the stable half and the two candidates above are the
+	 * same row in both the head-cut and the head-loaded list.
 	 */
 	key: string;
 	/**
 	 * Whether the run's opening user row is in this list. False means the
-	 * window's leading edge has walked past it: the span is PARTIAL, and the
-	 * collapse renders it as today (there is no opening row to anchor a bar to,
-	 * and a summary may only ever describe rows that are actually loaded).
+	 * window's leading edge or the fetched set has walked past it: the span is
+	 * PARTIAL. The collapse decides what that costs — a run with its closing
+	 * answer on hand still condenses from the loaded span (end-loaded
+	 * eligibility, `turn-collapse-model.ts`), stating no duration it cannot
+	 * honestly compute.
 	 */
 	opensWithUserRow: boolean;
 	/** Index of the run's first row in the list handed to `runsOf`. */
@@ -251,10 +283,7 @@ export type TurnRun = {
  */
 export function runsOf(rows: Row[]): TurnRun[] {
 	return walkTurns(rows, (row) => row.record).map((span) => ({
-		key:
-			span.openingUserIndex !== null
-				? (rows[span.openingUserIndex]?.record.id ?? "")
-				: (rows[span.openingIndex]?.record.id ?? ""),
+		key: span.closingAnswerId ?? rows[span.endIndex]?.record.id ?? "",
 		opensWithUserRow: span.openingUserIndex !== null,
 		openingIndex: span.openingIndex,
 		endIndex: span.endIndex,

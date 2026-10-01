@@ -3,12 +3,11 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * THE CHECKPOINT RAIL'S PURE RULES — placement, fallback text, and which
+ * THE CHECKPOINT RAIL'S PURE RULES — fallback text, and which
  * requested ids a manifest still shows as pending.
  *
  * The rendered half lives in `scripts/checkpoint-rail.test.mjs`; this file
- * drives the DECISION, which is where the review risks sit: a rail that
- * misrepresents the conversation (ordinal-uniform spacing reading as progress),
+ * drives the DECISION, which is where the review risks sit:
  * fallback text that invents a name or a clock the manifest never gave, and a
  * poll stop-condition that keeps waiting on something nothing will answer.
  *
@@ -51,49 +50,65 @@ const manifest = (checkpoints) => ({
 	checkpoints,
 });
 
-test("ticks are placed by seq, proportionally across the whole conversation", () => {
-	const placements = model.checkpointTickPlacement([
-		checkpoint({ id: "a", seq: 100 }),
-		checkpoint({ id: "b", seq: 150 }),
-		checkpoint({ id: "c", seq: 200 }),
-	]);
-	assert.deepEqual(placements, [
-		{ id: "a", fraction: 0 },
-		{ id: "b", fraction: 0.5 },
-		{ id: "c", fraction: 1 },
-	]);
+test("the state ladder's classes are the shipped table (the unloaded floor is measured)", () => {
 	/*
-	 * NOT ordinal-uniform: the distance between a and b (50 seq) and b and c
-	 * (50 seq) is equal here on purpose, so a uniform implementation would ALSO
-	 * pass this case - it is the next one that discriminates.
+	 * The table IS the contract: the four arms are what a mark can wear, and
+	 * the unloaded arm's 75% is the measured floor (at 60% the light themes
+	 * fell to 2.42:1 - rosePineDawn - under the 3:1 non-text floor; at 75%
+	 * every theme clears it). A repaint that changes one of these lines has to
+	 * change this case with it.
 	 */
-	const skewed = model.checkpointTickPlacement([
-		checkpoint({ id: "a", seq: 0 }),
-		checkpoint({ id: "b", seq: 90 }),
-		checkpoint({ id: "c", seq: 100 }),
-	]);
-	assert.ok(
-		skewed[1].fraction > 0.85,
-		`the busy tail must compress toward the bottom (got ${skewed[1].fraction})`,
-	);
+	assert.deepEqual(model.CHECKPOINT_MARK_CLASS, {
+		rest: "scale-x-60 bg-ink-dim",
+		preview: "scale-x-90 bg-ink-muted",
+		active: "scale-x-100 bg-ink",
+		unloaded: "scale-x-40 bg-ink-dim opacity-75",
+	});
 });
 
-test("a manifest without a span centres its ticks instead of dividing by zero", () => {
-	assert.deepEqual(model.checkpointTickPlacement([]), []);
-	assert.deepEqual(
-		model.checkpointTickPlacement([checkpoint({ id: "only", seq: 42 })]),
-		[{ id: "only", fraction: 0.5 }],
+test("checkpointMarkState's precedence is active > preview > unloaded > rest", () => {
+	/*
+	 * Precedence is the module's own stated contract (`checkpoint-model.ts`): a
+	 * hovered mark beside the active turn must not take the primacy the
+	 * reader's eye is parked on, a previewed mark whose turn is not resident
+	 * still previews (the pointer's question is answered with its shape while
+	 * the fill stays the quiet one), and unloaded beats rest - it is the state
+	 * that tells a reader a jump will have to load first.
+	 */
+	assert.equal(
+		model.checkpointMarkState({
+			id: "u5",
+			previewId: "u5",
+			activeId: "u5",
+			loaded: false,
+		}),
+		"active",
+		"the reading position outranks a preview and the resident window",
 	);
-	/* Two rows sharing one ordinal is degenerate but legal; neither may NaN. */
-	assert.deepEqual(
-		model.checkpointTickPlacement([
-			checkpoint({ id: "a", seq: 7 }),
-			checkpoint({ id: "b", seq: 7 }),
-		]),
-		[
-			{ id: "a", fraction: 0.5 },
-			{ id: "b", fraction: 0.5 },
-		],
+	assert.equal(
+		model.checkpointMarkState({
+			id: "u5",
+			previewId: "u5",
+			activeId: null,
+			loaded: false,
+		}),
+		"preview",
+		"a previewed mark previews even when its turn is unloaded",
+	);
+	assert.equal(
+		model.checkpointMarkState({
+			id: "u5",
+			previewId: null,
+			activeId: null,
+			loaded: false,
+		}),
+		"unloaded",
+		"unloaded outranks rest",
+	);
+	assert.equal(
+		model.checkpointMarkState({ id: "u5", previewId: null, activeId: null }),
+		"rest",
+		"rest is the default; loaded defaults to true",
 	);
 });
 
@@ -101,8 +116,8 @@ test("the accessible name is the two frozen forms, with a real clock", () => {
 	/* 2026-09-28 14:32 LOCAL, the unit the journal itself carries. */
 	const ts = new Date(2026, 8, 28, 14, 32).getTime() / 1000;
 	assert.equal(
-		model.checkpointAriaLabel(checkpoint({ ts })),
-		"Jump to your message, 2:32 PM",
+		model.checkpointAriaLabel(checkpoint({ ts }), 2),
+		"Jump to your message in turn 1 of 2, 2:32 PM",
 	);
 	assert.equal(
 		model.checkpointAriaLabel(
@@ -111,8 +126,9 @@ test("the accessible name is the two frozen forms, with a real clock", () => {
 				turn: 3,
 				naming: { state: "ready", name: "Fix the build", summary: "s" },
 			}),
+			7,
 		),
-		"Jump to completion: Fix the build",
+		"Jump to turn 3 of 7, Fix the build",
 	);
 	assert.equal(
 		model.checkpointAriaLabel(
@@ -121,18 +137,47 @@ test("the accessible name is the two frozen forms, with a real clock", () => {
 				turn: 3,
 				naming: { state: "pending", name: null, summary: null },
 			}),
+			7,
 		),
-		"Jump to completion: Turn 3",
+		"Jump to turn 3 of 7",
 	);
 	/* No naming field at all is the same fallback, not a blank. */
 	assert.equal(
-		model.checkpointAriaLabel(checkpoint({ kind: "completion", turn: 3 })),
-		"Jump to completion: Turn 3",
+		model.checkpointAriaLabel(checkpoint({ kind: "completion", turn: 3 }), 7),
+		"Jump to turn 3 of 7",
 	);
 	/* A zero/garbage ts drops the time half rather than printing 12:00 AM. */
 	assert.equal(
-		model.checkpointAriaLabel(checkpoint({ ts: 0 })),
-		"Jump to your message",
+		model.checkpointAriaLabel(checkpoint({ ts: 0 }), 4),
+		"Jump to your message in turn 1 of 4",
+	);
+});
+
+test("the card's lead label is the turn with a dot-name (review round 2)", () => {
+	/* The visible line and the tooltip's label share one builder, so the label
+	 * cannot lead with the bare name while the visible line leads with the
+	 * turn. */
+	assert.equal(
+		model.checkpointLeadLabel(
+			checkpoint({
+				kind: "completion",
+				turn: 3,
+				naming: { state: "pending", name: null, summary: null },
+			}),
+			7,
+		),
+		"Turn 3 of 7",
+	);
+	assert.equal(
+		model.checkpointLeadLabel(
+			checkpoint({
+				kind: "completion",
+				turn: 3,
+				naming: { state: "ready", name: "Fix the build", summary: "s" },
+			}),
+			7,
+		),
+		"Turn 3 of 7 · Fix the build",
 	);
 });
 

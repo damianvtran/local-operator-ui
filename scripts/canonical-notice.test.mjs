@@ -1,9 +1,21 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+
+/*
+ * The transcript reads its cross-session visibility through react-query
+ * (`useCrossSessionHidden`), so even a server render needs a client in scope.
+ * Nothing is seeded: in SSR the hooks resolve to their loading state, whose
+ * fail-closed answer is "show everything" - the same answer an old backend
+ * gets.
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
 
 // This is a separate file from the transport tests: bundling the transcript
 // is asynchronous and must finish before any tests or HTTP teardown can run.
@@ -33,7 +45,25 @@ const bundle = await build({
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react/jsx-runtime",
+		/* One copy with the provider below; the hook inside the bundle must find
+		 * the client the renders provide. */
+		"@tanstack/react-query",
+	],
 });
 const bundlePath = new URL("./_canonical-notice.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
@@ -67,36 +97,40 @@ for (const [name, headline, detail] of [
 ]) {
 	test(`job result preserves label, glyph and full message: ${name}`, () => {
 		const markup = renderToStaticMarkup(
-			h(CanonicalTranscript, {
-				transcript: {
-					...EMPTY_TRANSCRIPT,
-					records: [
-						{
-							kind: "custom",
-							id: "job-regression",
-							ts: 1_760_000_000_000,
-							customType: "job_result",
-							level: "info",
-							category: null,
-							provider: null,
-							headline,
-							text: [headline, detail].filter(Boolean).join("\n"),
-							attribution: "system",
-							detail,
-						},
-					],
-				},
-				gate: null,
-				waiting: false,
-				loadingOlder: false,
-				onLoadOlder: async () => true,
-				containerRef: { current: null },
-				isSmallView: false,
-				status: "live",
-				failure: null,
-				hydrated: true,
-				onReconnect: () => {},
-			}),
+			h(
+				QueryClientProvider,
+				{ client: queryClient },
+				h(CanonicalTranscript, {
+					transcript: {
+						...EMPTY_TRANSCRIPT,
+						records: [
+							{
+								kind: "custom",
+								id: "job-regression",
+								ts: 1_760_000_000_000,
+								customType: "job_result",
+								level: "info",
+								category: null,
+								provider: null,
+								headline,
+								text: [headline, detail].filter(Boolean).join("\n"),
+								attribution: "system",
+								detail,
+							},
+						],
+					},
+					gate: null,
+					waiting: false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: null },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					hydrated: true,
+					onReconnect: () => {},
+				}),
+			),
 		);
 		const text = markup.replace(/<[^>]*>/g, "").replaceAll("&#x27;", "'");
 		assert.ok(
@@ -137,19 +171,23 @@ function renderRecord(record) {
 		h(
 			MemoryRouter,
 			{},
-			h(CanonicalTranscript, {
-				transcript: { ...EMPTY_TRANSCRIPT, records: [record] },
-				gate: null,
-				waiting: false,
-				loadingOlder: false,
-				onLoadOlder: async () => true,
-				containerRef: { current: null },
-				isSmallView: false,
-				status: "live",
-				failure: null,
-				hydrated: true,
-				onReconnect: () => {},
-			}),
+			h(
+				QueryClientProvider,
+				{ client: queryClient },
+				h(CanonicalTranscript, {
+					transcript: { ...EMPTY_TRANSCRIPT, records: [record] },
+					gate: null,
+					waiting: false,
+					loadingOlder: false,
+					onLoadOlder: async () => true,
+					containerRef: { current: null },
+					isSmallView: false,
+					status: "live",
+					failure: null,
+					hydrated: true,
+					onReconnect: () => {},
+				}),
+			),
 		),
 	);
 }

@@ -19,6 +19,7 @@ import { openConversation } from "@features/chat/open-conversation";
 import {
 	paletteShortcutCaps,
 	paletteShortcutLabel,
+	switcherShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import {
@@ -594,8 +595,19 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						 * neither the label's start nor the row's height.
 						 */
 						<span className={cn(expanded && "ml-auto", "inline-flex")}>
+							{/*
+							 * THE QUIET COUNT (operator ask, 2026-09-30): the rail's badge is
+							 * the `attentionQuiet` register rather than the bordered `attention`
+							 * mark - borderless, an `elevated` whisper instead of the warning
+							 * wash, and the count family's own `ink-dim` / `text-meta-sm`
+							 * numeral, so it reads with the sidebar's team-count lines. The
+							 * header's globe keeps the bordered mark: it sits in a glyph
+							 * cluster, where the ring is what separates it from neighbouring
+							 * icons and the wash is the feature's "an agent is blocked on
+							 * you" meaning.
+							 */}
 							<Badge
-								variant="attention"
+								variant="attentionQuiet"
 								shape="pill"
 								size="count"
 								data-tour-tag={item.attentionTag}
@@ -706,7 +718,18 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * just said it does not have.
 	 */
 	const newChatLabel = `New chat (${newChatShortcutCap(isMac).replace("+", "")})`;
-	const searchLabel = `Search (${paletteShortcutLabel(isMac)})`;
+	/*
+	 * BOTH DOORS IN THE NAME (design/UX round 2, U3): this row is where the app
+	 * teaches the search chord, and since #659 there are two of them —
+	 * `Cmd/Ctrl+K` for the everything palette and `Cmd/Ctrl+P` for the
+	 * conversation switcher. The visible cap stays K: one cap is the row's
+	 * budget, and two caps beside "Search" would read as a combined chord. The
+	 * second door rides in the accessible name and (for the strip, which draws
+	 * its name as a tooltip) in the tooltip, so a reader who never met the tour
+	 * can still find it.
+	 */
+	const searchLabel = `Search (${paletteShortcutLabel(isMac)}) — chats (${switcherShortcutLabel(isMac)})`;
+	const searchTitle = `Search everything (${paletteShortcutLabel(isMac)}) · your chats (${switcherShortcutLabel(isMac)})`;
 	const primaryRow = (
 		icon: LucideIcon,
 		label: string,
@@ -772,7 +795,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		{
 			onClick: openCommandPalette,
 			ariaLabel: searchLabel,
-			attrs: { "data-command-palette-trigger": "" },
+			/* The title is what teaches the second door to a mouse reader; the cap
+			 * above can only carry one chord. */
+			attrs: { "data-command-palette-trigger": "", title: searchTitle },
 		},
 	);
 

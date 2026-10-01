@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
 import { unlink, writeFile } from "node:fs/promises";
 import { test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+
+/*
+ * The child reader's transcript reads cross-session visibility through
+ * react-query (`useCrossSessionHidden`); nothing is seeded, which is the
+ * fail-closed path these renderings are asserted against (nothing hidden).
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
 
 /*
  * The child reader's foot (`docs/run-sidebar.md` § 5.1, § 5.7).
@@ -65,7 +75,25 @@ export { CANCELLED_BEFORE_START, deriveRunDetails } from "./src/renderer/src/fea
 		".png": "dataurl",
 		".webp": "dataurl",
 	},
-	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react/jsx-runtime",
+		/* One copy with the provider below; the hook inside the bundle must find
+		 * the client. */
+		"@tanstack/react-query",
+	],
 });
 const bundlePath = new URL("./_run-child-reader.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
@@ -133,26 +161,36 @@ const renderReader = ({ job = {}, page = fixtures.childPage() } = {}) => {
 		todos: [],
 	});
 	return renderToStaticMarkup(
-		h(RunChildReader, {
-			row: details.subagents[0],
-			/*
-			 * No children on this row: the child's OWN subagents section is not what
-			 * this file is about, and an empty list is the state that paints nothing
-			 * (`run-child-subagents.tsx`), so it cannot add or remove a foot block.
-			 */
-			childRows: [],
-			childrenOpenable: true,
-			onOpenChild: () => {},
-			paneWidth: 420,
-			sessionId: "parent-session",
-			pulse: 0,
-			live: false,
-			previewPage: page,
-			attachmentScope: null,
-			onUnopenable: () => {},
-			measuredAtMs: fixtures.FIXTURE_NOW_MS,
-			measuredAtRealMs: fixtures.FIXTURE_NOW_MS,
-		}),
+		h(
+			QueryClientProvider,
+			{ client: queryClient },
+			h(RunChildReader, {
+				row: details.subagents[0],
+				/*
+				 * No children on this row: the child's OWN subagents section is not what
+				 * this file is about, and an empty list is the state that paints nothing
+				 * (`run-child-subagents.tsx`), so it cannot add or remove a foot block.
+				 */
+				childRows: [],
+				childrenOpenable: true,
+				onOpenChild: () => {},
+				paneWidth: 420,
+				sessionId: "parent-session",
+				pulse: 0,
+				live: false,
+				/*
+				 * The pane's own stream is not down in these fixtures: the reader's slot is
+				 * asserted in its transport-up shape here, and the down shape is the pair
+				 * `scripts/older-history-slot.test.mjs` renders.
+				 */
+				olderTransportDown: false,
+				previewPage: page,
+				attachmentScope: null,
+				onUnopenable: () => {},
+				measuredAtMs: fixtures.FIXTURE_NOW_MS,
+				measuredAtRealMs: fixtures.FIXTURE_NOW_MS,
+			}),
+		),
 	);
 };
 

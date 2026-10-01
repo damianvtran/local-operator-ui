@@ -114,6 +114,9 @@ export const kanagawaWave: ThemeDefinition = {
 		// sumiInk5 is `elevated` itself; sumiInk6 54546D is 1.62:1 on it — a
 		// ground colour, not a rule. Lifted along the same violet-grey.
 		hairline: "#424353",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 2.00:1 there against `hairline`'s 1.85:1.
+		hairlineStrong: "#474858",
 		borderControl: "#7E7E9C",
 
 		// crystalBlue 7E9CD8 is 4.31:1 on `elevated`, and solving at the 4.5

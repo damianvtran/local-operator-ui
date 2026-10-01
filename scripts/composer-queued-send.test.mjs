@@ -59,7 +59,7 @@ const chatPage = readFileSync(
 	"utf8",
 );
 const messageInput = readFileSync(
-	"src/renderer/src/features/chat/components/message-input.tsx",
+	"src/renderer/src/shared/components/composer/message-input.tsx",
 	"utf8",
 );
 

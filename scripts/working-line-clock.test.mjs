@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { after, test } from "node:test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
@@ -140,6 +141,9 @@ const transcriptBundle = await build({
 		"react-dom/client",
 		"react-dom/server",
 		"react/jsx-runtime",
+		/* One copy with the provider below; the hook inside the bundle must find
+		 * the client this file mounts it under. */
+		"@tanstack/react-query",
 	],
 	/*
 	 * BOTH of these exist because the bundle runs outside Vite, and each was a
@@ -158,6 +162,16 @@ const transcriptBundle = await build({
 	 *   variable present. `development` keeps every value it looks up.
 	 */
 	define: {
+		/*
+		 * The whole object, for `loadConfig` (`Object.entries(import.meta.env)` at
+		 * module scope). The transcript's answer action row reads the speech
+		 * credential probe, which reads `@shared/config`, so a bundle that defines
+		 * only the members below still throws `Cannot convert undefined or null to
+		 * object` at import time. The members stay where they are: esbuild matches
+		 * the longest key first, so the cases that assert DEV/PROD still read what
+		 * they always did.
+		 */
+		"import.meta.env": "{}",
 		"import.meta.env.DEV": "false",
 		"import.meta.env.PROD": "true",
 		"process.env.NODE_ENV": '"development"',
@@ -866,6 +880,15 @@ async function paneFixture(now, run) {
 	};
 
 	const root = createRoot(window.document.getElementById("root"));
+	/*
+	 * The transcript's cross-session hook reads react-query, so this mount needs
+	 * a client. Nothing seeds it, which is the fail-closed path this band renders
+	 * under here: no capabilities answer, so the hook answers false and nothing
+	 * is hidden.
+	 */
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	const api = {
 		/** The band's clock slot: the second of its two agent-hidden spans. */
 		label: () =>
@@ -873,7 +896,13 @@ async function paneFixture(now, run) {
 				?.textContent,
 		render: async (frontend) => {
 			await act(() =>
-				root.render(h(CanonicalTranscript, { ...paneProps, frontend })),
+				root.render(
+					h(
+						QueryClientProvider,
+						{ client: queryClient },
+						h(CanonicalTranscript, { ...paneProps, frontend }),
+					),
+				),
 			);
 		},
 	};

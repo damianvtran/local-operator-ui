@@ -94,7 +94,7 @@ import { after, test } from "node:test";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
-import React, { act } from "react";
+import React, { act, useState } from "react";
 
 const ROOT = resolve(import.meta.dirname, "..");
 
@@ -133,6 +133,8 @@ const bundle = await build({
 			export { ImageAttachment } from "./src/renderer/src/features/chat/components/message-item/image-attachment";
 			export { FileAttachment } from "./src/renderer/src/features/chat/components/message-item/file-attachment";
 			export { CanonicalImage } from "./src/renderer/src/features/chat/canonical/canonical-image";
+			export { FoldMedia } from "./src/renderer/src/features/chat/canonical/fold-media";
+			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
 		`,
 		resolveDir: ROOT,
 	},
@@ -173,9 +175,13 @@ const bundle = await build({
 mkdirSync(CACHE, { recursive: true });
 const bundlePath = join(CACHE, "image-expand.mjs");
 writeFileSync(bundlePath, bundle.outputFiles[0].text);
-const { ImageAttachment, FileAttachment, CanonicalImage } = await import(
-	pathToFileURL(bundlePath).href
-);
+const {
+	ImageAttachment,
+	FileAttachment,
+	CanonicalImage,
+	FoldMedia,
+	TraceFold,
+} = await import(pathToFileURL(bundlePath).href);
 
 /* ------------------------------------------------------------------ fixtures */
 
@@ -186,6 +192,13 @@ const { ImageAttachment, FileAttachment, CanonicalImage } = await import(
 const PNG_BASE64 =
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFAAH/q842iQAAAABJRU5ErkJggg==";
 const PNG = `data:image/png;base64,${PNG_BASE64}`;
+/**
+ * A 2x6 PORTRAIT, for the strip's uniform-slot claim: a tile that sized itself by
+ * its picture drew a phone-shaped capture 36px wide beside 96px landscapes, so the
+ * claim has to be made against two different aspects rather than one fixture twice.
+ */
+const PORTRAIT_BASE64 =
+	"iVBORw0KGgoAAAANSUhEUgAAAAIAAAAGCAIAAABmRdhlAAAAEElEQVR42mMIqDgBRAyEKQCEWRLBtZF+SAAAAABJRU5ErkJggg==";
 /**
  * The legacy shape, which is a PATH on disk and a URL to paint from two different
  * strings: `file` is what the picture is called and what its file-actions menu
@@ -269,7 +282,7 @@ const FILE_ACTIONS_WRAPPER = ".file-actions-menu";
 const UNTABBABLE_REVEAL = /\binvisible\b|group-hover:visible/;
 /** The store's own failure sentence, which the digest-backed row must say. */
 const STORE_COPY_RE =
-	/Screenshot could not be displayed\. Its stored copy is not available to this reader\./;
+	/Image could not be displayed\. Its stored copy is not available to this reader\./;
 
 /* ------------------------------------------------------------------ harness */
 
@@ -529,7 +542,7 @@ test("a canonical image — the row that had no click at all — expands too", a
 			React.createElement(CanonicalImage, {
 				image: transcriptImage,
 				scope: transcriptScope,
-				label: "Screenshot",
+				label: "Image",
 			}),
 		);
 		const picture = pictureButton(api.document);
@@ -543,7 +556,7 @@ test("a canonical image — the row that had no click at all — expands too", a
 		assert.equal(
 			api.document.getElementById(dialog.getAttribute("aria-labelledby"))
 				.textContent,
-			"Screenshot",
+			"Image",
 			"the row's own label names the overlay, not the blob's UUID",
 		);
 	});
@@ -859,7 +872,7 @@ test("a canonical picture with no bytes is a failure row, not an untappable pict
 					mimeType: "image/png",
 				},
 				scope: transcriptScope,
-				label: "Screenshot",
+				label: "Image",
 			}),
 		);
 		await api.settle(
@@ -876,5 +889,861 @@ test("a canonical picture with no bytes is a failure row, not an untappable pict
 			null,
 			"and it is not a button at all",
 		);
+	});
+});
+
+/**
+ * The condensed action group, which is the surface an image-bearing run is most
+ * often read on.
+ *
+ * A collapsed group UNMOUNTS its rows, so a screenshot a call produced used to
+ * be reachable only by expanding the group — the operator's report. The strip
+ * that answers it is mounted here as the REAL component, because the claims
+ * about it are the same class as every other claim in this file: each picture
+ * is a real button (in the tab order, expanded by Enter or Space like any
+ * other), each is NAMED, each carries the thumbnail ceiling rather than the
+ * row's full 240px one, and a press on one still reaches the overlay.
+ *
+ * The strip's own budget is in its geometry, and the geometry is in three class
+ * contracts rather than one ceiling: `h-[76px] w-[115px]` is the FIXED 115x76 slot every
+ * tile shares (a picture that sized its own tile made the row a ragged grid — a
+ * 200x360 portrait drew 36px wide beside 115px landscapes), `object-contain` is
+ * what lets a picture of any aspect live in that slot without distortion, and the
+ * row's full ceiling must be absent. The measured boxes are the frames'
+ * (`docs/evidence/chat-trace-fold/*`, `scripts/condensed-group-media-geometry.mjs`);
+ * jsdom has no layout, so what is asserted here is the contract those frames
+ * measure.
+ */
+const SLOT_CLASSES = ["h-[76px]", "w-[115px]", "object-contain"];
+/**
+ * The slot's own GEOMETRY, for the boxes that are not pictures: the picture's
+ * classes (`h-[76px] w-[115px] object-contain`) belong to an `<img>`, while the frame that
+ * reserves its place and the receipt that stands in for it are the tile's measured
+ * box (117x78) so that all three states occupy one slot.
+ */
+const SLOT_BOX = ["h-[78px]", "w-[117px]"];
+const FULL_CEILING = /max-h-\[240px\]/;
+/**
+ * The three classes the ledger rule is made of, asserted on the element rather
+ * than on a re-taken frame: this surface's frames are not byte-stable across two
+ * captures at one head (measured), so the class list is the instrument (P1).
+ */
+const FULL_CEILING_CLASSES = ["max-h-[240px]", "max-w-full", "object-contain"];
+
+test("a condensed group's pictures are named, expandable thumbnails", async () => {
+	await mount(async (api) => {
+		const second = {
+			id: "image-expand:group:1",
+			data: PORTRAIT_BASE64,
+			attachment: null,
+			mimeType: "image/png",
+		};
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [transcriptImage, second],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+
+		const strip = api.document.querySelector("[data-fold-media]");
+		assert.ok(strip, "the strip is on screen");
+		assert.equal(strip.tagName, "UL", "a run's pictures are a list of them");
+		assert.equal(
+			api.document.querySelectorAll("[data-fold-media] li").length,
+			2,
+			"every picture the run produced is shown, not one and a count",
+		);
+		assert.equal(
+			strip.getAttribute("aria-label"),
+			"2 images from this run",
+			"and the set itself is named, in the header's own noun, so a reader knows how many it is walking into",
+		);
+
+		const controls = [
+			...api.document.querySelectorAll("[data-fold-media] button"),
+		];
+		assert.deepEqual(
+			controls.map((control) => control.getAttribute("aria-label")),
+			["Expand Image 1", "Expand Image 2"],
+			"each picture's name says WHICH one it is, in the same noun as the clause",
+		);
+		const pictures = [
+			...api.document.querySelectorAll("[data-fold-media] img"),
+		];
+		for (const picture of pictures) {
+			for (const slotClass of SLOT_CLASSES) {
+				assert.ok(
+					picture.className.split(" ").includes(slotClass),
+					`a condensed group's picture carries \`${slotClass}\` — the fixed tile slot, not the row's own ceiling`,
+				);
+			}
+			assert.doesNotMatch(picture.className, FULL_CEILING);
+		}
+		/*
+		 * D4: every tile is the SAME slot, whatever the picture's aspect. jsdom
+		 * cannot lay two boxes out, so the claim asserted here is the one that makes
+		 * the layout uniform - identical class strings on two images of different
+		 * intrinsic sizes - and the rendered boxes are the frames' claim.
+		 */
+		assert.notEqual(
+			pictures[0].getAttribute("src"),
+			pictures[1].getAttribute("src"),
+			"the two tiles really are different pictures (fixtures 1x1 and 2x6)",
+		);
+		assert.equal(
+			pictures[0].className,
+			pictures[1].className,
+			"a landscape and a portrait picture get the same slot, so the row stays a grid",
+		);
+
+		/* The press that made the full picture readable is unchanged. */
+		await api.click(controls[1]);
+		assert.ok(isOpen(api.document), "a thumbnail expands to the full picture");
+		assert.equal(
+			api.document.getElementById(
+				api.document.querySelector(DIALOG).getAttribute("aria-labelledby"),
+			).textContent,
+			"Image 2",
+			"and the overlay is named for the picture that was pressed",
+		);
+	});
+});
+
+test("one picture in a group is named as one picture", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [transcriptImage],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		assert.equal(
+			api.document
+				.querySelector("[data-fold-media]")
+				.getAttribute("aria-label"),
+			"1 image from this run",
+		);
+		assert.equal(
+			pictureButton(api.document).getAttribute("aria-label"),
+			"Expand Image",
+			'a lone picture is not "Image 1"',
+		);
+	});
+});
+
+/**
+ * The fold's own header, mounted here so the strip's count and the tile's states
+ * can be asserted against the REAL component tree rather than against a stand-in.
+ * The optional `Fold` mounts the same props through the caller's host (`FoldHost`
+ * below) for the cases that press the fold's own toggles.
+ */
+const foldElement = (props, Fold = TraceFold) =>
+	React.createElement(
+		Fold,
+		{
+			summary: "Explored 1 file, ran 2 commands",
+			actionCount: 3,
+			failedCount: 0,
+			/*
+			 * Both defaulted to `null` rather than left out: `span?.running` is read on
+			 * every render, so an absent prop is a crash rather than a default, and a
+			 * fold with no stamps and no call in flight is the honest baseline for a
+			 * header assertion.
+			 */
+			span: null,
+			live: null,
+			recordIds: ["t0"],
+			...props,
+		},
+		React.createElement("span", { "data-testid": "fold-row" }, "row"),
+	);
+
+/*
+ * THE CALLER'S HALF OF THE CONTRACT, for the cases that press the fold's own
+ * toggles (`chat-image-expand` U1): `TraceFold` is CONTROLLED on this branch -
+ * `open`/`onOpenChange` are the conversation registry's, handed down at the
+ * transcript's call site (`open={foldOpenOf(...)}`, `onOpenChange` ->
+ * `setFoldOpenFor`), and BOTH the header's press and the count slot's report
+ * upward through that channel. `trace-fold.stories.tsx`'s `FoldHost` plays the
+ * registry's part for the story frames; this plays it for the mounted-tree
+ * cases, with a tap (`onPress`) so a case can assert the press REACHED the
+ * caller rather than only that a later frame looks open. A bare `TraceFold`
+ * render would press a path the component no longer has: the U1 case assumed an
+ * internal `setOpen`, which is why it threw `onOpenChange is not a function`
+ * until this host existed.
+ */
+const FoldHost = ({ onPress, ...props }) => {
+	const [open, setOpen] = useState(false);
+	return React.createElement(TraceFold, {
+		...props,
+		open,
+		onOpenChange: (next) => {
+			onPress?.(next);
+			setOpen(next);
+		},
+	});
+};
+
+test("the count is text in the header, and a run with no pictures gets no clause", async () => {
+	await mount(async (api) => {
+		/*
+		 * Design review round 1, D3: the strip's accessible name said how many
+		 * pictures the run produced while the visible header said nothing, so a
+		 * sighted reader was offered strictly less than a screen-reader user.
+		 */
+		await api.render(foldElement({ mediaCount: 3 }));
+		assert.match(
+			api.document.body.textContent,
+			/3 images/,
+			"the header states the count as text, not as a title attribute or a badge",
+		);
+		await api.render(foldElement({ mediaCount: 1 }));
+		assert.match(
+			api.document.body.textContent,
+			/1 image\b/,
+			'one picture is one image, not "1 images"',
+		);
+		await api.render(foldElement({ mediaCount: 0 }));
+		assert.doesNotMatch(
+			api.document.body.textContent,
+			/image/,
+			"and a run with no pictures reads exactly as it read before this change",
+		);
+	});
+});
+
+test("the strip is capped at one row, and says how many it is not showing", async () => {
+	await mount(async (api) => {
+		/*
+		 * Design review round 1, D3's second half: height grew with the count and had
+		 * no cap, so 25-30 pictures made a CONDENSED group taller than the expanded one
+		 * it replaces (~391px against ~338.7px). One row is the budget, and past it the
+		 * last slot is the count.
+		 */
+		const many = Array.from({ length: 8 }, (_, index) => ({
+			id: `image-expand:many:${index}`,
+			data: PNG_BASE64,
+			attachment: null,
+			mimeType: "image/png",
+		}));
+		let revealed = 0;
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: many,
+				scope: transcriptScope,
+				onRevealMore: () => {
+					revealed += 1;
+				},
+			}),
+		);
+		const items = [...api.document.querySelectorAll("[data-fold-media] li")];
+		assert.equal(items.length, 5, "one row of slots, whatever the count");
+		assert.equal(
+			api.document.querySelectorAll("[data-fold-media] img").length,
+			4,
+			"four pictures, because the fifth slot is the count",
+		);
+		/*
+		 * U1: past the cap this slot is the only route to the pictures the row did
+		 * not draw, so it is a real button - the fold's own toggle, in the app - and
+		 * not inert text a reader can do nothing with.
+		 */
+		const more = items.at(-1).querySelector("button");
+		assert.ok(more, "the count slot is a control, not text");
+		assert.equal(
+			more.textContent,
+			"+4",
+			"the VISIBLE label is compact: it is what lets the larger tile fit one row",
+		);
+		assert.equal(
+			more.getAttribute("aria-label"),
+			"+4 more images",
+			"and the accessible name is the full sentence - the count's honest carrier, noun included",
+		);
+		assert.ok(
+			(more.getAttribute("aria-label") ?? "").includes(
+				more.textContent ?? "\u0000",
+			),
+			"WCAG 2.5.3 (label in name): the visible label is a SUBSTRING of the accessible name, so a speech user reading `+4` off the screen can match the control",
+		);
+		assert.ok(
+			(more.getAttribute("title") ?? "").includes(more.textContent ?? "\u0000"),
+			"and the pointer reader's sentence contains it too",
+		);
+		assert.equal(
+			more.getAttribute("title"),
+			"+4 more images",
+			"the pointer reader gets the same sentence rather than a bare +4",
+		);
+		await api.click(more);
+		assert.equal(revealed, 1, "pressing it asks the fold's owner to open");
+	});
+});
+
+/**
+ * A digest-backed row: no inline bytes, so the relay is the only way to a URL.
+ *
+ * The DIGEST is a parameter because the hook's in-flight table is module-wide and
+ * keyed by digest, and this file shares one bundled module across its tests: two
+ * tests that used the same digest would be one fetch, so the second would wait on
+ * the first's bridge rather than exercising its own.
+ */
+const durableImage = (id, digestChar) => ({
+	id,
+	data: null,
+	attachment: digestChar.repeat(32),
+	mimeType: "image/png",
+});
+
+test("a tile whose bytes are still coming reserves its box rather than calling the picture unavailable", async () => {
+	await mount(async (api) => {
+		/*
+		 * Agent review round 1, P3: the hook answered `null` for "resolving" and
+		 * "failed" alike, so a durable screenshot's FIRST paint in the strip was the
+		 * unavailable receipt, swapping to a tile a frame later - in the one surface
+		 * whose point is that the artifact is on screen, and on the path that is
+		 * NORMAL there (a collapsed fold unmounts the rows that would have warmed the
+		 * cache). The relay is held OPEN here - the bridge never settles - because
+		 * that is the state under test; the test below is the same mount with the
+		 * relay answering empty.
+		 */
+		api.window.api = { desktop: { media: () => new Promise(() => {}) } };
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [durableImage("image-expand:durable:1", "b")],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const reserved = api.document.querySelector("[data-attachment-reserved]");
+		assert.ok(reserved, "the first paint is a reserved box, not a receipt");
+		for (const slotClass of SLOT_BOX) {
+			assert.ok(
+				reserved.className.split(" ").includes(slotClass),
+				`the reserved box occupies the tile's own \`${slotClass}\` slot, so nothing reflows when the picture lands`,
+			);
+		}
+		assert.doesNotMatch(
+			api.document.body.textContent,
+			STORE_COPY_RE,
+			"and it does not say the picture is unavailable while it is still coming",
+		);
+	});
+});
+
+test("a tile whose bytes never came shows the receipt, bounded to the tile", async () => {
+	await mount(async (api) => {
+		/*
+		 * The relay answers EMPTY here, deterministically: the previous test holds a
+		 * bridge open forever, and a fetch that fails for real (this rig's dead port)
+		 * needs event-loop turns the settle budget should not have to guess at - the
+		 * state under test is what the hook does with an empty answer, not how long a
+		 * refused connection takes.
+		 */
+		api.window.api = {
+			desktop: {
+				media: async () => ({ status: 404, kind: "error", detail: "gone" }),
+			},
+		};
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: [durableImage("image-expand:durable:2", "c")],
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		await api.settle(
+			() => api.document.querySelector("[data-attachment-reserved]") === null,
+			40,
+		);
+		const receipt = api.document.querySelector(
+			'[data-fold-media] [role="img"]',
+		);
+		assert.ok(
+			receipt,
+			"the tile becomes a receipt, not a sentence that would blow the strip's height",
+		);
+		for (const slotClass of SLOT_BOX) {
+			assert.ok(
+				receipt.className.split(" ").includes(slotClass),
+				`and the receipt stays inside the tile's own \`${slotClass}\` box`,
+			);
+		}
+		assert.match(
+			receipt.getAttribute("aria-label") ?? "",
+			/could not be displayed/,
+			"named rather than a silent icon: a reader is told which attachment failed, and why",
+		);
+		/*
+		 * U5: the same sentence reaches the pointer reader as the tile's tooltip -
+		 * at 78px there is no room for it as prose (it was a 66px tile before the
+		 * polish pass grew it), and the glyph alone reads as "still loading".
+		 */
+		assert.match(
+			receipt.getAttribute("title") ?? "",
+			/could not be displayed/,
+			"and the tile says why on hover, not only to a screen reader",
+		);
+	});
+});
+
+test("the real <img> survives the live-to-settled transition without remounting", async () => {
+	await mount(async (api) => {
+		/*
+		 * Agent review round 1, P2: the body claimed node identity on the picture's
+		 * `<img>` across the settle, and the assertion behind it was node identity on
+		 * a `<span>` stand-in. This is the real tree - `TraceFold` + `FoldMedia` +
+		 * `CanonicalImage` + `ImageAttachment` - across exactly that transition: the
+		 * section carries a live clause and is then settled.
+		 */
+		const images = [
+			{ ...transcriptImage },
+			{ ...transcriptImage, id: "image-expand:settle:1" },
+		];
+		const render = (props) =>
+			api.render(
+				foldElement({
+					...props,
+					mediaCount: images.length,
+					condensedMedia: (expand) =>
+						React.createElement(FoldMedia, {
+							images,
+							scope: transcriptScope,
+							onRevealMore: expand,
+						}),
+				}),
+			);
+		await render({
+			sectionLive: true,
+			live: { verb: "Running", object: "pnpm vitest run" },
+		});
+		const strip = api.document.querySelector("[data-fold-media]");
+		const picture = api.document.querySelector("[data-fold-media] img");
+		assert.ok(
+			strip && picture,
+			"the strip and its picture are drawn while live",
+		);
+
+		await render({ sectionLive: false, live: null });
+		assert.equal(
+			api.document.querySelector("[data-fold-media]"),
+			strip,
+			"the strip's own node survives the settle",
+		);
+		assert.equal(
+			api.document.querySelector("[data-fold-media] img"),
+			picture,
+			"and so does the picture's - nothing remounts, so nothing re-decodes or flickers",
+		);
+	});
+});
+
+test("the count slot opens the fold it belongs to (U1)", async () => {
+	await mount(async (api) => {
+		/*
+		 * UX round 1, U1: past the cap the count slot is the only route to the
+		 * pictures the row did not draw, and it was inert text. It is a button now
+		 * whose press is the FOLD'S OWN toggle - the same upward channel the
+		 * header's press uses - so pressing it must reach the conversation (here
+		 * `FoldHost`, playing the registry's part) and open the fold: the strip
+		 * unmounts and the rows it stood for mount.
+		 */
+		const many = Array.from({ length: 8 }, (_, index) => ({
+			id: `image-expand:more:${index}`,
+			data: PNG_BASE64,
+			attachment: null,
+			mimeType: "image/png",
+		}));
+		const pressed = [];
+		await api.render(
+			foldElement(
+				{
+					mediaCount: many.length,
+					condensedMedia: (expand) =>
+						React.createElement(FoldMedia, {
+							images: many,
+							scope: transcriptScope,
+							onRevealMore: expand,
+						}),
+					onPress: (next) => pressed.push(next),
+				},
+				FoldHost,
+			),
+		);
+		const strip = api.document.querySelector("[data-fold-media]");
+		assert.ok(strip, "the strip is on screen while condensed");
+		const more = [...strip.querySelectorAll("button")].find((control) =>
+			/more images?/.test(control.getAttribute("aria-label") ?? ""),
+		);
+		assert.ok(more, "the count slot is a real button");
+		await api.click(more);
+		assert.deepEqual(
+			pressed,
+			[true],
+			"the press reached the conversation's registry - the channel the header's own press uses",
+		);
+		assert.equal(
+			api.document.querySelector("[data-fold-media]"),
+			null,
+			"pressing it opens the fold: the strip hands over to the rows",
+		);
+		assert.ok(
+			api.document.querySelector('[data-testid="fold-row"]'),
+			"and the rows it stood for are mounted",
+		);
+	});
+});
+
+/*
+ * THE POLISH PASS'S CONTRACTS (the operator's "drop the ring, a step larger, improve
+ * the design"). jsdom has no layout and no hover, so what is asserted is the class
+ * contract the rendered frames and `condensed-group-media-geometry.mjs` measure:
+ * the measured boxes are theirs, the wiring that produces them is pinned here.
+ * Cases marked CONTRACT PIN state a decision and cannot fail before the change in a
+ * way that says anything new; the rest fail on the pre-change tree.
+ */
+const manyImages = (count, tag) =>
+	Array.from({ length: count }, (_, index) => ({
+		id: `image-expand:${tag}:${index}`,
+		data: PNG_BASE64,
+		attachment: null,
+		mimeType: "image/png",
+	}));
+
+test("the tile is borderless at rest and its edge returns on hover and on keyboard focus", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: manyImages(2, "edge"),
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const frame = api.document.querySelector(
+			"[data-fold-media] img",
+		).parentElement;
+		const classes = frame.className.split(" ");
+		assert.ok(
+			classes.includes("border-transparent"),
+			"at rest the 1px border is RESERVED but invisible: the tile reads borderless and the returning edge moves nothing",
+		);
+		assert.ok(
+			!classes.includes("border-control"),
+			"and the resting ring is gone (the operator's ask)",
+		);
+		for (const arm of [
+			"group-hover/tile:border-control",
+			"group-focus-visible/tile:border-control",
+		]) {
+			assert.ok(
+				classes.includes(arm),
+				`the edge returns through \`${arm}\` - focus is half of it, so the keyboard case is never ambiguous on a tile with no resting boundary`,
+			);
+		}
+		const button = api.document.querySelector("[data-fold-media] button");
+		const buttonClasses = button.className.split(" ");
+		assert.ok(
+			buttonClasses.includes("group/tile"),
+			"the edge answers to THIS tile's own button, not to the wrapper's unnamed group that the file-actions menu keys on",
+		);
+		assert.ok(
+			buttonClasses.includes("rounded-sm"),
+			"D4: the button the global focus ring is drawn on carries the frame's 6px radius, so the ring is not a square around a rounded tile",
+		);
+		assert.ok(
+			classes.includes("overflow-hidden") && classes.includes("rounded-sm"),
+			"the frame clips: the inner zoom can never leave the tile's silhouette",
+		);
+	});
+});
+
+test("hover zooms the picture INSIDE the tile, bounded by the gutter, and stands down under reduced motion", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: manyImages(1, "zoom"),
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const picture = api.document.querySelector("[data-fold-media] img");
+		const classes = picture.className.split(" ");
+		const zoom = classes.find((name) => name.includes("scale-["));
+		assert.equal(
+			zoom,
+			"motion-safe:group-hover/tile:scale-[1.04]",
+			"the zoom is the picture's, keyed to the tile's group, and gated on motion-safe",
+		);
+		assert.ok(
+			!classes.some(
+				(name) => name.includes("scale-[") && !name.startsWith("motion-safe:"),
+			),
+			"REDUCED-MOTION ARM: no ungated scale exists, so a reader who asked for less motion gets the edge alone",
+		);
+		const factor = Number(zoom.match(/scale-\[([\d.]+)\]/)[1]);
+		/* The gutter is 8px and the tile 117px: the most a scaled picture may grow
+		   before it could reach a neighbour, were the frame not clipping it. */
+		assert.ok(
+			factor > 1 && factor <= 1 + 8 / 117,
+			`the zoom (${factor}) stays inside the gutter bound (${(1 + 8 / 117).toFixed(3)})`,
+		);
+		assert.ok(
+			classes.includes("motion-safe:duration-fast") &&
+				classes.includes("motion-safe:transition-transform"),
+			"120ms, on the picture only",
+		);
+		assert.ok(
+			classes.includes("motion-safe:ease-out-quart"),
+			"with the app's own easing",
+		);
+	});
+});
+
+test("the +N control is an outlined button, not a filled pill (D3) - a resting edge at the contract's 3:1", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: manyImages(6, "outline"),
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const more = api.document.querySelector(
+			"[data-fold-media] li:last-child button",
+		);
+		const classes = more.className.split(" ");
+		assert.ok(
+			classes.includes("border-control"),
+			'the resting cue is the control edge, which contrast-contract.mjs pins at >=3:1 on every palette ground ("outline control")',
+		);
+		assert.ok(
+			!classes.includes("bg-surface"),
+			"and the fill that made it a pill is gone",
+		);
+		assert.equal(
+			more.textContent,
+			"+2",
+			"five tiles' worth: six pictures, four tiles, +2",
+		);
+	});
+});
+
+test("the compact label is a function of the count alone; the name is the sentence, singular at one", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: manyImages(5, "one"),
+				scope: transcriptScope,
+				onRevealMore: () => {},
+			}),
+		);
+		const more = api.document.querySelector(
+			"[data-fold-media] li:last-child button",
+		);
+		assert.equal(
+			api.document.querySelectorAll("[data-fold-media] img").length,
+			4,
+			"FIVE pictures draw four tiles: five 117px tiles (617px) do not fit the 556px column",
+		);
+		assert.equal(more.textContent, "+1");
+		assert.equal(
+			more.getAttribute("aria-label"),
+			"+1 more image",
+			"the noun agrees with the count in the name, and the name contains the visible `+1` (WCAG 2.5.3)",
+		);
+		assert.ok(
+			(more.getAttribute("aria-label") ?? "").includes("+1"),
+			"containment pinned at the singular too",
+		);
+	});
+});
+
+test("the uncapped strip is a four-column grid with no stranded tile (D5)", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(FoldMedia, {
+				images: manyImages(9, "grid"),
+				scope: transcriptScope,
+				uncapped: true,
+				onRevealMore: () => {},
+			}),
+		);
+		const strip = api.document.querySelector("[data-fold-media]");
+		assert.match(
+			strip.className,
+			/grid-cols-\[repeat\(4,max-content\)\]/,
+			"a four-column grid, the capped row's own width",
+		);
+		const items = [...strip.querySelectorAll("li")];
+		assert.equal(
+			items.length,
+			9,
+			"one item per picture and nothing else in the list",
+		);
+		const starts = items
+			.map((item, index) => [index, item.className.includes("col-start-1")])
+			.filter(([, starts]) => starts)
+			.map(([index]) => index);
+		assert.deepEqual(
+			starts,
+			[0, 4, 7],
+			"nine pictures break 4 / 3 / 2: the last row is two tiles, never one",
+		);
+	});
+});
+
+test("LEAK CHECK: the row's own (full) picture and the legacy frame keep the hairline and take no tile group", async () => {
+	await mount(async (api) => {
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				label: "invoice",
+				conversationId: "image-expand",
+			}),
+		);
+		const frame = api.document.querySelector("button img").parentElement;
+		const classes = frame.className.split(" ");
+		assert.ok(
+			classes.includes("border-hairline"),
+			"a transcript row's picture keeps its decorative hairline",
+		);
+		assert.ok(
+			!classes.some(
+				(name) => name.includes("/tile") || name === "border-transparent",
+			),
+			"and none of the tile's hover or focus arms leaked onto it",
+		);
+		const button = api.document.querySelector("button");
+		assert.ok(
+			!button.className.split(" ").includes("group/tile"),
+			"the full picture's button is not a tile group: nothing in a transcript row zooms",
+		);
+		assert.ok(
+			!api.document.querySelector("button img").className.includes("scale-["),
+			"and its picture never scales",
+		);
+	});
+});
+
+/*
+ * U2 - KEYBOARD FOCUS AFTER THE COUNT'S PRESS. A keyboard press is, to the DOM,
+ * a focused button receiving `click`, so that is what is sent: jsdom cannot turn a
+ * keydown into a click, and the assertion is about where focus is AFTER the
+ * control has unmounted, not about key synthesis.
+ */
+const pressByKeyboard = async (api, control) => {
+	control.focus();
+	assert.equal(
+		api.document.activeElement,
+		control,
+		"the control holds focus first",
+	);
+	await api.click(control);
+};
+
+test("pressing +N by keyboard lands focus on the fold's trigger, not on <body> (U2)", async () => {
+	await mount(async (api) => {
+		await api.render(
+			foldElement(
+				{
+					mediaCount: 8,
+					condensedMedia: (expand) =>
+						React.createElement(FoldMedia, {
+							images: manyImages(8, "focus"),
+							scope: transcriptScope,
+							onRevealMore: expand,
+						}),
+				},
+				FoldHost,
+			),
+		);
+		await pressByKeyboard(
+			api,
+			api.document.querySelector("[data-fold-media] li:last-child button"),
+		);
+		assert.equal(
+			api.document.querySelector("[data-fold-media]"),
+			null,
+			"the press opened the fold and the strip - with the control - unmounted",
+		);
+		const trigger = api.document.querySelector(
+			"[data-fold-ids] button[aria-expanded]",
+		);
+		assert.equal(trigger.getAttribute("aria-expanded"), "true");
+		assert.equal(
+			api.document.activeElement,
+			trigger,
+			"focus continues from where the reader pressed: the trigger, which stays mounted and closes the group again",
+		);
+	});
+});
+
+test("CONTROL ARM: a caller that only opens the fold leaves focus on <body> - the defect the handoff removes", async () => {
+	await mount(async (api) => {
+		/* The pre-fix `() => onOpenChange(true)`, written out: the same strip over a
+		   host that opens and unmounts and does nothing else. If this arm ever reads
+		   anything but <body> the instrument is no longer seeing the defect and the
+		   test above proves nothing. */
+		const Bare = () => {
+			const [open, setOpen] = useState(false);
+			return React.createElement(
+				"div",
+				null,
+				React.createElement(
+					"button",
+					{ type: "button", "aria-expanded": open },
+					"trigger",
+				),
+				!open &&
+					React.createElement(FoldMedia, {
+						images: manyImages(8, "bare"),
+						scope: transcriptScope,
+						onRevealMore: () => setOpen(true),
+					}),
+			);
+		};
+		await api.render(React.createElement(Bare));
+		await pressByKeyboard(
+			api,
+			api.document.querySelector("[data-fold-media] li:last-child button"),
+		);
+		assert.equal(
+			api.document.activeElement,
+			api.document.body,
+			"focus fell to <body>: the next Tab would restart at the document's first stop",
+		);
+	});
+});
+
+test("the full-ceiling picture keeps the three classes the ledger rule is made of", async () => {
+	await mount(async (api) => {
+		/*
+		 * Agent review round 1, P1: the `size` refactor dropped `max-w-full` and
+		 * `object-contain` from BOTH sizes, so the comment above the class map cited
+		 * `object-contain` as the reason a `min-w` floor was rejected while the element
+		 * no longer carried it. They are restored, and the claim is asserted here
+		 * rather than left to a frame: the pre-existing frames of this surface are not
+		 * byte-stable across captures (measured - two identical sweeps at one head
+		 * differ), so a re-take cannot be the instrument, and the class list is what
+		 * changed.
+		 */
+		await api.render(
+			React.createElement(ImageAttachment, {
+				file: FILE_PATH,
+				src: PNG,
+				label: "invoice",
+				conversationId: "image-expand",
+			}),
+		);
+		const picture = api.document.querySelector("button img");
+		for (const fullClass of FULL_CEILING_CLASSES) {
+			assert.ok(
+				picture.className.split(" ").includes(fullClass),
+				`the transcript's own picture carries \`${fullClass}\``,
+			);
+		}
 	});
 });

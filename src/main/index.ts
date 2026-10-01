@@ -48,6 +48,7 @@ import {
 	BackendInstaller,
 	BackendServiceManager,
 	INTERPRETER_RESOLUTION_WORST_MS,
+	LAUNCHER_PROBE_WORST_MS,
 	LocalOperatorStartupMode,
 	OWNED_STOP_WORST_MS,
 	READINESS_POLL_INTERVAL_MS,
@@ -94,6 +95,7 @@ import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
 } from "./picker-directory";
+import { createQuitState } from "./quit-state";
 import { createUserShellPath } from "./shell-path";
 import {
 	describeTelemetryLaunch,
@@ -137,6 +139,7 @@ import {
 	reportParkedInUse,
 	reportParkedLeftWaiting,
 	reportParksAtQuit,
+	reportSkippedWhileQuitting,
 } from "./window-raise";
 
 const BASE64_FILE_EXTENSIONS = ["csv", "tsv", "xls", "xlsx", "ods"];
@@ -1020,7 +1023,30 @@ const userShellPath = createUserShellPath({
 	log: (message) => logger.info(message, LogFileType.BACKEND),
 });
 const backendService = new BackendServiceManager({ userShellPath });
-const backendInstaller = new BackendInstaller();
+/*
+ * WHETHER THIS PROCESS HAS BEGUN QUITTING, and has not been cancelled since.
+ *
+ * Read by every site that must not answer a request with a window once a quit
+ * is under way - the `second-instance` target, the macOS `activate` handler and
+ * the window-create path - and set at `before-quit`'s FIRST entry, ahead of the
+ * session-cookie hold, which can wait while the window is already doomed (the
+ * operator's #636 report is exactly that state: a relaunch answered by a
+ * process whose window is gone but whose lock and teardown are not). The ONE
+ * release is the setup window's declined "Quit without setup?" - the one
+ * cancellation a running quit has - wired through `BackendInstaller` below; a
+ * cancelled quit that left the state set refused every later second launch and
+ * Dock click for the process's life (round-1 review, F-1). `./quit-state`
+ * carries the full contract and the sweep of the other close guards;
+ * `scripts/window-mode.test.mjs` pins the setter/release wiring and
+ * `scripts/python-bytecode-cache.test.mjs` drives the declined answer against
+ * the shipped installer.
+ */
+const quitState = createQuitState();
+const backendInstaller = new BackendInstaller({
+	// The installer's one route back from a cancelled quit: the declined dialog
+	// answer (`./quit-state` owns why there is exactly one such site).
+	onQuitCancelled: () => quitState.cancel(),
+});
 
 /**
  * Report a start failure unless a shutdown is already in flight.
@@ -1674,6 +1700,11 @@ const actualSizeFromEvent = () => {
 	}
 };
 
+// The quit state lives at the top of this file, beside the installer that can
+// release it (`quitState`; `./quit-state` owns the contract): the handler below
+// SETS it at the first `before-quit` entry, and every answer site reads it per
+// request.
+
 // --- Single Instance Lock ---
 /*
  * THE WINDOW INTENT RIDES THE REQUEST THAT LOSES. `second-instance` hands the
@@ -1745,6 +1776,16 @@ if (!gotTheLock) {
 				}),
 				{
 					window: mainWindow,
+					/*
+					 * Read PER REQUEST rather than captured once: this handler outlives every
+					 * window, and the state is LIVE — set at each quit's first `before-quit`
+					 * entry, released when the setup dialog declines to stop a run — so a
+					 * request that arrives during a quit is refused instead of answered with
+					 * a window the shutdown would take down, and a request after a CANCELLED
+					 * quit is answered normally (`./quit-state` owns the transitions;
+					 * `window-raise.ts` owns the refusal and its line).
+					 */
+					quitting: quitState.isQuitting(),
 					openConversation: openConversationInWindow
 						? (session, request) =>
 								openConversationInWindow?.(
@@ -2106,8 +2147,15 @@ app
 					// No window to focus. Recreate one — the same "recreate then
 					// navigate" rule the click path follows (m2), because a request to
 					// bring this app forward from an app alive in the dock is exactly
-					// the case that used to be a no-op.
-					setupMainWindowWithUpdateService();
+					// the case that used to be a no-op. The request names ITS OWN
+					// trigger (round-1 review, F-3): the window this creates presents —
+					// and is refused, if the app is quitting — as `viewer-focus`, where
+					// the default request would have said `initial-present`, this
+					// process's own launch, which this is not.
+					setupMainWindowWithUpdateService(null, false, {
+						show: windowLaunch.show,
+						trigger: "viewer-focus",
+					});
 					return "opened a window";
 				},
 			},
@@ -2207,7 +2255,7 @@ app
 				 * this feature's slice for a value that is a launch fact (argv, the
 				 * launch env, the persisted file) and cannot differ between the two
 				 * calls. The mini view's visible consumer of it is the platform
-				 * half: the header's keycap spells ⌘⌥Space against Ctrl+Alt+Space
+				 * half: the header's keycap spells ⌘⌥⇧Space against Ctrl+Alt+Shift+Space
 				 * from exactly this entry.
 				 */
 				chromeMode: resolveLaunchWindowChrome({
@@ -3130,6 +3178,21 @@ app
 			request: RaiseRequest = ownLaunchRequest(),
 		) {
 			/*
+			 * THE CREATE GATE for every caller (round-1 review, F-2/F-3): the consent
+			 * toast's reopen, the viewer's `focusWindow` recreate when no window is
+			 * up, the Dock click and any future caller — this is the one function
+			 * every creation goes through, so one check covers them. A window created
+			 * now would be answered by a process that is tearing down (the #636
+			 * defect, one request-source further out), so the request is refused WHOLE
+			 * and reported under ITS OWN trigger (`trigger=banner-click`,
+			 * `viewer-focus`, ...) — the line answers who asked. Non-quitting creation
+			 * is untouched: the state is false on every other path.
+			 */
+			if (quitState.isQuitting()) {
+				reportSkippedWhileQuitting(request, request.show);
+				return;
+			}
+			/*
 			 * A conversation PARKED by a request that could not be shown — a `headless`
 			 * launch that named one while this app had no window — rides into the window
 			 * that exists now, whatever created it: the operator's own next launch, a Dock
@@ -3282,8 +3345,11 @@ app
 				const isCmdOrCtrl = input.control || input.meta;
 
 				/*
-				 * Toggle command palette: Cmd/Ctrl + P — the palette's ORIGINAL gesture,
-				 * kept for everyone who learned it from the app's own tour.
+				 * The conversation switcher: Cmd/Ctrl + P — the palette's ORIGINAL
+				 * gesture, kept for everyone who learned it from the app's own tour, and
+				 * since issue #659 a job of its own rather than a second door to the
+				 * same list: the renderer opens the palette seeded to its conversations
+				 * source, which is a chat quick switcher.
 				 *
 				 * Cmd/Ctrl + K, the gesture the app now teaches, is deliberately NOT here:
 				 * a `before-input-event` hook fires before the renderer sees the key at all,
@@ -3365,6 +3431,11 @@ app
 					// the screen, and re-deciding it there would be a second policy beside
 					// `window-mode.ts`.
 					windowShow: windowLaunch.show,
+					// The other half of the plan the browser host forwards to a popup's
+					// `webPreferences`: a hidden popup must render like a shown one, so the
+					// mode's own answer travels with the mode rather than being re-derived
+					// (docs/design/browser-oauth-popups.md 2.5).
+					backgroundThrottling: windowLaunch.backgroundThrottling,
 					// A consent banner's click comes forward through the app's own raise policy,
 					// and this is where its one line goes — the same logger every other raise
 					// reports to, so `trigger=banner-click` is greppable beside them.
@@ -3559,6 +3630,21 @@ app
 				});
 				return;
 			}
+			/*
+			 * THE CREATE GATE (round-1 review, F-2). A window created here would be
+			 * answered by a process already tearing down — the #636 defect, one
+			 * request-source further out — so the request is refused WHOLE, and the
+			 * refusal sits ahead of the park below ON PURPOSE: a park promises a next
+			 * window this process will never create, so letting this branch park would
+			 * trade one broken promise for another. The direct callers that create
+			 * without coming through here (the consent reopen and the viewer's
+			 * `focusWindow` recreate) are refused by the same gate inside
+			 * `setupMainWindowWithUpdateService`, which every creation reaches.
+			 */
+			if (quitState.isQuitting()) {
+				reportSkippedWhileQuitting(request, request.show);
+				return;
+			}
 			// A request that must not be shown does not create a window at all: it parks
 			// its conversation for the operator's next window to open, so nothing
 			// invisible is left holding a screen nobody can reach. See
@@ -3621,9 +3707,32 @@ app
 			// queue emptied into a screen nobody can reach. The mode governs the launch;
 			// this is the other direction, and `OPERATOR_SHOW` is the plan that says so.
 			if (BrowserWindow.getAllWindows().length === 0) {
+				/*
+				 * A DOCK CLICK DURING A QUIT GETS A LINE, NOT A WINDOW — the same defect
+				 * as a relaunch during teardown, arriving on the operator's own act: the
+				 * click lands in the seconds between the window closing and the process
+				 * going, and the window it used to open died with that shutdown. The
+				 * refusal is reported like every other declined request
+				 * (`applied=skipped+quitting`), because a person who clicked the Dock icon
+				 * is owed the reason nothing appeared — and the NEXT click, after the
+				 * process is gone, launches a window normally.
+				 */
+				if (quitState.isQuitting()) {
+					reportSkippedWhileQuitting(
+						{ trigger: "activate", report: reportRaise },
+						OPERATOR_SHOW,
+					);
+					return;
+				}
 				setupMainWindowWithUpdateService(null, false, {
 					show: OPERATOR_SHOW,
-					trigger: "initial-present",
+					/*
+					 * The request names itself on its raise line. It used to present as
+					 * `initial-present` — this process's own launch — which is what a Dock
+					 * click is not, and the log's whole job is attribution; the refusal
+					 * above is the same request and must carry the same name.
+					 */
+					trigger: "activate",
 				});
 			}
 		});
@@ -3724,10 +3833,13 @@ app.on("window-all-closed", () => {
  * Each term is the exported bound it comes from; changing any of them moves
  * this one.
  *
- * The console term is GONE rather than zeroed. It was two 5 s `where`/`which`
- * ceilings for naming the global launcher; that is now a synchronous search of
- * the installers' bin directories, so no wait is left to bound and a term for
- * one would hold this timer ten seconds past everything it actually waits on.
+ * The console term is no longer a `where`/`which` ceiling - naming the global
+ * launcher is a synchronous search of the installers' bin directories - but the
+ * launcher-USABILITY probe that replaced that question is not synchronous, and it
+ * sits on this path: `startOwned` awaits `checkLocalOperatorExists`, and
+ * `stop(false)` awaits the start promise that is inside it. So the term is the
+ * probe's own worst case, derived from its exported ceiling (`LAUNCHER_PROBE_WORST_MS`)
+ * rather than restated here.
  *
  * What it does NOT cover, stated because a bound that only holds while the
  * thread is free is not a bound: it is a timer, so it cannot fire while the
@@ -3737,6 +3849,7 @@ app.on("window-all-closed", () => {
  */
 const QUIT_FAILSAFE_MARGIN_MS = 5_000;
 const QUIT_CLEANUP_FAILSAFE_MS =
+	LAUNCHER_PROBE_WORST_MS +
 	INTERPRETER_RESOLUTION_WORST_MS +
 	OWNED_STOP_WORST_MS +
 	READINESS_POLL_INTERVAL_MS +
@@ -3832,6 +3945,15 @@ const holdQuitForSessionCookieSnapshot = createSessionCookieQuitHold({
 });
 
 app.on("before-quit", async (event) => {
+	/*
+	 * THE QUIT IS RECORDED BEFORE ANYTHING CAN WAIT ON IT. A request that arrives
+	 * after this line must not be answered with a window — the window is doomed
+	 * from here, whether the hold below passes now or holds the quit for the
+	 * session-cookie budget first — so the state is set at the FIRST entry, ahead
+	 * of the hold. The only release is the setup dialog's declined answer, beside
+	 * its own cancellation (`./quit-state` owns why it is the only one).
+	 */
+	quitState.begin();
 	/*
 	 * Hold the quit for the browser host's stop, then let the ordinary pass
 	 * through: the stop settles or the budget expires, the hold asks for the quit

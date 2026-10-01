@@ -24,9 +24,74 @@ type BaseImageAttachmentProps = {
 	 * Defaults to the filename, which is right for a file on disk. A canonical
 	 * image has no filename — `getFileName` on a blob URL yields the blob's
 	 * UUID, so a screen reader announced a GUID — and passes a position
-	 * ("Screenshot") instead.
+	 * ("Image") instead.
 	 */
 	label?: string;
+	/**
+	 * The height ceiling the picture is drawn to.
+	 *
+	 * `full` is the transcript's own ceiling (240px): the size a picture is read
+	 * at when it IS the thing on screen. `thumbnail` is for a picture that is an
+	 * AFFORDANCE TO the full one — a condensed action group shows what its run
+	 * produced without every image-bearing group costing the height of a full
+	 * figure, and the click that expands to `full` is the same click either way.
+	 *
+	 * The thumbnail is a fixed 115x76 SLOT (a 117x78 tile with its 1px border)
+	 * rather than a shrink-wrap ceiling: 3:2, the fixtures' own aspect, sized so
+	 * four tiles and the `+N` control fit one row at the narrowest column this
+	 * renders in (see `FOLD_MEDIA_LIMIT`), and the fixed width is what keeps a row
+	 * of tiles a grid when the pictures in it have different aspects.
+	 */
+	size?: ImageSize;
+};
+
+/**
+ * The two boxes a picture is drawn into, named from the caller's question
+ * ("is this the picture, or a way into it?") rather than from its pixels.
+ *
+ * `full` is the ledger rule every existing caller already had, spelled out
+ * rather than implied: a shared 240px ceiling, `max-w-full` so a wide capture is
+ * bounded by its column, `object-contain` so nothing is cropped or stretched at
+ * any aspect. The last two are NOT left to Tailwind's preflight
+ * (`img,video{max-width:100%;height:auto}`) even though it agrees with them here:
+ * a constraint that has to hold for every picture has to be written where the
+ * picture's own box is written, or a later change to the box reads the preflight
+ * as permission rather than as a guard.
+ *
+ * `thumbnail` is a SLOT, not a shrink-wrap, and the fixed 115x76 is the point. A
+ * tile sized by its own picture made the strip a ragged grid — a 200x360 portrait
+ * drew 36px wide beside 115px landscapes, so the least legible picture got the
+ * least room — and it also made the wrap count depend on which aspect happened to
+ * be in the row (design review round 1, D4). `object-contain` inside the fixed
+ * slot letterboxes the picture on the frame's own ground instead: every tile is
+ * the same canvas, every picture gets the largest box the row can give it, and
+ * the cap below has one number to hold.
+ */
+export type ImageSize = "full" | "thumbnail";
+
+const PICTURE_CLASS: Record<ImageSize, string> = {
+	full: "max-h-[240px] max-w-full object-contain",
+	thumbnail: [
+		/*
+		 * 115x76, the picture box inside a 1px reserved border (117x78): 3:2, the
+		 * fixtures' own aspect, so a landscape capture fills it and a different
+		 * aspect letterboxes on the tile's own ground. The same number lives in
+		 * `canonical-image.tsx` (the reserved box) and `attachment-frame.tsx` (the
+		 * failed receipt): all three must move together or the slot changes size
+		 * between states.
+		 *
+		 * THE HOVER ZOOM IS HERE, on the picture, clipped by the frame's
+		 * `overflow-hidden`: the tile's silhouette and its neighbours never move
+		 * (the one form of "lift" that cannot break layout), bounded by the 8px
+		 * gutter (1.068 at this width) and set to 1.04. `motion-safe:` so a reader
+		 * with reduced motion gets NO zoom and the hover cue is the edge alone - a
+		 * state, not a movement. See `fold-media.tsx` for the branding section 4
+		 * exception this is.
+		 */
+		"h-[76px] w-[115px] object-contain",
+		"motion-safe:transition-transform motion-safe:duration-fast motion-safe:ease-out-quart",
+		"motion-safe:group-hover/tile:scale-[1.04]",
+	].join(" "),
 };
 
 export type ImageAttachmentProps = BaseImageAttachmentProps & {
@@ -71,7 +136,7 @@ const getFileName = (path: string): string => {
  * as rows rather than as a decorated scrapbook; the same reasoning is why the
  * composer's staging preview and the canvas viewer carry no mark either. What
  * says "this expands" is therefore the pointer cursor, the `title` tooltip, an
- * accessible name that states the ACTION ("Expand Screenshot"), and Enter/Space
+ * accessible name that states the ACTION ("Expand Image"), and Enter/Space
  * on a real button — four cues that cost the composition nothing, rather than a
  * fifth that would sit on every picture in every transcript.
  *
@@ -89,7 +154,7 @@ const getFileName = (path: string): string => {
  * canonical surface takes the same shape through its `inline-block` wrapper.
  */
 export const ImageAttachment: FC<ImageAttachmentProps> = memo(
-	({ file, src, conversationId, label }) => {
+	({ file, src, conversationId, label, size = "full" }) => {
 		const [hasError, setHasError] = useState(false);
 		const [isLoaded, setIsLoaded] = useState(false);
 		/**
@@ -249,15 +314,24 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 		const name = label ?? getFileName(file);
 
 		if (hasError) {
-			return <BrokenAttachment name={name} />;
+			return <BrokenAttachment name={name} compact={size === "thumbnail"} />;
 		}
 
 		const picture = (
-			<AttachmentFrame>
+			<AttachmentFrame
+				/*
+				 * A tile IS a control: the frame is the whole of the button's visible
+				 * boundary, so it takes the control edge rather than the decorative
+				 * hairline (design review round 1, D2). At `full` the frame is an
+				 * illustration's backing and the picture supplies its own extent.
+				 */
+				boundary={size === "thumbnail" ? "control" : "hairline"}
+			>
 				<img
 					className={cn(
-						// A shared height ceiling is the ledger rule. It does leave a
-						// phone-aspect capture (828x1792) as a ~111px slice, but a
+						// A shared height ceiling is the ledger rule, and `object-contain`
+						// plus `max-w-full` is what keeps it honest at every aspect. It does
+						// leave a phone-aspect capture (828x1792) as a ~111px slice, but a
 						// `min-w` floor is NOT the fix and was measured doing harm: it
 						// widens the img BOX while `object-contain` keeps letterboxing
 						// the picture inside it, so the portrait case paints 110.9px
@@ -265,10 +339,10 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 						// gets its width forced to 120px and upscales 5x into a blur.
 						// `AttachmentFrame`'s own `min-h-16`/`min-w-16` already floors
 						// the TILE, which is the level where a small picture should be
-						// centred rather than stretched. Solving the portrait case
-						// properly means bounding by area, or relaxing `max-h` below
-						// roughly a 0.6 aspect — not a width floor on the image.
-						"max-h-[240px] max-w-full object-contain",
+						// centred rather than stretched. The thumbnail's own portrait case
+						// is answered at the SLOT instead (a fixed 115x76 box every tile
+						// shares), not by a width floor on the image.
+						PICTURE_CLASS[size],
 						// The picture is invisible, not absent, until it decodes:
 						// the frame has already reserved the box, so nothing moves
 						// when it appears.
@@ -287,7 +361,19 @@ export const ImageAttachment: FC<ImageAttachmentProps> = memo(
 				<button
 					ref={pictureRef}
 					type="button"
-					className={cn("block max-w-full cursor-pointer")}
+					className={cn(
+						"block max-w-full cursor-pointer",
+						/*
+						 * The tile's own named group (the thumbnail only): the frame's
+						 * returning edge and the picture's zoom answer to THIS button, not
+						 * to the wrapper's unnamed `group` that the file-actions menu keys
+						 * its reveal on. `rounded-sm` so the app's global focus ring follows
+						 * the frame's 6px radius instead of drawing a square around a
+						 * rounded tile (design round, D4): the outline is drawn on this
+						 * button, which had no radius of its own.
+						 */
+						size === "thumbnail" && "group/tile rounded-sm",
+					)}
 					onClick={() => setExpanded(true)}
 					/*
 					 * `aria-label` rather than the picture's own `alt` as the name. The
