@@ -164,7 +164,16 @@ const PROFILES = [
 	{ name: "architect", kind: "role", source: "installed" },
 ];
 
-const TEAMS = ["release-crew", "docs-pod"];
+/**
+ * The Teams section's roster, and the fixture BOTH halves of the label split
+ * are read on: `release-crew` carries a label, so its row must draw the
+ * readable name; `docs-pod` carries none, so it must keep drawing its slug -
+ * which is also the fallback every backend that predates labels produces.
+ */
+const TEAMS = [
+	{ name: "release-crew", label: "Release Engineering" },
+	{ name: "docs-pod" },
+];
 
 const profile = ({ name, kind, source }: (typeof PROFILES)[number]) => ({
 	name,
@@ -221,9 +230,10 @@ const bridge = () => {
 				return ok({ profiles: PROFILES.map(profile) });
 			case "teams.list":
 				return ok({
-					teams: TEAMS.map((name) => ({
+					teams: TEAMS.map(({ name, label }) => ({
 						id: name,
 						name,
+						label,
 						description: "",
 						manager: PROFILES[2].name,
 						members: [],
