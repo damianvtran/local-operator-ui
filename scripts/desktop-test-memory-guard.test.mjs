@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	chmodSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -37,6 +44,7 @@ const MB = 1024 * 1024;
 
 /** Module-scope patterns (biome's `useTopLevelRegex`). */
 const REFUSING = /refusing/;
+const TABLE_UNREADABLE = /process table was unreadable \(walk coverage\)/;
 const LIMIT_EXCEEDED = /MEMORY LIMIT EXCEEDED/;
 const KILLED_GROUP_LINE = /MEMORY LIMIT EXCEEDED — killed process group \d+/;
 const NAMES_GROUP = /process group 4242 \(2 processes\)/;
@@ -431,6 +439,90 @@ test("the real runner kills a runaway group, names it, and exits non-zero", () =
 	}
 	if (!reaped) process.kill(grandchild, "SIGKILL");
 	assert.ok(reaped, `grandchild ${grandchild} survived the group kill`);
+});
+
+/*
+ * R1: a SIGKILL of the RUNNER's group (what a per-command guard or a
+ * `timeout`-by-pgid wrapper does) must not leave the detached test tree running
+ * with its watchdog dead. The watchdog is switched OFF here so the only thing that
+ * can reap the tree is the keeper.
+ */
+test("SIGKILL of the runner's group leaves no survivor from the test tree", async () => {
+	const pidFile = join(scratch, "grandchild-r1.pid");
+	const holder = join(scratch, "r1-holder.test.mjs");
+	writeFileSync(
+		holder,
+		`import { spawn } from "node:child_process";
+import { writeFileSync } from "node:fs";
+import { test } from "node:test";
+test("holds", async () => {
+	const g = spawn("sleep", ["60"], { stdio: "ignore" });
+	writeFileSync(${JSON.stringify(pidFile)}, String(g.pid));
+	await new Promise((resolve) => setTimeout(resolve, 60000));
+});
+`,
+	);
+	// The runner leads its own group, as it does under a harness that kills by pgid.
+	const runner = spawn(
+		process.execPath,
+		[RUNNER, "--test-concurrency=1", holder],
+		{
+			detached: true,
+			stdio: "ignore",
+			env: { ...process.env, [MEMORY_BUDGET_OVERRIDE_ENV]: "off" },
+		},
+	);
+	let grandchild = null;
+	for (let i = 0; i < 100 && grandchild === null; i++) {
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		try {
+			grandchild = Number(readFileSync(pidFile, "utf8"));
+		} catch {
+			grandchild = null;
+		}
+	}
+	assert.ok(grandchild, "the grandchild never started");
+	assert.ok(alive(grandchild));
+	process.kill(-runner.pid, "SIGKILL");
+	let reaped = false;
+	for (let i = 0; i < 80 && !reaped; i++) {
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		reaped = !alive(grandchild);
+	}
+	if (!reaped) process.kill(grandchild, "SIGKILL");
+	assert.ok(reaped, `grandchild ${grandchild} survived the runner's death`);
+});
+
+/*
+ * Q1: with `ps` failing the whole run, a memory hog must still be killed (found
+ * through `pgrep -P`), not waved through because only the ~17 MB coordinator was
+ * read. A fake `ps` first on PATH fails the TABLE read only; the narrow pre-kill
+ * re-check and everything else pass through to the real one.
+ */
+test("with the process table unreadable the runaway is still found and killed", () => {
+	const bin = join(scratch, "bin");
+	mkdirSync(bin, { recursive: true });
+	writeFileSync(
+		join(bin, "ps"),
+		'#!/bin/sh\nif [ "$1" = "-axo" ]; then exit 1; fi\nexec /bin/ps "$@"\n',
+	);
+	chmodSync(join(bin, "ps"), 0o755);
+	const result = spawnSync(
+		process.execPath,
+		[RUNNER, "--test-concurrency=1", HOLDER],
+		{
+			encoding: "utf8",
+			env: {
+				...process.env,
+				PATH: `${bin}:${process.env.PATH}`,
+				[MEMORY_BUDGET_OVERRIDE_ENV]: "300",
+			},
+			timeout: 45000,
+		},
+	);
+	assert.equal(result.status, BREACH_EXIT_CODE, result.stdout + result.stderr);
+	assert.match(result.stderr, KILLED_GROUP_LINE);
+	assert.match(result.stderr, TABLE_UNREADABLE);
 });
 
 test("the override `off` runs the suite unbounded and says so", () => {
