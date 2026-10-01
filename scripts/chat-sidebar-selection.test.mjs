@@ -1626,6 +1626,39 @@ test("every call site that paints a row state is painted on `surface`", () => {
 });
 
 /*
+ * THE OTHER HALF OF THE RAIL'S GROUND, and the half the nav pin above cannot see
+ * (review round 1, R1-1). `settings-sidebar.tsx`'s ground note promises that a
+ * future re-grounding - "or a list re-acquiring a ground of its own" - fails by
+ * name. The entry above resolves the NAV, the element the rows are painted on,
+ * so restoring the group lists' old `bg-surface` leaves every assertion in the
+ * grounds table green: the nav is `surface` either way. What regresses is the
+ * rail's appearance - the lists become the mismatched blocks the operator
+ * reported - and that is a fact about a class on an element no entry reads.
+ *
+ * So the list is read directly and the ABSENCE is what is asserted: the rail's
+ * one `<ul>` carries layout classes and no ground role at all. `SECTION_GROUPS.map`
+ * renders one list per group from ONE source literal, and the anchor is the tag
+ * itself, so the read lands on the list's own class literal (the same walk
+ * `literalClassAt` does for every other ground in this file, pointed at an
+ * element that is deliberately NOT one).
+ *
+ * FALSIFIED BEFORE IT WAS TRUSTED: putting the list back on
+ * `cn("flex flex-col gap-0.5 bg-surface")` fails this test and nothing else in
+ * either suite.
+ */
+test("the settings rail's group lists carry no ground of their own", () => {
+	const classes = literalClassAt(SETTINGS_RAIL, "<ul", "after")
+		.split(/\s+/)
+		.filter((c) => c.length > 0);
+	const ground = GROUND_ROLES.find((role) => classes.includes(role));
+	assert.equal(
+		ground,
+		undefined,
+		`the settings rail's group list carries \`${ground}\` again: ${JSON.stringify(classes)}. The rail is a flat \`surface\` and its rows sit directly on the rail's own ground, so a list with a tone of its own is the mismatched-block defect the operator reported on 2026-09-30. A ground belongs on the nav, not on a list inside it - see the ground note in settings-sidebar.tsx.`,
+	);
+});
+
+/*
  * THE PLATE INSIDE A ROW, AND THE HALF THE PALETTE GATE CANNOT SEE.
  *
  * The rail's account row is a row state's host (`hover:bg-row-hover`) and it

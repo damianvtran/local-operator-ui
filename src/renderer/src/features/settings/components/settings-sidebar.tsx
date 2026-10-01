@@ -313,9 +313,10 @@ export const SettingsSidebar: FC<SettingsSidebarProps> = ({
 	 * still a tone step; against the sidebar the two panels are one tone, which
 	 * is how the agents roster already sits beside it (`agents-sidebar.tsx`).
 	 *
-	 * `scripts/chat-sidebar-selection.test.mjs` resolves this nav as the rows'
-	 * ground, so a future re-grounding — or a list re-acquiring a ground of its
-	 * own — fails by name. */
+	 * `scripts/chat-sidebar-selection.test.mjs` pins both halves by name: the nav
+	 * is resolved as the rows' ground, so a re-grounding fails; and the rail's own
+	 * `<ul>` is read and required to carry no ground role at all, so a list
+	 * re-acquiring a ground of its own fails - which is the defect above. */
 	return (
 		<nav
 			aria-label="Settings sections"
