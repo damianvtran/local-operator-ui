@@ -6680,6 +6680,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * It renders before the alert for the same reason `deviceHold` does: a
 				 * state of the surface outlives the outcome of one send.
 				 */}
+				{/*
+				 * THE HOST'S REASON WHEN ITS PLACEHOLDER CANNOT BE READ (there is one
+				 * only while the box is EMPTY — the browser stops painting a
+				 * placeholder the moment the control has a value), and the host's
+				 * reason is otherwise only ever in that attribute. A draft now
+				 * survives leaving the page, so a reader can arrive with text in the
+				 * box and then meet a readOnly box they cannot explain; this puts the
+				 * host's own sentence in the band for exactly that state, and only
+				 * for a host that supplied one. Chat passes no `hostNotice`, so this
+				 * node is unreachable there.
+				 */}
+				{hostNotice?.blocksInput &&
+				hostNotice.placeholder &&
+				newMessage.trim().length > 0 ? (
+					<p className="mb-2 text-meta text-ink-muted">
+						{hostNotice.placeholder}
+					</p>
+				) : null}
 				{hostNotice?.node}
 				{composerAlert.message !== undefined && (
 					/*

@@ -254,6 +254,39 @@ const handle = (overrides = {}) => {
 const mounts = [];
 
 /** The same mount with the page's own gate set — see the M1 case below. */
+/**
+ * The same mount, but its blocked reason can be CHANGED after it is up — the
+ * only way to reach "the reader was already typing when the page locked", which
+ * is a state a draft-surviving key makes reachable in the product.
+ */
+const mountToggle = async (run) => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const render = async (blockedReason) => {
+		await act(async () => {
+			root.render(
+				React.createElement(
+					QueryClientProvider,
+					{ client: queryClient },
+					React.createElement(ConfigComposer, {
+						run,
+						about: null,
+						onClearAbout: () => undefined,
+						blockedReason,
+					}),
+				),
+			);
+		});
+	};
+	await render(undefined);
+	mounts.push({ root, queryClient });
+	return { host, root, render };
+};
+
 const mountBlocked = async (run, blockedReason) => {
 	const host = document.createElement("div");
 	document.body.append(host);
@@ -436,9 +469,10 @@ test("a blocked page refuses the box, and the send never fires", async () => {
 		});
 		assert.equal(sent.length, 0, "a blocked page sends nothing");
 		assert.match(
-			host.textContent ?? "",
+			box.getAttribute("placeholder") ?? "",
 			/Finish or cancel your edit first\./,
-			"and the reason is on screen",
+			"and the reason is the box's own placeholder (an attribute — a\n" +
+				"placeholder is never text, which is what the old assertion read)",
 		);
 	} finally {
 		await act(async () => root.unmount());
@@ -594,6 +628,56 @@ test("a live run cannot be sent a second request from the box", async () => {
 			);
 		});
 		assert.equal(sent.length, 0, "a live run takes no second request");
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("a blocked box that already holds a draft still says why", async () => {
+	/*
+	 * F4: the reason can only be read off a PLACEHOLDER while the box is EMPTY,
+	 * and a draft now survives leaving the page (constant key, U2) — so a reader
+	 * can arrive with text in the box and then open an Edit, which leaves them
+	 * holding a readOnly box with their own words in it and no explanation on
+	 * screen. The sentence moves into the band for that state, exactly once:
+	 * the placeholder is not painted on a non-empty control, so the two can
+	 * never both show.
+	 */
+	const { run } = handle();
+	const { host, root, render } = await mountToggle(run);
+	try {
+		const box = await type(host, "half a request");
+		assert.notEqual(box.value, "", "the box holds the draft");
+		await render("Finish or cancel your edit first.");
+		const text = host.textContent ?? "";
+		const shown = text.match(/Finish or cancel your edit first\./g) ?? [];
+		assert.equal(shown.length, 1, "the reason is said exactly once");
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("an unblocked box with a draft explains nothing", async () => {
+	/*
+	 * The other half of the same rule: this is a sentence about a BLOCKED page.
+	 * An unblocked box holding a draft must not carry it as text and must not
+	 * borrow it as its placeholder.
+	 */
+	const { run } = handle();
+	const { host, root, render } = await mountToggle(run);
+	try {
+		const box = await type(host, "half a request");
+		await render(undefined);
+		assert.doesNotMatch(
+			host.textContent ?? "",
+			/Finish or cancel your edit first\./,
+			"nothing is explained while nothing is blocked",
+		);
+		assert.doesNotMatch(
+			box.getAttribute("placeholder") ?? "",
+			/Finish or cancel your edit first\./,
+			"and the box invites rather than refuses",
+		);
 	} finally {
 		await act(async () => root.unmount());
 	}
