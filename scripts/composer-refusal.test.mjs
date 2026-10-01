@@ -470,8 +470,17 @@ test("the refusal predicate is declared before the handler whose deps name it", 
 	 * must not take the credential at all).
 	 */
 	const source = code(COMPOSER);
-	const declared = source.indexOf(
-		"const isInputDisabled = unavailable || isBusy || secretAnswerPending;",
+	/*
+	 * ALL FOUR TERMS BY NAME. The fourth is the HOST's — the page's own blocked
+	 * state arriving through the one prop-gated seam (`hostNotice.blocksInput`) —
+	 * and it is a term of this predicate rather than a guard beside it for the
+	 * same reason `secretAnswerPending` is: the box, the popups and the form's
+	 * submit refuse together. Whitespace is tolerated because the declaration
+	 * wraps; a MISSING term is not, and a regex that matched any expression
+	 * would stop pinning the thing this case exists for.
+	 */
+	const declared = source.search(
+		/const isInputDisabled =\s*unavailable\s*\|\|\s*isBusy\s*\|\|\s*secretAnswerPending\s*\|\|\s*Boolean\(hostNotice\?\.blocksInput\);/,
 	);
 	const handler = source.indexOf("const handleComposerKeyDown = useCallback(");
 	assert.ok(declared > -1 && handler > -1);
@@ -516,8 +525,8 @@ test("the secret gate's term refuses the box, and the box points at the dock's f
 	);
 	assert.match(
 		source,
-		/const isInputDisabled = unavailable \|\| isBusy \|\| secretAnswerPending;/,
-		"and it joins the one predicate every writer and submitter answers to",
+		/const isInputDisabled =\s*unavailable\s*\|\|\s*isBusy\s*\|\|\s*secretAnswerPending\s*\|\|\s*Boolean\(hostNotice\?\.blocksInput\);/,
+		"and it joins the one predicate every writer and submitter answers to — with the host's own term beside it",
 	);
 	assert.match(
 		source,
