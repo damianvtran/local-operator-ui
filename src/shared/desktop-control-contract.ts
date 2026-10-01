@@ -262,6 +262,28 @@ export type McpCatalogRow = {
 	)[];
 };
 
+/**
+ * One row of the catalog document's `verbs` table (`mcp_catalog` v2).
+ *
+ * The verb slot of `/mcp`'s argument list, derived server-side from ONE table
+ * (`MCP_VERB_ROWS` in `mcp/catalog.py`) so the TUI and this composer cannot
+ * drift on which verbs exist, what they say, or which of them are destructive —
+ * `destructive` is load-bearing safety on both hosts, not colour: the keyboard
+ * gate reads it to make a fuzzy single survivor complete instead of run (the
+ * row arm of `slashDestructive`).
+ *
+ * `offers` is the policy the SERVER slot filters by, over each row's `actions`:
+ * `all` admits every configured row (`remove`), `oauth` the OAuth-capable set
+ * (`login`/`reauth`), `signed_in` the rows a logout can act on, and `null` no
+ * rows at all (`list` takes no argument and an added name is new by definition).
+ */
+export type McpCatalogVerb = {
+	verb: "list" | "add" | "remove" | "login" | "logout" | "reauth";
+	description: string;
+	destructive: boolean;
+	offers: "all" | "oauth" | "signed_in" | null;
+};
+
 /** The whole catalog document, as both the GET and a mutating POST answer it. */
 export type McpCatalog = {
 	cwd: string;
@@ -273,6 +295,13 @@ export type McpCatalog = {
 	status_source: "config" | "live";
 	session_id: string | null;
 	servers: McpCatalogRow[];
+	/**
+	 * The verb table (`mcp_catalog` >= 2): what `/mcp <...>` offers before a
+	 * server is named. Optional because a pre-v2 document cannot carry it —
+	 * every reader is licensed by the capability version, and Settings never
+	 * reads it at all.
+	 */
+	verbs?: McpCatalogVerb[];
 	operations: McpCatalogOperation[];
 	/** On a POST answer only: the operation that request started or named. */
 	operation?: McpCatalogOperation | null;
