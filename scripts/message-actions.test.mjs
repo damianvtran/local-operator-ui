@@ -76,6 +76,7 @@ const RE_ROW_MOUNT =
 	/<AnswerActionRow\b[\s\S]{0,200}bodyText=\{remainingContent\}/;
 const RE_CLOSES_TURN_LINE = /\{closesTurn && \(/;
 const RE_ROW_MOUNT_SITES = /<AnswerActionRow\b/g;
+const RE_USER_ROW_MOUNT = /<AnswerActionRow\s+kind="user"/;
 
 /**
  * One in-memory build of the shipped row and its model.
@@ -124,6 +125,13 @@ const bundle = await build({
 			 * The probe, answered statically. `speech` selects which half of it
 			 * the mount sees, so one bundle covers "configured" and "not
 			 * configured" without a second build.
+			 * THE SHAPE IS THE SHIPPED ONE (issue #674): the consumers read the
+			 * shared capability and the disabled tooltip's class, not the file
+			 * question the probe used to answer alone. A fixture that answers the
+			 * old shape leaves `canUseRadientSpeech` undefined, so the row renders
+			 * its control disabled whatever `speechConfigured` says — the assertion
+			 * below then fails for a contract the fixture never spoke, which is how
+			 * this file was found (its run also ended in the memory guard's kill).
 			 */
 			name: "credential-probe-fixture",
 			setup(builder) {
@@ -135,8 +143,14 @@ const bundle = await build({
 					loader: "js",
 					contents: `
 						export const useRadientCredentialProbe = () => ({
-							hasRadientApiKey: globalThis.__speechConfigured === true,
-							isUnavailable: false,
+							canUseRadientSpeech: globalThis.__speechConfigured === true,
+							/*
+							 * An ANSWERED "no key" is the sign-in class's own arm; a
+							 * configured probe never renders a block at all.
+							 */
+							speechBlock: globalThis.__speechConfigured === true
+								? "could-not-check"
+								: "sign-in",
 						});
 					`,
 				}));
@@ -412,7 +426,7 @@ test("Speak is offered when there is an agent to speak with, and disabled when s
 
 /* ------------------------------------------------------- the wiring */
 
-test("the row rides the turn-closing line, and nothing else mounts it", () => {
+test("the row rides the turn-closing line and the user row's column, and nothing else mounts it", () => {
 	assert.ok(
 		RE_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
 		"the transcript hands the row the VISIBLE text, the same value its Quote gate reads",
@@ -429,8 +443,18 @@ test("the row rides the turn-closing line, and nothing else mounts it", () => {
 	);
 	assert.equal(
 		(TRANSCRIPT_SOURCE.match(RE_ROW_MOUNT_SITES) ?? []).length,
-		1,
-		"one mount site",
+		2,
+		"two mount sites: the closing answer's own line, and the user row's copy arm",
+	);
+	/*
+	 * And each site names itself: the answer arm hands over the visible text the
+	 * Quote gate reads, the user arm wears the role that strips Speak from the
+	 * model (`answerActionsFor`), so neither can be swapped for the other
+	 * without this file going red.
+	 */
+	assert.ok(
+		RE_USER_ROW_MOUNT.test(TRANSCRIPT_SOURCE),
+		"the user arm is mounted with its role",
 	);
 });
 
@@ -649,7 +673,7 @@ test("a configured service arms Speak, and the press reaches it", async () => {
 		);
 		/*
 		 * The press is observed at the store's own entry point rather than at
-		 * `loadingMessageId`: `playSpeech` sets that field and then clears it when
+		 * `loadingKey`: `playSpeech` sets that field and then clears it when
 		 * the fetch it starts fails, and this rig has no Speech service - so reading
 		 * it after the `act` window would read the cleared value rather than the
 		 * call. What is asserted is the call itself: this answer's id, the
@@ -692,7 +716,7 @@ test("the control survives the swap to Stop, so focus stays in the row", async (
 		"the control holds focus before the turn starts playing",
 	);
 	await act(async () => {
-		mod.useSpeechStore.setState({ playingMessageId: "a1" });
+		mod.useSpeechStore.setState({ playingKey: "msg:a1" });
 	});
 	const stop = button("Stop");
 	assert.ok(stop, `the control is now the stop control (labels: ${labels()})`);
@@ -708,7 +732,7 @@ test("the control survives the swap to Stop, so focus stays in the row", async (
 	);
 	await unmount();
 	mod.useSpeechStore.setState({
-		playingMessageId: null,
-		loadingMessageId: null,
+		playingKey: null,
+		loadingKey: null,
 	});
 });
