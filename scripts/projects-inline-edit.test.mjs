@@ -108,6 +108,23 @@ test("the keyboard contract: Enter per field type, Escape always, modifiers", ()
 	assert.equal(inlineEditKeyAction({ key: "Escape" }, multi), "revert");
 	assert.equal(inlineEditKeyAction({ key: "a" }, single), null);
 	/*
+	 * AN ESCAPE ALREADY CONSUMED IS NOT THE FIELD'S (Scope A contract check,
+	 * G1): Radix's `DismissableLayer` preventDefaults at the native capture
+	 * phase when it closes a portalled menu, and react-dom copies that into
+	 * the synthetic event - so this handler must stand down or one press
+	 * closes the menu AND reverts the field, discarding the draft. The second
+	 * press (nothing left to consume) reverts, which is why the two cases
+	 * differ only by `defaultPrevented`.
+	 */
+	assert.equal(
+		inlineEditKeyAction({ key: "Escape", defaultPrevented: true }, offEditor),
+		null,
+	);
+	assert.equal(
+		inlineEditKeyAction({ key: "Escape", defaultPrevented: false }, offEditor),
+		"revert",
+	);
+	/*
 	 * THE CHORD WORKS FROM THE FIELD'S OWN CHROME (round 1, n2): the
 	 * description's Write|Preview toggle holds focus after a mode switch, and
 	 * Cmd/Ctrl+Enter there means the same thing as in the textarea - while a
