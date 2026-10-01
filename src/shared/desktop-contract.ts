@@ -25,6 +25,18 @@ const secret = z.string().min(1).max(32768);
 export const sessionIdPattern = /^[a-f0-9]{12}$/;
 const sessionId = z.string().regex(sessionIdPattern);
 /*
+ * The folder a SESSIONLESS skills read is discovered from.
+ *
+ * NOT `mcpCatalogCwd`'s absolute-only regex: a draft pane's staged default is
+ * the literal `"~"`, which the route resolves against the daemon's home
+ * (`resolve_cwd`), and the acceptance here is the same `min(1).max(4096)` the
+ * session routes use for a `cwd` the folder chip can produce. Refusing `"~"`
+ * at the transport would refuse the one value every new draft starts from, and
+ * the route still enforces absolute-and-existing AFTER expansion (422
+ * `invalid_cwd`) — the check belongs at the end that can actually resolve it.
+ */
+const skillCwd = z.string().min(1).max(4096);
+/*
  * The MCP field shapes, named once because the session route and the
  * sessionless catalog route accept the same server names, secret references and
  * operation ids - two inline copies of a regex are two places to drift.
@@ -914,6 +926,8 @@ export function projectTagRule(tag: string): string | null {
 	return null;
 }
 
+const hubItemKind = z.enum(["agent", "team"]);
+
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
@@ -938,6 +952,57 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			name: profileName,
 			requestId,
 			fields: profileFields,
+		})
+		.strict(),
+	/*
+	 * THE HUB AUTO-UPDATE PLANE (backend `server/routes/desktop_hub.py`, gated by
+	 * the `hub_updates` capability). `hub.updates` is a STORE READ on the backend
+	 * (no network, O(items)), which is what makes it safe to poll from the
+	 * sidebar; the five mutations are the ones that touch the hub or write a
+	 * local definition, and each carries a `requestId` so a lost response is
+	 * replayed by the server's receipts rather than re-run.
+	 *
+	 * `kind` is closed to the two definition families the hub carries, and `name`
+	 * is the profile/team NAME because names are the runtime's attachment keys.
+	 * `prefer` is per-item only: the backend refuses it on apply-all, since a
+	 * conflict decision cannot be made for a set of items at once, so the
+	 * apply-all schema does not offer it.
+	 */
+	z
+		.object({ op: z.literal("hub.updates") })
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.check"),
+			requestId,
+			kind: hubItemKind.optional(),
+			name: profileName.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.apply"),
+			requestId,
+			kind: hubItemKind,
+			name: profileName,
+			prefer: z.enum(["local", "remote"]).optional(),
+			acknowledgeUnknownBaseline: z.boolean().optional(),
+			dryRun: z.boolean().optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.applyAll"),
+			requestId,
+			kind: hubItemKind.optional(),
+		})
+		.strict(),
+	z
+		.object({
+			op: z.literal("hub.retry"),
+			requestId,
+			kind: hubItemKind,
+			name: profileName,
 		})
 		.strict(),
 	z.object({ op: z.literal("teams.list") }).strict(),
@@ -1953,7 +2018,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z
-		.object({ op: z.literal("skills.list"), sessionId, name: id.optional() })
+		.object({
+			op: z.literal("skills.list"),
+			/*
+			 * The sessionless arm's pair, both optional, `cwd` wins when both are sent
+			 * (the explicit folder beats the implied one; the route's docstring owns
+			 * the rule). `cwd` given → the folder's own discovery roots (identical to
+			 * the session created there); `session_id` given → the session's cwd
+			 * (compat, for the `/skills` panel and released clients); NEITHER → the
+			 * daemon's home roots, explicitly — never the daemon's process cwd.
+			 */
+			sessionId: sessionId.optional(),
+			cwd: skillCwd.optional(),
+			name: id.optional(),
+		})
 		.strict(),
 	z.object({ op: z.literal("sessions.failovers"), sessionId }).strict(),
 	z
@@ -3521,6 +3599,55 @@ export function moveClientBoundMs(shape: MoveShape): number {
 	);
 }
 
+/*
+ * THE HUB'S WRITES ARE MODEL MERGES, so they sit on their own budgets, ABOVE the
+ * backend's (agent review round 1, R2; UX U9).
+ *
+ * MIRRORED FROM THE BACKEND, NEVER CHOSEN HERE: `hub_sync/resolver.py` gives one
+ * item `MERGE_ITEM_TIMEOUT_S = 120.0` of wall time (retries included), and
+ * `apply`/`retry` first re-check that one item against the hub over the network.
+ * On the 20 s control budget this layer gave up FIRST, told the person the update
+ * "may or may not have reached the server", and their natural next press minted a
+ * new request id (so the server's receipts could not dedupe it) and started a
+ * SECOND concurrent merge.
+ *
+ * - `hub.apply` / `hub.retry`: one item = the 120 s merge + its network check and
+ *   the write, with the same margin the move envelope uses (`MOVE_CLIENT_MARGIN_S`).
+ * - `hub.check`: a network read of every linked item, and it applies nothing.
+ * - `hub.applyAll`: SEQUENTIAL over every waiting item, so the honest bound scales
+ *   with a number this file cannot know at request time. It is a generous fixed
+ *   ceiling (five worst-case merges) rather than a promise; a run that outlasts it
+ *   ends in the "still working" sentence and the poll shows what landed. The
+ *   backend stops the run at the first systemic failure, so a typical long run is
+ *   far shorter than the ceiling.
+ */
+const HUB_ITEM_MERGE_S = 120;
+const HUB_ITEM_WRITE_DEADLINE_MS =
+	(HUB_ITEM_MERGE_S + 30 + MOVE_CLIENT_MARGIN_S) * 1000;
+const HUB_CHECK_DEADLINE_MS = 60_000;
+const HUB_APPLY_ALL_DEADLINE_MS = 5 * HUB_ITEM_WRITE_DEADLINE_MS;
+
+const HUB_WRITE_OPS: ReadonlySet<string> = new Set([
+	"hub.apply",
+	"hub.retry",
+	"hub.check",
+	"hub.applyAll",
+]);
+
+function hubWriteDeadlineMs(op: string): number | null {
+	switch (op) {
+		case "hub.apply":
+		case "hub.retry":
+			return HUB_ITEM_WRITE_DEADLINE_MS;
+		case "hub.check":
+			return HUB_CHECK_DEADLINE_MS;
+		case "hub.applyAll":
+			return HUB_APPLY_ALL_DEADLINE_MS;
+		default:
+			return null;
+	}
+}
+
 /**
  * The deadline one request may run for.
  *
@@ -3537,6 +3664,8 @@ export function desktopRequestDeadlineMs(
 		return moveClientBoundMs(request) + MOVE_APP_MARGIN_MS;
 	}
 	const op = typeof request === "string" ? request : request.op;
+	const hub = hubWriteDeadlineMs(op);
+	if (hub !== null) return hub;
 	return LONG_READ_OPS.has(op)
 		? DESKTOP_LONG_READ_DEADLINE_MS
 		: DESKTOP_CONTROL_DEADLINE_MS;
@@ -3646,6 +3775,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"commands.list",
 	"config.get",
 	"credentials.list",
+	"hub.updates",
 	"info.get",
 	"instructions.get",
 	"legacy.agent.get",
@@ -3758,6 +3888,19 @@ export function desktopRequestDeadlineDetail(
 		return {
 			code,
 			message: `The app waits up to ${seconds} seconds for a move, and it was still running when the app stopped waiting. The move was asked for, so its outcome is unknown from here: read the session again before moving it anywhere else.`,
+		};
+	}
+	/*
+	 * A HUB WRITE THAT RAN OUT OF TIME IS STILL RUNNING, and the person's next move
+	 * is to wait, not to repeat it (a repeat is a second merge). The sentence says
+	 * so in the app's own words, without a number of seconds or a mention of what
+	 * "the server" did (UX round 1, U9).
+	 */
+	if (HUB_WRITE_OPS.has(op)) {
+		return {
+			code,
+			message:
+				"This is taking longer than expected. It may still finish; the mark will update.",
 		};
 	}
 	if (READ_ONLY_OPS.has(op)) {
@@ -4487,6 +4630,55 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "PATCH",
 				body: { request_id: request.requestId, ...request.fields },
 			};
+		case "hub.updates":
+			return { path: "/v1/desktop/hub/updates", method: "GET" };
+		case "hub.check":
+			return {
+				path: "/v1/desktop/hub/updates/check",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.kind ? { kind: request.kind } : {}),
+					...(request.name ? { name: request.name } : {}),
+				},
+			};
+		case "hub.apply":
+			return {
+				path: "/v1/desktop/hub/updates/apply",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					kind: request.kind,
+					name: request.name,
+					...(request.prefer ? { prefer: request.prefer } : {}),
+					...(request.acknowledgeUnknownBaseline !== undefined
+						? {
+								acknowledge_unknown_baseline:
+									request.acknowledgeUnknownBaseline,
+							}
+						: {}),
+					...(request.dryRun !== undefined ? { dry_run: request.dryRun } : {}),
+				},
+			};
+		case "hub.applyAll":
+			return {
+				path: "/v1/desktop/hub/updates/apply-all",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					...(request.kind ? { kind: request.kind } : {}),
+				},
+			};
+		case "hub.retry":
+			return {
+				path: "/v1/desktop/hub/updates/retry",
+				method: "POST",
+				body: {
+					request_id: request.requestId,
+					kind: request.kind,
+					name: request.name,
+				},
+			};
 		case "teams.list":
 			return { path: "/v1/desktop/teams", method: "GET" };
 		case "teams.get":
@@ -5188,11 +5380,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
-		case "skills.list":
+		case "skills.list": {
+			/*
+			 * Built from the PRESENT fields only, in a fixed order, so the wire URL is
+			 * a function of the request and nothing else: `cwd` and `session_id` are
+			 * each optional, and a request with neither is the home-roots read rather
+			 * than a malformed one. Encoding is `URLSearchParams`', which is what the
+			 * `name` field was already encoded with (a name can never collide with a
+			 * query delimiter, but the cwd can).
+			 */
+			const query = new URLSearchParams();
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			if (request.cwd) query.set("cwd", request.cwd);
+			if (request.name) query.set("name", request.name);
+			const encoded = query.toString();
 			return {
-				path: `/v1/desktop/skills?session_id=${request.sessionId}${request.name ? `&name=${encodeURIComponent(request.name)}` : ""}`,
+				path: `/v1/desktop/skills${encoded ? `?${encoded}` : ""}`,
 				method: "GET",
 			};
+		}
 		case "sessions.failovers":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/failovers`,

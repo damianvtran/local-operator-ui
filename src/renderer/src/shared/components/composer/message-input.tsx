@@ -303,6 +303,11 @@ import { ScrollToBottomButton } from "@features/chat/components/scroll-to-bottom
  * which component modules cannot be.
  */
 import { skillCompletionFor } from "@features/chat/components/skill-completion";
+/*
+ * The `$` INK, a pure builder beside the slash one and merged below the plan
+ * gate rather than inside it (`skill-highlight.ts` states the gates).
+ */
+import { skillHighlightRuns } from "@features/chat/components/skill-highlight";
 import {
 	parseSkillInvocation,
 	renderSkillInvocation,
@@ -2296,20 +2301,24 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							unconfirmed: string[];
 					  }
 					| undefined;
-				const seam = credentialSessionId
-					? undefined
-					: async (sessionId: string) => {
-							settled = await storeCitedCredentials(message, sessionId);
-							return settled.text;
-						};
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it
 				// downstream of every comparison and deadlocked Restore - see
 				// `buildSendPayload`.
-				const carried = seam
-					? { text: message, stored: [], refused: [], unconfirmed: [] }
-					: await storeCitedCredentials(message);
+				/*
+				 * THE COMPLEMENT OF THE SEAM'S CONDITION — and the polarity is the
+				 * whole point: `seam` exists on exactly the panes this ternary does
+				 * NOT store on yet. A draft has no session to store against, so it
+				 * keeps the literal and the store's own admission hook settles it
+				 * through the seam above; an attached pane stores HERE, in the send,
+				 * before the payload is built. Swapping the arms silently detaches
+				 * the citation store from every attached send and double-settles the
+				 * draft (round-2 review, R2-1 — it shipped swapped once).
+				 */
+				const carried = credentialSessionId
+					? await storeCitedCredentials(message)
+					: { text: message, stored: [], refused: [], unconfirmed: [] };
 				if (carried.stored.length > 0)
 					showSuccessToast(storedNotice(carried.stored));
 				/*
@@ -2354,37 +2363,36 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * notice says so and the raw text goes through untouched, which is the
 				 * harness's own trade — a message the user can see and resend beats a
 				 * gesture that looked like it fired and did not. The REQUEST comes from
-				 * the substituted text (`carried.text`) when that still parses to the
-				 * SAME skill, because credential citations may have rewritten it inside
-				 * the request; a different or missing parse keeps the typed request.
+				 * the substituted text (whichever one this path's credential step
+				 * settled on — `composeOutgoing` below takes it as its argument) when
+				 * that still parses to the SAME skill, because credential citations may
+				 * have rewritten it inside the request; a different or missing parse
+				 * keeps the typed request.
 				 */
-				let outgoingText = buildSendPayload(carried.text, replies);
 				const skillNames = skillNamesRef.current;
 				const invocation = parseSkillInvocation(message, skillNames);
 				/*
-				 * `credentialSessionId`, not the pane id: the composer's own "a session
-				 * the host can resolve" predicate (a draft pane's id is not one), and
-				 * `skills.list` resolves the vocabulary from that session's cwd. The same
-				 * predicate the skill LIST reads, so the vocabulary the popup shows and
-				 * the vocabulary this parse reads are one answer.
+				 * THE SESSIONLESS BODY READ (#690's draft-pane finding, closed): the read
+				 * travels with the composer's OWN folder — the staged cwd on a first
+				 * message, the session's cwd once attached — so a `$skill` expands on a
+				 * first message exactly as it does in a live one. The parse still reads
+				 * the TYPED line before anything splices it, and the vocabulary it
+				 * resolves against is the same sessionless answer the list shows.
+				 *
+				 * READ ONCE, ABOVE BOTH COMPOSERS: the attached path's composition and
+				 * the draft path's seam both consume this body, and a second read
+				 * inside the seam would be a second request for an answer already in
+				 * hand.
 				 */
-				if (invocation && credentialSessionId && skillReadProvided) {
+				let skillBody: string | null = null;
+				if (invocation && skillReadProvided) {
 					const body = await readSkillBody(
 						skillReadClient,
-						credentialSessionId,
+						cwd ?? "",
 						invocation.name,
 					);
-					if (body !== null && skillBodyHasContent(body)) {
-						const substituted = parseSkillInvocation(carried.text, skillNames);
-						const request =
-							substituted && substituted.name === invocation.name
-								? substituted.request
-								: invocation.request;
-						outgoingText = buildSendPayload(
-							renderSkillInvocation({ ...invocation, request }, body),
-							replies,
-						);
-					} else if (body !== null) {
+					if (body !== null && skillBodyHasContent(body)) skillBody = body;
+					else if (body !== null) {
 						onSlashNote?.(
 							`skill \`${invocation.name}\` has an empty body — sending your message as written`,
 						);
@@ -2394,6 +2402,46 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						);
 					}
 				}
+				/*
+				 * THE ONE COMPOSITION, over whichever text the credential step settled
+				 * on — and WHY IT IS ONE (QA round 1, Q-1, the blocker). On a DRAFT pane
+				 * the credential work runs inside the store's `beforeAdmission` seam, and
+				 * the store lets that seam's RETURN REPLACE the payload the press built
+				 * (`admitChatDraft`: `(await beforeAdmission(id)) ?? text`). The seam used
+				 * to answer with the substituted raw line, so a first-message `$skill`
+				 * degraded to prose: the read succeeded, the payload was built, and the
+				 * replacement discarded it — the exact string the model then received
+				 * was the typed line. Both paths therefore end HERE: the attached path
+				 * composes once over `carried.text`, the seam composes over the
+				 * substituted text it just settled. One builder, so the two cannot
+				 * drift — the failure was invisible precisely because every gate, the
+				 * read and the list were all working; only the final string was
+				 * replaced.
+				 */
+				const composeOutgoing = (substitutedText: string): string => {
+					if (invocation !== null && skillBody !== null) {
+						const substituted = parseSkillInvocation(
+							substitutedText,
+							skillNames,
+						);
+						const request =
+							substituted && substituted.name === invocation.name
+								? substituted.request
+								: invocation.request;
+						return buildSendPayload(
+							renderSkillInvocation({ ...invocation, request }, skillBody),
+							replies,
+						);
+					}
+					return buildSendPayload(substitutedText, replies);
+				};
+				const seam = credentialSessionId
+					? undefined
+					: async (sessionId: string) => {
+							settled = await storeCitedCredentials(message, sessionId);
+							return composeOutgoing(settled.text);
+						};
+				const outgoingText = composeOutgoing(carried.text);
 				const accepted = await onSendMessage(
 					/*
 					 * THE INVOCATION PAYLOAD WHEN ONE FIRED, the composed text otherwise.
@@ -2501,11 +2549,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// did not read it would keep sending the value captured at mount.
 				inputModeForSend,
 				// The `$skill` expansion (issue #664): the cache a body is read
-				// through, and the note surface for a skill that cannot be loaded.
-				// The VOCABULARY itself rides `skillNamesRef` (see its declaration)
-				// because the send memo is built before the hook that fetches it.
+				// through, the folder the read addresses (the sessionless seam
+				// reads `cwd`, not a session), and the note surface for a skill
+				// that cannot be loaded. The VOCABULARY itself rides
+				// `skillNamesRef` (see its declaration) because the send memo is
+				// built before the hook that fetches it.
 				skillReadClient,
 				skillReadProvided,
+				cwd,
 				onSlashNote,
 			],
 		);
@@ -2660,20 +2711,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		});
 
 		/*
-		 * THE `$skill` LIST (issue #664), the third member of the popup family and
-		 * gated the same ways the other two are: off while a masked capture owns the
-		 * box (its keys never reach a popup, and a `$` inside a secret must not paint
-		 * a list over the mask), and off on a pane with no resolvable session —
-		 * `skills.list` discovers from a session's cwd, so no session is no
-		 * vocabulary, not a policy (`credentialSessionId`'s predicate is the one that
-		 * says a draft pane's id is not a session the host can resolve). The claim
-		 * that suppresses it while a slash context is live at the caret is the hook's
+		 * THE `$skill` LIST (issue #664), the third member of the popup family. Its
+		 * vocabulary is the SESSIONLESS catalogue read, so it answers from the
+		 * composer's OWN folder — the staged cwd on a draft, the session's cwd once
+		 * attached — and a first message can invoke a skill before any session
+		 * exists (that is #690's draft-pane finding, closed). It is off while a
+		 * masked capture owns the box (its keys never reach a popup, and a `$`
+		 * inside a secret must not paint a list over the mask), and where the
+		 * answer cannot be had it states why rather than opening nothing
+		 * (`skill-contract.ts` owns the states and their copy). The claim that
+		 * suppresses it while a slash context is live at the caret is the hook's
 		 * own (`skill-token.ts` documents why the desktop keeps that claim total).
+		 *
+		 * `attached` is the page's `paneHasSession` — the ONE predicate `/skills`
+		 * is refused behind (`slash-dispatch.ts`) — because the empty notice may
+		 * only carry the `/skills` pointer where the pointer can be followed.
 		 */
 		const skills = useSkillCompletion({
 			text: newMessage,
 			caret,
-			sessionId: credentialSessionId,
+			cwd,
+			attached: paneHasSession,
 			commandNames: slash.commandNames,
 			argumentWords: slash.argumentWords,
 			enabled: !isTyping(capture),
@@ -3787,7 +3845,37 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			slash.open,
 			slash.matches.length,
 		]);
-		const highlighting = highlightPaints(slashRuns);
+		/*
+		 * THE `$skill` INK, merged AFTER the plan gate above rather than through it —
+		 * and the order is load-bearing, not tidiness. A `$research fix this` draft
+		 * goes to the model on Enter (`plan.kind` is `send`), so `runsMatchingPlan`
+		 * blanks every run of it: a skill run merged before the gate would blank
+		 * exactly the primary case this tint exists for. The merge below appends the
+		 * `$` runs to the gated slash runs, and the two families cannot overlap by
+		 * construction — a paintable skill token must be LEADING (whitespace-only
+		 * before it), while a slash run needs its `/` word before anything a claim
+		 * could leave it, so at most one family can hold the draft's first token.
+		 *
+		 * The four inputs are the ones `skill-highlight.ts` judges on: the draft, the
+		 * vocabulary the popup reads (one vocabulary, no second request), whether
+		 * that answer is settled, and whether the list is open on the token — which
+		 * suppresses the UNRESOLVED ink only (a resolved name paints through, see
+		 * `spec-reconciliation.md` §2).
+		 */
+		const skillRuns = useMemo(() => {
+			if (composing) return [];
+			return skillHighlightRuns({
+				draft: newMessage,
+				vocabulary: skills.vocabulary,
+				settled: skills.settled,
+				picking: skills.open,
+			});
+		}, [newMessage, composing, skills.vocabulary, skills.settled, skills.open]);
+		const composerRuns = useMemo(
+			() => [...slashRuns, ...skillRuns],
+			[slashRuns, skillRuns],
+		);
+		const highlighting = highlightPaints(composerRuns);
 
 		/**
 		 * Carry out a plan that is not a plain send, and decide what the box holds
@@ -7012,7 +7100,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							 */}
 							<ComposerHighlight
 								draft={newMessage}
-								runs={slashRuns}
+								runs={composerRuns}
 								textareaRef={textareaRef}
 								fieldClassName={composerTextBox(isSmallView)}
 								refused={isInputDisabled}
