@@ -31,6 +31,7 @@ import type { FC } from "react";
 import { memo } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MarkdownTable } from "../chat/components/markdown-table";
 import "../chat/components/markdown.css";
 
 const EXTERNAL_HREF = /^(https?:|mailto:)/i;
@@ -57,6 +58,15 @@ const COMPONENTS: Components = {
 		 */
 		return <span className="font-mono text-mono-sm">{children}</span>;
 	},
+	/*
+	 * The same scroll wrapper the transcript's maps use, from the one shared
+	 * module (`markdown-table.tsx`) rather than a copy: a wide update table
+	 * here must scroll inside its own box exactly as a chat answer's does, and
+	 * the cell rules that make that necessary reach this surface through
+	 * `markdown.css` (shared, as the file header says) while the wrapper is a
+	 * rendered element the maps must each name.
+	 */
+	table: MarkdownTable,
 };
 
 export type ProjectMarkdownProps = {

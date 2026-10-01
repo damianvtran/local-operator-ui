@@ -1176,6 +1176,59 @@ export const STORIES = [
 	 */
 	["chat-canonical-message-surface--user-turn", 1024, 560],
 	/*
+	 * THE MARKDOWN TABLE'S COLUMN WIDTHS (operator report, 2026-09-30): a table
+	 * the agent wrote into an answer rendered with its short columns squeezed
+	 * to a few pixels - the reported cells `#684 (1a)` and `MERGED f11952f1d2`
+	 * wrapped mid-token - while the long prose column beside them took the
+	 * width. Seven fixture shapes from `markdown-tables.stories.tsx`: the reported
+	 * table over real pull requests, a 400+ character cell, unbreakable tokens
+	 * (a full 40-character sha, a deep link, a long path), seven mixed columns,
+	 * and a two-row control - plus the fix's two edge states, `three-shas` (three
+	 * sha columns whose min-contents sum past the measure; the wrapper must
+	 * scroll) and `giant-token` (a 263-character digest; the 64ch cell cap wraps
+	 * it instead), with round 1's three remediation states beside them (named
+	 * below). Five of the shapes are also captured at 920 wide - the narrow
+	 * rung the agent-hub frames use - so the set carries them at a comfort window
+	 * and at a narrow one; both widths resolve the same 810px chat measure, so the
+	 * pair differs in margins rather than in the table's own box (MEASUREMENTS.md
+	 * in the before half carries the reading).
+	 *
+	 * THE BEFORE HALF IS NOT A ROW HERE. It is the declared supplementary set
+	 * `../chat-markdown-tables-before/`: captured FIRST from this same tree,
+	 * with the fix not yet written and the story's title temporarily suffixed
+	 * `before` for that run, so the ids land in their own surface directory -
+	 * then the title and the temporary rows were restored. These rows are the
+	 * AFTER half the fix's own capture writes `docs/evidence/
+	 * chat-markdown-tables/` with, and the asymmetry runs one way by design: the
+	 * two edge states are AFTER-only because the before half is the reproduction
+	 * of the report the fix answers, while the containment and ceiling behaviours
+	 * are the fix's own - before the fix there is no wrapper to photograph.
+	 *
+	 * ROUND 1'S REMEDIATION ADDED THREE STATES TO THIS SET: `three-shas-linked`
+	 * (the containment shape with the Repo cells carrying real links - an
+	 * overflowing wrapper that ALSO holds focusable descendants, the mixed case
+	 * the keyboard question was left open on; UX-1), `user-turn` (the reported
+	 * table inside a user bubble - a different container geometry from the 810px
+	 * answer column; D1), and `code-in-cells` (code spans inside cells - the
+	 * `td code` override's live case; Q3). The linked shape is captured at both
+	 * rungs; the other two at 1280 alone.
+	 */
+	["chat-markdown-tables--operator-shape", 1280, 900],
+	["chat-markdown-tables--long-prose", 1280, 900],
+	["chat-markdown-tables--long-tokens", 1280, 900],
+	["chat-markdown-tables--many-columns", 1280, 900],
+	["chat-markdown-tables--few-rows", 1280, 900],
+	["chat-markdown-tables--three-shas", 1280, 900],
+	["chat-markdown-tables--giant-token", 1280, 900],
+	["chat-markdown-tables--three-shas-linked", 1280, 900],
+	["chat-markdown-tables--user-turn", 1280, 900],
+	["chat-markdown-tables--code-in-cells", 1280, 900],
+	["chat-markdown-tables--operator-shape", 920, 900],
+	["chat-markdown-tables--long-tokens", 920, 900],
+	["chat-markdown-tables--many-columns", 920, 900],
+	["chat-markdown-tables--three-shas", 920, 900],
+	["chat-markdown-tables--three-shas-linked", 920, 900],
+	/*
 	 * CURRENCY AND MATH IN ONE MESSAGE (operator report, 2026-09-27). Four
 	 * states of `math-currency.stories.tsx` - a cost report whose amounts must
 	 * stay literal with its bold intact, pandoc's own `$20,000 and $30,000`
@@ -7492,6 +7545,59 @@ export const STORIES = [
 	["mesh-tab--single-device", 1380, 900],
 	["mesh-tab--two-devices", 1380, 900],
 	["mesh-tab--overlapping-networks", 1380, 900],
+	/*
+	 * THE REACH MODEL'S OWN FRAME (feat/mesh-canvas-redesign): five reach states and one
+	 * working device on one canvas, including the three the shipped set could not produce -
+	 * a budget-exhausted peer, a busy conversation, and a drawn device no read named. The
+	 * story carries the relay's own sentences rather than invented ones.
+	 */
+	["mesh-tab--reach-states", 1380, 900],
+	/*
+	 * THE LIST'S OWN REACH FRAME (agent review round 1, M1/D1/U1/U2): the same fixture behind
+	 * one press on `List`. The list-ink fix has two faces - a not-attempted device must read
+	 * `not asked` with NO hue, and a suspect one must carry its reach word plus the shield
+	 * and badge - and neither face existed on the list in any committed frame before this
+	 * row, because `list-view`'s members can produce neither.
+	 */
+	["mesh-tab--reach-states-list", 1380, 900],
+	/*
+	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
+	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
+	 * `shared with this device`), and two that group with nothing.
+	 *
+	 * AND AT BOTH WIDTHS (agent review round 1, D2/U3): the band the layout reserves is the
+	 * fix for two measured causes - a label behind the node above at 1380x900, and the
+	 * topmost label behind the CANVAS'S own top edge at 1024x768 - so the narrow pass is the
+	 * second cause's proof, the same way `two-devices-narrow` is the responsive claim's.
+	 */
+	["mesh-tab--scopes", 1380, 900],
+	["mesh-tab--scopes", 1024, 768, { dir: "scopes-narrow" }],
+	/*
+	 * THE DECLARED TIER, WHICH NO INSTALL CAN RENDER (design review round 1, D6): the
+	 * story sets the membership field the client half reads (`scope`), so the shipped
+	 * styling is verifiable; the README states, in the same words, that no backend sends
+	 * the field yet.
+	 */
+	["mesh-tab--scopes-declared", 1380, 900],
+	/*
+	 * THE SHARED OPENER (agent review round 2, M4): a peer publishing a LAN address and a
+	 * tunnel address is topmost in TWO groups at once - the collision the reviewer's
+	 * repro measured as two labels on one anchor, with no frame to show it. The state is
+	 * the M4 case itself (two levels), at both widths because the narrow pass is where
+	 * the fit's floor binds; `scopes-nested` is the ruling's "n = 3 if cheap" - three
+	 * INFERRED levels on the same row (a declared tier can never nest: an authored scope
+	 * excludes the device from the prefix arithmetic, which is why that draft was
+	 * replaced) - so the staircase's full pitch is on disk too.
+	 */
+	["mesh-tab--scopes-shared-top", 1380, 900],
+	[
+		"mesh-tab--scopes-shared-top",
+		1024,
+		768,
+		{ dir: "scopes-shared-top-narrow" },
+	],
+	["mesh-tab--scopes-nested", 1380, 900],
+	["mesh-tab--scopes-nested", 1024, 768, { dir: "scopes-nested-narrow" }],
 	["mesh-tab--misconfigured", 1380, 900],
 	["mesh-tab--virgin-device", 1380, 900],
 	["mesh-tab--reads-failed", 1380, 900],
@@ -7633,6 +7739,12 @@ export const STORIES = [
 	// The narrow case, with the panel open: the column and the canvas have to fit
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
+	/*
+	 * AND THE PANEL'S `never` (design review round 1, D6): a null `Last status frame` on
+	 * the single-device fixture, which every other panel story's stamp kept out of the
+	 * committed set. The play presses the node's own button and waits for the words.
+	 */
+	["mesh-tab--single-device-panel", 1380, 900],
 	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped
@@ -7858,6 +7970,146 @@ export const STORIES = [
 				selector: '[role="menu"]',
 				includes: "Unarchive conversation",
 			},
+		},
+	],
+	/*
+	 * THE CHAT HEADER'S DEVICE CONTROL (feat/chat-move-control), one surface, in the
+	 * states the design's own spec names. WHAT EACH ROW CLAIMS, because a frame's name
+	 * has to be true rather than aspirational:
+	 *
+	 * - `before-new-chat` is the SAME TREE with `deviceSlot` omitted - the design's own
+	 *   before half, and the reason the header can be read against it pixel for pixel;
+	 * - `draft-against-live` is the PAIR the whole design exists for: `New on this
+	 *   device` and `On this device` differ by one word, and a user who reads a draft as
+	 *   a live session waits for output that is not coming;
+	 * - `new-chat-peer` is the same draft after the destination was set to a peer - the
+	 *   destination rides the draft row, which is the field `sessions.create` sends;
+	 * - `arrived-cold` and `arrived-live` are the two arrival sentences. The cold one's
+	 *   SECOND line is mandatory (`expectSentence` claims it), and the live one is only
+	 *   reachable when the wire says the destination engaged - nothing here guesses from
+	 *   a peer's build;
+	 * - `refused-busy` claims the remedy's own label, the one the Mesh tab already
+	 *   ships, on the app's existing notice;
+	 * - the four picker rows OPEN THE REAL MENU with a real pointer press and claim the
+	 *   panel is present before the shutter, so a frame cannot ship under a picker name
+	 *   with the menu never opened. `picker-live-local` additionally claims an ineligible
+	 *   row is present (a device that cannot receive a move stays visible and explained,
+	 *   never hidden), and `picker-ineligible-hover` is the pointer case for the same row,
+	 *   which is how "ineligibility is not a dimmed name" is photographed rather than
+	 *   argued: the row keeps `ink-muted` ink and takes no hover wash.
+	 */
+	["chat-device--before-new-chat", 1000, 168],
+	["chat-device--before-live-local", 1000, 168],
+	["chat-device--draft-against-live", 1000, 268],
+	["chat-device--new-chat-local", 1000, 168],
+	["chat-device--new-chat-peer", 1000, 168],
+	["chat-device--live-local", 1000, 168],
+	["chat-device--live-remote-moved", 1000, 168],
+	["chat-device--live-remote-unreachable", 1000, 168],
+	["chat-device--moving", 1000, 268, { expectSentence: "Moving to build-box" }],
+	[
+		"chat-device--arrived-cold",
+		1000,
+		320,
+		{ expectSentence: "Nothing is running on build-box yet." },
+	],
+	[
+		"chat-device--arrived-live",
+		1000,
+		268,
+		{ expectSentence: "running there now" },
+	],
+	/*
+	 * THE RECALL'S ARRIVAL (agent review round 2, R2-3): the state R1-1/QA Q-1/UX U2
+	 * are all about - the conversation came HOME, and the copy that was deleted is the
+	 * one on the peer - shipped as a story with no frame in the set. The sentence it
+	 * claims is the recall's own verb, which is the half a reader has to be able to
+	 * check against the chip above it.
+	 */
+	[
+		"chat-device--recalled",
+		1000,
+		268,
+		{
+			expectSentence: "Moved back to this device",
+			expectPresent: '[data-device-notice="moved"]',
+		},
+	],
+	/*
+	 * §2.4'S HOLD IS NOT IN THIS SET, AND THE ROUND-1 DISCLOSURE SAID SO FALSELY (agent
+	 * review R2-3). The strip IS implemented (`chat-device-hold.tsx`, composed by the page
+	 * through `MessageInput`'s `deviceHold` prop) and it needs a frame - but it cannot come
+	 * from here: `MessageInput` reads the preload seam (`window.api` / `ipcRenderer`) and
+	 * Storybook has no such bridge, so a story that mounts it renders Storybook's own
+	 * error display, which this rig refuses to photograph (measured: `chat-device--held`
+	 * failed with `Cannot read properties of undefined (reading 'ipcRenderer')`). The
+	 * hold's frame is therefore an APP capture, in the supplementary set the manifest
+	 * declares beside this one - the same rule the sidebar's live frames follow.
+	 */
+	[
+		"chat-device--refused-busy",
+		1000,
+		268,
+		{ expectSentence: "Wait for the turn to finish" },
+	],
+	["chat-device--narrow-band", 1000, 460],
+	[
+		"chat-device--new-chat-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: "[data-device-picker]",
+			dir: "picker-new-chat",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: ["[data-device-picker]", '[data-device-row="ineligible"]'],
+			dir: "picker-live-local",
+		},
+	],
+	[
+		"chat-device--live-remote-moved",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: "[data-device-picker]",
+			dir: "picker-live-remote",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			keys: [{ key: "ArrowDown", settleMs: 300 }],
+			expectPresent: [
+				"[data-device-picker]",
+				"[data-device-picker] [data-highlighted]",
+			],
+			dir: "picker-keyboard-highlight",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			hover: '[data-device-row="ineligible"]',
+			hoverSettleMs: 400,
+			dir: "picker-ineligible-hover",
 		},
 	],
 ];
