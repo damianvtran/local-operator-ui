@@ -29,6 +29,7 @@
  */
 
 import { publishStagedProjection } from "@features/browser/model/browser-projection-store";
+import { clampSidebarWidth } from "@features/chat/chat-sidebar-layout";
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
@@ -666,7 +667,15 @@ export function installDevDriver(): string[] {
 			if (!Number.isFinite(asked)) {
 				throw new Error("sidebar width must be a number");
 			}
-			const width = Math.min(360, Math.max(240, asked));
+			/*
+			 * THE APP'S OWN RANGE, not a copy of it (220..320, `chat-sidebar-layout.ts`). This
+			 * verb carried 240..360 from before the clamp moved, so a scene that asked for the
+			 * floor's 220 was told `clamped: true` and photographed a 240 panel - and 320, which is
+			 * the real maximum, was the only upper width the scenes could ever ask for anyway. A
+			 * second spelling of the clamp here is how the two drifted; the store applies this
+			 * same one, so the answer below reports the width actually painted.
+			 */
+			const width = clampSidebarWidth(asked);
 			useUiPreferencesStore.getState().setChatSidebarWidth(width);
 			await nextFrame();
 			return {
