@@ -125,10 +125,20 @@ export type BoundaryKind = "compaction" | "terminal";
 /**
  * A durable COMPLETION MARKER: the notice the transcript paints for a completion
  * attention record (`Stopped with an error`, `Interrupted`, and the neutral
- * `closed` / `retired` receipts). The run partition's "a marker closes this run"
- * test and the working line's "the turn stopped" test read this too, so the three
- * consumers of "a marker was seen" are one definition rather than three copies of
- * `kind === "notice" && complete === true`.
+ * `closed` / `retired` receipts).
+ *
+ * WHO READS IT (moved by the run-closure predicate change, 2026-09-30, review
+ * round 1's R5). This used to be the shared test three consumers read - the run
+ * partition's "a marker closes this run" clause among them - which is exactly how
+ * the narrow copy drifted from `boundaryKindOf`: the partition ignored the
+ * error-level `custom` a `session_incident` is, so a killed turn's retry was
+ * absorbed as a steer (`walkTurns` in `transcript-rows.ts` states the defect).
+ * The partition now reads `isTerminalMarker`. What is left here is one consumer,
+ * `working-line-model.ts`'s `turnStopped` - the live working line's "the turn
+ * stopped" reading, where a completion notice genuinely is the whole question and
+ * an error-level custom is not - and `boundaryKindOf`'s own notice arm. That
+ * asymmetry is deliberate: the boundary vocabulary is what the transcript uses to
+ * END things, and only the two readers above ask the narrower question.
  */
 export function isCompletionMarker(record: TranscriptRecord): boolean {
 	return record.kind === "notice" && record.complete === true;
