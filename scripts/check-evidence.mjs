@@ -403,7 +403,7 @@ const overrideDirFor = (id) => {
  * round earlier, Q5). `refreshedStories` is what a reader follows to the frames,
  * so an entry that resolves to nothing describes a run that did not happen.
  */
-const claimedStory = (id, surface, leaf) => {
+export const claimedStory = (id, surface, leaf) => {
 	const cut = id.indexOf("--");
 	if (cut === -1 || id.slice(0, cut) !== surface) return false;
 	const name = id.slice(cut + 2);
@@ -689,7 +689,7 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  * those frames declares the sets that do cover it, so the uncovered delta is
  * named rather than implied.
  */
-export const stampFailures = (manifest, git = gitOut) => {
+export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	const out = [];
 
 	for (const [field, path] of [
@@ -764,8 +764,8 @@ export const stampFailures = (manifest, git = gitOut) => {
 	if (typeof manifest.frames === "number") {
 		const declaredDirs = (manifest.supplementary ?? [])
 			.filter((set) => typeof set.path === "string" && set.path.length > 0)
-			.map((set) => join(EVIDENCE, set.path));
-		const swept = frames(EVIDENCE).filter(
+			.map((set) => join(dir, set.path));
+		const swept = frames(dir).filter(
 			(file) => !declaredDirs.some((dir) => file.startsWith(`${dir}/`)),
 		).length;
 		if (manifest.frames !== swept)
@@ -787,7 +787,7 @@ export const stampFailures = (manifest, git = gitOut) => {
 	 * And the PROSE the fields are explained by, which is what a reader checks a
 	 * fold against (round 3, R3-1).
 	 */
-	out.push(...countsMeanFailures(manifest, git));
+	out.push(...countsMeanFailures(manifest, git, dir));
 
 	return out;
 };
@@ -799,13 +799,13 @@ export const stampFailures = (manifest, git = gitOut) => {
  * about by the `surfaces` field AND by the prose that explains it, and two
  * mechanisms reading one literal is how they drift.
  */
-const declaredStoryRows = (capture) => {
+export const declaredStoryRows = (capture) => {
 	const block = capture.slice(capture.indexOf("const STORIES = ["));
 	return (block.slice(0, block.indexOf("\n];")).match(/^\t\[/gm) ?? []).length;
 };
 
 /** The theme names `capture-evidence.mjs` declares, counted the same way. */
-const declaredThemeNames = (capture) => {
+export const declaredThemeNames = (capture) => {
 	const block = capture.slice(capture.indexOf("const THEMES = ["));
 	return (block.slice(0, block.indexOf("\n];")).match(/^\t"/gm) ?? []).length;
 };
