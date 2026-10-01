@@ -77,13 +77,13 @@ before, and four are byte-identical, which is the check rather than the claim
 
 | Frame | Head it was taken at | Changed by the round-3 fix? |
 |---|---|---|
-| `after-collapsed-dark.png` | `2fbf422f3e` | **changed** — the delivered row's summary starts 20px further left |
-| `after-collapsed-light.png` | `2fbf422f3e` | **changed** — same shift, light palette |
-| `after-narrow-dark.png` | `2fbf422f3e` | **changed** — at 390px the summary is truncated, so the freed 20px shows as more characters |
-| `after-failure-expanded-dark.png` | `2fbf422f3e` | **changed** — the refusal's row and its `Error` block, same shift |
+| `after-collapsed-dark.png` | `2fbf422f3e` | **changed at the FAILED row only** — its unspent slot collapsed, so its word (`not delivered`) starts 14px further right; the delivered row inside the same frame is byte-identical |
+| `after-collapsed-light.png` | `2fbf422f3e` | **changed** — the same 14px, light palette |
+| `after-narrow-dark.png` | `2fbf422f3e` | **changed** — at 390px the summary is already truncated, so the refusal shows both halves of the 14px: its word moves right and its summary cell gains the width |
+| `after-failure-expanded-dark.png` | `2fbf422f3e` | **changed above y ≈ 133 CSS only** — the refusal's own row (its word's position, its summary's width). The expanded `Error` block below it is identical across the cut, which is the part this frame is cited for |
 | `after-too-narrow-dark.png` | `2fbf422f3e` | unchanged from the earlier re-shot version — the refusal's summary reads `w…` (7px → 21px measured), containment still 240/240 |
-| `after-open-mailbox-dark.png` | `2fbf422f3e` | byte-identical — at 1280px nothing truncates, so the shift is invisible |
-| `after-open-unconfirmed-dark.png` | `2fbf422f3e` | byte-identical — same reason |
+| `after-open-mailbox-dark.png` | `2fbf422f3e` | byte-identical — **the failed row is below this story box's clip**, and the failed row is the only one the fix moves (design round 4, D8: "nothing truncates at 1280px" was the wrong reason) |
+| `after-open-unconfirmed-dark.png` | `2fbf422f3e` | byte-identical — same clip, same reason |
 | `after-folded-dark.png` | `2fbf422f3e` | byte-identical — the folded bar draws no row |
 
 The two frames the round-2 pass re-shot for its own reasons (the refusal's frame
@@ -102,9 +102,10 @@ from one head.
   separate surface.
 - The 320px frame contains every row in its box (QA round 2, Q1). The refusal is
   at its floor there and its summary is the cell that gives way first — but no
-  longer to a single character: the mark slot used to reserve 14px plus a 6px gap
-  for a mark a `failed` row never draws, and that unspent 20px was the difference
-  (design round 3, D5; the slot now sizes itself only when it holds a mark, and
+  longer to a single character: the mark slot used to reserve 14px for a mark a
+  `failed` row never draws, and that unspent 14px was the difference (the
+  cluster's 6px gap stays - it is the slot, not the gap, that was reclaimed)
+  (design round 3, D5; the slot now sizes itself only when it holds a mark - 14px measured, not the 20px this README first said, because the cluster's 6px gap stays; design round 4, D9 - and
   the frame was re-shot). Below 320px the refusal's own fixed parts reach the box
   edge again.
 - **The 390px row is 310px (19.375rem), measured, against the 304px breakpoint**
