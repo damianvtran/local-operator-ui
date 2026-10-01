@@ -718,7 +718,8 @@ export const BackendSettingsSection: FC<BackendSettingsSectionProps> = ({
 		/* One authority for both cards (Q-6): the sentence for the cause main published,
 		   and whether an act exists at all. */
 		const { sentence: pairingSentence, remedy } = pairingCardCopy(
-			pairingCause,
+			/* `?? null`: no answer yet keeps the fallback branch, as no cause does (the hook's three states). */
+			pairingCause ?? null,
 			"Your settings could not be loaded.",
 			loadError,
 		);

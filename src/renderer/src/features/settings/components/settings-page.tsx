@@ -298,7 +298,8 @@ export const SettingsPage: FC = () => {
 	const pairingCause = usePairingCause();
 	const { sentence: loadErrorSentence, remedy: loadErrorRemedy } =
 		pairingCardCopy(
-			pairingCause,
+			/* `?? null`: no answer yet keeps the fallback branch, as no cause does (the hook's three states). */
+			pairingCause ?? null,
 			"Your settings could not be loaded.",
 			configError,
 		);
