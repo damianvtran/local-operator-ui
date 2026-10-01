@@ -14,7 +14,16 @@ const settingKey = z
 	.max(256)
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
-const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
+/**
+ * The canonical stream session id, as the wire spells it.
+ *
+ * Exported beside the schema so a client that holds a session KEY rather than
+ * a session id (a draft pane's "draft:<uuid>") can tell the two apart before
+ * composing a request — a second copy of the regex at the call site is where
+ * the two answers would drift (PR #726, QA Q-1).
+ */
+export const sessionIdPattern = /^[a-f0-9]{12}$/;
+const sessionId = z.string().regex(sessionIdPattern);
 /*
  * The folder a SESSIONLESS skills read is discovered from.
  *
@@ -35,12 +44,22 @@ const skillCwd = z.string().min(1).max(4096);
 const mcpServerName = z.string().regex(/^[A-Za-z0-9_.:-]{1,100}$/);
 const mcpSecretReference = z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/);
 const mcpOperationId = z.string().regex(/^[a-f0-9]{32}$/);
-/** An absolute POSIX or Windows directory path; the backend checks it exists. */
-const mcpCatalogCwd = z
-	.string()
-	.min(1)
-	.max(4096)
-	.regex(/^(\/|[A-Za-z]:[\\/])/);
+/**
+ * An absolute POSIX or Windows directory path; the backend checks it exists.
+ *
+ * Exported because a CLIENT sometimes holds a value that is not what it
+ * appears: the composer's own `cwd` is the pane's DISPLAY string ("~" for
+ * home) and its draft panes key their session as "draft:<uuid>". Sent raw,
+ * both are refused by the schemas here BEFORE any byte reaches the backend, so
+ * the sessionless MCP read died as a 422 and the composer's `/mcp` list
+ * rendered empty (PR #726, QA Q-1) — the read performed fine everywhere a
+ * fixture stood in for the transport. `mcp-catalog.ts` coerces with these two
+ * patterns; the schemas below stay the one enforcement point, and the bound
+ * mirror is there so a coerced value cannot fail a term the pattern does not
+ * check.
+ */
+export const mcpCatalogCwdPattern = /^(\/|[A-Za-z]:[\\/])/;
+const mcpCatalogCwd = z.string().min(1).max(4096).regex(mcpCatalogCwdPattern);
 /**
  * The wire shape of a canonical stream subscription id.
  *
@@ -4313,6 +4332,32 @@ export type DesktopProvider = {
 	base_url: string | null;
 	/** See `ProviderMethod.suggested_model`; optional for older backends. */
 	suggested_model?: SuggestedModel | null;
+	/*
+	 * The additive fields of the provider-catalogue contract (`provider_catalogue`
+	 * capability), which both this app's composer and the TUI read. Optional
+	 * because a backend that predates the capability omits them: readers fall
+	 * back to what the older snapshot carried, and the composer's provider lists
+	 * are licensed by the capability itself.
+	 */
+	/** The clean title the backend owns: "OpenAI" for "OpenAI (ChatGPT Plus/Pro)". */
+	brand?: string;
+	/** The declared capability vocabulary (`chat`/`tts`/`stt`). */
+	capabilities?: string[];
+	/** The machine form of the TUI's three-plus-two credential states. */
+	state?:
+		| "logged_in"
+		| "env_key"
+		| "needs_login"
+		| "local_ready"
+		| "local_unconfigured";
+	/**
+	 * The stored account's label when the provider holds exactly ONE credential
+	 * row; `null` (or absent) otherwise — the account-level choice stays in
+	 * `LogoutPicker`.
+	 */
+	identity?: string | null;
+	/** Stored credential rows; the same count as `stored_credentials`, named for the logout rows. */
+	account_count?: number;
 };
 export type AuthOperation = {
 	id: string;

@@ -1486,27 +1486,35 @@ test("a slow approach inside the zone is spent once it settles there", () => {
 });
 
 /*
- * THE PAINT IS NOT THE DEMAND. `use-scroll-paging.ts` paints the slot's
- * "Loading earlier messages" from `spendWindows`, so a demand `decide` has
- * REFUSED must not satisfy it: a reader following the tail arms a demand on
- * their first upward notch, the `followingTail` guard returns before the armed
- * branch, and the demand stays armed — retained for when they come back — while
- * nothing is requested and nothing is in flight. Before the gate, that state
- * painted a spinner and announced "Loading earlier messages" through the slot's
- * `aria-live` region (review round 2, R2-3a).
+ * THE PAINT IS NOT THE DEMAND, AND A TAIL DEMAND IS NOT RETAINED. Two contracts
+ * meet here, and both changed hands in the UI perf audit (A4).
  *
- * The case asserts both halves, because either alone is not the claim: the
- * refusal (`action: "none"`, `armed: true`) and the window answer the paint is
- * computed from (outside the zone at 6000px, inside it at 300px). It also
- * asserts the composite expression the DOM half uses, so a later edit to that
- * expression has to face this case rather than a comment — which is what round 3
- * asked for (R3-5), the gate having shipped with no case of its own.
+ * (1) THE PAINT IS GATED ON THE WINDOW, NOT ON `armed`. `use-scroll-paging.ts`
+ * paints the slot's "Loading earlier messages" from `spendWindows`, so a demand
+ * `decide` has REFUSED must not satisfy it. Before the gate, an armed-but-refused
+ * demand painted a spinner and announced "Loading earlier messages" through the
+ * slot's `aria-live` region (review round 2, R2-3a; R3-5 asked for the case).
+ *
+ * (2) THE TAIL GUARD DROPS THE DEMAND. A demand a reader at the tail armed can
+ * never spend while they are there — the guard returns before the armed branch
+ * every frame — so retaining it bought nothing and cost a re-decide forever: the
+ * DOM half re-arms its settle timer for any armed demand, the guard refuses
+ * again 120ms later, and the pair looped until the reader left the tail or the
+ * session changed. Measured against this module before the fix: an armed demand
+ * at the tail is `{action:"none", armed:true}` on every pass. Dropping it is what
+ * ends the loop; a reader who leaves the tail gives a fresh gesture that arms a
+ * fresh demand, so the retained one was never what delivered their page.
+ *
+ * The case therefore asserts, in order: the tail refusal DROPS the demand; the
+ * window answer the paint is computed from (outside the zone at 6000px, inside
+ * it at 300px); and the composite expression the DOM half uses, so a later edit
+ * to that expression has to face a case rather than a comment. The window half
+ * uses a NON-TAIL refusal (inside the settle debounce) because that is where an
+ * armed demand still survives — the tail no longer carries one to test with.
  */
-test("a demand the tail refuses stays armed and outside its spend window", () => {
+test("a demand the tail refuses is dropped, and the paint follows the window not `armed`", () => {
 	const at = GESTURE_GAP_MS;
 	const state = wheelUp(initialPagingState(), at, { travelledPx: 30 });
-	// Inside SETTLE_MS, so only the window can authorise a spend: this is the
-	// frame the pump sees between one notch and the next.
 	const now = at + 40;
 	const tail = geo({
 		distanceFromTopPx: 6000,
@@ -1519,8 +1527,8 @@ test("a demand the tail refuses stays armed and outside its spend window", () =>
 	assert.equal(decided.action, "none", "the tail guard refuses to spend");
 	assert.equal(
 		decided.state.armed,
-		true,
-		"and retains the demand rather than dropping it",
+		false,
+		"and drops the demand rather than carrying it (the 120ms re-decide loop)",
 	);
 
 	const windows = spendWindows(tail);
@@ -1538,14 +1546,31 @@ test("a demand the tail refuses stays armed and outside its spend window", () =>
 		"so the paint expression use-scroll-paging.ts computes stays off",
 	);
 
-	// Not simply always-off: the same armed demand, the same instant, inside the
-	// zone, is in the window — which is why the paint has to be gated on the
-	// window rather than on `armed` or on the window alone.
+	/*
+	 * The window half, with a demand that SURVIVES its refusal. Inside the settle
+	 * debounce and NOT at the tail, the armed branch returns before spending and
+	 * leaves the demand armed — the `{action:"none", armed:true}` state R2-3a was
+	 * about. Its paint is off 6000px from the top and on 300px from it, which is
+	 * the whole point of gating the paint on the window rather than on `armed`
+	 * alone (or on the window alone).
+	 */
+	const held = decide(state, geo({ distanceFromTopPx: 6000 }), now);
+	assert.equal(held.action, "none", "the debounce refuses to spend yet");
+	assert.equal(held.state.armed, true, "and this refusal retains the demand");
+	assert.equal(
+		held.action !== "none" ||
+			held.state.busy ||
+			held.state.pageWidenOwed ||
+			(held.state.armed &&
+				spendWindows(geo({ distanceFromTopPx: 6000 })).inZone),
+		false,
+		"outside the zone the paint stays off even for a retained demand",
+	);
 	const inside = spendWindows(geo({ distanceFromTopPx: 300 }));
 	assert.equal(
 		inside.inZone,
 		true,
-		"inside the zone the same demand is spendable",
+		"inside the zone the same retained demand is spendable",
 	);
 });
 
