@@ -926,8 +926,17 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			continue;
 		}
 		await new Promise((r) => setImmediate(r));
-		assert.equal(quit, outcome === "ok" ? 1 : 0);
-		assert.equal(exit, outcome === "ok" ? null : 1);
+		/*
+		 * A COMPLETED CLEANUP EXITS UNCONDITIONALLY (review round 1, M1). The
+		 * continuation used to re-`quit()`, and a re-entered `will-quit` could
+		 * cancel that second quit again while its own guard returned without arming
+		 * anything — the windowed first quit sitting windowless until a second one
+		 * (QA round 1, Q-1). `app.exit(0)` cannot be cancelled by the re-entry, so
+		 * the settled case is `exit`, not `quit`. The failed case is unchanged: the
+		 * catch's own `app.exit(1)`.
+		 */
+		assert.equal(quit, 0);
+		assert.equal(exit, outcome === "ok" ? 0 : 1);
 		assert.equal(
 			cleared.length,
 			1,
