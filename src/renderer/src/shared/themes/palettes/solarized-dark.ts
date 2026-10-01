@@ -127,6 +127,9 @@ export const solarizedDark: ThemeDefinition = {
 		// Derived: the scheme's recessed tones are panel fills, not 1px lines. Holds ΔE00
 		// 4.2 from every ground and 1.22-1.64:1 against them.
 		hairline: "#1E4955",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.77:1 there against `hairline`'s 1.64:1.
+		hairlineStrong: "#244E59",
 		// Base01 586E75 is 1.14:1 against the grounds — an inactive-tone value in a
 		// structural role. Lifted along the same grey-teal to 3.1:1 on the lightest
 		// ground.

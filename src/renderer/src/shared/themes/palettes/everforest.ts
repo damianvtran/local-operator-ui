@@ -121,6 +121,9 @@ export const everforest: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 4.64.
 		 */
 		hairline: "#4A555C",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 2.09:1 there against `hairline`'s 1.90:1.
+		hairlineStrong: "#505B61",
 		// bg4 4F585E is 1.29:1 on `elevated` — a ground colour doing a
 		// boundary's job. Lifted along the same cool grey.
 		borderControl: "#89949C",
