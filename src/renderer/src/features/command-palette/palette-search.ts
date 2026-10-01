@@ -387,6 +387,23 @@ export const SCOPE_LEGEND: {
 export const CONVERSATION_SWITCHER_SEED = "#";
 
 /**
+ * The query the sidebar's `Open agent…` control opens the palette with (issue
+ * #663): the agents scope, so a roster of any length is two keystrokes away
+ * from the chat column rather than a scan of disclosures.
+ *
+ * The same spelling rule as the switcher seed above - the glyph the scope IS,
+ * so the field shows the reader why the list is agents and backspacing it
+ * widens the surface again - and the same reason to live here: the seed is a
+ * claim about `parsePaletteQuery`'s own table, and
+ * `scripts/palette-search.test.mjs` pins it so it cannot drift from the table
+ * it reads. Unlike the switcher, this seed arrives from a pressure on a band
+ * control rather than a chord; the control opens and then writes it (see the
+ * call site), so an already-open palette moves to the agents view rather than
+ * toggling shut.
+ */
+export const AGENT_ROSTER_SEED = "@";
+
+/**
  * Read a raw query into its scope and its terms.
  *
  * The glyph form is only recognised at the very start (it is a prefix), and the
