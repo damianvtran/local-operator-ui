@@ -992,6 +992,16 @@ export const STORIES = [
 	],
 	["chat-turn-collapse--parked", 1280, 900],
 	/*
+	 * THE COMPLETION-VISIBILITY CELL (`CompletionsBothVisible`): the operator's
+	 * shape `U T88 A1(stop) W T3 A2(stop) K` - a fulsome completion, a wake, a
+	 * short reply - with both completions visible and the work between them
+	 * condensed. The before half is the same cell captured from the base tree
+	 * (the story file copied into a base worktree), where the fulsome close is
+	 * inside the bar.
+	 */
+	["chat-turn-collapse--completions-both-visible", 1280, 900],
+
+	/*
 	 * THE FRESH CONVERSATION'S OWN CELL (agent review round 1's frame
 	 * prerequisite): the harness's `session_mcp_unavailable` statement above the
 	 * reader's FIRST message and a short answer - the shape the run-closure
