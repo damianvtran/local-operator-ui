@@ -14,6 +14,10 @@ Written against UI head `961887cf7c` (this worktree, cut from `origin/main`;
 the shared backend checkout is on a feature branch. Line numbers drift, so each
 claim also names the symbol it is about.
 
+Round 2 (2026-10-01): amended for M5 (the box's own text is the fourth store write,
+and the (a) decision plus the store that owns it), m6 (the image-encoding path in the
+lift list), m7 (navigating away with a dirty field) and n4 (outside vs inside chrome).
+
 Round 1 (2026-09-30): amended for the agent review (B1, M1-M4, m1-m5, n1-n3) and
 for the UX consult, which settled the former Q1 and Q8 (folded into § 2.2 and
 § 2.6, recorded as resolved in § 4). The wire reading and Scope A's write path are
@@ -278,6 +282,14 @@ carries that sentence (`:616-624`). In-place editing does not change that gate.
   that a re-type cannot restore. `defaultPrevented` is checked first so an open
   picker (effort, member search) closes before the field does, reusing the guard
   `useEscapeToCancel` already carries (`detail-parts.tsx:196-210`).
+- **Navigating away with a dirty field commits it, exactly as blur does (m7).**
+  Clicking another roster row, switching the Agents/Teams tab or following a link
+  blurs the field, and blur accepts — so a dirty field commits on the way out. That
+  is the deliberate opposite of Escape, which *reverts*: the pointer has left, the
+  keyboard action was a decision. It is also why the page's discard question is
+  retired with the mode rather than re-pointed — with per-field autosave there is
+  nothing to discard (D2). Until the per-field commit lands the page's existing
+  guard stays as it is (`agents-page.tsx:296-305`, § 2.7).
 - **Affordances — SETTLED (UX consult, was Q8).** A check (accept) and x (revert)
   appear in the field's own row **only while the field is dirty** (`dirty` =
   value differs from base, per-field now rather than whole-record), at a **32x32**
@@ -486,29 +498,66 @@ it would not, and § 3.3 settles both.
 
 ### 3.3 The run's four differences, and how each is reconciled
 
-1. **No canonical session store row — and the mount's store reads are a stated
-   decision, not a "verify later" (M1).** The component reads canonical state on
-   its mount path: `useCanonicalSessionsStore((state) =>
+1. **No canonical session store row — the mount's reads AND writes are a stated
+   decision, not a "verify later" (M1, M5).** The component reads canonical state on
+   its mount path — `useCanonicalSessionsStore((state) =>
    sendUnsettledForSession(state.drafts, conversationId))`
-   (`message-input.tsx:2532-2534`), `useAsideStore` (`:123`, `:1478`), and it can
-   reach a write through slash dispatch, whose destination path calls the router
-   and `upsertSession` (`features/chat/components/slash-dispatch.ts:534-...`, the
-   `/new` branch). **The decision:** the run is allowed the composer's two
-   *reads* — the canonical **drafts lookup** (a pure read keyed by the id; it
-   cannot create a row, and `conversationId` is the run's own id) and the aside
-   read (inert: the run passes no `asideSessionId`) — and is **denied every write
-   path the component owns**:
-   - `onSlashCommand` **is not passed**, so `slash.available && Boolean(onSlashCommand)`
-     (`:3427`) is `false` and the whole slash surface — the one that reaches
-     `upsertSession` — is off;
-   - `mentionsEnabled` is **not enabled** (`:748`);
-   - the run's `onSendMessage` calls `run.start` directly and **never**
-     `admitChatDraft`.
+   (`message-input.tsx:2532-2534`) and `useAsideStore` (`:123`, `:1478`) — and it
+   writes through **two** seams: the **command** path (slash dispatch, whose
+   destination calls the router and `upsertSession` —
+   `features/chat/components/slash-dispatch.ts`, the `/new` branch) and the **box's
+   own text**, mirrored into `useConversationInputStore` on the keystroke path
+   (`setCurrentInput(conversationId, …)`, `use-message-input.ts:691`, `:1100`;
+   `message-input.tsx:2844`), a **persisted** store
+   (`conversation-input-store.ts:774`, `:1377`).
+
+   **Reads — allowed.** The **drafts lookup** is a pure read keyed by the id (it
+   cannot create a canonical row), and the aside read is inert (no
+   `asideSessionId` is passed).
+
+   **Command writes — denied.** `onSlashCommand` **is not passed**, so
+   `slash.available && Boolean(onSlashCommand)` (`:3427`) is `false` and the whole
+   slash surface — the one that reaches `upsertSession` — is off; `mentionsEnabled`
+   is **not enabled** (`:748`); and the run's `onSendMessage` calls `run.start`
+   directly and **never** `admitChatDraft`.
+
+   **The box's text — the fourth write, and M5's decision: (a), keep
+   `conversationId`.** The composer owns the box's text, so the run's text and its
+   attachments live in `useConversationInputStore` **keyed by the run id**, and that
+   is deliberate rather than an oversight. What this bends is named: the second of
+   the three mechanisms in `use-config-run.ts:12-16` reads "nothing about it reaches
+   the canonical session store, **the draft store** or the chat route" — mechanism 2
+   is amended to **"the canonical session store or the chat route"**, because the
+   run id *is* now a key in the input store. The invariant that must not bend is the
+   one the constraint exists for: the run never becomes a **canonical session row** —
+   absent from `lop sessions`, the sidebar and search, never a route, never
+   `upsertSession`ed. A stale `inputByConversation[<run id>]` entry may outlive the
+   run (the id is never re-created, so it can never be shown again); that is the
+   tolerated residue, and § 3.7's test gains it as a row it must *expect* alongside
+   the rows it must never see.
+
+   **Which store OWNS the box's text after the mount: the composer's, not
+   `config-run-store`.** `config-run-store.draft` / `setDraft` / `acceptDraft`
+   (`config-run-store.ts:67`, `:121-123`, `:187`; called `use-config-run.ts:558`,
+   `:619`) exist to keep a draft alive across a *failure*, and the composer's store
+   already provides that — persisted, which is stronger. The run keeps what its own
+   surface needs: `topic` (the strip's "what you asked for") and the accepted text
+   its `retry` re-issues. The "spent only when the send was accepted" rule survives
+   through the send seam rather than a run-level call: the host's `onSendMessage`
+   returns the `SendOutcome` the composer already understands — **`false` when the
+   `sessions.message` call fails**, which is the seam's own "put the text back in
+   the box" answer (`use-message-input.ts:182-196`), and `true` only once that call
+   resolves. `acceptDraft`'s semantics move to the one place that now owns the
+   text. **Option (b)** — a seam that keeps the text in `config-run-store` and
+   bypasses the chat store — was rejected: it needs a new prop the component does
+   not have (§ 3.6 step 2 adds none) and would still need the input store for
+   attachments, so it would bend the same clause with more machinery.
+
    The acceptance test this owes, as the constraint demands
    (`use-config-run.ts:10-14`): after a send from this box, the run id is absent
-   from `lop sessions`, from the sidebar and from search, and never appears in the
-   chat route. That is the *design-level* statement; the note no longer leaves it
-   to implementation to discover.
+   from `lop sessions`, from the sidebar, from search and from the chat route, and
+   no canonical session row is created for it. That is the *design-level*
+   statement; the note no longer leaves it to implementation to discover.
 2. **Background aside, no conversation entry — reuse the existing notice band,
    add no prop (Q5, U4).** The aside sentence is a **permanent footnote, not a
    placeholder**, and U4 requires it to stay the box's `aria-describedby` target,
@@ -601,8 +650,12 @@ both are the manager's to run, not this note's to message:
 ### 3.6 Step plan
 
 1. **Lift the coupled satellites into `shared/`** (§ 3.4), one PR, no behaviour
-   change, parity frames. This is the enabling step and it is reviewable on its
-   own.
+   change, parity frames. The lift list must include the **image binding and
+   encoding path**, or step 3's send accepts chips it cannot encode: `WireImage`
+   (`features/chat/utils/bound-image.ts:57`), `encodeImageAttachments`
+   (`features/chat/components/chat-page.tsx:191`, called `:1708`), and the
+   unreadable-attachment refusal beside it (`utils/attachment-read.ts:65`). This is
+   the enabling step and it is reviewable on its own.
 2. **Add only the seams the run genuinely needs** — with Q5 answered as the
    recommendation there is **no new prop** (the aside rides the existing notice
    band, § 3.3.2); the enabling work is the strip's readings-only use (§ 3.3.3),
@@ -613,8 +666,11 @@ both are the manager's to run, not this note's to message:
    (§ 3.1, B1) — with `conversationId` = the run id (reads allowed, writes denied
    per § 3.3.1), `onSendMessage` = `run.start` extended to carry attachments
    (§ 3.3.4), `frontend` = the run's snapshot with **no** `onCommand`, and the
-   About chip and the aside band as host chrome. Parity evidence for this step is
-   a frame of the **box plus the strip**, not the box alone.
+   About chip and the aside band as host chrome — **two different kinds of host
+   chrome (n4)**: the About chip is host chrome rendered by the page **outside** the
+   component (beside the box), while the aside sentence is host chrome **inside** it,
+   in the composer's notice band (§ 3.3.2). Parity evidence for this step is a frame
+   of the **box plus the strip**, not the box alone.
 4. **Retire `config-composer`'s bespoke *box*, not the file** (n3). What remains
    in `config-composer.tsx` after the mount is the run's own surface: `RunStrip`,
    `RunActivity`, `RunSummary` (`:66-326`), the `EXAMPLES` row, the About chip,
@@ -628,9 +684,13 @@ also keeps the chat unaffected if step 3 slips.
 ### 3.7 Risks to watch during rollout
 
 - **The leak, restated as a test of § 3.3.1's decision.** The mount denies the
-  write paths (no `onSlashCommand`, no `mentionsEnabled`, no `admitChatDraft`).
-  Watch: the run id is absent from `lop sessions`, the sidebar and search after a
-  send from the new box, and the route never becomes `#/chat`.
+  command write paths (no `onSlashCommand`, no `mentionsEnabled`, no
+  `admitChatDraft`). Watch, after a send from the new box: the run id is absent from
+  `lop sessions`, from the sidebar, from search and from the chat route, and no
+  canonical session row exists for it. **One row the test must EXPECT rather than
+  forbid:** `inputByConversation[<run id>]` in the persisted
+  `conversation-input-store` (the box's text, § 3.3.1's (a)) — its presence is the
+  designed bend, its *visibility anywhere* is not.
 - **The strip's reads returning nothing** for a no-draft session, leaving a strip
   that claims a model the run is not on — the exact drift `session-status-strip.tsx:60-75`
   says the slash-dispatch path exists to prevent.
