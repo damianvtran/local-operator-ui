@@ -2985,6 +2985,16 @@ const BRANCH_RECORDS = [
 	 * records and the package.json union - resolved per `citationConvention`.
 	 */
 	"foldOnto7b984851a0Note",
+	/*
+	 * And the lane's SIXTH fold record, the same evening: the sync onto
+	 * `origin/main` = `d10b50764d` (#738 the 0.31.27 release window, #732 the
+	 * agents-roster navigation), taken while CI was still queued on the previous
+	 * head. Registered for the same completeness reason as its siblings: a fold
+	 * resolved from main's copy would drop the statement of what this sync
+	 * carried - the refreshedStories union and the package.json union - resolved
+	 * per `citationConvention`.
+	 */
+	"foldOntod10b50764dNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
