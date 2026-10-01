@@ -107,6 +107,57 @@ test("the keyboard contract: Enter per field type, Escape always, modifiers", ()
 	assert.equal(inlineEditKeyAction({ key: "Escape" }, offEditor), "revert");
 	assert.equal(inlineEditKeyAction({ key: "Escape" }, multi), "revert");
 	assert.equal(inlineEditKeyAction({ key: "a" }, single), null);
+	/*
+	 * THE CHORD WORKS FROM THE FIELD'S OWN CHROME (round 1, n2): the
+	 * description's Write|Preview toggle holds focus after a mode switch, and
+	 * Cmd/Ctrl+Enter there means the same thing as in the textarea - while a
+	 * BARE Enter off the editor stays the control's own activation, and the
+	 * single-line rule keeps requiring the editor.
+	 */
+	const multiChrome = {
+		multiline: true,
+		keyboardCommit: true,
+		onEditor: false,
+	};
+	assert.equal(
+		inlineEditKeyAction({ key: "Enter", metaKey: true }, multiChrome),
+		"accept",
+	);
+	assert.equal(
+		inlineEditKeyAction({ key: "Enter", ctrlKey: true }, multiChrome),
+		"accept",
+	);
+	assert.equal(inlineEditKeyAction({ key: "Enter" }, multiChrome), null);
+	assert.equal(
+		inlineEditKeyAction({ key: "Enter", metaKey: true }, offEditor),
+		null,
+	);
+});
+
+test("the tags comparator is two-argument: the never-clobber rule holds for tags", () => {
+	/*
+	 * The comparator the field passes to the machine is
+	 * `(a, b) => tagsDraftEquals(parseProjectTags(a), b)` - BOTH sides are the
+	 * draft-domain string. The defect this pins (round 1, M2): the field used
+	 * to close over the live record, so `equals(base, fresh)` was vacuously
+	 * true and the conflict could never fire. These two assertions exercise
+	 * the comparator THROUGH the machine's reseed rule.
+	 */
+	const equals = (a, b) => tagsDraftEquals(parseProjectTags(a), b);
+	const ask = (phase, base, draft, fresh) =>
+		inlineEditReseed({ phase, base, draft, fresh, equals });
+
+	/* Spacing is not a change, on either side of the comparison. */
+	assert.equal(equals("q4, payments", "q4,payments"), true);
+	assert.equal(equals("q4,payments", "q4, payments"), true);
+	assert.equal(equals("q4", "q4, payments"), false);
+
+	/* The record moves under a CLEAN draft: adopt silently, never revert. */
+	assert.equal(ask("editing", "a, b", "a, b", "a, z"), "adopt");
+	/* The record moves under a DIRTY draft that does not touch it: commit. */
+	assert.equal(ask("editing", "a, b", "a, c", "a, b"), "none");
+	/* The record moves under a DIRTY draft on the same list: hold. */
+	assert.equal(ask("editing", "a, b", "a, c", "a, c, d"), "conflict");
 });
 
 test("the accept sends only a change", () => {
@@ -158,8 +209,14 @@ test("the description rule reads the shared constant", () => {
 test("a date is YYYY-MM-DD or empty - nothing else", () => {
 	assert.equal(projectDateFieldRule(""), null);
 	assert.equal(projectDateFieldRule("2026-09-30"), null);
-	assert.equal(projectDateFieldRule("2026-9-30"), "Dates are YYYY-MM-DD, or empty.");
-	assert.equal(projectDateFieldRule("tomorrow"), "Dates are YYYY-MM-DD, or empty.");
+	assert.equal(
+		projectDateFieldRule("2026-9-30"),
+		"Dates are YYYY-MM-DD, or empty.",
+	);
+	assert.equal(
+		projectDateFieldRule("tomorrow"),
+		"Dates are YYYY-MM-DD, or empty.",
+	);
 });
 
 test("the range rule fires only when both dates are set and backwards", () => {
@@ -246,33 +303,54 @@ test("a refused write, as the sentence beside the field", () => {
 		"milestones paid, refunds are incomplete - complete or remove the incomplete milestones, then mark it done",
 	);
 	/* Anything else passes through; nothing at all falls back honestly. */
-	assert.equal(projectRefusalCopy({ message: "target_date must not precede start_date" }), "target_date must not precede start_date");
-	assert.equal(projectRefusalCopy({ message: "" }), "The project was not saved.");
+	assert.equal(
+		projectRefusalCopy({ message: "target_date must not precede start_date" }),
+		"target_date must not precede start_date",
+	);
+	assert.equal(
+		projectRefusalCopy({ message: "" }),
+		"The project was not saved.",
+	);
 });
 
 /* ------------------------------------------- projects: the estimate pair */
 
 test("the estimate draft's identity: value-compared, empty keeps", () => {
 	assert.equal(
-		estimateDraftEquals({ number: "13", unit: "points" }, { number: "13", unit: "points" }),
+		estimateDraftEquals(
+			{ number: "13", unit: "points" },
+			{ number: "13", unit: "points" },
+		),
 		true,
 	);
 	/* "13.0" is not a change from "13". */
 	assert.equal(
-		estimateDraftEquals({ number: "13", unit: "points" }, { number: "13.0", unit: "points" }),
+		estimateDraftEquals(
+			{ number: "13", unit: "points" },
+			{ number: "13.0", unit: "points" },
+		),
 		true,
 	);
 	assert.equal(
-		estimateDraftEquals({ number: "13", unit: "points" }, { number: "13", unit: "days" }),
+		estimateDraftEquals(
+			{ number: "13", unit: "points" },
+			{ number: "13", unit: "days" },
+		),
 		false,
 	);
 	/* An emptied number asks to KEEP the current value. */
 	assert.equal(
-		estimateDraftEquals({ number: "13", unit: "points" }, { number: "", unit: "points" }),
+		estimateDraftEquals(
+			{ number: "13", unit: "points" },
+			{ number: "", unit: "points" },
+		),
 		true,
 	);
 	assert.equal(
-		estimateDraftEquals({ number: "", unit: "points" }, { number: "5", unit: "points" }),
+		estimateDraftEquals(
+			{ number: "", unit: "points" },
+			{ number: "5", unit: "points" },
+		),
 		false,
 	);
 });
@@ -280,13 +358,19 @@ test("the estimate draft's identity: value-compared, empty keeps", () => {
 test("the estimate's changed fields: only what moved, never a fake clear", () => {
 	const base = { estimate: 13, unit: "points" };
 	/* A changed number travels alone. */
-	assert.deepEqual(estimateChangedFields(base, { number: "7", unit: "points" }), {
-		estimate: 7,
-	});
+	assert.deepEqual(
+		estimateChangedFields(base, { number: "7", unit: "points" }),
+		{
+			estimate: 7,
+		},
+	);
 	/* A unit alone may change. */
-	assert.deepEqual(estimateChangedFields(base, { number: "13", unit: "days" }), {
-		estimate_unit: "days",
-	});
+	assert.deepEqual(
+		estimateChangedFields(base, { number: "13", unit: "days" }),
+		{
+			estimate_unit: "days",
+		},
+	);
 	/* Both moved: both keys. */
 	assert.deepEqual(estimateChangedFields(base, { number: "7", unit: "days" }), {
 		estimate: 7,
@@ -299,13 +383,19 @@ test("the estimate's changed fields: only what moved, never a fake clear", () =>
 	);
 	/* An EMPTIED number contributes nothing: the wire cannot clear one, and a
 	 * save that claims it did would be the lie the hint exists to prevent. */
-	assert.equal(estimateChangedFields(base, { number: "", unit: "points" }), null);
+	assert.equal(
+		estimateChangedFields(base, { number: "", unit: "points" }),
+		null,
+	);
 	assert.deepEqual(estimateChangedFields(base, { number: "", unit: "days" }), {
 		estimate_unit: "days",
 	});
 	/* From no estimate, a number is the change. */
 	assert.deepEqual(
-		estimateChangedFields({ estimate: null, unit: "points" }, { number: "5", unit: "points" }),
+		estimateChangedFields(
+			{ estimate: null, unit: "points" },
+			{ number: "5", unit: "points" },
+		),
 		{ estimate: 5 },
 	);
 });

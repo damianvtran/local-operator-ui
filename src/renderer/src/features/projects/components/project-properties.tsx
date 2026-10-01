@@ -20,13 +20,22 @@
  * prompt to fill it, and two prompts would race for the same attention.
  */
 
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@shared/components/ui";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import { Plus } from "lucide-react";
 import type { FC, ReactNode } from "react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { DesktopProjectView } from "../../../../../shared/desktop-control-contract";
-import { formatProjectDay, progressAge, progressAgePhrase } from "../project-model";
+import {
+	formatProjectDay,
+	progressAge,
+	progressAgePhrase,
+} from "../project-model";
 import {
 	type CommitProjectFields,
 	ProjectDateField,
@@ -68,7 +77,9 @@ const ReadRow: FC<{ label: string; children: ReactNode }> = ({
 	children,
 }) => (
 	<div className="flex items-start gap-3">
-		<dt className="w-24 shrink-0 pt-0.5 text-body-sm text-ink-muted">{label}</dt>
+		<dt className="w-24 shrink-0 pt-0.5 text-body-sm text-ink-muted">
+			{label}
+		</dt>
 		<dd className="min-w-0 flex-1 text-body-sm text-ink">{children}</dd>
 	</div>
 );
@@ -83,11 +94,26 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 		typeof navigator === "undefined" ? undefined : navigator.language;
 	const now = new Date(nowMs);
 	const [adding, setAdding] = useState<AddableField | null>(null);
+	/**
+	 * The `Add` trigger, and the reason it needs a ref (review round 1, m2): a
+	 * born row cancelled with Esc/x unmounts entirely - there is no pencil to
+	 * hand focus to - so the focus returns to the door that opened it. A row
+	 * that got its value keeps the pencil's own refocus and this stays quiet.
+	 */
+	const addButtonRef = useRef<HTMLButtonElement | null>(null);
+	/**
+	 * Whether the menu's close is the START of an add (M4). Radix's
+	 * `DropdownMenuContent` focuses its trigger back on close, which blurs the
+	 * just-focused input of the born row and cancels it before it can be
+	 * typed into; the repo's own precedent skips that return the same way
+	 * (`chat-header-identity-menu.tsx`).
+	 */
+	const addStartedRef = useRef(false);
 
-	/** Retire a born row; a no-op if the target already moved on. */
-	const retire = (field: AddableField) =>
-		setAdding((current) => (current === field ? null : current));
-
+	/**
+	 * What the record already holds, read once: the menu's offers, the rows'
+	 * visibility and the retire-focus rule all derive from these.
+	 */
 	const has = {
 		owner: project.owner !== null,
 		team: project.team !== null,
@@ -96,6 +122,13 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 		estimate: project.estimate !== null,
 		tags: project.tags.length > 0,
 	} as const;
+
+	/** Retire a born row; a no-op if the target already moved on. */
+	const retire = (field: AddableField, outcome: "cancelled" | "filled") => {
+		setAdding((current) => (current === field ? null : current));
+		if (outcome === "cancelled" && !has[field])
+			setTimeout(() => addButtonRef.current?.focus(), 0);
+	};
 
 	/*
 	 * The menu offers what is missing AND not already being born: a field the
@@ -142,6 +175,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 					<DropdownMenu>
 						<DropdownMenuTrigger asChild>
 							<button
+								ref={addButtonRef}
 								type="button"
 								data-project-add-field=""
 								className={cn(
@@ -153,12 +187,22 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 								Add
 							</button>
 						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
+						<DropdownMenuContent
+							align="end"
+							onCloseAutoFocus={(event) => {
+								if (!addStartedRef.current) return;
+								addStartedRef.current = false;
+								event.preventDefault();
+							}}
+						>
 							{missing.map(({ field, label }) => (
 								<DropdownMenuItem
 									key={field}
 									data-project-add-option={field}
-									onSelect={() => setAdding(field)}
+									onSelect={() => {
+										addStartedRef.current = true;
+										setAdding(field);
+									}}
 								>
 									{label}
 								</DropdownMenuItem>
@@ -174,7 +218,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 							project={project}
 							commit={commit}
 							autoBegin={adding === "owner"}
-							onRetire={() => retire("owner")}
+							onRetire={(outcome) => retire("owner", outcome)}
 						/>
 					)}
 					{showTeam && (
@@ -183,7 +227,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 							commit={commit}
 							label={teamLabel}
 							autoBegin={adding === "team"}
-							onRetire={() => retire("team")}
+							onRetire={(outcome) => retire("team", outcome)}
 						/>
 					)}
 					{showStart && (
@@ -193,7 +237,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 							which="start"
 							nowMs={nowMs}
 							autoBegin={adding === "start"}
-							onRetire={() => retire("start")}
+							onRetire={(outcome) => retire("start", outcome)}
 						/>
 					)}
 					{showTarget && (
@@ -203,7 +247,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 							which="target"
 							nowMs={nowMs}
 							autoBegin={adding === "target"}
-							onRetire={() => retire("target")}
+							onRetire={(outcome) => retire("target", outcome)}
 						/>
 					)}
 					{completed && <ReadRow label="Completed">{completed}</ReadRow>}
@@ -212,7 +256,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 							project={project}
 							commit={commit}
 							autoBegin={adding === "estimate"}
-							onRetire={() => retire("estimate")}
+							onRetire={(outcome) => retire("estimate", outcome)}
 						/>
 					)}
 					{showTags && (
@@ -220,7 +264,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 							project={project}
 							commit={commit}
 							autoBegin={adding === "tags"}
-							onRetire={() => retire("tags")}
+							onRetire={(outcome) => retire("tags", outcome)}
 						/>
 					)}
 					{project.updated_at > 0 && (

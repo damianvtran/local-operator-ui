@@ -90,9 +90,12 @@ cancel, blur accepts iff changed, Enter in the description is a newline while
 Cmd+Enter accepts, a refused write holds its sentence beside the field (a real
 409 `project_name_exists` and the done-gate 422), a field that moved
 out-of-band holds its commit with `Keep mine` / `Use theirs`, and a missing
-field is born inline from the properties block's `+ Add` menu. Its nine frames
-per palette are committed under `docs/evidence/projects-inline-edit/`, whose
-README carries the seed script, the exact command and the check list.
+field is born inline from the properties block's `+ Add` menu (an estimate
+and tags born from none included, and a clean tags draft adopting an
+out-of-band move without reverting it — the two data-integrity cases review
+round 1 reproduced). Its nine frames per palette are committed under
+`docs/evidence/projects-inline-edit/`, whose README carries the seed script,
+the exact command and the check list.
 
 **`--scene sessionless-slash` (issue #625) types five commands — `/help`,
 `/theme`, `/login`, `/logout`, `/resume` — into a NEW chat (`⌘N`, the press

@@ -34,6 +34,7 @@ import type {
 	DesktopProjectView,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
+import { INLINE_EDIT_CONFLICT_SENTENCE } from "@shared/components/inline-edit";
 import {
 	type BoardWindow,
 	PROJECTS_BOARD_ORDER_STORAGE_KEY,
@@ -1507,7 +1508,9 @@ export const InlineEditReveal: Story = {
 		await poll(
 			() =>
 				getComputedStyle(
-					need('[data-project-field="title"] [data-inline-edit-control="begin"]'),
+					need(
+						'[data-project-field="title"] [data-inline-edit-control="begin"]',
+					),
 				).opacity === "1",
 			"the revealed pencil",
 		);
@@ -1531,7 +1534,8 @@ export const InlineEditOpen: Story = {
 			'[data-project-field="title"] [data-inline-edit-control="begin"]',
 		);
 		await poll(
-			() => document.querySelector('[data-project-field="title"] input') !== null,
+			() =>
+				document.querySelector('[data-project-field="title"] input') !== null,
 			"the title editor",
 		);
 	}),
@@ -1689,13 +1693,39 @@ export const InlineEditConflict: Story = {
 		await userEvent.type(input, "2026-09-05");
 		/* The out-of-band write, from the play's own hands. */
 		if (stub.detail) stub.detail.project.start_date = "2026-09-03";
-		/* Past the detail query's 10s staleTime, then the app's own door: a
-		 * window-focus event, which is how a real editor learns the record moved. */
+		/*
+		 * THE DELIVERY IS A FOCUS TRANSITION, not a focus event (review round
+		 * 1, M6): React Query 5.73.3's focusManager subscribes to a BUBBLING
+		 * `visibilitychange` on `window` and tracks one boolean, so the bare
+		 * `focus` dispatch this play used to send was heard by nobody and the
+		 * conflict could never appear. Hidden -> visible is the pair a real
+		 * window switch delivers; the wait before it is the detail query's own
+		 * 10s `staleTime` - a focused query that is not stale is not refetched.
+		 * The recipe is `scripts/hub-round-trips.mjs`'s, kept identical so the
+		 * two rigs cannot drift.
+		 */
 		await new Promise((resolve) => setTimeout(resolve, 10_500));
+		const vis = window as unknown as {
+			__inlineEditVisibility?: string;
+			__inlineEditVisibilityPatched?: boolean;
+		};
+		if (!vis.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => vis.__inlineEditVisibility ?? "visible",
+			});
+			vis.__inlineEditVisibilityPatched = true;
+		}
+		vis.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		vis.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
 		window.dispatchEvent(new Event("focus"));
 		await poll(
 			() =>
-				(document.body.textContent ?? "").includes("Changed elsewhere."),
+				(document.body.textContent ?? "").includes(
+					INLINE_EDIT_CONFLICT_SENTENCE,
+				),
 			"the conflict hold",
 		);
 	}),

@@ -21,7 +21,8 @@ import type { FC } from "react";
 import type { InlineEditPhase } from "./inline-edit-model";
 
 /** The conflict row's fixed interaction words: a choice, not a status. */
-export const INLINE_EDIT_CONFLICT_SENTENCE = "Changed elsewhere.";
+export const INLINE_EDIT_CONFLICT_SENTENCE =
+	"This changed while you were editing";
 export const INLINE_EDIT_KEEP_MINE = "Keep mine";
 export const INLINE_EDIT_USE_THEIRS = "Use theirs";
 
@@ -34,6 +35,8 @@ export type InlineEditFeedbackHandle = {
 	feedbackId: string;
 	keepMine: () => void;
 	useTheirs: () => void;
+	/** The refusal's own door: re-issue the same write (§ 2.6). */
+	accept: () => void;
 };
 
 export type InlineEditFeedbackProps = {
@@ -66,10 +69,37 @@ export const InlineEditFeedback: FC<InlineEditFeedbackProps> = ({
 	return (
 		<div
 			id={api.feedbackId}
-			data-inline-edit-feedback={error && conflict ? "error+conflict" : error ? "error" : "conflict"}
+			data-inline-edit-feedback={
+				error && conflict ? "error+conflict" : error ? "error" : "conflict"
+			}
+			/*
+			 * `role="alert"` so a refusal or a held conflict REACHES a screen
+			 * reader: focus stays in the editor while these appear, and
+			 * `aria-describedby` is only read on re-focus, so without this the
+			 * 409/done-gate sentences and the hold were silent (review round 1,
+			 * m3). The row only renders when there is something to say, so the
+			 * announcement coincides with its arrival.
+			 */
+			role="alert"
 			className={cn("flex flex-wrap items-center gap-x-3 gap-y-1", className)}
 		>
 			{error && <p className="text-meta text-danger">{error}</p>}
+			{error && conflict === null && (
+				/*
+				 * The visible Retry § 2.6 settled - re-issuing the SAME write, which
+				 * is what the slot's check does in `error` (its label says so). The
+				 * copy is given a door of its own because the sentence reads as a
+				 * dead end otherwise; both controls call the same `accept`.
+				 */
+				<button
+					type="button"
+					data-inline-edit-control="retry"
+					onClick={api.accept}
+					className="cursor-pointer text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink"
+				>
+					Retry
+				</button>
+			)}
 			{conflict !== null && (
 				<span className="flex flex-wrap items-center gap-2">
 					<span className="text-meta text-warning">

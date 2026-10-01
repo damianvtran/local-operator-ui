@@ -85,9 +85,20 @@ export function inlineEditKeyAction(
 ): InlineEditKeyAction {
 	if (event.key === "Escape") return "revert";
 	if (event.key !== "Enter") return null;
-	if (!options.keyboardCommit || !options.onEditor) return null;
-	if (options.multiline && !(event.metaKey || event.ctrlKey)) return null;
-	return "accept";
+	if (!options.keyboardCommit) return null;
+	const chord = event.metaKey === true || event.ctrlKey === true;
+	if (options.multiline) {
+		/* A bare Enter is a newline; the chord accepts, and it is deliberately
+		 * NOT gated on the event target (round 1, n2): the description's
+		 * Write|Preview toggle is part of the field's chrome, and a reader who
+		 * checked their markdown and pressed Cmd+Enter from the toggle means
+		 * the same thing as one who pressed it in the textarea. A bare Enter
+		 * still requires the editor, because on any OTHER control in the
+		 * chrome Enter is that control's own activation (the toggle flips, the
+		 * check accepts through its click). */
+		return chord ? "accept" : null;
+	}
+	return options.onEditor ? "accept" : null;
 }
 
 /** What to do when the record's fresh value for this field arrives. */
