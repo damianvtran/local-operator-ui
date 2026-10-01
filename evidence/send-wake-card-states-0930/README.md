@@ -66,15 +66,29 @@ records for the chat measure). The behaviour was read off the rendered frames:
 | 320px | `SendDeliveriesTooNarrow` | **no** | yes | yes (`delivery unconfirmed — it may still arrive, so check before resending`) |
 | any | `failed` row | yes, always | n/a | the drawn word is the announcement |
 
-## Which frames were re-shot for round 2
+## Which frames were re-shot, and why the set is at ONE head
 
-The convergence commit changes two things that are in the pixels: the refusal's
-own sentence (now "Fix the cause named below") and the trailing duration, which
-sheds below the container width the state word already sheds at. So
-`after-failure-expanded-dark.png` and `after-too-narrow-dark.png` were re-shot at
-that head; the other six are unchanged in fact as well as in the diff — the
-duration is drawn at every width those frames use (their rows are 19.375rem and
-wider), and no other frame renders a delivery note.
+The whole gallery was re-shot at the round-3 head (`2fbf422f3e`), because the
+round-3 fix — the status mark slot sizing itself only when it holds a mark — moves
+the summary cell on the GLYPHLESS rows (`delivered`, `failed`) at every width, not
+only at the floor. Four of the eight renders differ from what was published
+before, and four are byte-identical, which is the check rather than the claim
+(sha256 of each new render against the published one):
+
+| Frame | Head it was taken at | Changed by the round-3 fix? |
+|---|---|---|
+| `after-collapsed-dark.png` | `2fbf422f3e` | **changed** — the delivered row's summary starts 20px further left |
+| `after-collapsed-light.png` | `2fbf422f3e` | **changed** — same shift, light palette |
+| `after-narrow-dark.png` | `2fbf422f3e` | **changed** — at 390px the summary is truncated, so the freed 20px shows as more characters |
+| `after-failure-expanded-dark.png` | `2fbf422f3e` | **changed** — the refusal's row and its `Error` block, same shift |
+| `after-too-narrow-dark.png` | `2fbf422f3e` | unchanged from the earlier re-shot version — the refusal's summary reads `w…` (7px → 21px measured), containment still 240/240 |
+| `after-open-mailbox-dark.png` | `2fbf422f3e` | byte-identical — at 1280px nothing truncates, so the shift is invisible |
+| `after-open-unconfirmed-dark.png` | `2fbf422f3e` | byte-identical — same reason |
+| `after-folded-dark.png` | `2fbf422f3e` | byte-identical — the folded bar draws no row |
+
+The two frames the round-2 pass re-shot for its own reasons (the refusal's frame
+and the 320px one) are re-shot again here, so every pixel in this directory comes
+from one head.
 
 ## What these frames do NOT prove
 
