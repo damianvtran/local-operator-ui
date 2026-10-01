@@ -83,10 +83,7 @@ import type {
 import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
-import {
-	DESTINATIONS,
-	destinationNeedsSession,
-} from "@features/chat/pickers/picker-registry";
+import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
 import {
@@ -119,6 +116,10 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import {
+	type RadientSpeechBlock,
+	speechUnavailableReason,
+} from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useAsideStore } from "@shared/store/aside-store";
 import {
@@ -152,6 +153,7 @@ import {
 } from "lucide-react";
 import {
 	forwardRef,
+	memo,
 	useCallback,
 	useEffect,
 	useImperativeHandle,
@@ -441,15 +443,21 @@ export type ComposerSendError = {
 };
 
 /**
- * The absent `recordingProbe`, as the state it reads: no key, and not because
- * the probe could not be asked. One instance rather than a fresh object, so the
- * default cannot churn an identity; the fail-closed direction is stated once
- * (see `recordingProbe` on the props).
+ * The absent `recordingProbe`, as the state it reads: no Radient credential
+ * answered, and not because the probe could not be asked. One instance rather
+ * than a fresh object, so the default cannot churn an identity; the fail-closed
+ * direction is stated once (see `recordingProbe` on the props). The block is
+ * the NEUTRAL class rather than the sign-in one (design round 2, D7): a host
+ * that passed no probe has no read behind the block at all, so the copy must
+ * not claim an ANSWER the way the sign-in sentence does — "could not be
+ * checked" is the literal truth about a probe that was never passed, and the
+ * sign-in sentence stays an answered read's alone (the invariant D1 and D6
+ * state).
  */
 const EMPTY_RECORDING_PROBE: {
-	hasRadientApiKey: boolean;
-	isUnavailable: boolean;
-} = { hasRadientApiKey: false, isUnavailable: false };
+	canUseRadientSpeech: boolean;
+	speechBlock: RadientSpeechBlock;
+} = { canUseRadientSpeech: false, speechBlock: "could-not-check" };
 
 /**
  * Props for the MessageInput component
@@ -743,6 +751,22 @@ export type MessageInputProps = {
 	 */
 	cwdPendingAccepted?: boolean;
 	isSmallView?: boolean;
+
+	/**
+	 * THE HOST PROVIDES ITS OWN HORIZONTAL GUTTER (mini restyle, design D1/D2).
+	 *
+	 * `CHAT_COLUMN_INSET` exists to put the composer's outer edge on the SAME line
+	 * as the transcript above it - 16px of transcript padding plus the 8px
+	 * scrollbar gutter it reserves - and its own comment forbids compacting it,
+	 * because compacting one side of a shared edge is a misalignment. A host with
+	 * no transcript has no such edge to match: the mini frame's own padding IS the
+	 * edge, and inheriting the chat's inset put the box 24px in from the header
+	 * and the hint that sit at the frame's edge (measured: 12 / 12 / 36 in a 640
+	 * window). Declared here rather than papered over with a negative margin. It is
+	 * an OPT-IN, defaulted false, so every existing host keeps the shared edge it
+	 * has today and only a host that is its own gutter says so (reviewer R2-1).
+	 */
+	ownGutter?: boolean;
 	/**
 	 * History has not resolved yet, so "no messages" is not yet a FACT.
 	 * The empty state is a claim about the conversation; making it before the
@@ -750,6 +774,19 @@ export type MessageInputProps = {
 	 * then repainted (design D7).
 	 */
 	isHydrating?: boolean;
+	/**
+	 * This host has NO transcript at all, so the empty-chat prompt is never drawn.
+	 *
+	 * THE MINI VIEW'S OWN FACT, and the reason it is not `isHydrating`: that prop
+	 * says "a page is still owed" (a moment), while a transcriptless host owes no
+	 * page in any state - the composer is a send box and the host paints
+	 * everything around it. `messages: []` alone would render the greeting, the
+	 * brand mark and the suggestion chips (the empty chat's splash), which a
+	 * hotkey-summoned quick-send view must not claim. This suppresses the splash
+	 * and bottom-anchors the box; the transcript-bearing hosts keep their
+	 * splash by leaving it off.
+	 */
+	transcriptless?: boolean;
 	/**
 	 * Whether the `@` affordance may be offered at all — see
 	 * `UseAtPickerArgs.enabled` for the two states this folds and why it fails
@@ -912,19 +949,29 @@ export type MessageInputProps = {
 	 */
 	onCredentialsStored?: (sessionId: string) => void | Promise<void>;
 	/**
-	 * The credential probe's answer, for the voice-input gate: whether this
-	 * document has a Radient API key, and whether the probe could be read at all
-	 * (`isUnavailable` — offline is a different sentence from unconfigured).
+	 * The credential probe's answer, for the voice-input gate: whether a speech
+	 * surface may be enabled on this machine (`canUseRadientSpeech`, the shared
+	 * session-first capability), and the class the disabled tooltip states when
+	 * it may not (`speechBlock` — see `@shared/lib/speech-gate` for the ladder:
+	 * `sign-in` only for an ANSWERED "no account" or a refused credential,
+	 * `checking` while the read is in flight (or the feature negotiation ahead
+	 * of it has not answered), `could-not-check` for an outage or a failed
+	 * negotiation, `offline` for the server being down; issue #674, design
+	 * round 1, D1; design round 2, D6 for the negotiation's own window).
 	 *
 	 * The composer cannot ask this itself any more, for the mount reason
 	 * `onCredentialsStored` states: the probe is a react-query read
 	 * (`useRadientCredentialProbe` -> `useCredentials`). The chat reads it in
 	 * `chat-content.tsx` and passes the answer; a host with no such probe leaves
-	 * the default, which reads as "no key" and carries the app's existing
-	 * sentence for that state — the fail-closed direction, matching
-	 * `mentionsEnabled`.
+	 * the default, which reads as "no key" — the fail-closed direction, matching
+	 * `mentionsEnabled` — and carries the neutral `could-not-check` block rather
+	 * than the sign-in sentence, because no read stands behind it (design round
+	 * 2, D7).
 	 */
-	recordingProbe?: { hasRadientApiKey: boolean; isUnavailable: boolean };
+	recordingProbe?: {
+		canUseRadientSpeech: boolean;
+		speechBlock: RadientSpeechBlock;
+	};
 	/**
 	 * Fired on every change of this composer's take state (the same fact
 	 * `setDictationActive` writes to the shared manager), so a host's own guards
@@ -1407,10 +1454,27 @@ const COMPOSER_BOX = cn(
 	"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
 );
 
+/*
+ * Development render counter — the same instrument `canonical-transcript.tsx`
+ * carries for its rows, and read by the composer's perf harness: incremented in
+ * the render body, so a commit in which the memo boundary below bails out does
+ * NOT count, which is exactly the difference the harness measures. Also exposed
+ * on `window` in development builds, because an automated browser driving the
+ * app cannot import this module's exports.
+ */
+export const messageInputRenderCount: { current: number } = { current: 0 };
+if (import.meta.env.DEV && typeof window !== "undefined") {
+	(
+		window as unknown as {
+			__messageInputRenders?: typeof messageInputRenderCount;
+		}
+	).__messageInputRenders = messageInputRenderCount;
+}
+
 /**
  * MessageInput component
  */
-export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
+const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 	(
 		{
 			onSendMessage,
@@ -1444,7 +1508,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			cwdPending,
 			cwdPendingAccepted,
 			isSmallView = false,
+			ownGutter = false,
 			isHydrating = false,
+			transcriptless = false,
 			unavailable = false,
 			mentionsEnabled = false,
 			mentionsUnsupported = false,
@@ -1460,6 +1526,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		},
 		ref,
 	) => {
+		messageInputRenderCount.current += 1;
 		/*
 		 * The canonical session's cwd is the answer where there is one; the legacy
 		 * agent record is the fallback so the old backend path keeps its chip.
@@ -1613,17 +1680,31 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * THE PROBE IS THE HOST'S READ NOW (see `recordingProbe` on the props): it
 		 * used to be `useRadientCredentialProbe()` here, a react-query read that
 		 * made a provider a mount requirement for every document. The chat reads
-		 * it in `chat-content.tsx`; the absent case reads as "no key".
+		 * it in `chat-content.tsx`; the absent case reads as "no key" and the
+		 * neutral block (design round 2, D7).
+		 *
+		 * AND IT CARRIES THE COPY'S OWN CLASS (issue #674; design round 1, D1):
+		 * `canUseRadientSpeech` is the shared session-first capability and
+		 * `speechBlock` is the account read's class for the disabled tooltip —
+		 * the sign-in sentence is reachable only when the account read ANSWERED
+		 * no, never for an outage or an in-flight read.
 		 */
-		const { hasRadientApiKey, isUnavailable } = recordingProbe;
-		const canEnableRecordingFeature = hasRadientApiKey && !isUnavailable;
+		const { canUseRadientSpeech, speechBlock } = recordingProbe;
+		const canEnableRecordingFeature = canUseRadientSpeech;
 
-		// The probe cannot tell "no key" apart from "could not ask", so the
-		// offline case is named separately rather than sending the user to the
-		// settings page to fix an account that is not broken.
-		const recordingUnavailableReason = isUnavailable
-			? "Voice input is unavailable while Local Operator is offline"
-			: "Sign in to Radient in the settings page to enable audio recording";
+		/*
+		 * The reason the control is off, from the one copy table the five speech
+		 * surfaces share (`@shared/lib/speech-gate`). It is rendered only on the
+		 * disabled arm, and `sign-in` is unreachable for a signed-in reader by
+		 * construction now (issue #674; design round 1, D1): only an ANSWERED
+		 * "no account" or a refused credential earns that sentence — neither an
+		 * outage, an in-flight read, nor a feature negotiation that has not
+		 * answered (design round 2, D6) does.
+		 */
+		const recordingUnavailableReason = speechUnavailableReason(
+			"recording",
+			speechBlock,
+		);
 
 		/*
 		 * Whether the empty-chat prompt belongs in the band.
@@ -1646,7 +1727,8 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * itself stays docked at the band's foot in every state (§G2), which is what
 		 * keeps the first send from moving it.
 		 */
-		const bandCentred = messages.length === 0 && !isHydrating;
+		const bandCentred =
+			!transcriptless && messages.length === 0 && !isHydrating;
 
 		/*
 		 * THE SPLASH IS NOT GATED ON THE COLUMN'S WIDTH (design round 2, D22).
@@ -2275,8 +2357,46 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				if (draftModelUnresolved) {
 					sessionStatus?.onOpenDraftPicker?.("session.model");
-					return;
+					/*
+					 * And the same `false`: this gate refuses the press too - it hands it to the
+					 * picker instead - so the box must keep its text. It was a bare `return`
+					 * (QA Q4's finding, one gate over), which retired a draft the user still
+					 * had to send once they had chosen a model.
+					 */
+					return false;
 				}
+				/*
+				 * A LIVE TAKE OWNS THE KEY (UX review round 1, U2).
+				 *
+				 * While a recording is up, Enter's job is to CONFIRM THE TAKE - the
+				 * recording branch below is that door, and the footer says so
+				 * ("Recording. Press the stop button when you're done."). It was not
+				 * the only door: the window-level recording listener runs after
+				 * React's delegated textarea handler, so the submit had already been
+				 * decided by the time the take's own Enter arrived, and the press
+				 * posted the TYPED draft while the take's words were never written
+				 * (measured live, 3/3: the daemon's history carried the typed text,
+				 * `input_mode: typed`, and no transcript). The dictating user's most
+				 * likely press sent a different message than the one they were
+				 * composing.
+				 *
+				 * Refused HERE, beside the model gate and for its reason: this is the
+				 * one function both doors (the form's submit control and the Enter
+				 * key) reach, so a second gate on the key alone is how the two start
+				 * disagreeing. `isTranscribing` is included because a transcript is
+				 * still landing - a send then would race the take's own write for the
+				 * same box.
+				 */
+				/*
+				 * `return false`, NOT a bare `return` (UX round 2 / QA Q4). `useMessageInput`
+				 * reads only `outcome === false` as a refusal (`use-message-input.ts`) and
+				 * treats `undefined` as an ACCEPTED send: it cleared the box, retired the
+				 * draft and logged the payload with no request ever made - the take's words
+				 * lost and the typed draft gone with them, silently (measured live, 3/3).
+				 * This is the shape the Esc-cancel path already refuses in, so the press now
+				 * leaves the text exactly where the user left it.
+				 */
+				if (isRecording || isTranscribing) return false;
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it
@@ -2551,6 +2671,11 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// The stamp read at the press (see `inputModeForSend`); a memo that
 				// did not read it would keep sending the value captured at mount.
 				inputModeForSend,
+				// The live-take gate above (UX round 1, U2): a memo that captured
+				// these at mount would keep posting the typed draft while a take is
+				// up, which is the defect the gate exists for.
+				isRecording,
+				isTranscribing,
 				// The `$skill` expansion (issue #664): the cache a body is read
 				// through, the folder the read addresses (the sessionless seam
 				// reads `cwd`, not a session), and the note surface for a skill
@@ -2705,6 +2830,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			activeSpec:
 				sessionStatus?.frontend?.effective_model ??
 				sessionStatus?.frontend?.selected_model,
+			/*
+			 * The pane's working directory, for the sessionless MCP catalog read the
+			 * argument list makes — the document it answers depends on this and on
+			 * the session (its query key is `(cwd, sessionId)`).
+			 */
+			cwd,
 		});
 
 		/*
@@ -4388,13 +4519,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * `transcript.clear` and `session.compact` keep their TWO-Enter path — a
 				 * single keystroke never detaches the app or clears the transcript view,
 				 * which is the behaviour they already had.
+				 *
+				 * THE ENTRY IS THE EFFECTIVE ONE (`slash.effectiveEntry`, resolved against
+				 * the capability answer in the hook), which is what keeps `/login`,
+				 * `/logout` and `/mcp` clicking through to their pickers on a backend that
+				 * does not license the inline lists: the hook reports no inline for them,
+				 * so the destination runs exactly as it did before the lists existed.
+				 * The two `runs: false` sources complete on a click — that flag is the
+				 * pointer's whole floor, and it must stay false (spec §4.1).
 				 */
 				const shouldRun =
 					disposition.run &&
 					(row.kind === "command"
 						? pointerPickRuns(
 								row.command.destination,
-								DESTINATIONS[row.command.destination],
+								slash.effectiveEntry(row.command.destination),
 							)
 						: (slash.inline?.runs ?? false)) &&
 					Boolean(onSlashCommand);
@@ -5618,11 +5757,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			 *
 			 * THE REFUSAL TERM IS LOAD-BEARING (review round 1, MAJOR 2), and it is the
 			 * only thing closing the hold path besides `canEnableRecordingFeature`:
-			 * that flag is `hasRadientApiKey && !isUnavailable` (the CREDENTIAL PROBE's
-			 * own flag - offline or no key), which is a different fact from the
-			 * composer's refusal. On the `view.missing` arm, `hasRadientApiKey` is
-			 * true for a configured user, so without `isInputDisabled` a press here
-			 * would write into a box the app has just told the user takes nothing.
+			 * that flag is `canUseRadientSpeech` (the CREDENTIAL PROBE's capability -
+			 * a Radient session or a listed key, and not offline), which is a
+			 * different fact from the composer's refusal. On the `view.missing`
+			 * arm, that capability is true for a configured user, so without
+			 * `isInputDisabled` a press here would write into a box the app has
+			 * just told the user takes nothing.
 			 *
 			 * `isLoading` is deliberately NOT a term (the operator's report): dictation
 			 * is a state of the composer and the composer is writable mid-turn.
@@ -6610,15 +6750,27 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 								? true
 								: undefined
 						}
+						/*
+						 * ONE ROW, THE SENTENCE AND ITS CONTROLS TOGETHER (design review
+						 * round 1, D3). The alert used to stack a sentence line over an
+						 * actions line: 42 px of a 168 px mini window for one sentence and
+						 * one link, and the field moved ~47 px under the user's caret when
+						 * it appeared. Inline is the same information in one wrapping row -
+						 * a long sentence (a store refusal, an unreadable file's name) still
+						 * wraps, and its control wraps with it. The regressions this must
+						 * not reintroduce are the ones the old comment names: the controls
+						 * keep their own hit targets (`min-h-6`, the 24 px floor) and the
+						 * sentence keeps `min-w-0 break-words`.
+						 */
 						className={cn(
 							CHAT_MEASURE,
-							"flex flex-col gap-1 text-body-sm",
+							"flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm",
 							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
 						)}
 					>
 						<p
 							className={cn(
-								"flex items-start gap-1.5",
+								"flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1",
 								composerAlert.muted ? "text-ink-muted" : "text-danger",
 							)}
 						>
@@ -6645,14 +6797,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						{(composerAlert.retry ||
 							composerAlert.clear ||
 							composerAlert.actions.length > 0) && (
-							<div className="flex min-h-6 flex-wrap items-center gap-3">
+							<>
 								{composerAlert.actions.map((action) => (
 									<Button
 										key={action.label}
 										type="button"
 										variant="link"
 										size="sm"
-										className={cn("cursor-pointer text-body-sm underline")}
+										className={cn(
+											"min-h-6 cursor-pointer text-body-sm underline",
+										)}
 										onClick={action.onClick}
 									>
 										{action.label}
@@ -6681,7 +6835,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * `composer-alert-geometry` at 500 for both, which is
 											 * exactly the D2 finding the class was meant to answer.
 											 */
-											"cursor-pointer font-semibold text-body-sm underline",
+											"min-h-6 cursor-pointer font-semibold text-body-sm underline",
 										)}
 										onClick={() => sendError.onRetry?.()}
 									>
@@ -6701,14 +6855,14 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 */
 										aria-label="Clear message"
 										className={cn(
-											"cursor-pointer text-ink-dim text-body-sm underline",
+											"min-h-6 cursor-pointer text-ink-dim text-body-sm underline",
 										)}
 										onClick={() => sendError.onClear?.()}
 									>
 										{CLEAR_LABEL}
 									</Button>
 								)}
-							</div>
+							</>
 						)}
 					</div>
 				)}
@@ -6881,7 +7035,16 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * already at the newest row (`isFarFromBottom`), so the two states that
 					 * own this strip are never drawn together.
 					 */}
-					{!slash.open && !at.open && !skills.open && (
+					{/*
+					 * NOT IN A TRANSCRIPTLESS HOST (design review round 1, N3): a
+					 * document with no transcript has nothing to scroll back to, and the
+					 * control was mounted hidden - 32x32, `tabIndex -1`, inside an
+					 * `aria-hidden` wrapper - which is dead DOM in the mini view and a
+					 * phantom in any rig that counts controls. The `$` list's own guard
+					 * arrived with the skill expansion (#664) and is kept: both are reasons
+					 * not to draw the disc, so the union is the condition.
+					 */}
+					{!transcriptless && !slash.open && !at.open && !skills.open && (
 						<ScrollToBottomButton
 							visible={isFarFromBottom}
 							onClick={scrollToBottom}
@@ -8286,7 +8449,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
 					// small view -- vertical space is what a short window is short of,
 					// and compacting it moves no edge the transcript also owns.
-					CHAT_COLUMN_INSET,
+					ownGutter ? undefined : CHAT_COLUMN_INSET,
 					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
 				)}
 				data-lo-composer-band={true}
@@ -8438,4 +8601,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 	},
 );
 
+/*
+ * THE MEMO BOUNDARY (C1). This component sits under the chat pane, which
+ * re-renders at stream-flush cadence, and it used to re-execute its whole
+ * render on every one of those commits — once per chunk of every streaming
+ * answer — even though a flush changes nothing this box reads. The boundary is
+ * shallow-prop memoisation, so every prop whose identity the pane rebuilds had
+ * to be frozen at its source first (`recordingProbe` in `use-credentials.ts`,
+ * `canonicalStop` in `chat-content.tsx`, and `send`/`dispatchFromControl` in
+ * `chat-page.tsx` via `useStableCallback`); a prop that is still rebuilt per
+ * render would defeat this line, which is why those identities are part of the
+ * contract rather than an optimisation. This changes WHEN the render runs,
+ * never what it produces: everything the box reads reactively — its stores,
+ * its own state — still re-renders it on its own schedule.
+ */
+export const MessageInput = memo(MessageInputForwarded);
 MessageInput.displayName = "MessageInput";

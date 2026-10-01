@@ -44,6 +44,7 @@ import {
 import { PageHeader } from "@shared/components/common/page-header";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { Network } from "lucide-react";
 import { type FC, useCallback, useMemo, useState } from "react";
 import { Navigate } from "react-router-dom";
@@ -688,6 +689,21 @@ export const MeshPage: FC = () => {
 	const state = meshReadState(reads);
 	const graph = useMeshGraph(reads);
 	const transfer = useMeshTransfer();
+	/*
+	 * THE MESH TAB IS A THIRD MOVE SITE, and it settles the row for the same
+	 * reason the chat's two sites do (agent review round 2, R2-1). A move issued
+	 * from this page lands on the same conversations the chat header's chip
+	 * describes - so a recall home ordered HERE, left unsettled, kept the row's
+	 * `locality: "remote"` and the chip went on reading `On <peer>` for a
+	 * conversation that was already home (and the offload direction mirrors it:
+	 * the chip would say `On this device` for one that had left). The rule the
+	 * remediation states - "the receipt owns the row's placement once a move
+	 * lands" - has to hold at every site that lands one, not only the two the
+	 * report happened to flow through.
+	 */
+	const settlePlacement = useCanonicalSessionsStore(
+		(state) => state.settlePlacement,
+	);
 	const invite = useNetworkInvite();
 	const removeMember = useNetworkMemberRemove();
 
@@ -752,6 +768,8 @@ export const MeshPage: FC = () => {
 				onSuccess: (outcome) => {
 					if (outcome.kind === "moved") {
 						const { receipt } = outcome;
+						/* The receipt settles the row the chip and the picker read back. */
+						settlePlacement(plan.sessionId, receipt);
 						const destination =
 							receipt.locality === "local"
 								? "this device"
@@ -812,7 +830,7 @@ export const MeshPage: FC = () => {
 				},
 			});
 		},
-		[graph, transfer],
+		[graph, transfer, settlePlacement],
 	);
 
 	const inviteOptions = useMemo(() => {

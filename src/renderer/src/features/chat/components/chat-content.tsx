@@ -654,6 +654,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				}),
 			[queryClient],
 		);
+		/*
+		 * A MEMOISED STOP, for the reason the probe above is memoised at its source:
+		 * this object is handed to the composer, whose memo boundary compares props
+		 * shallowly, and it used to be rebuilt inline on every render of this
+		 * component — which is once per stream flush. Frozen on the three values it
+		 * is made of, so it is rebuilt exactly when one of them moves: `onStop` is
+		 * the page's `stop` callback, stable since its own `useCallback` fix.
+		 */
+		const canonicalStop = useMemo(
+			() =>
+				canonical?.stopAvailable
+					? { active: canonical.busy, onStop: canonical.onStop }
+					: undefined,
+			[canonical?.stopAvailable, canonical?.busy, canonical?.onStop],
+		);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
 		/*
@@ -761,21 +776,42 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setSessionArchived = useCanonicalSessionsStore(
 			(state) => state.setSessionArchived,
 		);
+		const requestArchiveConfirm = useCanonicalSessionsStore(
+			(state) => state.requestArchiveConfirm,
+		);
 		/*
-		 * The header's archive press, in the same register as the other two routes
+		 * The header's archive press, in the same register as the other routes
 		 * (UX round 1, U2): the pane's menu item, the row's control and a typed
 		 * `/archive` are ONE act. The pane stays open either way - archiving hides, it
 		 * does not close - and the Undo all three offer is raised by the STORE, in the
 		 * update that settles the write (design round 8, D27): raising it here instead
 		 * put the accepted departure and the band that answers it in two commits, and the
 		 * commit between them is where the list's extent dips below the reader's position.
+		 *
+		 * AND THE ACT GAINED A QUESTION (2026-09-30, D1): the header's item STAGES the
+		 * candidate now instead of writing, exactly as `/delete` stages one, so all five
+		 * doors end in the pane's one `ArchiveConversationDialog`. The two halves of this
+		 * callback are therefore different acts rather than one write with a flag: the
+		 * RESTORE still writes straight through - unarchive never confirms, on this
+		 * surface or any other - while the ARCHIVE only asks. `fromRow: false` is what
+		 * says the reader was not standing in the list, so the caret goes back to the
+		 * menu that shut rather than to a successor row.
 		 */
 		const archiveFromHeader = useCallback(
-			async (next: boolean) => {
+			(next: boolean) => {
 				if (!sessionId) return;
-				await setSessionArchived(sessionId, next, agentName);
+				if (!next) {
+					void setSessionArchived(sessionId, false, agentName);
+					return;
+				}
+				requestArchiveConfirm({
+					sessionId,
+					fromRow: false,
+					fromHeader: true,
+					title: agentName,
+				});
 			},
-			[sessionId, agentName, setSessionArchived],
+			[sessionId, agentName, setSessionArchived, requestArchiveConfirm],
 		);
 		const requestSessionDelete = useCanonicalSessionsStore(
 			(state) => state.requestSessionDelete,
@@ -1391,8 +1427,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * The conversation's own actions, offered only where they can act: a draft
 						 * (`sessionId` undefined) has no conversation to archive and no route to
 						 * delete with, so the menu and the pill are absent rather than disabled.
-						 * `onSetArchived` is the same desired-state write the row's control makes,
-						 * so the header and the row cannot drift about what a press means.
+						 * `onSetArchived` is the row's own act reached from the header's door - one
+						 * store path for both (see `archiveFromHeader`), so the header and the row
+						 * cannot drift about what a press means - and since 2026-09-30 that path
+						 * ASKS first for the archive half and writes straight through for the
+						 * restore.
 						 */}
 						<ChatHeader
 							agentName={agentName}
@@ -1426,7 +1465,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							archiveEnabled={archiveEnabled}
 							archived={archived}
 							onSetArchived={
-								sessionId ? (next) => void archiveFromHeader(next) : undefined
+								sessionId ? (next) => archiveFromHeader(next) : undefined
 							}
 							deleteEnabled={deleteEnabled}
 							onRequestDelete={
@@ -1517,6 +1556,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								hasSubagentRuns={(runDetails?.lineage.length ?? 0) > 0}
 							/>
 						)}
+						{/*
+						 * THE ARCHIVE CONFIRMATION IS NOT RENDERED HERE (UX round 1, U1). The
+						 * row's control and `⌘⇧A` work on every route - the sidebar is on all of
+						 * them - and this component exists only on `/chat`, so a dialog mounted
+						 * here left a press from Settings staged with no host and then asked the
+						 * question on the next visit to the chat. It is mounted once in
+						 * `app.tsx`, beside the other app-wide dialogs; the two doors that start
+						 * from this pane pass the pane's title on the candidate instead of as a
+						 * prop.
+						 */}
 						{/* Chat Options Sidebar */}
 						{!canonical && (
 							<ChatOptionsSidebar
@@ -1854,11 +1903,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								unavailable={conversationUnavailable}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
-								canonicalStop={
-									canonical?.stopAvailable
-										? { active: canonical.busy, onStop: canonical.onStop }
-										: undefined
-								}
+								canonicalStop={canonicalStop}
 								/*
 								 * The aside panel's two reads, handed down as the two facts they are rather
 								 * than as a handle to re-derive them from: the SESSION the panel is keyed by

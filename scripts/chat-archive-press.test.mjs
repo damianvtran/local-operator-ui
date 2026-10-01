@@ -131,3 +131,66 @@ test("the record expires on the pointer's own path, not on a clock", () => {
 		"a hand that moved away and came back has made a NEW gesture",
 	);
 });
+
+/*
+ * THE DIALOG'S OWN GESTURE (2026-09-30). Archiving asks first now, so a press opens a
+ * dialog instead of removing the row - and the two questions that raises are about the
+ * guard's RECORD, which is the only state the press leaves behind:
+ *
+ *   - a CANCELLED confirmation must not swallow a deliberate re-press, and
+ *   - the second click of a double-click must not be able to archive.
+ *
+ * Both are answered by the same property, and it is why the rule did not have to change:
+ * the record is expired by the POINTER'S OWN PATH, and reaching the dialog's buttons and
+ * coming back to the row is a journey far beyond the slop. So the next press is a new
+ * gesture whatever row it lands on - including the row the first press was about.
+ */
+test("a gesture that carried on into the dialog expires, so a re-press after a cancel acts", () => {
+	const press = archivePressOutcome(null, at(100, 200), ROW_A);
+	assert.equal(press.drop, false);
+	assert.equal(press.record.sessionId, ROW_A);
+	/*
+	 * The reader travels to the dialog to answer it. The component's pointer path calls
+	 * `archivePressExpired` on every move and clears the record when it is true - so by the
+	 * time the pointer is back on a row, the gesture that opened the dialog is over.
+	 */
+	const backAtTheRow = at(100 + ARCHIVE_PRESS_SLOP_PX + 1, 200);
+	assert.equal(
+		archivePressExpired(press.record, backAtTheRow),
+		true,
+		"a journey to the dialog is a move, and a move ends the gesture",
+	);
+	// With the record cleared (which is what the component does), the deliberate re-press
+	// acts - on the SAME row and on any other one.
+	assert.deepEqual(archivePressOutcome(null, backAtTheRow, ROW_A), {
+		drop: false,
+		record: { x: backAtTheRow.x, y: backAtTheRow.y, sessionId: ROW_A },
+	});
+	assert.deepEqual(archivePressOutcome(null, backAtTheRow, ROW_B), {
+		drop: false,
+		record: { x: backAtTheRow.x, y: backAtTheRow.y, sessionId: ROW_B },
+	});
+});
+
+test("a dropped press still does not advance the record, so the reflex stays refused", () => {
+	/*
+	 * The other half of the dialog question, and it is the guard's original clause read
+	 * again with the dialog in it: when the reveal is NOT answered - a dropped second
+	 * click - the record must keep describing the FIRST press, or the row the reflex
+	 * landed on becomes the row the guard protects on the next click, and the gesture
+	 * archives after all.
+	 */
+	const first = archivePressOutcome(null, at(100, 200), ROW_A);
+	const second = archivePressOutcome(first.record, at(101, 200), ROW_B);
+	assert.equal(second.drop, true);
+	assert.deepEqual(
+		second.record,
+		first.record,
+		"a dropped press must leave the record on the row the gesture was aimed at",
+	);
+	// And a third click of the same reflex is still refused rather than accepted.
+	assert.equal(
+		archivePressOutcome(second.record, at(101, 200), ROW_B).drop,
+		true,
+	);
+});
