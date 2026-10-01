@@ -440,14 +440,42 @@ test("Retry is withheld exactly where a press cannot work", () => {
 		 * the press re-refuses into the same sentence.
 		 */
 		SESSION_UNVALIDATED_CODE,
+		/*
+		 * And the answers route's busy refusal is the fifth (design round 1 on that
+		 * change, D5). The old note here read "`runtime_busy` has a sentence that
+		 * invites the press", and that sentence — the backend's "Retrying is safe" —
+		 * is exactly what the design round removed from the wire. What is left is the
+		 * press's own facts: the app has already repeated the request under its own
+		 * bounded budget, and the composer's only retry control is Send over the
+		 * BOX, which is not the question that failed.
+		 */
+		RUNTIME_BUSY_CODE,
 	])
 		assert.equal(withholdsRetryHint(code), true, code);
-	for (const code of [RUNTIME_BUSY_CODE, RUNTIME_RETIRING_CODE])
-		assert.equal(
-			withholdsRetryHint(code),
-			false,
-			`${code} has a sentence that invites the press`,
-		);
+	assert.equal(
+		withholdsRetryHint(RUNTIME_RETIRING_CODE),
+		false,
+		"the retiring owner's sentence does invite the press",
+	);
+	/*
+	 * AND THE SEND PATH STILL OFFERS IT, WHICH IS NOT A CONTRADICTION (design round 1
+	 * on the answers route, D5). `withholdsRetryHint` answers for a PRESS; a send's
+	 * Retry acts on the message still in the box, which is the thing the refusal is
+	 * about. Pinned side by side so neither answer can be "fixed" into the other:
+	 * the two surfaces read the same code and must not be given one verdict.
+	 */
+	assert.equal(
+		sendFailureCopy(
+			new DesktopControlError(
+				503,
+				"This session's owner is busy with another request. Retry in a moment.",
+				undefined,
+				RUNTIME_BUSY_CODE,
+			),
+		).retry,
+		true,
+		"a refused SEND hands the text back to the box, so Retry is the remedy there",
+	);
 });
 
 /* --------------------------------------------------------------- retry rule */

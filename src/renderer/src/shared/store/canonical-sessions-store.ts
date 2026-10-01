@@ -1015,9 +1015,17 @@ export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";
  * resend fixes LATER, and both are cases where "Send it again" is not what to do
  * now. Its own statement is on the constant.
  *
- * `runtime_busy` was never on this list and still is not: the app has spent its
- * internal repeats by the time the composer sees it, and the owner's own
- * sentence asks for the press.
+ * `runtime_busy` IS THE EIGHTH TERM (design round 1 on the answers route, D5), and
+ * it arrives here for the press rather than for the send. On the SEND path the
+ * refusal's own arm keeps its press - `sendFailureCopy`'s busy branch answers
+ * `retry: true` literally, because there the control is the message in the box -
+ * and this predicate is not consulted. On the ANSWER path the composer's only
+ * retry control is Send over whatever the box holds, which is not the question
+ * the press was about: the retry an option press may have is the option itself,
+ * or the app's own bounded repeat `withBusyResends` has already spent. The old
+ * note here argued the opposite ("the owner's own sentence asks for the press"),
+ * and that argument was a reading of the backend sentence this change removes -
+ * "Retrying is safe" is gone from the wire.
  *
  * One function rather than call-site comparisons, so the composer reads the rule
  * instead of listing the codes, and so `scripts/canonical-chat.test.mjs` can
@@ -1036,7 +1044,12 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		 * Appended rather than slotted in, so the two ordinals the aside constants state
 		 * about themselves ("the sixth term", "the seventh") stay true.
 		 */
-		code === SESSION_UNVALIDATED_CODE
+		code === SESSION_UNVALIDATED_CODE ||
+		/*
+		 * Appended for the same reason: the eighth, and the one this predicate is
+		 * consulted for only when the failure is a press (see the note above).
+		 */
+		code === RUNTIME_BUSY_CODE
 	);
 }
 
@@ -2106,8 +2119,14 @@ export function isSessionUnvalidated(
 }
 
 /**
- * How many times a send that met a BUSY owner is repeated before the refusal is
- * handed to the composer, and the longest single wait between two attempts.
+ * How many times a request that met a BUSY owner is repeated before the refusal
+ * reaches its caller, and the longest single wait between two attempts.
+ *
+ * ONE POLICY FOR BOTH REQUESTS THAT CAN MEET IT. The send (`messageWithBusyResend`
+ * below) and an answer press (`answerGateOption`/`answerGateSecret` in
+ * `ask-answer.ts`) are the two control calls whose retry the daemon's own body
+ * invites - `retryable: true` with `retry_after_ms` - and answering it two ways
+ * would give one refusal two patience policies.
  *
  * `runtime_busy` (see `RUNTIME_BUSY_CODE`) is the daemon refusing a control call
  * in ~3 s because the session's owner is alive and not answering - mid-turn in a
@@ -2125,31 +2144,42 @@ export function isSessionUnvalidated(
  * describe the operator's own message as one whose fate cannot be known, which is
  * the one thing this owner has just said it is not.
  *
+ * THE TWO CALLERS DO NOT COST THE SAME TIME, which is the one thing to know
+ * before changing the count. A send's attempt answers in ~3 s (the fast verdict
+ * above), so the loop is ~15 s end to end. The answers route spends its OWN
+ * bounded ack budget first - ~17 s on the all-acks-lost arm - so an answer
+ * press's worst case is nearer a minute of silence, held on a card whose options
+ * are disabled. That is the disclosed cost of doing the repeat for the user
+ * rather than handing them an instruction the app has already carried out
+ * (design round 1 on the answers route, D2/D5).
+ *
  * The cap on one wait is there because the hint comes off the wire: a backend
- * that asked for a minute must not park a send that long with nothing on screen
- * but the pending echo.
+ * that asked for a minute must not park a request that long with nothing on
+ * screen but the pending echo.
  */
 const BUSY_RESENDS = 3;
 const BUSY_RESEND_MAX_WAIT_MS = 5_000;
 const BUSY_RESEND_DEFAULT_WAIT_MS = 2_000;
 
 /**
- * `sessions.message`, repeated on `runtime_busy` with the SAME request.
+ * `run`, repeated on a `runtime_busy` refusal with the SAME request.
  *
- * The request object is reused whole - same `requestId`, same text, images and
- * `mode` - because the backend's receipt is keyed on a hash of the whole body
- * (`desktop_receipts.py`): a resend that differed in any field would be a 409,
- * and one with a fresh id could deliver twice. Every other failure is thrown on
- * the first attempt, untouched, so the classification in `admitChatDraft`'s
- * catch sees exactly what it saw before this existed.
+ * The caller's request object is reused whole - same `requestId`, same text,
+ * images and `mode` - because the backend's receipt is keyed on a hash of the
+ * whole body (`desktop_receipts.py`): a resend that differed in any field would
+ * be a 409, and one with a fresh id could deliver twice. Every other failure is
+ * thrown on the first attempt, untouched, so the classification at each call
+ * site sees exactly what it saw before this existed.
+ *
+ * AND NOTHING IS PRODUCED WHILE IT REPEATS. The caller sees either the final
+ * refusal or a success, which is what makes the design round's "say nothing
+ * while the app's own retry still has a chance" (arm 1a) a property of this
+ * loop rather than a rule each surface has to remember.
  */
-async function messageWithBusyResend(
-	request: Extract<DesktopRequest, { op: "sessions.message" }>,
-): Promise<void> {
+export async function withBusyResends<T>(run: () => Promise<T>): Promise<T> {
 	for (let attempt = 0; ; attempt++) {
 		try {
-			await desktopResult(request);
-			return;
+			return await run();
 		} catch (error) {
 			if (
 				attempt >= BUSY_RESENDS ||
@@ -2164,6 +2194,17 @@ async function messageWithBusyResend(
 			await new Promise((resolve) => setTimeout(resolve, wait));
 		}
 	}
+}
+
+/**
+ * `sessions.message`, under that policy.
+ */
+async function messageWithBusyResend(
+	request: Extract<DesktopRequest, { op: "sessions.message" }>,
+): Promise<void> {
+	await withBusyResends(async () => {
+		await desktopResult(request);
+	});
 }
 
 /** Create and admission are intentionally separate receipts. A response lost

@@ -81,11 +81,15 @@ import {
  * code it cannot see is a code that does not withhold the hint (design round 1,
  * D2 — see `answerReport`'s note).
  */
-import { ANSWER_NOT_SENT_CODE } from "@shared/store/canonical-sessions-store";
+import {
+	ANSWER_NOT_SENT_CODE,
+	withBusyResends,
+} from "@shared/store/canonical-sessions-store";
 import {
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_LOST_SIGHT_CODE,
 	DESKTOP_REFUSAL_CODE,
+	RUNTIME_BUSY_CODE,
 } from "../../../../shared/desktop-contract";
 import type { DesktopRequest } from "../../../../shared/desktop-contract";
 import type { PendingDesktopGate } from "../../../../shared/desktop-session-contract";
@@ -523,6 +527,85 @@ export const answerUnconfirmedMessage = (error: unknown): string =>
 	)}`;
 
 /**
+ * The sentence for a press the route could not hand to a BUSY owner, after the
+ * app's own repeats are spent.
+ *
+ * The answers route answers `503 {"code": "runtime_busy", "retryable": true,
+ * "retry_after_ms": 2000}` when the session's owner is alive and not answering
+ * its attach socket. Two things about that arm decide this copy, and both were
+ * design round 1 on the backend change (D1/D2/D4/D5):
+ *
+ *  - IT MUST NOT CLAIM THE ANSWER WAS NOT SENT. The busy refusal is raised for
+ *    `RuntimeUnresponsiveError` AND for an ack timeout on a live owner
+ *    (`desktop_sessions.py`), and the second is the write-then-wait path this app
+ *    records on `DESKTOP_REFUSAL_CODE.transportFailed`: the frame was written and
+ *    only its acknowledgement was lost. Nothing was admitted is true of
+ *    `runtime_busy` on `/messages`; it is NOT true of an ack timeout on
+ *    `/answers`. The answer may have been taken - so this arm takes the
+ *    unknowable register, exactly as the deadline and lost-hop arms do, and the
+ *    app's own bounded repeat (`withBusyResends`, spent before this sentence can
+ *    paint) is what makes that acceptable to say in the first place.
+ *  - IT MUST NOT CARRY THE BACKEND'S PROSE. The route's sentence on this arm is
+ *    the unreachable one - "Reconnect and reconcile before retrying" - which
+ *    names a control this screen does not have and tells the user to retry what
+ *    the app has already retried. The app's own noun for this owner is "the
+ *    agent" (`SEND_FAILURE_COPY.busy`), not "the session owner".
+ *
+ * "isn't confirmed yet" rather than "wasn't sent" is the whole finding, and
+ * "yet" is load-bearing: the owner may still take it, and the app may still be
+ * told so.
+ */
+export const ANSWER_BUSY_MESSAGE =
+	"Your answer isn't confirmed yet. The agent is busy.";
+
+/**
+ * The sentence for a press addressed to a session the app could not reach at all.
+ *
+ * `runtime_unreachable` is the daemon's own hop failure: it could not hand the
+ * request to the session's owner, so nothing is established about whether the
+ * answer arrived (see `DESKTOP_LOST_SIGHT_CODE`). The LEAD is therefore already
+ * right and is kept verbatim - it is photographed in the committed
+ * `ask-options-live/unknown-composer` frames - and what changes is the reason:
+ * the backend's "Session owner is unavailable. Reconnect and reconcile before
+ * retrying" is replaced by a fact and a full stop.
+ *
+ * BOTH HALVES OF THE BACKEND SENTENCE HAD TO GO, and neither for style. "Session
+ * owner" is the app's WIRE noun, which is why `mcp-failure.ts` matches the
+ * backend's text for its MCP row and why that text must not be reworded (a
+ * shipped renderer prefix-matches it, so a backend rewording is a UI regression
+ * on every un-updated machine). "Reconnect and reconcile" names no control on
+ * screen, and after the ownerless-attach work the app re-dials for reads on its
+ * own - the instruction is stale as well as unactionable (design round 1, D3;
+ * the refusal table's own rule against remedies the user cannot perform).
+ *
+ * It is composed from the shared lead rather than spelled out, so the two arms
+ * that say "the outcome is not knowable" cannot drift apart in one word.
+ */
+export const ANSWER_SESSION_UNREACHABLE_MESSAGE = `${ANSWER_UNCONFIRMED_LEAD} The app could not reach this chat's session at all.`;
+
+/**
+ * Whether this failure is the answers route's retryable-busy refusal.
+ *
+ * Keyed on the CODE and never the status: a `503` on a `/v1/desktop/` route is
+ * also how the desktop plane refuses this app (`pairing.plane-closed`), which IS
+ * an answer about the request rather than a lost sight of it.
+ */
+export const answerOwnerIsBusy = (error: unknown): boolean =>
+	error instanceof DesktopControlError && error.code === RUNTIME_BUSY_CODE;
+
+/**
+ * Whether this failure is the daemon's own hop failure to the session's owner.
+ *
+ * The sibling of `answerOwnerIsBusy`, and separate from it for the same reason
+ * the two codes are separate: `runtime_busy` says the owner is there and not
+ * answering, `runtime_unreachable` says the daemon could not get to it. One
+ * sentence each, and neither may borrow the other's.
+ */
+export const answerSessionUnreachable = (error: unknown): boolean =>
+	error instanceof DesktopControlError &&
+	error.code === DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable;
+
+/**
  * Whether this failure is the answer route refusing, carrying no typed code.
  *
  * ## What the STATUS establishes, and what it does not
@@ -685,6 +768,14 @@ export type AnswerReport =
 			 * strand the kept value with nothing able to send it.
 			 */
 			readonly retryable: boolean;
+			/**
+			 * The register, as a property of the ARM rather than of the surface that
+			 * happens to render it: `true` only for the retryable-busy arm, which is a
+			 * failure the app is absorbing rather than one the user must repair (design
+			 * round 1, D4). The card paints it through `muted` on the same band the
+			 * composer's alert reads.
+			 */
+			readonly muted: boolean;
 	  }
 	/** The card is gone, so the composer carries the report. */
 	| {
@@ -696,6 +787,20 @@ export type AnswerReport =
 			 * note above).
 			 */
 			readonly code: string;
+			/** The arm's register; see the card arm's field. */
+			readonly muted: boolean;
+			/**
+			 * ALWAYS `false`, and carried rather than left unset for the reason the
+			 * code is: the alert reads a retry verdict it may inherit, and an earlier
+			 * send's `true` would lay out a control row for a press that no press can
+			 * fix. The composer's only retry control is Send over whatever the box
+			 * holds (`chat-page.tsx`'s `onRetry`), and for an option press that is not
+			 * the question that failed — the press's own retry is the option, or the
+			 * app's bounded repeat, which has already been spent by the time this
+			 * report exists (design round 1, D5: "the notice's control row is laid out
+			 * for `retry: true` while `onRetry` is absent").
+			 */
+			readonly retry: boolean;
 	  };
 
 /**
@@ -734,12 +839,13 @@ const TRANSPORT_LOST_SIGHT_CODES: ReadonlySet<string> = new Set([
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
 	DESKTOP_REFUSAL_CODE.transportFailed,
 	DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable,
+	RUNTIME_BUSY_CODE,
 ]);
 
 /**
  * Whether this failure says nothing at all about what the owner did.
  *
- * Four shapes, and each is a way the app can lose sight of the request without
+ * Five shapes, and each is a way the app can lose sight of the request without
  * the OWNER refusing it:
  *
  * - **No HTTP response at all** — a runtime exception, or a `DesktopControlError`
@@ -758,6 +864,19 @@ const TRANSPORT_LOST_SIGHT_CODES: ReadonlySet<string> = new Set([
  *   round 2's MAJOR-1: the app classified main's lost request as unknowable and
  *   the daemon's as a refusal, so an owner that kept the answer and lost its ack
  *   produced the definite sentence.
+ * - **The answers route's RETRYABLE-BUSY refusal** (`runtime_busy`) — the fifth
+ *   shape, and the one that had to be argued rather than read off a code table.
+ *   The route raises it for a live owner that is not answering AND for an ack
+ *   timeout on that same live owner (`desktop_sessions.py`), and the second is
+ *   the write-then-wait path the bullet above describes: the frame was written
+ *   and only its acknowledgement was lost, so the answer may have been taken.
+ *   Nothing-admitted is true of `runtime_busy` on `/messages` and is NOT true
+ *   here, which is design round 1's D1 — the false "Your answer was not sent"
+ *   this arm used to paint. It is in this set rather than in a branch of its own
+ *   because the two things the set is read for are both correct for it: the
+ *   sentence it is entitled to (an unknowable register, painted by
+ *   `ANSWER_BUSY_MESSAGE`) and the verdict the kept value's retry hangs on (the
+ *   hold stays — a repeat could send an answer that already landed).
  *
  * What is deliberately NOT here is a status the BACKEND chose as a REFUSAL: a
  * `503` with `pairing.plane-closed` (the daemon will not admit this app), a
@@ -799,6 +918,13 @@ export const answerReport = (
 	if (outcome.status === "refused") return { to: "refused" };
 	if (outcome.status === "sent") return { to: "sent" };
 	const sentence = pressSentenceFor(outcome.error, frame);
+	/*
+	 * The register is read once, from the arm, and travels with the sentence to
+	 * whichever surface paints it: the busy arm is a failure the app is still
+	 * absorbing, every other arm is the user's to read as a failure (design round
+	 * 1, D4).
+	 */
+	const muted = answerOwnerIsBusy(outcome.error);
 	if (frame.cardOnScreen && frame.liveGateKey === frame.pressedGateKey)
 		return {
 			to: "card",
@@ -807,11 +933,18 @@ export const answerReport = (
 			// established not-sent, the unknowable one is not (see the field's own
 			// note on `AnswerReport`).
 			retryable: !answerOutcomeIsUnknown(outcome.error),
+			muted,
 		};
 	return {
 		to: "composer",
 		message: sentence,
 		code: composerCodeFor(outcome.error),
+		muted,
+		/*
+		 * `false` for every press, and SET rather than left to the alert's last
+		 * failure: see the field's own note (design round 1, D5).
+		 */
+		retry: false,
 	};
 };
 
@@ -820,24 +953,35 @@ export const answerReport = (
  *
  * The order of the tests is the argument, not an implementation detail:
  *
- * 1. **An outcome the app cannot know** — no HTTP response at all, its own
- *    `deadline_exceeded` or `transport.failed`, or the daemon's
- *    `runtime_unreachable` — says so and nothing more (`answerOutcomeIsUnknown`).
- * 2. **A codeless `409` from a DIFFERENT epoch** — the press was addressed to a
+ * 1. **The answers route's retryable-busy refusal** (`runtime_busy`) — the owner
+ *    is alive and not answering, and the frame is write-then-wait, so the app can
+ *    neither say the answer landed nor say it did not. It says exactly that
+ *    (`ANSWER_BUSY_MESSAGE`), and it is checked FIRST because it is also in
+ *    `answerOutcomeIsUnknown`'s set (arm 3 below would otherwise claim it with the
+ *    generic lead). Design round 1, D1/D4.
+ * 2. **The daemon's hop failure to the owner** (`runtime_unreachable`) — also an
+ *    unknowable arm, and again a sentence of its own rather than the backend's
+ *    (`ANSWER_SESSION_UNREACHABLE_MESSAGE`), because the route's "Reconnect and
+ *    reconcile before retrying" is stale and names no control this screen has.
+ *    Design round 1, D3.
+ * 3. **An outcome the app cannot know** — no HTTP response at all, its own
+ *    `deadline_exceeded` or `transport.failed` — says so and nothing more
+ *    (`answerOutcomeIsUnknown`).
+ * 4. **A codeless `409` from a DIFFERENT epoch** — the press was addressed to a
  *    runtime instance that is gone, so nothing about who answered the question is
  *    established and the app must not claim another front end did. It says what it
  *    knows in its own voice (`ANSWER_LOST_TO_RECONNECT_MESSAGE`), which is also
  *    what the card carries for the same refusal (UX round 2, U8).
- * 3. **A codeless `409` with no gate pending** — something settled the question,
+ * 5. **A codeless `409` with no gate pending** — something settled the question,
  *    and it was not this press (a press the owner took answers `2xx`).
- * 4. **A codeless `409` with a gate that is not the pressed question** — the ask
+ * 6. **A codeless `409` with a gate that is not the pressed question** — the ask
  *    advanced past the question this press answered.
- * 5. **A codeless `409` with the pressed question STILL LIVE** — the one state the
- *    first four do not name, and the one that falls through to the backend's own
+ * 7. **A codeless `409` with the pressed question STILL LIVE** — the one state the
+ *    first six do not name, and the one that falls through to the backend's own
  *    reason below. A `409` never settled OUR value, so the not-sent half holds; and
  *    with the gate still current the app has nothing better to say than what the
  *    route said (agent review round 2, NIT-4).
- * 6. Everything else — a status the backend really sent as a refusal (a `503` with
+ * 8. Everything else — a status the backend really sent as a refusal (a `503` with
  *    `pairing.plane-closed`, a coded `409` from the relay or attachment ladders),
  *    where "your answer was not sent" is what the backend just said.
  */
@@ -854,6 +998,14 @@ export const answerReport = (
 export const ANSWER_UNCONFIRMED_CODE = "answer_unconfirmed";
 
 const pressSentenceFor = (error: unknown, frame: PressFrame): string => {
+	/*
+	 * The two arms with a sentence of their OWN come first, and both are checked
+	 * before the unknowable arm because both ARE unknowable outcomes - the busy arm
+	 * is in that set, and `runtime_unreachable` always has been.
+	 */
+	if (answerOwnerIsBusy(error)) return ANSWER_BUSY_MESSAGE;
+	if (answerSessionUnreachable(error))
+		return ANSWER_SESSION_UNREACHABLE_MESSAGE;
 	if (answerOutcomeIsUnknown(error)) return answerUnconfirmedMessage(error);
 	if (answerRefusedWithoutACode(error)) {
 		if (frame.liveEpoch !== frame.sentEpoch)
@@ -999,7 +1151,18 @@ export const answerGateOption = async (
 					questionIndex: gate.question_index,
 				};
 	try {
-		await send(request);
+		/*
+		 * THE APP'S OWN REPEAT, and the whole reason the busy arm's sentence can be
+		 * silence-free rather than an instruction: a busy owner is not a failure the
+		 * user has to read about, it is a moment the app waits out. The SAME
+		 * `request` goes out again - the daemon's receipt is keyed on the body, and
+		 * the answer route settles a repeat idempotently - so a press that landed
+		 * while its ack was lost comes back as `sent` here rather than as a refusal
+		 * (the backend change's retry-settled path, asserted there). Nothing is
+		 * reported while it repeats; only the final refusal, if there is one,
+		 * reaches `answerReport`.
+		 */
+		await withBusyResends(() => send(request));
 		return { status: "sent" };
 	} catch (error) {
 		return { status: "failed", request, error };
@@ -1085,7 +1248,9 @@ export const answerGateSecret = async (
 		questionIndex: gate.question_index,
 	};
 	try {
-		await send(request);
+		// The same policy as the option path, and by the same argument: a secret is
+		// an answer press too, and its owner can be just as busy.
+		await withBusyResends(() => send(request));
 		return { status: "sent" };
 	} catch (error) {
 		return { status: "failed", request, error };
