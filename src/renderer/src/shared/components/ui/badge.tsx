@@ -10,7 +10,12 @@ import { type HTMLAttributes, forwardRef } from "react";
  * Every variant is a `wash` fill with the matching semantic ink, which is the
  * exact triple the contrast contract verifies (`fill` + `border` + `ink`
  * against `canvas` and `surface`). Solid semantic fills are absent on purpose:
- * there is no `onSuccess` role to put on top of one.
+ * there is no `onSuccess` role to put on top of one. The one exception is
+ * `attentionQuiet`, the counted register of the attention mark (below it):
+ * borderless, a ground step rather than a wash, and the quiet ink - so its row
+ * in `scripts/contrast-contract.mjs` asserts the pairs it actually wears
+ * (ink on its own fill, and the step it spends instead of an edge) rather than
+ * a border no host draws.
  *
  * `attention` is the one variant whose edge is NOT its own semantic border, and
  * the reason is measured rather than aesthetic: `warningBorder` clears 2.51-2.98:1
@@ -62,6 +67,30 @@ const badgeVariants = cva(
 				info: "border-info-border bg-info-wash text-info",
 				outline: "border-control bg-transparent text-ink",
 				attention: "border-ink-muted bg-warning-wash text-ink",
+				/*
+				 * THE COUNTED REGISTER OF THE SAME MARK (operator ask, 2026-09-30). The
+				 * report, verbatim: the rail badge "should have more subtle treatment,
+				 * borderless ... smaller font size on the number and subtler font
+				 * treatment ... closer to the numbers on the team count lines instead of
+				 * the janky bubble". The count lines are the sidebar's own quiet numerals
+				 * (`text-meta` / `ink-dim`, right-aligned on the group rows), and this is
+				 * that family: `ink-dim` is the role authored for 11-13px metadata, and
+				 * `--text-meta-sm` buys the air the old 12px medium numeral did not have
+				 * inside the 16px circle.
+				 *
+				 * WHY THE RING GOES AND WHAT STILL CARRIES THE MARK. The old edge
+				 * (`ink-muted`) existed because the fill measured 1.00-1.19:1 against the
+				 * row grounds, so the border WAS the whole boundary. Nothing about the
+				 * count is lost with it: the mark's information is the NUMERAL, which
+				 * keeps its own floor (`ink-dim` on `elevated`, 5.01:1 worst over the
+				 * fifty-nine palettes), and the presence of a number at all is the signal
+				 * - a quiet row draws nothing. `elevated` stays as the whisper of a shape
+				 * that groups the numeral as a mark rather than as label text; where it
+				 * merges with a ground (0.00-0.47 ΔE00 on the row-state grounds at worst),
+				 * the count alone reads, which is the same promise the count lines keep.
+				 */
+				attentionQuiet:
+					"border-0 bg-elevated font-normal text-ink-dim text-meta-sm",
 			},
 			shape: {
 				rounded: "rounded-sm",
