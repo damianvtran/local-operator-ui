@@ -1866,9 +1866,10 @@ export const STORIES = [
 	 * The trigger's own pre-click states (design D4): pointer hover and the
 	 * keyboard's focus ring, each through the input path that makes the state
 	 * real - the hover via `Input.dispatchMouseEvent` (which the rig asserts
-	 * against `:hover` before the shutter), the focus via real Tab presses,
-	 * because Blink matches `:focus-visible` for a Tab walk and not for a
-	 * programmatic `focus()`.
+	 * against `:hover` before the shutter, on this path as well as the
+	 * `select.hover` one - agent review round 1, F1), the focus via real Tab
+	 * presses, because Blink matches `:focus-visible` for a Tab walk and not for
+	 * a programmatic `focus()`.
 	 */
 	[
 		"chat-header-identity--team-bound",
@@ -5629,6 +5630,28 @@ export const STORIES = [
 	 * photographed, rather than the unshed full-width page. */
 	["projects-tab--narrow-columns", 560, 600],
 	["projects-tab--many", 1280, 900],
+	/* THE TEAM HEADER UNDER THE POINTER, and the row beside it (issue #703).
+	 * The claim is that a header is a label and does not react - so the frame
+	 * that proves it is the header WITH the pointer on it, filed against the
+	 * same pointer on a project row, which does step to `elevated`. A resting
+	 * frame cannot show that the absence is intended. Real
+	 * `Input.dispatchMouseEvent`, the rig's own `hover` option, not a scripted
+	 * class. */
+	[
+		"projects-tab--populated",
+		1280,
+		900,
+		{ hover: '[data-project-team="platform"]', dir: "team-header-hover" },
+	],
+	[
+		"projects-tab--populated",
+		1280,
+		900,
+		{
+			hover: '[data-project-name="payments-migration"]',
+			dir: "project-row-hover",
+		},
+	],
 	/* The sticky team headers, mid-scroll (slice 3): the one state a resting
 	 * frame cannot hold, because at rest every header is in its flow
 	 * position. The play brings the second header flush to the scroller's
@@ -10468,6 +10491,32 @@ const main = async () => {
 					modifiers: 0,
 					pointerType: "mouse",
 				});
+				/*
+				 * THE POINTER MUST ACTUALLY LAND (agent review round 1, F1).
+				 *
+				 * This branch used to dispatch the move and only sleep, so a frame whose
+				 * claim is a hover could be filed from a resting control - and for an
+				 * entry that exists to prove an ABSENCE (the team band's non-reaction to
+				 * the pointer) a move that never arrived produces the same bytes as the
+				 * absence itself, which is the one reading the pair cannot afford to be
+				 * wrong about. `select.hover` already asserts this; the read is polled
+				 * rather than taken once because the scene can still be settling under
+				 * the fleet's load.
+				 */
+				let landed = false;
+				for (let attempt = 0; attempt < 50 && !landed; attempt++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `document.querySelector(${JSON.stringify(options.hover)})?.matches(":hover") === true`,
+					});
+					landed = result.value === true;
+					if (!landed) await sleep(200);
+				}
+				if (!landed) {
+					throw new Error(
+						`${story} @ ${theme}: the pointer is on \`${options.hover}\` but the element does not match :hover, so the frame would be a resting control filed under a hover`,
+					);
+				}
 				/*
 				 * A TOOLTIP IS NOT A `:hover` GROUND, and this is what tells the two apart.
 				 *

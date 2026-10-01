@@ -9,12 +9,17 @@
  * the main window; the mini scene drives over CDP directly), the PostHog
  * provider (a hotkey-summoned window must not emit a pageview per summon),
  * the feed subscription, the chat shell, the sidebar, the canvas, the
- * QueryClient provider (this surface calls `desktopResult` imperatively). What
- * it DOES mount is the theme, published from the persisted preference before
- * the first render — the store is zustand-persist and readable synchronously —
- * and the mini composer itself.
+ * QueryClient provider (this surface calls `desktopResult` imperatively).
+ * What it DOES mount is the theme, published from the persisted preference
+ * before the first render — the store is zustand-persist and readable
+ * synchronously — the mini frame (the shared composer's host), and, since the
+ * restyle, the app's own toast container: the shared composer carries toast
+ * paths (credential-store receipts), and a document with no container is a
+ * document where those receipts silently no-op (risk R4).
  */
 
+import { ThemedToastContainer } from "@shared/components/common";
+import { installConversationInputSync } from "@shared/store/conversation-input-sync";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { applyThemeToDocument } from "@shared/themes";
 import React from "react";
@@ -35,12 +40,20 @@ import { MiniComposer } from "./mini-composer";
  */
 applyThemeToDocument(useUiPreferencesStore.getState().themeName);
 
+/*
+ * The draft store's cross-document sync (risk R5). This document is the second
+ * writer of `conversation-input-store` now, and the listener must outlive every
+ * render — module scope, like the theme publication above.
+ */
+installConversationInputSync();
+
 document.addEventListener("DOMContentLoaded", () => {
 	const container = document.getElementById("mini-view");
 	if (!container) return;
 	ReactDOM.createRoot(container).render(
 		<React.StrictMode>
 			<MiniComposer />
+			<ThemedToastContainer />
 		</React.StrictMode>,
 	);
 });

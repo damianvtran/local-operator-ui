@@ -8,13 +8,12 @@
  * that agreement: every predicate against malformed wire values (a malformed
  * push must not reach a consumer — review round 1's nit made the preload's
  * claim real), the display pieces the keycap idiom splits on, and the
- * composer's state machine, whose transitions are driven here in process — the
- * discipline its own docstring promises, and where the re-summon semantics
- * (review round 1, Q1: a standing retryable refusal survives re-resolution) are
- * named rather than inferred from a scene — and the input-mode stamp's
- * derivation (`wireInputMode`, the mapping behind `typed`/`dictated`/`mixed`),
- * whose wire half — the field's absence and its exact values — is proven at
- * the desktop contract's own body builder in `mini-view-dictation.test.mjs`.
+ * FRAME's state machine (the restyle's smaller one: a notice with its register,
+ * and the "Sent" flash), the serve-side resize/dialog payload guards, and the
+ * seat-name resolver every one of the four seat sentences renders through
+ * (operator directive, 2026-09-29). The composer's own send machine left this
+ * file with the restyle: it is the SHARED composer's now, and the chat's own
+ * suites drive it.
  *
  * WHAT THEY ARE NOT: proof that the app renders these states (`--scene
  * mini-view` photographs them) or that a chord registers (the registrar suite
@@ -50,6 +49,7 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/shared/mini-view";',
 			'export * from "./src/renderer/src/mini-view/mini-state";',
+			'export * from "./src/renderer/src/mini-view/mini-copy";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -63,15 +63,24 @@ writeFileSync(bundleFile, bundle.outputFiles[0].text);
 const miniView = await import(pathToFileURL(bundleFile).href);
 
 const {
+	MINI_COPY,
+	MINI_VIEW_DIALOG,
 	MINI_VIEW_DISMISS,
+	MINI_VIEW_HEIGHT,
+	MINI_VIEW_MAX_HEIGHT,
 	MINI_VIEW_REGISTRATION,
 	MINI_VIEW_REGISTRATION_GET,
+	MINI_VIEW_RESIZE,
 	MINI_VIEW_SUMMONED,
+	MINI_VIEW_WIDTH,
 	formatQuickSendDisplay,
 	formatQuickSendTokens,
 	isFunctionKeyToken,
+	isMiniViewDialogPayload,
 	isMiniViewRegistrationState,
+	isMiniViewResizePayload,
 	isMiniViewSummonedPayload,
+	resolveSeatName,
 } = miniView;
 
 /* ------------------------------------------------------------------ *
@@ -89,6 +98,8 @@ test("the channel names are the literals every process spells", () => {
 	assert.equal(MINI_VIEW_DISMISS, "mini-view:dismiss");
 	assert.equal(MINI_VIEW_REGISTRATION, "mini-view:registration");
 	assert.equal(MINI_VIEW_REGISTRATION_GET, "mini-view:registration-get");
+	assert.equal(MINI_VIEW_RESIZE, "mini-view:resize");
+	assert.equal(MINI_VIEW_DIALOG, "mini-view:dialog");
 });
 
 test("isMiniViewSummonedPayload accepts the shape main sends and nothing else", () => {
@@ -179,156 +190,166 @@ test("the display tokens are one entry per cap, and the sentence joins them", ()
 });
 
 /* ------------------------------------------------------------------ *
- * The composer's state machine
+ * The FRAME's state machine (the restyle's smaller machine)
  * ------------------------------------------------------------------ */
 
-const {
-	MINI_INITIAL_STATE,
-	canSend,
-	isEditable,
-	miniTransitions,
-	wireInputMode,
-} = miniView;
+const { MINI_FRAME_INITIAL, miniFrameTransitions } = miniView;
 
-const at = (overrides) => ({ ...MINI_INITIAL_STATE, ...overrides });
-
-test("canSend and isEditable state the machine's one invariant", () => {
-	assert.equal(canSend(MINI_INITIAL_STATE, ""), false);
-	assert.equal(canSend(MINI_INITIAL_STATE, "   "), false);
+test("a notice is a sentence AND its register", () => {
+	const danger = miniFrameTransitions.noted(MINI_FRAME_INITIAL, "Nope.");
+	assert.equal(danger.notice.text, "Nope.");
 	assert.equal(
-		canSend(MINI_INITIAL_STATE, "hello"),
-		true,
-		"the seat pending state must not block the press (the press awaits the resolution)",
+		danger.notice.tone,
+		"danger",
+		"a failure is the default register: the caller only names the quiet one",
 	);
-	assert.equal(
-		canSend(at({ seat: "blocked" }), "hello"),
-		false,
-		"a blocked seat is the one refusal canSend states",
+	const muted = miniFrameTransitions.noted(
+		MINI_FRAME_INITIAL,
+		"Context: 12k of 200k tokens.",
+		"muted",
 	);
-	assert.equal(canSend(at({ send: "sending" }), "hello"), false);
-	assert.equal(canSend(at({ send: "sent" }), "hello"), false);
-	assert.equal(isEditable(at({ send: "sending" })), false);
-	assert.equal(isEditable(at({ send: "sent" })), true);
+	assert.equal(muted.notice.tone, "muted");
 });
 
-test("a send clears the notice and a failure carries the classifier's answer", () => {
-	const failed = miniTransitions.sendFailed(
-		at({ send: "sending" }),
-		"Couldn't reach the chief of staff.",
-		true,
-	);
-	assert.equal(failed.send, "error");
-	assert.equal(failed.retryable, true);
-	const restarted = miniTransitions.sendStarted(failed);
-	assert.equal(restarted.notice, null);
-	assert.equal(restarted.retryable, false);
-	assert.equal(miniTransitions.sendSucceeded(failed).send, "sent");
+test("a second sentence replaces the first rather than stacking", () => {
+	const first = miniFrameTransitions.noted(MINI_FRAME_INITIAL, "One.");
+	const second = miniFrameTransitions.noted(first, "Two.");
+	assert.equal(second.notice.text, "Two.");
 });
 
-test("a re-summon resets only the Sent flash, never a standing refusal", () => {
-	const failed = miniTransitions.sendFailed(
-		MINI_INITIAL_STATE,
-		"Couldn't reach the chief of staff.",
-		true,
-	);
-	const afterSummon = miniTransitions.summoned(failed);
-	assert.deepEqual(
-		afterSummon,
-		failed,
-		"the draft survives hide and the failure's notice keeps standing",
-	);
-	const flashed = miniTransitions.summoned(at({ send: "sent" }));
-	assert.equal(flashed.send, "idle");
-	assert.equal(flashed.notice, null);
+test("the flash goes up with the send and the notice with it", () => {
+	const noted = miniFrameTransitions.noted(MINI_FRAME_INITIAL, "Nope.");
+	const sent = miniFrameTransitions.sentUp(noted);
+	assert.equal(sent.sent, true);
+	assert.equal(sent.notice, null);
 });
 
-test("a re-resolution preserves a standing retryable refusal (Q1)", () => {
-	/*
-	 * THE QA ROUND 1 REPRO, as the machine sees it: send refused pre-admission
-	 * with Retry up; a summon re-resolves the seat; the resolution answers — and
-	 * before this fix seatBlocked/seatReady replaced the refusal, dropping Retry
-	 * and leaving the draft's only recovery a hide plus another summon.
-	 */
-	const refused = miniTransitions.sendFailed(
-		at({ seat: "blocked" }),
-		"Couldn't reach the chief of staff.",
-		true,
+test("a re-summon resets the flash and only the flash", () => {
+	const standing = miniFrameTransitions.noted(
+		MINI_FRAME_INITIAL,
+		"Still refused.",
 	);
-	const blockedAgain = miniTransitions.seatBlocked(
-		refused,
-		"This build doesn't have a chief-of-staff seat.",
-	);
-	assert.equal(blockedAgain.seat, "blocked");
+	const afterSummon = miniFrameTransitions.summoned(standing);
 	assert.equal(
-		blockedAgain.notice,
-		"Couldn't reach the chief of staff.",
-		"the sentence the reader was acting on keeps standing",
+		afterSummon.notice,
+		standing.notice,
+		"a standing notice keeps standing: the failure it names has not changed",
 	);
+	const flashed = miniFrameTransitions.summoned(
+		miniFrameTransitions.sentUp(standing),
+	);
+	assert.equal(flashed.sent, false);
 	assert.equal(
-		blockedAgain.retryable,
-		true,
-		"Retry is the only in-window recovery",
+		flashed.notice,
+		null,
+		"the send cleared the notice; the summon does not resurrect it",
 	);
-	const recovered = miniTransitions.seatReady(refused);
-	assert.equal(recovered.seat, "ready");
-	assert.equal(recovered.notice, "Couldn't reach the chief of staff.");
-	assert.equal(recovered.retryable, true);
-	/*
-	 * A NON-retryable notice (a seat sentence, no Retry offered) is the
-	 * resolution's own to replace: the new answer is the newer fact.
-	 */
-	const seatSentence = miniTransitions.seatBlocked(
-		MINI_INITIAL_STATE,
-		"This build doesn't have a chief-of-staff seat.",
-	);
-	const replaced = miniTransitions.seatReady(seatSentence);
-	assert.equal(replaced.notice, null);
-	assert.equal(replaced.retryable, false);
 });
 
-test("Retry re-opens the gate without erasing the sentence that explains it", () => {
-	const refused = miniTransitions.sendFailed(
-		at({ seat: "blocked" }),
-		"Couldn't reach the chief of staff.",
-		true,
+test("clearing an absent notice is the same state, by identity", () => {
+	assert.equal(
+		miniFrameTransitions.clearNotice(MINI_FRAME_INITIAL),
+		MINI_FRAME_INITIAL,
 	);
-	const retried = miniTransitions.seatRetry(refused);
-	assert.equal(retried.seat, "pending");
-	assert.equal(retried.notice, refused.notice);
-	assert.equal(retried.retryable, true);
-	const cleared = miniTransitions.clearNotice(refused);
-	assert.equal(cleared.notice, null);
-	assert.equal(cleared.retryable, false);
 });
 
 /* ------------------------------------------------------------------ *
- * The input-mode stamp's derivation
+ * The seat's display name (operator directive, 2026-09-29)
  * ------------------------------------------------------------------ */
 
-test("the stamp follows the composer's rule: typed | dictated | mixed", () => {
+test("every seat sentence renders the resolved name", () => {
 	/*
-	 * The mapping is the reference's own (`inputModeForSend`,
-	 * `message-input.tsx`): `dictated` only when a transcript put the content
-	 * there, `mixed` when both doors did, `typed` when only the keyboard did.
-	 * The caller owns "since the box last emptied" — its reset refs — and
-	 * passes the gate's own answer in.
+	 * The rename rule: no literal role in shipped UI, and a rename lands with
+	 * no code change. All four spots interpolate the one resolved value.
 	 */
-	assert.equal(wireInputMode(true, false, false), "typed", "keyboard only");
-	assert.equal(wireInputMode(true, false, true), "dictated", "transcript only");
-	assert.equal(wireInputMode(true, true, true), "mixed", "both doors");
+	assert.equal(MINI_COPY.seatLabel("Aida"), "To: Aida");
+	assert.equal(MINI_COPY.placeholder("Aida"), "Message Aida");
+	assert.equal(MINI_COPY.seatUnreachable("Aida"), "Couldn't reach Aida.");
 	assert.equal(
-		wireInputMode(true, true, false),
-		"typed",
-		"typing alone is still typed, however much was typed",
+		MINI_COPY.postAdmission("Aida"),
+		"That didn't reach Aida — check the conversation.",
+	);
+	assert.ok(
+		!MINI_COPY.seatLabel("Nova").includes("chief of staff"),
+		"no seat sentence may carry the role as a literal",
 	);
 });
 
-test("feature off stamps nothing: the legacy body is the field's absence", () => {
+test("every seat sentence the frame can say names the resolved seat", () => {
 	/*
-	 * `features.input_mode` off must produce `undefined` — which is what makes
-	 * the wire drop the key entirely rather than carry a present-but-empty one
-	 * (an older harness validates the message body with `extra="forbid"`).
+	 * THE RENAME RULE AT FULL COVERAGE (reviewer R2-2). Two sentences were still
+	 * role-literal when the first round landed - the "no seat in this build" and
+	 * "could not open the conversation" arms - and a renamed seat met the word
+	 * "chief-of-staff" on exactly the failure path a user reaches when something
+	 * is wrong. All six are pinned here, so a seventh sentence that reaches for a
+	 * role instead of the name has a failing case to answer.
 	 */
-	assert.equal(wireInputMode(false, false, false), undefined);
-	assert.equal(wireInputMode(false, true, true), undefined);
+	assert.equal(
+		MINI_COPY.seatMissing("Aida"),
+		"This build doesn't have a Aida seat.",
+	);
+	assert.equal(
+		MINI_COPY.seatOpenFailed("Aida"),
+		"Couldn't open the Aida conversation.",
+	);
+	for (const sentence of [
+		MINI_COPY.seatLabel("Nova"),
+		MINI_COPY.placeholder("Nova"),
+		MINI_COPY.seatUnreachable("Nova"),
+		MINI_COPY.postAdmission("Nova"),
+		MINI_COPY.seatMissing("Nova"),
+		MINI_COPY.seatOpenFailed("Nova"),
+	]) {
+		assert.ok(
+			!sentence.includes("chief of staff") &&
+				!sentence.includes("chief-of-staff"),
+			`a seat sentence still carries the role as a literal: ${sentence}`,
+		);
+		assert.ok(
+			sentence.includes("Nova"),
+			`the name is missing from: ${sentence}`,
+		);
+	}
+});
+
+test("the name resolver falls back on absence AND on a blank", () => {
+	/*
+	 * `name ?? "Aida"` at the sibling display sites treats an empty string as a
+	 * name; over a template that renders "To: " and "Message " — a blank where
+	 * the operator asked for a name. The resolver refuses that.
+	 */
+	assert.equal(resolveSeatName("Aida"), "Aida");
+	assert.equal(resolveSeatName("  Nova  "), "Nova");
+	assert.equal(resolveSeatName(null), "Aida");
+	assert.equal(resolveSeatName(undefined), "Aida");
+	assert.equal(resolveSeatName(""), "Aida");
+	assert.equal(resolveSeatName("   "), "Aida");
+});
+
+/* ------------------------------------------------------------------ *
+ * The resize contract (design R2)
+ * ------------------------------------------------------------------ */
+
+test("the resize request refuses everything but a finite height", () => {
+	assert.equal(isMiniViewResizePayload({ height: 320 }), true);
+	assert.equal(isMiniViewResizePayload({ height: Number.NaN }), false);
+	assert.equal(isMiniViewResizePayload({ height: "320" }), false);
+	assert.equal(isMiniViewResizePayload({}), false);
+	assert.equal(isMiniViewResizePayload(null), false);
+});
+
+test("the dialog latch payload is a boolean and nothing else", () => {
+	assert.equal(isMiniViewDialogPayload({ open: true }), true);
+	assert.equal(isMiniViewDialogPayload({ open: false }), true);
+	assert.equal(isMiniViewDialogPayload({ open: "yes" }), false);
+	assert.equal(isMiniViewDialogPayload({}), false);
+});
+
+test("the grown ceiling is above the base and the base is unchanged", () => {
+	assert.equal(MINI_VIEW_WIDTH, 640);
+	assert.equal(MINI_VIEW_HEIGHT, 168);
+	assert.ok(
+		MINI_VIEW_MAX_HEIGHT > MINI_VIEW_HEIGHT,
+		"a ceiling at the base would make the measured resize a no-op",
+	);
 });
