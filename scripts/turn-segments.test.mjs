@@ -1355,15 +1355,11 @@ test("PR-4 F2: the settled sequence stays condensed when a wake starts the next 
 	const states = [
 		[
 			"the wake receipt just landed, the agent is thinking",
-			"U " + repeat("T", 88) + " A W",
+			`U ${repeat("T", 88)} A W`,
 			1,
 		],
-		["the reply is streaming", "U " + repeat("T", 88) + " A W S", 2],
-		[
-			"the reply's tool calls are running",
-			"U " + repeat("T", 88) + " A W T T T",
-			2,
-		],
+		["the reply is streaming", `U ${repeat("T", 88)} A W S`, 2],
+		["the reply's tool calls are running", `U ${repeat("T", 88)} A W T T T`, 2],
 	];
 	for (const [name, spec, count] of states) {
 		const [run] = planFor(spec, true);
@@ -1393,13 +1389,13 @@ test("PR-4 F2: the settled sequence stays condensed when a wake starts the next 
 });
 
 test("PR-4 F2: nothing above the in-flight cycle changes between the wake landing and the cycle settling", () => {
-	const head = "U " + repeat("T", 88) + " A";
+	const head = `U ${repeat("T", 88)} A`;
 	const steps = [
-		planFor(head + " W", true)[0],
-		planFor(head + " W S", true)[0],
-		planFor(head + " W T T T", true)[0],
-		planFor(head + " W T T T A", true)[0],
-		planFor(head + " W T T T A K", false)[0],
+		planFor(`${head} W`, true)[0],
+		planFor(`${head} W S`, true)[0],
+		planFor(`${head} W T T T`, true)[0],
+		planFor(`${head} W T T T A`, true)[0],
+		planFor(`${head} W T T T A K`, false)[0],
 	];
 	const aboveOf = (run) => {
 		const first = run.segments[0];
@@ -1430,12 +1426,12 @@ test("PR-4 F2: nothing above the in-flight cycle changes between the wake landin
 });
 
 test("PR-4 F2: segment keys do not change when a cycle settles", () => {
-	const head = "U " + repeat("T", 4) + " A";
+	const head = `U ${repeat("T", 4)} A`;
 	const keysOf = (spec, live) =>
 		planFor(spec, live)[0].segments.map((s) => s.key);
-	const streaming = keysOf(head + " W T T", true);
-	const settled = keysOf(head + " W T T A", true);
-	const done = keysOf(head + " W T T A K", false);
+	const streaming = keysOf(`${head} W T T`, true);
+	const settled = keysOf(`${head} W T T A`, true);
+	const done = keysOf(`${head} W T T A K`, false);
 	assert.equal(streaming[0], settled[0]);
 	assert.equal(
 		settled[0],

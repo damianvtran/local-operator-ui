@@ -55,7 +55,6 @@ const {
 	paintedRows,
 	runsOf,
 	snapWindowToRunBoundary,
-	WIDEN_MAX_STEPS,
 	staysVisibleWhileCollapsed,
 	widenTarget,
 	windowTopRunIsHeadCut,
