@@ -72,6 +72,16 @@ const { fleetFacts, plural, REGISTRY_UNAVAILABLE_NOTICE } = await bundleInto(
 );
 
 /*
+ * The conversation half, bundled the same way for round 1's R1-3b: the Active
+ * row's team reading is a decision the model makes from a resolver ARGUMENT,
+ * and a frame cannot show which string a lookup answered with.
+ */
+const { conversationRows } = await bundleInto(
+	"info-conversation-model",
+	`export { conversationRows } from "./${MODEL}";`,
+);
+
+/*
  * Top-level, not inline: `useTopLevelRegex` is a warning here rather than an
  * error, but a file this one touches lands lint-clean — the rule exists because
  * a regex compiled inside a hot path is work repeated on every call.
@@ -471,4 +481,57 @@ test("the registry notice is one spelling, used by both sections", () => {
 		WIRING_NOTICE_LITERAL,
 		"the sentence itself belongs in the model, not in the panel",
 	);
+});
+
+/** The `Active` row's value for a frontend fixture, through the shipped model. */
+const activeRow = (frontend, teamLabelFor) =>
+	conversationRows(frontend, "2d5ad5da0025", teamLabelFor)?.find(
+		(row) => row.key === "active",
+	)?.value;
+
+test("the Active row reads the team's label when the caller can resolve one", () => {
+	/*
+	 * Round 1's R1-3b: the header chip on the same screen read the label while
+	 * this row printed the raw slug, so one team had two names one above the
+	 * other. The resolver is an ARGUMENT — the model stays pure and the adapter
+	 * owns the catalogue read — and its absence leaves exactly the old reading.
+	 */
+	const frontend = {
+		conversation_title: "Install the pinned uv",
+		selected_model: null,
+		effective_model: null,
+		context_tokens: null,
+		context_window: null,
+		context_is_estimate: null,
+		cost_knowledge: "unknown",
+		active_agent: "",
+		active_team: "release-crew",
+		goal: "",
+		mcp_servers: [],
+	};
+	assert.equal(activeRow(frontend), "team release-crew");
+	assert.equal(
+		activeRow(frontend, (slug) =>
+			slug === "release-crew" ? "Release Engineering" : slug,
+		),
+		"team Release Engineering",
+	);
+	// The agent arm names a profile, which has no label to prefer.
+	assert.equal(
+		activeRow({ ...frontend, active_team: "", active_agent: "coder" }),
+		"agent coder",
+	);
+});
+
+test("the panel threads the resolver into the model, and the adapter reads it", () => {
+	/*
+	 * Pinned as source text, the same device this file already uses: a bundle
+	 * cannot reach which expression the JSX passes, and a panel that stopped
+	 * forwarding the resolver would leave the model tests above green while the
+	 * screen went back to showing slugs.
+	 */
+	const source = readFileSync(join(ROOT, PANEL), "utf8");
+	assert.match(source, /conversationRows\(frontend, sessionId, teamLabelFor\)/);
+	assert.match(source, /teamLabelFor=\{teamLabelFor\}/);
+	assert.match(source, /const teamLabelFor = useTeamLabelFor\(/);
 });
