@@ -2995,6 +2995,15 @@ const BRANCH_RECORDS = [
 	 * per `citationConvention`.
 	 */
 	"foldOntod10b50764dNote",
+	/*
+	 * And the lane's SEVENTH fold record, the same evening: the sync onto
+	 * `origin/main` = `8e73cb8721` (#728 the hub-org-sharing teardown), whose
+	 * entire delta against this branch was the manifest itself - the code had
+	 * already arrived through the earlier folds. Registered for the same
+	 * completeness reason as its siblings: a fold resolved from main's copy
+	 * would drop the statement of what this sync carried.
+	 */
+	"foldOnto8e73cb8721Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
