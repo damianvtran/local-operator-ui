@@ -1622,14 +1622,26 @@ async function main() {
 		ghost.json?.error?.code === "element_not_found",
 		ghost.text,
 	);
+	// An invalid selector in the BUILT app: Electron's isolated world reports a
+	// generic "Script failed to execute" for any thrown exception, so the message
+	// the dev-time INVALID_SELECTOR mapping matches on never arrives here —
+	// measured for `read` itself first (same generic text, same `internal`). The
+	// contract this asserts is therefore PARITY: the new selector-keyed method
+	// refuses exactly the way the existing selector-keyed `read` refuses — typed,
+	// with no crash and no silent success.
+	const invalidRead = await rpc(state, "read", {
+		tab: geometryTab.tab,
+		selector: "###",
+	});
 	const invalid = await rpc(state, "styles", {
 		tab: geometryTab.tab,
 		selector: "###",
 	});
 	check(
-		"an invalid selector is the same typed refusal, never an internal error",
-		invalid.json?.error?.code === "element_not_found",
-		invalid.text,
+		"an invalid selector is refused the same way `read` refuses it",
+		invalid.json?.ok === false &&
+			invalid.json.error.code === invalidRead.json?.error?.code,
+		`read -> ${invalidRead.text}\nstyles -> ${invalid.text}`,
 	);
 	const noSelector = await rpc(state, "styles", { tab: geometryTab.tab });
 	check(

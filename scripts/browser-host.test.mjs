@@ -87,10 +87,10 @@ const bundle = await build({
 			// `policy/adapter.ts`, which this bundle reaches through `host`.
 			'export * from "./src/main/browser/vendor/driver/origin-policy";',
 			'export * from "./src/main/browser/vendor/driver/psl.gen";',
-			// The structured-read page functions, so the test below can assert that the
-			// literal source which crossed into the isolated world is the vendored
-			// function's own source and not a rebuilt expression.
-			'export * from "./src/main/browser/vendor/driver/geometry-read";',
+			// The generated source constants the host actually dispatches, so the test
+			// below can pin the dispatched code to them; the gate that keeps them equal
+			// to the vendored driver's functions is scripts/check-geometry-sources.test.mjs.
+			'export * from "./src/main/browser/actions/geometry-sources.gen";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -162,9 +162,9 @@ const {
 	domainScopeAvailable,
 	registrableDomain,
 	safeHttpUrl,
-	readStyles,
-	hitTest,
-	ancestors,
+	READ_STYLES_SOURCE,
+	HIT_TEST_SOURCE,
+	ANCESTORS_SOURCE,
 	navigateView,
 	settle,
 	// The popup policy's pure decision function and its cap constant: the matrix
@@ -3674,11 +3674,13 @@ test("the structured reads run the vendored page functions in read's isolated wo
 			view.webContents.worlds[0].code.includes('["border-top-width"]'),
 		"the selector and the requested extras cross as JSON arguments",
 	);
-	// The function that travels is the vendored one: the code starts with the
-	// driver function's own source, so a stub or a rebuilt expression cannot
-	// satisfy it.
+	// The function that travels is the vendored one: the dispatched code is built
+	// from the GENERATED constant, which `scripts/check-geometry-sources.test.mjs`
+	// pins fresh against the vendored driver — and never from a runtime
+	// `toString()`, which the app's bytecode build cannot provide
+	// (geometry-sources.gen.ts carries the measurement).
 	assert.ok(
-		view.webContents.worlds[0].code.startsWith(`(${readStyles.toString()})(`),
+		view.webContents.worlds[0].code.startsWith(`(${READ_STYLES_SOURCE})(`),
 		"the code begins with the vendored function's own source",
 	);
 	assert.equal(
@@ -3740,7 +3742,7 @@ test("the structured reads run the vendored page functions in read's isolated wo
 	);
 	assert.equal(view.webContents.worlds[0].worldId, 999);
 	assert.ok(
-		view.webContents.worlds[0].code.startsWith(`(${hitTest.toString()})(`),
+		view.webContents.worlds[0].code.startsWith(`(${HIT_TEST_SOURCE})(`),
 	);
 	assert.ok(view.webContents.worlds[0].code.endsWith("(12, 34)"));
 	assert.equal(hit.count, 1);
@@ -3762,7 +3764,7 @@ test("the structured reads run the vendored page functions in read's isolated wo
 		"s8",
 	);
 	assert.ok(
-		view.webContents.worlds[0].code.startsWith(`(${ancestors.toString()})(`),
+		view.webContents.worlds[0].code.startsWith(`(${ANCESTORS_SOURCE})(`),
 	);
 	assert.ok(view.webContents.worlds[0].code.endsWith('("#radix-pop", 3)'));
 	view.webContents.worlds = [];
