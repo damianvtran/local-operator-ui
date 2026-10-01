@@ -385,13 +385,17 @@ test("the refused box says WHY, by pointing at the pane's own sentence", () => {
 		"joined with the credential notice rather than replacing it: the two states can coincide",
 	);
 
-	const notice = read(MISSING_NOTICE);
+	/*
+	 * NIT-2: these three read SOURCE, so they go through `code()` like the pins
+	 * above — a commented copy of any of these tokens used to satisfy them.
+	 */
+	const notice = code(MISSING_NOTICE);
 	const named = notice.match(
 		/export const MISSING_SESSION_NOTICE_ID = "([^"]+)"/,
 	);
 	assert.ok(named, "the id has to be named once, in a leaf, for both ends");
 	assert.match(
-		read(TRANSCRIPT),
+		code(TRANSCRIPT),
 		/id=\{MISSING_SESSION_NOTICE_ID\}/,
 		"and the transcript has to actually paint it on the sentence, or the reference resolves to nothing",
 	);
@@ -418,7 +422,7 @@ test("a refused box takes the caret from a gesture and not from an unprompted fo
 		"the mount self-focus keeps its refusal gate: pulling the caret into a box the app has just declared inert is the silent steal, and it is what would take the caret out of the transcript when a refusal lands mid-read",
 	);
 	assert.match(
-		read(CARET),
+		code(CARET),
 		/if \(!field \|\| field\.disabled\) return false;/,
 		"and the gesture's hand-off still refuses only a DISABLED field - `readOnly` is not a bail, or the destination composer of every pick onto a missing conversation would be skipped in favour of the rail",
 	);
