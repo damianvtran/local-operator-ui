@@ -34,12 +34,14 @@
 
 import type { Meta, StoryObj } from "@storybook/react";
 import { useRef } from "react";
+import type { DesktopHistoryPage } from "../../../../../shared/desktop-session-contract";
 import { CanonicalTranscript } from "./canonical-transcript";
 import {
 	EMPTY_TRANSCRIPT,
 	type TranscriptRecord,
 	type TranscriptState,
 	applyEvent,
+	applyHistoryPage,
 } from "./transcript-reducer";
 
 /** One instant for every frame, so the frames are byte-reproducible. */
@@ -429,4 +431,79 @@ export const Narrow: Story = {
 	render: () => (
 		<Frame state={transcriptOf(TURN)} width={420} height={620} isSmallView />
 	),
+};
+
+/**
+ * THE OPERATOR'S FOOT-LINE STATE (2026-10-01): a turn that COMPACTED
+ * mid-run. The memory statement is pinned, so the hidden span partitions into
+ * two segments around it (`turn-segments.ts`) and no pre-answer segment carries
+ * the turn's stamp - the foot's own rule keeps the closing line, which is then
+ * the one shape where the caption and the action row paint TOGETHER:
+ * `Worked for 12s · 2 actions` beside the buttons.
+ *
+ * WHY THIS STORY EXISTS (the operator's report): "now that the action buttons
+ * only show up on hover, the Worked for and action count looks a bit weird -
+ * rearrange so those are on the leftmost extent and the action buttons are to
+ * the right." The caption used to FOLLOW the (invisible at rest) buttons, so
+ * it read indented by the buttons' own width; this is the state that shows it,
+ * and the frame the before/after pair under
+ * `docs/evidence/chat-canonical-message-actions-foot-before/` is taken from.
+ *
+ * Built through the DURABLE path (`applyHistoryPage`) rather than the live
+ * events, because a compaction is a durable row first (`append_compaction`
+ * writes `tokens_before` and no after-figure) and the fixture needs no live
+ * frames: the turn is settled.
+ */
+const compactedTurn = (): TranscriptState => {
+	const S = TS / 1000;
+	type Entry = DesktopHistoryPage["entries"][number];
+	const entry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "message", payload });
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: QUESTION }],
+			}),
+			entry("t1", S + 2, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c1",
+				tool_name: "bash",
+				content: [{ type: "text", text: "tests 40\npass 40\n" }],
+				provider_payload: { duration_s: 12.5, details: {} },
+			}),
+			{
+				id: "n1",
+				ts: S + 5,
+				type: "compaction",
+				payload: { tokens_before: 41_000 },
+			},
+			entry("t2", S + 8, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c2",
+				tool_name: "read",
+				content: [{ type: "text", text: "src/invoices/query.ts\n" }],
+				provider_payload: { duration_s: 0.4, details: {} },
+			}),
+			entry("a1", S + 70, {
+				kind: "message",
+				role: "assistant",
+				content: [{ text: ANSWER }],
+				stop_reason: "stop",
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
+/** A turn split by a mid-run compaction: the closing line keeps its foot. */
+export const CompactedRun: Story = {
+	render: () => <Frame state={compactedTurn()} height={640} />,
 };

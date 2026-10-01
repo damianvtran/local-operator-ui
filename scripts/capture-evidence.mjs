@@ -675,6 +675,21 @@ export const STORIES = [
 	 * design round judges that claim from.
 	 */
 	["chat-trace-fold--agent-ops", 1280, 130],
+	/*
+	 * THE OPERATOR'S NINE-TYPE LINE (2026-10-01 report: the fold summary spilled
+	 * past the container). The run whose header read `6 searches · 1 task · 2
+	 * browser actions · 1 ai_search · 1 get_tool_access · 1 query_data_sources ·
+	 * 1 todo update · 1 wait · 1 workspace_get_gmail_thread_content` - nine
+	 * unique action types. The cap (`foldCounts`) keeps the first five segments
+	 * and folds the rest into `and N other actions`; `many-types-narrow` is the
+	 * same header at the 640px window, where the capped line WRAPS rather than
+	 * truncating or overflowing the column. The before half of the pair (the
+	 * uncapped line, ellipsised by the same header) is
+	 * `docs/evidence/chat-trace-fold-before/`, captured from this story on the
+	 * pre-cap tree.
+	 */
+	["chat-trace-fold--many-types", 1280, 130],
+	["chat-trace-fold--many-types", 640, 130, { dir: "many-types-narrow" }],
 	[
 		"chat-trace-fold--expanded",
 		1280,
@@ -8162,6 +8177,29 @@ export const STORIES = [
 	["chat-canonical-message-actions--streaming", 1024, 620],
 	["chat-canonical-message-actions--multi-answer", 1024, 640],
 	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	/*
+	 * THE OPERATOR'S FOOT-LINE STATE (2026-10-01 report: "now that the action
+	 * buttons only show up on hover, the Worked for and action count looks a bit
+	 * weird - rearrange so those are on the leftmost extent and the action
+	 * buttons are to the right"). A turn that compacted mid-run partitions into
+	 * two segments, keeps its closing line, and paints the caption and the
+	 * action row TOGETHER there - the composition the report is about.
+	 * `compacted-run-hover` parks a real pointer on the answer, which is the
+	 * reveal state the no-shift claim is judged in; the before half (the caption
+	 * reading indented after the at-rest-invisible buttons) is
+	 * `docs/evidence/chat-canonical-message-actions-foot-before/`.
+	 */
+	["chat-canonical-message-actions--compacted-run", 1024, 640],
+	[
+		"chat-canonical-message-actions--compacted-run",
+		1024,
+		640,
+		{
+			hover: '[data-record-id="a1"]',
+			hoverSettleMs: 300,
+			dir: "compacted-run-hover",
+		},
+	],
 	/*
 	 * The minimum-action state (design round 1, D1): one call, so the frame shows
 	 * what the app paints where a caption beside the actions would sit if the rule

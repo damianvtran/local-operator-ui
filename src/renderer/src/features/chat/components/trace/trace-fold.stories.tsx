@@ -962,3 +962,63 @@ export const AgentOps: Story = {
 		children: <FoldRows specs={AGENT_OPS_ROWS} />,
 	},
 };
+
+/**
+ * THE OPERATOR'S OWN LINE (2026-10-01, relayed by Aida), pinned as a state.
+ *
+ * A long run's header read `6 searches · 1 task · 2 browser actions · 1
+ * ai_search · 1 get_tool_access · 1 query_data_sources · 1 todo update · 1
+ * wait · 1 workspace_get_gmail_thread_content` - nine unique action types,
+ * wider than the column at any realistic window - and the operator's ask was a
+ * cap: keep the majority classes and summarise the tail as `and N other
+ * actions`. This fixture IS that run (six fetches for the `searches` class,
+ * one task, two browser calls, then the six singleton kinds), derived through
+ * `foldProps` so the header states exactly what the shipped composition
+ * produces - the cap's frames cannot photograph a string the app would not
+ * paint, and the pre-cap tree renders this same fixture as the overflowing
+ * line the report quotes (the `chat-trace-fold-before/` half).
+ */
+const MANY_TYPES_ROWS: RowSpec[] = [
+	...Array.from(
+		{ length: 6 },
+		(_, index): RowSpec => ({
+			name: "web_fetch",
+			object: `https://docs.example.com/page-${index + 1}`,
+			durationS: 1.2 + index * 0.4,
+		}),
+	),
+	{
+		name: "task",
+		object: "audit the invoice journal",
+		op: "list",
+		durationS: 22.4,
+	},
+	{ name: "browser", object: "invoice tracker", op: "click", durationS: 3.1 },
+	{
+		name: "browser",
+		object: "invoice tracker",
+		op: "screenshot",
+		durationS: 2.2,
+	},
+	{ name: "ai_search", object: "late invoices pattern", durationS: 8.7 },
+	{ name: "get_tool_access", object: "linear", durationS: 0.3 },
+	{ name: "query_data_sources", object: "warehouse.invoices", durationS: 6.9 },
+	{ name: "todo", object: "add follow-up", op: "add", durationS: 0.2 },
+	{ name: "wait", object: "3600", durationS: 3_600 },
+	{
+		name: "workspace_get_gmail_thread_content",
+		object: "thread 18c2",
+		durationS: 1.8,
+	},
+];
+
+/** The nine-type run, capped by `foldCounts` to five segments and a tail. */
+export const ManyTypes: Story = {
+	args: {
+		...foldProps(MANY_TYPES_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 3_659_000, running: false },
+		live: null,
+		recordIds: MANY_TYPES_ROWS.map((_, index) => `s${index + 1}`),
+		children: <FoldRows specs={MANY_TYPES_ROWS} />,
+	},
+};

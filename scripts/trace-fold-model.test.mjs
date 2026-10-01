@@ -39,6 +39,7 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
+	FOLD_COUNT_LIMIT,
 	FOLD_MEDIA_LIMIT,
 	FOLD_MIN_ACTIONS,
 	actionClass,
@@ -362,6 +363,101 @@ test("the count line names the kinds in the app's own vocabulary", () => {
 		"the class nouns are untouched",
 	);
 	assert.equal(foldCounts([]), "0 actions", "only reachable for an empty run");
+});
+
+test("the count line caps its segments and folds the tail into `and N other actions`", () => {
+	/*
+	 * THE OPERATOR'S OWN LINE (2026-10-01, relayed by Aida), as the FIRST case:
+	 * the run whose header read `6 searches · 1 task · 2 browser actions · 1
+	 * ai_search · 1 get_tool_access · 1 query_data_sources · 1 todo update · 1
+	 * wait · 1 workspace_get_gmail_thread_content` - nine unique action types,
+	 * wider than the column at every realistic window. Six fetches carry the
+	 * `searches` class; the rest are one task, two browser calls and the four
+	 * singletons the operator named.
+	 */
+	const many = [
+		...Array.from({ length: 6 }, () => ({ name: "web_fetch", failed: false })),
+		{ name: "task", failed: false },
+		...Array.from({ length: 2 }, () => ({
+			name: "browser",
+			failed: false,
+		})),
+		{ name: "ai_search", failed: false },
+		{ name: "get_tool_access", failed: false },
+		{ name: "query_data_sources", failed: false },
+		{ name: "todo", op: "add", failed: false },
+		{ name: "wait", failed: false },
+		{ name: "workspace_get_gmail_thread_content", failed: false },
+	];
+	assert.equal(
+		foldSummary(many),
+		"6 searches · 1 task · 2 browser actions · 1 ai_search · 1 get_tool_access · and 4 other actions",
+		"five segments are kept in the line's own order; the four hidden CALLS make the tail",
+	);
+	/*
+	 * THE CAP IS `FOLD_COUNT_LIMIT` SEGMENTS SHOWN, and every shorter shape is
+	 * byte-identical to what it was before the cap - which is what the rest of
+	 * this file's expectations already witness (none of them exceeds five
+	 * segments, and all of them still pass unedited).
+	 */
+	assert.equal(FOLD_COUNT_LIMIT, 5, "the cap is pinned as a number");
+
+	const files = (n) =>
+		Array.from({ length: n }, () => ({ name: "read", failed: false }));
+	const searches = (n) =>
+		Array.from({ length: n }, () => ({ name: "web_fetch", failed: false }));
+	const web = (n) =>
+		Array.from({ length: n }, () => ({
+			name: "search_the_web",
+			failed: false,
+		}));
+	const commands = (n) =>
+		Array.from({ length: n }, () => ({ name: "bash", failed: false }));
+	const evals = (n) =>
+		Array.from({ length: n }, () => ({ name: "eval", failed: false }));
+	const edits = (n) =>
+		Array.from({ length: n }, () => ({ name: "write", failed: false }));
+
+	// AT the cap: five segments is still every segment, no tail.
+	assert.equal(
+		foldCounts([
+			...files(1),
+			...searches(1),
+			...web(1),
+			...commands(1),
+			...evals(1),
+		]),
+		"1 file · 1 search · 1 web search · 1 shell · 1 python",
+	);
+	// ONE past the cap: the sixth segment folds, and the tail singularises.
+	assert.equal(
+		foldCounts([
+			...files(1),
+			...searches(1),
+			...web(1),
+			...commands(1),
+			...evals(1),
+			...edits(1),
+		]),
+		"1 file · 1 search · 1 web search · 1 shell · 1 python · and 1 other action",
+	);
+	/*
+	 * THE TAIL COUNTS CALLS, NOT TYPES: three edits hide behind one segment, and
+	 * the tail states three - the same unit the bar's `N actions` and the foot's
+	 * `N actions` count, so a reader who sums the kept segments and the tail
+	 * still reaches the turn's action count.
+	 */
+	assert.equal(
+		foldCounts([
+			...files(1),
+			...searches(1),
+			...web(1),
+			...commands(1),
+			...evals(1),
+			...edits(3),
+		]),
+		"1 file · 1 search · 1 web search · 1 shell · 1 python · and 3 other actions",
+	);
 });
 
 test("the action classes are the ledgers' own names, case-folded", () => {

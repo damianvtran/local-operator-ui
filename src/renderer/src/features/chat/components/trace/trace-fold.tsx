@@ -292,10 +292,13 @@ export const TraceFold = ({
 						 * `1 python` lost) while the failure chip and clock survived on
 						 * `shrink-0` (design round 1, D1, measured on a long-name probe). The
 						 * counts and the clock are the facts a condensed group exists to carry,
-						 * so the summary takes `shrink-0` while the clause is present: the clause
-						 * is the one element with slack (`min-w-0 truncate`, and it can shrink to
-						 * nothing), so every overflow goes to the name first. With no clause -
-						 * a settled header - the summary truncates as it always has.
+						 * and they still are: the clause keeps `min-w-0 truncate` (it can shrink
+						 * to nothing) and the summary never truncates at all - it WRAPS (see
+						 * its own comment below), so the counts survive in full even where the
+						 * name has been paid away. `shrink-0` kept the summary on one line by
+						 * refusing every squeeze, and that is also what made a long summary
+						 * unable to stay inside a narrow row; with the counts wrapping there is
+						 * nothing left for it to protect (operator report, 2026-10-01).
 						 */}
 						{live !== null && !open && (
 							<>
@@ -310,7 +313,19 @@ export const TraceFold = ({
 								 */}
 								<span
 									data-fold-live=""
-									className={cn("min-w-0 truncate")}
+									/*
+									 * `shrink-[999]`: THE NAME IS THE ELEMENT THAT YIELDS. Its weight
+									 * against the summary's default 1 makes the deficit distribution
+									 * lexicographic in practice - flex divides it by `factor x basis`,
+									 * so this clause pays essentially all of it (to its own zero,
+									 * `min-w-0`), and only a deficit larger than the clause can pay
+									 * reaches the summary at all. That ordering is the D1 ruling and
+									 * is what keeps the counts on one line in every state the
+									 * committed frames show; the summary's wrap (its own comment)
+									 * is the backstop UNDER this, not a competitor to it (operator
+									 * report, 2026-10-01).
+									 */
+									className={cn("min-w-0 shrink-[999] truncate")}
 									/*
 									 * The name is the only element here that truncates, so the full text
 									 * would otherwise be reachable only by expanding the fold; the tooltip
@@ -340,11 +355,38 @@ export const TraceFold = ({
 							</>
 						)}
 						<span
+							/*
+							 * WRAPS, NEVER TRUNCATES, AND NEVER OVERFLOWS (operator report,
+							 * 2026-10-01): the summary is the run's counts - the facts a condensed
+							 * group exists to carry - so nothing about it may be silently cut, and a
+							 * settled header used to ellipsise it (`6 searches · 1 task · 2 browser
+							 * actions · 1 ai_search · 1 get_tool_access · 1 query_…` at the 640px
+							 * window). At a minimum-width column, or beside a long live clause, it
+							 * now wraps onto the next line and the row grows; the ROW keeps
+							 * `min-h-5`, so the ledger pitch only opens where a line genuinely
+							 * needs it. The cap in `foldCounts` is the first line of defence - the
+							 * report's nine-type run composes to five segments and a tail - and
+							 * this wrap is the backstop underneath it. The span carries
+							 * `data-fold-summary` for the tests and the rig (a text node inside the
+							 * button is otherwise unaddressable), and
+							 * `scripts/chat-alignment-geometry.mjs` reads its box per width.
+							 *
+							 * `shrink-[0.01]` IS THE ORDERING, measured in the Chrome this ships
+							 * on: flex divides a deficit by `factor x basis`, so against the live
+							 * clause's `shrink-[999]` this share rounds to ZERO layout units in
+							 * every state the committed frames show - the summary holds its exact
+							 * one-line width while the name truncates, D1's priority, and a
+							 * squeezed summary is not what the long-name and image-live states
+							 * photograph any more. Only when the clause has yielded to nothing
+							 * (or there is no clause at all) does the deficit reach this span,
+							 * and then it wraps. `shrink-0` was the old way to say the first
+							 * half of that and could not say the second - hence the factor.
+							 */
 							className={cn(
-								"min-w-0 truncate text-body-sm text-ink-muted",
-								live !== null && !open && "shrink-0",
+								"min-w-0 shrink-[0.01] text-body-sm text-ink-muted",
 							)}
 							title={`${actionCount} actions`}
+							data-fold-summary=""
 						>
 							{/*
 							 * What the run has done, by class or by kind (`foldSummary`).
