@@ -1322,6 +1322,22 @@ test("the transcript no longer renders a Writing row", () => {
 	);
 });
 
+/*
+ * The table-cell ceiling (design note D1, the markdown-table width fix of
+ * 2026-09-30): `th, td { max-width: 64ch }` is a ceiling on ONE CELL's
+ * min-content demand - the token with no word boundary at all - not a reading
+ * measure on prose, and the property test below admits exactly this one, by
+ * VALUE and by RULE. Hoisted because `scripts/` is held to
+ * `lint/performance/useTopLevelRegex`; kept beside the test because the
+ * exception and its guards read together.
+ */
+const WIDTH_CAP_DECLARATION = /max-width\s*:\s*([^;}]+)/g;
+const CH_UNIT = /[\d.]+ch\b/g;
+const CELL_CAP_RULES = /\.lo-markdown th,\s*\.lo-markdown td\s*\{[^}]*\}/g;
+const CELL_CAP_VALUE = /max-width\s*:\s*64ch/;
+const CELL_CAP_WORD_BREAK = /word-break\s*:\s*normal/;
+const CELL_CAP_OVERFLOW_WRAP = /overflow-wrap\s*:\s*break-word/;
+
 test("no reading measure survives on either surface, by property not by name", () => {
 	// The operator's report of 2026-09-16: a user card widened by a reply quote
 	// or a wide attachment left the message floating as a centre-constrained
@@ -1375,9 +1391,12 @@ test("no reading measure survives on either surface, by property not by name", (
 	// renderer are read, the rest of the tree is not), a width applied at runtime
 	// by something other than a class string or this stylesheet, and a cap written
 	// in a unit and a property no declaration here uses. And the deliberate cost
-	// stands: any future non-`100%` `width`/`max-width` in `markdown.css` is a
-	// failing test, because that file is the one place such a measure could retire
-	// to and a new cap there should be an argued act rather than a silent one.
+	// stands but for ONE ARGUED ACT: the markdown-table fix of 2026-09-30 (design
+	// note D1) puts `max-width: 64ch` on `th, td` - a ceiling on one table cell's
+	// min-content demand, not a reading measure on prose - and the assertions
+	// below admit exactly that cap, by value and by rule (see
+	// `WIDTH_CAP_DECLARATION` above); a SECOND cap anywhere in this file is still
+	// a failing test, which is the property this test exists to keep.
 	const source = (path) => readFileSync(path, "utf8");
 	// Comments stripped first: this file's own measure argument QUOTES `max-width:
 	// 62ch` and `margin-inline: auto` while explaining why they are gone, and a
@@ -1385,13 +1404,27 @@ test("no reading measure survives on either surface, by property not by name", (
 	const css = source(
 		"src/renderer/src/features/chat/components/markdown.css",
 	).replace(/\/\*[\s\S]*?\*\//g, "");
+	const capValues = [...css.matchAll(WIDTH_CAP_DECLARATION)]
+		.map(([, value]) => value.trim())
+		.filter((value) => value !== "100%");
 	assert.deepEqual(
-		[...css.matchAll(/max-width\s*:\s*([^;}]+)/g)]
-			.map(([, value]) => value.trim())
-			.filter((value) => value !== "100%"),
-		[],
-		"markdown.css declares no width cap beyond `100%`",
+		capValues,
+		["64ch"],
+		"the only width cap beyond `100%` is the argued table-cell ceiling (design note D1); any other cap is the reading measure coming back",
 	);
+	// And it really is the CELL rule that carries it, together with the pair of
+	// declarations the fix depends on - so the exception cannot drift to another
+	// selector, another number, or a cell rule that lost its word-break mode.
+	const cellCapRules = (css.match(CELL_CAP_RULES) ?? []).filter((rule) =>
+		CELL_CAP_VALUE.test(rule),
+	);
+	assert.equal(
+		cellCapRules.length,
+		1,
+		"the 64ch ceiling lives on the th/td override rule",
+	);
+	assert.match(cellCapRules[0], CELL_CAP_WORD_BREAK);
+	assert.match(cellCapRules[0], CELL_CAP_OVERFLOW_WRAP);
 	// `width` as well as `max-width` (code review round 2, MINOR 1): a fixed
 	// `width: 546px` on the root needs no `max-width`, no `ch` unit and no `auto`
 	// margin, and it leaves a column inside the card that never reaches the card's
@@ -1405,12 +1438,15 @@ test("no reading measure survives on either surface, by property not by name", (
 		[],
 		"markdown.css declares no `width` other than `100%`",
 	);
-	// A reading measure is a `ch` cap — 62ch was the number — so one re-added
-	// under another name still has to spell a `ch` unit in this file.
+	// A reading measure is a `ch` cap - 62ch was the number - so one re-added
+	// under another name still has to spell a `ch` unit in this file. The ONE
+	// `ch` allowed is the table-cell ceiling admitted above, and demanding the
+	// array be exactly `["64ch"]` is also what stops a second `ch` cap hiding
+	// beside it.
 	assert.deepEqual(
-		css.match(/[\d.]+ch\b/g) ?? [],
-		[],
-		"markdown.css keeps no `ch` unit: the reading measure has no spelling left",
+		css.match(CH_UNIT) ?? [],
+		["64ch"],
+		"the only `ch` unit in markdown.css is the argued table-cell ceiling (design note D1)",
 	);
 	assert.ok(
 		!/(?:^|[;{\s])margin[a-z-]*\s*:[^;}]*\bauto\b/.test(css),

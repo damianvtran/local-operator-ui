@@ -423,7 +423,11 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, [
 		userRecord("user:1"),
-		toolRecord("tool:1", { ts: TS + 1_000, endedAt: TS + 2_000 }),
+		toolRecord("tool:1", {
+			ts: TS + 1_000,
+			endedAt: TS + 2_000,
+			durationS: 3,
+		}),
 		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
 	]);
 	const summary = bar(mounted);
@@ -441,7 +445,7 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 	assert.match(
 		summary.textContent,
 		/Took 3s/,
-		"opening user row to the answer",
+		"the call's own reported seconds - the foot's quantity, not a wall span",
 	);
 	assert.match(summary.textContent, /1 action/);
 	assert.equal(
@@ -932,7 +936,7 @@ test("a settle announces the new bar politely, in the bar's own words", async (t
 	 */
 	const running = [
 		userRecord("user:1"),
-		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
 	];
 	const mounted = await mount(t, running, { waiting: true });
 	const region = () =>
@@ -1308,6 +1312,13 @@ test("a group holding only part of the span keeps its own clause (D3/U6, keep br
 	 * the whole set - the numbers differ, so both levels state their own and
 	 * the suppression must NOT fire. The notice between the two runs is what
 	 * splits them (`foldRuns`: a non-call row breaks a run).
+	 *
+	 * THE SPLITTER IS AN UNPINNED (info) NOTICE, since the segments change: a
+	 * `complete` marker is pinned, so it now ends one bar and opens another
+	 * instead of sitting between two runs of the same bar - which is the reorder
+	 * fix, and is asserted where it belongs (the segments suite). This test is
+	 * about the D3/U6 clause rule inside ONE bar, so its fixture must keep the
+	 * two folds in one.
 	 */
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, [
@@ -1317,7 +1328,7 @@ test("a group holding only part of the span keeps its own clause (D3/U6, keep br
 		}),
 		toolRecord("tool:2"),
 		toolRecord("tool:3"),
-		noticeRecord("notice:1"),
+		noticeRecord("notice:1", { complete: false, level: "info" }),
 		toolRecord("tool:4"),
 		toolRecord("tool:5", {
 			images: [shotImage("tool:5", 0), shotImage("tool:5", 1)],
@@ -1613,4 +1624,502 @@ test("the incident row under the bar takes the block step too (operator report, 
 		!incident.classList.contains(GAP.trace[0]),
 		"the 2px ledger hug is not painted on the incident row beneath the rule",
 	);
+});
+
+/* ------------- segments: several bars in one run (issue #665) ------------- */
+
+/** The order of the transcript's top-level entries: bars and rows by id. */
+const orderOf = (mounted) =>
+	[...mounted.container.querySelectorAll("[data-record-id]")]
+		.filter(
+			(node) =>
+				node.hasAttribute("data-turn-summary") ||
+				node.closest("[data-turn-summary]") === null,
+		)
+		.map((node) =>
+			node.hasAttribute("data-turn-summary")
+				? `bar:${node.getAttribute("data-record-id")}`
+				: node.getAttribute("data-record-id"),
+		);
+const barsOf = (mounted) => [
+	...mounted.container.querySelectorAll("[data-turn-summary]"),
+];
+
+test("a pinned row between two hidden spans stays BETWEEN their bars, before and after a press", async (t) => {
+	/*
+	 * The E8 reorder, as a rendered assertion. One bar at the first hidden row's
+	 * slot used to put the compaction AFTER a bar that preceded it - and moved it
+	 * when the bar opened. Each span is its own bar now, so the order is fixed.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		compactionRecord("compaction:1", { ts: TS + 2_000 }),
+		toolRecord("tool:2", { ts: TS + 3_000 }),
+		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+	]);
+	const expected = [
+		"user:1",
+		"bar:tool:1",
+		"compaction:1",
+		"bar:tool:2",
+		"answer:1",
+	];
+	assert.deepEqual(orderOf(mounted), expected, "collapsed order");
+	assert.equal(barsOf(mounted).length, 2, "two bars in one run");
+	// Pressing the SECOND bar opens only the second span.
+	await click(barsOf(mounted)[1].querySelector("button"));
+	assert.deepEqual(
+		orderOf(mounted).filter((id) => !id.startsWith("tool:")),
+		expected,
+		"opening a bar reorders nothing that stays visible",
+	);
+	assert.ok(rowBox(mounted, "tool:2"), "the second span's row is now mounted");
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the first span is still condensed",
+	);
+	assert.equal(
+		barsOf(mounted)[0].querySelector("button").getAttribute("aria-expanded"),
+		"false",
+	);
+});
+
+test("one stamp per turn with several bars: the answer's foot keeps it", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		compactionRecord("compaction:1", { ts: TS + 2_000 }),
+		toolRecord("tool:2", { ts: TS + 3_000 }),
+		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+	]);
+	assert.equal(mounted.container.querySelectorAll("time").length, 1);
+	assert.ok(
+		rowBox(mounted, "answer:1").querySelector("time"),
+		"the stamp is on the answer's own foot, since no single bar states the turn",
+	);
+	assert.match(rowBox(mounted, "answer:1").textContent, /Worked/);
+});
+
+test("a post-terminal reply is a follow-up bar AFTER the answer, with the completion mark", async (t) => {
+	/*
+	 * The operator's shape, minimal: the answer, the disposal marker and incident,
+	 * a peer note, then one more short reply with its work. The answer must stay
+	 * mounted with the turn's own foot; the reply's work is a labelled bar below.
+	 */
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+		noticeRecord("marker:1", {
+			ts: TS + 3_000,
+			text: "Stopped with an error",
+			level: "error",
+		}),
+		peerRecord("peer:1", { ts: TS + 4_000 }),
+		toolRecord("tool:2", { ts: TS + 5_000 }),
+		answerRecord("answer:2", {
+			ts: TS + 6_000,
+			settledAt: TS + 6_000,
+			text: "Status note.",
+		}),
+	]);
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 2, "the turn's bar and the follow-up's");
+	assert.equal(bars[0].hasAttribute("data-segment-complete"), false);
+	assert.equal(
+		bars[1].getAttribute("data-segment-complete"),
+		"true",
+		"only the follow-up is marked complete",
+	);
+	assert.match(bars[1].textContent, /Peer message/);
+	assert.doesNotMatch(bars[1].textContent, /Peer note/, "the retired word");
+	assert.ok(rowBox(mounted, "answer:1"), "the ANSWER stays mounted");
+	assert.ok(
+		rowBox(mounted, "answer:1").hasAttribute("data-turn-answer") ||
+			rowBox(mounted, "answer:1").querySelector("[data-turn-answer]"),
+		"and wears the answer mark",
+	);
+	assert.equal(
+		mounted.container.querySelectorAll("[data-turn-answer]").length,
+		1,
+		"the status note does not",
+	);
+	const order = orderOf(mounted);
+	assert.ok(
+		order.indexOf("answer:1") < order.indexOf("marker:1") &&
+			order.indexOf("marker:1") < order.indexOf("bar:peer:1"),
+		`answer, marker, then the follow-up bar: ${order.join(" ")}`,
+	);
+});
+
+test("the answer's rail is an opt-in setting: off by default, on under the key, always marked for rigs", async (t) => {
+	/*
+	 * `display.turn_answer_rail` through the component's own seam, the way the
+	 * cross-session toggle above is driven: the query client is seeded with the
+	 * two cache entries the app resolves, and one `setQueryData` per direction
+	 * under the same mount is the operator flipping the setting in Settings.
+	 * `data-turn-answer` is set from the election alone, so it must be present
+	 * in every state (rigs read it instead of a class name); only the CLASSES
+	 * follow the setting. Operator report 2026-09-30: the always-on 2px rule of
+	 * #708 "looks ugly" and "cramped".
+	 */
+	__resetTurnCollapseOpen();
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const records = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		peerRecord("peer:1", { ts: TS + 2_000 }),
+		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+	];
+	const answerEl = (mounted) =>
+		mounted.container.querySelector("[data-turn-answer]");
+	// No answer to the capabilities query at all: the fail-closed default.
+	const mounted = await mount(t, records, { client });
+	assert.ok(answerEl(mounted), "the election hook is set with no setting");
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
+	assert.equal(answerEl(mounted).className.includes("-ml-"), false);
+	assert.ok(answerEl(mounted).className.includes("w-full"));
+
+	const seed = async (settings) => {
+		await act(async () => {
+			client.setQueryData(desktopKeys.capabilities, {
+				desktop_available: true,
+				features: { settings: 1 },
+			});
+			client.setQueryData(backendSettingsKeys.all, { sections: [], settings });
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+		await flushFrames();
+	};
+	await seed([{ key: "display.turn_answer_rail", value: true }]);
+	const on = answerEl(mounted).className;
+	assert.match(on, /\bborder-hairline\b/);
+	assert.match(on, /\bborder-l\b/);
+	assert.match(on, /\bpl-3\b/);
+	assert.match(on, /-ml-\[13px\]/, "margin nets rule + padding to zero");
+	assert.doesNotMatch(on, /border-l-2|border-ink-dim|pl-1\.5/, "not #708's");
+	assert.equal(
+		mounted.container.querySelectorAll("[data-turn-answer]").length,
+		1,
+		"one elected answer",
+	);
+
+	/*
+	 * THE CAPABILITY PLANE IS THE OTHER HALF OF FAIL-CLOSED (agent review round 1,
+	 * R3; QA round 1, Q-1). A cached `true` plus a plane that stops advertising
+	 * `settings` used to keep the rail on: `enabled: false` stops the query
+	 * refetching but leaves the cache in place, and the hook read that cache. The
+	 * rail must drop the moment the capability does, without waiting for a reload.
+	 */
+	await act(async () => {
+		client.setQueryData(desktopKeys.capabilities, {
+			desktop_available: true,
+			features: {},
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.equal(
+		answerEl(mounted).className.includes("border-l"),
+		false,
+		"a plane that stops advertising `settings` draws no rail, cached true or not",
+	);
+	assert.ok(answerEl(mounted), "the election hook is still set for rigs");
+
+	await seed([{ key: "display.turn_answer_rail", value: true }]);
+	/*
+	 * TWO ticks, for the reason the cross-session toggle above gives: the query's
+	 * notification is applied on a TASK and the row's repaint then queues a FRAME,
+	 * and a capability flip re-enables the query, so the settle is one step later
+	 * than the seeded-write path.
+	 */
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.match(
+		answerEl(mounted).className,
+		/\bborder-hairline\b/,
+		"the rail returns when the plane advertises `settings` again",
+	);
+
+	await seed([{ key: "display.turn_answer_rail", value: "true" }]);
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
+	assert.ok(answerEl(mounted), "still marked for rigs with the rail off");
+	await seed([{ key: "display.shimmer", value: true }]);
+	assert.equal(
+		answerEl(mounted).className.includes("border-l"),
+		false,
+		"a backend without the key draws none",
+	);
+	await seed([{ key: "display.turn_answer_rail", value: false }]);
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
+});
+
+test("a reveal names the bar that holds the row: data-segment-ids decides among several", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		compactionRecord("compaction:1", { ts: TS + 2_000 }),
+		toolRecord("tool:2", { ts: TS + 3_000 }),
+		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+	]);
+	const [first, second] = barsOf(mounted);
+	assert.equal(first.getAttribute("data-segment-ids"), "tool:1");
+	assert.equal(second.getAttribute("data-segment-ids"), "tool:2");
+	assert.equal(
+		first.getAttribute("data-run-ids"),
+		second.getAttribute("data-run-ids"),
+		"the run's ids stay whole on every bar (the existing contract)",
+	);
+});
+
+/* ------------- pressing a bar keeps it where it was (UX U1) --------------- */
+
+test("U1: opening a bar moves the scroller by exactly how far the bar moved, and only then", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+	]);
+	/*
+	 * The transcript's own scroller: the harness hands `mounted.container` in as
+	 * the ref, but React writes the real element over it, so the container itself
+	 * is not what the effect scrolls.
+	 */
+	const region = mounted.container.querySelector(
+		"[data-lo-canonical-transcript]",
+	);
+	assert.ok(region, "the scroller is mounted");
+	const summary = bar(mounted);
+	/*
+	 * jsdom has no layout, so the bar's rect is stated: 300px into the scroller
+	 * while shut, and 320px higher (-20) once its span is mounted above the
+	 * pinned tail - the measured bottom-of-transcript case, where the browser's
+	 * scroll anchoring does not hold the pressed bar.
+	 */
+	const real = summary.getBoundingClientRect;
+	let drift = -320;
+	summary.getBoundingClientRect = () => {
+		const open =
+			summary.querySelector("button")?.getAttribute("aria-expanded") === "true";
+		const top = open ? 300 + drift : 300;
+		return { top, bottom: top + 33, left: 0, right: 0, width: 0, height: 33 };
+	};
+	region.scrollTop = 0;
+	await click(barTrigger(mounted));
+	assert.equal(
+		region.scrollTop,
+		-320,
+		"the scroller follows the bar down by the 320px it moved (reversed axis: negative)",
+	);
+	// Where the browser already held the bar the delta is zero: no write.
+	await click(barTrigger(mounted)); // closes
+	region.scrollTop = 0;
+	drift = 0;
+	await click(barTrigger(mounted));
+	assert.equal(region.scrollTop, 0, "an anchored bar is left alone");
+	summary.getBoundingClientRect = real;
+});
+
+/* -------- a live ladder: bars above, the running turn untouched (D5) ------- */
+
+test("D5: a turn still running keeps every row while the turns above it wear their ladders", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			toolRecord("tool:1", { ts: TS + 1_000, durationS: 4 }),
+			compactionRecord("compaction:1", { ts: TS + 2_000 }),
+			toolRecord("tool:2", { ts: TS + 3_000, durationS: 6 }),
+			answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+			userRecord("user:2", { ts: TS + 5_000 }),
+			toolRecord("tool:3", { ts: TS + 6_000, durationS: 2 }),
+			compactionRecord("compaction:2", { ts: TS + 7_000 }),
+			toolRecord("tool:4", { ts: TS + 8_000, durationS: 2 }),
+		],
+		{ waiting: true },
+	);
+	const bars = barsOf(mounted);
+	assert.equal(
+		bars.length,
+		2,
+		"the settled turn's two bars, none for the live one",
+	);
+	assert.deepEqual(
+		bars.map((node) => node.getAttribute("data-segment-ids")),
+		["tool:1", "tool:2"],
+	);
+	assert.match(bars[0].textContent, /Took 4s/);
+	assert.match(bars[1].textContent, /Took 6s/);
+	for (const id of ["tool:3", "compaction:2", "tool:4"]) {
+		assert.ok(rowBox(mounted, id), `${id} stays mounted while the turn runs`);
+	}
+});
+
+/* --------------- the mark's name, and the close's compensation -------------- */
+
+test("QA-1/QA-3: the completion word ends the bar's accessible name, and only where it is earned", async (t) => {
+	/*
+	 * The mark itself is an `aria-hidden` glyph, so without words the fact it
+	 * states is unavailable to a screen-reader user. The words join the trigger's
+	 * own accessible name (the button carries no `aria-label`, so its content IS
+	 * its name) - and the ORDER is the claim: they come after the facts, read the
+	 * way the row renders, so a marked bar is `Peer message Took 1s 1 action
+	 * completed` rather than a word wedged between the label and its count. The
+	 * unlabelled marked shape (a resync window's bar) reads `Took 9s 8 actions
+	 * completed` by the same rule, which is why the assertion below is on the LAST
+	 * part rather than on a full literal alone.
+	 *
+	 * The name is computed the way an accessibility tree computes it: document
+	 * order, `aria-hidden` subtrees dropped, an `aria-label` standing in for its
+	 * subtree. jsdom has no AX tree, so this is the closest faithful reading; the
+	 * strings were cross-checked against QA round 3's AX read.
+	 */
+	const nameParts = (node) => {
+		const parts = [];
+		const walk = (n) => {
+			if (n.nodeType === 3) {
+				const text = n.textContent.replace(/\s+/g, " ").trim();
+				if (text) parts.push(text);
+				return;
+			}
+			if (n.nodeType !== 1) return;
+			if (n.getAttribute("aria-hidden") === "true") return;
+			const label = n.getAttribute("aria-label");
+			if (label) {
+				parts.push(label);
+				return;
+			}
+			for (const child of n.childNodes) walk(child);
+		};
+		walk(node);
+		return parts;
+	};
+
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000, durationS: 1 }),
+		compactionRecord("compaction:1", { ts: TS + 2_000 }),
+		toolRecord("tool:2", { ts: TS + 3_000, durationS: 2 }),
+		answerRecord("answer:1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+		noticeRecord("marker:1", {
+			ts: TS + 5_000,
+			text: "Stopped with an error",
+			level: "error",
+		}),
+		peerRecord("peer:1", { ts: TS + 6_000 }),
+		toolRecord("tool:3", { ts: TS + 7_000, durationS: 1 }),
+		answerRecord("answer:2", {
+			ts: TS + 8_000,
+			settledAt: TS + 8_000,
+			text: "Status note.",
+		}),
+	]);
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 3);
+	const parts = bars.map((node) => nameParts(node.querySelector("button")));
+	/*
+	 * Joined with a single space, which is how an accessibility tree renders the
+	 * parts: these three strings are the names QA round 3 read off the AX tree of
+	 * the real app.
+	 */
+	const names = parts.map((list) => list.join(" "));
+	assert.deepEqual(
+		names,
+		[
+			"Took 1s 1 action",
+			"Took 2s 1 action",
+			"Peer message Took 1s 1 action completed",
+		],
+		"the unmarked bars claim nothing; the marked one names its completion last",
+	);
+	const [first, second, marked] = parts;
+	for (const [index, parts] of [first, second, marked].entries()) {
+		assert.equal(
+			parts.includes("completed"),
+			index === 2,
+			`bar ${index}: the word appears only where the mark is earned`,
+		);
+	}
+	assert.equal(
+		marked.at(-1),
+		"completed",
+		"and it ends the name, which is what makes an unlabelled marked bar read `Took 9s 8 actions completed`",
+	);
+	assert.ok(
+		marked.indexOf("completed") > marked.indexOf("1 action"),
+		"the word follows the facts, not the label",
+	);
+});
+
+test("QA-2: closing a bar returns the reader's place, one acknowledged write per movement", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+	]);
+	const region = mounted.container.querySelector(
+		"[data-lo-canonical-transcript]",
+	);
+	assert.ok(region, "the scroller is mounted");
+	const summary = bar(mounted);
+	/*
+	 * The measured close: the span's rows unmount and the bar drops back down the
+	 * viewport by the span's length (QA round 2 measured ~2.5 span-lengths of
+	 * drift on a real press). Stated here as a 320px step, so the compensation is
+	 * read as an exact number.
+	 */
+	/*
+	 * The bar's position follows the DISCLOSURE's own state, as it does in the
+	 * browser: a press flips `aria-expanded` synchronously, and the commit that
+	 * mounts (or unmounts) the span is what moves the bar.
+	 */
+	const isOpen = () =>
+		summary.querySelector("button")?.getAttribute("aria-expanded") === "true";
+	summary.getBoundingClientRect = () => {
+		const top = isOpen() ? -20 : 300;
+		return { top, bottom: top + 33, left: 0, right: 0, width: 0, height: 33 };
+	};
+	region.scrollTop = 0;
+	/*
+	 * Counted from here, so the seed above is not a movement: what the assertions
+	 * count is what the reader's two presses move, and the values are the offsets
+	 * the component assigns (`scrollTop += moved`).
+	 */
+	const writes = [];
+	let held = region.scrollTop;
+	Object.defineProperty(region, "scrollTop", {
+		configurable: true,
+		get: () => held,
+		set: (value) => {
+			writes.push(value);
+			held = value;
+		},
+	});
+	await click(barTrigger(mounted));
+	await click(barTrigger(mounted)); // re-press: the same button closes it
+	assert.equal(
+		writes.length,
+		2,
+		`one write per movement; got ${JSON.stringify(writes)}`,
+	);
+	assert.deepEqual(
+		writes,
+		[-320, 0],
+		"the open writes where the bar moved to, the close writes the reader's place back",
+	);
+	assert.equal(region.scrollTop, 0, "the reader's place is returned to them");
 });

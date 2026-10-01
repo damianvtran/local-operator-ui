@@ -410,6 +410,12 @@ const CHROME_LAUNCH_SITES = [
 		"captures the shipped /usage view against real provider data",
 	),
 	guarded(
+		"scripts/turn-answer-rail-evidence.mjs",
+		"spawn",
+		1,
+		"photographs the turn-answer rail's before/after/absent states over the shipped transcript (PR #717); one private headless Chrome for all three states, its profile under the system temp dir",
+	),
+	guarded(
 		"docs/evidence/desktop-413/harness/capture-413.mjs",
 		"spawn",
 		1,
