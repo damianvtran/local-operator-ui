@@ -819,7 +819,11 @@ test("with no probe bridge the ambiguous tokens stay prose and nothing throws", 
 test("a streaming row scans and asks nothing at all", async () => {
 	/*
 	 * `linkify` false is the streaming path, and its contract is the strongest of
-	 * the three: NO pre-scan, NO ask, NO anchor. A row re-renders per delta, so a
+	 * the three: NO pre-scan, NO ask, NO anchor. Review round 1 (R2): the
+	 * transcript's streaming ROW no longer uses this prop path - it renders
+	 * `StreamingMarkdown`, whose ask contract is pinned in
+	 * `scripts/streaming-markdown-parity.test.mjs` - but the path is still live
+	 * for the aside panel (`linkify: stream.settled`), so this assertion stays. A row re-renders per delta, so a
 	 * probe per render would be a stat storm on main's own event loop - the shape
 	 * `use-mentioned-files` documents for the same reason - and this is the one
 	 * assertion that fails loudly if the evidence effect stops reading its own
