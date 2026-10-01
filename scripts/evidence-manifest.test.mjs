@@ -2894,6 +2894,17 @@ const BRANCH_RECORDS = [
 	"sttRecordingDisplayFoldSixNote",
 	"sttRecordingDisplayFoldSevenNote",
 	/*
+	 * And by the TEAM LABELS lane (2026-09-30): its re-stamp is the branch's
+	 * newest top-level record, holding the two stamps this branch's delta moved
+	 * (the whole label read path under `src/` - the new `team-display.ts` and
+	 * its readers - and the three source-anchor tests plus three new cases
+	 * under `scripts/`). Listed for the reason this list exists: a fold that
+	 * started from main's copy would drop it first, and with it the only
+	 * statement of what the re-stamp read. The note spells its pair as bare
+	 * SHAs, so it adds no name to the quoting ledger.
+	 */
+	"teamLabelsRestampNote",
+	/*
 	 * AND THIS BRANCH'S OWN (feat/mesh-canvas-redesign, 2026-09-30): the two records
 	 * of the mesh canvas redesign - `meshCanvasRedesignRestampNote` (the pass: the
 	 * whole mesh-tab set re-captured at 42 frames through the repo's own sweep, the
@@ -3036,6 +3047,16 @@ const BRANCH_RECORDS = [
 	 * STORIES row, resolved per `citationConvention`.
 	 */
 	"foldOntoe1eb22cd58Note",
+	/*
+	 * And the lane's TWELFTH fold record, its first source fold: the sync onto
+	 * `origin/main` = `69d088ec52` (#716 the team-labels lane) conflicted in
+	 * `project-list.tsx` and `projects-page.tsx`, so the resolution is a union
+	 * of BEHAVIOUR (search/sort/filters props AND `teamLabelFor`), recorded in
+	 * the note. Registered for the same completeness reason as its siblings: a
+	 * fold resolved from main's copy would drop the statement of what this sync
+	 * carried - main's `teamLabelsRestampNote` and its two team-identity rows.
+	 */
+	"foldOnto69d088ec52Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

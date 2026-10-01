@@ -104,6 +104,13 @@ type ProjectListProps = {
 	todayMs: number;
 	onToggleFilter: (facet: FilterFacetKey, value: FilterOptionValue) => void;
 	onClearFilters: () => void;
+	/**
+	 * The team's readable name for the group headings (round 1, D5). A PROP
+	 * rather than a query in here, because this list renders and the page owns
+	 * the reads (the same rule `nowMs` follows); absent - a test, a story with
+	 * no catalogue - the slug renders exactly as it always did.
+	 */
+	teamLabelFor?: (slug: string) => string;
 };
 
 /** One column's plan: how it sheds, how wide it is, and what its menu does. */
@@ -229,6 +236,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 	todayMs,
 	onToggleFilter,
 	onClearFilters,
+	teamLabelFor = (name) => name,
 }) => {
 	/*
 	 * ORDER FIRST, THEN GROUP: an explicit sort orders the rows and
@@ -379,7 +387,12 @@ export const ProjectList: FC<ProjectListProps> = ({
 							data-project-team={group.team ?? ""}
 						>
 							<span className="truncate text-ink">
-								{group.team ?? NO_TEAM_LABEL}
+								{/*
+								 * The heading reads the team the way the rows' `Managed by`
+								 * line does (round 1, D5) - one team, one name across the
+								 * screen; the bucket keeps its own label.
+								 */}
+								{group.team == null ? NO_TEAM_LABEL : teamLabelFor(group.team)}
 							</span>
 							<span className="shrink-0 text-ink-muted">
 								{group.items.length}

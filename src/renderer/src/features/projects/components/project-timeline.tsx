@@ -87,6 +87,12 @@ type ProjectTimelineProps = {
 	failedDetails: number;
 	/** Refetch every failed milestone read; the page owns the queries. */
 	onRetryDetails: () => void;
+	/**
+	 * The team's readable name for the group headers (round 1, D5 — the timeline
+	 * draws the same human-read names the list headings do; the finding named
+	 * the list, and this is the same defect on the same data).
+	 */
+	teamLabelFor?: (slug: string) => string;
 };
 
 export const ProjectTimeline: FC<ProjectTimelineProps> = ({
@@ -96,6 +102,7 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 	pendingDetails,
 	failedDetails,
 	onRetryDetails,
+	teamLabelFor = (name) => name,
 }) => {
 	const [manual, setManual] = useState<TimelineTier | null>(null);
 	const [width, setWidth] = useState(0);
@@ -231,7 +238,9 @@ export const ProjectTimeline: FC<ProjectTimelineProps> = ({
 										style={{ width: NAME_COL_PX }}
 									>
 										<span className="truncate text-ink">
-											{group.team ?? NO_TEAM_LABEL}
+											{group.team == null
+												? NO_TEAM_LABEL
+												: teamLabelFor(group.team)}
 										</span>
 										<span className="shrink-0 text-ink-muted">
 											{group.items.length}

@@ -12,7 +12,11 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
-import type { ChatTarget } from "@shared/api/local-operator/profile-hooks";
+import {
+	type ChatTarget,
+	useTeams,
+} from "@shared/api/local-operator/profile-hooks";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import {
 	type MessageInputHandle,
 	composerHoldsFocusUntouched,
@@ -2573,10 +2577,43 @@ function SessionPanel({
 		recording: isDictationActive,
 		onInterrupt: stop,
 	});
-	const loadedTarget =
-		canonical.frontend?.active_team ||
+	/*
+	 * THE READABLE FORM OF THE STARTING IDENTITY, and the lookup behind it.
+	 *
+	 * This is the target the two HUMAN sites on this pane read - the draft
+	 * title (`New chat with …`) and the header's starting line - so a
+	 * TEAM-sourced value resolves through the catalogue's label lookup while an
+	 * agent name passes through untouched. The chain mirrors the raw one's
+	 * precedence exactly (`||`, not `??`, keeps the wire's empty-string
+	 * spelling of "unset" falling through) so the two can never name different
+	 * profiles; only the words differ.
+	 *
+	 * The query is gated to the panes that can need it - a team draft, or a
+	 * live stream that already named a team - and to the catalogue capability;
+	 * everywhere else the slug is the string, which is exactly what these sites
+	 * drew before labels existed.
+	 */
+	const draftTeamName =
+		draft?.target?.kind === "team" ? draft.target.name : null;
+	const liveTeamName = canonical.frontend?.active_team || null;
+	const teamNames = useTeams(
+		Boolean(draftTeamName || liveTeamName) &&
+			desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+	);
+	const teamLabelFor = useMemo(() => {
+		const labels = new Map(
+			(teamNames.data ?? []).map((row) => [row.name, teamDisplayName(row)]),
+		);
+		return (name: string) => labels.get(name) ?? name;
+	}, [teamNames.data]);
+	const loadedTargetDisplay =
+		(liveTeamName ? teamLabelFor(liveTeamName) : "") ||
 		canonical.frontend?.active_agent ||
-		draft?.target?.name;
+		(draft?.target
+			? draft.target.kind === "team"
+				? teamLabelFor(draft.target.name)
+				: draft.target.name
+			: undefined);
 	// active_agent/active_team come from the LIVE stream, so a cold session (no
 	// running owner) reports nulls and the header fell back to the cwd, naming
 	// nothing. The catalogue row's binding is the durable answer and is already
@@ -2615,7 +2652,7 @@ function SessionPanel({
 	// See chat-title.ts for the TUI precedent both rules follow.
 	const title = resolveChatTitle({
 		draftKey,
-		draftTarget: loadedTarget,
+		draftTarget: loadedTargetDisplay,
 		liveTitle: canonical.frontend?.conversation_title,
 		// The row's own name, or - for a conversation this window has deleted - the
 		// name that row wore when it went.
@@ -2719,7 +2756,7 @@ function SessionPanel({
 	 * a registry being reachable, which a binding does not evidence.
 	 */
 	//
-	// Keyed on the LIVE binding only, never on `loadedTarget`: that falls back to
+	// Keyed on the LIVE binding only, never on `loadedTargetDisplay`: that falls back to
 	// `draft?.target?.name`, which a draft staged from the agents page or `/agent`
 	// already carries before any send is attempted. Reading it here made an
 	// `unresolved_attachment` failure clear itself on the first render after the
@@ -3338,7 +3375,7 @@ function SessionPanel({
 								 * declares immutable, so the two lines now state one fact.
 								 */
 								starting
-								? (loadedTarget ?? "Starting the session")
+								? (loadedTargetDisplay ?? "Starting the session")
 								: draft?.sessionId
 									? canonical.frontend?.cwd || cwd || "Canonical chat"
 									: /*

@@ -37,9 +37,11 @@
  */
 
 import {
+	desktopFeatureEnabled,
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useTeamLabelFor } from "@shared/api/local-operator/profile-hooks";
 import { PageHeader } from "@shared/components/common/page-header";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button, Skeleton } from "@shared/components/ui";
@@ -127,6 +129,15 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const capabilities = useDesktopCapabilities();
 	const gate = desktopFeatureState(capabilities.data, "projects", 1);
 	const enabled = gate === "enabled";
+	/*
+	 * The team names the list's group headings draw (round 1, D5). The page owns
+	 * the read and hands the resolver down, the same rule `nowMs` follows; the
+	 * catalogue query is the one the chat sidebar already populates, so this
+	 * costs a cache hit at most.
+	 */
+	const teamLabelFor = useTeamLabelFor(
+		desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+	);
 	const list = useProjectsList(enabled);
 	const create = useCreateProject();
 	const update = useUpdateProject();
@@ -711,6 +722,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						todayMs={todayMs}
 						onToggleFilter={toggleFilter}
 						onClearFilters={clearSearchAndFilters}
+						teamLabelFor={teamLabelFor}
 					/>
 				)}
 
@@ -725,6 +737,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							onEdit={setEditing}
 							onDelete={setDeleting}
 							onMove={moveTo}
+							teamLabelFor={teamLabelFor}
 							movingKeys={
 								update.isPending && update.variables
 									? [update.variables.key]
@@ -770,6 +783,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						pendingDetails={pendingDetails}
 						failedDetails={failedDetails}
 						onRetryDetails={retryDetails}
+						teamLabelFor={teamLabelFor}
 					/>
 				)}
 			</div>
