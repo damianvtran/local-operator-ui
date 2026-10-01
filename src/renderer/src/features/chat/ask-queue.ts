@@ -205,6 +205,21 @@ export const askTimeoutSummary = (receipt: {
 }): string =>
 	`Timed out after ${askWaitedText(receipt.waitedS)} — the agent moved on; you can still answer (ask ${receipt.askId})`;
 
+/**
+ * The composer's placeholder while the ask surface is EXPANDED (design §5.0).
+ *
+ * It names the two facts the reader needs at that moment and neither alone: that
+ * what they type is an ANSWER (not a message), and the one key that leaves the
+ * mode. `Esc` is the right key to name because it is the collapse the bar
+ * already offers, so the sentence describes a control that exists rather than
+ * one this feature would have to add.
+ *
+ * The minimized and normal states keep each app's existing placeholder
+ * unchanged, which is why this string is only ever supplied while expanded.
+ */
+export const ASK_COMPOSER_PLACEHOLDER =
+	"Answering the agent's question — Esc to collapse";
+
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
 
 export const presentAsk = (ask: PendingAsk): AskPresentation => {
@@ -391,6 +406,26 @@ export const askHeadline = (ask: PendingAsk, limit = 120): string => {
  * state the atomic submit exists to make unrepresentable.
  */
 export type AskDraft = Record<string, string[]>;
+
+/**
+ * The empty draft, as a SHARED constant rather than a fresh `{}`.
+ *
+ * A caller that wrote `drafts[id] ?? {}` would hand the panel a new object on
+ * every render, so an effect or memo keyed on the draft would re-run for a
+ * question nobody touched — and the composer/panel draft is exactly the value
+ * that must only change when the user changes it.
+ */
+export const EMPTY_DRAFT: AskDraft = {};
+
+/** The empty draft MAP, shared for `EMPTY_DRAFT`'s reason. */
+export const EMPTY_DRAFTS: Record<string, AskDraft> = {};
+
+/**
+ * The no-op draft writer, for a mount that owns no draft (a story, a read-only
+ * surface). A component that could not accept one would have to branch on
+ * whether it was controlled, which is the second code path this avoids.
+ */
+export const noopDraftChange = (): void => undefined;
 
 /**
  * The secret values typed into the panel's masked fields, keyed by question id.

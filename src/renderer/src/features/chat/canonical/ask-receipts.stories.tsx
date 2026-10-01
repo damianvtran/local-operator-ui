@@ -147,7 +147,6 @@ const meta = {
 	title: "Chat/Asks/Receipts",
 	parameters: {
 		layout: "padded",
-		backgrounds: { default: "canvas" },
 	},
 } satisfies Meta;
 

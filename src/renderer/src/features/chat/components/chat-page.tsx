@@ -92,7 +92,14 @@ import {
 	declineQueuedAsk,
 	gateIsSecret,
 } from "../ask-answer";
-import { ASK_ALREADY_SETTLED_MESSAGE } from "../ask-queue";
+import {
+	ASK_ALREADY_SETTLED_MESSAGE,
+	ASK_COMPOSER_PLACEHOLDER,
+	type AskDraft,
+	EMPTY_DRAFT,
+	askAnswerMap,
+	askQueueView,
+} from "../ask-queue";
 import {
 	ownerAnswered,
 	stoppedAfterAdmission,
@@ -415,6 +422,40 @@ function SessionPanel({
 	const [askOutcomes, setAskOutcomes] = useState<
 		Record<string, { sending: boolean; refused: string | null }>
 	>({});
+	/*
+	 * THE ASK COMPOSER'S OWN STATE (design §5.0, the operator's R7 amendment).
+	 *
+	 * A separate lane from everything the composer already does, and separate on
+	 * purpose: this does NOT extend the skill selector's machine or the gate's
+	 * swallow. The gate's swallow is the behaviour this feature replaces - it is
+	 * why the old design turned the composer into the answer box unconditionally -
+	 * so reusing its flag would carry the unconditional part along with it.
+	 *
+	 * `askExpanded` is the ONE flag the routing rule reads. While it is true the
+	 * composer answers the ask; while it is false the composer is an ordinary
+	 * conversation box. It is owned here, rather than inside `AskSurfaces`, for
+	 * the reason the design gives: the bar and the composer must not be able to
+	 * disagree about which mode the user is in.
+	 */
+	const [askExpanded, setAskExpanded] = useState(false);
+	/*
+	 * The two DRAFTS, kept apart (design §5.0's invariant).
+	 *
+	 * The composer holds one box and the user may be mid-sentence in either mode,
+	 * so toggling has to swap buffers rather than share one: a chat draft must
+	 * never become an answer and an answer must never be sent as chat. The chat
+	 * buffer lives in the input store (where the composer already reads it) and
+	 * the ask buffer lives beside this flag; the swap below moves each in and out
+	 * of the box.
+	 */
+	const askBuffer = useRef("");
+	const chatBuffer = useRef("");
+	/*
+	 * The in-flight answers, keyed by ask id then question id: ONE draft shared by
+	 * the panel's ticks and the composer's typed answer. Two would mean a composer
+	 * Enter discarding a ticked option, or a tick discarding what was typed.
+	 */
+	const [askDrafts, setAskDrafts] = useState<Record<string, AskDraft>>({});
 	/*
 	 * The gate this panel is showing, and this panel's own record of having
 	 * pressed it.
@@ -1485,6 +1526,17 @@ function SessionPanel({
 		 */
 		inputMode?: "typed" | "dictated" | "mixed",
 	): Promise<SendOutcome> => {
+		/*
+		 * THE ASK-MODE BRANCH, FIRST, and before every other door this function
+		 * offers (design §5.0). While the ask surface is expanded the composer is
+		 * the answer box, so nothing below this line may see the text: the slash
+		 * planner would run a command the user meant as an answer, and the gate
+		 * swallow would send it as a message. Enter and the Send button both land
+		 * here because both are this function, which is what makes "Enter while the
+		 * ask composer is focused follows the same routing" true by construction
+		 * rather than by a second key handler that could drift from this one.
+		 */
+		if (askExpanded) return await sendToAsk(content);
 		const store = useCanonicalSessionsStore.getState();
 		// Same ROW the view reads, so a send can never address a different draft
 		// than the one whose retained text and Discard control are shown. The
@@ -2489,6 +2541,72 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		settleAskOutcome(taskId, outcome);
+	};
+	/*
+	 * THE MODE TOGGLE, and the draft swap it has to perform.
+	 *
+	 * The bar and the panel both call this rather than flipping a flag of their
+	 * own, and the composer reads `askExpanded` - so there is one answer to "which
+	 * mode is the user in" on the whole screen. The two buffers are the design's
+	 * own invariant (§5.0): toggling preserves BOTH drafts, and neither may ever
+	 * be sent into the other's channel. A chat draft that became an answer, or an
+	 * answer sent as chat, is the accident this swap makes impossible rather than
+	 * merely unlikely.
+	 */
+	const toggleAskExpanded = (next: boolean) => {
+		const store = useConversationInputStore.getState();
+		if (next) {
+			chatBuffer.current = store.getCurrentInput(identity);
+			store.setCurrentInput(identity, askBuffer.current);
+		} else {
+			askBuffer.current = store.getCurrentInput(identity);
+			store.setCurrentInput(identity, chatBuffer.current);
+		}
+		setAskExpanded(next);
+	};
+	/*
+	 * THE COMPOSER'S ASK ROUTING (design §5.0).
+	 *
+	 * While the ask surface is expanded, what the user types in the composer is an
+	 * ANSWER. It fills the FIRST unanswered question of the head ask and joins the
+	 * draft the panel's own ticks write to, so the two doors cannot hold different
+	 * versions of the same answer. The ask is submitted ATOMICALLY once every
+	 * question has one: the wire refuses a partial map, and a partial submit that
+	 * could only ever be refused is a control that lies.
+	 *
+	 * A SECRET question is SKIPPED. Its value is typed into the panel's masked
+	 * field, which is the only place on this side a credential may live, so a
+	 * composer Enter with one still open falls through to no send rather than
+	 * putting a credential into an ordinary text box.
+	 *
+	 * Returns false WITHOUT sending when there is nothing to answer into, which
+	 * leaves the user's text in the box - the alternative is swallowing a message
+	 * they typed, which is the failure this whole feature exists to end.
+	 */
+	const sendToAsk = async (content: string): Promise<SendOutcome> => {
+		const head = askQueueView(canonical.frontend).head;
+		if (!head || !head.canAnswer) return false;
+		const current = askDrafts[head.ask.ask_id] ?? EMPTY_DRAFT;
+		const target = head.ask.questions.find(
+			(question) =>
+				!question.secret && (current[question.id] ?? []).length === 0,
+		);
+		if (!target) return false;
+		const next = { ...current, [target.id]: [content] };
+		setAskDrafts((drafts) => ({ ...drafts, [head.ask.ask_id]: next }));
+		/*
+		 * The box is consumed HERE rather than through the composer's echo seam:
+		 * there is no echo, because nothing was sent to the conversation.
+		 */
+		askBuffer.current = "";
+		useConversationInputStore.getState().setCurrentInput(identity, "");
+		const answers = askAnswerMap(head.ask, next);
+		// A question still unanswered: the draft is kept (the panel shows it) and
+		// the ask is not submitted - the legacy incremental card's behaviour, with
+		// the whole-ask body the new contract requires.
+		if (answers === null) return true;
+		await answerAsk(head.ask.ask_id, answers);
+		return true;
 	};
 	/*
 	 * Put focus back after a keyboard answer.
@@ -3869,6 +3987,16 @@ function SessionPanel({
 							void answerAsk(taskId, answers),
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
 						askOutcomes,
+						/* The ask-mode lane: the flag, its door, the shared draft, and
+						 * the composer's own sentence for the expanded state. */
+						askExpanded,
+						onAskToggle: toggleAskExpanded,
+						askDrafts,
+						onAskDraftChange: (askId: string, next: AskDraft) =>
+							setAskDrafts((drafts) => ({ ...drafts, [askId]: next })),
+						askComposerPlaceholder: askExpanded
+							? ASK_COMPOSER_PLACEHOLDER
+							: undefined,
 					}}
 				/>
 			</div>
