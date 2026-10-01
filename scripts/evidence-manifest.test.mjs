@@ -3093,6 +3093,15 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto44249a6796Note",
 	/*
+	 * And the lane's SIXTEENTH fold record: the sync onto `origin/main` =
+	 * `26a814c2c2` (#705 the mini-view restyle), taken because the first fold's
+	 * push left the PR dirty again when main advanced once more. Registered
+	 * for the same reason as its siblings: a fold resolved from main's copy
+	 * would drop the statement of what this sync carried and the countsMean
+	 * union it resolved.
+	 */
+	"foldOnto26a814c2c2Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
