@@ -1757,6 +1757,112 @@ test("a post-terminal reply is a follow-up bar AFTER the answer, with the comple
 	);
 });
 
+test("the answer's rail is an opt-in setting: off by default, on under the key, always marked for rigs", async (t) => {
+	/*
+	 * `display.turn_answer_rail` through the component's own seam, the way the
+	 * cross-session toggle above is driven: the query client is seeded with the
+	 * two cache entries the app resolves, and one `setQueryData` per direction
+	 * under the same mount is the operator flipping the setting in Settings.
+	 * `data-turn-answer` is set from the election alone, so it must be present
+	 * in every state (rigs read it instead of a class name); only the CLASSES
+	 * follow the setting. Operator report 2026-09-30: the always-on 2px rule of
+	 * #708 "looks ugly" and "cramped".
+	 */
+	__resetTurnCollapseOpen();
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const records = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		peerRecord("peer:1", { ts: TS + 2_000 }),
+		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+	];
+	const answerEl = (mounted) =>
+		mounted.container.querySelector("[data-turn-answer]");
+	// No answer to the capabilities query at all: the fail-closed default.
+	const mounted = await mount(t, records, { client });
+	assert.ok(answerEl(mounted), "the election hook is set with no setting");
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
+	assert.equal(answerEl(mounted).className.includes("-ml-"), false);
+	assert.ok(answerEl(mounted).className.includes("w-full"));
+
+	const seed = async (settings) => {
+		await act(async () => {
+			client.setQueryData(desktopKeys.capabilities, {
+				desktop_available: true,
+				features: { settings: 1 },
+			});
+			client.setQueryData(backendSettingsKeys.all, { sections: [], settings });
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		});
+		await flushFrames();
+	};
+	await seed([{ key: "display.turn_answer_rail", value: true }]);
+	const on = answerEl(mounted).className;
+	assert.match(on, /\bborder-hairline\b/);
+	assert.match(on, /\bborder-l\b/);
+	assert.match(on, /\bpl-3\b/);
+	assert.match(on, /-ml-\[13px\]/, "margin nets rule + padding to zero");
+	assert.doesNotMatch(on, /border-l-2|border-ink-dim|pl-1\.5/, "not #708's");
+	assert.equal(
+		mounted.container.querySelectorAll("[data-turn-answer]").length,
+		1,
+		"one elected answer",
+	);
+
+	/*
+	 * THE CAPABILITY PLANE IS THE OTHER HALF OF FAIL-CLOSED (agent review round 1,
+	 * R3; QA round 1, Q-1). A cached `true` plus a plane that stops advertising
+	 * `settings` used to keep the rail on: `enabled: false` stops the query
+	 * refetching but leaves the cache in place, and the hook read that cache. The
+	 * rail must drop the moment the capability does, without waiting for a reload.
+	 */
+	await act(async () => {
+		client.setQueryData(desktopKeys.capabilities, {
+			desktop_available: true,
+			features: {},
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.equal(
+		answerEl(mounted).className.includes("border-l"),
+		false,
+		"a plane that stops advertising `settings` draws no rail, cached true or not",
+	);
+	assert.ok(answerEl(mounted), "the election hook is still set for rigs");
+
+	await seed([{ key: "display.turn_answer_rail", value: true }]);
+	/*
+	 * TWO ticks, for the reason the cross-session toggle above gives: the query's
+	 * notification is applied on a TASK and the row's repaint then queues a FRAME,
+	 * and a capability flip re-enables the query, so the settle is one step later
+	 * than the seeded-write path.
+	 */
+	await act(async () => {
+		await new Promise((resolve) => setTimeout(resolve, 0));
+	});
+	await flushFrames();
+	assert.match(
+		answerEl(mounted).className,
+		/\bborder-hairline\b/,
+		"the rail returns when the plane advertises `settings` again",
+	);
+
+	await seed([{ key: "display.turn_answer_rail", value: "true" }]);
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
+	assert.ok(answerEl(mounted), "still marked for rigs with the rail off");
+	await seed([{ key: "display.shimmer", value: true }]);
+	assert.equal(
+		answerEl(mounted).className.includes("border-l"),
+		false,
+		"a backend without the key draws none",
+	);
+	await seed([{ key: "display.turn_answer_rail", value: false }]);
+	assert.equal(answerEl(mounted).className.includes("border-l"), false);
+});
+
 test("a reveal names the bar that holds the row: data-segment-ids decides among several", async (t) => {
 	__resetTurnCollapseOpen();
 	const mounted = await mount(t, [

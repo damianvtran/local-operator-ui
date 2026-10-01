@@ -158,6 +158,9 @@ export const catppuccinLatte: ThemeDefinition = {
 		 * `sunken` is the tightest ground at ΔE00 4.29.
 		 */
 		hairline: "#CACCD5",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.51:1 there against `hairline`'s 1.19:1.
+		hairlineStrong: "#B3B5C1",
 		// Upstream surface2 BCC0CC is 1.37:1 against the grounds — a decorative value
 		// in a structural role. The structural edge is the muted tone walked to 3.1:1
 		// on the darkest ground.
