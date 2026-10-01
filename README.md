@@ -13,8 +13,9 @@ SLASH_PROOF_CASES=login,logout,mcp \
 
 | Directory | Tree | Result |
 | --- | --- | --- |
-| `chat-slash-providers/` | `feat/provider-suggestions-0930` (captured from the branch's `src/`+`scripts/` trees; the branch's later commits fold `origin/main` `95d55c3e9f` and re-stamp the evidence manifest — no frame is re-taken) | 13/13 gestures as the rule requires |
-| `chat-slash-providers-baseline/` | `origin/main` `dad1778e14` | 1/13; every list absent, every click "nothing to click" |
+| `chat-slash-providers/` | `feat/provider-suggestions-0930`, **re-captured in remediation round 1 after the fixes** (its frames are from the branch's `src/`+`scripts/` trees at that head; a later fold re-stamps the evidence manifest without re-taking them) | 19/19 gestures as the rule requires |
+| `chat-slash-providers-520/` | the same branch and case set at **520×900** — the narrow-width re-capture the design round asked for (D2's compound rows, U5's shed detail column) | 19/19 |
+| `chat-slash-providers-baseline/` | `origin/main` `dad1778e14`, the original 13-case set | 1/13; every list absent, every click "nothing to click". The six cases added in round 1 have no baseline pair: on that tree none of their states exist — no list opens at all. |
 
 Each directory carries `result.json` (every case's before/after readings and
 its expectation) and `run.log` (the full transcript).
@@ -33,6 +34,14 @@ its expectation) and `run.log` (the full transcript).
   half and say so.
 - The before directory is the SAME rig and the SAME bytes against `main`, so
   a difference between the directories is a difference the branch made.
+- Round 1 re-captured the after directories after the remediation commit
+  (`85584e1dbf`) because the affected rows, labels and copy changed: the
+  detail column now keeps its right edge, `/mcp` compound rows keep a 12ch
+  name floor, the danger cue sits on the row NAME, `/logout` rows carry the
+  census brands, and the `/mcp` verb label reads "Commands". The rig's `empty`
+  probe reads the empty-state sentence directly, so the copy findings
+  ("No servers to choose…", "No stored credential to remove.") are asserted
+  values in `result.json`, not just pixels.
 
 ## The pairs, named
 
@@ -58,3 +67,22 @@ its expectation) and `run.log` (the full transcript).
   detail `stored credential · connected` (what is removed, not the connection).
 - `mcp-logout-enter-fills-never-runs` / `mcp-remove-click-completes-never-runs`
   — the MCP destructive gate, both gestures.
+- `mcp-verb-click-opens-the-server-slot` / `mcp-verb-enter-opens-the-server-slot`
+  — the round-1 handoff: choosing a verb leaves `/mcp login ` (the value's own
+  trailing space) and the popup reopens in the server slot; the paired
+  `mcp-verb-pick-then-enter-fills-a-server` shows the two-turn crank ending in
+  a filled server name with nothing dispatched.
+- `mcp-add-space-hints-instead-of-blame` / `logout-names-a-census-provider-with-nothing-stored`
+  — the honest empty states ("No servers to choose. Enter runs the command.",
+  "No stored credential to remove.") read from the region itself.
+- `logout-alias-reaches-a-stored-provider` — `/logout gpt` reaches the OpenAI
+  row through the same census aliases `/login` honours, and the row is named
+  "OpenAI" while the id it writes stays `openai`.
+
+## Narrow width (520×900)
+
+`chat-slash-providers-520/` runs the same 19 cases at 520 px, where the popup
+is the ordinary composer's ~423 px. It is the frame set for design D2 (`remove
+postgres_…` keeps its name floor while the 35-character path ellipsises
+first), U5 (the danger cue on the NAME survives as the detail column sheds),
+and D1 (the right-aligned detail edge holds).

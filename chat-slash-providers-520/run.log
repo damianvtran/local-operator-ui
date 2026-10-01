@@ -17,7 +17,7 @@ PASS logout-click-completes-never-runs: click on the "Anthropic" row after typin
   before: draft="/logout " list="Command arguments" active="OpenAIremove 2 credentials" ran="none"
   after:  draft="/logout anthropic" list="Command arguments" phase="Accounts" ran="none"
 PASS mcp-space-lists-the-verbs: type "/mcp " and read the list
-  before: draft="/mcp " list="Command arguments" active=null ran="none"
+  before: draft="/mcp " list="Command arguments" active="listShow every configured server and its status" ran="none"
   after:  draft="/mcp " list="Command arguments" phase="Commands" ran="none"
 PASS mcp-logout-lists-signed-in-servers: type "/mcp logout " and read the list
   before: draft="/mcp logout " list="Command arguments" active="logout githubstored credential · connected" ran="none"
@@ -29,7 +29,7 @@ PASS mcp-remove-click-completes-never-runs: click on the "remove github" row aft
   before: draft="/mcp remove " list="Command arguments" active="remove linear~/.local-operator/mcp.json" ran="none"
   after:  draft="/mcp remove github" list="Command arguments" phase="Servers" ran="none"
 PASS login-enter-fills-the-top-match: Enter after typing "/login ope"
-  before: draft="/login ope" list="Command arguments" active=null ran="none"
+  before: draft="/login ope" list="Command arguments" active="OpenAIChatGPT Plus/Prologged in" ran="none"
   after:  draft="/login openai" list="Command arguments" phase="Providers" ran="none"
 PASS login-second-enter-runs: Enter, then Enter, after typing "/login ope"
   before: draft="/login ope" list="Command arguments" active="OpenAIChatGPT Plus/Prologged in" ran="none"
@@ -56,5 +56,5 @@ PASS logout-alias-reaches-a-stored-provider: type "/logout gpt" and read the lis
   before: draft="/logout gpt" list="Command arguments" active="OpenAIremove 2 credentials" ran="none"
   after:  draft="/logout gpt" list="Command arguments" phase="Accounts" ran="none"
 
-19/19 gestures behaved as the rule requires; record: /Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/result.json
-EXIT1380=0
+19/19 gestures behaved as the rule requires; record: /Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-520/result.json
+EXIT520=0
