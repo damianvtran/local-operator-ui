@@ -35,6 +35,7 @@ const bundle = await build({
 			export {
 				SKILL_EMPTY_ATTACHED,
 				SKILL_EMPTY_DRAFT,
+				SKILL_LOADING_LINE,
 				SKILL_MISS_LINE,
 				SKILL_PHASE_LABEL,
 				SKILL_TRANSIENT_REASON,
@@ -58,6 +59,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	SKILL_EMPTY_ATTACHED,
 	SKILL_EMPTY_DRAFT,
+	SKILL_LOADING_LINE,
 	SKILL_MISS_LINE,
 	SKILL_PHASE_LABEL,
 	SKILL_TRANSIENT_REASON,
@@ -335,7 +337,7 @@ test("the popup's copy and ids are the contract's own", () => {
 });
 
 /* ------------------------------------------------------------------ */
-/* The no-rows notice: durable > transient > empty > miss              */
+/* The no-rows notice: durable > transient > loading > empty > miss    */
 /* ------------------------------------------------------------------ */
 
 /** The fixture defaults: an enabled backend, a folder, a leading token. */
@@ -348,6 +350,7 @@ const noticeOf = (over = {}) =>
 		hasQuery: false,
 		rowsCount: 0,
 		vocabularyNonEmpty: false,
+		pairingRefused: false,
 		query: "success",
 		...over,
 	});
@@ -358,6 +361,9 @@ test("the notice copy, one ratified string per state", () => {
 		"This backend cannot serve the skill catalogue. Update the backend and try again.",
 	);
 	assert.equal(SKILL_TRANSIENT_REASON, "Skills aren't available right now.");
+	// The loading line is the `/` sibling's own word verbatim — family parity
+	// costs a state, not a new vocabulary (design round 1, D1).
+	assert.equal(SKILL_LOADING_LINE, "Loading…");
 	assert.equal(SKILL_EMPTY_ATTACHED, "No skills found — see /skills");
 	assert.equal(SKILL_EMPTY_DRAFT, "No skills found.");
 	assert.equal(SKILL_MISS_LINE, "No skills match.");
@@ -380,6 +386,13 @@ test("a bare leading `$` always opens SOMETHING: rows, or one stated line", () =
 		kind: "empty",
 		text: SKILL_EMPTY_ATTACHED,
 	});
+	/*
+	 * AND THE EMPTY ARM IS A LEADING-TOKEN NOTICE (review round 1, R1-1):
+	 * dropping the `leading &&` in front of it used to leave this suite green,
+	 * which is how an inline `$zzz` over an empty vocabulary would have grown
+	 * a backend sentence it must not carry.
+	 */
+	assert.equal(noticeOf({ leading: false }), null);
 });
 
 test("durable outranks everything and fires with no query at all", () => {
@@ -404,10 +417,25 @@ test("durable outranks everything and fires with no query at all", () => {
 	// And it is a LEADING-token notice: an inline `$` mid-sentence is money or a
 	// shell variable, not a backend report (the money-guard rule).
 	assert.equal(noticeOf({ feature: "below-version", leading: false }), null);
+	// Durable still outranks main's pairing cause: a backend that can never
+	// answer the read is a version fact, not a transient one.
+	assert.equal(
+		noticeOf({ feature: "below-version", pairingRefused: true }).kind,
+		"durable",
+	);
 });
 
-test("transient covers unpaired and a fired query's error; everything else is quiet", () => {
+test("transient covers unpaired, main's pairing cause, and a fired query's error; everything else is quiet", () => {
 	assert.deepEqual(noticeOf({ feature: "unpaired" }), {
+		kind: "transient",
+		text: SKILL_TRANSIENT_REASON,
+	});
+	/*
+	 * MAIN'S PAIRING CAUSE IS THE SAME FACT LEARNED EARLIER (QA round 1, Q-2):
+	 * the probe saw the refusal before any read fired, the picker gates the
+	 * vocabulary read on it, and this is the sentence that answers instead.
+	 */
+	assert.deepEqual(noticeOf({ pairingRefused: true }), {
 		kind: "transient",
 		text: SKILL_TRANSIENT_REASON,
 	});
@@ -423,14 +451,46 @@ test("transient covers unpaired and a fired query's error; everything else is qu
 	// A capability answer that never arrived asserts neither cause...
 	assert.equal(noticeOf({ feature: "unknown" }), null);
 	assert.equal(noticeOf({ feature: "unknown", query: "error" }), null);
-	// ... and transient, like its siblings, attaches to leading tokens only.
+	// ... and transient, like its siblings, attaches to leading tokens only —
+	// pinned for BOTH its sources (review round 1, R1-1 reproduced that
+	// dropping either gate left this suite green).
 	assert.equal(noticeOf({ query: "error", leading: false }), null);
-	// Loading is quiet — the notice arrives with the answer, and so does the ink.
+	assert.equal(noticeOf({ feature: "unpaired", leading: false }), null);
+	assert.equal(noticeOf({ pairingRefused: true, leading: false }), null);
+	// A read deliberately NOT running stays quiet: "pending" is also the shape
+	// of a read nobody started (no provider, a refused pairing), where a
+	// loading line would claim work that is not happening.
 	assert.equal(noticeOf({ query: "pending" }), null);
 	// Rows were served: a background refetch's failure does not replace them.
 	assert.equal(noticeOf({ query: "error", rowsCount: 2 }), null);
 	// No folder staged (mid-edit): no query is fired, so nothing has failed yet.
 	assert.equal(noticeOf({ hasCwd: false }), null);
+});
+
+test("loading speaks one line, and only on a leading token", () => {
+	/*
+	 * DESIGN ROUND 1, D1 (UX round 1, U4 asked for the same line): a leading `$`
+	 * on a cold catalogue used to open NOTHING while the sessionless read was in
+	 * flight — the one arm of "a leading `$` always opens something" that did
+	 * not hold. It now renders the family's "Loading…", the same word the `/`
+	 * sibling prints ahead of every other cause.
+	 */
+	assert.deepEqual(noticeOf({ query: "loading" }), {
+		kind: "loading",
+		text: SKILL_LOADING_LINE,
+	});
+	// The money guard is unchanged: an inline `$` never gets a consultation
+	// line, loading included.
+	assert.equal(noticeOf({ query: "loading", leading: false }), null);
+	// Cached rows answer for themselves: a refetch in flight does not replace
+	// them with a loading line.
+	assert.equal(noticeOf({ query: "loading", rowsCount: 2 }), null);
+	// Loading outranks only the states that cannot coexist with it; a pairing
+	// refusal is checked before it (no read was fired at all in that state).
+	assert.equal(
+		noticeOf({ query: "loading", pairingRefused: true }).kind,
+		"transient",
+	);
 });
 
 test("the miss is unchanged, and it keeps the evidence it always had", () => {
@@ -537,6 +597,35 @@ test("the shipped composer wires the `$` seams", () => {
 		picker,
 		/desktopFeatureState\(capabilities\.data, "skill_catalogue"\)/,
 		"the gate reads the sessionless key's STATE (durable/transient/quiet)",
+	);
+	/*
+	 * THE PAIRING GATE (QA round 1, Q-2), pinned at source because the read is
+	 * silenced before a request can exist: main's pairing cause gates `active`,
+	 * so the vocabulary read fires NO call against a daemon that already refused
+	 * this app's credential — and the machine's cells above prove the sentence
+	 * that answers instead.
+	 */
+	assert.match(
+		picker,
+		/const active = enabled && feature === "enabled" && !pairingRefused;/,
+		"the vocabulary read is gated on main's pairing cause",
+	);
+	assert.match(
+		picker,
+		/usePairingCause\(\)/,
+		"read through the shared pairing hook",
+	);
+	/*
+	 * THE DRAFT SEAM COMPOSES RATHER THAN REPLACES (QA round 1, Q-1, the
+	 * blocker): the store lets the seam's return replace the payload the press
+	 * built, so the seam has to answer with the composed text. The mount-level
+	 * regression lives in `shared-composer.test.mjs`; this pin is the seam's
+	 * own line, where the replacement used to happen.
+	 */
+	assert.match(
+		input,
+		/return composeOutgoing\(settled\.text\);/,
+		"the draft seam composes the payload instead of returning the raw line",
 	);
 	assert.match(
 		picker,

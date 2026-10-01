@@ -30,12 +30,14 @@
  * box then belongs to the operator's keystrokes (`draftHeld`'s rule).
  */
 
+import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { cn } from "@shared/lib/utils";
 import { type QueryClient, useQuery } from "@tanstack/react-query";
 import type { KeyboardEvent } from "react";
@@ -176,7 +178,22 @@ export function useSkillCompletion({
 	 * (`desktop-hooks.ts` carries the union's own reasoning).
 	 */
 	const feature = desktopFeatureState(capabilities.data, "skill_catalogue");
-	const active = enabled && feature === "enabled";
+	/*
+	 * THE PAIRING GATE (QA round 1, Q-2). Main knows the pairing cause BEFORE
+	 * any read is fired — its probe saw the daemon refuse this app's credential
+	 * (`usePairingCause()`, one shared bridge read) — while the PUBLIC capability
+	 * route answers a refused pairing just as cheerfully as a paired one, so
+	 * `feature === "enabled"` is not evidence the read can succeed. Gating the
+	 * vocabulary on the cause is what turns "five refused calls, then the
+	 * sentence" into "the sentence": the transient arm below renders with nothing
+	 * on the wire, and the token still derives from `enabled` alone, so the line
+	 * attaches where it is owed. The read resumes on its own when the cause
+	 * clears — main pushes the status change, the hook re-reads, `active`
+	 * re-opens.
+	 */
+	const pairingCause = usePairingCause();
+	const pairingRefused = pairingCause !== null;
+	const active = enabled && feature === "enabled" && !pairingRefused;
 	/*
 	 * The token is derived from `enabled` alone, NOT from `active`: the durable
 	 * notice has to attach to a `$` on a backend that will never answer a query,
@@ -225,6 +242,15 @@ export function useSkillCompletion({
 				}>({ op: "skills.list", cwd: skillCwd }),
 			enabled: active && provided && skillCwd.length > 0,
 			staleTime: 30_000,
+			/*
+			 * THE HOUSE RETRY POLICY (QA round 1, Q-2's tail). Without this the read
+			 * ran on react-query's default, which is what turned one refused call
+			 * into five. `retryDesktopQuery` is the sibling reads' own decision —
+			 * one retry for a failure that carried an answer, none for one that
+			 * spent the whole deadline — so this read joins the family rather than
+			 * inventing a second policy.
+			 */
+			retry: retryDesktopQuery,
 		},
 		client,
 	);
@@ -319,11 +345,14 @@ export function useSkillCompletion({
 						hasQuery,
 						rowsCount: rows.length,
 						vocabularyNonEmpty: choices.length > 0,
+						pairingRefused,
 						query: skillsQuery.isError
 							? "error"
 							: skillsQuery.isSuccess
 								? "success"
-								: "pending",
+								: active && skillsQuery.isLoading
+									? "loading"
+									: "pending",
 					}),
 		[
 			token,
@@ -335,8 +364,11 @@ export function useSkillCompletion({
 			hasQuery,
 			rows.length,
 			choices.length,
+			pairingRefused,
+			active,
 			skillsQuery.isError,
 			skillsQuery.isSuccess,
+			skillsQuery.isLoading,
 		],
 	);
 	const open =

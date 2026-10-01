@@ -153,6 +153,24 @@ const SKILL_ROWS = [
 	{ name: "secret-ritual", description: "Hidden from routing; invoke by name" },
 ];
 
+/*
+ * THE SCROLLED CATALOGUE'S VOCABULARY (design round 1, D2): more rows than the
+ * 216px region holds (six rows at the row pitch), so a frame can show the
+ * region scrolled rather than only ever resting on a whole set. The filler
+ * names deliberately carry no `res` subsequence - the filter cases' readings
+ * are about `SKILL_ROWS`, and a fixture that quietly matched `$res` would
+ * change what those frames show.
+ */
+const SKILL_ROWS_MANY = [
+	...SKILL_ROWS,
+	{ name: "audit-pass", description: "Walk a diff against its stated intent" },
+	{ name: "bench-run", description: "Run the benchmark suite headless" },
+	{ name: "changelog-draft", description: "Compose the release changelog" },
+	{ name: "dep-digest", description: "Summarise dependency updates" },
+	{ name: "env-doctor", description: "Diagnose the local environment" },
+	{ name: "fixture-refresh", description: "Re-derive the committed fixtures" },
+];
+
 const SLASH_COMMANDS: SlashCommandMeta[] = [
 	slashCommand(
 		"analytics",
@@ -270,7 +288,15 @@ const MODEL_ROWS = [
  * bridge is module-level and the page reloads between cases — a fresh module
  * per case, so the slot cannot leak across them.
  */
-type ClusterSkillFixture = "default" | "empty" | "broken" | "old-backend";
+type ClusterSkillFixture =
+	| "default"
+	| "empty"
+	| "broken"
+	| "old-backend"
+	/* The design round 1 additive states: more rows than the region holds (D2),
+	   and a read slow enough to photograph the loading arm (D1). */
+	| "many"
+	| "slow";
 let clusterSkillFixture: ClusterSkillFixture = "default";
 
 /* biome-ignore lint/suspicious/noExplicitAny: Necessary for mocking the window object, the same cast the preview makes. */
@@ -332,12 +358,25 @@ storyWindow.api = {
 						status: 503,
 						body: { detail: "the skills fixture is broken for this scenario" },
 					};
+				/*
+				 * THE SLOW READ (design round 1, D1): the loading arm renders for the
+				 * duration a real daemon takes, and the default fixture answers in the
+				 * same tick, so no case could witness the state. 900ms is long enough
+				 * for the proof driver to read and shoot the line before the rows land.
+				 */
+				if (clusterSkillFixture === "slow")
+					await new Promise((resolve) => setTimeout(resolve, 900));
 				return {
 					status: 200,
 					body: {
 						result: {
 							data: {
-								skills: clusterSkillFixture === "empty" ? [] : SKILL_ROWS,
+								skills:
+									clusterSkillFixture === "empty"
+										? []
+										: clusterSkillFixture === "many"
+											? SKILL_ROWS_MANY
+											: SKILL_ROWS,
 								scope: "discoverable",
 								/*
 								 * The detail is the runtime resolver's own output, a STRING, which is
