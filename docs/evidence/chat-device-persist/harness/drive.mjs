@@ -48,15 +48,21 @@ import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 /*
- * The switch is taken from its one home, never typed - the sibling rigs' rule,
- * and `chrome-keychain.test.mjs` scans for the literal.
+ * The frame decoder, from its one home in this tree (the sweep's own): a scan
+ * of the committed pixels is a READING, and it must decode the same bytes a
+ * reviewer's tool would.
  */
-import { MOCK_KEYCHAIN_SWITCH } from "../../../../scripts/chrome-keychain.mjs";
+import sharp from "sharp";
 /*
  * The single-frame predicate, so a frame that is not a picture of the app fails
  * the RUN that took it rather than a reviewer a week later.
  */
 import { assertFramePaints } from "../../../../scripts/check-evidence.mjs";
+/*
+ * The switch is taken from its one home, never typed - the sibling rigs' rule,
+ * and `chrome-keychain.test.mjs` scans for the literal.
+ */
+import { MOCK_KEYCHAIN_SWITCH } from "../../../../scripts/chrome-keychain.mjs";
 
 const RIG = dirname(fileURLToPath(import.meta.url));
 const WT = resolve(RIG, "../../../..");
@@ -74,17 +80,58 @@ const ARM = flag("arm", "run");
 const EXPECT_CHIP = flag("expect-chip", "");
 const EXPECT_ALIGNED = argv.includes("--expect-aligned");
 const EXPERIMENTS = argv.includes("--experiments");
+/*
+ * ROUND 2's OWN FLAGS.
+ *
+ * `--peer-name` is the fixture device's label for this run (the server reads
+ * it too): the narrow variant photographs the truncating chip, so the name it
+ * truncates must be long enough to do so.
+ *
+ * `--expect-ring` reads the focus ring's FOUR edges out of the captured
+ * pixels: `closed` (the fixed state) or `open-bottom` (the defect the design
+ * round measured - top and side strokes present, the bottom stroke cut away
+ * by the title line's clip). Each arm asserts its own reading, so the pair
+ * cannot pass by both being loose.
+ *
+ * `--expect-below-clip` reads the fill/ring ink that must (or must not) paint
+ * BELOW the title line's old clip edge: `inked` on the fixed tree, `none` on
+ * the review head - the two numeric halves of design D1.
+ *
+ * `--expect-recall-dismissed` is the F1 chain's own reading: after the recall
+ * settles and its arrival notice is dismissed, what the chip says. The review
+ * head reads `On <peer>` (the stale mark resurrected); the fixed tree reads
+ * `On this device`.
+ *
+ * `--short` stops after `after-send` (the light and narrow variants), and
+ * `--palette` wears one named palette for the whole run.
+ */
+const PEER_NAME = flag("peer-name", "cloud-node-1");
+const EXPECT_RING = flag("expect-ring", "");
+const EXPECT_BELOW_CLIP = flag("expect-below-clip", "");
+const EXPECT_RECALL_DISMISSED = flag("expect-recall-dismissed", "");
+const EXPECT_LOCAL = flag("expect-local", "On this device");
+const PALETTE = flag("palette", "");
+const SHORT = argv.includes("--short");
 const [WIN_W, WIN_H] = flag("window-size", "1380x900").split("x").map(Number);
 if (!EXPECT_CHIP) {
-	console.error("--expect-chip <substring> is required: each arm states what it expects the chip to read");
+	console.error(
+		"--expect-chip <substring> is required: each arm states what it expects the chip to read",
+	);
 	process.exit(2);
 }
 
 const RUN = join(OUT, ARM, "run");
 const WIRE = join(OUT, ARM, "wire.jsonl");
 const FRAMES = join(OUT, ARM);
+const HOLD = join(RUN, "hold-transfer");
 
-const report = { arm: ARM, expectChip: EXPECT_CHIP, steps: [], errors: [], console: [] };
+const report = {
+	arm: ARM,
+	expectChip: EXPECT_CHIP,
+	steps: [],
+	errors: [],
+	console: [],
+};
 const step = (name, data) => {
 	report.steps.push({ name, ...data });
 	console.log(`[step] ${name}: ${JSON.stringify(data)}`);
@@ -201,7 +248,10 @@ async function clickAt(cdp, selector, text = null) {
 		const r = el.getBoundingClientRect();
 		return { x: r.x + r.width / 2, y: r.y + r.height / 2, text: (el.textContent || "").trim().slice(0, 80) };
 	})()`);
-	if (!box) throw new Error(`no element for ${selector}${text ? ` containing ${text}` : ""}`);
+	if (!box)
+		throw new Error(
+			`no element for ${selector}${text ? ` containing ${text}` : ""}`,
+		);
 	for (const [type, buttons] of [
 		["mouseMoved", 0],
 		["mousePressed", 1],
@@ -325,6 +375,178 @@ const wire = () => {
 const themeOf = (cdp) =>
 	cdp.eval(`document.documentElement.dataset.theme || "localOperatorDark"`);
 
+/** A real Escape, the picker popover's own way out. */
+async function pressEscape(cdp) {
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+}
+
+/**
+ * The chip's box, the title line's clip box and the painted ring/fill colours,
+ * read live - the frame scan below compares pixels to these numbers, so a
+ * re-titled row or a re-toned ring fails loudly instead of scanning nothing.
+ * `fill` is the colour `:hover` is painting INTO the chip at the moment of the
+ * read (the drive moves the real pointer first), and `rowClip` carries
+ * `overflow-clip-margin` so the review head's absence of it is on the record.
+ */
+const CLIPINFO = `(() => {
+	const chip = document.querySelector("[data-device-chip]");
+	const rect = (el) => {
+		if (!el) return null;
+		const b = el.getBoundingClientRect();
+		return { x: b.x, y: b.y, w: b.width, h: b.height, right: b.right, bottom: b.bottom };
+	};
+	/*
+	 * THE CLIPPING ANCESTOR, walked to rather than guessed: the first ancestor
+	 * whose computed overflow is not 'visible' is the box whose edge cut the
+	 * ring before this round's fix (the title line, 'overflow-clip').
+	 */
+	const clipOf = (el) => {
+		let cur = el ? el.parentElement : null;
+		while (cur && cur !== document.body) {
+			if (getComputedStyle(cur).overflow !== "visible") return cur;
+			cur = cur.parentElement;
+		}
+		return null;
+	};
+	const rgb = (s) => {
+		const m = /rgba?\\(([^)]+)\\)/.exec(s || "");
+		if (!m) return null;
+		const p = m[1].split(",").map(Number);
+		return { r: p[0], g: p[1], b: p[2] };
+	};
+	const cs = chip ? getComputedStyle(chip) : null;
+	const clipRow = clipOf(chip);
+	const rcs = clipRow ? getComputedStyle(clipRow) : null;
+	return {
+		chip: rect(chip),
+		clipRow: clipRow
+			? {
+					rect: rect(clipRow),
+					overflow: rcs.overflow,
+					clipMargin: rcs.overflowClipMargin || "",
+				}
+			: null,
+		outline: cs ? { color: rgb(cs.outlineColor), width: cs.outlineWidth, offset: cs.outlineOffset } : null,
+		fill: cs ? rgb(cs.backgroundColor) : null,
+	};
+})()`;
+
+/**
+ * WHAT THE CAPTURED PIXELS SAY about the defect and its fix (design D1).
+ *
+ * Decodes one frame and counts, inside the chip's own box:
+ * `edges.{top,left,right}` - accent-coloured pixels in the inset ring's three
+ * bands that were never in question; `edges.bottom` - the same band at the
+ * box's bottom, which the review head's clip cuts away; and `belowClip.newInk`
+ * - pixels BELOW the title line's own bottom edge (the old clip line) that are
+ * not the page background, i.e. the fill and ring the fix restored: on the
+ * review head nothing paints there, on the fixed tree the chip's last two
+ * pixels do. The background is sampled beside the chip in the same rows, so
+ * the reading is invariant to the palette.
+ */
+async function scanChipEdges(file, info) {
+	const { data, info: meta } = await sharp(file)
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	const at = (x, y) => {
+		const i = (y * meta.width + x) * meta.channels;
+		return { r: data[i], g: data[i + 1], b: data[i + 2] };
+	};
+	const near = (px, c, tol) =>
+		!c ||
+		Math.abs(px.r - c.r) + Math.abs(px.g - c.g) + Math.abs(px.b - c.b) <= tol;
+	const count = (box, pred) => {
+		let n = 0;
+		for (
+			let y = Math.max(0, Math.floor(box.y0));
+			y < Math.min(meta.height, Math.ceil(box.y1));
+			y++
+		)
+			for (
+				let x = Math.max(0, Math.floor(box.x0));
+				x < Math.min(meta.width, Math.ceil(box.x1));
+				x++
+			)
+				if (pred(at(x, y))) n++;
+		return n;
+	};
+	const c = info.chip;
+	if (!c) return null;
+	const accent = info.outline?.color ?? null;
+	const bg = at(
+		Math.max(0, Math.floor(c.x) - 20),
+		Math.min(meta.height - 1, Math.floor(c.bottom - 1)),
+	);
+	return {
+		edges: {
+			top: count(
+				{ x0: c.x + 4, x1: c.right - 4, y0: c.y + 0.5, y1: c.y + 2.6 },
+				(p) => near(p, accent, 170),
+			),
+			left: count(
+				{ x0: c.x + 0.5, x1: c.x + 2.6, y0: c.y + 4, y1: c.bottom - 4 },
+				(p) => near(p, accent, 170),
+			),
+			right: count(
+				{
+					x0: c.right - 2.6,
+					x1: c.right - 0.5,
+					y0: c.y + 4,
+					y1: c.bottom - 4,
+				},
+				(p) => near(p, accent, 170),
+			),
+			bottom: count(
+				{
+					x0: c.x + 4,
+					x1: c.right - 4,
+					y0: c.bottom - 1.5,
+					y1: c.bottom - 0.4,
+				},
+				(p) => near(p, accent, 170),
+			),
+		},
+		belowClip: {
+			/*
+			 * THE CHIP'S OWN LAST TWO PIXELS - the band the clip cut before the fix
+			 * (the clip line sits exactly 2.2px above the chip's bottom, which is the
+			 * alignment fix's own delta; the box, not the mis-detectable row, defines
+			 * the band). `newInk` counts pixels there that are not the page
+			 * background: the restored ring stroke and fill on the fixed tree, zero
+			 * on the review head.
+			 */
+			newInk: count(
+				{
+					x0: c.x + 4,
+					x1: c.right - 4,
+					y0: c.bottom - 2.2,
+					y1: c.bottom - 0.2,
+				},
+				(p) => !near(p, bg, 30),
+			),
+			bg,
+		},
+		fillReachesBottom: count(
+			{ x0: c.x + 6, x1: c.right - 6, y0: c.bottom - 1.5, y1: c.bottom - 0.4 },
+			/*
+			 * "NOT THE PAGE BACKGROUND", not "matches the fill token": the hover
+			 * wash may carry alpha, and the painted pixels would then never equal the
+			 * computed rgba - what the band must show is the chip's own ink rather
+			 * than the page, which is exactly what this samples beside the chip.
+			 */
+			(p) => !near(p, bg, 30),
+		),
+	};
+}
+
 /**
  * A frame from the app itself, written where the committed set lays its own out
  * (`<arm>/<state>/<theme>.webp`) and judged by the repository's single-frame
@@ -361,7 +583,8 @@ async function settleChip(cdp, { messagesAtLeast, timeout = 20_000 }) {
 		).length;
 		const chip = await cdp.eval(CHIP);
 		const label = chip?.label ?? null;
-		if (sent >= messagesAtLeast && label !== null && label === last) stable += 1;
+		if (sent >= messagesAtLeast && label !== null && label === last)
+			stable += 1;
 		else stable = 0;
 		last = label;
 		if (stable >= 2) return chip;
@@ -374,21 +597,32 @@ async function settleChip(cdp, { messagesAtLeast, timeout = 20_000 }) {
 
 async function main() {
 	/*
-	 * A FRESH ARM DIRECTORY EVERY TIME. The first draft of this rig reused it
-	 * across runs, and the app restored the PREVIOUS run's persisted session and
-	 * state from the same user-data and config roots - so the second run booted
-	 * into a live conversation on `f47ac10b58cc` (a pick then opened the move
-	 * dialog) instead of the new-chat state this scene is about. The frames and
-	 * the wire log are the arm's output; everything else under `OUT/<arm>/` is
-	 * disposable input.
+	 * A FRESH ARM DIRECTORY EVERY TIME (the boot state, the wire and the report).
+	 * The first draft of this rig reused it across runs, and the app restored the
+	 * PREVIOUS run's persisted session and state from the same user-data and
+	 * config roots - so the second run booted into a live conversation on
+	 * `f47ac10b58cc` (a pick then opened the move dialog) instead of the
+	 * new-chat state this scene is about. `FRAMES` IS NOT WIPED since round 2:
+	 * the light and narrow runs of the fixed tree write ADDITIONAL frames into
+	 * the same shape (`<state>/<theme>.webp`), and a wipe would take the dark
+	 * run's frames with it.
 	 */
-	rmSync(join(OUT, ARM), { recursive: true, force: true });
+	for (const stale of [
+		RUN,
+		join(OUT, ARM, "config"),
+		WIRE,
+		join(OUT, ARM, "report.json"),
+		join(OUT, ARM, "app.log"),
+	])
+		rmSync(stale, { recursive: true, force: true });
 	mkdirSync(join(OUT, ARM), { recursive: true });
 	const endpoint = spawn(process.execPath, [join(RIG, "server.mjs")], {
 		env: {
 			...process.env,
 			RIG_WIRE: WIRE,
 			RIG_PORT: String(BACKEND_PORT),
+			RIG_PEER_NAME: PEER_NAME,
+			RIG_HOLD_FILE: HOLD,
 		},
 		stdio: ["ignore", "pipe", "pipe"],
 	});
@@ -503,6 +737,30 @@ async function main() {
 			return "skipped onboarding";
 		})()`);
 		step("onboarding", { outcome: skipped });
+		/*
+		 * THE RUN'S PALETTE, when one was asked for (design D4: the light variant).
+		 * Written the way the app's own theme switch writes it - `data-theme` on the
+		 * document root, the attribute every rule in `themes.generated.css` keys on -
+		 * and VERIFIED by the painted canvas variable below and, at capture time, by
+		 * the repository's own frame predicate, which fails a frame whose dominant
+		 * colours are not the palette its filename claims.
+		 */
+		if (PALETTE) {
+			await cdp.eval(
+				`document.documentElement.dataset.theme = ${JSON.stringify(PALETTE)}`,
+			);
+			await cdp.waitFor(
+				`document.documentElement.dataset.theme === ${JSON.stringify(PALETTE)}`,
+				{ label: "the palette attribute", timeout: 10_000 },
+			);
+			await sleep(600);
+			step("palette", {
+				theme: await themeOf(cdp),
+				canvas: await cdp.eval(
+					`getComputedStyle(document.documentElement).getPropertyValue("--lo-canvas").trim()`,
+				),
+			});
+		}
 		await sleep(1200);
 
 		/*
@@ -510,7 +768,9 @@ async function main() {
 		 * draft (`launchDraftSeed`); if the route did not land there, `⌘N` is the
 		 * app's own way in (the press `--scene new-chat` proves).
 		 */
-		let hasChip = await cdp.eval(`Boolean(document.querySelector("[data-device-chip]"))`);
+		const hasChip = await cdp.eval(
+			`Boolean(document.querySelector("[data-device-chip]"))`,
+		);
 		if (!hasChip) {
 			await pressNewChat(cdp);
 			await cdp
@@ -528,7 +788,7 @@ async function main() {
 		report.steps.push({
 			name: "diagnostics",
 			hash: await cdp.eval("location.hash"),
-			body: (await cdp.eval("(document.body.innerText || '').slice(0, 800)")),
+			body: await cdp.eval("(document.body.innerText || '').slice(0, 800)"),
 		});
 
 		/* -- the draft, before any pick: `New on this device` ------------------- */
@@ -564,7 +824,110 @@ async function main() {
 		await sleep(700);
 		step("chip:draft-peer", await cdp.eval(CHIP));
 		step("geometry:draft-peer", await cdp.eval(HEADER));
-		await shutter(cdp, "draft-peer");
+		/*
+		 * THE RING IS THE POINT OF THIS STATE (design review round 2, D1). The pick
+		 * leaves focus back on the chip, so the capture below is a FOCUSED control -
+		 * asserted, not assumed, and focused by the DOM if the pick left it elsewhere
+		 * (disclosed in the README when that happens: the ring's presence is the
+		 * claim, not how focus arrived).
+		 */
+		const focused = await cdp.eval(
+			`document.activeElement === document.querySelector("[data-device-chip]")`,
+		);
+		if (!focused) {
+			await cdp.eval(`document.querySelector("[data-device-chip]").focus()`);
+			await sleep(200);
+		}
+		step("focus:draft-peer", {
+			focusedByPick: focused,
+			focusedNow: await cdp.eval(
+				`document.activeElement === document.querySelector("[data-device-chip]")`,
+			),
+		});
+		const clipInfo = await cdp.eval(CLIPINFO);
+		step("clip:draft-peer", clipInfo);
+		const draftPeerFrame = await shutter(cdp, "draft-peer");
+		const ring = await scanChipEdges(draftPeerFrame, clipInfo);
+		report.ring = ring;
+		step("ring:draft-peer", ring);
+		if (EXPECT_RING === "closed") {
+			check(
+				"the focus ring's four edges are painted",
+				ring.edges.top >= 40 &&
+					ring.edges.left >= 12 &&
+					ring.edges.right >= 12 &&
+					ring.edges.bottom >= 80,
+				JSON.stringify(ring.edges),
+			);
+		}
+		if (EXPECT_RING === "open-bottom") {
+			check(
+				"the focus ring's bottom edge is cut away (the defect, reproduced)",
+				ring.edges.top >= 40 &&
+					ring.edges.left >= 12 &&
+					ring.edges.right >= 12 &&
+					ring.edges.bottom <= 20,
+				JSON.stringify(ring.edges),
+			);
+		}
+		if (EXPECT_BELOW_CLIP === "inked") {
+			check(
+				"the chip's fill and ring paint below the old clip line",
+				ring.belowClip.newInk >= 100,
+				JSON.stringify(ring.belowClip),
+			);
+		}
+		if (EXPECT_BELOW_CLIP === "none") {
+			check(
+				"nothing paints below the old clip line (the defect's own reading)",
+				ring.belowClip.newInk <= 40,
+				JSON.stringify(ring.belowClip),
+			);
+		}
+		/*
+		 * THE HOVER FILL, same box, real pointer: `:hover` engaged with a moved
+		 * mouse (never a click - a click would open the picker and change the
+		 * state under the shutter). The fill colour the frame scan compares to is
+		 * read live while the pointer is on the control.
+		 */
+		{
+			const box = await cdp.eval(`(() => {
+				const el = document.querySelector("[data-device-chip]");
+				const r = el.getBoundingClientRect();
+				return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+			})()`);
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: box.x,
+				y: box.y,
+				button: "none",
+				buttons: 0,
+			});
+			await sleep(350);
+		}
+		const hoverInfo = await cdp.eval(CLIPINFO);
+		step("clip:draft-peer-hover", {
+			fill: hoverInfo.fill,
+			clipMargin: hoverInfo.clipRow?.clipMargin ?? null,
+		});
+		const hoverFrame = await shutter(cdp, "draft-peer-hover");
+		const hoverScan = await scanChipEdges(hoverFrame, hoverInfo);
+		report.hover = hoverScan;
+		step("ring:draft-peer-hover", hoverScan);
+		if (EXPECT_BELOW_CLIP === "inked") {
+			check(
+				"the hover fill reaches the chip's own bottom edge",
+				hoverScan.fillReachesBottom >= 50,
+				JSON.stringify({ fillReachesBottom: hoverScan.fillReachesBottom }),
+			);
+		}
+		if (EXPECT_BELOW_CLIP === "none") {
+			check(
+				"the hover fill is cut before the chip's own bottom edge (the defect)",
+				hoverScan.fillReachesBottom <= 20,
+				JSON.stringify({ fillReachesBottom: hoverScan.fillReachesBottom }),
+			);
+		}
 
 		/* -- the send: the operator's own probe --------------------------------- */
 		await clickAt(cdp, '[data-tour-tag="chat-input-textarea"] textarea');
@@ -576,7 +939,8 @@ async function main() {
 			const deadline = Date.now() + 30_000;
 			while (Date.now() < deadline) {
 				const created = wire().some(
-					(call) => call.path === "/v1/desktop/sessions" && call.method === "POST",
+					(call) =>
+						call.path === "/v1/desktop/sessions" && call.method === "POST",
 				);
 				if (created) break;
 				await sleep(300);
@@ -666,11 +1030,155 @@ async function main() {
 			}
 		}
 
+		/*
+		 * THE F1 CHAIN, driven end to end (agent review round 1): the conversation
+		 * created on the peer is RECALLED home - the picker's own "this device" row
+		 * through the confirmation - the transfer is HELD so the in-flight state is
+		 * photographable, released so the receipt lands, and then the arrival notice
+		 * is DISMISSED, which is the step that used to leave the chip claiming the
+		 * peer over a conversation already home. `--expect-recall-dismissed` is the
+		 * reading each arm asserts (review head: `On <peer>`, the defect this round
+		 * fixes; fixed tree: `On this device`).
+		 */
+		if (!SHORT) {
+			await clickAt(cdp, "[data-device-chip]");
+			await cdp.waitFor(`document.querySelector("[data-device-picker]")`, {
+				label: "the picker on a live remote conversation",
+				timeout: 30_000,
+			});
+			await sleep(500);
+			step(
+				"picker-recall",
+				await cdp.eval(`(() => {
+					const panel = document.querySelector("[data-device-picker]");
+					return [...panel.querySelectorAll("[data-device-row]")].map((row) => ({
+						state: row.getAttribute("data-device-row"),
+						text: (row.textContent || "").trim().slice(0, 120),
+					}));
+				})()`),
+			);
+			const recallRow = await clickAt(cdp, "[data-device-row]", "this device");
+			step("pressed-recall-row", { text: recallRow.text });
+			await cdp.waitFor(
+				`[...document.querySelectorAll('[role="dialog"] button')].some((b) => /Recall/.test(b.textContent || ""))`,
+				{ label: "the confirmation's recall verb", timeout: 15_000 },
+			);
+			await clickAt(cdp, '[role="dialog"] button', "Recall");
+			{
+				const deadline = Date.now() + 30_000;
+				while (Date.now() < deadline) {
+					if (wire().some((call) => /\/transfer$/.test(call.path ?? ""))) break;
+					await sleep(200);
+				}
+			}
+			await cdp.waitFor(
+				`document.querySelector("[data-device-chip]").getAttribute("aria-busy") === "true"`,
+				{ label: "the chip in flight", timeout: 15_000 },
+			);
+			await sleep(500);
+			step("chip:recall-moving", await cdp.eval(CHIP));
+			await shutter(cdp, "recall-moving");
+			/* The hold releases HERE: the endpoint's answer waits for this file. */
+			writeFileSync(HOLD, "release\n");
+			await cdp.waitFor(
+				`(() => {
+					const chip = document.querySelector("[data-device-chip]");
+					return chip && (chip.textContent || "").includes("On this device");
+				})()`,
+				{ label: "the receipt's landing", timeout: 30_000 },
+			);
+			await sleep(800);
+			step("chip:recall-settled", await cdp.eval(CHIP));
+			await shutter(cdp, "recall-settled");
+			await clickAt(cdp, "button", "Dismiss");
+			await sleep(900);
+			const dismissed = await cdp.eval(CHIP);
+			report.chips["recall-dismissed"] = dismissed;
+			step("chip:recall-dismissed", dismissed);
+			await shutter(cdp, "recall-dismissed");
+			if (EXPECT_RECALL_DISMISSED) {
+				check(
+					`recall-dismissed chip reads "${EXPECT_RECALL_DISMISSED}"`,
+					Boolean(dismissed?.label?.includes(EXPECT_RECALL_DISMISSED)),
+					`label: ${JSON.stringify(dismissed?.label)}`,
+				);
+			}
+			/*
+			 * THE PICKER'S OWN RE-READ, for the record: where it now says the
+			 * conversation lives (the review's second claim about the same chain).
+			 */
+			await clickAt(cdp, "[data-device-chip]");
+			await cdp.waitFor(`document.querySelector("[data-device-picker]")`, {
+				label: "the picker after the recall",
+				timeout: 15_000,
+			});
+			await sleep(400);
+			step(
+				"picker-after-recall",
+				await cdp.eval(`(() => {
+					const panel = document.querySelector("[data-device-picker]");
+					return [...panel.querySelectorAll("[data-device-row]")].map((row) => ({
+						state: row.getAttribute("data-device-row"),
+						text: (row.textContent || "").trim().slice(0, 120),
+					}));
+				})()`),
+			);
+			await pressEscape(cdp);
+			await sleep(400);
+
+			/*
+			 * THE PLAIN LOCAL LIVE CHAT (design D3): a second conversation, created
+			 * here with no pick at all - the state most users see, and the one whose
+			 * carrier geometry the fix also moves. The stub mints unique ids (QA
+			 * N1), so this row cannot collide with the recalled one.
+			 */
+			await pressNewChat(cdp);
+			await cdp.waitFor(`document.querySelector("[data-device-chip]")`, {
+				label: "the chip on the second chat",
+				timeout: 30_000,
+			});
+			await sleep(800);
+			await clickAt(cdp, '[data-tour-tag="chat-input-textarea"] textarea');
+			await cdp.send("Input.insertText", { text: "a local probe" });
+			await sleep(400);
+			await pressEnter(cdp);
+			{
+				const deadline = Date.now() + 30_000;
+				while (Date.now() < deadline) {
+					const creates = wire().filter(
+						(call) =>
+							call.path === "/v1/desktop/sessions" && call.method === "POST",
+					).length;
+					if (creates >= 2) break;
+					await sleep(300);
+				}
+			}
+			const localChip = await settleChip(cdp, { messagesAtLeast: 3 });
+			report.chips["local-live"] = localChip;
+			step("chip:local-live", localChip);
+			await shutter(cdp, "local-live");
+			check(
+				`local-live chip reads "${EXPECT_LOCAL}"`,
+				Boolean(localChip?.label?.includes(EXPECT_LOCAL)),
+				`label: ${JSON.stringify(localChip?.label)}`,
+			);
+		}
+
 		/* AND THE WINDOW IS NEVER SHOWN, which is the claim the mode exists for. */
-		step(
-			"window",
-			await cdp.eval(`({ focused: document.hasFocus(), painted: document.querySelectorAll("*").length > 0 })`),
-		);
+		step("window", {
+			...(await cdp.eval(
+				`({ focused: document.hasFocus(), painted: document.querySelectorAll("*").length > 0 })`,
+			)),
+			/*
+			 * THE WINDOW'S OWN STATE, from the mode's log line rather than from the
+			 * page's `hasFocus()`: a headless window that has received CDP input can
+			 * have the document flagged active while the OS WINDOW stays unshown and
+			 * unfocused, and the claim this set lives under is about the window. Both
+			 * readings are printed; the mode's line is the one the disclosure cites.
+			 */
+			modeLine:
+				/visible=\S+ focused=\S+[^\n]*/.exec(logs.join(""))?.[0] ?? null,
+		});
 
 		/*
 		 * THE MECHANISM PROBES, live: why the chip sits where it sits. Run with
@@ -713,7 +1221,9 @@ async function main() {
 					agentBaseline: reading.agent?.baseline ?? null,
 					baselineDelta:
 						reading.chip?.baseline != null && reading.agent?.baseline != null
-							? Math.round((reading.chip.baseline - reading.agent.baseline) * 100) / 100
+							? Math.round(
+									(reading.chip.baseline - reading.agent.baseline) * 100,
+								) / 100
 							: null,
 				});
 				await cdp.eval(revert);
@@ -834,12 +1344,17 @@ async function main() {
 			step("style-facts-after", { note: "all mutations reverted" });
 		}
 
-		const create = wire().find(
+		const creates = wire().filter(
 			(call) => call.path === "/v1/desktop/sessions" && call.method === "POST",
 		);
+		const transfer = wire().find((call) => /\/transfer$/.test(call.path ?? ""));
 		step("wire", {
-			createPeer: create?.body?.peer ?? null,
-			createCwd: create?.body?.cwd ?? null,
+			creates: creates.length,
+			createPeer: creates[0]?.body?.peer ?? null,
+			localCreatePeer: creates[1]?.body?.peer ?? null,
+			transfer: transfer
+				? { to: transfer.body?.to ?? null, keep: transfer.body?.keep ?? null }
+				: null,
 			messages: wire().filter((call) =>
 				/\/v1\/desktop\/sessions\/[^/]+\/messages$/.test(call.path ?? ""),
 			).length,
@@ -870,7 +1385,10 @@ async function main() {
 				process.kill(pid, "SIGKILL");
 			} catch {}
 		}
-		writeFileSync(join(OUT, ARM, "report.json"), JSON.stringify(report, null, 1));
+		writeFileSync(
+			join(OUT, ARM, "report.json"),
+			JSON.stringify(report, null, 1),
+		);
 		writeFileSync(join(OUT, ARM, "app.log"), logs.join(""));
 		const chips = (report.chips ?? {})["after-send"];
 		console.log(

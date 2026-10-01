@@ -14,15 +14,41 @@
  * `chat-device-live/harness/server.mjs` carries for the transfer route). The
  * app's transport, its store, its chip and the create flow are the shipped ones.
  */
-import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { dirname } from "node:path";
 
 const PORT = Number(process.env.RIG_PORT ?? 24323);
 const WIRE = process.env.RIG_WIRE ?? "/tmp/rig-wire.jsonl";
-const SESSION = "f47ac10b58cc";
 const SELF = "d_rig_self0001";
 const NODE = "d_rig_node0001";
+/*
+ * THE PEER'S NAME IS THE RUN'S, so one rig can photograph the truncating chip
+ * (design review round 2, D4's narrow variant): the fixture device carries
+ * whatever label the drive's `--peer-name` asked for, in every place a name
+ * appears (both reads, the picker, the receipt's resolution). Default = the
+ * operator's own device, so the committed frames keep their reading.
+ */
+const PEER_NAME = process.env.RIG_PEER_NAME ?? "cloud-node-1";
+/*
+ * THE TRANSFER ANSWER IS HELD UNTIL THE DRIVE SAYS GO (`RIG_HOLD_FILE`), the
+ * sibling rig's own mechanism (`chat-device-live`): the in-flight state lives
+ * between the confirm and the receipt, and a state that lasts as long as a
+ * local socket round trip cannot be photographed. The body is recorded the
+ * moment it arrives (the wire reading is unaffected) and the answer waits for
+ * a file the drive writes once its in-flight frame is on disk.
+ */
+const HOLD_FILE = process.env.RIG_HOLD_FILE ?? "";
+
+/*
+ * UNIQUE SESSION IDS PER CREATE (QA round 1, N1). The stub used to answer every
+ * create with one constant, which was invisible while the rig created exactly
+ * one conversation - and would have the second create upsert over the first
+ * row the moment this set grew a local-send capture (D3). Daemon-minted ids
+ * are unique; the stub now is too.
+ */
+let createSeq = 0;
+const mintedId = () => `f47ac10b${(0x5800 + ++createSeq).toString(16)}`;
 
 /*
  * THE WIRE'S OWN DIRECTORY FIRST - the sibling rig's lesson, kept: the harness
@@ -87,7 +113,7 @@ const CAPABILITIES = {
 const PEERS = {
 	self_device_id: SELF,
 	peers: [
-		{ device_id: NODE, name: "cloud-node-1", reachable: true, session_count: 0 },
+		{ device_id: NODE, name: PEER_NAME, reachable: true, session_count: 0 },
 	],
 };
 
@@ -101,7 +127,7 @@ const NETWORKS = {
 			trust: "operator",
 			members: [
 				member({ device_id: SELF, name: "rig-mac", role: "admin" }),
-				member({ device_id: NODE, name: "cloud-node-1" }),
+				member({ device_id: NODE, name: PEER_NAME }),
 			],
 		},
 	],
@@ -140,6 +166,38 @@ const PREVIEW = {
 const record = (entry) => appendFileSync(WIRE, `${JSON.stringify(entry)}\n`);
 
 /**
+ * The receipt the transfer route answers with, in the wire's own shape
+ * (`TransferReceipt`): `locality`/`owner_device` are "where the session lives
+ * NOW" - `local`/this device on a recall, `remote`/the peer on a move out -
+ * and that pair is what the app's `settlePlacement` writes back onto the row
+ * once the move lands (agent review round 1, F1's fix).
+ */
+const receipt = (to, keep, sessionId) => ({
+	locality: to === "local" ? "local" : "remote",
+	owner_device: to === "local" ? SELF : to,
+	source_retired: !keep,
+	session_id: sessionId,
+	new_session_id: sessionId,
+	mode: keep ? "keep" : "move",
+	phases: [
+		{ phase: "prepared", peer: to, progress: 0.25 },
+		{ phase: "copied", peer: to, progress: 0.75 },
+		{ phase: "done", peer: to, progress: 1 },
+	],
+	replayed: false,
+});
+
+/** The hold itself: the answer waits for the file the drive writes. */
+const waitForRelease = async (path) => {
+	if (!path) return;
+	const deadline = Date.now() + 90_000;
+	while (Date.now() < deadline) {
+		if (existsSync(path)) return;
+		await new Promise((r) => setTimeout(r, 150));
+	}
+};
+
+/**
  * The session stream, minimally: `open` then `snapshot`, then the socket held.
  *
  * WHY THE DRIVE NEEDS IT rather than tolerating a dead stream. The header's
@@ -156,7 +214,11 @@ const streamFrames = (sessionId, subscriptionId) => [
 		epoch: "rig-bridge",
 		seq: 1,
 		type: "open",
-		payload: { subscription_id: subscriptionId, gap: false, watch_ttl_seconds: 45 },
+		payload: {
+			subscription_id: subscriptionId,
+			gap: false,
+			watch_ttl_seconds: 45,
+		},
 	},
 	{
 		session_id: sessionId,
@@ -234,18 +296,24 @@ const server = createServer((req, res) => {
 			 * THE CREATE, WHATEVER IT NAMED. The drive's claim is the CHIP's after the
 			 * answer, so the answer is the ordinary one - a minted id and the peer's
 			 * binding (none) - and the request body (its `peer`, its `cwd`) is read
-			 * back from the wire log by the drive itself.
+			 * back from the wire log by the drive itself. The id is MINTED PER CREATE
+			 * (`mintedId`): the set creates twice since round 2 (the peer scene and
+			 * the local-send control), and a constant would have the second create
+			 * upsert over the first row (QA N1).
 			 */
 			return send({
 				result: {
-					session_id: SESSION,
+					session_id: mintedId(),
 					binding: { agent: null, team: null },
 				},
 			});
 		}
 		if (path === "/v1/desktop/sessions/preview" && req.method === "POST")
 			return send({ result: PREVIEW });
-		if (/\/v1\/desktop\/sessions\/[^/]+\/events$/.test(path) && req.method === "GET") {
+		if (
+			/\/v1\/desktop\/sessions\/([^/]+)\/events$/.test(path) &&
+			req.method === "GET"
+		) {
 			/*
 			 * THE FRAME STREAM THE APP ACTUALLY READS, and the route it actually asks
 			 * (measured, not assumed): the main-process relay opens `GET .../events`
@@ -262,7 +330,10 @@ const server = createServer((req, res) => {
 				"cache-control": "no-cache",
 				connection: "keep-alive",
 			});
-			for (const frame of streamFrames(SESSION, "rig-events")) {
+			for (const frame of streamFrames(
+				path.match(/\/v1\/desktop\/sessions\/([^/]+)\/events$/)[1],
+				"rig-events",
+			)) {
 				res.write(`data: ${JSON.stringify(frame)}\n\n`);
 			}
 			/*
@@ -279,14 +350,33 @@ const server = createServer((req, res) => {
 			 */
 			return;
 		}
-		if (/\/v1\/desktop\/sessions\/[^/]+\/watch$/.test(path) && req.method === "POST") {
+		if (
+			/\/v1\/desktop\/sessions\/[^/]+\/watch$/.test(path) &&
+			req.method === "POST"
+		) {
 			/*
 			 * The watch LEASE (`sessions.watch`: visible/can_notify), not the frame
 			 * stream: its answer is the ordinary JSON envelope.
 			 */
 			return send({ result: {} });
 		}
-		if (/\/v1\/desktop\/sessions\/[^/]+\/messages$/.test(path) && req.method === "POST")
+		if (/\/v1\/desktop\/sessions\/([^/]+)\/transfer$/.test(path)) {
+			/*
+			 * THE TRANSFER, HELD WHEN THE RUN ASKS FOR IT. `sessions.transfer` is the
+			 * one route the recall scene (and the moving capture) needs; the receipt
+			 * names the session the path addressed, so a recall of the second-minted
+			 * conversation settles THAT row and no other.
+			 */
+			const sid = path.match(/\/v1\/desktop\/sessions\/([^/]+)\/transfer$/)[1];
+			void waitForRelease(HOLD_FILE).then(() =>
+				send({ result: receipt(parsed?.to ?? "", Boolean(parsed?.keep), sid) }),
+			);
+			return;
+		}
+		if (
+			/\/v1\/desktop\/sessions\/[^/]+\/messages$/.test(path) &&
+			req.method === "POST"
+		)
 			return send({ result: {} });
 		if (/\/v1\/desktop\/sessions\/[^/]+\/history$/.test(path))
 			return send({ result: { messages: [], truncated: false } });
