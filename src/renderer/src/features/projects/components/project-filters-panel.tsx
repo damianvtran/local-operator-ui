@@ -49,7 +49,7 @@ export type ProjectFiltersPanelProps = {
 	todayMs: number;
 	/** One option toggled; the caller owns the state so both entry points share it. */
 	onToggle: (facet: FilterFacetKey, value: FilterOptionValue) => void;
-	/** The header's Clear all (query and every facet; the sort is not a facet). */
+	/** The header's Clear all: the query, every facet and the sort (→ Default; D7). */
 	onClearAll: () => void;
 	/**
 	 * The scoped entry points: `undefined` renders the COMPLETE popover (the
@@ -79,6 +79,12 @@ export type ProjectFiltersPanelProps = {
  * not available where heights vary), applied only while there IS more below,
  * so the LAST row at the scroll's end is never dimmed for nothing.
  *
+ * THE FADE'S DEPTH IS A MEASURED CHOICE (design round 2, N2): the 20px mask
+ * first shipped here washed the section heading at the edge to ~27% of an
+ * unmasked label's ink and read as a disabled row rather than as "more
+ * below". At 12px the cut row keeps its upper half at full ink while the
+ * edge still dissolves — the affordance stays, the label stays legible.
+ *
  * THE CAP IS STATED HERE, once, for both callers: `min(70vh, 32rem)`. It is
  * taller than the option-list family (`max-h-72`/`max-h-96`) on purpose —
  * nine facets over an 800px listing, and the cap exists to keep the panel
@@ -107,7 +113,7 @@ export const FilterPopoverScroll: FC<{ children: ReactNode }> = ({
 			className={cn(
 				"max-h-[min(70vh,32rem)] overflow-y-auto overscroll-contain",
 				moreBelow &&
-					"[mask-image:linear-gradient(to_bottom,black_calc(100%-20px),transparent)]",
+					"[mask-image:linear-gradient(to_bottom,black_calc(100%-12px),transparent)]",
 			)}
 		>
 			{children}

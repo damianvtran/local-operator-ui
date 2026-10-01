@@ -1222,6 +1222,57 @@ export const FilterAndSortChips: Story = {
 };
 
 /**
+ * D7's pin: `Clear all` clears the query, the facets AND the sort. The
+ * play sets a facet through the popover (the story's sort is seeded by
+ * its own props), presses the chips row's Clear all, and fails unless
+ * every chip is gone and the Status header's `aria-sort` is back to
+ * `none` — the same end state the sort chip's own removal path reaches
+ * (U6), asserted here rather than argued.
+ */
+export const ClearAllClearsSort: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+	play: playOnce("clear-all-clears-sort", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 2,
+			"the facet chip and the sort chip",
+		);
+		const clear = [...document.querySelectorAll("button")].find(
+			(node) => node.textContent?.trim() === "Clear all",
+		);
+		if (!clear) throw new Error("the chips row's Clear all is absent");
+		clear.click();
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 0,
+			"every chip to clear",
+		);
+		const header = document.querySelector('[data-project-column="status"]');
+		if (header?.closest("th")?.getAttribute("aria-sort") !== "none") {
+			throw new Error(
+				`Clear all left the sort standing: aria-sort=${header?.closest("th")?.getAttribute("aria-sort")}`,
+			);
+		}
+	}),
+};
+
+/**
  * A stored column sort, at rest: the strip's Status header carries the
  * direction glyph and `aria-sort`, and the sort chip names it — the U6 door
  * that stays reachable when the column itself has been shed.
