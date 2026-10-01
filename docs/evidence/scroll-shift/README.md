@@ -21,7 +21,7 @@ schedule (30 x 8-word chunks; the young fixture 60 x 8):
   first settled move.
 - **`handover/`** — the young case: 3 rows, shorter than the viewport,
   top-populating, streaming until the content crosses the viewport edge and the
-  view flips into the anchored phase. `handover-settled.webp` is the same
+  view flips into the anchored phase. `handover-settled/localOperatorDark.webp` is the same
   conversation after the turn, in both arms, and the pair is where this fixture's
   shift is visible: the before arm's column DROPPED 29.4px at the turn's end
   (`lead 407.6 -> 437`, frame 185 of the trace), the after arm's leading edge

@@ -5,7 +5,10 @@ scene the R1/R2/R3 asks are written against — photographed through the app's o
 `capturePage()` in the `headless` window mode, against one isolated stub backend, at
 1380x900, in both brand palettes. They are here rather than attached to the PR because
 a committed frame is the one a later round can still read: the PR's attachments go with
-the PR, and `gh gist create` refuses binaries.
+the PR, and `gh gist create` refuses binaries. The frames are committed as lossless
+WebP on the sweep's canonical `<round>/<state>/<palette>.webp` layout, re-encoded from
+the original PNG captures by the 2026-09-30 clearing pass: pixel-identical (ICC profile
+carried), verified by a direct decode comparison, 0 differing bytes.
 
 ## Three sides, and why each is here
 
@@ -58,7 +61,9 @@ non-zero only for the failed claims.
 ## The states, and what the numbers are
 
 Sixteen frames per side (`after/` and `base/`), ten for `round-1/` (round 1's scene had
-fewer steps). Each is `<state>-<dark|light>.png`.
+fewer steps). Each frame is committed at `<round>/<state>/localOperatorDark.webp` or
+`<round>/<state>/localOperatorLight.webp` (`round` = `base`, `round-1`, `after`,
+`round-2`), the palette being the one the frame was painted under.
 
 | State | What it exercises | Numbers measured at round 1's head (what the `after/` frames show; the width table below carries THIS head) |
 | --- | --- | --- |
@@ -87,15 +92,15 @@ gap between two painted controls: the browser trigger `728..760`, the console `7
 i.e. **44px**, not the 40px the rung advances by; those four pixels come out of the
 title's fragment, never out of the row.
 
-| Frame | Window | Header (content) | Title | What the row sheds | Numbers |
+| Frame (`round-2/`) | Window | Header (content) | Title | What the row sheds | Numbers |
 | --- | --- | --- | --- | --- | --- |
-| `pane-open-1600-dark` | 1600 | 460px (428) | `208x22`, `truncated: false` | nothing | the browser trigger ends at 856 and the console trigger is PAINTED at **868..900** inside the 960 row — the shed is a threshold, not a removal |
-| `pane-open-1460-dark` | 1460 | 320px (288) | `112x22`, `truncated: true` | the canvas | **the band the ladder is about**: the console is painted `772..804` with the canvas gone, last painted control 804 inside 820, and the 44px step is readable here as the gap between the two triggers |
-| `pane-open-1380-dark` | 1380 | 240px (208) | `76x22`, `truncated: true` | the console and the canvas | last painted control 724 inside 740; nothing past the content edge at this width |
-| `pane-open-900-dark` | 900 | 220px (188) | `56x22`, `truncated: true` | the same two | last painted control 704 inside 720 |
-| `pane-open-800-dark` | 800 | 220px (188) | `56x22`, `truncated: true` | the same two | identical to 900: the app's declared minimum window (`WINDOW_MIN_WIDTH = 800`) floors the pane's layout at the same 220px header, and the row still holds the badge with 16px to spare |
-| `pane-open-900-light` | 900 | 220px (188) | `56x22` | the same two | the light brand palette, same geometry |
-| `pane-open-800-light` | 800 | 220px (188) | `56x22` | the same two | the light brand palette at the floor |
+| `pane-open-1600/localOperatorDark.webp` | 1600 | 460px (428) | `208x22`, `truncated: false` | nothing | the browser trigger ends at 856 and the console trigger is PAINTED at **868..900** inside the 960 row — the shed is a threshold, not a removal |
+| `pane-open-1460/localOperatorDark.webp` | 1460 | 320px (288) | `112x22`, `truncated: true` | the canvas | **the band the ladder is about**: the console is painted `772..804` with the canvas gone, last painted control 804 inside 820, and the 44px step is readable here as the gap between the two triggers |
+| `pane-open-1380/localOperatorDark.webp` | 1380 | 240px (208) | `76x22`, `truncated: true` | the console and the canvas | last painted control 724 inside 740; nothing past the content edge at this width |
+| `pane-open-900/localOperatorDark.webp` | 900 | 220px (188) | `56x22`, `truncated: true` | the same two | last painted control 704 inside 720 |
+| `pane-open-800/localOperatorDark.webp` | 800 | 220px (188) | `56x22`, `truncated: true` | the same two | identical to 900: the app's declared minimum window (`WINDOW_MIN_WIDTH = 800`) floors the pane's layout at the same 220px header, and the row still holds the badge with 16px to spare |
+| `pane-open-900/localOperatorLight.webp` | 900 | 220px (188) | `56x22` | the same two | the light brand palette, same geometry |
+| `pane-open-800/localOperatorLight.webp` | 800 | 220px (188) | `56x22` | the same two | the light brand palette at the floor |
 
 **The ladder, and why the rungs sit where they do.** `row = window − 1140` holds for the
 pane-open state, and the container query reads the header's CONTENT box (`row − 32`, its
