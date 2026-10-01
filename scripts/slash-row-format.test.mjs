@@ -22,7 +22,7 @@ import { build } from "esbuild";
 const bundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows"; export { activeModelForDefault, effortCommandSucceeded, writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings";',
+			'export * from "./src/renderer/src/features/chat/components/slash-argument-rows"; export { activeModelForDefault, effortCommandSucceeded, writeModelDefaultSettings } from "./src/renderer/src/features/chat/pickers/model-default-settings"; export { matchChoices } from "./src/renderer/src/features/chat/components/slash-rank";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -40,6 +40,9 @@ const {
 	activeModelForDefault,
 	effortCommandSucceeded,
 	writeModelDefaultSettings,
+	effectiveInlineArgument,
+	matchChoices,
+	providerQualifier,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -332,6 +335,79 @@ test("profile rows take their detail from the profile kind", () => {
 	assert.equal(rows[1].current, true);
 });
 
+test("a labelled team reads by its label, keeps its slug findable, and writes the slug", () => {
+	/*
+	 * The label split's row rule, from the branch that serves /team's list: the
+	 * DISPLAY is the label — through `teamDisplayName`, the app's one statement
+	 * of that rule — `value` - what a pick writes and a run sends - is the slug,
+	 * and the slug is republished as an ALIAS so the team's actual key keeps
+	 * FINDING the row while the row shows its label (`matchChoices` scores name
+	 * and aliases, and the alias arm is pinned in `slash-rank.test.mjs`).
+	 *
+	 * The `slug` field is the display-side twin of that alias (design round 1,
+	 * D2/D3): the popup draws it as the quiet mono token beside the label, and
+	 * its presence is what tells the renderer the name is prose. Round 1's R1-2
+	 * is pinned below: the rule is the SHARED one, trim included.
+	 */
+	const rows = argumentRows(
+		"team",
+		[
+			{
+				name: "lopdev",
+				value: "lopdev",
+				label: "Local Operator Dev",
+				description: "Builds and ships local-operator itself.",
+			},
+		],
+		null,
+	);
+	assert.equal(rows[0].name, "Local Operator Dev");
+	assert.equal(rows[0].value, "lopdev");
+	assert.equal(rows[0].slug, "lopdev");
+	assert.deepEqual(rows[0].aliases, ["lopdev"]);
+	// A row without a label (every agent, and any team from a backend that
+	// predates the field) keeps today's shape exactly: no alias, no slug token,
+	// name as was.
+	const agents = argumentRows(
+		"agent",
+		[{ name: "coder", value: "coder" }],
+		null,
+	);
+	assert.equal(agents[0].name, "coder");
+	assert.equal(agents[0].aliases, undefined);
+	assert.equal(agents[0].slug, undefined);
+});
+
+test("a padded or whitespace-only label goes through the shared trim rule", () => {
+	/*
+	 * Round 1's R1-2. This row used to replicate `label || name` WITHOUT
+	 * `teamDisplayName`'s trim, so a padded label rendered padded where every
+	 * other surface trims it, and a whitespace-only label - the exact case the
+	 * helper's docblock calls load-bearing - blanked the row instead of falling
+	 * back to the slug. The helper is the one statement of the rule; this test
+	 * pins that the popup's rows are read through it.
+	 */
+	const rows = argumentRows(
+		"team",
+		[{ name: "lopdev", value: "lopdev", label: "  Local Operator Dev  " }],
+		null,
+	);
+	assert.equal(rows[0].name, "Local Operator Dev");
+	assert.deepEqual(rows[0].aliases, ["lopdev"]);
+	assert.equal(rows[0].slug, "lopdev");
+
+	const blank = argumentRows(
+		"team",
+		[{ name: "lopdev", value: "lopdev", label: "   " }],
+		null,
+	);
+	assert.equal(blank[0].name, "lopdev");
+	// A label that cannot win leaves the row in its unlabelled shape: no alias
+	// to publish, and no slug token to draw.
+	assert.equal(blank[0].aliases, undefined);
+	assert.equal(blank[0].slug, undefined);
+});
+
 test("theme rows come from the renderer's own table shape", () => {
 	const rows = argumentRows(
 		"theme",
@@ -360,16 +436,14 @@ test("the inline list's entity ids are exactly the ones the route serves", () =>
 	 * A stale id would not fail anywhere — it would render an empty list, which
 	 * is the failure mode this guard exists to make impossible.
 	 *
-	 * THE GUARD NAMES THE RENDERER-LOCAL SOURCES TOO, and that is the half that
-	 * had to be EXTENDED rather than deleted when `/rename`'s flag list landed.
-	 * The two halves answer different questions: the backend ids must equal the
+	 * THE GUARD NAMES ALL THREE CATEGORIES. The backend entity ids must equal the
 	 * route's set exactly (a sixth one would query a route that does not serve
-	 * it), while the renderer-local ids must equal the ones `argumentRows`
-	 * actually has a `case` for (an id declared with no case renders nothing, and
-	 * a case with no declared id is dead code) — and neither invariant is visible
-	 * from the other, so both literals are pinned here. `title-refresh` joins
-	 * `theme` in the second list, and the literal in each is the thing a future
-	 * author updates deliberately.
+	 * it); the sessionless ids must equal the literal `SessionlessArgumentSource`
+	 * declares, because each one must have a `case` in `argumentRows` (an id
+	 * declared with no case renders nothing, and a case with no declared id is
+	 * dead code); and the renderer-local ids must equal the ones the shaper has a
+	 * case for too. Neither invariant is visible from the other, so each literal
+	 * is pinned here and updated deliberately.
 	 */
 	const source = readFileSync(
 		"src/renderer/src/features/chat/pickers/picker-registry.tsx",
@@ -382,14 +456,17 @@ test("the inline list's entity ids are exactly the ones the route serves", () =>
 		"agent",
 		"approvals",
 		"effort",
+		"mcp",
 		"model",
+		"provider-accounts",
+		"providers",
 		"team",
 		"theme",
 		"title-refresh",
 	]);
-	// The renderer-local half: exactly two, and they are the ones the row shaper
-	// has a case for. Read off `slash-argument-rows.ts` rather than restated, so
-	// the two files cannot drift into "declared but not shaped".
+	// The renderer-local half and the sessionless half: read off
+	// `slash-argument-rows.ts` rather than restated, so the two files cannot
+	// drift into "declared but not shaped".
 	const rowSource = readFileSync(
 		"src/renderer/src/features/chat/components/slash-argument-rows.ts",
 		"utf8",
@@ -400,25 +477,480 @@ test("the inline list's entity ids are exactly the ones the route serves", () =>
 		.map((match) => match[1])
 		.sort();
 	assert.deepEqual(localIds, ["theme", "title-refresh"]);
-	// Every renderer-local id has a `case` in `argumentRows`, and every declared
-	// id is one of the two halves. Together these are the whole guard: a new
-	// source cannot be added without stating which half it is, and a half cannot
-	// be stated without the shaping existing.
-	for (const id of localIds) {
+	const sessionlessUnion =
+		/SessionlessArgumentSource =\s*([^;]+);/.exec(rowSource)?.[1] ?? "";
+	const sessionlessIds = [...sessionlessUnion.matchAll(/"([a-z-]+)"/g)]
+		.map((match) => match[1])
+		.sort();
+	assert.deepEqual(sessionlessIds, ["mcp", "provider-accounts", "providers"]);
+	// Every sessionless and renderer-local id has a `case` in `argumentRows`.
+	for (const id of [...localIds, ...sessionlessIds]) {
 		assert.match(
 			rowSource,
 			new RegExp(`case "${id}":`),
-			`argumentRows must shape the renderer-local source "${id}"`,
+			`argumentRows must shape the source "${id}"`,
 		);
 	}
-	// The other five are entity commands and must exactly equal the route's set.
-	assert.deepEqual(declared.filter((id) => !localIds.includes(id)).sort(), [
-		"agent",
-		"approvals",
-		"effort",
-		"model",
-		"team",
-	]);
+	// What is left, once both of those are taken out, are the entity commands
+	// and they must exactly equal the route's set.
+	assert.deepEqual(
+		declared
+			.filter((id) => !localIds.includes(id) && !sessionlessIds.includes(id))
+			.sort(),
+		["agent", "approvals", "effort", "model", "team"],
+	);
+});
+
+/* ------------------------------------------------ sessionless source shaping */
+
+/**
+ * A census row shaped like `/v1/auth/providers` answers it (`provider_catalogue`
+ * landed): every field the composer's `/login` list reads.
+ */
+const providerRow = (over = {}) => ({
+	id: "openai",
+	name: "OpenAI (ChatGPT Plus/Pro)",
+	search_aliases: ["gpt", "chatgpt", "codex"],
+	state: "needs_login",
+	...over,
+});
+
+test("a provider row is written by id and read by brand and qualifier", () => {
+	const rows = argumentRows(
+		"providers",
+		[
+			providerRow(),
+			providerRow({
+				id: "deepseek",
+				name: "DeepSeek",
+				search_aliases: ["ds"],
+				state: "logged_in",
+			}),
+			providerRow({
+				id: "anthropic",
+				name: "Anthropic (Claude Pro/Max)",
+				search_aliases: [],
+				state: "env_key",
+			}),
+			providerRow({
+				id: "alibaba-token-plan",
+				name: "QwenCloud Token Plan",
+				brand: "QwenCloud",
+				search_aliases: [],
+				state: "local_ready",
+			}),
+		],
+		null,
+	);
+	// The pick writes the ID; the name column shows the BRAND the backend owns
+	// (or the strip-parenthetical fallback when it sends none); the description
+	// is the qualifier the id does not already say.
+	assert.deepEqual(rows[0], {
+		value: "openai",
+		name: "OpenAI",
+		description: "ChatGPT Plus/Pro",
+		detail: "needs login",
+		aliases: ["gpt", "chatgpt", "codex"],
+	});
+	assert.equal(rows[1].name, "DeepSeek");
+	// A name that restates its id answers with an EMPTY cell, not a repeat.
+	assert.equal(rows[1].description, "");
+	// `_credential_state`'s words, one per machine state (spec §5's copy table).
+	assert.equal(rows[1].detail, "logged in");
+	assert.equal(rows[2].detail, "env key");
+	// The backend brand wins over every derivation.
+	assert.equal(rows[3].name, "QwenCloud");
+	assert.equal(rows[3].detail, "configured server");
+	// `local_unconfigured` reads "configure server" (the CLI's own words).
+	const [local] = argumentRows(
+		"providers",
+		[
+			providerRow({
+				id: "ollama",
+				name: "Ollama",
+				state: "local_unconfigured",
+			}),
+		],
+		null,
+	);
+	assert.equal(local.detail, "configure server");
+});
+
+test("a row an older backend sends still shapes, without claiming a state", () => {
+	// `brand` and `state` absent (the pre-catalogue row): the name falls back to
+	// the strip-parenthetical rule, the qualifier still comes from the raw name,
+	// and the detail column stays EMPTY rather than inventing a state.
+	const [row] = argumentRows(
+		"providers",
+		[{ id: "openai", name: "OpenAI (ChatGPT Plus/Pro)" }],
+		null,
+	);
+	assert.equal(row.name, "OpenAI");
+	assert.equal(row.description, "ChatGPT Plus/Pro");
+	assert.equal(row.detail, undefined);
+	assert.equal(row.aliases, undefined);
+});
+
+test("the qualifier port answers the TUI's own vectors", () => {
+	// `_provider_summary` (`app.py:52567`): the parenthetical when there is one,
+	// an EMPTY cell when the name restates the id, the name itself otherwise.
+	assert.equal(
+		providerQualifier("openai", "OpenAI (ChatGPT Plus/Pro)"),
+		"ChatGPT Plus/Pro",
+	);
+	assert.equal(providerQualifier("deepseek", "DeepSeek"), "");
+	assert.equal(providerQualifier("openrouter", "OpenRouter"), "");
+	assert.equal(
+		providerQualifier("alibaba-token-plan", "QwenCloud Token Plan"),
+		"QwenCloud Token Plan",
+	);
+	assert.equal(providerQualifier("kimi", "Kimi (Moonshot)"), "Moonshot");
+});
+
+test("subsequences and aliases both reach openai", () => {
+	/*
+	 * The operator's exact typo class (`/login ope…`): a subsequence of the id
+	 * reaches the row (`ope` → `openai`, the matcher's own fuzzy arm), and the
+	 * registry's aliases reach it by name (`chatgpt`, `gpt` — the spellings a
+	 * user actually types for this provider).
+	 */
+	const rows = argumentRows(
+		"providers",
+		[
+			providerRow(),
+			providerRow({
+				id: "openrouter",
+				name: "OpenRouter",
+				search_aliases: ["or", "router"],
+			}),
+			providerRow({
+				id: "anthropic",
+				name: "Anthropic (Claude Pro/Max)",
+				search_aliases: ["claude"],
+			}),
+		],
+		null,
+	);
+	for (const query of ["ope", "chatgpt", "gpt", "openai"]) {
+		const matches = matchChoices(query, rows);
+		assert.ok(matches.length > 0, `${query} reaches a row`);
+		assert.equal(matches[0].choice.value, "openai", `${query} reaches openai`);
+	}
+});
+
+test("/logout's list groups credentials per provider and names the removal", () => {
+	const rows = argumentRows(
+		"provider-accounts",
+		[
+			{
+				provider: "openai",
+				type: "oauth",
+				identity_label: "damian@gominerva.com",
+			},
+			// Two credentials under ONE storage id (`xai`/`xai-oauth` share a row,
+			// and a provider can hold a key beside an OAuth grant): one row, the
+			// count as the digest, no identity — the TUI's own rule.
+			{ provider: "xai", type: "api_key", identity_label: "Stored credential" },
+			{ provider: "xai", type: "oauth", identity_label: "Stored credential" },
+			{
+				provider: "anthropic",
+				type: "api_key",
+				identity_label: "work@example.com",
+			},
+		],
+		null,
+	);
+	assert.deepEqual(
+		rows.map((row) => row.value),
+		["openai", "xai", "anthropic"],
+	);
+	assert.equal(rows[0].detail, "remove oauth · damian@gominerva.com");
+	// One row per provider: the second credential under `xai` is a COUNT, not a
+	// second row (`_removal_detail` reads `remove 2 credentials`).
+	assert.equal(rows[1].detail, "remove 2 credentials");
+	assert.equal(rows[2].detail, "remove api key · work@example.com");
+	// Every row on this list destroys a credential; the alert is what the
+	// keyboard gate reads to fill rather than fire on a fuzzy survivor.
+	for (const row of rows) assert.equal(row.alert, true, row.value);
+	// A single credential with only the generic label has no identity to state.
+	const [alone] = argumentRows(
+		"provider-accounts",
+		[
+			{
+				provider: "github",
+				type: "oauth",
+				identity_label: "Stored credential",
+			},
+		],
+		null,
+	);
+	assert.equal(alone.detail, "remove oauth");
+});
+
+test("/logout rows are named the census way, and carry its aliases", () => {
+	/*
+	 * Round 1, D5/U6 and U4: `/login` named rows by the census's `brand` and
+	 * reached them by `search_aliases`; `/logout` showed the raw id and matched
+	 * the id alone, so the SAME provider read `OpenAI` in one popup and `openai`
+	 * in the next, and `chatgpt` reached it in one command but not the other.
+	 * The shaper now joins the census the hook already fetches.
+	 */
+	const census = [
+		{
+			id: "openai",
+			name: "OpenAI (ChatGPT Plus/Pro)",
+			brand: "OpenAI",
+			search_aliases: ["gpt", "chatgpt"],
+		},
+		{
+			id: "anthropic",
+			name: "Anthropic (Claude Pro/Max)",
+			brand: "Anthropic",
+			search_aliases: ["claude"],
+		},
+	];
+	const rows = argumentRows(
+		"provider-accounts",
+		[
+			{ provider: "openai", type: "oauth", identity_label: "a@b.c" },
+			{ provider: "zai", type: "api_key", identity_label: "Stored credential" },
+		],
+		null,
+		{ providers: census },
+	);
+	assert.equal(rows[0].name, "OpenAI");
+	assert.equal(
+		rows[0].value,
+		"openai",
+		"the id stays the value the command takes",
+	);
+	assert.deepEqual(rows[0].aliases, ["gpt", "chatgpt"]);
+	assert.equal(
+		matchChoices("chatgpt", rows)[0]?.choice.value,
+		"openai",
+		"the alias vocabulary is the one /login already honours",
+	);
+	// A provider the census does not know (or a census that failed to load)
+	// keeps the row legible by its id, with no invented aliases.
+	assert.equal(rows[1].name, "zai");
+	assert.equal(rows[1].aliases, undefined);
+});
+
+/* The document table the real backend will publish (spec §3.1): descriptions
+   verbatim from the TUI's own literal (`app.py:47703-47725`). */
+const MCP_VERBS = [
+	{
+		verb: "list",
+		description: "Show every configured server and its status",
+		destructive: false,
+		offers: null,
+	},
+	{
+		verb: "add",
+		description: "Configure a new server (url, or a stdio command)",
+		destructive: false,
+		offers: null,
+	},
+	{
+		verb: "remove",
+		description: "Delete a server from local-operator's config",
+		destructive: true,
+		offers: "all",
+	},
+	{
+		verb: "login",
+		description: "Authorize an OAuth server (opens the browser)",
+		destructive: false,
+		offers: "oauth",
+	},
+	{
+		verb: "logout",
+		description: "Forget a server's stored OAuth credential",
+		destructive: true,
+		offers: "signed_in",
+	},
+	{
+		verb: "reauth",
+		description:
+			"Forget first, then authorize — for an account or scope change",
+		destructive: true,
+		offers: "oauth",
+	},
+];
+
+const MCP_SERVERS = [
+	{
+		name: "linear",
+		status: "needs_sign_in",
+		actions: ["test", "sign_in"],
+		source: { path: "/Users/you/.local-operator/config.yml" },
+	},
+	{
+		name: "github",
+		status: "connected",
+		actions: ["test", "sign_out", "reauth"],
+		source: { path: "/Users/you/.claude.json" },
+	},
+	{
+		name: "postgres",
+		status: "needs_sign_in",
+		actions: ["test", "set_key"],
+		source: { path: "/Users/you/project/.mcp.json" },
+	},
+];
+
+test("the /mcp verb slot reads the document's verbs, alert on destructive", () => {
+	const rows = argumentRows("mcp", MCP_SERVERS, null, {
+		argument: "",
+		verbs: MCP_VERBS,
+	});
+	// The document's ORDER, list first — the row a stray Enter lands on is the
+	// one that only shows something.
+	//
+	// THE TRAILING SPACE IS THE HANDOFF (round 1, U1): the value is what a pick
+	// WRITES, and choosing a verb must leave `/mcp login ` in the buffer so the
+	// server slot opens — `completionFor` appends no space for this source
+	// (`nameThenMessage` is false on purpose: that flag would CLOSE the list
+	// instead of advancing it), so the row's own value carries it.
+	assert.deepEqual(
+		rows.map((row) => row.value),
+		["list ", "add ", "remove ", "login ", "logout ", "reauth "],
+	);
+	assert.equal(
+		rows[0].description,
+		"Show every configured server and its status",
+	);
+	// `alert` is the keyboard gate's input: destructive verbs carry it, and an
+	// empty argument is not evidence about which verb is meant.
+	assert.deepEqual(
+		rows.map((row) => row.alert),
+		[false, false, true, false, true, true],
+	);
+});
+
+test("a partially typed verb stays in the verb slot", () => {
+	const rows = argumentRows("mcp", MCP_SERVERS, null, {
+		argument: "lo",
+		verbs: MCP_VERBS,
+	});
+	// The slot is the TUI's partition on the first space; a partial word is
+	// still the verb slot, and every candidate keeps the terminator its pick
+	// will write.
+	assert.deepEqual(
+		rows.map((row) => row.value),
+		["list ", "add ", "remove ", "login ", "logout ", "reauth "],
+	);
+});
+
+test("the /mcp server slot filters by offers and names the per-verb outcome", () => {
+	const rowsFor = (verb) =>
+		argumentRows("mcp", MCP_SERVERS, null, {
+			argument: `${verb} `,
+			verbs: MCP_VERBS,
+		});
+	// `login` admits every OAuth-capable row — signed out via `sign_in` and
+	// signed in via `reauth`/`sign_out` are BOTH reachable (the TUI's rule).
+	const login = rowsFor("login");
+	assert.deepEqual(
+		login.map((row) => row.value),
+		["login linear", "login github"],
+	);
+	assert.equal(login[0].detail, "needs sign-in");
+	assert.equal(login[1].detail, "connected — will re-use");
+	assert.equal(
+		login.every((row) => row.alert === false),
+		true,
+	);
+	// `logout` admits only rows a logout can act on, and its detail names what
+	// is being removed, never a bare connection state.
+	const logout = rowsFor("logout");
+	assert.deepEqual(
+		logout.map((row) => row.value),
+		["logout github"],
+	);
+	assert.equal(logout[0].detail, "stored credential · connected");
+	assert.equal(logout[0].alert, true);
+	const reauth = rowsFor("reauth");
+	assert.equal(reauth[1].detail, "connected — will re-authorize");
+	// `remove` admits EVERY configured row (the config is what it edits), and
+	// the detail is the source file — home-relative through `compactPath` — so
+	// a foreign import's refusal is something the user saw coming.
+	const remove = rowsFor("remove");
+	assert.deepEqual(
+		remove.map((row) => row.value),
+		["remove linear", "remove github", "remove postgres"],
+	);
+	assert.equal(remove[1].detail, "~/.claude.json");
+	assert.equal(
+		remove.every((row) => row.alert === true),
+		true,
+	);
+	// `list` takes no argument and an added name is new by definition: both
+	// offer nothing, and the user just types.
+	assert.deepEqual(rowsFor("list"), []);
+	assert.deepEqual(rowsFor("add"), []);
+});
+
+test("a backend that does not advertise the features offers no list at all", () => {
+	/*
+	 * The degrade matrix (spec §4.2), driven through the REAL resolver the hook
+	 * reads: `provider_catalogue` absent drops both provider lists, an
+	 * `mcp_catalog` still at 1 drops the MCP pair (the verbs table the server
+	 * slot needs is the v2 addition), and neither may disturb a list that
+	 * carries no requirement (every existing command's).
+	 */
+	const login = {
+		source: "providers",
+		nameThenMessage: false,
+		runs: true,
+		requires: "provider_catalogue",
+	};
+	const accounts = {
+		source: "provider-accounts",
+		nameThenMessage: false,
+		runs: false,
+		requires: "provider_catalogue",
+	};
+	const mcp = {
+		source: "mcp",
+		nameThenMessage: false,
+		runs: false,
+		requires: "mcp_catalog",
+	};
+	const licensed = {
+		desktop_available: true,
+		features: { provider_catalogue: 1, mcp_catalog: 2 },
+	};
+	assert.deepEqual(effectiveInlineArgument(login, licensed), login);
+	assert.deepEqual(effectiveInlineArgument(accounts, licensed), accounts);
+	assert.deepEqual(effectiveInlineArgument(mcp, licensed), mcp);
+	const providerless = {
+		desktop_available: true,
+		features: { mcp_catalog: 2 },
+	};
+	assert.equal(effectiveInlineArgument(login, providerless), undefined);
+	assert.equal(effectiveInlineArgument(accounts, providerless), undefined);
+	assert.deepEqual(effectiveInlineArgument(mcp, providerless), mcp);
+	// `mcp_catalog: 1` is the shipped Settings contract, NOT this licence.
+	const v1Catalog = {
+		desktop_available: true,
+		features: { provider_catalogue: 1, mcp_catalog: 1 },
+	};
+	assert.equal(effectiveInlineArgument(mcp, v1Catalog), undefined);
+	assert.deepEqual(effectiveInlineArgument(login, v1Catalog), login);
+	// No answer at all, and an unpaired plane, both fail closed.
+	assert.equal(effectiveInlineArgument(login, null), undefined);
+	assert.equal(effectiveInlineArgument(mcp, undefined), undefined);
+	assert.equal(
+		effectiveInlineArgument(login, {
+			desktop_available: false,
+			features: { provider_catalogue: 1 },
+		}),
+		undefined,
+	);
+	// A list with no requirement predates all of this and is never touched.
+	const model = { source: "model", nameThenMessage: false, runs: false };
+	assert.deepEqual(effectiveInlineArgument(model, null), model);
 });
 
 test("the /rename flag list is the one row the backend honours, aliased", () => {

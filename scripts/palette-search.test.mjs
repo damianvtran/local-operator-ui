@@ -31,6 +31,7 @@ const {
 	buildPanelItems,
 	buildSettingKeyItems,
 	buildSettingsSectionItems,
+	AGENT_ROSTER_SEED,
 	CONVERSATION_SWITCHER_SEED,
 	matchQuality,
 	normalizeText,
@@ -441,6 +442,53 @@ test("the conversation switcher's seed opens on the chats scope", () => {
 	);
 });
 
+/*
+ * THE AGENT JUMP'S SEED (issue #663): the chat sidebar's band control opens the
+ * palette with `AGENT_ROSTER_SEED`, so this pins what that seed MEANS for the
+ * same reason the switcher's own test above pins its label: a drift in the
+ * glyph or the table is silent, and the control would stop being the roster's
+ * door without a single test going red.
+ */
+test("the sidebar's agent jump seed opens on the agents scope", () => {
+	assert.equal(AGENT_ROSTER_SEED, "@");
+	assert.deepEqual(parsePaletteQuery(AGENT_ROSTER_SEED), {
+		scope: "agent",
+		terms: "",
+	});
+	/*
+	 * At the list level that is the agents group and nothing else: the fixture
+	 * gains one agent row, shaped the way the app's own source builds them
+	 * (`use-palette-sources.ts`), and the outcome must be the agents group
+	 * drawing that row. The plain `@ada` case above already proves the
+	 * negative half - an agents scope cannot fall back to another group.
+	 */
+	const outcome = searchPalette({
+		items: [
+			...items,
+			{
+				id: "agent-chat-ledger-auditor",
+				kind: "agent",
+				group: "agents",
+				name: "ledger-auditor",
+				hint: "Open chat",
+				icon: "chat",
+				// Featured for the reason the switcher's own rows are, one test up:
+				// with no terms the palette draws the BROWSE layout, which is built
+				// from featured rows, and the app's source marks its agent chat rows
+				// exactly so when the query is empty (`use-palette-sources.ts`).
+				featured: true,
+				target: { type: "path", path: "/chat/ledger-auditor" },
+			},
+		],
+		raw: AGENT_ROSTER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["agents"]);
+	assert.ok(
+		names(outcome).includes("ledger-auditor"),
+		"the scope shows the roster, not nothing",
+	);
+});
+
 test("aliases are how the app's vocabulary meets the user's", () => {
 	const outcome = searchPalette({ items, raw: "theme" });
 	/*
@@ -614,6 +662,45 @@ test("a chat row opens its session and says which agent owns it", () => {
 	assert.deepEqual(row.target, { type: "session", sessionId: "abc" });
 	assert.equal(row.name, "Retention");
 	assert.equal(row.hint, "Architect");
+});
+
+test("a labelled team's hint reads as its label; the slug is the fallback", () => {
+	/*
+	 * The binding hint is human text, so a TEAM resolved through the map the
+	 * palette hook builds from the team catalogue reads as its label; a slug
+	 * the map does not hold, or a caller with no map at all (the capability is
+	 * off, the list is still landing), keeps the pre-labels string. An AGENT
+	 * binding never consults the map.
+	 */
+	const labels = new Map([["lopdev", "Local Operator Dev"]]);
+	assert.equal(
+		buildChatItem(
+			{ session_id: "s1", binding: { agent: null, team: "lopdev" } },
+			labels,
+		).hint,
+		"Local Operator Dev",
+	);
+	assert.equal(
+		buildChatItem(
+			{ session_id: "s2", binding: { agent: null, team: "minerva" } },
+			labels,
+		).hint,
+		"minerva",
+	);
+	assert.equal(
+		buildChatItem({
+			session_id: "s3",
+			binding: { agent: null, team: "lopdev" },
+		}).hint,
+		"lopdev",
+	);
+	assert.equal(
+		buildChatItem(
+			{ session_id: "s4", binding: { agent: "coder", team: null } },
+			labels,
+		).hint,
+		"coder",
+	);
 });
 
 test("an untitled conversation still has a name", () => {

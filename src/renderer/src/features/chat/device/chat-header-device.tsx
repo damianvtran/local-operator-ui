@@ -131,14 +131,47 @@ const ChipButton = forwardRef<
 			title={label}
 			className={cn(
 				/* `h-5` and `rounded-xs` are the identity controls' own contract: the block
-				 * clips at its line height, and a 28/32px control would move it. */
-				"inline-flex h-5 max-w-full shrink-0 cursor-pointer items-center gap-1 rounded-xs px-1",
+				 * clips at its line height, and a 28/32px control would move it. `pr-1`
+				 * rather than `px-1` because the zero-width carrier below takes one
+				 * `gap-1` slot at the leading edge - `0 + carrier + gap` equals the old
+				 * `px-1` inset in every state, dot present or not. */
+				"inline-flex h-5 max-w-full shrink-0 cursor-pointer items-center gap-1 rounded-xs pr-1",
 				"select-none whitespace-nowrap text-body-sm",
 				"text-ink-muted hover:bg-row-hover hover:text-ink",
 				className,
 			)}
 			{...props}
 		>
+			{/*
+			 * THE ZERO-WIDTH CARRIER THAT PUTS THE CHIP ON THE HEADER'S LINE, first
+			 * child, and it is load-bearing - the operator's alignment report
+			 * (2026-09-30) is what it answers. The title block lays its items out on
+			 * one text baseline (`items-baseline`), and an item whose first child is
+			 * a GLYPH has no text baseline for the row to read: the browser
+			 * synthesises one from the leading icon's margin-box bottom (offset 16px
+			 * in this 20px control, where a text baseline lands at 13-14px), so the
+			 * chip stood at box y 42.0 with its label on 55.25 while the identity
+			 * pair sat at 44.2 / 57.5 - measured live on the built app, twice, before
+			 * this span existed.
+			 *
+			 * THE FONT IS THE FIX, and it was chosen by measurement rather than by
+			 * theory: the rig's `--experiments` table ran four candidates against the
+			 * running app. A zero-width run in the CHIP's own font closes 1.25px of
+			 * the 2.25px gap; the same run in the IDENTITY pair's font (mono, the one
+			 * this span carries) lands the box at 44.2 exactly and the baselines at
+			 * 57.45 against 57.5 - the residue is subpixel rounding. A fixed-size
+			 * shim is deliberately NOT the shape: `h-14`/`h-13` shims move the ROW's
+			 * own baseline with them (measured: the identity chips were dragged to
+			 * 45.2/44.7 while the chip stayed put), so the chip has to JOIN the
+			 * baseline the row computes rather than be offset toward it.
+			 *
+			 * The text is a zero-width space in an `aria-hidden` span: invisible,
+			 * zero-width, and the button's own `aria-label` already carries the whole
+			 * state, so nothing about the accessible name changes.
+			 */}
+			<span aria-hidden="true" className="font-mono text-mono-sm">
+				{"\u200b"}
+			</span>
 			{placement.kind === "moving" ? (
 				/*
 				 * THE SPINNER TAKES THE GLYPH'S SLOT inside the same 20px box, so nothing

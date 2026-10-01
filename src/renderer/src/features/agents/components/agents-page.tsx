@@ -50,6 +50,7 @@ import {
 	useTeamDetail,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { useLaneLeadingColumn } from "@shared/components/common/chat-layout";
 import {
 	Alert,
@@ -1132,7 +1133,13 @@ function Roster({
 						>
 							<span className="flex w-full items-center gap-2">
 								<span className="truncate text-body-sm text-ink">
-									{printName(row.name)}
+									{/* The READABLE name for a row: a team's label, or her configured
+									    name for the seat; every other agent row renders its own name
+									    unchanged. Identity stays `row.name` - the testid, the
+									    selection and the URL all read it. */}
+									{"members" in row
+										? teamDisplayName(row)
+										: printName(row.name)}
 								</span>
 								{/*
 								 * THE SOURCE CHIP SITS WITH THE NAME and reads as a statement, not a
@@ -1232,6 +1239,7 @@ function teamsFilter(
 		(row) =>
 			!needle ||
 			row.name.toLowerCase().includes(needle) ||
+			(row.label ?? "").toLowerCase().includes(needle) ||
 			(row.description ?? "").toLowerCase().includes(needle),
 	);
 }

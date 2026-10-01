@@ -47,7 +47,9 @@ const {
 	ALIGN_WALK_MAX_PAGES,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
+	alignWalkRunFromPlan,
 	alignWalkRunKey,
+	alignWalkRunKeyConfirmed,
 	alignWalkStateFor,
 	initialAlignWalkState,
 	collapsePlan,
@@ -58,6 +60,7 @@ const {
 	WIDEN_MAX_STEPS,
 	staysVisibleWhileCollapsed,
 	widenTarget,
+	windowTopRun,
 	windowTopRunIsHeadCut,
 	closingAnswerIds,
 	buildRows,
@@ -234,22 +237,32 @@ test("a completed run collapses over its in-between rows, bar at the first hidde
 });
 
 test("narration-only in-betweens collapse and state no duration: no call measured any work", () => {
-	// §5 case 3: prose between the user row and the answer hides; no action clause.
+	/*
+	 * §5 case 3: a span whose hidden rows are PROSE states no action clause. The
+	 * span has to be one the visibility invariant still folds - prose a lead-in to
+	 * the call that follows it, or a COMMENTARY close that is not the run's last
+	 * (V1 keeps every response close, V2 the last close of all) - so this fixture
+	 * is the second shape: the disposal, then a wake whose narration closed a
+	 * commentary cycle, then one more close.
+	 */
 	const plan = planOf([
 		user("u1"),
-		row(
-			"p1",
-			"assistant",
-			{ text: "Checking the ledger.", streaming: false },
-			"turn",
-		),
 		answer("a1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+		row("mark", "notice", {
+			text: "Completed",
+			level: "info",
+			complete: true,
+		}),
+		row("w1", "wake", { text: "wake" }),
+		row("p1", "assistant", { text: "Checking the ledger.", streaming: false }),
+		answer("a2"),
 	]);
 	const run = plan.runs[0];
 	assert.equal(run.collapses, true);
 	assert.deepEqual(
 		run.hidden.map((hidden) => hidden.record.id),
-		["p1"],
+		["w1", "p1"],
+		"the wake's own span: the receipt and a commentary close",
 	);
 	assert.equal(run.facts.actions, 0);
 	assert.equal(run.facts.title, null, "no actions, no hover sentence");
@@ -260,8 +273,10 @@ test("narration-only in-betweens collapse and state no duration: no call measure
 	);
 });
 
-test("a steer stays inside the expansion and its rows count in the run's totals", () => {
+test("a steer's rows count in the run's totals, and the steer itself stays on screen (V3)", () => {
 	// §5 case 5, the one whose numbers move: the foot used to reset at the steer.
+	// The steer's ROW is no longer inside the collapse (V3), so the run has a bar
+	// on either side of the reader's own message.
 	const plan = planOf([
 		user("u1"),
 		tool("t1"),
@@ -274,8 +289,13 @@ test("a steer stays inside the expansion and its rows count in the run's totals"
 	assert.equal(run.collapses, true);
 	assert.deepEqual(
 		run.hidden.map((hidden) => hidden.record.id),
-		["t1", "s1", "t2"],
-		"the steer message itself is inside the collapse",
+		["t1", "t2"],
+		"the steer message is between the two bars, not inside one",
+	);
+	assert.equal(
+		run.segments.length,
+		2,
+		"one bar per hidden span: the steer splits the run's work",
 	);
 	assert.equal(
 		run.facts.actions,
@@ -1701,6 +1721,101 @@ test("alignWalkRunKey: null for a headed run, a live run, and a bar the reader h
 	assert.equal(alignWalkRunKey(liveRun, { live: true }), null);
 });
 
+/* ------------- the store confirmation (agent review round 1, R1) ------------- */
+
+test("alignWalkRunKeyConfirmed: a window-cut run the STORE holds whole is not a cut (round 1, R1)", () => {
+	const WINDOW = 60;
+	/*
+	 * R1's counterexample: ONE settled run taller than the snap's completed
+	 * allowance, its opening user row LOADED. The ordinary snap (720 here) cannot
+	 * reach that opening row, so the raw edge sits inside the run — and the plan,
+	 * built over `visible`, reads `opensWithUserRow: false` while nothing in the
+	 * store is cut.
+	 */
+	const tall = [
+		user("r1u0", { ts: TS }),
+		...Array.from({ length: 1000 }, (_, i) =>
+			tool(`r1t${i}`, { ts: TS + i, durationS: 2 }, "trace"),
+		),
+		answer("r1a0", { ts: TS + 2_000_000 }),
+	];
+	const alignSize = snapWindowToRunBoundary(
+		tall,
+		WINDOW,
+		SNAP_MAX_EXTRA,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		false,
+	);
+	assert.ok(
+		alignSize < tall.length,
+		"fixture: the window really cuts the store",
+	);
+	const visible = tall.slice(tall.length - alignSize);
+	const plan = collapsePlan(visible, { live: false });
+	assert.equal(
+		windowTopRunIsHeadCut(tall, alignSize),
+		false,
+		"the store's run under the same edge IS headed — its opening row is loaded",
+	);
+	assert.equal(
+		alignWalkRunFromPlan(plan),
+		runsOf(tall)[0].key,
+		"the plan alone calls it cut: the R1 defect, on the same rows",
+	);
+	assert.equal(
+		alignWalkRunKeyConfirmed(plan, windowTopRun(tall, alignSize)),
+		null,
+		"the store says otherwise, so the walk stands down without fetching",
+	);
+	/*
+	 * The other direction: a store whose head really IS mid-run still yields the
+	 * run's key, so the confirmation suppresses only the false cut.
+	 */
+	const cut = headCutRows();
+	const cutSize = snapWindowToRunBoundary(
+		cut,
+		WINDOW,
+		SNAP_MAX_EXTRA,
+		WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+		false,
+	);
+	const cutVisible = cut.slice(cut.length - cutSize);
+	const cutKey = runsOf(cut)[0].key;
+	assert.equal(
+		windowTopRunIsHeadCut(cut, cutSize),
+		true,
+		"fixture: the store's head is genuinely missing",
+	);
+	assert.equal(
+		alignWalkRunKeyConfirmed(
+			collapsePlan(cutVisible, { live: false }),
+			windowTopRun(cut, cutSize),
+		),
+		cutKey,
+		"a real cut still yields the key",
+	);
+	/*
+	 * And when the window covers the whole list the plan IS the store's own view —
+	 * the journal's first page (55 rows into a 60-row window) — so no second
+	 * opinion is needed and the cut still fires.
+	 */
+	const short = [
+		...Array.from({ length: 50 }, (_, i) =>
+			tool(`r1sh${i}`, { ts: TS + i }, "trace"),
+		),
+		answer("r1sha", { ts: TS + 900_000 }),
+	];
+	assert.ok(short.length <= WINDOW, "fixture: the window covers the list");
+	assert.equal(
+		alignWalkRunKeyConfirmed(
+			collapsePlan(short, { live: false }),
+			windowTopRun(short, WINDOW),
+		),
+		runsOf(short)[0].key,
+		"a cut the plan can already see the whole of is the store's own answer",
+	);
+});
+
 /* ------------- the metric in the render's currency (agent review R1-1) ------------- */
 
 test("paintedRows agrees with the render on a COMPLETE run past the ordinary snap bound (R1-1)", () => {
@@ -1827,7 +1942,42 @@ test("#665: the answer is never hidden behind the bar", () => {
 		false,
 		"the answer stays mounted while collapsed",
 	);
-	assert.equal(hidden.has(1229), true, "the follow-up reply condenses");
+	assert.equal(
+		hidden.has(1229),
+		false,
+		"and so does the run's LAST close (V2): the post-dispose reply is the last word",
+	);
+	/*
+	 * THE BAR'S CONTENTS, not only its existence (agent review round 1, finding 4):
+	 * `hidden.length > 0` keeps passing if a later widening of the visible set eats
+	 * the follow-up's own bar down to one row. The follow-up's span is the run's
+	 * LAST segment, and its `segmentIds` are exactly the rows that bar stands in
+	 * for - the post-answer receipts and the calls they prompted.
+	 */
+	const followUp = plan.runs[0].segments.at(-1);
+	assert.equal(followUp?.afterAnswer, true, "the last bar is the follow-up's");
+	assert.deepEqual(
+		followUp?.segmentIds,
+		[
+			"entry-001203",
+			"entry-001204",
+			"entry-001206",
+			"entry-001208",
+			"tool:call-1208-0",
+			"entry-001211",
+			"tool:call-1211-0",
+			"entry-001214",
+			"tool:call-1214-0",
+			"tool:call-1217-0",
+			"tool:call-1220-0",
+			"entry-001223",
+			"tool:call-1223-0",
+			"entry-001226",
+			"tool:call-1226-0",
+			"tool:call-1226-1",
+		],
+		"the follow-up's own work still condenses into its bar, row for row",
+	);
 });
 
 test("#665: the turn's action count is the turn's own, not the reply's work folded in", () => {
