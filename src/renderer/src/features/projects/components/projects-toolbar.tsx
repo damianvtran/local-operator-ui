@@ -40,7 +40,7 @@ import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { cn } from "@shared/lib/utils";
 import { ArrowDown, ArrowUp, ListFilter, Search, X } from "lucide-react";
 import type { FC, ReactNode, RefObject } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import { clearSearch } from "../../chat/clear-search";
 import {
@@ -110,6 +110,9 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 	searchFieldRef,
 }) => {
 	const [filtersOpen, setFiltersOpen] = useState(false);
+	/* Set by the popover header's Clear all; read once by the close-focus
+	 * guard below so the suppressed restore applies only to that path. */
+	const headerClearRef = useRef(false);
 	const activeCount = activeSelectionCount(filters);
 	/*
 	 * The count ANNOUNCED is the settled one (the ux round's N4 fold, 300 ms
@@ -192,7 +195,19 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 						{activeCount > 0 && <Badge variant="neutral">{activeCount}</Badge>}
 					</Button>
 				</PopoverTrigger>
-				<PopoverContent align="end" aria-label="Filters" className="w-80 p-0">
+				<PopoverContent
+					align="end"
+					aria-label="Filters"
+					className="w-80 p-0"
+					/* U12: after a header Clear all the handoff owns focus; Radix's
+					 * default close restore would drag it back to the trigger. */
+					onCloseAutoFocus={(event) => {
+						if (headerClearRef.current) {
+							headerClearRef.current = false;
+							event.preventDefault();
+						}
+					}}
+				>
 					<FilterPopoverScroll>
 						<ProjectFiltersPanel
 							projects={projects}
@@ -202,7 +217,21 @@ export const ProjectsSearchControls: FC<ProjectsSearchControlsProps> = ({
 							onToggle={(facet, value) =>
 								onFiltersChange(toggleFilterValue(filters, facet, value))
 							}
-							onClearAll={onClearAll}
+							onClearAll={() => {
+								/* U12: this door cleared the state but dropped focus to
+								 * <body>, while the chips row's and the no-match block's
+								 * both take the handoff to the search field. Close the
+								 * popover (its subject is cleared) and take the same
+								 * handoff; the close-focus restore is suppressed for this
+								 * path or it would take focus back to the trigger. */
+								onClearAll();
+								headerClearRef.current = true;
+								setFiltersOpen(false);
+								/* The field never unmounts, so the handoff is direct
+								 * (the no-match block's own shape) rather than the
+								 * wait-for-commit kind the chips row needs. */
+								searchFieldRef.current?.focus();
+							}}
 						/>
 					</FilterPopoverScroll>
 				</PopoverContent>
@@ -266,6 +295,10 @@ export type ProjectsFilterChipsProps = {
 	onSortChange: (next: SortSpec | null) => void;
 	/** Clear the query and every facet (the sort chip has its own door). */
 	onClearAll: () => void;
+	/** The no-match block carries its own Clear all; while it is up, this
+	 * row's copy would be the second identically labelled button on the
+	 * screen (U14), so the page hides it. */
+	hideClearAll?: boolean;
 	searchFieldRef: RefObject<HTMLInputElement>;
 };
 
@@ -275,6 +308,7 @@ export const ProjectsFilterChips: FC<ProjectsFilterChipsProps> = ({
 	onFiltersChange,
 	onSortChange,
 	onClearAll,
+	hideClearAll = false,
 	searchFieldRef,
 }) => {
 	/*
@@ -385,16 +419,18 @@ export const ProjectsFilterChips: FC<ProjectsFilterChipsProps> = ({
 					</button>
 				</Badge>
 			))}
-			<Button
-				variant="link"
-				size="sm"
-				onClick={() => {
-					onClearAll();
-					setHandoff({ kind: "search" });
-				}}
-			>
-				Clear all
-			</Button>
+			{!hideClearAll && (
+				<Button
+					variant="link"
+					size="sm"
+					onClick={() => {
+						onClearAll();
+						setHandoff({ kind: "search" });
+					}}
+				>
+					Clear all
+				</Button>
+			)}
 		</div>
 	);
 };

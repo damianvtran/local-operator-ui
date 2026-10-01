@@ -159,7 +159,9 @@ const FacetOptionRow: FC<{
  * which is the v1 way to reach the opposite direction. Reproduced on the
  * shipped component: the group's `onChange` handles the unchecked→checked
  * press, and the checked item's own press flips it (a radio that is already
- * checked fires no change event).
+ * checked fires no change event) — on the mouse through `onClick` and on the
+ * keys through the checked radio's `onKeyDown` (U11), because the two fire
+ * nothing for each other.
  */
 const ColumnSortGroup: FC<{
 	column: SortKey;
@@ -208,6 +210,18 @@ const ColumnSortGroup: FC<{
 					 * component, not assumed. */
 					onClick={() => {
 						if (radioValue === "sorted") apply();
+					}}
+					/* THE SAME FLIP ON THE KEY PATH (ux round 2, U11): Space and Enter
+					 * on an ALREADY-CHECKED radio fire no click and no change event —
+					 * calibrated in the round's rig against a bare radio — so the
+					 * opposite direction was mouse-only until this handler stated the
+					 * keys. Space on an UNCHECKED radio is left to the native change
+					 * path; only the flip needs a key spelling. */
+					onKeyDown={(event) => {
+						if (radioValue !== "sorted") return;
+						if (event.key !== " " && event.key !== "Enter") return;
+						event.preventDefault();
+						apply();
 					}}
 					className="m-0 size-3.5 shrink-0 accent-[var(--color-accent)]"
 				/>

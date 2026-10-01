@@ -82,6 +82,7 @@ import {
 import { searchProjects } from "../project-search";
 import {
 	type SortSpec,
+	clearAllAnnouncement,
 	readProjectsSort,
 	sortAnnouncement,
 	writeProjectsSort,
@@ -356,9 +357,23 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 * removal path (U6), so the live-region sentence and the persisted write
 	 * match the chip exactly. */
 	const clearSearchAndFilters = () => {
+		const hadSearch = query.trim() !== "";
+		const hadFilters = !isFilterEmpty(filters);
+		const hadSort = sort !== null;
 		setQuery("");
 		setFilters(NO_FILTERS);
 		if (sort !== null) changeSort(null);
+		/* ONE sentence for what the press actually cleared (U15): the sort's
+		 * own announcement would name only itself, and the query and facets
+		 * cleared silently beside it. Overwrites `changeSort`'s text in the
+		 * same commit, so the region speaks once. */
+		setSortAnnouncementText(
+			clearAllAnnouncement({
+				search: hadSearch,
+				filters: hadFilters,
+				sort: hadSort,
+			}),
+		);
 	};
 	/*
 	 * THE WINDOW'S OWN RECOVERY, one implementation for its two homes (the
@@ -562,6 +577,8 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						onFiltersChange={setFilters}
 						onSortChange={changeSort}
 						onClearAll={clearSearchAndFilters}
+						/* The no-match block below carries its own Clear all (U14). */
+						hideClearAll={noMatch}
 						searchFieldRef={searchFieldRef}
 					/>
 					{/*
@@ -680,9 +697,9 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 								: "No projects match."}
 						</p>
 						<p className="max-w-140 text-center text-body-sm text-ink-muted">
-							Searches names, descriptions, tags, owners and teams. Update text
-							is not searched yet. Clearing the search and filters restores the
-							list.
+							{query.trim()
+								? "Searches names, descriptions, tags, owners and teams. Update text is not searched. Clearing the search and filters restores the list."
+								: "Try removing a filter. Clearing the filters restores the list."}
 						</p>
 						<div className="flex flex-col items-center gap-2">
 							<Button
