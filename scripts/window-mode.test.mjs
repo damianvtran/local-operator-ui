@@ -2396,8 +2396,23 @@ test("a non-headless launch asserts the Dock tile, and a headless one hides it",
 		helperAt !== -1,
 		"the mid-life dock re-assert helper was not found",
 	);
+	/*
+	 * The slice is the helper's own body, found by brace matching, not a fixed
+	 * character window: a 260-char slice ends wherever the preceding text happens
+	 * to land, so any insertion above the guard failed this spuriously (review
+	 * round 1, n2). Brace counting is exact for this shape and has no radius.
+	 */
+	const helperBody = (() => {
+		let depth = 0;
+		for (let i = helperAt; i < flat.length; i++) {
+			if (flat[i] === "{") depth++;
+			else if (flat[i] === "}" && --depth === 0)
+				return flat.slice(helperAt, i + 1);
+		}
+		return flat.slice(helperAt);
+	})();
 	assert.match(
-		flat.slice(helperAt, helperAt + 260),
+		helperBody,
 		/if \(windowLaunch\.hideDock\) return;/,
 		"the mid-life re-assert must keep the hideDock guard",
 	);
