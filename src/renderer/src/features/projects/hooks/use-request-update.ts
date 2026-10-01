@@ -116,8 +116,16 @@ export async function sendRequestUpdate(
 	target: RequestUpdateTarget,
 ): Promise<void> {
 	const projectId = target.id;
-	/* (1) One press at a time, per project, across BOTH doors. */
-	if (isRequestUpdateInFlight(projectId)) return;
+	/* (1) One press at a time, per project, across BOTH doors. The detail door
+	 * already shows Requesting…; the board has no per-card state, so a second
+	 * press there must still say something (UX round 1, U3) - the loading card
+	 * is idempotent under the stable id, so a repeat replaces, never stacks. */
+	if (isRequestUpdateInFlight(projectId)) {
+		showLoadingToast(REQUEST_UPDATE_LOADING_COPY, {
+			id: requestUpdateToastId(projectId),
+		});
+		return;
+	}
 	/* (2) Inside the window: explain, send nothing. */
 	const nowMs = Date.now();
 	const cooldown = requestUpdateCooldown(projectId);
@@ -183,7 +191,17 @@ export async function sendRequestUpdate(
 			error instanceof Error && error.message.trim() !== ""
 				? error.message.trim()
 				: null;
-		/* (5) Name the route's sentence, keep the uncertainty, no window. */
+		/* (5) Name the route's sentence, keep the uncertainty, no window.
+		 *
+		 * THE CARD RETIRES FIRST, UNCONDITIONALLY (agent review round 1 R1-1 ==
+		 * UX U1): showErrorToast dedupes - a repeat of the same sentence inside
+		 * its cooldown window returns the EXISTING id without calling sonner -
+		 * so on that path the id-replacement never runs and the loading card
+		 * (which renders no close button) would outlive the request it
+		 * describes, permanently. Dismissing the id first leaves nothing to
+		 * strand whether or not the error reaches the screen; when it does, the
+		 * same-id show lands it in the card's place. */
+		dismissToast(toastId);
 		showErrorToast(
 			message
 				? `Could not request updates: ${endedSentence(message)}`

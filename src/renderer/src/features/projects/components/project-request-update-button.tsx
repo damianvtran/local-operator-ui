@@ -74,7 +74,17 @@ export const ProjectRequestUpdateButton: FC<
 
 	return (
 		<>
-			<Tooltip content={REQUEST_UPDATE_TOOLTIP}>
+			<Tooltip
+				content={
+					cooling && cooldownRemainingMs !== null
+						? /* While cooling the tooltip must not invite the thing the button
+							 * has just done (UX round 1, U2): it carries the same sentence the
+							 * press would raise, computed from the shared window's remainder like
+							 * the sr-only span below. */
+							requestUpdateCooldownSentence(display, cooldownRemainingMs)
+						: REQUEST_UPDATE_TOOLTIP
+				}
+			>
 				<Button
 					variant="secondary"
 					className="min-w-37"
