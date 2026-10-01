@@ -412,10 +412,32 @@ export type PickerInput = {
 export function panePlacement(input: {
 	/** The draft's destination, when this pane is a new chat. */
 	draft: { deviceId: string | null; name: string } | null;
+	/**
+	 * WHERE A LIVE CONVERSATION LIVES, when its row states a device other than
+	 * this one.
+	 *
+	 * THE ROW'S OWN STATEMENT, never a second inference: `locality` and
+	 * `owner_device` are the wire's fields for it, and a conversation created on
+	 * a picked peer carries them from the moment the create lands
+	 * (`canonical-sessions-store`'s `createSession`). Without this arm the chip
+	 * fell back to `local` the moment the draft it was born from stopped
+	 * existing - the operator's "the device selection reverted to local on
+	 * send" (2026-09-30): on create success the store patches `sessionId`, the
+	 * message's `finishDraft` retires the draft, and the only fact left was
+	 * "not a move this pane issued".
+	 *
+	 * `null` IS "NO ROW HAS SAID ANYTHING" - a local row, a row from a listing
+	 * that never asked for peers, or no row at all - and the fallback stays
+	 * `local`, which is what every conversation that never left this device
+	 * shows. The arm can never overrule a move this pane ISSUED (that receipt
+	 * is checked first), and it is reached only through `locality: "remote"`,
+	 * so a row that says otherwise is never repainted as remote.
+	 */
+	host: { deviceId: string; name: string } | null;
 	move: DeviceMove | undefined;
 	reachableFor: (deviceId: string) => boolean | null;
 }): DevicePlacement {
-	const { draft, move, reachableFor } = input;
+	const { draft, host, move, reachableFor } = input;
 	if (move?.kind === "moving") {
 		return { kind: "moving", deviceId: move.deviceId, name: move.name };
 	}
@@ -464,6 +486,19 @@ export function panePlacement(input: {
 	}
 	if (draft)
 		return { kind: "draft", deviceId: draft.deviceId, name: draft.name };
+	/*
+	 * THE CONVERSATION THAT EXISTS ELSEWHERE. Reachability is the move paths'
+	 * own tri-state (`reachableFor`): `null` draws no dot rather than announcing
+	 * a read nobody made.
+	 */
+	if (host)
+		return {
+			kind: "remote",
+			deviceId: host.deviceId,
+			name: host.name,
+			reachable: reachableFor(host.deviceId),
+			reason: "",
+		};
 	return { kind: "local" };
 }
 

@@ -1,6 +1,7 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useSpeechStore } from "@shared/store/speech-store";
 import {
@@ -79,15 +80,18 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 
 	const { addReply, addAttachment } = useConversationInputStore();
 
-	const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
-	const canEnableSpeechFeature = hasRadientApiKey && !isUnavailable;
+	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
+	const canEnableSpeechFeature = canUseRadientSpeech;
 
-	// The probe returns no keys both when nothing is configured and when the
-	// local server cannot be reached, and those need different copy — one sends
-	// the reader to settings, the other tells them to wait.
-	const speechUnavailableReason = isUnavailable
-		? "Text to speech is unavailable while Local Operator is offline"
-		: "Sign in to Radient in the settings page to enable text to speech";
+	// The sentence for a disabled control comes from the one copy table the five
+	// speech surfaces share (`@shared/lib/speech-gate`), and `sign-in` is
+	// unreachable for a signed-in reader by construction: only an ANSWERED "no
+	// account" or a refused credential earns it (issue #674; design round 1,
+	// D1).
+	const speechDisabledReason = speechUnavailableReason(
+		"speaking-aloud",
+		speechBlock,
+	);
 
 	const [currentSelectionId, setCurrentSelectionId] = useState<string | null>(
 		null,
@@ -329,7 +333,7 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 							isLoading
 								? "Loading"
 								: !canEnableSpeechFeature
-									? speechUnavailableReason
+									? speechDisabledReason
 									: "Speak aloud"
 						}
 					>

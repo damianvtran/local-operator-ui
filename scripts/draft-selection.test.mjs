@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -87,6 +87,7 @@ const bundle = await build({
 				admitChatDraft,
 				useCanonicalSessionsStore,
 			} from "./src/renderer/src/shared/store/canonical-sessions-store";
+			export { panePlacement } from "./src/renderer/src/features/chat/device/chat-device-model";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		resolveDir: process.cwd(),
@@ -130,6 +131,7 @@ const {
 	errorText,
 	fetchDraftPreview,
 	modelSelector,
+	panePlacement,
 	selectionFromModel,
 	selectionSelector,
 	specUnresolved,
@@ -422,6 +424,180 @@ test("a changed DESTINATION gets a fresh at-most-once key too, and a same-value 
 	assert.equal(
 		useCanonicalSessionsStore.getState().drafts[key].createRequestId,
 		pinned,
+	);
+});
+
+test("a create that named a peer stamps the peer on the session row; a local create's row says nothing new", async () => {
+	/*
+	 * THE STORE HALF OF THE REVERT DEFECT (operator report, 2026-09-30). On create
+	 * success the send patches `sessionId` and, once the message lands,
+	 * `finishDraft` retires the row the destination lived on - so the placement
+	 * fact the chip needs after the send must be ON THE SESSION ROW, written by
+	 * the one action that knows the create named a peer. The fields are the
+	 * wire's own (`SessionCatalogueRow.locality`/`owner_device`), which is what
+	 * the chat header's slot reads back (`chat-device-slot.tsx`).
+	 */
+	const store = useCanonicalSessionsStore.getState();
+
+	// AIMED: the peer pick rides the create body (the destination test above)
+	// AND lands on the row that create mints.
+	calls.length = 0;
+	reply = (request) =>
+		request.op === "sessions.create"
+			? { result: { session_id: "facefeed0001", binding: { kind: "none" } } }
+			: { result: {} };
+	const aimedKey = store.stageDraft();
+	store.setDraftPeer(aimedKey, "d_build");
+	const aimedId = await admitChatDraft(aimedKey, {
+		text: "what OS are you on",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	assert.equal(aimedId, "facefeed0001");
+	const aimedRow = useCanonicalSessionsStore
+		.getState()
+		.sessions.find((row) => row.session_id === aimedId);
+	assert.equal(aimedRow?.locality, "remote");
+	assert.equal(aimedRow?.owner_device, "d_build");
+
+	// NEVER PICKED: no placement fields AT ALL - absent, not null - so the row is
+	// the one every pre-peer create has always written.
+	calls.length = 0;
+	reply = (request) =>
+		request.op === "sessions.create"
+			? { result: { session_id: "facefeed0002", binding: { kind: "none" } } }
+			: { result: {} };
+	const plainKey = store.stageDraft();
+	const plainId = await admitChatDraft(plainKey, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	assert.equal(plainId, "facefeed0002");
+	const plainRow = useCanonicalSessionsStore
+		.getState()
+		.sessions.find((row) => row.session_id === plainId);
+	assert.ok(plainRow, "the create's row is on the list");
+	assert.ok(
+		!("locality" in plainRow),
+		"a local create's row carries no locality",
+	);
+	assert.ok(!("owner_device" in plainRow), "...and no owner");
+});
+
+test("a move's receipt settles the row it lands on, so a dismissal cannot resurrect the old placement", () => {
+	/*
+	 * AGENT REVIEW ROUND 1, F1 - the reproducing chain, at the seam that missed
+	 * it: pick a peer, send, RECALL the conversation home, dismiss the arrival
+	 * notice. The dismissal drops the pane's move record; what the chip falls to
+	 * is this row, and before `settlePlacement` nothing ever rewrote the create
+	 * stamp - so the chip claimed `On cloud-node-1` over a conversation already
+	 * back on this device. The store half is asserted here; the call sites are
+	 * the two `moved` branches (`chat-device-slot.tsx`, `chat-device-notice.tsx`)
+	 * and the chain itself is driven end to end by the evidence rig.
+	 */
+	const store = useCanonicalSessionsStore.getState();
+	const rowOf = (id) =>
+		useCanonicalSessionsStore
+			.getState()
+			.sessions.find((row) => row.session_id === id);
+	/* The slot's own gate, rebuilt from the code it runs (`chat-device-slot.tsx`). */
+	const slotHost = (row) =>
+		row?.locality === "remote" &&
+		typeof row.owner_device === "string" &&
+		row.owner_device
+			? { deviceId: row.owner_device, name: "build-box" }
+			: null;
+	const placementFor = (row) =>
+		panePlacement({
+			draft: null,
+			host: slotHost(row),
+			move: undefined,
+			reachableFor: () => true,
+		}).kind;
+
+	// A conversation born on the peer, exactly as the create stamp writes it.
+	store.upsertSession({
+		session_id: "5e771ed0001",
+		title: "a recalled conversation",
+		locality: "remote",
+		owner_device: "d_build",
+	});
+	assert.equal(placementFor(rowOf("5e771ed0001")), "remote");
+
+	// The RECALL's receipt - the wire's own "where it lives NOW" - settles it.
+	store.settlePlacement("5e771ed0001", {
+		locality: "local",
+		owner_device: "d_self0001",
+	});
+	const home = rowOf("5e771ed0001");
+	assert.equal(home?.locality, "local");
+	assert.equal(home?.owner_device, "d_self0001");
+	// ...with the dismissal (no move record) the chip now reads home, not the stale mark.
+	assert.equal(placementFor(home), "local");
+	// The settle is a SETTLE: the row's other facts are its own.
+	assert.equal(home?.title, "a recalled conversation");
+
+	// A MOVE-OUT settles the other way: same action, opposite receipt.
+	store.settlePlacement("5e771ed0001", {
+		locality: "remote",
+		owner_device: "d_build",
+	});
+	assert.equal(placementFor(rowOf("5e771ed0001")), "remote");
+
+	// A ROW THE LIST DOES NOT CARRY IS NOT INVENTED by a receipt.
+	const before = useCanonicalSessionsStore.getState().sessions.length;
+	store.settlePlacement("n0t0nth3l1st", {
+		locality: "local",
+		owner_device: "d_self0001",
+	});
+	assert.equal(useCanonicalSessionsStore.getState().sessions.length, before);
+});
+
+test('every transfer "moved" branch settles the row it lands on (agent review round 2, R2-1)', () => {
+	/*
+	 * THE GUARD THE MISS NEEDED. R2-1 was a THIRD move site - the Mesh tab's own
+	 * `run` - that landed a recall without settling the row, so the chat header's
+	 * chip kept claiming the peer for a conversation that was home (and the
+	 * offload direction mirrored it). The rule the fix states - "the receipt owns
+	 * the row's placement once a move lands" - holds at every site that lands a
+	 * move, not only the two the operator's report happened to flow through, so
+	 * this enumerates them instead of trusting a list to stay right.
+	 *
+	 * THE DISCRIMINATOR IS `outcome.kind === "moved"`, the transfer outcome's own
+	 * branch: the placement model's `move?.kind` and the Mesh report's
+	 * `moveReport.kind` read `"moved"` too, and neither lands a move, so keying on
+	 * a bare `"moved"` would demand settling from the wrong places. A site that
+	 * answers a receipt is exactly a site that must correct the row.
+	 */
+	const root = join(ROOT, "src/renderer/src");
+	const walk = (dir) => {
+		const out = [];
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = join(dir, entry.name);
+			if (entry.isDirectory()) out.push(...walk(full));
+			else if (/\.tsx?$/.test(entry.name)) out.push(full);
+		}
+		return out;
+	};
+	const carriers = walk(root).filter((file) =>
+		/outcome\.kind === "moved"/.test(readFileSync(file, "utf8")),
+	);
+	assert.ok(
+		carriers.length >= 3,
+		`expected the chat's two move sites and the Mesh tab's, found ${carriers.length}`,
+	);
+	const missing = carriers
+		.filter((file) => !/settlePlacement\(/.test(readFileSync(file, "utf8")))
+		.map((file) => file.replace(`${root}/`, ""));
+	assert.deepEqual(
+		missing,
+		[],
+		"these files answer a transfer receipt without settling the row it landed on - the chip keeps the old placement until a dismissal loses it",
 	);
 });
 
