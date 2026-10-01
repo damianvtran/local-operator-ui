@@ -2,7 +2,7 @@
  * The reader's expanded turn summaries, per conversation.
  *
  * WHY THIS EXISTS OUTSIDE THE COMPONENT. A bar's React identity is its run's
- * opening user row, and that row legitimately leaves and re-enters the render
+ * key (`TurnRun.key`: the opening user row when it is loaded), and that row legitimately leaves and re-enters the render
  * window while the reader scrolls (the transcript mounts only the newest
  * `WINDOW` rows, and the edge walks). Component-local `useState` would lose the
  * reader's expansion on the scroll back, and the transcript component itself
@@ -100,6 +100,36 @@ export function writeRunExpanded(
 		store.delete(oldest);
 	}
 	return store.get(key) ?? EMPTY;
+}
+
+/**
+ * Re-state the reader's expansions under new keys, and return the new set.
+ *
+ * WHY (the run identity change, `TurnRun.key`): a run's key moves once, when the
+ * head of a head-cut run lands, and the expansion the reader made before that must
+ * follow it. `rewrite` maps each stored key to the key it should have (identity for
+ * keys it does not know, which is the stale-key rule: left alone, they match no
+ * bar). Order is preserved so the per-session cap still evicts the oldest
+ * expansion first, and nothing is written when nothing changed, so a caller can
+ * run this on every commit without churning the set's identity.
+ */
+export function rewriteRunExpanded(
+	sessionId: string | null,
+	rewrite: (runKey: string) => string,
+): ReadonlySet<string> {
+	const key = keyOf(sessionId);
+	const current = store.get(key);
+	if (current === undefined) return EMPTY;
+	let changed = false;
+	const next = new Set<string>();
+	for (const runKey of current) {
+		const moved = rewrite(runKey);
+		if (moved !== runKey) changed = true;
+		next.add(moved);
+	}
+	if (!changed) return current;
+	store.set(key, next);
+	return next;
 }
 
 /** Forget one conversation. The sibling of `dropPaint`, for the same events. */

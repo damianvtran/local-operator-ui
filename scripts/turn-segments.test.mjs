@@ -37,7 +37,7 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/turn-segments";',
-			'export { paintsSomething, isStatementRow, runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
+			'export { paintsSomething, isStatementRow, runsOf, headedRunAliases, rewriteBarKeyRun, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			'export { collapsePlan, staysVisibleWhileCollapsed } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 		].join("\n"),
@@ -68,6 +68,8 @@ const {
 	paintsSomething,
 	reportsCompletedThought,
 	runsOf,
+	headedRunAliases,
+	rewriteBarKeyRun,
 	segmentIsCompleted,
 	staysVisibleWhileCollapsed,
 	triggerOf,
@@ -1168,7 +1170,11 @@ test("closingAnswerIds and the run key agree with the elector (one authority)", 
 		[plan.runs[0].answerId],
 	);
 	assert.equal(runsOf(rows)[0].closingAnswerId, plan.runs[0].answerId);
-	assert.equal(runsOf(rows)[0].key, plan.runs[0].answerId);
+	assert.equal(
+		runsOf(rows)[0].key,
+		rows.find((r) => r.record.kind === "user").record.id,
+		"the run's identity is the row that OPENS it, not the elected answer",
+	);
 	const closing = rows.filter((r) => r.closesTurn).map((r) => r.record.id);
 	assert.deepEqual(
 		closing,
@@ -1205,13 +1211,24 @@ test("segment keys are STABLE while pages land above the run's head", async () =
 		pages += 1;
 		await reader.loadOlder();
 		const next = keysNow();
-		// A key may DISAPPEAR only by being MERGED into a longer span when the head
-		// arrives; it must never be renamed. The invariant that matters to the
-		// reader is that the run's own key (the answer's) survives every page.
+		const rows = buildRows(reader.transcript.records, []);
+		/*
+		 * A key may DISAPPEAR only by being MERGED into a longer span when the head
+		 * arrives; it must never be renamed - with ONE sanctioned move. The run's key
+		 * is its tail anchor (the answer's id) while the head is cut off, which is
+		 * every page of this walk but the last, and its opener once the head lands
+		 * (`runsOf`, PR-5). The reader's stored keys follow that move through
+		 * `headedRunAliases`, so "survives" is asserted on the keys AFTER the same
+		 * rewrite the transcript applies to the stored set.
+		 */
+		const aliases = headedRunAliases(rows);
+		const headed = aliases.size > 0;
+		const ownKey = headed ? "entry-000003" : "entry-001196";
 		assert.ok(
-			next.has("entry-001196"),
-			`page ${pages}: the run's own key (the answer) must survive`,
+			next.has(ownKey),
+			`page ${pages}: the run's own key (${ownKey}) must be present`,
 		);
+		seen = new Set([...seen].map((key) => rewriteBarKeyRun(key, aliases)));
 		for (const key of seen) {
 			const suffix = key.includes("#") ? key.split("#")[1] : null;
 			if (suffix === null) continue;
@@ -1225,13 +1242,14 @@ test("segment keys are STABLE while pages land above the run's head", async () =
 	assert.equal(reader.transcript.hasMore, false, "walked to the start");
 });
 
-test("a head-cut run's cut span keeps the same key once the head lands", () => {
+test("a head-cut run's bar keys move ONCE when the head lands, and the alias names every move", () => {
 	// One journal, loaded twice: without its head (the rows a first page holds) and
 	// whole. The rows are the SAME records, because that is what a page landing is.
 	const whole = seq("U T T T C T A");
 	const cut = whole.slice(1); // the opening user row has not landed yet
+	const rowsOf = (records) => buildRows(records, []);
 	const keyed = (records) =>
-		collapsePlan(buildRows(records, []), { live: false }).runs[0].segments.map(
+		collapsePlan(rowsOf(records), { live: false }).runs[0].segments.map(
 			(s) => s.key,
 		);
 	const before = keyed(cut);
@@ -1241,16 +1259,32 @@ test("a head-cut run's cut span keeps the same key once the head lands", () => {
 		2,
 		"T T | C | T: the compaction splits the loaded span",
 	);
-	assert.deepEqual(before, after, "the same two keys, in the same order");
-	assert.equal(
-		before.at(-1),
-		"A6",
-		"the span nearest the answer keeps the run's own key",
+	assert.deepEqual(
+		before,
+		["A6#T3", "A6"],
+		"cut: the tail anchor, the earlier span keyed by its LAST row",
+	);
+	assert.deepEqual(after, ["U0#T3", "U0"], "headed: the opener");
+	/*
+	 * The reader's expansion is stored under the cut keys. The alias is what carries
+	 * it across: mapping every stored key through it lands exactly on the headed
+	 * run's keys, in order, so nothing is lost and nothing aliases onto another bar.
+	 */
+	const aliases = headedRunAliases(rowsOf(whole));
+	assert.deepEqual([...aliases], [["A6", "U0"]]);
+	assert.deepEqual(
+		before.map((key) => rewriteBarKeyRun(key, aliases)),
+		after,
 	);
 	assert.equal(
-		before[0],
-		"A6#T3",
-		"an earlier span is keyed by its LAST row, which cannot change",
+		headedRunAliases(rowsOf(cut)).size,
+		0,
+		"a run whose head is still cut has nothing to alias yet",
+	);
+	assert.equal(
+		rewriteBarKeyRun("never-heard-of-it#x", aliases),
+		"never-heard-of-it#x",
+		"a stale key passes through untouched and matches no bar",
 	);
 });
 
@@ -1291,7 +1325,7 @@ test("focus hold is per segment: only the span holding the focused row stays ope
 	const open = collapsePlan(rows, {
 		live: false,
 		focusHold: "T3",
-		openRuns: new Set(["A4"]),
+		openRuns: new Set(["U0"]),
 	}).runs[0];
 	assert.deepEqual(
 		open.segments.map((s) => s.collapsed),

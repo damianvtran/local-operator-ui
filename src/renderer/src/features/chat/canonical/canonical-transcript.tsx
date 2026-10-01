@@ -53,6 +53,7 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	expandedRunsOf,
+	rewriteRunExpanded,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
@@ -182,8 +183,10 @@ import {
 	GAP,
 	type Row,
 	buildRows,
+	headedRunAliases,
 	ledgerName,
 	paintsSomething,
+	rewriteBarKeyRun,
 	runsOf,
 	splitFirstLine,
 } from "./transcript-rows";
@@ -3401,6 +3404,30 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 
 	/*
+	 * THE READER'S EXPANSION FOLLOWS A RUN WHEN ITS HEAD LANDS. A run's key
+	 * (`TurnRun.key`) is its opening user row once that row is loaded and its tail
+	 * anchor while the head is cut off, so it changes exactly once, on the page that
+	 * lands the head, and the expansion the reader made before that is stored under
+	 * the old key. `headedRunAliases` names each such move over the rows the plan is
+	 * about to read, and the store re-states the reader's keys under the new ones.
+	 *
+	 * IN THE RENDER PHASE, not an effect, for the reason the session switch above
+	 * gives: an effect would paint one frame with the bar collapsed and then open
+	 * it, which is the flicker this exists to prevent. It is a no-op (no write, no
+	 * state change) unless a stored key actually moves, and it is skipped outright
+	 * while nothing is expanded, so the per-token render pays nothing for it. A key
+	 * no run aliases - a stale one - is left exactly as it is and matches no bar.
+	 */
+	if (openRuns.size > 0) {
+		const aliases = headedRunAliases(visible);
+		if (aliases.size > 0) {
+			const moved = rewriteRunExpanded(sessionId, (key) =>
+				rewriteBarKeyRun(key, aliases),
+			);
+			if (moved !== openRuns) setOpenRuns(moved);
+		}
+	}
+	/*
 	 * THE TURN COLLAPSE (§4.5), computed beside the fold groups and the feet: one
 	 * pure plan (`turn-collapse-model.ts`) over the same `visible` rows the list
 	 * renders, so a bar can only ever summarise rows that are loaded and on
@@ -4293,9 +4320,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									entry.kind === "bar" ? (
 										<TurnSummary
 											/*
-											 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
-											 * answer's, else the run's last row's; later segments append
-											 * `#<row>`), and the run's groups render as their own children
+											 * Prefixed: the segment's key is a ROW ID (`runsOf`: the opening
+											 * user row's, else - head cut off - the closing answer's or the
+											 * run's last row's; other segments append `#<row>`), and the run's groups render as their own children
 											 * elsewhere in the same list - an unprefixed key collided with
 											 * one of them (two children, one key) and React silently
 											 * dropped one of the pair. The prefix also states which

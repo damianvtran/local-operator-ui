@@ -299,17 +299,29 @@ function walkTurns<T>(
  */
 export type TurnRun = {
 	/**
-	 * Stable identity ACROSS THE HEAD ARRIVING LATER: the closing answer's
-	 * record id when the run has one (the row the bar and the caption already
-	 * speak through), else the run's LAST row's id.
+	 * The run's identity: what the reader's expansion and the bar's React key
+	 * hang on, so it must not move while the run is the same run.
 	 *
-	 * WHY NOT THE OPENING USER ROW (the pre-fix identity): a run whose head the
-	 * fetched rows cut off keys off whatever it does have — that used to be its
-	 * first row — so the day a page landed the head, the key changed and every
-	 * consumer keyed by it (the reader's expansion on the bar, the bar's own
-	 * React key) silently started over. Rows only ever arrive ABOVE a run's
-	 * head, so its tail is the stable half and the two candidates above are the
-	 * same row in both the head-cut and the head-loaded list.
+	 * A run that OPENS WITH A USER ROW is keyed by that row's record id. It is the
+	 * one row of the run that cannot change: rows arrive ABOVE a run's head (but a
+	 * run's head is this row, so nothing can arrive above it inside the run) and at
+	 * its tail, and `walkTurns` opens a run only at a user row.
+	 *
+	 * WHY NOT THE CLOSING ANSWER (the identity before this): a wake, a peer message
+	 * or a job result after an answer does not open a new run, it RE-OPENS the one
+	 * that just settled, and its reply becomes the new closing answer. The key moved
+	 * (A1 -> A2), the bar became a different React element, and an expansion the
+	 * reader had made was silently dropped. The reader sees a settled run unfold
+	 * and fold again around their own press.
+	 *
+	 * A run whose head the fetched rows cut off has no opening user row to key on,
+	 * so it keeps the tail anchor: its closing answer's id, else its last row's. That
+	 * is deliberate and it is a trade, not an oversight: the head-cut run's first
+	 * loaded row is NOT stable (it moves on every older page that lands, not only on
+	 * the one that brings the head), so keying on it would drop the reader's
+	 * expansion at every page of a walk. The tail anchor survives every landing and
+	 * moves only when a wake extends the run - and when the head finally lands the
+	 * run becomes a headed one and takes the opener's id, once.
 	 */
 	key: string;
 	/**
@@ -331,6 +343,21 @@ export type TurnRun = {
 };
 
 /**
+ * The run's identity; see `TurnRun.key` for the rule and its reasons.
+ *
+ * Its own function so the two arms (headed: the opener; head-cut: the tail) read
+ * as one decision and a stale key has one place to be understood: every consumer
+ * keeps keys in memory only (`shared/store/turn-collapse-open.ts`), so a key that
+ * no longer names a run simply matches nothing and its bar renders collapsed.
+ */
+function runKeyOf(rows: Row[], span: TurnSpan): string {
+	if (span.openingUserIndex !== null) {
+		return rows[span.openingUserIndex]?.record.id ?? "";
+	}
+	return span.closingAnswerId ?? rows[span.endIndex]?.record.id ?? "";
+}
+
+/**
  * The rows partitioned into turns, in order, in the ROW index space.
  *
  * This is `walkTurns` over the row list: the same partition `closingAnswerIds`
@@ -339,13 +366,61 @@ export type TurnRun = {
  */
 export function runsOf(rows: Row[]): TurnRun[] {
 	return walkTurns(rows, (row) => row.record).map((span) => ({
-		key: span.closingAnswerId ?? rows[span.endIndex]?.record.id ?? "",
+		key: runKeyOf(rows, span),
 		opensWithUserRow: span.openingUserIndex !== null,
 		openingIndex: span.openingIndex,
 		endIndex: span.endIndex,
 		boundary: span.boundary,
 		closingAnswerId: span.closingAnswerId,
 	}));
+}
+
+/**
+ * The ALIAS between a run's two identities: the tail anchor it carried while its
+ * head was cut off, and the opener it carries once the head is loaded.
+ *
+ * WHY THIS EXISTS (the one place the identity rule in `TurnRun.key` costs
+ * something). No single row is stable against both a wake (which moves the tail)
+ * and the head landing (which moves the head), so a head-cut run's key changes
+ * ONCE, from its tail anchor to its opener, on the page that lands the head. The
+ * reader's expansion is stored under the old key and the shipped behaviour is that
+ * it survives that page, so the owner of the stored set (`canonical-transcript`)
+ * re-states it under the new key. This function is the only fact that rewrite
+ * needs: for every run in `rows` that OPENS WITH A USER ROW, the key the same run
+ * would have had with its head cut off, mapped to the key it has now. Runs whose
+ * two keys coincide (never true today: an opener is never the closing row) or whose
+ * head is not loaded contribute nothing.
+ *
+ * Keyed by the TAIL anchor because that is what a stale stored key looks like; a
+ * key that is in no run's alias is left exactly as it is, and a key that names
+ * nothing simply matches no bar.
+ */
+export function headedRunAliases(rows: Row[]): Map<string, string> {
+	const aliases = new Map<string, string>();
+	for (const run of runsOf(rows)) {
+		if (!run.opensWithUserRow) continue;
+		const tail = run.closingAnswerId ?? rows[run.endIndex]?.record.id ?? "";
+		if (tail !== "" && tail !== run.key) aliases.set(tail, run.key);
+	}
+	return aliases;
+}
+
+/**
+ * Rewrite the RUN part of a bar key through `map`, leaving any segment suffix.
+ *
+ * A bar key is `<run key>` or `<run key>#<row id>` (`planRun` builds them; this
+ * only reads the shape, and row ids carry no `#` the plan relies on because the
+ * suffix is everything after the FIRST one). Returns the key unchanged when its
+ * run part is not in `map`, which is what makes a stale key harmless here.
+ */
+export function rewriteBarKeyRun(
+	key: string,
+	map: ReadonlyMap<string, string>,
+): string {
+	const at = key.indexOf("#");
+	const run = at === -1 ? key : key.slice(0, at);
+	const next = map.get(run);
+	return next === undefined ? key : next + (at === -1 ? "" : key.slice(at));
 }
 
 /**

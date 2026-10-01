@@ -126,8 +126,8 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	assert.equal(steered.length, 1, "one turn, not two");
 	assert.equal(
 		steered[0].key,
-		"a1",
-		"the run is keyed by its closing answer (the head-independent identity)",
+		"u1",
+		"the run is keyed by the user row that opens it, not by the answer that closes it",
 	);
 	assert.equal(
 		steered[0].closingAnswerId,
@@ -145,8 +145,8 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	]);
 	assert.deepEqual(
 		twoTurns.map((run) => run.key),
-		["a1", "a2"],
-		"a settled answer makes the next user message a new turn, keyed on its answer",
+		["u1", "u2"],
+		"a settled answer makes the next user message a new turn, keyed on its opener",
 	);
 	assert.equal(twoTurns[0].boundary, "answer");
 	assert.equal(twoTurns[0].closingAnswerId, "a1");
@@ -172,40 +172,214 @@ test("a steer folds into the run it interrupted; a settled turn opens the next",
 	]);
 	assert.deepEqual(
 		marked.map((run) => run.key),
-		["m1", "a2"],
+		["u1", "u2"],
 		"a completion marker ends the turn even with no answer painted",
 	);
 	assert.equal(marked[0].boundary, "marker");
 });
 
-test("a head-cut run's identity survives the head arriving later", () => {
+test("a run is keyed by the row that OPENS it, so a wake re-opening it does not move the key (PR-5)", () => {
 	/*
-	 * The key is what the reader's expansion and the bar's React key hang on,
-	 * and a head-cut run's first row is NOT stable: the day a page brings the
-	 * opening user row in, that row is no longer first. The closing answer (or,
-	 * with none to key on, the run's last row) is the same row in both lists —
-	 * rows only ever arrive ABOVE a run's head.
+	 * THE FAIL-BEFORE FIXTURE (case 2 of the completion-visibility design). A wake
+	 * after an answer does not open a run, it RE-OPENS the settled one, and the
+	 * reply becomes the new closing answer. On the closing-answer identity the key
+	 * moved a1 -> a2 here, which is the bar's React key and the reader's expansion
+	 * key together.
+	 */
+	const settled = [
+		user("u1"),
+		tool("t1"),
+		tool("t2", {}, "trace"),
+		answer("a1"),
+	];
+	const woken = [
+		...settled,
+		row("w1", "wake", { text: "(alarm) wake" }),
+		tool("t3"),
+		answer("a2"),
+	];
+	assert.equal(runsOf(settled).length, 1);
+	assert.equal(
+		runsOf(woken).length,
+		1,
+		"the wake extends the run, it opens none",
+	);
+	assert.equal(
+		runsOf(woken)[0].closingAnswerId,
+		"a2",
+		"the elected close moved",
+	);
+	assert.equal(runsOf(settled)[0].key, "u1");
+	assert.equal(
+		runsOf(woken)[0].key,
+		runsOf(settled)[0].key,
+		"…and the identity did not move with it",
+	);
+	// The same holds for a job result / a peer message and for a steer folding in.
+	for (const reopener of [
+		row("p1", "peer", { body: "hi", sender: {} }),
+		row("j1", "custom", {
+			customType: "job_result",
+			level: "info",
+			text: "done",
+		}),
+	]) {
+		assert.equal(
+			runsOf([...settled, reopener, answer("a2")])[0].key,
+			"u1",
+			`a ${reopener.record.kind} re-opening the run keeps its key`,
+		);
+	}
+	// A second turn is a different run with its own opener.
+	assert.deepEqual(
+		runsOf([...woken, user("u2"), answer("a3")]).map((run) => run.key),
+		["u1", "u2"],
+	);
+});
+
+test("a head-cut run, which has no opener to key on, is keyed by its tail", () => {
+	/*
+	 * `walkTurns` cannot name an opening row it was not given. The tail anchor is
+	 * the stable half of a head-cut run across the thing that happens to it MOST,
+	 * an older page landing above it (every page of a completion walk): the first
+	 * loaded row moves on every page, the closing answer on none. The one move it
+	 * has is when the head itself lands and the run becomes a headed one - once -
+	 * and a key that no longer names a run only fails to match (see the stale-key
+	 * test below), it never throws.
 	 */
 	const cut = runsOf([tool("t1"), tool("t2", {}, "trace"), answer("a1")]);
 	assert.equal(cut.length, 1);
 	assert.equal(cut[0].opensWithUserRow, false);
 	assert.equal(cut[0].key, "a1", "the closing answer keys the cut run");
-	const whole = runsOf([
-		user("u1"),
+	const deeperPage = runsOf([
+		tool("t0"),
 		tool("t1"),
 		tool("t2", {}, "trace"),
 		answer("a1"),
 	]);
-	assert.equal(whole[0].key, cut[0].key, "the head landing does not move it");
+	assert.equal(
+		deeperPage[0].key,
+		cut[0].key,
+		"an older page landing above does not move it",
+	);
 	assert.equal(
 		runsOf([tool("t3")])[0].key,
 		"t3",
-		"with no answer to key on, the run's last row is the stable half",
+		"with no answer to key on, the run's last row is the tail anchor",
 	);
 	assert.equal(
-		runsOf([user("u2"), tool("t3")])[0].key,
-		"t3",
-		"and it is the same row before and after the head lands",
+		runsOf([user("u1"), tool("t1"), tool("t2", {}, "trace"), answer("a1")])[0]
+			.key,
+		"u1",
+		"once the head lands the run is a headed one and takes its opener",
+	);
+});
+
+test("a stale run key fails harmlessly: the bar arrives collapsed, nothing throws (PR-5 migration)", () => {
+	/*
+	 * `openRuns` is in-memory per session (`shared/store/turn-collapse-open.ts`),
+	 * so there is nothing to migrate on disk; what has to hold is that a key the
+	 * identity no longer produces - the PRE-PR key (the closing answer's id), a
+	 * key from an evicted run, a key from another session - is merely absent from
+	 * every plan and every consumer of it.
+	 */
+	const rows = [
+		user("u1"),
+		tool("t1"),
+		tool("t2", {}, "trace"),
+		answer("a1"),
+		row("w1", "wake", { text: "w" }),
+		tool("t3"),
+		answer("a2"),
+	];
+	const stale = new Set(["a1", "a2", "a2#t2", "gone-forever"]);
+	let plan;
+	assert.doesNotThrow(() => {
+		plan = collapsePlan(rows, { live: false, openRuns: stale });
+	});
+	assert.ok(plan.runs[0].segments.length > 0);
+	assert.ok(
+		plan.runs[0].segments.every((segment) => segment.collapsed),
+		"no stale key opens a bar: every bar is in its shipped default",
+	);
+	// The other consumers of `openRuns` read the same set the same way.
+	assert.doesNotThrow(() =>
+		alignWalkRunKey(rows, { live: false, openRuns: stale }),
+	);
+	assert.doesNotThrow(() =>
+		paintedRows(rows, rows.length, {
+			step: 10,
+			openRuns: stale,
+			snapMaxExtra: 300,
+			completedRunMaxExtra: 720,
+		}),
+	);
+	assert.equal(
+		paintedRows(rows, rows.length, {
+			step: 10,
+			openRuns: stale,
+			snapMaxExtra: 300,
+			completedRunMaxExtra: 720,
+		}),
+		paintedRows(rows, rows.length, {
+			step: 10,
+			snapMaxExtra: 300,
+			completedRunMaxExtra: 720,
+		}),
+		"a stale set paints exactly what no set paints",
+	);
+});
+
+test("KNOWN GAP (owned by planRun): across a wake the bare run key names a DIFFERENT bar than the reader pressed", () => {
+	/*
+	 * WHAT THIS PINS, AND WHY IT PINS A DEFECT. The run's identity no longer moves,
+	 * so the key the reader's press stored (`u1`: the bar nearest the answer) is
+	 * still produced after a wake. But `planRun` hands the bare run key to "the
+	 * span nearest the answer", and after a wake that is the NEW span; the span the
+	 * reader opened is re-keyed `u1#<its last row>`. So a stored `u1` now opens the
+	 * wake's bar instead of the one the reader opened. Before PR-5 the same press
+	 * stored `a1`, which nothing produced after the wake, and the expansion was
+	 * dropped harmlessly: this aliasing is a NEW risk this change introduces
+	 * relative to the old key.
+	 *
+	 * THE FIX IS NOT HERE. It is in `planRun` (`turn-collapse-model.ts`, the
+	 * segment-key rule), which a sibling change owns: key every pre-answer span by
+	 * its own last row so no stored key can come to name a different bar. When that
+	 * lands, flip the two assertions marked FLIP; the rest of this test holds
+	 * either way.
+	 */
+	const settled = [
+		user("u1"),
+		tool("t1"),
+		tool("t2", {}, "trace"),
+		answer("a1"),
+	];
+	const woken = [
+		...settled,
+		row("w1", "wake", { text: "w" }),
+		tool("t3"),
+		answer("a2"),
+	];
+	const before = collapsePlan(settled, { live: false }).runs[0];
+	const after = collapsePlan(woken, { live: false }).runs[0];
+	assert.equal(before.run.key, after.run.key, "one identity across the settle");
+	const pressed = before.segments[0];
+	assert.equal(pressed.key, "u1", "the reader pressed the bar keyed u1");
+	assert.deepEqual(pressed.segmentIds, ["t1", "t2"]);
+	const keys = after.segments.map((segment) => segment.key);
+	assert.equal(new Set(keys).size, keys.length, "no two bars share a key");
+	const named = after.segments.find((segment) => segment.key === pressed.key);
+	// FLIP: once planRun keys by the span's own last row, `named` is the span
+	// holding t1/t2 (or undefined), never the wake's span.
+	assert.ok(named, "the stored key is still produced after the wake");
+	assert.deepEqual(
+		named.segmentIds,
+		["w1", "t3"],
+		"FLIP: today it names the wake's bar, not the bar the reader opened",
+	);
+	assert.ok(
+		after.segments.some((segment) => segment.segmentIds.includes("t1")),
+		"the bar the reader opened still exists, under another key",
 	);
 });
 
@@ -425,7 +599,7 @@ test("a dead run with no settled row collapses to the bar alone", () => {
 	const withSteer = planOf([user("u1"), tool("t1"), user("s1")]);
 	assert.deepEqual(
 		withSteer.runs.map((run) => run.key),
-		["s1"],
+		["u1"],
 		"the following message is a steer, however unideal that is (R2)",
 	);
 });
@@ -525,7 +699,7 @@ test("the focus hold keeps a run open while the reader's focus sits in a row it 
 		collapsePlan(rows, {
 			live: false,
 			focusHold: "t1",
-			openRuns: new Set(["a1"]),
+			openRuns: new Set(["u1"]),
 		}).runs[0].collapses,
 		true,
 		"an OPEN run already renders its rows, so nothing is mid-transition",
@@ -1061,8 +1235,8 @@ test("R1-3(a): a prose-free settled answer does not close the run — the next m
 	assert.equal(runs.length, 1, "so u2 folds into u1's run as a steer");
 	assert.equal(
 		runs[0].key,
-		"u2",
-		"keyed on its last row: the closure `a1` paints no row to key on",
+		"u1",
+		"keyed on the opener, which a steer folding in cannot move",
 	);
 });
 
@@ -1109,7 +1283,7 @@ test("R1-3(b): a steer landing after settled mid-turn prose opens its own run", 
 	const runs = runsOf(rows);
 	assert.deepEqual(
 		runs.map((run) => run.key),
-		["n1", "u2"],
+		["u1", "u2"],
 		"the steer opens a run: the settled prose counted as the ending",
 	);
 });
