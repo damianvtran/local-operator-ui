@@ -285,6 +285,53 @@ export type ArchiveUndoOffer = {
 };
 
 /**
+ * The conversation an archive confirmation is asking about, and the KIND of
+ * surface that asked.
+ *
+ * IN THE STORE for the delete candidate's own reason (see `deleteCandidate`
+ * below): five surfaces ask this one question - the row's hover control, the row's
+ * context menu, the `⌘⇧A` chord (which presses that control), a typed `/archive`
+ * and the pane header's menu item - and they reach the store from three different
+ * subtrees. One candidate and one dialog is what keeps "one act, one register"
+ * true after the act gained a question.
+ *
+ * `fromRow` IS THE SURFACE, and it is carried rather than inferred because the two
+ * kinds of door want different things afterwards. A row's own press acts on a row
+ * that is ABOUT to leave the list the reader is standing in, so the caret has to
+ * follow it to the row that takes its place (`focusRowAfterRemoval`). The typed
+ * and header doors are answered where the reader already is - the composer, or the
+ * menu that shut - so the dialog's own opener restoration is the whole rule.
+ */
+export type ArchiveConfirmCandidate = {
+	sessionId: string;
+	/** True when a ROW's own control (or its menu item, or the chord) asked. */
+	fromRow: boolean;
+	/**
+	 * True when the pane HEADER's menu item asked, so the caret goes back to that menu's
+	 * trigger and nowhere else (UX round 1, U4).
+	 *
+	 * A SEPARATE FLAG rather than an inference from `fromRow: false`, because the typed door
+	 * is also `fromRow: false` and goes back to the composer. And rather than trusting the
+	 * element that held focus when the dialog opened: the header's menu item is unmounted as
+	 * the menu shuts, so what `document.activeElement` was at that instant depends on the
+	 * order Radix closes the menu and mounts the dialog - measured, the same press returned
+	 * to the trigger in one palette's run and to a sidebar row in the other's.
+	 */
+	fromHeader?: boolean;
+	/**
+	 * The name to ask about when the store holds no row for `sessionId`.
+	 *
+	 * CARRIED BY THE CANDIDATE since the dialog moved to the app shell (UX round 1, U1):
+	 * it used to be a prop from `ChatContent`, which owns the open conversation's
+	 * title - and a dialog that has to work on EVERY route has no such parent. The two
+	 * doors that can name a conversation the list is not drawing (a typed `/archive`
+	 * and the header's item) know the pane's title and pass it; a row door always has
+	 * a row, so it leaves this out.
+	 */
+	title?: string;
+};
+
+/**
  * The undo a discard stands, and the SNAPSHOT that makes it real.
  *
  * WHY THE SNAPSHOT IS THE POINT (design round 1, D1; UX round 1, U3). A discard
@@ -3609,6 +3656,20 @@ type CanonicalSessionsState = {
 	 */
 	deleteCandidate: string | null;
 	/**
+	 * The conversation an ARCHIVE confirmation is asking about, or null.
+	 *
+	 * A second candidate rather than a shared one with a `kind`: the two dialogs ask
+	 * different questions with different copy and different buttons (`Archive` is not
+	 * dangerous and `Delete` is), and a shared slot would let one act's confirmation
+	 * be replaced by the other's while it is open.
+	 */
+	archiveCandidate: ArchiveConfirmCandidate | null;
+	/**
+	 * Stage or clear the archive confirmation. `null` closes it without asking
+	 * anything, which is what every cancel path does.
+	 */
+	requestArchiveConfirm: (candidate: ArchiveConfirmCandidate | null) => void;
+	/**
 	 * Archive or unarchive one conversation: the optimistic write, its currency
 	 * stamp, and the revert-and-report path when the backend refuses.
 	 *
@@ -4748,6 +4809,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			draftsUndo: null,
 			stagedByDiscard: null,
 			deleteCandidate: null,
+			archiveCandidate: null,
 			error: null,
 			cwd: "~",
 			/*
@@ -5786,6 +5848,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				}
 			},
 			requestSessionDelete: (sessionId) => set({ deleteCandidate: sessionId }),
+			requestArchiveConfirm: (candidate) =>
+				set({ archiveCandidate: candidate }),
 			createSession: async (
 				cwd,
 				target,
