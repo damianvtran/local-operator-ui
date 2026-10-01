@@ -34,6 +34,8 @@ import {
 	THEME_SETTLE_ENV,
 	THEME_SETTLE_POLL_MS,
 	clearSweptFrames,
+	partialCaptureRecord,
+	partialPassContinues,
 	profileOwnerPid,
 	resolveThemeSettleMs,
 	storyDrew,
@@ -552,5 +554,209 @@ test("the theme guard spends the configurable budget, not a literal", () => {
 	assert.ok(
 		!source.includes("attempt < 40"),
 		"the pre-change literal is back in the guard: the budget constants are no longer what it spends",
+	);
+});
+
+/*
+ * The pass record has to survive a FOLD, which is every lane's daily cadence.
+ *
+ * Why the numbers below are real rather than made up: the decision this pins
+ * lives behind `main()`'s Chrome loop, which no CI workflow runs, and the loss
+ * it allowed was invisible to BOTH `check-evidence.mjs` terms - they derive
+ * their denominators from the same fields the reset re-anchors, so a record
+ * replaced wholesale passes a gate that measures it against itself. These are
+ * PR #555's own values, read out of its manifest, and they are the reproducer:
+ *
+ *   `a4348e9a4a`  8987 frames / 837 directories   the pass's own record
+ *   `d9e9cd8f44`  the fold: the resolution took main's copy of the block, so
+ *                 `refreshedAtHead` came to name `6173e6bcb6` - the tip of a
+ *                 `fix(chat)` branch that is NOT on origin/main and NOT an
+ *                 ancestor of the fold
+ *   `21e96242f5`  144 frames / 17 directories      the pass's next subset run
+ *
+ * 837 directories became 17 because the gate the decision below replaced asked
+ * ONE question - is the recorded `refreshedAtHead` reachable from this head -
+ * and the fold had put a foreign sha in that one field, while the pass's own
+ * start (`f933ea304f`) was still an ancestor. The pass's start is therefore the
+ * signal the decision reads, along with the manifest's own capture head.
+ */
+const PASS_START = "f933ea304f";
+const FOREIGN_HEAD = "6173e6bcb6";
+const FOLD_HEAD = "d9e9cd8f44";
+const onlyPassStart = (sha) => sha === PASS_START;
+
+/* The manifest the folded tree's subset run found on disk, to main's numbers. */
+const foldedManifest = () => ({
+	head: FOREIGN_HEAD,
+	partialCapture: {
+		refreshedAt: "2026-09-26T16:34:37.398Z",
+		refreshedAtHead: FOREIGN_HEAD,
+		refreshedFromHead: PASS_START,
+		refreshedFrames: 8891,
+		refreshedStories: [
+			"chat-sidebar-sections--chats-first",
+			"installer-installercontent--default",
+		],
+		refreshedThemes: ["localOperatorDark", "dracula"],
+		addedFrames: 296,
+		addedSurfaces: ["installer-installercontent/reduced-motion"],
+		addedAt: "2026-09-26T16:34:37.453Z",
+		addedAtHead: FOREIGN_HEAD,
+	},
+});
+
+const runOn = (previous, overrides = {}) =>
+	partialCaptureRecord({
+		previous,
+		head: FOLD_HEAD,
+		captured: 144,
+		storyDirs: ["installer-installercontent--installed"],
+		themes: ["localOperatorDark", "neon"],
+		addedFrameCount: 0,
+		addedSurfaces: [],
+		reachable: onlyPassStart,
+		...overrides,
+	});
+
+test("a subset run at a folded head continues the pass instead of replacing it", () => {
+	const previous = foldedManifest();
+	assert.equal(
+		partialPassContinues(previous, FOLD_HEAD, onlyPassStart),
+		true,
+		"the pass's own start is still in this history, so its record is this lineage's to continue",
+	);
+
+	const record = runOn(previous);
+
+	assert.equal(
+		record.refreshedFrames,
+		8891 + 144,
+		"the pass's total adds this run's frames; writing 144 here is the record being replaced",
+	);
+	assert.equal(
+		record.refreshedFromHead,
+		PASS_START,
+		"the pass still started where it started, so the gate keeps measuring the round rather than the run",
+	);
+	assert.deepEqual(
+		record.refreshedStories,
+		[
+			...previous.partialCapture.refreshedStories,
+			"installer-installercontent--installed",
+		],
+		"the directories the earlier runs rewrote are still named",
+	);
+	assert.deepEqual(record.refreshedThemes, [
+		"localOperatorDark",
+		"dracula",
+		"neon",
+	]);
+	// A zero-add run is not an adding pass, even when it continues one.
+	assert.equal(record.addedFrames, undefined);
+	assert.equal(record.addedAt, undefined);
+});
+
+/*
+ * The control, without which the test above would be satisfied by a decision
+ * that always inherits: a record with NO head this history carries is another
+ * branch's, and a fresh pass is the honest answer for it.
+ */
+test("a record with no head this history carries still starts a fresh pass", () => {
+	const previous = foldedManifest();
+	const nothingReachable = () => false;
+	assert.equal(
+		partialPassContinues(previous, FOLD_HEAD, nothingReachable),
+		false,
+	);
+
+	const record = runOn(previous, { reachable: nothingReachable });
+
+	assert.equal(record.refreshedFrames, 144);
+	assert.equal(record.refreshedFromHead, FOLD_HEAD);
+	assert.deepEqual(record.refreshedStories, [
+		"installer-installercontent--installed",
+	]);
+	assert.deepEqual(record.refreshedThemes, ["localOperatorDark", "neon"]);
+	// The same head needs no git read at all, and must not become a reset.
+	assert.equal(
+		partialPassContinues(
+			{ head: FOLD_HEAD, partialCapture: { refreshedAtHead: FOLD_HEAD } },
+			FOLD_HEAD,
+			nothingReachable,
+		),
+		true,
+	);
+});
+
+/*
+ * The property the field's own note promises and the one the first report of
+ * this defect named: consecutive subset runs at an unmoved head accumulate.
+ * Pinned here too, because the fix above widened the gate rather than replacing
+ * it, and a widening is exactly the change that could lose this case.
+ */
+test("a second subset run at the same head adds to the pass rather than starting over", () => {
+	const head = "c1d31003db";
+	const beyond = { reachable: () => false };
+	const first = runOn(
+		{},
+		{
+			head,
+			captured: 12,
+			storyDirs: ["a-panel--one"],
+			themes: ["dracula"],
+			...beyond,
+		},
+	);
+	// The manifest the first run leaves: its record, plus the fields the caller writes.
+	const committed = {
+		head,
+		partialCapture: { ...first, refreshedAtHead: head },
+	};
+	const second = runOn(committed, {
+		head,
+		captured: 8,
+		storyDirs: ["a-panel--one", "a-panel--two"],
+		themes: ["dracula", "neon"],
+		addedFrameCount: 3,
+		addedSurfaces: ["a-panel/two"],
+		...beyond,
+	});
+
+	assert.equal(second.refreshedFrames, 20);
+	assert.equal(second.refreshedFromHead, head);
+	assert.deepEqual(second.refreshedStories, ["a-panel--one", "a-panel--two"]);
+	// ... and the pass that DID add frames stamps its own citation, at its own head.
+	assert.equal(second.addedFrames, 3 + 0);
+	assert.equal(second.addedAtHead, head);
+});
+
+/*
+ * A full sweep must stay what it was: its own run's counts, no pass record
+ * carried forward. Nothing above can show that - it is the arm the decision is
+ * NOT spent on - so it is pinned against the shipped source, the way the
+ * theme-settle guard is.
+ */
+test("the pass record is spent on narrowed runs, and the sweep still writes its own", () => {
+	const source = readFileSync(
+		new URL("./capture-evidence.mjs", import.meta.url),
+		"utf8",
+	);
+	const arms = source.slice(
+		source.indexOf("const manifest = PARTIAL"),
+		source.indexOf("writeFileSync(manifestPath"),
+	);
+	assert.equal(
+		arms.split("...partialCaptureRecord(").length - 1,
+		1,
+		"the pass record has exactly one call site, in the narrowed arm",
+	);
+	const sweepArm = arms.slice(arms.lastIndexOf("\t\t: {"));
+	assert.ok(
+		!sweepArm.includes("partialCaptureRecord"),
+		"the sweep must not carry a previous pass's record forward",
+	);
+	assert.ok(
+		sweepArm.includes("frames: captured"),
+		"the sweep's own arm still writes this run's frames, which is what makes a repeat sweep idempotent",
 	);
 });
