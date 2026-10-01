@@ -3027,6 +3027,15 @@ const BRANCH_RECORDS = [
 	 * the pair from the tree that includes it.
 	 */
 	"runClosureVocabularyRestampNote",
+	/*
+	 * And the lane's NINTH fold record: the sync onto `origin/main` =
+	 * `e1eb22cd58` (#737 the turn's visible completion), taken so the head is
+	 * clean and CI can run. Registered for the same completeness reason as its
+	 * siblings: a fold resolved from main's copy would drop the statement of
+	 * what this sync carried - main's `turnVisibleRestampNote` and its new
+	 * STORIES row, resolved per `citationConvention`.
+	 */
+	"foldOntoe1eb22cd58Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
