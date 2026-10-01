@@ -67,6 +67,70 @@ uses for destructive acts. `/delete` therefore stages a candidate and never
 calls the wire: the wire requires `confirmed: true`, only the dialog sends it, and
 no typed word can be that confirmation.
 
+### The archive asks too (2026-09-30), on the delete's own argument
+
+The argument above is not about DESTRUCTION. It is about the REVEAL: a pointer that
+crosses the row's strip is aiming somewhere else, and the archive control is the one it
+crosses to reach the row's right edge. Archiving is recoverable, so the consequence is
+smaller — but it is SILENT from the reading side, which is the defect this document's own
+search-block decision exists to answer: a conversation that leaves the lists and the
+search is one the user has to KNOW to look for. So the operator's own report (the hover
+reveal "pops out quite far", *easy to hit accidentally*) is this section's sentence with
+the severity changed, and it is answered the same way.
+
+**All FIVE doors confirm, through the delete's architecture rather than a second one**: a
+store-backed candidate (`archiveCandidate`) carrying the door it came from, and ONE
+dialog, exactly as `requestSessionDelete`/`deleteCandidate` work.
+
+| # | door | stages as |
+| --- | --- | --- |
+| 1 | the row's hover control (pinned and regular rows) | `{ sessionId, fromRow: true }` |
+| 2 | the row's context-menu item | the same control, pressed — so the same candidate |
+| 3 | the `⌘⇧A` chord | the same control, pressed |
+| 4 | typed `/archive` | `{ sessionId, fromRow: false, title }` |
+| 5 | the pane header's menu item | `{ sessionId, fromRow: false, title }` |
+
+`fromRow` is the SURFACE and not a hint: a row's press acts on a row that is about to
+leave the list the reader is standing in, so the caret follows it to the successor row;
+the other three doors are answered where the reader already is — the composer, or the
+menu that shut.
+
+**WHERE THE DIALOG IS MOUNTED, and why it is not the pane (UX round 1, U1, a MAJOR).** The
+delete dialog lives in `ChatContent` because both of its doors start from that pane. The
+archive's do not: the row's control, its menu item and `⌘⇧A` work on EVERY route, because the
+sidebar does. A dialog hosted by the pane left a press from Settings staged with nothing to
+draw it - no feedback of any kind - and then asked the question, unprompted, on the next visit
+to `/chat`: a regression against the one-press write this act used to be. So the dialog is
+mounted once in `app.tsx`, beside the other app-wide dialogs, gated on the same
+`session_archive` capability, and a staged candidate is cleared on any path change so that it
+can never outlive its route. The pane's title, which the dialog used to receive as a prop for the
+conversations the list does not draw, now rides the candidate (`title`).
+
+**THE BODY SENTENCE (design round 1, D1; UX round 1, U3 and a NIT).** `It leaves your lists.
+You can undo for 8 seconds; after that, search above your chats, turn on “Include archived”,
+then Unarchive it.` It leads with the consequence, states the duration the toast really
+runs on (the number is interpolated from `ARCHIVE_UNDO_TOAST_MS`, so the copy and the timer
+cannot drift), and does not contradict itself: the first draft said the conversation leaves
+"your lists and search" and then that "search finds it again". The control is named where it
+lives - it is drawn only once a query is typed, in the sidebar's search block, and not in the
+`Search` palette row - so the sentence sends the reader to a search first.
+
+**UNARCHIVE NEVER CONFIRMS**, on any surface that offers it (the row's control, the
+header's `Archived` pill, `/unarchive`). A question in front of the act that puts a
+conversation BACK would be a confirmation for the safe half of the pair.
+
+**THE ONE DEVIATION FROM THE CONSULTATION SPEC, and its reason.** The spec
+(`SPEC-archive-confirm-and-pinned-strip.md` §1) asked for the delete dialog's own busy
+state and in-dialog refusal rendering. This dialog has neither: it CLOSES on confirm, and
+the write then settles through the store's existing semantics — the unanswered fact, the
+Undo offer the store raises in the update that settles it, and the ordinary toast lane
+for a refusal. Three reasons, in order of weight: the act is reversible, so there is
+nothing the user must be held to; the behaviour QA has already pinned (one refusal, one
+sentence, one surface) IS the store's, and a dialog that also rendered it would be a
+second register for one press; and it keeps the change to the question and its answer. If
+a review round produces counter-evidence — a refusal a user cannot connect to the press
+that caused it — this is the paragraph to reopen.
+
 ### The archived marker leads the row
 
 Archived rows show a muted archive glyph before the title. It is not in the
@@ -300,18 +364,21 @@ action drew no ring while Enter on that same button cancelled.
 
 ## The interaction, end to end
 
-1. **Archive a row**: the row's control (`aria-label` = `Archive “<title>”`)
-   writes the desired state, the row leaves the list, the panel reports a refusal
-   in its own register if the wire says no — and a successful press offers the
-   same **Undo** the typed command does, because the row and its control are gone
-   with it (round 1, UX U2: the same act used to report differently depending on
-   the surface that performed it). The keyboard moves to the row that took the
-   vacated place rather than to `<body>` (UX U5).
-2. **Archive by command**: `/archive` on the open conversation does the same and
-   offers the same **Undo**, under one retirement rule: the offer stands while the
-   conversation still holds the state the offer was taken from, and is retired the
-   moment this client knows it does not (`undoOfferStands`). An answer that merely
-   MENTIONS the row no longer ends it — that version lasted 0.4–1.6s and nobody
+1. **Archive a row**: the row's control (`aria-label` = `Archive “<title>”`) OPENS THE
+   CONFIRMATION (2026-09-30 — it did not used to, and that is the whole change): Cancel
+   changes nothing and hands the keyboard back to the row, and Archive writes the desired
+   state. On an accepted write the row leaves the list and the keyboard moves to the row
+   that took the vacated place rather than to `<body>` (UX U5) — which is why the successor
+   is resolved at CONFIRM time now and not at the press: with a question in between, the
+   press removes nothing. The panel reports a refusal in its own register if the wire says
+   no — and a successful press offers the same **Undo** the typed command does, because the
+   row and its control are gone with it (round 1, UX U2: the same act used to report
+   differently depending on the surface that performed it).
+2. **Archive by command**: `/archive` on the open conversation opens the SAME confirmation
+   and offers the same **Undo** on an accepted write, under one retirement rule: the offer
+   stands while the conversation still holds the state the offer was taken from, and is
+   retired the moment this client knows it does not (`undoOfferStands`). An answer that
+   merely MENTIONS the row no longer ends it — that version lasted 0.4–1.6s and nobody
    could reach it (round 1, UX U4).
 3. **Find it again**: the search block, with `Include archived` on. The row is
    marked, and its control reads **Unarchive**.

@@ -285,6 +285,53 @@ export type ArchiveUndoOffer = {
 };
 
 /**
+ * The conversation an archive confirmation is asking about, and the KIND of
+ * surface that asked.
+ *
+ * IN THE STORE for the delete candidate's own reason (see `deleteCandidate`
+ * below): five surfaces ask this one question - the row's hover control, the row's
+ * context menu, the `⌘⇧A` chord (which presses that control), a typed `/archive`
+ * and the pane header's menu item - and they reach the store from three different
+ * subtrees. One candidate and one dialog is what keeps "one act, one register"
+ * true after the act gained a question.
+ *
+ * `fromRow` IS THE SURFACE, and it is carried rather than inferred because the two
+ * kinds of door want different things afterwards. A row's own press acts on a row
+ * that is ABOUT to leave the list the reader is standing in, so the caret has to
+ * follow it to the row that takes its place (`focusRowAfterRemoval`). The typed
+ * and header doors are answered where the reader already is - the composer, or the
+ * menu that shut - so the dialog's own opener restoration is the whole rule.
+ */
+export type ArchiveConfirmCandidate = {
+	sessionId: string;
+	/** True when a ROW's own control (or its menu item, or the chord) asked. */
+	fromRow: boolean;
+	/**
+	 * True when the pane HEADER's menu item asked, so the caret goes back to that menu's
+	 * trigger and nowhere else (UX round 1, U4).
+	 *
+	 * A SEPARATE FLAG rather than an inference from `fromRow: false`, because the typed door
+	 * is also `fromRow: false` and goes back to the composer. And rather than trusting the
+	 * element that held focus when the dialog opened: the header's menu item is unmounted as
+	 * the menu shuts, so what `document.activeElement` was at that instant depends on the
+	 * order Radix closes the menu and mounts the dialog - measured, the same press returned
+	 * to the trigger in one palette's run and to a sidebar row in the other's.
+	 */
+	fromHeader?: boolean;
+	/**
+	 * The name to ask about when the store holds no row for `sessionId`.
+	 *
+	 * CARRIED BY THE CANDIDATE since the dialog moved to the app shell (UX round 1, U1):
+	 * it used to be a prop from `ChatContent`, which owns the open conversation's
+	 * title - and a dialog that has to work on EVERY route has no such parent. The two
+	 * doors that can name a conversation the list is not drawing (a typed `/archive`
+	 * and the header's item) know the pane's title and pass it; a row door always has
+	 * a row, so it leaves this out.
+	 */
+	title?: string;
+};
+
+/**
  * The undo a discard stands, and the SNAPSHOT that makes it real.
  *
  * WHY THE SNAPSHOT IS THE POINT (design round 1, D1; UX round 1, U3). A discard
@@ -3609,6 +3656,20 @@ type CanonicalSessionsState = {
 	 */
 	deleteCandidate: string | null;
 	/**
+	 * The conversation an ARCHIVE confirmation is asking about, or null.
+	 *
+	 * A second candidate rather than a shared one with a `kind`: the two dialogs ask
+	 * different questions with different copy and different buttons (`Archive` is not
+	 * dangerous and `Delete` is), and a shared slot would let one act's confirmation
+	 * be replaced by the other's while it is open.
+	 */
+	archiveCandidate: ArchiveConfirmCandidate | null;
+	/**
+	 * Stage or clear the archive confirmation. `null` closes it without asking
+	 * anything, which is what every cancel path does.
+	 */
+	requestArchiveConfirm: (candidate: ArchiveConfirmCandidate | null) => void;
+	/**
 	 * Archive or unarchive one conversation: the optimistic write, its currency
 	 * stamp, and the revert-and-report path when the backend refuses.
 	 *
@@ -4025,6 +4086,15 @@ type CanonicalSessionsState = {
 	) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
+	/**
+	 * SETTLE A ROW'S PLACEMENT FROM A MOVE'S RECEIPT (see the implementation
+	 * for why the receipt and not the ask). `locality`/`owner_device` only:
+	 * the placement pair is the whole of what a receipt says about the row.
+	 */
+	settlePlacement: (
+		sessionId: string,
+		placement: { locality: "local" | "remote"; owner_device: string },
+	) => void;
 };
 
 function mergeRow(
@@ -4739,6 +4809,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			draftsUndo: null,
 			stagedByDiscard: null,
 			deleteCandidate: null,
+			archiveCandidate: null,
 			error: null,
 			cwd: "~",
 			/*
@@ -5777,6 +5848,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				}
 			},
 			requestSessionDelete: (sessionId) => set({ deleteCandidate: sessionId }),
+			requestArchiveConfirm: (candidate) =>
+				set({ archiveCandidate: candidate }),
 			createSession: async (
 				cwd,
 				target,
@@ -5830,6 +5903,32 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						session_id: result.session_id,
 						cwd,
 						binding: result.binding,
+						/*
+						 * A CONVERSATION BORN ON A PEER SAYS SO ON ITS ROW, and this is
+						 * the write the chat header's device control reads back
+						 * (`chat-device-slot.tsx` takes `locality`/`owner_device` into
+						 * `panePlacement`'s `host`). The fields are the wire's own - the
+						 * same pair a peer-aware listing publishes (`mesh-types.ts`)
+						 * - so nothing downstream learns a second vocabulary. A mark this
+						 * stamp made is SETTLED BY THE MOVE THAT OUTDATES IT:
+						 * `settlePlacement` (below) takes the receipt's own `locality`/
+						 * `owner_device`, because the receipt is the wire's "where it lives
+						 * NOW" and a plain listing never speaks about placement at all
+						 * (`fetchSessions` does not ask for peers - agent review F1).
+						 *
+						 * THE DEFECT THIS FEEDS: on create success the send patches
+						 * `sessionId` and `finishDraft` retires the draft, so the
+						 * pane's only placement facts used to be "not a move issued
+						 * here" - and the chip fell through to `On this device` over a
+						 * conversation the peer had just minted (operator report,
+						 * 2026-09-30). The create RESOLVED with `peer` set, so the peer
+						 * owns it; the row is where that fact survives the draft.
+						 *
+						 * OMITTED ENTIRELY FOR A LOCAL CREATE: its row is byte-for-byte
+						 * what it was before this field existed, and no arm of the
+						 * control consults it.
+						 */
+						...(peer ? { locality: "remote", owner_device: peer } : {}),
 					});
 					return result.session_id;
 				} catch (error) {
@@ -7014,6 +7113,51 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							: [...state.sessions, row],
 					};
 				}),
+			/*
+			 * THE RECEIPT OWNS THE ROW'S PLACEMENT ONCE A MOVE LANDS (agent review F1).
+			 *
+			 * WHY IT HAS TO EXIST. The create stamp above is durable - the row outlives
+			 * the draft AND the pane's own move record - but nothing ever rewrote it:
+			 * a conversation carried home again kept its `locality: "remote"` row, and
+			 * the chip stayed correct only while the move's own receipt lived in
+			 * `useChatDeviceStore`. Dismiss the arrival notice (`dismissMove` drops the
+			 * entry) and the chip fell through to the host arm reading the stale row -
+			 * `On cloud-node-1` over a conversation that was already back on this
+			 * device, with the picker re-offering a recall of a session that was home.
+			 * The chain is: pick a peer, send, recall home, dismiss - every step the
+			 * operator's own flow. Before this action the same chain ended on the
+			 * fallback's `On this device` by accident; the create stamp turned the
+			 * accident into a claim. So the move that lands writes what it knows.
+			 *
+			 * WHY THE RECEIPT AND NOT THE ASK. `move.deviceId` is what this window
+			 * REQUESTED, and a request can be refused, held or answered long after the
+			 * pane moved on - a receipt is the only statement of where the session
+			 * actually lives (`TransferReceipt.locality`: "local when it landed
+			 * here"). Both call sites settle only on a `moved` outcome, which is the
+			 * same honesty rule `settleMove` already follows one store over.
+			 *
+			 * A ROW THE LIST DOES NOT CARRY IS NOT INVENTED: a receipt settles the row
+			 * the pane's conversation already had, and there is nothing on this surface
+			 * to correct when there is no row (a wiped list re-owns the truth from the
+			 * next listing, which is where every other row fact comes from).
+			 *
+			 * AND THE NAME IS NOT WRITTEN HERE: a settle can arrive from a window that
+			 * never read the peers list, so the reader keeps resolving the name it does
+			 * not have (`chat-device-slot.tsx`'s `deviceNameFor`, which already prefers
+			 * `owner_device_name` when a create's row carries one).
+			 */
+			settlePlacement: (sessionId, placement) =>
+				set((state) => ({
+					sessions: state.sessions.map((item) =>
+						item.session_id === sessionId
+							? mergeRow(item, {
+									session_id: sessionId,
+									locality: placement.locality,
+									owner_device: placement.owner_device,
+								})
+							: item,
+					),
+				})),
 		}),
 		{
 			name: "canonical-sessions-storage",

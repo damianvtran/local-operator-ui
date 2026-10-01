@@ -387,6 +387,17 @@ export type CollapsePlan = {
  * a bar over a run the reader is not in cannot disturb them, and a reader
  * already looking at the rows (the bar is open) is not mid-transition.
  */
+/**
+ * DEV INSTRUMENTATION (UI perf audit A3): how many times `collapsePlan` runs.
+ *
+ * The walk's question is asked of a plan, and a transcript update used to ask it
+ * by building a SECOND plan over the whole store; this counter is what the
+ * before/after bench reads to show the per-update cost. Same shape as C1's
+ * `messageInputRenderCount`: a module-level counter the bench reads and nothing
+ * else touches at runtime.
+ */
+export const dbgCollapsePlanCalls = { count: 0 };
+
 export function collapsePlan(
 	rows: Row[],
 	options: {
@@ -395,6 +406,7 @@ export function collapsePlan(
 		openRuns?: ReadonlySet<string>;
 	},
 ): CollapsePlan {
+	dbgCollapsePlanCalls.count += 1;
 	/*
 	 * Only the NEWEST run can be the one in flight, and only while the pane says
 	 * the turn is unsettled (`live`): every earlier run is a finished turn and
@@ -512,11 +524,18 @@ export function snapWindowToRunBoundary(
 	maxExtra: number,
 	completedRunMaxExtra = 0,
 	live = false,
+	/*
+	 * The run under the window's top edge, PRE-COMPUTED when the caller already
+	 * has it (agent review round 2, R2-2). `windowTopRun` is a whole-store
+	 * partition, and the walk's store confirmation reads the SAME run — so the
+	 * render computes it once and hands it here rather than each consumer paying
+	 * its own partition per render. Defaulted for every other caller.
+	 */
+	enclosing: TurnRun | null = windowTopRun(rows, windowSize),
 ): number {
 	const total = rows.length;
 	if (total <= windowSize) return windowSize;
 	const top = total - windowSize;
-	const enclosing = windowTopRun(rows, windowSize);
 	if (enclosing === null) return windowSize;
 	const extra = top - enclosing.openingIndex;
 	/*
@@ -608,10 +627,28 @@ export function alignWalkRunKey(
 	rows: Row[],
 	options: { live: boolean; openRuns?: ReadonlySet<string> },
 ): string | null {
-	const plan = collapsePlan(rows, {
-		live: options.live,
-		openRuns: options.openRuns,
-	});
+	return alignWalkRunFromPlan(
+		collapsePlan(rows, { live: options.live, openRuns: options.openRuns }),
+		options.openRuns,
+	);
+}
+
+/**
+ * The same question, asked of a plan the caller ALREADY holds (UI perf audit
+ * A3). The completion walk's effect ran on every transcript update and paid a
+ * second `collapsePlan` over the whole store to ask it; the render already
+ * builds the plan it paints from, so the consumer derives the key from THAT plan
+ * and the effect keys on the resulting string instead of on the row array — a
+ * flush that moves no run the plan can see no longer re-runs the walk's effect.
+ *
+ * Split from `alignWalkRunKey` rather than replacing it: the row-taking form
+ * stays the one place a row list is turned into the question, so the two
+ * callers cannot drift into two opinions about which run owes a walk.
+ */
+export function alignWalkRunFromPlan(
+	plan: CollapsePlan,
+	openRuns?: ReadonlySet<string>,
+): string | null {
 	const cut = plan.runs.find(
 		(run) =>
 			!run.run.opensWithUserRow &&
@@ -622,10 +659,47 @@ export function alignWalkRunKey(
 			// headers rather than partial statements (the `openRuns` treatment
 			// `paintedRows` gives them) and owes no walk.
 			run.segments.some(
-				(segment) => segment.collapsed && !options.openRuns?.has(segment.key),
+				(segment) => segment.collapsed && !openRuns?.has(segment.key),
 			),
 	);
 	return cut?.key ?? null;
+}
+
+/**
+ * The walk key a RENDER may act on: the plan's cut-run key, confirmed against
+ * the store (agent review round 1, R1).
+ *
+ * `plan` is built over `visible` - the MOUNTED window, a suffix of the store -
+ * so its leading run can read `opensWithUserRow: false` for a reason that is not
+ * the store's: a settled run TALLER than the snap's completed-run allowance
+ * keeps the ordinary snap, so the raw window edge sits inside it and the plan
+ * sees a run whose opening row it cannot show, while the STORE holds that run
+ * whole. The walk's own question is "a run whose opening user row is not in the
+ * STORE", and only the store can answer it. So the plan's key stands only when
+ * the store's run under the SAME edge (the plan's window top) is head-cut too,
+ * and names the same run. A null `storeTopRun` means the window covers the whole
+ * list, and then the plan IS the store's own view - it needs no second opinion.
+ *
+ * The caller passes the run rather than the rows on purpose (review round 2,
+ * R2-2): the snap above needs the same run, so one `windowTopRun` serves both and
+ * the render pays no second whole-store partition.
+ *
+ * Without this the walk fetched up to `ALIGN_WALK_MAX_PAGES` pages for a run it
+ * could never help: a prepend shifts the edge and the run's opening row equally,
+ * so `extra` stays past the allowance and the snap still refuses (the same
+ * reasoning `WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA` exists for).
+ */
+export function alignWalkRunKeyConfirmed(
+	plan: CollapsePlan,
+	/** The store's run under the window's top edge (`windowTopRun`), or null when
+	 * the window covers the whole list. */
+	storeTopRun: TurnRun | null,
+	openRuns?: ReadonlySet<string>,
+): string | null {
+	const key = alignWalkRunFromPlan(plan, openRuns);
+	if (key === null) return null;
+	if (storeTopRun === null) return key;
+	return !storeTopRun.opensWithUserRow && storeTopRun.key === key ? key : null;
 }
 
 /**

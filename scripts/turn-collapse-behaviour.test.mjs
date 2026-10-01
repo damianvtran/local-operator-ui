@@ -173,6 +173,9 @@ const bundle = await build({
 			'export { GAP } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			/* The walk's bound, so the assertion below names the shipped number. */
 			'export { ALIGN_WALK_MAX_PAGES } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			/* The settle cadence the walk's wake arms on, so the counter below reads the
+			 * module's own number rather than a retyped one. */
+			'export { SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
 			/*
 			 * The two query keys the transcript's own hook reads, so the hide case
 			 * below seeds the SAME entries the app resolves - a second spelling of
@@ -230,6 +233,7 @@ const {
 	__turnCollapseOpenStats,
 	GAP,
 	ALIGN_WALK_MAX_PAGES,
+	SETTLE_MS,
 	backendSettingsKeys,
 	desktopKeys,
 } = await import(bundlePath.href);
@@ -782,6 +786,170 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 	assert.ok(
 		afterRender2 - idleFetches <= ALIGN_WALK_MAX_PAGES,
 		`the walk stays inside its bound (cut=${afterRender2} control=${idleFetches})`,
+	);
+});
+
+test("a run the STORE holds whole is never walked, however tall it is (round 1, R1)", async (t) => {
+	/*
+	 * R1's counterexample, at the mount level. A settled run TALLER than the snap's
+	 * completed-run allowance (720) with its opening user row loaded: the ordinary
+	 * snap cannot reach that row, so the raw window edge sits INSIDE the run. The
+	 * render's plan, built over `visible`, then reads the run as head-cut — and
+	 * before the store confirmation that keyed a walk that fetched up to
+	 * `ALIGN_WALK_MAX_PAGES` pages it could never help (a prepend shifts the edge
+	 * and the run's opening row equally, so the snap still refuses).
+	 *
+	 * The control is the SAME row count with the head genuinely missing, so the two
+	 * mounts differ only in the fact the walk is supposed to read: the store.
+	 */
+	const TALL = 800;
+	const tall = (headLoaded) => [
+		...(headLoaded ? [userRecord("user:1")] : []),
+		...Array.from({ length: TALL }, (_, index) =>
+			toolRecord(`tall:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+		answerRecord("answer:1", { ts: TS + 900_000, settledAt: TS + 900_000 }),
+	];
+	const run = async (records) => {
+		let fetches = 0;
+		const load = async () => {
+			fetches += 1;
+			return true;
+		};
+		const mounted = await mount(t, records, {
+			hasMore: true,
+			onLoadOlder: load,
+		});
+		await flushFrames();
+		await mounted.render(records, { hasMore: true, onLoadOlder: load });
+		await flushFrames();
+		return fetches;
+	};
+	const loaded = await run(tall(true));
+	const cut = await run(tall(false));
+	t.diagnostic(
+		`R1 control: fetches with the store holding the run whole = ${loaded}; with the head genuinely cut = ${cut}`,
+	);
+	/*
+	 * The head-cut list spends its walk; the loaded-head list must not spend one on
+	 * top of whatever the pump asks for on its own (the baseline jsdom geometry
+	 * gives it). The DIRECTION is the claim, and the model case above pins that the
+	 * confirmation is what draws the line.
+	 */
+	assert.ok(
+		cut > loaded,
+		`a genuinely cut store asks more than one the store holds whole (loaded=${loaded} cut=${cut})`,
+	);
+});
+
+test("the walk's settle wake arms only when the clock is the only missing clause (round 2, R2-1)", async (t) => {
+	/*
+	 * R2-1's counterexample. `mayWalk` is false for TWO reasons — the input debounce
+	 * is still running, or the reader is off the tail — and the wake exists for the
+	 * first alone. Arming on `!mayWalk` therefore re-armed the timer forever for an
+	 * off-tail reader while a cut bar was painted: nothing could satisfy the clause
+	 * and `spent` never grew (no fetch), so the loop could not bound itself.
+	 *
+	 * The count is `window.setTimeout` at the settle delay, which is the wake's own
+	 * cadence (the paging pump's timers share the delay but only arm on reader input,
+	 * and these mounts send none).
+	 */
+	const cutRecords = [
+		...Array.from({ length: 420 }, (_, index) =>
+			toolRecord(`wake:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+		answerRecord("answer:1", { ts: TS + 500_000, settledAt: TS + 500_000 }),
+	];
+	/* The control for the KEY: a headed store paints no cut bar, so it arms nothing
+	 * whatever the geometry — the wake is not simply always-off. */
+	const headedRecords = [
+		userRecord("user:1"),
+		...Array.from({ length: 419 }, (_, index) =>
+			toolRecord(`wh:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+		answerRecord("answer:1", { ts: TS + 500_000, settledAt: TS + 500_000 }),
+	];
+	/*
+	 * The SCROLLER, not the harness's wrapper: the transcript attaches its own
+	 * `containerRef` to the `[data-lo-canonical-transcript]` node it renders, and
+	 * that is the element the paging hook measures.
+	 */
+	const stubGeometry = (mounted, scrollTop) => {
+		const scroller =
+			mounted.container.querySelector("[data-lo-canonical-transcript]") ??
+			mounted.container;
+		Object.defineProperty(scroller, "scrollTop", {
+			configurable: true,
+			writable: true,
+			value: scrollTop,
+		});
+		Object.defineProperty(scroller, "scrollHeight", {
+			configurable: true,
+			value: 6_000,
+		});
+		Object.defineProperty(scroller, "clientHeight", {
+			configurable: true,
+			value: 800,
+		});
+		return scroller;
+	};
+	const armsOffTail = async (records, scrollTop) => {
+		const load = async () => true;
+		/*
+		 * `hasMore: false` at the mount, flipped inside the measured window: the walk
+		 * cannot spend a page before the geometry under test is in place, so the
+		 * counter sees the wake's whole behaviour rather than a budget already
+		 * exhausted by the mount.
+		 */
+		const mounted = await mount(t, records, {
+			hasMore: false,
+			onLoadOlder: load,
+		});
+		stubGeometry(mounted, scrollTop);
+		await flushFrames();
+		let count = 0;
+		const original = window.setTimeout;
+		window.setTimeout = (fn, delay, ...rest) => {
+			if (delay === SETTLE_MS) count += 1;
+			return original.call(window, fn, delay, ...rest);
+		};
+		try {
+			/* A fresh loader identity, so the effect re-runs under this geometry. */
+			await mounted.render(records, {
+				hasMore: true,
+				onLoadOlder: async () => true,
+			});
+			await flushFrames();
+			/*
+			 * A real settle window, so a wake that re-arms itself is counted again: that
+			 * is the reviewer's 650 ms reading, and the loop is the symptom (an off-tail
+			 * reader whose budget can never grow). The wait uses the runtime's own timer
+			 * under a delay the counter ignores.
+			 */
+			await act(async () => {
+				await new Promise((resolve) => original.call(window, resolve, 650));
+			});
+			await flushFrames();
+		} finally {
+			window.setTimeout = original;
+		}
+		return count;
+	};
+	const cutOffTail = await armsOffTail(cutRecords, -5_000);
+	const headedOffTail = await armsOffTail(headedRecords, -5_000);
+	const cutAtTail = await armsOffTail(cutRecords, 0);
+	t.diagnostic(
+		`R2-1 control: settle arms — cut+off-tail=${cutOffTail}, headed+off-tail=${headedOffTail}, cut+at-tail=${cutAtTail}`,
+	);
+	assert.equal(
+		cutOffTail,
+		0,
+		"off the tail the wake arms nothing, however cut the painted bar is",
+	);
+	assert.equal(
+		headedOffTail,
+		0,
+		"and a headed store has no cut to arm for in the first place",
 	);
 });
 
