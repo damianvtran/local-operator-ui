@@ -47,6 +47,7 @@ const MODEL_DEFAULT_LABEL = /Set current model as default/;
 import type { FC } from "react";
 import "../../../styles/index.css";
 import { writeModelDefaultSettings } from "../pickers/model-default-settings";
+import { DESTINATIONS } from "../pickers/picker-registry";
 import {
 	type ArgumentRow,
 	type ArgumentSource,
@@ -383,6 +384,14 @@ const state = (over: Partial<SlashCompletionState>): SlashCompletionState => ({
 	activeDescendantId: null,
 	argumentCommand: null,
 	inline: undefined,
+	/*
+	 * The raw table: a hand-built frame has no capability answer, and every
+	 * destination these frames use is un-required — where the raw and the
+	 * effective entries are the same object. The hook's own resolution is what
+	 * `slash-contract.test.mjs` pins; here it would only restate it.
+	 */
+	effectiveEntry: (destination) =>
+		destination ? DESTINATIONS[destination] : undefined,
 	argumentQuery: "",
 	commandQuery: "",
 	argumentList: { rows: [], loading: false, error: null, needsSession: false },

@@ -110,6 +110,42 @@ test("brands drop the method parenthetical and keep plain names", () => {
 	);
 });
 
+test("a backend-sent brand wins over every local derivation", () => {
+	/*
+	 * The census's `brand` (`provider_brand` in the provider registry) is what
+	 * both hosts read now; the strip-parenthetical rule above is its documented
+	 * fallback for rows an older backend sends without one. A backend brand also
+	 * outranks `BRAND_OVERRIDES`, which is the same fallback class — the backend
+	 * owns the answer once it says one.
+	 */
+	assert.equal(
+		brandOf({
+			id: "alibaba-token-plan",
+			name: "QwenCloud Token Plan",
+			brand: "QwenCloud",
+		}),
+		"QwenCloud",
+	);
+	assert.equal(
+		brandOf({
+			id: "alibaba-token-plan",
+			name: "Whatever (Plan)",
+			brand: "Alibaba Cloud",
+		}),
+		"Alibaba Cloud",
+		"the backend's brand is not overridden by the local table",
+	);
+	// Empty and whitespace are ABSENT, not a brand: the derivation still runs.
+	assert.equal(
+		brandOf({ id: "openai", name: "OpenAI (ChatGPT Plus/Pro)", brand: "" }),
+		"OpenAI",
+	);
+	assert.equal(
+		brandOf({ id: "openai", name: "OpenAI (ChatGPT Plus/Pro)", brand: "   " }),
+		"OpenAI",
+	);
+});
+
 test("no method tab repeats its provider's name, and each is unique in its chooser", () => {
 	for (const row of census) {
 		const names = row.auth_methods.map(methodName);
