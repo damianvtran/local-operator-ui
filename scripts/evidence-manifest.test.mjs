@@ -471,6 +471,16 @@ const MOVED_FRAMES = [
 	"docs/evidence/chat-run-panel/mcp-key-saving/dracula.webp",
 	"docs/evidence/chat-run-panel/mcp-key-saving/dune.webp",
 	"docs/evidence/chat-run-panel/mcp-key-error/dune.webp",
+	/*
+	 * And the lane's FOURTH fold record, the same evening: the sync onto
+	 * `origin/main` = `689efa1eb4` (#667 the hub-update indicators, #730 the
+	 * settings-rail colour fix, #713 the scrollbar fade), which moved main twice
+	 * more while the round was in flight. Registered for the same completeness
+	 * reason as its siblings: a fold resolved from main's copy would drop the
+	 * statement of what this sync carried - main's five revised supplementary
+	 * records and its re-stamped notes, resolved per `citationConvention`.
+	 */
+	"foldOnto689efa1eb4Note",
 ];
 
 const HONEST_PASS = {
