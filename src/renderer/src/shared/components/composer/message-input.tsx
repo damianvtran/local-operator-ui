@@ -2309,9 +2309,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				// string on the reply path too. Building the prefix inline here put it
 				// downstream of every comparison and deadlocked Restore - see
 				// `buildSendPayload`.
+				/*
+				 * THE COMPLEMENT OF THE SEAM'S CONDITION — and the polarity is the
+				 * whole point: `seam` exists on exactly the panes this ternary does
+				 * NOT store on yet. A draft has no session to store against, so it
+				 * keeps the literal and the store's own admission hook settles it
+				 * through the seam above; an attached pane stores HERE, in the send,
+				 * before the payload is built. Swapping the arms silently detaches
+				 * the citation store from every attached send and double-settles the
+				 * draft (round-2 review, R2-1 — it shipped swapped once).
+				 */
 				const carried = credentialSessionId
-					? { text: message, stored: [], refused: [], unconfirmed: [] }
-					: await storeCitedCredentials(message);
+					? await storeCitedCredentials(message)
+					: { text: message, stored: [], refused: [], unconfirmed: [] };
 				if (carried.stored.length > 0)
 					showSuccessToast(storedNotice(carried.stored));
 				/*
