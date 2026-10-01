@@ -29,7 +29,7 @@
  * answering" when the user only meant to get their transcript back.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type { AskDraft } from "../../ask-queue";
 import {
@@ -168,7 +168,12 @@ export const AskSurfaces = ({
 	 */
 	const rootRef = useRef<HTMLDivElement | null>(null);
 	const wasExpanded = useRef(false);
-	useEffect(() => {
+	/*
+	 * A LAYOUT effect, matching the sibling focus return the blocking card uses: it
+	 * runs in the commit that removes the panel, before the browser paints, so no
+	 * frame ever shows focus on the body (agent review round 3, NIT-1).
+	 */
+	useLayoutEffect(() => {
 		const was = wasExpanded.current;
 		wasExpanded.current = expanded;
 		if (!was || expanded) return;
@@ -183,7 +188,12 @@ export const AskSurfaces = ({
 	if (sessionAsks(frontend) === null) return null;
 
 	return (
-		<div className={className} ref={rootRef}>
+		/*
+		 * `data-lo-ask-surfaces` is the lane's OWN marker, read by `askClaimsEscape`:
+		 * the Escape claim covers these surfaces and the composer box, not the window
+		 * (agent review round 3, F2).
+		 */
+		<div className={className} data-lo-ask-surfaces="" ref={rootRef}>
 			<AskBar
 				view={view}
 				expanded={expanded}
