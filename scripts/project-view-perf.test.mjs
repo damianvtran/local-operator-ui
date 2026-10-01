@@ -20,12 +20,32 @@ import { build } from "esbuild";
  * code (a 40x run on a shared box has measured a 12 ms outlier on a 0.3 ms
  * operation). The p95 of many warmed runs is stable enough to hold a ceiling
  * with headroom — and the currency it is read in is CPU time, because this
- * host ran at load average 282 on 2026-09-30 and the wall reading crossed the
- * matcher's 4 ms budget while the CPU reading of the same runs stayed near 2 ms
- * (`samplesOf` states the measurement in full). The ceilings themselves are
- * the architecture note's budgets (8 ms pipeline / 4 ms matcher at 800) — not
- * calibrated on one laptop, which is the failure `~/local-operator/AGENTS.md`
- * records under "Calibrate ceilings from CI".
+ * host ran at load average 282 on 2026-09-30 and the wall reading crossed what
+ * was then the matcher's budget while the CPU reading of the same runs stayed
+ * near 2 ms (`samplesOf` states the measurement in full).
+ *
+ * THE CEILINGS' DATASET, written down per "Calibrate ceilings from CI, never
+ * from your laptop" (round 2 of the PR that added this file: before the
+ * recalibration the ceilings were the architecture note's 8 ms / 4 ms budgets,
+ * and a slower ubuntu-latest instance tripped both on a byte-identical path):
+ *
+ *   - CI (ubuntu-latest), run 36796958829 at head `8eda97e11c`: pipeline CPU
+ *     p95 8.22 ms, matcher CPU p95 7.41 ms — the run that tripped 8/4. The
+ *     tested path is byte-identical at `68445645d7`, whose earlier CI run
+ *     passed under 8/4, so the spread is the runner, not the derivation.
+ *   - This host (fleet-loaded): pipeline 3.62 ms, matcher 2.60 ms at 800 rows,
+ *     0.27 ms at 76 — the reading the interaction's "instant" claim rests on.
+ *   - THE PASS SIDE NOW PRINTS TOO (this recalibration's first fix): the
+ *     `68445645d7` pass left no numbers in its log, which is why the dataset
+ *     above needed a failure to exist. Every run, pass or fail, logs both
+ *     p95s, so the next recalibration starts from the log, not from scratch.
+ *
+ * The ceilings sit at ~1.6× the worst observed CI reading (13 ms pipeline =
+ * 1.58× the 8.22; 12 ms matcher = 1.62× the 7.41): headroom for a slower
+ * instance than any seen, while a ≥1.6× algorithmic regression — the class
+ * this tripwire exists for — still trips it. They are a REGRESSION TRIPWIRE,
+ * not the interaction's latency claim; that claim is the LOCAL reading above,
+ * and the architecture's 8/4 budgets stay recorded as its provenance.
  *
  * WHAT IS NOT MEASURED HERE, and must not be implied: the DOM. These are the
  * numbers the renderer's memo chain feeds on; the frame-level claims (no row
@@ -166,6 +186,29 @@ function p95(samples) {
 }
 
 /**
+ * The reading, LOGGED ON PASS AS WELL AS FAILURE, then asserted.
+ *
+ * The recalibration that produced the ceilings above had to mine a FAILURE
+ * for its CI numbers because the pass side printed nothing (see the
+ * docstring's dataset): a log that only speaks when it breaks cannot
+ * accumulate the evidence the next recalibration needs, and the whole
+ * failure mode this file just survived was a ceiling argued from a missing
+ * dataset. `label`/`sizeNote` keep the printed line and the assertion
+ * message the shapes CI already greps for.
+ */
+function reportAndAssert(label, samples, ceiling, sizeNote) {
+	const cpu = p95(samples.cpu);
+	const wall = p95(samples.wall);
+	console.log(
+		`[project-view-perf] ${label} ${sizeNote}: CPU p95 ${cpu.toFixed(2)} ms (ceiling ${ceiling} ms) | wall p95 ${wall.toFixed(2)} ms`,
+	);
+	assert.ok(
+		cpu <= ceiling,
+		`${label} CPU p95 ${cpu.toFixed(2)} ms exceeds ${ceiling} ms ${sizeNote} (wall p95 ${wall.toFixed(2)} ms)`,
+	);
+}
+
+/**
  * Per-call samples, warmed first so the JIT is not part of the reading, in
  * BOTH currencies:
  *
@@ -173,9 +216,10 @@ function p95(samples) {
  *    budgets below assert on. That is the repo's own rule — "if you must
  *    measure, measure CPU, not wall time" — applied to a test that has to
  *    survive this fleet. Measured on 2026-09-30 while this host ran at load
- *    average 282: the WALL p95 of the matcher read 5.3 ms against its 4 ms
- *    budget — a reading of the host, not of the matcher — while the CPU p95
- *    of the same runs sat near 2 ms, where the budgets have their headroom.
+ *    average 282: the WALL p95 of the matcher read 5.3 ms against what was
+ *    then its 4 ms budget — a reading of the host, not of the matcher —
+ *    while the CPU p95 of the same runs sat near 2 ms, where the ceilings
+ *    now carry their headroom.
  *    A wall-time assertion would have flaked here and taught people to route
  *    around the gate; this instrument does not.
  *  - `wall` is kept beside it and printed by the PR's own evidence script,
@@ -198,14 +242,14 @@ function samplesOf(run, iterations, warmup = 30) {
 
 /* -------------------------------------------------------------- budgets -- */
 
-/* The architecture's budgets (1200-row spike extrapolation, §6): the tail of
- * the pipeline and the matcher. Local p95 sits an order of magnitude under
- * both (recorded in the PR), so the headroom absorbs fleet load the way the
- * spike's own ±2x caveat anticipated. */
-const PIPELINE_P95_MS_800 = 8;
-const MATCHER_P95_MS_800 = 4;
-
-/* ---------------------------------------------------------------- tests -- */
+/* THE CI TRIPWIRES, recalibrated in round 2 (the docstring carries the full
+ * dataset): ~1.6× the worst observed CI reading (8.22 / 7.41 ms at
+ * `8eda97e11c`, on a path byte-identical to the run that passed at
+ * `68445645d7`). The architecture's 8 ms / 4 ms budgets are the LOCAL
+ * interaction claim's provenance, not these ceilings — do not quote these as
+ * the interaction's latency. */
+const PIPELINE_P95_MS_800 = 13;
+const MATCHER_P95_MS_800 = 12;
 
 test("the synthetic listings are the sizes the plan named", () => {
 	assert.equal(ROWS_76.length, 76);
@@ -227,20 +271,12 @@ test("the pipeline stays inside its 800-row budget, p95", () => {
 		() => pipeline(ROWS_800, QUERY, FILTER_STATE, SORT_SPEC),
 		100,
 	);
-	const measured = p95(samples.cpu);
-	assert.ok(
-		measured <= PIPELINE_P95_MS_800,
-		`pipeline CPU p95 ${measured.toFixed(2)} ms exceeds ${PIPELINE_P95_MS_800} ms @800 (wall p95 ${p95(samples.wall).toFixed(2)} ms)`,
-	);
+	reportAndAssert("pipeline", samples, PIPELINE_P95_MS_800, "@800");
 });
 
 test("the matcher stays inside its 800-row budget, p95", () => {
 	const samples = samplesOf(() => search.searchProjects(ROWS_800, QUERY), 100);
-	const measured = p95(samples.cpu);
-	assert.ok(
-		measured <= MATCHER_P95_MS_800,
-		`matcher CPU p95 ${measured.toFixed(2)} ms exceeds ${MATCHER_P95_MS_800} ms @800 (wall p95 ${p95(samples.wall).toFixed(2)} ms)`,
-	);
+	reportAndAssert("matcher", samples, MATCHER_P95_MS_800, "@800");
 });
 
 test("the pipeline is identity-stable: same input, identical output order", () => {
@@ -270,9 +306,5 @@ test("the 76-row listing is inside the same budget with room to spare", () => {
 		() => pipeline(ROWS_76, QUERY, FILTER_STATE, SORT_SPEC),
 		60,
 	);
-	const measured = p95(samples.cpu);
-	assert.ok(
-		measured <= PIPELINE_P95_MS_800,
-		`pipeline CPU p95 ${measured.toFixed(2)} ms exceeds ${PIPELINE_P95_MS_800} ms @76 (wall p95 ${p95(samples.wall).toFixed(2)} ms)`,
-	);
+	reportAndAssert("pipeline", samples, PIPELINE_P95_MS_800, "@76");
 });
