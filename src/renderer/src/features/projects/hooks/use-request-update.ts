@@ -131,7 +131,6 @@ export async function sendRequestUpdate(
 		return;
 	}
 
-	const display = projectDisplayName(target);
 	beginRequestUpdate(projectId);
 	const toastId = requestUpdateToastId(projectId);
 	/* (3) The loading card is armed on a delay and REPLACED in place: it

@@ -999,6 +999,9 @@ const page = (
 		failList: null,
 		hang: false,
 		failPatch: null,
+		/* Pinned like the defaults above: without it the spread's Optional half
+		 * keeps `undefined` in the inferred type, which a required field refuses. */
+		requestUpdate: null,
 		...state,
 	};
 	bridgeOps = [];
