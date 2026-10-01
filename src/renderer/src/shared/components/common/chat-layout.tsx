@@ -125,8 +125,11 @@ const SIDEBAR_SHEET_SCOPE = "data-sidebar-sheet";
  * only thing that can put a route-owned column's ground up there, and it has to be
  * told which column that is - and on which rung the column stands. It used to assume
  * `surface`; the settings rail's move to `elevated` (2026-09-27) is what made the
- * assumption visible, and the attribute's VALUE is now the role the lane must paint
- * across the marked column's width.
+ * assumption visible, and the attribute's VALUE is the role the lane must paint
+ * across the marked column's width. That rail was re-grounded flat on 2026-09-30, so
+ * every column hands over `surface` today - the rung stays part of the contract
+ * rather than being narrowed away, because a route on `elevated` is exactly the case
+ * the argument exists for.
  *
  * WRITTEN BY `useLaneLeadingColumn` rather than spelled in the JSX, so the attribute
  * and the registration that gives it meaning cannot be separated: an element wearing
@@ -153,12 +156,13 @@ const LaneLeadingContext = createContext<LaneLeadingRegistration | null>(null);
  *
  * THE ARGUMENT IS THE COLUMN'S OWN GROUND, and it is required rather than defaulted:
  * a route added later has to say which rung it stands on for its column to be
- * mirrored, and the settings rail's `elevated` is why one fixed ground is no longer
- * enough. This hook does not restate the paint - `chat-layout`'s lane reads the
- * marker back - so the value and the class on the column are one decision, pinned by
- * the sweep: `lane-leading.test.mjs` reads the painting file's `bg-<ground>` beside
- * the handed value, so `settings-sidebar.tsx`'s `bg-elevated` and the rail wrapper's
- * `"elevated"` fail together if only one of them moves.
+ * mirrored, and the settings rail's round on `elevated` (2026-09-27, given up
+ * 2026-09-30) is why one fixed ground is no longer enough. This hook does not
+ * restate the paint - `chat-layout`'s lane reads the marker back - so the value and
+ * the class on the column are one decision, pinned by the sweep:
+ * `lane-leading.test.mjs` reads the painting file's `bg-<ground>` beside the handed
+ * value, so `settings-sidebar.tsx`'s `bg-surface` and the rail wrapper's
+ * `"surface"` fail together if only one of them moves.
  *
  * A REF RATHER THAN A QUERY, and the settings rail is why: it renders after the
  * route's config read resolves, so on a cold route it is not in the tree at the
