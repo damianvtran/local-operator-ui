@@ -19,7 +19,7 @@
  * shape satisfies it, and the component's own rows are assignable to it.
  */
 import type { FastModeState } from "../session-status/session-model";
-import { ARGUMENT_SOURCE_LABEL } from "./slash-argument-rows";
+import { ARGUMENT_SOURCE_LABEL, mcpInServerSlot } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";
 import { slashContext } from "./slash-token";
 
@@ -313,10 +313,12 @@ const DESTRUCTIVE_COMMANDS: ReadonlySet<string> = new Set(["logout", "delete"]);
 /**
  * Whether the active row's list is destructive IN THIS HOST.
  *
- * The row's own `alert` is one arm and the command word is the other, because
- * `session.credential` revokes a stored credential from `LogoutPicker` while
- * `argumentRows` never paints a destructive detail — so for `/logout` only the
- * command-word arm can fire (round 1 R1).
+ * The row's own `alert` is one arm and the command word is the other. Both
+ * matter and neither subsumes the other: `/logout`'s rows carry `alert` AND its
+ * word is in the set, while `/mcp`'s destructive rows (`remove`, `logout`,
+ * `reauth`) are armed by `alert` ALONE — its command word is not in the set,
+ * so for `/mcp` this row bit is the only thing standing between a fuzzy
+ * single survivor and a deleted config entry (round 1, R1).
  *
  * The word arm is also what paints a BARE destructive command in the danger
  * role (`commandRowContent` asks this function for its ink), which is its only
@@ -710,11 +712,13 @@ export function slashKeyIntent(input: SlashKeyInput): SlashKeyIntent {
 			 */
 			if (input.selectsFlag && !input.selectsFlag(input.argumentQuery))
 				return { kind: "apply", index: input.active, run: false };
-			// `/logout` is destructive IN THE DESKTOP TOO: `session.credential`
-			// resolves to `LogoutPicker`, whose rows revoke stored credentials.
-			// The `alert` arm is defence for a row that paints a destructive
-			// detail; nothing sets it today, so the command-word arm is the one
-			// that actually fires.
+			// This arm is NOT defence only, whatever it said before the provider/MCP
+			// lists landed (round 1, R1): `/logout`'s rows carry `alert` AND its
+			// command word is in `DESTRUCTIVE_COMMANDS`, so either arm fires for
+			// it — but `/mcp` is NOT a destructive command word, and for its rows
+			// THIS bit is the arm that fires. It is what makes a fuzzy
+			// `/mcp remove pg` survivor complete instead of delete the entry, the
+			// data-loss class `test_destructive_argument_gate.py` pins.
 			const destructive = slashDestructive(
 				input.argumentCommand,
 				row.row.alert,
@@ -801,9 +805,20 @@ export function chosenByHandSurvives(
 export function phaseLabel(
 	phase: "command" | "argument",
 	source: keyof typeof ARGUMENT_SOURCE_LABEL | undefined,
+	/*
+	 * The typed argument text, for the ONE source whose label is per-SLOT: `/mcp`'s
+	 * two keystrokes draw two different lists — the document's verbs, then their
+	 * servers — so a single record label named only the second one, and a user
+	 * reading `list / add / remove…` under "Servers" was reading a label for the
+	 * NEXT list (round 1, D6/U7). The verb slot says "Commands"; the server slot
+	 * keeps the record's "Servers".
+	 */
+	argument = "",
 ): string {
 	if (phase === "command") return "Commands";
-	return source ? ARGUMENT_SOURCE_LABEL[source] : "Arguments";
+	if (!source) return "Arguments";
+	if (source === "mcp" && !mcpInServerSlot(argument)) return "Commands";
+	return ARGUMENT_SOURCE_LABEL[source];
 }
 
 /**
@@ -1035,6 +1050,16 @@ export type EnterFooterInput = {
 	/** The active row's value, and whether there is an active row at all. */
 	value: string;
 	matched: boolean;
+	/**
+	 * Whether the caret's argument ALREADY holds the row's value — the state a
+	 * first Enter leaves behind on a `runs: false` source. A press here writes
+	 * nothing (the completion is a no-op), so the key only CLOSES the list, and
+	 * the NEXT Enter is the one that runs the filled command. Saying "Enter
+	 * completes the value" for that press read as a dropped keystroke (round 1,
+	 * U3); on `/login` the same filled state says what it does because the next
+	 * Enter runs it.
+	 */
+	complete: boolean;
 	unambiguous: boolean;
 	/**
 	 * Whether a pick of the ACTIVE row ARMS its command (`pickArmsCommand`). Passed
@@ -1196,7 +1221,10 @@ export function enterFooter(input: EnterFooterInput): string | null {
 		return `Enter completes to ${input.prefix}.`;
 	}
 	if (input.nameThenMessage) return "Enter chooses this name.";
-	if (!input.runs) return "Enter completes the value.";
+	if (!input.runs)
+		return input.complete
+			? "Enter closes the list; Enter again runs."
+			: "Enter completes the value.";
 	if (!input.unambiguous) return "Enter completes; Enter again runs.";
 	const command = input.command ? `/${input.command} ` : "";
 	return `Enter runs ${command}${input.value}.`.trim();
@@ -1292,6 +1320,14 @@ export type EmptyArgumentList = {
 	loading: boolean;
 	error: string | null;
 	needsSession: boolean;
+	/**
+	 * A more specific fact than the four generic sentences below, when the
+	 * source can state one: `/mcp`'s server slot with nothing eligible is empty
+	 * BY DESIGN (`list`/`add`/an unknown verb — U2), and `/logout` can name a
+	 * provider the census knows with nothing stored (U4). Set from the query or
+	 * the slot, read only in the empty state (before the generic arms).
+	 */
+	emptyCopy?: string;
 };
 
 /**
@@ -1330,6 +1366,15 @@ export function argumentEmptyCopy(list: EmptyArgumentList): string {
 	if (list.needsSession) return "Needs an open conversation. Start one first.";
 	if (list.error) return list.error;
 	if (list.loading) return "Loading…";
+	/*
+	 * The source's own sentence, when it has one. It outranks the two generic
+	 * arms below because it is a fact about THIS slot rather than about the
+	 * matcher or the route: "Not reported yet" claimed the route had never
+	 * answered for a `/mcp` slot that is empty BY DESIGN (round 1, U2), and "No
+	 * matches" blamed the matcher for a `/logout` query naming a provider with
+	 * no stored credential (round 1, U4).
+	 */
+	if (list.emptyCopy) return list.emptyCopy;
 	// Rows exist, the query excluded all of them: "not reported yet" would be a
 	// lie about the source rather than a fact about the filter.
 	if (list.rows.length > 0) return "No matches. Enter runs the command.";

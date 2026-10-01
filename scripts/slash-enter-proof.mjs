@@ -367,7 +367,269 @@ const CASES = [
 		key: "Enter",
 		expect: { ran: "/rename --refresh", draft: "", list: null },
 	},
+	/*
+	 * THE PROVIDER AND MCP LISTS — the operator's feature, end to end.
+	 *
+	 * The report this rig's pair exists for: typing `/login ope…` in the composer
+	 * offered NOTHING. The fixture (`message-input.stories.tsx`) serves the
+	 * census, the accounts document and the MCP catalog (+ the two capabilities),
+	 * so these frames show the real list copy, the real rank, and the real
+	 * gestures. The three groups mirror the acceptance: suggest-on-typing
+	 * (typeOnly), the one-Enter and one-click RUN paths for `/login`, and the
+	 * DESTRUCTIVE half — `/logout`'s and `/mcp`'s rows FILL the box and never run
+	 * on the gesture that names them, because those rows remove credentials and
+	 * config entries (`runs: false` on the source; `alert` on each row).
+	 */
+	{
+		name: "login-suggest-on-ope",
+		why: "The operator's exact repro: `/login ope` — a subsequence of `openai` — offers the OpenAI row with its registry qualifier and a live state in the detail column. On the base tree this shows no list at all.",
+		word: "login ope",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/login ope",
+			list: "Command arguments",
+			phase: "Providers",
+		},
+	},
+	{
+		name: "login-space-lists-every-provider",
+		why: "The bare space after `/login`: every loginable provider in registry order, logged-in rows annotated in the detail column and still offered (the acceptance's `/login [provider]` half).",
+		word: "login ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/login ",
+			list: "Command arguments",
+			phase: "Providers",
+		},
+	},
+	{
+		name: "login-one-click-runs",
+		why: "One CLICK on a suggested provider runs the sign-in for it — the pointer half of the acceptance, and the gesture the operator reached for.",
+		word: "login ope",
+		click: "OpenAI",
+		expect: { ran: "/login openai", draft: "", list: null },
+	},
+	{
+		name: "logout-space-lists-stored-accounts",
+		why: "`/logout ` offers only providers with stored credentials: one row per PROVIDER, the removal digest in the detail column and the single account's identity where there is one.",
+		word: "logout ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/logout ",
+			list: "Command arguments",
+			phase: "Accounts",
+		},
+	},
+	{
+		name: "logout-enter-fills-never-runs",
+		why: "Fill-not-run, the destructive gate: `/logout anthro` + Enter completes the survivor to `/logout anthropic` and dispatches NOTHING — a credential is only ever removed by a press on a box the user can read. The footer on the filled row says what the key does NEXT (round 1, U3): the completion is a no-op now, so this Enter only closes the list.",
+		word: "logout anthro",
+		key: "Enter",
+		expect: {
+			ran: "none",
+			draft: "/logout anthropic",
+			enterNote: "Enter closes the list; Enter again runs.",
+		},
+	},
+	{
+		name: "logout-click-completes-never-runs",
+		why: "A CLICK on a `/logout` row only completes it — the pointer arm has no ambiguity gate, so `runs: false` on the source is the whole floor and the frame shows the filled box instead of a removal. The needle is the census BRAND (round 1, D5/U6): the row is named the way `/login` names it, and the id it writes is unchanged.",
+		word: "logout ",
+		click: "Anthropic",
+		expect: { ran: "none", draft: "/logout anthropic" },
+	},
+	{
+		name: "mcp-space-lists-the-verbs",
+		why: "`/mcp ` offers the document's own verb table — `list` first, every destructive verb below it carrying its alert, which is what the next two cases spend. The label is this slot's own (round 1, D6/U7): the rows are verbs, and only the server slot says \"Servers\".",
+		word: "mcp ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/mcp ",
+			list: "Command arguments",
+			phase: "Commands",
+		},
+	},
+	{
+		name: "mcp-logout-lists-signed-in-servers",
+		why: "`/mcp logout ` filters the catalog to the rows a logout can act on (`offers: signed_in`), and the detail names what is REMOVED rather than the connection that happens to be up.",
+		word: "mcp logout ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/mcp logout ",
+			list: "Command arguments",
+			phase: "Servers",
+		},
+	},
+	{
+		name: "mcp-logout-enter-fills-never-runs",
+		why: "The destructive gate on the MCP side: `/mcp logout gith` + Enter completes to `/mcp logout github` and dispatches nothing — the credential survives the first press, and the footer says the next Enter is the one that runs (round 1, U3).",
+		word: "mcp logout gith",
+		key: "Enter",
+		expect: {
+			ran: "none",
+			draft: "/mcp logout github",
+			enterNote: "Enter closes the list; Enter again runs.",
+		},
+	},
+	{
+		name: "mcp-remove-click-completes-never-runs",
+		why: "A CLICK on a `/mcp remove` row completes it and dispatches nothing: deleting a config entry takes a second, deliberate press, and the frame records the filled box.",
+		word: "mcp remove ",
+		click: "remove github",
+		expect: { ran: "none", draft: "/mcp remove github" },
+	},
+	{
+		name: "login-enter-fills-the-top-match",
+		why: "`/login ope` + Enter FILLS the top match instead of running it, because `ope` is a subsequence of `openrouter` too — two candidates, so the matcher's pick may not be run on the user's behalf (the frame names the row the box now holds, OpenAI, not the runner-up).",
+		word: "login ope",
+		key: "Enter",
+		expect: { ran: "none", draft: "/login openai" },
+	},
+	{
+		name: "login-second-enter-runs",
+		why: "The second Enter on the box the fill wrote (`/login openai`, EXACT) runs the sign-in — the two-Enter path a fuzzy query has to take, ending in the one-gesture outcome the operator asked for once the word is named.",
+		word: "login ope",
+		key: "Enter",
+		secondGesture: { key: "Enter" },
+		expect: { ran: "/login openai", draft: "", list: null },
+	},
+	{
+		name: "logout-typed-full-then-enter-submits",
+		why: "The destructive source's escape hatch, recorded rather than assumed: with `/logout anthropic` typed in full, the first Enter only completes-and-closes (runs: false keeps the popup from ever being the dispatcher), and the NEXT Enter — no list holding the key — submits the command like any other draft. The deviation is the popup's extra press, not a dead end.",
+		word: "logout anthropic",
+		key: "Enter",
+		secondGesture: { key: "Enter" },
+		expect: { ran: "/logout anthropic", draft: "", list: null },
+	},
+	/*
+	 * THE ROUND-1 REMEDIATION CASES.
+	 *
+	 * U1 is the `/mcp` verb-to-server handoff: the pick must leave `/mcp login `
+	 * (the verb's own trailing space, the TUI's terminator) and reopen the list in
+	 * the SERVER slot. Before the fix the draft stayed `/mcp login`, the verb list
+	 * remained up, and the server rows were unreachable by mouse or Tab — the rig
+	 * had no case that typed past the verbs, which is why it could not see the
+	 * dead end (UX round 1; reviewer's corroboration names this case as the one
+	 * that would have caught it).
+	 *
+	 * U2/U4 are copy cases: the `empty` field reads the region's own sentence, so a
+	 * regression to "Not reported yet" or "No matches" fails here rather than in a
+	 * reviewer's frame-reading.
+	 */
+	{
+		name: "mcp-verb-click-opens-the-server-slot",
+		why: 'Choosing a VERB must leave `/mcp login ` (its own trailing space) with the popup reopened in the SERVER slot — the TUI\'s two-turn crank (`_mcp_argument_choices`: "choosing a verb leaves `/mcp login ` in the buffer").',
+		word: "mcp ",
+		click: "login",
+		expect: {
+			ran: "none",
+			draft: "/mcp login ",
+			list: "Command arguments",
+			phase: "Servers",
+		},
+	},
+	{
+		name: "mcp-verb-enter-opens-the-server-slot",
+		why: "The keyboard half of the same crank: `/mcp login` + Enter writes the verb AND its terminator (the value's own trailing space), so the server list is where the user lands without a hand-typed space.",
+		word: "mcp login",
+		key: "Enter",
+		expect: {
+			ran: "none",
+			draft: "/mcp login ",
+			list: "Command arguments",
+			phase: "Servers",
+		},
+	},
+	{
+		name: "mcp-verb-pick-then-enter-fills-a-server",
+		why: "The two-turn crank to its end: click `login`, then Enter fills the slot's first server row (`linear`) and dispatches NOTHING — the same fill-not-run floor the typed cases pin, now shown through the handoff.",
+		word: "mcp ",
+		click: "login",
+		secondGesture: { key: "Enter" },
+		expect: { ran: "none", draft: "/mcp login linear" },
+	},
+	{
+		name: "mcp-add-space-hints-instead-of-blame",
+		why: "`/mcp add ` has no server list BY DESIGN (`offers: null`): the sentence must say so rather than claim the route never answered (round 1, U2).",
+		word: "mcp add ",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/mcp add ",
+			list: "Command arguments",
+			phase: "Servers",
+			empty: "No servers to choose. Enter runs the command.",
+		},
+	},
+	{
+		name: "logout-names-a-census-provider-with-nothing-stored",
+		why: '`/logout deepseek` names a provider the census knows whose credential is an ENV key — not a store row — so no list can hold it; the empty sentence is a fact about the provider rather than the matcher\'s "No matches" (round 1, U4).',
+		word: "logout deepseek",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/logout deepseek",
+			list: "Command arguments",
+			phase: "Accounts",
+			empty: "No stored credential to remove.",
+		},
+	},
+	{
+		name: "logout-alias-reaches-a-stored-provider",
+		why: "`/logout gpt` — the alias `/login` already honours — must reach the openai row: the logout list joins the census's `search_aliases`, so both commands share one alias vocabulary (round 1, U4).",
+		word: "logout gpt",
+		typeOnly: true,
+		expect: {
+			ran: "none",
+			draft: "/logout gpt",
+			list: "Command arguments",
+			phase: "Accounts",
+			/* The spans concatenate without separators (no text node between them),
+			   the same shape the rename cases read. */
+			active: "OpenAIremove 2 credentials",
+		},
+	},
 ];
+
+/*
+ * An optional case filter, for the before/after pair: a base-tree run needs only
+ * the cases whose subject is the change (`SLASH_PROOF_CASES=login,mcp`), while
+ * the rename and ambiguity cases were written for a tree that no longer matches
+ * the base's component set. Kept here rather than as a second script, so both
+ * halves of the pair run the SAME file and the filter is the only difference.
+ */
+const CASE_FILTER = (process.env.SLASH_PROOF_CASES ?? "")
+	.split(",")
+	.map((name) => name.trim())
+	.filter(Boolean);
+if (CASE_FILTER.length > 0) {
+	CASES.splice(
+		0,
+		CASES.length,
+		...CASES.filter((testCase) =>
+			CASE_FILTER.some((needle) => testCase.name.includes(needle)),
+		),
+	);
+	/*
+	 * A filter that selects NOTHING is a broken instrument, not a pass: a renamed
+	 * case or a mis-typed needle used to report "0/0 gestures behaved as the rule
+	 * requires" and write `failures: 0`, which this rig's before/after pair exists
+	 * to prevent — a later re-run could "confirm" a tree it never touched
+	 * (review round 1, R3; the same principle `run-desktop-tests.mjs` states for
+	 * killed suites). Exits before Chrome is spawned, so nothing leaks.
+	 */
+	if (CASES.length === 0) {
+		console.error(
+			`SLASH_PROOF_CASES=${process.env.SLASH_PROOF_CASES} selected no cases; fix the filter — the run would have exercised nothing.`,
+		);
+		process.exit(2);
+	}
+}
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -466,6 +728,18 @@ const READ_STATE = `(() => {
 		   argument list's subject ("Models"). */
 		phase: box ? text(box.firstElementChild) : null,
 		rows: options.map((node) => text(node)),
+		/*
+		 * The region's empty-state sentence, when no row is drawn: the copy findings
+		 * ("No servers to choose…", "No stored credential to remove.") are about
+		 * THIS string, and a frame alone would leave a reviewer reading pixels.
+		 * children[1] is the scroller — the label is [0], the footer [2].
+		 */
+		empty: (() => {
+			if (!box) return null;
+			const region = box.children[1];
+			if (!region || region.querySelector('[role="option"]')) return null;
+			return text(region.firstElementChild);
+		})(),
 		active: active ? text(active) : null,
 		ran: text(document.querySelector("[data-slash-dispatched]")),
 		/* The popup's own ENTER line, verbatim: the gesture strip's first
@@ -784,6 +1058,26 @@ try {
 			 */
 			!testCase.noListBefore,
 		);
+		/*
+		 * An `empty`-reading case waits for the state to SETTLE first: the two
+		 * sessionless reads behind `/logout` (the accounts route plus the census
+		 * join) resolve a render tick after the keystroke, and the honest sentence
+		 * replaces "Loading…" then. Wait on that transition rather than on a clock
+		 * (bound 6 s, and the verdict below still reports whatever stands if it
+		 * never settles) — a fixed sleep here is the flake this poll replaces.
+		 */
+		if (testCase.expect.empty) {
+			const empties = Date.now();
+			for (;;) {
+				const probe = await evaluate(READ_STATE);
+				if (probe.empty !== "Loading…") break;
+				if (Date.now() - empties > 6_000) {
+					console.log("  (the empty state is still 'Loading…' after 6s)");
+					break;
+				}
+				await wait(150);
+			}
+		}
 		const before = await evaluate(READ_STATE);
 		const beforeFrame = await shoot(`${testCase.name}-before`);
 		/*
