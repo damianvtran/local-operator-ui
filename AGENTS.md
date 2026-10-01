@@ -104,6 +104,12 @@ ground where it does not.
 - Regenerate theme CSS: `pnpm gen-themes`
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
+- Fold an evidence stamp after a merge: `pnpm evidence:fold` (resolves
+  `docs/evidence/manifest.json` per field, re-derives the stamps and counts from the
+  merged tree, runs the guards and stages the result - one commit per fold).
+  `pnpm evidence:fold:install` wires the clone's merge driver once, so `git merge
+  origin/main` does not stop on a manifest conflict at all; `pnpm evidence:fold:check`
+  is the read-only form. See the evidence section below.
 
 `pnpm check-evidence` admits **one sweep per machine**, across worktrees and
 isolated `HOME`/`TMPDIR` runs. It requires Python 3 with POSIX `flock` (macOS/Linux)
@@ -123,14 +129,31 @@ not independent capture scripts importing the single-frame predicate. Run
 lightweight subprocess/CLI contract tests; they use isolated synthetic evidence,
 not the committed image set.
 
-**A commit that moves `src/` or `scripts/` costs every open branch two commits.**
+**A commit that moves `src/` or `scripts/` costs every open branch one command.**
 `docs/evidence/manifest.json` pins `srcTree`/`scriptsTree` to
 `git rev-parse HEAD:src`/`HEAD:scripts`, and the gate fails a mismatch with "re-capture
 and re-stamp" rather than a warning - so `main` moving a rig, or any sibling branch
 landing one, invalidates the stamp for everybody holding a branch, whether or not
-that branch's own frames changed. That is the convergence cost of the file, and the
-reason a sync here ends with a re-stamp-only commit whose message says what moved,
-what did not, and why. `scripts/evidence-manifest.test.mjs` checks the stamp and
+that branch's own frames changed. That is the convergence cost of the file, and it
+used to be paid with two hand commits per fold. It is now `pnpm evidence:fold`:
+
+```
+git merge origin/main        # with `pnpm evidence:fold:install` once per clone,
+                             # this does not stop on the manifest at all
+pnpm evidence:fold           # resolve + re-derive + stage, one commit
+```
+
+`scripts/evidence-fold.mjs` resolves `docs/evidence/manifest.json` a FIELD at a time
+from the three sides git already holds (pass-describing fields are this branch's,
+listings are the union, the derived fields are re-derived from the merged tree), runs
+the guards this section names over the result and refuses to write a manifest that
+fails them, so the fold is one commit that carries correct values. `--install` wires
+its merge driver into the clone's local config (and `prepare` does it on install);
+`--check` is the read-only form and exits non-zero when pushes and folds are not
+wired. It does NOT weaken anything: the stamps stay stored in the manifest and are
+still compared against `HEAD` exactly as below.
+
+`scripts/evidence-manifest.test.mjs` checks the stamp and
 needs no lease: it runs inside `pnpm test:desktop`, fails in well under a second, and
 it is what caught the stale stamps that reached `main` once - so a stale stamp is
 visible locally without a sweep, contrary to what this paragraph used to say. Only
@@ -163,10 +186,14 @@ name, because a new binding is the defect the assertion exists for. The conventi
 it replaces - `STAMP_BINDING_NOTES`, which held its members to the pair the file
 SHIPS - is what kept those notes bound across every fold.
 
-**Fold first, re-stamp second, as two commits.** The fold is where the
-two-commit rule above keeps biting: the re-stamp reads like part of the merge,
-and sweeping it in reads the values against the pre-fold head. Merge
-`origin/main` in one commit; re-stamp in a separate `docs/`-only one.
+**Fold first, re-stamp second - which is now one command, not two commits.** The fold
+is where the two-commit rule above kept biting: the re-stamp reads like part of the
+merge, and sweeping it in reads the values against the pre-fold head. `pnpm
+evidence:fold` is that separation made mechanical: it re-derives from the MERGED tree
+(the index, before the merge commit exists, and `HEAD` after it), stages the values,
+and amends only when the tip IS the merge commit and the only staged change is this
+file - so the value and the tree it names sit inside one commit either way. Merge
+`origin/main` in one commit; run it; commit once.
 
 Measured 2026-09-27 - three PRs in one night, twice during a fold. #553
 (`feat/provider-setup`, `a10e43c25f`) carried 28 frames while also moving `src/`
