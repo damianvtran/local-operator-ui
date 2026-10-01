@@ -80,6 +80,18 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		pair.includes("{archiveEnabled && ("),
 		"the archive CONTROL's gate is no longer `archiveEnabled`",
 	);
+	/*
+	 * THE THIRD GATE, and it is shared rather than copied: the drag handle and the
+	 * menu's two Move items both read `offersMove`, which is `offersPinnedMove` over
+	 * the row. Two spellings would be two chances for the handle and the menu to
+	 * appear on different rows.
+	 */
+	assert.ok(
+		pair.includes(
+			"const offersMove = offersPinnedMove(row.session_id, nested);",
+		),
+		"the grip's predicate is no longer the one the menu's items read",
+	);
 	const archiveItem = between(
 		MENU,
 		"{archiveEnabled && (",
@@ -99,15 +111,30 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		"the pin ITEM exists outside the pin-state gate the control reads",
 	);
 	/*
-	 * WITHHELD, NEVER DISABLED: an act the row cannot take is an absent row. There
-	 * is no `disabled` prop in the menu's JSX at all, so nobody can half-enable an
-	 * item the pair would have withheld.
+	 * WITHDRAWN, NEVER DISABLED - WITH ONE DELIBERATE EXCEPTION (2026-09-30).
+	 * The rule is about an act the row cannot take AT ALL: that is an absent row, not
+	 * a greyed one. The row menu's two Move items are the exception, and it is WCAG
+	 * 2.5.7's: a move the row cannot make in ONE DIRECTION is a BOUNDARY rather than
+	 * an absent act, and the app's own idiom for a refused target is `aria-disabled`
+	 * (the drafts' discard act, `older-history-slot.tsx`) - a real `disabled` would
+	 * drop the item out of the flow a keyboard reader walks AND stop the activation,
+	 * swallowing the `pinMoveBoundaryNote` sentence that says which boundary it is. So
+	 * the assertion is about the PROP, plus a check that `aria-disabled` appears
+	 * nowhere in this menu but on those two items.
 	 */
 	assert.equal(
-		MENU.includes("disabled"),
+		/[\s"'{]disabled[=>\s]/.test(MENU.replace(/aria-disabled/g, "")),
 		false,
-		"a menu item is disabled rather than withheld - the row's own rule is that an affordance that cannot act on a row is not drawn at all",
+		"a menu item is disabled rather than withheld - the row's own rule is that an affordance that cannot act on a row is not drawn at all, and the two Move items state their boundary with `aria-disabled` instead",
 	);
+	for (const item of MENU.split("<ContextMenuItem").slice(1)) {
+		if (!item.includes("aria-disabled")) continue;
+		assert.match(
+			item,
+			/Move conversation (?:up|down)/,
+			"`aria-disabled` is on something other than the two boundary-bearing Move items",
+		);
+	}
 	/*
 	 * THE COPY AND THE ORDER. Sentence case, verb + object, and the pair's own
 	 * measured order (the archive glyph is `order-first` in the strip): archive
@@ -128,6 +155,27 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		MENU.indexOf('pressRowAct(row.session_id, "archive")') <
 			MENU.indexOf('pressRowAct(row.session_id, "pin")'),
 		"the menu no longer reads Archive then Pin",
+	);
+	/*
+	 * AND THE TWO MOVE ITEMS COME AFTER THEM (2026-09-30), in the order the deleted
+	 * arrow pair was drawn: the row's own acts first, then the refinement of the order
+	 * they only apply to. They are gated on `offersMove`, which is the SAME predicate
+	 * the row's drag handle reads - asserted against the grip's own line above, so
+	 * neither surface can be moved to a different set of rows alone.
+	 */
+	assert.ok(
+		MENU.includes("{offersMove && ("),
+		"the menu's Move items exist outside the predicate the row's grip reads",
+	);
+	assert.ok(
+		MENU.indexOf('pressRowAct(row.session_id, "pin")') <
+			MENU.indexOf("Move conversation up"),
+		"the menu no longer reads Archive, Pin, then the moves",
+	);
+	assert.ok(
+		MENU.indexOf("Move conversation up") <
+			MENU.indexOf("Move conversation down"),
+		"the menu no longer reads Move up then Move down",
 	);
 	/*
 	 * AND THE PRESS IS THE CONTROL'S OWN. `.click()` on the row's control takes the
@@ -187,9 +235,11 @@ test("no rule on the row box is authored against `data-state`", () => {
 	/*
 	 * AND THE SANCTIONED SPELLING IS PRESENT, so the guard above cannot pass by
 	 * the hold being deleted: the ground on `!current` rows, and the reveal's
-	 * authoring sites - the pin glyph, the archive glyph, the pair wrapper, and
-	 * (with #697 folded in) the pin strip's own grip and move pair - because a
-	 * hold on the wrapper alone renders a `flex` box with nothing in it.
+	 * authoring sites - the pin glyph, the archive glyph, and (with #697 folded in)
+	 * the pin strip's own grip - because a hold on the wrapper alone renders a
+	 * `flex` box with nothing in it. THE MOVE PAIR'S TWO CLAUSES WENT WITH THE PAIR
+	 * (2026-09-30): its acts are the row menu's Move items now, and a menu row is in
+	 * the menu's portal, where the row's hold does not reach.
 	 */
 	assert.ok(
 		boxClasses.includes('menuOpen && !current && "bg-row-hover"'),
@@ -197,8 +247,8 @@ test("no rule on the row box is authored against `data-state`", () => {
 	);
 	assert.equal(
 		SIDEBAR_CODE.split('menuOpen && "flex text-ink-muted"').length - 1,
-		5,
-		"the held reveal no longer covers every revealing site (both glyphs, and #697's grip and move pair: five clauses; the wrapper holds separately)",
+		3,
+		"the held reveal no longer covers every revealing site (both glyphs and #697's grip: three clauses; the wrapper holds separately)",
 	);
 	assert.ok(
 		SIDEBAR_CODE.includes("pinned || menuOpen"),
