@@ -992,6 +992,16 @@ export const STORIES = [
 	],
 	["chat-turn-collapse--parked", 1280, 900],
 	/*
+	 * THE COMPLETION-VISIBILITY CELL (`CompletionsBothVisible`): the operator's
+	 * shape `U T88 A1(stop) W T3 A2(stop) K` - a fulsome completion, a wake, a
+	 * short reply - with both completions visible and the work between them
+	 * condensed. The before half is the same cell captured from the base tree
+	 * (the story file copied into a base worktree), where the fulsome close is
+	 * inside the bar.
+	 */
+	["chat-turn-collapse--completions-both-visible", 1280, 900],
+
+	/*
 	 * THE FRESH CONVERSATION'S OWN CELL (agent review round 1's frame
 	 * prerequisite): the harness's `session_mcp_unavailable` statement above the
 	 * reader's FIRST message and a short answer - the shape the run-closure
@@ -2061,6 +2071,41 @@ export const STORIES = [
 	["chat-header-identity--before", 560, 84],
 	/* The operator's own width: the same arrangement the screenshot showed. */
 	["chat-header-identity--wide", 1380, 84],
+	/*
+	 * THE WIDTH BOUND'S TWO FRAMES (design round 1, D1/D2): an eighty-character
+	 * label - the core contract's ceiling - at the 560 band the header's frames
+	 * are priced against and at the app's own 800 minimum. The claim pins the
+	 * chip's tooltip to `Label (slug)`, so a regression that drops the slug from
+	 * the title, or restores the action-only tooltip, fails the run instead of
+	 * shipping under these names; the cap's truncation itself is read off the
+	 * frame against the same label rendered whole in the title.
+	 */
+	[
+		"chat-header-identity--long-label",
+		560,
+		84,
+		{
+			expectAttribute: {
+				selector: '[data-header-identity="team"]',
+				name: "title",
+				equals:
+					"Data Quality, Sanctions Screening and Regulatory Reporting (Global Markets Desk) (data-quality)",
+			},
+		},
+	],
+	[
+		"chat-header-identity--long-label-min-width",
+		800,
+		84,
+		{
+			expectAttribute: {
+				selector: '[data-header-identity="team"]',
+				name: "title",
+				equals:
+					"Data Quality, Sanctions Screening and Regulatory Reporting (Global Markets Desk) (data-quality)",
+			},
+		},
+	],
 	/* The menu's two honest states, from the catalogue's own answers: no teams
 	 * registered, and the registry's refusal in its own words. */
 	[
