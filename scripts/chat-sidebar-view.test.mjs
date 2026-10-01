@@ -63,6 +63,13 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/chat-sidebar-view";',
 			'export * from "./src/renderer/src/features/chat/chat-list-sections";',
 			/*
+			 * The roster's own module joins for the PIN field's cases: the stored
+			 * `pinnedAgents` list is written by `togglePinnedAgent` and parsed a
+			 * field down from it, so the round trip below would be asserting one
+			 * half of a contract the other half spells.
+			 */
+			'export * from "./src/renderer/src/features/chat/chat-sidebar-agents";',
+			/*
 			 * The store joins the bundle for the PERSISTENCE case, and for one
 			 * reason: the view the popover writes is a persisted field, so the
 			 * claim "this setting survives a relaunch" is a claim about the
@@ -108,6 +115,8 @@ const {
 	useUiPreferencesStore,
 	isActiveRow,
 	CHAT_LIST_SECTIONS,
+	PINNED_AGENTS_MAX,
+	togglePinnedAgent,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -456,6 +465,38 @@ test("an unreadable or tampered view draws the column nobody has configured", ()
 	assert.equal(DEFAULT_SIDEBAR_VIEW.loads, 0);
 });
 
+/*
+ * THE PINNED ROSTER'S STORED LIST (issue #663), parsed on its own axis like
+ * every other field: a blob from before the field existed yields no pins, and a
+ * tampered one degrades per ENTRY - non-strings and empties dropped, duplicates
+ * collapsed, the count clamped to `PINNED_AGENTS_MAX` - rather than taking the
+ * view down with it. The keys are opaque HERE (the roster they name is not
+ * loaded at parse time), so a pin that names no row survives and is inert:
+ * that is the difference between a preference that has outlived an agent and a
+ * defect.
+ */
+test("a stored view without pins parses to none, and a tampered list degrades field-wise", () => {
+	assert.deepEqual(
+		parseSidebarView({}).pinnedAgents,
+		[],
+		"a blob from before the field existed means no pins",
+	);
+	assert.deepEqual(parseSidebarView({ pinnedAgents: "kept" }).pinnedAgents, []);
+	assert.deepEqual(
+		parseSidebarView({ pinnedAgents: ["kept", 7, null, "kept", "second", ""] })
+			.pinnedAgents,
+		["kept", "second"],
+		"strings only, deduped, empties dropped",
+	);
+	const many = Array.from({ length: 80 }, (_, index) => `agent-${index}`);
+	assert.equal(
+		parseSidebarView({ pinnedAgents: many }).pinnedAgents.length,
+		PINNED_AGENTS_MAX,
+		"the count is clamped rather than trusted",
+	);
+	assert.deepEqual(DEFAULT_SIDEBAR_VIEW.pinnedAgents, []);
+});
+
 test("the time basis parses like the other two choices: stored, validated, defaulted", () => {
 	assert.equal(parseSidebarView({ basis: "created" }).basis, "created");
 	assert.equal(
@@ -592,6 +633,7 @@ test("the component draws the band's controls and the popover's four groups", ()
 		"data-sidebar-view-options",
 		"data-sidebar-create",
 		"data-sidebar-page-more",
+		"data-sidebar-open-agent",
 	]) {
 		assert.ok(source.includes(hook), `${hook} is not drawn`);
 	}
@@ -621,6 +663,39 @@ test("the component draws the band's controls and the popover's four groups", ()
 	assert.ok(
 		source.includes('aria-label="Search chats and agents"'),
 		"the band's search control has no accessible name",
+	);
+	assert.ok(
+		source.includes('aria-label="Open agent…"'),
+		"the band's agent jump has no accessible name",
+	);
+});
+
+/*
+ * THE AGENT JUMP'S SEED (issue #663): the band control opens the palette and
+ * writes the agents-scope seed, in that order.
+ *
+ * WHAT THIS FILE CAN SAY about it: the two writes exist at the control's own
+ * anchor and in the order the store's shapes want - `openCommandPalette`
+ * raises the flag and does not touch the query, and the seed is written after
+ * it, so both land in the one commit the palette's open-time sync reads. What
+ * the seed MEANS is `palette-search.ts`'s table and is pinned in
+ * `scripts/palette-search.test.mjs`; that the palette then renders seeded is
+ * the story's frame and QA's walk.
+ */
+test("the band's agent jump opens the palette and seeds it to the agent scope", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	const at = source.indexOf("data-sidebar-open-agent");
+	assert.notEqual(at, -1, "the band's Open agent… control is gone");
+	const control = source.slice(at, at + 1_800);
+	assert.ok(
+		control.includes("openCommandPalette()") &&
+			control.includes("setCommandPaletteQuery(AGENT_ROSTER_SEED)"),
+		"the control no longer opens the palette seeded to the agents scope",
+	);
+	assert.ok(
+		control.indexOf("openCommandPalette()") <
+			control.indexOf("setCommandPaletteQuery("),
+		"the seed is written before the open, so an open-time reset would clobber it",
 	);
 });
 
@@ -722,12 +797,15 @@ test("every view setting the popover writes survives a relaunch", () => {
 	const moved = moveSection(hidden, "today", 1);
 	const grouped = { ...moved, groupBy: "flat" };
 	const ordered = { ...grouped, orderBy: "recent" };
-	store.getState().setChatSidebarView(ordered);
+	// The pin is the roster's own field and rides the same object: one press, in
+	// the module's own spelling, so the relaunch below proves it comes back.
+	const pinned = togglePinnedAgent(ordered, "release-captain");
+	store.getState().setChatSidebarView(pinned);
 	// The store is the writer, and the filter the middleware keeps is the one it
 	// ships: assert the field is IN the persisted blob rather than assuming it.
 	assert.deepEqual(
 		persistedUiPreferences(store.getState()).chatSidebarView,
-		ordered,
+		pinned,
 	);
 	// The bytes on disk, parsed the way the next launch parses them.
 	const key = [...memory.keys()].find((entry) => {
@@ -750,6 +828,11 @@ test("every view setting the popover writes survives a relaunch", () => {
 	assert.deepEqual(relaunched.order, ordered.order, "the reorder came back");
 	assert.equal(relaunched.groupBy, "flat", "the grouping came back");
 	assert.equal(relaunched.orderBy, "recent", "the ordering came back");
+	assert.deepEqual(
+		relaunched.pinnedAgents,
+		["release-captain"],
+		"the pin came back",
+	);
 	// And the one control with a non-default value nothing else writes: the page
 	// ladder, whose counter is the only field that can only ever grow.
 	store.getState().setChatSidebarView({ ...relaunched, loads: 2 });

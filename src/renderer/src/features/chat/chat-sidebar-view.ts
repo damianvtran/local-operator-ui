@@ -161,6 +161,17 @@ export type SidebarView = {
 	orderBy: SidebarOrderBy;
 	/** How many times "Load more" has been pressed. 0 is the first page. */
 	loads: number;
+	/**
+	 * The agents the reader pinned, held at the top of the roster.
+	 *
+	 * Keys are the roster ROW's stable id, not a display name - and
+	 * `chat-sidebar-agents.ts` carries the verified finding that on today's
+	 * profile wire the two are one string - because a pin has to outlive a
+	 * rename. Read and written as a SET: the array's own order is not
+	 * load-bearing (the band orders by recency), a key naming no row the roster
+	 * holds is inert rather than invalid, and `PINNED_AGENTS_MAX` bounds it.
+	 */
+	pinnedAgents: string[];
 };
 
 export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
@@ -170,6 +181,7 @@ export const DEFAULT_SIDEBAR_VIEW: SidebarView = {
 	basis: "active",
 	orderBy: "active-first",
 	loads: 0,
+	pinnedAgents: [],
 };
 
 /**
@@ -198,6 +210,20 @@ export const CHAT_PAGE_STEP = 50;
  * 500-row page the store's own cap names, and no stored number may exceed it.
  */
 export const CHAT_PAGE_MAX = 500;
+
+/**
+ * The ceiling on `pinnedAgents`, enforced on read AND on press.
+ *
+ * The same discipline `CHAT_PAGE_MAX` above states for the page counter, one
+ * field over: nothing in the app writes more pins than the roster has agents,
+ * and the parser is the tampered-storage edge of a blob a user can edit by
+ * hand, so the count is clamped rather than trusted. It is a COUNT and not a
+ * validation - the roster the pins name is not loaded at parse time - so a pin
+ * naming an agent the reader no longer holds degrades by being inert, never by
+ * taking the view down. `chat-sidebar-agents.ts`'s `togglePinnedAgent` clamps
+ * its own press to this same bound.
+ */
+export const PINNED_AGENTS_MAX = 64;
 
 /** How many rows a list that has been "load more"-ed `loads` times draws. */
 export function pageLimit(loads: number): number {
@@ -517,6 +543,13 @@ const ORDER_BY: readonly SidebarOrderBy[] = ["active-first", "recent"];
  * tampered `1e9` would ask the list for a page larger than the catalogue it is
  * paging (the store already caps a list read at 500 rows, which is the honest
  * bound and is stated in the sidebar's own note when it is hit).
+ *
+ * `pinnedAgents` is the same clamp one field over, plus the two rules a list of
+ * keys needs: only non-empty STRINGS survive and the list is deduped, first
+ * occurrence winning. Its keys are opaque to THIS module - the roster they name
+ * is not loaded here, so an entry naming no row the roster holds is kept and
+ * inert rather than treated as invalid, which is the difference between a
+ * preference that has outlived an agent and a tampered blob.
  */
 export function parseSidebarView(value: unknown): SidebarView {
 	if (typeof value !== "object" || value === null) return DEFAULT_SIDEBAR_VIEW;
@@ -554,5 +587,16 @@ export function parseSidebarView(value: unknown): SidebarView {
 		typeof raw.loads === "number" && Number.isFinite(raw.loads) && raw.loads > 0
 			? Math.min(CHAT_PAGE_MAX, Math.floor(raw.loads))
 			: 0;
-	return { hidden, order, groupBy, basis, orderBy, loads };
+	const pinnedAgents: string[] = [];
+	if (Array.isArray(raw.pinnedAgents)) {
+		for (const entry of raw.pinnedAgents) {
+			if (typeof entry !== "string") continue;
+			// An empty key can never name a row and does not count against the cap.
+			if (entry === "") continue;
+			if (pinnedAgents.includes(entry)) continue;
+			if (pinnedAgents.length >= PINNED_AGENTS_MAX) break;
+			pinnedAgents.push(entry);
+		}
+	}
+	return { hidden, order, groupBy, basis, orderBy, loads, pinnedAgents };
 }
