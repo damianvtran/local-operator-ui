@@ -33,6 +33,7 @@ const twMerge = extendTailwindMerge({
 						"body",
 						"body-sm",
 						"meta",
+						"meta-sm",
 						"mono",
 						"mono-sm",
 					],

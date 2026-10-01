@@ -1,9 +1,9 @@
 {
-  "session": "1f95eb98cc5f",
-  "backend": "http://127.0.0.1:18111",
+  "session": "b02661d0f2e6",
+  "backend": "http://127.0.0.1:18133",
   "viewport": [
     800,
-    568,
+    600,
     2
   ],
   "press": "Open the plan in run details — 6 to-dos open",
@@ -15,7 +15,7 @@
   "before": {
     "viewport": [
       800,
-      568,
+      600,
       2
     ],
     "paneOpen": false,
@@ -28,7 +28,11 @@
       "closeControl": null,
       "closeControlHit": null,
       "elidedRows": 0,
-      "cutRows": 0
+      "cutRows": 0,
+      "collapsedTextRows": 0,
+      "outsideRegionRows": 0,
+      "collapsedTextExamples": [],
+      "outsideRegionExamples": []
     },
     "scrollBoxes": [
       {
@@ -40,11 +44,11 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 412,
-        "left": 526
+        "top": 442,
+        "left": 90
       },
       {
-        "name": "div|w-full.@min-[750px]/chatcol:max-w-[900px].@min-[750px]/chatcol:mx-auto",
+        "name": "div|flex.min-w-0.flex-wrap",
         "isRegion": false,
         "overflowY": "visible",
         "overflowX": "visible",
@@ -52,8 +56,20 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 412,
-        "left": 524
+        "top": 442,
+        "left": 96
+      },
+      {
+        "name": "div|w-full.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)].@min-[750px]/chatcol:mx-auto",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 442,
+        "left": 80
       },
       {
         "name": "form|w-full",
@@ -64,8 +80,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 412,
-        "left": 524
+        "top": 442,
+        "left": 80
       },
       {
         "name": "div|w-full",
@@ -76,8 +92,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 412,
-        "left": 524
+        "top": 442,
+        "left": 80
       },
       {
         "name": "div|@container/chatcol.flex.w-full",
@@ -88,8 +104,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 410,
-        "left": 500
+        "top": 434,
+        "left": 56
       },
       {
         "name": "div|flex.h-full.min-h-0",
@@ -100,8 +116,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|relative.h-full.w-0",
@@ -112,8 +128,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|relative.flex.h-full",
@@ -124,8 +140,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|min-h-0.flex-1",
@@ -136,8 +152,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|flex.h-full.min-h-0",
@@ -148,8 +164,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|min-h-0.flex-1",
@@ -160,8 +176,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|flex.h-full.min-h-0",
@@ -172,32 +188,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
-      },
-      {
-        "name": "div|h-full.grow.overflow-hidden",
-        "isRegion": false,
-        "overflowY": "hidden",
-        "overflowX": "hidden",
-        "scrollTop": 0,
-        "scrollLeft": 0,
-        "verticalOverflow": 0,
-        "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
-      },
-      {
-        "name": "div|flex.h-full.w-full",
-        "isRegion": false,
-        "overflowY": "hidden",
-        "overflowX": "hidden",
-        "scrollTop": 0,
-        "scrollLeft": 0,
-        "verticalOverflow": 0,
-        "horizontalOverflow": 0,
-        "top": 0,
-        "left": 220
+        "top": 32,
+        "left": 56
       },
       {
         "name": "main|flex.grow.flex-col",
@@ -208,8 +200,56 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
+        "top": 32,
+        "left": 56
+      },
+      {
+        "name": "div|flex.h-full.min-w-0",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 32,
+        "left": 56
+      },
+      {
+        "name": "div|flex.min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 32,
+        "left": 0
+      },
+      {
+        "name": "div|flex.min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
         "top": 0,
-        "left": 220
+        "left": 0
+      },
+      {
+        "name": "div|flex.min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
       },
       {
         "name": "div|relative.flex.h-screen",
@@ -248,7 +288,7 @@
         "left": 0
       },
       {
-        "name": "html|dark",
+        "name": "html|",
         "isRegion": false,
         "overflowY": "hidden",
         "overflowX": "hidden",
@@ -261,35 +301,25 @@
       }
     ],
     "surfaces": {
-      "iconRailAndList": {
-        "top": 0,
-        "left": 0,
-        "width": 220,
-        "height": 568
-      },
-      "chatList": {
-        "top": 0,
-        "left": 220,
-        "width": 280,
-        "height": 568
-      },
+      "iconRailAndList": null,
+      "chatList": null,
       "chatColumn": {
-        "top": 56,
-        "left": 500,
-        "width": 300,
-        "height": 354
+        "top": 72,
+        "left": 56,
+        "width": 744,
+        "height": 362
       },
       "transcript": {
-        "top": 56,
-        "left": 500,
-        "width": 300,
-        "height": 354
+        "top": 72,
+        "left": 56,
+        "width": 744,
+        "height": 362
       },
       "composerBand": {
-        "top": 410,
-        "left": 500,
-        "width": 300,
-        "height": 158
+        "top": 434,
+        "left": 56,
+        "width": 744,
+        "height": 166
       },
       "runPane": null,
       "todosSection": null
@@ -298,7 +328,7 @@
   "after": {
     "viewport": [
       800,
-      568,
+      600,
       2
     ],
     "paneOpen": true,
@@ -314,8 +344,12 @@
         "insideViewport": true
       },
       "closeControlHit": true,
-      "elidedRows": 49,
-      "cutRows": 0
+      "elidedRows": 14,
+      "cutRows": 0,
+      "collapsedTextRows": 0,
+      "outsideRegionRows": 0,
+      "collapsedTextExamples": [],
+      "outsideRegionExamples": []
     },
     "scrollBoxes": [
       {
@@ -327,11 +361,11 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 386,
-        "left": 526
+        "top": 478,
+        "left": 82
       },
       {
-        "name": "div|w-full.@min-[750px]/chatcol:max-w-[900px].@min-[750px]/chatcol:mx-auto",
+        "name": "div|flex.min-w-0.flex-wrap",
         "isRegion": false,
         "overflowY": "visible",
         "overflowX": "visible",
@@ -339,8 +373,20 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 386,
-        "left": 524
+        "top": 478,
+        "left": 88
+      },
+      {
+        "name": "div|w-full.@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)].@min-[750px]/chatcol:mx-auto",
+        "isRegion": false,
+        "overflowY": "visible",
+        "overflowX": "visible",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 478,
+        "left": 80
       },
       {
         "name": "form|w-full",
@@ -351,8 +397,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 386,
-        "left": 524
+        "top": 478,
+        "left": 80
       },
       {
         "name": "div|w-full",
@@ -363,8 +409,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 386,
-        "left": 524
+        "top": 478,
+        "left": 80
       },
       {
         "name": "div|@container/chatcol.flex.w-full",
@@ -375,8 +421,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 384,
-        "left": 500
+        "top": 476,
+        "left": 56
       },
       {
         "name": "div|flex.h-full.min-h-0",
@@ -387,8 +433,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|relative.h-full.w-0",
@@ -399,8 +445,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|relative.flex.h-full",
@@ -411,8 +457,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|min-h-0.flex-1",
@@ -423,8 +469,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|flex.h-full.min-h-0",
@@ -435,8 +481,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|min-h-0.flex-1",
@@ -447,8 +493,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
+        "top": 32,
+        "left": 56
       },
       {
         "name": "div|flex.h-full.min-h-0",
@@ -459,32 +505,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
-      },
-      {
-        "name": "div|h-full.grow.overflow-hidden",
-        "isRegion": false,
-        "overflowY": "hidden",
-        "overflowX": "hidden",
-        "scrollTop": 0,
-        "scrollLeft": 0,
-        "verticalOverflow": 0,
-        "horizontalOverflow": 0,
-        "top": 0,
-        "left": 500
-      },
-      {
-        "name": "div|flex.h-full.w-full",
-        "isRegion": false,
-        "overflowY": "hidden",
-        "overflowX": "hidden",
-        "scrollTop": 0,
-        "scrollLeft": 0,
-        "verticalOverflow": 0,
-        "horizontalOverflow": 0,
-        "top": 0,
-        "left": 220
+        "top": 32,
+        "left": 56
       },
       {
         "name": "main|flex.grow.flex-col",
@@ -495,8 +517,56 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
+        "top": 32,
+        "left": 56
+      },
+      {
+        "name": "div|flex.h-full.min-w-0",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 32,
+        "left": 56
+      },
+      {
+        "name": "div|flex.min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 32,
+        "left": 0
+      },
+      {
+        "name": "div|flex.min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
         "top": 0,
-        "left": 220
+        "left": 0
+      },
+      {
+        "name": "div|flex.min-h-0.flex-1",
+        "isRegion": false,
+        "overflowY": "hidden",
+        "overflowX": "hidden",
+        "scrollTop": 0,
+        "scrollLeft": 0,
+        "verticalOverflow": 0,
+        "horizontalOverflow": 0,
+        "top": 0,
+        "left": 0
       },
       {
         "name": "div|relative.flex.h-screen",
@@ -535,7 +605,7 @@
         "left": 0
       },
       {
-        "name": "html|dark",
+        "name": "html|",
         "isRegion": false,
         "overflowY": "hidden",
         "overflowX": "hidden",
@@ -555,8 +625,8 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 40,
-        "left": 721
+        "top": 72,
+        "left": 536
       },
       {
         "name": "div|flex.flex-col",
@@ -566,9 +636,9 @@
         "scrollTop": 0,
         "scrollLeft": 0,
         "verticalOverflow": 0,
-        "horizontalOverflow": 141,
-        "top": 40,
-        "left": 721
+        "horizontalOverflow": 0,
+        "top": 72,
+        "left": 536
       },
       {
         "name": "div|min-h-0.flex-1.overflow-y-auto",
@@ -577,10 +647,10 @@
         "overflowX": "auto",
         "scrollTop": 0,
         "scrollLeft": 0,
-        "verticalOverflow": 203,
-        "horizontalOverflow": 141,
-        "top": 40,
-        "left": 721
+        "verticalOverflow": 174,
+        "horizontalOverflow": 0,
+        "top": 72,
+        "left": 536
       },
       {
         "name": "section|flex.h-full.flex-col",
@@ -591,11 +661,11 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 721
+        "top": 32,
+        "left": 536
       },
       {
-        "name": "div|relative.h-full.shrink",
+        "name": "div|relative.h-full.overflow-hidden",
         "isRegion": false,
         "overflowY": "hidden",
         "overflowX": "hidden",
@@ -603,51 +673,41 @@
         "scrollLeft": 0,
         "verticalOverflow": 0,
         "horizontalOverflow": 0,
-        "top": 0,
-        "left": 720
+        "top": 32,
+        "left": 536
       }
     ],
     "surfaces": {
-      "iconRailAndList": {
-        "top": 0,
-        "left": 0,
-        "width": 220,
-        "height": 568
-      },
-      "chatList": {
-        "top": 0,
-        "left": 220,
-        "width": 280,
-        "height": 568
-      },
+      "iconRailAndList": null,
+      "chatList": null,
       "chatColumn": {
-        "top": 56,
-        "left": 500,
-        "width": 220,
-        "height": 328
+        "top": 72,
+        "left": 56,
+        "width": 480,
+        "height": 404
       },
       "transcript": {
-        "top": 56,
-        "left": 500,
-        "width": 220,
-        "height": 328
+        "top": 72,
+        "left": 56,
+        "width": 480,
+        "height": 404
       },
       "composerBand": {
-        "top": 384,
-        "left": 500,
-        "width": 220,
-        "height": 184
+        "top": 476,
+        "left": 56,
+        "width": 480,
+        "height": 124
       },
       "runPane": {
-        "top": 0,
-        "left": 721,
-        "width": 79,
+        "top": 32,
+        "left": 536,
+        "width": 264,
         "height": 568
       },
       "todosSection": {
-        "top": 40,
-        "left": 721,
-        "width": 71,
+        "top": 72,
+        "left": 536,
+        "width": 256,
         "height": 227.4
       }
     }
