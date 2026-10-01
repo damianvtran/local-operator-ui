@@ -1911,6 +1911,12 @@ MERGE_SHA=$(gh pr view <claim-pr-number> --json mergeCommit --jq .mergeCommit.oi
 #    hand-written from the template. Anything merged since step 1 rides this tag —
 #    the tag names a SHA and everything reachable from it ships — so this is the
 #    moment the notes' PR list is composed, not when the window was claimed.
+#    The range includes the release's own bump PR (it merged after the
+#    predecessor tag) - exclude it by number: `## PRs` lists the window's
+#    content PRs, as every release since v0.31.24 has done.
+#    Scan the notes body for working markers before creating the Release
+#    (`grep -inE '^# *draft|re-verify'`): v0.31.27 shipped a "# DRAFT" heading
+#    and needed a post-publish edit (2026-10-01).
 git log --first-parent --oneline v<PREV>..origin/main
 cp .github/RELEASE_TEMPLATE.md /tmp/vX.Y.Z.md && $EDITOR /tmp/vX.Y.Z.md
 gh release create vX.Y.Z --target "$MERGE_SHA" --prerelease \

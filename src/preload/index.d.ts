@@ -14,6 +14,7 @@ import type {
 	ReadFileBytesResponse,
 } from "../shared/desktop-contract";
 import type {
+	MiniViewDialogPayload,
 	MiniViewDismissReason,
 	MiniViewRegistrationState,
 	MiniViewSummonedPayload,
@@ -84,6 +85,14 @@ declare global {
 					callback: (payload: MiniViewSummonedPayload) => void,
 				) => () => void;
 				dismiss: (reason: MiniViewDismissReason) => Promise<void>;
+				/** The content height this frame needs; main clamps and resizes. */
+				resize: (height: number) => void;
+				/** This document has committed its first paint; the window may be shown. */
+				painted: () => void;
+				/** A native dialog on this window opened or closed (blur latch). */
+				onDialog: (
+					callback: (payload: MiniViewDialogPayload) => void,
+				) => () => void;
 				onRegistration: (
 					callback: (state: MiniViewRegistrationState) => void,
 				) => () => void;

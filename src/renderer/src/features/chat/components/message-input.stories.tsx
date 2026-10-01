@@ -97,9 +97,12 @@ import "./story-electron-shim";
  *
  * THREE ops, which is the whole of what the list needs: `capabilities` and
  * `commands.list` to exist, and `commands.entities` for the argument list that
- * `/model` opens. Everything else is a 5xx, deliberately: a story that starts
- * depending on another op should say so loudly rather than render the popup's own
- * "not reported yet." copy and look like an empty registry.
+ * `/model` opens. THE THREE SESSIONLESS OPS JOINED THEM with the provider/MCP
+ * lists — `providers.list`, `accounts.list`, `mcp.catalog` — because `/login`,
+ * `/logout` and `/mcp` now open lists of their own. Everything else is a 5xx,
+ * deliberately: a story that starts depending on another op should say so loudly
+ * rather than render the popup's own "not reported yet." copy and look like an
+ * empty registry.
  *
  * ABSENT, not faked: `desktop.capture`/`stream`/`media` and every native channel.
  * This stands up a decision surface; it is not an app.
@@ -215,10 +218,15 @@ const SLASH_COMMANDS: SlashCommandMeta[] = [
 	),
 	slashCommand("exit", "Quit the app", "window.close"),
 	slashCommand("login", "Authenticate a provider", "auth.login", {
-		arguments: "optional",
+		/*
+		 * REQUIRED and `provider`-shaped, the registry's own declaration
+		 * (`slash_commands.py`) — the provider list IS the command, and completing
+		 * the word opens it rather than submitting a bare no-op.
+		 */
+		arguments: "required",
 	}),
 	slashCommand("logout", "Remove stored provider credentials", "auth.logout", {
-		arguments: "optional",
+		arguments: "required",
 	}),
 	slashCommand(
 		"loop",
@@ -244,6 +252,17 @@ const SLASH_COMMANDS: SlashCommandMeta[] = [
 		"Name this conversation, or /title --refresh",
 		"session.rename",
 		{ arguments: "optional", aliases: ["title"], argument_shape: "any" },
+	),
+	/*
+	 * `/mcp`, the registry's own row: OPTIONAL (bare `/mcp` answers the listing,
+	 * so Enter still sends it) and SUBCOMMAND-shaped. The verb list and the
+	 * server slot are the two halves the new inline source draws.
+	 */
+	slashCommand(
+		"mcp",
+		"List MCP servers; add/remove one, or manage an OAuth grant",
+		"mcp",
+		{ arguments: "optional", argument_shape: "subcommand" },
 	),
 ];
 
@@ -276,6 +295,200 @@ const MODEL_ROWS = [
 		output_price: 10,
 	},
 ];
+
+/*
+ * THE PROVIDER REGISTRY'S OWN ROWS, in the census's wire shape with the
+ * `provider_catalogue` fields (brand / state / search_aliases). The subset is
+ * chosen for the gestures the slash-enter rig drives: `openai` for the
+ * operator's `/login ope…` repro (its `search_aliases` are the registry's own
+ * `gpt`/`chatgpt`/`codex`), `anthropic` as a logged-in row with one stored
+ * account, `openai` again as a MULTI-account logout row, and providers in each
+ * of the remaining states so the detail column's whole vocabulary is on
+ * screen.
+ */
+const PROVIDER_ROWS = [
+	{
+		id: "openai",
+		name: "OpenAI (ChatGPT Plus/Pro)",
+		brand: "OpenAI",
+		search_aliases: ["gpt", "chatgpt", "codex"],
+		state: "logged_in",
+		stored_credentials: 2,
+	},
+	{
+		id: "anthropic",
+		name: "Anthropic (Claude Pro/Max)",
+		brand: "Anthropic",
+		search_aliases: ["claude", "sonnet"],
+		state: "logged_in",
+		stored_credentials: 1,
+	},
+	{
+		id: "deepseek",
+		name: "DeepSeek",
+		brand: "DeepSeek",
+		search_aliases: ["ds"],
+		state: "env_key",
+		stored_credentials: 0,
+	},
+	{
+		id: "xai",
+		name: "xAI (Grok API key)",
+		brand: "xAI",
+		search_aliases: ["grok"],
+		state: "needs_login",
+		stored_credentials: 0,
+	},
+	{
+		id: "openrouter",
+		name: "OpenRouter",
+		brand: "OpenRouter",
+		search_aliases: ["or", "router"],
+		state: "needs_login",
+		stored_credentials: 0,
+	},
+];
+
+/*
+ * The stored credentials `/logout` reads, one row per CREDENTIAL as
+ * `/v1/auth/status` answers them. `anthropic` holds exactly one (so the row
+ * carries its identity), `openai` holds two of different kinds (so the row
+ * says how many it would remove and states no identity) — the two shapes the
+ * TUI's logout list distinguishes, photographed in one frame.
+ */
+const ACCOUNT_ROWS = [
+	{
+		id: 1,
+		provider: "openai",
+		type: "oauth",
+		identity_label: "damian@example.com",
+		source: "oauth",
+		state: "configured",
+	},
+	{
+		id: 2,
+		provider: "openai",
+		type: "api_key",
+		identity_label: "Stored credential",
+		source: "api_key",
+		state: "configured",
+	},
+	{
+		id: 3,
+		provider: "anthropic",
+		type: "oauth",
+		identity_label: "damian@example.com",
+		source: "oauth",
+		state: "configured",
+	},
+];
+
+/*
+ * The sessionless MCP catalog, verbs included (`mcp_catalog: 2`): four servers
+ * chosen so every `offers` policy has rows — `linear` (OAuth-capable, signed
+ * out), `github` (connected, so both `reauth` and `logout` act on it),
+ * `postgres-prod` (key-based: no OAuth action at all) and `borrowed-github`
+ * (imported from another tool's config, which `remove` shows by path).
+ */
+const MCP_CATALOG = {
+	cwd: "/Users/you/projects/acme",
+	project_scope_available: true,
+	global_path: "/Users/you/.local-operator/mcp.json",
+	project_path: "/Users/you/projects/acme/.local-operator/mcp.json",
+	status_source: "config",
+	session_id: null,
+	servers: [
+		{
+			id: "linear",
+			name: "linear",
+			scope: "global",
+			transport: "http",
+			status: "connecting",
+			auth: { kind: "oauth", signed_in: false },
+			actions: ["test", "sign_in", "remove"],
+			source: {
+				kind: "local-operator",
+				path: "/Users/you/.local-operator/mcp.json",
+			},
+		},
+		{
+			id: "github",
+			name: "github",
+			scope: "global",
+			transport: "http",
+			status: "connected",
+			auth: { kind: "oauth", signed_in: true },
+			actions: ["test", "reauth", "sign_out", "remove"],
+			source: {
+				kind: "local-operator",
+				path: "/Users/you/.local-operator/mcp.json",
+			},
+		},
+		{
+			id: "postgres-prod",
+			name: "postgres-prod",
+			scope: "project",
+			transport: "local_command",
+			status: "needs_sign_in",
+			auth: { kind: "api_key" },
+			actions: ["test", "set_key", "remove"],
+			source: {
+				kind: "local-operator",
+				path: "/Users/you/projects/acme/.local-operator/mcp.json",
+			},
+		},
+		{
+			id: "borrowed-github",
+			name: "borrowed-github",
+			scope: "global",
+			transport: "http",
+			status: "not_started",
+			auth: { kind: "oauth", signed_in: false },
+			actions: ["test", "sign_in"],
+			source: { kind: "cursor", path: "/Users/you/.cursor/mcp.json" },
+		},
+	],
+	verbs: [
+		{
+			verb: "list",
+			description: "Show every configured server and its status",
+			destructive: false,
+			offers: null,
+		},
+		{
+			verb: "add",
+			description: "Configure a new server (url, or a stdio command)",
+			destructive: false,
+			offers: null,
+		},
+		{
+			verb: "remove",
+			description: "Delete a server from local-operator's config",
+			destructive: true,
+			offers: "all",
+		},
+		{
+			verb: "login",
+			description: "Authorize an OAuth server (opens the browser)",
+			destructive: false,
+			offers: "oauth",
+		},
+		{
+			verb: "logout",
+			description: "Forget a server's stored OAuth credential",
+			destructive: true,
+			offers: "signed_in",
+		},
+		{
+			verb: "reauth",
+			description:
+				"Forget first, then authorize — for an account or scope change",
+			destructive: true,
+			offers: "oauth",
+		},
+	],
+	operations: [],
+};
 
 /*
  * The composer-cluster story's SCENARIO knobs, in the two dimensions the
@@ -321,6 +534,8 @@ storyWindow.api = {
 								commands: 1,
 								session_catalogue: 1,
 								catalogues: 1,
+								provider_catalogue: 1,
+								mcp_catalog: 2,
 								/*
 								 * The sessionless skills read: present by default, absent in the
 								 * `old-backend` scenario — which is the state the durable notice
@@ -345,6 +560,23 @@ storyWindow.api = {
 							current: null,
 						},
 					},
+				};
+			/*
+			 * The three sessionless ops the new lists read, under the same envelopes
+			 * their real routes answer with (`{providers}`, `{accounts}` and the
+			 * control result `{data, replayed}`).
+			 */
+			if (request.op === "providers.list")
+				return {
+					status: 200,
+					body: { result: { providers: PROVIDER_ROWS } },
+				};
+			if (request.op === "accounts.list")
+				return { status: 200, body: { result: { accounts: ACCOUNT_ROWS } } };
+			if (request.op === "mcp.catalog")
+				return {
+					status: 200,
+					body: { result: { data: MCP_CATALOG, replayed: false } },
 				};
 			if (request.op === "skills.list") {
 				/*
@@ -397,7 +629,7 @@ storyWindow.api = {
 			return {
 				status: 503,
 				body: {
-					detail: `The slash-gesture fixture answers capabilities, commands.list, commands.entities and skills.list only; ${request.op} is not one of them.`,
+					detail: `The slash-gesture fixture answers capabilities, commands.list, commands.entities, skills.list, providers.list, accounts.list and mcp.catalog only; ${request.op} is not one of them.`,
 				},
 			};
 		},
