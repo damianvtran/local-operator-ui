@@ -615,6 +615,40 @@ export function alignWalkRunFromPlan(
 }
 
 /**
+ * The walk key a RENDER may act on: the plan's cut-run key, confirmed against
+ * the store (agent review round 1, R1).
+ *
+ * `plan` is built over `visible` - the MOUNTED window, a suffix of the store -
+ * so its leading run can read `opensWithUserRow: false` for a reason that is not
+ * the store's: a settled run TALLER than the snap's completed-run allowance
+ * keeps the ordinary snap, so the raw window edge sits inside it and the plan
+ * sees a run whose opening row it cannot show, while the STORE holds that run
+ * whole. The walk's own question is "a run whose opening user row is not in the
+ * STORE", and only the store can answer it. So the plan's key stands only when
+ * the store's run under the SAME edge (the plan's window top) is head-cut too,
+ * and names the same run. `windowTopRun` returns null when the window covers the
+ * whole list, and then the plan IS the store's own view - it needs no second
+ * opinion.
+ *
+ * Without this the walk fetched up to `ALIGN_WALK_MAX_PAGES` pages for a run it
+ * could never help: a prepend shifts the edge and the run's opening row equally,
+ * so `extra` stays past the allowance and the snap still refuses (the same
+ * reasoning `WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA` exists for).
+ */
+export function alignWalkRunKeyConfirmed(
+	plan: CollapsePlan,
+	rows: Row[],
+	windowSize: number,
+	openRuns?: ReadonlySet<string>,
+): string | null {
+	const key = alignWalkRunFromPlan(plan, openRuns);
+	if (key === null) return null;
+	const storeTop = windowTopRun(rows, windowSize);
+	if (storeTop === null) return key;
+	return !storeTop.opensWithUserRow && storeTop.key === key ? key : null;
+}
+
+/**
  * What a window of this size actually PUTS ON SCREEN, in rows.
  *
  * THE READER'S CURRENCY (operator report, 2026-09-29: "the full set of condensed
