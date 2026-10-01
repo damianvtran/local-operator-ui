@@ -46,6 +46,12 @@ RULES, and they are enforced rather than advisory:
    rather than prose, so a forgotten one renders as nothing - but the raw body
    would still carry the rules, and the raw body is what the Release shows to
    anyone reading the JSON.
+   **Strip every working marker with it.** The notes file may not ship a
+   `# DRAFT` heading, a `re-verify` line or any scratch note: scan the body
+   (`grep -inE '^# *draft|re-verify'`) right before `gh release create`.
+   v0.31.27 shipped its draft heading to the published notes and needed a
+   post-publish body edit (2026-10-01) - this scan is the check that prevents
+   the repeat.
 -->
 
 ## What's New
