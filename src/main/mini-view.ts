@@ -37,6 +37,7 @@
 
 import {
 	BrowserWindow,
+	type IpcMainEvent,
 	type IpcMainInvokeEvent,
 	app,
 	ipcMain,
@@ -45,10 +46,14 @@ import {
 import {
 	MINI_VIEW_DISMISS,
 	MINI_VIEW_HEIGHT,
+	MINI_VIEW_MAX_HEIGHT,
+	MINI_VIEW_PAINTED,
+	MINI_VIEW_RESIZE,
 	MINI_VIEW_SUMMONED,
 	MINI_VIEW_WIDTH,
 	type MiniViewSummonedPayload,
 	isMiniViewDismissReason,
+	isMiniViewResizePayload,
 } from "../shared/mini-view";
 import { windowChromeArgumentFor } from "../shared/window-chrome";
 import type { WindowChromeMode } from "../shared/window-chrome";
@@ -94,6 +99,79 @@ export interface MiniView {
 	dispose(): void;
 }
 
+/**
+ * The mini window's GROUND, painted by the window itself before any document
+ * has rendered.
+ *
+ * WHY IT EXISTS AT ALL. A frameless window on macOS paints WHITE under an
+ * unpainted document, and the shipped defect this answers was exactly that: the
+ * popup opened as a blank white rounded card (each new renderer read a swapped
+ * bundle through a stale main process, so its first load never committed). The
+ * show-after-ready handshake below is the primary guard - this is the belt for
+ * the frame between `show()` and the compositor's first frame, and it is the
+ * dark theme's own canvas ground rather than a new colour.
+ */
+export const MINI_VIEW_GROUND = "#22201c";
+
+/**
+ * How long presentation waits for the renderer's first-commit signal.
+ *
+ * The signal is the guard that matters; this is what stops a load that never
+ * commits (a mangled bundle, a renderer that died before paint, a document that
+ * fails to parse) from leaving a summons unanswered. On expiry the error card is
+ * loaded and shown instead of the blank window.
+ */
+export const MINI_VIEW_PAINT_TIMEOUT_MS = 1500;
+
+/**
+ * What a summon should do, given the plan and the renderer's readiness.
+ *
+ * PURE, and exported for the same reason `miniViewUrlFor` is: it is the whole
+ * decision, and the harness can drive every arm without constructing a window
+ * (the electron stub deliberately does not fake one). `wait` is the state the
+ * shipped build was missing - it presented whenever the plan said it could,
+ * with no idea whether the document behind it had painted anything.
+ */
+export type MiniViewPresentation = "present" | "wait" | "error-surface";
+
+export function miniViewPresentationFor(input: {
+	show: WindowShow;
+	painted: boolean;
+	timedOut: boolean;
+}): MiniViewPresentation {
+	// A plan that may not present never waits: nothing is going to be shown, so
+	// there is no blank card to prevent and no reason to hold a timer.
+	if (input.show !== "focus") return "present";
+	if (input.painted) return "present";
+	if (input.timedOut) return "error-surface";
+	return "wait";
+}
+
+/**
+ * The load-failure card: a static document, dark, one honest sentence.
+ *
+ * HELD IN MAIN, as a `data:` URL, deliberately. Every other surface in this app
+ * is a bundle the renderer must parse - and the failure this card answers is
+ * precisely "the renderer could not produce a document", so a card that needed
+ * its own bundle could fail with it. It carries no script (nothing to be blocked
+ * by a CSP, nothing to throw) and no external fetch: `did-finish-load` on it is
+ * the only readiness it needs.
+ */
+export function miniViewErrorSurfaceHtml(): string {
+	return `<!doctype html>
+<html><head><meta charset="utf-8" /><title>Quick send</title>
+<style>
+	:root { color-scheme: dark; }
+	html, body { margin: 0; height: 100%; background: ${MINI_VIEW_GROUND}; }
+	body { display: flex; align-items: center; padding: 0 16px;
+		font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+		color: #c2bcb0; }
+	p { margin: 0; }
+	strong { font-weight: 600; color: #ef8078; }
+</style></head>
+<body><p><strong>Quick send could not open.</strong> Try the hotkey again, or restart Local Operator if it keeps failing.</p></body></html>`;
+}
+
 export interface MiniViewOptions {
 	/** The mini document's URL (`miniViewUrlFor`'s answer). */
 	url: string;
@@ -121,12 +199,16 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 		width: MINI_VIEW_WIDTH,
 		height: MINI_VIEW_HEIGHT,
 		/*
-		 * Sized in content, not window, terms: the design fixes the COMPOSER at
-		 * 640x168 and the frames are captured and reviewed at that size, so the
-		 * page's viewport is the number that must be exact on every platform.
+		 * Sized in content, not window, terms, and the content size is now the
+		 * BASE of a measured range rather than the whole story: the restyle's
+		 * chrome (previews, the readings strip, the picker sheet) asks for more
+		 * through `MINI_VIEW_RESIZE` below, and this call is what makes the
+		 * page's viewport the number every frame is captured at.
 		 */
 		useContentSize: true,
 		show: false,
+		/* The dark ground under an as-yet-unpainted document; see MINI_VIEW_GROUND. */
+		backgroundColor: MINI_VIEW_GROUND,
 		// A composer that floats over other apps carries no frame of its own:
 		// the app's own rows are the entire surface, and the one sanctioned
 		// elevation step is the card's ground.
@@ -182,7 +264,150 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 		window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 	}
 
+	/*
+	 * THE READINESS LATCH (see `MINI_VIEW_PAINTED`). `painted` is per LOAD, not
+	 * per window: a reload (the evidence scene does one, and a future update
+	 * would) must not inherit the previous document's readiness.
+	 */
+	let paintedForLoad = false;
+	let paintTimer: NodeJS.Timeout | null = null;
+	let paintWaiters: Array<() => void> = [];
+
+	const settlePaint = (ready: boolean): void => {
+		if (paintTimer !== null) {
+			clearTimeout(paintTimer);
+			paintTimer = null;
+		}
+		paintedForLoad = ready;
+		const waiting = paintWaiters;
+		paintWaiters = [];
+		for (const resolve of waiting) resolve();
+	};
+
+	/** The card that stands in when no document can: dark, static, unscriptable. */
+	const showErrorSurface = (): void => {
+		if (disposed || window.isDestroyed()) return;
+		settlePaint(false);
+		void window.loadURL(
+			`data:text/html;charset=utf-8,${encodeURIComponent(miniViewErrorSurfaceHtml())}`,
+		);
+		/*
+		 * PRESENTED ON ITS OWN LOAD, and only if the plan allows presentation at all
+		 * (`presentMiniView` is the one sanctioned raise). The card is main's own
+		 * string, so there is no bundle left to fail - which is the entire point of
+		 * holding it here rather than shipping it.
+		 */
+		window.webContents.once("did-finish-load", () => {
+			if (disposed || window.isDestroyed()) return;
+			positionForCursorDisplay();
+			presentMiniView(window, options.show, {
+				trigger: "mini-view",
+				report: options.report,
+			});
+			if (options.show === "focus") {
+				window.webContents.send(MINI_VIEW_SUMMONED, {
+					at: Date.now(),
+				} satisfies MiniViewSummonedPayload);
+			}
+		});
+	};
+
+	window.webContents.on("did-start-loading", () => {
+		paintedForLoad = false;
+	});
+	/*
+	 * A LOAD THAT FAILED IS A WINDOW WITH NOTHING IN IT. `did-fail-load` covers the
+	 * ordinary cases (a missing file, a refused scheme); `render-process-gone`
+	 * covers the renderer that died before or after it painted - the shipped
+	 * white-card report was a mangled load through a stale main process, which may
+	 * or may not raise `did-fail-load` at all, so the paint timeout below is the
+	 * backstop that does not depend on either signal firing.
+	 */
+	window.webContents.on(
+		"did-fail-load",
+		(_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+			if (!isMainFrame) return;
+			options.report?.(
+				`[mini-view] load failed (${errorCode} ${errorDescription}) for ${validatedURL}; showing the error card`,
+			);
+			showErrorSurface();
+		},
+	);
+	window.webContents.on("render-process-gone", (_event, details) => {
+		options.report?.(
+			`[mini-view] renderer gone (${details.reason}); showing the error card`,
+		);
+		showErrorSurface();
+	});
+
 	void window.loadURL(options.url);
+
+	/*
+	 * THE MEASURED RESIZE (design R2's mechanism). The frame is the only thing
+	 * that can measure its own content, so it sends what it needs and this
+	 * handler is the only thing that may grant it: the height is clamped to
+	 * [base, `MINI_VIEW_MAX_HEIGHT`] and to the display's work area (minus a
+	 * margin), the WIDTH never moves, and the TOP EDGE is held so growth goes
+	 * downward from where the summon put the window. If a growth would cross
+	 * the work area's bottom the window is lifted just enough to fit.
+	 *
+	 * Fire-and-forget (`ipcMain.on`): the renderer re-measures on every layout
+	 * settle and there is no answer to await; the clamp is this side's, and a
+	 * request that changes nothing is a no-op rather than a round trip.
+	 */
+	const onResize = (event: IpcMainEvent, payload: unknown): void => {
+		if (
+			window.isDestroyed() ||
+			event.sender !== window.webContents ||
+			event.senderFrame !== window.webContents.mainFrame
+		) {
+			return;
+		}
+		if (!isMiniViewResizePayload(payload)) return;
+		const area = screen.getDisplayMatching(window.getBounds()).workArea;
+		/* The margin keeps a fully grown frame off the work area's edges. */
+		const ceiling = Math.max(
+			MINI_VIEW_HEIGHT,
+			Math.min(MINI_VIEW_MAX_HEIGHT, area.height - 64),
+		);
+		const height = Math.max(
+			MINI_VIEW_HEIGHT,
+			Math.min(Math.round(payload.height), ceiling),
+		);
+		const bounds = window.getContentBounds();
+		if (bounds.height === height) return;
+		window.setContentSize(MINI_VIEW_WIDTH, height);
+		const bottom = bounds.y + height;
+		if (bottom > area.y + area.height) {
+			window.setPosition(
+				bounds.x,
+				Math.max(area.y, area.y + area.height - height),
+			);
+		}
+	};
+	/*
+	 * NO `removeListener` BEFORE THE `on`: `onResize` is a fresh closure per creation,
+	 * so its identity never matched a predecessor's (reviewer N2 - the line could
+	 * not do what it read as doing). `dispose()` below is what actually removes it,
+	 * and it is reached by every path that tears a mini view down.
+	 */
+	ipcMain.on(MINI_VIEW_RESIZE, onResize);
+
+	/*
+	 * THE FIRST-COMMIT SIGNAL, from the frame's own mount (see MINI_VIEW_PAINTED).
+	 * Sender-guarded like every other channel here: only the mini document's own
+	 * main frame may declare it painted.
+	 */
+	const onPainted = (event: IpcMainEvent): void => {
+		if (
+			window.isDestroyed() ||
+			event.sender !== window.webContents ||
+			event.senderFrame !== window.webContents.mainFrame
+		)
+			return;
+		settlePaint(true);
+	};
+	ipcMain.on(MINI_VIEW_PAINTED, onPainted);
 
 	let disposed = false;
 
@@ -244,6 +469,77 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 		hide();
 	});
 
+	/**
+	 * Present the window - once its document has painted, or with the card.
+	 *
+	 * THE HANDSHAKE (the shipped white-card fix). `presentMiniView` is called only
+	 * when the renderer has signalled its first commit, so a summon can never show
+	 * an unpainted window; a document that never signals is answered by the timeout,
+	 * which swaps in the error card. A plan that may not present takes the
+	 * `present` arm immediately: nothing is shown, so there is nothing to wait for.
+	 */
+	function presentWhenReady(): void {
+		if (disposed || window.isDestroyed()) return;
+		const decision = miniViewPresentationFor({
+			show: options.show,
+			painted: paintedForLoad,
+			timedOut: false,
+		});
+		if (decision === "error-surface") {
+			showErrorSurface();
+			return;
+		}
+		if (decision === "present") {
+			presentNow();
+			return;
+		}
+		/* `wait`: the signal, or the timeout that stands the error card in. */
+		paintWaiters.push(() => {
+			if (
+				miniViewPresentationFor({
+					show: options.show,
+					painted: paintedForLoad,
+					timedOut: false,
+				}) === "present"
+			)
+				presentNow();
+		});
+		if (paintTimer === null) {
+			paintTimer = setTimeout(() => {
+				paintTimer = null;
+				if (
+					miniViewPresentationFor({
+						show: options.show,
+						painted: paintedForLoad,
+						timedOut: true,
+					}) === "error-surface"
+				)
+					showErrorSurface();
+			}, MINI_VIEW_PAINT_TIMEOUT_MS);
+		}
+	}
+
+	/** The one presentation path: the plan's gate, then the renderer's half. */
+	function presentNow(): void {
+		if (disposed || window.isDestroyed()) return;
+		positionForCursorDisplay();
+		presentMiniView(window, options.show, {
+			trigger: "mini-view",
+			report: options.report,
+		});
+		/*
+		 * The renderer's half of the summon: focus the composer, reset the "Sent"
+		 * flash, settle a draft the previous hide preserved. Sent only when the plan
+		 * actually allows presentation, so it can never arrive for a window nothing
+		 * was allowed to raise.
+		 */
+		if (options.show === "focus") {
+			window.webContents.send(MINI_VIEW_SUMMONED, {
+				at: Date.now(),
+			} satisfies MiniViewSummonedPayload);
+		}
+	}
+
 	function toggle(): void {
 		if (disposed) return;
 		if (!window.isDestroyed() && window.isVisible()) {
@@ -251,21 +547,7 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 			hide();
 			return;
 		}
-		positionForCursorDisplay();
-		presentMiniView(window, options.show, {
-			trigger: "mini-view",
-			report: options.report,
-		});
-		/*
-		 * The renderer's half of the summon: focus the composer, reset the
-		 * "Sent" flash, settle a draft the previous hide preserved. Sent only
-		 * when the plan actually allows presentation, so it can never arrive
-		 * for a window nothing was allowed to raise.
-		 */
-		if (options.show === "focus" && !window.isDestroyed()) {
-			const payload: MiniViewSummonedPayload = { at: Date.now() };
-			window.webContents.send(MINI_VIEW_SUMMONED, payload);
-		}
+		presentWhenReady();
 	}
 
 	/**
@@ -285,13 +567,19 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 			screen.getCursorScreenPoint(),
 		);
 		const area = display.workArea;
+		/*
+		 * The window's CURRENT content height, not the base: a frame grown for a
+		 * preview or a sheet keeps its height across hides (the renderer
+		 * reconciles it on the next summon), and centring it on the base would
+		 * float it a sheet's worth too high on the display.
+		 */
+		const height = window.isDestroyed()
+			? MINI_VIEW_HEIGHT
+			: window.getContentBounds().height;
 		const x = Math.round(area.x + (area.width - MINI_VIEW_WIDTH) / 2);
-		const desiredY = area.y + area.height / 3 - MINI_VIEW_HEIGHT / 2;
+		const desiredY = area.y + area.height / 3 - height / 2;
 		const y = Math.round(
-			Math.min(
-				Math.max(desiredY, area.y),
-				area.y + area.height - MINI_VIEW_HEIGHT,
-			),
+			Math.min(Math.max(desiredY, area.y), area.y + area.height - height),
 		);
 		window.setPosition(x, y);
 	}
@@ -299,7 +587,13 @@ export function createMiniView(options: MiniViewOptions): MiniView {
 	function dispose(): void {
 		if (disposed) return;
 		disposed = true;
+		ipcMain.removeListener(MINI_VIEW_RESIZE, onResize);
+		ipcMain.removeListener(MINI_VIEW_PAINTED, onPainted);
 		ipcMain.removeHandler(MINI_VIEW_DISMISS);
+		if (paintTimer !== null) {
+			clearTimeout(paintTimer);
+			paintTimer = null;
+		}
 		if (!window.isDestroyed()) window.destroy();
 	}
 
