@@ -252,9 +252,10 @@ export type SegmentPlan = {
 	 *
 	 * A row is in exactly one span, so two spans can never share a key. A key of an
 	 * older shape (the run key, or `<run key>#<row>`) never starts `seg:`, so it
-	 * names nothing: the bar renders collapsed, which is the safe failure for a key
-	 * the reader's in-memory store may still hold. The store is memory-only
-	 * (`turn-collapse-open.ts`), so there is no durable expansion to migrate.
+	 * names nothing: the bar renders collapsed, which is the safe failure for a
+	 * stored expansion whose bar is gone. Expansion state is memory-only
+	 * (`turn-collapse-open.ts`), so a new shape simply renders every bar collapsed
+	 * once - there is never a key to migrate.
 	 *
 	 * A span still IN FLIGHT (see `planRun`) is not a bar yet, so no reader can hold
 	 * its key; the key it has when it settles is the one it keeps.

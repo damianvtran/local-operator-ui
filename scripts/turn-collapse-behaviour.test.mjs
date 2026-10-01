@@ -2815,3 +2815,55 @@ test("PR-4: a lead-in (stopReason toolUse) is not a settle: nothing condenses wh
 	assert.equal(bar(mounted), null, "and the call's arrival changes nothing");
 	assert.ok(rowBox(mounted, "tool:1"), "the work never flipped");
 });
+
+/* -------- case 2: the expanded bar survives a wake re-closing the run ------- */
+
+test("case 2: a wake's reply re-closes the run, and the expanded bar stays the same element", async (t) => {
+	/*
+	 * The lane's case-2 remount through the shipped transcript: the wake lands, its
+	 * reply cycle re-closes the run, the elected answer moves - and under the old
+	 * rule the bar the reader had expanded was RENAMED, so React unmounted it and
+	 * the press was lost. The span's own anchor does not move, so the same element
+	 * stays, still open. (The pane's liveness while the reply streams is covered by
+	 * PR-4's mounted cases; this test isolates the identity across the same settle
+	 * the reader sees.)
+	 */
+	__resetTurnCollapseOpen();
+	const before = [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		answerRecord("answer:1"),
+	];
+	const after = [
+		...before,
+		wakeRecord("wake:1"),
+		toolRecord("tool:2", { ts: TS + 5_000 }),
+		answerRecord("answer:2", { ts: TS + 6_000 }),
+	];
+	const mounted = await mount(t, before);
+	const bars = () => [
+		...mounted.container.querySelectorAll("[data-turn-summary]"),
+	];
+	assert.equal(bars().length, 1, "the settled run condenses on load");
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "the press opens the run");
+	/* Tagged by IDENTITY, not by key text: a remount is a new element. */
+	bars()[0].__caseTwoProbe = "kept";
+	await mounted.render(after);
+	await flushFrames();
+	assert.equal(bars().length, 2, "the wake's reply cycle adds its own bar");
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"the reader's expansion is still open on the first bar",
+	);
+	assert.equal(
+		bars()[0].__caseTwoProbe,
+		"kept",
+		"and it is the same element, not a remount",
+	);
+	assert.ok(
+		expandedRunsOf(null).has("seg:answer:1"),
+		"the stored expansion still names the first bar",
+	);
+});
