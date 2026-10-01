@@ -234,22 +234,32 @@ test("a completed run collapses over its in-between rows, bar at the first hidde
 });
 
 test("narration-only in-betweens collapse and state no duration: no call measured any work", () => {
-	// §5 case 3: prose between the user row and the answer hides; no action clause.
+	/*
+	 * §5 case 3: a span whose hidden rows are PROSE states no action clause. The
+	 * span has to be one the visibility invariant still folds - prose a lead-in to
+	 * the call that follows it, or a COMMENTARY close that is not the run's last
+	 * (V1 keeps every response close, V2 the last close of all) - so this fixture
+	 * is the second shape: the disposal, then a wake whose narration closed a
+	 * commentary cycle, then one more close.
+	 */
 	const plan = planOf([
 		user("u1"),
-		row(
-			"p1",
-			"assistant",
-			{ text: "Checking the ledger.", streaming: false },
-			"turn",
-		),
 		answer("a1", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+		row("mark", "notice", {
+			text: "Completed",
+			level: "info",
+			complete: true,
+		}),
+		row("w1", "wake", { text: "wake" }),
+		row("p1", "assistant", { text: "Checking the ledger.", streaming: false }),
+		answer("a2"),
 	]);
 	const run = plan.runs[0];
 	assert.equal(run.collapses, true);
 	assert.deepEqual(
 		run.hidden.map((hidden) => hidden.record.id),
-		["p1"],
+		["w1", "p1"],
+		"the wake's own span: the receipt and a commentary close",
 	);
 	assert.equal(run.facts.actions, 0);
 	assert.equal(run.facts.title, null, "no actions, no hover sentence");
@@ -260,8 +270,10 @@ test("narration-only in-betweens collapse and state no duration: no call measure
 	);
 });
 
-test("a steer stays inside the expansion and its rows count in the run's totals", () => {
+test("a steer's rows count in the run's totals, and the steer itself stays on screen (V3)", () => {
 	// §5 case 5, the one whose numbers move: the foot used to reset at the steer.
+	// The steer's ROW is no longer inside the collapse (V3), so the run has a bar
+	// on either side of the reader's own message.
 	const plan = planOf([
 		user("u1"),
 		tool("t1"),
@@ -274,8 +286,13 @@ test("a steer stays inside the expansion and its rows count in the run's totals"
 	assert.equal(run.collapses, true);
 	assert.deepEqual(
 		run.hidden.map((hidden) => hidden.record.id),
-		["t1", "s1", "t2"],
-		"the steer message itself is inside the collapse",
+		["t1", "t2"],
+		"the steer message is between the two bars, not inside one",
+	);
+	assert.equal(
+		run.segments.length,
+		2,
+		"one bar per hidden span: the steer splits the run's work",
 	);
 	assert.equal(
 		run.facts.actions,
@@ -1827,7 +1844,42 @@ test("#665: the answer is never hidden behind the bar", () => {
 		false,
 		"the answer stays mounted while collapsed",
 	);
-	assert.equal(hidden.has(1229), true, "the follow-up reply condenses");
+	assert.equal(
+		hidden.has(1229),
+		false,
+		"and so does the run's LAST close (V2): the post-dispose reply is the last word",
+	);
+	/*
+	 * THE BAR'S CONTENTS, not only its existence (agent review round 1, finding 4):
+	 * `hidden.length > 0` keeps passing if a later widening of the visible set eats
+	 * the follow-up's own bar down to one row. The follow-up's span is the run's
+	 * LAST segment, and its `segmentIds` are exactly the rows that bar stands in
+	 * for - the post-answer receipts and the calls they prompted.
+	 */
+	const followUp = plan.runs[0].segments.at(-1);
+	assert.equal(followUp?.afterAnswer, true, "the last bar is the follow-up's");
+	assert.deepEqual(
+		followUp?.segmentIds,
+		[
+			"entry-001203",
+			"entry-001204",
+			"entry-001206",
+			"entry-001208",
+			"tool:call-1208-0",
+			"entry-001211",
+			"tool:call-1211-0",
+			"entry-001214",
+			"tool:call-1214-0",
+			"tool:call-1217-0",
+			"tool:call-1220-0",
+			"entry-001223",
+			"tool:call-1223-0",
+			"entry-001226",
+			"tool:call-1226-0",
+			"tool:call-1226-1",
+		],
+		"the follow-up's own work still condenses into its bar, row for row",
+	);
 });
 
 test("#665: the turn's action count is the turn's own, not the reply's work folded in", () => {
