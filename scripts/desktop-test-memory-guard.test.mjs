@@ -22,6 +22,8 @@ import {
 	formatBreachLine,
 	killTree,
 	parseFootprintBytes,
+	parseProcStat,
+	parseProcStatusRss,
 	parseProcessTable,
 	sampleGroup,
 	selectMembers,
@@ -665,6 +667,132 @@ test("holds", async () => {
 	}
 	if (!reaped) process.kill(grandchild, "SIGKILL");
 	assert.ok(reaped, `grandchild ${grandchild} survived under a spaced path`);
+});
+
+/*
+ * THE LINUX ARM (CI regression). The first revision gated the whole fallback walk
+ * to macOS, so on the hosted ubuntu runner a failing `ps` left the watchdog blind
+ * and the two real-runner cells above timed out with exit 1. These cells exercise
+ * the Linux branch on ANY host by pointing `procRoot` at a fake `/proc` and passing
+ * `platform: "linux"`, so the logic is pinned here and not only on the one runner
+ * that can run it for real.
+ */
+function fakeProc(entries) {
+	const root = mkdtempSync(join(scratch, "proc-"));
+	for (const [
+		pid,
+		{ comm = "node", state = "S", ppid, pgid, start, rssKb },
+	] of Object.entries(entries)) {
+		mkdirSync(join(root, pid), { recursive: true });
+		// 52 fields in the real file; only the ones the parser reads matter, but the
+		// positions must be right: after `)` come state(3) ppid(4) pgrp(5) ... and
+		// starttime is field 22.
+		const rest = [state, ppid, pgid, ...new Array(16).fill("0"), start, "0"];
+		writeFileSync(
+			join(root, pid, "stat"),
+			`${pid} (${comm}) ${rest.join(" ")}\n`,
+		);
+		writeFileSync(
+			join(root, pid, "status"),
+			`Name:\t${comm}\nVmRSS:\t${rssKb} kB\n`,
+		);
+	}
+	mkdirSync(join(root, "self"), { recursive: true }); // non-numeric entries are ignored
+	return root;
+}
+
+test("/proc parsing counts fields from the LAST paren, so a hostile comm cannot shift them", () => {
+	const hostile =
+		"42 (a) b (c d)) S 7 9 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 123456 0\n";
+	assert.deepEqual(parseProcStat(hostile), {
+		ppid: 7,
+		pgid: 9,
+		lstart: "proc:123456",
+	});
+	assert.equal(parseProcStat("garbage"), null);
+	assert.equal(parseProcStat("1 (x) S 1"), null);
+	assert.equal(parseProcStatusRss("Name:\tx\nVmRSS:\t 2048 kB\n"), 2048 * 1024);
+	assert.equal(parseProcStatusRss("Name:\tkthread\n"), 0);
+});
+
+test("linux: a failed `ps` falls back to /proc, sees the whole tree, and is NOT blind", async () => {
+	const root = fakeProc({
+		100: { ppid: 1, pgid: 100, start: 1000, rssKb: 17000 },
+		101: { ppid: 100, pgid: 100, start: 1001, rssKb: 900000 },
+		102: { ppid: 101, pgid: 102, start: 1002, rssKb: 400000 }, // setsid'd grandchild
+		200: { ppid: 1, pgid: 200, start: 5, rssKb: 999999 }, // a stranger
+	});
+	const reading = await sampleGroup(100, {
+		platform: "linux",
+		procRoot: root,
+		run: async () => null,
+	});
+	assert.deepEqual(reading.members.map((m) => m.pid).sort(), [100, 101, 102]);
+	assert.equal(reading.coverage, "walk");
+	// On Linux RSS is the instrument, so a full walk is a bounded reading.
+	assert.equal(reading.blind, false);
+	assert.equal(reading.totalBytes, (17000 + 900000 + 400000) * 1024);
+	assert.equal(reading.members.find((m) => m.pid === 102).lstart, "proc:1002");
+});
+
+test("linux: with /proc unlistable and nothing found it is blind, and `unknown` never kills", async () => {
+	const reading = await sampleGroup(100, {
+		platform: "linux",
+		procRoot: join(scratch, "does-not-exist"),
+		run: async () => null,
+	});
+	assert.equal(reading, null);
+	// A leader-only /proc reading (children invisible) is blind but still a reading.
+	const root = fakeProc({ 100: { ppid: 1, pgid: 100, start: 1, rssKb: 5000 } });
+	const lone = await sampleGroup(100, {
+		platform: "linux",
+		procRoot: root,
+		run: async () => null,
+	});
+	assert.equal(lone.coverage, "leader");
+	assert.equal(lone.blind, true);
+});
+
+test("linux: the pre-kill identity check reads /proc starttime, so a re-parented descendant is killed and a recycled pid is not", async () => {
+	// After the group kill the grandchild's parent is pid 1; same starttime.
+	const root = fakeProc({
+		102: { ppid: 1, pgid: 102, start: 1002, rssKb: 1 },
+		103: { ppid: 1, pgid: 103, start: 9999, rssKb: 1 }, // pid recycled: new starttime
+	});
+	const sent = [];
+	const outcome = await killTree(
+		100,
+		[
+			{ pid: 102, pgid: 102, lstart: "proc:1002" },
+			{ pid: 103, pgid: 103, lstart: "proc:1003" },
+			{ pid: 104, pgid: 104, lstart: "proc:1" }, // gone with the group
+		],
+		{
+			platform: "linux",
+			procRoot: root,
+			kill: (target) => sent.push(target),
+			// A fork-free recheck must not need `ps` at all.
+			run: async () => assert.fail("linux re-check must not spawn ps"),
+		},
+	);
+	assert.deepEqual(sent, [-100, 102]);
+	assert.deepEqual(outcome, { signalled: 1, skipped: 1, errors: [] });
+});
+
+test("linux: a table member that left the group is stamped from /proc when ps works", async () => {
+	const root = fakeProc({
+		100: { ppid: 1, pgid: 100, start: 1, rssKb: 1 },
+		102: { ppid: 100, pgid: 102, start: 77, rssKb: 1 },
+	});
+	const table =
+		"  100     1   100  1 Tue Sep 30 21:56:12 2026\n  102   100   102  1 Tue Sep 30 21:56:13 2026\n";
+	const reading = await sampleGroup(100, {
+		platform: "linux",
+		procRoot: root,
+		run: async () => table,
+	});
+	assert.equal(reading.coverage, "table");
+	assert.equal(reading.members.find((m) => m.pid === 102).lstart, "proc:77");
 });
 
 test("the override `off` runs the suite unbounded and says so", () => {

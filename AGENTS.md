@@ -308,13 +308,15 @@ the reasoning, probe costs and constants are in
 - **When the watchdog cannot see the whole tree it says so, and the bound is
   narrower.** A probe that fails or times out skips that tick (unknown never
   kills, and a starved `ps` must not wedge the run). If the process-table read
-  fails the watchdog falls back to walking `pgrep -P` from the leader and keeps
-  enforcing on whatever footprints it could read; if that finds nothing it is
-  reading only the ~17 MB `node --test` coordinator, which is NOT a bound on the
-  test-file processes that hold the memory. Any such tick (and any tick with no
-  footprint reading) counts as **blind**; after five in a row the runner prints
-  `WARNING … the run is NOT reliably bounded`. A reading that is over budget
-  still kills, blind or not.
+  fails the watchdog rebuilds the membership itself — macOS by walking `pgrep -P`
+  from the leader, Linux by rebuilding the whole table from `/proc` (no
+  subprocess, so it cannot be starved; RSS is the instrument there, since Linux
+  has no compressor hiding pages from it) — and keeps enforcing on whatever it
+  could read. If that finds nothing it is reading only the ~17 MB `node --test`
+  coordinator, which is NOT a bound on the test-file processes that hold the
+  memory. Any such tick (and any macOS tick with no footprint reading) counts as
+  **blind**; after five in a row the runner prints `WARNING … the run is NOT
+  reliably bounded`. A reading that is over budget still kills, blind or not.
 - **If the runner itself is killed**, a small keeper process
   (`scripts/desktop-test-keeper.mjs`, its own session, tethered by a pipe the
   kernel closes however the runner dies) SIGKILLs the test group, so a harness's

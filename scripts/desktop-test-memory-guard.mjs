@@ -82,6 +82,7 @@
  */
 
 import { execFile } from "node:child_process";
+import { readFile, readdir } from "node:fs/promises";
 import { totalmem } from "node:os";
 
 /** `off` disables the watchdog (announced loudly); a positive whole number of MB
@@ -166,6 +167,8 @@ const FOOTPRINT_LINE =
 	/\[(\d+)\]:\s+\d+-bit\s+Footprint:\s+([\d.]+)\s*(B|KB|MB|GB|bytes)?\b/;
 const UNIT_BYTES = { B: 1, bytes: 1, KB: 1024, MB: MB, GB: 1024 * MB };
 const WHITESPACE = /\s+/;
+const VM_RSS_LINE = /^VmRSS:\s+(\d+)\s*kB/m;
+const PID_NAME = /^\d+$/;
 const PS_TABLE_ARGS = ["-axo", "pid=,ppid=,pgid=,rss=,lstart="];
 
 /** `NNN MB` / `N.N GB`, for the one line a human reads. */
@@ -372,6 +375,100 @@ export function runProbe(
 	});
 }
 
+/** Where Linux keeps its process table. A parameter everywhere it is used so a
+ * test can point it at a fake tree and exercise the Linux arm on any host. */
+export const DEFAULT_PROC_ROOT = "/proc";
+
+/** `/proc/<pid>/stat` text -> `{ ppid, pgid, lstart }`, or `null` when it does not
+ * parse. PURE. The command name (field 2) is parenthesised and may itself contain
+ * spaces and `)`, so fields are counted from the LAST `)`: what follows is field 3
+ * (state) onward, which puts ppid at index 1, pgrp at 2 and `starttime` (field 22,
+ * clock ticks since boot) at 19. `starttime` is the identity stamp: it is the one
+ * per-process value that never changes and never repeats for a recycled pid, and
+ * it needs no fork and no locale/format parsing, unlike `ps -o lstart=`. It is
+ * prefixed so it can never be confused with a `ps` start-time string. */
+export function parseProcStat(text) {
+	const close = String(text ?? "").lastIndexOf(")");
+	if (close < 0) return null;
+	const fields = text
+		.slice(close + 1)
+		.trim()
+		.split(WHITESPACE);
+	const ppid = Number.parseInt(fields[1], 10);
+	const pgid = Number.parseInt(fields[2], 10);
+	const start = fields[19];
+	if (!Number.isInteger(ppid) || !Number.isInteger(pgid) || !start) return null;
+	return { ppid, pgid, lstart: `proc:${start}` };
+}
+
+/** `/proc/<pid>/status` text -> resident bytes (`VmRSS`, kB), `0` for a kernel
+ * thread that has none. PURE. */
+export function parseProcStatusRss(text) {
+	const match = VM_RSS_LINE.exec(String(text ?? ""));
+	return match === null ? 0 : Number(match[1]) * 1024;
+}
+
+/** One pid's `{ pid, ppid, pgid, lstart }` from `/proc`, or `null` (gone, or not
+ * ours to read). Never throws. */
+async function readProcStat(pid, procRoot) {
+	try {
+		const parsed = parseProcStat(
+			await readFile(`${procRoot}/${pid}/stat`, "utf8"),
+		);
+		return parsed === null ? null : { pid, rssBytes: 0, ...parsed };
+	} catch {
+		return null;
+	}
+}
+
+async function readProcRss(pid, procRoot) {
+	try {
+		return parseProcStatusRss(
+			await readFile(`${procRoot}/${pid}/status`, "utf8"),
+		);
+	} catch {
+		return 0;
+	}
+}
+
+/**
+ * The Linux fallback for a `ps` table that cannot be read: the whole table rebuilt
+ * from `/proc`, with NO subprocess at all. This is the arm that matters on the
+ * hosted CI runner, where the first revision's macOS-only `pgrep` walk left a
+ * starved or failing `ps` as total blindness (measured there: the runaway ran to
+ * completion with the table read dead, and only the "NOT reliably bounded" line
+ * said so). Reading `/proc` directly is cheaper than the `ps` it replaces and
+ * cannot be starved by a fork failing under memory pressure — the exact condition
+ * the watchdog exists for.
+ *
+ * Returns the leader's tree (group + `ppid` descendants, via `selectMembers`) with
+ * RSS and the `starttime` identity already recorded for every member, which is
+ * what lets `killTree` verify a descendant that left the group AFTER the group is
+ * dead and it has been re-parented. `null` when `/proc` cannot be listed.
+ */
+async function walkProc(leaderPid, procRoot) {
+	let names;
+	try {
+		names = await readdir(procRoot);
+	} catch {
+		return null;
+	}
+	const rows = (
+		await Promise.all(
+			names
+				.filter((name) => PID_NAME.test(name))
+				.map((name) => readProcStat(Number(name), procRoot)),
+		)
+	).filter((row) => row !== null);
+	const members = selectMembers(rows, leaderPid);
+	await Promise.all(
+		members.map(async (member) => {
+			member.rssBytes = await readProcRss(member.pid, procRoot);
+		}),
+	);
+	return members;
+}
+
 /**
  * Descendants of the leader through `pgrep -P`, for when the `ps` table cannot be
  * read. Walks breadth-first to `_PGREP_DEPTH` levels, one short-timeout call per
@@ -463,20 +560,31 @@ async function walkDescendants(leaderPid, run) {
  * being unwatched):
  *
  *   coverage "table"   `ps` rows gave the whole tree.
- *   coverage "walk"    `ps` failed; `pgrep -P` found the descendants. Kills still
- *                      come from real footprint readings only.
+ *   coverage "walk"    `ps` failed and the descendants were found another way:
+ *                      macOS `pgrep -P`; Linux `/proc` (fork-free), then `pgrep -P`
+ *                      if `/proc` cannot be listed. Kills still come from real
+ *                      readings only.
  *   coverage "leader"  nothing but the leader could be found.
  *   blind              true for "leader", and on macOS when no footprint came back
- *                      (RSS alone is the blind instrument, see the module header).
- *                      The budget is still enforced on whatever WAS read.
+ *                      (RSS alone is the blind instrument there, see the module
+ *                      header). On Linux RSS IS the instrument — there is no
+ *                      compressor hiding pages from it and no footprint tool — so
+ *                      a Linux reading is blind only at "leader" coverage. The
+ *                      budget is still enforced on whatever WAS read.
  *
- * `run` and `platform` are injectable so the failure shapes (starved `ps`,
- * vanished pid, no footprint tool) are tested against canned output instead of
- * the host.
+ * PLATFORMS. macOS and Linux have a fallback walk; any other platform has none
+ * and a failed table read skips the tick. `run`, `platform` and `procRoot` are
+ * injectable so the failure shapes (starved `ps`, vanished pid, no footprint tool)
+ * and BOTH platforms' branches are tested against canned output and a fake
+ * `/proc` instead of the host.
  */
 export async function sampleGroup(
 	leaderPid,
-	{ run = runProbe, platform = process.platform } = {},
+	{
+		run = runProbe,
+		platform = process.platform,
+		procRoot = DEFAULT_PROC_ROOT,
+	} = {},
 ) {
 	const tableText = await run("ps", PS_TABLE_ARGS);
 	let members =
@@ -488,9 +596,34 @@ export async function sampleGroup(
 		// The membership read failed, was degenerate (no rows, or no leader in
 		// them) or the leader is gone. The pid we spawned is ours, so it can still
 		// be read without any table; elsewhere the tick is skipped.
-		if (platform !== "darwin") return null;
-		members = await walkDescendants(leaderPid, run);
+		if (platform === "darwin") {
+			members = await walkDescendants(leaderPid, run);
+		} else if (platform === "linux") {
+			members =
+				(await walkProc(leaderPid, procRoot)) ??
+				(await walkDescendants(leaderPid, run));
+		} else {
+			return null;
+		}
+		if (!members.some((member) => member.pid === leaderPid)) {
+			// /proc listed but the leader is not in it (already gone): the leader
+			// stub keeps the leader-only reading honest.
+			members = [
+				{ pid: leaderPid, ppid: 0, pgid: leaderPid, rssBytes: 0, lstart: null },
+			];
+		}
 		coverage = members.length > 1 ? "walk" : "leader";
+	} else if (platform === "linux") {
+		// A table member that left the group gets the `/proc` identity stamp, so the
+		// pre-kill re-check (which reads `/proc` on Linux) compares like with like.
+		await Promise.all(
+			members
+				.filter((member) => member.pgid !== leaderPid)
+				.map(async (member) => {
+					member.lstart =
+						(await readProcStat(member.pid, procRoot))?.lstart ?? null;
+				}),
+		);
 	}
 	let footprints = new Map();
 	if (platform === "darwin") {
@@ -505,9 +638,14 @@ export async function sampleGroup(
 		]);
 		if (text !== null) footprints = parseFootprintBytes(text);
 	}
-	// Without a table there is no RSS floor either: no footprint means nothing at
-	// all to judge.
-	if (coverage !== "table" && footprints.size === 0) return null;
+	// Nothing at all read: no footprint and no member carrying an RSS.
+	if (
+		coverage !== "table" &&
+		footprints.size === 0 &&
+		!members.some((member) => member.rssBytes > 0)
+	) {
+		return null;
+	}
 	const blind =
 		coverage === "leader" || (platform === "darwin" && footprints.size === 0);
 	return { members, coverage, blind, ...totalMemory(members, footprints) };
@@ -527,9 +665,12 @@ export async function sampleGroup(
  * they are the one place the "only signal what we spawned" invariant is
  * probabilistic: the sample they come from can be seconds old (probes are allowed
  * 8 s each, and `ps` has been measured at 13.6 s here), long enough for a pid to
- * be recycled to a stranger. So each is signalled only if a FRESH, narrow
- * `ps -p <pids>` read (bounded by `_RECHECK_TIMEOUT_MS`) shows the same start
- * time (`lstart`) the sample recorded for that pid. A recycled pid has a different
+ * be recycled to a stranger. So each is signalled only if a FRESH read shows the
+ * same start time (`lstart`) the sample recorded for that pid: on macOS a narrow
+ * `ps -p <pids>` (bounded by `_RECHECK_TIMEOUT_MS`); on Linux `/proc/<pid>/stat`
+ * `starttime`, which forks nothing and so cannot fail under the pressure that
+ * caused the kill. (Each platform's sample stamps members with its own kind, and
+ * the Linux ones are `proc:`-prefixed so the two can never be compared.) A recycled pid has a different
  * one. Anything unverifiable — no recorded start time, or the re-read itself
  * failing — is skipped and COUNTED, so the loud line can say so, rather than
  * guessed at. A pid that is simply gone (it died with the group) is the common case
@@ -550,6 +691,8 @@ export async function killTree(
 		kill = process.kill,
 		run = runProbe,
 		recheckTimeoutMs = _RECHECK_TIMEOUT_MS,
+		platform = process.platform,
+		procRoot = DEFAULT_PROC_ROOT,
 	} = {},
 ) {
 	if (
@@ -578,20 +721,34 @@ export async function killTree(
 	);
 	if (outOfGroup.length === 0) return { signalled: 0, skipped: 0, errors };
 
-	const text = await run(
-		"ps",
-		[
-			"-o",
-			"pid=,ppid=,pgid=,rss=,lstart=",
-			"-p",
-			outOfGroup.map((member) => member.pid).join(","),
-		],
-		recheckTimeoutMs,
-		[1],
-	);
-	if (text === null)
-		return { signalled: 0, skipped: outOfGroup.length, errors };
-	const fresh = new Map(parseProcessTable(text).map((row) => [row.pid, row]));
+	// The fresh identity read. Linux reads `/proc` (no fork, so it cannot be starved
+	// or fail under the memory pressure that triggered the kill); elsewhere the
+	// narrow `ps -p` read. Both yield rows with the same shape and the stamp kind
+	// the sample recorded on that platform.
+	let fresh = null;
+	if (platform === "linux") {
+		fresh = new Map();
+		for (const member of outOfGroup) {
+			const row = await readProcStat(member.pid, procRoot);
+			if (row !== null) fresh.set(member.pid, row);
+		}
+	} else {
+		const text = await run(
+			"ps",
+			[
+				"-o",
+				"pid=,ppid=,pgid=,rss=,lstart=",
+				"-p",
+				outOfGroup.map((member) => member.pid).join(","),
+			],
+			recheckTimeoutMs,
+			[1],
+		);
+		if (text === null) {
+			return { signalled: 0, skipped: outOfGroup.length, errors };
+		}
+		fresh = new Map(parseProcessTable(text).map((row) => [row.pid, row]));
+	}
 	const known = new Set([leaderPid, ...members.map((member) => member.pid)]);
 	let signalled = 0;
 	let skipped = 0;
