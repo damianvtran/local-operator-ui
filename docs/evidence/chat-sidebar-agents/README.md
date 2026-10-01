@@ -63,6 +63,14 @@ the same pass's capture of the band's `Open agent…` hover and tooltip — the 
 state the first round registered but could not take. The pass this replaced, and
 the passes before it, are the paragraphs below.
 
+**The fold onto `origin/main` = `e0abc82495` re-took the whole set to measure
+itself**, because the hub-updates train changed `chat-sidebar.tsx` under this
+branch: every frame was re-rendered at the folded head `c306629ec` — 168 agents
+frames plus the band's 12 — and **all 180 came back byte-identical**. That is
+the measurement, not an assumption: `git diff` over this directory after the run
+names only `manifest.json`, so nothing the train draws touches any state this
+set carries, and the frames remain pictures of the tree they ship in.
+
 **The byte diff is a measurement in three parts**: all 84 carried frames were
 rewritten by this run and `git diff` names each one (no frame is a leftover
 nobody re-took); `offer-dismissed` arrives as twelve new files; and the move's
