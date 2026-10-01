@@ -991,6 +991,19 @@ export const STORIES = [
 		},
 	],
 	["chat-turn-collapse--parked", 1280, 900],
+	/*
+	 * THE FRESH CONVERSATION'S OWN CELL (agent review round 1's frame
+	 * prerequisite): the harness's `session_mcp_unavailable` statement above the
+	 * reader's FIRST message and a short answer - the shape the run-closure
+	 * predicate change is about, and the one the operator's report came from ("my
+	 * initial message ended up condensed"). Before the change these rows are ONE
+	 * bar labelled `Steered` hiding the reader's own sentence; after it the
+	 * statement stands alone and the reader's turn keeps its own bar. NO FRAME IS
+	 * OWED BY THIS ENTRY YET: the sweep is deferred (§ the PR's evidence note -
+	 * the disk floor aborted the capture at 4.4 GiB free against 8 GiB), and this
+	 * registration is what lets the frame exist the moment it runs.
+	 */
+	["chat-turn-collapse--fresh-conversation", 1280, 900],
 
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
