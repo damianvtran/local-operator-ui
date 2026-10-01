@@ -746,13 +746,17 @@ const StatusCluster = ({
 			 * THE MARK SLOT ONLY RESERVES A BOX WHEN THERE IS A MARK IN IT (design
 			 * round 3, D5). `size-3.5` used to be unconditional, so a `failed` row -
 			 * which draws no glyph by design, having no non-colour mark of its own -
-			 * paid 14px plus this cluster's gap for an empty box until the row was at
-			 * its floor (320px), where that 20px starved the summary cell to a single
-			 * character (`Attempted w not delivered`). With the box collapsed the
-			 * summary gets its characters back. The sr-only children inside cannot
-			 * hold the box open themselves - `sr-only` is absolutely positioned - so
-			 * nothing is lost when the slot shrinks, and rows that DO draw a mark
-			 * (`running` draws none either, for the same reason) are unchanged.
+			 * paid for an empty box at every width, and at the row's floor (320px) that
+			 * was the difference between a summary and a single character (`Attempted w
+			 * not delivered`). With the box collapsed the summary cell measures 7px ->
+			 * 21px there, i.e. `w` -> `w…` (design round 4, D9: the reclaimed width is
+			 * the slot's own 14px - the cluster's 6px gap is NOT reclaimed, because the
+			 * empty span still sits in the flex row and still draws its gap; an earlier
+			 * version of this comment said 20px, which was a sum nobody measured).
+			 * The sr-only children inside cannot hold the box open themselves -
+			 * `sr-only` is absolutely positioned - so nothing is lost when the slot
+			 * shrinks, and rows that DO draw a mark (`running` draws none either, for
+			 * the same reason) are unchanged.
 			 */}
 			<span
 				className={cn(
