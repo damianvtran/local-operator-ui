@@ -374,6 +374,16 @@ transition: a pointer that crosses the row inside the dwell leaves no transform 
 The keyboard walk was re-pointed with the strip: a Tab from the row's button now LEAVES the row
 (both acts are out of the Tab ring), and the chord path is `⌘⇧P` on the row.
 
+**ROUND 1 REMEDIATION (2026-10-01): `after/archive-confirm-long`, both palettes.** The archive
+dialog on the fixture's 56-character title (`Quarterly retention sweep and the transcripts it
+dropped`), cancelled so the fixture is unchanged. The scene reads three claims as boxes: the NAME is
+cut (`scrollWidth` 422 against `clientWidth` 281), the verb, BOTH quotation marks and the question
+mark are all still on screen (only the words ellipsise), and the question stops short of the dialog's
+own close control. The first run of this frame found a real defect - the closing quote was inside
+the truncating box and was cut with the name - which is fixed in the dialog; the second found the
+scene's own selector matching the wrapper instead of the verb, which is fixed in the scene. The
+scene on the final build: **58 PASS / 0 FAIL in both palettes**.
+
 **AFTER THE FOLD (2026-10-01).** These frames were shot at `56bfefa3ec`; the branch was then
 folded onto `origin/main` as `5bea768188`, where #663's `Open agent` (`@`) control joins the band's
 toolbar and shifts the panel's top, so every FULL frame now differs from the committed one by that

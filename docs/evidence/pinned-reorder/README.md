@@ -175,22 +175,37 @@ palettes). Two states are changed in MEANING, not just in pixels:
 logs its readings and the file is the four slices' logs re-keyed. The shape and key order are the
 committed ones; only the readings changed.
 
-### `grip-hover-220`: PENDING (round 1, design D4)
+### `grip-hover-220`: the clamp's real floor, MEASURED (round 1, design D4)
 
-The clamp's real floor is 220 (`SIDEBAR_MIN_WIDTH`), and the scene now photographs and READS it
-(`PINNED_WIDTHS` gained 220: `order-before-220` and `grip-hover-220`, with the same grip-drawn,
-out-of-the-Tab-ring and cluster checks as the other widths). The frames and the title reading are
-**not committed yet**: the host's free disk stayed under the rig's start line when the run was due.
-The arithmetic the reading will be compared to, from the row at the 220 floor (188px: the panel less
-its 32px of inset, the same relation as the 240 row's 208 in the table above) is the row-space
-scene's own formula, `row - 4 - cluster - 28`, where the 4 is the row's gap and the **28 is the
-leading status slot** (not the grip: the grip is already inside the cluster's 80, which is
-3 x 24 + 2 x 4). So with TWO or more pinned rows the title under the pointer should read
-`188 - 4 - 80 - 28 = 76`, and with ONE (no grip, a 52px cluster) `188 - 4 - 52 - 28 = 104`. The
-first draft of this note wrote the two-pin formula without the 28 and so computed 104 for it
-(review round 2 caught it); the same formula reproduces the table's 96 at 240 (`208 - 4 - 80 - 28`).
-These are predictions: the reading is the scene's, and `sidebar-row-space.md` §15 says how it will
-be judged.
+The panel's range is 220..320 (`SIDEBAR_MIN_WIDTH`, `SIDEBAR_MAX_WIDTH`), and the set now
+photographs the floor: `order-before-220` and `grip-hover-220`, both palettes, with the same
+grip-drawn, out-of-the-Tab-ring and cluster checks as every other width (scene 56 PASS / 0 FAIL in
+each palette on one build).
+
+**A DRIVER DEFECT THIS FOUND, fixed in the same commit:** the dev driver's `setSidebarWidth` verb
+carried its own `240..360` clamp from before the app's range moved, so the first 220 run was told
+`{"width":240,"clamped":true}` and photographed a 240 panel under a 220 label - and the scene's own
+numbers (title 96) were the 240 row's. The verb now applies the app's `clampSidebarWidth`, and the
+re-run reports `{"width":220,"clamped":false}`. Nothing in the app moved; the committed 240 / 260 /
+280 / 320 frames are unaffected (those widths were inside both ranges).
+
+| Panel | Row box | Title at rest | Title under the pointer (grip drawn) |
+| --- | --- | --- | --- |
+| **220** (the floor) | 188 | **106** | **76** |
+
+**76 is the prediction, to the pixel.** The row-space scene's own formula is `row - 4 - cluster -
+28` (the 28 is the leading status slot, the cluster is 80 with the grip: 3 x 24 + 2 x 4):
+`188 - 4 - 80 - 28 = 76`, and the same formula gives the table's 96 at 240. The note this section
+replaces wrote that formula without the 28 and so computed 104 (review round 2 caught it). 76px is
+about **12 characters** of a pinned title at the measured 6.31px per character, in both palettes.
+`sidebar-row-space.md` §15 states what this reading does to its revisit trigger.
+
+> **Second and third folds (2026-10-01).** After the fold below the branch was folded onto
+> `e1eb22cd58` (`a191f2e928`) and `81a621f8af` (`9d1f54a9ae`); the only file resolved by hand each time
+> is `docs/evidence/manifest.json` (main's copy taken whole, the stamp pair re-derived). The frames
+> in this set other than the two `220` ones are the ones the first fold's comparison below describes;
+> they were NOT re-shot for the later folds, and the later folds changed no file the pinned strip
+> reads (a rows-region comparison was not repeated for them).
 
 ### After the fold onto `origin/main` (2026-10-01)
 
