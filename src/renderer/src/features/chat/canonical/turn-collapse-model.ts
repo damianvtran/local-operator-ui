@@ -344,6 +344,17 @@ export type CollapsePlan = {
  * a bar over a run the reader is not in cannot disturb them, and a reader
  * already looking at the rows (the bar is open) is not mid-transition.
  */
+/**
+ * DEV INSTRUMENTATION (UI perf audit A3): how many times `collapsePlan` runs.
+ *
+ * The walk's question is asked of a plan, and a transcript update used to ask it
+ * by building a SECOND plan over the whole store; this counter is what the
+ * before/after bench reads to show the per-update cost. Same shape as C1's
+ * `messageInputRenderCount`: a module-level counter the bench reads and nothing
+ * else touches at runtime.
+ */
+export const dbgCollapsePlanCalls = { count: 0 };
+
 export function collapsePlan(
 	rows: Row[],
 	options: {
@@ -352,6 +363,7 @@ export function collapsePlan(
 		openRuns?: ReadonlySet<string>;
 	},
 ): CollapsePlan {
+	dbgCollapsePlanCalls.count += 1;
 	/*
 	 * Only the NEWEST run can be the one in flight, and only while the pane says
 	 * the turn is unsettled (`live`): every earlier run is a finished turn and

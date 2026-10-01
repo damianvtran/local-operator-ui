@@ -88,6 +88,15 @@ export interface ActiveCueRow {
 }
 
 /**
+ * DEV INSTRUMENTATION (UI perf audit A2): how many times the cue's scan runs.
+ *
+ * A scan is the expensive half - a region rect plus a `querySelector` and a rect
+ * per loaded checkpoint - so the bench reads it to show the per-flush cost the
+ * ref-split listener removed. Same shape as C1's `messageInputRenderCount`.
+ */
+export const dbgActiveCueScans = { count: 0 };
+
+/**
  * The cue for a region, over the rows and manifest a caller holds. Returns
  * both halves the rail consumes, so the store's id set has one derivation.
  */
@@ -132,6 +141,7 @@ export const useActiveCheckpoint = (
 	const syncActiveCheckpoint = useCallback(() => {
 		const region = regionRef.current;
 		if (region === null) return;
+		dbgActiveCueScans.count += 1;
 		const top = region.getBoundingClientRect().top;
 		let best: string | null = null;
 		let bestTop = Number.NEGATIVE_INFINITY;

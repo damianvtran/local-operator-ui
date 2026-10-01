@@ -291,6 +291,16 @@ const CheckpointMark = memo(function CheckpointMark({
 	);
 });
 
+/**
+ * DEV INSTRUMENTATION (UI perf audit A6): how many times the rail's body runs.
+ *
+ * `memo` means a flush that moves nothing the rail paints does not run this
+ * body; the bench reads the counter to show that, and its falsifier arm (a
+ * fresh `onJump` per flush, the pre-fix call site) makes the counter climb.
+ * Same shape as C1's `messageInputRenderCount`.
+ */
+export const dbgRailRenders = { count: 0 };
+
 const CheckpointRailView: FC<CheckpointRailProps> = ({
 	sessionId,
 	checkpoints,
@@ -300,6 +310,7 @@ const CheckpointRailView: FC<CheckpointRailProps> = ({
 	loadedIds,
 	activeId = null,
 }) => {
+	dbgRailRenders.count += 1;
 	const cardElementId = useId();
 	const [previewId, setPreviewId] = useState<string | null>(null);
 	const [openCardId, setOpenCardId] = useState<string | null>(null);
