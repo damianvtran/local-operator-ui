@@ -21,10 +21,17 @@
  *     the defect, and the same script run on a tree WITHOUT the fix records the
  *     draft being swapped for a recall — `FAIL` in its `result.json`, which is
  *     exactly what the before frames show.
- *   - `skill-*` (issue #664): the `$` list. On a tree without the feature the
- *     list never opens, so the accept case clicks nothing (the draft survives,
- *     un-reassembled) and the send case's Enter submits the RAW text — the
- *     `[data-sent]` strip carries both halves byte for byte.
+ *   - `skill-*` (issue #664, and the v2 sessionless contract): the `$` list and
+ *     the `$` INK. On a tree without the feature the list never opens, so the
+ *     accept case clicks nothing (the draft survives, un-reassembled) and the
+ *     send case's Enter submits the RAW text — the `[data-sent]` strip carries
+ *     both halves byte for byte. The v2 rows add: a bare `$` on a DRAFT pane
+ *     (the sessionless read), the leading-filter rows (`$res` = 2, `$resea` =
+ *     1), the ink readbacks (`data-slash-run` = `skill`/`skill-unknown`), the
+ *     money/claim negatives, the three unreachable/empty notices (with the
+ *     durable scenario asserting ZERO `skills.list` calls on the wire), and the
+ *     first-message `$skill` send — the expansion the session gate used to
+ *     forbid.
  *   - `theme-*` (issue #676): `/theme dracula` dispatched, the story mounts the
  *     real `ThemePicker` with the dispatcher's action shape. Both trees mount a
  *     dialog; what differs is its content — the grid (before) versus the
@@ -239,6 +246,245 @@ const CASES = [
 		],
 	},
 	{
+		name: "skill-list-bare-leading",
+		why: "THE v2 HEADLINE: a bare `$` at buffer start opens the whole catalogue on a DRAFT pane — the sessionless read answers before any session exists — 3 rows, header `Skills`, and the token uninked.",
+		args: ";pane:draft",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await waitForList();
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["list", state.list, "Skills"],
+			["rows", state.rows.length, 3],
+			["the token carries no ink", state.runs.length, 0],
+		],
+	},
+	{
+		name: "skill-list-leading-fuzzy",
+		why: "Leading `$res` at the fuzzy floor runs the FULL case-insensitive matcher (TUI parity): 2 rows — research and release-notes (the subsequence `res` in `release-notes` is the matcher doing its job, not a defect).",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$res" });
+			await waitForList();
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [["rows", state.rows.length, 2]],
+	},
+	{
+		name: "skill-list-leading-single",
+		why: "One more character narrows to ONE row: `$resea` matches research only (the single-row case; `$rese` still fuzzy-matches release-notes).",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$resea" });
+			await waitForList();
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["rows", state.rows.length, 1],
+			[
+				"the row is research",
+				String(state.rows[0]).startsWith("$research"),
+				true,
+			],
+		],
+	},
+	{
+		name: "skill-highlight-resolved",
+		why: 'The `$` ink: a leading `$research` that names a settled skill paints the structured-token run (`data-slash-run="skill"`) with a request behind it — the primary case the merge point exists for.',
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$research fix this" });
+			await waitForRuns(1);
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["runs", JSON.stringify(state.runs), JSON.stringify(["skill:$research"])],
+			["draft", state.draft, "$research fix this"],
+		],
+	},
+	{
+		name: "skill-highlight-paints-through",
+		why: "A RESOLVED token paints even while the list is open on it (spec-reconciliation v2 §4): `$research` alone keeps its run under the open row list.",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$research" });
+			await waitForList();
+			await waitForRuns(1);
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["list", state.list, "Skills"],
+			[
+				"the run stays painted",
+				JSON.stringify(state.runs),
+				JSON.stringify(["skill:$research"]),
+			],
+		],
+	},
+	{
+		name: "skill-highlight-inert",
+		why: "An unresolved whole-draft `$zzz` paints NOTHING while its miss list is open (a prefix in progress), and the dim run arrives after Escape closes it — the pair UX U4b names.",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$zzz" });
+			await waitForList();
+			const whileOpen = await evaluate(READ_STATE);
+			await press(...KEYS.Escape);
+			await waitForRuns(1);
+			return { state: await evaluate(READ_STATE), extra: { whileOpen } };
+		},
+		expect: (state, extra) => [
+			["no ink while the list owns the token", extra.whileOpen.runs.length, 0],
+			[
+				"the dim arrives after closure",
+				JSON.stringify(state.runs),
+				JSON.stringify(["skill-unknown:$zzz"]),
+			],
+		],
+	},
+	{
+		name: "skill-highlight-money-guards",
+		why: "Money and shell stay unpainted: a glued `$5` is punctuation inside a word (no token at all), and `echo $PATH` is inline — zero `$` runs in both states.",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "costs$5 for the redesign" });
+			await sleep(400);
+			const glued = await evaluate(READ_STATE);
+			await clearDraft();
+			await send("Input.insertText", { text: "echo $PATH" });
+			await sleep(400);
+			const shell = await evaluate(READ_STATE);
+			return { state: shell, extra: { glued } };
+		},
+		expect: (state, extra) => [
+			["glued `$5` paints nothing", extra.glued.runs.length, 0],
+			["inline `$PATH` paints nothing", state.runs.length, 0],
+		],
+	},
+	{
+		name: "skill-highlight-slash-claim",
+		why: "A `$` inside a recognised command's argument is argument text: `/model $5` paints no skill run (the desktop keeps the claim total).",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "/model $5" });
+			await sleep(400);
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			[
+				"no skill runs",
+				state.runs.filter((run) => run.startsWith("skill")).length,
+				0,
+			],
+		],
+	},
+	{
+		name: "skill-notice-durable",
+		why: "The durable state (spec §2): a backend without `skill_catalogue` fires NO skills query — `window.__skillListCalls` stays 0 — and a leading `$` opens the shell with the update-the-backend sentence.",
+		args: ";skillFixture:old-backend",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await waitForList();
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			[
+				"the notice",
+				String(state.listText).includes(
+					"This backend cannot serve the skill catalogue. Update the backend and try again.",
+				),
+				true,
+			],
+			["no query fired on the wire", state.skillListCalls, 0],
+			["no rows", state.rows.length, 0],
+		],
+	},
+	{
+		name: "skill-notice-transient",
+		why: "The transient state: a failing skills read (503) opens the shell with the reachability sentence on a leading `$`.",
+		args: ";skillFixture:broken",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await waitForList();
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			[
+				"the notice",
+				String(state.listText).includes("Skills aren't available right now."),
+				true,
+			],
+			["no rows", state.rows.length, 0],
+		],
+	},
+	{
+		name: "skill-notice-empty",
+		why: "The empty state, session pane: a settled vocabulary with zero rows states the fact and keeps the `/skills` pointer (it can be followed here).",
+		args: ";skillFixture:empty",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await waitForList();
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			[
+				"the notice",
+				String(state.listText).includes("No skills found — see /skills"),
+				true,
+			],
+			["no rows", state.rows.length, 0],
+		],
+	},
+	{
+		name: "skill-notice-empty-draft",
+		why: "The empty state, draft pane: same state, no pointer — `/skills` is refused without a conversation, so the draft gets the bare sentence.",
+		args: ";skillFixture:empty;pane:draft",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await waitForList();
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["the notice", String(state.listText).includes("No skills found."), true],
+			["and no pointer", String(state.listText).includes("/skills"), false],
+		],
+	},
+	{
+		name: "skill-draft-first-send",
+		why: "The first-message expansion (F-1 closed): on a DRAFT pane, `$research fix this` + Enter sends the skill payload — the expansion the session gate used to forbid.",
+		args: ";pane:draft",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$research fix this" });
+			await waitForRuns(1);
+			await press(...KEYS.Enter);
+			await sleep(600);
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			[
+				"the payload is the skill expansion",
+				String(state.sent).startsWith(
+					"The user invoked the `research` skill directly.",
+				),
+				true,
+			],
+			[
+				"the typed line rides the attribute",
+				String(state.sent).includes(
+					'<skill name="research" invocation="$research fix this">',
+				),
+				true,
+			],
+		],
+	},
+	{
 		name: "theme-qualified-confirms",
 		why: "The double selection (issue #676): `/theme dracula` submits and the dialog mounts. Before, the full grid under the applied receipt; after, the confirmation — the receipt and no rows.",
 		drive: async () => {
@@ -294,7 +540,96 @@ const CASES = [
 			],
 		],
 	},
+	{
+		name: "skill-narrow-composer",
+		why: "The long notice at the app's 800px floor (design round 1, D2): the durable sentence is the longest line the composer paints, and a width the default frame never visits is where a wrap would show. Structure is asserted here; the frame is what a designer reads.",
+		viewport: { width: 800, height: 900 },
+		args: ";skillFixture:old-backend",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await sleep(400);
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["rows", state.rows.length, 0],
+			[
+				"the durable sentence is the box",
+				String(state.listText).includes(
+					"This backend cannot serve the skill catalogue.",
+				),
+				true,
+			],
+			["no query fired for it", state.skillListCalls, 0],
+		],
+	},
+	{
+		name: "skill-many-scroll",
+		why: "A catalogue longer than the region (design round 1, D2): six rows are reserved at a whole pitch and this fixture carries nine, scrolled by one real wheel event. The readback proves the scroll landed (scrollTop > 0) rather than trusting the picture.",
+		args: ";pane:draft;skillFixture:many",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await sleep(400);
+			const box = await evaluate(`(() => {
+				const region = document.querySelector('[role="listbox"] div.overflow-y-auto');
+				if (!region) return null;
+				const r = region.getBoundingClientRect();
+				return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+			})()`);
+			if (box) {
+				await send("Input.dispatchMouseEvent", {
+					type: "mouseWheel",
+					x: box.x,
+					y: box.y,
+					deltaX: 0,
+					deltaY: 144,
+				});
+				await sleep(300);
+			}
+			const scrolled = await evaluate(`(() => {
+				const region = document.querySelector('[role="listbox"] div.overflow-y-auto');
+				return region ? region.scrollTop : null;
+			})()`);
+			return { state: await evaluate(READ_STATE), extra: { scrolled } };
+		},
+		expect: (state, extra) => [
+			["rows", state.rows.length, 9],
+			["the region scrolled under the wheel", extra.scrolled > 0, true],
+		],
+	},
+	{
+		name: "skill-loading-line",
+		why: "The loading arm (design round 1, D1): a leading `$` against a read still in flight renders the family's \"Loading…\" — the one arm that used to open NOTHING at all. The fixture's 900ms delay is the window this case reads and shoots inside.",
+		args: ";pane:draft;skillFixture:slow",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await sleep(120);
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["rows while loading", state.rows.length, 0],
+			[
+				"the loading line is the box",
+				String(state.listText).includes("Loading…"),
+				true,
+			],
+			["the slow read fired once", state.skillListCalls, 1],
+		],
+	},
 ];
+
+/*
+ * `COMPOSER_PROOF_ONLY=skill-notice` runs only the cases whose name contains
+ * the value — the narrow spelling for re-checking one row after a fix, which
+ * is otherwise a full sweep of the set. The subset still writes a complete
+ * `result.json` of what ran, so a narrowed run is legible rather than silent.
+ */
+const ONLY = process.env.COMPOSER_PROOF_ONLY;
+const SELECTED_CASES = ONLY
+	? CASES.filter((testCase) => testCase.name.includes(ONLY))
+	: CASES;
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -404,6 +739,18 @@ const READ_STATE = `(() => {
 		dialog: text(dialog),
 		/* The dialog's own row count: the grid is rows; a confirmation has none. */
 		dialogRows: dialog ? dialog.querySelectorAll('[role="option"]').length : 0,
+		/* The composer's painted runs, "kind:text" - the $skill ink readback (and
+		   the slash runs', which share the mirror). */
+		runs: [...document.querySelectorAll('[data-composer-mirror-paint] [data-slash-run]')].map(
+			(node) => node.dataset.slashRun + ":" + node.textContent,
+		),
+		/* How many skills.list requests this page load has made. The durable
+		   scenario asserts NONE: a backend without skill_catalogue must not be
+		   asked a question it cannot answer. */
+		skillListCalls: window.__skillListCalls ?? 0,
+		/* The story's scenario knobs as the PAGE read them ("fixture:pane") -
+		   evidence of which fixture a frame shows, not an inference from it. */
+		scenario: window.__clusterArgsSeen ?? null,
 	};
 })()`;
 
@@ -444,12 +791,34 @@ async function shoot(name) {
  * The DRAFT is not cleared by the reload: it belongs to the conversation store
  * and comes back with the page, which is why `clearDraft` works with real keys
  * before each case types.
+ *
+ * `extraArgs` is the case's own `args` tail (`;pane:draft`, `;skillFixture:empty`
+ * — the story's scenario knobs, read through its local signature). It rides the
+ * same `args` param the theme does, in the order the story reads them.
  */
-async function reset() {
+async function reset(extraArgs = "") {
 	await send("Page.navigate", { url: "about:blank" });
-	await wait(150);
+	/*
+	 * WAIT FOR THE OLD DOCUMENT TO ACTUALLY GO AWAY, actively rather than by a
+	 * fixed sleep. The fixed 150ms was a race: when the blank navigation had not
+	 * committed yet, the readiness poll below found the PREVIOUS case's textarea
+	 * still mounted, returned early, and whatever the case then typed went into a
+	 * document that vanished under it — measured once in a full sweep: one case
+	 * read `draft: null, scenario: null` and shot a blank frame. Waiting until no
+	 * textarea remains makes "a textarea exists" mean the NEW page's, always.
+	 */
+	const blanked = Date.now();
+	for (;;) {
+		const cleared = await evaluate(
+			`(() => !document.querySelector("textarea"))()`,
+		);
+		if (cleared) break;
+		if (Date.now() - blanked > 5_000)
+			throw new Error("about:blank never cleared the previous composer");
+		await wait(50);
+	}
 	await send("Page.navigate", {
-		url: `${ORIGIN}/iframe.html?id=${STORY}&viewMode=story&args=theme:${THEME}`,
+		url: `${ORIGIN}/iframe.html?id=${STORY}&viewMode=story&args=theme:${THEME}${extraArgs}`,
 	});
 	const started = Date.now();
 	for (;;) {
@@ -534,10 +903,23 @@ async function clearDraft() {
 async function waitForList() {
 	const started = Date.now();
 	for (;;) {
-		const open = await evaluate(
-			`Boolean(document.querySelector('[role="listbox"]'))`,
-		);
-		if (open) return;
+		/*
+		 * SETTLED, NOT MERELY OPEN (design round 1, D1's side effect). The loading
+		 * arm opens the shell while the read is still in flight, so "a listbox
+		 * exists" no longer means "there is an answer in it" — a wait that
+		 * stopped there handed every later case the half-second-old "Loading…"
+		 * (measured: the transient case read the loading line as a missing
+		 * sentence). The box counts as ready when it shows anything but the
+		 * loading line: rows, a notice, or the miss.
+		 */
+		const state = await evaluate(`(() => {
+			const box = document.querySelector('[role="listbox"]');
+			return {
+				open: Boolean(box),
+				loading: box ? (box.textContent ?? "").includes("Loading…") : false,
+			};
+		})()`);
+		if (state.open && !state.loading) return;
 		if (Date.now() - started > 10_000) {
 			console.log("  (no list opened — recording the state as it stands)");
 			return;
@@ -555,6 +937,30 @@ async function waitForDialog() {
 		if (open) return;
 		if (Date.now() - started > 10_000) {
 			console.log("  (no dialog mounted — recording the state as it stands)");
+			return;
+		}
+		await wait(100);
+	}
+}
+
+/**
+ * Wait for at least `count` painted runs in the composer mirror.
+ *
+ * The ink readback rides the same non-fatal shape `waitForList` states: on a
+ * tree without the ink the runs never appear, and returning lets the frame be
+ * taken and the case record its own mismatch rather than throwing.
+ */
+async function waitForRuns(count) {
+	const started = Date.now();
+	for (;;) {
+		const painted = await evaluate(
+			`document.querySelectorAll('[data-composer-mirror-paint] [data-slash-run]').length`,
+		);
+		if (painted >= count) return;
+		if (Date.now() - started > 10_000) {
+			console.log(
+				`  (${count} painted run(s) never appeared — recording the state as it stands)`,
+			);
 			return;
 		}
 		await wait(100);
@@ -640,13 +1046,36 @@ try {
 	 */
 	await send("Emulation.setFocusEmulationEnabled", { enabled: true });
 
-	for (const testCase of CASES) {
-		await reset();
+	for (const testCase of SELECTED_CASES) {
+		/*
+		 * PER-CASE VIEWPORT (design round 1, D2): the frames are authored at the
+		 * app's own default, and ONE case photographs the composer's 800px floor
+		 * - a width the default frame never visits. The override is per case and
+		 * restored after its shot, so every other frame keeps the size the
+		 * record's own `viewport` field names, and the case's entry carries the
+		 * size it was framed at.
+		 */
+		const viewport = testCase.viewport ?? { width: WIDTH, height: HEIGHT };
+		if (viewport.width !== WIDTH || viewport.height !== HEIGHT)
+			await send("Emulation.setDeviceMetricsOverride", {
+				width: viewport.width,
+				height: viewport.height,
+				deviceScaleFactor: 1,
+				mobile: false,
+			});
+		await reset(testCase.args ?? "");
 		await send("Page.addScriptToEvaluateOnNewDocument", {
 			source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(THEME)} }, version: 0 })); } catch {}`,
 		});
 		const { state, extra } = await testCase.drive();
 		const frame = await shoot(testCase.name);
+		if (viewport.width !== WIDTH || viewport.height !== HEIGHT)
+			await send("Emulation.setDeviceMetricsOverride", {
+				width: WIDTH,
+				height: HEIGHT,
+				deviceScaleFactor: 1,
+				mobile: false,
+			});
 
 		const mismatches = [];
 		for (const [field, actual, expected] of testCase.expect(
@@ -666,6 +1095,10 @@ try {
 			state,
 			extra: extra ?? null,
 			frame,
+			/* The size this frame was shot at, when it is not the record default. */
+			...(viewport.width !== WIDTH || viewport.height !== HEIGHT
+				? { viewport: { width: viewport.width, height: viewport.height } }
+				: {}),
 			verdict: mismatches.length === 0 ? "PASS" : "FAIL",
 			mismatches,
 		});
@@ -688,6 +1121,6 @@ try {
 }
 
 console.log(
-	`\n${CASES.length - failures}/${CASES.length} cases behaved as the rule requires; record: ${join(OUT, "result.json")}`,
+	`\n${SELECTED_CASES.length - failures}/${SELECTED_CASES.length} cases behaved as the rule requires; record: ${join(OUT, "result.json")}`,
 );
 process.exit(failures === 0 ? 0 : 1);
