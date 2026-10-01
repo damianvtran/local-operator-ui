@@ -71,6 +71,13 @@ the measurement, not an assumption: `git diff` over this directory after the run
 names only `manifest.json`, so nothing the train draws touches any state this
 set carries, and the frames remain pictures of the tree they ship in.
 
+**The second fold (`origin/main` = `443ad13c70`, the composer skill-selector
+train) re-stamped, not re-captured**, and the reason is checkable in one
+grep: the fold's 73 files contain no sidebar or roster file at all — the
+deltas are the composer, the skill contract and pickers, settings, the pairing
+hooks and the desktop contract — so no frame this set carries could have moved,
+and the pair plus the swept count are re-derived at the folded tip instead.
+
 **The byte diff is a measurement in three parts**: all 84 carried frames were
 rewritten by this run and `git diff` names each one (no frame is a leftover
 nobody re-took); `offer-dismissed` arrives as twelve new files; and the move's
