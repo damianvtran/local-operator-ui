@@ -42,16 +42,24 @@ import { ARCHIVE_UNDO_TOAST_MS } from "./archive-undo";
  * BOTH WAYS BACK ARE NAMED because they are different doors - Undo is the immediate
  * one and it EXPIRES, the search block's `Include archived` is the one that still
  * works tomorrow - and the second names what to DO, not where a thing "is found":
- * the control exists only inside a search (the sidebar's search block draws it once
- * a query is typed), so the sentence says "search for it" first. It lives in the
- * sidebar's search, not in the `Search` palette row, which is why the sentence says
- * where.
+ * the control exists only inside a search (drawn once a query is typed), so the
+ * sentence says to search first.
+ *
+ * WHERE, IN THE PRODUCT'S OWN WORDS (design round 2, D10; UX round 2, U7): "the
+ * sidebar's search" had two homes - the `Search` palette row at the top, which
+ * deliberately does not widen to archived rows and has no such control, and the
+ * field labelled `Search chats and agents` in the list band, which does. "Search
+ * above your chats" points at the second and not the first. The sentence ENDS on
+ * the restore control by name (U8): an archived hit's row control reads
+ * `Unarchive`, so the reader is told the verb that finishes the job instead of a
+ * bare "restore it". Two rendered lines is the target (design round 2, D11), which
+ * is why it is a list of three short acts rather than a clause that explains them.
  *
  * `\u201cInclude archived\u201d` in curly quotes is the control's own label, spelled
  * exactly as the search block draws it, so the sentence sends the reader to a thing
  * they can find by the name they were given.
  */
-export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists. You can undo for ${ARCHIVE_UNDO_TOAST_MS / 1000} seconds; after that, search the sidebar for it and turn on \u201cInclude archived\u201d to find it and restore it.`;
+export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists. You can undo for ${ARCHIVE_UNDO_TOAST_MS / 1000} seconds; after that, search above your chats, turn on \u201cInclude archived\u201d, then Unarchive it.`;
 
 /**
  * What the question names when nobody can say which conversation it is: the store

@@ -384,7 +384,7 @@ the truncating box and was cut with the name - which is fixed in the dialog; the
 scene's own selector matching the wrapper instead of the verb, which is fixed in the scene. The
 scene on the final build: **58 PASS / 0 FAIL in both palettes**.
 
-**THIRD FOLD (2026-10-01), onto `44e4812b31` (`d08936c26e`).** Upstream's team-label and hub-mark work
+**FOURTH FOLD (2026-10-01), onto `44e4812b31` (`d08936c26e`).** The branch has been folded four times in all: `5bea768188` onto `8e73cb8721`, `a191f2e928` onto `e1eb22cd58`, `9d1f54a9ae` onto `81a621f8af`, then this one (the same ledger is in the session-archive and pinned-reorder READMEs). Upstream's team-label and hub-mark work
 auto-merged into `chat-sidebar.tsx`, `chat-header.tsx` and the canonical sessions store; the one
 hand-resolved file is `docs/evidence/manifest.json`. The scene was re-run on the folded build (dark,
 **58 PASS / 0 FAIL**) and compared with every committed `after/` label over the rows region below

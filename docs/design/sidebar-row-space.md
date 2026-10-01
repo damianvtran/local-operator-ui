@@ -998,18 +998,37 @@ than from a green test.
   step stays what it was: a band for the grip ALONE (one control, one more position), not a
   redesign of the reveal.
 
-  **THE 220 TRIGGER IS MET, AND IT IS NOT MOVED TO AVOID THAT (review round 2; measured
-  2026-10-01).** The reading is in (`pinned-reorder/grip-hover-220`, both palettes, scene 56 PASS /
-  0 FAIL): at the 220 floor with two or more pinned rows the title under the pointer measures
-  **76px** (a 188px row; 106px at rest), which is under the "about 80px at the 220 floor" this
-  section named, and it equals the prediction `188 - 4 - 80 - 28` to the pixel. At the default
-  (260) the same reading is 116px, over the 100px default-width trigger, so only the 220 trigger
-  fires. **The threshold is left where it was written and the adjudication is the design round's,
-  with the frame in front of it**: keep the deferral (the argument that survives its own trigger is
-  that 220 is the floor of a range the default sits 40px above, the title still reads about 12
-  characters, the grip-only band would give back 28px at the cost of a second home for the same
-  handle, and the operator's complaint was the pop-out at the widths people use) or take the
-  grip-only band for the narrow end. This section does not decide it by editing its own trigger.
+  **THE 220 TRIGGER FIRED, AND DESIGN ROUND 2 RULED: KEEP THE DEFERRAL (measured 2026-10-01;
+  adjudicated in design round 2, D8).** The reading is in (`pinned-reorder/grip-hover-220`, both
+  palettes, scene 56 PASS / 0 FAIL): at the 220 floor with two or more pinned rows the title under
+  the pointer measures **76px** (a 188px row; 106px at rest), under the "about 80px at the 220
+  floor" this section named, and equal to the prediction `188 - 4 - 80 - 28` to the pixel. At the
+  default (260) the same reading is 116px, so only the 220 trigger fired. The trigger was not edited
+  to avoid that; the design round answered it, and the reasons are written here so a fired trigger
+  is not a silently ignored one:
+  1. **A band that exists only at narrow widths moves the handle.** If the grip lived in the
+     trailing band at 220 and in the cluster at 240 and up, a reader dragging the panel edge would
+     watch the grip change place mid-resize, which is worse than 28px of title at the floor. The
+     only consistent band is one drawn at EVERY width, and that is the second home for the same
+     handle this section already prices.
+  2. **The title under the pointer is not the reading surface.** The reader is acting on the row;
+     the flyout gives the whole title after its dwell and clears the acts (T3). 76px is about 12
+     characters at the measured 6.31px per character.
+  3. **220 is reached by a deliberate drag to the clamp's end**, and the pop-out complaint is
+     already improved there (arrival cost 80, one step).
+
+  **The spec, if a report ever triggers it**: the band applies at ALL widths (never a narrow-only
+  variant), gives back 28px at each (the title under the pointer reads 104 at 220, 124 at 240 and
+  144 at 260 with two or more pins), and nothing else about the reveal changes. **Re-arm on a
+  REPORT, not on the arithmetic alone**: the grip hit by accident in the band, or a pinned title a
+  reader cannot identify at 220. The number was already true and already weighed, so it is not
+  itself the trigger any more.
+
+  **Frame limit, stated (design round 2, D9).** `grip-hover-220` uses the fixture's eight-character
+  titles (`Chat 005`), so 76px looks roomy in it; the call rests on the verified arithmetic, not on
+  a frame of a long title clipped at 220. A 220 frame with a realistic long pinned title was not
+  taken in this round. The connection-error card behind the `archive-confirm-settings` dialog is
+  fixture noise of the same class as the earlier stub banners (D13), not a state of the product.
 - **T3 and T2 are NOT deferred - they are met, and their readings are pinned in §14.** T3's
   bound (`flyout.left >= row.right + 4`) measures **+6 at every width** on this head, because
   the card is anchored to the row's BOX, which does not shrink when the acts reveal; the
