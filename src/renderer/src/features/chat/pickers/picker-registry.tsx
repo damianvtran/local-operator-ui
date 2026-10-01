@@ -522,6 +522,15 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		 * licensed by). `runs: false` for the same reason `/logout`'s is — the
 		 * source contains destructive rows (`remove`, `logout`, `reauth`), and a
 		 * pointer pick may not run any of them (spec §4.1).
+		 *
+		 * THE ACCEPTED COST, recorded where the next reader will look for it
+		 * (review round 1, R2): `runs: false` also strips `/mcp login` — a
+		 * non-destructive verb — of the TUI's one-keystroke run on a single
+		 * unambiguous match; Enter can only ever complete, even when the name is
+		 * exact. Accepted on purpose: the pointer floor is a per-SOURCE bit, so
+		 * keeping the run for login would need a per-row run flag; pointer safety
+		 * outranks the extra keypress. Revisit only with that per-row flag —
+		 * flipping this one is what §4.1 forbids.
 		 */
 		inline: {
 			source: "mcp",

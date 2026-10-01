@@ -44,6 +44,8 @@ import {
 import {
 	fetchMcpCatalog,
 	mcpCatalogKeys,
+	mcpTransportCwd,
+	mcpTransportSession,
 } from "@shared/api/local-operator/mcp-catalog";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { cn } from "@shared/lib/utils";
@@ -81,12 +83,14 @@ import {
 	type ArgumentRow,
 	type ArgumentSource,
 	FLAG_LIST_SOURCES,
+	MCP_EMPTY_SLOT_COPY,
 	argumentRows,
 	effectiveInlineArgument,
 	flagTokenDraws,
 	flagTokenSelects,
 	isRendererLocalSource,
 	isSessionlessBackendSource,
+	mcpInServerSlot,
 	modelDefaultActionRow,
 	shouldRunArgumentAction,
 	showsUnmatchedList,
@@ -266,6 +270,14 @@ export type SlashArgumentListState = {
 	error: string | null;
 	/** No live session, so no entity source can answer. */
 	needsSession: boolean;
+	/**
+	 * A more specific empty state than `argumentEmptyCopy`'s generic sentences,
+	 * when the source can name the fact: the `/mcp` server slot with nothing
+	 * eligible (empty BY DESIGN, not unreported — U2), or a `/logout` query
+	 * naming a provider with no stored credential (U4). Wins over both generic
+	 * lines; only ever set while `rows` is empty.
+	 */
+	emptyCopy?: string;
 };
 
 export type SlashCompletionState = {
@@ -349,9 +361,10 @@ export type SlashCompletionState = {
 	 * `required`, read off the same `SlashCommandMeta` the planner is handed.
 	 *
 	 * It exists because the other two sets are narrower than the field they were
-	 * standing in for: `/login`, `/logout`, `/stop`, `/fast` and `/move` declare
-	 * an argument and carry no inline list, so a union of the other two read
-	 * their whole-draft forms as prose (review round 1, R1).
+	 * standing in for: `/stop`, `/fast` and `/move` declare an argument and carry
+	 * neither a prompt nor a list, and `/login`/`/logout` carry their lists only
+	 * while the backend licenses them (`provider_catalogue`) — so a union of the
+	 * other two read those whole-draft forms as prose (review round 1, R1).
 	 */
 	argumentCommands: ReadonlySet<string>;
 	/**
@@ -448,7 +461,10 @@ function useArgumentRows(
 	 * composer is reachable in documents without a `QueryClientProvider` (the
 	 * mini view), where the fallback client must not fetch
 	 * (`useOptionalQueryClient`). Same key, same fetch, same options, so one
-	 * cache entry serves both surfaces.
+	 * cache entry serves both surfaces. Enabled for `/logout` (`provider-accounts`)
+	 * as well since round 1 (U4/D5): that list joins the census for the brand it
+	 * names a provider by and the aliases it finds one with — the accounts route
+	 * carries neither, and a second name for one provider is a second answer.
 	 */
 	const providers = useQuery(
 		{
@@ -457,7 +473,10 @@ function useArgumentRows(
 				desktopResult<{ providers: DesktopProvider[] }>({
 					op: "providers.list",
 				}).then((result) => result.providers ?? []),
-			enabled: enabled && provided && source === "providers",
+			enabled:
+				enabled &&
+				provided &&
+				(source === "providers" || source === "provider-accounts"),
 			staleTime: 30_000,
 			retry: retryDesktopQuery,
 		},
@@ -481,11 +500,22 @@ function useArgumentRows(
 	 * where one exists and degrade silently where one does not. Same freshness
 	 * window as that page's read; no polling, because a composer list is not a
 	 * status surface.
+	 *
+	 * THE TWO VALUES ARE COERCED FIRST (round 1, QA Q-1): the pane's `cwd` is a
+	 * display token ("~") and a draft pane's session is a synthetic key
+	 * ("draft:<uuid>"), and the op schema refuses both BEFORE the wire — the
+	 * live app's read 422'd and `/mcp` drew an empty list while every
+	 * fixture-staged run passed. Coerced ONCE here so the query key and the
+	 * payload are the same two values, and so the key cannot hold a cache entry
+	 * for a document that can never be fetched beside the one Settings reads for
+	 * the same home.
 	 */
+	const mcpWireCwd = mcpTransportCwd(cwd);
+	const mcpWireSession = mcpTransportSession(sessionId);
 	const mcp = useQuery(
 		{
-			queryKey: mcpCatalogKeys.catalog(cwd ?? null, sessionId ?? null),
-			queryFn: () => fetchMcpCatalog(cwd ?? null, sessionId ?? null),
+			queryKey: mcpCatalogKeys.catalog(mcpWireCwd, mcpWireSession),
+			queryFn: () => fetchMcpCatalog(mcpWireCwd, mcpWireSession),
 			enabled: enabled && provided && source === "mcp",
 			staleTime: 10_000,
 		},
@@ -557,9 +587,57 @@ function useArgumentRows(
 			};
 		}
 		if (source === "provider-accounts") {
+			const rows = argumentRows(
+				"provider-accounts",
+				accounts.data ?? [],
+				null,
+				{
+					providers: providers.data,
+				},
+			);
+			/*
+			 * U4's second half: `/logout deepseek` said "No matches. Enter runs the
+			 * command." for a provider the CENSUS knows and the accounts route cannot
+			 * answer, because an env key is not a store row. The honest sentence is a
+			 * fact about this provider, not about the matcher: let the census say
+			 * whether the typed word names one of its rows with nothing stored.
+			 * `matchChoices` is the same matcher the LIST itself uses, so "names"
+			 * means what it means everywhere else — subsequence and aliases included.
+			 *
+			 * The copy is set from the QUERY alone — `rows` here is the whole
+			 * filtered-ready list, and whether the query leaves any MATCH is the
+			 * popup's answer, not this branch's: the sentence replaces "No matches"
+			 * in the states where that sentence would be shown, and is invisible in
+			 * every state where a row is drawn.
+			 */
+			let emptyCopy: string | undefined;
+			if (argument.trim() && providers.data) {
+				/*
+				 * Match on the SHAPED rows (brand names and aliases, exactly what
+				 * `/login` matches on) and carry the count beside them: the shaped row
+				 * is an `ArgumentRow`, which deliberately has no count field.
+				 */
+				const storedById = new Map(
+					providers.data.map((row) => [row.id, row.stored_credentials ?? 0]),
+				);
+				const named = matchChoices(
+					argument,
+					argumentRows("providers", providers.data, null),
+				)[0]?.choice.value;
+				if (named && (storedById.get(named) ?? 0) <= 0) {
+					emptyCopy = "No stored credential to remove.";
+				}
+			}
 			return {
-				rows: argumentRows("provider-accounts", accounts.data ?? [], null),
-				loading: accounts.isLoading,
+				rows,
+				emptyCopy,
+				/*
+				 * Both reads are this list's data: the accounts route answers its rows,
+				 * and the census join answers the names, aliases and the "nothing
+				 * stored" fact the empty state uses — so the honest "Loading…" covers
+				 * whichever of the two is still in flight, not just the first.
+				 */
+				loading: accounts.isLoading || providers.isLoading,
 				error: accounts.isError
 					? "The list could not be loaded. Try again."
 					: null,
@@ -567,11 +645,23 @@ function useArgumentRows(
 			};
 		}
 		if (source === "mcp") {
+			const rows = argumentRows("mcp", mcp.data?.servers ?? [], null, {
+				argument,
+				verbs: mcp.data?.verbs,
+			});
 			return {
-				rows: argumentRows("mcp", mcp.data?.servers ?? [], null, {
-					argument,
-					verbs: mcp.data?.verbs,
-				}),
+				rows,
+				/*
+				 * U2: the SERVER slot with nothing eligible is empty by design — `list`
+				 * and `add` offer no server at all, an unknown verb names no list, and a
+				 * verb whose filter matches nothing has simply nothing eligible. The
+				 * generic "Not reported yet" claimed the route never answered; this says
+				 * what is actually true and keeps the route sentence.
+				 */
+				emptyCopy:
+					rows.length === 0 && mcpInServerSlot(argument)
+						? MCP_EMPTY_SLOT_COPY
+						: undefined,
 				loading: mcp.isLoading,
 				error: mcp.isError ? "The list could not be loaded. Try again." : null,
 				needsSession: false,
@@ -1329,6 +1419,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				value: activeArgument?.value ?? "",
 				matched: Boolean(activeRow),
 				/*
+				 * The filled state on a `runs: false` source: the row's value is ALREADY
+				 * what the box holds, so this Enter writes nothing and only closes the
+				 * list — the line has to say so rather than promise a completion that
+				 * will not change a character (round 1, U3). Read off `argumentQuery`
+				 * (the same value the router's gate reads) and the active row's value.
+				 */
+				complete:
+					activeArgument !== null &&
+					state.argumentQuery === activeArgument.value,
+				/*
 				 * The arming's own two inputs, read off the row's ROUTE (`pickArmsCommand`)
 				 * and off the draft (`state.hoists`) rather than written as a command name:
 				 * this line described "Enter completes the command." for the one row whose
@@ -1449,7 +1549,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			 * (round 1 D3 / UX U3). One word, sentence case, an existing role.
 			 */}
 			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
-				{phaseLabel(argument ? "argument" : "command", state.inline?.source)}
+				{phaseLabel(
+					argument ? "argument" : "command",
+					state.inline?.source,
+					/*
+					 * The typed argument, for the one per-SLOT label: `/mcp`'s verb list is
+					 * drawn under "Commands" and only the server slot says "Servers"
+					 * (round 1, D6/U7). Every other source ignores it.
+					 */
+					state.argumentQuery,
+				)}
 			</div>
 			{/*
 			 * The row region owns the scroller, and its max-height is a whole number
@@ -1538,7 +1647,7 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									? commandRowContent(row)
 									: row.kind === "action"
 										? actionRowContent(row.row)
-										: argumentRowContent(row)}
+										: argumentRowContent(row, state.inline?.source)}
 							</li>
 						))}
 					</ul>
@@ -1627,8 +1736,19 @@ function actionRowContent(row: ArgumentActionRow) {
 	);
 }
 
-function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
+function argumentRowContent(
+	row: Extract<CompletionRow, { kind: "argument" }>,
+	/*
+	 * The active source, for the ONE presentation rule that is per-source: a
+	 * `/mcp <verb> <server>` row's detail is a config PATH, and the row reads
+	 * worse than unreadable when the NAME truncates first (`remove p…` for every
+	 * server — round 1, D2). The name keeps a floor there and the path gives way
+	 * instead; every other source keeps the numbers-shed-first rule below.
+	 */
+	source: ArgumentSource | undefined,
+) {
 	const value = row.row;
+	const mcp = source === "mcp";
 	return (
 		<>
 			{/*
@@ -1649,7 +1769,28 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 			>
 				{value.current ? "●" : ""}
 			</span>
-			<span className="min-w-0 shrink truncate font-mono text-body-sm text-ink">
+			<span
+				className={cn(
+					"shrink truncate font-mono text-body-sm",
+					/*
+					 * The floor is what makes D2 hold: the name may shrink from its own
+					 * width down to 12ch, and the PATH detail below absorbs the rest, so
+					 * the server is identifiable before its path is.
+					 */
+					mcp ? "min-w-[12ch]" : "min-w-0",
+					/*
+					 * THE DANGER CUE LIVES ON THE NAME, not on the detail (round 1, D3/
+					 * D4/U5): a `/logout` row and a destructive `/mcp` row show exactly
+					 * which thing the gesture would destroy, and the cue survives the
+					 * narrow widths where the detail column is shed (`hidden` below the
+					 * 24rem container), which is where the safety information used to
+					 * disappear entirely. Verb rows carry it too — `remove`/`logout`/
+					 * `reauth` used to look identical to `list`/`add`/`login` until a
+					 * second keystroke.
+					 */
+					value.alert ? "text-danger" : "text-ink",
+				)}
+			>
 				{value.name}
 			</span>
 			{value.description && (
@@ -1666,12 +1807,29 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 				   `200k · $0.075/0.3` measured NARROWER than the 16-character
 				   `1m · usage-based`, which no monospace face can produce (round 1
 				   D4).
+
+				   `ml-auto` keeps a fixed RIGHT edge on every row: `flex-1` on the
+				   description used to be the only thing absorbing the slack, so a row
+				   without one put its state straight after the name while its
+				   neighbours right-aligned theirs — the same word in two columns, and
+				   a `needs login` scan had to read every row's middle (round 1, D1).
+
+				   INK-DIM ON EVERY ROW, alerts included (round 1, D4): the danger
+				   role moved to the name spans above, because with the whole row red
+				   red stopped discriminating — and on `/mcp remove` rows it tinted a
+				   FILE PATH, which reads as an error about the file rather than as
+				   "removing this deletes it from that file".
+
+				   `min-w-0 shrink truncate` for the `/mcp` compound rows is D2's
+				   other half: this is the column that gives way under the name's
+				   floor, so the path is the thing that ellipsises.
 				 */
 				<span
 					className={cn(
-						"hidden shrink-0 font-mono text-meta",
+						"ml-auto hidden font-mono text-meta",
 						NUMBERS_MIN,
-						value.alert ? "text-danger" : "text-ink-dim",
+						mcp ? "min-w-0 shrink truncate" : "shrink-0",
+						"text-ink-dim",
 					)}
 				>
 					{value.detail}

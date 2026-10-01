@@ -275,13 +275,15 @@ test("the pinned payload drives the /mcp list's two slots", () => {
 	 */
 	const verbs = document_.verbs;
 	const verbRows = m.argumentRows("mcp", rows, null, { argument: "", verbs });
+	// The value carries the verb's terminator (round 1, U1); the NAME is the
+	// verb itself, and that is what the alert lookup keys on.
 	assert.deepEqual(
 		verbRows.map((row) => row.value),
-		["list", "add", "remove", "login", "logout", "reauth"],
+		["list ", "add ", "remove ", "login ", "logout ", "reauth "],
 	);
 	for (const row of verbRows) {
-		const verb = verbs.find((candidate) => candidate.verb === row.value);
-		assert.equal(row.alert, verb.destructive, row.value);
+		const verb = verbs.find((candidate) => candidate.verb === row.name);
+		assert.equal(row.alert, verb.destructive, row.name);
 	}
 	// `oauth` admits every OAuth-capable row (the TUI's rule, both for login and
 	// for reauth), `signed_in` only what a logout can act on, `remove` every

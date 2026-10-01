@@ -756,6 +756,11 @@ test("the phase label names the list's subject", () => {
 	// The renderer-local sixth source (DESIGN §5.3, /theme inline) has a name
 	// like the rest, so no source renders under another's subject.
 	assert.equal(phaseLabel("argument", "theme"), "Themes");
+	// `/mcp` is per-SLOT (round 1, D6/U7): the verb list is not headed "Servers"
+	// — that label belongs to the list the NEXT keystroke opens.
+	assert.equal(phaseLabel("argument", "mcp", ""), "Commands");
+	assert.equal(phaseLabel("argument", "mcp", "lo"), "Commands");
+	assert.equal(phaseLabel("argument", "mcp", "login "), "Servers");
 });
 
 test("the footer says what Enter will do, in each state", () => {
@@ -850,6 +855,21 @@ test("the footer says what Enter will do, in each state", () => {
 	assert.equal(
 		enterFooter({ ...base, runs: false }),
 		"Enter completes the value.",
+	);
+	/*
+	 * The FILLED state on a `runs: false` source (round 1, U3): the completion is
+	 * already IN the box, so this Enter writes nothing and only closes the list —
+	 * the line says so rather than repeating a completion over a byte-identical
+	 * draft, which read as a dropped keystroke. The `runs: true` arm is
+	 * untouched: a completed `/login openai` still runs on that Enter.
+	 */
+	assert.equal(
+		enterFooter({ ...base, runs: false, complete: true }),
+		"Enter closes the list; Enter again runs.",
+	);
+	assert.equal(
+		enterFooter({ ...base, complete: true }),
+		"Enter runs /model openai/gpt-5.",
 	);
 	// No row: the empty state's own copy carries the route.
 	assert.equal(enterFooter({ ...base, matched: false }), null);
@@ -1328,6 +1348,23 @@ test("the empty copy names which of the four causes it is", () => {
 		argumentEmptyCopy({ ...list, rows: [{ value: "delivery" }] }),
 		"No matches. Enter runs the command.",
 	);
+	// The source's own sentence, when it has one (round 1, U2/U4): a `/mcp`
+	// server slot empty by design, or a `/logout` query naming a provider with
+	// no stored credential, outranks both generic arms.
+	assert.equal(
+		argumentEmptyCopy({
+			...list,
+			emptyCopy: "No servers to choose. Enter runs the command.",
+		}),
+		"No servers to choose. Enter runs the command.",
+	);
+	assert.equal(
+		argumentEmptyCopy({
+			...list,
+			emptyCopy: "No stored credential to remove.",
+		}),
+		"No stored credential to remove.",
+	);
 });
 
 /*
@@ -1471,9 +1508,11 @@ test("a source whose rows can destroy something never runs on a click", () => {
 		},
 	];
 	const verbRows = argumentRows("mcp", [], null, { argument: "", verbs });
-	assert.equal(verbRows.find((row) => row.value === "remove")?.alert, true);
-	assert.equal(verbRows.find((row) => row.value === "logout")?.alert, true);
-	assert.equal(verbRows.find((row) => row.value === "list")?.alert, false);
+	// The verb row's value carries its terminator (round 1, U1), so the find
+	// keys on the NAME the row is displayed by.
+	assert.equal(verbRows.find((row) => row.name === "remove")?.alert, true);
+	assert.equal(verbRows.find((row) => row.name === "logout")?.alert, true);
+	assert.equal(verbRows.find((row) => row.name === "list")?.alert, false);
 	const servers = [{ name: "gh", actions: ["sign_out"], status: "connected" }];
 	assert.equal(
 		argumentRows("mcp", servers, null, { argument: "logout ", verbs })[0].alert,

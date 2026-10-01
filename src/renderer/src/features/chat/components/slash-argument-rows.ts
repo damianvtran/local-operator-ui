@@ -227,6 +227,29 @@ export function isSessionlessBackendSource(
 }
 
 /**
+ * Whether the typed argument has reached `/mcp`'s SERVER slot — the TUI's own
+ * partition on the first space (`app.py:47774`), named here because the row
+ * shaper and the empty-state copy must agree about which slot is on screen.
+ */
+export function mcpInServerSlot(argument: string): boolean {
+	return argument.includes(" ");
+}
+
+/**
+ * The server slot's honest sentence when there is nothing to draw.
+ *
+ * Three shapes reach it and none of them is an outage: `list`/`add` offer no
+ * server by definition (`offers: null`), an unknown verb names no list, and a
+ * verb whose filter matches no configured server has simply nothing eligible.
+ * "Not reported yet" — the `effort` cold-owner sentence — said the route had
+ * never answered, which the UX round read as a backend failure for a list that
+ * is empty BY DESIGN (round 1, U2). The route sentence stays: Enter really
+ * does run the command.
+ */
+export const MCP_EMPTY_SLOT_COPY =
+	"No servers to choose. Enter runs the command.";
+
+/**
  * The minimum version of a `requires` feature that licenses its inline list.
  *
  * v1 is the default (`desktopFeatureEnabled`'s own). The MCP inline lists are
@@ -865,7 +888,20 @@ export function argumentRows(
 	 * object because both arrive from the same document; every other case
 	 * ignores it.
 	 */
-	extras?: { argument?: string; verbs?: readonly McpCatalogVerb[] },
+	extras?: {
+		argument?: string;
+		verbs?: readonly McpCatalogVerb[];
+		/*
+		 * The provider census, for `/logout`'s name and alias columns: the accounts
+		 * route carries neither (its rows are credentials — provider, kind,
+		 * identity), while the paired `/login` list names rows by the census's
+		 * `brand` and finds them by `search_aliases`. Joining here is what keeps
+		 * one vocabulary across the two commands (round 1, D5/U6 and U4); absent
+		 * (a failed or unlicensed census read) falls back to the raw id, which is
+		 * what the row showed before.
+		 */
+		providers?: readonly ProviderEntity[];
+	},
 ): ArgumentRow[] {
 	switch (command) {
 		case "model": {
@@ -1008,6 +1044,9 @@ export function argumentRows(
 				group.labels.push(asText(row.identity_label));
 				groups.set(provider, group);
 			}
+			const census = new Map(
+				(extras?.providers ?? []).map((row) => [asText(row.id), row]),
+			);
 			return [...groups.entries()].map(([provider, group]) => {
 				const kinds = new Set(
 					group.kinds
@@ -1023,9 +1062,30 @@ export function argumentRows(
 					group.labels[0] !== STORED_CREDENTIAL_FALLBACK
 						? group.labels[0]
 						: "";
+				const providerRow = census.get(provider);
 				return {
 					value: provider,
-					name: provider,
+					/*
+					 * The census's brand (the same derivation the `/login` rows use), so
+					 * the two commands name one provider one way; the id remains the
+					 * VALUE — it is what the command takes — and the fallback keeps the
+					 * row legible when the census is missing.
+					 */
+					name: providerRow
+						? brandOf({
+								id: provider,
+								name: asText(providerRow.name),
+								brand: asText(providerRow.brand),
+							})
+						: provider,
+					/*
+					 * The same aliases `/login` matches on (`chatgpt`/`gpt` reach openai
+					 * there; spec §1.4's one-alias-vocabulary promise) — absent when the
+					 * census row is, which degrades to the id-only matching of before.
+					 */
+					aliases: providerRow
+						? asAliases(providerRow.search_aliases)
+						: undefined,
 					detail: identity ? `${removal} · ${identity}` : removal,
 					alert: true,
 				};
@@ -1056,7 +1116,19 @@ export function argumentRows(
 			const space = argument.indexOf(" ");
 			if (space === -1) {
 				return verbs.map((verb) => ({
-					value: verb.verb,
+					/*
+					 * THE TRAILING SPACE IS THE HANDOFF, not cosmetics: choosing a verb
+					 * leaves `/mcp login ` in the buffer and the SERVER slot open — the
+					 * TUI's own two-turn crank (`app.py:47755-47760`, "choosing a verb
+					 * leaves `/mcp login ` in the buffer"), and the space is exactly
+					 * the terminator the slot split reads. `completionFor` appends a
+					 * space only for `nameThenMessage` sources, and this source must NOT
+					 * be one of those: that flag CLOSES the list after the space (a name
+					 * is complete, a message follows), while here the space OPENS the
+					 * second slot. Without it the pick dead-ended at a bare verb token
+					 * (round 1, UX U1).
+					 */
+					value: `${verb.verb} `,
 					name: verb.verb,
 					description: verb.description,
 					alert: verb.destructive,
