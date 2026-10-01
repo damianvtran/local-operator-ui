@@ -165,6 +165,44 @@ test("an agent or team name is a label hit, at the name tier", () => {
 	assert.ok(matchesLabel(rows[2], "release-pod"));
 });
 
+test("a team's label is matched by the words a reader sees", () => {
+	/*
+	 * Round 1's R1-3c: the join's own haystack matched the binding's SLUG only,
+	 * so a row DRAWN as `· Release Engineering` was found by `release-crew` but
+	 * not by the words now on screen — the fix the sidebar and roster filters
+	 * already carried. The resolver is the caller's (the sidebar hands in the
+	 * same one its row slots render with), and absent means slug-only, exactly
+	 * the old reading.
+	 */
+	const rows = [
+		row("cccccccccccc", "Unrelated", { agent: "coder", team: "release-crew" }),
+	];
+	const teamLabelFor = (slug) =>
+		slug === "release-crew" ? "Release Engineering" : slug;
+
+	assert.ok(matchesLabel(rows[0], "release engineering", teamLabelFor));
+	assert.ok(matchesLabel(rows[0], "release-crew", teamLabelFor));
+	// Without a resolver the haystack is exactly what it always was.
+	assert.ok(matchesLabel(rows[0], "release-crew"));
+	assert.equal(matchesLabel(rows[0], "release engineering"), false);
+
+	// The join admits the row at the label tier, not as a conversation match.
+	const outcome = searchChats(
+		rows,
+		"release engineering",
+		null,
+		{},
+		undefined,
+		undefined,
+		teamLabelFor,
+	);
+	assert.deepEqual(
+		outcome.rows.map((entry) => entry.session_id),
+		["cccccccccccc"],
+	);
+	assert.equal(outcome.conversationMatches.size, 0);
+});
+
 test("the conversation marker comes from the answer, never from a local label hit", () => {
 	const rows = [row("aaaaaaaaaaaa", "Some chat", { agent: "architect" })];
 

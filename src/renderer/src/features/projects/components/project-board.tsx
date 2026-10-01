@@ -120,6 +120,13 @@ type ProjectBoardProps = {
 	onMove: (project: DesktopProject, status: string) => void;
 	/** The status writes in flight, so their cards can refuse a second press. */
 	movingKeys?: string[];
+	/**
+	 * The team's readable name for the band headers (round 1, D5 — the board
+	 * draws the same human-read names the list headings do; the finding named
+	 * the list, and this is the same defect on the same data). A prop, because
+	 * the page owns the reads.
+	 */
+	teamLabelFor?: (slug: string) => string;
 };
 
 /** The column names, in the fixed order the derivation returns them in. */
@@ -186,6 +193,7 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 	onDelete,
 	onMove,
 	movingKeys = [],
+	teamLabelFor = (name) => name,
 }) => {
 	/*
 	 * The order is board state, read once per mount from the guarded store the
@@ -717,7 +725,9 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 							>
 								<span className="sticky left-3 flex min-w-0 max-w-[calc(100cqw-2.25rem)] items-center gap-2">
 									<span className="truncate text-ink">
-										{band.team ?? NO_TEAM_LABEL}
+										{band.team == null
+											? NO_TEAM_LABEL
+											: teamLabelFor(band.team)}
 									</span>
 									<span className="shrink-0 text-ink-muted">
 										{band.items.length}

@@ -387,6 +387,23 @@ export const SCOPE_LEGEND: {
 export const CONVERSATION_SWITCHER_SEED = "#";
 
 /**
+ * The query the sidebar's `Open agent…` control opens the palette with (issue
+ * #663): the agents scope, so a roster of any length is two keystrokes away
+ * from the chat column rather than a scan of disclosures.
+ *
+ * The same spelling rule as the switcher seed above - the glyph the scope IS,
+ * so the field shows the reader why the list is agents and backspacing it
+ * widens the surface again - and the same reason to live here: the seed is a
+ * claim about `parsePaletteQuery`'s own table, and
+ * `scripts/palette-search.test.mjs` pins it so it cannot drift from the table
+ * it reads. Unlike the switcher, this seed arrives from a pressure on a band
+ * control rather than a chord; the control opens and then writes it (see the
+ * call site), so an already-open palette moves to the agents view rather than
+ * toggling shut.
+ */
+export const AGENT_ROSTER_SEED = "@";
+
+/**
  * Read a raw query into its scope and its terms.
  *
  * The glyph form is only recognised at the very start (it is a prefix), and the
@@ -1118,9 +1135,12 @@ export function buildPanelItems(
  * nothing when it serves none (`opened_by` read by `rowTrailingStatement`), while
  * this row always draws the binding — the same string on a team-bound workstream,
  * where the two surfaces agree, and `· <agent>` on a team-less one, where the
- * sidebar's slot is now silent. What this row cannot say, on any of them, is WHO
- * opened the conversation: a workstream an agent opened reads here as any chat
- * bound to its team or agent does, which is the indistinguishability the
+ * sidebar's slot is now silent. THE BINDING IS RESOLVED THROUGH `teamNames` (the
+ * sidebar's label rule), so a labelled team reads here the way the sidebar's own
+ * slots read it; without the map, or for a slug it does not hold, the slug is the
+ * string, which is the pre-labels pixel. What this row cannot say, on any of them,
+ * is WHO opened the conversation: a workstream an agent opened reads here as any
+ * chat bound to its team or agent does, which is the indistinguishability the
  * sidebar's flyout and screen-reader sentence answer where they can. It is
  * DELIBERATE and bounded rather than overlooked: this row has ONE secondary slot
  * (`hint`), the search mark already arbitrates for it below
@@ -1133,12 +1153,26 @@ export function buildPanelItems(
  * here (`CanonicalSessionRow`), so the work is a precedence choice rather than a
  * wire change.
  */
-export function buildChatItem(row: {
-	session_id: string;
-	title?: string | null;
-	binding?: { agent: string | null; team: string | null } | null;
-}): PaletteItem {
-	const binding = row.binding?.team || row.binding?.agent || "";
+export function buildChatItem(
+	row: {
+		session_id: string;
+		title?: string | null;
+		binding?: { agent: string | null; team: string | null } | null;
+	},
+	/*
+	 * Team slug -> the name a person reads, when the caller holds the catalogue
+	 * (`use-palette-sources.ts` does, gated on the same `team_catalogue`
+	 * capability the sidebar gates its own list on). A parameter rather than an
+	 * import because this module is deliberately import-free so its test can
+	 * bundle it bare; an absent map, or a slug it does not hold, keeps the
+	 * string this row drew before labels existed.
+	 */
+	teamNames?: ReadonlyMap<string, string>,
+): PaletteItem {
+	const team = row.binding?.team;
+	const binding = team
+		? (teamNames?.get(team) ?? team)
+		: (row.binding?.agent ?? "");
 	return {
 		id: `chat-${row.session_id}`,
 		kind: "chat",
