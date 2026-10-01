@@ -54,6 +54,14 @@ import {
 	MoveNotice,
 	RemoveMemberDialog,
 } from "./mesh-actions";
+import {
+	type ApprovalDecision,
+	type MeshApprovalRow,
+	approvalErrorMessage,
+	useMeshApprovalDecision,
+	useMeshApprovals,
+} from "./mesh-approvals";
+import { MeshApprovalsTray } from "./mesh-approvals-tray";
 import { MeshCanvas } from "./mesh-canvas";
 import {
 	DevicePanel,
@@ -142,6 +150,21 @@ export const MeshSurface: FC<{
 	/** A poll failed over drawn data: a sentence, never a change to the nodes. */
 	staleError: string | null;
 	onRetry: () => void;
+	/**
+	 * The onboarding approvals: the badge read's rows, its own failure and its two
+	 * writes. A READ OF ITS OWN, separate from the mesh's — it dials nothing and
+	 * answers on a machine whose relay is down (`mesh-approvals.ts`) — so it
+	 * renders above every state block below and a mesh failure never blanks it.
+	 */
+	approvals: {
+		rows: readonly MeshApprovalRow[];
+		error: string | null;
+		pending: { approvalId: string; decision: ApprovalDecision } | null;
+		onDecide: (approvalId: string, decision: ApprovalDecision) => void;
+		onRetry: () => void;
+		/** The approvals read's own stamp, so the expiry lines share one clock. */
+		nowSeconds: number;
+	};
 	/** The conversations the reads returned, and what each device holds. */
 	sessions: readonly MeshSessionRow[];
 	/** A failure of the sessions read alone: the graph still draws without chips. */
@@ -213,6 +236,7 @@ export const MeshSurface: FC<{
 	checking,
 	staleError,
 	onRetry,
+	approvals,
 	sessions,
 	sessionError,
 	selfLabel,
@@ -419,6 +443,22 @@ export const MeshSurface: FC<{
 					)}
 				</div>
 			</PageHeader>
+
+			{/*
+			 * THE APPROVALS RENDER FIRST, above every state block below, because a
+			 * pending record is the most important fact on this tab and it is
+			 * independent of the mesh read: the tray is its own query, so a loading
+			 * canvas or an empty network does not hide a request that is waiting on
+			 * the operator.
+			 */}
+			<MeshApprovalsTray
+				rows={approvals.rows}
+				error={approvals.error}
+				pending={approvals.pending}
+				onDecide={approvals.onDecide}
+				onRetry={approvals.onRetry}
+				nowSeconds={approvals.nowSeconds}
+			/>
 
 			{state.kind === "loading" && (
 				<div className="flex min-h-0 flex-1 flex-col gap-3">
@@ -690,6 +730,29 @@ export const MeshPage: FC = () => {
 	const graph = useMeshGraph(reads);
 	const transfer = useMeshTransfer();
 	/*
+	 * THE APPROVALS READ, gated on its OWN key (`features.approvals`) rather than
+	 * on `peers`: the routes are additive, and the key is how this renderer learns
+	 * the surface exists before building an affordance whose POST would 404 on a
+	 * backend without it. Absent ⇒ no tray, no rail badge, nothing to click into a
+	 * 404 — the pre-onboarding state.
+	 *
+	 * THE PAGE RIDES THE RAIL'S POLLER (`poll: false`): the rail is mounted on
+	 * every route and is where the badge must move, so the interval lives there and
+	 * this observer shares the cache entry (the inverse of the networks split, for
+	 * the reason `mesh-approvals.ts` states — this read dials no peer). The
+	 * decisions' invalidation is what refreshes it after a write.
+	 */
+	const approvalsEnabled =
+		desktopFeatureState(capabilities.data, "approvals") === "enabled";
+	const approvals = useMeshApprovals(enabled && approvalsEnabled, {
+		poll: false,
+	});
+	const decideApproval = useMeshApprovalDecision();
+	const approvalsNowSeconds = useMemo(
+		() => Math.floor((approvals.dataUpdatedAt || Date.now()) / 1000),
+		[approvals.dataUpdatedAt],
+	);
+	/*
 	 * THE MESH TAB IS A THIRD MOVE SITE, and it settles the row for the same
 	 * reason the chat's two sites do (agent review round 2, R2-1). A move issued
 	 * from this page lands on the same conversations the chat header's chip
@@ -869,6 +932,17 @@ export const MeshPage: FC = () => {
 			checking={peers.isFetching || networks.isFetching}
 			staleError={staleError}
 			onRetry={retry}
+			approvals={{
+				rows: approvals.data ?? [],
+				error: approvals.isError ? approvalErrorMessage(approvals.error) : null,
+				pending: decideApproval.isPending
+					? (decideApproval.variables ?? null)
+					: null,
+				onDecide: (approvalId, decision) =>
+					decideApproval.mutate({ approvalId, decision }),
+				onRetry: () => void approvals.refetch(),
+				nowSeconds: approvalsNowSeconds,
+			}}
 			sessions={sessionRead.data ?? []}
 			movingSessionId={
 				transfer.isPending ? (transfer.variables?.sessionId ?? null) : null

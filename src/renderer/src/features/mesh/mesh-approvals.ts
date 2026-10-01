@@ -1,0 +1,425 @@
+/**
+ * The Mesh tab's approval surface: the device-local onboarding records, read
+ * and answered.
+ *
+ * WHAT THIS IS (remote-onboarding design §2, as shipped in `local_operator/network/approvals.py`):
+ * one durable, signed record per onboarding request — `device_onboard` carries a
+ * `device` block (host, user, transport, host-key fingerprint), `local_authority`
+ * carries a `machine` block — kept on THIS machine under
+ * `<config>/network/approvals/`. The desktop plane serves three routes for it
+ * (`GET /v1/desktop/approvals` and the two decision posts) and
+ * `features.approvals` is what says a backend has them; this module is the
+ * renderer half: the row normaliser, the state vocabulary and the two writes.
+ *
+ * WHY THE RAIL MAY POLL THIS READ, when the mesh store's own header forbids the
+ * rail an interval for `networks.list` (review round 2, R2-1: that read dials
+ * every peer). THIS ONE DIALS NOTHING. `approval_rows` is a cold scan of the
+ * device-local directory — the store's own words: "the badge must answer on a
+ * machine whose relay is down, which is exactly why the store lives in a flat
+ * directory rather than behind the running relay" — so an always-mounted
+ * interval costs one local scan per tick and no socket at all. It is also the
+ * ONE read whose fact is "a human is waiting": the browser sidebar's badge is
+ * push-live for the same reason, and a badge that only moved when the tab was
+ * open would not be a notification. `MESH_APPROVAL_POLL_MS` is
+ * `CAPABILITY_RENEGOTIATE_MS`'s number (the cadence of the app's faster watch)
+ * and half the catalogue watch, because the read is local and the wait is a
+ * person's.
+ *
+ * THE PAGE RIDES THE RAIL'S OBSERVER (the inverse of the networks split, for the
+ * same reason: one poll, one entry). The rail polls; the tray on `/mesh` reads
+ * the same cache entry with `poll: false` and is refetched by the decisions'
+ * own invalidation. On a device in no network the rail has no row and so asks
+ * for nothing — the page still makes ONE read on mount, which is what lets a
+ * `local_authority` record (a local bootstrap, not a mesh fact) be answered
+ * there, and the read is `is_dir`-safe so it creates nothing.
+ *
+ * WHY EVERYTHING IS NORMALISED HERE, not cast: the same boundary rule
+ * `mesh-types.ts` states at length — `desktopResult` casts its envelope, so a
+ * sparse row becomes a typed object with a missing field and the first reader
+ * to touch it throws, which above `/mesh` means the app root's error boundary
+ * replaces the whole window. A row that cannot be keyed or described (no id, no
+ * state) is DROPPED; every other field degrades to the empty answer for its
+ * type.
+ *
+ * WHY THE DECISIONS DO NOT PARSE THEIR ANSWER: the decision's `state` is the
+ * record's new state, but the row that matters on screen is the LIST's — so the
+ * settle invalidates the read and the list stays the ONE authority for what
+ * state the record is in. A second copy kept beside it is how "approved" on a
+ * button and "denied" in the store come to be visible at once.
+ */
+
+import {
+	type DesktopControlError,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { meshKeys } from "./mesh-store";
+import { deviceLabel, flag, strings, text, time } from "./mesh-types";
+
+/** The approvals read's own cache entry. One key, one read, two observers. */
+export const meshApprovalKeys = {
+	approvals: ["desktop", "mesh", "approvals"] as const,
+};
+
+/**
+ * The rail's cadence. See this file's header for why an interval is right here
+ * where the catalogue's is not — the read dials no peer, and the fact is a
+ * person waiting on the other end.
+ */
+export const MESH_APPROVAL_POLL_MS = 15_000;
+
+/** The two decisions the record's store accepts (`approve`, `deny`). */
+export type ApprovalDecision = "approve" | "deny";
+
+/** The where-block, under whichever key the row's kind spells it. */
+export type MeshApprovalWhere = {
+	deviceId: string;
+	name: string;
+	host: string;
+	user: string;
+	transport: string;
+	hostKeyFp: string;
+};
+
+/**
+ * The scope block (`what`), structured rather than pre-worded: the copy lives in
+ * the surfaces, and a new scope the wire grows is a change HERE, in one place,
+ * rather than in a string some composer wrote.
+ */
+export type MeshApprovalScopes = {
+	connect: boolean;
+	install: boolean;
+	anchor: boolean;
+	networkId: string;
+	role: string;
+	unattended: boolean;
+	grants: string[];
+};
+
+export type MeshApprovalRow = {
+	approvalId: string;
+	/** Verbatim from the store: `requested`/`approved`/`connecting`/`connected`/`denied`/`expired`/`failed`. */
+	state: string;
+	/** Which where-block this row carries — the record's own kind is the difference. */
+	kind: "device" | "machine";
+	where: MeshApprovalWhere;
+	what: MeshApprovalScopes;
+	requestedBy: { surface: string; sessionId: string; deviceId: string };
+	/** Epoch seconds, or `null`; `<= 0` reads as "no window" in the labels. */
+	expiresAt: number | null;
+};
+
+/* ------------------------------------------------------------ the states */
+
+/**
+ * The NON-TERMINAL states: an onboarding that is waiting, approved, running or
+ * stopped-but-retryable. `connected`/`denied`/`expired` are terminal
+ * (`network/approvals.py::TERMINAL_STATES`), and the badge counts everything
+ * here — "pending connection/install approvals" in the operator's words covers
+ * the whole flight, so the badge stays up through `approved` and `connecting`
+ * and drops when the record settles (including a `failed` runner, which is the
+ * state a person should not miss).
+ */
+const OPEN_STATES: ReadonlySet<string> = new Set([
+	"requested",
+	"approved",
+	"connecting",
+	"failed",
+]);
+
+export function isOpenApproval(state: string): boolean {
+	return OPEN_STATES.has(state);
+}
+
+/** The number the rail badge and the tray heading count. */
+export function pendingApprovalCount(rows: readonly MeshApprovalRow[]): number {
+	return rows.filter((row) => isOpenApproval(row.state)).length;
+}
+
+/** `approve` is offered on `requested` alone: every other open state is past the decision. */
+export function canApproveApproval(state: string): boolean {
+	return state === "requested";
+}
+
+/**
+ * `deny` is offered on every open state, and the store's matrix is why it is not
+ * narrower: a deny is allowed while no receipt exists (nothing ran), MID-RUN
+ * (the write lands and the runner stops at its next step check), and on a
+ * `failed` record the operator no longer wants (abandoned, write-once).
+ */
+export function canDenyApproval(state: string): boolean {
+	return isOpenApproval(state);
+}
+
+/** The chip's word for a state. Unknown states render verbatim rather than blank. */
+export function approvalStateLabel(state: string): string {
+	switch (state) {
+		case "requested":
+			return "Waiting for you";
+		case "approved":
+			return "Approved";
+		case "connecting":
+			return "Connecting…";
+		case "connected":
+			return "Connected";
+		case "denied":
+			return "Denied";
+		case "expired":
+			return "Expired";
+		case "failed":
+			return "Failed";
+		default:
+			return state;
+	}
+}
+
+/* ------------------------------------------------------------ the rows */
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
+function where(value: unknown): MeshApprovalWhere {
+	const block = isRecord(value) ? value : {};
+	return {
+		deviceId: text(block.device_id),
+		name: text(block.name),
+		host: text(block.host),
+		user: text(block.user),
+		transport: text(block.transport),
+		hostKeyFp: text(block.host_key_fp),
+	};
+}
+
+function scopes(value: unknown): MeshApprovalScopes {
+	const what = isRecord(value) ? value : {};
+	return {
+		connect: flag(what.connect, false),
+		install: flag(what.install, false),
+		anchor: isRecord(what.anchor),
+		networkId: text(what.network_id),
+		role: text(what.role),
+		unattended: flag(what.unattended, false),
+		grants: strings(what.grant),
+	};
+}
+
+/**
+ * `GET /v1/desktop/approvals`, normalised — store order (oldest first) kept.
+ *
+ * THE ORDER IS THE STORE'S and is not re-sorted: the oldest record is the first
+ * one to expire, and a surface that re-sorted would disagree with the CLI's own
+ * listing about which request comes first.
+ */
+export function approvalRows(value: unknown): MeshApprovalRow[] {
+	const source = Array.isArray(value)
+		? value
+		: ((value as { approvals?: unknown } | null)?.approvals ?? []);
+	if (!Array.isArray(source)) return [];
+	const rows: MeshApprovalRow[] = [];
+	for (const raw of source) {
+		if (!isRecord(raw)) continue;
+		const approvalId = text(raw.approval_id);
+		const state = text(raw.state);
+		// No identity, no row; no state, no row either — every reader of the
+		// state makes a claim with it, and the chip has nothing honest to say.
+		if (!approvalId || !state) continue;
+		/*
+		 * WHICH BLOCK IS PRESENT DECIDES THE KIND, which is the store's own rule
+		 * (`badge_row`: "the kind is the difference a reader keys on, rather than
+		 * a renamed key hiding which machine the block is about"). A row with
+		 * neither reads as `device` — the kind v1 mints — and renders its empty
+		 * where-fields as nothing rather than inventing one.
+		 */
+		const kind: MeshApprovalRow["kind"] =
+			!isRecord(raw.device) && isRecord(raw.machine) ? "machine" : "device";
+		const requestedBy = isRecord(raw.requested_by) ? raw.requested_by : {};
+		rows.push({
+			approvalId,
+			state,
+			kind,
+			where: where(kind === "machine" ? raw.machine : raw.device),
+			what: scopes(raw.what),
+			requestedBy: {
+				surface: text(requestedBy.surface),
+				sessionId: text(requestedBy.session_id),
+				deviceId: text(requestedBy.device_id),
+			},
+			expiresAt: time(raw.expires_at),
+		});
+	}
+	return rows;
+}
+
+/* --------------------------------------------------------------- labels */
+
+/**
+ * What the row is about, for the card's title and the resolved lines: the device
+ * for a `device_onboard` (name, else its id's tail — `deviceLabel`'s one rule),
+ * "this machine" for a `local_authority` bootstrap, which is about the reader's
+ * own machine by definition.
+ */
+export function approvalSubject(row: MeshApprovalRow): string {
+	if (row.kind === "machine") return "this machine";
+	return deviceLabel({ device_id: row.where.deviceId, name: row.where.name });
+}
+
+/** The card's title: the record's own verb, sentence case. */
+export function approvalTitle(row: MeshApprovalRow): string {
+	return row.kind === "machine"
+		? "Set up operator authority on this machine"
+		: `Onboard ${approvalSubject(row)}`;
+}
+
+/**
+ * The where line, in the CLI's own order and spelling ("what / where / who" is
+ * the card's order in `network/cli.py::_approval_lines`): `user@host via
+ * transport (name)`. Absent parts are omitted, and a block that names nothing
+ * returns `null` so the surface hides the line rather than drawing "via ".
+ */
+export function approvalWhereLabel(row: MeshApprovalRow): string | null {
+	const { user, host, transport, name } = row.where;
+	const parts = [
+		host ? (user ? `${user}@${host}` : host) : "",
+		transport ? `via ${transport}` : "",
+		// The CLI's own `(name)` clause, minus the case where the name IS the host: two
+		// identical words read as a stutter, not as information.
+		name && name !== host ? `(${name})` : "",
+	].filter(Boolean);
+	return parts.length ? parts.join(" ") : null;
+}
+
+/** The host-key fingerprint, when the record carries one — its own line, monospace. */
+export function approvalHostKeyLabel(row: MeshApprovalRow): string | null {
+	return row.where.hostKeyFp || null;
+}
+
+/**
+ * The who line: the SURFACE that filed the request (`cli`, `desktop`, …) and the
+ * session that asked, when the record names one. The id is shown by its tail,
+ * the app's own rule for a session a user has not named.
+ */
+export function approvalRequesterLabel(row: MeshApprovalRow): string | null {
+	const { surface, sessionId } = row.requestedBy;
+	const parts = [
+		surface || "",
+		sessionId ? `session ${sessionId.slice(-6)}` : "",
+	].filter(Boolean);
+	return parts.length ? `asked by ${parts.join(" · ")}` : null;
+}
+
+/**
+ * The scope chips, in the CLI's own order and wording, so the two surfaces read
+ * one sentence: connect / install / install operator anchor / join … as … /
+ * trust unattended sessions / grant ….
+ */
+export function approvalScopeLabels(row: MeshApprovalRow): string[] {
+	const { connect, install, anchor, networkId, role, unattended, grants } =
+		row.what;
+	const labels: string[] = [];
+	if (connect) labels.push("connect");
+	if (install) labels.push("install");
+	if (anchor) labels.push("install operator anchor");
+	if (networkId) labels.push(`join ${networkId} as ${role || "?"}`);
+	if (unattended) labels.push("trust unattended sessions");
+	for (const grant of grants) labels.push(`grant ${grant}`);
+	return labels;
+}
+
+/**
+ * "expires in 42 minutes" — the record's ONE window (§2.1: 60 minutes by
+ * default), rounded UP to the next unit so the copy never claims less time than
+ * is left, which is the browser consent card's own rule for the same reason.
+ * `null` when there is no window or it has passed (a passed window folds to
+ * `expired` server-side anyway; this is the belt beside that brace).
+ */
+export function approvalRemainingLabel(
+	expiresAtSeconds: number | null,
+	nowSeconds: number,
+): string | null {
+	if (expiresAtSeconds === null || expiresAtSeconds <= 0) return null;
+	const leftSeconds = expiresAtSeconds - nowSeconds;
+	if (leftSeconds <= 0) return null;
+	if (leftSeconds < 60) return "expires in under a minute";
+	const minutes = Math.ceil(leftSeconds / 60);
+	if (minutes < 90)
+		return minutes === 1
+			? "expires in 1 minute"
+			: `expires in ${minutes} minutes`;
+	const hours = Math.ceil(minutes / 60);
+	return hours === 1 ? "expires in 1 hour" : `expires in ${hours} hours`;
+}
+
+/* ---------------------------------------------------------------- hooks */
+
+/**
+ * `GET /v1/desktop/approvals`, normalised.
+ *
+ * `poll` is the RAIL's true and the PAGE's false — see this file's header. It
+ * mirrors the networks hook's rider configuration exactly (infinite `staleTime`,
+ * no focus refetch), so whichever observer is the poller, the other one rides
+ * the same cache entry and a settled decision refetches both through one key.
+ */
+export function useMeshApprovals(
+	enabled: boolean,
+	{ poll = true }: { poll?: boolean } = {},
+) {
+	return useQuery({
+		queryKey: meshApprovalKeys.approvals,
+		enabled,
+		queryFn: async () =>
+			approvalRows(await desktopResult<unknown>({ op: "approvals.list" })),
+		retry: false,
+		staleTime: poll ? 10_000 : Number.POSITIVE_INFINITY,
+		refetchInterval: enabled && poll ? MESH_APPROVAL_POLL_MS : false,
+		refetchOnWindowFocus: poll,
+	});
+}
+
+/**
+ * The two decisions. See this file's header for why the answer is not parsed:
+ * the LIST is the one authority for the record's state, and the settle is what
+ * makes it current.
+ *
+ * BOTH READS THE ANSWER CAN CONTRADICT ARE INVALIDATED: the approvals (the
+ * record's own state) and the mesh reads (a `connected` record is a device that
+ * now exists in the topology — `networks`/`peers` are how "the device appears on
+ * the network" reaches the canvas). The runner itself is agent-driven
+ * (`lop network approvals run`), so for the states the UI cannot cause, the
+ * 30 s mesh cadence is what picks the arrival up; this invalidation is what
+ * makes the DECIDED cases immediate.
+ */
+export function useMeshApprovalDecision() {
+	const client = useQueryClient();
+	return useMutation({
+		mutationFn: async (ask: {
+			approvalId: string;
+			decision: ApprovalDecision;
+		}): Promise<void> => {
+			const request =
+				ask.decision === "approve"
+					? ({ op: "approvals.approve", approvalId: ask.approvalId } as const)
+					: ({ op: "approvals.deny", approvalId: ask.approvalId } as const);
+			await desktopResult<unknown>(request);
+		},
+		onSettled: () => {
+			void client.invalidateQueries({ queryKey: meshApprovalKeys.approvals });
+			void client.invalidateQueries({ queryKey: meshKeys.networks });
+			void client.invalidateQueries({ queryKey: meshKeys.peers });
+		},
+	});
+}
+
+/**
+ * The sentence a failed approvals READ shows.
+ *
+ * Same rule as `meshErrorMessage`: the authored sentence (the transport's or the
+ * backend's) is preferred over a composed one, and the composed fallback names
+ * the read rather than the mesh, because this read can fail while the mesh is
+ * fine (and the reverse).
+ */
+export function approvalErrorMessage(error: unknown): string {
+	const authored = (error as Partial<DesktopControlError> | null)?.message;
+	if (typeof authored === "string" && authored.trim()) return authored.trim();
+	return "The approvals could not be read.";
+}
