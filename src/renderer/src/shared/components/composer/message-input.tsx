@@ -83,10 +83,7 @@ import type {
 import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
-import {
-	DESTINATIONS,
-	destinationNeedsSession,
-} from "@features/chat/pickers/picker-registry";
+import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
 import {
@@ -2758,6 +2755,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			activeSpec:
 				sessionStatus?.frontend?.effective_model ??
 				sessionStatus?.frontend?.selected_model,
+			/*
+			 * The pane's working directory, for the sessionless MCP catalog read the
+			 * argument list makes — the document it answers depends on this and on
+			 * the session (its query key is `(cwd, sessionId)`).
+			 */
+			cwd,
 		});
 
 		/*
@@ -4441,13 +4444,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * `transcript.clear` and `session.compact` keep their TWO-Enter path — a
 				 * single keystroke never detaches the app or clears the transcript view,
 				 * which is the behaviour they already had.
+				 *
+				 * THE ENTRY IS THE EFFECTIVE ONE (`slash.effectiveEntry`, resolved against
+				 * the capability answer in the hook), which is what keeps `/login`,
+				 * `/logout` and `/mcp` clicking through to their pickers on a backend that
+				 * does not license the inline lists: the hook reports no inline for them,
+				 * so the destination runs exactly as it did before the lists existed.
+				 * The two `runs: false` sources complete on a click — that flag is the
+				 * pointer's whole floor, and it must stay false (spec §4.1).
 				 */
 				const shouldRun =
 					disposition.run &&
 					(row.kind === "command"
 						? pointerPickRuns(
 								row.command.destination,
-								DESTINATIONS[row.command.destination],
+								slash.effectiveEntry(row.command.destination),
 							)
 						: (slash.inline?.runs ?? false)) &&
 					Boolean(onSlashCommand);
