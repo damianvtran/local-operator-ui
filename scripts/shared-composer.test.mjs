@@ -384,6 +384,21 @@ async function mount({
 		 */
 		textarea: () => container.querySelector("textarea"),
 		band: () => container.querySelector("[data-lo-composer-band]"),
+		/*
+		 * The empty chat's splash, the surface `transcriptless` exists to withhold.
+		 * The HOST is always in the DOM (the band's own class rides `bandCentred`,
+		 * and swapping the element would remount the siblings' subtree), so the
+		 * visible splash is its inner child - the one without `hidden`. Returning
+		 * null for a hidden splash is what makes this a reading about what the user
+		 * sees rather than about a node's existence.
+		 */
+		splash: () => {
+			const host = container.querySelector("[data-lo-composer-splash]");
+			const inner = host?.firstElementChild ?? null;
+			return inner !== null && !inner.className.includes("hidden")
+				? inner
+				: null;
+		},
 	};
 }
 
@@ -763,6 +778,40 @@ test("an unpaired daemon gets zero `skills.list` reads across a fresh mount and 
 /* ------------------------------------------------------------------ */
 /* 2. The density prop: explicit, and it reaches the surface            */
 /* ------------------------------------------------------------------ */
+
+test("transcriptless withholds the empty-chat splash a host with no transcript must not claim", async () => {
+	/*
+	 * THE MINI VIEW'S PROP (restyle slice 2). A host that passes `messages: []`
+	 * because it has NO transcript - not because the transcript is loading - must
+	 * not be shown the greeting, the mark and the suggestion chips: those are the
+	 * empty CHAT's splash, and a hotkey-summoned quick-send box claiming one would
+	 * be asserting a conversation it does not have. `isHydrating` is a different
+	 * fact (a page is still owed), so it cannot stand in - which is why the host
+	 * declares its shape outright.
+	 */
+	const plain = await mount({ messages: [] });
+	assert.ok(
+		plain.splash() !== null,
+		"an empty transcript-bearing host keeps the splash it always had",
+	);
+	await act(async () => {
+		root.unmount();
+	});
+
+	const quickSend = await mount({ messages: [], transcriptless: true });
+	assert.equal(
+		quickSend.splash(),
+		null,
+		"the transcriptless host gets the box and its own chrome, never the greeting",
+	);
+	assert.ok(
+		quickSend.textarea() !== null,
+		"and the composer itself is still mounted: the box is the point",
+	);
+	await act(async () => {
+		root.unmount();
+	});
+});
 
 test("isSmallView is an explicit density prop that reaches the band and the controls", async () => {
 	const wide = await mount({ isSmallView: false });

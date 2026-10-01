@@ -1,67 +1,102 @@
 /**
- * The quick-send composer: the whole mini view.
+ * The quick-send frame: the mini view's whole document, now a host of the
+ * SHARED composer.
  *
- * WHAT IT IS. A one-off send surface for the chief-of-staff seat: resolve the
- * seat, admit one message through the app's own send path, paint "Sent", get
- * out of the way (design §C, §E). It holds no transcript, no attachments, no
- * steer mode — a quick composer must not interrupt a running turn.
+ * WHAT CHANGED AND WHY. This surface used to BE a bespoke one-off send box
+ * (its own textarea, its own microphone, its own dictation stack, its own send
+ * state machine). The operator's directive: the mini view must be a mini
+ * VERSION OF THE APP - same tokens, same controls, same behaviours - and the
+ * chat's composer is now a shared component (`@shared/components/composer`,
+ * slice 1 of this workstream). So this file shrank to what a FRAME owns and
+ * nothing else:
  *
- * WHAT IT DELIBERATELY DOES NOT IMPORT. Nothing from `message-input.tsx` (the
- * speech-to-text stream owns that file; the mini's dictation seam is
- * `mini-dictation.ts`), none of the app's shell (no router, no feed, no
- * sidebar — the console capture's lesson, §D.1), and no React Query provider:
- * the two reads it needs are imperative `desktopResult` calls, replicated from
- * the canonical flow (`use-aida-target.ts`) rather than re-invented. The store
- * it sends through is its own copy in this renderer process, which is the
- * intended shape: admission is receipt-keyed server-side, and the main window
- * reconciles the new message the way it reconciles any other producer (§E.2).
+ * - the SEAT: capability gate -> `aida.status` -> (open if needed). The
+ *   display NAME rides the same read (`DesktopAidaState.name`, whose backend
+ *   author is `aida.naming.display_name`) - every seat sentence renders it, so
+ *   a rename lands with no code change (operator directive, 2026-09-29).
+ * - the WINDOW's relationship to the composer: summon focus, Esc dismissal,
+ *   the dialog-latch on blur, the "Sent" flash that precedes the hide.
+ * - the SEAT SNAPSHOT, read one-shot with `sessions.get` (the route answers a
+ *   `SessionSnapshot` whose `payload.frontend` is the same sync the chat's
+ *   stream paints) and handed to the composer's readings strip, its chips and
+ *   the send's steer decision.
+ * - the compact MODEL/EFFORT sheets the chips open (`mini-sheet.tsx`).
+ * - the MEASURED RESIZE (design R2): the frame measures its own content and
+ *   asks main for the height (see `MINI_VIEW_RESIZE`).
  *
- * FAILURE POLICY, one line: the window never closes itself on an error. It
- * keeps the draft, states the sentence, and — for pre-admission refusals only
- * — offers Retry. A post-admission failure may already be in the conversation,
- * so it points at the conversation instead (§E.5).
+ * WHY THE COMPOSER OWNS THE SEND. `onSendMessage` below is the same binding
+ * the chat page has: the composer keeps the draft, the attachments, the paste
+ * path, the credential capture and the provenance stamp, and calls back with
+ * the payload frozen at the press. The mini resolves the seat, encodes images
+ * exactly as the chat's send does (one lifted pipeline, see
+ * `attachment-encode.ts`), and admits through `admitChatDraft` - `steer` when
+ * the seat is mid-turn, `prompt` otherwise (the chat page's own rule).
  *
- * THE DICTATION now rides the app's shared speech layer (#633): this component
- * registers the mini's controller with the shared `SpeechToTextManager` and its
- * recording participates in the shared dictation-active coordination — one
- * dictation stack across surfaces (§F), not a private one beside it.
+ * WHAT DOES NOT LIVE HERE. No transcript, no feed, no router, no QueryClient
+ * (the shared composer mounts without one; the sheets read imperatively), no
+ * second dictation stack - the composer's registration with the shared speech
+ * manager is the one stack, PTT (`push-to-talk`) included.
  */
 
 import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
+import { gateIsSecret } from "@features/chat/ask-answer";
+import { formatContextTokens } from "@features/chat/pickers/panels/formatters";
+import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
+import { unreadableAttachmentRefusal } from "@features/chat/utils/attachment-read";
+import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
+import { messageBudgetRefusal } from "@features/chat/utils/message-budget";
+import { createLocalOperatorClient } from "@shared/api/local-operator";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { desktopFeatureEnabled } from "@shared/api/local-operator/desktop-hooks";
+import { radientProxy } from "@shared/api/radient/proxy";
+import type { UserInfoResult } from "@shared/api/radient/types";
 import { KeyboardShortcut } from "@shared/components/common/keyboard-shortcut";
-import { Spinner } from "@shared/components/common/spinner";
-import { Button } from "@shared/components/ui";
 import {
-	SpeechToTextPriority,
-	setDictationActive,
-	useSpeechToTextManager,
-} from "@shared/hooks/use-speech-to-text-manager";
+	type ComposerSendError,
+	MessageInput,
+	type MessageInputHandle,
+	type MessageInputProps,
+} from "@shared/components/composer";
+import { apiConfig } from "@shared/config";
+import {
+	type RadientAccountRead,
+	classifyRadientAccountFailure,
+} from "@shared/hooks/use-radient-user-query";
+import {
+	type RadientSpeechBlock,
+	radientSpeechBlock,
+} from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import {
 	SEND_FAILURE_COPY,
+	UNREADABLE_ATTACHMENT_CODE,
 	admitChatDraft,
 	isRefusedBeforeAdmission,
 	paneDraftKey,
 	sendFailureCopy,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
+import { useCanvasStore } from "@shared/store/canvas-store";
+import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { applyThemeToDocument } from "@shared/themes";
-import { Mic, Square } from "lucide-react";
 import {
-	type KeyboardEvent as ReactKeyboardEvent,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useRef,
 	useState,
 } from "react";
+import { isServerReachable } from "../../../shared/backend-status";
 import type { DesktopCapabilities } from "../../../shared/desktop-contract";
 import type {
 	DesktopAidaControlResult,
 	DesktopAidaState,
 } from "../../../shared/desktop-control-contract";
+import type {
+	CanonicalFrontendState,
+	CanonicalFrontendSync,
+} from "../../../shared/desktop-session-contract";
 import {
 	DEFAULT_QUICK_SEND_VALUE,
 	type MiniViewDismissReason,
@@ -69,67 +104,103 @@ import {
 	type MiniViewRegistrationState,
 	formatQuickSendTokens,
 } from "../../../shared/mini-view";
-import { MINI_COPY } from "./mini-copy";
-import {
-	type MiniDictationController,
-	type MiniDictationState,
-	createMiniDictation,
-} from "./mini-dictation";
-import {
-	MINI_INITIAL_STATE,
-	type MiniViewState,
-	canSend,
-	isEditable,
-	miniTransitions,
-	wireInputMode,
-} from "./mini-state";
+import { MINI_COPY, resolveSeatName } from "./mini-copy";
+import { MiniSheet, type MiniSheetMode } from "./mini-sheet";
+import { MINI_FRAME_INITIAL, miniFrameTransitions } from "./mini-state";
 import { rendererPlatform } from "./renderer-platform";
 
 /** How long the "Sent" flash stays up before the window hides (§E.4). */
 export const SENT_FLASH_MS = 600;
 
-/**
- * The reject code the seat's route answers once the install's switch is off
- * (`desktop_aida.py`'s contract, §E.1 step 4): a 409 whose detail carries this
- * word. Matched by value because no constant crosses the wire for it.
- */
+/** The AIDA-disabled refusal code, as the transport carries it. */
 const AIDA_DISABLED_CODE = "aida_disabled";
 
+/** The composer's `messages` slot for a host that has no transcript. */
+const EMPTY_MESSAGES: MessageInputProps["messages"] = [];
+
+/**
+ * The seat's snapshot as `sessions.get` answers it: the receipt-shaped frame
+ * (`SessionSnapshot`) whose `payload.frontend` is the same canonical sync the
+ * chat's stream paints. Typed to the fields this frame reads.
+ */
+type SessionGetReply = {
+	payload: {
+		frontend: CanonicalFrontendSync;
+		cold: boolean;
+	};
+};
+
 export function MiniComposer() {
-	const [text, setText] = useState("");
-	const [state, setState] = useState<MiniViewState>(MINI_INITIAL_STATE);
-	const [dictation, setDictation] = useState<MiniDictationState>("idle");
-	const [dictationNotice, setDictationNotice] = useState<string | null>(null);
+	const [frame, setFrame] = useState(MINI_FRAME_INITIAL);
+	const frameRef = useRef(frame);
+	useEffect(() => {
+		frameRef.current = frame;
+	}, [frame]);
+
+	const [seatId, setSeatId] = useState<string | null>(null);
+	/*
+	 * THE UNSEATED BOX'S OWN CONVERSATION KEY. The shared composer owns the draft
+	 * through `useMessageInput` keyed by a conversation id, and its submit REFUSES
+	 * without one - so a quick-send box that passed `undefined` until a seat
+	 * resolved would have a Send that silently did nothing on the first press.
+	 * The key is therefore always present; when the seat resolves, whatever was
+	 * typed under this one is MIGRATED into the seat's key (see the effect below),
+	 * because the operator's rule is that the seat conversation's draft is one
+	 * draft - the same text whether it is read in the chat pane or the popup.
+	 */
+	const UNSEATED_DRAFT_KEY = "mini-view:unseated";
+	const draftKey = seatId ?? UNSEATED_DRAFT_KEY;
+	const seatRef = useRef<string | null>(null);
+	const seatPromiseRef = useRef<Promise<string | null> | null>(null);
+	/*
+	 * The seat's display name, resolved from `aida.status` with the app's own
+	 * fallback (`resolveSeatName`). The initial value is the fallback because
+	 * the first paint precedes any read; every summon re-reads the status, and
+	 * a rename is live on the backend side, so the popup showing the fresh
+	 * answer on every open is the whole refresh story (no subscription exists;
+	 * see the PR note).
+	 */
+	const [seatName, setSeatName] = useState(() => resolveSeatName(null));
+	const seatNameRef = useRef(seatName);
+	useEffect(() => {
+		seatNameRef.current = seatName;
+	}, [seatName]);
+
+	const [frontend, setFrontend] = useState<CanonicalFrontendState | null>(null);
+	const frontendRef = useRef(frontend);
+	useEffect(() => {
+		frontendRef.current = frontend;
+	}, [frontend]);
+	const [effortEntities, setEffortEntities] = useState<
+		readonly unknown[] | undefined
+	>(undefined);
+	const [recordingProbe, setRecordingProbe] = useState<{
+		canUseRadientSpeech: boolean;
+		speechBlock: RadientSpeechBlock;
+	}>({ canUseRadientSpeech: false, speechBlock: "could-not-check" });
+	const [sendError, setSendError] = useState<ComposerSendError | undefined>(
+		undefined,
+	);
+	const [sheet, setSheet] = useState<MiniSheetMode | null>(null);
+	const [dictating, setDictating] = useState(false);
 	const [shortcut, setShortcut] = useState(DEFAULT_QUICK_SEND_VALUE);
 	const [platform] = useState<MiniViewPlatform>(rendererPlatform);
 
-	/*
-	 * Mirrors for the async paths. `beginSend` awaits a seat resolution and a
-	 * store call, so it must read the CURRENT state when it resumes rather than
-	 * the values its closure captured at the press — the classic stale-closure
-	 * double-send.
-	 */
-	const stateRef = useRef(state);
-	const textRef = useRef(text);
-	useEffect(() => {
-		stateRef.current = state;
-	}, [state]);
-	useEffect(() => {
-		textRef.current = text;
-	}, [text]);
-
-	const seatRef = useRef<string | null>(null);
-	const seatPromiseRef = useRef<Promise<string | null> | null>(null);
-	const inputRef = useRef<HTMLTextAreaElement | null>(null);
-	const dictationRef = useRef<MiniDictationController | null>(null);
-	const dictationPhaseRef = useRef<MiniDictationState>("idle");
+	const capabilitiesRef = useRef<DesktopCapabilities | null>(null);
+	const inputRef = useRef<MessageInputHandle | null>(null);
+	const contentRef = useRef<HTMLDivElement | null>(null);
 	const sentTimerRef = useRef<number | null>(null);
+	const settleReadRef = useRef<number | null>(null);
+	const dictationActiveRef = useRef(false);
+	const dialogOpenRef = useRef(false);
 
 	const update = useCallback(
-		(step: (current: MiniViewState) => MiniViewState): void => {
-			setState((current) => {
+		(
+			step: (current: typeof MINI_FRAME_INITIAL) => typeof MINI_FRAME_INITIAL,
+		) => {
+			setFrame((current) => {
 				const next = step(current);
-				stateRef.current = next;
+				frameRef.current = next;
 				return next;
 			});
 		},
@@ -145,48 +216,150 @@ export function MiniComposer() {
 		}
 	}, []);
 
-	/*
-	 * HOW THE DRAFT WAS PRODUCED (arch §4.2's `input_mode`, the composer's own
-	 * rule): `dictated` for a message only a transcript put there, `typed` for
-	 * one only the keyboard did, `mixed` for both — over "since the box last
-	 * emptied", because the empties (an accepted send's clear, a select-and-
-	 * delete) are the delimiters that start the next message's provenance over.
-	 * A refused send hands its text back still wearing its flags, so a retry
-	 * replays the same provenance.
-	 */
-	const sawTypingRef = useRef(false);
-	const sawDictationRef = useRef(false);
-
-	/*
-	 * The last capability answer, kept for the send gate: `features.input_mode`
-	 * decides whether a stamp may ride the wire at all, because an older harness
-	 * validates the message body with `extra="forbid"`. It is written by every
-	 * seat resolution — the same reads that decide `features.aida` — and read at
-	 * the press, so the gate and the seat it gates never come from two different
-	 * answers, and a failed read leaves both on the fail-closed side.
-	 */
-	const capabilitiesRef = useRef<DesktopCapabilities | null>(null);
-
-	/*
-	 * When the box is empty there is nothing left to attribute: the next
-	 * message's provenance starts over. This fires on ANY empty — the send's own
-	 * clear included — and `beginSend` also clears the flags at the accepted
-	 * send itself, because a transcript landing between that clear and this
-	 * effect must not inherit the sent message's provenance.
-	 */
-	useEffect(() => {
-		if (text === "") {
-			sawTypingRef.current = false;
-			sawDictationRef.current = false;
-		}
-	}, [text]);
+	/* -- the seat's reads --------------------------------------------------- */
 
 	/**
-	 * Resolve the seat: capability gate, read, open-if-needed (§E.1).
+	 * Refresh the seat's readings: snapshot, effort rungs, recording probe.
 	 *
-	 * The gate is asked FIRST and nothing else runs when it is closed — the
-	 * canonical fail-closed rule (§ 3.4): a route must not be called by a build
-	 * that does not advertise it.
+	 * ONE-SHOT READS, deliberately. The chat's pane subscribes its session to
+	 * the canonical stream; that machinery drags the transcript stack this
+	 * document exists to avoid. `sessions.get` answers the SAME snapshot the
+	 * stream's bootstrap frame carries (`SessionSnapshot.payload.frontend`), so
+	 * the strip, the chips and the steer decision read the canonical state from
+	 * the backend's own projection - just at a measured cadence (summon, after
+	 * a send, after a pick) rather than per frame.
+	 */
+	const refreshSeatReads = useCallback(async (sessionId: string) => {
+		try {
+			const reply = await desktopResult<SessionGetReply>({
+				op: "sessions.get",
+				sessionId,
+			});
+			setFrontend(reply.payload.frontend.snapshot);
+		} catch {
+			/* A read that failed leaves the last readings (or none); sends do
+			   not depend on it and the strip's absent state is honest. */
+		}
+		try {
+			const payload = await desktopResult<{ entities: unknown[] }>({
+				op: "commands.entities",
+				sessionId,
+				command: "effort",
+			});
+			setEffortEntities(payload.entities);
+		} catch {
+			/* Same rule: the strip's effort chip without rungs is a label. */
+		}
+	}, []);
+
+	/**
+	 * The recording probe, read the way `useRadientCredentialProbe` reads it
+	 * without mounting react-query: the server's reachability, the capabilities
+	 * negotiation, the Radient session, and the legacy `RADIENT_API_KEY` question,
+	 * composed into the shared capability and the disabled control's block
+	 * (`@shared/lib/speech-gate`).
+	 *
+	 * THE SAME SESSION-FIRST SEMANTICS AS THE CHAT'S PROBE (issue #674): a live
+	 * Radient account read enables speech first, the file key second, and the
+	 * local server gates both. One deliberate difference: these reads are
+	 * ONE-SHOT per summon rather than react-query's cache - the same decision the
+	 * seat's other reads make (see `refreshSeatReads`) and safe for the same
+	 * reason: the popup mounts fresh per summon, so a read on mount is fresh at
+	 * every open, and no window stays open across a sign-in to go stale. It is
+	 * also why there is no refetch-on-session-flip here: a summon re-reads.
+	 * Fail-closed: an unanswered read leaves the capability false, and the class
+	 * it reports is `could-not-check` - the same neutral default the shared
+	 * composer carries for a host with no probe.
+	 */
+	const refreshProbe = useCallback(async () => {
+		/*
+		 * The server's reachability, asked of the MAIN process the way the
+		 * connectivity gate asks it: it is the only process that knows whether the
+		 * daemon it attached to is still there (see `use-connectivity-status`). A
+		 * window whose bridge cannot answer is the offline direction.
+		 */
+		let serverOnline = false;
+		const bridge = window.api?.backend;
+		if (bridge) {
+			try {
+				serverOnline = isServerReachable((await bridge.getStatus()).state);
+			} catch {
+				/* The ask itself failed: no server this surface can use. */
+			}
+		}
+		/*
+		 * The capabilities negotiation's own state, because the account read is
+		 * disabled until it answers (design round 2, D6): its silence must not
+		 * classify as an answer class.
+		 */
+		let capabilitiesState: "pending" | "error" | "answered" = "pending";
+		let accountUnavailable = false;
+		try {
+			const capabilities = await desktopResult<DesktopCapabilities>({
+				op: "capabilities",
+			});
+			capabilitiesState = "answered";
+			accountUnavailable = !desktopFeatureEnabled(capabilities, "radient");
+		} catch {
+			capabilitiesState = "error";
+		}
+		/*
+		 * The session tier: the same proxy call the chat's account read makes, one
+		 * attempt. Skipped when it could not mean anything (no server, a failed
+		 * negotiation, or a backend that cannot serve Radient - on those the read
+		 * never asked in the chat either).
+		 */
+		let accountRead: RadientAccountRead = "checking";
+		if (
+			serverOnline &&
+			capabilitiesState === "answered" &&
+			!accountUnavailable
+		) {
+			try {
+				const account = await radientProxy<UserInfoResult>({
+					operation: "account",
+				});
+				accountRead = account ? "ready" : "signed-out";
+			} catch (error) {
+				accountRead = classifyRadientAccountFailure(error);
+			}
+		}
+		/* The legacy tier: the credentials file lists a Radient key. */
+		let hasRadientApiKey = false;
+		let keyUnreadable = false;
+		try {
+			const client = createLocalOperatorClient(apiConfig.baseUrl);
+			const response = await client.credentials.listCredentials();
+			if (response.status >= 400) throw new Error("credentials read failed");
+			const keys = (response.result as { keys?: string[] } | null)?.keys;
+			hasRadientApiKey = Array.isArray(keys)
+				? keys.includes("RADIENT_API_KEY")
+				: false;
+		} catch {
+			keyUnreadable = true;
+		}
+		setRecordingProbe({
+			canUseRadientSpeech:
+				serverOnline &&
+				(accountRead === "ready" || (hasRadientApiKey && !keyUnreadable)),
+			speechBlock: radientSpeechBlock({
+				serverOnline,
+				accountRead,
+				accountUnavailable,
+				capabilitiesState,
+			}),
+		});
+	}, []);
+
+	/**
+	 * The seat resolution: capability gate, status read, open-if-needed.
+	 *
+	 * The gate is asked FIRST and nothing else runs when it is closed (the
+	 * canonical fail-closed rule): a route must not be called by a build that
+	 * does not advertise it. The status read is where the DISPLAY NAME comes
+	 * from - the same `aida.status.name` the sidebar's own row renders, whose
+	 * backend author is `naming.display_name` - so naming and opening are one
+	 * read apart rather than two sources that can disagree.
 	 */
 	const resolveSeat = useCallback(async (): Promise<string | null> => {
 		let capabilities: DesktopCapabilities | null = null;
@@ -195,56 +368,53 @@ export function MiniComposer() {
 				op: "capabilities",
 			});
 		} catch {
-			// The transport could not answer: the seat cannot be confirmed, and
-			// the gate's fail-closed default applies.
 			capabilities = null;
 		}
 		if (capabilities === null) {
-			/*
-			 * A FAILED read is not an absent feature (review round 1, U3): the
-			 * transport could not answer, so the sentence is the unreachable one.
-			 * The "doesn't have a seat" sentence below belongs to an ANSWERED
-			 * capability that lacks `aida` and to nothing else (§E.5) — a
-			 * headless or offline machine must not read as a build without the
-			 * seat, which is the different fact a user would act on differently.
-			 */
 			capabilitiesRef.current = null;
 			seatRef.current = null;
 			update((current) =>
-				miniTransitions.seatBlocked(current, MINI_COPY.seatUnreachable),
+				miniFrameTransitions.noted(
+					current,
+					MINI_COPY.seatUnreachable(seatNameRef.current),
+				),
 			);
 			return null;
 		}
-		/*
-		 * The capability answer is KEPT for the send gate: `features.input_mode`
-		 * rides the same map, so one resolution answers both questions.
-		 */
 		capabilitiesRef.current = capabilities;
 		if (!desktopFeatureEnabled(capabilities, "aida", 1)) {
 			seatRef.current = null;
 			update((current) =>
-				miniTransitions.seatBlocked(current, MINI_COPY.seatMissing),
+				miniFrameTransitions.noted(
+					current,
+					MINI_COPY.seatMissing(seatNameRef.current),
+				),
 			);
 			return null;
 		}
 		try {
 			const read = await desktopResult<DesktopAidaState>({ op: "aida.status" });
+			/*
+			 * THE NAME IS TAKEN EVEN WHEN THE SEAT IS REFUSED, because the
+			 * refusal SENTENCES render it ("Couldn't reach Aida."): an error
+			 * path that skipped the read would speak the fallback while the
+			 * rest of the app says the operator's chosen name.
+			 */
+			const name = resolveSeatName(read.name);
+			setSeatName(name);
+			seatNameRef.current = name;
 			if (!read.enabled) {
 				seatRef.current = null;
 				update((current) =>
-					miniTransitions.seatBlocked(current, AIDA_DISABLED_SENTENCE),
+					miniFrameTransitions.noted(current, AIDA_DISABLED_SENTENCE),
 				);
 				return null;
 			}
 			let sessionId = read.session_id;
 			if (!sessionId) {
-				/*
-				 * `open` is idempotent server-side (the single-session rule is the
-				 * backend's), so a stale null costs one POST and can never create a
-				 * second conversation. The mini calls the op directly rather than
-				 * through `useAidaResolver`: that hook needs a QueryClient this
-				 * document deliberately does not mount.
-				 */
+				/* `open` is idempotent server-side (the single-session rule is the
+				   backend's), so a stale null costs one POST and can never create a
+				   second conversation. */
 				const opened = await desktopResult<DesktopAidaControlResult>({
 					op: "aida.control",
 					action: "open",
@@ -254,12 +424,15 @@ export function MiniComposer() {
 			if (!sessionId) {
 				seatRef.current = null;
 				update((current) =>
-					miniTransitions.seatBlocked(current, MINI_COPY.seatOpenFailed),
+					miniFrameTransitions.noted(
+						current,
+						MINI_COPY.seatOpenFailed(seatNameRef.current),
+					),
 				);
 				return null;
 			}
 			seatRef.current = sessionId;
-			update((current) => miniTransitions.seatReady(current));
+			setSeatId(sessionId);
 			return sessionId;
 		} catch (error) {
 			seatRef.current = null;
@@ -270,8 +443,8 @@ export function MiniComposer() {
 			const sentence =
 				code === AIDA_DISABLED_CODE
 					? AIDA_DISABLED_SENTENCE
-					: MINI_COPY.seatUnreachable;
-			update((current) => miniTransitions.seatBlocked(current, sentence));
+					: MINI_COPY.seatUnreachable(seatNameRef.current);
+			update((current) => miniFrameTransitions.noted(current, sentence));
 			return null;
 		}
 	}, [update]);
@@ -287,61 +460,104 @@ export function MiniComposer() {
 	}, [resolveSeat]);
 
 	/**
-	 * Admit the draft — the composer's own send path, verbatim (§E.2).
-	 *
-	 * `mode: "prompt"` always (never steer); no attachments; `cwd` is unused for
-	 * an existing session; no navigation afterwards, because the point is not to
-	 * leave where the operator is.
+	 * The light status read a WARM summon makes: the name (and a session id
+	 * that changed under us, which a rebuilt conversation produces) refresh
+	 * without the open flow, so a rename since the last summon is on screen
+	 * with one cheap read.
 	 */
-	const beginSend = useCallback(async (): Promise<void> => {
-		const draft = textRef.current.trim();
-		if (!canSend(stateRef.current, draft)) return;
-		if (dictationPhaseRef.current === "recording") {
-			/*
-			 * NO SEND PATH FIRES MID-RECORDING (review round 1, U2). Enter confirms
-			 * a recording rather than sending (the keydown handler owns that), the
-			 * disabled controls keep the pointer out, and this guard is the belt
-			 * for every remaining caller (a stale closure, a programmatic press):
-			 * a send here would file the message without the spoken words, and its
-			 * "Sent" dismissal could hide the window while the mic is still live —
-			 * the data loss §C.1 forbids.
-			 */
-			return;
-		}
-		if (sentTimerRef.current !== null) {
-			window.clearTimeout(sentTimerRef.current);
-			sentTimerRef.current = null;
-		}
-		/*
-		 * HOW THIS MESSAGE WAS PRODUCED, read at the press (arch §4.2): the
-		 * vocabulary is the composer's own (`typed`/`dictated`/`mixed`), the gate
-		 * is `features.input_mode` (an older harness validates the message body
-		 * with `extra="forbid"` and would refuse a body carrying it), and
-		 * `undefined` keeps the legacy body. The reference implementation is
-		 * `message-input.tsx`'s `inputModeForSend`, sent through the page's
-		 * `send`; this surface is its own page, so it owns both halves.
-		 */
-		const inputMode = wireInputMode(
-			desktopFeatureEnabled(capabilitiesRef.current, "input_mode"),
-			sawTypingRef.current,
-			sawDictationRef.current,
-		);
-		update((current) => miniTransitions.sendStarted(current));
+	const refreshIdentity = useCallback(async (): Promise<string | null> => {
 		try {
+			const read = await desktopResult<DesktopAidaState>({ op: "aida.status" });
+			const name = resolveSeatName(read.name);
+			setSeatName(name);
+			seatNameRef.current = name;
+			if (read.session_id && read.session_id !== seatRef.current) {
+				seatRef.current = read.session_id;
+				setSeatId(read.session_id);
+			}
+		} catch {
+			/* Keep the last name; the next summon tries again. */
+		}
+		return seatRef.current;
+	}, []);
+
+	/** The arrival-order guard for the delayed re-read after a pick or send. */
+	const scheduleSettleRead = useCallback(
+		(sessionId: string) => {
+			if (settleReadRef.current !== null) {
+				window.clearTimeout(settleReadRef.current);
+			}
+			/* A model or effort switch (and a steering turn starting) settles
+			   in the owner within a couple of seconds; one delayed re-read
+			   catches the confirmed reading without polling. */
+			settleReadRef.current = window.setTimeout(() => {
+				settleReadRef.current = null;
+				void refreshSeatReads(sessionId);
+			}, 2000);
+		},
+		[refreshSeatReads],
+	);
+
+	/* -- the send ----------------------------------------------------------- */
+
+	/**
+	 * The composer's send binding: the mini's half of `onSendMessage`.
+	 *
+	 * Mirrors the chat page's order of operations for the parts a quick send
+	 * has: encode the attachments (images only - the one lifted pipeline), take
+	 * the two pre-admission refusals (an unreadable file, a payload over the
+	 * transport budget) while the draft is still editable, then admit against
+	 * the seat. `mode` is the chat's own rule: a mid-turn seat gets `steer`, so
+	 * the message joins the running turn instead of queueing behind it.
+	 */
+	const onSendMessage = useCallback(
+		async (
+			content: string,
+			attachments: string[],
+			onEchoPainted?: () => void,
+			_typed?: string,
+			beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
+			inputMode?: "typed" | "dictated" | "mixed",
+		) => {
+			const { images, unreadable } = await encodeImageAttachments(
+				attachments,
+				content,
+			);
+			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			if (unreadableRefusal) {
+				setSendError({
+					message: unreadableRefusal,
+					code: UNREADABLE_ATTACHMENT_CODE,
+					retry: false,
+				});
+				return false;
+			}
+			const budgetRefusal = messageBudgetRefusal(content, images);
+			if (budgetRefusal) {
+				setSendError({ message: budgetRefusal, retry: false });
+				return false;
+			}
 			const target = seatRef.current ?? (await ensureSeat());
 			if (target === null) {
-				/*
-				 * The resolution refused and put ITS sentence up (every blocked arm
-				 * writes one). The send reads that sentence before replacing the
-				 * notice, so what the reader sees is the seat's reason rather than a
-				 * generic one. Retry is offered: a refusal can be a moment rather
-				 * than a verdict, and re-resolving is one read.
-				 */
-				const sentence = stateRef.current.notice ?? MINI_COPY.seatUnreachable;
-				update((current) =>
-					miniTransitions.sendFailed(current, sentence, true),
-				);
-				return;
+				/* The resolution refused and put ITS sentence up (every blocked
+				   arm writes one); the send reads it so the reader sees the
+				   seat's reason rather than a generic one, and Retry is offered
+				   because the next press re-resolves. */
+				setSendError({
+					message:
+						frameRef.current.notice?.text ??
+						MINI_COPY.seatUnreachable(seatNameRef.current),
+					retry: true,
+					onRetry: () => {
+						inputRef.current?.submitNow();
+						inputRef.current?.focusInput();
+					},
+					onDismiss: () => {
+						setSendError(undefined);
+						inputRef.current?.focusInput();
+					},
+				});
+				return false;
 			}
 			const key =
 				paneDraftKey(
@@ -349,198 +565,159 @@ export function MiniComposer() {
 					target,
 					useCanonicalSessionsStore.getState().drafts,
 				) ?? `send:${target}`;
-			const admitted = await admitChatDraft(
-				key,
-				{
-					text: draft,
-					attachments: [],
-					images: [],
-					mode: "prompt",
-					cwd: "",
-					inputMode,
-				},
-				target,
+			const inputModeEnabled = desktopFeatureEnabled(
+				capabilitiesRef.current,
+				"input_mode",
 			);
-			if (admitted === null) {
-				/*
-				 * The send lock: the same send is already in flight, or the
-				 * payload was unchanged. The store's own sentence says so; the
-				 * draft is still here and pressing again is safe.
-				 */
-				update((current) =>
-					miniTransitions.sendFailed(
-						current,
-						`${SEND_FAILURE_COPY.sendLock} ${MINI_COPY.keepText}`,
-						true,
-					),
+			try {
+				const admitted = await admitChatDraft(
+					key,
+					{
+						text: content,
+						attachments,
+						images,
+						mode: frontendRef.current?.streaming ? "steer" : "prompt",
+						cwd: frontendRef.current?.cwd ?? "",
+						inputMode: inputModeEnabled ? inputMode : undefined,
+					},
+					target,
+					onEchoPainted,
+					beforeAdmission,
 				);
-				return;
+				if (admitted === null) {
+					/* The send lock: the same send is already in flight, or the
+					   payload was unchanged. The store's own sentence says so;
+					   the draft is still here and pressing again is safe. */
+					setSendError({
+						message: `${SEND_FAILURE_COPY.sendLock} ${MINI_COPY.keepText}`,
+						muted: true,
+						polite: true,
+						onDismiss: () => setSendError(undefined),
+					});
+					return false;
+				}
+				setSendError(undefined);
+				/*
+				 * THE FILES PANEL GETS WHAT WAS SENT WITH IT (QA Q3). The composer's attachments
+				 * are not on the wire - a canonical content block is text or an image - so
+				 * without this write the mini's new attach control could accept a file, admit the
+				 * message, and leave the file existing nowhere (observed: the daemon's history
+				 * carried the text alone). This is the chat page's own carriage, ported rather
+				 * than reinvented: both keys, because a draft is keyed by its draft key while the
+				 * admitted session is keyed by its id, and writing only one would orphan the file
+				 * at the moment the user looks for it. A pasted image (`data:`) is skipped: it has
+				 * no path to open, and the image itself already rode the wire.
+				 */
+				const sentFiles = attachments
+					.filter((attachment) => !attachment.startsWith("data:"))
+					.map((attachment) => canvasDocumentForPath(attachment));
+				if (sentFiles.length > 0) {
+					const canvas = useCanvasStore.getState();
+					canvas.addMentionedFilesBatch(key, sentFiles);
+					canvas.addMentionedFilesBatch(target, sentFiles);
+				}
+				update((current) => miniFrameTransitions.sentUp(current));
+				if (sentTimerRef.current !== null) {
+					window.clearTimeout(sentTimerRef.current);
+				}
+				sentTimerRef.current = window.setTimeout(() => {
+					sentTimerRef.current = null;
+					/* Belt for the invariant the composer also enforces: no send
+					   path may hide the window while a recording is live. */
+					if (dictationActiveRef.current) return;
+					dismiss("sent");
+				}, SENT_FLASH_MS);
+				void refreshSeatReads(target);
+				scheduleSettleRead(target);
+				return true;
+			} catch (error) {
+				// A failed send invalidates the resolved seat: the conversation
+				// may be gone, so the next press re-resolves and `open` can heal it.
+				seatRef.current = null;
+				if (isRefusedBeforeAdmission(error)) {
+					const classified = sendFailureCopy(error);
+					setSendError({
+						message: `${classified.message} ${MINI_COPY.keepText}`,
+						retry: classified.retry,
+						onRetry: () => {
+							inputRef.current?.submitNow();
+							inputRef.current?.focusInput();
+						},
+						onDismiss: () => {
+							setSendError(undefined);
+							inputRef.current?.focusInput();
+						},
+					});
+				} else {
+					setSendError({
+						message: MINI_COPY.postAdmission(seatNameRef.current),
+						retry: false,
+						onDismiss: () => setSendError(undefined),
+					});
+				}
+				return false;
 			}
-			setText("");
-			textRef.current = "";
-			/*
-			 * THE PROVENANCE DIES WITH THE MESSAGE IT DESCRIBED (the composer's own
-			 * rule): the empty-box reset above would catch this clear only on the
-			 * next render, and a transcript landing in between would otherwise
-			 * inherit the sent message's flags.
-			 */
-			sawTypingRef.current = false;
-			sawDictationRef.current = false;
-			update((current) => miniTransitions.sendSucceeded(current));
-			sentTimerRef.current = window.setTimeout(() => {
-				sentTimerRef.current = null;
-				/*
-				 * Belt for the same invariant (review round 1, U2): no send path
-				 * may hide the window while a recording is live. Unreachable today
-				 * (Send and the mic are mutually disabled during each other's
-				 * phase), but a hide here would be the data loss §C.1 forbids, so
-				 * the flash simply stays until the next dismissal.
-				 */
-				if (dictationPhaseRef.current === "recording") return;
-				dismiss("sent");
-			}, SENT_FLASH_MS);
-		} catch (error) {
-			// A failed send invalidates the resolved seat: the conversation may be
-			// gone, so the next press re-resolves and `open` can heal it.
-			seatRef.current = null;
-			if (isRefusedBeforeAdmission(error)) {
-				const classified = sendFailureCopy(error);
-				const sentence = `${classified.message} ${MINI_COPY.keepText}`;
-				update((current) =>
-					miniTransitions.sendFailed(current, sentence, classified.retry),
-				);
-			} else {
-				update((current) =>
-					miniTransitions.sendFailed(current, MINI_COPY.postAdmission, false),
-				);
-			}
-		}
-	}, [dismiss, ensureSeat, update]);
-
-	/* -- dictation --------------------------------------------------------- */
-
-	useEffect(() => {
-		const controller = createMiniDictation({
-			onState: (next) => {
-				dictationPhaseRef.current = next;
-				setDictation(next);
-			},
-			onResult: (transcript) => {
-				/*
-				 * A TRANSCRIPT PUT WORDS IN THIS BOX (arch §4.2): the flag behind
-				 * `dictated`/`mixed`, set at this one door — the audio path — and
-				 * never for the keyboard's own edits, which arrive through the
-				 * textarea's `onChange`. The value becomes the wire's `input_mode`
-				 * at the next send, read at the press (`wireInputMode`).
-				 */
-				sawDictationRef.current = true;
-				setText((current) => {
-					const next =
-						current.length === 0
-							? transcript
-							: `${current}${current.endsWith(" ") ? "" : " "}${transcript}`;
-					textRef.current = next;
-					return next;
-				});
-			},
-			onError: (sentence) => {
-				setDictationNotice(sentence);
-			},
-		});
-		dictationRef.current = controller;
-		return () => {
-			controller.dispose();
-			dictationRef.current = null;
-		};
-	}, []);
-
-	/*
-	 * THE DICTATION-ACTIVE COORDINATION (the shared stack's own presence set):
-	 * while this surface records, the app's dictation is "active" here exactly
-	 * as it is in the main window, so every reader gets one answer rather than
-	 * each surface's private phase.
-	 */
-	useEffect(() => {
-		setDictationActive("mini-view", dictation === "recording");
-		return () => setDictationActive("mini-view", false);
-	}, [dictation]);
-
-	/*
-	 * The mic's own door and the shared manager's registration pair. The pair is
-	 * the frozen `{start, stop}` contract (the registrant owns release
-	 * semantics): the manager dispatches `start` on engage and `stop(reason)` on
-	 * release or abort, and the controller owns what each reason means. The gate
-	 * is the controls' own disabled state — a transcribing take or a send in
-	 * flight closes dictation — so the registered pair and the pointer door can
-	 * never disagree about when this surface accepts a take.
-	 */
-	const startTake = useCallback((): void => {
-		setDictationNotice(null);
-		void dictationRef.current?.start();
-	}, []);
-
-	const stopTake = useCallback((reason?: "release" | "abort"): void => {
-		dictationRef.current?.stop(reason ?? "release");
-	}, []);
-
-	const toggleDictation = useCallback((): void => {
-		if (dictationRef.current === null) return;
-		if (dictationPhaseRef.current === "recording") {
-			stopTake("release");
-			return;
-		}
-		if (dictationPhaseRef.current === "transcribing") return;
-		startTake();
-	}, [startTake, stopTake]);
-
-	useSpeechToTextManager(
-		"mini-view",
-		SpeechToTextPriority.MESSAGE_INPUT,
-		{ start: startTake, stop: stopTake },
-		() =>
-			dictationPhaseRef.current !== "recording" &&
-			dictationPhaseRef.current !== "transcribing" &&
-			stateRef.current.send !== "sending",
+		},
+		[dismiss, ensureSeat, refreshSeatReads, scheduleSettleRead, update],
 	);
 
-	/* -- the hotkey's own events ------------------------------------------- */
+	/* -- the frame's own events --------------------------------------------- */
 
+	/**
+	 * THE SHEET'S ONE EXIT (UX round 2, U3's residual).
+	 *
+	 * Every way out of the sheet - Escape through the frame's ladder, the sheet's own
+	 * close control, or a pick - comes through here. The restore used to live on the
+	 * `onClose` prop alone and the LADDER did not reach it: measured after an Escape,
+	 * `document.activeElement` was `<body>` and the next Escape produced no hide at
+	 * all (the event's target sits outside the React root, so the frame never saw
+	 * it). A pick was already correct - which is what a second, unreached copy of
+	 * one rule looks like.
+	 */
+	const closeSheet = useCallback((): void => {
+		setSheet(null);
+		inputRef.current?.focusInput();
+	}, []);
+
+	/**
+	 * The summon: keyboard to the composer, palette re-read, flash reset, seat
+	 * re-read (name + identity, then the readings), and a sheet closed - a
+	 * picker left open from the last summon lists a stale world.
+	 */
 	useEffect(() => {
-		/*
-		 * The summon: the keyboard goes to the composer, the palette is re-read
-		 * (the main window may have changed the theme since the last summon),
-		 * the "Sent" flash resets, and a seat that was never resolved — or was
-		 * cleared by a failure — re-resolves in the background.
-		 */
 		return window.api?.miniView?.onSummoned?.(() => {
-			/*
-			 * The theme is re-read per summon, not watched: the preference lives in
-			 * localStorage and this window is usually hidden, so applying it at the
-			 * moment the composer comes up is both cheaper and more current than a
-			 * subscription that fires while nobody is looking. See `main.tsx` for
-			 * why the NAME goes straight in rather than through `getTheme`.
-			 */
 			applyThemeToDocument(useUiPreferencesStore.getState().themeName);
-			update((current) => miniTransitions.summoned(current));
-			window.setTimeout(() => inputRef.current?.focus(), 0);
-			if (seatRef.current === null) void ensureSeat();
+			update((current) => miniFrameTransitions.summoned(current));
+			closeSheet();
+			/*
+			 * THE HEIGHT RETURNS TO REST WITH THE SUMMON (reviewer M1): a sheet or a
+			 * long draft grown on the last summon is closed here, and the observer
+			 * then asks for the smaller height - the request is driven by content,
+			 * so it shrinks as well as grows.
+			 */
+			window.setTimeout(() => inputRef.current?.focusInput(), 0);
+			void (async () => {
+				const id = seatRef.current
+					? await refreshIdentity()
+					: await ensureSeat();
+				if (id) void refreshSeatReads(id);
+				void refreshProbe();
+			})();
 		});
-	}, [ensureSeat, update]);
+	}, [
+		closeSheet,
+		ensureSeat,
+		refreshIdentity,
+		refreshProbe,
+		refreshSeatReads,
+		update,
+	]);
 
 	useEffect(() => {
-		/*
-		 * The registration state feeds the header's keycap. A window whose
-		 * process has no handler yet (or no registration at all, as in an
-		 * evidence run) keeps the shipped default — the header must never
-		 * render nothing where the chord belongs.
-		 */
+		/* The registration state feeds the header's keycap. A window whose
+		   process has no handler yet keeps the shipped default - the header
+		   must never render nothing where the chord belongs. */
 		const apply = (registration: MiniViewRegistrationState): void => {
-			/*
-			 * AN EMPTY VALUE IS "no value", not a value: a rig-shaped launch answers
-			 * `unavailable` with value "" (there is no stored chord to report), and
-			 * the header must keep the shipped default rather than render an empty
-			 * keycap — the promise the effect's comment makes.
-			 */
 			if (
 				typeof registration?.value === "string" &&
 				registration.value !== ""
@@ -556,229 +733,390 @@ export function MiniComposer() {
 		return unsubscribe;
 	}, []);
 
+	/**
+	 * THE DRAFT FOLLOWS THE SEAT (see `UNSEATED_DRAFT_KEY`).
+	 *
+	 * What was typed - and what was attached - before the seat resolved lives under
+	 * the placeholder key; the moment the seat exists the whole ROW moves onto its
+	 * conversation, so the popup's draft is the same draft the chat pane would show
+	 * for that conversation. One draft per conversation is the operator's rule, and
+	 * the composer's own re-seed on the id change then paints it without a second
+	 * write.
+	 *
+	 * THE CHIPS MOVE WITH THE TEXT (reviewer m1). `clearComposer` empties the whole
+	 * row, attachments included, so a migration that carried only `currentInput`
+	 * either wiped a file the user had attached before the seat answered or - with
+	 * no text to carry - returned early and stranded it invisibly under a key
+	 * nothing renders. Both are silent losses of exactly the kind the encoder's own
+	 * comment rejects, so the row is moved whole.
+	 *
+	 * THE ORDER IS THE STORE'S, NOT THIS EFFECT'S (reviewer N1): the effect runs
+	 * after the render that follows `seatId` changing, so the box is first re-seeded
+	 * from the seat's (still empty) row and the migrated text arrives through the
+	 * hook's own store-adoption effect (`use-message-input.ts`, `storedDraft !==
+	 * lastPushedRef`). The outcome is right; the mechanism is that one, so a later
+	 * change that assumed a pre-emptive write would be building on an invariant this
+	 * code does not hold.
+	 */
 	useEffect(() => {
-		/*
-		 * Blur hides, with the recording guard (§C.1): losing the window
-		 * mid-recording is data loss, so the mic session keeps its surface
-		 * until the user stops it. `dictationPhaseRef` rather than the state
-		 * value because this listener must not re-subscribe per phase.
-		 */
+		if (seatId === null) return;
+		const store = useConversationInputStore.getState();
+		const pendingRow = store.inputByConversation[UNSEATED_DRAFT_KEY];
+		if (pendingRow === undefined) return;
+		const pendingText = pendingRow.currentInput;
+		const pendingChips = pendingRow.attachments ?? [];
+		if (pendingChips.length > 0) {
+			for (const chip of pendingChips) store.addAttachment(seatId, chip);
+		}
+		if (typeof pendingText === "string" && pendingText !== "") {
+			store.setCurrentInput(seatId, pendingText);
+		}
+		if (pendingChips.length > 0 || pendingText !== "") {
+			store.clearComposer(UNSEATED_DRAFT_KEY);
+		}
+	}, [seatId]);
+
+	/**
+	 * THE BOOT READ (reading on mount is approved; there is no subscription).
+	 *
+	 * It exists so the composer mounts keyed to her conversation from the first
+	 * paint on an install where she already exists - a first summon must not
+	 * flip the draft key under a thumb. It NEVER opens her: `refreshIdentity`
+	 * reads `aida.status` without the open flow, so app launch stays
+	 * side-effect-free; a null id here is resolved by the first summon's
+	 * `ensureSeat`. The capability gate is asked first, because the route must
+	 * not be called by a build that does not advertise it.
+	 */
+	useEffect(() => {
+		void (async () => {
+			try {
+				const capabilities = await desktopResult<DesktopCapabilities>({
+					op: "capabilities",
+				});
+				capabilitiesRef.current = capabilities;
+				if (!desktopFeatureEnabled(capabilities, "aida", 1)) return;
+			} catch {
+				return;
+			}
+			const id = await refreshIdentity();
+			if (id) void refreshSeatReads(id);
+		})();
+		void refreshProbe();
+	}, [refreshIdentity, refreshProbe, refreshSeatReads]);
+
+	useEffect(() => {
+		/* Blur hides, with two latches: a live recording keeps its surface
+		   (data loss), and a native dialog the window opened keeps the window
+		   (R3 - the file picker must not dismiss the window it belongs to). */
 		const onBlur = (): void => {
-			if (dictationPhaseRef.current === "recording") return;
+			if (dictationActiveRef.current) return;
+			if (dialogOpenRef.current) return;
 			dismiss("blur");
 		};
 		window.addEventListener("blur", onBlur);
 		return () => window.removeEventListener("blur", onBlur);
 	}, [dismiss]);
 
-	const onKeyDown = useCallback(
-		(event: ReactKeyboardEvent<HTMLDivElement>): void => {
-			if (event.key === "Escape") {
-				/*
-				 * A PRESS THE SHARED MANAGER ALREADY CLAIMED IS NOT OURS (review round 1,
-				 * M2): an Escape that aborts a hold is preventDefaulted by the manager's
-				 * capture listener (its QA-round-1 contract), and the abort settles the
-				 * take before this handler sees it — so without this read the press fell
-				 * through to the hide, making the one cancel gesture two acts: the take
-				 * aborted AND the window dismissed out from under the reader. The claim,
-				 * where the manager set it, is the whole press.
-				 */
-				if (event.nativeEvent.defaultPrevented) return;
+	useEffect(() => {
+		return window.api?.miniView?.onDialog?.((payload) => {
+			dialogOpenRef.current = payload.open;
+		});
+	}, []);
+
+	/**
+	 * THE FIRST-COMMIT SIGNAL (see `MINI_VIEW_PAINTED`).
+	 *
+	 * Main presents this window only after this fires, because a frameless window
+	 * shown before its document commits is a WHITE CARD on macOS - the shipped
+	 * defect, where every open after a bundle swap was blank until relaunch.
+	 *
+	 * FROM THE COMMIT, NOT FROM A FRAME: `useLayoutEffect` runs synchronously as part
+	 * of the first commit, while a window that has never been shown cannot be relied
+	 * on to run `requestAnimationFrame` at all (the same property that made the
+	 * rAF-coalesced resize invisible in this pass's own rig). One shot: the signal
+	 * describes this document, and a reload is a new document whose own mount
+	 * signals again.
+	 */
+	useLayoutEffect(() => {
+		window.api?.miniView?.painted?.();
+	}, []);
+
+	/*
+	 * THE MEASURED RESIZE (design R2). The frame's content column is measured and
+	 * the height asked of main, which clamps and calls `setContentSize`.
+	 *
+	 * TWO DRIVERS, AND THE SECOND IS THE ONE THAT MATTERS. The measurement runs in
+	 * a LAYOUT EFFECT on every render - the states that grow this frame (a draft
+	 * gaining a line, the alert appearing, a chip landing, the sheet opening) are
+	 * all render-driven, and a layout effect runs while the window is HIDDEN.
+	 * The ResizeObserver stays for the growth that no render announces (a font
+	 * landing, the browser's own auto-size after a paste) and posts directly: it
+	 * already batches per frame, so the rAF this used to coalesce through was
+	 * costing correctness for nothing.
+	 *
+	 * WHY THE rAF HAD TO GO (measured in this pass's own rig): a hidden window has
+	 * Chromium's background throttling on, so `requestAnimationFrame` callbacks do
+	 * not run at all - the scene's walk measured a content column of 227px while
+	 * the window stayed 168 and not one resize request was posted. The window is
+	 * created hidden and shown on summon, so the old shape would have kept the
+	 * live surface clipped until its first painted frame, and the headless rig
+	 * could never see the mechanism work.
+	 */
+	const postHeight = useCallback((): void => {
+		const node = contentRef.current;
+		if (node === null) return;
+		window.api?.miniView?.resize?.(
+			Math.ceil(node.getBoundingClientRect().height),
+		);
+	}, []);
+
+	useLayoutEffect(() => {
+		postHeight();
+	});
+
+	useEffect(() => {
+		const node = contentRef.current;
+		if (node === null) return;
+		const observer = new ResizeObserver(postHeight);
+		observer.observe(node);
+		return () => {
+			observer.disconnect();
+		};
+	}, [postHeight]);
+
+	useEffect(() => {
+		return () => {
+			if (sentTimerRef.current !== null)
+				window.clearTimeout(sentTimerRef.current);
+			if (settleReadRef.current !== null)
+				window.clearTimeout(settleReadRef.current);
+		};
+	}, []);
+
+	/**
+	 * The window's Escape ladder, below the composer's own claims.
+	 *
+	 * A press the shared manager (a hold) or the composer (a live recording)
+	 * already claimed arrives with `defaultPrevented` - the claim IS the whole
+	 * press (Esc cancels the take; it never also hides the window). A sheet
+	 * closes first. Otherwise Esc hides, naming itself.
+	 */
+	const onFrameKeyDown = useCallback(
+		(event: React.KeyboardEvent<HTMLDivElement>): void => {
+			if (event.key !== "Escape") return;
+			if (event.nativeEvent.defaultPrevented) return;
+			if (sheet !== null) {
 				event.preventDefault();
-				if (dictationPhaseRef.current === "recording") {
-					// The composer's own gesture (Esc cancels a recording) rather
-					// than a hide: the recorded words would be lost, and Esc-cancel
-					// is the muscle memory this product already teaches.
-					dictationRef.current?.cancel();
-					setDictationNotice(null);
+				closeSheet();
+				return;
+			}
+			if (dictationActiveRef.current) return;
+			event.preventDefault();
+			dismiss("escape");
+		},
+		[closeSheet, dismiss, sheet],
+	);
+
+	/* -- the readings strip's dispatcher ------------------------------------ */
+
+	const onCommand = useCallback(
+		(invocation: { name: string; args: string }): void => {
+			if (invocation.name === "model" && invocation.args === "") {
+				if (seatRef.current === null) {
+					update((current) =>
+						miniFrameTransitions.noted(
+							current,
+							MINI_COPY.seatUnreachable(seatNameRef.current),
+						),
+					);
 					return;
 				}
-				dismiss("escape");
+				setSheet("model");
 				return;
 			}
-			if (event.key !== "Enter" || event.shiftKey) return;
-			if (event.nativeEvent.isComposing) return;
-			/*
-			 * Enter on a focused BUTTON belongs to the button: intercepting it
-			 * here would start one send from the handler and a second from the
-			 * button's own activation.
-			 */
-			const target = event.target as HTMLElement | null;
-			if (target?.tagName === "BUTTON") return;
-			event.preventDefault();
-			if (dictationPhaseRef.current === "recording") {
-				/*
-				 * ENTER CONFIRMS A RECORDING (review round 1, U2), the same gesture
-				 * the composer teaches (`message-input.tsx`): stop, transcribe,
-				 * append to the draft. Sending here would file the message without
-				 * the words still being spoken — and an admission's "Sent" flash
-				 * would hide the window while the mic was live.
-				 */
-				dictationRef.current?.stop();
+			if (invocation.name === "effort" && invocation.args === "") {
+				if (seatRef.current === null) {
+					update((current) =>
+						miniFrameTransitions.noted(
+							current,
+							MINI_COPY.seatUnreachable(seatNameRef.current),
+						),
+					);
+					return;
+				}
+				setSheet("effort");
 				return;
 			}
-			void beginSend();
+			if (invocation.name === "context") {
+				/* A READOUT, not a control: the chip's numbers come from the
+				   same snapshot the strip reads, and there is no list to draw. */
+				const reading = frontendRef.current;
+				const used = reading?.context_tokens ?? null;
+				if (used === null) {
+					update((current) =>
+						miniFrameTransitions.noted(
+							current,
+							MINI_COPY.contextLineNoReading,
+							"muted",
+						),
+					);
+					return;
+				}
+				const window = reading?.context_window ?? null;
+				update((current) =>
+					miniFrameTransitions.noted(
+						current,
+						MINI_COPY.contextLine(
+							formatContextTokens(used),
+							window === null ? null : formatContextTokens(window),
+							reading?.context_is_estimate === true,
+						),
+						"muted",
+					),
+				);
+				return;
+			}
+			update((current) =>
+				miniFrameTransitions.noted(current, MINI_COPY.controlUnavailable),
+			);
 		},
-		[beginSend, dismiss],
+		[update],
 	);
+
+	const sessionStatus = frontend
+		? { frontend, onCommand, effortEntities }
+		: undefined;
 
 	/* -- paint -------------------------------------------------------------- */
 
-	const notice = state.notice ?? dictationNotice;
-	const recording = dictation === "recording";
-	/*
-	 * Send never fires while a recording is live (review round 1, U2): Enter
-	 * confirms the recording instead, and the disabled control is what the
-	 * pointer hears. `beginSend` carries the same guard as the belt for every
-	 * other caller.
-	 */
-	const sendDisabled = !canSend(state, text) || recording;
-	const statusLine = recording
-		? MINI_COPY.recording
-		: dictation === "transcribing"
-			? MINI_COPY.transcribing
-			: state.send === "sent"
-				? MINI_COPY.sent
-				: (notice ?? MINI_COPY.hint);
-	const statusTone =
-		state.send === "sent"
-			? "text-ink-muted"
-			: recording
-				? "text-accent"
-				: state.send === "error" ||
-						(notice !== null && notice === dictationNotice)
+	const statusText = frame.sent
+		? MINI_COPY.sent
+		: dictating
+			? MINI_COPY.recording
+			: (frame.notice?.text ?? MINI_COPY.hint);
+	const statusTone = frame.sent
+		? "text-ink-muted"
+		: dictating
+			? "text-accent"
+			: frame.notice
+				? frame.notice.tone === "danger"
 					? "text-danger"
-					: "text-ink-muted";
+					: "text-ink-muted"
+				: "text-ink-dim";
 
 	return (
 		<div
-			className="flex h-screen w-screen flex-col gap-2 bg-canvas p-3 text-ink"
-			onKeyDown={onKeyDown}
+			className="flex h-screen w-screen flex-col overflow-hidden bg-canvas text-ink"
+			onKeyDown={onFrameKeyDown}
+			data-tour-tag="mini-frame"
 		>
-			<div className="flex h-4 shrink-0 items-center justify-between pb-0.5">
-				<span className="text-meta text-ink-muted">{MINI_COPY.seatLabel}</span>
-				{/*
-				 * THE APP'S CAP IDIOM (design round 1, D4), not a bare mono span: every
-				 * other chord in the app rides `KeyboardShortcut`, whose caps carry the
-				 * measured ink role at the mono ramp. The tokens are joined with "+"
-				 * because the component splits its prop on it — the macOS sentence
-				 * spelling (⌘⌥⇧Space, no separators) cannot be split back.
-				 */}
-				<KeyboardShortcut
-					shortcut={formatQuickSendTokens(shortcut, platform).join("+")}
-					joined
-				/>
-			</div>
-			<textarea
-				ref={inputRef}
-				data-tour-tag="mini-composer-input"
-				value={text}
-				disabled={!isEditable(state)}
-				placeholder={MINI_COPY.placeholder}
-				aria-label={MINI_COPY.placeholder}
-				onChange={(event) => {
-					/*
-					 * THE KEYBOARD TOUCHED THIS BOX (arch §4.2): the flag behind
-					 * `typed`/`mixed`. This handler is the one door every human edit
-					 * arrives through, and it does not fire for the transcript's own
-					 * programmatic write (a controlled value change is not an input
-					 * event) — which is exactly the distinction the stamp records.
-					 */
-					sawTypingRef.current = true;
-					setDictationNotice(null);
-					setText(event.target.value);
-				}}
-				className={cn(
-					"min-h-0 w-full flex-1 resize-none rounded-sm border border-control bg-elevated px-3 py-2",
-					"text-body-sm text-ink placeholder:text-ink-dim",
-					"transition-colors duration-fast ease-out-quart",
-					"disabled:border-hairline disabled:bg-sunken disabled:text-ink-disabled",
-					"disabled:placeholder:text-ink-disabled",
-				)}
-			/>
-			{/*
-			 * h-8, not h-7: the md Send is 32px and must sit inside its row rather
-			 * than bleed past it (design round 1, D1).
-			 */}
-			<div className="flex h-8 shrink-0 items-center justify-between gap-2">
-				<div className="flex min-w-0 items-center gap-2">
-					<Button
-						variant="ghost"
-						size="icon-sm"
-						data-tour-tag="mini-composer-mic"
-						aria-label={
-							recording ? MINI_COPY.dictationStop : MINI_COPY.dictationStart
-						}
-						disabled={dictation === "transcribing" || state.send === "sending"}
-						onClick={toggleDictation}
-					>
-						{recording ? (
-							<Square aria-hidden="true" />
-						) : dictation === "transcribing" ? (
-							<Spinner size="xs" />
-						) : (
-							<Mic aria-hidden="true" />
-						)}
-					</Button>
-					{recording ? (
-						<span className="relative block size-2 shrink-0" aria-hidden="true">
-							<span className="absolute inset-0 rounded-full border border-accent opacity-0 animate-ping" />
-							<span className="block size-2 rounded-full bg-accent" />
-						</span>
-					) : null}
+			<div
+				ref={contentRef}
+				data-tour-tag="mini-frame-content"
+				/*
+				 * `shrink-0`, NO `min-h-full`, and both halves are load-bearing
+				 * (design D1 / UX U1 / QA Q2). This node is what the ResizeObserver
+				 * below measures, and `min-h-full` made its box the VIEWPORT height
+				 * while the default `flex-shrink: 1` let the parent's `h-screen`
+				 * column squeeze it: the observer therefore read 168 in every state
+				 * and `mini-view:resize` was asked for the height the window already
+				 * had, so the sheet and a long draft were painted outside the window
+				 * (measured: sheet content 479 px against innerHeight 168). With the
+				 * intrinsic box the observer reports real content, which is also
+				 * what lets a request DROP again when the content shrinks (reviewer
+				 * M1) - main clamps below at MINI_VIEW_HEIGHT.
+				 */
+				className="flex shrink-0 flex-col gap-2 p-3"
+			>
+				<div className="flex h-4 shrink-0 items-center justify-between pb-0.5">
 					<span
-						data-tour-tag="mini-composer-status"
-						role={notice !== null || recording ? "status" : undefined}
-						aria-live={notice !== null ? "polite" : undefined}
-						className={cn("truncate text-meta", statusTone)}
+						data-tour-tag="mini-seat"
+						className="truncate text-meta text-ink-muted"
 					>
-						{statusLine}
+						{MINI_COPY.seatLabel(seatName)}
 					</span>
+					<KeyboardShortcut
+						shortcut={formatQuickSendTokens(shortcut, platform).join("+")}
+						joined
+					/>
 				</div>
-				<div className="flex shrink-0 items-center gap-2">
-					{state.send === "error" && state.retryable ? (
-						<Button
-							variant="ghost"
-							size="sm"
-							data-tour-tag="mini-composer-retry"
-							disabled={recording}
-							onClick={() => {
-								/*
-								 * A Retry after a SEAT refusal must re-resolve, not re-spend the
-								 * cached no: the gate goes back to pending and the cached id
-								 * is dropped, so `beginSend`
-								 * re-asks the route pair. Every other failure just clears the
-								 * notice and sends again — the seat is still the one it used.
-								 */
-								if (state.seat === "blocked") {
-									seatRef.current = null;
-									update((current) => miniTransitions.seatRetry(current));
-								} else {
-									update((current) => miniTransitions.clearNotice(current));
-								}
-								void beginSend();
-							}}
-						>
-							{MINI_COPY.retry}
-						</Button>
-					) : null}
-					<Button
-						variant="primary"
-						size="md"
-						data-tour-tag="mini-composer-send"
-						disabled={sendDisabled}
-						onClick={() => void beginSend()}
+				<MessageInput
+					ref={inputRef}
+					/*
+					 * THE BOX'S CONVERSATION KEY (see `UNSEATED_DRAFT_KEY`). The composer
+					 * owns the draft through `useMessageInput` keyed by this id, and it
+					 * REFUSES TO SUBMIT WITHOUT ONE (`handleSubmit`'s first guard), which is
+					 * why the key is present from the first paint rather than only once a
+					 * seat resolves - a quick-send box whose Send silently did nothing
+					 * before the seat answered would be a dead control on the one press
+					 * this surface exists for.
+					 */
+					conversationId={draftKey}
+					messages={EMPTY_MESSAGES}
+					isLoading={false}
+					isSmallView
+					/*
+					 * THE FRAME IS THE GUTTER (design D2): the composer's chat inset
+					 * exists to align the box with a transcript's scrollbar gutter, and
+					 * a quick-send frame has neither - its own `p-3` is the edge, and
+					 * inheriting the chat's 24px put the box 24px in from the header and
+					 * the hint that sit at that edge.
+					 */
+					ownGutter
+					transcriptless
+					placeholderOverride={MINI_COPY.placeholder(seatName)}
+					cwd={frontend?.cwd}
+					cwdReadOnlyReason={MINI_COPY.cwdReadOnly}
+					sessionStatus={sessionStatus}
+					recordingProbe={recordingProbe}
+					secretAnswer={gateIsSecret(frontend?.pending_gate)}
+					onDictationStateChange={(active) => {
+						dictationActiveRef.current = active;
+						setDictating(active);
+					}}
+					onSendMessage={onSendMessage}
+					sendError={sendError}
+				/>
+				{/*
+				 * ONE ERROR SURFACE (design D3): while the composer is showing its own
+				 * failure alert, this row does not repeat the same sentence below it -
+				 * the composer owns "your send did not go", with its Retry, and a second
+				 * copy here made the block two lines taller and the field jump under the
+				 * user's caret. Every other state (the resting hint, a frame notice, the
+				 * recording line, the Sent flash) still speaks here.
+				 */}
+				{sendError?.message ? null : (
+					<p
+						data-tour-tag="mini-composer-status"
+						role={frame.notice !== null || dictating ? "status" : undefined}
+						aria-live={frame.notice !== null ? "polite" : undefined}
+						className={cn("min-h-4 shrink-0 truncate text-meta", statusTone)}
 					>
-						{state.send === "sending" ? (
-							<>
-								<Spinner size="xs" />
-								{MINI_COPY.send}
-							</>
-						) : (
-							MINI_COPY.send
-						)}
-					</Button>
-				</div>
+						{statusText}
+					</p>
+				)}
+				{sheet !== null && seatId !== null ? (
+					<MiniSheet
+						mode={sheet}
+						sessionId={seatId}
+						/*
+						 * EVERY EXIT HANDS THE KEYBOARD BACK (UX U3): the open path
+						 * focuses the sheet, and without this the closed sheet left
+						 * `document.activeElement` on `<body>` - no caret, and the next
+						 * Escape never reached the frame's ladder because the event's
+						 * target sat outside the React root. Both exits (Escape and a
+						 * pick) come through here, so the restore cannot be forgotten on
+						 * one of them.
+						 */
+						onClose={closeSheet}
+						onPicked={() => {
+							closeSheet();
+							inputRef.current?.focusInput();
+							void refreshSeatReads(seatId);
+							scheduleSettleRead(seatId);
+						}}
+					/>
+				) : null}
 			</div>
 		</div>
 	);
