@@ -55,7 +55,7 @@
  */
 
 import { TRANSCRIPT_TOP_FADE_PX } from "@shared/lib/transcript-fade";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import type { Checkpoint } from "../../../../../shared/desktop-contract";
 
@@ -99,9 +99,28 @@ export const useActiveCheckpoint = (
 	const [activeCheckpointId, setActiveCheckpointId] = useState<string | null>(
 		null,
 	);
+	/*
+	 * THE LOADED SET'S IDENTITY COMES FROM ITS CONTENT, NOT FROM `rows` (UI
+	 * perf audit A2). `rows` is a fresh array on every streaming flush, so a memo
+	 * keyed on it rebuilt the Set — and the filtered checkpoint list, the scan
+	 * callback and the effect that attaches the scroll listener downstream of it
+	 * — on every frame even when no id had moved. The resident window grows and
+	 * shrinks only at its two ENDS (pages load tail-first and contiguously), so
+	 * the count plus the first and last ids name the set exactly: a prepend or an
+	 * append moves an end, a session switch moves all three, and no other event
+	 * can add or remove an id without one of them moving.
+	 */
+	const loadedIdSignature = useMemo(
+		() =>
+			`${rows.length}\u0000${rows[0]?.record.id ?? ""}\u0000${
+				rows[rows.length - 1]?.record.id ?? ""
+			}`,
+		[rows],
+	);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the Set is rebuilt from `rows` only when the content signature above moves; a `rows` dependency would rebuild it on every flush, which is the per-update cost this memo exists to remove.
 	const loadedCheckpointIds = useMemo(
 		() => new Set(rows.map((row) => row.record.id)),
-		[rows],
+		[loadedIdSignature],
 	);
 	const loadedCheckpoints = useMemo(
 		() =>
@@ -150,6 +169,23 @@ export const useActiveCheckpoint = (
 		else if (atTop) best = first;
 		setActiveCheckpointId((previous) => (previous === best ? previous : best));
 	}, [regionRef, loadedCheckpoints]);
+	/*
+	 * The scroll listener reads the scan through a ref (UI perf audit A2): the
+	 * listener must be attached ONCE per region, but the scan it calls changes
+	 * whenever the loaded set does. Reading the latest scan from a ref is what
+	 * lets the two effects below have stable dependencies — the alternative, the
+	 * single effect keyed on `syncActiveCheckpoint`, is what detached and
+	 * re-attached the listener on every flush. The ref write is during render,
+	 * as `rowsRef`/`widenInputs` in `canonical-transcript.tsx` do, so the listener
+	 * always sees the scan of the last committed render.
+	 */
+	const syncRef = useRef(syncActiveCheckpoint);
+	syncRef.current = syncActiveCheckpoint;
+	/*
+	 * The listener, attached once per region. Its rAF leading read and its 160ms
+	 * trailing read are unchanged (the header's N1 measurement); only the
+	 * attachment cadence moved.
+	 */
 	useEffect(() => {
 		const region = regionRef.current;
 		if (region === null) return;
@@ -159,7 +195,7 @@ export const useActiveCheckpoint = (
 			if (frame === 0) {
 				frame = window.requestAnimationFrame(() => {
 					frame = 0;
-					syncActiveCheckpoint();
+					syncRef.current();
 				});
 			}
 			/*
@@ -169,16 +205,24 @@ export const useActiveCheckpoint = (
 			window.clearTimeout(settle);
 			settle = window.setTimeout(() => {
 				settle = 0;
-				syncActiveCheckpoint();
+				syncRef.current();
 			}, ACTIVE_CUE_SETTLE_MS);
 		};
 		region.addEventListener("scroll", onScroll, { passive: true });
-		syncActiveCheckpoint();
 		return () => {
 			region.removeEventListener("scroll", onScroll);
 			if (frame !== 0) window.cancelAnimationFrame(frame);
 			window.clearTimeout(settle);
 		};
-	}, [regionRef, syncActiveCheckpoint]);
+	}, [regionRef]);
+	/*
+	 * The LOAD's own read, kept separate from the listener because it has a
+	 * different clock: a page that lands without a scroll must still re-read (the
+	 * loaded set is this effect's dependency), and it is now the only thing that
+	 * re-runs per loaded-set change — the mount read rides on it too.
+	 */
+	useEffect(() => {
+		syncActiveCheckpoint();
+	}, [syncActiveCheckpoint]);
 	return { activeId: activeCheckpointId, loadedIds: loadedCheckpointIds };
 };

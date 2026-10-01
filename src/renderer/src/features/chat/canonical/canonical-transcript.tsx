@@ -194,7 +194,7 @@ import {
 	WIDEN_MAX_STEPS,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
-	alignWalkRunKey,
+	alignWalkRunFromPlan,
 	alignWalkStateFor,
 	collapsePlan,
 	initialAlignWalkState,
@@ -2998,105 +2998,6 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		acknowledgeOwnWrite(before, region.scrollTop);
 	});
 	/*
-	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
-	 * settled turn finishes its own condensation instead of waiting for the
-	 * reader to scroll the head in page by page.
-	 *
-	 * WHEN the edge sits inside a run whose head the FETCHED rows cut off, the
-	 * snap has no boundary to land on and the bar can only describe the loaded
-	 * span — no real action count, no `Took` clause. The walk fetches that head,
-	 * one page per invocation, for as long as the decision's clauses hold: the
-	 * run is still cut AND the backend has more, no page is in flight, every
-	 * page so far applied, and the reader is following the tail with no recent
-	 * input (`mayAutoWalk` — the hook's own geometry and input clock, never a
-	 * re-derivation here).
-	 *
-	 * WHY ONE PAGE PER INVOCATION rather than a loop, and why the effect's own
-	 * dependency list is the walk's clock: a landing changes `rows` and flips
-	 * `loadingOlder`, so the effect re-runs by itself exactly once per page —
-	 * the same shape the flat two-page budget had, with the pages counted
-	 * instead of capped at two. A loop inside the effect would walk the whole
-	 * bound in one commit and hand the reader twelve pages of history as one
-	 * uninterruptible act.
-	 *
-	 * WHY IT STOPS RATHER THAN RETRIES on a non-`applied` outcome: a failure
-	 * already owns the failed row and the automatic retry budget (rule G), and a
-	 * walk that kept asking through a failure is the operator's "keeps loading in
-	 * chunks" loop. `halted` is the walk's own memory of that, cleared with the
-	 * rest of it on a session change — the reader's next act re-arms everything.
-	 *
-	 * THE SUPPRESSION BELOW IS ONE LINE AND SITS ON THE HOOK, not on the dependency,
-	 * because biome attaches an ignore to the NEXT line — the file states the same
-	 * convention at the clamp effect. `alignSize` is a RE-RUN TRIGGER, not a value
-	 * this body reads: a landing prepends older rows and the snap that follows it is
-	 * what mounts the completed run, so an effect that did not re-run on the new
-	 * mount would decide once per page against a window that no longer exists.
-	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `alignSize` is a re-run trigger (the completion's own mount), not a value this body reads; see the note above
-	useEffect(() => {
-		/*
-		 * WHOSE WALK THIS IS (1b/B). The run with a condensed, head-cut bar owns the
-		 * budget, and moving to a different such run starts a fresh one — that is what
-		 * lets a later settled turn complete its own bar in a long-lived conversation.
-		 * The same run keeps its spent budget, so no run is walked twice for the same
-		 * content. `widenInputs` is the render's own collapse inputs (the same ones
-		 * the widen and the plan read), so "condensed" here means the bar the reader
-		 * is looking at.
-		 */
-		const key = alignWalkRunKey(rows, {
-			live: paneIsLive,
-			openRuns,
-		});
-		const state = alignWalkStateFor(alignWalk.current, key);
-		const decision = alignWalkDecision(state.spent, {
-			hasMore: Boolean(transcript.hasMore),
-			loadingOlder,
-			headCut: state.key !== null,
-			mayWalk: mayAutoWalk(),
-			halted: state.halted,
-		});
-		alignWalk.current = { ...state, spent: decision.spent };
-		if (!decision.fetch) return;
-		const dispatchedFor = state.key;
-		void walkLoadOlder().then((applied) => {
-			/*
-			 * A walk page that did not apply halts the walk. `applied` is the boolean
-			 * form of the SAME single-flight ask the reader's own pump uses
-			 * (`createOlderLoader`), so the walk and a gesture can never be waiting on
-			 * two pages at once.
-			 *
-			 * THE KEY IS RE-CHECKED FIRST (agent review round 1, R1-2). A page can
-			 * resolve after the window has moved to a DIFFERENT cut run, and halting
-			 * whichever run is current then refuses that run's walk for its whole life
-			 * although none of its own pages failed — its bar would stay partial with
-			 * no reader-visible reason. Only the run that spent the ask may be halted
-			 * by its outcome.
-			 */
-			if (!applied && alignWalk.current.key === dispatchedFor) {
-				alignWalk.current = { ...alignWalk.current, halted: true };
-			}
-		});
-	}, [
-		rows,
-		/*
-		 * THE WALK'S OWN COMPLETION RE-ARMS THE ALIGN THROUGH `alignSize`, and that is
-		 * why it is a dependency even though the key no longer reads it. A landing
-		 * prepends OLDER rows: `rows` changes, the snap re-derives, and once the run's
-		 * own opening row is in the store the completed-run allowance mounts the whole
-		 * run — which is the transition that puts the true count and the `Took` clause
-		 * on the bar. A version of this effect that only watched the tail would decide
-		 * once per page and never re-read the mount the completion produced.
-		 */
-		alignSize,
-		loadingOlder,
-		transcript.hasMore,
-		walkLoadOlder,
-		mayAutoWalk,
-		paneIsLive,
-		openRuns,
-	]);
-
-	/*
 	 * §D7's near path, wired to the rail's ticks: ensure the row is reachable
 	 * (load pages, mount the render window), reveal it through the collapse
 	 * walk, centre it in the scroller, flash it.
@@ -3429,6 +3330,107 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			}),
 		[visible, working, gate, focusedRecordId, openRuns],
 	);
+	/*
+	 * THE WALK'S CUT-RUN KEY (UI perf audit A3). The completion walk below asks
+	 * "is there a run whose bar is PAINTED and whose opening user row is not in
+	 * the store?" — and the `collapsePlan` right above already answers it. That is
+	 * the plan the list PAINTS from, so the walk reads its answer instead of
+	 * building a second plan over the whole store on every transcript update.
+	 *
+	 * KEYING THE EFFECT ON THIS STRING, NOT ON `rows`, IS THE FIX: a streaming
+	 * flush moves `rows` on every frame, so the effect used to re-run — and pay a
+	 * whole-store `collapsePlan` — on each one even when no run it can act on had
+	 * changed. The answer is stable exactly while the run the reader sees is
+	 * unchanged, which is when the walk has nothing new to decide.
+	 */
+	const alignWalkKey = useMemo(
+		() => alignWalkRunFromPlan(collapse, openRuns),
+		[collapse, openRuns],
+	);
+
+	/*
+	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
+	 * settled turn finishes its own condensation instead of waiting for the
+	 * reader to scroll the head in page by page.
+	 *
+	 * WHEN the edge sits inside a run whose head the FETCHED rows cut off, the
+	 * snap has no boundary to land on and the bar can only describe the loaded
+	 * span — no real action count, no `Took` clause. The walk fetches that head,
+	 * one page per invocation, for as long as the decision's clauses hold: the
+	 * run is still cut AND the backend has more, no page is in flight, every
+	 * page so far applied, and the reader is following the tail with no recent
+	 * input (`mayAutoWalk` — the hook's own geometry and input clock, never a
+	 * re-derivation here).
+	 *
+	 * WHY ONE PAGE PER INVOCATION rather than a loop, and why the effect's own
+	 * dependency list is the walk's clock: a landing flips `loadingOlder` and, when
+	 * it completes the run, moves `alignWalkKey` to null, so the effect re-runs by
+	 * itself once per page — the same shape the flat two-page budget had, with the
+	 * pages counted instead of capped at two. A loop inside the effect would walk
+	 * the whole bound in one commit and hand the reader twelve pages of history as
+	 * one uninterruptible act.
+	 *
+	 * WHY IT STOPS RATHER THAN RETRIES on a non-`applied` outcome: a failure
+	 * already owns the failed row and the automatic retry budget (rule G), and a
+	 * walk that kept asking through a failure is the operator's "keeps loading in
+	 * chunks" loop. `halted` is the walk's own memory of that, cleared with the
+	 * rest of it on a session change — the reader's next act re-arms everything.
+	 *
+	 * THE DEPENDENCIES ARE THE KEY AND THE DECISION'S OWN INPUTS (UI perf audit
+	 * A3). `rows` and `alignSize` used to sit here as re-run triggers; the key now
+	 * carries everything either of them stood for — it is rebuilt from the plan,
+	 * which is built over `visible` (so a window move is already in it) — and
+	 * `loadingOlder` is the once-per-page clock the walk actually advances on.
+	 * Listing `paneIsLive`/`openRuns` separately would be redundant for the same
+	 * reason: the plan folds both.
+	 */
+	useEffect(() => {
+		/*
+		 * WHOSE WALK THIS IS (1b/B). The run with a condensed, head-cut bar owns the
+		 * budget, and moving to a different such run starts a fresh one — that is what
+		 * lets a later settled turn complete its own bar in a long-lived conversation.
+		 * The same run keeps its spent budget, so no run is walked twice for the same
+		 * content. `widenInputs` is the render's own collapse inputs (the same ones
+		 * the widen and the plan read), so "condensed" here means the bar the reader
+		 * is looking at.
+		 */
+		const state = alignWalkStateFor(alignWalk.current, alignWalkKey);
+		const decision = alignWalkDecision(state.spent, {
+			hasMore: Boolean(transcript.hasMore),
+			loadingOlder,
+			headCut: state.key !== null,
+			mayWalk: mayAutoWalk(),
+			halted: state.halted,
+		});
+		alignWalk.current = { ...state, spent: decision.spent };
+		if (!decision.fetch) return;
+		const dispatchedFor = state.key;
+		void walkLoadOlder().then((applied) => {
+			/*
+			 * A walk page that did not apply halts the walk. `applied` is the boolean
+			 * form of the SAME single-flight ask the reader's own pump uses
+			 * (`createOlderLoader`), so the walk and a gesture can never be waiting on
+			 * two pages at once.
+			 *
+			 * THE KEY IS RE-CHECKED FIRST (agent review round 1, R1-2). A page can
+			 * resolve after the window has moved to a DIFFERENT cut run, and halting
+			 * whichever run is current then refuses that run's walk for its whole life
+			 * although none of its own pages failed — its bar would stay partial with
+			 * no reader-visible reason. Only the run that spent the ask may be halted
+			 * by its outcome.
+			 */
+			if (!applied && alignWalk.current.key === dispatchedFor) {
+				alignWalk.current = { ...alignWalk.current, halted: true };
+			}
+		});
+	}, [
+		alignWalkKey,
+		loadingOlder,
+		transcript.hasMore,
+		walkLoadOlder,
+		mayAutoWalk,
+	]);
+
 	/*
 	 * THE SETTLE ANNOUNCEMENT (polite). A bar appearing is a transition the
 	 * reader did not initiate — rows readable a moment ago are unmounted — and
@@ -3871,9 +3873,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					building={checkpoints.building}
 					loadedIds={loadedCheckpointIds}
 					activeId={activeCheckpointId}
-					onJump={(id) => {
-						void jumpToCheckpoint(id);
-					}}
+					/*
+					 * The callback itself, not an inline arrow (UI perf audit A6): the rail
+					 * is `memo`ised, and a fresh arrow each render would break the prop
+					 * comparison on its own. `jumpToCheckpoint` is already a `useCallback`
+					 * that returns void, so the wrapper bought nothing.
+					 */
+					onJump={jumpToCheckpoint}
 					onHover={handleCheckpointHover}
 				/>
 				{/* biome-ignore lint/a11y/useKeyWithClickEvents: the click is a pointer gesture that hands the caret to the composer, which the keyboard already reaches with Tab; the transcript's own keys are its paging keys (Home/PageUp/ArrowUp), and adding a key that moved focus would take them away. */}
