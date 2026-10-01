@@ -16,7 +16,7 @@ a hand-built row with the same class names.
 | `after-collapsed-dark.png` | `SendDeliveries` | Four states in one column: `delivered` silent at 0.4s, `mailbox` amber `wake unconfirmed` + mailbox mark at 5.1s, `unconfirmed` amber `delivery unconfirmed` + question-mark message mark at 16s, `failed` `Attempted … not delivered` on the danger wash at 0.1s |
 | `after-open-mailbox-dark.png` | `SendDeliveriesOpen` | The incident's own expansion: the WRAPPING reader-facing sentence above the machine result, which is where the actionable half now lives |
 | `after-open-unconfirmed-dark.png` | `SendDeliveriesUnconfirmedOpen` | The retry-exhausted state's expansion: "Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending." |
-| `after-failure-expanded-dark.png` | `SendDeliveriesFailureOpen` | The refusal expanded: the danger pathway kept, the only state whose result renders as an `Error` block |
+| `after-failure-expanded-dark.png` | `SendDeliveriesFailureOpen` | The refusal expanded in its own prose: the danger pathway kept, and the frame now CONTAINS the `Error` block it is cited for (the label and the cause line, with the peer pid) — it was clipped until round 2's D1 |
 | `after-narrow-dark.png` | `SendDeliveriesNarrow` (390px) | The word whole (`wake unconfirmed`, `delivery unconfirmed`) and the summary truncating first |
 | `after-too-narrow-dark.png` | `SendDeliveriesTooNarrow` (320px) | BELOW the fit width: the amber pair sheds the WORD and keeps its mark, while the refusal keeps `not delivered` (it has no mark, so shedding it would leave the wash alone saying the call failed) |
 | `after-collapsed-light.png` | `SendDeliveriesLight` | The same four rows under `localOperatorLight` |
@@ -49,7 +49,10 @@ http://localhost:6139/iframe.html?id=chat-tool-rows--send-deliveries&viewMode=st
 
 The tab was closed and the Storybook process group reaped by exact pid when the
 capture finished; no browser was installed and no second rig was launched. Frames
-are the tab's own viewport at 1024x576 logical (2560x1440 device pixels).
+are the tab's own layout viewport at 1280x720 CSS with DPR 2 (a 2560x1440
+raster) — measured by QA round 2 (Q5): the same story rendered at 1024x576
+lands 1.25x larger and offset, while 1280x720@2 matches the frame's ink bbox
+to 1px.
 
 ## The width rule, measured rather than asserted
 
@@ -63,14 +66,30 @@ records for the chat measure). The behaviour was read off the rendered frames:
 | 320px | `SendDeliveriesTooNarrow` | **no** | yes | yes (`delivery unconfirmed — it may still arrive, so check before resending`) |
 | any | `failed` row | yes, always | n/a | the drawn word is the announcement |
 
+## Which frames were re-shot for round 2
+
+The convergence commit changes two things that are in the pixels: the refusal's
+own sentence (now "Fix the cause named below") and the trailing duration, which
+sheds below the container width the state word already sheds at. So
+`after-failure-expanded-dark.png` and `after-too-narrow-dark.png` were re-shot at
+that head; the other six are unchanged in fact as well as in the diff — the
+duration is drawn at every width those frames use (their rows are 21.4rem and
+wider), and no other frame renders a delivery note.
+
 ## What these frames do NOT prove
 
 - They are **fixtures**, not a live incident. The result strings are the ones core
   builds for each state; the durations are the ones the design measured. The
   backend half (the retry, the disk probe, the classification) lives in
-  `damianvtran/local-operator` and is not exercised here — no PR for it exists yet.
+  `damianvtran/local-operator` **#1855** (open, head `d50bccfd53`) and is not
+  exercised here; that PR also aligns the TUI's own state words to
+  `delivery unconfirmed` / `not delivered` in its remediation.
 - They say nothing about the TUI's own frames; the TUI half of the vocabulary is a
   separate surface.
+- The 320px frame contains every row in its box (QA round 2, Q1), but the refusal
+  is at its floor there: its summary truncates to a single character, because the
+  frozen word and the verb are what the row will not give up. Below 320px the
+  refusal's own fixed parts reach the box edge again.
 - They are not a contrast measurement. The floors are asserted by
   `scripts/contrast-contract.mjs` (`warning` as text on every ground, plus the
   `warning`/`rowHover` row this PR adds).
