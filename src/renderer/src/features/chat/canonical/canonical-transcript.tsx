@@ -3405,8 +3405,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * pure plan (`turn-collapse-model.ts`) over the same `visible` rows the list
 	 * renders, so a bar can only ever summarise rows that are loaded and on
 	 * screen. `live` is the liveness the working line and the folds read; the
-	 * model applies it to the newest run, so a finished turn above the reader's
-	 * place still collapses while a later turn streams.
+	 * model applies it to the newest run's IN-FLIGHT CYCLE only (the rows after its
+	 * last settled close), so a finished turn above the reader's place still
+	 * collapses while a later turn streams, and a sequence the reader already saw
+	 * condense stays condensed when a wake / peer message / job result starts the
+	 * next cycle in the same run (operator report, 2026-10-01).
 	 */
 	const collapse = useMemo(
 		/*
