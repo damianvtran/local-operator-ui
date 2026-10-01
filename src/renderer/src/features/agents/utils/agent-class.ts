@@ -119,7 +119,9 @@ export const CLASS_SWITCH_EFFECT: Record<ActionClass, string> = {
  * switch installs one first, exactly as the backend does for a seeded role.
  * That is a write the operator did not ask for by name, so it is disclosed in
  * the control's own copy before the press rather than discovered in the list
- * afterwards ("why does Aida say Installed now?").
+ * afterwards ("why does it say Installed now?") — said of the agent, never of a
+ * name, because the seat is renameable and this module has no business knowing
+ * what she is currently called (design round 2, D9).
  */
 export const BUILTIN_SWITCH_DISCLOSURE =
 	"This one ships with the app and has no copy of its own yet, so switching installs it first — the same agent and the same instructions, now editable — and then sets its class.";
