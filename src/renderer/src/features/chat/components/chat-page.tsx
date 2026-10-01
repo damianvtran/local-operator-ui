@@ -72,10 +72,7 @@ import {
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { pairingHasRemedy } from "../../../../../shared/backend-status";
-import {
-	DESKTOP_MESSAGE_BUDGET_BYTES,
-	DESKTOP_REFUSAL_CODE,
-} from "../../../../../shared/desktop-contract";
+import { DESKTOP_REFUSAL_CODE } from "../../../../../shared/desktop-contract";
 import {
 	asideAskBlockedReason,
 	askAside,
@@ -131,13 +128,10 @@ import { openConversation } from "../open-conversation";
 import { PickerOutlet } from "../pickers/picker-registry";
 import { effortQueryModel } from "../session-status/session-model";
 import type { Message } from "../types/message";
+import { encodeImageAttachments } from "../utils/attachment-encode";
 import { unreadableAttachmentRefusal } from "../utils/attachment-read";
-import { type WireImage, boundImagesForBudget } from "../utils/bound-image";
 import { canvasDocumentForPath } from "../utils/canvas-document";
-import {
-	messageBodyBytes,
-	messageBudgetRefusal,
-} from "../utils/message-budget";
+import { messageBudgetRefusal } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
 import type { HeaderIdentityData } from "./chat-header-identity";
 import { headerIdentityControlsShown } from "./chat-header-identity-model";
@@ -164,89 +158,6 @@ const SESSION_ID = /^[a-f0-9]{12}$/;
  */
 const gateKeyOf = (gate: { request_id: string; question_index: number }) =>
 	`${gate.request_id}:${gate.question_index}`;
-
-const IMAGE_MIME_BY_EXT: Record<
-	string,
-	"image/png" | "image/jpeg" | "image/gif" | "image/webp"
-> = {
-	png: "image/png",
-	jpg: "image/jpeg",
-	jpeg: "image/jpeg",
-	gif: "image/gif",
-	webp: "image/webp",
-};
-
-/**
- * Canonical admission carries images inline as `{data_b64, mime_type}`. The
- * composer holds attachments as paths or data URLs; only image types the
- * runtime accepts are encoded, anything else is left out rather than refused.
- *
- * The JSON transport budget for a message is 880,000 bytes - headroom under
- * the backend's real 900,000-byte control-frame limit, enforced by
- * `Prompt.nonempty` at
- * `local_operator/server/routes/desktop_sessions.py:101`. The earlier note
- * here claimed 256 KiB "see the backend contract", which the backend contract
- * contradicted: that number was an arbitrary transport literal 3.4x stricter
- * than what the server accepts, and one Retina screenshot exceeded it.
- *
- * Images are bounded CLIENT-SIDE before encoding, to the same 1024px long edge
- * the TUI applies (`bound-image.ts` cites the constants). Raising the budget
- * alone would not have been enough: unbounded screenshots are ~8.5 MB each, so
- * none of them fit at any budget this transport can offer.
- */
-const IMAGE_DATA_URL = /^data:(image\/(png|jpeg|gif|webp));base64,(.+)$/;
-const FILE_SCHEME = /^file:\/\//;
-
-async function encodeImageAttachments(attachments: string[], text: string) {
-	const images: WireImage[] = [];
-	/*
-	 * The paths this send identified as images but could NOT read.
-	 *
-	 * Returned rather than dropped, because a dropped one is a file the user
-	 * believes is in the message and is not - and on a draft restored from a
-	 * refusal that file is one they already sent once. The send refuses before
-	 * admission on a non-empty list (`unreadableAttachmentRefusal`), where the
-	 * chip is still removable (code review round 8, MINOR-1).
-	 */
-	const unreadable: string[] = [];
-	for (const attachment of attachments) {
-		const dataUrl = IMAGE_DATA_URL.exec(attachment);
-		if (dataUrl) {
-			images.push({
-				data_b64: dataUrl[3],
-				mime_type: dataUrl[1] as (typeof IMAGE_MIME_BY_EXT)[string],
-			});
-			continue;
-		}
-		const ext = attachment.split(".").pop()?.toLowerCase() ?? "";
-		const mime = IMAGE_MIME_BY_EXT[ext];
-		// Two skips that are NOT this send's failure, so neither is reported here: a
-		// path that is not one of the four image types the runtime accepts is left
-		// out of the body by design, for every send; and a renderer with no
-		// `window.api.readFile` bridge cannot read any file at all, which is a fact
-		// about the context rather than about this attachment (`attachment-read.ts`
-		// states both limits where the sentence is built).
-		if (!mime || !window.api?.readFile) continue;
-		const read = await window.api.readFile(
-			attachment.replace(FILE_SCHEME, ""),
-			"base64",
-		);
-		if (read.success) images.push({ data_b64: read.data, mime_type: mime });
-		else unreadable.push(attachment);
-	}
-	// Bound per image first, then check the TOTAL and step the whole set down
-	// until the message fits. Several individually legal screenshots that do not
-	// collectively fit is the common case, and it is not visible to a per-image
-	// rule.
-	return {
-		images: await boundImagesForBudget(
-			images.slice(0, 8),
-			DESKTOP_MESSAGE_BUDGET_BYTES,
-			(candidate) => messageBodyBytes(text, candidate),
-		),
-		unreadable,
-	};
-}
 
 /** Each displayed identity owns its stream and composer. A candidate open is
  * prepared by the store first; changing rows never stops the outgoing runtime. */
