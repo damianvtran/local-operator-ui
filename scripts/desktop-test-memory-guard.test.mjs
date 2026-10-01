@@ -35,6 +35,16 @@ import {
 const RUNNER = join(process.cwd(), "scripts", "run-desktop-tests.mjs");
 const MB = 1024 * 1024;
 
+/** Module-scope patterns (biome's `useTopLevelRegex`). */
+const REFUSING = /refusing/;
+const LIMIT_EXCEEDED = /MEMORY LIMIT EXCEEDED/;
+const KILLED_GROUP_LINE = /MEMORY LIMIT EXCEEDED — killed process group \d+/;
+const NAMES_GROUP = /process group 4242 \(2 processes\)/;
+const NAMES_FIGURE = /1\.1 GB owned \(footprint 1\.1 GB, rss 40 MB\)/;
+const NAMES_BUDGET = /budget 300 MB/;
+const WATCHDOG_OFF = /memory watchdog OFF/;
+const BUDGET_LINE = /desktop tests: memory bound \d/;
+
 test("the derived budget has a floor, scales with RAM, and is capped for small hosts", () => {
 	// 36 GB host: 25% (9,216 MB) beats the floor.
 	assert.equal(computeMemoryBudget({ totalMb: 36864 }).budgetMb, 9216);
@@ -205,7 +215,7 @@ test("the kill addresses the group and out-of-group members, and refuses unsafe 
 		[102, "SIGKILL"],
 	]);
 	for (const bad of [0, 1, -5, process.pid, Number.NaN, undefined]) {
-		assert.throws(() => killGroup(bad, [], { kill }), /refusing/, String(bad));
+		assert.throws(() => killGroup(bad, [], { kill }), REFUSING, String(bad));
 	}
 	// ESRCH is the expected race, any other failure is real.
 	assert.doesNotThrow(() =>
@@ -235,10 +245,10 @@ test("the breach line names the leader, the measured figure and the budget", () 
 			members: [{}, {}],
 		},
 	});
-	assert.match(line, /MEMORY LIMIT EXCEEDED/);
-	assert.match(line, /process group 4242 \(2 processes\)/);
-	assert.match(line, /1\.1 GB owned \(footprint 1\.1 GB, rss 40 MB\)/);
-	assert.match(line, /budget 300 MB/);
+	assert.match(line, LIMIT_EXCEEDED);
+	assert.match(line, NAMES_GROUP);
+	assert.match(line, NAMES_FIGURE);
+	assert.match(line, NAMES_BUDGET);
 	assert.match(line, new RegExp(MEMORY_BUDGET_OVERRIDE_ENV));
 });
 
@@ -291,11 +301,8 @@ test("the real runner kills a runaway group, names it, and exits non-zero", () =
 	);
 	const elapsed = Date.now() - started;
 	assert.equal(result.status, BREACH_EXIT_CODE, result.stdout + result.stderr);
-	assert.match(
-		result.stderr,
-		/MEMORY LIMIT EXCEEDED — killed process group \d+/,
-	);
-	assert.match(result.stderr, /budget 300 MB/);
+	assert.match(result.stderr, KILLED_GROUP_LINE);
+	assert.match(result.stderr, NAMES_BUDGET);
 	// Fast: the cadence is 2 s, so a trip is seconds, nowhere near the 60 s hold.
 	assert.ok(elapsed < 30000, `took ${elapsed} ms`);
 	// The grandchild was in the killed group; no orphan is left holding anything.
@@ -321,7 +328,7 @@ test("the override `off` runs the suite unbounded and says so", () => {
 		timeout: 60000,
 	});
 	assert.equal(result.status, 0, result.stdout);
-	assert.match(result.stdout, /memory watchdog OFF/);
+	assert.match(result.stdout, WATCHDOG_OFF);
 });
 
 test("a normal run prints the budget line and is unaffected", () => {
@@ -336,7 +343,7 @@ test("a normal run prints the budget line and is unaffected", () => {
 		timeout: 60000,
 	});
 	assert.equal(result.status, 0, result.stdout);
-	assert.match(result.stdout, /desktop tests: memory bound \d/);
+	assert.match(result.stdout, BUDGET_LINE);
 });
 
 test.after(() => rmSync(scratch, { recursive: true, force: true }));
