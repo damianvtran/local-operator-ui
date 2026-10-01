@@ -391,6 +391,13 @@ hand-resolved file is `docs/evidence/manifest.json`. The scene was re-run on the
 the toolbar (device y >= 1040): **17 of 17 byte-identical**, including `archive-confirm-long`. The
 light palette was not re-run for this fold.
 
+**FOURTH-FOLD COMPARISON (2026-10-01).** Re-run on the folded build in both palettes, every label
+compared against the committed `after/` frame over the panel band (device x < 700, below the toolbar,
+which is the sidebar and nothing else): **17 of 17 panel regions byte-identical, both palettes**. The
+chat pane (device x >= 700) differs in 12 frames - `rest-*`, `hover-*` and `archive-confirm-long`
+each ~7.8k device pixels - because main's 63 commits since the previous fold reworked the chat pane
+(its composer stop, the actions row, the speech control); that region is not this set's subject.
+
 **AFTER THE FOLD (2026-10-01).** These frames were shot at `56bfefa3ec`; the branch was then
 folded onto `origin/main` as `5bea768188`, where #663's `Open agent` (`@`) control joins the band's
 toolbar and shifts the panel's top, so every FULL frame now differs from the committed one by that
