@@ -17,16 +17,17 @@
  * passes a `ref` from `useLaneLeadingColumn` to its column, the marker is still
  * written by that hook rather than spelled beside it where the two could separate,
  * the marker's VALUE is the rung the lane must paint across the column's width
- * (`elevated` for the settings rail since 2026-09-27, `surface` for the two agent
- * rosters), the file each column is painted in still carries that same rung's
+ * (`surface` on every column — the settings rail was re-grounded flat on
+ * 2026-09-30 after a round on `elevated`; the two agent rosters were already
+ * `surface`), the file each column is painted in still carries that same rung's
  * `bg-<ground>` (so the value and the paint fail together - review round 1, M1),
  * and the band is still derived from the measured edge rather than from
  * the sidebar's width alone. The columns draw no right rule any more: the
  * operator's report of 2026-09-27 - "the right border doesn't go all the way up
  * ... either make it extend all the way up or remove the right border" - is
  * answered with the removal, because every boundary those rules drew is a tone
- * step now (the rail's `elevated` against the sidebar and the content, the
- * rosters' `surface` against the content), and a rule over a tone step is the
+ * step now (the rail's `surface` against the `canvas` content, the rosters'
+ * `surface` against the same content), and a rule over a tone step is the
  * redundant second mark this fleet removes (#564 took the dock's leading rule for
  * the same reason). It does NOT prove the lane reaches the column on screen -
  * that is geometry, and `--scene route-tops` measures it in the running app (the
@@ -69,7 +70,7 @@ const AGENTS_SIDEBAR =
 const LEADING_COLUMN_ROUTES = [
 	{
 		path: "src/renderer/src/features/settings/components/settings-page.tsx",
-		ground: "elevated",
+		ground: "surface",
 		paintedBy:
 			"src/renderer/src/features/settings/components/settings-sidebar.tsx",
 	},
@@ -115,8 +116,8 @@ test("the box a route hands over is painted in the ground it names", () => {
 	 * built app and a backend. What a text sweep can resolve is the FILE the box
 	 * is painted in, named per entry above, and the class is read there in its
 	 * className form so a box's own ground is what is asserted: the rail's
-	 * `bg-elevated` root, the rosters' `bg-surface` boxes. The token is exact
-	 * (review round 2's nit): a slash form (`bg-elevated/50`) is a wash OF the
+	 * `bg-surface` root, the rosters' `bg-surface` boxes. The token is exact
+	 * (review round 2's nit): a slash form (`bg-surface/50`) is a wash OF the
 	 * rung, not the rung, and the lookahead refuses it. A file that loses the
 	 * class, or a value the file never paints, fails on this line instead of on a
 	 * review of two files that were each moved alone.
@@ -209,8 +210,8 @@ test("no route column draws a right rule any more", () => {
 	 * doesn't go all the way up ... either make it extend all the way up or remove
 	 * the right border". It is the removal, on every route column, and for the same
 	 * reason on each: the boundary those rules drew is a tone step now (the rail's
-	 * `elevated` against the sidebar and the content, the rosters' `surface`
-	 * against the content) and a rule over a tone step is the redundant second mark
+	 * `surface` against the `canvas` content, the rosters' `surface` against the
+	 * same content) and a rule over a tone step is the redundant second mark
 	 * this fleet removes (`#564` took the dock's leading rule for the same reason).
 	 *
 	 * AND A RULE COULD NEVER HAVE BEEN EXTENDED FROM THE ROUTE ITSELF: nothing a

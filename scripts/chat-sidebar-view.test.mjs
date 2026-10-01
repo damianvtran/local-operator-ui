@@ -63,6 +63,13 @@ const bundle = await build({
 			'export * from "./src/renderer/src/features/chat/chat-sidebar-view";',
 			'export * from "./src/renderer/src/features/chat/chat-list-sections";',
 			/*
+			 * The roster's own module joins for the PIN field's cases: the stored
+			 * `pinnedAgents` list is written by `togglePinnedAgent` and parsed a
+			 * field down from it, so the round trip below would be asserting one
+			 * half of a contract the other half spells.
+			 */
+			'export * from "./src/renderer/src/features/chat/chat-sidebar-agents";',
+			/*
 			 * The store joins the bundle for the PERSISTENCE case, and for one
 			 * reason: the view the popover writes is a persisted field, so the
 			 * claim "this setting survives a relaunch" is a claim about the
@@ -109,10 +116,13 @@ const {
 	isActiveRow,
 	entityRows,
 	entityMore,
+	entityQueryAdmits,
 	entitySectionGap,
 	ENTITY_SECTION_GAP,
 	ENTITY_SECTION_GAP_COLLAPSED,
 	CHAT_LIST_SECTIONS,
+	PINNED_AGENTS_MAX,
+	togglePinnedAgent,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(
 		bundle.outputFiles[0].text,
@@ -368,6 +378,45 @@ test("the gap below a section is conditional on whether that section drew rows",
 	 * differently. That is the case a per-count rule gets wrong.
 	 */
 	assert.equal(entitySectionGap(false), entitySectionGap(false));
+});
+
+/*
+ * AN ENTITY'S QUERY GATE, hoisted into the module so the row and the roster
+ * filter's empty sentence cannot drift (issue #663, UX round 1's U1): a list
+ * query admits an entity when its NAME carries the query, or when it still has
+ * rows to draw.
+ */
+test("an entity survives the list query by its name or by the rows it holds", () => {
+	assert.equal(
+		entityQueryAdmits("builder", 0, ""),
+		true,
+		"an empty query admits everything",
+	);
+	assert.equal(
+		entityQueryAdmits("builder", 0, "build"),
+		true,
+		"the name carries the query",
+	);
+	assert.equal(
+		entityQueryAdmits("builder", 2, "scout"),
+		true,
+		"rows survive even when the name does not",
+	);
+	assert.equal(
+		entityQueryAdmits("builder", 0, "scout"),
+		false,
+		"no name hit and no rows is the drop",
+	);
+	assert.equal(
+		entityQueryAdmits("Patch-Reviewer", 0, "patch"),
+		true,
+		"the comparison is case-insensitive on both sides",
+	);
+	assert.equal(
+		entityQueryAdmits("patch-reviewer", 0, "reviewer"),
+		true,
+		"a substring, not a prefix",
+	);
 });
 
 test("invariant 1: the viewed conversation is on screen past the page's end", () => {
@@ -663,6 +712,38 @@ test("an unreadable or tampered view draws the column nobody has configured", ()
 	assert.equal(DEFAULT_SIDEBAR_VIEW.loads, 0);
 });
 
+/*
+ * THE PINNED ROSTER'S STORED LIST (issue #663), parsed on its own axis like
+ * every other field: a blob from before the field existed yields no pins, and a
+ * tampered one degrades per ENTRY - non-strings and empties dropped, duplicates
+ * collapsed, the count clamped to `PINNED_AGENTS_MAX` - rather than taking the
+ * view down with it. The keys are opaque HERE (the roster they name is not
+ * loaded at parse time), so a pin that names no row survives and is inert:
+ * that is the difference between a preference that has outlived an agent and a
+ * defect.
+ */
+test("a stored view without pins parses to none, and a tampered list degrades field-wise", () => {
+	assert.deepEqual(
+		parseSidebarView({}).pinnedAgents,
+		[],
+		"a blob from before the field existed means no pins",
+	);
+	assert.deepEqual(parseSidebarView({ pinnedAgents: "kept" }).pinnedAgents, []);
+	assert.deepEqual(
+		parseSidebarView({ pinnedAgents: ["kept", 7, null, "kept", "second", ""] })
+			.pinnedAgents,
+		["kept", "second"],
+		"strings only, deduped, empties dropped",
+	);
+	const many = Array.from({ length: 80 }, (_, index) => `agent-${index}`);
+	assert.equal(
+		parseSidebarView({ pinnedAgents: many }).pinnedAgents.length,
+		PINNED_AGENTS_MAX,
+		"the count is clamped rather than trusted",
+	);
+	assert.deepEqual(DEFAULT_SIDEBAR_VIEW.pinnedAgents, []);
+});
+
 test("the time basis parses like the other two choices: stored, validated, defaulted", () => {
 	assert.equal(parseSidebarView({ basis: "created" }).basis, "created");
 	assert.equal(
@@ -799,6 +880,7 @@ test("the component draws the band's controls and the popover's four groups", ()
 		"data-sidebar-view-options",
 		"data-sidebar-create",
 		"data-sidebar-page-more",
+		"data-sidebar-open-agent",
 	]) {
 		assert.ok(source.includes(hook), `${hook} is not drawn`);
 	}
@@ -828,6 +910,122 @@ test("the component draws the band's controls and the popover's four groups", ()
 	assert.ok(
 		source.includes('aria-label="Search chats and agents"'),
 		"the band's search control has no accessible name",
+	);
+	assert.ok(
+		source.includes('aria-label="Open agent…"'),
+		"the band's agent jump has no accessible name",
+	);
+});
+
+/*
+ * THE AGENT JUMP'S SEED (issue #663): the band control opens the palette and
+ * writes the agents-scope seed, in that order.
+ *
+ * WHAT THIS FILE CAN SAY about it: the two writes exist at the control's own
+ * anchor and in the order the store's shapes want - `openCommandPalette`
+ * raises the flag and does not touch the query, and the seed is written after
+ * it, so both land in the one commit the palette's open-time sync reads. What
+ * the seed MEANS is `palette-search.ts`'s table and is pinned in
+ * `scripts/palette-search.test.mjs`; that the palette then renders seeded is
+ * the story's frame and QA's walk.
+ */
+test("the band's agent jump opens the palette and seeds it to the agent scope", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	const at = source.indexOf("data-sidebar-open-agent");
+	assert.notEqual(at, -1, "the band's Open agent… control is gone");
+	const control = source.slice(at, at + 1_800);
+	assert.ok(
+		control.includes("openCommandPalette()") &&
+			control.includes("setCommandPaletteQuery(AGENT_ROSTER_SEED)"),
+		"the control no longer opens the palette seeded to the agents scope",
+	);
+	assert.ok(
+		control.indexOf("openCommandPalette()") <
+			control.indexOf("setCommandPaletteQuery("),
+		"the order fails: `openCommandPalette()` must come before `setCommandPaletteQuery(...)`, so both writes land in the one commit the palette's open-time sync reads",
+	);
+});
+
+/*
+ * THE ROSTER FILTER'S LIFECYCLE (issue #663, remediation round 1): the filter
+ * may narrow the section only while its FIELD is drawn. Design round 1 (D2),
+ * the agent review (B3) and the UX walk (U3) filed one defect three ways - a
+ * stored filter outliving its field (collapse Agents and type in the list
+ * search, which force-opens the rows; or let the roster shrink to the cap) and
+ * silently narrowing a list whose control was not on screen.
+ *
+ * WHAT THIS FILE CAN SAY about a component it cannot render: the gate and the
+ * branch are ONE expression each way - `rosterFilterShown` (the field's own
+ * render gate) is what the rows branch reads, and the field's gate answers
+ * "cap-bound OR filter applied", so the pair cannot come apart. The behaviour
+ * the pair produces is the story set's frames and QA's walk.
+ */
+test("the roster filter narrows only while its field is drawn", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.ok(
+		source.includes(
+			'ownAgents.length > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== ""',
+		),
+		"the field's gate no longer keeps a filter's own field alive",
+	);
+	assert.ok(
+		source.includes("rosterFilterShown && rosterFilter.trim()"),
+		"the rows branch narrows on the filter alone, so a stored filter can outlive its field",
+	);
+	assert.ok(
+		source.includes("data-roster-filter"),
+		"the roster field has no stable hook for the keyboard walk",
+	);
+});
+
+test("the empty sentence counts the rows that draw, not the matches", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.ok(
+		source.includes("drawnFilteredAgents.length > 0"),
+		"the sentence still tests the matches, so a list query can blank the section silently",
+	);
+	assert.ok(
+		source.includes("entityQueryAdmits(") &&
+			source.includes('scopeRows("agent", row.name).length'),
+		"the drawn set is not computed with the row gate's own rule",
+	);
+});
+
+/*
+ * THE PIN CONTROL'S CONTRACT (agent review's B2, UX's U7/U8, design's D7): the
+ * label names the SUBJECT and is constant, the state is `aria-pressed`, and the
+ * tooltip is the app's own component rather than a native `title`.
+ */
+test("the pin's label is the subject and the state is aria-pressed", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	const at = source.indexOf("data-agent-pin={pinKey}");
+	assert.notEqual(at, -1, "the roster's pin control is gone");
+	/*
+	 * THE SLICE IS ANCHORED AT THE TOOLTIP, because the absence it asserts
+	 * (`title=`) is only meaningful over this control: the slice must start at
+	 * the pin's own wrapper, not at an offset that could swallow the name
+	 * button's `title` above it (which is deliberate - a truncated name needs
+	 * one - and would fail this test for the wrong reason). If the wrapper is
+	 * ever dropped, the anchor walks back to some distant Tooltip and the
+	 * distance check below fails as "not wrapped", which is the finding.
+	 */
+	const tooltipAt = source.lastIndexOf("<Tooltip", at);
+	assert.ok(
+		at - tooltipAt < 600,
+		"the pin is not wrapped in the app's own Tooltip",
+	);
+	const control = source.slice(tooltipAt, at + 900);
+	assert.ok(
+		control.includes("aria-label={`Pin “${name}”`}"),
+		"the pin's label no longer names the agent it pins",
+	);
+	assert.ok(
+		control.includes("aria-pressed={pinnedAgent}"),
+		"the pin's state left aria-pressed",
+	);
+	assert.ok(
+		!control.includes("title="),
+		"the pin carries a native title again beside the app's Tooltip",
 	);
 });
 
@@ -877,7 +1075,14 @@ test("an entity section is hidden by the same field as a chat section", () => {
 test("the AGENTS/TEAMS region draws each entity row behind the view's own gate", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
 	for (const key of ENTITY_SECTIONS) {
-		const at = source.indexOf(`{heading("${key}", `);
+		/*
+		 * A WINDOW AROUND THE CALL, MATCHED TOLERANTLY (agent review round 2, R2-2).
+		 * The literal `{heading("agents", ` was a stale pin the moment the call had to
+		 * carry the hub heading controls and was broken across lines; the gate it
+		 * guards is the `isSectionShown` call beside it, so the anchor is the CALL
+		 * (whitespace-tolerant) rather than one spelling of its arguments.
+		 */
+		const at = source.search(new RegExp(`heading\\(\\s*"${key}"`));
 		assert.ok(at > 0, `the ${key} section's heading call is gone`);
 		const window = source.slice(Math.max(0, at - 600), at);
 		assert.ok(
@@ -929,12 +1134,15 @@ test("every view setting the popover writes survives a relaunch", () => {
 	const moved = moveSection(hidden, "today", 1);
 	const grouped = { ...moved, groupBy: "flat" };
 	const ordered = { ...grouped, orderBy: "recent" };
-	store.getState().setChatSidebarView(ordered);
+	// The pin is the roster's own field and rides the same object: one press, in
+	// the module's own spelling, so the relaunch below proves it comes back.
+	const pinned = togglePinnedAgent(ordered, "release-captain");
+	store.getState().setChatSidebarView(pinned);
 	// The store is the writer, and the filter the middleware keeps is the one it
 	// ships: assert the field is IN the persisted blob rather than assuming it.
 	assert.deepEqual(
 		persistedUiPreferences(store.getState()).chatSidebarView,
-		ordered,
+		pinned,
 	);
 	// The bytes on disk, parsed the way the next launch parses them.
 	const key = [...memory.keys()].find((entry) => {
@@ -957,6 +1165,11 @@ test("every view setting the popover writes survives a relaunch", () => {
 	assert.deepEqual(relaunched.order, ordered.order, "the reorder came back");
 	assert.equal(relaunched.groupBy, "flat", "the grouping came back");
 	assert.equal(relaunched.orderBy, "recent", "the ordering came back");
+	assert.deepEqual(
+		relaunched.pinnedAgents,
+		["release-captain"],
+		"the pin came back",
+	);
 	// And the one control with a non-default value nothing else writes: the page
 	// ladder, whose counter is the only field that can only ever grow.
 	store.getState().setChatSidebarView({ ...relaunched, loads: 2 });
