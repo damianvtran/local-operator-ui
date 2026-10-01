@@ -2893,6 +2893,49 @@ const BRANCH_RECORDS = [
 	"sttRecordingDisplayFoldFiveNote",
 	"sttRecordingDisplayFoldSixNote",
 	"sttRecordingDisplayFoldSevenNote",
+	/*
+	 * AND THIS BRANCH'S OWN (feat/mesh-canvas-redesign, 2026-09-30): the two records
+	 * of the mesh canvas redesign - `meshCanvasRedesignRestampNote` (the pass: the
+	 * whole mesh-tab set re-captured at 42 frames through the repo's own sweep, the
+	 * pair's derivation and the reason both halves moved) and
+	 * `meshCanvasRedesignFoldNote` (the branch's earlier fold onto `b897ebeb93`) -
+	 * plus `rebaseOntoA298bfb120Note` (this sync's own record: a rebase rather than
+	 * a fold, its two conflicted paths resolved, and the way the manifest's spine
+	 * was re-laid). All three spell their identity as bare SHAs, so they add no
+	 * name to the quoting ledger.
+	 *
+	 * GROWN BY THE ROUND-1 REMEDIATION, which re-captured the set WHOLE (50 frames,
+	 * 25 states, four added) and wrote this branch's newest top-level record:
+	 * `meshCanvasRedesignRemediationNote` names what moved in the pixels, the four
+	 * states the findings asked for by name, and why the pair is not restated in
+	 * prose. It is listed for the list's usual reason: a fold resolved from main's
+	 * copy of the manifest would drop it, and with it the only statement of which
+	 * fixes these frames carry. It spells its identity as bare SHAs too, so it adds
+	 * no name to the quoting ledger.
+	 *
+	 * AND EXTENDED BY THE ROUND-2 REMEDIATION, which re-captured the set whole again
+	 * (58 frames, 29 states, four added - the shared-opener pair and the three-level
+	 * stack), narrowed once to re-take the replaced `scopes-nested` fixture, and
+	 * corrected this note's own 34-finding breakdown (24 + 3 + 7, not 29 + 5). Same
+	 * key, same list entry: the record grows where it stands rather than growing a
+	 * second key a later fold would have to be told about.
+	 */
+	"meshCanvasRedesignRestampNote",
+	"meshCanvasRedesignFoldNote",
+	"rebaseOntoA298bfb120Note",
+	"meshCanvasRedesignRemediationNote",
+	/*
+	 * AND THE PROJECTS SEARCH/FILTERS LANE'S OWN FOLD RECORD, added by that
+	 * branch's sync onto `origin/main` = `4ea1635904` (#621, the mesh-canvas
+	 * redesign). It is listed for the list's usual reason: this fold's
+	 * resolution took main's records at the top level and kept this branch's,
+	 * and a LATER fold resolved from main's copy of the manifest would drop
+	 * this key unless the list names it - the twelfth-fold incident this list
+	 * exists for, caught here at the list's own edge rather than by the round
+	 * that next reads the note. It spells its identity as bare SHAs, so it
+	 * adds no name to the quoting ledger.
+	 */
+	"foldOnto4ea1635904Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
