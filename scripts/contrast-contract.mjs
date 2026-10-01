@@ -2846,22 +2846,34 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
-		 * The condensed action group's media tile (design review round 1, D2).
+		 * The condensed action group's media tile: THE EDGE RETURNS WHERE THE TILE IS
+		 * A CONTROL (design review round 1, D2; re-decided by the operator's "drop the
+		 * ring" change, where the design round's D1 recorded the trade).
 		 *
-		 * The tile IS a focusable `<button>`, so its frame's edge is a control
+		 * The tile IS a focusable `<button>`, so when its edge is drawn it is a control
 		 * boundary and answers to 3:1 (SC 1.4.11) rather than to taste. The palette
 		 * rows above already prove the COLOUR clears the floor - "outline control"
 		 * measures `borderControl` on all four grounds - and what only this pin can
-		 * see is the edit that puts the tile back on the decorative `hairline`: that
-		 * role has no floor at all, measured at 1.25:1 against the light transcript,
-		 * which is invisible chrome for exactly the picture that needs it most (a
-		 * light-canvas screenshot on a light page, where the tile would otherwise have
-		 * no visible extent).
+		 * see is the edit that puts the returning edge on the decorative `hairline`
+		 * (1.25:1 against the light transcript, no floor) or drops the focus half: a
+		 * keyboard reader has NO other resting boundary on a borderless tile, so the
+		 * `focus-visible` arm is the one that must not be deleted unseen.
 		 */
-		what: "condensed group media tile edge",
+		what: "condensed group media tile edge (hover and keyboard focus)",
 		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
-		must: '"border border-control"',
-		why: "a media tile is a button whose frame is its whole visible boundary; dropping it to `hairline` leaves the pair green in every palette row while a light-canvas picture stops having a visible extent, which no ratio in this file can see",
+		must: '"group-hover/tile:border-control group-focus-visible/tile:border-control"',
+		why: "a media tile is a button whose edge now appears only on hover and keyboard focus; dropping either arm, or moving it to `hairline`, leaves the pair green in every palette row while the tile loses the boundary of the state in which it is a control, which no ratio in this file can see",
+	},
+	{
+		/*
+		 * The failed receipt keeps the edge AT REST: a card in a state keeps its edge
+		 * because the state is the information, and with no picture the receipt has no
+		 * other extent (branding section 2).
+		 */
+		what: "condensed group failed-tile receipt edge",
+		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
+		must: "rounded-sm border border-control bg-sunken",
+		why: "the compact receipt has no picture to give it an extent, so its `border-control` is its only boundary; removing it with the working tile's edge (which the operator asked to drop) would leave a bare glyph in a well",
 	},
 	{
 		/*
