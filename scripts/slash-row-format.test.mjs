@@ -614,6 +614,55 @@ test("/logout's list groups credentials per provider and names the removal", () 
 	assert.equal(alone.detail, "remove oauth");
 });
 
+test("/logout rows are named the census way, and carry its aliases", () => {
+	/*
+	 * Round 1, D5/U6 and U4: `/login` named rows by the census's `brand` and
+	 * reached them by `search_aliases`; `/logout` showed the raw id and matched
+	 * the id alone, so the SAME provider read `OpenAI` in one popup and `openai`
+	 * in the next, and `chatgpt` reached it in one command but not the other.
+	 * The shaper now joins the census the hook already fetches.
+	 */
+	const census = [
+		{
+			id: "openai",
+			name: "OpenAI (ChatGPT Plus/Pro)",
+			brand: "OpenAI",
+			search_aliases: ["gpt", "chatgpt"],
+		},
+		{
+			id: "anthropic",
+			name: "Anthropic (Claude Pro/Max)",
+			brand: "Anthropic",
+			search_aliases: ["claude"],
+		},
+	];
+	const rows = argumentRows(
+		"provider-accounts",
+		[
+			{ provider: "openai", type: "oauth", identity_label: "a@b.c" },
+			{ provider: "zai", type: "api_key", identity_label: "Stored credential" },
+		],
+		null,
+		{ providers: census },
+	);
+	assert.equal(rows[0].name, "OpenAI");
+	assert.equal(
+		rows[0].value,
+		"openai",
+		"the id stays the value the command takes",
+	);
+	assert.deepEqual(rows[0].aliases, ["gpt", "chatgpt"]);
+	assert.equal(
+		matchChoices("chatgpt", rows)[0]?.choice.value,
+		"openai",
+		"the alias vocabulary is the one /login already honours",
+	);
+	// A provider the census does not know (or a census that failed to load)
+	// keeps the row legible by its id, with no invented aliases.
+	assert.equal(rows[1].name, "zai");
+	assert.equal(rows[1].aliases, undefined);
+});
+
 /* The document table the real backend will publish (spec §3.1): descriptions
    verbatim from the TUI's own literal (`app.py:47703-47725`). */
 const MCP_VERBS = [
@@ -684,9 +733,15 @@ test("the /mcp verb slot reads the document's verbs, alert on destructive", () =
 	});
 	// The document's ORDER, list first — the row a stray Enter lands on is the
 	// one that only shows something.
+	//
+	// THE TRAILING SPACE IS THE HANDOFF (round 1, U1): the value is what a pick
+	// WRITES, and choosing a verb must leave `/mcp login ` in the buffer so the
+	// server slot opens — `completionFor` appends no space for this source
+	// (`nameThenMessage` is false on purpose: that flag would CLOSE the list
+	// instead of advancing it), so the row's own value carries it.
 	assert.deepEqual(
 		rows.map((row) => row.value),
-		["list", "add", "remove", "login", "logout", "reauth"],
+		["list ", "add ", "remove ", "login ", "logout ", "reauth "],
 	);
 	assert.equal(
 		rows[0].description,
@@ -705,9 +760,12 @@ test("a partially typed verb stays in the verb slot", () => {
 		argument: "lo",
 		verbs: MCP_VERBS,
 	});
+	// The slot is the TUI's partition on the first space; a partial word is
+	// still the verb slot, and every candidate keeps the terminator its pick
+	// will write.
 	assert.deepEqual(
 		rows.map((row) => row.value),
-		["list", "add", "remove", "login", "logout", "reauth"],
+		["list ", "add ", "remove ", "login ", "logout ", "reauth "],
 	);
 });
 

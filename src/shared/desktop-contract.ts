@@ -14,7 +14,16 @@ const settingKey = z
 	.max(256)
 	.regex(/^[a-zA-Z0-9_][a-zA-Z0-9_.-]*$/);
 const secret = z.string().min(1).max(32768);
-const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
+/**
+ * The canonical stream session id, as the wire spells it.
+ *
+ * Exported beside the schema so a client that holds a session KEY rather than
+ * a session id (a draft pane's "draft:<uuid>") can tell the two apart before
+ * composing a request — a second copy of the regex at the call site is where
+ * the two answers would drift (PR #726, QA Q-1).
+ */
+export const sessionIdPattern = /^[a-f0-9]{12}$/;
+const sessionId = z.string().regex(sessionIdPattern);
 /*
  * The MCP field shapes, named once because the session route and the
  * sessionless catalog route accept the same server names, secret references and
@@ -23,12 +32,22 @@ const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
 const mcpServerName = z.string().regex(/^[A-Za-z0-9_.:-]{1,100}$/);
 const mcpSecretReference = z.string().regex(/^\$\{[A-Za-z_][A-Za-z0-9_]*\}$/);
 const mcpOperationId = z.string().regex(/^[a-f0-9]{32}$/);
-/** An absolute POSIX or Windows directory path; the backend checks it exists. */
-const mcpCatalogCwd = z
-	.string()
-	.min(1)
-	.max(4096)
-	.regex(/^(\/|[A-Za-z]:[\\/])/);
+/**
+ * An absolute POSIX or Windows directory path; the backend checks it exists.
+ *
+ * Exported because a CLIENT sometimes holds a value that is not what it
+ * appears: the composer's own `cwd` is the pane's DISPLAY string ("~" for
+ * home) and its draft panes key their session as "draft:<uuid>". Sent raw,
+ * both are refused by the schemas here BEFORE any byte reaches the backend, so
+ * the sessionless MCP read died as a 422 and the composer's `/mcp` list
+ * rendered empty (PR #726, QA Q-1) — the read performed fine everywhere a
+ * fixture stood in for the transport. `mcp-catalog.ts` coerces with these two
+ * patterns; the schemas below stay the one enforcement point, and the bound
+ * mirror is there so a coerced value cannot fail a term the pattern does not
+ * check.
+ */
+export const mcpCatalogCwdPattern = /^(\/|[A-Za-z]:[\\/])/;
+const mcpCatalogCwd = z.string().min(1).max(4096).regex(mcpCatalogCwdPattern);
 /**
  * The wire shape of a canonical stream subscription id.
  *
