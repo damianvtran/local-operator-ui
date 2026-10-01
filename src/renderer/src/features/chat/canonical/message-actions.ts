@@ -27,10 +27,10 @@ export type AnswerActionId = "copy" | "speak";
  *
  * The SECOND half of speech's gate - whether a speech credential is configured -
  * is deliberately NOT in this list. It is read by the button itself
- * (`useRadientCredentialProbe`, the same probe and the same two sentences
- * `text-selection-controls.tsx` uses) and paints as a disabled button whose
+ * (`useRadientCredentialProbe`; the disabled sentence comes from the one copy
+ * table in `@shared/lib/speech-gate`) and paints as a disabled button whose
  * tooltip gives the reason. Collapsing the two here would take the only route
- * by which "sign in to Radient to enable text to speech" reaches the reader.
+ * by which the sign-in sentence reaches the reader.
  *
  * QUOTE IS DELIBERATELY ABSENT. Its trigger is the selection, `canonical-
  * transcript.tsx` enforces one subject per row, and a Quote button here would

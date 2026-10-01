@@ -19,15 +19,20 @@
  * cannot drift from what the reader is looking at.
  *
  * `agentId` is the conversation the speech engine synthesises against, and its
- * ABSENCE is what makes Speak unavailable (with a missing credential it is the
- * second half of the same gate) - the same pair `text-selection-controls.tsx`
- * reads. `speechId` keys this row in the speech store, so the button's busy and
- * playing states belong to this answer and cannot be claimed by another.
+ * ABSENCE is what keeps Speak off the row altogether (`answerActionsFor`): a
+ * button whose every press would be a no-op is not offered. The button the row
+ * does render gates on the shared speech capability with the shared sentences
+ * (`@shared/lib/speech-gate`) - the same reading the four surfaces converted
+ * before it take, and the conversion this row missed when it shipped from #695
+ * (UX round 2, U6). `speechId` keys this row in the speech store, so the
+ * button's busy and playing states belong to this answer and cannot be claimed
+ * by another.
  */
 
 import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useSpeechStore } from "@shared/store/speech-store";
 import { Check, ClipboardCopy, Square, Volume2 } from "lucide-react";
@@ -65,17 +70,16 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 		useSpeechStore();
 
 	/*
-	 * The speech credential probe, borrowed whole from `text-selection-controls.tsx`
-	 * including its two different reasons: the probe answers "no key" both when
-	 * nothing is configured and when the local server could not be reached, and
-	 * those need different sentences - one sends the reader to settings, the other
-	 * tells them to wait.
+	 * The sentence for a disabled control comes from the one copy table the
+	 * speech surfaces share (`@shared/lib/speech-gate`), and `sign-in` is
+	 * unreachable for a signed-in reader by construction: only an ANSWERED "no
+	 * account" or a refused credential earns it (issue #674; design round 1,
+	 * D1). This row shipped beside #695 on the file-only gate with two sentences
+	 * of its own; UX round 2's U6 moved it onto the shared reading.
 	 */
-	const { hasRadientApiKey, isUnavailable } = useRadientCredentialProbe();
-	const canEnableSpeechFeature = hasRadientApiKey && !isUnavailable;
-	const speechUnavailableReason = isUnavailable
-		? "Text to speech is unavailable while Local Operator is offline"
-		: "Sign in to Radient in the settings page to enable text to speech";
+	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
+	const canEnableSpeechFeature = canUseRadientSpeech;
+	const speechTooltip = speechUnavailableReason("speaking-aloud", speechBlock);
 
 	const isPlaying = playingMessageId === speechId;
 	const isLoading = loadingMessageId === speechId;
@@ -159,7 +163,7 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 								: isLoading
 									? "Loading"
 									: !canEnableSpeechFeature
-										? speechUnavailableReason
+										? speechTooltip
 										: "Speak aloud"
 						}
 					>
