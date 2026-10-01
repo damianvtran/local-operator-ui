@@ -98,6 +98,7 @@ import {
 } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
+import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import {
@@ -1625,6 +1626,24 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			onCredentialsStoredRef.current = onCredentialsStored;
 		});
 		const [isRecording, setIsRecording] = useState(false);
+		/*
+		 * THE ACKNOWLEDGMENT THE PRESS GETS BEFORE THE RECORDER EXISTS (operator
+		 * feedback via Aida, 2026-10-01: the mic "sometimes lags on click").
+		 *
+		 * The click path itself is cheap, measured on this fleet: 0-15 ms from
+		 * the click to `getUserMedia` being called (the provider gates are
+		 * already-resolved booleans and contribute 0 transport calls - 8/8
+		 * cycles), and ~1-4 ms from the resolved stream to a started recorder.
+		 * The wait is the acquisition: 5-25 ms warm, but 830 ms to over 2.6 s
+		 * cold, because a session's first `getUserMedia` pays the capture-device
+		 * setup. NOTHING used to change on screen during that window, so the
+		 * press read as dropped. This flag is set synchronously inside the
+		 * press's own handler (before any await), so React's discrete-event
+		 * flush commits it in the click's own frame, and cleared in the same
+		 * commit that turns `isRecording` on - or when the attempt settles
+		 * (release/abort/failure), so it cannot outlive its attempt.
+		 */
+		const [isPreparing, setIsPreparing] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
 		/*
@@ -5691,6 +5710,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const settleRecordingAttempt = useCallback(
 			(reason: "release" | "abort") => {
+				/*
+				 * A settle ends the PREPARING window too: the attempt can be
+				 * released inside `getUserMedia` (a hold shorter than the
+				 * acquisition), aborted, or run a live take - in every one of those
+				 * the acknowledgment must not outlive the attempt it belongs to.
+				 */
+				setIsPreparing(false);
 				const recorder = mediaRecorderRef.current;
 				if (!recorder) return;
 				const startedAt = recordingAttemptRef.current?.startedAt ?? null;
@@ -5791,6 +5817,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					released: false,
 					aborted: false,
 				};
+				/*
+				 * THE PRESS'S OWN FRAME. This must stay before the first `await`: the
+				 * discrete-event flush commits the acknowledgment in the same frame
+				 * the click arrives in, which is the whole fix - the acquisition
+				 * wait below stays as long as it is, but it is no longer silent.
+				 */
+				setIsPreparing(true);
 				try {
 					const stream = await navigator.mediaDevices.getUserMedia({
 						audio: true,
@@ -5816,6 +5849,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					mediaRecorderRef.current.start();
 					const attempt = recordingAttemptRef.current;
 					if (attempt) attempt.startedAt = performance.now();
+					/*
+					 * One commit, both flags: the acknowledgment is replaced by the
+					 * recording state, never shown beside it.
+					 */
+					setIsPreparing(false);
 					setIsRecording(true);
 					setAudioBlob(null); // Clear previous blob
 					/*
@@ -5829,6 +5867,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					}
 				} catch (err) {
 					recordingAttemptRef.current = null;
+					setIsPreparing(false);
 					console.error("Error accessing microphone:", err);
 					showErrorToast(
 						"Error accessing microphone. Please ensure microphone permissions are granted.",
@@ -7678,6 +7717,31 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							/>
 						</div>
 						{/*
+						 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
+						 * via Aida, 2026-10-01). The microphone acquisition is the one part of
+						 * the click path that is genuinely slow - 830 ms to over 2.6 s on a
+						 * cold `getUserMedia` on this fleet - and it used to be silent: the
+						 * screen looked exactly as it did before the press. This line is that
+						 * window's own face, in the same slot the recording lane takes, while
+						 * the mic control itself carries the same state as a busy spinner
+						 * (see the control cluster below) - so the acknowledgment reads
+						 * wherever the eye is. It mirrors the transcribing strip's shape
+						 * deliberately (one transient one-line state, same inset and rhythm)
+						 * and gives way to the recording lane in the same commit that clears
+						 * `isPreparing`.
+						 */}
+						{isPreparing && (
+							<div
+								data-preparing-indicator=""
+								className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
+							>
+								<Spinner size="sm" />
+								<span className="font-medium text-body-sm text-ink-muted">
+									Starting recording
+								</span>
+							</div>
+						)}
+						{/*
 						 * THE RECORDING STATE, as a full-width block under the field it belongs
 						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
 						 * field's own content column, its label row sits over it, and nothing
@@ -7947,9 +8011,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										!(isLoading && currentJobId) && (
 											<Tooltip
 												content={
-													!canEnableRecordingFeature
-														? recordingUnavailableReason
-														: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
+													isPreparing
+														? "Starting recording"
+														: !canEnableRecordingFeature
+															? recordingUnavailableReason
+															: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
 												}
 											>
 												<span>
@@ -7961,6 +8027,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														onClick={handleStartRecording}
 														aria-label="Start recording"
 														/*
+														 * BUSY IS ITS OWN FACE (operator feedback via Aida,
+														 * 2026-10-01): while the recorder is being acquired the
+														 * control shows the acknowledgment instead of the mic glyph,
+														 * and `disabled` keeps a second press from doubling the
+														 * attempt (the handler's own guard is the second door).
+														 * The label stays "Start recording" - the control IS still
+														 * the start control, and `aria-busy` plus the strip above
+														 * carry the state; the reader that keys on this label
+														 * (`scripts/renderer-driver.mjs`, the mini-view scene)
+														 * keeps resolving it.
+														 */
+														aria-busy={isPreparing || undefined}
+														/*
 														 * `isLoading` IS NOT A TERM HERE (the operator's report): the
 														 * composer's own writability is `isInputDisabled`, and a send in
 														 * flight does not make this box unwritable - mid-turn messages
@@ -7970,10 +8049,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														 * gate (the registration below) carries the same correction.
 														 */
 														disabled={
-															isInputDisabled || !canEnableRecordingFeature
+															isInputDisabled ||
+															!canEnableRecordingFeature ||
+															isPreparing
 														}
 													>
-														<Mic aria-hidden="true" />
+														{isPreparing ? (
+															<Spinner size="sm" />
+														) : (
+															<Mic aria-hidden="true" />
+														)}
 													</Button>
 												</span>
 											</Tooltip>

@@ -909,6 +909,169 @@ test("onDictationStateChange reports the take's start and end", async () => {
 	mic.next = null;
 });
 
+/*
+ * INSTANT ACKNOWLEDGMENT (operator feedback via Aida, 2026-10-01: the mic
+ * "sometimes lags on click"). The acquisition window is the slow part of the
+ * click path - a cold `getUserMedia` has measured 830 ms to over 2.6 s on this
+ * fleet - and NOTHING used to change on screen during it, so the press read as
+ * dropped. The three cases below drive the SHIPPED React wiring with a
+ * DEFERRED stream: they hold the acquisition pending and read what the
+ * composer shows DURING that window, then let the stream land, fail, or be
+ * released-under. They pin the lifecycle, not the pixels: whether the
+ * acknowledgment reads clearly is the evidence rig's half.
+ */
+test("the mic acknowledges the press while the stream is still pending, and the acknowledgment becomes the recording state", async () => {
+	mic.calls = 0;
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(fakeStream());
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	assert.ok(micControl(), "the mic control is mounted");
+	await act(async () => {
+		micControl().click();
+	});
+	assert.equal(mic.calls, 1, "the press reached the microphone");
+	assert.ok(
+		preparing(),
+		"the acknowledgment is on screen while getUserMedia is still pending",
+	);
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		"true",
+		"the control itself carries the busy state",
+	);
+	assert.equal(
+		confirm(),
+		null,
+		"no recording control exists before the stream resolves",
+	);
+
+	/* The indicator's own analyser acquisition resolves too, once recording starts. */
+	mic.next = async () => fakeStream();
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.equal(preparing(), null, "the acknowledgment gives way");
+	assert.ok(confirm(), "the recording state arrives");
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+test("a refused acquisition clears the acknowledgment and the control returns to rest", async () => {
+	mic.calls = 0;
+	mic.next = () => Promise.reject(new Error("denied"));
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+
+	await act(async () => {
+		micControl().click();
+	});
+	await settle();
+	assert.equal(
+		preparing(),
+		null,
+		"the acknowledgment does not outlive the refusal",
+	);
+	assert.ok(micControl(), "the mic is back to rest");
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		null,
+		"the busy state is off again",
+	);
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+test("a release inside the acquisition window clears the acknowledgment without a recording state", async () => {
+	mic.calls = 0;
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(fakeStream());
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	/* The hold door: the real manager's capture dispatch, released mid-acquisition. */
+	const { code } = resolvePushToTalkBinding();
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	assert.ok(preparing(), "the hold's press is acknowledged too");
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.equal(
+		preparing(),
+		null,
+		"the acknowledgment ends when the attempt settles under it",
+	);
+	assert.equal(
+		confirm(),
+		null,
+		"a release inside the acquisition window never becomes a recording",
+	);
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
 /* ------------------------------------------------------------------ */
 /* 4. The placeholder override                                          */
 /* ------------------------------------------------------------------ */
