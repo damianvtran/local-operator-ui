@@ -87,6 +87,10 @@ const bundle = await build({
 			// `policy/adapter.ts`, which this bundle reaches through `host`.
 			'export * from "./src/main/browser/vendor/driver/origin-policy";',
 			'export * from "./src/main/browser/vendor/driver/psl.gen";',
+			// The structured-read page functions, so the test below can assert that the
+			// literal source which crossed into the isolated world is the vendored
+			// function's own source and not a rebuilt expression.
+			'export * from "./src/main/browser/vendor/driver/geometry-read";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -158,6 +162,9 @@ const {
 	domainScopeAvailable,
 	registrableDomain,
 	safeHttpUrl,
+	readStyles,
+	hitTest,
+	ancestors,
 	navigateView,
 	settle,
 	// The popup policy's pure decision function and its cap constant: the matrix
@@ -3667,11 +3674,12 @@ test("the structured reads run the vendored page functions in read's isolated wo
 			view.webContents.worlds[0].code.includes('["border-top-width"]'),
 		"the selector and the requested extras cross as JSON arguments",
 	);
-	// The function that travels is the vendored one, as its own source rather than
-	// a rebuilt expression: a stub without a query in it would not satisfy this.
+	// The function that travels is the vendored one: the code starts with the
+	// driver function's own source, so a stub or a rebuilt expression cannot
+	// satisfy it.
 	assert.ok(
-		view.webContents.worlds[0].code.includes("document."),
-		"the code is the driver function's own source",
+		view.webContents.worlds[0].code.startsWith(`(${readStyles.toString()})(`),
+		"the code begins with the vendored function's own source",
 	);
 	assert.equal(
 		styled.count,
@@ -3731,6 +3739,9 @@ test("the structured reads run the vendored page functions in read's isolated wo
 		"s6",
 	);
 	assert.equal(view.webContents.worlds[0].worldId, 999);
+	assert.ok(
+		view.webContents.worlds[0].code.startsWith(`(${hitTest.toString()})(`),
+	);
 	assert.ok(view.webContents.worlds[0].code.endsWith("(12, 34)"));
 	assert.equal(hit.count, 1);
 	await assert.rejects(
@@ -3749,6 +3760,9 @@ test("the structured reads run the vendored page functions in read's isolated wo
 		"ancestors",
 		{ tab: opened.tab, selector: "#radix-pop", depth: 3 },
 		"s8",
+	);
+	assert.ok(
+		view.webContents.worlds[0].code.startsWith(`(${ancestors.toString()})(`),
 	);
 	assert.ok(view.webContents.worlds[0].code.endsWith('("#radix-pop", 3)'));
 	view.webContents.worlds = [];
@@ -6320,7 +6334,13 @@ test("the sanitiser strips a path, controls, bidi overrides and reserved stems",
 test("/health carries the capabilities this build serves", async () => {
 	const response = await fetch(rpcUrl(HEALTH_PATH));
 	const body = await response.json();
-	assert.deepEqual(body.capabilities, ["download", "upload"]);
+	assert.deepEqual(body.capabilities, [
+		"styles",
+		"hit_test",
+		"ancestors",
+		"download",
+		"upload",
+	]);
 });
 
 test("the state file carries the same list, from the same constant", () => {

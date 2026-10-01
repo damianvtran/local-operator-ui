@@ -271,10 +271,22 @@ export interface UploadResult {
  * (`state-file.ts`'s `capabilities`) and in `/health`, which is what lets the
  * harness degrade without opening a socket at all.
  *
+ * The structured reads (`styles`, `hit_test`, `ancestors`) ride this list for the
+ * same reason as the file verbs: a build that predates them answers their frames
+ * with a bare `internal` (its dispatch has no case), which the session can only
+ * render as "the bridge broke" — the capability turns the same peer into a
+ * typed, actionable refusal instead.
+ *
  * ONE constant, three writers: a second list beside this one is how a host starts
  * advertising something it does not serve.
  */
-export const HOST_CAPABILITIES: readonly Method[] = ["download", "upload"];
+export const HOST_CAPABILITIES: readonly Method[] = [
+	"styles",
+	"hit_test",
+	"ancestors",
+	"download",
+	"upload",
+];
 
 export interface Request {
 	id: string;
