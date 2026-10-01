@@ -168,29 +168,31 @@ export type ProjectEstimateBase = {
 };
 
 /**
- * The estimate row's draft identity, for the machine's dirty derivation: the
- * draft LIST compares unit-for-unit, and a number compares by VALUE (so
- * "13.0" is not a change from "13") with one exception - an EMPTIED number
- * reads as "keep the current value" (the rule above), so it equals whatever
- * it is compared against. That exception is what makes the field close
- * quietly on blur instead of claiming a save the wire cannot make, with the
- * editor's hint having already said why.
- */
-/**
- * The estimate row's draft identity, for the machine's dirty derivation: the
- * draft LIST compares unit-for-unit, and a number compares by VALUE (so
- * "13.0" is not a change from "13") with one DIRECTIONAL exception - an
- * emptied DRAFT reads as "keep the current value" (the rule the editor's hint
- * states), while an emptied BASE against a real draft is a CHANGE.
+ * The estimate row's draft identity: unit-for-unit, and a number by VALUE
+ * ("13.0" is not a change from "13") with ONE directional exception - an
+ * emptied SECOND argument reads as "keep / no change" instead of as a
+ * different value.
  *
- * THE DIRECTION IS LOAD-BEARING (review round 1, M1): the rule used to fire
- * on EITHER side (`left === "" || right === ""`), so on a record with no
- * estimate - the whole "+ Add -> Estimate" path - typing `5` compared equal
- * to the empty base, the machine read the field as unchanged, and the born
- * row retired without a request; the value was silently dropped. `b` is the
- * DRAFT and `a` what it is compared against on every call site the machine
- * makes (`equals(base, fresh)`, `equals(draft, base)`, `equals(draft,
- * fresh)`), so only `b`'s emptiness may mean keep.
+ * EVERY DRAFT COMPARISON THE MACHINE MAKES PASSES THE DRAFT AS THE SECOND
+ * ARGUMENT (review round 2, m-A - the reseed used to pass `(draft, base)`,
+ * so the exception silently did not apply there): the dirty derivation and
+ * the accept check (`equals(base, draft)`), and both reseed comparisons -
+ * the clean-draft test and the already-matches-the-fresh-value test. With
+ * the draft second, an emptied draft reads as "asks for no write": it is not
+ * dirty, blur closes it without a request, and a record that moved under it
+ * ADOPTS instead of holding a conflict over a write that would never be
+ * sent.
+ *
+ * THE DIRECTION IS LOAD-BEARING (review round 1, M1): as a LEFT argument an
+ * empty number is a different value, so typing `5` over an empty base - the
+ * whole "+ Add -> Estimate" path - is a real change and the born draft
+ * sends.
+ *
+ * `equals(base, fresh)` is the one reseed comparison with no draft in it:
+ * both arguments are record values, and under the same second-argument rule
+ * an emptied FRESH reads as no-move - a record cleared out-of-band while
+ * the field is open reconciles only when the draft itself changed, not
+ * merely because the record emptied.
  */
 export function estimateDraftEquals(
 	a: ProjectEstimateDraft,

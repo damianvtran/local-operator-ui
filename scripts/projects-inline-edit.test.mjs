@@ -355,6 +355,37 @@ test("the estimate draft's identity: value-compared, empty keeps", () => {
 	);
 });
 
+test("the estimate reseed reads the draft second: an emptied draft adopts a moved record", () => {
+	/*
+	 * Round 2 m-A's exact case, through the real decision function: the user
+	 * EMPTIED the number (draft ""), the record moved (13 -> 20). The emptied
+	 * draft asks for no write, so there is nothing to hold - the reseed must
+	 * adopt. The old call order passed the draft FIRST there
+	 * (`equals(draft, base)`), the comparator's directional exception did not
+	 * apply, and the field raised a "changed elsewhere" conflict over a
+	 * request it would never send.
+	 */
+	const d = (number, unit = "points") => ({ number, unit });
+	const reseed = (base, draft, fresh) =>
+		inlineEditReseed({
+			phase: "editing",
+			base,
+			draft,
+			fresh,
+			equals: estimateDraftEquals,
+		});
+	/* The emptied draft moved under a moved record: adopt, never hold. */
+	assert.equal(reseed(d("13"), d(""), d("20")), "adopt");
+	/* A clean draft over the same move: adopt (§ 2.4 case 1, preserved). */
+	assert.equal(reseed(d("13"), d("13"), d("20")), "adopt");
+	/* A dirty draft on the same field: the hold is real. */
+	assert.equal(reseed(d("13"), d("15"), d("20")), "conflict");
+	/* A born row, still empty, under a record that gained an estimate: adopt. */
+	assert.equal(reseed(d(""), d(""), d("7")), "adopt");
+	/* A born row WITH a typed value under a moved record: hold. */
+	assert.equal(reseed(d(""), d("5"), d("7")), "conflict");
+});
+
 test("the estimate's changed fields: only what moved, never a fake clear", () => {
 	const base = { estimate: 13, unit: "points" };
 	/* A changed number travels alone. */

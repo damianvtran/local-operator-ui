@@ -380,7 +380,15 @@ export function useInlineEdit<T>(
 		if (decision === "adopt") {
 			if (!equalsRef.current(baseRef.current, recordValueRef.current))
 				setBaseBoth(recordValueRef.current);
-			if (!equalsRef.current(draftRef.current, recordValueRef.current))
+			/*
+			 * The DRAFT is the SECOND argument here too (the comparator's
+			 * directional rule is defined over that position; review round 2,
+			 * m-A). For an emptied draft that moved under a moved record this
+			 * means `fresh` reads as already carried and the user's empty box is
+			 * kept - consistent with the adopted decision, which exists because
+			 * the draft asks for no write.
+			 */
+			if (!equalsRef.current(recordValueRef.current, draftRef.current))
 				setDraftBoth(recordValueRef.current);
 		} else if (decision === "conflict") {
 			if (

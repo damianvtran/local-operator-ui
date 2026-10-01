@@ -34272,7 +34272,9 @@ async function sceneProjectInlineEdit(cdp) {
 	const need = async (selector, label, timeoutMs = 8_000) => {
 		const waited = await waitForCondition(cdp, EXISTS(selector), timeoutMs);
 		if (!waited.ok)
-			throw new Error(`the scene expected ${label}: ${selector} never appeared`);
+			throw new Error(
+				`the scene expected ${label}: ${selector} never appeared`,
+			);
 		return waited;
 	};
 	const clickControl = async (name, which) => {
@@ -34288,8 +34290,7 @@ async function sceneProjectInlineEdit(cdp) {
 		cdp.evaluate(
 			`document.querySelector(${JSON.stringify(SLOT(name))})?.getAttribute('data-inline-edit-slot') ?? null`,
 		);
-	const paneText = async () =>
-		cdp.evaluate(`document.body.textContent ?? ""`);
+	const paneText = async () => cdp.evaluate(`document.body.textContent ?? ""`);
 	const stored = async () => {
 		const view = await fetchProjectView(PROJECT);
 		return view?.body?.result?.project ?? null;
@@ -34448,7 +34449,11 @@ async function sceneProjectInlineEdit(cdp) {
 		code: "Escape",
 		virtualKeyCode: 27,
 	});
-	await waitForCondition(cdp, `document.querySelector(${JSON.stringify(ENTRY("title"))}) === null`, 4_000);
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("title"))}) === null`,
+		4_000,
+	);
 	const afterEsc = await stored();
 	const escHeading = await cdp.evaluate(
 		`document.querySelector("[data-project-title]").textContent`,
@@ -34516,7 +34521,11 @@ async function sceneProjectInlineEdit(cdp) {
 	await need(ENTRY("start"), "the start-date editor");
 	await replaceAllText(cdp, ENTRY("start"), "2026-09-05");
 	await clickControl("start", "cancel");
-	await waitForCondition(cdp, `document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`, 4_000);
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`,
+		4_000,
+	);
 	const afterCancel = await stored();
 	check(
 		"the x cancels: the stored start date stands, nothing was written",
@@ -34528,7 +34537,11 @@ async function sceneProjectInlineEdit(cdp) {
 	await need(ENTRY("start"), "the start-date editor again");
 	await replaceAllText(cdp, ENTRY("start"), "2026-09-05");
 	await clickControl("start", "accept");
-	await waitForCondition(cdp, `document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`, 8_000);
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`,
+		8_000,
+	);
 	const afterCheck = await stored();
 	check(
 		"the check accepts: the daemon holds the new start date",
@@ -34550,7 +34563,11 @@ async function sceneProjectInlineEdit(cdp) {
 	);
 	await wait(200);
 	await clickAt(cdp, FIELD("description"));
-	await waitForCondition(cdp, `document.querySelector(${JSON.stringify(ENTRY("owner"))}) === null`, 8_000);
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("owner"))}) === null`,
+		8_000,
+	);
 	const afterBlur = await stored();
 	check(
 		"blur on a dirty, valid field commits it",
@@ -34567,7 +34584,11 @@ async function sceneProjectInlineEdit(cdp) {
 	 */
 	await clickControl("description", "begin");
 	await need(ENTRY("description"), "the description editor");
-	await replaceAllText(cdp, ENTRY("description"), `rig note line one\nsecond line ${stamp}`);
+	await replaceAllText(
+		cdp,
+		ENTRY("description"),
+		`rig note line one\nsecond line ${stamp}`,
+	);
 	const beforeEnterCount = await cdp.evaluate(
 		`(document.querySelector(${JSON.stringify(ENTRY("description"))}).value.match(/\\n/g) ?? []).length`,
 	);
@@ -34580,7 +34601,9 @@ async function sceneProjectInlineEdit(cdp) {
 	const afterEnterCount = await cdp.evaluate(
 		`(document.querySelector(${JSON.stringify(ENTRY("description"))}).value.match(/\\n/g) ?? []).length`,
 	);
-	const stillEditing = (await slotPhase("description")) === "editing" || (await slotPhase("description")) === "dirty";
+	const stillEditing =
+		(await slotPhase("description")) === "editing" ||
+		(await slotPhase("description")) === "dirty";
 	check(
 		"Enter in the description is a newline: still editing, the text grew a line",
 		afterEnterCount === beforeEnterCount + 1 && stillEditing,
@@ -34825,7 +34848,10 @@ async function sceneProjectInlineEdit(cdp) {
 		`conflict=${conflictShown.ok} draft=${JSON.stringify(draftHeld)}`,
 	);
 	await captureSettled(cdp, `project-inline-${size}-${theme}-conflict`);
-	await clickAt(cdp, `${FIELD("start")} [data-inline-edit-control="keep-mine"]`);
+	await clickAt(
+		cdp,
+		`${FIELD("start")} [data-inline-edit-control="keep-mine"]`,
+	);
 	const keptMine = await waitForCondition(
 		cdp,
 		`document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`,
@@ -34983,7 +35009,9 @@ async function sceneProjectInlineEdit(cdp) {
 	const afterTags = await stored();
 	check(
 		"tags can be born from none",
-		tagsSaved.ok && Array.isArray(afterTags?.tags) && afterTags.tags.join(",") === "q4,payments",
+		tagsSaved.ok &&
+			Array.isArray(afterTags?.tags) &&
+			afterTags.tags.join(",") === "q4,payments",
 		`tags=${JSON.stringify(afterTags?.tags ?? null)}`,
 		`tags=${JSON.stringify(afterTags?.tags ?? null)}`,
 	);
