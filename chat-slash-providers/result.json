@@ -7,7 +7,7 @@
     "height": 900
   },
   "driver": "scripts/slash-enter-proof.mjs",
-  "at": "2026-09-30T22:35:42.359Z",
+  "at": "2026-10-01T01:41:41.443Z",
   "cases": [
     {
       "name": "login-suggest-on-ope",
@@ -27,6 +27,7 @@
           "OpenAIChatGPT Plus/Prologged in",
           "OpenRouterneeds login"
         ],
+        "empty": null,
         "active": "OpenAIChatGPT Plus/Prologged in",
         "ran": "none",
         "enterNote": "Enter completes; Enter again runs."
@@ -39,12 +40,13 @@
           "OpenAIChatGPT Plus/Prologged in",
           "OpenRouterneeds login"
         ],
+        "empty": null,
         "active": "OpenAIChatGPT Plus/Prologged in",
         "ran": "none",
         "enterNote": "Enter completes; Enter again runs."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-suggest-on-ope-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-suggest-on-ope-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-suggest-on-ope-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-suggest-on-ope-before.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -69,6 +71,7 @@
           "xAIGrok API keyneeds login",
           "OpenRouterneeds login"
         ],
+        "empty": null,
         "active": "OpenAIChatGPT Plus/Prologged in",
         "ran": "none",
         "enterNote": "Enter completes; Enter again runs."
@@ -84,12 +87,13 @@
           "xAIGrok API keyneeds login",
           "OpenRouterneeds login"
         ],
+        "empty": null,
         "active": "OpenAIChatGPT Plus/Prologged in",
         "ran": "none",
         "enterNote": "Enter completes; Enter again runs."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-space-lists-every-provider-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-space-lists-every-provider-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-space-lists-every-provider-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-space-lists-every-provider-before.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -110,6 +114,7 @@
           "OpenAIChatGPT Plus/Prologged in",
           "OpenRouterneeds login"
         ],
+        "empty": null,
         "active": "OpenAIChatGPT Plus/Prologged in",
         "ran": "none",
         "enterNote": "Enter completes; Enter again runs."
@@ -119,12 +124,13 @@
         "list": null,
         "phase": null,
         "rows": [],
+        "empty": null,
         "active": null,
         "ran": "/login openai",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-one-click-runs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-one-click-runs-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-one-click-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-one-click-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -143,10 +149,11 @@
         "list": "Command arguments",
         "phase": "Accounts",
         "rows": [
-          "openairemove 2 credentials",
-          "anthropicremove oauth · damian@example.com"
+          "OpenAIremove 2 credentials",
+          "Anthropicremove oauth · damian@example.com"
         ],
-        "active": "openairemove 2 credentials",
+        "empty": null,
+        "active": "OpenAIremove 2 credentials",
         "ran": "none",
         "enterNote": "Enter completes the value."
       },
@@ -155,34 +162,37 @@
         "list": "Command arguments",
         "phase": "Accounts",
         "rows": [
-          "openairemove 2 credentials",
-          "anthropicremove oauth · damian@example.com"
+          "OpenAIremove 2 credentials",
+          "Anthropicremove oauth · damian@example.com"
         ],
-        "active": "openairemove 2 credentials",
+        "empty": null,
+        "active": "OpenAIremove 2 credentials",
         "ran": "none",
         "enterNote": "Enter completes the value."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/logout-space-lists-stored-accounts-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/logout-space-lists-stored-accounts-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-space-lists-stored-accounts-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-space-lists-stored-accounts-before.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "logout-enter-fills-never-runs",
-      "why": "Fill-not-run, the destructive gate: `/logout anthro` + Enter completes the survivor to `/logout anthropic` and dispatches NOTHING — a credential is only ever removed by a press on a box the user can read.",
+      "why": "Fill-not-run, the destructive gate: `/logout anthro` + Enter completes the survivor to `/logout anthropic` and dispatches NOTHING — a credential is only ever removed by a press on a box the user can read. The footer on the filled row says what the key does NEXT (round 1, U3): the completion is a no-op now, so this Enter only closes the list.",
       "gesture": "Enter after typing \"/logout anthro\"",
       "expect": {
         "ran": "none",
-        "draft": "/logout anthropic"
+        "draft": "/logout anthropic",
+        "enterNote": "Enter closes the list; Enter again runs."
       },
       "before": {
         "draft": "/logout anthro",
         "list": "Command arguments",
         "phase": "Accounts",
         "rows": [
-          "anthropicremove oauth · damian@example.com"
+          "Anthropicremove oauth · damian@example.com"
         ],
-        "active": "anthropicremove oauth · damian@example.com",
+        "empty": null,
+        "active": "Anthropicremove oauth · damian@example.com",
         "ran": "none",
         "enterNote": "Enter completes the value."
       },
@@ -191,21 +201,22 @@
         "list": "Command arguments",
         "phase": "Accounts",
         "rows": [
-          "anthropicremove oauth · damian@example.com"
+          "Anthropicremove oauth · damian@example.com"
         ],
-        "active": "anthropicremove oauth · damian@example.com",
+        "empty": null,
+        "active": "Anthropicremove oauth · damian@example.com",
         "ran": "none",
-        "enterNote": "Enter completes the value."
+        "enterNote": "Enter closes the list; Enter again runs."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/logout-enter-fills-never-runs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/logout-enter-fills-never-runs-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-enter-fills-never-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-enter-fills-never-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "logout-click-completes-never-runs",
-      "why": "A CLICK on a `/logout` row only completes it — the pointer arm has no ambiguity gate, so `runs: false` on the source is the whole floor and the frame shows the filled box instead of a removal.",
-      "gesture": "click on the \"anthropic\" row after typing \"/logout \"",
+      "why": "A CLICK on a `/logout` row only completes it — the pointer arm has no ambiguity gate, so `runs: false` on the source is the whole floor and the frame shows the filled box instead of a removal. The needle is the census BRAND (round 1, D5/U6): the row is named the way `/login` names it, and the id it writes is unchanged.",
+      "gesture": "click on the \"Anthropic\" row after typing \"/logout \"",
       "expect": {
         "ran": "none",
         "draft": "/logout anthropic"
@@ -215,10 +226,11 @@
         "list": "Command arguments",
         "phase": "Accounts",
         "rows": [
-          "openairemove 2 credentials",
-          "anthropicremove oauth · damian@example.com"
+          "OpenAIremove 2 credentials",
+          "Anthropicremove oauth · damian@example.com"
         ],
-        "active": "openairemove 2 credentials",
+        "empty": null,
+        "active": "OpenAIremove 2 credentials",
         "ran": "none",
         "enterNote": "Enter completes the value."
       },
@@ -227,61 +239,50 @@
         "list": "Command arguments",
         "phase": "Accounts",
         "rows": [
-          "anthropicremove oauth · damian@example.com"
+          "Anthropicremove oauth · damian@example.com"
         ],
-        "active": "anthropicremove oauth · damian@example.com",
+        "empty": null,
+        "active": "Anthropicremove oauth · damian@example.com",
         "ran": "none",
-        "enterNote": "Enter completes the value."
+        "enterNote": "Enter closes the list; Enter again runs."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/logout-click-completes-never-runs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/logout-click-completes-never-runs-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-click-completes-never-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-click-completes-never-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "mcp-space-lists-the-verbs",
-      "why": "`/mcp ` offers the document's own verb table — `list` first, every destructive verb below it carrying its alert, which is what the next two cases spend.",
+      "why": "`/mcp ` offers the document's own verb table — `list` first, every destructive verb below it carrying its alert, which is what the next two cases spend. The label is this slot's own (round 1, D6/U7): the rows are verbs, and only the server slot says \"Servers\".",
       "gesture": "type \"/mcp \" and read the list",
       "expect": {
         "ran": "none",
         "draft": "/mcp ",
         "list": "Command arguments",
-        "phase": "Servers"
+        "phase": "Commands"
       },
       "before": {
         "draft": "/mcp ",
         "list": "Command arguments",
-        "phase": "Servers",
-        "rows": [
-          "listShow every configured server and its status",
-          "addConfigure a new server (url, or a stdio command)",
-          "removeDelete a server from local-operator's config",
-          "loginAuthorize an OAuth server (opens the browser)",
-          "logoutForget a server's stored OAuth credential",
-          "reauthForget first, then authorize — for an account or scope change"
-        ],
-        "active": "listShow every configured server and its status",
+        "phase": "Commands",
+        "rows": [],
+        "empty": "Loading…",
+        "active": null,
         "ran": "none",
-        "enterNote": "Enter completes the value."
+        "enterNote": null
       },
       "after": {
         "draft": "/mcp ",
         "list": "Command arguments",
-        "phase": "Servers",
-        "rows": [
-          "listShow every configured server and its status",
-          "addConfigure a new server (url, or a stdio command)",
-          "removeDelete a server from local-operator's config",
-          "loginAuthorize an OAuth server (opens the browser)",
-          "logoutForget a server's stored OAuth credential",
-          "reauthForget first, then authorize — for an account or scope change"
-        ],
-        "active": "listShow every configured server and its status",
+        "phase": "Commands",
+        "rows": [],
+        "empty": "Loading…",
+        "active": null,
         "ran": "none",
-        "enterNote": "Enter completes the value."
+        "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/mcp-space-lists-the-verbs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/mcp-space-lists-the-verbs-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-space-lists-the-verbs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-space-lists-the-verbs-before.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -302,6 +303,7 @@
         "rows": [
           "logout githubstored credential · connected"
         ],
+        "empty": null,
         "active": "logout githubstored credential · connected",
         "ran": "none",
         "enterNote": "Enter completes the value."
@@ -313,22 +315,24 @@
         "rows": [
           "logout githubstored credential · connected"
         ],
+        "empty": null,
         "active": "logout githubstored credential · connected",
         "ran": "none",
         "enterNote": "Enter completes the value."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/mcp-logout-lists-signed-in-servers-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/mcp-logout-lists-signed-in-servers-before.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-logout-lists-signed-in-servers-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-logout-lists-signed-in-servers-before.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "mcp-logout-enter-fills-never-runs",
-      "why": "The destructive gate on the MCP side: `/mcp logout gith` + Enter completes to `/mcp logout github` and dispatches nothing — the credential survives the first press.",
+      "why": "The destructive gate on the MCP side: `/mcp logout gith` + Enter completes to `/mcp logout github` and dispatches nothing — the credential survives the first press, and the footer says the next Enter is the one that runs (round 1, U3).",
       "gesture": "Enter after typing \"/mcp logout gith\"",
       "expect": {
         "ran": "none",
-        "draft": "/mcp logout github"
+        "draft": "/mcp logout github",
+        "enterNote": "Enter closes the list; Enter again runs."
       },
       "before": {
         "draft": "/mcp logout gith",
@@ -337,6 +341,7 @@
         "rows": [
           "logout githubstored credential · connected"
         ],
+        "empty": null,
         "active": "logout githubstored credential · connected",
         "ran": "none",
         "enterNote": "Enter completes the value."
@@ -348,12 +353,13 @@
         "rows": [
           "logout githubstored credential · connected"
         ],
+        "empty": null,
         "active": "logout githubstored credential · connected",
         "ran": "none",
-        "enterNote": "Enter completes the value."
+        "enterNote": "Enter closes the list; Enter again runs."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/mcp-logout-enter-fills-never-runs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/mcp-logout-enter-fills-never-runs-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-logout-enter-fills-never-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-logout-enter-fills-never-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -375,6 +381,7 @@
           "remove postgres-prod~/projects/acme/.local-operator/mcp.json",
           "remove borrowed-github~/.cursor/mcp.json"
         ],
+        "empty": null,
         "active": "remove linear~/.local-operator/mcp.json",
         "ran": "none",
         "enterNote": "Enter completes the value."
@@ -387,12 +394,13 @@
           "remove github~/.local-operator/mcp.json",
           "remove borrowed-github~/.cursor/mcp.json"
         ],
+        "empty": null,
         "active": "remove github~/.local-operator/mcp.json",
         "ran": "none",
-        "enterNote": "Enter completes the value."
+        "enterNote": "Enter closes the list; Enter again runs."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/mcp-remove-click-completes-never-runs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/mcp-remove-click-completes-never-runs-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-remove-click-completes-never-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-remove-click-completes-never-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -408,13 +416,11 @@
         "draft": "/login ope",
         "list": "Command arguments",
         "phase": "Providers",
-        "rows": [
-          "OpenAIChatGPT Plus/Prologged in",
-          "OpenRouterneeds login"
-        ],
-        "active": "OpenAIChatGPT Plus/Prologged in",
+        "rows": [],
+        "empty": "Loading…",
+        "active": null,
         "ran": "none",
-        "enterNote": "Enter completes; Enter again runs."
+        "enterNote": null
       },
       "after": {
         "draft": "/login openai",
@@ -423,12 +429,13 @@
         "rows": [
           "OpenAIChatGPT Plus/Prologged in"
         ],
+        "empty": null,
         "active": "OpenAIChatGPT Plus/Prologged in",
         "ran": "none",
         "enterNote": "Enter runs /login openai."
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-enter-fills-the-top-match-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-enter-fills-the-top-match-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-enter-fills-the-top-match-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-enter-fills-the-top-match-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -449,6 +456,7 @@
           "OpenAIChatGPT Plus/Prologged in",
           "OpenRouterneeds login"
         ],
+        "empty": null,
         "active": "OpenAIChatGPT Plus/Prologged in",
         "ran": "none",
         "enterNote": "Enter completes; Enter again runs."
@@ -458,12 +466,13 @@
         "list": null,
         "phase": null,
         "rows": [],
+        "empty": null,
         "active": null,
         "ran": "/login openai",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-second-enter-runs-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/login-second-enter-runs-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-second-enter-runs-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/login-second-enter-runs-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -481,23 +490,266 @@
         "list": "Command arguments",
         "phase": "Accounts",
         "rows": [
-          "anthropicremove oauth · damian@example.com"
+          "Anthropicremove oauth · damian@example.com"
         ],
-        "active": "anthropicremove oauth · damian@example.com",
+        "empty": null,
+        "active": "Anthropicremove oauth · damian@example.com",
         "ran": "none",
-        "enterNote": "Enter completes the value."
+        "enterNote": "Enter closes the list; Enter again runs."
       },
       "after": {
         "draft": "",
         "list": null,
         "phase": null,
         "rows": [],
+        "empty": null,
         "active": null,
         "ran": "/logout anthropic",
         "enterNote": null
       },
-      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/logout-typed-full-then-enter-submits-before.png",
-      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/evidence-branch/chat-slash-providers/logout-typed-full-then-enter-submits-after.png",
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-typed-full-then-enter-submits-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-typed-full-then-enter-submits-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "mcp-verb-click-opens-the-server-slot",
+      "why": "Choosing a VERB must leave `/mcp login ` (its own trailing space) with the popup reopened in the SERVER slot — the TUI's two-turn crank (`_mcp_argument_choices`: \"choosing a verb leaves `/mcp login ` in the buffer\").",
+      "gesture": "click on the \"login\" row after typing \"/mcp \"",
+      "expect": {
+        "ran": "none",
+        "draft": "/mcp login ",
+        "list": "Command arguments",
+        "phase": "Servers"
+      },
+      "before": {
+        "draft": "/mcp ",
+        "list": "Command arguments",
+        "phase": "Commands",
+        "rows": [
+          "listShow every configured server and its status",
+          "addConfigure a new server (url, or a stdio command)",
+          "removeDelete a server from local-operator's config",
+          "loginAuthorize an OAuth server (opens the browser)",
+          "logoutForget a server's stored OAuth credential",
+          "reauthForget first, then authorize — for an account or scope change"
+        ],
+        "empty": null,
+        "active": "listShow every configured server and its status",
+        "ran": "none",
+        "enterNote": "Enter completes the value."
+      },
+      "after": {
+        "draft": "/mcp login ",
+        "list": "Command arguments",
+        "phase": "Servers",
+        "rows": [
+          "login linearconnecting",
+          "login githubconnected — will re-use",
+          "login borrowed-githubnot connected"
+        ],
+        "empty": null,
+        "active": "login linearconnecting",
+        "ran": "none",
+        "enterNote": "Enter completes the value."
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-verb-click-opens-the-server-slot-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-verb-click-opens-the-server-slot-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "mcp-verb-enter-opens-the-server-slot",
+      "why": "The keyboard half of the same crank: `/mcp login` + Enter writes the verb AND its terminator (the value's own trailing space), so the server list is where the user lands without a hand-typed space.",
+      "gesture": "Enter after typing \"/mcp login\"",
+      "expect": {
+        "ran": "none",
+        "draft": "/mcp login ",
+        "list": "Command arguments",
+        "phase": "Servers"
+      },
+      "before": {
+        "draft": "/mcp login",
+        "list": "Command arguments",
+        "phase": "Commands",
+        "rows": [
+          "loginAuthorize an OAuth server (opens the browser)"
+        ],
+        "empty": null,
+        "active": "loginAuthorize an OAuth server (opens the browser)",
+        "ran": "none",
+        "enterNote": "Enter completes the value."
+      },
+      "after": {
+        "draft": "/mcp login ",
+        "list": "Command arguments",
+        "phase": "Servers",
+        "rows": [
+          "login linearconnecting",
+          "login githubconnected — will re-use",
+          "login borrowed-githubnot connected"
+        ],
+        "empty": null,
+        "active": "login linearconnecting",
+        "ran": "none",
+        "enterNote": "Enter completes the value."
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-verb-enter-opens-the-server-slot-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-verb-enter-opens-the-server-slot-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "mcp-verb-pick-then-enter-fills-a-server",
+      "why": "The two-turn crank to its end: click `login`, then Enter fills the slot's first server row (`linear`) and dispatches NOTHING — the same fill-not-run floor the typed cases pin, now shown through the handoff.",
+      "gesture": "click on the \"login\" row after typing \"/mcp \"",
+      "expect": {
+        "ran": "none",
+        "draft": "/mcp login linear"
+      },
+      "before": {
+        "draft": "/mcp ",
+        "list": "Command arguments",
+        "phase": "Commands",
+        "rows": [
+          "listShow every configured server and its status",
+          "addConfigure a new server (url, or a stdio command)",
+          "removeDelete a server from local-operator's config",
+          "loginAuthorize an OAuth server (opens the browser)",
+          "logoutForget a server's stored OAuth credential",
+          "reauthForget first, then authorize — for an account or scope change"
+        ],
+        "empty": null,
+        "active": "listShow every configured server and its status",
+        "ran": "none",
+        "enterNote": "Enter completes the value."
+      },
+      "after": {
+        "draft": "/mcp login linear",
+        "list": "Command arguments",
+        "phase": "Servers",
+        "rows": [
+          "login linearconnecting"
+        ],
+        "empty": null,
+        "active": "login linearconnecting",
+        "ran": "none",
+        "enterNote": "Enter closes the list; Enter again runs."
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-verb-pick-then-enter-fills-a-server-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-verb-pick-then-enter-fills-a-server-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "mcp-add-space-hints-instead-of-blame",
+      "why": "`/mcp add ` has no server list BY DESIGN (`offers: null`): the sentence must say so rather than claim the route never answered (round 1, U2).",
+      "gesture": "type \"/mcp add \" and read the list",
+      "expect": {
+        "ran": "none",
+        "draft": "/mcp add ",
+        "list": "Command arguments",
+        "phase": "Servers",
+        "empty": "No servers to choose. Enter runs the command."
+      },
+      "before": {
+        "draft": "/mcp add ",
+        "list": "Command arguments",
+        "phase": "Servers",
+        "rows": [],
+        "empty": "No servers to choose. Enter runs the command.",
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "after": {
+        "draft": "/mcp add ",
+        "list": "Command arguments",
+        "phase": "Servers",
+        "rows": [],
+        "empty": "No servers to choose. Enter runs the command.",
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-add-space-hints-instead-of-blame-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/mcp-add-space-hints-instead-of-blame-before.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "logout-names-a-census-provider-with-nothing-stored",
+      "why": "`/logout deepseek` names a provider the census knows whose credential is an ENV key — not a store row — so no list can hold it; the empty sentence is a fact about the provider rather than the matcher's \"No matches\" (round 1, U4).",
+      "gesture": "type \"/logout deepseek\" and read the list",
+      "expect": {
+        "ran": "none",
+        "draft": "/logout deepseek",
+        "list": "Command arguments",
+        "phase": "Accounts",
+        "empty": "No stored credential to remove."
+      },
+      "before": {
+        "draft": "/logout deepseek",
+        "list": "Command arguments",
+        "phase": "Accounts",
+        "rows": [],
+        "empty": "No stored credential to remove.",
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "after": {
+        "draft": "/logout deepseek",
+        "list": "Command arguments",
+        "phase": "Accounts",
+        "rows": [],
+        "empty": "No stored credential to remove.",
+        "active": null,
+        "ran": "none",
+        "enterNote": null
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-names-a-census-provider-with-nothing-stored-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-names-a-census-provider-with-nothing-stored-before.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "logout-alias-reaches-a-stored-provider",
+      "why": "`/logout gpt` — the alias `/login` already honours — must reach the openai row: the logout list joins the census's `search_aliases`, so both commands share one alias vocabulary (round 1, U4).",
+      "gesture": "type \"/logout gpt\" and read the list",
+      "expect": {
+        "ran": "none",
+        "draft": "/logout gpt",
+        "list": "Command arguments",
+        "phase": "Accounts",
+        "active": "OpenAIremove 2 credentials"
+      },
+      "before": {
+        "draft": "/logout gpt",
+        "list": "Command arguments",
+        "phase": "Accounts",
+        "rows": [
+          "OpenAIremove 2 credentials"
+        ],
+        "empty": null,
+        "active": "OpenAIremove 2 credentials",
+        "ran": "none",
+        "enterNote": "Enter completes the value."
+      },
+      "after": {
+        "draft": "/logout gpt",
+        "list": "Command arguments",
+        "phase": "Accounts",
+        "rows": [
+          "OpenAIremove 2 credentials"
+        ],
+        "empty": null,
+        "active": "OpenAIremove 2 credentials",
+        "ran": "none",
+        "enterNote": "Enter completes the value."
+      },
+      "beforeFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-alias-reaches-a-stored-provider-before.png",
+      "afterFrame": "/Users/damian/.local-operator/sessions/56a53a14ced9/scratchpad/rig-r1fix-1380/logout-alias-reaches-a-stored-provider-before.png",
       "verdict": "PASS",
       "mismatches": []
     }
