@@ -3269,7 +3269,9 @@ const detailWithRequestUpdate = (
 );
 
 const requestUpdateButton = () =>
-	document.querySelector<HTMLElement>('[data-tour-tag="project-request-update"]');
+	document.querySelector<HTMLElement>(
+		'[data-tour-tag="project-request-update"]',
+	);
 
 /**
  * The press that never answers: the button holds `Requesting…` and the

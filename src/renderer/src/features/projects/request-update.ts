@@ -85,7 +85,11 @@ export const requestUpdateCooldownToastId = (projectId: string): string =>
 export const requestUpdateCooldownSpanId = (projectId: string): string =>
 	`project-request-update-cooldown-${projectId}`;
 
-export type RequestUpdateToastVariant = "success" | "warning" | "error" | "info";
+export type RequestUpdateToastVariant =
+	| "success"
+	| "warning"
+	| "error"
+	| "info";
 
 export type RequestUpdateToast = {
 	variant: RequestUpdateToastVariant;
@@ -192,17 +196,18 @@ export function requestUpdateResultToast(
 	}
 	if (delivered >= 1) {
 		let title = `Requested updates from ${delivered} of ${total} sessions on ${display}.`;
-		if (failed > 0) title += ` ${namesClause(failedNames)} could not be reached.`;
+		if (failed > 0)
+			title += ` ${namesClause(failedNames)} could not be reached.`;
 		if (unconfirmed > 0)
 			title += ` Delivery to ${namesClause(unconfirmedNames)} could not be confirmed.`;
-		return { variant: "warning", title, duration: Infinity };
+		return { variant: "warning", title, duration: Number.POSITIVE_INFINITY };
 	}
 	if (failed === 0) {
 		/* Every target unconfirmed: nothing may be asserted about arrival. */
 		return {
 			variant: "warning",
 			title: `Could not confirm delivery on ${display} — the requests may still reach its sessions.`,
-			duration: Infinity,
+			duration: Number.POSITIVE_INFINITY,
 		};
 	}
 	if (unconfirmed === 0) {
@@ -223,7 +228,7 @@ export function requestUpdateResultToast(
 		} else {
 			title = `Could not reach any of the ${total} linked sessions on ${display}.`;
 		}
-		return { variant: "error", title, duration: Infinity };
+		return { variant: "error", title, duration: Number.POSITIVE_INFINITY };
 	}
 	/* Nothing delivered and nothing confirmed: some refused, some uncertain.
 	 * The mixed sentence is composed here (the frozen set names the two pure
@@ -232,7 +237,7 @@ export function requestUpdateResultToast(
 	return {
 		variant: "warning",
 		title: `Could not reach ${failed} of the ${total} linked sessions on ${display}. Delivery to ${namesClause(unconfirmedNames)} could not be confirmed.`,
-		duration: Infinity,
+		duration: Number.POSITIVE_INFINITY,
 	};
 }
 
