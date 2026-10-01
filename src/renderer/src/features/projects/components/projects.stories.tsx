@@ -1911,6 +1911,68 @@ export const NoMatch: Story = {
 };
 
 /**
+ * D10's frame: the FILTER-only no-match state, held for the shutter (design
+ * round 4; agent review round 7's R10 added the pin this state lacked).
+ *
+ * `NoMatch`'s walk passes through this state and deliberately restores the
+ * query variant before returning - that directory has always shown the query
+ * case - so the state the filter door produces had no frame of its own. This
+ * story is the same walk with the restoration dropped: the pair whose
+ * intersection is empty, no query typed, the block's filter-only heading and
+ * recovery sentence on screen. The assertions are the ones that discriminate
+ * the variant (the heading names no query; the sentence names filters; exactly
+ * one Clear all, U14's count, which the chip row cannot pass).
+ */
+export const NoMatchFilter: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("no-match-filter", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Done"),
+				),
+			"the Done option",
+		);
+		for (const [index, label] of ["Done", "Has live sessions"].entries()) {
+			const option = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith(label));
+			if (!option) throw new Error(`the ${label} option is absent`);
+			option.click();
+			/* ONE faceted click per commit, the pace `NoMatch`'s walk measured:
+			 * the panel's `onToggle` closes over the filters of ITS render. */
+			await poll(
+				() =>
+					document.querySelectorAll("[data-project-chip]").length === index + 1,
+				`the ${label} chip`,
+			);
+		}
+		await userEvent.keyboard("{Escape}");
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("No projects match.") &&
+				text.includes("Try removing a filter.") &&
+				text.includes("Clearing the filters restores the list.")
+			);
+		}, "the filter-only heading and recovery sentence");
+		await poll(
+			() =>
+				[...document.querySelectorAll<HTMLElement>("button")].filter(
+					(node) => node.textContent?.trim() === "Clear all",
+				).length === 1,
+			"exactly one Clear all in the filter-only no-match state",
+		);
+	}),
+};
+
+/**
  * The sticky team headers, mid-scroll: the second section's header pinned at
  * the scroller's top with its rows passing under it and the first section's
  * header pushed out behind it — a state the resting list can never show,
