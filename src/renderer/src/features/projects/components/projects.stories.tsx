@@ -827,6 +827,175 @@ const poll = async (predicate: () => boolean, what: string) => {
 	throw new Error(`the story's state never arrived: ${what}`);
 };
 
+/**
+ * The live colour a role class resolves to, read from a probe in this document.
+ *
+ * The stories run under every palette, so a band's ground has to be compared
+ * against the TOKEN rather than a hex: the probe carries the same class the band
+ * carries, in the same document and theme, so the assertion cannot drift from
+ * the role it names.
+ */
+const roleGround = (role: string): string => {
+	const probe = document.createElement("div");
+	probe.className = role;
+	probe.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px";
+	document.body.appendChild(probe);
+	const ground = getComputedStyle(probe).backgroundColor;
+	probe.remove();
+	return ground;
+};
+
+/**
+ * The team band's register, read off the live band (issue #703, RESHAPED on
+ * operator direction): the team's OWN name in an `<h3>`, 32px tall, BORDERLESS,
+ * on the `surface` rung one lightness step above the rows' `canvas` - and not
+ * operable, because a band is a label and the row-style hover it once resembled
+ * is what the reporter read as broken.
+ *
+ * The last clause is the fold's own (#716's team labels, folded in): the band
+ * prints the RESOLVED name - `teamLabelFor` wired from the page - and never the
+ * raw binding, so a fixture whose label differs from its slug is what makes the
+ * integration falsifiable at all. The fixture is main's own catalogue entry
+ * (`platform` -> `Platform Delivery`), which is the smallest thing that can
+ * exercise it: the same stories, the same lanes, one resolved name.
+ *
+ * Each clause can fail on its own, and each is the shape the change made:
+ * `main` draws a `canvas` span with a `py-1.5` box and no heading, so the height
+ * clause and the heading clause fail there; the register the first pass shipped
+ * was small caps, which the `text-transform` clause fails; and the ground clause
+ * is the change itself. The last two clauses are review round 1's U1/U2: the
+ * count's accessible name, and the association between the section's heading and
+ * the list it labels - the two places the visual grouping does not reach.
+ */
+const assertTeamBand = (
+	selector: string,
+	expectedLabel: string,
+	slug: string,
+) => {
+	const bands = [...document.querySelectorAll<HTMLElement>(selector)];
+	if (bands.length === 0) throw new Error(`no team band matches ${selector}`);
+	const surface = roleGround("bg-surface");
+	const canvas = roleGround("bg-canvas");
+	if (surface === canvas) {
+		throw new Error(
+			"bg-surface and bg-canvas resolve to the same colour in this theme - the band's step is unmeasurable here",
+		);
+	}
+	for (const band of bands) {
+		const label = band.querySelector("h3");
+		if (!label || (label.textContent ?? "").trim() === "") {
+			throw new Error(`${selector}: a team band carries no <h3> label`);
+		}
+		if (getComputedStyle(label).textTransform !== "none") {
+			throw new Error(
+				`${selector}: the team label is transformed, so user data is being re-cased`,
+			);
+		}
+		const height = band.getBoundingClientRect().height;
+		if (Math.abs(height - 32) > 0.6) {
+			throw new Error(`${selector}: a team band is ${height}px tall, not 32`);
+		}
+		if (Number.parseFloat(getComputedStyle(band).borderBottomWidth) > 0) {
+			throw new Error(
+				`${selector}: a team band carries a bottom rule; the step is the division`,
+			);
+		}
+		const ground = getComputedStyle(band).backgroundColor;
+		if (ground !== surface) {
+			throw new Error(
+				`${selector}: a team band's ground is ${ground}, not the surface rung (${surface})`,
+			);
+		}
+		if (ground === canvas) {
+			throw new Error(
+				`${selector}: a team band is still on the rows' canvas ground - no division`,
+			);
+		}
+		if (band.querySelector("button, a, [tabindex]") || band.tabIndex >= 0) {
+			throw new Error(`${selector}: a team band became operable`);
+		}
+		/*
+		 * The count is NAMED (UX review round 1, U1). The span sits outside the
+		 * `<h3>`, so without an accessible name the reading order says "platform,
+		 * 8" and the digit carries no noun; the visible text stays the terse number.
+		 */
+		const countEl = band.querySelector<HTMLElement>("span[aria-label]");
+		if (!countEl) {
+			throw new Error(`${selector}: the count carries no accessible name`);
+		}
+		const said = countEl.getAttribute("aria-label") ?? "";
+		const visible = (countEl.textContent ?? "").trim();
+		const noun = visible === "1" ? "project" : "projects";
+		if (said !== `${visible} ${noun}`) {
+			throw new Error(
+				`${selector}: the count's accessible name is "${said}" where "${visible} ${noun}" is what it counts`,
+			);
+		}
+		/*
+		 * And the section's own list names itself with the heading it belongs to
+		 * (UX review round 1, U2) - the association the visual grouping only implied.
+		 */
+		const headingId = label.id;
+		if (!headingId) {
+			throw new Error(
+				`${selector}: the section heading carries no id for its list to name`,
+			);
+		}
+		if (document.querySelectorAll(`#${CSS.escape(headingId)}`).length !== 1) {
+			throw new Error(
+				`${selector}: the heading's id "${headingId}" is not unique in the document`,
+			);
+		}
+		const rows = band.parentElement?.querySelector("ul");
+		if (!rows) {
+			throw new Error(`${selector}: the section draws no list under its band`);
+		}
+		if (rows.getAttribute("aria-labelledby") !== headingId) {
+			throw new Error(
+				`${selector}: the section's list names "${rows.getAttribute("aria-labelledby")}" rather than its heading "${headingId}"`,
+			);
+		}
+	}
+	const exact = bands.some(
+		(band) => (band.querySelector("h3")?.textContent ?? "") === expectedLabel,
+	);
+	if (!exact) {
+		throw new Error(
+			`${selector}: no band prints the resolved name "${expectedLabel}" exactly - a register that re-cases user data fails here`,
+		);
+	}
+	/*
+	 * AND THE SLUG MUST NOT BE WHAT IS PRINTED (the fold onto main's team labels,
+	 * #716). The catalogue in this file resolves `platform` to `Platform
+	 * Delivery`, so a band that prints the BINDING rather than the resolved name
+	 * is a silent regression to the pre-label behaviour - the failure mode the
+	 * integration exists to prevent, and one no colour or geometry clause can see.
+	 */
+	if (
+		bands.some((band) => (band.querySelector("h3")?.textContent ?? "") === slug)
+	) {
+		throw new Error(
+			`${selector}: a band prints the raw slug "${slug}" where the catalogue has a label`,
+		);
+	}
+};
+
+/**
+ * The bands, once the story's own boot has drawn them.
+ *
+ * The plays race the story's boot - the route swap and the stubbed query - so an
+ * assertion taken on the first tick reads a List that has not rendered yet and
+ * reports it as a missing band (measured: the first version of these plays threw
+ * `no team band matches [data-project-team]` at `populated @ localOperatorDark`,
+ * and the rig correctly refused the frame). `poll`'s own 60 s ceiling is what
+ * makes waiting the cheap option.
+ */
+const bandsReady = () =>
+	poll(
+		() => document.querySelectorAll("[data-project-team]").length > 0,
+		"the List's team bands",
+	);
+
 /** A story's play: hold the shutter, run the gesture, wait, release. */
 const playOnce = (key: string, gesture: () => Promise<void>) => async () => {
 	if (played.has(key)) return;
@@ -1032,6 +1201,10 @@ export const LoadError: Story = {
 /** Three projects: the list's ordinary shape. */
 export const Populated: Story = {
 	render: () => page({ view: "list", projects: THREE }),
+	play: playOnce("populated-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
+	}),
 };
 
 /**
@@ -1056,6 +1229,10 @@ export const DefaultBoard: Story = { render: () => page({ projects: THREE }) };
  */
 export const NarrowColumns: Story = {
 	render: () => page({ view: "list", projects: THREE }),
+	play: playOnce("narrow-columns-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
+	}),
 };
 
 /**
@@ -1113,6 +1290,10 @@ export const NarrowSearchActive: Story = {
 /** Twelve projects: the list under a scrollbar. */
 export const Many: Story = {
 	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("many-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
+	}),
 };
 
 /**
@@ -1761,6 +1942,7 @@ export const ListTeamsSticky: Story = {
 				`fewer than two team headers rendered (${headers.length})`,
 			);
 		}
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
 		const second = headers[1];
 		element.scrollTop +=
 			second.getBoundingClientRect().top - element.getBoundingClientRect().top;

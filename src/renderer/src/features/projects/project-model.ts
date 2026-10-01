@@ -311,6 +311,24 @@ export function sessionsCountLabel(count: number): string {
 }
 
 /**
+ * The section band's tally, NAMED: `1 project` / `8 projects`.
+ *
+ * The band prints the bare number - the app's terse register, and the same
+ * terse form `boardLinkCount`'s callers use - so this exists for the ACCESSIBLE
+ * NAME only (UX review round 1, U1): the count span sits outside the `<h3>`, so
+ * a screen reader in reading order announced `platform, 8`, and "8" carries no
+ * noun to say what it tallies.
+ *
+ * NO ZERO CLAUSE, unlike `sessionsCountLabel`: that clause exists for chips that
+ * are not drawn at zero, while this number is always drawn and always needs the
+ * noun. The plural rule is that helper's own - `1 project`, `n projects` - so
+ * the two cannot drift into two vocabularies for one idea.
+ */
+export function projectsCountLabel(count: number): string {
+	return count === 1 ? "1 project" : `${count} projects`;
+}
+
+/**
  * The board card's popover trigger: the DOOR's name, with liveness folded in.
  *
  * The trigger used to print liveness alone (`0 live` on a project whose links
