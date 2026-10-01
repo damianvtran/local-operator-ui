@@ -2997,13 +2997,36 @@ const BRANCH_RECORDS = [
 	"foldOntod10b50764dNote",
 	/*
 	 * And the lane's SEVENTH fold record, the same evening: the sync onto
-	 * `origin/main` = `8e73cb8721` (#728 the hub-org-sharing teardown), whose
-	 * entire delta against this branch was the manifest itself - the code had
-	 * already arrived through the earlier folds. Registered for the same
-	 * completeness reason as its siblings: a fold resolved from main's copy
-	 * would drop the statement of what this sync carried.
+	 * `origin/main` = `8e73cb8721` (#728 the hub-org-sharing teardown). Its delta
+	 * is three files: the manifest resolution, the agent-hub suite's `gcTime` pin
+	 * (`22bd23fd9b`, which arrived at that fold and moved `scripts/`), and the
+	 * BRANCH_RECORDS registration. (The `15 insertions, 1 deletion` this entry's
+	 * first revision attributed to the manifest is that TEST FILE's stat - agent
+	 * review R9.) Registered for the same completeness reason as its siblings: a
+	 * fold resolved from main's copy would drop the statement of what this sync
+	 * carried.
 	 */
 	"foldOnto8e73cb8721Note",
+	/*
+	 * And the lane's EIGHTH fold record, the next morning: the sync onto
+	 * `origin/main` = `eda575325e` (#736 the turn-partition predicate), taken so a
+	 * clean head can run CI. Registered for the same completeness reason as its
+	 * siblings: a fold resolved from main's copy would drop the statement of what
+	 * this sync carried - main's `runClosureVocabularyRestampNote` and the
+	 * package.json union, resolved per `citationConvention`.
+	 */
+	"foldOntoeda575325eNote",
+	/*
+	 * AND BY THE FOLD ITSELF, once - which is the list earning its keep. The
+	 * vocabulary round's note moves `scripts/` only and takes no frame, and the
+	 * fold onto `origin/main` (443ad13c70) took main's manifest whole exactly as
+	 * the entry above predicts: the note was gone from the tree and nothing else
+	 * noticed. Re-adding it is not enough on its own - the point of naming it here
+	 * is that the NEXT fold cannot drop it in silence - so the registration lands
+	 * as its own `scripts/` commit, and the docs-only re-stamp that follows derives
+	 * the pair from the tree that includes it.
+	 */
+	"runClosureVocabularyRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
