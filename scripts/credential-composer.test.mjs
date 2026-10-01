@@ -67,6 +67,8 @@ for (const [key, value] of Object.entries({
 	Element: window.Element,
 	Node: window.Node,
 	Event: window.Event,
+	CustomEvent: window.CustomEvent,
+	FocusEvent: window.FocusEvent,
 	KeyboardEvent: window.KeyboardEvent,
 	InputEvent: window.InputEvent,
 	MouseEvent: window.MouseEvent,
@@ -185,6 +187,12 @@ const credentialList = [{ key: "LOP_SECRET_ABCDEFGH", source: "command" }];
  * `after` hook so one case's transport cannot leak into the next.
  */
 let transportOverride = null;
+/*
+ * The server-down switch for the offline case: when true, the `/health` fetch
+ * rejects, which is how the connectivity gate (and the app's banner) learns
+ * the server is offline. Reset by the case that sets it.
+ */
+let healthFails = false;
 
 /** A response the way the mocked bridge builds one, for an override to return. */
 const transportSays = (status, result) => ({
@@ -279,6 +287,9 @@ const answer = (request) => {
 const nodeFetch = globalThis.fetch.bind(globalThis);
 
 globalThis.fetch = async (url, init) => {
+	if (healthFails && String(url).includes("/health")) {
+		throw new Error("rig: the server is down");
+	}
 	let request = {};
 	try {
 		request = JSON.parse(init?.body ?? "{}");
@@ -303,6 +314,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { MessageInput } from "./src/renderer/src/shared/components/composer/message-input.tsx";
+			export { useRadientCredentialProbe } from "./src/renderer/src/shared/hooks/use-credentials";
 			export { CredentialChipLayer } from "./src/renderer/src/features/chat/components/credential-chip-layer.tsx";
 			export { CHAT_MEASURE } from "./src/renderer/src/features/chat/chat-measure";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -351,6 +363,7 @@ const {
 	QueryClient,
 	QueryClientProvider,
 	useConversationInputStore,
+	useRadientCredentialProbe,
 	CREDENTIAL_ARMED_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_DRAFT_NOTICE,
 	CREDENTIAL_EMPTY_SPAN_NOTICE,
@@ -366,6 +379,19 @@ const React = await import("react");
 const { createRoot } = await import("react-dom/client");
 const { act } = React;
 const h = React.createElement;
+
+/**
+ * The probe HOST, as the chat renders it. Since the composer's lift the probe is
+ * the host's read (`recordingProbe` on the props) and the composer asks nothing
+ * itself; `chat-content.tsx` supplies the shipped hook's answer. The mic cases
+ * below mount through this host so they drive the same wiring, and the reading
+ * is published for waits.
+ */
+const MicProbeHost = ({ baseProps }) => {
+	const recordingProbe = useRadientCredentialProbe();
+	globalThis.__composerProbe = recordingProbe;
+	return h(MessageInput, { ...baseProps, recordingProbe });
+};
 
 const client = new QueryClient({
 	defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
@@ -498,6 +524,14 @@ async function mount({
 	messages = [{ id: "m", role: "system", timestamp: new Date(0) }],
 	keepWorld = false,
 	remount = false,
+	/*
+	 * The probe the lifted composer expects from its host. A case that needs the
+	 * voice-input gate live mounts through `MicProbeHost`, which supplies the
+	 * shipped `useRadientCredentialProbe()` reading the way `chat-content.tsx`
+	 * does; the default host supplies none, the mini-view-shaped host whose
+	 * absent probe reads as "no key".
+	 */
+	withRecordingProbe = false,
 } = {}) {
 	const sent = [];
 	/*
@@ -578,32 +612,35 @@ async function mount({
 		root = undefined;
 	}
 	root ??= createRoot(window.document.getElementById("root"));
+	const composerProps = {
+		isLoading,
+		messages,
+		conversationId,
+		sessionStatus,
+		unavailable,
+		secretAnswer,
+		currentJobId,
+		deliveryRemediesReachable,
+		onSendMessage: async (...args) => {
+			sent.push(args);
+			return onSendMessage ? onSendMessage(...args) : true;
+		},
+		onSlashCommand,
+		onSlashNote: (text) => {
+			notes.push(text);
+			onSlashNote?.(text);
+		},
+		onCredentialsStored,
+		paneHasSession,
+	};
 	await act(async () => {
 		root.render(
 			h(
 				QueryClientProvider,
 				{ client },
-				h(MessageInput, {
-					isLoading,
-					messages,
-					conversationId,
-					sessionStatus,
-					unavailable,
-					secretAnswer,
-					currentJobId,
-					deliveryRemediesReachable,
-					onSendMessage: async (...args) => {
-						sent.push(args);
-						return onSendMessage ? onSendMessage(...args) : true;
-					},
-					onSlashCommand,
-					onSlashNote: (text) => {
-						notes.push(text);
-						onSlashNote?.(text);
-					},
-					onCredentialsStored,
-					paneHasSession,
-				}),
+				withRecordingProbe
+					? h(MicProbeHost, { baseProps: composerProps })
+					: h(MessageInput, composerProps),
 			),
 		);
 	});
@@ -5377,4 +5414,244 @@ test("the closed box with a draft carries a visible reason (UX round 1, U2)", as
 		/composer-secret-closure-notice/,
 		"and the field is described by it",
 	);
+});
+
+/* ------------------------------------------------------------------ */
+/* The mic gate reads the Radient session, not only the file (#674)     */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE REPORTED STATE AND ITS COUNTERSTATES, driven through this file's own
+ * rig. The report: a user signed in to Radient Cloud gets a permanently
+ * disabled mic whose tooltip says "Sign in to Radient in the settings page to
+ * enable audio recording" — the state they just left. The gate read the
+ * legacy `/v1/credentials` key list alone; a sign-in lands in the backend's
+ * auth store instead. The cases below pin the fixed matrix on the surface the
+ * report is about: session-only → live, key-only → live (unchanged), neither →
+ * off with the sign-in sentence, probe-dead → off with the offline sentence.
+ *
+ * The answers are the desktop transport's own shapes: capabilities advertises
+ * the `radient` feature (which is what ENABLES the account read at all),
+ * `credentials.list` is the legacy file the probe lists, and
+ * `radient.request` carries the account read in the `{data: {msg, result}}`
+ * chain `radientProxy` unwraps. The signed-out refusal goes through
+ * `transportInner` rather than a bare `transportSays(409, …)`: the shim's
+ * outer `!response.ok` check would throw the body away before it is read, and
+ * with the body goes the daemon's own "Sign in to Radient…" sentence — the
+ * 409-plus-prose pair the account read classifies as `signed-out` instead of
+ * `unknown`.
+ */
+
+const MIC_TEST_ACCOUNT = {
+	account: {
+		id: "acct_mic_gate",
+		tenant_id: "ten_mic_gate",
+		email: "mic-gate@example.test",
+		name: "Mic Gate",
+		role: "owner",
+		status: "active",
+		created_at: "2026-01-02T03:04:05Z",
+		updated_at: "2026-01-02T03:04:05Z",
+	},
+	identity: {
+		email: "mic-gate@example.test",
+		provider: "google",
+		provider_id: "google-mic-gate",
+	},
+};
+
+/** A refusal whose ENVELOPE survives the shim's outer `ok` check (see above). */
+const transportInner = (status, detail) => ({
+	ok: true,
+	status: 200,
+	json: async () => ({ status, body: { detail } }),
+});
+
+/** The transport for the mic-gate cases, per state under test. */
+const micTransport =
+	({ account = "signed-out", keys = [], credentialsFail = false } = {}) =>
+	(request) => {
+		if (request.op === "capabilities")
+			return transportSays(200, {
+				desktop_available: true,
+				features: { commands: 1, session_credential: 1, radient: 1 },
+			});
+		if (request.op === "credentials.list") {
+			if (credentialsFail)
+				return transportSays(503, {
+					detail: "rig: the server did not answer",
+				});
+			return transportSays(200, { keys });
+		}
+		if (request.op === "radient.request") {
+			if (account === "signed-in")
+				return transportSays(200, {
+					data: { msg: "ok", result: MIC_TEST_ACCOUNT },
+				});
+			return transportInner(409, "Sign in to Radient to access your account");
+		}
+		return undefined;
+	};
+
+/** The composer's dictation control, as the DOM carries it. */
+const micButton = () =>
+	window.document.querySelector('button[aria-label="Start recording"]');
+
+/** Flush React and the transport until `predicate` holds, or fail naming it. */
+async function until(predicate, what, timeoutMs = 20_000) {
+	const deadline = Date.now() + timeoutMs;
+	for (;;) {
+		await act(async () => {
+			await new Promise((resolve) => realSetTimeout(resolve, 10));
+		});
+		const value = predicate();
+		if (value) return value;
+		if (Date.now() > deadline) {
+			throw new Error(`timed out after ${timeoutMs}ms waiting for ${what}`);
+		}
+	}
+}
+
+/**
+ * The mic's tooltip, read by focusing its trigger span and matched BY NAME:
+ * the primitive keeps a previously opened panel mounted while the next opens,
+ * so the first `[role=tooltip]` can be the previous case's sentence. `prefix`
+ * asks for the enabled arm, whose text carries the binding after the prefix.
+ *
+ * THE DISPATCH HAPPENS ONCE AND THE POLL IS PLAIN. Re-dispatching inside an
+ * `act` every attempt — the first shape — made these reads hostage to fleet
+ * load: on 2026-09-29 (load average 95+) one act-wrapped dispatch measured
+ * minutes, and the loop could outlast any bound. The panel opens once and
+ * stays while the focus does; a re-dispatch every 30 attempts is the only
+ * retry there is.
+ */
+async function openMicTooltip(expected, { prefix = false } = {}) {
+	const trigger = micButton().parentElement;
+	const seen = new Set();
+	for (let attempt = 0; attempt < 200; attempt += 1) {
+		if (attempt % 30 === 0) {
+			trigger.dispatchEvent(
+				new window.FocusEvent("focusin", { bubbles: true, cancelable: true }),
+			);
+		}
+		// eslint-disable-next-line no-await-in-loop
+		await new Promise((resolve) => realSetTimeout(resolve, 100));
+		for (const panel of window.document.querySelectorAll('[role="tooltip"]')) {
+			const text = (panel.textContent ?? "").trim();
+			seen.add(text);
+			if (prefix ? text.startsWith(expected) : text === expected) return text;
+		}
+	}
+	throw new Error(
+		`no tooltip read "${expected}"; sentences seen: ${JSON.stringify([...seen])}`,
+	);
+}
+
+/**
+ * Mount a composer on a FRESH machine: the shared `client` keeps the previous
+ * case's key list and account otherwise, and a cached key answers for a machine
+ * that does not have one (measured: the `neither` case read the key-only case's
+ * cached key and left the mic live). This is the one place in this file that
+ * clears the shared cache between cases, and it is deliberate — these four
+ * cases are four different MACHINES.
+ */
+async function mountMicMachine() {
+	await act(async () => {
+		client.clear();
+	});
+	return mount({ withRecordingProbe: true });
+}
+
+test("a signed-in user gets a live mic with no key listed (issue #674)", async () => {
+	transportOverride = micTransport({ account: "signed-in", keys: [] });
+	try {
+		await mountMicMachine();
+		const mic = await until(
+			() => micButton(),
+			"the dictation control to render",
+		);
+		await until(
+			() => !mic.hasAttribute("disabled"),
+			"the mic of the reported state to go live",
+		);
+		assert.equal(
+			mic.hasAttribute("disabled"),
+			false,
+			"a signed-in user's mic must be live without a listed key",
+		);
+		/*
+		 * AND THE TOOLTIP IS THE ENABLED ONE. This is the control the report
+		 * watched advise signing in while its user was signed in.
+		 */
+		await openMicTooltip("Start recording (", { prefix: true });
+	} finally {
+		transportOverride = null;
+	}
+});
+
+test("a key-only install keeps the mic live, unchanged", async () => {
+	transportOverride = micTransport({
+		account: "signed-out",
+		keys: ["RADIENT_API_KEY"],
+	});
+	try {
+		await mountMicMachine();
+		const mic = await until(
+			() => micButton(),
+			"the dictation control to render",
+		);
+		await until(
+			() => !mic.hasAttribute("disabled"),
+			"the key-only install's mic to be live",
+		);
+		assert.equal(mic.hasAttribute("disabled"), false);
+	} finally {
+		transportOverride = null;
+	}
+});
+
+test("neither a session nor a key: the sign-in sentence, and only for that machine", async () => {
+	transportOverride = micTransport({ account: "signed-out", keys: [] });
+	try {
+		await mountMicMachine();
+		await until(() => micButton(), "the dictation control to render");
+		await until(
+			() => micButton().hasAttribute("disabled"),
+			"the mic to settle off",
+		);
+		await openMicTooltip(
+			"Sign in to Radient in the settings page to enable recording",
+		);
+	} finally {
+		transportOverride = null;
+	}
+});
+
+test("the offline sentence is for the server being down, not for a failed probe", async () => {
+	transportOverride = micTransport({ account: "signed-out", keys: [] });
+	try {
+		await mountMicMachine();
+		await until(() => micButton(), "the dictation control to render");
+		await until(
+			() => micButton().hasAttribute("disabled"),
+			"the mic to settle off",
+		);
+		/*
+		 * Take the server down the way the app learns it: the health read answers
+		 * offline, and the connectivity gate's reading is what the offline
+		 * sentence states. A failed credentials probe is NOT that state (design
+		 * round 1, D1/D3) — the sign-in case above is the answer for a machine
+		 * whose probe merely could not ask.
+		 */
+		healthFails = true;
+		await act(async () => {
+			await client.invalidateQueries({ queryKey: ["server-health"] });
+		});
+		await openMicTooltip(
+			"Recording is unavailable while Local Operator is offline",
+		);
+	} finally {
+		healthFails = false;
+		transportOverride = null;
+	}
 });

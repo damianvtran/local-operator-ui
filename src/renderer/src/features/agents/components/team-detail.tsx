@@ -23,6 +23,7 @@ import type {
 	ReusableTeam,
 	TeamMember,
 } from "@shared/api/local-operator/profile-hooks";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import {
 	Alert,
 	AlertDescription,
@@ -328,7 +329,14 @@ export function TeamDetail({
 							tabIndex={-1}
 							className="text-title focus:outline-none"
 						>
-							{team ? team.name : "New team"}
+							{/*
+							 * The heading reads the team the way every other human-read
+							 * surface does (round 1, R1-3a): the roster row that opens this
+							 * pane shows the label, so the pane it opens must not rename the
+							 * team back to its slug. The `name` field below stays the slug -
+							 * it is the key a rename edits, not prose.
+							 */}
+							{team ? teamDisplayName(team) : "New team"}
 						</h2>
 						<div className="flex flex-wrap items-center gap-1.5">
 							<Badge variant="neutral">
