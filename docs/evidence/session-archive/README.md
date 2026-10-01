@@ -194,14 +194,17 @@ section its last step presses).
 > branch ships. The long-name frame belongs to the row-space set
 > (`sidebar-row-space/after/archive-confirm-long`).
 >
-> **FOLDS (one ledger, shared by the three evidence READMEs).** The branch has been folded FOUR times
-> since the first frames: (1) `5bea768188` onto `8e73cb8721`, (2) `a191f2e928` onto `e1eb22cd58`,
-> (3) `9d1f54a9ae` onto `81a621f8af`, (4) `d08936c26e` onto `44e4812b31`. Each fold commit
-> hand-resolves exactly one file, `docs/evidence/manifest.json`, taking main's copy and re-deriving
-> the stamp pair; fold 4 also auto-merged upstream's team-label and hub-mark changes into
-> `chat-sidebar.tsx`, `chat-header.tsx` and the canonical sessions store. The paragraph above, comparing
-> the first fold's rows region, describes THAT comparison only. Fold 4 has been compared for the
-> row-space set (17 of 17 panel regions byte-identical, both palettes).
+> **FOLDS (one ledger, shared by the three evidence READMEs; six, per design round 3's D15).** The
+> branch has SIX fold commits on its first-parent chain: (1) `5bea768188` onto `8e73cb8721`,
+> (2) `a191f2e928` onto `e1eb22cd58`, (3) `9d1f54a9ae` onto `81a621f8af`, (4) `d08936c26e` onto
+> `44e4812b31`, (5) `034a7277a8` onto `53c5cfec6b`, (6) `637fb83d81` onto `44249a6796`. Each fold
+> commit hand-resolves exactly one file, `docs/evidence/manifest.json`, taking main's copy and
+> re-deriving the stamp pair; fold 4 also auto-merged upstream's team-label and hub-mark changes into
+> `chat-sidebar.tsx`, `chat-header.tsx` and the canonical sessions store. **Folds five and six brought
+> in no change to any surface this set photographs** - neither `44e4812b31..53c5cfec6b` nor
+> `53c5cfec6b..44249a6796` touches the sidebar, the dialog, the pins, the header or the store - so the
+> comparisons below still describe the current head's rows. The paragraph above, comparing the first
+> fold's rows region, describes THAT comparison only.
 
 **FOURTH-FOLD COMPARISON (2026-10-01).** Only TWO frames in this set are the same capture size as
 this round's runs: `archive-confirm` and `archive-confirm-settings` (the round-1 remediation
