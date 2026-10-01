@@ -1381,9 +1381,9 @@ function SessionPanel({
 	 * dispatcher's own identity is rebuilt on every render — its dependency list
 	 * reads the canonical handle, which the stream replaces per flush — and the
 	 * composer takes this callback both as `onSlashCommand` and inside its session
-	 * readings. The wrapper keeps the fresh closure's semantics (every invocation
-	 * runs the latest render's function) while giving the boundary one identity;
-	 * see `useStableCallback`.
+	 * readings. The wrapper gives the boundary one identity while still running the
+	 * most recently committed render's closure (see `useStableCallback` for the
+	 * exact guarantee, including the same-commit window it does not cover).
 	 */
 	const stableDispatchFromControl = useStableCallback(dispatchFromControl);
 	/*
@@ -3641,7 +3641,7 @@ function SessionPanel({
 					 * afterwards, and a failure must report through this path's own note
 					 * rather than a second copy of its sentence (round 2, Q-7's contract).
 					 */
-					onSlashCommand={dispatchFromControl}
+					onSlashCommand={stableDispatchFromControl}
 					onSlashNote={slashNote}
 					/*
 					 * The pane's answer to the dispatcher's own question, handed to the
