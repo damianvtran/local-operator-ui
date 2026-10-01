@@ -564,10 +564,28 @@ export function alignWalkRunKey(
 	rows: Row[],
 	options: { live: boolean; openRuns?: ReadonlySet<string> },
 ): string | null {
-	const plan = collapsePlan(rows, {
-		live: options.live,
-		openRuns: options.openRuns,
-	});
+	return alignWalkRunFromPlan(
+		collapsePlan(rows, { live: options.live, openRuns: options.openRuns }),
+		options.openRuns,
+	);
+}
+
+/**
+ * The same question, asked of a plan the caller ALREADY holds (UI perf audit
+ * A3). The completion walk's effect ran on every transcript update and paid a
+ * second `collapsePlan` over the whole store to ask it; the render already
+ * builds the plan it paints from, so the consumer derives the key from THAT plan
+ * and the effect keys on the resulting string instead of on the row array — a
+ * flush that moves no run the plan can see no longer re-runs the walk's effect.
+ *
+ * Split from `alignWalkRunKey` rather than replacing it: the row-taking form
+ * stays the one place a row list is turned into the question, so the two
+ * callers cannot drift into two opinions about which run owes a walk.
+ */
+export function alignWalkRunFromPlan(
+	plan: CollapsePlan,
+	openRuns?: ReadonlySet<string>,
+): string | null {
 	const cut = plan.runs.find(
 		(run) =>
 			!run.run.opensWithUserRow &&
@@ -578,7 +596,7 @@ export function alignWalkRunKey(
 			// headers rather than partial statements (the `openRuns` treatment
 			// `paintedRows` gives them) and owes no walk.
 			run.segments.some(
-				(segment) => segment.collapsed && !options.openRuns?.has(segment.key),
+				(segment) => segment.collapsed && !openRuns?.has(segment.key),
 			),
 	);
 	return cut?.key ?? null;

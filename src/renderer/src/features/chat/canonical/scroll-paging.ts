@@ -728,7 +728,24 @@ export const decide = (
 	// A reader looking at a conversation that does not fill its viewport is not
 	// "following the tail" in any sense they would recognise: they can see the
 	// whole thing at once, including its first row.
-	if (geo.followingTail && geo.scrollable) return { action: "none", state };
+	//
+	// THE DEMAND IS DROPPED HERE, NOT CARRIED (UI perf audit A4). A demand a
+	// reader at the tail armed can never spend while they are there — this guard
+	// returns before the armed branch on every frame — so retaining it bought
+	// nothing and cost a re-decide forever: the DOM half re-arms its settle timer
+	// for any armed demand (`use-scroll-paging.ts`), the same guard refuses again
+	// 120ms later, and the pair re-runs until the reader leaves the tail or the
+	// session changes. Measured against this module: an armed demand at the tail
+	// is `{action:"none", armed:true}` on every pass. Dropping it ends the loop at
+	// the only place that can: while the reader CAN spend, the guard does not run
+	// and the demand is spent as before, and a reader who leaves the tail gives a
+	// fresh gesture that arms a fresh demand — the retained one was never what
+	// delivered their page.
+	if (geo.followingTail && geo.scrollable) {
+		return state.armed
+			? { action: "none", state: { ...state, armed: false } }
+			: { action: "none", state };
+	}
 
 	const zonePx = prefetchZonePx(geo.clientHeight);
 	/*

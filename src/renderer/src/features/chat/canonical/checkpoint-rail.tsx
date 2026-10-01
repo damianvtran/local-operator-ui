@@ -291,7 +291,7 @@ const CheckpointMark = memo(function CheckpointMark({
 	);
 });
 
-export const CheckpointRail: FC<CheckpointRailProps> = ({
+const CheckpointRailView: FC<CheckpointRailProps> = ({
 	sessionId,
 	checkpoints,
 	onJump,
@@ -791,3 +791,20 @@ export const CheckpointRail: FC<CheckpointRailProps> = ({
 		</div>
 	);
 };
+
+/*
+ * THE RAIL IS MEMOISED (UI perf audit A6). It was a plain FC, so the parent's
+ * every streaming flush re-rendered it — and the cost scaled with the
+ * conversation: each flush rebuilt the tick list and recomputed
+ * `checkpointMarkState` for every mark. The props it receives are stable across
+ * a flush that moves nothing the rail paints (`checkpoints` is the manifest
+ * answer, `loadedIds` is the hook's content-keyed Set, `activeId` is a scalar,
+ * `sessionId` a string, and the two callbacks are `useCallback`s), so memo lets
+ * a flush that changes none of them cost nothing here.
+ *
+ * The `loadedIds` identity half of this fix lives in `use-active-checkpoint.ts`
+ * (a content-keyed Set rather than one rebuilt per flush): memo compares props
+ * by reference, so a rail whose `loadedIds` was a fresh Set every flush would
+ * still re-render and this wrapper would buy nothing.
+ */
+export const CheckpointRail = memo(CheckpointRailView);
