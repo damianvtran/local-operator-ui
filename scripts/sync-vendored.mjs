@@ -87,6 +87,17 @@ export const VENDORED_FILES = [
 		from: "extension/src/driver/scroll-expressions.ts",
 		to: "driver/scroll-expressions.ts",
 	},
+	// The structured-read page functions (`styles`, `hit_test`, `ancestors`).
+	// They are FUNCTION EXPRESSIONS rather than strings because the extension
+	// hands them to `chrome.scripting.executeScript({func})` and this host
+	// reproduces the same call as `({fn}.toString())(...)`: self-contained (no
+	// imports, no closures) so the source round-trips through both boundaries,
+	// and one implementation means the two hosts answer with the same caps,
+	// rounding and property lists.
+	{
+		from: "extension/src/driver/geometry-read.ts",
+		to: "driver/geometry-read.ts",
+	},
 ];
 
 /**

@@ -328,6 +328,79 @@ const POPUP_PAGE = `<!doctype html><html><head><meta charset="utf-8"><title>Popu
   }
 </script></body></html>`;
 
+/**
+ * The geometry fixture: the shape the structured reads (`styles`, `hit_test`,
+ * `ancestors`) exist for, plus the bounds probe.
+ *
+ * The popper is the Radix popup's, because that is the case a text read cannot
+ * answer: a fixed-positioned floating wrapper inside the app's root container,
+ * offset by a transform, under a global `div` reset that makes every div
+ * `position: relative` and border-boxed. Its bounding rect only exists if the
+ * fixed positioning AND the transform are both applied; its computed `left`/
+ * `top` are the pre-transform values (the disagreement is the point); the
+ * placement data the popper library writes travels as inline `--*` custom
+ * properties, which no computed-style key reports; and the listbox sheet sits
+ * in a stack only `elementsFromPoint` can enumerate.
+ *
+ * The deep stack at the end exists for the BOUNDS halves of the contract:
+ * twenty nested divs put more than eight elements under one point and more
+ * than sixteen ancestors above one element, so numbers beyond the caps are a
+ * failure of the cap rather than of the arithmetic.
+ *
+ * No backticks in this comment or its markup: it lives inside a template
+ * literal.
+ */
+const GEOMETRY_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Geometry proof page</title>
+<style>
+  /* The reset the reads must be interpreted THROUGH: every div relative,
+     border-box. The popover is the one element that overrides it. */
+  div { position: relative; box-sizing: border-box; }
+  body { font: 14px system-ui; margin: 0; padding: 24px; }
+  #minerva-app-root { width: 900px; }
+  #radix-popover {
+    position: fixed; top: 120px; left: 300px;
+    transform: translate(10px, 20px);
+    width: 240px; padding: 8px; border: 1px solid #888;
+    background: #fff; z-index: 50;
+  }
+  #radix-listbox { outline: none; }
+  [role="option"] { padding: 4px 8px; }
+  #deep-stack-holder { width: 200px; height: 140px; }
+</style>
+</head><body>
+<div id="minerva-app-root">
+  <h1>Geometry proof page</h1>
+  <div id="radix-popover"
+       style="--radix-popper-available-width: 640px; --radix-popper-transform-origin: 20px 30px">
+    <div role="listbox" id="radix-listbox" aria-label="Options">
+      <div role="option" id="option-a">Alpha</div>
+      <div role="option" id="option-b">Beta</div>
+      <div role="option" id="option-c">Gamma</div>
+    </div>
+  </div>
+  <div id="deep-stack-holder"></div>
+</div>
+<script>
+  // Twenty nested absolutely positioned divs, built by the page so the markup
+  // stays readable. Each child shifts one pixel relative to its parent, so the
+  // innermost center has all twenty under one point and all twenty above one
+  // element.
+  var parent = document.getElementById("deep-stack-holder");
+  for (var index = 1; index <= 20; index += 1) {
+    var div = document.createElement("div");
+    div.id = "stack-" + index;
+    div.style.position = "absolute";
+    div.style.top = "1px";
+    div.style.left = "1px";
+    div.style.width = "120px";
+    div.style.height = "60px";
+    parent.appendChild(div);
+    parent = div;
+  }
+</script>
+</body></html>`;
+
 /** Responses still held open by the `/slow` route, destroyed at the end of the
  * run so a deliberately hung request cannot keep this process alive. */
 const held = [];
@@ -369,6 +442,11 @@ function startSite() {
 		if (url.pathname === "/page2") {
 			res.writeHead(200, { "Content-Type": "text/html" });
 			res.end(PAGE2);
+			return;
+		}
+		if (url.pathname === "/geometry") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(GEOMETRY_PAGE);
 			return;
 		}
 		if (url.pathname === "/popup-target") {
@@ -1402,6 +1480,176 @@ async function main() {
 			tabsAfterCleanup.tabs.length === tabsBefore.tabs.length,
 		`targets after the close: ${JSON.stringify(survivors)}\ntabs: ${tabsAfterCleanup.tabs.length}`,
 	);
+	// --- 5c. the structured reads, against the Radix-shaped fixture ----------
+	/*
+	 * The case a text read cannot answer: the popper's bounding rect (which
+	 * exists only if the fixed positioning AND the transform are both applied),
+	 * its computed `position`/`transform`/`width` (which disagree with its
+	 * computed `left`/`top`), the inline `--*` placement properties the popper
+	 * library writes, the element stack under a point, and the ancestor chain
+	 * above an element - one call each. The bounds ride the same section: five
+	 * matches, eight elements, twelve steps by default, sixteen as the hard
+	 * ceiling.
+	 */
+	const geometryTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/geometry`,
+		requester: "session:proof",
+	});
+	const popover = await rpcOk(state, "styles", {
+		tab: geometryTab.tab,
+		selector: "#radix-popover",
+		properties: ["border-top-width"],
+	});
+	const pop = popover.matches?.[0] ?? {};
+	check(
+		"styles answers the popper question in one call: rect, computed position/transform/width, inline --* props",
+		popover.count === 1 &&
+			pop.rect?.x === 310 &&
+			pop.rect?.y === 140 &&
+			pop.rect?.width === 240 &&
+			pop.styles?.position === "fixed" &&
+			pop.styles?.transform === "matrix(1, 0, 0, 1, 10, 20)" &&
+			pop.styles?.left === "300px" &&
+			pop.styles?.top === "120px" &&
+			pop.styles?.width === "240px" &&
+			pop.styles?.["border-top-width"] === "1px" &&
+			pop.inline?.["--radix-popper-available-width"] === "640px" &&
+			pop.inline?.["--radix-popper-transform-origin"] === "20px 30px",
+		`count=${popover.count} rect=${JSON.stringify(pop.rect)}\nstyles.position=${pop.styles?.position} styles.transform=${pop.styles?.transform} styles.left=${pop.styles?.left} styles.top=${pop.styles?.top} styles.width=${pop.styles?.width} styles[border-top-width]=${pop.styles?.["border-top-width"]}\ninline=${JSON.stringify(pop.inline)}`,
+	);
+	record("styles('#radix-popover') (raw)", JSON.stringify(popover, null, 2));
+
+	const many = await rpcOk(state, "styles", {
+		tab: geometryTab.tab,
+		selector: "div",
+	});
+	check(
+		"styles caps its matches at five, so a broad selector cannot flood the wire",
+		many.count === 5 && many.truncated === true,
+		`div matches: count=${many.count} truncated=${many.truncated} first=${JSON.stringify((many.matches ?? []).map((match) => match.id || match.tag))}`,
+	);
+
+	const beta = await rpcOk(state, "styles", {
+		tab: geometryTab.tab,
+		selector: "#option-b",
+	});
+	const betaRect = beta.matches?.[0]?.rect;
+	const betaX = betaRect.x + betaRect.width / 2;
+	const betaY = betaRect.y + betaRect.height / 2;
+	const hit = await rpcOk(state, "hit_test", {
+		tab: geometryTab.tab,
+		x: betaX,
+		y: betaY,
+	});
+	const hitStack = (hit.elements ?? []).map(
+		(element) => element.id || element.tag,
+	);
+	check(
+		"hit_test answers the element stack under a point, topmost first",
+		hit.elements?.[0]?.id === "option-b" &&
+			hitStack.includes("radix-listbox") &&
+			hitStack.includes("radix-popover") &&
+			hitStack.includes("minerva-app-root"),
+		`point=(${betaX}, ${betaY}) stack=${JSON.stringify(hitStack)}`,
+	);
+	record("hit_test at #option-b (raw)", JSON.stringify(hit, null, 2));
+
+	const innermost = await rpcOk(state, "styles", {
+		tab: geometryTab.tab,
+		selector: "#stack-20",
+	});
+	const innerRect = innermost.matches?.[0]?.rect;
+	const deepHit = await rpcOk(state, "hit_test", {
+		tab: geometryTab.tab,
+		x: innerRect.x + innerRect.width / 2,
+		y: innerRect.y + innerRect.height / 2,
+	});
+	check(
+		"hit_test caps its stack at eight, still topmost first",
+		deepHit.elements?.length === 8 && deepHit.elements?.[0]?.id === "stack-20",
+		`count=${deepHit.count} first=${deepHit.elements?.[0]?.id} stack=${JSON.stringify(
+			(deepHit.elements ?? []).map((element) => element.id || element.tag),
+		)}`,
+	);
+
+	const chain = await rpcOk(state, "ancestors", {
+		tab: geometryTab.tab,
+		selector: "#option-b",
+	});
+	const chainIds = (chain.chain ?? []).map(
+		(element) => element.id || element.tag,
+	);
+	const popoverEntry = (chain.chain ?? []).find(
+		(element) => element.id === "radix-popover",
+	);
+	check(
+		"ancestors walks from the element up to the document element, each with its own rect and styles",
+		chain.count === 6 &&
+			chainIds.join(">") ===
+				"option-b>radix-listbox>radix-popover>minerva-app-root>body>html" &&
+			popoverEntry?.styles?.position === "fixed" &&
+			popoverEntry?.styles?.["z-index"] === "50",
+		`chain=${chainIds.join(" > ")} count=${chain.count}\npopover entry styles.position=${popoverEntry?.styles?.position} styles.z-index=${popoverEntry?.styles?.["z-index"]} styles.top=${popoverEntry?.styles?.top}`,
+	);
+	record("ancestors('#option-b') ids (raw)", JSON.stringify(chainIds));
+
+	const deepChain = await rpcOk(state, "ancestors", {
+		tab: geometryTab.tab,
+		selector: "#stack-20",
+	});
+	check(
+		"ancestors bounds the walk at twelve steps by default",
+		deepChain.count === 12 && deepChain.chain?.[0]?.id === "stack-20",
+		`count=${deepChain.count} head=${deepChain.chain?.[0]?.id} tail=${deepChain.chain?.[deepChain.chain.length - 1]?.tag}`,
+	);
+	const cappedChain = await rpcOk(state, "ancestors", {
+		tab: geometryTab.tab,
+		selector: "#stack-20",
+		depth: 99,
+	});
+	check(
+		"ancestors hard-caps the walk at sixteen even when asked for more",
+		cappedChain.count === 16,
+		`depth=99 -> count=${cappedChain.count}`,
+	);
+
+	const ghost = await rpc(state, "styles", {
+		tab: geometryTab.tab,
+		selector: "#ghost",
+	});
+	check(
+		"a selector that matches nothing is the existing element_not_found refusal",
+		ghost.json?.error?.code === "element_not_found",
+		ghost.text,
+	);
+	const invalid = await rpc(state, "styles", {
+		tab: geometryTab.tab,
+		selector: "###",
+	});
+	check(
+		"an invalid selector is the same typed refusal, never an internal error",
+		invalid.json?.error?.code === "element_not_found",
+		invalid.text,
+	);
+	const noSelector = await rpc(state, "styles", { tab: geometryTab.tab });
+	check(
+		"a missing selector is the extension's own `selector is required` refusal",
+		noSelector.json?.error?.code === "element_not_found" &&
+			/selector is required/.test(noSelector.text),
+		noSelector.text,
+	);
+	const offViewport = await rpc(state, "hit_test", {
+		tab: geometryTab.tab,
+		x: 5000,
+		y: 5000,
+	});
+	check(
+		"a point with no element on it is `no element at point`, not an empty success",
+		offViewport.json?.error?.code === "element_not_found" &&
+			/no element at point/.test(offViewport.text),
+		offViewport.text,
+	);
+	await rpcOk(state, "close", { tab: geometryTab.tab });
 	// --- 6. a navigation, and the epoch it invalidates ----------------------
 	const staleClick = await rpc(state, "click", { tab: handle, ref: goRef });
 	const navigated = await rpcOk(state, "goto", {
