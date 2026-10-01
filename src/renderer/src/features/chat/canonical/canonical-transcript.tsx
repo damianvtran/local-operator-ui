@@ -145,6 +145,7 @@ import {
 import { isQuotable } from "./quote-model";
 import { QuoteToolkit } from "./quote-toolkit";
 import { ensureReachable, jumpToEntry } from "./reveal-record";
+import { SETTLE_MS } from "./scroll-paging";
 import { THREAD_SEARCH_JUMP_MISS_COPY } from "./thread-search-model";
 import { ThreadSearchOverlay } from "./thread-search-overlay";
 import {
@@ -189,12 +190,13 @@ import {
 } from "./transcript-rows";
 import { turnAnswerMarkClass } from "./turn-answer-rail";
 import {
+	ALIGN_WALK_MAX_PAGES,
 	type RunCollapsePlan,
 	type SegmentPlan,
 	WIDEN_MAX_STEPS,
 	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	alignWalkDecision,
-	alignWalkRunFromPlan,
+	alignWalkRunKeyConfirmed,
 	alignWalkStateFor,
 	collapsePlan,
 	initialAlignWalkState,
@@ -3331,22 +3333,40 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		[visible, working, gate, focusedRecordId, openRuns],
 	);
 	/*
-	 * THE WALK'S CUT-RUN KEY (UI perf audit A3). The completion walk below asks
-	 * "is there a run whose bar is PAINTED and whose opening user row is not in
-	 * the store?" — and the `collapsePlan` right above already answers it. That is
-	 * the plan the list PAINTS from, so the walk reads its answer instead of
-	 * building a second plan over the whole store on every transcript update.
+	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
+	 * The completion walk below asks "is there a run whose bar is PAINTED and
+	 * whose opening user row is not in the STORE?" — and the `collapsePlan` right
+	 * above already answers the PAINTED half. That is the plan the list paints
+	 * from, so the walk reads its answer instead of building a second plan over
+	 * the whole store on every transcript update.
 	 *
-	 * KEYING THE EFFECT ON THIS STRING, NOT ON `rows`, IS THE FIX: a streaming
+	 * THE PLAN IS OVER `visible`, THOUGH, SO IT CANNOT ANSWER THE STORE HALF.
+	 * R1's counterexample: a settled run taller than the snap's 720-row allowance
+	 * keeps the ordinary snap, so the raw edge sits inside it and the plan reads
+	 * `opensWithUserRow: false` while the store holds the run whole — a "cut" the
+	 * walk can never resolve, because a prepend shifts the edge and the run's head
+	 * equally. `alignWalkRunKeyConfirmed` closes that: the plan's key stands only
+	 * when the store's own run under the same edge is head-cut and is the same run.
+	 *
+	 * KEYING THE EFFECT ON THIS STRING, NOT ON `rows`, IS THE PERF FIX: a streaming
 	 * flush moves `rows` on every frame, so the effect used to re-run — and pay a
 	 * whole-store `collapsePlan` — on each one even when no run it can act on had
-	 * changed. The answer is stable exactly while the run the reader sees is
-	 * unchanged, which is when the walk has nothing new to decide.
+	 * changed. The store confirmation costs one `windowTopRun` per render, and only
+	 * while a cut bar is actually painted (the plan key short-circuits to null
+	 * otherwise), which is exactly when the walk has something to decide.
 	 */
 	const alignWalkKey = useMemo(
-		() => alignWalkRunFromPlan(collapse, openRuns),
-		[collapse, openRuns],
+		() => alignWalkRunKeyConfirmed(collapse, rows, alignSize, openRuns),
+		[collapse, rows, alignSize, openRuns],
 	);
+	/*
+	 * The walk's clock wake (agent review round 1, R2): `mayAutoWalk` is a stable
+	 * callback whose VALUE moves with time alone, so a walk waiting only on the
+	 * input debounce has nothing to re-run it. Bumping this tick from a one-shot
+	 * timer re-runs the effect exactly once when the debounce has had time to
+	 * expire; see the arm in the effect below.
+	 */
+	const [walkClockTick, setWalkClockTick] = useState(0);
 
 	/*
 	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
@@ -3383,7 +3403,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * `loadingOlder` is the once-per-page clock the walk actually advances on.
 	 * Listing `paneIsLive`/`openRuns` separately would be redundant for the same
 	 * reason: the plan folds both.
+	 *
+	 * `walkClockTick` is the same CLASS of dependency the old `alignSize` was: a
+	 * RE-RUN TRIGGER, not a value this body reads. `mayAutoWalk` moves with time
+	 * while its identity does not, so without a dependency that changes there is
+	 * nothing to re-decide a walk that is only waiting on the input debounce (the
+	 * arm below explains why that cannot wait for an unrelated transition).
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `walkClockTick` is a re-run trigger (the settle wake), not a value this body reads; see the note above
 	useEffect(() => {
 		/*
 		 * WHOSE WALK THIS IS (1b/B). The run with a condensed, head-cut bar owns the
@@ -3395,15 +3422,44 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * is looking at.
 		 */
 		const state = alignWalkStateFor(alignWalk.current, alignWalkKey);
+		const mayWalk = mayAutoWalk();
 		const decision = alignWalkDecision(state.spent, {
 			hasMore: Boolean(transcript.hasMore),
 			loadingOlder,
 			headCut: state.key !== null,
-			mayWalk: mayAutoWalk(),
+			mayWalk,
 			halted: state.halted,
 		});
 		alignWalk.current = { ...state, spent: decision.spent };
-		if (!decision.fetch) return;
+		if (!decision.fetch) {
+			/*
+			 * THE CLOCK IS NOT A DEPENDENCY (agent review round 1, R2). `mayAutoWalk`
+			 * reports `performance.now() - lastInputAt >= SETTLE_MS`, so its VALUE
+			 * moves with time alone while its identity (the dependency) does not. A
+			 * walk that is complete but for the settle would therefore never be
+			 * re-decided: the old dependency list re-ran on every streaming commit
+			 * (`rows` was fresh per flush), and this one keys on the run instead. So
+			 * the walk wakes ITSELF: one one-shot timer, armed only while a cut run is
+			 * painted, more is available, no page is in flight, the budget is unspent
+			 * and the debounce is the only missing clause — exactly the state that
+			 * would otherwise wait for an unrelated transition. The tick re-runs this
+			 * effect; a real transition re-runs it first and the cleanup drops the
+			 * timer.
+			 */
+			const clockOnlyRefusal =
+				state.key !== null &&
+				Boolean(transcript.hasMore) &&
+				!loadingOlder &&
+				!state.halted &&
+				!mayWalk &&
+				alignWalk.current.spent < ALIGN_WALK_MAX_PAGES;
+			if (!clockOnlyRefusal) return;
+			const wake = window.setTimeout(
+				() => setWalkClockTick((tick) => tick + 1),
+				SETTLE_MS,
+			);
+			return () => window.clearTimeout(wake);
+		}
 		const dispatchedFor = state.key;
 		void walkLoadOlder().then((applied) => {
 			/*
@@ -3429,6 +3485,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		transcript.hasMore,
 		walkLoadOlder,
 		mayAutoWalk,
+		walkClockTick,
 	]);
 
 	/*

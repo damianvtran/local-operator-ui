@@ -758,6 +758,59 @@ test("the snap's fetch half runs when the head is cut off, and is bounded", asyn
 	);
 });
 
+test("a run the STORE holds whole is never walked, however tall it is (round 1, R1)", async (t) => {
+	/*
+	 * R1's counterexample, at the mount level. A settled run TALLER than the snap's
+	 * completed-run allowance (720) with its opening user row loaded: the ordinary
+	 * snap cannot reach that row, so the raw window edge sits INSIDE the run. The
+	 * render's plan, built over `visible`, then reads the run as head-cut — and
+	 * before the store confirmation that keyed a walk that fetched up to
+	 * `ALIGN_WALK_MAX_PAGES` pages it could never help (a prepend shifts the edge
+	 * and the run's opening row equally, so the snap still refuses).
+	 *
+	 * The control is the SAME row count with the head genuinely missing, so the two
+	 * mounts differ only in the fact the walk is supposed to read: the store.
+	 */
+	const TALL = 800;
+	const tall = (headLoaded) => [
+		...(headLoaded ? [userRecord("user:1")] : []),
+		...Array.from({ length: TALL }, (_, index) =>
+			toolRecord(`tall:${index + 1}`, { ts: TS + 1_000 + index }),
+		),
+		answerRecord("answer:1", { ts: TS + 900_000, settledAt: TS + 900_000 }),
+	];
+	const run = async (records) => {
+		let fetches = 0;
+		const load = async () => {
+			fetches += 1;
+			return true;
+		};
+		const mounted = await mount(t, records, {
+			hasMore: true,
+			onLoadOlder: load,
+		});
+		await flushFrames();
+		await mounted.render(records, { hasMore: true, onLoadOlder: load });
+		await flushFrames();
+		return fetches;
+	};
+	const loaded = await run(tall(true));
+	const cut = await run(tall(false));
+	t.diagnostic(
+		`R1 control: fetches with the store holding the run whole = ${loaded}; with the head genuinely cut = ${cut}`,
+	);
+	/*
+	 * The head-cut list spends its walk; the loaded-head list must not spend one on
+	 * top of whatever the pump asks for on its own (the baseline jsdom geometry
+	 * gives it). The DIRECTION is the claim, and the model case above pins that the
+	 * confirmation is what draws the line.
+	 */
+	assert.ok(
+		cut > loaded,
+		`a genuinely cut store asks more than one the store holds whole (loaded=${loaded} cut=${cut})`,
+	);
+});
+
 test("a run whose head the LOADED rows cut off condenses from the loaded span: counts, no Took", async (t) => {
 	__resetTurnCollapseOpen();
 	/*
