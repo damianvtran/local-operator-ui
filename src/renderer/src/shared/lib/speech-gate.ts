@@ -139,19 +139,26 @@ export function radientSpeechBlock(state: {
  * The one sentence table. One entry per control per block, so a new block or a
  * new control is a completeness failure at type-check time rather than a
  * surface quietly rendering the wrong name.
+ *
+ * THE SIGN-IN SENTENCE NAMES `Settings`, not "the settings page" (copy review
+ * round 2, C4): the app's own copy names the destination `Settings` ("Connect
+ * one in Settings > Providers") and uses "on the settings page" where it
+ * means the page, so the old phrasing was off on the preposition and on the
+ * name at once - on the one sentence that is a reader's whole instruction for
+ * fixing the state, and which design round 1's D2 now puts in front of a
+ * screen-reader reader a second time as the control's description.
  */
 const REASONS: Record<SpeechControl, Record<RadientSpeechBlock, string>> = {
 	recording: {
 		checking: "Checking your Radient sign-in…",
-		"sign-in": "Sign in to Radient in the settings page to enable recording",
+		"sign-in": "Sign in to Radient in Settings to enable recording",
 		"could-not-check":
 			"Your Radient sign-in could not be checked, so recording is unavailable for now",
 		offline: "Recording is unavailable while Local Operator is offline",
 	},
 	"speaking-aloud": {
 		checking: "Checking your Radient sign-in…",
-		"sign-in":
-			"Sign in to Radient in the settings page to enable speaking aloud",
+		"sign-in": "Sign in to Radient in Settings to enable speaking aloud",
 		"could-not-check":
 			"Your Radient sign-in could not be checked, so speaking aloud is unavailable for now",
 		offline: "Speaking aloud is unavailable while Local Operator is offline",

@@ -921,7 +921,7 @@ test("and the sign-in sentence is owed only to a machine that is not signed in",
 	 */
 	await openTooltip(
 		speechButton(container).parentElement,
-		"Sign in to Radient in the settings page to enable speaking aloud",
+		"Sign in to Radient in Settings to enable speaking aloud",
 	);
 });
 
@@ -987,7 +987,7 @@ test("a refused credential earns the sign-in sentence", async () => {
 	assert.equal(speechButton(container).hasAttribute("disabled"), true);
 	await openTooltip(
 		speechButton(container).parentElement,
-		"Sign in to Radient in the settings page to enable speaking aloud",
+		"Sign in to Radient in Settings to enable speaking aloud",
 	);
 });
 
@@ -1199,7 +1199,7 @@ test("the row's sign-in sentence is the shared one, owed only to a machine that 
 	);
 	await openTooltip(
 		answerRowSpeakButton(container).parentElement,
-		"Sign in to Radient in the settings page to enable speaking aloud",
+		"Sign in to Radient in Settings to enable speaking aloud",
 	);
 });
 
@@ -1432,7 +1432,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 	);
 	assert.equal(
 		speechUnavailableReason("recording", "sign-in"),
-		"Sign in to Radient in the settings page to enable recording",
+		"Sign in to Radient in Settings to enable recording",
 	);
 	assert.equal(
 		speechUnavailableReason("recording", "could-not-check"),
@@ -1448,7 +1448,7 @@ test("the shared copy table classifies every state and names every sentence", ()
 	);
 	assert.equal(
 		speechUnavailableReason("speaking-aloud", "sign-in"),
-		"Sign in to Radient in the settings page to enable speaking aloud",
+		"Sign in to Radient in Settings to enable speaking aloud",
 	);
 	assert.equal(
 		speechUnavailableReason("speaking-aloud", "could-not-check"),
@@ -1466,10 +1466,18 @@ test("the shared copy table classifies every state and names every sentence", ()
  * context), plus the guards that no surface drifts back to the file-only gate
  * or to a copy ladder of its own: each enable flag must derive from the shared
  * capability, each disabled sentence from the shared table (design round 1,
- * D5), and each control must answer to its one name — recording / speaking
- * aloud (D2). The answer action row joins the set by UX round 2's U6: it
- * reached `main` after the conversion and shipped outside every guard, which
- * is what the pins are for.
+ * D5), and each control must answer to its one name - recording / speaking
+ * aloud (D2).
+ *
+ * THE SPEAK-AUDIO SURFACES READ THE CAPABILITY THROUGH THE SHARED CONTROL
+ * (`speak-control.tsx`, the speak-aloud round): they no longer inline the
+ * probe or the copy call at all, so pinning `canUseRadientSpeech` in THEIR
+ * sources would pin the old duplication back - the pin follows the delegation
+ * (`reads: "shared-control"`), and the shared control itself carries the
+ * capability/table assertions that used to live on the call sites. The answer
+ * action row joins the set by UX round 2's U6: it reached `main` after the
+ * conversion and shipped outside every guard, which is what the pins are for -
+ * on this branch it, too, delegates to the shared control.
  */
 const SOURCES = {
 	/*
@@ -1477,23 +1485,37 @@ const SOURCES = {
 	 * HOST's read (`recordingProbe`) — the pin follows the file (and
 	 * `shared-composer.test.mjs` pins the chat that feeds it).
 	 */
-	"the composer mic":
-		"src/renderer/src/shared/components/composer/message-input.tsx",
-	"the speak-aloud control":
-		"src/renderer/src/features/chat/components/message-item/message-controls.tsx",
-	"the selection toolbar":
-		"src/renderer/src/shared/components/common/text-selection-controls.tsx",
-	"the canvas editor mic":
-		"src/renderer/src/features/chat/components/canvas/inline-edit.tsx",
+	"the composer mic": {
+		path: "src/renderer/src/shared/components/composer/message-input.tsx",
+		reads: "capability",
+	},
+	"the speak-aloud control": {
+		path: "src/renderer/src/features/chat/components/message-item/message-controls.tsx",
+		reads: "shared-control",
+	},
+	"the selection toolbar": {
+		path: "src/renderer/src/shared/components/common/text-selection-controls.tsx",
+		reads: "shared-control",
+	},
+	"the canvas editor mic": {
+		path: "src/renderer/src/features/chat/components/canvas/inline-edit.tsx",
+		reads: "capability",
+	},
+	"the shared speak control": {
+		path: "src/renderer/src/shared/components/common/speak-control.tsx",
+		reads: "capability",
+	},
 	/*
-	 * The FIFTH speech surface, added by UX round 2's U6: it landed from #695
-	 * after the four were converted and matched all three forbidden patterns
-	 * below — the file-only gate, a sentence of its own and the retired name —
-	 * with nothing in this file reading it. It joins the pins and the DOM cases
-	 * above.
+	 * The answer action row, added by UX round 2's U6: it landed from #695
+	 * after the four were converted and shipped outside every guard, which is
+	 * what the pins are for. On this branch it delegates to the shared control
+	 * like the selection toolbar, so it pins as `shared-control`; the
+	 * capability/table assertions sit on the control itself.
 	 */
-	"the answer action row":
-		"src/renderer/src/features/chat/canonical/message-actions-row.tsx",
+	"the answer action row": {
+		path: "src/renderer/src/features/chat/canonical/message-actions-row.tsx",
+		reads: "shared-control",
+	},
 };
 
 /*
@@ -1505,18 +1527,27 @@ const CAPABILITY_FLAG = /canUseRadientSpeech/;
 const FILE_ONLY_GATE =
 	/= hasRadientApiKey && !isUnavailable|isRadientApiKeyConfigured && !isLoadingCredentials/;
 const SHARED_COPY_CALL = /speechUnavailableReason\(/;
+const SHARED_SPEAK_CONTROL = /@shared\/components\/common\/speak-control/;
 const INLINED_SENTENCE =
-	/unavailable while Local Operator is offline|in the settings page to enable/;
+	/unavailable while Local Operator is offline|in (?:the settings page|Settings) to enable/;
 const DEPRECATED_CONTROL_NAMES = /Voice input|audio recording|text to speech/i;
 
 test("every speech surface derives its gate from the shared capability", async () => {
-	for (const [name, path] of Object.entries(SOURCES)) {
+	for (const [name, { path, reads }] of Object.entries(SOURCES)) {
 		const source = await readFile(path, "utf8");
-		assert.match(
-			source,
-			CAPABILITY_FLAG,
-			`${name} must read the shared session-first capability`,
-		);
+		if (reads === "shared-control") {
+			assert.match(
+				source,
+				SHARED_SPEAK_CONTROL,
+				`${name} must render through the shared speak control`,
+			);
+		} else {
+			assert.match(
+				source,
+				CAPABILITY_FLAG,
+				`${name} must read the shared session-first capability`,
+			);
+		}
 		assert.doesNotMatch(
 			source,
 			FILE_ONLY_GATE,
@@ -1526,13 +1557,15 @@ test("every speech surface derives its gate from the shared capability", async (
 });
 
 test("every speech surface states its reason from the one shared copy table", async () => {
-	for (const [name, path] of Object.entries(SOURCES)) {
+	for (const [name, { path, reads }] of Object.entries(SOURCES)) {
 		const source = await readFile(path, "utf8");
-		assert.match(
-			source,
-			SHARED_COPY_CALL,
-			`${name} must read its disabled sentence from @shared/lib/speech-gate (design round 1, D5)`,
-		);
+		if (reads === "capability") {
+			assert.match(
+				source,
+				SHARED_COPY_CALL,
+				`${name} must read its disabled sentence from @shared/lib/speech-gate (design round 1, D5)`,
+			);
+		}
 		assert.doesNotMatch(
 			source,
 			INLINED_SENTENCE,
