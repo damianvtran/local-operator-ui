@@ -28,10 +28,10 @@ gate runs the legs its flags select. A prose-only diff runs nothing.
 
 **The subject is the ref being pushed, not `HEAD`.** Git writes the refs it is
 about to push to the hook's stdin (`<local ref> <local sha> <remote ref> <remote
-sha>` per line) and that is what this gate classifies, so `git push origin other`,
-`--all` and tags are all gated against the commits they actually carry — and not
-against whatever `HEAD` happens to be. `--ref <sha>` is the by-hand spelling for a
-checkout with no push in flight.
+sha>` per line) and that is what this gate classifies — so a push of the branch you
+are on is judged against the commit it carries, and a push of anything else is
+refused (see below) rather than judged against whatever `HEAD` happens to be.
+`--ref <sha>` is the by-hand spelling for a checkout with no push in flight.
 
 **And the gate only speaks when it is reading exactly what is being pushed.** The
 legs run the repository's own tools over **files on disk**, so anything that would
@@ -49,6 +49,14 @@ than judged:
   about somebody else's bytes, in *either* direction, so it refuses and names the
   files. `pnpm check-changed` and `pnpm lint:scripts` are the spellings that see
   uncommitted work.
+
+  **This refusal is deliberate and settled, not a rough edge awaiting a softening.**
+  It was weighed against a warning, and a warning is the same defect in a quieter
+  voice: it still prints a green over bytes nobody pushed. The refusal names the
+  files, never suggests `--no-verify`, and offers `PREPUSH_BYPASS="<reason>"`. The
+  cost — the scope is the branch's whole delta, so one work-in-progress edit blocks
+  every push until it is dealt with — is answered by `git stash`, and that is the
+  answer rather than a downgrade of the check.
 - **A stdin that exists but cannot be read.** git wrote refs this gate could not
   read, so it does not know what is being pushed; it does not fall back to `HEAD`.
   (A terminal, or a pipe with nothing in it, is the by-hand case, and that *is*

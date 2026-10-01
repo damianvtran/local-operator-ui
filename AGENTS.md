@@ -1644,9 +1644,9 @@ by that setting is said out loud. Full detail and the wiring's failure modes:
 `docs/hooks.md`.
 
 - **Its subject is the ref being pushed, not `HEAD`.** Git writes the refs to the
-  hook's stdin and that is what gets classified, so `git push origin other`, `--all`
-  and tags are gated against the commits they carry. **Anything that would make the
-  legs read bytes other than the pushed ones is refused, loudly**: a subject other
+  hook's stdin and that is what gets classified. **Anything that would make the legs
+  read bytes other than the pushed ones is refused, loudly — not gated against
+  something else**: a subject other
   than the checked-out `HEAD` (a foreign branch, a tag, or an ancestor whose files
   the worktree has since changed — an old violating commit pushed from a fixed
   worktree once reported a pass), a file a leg would read that has uncommitted

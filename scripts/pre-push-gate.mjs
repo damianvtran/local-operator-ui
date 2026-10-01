@@ -470,22 +470,19 @@ function biomeVerdict(biome, top, files) {
 }
 
 /**
- * The legs, in the order they run. Each returns whether it passed, having already
- * printed its own account; the caller stops at the first failure and names the
- * legs that therefore did not run.
- */
-/**
  * Refuse a push whose commits this worktree cannot read.
  *
- * THE LEGS READ FILES ON DISK. A subject that is reachable from `HEAD` is one the
- * worktree carries - the checkout is that commit plus whatever came after - so
- * linting the working copies speaks about the pushed bytes (and, for the
- * `scripts/` ratchet, about the worktree's own delta from the base, which is a
- * superset of the push). A FOREIGN ref (`git push origin other`, a tag of a
- * commit on no branch here, `--all`) is not carried by this checkout at all:
- * reading the worktree would lint somebody else's bytes and report a verdict
- * about the push, which is exactly the false green this gate exists to prevent.
- * So it refuses, names the ref, and names the way to get a real verdict.
+ * THE LEGS READ FILES ON DISK, SO THE ONLY COMMIT THEY CAN JUDGE IS THE ONE THE
+ * CHECKOUT IS: `HEAD`. Anything else is refused, and the ANCESTOR case is the one
+ * worth stating because it looks safe and is not - a commit reachable from `HEAD`
+ * is "carried" by the checkout in the sense that its objects are here, but the
+ * worktree holds what came AFTER it, so pushing an old violating commit from a
+ * worktree holding its fix reported a pass over the fixed copies and published the
+ * violating blobs. A foreign ref (`git push origin other`, a tag of a commit on no
+ * branch here, `--all`) is refused for the plainer reason: its bytes are not in
+ * this checkout at all. Either way the verdict would be about bytes other than the
+ * ones being pushed, which is the false green this gate exists to prevent, so it
+ * refuses, names the ref, and names the way to get a real verdict.
  */
 function assertSubjectsReadable(top, resolved) {
 	const head = gitProbe(
@@ -569,6 +566,11 @@ function assertLegsReadTheSubject(top, head, paths, flags) {
 	);
 }
 
+/**
+ * The legs, in the order they run. Each returns whether it passed, having already
+ * printed its own account; the caller stops at the first failure and names the
+ * legs that therefore did not run.
+ */
 function buildLegs({ top, since, paths, flags }) {
 	const legs = [];
 	if (flags.lint) {
@@ -774,10 +776,10 @@ function main(argv) {
 		return 0;
 	}
 
-	// Every accepted subject is reachable from HEAD (assertSubjectsReadable), so
-	// the window the worktree-based legs run over - the base, reduced to its merge
-	// base with HEAD, to the working tree - is a superset of what this push
-	// carries, and never a smaller set than the subject's own changes.
+	// The accepted subject IS HEAD and its files are the worktree's own
+	// (assertSubjectsReadable, assertLegsReadTheSubject), so the window the legs run
+	// over - the base, reduced to its merge base with HEAD, to the working tree - is
+	// exactly this branch's delta and no larger than what a push from here carries.
 	const head = assertSubjectsReadable(top, resolved);
 	assertLegsReadTheSubject(top, head, paths, flags);
 	const since = gitProbe(["merge-base", baseCommit, head], top) ?? baseCommit;
