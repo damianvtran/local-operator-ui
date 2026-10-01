@@ -102,7 +102,9 @@ const EXPERIMENTS = argv.includes("--experiments");
  * head reads `On <peer>` (the stale mark resurrected); the fixed tree reads
  * `On this device`.
  *
- * `--short` stops after `after-send` (the light and narrow variants), and
+ * `--short` stops after the HEADER ROW (the light and narrow variants): the
+ * recall half, the dismissal and the local-live capture are what it skips, so a
+ * short run still asserts the chip's post-send reading and the alignment.
  * `--palette` wears one named palette for the whole run.
  */
 const PEER_NAME = flag("peer-name", "cloud-node-1");

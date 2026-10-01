@@ -116,6 +116,16 @@ The chip's horizontal geometry is byte-identical across the arms in the same
 state (`x` 346.04 / width 171.06 on `draft-peer`), which is the check that the
 alignment fix's padding compensation moves nothing.
 
+**Which partner the reading is against** (design review round 1, D2): the table
+above is the `after-send` row, where the chip's neighbours are the two identity
+SELECTS. The `draft-peer` row has a different partner — the title alone, no
+selects — and there the chip sits roughly 1px BELOW the title's baseline where
+before the fix it sat ~1px above: the same magnitude, flipped in sign. That is
+not a regression (the carrier joins the row's text baseline either way), and it
+is left as measured rather than retuned, because the row above is the state the
+operator's report is about; the numbers are in each arm's `geometry:draft-peer`
+step.
+
 ### Defect 3 — the clipped focus ring (round 2, design D1)
 
 The pick leaves focus on the chip, so `draft-peer` is a FOCUSED control (the
@@ -158,11 +168,14 @@ device` in both arms, and the carrier sits it on the identity pair's line.
 
 ## What a reader may verify without re-running
 
-- Each `*/*.webp` is a `Page.captureScreenshot` of the built app in
-  `--window-mode=headless` (the mode's own line, `visible=false
-  focused=false`, is recorded in each run's report), 1380x900 (window size and
-  CDP metric override; the narrow arm is 820x900), one palette per arm, and
-  passed `assertFramePaints` at capture.
+- Each full-window `*/*.webp` is a `Page.captureScreenshot` of the built app in
+  `--window-mode=headless` (the mode's own line, `visible=false focused=false`,
+  is recorded in each run's report), 1380x900 (window size and CDP metric
+  override; the narrow arm is 820x900), one palette per arm, and passed
+  `assertFramePaints` at capture. `header-row` IS A CROP, not a full window:
+  1120x48 in the four 1380-wide arms and 764x48 in `after-narrow`, taken from
+  the header band alone (`Page.captureScreenshot`'s `clip`), so its pixel counts
+  are comparable only with each other.
 - `before/` holds four states from the set's first pass (the base tree, the
   revert); `review-head/`, `after/`, `after-light/` and `after-narrow/` hold
   round 2's.
