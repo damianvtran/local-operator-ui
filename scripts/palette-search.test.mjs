@@ -31,6 +31,7 @@ const {
 	buildPanelItems,
 	buildSettingKeyItems,
 	buildSettingsSectionItems,
+	AGENT_ROSTER_SEED,
 	CONVERSATION_SWITCHER_SEED,
 	matchQuality,
 	normalizeText,
@@ -438,6 +439,53 @@ test("the conversation switcher's seed opens on the chats scope", () => {
 	assert.ok(
 		names(outcome).length > 0,
 		"the scope shows conversations, not nothing",
+	);
+});
+
+/*
+ * THE AGENT JUMP'S SEED (issue #663): the chat sidebar's band control opens the
+ * palette with `AGENT_ROSTER_SEED`, so this pins what that seed MEANS for the
+ * same reason the switcher's own test above pins its label: a drift in the
+ * glyph or the table is silent, and the control would stop being the roster's
+ * door without a single test going red.
+ */
+test("the sidebar's agent jump seed opens on the agents scope", () => {
+	assert.equal(AGENT_ROSTER_SEED, "@");
+	assert.deepEqual(parsePaletteQuery(AGENT_ROSTER_SEED), {
+		scope: "agent",
+		terms: "",
+	});
+	/*
+	 * At the list level that is the agents group and nothing else: the fixture
+	 * gains one agent row, shaped the way the app's own source builds them
+	 * (`use-palette-sources.ts`), and the outcome must be the agents group
+	 * drawing that row. The plain `@ada` case above already proves the
+	 * negative half - an agents scope cannot fall back to another group.
+	 */
+	const outcome = searchPalette({
+		items: [
+			...items,
+			{
+				id: "agent-chat-ledger-auditor",
+				kind: "agent",
+				group: "agents",
+				name: "ledger-auditor",
+				hint: "Open chat",
+				icon: "chat",
+				// Featured for the reason the switcher's own rows are, one test up:
+				// with no terms the palette draws the BROWSE layout, which is built
+				// from featured rows, and the app's source marks its agent chat rows
+				// exactly so when the query is empty (`use-palette-sources.ts`).
+				featured: true,
+				target: { type: "path", path: "/chat/ledger-auditor" },
+			},
+		],
+		raw: AGENT_ROSTER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["agents"]);
+	assert.ok(
+		names(outcome).includes("ledger-auditor"),
+		"the scope shows the roster, not nothing",
 	);
 });
 
