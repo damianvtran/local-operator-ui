@@ -65,10 +65,11 @@ export const SPEECH_PLAYBACK_COPY = "Couldn't speak this aloud. Try again.";
  * character-for-character. LAST READ AT #1835's `bcca80808` (the C4 alignment:
  * the daemon's two sign-in sentences now use the app's `Settings` naming -
  * `Sign in to Radient in Settings to enable speaking aloud.` and `Your Radient
- * sign-in has stopped working. Sign in again in Settings.`), replacing the
- * spellings its commit retired; a daemon still on the OLD literal falls to the
- * designed fallback until it redeploys, which is the same deploy-skew window
- * the note on agent-server's base 503 below describes.
+ * sign-in has stopped working. Sign in again in Settings.`), whose commit
+ * retired two spellings that are kept BESIDE the new pair below as skew
+ * entries: the daemon side of #1835 is unmerged at this head, so every daemon
+ * in the field still answers the retired spellings, and they retire from this
+ * set only once the shipped daemon's floor is past `bcca80808`.
  */
 const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	"Your Radient sign-in has stopped working. Sign in again in Settings.",
@@ -85,6 +86,18 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	"Speech is temporarily unavailable.",
 	"Sign in to Radient in Settings to enable speaking aloud.",
 	"This conversation's agent is no longer available.",
+	/*
+	 * The two spellings `bcca80808` retired, kept as skew entries on the same
+	 * rule as agent-server's base 503 above: `local-operator` #1835 is not
+	 * shipped, so no daemon in the field can emit the new pair yet - a refusal
+	 * that reaches the app today still answers these, they are designed copy
+	 * either way, and dropping them degraded the actionable 401 ("Sign in
+	 * again") to `Try again` in a state where trying again cannot work (agent
+	 * review round 4, MINOR-1). Remove them once the shipped daemon's floor is
+	 * past `bcca80808`.
+	 */
+	"Your Radient sign-in has stopped working. Sign in again in the settings page.",
+	"Sign in to Radient in the settings page to enable text to speech.",
 ]);
 
 /**
