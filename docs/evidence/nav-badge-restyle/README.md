@@ -52,9 +52,10 @@ Every frame is the **built app in `headless` window mode** taken by
 `scripts/renderer-driver.mjs --scene approval-badges` (the rail half needs no
 backend; the header half is skipped without one, which is why no `chat-header`
 claim appears here; QA rounds 1 and 2 between them repaired its
-a conversation-open step — the disclosure press it threw on has no home in today's
-sidebar, and the row it presses has to be WAITED for rather than pressed blind — so
-a `--backend` run reaches the header half instead of failing before it) and by the committed
+conversation-open step — the disclosure press it threw on has no home in today's
+sidebar, and the row it presses has to be WAITED for, then confirmed open, rather
+than pressed blind — so a `--backend` run reaches the header half instead of
+failing before it) and by the committed
 `chat-sidebar-ack-and-selection` rig for Aida's row (a REAL mock-provider
 completion, the same path that set's own frames use). PNG, not WebP, on purpose:
 `check-evidence.mjs`'s frame walker counts `.webp` only, so a rig-driven set cannot

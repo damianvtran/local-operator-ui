@@ -16693,10 +16693,10 @@ async function sceneApprovalBadges(cdp) {
 			 * a row that has not painted yet cannot be pressed, so a merely GUARDED press
 			 * still left `activeSessionId: null` and the header half unreachable while the
 			 * run looked fine (QA round 2, Q5). The shape now is the one the file's newer
-			 * scenes already use (`:26235`, `:30806`/`:30811`): create the conversation on
-			 * this run's own backend, press the disclosure only if the app rendered it,
-			 * then WAIT for the row and press it - with an expiry that is REPORTED rather
-			 * than passed over in silence.
+			 * scenes already use (`sceneHitZones`, `sceneComposer` - named rather than cited
+			 * by line, because this file moved under those citations twice in review):
+			 * create the conversation on this run's own backend, press the disclosure only if
+			 * the app rendered it, then WAIT for the row and press it.
 			 */
 			const created = await createBackendSession();
 			note("a conversation on this run's own backend", JSON.stringify(created));
@@ -16716,15 +16716,25 @@ async function sceneApprovalBadges(cdp) {
 				}
 				await wait(500);
 			}
-			reading(
-				"the conversation row painted and was opened for the header half",
-				rowPressed,
-				`${rowSelector} never appeared within 20s`,
-			);
 			await wait(600);
 			const live = await verb(cdp, "state");
 			conversation = live.activeSessionId ?? null;
 			note("state (chat, conversation open)", JSON.stringify(live));
+			/*
+			 * THE CLAIM IS THE OPEN, NOT THE PRESS (review round 3, F8): a press that lands
+			 * on a row the app has not wired yet still leaves `activeSessionId` null, and the
+			 * conversation-gated header claims are then skipped by their own guards while
+			 * this reading reports success. And the text is the READING rather than the
+			 * failure, because `reading` prints its third argument on PASS as well as on
+			 * FAIL (review round 3, F9).
+			 */
+			reading(
+				"the conversation row opened, so the header half has something to read",
+				rowPressed && conversation !== null,
+				`row ${
+					rowPressed ? "pressed" : "never appeared within 20s"
+				}, activeSessionId ${conversation ?? "null"}`,
+			);
 		} else {
 			note(
 				"no conversation",
