@@ -333,6 +333,56 @@ const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
 	sessions: { noun: "session", plural: "sessions" },
 };
 
+/**
+ * The cap on the unique action-type segments ONE count line shows, and the
+ * tail token that stands in for everything past it.
+ *
+ * WHY IT EXISTS (operator report, 2026-10-01, relayed by Aida): a long run's
+ * header read `6 searches · 1 task · 2 browser actions · 1 ai_search · 1
+ * get_tool_access · 1 query_data_sources · 1 todo update · 1 wait · 1
+ * workspace_get_gmail_thread_content` - nine unique action types, wider than
+ * the column at every realistic window. The operator's ask was a cap: "how
+ * many unique action types will show up per line", with everything past the
+ * majority classes summarised as `and N other actions`.
+ *
+ * THE TAIL COUNTS CALLS, NOT TYPES, and the same unit every other number on
+ * the line counts (the bar's `N actions`, the foot's `N actions`), so a reader
+ * who sums the segments still reaches the turn's action count; the number of
+ * hidden TYPES is deliberately not stated, because `and N other actions` is a
+ * measure of work and the expanded rows are the lossless record. `1`
+ * singularises, like every `fact` on the line.
+ *
+ * WHAT IS KEPT IS THE FIRST `FOLD_COUNT_LIMIT` SEGMENTS IN THE LINE'S OWN
+ * ORDER - the sentence order's classes first (files, searches, web, shell,
+ * python, edits, tasks), then the meta kinds by count and name - so the tail
+ * is always what the order already ranked least-major, and at N or fewer
+ * segments the line is byte-identical to what it has always been. Five is
+ * chosen against the report's own run: it keeps the three classes the run was
+ * mostly made of plus two named singles, and the capped line fits the standard
+ * column one line while still wrapping at the 640px window (the frames under
+ * `docs/evidence/chat-trace-fold/` and its `-before` sibling).
+ */
+export const FOLD_COUNT_LIMIT = 5;
+
+/**
+ * The line's segments, ordered, capped at `FOLD_COUNT_LIMIT` with the rest
+ * folded into `and N other actions` (see the constant above).
+ */
+const foldCountSegments = (
+	segments: { label: string; count: number }[],
+): string => {
+	if (segments.length <= FOLD_COUNT_LIMIT)
+		return segments.map((segment) => segment.label).join(" · ");
+	const kept = segments.slice(0, FOLD_COUNT_LIMIT);
+	const other = segments
+		.slice(FOLD_COUNT_LIMIT)
+		.reduce((total, segment) => total + segment.count, 0);
+	return [
+		...kept.map((segment) => segment.label),
+		`and ${other} other action${other === 1 ? "" : "s"}`,
+	].join(" · ");
+};
+
 export function foldCounts(actions: FoldableAction[]): string {
 	type Kind = { noun: string; plural: string | null };
 	const counts = new Map<string, { kind: Kind; count: number }>();
@@ -401,12 +451,13 @@ export function foldCounts(actions: FoldableAction[]): string {
 		"kind:team",
 		"kind:hub",
 	];
-	const parts: string[] = [];
+	const segments: { label: string; count: number }[] = [];
 	const fact = (count: number, kind: Kind) =>
 		`${count} ${count === 1 || kind.plural === null ? kind.noun : kind.plural}`;
 	for (const key of order) {
 		const seen = counts.get(key);
-		if (seen) parts.push(fact(seen.count, seen.kind));
+		if (seen)
+			segments.push({ label: fact(seen.count, seen.kind), count: seen.count });
 	}
 	const rest = [...counts.entries()]
 		.filter(([key]) => !order.includes(key))
@@ -414,9 +465,11 @@ export function foldCounts(actions: FoldableAction[]): string {
 			([, a], [, b]) =>
 				b.count - a.count || a.kind.noun.localeCompare(b.kind.noun),
 		);
-	for (const [, seen] of rest) parts.push(fact(seen.count, seen.kind));
+	for (const [, seen] of rest)
+		segments.push({ label: fact(seen.count, seen.kind), count: seen.count });
 	// Only reachable for an empty run, which `foldRuns` never emits a summary for.
-	return parts.length > 0 ? parts.join(" · ") : `${actions.length} actions`;
+	if (segments.length === 0) return `${actions.length} actions`;
+	return foldCountSegments(segments);
 }
 
 /**
