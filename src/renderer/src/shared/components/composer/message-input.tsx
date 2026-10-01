@@ -546,6 +546,23 @@ export type MessageInputProps = {
 	 */
 	deviceHold?: React.ReactNode;
 	/**
+	 * Host chrome that has to live INSIDE this composer's notice band, carrying the
+	 * id the box's `aria-describedby` names it by.
+	 *
+	 * WHY THE HOST DOES NOT RENDER IT ITSELF. The band is inside the composer's own
+	 * chrome, immediately outboard of the box, and only a node in there can be the
+	 * box's `aria-describedby` target — which is the whole requirement for the
+	 * configuration run's standing sentence ("Runs in the background. This does not
+	 * appear in your conversation."): a permanent footnote that a screen reader
+	 * reaches from the box, never an invitation dressed as a placeholder (design
+	 * note §3.3.2, U4; the note's alternative (a), chosen over reusing `deviceHold`
+	 * — that prop is a device-move hold, and one prop may not mean two things).
+	 *
+	 * ONE PROP FOR BOTH HALVES because they are one fact: an id this component
+	 * cannot invent and a node the host cannot place are useless apart.
+	 */
+	hostNotice?: { id: string; node: React.ReactNode };
+	/**
 	 * A pending question takes a SECRET answer, and the composer is not where it
 	 * goes.
 	 *
@@ -1443,6 +1460,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			awaitingAnswer = false,
 			deliveryRemediesReachable = false,
 			deviceHold,
+			hostNotice,
 			secretAnswer = false,
 			asideSessionId,
 			asideStreaming = false,
@@ -6531,6 +6549,13 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * because it is a state of the conversation and not an outcome of one send.
 				 */}
 				{deviceHold}
+				{/*
+				 * THE HOST'S OWN STANDING LINE, in the band with the other STANDING
+				 * statements rather than beside the transient alert (see `hostNotice`).
+				 * It renders before the alert for the same reason `deviceHold` does: a
+				 * state of the surface outlives the outcome of one send.
+				 */}
+				{hostNotice?.node}
 				{composerAlert.message !== undefined && (
 					/*
 					 * ONE SENTENCE, AT MOST TWO CONTROLS. THE WHOLE OF IT.
@@ -7453,6 +7478,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * cannot be verified without an AT in this environment.
 										 */
 										[
+											hostNotice ? hostNotice.id : null,
 											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
 											secretClosureNotice ? SECRET_CLOSURE_NOTICE_ID : null,
 											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
