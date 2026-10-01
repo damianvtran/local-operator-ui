@@ -12,7 +12,7 @@ import {
 	computeMemoryBudget,
 	createMemoryWatchdog,
 	formatBreachLine,
-	killGroup,
+	killTree,
 	parseFootprintBytes,
 	parseProcessTable,
 	sampleGroup,
@@ -48,12 +48,13 @@ const BUDGET_LINE = /desktop tests: memory bound \d/;
 test("the derived budget has a floor, scales with RAM, and is capped for small hosts", () => {
 	// 36 GB host: 25% (9,216 MB) beats the floor.
 	assert.equal(computeMemoryBudget({ totalMb: 36864 }).budgetMb, 9216);
-	// 16 GB hosted runner: the 6,144 MB floor beats 25% (4,096 MB).
+	// 16 GB hosted runner: the 8,192 MB floor beats 25% (4,096 MB) and is exactly
+	// the 50% ceiling.
 	assert.equal(
 		computeMemoryBudget({ totalMb: 16384 }).budgetMb,
 		_BUDGET_FLOOR_MB,
 	);
-	// 8 GB box: the floor would be 75% of RAM, so the 50% ceiling binds.
+	// 8 GB box: the floor would be 100% of RAM, so the 50% ceiling binds.
 	assert.equal(computeMemoryBudget({ totalMb: 8192 }).budgetMb, 4096);
 	// Unmeasurable RAM still bounds the run.
 	const unknown = computeMemoryBudget({ totalMb: null });
@@ -163,31 +164,66 @@ test("a sampler that throws is a skipped tick, and a blind run warns exactly onc
 	assert.deepEqual(warnings, [_BLIND_TICKS_WARN]);
 });
 
-test("the sampler survives each probe-failure shape", async () => {
-	const tableText = "  100     1   100  2048\n  101   100   100  1024\n";
+test("the sampler survives each probe-failure shape, and says how complete it was", async () => {
+	const tableText =
+		"  100     1   100  2048 Tue Sep 30 21:56:12 2026\n  101   100   100  1024 Tue Sep 30 21:56:13 2026\n";
 	const fpText =
 		"n [100]: 64-bit    Footprint: 5000 MB (16384 bytes per page)\n";
 	const darwin = { platform: "darwin" };
-	// Both probes fine: footprint wins over RSS.
+	const noWalk = (cmd) => cmd === "pgrep";
+	// Both probes fine: footprint wins over RSS, the tree was fully read.
 	let reading = await sampleGroup(100, {
 		...darwin,
 		run: async (cmd) => (cmd === "ps" ? tableText : fpText),
 	});
 	assert.equal(reading.totalBytes, 5000 * MB + 1024 * 1024);
-	// `ps` starved: the leader's own footprint is still read, so a runaway leader
-	// is still caught without a table.
+	assert.equal(reading.coverage, "table");
+	assert.equal(reading.blind, false);
+	// `ps` starved and nothing discoverable: only the leader is read. It is still a
+	// valid kill signal (so the leader's footprint counts) but it is BLIND - this is
+	// the first revision's hole, where this shape reset the warning counter.
 	reading = await sampleGroup(100, {
 		...darwin,
-		run: async (cmd) => (cmd === "ps" ? null : fpText),
+		run: async (cmd) => (noWalk(cmd) ? "" : cmd === "ps" ? null : fpText),
 	});
 	assert.equal(reading.totalBytes, 5000 * MB);
-	// `footprint` starved: degrade to RSS, do not skip.
+	assert.equal(reading.coverage, "leader");
+	assert.equal(reading.blind, true);
+	// `ps` starved but `pgrep -P` finds the children: the tree is seen, not blind.
+	const kids = { 100: "101\n102\n", 101: "", 102: "" };
+	reading = await sampleGroup(100, {
+		...darwin,
+		run: async (cmd, args) => {
+			if (cmd === "ps") return null;
+			if (cmd === "pgrep") {
+				return args[1]
+					.split(",")
+					.map((pid) => kids[pid] ?? "")
+					.join("");
+			}
+			return "n [100]: 64-bit    Footprint: 10 MB (16384 bytes per page)\nc [102]: 64-bit    Footprint: 4000 MB (16384 bytes per page)\n";
+		},
+	});
+	assert.deepEqual(reading.members.map((m) => m.pid).sort(), [100, 101, 102]);
+	assert.equal(reading.coverage, "walk");
+	assert.equal(reading.blind, false);
+	assert.equal(reading.totalBytes, 4010 * MB);
+	// A DEGENERATE table (parses to nothing, or lacks the leader) is the same as a
+	// failed one, not a clean empty tree.
+	reading = await sampleGroup(100, {
+		...darwin,
+		run: async (cmd) =>
+			noWalk(cmd) ? "" : cmd === "ps" ? "\ngarbage\n" : fpText,
+	});
+	assert.equal(reading.blind, true);
+	// `footprint` starved: degrade to RSS, but that is the blind instrument.
 	reading = await sampleGroup(100, {
 		...darwin,
 		run: async (cmd) => (cmd === "ps" ? tableText : null),
 	});
 	assert.equal(reading.totalBytes, 3072 * 1024);
-	// Both starved: nothing to judge -> null (skip the tick).
+	assert.equal(reading.blind, true);
+	// Everything starved: nothing to judge -> null (skip the tick).
 	assert.equal(
 		await sampleGroup(100, { ...darwin, run: async () => null }),
 		null,
@@ -199,39 +235,120 @@ test("the sampler survives each probe-failure shape", async () => {
 	);
 });
 
-test("the kill addresses the group and out-of-group members, and refuses unsafe pids", () => {
+test("a blind-but-successful reading counts toward the warning, and an over-budget one still kills", async () => {
+	const warnings = [];
+	let reading = {
+		totalBytes: 10,
+		footprintBytes: 10,
+		rssBytes: 0,
+		blind: true,
+		members: [],
+	};
+	const watchdog = createMemoryWatchdog({
+		leaderPid: 4242,
+		budgetBytes: 1000,
+		sample: async () => reading,
+		kill: async () => ({ signalled: 0, skipped: 0, errors: [] }),
+		onBreach: () => {},
+		onBlind: (ticks) => warnings.push(ticks),
+	});
+	for (let i = 0; i < _BLIND_TICKS_WARN; i++) {
+		assert.equal(await watchdog.tick(), "blind");
+	}
+	assert.deepEqual(warnings, [_BLIND_TICKS_WARN]);
+	// The leader-only reading is a valid kill signal even though it is blind.
+	reading = { ...reading, totalBytes: 1000, footprintBytes: 1000 };
+	assert.equal(await watchdog.tick(), "breach");
+});
+
+test("the group is signalled first; EPERM/ESRCH never escape or skip the rest", async () => {
 	const sent = [];
-	const kill = (target, signal) => sent.push([target, signal]);
-	killGroup(
+	const kill = (target, signal) => {
+		sent.push([target, signal]);
+		// macOS: a zombie-only group answers EPERM.
+		if (target === -100) {
+			throw Object.assign(new Error("zombies"), { code: "EPERM" });
+		}
+	};
+	const stamp = "Tue Sep 30 21:56:12 2026";
+	const fresh = `  102   100   102  512 ${stamp}\n`;
+	const outcome = await killTree(
 		100,
 		[
-			{ pid: 101, pgid: 100 },
-			{ pid: 102, pgid: 102 },
+			{ pid: 101, pgid: 100, lstart: stamp },
+			{ pid: 102, pgid: 102, lstart: stamp },
 		],
-		{ kill },
+		{ kill, run: async () => fresh },
 	);
 	assert.deepEqual(sent, [
 		[-100, "SIGKILL"],
 		[102, "SIGKILL"],
 	]);
+	assert.deepEqual(outcome, { signalled: 1, skipped: 0, errors: [] });
+	// Anything other than gone/EPERM is reported, not thrown, and not fatal to the
+	// remaining sends.
+	const failing = await killTree(
+		100,
+		[{ pid: 102, pgid: 102, lstart: stamp }],
+		{
+			kill: (target) => {
+				throw Object.assign(new Error("odd"), { code: "EIO", target });
+			},
+			run: async () => fresh,
+		},
+	);
+	assert.equal(failing.errors.length, 2);
+	assert.equal(failing.signalled, 0);
+});
+
+test("a recycled pid is not signalled: identity is re-read before a by-pid kill", async () => {
+	const sent = [];
+	const kill = (target) => sent.push(target);
+	const sampled = "Tue Sep 30 21:56:12 2026";
+	const members = [{ pid: 102, pgid: 102, lstart: sampled }];
+	// The pid now belongs to a process started later, with an unrelated parent.
+	let outcome = await killTree(100, members, {
+		kill,
+		run: async () => "  102     1   102  512 Tue Sep 30 22:10:00 2026\n",
+	});
+	assert.deepEqual(sent, [-100]);
+	assert.equal(outcome.skipped, 1);
+	// An unreadable re-check skips every by-pid kill and says so.
+	sent.length = 0;
+	outcome = await killTree(100, members, { kill, run: async () => null });
+	assert.deepEqual(sent, [-100]);
+	assert.equal(outcome.skipped, 1);
+	// A pid that is simply gone is fine and not counted.
+	sent.length = 0;
+	outcome = await killTree(100, members, { kill, run: async () => "" });
+	assert.deepEqual(sent, [-100]);
+	assert.equal(outcome.skipped, 0);
+	// A walked member (no start time on record) is trusted only while its parent is
+	// still in this tree.
+	sent.length = 0;
+	const walked = [{ pid: 103, pgid: null, lstart: null }];
+	outcome = await killTree(100, walked, {
+		kill,
+		run: async () => "  103   100   103  8 Tue Sep 30 21:56:12 2026\n",
+	});
+	assert.deepEqual(sent, [-100, 103]);
+	sent.length = 0;
+	outcome = await killTree(100, walked, {
+		kill,
+		run: async () => "  103     1   103  8 Tue Sep 30 21:56:12 2026\n",
+	});
+	assert.deepEqual(sent, [-100]);
+	assert.equal(outcome.skipped, 1);
+});
+
+test("the kill refuses a pid that could address the world", async () => {
 	for (const bad of [0, 1, -5, process.pid, Number.NaN, undefined]) {
-		assert.throws(() => killGroup(bad, [], { kill }), REFUSING, String(bad));
+		await assert.rejects(
+			killTree(bad, [], { kill: () => assert.fail("must not signal") }),
+			REFUSING,
+			String(bad),
+		);
 	}
-	// ESRCH is the expected race, any other failure is real.
-	assert.doesNotThrow(() =>
-		killGroup(100, [], {
-			kill: () => {
-				throw Object.assign(new Error("gone"), { code: "ESRCH" });
-			},
-		}),
-	);
-	assert.throws(() =>
-		killGroup(100, [], {
-			kill: () => {
-				throw Object.assign(new Error("nope"), { code: "EPERM" });
-			},
-		}),
-	);
 });
 
 test("the breach line names the leader, the measured figure and the budget", () => {

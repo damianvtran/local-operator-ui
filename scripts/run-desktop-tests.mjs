@@ -231,6 +231,45 @@ const child = spawn(process.execPath, nodeArgs, {
 	detached: true,
 });
 
+/*
+ * The death-watch (R1 of the PR #733 review). `detached` takes the test tree out
+ * of THIS process's group, so a SIGKILL of the runner's group - what every
+ * per-command guard and `timeout`-by-pgid wrapper here does - would otherwise
+ * leave the tree running with its watchdog dead. The keeper is a separate-session
+ * process holding the read end of a pipe only this runner writes; when the pipe
+ * closes without `done` it SIGKILLs the test group. See `desktop-test-keeper.mjs`.
+ * It covers a SIGKILLed runner (and any other way the runner vanishes); it does
+ * not cover the keeper itself being killed, and it signals the group only.
+ */
+let keeper = null;
+if (child.pid !== undefined) {
+	try {
+		keeper = spawn(
+			process.execPath,
+			[
+				new URL("./desktop-test-keeper.mjs", import.meta.url).pathname,
+				String(child.pid),
+			],
+			{ stdio: ["pipe", "ignore", "ignore"], detached: true },
+		);
+		keeper.on("error", () => {
+			keeper = null;
+		});
+		keeper.stdin.on("error", () => {});
+		keeper.unref();
+	} catch {
+		keeper = null;
+	}
+}
+function releaseKeeper() {
+	// Tell it this is a NORMAL end so it does not signal a finished suite's group.
+	try {
+		keeper?.stdin.end("done\n");
+	} catch {
+		// Already gone.
+	}
+}
+
 const memoryBudget = resolveMemoryBudget();
 console.log(formatMemoryBudgetLine(memoryBudget));
 let breached = false;
@@ -240,19 +279,25 @@ const watchdog =
 		: createMemoryWatchdog({
 				leaderPid: child.pid,
 				budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
-				onBreach: (reading) => {
+				onTrip: () => {
+					// Set BEFORE the kill: the child's exit can be observed while the
+					// pre-kill re-read is still in flight, and must already read as a
+					// verdict rather than a signal death to re-raise.
 					breached = true;
+				},
+				onBreach: (reading, outcome) => {
 					console.error(
 						formatBreachLine({
 							leaderPid: child.pid,
 							reading,
 							budgetBytes: memoryBudget.budgetMb * 1024 * 1024,
+							outcome,
 						}),
 					);
 				},
 				onBlind: (ticks) =>
 					console.error(
-						`desktop tests: WARNING - memory watchdog could not read the process group for ${ticks} consecutive ticks; the run is NOT currently bounded`,
+						`desktop tests: WARNING - memory watchdog could not fully read the process group for ${ticks} consecutive ticks (the process table is unreadable or no footprint came back); the run is NOT reliably bounded`,
 					),
 			});
 watchdog?.start();
@@ -260,6 +305,10 @@ watchdog?.start();
 // Forward the signals a user or CI actually sends, so Ctrl-C interrupts the
 // suite rather than leaving it orphaned behind a killed wrapper. To the GROUP:
 // the child no longer shares ours, and its own children are what hold memory.
+// KNOWN LIMIT (Q3 of the PR #733 QA pass): this reaches the group only. A
+// descendant that called setsid (an Electron a rig launched `detached`) survives
+// Ctrl-C/SIGTERM, exactly as it did under the base runner; only the memory
+// watchdog's breach path walks out-of-group descendants.
 for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 	process.on(signal, () => {
 		if (child.exitCode === null && child.signalCode === null) {
@@ -274,6 +323,7 @@ for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 
 child.on("exit", (code, signal) => {
 	watchdog?.stop();
+	releaseKeeper();
 	if (breached) {
 		// The watchdog's SIGKILL is a deliberate, already-announced verdict: report
 		// it as an exit status rather than re-raising, so the loud line above is
