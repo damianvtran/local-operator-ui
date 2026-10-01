@@ -1,0 +1,40 @@
+#!/usr/bin/env node
+/**
+ * The tracked pre-push hook: the gate the rest of this repository reviews.
+ *
+ * WHY THIS FILE IS THREE LINES. It is deliberately a launcher and not the gate:
+ * the gate is `scripts/pre-push-gate.mjs`, where the classifier lives, where the
+ * ratchet's lint contract is reused, and where it can be imported and tested by
+ * `scripts/pre-push-gate.test.mjs`. This file exists because `core.hooksPath`
+ * can only name a directory, and because the DISPATCHER that runs it (see
+ * `scripts/hooks-install.mjs`) has to be able to tell, per worktree, whether the
+ * branch checked out there carries a gate at all - a question it can only ask of
+ * a tracked path.
+ *
+ * IT RESOLVES ITS OWN LOCATION rather than `git rev-parse --show-toplevel`, so
+ * the gate it runs is the one in the checkout the hook itself came from, not
+ * necessarily the one in the working directory somebody happened to push from.
+ *
+ * WHAT IT CANNOT SEE. A checkout without `node_modules` gets the gate's own
+ * refusal naming the fix rather than a silent pass; a platform without a
+ * Node-aware hook runner (Windows) does not run this file at all, which is
+ * stated in docs/hooks.md rather than papered over.
+ */
+import { spawnSync } from "node:child_process";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = dirname(dirname(fileURLToPath(import.meta.url)));
+const gate = join(root, "scripts", "pre-push-gate.mjs");
+
+// `stdio: inherit` so the gate's report lands where the pusher is looking, and
+// the exit status is forwarded unchanged: git aborts the push on anything but 0.
+const result = spawnSync(process.execPath, [gate, ...process.argv.slice(2)], {
+	cwd: root,
+	stdio: "inherit",
+});
+if (result.error) {
+	console.error(`pre-push: could not run ${gate}: ${result.error.message}`);
+	process.exit(1);
+}
+process.exit(result.status === null ? 1 : result.status);

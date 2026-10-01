@@ -1630,6 +1630,58 @@ tolerates and needs the npm registry, and the pack and launch legs need the four
 `VITE_*` build secrets and a macOS runner. A green `pnpm check-changed` means
 "the gates CI will run on this diff passed", never "everything passed".
 
+## The pre-push gate
+
+`git push` runs `.githooks/pre-push`, a DELTA-SCOPED gate: it costs what the diff
+costs, not what the tree costs. It is wired per clone by
+`scripts/hooks-install.mjs` (run from `prepare`, and by hand as
+`pnpm hooks:install`; `pnpm hooks:check` reports read-only and exits non-zero when
+pushes from a checkout are not gated). Full detail and the wiring's failure modes:
+`docs/hooks.md`.
+
+- **It runs three legs, and `scripts/ci-scope.mjs` decides whether each applies.**
+  `scripts/` files this change touches go through the `lint:scripts` ratchet;
+  changed `src/`/`bin/` files go through the same `biome` `pnpm lint` names, over
+  those paths; the typecheck runs both projects in the order `pnpm check-types`
+  uses, **serially**, because two concurrent `tsc` processes are what this host's
+  memory budget cannot take. A prose-only diff, a committed-evidence-only diff and
+  a version-only `package.json` bump run nothing at all.
+- **CI remains the authority.** The desktop suite (now 345 files), the build, the
+  pack/launch, the audit and the runtime-dependency allowlist are NOT run here —
+  none is delta-scoped. The gate prints which jobs it is leaving to CI on every
+  push, so a green push is never read as a green PR.
+- **The types leg is the one that costs the tree**, because TypeScript has no
+  per-file mode; it therefore runs only when the diff touches a TypeScript file.
+- **Never `--no-verify`.** If a leg cannot run in your environment, run the
+  equivalent legs BY HAND and record that in the PR. To bypass deliberately, use
+  `PREPUSH_BYPASS="<reason>"`, which prints the reason on the push itself: the
+  four disclosed bypasses this fleet produced in one night were all hooks that
+  could not finish, and a silent skip and a pass are indistinguishable
+  afterwards.
+- **A fresh worktree is gated or refused, never silently ungated.** A worktree
+  whose branch predates `.githooks/` fails the push and names both ways forward —
+  because git skips a missing hook file without a word, which is exactly how a
+  worktree pushed ungated while reporting no problem.
+
+**Measurements: NOT RUN as of 2026-10-01** (the host was below the fleet's floor —
+4.6 GiB free, swap 26.5 of 27.6 GB, load 28-37 — and heavy lanes were stopped). The
+commands are:
+
+```sh
+# wall time and peak RSS for a representative change: one src/ file and one script
+/usr/bin/time -l node scripts/pre-push-gate.mjs --since "$(git merge-base origin/main HEAD)"
+# the whole hook, exactly as a push runs it
+/usr/bin/time -l git push <a scratch remote> <branch>
+```
+
+What HAS been executed: `node --test --test-concurrency=1
+scripts/pre-push-gate.test.mjs` — 8 tests, 8 passing, ~93 s wall, all against real
+scratch clones and real `git push` runs (refusal on a missing hook, the hook's own
+exit status propagating, the disclosed bypass, idempotent wiring, and the
+refusals for an unresolvable base and a missing tool). Those fixtures carry no
+`node_modules`, so they exercise the wiring and the refusal paths, not the lint or
+`tsc` legs.
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 **Releasing is a decision a person makes, separately from merging.** Merging
