@@ -186,6 +186,24 @@ function fixture({ withHook = true, withTools = true } = {}) {
 				cwd: worktree,
 				env: { ...env, ...extra },
 			}),
+		/**
+		 * The gate with an UNREADABLE stdin (fd 0 opened write-only, so a read is
+		 * `EBADF`). Not `/dev/null` and not a closed descriptor: a closed fd 0 is
+		 * repaired by node to `/dev/null`, which reads as empty - the by-hand case -
+		 * and an empty read is not the answer under test here.
+		 */
+		gateWithoutStdin: (args) =>
+			run(
+				"sh",
+				[
+					"-c",
+					'exec 0>/dev/null ; exec "$0" "$@"',
+					process.execPath,
+					GATE,
+					...args,
+				],
+				{ cwd: worktree, env },
+			),
 		commit: (message, write) => {
 			write();
 			git(worktree, ["add", "-A"], { env });
@@ -202,6 +220,9 @@ function fixture({ withHook = true, withTools = true } = {}) {
  * reached over `scripts/` - the hole the ratchet exists to close.
  */
 const VIOLATION = "export const thing = {a:1}\n";
+
+/** The same file as the repository's formatter would print it: lint-clean. */
+const CLEAN_FILE = "export const thing = { a: 1 };\n";
 
 test("an inert push succeeds through the real dispatcher and the real hook", () => {
 	// THE REGRESSION THIS FILE WAS MISSING. The launcher used to forward git's own
@@ -238,6 +259,15 @@ test("the gate ignores git's two positional arguments", () => {
 		]);
 		assert.doesNotMatch(`${direct.stdout}${direct.stderr}`, /unknown argument/);
 		assert.equal(direct.status, 0, `${direct.stdout}${direct.stderr}`);
+
+		// One positional is tolerated, and the report SAYS it was ignored: a silent
+		// drop is the same defect in a smaller place.
+		const lone = f.gate(["--since", "origin/main", "origin"]);
+		assert.equal(lone.status, 0, `${lone.stdout}${lone.stderr}`);
+		assert.match(
+			lone.stdout,
+			/ignoring git's 1 pre-push argument\(s\) \(origin\)/,
+		);
 
 		// More than the two the contract names is refused rather than dropped: an
 		// argument this gate does not understand must not be silently ignored.
@@ -327,7 +357,106 @@ test("a pushed ref this checkout cannot read is REFUSED, not a false green", () 
 		assert.notEqual(pushed.status, 0);
 		const output = `${pushed.stdout}${pushed.stderr}`;
 		assert.match(output, /REFUSED/);
-		assert.match(output, /does not carry/);
+		assert.match(output, /the only commit this checkout can be judged from is HEAD/);
+	} finally {
+		f.cleanup();
+	}
+});
+
+test("an ANCESTOR of HEAD is refused, so a fixed worktree cannot launder a broken commit", () => {
+	// THE ROUND-2 MAJOR, as a regression. Commit V carries a formatter violation,
+	// commit F fixes it, and the worktree holds F - so a gate that judged the
+	// FILES ON DISK reported "lint (scripts/) passed" for `git push <V>:refs/heads/x`
+	// while the remote received V's violating blob. Only the commit the checkout IS
+	// can be judged from disk, and anything else has to refuse.
+	const f = fixture();
+	try {
+		assert.equal(f.install().status, 0);
+		f.commit("feat: V breaks the formatter", () =>
+			writeFileSync(join(f.worktree, "scripts", "violation.mjs"), VIOLATION),
+		);
+		const v = git(f.worktree, ["rev-parse", "HEAD"], {
+			env: f.env,
+		}).stdout.trim();
+		f.commit("fix: F repairs it", () =>
+			writeFileSync(join(f.worktree, "scripts", "violation.mjs"), CLEAN_FILE),
+		);
+
+		const pushed = f.push(["origin", `${v}:refs/heads/older`]);
+		const output = `${pushed.stdout}${pushed.stderr}`;
+		assert.notEqual(
+			pushed.status,
+			0,
+			"the legs cannot read V, so this must not pass",
+		);
+		assert.match(output, /REFUSED/);
+		assert.match(output, /ANCESTOR/);
+		assert.doesNotMatch(output, /lint \(scripts\/\) passed/);
+
+		// And nothing was published: the refusal happened before the ref moved.
+		const landed = run(
+			"git",
+			[
+				"--git-dir",
+				f.remote,
+				"rev-parse",
+				"--verify",
+				"--quiet",
+				"refs/heads/older",
+			],
+			{ env: f.env },
+		);
+		assert.notEqual(landed.status, 0, `the remote got ${landed.stdout.trim()}`);
+	} finally {
+		f.cleanup();
+	}
+});
+
+test("a file a leg would read that has uncommitted edits refuses", () => {
+	const f = fixture();
+	try {
+		assert.equal(f.install().status, 0);
+		f.commit("feat: a clean scripts file", () =>
+			writeFileSync(join(f.worktree, "scripts", "clean.mjs"), CLEAN_FILE),
+		);
+		// The worktree now holds a version that is NOT the one being pushed, so the
+		// leg's verdict would be about somebody else's bytes - in either direction.
+		writeFileSync(
+			join(f.worktree, "scripts", "clean.mjs"),
+			`${CLEAN_FILE}// uncommitted\n`,
+		);
+		const pushed = f.push(["origin", "HEAD:refs/heads/feature"]);
+		const output = `${pushed.stdout}${pushed.stderr}`;
+		assert.notEqual(pushed.status, 0);
+		assert.match(output, /working tree differs from/);
+		assert.match(output, /scripts\/clean\.mjs/);
+	} finally {
+		f.cleanup();
+	}
+});
+
+test("a stdin this gate cannot read refuses rather than answering about HEAD", () => {
+	const f = fixture();
+	try {
+		const refused = f.gateWithoutStdin(["--since", "origin/main"]);
+		assert.notEqual(refused.status, 0);
+		assert.match(refused.stderr, /could not be read from stdin/);
+		assert.doesNotMatch(
+			refused.stdout,
+			/the subject is HEAD/,
+			"no silent fallback",
+		);
+
+		// `--ref` names the subject, so it needs no stdin at all - which is the
+		// spelling a closed-stdin caller (a cron job, a rig) should use.
+		const named = f.gateWithoutStdin([
+			"--since",
+			"origin/main",
+			"--ref",
+			"HEAD",
+		]);
+		assert.equal(named.status, 0, `${named.stdout}${named.stderr}`);
+		assert.match(named.stdout, /no changed path/);
 	} finally {
 		f.cleanup();
 	}
@@ -487,6 +616,12 @@ test("a hooksPath configured elsewhere is superseded, not written over", () => {
 		// that is not this repository's. The installer names the local scope.
 		const foreign = join(f.root, "foreign-gitconfig");
 		writeFileSync(foreign, "[core]\n\thooksPath = /nowhere/at/all\n");
+		// A hook in the directory `core.hooksPath` makes git ignore: disowned, not
+		// chained, and the install has to say so rather than replacing it in silence.
+		writeFileSync(
+			join(f.clone, ".git", "hooks", "pre-push"),
+			"#!/bin/sh\necho 'a hook nobody will run'\n",
+		);
 		const direct = run(process.execPath, [INSTALLER], {
 			cwd: f.clone,
 			env: { ...f.env, GIT_CONFIG_GLOBAL: foreign },
@@ -496,6 +631,11 @@ test("a hooksPath configured elsewhere is superseded, not written over", () => {
 			direct.stderr,
 			/WARNING - a core\.hooksPath is ALSO configured elsewhere/,
 		);
+		assert.match(
+			direct.stderr,
+			/IGNORES the whole hooks directory once core\.hooksPath is set/,
+		);
+		assert.match(direct.stderr, /disowned, not chained/);
 		// The foreign file is untouched, and the local value is this repository's:
 		// a nested checkout must not be able to poison a config it does not own.
 		assert.match(
