@@ -33,11 +33,27 @@ halves stay the disabled-gates run from the original lane — they document the
 reported defects on that tree, and nothing in this delta changes what they
 show.
 
+RE-SHOT A FOURTH TIME, for the round-1 remediation (review/design/UX/QA rounds on this
+PR): the design round's two additive states plus the loading arm. The set is
+TWENTY-FIVE cases now, every frame re-taken at this head in both themes (25/25
+each side). The three new cases: `skill-narrow-composer` — the durable sentence
+is the longest line the composer paints, photographed at the app's 800px floor
+(this one frame is 800x900 and its `result.json` entry carries the per-case
+`viewport`); `skill-many-scroll` — nine rows against the six-row region,
+scrolled by one real wheel event, the landing proven by a `scrollTop > 0`
+readback; `skill-loading-line` — the state that used to open NOTHING, read and
+shot inside the fixture's 900ms `slow` window.
+
 FOLDED ONTO A MOVED `origin/main` AFTER THE SHOOT, AND NOT RE-CAPTURED: the
 fold's one composer change is the optional `deviceHold` node (`{deviceHold}`
 renders nothing when no move store is mounted, which the story never has), so
 the photographed band is the same DOM; the manifest's stamp pair was re-derived
 at the folded tip instead.
+
+AND FOLDED AGAIN AFTER THE FOURTH SHOOT, the same way and for the same reason:
+current `origin/main` brings #621 (mesh canvas) and #717 (turn-answer rail),
+neither of which touches the composer cluster the frames photograph — the
+round-1 fold is the one these frames' stamps describe.
 
 The reports:
 
@@ -91,6 +107,9 @@ scenario each frame ran under is recorded in its `result.json` entry
 | `skill-notice-empty` | `skillFixture:empty`, session pane, type `$` | "No skills found — see /skills" (the pointer can be followed here) |
 | `skill-notice-empty-draft` | `skillFixture:empty`, draft pane, type `$` | "No skills found." — the pointer clause is dropped where `/skills` would be refused |
 | `skill-draft-first-send` | draft pane, `$research fix this` + Enter | the first-message expansion fires: `[data-sent]` starts with the invocation header and carries `invocation="$research fix this"` — the send the session gate used to forbid |
+| `skill-narrow-composer` | `skillFixture:old-backend`, type `$`, **800x900** | the durable sentence (the longest line the composer paints) wraps sanely at the app's narrow floor; `skills.list` calls stay 0 |
+| `skill-many-scroll` | draft pane, `skillFixture:many`, type `$`, wheel 144px | nine rows against the six-row region, and the region really scrolled (`extra.scrolled > 0` — the readback, not the picture) |
+| `skill-loading-line` | draft pane, `skillFixture:slow`, type `$` | the loading arm: `Loading…` in the shell while the sessionless read is in flight (the fixture holds it 900ms so the window is photographable) |
 
 The v2 rows are AFTER-ONLY, and that is a statement about the fixture rather
 than an omission: the before state of each is a fact of the old tree (the
@@ -144,9 +163,10 @@ longer names where the original set did.
 The story is `chat-message-input--composer-cluster`; the palette is whichever
 `COMPOSER_PROOF_THEME` names, seeded into the preview's persisted preferences
 AND passed as the story's `theme` argument, so the store and the arg agree from
-the first paint. One PNG per case per theme, 1380x900 at DPR 1, captured from
-the browser driving the story — the same shape the slash-enter set's harness
-uses.
+the first paint. One PNG per case per theme, 1380x900 at DPR 1 — except
+`skill-narrow-composer`, shot at 800x900 (the app's floor; its record entry
+carries the size) — captured from the browser driving the story, the same shape
+the slash-enter set's harness uses.
 
 ## What the frames do not show
 

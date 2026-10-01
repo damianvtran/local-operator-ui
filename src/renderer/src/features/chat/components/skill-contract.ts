@@ -112,20 +112,27 @@ export function skillClickFooter(name: string): string {
  * in three different states (a draft pane, an older build, an empty or
  * unreachable vocabulary). The fix is one predicate: a LEADING token always
  * opens SOMETHING — rows, or one non-selectable line in the same shell — and
- * silence survives only where it is the honest answer (the read is still
- * loading, no capability answer has arrived, or the token is not leading at
- * all).
+ * silence survives only where it is the honest answer (no capability answer
+ * has arrived, the token is not leading at all, or the pane has no folder
+ * staged — `!hasCwd`, where no query has fired and nothing has failed yet).
+ * A read still in flight is no longer one of the silent states: it renders
+ * `SKILL_LOADING_LINE` (design round 1, D1 — the `/` sibling prints its own
+ * "Loading…" ahead of every other cause, `slash-contract.ts`).
  *
- * ORDER IS THE CONTRACT, durable > transient > empty > miss:
+ * ORDER IS THE CONTRACT, durable > transient > loading > empty > miss:
  *
  *   - DURABLE (`skill_catalogue` absent): this backend cannot answer a
  *     sessionless read at all. NO query is fired, and the sentence is the
  *     update-the-backend register, the same one the `@` composer notice uses
  *     (`at-contract.ts`, `AT_UNAVAILABLE_REASON`): the state, then the one
  *     remedy that can change it.
- *   - TRANSIENT (unpaired ∪ the fired query's own error): reachability is not
- *     a pane property — one string serves drafts and sessions alike, and it
- *     never promises a session (UX v2 §1).
+ *   - TRANSIENT (unpaired ∪ pairing-refused ∪ the fired query's own error):
+ *     reachability is not a pane property — one string serves drafts and
+ *     sessions alike, and it never promises a session (UX v2 §1).
+ *   - LOADING (a leading token while the sessionless read is in flight): the
+ *     family's "Loading…" — the `/` sibling's own word, so parity costs a
+ *     state rather than a new vocabulary. Design round 2 ratifies this one
+ *     state; every other string here is unchanged.
  *   - EMPTY (settled, zero rows): "No skills found" with the pointer clause
  *     only where the pointer can be followed — `/skills` needs a conversation
  *     (its own dispatcher gate, `slash-dispatch.ts`), so a draft gets the
@@ -135,7 +142,8 @@ export function skillClickFooter(name: string): string {
  *     "No skills match." — unchanged from #690.
  *
  * WHERE A NOTICE MAY ATTACH, and this is the money guard rather than polish:
- * the three consultation states attach to LEADING tokens only. An inline `$`
+ * the consultation states (durable, transient, loading, empty) attach to
+ * LEADING tokens only. An inline `$`
  * mid-sentence is overwhelmingly money or a shell variable, and "the sigil's
  * position tells you nothing inline" is the rule that makes running the
  * tokenizer on every keystroke of prose safe (`skill-token.ts`). The MISS is
@@ -150,8 +158,13 @@ export function skillClickFooter(name: string): string {
  * cached rows are not trustworthy at all.
  */
 
-/** The four states a no-rows list can be in, in precedence order. */
-export type SkillNoticeKind = "durable" | "transient" | "empty" | "miss";
+/** The five states a no-rows list can be in, in precedence order. */
+export type SkillNoticeKind =
+	| "durable"
+	| "transient"
+	| "loading"
+	| "empty"
+	| "miss";
 
 /** The notice line and the state it names. `text` is what the list renders. */
 export type SkillNotice = { kind: SkillNoticeKind; text: string };
@@ -170,6 +183,15 @@ export const SKILL_UNAVAILABLE_REASON =
 
 /** The transient state's sentence; one string for every pane and cause. */
 export const SKILL_TRANSIENT_REASON = "Skills aren't available right now.";
+
+/**
+ * The loading state's line: the `/` sibling's own word, verbatim
+ * (`slash-contract.ts`'s `argumentEmptyCopy` prints it ahead of every other
+ * cause). Reusing it is the point — family parity here is a state, not a new
+ * vocabulary — and it is the one string design round 2 ratifies with this
+ * state (`skillNotice`'s LOADING arm, design round 1's D1).
+ */
+export const SKILL_LOADING_LINE = "Loading…";
 
 /** The empty state where `/skills` can be followed (a session is attached). */
 export const SKILL_EMPTY_ATTACHED = "No skills found — see /skills";
@@ -200,8 +222,22 @@ export type SkillNoticeInput = {
 	rowsCount: number;
 	/** Whether the settled vocabulary is non-empty (empty vs miss). */
 	vocabularyNonEmpty: boolean;
-	/** The query's own state, as one of three answers. */
-	query: "pending" | "error" | "success";
+	/**
+	 * MAIN's pairing fact (`usePairingCause() !== null`): the running daemon has
+	 * refused — or this app cannot present — its credential, so nothing may be
+	 * asked of it right now. Known BEFORE any read is fired, and the picker
+	 * gates the vocabulary query off while it holds (round 1's Q-2 measured the
+	 * five refused calls that fired without this).
+	 */
+	pairingRefused: boolean;
+	/**
+	 * The query's own state. `"loading"` is a read actually in flight
+	 * (`isLoading` under the same gate); `"pending"` stays quiet — it is also
+	 * the shape of a read that is deliberately NOT running (no provider, no
+	 * capability answer, a refused pairing), where a loading line would be a
+	 * claim about work nobody started.
+	 */
+	query: "pending" | "loading" | "error" | "success";
 };
 
 /**
@@ -216,15 +252,23 @@ export function skillNotice({
 	hasQuery,
 	rowsCount,
 	vocabularyNonEmpty,
+	pairingRefused,
 	query,
 }: SkillNoticeInput): SkillNotice | null {
 	// DURABLE first: a capability fact outranks everything, and no query was
 	// fired on this build to ask anything else.
 	if (feature === "below-version")
 		return leading ? { kind: "durable", text: SKILL_UNAVAILABLE_REASON } : null;
-	// TRANSIENT, pairing half: a daemon this app holds no credential for is a
-	// pairing fact no matter what its feature list says (`desktopFeatureState`).
-	if (feature === "unpaired")
+	/*
+	 * TRANSIENT, pairing half: a daemon this app holds no credential for is a
+	 * pairing fact no matter what its feature list says (`desktopFeatureState`),
+	 * and main's own pairing cause (`pairingRefused`) is the same fact learned
+	 * EARLIER — from the probe that saw the refusal, before any read was fired.
+	 * Either source takes this sentence; the picker gates the read off while the
+	 * cause holds, so the line is the whole answer rather than the report of a
+	 * failed call (QA round 1, Q-2).
+	 */
+	if (feature === "unpaired" || pairingRefused)
 		return leading ? { kind: "transient", text: SKILL_TRANSIENT_REASON } : null;
 	// No capability answer yet: assert neither cause.
 	if (feature === "unknown") return null;
@@ -237,8 +281,17 @@ export function skillNotice({
 	// TRANSIENT, transport half: the fired query failed.
 	if (query === "error")
 		return leading ? { kind: "transient", text: SKILL_TRANSIENT_REASON } : null;
-	// Loading: quiet — no notice, and (beside it) no ink, so a read in flight
-	// cannot flash a claim it may have to withdraw.
+	/*
+	 * LOADING: a read actually in flight, on a leading token — the one arm that
+	 * used to be silent and no longer is (design round 1, D1; UX round 1, U4
+	 * asked for the same line). The INK stays suppressed while loading — the
+	 * picker's `settled` reads the same gate — which is the half the old
+	 * rationale protected: this line claims only that a read is running, while
+	 * ink would claim a verdict the read may still withdraw.
+	 */
+	if (query === "loading")
+		return leading ? { kind: "loading", text: SKILL_LOADING_LINE } : null;
+	// Pending (a read deliberately not running): quiet — no claim to make.
 	if (query !== "success") return null;
 	// EMPTY: a settled vocabulary with nothing in it. Both the bare `$` and a
 	// typed `$zzz` take this notice, and only a leading token may carry it.

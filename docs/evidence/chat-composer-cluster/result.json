@@ -7,11 +7,11 @@
     "height": 900
   },
   "driver": "scripts/composer-cluster-proof.mjs",
-  "at": "2026-09-30T19:20:00.117Z",
+  "at": "2026-10-01T00:17:38.622Z",
   "cases": [
     {
       "name": "history-empty-recalls",
-      "why": "The preserved gesture: an empty box still recalls (newest first) and ArrowDown returns past the newest to the empty draft. Both trees must agree — the fix narrows the trigger, it does not remove the walk.",
+      "why": "The preserved gesture: an empty box still recalls (newest first) and ArrowDown returns past the newest to the empty draft. Both trees must agree \u2014 the fix narrows the trigger, it does not remove the walk.",
       "state": {
         "draft": "run the migration again please",
         "sel": 30,
@@ -44,7 +44,7 @@
           "scenario": "default:session"
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/history-empty-recalls.png",
+      "frame": "docs/evidence/chat-composer-cluster/history-empty-recalls-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -67,13 +67,13 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/history-draft-survives-arrowup.png",
+      "frame": "docs/evidence/chat-composer-cluster/history-draft-single-line-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "history-draft-multiline-arrowup",
-      "why": "The same misfire on a multi-line draft: the caret is walked onto line 1 by a native ArrowUp first (both trees), and the SECOND ArrowUp is the one the old gate misfired on — before, the draft is replaced by a recall; after, nothing moves at the top of the draft.",
+      "why": "The same misfire on a multi-line draft: the caret is walked onto line 1 by a native ArrowUp first (both trees), and the SECOND ArrowUp is the one the old gate misfired on \u2014 before, the draft is replaced by a recall; after, nothing moves at the top of the draft.",
       "state": {
         "draft": "one\ntwo",
         "sel": 0,
@@ -121,13 +121,13 @@
           "scenario": "default:session"
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/history-draft-multiline-arrowup.png",
+      "frame": "docs/evidence/chat-composer-cluster/history-draft-multiline-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-list-opens",
-      "why": "The `$` list: typed inline (`fix this $res`), the list opens over the discovered vocabulary — the one row the evidence admits starts with `res` — where before there was no list at all.",
+      "why": "The `$` list: typed inline (`fix this $res`), the list opens over the discovered vocabulary \u2014 the one row the evidence admits starts with `res` \u2014 where before there was no list at all.",
       "state": {
         "draft": "fix this $res",
         "sel": 13,
@@ -146,7 +146,7 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-list-opens.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-list-open-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -169,13 +169,13 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-list-empty.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-list-empty-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-accepted-reassembles",
-      "why": "Accepting the row: the token moves to the FRONT with the surviving draft as its request (`fix this $res` → `$research fix this `), staged for send. The click is used here so the before tree — which has no list to click — simply leaves the draft alone; the keyboard accept is the unit suites' (the accept write is `skillCompletionFor`, executed there).",
+      "why": "Accepting the row: the token moves to the FRONT with the surviving draft as its request (`fix this $res` \u2192 `$research fix this `), staged for send. The click is used here so the before tree \u2014 which has no list to click \u2014 simply leaves the draft alone; the keyboard accept is the unit suites' (the accept write is `skillCompletionFor`, executed there).",
       "state": {
         "draft": "$research fix this ",
         "sel": 19,
@@ -194,13 +194,13 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-accepted-reassembles.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-accepted-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-send-expands",
-      "why": "The submission: Enter accepts the row, then Enter sends — and the `[data-sent]` strip is the claim, because the payload is `invoke.py`'s expansion. Before, the same keys sent the raw prose (`fix this $res`), which is the second half of the pair.",
+      "why": "The submission: Enter accepts the row, then Enter sends \u2014 and the `[data-sent]` strip is the claim, because the payload is `invoke.py`'s expansion. Before, the same keys sent the raw prose (`fix this $res`), which is the second half of the pair.",
       "state": {
         "draft": "",
         "sel": 0,
@@ -217,13 +217,13 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-send-expands.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-send-expanded-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-list-bare-leading",
-      "why": "THE v2 HEADLINE: a bare `$` at buffer start opens the whole catalogue on a DRAFT pane — the sessionless read answers before any session exists — 3 rows, header `Skills`, and the token uninked.",
+      "why": "THE v2 HEADLINE: a bare `$` at buffer start opens the whole catalogue on a DRAFT pane \u2014 the sessionless read answers before any session exists \u2014 3 rows, header `Skills`, and the token uninked.",
       "state": {
         "draft": "$",
         "sel": 1,
@@ -244,13 +244,13 @@
         "scenario": "default:draft"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-list-bare-leading.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-list-bare-leading-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-list-leading-fuzzy",
-      "why": "Leading `$res` at the fuzzy floor runs the FULL case-insensitive matcher (TUI parity): 2 rows — research and release-notes (the subsequence `res` in `release-notes` is the matcher doing its job, not a defect).",
+      "why": "Leading `$res` at the fuzzy floor runs the FULL case-insensitive matcher (TUI parity): 2 rows \u2014 research and release-notes (the subsequence `res` in `release-notes` is the matcher doing its job, not a defect).",
       "state": {
         "draft": "$res",
         "sel": 4,
@@ -270,7 +270,7 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-list-leading-fuzzy.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-list-leading-fuzzy-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -295,13 +295,13 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-list-leading-single.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-list-leading-single-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-highlight-resolved",
-      "why": "The `$` ink: a leading `$research` that names a settled skill paints the structured-token run (`data-slash-run=\"skill\"`) with a request behind it — the primary case the merge point exists for.",
+      "why": "The `$` ink: a leading `$research` that names a settled skill paints the structured-token run (`data-slash-run=\"skill\"`) with a request behind it \u2014 the primary case the merge point exists for.",
       "state": {
         "draft": "$research fix this",
         "sel": 18,
@@ -320,13 +320,13 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-highlight-resolved.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-highlight-resolved-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-highlight-paints-through",
-      "why": "A RESOLVED token paints even while the list is open on it (spec-reconciliation v2 §4): `$research` alone keeps its run under the open row list.",
+      "why": "A RESOLVED token paints even while the list is open on it (spec-reconciliation v2 \u00a74): `$research` alone keeps its run under the open row list.",
       "state": {
         "draft": "$research",
         "sel": 9,
@@ -347,13 +347,13 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-highlight-paints-through.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-highlight-paints-through-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-highlight-inert",
-      "why": "An unresolved whole-draft `$zzz` paints NOTHING while its miss list is open (a prefix in progress), and the dim run arrives after Escape closes it — the pair UX U4b names.",
+      "why": "An unresolved whole-draft `$zzz` paints NOTHING while its miss list is open (a prefix in progress), and the dim run arrives after Escape closes it \u2014 the pair UX U4b names.",
       "state": {
         "draft": "$zzz",
         "sel": 4,
@@ -388,13 +388,13 @@
           "scenario": "default:session"
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-highlight-inert.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-highlight-inert-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-highlight-money-guards",
-      "why": "Money and shell stay unpainted: a glued `$5` is punctuation inside a word (no token at all), and `echo $PATH` is inline — zero `$` runs in both states.",
+      "why": "Money and shell stay unpainted: a glued `$5` is punctuation inside a word (no token at all), and `echo $PATH` is inline \u2014 zero `$` runs in both states.",
       "state": {
         "draft": "echo $PATH",
         "sel": 10,
@@ -427,7 +427,7 @@
           "scenario": "default:session"
         }
       },
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-highlight-money-guards.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-highlight-money-guards-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -452,13 +452,13 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-highlight-slash-claim.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-highlight-slash-claim-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-notice-durable",
-      "why": "The durable state (spec §2): a backend without `skill_catalogue` fires NO skills query — `window.__skillListCalls` stays 0 — and a leading `$` opens the shell with the update-the-backend sentence.",
+      "why": "The durable state (spec \u00a72): a backend without `skill_catalogue` fires NO skills query \u2014 `window.__skillListCalls` stays 0 \u2014 and a leading `$` opens the shell with the update-the-backend sentence.",
       "state": {
         "draft": "$",
         "sel": 1,
@@ -475,7 +475,7 @@
         "scenario": "old-backend:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-notice-durable.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-notice-durable-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -498,7 +498,7 @@
         "scenario": "broken:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-notice-transient.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-notice-transient-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
@@ -509,7 +509,7 @@
         "draft": "$",
         "sel": 1,
         "list": "Skills",
-        "listText": "SkillsNo skills found — see /skills",
+        "listText": "SkillsNo skills found \u2014 see /skills",
         "rows": [],
         "active": null,
         "sent": "none",
@@ -521,13 +521,13 @@
         "scenario": "empty:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-notice-empty.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-notice-empty-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-notice-empty-draft",
-      "why": "The empty state, draft pane: same state, no pointer — `/skills` is refused without a conversation, so the draft gets the bare sentence.",
+      "why": "The empty state, draft pane: same state, no pointer \u2014 `/skills` is refused without a conversation, so the draft gets the bare sentence.",
       "state": {
         "draft": "$",
         "sel": 1,
@@ -544,13 +544,13 @@
         "scenario": "empty:draft"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-notice-empty-draft.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-notice-empty-draft-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "skill-draft-first-send",
-      "why": "The first-message expansion (F-1 closed): on a DRAFT pane, `$research fix this` + Enter sends the skill payload — the expansion the session gate used to forbid.",
+      "why": "The first-message expansion (F-1 closed): on a DRAFT pane, `$research fix this` + Enter sends the skill payload \u2014 the expansion the session gate used to forbid.",
       "state": {
         "draft": "",
         "sel": 0,
@@ -567,13 +567,13 @@
         "scenario": "default:draft"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/skill-draft-first-send.png",
+      "frame": "docs/evidence/chat-composer-cluster/skill-draft-first-send-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "theme-qualified-confirms",
-      "why": "The double selection (issue #676): `/theme dracula` submits and the dialog mounts. Before, the full grid under the applied receipt; after, the confirmation — the receipt and no rows.",
+      "why": "The double selection (issue #676): `/theme dracula` submits and the dialog mounts. Before, the full grid under the applied receipt; after, the confirmation \u2014 the receipt and no rows.",
       "state": {
         "draft": "",
         "sel": 0,
@@ -590,18 +590,18 @@
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/theme-qualified-confirms.png",
+      "frame": "docs/evidence/chat-composer-cluster/theme-qualified-after.png",
       "verdict": "PASS",
       "mismatches": []
     },
     {
       "name": "theme-bare-keeps-the-grid",
-      "why": "The modal remains for a bare `/theme`: no argument names the choice, so the table IS the surface. Both trees must agree on this frame — it is the counter-case that keeps the confirmation from being a removal.",
+      "why": "The modal remains for a bare `/theme`: no argument names the choice, so the table IS the surface. Both trees must agree on this frame \u2014 it is the counter-case that keeps the confirmation from being a removal.",
       "state": {
         "draft": "",
         "sel": 0,
         "list": "Theme",
-        "listText": "Local OperatorLocal Operator DarkThe default. Warm near-black with the brand green.Local Operator LightWarm paper and ink, with the brand green.PortsDraculaBlue-grey ground with the signature Dracula purple.DuneDesert night: warm near-black with a vivid orange.SageLight and green: floral white paper with a deep sage ink.MonokaiThe Monokai scheme: olive-black ground with the acid green.Tokyo NightDeep blue-purple night with a bright blue accent.IcebergCool blue-grey paper with the Iceberg navy.RadientRadient blue: deep navy ground with a soft blue accent.NeonTron: near-black blue with cyan and cyberpunk pink.ObsidianMonochrome: zinc near-black with an off-white accent.SynthSynthwave: deep purple night with hot pink and neon blue.Catppuccin MochaThe original flavour — the deepest navy under the Catppuccin pastels.Catppuccin LatteThe light flavour — cool paper under the same Catppuccin pastels.Tokyo Night StormThe brighter night — indigo storm skies under the same neon accents.GruvboxRetro groove after dark — warm charcoal under the gruvbox brights.NordArctic blue-grey with a frost cyan accent.One DarkAtom's night standard — cool charcoal with the One accent row.Solarized DarkSchoonover's precision dark — deep teal-black with a cyan accent.Rosé PineDusty rose and muted pine on a deep plum night.Rosé Pine MoonRosé Pine lifted: the same rose and pine over a softer violet.Rosé Pine DawnRosé Pine by daylight: warm rose paper with pine and gold ink.AlucardDracula's daylight: warm parchment under an indigo accent.Gruvbox LightRetro groove by daylight, warm cream and faded ink.Tokyo Night DayTokyo Night at noon — cool paper under the same neon hues.One LightAtom's daylight standard, cool white with the One accent row.Catppuccin FrappéThe middle flavour — warm slate under the Catppuccin pastels.Catppuccin MacchiatoThe deep flavour — cool navy-slate under the same pastels.PalenightMaterial Palenight: deep navy under a soft violet accent.EverforestLow-contrast forest night, moss green over warm slate.Everforest LightEverforest by daylight: warm paper under a soft olive green.Kanagawa WaveHokusai ink-wash night, muted paper tones on deep sumi.Kanagawa LotusHokusai by daylight: yellowed paper under indigo and lotus pink.Ayu DarkAyu's night: near-black blue with a bright azure accent.Ayu MirageAyu's mirage: blue-grey ground with the same azure accent.Ayu LightAyu's daylight: white-grey paper with a deep azure accent.NightfoxNordfox night: slate blue under a pale azure accent.DuskfoxNordfox at dusk: the same slate warmed into violet plum.Synthwave '84Hot pink and cyan on a deep purple-navy night drive.MatrixPhosphor green rain on a near-black terminal screen.TronElectric cyan circuitry on the Grid's blue-black.CyberpunkConstruction yellow and glare cyan over violet-black Night City.VaporwaveDusty pink and faded teal pastels on deep mall-purple.OutrunSunset magenta and grid cyan racing over midnight blue.Neon NoirRain-dimmed cyan and magenta signs over 3am charcoal.ArcadeCandy RGB game states glowing on black CRT glass.ForestDeep pine shadow lit by moss-green light through the canopy.OceanDeep-sea blue-green under a pale sea-foam accent.DesertWarm dark sand under a terracotta glow and cactus green.AutumnDark oak under maple red and harvest amber.LavenderPurple-grey dusk lit by a soft lavender glow.ArcticSlate-blue polar night lit by an aurora-green accent.RosewoodDark rosewood with dried-rose reds and a glint of brass.Solarized LightSchoonover's precision light — warm paper with the Solarized hues.GitHub LightGitHub's daylight canvas, white panels and Primer blue.PaperWarm cream paper with brown ink, an open book in good light.LinenCool off-white linen with soft dusty-pastel states.High Contrast LightNear-black ink on near-white, every state well past its floor.Mint LightCrisp white with the cool cast of fresh mint.",
+        "listText": "Local OperatorLocal Operator DarkThe default. Warm near-black with the brand green.Local Operator LightWarm paper and ink, with the brand green.PortsDraculaBlue-grey ground with the signature Dracula purple.DuneDesert night: warm near-black with a vivid orange.SageLight and green: floral white paper with a deep sage ink.MonokaiThe Monokai scheme: olive-black ground with the acid green.Tokyo NightDeep blue-purple night with a bright blue accent.IcebergCool blue-grey paper with the Iceberg navy.RadientRadient blue: deep navy ground with a soft blue accent.NeonTron: near-black blue with cyan and cyberpunk pink.ObsidianMonochrome: zinc near-black with an off-white accent.SynthSynthwave: deep purple night with hot pink and neon blue.Catppuccin MochaThe original flavour \u2014 the deepest navy under the Catppuccin pastels.Catppuccin LatteThe light flavour \u2014 cool paper under the same Catppuccin pastels.Tokyo Night StormThe brighter night \u2014 indigo storm skies under the same neon accents.GruvboxRetro groove after dark \u2014 warm charcoal under the gruvbox brights.NordArctic blue-grey with a frost cyan accent.One DarkAtom's night standard \u2014 cool charcoal with the One accent row.Solarized DarkSchoonover's precision dark \u2014 deep teal-black with a cyan accent.Ros\u00e9 PineDusty rose and muted pine on a deep plum night.Ros\u00e9 Pine MoonRos\u00e9 Pine lifted: the same rose and pine over a softer violet.Ros\u00e9 Pine DawnRos\u00e9 Pine by daylight: warm rose paper with pine and gold ink.AlucardDracula's daylight: warm parchment under an indigo accent.Gruvbox LightRetro groove by daylight, warm cream and faded ink.Tokyo Night DayTokyo Night at noon \u2014 cool paper under the same neon hues.One LightAtom's daylight standard, cool white with the One accent row.Catppuccin Frapp\u00e9The middle flavour \u2014 warm slate under the Catppuccin pastels.Catppuccin MacchiatoThe deep flavour \u2014 cool navy-slate under the same pastels.PalenightMaterial Palenight: deep navy under a soft violet accent.EverforestLow-contrast forest night, moss green over warm slate.Everforest LightEverforest by daylight: warm paper under a soft olive green.Kanagawa WaveHokusai ink-wash night, muted paper tones on deep sumi.Kanagawa LotusHokusai by daylight: yellowed paper under indigo and lotus pink.Ayu DarkAyu's night: near-black blue with a bright azure accent.Ayu MirageAyu's mirage: blue-grey ground with the same azure accent.Ayu LightAyu's daylight: white-grey paper with a deep azure accent.NightfoxNordfox night: slate blue under a pale azure accent.DuskfoxNordfox at dusk: the same slate warmed into violet plum.Synthwave '84Hot pink and cyan on a deep purple-navy night drive.MatrixPhosphor green rain on a near-black terminal screen.TronElectric cyan circuitry on the Grid's blue-black.CyberpunkConstruction yellow and glare cyan over violet-black Night City.VaporwaveDusty pink and faded teal pastels on deep mall-purple.OutrunSunset magenta and grid cyan racing over midnight blue.Neon NoirRain-dimmed cyan and magenta signs over 3am charcoal.ArcadeCandy RGB game states glowing on black CRT glass.ForestDeep pine shadow lit by moss-green light through the canopy.OceanDeep-sea blue-green under a pale sea-foam accent.DesertWarm dark sand under a terracotta glow and cactus green.AutumnDark oak under maple red and harvest amber.LavenderPurple-grey dusk lit by a soft lavender glow.ArcticSlate-blue polar night lit by an aurora-green accent.RosewoodDark rosewood with dried-rose reds and a glint of brass.Solarized LightSchoonover's precision light \u2014 warm paper with the Solarized hues.GitHub LightGitHub's daylight canvas, white panels and Primer blue.PaperWarm cream paper with brown ink, an open book in good light.LinenCool off-white linen with soft dusty-pastel states.High Contrast LightNear-black ink on near-white, every state well past its floor.Mint LightCrisp white with the cool cast of fresh mint.",
         "rows": [
           "Local Operator DarkThe default. Warm near-black with the brand green.",
           "Local Operator LightWarm paper and ink, with the brand green.",
@@ -615,22 +615,22 @@
           "NeonTron: near-black blue with cyan and cyberpunk pink.",
           "ObsidianMonochrome: zinc near-black with an off-white accent.",
           "SynthSynthwave: deep purple night with hot pink and neon blue.",
-          "Catppuccin MochaThe original flavour — the deepest navy under the Catppuccin pastels.",
-          "Catppuccin LatteThe light flavour — cool paper under the same Catppuccin pastels.",
-          "Tokyo Night StormThe brighter night — indigo storm skies under the same neon accents.",
-          "GruvboxRetro groove after dark — warm charcoal under the gruvbox brights.",
+          "Catppuccin MochaThe original flavour \u2014 the deepest navy under the Catppuccin pastels.",
+          "Catppuccin LatteThe light flavour \u2014 cool paper under the same Catppuccin pastels.",
+          "Tokyo Night StormThe brighter night \u2014 indigo storm skies under the same neon accents.",
+          "GruvboxRetro groove after dark \u2014 warm charcoal under the gruvbox brights.",
           "NordArctic blue-grey with a frost cyan accent.",
-          "One DarkAtom's night standard — cool charcoal with the One accent row.",
-          "Solarized DarkSchoonover's precision dark — deep teal-black with a cyan accent.",
-          "Rosé PineDusty rose and muted pine on a deep plum night.",
-          "Rosé Pine MoonRosé Pine lifted: the same rose and pine over a softer violet.",
-          "Rosé Pine DawnRosé Pine by daylight: warm rose paper with pine and gold ink.",
+          "One DarkAtom's night standard \u2014 cool charcoal with the One accent row.",
+          "Solarized DarkSchoonover's precision dark \u2014 deep teal-black with a cyan accent.",
+          "Ros\u00e9 PineDusty rose and muted pine on a deep plum night.",
+          "Ros\u00e9 Pine MoonRos\u00e9 Pine lifted: the same rose and pine over a softer violet.",
+          "Ros\u00e9 Pine DawnRos\u00e9 Pine by daylight: warm rose paper with pine and gold ink.",
           "AlucardDracula's daylight: warm parchment under an indigo accent.",
           "Gruvbox LightRetro groove by daylight, warm cream and faded ink.",
-          "Tokyo Night DayTokyo Night at noon — cool paper under the same neon hues.",
+          "Tokyo Night DayTokyo Night at noon \u2014 cool paper under the same neon hues.",
           "One LightAtom's daylight standard, cool white with the One accent row.",
-          "Catppuccin FrappéThe middle flavour — warm slate under the Catppuccin pastels.",
-          "Catppuccin MacchiatoThe deep flavour — cool navy-slate under the same pastels.",
+          "Catppuccin Frapp\u00e9The middle flavour \u2014 warm slate under the Catppuccin pastels.",
+          "Catppuccin MacchiatoThe deep flavour \u2014 cool navy-slate under the same pastels.",
           "PalenightMaterial Palenight: deep navy under a soft violet accent.",
           "EverforestLow-contrast forest night, moss green over warm slate.",
           "Everforest LightEverforest by daylight: warm paper under a soft olive green.",
@@ -656,7 +656,7 @@
           "LavenderPurple-grey dusk lit by a soft lavender glow.",
           "ArcticSlate-blue polar night lit by an aurora-green accent.",
           "RosewoodDark rosewood with dried-rose reds and a glint of brass.",
-          "Solarized LightSchoonover's precision light — warm paper with the Solarized hues.",
+          "Solarized LightSchoonover's precision light \u2014 warm paper with the Solarized hues.",
           "GitHub LightGitHub's daylight canvas, white panels and Primer blue.",
           "PaperWarm cream paper with brown ink, an open book in good light.",
           "LinenCool off-white linen with soft dusty-pastel states.",
@@ -666,14 +666,99 @@
         "active": "Local Operator DarkThe default. Warm near-black with the brand green.",
         "sent": "none",
         "dispatched": "/theme",
-        "dialog": "ThemeDesktop theme. The terminal keeps its own tui.theme setting.Local OperatorLocal Operator DarkThe default. Warm near-black with the brand green.Local Operator LightWarm paper and ink, with the brand green.PortsDraculaBlue-grey ground with the signature Dracula purple.DuneDesert night: warm near-black with a vivid orange.SageLight and green: floral white paper with a deep sage ink.MonokaiThe Monokai scheme: olive-black ground with the acid green.Tokyo NightDeep blue-purple night with a bright blue accent.IcebergCool blue-grey paper with the Iceberg navy.RadientRadient blue: deep navy ground with a soft blue accent.NeonTron: near-black blue with cyan and cyberpunk pink.ObsidianMonochrome: zinc near-black with an off-white accent.SynthSynthwave: deep purple night with hot pink and neon blue.Catppuccin MochaThe original flavour — the deepest navy under the Catppuccin pastels.Catppuccin LatteThe light flavour — cool paper under the same Catppuccin pastels.Tokyo Night StormThe brighter night — indigo storm skies under the same neon accents.GruvboxRetro groove after dark — warm charcoal under the gruvbox brights.NordArctic blue-grey with a frost cyan accent.One DarkAtom's night standard — cool charcoal with the One accent row.Solarized DarkSchoonover's precision dark — deep teal-black with a cyan accent.Rosé PineDusty rose and muted pine on a deep plum night.Rosé Pine MoonRosé Pine lifted: the same rose and pine over a softer violet.Rosé Pine DawnRosé Pine by daylight: warm rose paper with pine and gold ink.AlucardDracula's daylight: warm parchment under an indigo accent.Gruvbox LightRetro groove by daylight, warm cream and faded ink.Tokyo Night DayTokyo Night at noon — cool paper under the same neon hues.One LightAtom's daylight standard, cool white with the One accent row.Catppuccin FrappéThe middle flavour — warm slate under the Catppuccin pastels.Catppuccin MacchiatoThe deep flavour — cool navy-slate under the same pastels.PalenightMaterial Palenight: deep navy under a soft violet accent.EverforestLow-contrast forest night, moss green over warm slate.Everforest LightEverforest by daylight: warm paper under a soft olive green.Kanagawa WaveHokusai ink-wash night, muted paper tones on deep sumi.Kanagawa LotusHokusai by daylight: yellowed paper under indigo and lotus pink.Ayu DarkAyu's night: near-black blue with a bright azure accent.Ayu MirageAyu's mirage: blue-grey ground with the same azure accent.Ayu LightAyu's daylight: white-grey paper with a deep azure accent.NightfoxNordfox night: slate blue under a pale azure accent.DuskfoxNordfox at dusk: the same slate warmed into violet plum.Synthwave '84Hot pink and cyan on a deep purple-navy night drive.MatrixPhosphor green rain on a near-black terminal screen.TronElectric cyan circuitry on the Grid's blue-black.CyberpunkConstruction yellow and glare cyan over violet-black Night City.VaporwaveDusty pink and faded teal pastels on deep mall-purple.OutrunSunset magenta and grid cyan racing over midnight blue.Neon NoirRain-dimmed cyan and magenta signs over 3am charcoal.ArcadeCandy RGB game states glowing on black CRT glass.ForestDeep pine shadow lit by moss-green light through the canopy.OceanDeep-sea blue-green under a pale sea-foam accent.DesertWarm dark sand under a terracotta glow and cactus green.AutumnDark oak under maple red and harvest amber.LavenderPurple-grey dusk lit by a soft lavender glow.ArcticSlate-blue polar night lit by an aurora-green accent.RosewoodDark rosewood with dried-rose reds and a glint of brass.Solarized LightSchoonover's precision light — warm paper with the Solarized hues.GitHub LightGitHub's daylight canvas, white panels and Primer blue.PaperWarm cream paper with brown ink, an open book in good light.LinenCool off-white linen with soft dusty-pastel states.High Contrast LightNear-black ink on near-white, every state well past its floor.Mint LightCrisp white with the cool cast of fresh mint.Arrows move · Enter picks Local Operator Dark · Esc closesClose",
+        "dialog": "ThemeDesktop theme. The terminal keeps its own tui.theme setting.Local OperatorLocal Operator DarkThe default. Warm near-black with the brand green.Local Operator LightWarm paper and ink, with the brand green.PortsDraculaBlue-grey ground with the signature Dracula purple.DuneDesert night: warm near-black with a vivid orange.SageLight and green: floral white paper with a deep sage ink.MonokaiThe Monokai scheme: olive-black ground with the acid green.Tokyo NightDeep blue-purple night with a bright blue accent.IcebergCool blue-grey paper with the Iceberg navy.RadientRadient blue: deep navy ground with a soft blue accent.NeonTron: near-black blue with cyan and cyberpunk pink.ObsidianMonochrome: zinc near-black with an off-white accent.SynthSynthwave: deep purple night with hot pink and neon blue.Catppuccin MochaThe original flavour \u2014 the deepest navy under the Catppuccin pastels.Catppuccin LatteThe light flavour \u2014 cool paper under the same Catppuccin pastels.Tokyo Night StormThe brighter night \u2014 indigo storm skies under the same neon accents.GruvboxRetro groove after dark \u2014 warm charcoal under the gruvbox brights.NordArctic blue-grey with a frost cyan accent.One DarkAtom's night standard \u2014 cool charcoal with the One accent row.Solarized DarkSchoonover's precision dark \u2014 deep teal-black with a cyan accent.Ros\u00e9 PineDusty rose and muted pine on a deep plum night.Ros\u00e9 Pine MoonRos\u00e9 Pine lifted: the same rose and pine over a softer violet.Ros\u00e9 Pine DawnRos\u00e9 Pine by daylight: warm rose paper with pine and gold ink.AlucardDracula's daylight: warm parchment under an indigo accent.Gruvbox LightRetro groove by daylight, warm cream and faded ink.Tokyo Night DayTokyo Night at noon \u2014 cool paper under the same neon hues.One LightAtom's daylight standard, cool white with the One accent row.Catppuccin Frapp\u00e9The middle flavour \u2014 warm slate under the Catppuccin pastels.Catppuccin MacchiatoThe deep flavour \u2014 cool navy-slate under the same pastels.PalenightMaterial Palenight: deep navy under a soft violet accent.EverforestLow-contrast forest night, moss green over warm slate.Everforest LightEverforest by daylight: warm paper under a soft olive green.Kanagawa WaveHokusai ink-wash night, muted paper tones on deep sumi.Kanagawa LotusHokusai by daylight: yellowed paper under indigo and lotus pink.Ayu DarkAyu's night: near-black blue with a bright azure accent.Ayu MirageAyu's mirage: blue-grey ground with the same azure accent.Ayu LightAyu's daylight: white-grey paper with a deep azure accent.NightfoxNordfox night: slate blue under a pale azure accent.DuskfoxNordfox at dusk: the same slate warmed into violet plum.Synthwave '84Hot pink and cyan on a deep purple-navy night drive.MatrixPhosphor green rain on a near-black terminal screen.TronElectric cyan circuitry on the Grid's blue-black.CyberpunkConstruction yellow and glare cyan over violet-black Night City.VaporwaveDusty pink and faded teal pastels on deep mall-purple.OutrunSunset magenta and grid cyan racing over midnight blue.Neon NoirRain-dimmed cyan and magenta signs over 3am charcoal.ArcadeCandy RGB game states glowing on black CRT glass.ForestDeep pine shadow lit by moss-green light through the canopy.OceanDeep-sea blue-green under a pale sea-foam accent.DesertWarm dark sand under a terracotta glow and cactus green.AutumnDark oak under maple red and harvest amber.LavenderPurple-grey dusk lit by a soft lavender glow.ArcticSlate-blue polar night lit by an aurora-green accent.RosewoodDark rosewood with dried-rose reds and a glint of brass.Solarized LightSchoonover's precision light \u2014 warm paper with the Solarized hues.GitHub LightGitHub's daylight canvas, white panels and Primer blue.PaperWarm cream paper with brown ink, an open book in good light.LinenCool off-white linen with soft dusty-pastel states.High Contrast LightNear-black ink on near-white, every state well past its floor.Mint LightCrisp white with the cool cast of fresh mint.Arrows move \u00b7 Enter picks Local Operator Dark \u00b7 Esc closesClose",
         "dialogRows": 59,
         "runs": [],
         "skillListCalls": 1,
         "scenario": "default:session"
       },
       "extra": null,
-      "frame": "/Users/damian/.local-operator/sessions/ba70aa217e9f/scratchpad/cc-frames-dark/theme-bare-keeps-the-grid.png",
+      "frame": "docs/evidence/chat-composer-cluster/theme-bare-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "skill-narrow-composer",
+      "why": "The long notice at the app's 800px floor (design round 1, D2): the durable sentence is the longest line the composer paints, and a width the default frame never visits is where a wrap would show. Structure is asserted here; the frame is what a designer reads.",
+      "state": {
+        "draft": "$",
+        "sel": 1,
+        "list": "Skills",
+        "listText": "SkillsThis backend cannot serve the skill catalogue. Update the backend and try again.",
+        "rows": [],
+        "active": null,
+        "sent": "none",
+        "dispatched": "none",
+        "dialog": null,
+        "dialogRows": 0,
+        "runs": [],
+        "skillListCalls": 0,
+        "scenario": "old-backend:session"
+      },
+      "extra": null,
+      "frame": "docs/evidence/chat-composer-cluster/skill-narrow-composer-after.png",
+      "viewport": {
+        "width": 800,
+        "height": 900
+      },
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "skill-many-scroll",
+      "why": "A catalogue longer than the region (design round 1, D2): six rows are reserved at a whole pitch and this fixture carries nine, scrolled by one real wheel event. The readback proves the scroll landed (scrollTop > 0) rather than trusting the picture.",
+      "state": {
+        "draft": "$",
+        "sel": 1,
+        "list": "Skills",
+        "listText": "Skills$researchResearch a question against the codebase$release-notesDraft release notes from merged pull requests$secret-ritualHidden from routing; invoke by name$audit-passWalk a diff against its stated intent$bench-runRun the benchmark suite headless$changelog-draftCompose the release changelog$dep-digestSummarise dependency updates$env-doctorDiagnose the local environment$fixture-refreshRe-derive the committed fixturesEnter completes $research; Enter again sends it.Click completes $research.",
+        "rows": [
+          "$researchResearch a question against the codebase",
+          "$release-notesDraft release notes from merged pull requests",
+          "$secret-ritualHidden from routing; invoke by name",
+          "$audit-passWalk a diff against its stated intent",
+          "$bench-runRun the benchmark suite headless",
+          "$changelog-draftCompose the release changelog",
+          "$dep-digestSummarise dependency updates",
+          "$env-doctorDiagnose the local environment",
+          "$fixture-refreshRe-derive the committed fixtures"
+        ],
+        "active": "$researchResearch a question against the codebase",
+        "sent": "none",
+        "dispatched": "none",
+        "dialog": null,
+        "dialogRows": 0,
+        "runs": [],
+        "skillListCalls": 1,
+        "scenario": "many:draft"
+      },
+      "extra": {
+        "scrolled": 104
+      },
+      "frame": "docs/evidence/chat-composer-cluster/skill-many-scroll-after.png",
+      "verdict": "PASS",
+      "mismatches": []
+    },
+    {
+      "name": "skill-loading-line",
+      "why": "The loading arm (design round 1, D1): a leading `$` against a read still in flight renders the family's \"Loading\u2026\" \u2014 the one arm that used to open NOTHING at all. The fixture's 900ms delay is the window this case reads and shoots inside.",
+      "state": {
+        "draft": "$",
+        "sel": 1,
+        "list": "Skills",
+        "listText": "SkillsLoading\u2026",
+        "rows": [],
+        "active": null,
+        "sent": "none",
+        "dispatched": "none",
+        "dialog": null,
+        "dialogRows": 0,
+        "runs": [],
+        "skillListCalls": 1,
+        "scenario": "slow:draft"
+      },
+      "extra": null,
+      "frame": "docs/evidence/chat-composer-cluster/skill-loading-line-after.png",
       "verdict": "PASS",
       "mismatches": []
     }

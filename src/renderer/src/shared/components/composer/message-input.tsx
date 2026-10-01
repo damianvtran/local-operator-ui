@@ -2304,18 +2304,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 							unconfirmed: string[];
 					  }
 					| undefined;
-				const seam = credentialSessionId
-					? undefined
-					: async (sessionId: string) => {
-							settled = await storeCitedCredentials(message, sessionId);
-							return settled.text;
-						};
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it
 				// downstream of every comparison and deadlocked Restore - see
 				// `buildSendPayload`.
-				const carried = seam
+				const carried = credentialSessionId
 					? { text: message, stored: [], refused: [], unconfirmed: [] }
 					: await storeCitedCredentials(message);
 				if (carried.stored.length > 0)
@@ -2362,11 +2356,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * notice says so and the raw text goes through untouched, which is the
 				 * harness's own trade — a message the user can see and resend beats a
 				 * gesture that looked like it fired and did not. The REQUEST comes from
-				 * the substituted text (`carried.text`) when that still parses to the
-				 * SAME skill, because credential citations may have rewritten it inside
-				 * the request; a different or missing parse keeps the typed request.
+				 * the substituted text (whichever one this path's credential step
+				 * settled on — `composeOutgoing` below takes it as its argument) when
+				 * that still parses to the SAME skill, because credential citations may
+				 * have rewritten it inside the request; a different or missing parse
+				 * keeps the typed request.
 				 */
-				let outgoingText = buildSendPayload(carried.text, replies);
 				const skillNames = skillNamesRef.current;
 				const invocation = parseSkillInvocation(message, skillNames);
 				/*
@@ -2376,24 +2371,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * first message exactly as it does in a live one. The parse still reads
 				 * the TYPED line before anything splices it, and the vocabulary it
 				 * resolves against is the same sessionless answer the list shows.
+				 *
+				 * READ ONCE, ABOVE BOTH COMPOSERS: the attached path's composition and
+				 * the draft path's seam both consume this body, and a second read
+				 * inside the seam would be a second request for an answer already in
+				 * hand.
 				 */
+				let skillBody: string | null = null;
 				if (invocation && skillReadProvided) {
 					const body = await readSkillBody(
 						skillReadClient,
 						cwd ?? "",
 						invocation.name,
 					);
-					if (body !== null && skillBodyHasContent(body)) {
-						const substituted = parseSkillInvocation(carried.text, skillNames);
-						const request =
-							substituted && substituted.name === invocation.name
-								? substituted.request
-								: invocation.request;
-						outgoingText = buildSendPayload(
-							renderSkillInvocation({ ...invocation, request }, body),
-							replies,
-						);
-					} else if (body !== null) {
+					if (body !== null && skillBodyHasContent(body)) skillBody = body;
+					else if (body !== null) {
 						onSlashNote?.(
 							`skill \`${invocation.name}\` has an empty body — sending your message as written`,
 						);
@@ -2403,6 +2395,46 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 						);
 					}
 				}
+				/*
+				 * THE ONE COMPOSITION, over whichever text the credential step settled
+				 * on — and WHY IT IS ONE (QA round 1, Q-1, the blocker). On a DRAFT pane
+				 * the credential work runs inside the store's `beforeAdmission` seam, and
+				 * the store lets that seam's RETURN REPLACE the payload the press built
+				 * (`admitChatDraft`: `(await beforeAdmission(id)) ?? text`). The seam used
+				 * to answer with the substituted raw line, so a first-message `$skill`
+				 * degraded to prose: the read succeeded, the payload was built, and the
+				 * replacement discarded it — the exact string the model then received
+				 * was the typed line. Both paths therefore end HERE: the attached path
+				 * composes once over `carried.text`, the seam composes over the
+				 * substituted text it just settled. One builder, so the two cannot
+				 * drift — the failure was invisible precisely because every gate, the
+				 * read and the list were all working; only the final string was
+				 * replaced.
+				 */
+				const composeOutgoing = (substitutedText: string): string => {
+					if (invocation !== null && skillBody !== null) {
+						const substituted = parseSkillInvocation(
+							substitutedText,
+							skillNames,
+						);
+						const request =
+							substituted && substituted.name === invocation.name
+								? substituted.request
+								: invocation.request;
+						return buildSendPayload(
+							renderSkillInvocation({ ...invocation, request }, skillBody),
+							replies,
+						);
+					}
+					return buildSendPayload(substitutedText, replies);
+				};
+				const seam = credentialSessionId
+					? undefined
+					: async (sessionId: string) => {
+							settled = await storeCitedCredentials(message, sessionId);
+							return composeOutgoing(settled.text);
+						};
+				const outgoingText = composeOutgoing(carried.text);
 				const accepted = await onSendMessage(
 					/*
 					 * THE INVOCATION PAYLOAD WHEN ONE FIRED, the composed text otherwise.

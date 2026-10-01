@@ -540,6 +540,84 @@ const CASES = [
 			],
 		],
 	},
+	{
+		name: "skill-narrow-composer",
+		why: "The long notice at the app's 800px floor (design round 1, D2): the durable sentence is the longest line the composer paints, and a width the default frame never visits is where a wrap would show. Structure is asserted here; the frame is what a designer reads.",
+		viewport: { width: 800, height: 900 },
+		args: ";skillFixture:old-backend",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await sleep(400);
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["rows", state.rows.length, 0],
+			[
+				"the durable sentence is the box",
+				String(state.listText).includes(
+					"This backend cannot serve the skill catalogue.",
+				),
+				true,
+			],
+			["no query fired for it", state.skillListCalls, 0],
+		],
+	},
+	{
+		name: "skill-many-scroll",
+		why: "A catalogue longer than the region (design round 1, D2): six rows are reserved at a whole pitch and this fixture carries nine, scrolled by one real wheel event. The readback proves the scroll landed (scrollTop > 0) rather than trusting the picture.",
+		args: ";pane:draft;skillFixture:many",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await sleep(400);
+			const box = await evaluate(`(() => {
+				const region = document.querySelector('[role="listbox"] div.overflow-y-auto');
+				if (!region) return null;
+				const r = region.getBoundingClientRect();
+				return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+			})()`);
+			if (box) {
+				await send("Input.dispatchMouseEvent", {
+					type: "mouseWheel",
+					x: box.x,
+					y: box.y,
+					deltaX: 0,
+					deltaY: 144,
+				});
+				await sleep(300);
+			}
+			const scrolled = await evaluate(`(() => {
+				const region = document.querySelector('[role="listbox"] div.overflow-y-auto');
+				return region ? region.scrollTop : null;
+			})()`);
+			return { state: await evaluate(READ_STATE), extra: { scrolled } };
+		},
+		expect: (state, extra) => [
+			["rows", state.rows.length, 9],
+			["the region scrolled under the wheel", extra.scrolled > 0, true],
+		],
+	},
+	{
+		name: "skill-loading-line",
+		why: "The loading arm (design round 1, D1): a leading `$` against a read still in flight renders the family's \"Loading…\" — the one arm that used to open NOTHING at all. The fixture's 900ms delay is the window this case reads and shoots inside.",
+		args: ";pane:draft;skillFixture:slow",
+		drive: async () => {
+			await clearDraft();
+			await send("Input.insertText", { text: "$" });
+			await sleep(120);
+			return { state: await evaluate(READ_STATE) };
+		},
+		expect: (state) => [
+			["rows while loading", state.rows.length, 0],
+			[
+				"the loading line is the box",
+				String(state.listText).includes("Loading…"),
+				true,
+			],
+			["the slow read fired once", state.skillListCalls, 1],
+		],
+	},
 ];
 
 /*
@@ -720,7 +798,25 @@ async function shoot(name) {
  */
 async function reset(extraArgs = "") {
 	await send("Page.navigate", { url: "about:blank" });
-	await wait(150);
+	/*
+	 * WAIT FOR THE OLD DOCUMENT TO ACTUALLY GO AWAY, actively rather than by a
+	 * fixed sleep. The fixed 150ms was a race: when the blank navigation had not
+	 * committed yet, the readiness poll below found the PREVIOUS case's textarea
+	 * still mounted, returned early, and whatever the case then typed went into a
+	 * document that vanished under it — measured once in a full sweep: one case
+	 * read `draft: null, scenario: null` and shot a blank frame. Waiting until no
+	 * textarea remains makes "a textarea exists" mean the NEW page's, always.
+	 */
+	const blanked = Date.now();
+	for (;;) {
+		const cleared = await evaluate(
+			`(() => !document.querySelector("textarea"))()`,
+		);
+		if (cleared) break;
+		if (Date.now() - blanked > 5_000)
+			throw new Error("about:blank never cleared the previous composer");
+		await wait(50);
+	}
 	await send("Page.navigate", {
 		url: `${ORIGIN}/iframe.html?id=${STORY}&viewMode=story&args=theme:${THEME}${extraArgs}`,
 	});
@@ -807,10 +903,23 @@ async function clearDraft() {
 async function waitForList() {
 	const started = Date.now();
 	for (;;) {
-		const open = await evaluate(
-			`Boolean(document.querySelector('[role="listbox"]'))`,
-		);
-		if (open) return;
+		/*
+		 * SETTLED, NOT MERELY OPEN (design round 1, D1's side effect). The loading
+		 * arm opens the shell while the read is still in flight, so "a listbox
+		 * exists" no longer means "there is an answer in it" — a wait that
+		 * stopped there handed every later case the half-second-old "Loading…"
+		 * (measured: the transient case read the loading line as a missing
+		 * sentence). The box counts as ready when it shows anything but the
+		 * loading line: rows, a notice, or the miss.
+		 */
+		const state = await evaluate(`(() => {
+			const box = document.querySelector('[role="listbox"]');
+			return {
+				open: Boolean(box),
+				loading: box ? (box.textContent ?? "").includes("Loading…") : false,
+			};
+		})()`);
+		if (state.open && !state.loading) return;
 		if (Date.now() - started > 10_000) {
 			console.log("  (no list opened — recording the state as it stands)");
 			return;
@@ -938,12 +1047,35 @@ try {
 	await send("Emulation.setFocusEmulationEnabled", { enabled: true });
 
 	for (const testCase of SELECTED_CASES) {
+		/*
+		 * PER-CASE VIEWPORT (design round 1, D2): the frames are authored at the
+		 * app's own default, and ONE case photographs the composer's 800px floor
+		 * - a width the default frame never visits. The override is per case and
+		 * restored after its shot, so every other frame keeps the size the
+		 * record's own `viewport` field names, and the case's entry carries the
+		 * size it was framed at.
+		 */
+		const viewport = testCase.viewport ?? { width: WIDTH, height: HEIGHT };
+		if (viewport.width !== WIDTH || viewport.height !== HEIGHT)
+			await send("Emulation.setDeviceMetricsOverride", {
+				width: viewport.width,
+				height: viewport.height,
+				deviceScaleFactor: 1,
+				mobile: false,
+			});
 		await reset(testCase.args ?? "");
 		await send("Page.addScriptToEvaluateOnNewDocument", {
 			source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(THEME)} }, version: 0 })); } catch {}`,
 		});
 		const { state, extra } = await testCase.drive();
 		const frame = await shoot(testCase.name);
+		if (viewport.width !== WIDTH || viewport.height !== HEIGHT)
+			await send("Emulation.setDeviceMetricsOverride", {
+				width: WIDTH,
+				height: HEIGHT,
+				deviceScaleFactor: 1,
+				mobile: false,
+			});
 
 		const mismatches = [];
 		for (const [field, actual, expected] of testCase.expect(
@@ -963,6 +1095,10 @@ try {
 			state,
 			extra: extra ?? null,
 			frame,
+			/* The size this frame was shot at, when it is not the record default. */
+			...(viewport.width !== WIDTH || viewport.height !== HEIGHT
+				? { viewport: { width: viewport.width, height: viewport.height } }
+				: {}),
 			verdict: mismatches.length === 0 ? "PASS" : "FAIL",
 			mismatches,
 		});
