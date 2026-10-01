@@ -197,6 +197,22 @@ export type DesktopFeature =
 	| "commands"
 	| "catalogues"
 	/**
+	 * The SESSIONLESS skills read: `skills.list` answers with NO session — an
+	 * explicit `cwd` (the daemon's home roots when omitted) or the session form —
+	 * and carries a `version` for the vocabulary.
+	 *
+	 * ITS OWN KEY rather than a bump of `catalogues`, on the rule this union
+	 * states in several places: a released backend serves `skills.list` only with
+	 * `session_id` (it answers a masked 422 for anything else), so the composer
+	 * must be able to ASK before sending a sessionless call an older surface
+	 * cannot honour. Absent here means the composer fires NO skills query and
+	 * shows the update-the-backend notice; the session arm keeps serving the
+	 * `/skills` panel and released clients unchanged. NOT in
+	 * `REQUIRED_BACKEND_FEATURES`: an optional feature, like `radient_org` — the
+	 * compatibility banner must not hold every older backend to it.
+	 */
+	| "skill_catalogue"
+	/**
 	 * The four closed ORGANIZATION operations the merged local server exposes
 	 * (`memberships.list`, `org_agents.list`, `org_team.get`, `org_teams.list`).
 	 *
@@ -209,6 +225,13 @@ export type DesktopFeature =
 	 * backend", which is the remedy the org surfaces render.
 	 */
 	| "radient_org"
+	/**
+	 * The hub auto-update plane (`GET /v1/desktop/hub/updates` and its five
+	 * mutations). ITS OWN KEY so a backend that predates it is never asked: an
+	 * unknown `/v1/desktop/hub/...` path would answer 404 on every poll, and the
+	 * sidebar would either log that forever or have to guess whether to stop.
+	 */
+	| "hub_updates"
 	| "profile_catalogue"
 	| "team_catalogue"
 	| "session_catalogue"
@@ -355,6 +378,21 @@ export type DesktopFeature =
 	 * falling back to something that ends the session.
 	 */
 	| "session_interrupt"
+	/**
+	 * Conversational configuration: `sessions.create` accepting a `purpose`
+	 * (`agents-config`), which makes the backend start a SUPERVISED BACKGROUND
+	 * RUN that edits this device's agent and team registries without ever
+	 * entering the operator's conversation.
+	 *
+	 * ITS OWN KEY, for the reason every key in this union is: a backend that
+	 * predates the field validates the create body with `extra="forbid"` and
+	 * answers a masked 422, so an un-gated composer would report a malformed
+	 * request for a request the app deliberately made — and could not tell
+	 * "update the backend" from "the app is broken". Absent here means the
+	 * composer is not rendered at all and the structured editor is the only
+	 * path, with one honest line saying why (the `session_interrupt` precedent).
+	 */
+	| "agents_config"
 	/**
 	 * `input_mode` on `sessions.message`: the harness carries the composer's own
 	 * record of how a message was produced (`typed` / `dictated` / `mixed`, see

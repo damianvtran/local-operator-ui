@@ -110,6 +110,9 @@ export const gruvbox: ThemeDefinition = {
 		// 1.21-1.71:1 against them. It divides rather than bounds, which is what keeps it
 		// from competing with the edge below.
 		hairline: "#494442",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.87:1 there against `hairline`'s 1.71:1.
+		hairlineStrong: "#4F4A46",
 		// Bg2 504945 is 1.31:1 against the grounds, far under the 3:1 a control's only
 		// edge is asked for. Lifted along the same warm grey to 3.1:1 on the lightest
 		// ground.

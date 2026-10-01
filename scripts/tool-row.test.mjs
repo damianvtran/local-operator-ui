@@ -39,6 +39,9 @@ const bundle = await build({
 });
 const {
 	compactPath,
+	deliveryRowOutcome,
+	deliverySettledVerb,
+	deliveryStateFromDetails,
 	diffBody,
 	diffCount,
 	diffFromDetails,
@@ -51,10 +54,17 @@ const {
 	formatSettledDuration,
 	isDiffBodyTool,
 	isDiffBodyRow,
+	isFailedResult,
+	isPartialDelivery,
 	preferDiff,
 	preferDiffCounts,
+	preferDeliveryState,
 	outputFallbackLine,
 	requestDesktopMedia,
+	SEND_DELIVERY_LABEL,
+	SEND_DELIVERY_NOTE,
+	SEND_DELIVERY_TITLE,
+	SEND_DELIVERY_WORD,
 	stripDiffHeader,
 	summaryFromArgs,
 	toolCategory,
@@ -137,6 +147,292 @@ test("a send row leads with the delivery mode", () => {
 	// Nothing addresses a peer: `?` rather than a blank, which would read as
 	// though the next field were the target.
 	assert.equal(summaryFromArgs("send", { message: "hi" }), "wake · ? · hi");
+});
+
+test("a send row's delivery state is read from details, and absent or unknown is no statement", () => {
+	/*
+	 * The renderers must not sniff prose - the rule the row's other state fields
+	 * already keep - so the state comes from `details.delivery.state` alone. Two
+	 * ways of saying nothing have to read the SAME, because their fallback is
+	 * exactly the row this field did not exist for: an old transcript, an old core
+	 * and a tool that never had a delivery.
+	 */
+	for (const state of ["delivered", "mailbox", "unconfirmed", "failed"]) {
+		assert.equal(deliveryStateFromDetails({ delivery: { state } }), state);
+	}
+	// A state this build does not know is treated as absent, never guessed at.
+	assert.equal(
+		deliveryStateFromDetails({ delivery: { state: "queued" } }),
+		null,
+	);
+	assert.equal(deliveryStateFromDetails({ delivery: { state: "" } }), null);
+	assert.equal(deliveryStateFromDetails({ delivery: { state: 7 } }), null);
+	// Absent, in every shape a result can be absent in - and ANOTHER tool's
+	// `details` object, which must not be read as a delivery that says nothing
+	// new but as no delivery at all.
+	assert.equal(deliveryStateFromDetails({}), null);
+	assert.equal(deliveryStateFromDetails({ delivery: {} }), null);
+	assert.equal(deliveryStateFromDetails({ delivery: "mailbox" }), null);
+	assert.equal(deliveryStateFromDetails({ diff: ["+ one"], pid: 42 }), null);
+	assert.equal(deliveryStateFromDetails(null), null);
+	assert.equal(deliveryStateFromDetails(undefined), null);
+
+	/*
+	 * And the reducer's rule, which is `preferDiffCounts`' rule because it is the
+	 * same question: a frame whose `details` were stripped says NOTHING and keeps
+	 * what the row held, where a frame that carried an object states the delivery
+	 * (`{}` included, which is the producer saying "no delivery here").
+	 */
+	assert.equal(preferDeliveryState(undefined, "mailbox"), "mailbox");
+	assert.equal(preferDeliveryState(null, "unconfirmed"), "unconfirmed");
+	assert.equal(preferDeliveryState(undefined, null), null);
+	assert.equal(
+		preferDeliveryState({ delivery: { state: "failed" } }, "mailbox"),
+		"failed",
+	);
+	assert.equal(preferDeliveryState({}, "mailbox"), null);
+
+	/*
+	 * THE WORDS, THE SPOKEN SENTENCES, THE HOVERS AND THE EXPANSION NOTES,
+	 * verbatim - and the provenance of each is stated rather than implied (agent
+	 * review round 1: for one round the `unconfirmed` hover was asserted as "the
+	 * frozen interface's own strings" when nothing froze it, so the assertion
+	 * could not tell the copy from the design).
+	 *
+	 * FROZEN: the three words (the fourth state's word is `delivery unconfirmed`
+	 * per the round-1 disposition, which supersedes the round-0 brief's bare
+	 * `unconfirmed`), the mailbox hover, and the mailbox spoken sentence.
+	 *
+	 * THIS CHANGE'S OWN COMPOSITION, for the design round to bless or replace: the
+	 * `unconfirmed` hover, the hedge on the `unconfirmed` spoken sentence (UX U3),
+	 * and the three `SEND_DELIVERY_NOTE` sentences (UX U1/U4). They are asserted so
+	 * an edit is visible in the suite, NOT as a claim that a design note asked for
+	 * them.
+	 */
+	assert.deepEqual(SEND_DELIVERY_WORD, {
+		mailbox: "wake unconfirmed",
+		unconfirmed: "delivery unconfirmed",
+		failed: "not delivered",
+	});
+	assert.deepEqual(SEND_DELIVERY_LABEL, {
+		mailbox: "delivered, wake unconfirmed",
+		unconfirmed:
+			"delivery unconfirmed — it may still arrive, so check before resending",
+	});
+	assert.deepEqual(SEND_DELIVERY_TITLE, {
+		mailbox:
+			"In their mailbox. The wake got no answer, so they will read it on their next turn.",
+		unconfirmed:
+			"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+	});
+	// Only the two amber states carry a hover: `not delivered` is the whole
+	// statement and `delivered` says nothing at all. Nor does `failed` carry a
+	// spoken sentence - its drawn word IS the announcement - so an entry there
+	// would be a string nothing renders.
+	assert.equal(SEND_DELIVERY_TITLE.failed, undefined);
+	assert.equal(SEND_DELIVERY_TITLE.delivered, undefined);
+	assert.equal(SEND_DELIVERY_LABEL.failed, undefined);
+	assert.equal(SEND_DELIVERY_LABEL.delivered, undefined);
+	// Every word is distinct with the colour off, which is what makes the pair
+	// readable to a reader who cannot see the amber/red step.
+	assert.equal(
+		new Set(Object.values(SEND_DELIVERY_WORD)).size,
+		Object.keys(SEND_DELIVERY_WORD).length,
+	);
+	/*
+	 * The expansion's own sentences (UX round 1, U1/U4): one per state that did not
+	 * plainly succeed, and NONE for `delivered` - a success says nothing, and its
+	 * expansion is the row it always was.
+	 */
+	assert.deepEqual(Object.keys(SEND_DELIVERY_NOTE).sort(), [
+		"failed",
+		"mailbox",
+		"unconfirmed",
+	]);
+	assert.equal(SEND_DELIVERY_NOTE.delivered, undefined);
+	for (const note of Object.values(SEND_DELIVERY_NOTE)) {
+		assert.match(note, /\.$/);
+		// No agent API in a sentence a PERSON reads (U4): the check the reader can
+		// run lives in the model-facing result text, not here.
+		assert.ok(
+			!/sessions\(|op=|\(id /.test(note),
+			`the expansion's note speaks to the reader, not the model — got ${note}`,
+		);
+		// The states that must not be re-sent say so; the one that may be retried
+		// says that instead. Either way there is an action in the sentence.
+		assert.match(note, /again|resending|retry/i);
+	}
+	/*
+	 * ...AND THE DIRECTION A NOTE POINTS MUST BE THE DIRECTION THE CARD RENDERS
+	 * (agent review round 2, MINOR-1 / design D2 / UX U9). The note is drawn ABOVE
+	 * the result block (`[target][message][wake][note][label][machine line]`), so a
+	 * "cause above" sent the reader to the arguments grid while the cause is named
+	 * in the machine line BELOW it. Pinned as a direction rather than as the
+	 * sentence, so the copy can still be rewritten without the pointer drifting
+	 * back.
+	 */
+	assert.doesNotMatch(SEND_DELIVERY_NOTE.failed, /cause above/i);
+	assert.match(SEND_DELIVERY_NOTE.failed, /cause named below/i);
+
+	/*
+	 * Which outcome each state earns, and the COUNT rule that follows from it: the
+	 * fold's failed count, the turn foot's `· N failed` and the failed-row jump all
+	 * read `isFailedResult`, so a settled partial can never be counted or jumped to
+	 * as a failure even if a producer put `is_error` on it. `failed` earns NO row
+	 * outcome of its own - it is the error the row already had, and the word beside
+	 * it comes from the table above.
+	 */
+	assert.equal(deliveryRowOutcome("mailbox"), "partial");
+	assert.equal(deliveryRowOutcome("unconfirmed"), "partial");
+	assert.equal(deliveryRowOutcome("failed"), null);
+	assert.equal(deliveryRowOutcome("delivered"), null);
+	assert.equal(deliveryRowOutcome(null), null);
+	assert.equal(deliveryRowOutcome(undefined), null);
+	assert.ok(isPartialDelivery("mailbox") && isPartialDelivery("unconfirmed"));
+	assert.ok(!isPartialDelivery("failed") && !isPartialDelivery("delivered"));
+	assert.ok(!isPartialDelivery(null));
+	assert.equal(isFailedResult(true, "failed"), true);
+	assert.equal(isFailedResult(true, null), true);
+	assert.equal(isFailedResult(false, "failed"), false);
+	assert.equal(isFailedResult(true, "mailbox"), false);
+	assert.equal(isFailedResult(true, "unconfirmed"), false);
+	assert.equal(isFailedResult(undefined, "failed"), false);
+	/*
+	 * And the settled VERB a failed delivery earns (UX round 1, U8): the row must
+	 * not open with `Sent` and close with `not delivered`. Only the proven-failure
+	 * state overrides; the amber pair keeps the tool's own verb.
+	 */
+	assert.equal(deliverySettledVerb("failed"), "Attempted");
+	assert.equal(deliverySettledVerb("mailbox"), null);
+	assert.equal(deliverySettledVerb("unconfirmed"), null);
+	assert.equal(deliverySettledVerb("delivered"), null);
+	assert.equal(deliverySettledVerb(null), null);
+});
+
+test("a sessions row names its operation, its address, and its window", () => {
+	/*
+	 * `sessions` is one tool with six ops (list/info/spawn/resume/stop/peek,
+	 * `docs/design/sessions-tool.md` §3.1), and it mirrors the TUI/phone's
+	 * shared summary (`sessions_row_summary`, `harness/rows.py`, sibling PR
+	 * `damianvtran/local-operator` #1825) in this row's own grammar: the verb
+	 * carries the op, the object everything else. The discriminator rule is
+	 * `send`'s, one layer down - the row sheds from the right, so `spawn`
+	 * carries its VISIBILITY first (both values; the default is spelled) and
+	 * a `stop` beside a `peek` on one session never reads the same.
+	 */
+	const row = (args) =>
+		toolRowLabel(
+			"sessions",
+			summaryFromArgs("sessions", args),
+			null,
+			false,
+			toolOp(args),
+		);
+
+	// A spawn with a name and a prompt: the visibility leads, the name is the
+	// subject. An omitted flag still reads `workstream` - the default is the
+	// fix this tool ships and must not be the field a narrow row drops.
+	assert.deepEqual(row({ op: "spawn", name: "night-audit", prompt: "go" }), {
+		verb: "Spawned session",
+		object: "workstream · night-audit",
+	});
+	// The ephemeral arm, prompt-only: no name, and the visibility still leads.
+	assert.deepEqual(
+		row({ op: "spawn", visibility: "ephemeral", prompt: "fix the shard" }),
+		{ verb: "Spawned session", object: "ephemeral · fix the shard" },
+	);
+	// Addressed ops take the resolver's own precedence: pid, then the exact
+	// session id, then the substring (`_sessions_address`).
+	assert.deepEqual(row({ op: "stop", target: "release-crew" }), {
+		verb: "Stopped session",
+		object: "release-crew",
+	});
+	assert.deepEqual(row({ op: "resume", session: "5d3f2a9c" }), {
+		verb: "Resumed session",
+		object: "5d3f2a9c",
+	});
+	assert.deepEqual(row({ op: "info", pid: 48213 }), {
+		verb: "Viewed session",
+		object: "pid 48213",
+	});
+	// The lax spellings the schema executes read as the pid they execute as -
+	// a string that coerces, and the `.0` float - while a non-integer float,
+	// which the schema REFUSES, paints no pid at all and falls through to the
+	// address ladder (review round 1, R-3).
+	assert.deepEqual(row({ op: "stop", pid: "48213" }), {
+		verb: "Stopped session",
+		object: "pid 48213",
+	});
+	assert.deepEqual(row({ op: "info", pid: "48213.0" }), {
+		verb: "Viewed session",
+		object: "pid 48213",
+	});
+	assert.deepEqual(row({ op: "stop", pid: 48213.5 }), {
+		verb: "Stopped session",
+		object: "?",
+	});
+	// An addressed op that names no address: `?`, never blank (the send rule).
+	assert.deepEqual(row({ op: "stop" }), {
+		verb: "Stopped session",
+		object: "?",
+	});
+	// peek: the address, then the window. `query` outranks `steps` because the
+	// tool keeps `steps` as the match window's SIZE - `last 6` would be a read
+	// this call never makes, and the search term would be dropped.
+	assert.deepEqual(row({ op: "peek", target: "night-audit", steps: 12 }), {
+		verb: "Peeked at session",
+		object: "night-audit · last 12",
+	});
+	assert.deepEqual(
+		row({ op: "peek", target: "night-audit", query: "flaky", steps: 6 }),
+		{
+			verb: "Peeked at session",
+			object: "night-audit · search flaky · 6 around",
+		},
+	);
+	assert.deepEqual(row({ op: "peek", target: "night-audit", digest: true }), {
+		verb: "Peeked at session",
+		object: "night-audit · digest",
+	});
+	// A call that names no window must not claim one (the tool's default
+	// applies, and the row must not invent a `last 12`).
+	assert.deepEqual(row({ op: "peek", target: "night-audit" }), {
+		verb: "Peeked at session",
+		object: "night-audit",
+	});
+	// The lax ints: a string `steps` executes exactly like its number (the
+	// hub/wait lesson, QA Q1b), and a non-numeric string is not a window.
+	assert.deepEqual(row({ op: "peek", target: "night-audit", steps: "12" }), {
+		verb: "Peeked at session",
+		object: "night-audit · last 12",
+	});
+	assert.deepEqual(row({ op: "peek", target: "night-audit", steps: "many" }), {
+		verb: "Peeked at session",
+		object: "night-audit",
+	});
+	// list: the scope markers ride the object; a bare listing names nothing.
+	assert.deepEqual(
+		row({ op: "list", include_stored: true, query: "release" }),
+		{ verb: "Listed sessions", object: "stored · release" },
+	);
+	assert.deepEqual(row({ op: "list" }), {
+		verb: "Listed sessions",
+		object: "",
+	});
+	// The running half is the present participle, as everywhere else.
+	assert.equal(toolVerb("sessions", "spawn").running, "Spawning session");
+	assert.equal(toolVerb("sessions", "peek").running, "Peeking at session");
+	// An operation this build does not know takes the GENERIC verb, and the
+	// selector token does not leak into the object (the agent precedent): the
+	// call is named, nothing is guessed.
+	assert.deepEqual(row({ op: "frobnicate" }), {
+		verb: "Called",
+		object: "sessions",
+	});
+	assert.deepEqual(row({ op: "frobnicate", target: "x" }), {
+		verb: "Called",
+		object: "sessions x",
+	});
 });
 
 test("a whole-token absolute path is shortened against home", () => {
@@ -360,10 +656,11 @@ test("the project family names every operation, and the milestone flag decides a
 		{ verb: "Removed milestone", object: "ship-v2" },
 	);
 	// Every op the installed build accepts names its call: `Called` is what a
-	// row says when it does NOT know, and none of these are that. The four
+	// row says when it does NOT know, and none of these are that. The five
 	// meta tools whose ops the tables key on are all covered EXHAUSTIVELY here
-	// (review round 1, R1-2): a typo or a dropped entry in any of them used to
-	// fall to `Called` with nothing failing.
+	// (review round 1, R1-2; `sessions` added by the trace-sessions lane): a
+	// typo or a dropped entry in any of them used to fall to `Called` with
+	// nothing failing.
 	for (const [tool, ops] of Object.entries({
 		agent: [
 			"list",
@@ -386,6 +683,7 @@ test("the project family names every operation, and the milestone flag decides a
 			"unlink",
 			"milestone",
 		],
+		sessions: ["list", "info", "spawn", "resume", "stop", "peek"],
 	})) {
 		for (const op of ops) {
 			assert.notEqual(
@@ -539,6 +837,28 @@ test("the project pair carries its glyphs, and the two fallbacks stay distinct",
 	assert.equal(toolIcon("project_delete").displayName, "Trash2");
 	assert.equal(toolIcon("some_custom_tool").displayName, "Wrench");
 	assert.equal(toolIcon("mcp__linear_create_issue").displayName, "Plug");
+});
+
+test("the sessions glyph is the second window, not the wrench or a copy", () => {
+	/*
+	 * PR C's desk half (sibling `damianvtran/local-operator` #1825): a
+	 * `sessions` row used to lead with the generic wrench. The TUI picked
+	 * nf-fa-window_restore - two windows, "a second window opened beside this
+	 * one" - and this table mirrors the SEMANTIC in lucide's vocabulary:
+	 * `PictureInPicture2` is the one mark that draws two windows. It must not
+	 * take either fallback and must not duplicate its nearest neighbours:
+	 * `task`/`agent` (work handed to a child) and `send` (a note to a peer) -
+	 * a peer session is a window of its own that this session watches rather
+	 * than owns. The category follows the tool family (coordination, the same
+	 * `meta` lane `project` and `console` sit in).
+	 */
+	assert.equal(toolIcon("sessions").displayName, "PictureInPicture2");
+	// Case-insensitive, because a tool name is model-controlled.
+	assert.equal(toolIcon("Sessions").displayName, "PictureInPicture2");
+	assert.notEqual(toolIcon("sessions").displayName, "Wrench");
+	assert.notEqual(toolIcon("sessions").displayName, "Users");
+	assert.notEqual(toolIcon("sessions").displayName, "Send");
+	assert.equal(toolCategory("sessions"), "meta");
 });
 
 /* ------------------------------------------------------- the media relay */
@@ -1172,6 +1492,22 @@ test("the transcript no longer renders a Writing row", () => {
 	);
 });
 
+/*
+ * The table-cell ceiling (design note D1, the markdown-table width fix of
+ * 2026-09-30): `th, td { max-width: 64ch }` is a ceiling on ONE CELL's
+ * min-content demand - the token with no word boundary at all - not a reading
+ * measure on prose, and the property test below admits exactly this one, by
+ * VALUE and by RULE. Hoisted because `scripts/` is held to
+ * `lint/performance/useTopLevelRegex`; kept beside the test because the
+ * exception and its guards read together.
+ */
+const WIDTH_CAP_DECLARATION = /max-width\s*:\s*([^;}]+)/g;
+const CH_UNIT = /[\d.]+ch\b/g;
+const CELL_CAP_RULES = /\.lo-markdown th,\s*\.lo-markdown td\s*\{[^}]*\}/g;
+const CELL_CAP_VALUE = /max-width\s*:\s*64ch/;
+const CELL_CAP_WORD_BREAK = /word-break\s*:\s*normal/;
+const CELL_CAP_OVERFLOW_WRAP = /overflow-wrap\s*:\s*break-word/;
+
 test("no reading measure survives on either surface, by property not by name", () => {
 	// The operator's report of 2026-09-16: a user card widened by a reply quote
 	// or a wide attachment left the message floating as a centre-constrained
@@ -1225,9 +1561,12 @@ test("no reading measure survives on either surface, by property not by name", (
 	// renderer are read, the rest of the tree is not), a width applied at runtime
 	// by something other than a class string or this stylesheet, and a cap written
 	// in a unit and a property no declaration here uses. And the deliberate cost
-	// stands: any future non-`100%` `width`/`max-width` in `markdown.css` is a
-	// failing test, because that file is the one place such a measure could retire
-	// to and a new cap there should be an argued act rather than a silent one.
+	// stands but for ONE ARGUED ACT: the markdown-table fix of 2026-09-30 (design
+	// note D1) puts `max-width: 64ch` on `th, td` - a ceiling on one table cell's
+	// min-content demand, not a reading measure on prose - and the assertions
+	// below admit exactly that cap, by value and by rule (see
+	// `WIDTH_CAP_DECLARATION` above); a SECOND cap anywhere in this file is still
+	// a failing test, which is the property this test exists to keep.
 	const source = (path) => readFileSync(path, "utf8");
 	// Comments stripped first: this file's own measure argument QUOTES `max-width:
 	// 62ch` and `margin-inline: auto` while explaining why they are gone, and a
@@ -1235,13 +1574,27 @@ test("no reading measure survives on either surface, by property not by name", (
 	const css = source(
 		"src/renderer/src/features/chat/components/markdown.css",
 	).replace(/\/\*[\s\S]*?\*\//g, "");
+	const capValues = [...css.matchAll(WIDTH_CAP_DECLARATION)]
+		.map(([, value]) => value.trim())
+		.filter((value) => value !== "100%");
 	assert.deepEqual(
-		[...css.matchAll(/max-width\s*:\s*([^;}]+)/g)]
-			.map(([, value]) => value.trim())
-			.filter((value) => value !== "100%"),
-		[],
-		"markdown.css declares no width cap beyond `100%`",
+		capValues,
+		["64ch"],
+		"the only width cap beyond `100%` is the argued table-cell ceiling (design note D1); any other cap is the reading measure coming back",
 	);
+	// And it really is the CELL rule that carries it, together with the pair of
+	// declarations the fix depends on - so the exception cannot drift to another
+	// selector, another number, or a cell rule that lost its word-break mode.
+	const cellCapRules = (css.match(CELL_CAP_RULES) ?? []).filter((rule) =>
+		CELL_CAP_VALUE.test(rule),
+	);
+	assert.equal(
+		cellCapRules.length,
+		1,
+		"the 64ch ceiling lives on the th/td override rule",
+	);
+	assert.match(cellCapRules[0], CELL_CAP_WORD_BREAK);
+	assert.match(cellCapRules[0], CELL_CAP_OVERFLOW_WRAP);
 	// `width` as well as `max-width` (code review round 2, MINOR 1): a fixed
 	// `width: 546px` on the root needs no `max-width`, no `ch` unit and no `auto`
 	// margin, and it leaves a column inside the card that never reaches the card's
@@ -1255,12 +1608,15 @@ test("no reading measure survives on either surface, by property not by name", (
 		[],
 		"markdown.css declares no `width` other than `100%`",
 	);
-	// A reading measure is a `ch` cap — 62ch was the number — so one re-added
-	// under another name still has to spell a `ch` unit in this file.
+	// A reading measure is a `ch` cap - 62ch was the number - so one re-added
+	// under another name still has to spell a `ch` unit in this file. The ONE
+	// `ch` allowed is the table-cell ceiling admitted above, and demanding the
+	// array be exactly `["64ch"]` is also what stops a second `ch` cap hiding
+	// beside it.
 	assert.deepEqual(
-		css.match(/[\d.]+ch\b/g) ?? [],
-		[],
-		"markdown.css keeps no `ch` unit: the reading measure has no spelling left",
+		css.match(CH_UNIT) ?? [],
+		["64ch"],
+		"the only `ch` unit in markdown.css is the argued table-cell ceiling (design note D1)",
 	);
 	assert.ok(
 		!/(?:^|[;{\s])margin[a-z-]*\s*:[^;}]*\bauto\b/.test(css),
@@ -3670,4 +4026,357 @@ test("a result with no details keeps the counts the row already had", () => {
 		added: 0,
 		removed: 0,
 	});
+});
+
+test("the partial delivery pair paints an amber word and its own mark, and never the danger ground", () => {
+	/*
+	 * The incident this exists for: a `send` whose message landed in a busy
+	 * peer's mailbox was painted with the SAME row as a refusal - danger wash,
+	 * the word `failed`, an Error block - so a delivered message read as a lost
+	 * one. These assertions are the pair's own properties, over the production
+	 * component's markup: the word, the mark BESIDE it (so the two states read
+	 * apart with the colour off), the sentence assistive tech hears instead of
+	 * the abbreviation, and the ground that must NOT be the failure's.
+	 */
+	/** The class list of the span that draws exactly `text`, or null. */
+	const wordClasses = (markup, text) => {
+		const match = markup.match(
+			new RegExp(`<span class="([^"]*)"[^>]*>${text}</span>`),
+		);
+		return match ? match[1].split(/\s+/) : null;
+	};
+	/*
+	 * The word's class list EXACTLY, which is also the drop gate (UX round 1,
+	 * U7): `hidden` until the row's own `toolrow` container is at least 19rem, then
+	 * `inline`. Pinned as a full list rather than a `includes` so a mutation - the
+	 * gate removed, its breakpoint moved, the state swapped - fails here rather
+	 * than passing on the tokens that happen to survive.
+	 */
+	const WORD_INK = [
+		"font-medium",
+		"text-meta",
+		"text-warning",
+		"hidden",
+		"@[19rem]/toolrow:inline",
+	];
+	const srOnly = (markup) =>
+		[...markup.matchAll(/<span class="sr-only">([^<]*)<\/span>/g)].map(
+			([, text]) => text,
+		);
+
+	const mailbox = renderRow("send", "partial", { deliveryState: "mailbox" });
+	assert.deepEqual(
+		wordClasses(mailbox, "wake unconfirmed"),
+		WORD_INK,
+		"the mailbox row draws its own word in the warning role",
+	);
+	assert.ok(
+		// The mark is a SECOND channel: a shape of its own beside the word, not a
+		// recollection of the tick or the cross.
+		mailbox.includes("lucide-mailbox"),
+		"the mailbox row draws the mailbox mark beside its word",
+	);
+	assert.deepEqual(
+		srOnly(mailbox),
+		["delivered, wake unconfirmed"],
+		"the row speaks the fact its word abbreviates, and only once",
+	);
+	assert.ok(
+		mailbox.includes('title="In their mailbox.'),
+		"the word tiles itself with the hedge the reader acts on",
+	);
+
+	const unconfirmed = renderRow("send", "partial", {
+		deliveryState: "unconfirmed",
+	});
+	/*
+	 * The fourth state's drawn word NAMES ITS SUBJECT (UX round 1, U2): the bare
+	 * `unconfirmed` read as a verdict at the row's trailing edge (`Sent …
+	 * unconfirmed`), which is the one reading that leads to a duplicate delivery.
+	 */
+	assert.deepEqual(wordClasses(unconfirmed, "delivery unconfirmed"), WORD_INK);
+	assert.ok(
+		unconfirmed.includes("lucide-mail-question"),
+		"the unconfirmed row draws a DIFFERENT mark from the mailbox one",
+	);
+	/*
+	 * NOT the dashed circle (UX round 1, U5): that ring is the app's busy
+	 * silhouette (`LoaderCircle … animate-spin` on the running states), so a
+	 * settled row wearing it said "still working" - the inverse of the state.
+	 */
+	assert.ok(!unconfirmed.includes("lucide-circle-dashed"));
+	assert.ok(!unconfirmed.includes("animate-spin"));
+	assert.ok(!unconfirmed.includes("lucide-mailbox"));
+	/*
+	 * And the spoken sentence carries the hedge the hover carries (UX round 1,
+	 * U3): the drawn word is `aria-hidden`, so this span is the whole of what a
+	 * reader with no screen gets - and `delivery unconfirmed` alone is "it did not
+	 * go".
+	 */
+	assert.deepEqual(srOnly(unconfirmed), [
+		"delivery unconfirmed — it may still arrive, so check before resending",
+	]);
+	assert.ok(unconfirmed.includes('title="No wake answer'));
+
+	// Both are settled NON-failures: no danger on the ground, none in the ink,
+	// and the silhouette the failed row has (a word in `danger`) is not theirs.
+	for (const markup of [mailbox, unconfirmed]) {
+		assert.ok(
+			!markup.includes("bg-danger-wash"),
+			"a partial row never wears the failure's ground",
+		);
+		assert.ok(
+			!markup.includes("text-danger"),
+			"a partial row never wears the failure's ink",
+		);
+	}
+
+	// ...while `failed` keeps the danger pathway and says the fact the reader
+	// acts on - `not delivered`, not the generic `failed`, which read as a
+	// statement about the MESSAGE ("Sent ... failed").
+	const failed = renderRow("send", "error", { deliveryState: "failed" });
+	assert.deepEqual(
+		wordClasses(failed, "not delivered"),
+		["font-medium", "text-meta", "text-danger"],
+		/*
+		 * NO DROP GATE ON THIS ONE, and it is load-bearing rather than an omission
+		 * (see `StatusCluster`): the partial pair can shed its word because the MARK
+		 * beside it carries the state with the colour off, and a failed row has no
+		 * mark - its word IS the whole of its non-colour statement, so shedding it
+		 * would leave the danger WASH (colour alone) saying that the call failed.
+		 */
+	);
+	assert.ok(failed.includes("bg-danger-wash"));
+	assert.ok(!failed.includes("text-warning"));
+	assert.ok(!failed.includes("lucide-mailbox"));
+	/*
+	 * And the row does not contradict itself (UX round 1, U8): the settled verb
+	 * for a delivery that provably happened is `Attempted`, never `Sent` beside
+	 * `not delivered`.
+	 */
+	assert.ok(
+		/>Attempted</.test(failed),
+		`a failed delivery must not open with the settled verb \`Sent\` — got ${failed.match(/>[A-Za-z]+</g)}`,
+	);
+	assert.deepEqual(
+		srOnly(failed),
+		[],
+		"the drawn word IS the announcement for a failure - never read out twice",
+	);
+
+	// `delivered`, and every row whose result stated nothing at all, keep
+	// exactly the row they had: no word, no mark, no delivery ink.
+	for (const [outcome, state] of [
+		["success", "delivered"],
+		["success", null],
+		["error", "queued"],
+	]) {
+		const quiet = renderRow("send", outcome, { deliveryState: state });
+		assert.deepEqual(wordClasses(quiet, "not delivered"), null);
+		assert.equal(wordClasses(quiet, "delivery unconfirmed"), null);
+		assert.ok(!quiet.includes("text-warning"));
+		assert.ok(!quiet.includes("lucide-mailbox"));
+		assert.ok(!quiet.includes("lucide-mail-question"));
+	}
+
+	/*
+	 * THE WIDTH RULE, both halves, and what this test can and cannot claim.
+	 *
+	 * The design's rule has two halves ("drop it below the width that holds it
+	 * whole; summary truncates first, the word never truncates") and until round 1
+	 * the suite asserted only the second - with a property any implementation has,
+	 * including one whose word is squeezed or clipped: no `truncate` on the word,
+	 * `truncate` on the summary. This pins the OTHER half as a mechanism: the
+	 * partial pair's word sits behind the row's own `toolrow` container query, and
+	 * the failed row's word does not.
+	 *
+	 * It cannot pin the GEOMETRY: jsdom has no layout engine, so a container query
+	 * resolves to nothing here whatever the class list says - the same limit
+	 * `scripts/stopped-row-measure.test.mjs` records for the chat measure. What
+	 * makes it discriminating is that it names the whole contract, so the
+	 * mutations that matter all fail it: gate removed, `shrink-0` kept as the only
+	 * mechanism, breakpoint changed, gate added to the failure word, the state
+	 * swapped. The BEHAVIOUR is measured in a real browser instead, at three
+	 * widths, and the readings are on the PR (the word present at 390px and 560px,
+	 * absent at 320px with the mark and the spoken sentence still carrying the
+	 * state).
+	 */
+	const narrow = renderRow("send", "partial", { deliveryState: "unconfirmed" });
+	assert.ok(
+		!wordClasses(narrow, "delivery unconfirmed").includes("truncate"),
+		"the state word is never truncated (a `wake unconf…` would say nothing)",
+	);
+	assert.ok(
+		/class="min-w-0 flex-1 truncate[^"]*"/.test(narrow),
+		"the summary is the cell that truncates first",
+	);
+	assert.ok(
+		wordClasses(narrow, "delivery unconfirmed").includes(
+			"@[19rem]/toolrow:inline",
+		),
+		"the word is gated on the ROW's own container, so the row sheds it rather than the summary",
+	);
+	/*
+	 * ...AND THE DURATION IS WHAT GIVES WAY WHEN THE FAILED ROW CANNOT (QA round 2,
+	 * Q1): the refusal's word is frozen and it has no mark to fall back on, so at
+	 * 320px its 259px of content overflowed the 240px box by 19px and the trailing
+	 * `0.4s` is the slot that sheds instead. Pinned EXACTLY, on both a partial row
+	 * and a refusal: a gate removed, moved to another breakpoint or applied to only
+	 * one of them fails here rather than passing on the tokens that survive.
+	 */
+	const DURATION_SLOT = [
+		"hidden",
+		"w-[5ch]",
+		"text-right",
+		"font-mono",
+		"text-ink-dim",
+		"text-mono-sm",
+		"tabular-nums",
+		"@[19rem]/toolrow:inline",
+	];
+	const durationClasses = (markup) =>
+		[...markup.matchAll(/<span class="([^"]*w-\[5ch\][^"]*)"/g)].map((m) =>
+			m[1].split(/\s+/),
+		);
+	assert.deepEqual(
+		durationClasses(narrow),
+		[DURATION_SLOT],
+		"the duration sheds on the same container the word does",
+	);
+	assert.deepEqual(
+		durationClasses(renderRow("send", "error", { deliveryState: "failed" })),
+		[DURATION_SLOT],
+		"the refusal's row sheds the duration too - it is the failed word's containment",
+	);
+	/*
+	 * ...AND A ROW WITH NO MARK RESERVES NO MARK BOX (design round 3, D5). The
+	 * status cluster's slot is 14px plus its 6px gap, and `failed` draws no glyph by
+	 * design, so at the floor that unspent 20px starved the summary cell to ONE
+	 * character (`Attempted w not delivered`). The slot itself stays: it holds the
+	 * sr-only sentence, which is absolutely positioned and cannot hold the box open.
+	 *
+	 * Counted rather than matched, because the row has TWO slots with this class
+	 * list - the leading tool icon, which always holds a glyph, and the status
+	 * cluster's - so a bare `!includes` would pass on either one. The filter is on
+	 * the class TOKENS and not on the variant: React escapes the `&` in
+	 * `[&_svg]:size-3.5` to `[&amp;_svg]:size-3.5` in the rendered attribute, so a
+	 * regex written against the source spelling matches nothing at all.
+	 */
+	const sizedSlots = (markup) =>
+		[...markup.matchAll(/<span class="([^"]*)"/g)]
+			.map((m) => m[1].split(/\s+/))
+			.filter((list) => list.includes("shrink-0") && list.includes("size-3.5"));
+	assert.deepEqual(
+		sizedSlots(renderRow("send", "error", { deliveryState: "failed" })).length,
+		1,
+		"a row that draws no mark reserves no mark's box: only the tool icon is sized",
+	);
+	assert.deepEqual(
+		sizedSlots(renderRow("send", "partial", { deliveryState: "mailbox" }))
+			.length,
+		2,
+		"...while a row that DOES draw one keeps its box",
+	);
+});
+
+/*
+ * The pane the `send` row expands into, bundled on its own.
+ *
+ * The delivery note (UX round 1, U1/U4) is a slot on `ToolDetail`, and the
+ * reasons it exists are positional: it has to sit between the arguments and the
+ * machine result, and it has to WRAP - the result body cannot, which is what the
+ * finding was about. Both are properties of the rendered markup, so this bundles
+ * the shipped component rather than reading its source.
+ */
+const paneBundle = await build({
+	stdin: {
+		contents:
+			'export { ToolDetail } from "./src/renderer/src/features/chat/components/trace/tool-detail";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+		"@features": "./src/renderer/src/features",
+	},
+	loader: { ".css": "empty" },
+	jsx: "automatic",
+	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+});
+const panePath = new URL("./_tool-detail-pane.bundle.mjs", import.meta.url);
+await writeFile(panePath, paneBundle.outputFiles[0].text);
+const { ToolDetail } = await import(panePath.href);
+await unlink(panePath);
+
+test("the pane's note slot wraps, and sits between the arguments and the machine result", () => {
+	const NOTE = "Delivered to their mailbox. Do not send it again.";
+	const markup = renderToStaticMarkup(
+		h(ToolDetail, {
+			args: { target: "night-audit", message: "re-run the shard" },
+			output: "→ night-audit (pid 51120): delivered to its mailbox",
+			isError: false,
+			note: h("span", null, NOTE),
+		}),
+	);
+	const noteAt = markup.indexOf('data-detail-section="note"');
+	assert.ok(noteAt > 0, `the note slot renders — got ${markup.slice(0, 200)}`);
+	// The reader's sentence comes after the arguments (the design note's order,
+	// and the order that puts it above the line nobody can read to the end) and
+	// before the result body, which stays.
+	assert.ok(
+		markup.indexOf("night-audit") < noteAt,
+		"the note follows the arguments",
+	);
+	assert.ok(
+		noteAt < markup.indexOf("Output"),
+		"the note precedes the result body",
+	);
+	// It WRAPS, in the sans face: the box it sits in is the machine payload's
+	// `font-mono` + `whitespace-pre`, which is exactly what could not be read.
+	const noteTag = markup.slice(noteAt - 260, noteAt);
+	assert.match(noteTag, /whitespace-normal/);
+	assert.match(noteTag, /font-sans/);
+	assert.ok(markup.includes("Output"), "the machine result is still rendered");
+
+	// And a pane with no note is the pane it always was: the slot is opt-in, so
+	// every other tool's expansion is untouched by this change.
+	const bare = renderToStaticMarkup(
+		h(ToolDetail, { args: { a: 1 }, output: "ok", isError: false }),
+	);
+	assert.ok(!bare.includes('data-detail-section="note"'));
+});
+
+test("the transcript wires the note and the failure predicate into the pane", () => {
+	/*
+	 * The two connections the components cannot assert for themselves: that the
+	 * ROW hands the note to the pane at all, and that the pane's `Error` heading
+	 * reads the same failure predicate the counts read (QA round 1, Q2 - before
+	 * this the heading read `record.isError` alone, so a producer that set
+	 * `is_error` on a partial painted an amber row over an `Error` block).
+	 *
+	 * A source read, because the transcript is a page component this suite has no
+	 * way to mount (it reads the canonical stores, the router and the preference
+	 * hooks); the same limit `scripts/stopped-row-measure.test.mjs` records for
+	 * `chat-content.tsx`. Comments are stripped so the prose above these
+	 * expressions cannot satisfy the match.
+	 */
+	const source = readFileSync(
+		"src/renderer/src/features/chat/canonical/canonical-transcript.tsx",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\//g, "");
+	assert.match(
+		source,
+		/note=\{\s*record\.delivery\s*\?\s*<DeliveryNote state=\{record\.delivery\} \/>\s*:\s*undefined\s*\}/,
+		"the row hands the delivery note to the pane",
+	);
+	assert.match(
+		source,
+		/isError=\{isFailedResult\(record\.isError, record\.delivery\)\}/,
+		"the pane's Error heading reads the same predicate the failure counts read",
+	);
 });
