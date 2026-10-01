@@ -1945,6 +1945,12 @@ const AskReceiptRow = memo(function AskReceiptRow({
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ToolLedgerRow
 					toolName="ask"
+					/*
+					 * VERBLESS: the backend's own sentence is the whole label. With the
+					 * verb column this row read "Asked Timed out after 15m - ...", and its
+					 * sibling read "Asked Answered late - ..." (design round 2, D13).
+					 */
+					verbless
 					summary={askTimeoutSummary(record)}
 					outcome="receipt"
 					durationS={null}
@@ -1957,6 +1963,7 @@ const AskReceiptRow = memo(function AskReceiptRow({
 			<MessageContainer isUser={false} isSmallView={isSmallView}>
 				<ToolLedgerRow
 					toolName="ask"
+					verbless
 					summary={summary}
 					outcome="receipt"
 					durationS={null}
@@ -1967,6 +1974,7 @@ const AskReceiptRow = memo(function AskReceiptRow({
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			<ToolLedgerRow
 				toolName="ask"
+				verbless
 				summary={summary}
 				outcome="receipt"
 				durationS={null}

@@ -241,8 +241,18 @@ const AskQuestionField = ({
 								/>
 								<span className="min-w-0 flex-1">
 									{option.label}
+									{/*
+									 * `ink-muted` RESTORED (design round 2, D12). Round 1's
+									 * D3 premise was a MISMEASUREMENT - the colours it sampled
+									 * were the option MARK's `border-control`, not the text -
+									 * and the muted pair actually measures 7.85:1 dark /
+									 * 8.19:1 light, contract-floored at 5.5:1 across all 59
+									 * palettes. Flattening the description to `ink` did not fix
+									 * a contrast fault; it spent the two-step ranking inside a
+									 * two-line option row, which is the thing the row reads by.
+									 */}
 									{option.description ? (
-										<span className="block text-ink text-xs">
+										<span className="block text-ink-muted text-xs">
 											{option.description}
 										</span>
 									) : null}
@@ -350,7 +360,7 @@ const AskRow = ({
 				<div className="flex flex-col gap-1.5">
 					{askSettledAnswers(ask).map((entry) => (
 						<div key={entry.id} className="flex flex-col gap-0.5">
-							<span className="text-ink text-xs">{entry.question}</span>
+							<span className="text-ink-muted text-xs">{entry.question}</span>
 							<span className="text-ink text-sm">
 								{entry.answers.length > 0
 									? entry.answers.join(", ")
@@ -432,7 +442,7 @@ const AskRow = ({
 							type="button"
 							disabled={busy}
 							onClick={() => onDecline(ask)}
-							className="rounded-md px-3 py-1.5 text-ink text-sm hover:bg-sunken"
+							className="rounded-md px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
 						>
 							Decline
 						</button>

@@ -33,6 +33,7 @@ const bundle = await build({
 			 * read without a DOM (see askBarText's own note).
 			 */
 			export * from "./src/renderer/src/features/chat/ask-queue";
+			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
 		`,
 		loader: "tsx",
 		resolveDir: process.cwd(),
@@ -41,13 +42,26 @@ const bundle = await build({
 	format: "esm",
 	platform: "node",
 	packages: "external",
+	// The renderer's own alias: `ask-queue` reaches `userFacingMessage` through
+	// `@shared/api/...` now that the refusal sentence is composed there, and a
+	// node-side bundle has no idea what `@shared` means without this.
+	alias: { "@shared": `${process.cwd()}/src/renderer/src/shared` },
 	write: false,
 	logLevel: "silent",
 });
 const bundlePath = new URL(`./_ask-queue-${process.pid}.mjs`, import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const queue = await import(bundlePath.href);
-await unlink(bundlePath).catch(() => {});
+/*
+ * The bundle is removed even when it FAILS TO LOAD: an earlier version unlinked
+ * only after a successful import, so a broken alias left `_ask-queue-<pid>.mjs`
+ * sitting in `scripts/` - repo scratch that a `git add -A` would have committed.
+ */
+let queue;
+try {
+	queue = await import(bundlePath.href);
+} finally {
+	await unlink(bundlePath).catch(() => {});
+}
 
 const TS = 1_760_000_000_000;
 
@@ -375,4 +389,96 @@ test("the settled frame keeps the question ID, so two identical texts cannot col
 	// A question nobody answered is present with an EMPTY list, which is the
 	// caller's cue to say so rather than to leave a gap.
 	assert.deepEqual(rows[1].answers, []);
+});
+
+/* ------------------------------------------------------- refusal sentences ---- */
+
+test("the app's own refusal sentence is chosen by the state, and both constants are named", () => {
+	// QA round 2, Q-2: neither constant was reachable, and nothing in the repo
+	// named either - which is how a green suite sat beside a dead branch. These
+	// assertions are the rig that names them.
+	assert.equal(
+		queue.askRefusalFallback({ status: 410 }),
+		queue.ASK_EXPIRED_MESSAGE,
+	);
+	assert.equal(
+		queue.askRefusalFallback({ code: "expired" }),
+		queue.ASK_EXPIRED_MESSAGE,
+	);
+	assert.equal(
+		queue.askRefusalFallback({ status: 409 }),
+		queue.ASK_ALREADY_SETTLED_MESSAGE,
+	);
+	// NULL is a real answer: a transport failure (no status) and a 404 ("no ask
+	// with that id") are states neither constant describes, and inventing one would
+	// be the app asserting a fact it does not have.
+	assert.equal(queue.askRefusalFallback({}), null);
+	assert.equal(queue.askRefusalFallback({ status: 404 }), null);
+	assert.equal(queue.askRefusalFallback(new Error("offline")), null);
+});
+
+test("a refusal WITH the owner's sentence keeps it; without one, the app says the state", () => {
+	// The owner's words cross the wire as `detail` plus the message.
+	const authored = new queue.DesktopControlError(
+		409,
+		"That ask was already answered by the phone.",
+		undefined,
+		"ask_settled",
+		undefined,
+		{ status: "answered" },
+	);
+	assert.equal(
+		queue.askRefusalSentence(authored),
+		"That ask was already answered by the phone.",
+	);
+
+	// NO SENTENCE: the message is the transport's placeholder, which describes the
+	// transport rather than what happened - the defect this selection exists to fix
+	// (round 1's version passed the choice as `userFacingMessage`'s FALLBACK
+	// argument, which that helper never consults for a DesktopControlError).
+	const bare = new queue.DesktopControlError(
+		409,
+		"This server did not answer the request for its desktop controls.",
+	);
+	assert.equal(
+		queue.askRefusalSentence(bare),
+		queue.ASK_ALREADY_SETTLED_MESSAGE,
+	);
+	const expired = new queue.DesktopControlError(
+		410,
+		"This server did not answer the request for its desktop controls.",
+	);
+	assert.equal(queue.askRefusalSentence(expired), queue.ASK_EXPIRED_MESSAGE);
+	// And an error the app cannot classify keeps the transport's own sentence
+	// rather than borrowing one.
+	assert.equal(
+		queue.askRefusalSentence(new Error("socket closed")),
+		"socket closed",
+	);
+});
+
+test("the bar's announced name does not double a full stop", () => {
+	const questionEndingInStop = queue.askQueueView({
+		asks: [
+			single({
+				questions: [{ id: "k", question: "Paste the API key.", multi: false }],
+			}),
+		],
+	});
+	assert.equal(
+		queue.askBarLabel(questionEndingInStop, false),
+		"1 question waiting — Paste the API key. Expand to answer.",
+	);
+	// A `?` is one too - the case round 1's frame happened to carry, which is why
+	// the doubling reached a release candidate unremarked (QA round 2, Q-3).
+	assert.equal(
+		queue.askBarLabel(questionEndingInStop, true),
+		"1 question waiting — Paste the API key. Collapse.",
+	);
+	// A head with no question text: `askHeadline` supplies its own fallback, and the
+	// assertion is about the STOP, not about that sentence.
+	const questionless = queue.askQueueView({ asks: [ask({ questions: [] })] });
+	const headless = queue.askBarLabel(questionless, false);
+	assert.ok(headless.endsWith(". Expand to answer."), headless);
+	assert.ok(!headless.includes(".."), headless);
 });

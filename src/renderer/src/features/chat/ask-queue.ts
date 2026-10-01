@@ -41,6 +41,7 @@
  * would disagree with the model the moment the two clocks differ.
  */
 
+import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
@@ -119,6 +120,30 @@ export const effectiveGate = (
 		| undefined,
 ): PendingDesktopGate | null =>
 	legacyAskMirrorSuppressed(frontend) ? null : (frontend?.pending_gate ?? null);
+
+/**
+ * The bar's announced name: the drawn sentence plus the control it offers.
+ *
+ * A PURE FUNCTION for the same reason `askBarText` is one (QA round 2, Q-3): the
+ * full stop was being appended unconditionally, so a question that already ended
+ * in one produced `...staging cluster.. Collapse.` - a stutter only visible on a
+ * sentence the round-1 frame did not carry (it was a `?`-terminated question).
+ * Keeping the composition here means a rig can assert it instead of a reviewer
+ * having to open a specific story.
+ */
+/**
+ * A sentence that already ends in terminal punctuation needs no second mark.
+ *
+ * Hoisted rather than inline: the lint rule is right that a regex literal inside a
+ * function is rebuilt per call, and this one runs on every bar render.
+ */
+const ENDS_TERMINALLY = /[.!?]$/;
+
+export const askBarLabel = (view: AskQueueView, expanded: boolean): string => {
+	const sentence = askBarText(view);
+	const stop = ENDS_TERMINALLY.test(sentence) ? "" : ".";
+	return `${sentence}${stop} ${expanded ? "Collapse" : "Expand to answer"}.`;
+};
 
 export const legacyAskMirrorSuppressed = (
 	frontend:
@@ -594,7 +619,7 @@ export const ASK_EXPIRED_MESSAGE =
  * the wire without the owner's words was reported as "already settled" - the one
  * state the second constant was written for.
  */
-export const askRefusalFallback = (error: unknown): string => {
+export const askRefusalFallback = (error: unknown): string | null => {
 	const status =
 		typeof (error as { status?: unknown })?.status === "number"
 			? ((error as { status: number }).status as number)
@@ -603,9 +628,62 @@ export const askRefusalFallback = (error: unknown): string => {
 		typeof (error as { code?: unknown })?.code === "string"
 			? ((error as { code: string }).code as string)
 			: "";
-	return status === 410 || code === "expired"
-		? ASK_EXPIRED_MESSAGE
-		: ASK_ALREADY_SETTLED_MESSAGE;
+	if (status === 410 || code === "expired") return ASK_EXPIRED_MESSAGE;
+	if (status === 409) return ASK_ALREADY_SETTLED_MESSAGE;
+	/*
+	 * NULL MEANS "NOT THIS APP'S CALL", and it is a real answer rather than a
+	 * failure. A transport failure carries no status, and a 404 is "no ask with
+	 * that id" - a state neither constant describes. Saying "already settled" over
+	 * a request that never reached the backend would be this app inventing a fact,
+	 * which is the very class of defect this selection exists to end.
+	 */
+	return null;
+};
+
+/**
+ * What to paint on a row whose answer the backend refused.
+ *
+ * TWO FACTS, IN ORDER (agent review F5, QA round 1 Q-2, QA round 2 Q-2):
+ *
+ *  1. THE OWNER'S SENTENCE WINS WHENEVER IT CROSSED THE WIRE. That is
+ *     `DesktopControlError.detail` being present - the refusal body's own object,
+ *     which the transport keeps - and the prose in `error.message` is the
+ *     backend's own words ("That ask was already answered by the phone.").
+ *  2. NO SENTENCE CROSSED THE WIRE means `error.message` is the transport's
+ *     placeholder ("This server did not answer the request for its desktop
+ *     controls."), which describes the TRANSPORT rather than what happened. Then
+ *     the app says the state it can substantiate, chosen by status/code.
+ *
+ * WHY THIS IS NOT `userFacingMessage(error, fallback)` WITH THE CHOICE AS THE
+ * ARGUMENT: that helper returns `error.message` for every `DesktopControlError`
+ * BEFORE it consults its fallback, so the argument was never read and
+ * `ASK_EXPIRED_MESSAGE` had no reachable input at all. The comment claimed a
+ * behaviour the code did not have, and nothing in the repo named either constant
+ * - which is how a green suite sat beside a dead branch. `ask-queue.test.mjs`
+ * now names both.
+ */
+export const askRefusalSentence = (error: unknown): string => {
+	const detail =
+		typeof error === "object" && error !== null
+			? (error as { detail?: unknown }).detail
+			: undefined;
+	if (detail !== undefined)
+		return userFacingMessage(error, ASK_ALREADY_SETTLED_MESSAGE);
+	const classified = askRefusalFallback(error);
+	if (classified !== null) return classified;
+	/*
+	 * NOT CLASSIFIABLE, so the app does not borrow a sentence about settling: a
+	 * transport failure carries no status and a 404 is "no ask with that id", and
+	 * saying "already settled" over either would be this app inventing a fact. The
+	 * transport's own word is kept, with the error's message as `userFacingMessage`'s
+	 * stand-in so a plain `Error` still speaks.
+	 */
+	return userFacingMessage(
+		error,
+		error instanceof Error && error.message
+			? error.message
+			: ASK_ALREADY_SETTLED_MESSAGE,
+	);
 };
 
 /**
