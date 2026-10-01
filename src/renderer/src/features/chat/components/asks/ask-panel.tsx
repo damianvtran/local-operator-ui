@@ -189,14 +189,25 @@ const AskQuestionField = ({
 									disabled ? "text-ink-dim" : "text-ink",
 								)}
 							>
-								{/* A drawn box rather than a tick glyph: the tick and the dot this
-								 * pair used to be read as emoji-adjacent decoration, and a filled box
-								 * is the same mark in a colour role the contrast gate already
-								 * covers. */}
+								{/* A drawn mark rather than a tick glyph: the tick and the dot this pair
+								 * used to be read as emoji-adjacent decoration, and a filled shape is
+								 * the same mark in a colour role the contrast gate already covers.
+								 *
+								 * THE SHAPE CARRIES THE CARDINALITY, and that is not decoration: a
+								 * single-select question answers with ONE label and a multi-select
+								 * with several, so a round mark on both is a radio that accepts a
+								 * second press - an affordance stating the wrong input cardinality,
+								 * which is the same class of defect as the inert option list this
+								 * card replaced. Round reads "pick one", square reads "pick any",
+								 * and both are the app's existing idiom for those two controls
+								 * (`shared/components/ui/checkbox.tsx`).
+								 * The ARIA roles already split (`role="radio"`/"checkbox"`), so
+								 * this brings the pixels in line with what a screen reader is told. */}
 								<span
 									aria-hidden="true"
 									className={cn(
-										"mt-1 h-3 w-3 shrink-0 rounded-sm border",
+										"mt-1 h-3 w-3 shrink-0 border",
+										multi ? "rounded-sm" : "rounded-full",
 										chosen ? "border-accent bg-accent" : "border-control",
 									)}
 								/>

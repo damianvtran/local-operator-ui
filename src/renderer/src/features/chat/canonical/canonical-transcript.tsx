@@ -83,6 +83,7 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import {
 	CHAT_COLUMN_CONTAINER,
 	CHAT_MEASURE,
@@ -1894,6 +1895,114 @@ const PeerRow = memo(function PeerRow({
 });
 
 /**
+ * A queued ask's receipt: the response that landed, or the notice that the
+ * deadline passed.
+ *
+ * ## Why a receipt and not a card
+ *
+ * Both rows report an EVENT rather than a call, which is the register `peer` and
+ * `wake` already take here and the TUI takes for the same two facts
+ * (`transcript.py`'s response/timeout blocks). The design note calls this "one
+ * transcript receipt block per surface's own idiom": the data is the same
+ * `ask_response`/`ask_timeout` pair the phone fold paints, and what differs per
+ * surface is only how a receipt is drawn.
+ *
+ * ## What the expansion is FOR
+ *
+ * A response row exists so a question and its answer can be found again later —
+ * the ask itself may be long gone from the live queue, which is the durability
+ * the whole feature is built on. So the expansion lists the QUESTIONS and what
+ * was answered for each, in the ask's own order, and a question with no answer
+ * says so rather than leaving a gap (a decline, or a partially-answered ask from
+ * the legacy incremental path). A SECRET answer is `[<key>]` on the wire and is
+ * painted verbatim: the value only ever existed in the session's memory store.
+ *
+ * The timeout row has NO expansion. It states a fact in one sentence and the
+ * expansion would repeat it — the rule `PeerRow` states and `WakeRow` applies
+ * (an expansion that delivers nothing is worse than no expansion), with the
+ * timeout's extra half (the ask is still answerable) already in the words.
+ *
+ * ## INK, and one honest gap
+ *
+ * Both rows take the neutral receipt register, because neither is a call and the
+ * ledger's rule is that a receipt takes the name column's own ink — see
+ * `rowInk`'s `receipt` branch. The BACKEND marks a timeout and a late answer
+ * `warning` (`harness/rows.py`), and matching that here would need a warning arm
+ * on the shared `ToolRowOutcome`, which is a change to the ledger every other
+ * row reads. Until it exists, the warning is carried in WORDS - the timeout's
+ * summary is the backend's own sentence and says the agent moved on - and the
+ * ink parity is a named follow-up rather than a silent difference.
+ */
+const AskReceiptRow = memo(function AskReceiptRow({
+	record,
+	isSmallView,
+}: {
+	record: Extract<TranscriptRecord, { kind: "ask_response" | "ask_timeout" }>;
+	isSmallView: boolean;
+}) {
+	if (record.kind === "ask_timeout")
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ToolLedgerRow
+					toolName="ask"
+					summary={askTimeoutSummary(record)}
+					outcome="receipt"
+					durationS={null}
+				/>
+			</MessageContainer>
+		);
+	const summary = askResponseSummary(record);
+	if (record.questions.length === 0)
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ToolLedgerRow
+					toolName="ask"
+					summary={summary}
+					outcome="receipt"
+					durationS={null}
+				/>
+			</MessageContainer>
+		);
+	return (
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
+			<ToolLedgerRow
+				toolName="ask"
+				summary={summary}
+				outcome="receipt"
+				durationS={null}
+				details={
+					// `px-3` for the reason `PeerRow` states: an expanded receipt body has
+					// to sit on the same text rail as every other expansion in the ledger.
+					<div className={cn("flex flex-col gap-2 px-3")}>
+						{record.secretLost ? (
+							<p className={cn("text-body-sm text-warning")}>
+								The session no longer holds the credential this answer named.
+							</p>
+						) : null}
+						{record.questions.map((question) => (
+							<div key={question.id} className={cn("flex flex-col gap-0.5")}>
+								<p className={cn("text-body-sm text-ink-muted")}>
+									{question.question}
+								</p>
+								<p
+									className={cn(
+										"whitespace-pre-wrap break-words text-body-sm text-ink",
+									)}
+								>
+									{(record.answers[question.id] ?? []).length > 0
+										? (record.answers[question.id] ?? []).join(", ")
+										: "No answer given"}
+								</p>
+							</div>
+						))}
+					</div>
+				}
+			/>
+		</MessageContainer>
+	);
+});
+
+/**
  * A scheduled-wake delivery receipt.
  *
  * The row exists because a wake fires with no user keystroke: before it, a
@@ -2143,6 +2252,16 @@ const TranscriptRow = memo(function TranscriptRow({
 			break;
 		case "peer":
 			body = <PeerRow record={record} isSmallView={isSmallView} />;
+			break;
+		/*
+		 * The two queued-ask receipts. One arm for both because they are one
+		 * feature's pair and share a row component — the two-row shape the design
+		 * calls for (`ask_timeout-` then `ask-response-` for a late answer), with
+		 * the component deciding which of the two it is holding.
+		 */
+		case "ask_response":
+		case "ask_timeout":
+			body = <AskReceiptRow record={record} isSmallView={isSmallView} />;
 			break;
 		case "wake":
 			body = <WakeRow record={record} isSmallView={isSmallView} />;

@@ -11,13 +11,63 @@ import {
 	EqualApproximately,
 	HelpCircle,
 	LoaderCircle,
+	MessageCircleQuestion,
 	MessageSquare,
 	Pause,
 	Share2,
 } from "lucide-react";
+import { asksOutstandingLabel } from "../ask-queue";
 
 /** Resting codes that legitimately render as a plain ring. */
 const KNOWN_RESTING = new Set(["idle", "recent"]);
+
+/**
+ * The OUTSTANDING-ASKS mark for a conversation row (design §5.0).
+ *
+ * ## Why it is a second mark rather than a status code
+ *
+ * The rail already has a state for a session that needs the user - `pending`,
+ * the approval queue - and this deliberately is NOT it. An approval is
+ * BLOCKING: the runtime is parked and nothing moves until it is answered. A
+ * queued ask is not: the agent returned a receipt and carried on, and the
+ * session may be busy, idle or done while its asks sit unanswered. Folding asks
+ * into `pending` would make the rail say "waiting for you" about a session that
+ * is working, which is the one claim §5's header forbids a surface from making.
+ *
+ * ## Absent at zero, never a zero badge
+ *
+ * It returns `null` - not a dimmed `0` - for no asks, for an absent field, and
+ * for a value the wire could not be read as a number. A zero badge is a claim
+ * that something is happening, and the honest state of "nothing outstanding" is
+ * no mark at all.
+ *
+ * ## The glyph, and why it is the same one as the dock's
+ *
+ * `MessageCircleQuestion` is the glyph the question dock already spends on "the
+ * agent is asking". One fact, one glyph across surfaces: a reader who has seen
+ * the dock knows what this mark means without the tooltip. The COUNT rides
+ * `tabular-nums` beside it, and the accessible name is the sentence rather than
+ * the digits, so a screen reader hears "2 asks, the agent is not waiting on
+ * you" instead of "two".
+ */
+export function ChatAsksOutstanding({ row }: { row: CanonicalSessionRow }) {
+	const open = row.asks_open;
+	if (typeof open !== "number" || !Number.isFinite(open) || open <= 0)
+		return null;
+	return (
+		<span
+			className={cn("inline-flex shrink-0 items-center gap-0.5 text-ink-muted")}
+			title={`${asksOutstandingLabel(open)} outstanding. The agent is not blocked on you.`}
+		>
+			<MessageCircleQuestion aria-hidden="true" size={14} />
+			<span className={cn("tabular-nums text-xs")}>{open}</span>
+			<span className={cn("sr-only")}>
+				{asksOutstandingLabel(open)} outstanding. The agent is not blocked on
+				you.
+			</span>
+		</span>
+	);
+}
 
 export function ChatSessionStatus({ row }: { row: CanonicalSessionRow }) {
 	const code = row.status?.code;
