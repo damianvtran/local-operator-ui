@@ -179,21 +179,31 @@ export function useSkillCompletion({
 	 */
 	const feature = desktopFeatureState(capabilities.data, "skill_catalogue");
 	/*
-	 * THE PAIRING GATE (QA round 1, Q-2). Main knows the pairing cause BEFORE
-	 * any read is fired — its probe saw the daemon refuse this app's credential
-	 * (`usePairingCause()`, one shared bridge read) — while the PUBLIC capability
-	 * route answers a refused pairing just as cheerfully as a paired one, so
-	 * `feature === "enabled"` is not evidence the read can succeed. Gating the
-	 * vocabulary on the cause is what turns "five refused calls, then the
-	 * sentence" into "the sentence": the transient arm below renders with nothing
-	 * on the wire, and the token still derives from `enabled` alone, so the line
-	 * attaches where it is owed. The read resumes on its own when the cause
-	 * clears — main pushes the status change, the hook re-reads, `active`
-	 * re-opens.
+	 * THE PAIRING GATE (QA round 1, Q-2; hardened by round 2's Q-3). Main knows
+	 * the pairing cause BEFORE any read is fired — its probe saw the daemon
+	 * refuse this app's credential (`usePairingCause()`, one shared bridge read)
+	 * — while the PUBLIC capability route answers a refused pairing just as
+	 * cheerfully as a paired one, so `feature === "enabled"` is not evidence the
+	 * read can succeed. Gating the vocabulary on the cause is what turns "five
+	 * refused calls, then the sentence" into "the sentence": the transient arm
+	 * below renders with nothing on the wire, and the token still derives from
+	 * `enabled` alone, so the line attaches where it is owed. The read resumes
+	 * on its own when the cause clears — main pushes the status change, the hook
+	 * re-reads, `active` re-opens.
+	 *
+	 * FAIL CLOSED WHILE UNKNOWN (Q-3). The hook answers in three states: no
+	 * answer yet (`undefined`), paired and serving (`null`), refused (a cause).
+	 * A fresh mount starts in the first, and the read runs only on the second —
+	 * gating on `!pairingRefused` alone fired one refused `skills.list` per
+	 * mount (measured: six a run, four at boot and two in a forced-remount
+	 * window), because "not refused yet" is not "good to ask". Unknown is also
+	 * no refusal for the LINE: it asserts neither cause, so the notice stays
+	 * silent until the hook answers — the rule the capability's own `unknown`
+	 * state already follows.
 	 */
 	const pairingCause = usePairingCause();
-	const pairingRefused = pairingCause !== null;
-	const active = enabled && feature === "enabled" && !pairingRefused;
+	const pairingRefused = pairingCause !== undefined && pairingCause !== null;
+	const active = enabled && feature === "enabled" && pairingCause === null;
 	/*
 	 * The token is derived from `enabled` alone, NOT from `active`: the durable
 	 * notice has to attach to a `$` on a backend that will never answer a query,

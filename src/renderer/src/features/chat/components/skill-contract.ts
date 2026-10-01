@@ -223,11 +223,13 @@ export type SkillNoticeInput = {
 	/** Whether the settled vocabulary is non-empty (empty vs miss). */
 	vocabularyNonEmpty: boolean;
 	/**
-	 * MAIN's pairing fact (`usePairingCause() !== null`): the running daemon has
-	 * refused — or this app cannot present — its credential, so nothing may be
-	 * asked of it right now. Known BEFORE any read is fired, and the picker
-	 * gates the vocabulary query off while it holds (round 1's Q-2 measured the
-	 * five refused calls that fired without this).
+	 * MAIN's pairing fact (the hook's answer is a CAUSE — neither `null`, a
+	 * paired-and-serving daemon, nor `undefined`, no answer yet): the running
+	 * daemon has refused — or this app cannot present — its credential, so
+	 * nothing may be asked of it right now. The picker gates the vocabulary
+	 * query off while it holds AND while the answer is unknown (round 2's Q-3:
+	 * unknown fails closed), and the line still fires before any read (round 1's
+	 * Q-2 measured the five refused calls that fired without either gate).
 	 */
 	pairingRefused: boolean;
 	/**

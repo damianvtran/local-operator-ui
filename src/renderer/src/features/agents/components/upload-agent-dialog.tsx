@@ -192,7 +192,8 @@ export const UploadAgentDialog: FC<UploadAgentDialogProps> = ({
 	const orgState = desktopFeatureState(capabilities.data, "radient_org");
 	const orgReady = orgSurfaceReady(orgState);
 	const orgNotice = isAuthenticated
-		? orgSurfaceNotice(orgState, pairingCause)
+		/* `?? null`: no answer yet owes the same nothing as no cause (the hook's three states). */
+		? orgSurfaceNotice(orgState, pairingCause ?? null)
 		: null;
 	const { memberships, isError: membershipsFailed } = useMembershipsQuery({
 		enabled: open && isAuthenticated && orgReady,

@@ -672,6 +672,95 @@ test("a draft's first-message seam answers with the composed `$skill` payload (Q
 });
 
 /* ------------------------------------------------------------------ */
+/* 1d. Q-3: an unpaired daemon hears NO catalogue read, per mount      */
+/* ------------------------------------------------------------------ */
+
+test("an unpaired daemon gets zero `skills.list` reads across a fresh mount and a forced remount (QA round 2, Q-3)", async () => {
+	/*
+	 * THE Q-3 REGRESSION. The pairing gate removed reads AFTER a refusal was
+	 * known, but a fresh mount starts with no answer YET — and "not refused
+	 * yet" is not "good to ask": QA measured one refused `skills.list` per
+	 * mount, six a run (four at boot, two in a forced-remount window). The
+	 * composer under test is the shipped tree again (the forced-provider bundle
+	 * — the only way `skills.list` can fire at all in a providerless harness),
+	 * with the pairing bridge answering as main does for a daemon that refused
+	 * this app's credential. The instrument is `transportOps`, which case 1c
+	 * shows reporting non-zero on this exact op; the paired control at the end
+	 * re-proves the instrument mid-case rather than borrowing another case's
+	 * reading.
+	 */
+	const { MessageInput: ProvidedMessageInput } =
+		await buildProvidedComposerBundle();
+	const backend = {
+		getStatus: async () => ({
+			pairing: { available: false, cause: "credential-refused" },
+		}),
+		onStatusChange: () => () => {},
+	};
+	window.api = { backend };
+	const skillsReads = () =>
+		transportOps.filter((op) => op === "skills.list").length;
+
+	const mountOnce = async (suffix) => {
+		useConversationInputStore.setState({ inputByConversation: {} });
+		const container = window.document.createElement("div");
+		window.document.body.appendChild(container);
+		const mountRoot = createRoot(container);
+		await act(async () => {
+			mountRoot.render(
+				h(ProvidedMessageInput, {
+					conversationId: `shared-composer-q3-${suffix}-${++mountSeq}`,
+					messages: [],
+					isLoading: false,
+					cwd: "~",
+					onSendMessage: async () => undefined,
+				}),
+			);
+		});
+		await settle();
+		return mountRoot;
+	};
+
+	transportOps.length = 0;
+	const first = await mountOnce("first");
+	assert.equal(
+		skillsReads(),
+		0,
+		"a fresh mount on the refused daemon fires no catalogue read",
+	);
+	await act(async () => {
+		first.unmount();
+	});
+	/* The forced-remount window: a new composer against the same refused daemon. */
+	const second = await mountOnce("second");
+	assert.equal(
+		skillsReads(),
+		0,
+		"and the remount fires none either — the unknown answer fails closed",
+	);
+	await act(async () => {
+		second.unmount();
+	});
+
+	/*
+	 * THE CONTROL, mid-case: the same counter against a PAIRED daemon must read
+	 * non-zero, or the zeros above would be a recorder that cannot count.
+	 */
+	backend.getStatus = async () => ({
+		pairing: { available: true, cause: null },
+	});
+	const paired = await mountOnce("paired");
+	assert.ok(
+		skillsReads() >= 1,
+		"the paired control fires it on the same counter — the zeros are the gate's",
+	);
+	await act(async () => {
+		paired.unmount();
+	});
+	delete window.api;
+});
+
+/* ------------------------------------------------------------------ */
 /* 2. The density prop: explicit, and it reaches the surface            */
 /* ------------------------------------------------------------------ */
 

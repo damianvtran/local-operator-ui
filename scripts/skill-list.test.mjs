@@ -599,16 +599,23 @@ test("the shipped composer wires the `$` seams", () => {
 		"the gate reads the sessionless key's STATE (durable/transient/quiet)",
 	);
 	/*
-	 * THE PAIRING GATE (QA round 1, Q-2), pinned at source because the read is
-	 * silenced before a request can exist: main's pairing cause gates `active`,
-	 * so the vocabulary read fires NO call against a daemon that already refused
-	 * this app's credential — and the machine's cells above prove the sentence
-	 * that answers instead.
+	 * THE PAIRING GATE (QA round 1, Q-2) AND ITS FAIL-CLOSED HALF (round 2's
+	 * Q-3), pinned at source because the read is silenced before a request can
+	 * exist: the read fires only on a KNOWN-GOOD pairing — `pairingCause ===
+	 * null`, where `undefined` is "no answer yet" and fails closed too (the
+	 * measured six refused calls a run came from gating on `!pairingRefused`
+	 * alone) — and the machine's cells above prove the sentence that answers
+	 * instead. The mount-level count lives in `shared-composer.test.mjs`.
 	 */
 	assert.match(
 		picker,
-		/const active = enabled && feature === "enabled" && !pairingRefused;/,
-		"the vocabulary read is gated on main's pairing cause",
+		/const active = enabled && feature === "enabled" && pairingCause === null;/,
+		"the vocabulary read runs only on a KNOWN-GOOD pairing (Q-2; Q-3 fails closed on unknown)",
+	);
+	assert.match(
+		picker,
+		/const pairingRefused = pairingCause !== undefined && pairingCause !== null;/,
+		"and a refusal is a cause — not the unknown state, which asserts neither cause",
 	);
 	assert.match(
 		picker,
