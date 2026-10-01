@@ -444,3 +444,38 @@ test("a blocked page refuses the box, and the send never fires", async () => {
 		await act(async () => root.unmount());
 	}
 });
+
+test("a blocked box says the page's reason, never chat's 'Agent is busy'", async () => {
+	/*
+	 * D1 (design review round 1): the composer's own sentence for a refused box is
+	 * chat's "Agent is busy", and nothing is busy here — the page is holding a
+	 * dirty edit. The host supplies its own line through the same notice prop,
+	 * and this asserts the words on the box, because the earlier case proved only
+	 * that the box refuses.
+	 *
+	 * D5's running sentence rides the same seam (`Working on your request…` while
+	 * `live`), but provoking it needs the canonical sending state rather than a
+	 * handle, so it is asserted here only for the blocked state.
+	 */
+	const { run } = handle();
+	const { host, root } = await mountBlocked(
+		run,
+		"Finish or cancel your edit first.",
+	);
+	try {
+		const box = host.querySelector("textarea");
+		const placeholder = box?.getAttribute("placeholder") ?? "";
+		assert.match(
+			placeholder,
+			/Finish or cancel your edit first\./,
+			`the page's own sentence (got ${placeholder})`,
+		);
+		assert.doesNotMatch(
+			placeholder,
+			/busy/i,
+			"chat's sentence is unreachable from this page",
+		);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});

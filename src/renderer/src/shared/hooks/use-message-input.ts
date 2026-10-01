@@ -389,9 +389,27 @@ export const composerPlaceholder = (state: {
 	 * than an invitation to use it.
 	 */
 	idle?: string;
+	/**
+	 * The HOST's own sentence for the states the host owns (design review round 1,
+	 * D1/D5).
+	 *
+	 * WHY THIS OUTRANKS `inputDisabled`/`sendingUnsettled`/`awaitingReply`, and
+	 * only those: "Agent is busy" and "Sending your message" are facts about a
+	 * CHAT purpose. A host that refuses input for its own reason (the Agents page's
+	 * dirty-edit gate, a backend without the capability) or that has its own
+	 * request outstanding says its own words there, while every other sentence —
+	 * `unavailable`, `secretAnswer`, the invitation — still outranks this one.
+	 * ABSENT MEANS NOTHING CHANGES: no chat mount passes it.
+	 */
+	hostLine?: string | null;
 }): string => {
 	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
 	if (state.secretAnswer) return COMPOSER_PLACEHOLDER.secretAnswer;
+	if (
+		state.hostLine &&
+		(state.inputDisabled || state.sendingUnsettled || state.awaitingReply)
+	)
+		return state.hostLine;
 	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
 	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
 	if (state.asideAttached) return COMPOSER_PLACEHOLDER.aside;

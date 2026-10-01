@@ -583,6 +583,15 @@ export type MessageInputProps = {
 		 * round 1, m1).
 		 */
 		blocksInput?: boolean;
+		/**
+		 * The host's own placeholder for the states this notice describes (D1/D5).
+		 *
+		 * It is the same fact as `blocksInput` — the host knows why its box is
+		 * refusing, or what its own outstanding request means — and it travels in
+		 * the same prop so the words and the refusal cannot disagree. `undefined`
+		 * leaves the app's own sentences exactly as they are.
+		 */
+		placeholder?: string;
 	};
 	/**
 	 * A pending question takes a SECRET answer, and the composer is not where it
@@ -7260,6 +7269,9 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 													 * own idle line.
 													 */
 													idle: placeholderOverride,
+													// The host's own words for its own states (D1/D5); absent on
+													// every chat mount, which is what keeps chat unchanged.
+													hostLine: hostNotice?.placeholder ?? null,
 												})
 									}
 									value={newMessage}

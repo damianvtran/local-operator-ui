@@ -36,6 +36,7 @@
  * the subagent reader shows per child.
  */
 
+import { CHAT_COLUMN_INSET } from "@features/chat/chat-measure";
 import {
 	MessageInput,
 	type MessageInputHandle,
@@ -500,6 +501,23 @@ export function ConfigComposer({
 	 * single. `disabled` survives for the states that really cannot send anything.
 	 */
 	const disabled = !run.enabled || Boolean(blockedReason);
+	/*
+	 * THE BOX'S WORDS IN THE STATES THIS PAGE OWNS (design review round 1, D1/D5).
+	 *
+	 * The composer's own sentences for a refused or outstanding box are chat's
+	 * ("Agent is busy", "Sending your message"), and neither is true here: nothing
+	 * is busy when the page is holding a dirty edit, and the request the box is
+	 * waiting on is a configuration run. The host supplies the sentence for those
+	 * two states and nothing else — the invitation and every other state still
+	 * come from the composer.
+	 */
+	const hostPlaceholder = blockedReason
+		? blockedReason
+		: !run.enabled
+			? (run.disabledReason ?? undefined)
+			: live
+				? "Working on your request…"
+				: undefined;
 	const placeholder = about
 		? `Change ${about.name}…`
 		: run.enabled
@@ -628,6 +646,7 @@ export function ConfigComposer({
 					 * transcript-only notice id on this page (m1).
 					 */
 					blocksInput: !run.enabled || Boolean(blockedReason),
+					placeholder: hostPlaceholder,
 					node: (
 						/*
 						 * THE STANDING SENTENCE, verbatim and permanent — not a
@@ -635,10 +654,18 @@ export function ConfigComposer({
 						 * work to a conversation from "New chat", and without this line the
 						 * reasonable reading of the box is that it does the same.
 						 */
+						/*
+						 * `mb-2` IS THE BAND'S OWN STEP, not a chosen number: the
+						 * sentence renders immediately above the box, and the design
+						 * round measured it FLUSH with the box's top border — 0 px, with
+						 * the descenders touching the ring (D2). One 8 px step from the
+						 * scale the surrounding chrome uses puts the sentence back in the
+						 * band's rhythm.
+						 */
 						<p
 							id={ASIDE_NOTICE_ID}
 							data-testid="config-composer-note"
-							className="text-meta text-ink-muted"
+							className="mb-2 text-meta text-ink-muted"
 						>
 							{run.enabled
 								? "Runs in the background. This does not appear in your conversation."
@@ -662,8 +689,27 @@ export function ConfigComposer({
 			 * now, so a chip that wrote anywhere else would type into a box nobody is
 			 * looking at.
 			 */}
-			{run.enabled && !about && !live ? (
-				<div className="mt-2 flex flex-wrap gap-1.5">
+			{/*
+			 * THE ROW IS ALWAYS MOUNTED, AND ALWAYS IN THE BOX'S COLUMN.
+			 *
+			 * D4: hiding it collapsed the card by 37 px and moved the box's top
+			 * 196 -> 233 the moment Enter was pressed — the control the operator is
+			 * using jumped under the caret. `invisible` reserves the row instead
+			 * (and takes the hidden buttons out of the tab order for free).
+			 *
+			 * D3: at the card's own edge the chips sat 24 px left of the box and of
+			 * the sentence above them. `CHAT_COLUMN_INSET` is the composer's own
+			 * inset — the value, not a copied number — so the two columns line up
+			 * and stay lined up if that inset ever moves.
+			 */}
+			{run.enabled ? (
+				<div
+					className={cn(
+						"mt-2 flex flex-wrap gap-1.5",
+						CHAT_COLUMN_INSET,
+						run.enabled && !about && !live ? "" : "invisible",
+					)}
+				>
 					{EXAMPLES.map((example) => (
 						<Button
 							key={example}
