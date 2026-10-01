@@ -19,7 +19,6 @@
 import type { DesktopCapabilities } from "../../../../../shared/desktop-contract";
 import type { McpCatalogVerb } from "../../../../../shared/desktop-control-contract";
 import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-hooks";
-import { brandOf } from "../../providers/provider-catalog";
 /*
  * The shared display rule, imported RELATIVELY rather than through the
  * `@shared` alias: this module is bundled by `slash-row-format.test.mjs` and
@@ -28,6 +27,7 @@ import { brandOf } from "../../providers/provider-catalog";
  * the same leaf.
  */
 import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
+import { brandOf } from "../../providers/provider-catalog";
 import { activeModelForDefault } from "../pickers/model-default-settings";
 import { effortDisplay } from "../session-status/session-model";
 import { pyTrim } from "./slash-token";
