@@ -11,7 +11,7 @@
 
 import { displayName } from "../components/trace/tool-row-model";
 import type { TranscriptRecord } from "./transcript-reducer";
-import { cyclesOf, electAnswer, isCompletionMarker } from "./turn-segments";
+import { cyclesOf, electAnswer, isTerminalMarker } from "./turn-segments";
 
 /**
  * A notice's body split into the line its row paints and the rest of it, if any.
@@ -122,13 +122,39 @@ type TurnSpan = {
  * The partition itself, shared by `closingAnswerIds` and `runsOf`.
  *
  * A user item opens a new run iff the open run is CLOSED, and the closure test
- * is `closingAnswerIds`' own: the last paint-non-statement record is a settled
- * assistant, or a `complete === true` notice has been seen since the run opened.
- * Otherwise the user item is a steer and stays inside the run — steering is NOT
- * marked on the durable wire (the harness persists a steer as an ordinary user
+ * has THREE arms, all stated from the record list alone: the last
+ * paint-non-statement record is a settled assistant (the run handed its answer
+ * over); a TERMINAL marker has been seen since the run opened (`isTerminalMarker`
+ * — the shared boundary vocabulary, NOT a local copy of it); or nothing has run
+ * yet. Otherwise the user item is a steer and stays inside the run — steering is
+ * NOT marked on the durable wire (the harness persists a steer as an ordinary user
  * message and the live `SteeringDeliveredEvent` is consumed by the stream, not
- * the transcript), so the partition can only be structural, and these two facts
- * are the ones the record list actually states.
+ * the transcript), so the partition can only be structural, and these facts are
+ * the ones the record list actually states.
+ *
+ * WHY THE BOUNDARY VOCABULARY AND NOT A LOCAL COPY (the operator's own report,
+ * 2026-09-30). This test used to read `isCompletionMarker` — `notice &&
+ * complete === true` — while the pin list, the classifier and the rows' own paint
+ * all read `boundaryKindOf`. The two agreed by copy, and they diverged at the
+ * error-level `custom` a `session_incident` is: a terminal marker the rest of the
+ * transcript honours, and one this test ignored. So `[session_incident][user]`
+ * left `closed()` false, the reader's own FIRST message was absorbed as a steer,
+ * and the bar over it was labelled "Steered" while the message sat inside the
+ * hidden span. That is the last surviving copy of the four-way list the segments
+ * module says it ended, and this is that copy fixed.
+ *
+ * WHY "NOTHING HAS RUN YET", which the vocabulary arm alone cannot cover. A
+ * conversation OPENS with harness prefix rows — `system_prefix`, `selected_model`,
+ * `session_mcp_unavailable` — that paint but are not `user` rows and are NOT
+ * boundaries (an info-level `custom` is not terminal). The first of them opened
+ * the run with `openingUserIndex: null`, so EVERY fresh conversation's first user
+ * message steered into a head-cut run that held nothing. A steer is a message to
+ * an agent that is WORKING; a run that opens off a non-user row and holds no work
+ * of its own — no tool row, no assistant row — is not a turn in flight, it is an
+ * empty preamble, so a following user message OPENS its own run. The test needs
+ * both halves: it fires only while the run opens off a non-user row AND nothing
+ * in it has painted work, so a `[user][user]` pair keeps today's steer semantics
+ * (a turn the reader opened is in flight even before its first call).
  *
  * `recordOf` lets the same walk serve records and `Row`s: `Row`s only wrap a
  * subset of records, and each caller needs spans in its own index space.
@@ -141,12 +167,30 @@ function walkTurns<T>(
 	let open: TurnSpan | null = null;
 	/** The last record in the open run that paints and is not a statement. */
 	let last: TranscriptRecord | null = null;
-	let sawMarker = false;
+	/** A terminal marker (the shared boundary vocabulary) since the run opened. */
+	let sawTerminal = false;
+	/** Has the open run done any WORK of its own (a tool or assistant row)? */
+	let sawWork = false;
 
-	const closed = (): boolean => sawMarker || settledTail();
+	const closed = (): boolean =>
+		sawTerminal || settledTail() || nothingHasRunYet();
 	/** Whether the open run's tail is a settled answer (the OLD closure test). */
 	const settledTail = (): boolean =>
 		last !== null && last.kind === "assistant" && !last.streaming;
+	/**
+	 * An EMPTY PREAMBLE: a run that opens off a non-user row (head-cut) and has
+	 * done no work of its own. Nothing can be steered into it - see the module
+	 * comment - so a user row after one OPENS rather than steers.
+	 *
+	 * TWO HALVES, both load-bearing. `openingUserIndex === null` is what keeps
+	 * `[user][user]` a steer: a turn the reader opened is in flight even before
+	 * its first call. `sawWork` counts a `tool` row OR an `assistant` row - the
+	 * assistant arm includes a streaming and an empty one, because typing while
+	 * the agent is writing its first paragraph, or while its first call is being
+	 * set up, is the classic steer and nothing has been CALLED yet either way.
+	 */
+	const nothingHasRunYet = (): boolean =>
+		open !== null && open.openingUserIndex === null && !sawWork;
 	/*
 	 * THE RUN'S ANSWER IS ELECTED, NOT "THE LAST SETTLED ASSISTANT" (issue #665).
 	 *
@@ -157,10 +201,11 @@ function walkTurns<T>(
 	 * null under the same gate the old rule had - a run that ends on a tool row or
 	 * a streaming answer has not handed anything over.
 	 *
-	 * The RUN BOUNDARY below (`closed()`, the user-row test) deliberately keeps the
-	 * old closure test: where a run ends is a fact about what the NEXT user row
-	 * saw, and changing the partition would move every consumer keyed by it. Only
-	 * WHICH row of the run is its answer changes.
+	 * The RUN BOUNDARY (`closed()`, the user-row test) now reads the SAME terminal
+	 * vocabulary this election does (`isTerminalMarker`), plus the empty-preamble
+	 * clause — see the module comment on `walkTurns`. The reasoning above is about
+	 * WHICH row of a run is its answer, not about which rows END a run; only the
+	 * latter changed here, and the gate stays exactly as it was.
 	 */
 	const closing = (from: number, to: number): string | null => {
 		const records: TranscriptRecord[] = [];
@@ -200,7 +245,8 @@ function walkTurns<T>(
 					closingAnswerId: null,
 				};
 				last = null;
-				sawMarker = false;
+				sawTerminal = false;
+				sawWork = false;
 			}
 			/*
 			 * Either way the user item itself is never the run's "last content": a
@@ -226,7 +272,8 @@ function walkTurns<T>(
 			};
 		}
 		if (paintsSomething(record) && !isStatementRow(record)) last = record;
-		if (isCompletionMarker(record)) sawMarker = true;
+		if (isTerminalMarker(record)) sawTerminal = true;
+		if (record.kind === "tool" || record.kind === "assistant") sawWork = true;
 		open.endIndex = index;
 	});
 	flush("end", items.length - 1);
