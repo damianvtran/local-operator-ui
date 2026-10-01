@@ -60,7 +60,7 @@ import {
 } from "../../../../../shared/desktop-session-contract";
 import { gateIsSecret } from "../ask-answer";
 import type { AskDraft } from "../ask-queue";
-import { legacyAskMirrorSuppressed } from "../ask-queue";
+import { effectiveGate } from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
@@ -719,6 +719,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * failure). Computed once, here, because "the row exists" is a fact about
 		 * this transcript and computing it twice is how the two surfaces drift.
 		 */
+		/*
+		 * THE ONE GATE READING (agent review round 1, F3): with the legacy-mirror rule
+		 * applied in ONE place, every reader below - the dock, the composer's two
+		 * terms and the working line - sees the same value, so a mirrored ask cannot
+		 * be drawn once, named as a gate, and answered by index all at the same time.
+		 */
+		const gate = effectiveGate(canonical?.view.frontend);
 		const undeliveredOnScreen =
 			undelivered !== null &&
 			canonical.view.transcript.records.some(
@@ -1728,36 +1735,35 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * same question twice (design §4, client rule N3). Approvals keep the
 						 * single slot untouched - they have no queue to appear in.
 						 */}
-						{canonical?.view.frontend?.pending_gate &&
-							!legacyAskMirrorSuppressed(canonical.view.frontend) && (
-								<div
-									className={cn(
-										CHAT_COLUMN_CONTAINER,
-										CHAT_COLUMN_INSET,
-										"w-full shrink-0 pt-2",
-									)}
-								>
-									<QuestionDock
-										key={canonical.view.frontend.pending_gate.request_id}
-										className={CHAT_MEASURE}
-										gate={canonical.view.frontend.pending_gate}
-										onAnswer={canonical.onAnswer}
-										/*
-										 * The secret field's own door, forwarded untouched like `onAnswer`:
-										 * the dock decides WHEN a secret is answered from its field, and the
-										 * panel owns the lock, the request and the report behind it.
-										 */
-										onAnswerSecret={canonical.onAnswerSecret}
-										// The composer's own in-flight flag, reused: one answer per
-										// question, whichever surface starts it.
-										answering={Boolean(canonical.admitting)}
-										// This panel's own record of the gate it pressed, so the card
-										// holds itself disabled after an answer instead of coming back
-										// live against a gate the owner already took.
-										answer={canonical.answer ?? null}
-									/>
-								</div>
-							)}
+						{gate !== null && (
+							<div
+								className={cn(
+									CHAT_COLUMN_CONTAINER,
+									CHAT_COLUMN_INSET,
+									"w-full shrink-0 pt-2",
+								)}
+							>
+								<QuestionDock
+									key={gate.request_id}
+									className={CHAT_MEASURE}
+									gate={gate}
+									onAnswer={canonical.onAnswer}
+									/*
+									 * The secret field's own door, forwarded untouched like `onAnswer`:
+									 * the dock decides WHEN a secret is answered from its field, and the
+									 * panel owns the lock, the request and the report behind it.
+									 */
+									onAnswerSecret={canonical.onAnswerSecret}
+									// The composer's own in-flight flag, reused: one answer per
+									// question, whichever surface starts it.
+									answering={Boolean(canonical.admitting)}
+									// This panel's own record of the gate it pressed, so the card
+									// holds itself disabled after an answer instead of coming back
+									// live against a gate the owner already took.
+									answer={canonical.answer ?? null}
+								/>
+							</div>
+						)}
 						{/*
 						 * THE STOPPED TURN'S OWN LINE (§G3). Above the composer and below the transcript's
 						 * own dock, which is where a turn that has ENDED can say so without being part of
@@ -1845,6 +1851,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * describe facts about the box that this copy cannot.
 								 */
 								placeholderOverride={canonical?.askComposerPlaceholder}
+								/*
+								 * AND IT IS A MODE, not an invitation (design §5.0). Without this
+								 * the turn's own sentence outranked the ask's while a turn ran -
+								 * "Steer the agent. Enter sends now. Esc stops." over a box whose
+								 * Enter posts the ANSWER (UX round 1, U2). The ranking itself is
+								 * `composerPlaceholder`'s `askMode` rung.
+								 */
+								askMode={Boolean(canonical?.askComposerPlaceholder)}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)
@@ -1884,7 +1898,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												startingAfterId: canonical.startingAfterId ?? null,
 												startingSession: canonical.startingSession === true,
 												startingSince: canonical.startingSince ?? null,
-												gate: canonical.view.frontend?.pending_gate ?? null,
+												gate,
 												unavailable: canonicalSpeaking(canonical, gone),
 												records: canonical.view.transcript.records,
 											}),
@@ -1960,7 +1974,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * composer reading "Ask me for help" over a turn that is waiting
 								 * on the user (UX round 2, U8).
 								 */
-								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
+								awaitingAnswer={gate !== null}
 								/*
 								 * AND WHETHER THAT QUESTION TAKES A SECRET: the composer refuses
 								 * input while one waits (`message-input.tsx` reads this as
@@ -1972,9 +1986,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * value the wire means as secret cannot be masked on one surface
 								 * while this one stays open — the mix that re-opened the exposure.
 								 */
-								secretAnswer={gateIsSecret(
-									canonical?.view.frontend?.pending_gate,
-								)}
+								secretAnswer={gateIsSecret(gate)}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above

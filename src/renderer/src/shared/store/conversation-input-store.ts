@@ -534,6 +534,14 @@ type ConversationInputStoreState = {
 		value: string,
 		unredactedChars?: number,
 	) => void;
+	/**
+	 * Move the composer's TEXT, with the store as the author (bumps `textRevision`).
+	 *
+	 * Distinct from `setCurrentInput`, which is the keystroke path and deliberately
+	 * silent. Use this when the APP moves the box - see the action's own note for the
+	 * defect that shipped without it.
+	 */
+	setComposerText: (conversationId: string, value: string) => void;
 
 	/**
 	 * How many characters of a conversation's draft are disclosed plain text.
@@ -1368,6 +1376,48 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 							 * (review round 1, B2/Q-1/U3).
 							 */
 							textRevision: (row.textRevision ?? 0) + 1,
+						},
+					},
+				});
+			},
+
+			/*
+			 * THE STORE WROTE THE BOX, for a writer that is not the box.
+			 *
+			 * `setCurrentInput` is the KEYSTROKE writer: the composer calls it on every
+			 * change, so it deliberately does not bump `textRevision` - bumping there
+			 * would make the composer mirror its own keystrokes back at itself. But that
+			 * leaves no way for the app to move the box's text, and the hook mirrors
+			 * store text only when the revision says the store is the author. Measured
+			 * consequence before this action existed: the ask-mode draft swap wrote
+			 * `currentInput` and the textarea did not move, so a chat draft typed while
+			 * the bar was minimized was still in the box after expanding and went out as
+			 * the ANSWER to the agent's question (agent review F1 / QA Q-1 / UX U1 - all
+			 * three streams, same defect).
+			 *
+			 * The row is created when absent, because the swap can be the first write a
+			 * conversation ever sees, and an empty `value` is a real instruction here
+			 * rather than "no change": switching into an empty ask buffer means the box
+			 * must be EMPTY.
+			 */
+			setComposerText: (conversationId, value) => {
+				const existing = get().inputByConversation[conversationId] || {
+					currentInput: "",
+					submittedMessages: [],
+					currentHistoryIndex: null,
+					replies: [],
+					attachments: [],
+				};
+				set({
+					inputByConversation: {
+						...get().inputByConversation,
+						[conversationId]: {
+							...existing,
+							currentInput: value,
+							// The redaction count belongs to the text it was measured on, so it
+							// goes with the text it described rather than across the swap.
+							unredactedChars: 0,
+							textRevision: (existing.textRevision ?? 0) + 1,
 						},
 					},
 				});

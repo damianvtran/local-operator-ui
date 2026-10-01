@@ -44,6 +44,7 @@
 import type {
 	CanonicalFrontendState,
 	PendingAsk,
+	PendingDesktopGate,
 } from "../../../../shared/desktop-session-contract";
 
 /**
@@ -95,6 +96,30 @@ export const sessionAsks = (
  * The negation is what a mount needs (rule 2 above): an ask-shaped `pending_gate`
  * is shown only when the queue is NOT on the wire.
  */
+/**
+ * The gate every reader should use, with the legacy-mirror rule applied ONCE.
+ *
+ * THE RULE (design §4, client rule N3): once `asks` is on the wire, an ask-shaped
+ * `pending_gate` is the backend's one-release MIRROR of an ask already in `asks[]`.
+ * An approval keeps the slot.
+ *
+ * WHY IT IS A FUNCTION AND NOT A HABIT. The rule was applied at the dock's render
+ * and at nothing else, so four other readers kept consuming the mirrored gate: the
+ * composer's `awaitingAnswer` named a gate answer instead of the ask lane's
+ * sentence, `secretAnswer` REFUSED ALL TYPING while a mirrored secret ask waited,
+ * `send`'s gate branch answered the mirror one question at a time by index (the
+ * behaviour this feature replaces), and the working line said "the agent is parked
+ * on you" about a queued ask (agent review round 1, F3). Each of those is the same
+ * mistake made independently, which is what a shared derivation prevents.
+ */
+export const effectiveGate = (
+	frontend:
+		| Pick<CanonicalFrontendState, "asks" | "pending_gate">
+		| null
+		| undefined,
+): PendingDesktopGate | null =>
+	legacyAskMirrorSuppressed(frontend) ? null : (frontend?.pending_gate ?? null);
+
 export const legacyAskMirrorSuppressed = (
 	frontend:
 		| Pick<CanonicalFrontendState, "asks" | "pending_gate">
@@ -146,8 +171,16 @@ export type AskPresentation = {
  */
 export const askSettledAnswers = (
 	ask: PendingAsk,
-): { question: string; answers: string[] }[] =>
+): { id: string; question: string; answers: string[] }[] =>
 	ask.questions.map((question) => ({
+		/*
+		 * The ID travels WITH the text, not only inside it. Two questions in one ask
+		 * may carry identical text (a clarification loop, a repeated field), and a
+		 * caller keying rows on the sentence would collide them - a React key warning
+		 * and a mis-pairing on reorder. `ask_id` is the identity everywhere else in
+		 * this feature; the settled frame now has it too (agent review F7).
+		 */
+		id: question.id,
 		question: question.question,
 		answers: (ask.answers?.[question.id] ?? []).slice(),
 	}));
@@ -219,6 +252,31 @@ export const askTimeoutSummary = (receipt: {
  */
 export const ASK_COMPOSER_PLACEHOLDER =
 	"Answering the agent's question — Esc to collapse";
+
+/**
+ * The bar's ONE sentence, drawn and announced (design §5.0).
+ *
+ * It lives in the copy contract rather than in the component for two reasons that
+ * both bit this PR: the sentence and the accessible name diverged when they were
+ * assembled separately (the bar painted "1 settled" beside a name that said "No
+ * asks outstanding" - agent review F6, UX U3), and a string inside a component
+ * that imports `@shared` cannot be asserted by a DOM-free rig.
+ *
+ * The question NAMED is the open head when there is one and the first settled row
+ * otherwise. `view.head` stays "the head OPEN ask", because the composer's routing
+ * reads it for `canAnswer`; the settled fallback lives here rather than moving that
+ * field, which would put a settled ask under a branch that submits answers.
+ */
+export const askBarText = (view: AskQueueView): string => {
+	// An absent queue and a published-but-empty one both draw nothing, and the
+	// sentence says so rather than claiming a count it does not have.
+	if (view.asks === null || view.rows.length === 0)
+		return "No asks outstanding";
+	const lead =
+		view.open > 0 ? askCountLabel(view.open) : `${view.total} settled`;
+	const named = view.head?.ask ?? view.rows[0]?.ask ?? null;
+	return named === null ? lead : `${lead} — ${askHeadline(named)}`;
+};
 
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
 
@@ -371,11 +429,18 @@ export const askExpiryText = (
 	const remainingMs = expiresAt - nowMs;
 	if (remainingMs <= 0) return "expiring now";
 	const minutes = Math.floor(remainingMs / 60_000);
-	if (minutes < 1) return `expires in ${Math.floor(remainingMs / 1000)} s`;
-	if (minutes < 60) return `expires in ${minutes} m`;
+	/*
+	 * ONE SPELLING OF ONE UNIT, and no space: the TUI this feature deliberately
+	 * rhymes with reads `expires in 42m` (`tui/widgets/ask_queue.py`), and the
+	 * receipt row's own `askWaitedText` already writes it that way. Two renderings of
+	 * "minutes" in the pair of PRs that share a copy contract is the kind of drift
+	 * the shared contract exists to prevent (design round 1, D5).
+	 */
+	if (minutes < 1) return `expires in ${Math.floor(remainingMs / 1000)}s`;
+	if (minutes < 60) return `expires in ${minutes}m`;
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `expires in ${hours} h`;
-	return `expires in ${Math.floor(hours / 24)} d`;
+	if (hours < 24) return `expires in ${hours}h`;
+	return `expires in ${Math.floor(hours / 24)}d`;
 };
 
 /**
@@ -513,6 +578,35 @@ export const ASK_ALREADY_SETTLED_MESSAGE =
 
 export const ASK_EXPIRED_MESSAGE =
 	"This ask is too old to answer — ask the agent again.";
+
+/**
+ * The app's own sentence for a refusal that arrived WITHOUT one.
+ *
+ * WHY IT IS A CHOICE, not one constant (agent review F5, QA round 1 Q-2). The
+ * sentence has to match the state the backend refused on - "too old to answer" and
+ * "already settled" are different facts and the user acts differently on each - and
+ * the refusal carries the state: `DesktopControlError.status` is the HTTP status
+ * the route chose (410 for an expiry, 409 for a settled ask; measured in QA round
+ * 1's refusal arm) and `code` is the vetted rejection category.
+ *
+ * Before this existed the code passed the settled sentence unconditionally, which
+ * made `ASK_EXPIRED_MESSAGE` DEAD: nothing imported it, so an expiry that crossed
+ * the wire without the owner's words was reported as "already settled" - the one
+ * state the second constant was written for.
+ */
+export const askRefusalFallback = (error: unknown): string => {
+	const status =
+		typeof (error as { status?: unknown })?.status === "number"
+			? ((error as { status: number }).status as number)
+			: null;
+	const code =
+		typeof (error as { code?: unknown })?.code === "string"
+			? ((error as { code: string }).code as string)
+			: "";
+	return status === 410 || code === "expired"
+		? ASK_EXPIRED_MESSAGE
+		: ASK_ALREADY_SETTLED_MESSAGE;
+};
 
 /**
  * The `sessions.answer` body for a whole-ask answer, or `null` when the draft is

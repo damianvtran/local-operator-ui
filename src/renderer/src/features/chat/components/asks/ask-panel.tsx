@@ -175,6 +175,13 @@ const AskQuestionField = ({
 					value={secret}
 					onChange={(event) => onSecret(event.target.value)}
 					placeholder="Your answer (never shown again)"
+					/*
+					 * A real name, because the placeholder is not one: it vanishes at the
+					 * first character and the question <p> beside it is a sibling rather
+					 * than an association (`dom_audit` reported `fail input-label`; design
+					 * round 1, D8).
+					 */
+					aria-label={`Your answer to: ${question.question}`}
 					className="w-full rounded-md border border-control bg-surface px-2 py-1.5 text-ink text-sm"
 				/>
 			) : options.length > 0 ? (
@@ -220,14 +227,22 @@ const AskQuestionField = ({
 									aria-hidden="true"
 									className={cn(
 										"mt-1 h-3 w-3 shrink-0 border",
-										multi ? "rounded-sm" : "rounded-full",
+										/*
+										 * `rounded-[2px]`, NOT `rounded-sm`: the token is 6px
+										 * (`styles/index.css`), which on a 12px box is a
+										 * perfect circle - so the class the design round
+										 * measured as "identical to the single-select mark"
+										 * really was identical, and the claim that it
+										 * differed was wrong (design round 1, D1).
+										 */
+										multi ? "rounded-[2px]" : "rounded-full",
 										chosen ? "border-accent bg-accent" : "border-control",
 									)}
 								/>
 								<span className="min-w-0 flex-1">
 									{option.label}
 									{option.description ? (
-										<span className="block text-ink-muted text-xs">
+										<span className="block text-ink text-xs">
 											{option.description}
 										</span>
 									) : null}
@@ -296,7 +311,13 @@ const AskRow = ({
 		<div
 			data-lo-ask-row={ask.ask_id}
 			data-lo-ask-status={status}
-			className="flex flex-col gap-2 rounded-md border border-control bg-surface p-3"
+			/*
+			 * `border-hairline`, not `border-control`: `border-control` is the contract's
+			 * role for the sole boundary of a CONTROL (3:1 floor) and this is a card -
+			 * the transcript's own turn rule takes the hairline for the same reason
+			 * (design round 1, D9).
+			 */
+			className="flex flex-col gap-2 rounded-md border border-hairline bg-surface p-3"
 		>
 			<div className="flex items-center gap-2">
 				<StatusIcon
@@ -304,12 +325,20 @@ const AskRow = ({
 					className={cn("shrink-0", mark.className)}
 					size={16}
 				/>
-				<span className="min-w-0 flex-1 text-ink-muted text-xs">
+				<span className="min-w-0 flex-1 text-ink text-xs">
 					{askStatusText(ask, nowMs)}
 				</span>
-				{/* Machine voice, monospace: the id is what a user quotes in a bug
-				 * report, and it is not prose. */}
-				<span className="shrink-0 text-ink-dim text-xs">{ask.ask_id}</span>
+				{/*
+				 * THE ID MOVED INTO A TITLE (design round 1, D6). It is the string a
+				 * user quotes in a report, so it stays reachable - but on a row whose job
+				 * is "answer the question" it was the only text meaningless to the
+				 * reader, and it took the most prominent empty corner on every card. The
+				 * TUI spends the id only as a fallback for a missing headline; a tooltip
+				 * keeps the support value without spending attention on every row.
+				 */}
+				<span className="shrink-0 text-ink text-xs" title={ask.ask_id}>
+					{"\u00a0"}
+				</span>
 			</div>
 			{/*
 			 * A SETTLED ask draws the ANSWER FRAME, not a disabled form: what the
@@ -320,8 +349,8 @@ const AskRow = ({
 			{!canAnswer ? (
 				<div className="flex flex-col gap-1.5">
 					{askSettledAnswers(ask).map((entry) => (
-						<div key={entry.question} className="flex flex-col gap-0.5">
-							<span className="text-ink-muted text-xs">{entry.question}</span>
+						<div key={entry.id} className="flex flex-col gap-0.5">
+							<span className="text-ink text-xs">{entry.question}</span>
 							<span className="text-ink text-sm">
 								{entry.answers.length > 0
 									? entry.answers.join(", ")
@@ -384,10 +413,16 @@ const AskRow = ({
 						}}
 						className={cn(
 							"rounded-md px-3 py-1.5 text-sm",
-							// Disabled changes COLOUR, never opacity (branding § 2).
+							/*
+							 * The disabled state changes COLOUR, never opacity (branding §2),
+							 * and it keeps an EDGE: without one it rendered as body text of the
+							 * same weight as `Decline` beside it, so the card's one action that
+							 * becomes enabled was also its quietest element (design round 1,
+							 * D7).
+							 */
 							disabled || !ready
-								? "bg-surface text-ink-dim"
-								: "bg-accent text-on-accent hover:bg-accent-hover",
+								? "border border-hairline bg-surface text-ink-dim"
+								: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
 						)}
 					>
 						Send answer
@@ -397,7 +432,7 @@ const AskRow = ({
 							type="button"
 							disabled={busy}
 							onClick={() => onDecline(ask)}
-							className="rounded-md px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
+							className="rounded-md px-3 py-1.5 text-ink text-sm hover:bg-sunken"
 						>
 							Decline
 						</button>
@@ -426,7 +461,7 @@ export const AskPanel = ({
 			className={cn("flex w-full flex-col gap-2", className)}
 		>
 			{view.rows.length === 0 ? (
-				<p className="px-3 py-2 text-ink-muted text-sm">
+				<p className="px-3 py-2 text-ink text-sm">
 					No asks outstanding. The agent is not waiting on anything.
 				</p>
 			) : (
