@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { readFileSync, readdirSync } from "node:fs";
 import { unlink, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { join } from "node:path";
@@ -556,6 +556,49 @@ test("a move's receipt settles the row it lands on, so a dismissal cannot resurr
 		owner_device: "d_self0001",
 	});
 	assert.equal(useCanonicalSessionsStore.getState().sessions.length, before);
+});
+
+test('every transfer "moved" branch settles the row it lands on (agent review round 2, R2-1)', () => {
+	/*
+	 * THE GUARD THE MISS NEEDED. R2-1 was a THIRD move site - the Mesh tab's own
+	 * `run` - that landed a recall without settling the row, so the chat header's
+	 * chip kept claiming the peer for a conversation that was home (and the
+	 * offload direction mirrored it). The rule the fix states - "the receipt owns
+	 * the row's placement once a move lands" - holds at every site that lands a
+	 * move, not only the two the operator's report happened to flow through, so
+	 * this enumerates them instead of trusting a list to stay right.
+	 *
+	 * THE DISCRIMINATOR IS `outcome.kind === "moved"`, the transfer outcome's own
+	 * branch: the placement model's `move?.kind` and the Mesh report's
+	 * `moveReport.kind` read `"moved"` too, and neither lands a move, so keying on
+	 * a bare `"moved"` would demand settling from the wrong places. A site that
+	 * answers a receipt is exactly a site that must correct the row.
+	 */
+	const root = join(ROOT, "src/renderer/src");
+	const walk = (dir) => {
+		const out = [];
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			const full = join(dir, entry.name);
+			if (entry.isDirectory()) out.push(...walk(full));
+			else if (/\.tsx?$/.test(entry.name)) out.push(full);
+		}
+		return out;
+	};
+	const carriers = walk(root).filter((file) =>
+		/outcome\.kind === "moved"/.test(readFileSync(file, "utf8")),
+	);
+	assert.ok(
+		carriers.length >= 3,
+		`expected the chat's two move sites and the Mesh tab's, found ${carriers.length}`,
+	);
+	const missing = carriers
+		.filter((file) => !/settlePlacement\(/.test(readFileSync(file, "utf8")))
+		.map((file) => file.replace(`${root}/`, ""));
+	assert.deepEqual(
+		missing,
+		[],
+		"these files answer a transfer receipt without settling the row it landed on - the chip keeps the old placement until a dismissal loses it",
+	);
 });
 
 test("a pick on a discarded pane records nothing, and never resurrects the row", () => {
