@@ -1052,6 +1052,52 @@ test("linux: EPERM on a by-pid send is REPORTED, never silently dropped", async 
 	);
 });
 
+/*
+ * R9: the retry must not erase ANOTHER member's count, and a member the fresh row
+ * puts in the leader's own group is covered by the group send - it is neither
+ * counted nor retried. Before this cell, retrying the group-covered member
+ * decremented a counter it had never incremented, so a run that left a process
+ * alive printed no "NOT signalled" note at all.
+ */
+test("R9: retrying a group-covered member cannot erase another member's count", async () => {
+	const stamp = "Tue Sep 30 21:56:12 2026";
+	const other = "Tue Sep 30 21:56:13 2026";
+	// 104 left the group at sample time but is back in the leader's group now (the
+	// group send covers it); 105's identity no longer matches (a recycled pid).
+	const fresh = `  104   100   100  512 ${stamp}\n  105     1   105  512 Tue Sep 30 22:10:00 2026\n`;
+	const sent = [];
+	const outcome = await killTree(
+		100,
+		[
+			{ pid: 104, pgid: 104, lstart: stamp },
+			{ pid: 105, pgid: 105, lstart: other },
+		],
+		{
+			platform: "darwin",
+			delay: async () => {},
+			alive: () => true, // both are still there; only their identity decides
+			kill: (target) => sent.push(target),
+			run: async () => fresh,
+		},
+	);
+	assert.deepEqual(
+		sent,
+		[-100],
+		"a group-covered member is not signalled again",
+	);
+	assert.deepEqual(outcome, { signalled: 0, skipped: 1, errors: [] });
+	// And the loud line names it, which is the promise the counter bug broke.
+	assert.match(
+		formatBreachLine({
+			leaderPid: 100,
+			budgetBytes: 1000,
+			reading: { totalBytes: 2000, rssBytes: 2000, members: [] },
+			outcome,
+		}),
+		/1 out-of-group process\(es\) NOT signalled/,
+	);
+});
+
 test("the override `off` runs the suite unbounded and says so", () => {
 	const passes = join(scratch, "passes.test.mjs");
 	writeFileSync(
