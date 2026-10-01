@@ -63,8 +63,25 @@ import { Tooltip } from "./tooltip";
 export type SearchableOption = {
 	/** The value handed back on selection. Unique within `options`. */
 	id: string;
-	/** The label, and the only thing the filter matches against. */
+	/** The label, and the first of the terms the filter matches against. */
 	name: string;
+	/**
+	 * Extra terms the filter matches beside `name` — a team's slug when the row
+	 * displays its label, a spelling the wire uses, an alias.
+	 *
+	 * WHY THIS EXISTS (round 1, R1-1). A row's `name` is what a person READS and
+	 * the only term this control could match, so the moment a team's row started
+	 * showing its label the field stopped answering the team's actual key —
+	 * typing `release-crew` returned nothing at all, while every sibling surface
+	 * (the `/team` popup, the sidebar and roster filters, the modal pickers)
+	 * keeps the key findable. This is the same "readable name, machine term
+	 * beside it" split those surfaces carry.
+	 *
+	 * The FIRST term is still what Enter resolves exactly against
+	 * (`resolveActiveIndex`), and nothing about the value is changed: `id` stays
+	 * what a pick hands back.
+	 */
+	keywords?: readonly string[];
 	/** Second line of the row. */
 	description?: ReactNode;
 	/** Rendered after the name — the model picker's "recommended" star. */
@@ -178,6 +195,16 @@ export const fold = (text: string): string =>
 		.toLowerCase();
 
 /**
+ * Every folded term a query may match: the visible name first, then the
+ * keywords. One function so the filter, the custom row's suppression and the
+ * keyboard's exact-match arm cannot disagree about what "matches" means.
+ */
+const foldedTerms = (option: SearchableOption): string[] => [
+	fold(option.name),
+	...(option.keywords ?? []).map((keyword) => fold(keyword)),
+];
+
+/**
  * The rows a query admits, in the order they were given.
  *
  * Exported and pure so the filter is assertable without a browser: it is one
@@ -197,7 +224,9 @@ export function filterSearchableOptions(
 	// internally; the old code approximated it with an `isUserTyping` ref.
 	if (!typed || typed === selectedName) return options;
 	const needle = fold(typed);
-	return options.filter((option) => fold(option.name).includes(needle));
+	return options.filter((option) =>
+		foldedTerms(option).some((term) => term.includes(needle)),
+	);
 }
 
 /**
@@ -233,7 +262,9 @@ export type ComboboxRow = { kind: "group"; label: string } | ComboboxOptionRow;
  *
  * The row is built only when the caller sets `customRow` (a field that rejects
  * free text has nothing for it to carry) and only when the text is not already
- * an option's own name, because then the option's row IS the typed value.
+ * one of an option's own terms (`foldedTerms` — the name, or a keyword): then
+ * the option's row IS the typed value, and offering a second row carrying the
+ * same text would make the same choice twice.
  */
 /**
  * The typed-value row's name when the owner does not supply one.
@@ -263,7 +294,7 @@ export function buildComboboxRows(
 	if (
 		customRow &&
 		typed &&
-		!visible.some((option) => fold(option.name) === fold(typed))
+		!visible.some((option) => foldedTerms(option).includes(fold(typed)))
 	) {
 		out.push({ kind: "custom", text: typed, index: visible.length });
 	}
@@ -288,9 +319,10 @@ export const navigableRowCount = (rows: ComboboxRow[]): number =>
  *   replace the value. Nothing is resolved: no row is marked, Enter is nobody's.
  * - **a query narrowing the list** - typed text that is not the current
  *   selection's own name. Whatever the user is looking at is the answer, so the
- *   first row is resolved; an exact name match wins instead, because typing a
- *   whole name is a deliberate act and the filter can admit a longer name ahead
- *   of the shorter one that matches exactly.
+ *   first row is resolved; an exact term match wins instead (`foldedTerms`,
+ *   the same set the filter reads), because typing a whole name - or the exact
+ *   key a row carries as a keyword - is a deliberate act and the filter can
+ *   admit a longer name ahead of the shorter one that matches exactly.
  *
  * This is the half of the fix the keyboard contract rests on: it is what makes
  * "type three characters, press Enter" commit the row the list is showing
@@ -309,7 +341,7 @@ export function resolveActiveIndex(
 	if (!typed || fold(typed) === fold(selectedName)) return -1;
 	const exact = rows.find(
 		(row): row is ComboboxOptionRow =>
-			row.kind === "option" && fold(row.option.name) === fold(typed),
+			row.kind === "option" && foldedTerms(row.option).includes(fold(typed)),
 	);
 	return exact ? exact.index : 0;
 }

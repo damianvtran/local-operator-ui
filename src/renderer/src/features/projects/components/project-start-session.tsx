@@ -23,6 +23,7 @@ import {
 	useProfiles,
 	useTeams,
 } from "@shared/api/local-operator/profile-hooks";
+import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import {
 	BaseDialog,
 	PrimaryButton,
@@ -111,7 +112,22 @@ export const ProjectStartSessionDialog: FC<ProjectStartSessionDialogProps> = ({
 		for (const team of teams.data ?? []) {
 			rows.push({
 				id: teamOptionId(team.name),
-				name: team.name,
+				/*
+				 * The READABLE name; the id above stays `teamOptionId(team.name)`,
+				 * so a pick parses back to the slug `sessions.create` is sent.
+				 */
+				name: teamDisplayName(team),
+				/*
+				 * THE SLUG STAYS FINDABLE BESIDE THE LABEL (round 1, R1-1). `name`
+				 * is what the filter matches by default, so the moment this option
+				 * started showing the label, typing the team's actual key
+				 * (`release-crew`) into the field found NOTHING - every sibling
+				 * surface keeps the key reachable (the `/team` popup republishes
+				 * it as an alias, the sidebar and roster filters match name OR
+				 * label), and this dialog now carries the same second term
+				 * through the shared control's `keywords` slot.
+				 */
+				keywords: team.name === teamDisplayName(team) ? undefined : [team.name],
 				description: `Team · manager: ${team.manager}`,
 				group: "Teams",
 			});
