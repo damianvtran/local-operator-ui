@@ -215,9 +215,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	 * live there; nothing downstream memoises on its identity.
 	 */
 	const commitFields: CommitProjectFields = (fields) =>
-		update
-			.mutateAsync({ key: project.id, fields })
-			.then(() => undefined);
+		update.mutateAsync({ key: project.id, fields }).then(() => undefined);
 	/*
 	 * THE TEAM'S HUMAN NAME (the team-labels lane, `69d088ec52`, carried through
 	 * this slice's restructure): the Properties Team row DISPLAYS the
@@ -388,124 +386,124 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					teamLabel={teamLabel}
 				/>
 
-			{/*
-			 * THE PRE-LOG PROGRESS, and only when there is a reading to show: an
-			 * empty one would land beside the feed's own empty state and say
-			 * "nothing yet" twice (design round 1, D3) - the feed's line is the more
-			 * informative of the two, so it is the one that stays.
-			 */}
-			{project.updates.length === 0 && project.progress && (
-				<section className="flex flex-col gap-2">
-					<h2 className="text-title text-ink">Progress</h2>
-					<ProjectMarkdown className="text-body">
-						{project.progress}
-					</ProjectMarkdown>
-					<p className="text-meta text-ink-muted">
-						{progressLine(project, nowMs)}
-					</p>
-				</section>
-			)}
-
-			<ProjectMilestones
-				milestones={project.milestones}
-				summary={milestoneSummary}
-				busy={busy}
-				onToggle={(name, completedFlag) => {
-					void setMilestone
-						.mutateAsync({ key: project.id, name, completed: completedFlag })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The milestone was not updated.",
-							);
-						});
-				}}
-				onRemove={(name) => {
-					void removeMilestone
-						.mutateAsync({ key: project.id, name })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The milestone was not removed.",
-							);
-						});
-				}}
-				onAdd={(name, targetDate) => {
-					void setMilestone
-						.mutateAsync({ key: project.id, name, targetDate })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The milestone was not added.",
-							);
-						});
-				}}
-			/>
-
-			<ProjectLinks
-				projectKey={project.id}
-				links={links}
-				busy={busy}
-				onStartSession={() => setStarting(true)}
-				onQuickSend={quickSend}
-				onLink={(sessionId) => {
-					void link
-						.mutateAsync({ key: project.id, sessionId })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The session was not linked.",
-							);
-						});
-				}}
-				onUnlink={(sessionId) => {
-					void unlink
-						.mutateAsync({ key: project.id, sessionId })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The session was not unlinked.",
-							);
-						});
-				}}
-			/>
-
-			<ProjectTodos links={links} />
-
-			<ProjectUpdates updates={project.updates} nowMs={nowMs} />
-
-			<ProjectDeleteDialog
-				open={deleting}
-				projectName={project.name}
-				onClose={() => setDeleting(false)}
-				onConfirm={async (typedName) => {
-					await remove.mutateAsync({
-						key: project.id,
-						confirmedName: typedName,
-					});
-					showSuccessToast("Project deleted");
-					void navigate("/projects");
-				}}
-			/>
-
-			<ProjectStartSessionDialog
-				open={starting}
-				onClose={() => setStarting(false)}
-				onStart={startSession}
-				teamsEnabled={desktopFeatureEnabled(
-					capabilities.data,
-					"team_catalogue",
+				{/*
+				 * THE PRE-LOG PROGRESS, and only when there is a reading to show: an
+				 * empty one would land beside the feed's own empty state and say
+				 * "nothing yet" twice (design round 1, D3) - the feed's line is the more
+				 * informative of the two, so it is the one that stays.
+				 */}
+				{project.updates.length === 0 && project.progress && (
+					<section className="flex flex-col gap-2">
+						<h2 className="text-title text-ink">Progress</h2>
+						<ProjectMarkdown className="text-body">
+							{project.progress}
+						</ProjectMarkdown>
+						<p className="text-meta text-ink-muted">
+							{progressLine(project, nowMs)}
+						</p>
+					</section>
 				)}
-				profilesEnabled={desktopFeatureEnabled(
-					capabilities.data,
-					"profile_catalogue",
-				)}
-			/>
+
+				<ProjectMilestones
+					milestones={project.milestones}
+					summary={milestoneSummary}
+					busy={busy}
+					onToggle={(name, completedFlag) => {
+						void setMilestone
+							.mutateAsync({ key: project.id, name, completed: completedFlag })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The milestone was not updated.",
+								);
+							});
+					}}
+					onRemove={(name) => {
+						void removeMilestone
+							.mutateAsync({ key: project.id, name })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The milestone was not removed.",
+								);
+							});
+					}}
+					onAdd={(name, targetDate) => {
+						void setMilestone
+							.mutateAsync({ key: project.id, name, targetDate })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The milestone was not added.",
+								);
+							});
+					}}
+				/>
+
+				<ProjectLinks
+					projectKey={project.id}
+					links={links}
+					busy={busy}
+					onStartSession={() => setStarting(true)}
+					onQuickSend={quickSend}
+					onLink={(sessionId) => {
+						void link
+							.mutateAsync({ key: project.id, sessionId })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The session was not linked.",
+								);
+							});
+					}}
+					onUnlink={(sessionId) => {
+						void unlink
+							.mutateAsync({ key: project.id, sessionId })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The session was not unlinked.",
+								);
+							});
+					}}
+				/>
+
+				<ProjectTodos links={links} />
+
+				<ProjectUpdates updates={project.updates} nowMs={nowMs} />
+
+				<ProjectDeleteDialog
+					open={deleting}
+					projectName={project.name}
+					onClose={() => setDeleting(false)}
+					onConfirm={async (typedName) => {
+						await remove.mutateAsync({
+							key: project.id,
+							confirmedName: typedName,
+						});
+						showSuccessToast("Project deleted");
+						void navigate("/projects");
+					}}
+				/>
+
+				<ProjectStartSessionDialog
+					open={starting}
+					onClose={() => setStarting(false)}
+					onStart={startSession}
+					teamsEnabled={desktopFeatureEnabled(
+						capabilities.data,
+						"team_catalogue",
+					)}
+					profilesEnabled={desktopFeatureEnabled(
+						capabilities.data,
+						"profile_catalogue",
+					)}
+				/>
 			</div>
 		</InlineEditPane>
 	);

@@ -46,13 +46,15 @@ import {
 import { cn } from "@shared/lib/utils";
 import type { ClipboardEvent, FC } from "react";
 import { useEffect, useId, useRef, useState } from "react";
-import { projectNameRule, PROJECT_DESCRIPTION_MAX_CHARS } from "../../../../../shared/desktop-contract";
+import {
+	PROJECT_DESCRIPTION_MAX_CHARS,
+	projectNameRule,
+} from "../../../../../shared/desktop-contract";
 import type { DesktopProjectStatus } from "../../../../../shared/desktop-control-contract";
 import type {
 	ProjectCreateFields,
 	ProjectEditFields,
 } from "../hooks/use-projects-queries";
-import { ProjectMarkdown } from "../project-markdown";
 import {
 	parseProjectTags,
 	projectAttributionRule,
@@ -63,6 +65,7 @@ import {
 	projectTagsFieldRule,
 	projectTitleRule,
 } from "../project-edit-model";
+import { ProjectMarkdown } from "../project-markdown";
 import { PROJECT_STATUS_OPTIONS, refusalCopy } from "../project-model";
 import {
 	PROJECT_DESCRIPTION_TEMPLATE,
@@ -118,7 +121,6 @@ const EMPTY_FORM: FormState = {
 
 /** `2026-09-20`, or `""` — the one day shape every date field accepts. */
 
-
 export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	open,
 	onClose,
@@ -149,7 +151,6 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	 * ask to resume. `open` is the trigger that means "the user asked for this
 	 * form".
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset is keyed on the open transition, see above.
 	useEffect(() => {
 		if (!open) return;
 		setForm({ ...EMPTY_FORM, description: PROJECT_DESCRIPTION_TEMPLATE });
@@ -189,9 +190,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	 * text is already markdown, and eating it to round-trip would only risk
 	 * changing it.
 	 */
-	const handleDescriptionPaste = (
-		event: ClipboardEvent<HTMLTextAreaElement>,
-	) =>
+	const handleDescriptionPaste = (event: ClipboardEvent<HTMLTextAreaElement>) =>
 		pasteMarkdownIntoDescription(event, descriptionRef, (next) =>
 			set("description", next),
 		);

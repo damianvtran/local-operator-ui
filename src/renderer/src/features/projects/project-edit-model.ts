@@ -176,6 +176,22 @@ export type ProjectEstimateBase = {
  * quietly on blur instead of claiming a save the wire cannot make, with the
  * editor's hint having already said why.
  */
+/**
+ * The estimate row's draft identity, for the machine's dirty derivation: the
+ * draft LIST compares unit-for-unit, and a number compares by VALUE (so
+ * "13.0" is not a change from "13") with one DIRECTIONAL exception - an
+ * emptied DRAFT reads as "keep the current value" (the rule the editor's hint
+ * states), while an emptied BASE against a real draft is a CHANGE.
+ *
+ * THE DIRECTION IS LOAD-BEARING (review round 1, M1): the rule used to fire
+ * on EITHER side (`left === "" || right === ""`), so on a record with no
+ * estimate - the whole "+ Add -> Estimate" path - typing `5` compared equal
+ * to the empty base, the machine read the field as unchanged, and the born
+ * row retired without a request; the value was silently dropped. `b` is the
+ * DRAFT and `a` what it is compared against on every call site the machine
+ * makes (`equals(base, fresh)`, `equals(draft, base)`, `equals(draft,
+ * fresh)`), so only `b`'s emptiness may mean keep.
+ */
 export function estimateDraftEquals(
 	a: ProjectEstimateDraft,
 	b: ProjectEstimateDraft,
@@ -183,7 +199,8 @@ export function estimateDraftEquals(
 	if (a.unit !== b.unit) return false;
 	const left = a.number.trim();
 	const right = b.number.trim();
-	if (left === "" || right === "") return true;
+	if (right === "") return true;
+	if (left === "") return false;
 	return Number(left) === Number(right);
 }
 

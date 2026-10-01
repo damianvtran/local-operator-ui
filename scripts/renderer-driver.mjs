@@ -18927,7 +18927,7 @@ function runDaemonPids() {
 	const backendPort = Number(new URL(BACKEND).port);
 	if (backendPort === 1111) {
 		throw new Error(
-			"--scene mini-view refuses a backend on 1111: that is the operator's own daemon, and this scene pauses a run-owned one",
+			"--backend points at the operator's own daemon on 1111: that daemon is never this run's to signal, and every scene here that pauses or kills one is reaping its OWN - point --backend at a run-owned daemon",
 		);
 	}
 	const pids = [];
@@ -33781,7 +33781,11 @@ async function sceneProjectDetail(cdp) {
 	/*
 	 * 1. THE SHEET. The heading is the DISPLAY name (`title`), and the key rides
 	 * under it in the machine voice; the checks name the facts a reader would
-	 * hunt for: the attribution line, the milestone and the seeded history entry.
+	 * hunt for: the owner's and team's property rows, the milestone and the
+	 * seeded history entry. The header's `Managed by` line these rows moved
+	 * from retired with the inline-edit slice - the rows ARE the attribution
+	 * now, so the check reads them by their field markers rather than a line
+	 * of prose that no longer exists.
 	 */
 	await verb(cdp, "navigate", `/projects/${PROJECT}`);
 	const sheet = await waitForCondition(
@@ -33794,14 +33798,23 @@ async function sceneProjectDetail(cdp) {
 		30_000,
 	);
 	const sheetText = String(sheet.last ?? "");
+	const ownerRow = await cdp.evaluate(
+		`document.querySelector('[data-project-field="owner"]')?.textContent ?? null`,
+	);
+	const teamRow = await cdp.evaluate(
+		`document.querySelector('[data-project-field="team"]')?.textContent ?? null`,
+	);
 	check(
-		"the sheet draws the seeded project: title, key, managed-by, milestone and feed",
+		"the sheet draws the seeded project: title, key, owner/team rows, milestone and feed",
 		sheet.ok &&
 			sheetText.includes(PROJECT) &&
-			sheetText.includes("Managed by atlas · platform") &&
+			typeof ownerRow === "string" &&
+			ownerRow.includes("atlas") &&
+			typeof teamRow === "string" &&
+			teamRow.includes("platform") &&
 			sheetText.includes("rig milestone") &&
 			sheetText.includes("Seeded by the evidence rig"),
-		`after ${sheet.waitedMs}ms`,
+		`after ${sheet.waitedMs}ms owner=${JSON.stringify(ownerRow)} team=${JSON.stringify(teamRow)}`,
 	);
 	note("detail route", `${await verb(cdp, "state")}`);
 	await captureSettled(cdp, `project-detail-${size}-${theme}-sheet`);
@@ -34621,16 +34634,18 @@ async function sceneProjectInlineEdit(cdp) {
 	);
 
 	/*
-	 * 9. THE STATUS: the badge opens the select, `qa` commits from the menu,
-	 * and picking `done` with an incomplete milestone gets the daemon's own
-	 * done-gate sentence back — re-spoken beside the control through
-	 * `refusalCopy` (the tail is swapped for the app's sentence; § 2.5).
+	 * 9. THE STATUS: the pencil opens the select (the badge's own gesture is a
+	 * DOUBLE click - the value gesture everywhere in this file; a single
+	 * click on the badge deliberately begins nothing, round 1), `qa` commits
+	 * from the menu, and picking `done` with an incomplete milestone gets the
+	 * daemon's own done-gate sentence back — re-spoken beside the control
+	 * through `refusalCopy` (the tail is swapped for the app's sentence; § 2.5).
 	 */
 	await cdp.evaluate(
 		`document.querySelector(${JSON.stringify(FIELD("status"))}).scrollIntoView({block: 'center'}); true`,
 	);
 	await wait(200);
-	await clickAt(cdp, `[data-project-status]`);
+	await clickControl("status", "begin");
 	await need(`[data-project-status-option="qa"]`, "the status menu");
 	await clickAt(cdp, `[data-project-status-option="qa"]`);
 	const statusCommitted = await waitForCondition(
@@ -34645,7 +34660,7 @@ async function sceneProjectInlineEdit(cdp) {
 		`status=${JSON.stringify(afterStatus?.status ?? null)} badge=${JSON.stringify(statusCommitted.last)}`,
 		`status=${JSON.stringify(afterStatus?.status ?? null)} badge=${JSON.stringify(statusCommitted.last)}`,
 	);
-	await clickAt(cdp, `[data-project-status]`);
+	await clickControl("status", "begin");
 	await need(`[data-project-status-option="done"]`, "the done option");
 	await clickAt(cdp, `[data-project-status-option="done"]`);
 	const doneRefusal = await waitForCondition(
@@ -34745,8 +34760,8 @@ async function sceneProjectInlineEdit(cdp) {
 	/*
 	 * 12. THE CONFLICT HOLD, with the out-of-band writer being THIS process
 	 * (§ 2.4 case 3): a dirty draft on the start date, the record moved behind
-	 * it by a real PATCH, and the app's own focus-refetch path delivering the
-	 * moved record. The commit must be HELD, not forced and not silently
+	 * it by a real PATCH, and the app's own focus path delivering the moved
+	 * record. The commit must be HELD, not forced and not silently
 	 * overwritten, until "Keep mine" answers it.
 	 */
 	const conflictStart = "2026-10-01";
@@ -34762,16 +34777,42 @@ async function sceneProjectInlineEdit(cdp) {
 		`status=${patched.status}`,
 	);
 	/*
-	 * Past the detail query's own `staleTime` (10s), then the door a real
-	 * editor learns through: a window-focus event, the same one React Query's
-	 * focus manager listens for. The wait is the query's contract, not a
-	 * sleep for its own sake — a focus refetch only touches a STALE query.
+	 * THE DELIVERY IS A FOCUS TRANSITION, not a focus event (review round 1,
+	 * M6): React Query 5.73.3's focusManager subscribes to a BUBBLING
+	 * `visibilitychange` on `window` and tracks one boolean, so the bare
+	 * window `focus` this scene used to dispatch was heard by nobody - the
+	 * conflict could never appear. The nudge goes hidden -> visible (with
+	 * `visibilityState` made readable so the pair is visible to the manager),
+	 * which is exactly what a real window switch delivers; the wait before it
+	 * is the detail query's own `staleTime` (10s) - a focused query that is
+	 * not stale is not refetched. The recipe is `scripts/hub-round-trips.mjs`'s,
+	 * kept identical so the two rigs cannot drift.
+	 *
+	 * WHY NOT "commit another field and let its invalidation deliver it": the
+	 * blur rule fires first (clicking any other control blurs this dirty,
+	 * valid field, and blur ACCEPTS - § 2.2), so the draft would be committed
+	 * by the gesture before the refetch could ever hold it. The visibility
+	 * pair is the one delivery path that does not move focus.
 	 */
 	await wait(10_500);
-	await cdp.evaluate(`window.dispatchEvent(new Event("focus")); true`);
+	await cdp.evaluate(`(() => {
+		if (!window.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => window.__inlineEditVisibility ?? "visible",
+			});
+			window.__inlineEditVisibilityPatched = true;
+		}
+		window.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.dispatchEvent(new Event("focus"));
+		return true;
+	})()`);
 	const conflictShown = await waitForCondition(
 		cdp,
-		`(document.body.textContent ?? "").includes("Changed elsewhere.")`,
+		`(document.body.textContent ?? "").includes("This changed while you were editing")`,
 		8_000,
 	);
 	const draftHeld = await cdp.evaluate(
@@ -34885,6 +34926,117 @@ async function sceneProjectInlineEdit(cdp) {
 		`team=${JSON.stringify(afterTeam?.team ?? null)}`,
 		`team=${JSON.stringify(afterTeam?.team ?? null)}`,
 	);
+
+	/*
+	 * 15. THE ESTIMATE BORN FROM NONE (round 1, M1's exact repro): the seed
+	 * has no estimate, the row is born from `+ Add`, and typing a number and
+	 * accepting must WRITE - a directional identity is what makes the born
+	 * draft dirty against its empty base, and the old symmetric one compared
+	 * it equal and retired the row without a request.
+	 */
+	await cdp.evaluate(
+		`document.querySelector("[data-project-add-field]").scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	await clickAt(cdp, "[data-project-add-field]");
+	await need(
+		'[data-project-add-option="estimate"]',
+		"the add-field menu (estimate)",
+	);
+	await clickAt(cdp, '[data-project-add-option="estimate"]');
+	await need(ENTRY("estimate"), "the estimate editor born from the menu");
+	await replaceAllText(cdp, ENTRY("estimate"), "5");
+	await clickControl("estimate", "accept");
+	const estimateSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("estimate"))}) === null`,
+		8_000,
+	);
+	const afterEstimate = await stored();
+	check(
+		"an estimate can be born from none (round 1, M1)",
+		estimateSaved.ok && afterEstimate?.estimate === 5,
+		`estimate=${JSON.stringify(afterEstimate?.estimate ?? null)}`,
+		`estimate=${JSON.stringify(afterEstimate?.estimate ?? null)}`,
+	);
+
+	/*
+	 * 16. TAGS BORN FROM NONE, on the comparator the born draft now makes
+	 * dirty: same `+ Add` birth, the comma text committed, the daemon read
+	 * back as the list.
+	 */
+	await cdp.evaluate(
+		`document.querySelector("[data-project-add-field]").scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	await clickAt(cdp, "[data-project-add-field]");
+	await need('[data-project-add-option="tags"]', "the add-field menu (tags)");
+	await clickAt(cdp, '[data-project-add-option="tags"]');
+	await need(ENTRY("tags"), "the tags editor born from the menu");
+	await replaceAllText(cdp, ENTRY("tags"), "q4, payments");
+	await clickControl("tags", "accept");
+	const tagsSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("tags"))}) === null`,
+		8_000,
+	);
+	const afterTags = await stored();
+	check(
+		"tags can be born from none",
+		tagsSaved.ok && Array.isArray(afterTags?.tags) && afterTags.tags.join(",") === "q4,payments",
+		`tags=${JSON.stringify(afterTags?.tags ?? null)}`,
+		`tags=${JSON.stringify(afterTags?.tags ?? null)}`,
+	);
+
+	/*
+	 * 17. TAGS NEVER CLOBBER (round 1, M2's exact repro): a CLEAN draft (the
+	 * record's own text, untouched), an out-of-band move behind it, delivered
+	 * by the same visibility pair as step 12. The clean draft ADOPTS the moved
+	 * record - visible right in the open editor - and a blur after the
+	 * adoption writes nothing; the old comparator closed over the live record
+	 * and turned this into a dirty draft that reverted the write on the first
+	 * blur.
+	 */
+	await clickControl("tags", "begin");
+	await need(ENTRY("tags"), "the tags editor (never-clobber)");
+	const patchedTags = await projectPatch(PROJECT, { tags: ["a", "z"] });
+	check(
+		"the out-of-band tags write landed",
+		patchedTags.status === 200,
+		`status=${patchedTags.status}`,
+		`status=${patchedTags.status}`,
+	);
+	await wait(10_500);
+	await cdp.evaluate(`(() => {
+		if (!window.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => window.__inlineEditVisibility ?? "visible",
+			});
+			window.__inlineEditVisibilityPatched = true;
+		}
+		window.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.dispatchEvent(new Event("focus"));
+		return true;
+	})()`);
+	const tagsAdopted = await waitForCondition(
+		cdp,
+		`(document.querySelector(${JSON.stringify(ENTRY("tags"))})?.value ?? "") === "a, z"`,
+		8_000,
+	);
+	const tagsAfterAdopt = await stored();
+	check(
+		"a clean tags draft adopts the moved record and cannot revert it",
+		tagsAdopted.ok &&
+			Array.isArray(tagsAfterAdopt?.tags) &&
+			tagsAfterAdopt.tags.join(",") === "a,z",
+		`value=${JSON.stringify(tagsAdopted.last)} tags=${JSON.stringify(tagsAfterAdopt?.tags ?? null)}`,
+		`value=${JSON.stringify(tagsAdopted.last)} tags=${JSON.stringify(tagsAfterAdopt?.tags ?? null)}`,
+	);
+	await clickControl("tags", "cancel");
 }
 
 /**

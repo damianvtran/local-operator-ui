@@ -1,11 +1,14 @@
-# The project detail page, edited in place: eighteen frames from the inline-edit scene
+# The project detail page, edited in place: the inline-edit scene's frames
 
-Eighteen frames from `scripts/renderer-driver.mjs`'s `project-inline-edit`
-scene — photographed through the app's own `capturePage()` in the `headless`
-window mode, at 1380x900, nine states in each brand palette (`dark/` =
-`localOperatorDark`, `light/` = `localOperatorLight`). They are here rather
-than attached to the PR because a committed frame is the one a later round can
-still read.
+**Status: the scene is written and pinned; its frames are owed to the capture
+pass.** At this head the directory carries this README and `seed.py`; the
+run below has not executed under the fleet hold, and the eighteen PNGs (nine
+states x two brand palettes, `dark/` = `localOperatorDark`, `light/` =
+`localOperatorLight`, 1380x900 through the app's own `capturePage()` in the
+`headless` window mode) are committed by that pass beside this file — a
+committed frame is the one a later round can still read. Until then the
+STATES TABLE, the seed and the command are the evidence-of-record, and the
+scene's own PASS/FAIL lines are the checklist at the foot of this file.
 
 ## What the frames are evidence for, and what they are not
 
@@ -27,8 +30,8 @@ asserts each one and photographs the state it leaves:
   SIGCONT by exact pid, from the serve record), so the spinner is an in-flight
   write rather than a photographed fabrication.
 
-The run closes its own app and leaves nothing behind (`no process from this run
-outlived its boot`).
+The scene closes its own app and leaves nothing behind — its last check is
+`no process from this run outlived its boot`.
 
 ## The run, exactly
 
@@ -83,8 +86,9 @@ by construction).
 
 ## The scene's own checks
 
-The scene prints one PASS/FAIL line per check and exits non-zero on any FAIL
-(the run's log ends `ALL CHECKS PASSED`). The checklist, in order:
+The scene prints one PASS/FAIL line per check and exits non-zero on any FAIL.
+The checklist, in order (the capture pass records the run's final
+`ALL CHECKS PASSED` line here when it executes):
 
 ```
 the window is the headless launch, not a raised one
@@ -122,8 +126,24 @@ the run's own daemon is identifiable by pid (never 1111)
 the saving state holds while the daemon answers nothing
 the same write completes once the daemon resumes
 a missing field is born inline from the + Add menu
+an estimate can be born from none (round 1, M1)
+tags can be born from none
+the out-of-band tags write landed
+a clean tags draft adopts the moved record and cannot revert it
 no process from this run outlived its boot
 ```
+
+## What the scene covers, and what only the unit lane covers
+
+The scene's reach was widened in review round 1 to the two reproduced
+data-integrity defects: an estimate BORN from none (M1 — the directional
+draft identity is what makes the born draft dirty) and the tags rows (M2 —
+born from none; a clean draft adopting an out-of-band move). The remaining
+rule-level cases are pinned in `scripts/projects-inline-edit.test.mjs` rather
+than photographed, because they are pure: the estimate's unit-only change,
+the estimate's NO-CLEAR rule, the trimmed identity of every string field, the
+keyboard contract's chord-from-chrome case, and the never-clobber comparison
+driven through the machine for tags.
 
 ## The seed
 

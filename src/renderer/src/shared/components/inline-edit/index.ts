@@ -45,4 +45,8 @@ export type {
 } from "./inline-edit-model";
 export { InlineEditPane } from "./inline-edit-pane";
 export { useInlineEdit } from "./use-inline-edit";
-export type { InlineEditApi, InlineEditLabels, InlineEditOptions } from "./use-inline-edit";
+export type {
+	InlineEditApi,
+	InlineEditLabels,
+	InlineEditOptions,
+} from "./use-inline-edit";

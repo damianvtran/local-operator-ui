@@ -74,6 +74,17 @@ export type InlineEditControlsProps = {
 const SLOT_BUTTON =
 	"inline-flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-xs text-ink-dim transition-colors duration-fast ease-out-quart hover:text-ink-muted";
 
+/**
+ * § 2.2's SETTLED 32x32 hit area, as a hit area rather than a box: the
+ * pseudo-element extends the pointer target to 32x32 while the visible box
+ * stays `size-5` - so the affordance keeps the glyph-and-colour-only rule
+ * (`docs/branding.md`; nothing grows, lifts or reflows when a row enters
+ * edit) and a pointer still gets the composer's target size (review round 1,
+ * m4).
+ */
+const SLOT_HIT_AREA =
+	"relative before:absolute before:-inset-1.5 before:content-['']";
+
 export const InlineEditControls: FC<InlineEditControlsProps> = ({
 	api,
 	idle = "affordance",
@@ -110,6 +121,7 @@ export const InlineEditControls: FC<InlineEditControlsProps> = ({
 						}}
 						className={cn(
 							SLOT_BUTTON,
+							SLOT_HIT_AREA,
 							phase === "saving" && "cursor-default text-ink-disabled",
 						)}
 					>
@@ -130,14 +142,22 @@ export const InlineEditControls: FC<InlineEditControlsProps> = ({
 							data-inline-edit-control="accept"
 							/* In `error` the check re-attempts the write, and its
 							 * name says so; the slot's own door out of error. */
-							aria-label={phase === "error" ? (labels.retry ?? labels.accept) : labels.accept}
-							title={phase === "error" ? (labels.retry ?? labels.accept) : labels.accept}
+							aria-label={
+								phase === "error"
+									? (labels.retry ?? labels.accept)
+									: labels.accept
+							}
+							title={
+								phase === "error"
+									? (labels.retry ?? labels.accept)
+									: labels.accept
+							}
 							onMouseDown={(event) => event.preventDefault()}
 							onClick={(event) => {
 								if (event.detail > 1) return;
 								api.accept();
 							}}
-							className={SLOT_BUTTON}
+							className={cn(SLOT_BUTTON, SLOT_HIT_AREA)}
 						>
 							<Check className="size-3" aria-hidden="true" />
 						</button>

@@ -37,10 +37,10 @@
 
 import { DesktopControlError } from "@shared/api/local-operator/desktop-api";
 import {
+	INLINE_EDIT_GROUP,
 	InlineEditControls,
 	InlineEditFeedback,
 	type InlineEditFeedbackHandle,
-	INLINE_EDIT_GROUP,
 	type InlineEditLabels,
 	type InlineEditSlotHandle,
 	useInlineEdit,
@@ -56,7 +56,8 @@ import {
 	Textarea,
 } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
-import type { FC, KeyboardEvent, ReactNode, RefObject } from "react";import { useEffect, useRef, useState } from "react";
+import type { FC, KeyboardEvent, ReactNode, RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
 	PROJECT_DESCRIPTION_MAX_CHARS,
 	projectNameRule,
@@ -67,9 +68,9 @@ import type {
 } from "../../../../../shared/desktop-control-contract";
 import type { ProjectEditFields } from "../hooks/use-projects-queries";
 import {
+	type ProjectEstimateDraft,
 	estimateChangedFields,
 	estimateDraftEquals,
-	type ProjectEstimateDraft,
 	parseProjectTags,
 	projectAttributionRule,
 	projectDateFieldRule,
@@ -81,12 +82,12 @@ import {
 	projectTitleRule,
 	tagsDraftEquals,
 } from "../project-edit-model";
+import { ProjectMarkdown } from "../project-markdown";
 import {
+	PROJECT_STATUS_OPTIONS,
 	estimateLabel,
 	formatProjectDay,
-	PROJECT_STATUS_OPTIONS,
 } from "../project-model";
-import { ProjectMarkdown } from "../project-markdown";
 import { pasteMarkdownIntoDescription } from "../project-sheet-model";
 import { ProjectStatusBadge } from "./project-status-badge";
 
@@ -145,9 +146,6 @@ type FieldShellProps = {
 	editor: ReactNode;
 	slot: InlineEditSlotHandle;
 	feedback: InlineEditFeedbackHandle;
-	onBegin: () => void;
-	/** The status badge's own gesture: a single press begins it. */
-	beginOnDisplayClick?: boolean;
 	controlsIdle?: "affordance" | "none";
 	className?: string;
 	controlsClassName?: string;
@@ -173,8 +171,6 @@ const FieldShell: FC<FieldShellProps> = ({
 	editor,
 	slot,
 	feedback,
-	onBegin,
-	beginOnDisplayClick = false,
 	controlsIdle = "affordance",
 	className,
 	controlsClassName,
@@ -204,10 +200,17 @@ const FieldShell: FC<FieldShellProps> = ({
 			)}
 		>
 			<div className="flex min-w-0 items-center gap-1.5">
+				{/*
+				 * The value's own gesture is a DOUBLE click; the pencil is the
+				 * single-click and keyboard door. A single click on the value
+				 * deliberately does nothing here: the status badge briefly took one
+				 * (review round 1: an `onClick` on a plain `div` is not a control,
+				 * and the operator never asked for it), and the field's one tab
+				 * stop stays the pencil.
+				 */}
 				<div
 					className="min-w-0 flex-1"
-					onClick={editing || !beginOnDisplayClick ? undefined : onBegin}
-					onDoubleClick={editing ? undefined : onBegin}
+					onDoubleClick={editing ? undefined : slot.begin}
 				>
 					{editing ? editor : display}
 				</div>
@@ -242,7 +245,13 @@ type TextFieldProps = {
 	label?: string;
 	bare?: boolean;
 	autoBegin?: boolean;
-	onRetire?: () => void;
+	/**
+	 * Why the row stopped being born: `cancelled` (Esc/x, the value kept out)
+	 * or `filled` (the committed value arrived). The consumer uses the reason
+	 * to hand focus back to its own trigger only on the cancel - a filled row
+	 * keeps the pencil's refocus (§ 2.6; review round 1, m2).
+	 */
+	onRetire?: (outcome: "cancelled" | "filled") => void;
 	className?: string;
 	controlsClassName?: string;
 };
@@ -279,7 +288,7 @@ const TextField: FC<TextFieldProps> = ({
 	useEffect(() => {
 		if (open && value !== "") {
 			setOpen(false);
-			onRetire?.();
+			onRetire?.("filled");
 		}
 	}, [open, value, onRetire]);
 	const api = useInlineEdit<string>({
@@ -287,6 +296,15 @@ const TextField: FC<TextFieldProps> = ({
 		commit: async (next) => {
 			await commit(commitFields(next));
 		},
+		/*
+		 * TRIMMED (review round 1, m1): every consumer's `commitFields` trims
+		 * before sending, so `atlas` -> `atlas ` was dirty under `Object.is`,
+		 * sent an identical value and showed "saved" - a PATCH nobody asked
+		 * for, in a feature whose promise is changed-fields-only. Comparing
+		 * what the wire would RECEIVE is the same rule `tagsDraftEquals`
+		 * applies to tags.
+		 */
+		equals: (a, b) => a.trim() === b.trim(),
 		validate,
 		labels,
 		selectAllOnBegin: true,
@@ -295,7 +313,7 @@ const TextField: FC<TextFieldProps> = ({
 		onSettle: (outcome) => {
 			if (outcome === "cancelled") {
 				setOpen(false);
-				onRetire?.();
+				onRetire?.("cancelled");
 			}
 		},
 	});
@@ -309,7 +327,6 @@ const TextField: FC<TextFieldProps> = ({
 			label={label}
 			bare={bare}
 			display={display}
-			onBegin={api.begin}
 			slot={api}
 			feedback={api}
 			className={className}
@@ -352,6 +369,18 @@ export const ProjectHeaderIdentity: FC<{
 }> = ({ project, commit }) => {
 	const title = project.title ?? "";
 	const [addingTitle, setAddingTitle] = useState(false);
+	/*
+	 * The born title's own focus target (review round 1, m2): a cancelled
+	 * "Add a title" row has no pencil to return to (it never had a value),
+	 * so focus goes back to the affordance that opened it - the same rule the
+	 * properties block's "+ Add" applies to its rows.
+	 */
+	const addTitleRef = useRef<HTMLButtonElement | null>(null);
+	const retireTitle = (outcome: "cancelled" | "filled") => {
+		setAddingTitle(false);
+		if (outcome === "cancelled")
+			setTimeout(() => addTitleRef.current?.focus(), 0);
+	};
 	return (
 		<div className="flex min-w-0 flex-col gap-1.5">
 			<div className={cn(INLINE_EDIT_GROUP, "flex min-w-0 flex-col gap-0.5")}>
@@ -415,10 +444,11 @@ export const ProjectHeaderIdentity: FC<{
 							ramp="text-body-sm"
 							bare
 							autoBegin
-							onRetire={() => setAddingTitle(false)}
+							onRetire={retireTitle}
 						/>
 					) : (
 						<button
+							ref={addTitleRef}
 							type="button"
 							data-project-add-title=""
 							onClick={() => setAddingTitle(true)}
@@ -462,12 +492,16 @@ export const ProjectHeaderIdentity: FC<{
 /**
  * The status field. See this file's header for why a pick commits directly.
  *
- * THE MENU OPENS WITH THE EDIT: the badge is pressed, the machine begins, and
- * the select's menu opens on the same gesture (the `onBegin` hook option), so
- * "edit the status" is one press rather than click-open-select. The menu state
- * is owned here, not by the machine: it is chrome over the draft, and a closed
- * menu with an open field (Escape once) is a real, harmless state the user can
- * leave by picking again or pressing x.
+ * THE MENU OPENS WITH THE EDIT: the pencil is pressed (or the badge is
+ * double-clicked - the value's own gesture everywhere in this file), the
+ * machine begins, and the select's menu opens on the same gesture (the
+ * `onBegin` hook option), so "edit the status" is one press rather than
+ * click-open-select. A single click on the badge deliberately does NOT begin
+ * it (review round 1: that was an `onClick` on a plain div, not a control -
+ * the field's one tab stop is the pencil). The menu state is owned here, not
+ * by the machine: it is chrome over the draft, and a closed menu with an open
+ * field (Escape once) is a real, harmless state the user can leave by picking
+ * again or pressing x.
  */
 export const ProjectStatusField: FC<{
 	project: DesktopProjectView;
@@ -491,8 +525,6 @@ export const ProjectStatusField: FC<{
 			fieldProps={api.fieldProps}
 			editing={api.editing}
 			display={<ProjectStatusBadge status={project.status} />}
-			onBegin={api.begin}
-			beginOnDisplayClick
 			slot={api}
 			feedback={api}
 			editor={
@@ -560,11 +592,15 @@ export const ProjectDescriptionBlock: FC<{
 }> = ({ project, commit }) => {
 	const [preview, setPreview] = useState(false);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const addDescriptionRef = useRef<HTMLButtonElement | null>(null);
 	const api = useInlineEdit<string>({
 		value: project.description,
 		commit: async (next) => {
 			await commit({ description: next.trim() });
 		},
+		/* TRIMMED, the same m1 rule the single-line fields carry: the commit
+		 * sends `next.trim()`, so a trailing space is not a change. */
+		equals: (a, b) => a.trim() === b.trim(),
 		validate: (next) => projectDescriptionRule(next),
 		multiline: true,
 		labels: editLabels("description", "Description"),
@@ -576,6 +612,17 @@ export const ProjectDescriptionBlock: FC<{
 		 * from the editor read as a key from OUTSIDE it (refused).
 		 */
 		editorRef: textareaRef,
+		onSettle: (outcome) => {
+			/*
+			 * m2: a cancelled EMPTY description has no pencil to hand focus to
+			 * (its resting affordance is the "Add description" button), so the
+			 * focus returns to the door that opened it - the same rule the
+			 * properties block's "+ Add" applies to its rows. A non-empty
+			 * description keeps the pencil's own refocus.
+			 */
+			if (outcome === "cancelled" && !project.description.trim())
+				setTimeout(() => addDescriptionRef.current?.focus(), 0);
+		},
 	});
 	/*
 	 * Returning from Preview puts the caret back in the textarea: the toggle
@@ -656,10 +703,8 @@ export const ProjectDescriptionBlock: FC<{
 							aria-label={api.labels.name}
 							onChange={(event) => api.setDraft(event.target.value)}
 							onPaste={(event) =>
-								pasteMarkdownIntoDescription(
-									event,
-									textareaRef,
-									(next) => api.setDraft(next),
+								pasteMarkdownIntoDescription(event, textareaRef, (next) =>
+									api.setDraft(next),
 								)
 							}
 							className="h-40 resize-none"
@@ -690,6 +735,7 @@ export const ProjectDescriptionBlock: FC<{
 						</div>
 					) : (
 						<button
+							ref={addDescriptionRef}
 							type="button"
 							data-project-add-description=""
 							onClick={api.begin}
@@ -714,15 +760,13 @@ export const ProjectOwnerField: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 	autoBegin?: boolean;
-	onRetire?: () => void;
+	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, autoBegin = false, onRetire }) => (
 	<TextField
 		field="owner"
 		value={project.owner ?? ""}
 		label="Owner"
-		display={
-			<span className="text-body-sm text-ink">{project.owner}</span>
-		}
+		display={<span className="text-body-sm text-ink">{project.owner}</span>}
 		commitFields={(next) => ({ owner: next.trim() })}
 		validate={(next) => projectAttributionRule(next, "owner")}
 		labels={editLabels("owner", "Owner")}
@@ -745,7 +789,7 @@ export const ProjectTeamField: FC<{
 	 */
 	label?: string | null;
 	autoBegin?: boolean;
-	onRetire?: () => void;
+	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, label = null, autoBegin = false, onRetire }) => (
 	<TextField
 		field="team"
@@ -778,10 +822,12 @@ export const ProjectDateField: FC<{
 	which: "start" | "target";
 	nowMs: number;
 	autoBegin?: boolean;
-	onRetire?: () => void;
+	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, which, nowMs, autoBegin = false, onRetire }) => {
 	const raw =
-		which === "start" ? (project.start_date ?? "") : (project.target_date ?? "");
+		which === "start"
+			? (project.start_date ?? "")
+			: (project.target_date ?? "");
 	const locale =
 		typeof navigator === "undefined" ? undefined : navigator.language;
 	const display = formatProjectDay(raw, locale, new Date(nowMs));
@@ -824,7 +870,7 @@ export const ProjectEstimateField: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 	autoBegin?: boolean;
-	onRetire?: () => void;
+	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, autoBegin = false, onRetire }) => {
 	const base = {
 		estimate: project.estimate,
@@ -836,7 +882,7 @@ export const ProjectEstimateField: FC<{
 	useEffect(() => {
 		if (open && project.estimate !== null) {
 			setOpen(false);
-			onRetire?.();
+			onRetire?.("filled");
 		}
 	}, [open, project.estimate, onRetire]);
 	const api = useInlineEdit<ProjectEstimateDraft>({
@@ -857,13 +903,12 @@ export const ProjectEstimateField: FC<{
 		onSettle: (outcome) => {
 			if (outcome === "cancelled") {
 				setOpen(false);
-				onRetire?.();
+				onRetire?.("cancelled");
 			}
 		},
 	});
 	if (!open && project.estimate === null) return null;
-	const display =
-		estimateLabel(project.estimate, project.estimate_unit) || "—";
+	const display = estimateLabel(project.estimate, project.estimate_unit) || "—";
 	return (
 		<FieldShell
 			field="estimate"
@@ -872,7 +917,6 @@ export const ProjectEstimateField: FC<{
 			editing={api.editing}
 			label="Estimate"
 			display={<span className="text-body-sm text-ink">{display}</span>}
-			onBegin={api.begin}
 			slot={api}
 			feedback={api}
 			editor={
@@ -939,18 +983,28 @@ export const ProjectTagsField: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
 	autoBegin?: boolean;
-	onRetire?: () => void;
+	onRetire?: (outcome: "cancelled" | "filled") => void;
 }> = ({ project, commit, autoBegin = false, onRetire }) => {
 	const [open, setOpen] = useState(autoBegin);
 	useEffect(() => {
 		if (open && project.tags.length > 0) {
 			setOpen(false);
-			onRetire?.();
+			onRetire?.("filled");
 		}
 	}, [open, project.tags, onRetire]);
 	const api = useInlineEdit<string>({
 		value: project.tags.join(", "),
-		equals: (_base, draft) => tagsDraftEquals(project.tags, draft),
+		/*
+		 * THE COMPARATOR COMPARES ITS TWO ARGUMENTS (review round 1, M2). It
+		 * used to close over the live `project.tags` (`(_base, draft) =>
+		 * tagsDraftEquals(project.tags, draft)`), which made `equals(base,
+		 * fresh)` vacuously true: the never-clobber rule could not fire for
+		 * tags, and a CLEAN draft whose spacing differed from a moved record
+		 * read as dirty against the record - a blur could revert an
+		 * out-of-band write. Both sides are parsed now, so only a real,
+		 * whitespace-insensitive change is a change.
+		 */
+		equals: (a, b) => tagsDraftEquals(parseProjectTags(a), b),
 		commit: async (next) => {
 			const { tags } = projectTagsFieldRule(next);
 			await commit({ tags });
@@ -963,7 +1017,7 @@ export const ProjectTagsField: FC<{
 		onSettle: (outcome) => {
 			if (outcome === "cancelled") {
 				setOpen(false);
-				onRetire?.();
+				onRetire?.("cancelled");
 			}
 		},
 	});
@@ -985,7 +1039,6 @@ export const ProjectTagsField: FC<{
 					))}
 				</span>
 			}
-			onBegin={api.begin}
 			slot={api}
 			feedback={api}
 			editor={

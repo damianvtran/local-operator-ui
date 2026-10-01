@@ -39,7 +39,14 @@
  * for deciding.
  */
 
-import { useCallback, useContext, useEffect, useId, useRef, useState } from "react";
+import {
+	useCallback,
+	useContext,
+	useEffect,
+	useId,
+	useRef,
+	useState,
+} from "react";
 import type { KeyboardEvent, RefObject } from "react";
 import {
 	type InlineEditPhase,
@@ -180,7 +187,9 @@ function defaultErrorCopy(error: unknown): string {
 	return "The change was not saved.";
 }
 
-export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T> {
+export function useInlineEdit<T>(
+	options: InlineEditOptions<T>,
+): InlineEditApi<T> {
 	const {
 		value,
 		multiline = false,
@@ -196,7 +205,9 @@ export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T
 	 * ones without re-creating themselves (and without the callers having to
 	 * memoise). Same pattern for `equals`, whose default is `Object.is`.
 	 */
-	const equalsRef = useRef<(a: T, b: T) => boolean>(options.equals ?? Object.is);
+	const equalsRef = useRef<(a: T, b: T) => boolean>(
+		options.equals ?? Object.is,
+	);
 	equalsRef.current = options.equals ?? Object.is;
 	const commitRef = useRef(options.commit);
 	commitRef.current = options.commit;
@@ -282,11 +293,10 @@ export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T
 	useEffect(() => {
 		const memory = pendingSavedRef.current;
 		if (memory === null) return;
-		const same = options.equals ?? Object.is;
+		const same = equalsRef.current;
 		if (same(value, memory.saved) || !same(value, memory.previous)) {
 			pendingSavedRef.current = null;
 		}
-		// biome-ignore lint/correctness/useExhaustiveDependencies: `equals` is read through `options`, whose identity is the caller's and not a trigger.
 	}, [value]);
 
 	/*
@@ -343,10 +353,7 @@ export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T
 			onSettleRef.current?.("saved");
 			return;
 		}
-		if (
-			(previous === "editing" || previous === "error") &&
-			phase === "idle"
-		) {
+		if ((previous === "editing" || previous === "error") && phase === "idle") {
 			onSettleRef.current?.("cancelled");
 		}
 		/* `saved -> idle` is the dwell expiring: already settled. */
@@ -361,6 +368,7 @@ export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T
 	 * AS THIS FIELD READS IT (`recordValueRef`), so the stale snapshot a
 	 * just-saved field is still being served does not adopt over its own save.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `value` and `phase` ARE the triggers - the body reads them through refs (`phaseRef`, `recordValueRef`) so the reconcile runs on the arrival and on the phase that ends the `saved` dwell, and biome cannot see those reads.
 	useEffect(() => {
 		const decision = inlineEditReseed({
 			phase: phaseRef.current,
@@ -418,7 +426,9 @@ export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T
 			 * `undefined` meaning something of their own, so the two are the same
 			 * decision a `hasOwn` check would make. */
 			const candidate = next !== undefined ? next : draftRef.current;
-			if (!inlineEditAcceptSends(baseRef.current, candidate, equalsRef.current)) {
+			if (
+				!inlineEditAcceptSends(baseRef.current, candidate, equalsRef.current)
+			) {
 				/* Unchanged: exit with no request (§ 2.2). An explicit gesture
 				 * closes it; there is nothing to save. */
 				closeWithFocus(refocus && currentPhase !== "idle");
@@ -476,7 +486,6 @@ export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T
 			savedDwellMs,
 			setBaseBoth,
 			setDraftBoth,
-			setError,
 			setPhaseBoth,
 		],
 	);
@@ -494,14 +503,7 @@ export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T
 		setError(null);
 		setPhaseBoth("editing");
 		onBeginRef.current?.();
-	}, [
-		clearDwell,
-		setBaseBoth,
-		setConflictBoth,
-		setDraftBoth,
-		setError,
-		setPhaseBoth,
-	]);
+	}, [clearDwell, setBaseBoth, setConflictBoth, setDraftBoth, setPhaseBoth]);
 
 	const keepMine = useCallback(() => {
 		const fresh = conflictRef.current;
@@ -556,9 +558,30 @@ export function useInlineEdit<T>(options: InlineEditOptions<T>): InlineEditApi<T
 			 */
 			const next = event.relatedTarget as Node | null;
 			if (next !== null && fieldRef.current?.contains(next)) return;
+			/*
+			 * A menu the field owns lives in a PORTAL outside this wrapper (Radix),
+			 * so the trigger->item focus move it performs on open looks like a
+			 * click-away: the status Select's unchanged draft would close the
+			 * editor the moment its menu appeared, and the estimate's unit menu
+			 * would commit the field mid-gesture (review round 1, M3). Radix wraps
+			 * every portalled surface in `[data-radix-popper-content-wrapper]`;
+			 * focus landing inside one is focus on the field's own chrome. At
+			 * most one popper is open at a time in this app, and the Select
+			 * unmounts its menu when the field closes, so the containment cannot
+			 * keep a retired field alive.
+			 */
+			if (
+				next instanceof Element &&
+				next.closest("[data-radix-popper-content-wrapper]") !== null
+			)
+				return;
 			if (conflictRef.current !== null) return;
 			if (
-				!inlineEditAcceptSends(baseRef.current, draftRef.current, equalsRef.current)
+				!inlineEditAcceptSends(
+					baseRef.current,
+					draftRef.current,
+					equalsRef.current,
+				)
 			) {
 				closeWithFocus(false);
 				return;
