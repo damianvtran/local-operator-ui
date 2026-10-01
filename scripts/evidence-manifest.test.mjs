@@ -3126,6 +3126,16 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto396fd472f3Note",
 	/*
+	 * And the lane's NINETEENTH fold record: the sync onto `origin/main` =
+	 * `6f2e9b7838` (#731 the agent-class toggle). The second fold of one push
+	 * cycle - main moved while the `396fd472f3` fold was being pushed - and the
+	 * one whose `package.json` resolution the round-8 gate exists for: main
+	 * lacks this branch's `check-themes` and `check-fold-keys` keys, so a fold
+	 * laid from main's copy would drop one again. Registered so the statement
+	 * of the union that kept them survives any fold resolved from main.
+	 */
+	"foldOnto6f2e9b7838Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
