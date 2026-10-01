@@ -21,8 +21,12 @@
  * A guard keyed on RSS is therefore structurally blind to exactly the incident
  * class, which is the failure this file exists to close. So each member is
  * charged `max(footprint, rss)`: footprint where the platform can provide it
- * (macOS), RSS as the always-available floor (and the only arm on Linux, where
- * RSS has no compressor to hide behind).
+ * (macOS), RSS as the always-available floor and the ONLY arm on Linux, where
+ * there is no `ri_phys_footprint` equivalent. RSS is a floor there, not the honest
+ * counter, and that is a stated limitation rather than a claim: Linux swap and
+ * zswap hold pages out of RSS exactly as macOS's compressor does, so a SWAPPING
+ * Linux host can read low, and the watchdog has no second instrument to notice it
+ * with (see the coverage/blind discussion on `sampleGroup`).
  *
  * THE PROBE. Measured on the 14-core / 36 GB host, 2026-09-30, load 14-70:
  *
@@ -439,7 +443,8 @@ async function readProcRss(pid, procRoot) {
  * completion with the table read dead, and only the "NOT reliably bounded" line
  * said so). Reading `/proc` directly is cheaper than the `ps` it replaces and
  * cannot be starved by a fork failing under memory pressure — the exact condition
- * the watchdog exists for.
+ * the watchdog exists for. Its RSS is `VmRSS` from `/proc/<pid>/status`: the same
+ * resident-only figure `ps` reports, and on a swapping host the same floor.
  *
  * Returns the leader's tree (group + `ppid` descendants, via `selectMembers`) with
  * RSS and the `starttime` identity already recorded for every member, which is
@@ -478,7 +483,7 @@ async function walkProc(leaderPid, procRoot) {
  * table is exactly what we do not have), so they are signalled by pid only after
  * `killTree`'s own fresh re-check.
  */
-async function walkDescendants(leaderPid, run) {
+async function walkDescendants(leaderPid, run, { platform, procRoot } = {}) {
 	const members = [
 		{ pid: leaderPid, ppid: 0, pgid: leaderPid, rssBytes: 0, lstart: null },
 	];
@@ -507,7 +512,24 @@ async function walkDescendants(leaderPid, run) {
 			members.push({ pid, ppid: 0, pgid: null, rssBytes: 0, lstart: null });
 		}
 	}
-	if (members.length > 1) {
+	if (members.length > 1 && platform === "linux") {
+		// THE SAME KIND OF STAMP ON BOTH SIDES (R7). `pgrep` finds the children but
+		// carries no identity, and the pre-kill re-check on Linux compares `proc:`
+		// stamps, so a walked member left with a `ps`-format stamp (or none) would be
+		// skipped and left running in exactly the shape `/proc` cannot be LISTED but
+		// per-pid reads still work. Per-pid reads are what this walk already assumes,
+		// so filling pgid/rss/lstart in from `/proc/<pid>` costs no extra failure mode.
+		// Anything that still cannot be read keeps `lstart: null` and is
+		// skipped-and-counted at kill time rather than guessed at.
+		for (const member of members.slice(1)) {
+			const row = await readProcStat(member.pid, procRoot);
+			if (row === null) continue;
+			member.ppid = row.ppid;
+			member.pgid = row.pgid;
+			member.lstart = row.lstart;
+			member.rssBytes = await readProcRss(member.pid, procRoot);
+		}
+	} else if (members.length > 1) {
 		// IDENTITY AT WALK TIME (Q5). A walked member's start time has to be on
 		// record BEFORE the group is killed: once it is, a `setsid` descendant is
 		// re-parented to pid 1 and the "my parent is still in this tree" fallback can
@@ -567,10 +589,15 @@ async function walkDescendants(leaderPid, run) {
  *   coverage "leader"  nothing but the leader could be found.
  *   blind              true for "leader", and on macOS when no footprint came back
  *                      (RSS alone is the blind instrument there, see the module
- *                      header). On Linux RSS IS the instrument — there is no
- *                      compressor hiding pages from it and no footprint tool — so
- *                      a Linux reading is blind only at "leader" coverage. The
- *                      budget is still enforced on whatever WAS read.
+ *                      header). On Linux RSS is the only instrument there is, and
+ *                      it is a FLOOR rather than the honest counter: a swapping
+ *                      host holds pages out of RSS (swap, zswap) exactly as macOS
+ *                      holds them in its compressor, so this reading can
+ *                      undercount and there is no second instrument with which to
+ *                      notice - a stated limitation, not a claim of accuracy. A
+ *                      Linux reading is reported blind only at "leader" coverage,
+ *                      because there is nothing else to consult. The budget is
+ *                      still enforced on whatever WAS read.
  *
  * PLATFORMS. macOS and Linux have a fallback walk; any other platform has none
  * and a failed table read skips the tick. `run`, `platform` and `procRoot` are
@@ -597,11 +624,11 @@ export async function sampleGroup(
 		// them) or the leader is gone. The pid we spawned is ours, so it can still
 		// be read without any table; elsewhere the tick is skipped.
 		if (platform === "darwin") {
-			members = await walkDescendants(leaderPid, run);
+			members = await walkDescendants(leaderPid, run, { platform, procRoot });
 		} else if (platform === "linux") {
 			members =
 				(await walkProc(leaderPid, procRoot)) ??
-				(await walkDescendants(leaderPid, run));
+				(await walkDescendants(leaderPid, run, { platform, procRoot }));
 		} else {
 			return null;
 		}

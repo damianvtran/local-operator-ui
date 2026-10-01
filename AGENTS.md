@@ -310,9 +310,10 @@ the reasoning, probe costs and constants are in
   kills, and a starved `ps` must not wedge the run). If the process-table read
   fails the watchdog rebuilds the membership itself — macOS by walking `pgrep -P`
   from the leader, Linux by rebuilding the whole table from `/proc` (no
-  subprocess, so it cannot be starved; RSS is the instrument there, since Linux
-  has no compressor hiding pages from it) — and keeps enforcing on whatever it
-  could read. If that finds nothing it is reading only the ~17 MB `node --test`
+  subprocess, so it cannot be starved; RSS is the only instrument there, and a
+  floor rather than a claim — a swapping Linux box holds pages out of RSS just as
+  macOS holds them in its compressor, and the watchdog has no second reading to
+  notice with) — and keeps enforcing on whatever it could read. If that finds nothing it is reading only the ~17 MB `node --test`
   coordinator, which is NOT a bound on the test-file processes that hold the
   memory. Any such tick (and any macOS tick with no footprint reading) counts as
   **blind**; after five in a row the runner prints `WARNING … the run is NOT
