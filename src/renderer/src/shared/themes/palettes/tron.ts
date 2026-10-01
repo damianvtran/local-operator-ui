@@ -168,6 +168,9 @@ export const tron: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 5.69.
 		 */
 		hairline: "#283C4F",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.64:1 there against `hairline`'s 1.52:1.
+		hairlineStrong: "#2D4155",
 		// The TUI `edge-hi` 2A4660 lifted in L* until it clears 3:1 on `elevated`.
 		/*
 		 * Legibility pass: `borderControl` is the sole boundary of every input in the

@@ -18,16 +18,17 @@
  * cannot be reproduced or extended; this can, and the MR evidence comes from
  * the same tool the next reviewer will run.
  *
- * The Storybook it reads has to BUILD first, and on the tree as it stands the
- * shipped `.storybook/main.ts` cannot build its preview: it sets
- * `reactDocgen: "react-docgen-typescript"` while `package.json` pins
- * `typescript ^7.0.2`, and that pair throws `Cannot read properties of
- * undefined (reading 'React')` inside the docgen parser before a single frame
- * is taken. Boot Storybook with `reactDocgen: false` in your own checkout until
- * the config on `main` moves to `"react-docgen"`. It is pixel-neutral, measured
- * rather than argued: the whole `chat-ask-options` set re-captured under it came
- * back byte-identical to the committed frames, so it changes how the preview is
- * BUILT and nothing about what is photographed (design round 3, D12).
+ * The Storybook it reads has to BUILD first, and the config on `main` now does.
+ * This paragraph used to say the opposite - that the shipped `.storybook/main.ts`
+ * set `reactDocgen: "react-docgen-typescript"`, that the pair threw `Cannot read
+ * properties of undefined (reading 'React')` under TypeScript 7 before a single
+ * frame was taken, and that a capturer must boot with `reactDocgen: false` in
+ * its own checkout until the config moved. It moved: `.storybook/main.ts` sets
+ * `reactDocgen: "react-docgen"` (with the why beside it), and the shipped config
+ * boots this rig unmodified - the log prints `Using tsconfig paths for
+ * react-docgen` and the first frame is taken. A capturer that still follows the
+ * old paragraph is disabling a docgen mode the tree no longer uses, which costs
+ * only the types-driven prop tables `react-docgen` already gives up.
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -692,10 +693,13 @@ export const STORIES = [
 	 * absent MEANS), the second is the same run carrying it. `images-three` is the
 	 * same height again - one picture and three cost the same row - which is the
 	 * compactness claim this change makes and the one a reader of the diff should
-	 * be able to see. The extra 71px over the header-only states is the strip: 67
-	 * measured (a 64px picture in the frame's 66px box, plus the row's own line
-	 * box) and 4 of the fold's own `mt-1`. Both numbers are the rig's
-	 * (`condensed-group-media-geometry.mjs`), not this comment's arithmetic.
+	 * be able to see. The extra 87px over the header-only states is the strip: 79
+	 * measured (a 76px picture in the frame's 78px box, plus the row's own line
+	 * box) and 8 of the fold's own `mt-2` (RE-DERIVED FOR THE POLISH PASS: the
+	 * tile went 98x66 -> 117x78, so the pre-change reading here was 67 and 4 -
+	 * the 66px box this comment used to quote is the OLD tile). Both numbers are
+	 * the rig's (`condensed-group-media-geometry.mjs`), not this comment's
+	 * arithmetic.
 	 *
 	 * `image-live` is the other window a reader meets the strip in - the picture
 	 * has landed and the run has not finished - and `image-expanded` is the price
@@ -720,7 +724,8 @@ export const STORIES = [
 	 *   holds a picture whose own canvas IS the page's ground, so the tile's edge
 	 *   is the only thing that gives it an extent.
 	 * - `image-unavailable` is the compact receipt, the one tile state whose SHAPE
-	 *   is new (prose would blow the 66px strip).
+	 *   is new (prose would blow the 78px strip - it was 66px before the tile
+	 *   grew).
 	 *
 	 * `images-many` is now ONE row at 91px, because the cap answers it: the first
 	 * cut let eight pictures wrap to 166px and 25-30 reach ~391px, past the price
@@ -735,6 +740,56 @@ export const STORIES = [
 	["chat-trace-fold--image-tones", 1280, 200],
 	["chat-trace-fold--image-unavailable", 1280, 200],
 	["chat-trace-fold--image-live", 1280, 200],
+	/*
+	 * THE POLISH PASS'S OWN STATES (operator, 2026-09-30). Two frames answer the
+	 * question a still cannot: the tile is BORDERLESS AT REST and its edge returns
+	 * only while the pointer is on it, with the picture zoomed inside the frame
+	 * that clips it. `images-many-hover` is that state - its RESTING partner is
+	 * the `images-many` frame beside it, byte-identical to the before-hover frame
+	 * because the pre-change tile had no hover treatment at all (measured by the
+	 * design round: with `:hover` matched, every computed property was byte-equal
+	 * to rest). `images-many-hover-reduced-motion` is the same state with
+	 * `prefers-reduced-motion: reduce` emulated, where the ZOOM IS ABSENT (it is
+	 * `motion-safe:` only) and the EDGE IS STILL THERE - the cue that always reads
+	 * is a state, not a movement.
+	 */
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-many-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-many-hover-reduced-motion",
+			hoverSettleMs: 400,
+			reducedMotion: true,
+		},
+	],
+	/*
+	 * THE KEYBOARD ARM (design review round 1, D1 - the one MAJOR of that round).
+	 *
+	 * The tile's edge is a hover state AND a keyboard one, and the ring the app
+	 * draws on the focused button is - with the resting edge gone - the ONLY
+	 * control boundary a keyboard reader gets at rest. `tabTo` presses real Tab
+	 * keys until the tile's own button holds focus (and FAILS the run if it never
+	 * does), so these frames show the D4 fix as pixels: the 2px accent ring
+	 * following the frame's 6px radius rather than boxing it square.
+	 */
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{ tabTo: "[data-fold-media] li button", dir: "images-many-focus" },
+	],
 	[
 		"chat-trace-fold--image-expanded",
 		1280,
@@ -847,7 +902,8 @@ export const STORIES = [
 	 * cell (three pictures - one landscape, one portrait, one plot - in one
 	 * capped row of tiles), its `press` row is the expanded state whose price
 	 * the strip replaces, and `images-many` is the overflow count's own frame
-	 * (eight pictures, four tiles and the `+4 more images` control).
+	 * (eight pictures, four tiles and the `+4` count control, whose accessible
+	 * name and title read `4 more images`).
 	 * `images-many-expanded` is that control's press (U8): the bar opens onto
 	 * its sole image-bearing group, whose strip shows the WHOLE set - one
 	 * press reaches the pictures the count stood for. The before half is the
@@ -866,6 +922,65 @@ export const STORIES = [
 		},
 	],
 	["chat-turn-collapse--images-many", 1280, 900],
+	/*
+	 * The bar's three proof states for the same pass: the hover (the tile's edge
+	 * and zoom, which a resting still cannot show), the same under
+	 * `prefers-reduced-motion: reduce` (edge only - the pin the design round can
+	 * check against a frame rather than against code), and the NARROW column, where
+	 * the one-row invariant is the claim: at a 640px window the strip is 556px and
+	 * four 117px tiles plus their gutters and the `+N` are 533.6px, 22.4px inside
+	 * it (measured by `condensed-group-media-geometry.mjs`).
+	 */
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-hover-reduced-motion",
+			hoverSettleMs: 400,
+			reducedMotion: true,
+		},
+	],
+	["chat-turn-collapse--images", 640, 900, { dir: "images-narrow" }],
+	/*
+	 * The COUNT at the narrowest column, which is the row the whole size decision
+	 * rests on: four 117px tiles, their four 8px gutters and the `+4` control are
+	 * 533.6px of the 556px the strip has at a 640px window (slack 22.4px, and
+	 * 541.4px worst case at `+99`) - measured by
+	 * `condensed-group-media-geometry.mjs`, and framed here so the wrap claim can
+	 * be seen rather than only computed.
+	 */
+	["chat-turn-collapse--images-many", 640, 900, { dir: "images-many-narrow" }],
+	/* The bar's own keyboard arm, and the uncapped grid's - both callers of the
+	   same tile, so the ring is checked where the strip is flush and where it is
+	   a four-column grid rather than on the group fold alone. */
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{ tabTo: "[data-fold-media] li button", dir: "images-focus" },
+	],
+	[
+		"chat-turn-collapse--images-many",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			tabTo: "[data-fold-media] li button",
+			dir: "images-many-expanded-focus",
+		},
+	],
 	[
 		"chat-turn-collapse--images-many",
 		1280,
@@ -1175,6 +1290,59 @@ export const STORIES = [
 	 */
 	["chat-canonical-message-surface--user-turn", 1024, 560],
 	/*
+	 * THE MARKDOWN TABLE'S COLUMN WIDTHS (operator report, 2026-09-30): a table
+	 * the agent wrote into an answer rendered with its short columns squeezed
+	 * to a few pixels - the reported cells `#684 (1a)` and `MERGED f11952f1d2`
+	 * wrapped mid-token - while the long prose column beside them took the
+	 * width. Seven fixture shapes from `markdown-tables.stories.tsx`: the reported
+	 * table over real pull requests, a 400+ character cell, unbreakable tokens
+	 * (a full 40-character sha, a deep link, a long path), seven mixed columns,
+	 * and a two-row control - plus the fix's two edge states, `three-shas` (three
+	 * sha columns whose min-contents sum past the measure; the wrapper must
+	 * scroll) and `giant-token` (a 263-character digest; the 64ch cell cap wraps
+	 * it instead), with round 1's three remediation states beside them (named
+	 * below). Five of the shapes are also captured at 920 wide - the narrow
+	 * rung the agent-hub frames use - so the set carries them at a comfort window
+	 * and at a narrow one; both widths resolve the same 810px chat measure, so the
+	 * pair differs in margins rather than in the table's own box (MEASUREMENTS.md
+	 * in the before half carries the reading).
+	 *
+	 * THE BEFORE HALF IS NOT A ROW HERE. It is the declared supplementary set
+	 * `../chat-markdown-tables-before/`: captured FIRST from this same tree,
+	 * with the fix not yet written and the story's title temporarily suffixed
+	 * `before` for that run, so the ids land in their own surface directory -
+	 * then the title and the temporary rows were restored. These rows are the
+	 * AFTER half the fix's own capture writes `docs/evidence/
+	 * chat-markdown-tables/` with, and the asymmetry runs one way by design: the
+	 * two edge states are AFTER-only because the before half is the reproduction
+	 * of the report the fix answers, while the containment and ceiling behaviours
+	 * are the fix's own - before the fix there is no wrapper to photograph.
+	 *
+	 * ROUND 1'S REMEDIATION ADDED THREE STATES TO THIS SET: `three-shas-linked`
+	 * (the containment shape with the Repo cells carrying real links - an
+	 * overflowing wrapper that ALSO holds focusable descendants, the mixed case
+	 * the keyboard question was left open on; UX-1), `user-turn` (the reported
+	 * table inside a user bubble - a different container geometry from the 810px
+	 * answer column; D1), and `code-in-cells` (code spans inside cells - the
+	 * `td code` override's live case; Q3). The linked shape is captured at both
+	 * rungs; the other two at 1280 alone.
+	 */
+	["chat-markdown-tables--operator-shape", 1280, 900],
+	["chat-markdown-tables--long-prose", 1280, 900],
+	["chat-markdown-tables--long-tokens", 1280, 900],
+	["chat-markdown-tables--many-columns", 1280, 900],
+	["chat-markdown-tables--few-rows", 1280, 900],
+	["chat-markdown-tables--three-shas", 1280, 900],
+	["chat-markdown-tables--giant-token", 1280, 900],
+	["chat-markdown-tables--three-shas-linked", 1280, 900],
+	["chat-markdown-tables--user-turn", 1280, 900],
+	["chat-markdown-tables--code-in-cells", 1280, 900],
+	["chat-markdown-tables--operator-shape", 920, 900],
+	["chat-markdown-tables--long-tokens", 920, 900],
+	["chat-markdown-tables--many-columns", 920, 900],
+	["chat-markdown-tables--three-shas", 920, 900],
+	["chat-markdown-tables--three-shas-linked", 920, 900],
+	/*
 	 * CURRENCY AND MATH IN ONE MESSAGE (operator report, 2026-09-27). Four
 	 * states of `math-currency.stories.tsx` - a cost report whose amounts must
 	 * stay literal with its bold intact, pandoc's own `$20,000 and $30,000`
@@ -1388,6 +1556,7 @@ export const STORIES = [
 	["browser-tab-strip--waiting", 1280, 140],
 	["browser-tab-strip--agent-and-waiting", 1280, 140],
 	["browser-tab-strip--failed", 1280, 140],
+	["browser-tab-strip--failed-while-loading", 1280, 140],
 	["browser-tab-strip--restored", 1280, 140],
 	// THE WORST-CASE ROWS (review round 6). Four and five chips, one story each
 	// because only one tab can be active and the active row pays 68px for the cluster
@@ -1460,6 +1629,7 @@ export const STORIES = [
 	["browser-load-failure--connection-refused", 1280, 420],
 	["browser-load-failure--name-not-resolved", 1280, 420],
 	["browser-load-failure--unmapped-code", 1280, 420],
+	["browser-load-failure--restore-unanswered", 1280, 420],
 
 	/*
 	 * The passkey chooser (design round 1, D6). It shipped with NO rendered
@@ -2136,6 +2306,22 @@ export const STORIES = [
 	 * story OPENS it so the frame holds both the summary line and the rows.
 	 */
 	["chat-tool-rows--tool-ops", 1280, 570],
+	/*
+	 * The sessions tool's six ops, one row each (list bare and scoped, info,
+	 * spawn listed and ephemeral, resume, stop, three peek windows, a live
+	 * spawn): the desk half of the sessions lane (sibling
+	 * `damianvtran/local-operator` #1825). Before it a row for any of them
+	 * read `Called sessions <first scalar>` under the generic wrench; now the
+	 * op's verb leads and the discriminator rides first in the object (a
+	 * spawn's visibility, a peek's window). The fold on the frame reads
+	 * `12 sessions`, the noun this lane adds to `KIND_NOUNS`. The BEFORE half
+	 * is the declared set `sessions-ops-baseline/`, the same story captured
+	 * from unmodified `origin/main` - see that set's README. Height paired
+	 * with the story's own `Frame` (470): eleven actions condense into one
+	 * fold, and the story OPENS it so the frame holds the summary line and
+	 * every row beneath it.
+	 */
+	["chat-tool-rows--sessions-ops", 1280, 470],
 	["chat-tool-rows--names-and-fallbacks", 1280, 900],
 	/* The reported defect, and the only new surface this set added: a viewer that
 	   joins a turn already in flight. Its rows are built by the PRODUCTION
@@ -2649,13 +2835,41 @@ export const STORIES = [
 	   ladder — the state ink the wakes rows deliberately lack), the cap and its
 	   marker one past the arm path's own eight, a description longer than its
 	   row, the pair with the wakes (`wakes-and-plan`'s sibling, in the order both
-	   surfaces draw: the wakes first), and the pane's 320px floor. */
+	   surfaces draw: the wakes first), the pane's 320px floor, and that floor with
+	   a dismissed refusal's record on it - the state design round 1's D1 collision
+	   was worst in, because the record widens the action column by a further
+	   ~90px on top of the plain floor's squeeze. */
 	["chat-run-panel--monitors-only", 1280, 700],
 	["chat-run-panel--monitors-health", 1280, 820],
 	["chat-run-panel--monitors-many", 1280, 820],
 	["chat-run-panel--monitor-long-description", 1280, 700],
 	["chat-run-panel--monitors-and-wakes", 1280, 820],
 	["chat-run-panel--monitors-floor-320", 1280, 700],
+	["chat-run-panel--monitors-floor-320-refusal-record", 1280, 700],
+	/*
+	 * The cancel affordance's own states (the design's cancel paragraph, Unit B):
+	 * the row control under the pointer, the control holding the point's
+	 * `:focus-visible` ring, the confirmation the press opens, the confirmation
+	 * after a refusal - the state where the dialog must stay open with the
+	 * backend's own sentence - and the two records an attempt leaves on the row
+	 * once its dialog is gone: the `Cancelled` settling mark a receipt buys, and
+	 * the quiet `Cancel refused` note a dismissed refusal leaves (the round-1
+	 * remediation's U4/U8 half). The hover goes through the rig's real pointer
+	 * (the wash is a real hover state, hence `hoverSettleMs`); the refused,
+	 * cancelled and refusal-record frames perform their own presses and hold the
+	 * shutter until the state lands.
+	 */
+	[
+		"chat-run-panel--monitor-cancel-hover",
+		1280,
+		820,
+		{ hover: '[data-monitor-cancel="m1"]', hoverSettleMs: 400 },
+	],
+	["chat-run-panel--monitor-cancel-focus", 1280, 820],
+	["chat-run-panel--monitor-cancel-confirm", 1280, 820],
+	["chat-run-panel--monitor-cancel-refused", 1280, 820],
+	["chat-run-panel--monitor-cancel-cancelled", 1280, 820],
+	["chat-run-panel--monitor-cancel-refusal-record", 1280, 820],
 	/* The trigger's activity blip: the pane is CLOSED and a child is running, so
 	   the dot is drawn in `info`. Read against `trigger-idle` (nothing to say) and
 	   `panel-empty` (pane open, no activity ink) — the ink switch is the whole claim
@@ -3062,6 +3276,56 @@ export const STORIES = [
 	 */
 	["chat-sidebar-status-feed--delegating-row-default", 720, 660],
 	["chat-sidebar-status-feed--delegating-row-minimum", 680, 660],
+	/*
+	 * The rows that OWN subagents while the primary mark says something else
+	 * (the operator's report, 2026-09-29). Same pair of widths and the same
+	 * reason the delegating pair above carries them: the second frame is the
+	 * 240px floor `ui-preferences-store.ts` clamps to, where the longest title is
+	 * truncated hardest and the new mark has the least room beside it.
+	 *
+	 * The roster deliberately includes the delegating arm's own row as its last
+	 * entry - the one state whose primary mark already IS the subagent mark - so
+	 * the frames answer the question a reader will have about it (why is there no
+	 * second glyph there) on the same surface, rather than in prose alone.
+	 */
+	["chat-sidebar-status-feed--subagent-rows-running", 720, 660],
+	["chat-sidebar-status-feed--subagent-rows-running-minimum", 680, 660],
+	["chat-sidebar-status-feed--subagent-rows-resting", 720, 980],
+	["chat-sidebar-status-feed--subagent-rows-resting-minimum", 680, 980],
+	/*
+	 * THE OTHER STORY THAT CAN SILENTLY NO-OP (review round 2's MINOR). Its
+	 * subject is a SELECTED row, and "selected" is a prop the story passes rather
+	 * than a state the row reaches on its own - so a story that spelled that prop
+	 * wrong would photograph two resting rows and still look like evidence. The
+	 * guard is the row's own hook: `data-chat-row` is the attribute every harness
+	 * addresses a row by, and `aria-current="page"` is what the current row
+	 * carries (`chat-sidebar.tsx`: `aria-current={current ? "page" : undefined}`).
+	 *
+	 * IT EARNED ITS KEEP IMMEDIATELY: the story was passing `session/<id>` while
+	 * the row compares `selectedConversation === row.session_id`, i.e. the BARE
+	 * id the app passes (`sidebar-navigation.tsx`), so no row was ever current -
+	 * the frame claimed the operator's own case and drew two resting rows. The
+	 * story passes the bare id now, and this entry is what keeps that true.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-selected-row",
+		720,
+		660,
+		{ expectPresent: '[data-chat-row][aria-current="page"]' },
+	],
+	/*
+	 * `expectPresent` IS THE GUARD THIS STORY OWED (QA round 1, Q-1). Its first
+	 * version typed no query at all - the play's label lookup matched two elements
+	 * and died - so the rig photographed the unarchived twin and wrote the frame
+	 * without complaint. The selector is the row's own archive attribute, so the
+	 * rig now refuses to write these frames unless an archived row is on screen.
+	 */
+	[
+		"chat-sidebar-status-feed--subagent-archived-row",
+		720,
+		660,
+		{ expectPresent: '[data-session-archived="true"]' },
+	],
 	/*
 	 * The pile scrolled to the bottom of its own box: the frame that proves the
 	 * header row is STICKY, since at rest a sticky row and a static one are the
@@ -4534,6 +4798,50 @@ export const STORIES = [
 	["agent-hub-page--org-plan-lapsed", 1280, 900],
 	["agent-hub-page--org-access-revoked", 1280, 900],
 	/*
+	 * The hub's browse bar and Teams view (operator report, 2026-09-29: teams were
+	 * a roster under the grid, the scope a select, the pager an off-centre box).
+	 * `org-teams` is the same id as before and now photographs the promoted Teams
+	 * tab over a POPULATED grid; the rest are new states of the same surface:
+	 * the roster's empty and loading arms, the plan refusal read from the Teams
+	 * view, the PUBLIC-scope explanation (teams are organization-only, so it is a
+	 * state and not a list) in its signed-in and signed-out shapes, and the pager
+	 * footer at both widths - one row of cards keeps it inside the frame.
+	 */
+	["agent-hub-page--org-teams-empty", 1280, 900],
+	/*
+	 * The Teams summary rows (operator report, 2026-09-30: "just a list view, it
+	 * doesn't show a lot of information"). `org-teams` and `org-teams-loading` keep
+	 * their ids and are RE-SHOT as the before/after pair; the rest are new. A narrow
+	 * frame needs its OWN story because the per-state directory is named from the
+	 * story id. The six-row set is one row per awkward shape (long description with
+	 * an unbroken token, nine slots, every optional field absent, no manager, a
+	 * description past the expanded ceiling), and the expanded pair opens three of
+	 * them by pressing their triggers.
+	 */
+	["agent-hub-page--org-teams-narrow", 920, 900],
+	["agent-hub-page--org-teams-varied", 1280, 900],
+	["agent-hub-page--org-teams-varied-narrow", 920, 900],
+	["agent-hub-page--org-teams-expanded", 1280, 900],
+	["agent-hub-page--org-teams-expanded-narrow", 920, 900],
+	["agent-hub-page--org-teams-loading", 1280, 900],
+	["agent-hub-page--org-teams-plan-lapsed", 1280, 900],
+	["agent-hub-page--teams-public-scope", 1280, 900],
+	["agent-hub-page--teams-signed-out", 1280, 900],
+	/*
+	 * Round 1's remediation states: the public Teams view's other four reasons
+	 * (the pending read that used to be misreported as "none", the settled empty
+	 * read, the unavailable backend and the failed memberships read) and the pager
+	 * on its last page, where focus has moved to Previous.
+	 */
+	["agent-hub-page--teams-public-loading", 1280, 900],
+	["agent-hub-page--teams-public-none", 1280, 900],
+	["agent-hub-page--teams-public-unavailable", 1280, 900],
+	["agent-hub-page--teams-public-unreadable", 1280, 900],
+	["agent-hub-page--pager-last-page", 1280, 900],
+	["agent-hub-page--teams-public-retry-recovers", 1280, 900],
+	["agent-hub-page--pager-footer", 1280, 900],
+	["agent-hub-page--pager-footer-narrow", 920, 900],
+	/*
 	 * The chat sidebar's Agents section, at the width that column actually is:
 	 * the frame is the 360px panel inside a little ground, because the section is
 	 * three rows and an action, and a 1280px frame of it would be a picture of the
@@ -4676,6 +4984,94 @@ export const STORIES = [
 		741,
 		760,
 	],
+	/* A 41-conversation team expanded: TEN rows and the foot naming the next rung and the position. */
+	[
+		"chat-sidebar-view-menu--group-bound-ten",
+		741,
+		900,
+		{ dir: "group-bound/ten" },
+	],
+	/* The same team after ONE real press on the foot: twenty-five rows drawn. */
+	[
+		"chat-sidebar-view-menu--group-bound-after-one",
+		741,
+		900,
+		{ dir: "group-bound/after-one" },
+	],
+	/* After TWO presses: the third rung exceeds what the team holds, so the group is fully drawn and the foot is gone. */
+	[
+		"chat-sidebar-view-menu--group-bound-after-two",
+		741,
+		900,
+		{ dir: "group-bound/after-two" },
+	],
+	/* The viewed conversation sits below the bound, so it is lifted to the head of the group rather than admitted in place. */
+	[
+		"chat-sidebar-view-menu--group-bound-current-lifted",
+		741,
+		900,
+		{ dir: "group-bound/current-lifted" },
+	],
+	/* The lift gone again: after two real presses the ladder has drawn past the viewed row, which settles in its catalogue place. */
+	[
+		"chat-sidebar-view-menu--group-bound-current-settled",
+		741,
+		900,
+		{ dir: "group-bound/current-settled" },
+	],
+	/* A busy row below the bound is drawn anyway (it costs no quota), and the foot counts it. */
+	[
+		"chat-sidebar-view-menu--group-bound-running-exempt",
+		741,
+		900,
+		{ dir: "group-bound/running-exempt" },
+	],
+	/* The foot under a real pointer: the idle -> hover ink step, with `:hover` asserted before the shutter. */
+	[
+		"chat-sidebar-view-menu--group-bound-ten",
+		741,
+		900,
+		{
+			hover: '[data-entity-more="team:minervadev"]',
+			hoverSettleMs: 900,
+			dir: "group-bound/foot-hover",
+		},
+	],
+	/*
+	 * WITHDRAWN — `group-bound/search-finds-unloaded` HAS NO FRAME, deliberately.
+	 *
+	 * The claim it would carry (a query reaches a row the bound has not loaded) is
+	 * the one the operator named, and it is asserted in
+	 * `scripts/chat-sidebar-view.test.mjs` ("a query is never bounded: the bound
+	 * cannot hide a hit"). Its FRAME could not be made reproducible: capturing the
+	 * same story on one clean tree six times produced two distinct end states, the
+	 * diff spanning the whole panel rather than one label, and a settle-wait plus
+	 * an assertion on the story's own facts did not remove it. A frame that
+	 * photographs one of two states under a caption that claims one is worse than
+	 * no frame, so the story stays in Storybook for a human to look at and is NOT
+	 * captured here. Re-add this row only with a story whose state is pinned.
+	 */
+	/* BEFORE the spacing fix: Agents collapsed above Teams expanded, at this branch's head. */
+	[
+		"chat-sidebar-view-menu--agents-collapsed-teams-expanded",
+		741,
+		620,
+		{ dir: "section-gap-before/agents-collapsed-teams-expanded" },
+	],
+	/* BEFORE the spacing fix: both sections collapsed. */
+	[
+		"chat-sidebar-view-menu--both-sections-collapsed",
+		741,
+		620,
+		{ dir: "section-gap-before/both-collapsed" },
+	],
+	/* BEFORE the spacing fix: both sections expanded, the case a shortened constant would tighten unasked. */
+	[
+		"chat-sidebar-view-menu--both-sections-expanded",
+		741,
+		620,
+		{ dir: "section-gap-before/both-expanded" },
+	],
 	[
 		"chat-sidebar-view-menu--band-resting",
 		741,
@@ -4685,6 +5081,27 @@ export const STORIES = [
 			hoverSettleMs: 900,
 			dir: "band-search-hover",
 		},
+	],
+	/* AFTER the spacing fix: Agents collapsed above Teams expanded, the operator's own case. */
+	[
+		"chat-sidebar-view-menu--agents-collapsed-teams-expanded",
+		741,
+		620,
+		{ dir: "section-gap/agents-collapsed-teams-expanded" },
+	],
+	/* AFTER the spacing fix: both sections collapsed - the last-section-on-screen case. */
+	[
+		"chat-sidebar-view-menu--both-sections-collapsed",
+		741,
+		620,
+		{ dir: "section-gap/both-collapsed" },
+	],
+	/* AFTER the spacing fix: both expanded, which must be pixel-identical to the before frame. */
+	[
+		"chat-sidebar-view-menu--both-sections-expanded",
+		741,
+		620,
+		{ dir: "section-gap/both-expanded" },
 	],
 	[
 		"chat-sidebar-view-menu--band-resting",
@@ -5087,6 +5504,106 @@ export const STORIES = [
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
 	/*
+	 * The board's time window (feat/board-time-window): one frame per rung plus
+	 * the states around it. Each play asserts the visible card set - and the R5
+	 * frame's 12d-old progress line under a 24h window - so a capture whose
+	 * filter regressed FAILS rather than photographing the wrong board.
+	 * `-narrow` is the 800px window floor; `-menu-open` photographs the open
+	 * panel with its check on the current rung.
+	 */
+	["projects-tab--board-window-populated", 1280, 900],
+	["projects-tab--board-window-24-h", 1280, 900],
+	["projects-tab--board-window-30-d", 1280, 900],
+	["projects-tab--board-window-90-d", 1280, 900],
+	["projects-tab--board-window-all", 1280, 900],
+	["projects-tab--board-window-empty", 1280, 900],
+	["projects-tab--board-window-widened", 1280, 900],
+	["projects-tab--board-window-menu-open", 1280, 900],
+	["projects-tab--board-window-narrow", 800, 900],
+	/* The empty window at two more rungs (design round 1, D5): the heading has to
+	 * read the RUNG's phrase, and one frame of the default rung could not show
+	 * that. The hint frame is the control's own dimension said in words (D1),
+	 * opened on focus - the keyboard path - by its play. */
+	["projects-tab--board-window-empty-24-h", 1280, 900],
+	["projects-tab--board-window-empty-90-d", 1280, 900],
+	["projects-tab--board-window-hint", 1280, 900],
+	["projects-tab--board-window-no-projects", 1280, 900],
+	/*
+	 * The operator's title items (2026-09-30): the clipped card title's reveal
+	 * (the play opens it on hover and leaves it open on FOCUS - the keyboard
+	 * path is the state the shutter lands on), and the long-title detail at
+	 * the wide viewport and the 800px floor, whose wrap and edge-riding
+	 * scrollbar are the frame's whole claim.
+	 */
+	["projects-tab--board-title-tooltip", 1280, 900],
+	/*
+	 * The long-title detail, wide and at the 800px floor. `expectSentence`
+	 * scoped to the `h1` is the machine-checked half of the claim: the header
+	 * leads with the TITLE (not the key). The other half - that the title is not
+	 * clipped - is the frame's own subject, read off these pixels by the design
+	 * round (`expect` cannot carry it: that phase runs BEFORE the story-ready
+	 * probe, and a probe that reads a header the story has not mounted yet fails
+	 * for the wrong reason - measured here as `"No Preview"`).
+	 */
+	[
+		"projects-tab--detail-long-title",
+		1280,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
+				 */
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
+			},
+		},
+	],
+	[
+		"projects-tab--detail-long-title-narrow",
+		800,
+		900,
+		{
+			expectSentence: {
+				/*
+				 * SCOPED BY A HANDLE, NOT BY `h1` (review round 1, R1-1). Three
+				 * headings are in this document - storybook's hidden
+				 * `sb-nopreview_heading` placeholder, the shell's own "Projects"
+				 * header, and this screen's - so a bare or first-match `h1` reads
+				 * the wrong element, which is what silently failed this claim when
+				 * the selector was first written. The header carries
+				 * `data-project-title` (the board card's family, the same fact), so
+				 * the claim names the element it is about.
+				 *
+				 * THE CLAIM IS A FRAGMENT, and that is a constraint rather than
+				 * slack: `innerText` inserts a line break at every RENDERED wrap,
+				 * and this heading wraps at both widths, so a whole-sentence match
+				 * cannot hold here. The exact title and the non-clipping are the
+				 * story's own play (`textContent` equality and `scrollWidth` inside
+				 * the box); this entry's job is to refuse a frame whose header does
+				 * not carry the title at all.
+				 */
+				selector: '[data-project-title="payments-migration-v2"]',
+				includes: "Payments migration onto",
+			},
+		},
+	],
+	/*
 	 * The column reorder: the layer the drag writes. `board-column-order-stored`
 	 * is the reload half (a stored order applied at mount),
 	 * `board-column-keyboard-move` is the accessible half (a focused grip's
@@ -5120,6 +5637,49 @@ export const STORIES = [
 				settleMs: 900,
 			},
 			expectSentence: "Moving Active column",
+		},
+	],
+	/*
+	 * The scroll chain (operator refinement): the wheel delivered at ONE
+	 * trusted point over a column that cannot scroll (the quiet `planning`
+	 * cell) must reach the board, and over a column that CAN scroll (the
+	 * `active` queue) must first exhaust that cell and then reach the board —
+	 * each entry asserts its own reading before the shutter.
+	 */
+	[
+		"projects-tab--board-scroll-chain",
+		1280,
+		900,
+		{
+			wheel: {
+				at: '[data-board-strip] section [data-board-cell="planning"]',
+				deltaY: 240,
+				times: 5,
+			},
+			expect: {
+				expression:
+					'document.querySelector("[data-board-strip]").scrollTop > 200',
+				message:
+					"the wheel over a non-scrollable column did not advance the board (the wheel is trapped in the column)",
+			},
+		},
+	],
+	[
+		"projects-tab--board-scroll-edge",
+		1280,
+		900,
+		{
+			wheel: {
+				at: '[data-board-strip] section [data-board-cell="active"]',
+				deltaY: 240,
+				times: 5,
+			},
+			expect: {
+				expression:
+					'(() => { const strip = document.querySelector("[data-board-strip]"); const cell = document.querySelector(\'[data-board-strip] section [data-board-cell="active"]\'); return strip.scrollTop > 200 && cell.scrollTop >= cell.scrollHeight - cell.clientHeight - 1; })()',
+				message:
+					"the wheel over the active column did not exhaust the cell and then advance the board",
+			},
 		},
 	],
 	["projects-tab--timeline", 1280, 900],
@@ -5780,7 +6340,7 @@ export const STORIES = [
 	   measures at the app's own 800px minimum window. Sized to the boards. */
 	["chat-older-history-slot--every-state", 900, 460],
 	["chat-older-history-slot--app-minimum-width", 900, 720],
-	["chat-older-history-slot--one-hidden-row", 900, 260],
+	["chat-older-history-slot--windowed-sentence", 900, 260],
 	/* The transport-down branch: a failure the reader cannot answer is not
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
@@ -7077,6 +7637,59 @@ export const STORIES = [
 	["mesh-tab--single-device", 1380, 900],
 	["mesh-tab--two-devices", 1380, 900],
 	["mesh-tab--overlapping-networks", 1380, 900],
+	/*
+	 * THE REACH MODEL'S OWN FRAME (feat/mesh-canvas-redesign): five reach states and one
+	 * working device on one canvas, including the three the shipped set could not produce -
+	 * a budget-exhausted peer, a busy conversation, and a drawn device no read named. The
+	 * story carries the relay's own sentences rather than invented ones.
+	 */
+	["mesh-tab--reach-states", 1380, 900],
+	/*
+	 * THE LIST'S OWN REACH FRAME (agent review round 1, M1/D1/U1/U2): the same fixture behind
+	 * one press on `List`. The list-ink fix has two faces - a not-attempted device must read
+	 * `not asked` with NO hue, and a suspect one must carry its reach word plus the shield
+	 * and badge - and neither face existed on the list in any committed frame before this
+	 * row, because `list-view`'s members can produce neither.
+	 */
+	["mesh-tab--reach-states-list", 1380, 900],
+	/*
+	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
+	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
+	 * `shared with this device`), and two that group with nothing.
+	 *
+	 * AND AT BOTH WIDTHS (agent review round 1, D2/U3): the band the layout reserves is the
+	 * fix for two measured causes - a label behind the node above at 1380x900, and the
+	 * topmost label behind the CANVAS'S own top edge at 1024x768 - so the narrow pass is the
+	 * second cause's proof, the same way `two-devices-narrow` is the responsive claim's.
+	 */
+	["mesh-tab--scopes", 1380, 900],
+	["mesh-tab--scopes", 1024, 768, { dir: "scopes-narrow" }],
+	/*
+	 * THE DECLARED TIER, WHICH NO INSTALL CAN RENDER (design review round 1, D6): the
+	 * story sets the membership field the client half reads (`scope`), so the shipped
+	 * styling is verifiable; the README states, in the same words, that no backend sends
+	 * the field yet.
+	 */
+	["mesh-tab--scopes-declared", 1380, 900],
+	/*
+	 * THE SHARED OPENER (agent review round 2, M4): a peer publishing a LAN address and a
+	 * tunnel address is topmost in TWO groups at once - the collision the reviewer's
+	 * repro measured as two labels on one anchor, with no frame to show it. The state is
+	 * the M4 case itself (two levels), at both widths because the narrow pass is where
+	 * the fit's floor binds; `scopes-nested` is the ruling's "n = 3 if cheap" - three
+	 * INFERRED levels on the same row (a declared tier can never nest: an authored scope
+	 * excludes the device from the prefix arithmetic, which is why that draft was
+	 * replaced) - so the staircase's full pitch is on disk too.
+	 */
+	["mesh-tab--scopes-shared-top", 1380, 900],
+	[
+		"mesh-tab--scopes-shared-top",
+		1024,
+		768,
+		{ dir: "scopes-shared-top-narrow" },
+	],
+	["mesh-tab--scopes-nested", 1380, 900],
+	["mesh-tab--scopes-nested", 1024, 768, { dir: "scopes-nested-narrow" }],
 	["mesh-tab--misconfigured", 1380, 900],
 	["mesh-tab--virgin-device", 1380, 900],
 	["mesh-tab--reads-failed", 1380, 900],
@@ -7219,6 +7832,12 @@ export const STORIES = [
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
 	/*
+	 * AND THE PANEL'S `never` (design review round 1, D6): a null `Last status frame` on
+	 * the single-device fixture, which every other panel story's stamp kept out of the
+	 * committed set. The play presses the node's own button and waits for the words.
+	 */
+	["mesh-tab--single-device-panel", 1380, 900],
+	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped
 	 * width, so 900x560 holds every state without a crop: the rank list is
@@ -7234,6 +7853,357 @@ export const STORIES = [
 	["chat-in-thread-search--building-partial", 900, 560],
 	["chat-in-thread-search--unsupported", 900, 560],
 	["chat-in-thread-search--error-state", 900, 560],
+	/*
+	 * THE ACTION ROW UNDER THE TURN-CLOSING ANSWER (issue #695, design memo (h)).
+	 *
+	 * `rest` is the discoverability claim itself: the row is present with NO
+	 * pointer in the frame, which is the whole difference from the toolbar this
+	 * supersedes. The interaction states are entries rather than stories because
+	 * every one of them is BROWSER state the rig has to produce with real input -
+	 * `hover` moves a real pointer, `tabTo` presses real Tabs until the button
+	 * holds focus, `press` is a real press through the input pipeline - and a
+	 * story that faked any of them in a class would photograph the story.
+	 *
+	 * `hover-answer-no-corner-control` is the pointer parked ON THE ANSWER (the
+	 * region the superseded pattern raised a corner toolbar from) with both
+	 * selectors asserted: the row must be present and no link toolbar may be
+	 * raised. It is the honest half of the before/after comparison - this set
+	 * carries no frame of the dead component, per the memo's ruling: what the
+	 * frame shows is that the live surface raises nothing there.
+	 *
+	 * `copied` asserts the label the press produced (`expectAttribute`) rather
+	 * than trusting the tick to be legible in six themes, and it is the one entry
+	 * whose subject is a TIMER: the button's own reset is 2000 ms and the rig
+	 * presses ~400 ms before the shutter, so the frame is the pressed state and
+	 * not a race the timing decides.
+	 *
+	 * Six themes, by the memo's logic rather than by taste: the two brand
+	 * extremes, the two smallest ground steps in the fleet (where an on-canvas
+	 * icon row is hardest to find), the lowest canvas (`obsidian`, L* 12) and the
+	 * widest step (`radient`, which must NOT move). A `--themes=` narrowed run.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-record-id="a1"]',
+			hoverSettleMs: 300,
+			// The action row is what hover must NOT change, and nothing may be raised
+			// over the answer: the link toolbar only exists for a link, and this
+			// fixture has none - so the assertion is that the surface is unchanged.
+			expectPresent: "[data-lo-answer-actions]",
+			expectGone: "[data-lo-link-toolbar]",
+			dir: "hover-answer-no-corner-control",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 400,
+			dir: "hover-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			tabTo: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			dir: "focus-copy",
+		},
+	],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			press: '[data-lo-answer-actions] button[aria-label="Copy"]',
+			pressSettleMs: 400,
+			expectAttribute: {
+				selector: "[data-lo-answer-actions] button",
+				name: "aria-label",
+				equals: "Copied",
+			},
+			dir: "copied",
+		},
+	],
+	["chat-canonical-message-actions--short-answer", 1024, 320],
+	["chat-canonical-message-actions--refused", 1024, 380],
+	["chat-canonical-message-actions--truncated", 1024, 400],
+	["chat-canonical-message-actions--streaming", 1024, 620],
+	["chat-canonical-message-actions--multi-answer", 1024, 640],
+	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	/*
+	 * The minimum-action state (design round 1, D1): one call, so the frame shows
+	 * what the app paints where a caption beside the actions would sit if the rule
+	 * allowed it - the bar above carries `1 action`, the line under the answer
+	 * carries the actions alone. See the story's own comment for the chain.
+	 */
+	["chat-canonical-message-actions--one-call-turn", 1024, 560],
+	["chat-canonical-message-actions--narrow", 420, 620],
+
+	/*
+	 * THE ROW'S CONTEXT MENU (#694), the FINAL set - captured from the shipped
+	 * implementation, not from a proposal.
+	 *
+	 * The stories drive the REAL path: a dispatched `contextmenu` at the row's own
+	 * box (the trigger) for the pointer states, a real `ContextMenu` keydown on the
+	 * row's button for the keyboard one, the real `openMenuRowId` hold, the pair's
+	 * real predicates (s1 pinned, s2 normal, s3 pin-unknown), and per-frame readouts
+	 * of the numbers each frame is read for, sampled from the DOM.
+	 *
+	 * THE HOVER IS PART OF THE MEASUREMENT, not decoration: the row's reveal and its
+	 * hover ground are `:hover`/`group-hover` until the menu takes the pointer, and
+	 * the hold is what replaces them while it is open. The story opens the menu
+	 * 250ms in - before the flyout's own 400ms dwell - so the clean frames carry no
+	 * flyout; `flyout-dwelled` waits 1800ms so the flyout has drawn and the frame
+	 * can show it suppressed; `flyout-alone` is its control (same hover, same dwell,
+	 * no menu), and `menu-closed` is the before/after partner of `pointer-open`
+	 * (same scene, same settle, no open).
+	 */
+	[
+		"chat-sidebar-row-context-menu--pointer-open",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	["chat-sidebar-row-context-menu--keyboard-open", 780, 520],
+	[
+		"chat-sidebar-row-context-menu--pinned-row",
+		780,
+		520,
+		{ hover: '[data-session-row="s1"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--pin-state-unknown",
+		780,
+		520,
+		{ hover: '[data-session-row="s3"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--archive-withheld",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	[
+		"chat-sidebar-row-context-menu--flyout-dwelled",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 3600 },
+	],
+	[
+		"chat-sidebar-row-context-menu--flyout-alone",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 3600 },
+	],
+	[
+		"chat-sidebar-row-context-menu--menu-closed",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	/*
+	 * THE REMEDIATION'S TWO STATES (round-1 findings D1/D2), captured BESIDE the
+	 * set rather than into it: neither re-takes an existing frame.
+	 *
+	 * `pointer-hover` is the SAME story as `pointer-open`, driven one move further:
+	 * `hoverChain` walks the real pointer onto the row and then onto the panel's
+	 * first item, which is the state a pointer user meets the moment they move
+	 * into the menu - an item carrying `data-highlighted` on `bg-accent-wash` - and
+	 * the one observation the set was missing (the menu's only washed row was
+	 * `keyboard-open`'s, where the app's focus ring also draws). The chain waits
+	 * for the item to exist, which is why this is a second `dir` of the
+	 * pointer-open entry instead of a second story: the scene is identical and
+	 * only the gesture differs. `expectPresent` refuses the shutter if the item
+	 * never took the highlight, so a frame filed under this name cannot be the
+	 * un-hovered state.
+	 *
+	 * `archived-row` is the set's only widened-search state: the story drives the
+	 * field and `Include archived`, then opens the menu at the archived row's own
+	 * box - the state whose item reads `Unarchive conversation`, the widest label
+	 * the panel draws, so the frame closes the width table's last case. Its two
+	 * gates read the claims the frame is for: the row is DRAWN as archived
+	 * (`data-session-archived`), and the menu says Unarchive.
+	 */
+	[
+		"chat-sidebar-row-context-menu--pointer-open",
+		780,
+		520,
+		{
+			dir: "pointer-hover",
+			hoverChain: [
+				'[data-session-row="s2"]',
+				'[role="menu"] [role="menuitem"]',
+			],
+			hoverChainSettleMs: 300,
+			expectPresent: '[role="menu"] [data-highlighted]',
+		},
+	],
+	[
+		"chat-sidebar-row-context-menu--archived-row",
+		780,
+		520,
+		{
+			hoverChain: ['[data-session-row="s4"]'],
+			hoverChainSettleMs: 300,
+			expectAttribute: {
+				selector: '[data-session-row="s4"] [data-session-archived]',
+				name: "data-session-archived",
+				equals: "true",
+			},
+			expectSentence: {
+				selector: '[role="menu"]',
+				includes: "Unarchive conversation",
+			},
+		},
+	],
+	/*
+	 * THE CHAT HEADER'S DEVICE CONTROL (feat/chat-move-control), one surface, in the
+	 * states the design's own spec names. WHAT EACH ROW CLAIMS, because a frame's name
+	 * has to be true rather than aspirational:
+	 *
+	 * - `before-new-chat` is the SAME TREE with `deviceSlot` omitted - the design's own
+	 *   before half, and the reason the header can be read against it pixel for pixel;
+	 * - `draft-against-live` is the PAIR the whole design exists for: `New on this
+	 *   device` and `On this device` differ by one word, and a user who reads a draft as
+	 *   a live session waits for output that is not coming;
+	 * - `new-chat-peer` is the same draft after the destination was set to a peer - the
+	 *   destination rides the draft row, which is the field `sessions.create` sends;
+	 * - `arrived-cold` and `arrived-live` are the two arrival sentences. The cold one's
+	 *   SECOND line is mandatory (`expectSentence` claims it), and the live one is only
+	 *   reachable when the wire says the destination engaged - nothing here guesses from
+	 *   a peer's build;
+	 * - `refused-busy` claims the remedy's own label, the one the Mesh tab already
+	 *   ships, on the app's existing notice;
+	 * - the four picker rows OPEN THE REAL MENU with a real pointer press and claim the
+	 *   panel is present before the shutter, so a frame cannot ship under a picker name
+	 *   with the menu never opened. `picker-live-local` additionally claims an ineligible
+	 *   row is present (a device that cannot receive a move stays visible and explained,
+	 *   never hidden), and `picker-ineligible-hover` is the pointer case for the same row,
+	 *   which is how "ineligibility is not a dimmed name" is photographed rather than
+	 *   argued: the row keeps `ink-muted` ink and takes no hover wash.
+	 */
+	["chat-device--before-new-chat", 1000, 168],
+	["chat-device--before-live-local", 1000, 168],
+	["chat-device--draft-against-live", 1000, 268],
+	["chat-device--new-chat-local", 1000, 168],
+	["chat-device--new-chat-peer", 1000, 168],
+	["chat-device--live-local", 1000, 168],
+	["chat-device--live-remote-moved", 1000, 168],
+	["chat-device--live-remote-unreachable", 1000, 168],
+	["chat-device--moving", 1000, 268, { expectSentence: "Moving to build-box" }],
+	[
+		"chat-device--arrived-cold",
+		1000,
+		320,
+		{ expectSentence: "Nothing is running on build-box yet." },
+	],
+	[
+		"chat-device--arrived-live",
+		1000,
+		268,
+		{ expectSentence: "running there now" },
+	],
+	/*
+	 * THE RECALL'S ARRIVAL (agent review round 2, R2-3): the state R1-1/QA Q-1/UX U2
+	 * are all about - the conversation came HOME, and the copy that was deleted is the
+	 * one on the peer - shipped as a story with no frame in the set. The sentence it
+	 * claims is the recall's own verb, which is the half a reader has to be able to
+	 * check against the chip above it.
+	 */
+	[
+		"chat-device--recalled",
+		1000,
+		268,
+		{
+			expectSentence: "Moved back to this device",
+			expectPresent: '[data-device-notice="moved"]',
+		},
+	],
+	/*
+	 * §2.4'S HOLD IS NOT IN THIS SET, AND THE ROUND-1 DISCLOSURE SAID SO FALSELY (agent
+	 * review R2-3). The strip IS implemented (`chat-device-hold.tsx`, composed by the page
+	 * through `MessageInput`'s `deviceHold` prop) and it needs a frame - but it cannot come
+	 * from here: `MessageInput` reads the preload seam (`window.api` / `ipcRenderer`) and
+	 * Storybook has no such bridge, so a story that mounts it renders Storybook's own
+	 * error display, which this rig refuses to photograph (measured: `chat-device--held`
+	 * failed with `Cannot read properties of undefined (reading 'ipcRenderer')`). The
+	 * hold's frame is therefore an APP capture, in the supplementary set the manifest
+	 * declares beside this one - the same rule the sidebar's live frames follow.
+	 */
+	[
+		"chat-device--refused-busy",
+		1000,
+		268,
+		{ expectSentence: "Wait for the turn to finish" },
+	],
+	["chat-device--narrow-band", 1000, 460],
+	[
+		"chat-device--new-chat-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: "[data-device-picker]",
+			dir: "picker-new-chat",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: ["[data-device-picker]", '[data-device-row="ineligible"]'],
+			dir: "picker-live-local",
+		},
+	],
+	[
+		"chat-device--live-remote-moved",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			expectPresent: "[data-device-picker]",
+			dir: "picker-live-remote",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			keys: [{ key: "ArrowDown", settleMs: 300 }],
+			expectPresent: [
+				"[data-device-picker]",
+				"[data-device-picker] [data-highlighted]",
+			],
+			dir: "picker-keyboard-highlight",
+		},
+	],
+	[
+		"chat-device--live-local",
+		1000,
+		520,
+		{
+			press: "[data-device-chip]",
+			pressSettleMs: 400,
+			hover: '[data-device-row="ineligible"]',
+			hoverSettleMs: 400,
+			dir: "picker-ineligible-hover",
+		},
+	],
 ];
 
 /**
@@ -8738,28 +9708,34 @@ const main = async () => {
 			 * navigation is preceded by `about:blank`, so no page inherits Chromium's input
 			 * state - the same argument the `hold` arm states.
 			 */
+			/*
+			 * The point resolver both gesture options share: a selector's centre
+			 * once it has a painted box, or a named failure. A gesture that
+			 * finds nothing must fail the capture rather than photograph a
+			 * state the gesture never reached.
+			 */
+			const pointAt = async (selector, what) => {
+				for (let i = 0; i < 100; i++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `(() => {
+							const el = document.querySelector(${JSON.stringify(selector)});
+							if (!el) return null;
+							const r = el.getBoundingClientRect();
+							if (r.width === 0 || r.height === 0) return null;
+							return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+						})()`,
+					});
+					if (result.value) return result.value;
+					await sleep(150);
+				}
+				throw new Error(
+					`${story} @ ${theme}: the ${what} selector \`${selector}\` never appeared (15s) - a gesture that finds nothing must fail rather than photograph the settled state`,
+				);
+			};
 			if (options?.drag) {
-				const point = async (selector) => {
-					for (let i = 0; i < 100; i++) {
-						const { result } = await cdp.send("Runtime.evaluate", {
-							returnByValue: true,
-							expression: `(() => {
-								const el = document.querySelector(${JSON.stringify(selector)});
-								if (!el) return null;
-								const r = el.getBoundingClientRect();
-								if (r.width === 0 || r.height === 0) return null;
-								return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
-							})()`,
-						});
-						if (result.value) return result.value;
-						await sleep(150);
-					}
-					throw new Error(
-						`${story} @ ${theme}: the drag selector \`${selector}\` never appeared (15s) - a drag that finds nothing must fail rather than photograph the settled state`,
-					);
-				};
-				const from = await point(options.drag.from);
-				const to = await point(options.drag.to);
+				const from = await pointAt(options.drag.from, "drag");
+				const to = await pointAt(options.drag.to, "drag");
 				const mouse = (type, x, y, buttons) =>
 					cdp.send("Input.dispatchMouseEvent", {
 						type,
@@ -8793,6 +9769,54 @@ const main = async () => {
 				 * leaves stories without such a mechanism untouched.
 				 */
 				if (options.drag.settleMs) await sleep(options.drag.settleMs);
+			}
+
+			/*
+			 * A TRUSTED WHEEL, for the scroll-chain stories (operator
+			 * refinement): a play's synthetic wheel cannot scroll a container
+			 * (untrusted events skip the default action), so the gesture has
+			 * to come through CDP. Ticks are delivered at ONE point, which is
+			 * the case under test: a column that cannot scroll (or has hit
+			 * its edge) must let the wheel chain to the board's own scroller.
+			 */
+			if (options?.wheel) {
+				const at = await pointAt(options.wheel.at, "wheel");
+				const times = options.wheel.times ?? 5;
+				const deltaY = options.wheel.deltaY ?? 240;
+				const settleMs = options.wheel.settleMs ?? 120;
+				for (let i = 0; i < times; i += 1) {
+					await cdp.send("Input.dispatchMouseEvent", {
+						type: "mouseWheel",
+						x: at.x,
+						y: at.y,
+						deltaX: 0,
+						deltaY,
+						button: "none",
+						buttons: 0,
+						modifiers: 0,
+						pointerType: "mouse",
+					});
+					await sleep(settleMs);
+				}
+			}
+
+			/*
+			 * THE GESTURE'S OWN CLAIM, checked in-page after it lands and
+			 * before the shutter: an expression that must read exactly `true`,
+			 * with the failure naming what was expected and what was read. A
+			 * wheel that a column swallowed fails here rather than shipping a
+			 * frame that claims a scroll the board never made.
+			 */
+			if (options?.expect) {
+				const { result } = await cdp.send("Runtime.evaluate", {
+					returnByValue: true,
+					expression: options.expect.expression,
+				});
+				if (result.value !== true) {
+					throw new Error(
+						`${story} @ ${theme}: ${options.expect.message} (read ${JSON.stringify(result.value)})`,
+					);
+				}
 			}
 
 			/*
@@ -8955,6 +9979,28 @@ const main = async () => {
 			if (!prepared) {
 				throw new Error(
 					`${story} @ ${theme}: Storybook never finished preparing the story (60s). Last probe: ${JSON.stringify(probe)}. \`counted\` is the story's own elements with the decorator's two excluded, and \`drawn\` false with \`loading\`/\`pending\`/\`fonts\` clear means the element floor in \`storyDrew\` rejected it`,
+				);
+			}
+			/*
+			 * A STORY'S OWN SHUTTER LATCH THAT EXPIRED IS A REFUSAL, NOT A FRAME.
+			 *
+			 * `data-capture-pending` is how a story holds the shutter until the state
+			 * its play produced is on screen (`agent-hub.stories.tsx`'s `holdShutter`,
+			 * and `docs-library.stories.tsx`'s `HubHold`). Clearing it on a TIMEOUT
+			 * without a word hands the shutter back mid-play and files whatever was on
+			 * screen — the state the latch exists to avoid photographing. The story
+			 * sets `data-capture-failed` in that seat, and this is the check that makes
+			 * the marker mean something for THIS rig: `capture-docs-library.mjs` has
+			 * read it since its own scenes grew latches, and the evidence sweep did
+			 * not, so an expired latch was silent here (agent review round 2, N1).
+			 */
+			const latch = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: 'document.documentElement.dataset.captureFailed || ""',
+			});
+			if (latch.result.value) {
+				throw new Error(
+					`${story} @ ${theme}: the story's shutter latch expired — ${latch.result.value}. The play did not put the state this frame claims on screen, and the frame was refused rather than taken mid-flight.`,
 				);
 			}
 			/*

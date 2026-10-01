@@ -553,7 +553,7 @@ test("the pane's resolution state is wired to the strip, not merely supported by
 		"utf8",
 	);
 	const composer = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
 	assert.match(
@@ -773,7 +773,7 @@ function rowChildren(composer) {
 
 test("the row right-justifies its controls whether or not the readings render", () => {
 	const composer = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
 	const { rowClasses, controlsClasses } = rowChildren(composer);
@@ -875,7 +875,7 @@ test("the inline layout is a PAIRING, and neither half works alone", () => {
 	// while every rendering test stays green, because the strip's own markup is
 	// unchanged - so the pairing is asserted where it lives.
 	const composer = readFileSync(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 		"utf8",
 	);
 	const strip = readFileSync(

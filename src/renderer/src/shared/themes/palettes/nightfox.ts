@@ -125,6 +125,12 @@ export const nightfox: ThemeDefinition = {
 		inkDisabled: "#738091",
 
 		hairline: "#35465C",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.96:1 there against `hairline`'s 1.82:1.
+
+		hairlineStrong: "#3A4B61",
 		// the scheme's own border blue 6483ad, which is already at 3:1.
 		borderControl: "#6483AD",
 

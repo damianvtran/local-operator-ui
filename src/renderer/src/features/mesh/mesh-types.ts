@@ -152,6 +152,16 @@ export type NetworkMember = {
 	reachable: boolean;
 	/** In words, `""` when reachable. */
 	reason: string;
+	/**
+	 * The operator's DECLARED scope for this membership, or `""` for none.
+	 *
+	 * THE WIRE HAS NO SUCH FIELD YET, and it is normalised anyway so the client half of
+	 * the declared boundary exists before the backend half does (the mesh redesign's T2:
+	 * "build the client side so it renders when the field appears"). A missing key reads
+	 * as `""` - the same rule every optional field here follows - so an older backend
+	 * cannot make a declared boundary appear out of nothing.
+	 */
+	scope: string;
 };
 
 export type NetworkSummary = {
@@ -233,6 +243,7 @@ function member(raw: Record<string, unknown>): NetworkMember | null {
 		last_seen_at: time(raw.last_seen_at),
 		reachable: flag(raw.reachable, true),
 		reason: text(raw.reason ?? raw.unreachable_reason),
+		scope: text(raw.scope),
 	};
 }
 

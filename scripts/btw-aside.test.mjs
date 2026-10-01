@@ -947,7 +947,7 @@ test("the adopt chord confirms on its first press and adopts on its second", () 
 	// The composer applies it: the first press raises the confirm on the panel's
 	// notice line and returns BEFORE `adoptAside`; the second clears the arm and adopts.
 	const input = read(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 	);
 	assert.match(
 		input,
@@ -1259,7 +1259,7 @@ test("the placeholder names the destination the press actually reaches", () => {
 	);
 	// The wiring: the composer hands the attached panel to the function.
 	assert.match(
-		read("src/renderer/src/features/chat/components/message-input.tsx"),
+		read("src/renderer/src/shared/components/composer/message-input.tsx"),
 		/asideAttached: aside !== null,/,
 	);
 });
@@ -1310,7 +1310,7 @@ test("the panel is not a modal and owns none of the app's keys", () => {
 	assert.match(panel, RE_PANEL_LABEL);
 	// And the band mounts it, in flow, above the composer box.
 	const composer = read(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 	);
 	assert.match(composer, RE_PANEL_MOUNT);
 	assert.match(composer, RE_PANEL_GATE);
@@ -2496,7 +2496,7 @@ test("a new aside retires the composer's line, and the panel hands focus back", 
 		"close, Escape and adopt all hand focus to the composer",
 	);
 	assert.match(
-		read("src/renderer/src/features/chat/components/message-input.tsx"),
+		read("src/renderer/src/shared/components/composer/message-input.tsx"),
 		/onReturnFocus=\{\(\) => textareaRef\.current\?\.focus\(\)\}/,
 	);
 });
@@ -2529,7 +2529,7 @@ test("the panel names its chord's verb, describes its blocked control, and annou
 		"src/renderer/src/features/chat/components/aside-panel.tsx",
 	);
 	const input = read(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 	);
 	assert.match(panel, RE_PANEL_DESCRIBED_BY);
 	assert.match(panel, RE_PANEL_REASON_ID);
@@ -2681,7 +2681,7 @@ test("the ceiling counts the question's measured box and the gap under it", () =
  */
 test("the retirement request is a trigger the effect reads", () => {
 	const input = read(
-		"src/renderer/src/features/chat/components/message-input.tsx",
+		"src/renderer/src/shared/components/composer/message-input.tsx",
 	);
 	assert.match(input, RE_RETIRE_REQUEST_BUMP);
 	assert.match(input, RE_RETIRE_REQUEST_TRIGGER);

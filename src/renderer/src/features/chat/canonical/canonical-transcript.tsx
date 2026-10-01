@@ -55,6 +55,7 @@ import {
 	expandedRunsOf,
 	writeRunExpanded,
 } from "@shared/store/turn-collapse-open";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { showInfoToast } from "@shared/utils/toast-manager";
 import {
 	CircleAlert,
@@ -82,8 +83,13 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
-import { CHAT_COLUMN_CONTAINER, CHAT_MEASURE } from "../chat-measure";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_MEASURE,
+	readShippedChatMeasurePx,
+} from "../chat-measure";
 import { CHAT_REGION_LABEL } from "../chat-regions";
+import { ChatMeasureHandle } from "../components/chat-measure-handle";
 import { MarkdownRenderer } from "../components/markdown-renderer";
 import { MessageContainer } from "../components/message-item/message-container";
 import { TurnTimestamp } from "../components/message-item/turn-timestamp";
@@ -123,7 +129,10 @@ import { CheckpointRail } from "./checkpoint-rail";
 import { visibleRecords } from "./cross-session-visibility";
 import { isRecordReachable } from "./failed-row-jump";
 import { FoldMedia } from "./fold-media";
+import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { LinkToolkit } from "./link-toolkit";
+import type { LoadOlderOutcome } from "./load-older";
+import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
 	type ProviderErrorAction,
@@ -140,6 +149,7 @@ import {
 	foldImages,
 	foldRuns,
 	turnFeet,
+	workedSecondsOf,
 } from "./trace-fold-model";
 import {
 	TRANSCRIPT_DRAG_SLOP_PX,
@@ -173,12 +183,19 @@ import {
 	runsOf,
 	splitFirstLine,
 } from "./transcript-rows";
+import { turnAnswerMarkClass } from "./turn-answer-rail";
 import {
 	type RunCollapsePlan,
-	alignFetchDecision,
+	type SegmentPlan,
+	WIDEN_MAX_STEPS,
+	WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+	alignWalkDecision,
+	alignWalkRunKey,
+	alignWalkStateFor,
 	collapsePlan,
+	initialAlignWalkState,
 	snapWindowToRunBoundary,
-	windowTopRunIsHeadCut,
+	widenTarget,
 } from "./turn-collapse-model";
 import { useActiveCheckpoint } from "./use-active-checkpoint";
 import type { AttachmentScope } from "./use-attachment-url";
@@ -186,6 +203,7 @@ import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionHidden } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
+import { useTurnAnswerRail } from "./use-turn-answer-rail";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -206,23 +224,6 @@ const WINDOW = 60;
 const WINDOW_STEP = 60;
 
 /**
- * Rows of headroom above a jump's target, so "centred" is true at the top of
- * the reach as well as below it.
- *
- * QA round 1 (Q-1) measured the far jump landing top-clamped: with the window
- * widened to exactly the target's distance, the row is the OLDEST mounted one,
- * `scrollRegionToCenter` runs out of content above it and clamps — 254 px short
- * at the scene's size — while a warm re-jump of the same row measures 0 px,
- * which is how the mechanism was confirmed. Half a viewport of rows clears it
- * with margin at both the scene's row height (~20 px) and an ordinary one, and
- * the rows above the target ARE the extra ones: the window is newest-anchored
- * (`slice(total - windowSize)`), so a wider window reaches further back and
- * never forward. The cost is mounting those rows — the same write the reader's
- * own scroll makes.
- */
-const JUMP_MOUNT_HEADROOM_ROWS = 16;
-
-/**
  * How far the render window may be extended to land its top edge on a run
  * boundary (the on-load fix, operator report 2026-09-28).
  *
@@ -238,17 +239,8 @@ const JUMP_MOUNT_HEADROOM_ROWS = 16;
  */
 const WINDOW_ALIGN_MAX_EXTRA = 300;
 
-/**
- * Durable pages one open may fetch to bring a cut run's head into the loaded
- * rows (`windowTopRunIsHeadCut`).
- *
- * The first automatic follow-up load, bounded: an open must not walk an
- * unbounded conversation into memory. SINCE THE END-LOADED RULE (operator
- * report, 2026-09-29) the bound no longer decides whether a completed turn
- * folds — a run whose head stays cut still condenses from its loaded span —
- * only whether its bar gains the head row and the real duration clause.
- */
-const ALIGN_FETCH_MAX = 2;
+/* (`ALIGN_WALK_MAX_PAGES`, the walk's bound, lives in `turn-collapse-model.ts`
+ * beside the decision that spends it.) */
 
 /**
  * What a bar's appearance says out loud (the settle announcement's sentence).
@@ -259,19 +251,25 @@ const ALIGN_FETCH_MAX = 2;
  * only when non-zero. `formatDuration` is the bar's own formatter, so the
  * sentence and the row cannot disagree about "20m30s".
  */
-function condenseSentence(plan: RunCollapsePlan): string {
+function condenseSentence(segment: SegmentPlan): string {
 	const parts: string[] = [];
-	if (plan.facts.durationS !== null) {
-		parts.push(`took ${formatDuration(plan.facts.durationS)}`);
+	if (segment.facts.durationS !== null) {
+		parts.push(`took ${formatDuration(segment.facts.durationS)}`);
 	}
-	if (plan.facts.actions > 0) {
+	if (segment.facts.actions > 0) {
 		parts.push(
-			plan.facts.actions === 1 ? "1 action" : `${plan.facts.actions} actions`,
+			segment.facts.actions === 1
+				? "1 action"
+				: `${segment.facts.actions} actions`,
 		);
 	}
-	return parts.length === 0
-		? "Turn condensed."
-		: `Turn condensed: ${parts.join(", ")}.`;
+	/*
+	 * A labelled bar states its own kind first ("Wake: 8 actions."): a
+	 * follow-up section appearing after the answer is not "the turn condensing",
+	 * and saying so would announce the answer's own turn twice.
+	 */
+	const lead = segment.label ?? "Turn condensed";
+	return parts.length === 0 ? `${lead}.` : `${lead}: ${parts.join(", ")}.`;
 }
 
 /**
@@ -372,6 +370,32 @@ export type CanonicalTranscriptProps = {
 	 * loop or no retry at all, and neither is the contract.
 	 */
 	onLoadOlder: () => Promise<boolean>;
+	/**
+	 * The outcome-aware form of `onLoadOlder`, passed straight to the scroll pump
+	 * so a lost race is not read as a failure. Optional: a caller with only the
+	 * boolean keeps the old behaviour.
+	 */
+	onLoadOlderOutcome?: () => Promise<LoadOlderOutcome>;
+	/** The session hook's single statement that the last ask failed. */
+	olderFailed?: boolean;
+	/**
+	 * The older-history row's transport truth, where the caller knows it better
+	 * than `status` does.
+	 *
+	 * The slot drops its retry while the transport is down, because a retry that
+	 * cannot succeed must not be painted beside the transcript's own notice
+	 * (`older-history-slot.tsx`). For a pane whose rows came from the session's
+	 * own stream, `status` is that answer and stays it; this prop exists for a
+	 * caller painting these rows from something else. The child reader's page is
+	 * a read-only GET whose own `status` is a static `"live"` (there is no stream
+	 * of ITS to be connecting or reconnecting on), so without it a child's failed
+	 * page offers a `Try again` that cannot work while the parent's identical
+	 * failure goes quiet — the asymmetry design round 1's D2 measured.
+	 *
+	 * Omitted, nothing changes: the row reads `status !== "live"` exactly as it
+	 * always has.
+	 */
+	olderTransportDown?: boolean;
 	containerRef: RefObject<HTMLDivElement>;
 	isSmallView: boolean;
 
@@ -490,6 +514,18 @@ export type CanonicalTranscriptProps = {
 	 * replaces it.
 	 */
 	labelMarked?: ReadonlySet<string>;
+	/**
+	 * Mount the measure's drag handles on this column.
+	 *
+	 * Opt-in, and only the chat page passes it: the width a handle writes is a
+	 * document-root property shared by every chat surface, so a second mount
+	 * (the run pane's child reader) would let a drag there resize the main
+	 * column (review, finding 2). A transcript without it is indistinguishable
+	 * from the state before the handles existed - they are absolutely
+	 * positioned children of this column, and the `relative` on the column is
+	 * theirs.
+	 */
+	measureHandle?: boolean;
 	/**
 	 * Re-arm the session's stream and history read.
 	 *
@@ -882,6 +918,7 @@ const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
 	closesTurn,
+	answerRail,
 	foot = null,
 	closingLineSuppressed = false,
 	conversationId,
@@ -889,6 +926,14 @@ const AssistantRow = memo(function AssistantRow({
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
 	closesTurn: boolean;
+	/**
+	 * Whether the opt-in rail is on, resolved ONCE for the transcript and handed
+	 * down (see `CanonicalTranscript`'s `answerRail`): it is one query answering
+	 * one question about one row, so a subscription per assistant row would
+	 * N cache reads for it, and a prop keeps every memoised row's identity stable
+	 * until the reader actually flips the switch.
+	 */
+	answerRail: boolean;
 	/** §E3's foot line data, on the row that closes the turn. */
 	foot?: TurnFoot | null;
 	/**
@@ -939,7 +984,21 @@ const AssistantRow = memo(function AssistantRow({
 			 */}
 			<div
 				ref={turnRef}
-				className={cn("relative w-full break-words text-ink")}
+				className={cn(
+					"relative break-words text-ink",
+					/*
+					 * THE ANSWER'S OWN MARK (issue #665), now an OPT-IN: the backend key
+					 * `display.turn_answer_rail`, default off (operator report, 2026-09-30:
+					 * the 2px always-on rule "looks ugly" and "cramped"). `closesTurn` is
+					 * the segments module's election, so a post-dispose status reply never
+					 * wears it. The classes, and why the prose box never moves between on
+					 * and off, are `turnAnswerMarkClass`'s. `data-turn-answer` below is
+					 * the hook rigs and tests read instead of a class name, and it is set
+					 * from the election alone so it does not depend on the setting.
+					 */
+					turnAnswerMarkClass(closesTurn, answerRail),
+				)}
+				data-turn-answer={closesTurn || undefined}
 				aria-busy={record.streaming || undefined}
 				data-lo-streaming={record.streaming || undefined}
 				data-lo-truncated={record.truncated || undefined}
@@ -1043,12 +1102,17 @@ const AssistantRow = memo(function AssistantRow({
 			 * markdown's own block margins collapse.
 			 */}
 			{/*
-			 * Left-aligned by the container's own `pl-10` gutter, which is the padding
-			 * the answer's prose already starts at - so the caption and the prose share
-			 * one left edge structurally rather than by a second measurement (the frame
-			 * is where that is checked; see `docs/evidence/chat-tool-rows/README.md`).
+			 * ALIGNED STRUCTURALLY, NOT BY A GUTTER. This line is a sibling of the answer's
+			 * content box inside `MessageContainer`, which is `relative w-full` for an agent
+			 * row (D11: the 40px gutter and the agent glyph it existed for are both
+			 * deleted), so the two share the container's own left edge with nothing between
+			 * them. The comment this replaces named a `pl-10` gutter that no class in
+			 * `features/chat` supplies any more, and a frame cannot settle an edge claim -
+			 * so the rail is MEASURED from the rendered DOM
+			 * (`scripts/chat-alignment-geometry.mjs`), and the numbers are in
+			 * `docs/evidence/chat-canonical-message-actions/README.md`.
 			 */}
-			{closesTurn && !closingLineSuppressed && (
+			{closesTurn && (
 				/*
 				 * THE TURN-FOOT LINE (§E3), and the one line D9 leaves behind.
 				 *
@@ -1066,9 +1130,35 @@ const AssistantRow = memo(function AssistantRow({
 				 * same record cannot be the one that opens, and it opens that row's
 				 * disclosure BEFORE scrolling - the detail is what the reader came for, and
 				 * landing on a closed row would make the jump a second click.
+				 *
+				 * THE ANSWER'S ACTION ROW RIDES THIS LINE (issue #695, design memo (c)). It is
+				 * not a second band: a band of its own would cost a whole row per turn and
+				 * would leave the turn's LAST line being controls rather than the turn's own
+				 * fact. The actions take the line's left so the reader's eye returns to one
+				 * rail - the prose's - and the caption follows them on the same line.
+				 *
+				 * THE TWO HALVES OF THIS LINE HAVE DIFFERENT CONDITIONS, which is why the
+				 * gate moved from the line to the pieces. The ACTIONS are a fact about the
+				 * answer (there is prose to copy), so they render whenever the turn closes;
+				 * the NUMBERS and the STAMP are facts about the turn's closing line, and a run
+				 * that carries a turn bar already states both (`closingLineSuppressed`, F5).
+				 * The bar keeps its own stamp and never takes the actions.
 				 */
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					{foot && foot.actions > 0 && (
+					{/*
+					 * The gate the Quote control above already uses, for its reason: an answer
+					 * still receiving deltas is a prefix the next token falsifies, so there is
+					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
+					 * send's markup alone) has nothing to offer either.
+					 */}
+					{isQuotable(record, remainingContent) && (
+						<AnswerActionRow
+							bodyText={remainingContent}
+							agentId={conversationId}
+							speechId={record.id}
+						/>
+					)}
+					{!closingLineSuppressed && foot && foot.actions > 0 && (
 						<>
 							<span className={cn("text-ink-dim")}>
 								{foot.durationS !== null
@@ -1087,9 +1177,11 @@ const AssistantRow = memo(function AssistantRow({
 							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
-					<span className={cn("ml-auto")}>
-						<TurnTimestamp timestamp={record.ts} scope="answer" />
-					</span>
+					{!closingLineSuppressed && (
+						<span className={cn("ml-auto")}>
+							<TurnTimestamp timestamp={record.ts} scope="answer" />
+						</span>
+					)}
 				</div>
 			)}
 		</MessageContainer>
@@ -1827,6 +1919,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * `outputFallbackLine`, and why dropping this prop would silently restore the
 	 * bug #490 fixed (`bash  … {"text": 200…` drawn as if it were the command).
 	 */
+	answerRail = false,
 	foot = null,
 	closingLineSuppressed = false,
 	labelPending = false,
@@ -1838,6 +1931,12 @@ const TranscriptRow = memo(function TranscriptRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/**
+	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
+	 * query, for the reason `labelPending` documents below: the rows are
+	 * memoised, and the value changes only when the reader flips the switch.
+	 */
+	answerRail?: boolean;
 	/** The turn's own foot line, on the row that closes it (§E3). */
 	foot?: TurnFoot | null;
 	/** The run above carries a bar; see `AssistantRow`'s copy of this prop. */
@@ -1880,6 +1979,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					closesTurn={row.closesTurn}
+					answerRail={answerRail}
 					foot={foot}
 					closingLineSuppressed={closingLineSuppressed}
 					conversationId={conversationId}
@@ -1977,13 +2077,14 @@ const CHECKPOINT_JUMP_MISS_COPY =
 	"Could not reach that turn. It is further back than the loaded history — scroll up in the transcript to load more.";
 
 /**
- * A fold group as the aggregation pass hands it on: a run group carries the
- * section flag it was decorated with (`isNewestTurn`), a row group is the
- * partition's own row variant unchanged.
+ * A fold group as the aggregation pass hands it on: the partition's own
+ * variants unchanged. A run group used to carry a section flag
+ * (`isNewestTurn`) for the fold's condense; the condense is retired (the
+ * fold's open state is the reader's, see `fold-open.ts`), so the decoration
+ * is gone with it.
  */
 type SectionGroup =
 	| (Extract<FoldGroup, { kind: "run" }> & {
-			isNewestTurn: boolean;
 			/**
 			 * The run's images, computed by the groups memo while the rows are still
 			 * in hand (`foldImages`). The fold's condensed header carries them because
@@ -2009,6 +2110,9 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	workingLine,
 	loadingOlder,
 	onLoadOlder,
+	onLoadOlderOutcome,
+	olderFailed,
+	olderTransportDown,
 	containerRef,
 	isSmallView,
 	status,
@@ -2022,6 +2126,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	undelivered = null,
 	labelHoldLate,
 	labelMarked,
+	measureHandle = false,
 	onReconnect,
 }) => {
 	// A crash-recovered outcome has no durable row of its own, so it is
@@ -2072,6 +2177,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * flip the pane's empty state.
 	 */
 	const hide = useCrossSessionHidden();
+	/*
+	 * ONE read of the rail setting for the whole transcript, handed to the rows as
+	 * a boolean prop: the elected answer is the only row that consumes it, so a
+	 * hook per assistant row would subscribe to the Settings query once per row
+	 * for one fact (agent review round 1, R4).
+	 */
+	const answerRail = useTurnAnswerRail();
 	const shownRecords = useMemo(
 		() => visibleRecords(painted.records, hide),
 		[painted.records, hide],
@@ -2136,9 +2248,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// belongs to the previous transcript.
 	const [windowSession, setWindowSession] = useState(sessionId);
 	const [windowSize, setWindowSize] = useState(WINDOW);
-	/* Durable pages this conversation's open has spent aligning the window's
-	 * top edge onto a loaded run boundary. See the alignment effect below. */
-	const alignFetches = useRef(0);
+	/* The completion walk's budget, KEYED BY THE RUN it is walking (1b/B): the
+	 * run under the window's top edge owns the pages spent on it, so a
+	 * conversation that outlives its first walk can still complete the bars of
+	 * turns that settle later. See `alignWalkStateFor` and the effect below. */
+	const alignWalk = useRef(initialAlignWalkState());
 	/* The settle announcement's own memory — see the effect beside the collapse
 	 * plan. `keys` are the bars already stated (or absorbed silently, when they
 	 * were window-entered rather than settled); `rowIds` are every row the
@@ -2150,9 +2264,54 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	if (windowSession !== sessionId) {
 		setWindowSession(sessionId);
 		setWindowSize(WINDOW);
-		alignFetches.current = 0;
+		alignWalk.current = initialAlignWalkState();
 		announcedPlan.current = null;
 	}
+	/*
+	 * THE FOLD-OPEN REGISTRY, keyed to the conversation and reset the same
+	 * render-phase way (operator report, 2026-09-27). It lives HERE rather than
+	 * on each `TraceFold` because a fold's React identity is its key - the first
+	 * row of its run - and the render window's leading edge walks through runs as
+	 * rows arrive, remounting them; `fold-open.ts`'s header carries the measured
+	 * walk and the migration the registry performs. `sessionId` is the
+	 * transcript's own conversation identity, the same value the window above
+	 * resets on, so the two cannot disagree about a switch.
+	 *
+	 * THE IDENTITY IS STICKY ACROSS A NULL, and that is the report's own failure
+	 * class one layer down: the reconnect gap arms null `frontend` outright, so a
+	 * registry keyed on `sessionId` alone would close every fold the reader opened
+	 * on every reconnect. The last STATED id is held until a different one
+	 * arrives - a gap keeps the conversation, a switch changes it.
+	 */
+	const foldSession = useRef(sessionId);
+	if (sessionId !== null) foldSession.current = sessionId;
+	const [foldOpen, setFoldOpen] = useState<{
+		session: string | null;
+		entries: readonly FoldOpenEntry[];
+	}>(() => ({ session: foldSession.current, entries: [] }));
+	if (foldOpen.session !== foldSession.current) {
+		setFoldOpen({ session: foldSession.current, entries: [] });
+	}
+	/**
+	 * The reader's press on a fold, recorded against the fold's CURRENT id set.
+	 *
+	 * `keep` is every record the conversation holds - not just the render window:
+	 * a fold scrolled outside the window is still the reader's, and pruning its
+	 * entry the moment its rows leave the window would reproduce the bug this
+	 * registry exists to fix, one scroll later.
+	 */
+	const setFoldOpenFor = (ids: readonly string[], open: boolean) => {
+		const keep = new Set(transcript.records.map((record) => record.id));
+		setFoldOpen((current) => ({
+			session: foldSession.current,
+			entries: withFoldOpen(
+				current.session === foldSession.current ? current.entries : [],
+				ids,
+				open,
+				keep,
+			),
+		}));
+	};
 	/*
 	 * THE READER'S EXPANSION OF TURN BARS, per conversation. The store is a
 	 * sibling of the paint cache (`shared/store/turn-collapse-open.ts`) so the
@@ -2163,6 +2322,31 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * not one commit later. `openRuns` is the readable copy; every write goes
 	 * through the store so the two cannot drift.
 	 */
+	/*
+	 * The collapse's own liveness and open-run set, for the WIDEN's paint count
+	 * (loader-continuity 1b). `widen()` runs from an input event long after the
+	 * render that computed them, and it must count the same rows the render pass
+	 * paints: a run the reader has opened shows its rows, and the newest run
+	 * while a turn is being written never collapses. Read through a ref rather
+	 * than added to `widen`'s dependency list, because `widen` is consumed by
+	 * the paging hook and a new identity per render would re-create it (and the
+	 * hook's refs) for a value that only an event reads - the same reason
+	 * `rowsRef` exists.
+	 */
+	const widenInputs = useRef<{
+		live: boolean;
+		openRuns: ReadonlySet<string> | undefined;
+		/**
+		 * The size the reader is LOOKING at (`alignSize`, the snap's output), which is
+		 * the widen's measuring baseline (agent review round 1, R1-1): the raw
+		 * `windowSize` can be far smaller than what is mounted, and a search measured
+		 * from the raw number compares windows the render never painted. A ref for the
+		 * same reason as the two above — `widen` runs from an input event long after
+		 * the render that computed this, and adding it to the callback's dependencies
+		 * would re-create the hook's refs on every mount change.
+		 */
+		mounted: number;
+	}>({ live: false, openRuns: undefined, mounted: 0 });
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
 		expandedRunsOf(sessionId),
 	);
@@ -2177,7 +2361,152 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		},
 		[sessionId],
 	);
+	/*
+	 * Where the pressed bar sat when the reader pressed it, and the bar lookup the
+	 * press and its layout effect share. The rule these serve - a pressed bar stays
+	 * where it was pressed, and its write goes out acknowledged to the paging hook
+	 * - is stated at the effect that spends them.
+	 */
+	const pressedBar = useRef<{ id: string; top: number } | null>(null);
+	/*
+	 * Found by comparing the attribute rather than by a selector: a record id is
+	 * arbitrary text, and escaping it for a selector is a second thing to get wrong
+	 * (and `CSS.escape` is absent from the test DOM).
+	 */
+	const barFor = useCallback(
+		(id: string): Element | null => {
+			const bars = containerRef.current?.querySelectorAll(
+				"[data-turn-summary]",
+			);
+			for (const bar of bars ?? []) {
+				if (bar.getAttribute("data-record-id") === id) return bar;
+			}
+			return null;
+		},
+		[containerRef],
+	);
+	const openBar = useCallback(
+		(runKey: string, firstId: string, open: boolean) => {
+			/*
+			 * RECORDED FOR A CLOSE AS WELL AS AN OPEN (QA round 2, QA-2). The open
+			 * was compensated first because that is where the defect was measured;
+			 * the close moves the viewport the other way by the same span and is
+			 * just as much the reader's press, so it takes the same record and the
+			 * same single write. One record per press, consumed by the next commit,
+			 * so the two movements cannot double-count each other - the open's write
+			 * is already spent, and acknowledged, before the close is pressed.
+			 */
+			const bar = barFor(firstId);
+			if (bar) {
+				pressedBar.current = {
+					id: firstId,
+					top: bar.getBoundingClientRect().top,
+				};
+			}
+			setRunOpen(runKey, open);
+		},
+		[barFor, setRunOpen],
+	);
 	const total = rows.length;
+	// What the working line says, and which phase it is timing. The derivation
+	// (and its copy contract, including the one branch this app drives from its
+	// own admitted send rather than from a frame) lives in
+	// `working-line-model.ts`; this is only the memo that keeps it off the
+	// per-token path.
+	const paneWorking = useMemo(
+		() =>
+			// One input builder for this claim's two readers - this rung and the
+			// composer's hint (`workingLineInputFor`, `working-line-model.ts`).
+			// The builder is shared; the record lists handed to it are not: this
+			// rung reads the cross-session filter's `shownRecords`, while the
+			// composer's hint still reads the raw records (`chat-content.tsx`).
+			// No divergence is reachable today - `waiting` is answered by the
+			// ladder's fallback on either list, and the one predicate that could
+			// flip on dropped rows (`ownerAnswered`) is decided over RAW records
+			// in `chat-page` before either reader is built. If that normalization
+			// ever moves off raw records, this seam moves with it.
+			deriveWorkingLine(
+				workingLineInputFor({
+					waiting,
+					// The pass is the transcript's own fact, read here rather than
+					// latched in this view: one source for the rung and the composer's
+					// hint (see `transcript-reducer`'s `compacting`).
+					compacting: transcript.compacting,
+					// The phase's own start, so the clock times the PASS rather than this
+					// component's mount - and so the frame is a picture of the state
+					// instead of the shutter's timing (design round 2, D3).
+					compactingSince: transcript.compactingSince,
+					// The producer's OWN phase and its zero, off the frontend state that
+					// rode in with the snapshot. This is the half a resumed pane cannot
+					// derive from its own records (`thinking` has no tool row behind it at
+					// all), and it is used only when the producer's phase equals the one
+					// derived here - the gate lives in `deriveWorkingLine`, once, because
+					// the comparison needs the derived phase.
+					foldedPhase: frontend?.activity_phase,
+					foldedPhaseStartedAt: frontend?.activity_phase_started_at,
+					starting,
+					startingAfterId,
+					startingSession,
+					startingSince,
+					gate,
+					// One definition of "this pane is speaking for itself", shared with the
+					// band's own greeting decision rather than a second copy of "the
+					// transport is down": the failure notice and the reconnecting line are
+					// the only things on screen that say what happened, so the rung must
+					// not claim progress beside them.
+					//
+					// The four fields are spelled out rather than handed over as
+					// `paneView`: this is a memo, and a fresh object would make its deps
+					// depend on the view's identity instead of on the facts it reads.
+					unavailable: canonicalTranscriptSpeaks({
+						status,
+						failure,
+						missing,
+						stale,
+					}),
+					records: shownRecords,
+				}),
+			),
+		[
+			waiting,
+			transcript.compacting,
+			// The phase's own start, read by the builder above: without it a pass
+			// whose stamp changed while the claim did not would keep the old anchor.
+			transcript.compactingSince,
+			// Read by the builder above as the resumed rung's anchor. Spelled out as the
+			// two fields rather than the `frontend` object, for the same reason the four
+			// view flags are: a memo whose dep is the object re-derives on every frame
+			// the stream repaints, which is the per-token path this memo exists to stay
+			// off.
+			frontend?.activity_phase,
+			frontend?.activity_phase_started_at,
+			starting,
+			startingAfterId,
+			startingSession,
+			startingSince,
+			gate,
+			status,
+			failure,
+			// The pane's two click-path states, because the predicate above reads them
+			// and a memo that missed them would keep a claim the pane has withdrawn.
+			missing,
+			stale,
+			shownRecords,
+		],
+	);
+
+	/*
+	 * IS A TURN BEING WRITTEN (or parked on a question)? The collapse's own
+	 * liveness rule, derived ONCE here and read by the window's snap, the widen's
+	 * paint count and the plan below. It is above them because the snap needs it:
+	 * the completed-run allowance is for a SETTLED turn's bar, and mounting a run
+	 * that is still streaming whole would put a live turn's whole prefix on screen
+	 * — the cost the window exists to bound. See `snapWindowToRunBoundary`.
+	 */
+	const paneIsLive =
+		(workingLine === undefined ? paneWorking : workingLine) !== null ||
+		gate !== null;
+
 	/*
 	 * The window's top edge lands on a RUN boundary, not a raw row count (the
 	 * on-load fix, operator report 2026-09-28: a completed run the edge cut
@@ -2189,8 +2518,23 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * window without an effect.
 	 */
 	const alignSize = useMemo(
-		() => snapWindowToRunBoundary(rows, windowSize, WINDOW_ALIGN_MAX_EXTRA),
-		[rows, windowSize],
+		() =>
+			snapWindowToRunBoundary(
+				rows,
+				windowSize,
+				WINDOW_ALIGN_MAX_EXTRA,
+				// The COMPLETED-RUN allowance (1b/A): a run whose own opening row is in the
+				// store may be snapped all the way to that row, so a settled turn states its
+				// true action count and its `Took` clause at open. See the constant's note for
+				// why the reach is safe (a collapsed run unmounts what its bar hides) and why
+				// the bound is the widen's own.
+				WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+				// …and it is for a SETTLED run only: `paneIsLive` is the same liveness the
+				// collapse reads, so a turn still being written keeps the ordinary reach and
+				// cannot mount its whole streaming prefix (see the snap's own note).
+				paneIsLive,
+			),
+		[rows, windowSize, paneIsLive],
 	);
 	const visible = useMemo(
 		() => (total > alignSize ? rows.slice(total - alignSize) : rows),
@@ -2211,42 +2555,19 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * and the jump walk — while the READER's own scroll path keeps the pager's
 	 * raw refusal semantics (`onLoadOlder` straight through).
 	 *
-	 * WHY THE SPLIT: the pager answers a concurrent ask with `false`, and for a
-	 * scroll that is right (no double-apply). But a walk reads `false` as
-	 * "history ends here", so a jump colliding with an align page used to fall
-	 * through to a clamped mount instead of awaiting the page already on its
-	 * way. Sharing the promise here makes that collision a wait for the two
-	 * consumers that walk; the scroll path's semantics are untouched.
+	 * HISTORY OF THE SPLIT: the pager used to answer a concurrent ask with
+	 * `false`, and a walk read that as "history ends here", so a jump colliding
+	 * with an align page fell through to a clamped mount instead of awaiting the
+	 * page already on its way. The session hook is now single-flight and SHARES
+	 * the in-flight page with every caller (`createOlderLoader`), so this wrapper
+	 * is redundant for the hook's own `onLoadOlder`; it is kept because the
+	 * walk's callers may be handed any boolean pager (the child reader's), and
+	 * sharing is idempotent.
 	 */
 	const walkLoadOlder = useMemo(
 		() => shareInFlight(onLoadOlder),
 		[onLoadOlder],
 	);
-	/*
-	 * The alignment's load half: when the edge sits inside a run whose head the
-	 * FETCHED rows cut off, the snap has no boundary to land on. Fetch the head
-	 * — bounded (ALIGN_FETCH_MAX pages per conversation), only while a page is
-	 * not already in flight — and let the snap do the rest when it lands.
-	 *
-	 * SINCE THE END-LOADED RULE (operator report, 2026-09-29) this is a
-	 * REFINEMENT, not the fix: a run whose head is farther than the bound still
-	 * condenses from its loaded span, so the bound no longer decides whether a
-	 * completed turn folds — only whether its bar gains the head row and the
-	 * real duration. The bound still exists because its old reason does: an open
-	 * must not walk an unbounded conversation into memory.
-	 */
-	useEffect(() => {
-		const decision = alignFetchDecision(
-			alignFetches.current,
-			transcript.hasMore,
-			loadingOlder,
-			windowTopRunIsHeadCut(rows, alignSize),
-			ALIGN_FETCH_MAX,
-		);
-		if (!decision.fetch) return;
-		alignFetches.current = decision.spent;
-		void walkLoadOlder();
-	}, [rows, alignSize, loadingOlder, transcript.hasMore, walkLoadOlder]);
 	/*
 	 * §E2's aggregation tier, and §E3's foot lines, computed over the SAME visible
 	 * rows the list renders. Both are pure (`trace-fold-model.ts`) because both are
@@ -2259,19 +2580,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const rowGroups = useMemo(() => {
 		/*
-		 * The newest turn is the one after the last user row: a run in an OLDER turn
-		 * must not open itself because a LATER turn happens to be running.
+		 * `isNewestTurn` used to be computed here for the fold's condense; the
+		 * condense is retired (the fold's open state is the reader's, see
+		 * `fold-open.ts`), and the map below carries only the run's images - the
+		 * media lane's own decoration, documented at its own site.
 		 */
-		let lastUserIndex = -1;
-		for (let index = 0; index < visible.length; index += 1) {
-			if (visible[index].record.kind === "user") lastUserIndex = index;
-		}
 		const groups = foldRuns(visible, {
 			nameOf: (row) => ledgerName(row.record),
 			failedOf: (row) =>
 				row.record.kind === "tool" && row.record.isError === true,
-			durationOf: (row) =>
-				row.record.kind === "tool" ? row.record.durationS : null,
+			durationOf: workedSecondsOf,
 			/*
 			 * The fold's condensed header is fed from the records themselves: the
 			 * running call's own words (`toolRecordSummary`), its own running
@@ -2302,13 +2620,10 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				row.record.kind === "tool" ? row.record.endedAt : null,
 			isFoldable: (row) => row.record.kind === "tool",
 		});
-		const firstIndexOf = new Map<string, number>();
-		visible.forEach((row, index) => firstIndexOf.set(row.record.id, index));
 		return groups.map((group) =>
 			group.kind === "run"
 				? {
 						...group,
-						isNewestTurn: (firstIndexOf.get(group.id) ?? 0) > lastUserIndex,
 						/*
 						 * The run's pictures, computed HERE rather than at the fold's call
 						 * site: a collapsed fold unmounts the rows that draw them, so the
@@ -2338,8 +2653,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		return turnFeet(visible, {
 			failedOf: (row) =>
 				row.record.kind === "tool" && row.record.isError === true,
-			durationOf: (row) =>
-				row.record.kind === "tool" ? row.record.durationS : null,
+			/*
+			 * The SAME quantity every condensed bar states (`workedSecondsOf`): one
+			 * definition, so the bars of a ladder add up to this figure (#708 D1).
+			 */
+			durationOf: workedSecondsOf,
 			isAction: (row) => row.record.kind === "tool",
 			opensRun: (row) => openerIds.has(row.record.id),
 		});
@@ -2501,31 +2819,205 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// the top, which meant a single fling widened it by dozens of steps and
 	// mounted hundreds of rows for one gesture. It is the same jitter family as
 	// the missing durable paging and it gets the same discipline.
+	//
+	// THE STEP IS CHOSEN IN THE READER'S CURRENCY (loader-continuity 1b). A raw
+	// `+WINDOW_STEP` over a transcript of finished turns moves the count in the
+	// slot and mounts rows the collapse hides again, so the reader's gesture
+	// reveals nothing: measured on the operator's journal, one 618-row run
+	// painted 4-7 rows across window 60..300, and the bar only gained its real
+	// count and its `Took` clause at window 300. `widenTarget` walks the same
+	// steps until the window PAINTS `minVisibleRows` more rows than the one it
+	// started from, and stops at `WIDEN_MAX_STEPS` steps - the bound the reveal
+	// chain already uses, so one gesture still reveals one window's worth.
 	const widen = useCallback(() => {
-		setWindowSize((current) => Math.min(total, current + WINDOW_STEP));
+		setWindowSize(() =>
+			Math.min(
+				total,
+				widenTarget(rowsRef.current, widenInputs.current.mounted, {
+					step: WINDOW_STEP,
+					live: widenInputs.current.live,
+					openRuns: widenInputs.current.openRuns,
+					snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
+					// The render's OWN second bound (the completed-run allowance), so the
+					// step's painted delta is measured against the window the component
+					// actually mounts - agent review round 1, R1-1.
+					completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+					maxRows: Math.min(
+						total,
+						widenInputs.current.mounted + WIDEN_MAX_STEPS * WINDOW_STEP,
+					),
+				}),
+			),
+		);
 	}, [total]);
 
 	// The session identity the paging state belongs to. `hasMore` is folded in
 	// because `/clear` replaces the transcript without changing the session, and
 	// a latch held against rows that are gone would refuse the first gesture in
 	// the transcript that replaced them.
-	const { slotState, requestOlder } = useScrollPaging({
-		containerRef,
-		sessionKey: sessionId,
-		hiddenRows: hidden,
-		hasMore: Boolean(transcript.hasMore),
-		onWiden: widen,
-		onLoadOlder,
-		loadingOlder,
-		// The content node exists only once the transcript is non-empty; this is
-		// what re-runs the observer effect at that moment.
-		contentKey: collapsed ? "empty" : "filled",
-		// The MOUNTED count, not the total: a local widen reveals rows the
-		// transcript already had, so `rows.length` does not change and the
-		// pre-paint correction would skip exactly the reveal that displaces the
-		// reader furthest. `visible.length` changes on both growth paths.
-		rowCount: visible.length,
+	const { slotState, requestOlder, mayAutoWalk, acknowledgeOwnWrite } =
+		useScrollPaging({
+			containerRef,
+			sessionKey: sessionId,
+			hiddenRows: hidden,
+			hasMore: Boolean(transcript.hasMore),
+			onWiden: widen,
+			onLoadOlder,
+			onLoadOlderOutcome,
+			olderFailed,
+			loadingOlder,
+			// The content node exists only once the transcript is non-empty; this is
+			// what re-runs the observer effect at that moment.
+			contentKey: collapsed ? "empty" : "filled",
+			// The MOUNTED count, not the total: a local widen reveals rows the
+			// transcript already had, so `rows.length` does not change and the
+			// pre-paint correction would skip exactly the reveal that displaces the
+			// reader furthest. `visible.length` changes on both growth paths.
+			rowCount: visible.length,
+		});
+	/*
+	 * A PRESSED BAR STAYS WHERE IT WAS PRESSED (UX review round 1 on #708, U1).
+	 *
+	 * The disclosure idiom is "the row you press stays and its content appears
+	 * under it". The browser's scroll anchoring gives that everywhere except at
+	 * the bottom of this transcript: the scroller is `flex-col-reverse` and pinned
+	 * at `scrollTop = 0`, so growing content is added ABOVE the pinned tail and
+	 * the pressed bar is pushed off the top (measured: y 272 to -348, the scroller
+	 * unmoved, with 620px of opened span between the reader and the bar's label).
+	 * A reader following live work sits at the bottom, so that is the most likely
+	 * place for the press.
+	 *
+	 * So the press records where the bar is, and the commit that MOUNTS OR
+	 * UNMOUNTS its content moves the scroller by exactly how far the bar moved -
+	 * the close needs this as much as the open (QA round 2, QA-2: an un-
+	 * compensated close moved the reader about 2.5 span-lengths, the same defect
+	 * with the sign flipped). Where the
+	 * browser already held the bar (top, mid-transcript) the delta is zero and
+	 * this writes nothing, so it cannot fight the anchoring it complements. The
+	 * shift is in the reversed axis's own sign (`scrollTop` is negative above the
+	 * tail and more negative moves content DOWN - `scroll-paging` states the
+	 * contract), and it is one assignment in the layout phase, so no frame paints
+	 * the bar off-screen first.
+	 *
+	 * THE WRITE IS ACKNOWLEDGED TO THE PAGING HOOK, and that is not bookkeeping
+	 * (review round 2, MINOR-3). This scroller's `onPointerDown` opened the hook's
+	 * drag window when the reader pressed the bar, so the `scroll` event this
+	 * write produces would otherwise be read as the reader dragging older-ward:
+	 * a correction recorded as input, which arms a paging demand from a click.
+	 * `acknowledgeOwnWrite` takes the offsets around the assignment, so a write
+	 * the browser clamps to nothing claims nothing either.
+	 */
+	useLayoutEffect(() => {
+		const pressed = pressedBar.current;
+		if (pressed === null) return;
+		pressedBar.current = null;
+		const region = containerRef.current;
+		const bar = barFor(pressed.id);
+		if (!region || !bar) return;
+		const moved = bar.getBoundingClientRect().top - pressed.top;
+		if (Math.abs(moved) < 1) return;
+		const before = region.scrollTop;
+		region.scrollTop += moved;
+		acknowledgeOwnWrite(before, region.scrollTop);
 	});
+	/*
+	 * THE COMPLETION WALK (loader-continuity 1b, design spec section 7): a
+	 * settled turn finishes its own condensation instead of waiting for the
+	 * reader to scroll the head in page by page.
+	 *
+	 * WHEN the edge sits inside a run whose head the FETCHED rows cut off, the
+	 * snap has no boundary to land on and the bar can only describe the loaded
+	 * span — no real action count, no `Took` clause. The walk fetches that head,
+	 * one page per invocation, for as long as the decision's clauses hold: the
+	 * run is still cut AND the backend has more, no page is in flight, every
+	 * page so far applied, and the reader is following the tail with no recent
+	 * input (`mayAutoWalk` — the hook's own geometry and input clock, never a
+	 * re-derivation here).
+	 *
+	 * WHY ONE PAGE PER INVOCATION rather than a loop, and why the effect's own
+	 * dependency list is the walk's clock: a landing changes `rows` and flips
+	 * `loadingOlder`, so the effect re-runs by itself exactly once per page —
+	 * the same shape the flat two-page budget had, with the pages counted
+	 * instead of capped at two. A loop inside the effect would walk the whole
+	 * bound in one commit and hand the reader twelve pages of history as one
+	 * uninterruptible act.
+	 *
+	 * WHY IT STOPS RATHER THAN RETRIES on a non-`applied` outcome: a failure
+	 * already owns the failed row and the automatic retry budget (rule G), and a
+	 * walk that kept asking through a failure is the operator's "keeps loading in
+	 * chunks" loop. `halted` is the walk's own memory of that, cleared with the
+	 * rest of it on a session change — the reader's next act re-arms everything.
+	 *
+	 * THE SUPPRESSION BELOW IS ONE LINE AND SITS ON THE HOOK, not on the dependency,
+	 * because biome attaches an ignore to the NEXT line — the file states the same
+	 * convention at the clamp effect. `alignSize` is a RE-RUN TRIGGER, not a value
+	 * this body reads: a landing prepends older rows and the snap that follows it is
+	 * what mounts the completed run, so an effect that did not re-run on the new
+	 * mount would decide once per page against a window that no longer exists.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `alignSize` is a re-run trigger (the completion's own mount), not a value this body reads; see the note above
+	useEffect(() => {
+		/*
+		 * WHOSE WALK THIS IS (1b/B). The run with a condensed, head-cut bar owns the
+		 * budget, and moving to a different such run starts a fresh one — that is what
+		 * lets a later settled turn complete its own bar in a long-lived conversation.
+		 * The same run keeps its spent budget, so no run is walked twice for the same
+		 * content. `widenInputs` is the render's own collapse inputs (the same ones
+		 * the widen and the plan read), so "condensed" here means the bar the reader
+		 * is looking at.
+		 */
+		const key = alignWalkRunKey(rows, {
+			live: paneIsLive,
+			openRuns,
+		});
+		const state = alignWalkStateFor(alignWalk.current, key);
+		const decision = alignWalkDecision(state.spent, {
+			hasMore: Boolean(transcript.hasMore),
+			loadingOlder,
+			headCut: state.key !== null,
+			mayWalk: mayAutoWalk(),
+			halted: state.halted,
+		});
+		alignWalk.current = { ...state, spent: decision.spent };
+		if (!decision.fetch) return;
+		const dispatchedFor = state.key;
+		void walkLoadOlder().then((applied) => {
+			/*
+			 * A walk page that did not apply halts the walk. `applied` is the boolean
+			 * form of the SAME single-flight ask the reader's own pump uses
+			 * (`createOlderLoader`), so the walk and a gesture can never be waiting on
+			 * two pages at once.
+			 *
+			 * THE KEY IS RE-CHECKED FIRST (agent review round 1, R1-2). A page can
+			 * resolve after the window has moved to a DIFFERENT cut run, and halting
+			 * whichever run is current then refuses that run's walk for its whole life
+			 * although none of its own pages failed — its bar would stay partial with
+			 * no reader-visible reason. Only the run that spent the ask may be halted
+			 * by its outcome.
+			 */
+			if (!applied && alignWalk.current.key === dispatchedFor) {
+				alignWalk.current = { ...alignWalk.current, halted: true };
+			}
+		});
+	}, [
+		rows,
+		/*
+		 * THE WALK'S OWN COMPLETION RE-ARMS THE ALIGN THROUGH `alignSize`, and that is
+		 * why it is a dependency even though the key no longer reads it. A landing
+		 * prepends OLDER rows: `rows` changes, the snap re-derives, and once the run's
+		 * own opening row is in the store the completed-run allowance mounts the whole
+		 * run — which is the transition that puts the true count and the `Took` clause
+		 * on the bar. A version of this effect that only watched the tail would decide
+		 * once per page and never re-read the mount the completion produced.
+		 */
+		alignSize,
+		loadingOlder,
+		transcript.hasMore,
+		walkLoadOlder,
+		mayAutoWalk,
+		paneIsLive,
+		openRuns,
+	]);
 
 	/*
 	 * §D7's near path, wired to the rail's ticks: ensure the row is reachable
@@ -2553,32 +3045,21 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					);
 					return index === -1 ? null : rowsRef.current.length - index;
 				},
-				hasHeadroom: () => {
-					/*
-					 * Rows OLDER than the target are the margin the mount needs above
-					 * it, and the store is oldest-first: the target's own index IS that
-					 * count. A page-leading target (index 0) would otherwise mount with
-					 * nothing above it and centre clamped (QA Q-2, −254 px, ~the first 8
-					 * rows of every fetched page). `-1` cannot happen here — the loop
-					 * consults this only once `rowDistance` found the row — so it reads
-					 * as satisfied rather than forcing a fetch on an absence.
-					 */
-					const index = rowsRef.current.findIndex(
-						(row) => row.record.id === id,
-					);
-					return index === -1 || index >= JUMP_MOUNT_HEADROOM_ROWS;
-				},
 				mount: (distance) => {
 					/*
-					 * The row PLUS headroom above it, or the far jump lands clamped at the
-					 * content's top rather than centred (see
-					 * `JUMP_MOUNT_HEADROOM_ROWS`), which the rail's ticks share: this is
-					 * one loop for both callers.
+					 * The row's EXACT distance - no margin. The old +16 rows were the
+					 * centring era's headroom (Q-2: a page-leading target had nothing
+					 * above it to centre against and clamped, -254 px), and the jump
+					 * now anchors the row's TOP at the scrollport's top (issue #680),
+					 * where the margin buys nothing: for the oldest mounted row the
+					 * oldest-end clamp IS the anchor, and the landing's settle
+					 * re-measures after this write commits. A viewport-derived margin
+					 * comes back only if the rendered matrix shows a case that needs it
+					 * (the frames decide, never a fixed row guess).
 					 */
-					setWindowSize((current) => {
-						const wanted = distance + JUMP_MOUNT_HEADROOM_ROWS;
-						return current >= wanted ? current : wanted;
-					});
+					setWindowSize((current) =>
+						current >= distance ? current : distance,
+					);
 				},
 				loadOlder: walkLoadOlder,
 			});
@@ -2620,6 +3101,29 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	// performance.getEntriesByName("lop:transcript:render").
 	const commits = useRef(0);
 	const [perf, setPerf] = useState("");
+
+	/*
+	 * The conversation column's width, and the two writes that change it.
+	 *
+	 * The READ is the reader's own width when they have one and the shipped
+	 * default otherwise - never the width on screen, which a narrow pane may have
+	 * clamped (`chat-measure-drag.ts` argues that distinction). `useMemo` with no
+	 * dependencies because the shipped value is a property lookup on the document
+	 * and the stylesheet has loaded by the time this component mounts; reading it
+	 * per render would put a `getComputedStyle` on the streaming transcript's hot
+	 * path for a number that cannot change while the app runs.
+	 */
+	const chatMeasureWidth = useUiPreferencesStore(
+		(state) => state.chatMeasureWidth,
+	);
+	const setChatMeasureWidth = useUiPreferencesStore(
+		(state) => state.setChatMeasureWidth,
+	);
+	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
+		(state) => state.restoreDefaultChatMeasureWidth,
+	);
+	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
+	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
 		commits.current += 1;
 		performance.mark("lop:transcript:render", {
@@ -2640,98 +3144,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			const p50 = flushes[Math.floor(flushes.length / 2)] ?? 0;
 			const max = flushes.at(-1) ?? 0;
 			setPerf(
-				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms settledUpdates=${streamDiagnostics.settledAssistantUpdate} seedDeltasWithheld=${streamDiagnostics.seededDeltaWithheld} staleUpdateFrameDropped=${streamDiagnostics.staleUpdateFrameDropped}`,
+				`commits=${commits.current} rowRenders=${rowRenderCount.current} rows=${visible.length} flushes=${flushes.length} flushP50=${p50.toFixed(2)}ms flushMax=${max.toFixed(2)}ms settledUpdates=${streamDiagnostics.settledAssistantUpdate} seedDeltasWithheld=${streamDiagnostics.seededDeltaWithheld} staleUpdateFrameDropped=${streamDiagnostics.staleUpdateFrameDropped} idlessFrameRefused=${streamDiagnostics.idlessFrameRefused}`,
 			);
 		}, 1000);
 		return () => window.clearInterval(timer);
 	}, [visible.length]);
-
-	// What the working line says, and which phase it is timing. The derivation
-	// (and its copy contract, including the one branch this app drives from its
-	// own admitted send rather than from a frame) lives in
-	// `working-line-model.ts`; this is only the memo that keeps it off the
-	// per-token path.
-	const paneWorking = useMemo(
-		() =>
-			// One input builder for this claim's two readers - this rung and the
-			// composer's hint (`workingLineInputFor`, `working-line-model.ts`).
-			// The builder is shared; the record lists handed to it are not: this
-			// rung reads the cross-session filter's `shownRecords`, while the
-			// composer's hint still reads the raw records (`chat-content.tsx`).
-			// No divergence is reachable today - `waiting` is answered by the
-			// ladder's fallback on either list, and the one predicate that could
-			// flip on dropped rows (`ownerAnswered`) is decided over RAW records
-			// in `chat-page` before either reader is built. If that normalization
-			// ever moves off raw records, this seam moves with it.
-			deriveWorkingLine(
-				workingLineInputFor({
-					waiting,
-					// The pass is the transcript's own fact, read here rather than
-					// latched in this view: one source for the rung and the composer's
-					// hint (see `transcript-reducer`'s `compacting`).
-					compacting: transcript.compacting,
-					// The phase's own start, so the clock times the PASS rather than this
-					// component's mount - and so the frame is a picture of the state
-					// instead of the shutter's timing (design round 2, D3).
-					compactingSince: transcript.compactingSince,
-					// The producer's OWN phase and its zero, off the frontend state that
-					// rode in with the snapshot. This is the half a resumed pane cannot
-					// derive from its own records (`thinking` has no tool row behind it at
-					// all), and it is used only when the producer's phase equals the one
-					// derived here - the gate lives in `deriveWorkingLine`, once, because
-					// the comparison needs the derived phase.
-					foldedPhase: frontend?.activity_phase,
-					foldedPhaseStartedAt: frontend?.activity_phase_started_at,
-					starting,
-					startingAfterId,
-					startingSession,
-					startingSince,
-					gate,
-					// One definition of "this pane is speaking for itself", shared with the
-					// band's own greeting decision rather than a second copy of "the
-					// transport is down": the failure notice and the reconnecting line are
-					// the only things on screen that say what happened, so the rung must
-					// not claim progress beside them.
-					//
-					// The four fields are spelled out rather than handed over as
-					// `paneView`: this is a memo, and a fresh object would make its deps
-					// depend on the view's identity instead of on the facts it reads.
-					unavailable: canonicalTranscriptSpeaks({
-						status,
-						failure,
-						missing,
-						stale,
-					}),
-					records: shownRecords,
-				}),
-			),
-		[
-			waiting,
-			transcript.compacting,
-			// The phase's own start, read by the builder above: without it a pass
-			// whose stamp changed while the claim did not would keep the old anchor.
-			transcript.compactingSince,
-			// Read by the builder above as the resumed rung's anchor. Spelled out as the
-			// two fields rather than the `frontend` object, for the same reason the four
-			// view flags are: a memo whose dep is the object re-derives on every frame
-			// the stream repaints, which is the per-token path this memo exists to stay
-			// off.
-			frontend?.activity_phase,
-			frontend?.activity_phase_started_at,
-			starting,
-			startingAfterId,
-			startingSession,
-			startingSince,
-			gate,
-			status,
-			failure,
-			// The pane's two click-path states, because the predicate above reads them
-			// and a memo that missed them would keep a claim the pane has withdrawn.
-			missing,
-			stale,
-			shownRecords,
-		],
-	);
 
 	/*
 	 * What this view PAINTS: the pane's own line, unless a caller handed one in.
@@ -2742,6 +3159,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * two values that are already computed, and only `paneWorking` costs anything.
 	 */
 	const working = workingLine === undefined ? paneWorking : workingLine;
+	/* The widen's paint count reads these (see `widenInputs`): the collapse's own
+	 * liveness rule, stated once here and reused by the plan below, and the mounted
+	 * size the widen measures from. */
+	widenInputs.current = {
+		live: paneIsLive,
+		openRuns,
+		mounted: alignSize,
+	};
 
 	/*
 	 * THE READER'S FOCUS, tracked for the collapse's own guard (the model's
@@ -2955,31 +3380,42 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const [condenseAnnouncement, setCondenseAnnouncement] = useState("");
 	useEffect(() => {
-		const collapsed = collapse.runs.filter((run) => run.collapses);
+		/*
+		 * The announcement's unit is the SEGMENT (a run can now hold several bars),
+		 * keyed by the same key the reader's expansion uses. Still ONE `<output>` for
+		 * the whole list: several bars per run make a live region per bar the
+		 * obvious wrong turn, and each new bar simply adds its sentence to the one.
+		 */
+		const collapsed = collapse.runs.flatMap((run) =>
+			run.segments.filter((segment) => segment.collapsed),
+		);
 		const rowIds = planRowIds(collapse.runs);
 		const previous = announcedPlan.current;
 		if (previous === null) {
 			/*
 			 * The first pass that has RUNS initialises without announcing: its
 			 * bars are what the conversation loaded with, not a settle. A pass
-			 * with no runs at all — a held or empty pane — leaves the
+			 * with no runs at all - a held or empty pane - leaves the
 			 * initialisation for the first pass that paints rows.
 			 */
 			if (collapse.runs.length > 0) {
 				announcedPlan.current = {
-					keys: new Set(collapsed.map((run) => run.key)),
+					keys: new Set(collapsed.map((segment) => segment.key)),
 					rowIds,
 				};
 			}
 			return;
 		}
 		const appeared = collapsed.filter(
-			(run) =>
-				!previous.keys.has(run.key) &&
-				run.recordIds.some((id) => previous.rowIds.has(id)),
+			(segment) =>
+				!previous.keys.has(segment.key) &&
+				segment.segmentIds.some((id) => previous.rowIds.has(id)),
 		);
 		announcedPlan.current = {
-			keys: new Set([...previous.keys, ...collapsed.map((run) => run.key)]),
+			keys: new Set([
+				...previous.keys,
+				...collapsed.map((segment) => segment.key),
+			]),
 			rowIds,
 		};
 		if (appeared.length === 0) return;
@@ -2988,10 +3424,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 
 	/*
 	 * THE LIST, RE-EXPRESSED AS ENTRIES. Every group renders exactly as today,
-	 * with one exception: a collapsed run's hidden groups move INSIDE its bar
-	 * (so they are merely unmounted while collapsed — the fold's own contract)
-	 * and the bar takes the FIRST hidden row's slot and gap. Pinned and tail
-	 * groups keep their places, so a collapse never reorders a visible row.
+	 * with one exception: a collapsed SEGMENT's hidden groups move INSIDE its bar
+	 * (so they are merely unmounted while collapsed - the fold's own contract)
+	 * and the bar takes the slot and gap of the segment's FIRST hidden group.
+	 * Pinned rows, the elected answer and the trailing statements keep their
+	 * places, so a collapse never reorders a visible row.
+	 *
+	 * THE WALK CONSUMES GROUPS STRICTLY IN ORDER, which is why a pinned row between
+	 * two hidden spans can no longer land after a bar that precedes it: each span
+	 * pushes its own bar the moment its first group is reached, and the pinned row
+	 * is pushed where the walk finds it. Sorting afterwards could not express that
+	 * (the two orders differ per expansion state); the partition is what fixes it.
 	 */
 	const chatEntries = useMemo(() => {
 		const indexOf = new Map<string, number>();
@@ -3003,23 +3446,25 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					group: SectionGroup;
 					suppressClosingLine: boolean;
 					/**
-					 * Whether this group renders directly under a collapsed run's
-					 * bar. The row beneath the bar's rule re-tiers at the render pass
-					 * (`atItemTierGroup`); this flag is the walk's half of that
-					 * decision, set where the bar is placed.
+					 * Whether this group renders below a bar of its run. The row beneath
+					 * the bar's rule re-tiers at the render pass (`atItemTierGroup`); this
+					 * flag is the walk's half of that decision, set where the bar is
+					 * placed.
 					 */
 					afterBar?: boolean;
 			  }
 			| {
 					kind: "bar";
-					plan: RunCollapsePlan;
+					segment: SegmentPlan;
+					/** The whole run's ids: the bar's long-standing `data-run-ids`. */
+					runIds: readonly string[];
 					children: SectionGroup[];
 					/**
-					 * The hidden span's pictures, computed HERE because the bar's children
+					 * The segment's pictures, computed HERE because the bar's children
 					 * are unmounted while it is collapsed and these are what they would
-					 * have shown. `plan.hidden` rather than the whole run: the bar shows
-					 * exactly what the collapse hides, and a pinned row that stays on
-					 * screen keeps drawing its own media.
+					 * have shown. The segment's own rows rather than the whole run: a bar
+					 * shows exactly what it hides, and a pinned row that stays on screen
+					 * keeps drawing its own media.
 					 */
 					images: TranscriptImage[];
 			  };
@@ -3051,55 +3496,68 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				}
 				continue;
 			}
-			const hiddenIds = new Set(plan.hidden.map((row) => row.record.id));
-			const children: SectionGroup[] = [];
+			/* Which segment (index) each hidden row belongs to. */
+			const segmentOf = new Map<string, number>();
+			plan.segments.forEach((segment, index) => {
+				for (const id of segment.segmentIds) segmentOf.set(id, index);
+			});
 			/*
-			 * THE BLOCK BELOW THE BAR (operator reports, 2026-09-29). A pinned
-			 * statement's gap was BUILT against its original neighbour - often a
-			 * tool row that has collapsed into the bar - so it arrives at the trace
-			 * tier and the collapse leaves it 2px under the rule, which the
-			 * operator read as the row hugging it. The SECOND report extended the
-			 * class: an incident row behind the memory statement hugged THAT row
-			 * by the same 2px, because only the first group was re-tiered. Every
-			 * group the bar leaves visible takes the re-tier (`atItemTierGroup`),
-			 * so the statements under the rule sit at the block step, not the
-			 * ledger's hairline: the bar is a boundary, and the rows it leaves out
-			 * read as statements of their own. Groups built at a wider tier (prose,
-			 * the closing answer) are handed back unchanged by the memoised
-			 * helper - the re-tier only ever fires on the trace tier.
+			 * The turn's ONE stamp lives on the bar that carries it, and that bar
+			 * withholds the answer's own closing line (`stampTs` is set only when
+			 * that bar is the run's sole pre-answer segment, so the totals it
+			 * states are the turn's). Any other shape keeps the foot: it is where
+			 * the turn's totals and stamp go when the bars state only parts.
 			 */
+			const footWithheld = plan.segments.some(
+				(segment) => segment.collapsed && segment.stampTs !== null,
+			);
+			const children = new Map<number, SectionGroup[]>();
 			let afterBar = false;
 			for (const group of groups) {
-				const hidden =
-					group.kind === "run"
-						? group.rows.every((row) => hiddenIds.has(row.record.id))
-						: hiddenIds.has(group.row.record.id);
-				if (hidden) {
-					children.push(group);
-					if (children.length === 1) {
-						/* The bar sits where the first hidden group did. */
+				/*
+				 * A GROUP IS HIDDEN ONLY IF EVERY ROW OF IT IS IN ONE SEGMENT (agent
+				 * review round 1 on #708, R1-5; the pre-segments code checked `every`).
+				 * A segment is a maximal contiguous span and a run group is a run of
+				 * contiguous tool rows, so a group cannot straddle a boundary today - but
+				 * that invariant lives in two other files, and if a boundary is ever
+				 * drawn mid-group, reading only the FIRST row would swallow the group's
+				 * visible rows into the bar without a sound. A mixed group renders in
+				 * place instead: visible rows stay visible.
+				 */
+				const groupRows = group.kind === "run" ? group.rows : [group.row];
+				const first = segmentOf.get(groupRows[0].record.id);
+				const index = groupRows.every(
+					(member) => segmentOf.get(member.record.id) === first,
+				)
+					? first
+					: undefined;
+				const segment = index === undefined ? null : plan.segments[index];
+				if (segment !== null && index !== undefined && segment.collapsed) {
+					let held = children.get(index);
+					if (held === undefined) {
+						held = [];
+						children.set(index, held);
+						/* The bar sits where the segment's first hidden group did. */
 						entries.push({
 							kind: "bar",
-							plan,
-							children,
-							images: foldImages(plan.hidden),
+							segment,
+							runIds: plan.recordIds,
+							children: held,
+							images: foldImages(segment.rows),
 						});
 						afterBar = true;
 					}
+					held.push(group);
 					continue;
 				}
 				/*
-				 * Everything visible in a bar'd run renders with its closing line
-				 * withheld: the bar IS the turn's summary and the turn's stamp (F5).
-				 *
-				 * `afterBar` is deliberately NOT reset: see the comment above -
-				 * every visible group of a bar'd run, not only the first, is the
-				 * block below the bar.
+				 * A hidden group of a segment the focus hold stood open renders in
+				 * place, exactly as it did before this pass could collapse it.
 				 */
 				entries.push({
 					kind: "group",
 					group,
-					suppressClosingLine: true,
+					suppressClosingLine: footWithheld && segment === null,
 					afterBar,
 				});
 			}
@@ -3133,14 +3591,24 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				span={group.span}
 				live={group.live}
 				/*
-				 * THE FOLD'S SECTION: the newest turn while that turn is in
-				 * flight. While it is true nothing condenses the fold; when it
-				 * turns false the fold closes itself once (see `TraceFold`'s
-				 * condense rule). `working` is the same liveness the working
-				 * line reads, so the section ends exactly when the pane says the
-				 * turn did.
+				 * THE READER'S OPEN STATE, held by the conversation rather than by
+				 * the fold (operator report, 2026-09-27): the fold's React key is
+				 * its first row, and the render window's leading edge walks through
+				 * a run as rows arrive, which remounts the fold - state kept on the
+				 * instance cannot survive that, and the fold re-collapsed under the
+				 * reader. The registry answers for the fold's CURRENT id set and
+				 * migrates with it.
 				 */
-				sectionLive={working !== null && group.isNewestTurn}
+				open={foldOpenOf(
+					foldOpen.entries,
+					group.rows.map((row) => row.record.id),
+				)}
+				onOpenChange={(next) =>
+					setFoldOpenFor(
+						group.rows.map((row) => row.record.id),
+						next,
+					)
+				}
 				/*
 				 * The run's images, while the rows that draw them are unmounted.
 				 * Rendered only while the fold is condensed, and not passed at all
@@ -3197,6 +3665,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						}
 						closingLineSuppressed={suppressClosingLine}
 						undelivered={undelivered}
+						answerRail={answerRail}
 					/>
 				))}
 			</TraceFold>
@@ -3221,6 +3690,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				}
 				closingLineSuppressed={suppressClosingLine}
 				undelivered={undelivered}
+				answerRail={answerRail}
 			/>
 		);
 
@@ -3498,9 +3968,47 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						 * and the centred splash is unaffected. And a transcript shorter than the
 						 * pane never scrolls, so the mask stays inert (the ramp note in
 						 * `styles/index.css`).
+						 *
+						 * `relative` is here for the measure handles and for nothing else: they are
+						 * positioned against the CONTENT column rather than against the scroller,
+						 * which is what makes them track the column's edge for free as the measure
+						 * changes and as the pane resizes. They are absolutely positioned, so they
+						 * are out of flow and the rows cannot move because of them, and they sit in
+						 * the 24px gutter the measure already insets its content by
+						 * (`chat-measure.ts`: `p-4` + the 8px scrollbar gutter), so they never cover
+						 * text and cannot swallow a click meant for it.
 						 */
-						className={cn("mb-auto flex flex-col", CHAT_MEASURE)}
+						className={cn("mb-auto relative flex flex-col", CHAT_MEASURE)}
 					>
+						{/*
+						 * One handle per edge of the measure, where the mount opts in
+						 * (`measureHandle` - only the chat page does) AND there is a measure to
+						 * resize: `readShippedChatMeasurePx` answers `null` in a host with no
+						 * stylesheet, where the column has no cap at all and a control
+						 * offering to resize it would be inventing one.
+						 *
+						 * `width` is the CAP - the reader's own width, else the shipped
+						 * default - and never the width on screen: see `chat-measure-drag.ts`
+						 * for why that distinction is the difference between a drag and a bug.
+						 */}
+						{measureHandle && measurePx !== null && (
+							<>
+								<ChatMeasureHandle
+									edge="left"
+									width={measurePx}
+									onWidthChange={setChatMeasureWidth}
+									onReset={restoreDefaultChatMeasureWidth}
+									label="Widen or narrow the conversation column (left edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
+								/>
+								<ChatMeasureHandle
+									edge="right"
+									width={measurePx}
+									onWidthChange={setChatMeasureWidth}
+									onReset={restoreDefaultChatMeasureWidth}
+									label="Widen or narrow the conversation column (right edge). Arrow keys adjust the width; Home and End go to the limits; Enter restores the default."
+								/>
+							</>
+						)}
 						{/* The state this element exists for: the frame BEFORE the conversation's
 				    first page, when there is nothing of it to paint yet - either because
 				    the pane holds no records at all, or because every record it holds is
@@ -3533,12 +4041,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						{transcript.records.length > 0 && !stale && !missing && (
 							<OlderHistorySlot
 								state={slotState}
-								hiddenRows={hidden}
 								// A retry cannot succeed while the transport is down, and the
 								// transcript's own notice below already explains why. The slot
 								// drops its gesture hint rather than stacking a second claim on
-								// top of that one.
-								transportDown={status !== "live"}
+								// top of that one. `olderTransportDown` is the same assertion
+								// for a caller whose rows did NOT come from this session's
+								// stream (the child reader's page): it is the caller's own
+								// status, so a pane with no stream of its own is not read as a
+								// live one by default.
+								transportDown={olderTransportDown ?? status !== "live"}
 								onLoadOlder={requestOlder}
 							/>
 						)}
@@ -3705,28 +4216,48 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 									entry.kind === "bar" ? (
 										<TurnSummary
 											/*
-											 * Prefixed: the run's key is a ROW ID (`runsOf`: the closing
-											 * answer's, else the run's last row's), and both candidates
-											 * render as their own groups elsewhere in the same list — an
-											 * unprefixed key collided with one of them (two children, one
-											 * key) and React silently dropped one of the pair. The prefix
-											 * also states which collided: the replaced slot is not the bar.
+											 * Prefixed: the segment's key is a ROW ID (`runsOf`: the closing
+											 * answer's, else the run's last row's; later segments append
+											 * `#<row>`), and the run's groups render as their own children
+											 * elsewhere in the same list - an unprefixed key collided with
+											 * one of them (two children, one key) and React silently
+											 * dropped one of the pair. The prefix also states which
+											 * collided: the replaced slot is not the bar.
 											 */
-											key={`turn-summary:${entry.plan.key}`}
-											recordIds={entry.plan.recordIds}
+											key={`turn-summary:${entry.segment.key}`}
+											recordIds={entry.runIds}
+											/*
+											 * The ids THIS bar hides. With several bars in a run, the
+											 * run's ids alone cannot say which bar holds a row, and the
+											 * reveal walk (`failed-row-jump.ts`) would open the FIRST bar
+											 * of the run for a row in the second - one unrequested
+											 * expansion per bar in between.
+											 */
+											segmentIds={entry.segment.segmentIds}
 											/*
 											 * The bar stands where the FIRST hidden row stood, so it
 											 * carries that row's identity: a lookup for the row finds the
 											 * bar that replaced its slot.
 											 */
-											anchorRecordId={entry.plan.hidden[0].record.id}
-											className={GAP[entry.plan.gap][isSmallView ? 1 : 0]}
-											durationS={entry.plan.facts.durationS}
-											actionCount={entry.plan.facts.actions}
-											title={entry.plan.facts.title}
-											stampTs={entry.plan.stampTs}
-											open={openRuns.has(entry.plan.key)}
-											onOpenChange={(next) => setRunOpen(entry.plan.key, next)}
+											anchorRecordId={entry.segment.firstId}
+											className={GAP[entry.segment.gap][isSmallView ? 1 : 0]}
+											durationS={entry.segment.facts.durationS}
+											actionCount={entry.segment.facts.actions}
+											/*
+											 * The count is a minimum while the segment's head is cut
+											 * (`N+ actions`): see `TurnSummaryFacts.partial` - the bar says
+											 * so in its own vocabulary rather than stating a total it
+											 * cannot know.
+											 */
+											partial={entry.segment.facts.partial}
+											title={entry.segment.facts.title}
+											stampTs={entry.segment.stampTs}
+											label={entry.segment.label}
+											completed={entry.segment.completed}
+											open={openRuns.has(entry.segment.key)}
+											onOpenChange={(next) =>
+												openBar(entry.segment.key, entry.segment.firstId, next)
+											}
 											/*
 											 * The span's pictures, while the rows that draw them are
 											 * unmounted - the same composition and the same rule as
@@ -3786,19 +4317,57 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 							</CanvasPaneProvider>
 						)}
 
-						{working && (
-							// On the `item` tier, not a tier of its own: the working line is
-							// the foot of the run above it and shares that run's rhythm. It
-							// takes slightly more than `trace` because it is the one row that
-							// is not a completed action, and slightly less than a turn
-							// boundary because the turn has not ended.
-							<div className={GAP.item[isSmallView ? 1 : 0]}>
-								<WorkingLine
-									activity={working.activity}
-									phase={working.phase}
-									startedAt={working.startedAt}
-									clock={working.clock}
-								/>
+						{/*
+						 * THE FOOT SLOT IS RESERVED, NOT TOGGLED (operator report, 2026-09-27).
+						 *
+						 * "Sometimes the whole conversation including the leading edge shifts up
+						 * even though we're now in the scroll phase." Measured on the harness
+						 * (`scripts/scroll-shift-evidence.mjs`, a tall fixture at 1380x872):
+						 * while the transcript is anchored at the tail, this row MOUNTING moved
+						 * every settled row and the last row's bottom edge - the leading edge -
+						 * up 29.4px in one frame at the turn's start, and its unmount moved them
+						 * back down at the turn's end. The scroller is pinned at `scrollTop = 0`,
+						 * so anything that appears below the last row displaces the whole
+						 * conversation; the fix is that nothing appears: the line mounts into a
+						 * row that was already there.
+						 *
+						 * 29.4px is this row's own footprint - `GAP.item`'s 12px plus one
+						 * `text-mono-sm` line at 1.45 line-height (17.4px) - and `min-h-[1lh]`
+						 * rather than a number is what keeps the reserve glued to the thing it
+						 * reserves: the reserve is exactly one line of the line's own type, so a
+						 * change to that token moves both together. The reserved row is
+						 * otherwise empty - it paints no text when no turn is running and holds
+						 * no live region - so the idle pane is the same picture it was, one row
+						 * taller.
+						 *
+						 * This is the older-history slot's rule, one element down ("One
+						 * fixed-height slot for every state of both, so a state change above the
+						 * oldest row can never shift the conversation under the reader"), and it
+						 * is withheld on the same terms: the slot belongs to a CONVERSATION, not
+						 * to a turn, and the failure surfaces replace the rows rather than sit
+						 * above them.
+						 */}
+						{transcript.records.length > 0 && !stale && !missing && (
+							<div
+								data-lo-transcript-foot={true}
+								className={cn(
+									// On the `item` tier, not a tier of its own: the working line is
+									// the foot of the run above it and shares that run's rhythm. It
+									// takes slightly more than `trace` because it is the one row that
+									// is not a completed action, and slightly less than a turn
+									// boundary because the turn has not ended.
+									GAP.item[isSmallView ? 1 : 0],
+									"min-h-[1lh] font-mono text-mono-sm",
+								)}
+							>
+								{working && (
+									<WorkingLine
+										activity={working.activity}
+										phase={working.phase}
+										startedAt={working.startedAt}
+										clock={working.clock}
+									/>
+								)}
 							</div>
 						)}
 

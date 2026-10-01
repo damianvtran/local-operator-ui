@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail) the seeded project the
  *                          detail scene drives; the seed decides the name and a
@@ -372,6 +372,19 @@ const TUI_PYTHON = argValue("--tui-python", null);
  * harness runs the scene once per theme.
  */
 const THEME = argValue("--theme", null);
+
+/**
+ * Which slice of `pinned-reorder`'s frame list a launch takes (`--pinned-state`):
+ * `three` | `many` | `single` | `keys`.
+ *
+ * WHY AN ARGUMENT RATHER THAN ONE LONG SCENE: three of the states are about how many
+ * rows the section holds, and the stand-in's fixture is per process - so the pins
+ * those states are made of have to be chosen when the stub is launched, not while the
+ * scene runs. `three` (the default) takes the gesture states, `many` the overflow and
+ * auto-scroll states, `single` the one-pin state. The frame names do not change
+ * between slices, which is what makes the three launches one evidence set.
+ */
+const PINNED_STATE = argValue("--pinned-state", "three");
 /*
  * The paged-catalogue evidence set (`docs/evidence/sidebar-lazy-chats`).
  *
@@ -516,6 +529,18 @@ const [WINDOW_WIDTH, WINDOW_HEIGHT] = WINDOW_SIZE.split("x").map((n) =>
 if (!/^\d+x\d+$/.test(WINDOW_SIZE)) {
 	console.error(`--window-size expects WxH (got "${WINDOW_SIZE}")`);
 	process.exit(2);
+}
+
+if (process.argv.some((arg) => arg.startsWith("--window-size="))) {
+	/*
+	 * The space-separated form is the one `argValue` reads; the `=` form is
+	 * silently ignored otherwise - measured on issue #680's first short run,
+	 * which captured 1380x900 frames while claiming 900x650 (review round 1's
+	 * NIT 2). Loud, not fatal: the run is still useful at the default size.
+	 */
+	console.error(
+		"--window-size takes the space-separated form (--window-size 900x650); the = form is ignored",
+	);
 }
 
 /*
@@ -10618,6 +10643,442 @@ async function sceneTranscriptRail(cdp) {
 		`ticks=${tickCount}`,
 	);
 
+	/*
+	 * #680's landing probe: press ticks across the reach and read WHERE THEY
+	 * LAND - the washed row's top relative to the scroller's top (`offset`;
+	 * the fixed anchor is the top-fade depth, design round 1's D1), with the
+	 * scroller's own numbers, the landed row's peak ink against a mid-viewport
+	 * reference row, and the rail's active tick after the jump. Run with
+	 * `--scoped-case rail-jump-probe`; the before/after pair is the same
+	 * command against the pre-anchor and post-anchor builds, and each jump's
+	 * frame is captured under its case name. `--theme localOperatorLight` is
+	 * the light pass (D5).
+	 */
+	if (RAIL_CASE === "rail-jump-probe") {
+		/* The theme is named, not assumed: the light frame is this same probe
+		 * with `--theme localOperatorLight`. */
+		await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+		const anchorView = (id) =>
+			evaluate(`(() => {
+				const sc = document.querySelector('[role="log"]');
+				/*
+				 * The landed row, flash or not: the wash is the app's arrival cue, but
+				 * it is interactive-state (it can be replaced by a late mount commit
+				 * under load - the timeline below records when), while the LANDING is
+				 * the geometry this probe measures. The fallback reads the target's own
+				 * anchor row by id, skipping the collapsed bar that carries it as
+				 * data-turn-summary (the bar is not the row it stands for).
+				 */
+				const flashed = document.querySelector("[data-jump-highlight]");
+				const row =
+					flashed ??
+					document.querySelector(
+						'[data-record-id="${id}"]:not([data-turn-summary])',
+					);
+				if (!sc || !row) return null;
+				const sr = sc.getBoundingClientRect();
+				const rr = row.getBoundingClientRect();
+				/*
+				 * The reference row for the luma check: the loaded checkpoint row
+				 * nearest the scroller's vertical middle, i.e. one the top fade
+				 * cannot touch. Read in the same snapshot as the target's rect, so
+				 * one frame answers both.
+				 */
+				const mid = sr.top + sc.clientHeight / 2;
+				let ref = null;
+				let refDist = Infinity;
+				for (const el of sc.querySelectorAll("[data-record-id]")) {
+					if (el === row || el.hasAttribute("data-turn-summary")) continue;
+					const r = el.getBoundingClientRect();
+					/*
+					 * Same-frame painted guard (QA round 2, Q-1): only rows fully
+					 * inside the scroller's visible band can be the reference. A
+					 * row below the fold reads empty paint - how the near-newest
+					 * clamp leg read 32 against its 238 - and a "reference" that
+					 * is not painted can only fail or pass vacuously.
+					 */
+					if (r.top < sr.top || r.bottom > sr.top + sc.clientHeight) {
+						continue;
+					}
+					const dist = Math.abs(r.top + 11 - mid);
+					if (dist < refDist) {
+						refDist = dist;
+						ref = el;
+					}
+				}
+				const rr2 = ref ? ref.getBoundingClientRect() : null;
+				/* The target's preceding row - painted whenever the target is,
+				 * so it backstops the reference at the clamps. */
+				const rowsAll = Array.from(
+					sc.querySelectorAll("[data-record-id]"),
+				).filter((el) => !el.hasAttribute("data-turn-summary"));
+				const rowIdx = rowsAll.indexOf(row);
+				const adj = rowIdx > 0 ? rowsAll[rowIdx - 1] : null;
+				const rr3 = adj ? adj.getBoundingClientRect() : null;
+				const active = document.querySelector('[data-mark-state="active"]');
+				return {
+					landed: row.getAttribute("data-record-id"),
+					flashed: Boolean(flashed),
+					offset: Math.round((rr.top - sr.top) * 10) / 10,
+					scrollTop: Math.round(sc.scrollTop * 10) / 10,
+					maxNeg: Math.round((sc.scrollHeight - sc.clientHeight) * -1),
+					rowH: Math.round(rr.height),
+					viewport: sc.clientHeight,
+					rows: sc.querySelectorAll("[data-record-id]").length,
+					scrollerLeft: Math.round(sr.left),
+					targetBand: {
+						top: Math.round(rr.top),
+						height: Math.round(rr.height),
+					},
+					refBand: rr2
+						? { top: Math.round(rr2.top), height: Math.round(rr2.height) }
+						: null,
+					adjBand: rr3
+						? { top: Math.round(rr3.top), height: Math.round(rr3.height) }
+						: null,
+					/* The target's strip that is actually inside the scroller's
+					 * visible band: at the clamp the last row can sit past the
+					 * fold, and there is no ink to meter. */
+					visibleStrip: {
+						top: Math.round(Math.max(rr.top, sr.top)),
+						bottom: Math.round(Math.min(rr.bottom, sr.top + sc.clientHeight)),
+					},
+					activeTick: active ? active.getAttribute("data-checkpoint-id") : null,
+				};
+			})()`);
+		/*
+		 * A row band's luma stats (min, max) from the captured PNG: the x window
+		 * is the scroller's own left edge plus 520px (the fixture's rows draw
+		 * their text in the left half), the y window the row's own band. The
+		 * INK measurement is the RANGE (max - min), because ink's polarity flips
+		 * with the palette - light-on-dark reads as the max, dark-on-light as
+		 * the min - and a mask that dims the text shrinks the range in either
+		 * (design round 1 measured 238 -> 189 inside the fade in dark). The MAX
+		 * doubles as the band's GROUND, which is what tells reference classes
+		 * apart: light grounds run 237-251 and both are full ink, so a
+		 * peak-vs-peak comparison across rows of different grounds was unsound
+		 * (QA round 5's light-palette false red).
+		 */
+		const rowBandStats = async (label, scrollerLeft, band) => {
+			const file = join(FRAMES, `${label}.png`);
+			const meta = await sharp(file).metadata();
+			const inner = await evaluate("window.innerWidth");
+			const scale = (meta.width ?? 0) / inner;
+			const left = Math.max(0, Math.round((scrollerLeft + 8) * scale));
+			const top = Math.max(0, Math.round((band.top + 2) * scale));
+			const width = Math.max(
+				1,
+				Math.min((meta.width ?? 0) - left, Math.round(520 * scale)),
+			);
+			const height = Math.max(1, Math.round((band.height - 4) * scale));
+			const { data } = await sharp(file)
+				.extract({ left, top, width, height })
+				.raw()
+				.toBuffer({ resolveWithObject: true });
+			let min = 255;
+			let max = 0;
+			const values = [];
+			for (let i = 0; i + 2 < data.length; i += 3) {
+				const value =
+					0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+				values.push(value);
+				if (value > max) max = value;
+				if (value < min) min = value;
+			}
+			/*
+			 * The counts at each extreme tell GROUND from INK without a palette
+			 * table: the band's ground is its majority value, and the ink is the
+			 * minority extreme - bright-on-dark in one palette, dark-on-light in
+			 * another, same numbers either way (QA round 5 measured a light band
+			 * as min 30 / max 251 and a dark one as min 33 / max 238).
+			 */
+			let minCount = 0;
+			let maxCount = 0;
+			for (const value of values) {
+				if (value <= min + 8) minCount += 1;
+				if (value >= max - 8) maxCount += 1;
+			}
+			return {
+				min: Math.round(min),
+				max: Math.round(max),
+				minCount,
+				maxCount,
+			};
+		};
+		const jumpCase = async (name, id, expect) => {
+			await washGone();
+			const rowsBefore = await evaluate(
+				`document.querySelectorAll('[role="log"] [data-record-id]').length`,
+			);
+			/*
+			 * A per-frame settle sampler (QA round 5's 1/5 clamp-end miss): every
+			 * animation frame from before the press until the settle resolves
+			 * records [ms, scrollTop, targetOffset], so a landing that exits
+			 * short can be read frame by frame instead of argued about.
+			 */
+			await evaluate(`(() => {
+				window.__anchorSamples = [];
+				window.__anchorSamplerOn = true;
+				const t0 = performance.now();
+				const tick = () => {
+					if (!window.__anchorSamplerOn) return;
+					const reg = document.querySelector('[role="log"]');
+					const row = document.querySelector('[data-record-id="${id}"]:not([data-turn-summary])');
+					if (reg && row) {
+						window.__anchorSamples.push([
+							Math.round(performance.now() - t0),
+							Math.round(reg.scrollTop * 10) / 10,
+							Math.round((row.getBoundingClientRect().top - reg.getBoundingClientRect().top) * 10) / 10,
+						]);
+					}
+					window.requestAnimationFrame(tick);
+				};
+				window.requestAnimationFrame(tick);
+				return true;
+			})()`);
+			const jump = await jumpVia(id);
+			const atWash = await anchorView(id);
+			await capture(cdp, `rail-jump-${name}`);
+			/*
+			 * The flash's own timeline: the landing highlight lives 1400ms from
+			 * paint, and a late mount commit under load can replace the flashed
+			 * node - the very-top and near-newest legs were seen to lose the
+			 * attribute between jumpVia's read and this probe's. Sampling `fate`
+			 * (`lit` -> the marked node still flashed; `alive` -> same node, no
+			 * attribute; `gone` -> node replaced) turns "the highlight is gone"
+			 * into WHAT happened, which is the fact a fix needs.
+			 */
+			await evaluate("(() => { window.__probeRow = null; return true; })()");
+			const timeline = [];
+			for (let sample = 0; sample < 10; sample += 1) {
+				timeline.push(
+					await evaluate(
+						`(() => { const hl = document.querySelector("[data-jump-highlight]"); const sc = document.querySelector('[role="log"]'); if (!window.__probeRow && hl) window.__probeRow = hl; const row = window.__probeRow; const fate = row ? (row.isConnected ? (row.hasAttribute("data-jump-highlight") ? "lit" : "alive") : "gone") : "none"; return [${sample * 40}, hl ? 1 : 0, hl ? hl.getAttribute("data-record-id") : null, sc ? Math.round(sc.scrollTop) : null, fate]; })()`,
+					),
+				);
+				await wait(40);
+			}
+			/*
+			 * The wash is up NOW (jumpVia waits on its attribute), and its 1400ms
+			 * timer clears it - so the frame is captured and the first read taken
+			 * before the wait, while the highlight is guaranteed in the picture;
+			 * the settled read after the anchor's window is the landing number.
+			 * A slow cold jump's wash can expire before the settled read, which is
+			 * why the check falls back to the earlier one rather than reading
+			 * null on a landing that happened. The frame is taken AT the wash (the
+			 * first read, right after the jump resolves, before the timeline
+			 * sampling), so the before/after pair photographs the same instant of
+			 * the arrival cue the pre-anchor runs photographed; the luma reads
+			 * below use their own post-settle capture.
+			 */
+			await wait(700);
+			const settled = await anchorView(id);
+			const view = settled ?? atWash;
+			const samples = await evaluate(`(() => {
+				window.__anchorSamplerOn = false;
+				const all = window.__anchorSamples || [];
+				const head = all.slice(0, 300);
+				return { n: all.length, head, last: all.length > 300 ? all.slice(-8) : [] };
+			})()`);
+			/*
+			 * The luma reads come from a POST-SETTLE capture (UX round 1's U1):
+			 * the wash-instant still above is the design frame, but a tall
+			 * near-newest run had its still photograph a stale paint once (the
+			 * scroller repaint lagging the DOM's landing), and sampling a stale
+			 * frame can only read a red for a property that holds. The bands
+			 * come from the same settled snapshot this capture shows; the wash
+			 * instant is the fallback only when no settled read came back.
+			 */
+			await capture(cdp, `rail-jump-${name}-settled`);
+			const lumaView = settled ?? atWash;
+			const strip = lumaView?.visibleStrip ?? null;
+			const targetVisible = strip !== null && strip.bottom - strip.top >= 6;
+			const targetStats = targetVisible
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						{
+							top: strip.top,
+							height: strip.bottom - strip.top,
+						},
+					)
+				: null;
+			const refStats = lumaView?.refBand
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						lumaView.refBand,
+					)
+				: null;
+			const adjStats = lumaView?.adjBand
+				? await rowBandStats(
+						`rail-jump-${name}-settled`,
+						lumaView.scrollerLeft,
+						lumaView.adjBand,
+					)
+				: null;
+			const bandRange = (stats) => (stats ? stats.max - stats.min : null);
+			/* The ground is the majority extreme; the ink is the other one. */
+			const inkValue = (stats) =>
+				stats.maxCount >= stats.minCount ? stats.min : stats.max;
+			const inkCount = (stats) =>
+				stats.maxCount >= stats.minCount ? stats.minCount : stats.maxCount;
+			/* A band carries ink when it has real contrast AND a real minority
+			 * extreme (text strokes, not antialiasing noise). */
+			const carriesInk = (stats) =>
+				stats !== null && stats.max - stats.min >= 100 && inkCount(stats) >= 30;
+			const targetRange = bandRange(targetStats);
+			/*
+			 * Full ink is a RANGE of 180+ (dark full 206, inside the fade 156;
+			 * light full 207). The reference comparison runs only against a band
+			 * that CARRIES INK (contrast plus a real text minority): a blank
+			 * band's extremes are all ground - comparing against one was the
+			 * light-palette false red (QA round 5) - while a band on another
+			 * ground is another row class whose range still differs only by its
+			 * ground, so the comparison anchors on the INK extreme, not the
+			 * range. With no inked reference the absolute bar carries the check
+			 * and the note shows the candidates.
+			 */
+			const reference =
+				targetStats === null
+					? null
+					: ([refStats, adjStats].find(carriesInk) ?? null);
+			if (name === "very-top") {
+				note(
+					`settle frames ${name}`,
+					`n=${samples?.n ?? 0} head=${JSON.stringify(samples?.head ?? [])} tail=${JSON.stringify(samples?.last ?? [])}`,
+				);
+			}
+			note(
+				`landing ${name}`,
+				`id=${id} ms=${jump.ms} focused=${jump.focused} hit=${jump.hit} landed=${view?.landed ?? "none"} flashed=${view?.flashed ?? "none"} offset=${view?.offset ?? "none"} atWash=${atWash ? atWash.offset : "none"} scrollTop=${view?.scrollTop ?? "none"} max=${view?.maxNeg ?? "none"} rowH=${view?.rowH ?? "none"} viewport=${view?.viewport ?? "none"} rows=${rowsBefore}->${view?.rows ?? "none"} luma=${targetRange ?? "none"}/${reference ? bandRange(reference) : "none"} ink=${targetStats ? inkValue(targetStats) : "none"}/${reference ? inkValue(reference) : "none"} mid=${bandRange(refStats) ?? "none"} ink=${refStats ? inkValue(refStats) : "none"} adj=${bandRange(adjStats) ?? "none"} ink=${adjStats ? inkValue(adjStats) : "none"} strip=${strip ? `${strip.top}-${strip.bottom}` : "none"} active=${view?.activeTick ?? "none"} tl=${JSON.stringify(timeline)}`,
+			);
+			check(
+				`the ${name} jump lands the target's top at the scrollport's top plus the fade depth (issue #680, D1)`,
+				view !== null &&
+					view.landed === id &&
+					(expect === "clamp"
+						? view.scrollTop === 0
+						: Math.abs(view.offset - 24) <= 1.5),
+				JSON.stringify({
+					jump: jump.landed,
+					focused: jump.focused,
+					hit: jump.hit,
+					view,
+					timeline,
+				}),
+			);
+			check(
+				`the ${name} landing's target reads at full ink, clear of the top fade`,
+				targetVisible
+					? targetRange !== null &&
+							targetRange >= 180 &&
+							carriesInk(targetStats) &&
+							(reference === null ||
+								Math.abs(inkValue(targetStats) - inkValue(reference)) <= 4)
+					: expect === "clamp",
+				targetVisible
+					? `target=${targetRange} (${targetStats?.min}-${targetStats?.max}) reference=${reference ? bandRange(reference) : "none"} (mid=${bandRange(refStats) ?? "none"} ink=${refStats ? inkValue(refStats) : "none"} adj=${bandRange(adjStats) ?? "none"} ink=${adjStats ? inkValue(adjStats) : "none"})`
+					: `no visible target strip (the clamp's last row sits past the fold): ${JSON.stringify(strip)}`,
+			);
+			check(
+				`the rail's active tick after the ${name} jump is the target`,
+				view !== null && view.activeTick === id,
+				`active=${view?.activeTick} expected=${id}`,
+			);
+			return view;
+		};
+		const ids = await evaluate(`(() => {
+			const ticks = Array.from(document.querySelectorAll('${rail} [data-checkpoint-id]'));
+			const ns = ticks
+				.map((el) => el.getAttribute("data-checkpoint-id"))
+				.filter((id) => (id || "").startsWith("n"));
+			return {
+				first: ns[0] ?? null,
+				deep: ns[Math.floor(ns.length * 0.65)] ?? null,
+				count: ns.length,
+			};
+		})()`);
+		note("rail ids", JSON.stringify(ids));
+		/*
+		 * The deep leg FIRST - it walks the store back, so a deep read taken
+		 * after the near legs would be reading a store they warmed. The warm leg
+		 * is that same row re-jumped.
+		 */
+		await jumpCase("deep-cold", ids.deep, "anchor");
+		await jumpCase("warm", ids.deep, "anchor");
+		await jumpCase("very-top", ids.first, "anchor");
+		/* The newest completion: within a viewport of the end, so the anchor is
+		 * unreachable by construction - the documented clamp at max scroll. */
+		await jumpCase("near-newest", nearTick, "clamp");
+		/*
+		 * D4's card step: the text is frozen while the card is open. Open a
+		 * completion's card, read it, hold through a settle window and read
+		 * again - equal - then close and reopen. The store-side half (a warm
+		 * landing mid-hover) is pinned by the rail suite's own case; this is the
+		 * DOM-level half on the real app, and its frame carries the card.
+		 */
+		const cardText = () =>
+			evaluate(
+				`(() => { const card = document.querySelector("[data-checkpoint-card]"); return card ? card.textContent : null; })()`,
+			);
+		await washGone();
+		/*
+		 * The last jump already focused this tick; `focus()` on an already-active
+		 * element fires no focus event, so the card's own open path never runs.
+		 * Blur first, then focus, so the step exercises a real focus transition.
+		 */
+		await evaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		await wait(120);
+		await focusTick(nearTick);
+		const cardFocus = await evaluate(
+			`(() => { const a = document.activeElement; return a ? (a.getAttribute("data-checkpoint-id") || a.tagName) : null; })()`,
+		);
+		const cardOpened = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector("[data-checkpoint-card]"))`,
+			5_000,
+		);
+		note(
+			"card step",
+			`active=${cardFocus ?? "none"} opened=${String(cardOpened.ok)}`,
+		);
+		const cardBefore = await cardText();
+		await wait(1600);
+		const cardAfter = await cardText();
+		await capture(cdp, "rail-jump-card-open");
+		check(
+			"the open card's text does not swap while it is open (issue #680, D4)",
+			cardOpened.ok && cardBefore !== null && cardBefore === cardAfter,
+			`before=${JSON.stringify(cardBefore)} after=${JSON.stringify(cardAfter)}`,
+		);
+		await pressChord(cdp, {
+			key: "Escape",
+			code: "Escape",
+			virtualKeyCode: 27,
+		});
+		await wait(250);
+		/*
+		 * Same already-focused trap as the first open: Escape closes the card but
+		 * leaves the tick focused, so the refocus must be a real transition for
+		 * the second open to exercise the open path at all.
+		 */
+		await evaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		await wait(120);
+		await focusTick(nearTick);
+		const cardAgain = await cardText();
+		check(
+			"the next open still renders a card",
+			cardAgain !== null && cardAgain.length > 0,
+			JSON.stringify(cardAgain),
+		);
+		return;
+	}
+
 	const themes = sceneThemes();
 	for (const theme of themes) {
 		check(
@@ -13544,6 +14005,1393 @@ async function scenePinsSearch(cdp) {
 const sceneThemes = () =>
 	THEME === null ? ["localOperatorDark", "localOperatorLight"] : [THEME];
 
+/**
+ * The Pinned section's manual order, DRIVEN: what the drag handle costs at rest and
+ * under the pointer, what a drag looks like mid-gesture, and what it leaves behind
+ * (issue #697).
+ *
+ * WHY THIS SCENE EXISTS. Issue #693 gave the section an order the reader owns, moved
+ * by a pair of controls and by chords; #697 adds the gesture the operator asked for -
+ * a drag - and every one of its claims is a claim about PIXELS or about a GESTURE,
+ * neither of which a `node --test` file can reach: the grip is revealed by `:hover`
+ * (compositor state, which no dispatched event inside the page can enter), the
+ * indicator exists only between a press and a release, the dragged row's own ground is
+ * a class the browser paints, and "a multi-place drop is ONE write" is a fact about a
+ * commit and a store, not about a class string. `scripts/sidebar-pin-order.test.mjs`
+ * holds the MODEL (which array a drop resolves to, what a no-op drop does, how a slot
+ * is hit-tested); this scene holds what that model looks like on screen.
+ *
+ * WHAT A FRAME HERE PROVES, AND WHAT IT CANNOT.
+ *   - Every gesture goes through `Input.dispatchMouseEvent`, so it enters Chromium's
+ *     own pipeline and the element under it is found the way a hand's would be. It is
+ *     still synthetic: no pressure, no jitter, no trackpad momentum, so no frame says
+ *     "a real hand finds this".
+ *   - `captureSettled` is what makes a frame evidence at all (two consecutive
+ *     identical captures with no toast on screen), so a mid-drag frame is of a HELD
+ *     gesture - which is what a drag is - rather than of a moment that happened to
+ *     freeze.
+ *   - The rows these frames draw are the STAND-IN's (`stub-daemon.mjs`), not a real
+ *     store: `--pins` names the ids pinned at boot, so the section has the three pins a
+ *     reorder needs to be visible. No conversation is created, sent or opened here.
+ *   - A HEADLESS window never renders `:focus-visible` rings or carets, so the frames
+ *     that follow a keyboard move are about focus LOCATION only. This scene takes no
+ *     keyboard step at all: #693's chords are `pins`/`pins-search`'s subject, and this
+ *     change adds no key.
+ *   - The RELAUNCH step is a `Page.reload` against the same `--user-data-dir` profile,
+ *     not a second process: the order is a PERSISTED preference, and the claim is that
+ *     a fresh boot of the renderer rehydrates it (the row-space and `turn-collapse`
+ *     scenes' own restart step). A second process would say the same thing about the
+ *     same bytes and would cost one more app launch per palette.
+ *
+ * ONE LAUNCH PER PALETTE, with widths 240/280/320 driven through the store the panel
+ * already persists (`setSidebarWidth`) - the whole point of the 240 frame is that the
+ * revealed cluster's cost is FELT there first, and a width this scene labelled must be
+ * the width it photographed (`setSidebarWidth` reports the clamped value it applied).
+ *
+ * THE STATE ORDER IS PART OF THE EVIDENCE: the mutating steps run LAST (many pins, then
+ * a single pin), so every frame taken before them is of the panel the stand-in booted
+ * with. The drop itself is a real write to the stub, which is why the one launch per
+ * palette is also the reason two palettes cannot share a stub process.
+ */
+async function scenePinnedReorder(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless",
+		facts.windowMode === "headless",
+		facts.windowMode,
+	);
+	check(
+		"the window is never shown and never focused",
+		facts.visible === false && facts.focused === false,
+		`visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "navigate", "/chat");
+	if (THEME !== null) await verb(cdp, "setTheme", THEME);
+	await parkPointer(cdp);
+	const arrived = await waitForCondition(
+		cdp,
+		'document.querySelectorAll("[data-session-row]").length > 0',
+		20_000,
+	);
+	check(
+		"the stand-in's catalogue reached the panel",
+		arrived.ok === true,
+		JSON.stringify(arrived),
+	);
+	/*
+	 * THE SCENE'S OWN TWO NUMBERS, named rather than inlined.
+	 *
+	 * `PINNED_SETTLE_MS` is longer than the reveal's fade (`duration-base`), so a frame
+	 * taken after a pointer move is of the SETTLED reveal rather than of one caught
+	 * half-painted. `PINNED_MANY_COUNT` is twelve because that is past the point where the
+	 * pinned section's rows overflow the scroller at the default width: the many-pins
+	 * frames are about a section a drop has to be able to reach the bottom of.
+	 */
+	const PINNED_SETTLE_MS = 400;
+	const PINNED_MANY_COUNT = 12;
+	/*
+	 * THE STAND-IN'S FIXTURE, named here because three of the scene's claims are about
+	 * specific ids: the three the stub was launched with (`--pins`), the query that hides
+	 * exactly one of them, and the widths the width-sensitive states are photographed at.
+	 *
+	 * The query is a PREFIX of two of the three titles ("Chat 000", "Chat 005") and of
+	 * neither half of the third ("Chat 010"), which is what makes the filtered frames
+	 * show a HIDDEN pin rather than a shorter section - rule 2's second half.
+	 */
+	const PINNED_IDS = ["p000", "p005", "p010"];
+	const PINNED_QUERY = "Chat 00";
+	/*
+	 * 240 / 260 / 280 / 320 (round 2, design D8): 260 is the panel's DEFAULT width and the
+	 * overlay sheet's fixed width, so it is the state nearly every reader gets and the one
+	 * the shed rule actually decides; the other three bracket it - 240 is a step BELOW the
+	 * default, 280 a panel widened past it, 320 the clamp's own maximum (the clamp is
+	 * 220..320, `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
+	 * the README called 280 "the default", which is not a width the app opens at.
+	 */
+	const PINNED_WIDTHS = [240, 260, 280, 320];
+	await wait(PINNED_SETTLE_MS);
+
+	/**
+	 * One reading of the pinned section, in the app's own geometry.
+	 *
+	 * Read from the DOM rather than inferred: the order the reader sees, the title box
+	 * each row gives up, which of the row's controls are PAINTED (a revealed control is
+	 * `display: none` at rest, so `getComputedStyle` is the honest answer and a class
+	 * list is not), the indicator's own y, the dragged row's mark, the live region's
+	 * sentence and what the store holds. This is the half-frame the pixels cannot carry:
+	 * a still shows the cluster, the numbers say what it cost.
+	 */
+	const readPinnedPanel = () =>
+		cdp.evaluate(`(() => {
+			const section = document.querySelector('[data-chat-section="pinned"]');
+			const box = (node) => {
+				const r = node.getBoundingClientRect();
+				return { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+			};
+			const painted = (node) => {
+				if (!node) return false;
+				const style = getComputedStyle(node);
+				return style.display !== "none" && style.visibility !== "hidden" && node.getBoundingClientRect().width > 0;
+			};
+			const live = document.querySelector('[data-sidebar-pin-order-announcement]');
+			let stored = null;
+			/* A DIAGNOSIS HATCH: the whole persisted view and the store's own key list,
+			   because a null here after a drop that plainly re-ordered the section cannot
+			   be told apart from an absent write without them. */
+			let storedView = null;
+			let storeKeys = null;
+			try {
+				const key = Object.keys(window.localStorage).find((each) => each.startsWith('ui-preferences'));
+			const raw = key === undefined ? null : window.localStorage.getItem(key);
+				/* The view lives UNDER the store's own field, not at its root: reading pins
+			   off the root answered null on a section that plainly held an order (measured on
+			   this scene's first run), which would have made an unwritten drop and a written one
+			   read alike. */
+			const parsed = raw === null ? null : JSON.parse(raw);
+			const state = parsed === null ? null : (parsed.state ?? parsed);
+			storeKeys = {
+				all: Object.keys(window.localStorage),
+				stateKeys:
+					parsed === null
+						? null
+						: Object.keys(parsed.state ?? parsed).filter((key) =>
+								/json|pin|view|sidebar/i.test(key),
+							),
+				rawView:
+					parsed === null
+						? null
+						: JSON.stringify(parsed.state ?? parsed).slice(0, 400),
+			};
+			storedView = state === null ? null : (state.chatSidebarView ?? null);
+			stored = storedView?.pins ?? null;
+			} catch { stored = "unreadable"; }
+			if (!section) return { section: false, order: [], rows: [], indicator: null, dragging: [], announcement: live ? live.textContent : null, storedMiss: stored };
+			const rows = [...section.querySelectorAll("[data-session-row]")];
+			const rowBox = section.querySelector('[data-session-row]');
+			const indicator = section.querySelector('[data-session-pin-indicator]');
+			return {
+				section: true,
+				order: rows.map((node) => node.getAttribute("data-session-row")),
+				rows: rows.map((node) => {
+					const title = node.querySelector("[data-session-title]");
+					return {
+						id: node.getAttribute("data-session-row"),
+						box: box(node),
+						/* WHAT THE ROW IS PAINTED (round 1, D1 and D5c). The computed
+						   background is the only honest reading of a ground step: a class list
+						   says what was ASKED for, and round 1 measured a frame where the
+						   asked-for colour lost to a hover variant. NO BACKTICKS IN THIS
+						   COMMENT: it lives inside a template literal, and one would end the
+						   string early - measured, twice on this file. */
+						ground: getComputedStyle(node).backgroundColor,
+						/* THE HELD ROW'S NON-FILL CUE (round 2, D7 and U6; round 3, D10): a
+						   1px OUTLINE inset by 1px - an outline rather than an inset ring
+						   because the current row's own button paints an opaque fill over its
+						   parent's box-shadow, which left 5.3% of the mark visible on exactly
+						   the row round 2 was about. The computed outline is the honest
+						   reading of "is this row marked as held"; a merely hovered row
+						   carries none. NO BACKTICKS IN THIS COMMENT: it lives inside a
+						   template literal. */
+						mark: (() => {
+							const st = getComputedStyle(node);
+							return st.outlineStyle === "none"
+								? "none"
+								: st.outlineColor + " " + st.outlineStyle + " " + st.outlineWidth + " offset " + st.outlineOffset;
+						})(),
+						current:
+							node.querySelector("[data-chat-row][aria-current='page']") !== null,
+						title: title ? box(title) : null,
+						grip: painted(node.querySelector("[data-session-pin-grip]")) ? box(node.querySelector("[data-session-pin-grip]")) : null,
+						up: painted(node.querySelector("[data-session-move-up]")),
+						down: painted(node.querySelector("[data-session-move-down]")),
+						pin: painted(node.querySelector("[data-session-pin]")),
+						archive: painted(node.querySelector("[data-session-archive]")),
+						dragging: node.hasAttribute("data-dragging"),
+						tabIndexGrip: node.querySelector("[data-session-pin-grip]") ? node.querySelector("[data-session-pin-grip]").tabIndex : null,
+					};
+				}),
+				rowBox: rowBox ? box(rowBox) : null,
+				sectionBox: box(section),
+				panel: (() => { const el = document.querySelector('[data-sidebar-region="scroller"]'); return el ? box(el) : null; })(),
+				indicator: indicator ? { y: Math.round(indicator.getBoundingClientRect().top), h: Math.round(indicator.getBoundingClientRect().height) } : null,
+				dragging: rows.filter((node) => node.hasAttribute("data-dragging")).map((node) => node.getAttribute("data-session-row")),
+				/* #691's per-row mark (main's subagentMarks), counted here because this
+				   branch folds main's row render into the same sessionRow: the count is
+				   what says whether the fold can have moved these frames' pixels at all. */
+				subagentMarks: section.querySelectorAll("[data-subagent-mark]").length,
+				announcement: live ? live.textContent : null,
+				stored: stored,
+				storedView: storedView,
+				storeKeys: storeKeys,
+			};
+		})()`);
+	const centreOf = (selector) =>
+		cdp.evaluate(`(() => {
+			const node = document.querySelector(${JSON.stringify(selector)});
+			if (!node) return null;
+			node.scrollIntoView({ block: "center", inline: "nearest" });
+			const r = node.getBoundingClientRect();
+			return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2), w: Math.round(r.width), h: Math.round(r.height) };
+		})()`);
+
+	/** The title box the panel gives a row, keyed by id - § 3's own column. */
+	const titleWidths = (reading) =>
+		Object.fromEntries(
+			reading.rows.map((row) => [row.id, row.title?.w ?? null]),
+		);
+	const setWidth = async (width) => {
+		const applied = await verb(cdp, "setSidebarWidth", { width });
+		await wait(PINNED_SETTLE_MS);
+		return applied;
+	};
+	/*
+	 * A REAL pointer over a row, which is the ONLY way to enter `group-hover` - a
+	 * dispatched `mouseover` inside the page proves a handler ran, not that the row
+	 * under the pointer changes.
+	 */
+	/**
+	 * Drive the panel's OWN search box, with the trusted input pipeline (the
+	 * `pins-search` scene's rule).
+	 *
+	 * WHY THE REAL FIELD AND NOT A STORE WRITE: the claim the filtered frames carry is
+	 * that the SECTION draws fewer rows while the stored order keeps the hidden id's
+	 * slot, so the query has to be one the panel itself filtered by. Writing the store
+	 * would photograph a list nobody asked for. Escape clears the field, which is the
+	 * field's own documented way back and the reason no second press is needed.
+	 */
+	const typePinnedQuery = async (query) => {
+		/*
+		 * THE FIELD IS FOCUSED IN THE PAGE, then typed into through the input pipeline
+		 * (the `pins-search` scene's own shape). A POINTER press would be the reader's
+		 * gesture, but this field is not drawn at rest: the panel raises it on a key, so
+		 * there is no box to press until it is there, and a press on a `0x0` box would
+		 * type into nothing. `document.activeElement` is checked rather than assumed,
+		 * because a query that never arrived would photograph the unfiltered list and
+		 * make the claim look satisfied.
+		 */
+		/*
+		 * THE PANEL'S OWN DOOR FIRST: the field is drawn only while the list is filtering
+		 * (`filterShown`), and the control the reader presses to open it carries the same
+		 * accessible name - which is why the CLICK is what raises the field and why the
+		 * wait below is for the input to EXIST rather than for it to become focusable
+		 * (the `pins-search` scene's own sequence, followed here step for step).
+		 */
+		await clickAt(cdp, '[aria-label="Search chats and agents"]');
+		const fieldThere = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector('input[aria-label="Search chats and agents"]'))`,
+			10_000,
+		);
+		check(
+			"the panel raises its search field",
+			fieldThere.ok === true,
+			JSON.stringify(fieldThere),
+		);
+		const focused = await cdp.evaluate(`(() => {
+			const field = document.querySelector('input[aria-label="Search chats and agents"]');
+			if (field === null) return false;
+			field.focus();
+			return document.activeElement === field;
+		})()`);
+		check(
+			"the search field takes the caret",
+			focused === true,
+			String(focused),
+		);
+		await wait(200);
+		if (query === "") {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "rawKeyDown",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			await cdp.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+		} else {
+			await cdp.send("Input.insertText", { text: query });
+		}
+		await wait(PINNED_SETTLE_MS);
+	};
+	const hoverRow = async (id) => {
+		const point = await centreOf(
+			`[data-session-row="${id}"][data-chat-row], [data-session-row="${id}"] [data-chat-row]`,
+		);
+		const target = point ?? (await centreOf(`[data-session-row="${id}"]`));
+		await movePointer(cdp, target.x, target.y);
+		await wait(PINNED_SETTLE_MS);
+		return target;
+	};
+	const pressAt = (x, y) =>
+		cdp.send("Input.dispatchMouseEvent", {
+			type: "mousePressed",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+			clickCount: 1,
+		});
+	/*
+	 * A move with the BUTTON HELD (`buttons: 1`), which is what makes it a drag rather
+	 * than a hover: `movePointer` sends `buttons: 0`, and a drag that reported no button
+	 * down would photograph the sizer's own gesture, not the reader's.
+	 */
+	const dragMoveTo = async (x, y) => {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+		});
+	};
+	/* Escape, through the input pipeline: the drag's own cancel door, and now a press
+	   that the handler CLAIMS (round 1, U5) rather than one a Radix layer happened to. */
+	const sendEscape = async (target) => {
+		await target.send("Input.dispatchKeyEvent", {
+			type: "rawKeyDown",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await target.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+	};
+	const releaseAt = (x, y) =>
+		cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseReleased",
+			x,
+			y,
+			button: "left",
+			buttons: 0,
+			clickCount: 1,
+		});
+	/**
+	 * A drag in steps, the way a hand makes one.
+	 *
+	 * The steps matter twice: a single jump from the grip to the target would arm the
+	 * gesture and land it in the same event (so no frame could be taken MID-drag), and
+	 * the site's own hit test walks the row boxes the pointer passes - which is the
+	 * behaviour the indicator is supposed to show.
+	 */
+	const dragGrip = async (id, target, { steps = 8 } = {}) => {
+		await hoverRow(id);
+		const grip = await centreOf(
+			`[data-session-row="${id}"] [data-session-pin-grip]`,
+		);
+		check(
+			`the grip is revealed under the pointer on ${id}`,
+			grip !== null && grip.w > 0 && grip.h > 0,
+			JSON.stringify(grip),
+		);
+		/*
+		 * A ROW TARGET IS RESOLVED AFTER THE HOVER, from the frame the drag measures in.
+		 * The first version of this scene aimed at a box read BEFORE the drag, and the row
+		 * boxes had moved between the two readings - so the pointer crossed no midpoint,
+		 * the hit test answered slot 0, and a drop that should have moved the row by one
+		 * place wrote nothing. The app's own log named it (`slot: 0` for a drag whose
+		 * indicator sat at the next row's edge), which is why the scene now re-reads the
+		 * panel it is about to drag in.
+		 */
+		let targetY = target;
+		if (typeof target === "string") {
+			const fresh = await readPinnedPanel();
+			const targetBox =
+				fresh.rows.find((row) => row.id === target)?.box ?? null;
+			check(
+				`the drag's target row ${target} is on screen`,
+				targetBox !== null,
+				JSON.stringify(fresh.order),
+			);
+			if (targetBox === null) return { grip, x: grip.x, y: target };
+			targetY = targetBox.y + targetBox.h - 2;
+		}
+		await pressAt(grip.x, grip.y);
+		for (let step = 1; step <= steps; step += 1) {
+			const y = Math.round(grip.y + ((targetY - grip.y) * step) / steps);
+			await dragMoveTo(grip.x, y);
+			await wait(40);
+		}
+		return { grip, x: grip.x, y: targetY };
+	};
+
+	/*
+	 * 1. ORDER BEFORE A MOVE - and the same three frames carry the ORIGIN/MAIN HALF's
+	 * reading, because at rest this change draws nothing the previous tree did not: the
+	 * grip, the pair and the indicator are all revealed or absent until a gesture
+	 * starts. `--main-tree` swaps the binary, not the scene.
+	 */
+	/*
+	 * WHICH SLICE OF THE FRAME LIST THIS LAUNCH TAKES (`--pinned-state`), because the
+	 * three states that are about the SECTION'S SIZE cannot share one stand-in: the
+	 * stub's fixture is per process (`--pins`), and the app's own pin presses are
+	 * answered by that fixture rather than by a store the scene can seed. So each
+	 * slice is one launch against a stub booted with the pins its own states are
+	 * about - the gesture states from three pins (the smallest section a reorder is
+	 * visible in), the many-pins and single-pin states from fixtures of their own.
+	 * The frames are named the same way in every slice, so the directory is one set.
+	 */
+	/*
+	 * A TYPO IN `--pinned-state` IS REFUSED RATHER THAN SILENTLY SHORT: the shared setup
+	 * above runs for every slice, so an unknown state would produce a launch that
+	 * photographed nothing and exited 0 - the failure mode this repo's own evidence rules
+	 * call a dead instrument.
+	 */
+	if (!["three", "many", "single", "keys"].includes(PINNED_STATE)) {
+		throw new Error(
+			`--pinned-state ${PINNED_STATE} is not a slice of this scene (three | many | single | keys)`,
+		);
+	}
+
+	if (PINNED_STATE === "three") {
+		const boot = await readPinnedPanel();
+		check(
+			"the stand-in's three pins are drawn in the catalogue's own order",
+			JSON.stringify(boot.order) === JSON.stringify(PINNED_IDS),
+			JSON.stringify(boot.order),
+		);
+		/*
+		 * AND MAIN'S OWN ROW MARK HAS NOTHING TO DRAW IN THIS FIXTURE (#691, folded in
+		 * after these frames were first taken). The stand-in's rows carry no subagent
+		 * counts, so `subagentMarks` returns nothing for any of them - which is the fact
+		 * that lets the fold be validated as a BYTE COMPARISON rather than a re-shoot of
+		 * the whole set. Stated as a check rather than a note because a fixture that grew
+		 * a subagent count would start moving the row's layout, and this is where that
+		 * would be caught.
+		 */
+		check(
+			"the folded-in subagent mark draws nothing on the stand-in's rows",
+			boot.subagentMarks === 0,
+			`${boot.subagentMarks} marker(s) in the pinned section`,
+		);
+		check(
+			"no move control is painted at rest",
+			boot.rows.every((row) => row.grip === null && !row.up && !row.down),
+			JSON.stringify(
+				boot.rows.map((row) => ({
+					id: row.id,
+					grip: row.grip !== null,
+					up: row.up,
+				})),
+			),
+		);
+		/*
+		 * THE WIDTH TABLE this slice's frames are read as numbers: what each width's row box
+		 * is, what the title has at rest, and what it gives up under the pointer once the grip
+		 * joins the cluster.
+		 */
+		const widths = {};
+		for (const width of PINNED_WIDTHS) {
+			const applied = await setWidth(width);
+			await parkPointer(cdp);
+			const rest = await readPinnedPanel();
+			const before = await captureSettled(cdp, `order-before-${width}`);
+			note(
+				"frame",
+				JSON.stringify({ label: `order-before-${width}`, ...before }),
+			);
+			/*
+			 * The pointer is put on the SECOND pinned row: the middle one is the row where the
+			 * revealed cluster and the row's own title can both be read, and it is not a row at
+			 * either boundary.
+			 */
+			await hoverRow(PINNED_IDS[1]);
+			const hovered = await readPinnedPanel();
+			const hoverFrame = await captureSettled(cdp, `grip-hover-${width}`);
+			note(
+				"frame",
+				JSON.stringify({ label: `grip-hover-${width}`, ...hoverFrame }),
+			);
+			const hoveredRow = hovered.rows.find((row) => row.id === PINNED_IDS[1]);
+			/*
+			 * THE SHED IS WIDTH-DEPENDENT (round 1, design D2, rounded to the measured edge
+			 * in round 2): the grip is DRAWN at a 279px panel and above and shed at 278 and
+			 * below - QA measured 277/278 shed and 279/280 drawn, which is what the shipped
+			 * `@max-[263px]/chatsidebar:hidden!` decides once the panel's own `p-2` is taken
+			 * off (the container query reads a content box 16px narrower than the panel) -
+			 * because at the 240 clamp the revealed cluster left the title 40px of the row's
+			 * 208. The PAIR STAYS at every width - it is WCAG 2.5.7's single-pointer
+			 * alternative - so the check is two claims, one per band, rather than one claim
+			 * with an exception.
+			 */
+			const gripExpected = width >= 279;
+			check(
+				`${width}: the pointer reveals ${gripExpected ? "the grip, " : ""}the pair, the archive and the mark on one row`,
+				(hoveredRow.grip !== null) === gripExpected &&
+					hoveredRow.up === true &&
+					hoveredRow.down === true &&
+					hoveredRow.archive === true &&
+					hoveredRow.pin === true,
+				JSON.stringify({ width, gripExpected, row: hoveredRow }),
+			);
+			check(
+				`${width}: the shed leaves the pair in place`,
+				hoveredRow.up === true && hoveredRow.down === true,
+				JSON.stringify({ width, up: hoveredRow.up, down: hoveredRow.down }),
+			);
+			check(
+				`${width}: the grip is out of the Tab ring`,
+				hoveredRow.tabIndexGrip === -1,
+				String(hoveredRow.tabIndexGrip),
+			);
+			check(
+				`${width}: the revealed cluster leaves the rest of the section alone`,
+				hovered.rows
+					.filter((row) => row.id !== PINNED_IDS[1])
+					.every((row) => row.grip === null && !row.up),
+				JSON.stringify(
+					hovered.rows.map((row) => ({ id: row.id, grip: row.grip !== null })),
+				),
+			);
+			widths[width] = {
+				applied,
+				panel: applied,
+				rowBox: rest.rowBox,
+				/* The hovered row's own ground and whether the grip is painted: the two
+				   readings round 1 (D1, D2) is about, kept as numbers because the frames show
+				   the symptom and these say which state painted what. */
+				hoverGround: hoveredRow.ground,
+				restGround: rest.rows.find((row) => row.id === PINNED_IDS[1])?.ground,
+				gripPainted: hoveredRow.grip !== null,
+				restTitles: titleWidths(rest),
+				hoverTitles: titleWidths(hovered),
+				hoveredCluster: {
+					grip: hoveredRow.grip,
+					up: hoveredRow.up,
+					down: hoveredRow.down,
+					archive: hoveredRow.archive,
+					pin: hoveredRow.pin,
+				},
+			};
+			note(
+				`geometry at ${width}`,
+				JSON.stringify({
+					row: rest.rowBox,
+					restTitle: rest.rows.find((row) => row.id === PINNED_IDS[1])?.title,
+					hoverTitle: hoveredRow.title,
+					grip: hoveredRow.grip,
+				}),
+			);
+		}
+		await setWidth(280);
+
+		/*
+		 * 2. THE DRAG, from the first pinned row to just past the second one's midpoint -
+		 * one place, so the drop is the smallest move the hit test can express.
+		 */
+		const second = (await readPinnedPanel()).rows.find(
+			(row) => row.id === PINNED_IDS[1],
+		);
+		const grip = await dragGrip(PINNED_IDS[0], PINNED_IDS[1]);
+		const midDrag = await readPinnedPanel();
+		const midFrame = await captureSettled(cdp, "drag-mid");
+		note("frame", JSON.stringify({ label: "drag-mid", ...midFrame }));
+		check(
+			"mid-drag: the dragged row carries the mark and the section draws the indicator",
+			midDrag.dragging.includes(PINNED_IDS[0]) && midDrag.indicator !== null,
+			JSON.stringify({
+				dragging: midDrag.dragging,
+				indicator: midDrag.indicator,
+			}),
+		);
+		check(
+			"mid-drag: nothing has been written yet",
+			JSON.stringify(midDrag.order) === JSON.stringify(PINNED_IDS),
+			JSON.stringify(midDrag.order),
+		);
+		/*
+		 * D1'S OWN READING, MEASURED RATHER THAN JUDGED FROM THE FRAME (round 1, D1 and
+		 * U1). The bug was that the dragged row painted the same fill as a merely hovered
+		 * one - `#302D2A` dark against the intended `#372F24` - so the check is a
+		 * COMPARISON between two computed grounds taken in the same run and at the same
+		 * width: the hovered row's from the width loop above, the dragged row's here. The
+		 * numbers go into the geometry note because a still shows the symptom and the
+		 * computed colour says which state painted it.
+		 */
+		const midGround =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.ground ?? null;
+		const hoverGround = widths[280]?.hoverGround ?? null;
+		check(
+			"mid-drag: the dragged row's ground is a step the hover does not paint",
+			midGround !== null && hoverGround !== null && midGround !== hoverGround,
+			JSON.stringify({ dragged: midGround, hovered: hoverGround }),
+		);
+		/*
+		 * AND THE HELD STATE CARRIES A RING AS WELL (round 2, D7 and U6): the ground alone
+		 * cannot say "held" in the current-row case, so the non-fill cue is what every held
+		 * row has, and the row under the pointer has none of it.
+		 */
+		const midMark =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.mark ?? null;
+		const hoveredMark =
+			midDrag.rows.find((row) => row.id === PINNED_IDS[1])?.mark ?? null;
+		check(
+			"mid-drag: the held row wears an inset outline and an unheld row wears none",
+			typeof midMark === "string" &&
+				midMark.includes("solid") &&
+				midMark.includes("offset -1px") &&
+				String(hoveredMark) === "none",
+			JSON.stringify({ held: midMark, other: hoveredMark }),
+		);
+		await releaseAt(grip.x, grip.y);
+		await wait(PINNED_SETTLE_MS);
+		const dropped = await readPinnedPanel();
+		const dropFrame = await captureSettled(cdp, "after-drop");
+		note("frame", JSON.stringify({ label: "after-drop", ...dropFrame }));
+		/*
+		 * THE HIT TEST'S OWN READING, printed because the first run of this scene left the
+		 * drop unwritten and every other reading was consistent with two different causes
+		 * (a slot of zero, or an id the drawn list does not hold): the pointer's target y,
+		 * the section's row boxes as the drop measures them, and the indicator's own y. A
+		 * line drawn at the section's top is slot 0 and says the hit test disagrees with the
+		 * pointer; a line drawn in the gap below the second row says the drop's input was
+		 * right and the fault is somewhere else.
+		 */
+		note(
+			"the drop's own geometry",
+			JSON.stringify({
+				targetY: grip.y,
+				boxes: second
+					? [
+							{ id: PINNED_IDS[1], y: second.box.y, h: second.box.h },
+							{
+								id: PINNED_IDS[2],
+								y: midDrag.rows.find((row) => row.id === PINNED_IDS[2])?.box?.y,
+								h: midDrag.rows.find((row) => row.id === PINNED_IDS[2])?.box?.h,
+							},
+						]
+					: null,
+				indicator: midDrag.indicator,
+				rowBox: midDrag.rowBox,
+				order: midDrag.order,
+			}),
+		);
+		note(
+			"the persisted app preferences after the drop",
+			JSON.stringify({
+				stored: dropped.stored,
+				view: dropped.storedView,
+				keys: dropped.storeKeys,
+			}),
+		);
+		const expectedOrder = [PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]];
+		check(
+			"the drop leaves the row one place down, with the third pin untouched",
+			JSON.stringify(dropped.order) === JSON.stringify(expectedOrder),
+			JSON.stringify(dropped.order),
+		);
+		check(
+			"the dragged row's mark is gone once the gesture ends",
+			dropped.dragging.length === 0 && dropped.indicator === null,
+			JSON.stringify({
+				dragging: dropped.dragging,
+				indicator: dropped.indicator,
+			}),
+		);
+		check(
+			"the live region says where the row went",
+			typeof dropped.announcement === "string" &&
+				/moved .* to position 2 of 3/i.test(dropped.announcement),
+			JSON.stringify(dropped.announcement),
+		);
+		check(
+			"the store holds the dropped order, and ONLY one write was made",
+			JSON.stringify(dropped.stored) === JSON.stringify(dropped.order),
+			JSON.stringify(dropped.stored),
+		);
+
+		/*
+		 * 3. RELAUNCH: a fresh boot of the renderer against the same profile must rehydrate
+		 * the arrangement the drop wrote (rule 6, and the acceptance criterion).
+		 */
+		await cdp.send("Page.reload", { ignoreCache: false });
+		const backAgain = await waitForCondition(
+			cdp,
+			'document.querySelectorAll("[data-session-row]").length > 0',
+			30_000,
+		);
+		await wait(PINNED_SETTLE_MS);
+		await parkPointer(cdp);
+		const relaunched = await readPinnedPanel();
+		const relaunchFrame = await captureSettled(cdp, "order-relaunch");
+		note(
+			"frame",
+			JSON.stringify({ label: "order-relaunch", ...relaunchFrame }),
+		);
+		check(
+			"a relaunch comes back with the reader's order, not the catalogue's",
+			backAgain.ok === true &&
+				JSON.stringify(relaunched.order) === JSON.stringify(expectedOrder),
+			JSON.stringify({ arrived: backAgain, order: relaunched.order }),
+		);
+
+		/*
+		 * 3b. THE FIRST SLOT'S LINE (round 1, design D5b). A drag held ABOVE the first
+		 * pinned row draws the line at the section's own top edge - the case most likely
+		 * to collide with the `Pinned chats` header, and the one no earlier frame showed.
+		 * Escape cancels it, so the order the drop wrote is still the order the checks
+		 * below read (and the cancel is the round-1 U5 path, exercised in a frame).
+		 */
+		const lastPinned = (await readPinnedPanel()).rows.at(-1);
+		await hoverRow(lastPinned.id);
+		/*
+		 * THE TARGET IS MEASURED AFTER THE HOVER, and that ordering is the same lesson
+		 * `dragGrip` records one screen up: the hover brings the row into view, so the
+		 * boxes read before it are not the boxes the drag measures in (measured on the
+		 * first run of this state: a target computed from the pre-hover geometry was 630,
+		 * inside the section, and the line landed at slot 2). ABOVE THE FIRST ROW and not
+		 * merely above the section: slot 0's line is drawn at that row's own top edge, and
+		 * the panel's heading sits between the section's box and its first row.
+		 */
+		const aboveFirst = (await readPinnedPanel()).rows[0].box.y - 6;
+		const topGrip = await centreOf(
+			`[data-session-row="${lastPinned.id}"] [data-session-pin-grip]`,
+		);
+		check(
+			"the grip is revealed under the pointer at the last pinned row",
+			topGrip !== null && topGrip.w > 0,
+			JSON.stringify(topGrip),
+		);
+		await pressAt(topGrip.x, topGrip.y);
+		for (let step = 1; step <= 8; step += 1) {
+			const y = Math.round(topGrip.y + ((aboveFirst - topGrip.y) * step) / 8);
+			await dragMoveTo(topGrip.x, y);
+			await wait(40);
+		}
+		const topDrag = await readPinnedPanel();
+		const topFrame = await captureSettled(cdp, "drag-top");
+		note("frame", JSON.stringify({ label: "drag-top", ...topFrame }));
+		check(
+			"a drag held above the first pinned row draws its line at that row's top edge",
+			topDrag.indicator !== null &&
+				Math.abs(topDrag.indicator.y - topDrag.rows[0].box.y) <= 2 &&
+				topDrag.dragging.includes(lastPinned.id),
+			JSON.stringify({
+				indicator: topDrag.indicator,
+				firstRow: topDrag.rows[0],
+				rows: topDrag.rows.map((row) => row.box),
+				section: topDrag.sectionBox,
+				dragging: topDrag.dragging,
+				pointerY: aboveFirst,
+			}),
+		);
+		await sendEscape(cdp);
+		await releaseAt(topGrip.x, topGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const topCancelled = await readPinnedPanel();
+		check(
+			"the cancelled slot-0 drag wrote nothing and said so",
+			JSON.stringify(topCancelled.order) === JSON.stringify(expectedOrder) &&
+				topCancelled.indicator === null &&
+				/cancelled/i.test(String(topCancelled.announcement)),
+			JSON.stringify({
+				order: topCancelled.order,
+				announcement: topCancelled.announcement,
+			}),
+		);
+
+		/*
+		 * 4. A DROP UNDER A SEARCH FILTER: the query hides one of the three pins, and the
+		 * moved row steps over the VISIBLE neighbour while the hidden id keeps its stored
+		 * slot (rule 2's second half, which is the one a splice would break).
+		 */
+		/*
+		 * THE LIST IS PUT BACK AT ITS TOP FIRST, so the search states are a function of the
+		 * query rather than of how far the gestures above happened to scroll the list: the
+		 * drags and the slot-0 state bring rows into view with `scrollIntoView`, and a frame
+		 * whose scroll offset depends on the frames before it is a frame that moves when
+		 * anything upstream changes (measured on the first re-shoot of this set: the search
+		 * frames differed from the committed ones by a scroll offset and nothing else).
+		 */
+		await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop = 0",
+		);
+		await wait(PINNED_SETTLE_MS);
+		await typePinnedQuery(PINNED_QUERY);
+		await wait(PINNED_SETTLE_MS);
+		const filtered = await readPinnedPanel();
+		check(
+			`the query ${JSON.stringify(PINNED_QUERY)} hides the third pin and keeps two`,
+			filtered.order.length === 2 &&
+				filtered.order.includes(PINNED_IDS[0]) &&
+				filtered.order.includes(PINNED_IDS[1]),
+			JSON.stringify(filtered.order),
+		);
+		const filteredFrame = await captureSettled(cdp, "search-filtered");
+		note(
+			"frame",
+			JSON.stringify({ label: "search-filtered", ...filteredFrame }),
+		);
+		const filteredSecond = filtered.rows.find(
+			(row) => row.id === PINNED_IDS[1],
+		);
+		const filteredGrip = await dragGrip(PINNED_IDS[0], PINNED_IDS[1]);
+		const filteredMid = await readPinnedPanel();
+		const filteredMidFrame = await captureSettled(cdp, "search-drag-mid");
+		note(
+			"frame",
+			JSON.stringify({ label: "search-drag-mid", ...filteredMidFrame }),
+		);
+		check(
+			"mid-drag the filtered section draws the indicator and marks the row being moved",
+			filteredMid.indicator !== null &&
+				JSON.stringify(filteredMid.dragging) ===
+					JSON.stringify([PINNED_IDS[0]]),
+			JSON.stringify({
+				indicator: filteredMid.indicator,
+				dragging: filteredMid.dragging,
+			}),
+		);
+		await releaseAt(filteredGrip.x, filteredGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const filteredDropped = await readPinnedPanel();
+		const filteredDropFrame = await captureSettled(cdp, "search-after-drop");
+		note(
+			"frame",
+			JSON.stringify({ label: "search-after-drop", ...filteredDropFrame }),
+		);
+		check(
+			"a filtered drop moves among the SHOWN rows and keeps the hidden id's slot",
+			JSON.stringify(filteredDropped.order) ===
+				JSON.stringify([PINNED_IDS[1], PINNED_IDS[0]]) &&
+				JSON.stringify(filteredDropped.stored) ===
+					JSON.stringify([PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]]),
+			JSON.stringify({
+				shown: filteredDropped.order,
+				stored: filteredDropped.stored,
+			}),
+		);
+		await typePinnedQuery("");
+		await wait(PINNED_SETTLE_MS);
+
+		/*
+		 * 5. THE HELD CURRENT ROW (round 2, design D7 and UX round 2, U6), and it is the
+		 * state the first pass could not photograph.
+		 *
+		 * WHY IT IS ORDINARY AND NOT AN EDGE CASE: the pointer has to land on another row
+		 * for a drop to move anything, so "the conversation the reader is in is the one
+		 * being dragged" is the normal shape of the gesture - and it is where the first
+		 * attempt at the held cue broke, because it gave that row the HOVER fill, which is
+		 * exactly what the row under the pointer already paints. Two rows, one reading.
+		 *
+		 * THE ROUTE STATE IS REACHED THROUGH THE ROW'S OWN DOOR: the button inside the row
+		 * carries `data-chat-row`, and Enter on it is the sidebar's own way into a
+		 * conversation (UX round 2 walked it and read `aria-current=page` off the row). A
+		 * `.click()` from the evaluate hatch would be a page-level event the row hears
+		 * only if React happens to be listening; a real key on the focused button is the
+		 * reader's gesture, which is the standard this file's other gestures are held to.
+		 */
+		await hoverRow(PINNED_IDS[0]);
+		const door = await centreOf(
+			`[data-session-row="${PINNED_IDS[0]}"] [data-chat-row]`,
+		);
+		const focusedDoor = await cdp.evaluate(
+			`(() => {
+				const el = document.querySelector('[data-session-row="${PINNED_IDS[0]}"] [data-chat-row]');
+				if (el === null) return false;
+				el.focus();
+				return document.activeElement === el;
+			})()`,
+		);
+		const routeOf = () =>
+			cdp.evaluate(
+				`(() => ({ hash: location.hash, toasts: [...document.querySelectorAll('[data-sonner-toast]')].map((node) => node.textContent) }))()`,
+			);
+		/*
+		 * `keyDown` AND NOT `rawKeyDown`: a raw press delivers the key to the page without
+		 * running the browser's own default action, and the default action is what turns
+		 * Enter on a focused BUTTON into the click that opens the row (measured on this
+		 * scene's first run: the raw form left the route at `#/chat` and no row current,
+		 * while the pointer's press on the same element opened it).
+		 */
+		for (const type of ["keyDown", "keyUp"]) {
+			await cdp.send("Input.dispatchKeyEvent", {
+				type,
+				key: "Enter",
+				code: "Enter",
+				text: type === "keyDown" ? "\r" : undefined,
+				unmodifiedText: type === "keyDown" ? "\r" : undefined,
+				windowsVirtualKeyCode: 13,
+			});
+		}
+		await wait(PINNED_SETTLE_MS);
+		const afterEnter = await readPinnedPanel();
+		note(
+			"the row's own door, by keyboard",
+			JSON.stringify({
+				focused: focusedDoor,
+				door,
+				route: await routeOf(),
+				rows: afterEnter.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+			}),
+		);
+		/*
+		 * AND THE POINTER'S OWN DOOR, when the keyboard's did not take: the row's button is
+		 * the same element, and a real press is the gesture a reader makes. Both are tried
+		 * and the reading says which one the stand-in answered - a check that failed on the
+		 * keyboard alone would report the fixture rather than the app.
+		 */
+		let opened = afterEnter;
+		if (opened.rows.find((row) => row.id === PINNED_IDS[0])?.current !== true) {
+			await pressAt(door.x, door.y);
+			await releaseAt(door.x, door.y);
+			await wait(PINNED_SETTLE_MS);
+			opened = await readPinnedPanel();
+			note(
+				"the row's own door, by pointer",
+				JSON.stringify({
+					route: await routeOf(),
+					rows: opened.rows.map((row) => ({
+						id: row.id,
+						current: row.current,
+					})),
+				}),
+			);
+		}
+		check(
+			"the row's own door makes it the current one (a route the stand-in can hold)",
+			opened.rows.find((row) => row.id === PINNED_IDS[0])?.current === true,
+			JSON.stringify({
+				focused: focusedDoor,
+				door,
+				afterEnter: afterEnter.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+				afterPointer: opened.rows.map((row) => ({
+					id: row.id,
+					current: row.current,
+				})),
+			}),
+		);
+
+		/*
+		 * THE DRAG, WITH THE POINTER PARKED OVER ANOTHER ROW - the mid-gesture position
+		 * this pass exists for.
+		 */
+		const currentRow = opened.rows.find((row) => row.id === PINNED_IDS[0]);
+		const otherRow = opened.rows.find((row) => row.id === PINNED_IDS[1]);
+		await hoverRow(PINNED_IDS[0]);
+		const currentGrip = await centreOf(
+			`[data-session-row="${PINNED_IDS[0]}"] [data-session-pin-grip]`,
+		);
+		check(
+			"the grip is revealed on the current row too",
+			currentGrip !== null && currentGrip.w > 0,
+			JSON.stringify(currentGrip),
+		);
+		await pressAt(currentGrip.x, currentGrip.y);
+		for (let step = 1; step <= 6; step += 1) {
+			const y = Math.round(
+				currentGrip.y +
+					((otherRow.box.y + otherRow.box.h / 2 - currentGrip.y) * step) / 6,
+			);
+			await dragMoveTo(currentGrip.x, y);
+			await wait(40);
+		}
+		const currentMid = await readPinnedPanel();
+		const currentMidFrame = await captureSettled(cdp, "current-drag-mid");
+		note(
+			"frame",
+			JSON.stringify({ label: "current-drag-mid", ...currentMidFrame }),
+		);
+		const heldRow = currentMid.rows.find((row) => row.id === PINNED_IDS[0]);
+		const targetRow = currentMid.rows.find((row) => row.id === PINNED_IDS[1]);
+		/*
+		 * THE TWO CLAIMS ROUND 2 FILED, EACH MEASURED RATHER THAN READ OFF A FRAME: the held
+		 * row keeps the SELECTED fill (so "you are here" survives the gesture) while the row
+		 * under the pointer paints the hover fill, and the two are told apart by the held
+		 * row's ring - a non-fill cue no hover state paints.
+		 */
+		check(
+			"the held current row keeps its own fill and is not painted as hovered",
+			heldRow?.dragging === true &&
+				heldRow.current === true &&
+				heldRow.ground !== targetRow?.ground &&
+				heldRow.ground === currentRow?.ground,
+			JSON.stringify({
+				held: { ground: heldRow?.ground, mark: heldRow?.mark },
+				target: { ground: targetRow?.ground, mark: targetRow?.mark },
+				restingCurrent: currentRow?.ground,
+			}),
+		);
+		check(
+			"the held row is marked by an inset outline the hovered row does not paint",
+			typeof heldRow?.mark === "string" &&
+				heldRow.mark.includes("solid") &&
+				heldRow.mark.includes("offset -1px") &&
+				targetRow?.mark === "none",
+			JSON.stringify({ held: heldRow?.mark, target: targetRow?.mark }),
+		);
+		await sendEscape(cdp);
+		await releaseAt(currentGrip.x, currentGrip.y);
+		await wait(PINNED_SETTLE_MS);
+		const currentCancelled = await readPinnedPanel();
+		check(
+			"cancelling the current-row drag writes nothing and leaves the order alone",
+			JSON.stringify(currentCancelled.order) ===
+				JSON.stringify([PINNED_IDS[1], PINNED_IDS[0], PINNED_IDS[2]]) &&
+				currentCancelled.dragging.length === 0,
+			JSON.stringify({
+				order: currentCancelled.order,
+				dragging: currentCancelled.dragging,
+				announcement: currentCancelled.announcement,
+			}),
+		);
+
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				...widths,
+				round1: {
+					draggedGround: midGround,
+					hoverGround,
+					slot0Line: {
+						indicatorY: topDrag.indicator?.y ?? null,
+						sectionTop: topDrag.sectionBox.y,
+					},
+				},
+				round2: {
+					heldCurrent: {
+						ground: heldRow?.ground ?? null,
+						mark: heldRow?.mark ?? null,
+						restingGround: currentRow?.ground ?? null,
+					},
+					heldPlain: {
+						ground: midGround,
+						mark:
+							midDrag.rows.find((row) => row.id === PINNED_IDS[0])?.mark ??
+							null,
+					},
+					hoveredTarget: {
+						ground: targetRow?.ground ?? null,
+						mark: targetRow?.mark ?? null,
+					},
+				},
+			}),
+		);
+	}
+
+	if (PINNED_STATE === "many") {
+		/*
+		 * MANY PINS: the section holds more rows than the scroller can show, which is the
+		 * state the auto-scroll and a drop past the fold are about. The pins are the
+		 * STAND-IN's (`--pins`), not the app's presses, and the reason is in the stub: its
+		 * pin route answers about the fixture it SERVES, so a scene that pinned rows by
+		 * pressing asked the daemon about rows it does not serve and the section stayed at
+		 * three however many times the mark was pressed (measured, then fixed on both sides).
+		 */
+		/*
+		 * AT 280, NOT AT THE PANEL'S 260 DEFAULT, and it is the shed's arithmetic (round 1,
+		 * D2): the grip is drawn only above a 279px panel, so at the default width this
+		 * slice's drag would have no handle to grab. The width is stated here rather than
+		 * left to the launch because the state is ABOUT the drag handle.
+		 */
+		await setWidth(280);
+		await parkPointer(cdp);
+		const many = await readPinnedPanel();
+		const manyFrame = await captureSettled(cdp, "many-pins");
+		note("frame", JSON.stringify({ label: "many-pins", ...manyFrame }));
+		check(
+			`the section holds at least the ${PINNED_MANY_COUNT} pins its frame is about, so its rows overflow the scroller`,
+			many.order.length >= PINNED_MANY_COUNT,
+			JSON.stringify({ pinned: many.order.length }),
+		);
+		/*
+		 * AND THE AUTO-SCROLL, photographed at the visible edge: a drag held inside the
+		 * scroller's bottom zone must scroll the list so a row past the fold is reachable.
+		 */
+		const firstMany = many.rows[0];
+		const scroller = many.panel;
+		const scrolled = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const autoDrag = await dragGrip(firstMany.id, scroller.y + scroller.h - 6, {
+			steps: 12,
+		});
+		await wait(700);
+		const dragged = await readPinnedPanel();
+		const autoFrame = await captureSettled(cdp, "many-pins-drag");
+		note("frame", JSON.stringify({ label: "many-pins-drag", ...autoFrame }));
+		const scrolledAfter = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		check(
+			"a drag held at the scroller's edge scrolls the list it is dragging in",
+			scrolledAfter > scrolled && dragged.indicator !== null,
+			JSON.stringify({ before: scrolled, after: scrolledAfter }),
+		);
+		/* Escape cancels: no write, and the order the drop left stands. */
+		const beforeCancel = dragged.order;
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "rawKeyDown",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await cdp.send("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+		});
+		await releaseAt(autoDrag.x, autoDrag.y);
+		await wait(PINNED_SETTLE_MS);
+		const cancelled = await readPinnedPanel();
+		check(
+			"a cancelled drag writes nothing at all",
+			JSON.stringify(cancelled.order) === JSON.stringify(beforeCancel) &&
+				cancelled.indicator === null,
+			JSON.stringify({ before: beforeCancel, after: cancelled.order }),
+		);
+		/*
+		 * AND A DROP, AT A SCROLLED LIST (agent review round 1, R3), taken after the cancel
+		 * above so the frames are unaffected: the post-commit correction anchored on the row
+		 * BELOW the moved one, and a downward drop moves that anchor too, so a plain
+		 * correction shifted the list by a whole row after the drop. A reorder now stands the
+		 * correction down, and the reading is the scroller across the drop: it has to stay
+		 * where the reader left it.
+		 */
+		const secondMany = (await readPinnedPanel()).rows[0];
+		const dropDrag = await dragGrip(
+			secondMany.id,
+			scroller.y + scroller.h - 6,
+			{
+				steps: 12,
+			},
+		);
+		await wait(700);
+		const scrolledBeforeDrop = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const orderBeforeDrop = (await readPinnedPanel()).order;
+		await releaseAt(dropDrag.x, dropDrag.y);
+		await wait(PINNED_SETTLE_MS + 300);
+		const scrolledAfterDrop = await cdp.evaluate(
+			"document.querySelector('[data-sidebar-region=\"scroller\"]').scrollTop",
+		);
+		const droppedMany = await readPinnedPanel();
+		check(
+			"a drop in a scrolled list leaves the scroll where the reader left it (R3)",
+			Math.abs(scrolledAfterDrop - scrolledBeforeDrop) <= 40 &&
+				droppedMany.indicator === null,
+			JSON.stringify({
+				before: scrolledBeforeDrop,
+				after: scrolledAfterDrop,
+				order: droppedMany.order,
+			}),
+		);
+		note(
+			"the scrolled drop",
+			JSON.stringify({
+				scrollBefore: scrolledBeforeDrop,
+				scrollAfter: scrolledAfterDrop,
+				orderBefore: orderBeforeDrop,
+				orderAfter: droppedMany.order,
+			}),
+		);
+
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				state: "many",
+				pins: many.order.length,
+				scrollerTop: scroller.y,
+				scrollerHeight: scroller.h,
+				scrolledBefore: scrolled,
+				scrolledAfter,
+			}),
+		);
+	}
+
+	if (PINNED_STATE === "keys") {
+		/*
+		 * THE KEYBOARD'S OWN PATH (round 1: QA's Q1 and UX's U3/R6/Q3), read where it is
+		 * cheap and no frame is needed. Two claims, both about what happens AFTER the
+		 * chord that moves a row:
+		 *
+		 * (a) THE CARET (Q1). After a move the caret has to be on the row's OWN button,
+		 *     because that is the arrow ring's stop list - parked on the pin mark it left
+		 *     the reader outside the ring, and the next bare arrow restarted at the
+		 *     panel's first stop (the `Agents` disclosure, measured by QA).
+		 * (b) THE REPEAT (U3/R6/Q3). A live region is read from its MUTATIONS: a second
+		 *     identical sentence inside the dwell has to be a fresh mutation, which is
+		 *     what the clear-then-set-across-a-frame does.
+		 */
+		await setWidth(280);
+		const keysBefore = await readPinnedPanel();
+		check(
+			"the keyboard slice has three pins to walk",
+			keysBefore.order.length === 3,
+			JSON.stringify(keysBefore.order),
+		);
+		const walker = keysBefore.order[1];
+		await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-session-row="${walker}"] [data-chat-row]');
+			row.focus();
+			return document.activeElement === row;
+		})()`);
+		/* Count the region's mutations, so "is the same sentence audible twice" is a
+		   number rather than a promise. */
+		await cdp.evaluate(
+			"(() => {\n\t\t\tconst live = document.querySelector('[data-sidebar-pin-order-announcement]');\n\t\t\twindow.__pinMutations = 0;\n\t\t\tif (live === null) return false;\n\t\t\twindow.__pinObserver?.disconnect();\n\t\t\twindow.__pinObserver = new MutationObserver(() => { window.__pinMutations += 1; });\n\t\t\twindow.__pinObserver.observe(live, { childList: true, characterData: true, subtree: true });\n\t\t\treturn true;\n\t\t})()",
+		);
+		const chord = async (key, shift) => {
+			for (const type of ["rawKeyDown", "keyUp"]) {
+				await cdp.send("Input.dispatchKeyEvent", {
+					type,
+					key,
+					code: key === "ArrowUp" ? "ArrowUp" : "ArrowDown",
+					modifiers: shift ? 10 : 0,
+					windowsVirtualKeyCode: key === "ArrowUp" ? 38 : 40,
+				});
+			}
+			await wait(120);
+		};
+		await chord("ArrowUp", true);
+		const afterChord = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				const row = el?.closest?.("[data-session-row]");
+				return {
+					tag: el?.tagName ?? null,
+					chatRow: el?.hasAttribute?.("data-chat-row") ?? false,
+					pinMark: el?.hasAttribute?.("data-session-pin") ?? false,
+					rowId: row ? row.getAttribute("data-session-row") : null,
+				};
+			})()`,
+		);
+		check(
+			"a chord leaves the caret on the moved row's own button (Q1)",
+			afterChord.chatRow === true && afterChord.rowId === walker,
+			JSON.stringify(afterChord),
+		);
+		/* The bare arrow continues the walk from that row: the next stop is a row in the
+		   SAME section, never the panel's first stop. `afterArrow` reads the caret again
+		   just before the arrow, so the check's own detail names the row the walk started
+		   from and the one it landed on (Q1). */
+		const afterArrow = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				const row = el?.closest?.("[data-session-row]");
+				return {
+					tag: el?.tagName ?? null,
+					chatRow: el?.hasAttribute?.("data-chat-row") ?? false,
+					rowId: row ? row.getAttribute("data-session-row") : null,
+				};
+			})()`,
+		);
+		await chord("ArrowDown", false);
+		const walked = await cdp.evaluate(
+			`(() => {
+				const el = document.activeElement;
+				return { tag: el?.tagName ?? null, chatRow: el?.hasAttribute?.("data-chat-row") ?? false, id: el?.closest?.("[data-session-row]")?.getAttribute("data-session-row") ?? null };
+			})()`,
+		);
+		check(
+			"a bare arrow after the chord walks on inside the list (Q1)",
+			walked.chatRow === true && walked.id !== walker,
+			JSON.stringify({ before: afterArrow, after: walked }),
+		);
+		/* The boundary sentence, twice inside the dwell: the SECOND press has to reach the
+		   region as its own mutation (U3/R6/Q3). The row is walked to the section's top
+		   first, so both presses are boundary presses. */
+		for (let i = 0; i < 8; i += 1) await chord("ArrowUp", true);
+		const boundaryMutations = await cdp.evaluate(
+			"(() => { const n = window.__pinMutations; window.__pinMutations = 0; return n; })()",
+		);
+		await chord("ArrowUp", true);
+		await wait(400);
+		await chord("ArrowUp", true);
+		await wait(400);
+		const repeatMutations = await cdp.evaluate("window.__pinMutations");
+		check(
+			"the boundary answer reaches the region on a repeat press (U3/R6/Q3)",
+			boundaryMutations >= 1 && repeatMutations >= 1,
+			JSON.stringify({
+				toBoundary: boundaryMutations,
+				repeatInsideDwell: repeatMutations,
+				announcement: await cdp.evaluate(
+					"document.querySelector('[data-sidebar-pin-order-announcement]').textContent",
+				),
+			}),
+		);
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({
+				state: "keys",
+				caret: afterChord,
+				walked,
+				mutationsToBoundary: boundaryMutations,
+				mutationsOnRepeat: repeatMutations,
+			}),
+		);
+	}
+
+	if (PINNED_STATE === "single") {
+		/*
+		 * A SINGLE PIN: the state in which both move controls are inapplicable at once, and
+		 * the one the boundary sentence speaks about ("the only pinned chat"). The pin is the
+		 * stand-in's, for the many-pins state's reason.
+		 */
+		/*
+		 * AT 280, DELIBERATELY, so the frame says which rule hid the grip: at the panel's
+		 * 260 default BOTH rules would (the shed and the count), and the state this pair of
+		 * frames is evidence for is the COUNT one (design D3) - one row, so no second slot.
+		 */
+		await setWidth(280);
+		await parkPointer(cdp);
+		const single = await readPinnedPanel();
+		const singleFrame = await captureSettled(cdp, "single-pin");
+		note("frame", JSON.stringify({ label: "single-pin", ...singleFrame }));
+		check(
+			"the section is down to one pin, and both move controls are inapplicable",
+			single.order.length === 1,
+			JSON.stringify(single.order),
+		);
+		await hoverRow(single.order[0]);
+		const singleHover = await readPinnedPanel();
+		const singleRow = singleHover.rows[0];
+		const singleHoverFrame = await captureSettled(cdp, "single-pin-hover");
+		note(
+			"frame",
+			JSON.stringify({ label: "single-pin-hover", ...singleHoverFrame }),
+		);
+		/*
+		 * THE GRIP IS NOT OFFERED WITH ONE PIN (round 1, design D3; UX NIT1 corrected the
+		 * README's claim about it). With one row there is no second slot a drop could land
+		 * on - measured, a one-row drag can be started, always lands on slot 0 and writes
+		 * nothing - so the handle was an affordance for a gesture that cannot change
+		 * anything. The PAIR stays: it still answers with the boundary sentence, which is
+		 * the sentence this state's frame is about.
+		 */
+		check(
+			"the only pin draws its two arrows inapplicable and offers no grip",
+			singleRow.grip === null &&
+				singleRow.up === true &&
+				singleRow.down === true,
+			JSON.stringify(singleRow),
+		);
+		note(
+			"pinned-reorder geometry",
+			JSON.stringify({ state: "single", pins: single.order.length }),
+		);
+	}
+
+	return [];
+}
+
 async function scenePins(cdp) {
 	const hello = await verb(cdp, "hello");
 	check(
@@ -14795,6 +16643,13 @@ async function sceneApprovalBadges(cdp) {
 	 * audit. Same function, both slots.
 	 */
 	const reading = (label, ok, text) => check(label, ok, text, text);
+	/*
+	 * The count staged for the three-digit state below. 128 is the smallest three-digit
+	 * number that is not a round one, so a frame that renders it cannot be mistaken for
+	 * a placeholder or a capped "99+", and it is well past the consent queue's own cap
+	 * of 16 - which is what makes the state one only the seam can produce.
+	 */
+	const THREE_DIGIT_COUNT = 128;
 	const hello = await verb(cdp, "hello");
 	reading(
 		"the renderer reports this run's frames directory",
@@ -14829,15 +16684,57 @@ async function sceneApprovalBadges(cdp) {
 		 */
 		let conversation = null;
 		if (BACKEND) {
-			await verb(cdp, "press", {
-				selector: '[data-tour-tag="chat-all-chats"]',
-			});
-			await verb(cdp, "press", {
-				selector: '[data-tour-tag="chat-session-row"]',
-			});
+			/*
+			 * A CONVERSATION HAS TO BE OPEN for the header half, and the app's own path to
+			 * one is three steps: the run's backend must HAVE one, the list must paint its
+			 * row, and the row must be pressed. This block got it wrong twice - the press
+			 * `[data-tour-tag="chat-all-chats"]` had no home in `src/` at this head, so it
+			 * threw and took the whole `--backend` half down with it (QA round 1, Q4), and
+			 * a row that has not painted yet cannot be pressed, so a merely GUARDED press
+			 * still left `activeSessionId: null` and the header half unreachable while the
+			 * run looked fine (QA round 2, Q5). The shape now is the one the file's newer
+			 * scenes already use (`sceneHitZones`, `sceneComposer` - named rather than cited
+			 * by line, because this file moved under those citations twice in review):
+			 * create the conversation on this run's own backend, press the disclosure only if
+			 * the app rendered it, then WAIT for the row and press it.
+			 */
+			const created = await createBackendSession();
+			note("a conversation on this run's own backend", JSON.stringify(created));
+			if (await drawnSelector(cdp, '[data-tour-tag="chat-all-chats"]')) {
+				await verb(cdp, "press", {
+					selector: '[data-tour-tag="chat-all-chats"]',
+				});
+			}
+			const rowSelector = '[data-tour-tag="chat-session-row"]';
+			let rowPressed = false;
+			const rowDeadline = Date.now() + 20_000;
+			while (Date.now() < rowDeadline) {
+				if (await drawnSelector(cdp, rowSelector)) {
+					await verb(cdp, "press", { selector: rowSelector });
+					rowPressed = true;
+					break;
+				}
+				await wait(500);
+			}
+			await wait(600);
 			const live = await verb(cdp, "state");
 			conversation = live.activeSessionId ?? null;
 			note("state (chat, conversation open)", JSON.stringify(live));
+			/*
+			 * THE CLAIM IS THE OPEN, NOT THE PRESS (review round 3, F8): a press that lands
+			 * on a row the app has not wired yet still leaves `activeSessionId` null, and the
+			 * conversation-gated header claims are then skipped by their own guards while
+			 * this reading reports success. And the text is the READING rather than the
+			 * failure, because `reading` prints its third argument on PASS as well as on
+			 * FAIL (review round 3, F9).
+			 */
+			reading(
+				"the conversation row opened, so the header half has something to read",
+				rowPressed && conversation !== null,
+				`row ${
+					rowPressed ? "pressed" : "never appeared within 20s"
+				}, activeSessionId ${conversation ?? "null"}`,
+			);
 		} else {
 			note(
 				"no conversation",
@@ -14941,8 +16838,8 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify({ badge: drawn.railBadge, name: drawn.railName }),
 		);
 		reading(
-			"the badge does not move the rail's label, and the row is still 32px",
-			drawn.railButton.height === 32 &&
+			"the badge does not move the rail's label, and the row is still 30px",
+			drawn.railButton.height === 30 &&
 				(quiet.railButton === null ||
 					quiet.railButton.height === drawn.railButton.height) &&
 				(quiet.railLabel === null || quiet.railLabel.x === drawn.railLabel.x),
@@ -15097,18 +16994,29 @@ async function sceneApprovalBadges(cdp) {
 
 		/*
 		 * 5. COLLAPSED. The rail's own geometry is the risky half: a 16px badge cannot sit
-		 * outside a 48px rail, and the offset has to clear the 16px glyph inside a 32px
+		 * outside a 56px rail, and the offset has to clear the 16px glyph inside a 30px
 		 * button. The numbers are the claim; the frame is the picture of it.
+		 *
+		 * THE GEOMETRY READINGS HERE WERE RE-DERIVED FROM THE TREE (2026-09-30), and the
+		 * reason is the repo's own: the scene outlived the layout it described. It read
+		 * the strip as 48px and the row as 32px when this set's badge work ran, and read
+		 * the rail's container as a `nav`- `closest('nav')` matched nothing on today's
+		 * tree, so `railWidth`/`railEdge` were `null` and every clearance claim below was
+		 * a comparison against nothing. The strip is 56px and the row 30px now (the
+		 * mount the driver reads is `[data-sidebar-shell]` docked and
+		 * `[data-sidebar-strip]` collapsed); the readings are corrected, the claims are
+		 * the same claims.
 		 */
 		await verb(cdp, "press", { selector: '[aria-label="Collapse sidebar"]' });
 		await wait(400);
 		const collapsed = await readApprovalBadges(cdp);
 		note("badges (three pending, rail collapsed)", JSON.stringify(collapsed));
 		reading(
-			"the collapsed rail is 48px and the badge stays inside it",
-			collapsed.railWidth === 48 &&
+			"the collapsed rail is 56px and the badge stays inside it",
+			collapsed.railWidth === 56 &&
 				collapsed.railBadge !== null &&
-				collapsed.railBadge.right <= 48 &&
+				collapsed.railEdge !== null &&
+				collapsed.railBadge.right <= collapsed.railEdge - 1 &&
 				collapsed.railBadge.x >= 0,
 			JSON.stringify({ rail: collapsed.railWidth, badge: collapsed.railBadge }),
 		);
@@ -15118,10 +17026,11 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify(collapsed.railName),
 		);
 		reading(
-			"the collapsed row is still a 32px square inside the 48px rail",
-			collapsed.railButton.height === 32 &&
+			"the collapsed row is still a 30px row inside the 56px rail",
+			collapsed.railButton.height === 30 &&
 				collapsed.railButton.x >= 0 &&
-				collapsed.railButton.right <= 48,
+				collapsed.railEdge !== null &&
+				collapsed.railButton.right <= collapsed.railEdge - 1,
 			JSON.stringify(collapsed.railButton),
 		);
 		/*
@@ -15190,7 +17099,7 @@ async function sceneApprovalBadges(cdp) {
 		await wait(300);
 		reading(
 			"the rail expands again for the next state",
-			(await readApprovalBadges(cdp)).railWidth === 220,
+			(await readApprovalBadges(cdp)).railWidth === 260,
 			`rail width ${(await readApprovalBadges(cdp)).railWidth}`,
 		);
 
@@ -15232,52 +17141,68 @@ async function sceneApprovalBadges(cdp) {
 			JSON.stringify({ badge: crowdedCollapsed.railBadgeText }),
 		);
 		/*
-		 * AND THE MARK DOES NOT REACH BACK OVER THE GLYPH, which is the claim the cap
-		 * used to be asked to make and cannot: `9+` and `13` are the same two
-		 * characters, so the width a cap saves is nil for every count this queue can
-		 * hold. What saves it is the VERTICAL offset: the badge's bottom edge must land
-		 * at or above the glyph's top edge, which at `-top-2` it does.
-		 */
-		/*
 		 * WHAT THE TWO-DIGIT MARK DOES TO THE ICON, stated as measurements rather than
 		 * as a promise it cannot keep. At two characters the pill is ~25px wide and its
 		 * left edge reaches back over the icon's crown, exactly as the chat header's
-		 * badge crosses its own trigger's glyph - so the claim here is the reason the
-		 * collapse is safe there: the badge carries a `ring-2`, and the ring's 2px of
-		 * outward paint must stay inside the rail's own 1px border. The badge's box is
-		 * allowed to kiss the glyph; the rail's edge is not allowed to eat the mark.
+		 * badge crosses its own trigger's glyph. The QUIET register changed what this
+		 * claim is about (operator restyle, 2026-09-30): the mark no longer carries a
+		 * `ring-2`, so its own box is its whole boundary and the rail's edge may not
+		 * eat it — while the numeral's ink, not any edge, is what keeps the count
+		 * legible (contrast-contract's `rail approval badge (quiet)` row).
 		 */
 		reading(
-			"the two-digit mark and its ring stay inside the rail's edge",
+			"the two-digit mark stays inside the rail's edge",
 			crowdedCollapsed.railBadge !== null &&
 				crowdedCollapsed.railEdge !== null &&
-				crowdedCollapsed.railBadge.right + 2 <= crowdedCollapsed.railEdge - 1,
+				crowdedCollapsed.railBadge.right <= crowdedCollapsed.railEdge - 1,
 			JSON.stringify({
 				badge: crowdedCollapsed.railBadge,
 				railEdge: crowdedCollapsed.railEdge,
-				ringClearance:
+				clearance:
 					crowdedCollapsed.railBadge !== null &&
 					crowdedCollapsed.railEdge !== null
-						? crowdedCollapsed.railEdge - (crowdedCollapsed.railBadge.right + 2)
+						? crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right
 						: null,
 			}),
 		);
+		/*
+		 * THE MARK'S PAINT, which is the whole of the restyle, read from the computed
+		 * style rather than from a class: the ring and the border that used to BE the
+		 * boundary are gone (`boxShadow: none`, `border-width: 0px`), and the numeral
+		 * is the quiet register's — `text-meta-sm` (11px) at weight 400 in `ink-dim`,
+		 * where the old mark was a 12px medium `ink`. A background still paints, so
+		 * the shape is a subtle step and not nothing.
+		 */
 		reading(
-			"and the two-digit mark crosses the icon by no more than the ring it carries",
-			crowdedCollapsed.railBadge !== null &&
-				crowdedCollapsed.railIcon !== null &&
-				crowdedCollapsed.railBadge.y + crowdedCollapsed.railBadge.height <=
-					crowdedCollapsed.railIcon.y + 2,
+			"the mark is borderless and ringless: its box is its whole boundary",
+			crowdedCollapsed.railBadgeStyle !== null &&
+				crowdedCollapsed.railBadgeStyle.boxShadow === "none" &&
+				Number.parseFloat(crowdedCollapsed.railBadgeStyle.borderTopWidth) === 0,
+			JSON.stringify(crowdedCollapsed.railBadgeStyle),
+		);
+		reading(
+			"the numeral is the count family's: 11px, weight 400, ink-dim on elevated",
+			crowdedCollapsed.railBadgeStyle !== null &&
+				crowdedCollapsed.railBadgeStyle.fontSize === "11px" &&
+				crowdedCollapsed.railBadgeStyle.fontWeight === "400" &&
+				crowdedCollapsed.railBadgeStyle.color ===
+					crowdedCollapsed.railInkDimRgb &&
+				crowdedCollapsed.railBadgeStyle.backgroundColor ===
+					crowdedCollapsed.railElevatedRgb,
 			JSON.stringify({
-				badge: crowdedCollapsed.railBadge,
-				glyph: crowdedCollapsed.railIcon,
+				fontSize: crowdedCollapsed.railBadgeStyle?.fontSize ?? null,
+				fontWeight: crowdedCollapsed.railBadgeStyle?.fontWeight ?? null,
+				color: crowdedCollapsed.railBadgeStyle?.color ?? null,
+				inkDim: crowdedCollapsed.railInkDimRgb,
+				background: crowdedCollapsed.railBadgeStyle?.backgroundColor ?? null,
+				elevated: crowdedCollapsed.railElevatedRgb,
 			}),
 		);
 		reading(
-			"and the capped mark still clears the rail's edge",
+			"and the two-digit mark still clears the rail's edge",
 			crowdedCollapsed.railEdge !== null &&
 				crowdedCollapsed.railBadge !== null &&
-				crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right >= 2,
+				crowdedCollapsed.railEdge - crowdedCollapsed.railBadge.right >= 1,
 			JSON.stringify({
 				railEdge: crowdedCollapsed.railEdge,
 				badgeRight: crowdedCollapsed.railBadge?.right ?? null,
@@ -15341,6 +17266,42 @@ async function sceneApprovalBadges(cdp) {
 			);
 			await captureSettled(cdp, `approval-badges-cleared-${suffix}`);
 		}
+
+		/*
+		 * 6. THREE DIGITS, the third state the operator asked to see and the one the
+		 * queue itself cannot reach: the consent queue caps at 16, so no live run draws
+		 * a three-digit count on this mark. It is staged through the armed dev driver's
+		 * `stageLiveConsents` verb - pending REQUESTS published through the store's own
+		 * path, granting and deciding nothing - so the numeral, the mark's geometry and
+		 * the row's accessible name are all the shipped code, on a synthetic input.
+		 * DISCLOSED AS THE SEAM: this is the only state in this scene that a real run
+		 * does not produce, and it is why the verb exists (QA round 1, Q1: the verb had
+		 * no caller, so the README claimed a three-digit frame the instrument could not
+		 * reach).
+		 *
+		 * THE THEME ENDS QUIET AGAIN. The staged snapshot is replaced by a zero-count
+		 * one, because the next theme's first claim is that nothing pending draws
+		 * nothing - made about a quiet rail, not about the leak from this step.
+		 */
+		await verb(cdp, "stageLiveConsents", { count: THREE_DIGIT_COUNT });
+		await waitForBadge(cdp, THREE_DIGIT_COUNT);
+		const threeDigits = await readApprovalBadges(cdp);
+		note("badges (three digits, staged)", JSON.stringify(threeDigits));
+		reading(
+			"a three-digit count renders, uncapped, inside the rail's edge",
+			threeDigits.railBadgeText === String(THREE_DIGIT_COUNT) &&
+				threeDigits.railBadge !== null &&
+				threeDigits.railEdge !== null &&
+				threeDigits.railBadge.right <= threeDigits.railEdge - 1,
+			JSON.stringify({
+				text: threeDigits.railBadgeText,
+				badge: threeDigits.railBadge,
+				railEdge: threeDigits.railEdge,
+			}),
+		);
+		await captureSettled(cdp, `approval-badges-three-digits-${suffix}`);
+		await verb(cdp, "stageLiveConsents", { count: 0 });
+		await waitForBadge(cdp, 0);
 	}
 }
 
@@ -15354,6 +17315,18 @@ async function sceneApprovalBadges(cdp) {
  */
 function readApprovalBadges(cdp) {
 	return cdp.evaluate(`(() => {
+		/*
+		 * The resolved ROLE values, so the paint assertions below compare the mark's
+		 * computed colour against the token it is supposed to wear rather than against
+		 * "some non-empty colour" (review round 1, F3): a regression to text-ink or to a
+		 * transparent background has to FAIL, not pass on a length check.
+		 */
+		const hexToRgb = (hex) => {
+			const c = hex.trim().replace('#', '');
+			if (c.length !== 6) return null;
+			return 'rgb(' + [0, 2, 4].map((i) => parseInt(c.slice(i, i + 2), 16)).join(', ') + ')';
+		};
+		const rootStyle = getComputedStyle(document.documentElement);
 		const box = (el) => {
 			if (!el) return null;
 			const r = el.getBoundingClientRect();
@@ -15366,7 +17339,19 @@ function readApprovalBadges(cdp) {
 			};
 		};
 		const railButton = document.querySelector('[data-tour-tag="nav-item-browser"]');
-		const rail = railButton ? railButton.closest('nav') : null;
+		/*
+		 * THE RAIL'S OWN CONTAINER, and it is NOT a nav: the sidebar renders
+		 * [data-sidebar-shell] docked and [data-sidebar-strip] collapsed, and
+		 * this read used closest('nav'), which had matched nothing since the
+		 * element changed - so railWidth/railEdge were null and every clearance
+		 * reading below was a comparison against nothing. The root cause was a
+		 * driver left behind by the tree it photographs; the readings are
+		 * re-derived, not the claims.
+		 */
+		const rail = railButton
+			? (railButton.closest('[data-sidebar-shell]') ??
+				railButton.closest('[data-sidebar-strip]'))
+			: null;
 		const railBadge = railButton
 			? railButton.querySelector('[data-tour-tag="nav-browser-badge"]')
 			: null;
@@ -15399,6 +17384,31 @@ function readApprovalBadges(cdp) {
 			),
 			railBadge: box(railBadge),
 			railBadgeText: railBadge ? railBadge.textContent.trim() : null,
+			railInkDimRgb: hexToRgb(rootStyle.getPropertyValue('--lo-ink-dim')),
+			railElevatedRgb: hexToRgb(rootStyle.getPropertyValue('--lo-elevated')),
+			/*
+			 * THE MARK'S OWN PAINT (operator restyle, 2026-09-30), read from the
+			 * computed style rather than from the class string: a class is a claim
+			 * about intent, the computed value is what the platform draws. The
+			 * quiet register removed the border and the ring, so borderTopWidth and
+			 * boxShadow are the two facts that say the ring is gone, and
+			 * fontSize/fontWeight/color are the subtler numeral.
+			 */
+			railBadgeStyle: railBadge
+				? (() => {
+						const s = getComputedStyle(railBadge);
+						return {
+							borderTopWidth: s.borderTopWidth,
+							borderTopStyle: s.borderTopStyle,
+							boxShadow: s.boxShadow,
+							backgroundColor: s.backgroundColor,
+							color: s.color,
+							fontSize: s.fontSize,
+							fontWeight: s.fontWeight,
+							radius: s.borderTopLeftRadius,
+						};
+					})()
+				: null,
 			railName: railButton ? railButton.getAttribute('aria-label') : null,
 			railCurrent: railButton
 				? railButton.getAttribute('aria-current') !== null
@@ -17520,6 +19530,7 @@ async function sceneBtwAside(cdp) {
 					 * on the value, because the value is no longer in the class: the
 					 * measure resolves the --lo-chat-measure property, so that one number
 					 * serves the transcript and the composer together, and this selector used to
+
 					 * spell max-w-[900px]. It stopped matching when the value moved into
 					 * the property, which read as "the composer has no frame" - the two
 					 * readings this block exists to compare would both have been null and
@@ -17530,6 +19541,7 @@ async function sceneBtwAside(cdp) {
 					 * inside the template literal the rig sends to the page, so a backtick here
 					 * ends the string and the file stops parsing - which is exactly what the
 					 * first version of this comment did.
+
 					 */
 					const shared = Array.from(
 						document.querySelectorAll('[class*="chatcol:max-w-"]'),
@@ -25154,9 +27166,19 @@ async function sceneSidebarLazyChats(cdp) {
 		const label = await cdp.evaluate(
 			`(() => { const node = document.querySelector('[data-scope-more="team:${LAZY_GROUP}"]'); return node === null ? null : (node.textContent || "").trim(); })()`,
 		);
+		/*
+		 * THE LEADING CLAUSE, not the whole string (review round 1, F1): the control
+		 * renders `Show N more chats` now and may carry the position tail beside it
+		 * (` · X of Y`, `entityMore`), so the exact equality this scene shipped with
+		 * pins copy the app no longer draws. What the round is about is the COUNT the
+		 * press will add - the leading clause states it, and a stale tail may change
+		 * with it rather than fail a scene on a copy edit.
+		 */
 		check(
 			"Show more states the rows the press will ADD, not the page size (D7)",
-			label === `Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more`,
+			String(label ?? "").startsWith(
+				`Show ${LAZY_GROUP_TOTAL - LAZY_GROUP_PAGE * 2} more chats`,
+			),
 			`the control reads ${JSON.stringify(label)} with ${LAZY_GROUP_PAGE * 2} of ${LAZY_GROUP_TOTAL} drawn`,
 		);
 		const lastPress = await verb(cdp, "press", {
@@ -31728,6 +33750,11 @@ async function main() {
 			"--scene btw-aside needs --backend: the aside is answered by the daemon (sessions.aside) and its answer streams over the session's own SSE frames, so a run with no backend photographs an app that can never be asked anything",
 		);
 	}
+	if (SCENE === "pinned-reorder" && BACKEND === null) {
+		throw new Error(
+			"--scene pinned-reorder needs --backend: the section's rows and its reorder both come from a catalogue, and a run with no backend has no pin to drag",
+		);
+	}
 	if (SCENE === "pins-scroll" && BACKEND === null) {
 		throw new Error(
 			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
@@ -32001,6 +34028,7 @@ async function main() {
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
 			else if (SCENE === "approval-badges") await sceneApprovalBadges(cdp);
 			else if (SCENE === "pins") await scenePins(cdp);
+			else if (SCENE === "pinned-reorder") await scenePinnedReorder(cdp);
 			else if (SCENE === "pins-scroll") await scenePinsScrolled(cdp);
 			else if (SCENE === "pins-search") await scenePinsSearch(cdp);
 			else if (SCENE === "mentions") await sceneMentions(cdp);

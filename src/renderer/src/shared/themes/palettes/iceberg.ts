@@ -127,6 +127,12 @@ export const iceberg: ThemeDefinition = {
 		inkDisabled: "#A0A4B8",
 
 		hairline: "#CBCCD2",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.57:1 there against `hairline`'s 1.23:1.
+
+		hairlineStrong: "#B3B5BE",
 		// Derived. The old theme bounded inputs at 15 percent black, about 1.4:1.
 		borderControl: "#787D97",
 

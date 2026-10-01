@@ -54,6 +54,40 @@ export const HUB_STORIES = [
 		"agent-hub-page--load-failed",
 		"a refused list read is one read, not a retry loop",
 	],
+	/*
+	 * The Teams composition (the hub UX revamp). The three stories pin the reads
+	 * the tab and the scope chips must NOT multiply: entering an org scope costs
+	 * ONE `org_teams.list` (the tab's count and the roster share it) and a tab
+	 * switch costs none; the public scope's Teams view costs ZERO team reads,
+	 * because teams are organization-only and there is no public team read.
+	 */
+	[
+		"agent-hub-page--org-scope-selected",
+		"org scope (entered from the signed-in public page): ONE org_agents.list and ONE org_teams.list",
+	],
+	[
+		"agent-hub-page--org-teams",
+		"org scope, Teams tab opened: the same reads as the agents tab, no extra teams read",
+	],
+	/*
+	 * The Teams summary rows (2026-09-30). The rows show fields `org_teams.list`
+	 * already returned, and opening one is client-only - the `instructions` brief
+	 * is detail-only and NOT fetched - so neither the nine-row roster nor the same
+	 * roster with three rows pressed open may add a read: ONE `org_teams.list`,
+	 * ZERO `org_team.get`.
+	 */
+	[
+		"agent-hub-page--org-teams-varied",
+		"org scope, nine team rows rendered: ONE org_teams.list and ZERO org_team.get",
+	],
+	[
+		"agent-hub-page--org-teams-expanded",
+		"org scope, three of the nine team rows pressed open: still ONE org_teams.list and ZERO org_team.get (expanding is client-only)",
+	],
+	[
+		"agent-hub-page--teams-public-scope",
+		"public scope, Teams tab opened: no team read at all (ZERO org_teams.list)",
+	],
 ];
 
 const ARGS = process.argv.slice(2);

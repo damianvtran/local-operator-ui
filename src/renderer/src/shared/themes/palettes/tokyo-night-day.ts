@@ -131,6 +131,12 @@ export const tokyoNightDay: ThemeDefinition = {
 		inkDisabled: "#8990B3",
 
 		hairline: "#C5C9DB",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.51:1 there against `hairline`'s 1.18:1.
+
+		hairlineStrong: "#ADB2C9",
 		// The generated comment blue, which clears the 3:1 structural floor (3.31:1 on
 		// the binding ground) where it could not clear 4.5 as text.
 		borderControl: "#6172B0",
