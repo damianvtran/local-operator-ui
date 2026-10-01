@@ -757,7 +757,7 @@ test("an unpaired daemon gets zero `skills.list` reads across a fresh mount and 
 	await act(async () => {
 		paired.unmount();
 	});
-	delete window.api;
+	window.api = undefined;
 });
 
 /* ------------------------------------------------------------------ */
