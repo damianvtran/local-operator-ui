@@ -2945,6 +2945,17 @@ const BRANCH_RECORDS = [
 	 * name to the quoting ledger.
 	 */
 	"partialCaptureContinuityRestampNote",
+	/*
+	 * AND BY THE FOLD ITSELF, once - which is the list earning its keep. The
+	 * vocabulary round's note moves `scripts/` only and takes no frame, and the
+	 * fold onto `origin/main` (443ad13c70) took main's manifest whole exactly as
+	 * the entry above predicts: the note was gone from the tree and nothing else
+	 * noticed. Re-adding it is not enough on its own - the point of naming it here
+	 * is that the NEXT fold cannot drop it in silence - so the registration lands
+	 * as its own `scripts/` commit, and the docs-only re-stamp that follows derives
+	 * the pair from the tree that includes it.
+	 */
+	"runClosureVocabularyRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
