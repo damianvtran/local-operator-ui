@@ -270,9 +270,10 @@ printed one cap and **36** once they print three (the D1 A/B above), so the old
 `178` was 176 − 6 + 8. There is no third kind and no unexplained residue.
 The 273 is the archive row's own length: `px-2` 16 + icon 16 + `gap-2` 8 +
 label + `pl-6` 24 + chord ≈ 60 + `px-2` 16. `Unarchive conversation` is the
-widest label the menu draws, and its state measures the widest panel:
-**288 × 113** (`archived-row`), the two extra characters showing up exactly
-there; Fork's label (`Fork conversation`) is shorter than either chord row, so
+widest LABEL the menu draws, and its state measures **288 × 113**
+(`archived-row`), the two extra characters showing up exactly there — which is
+no longer the widest PANEL: that is the pinned five-row state at **296 × 184**
+(§ 2), where the Move rows' joined chords are wider than every label; Fork's label (`Fork conversation`) is shorter than either chord row, so
 it widens nothing. The floor exists so that a
 one-short-item menu is not cramped; the width above it is the content's. A menu
 padded to a width it does not use would be the chrome §5 deletes — and the two
@@ -420,7 +421,7 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 | open at the pointer, normal row | 3 rows - archive, pin, fork; chords on the first two, none on fork (#739) | reveal held, hover ground held | `pointer-open` |
 | the same, the pointer moved onto the first item | the same 3 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
 | open via keyboard (`ContextMenu` / `Shift+F10`) | the same 3 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
-| open at the pointer, pinned row in the moved-from section | **5 rows**: `Unpin conversation`, `Fork conversation`, `Move conversation up`, `Move conversation down` (both Move rows `aria-disabled` and boundary-inked at this row's ends, with the boundary sentence as their `title`) | the pair is drawn at rest (the mark is the state), with nothing else revealed | `pinned-row` (re-shot at #739's order and D1's joined caps: five rows in 296 × 184) |
+| open at the pointer, pinned row in the moved-from section | **5 rows**: `Archive conversation`, `Unpin conversation`, `Fork conversation`, `Move conversation up`, `Move conversation down` (both Move rows `aria-disabled` and boundary-inked at this row's ends, with the boundary sentence as their `title`) | the pair is drawn at rest (the mark is the state), with nothing else revealed | `pinned-row` (re-shot at #739's order and D1's joined caps: five rows in 296 × 184) |
 | `row.pinned === undefined` | **2 rows** (archive, fork); the pin row is withheld | row draws no pin control either | `pin-state-unknown` (273 × 77) |
 | `archiveEnabled` false | **2 rows** (pin, fork); the archive row is withheld | archive control absent | `archive-withheld` (246 × 77 - the widest-label-withheld state) |
 | the row is a never-sent draft's conversation (#739) | **2 rows** (archive, pin); Fork is **absent, not greyed** - the backend has no transcript to copy | the row reads `, not sent yet` | `fork-withheld` (273 × 81) |
@@ -844,7 +845,7 @@ app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520:
 |---|---|---|---|---|---|---|---|
 | anchor point | 140,369 | 140,369 | 12,371 | 140,362 | 140,297 | 140,401 | 140,369 |
 | panel | 273 × 113 at 142,369 | 273 × 113 at 142,369 | 273 × 113 at 14,370 | 288 × 113 at 142,362 | **296 × 184** at 142,297 | 273 × 77 at 142,401 | 246 × 77 at 142,369 |
-| items | 3 (archive, pin, fork) | 3 | 3 | 3 (`Unarchive conversation`) | **5** (`Unpin conversation`, `Fork conversation`, `Move conversation up`, `Move conversation down`) | 2 (archive, fork) | 2 (`Pin conversation`, fork) |
+| items | 3 (archive, pin, fork) | 3 | 3 | 3 (`Unarchive conversation`) | **5** (`Archive conversation`, `Unpin conversation`, `Fork conversation`, `Move conversation up`, `Move conversation down`) | 2 (archive, fork) | 2 (`Pin conversation`, fork) |
 | row | 255 × 32 at 12,340 | same (s2) | same (s2) | 255 × 32 at 12,333 (s4) | 255 × 32 at 12,268 (s1) | 255 × 32 at 12,372 (s3) | s2 |
 | ground | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` |
 | `data-state` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` |

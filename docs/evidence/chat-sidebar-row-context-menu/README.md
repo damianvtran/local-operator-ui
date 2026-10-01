@@ -64,8 +64,9 @@ up`, `Move conversation down`, `Fork conversation` - in **273 × 178**, up from 
 Move down`: the two Move rows print their chord through the joined sibling
 (`chatPinMoveCapJoined`) like the rows above them, which widens the menu's chord
 column past every label (273 → 296) and makes those rows a full chord row tall
-(33 → 36), and Fork has moved to row 3. Twenty-three of the twenty-four files are
-byte-identical to the previous take; this is the only state that draws either the
+(33 → 36), and Fork has moved to row 3. **Twenty-two** of the twenty-four files are
+byte-identical to the previous take (the pair that moved is the two
+`pinned-row` webps); this is the only state that draws either the
 Move pair or Fork beside it. The ordinary-row states do not draw the Move
 pair at all (`offersMove` is false unless the row is pinned and in the section the
 order belongs to), which is why their pixels are untouched by #743.

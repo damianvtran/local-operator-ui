@@ -3728,9 +3728,12 @@ export function ChatSidebar({
 	 */
 	// A first send that failed after allocation but before admission leaves a real
 	// but empty session. It is NOT hidden — it exists on the backend and hiding it
-	// would make the list lie — but an unfinished draft still holding its id is
-	// proof it never carried a message, so say so instead of showing it as an
-	// ordinary untitled chat.
+	// would make the list lie — but a draft still holding its id means no send has
+	// completed for it, so say so instead of showing it as an ordinary untitled
+	// chat. ("No send has completed" rather than the stronger "it never carried a
+	// message": `finishDraft` clears the draft on send COMPLETION, so a session
+	// whose first send is still in flight is drawn as unstarted for that window —
+	// the same caveat `forkable`'s own comment states.)
 	const unstarted = useMemo(
 		() =>
 			new Set(
@@ -5412,9 +5415,10 @@ export function ChatSidebar({
 				 * deleted arrow buttons used to carry; Fork qualifies because it is the only door
 				 * that names the ROW's conversation - neither `/fork` nor the palette can, as both
 				 * act on the pane's. A sixth act is admitted only by passing that test; otherwise
-				 * it replaces a row or finds another surface. The cap costs **273 × 178** at a
-				 * 280px sidebar, and around eight rows or ~280px is where the answer changes from
-				 * "grow" to "submenu or another surface". `scripts/chat-sidebar-row-menu.test.mjs`
+				 * it replaces a row or finds another surface. The cap costs **296 × 184** in its
+				 * widest state (a pinned row, where the Move rows draw their full chords) at a
+				 * 280px sidebar, and around eight rows or ~280px tall is where the answer changes
+				 * from "grow" to "submenu or another surface". `scripts/chat-sidebar-row-menu.test.mjs`
 				 * counts the items and pins their order, so a sixth is a failing assertion rather
 				 * than a quiet addition.
 				 */}
