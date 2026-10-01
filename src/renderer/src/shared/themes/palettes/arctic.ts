@@ -115,6 +115,9 @@ export const arctic: ThemeDefinition = {
 		// border (2:1 at most). Here it is 1.20:1 at its quietest.
 		hairline: "#33455C",
 
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.93:1 there against `hairline`'s 1.79:1.
+		hairlineStrong: "#384A61",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground
