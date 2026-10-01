@@ -327,9 +327,10 @@ app.setName("Local Operator");
  *
  * WHAT THIS CANNOT DO, stated where the assertion is: a detach that happens
  * after startup is not prevented by it. It guarantees the tile EXISTS at
- * launch; whether the record keeps presenting it is the OS's, and re-asserting
- * mid-life is deliberately out of scope here (see the PR for the probe
- * evidence on the one restore path that does work — an activation).
+ * launch; whether the record keeps presenting it is the OS's. The mid-life case
+ * belongs to `reassertDockParticipation` below, and the probe is what says which
+ * call heals it: a PLAIN activation does not clear the detach, the explicit
+ * dock-policy show call does.
  */
 const image = nativeImage.createFromPath(icon);
 if (process.platform === "darwin" && app.dock) {
@@ -358,10 +359,9 @@ if (process.platform === "darwin" && app.dock) {
  * mini-view/popup surfaces exist only in `normal` launches, which is why one
  * guard covers them.
  *
- * The dock-policy show call is idempotent for an app that is already regular and
- * is NOT
- * a window raise (see the startup block above for the same argument; the
- * raise-family scan's one-line allow covers this call too).
+ * The dock-policy show call is idempotent for an app that is already regular
+ * and is NOT a window raise (see the startup block above for the same
+ * argument; the raise-family scan's one-line allow covers this call too).
  *
  * WHAT THE PROBE SHOWED ABOUT THE ALTERNATIVE: a PLAIN activation does not clear
  * the detach — measured, `open -a` and `osascript … activate` both left a
@@ -3853,6 +3853,22 @@ app.on("window-all-closed", () => {
 			app.quit();
 			return;
 		}
+		/*
+		 * A CLOSE THAT ARRIVES DURING A QUIT IS THE QUIT'S OWN CLOSE, not the red
+		 * button, so the keep-active contract below does not describe it. The
+		 * operator's windowed first quit reaches here (measured, QA round 1 Q-1:
+		 * `All windows closed, but keeping app active (macOS platform)` is the last
+		 * line the first quit logs) and the completion belongs to `will-quit`'s pass,
+		 * whose continuation is the terminal that exits the process. Logged apart so
+		 * a post-mortem can tell the two closes apart.
+		 */
+		if (quitState.isQuitting()) {
+			logger.info(
+				"All windows closed as part of a quit in progress; will-quit owns the completion",
+				LogFileType.BACKEND,
+			);
+			return;
+		}
 		logger.info(
 			"All windows closed, but keeping app active (macOS platform)",
 			LogFileType.BACKEND,
@@ -3957,31 +3973,35 @@ app.on("will-quit", (event) => {
 		.then(() => {
 			clearTimeout(failsafe);
 			/*
-			 * `app.exit(0)`, NOT `app.quit()`, AND THIS LINE IS THE FIX (measured on
-			 * this machine, 2026-09-30, Electron 44.3.0, `scripts/exp-quit-trace`). A
-			 * quit that `will-quit` CANCELLED is not restarted by calling `app.quit()`
-			 * from this continuation: instrumented, the first quit reached
-			 * `will-quit` (prevented), the owned cleanup resolved, `app.quit()` ran —
-			 * and NO second `before-quit` was ever emitted (probe: `stop resolved`,
-			 * then silence until an EXTERNAL quit 20 s later). The app then sat running
-			 * with no window until the user quit a SECOND time, which is the operator's
-			 * report verbatim: "click to quit, it just closes the window, and you have
-			 * to click to quit again in the dock to actually close the app".
+			 * `app.exit(0)`, NOT `app.quit()`, AND THAT IS THE FIX.
 			 *
-			 * The second quit exits only because by then `isOwnedCleanupComplete()` is
-			 * true and `will-quit` no longer prevents — i.e. the work had already been
-			 * done by the first quit, and the first quit had no way to finish itself.
+			 * A quit that `will-quit` cancelled IS restarted by `app.quit()` from this
+			 * continuation — measured on this machine (2026-09-30, Electron 44.3.0) and
+			 * reproduced independently by review round 1's minimal probe: the second
+			 * quit emits its own `before-quit` and reaches `will-quit` again.
 			 *
-			 * WHY `exit` IS THE RIGHT TERMINAL HERE: the cleanup this continuation waited
-			 * on HAS run (the owned serve is stopped, `stop` resolved), the window is
-			 * already gone, and `before-quit`'s own session-cookie hold has already had
-			 * its pass in this quit. `app.exit` terminates unconditionally, and the
-			 * process-level `exit` handler (`emergencyStopOwned`, telemetry shutdown)
-			 * still fires. The failsafe above keeps its own `app.exit(1)`; the two now
-			 * agree on the mechanism, which is what makes the bound the only difference
-			 * between a clean and a failed exit.
+			 * WHAT WEDGES IS THAT SECOND `will-quit`, not the restart (review round 1,
+			 * M1; QA round 1, Q-1 — the operator's windowed first quit). When
+			 * `isOwnedCleanupComplete()` is STILL false on the re-entered pass — which is
+			 * the windowed state, where a mini-view or quick-send start can hold a
+			 * `startPromise` — the pass prevents the quit again, and the
+			 * `backendQuitPending` guard (already true) returns without arming anything.
+			 * The failsafe above was cleared when this continuation ran, so nothing is
+			 * left to finish the quit: the process sits windowless and silent until the
+			 * user quits a SECOND time, which is the operator's report verbatim: "click
+			 * to quit, it just closes the window, and you have to click to quit again in
+			 * the dock to actually close the app".
+			 *
+			 * `app.exit` terminates unconditionally, so this continuation cannot be
+			 * cancelled by the re-entry calling `app.quit()` provokes. The cleanup it
+			 * waited on HAS run (the owned serve is stopped, `stop` resolved), the window
+			 * is already gone, and `before-quit`'s session-cookie hold had its pass in the
+			 * first quit. `app.exit` still fires the process-level `exit` handler
+			 * (`emergencyStopOwned`, telemetry shutdown), and the failsafe above keeps its
+			 * own `app.exit(1)`, so the bound is the only difference between a clean and a
+			 * failed exit.
 			 */
-			app.quit();
+			app.exit(0);
 		})
 		.catch((error) => {
 			clearTimeout(failsafe);
@@ -4044,6 +4064,37 @@ app.on("before-quit", async (event) => {
 	 * its own cancellation (`./quit-state` owns why it is the only one).
 	 */
 	quitState.begin();
+
+	/*
+	 * THE WINDOW-CLOSE INTERCEPTIONS ARE STOOD DOWN HERE, IN THE SYNCHRONOUS PART
+	 * OF THIS HANDLER, BEFORE THE FIRST `await` (remediation round 1: QA round 1's
+	 * Q-1 and the operator's own report, then reproduced on an instrumented build
+	 * of this branch).
+	 *
+	 * ELECTRON CLOSES EVERY WINDOW THE MOMENT THIS LISTENER'S SYNCHRONOUS PART
+	 * RETURNS — it does not await the listener (measured: `will-quit` fires 0-2 ms
+	 * after a `before-quit` that awaits 1000 ms). The mini view's close handler
+	 * turns a close into a HIDE (`event.preventDefault()`), which is right for the
+	 * accidental close it was written for and fatal here: a refused close CANCELS
+	 * the whole quit, so `will-quit` is never reached at all, its owned-cleanup
+	 * fallback never runs, and the process sits alive with no window until the user
+	 * quits a SECOND time — the operator's report, and the instrumented trace:
+	 * `before-quit stop RESOLVED`, `All windows closed …`, then a hundred seconds of
+	 * silence and `will-quit entry` only on the second quit.
+	 *
+	 * The teardown below stands the same interception down, but it runs AFTER the
+	 * awaited owned-backend stop — seconds too late, and it is what the mini view's
+	 * own docstring already promises (`dispose()` … sets `disposed` first).
+	 * Everything in this block is synchronous, so none of it needs to wait.
+	 */
+	globalShortcut.unregisterAll();
+	miniViewRegistrar?.dispose();
+	quickSendWatcher?.stop();
+	miniView?.dispose();
+	if (windowLaunch.mode === "headless") {
+		launcherWatch?.stop();
+		armHeadlessExitDeadline("the app is quitting");
+	}
 	/*
 	 * Hold the quit for the browser host's stop, then let the ordinary pass
 	 * through: the stop settles or the budget expires, the hold asks for the quit
@@ -4062,23 +4113,36 @@ app.on("before-quit", async (event) => {
 	logger.info("App is about to quit", LogFileType.BACKEND);
 
 	/*
-	 * THE OWNED BACKEND'S STOP IS AWAITED ON THE HANDLER THAT CAN WAIT.
+	 * THE OWNED BACKEND'S STOP IS STARTED ON THE HANDLER THAT CAN WAIT; the
+	 * `will-quit` intercept above carries it whenever it is slower than the window
+	 * close.
 	 *
-	 * `will-quit` cannot await a listener, so it used to cancel the quit and
-	 * finish it from an async continuation — and MEASURED (2026-09-30, Electron
-	 * 44.3.0, instrumented) a quit that `will-quit` cancelled is NOT restarted by
-	 * `app.quit()` from that continuation: the owned cleanup resolved, `app.quit()`
-	 * ran, and no second `before-quit` was emitted, so the first quit left the
-	 * process running with no window until the user quit again (the operator's
-	 * report). The stop belongs here, where the quit can wait for it: by the time
-	 * `will-quit` runs, `isOwnedCleanupComplete()` is true and that handler simply
-	 * lets the quit through, so ONE quit exits.
+	 * ELECTRON DOES NOT AWAIT LISTENERS. Measured (2026-09-30, Electron 44.3.0, and
+	 * reproduced by review round 1's probes): a `before-quit` listener that awaits
+	 * 1000 ms still saw `will-quit` fire 0-2 ms later. So what the await below buys
+	 * is the stop being STARTED here and typically resolved before the quit reaches
+	 * `will-quit` — not a guarantee that it has. Every stop slower than the
+	 * window-close interval lands in `will-quit`'s fallback, which is why that
+	 * intercept stays and why ITS completion terminal is the one that has to be
+	 * reliable (review round 1, M1/M2).
 	 *
-	 * The bound is `will-quit`'s own failsafe, kept below for a stop that stops
-	 * resolving after this point.
+	 * A REJECTED STOP MUST NOT TAKE THE REST OF THE SHUTDOWN WITH IT (review round
+	 * 1, m1): there is no `unhandledRejection` handler under `src/main`, so an
+	 * unconfirmed exit would reject this listener and skip the park report, the
+	 * headless deadline, the mini-view teardown, the update hand-off and the
+	 * browser-host stop — all of which belong to this quit however the backend's
+	 * stop ended.
 	 */
 	if (!backendService.isOwnedCleanupComplete()) {
-		await backendService.stop(false);
+		try {
+			await backendService.stop(false);
+		} catch (error) {
+			logger.error(
+				"Owned backend stop rejected during quit; continuing the shutdown",
+				LogFileType.BACKEND,
+				error,
+			);
+		}
 	}
 
 	/*
@@ -4101,36 +4165,12 @@ app.on("before-quit", async (event) => {
 		);
 	}
 	/*
-	 * The bounded exit for EVERY way a headless run can be asked to quit, not
-	 * only the two that arm it themselves (the launcher going, a signal). This is
-	 * here rather than in the two call sites because a quit that wedges is a
-	 * property of the quit path, not of whoever asked for it: measured on this
-	 * head, `app.quit()` from a signal never reached `will-quit` and never
-	 * completed, so a run whose launcher went would have sat there had the
-	 * deadline been armed only in the watch's callback. Arming it here also makes
-	 * the window-close path (a driver closing the window over CDP) bounded.
-	 *
-	 * The watch is stopped with it: a poll that lands mid-shutdown must not stack
-	 * a second quit on the one already under way.
+	 * The shortcut registrations, the mini view's close interception and the
+	 * launcher watch were already stood down in the SYNCHRONOUS part of this
+	 * handler — see the block beside `quitState.begin()` for why they cannot wait
+	 * for the stop above (a window that refuses its close cancels the whole quit,
+	 * and Electron closes the windows the moment this listener's sync part ends).
 	 */
-	if (windowLaunch.mode === "headless") {
-		launcherWatch?.stop();
-		armHeadlessExitDeadline("the app is quitting");
-	}
-	// Unregister all shortcuts.
-	globalShortcut.unregisterAll();
-	/*
-	 * The mini view's own teardown, beside the line it depends on. The registrar
-	 * releases its chord through the SAME mechanism `unregisterAll` just used,
-	 * but explicitly, so its bookkeeping is not left claiming a live binding; the
-	 * watcher loses its timers (a poll landing mid-shutdown would re-apply a
-	 * registration into a dying process); and the window is destroyed with its
-	 * close-interception stood down, or the quit would be blocked by the very
-	 * guard that turns an accidental close into a hide.
-	 */
-	miniViewRegistrar?.dispose();
-	quickSendWatcher?.stop();
-	miniView?.dispose();
 	/*
 	 * Any quit, not only the panel's button.
 	 *
