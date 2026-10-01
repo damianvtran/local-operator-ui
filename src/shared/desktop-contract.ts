@@ -16,6 +16,18 @@ const settingKey = z
 const secret = z.string().min(1).max(32768);
 const sessionId = z.string().regex(/^[a-f0-9]{12}$/);
 /*
+ * The folder a SESSIONLESS skills read is discovered from.
+ *
+ * NOT `mcpCatalogCwd`'s absolute-only regex: a draft pane's staged default is
+ * the literal `"~"`, which the route resolves against the daemon's home
+ * (`resolve_cwd`), and the acceptance here is the same `min(1).max(4096)` the
+ * session routes use for a `cwd` the folder chip can produce. Refusing `"~"`
+ * at the transport would refuse the one value every new draft starts from, and
+ * the route still enforces absolute-and-existing AFTER expansion (422
+ * `invalid_cwd`) — the check belongs at the end that can actually resolve it.
+ */
+const skillCwd = z.string().min(1).max(4096);
+/*
  * The MCP field shapes, named once because the session route and the
  * sessionless catalog route accept the same server names, secret references and
  * operation ids - two inline copies of a regex are two places to drift.
@@ -1987,7 +1999,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z
-		.object({ op: z.literal("skills.list"), sessionId, name: id.optional() })
+		.object({
+			op: z.literal("skills.list"),
+			/*
+			 * The sessionless arm's pair, both optional, `cwd` wins when both are sent
+			 * (the explicit folder beats the implied one; the route's docstring owns
+			 * the rule). `cwd` given → the folder's own discovery roots (identical to
+			 * the session created there); `session_id` given → the session's cwd
+			 * (compat, for the `/skills` panel and released clients); NEITHER → the
+			 * daemon's home roots, explicitly — never the daemon's process cwd.
+			 */
+			sessionId: sessionId.optional(),
+			cwd: skillCwd.optional(),
+			name: id.optional(),
+		})
 		.strict(),
 	z.object({ op: z.literal("sessions.failovers"), sessionId }).strict(),
 	z
@@ -5310,11 +5335,25 @@ export function desktopEndpoint(request: DesktopRequest): {
 				method: "GET",
 			};
 		}
-		case "skills.list":
+		case "skills.list": {
+			/*
+			 * Built from the PRESENT fields only, in a fixed order, so the wire URL is
+			 * a function of the request and nothing else: `cwd` and `session_id` are
+			 * each optional, and a request with neither is the home-roots read rather
+			 * than a malformed one. Encoding is `URLSearchParams`', which is what the
+			 * `name` field was already encoded with (a name can never collide with a
+			 * query delimiter, but the cwd can).
+			 */
+			const query = new URLSearchParams();
+			if (request.sessionId) query.set("session_id", request.sessionId);
+			if (request.cwd) query.set("cwd", request.cwd);
+			if (request.name) query.set("name", request.name);
+			const encoded = query.toString();
 			return {
-				path: `/v1/desktop/skills?session_id=${request.sessionId}${request.name ? `&name=${encodeURIComponent(request.name)}` : ""}`,
+				path: `/v1/desktop/skills${encoded ? `?${encoded}` : ""}`,
 				method: "GET",
 			};
+		}
 		case "sessions.failovers":
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/failovers`,
