@@ -374,7 +374,13 @@ transition: a pointer that crosses the row inside the dwell leaves no transform 
 The keyboard walk was re-pointed with the strip: a Tab from the row's button now LEAVES the row
 (both acts are out of the Tab ring), and the chord path is `⌘⇧P` on the row.
 
-**ROUND 1 REMEDIATION (2026-10-01): `after/archive-confirm-long`, both palettes.** The archive
+**ROUND 1 REMEDIATION (2026-10-01): `after/archive-confirm-long`, both palettes.** SUPERSEDED BODY
+WORDING (design round 3, D14): this frame was shot before the copy's final pass, so the sentence
+inside the dialog is the earlier three-line form. **Its subject is the TITLE** - the ellipsis, the
+kept verb and quotation marks, and the gap to the close control - and every one of those readings
+still holds; the body wording it draws is superseded by the re-shot `archive-confirm` pair in
+`session-archive/`, which carries the shipped two-line copy. It was not re-shot here: free disk read
+5.6 GiB, under the 8 GiB floor, when this note was written. The archive
 dialog on the fixture's 56-character title (`Quarterly retention sweep and the transcripts it
 dropped`), cancelled so the fixture is unchanged. The scene reads three claims as boxes: the NAME is
 cut (`scrollWidth` 422 against `clientWidth` 281), the verb, BOTH quotation marks and the question
@@ -384,14 +390,24 @@ the truncating box and was cut with the name - which is fixed in the dialog; the
 scene's own selector matching the wrapper instead of the verb, which is fixed in the scene. The
 scene on the final build: **58 PASS / 0 FAIL in both palettes**.
 
-**FOURTH FOLD (2026-10-01), onto `44e4812b31` (`d08936c26e`).** The branch has been folded four times in all: `5bea768188` onto `8e73cb8721`, `a191f2e928` onto `e1eb22cd58`, `9d1f54a9ae` onto `81a621f8af`, then this one (the same ledger is in the session-archive and pinned-reorder READMEs). Upstream's team-label and hub-mark work
+**FOLD FOUR (2026-10-01), onto `44e4812b31` (`d08936c26e`).** Upstream's team-label and hub-mark work
 auto-merged into `chat-sidebar.tsx`, `chat-header.tsx` and the canonical sessions store; the one
 hand-resolved file is `docs/evidence/manifest.json`. The scene was re-run on the folded build (dark,
 **58 PASS / 0 FAIL**) and compared with every committed `after/` label over the rows region below
 the toolbar (device y >= 1040): **17 of 17 byte-identical**, including `archive-confirm-long`. The
 light palette was not re-run for this fold.
 
-**FOURTH-FOLD COMPARISON (2026-10-01).** Re-run on the folded build in both palettes, every label
+**THE FOLD LEDGER, in one count (design round 3, D15).** The branch has six fold commits on its
+first-parent chain: `5bea768188` onto `8e73cb8721`, `a191f2e928` onto `e1eb22cd58`, `9d1f54a9ae` onto `81a621f8af`, `d08936c26e` onto `44e4812b31`, `034a7277a8` onto `53c5cfec6b`, and `637fb83d81` onto `44249a6796`. The first four each hand-resolved exactly
+`docs/evidence/manifest.json`; folds five and six did the same (the pair is re-derived at each tip).
+**Folds five and six brought in no change to any surface these sets photograph**: neither
+`44e4812b31..53c5cfec6b` nor `53c5cfec6b..44249a6796` touches `chat-sidebar.tsx`,
+`archive-confirm.ts`, `chat-pin-order.ts`, `chat-header.tsx` or the canonical sessions store (main's
+delta in those two windows is the chat pane's composer stop, the provider suggestions and the
+actions row). The same ledger is in the session-archive and pinned-reorder READMEs.
+
+**THE PANEL COMPARISON (2026-10-01; run on the fold-five tip `034a7277a8`, which for our surfaces is
+the content of the current head).** Re-run on the folded build in both palettes, every label
 compared against the committed `after/` frame over the panel band (device x < 700, below the toolbar,
 which is the sidebar and nothing else): **17 of 17 panel regions byte-identical, both palettes**. The
 chat pane (device x >= 700) differs in 12 frames - `rest-*`, `hover-*` and `archive-confirm-long`

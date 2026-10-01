@@ -200,10 +200,14 @@ replaces wrote that formula without the 28 and so computed 104 (review round 2 c
 about **12 characters** of a pinned title at the measured 6.31px per character, in both palettes.
 `sidebar-row-space.md` §15 states what this reading does to its revisit trigger.
 
-> **Second, third and fourth folds (2026-10-01).** After the fold below (the first: `5bea768188`
-> onto `8e73cb8721`) the branch was folded onto `e1eb22cd58` (`a191f2e928`), `81a621f8af`
-> (`9d1f54a9ae`) and `44e4812b31` (`d08936c26e`); the only file resolved by hand each time is
-> `docs/evidence/manifest.json` (main's copy taken whole, the stamp pair re-derived). The frames in
+> **Folds two to six (2026-10-01).** After the fold below (the first: `5bea768188` onto
+> `8e73cb8721`) the branch was folded onto `e1eb22cd58` (`a191f2e928`), `81a621f8af`
+> (`9d1f54a9ae`), `44e4812b31` (`d08936c26e`), `53c5cfec6b` (`034a7277a8`) and `44249a6796`
+> (`637fb83d81`) - SIX in all, which is the count all three evidence READMEs now carry (design round
+> 3, D15). The only file resolved by hand each time is `docs/evidence/manifest.json` (main's copy
+> taken whole, the stamp pair re-derived). **Folds five and six brought in no change to any surface
+> these frames show** - neither window touches the sidebar, the dialog, the pins, the header or the
+> store. The frames in
 > this set other than the two `220` ones are the ones the first fold's comparison below describes;
 > they were NOT re-shot for the later folds. **Fold 4 DID touch files the pinned strip reads**
 > (`chat-sidebar.tsx` - team labels in the row slot and the search arm, and a `title` on the row's
