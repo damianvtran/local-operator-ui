@@ -779,6 +779,58 @@ test("linux: the pre-kill identity check reads /proc starttime, so a re-parented
 	assert.deepEqual(outcome, { signalled: 1, skipped: 1, errors: [] });
 });
 
+/*
+ * R7: the shape `/proc` cannot be LISTED but per-pid reads still work (mode 0111
+ * was QA's repro). Then the walk falls through to `pgrep -P`, and a walked member
+ * must still carry the SAME stamp kind the pre-kill re-check compares on Linux —
+ * otherwise it is skipped and left running.
+ */
+/* Roots made unlistable are restored before the scratch tree is removed: an 0o111
+ * directory cannot be walked by `rmSync`, so leaving one behind fails the file's
+ * own cleanup rather than the case. */
+const unlistableRoots = [];
+function unlistableProc(entries) {
+	const root = fakeProc(entries);
+	chmodSync(root, 0o111); // traversable, not listable
+	unlistableRoots.push(root);
+	return root;
+}
+
+test("linux: a /proc that cannot be listed still stamps walked members from /proc", async () => {
+	const root = unlistableProc({
+		100: { ppid: 1, pgid: 100, start: 1000, rssKb: 17000 },
+		101: { ppid: 100, pgid: 101, start: 1001, rssKb: 900000 }, // setsid'd
+	});
+	const kids = { 100: "101", 101: "" };
+	const reading = await sampleGroup(100, {
+		platform: "linux",
+		procRoot: root,
+		run: async (cmd, args) => {
+			if (cmd === "ps") return null; // the table is unreadable
+			if (cmd === "pgrep") return kids[args[1]] ?? "";
+			return null;
+		},
+	});
+	assert.equal(reading.coverage, "walk");
+	const walked = reading.members.find((m) => m.pid === 101);
+	assert.equal(
+		walked.lstart,
+		"proc:1001",
+		"walked member must carry a proc: stamp",
+	);
+	assert.equal(walked.pgid, 101);
+	// And the kill verifies it by that stamp, after the group kill re-parents it.
+	const sent = [];
+	const outcome = await killTree(100, reading.members, {
+		platform: "linux",
+		procRoot: root,
+		kill: (target) => sent.push(target),
+		run: async () => assert.fail("linux re-check must not spawn ps"),
+	});
+	assert.deepEqual(sent, [-100, 101]);
+	assert.equal(outcome.skipped, 0);
+});
+
 test("linux: a table member that left the group is stamped from /proc when ps works", async () => {
 	const root = fakeProc({
 		100: { ppid: 1, pgid: 100, start: 1, rssKb: 1 },
@@ -825,4 +877,7 @@ test("a normal run prints the budget line and is unaffected", () => {
 	assert.match(result.stdout, BUDGET_LINE);
 });
 
-test.after(() => rmSync(scratch, { recursive: true, force: true }));
+test.after(() => {
+	for (const root of unlistableRoots) chmodSync(root, 0o755);
+	rmSync(scratch, { recursive: true, force: true });
+});
