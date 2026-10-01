@@ -27,9 +27,17 @@ import { fileURLToPath } from "node:url";
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const gate = join(root, "scripts", "pre-push-gate.mjs");
 
-// `stdio: inherit` so the gate's report lands where the pusher is looking, and
-// the exit status is forwarded unchanged: git aborts the push on anything but 0.
-const result = spawnSync(process.execPath, [gate, ...process.argv.slice(2)], {
+// GIT'S ARGUMENTS ARE NOT PASSED ON. `pre-push` is invoked with the remote's
+// name and URL, and the gate's arguments are its own (`--since`, `--ref`, flags);
+// forwarding `process.argv.slice(2)` shipped a hook that refused EVERY push with
+// "unknown argument 'origin'" - the shape of failure this gate exists to remove,
+// in the gate itself. The pushed refs arrive on stdin, which the gate reads, so
+// the launcher forwards nothing but its own exit status.
+//
+// `stdio: inherit` so the gate's report lands where the pusher is looking AND so
+// the refs git wrote to stdin reach the gate; the status is forwarded unchanged,
+// because git aborts the push on anything but 0.
+const result = spawnSync(process.execPath, [gate], {
 	cwd: root,
 	stdio: "inherit",
 });

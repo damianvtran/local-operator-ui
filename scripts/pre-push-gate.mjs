@@ -42,6 +42,13 @@
  * cannot process exits non-zero having failed at nothing, so violations, clean and
  * "no verdict to give" have to stay three answers and not collapse into two.
  *
+ * ITS SUBJECT IS THE PUSHED REF, NOT `HEAD`, AND NOT ITS OWN ARGUMENTS. Git
+ * writes the refs being pushed to stdin and a false green is one `git push
+ * origin other` away from a gate that diffs `HEAD`. The two positional arguments
+ * git appends (the remote's name and URL) are accepted and ignored rather than
+ * refused: an earlier revision of this file threw on them, and because the
+ * dispatcher forwards what git gave the hook, that refused EVERY push.
+ *
  * WHAT IT CANNOT SEE, SAID HERE RATHER THAN IMPLIED. Pre-existing violations in
  * files this change does not touch. Anything about behaviour: no test runs here,
  * and `pnpm test:desktop` is 344 files, which no push should pay for. Deletions -
@@ -65,15 +72,14 @@
  * bypass is the thing this exists to prevent.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
 	JOB_COMMANDS,
 	LOCAL_EXCLUSIONS,
 	categoryOf,
 	classify,
-	collectPaths,
-	manifestDiff,
+	parseNameStatus,
 } from "./ci-scope.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
 
@@ -96,12 +102,21 @@ const GATE_JOBS = ["lint", "check-types"];
 const NOTHING_PROCESSED = /No files were processed in the specified paths/;
 
 const USAGE = [
-	"usage: node scripts/pre-push-gate.mjs [--since <ref>] [--help]",
+	"usage: node scripts/pre-push-gate.mjs [--since <ref>] [--ref <sha>] [--help]",
+	"",
+	"  Git invokes this as a pre-push hook and writes the refs being pushed to",
+	"  stdin, one '<local ref> <local sha> <remote ref> <remote sha>' per line;",
+	"  that line is the SUBJECT of this gate. The two positional arguments git",
+	"  appends (the remote's name and URL) are accepted and ignored: a gate that",
+	"  dies on its own harness's arguments refuses every push, which is the",
+	"  failure this gate exists to remove.",
 	"",
 	"  --since <ref>  the base to compare against (default: origin/main, then",
-	"                 main, resolved to its merge base with HEAD - the same base",
-	"                 `pnpm check-changed` uses). The diff is taken against the",
-	"                 WORKING TREE, so staged and unstaged edits count too.",
+	"                 main - the same base `pnpm check-changed` uses), each",
+	"                 reduced to its merge base with the pushed commit.",
+	"  --ref <sha>    gate this commit instead of the refs on stdin. This is the",
+	"                 by-hand spelling for a checkout with no push in flight;",
+	"                 what a push carries is what its refs name, never HEAD.",
 	"",
 	"env:",
 	'  PREPUSH_BYPASS="<reason>"  print the reason and let the push through.',
@@ -110,11 +125,24 @@ const USAGE = [
 ].join("\n");
 
 function parseArguments(argv) {
-	const options = { base: "", requested: false, help: false };
+	const options = {
+		base: "",
+		requested: false,
+		ref: "",
+		positional: [],
+		help: false,
+	};
 	for (let index = 0; index < argv.length; index += 1) {
 		const argument = argv[index];
 		if (argument === "--help" || argument === "-h") {
 			options.help = true;
+		} else if (argument === "--ref") {
+			const value = argv[index + 1] ?? "";
+			if (!value) throw new Error(`'--ref' needs a value\n\n${USAGE}`);
+			index += 1;
+			options.ref = value;
+		} else if (argument.startsWith("--ref=")) {
+			options.ref = argument.slice(6);
 		} else if (argument === "--since") {
 			const value = argv[index + 1] ?? "";
 			if (!value) throw new Error(`'--since' needs a value\n\n${USAGE}`);
@@ -124,9 +152,24 @@ function parseArguments(argv) {
 		} else if (argument.startsWith("--since=")) {
 			options.base = argument.slice(8);
 			options.requested = true;
-		} else {
+		} else if (argument.startsWith("-")) {
+			// A flag this gate does not know is a request it cannot honour, so it
+			// is refused rather than dropped.
 			throw new Error(`unknown argument '${argument}'\n\n${USAGE}`);
+		} else {
+			// POSITIONAL ARGUMENTS ARE GIT'S, NOT THIS GATE'S. `pre-push` receives
+			// the remote's name and URL; git's own hook contract says so, and a
+			// version of this file that threw on them refused EVERY push - the
+			// exact failure this gate exists to remove - because the dispatcher
+			// forwards them. They are accepted and ignored, and more than the two
+			// the contract names is refused rather than quietly dropped.
+			options.positional.push(argument);
 		}
+	}
+	if (options.positional.length > 2) {
+		throw new GateRefused(
+			`${options.positional.length} positional arguments ('${options.positional.join("', '")}') were given, but git's pre-push contract names two (the remote's name and its URL): refusing rather than guessing which of them this gate should have understood\n\n${USAGE}`,
+		);
 	}
 	// An empty base is a request with no value, not the absence of a request:
 	// reading it as "not asked" substitutes `origin/main`, i.e. a comparison
@@ -172,34 +215,140 @@ const repoTop = () =>
 	gitProbe(["rev-parse", "--show-toplevel"]) ?? process.cwd();
 
 /**
- * The base this gate compares against, resolved to a commit.
+ * The base this gate compares against, resolved to a commit (not yet merged with
+ * anything: the merge base belongs to a SUBJECT, and there is one subject per
+ * pushed ref).
  *
- * `origin/main` then `main`, and each is reduced to its MERGE BASE with HEAD, so
- * a branch that has fallen behind is charged for its own work and not for main's.
- * A base that does not resolve refuses: substituting "no base" for a change set
- * would report a clean gate over a comparison this run never made.
+ * `origin/main` then `main`. A base that does not resolve refuses: substituting
+ * "no base" for a change set would report a clean gate over a comparison this run
+ * never made.
  */
-function resolveChangeSetBase(top, requested) {
+function resolveBaseRef(top, requested) {
 	const candidates = requested ? [requested] : ["origin/main", "main"];
 	for (const ref of candidates) {
 		const commit = gitProbe(
 			["rev-parse", "--verify", "--quiet", `${ref}^{commit}`],
 			top,
 		);
-		if (!commit) continue;
-		const mergeBase = gitProbe(["merge-base", commit, "HEAD"], top);
-		if (!mergeBase) {
-			throw new GateRefused(
-				`there is no merge base between ${ref} (${commit.slice(0, 7)}) and HEAD - fetch enough history for it (a depth-1 clone of both sides has none)`,
-			);
-		}
-		return { ref, commit: mergeBase };
+		if (commit) return { ref, commit };
 	}
 	throw new GateRefused(
 		requested
 			? `the base ref '${requested}' does not resolve to a commit here (fetch it, or drop --since)`
 			: "neither origin/main nor main resolves to a commit here; run `git fetch origin main`, or name a base with --since <ref>",
 	);
+}
+
+/**
+ * What the push is actually carrying, from git's own pre-push input.
+ *
+ * THE SUBJECT OF THIS GATE IS THE PUSHED REF, NOT `HEAD`. Gating `HEAD` against
+ * the base is a false green the moment they differ - `git push origin other`,
+ * `--all`, a tag, or a worktree whose `HEAD` is another branch - because the run
+ * then answers a question about a commit nobody is pushing (and answers it with
+ * "no changed path", which reads as a pass). Git writes the answer to stdin as
+ * `<local ref> <local sha> <remote ref> <remote sha>` per line, so the gate reads
+ * it, one subject per line, and refuses a line it cannot read rather than
+ * guessing.
+ *
+ * A DELETION (`(delete)` or an all-zero local sha) carries no content, so it has
+ * nothing for the lint or typecheck legs to read: it is named and skipped, not
+ * passed to tools that would fail on a file that no longer exists.
+ *
+ * A TTY IS NOT WAITED ON. Run by hand there are no refs to read, and reading a
+ * terminal would block until EOF, so a TTY (or an unreadable stdin) is answered
+ * as "no refs", and the caller decides what that means - `--ref <sha>` for a
+ * named commit, or HEAD with the report saying so.
+ */
+function pushedSubjects() {
+	if (process.stdin.isTTY) return { subjects: [], source: "a terminal" };
+	let text = "";
+	try {
+		text = readFileSync(0, "utf8");
+	} catch (error) {
+		return {
+			subjects: [],
+			source: `unreadable (${error.code ?? error.message})`,
+		};
+	}
+	const subjects = [];
+	for (const raw of text.split("\n")) {
+		const line = raw.trim();
+		if (!line) continue;
+		const fields = line.split(/\s+/);
+		if (fields.length < 2) {
+			throw new GateRefused(
+				`git's pre-push input line '${line}' does not have the shape '<local ref> <local sha> <remote ref> <remote sha>', so this gate cannot tell which commit it is being asked about`,
+			);
+		}
+		const [localRef, localSha, remoteRef = "(unknown)"] = fields;
+		subjects.push({
+			localRef,
+			localSha,
+			remoteRef,
+			deletion: localRef === "(delete)" || /^0+$/.test(localSha),
+		});
+	}
+	return {
+		subjects,
+		source: subjects.length
+			? "stdin"
+			: "a pipe git wrote nothing to (a by-hand run)",
+	};
+}
+
+/**
+ * One subject, resolved to the commits this gate will actually diff: the pushed
+ * commit itself (peeled, so a tag naming a commit is a commit), and its merge
+ * base with the base ref - so a branch that has fallen behind is charged for its
+ * own work and not for main's.
+ */
+function resolveSubject(top, baseCommit, subject) {
+	const commit = gitProbe(
+		["rev-parse", "--verify", "--quiet", `${subject.localSha}^{commit}`],
+		top,
+	);
+	if (!commit) {
+		throw new GateRefused(
+			`${subject.localRef} -> ${subject.remoteRef} names ${subject.localSha.slice(0, 7)}, which is not a commit this checkout can read: there is nothing for this gate to diff, so it refuses rather than reporting a pass over a push it could not look at`,
+		);
+	}
+	const mergeBase = gitProbe(["merge-base", baseCommit, commit], top);
+	if (!mergeBase) {
+		throw new GateRefused(
+			`there is no merge base between the base and ${subject.localRef} (${commit.slice(0, 7)}) - fetch enough history for it (an unrelated branch has none against a base it never forked from)`,
+		);
+	}
+	return { ...subject, commit, mergeBase };
+}
+
+/**
+ * The files one subject changes, or `null` when git could not answer.
+ *
+ * `collectPaths` in `ci-scope.mjs` cannot be reused here: it diffs against `HEAD`
+ * by construction, and the whole point of this path is that the subject may be
+ * some other commit. The PARSING is reused (`parseNameStatus`), because git's
+ * `--name-status` output - renames, and the path-quoting hazard - is exactly
+ * what that helper exists to read.
+ */
+function pathsForSubject(top, resolved) {
+	const result = run(
+		"git",
+		["diff", "--name-status", "-M", resolved.mergeBase, resolved.commit],
+		top,
+	);
+	if (result.status !== 0) return null;
+	return [...new Set(parseNameStatus(result.stdout))];
+}
+
+/** The `package.json` diff for one subject, or `null` when git could not answer. */
+function manifestDiffForSubject(top, resolved) {
+	const result = run(
+		"git",
+		["diff", resolved.mergeBase, resolved.commit, "--", "package.json"],
+		top,
+	);
+	return result.status === 0 ? result.stdout : null;
 }
 
 /**
@@ -305,7 +454,53 @@ function biomeVerdict(biome, top, files) {
  * printed its own account; the caller stops at the first failure and names the
  * legs that therefore did not run.
  */
-function buildLegs({ top, base, paths, flags }) {
+/**
+ * Refuse a push whose commits this worktree cannot read.
+ *
+ * THE LEGS READ FILES ON DISK. A subject that is reachable from `HEAD` is one the
+ * worktree carries - the checkout is that commit plus whatever came after - so
+ * linting the working copies speaks about the pushed bytes (and, for the
+ * `scripts/` ratchet, about the worktree's own delta from the base, which is a
+ * superset of the push). A FOREIGN ref (`git push origin other`, a tag of a
+ * commit on no branch here, `--all`) is not carried by this checkout at all:
+ * reading the worktree would lint somebody else's bytes and report a verdict
+ * about the push, which is exactly the false green this gate exists to prevent.
+ * So it refuses, names the ref, and names the way to get a real verdict.
+ */
+function assertSubjectsReadable(top, resolved) {
+	const head = gitProbe(
+		["rev-parse", "--verify", "--quiet", "HEAD^{commit}"],
+		top,
+	);
+	if (!head) {
+		throw new GateRefused(
+			"HEAD is not a commit here, so this gate cannot tell whether the pushed commits are the ones this checkout carries",
+		);
+	}
+	const foreign = [];
+	for (const subject of resolved) {
+		if (subject.commit === head) continue;
+		const probe = run(
+			"git",
+			["merge-base", "--is-ancestor", subject.commit, head],
+			top,
+		);
+		// 0 = an ancestor, 1 = not an ancestor, anything else = git could not answer.
+		if (probe.status === 0) continue;
+		if (probe.status !== 1) {
+			throw new GateRefused(
+				`git could not tell whether ${subject.localRef} (${subject.commit.slice(0, 7)}) is part of this checkout's history (${(probe.stderr || "").trim() || "no output"}), so this gate will not guess which bytes it would be linting`,
+			);
+		}
+		foreign.push(subject);
+	}
+	if (!foreign.length) return head;
+	throw new GateRefused(
+		`the push carries ${foreign.map((subject) => `${subject.localRef} (${subject.commit.slice(0, 7)})`).join(", ")}, which this checkout does not carry: the lint and typecheck legs read files on disk, so they would be checking different bytes than the ones being pushed. Check that ref out in a worktree that has it and push from there, or run the legs by hand over it and record that - and if you must push from here anyway, say so with PREPUSH_BYPASS="<reason>" rather than --no-verify.`,
+	);
+}
+
+function buildLegs({ top, since, paths, flags }) {
 	const legs = [];
 	if (flags.lint) {
 		const scripts = onDisk(top, paths, ["scripts/"]);
@@ -316,7 +511,7 @@ function buildLegs({ top, base, paths, flags }) {
 				run: () =>
 					runInherited(
 						process.execPath,
-						["scripts/check-scripts-lint.mjs", "--since", base.commit],
+						["scripts/check-scripts-lint.mjs", "--since", since],
 						top,
 					) === 0,
 			});
@@ -392,25 +587,95 @@ function main(argv) {
 	}
 
 	const top = repoTop();
-	const { ref, commit } = resolveChangeSetBase(top, options.base);
-	const against = `${ref} (${commit.slice(0, 7)})`;
+	const { ref, commit: baseCommit } = resolveBaseRef(top, options.base);
+	const against = `${ref} (${baseCommit.slice(0, 7)})`;
 
-	const paths = collectPaths(commit, true, top);
-	if (paths === null) {
-		throw new GateRefused(
-			`git could not produce a change list against ${against}, so this gate has no verdict to give - and an empty change list is not the same answer`,
+	// THE SUBJECT: the refs git says are being pushed, or the commit a by-hand run
+	// named. See `pushedSubjects` for why HEAD is only ever the last resort.
+	const pushed = pushedSubjects();
+	const named = options.ref
+		? [
+				{
+					localRef: options.ref,
+					localSha: options.ref,
+					remoteRef: "(named by --ref)",
+				},
+			]
+		: [];
+	const raw = named.length ? named : pushed.subjects;
+
+	if (!raw.length) {
+		if (named.length) {
+			// `--ref` and stdin cannot both be the subject; `raw` already says which.
+			throw new GateRefused("unreachable: --ref and stdin are exclusive");
+		}
+		const head = gitProbe(
+			["rev-parse", "--verify", "--quiet", "HEAD^{commit}"],
+			top,
+		);
+		if (!head) {
+			throw new GateRefused(
+				`there are no refs on stdin (${pushed.source}) and HEAD is not a commit here, so this gate has no subject to check - name one with --ref <sha>`,
+			);
+		}
+		console.log(
+			`pre-push gate: no refs on stdin (${pushed.source}), so the subject is HEAD (${head.slice(0, 7)}) - a push names its own refs, and this is a by-hand run.`,
+		);
+		raw.push({ localRef: "HEAD", localSha: head, remoteRef: "(by hand)" });
+	}
+
+	for (const subject of raw) {
+		console.log(
+			`pre-push gate: push subject ${subject.localRef} ${subject.localSha.slice(0, 7)} -> ${subject.remoteRef} against ${against}`,
 		);
 	}
-	const flags = classify(paths, manifestDiff(commit, true, top));
+	const deletions = raw.filter((subject) => subject.deletion);
+	if (deletions.length) {
+		console.log(
+			`pre-push gate: ${deletions.length} deletion(s) carry no content for a lint or typecheck leg to read, so they are named and skipped: ${deletions.map((subject) => `${subject.localRef} -> ${subject.remoteRef}`).join(", ")}.`,
+		);
+	}
+	const live = raw.filter((subject) => !subject.deletion);
+	if (!live.length) {
+		console.log(
+			"pre-push gate: this push carries nothing but deletions, so there is nothing for the local legs to check.",
+		);
+		return 0;
+	}
 
-	console.log(
-		`pre-push gate: ${paths.length} changed path(s) against ${against}`,
+	const resolved = live.map((subject) =>
+		resolveSubject(top, baseCommit, subject),
 	);
+	const paths = [];
+	let manifestDiff = null;
+	let manifestSubjects = 0;
+	for (const subject of resolved) {
+		const changed = pathsForSubject(top, subject);
+		if (changed === null) {
+			throw new GateRefused(
+				`git could not list what ${subject.localRef} (${subject.commit.slice(0, 7)}) changes, so this gate has no verdict to give - and an empty change list is not the same answer`,
+			);
+		}
+		for (const path of changed) if (!paths.includes(path)) paths.push(path);
+		if (changed.includes("package.json")) {
+			manifestSubjects += 1;
+			// The classifier refines a `package.json` change into `release_bump`
+			// only when the diff is nothing but the version line pair. Two subjects
+			// both moving the manifest is not that shape, so `null` keeps the
+			// manifest live - the fail-closed direction.
+			manifestDiff =
+				manifestSubjects === 1 ? manifestDiffForSubject(top, subject) : null;
+		}
+	}
+
+	const flags = classify(paths, manifestDiff);
+
+	console.log(`pre-push gate: ${paths.length} changed path(s) in that push`);
 	for (const path of paths) console.log(`  ${path} -> ${categoryOf(path)}`);
 
 	if (paths.length === 0) {
 		console.log(
-			"pre-push gate: git reports no changed path against this base - there is nothing to check. That is a real answer about a diff git could read, and not the refusal an unreachable base or tool produces.",
+			"pre-push gate: git reports no changed path for this push - there is nothing to check. That is a real answer about a diff git could read, and not the refusal an unreachable base or tool produces.",
 		);
 		return 0;
 	}
@@ -422,7 +687,13 @@ function main(argv) {
 		return 0;
 	}
 
-	const legs = buildLegs({ top, base: { ref, commit }, paths, flags });
+	// Every accepted subject is reachable from HEAD (assertSubjectsReadable), so
+	// the window the worktree-based legs run over - the base, reduced to its merge
+	// base with HEAD, to the working tree - is a superset of what this push
+	// carries, and never a smaller set than the subject's own changes.
+	const head = assertSubjectsReadable(top, resolved);
+	const since = gitProbe(["merge-base", baseCommit, head], top) ?? baseCommit;
+	const legs = buildLegs({ top, since, paths, flags });
 	if (!legs.length) {
 		console.log(
 			"pre-push gate: the classifier selects lint/typecheck for this diff, but no changed path is one of their targets - nothing to run.",
