@@ -136,6 +136,9 @@ const {
 	RPC_PATH,
 	KEY_HEADER,
 	PROTO_VERSION,
+	METHODS,
+	COMMAND_TIMEOUTS_S,
+	isMethod,
 	ERROR_CODES,
 	ApprovalStore,
 	ACCESS_QUEUE_CAP,
@@ -185,6 +188,10 @@ class FakeWebContents extends EventEmitter {
 		this.loaded = [];
 		this.worlds = [];
 		this.isolatedResult = "";
+		// A settable rejection, so the selector-refusal arm can be driven: a real
+		// isolated world rejects an invalid selector with a SyntaxError before the
+		// injected function ever runs.
+		this.isolatedError = null;
 		this.debugger = new FakeDebugger(this);
 		this.#history = {
 			canGoBack: () => false,
@@ -249,6 +256,7 @@ class FakeWebContents extends EventEmitter {
 
 	async executeJavaScriptInIsolatedWorld(worldId, scripts) {
 		this.worlds.push({ worldId, code: scripts[0]?.code ?? "" });
+		if (this.isolatedError) throw this.isolatedError;
 		return this.isolatedResult;
 	}
 }
@@ -594,6 +602,22 @@ test("a dispatched failure comes back as the typed error arm, and an unknown cod
 		ERROR_CODES.includes(response.json.error.code),
 		`the code is one the session knows: ${response.json.error.code}`,
 	);
+});
+
+test("the structured reads are in the wire vocabulary with read's budget", () => {
+	// The three methods are one contract with `protocol.py`'s tuple and the
+	// extension's dispatcher: a name must pass this host's closed gate or a
+	// session that sends it is refused here while the other half of the pair
+	// serves it, which is the drift `isMethod` exists to make loud.
+	for (const method of ["styles", "hit_test", "ancestors"]) {
+		assert.ok(METHODS.includes(method), `${method} is in METHODS`);
+		assert.ok(isMethod(method), `${method} passes the isMethod gate`);
+		assert.equal(
+			COMMAND_TIMEOUTS_S[method],
+			20,
+			`${method} carries read's 20 s budget (protocol.py COMMAND_TIMEOUTS)`,
+		);
+	}
 });
 
 test("health identifies the process without the key, and only the process", async () => {
@@ -2957,7 +2981,14 @@ test("a document change under any non-navigating action discards its result", as
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	const opened = await host.dispatch("open", params, "open");
 	const record = registry.requireSurface(opened.tab);
-	record.view.webContents.isolatedResult = "hello";
+	// `read` stringifies whatever the isolated world returns; the structured reads
+	// require an object (their own guard). One value serves the whole loop — its
+	// content is not what is under test here.
+	record.view.webContents.isolatedResult = {
+		count: 0,
+		matches: [],
+		truncated: false,
+	};
 	// `screenshot` refuses a zero-area view before it captures anything, so the
 	// view needs the page area the app's chrome reports in a real run.
 	record.view.setBounds({ x: 0, y: 0, width: 1280, height: 720 });
@@ -2973,6 +3004,9 @@ test("a document change under any non-navigating action discards its result", as
 	};
 	for (const [method, extra] of [
 		["read", { selector: "body" }],
+		["styles", { selector: "body" }],
+		["hit_test", { x: 10, y: 20 }],
+		["ancestors", { selector: "body" }],
 		["snapshot", {}],
 		["screenshot", {}],
 		["scroll", { direction: "down" }],
@@ -3101,13 +3135,20 @@ test("the per-hop gate is armed for the actions that can navigate, and only thos
 	await host.dispatch("request_access", params, "request");
 	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
 	const opened = await host.dispatch("open", params, "open");
-	registry.requireSurface(opened.tab).view.webContents.isolatedResult = "hello";
+	registry.requireSurface(opened.tab).view.webContents.isolatedResult = {
+		count: 0,
+		matches: [],
+		truncated: false,
+	};
 	const armed = () =>
 		cdp.calls.filter((call) => call.method === "Fetch.enable").length;
 	assert.equal(armed(), 1, "the navigation armed the gate exactly once");
 
 	const cases = [
 		["read", { selector: "body" }],
+		["styles", { selector: "body" }],
+		["hit_test", { x: 10, y: 20 }],
+		["ancestors", { selector: "body" }],
 		["snapshot", {}],
 		["screenshot", {}],
 		["scroll", { direction: "down" }],
@@ -3595,6 +3636,189 @@ test("read runs in an isolated world, and snapshot refs carry the tab's epoch", 
 	assert.equal(snap.refs, 1);
 	assert.match(snap.snapshot, /button "Submit" \[e1\]/);
 	assert.equal(registry.requireSurface(opened.tab).refs.e1.epoch, snap.epoch);
+});
+
+test("the structured reads run the vendored page functions in read's isolated world", async () => {
+	const { host, registry } = makeHost();
+	const params = { url: "https://approved.example/", requester: "session:a" };
+	await host.dispatch("request_access", params, "s1");
+	host.respondToConsent(host.chromeState().pendingConsent[0].entryId, "site");
+	const opened = await host.dispatch("open", params, "s2");
+	const view = registry.requireSurface(opened.tab).view;
+	view.webContents.isolatedResult = { count: 1, matches: [], truncated: false };
+
+	const styled = await host.dispatch(
+		"styles",
+		{
+			tab: opened.tab,
+			selector: "#radix-pop",
+			properties: ["border-top-width"],
+		},
+		"s3",
+	);
+	assert.equal(view.webContents.worlds.length, 1);
+	assert.equal(
+		view.webContents.worlds[0].worldId,
+		999,
+		"the structured reads use read's isolated world, never the main one",
+	);
+	assert.ok(
+		view.webContents.worlds[0].code.includes('"#radix-pop"') &&
+			view.webContents.worlds[0].code.includes('["border-top-width"]'),
+		"the selector and the requested extras cross as JSON arguments",
+	);
+	// The function that travels is the vendored one, as its own source rather than
+	// a rebuilt expression: a stub without a query in it would not satisfy this.
+	assert.ok(
+		view.webContents.worlds[0].code.includes("document."),
+		"the code is the driver function's own source",
+	);
+	assert.equal(
+		styled.count,
+		1,
+		"the page's structured result is spread into the answer",
+	);
+	assert.equal(styled.url, params.url);
+
+	// Extras are TYPE-filtered, so a non-string can never reach the page function,
+	// and an absent list crosses as an empty array, never a dangling argument.
+	view.webContents.worlds = [];
+	await host.dispatch(
+		"styles",
+		{ tab: opened.tab, selector: "body", properties: ["color", 42] },
+		"s4",
+	);
+	assert.ok(view.webContents.worlds[0].code.includes('["color"]'));
+	view.webContents.worlds = [];
+	const manyProperties = Array.from(
+		{ length: 25 },
+		(_, index) => `prop-${index}`,
+	);
+	await host.dispatch(
+		"styles",
+		{ tab: opened.tab, selector: "body", properties: manyProperties },
+		"s4b",
+	);
+	assert.ok(
+		view.webContents.worlds[0].code.includes('"prop-19"') &&
+			!view.webContents.worlds[0].code.includes('"prop-20"'),
+		"the extras list is pre-capped at twenty, like the extension's handler",
+	);
+	view.webContents.worlds = [];
+	await host.dispatch("styles", { tab: opened.tab, selector: "body" }, "s5");
+	assert.ok(
+		view.webContents.worlds[0].code.endsWith('("body", [])'),
+		"no extras -> an empty list, never a dangling argument",
+	);
+	// A selector is required, refused with the extension's own words and code.
+	await assert.rejects(
+		() => host.dispatch("styles", { tab: opened.tab }, "s5b"),
+		(error) =>
+			error.code === "element_not_found" &&
+			/selector is required/.test(error.message),
+	);
+	await assert.rejects(
+		() => host.dispatch("ancestors", { tab: opened.tab }, "s5c"),
+		(error) =>
+			error.code === "element_not_found" &&
+			/selector is required/.test(error.message),
+	);
+
+	view.webContents.worlds = [];
+	const hit = await host.dispatch(
+		"hit_test",
+		{ tab: opened.tab, x: 12, y: 34 },
+		"s6",
+	);
+	assert.equal(view.webContents.worlds[0].worldId, 999);
+	assert.ok(view.webContents.worlds[0].code.endsWith("(12, 34)"));
+	assert.equal(hit.count, 1);
+	await assert.rejects(
+		() => host.dispatch("hit_test", { tab: opened.tab, x: 12 }, "s7"),
+		(error) => error.code === "internal" && /x and y/.test(error.message),
+		"a half-specified point is refused at the host",
+	);
+	assert.equal(
+		view.webContents.worlds.length,
+		1,
+		"the refusal happens before any script crosses the boundary",
+	);
+
+	view.webContents.worlds = [];
+	await host.dispatch(
+		"ancestors",
+		{ tab: opened.tab, selector: "#radix-pop", depth: 3 },
+		"s8",
+	);
+	assert.ok(view.webContents.worlds[0].code.endsWith('("#radix-pop", 3)'));
+	view.webContents.worlds = [];
+	await host.dispatch(
+		"ancestors",
+		{ tab: opened.tab, selector: "#radix-pop" },
+		"s9",
+	);
+	assert.ok(
+		view.webContents.worlds[0].code.endsWith('("#radix-pop", 12)'),
+		"no depth -> the default bound crosses explicitly",
+	);
+	view.webContents.worlds = [];
+	await host.dispatch(
+		"ancestors",
+		{ tab: opened.tab, selector: "#radix-pop", depth: 99 },
+		"s9b",
+	);
+	assert.ok(
+		view.webContents.worlds[0].code.endsWith('("#radix-pop", 16)'),
+		"an over-long depth is pre-clamped to the hard cap, like the extension's",
+	);
+
+	// The not-found convention: the page function answers null and the host raises
+	// read's own typed refusal.
+	view.webContents.isolatedResult = null;
+	await assert.rejects(
+		() =>
+			host.dispatch("styles", { tab: opened.tab, selector: "#ghost" }, "s10"),
+		(error) =>
+			error.code === "element_not_found" &&
+			/matched nothing/.test(error.message),
+	);
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"ancestors",
+				{ tab: opened.tab, selector: "#ghost" },
+				"s11",
+			),
+		(error) =>
+			error.code === "element_not_found" &&
+			/matched nothing/.test(error.message),
+	);
+	// `hit_test` answers null when the point lands on no element at all; that is
+	// the extension's `no element at point` refusal, not an internal error.
+	await assert.rejects(
+		() => host.dispatch("hit_test", { tab: opened.tab, x: 1, y: 2 }, "s11b"),
+		(error) =>
+			error.code === "element_not_found" &&
+			/no element at point \(1, 2\)/.test(error.message),
+	);
+	// An invalid selector comes back from the isolated world as the SyntaxError
+	// `read` already maps.
+	view.webContents.isolatedError = new Error(
+		"SyntaxError: '#..' is not a valid selector",
+	);
+	await assert.rejects(
+		() => host.dispatch("styles", { tab: opened.tab, selector: "#.." }, "s12"),
+		(error) =>
+			error.code === "element_not_found" && /is not valid/.test(error.message),
+	);
+	view.webContents.isolatedError = null;
+	// A bare value where a structured answer is required is a typed internal, not
+	// a string the session would try to read as `{count, ...}`.
+	view.webContents.isolatedResult = "hello";
+	await assert.rejects(
+		() => host.dispatch("hit_test", { tab: opened.tab, x: 1, y: 2 }, "s13"),
+		{ code: "internal" },
+	);
 });
 
 test("a ref from before a navigation is refused with element_not_found", async () => {
