@@ -34,29 +34,36 @@ node scripts/renderer-driver.mjs --scene route-tops \
 touched) with the pristine build; `after-*` is the branch head rebuilt against
 the same URL. Eight runs, one Electron boot each, sequential.
 
-## The fold, and what these frames do and do not span
+## The folds, and what these frames do and do not span
 
-This branch folded `origin/main` at `99acc92f93` after the frames were shot
-(#721, the app sidebar's badge restyle; #722, the fold-media train). The fold's
-own commits are `e57ee3e358` (the merge) and `a9e44baee1` (the re-derived
-stamps).
+This branch folded `origin/main` twice after the frames were shot: onto
+`99acc92f93` (#721, the app sidebar's badge restyle; #722, the fold-media train,
+commits `e57ee3e358` merge and `a9e44baee1` stamps) and then onto `1bf8373292`
+(#713, the scrollbar fade; #723, the evidence-record-clear train, commits
+`988e514919` merge and `5178ad0e21` stamps, plus `fa581b55f2` for the round-1
+re-stamp the fold sits on top of).
 
 The `after-*` frames above were taken at the pre-fold head `40db48225a`, so the
-before/after pair spans the fold as well as the change. What the fold moves
-inside these frames is the app sidebar's counted mark (`attention` ->
+before/after pair spans both folds as well as the change. What the folds move
+inside these frames: the app sidebar's counted mark (`attention` ->
 `attentionQuiet`, a variant swap inside the sidebar's own column) and the type
-token it uses; no ground moves anywhere in `src/` between `4ea1635904` and
-`99acc92f93`, which is what the comparison below rests on. The region this change
-is about - the rail, its rows, and the rail|sidebar join - is untouched by the
-fold, and the sampled tones below are read frame-to-frame.
+token it uses, and - with #713 - the scrollbar chrome, which the right edge of
+every frame renders. Neither touches a ground anywhere in `src/` between
+`4ea1635904` and `1bf8373292`, which is what the comparison below rests on: the
+region this change is about (the rail, its rows, the rail|sidebar join) is
+untouched by either fold, and the sampled tones are read frame-to-frame.
 
-The `after-*` set was not re-shot over the fold, and this is the disclosure
-rather than a claim that it was: the fold's only visible delta in these frames is
-the sidebar's badge variant, and re-shooting the four after runs needs the single
-CSP-allowed rig port (`8080`), which another lane's active `local-operator serve`
-held for the whole of this pass's remaining window (its own isolated rig, so not
-one to reap). The `before-*` frames are unaffected either way: they are the
-pristine base tree.
+The `after-*` set was not re-shot over the folds, and this is the disclosure
+rather than a claim that it was. Two reasons, recorded in order: the earlier
+fold's only visible delta in these frames is the sidebar's badge variant, and
+re-shooting needs the single CSP-allowed rig port (`8080`), which other lanes'
+active `local-operator serve` instances held for the whole of this pass's
+remaining windows (isolated rigs of their own - not ones to reap). The `before-*`
+frames are unaffected either way: they are the pristine base tree.
+
+A future re-shoot of this set would therefore differ from these frames at the
+sidebar's badge if the head is past #721, and along the right-edge scrollbar if
+it is past #713. Neither difference is a reading this set supports.
 
 ## The reading that discriminates, and the one that does not
 
