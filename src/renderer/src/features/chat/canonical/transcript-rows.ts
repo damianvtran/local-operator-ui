@@ -224,6 +224,30 @@ function walkTurns<T>(
 		spans.push(open);
 		open = null;
 	};
+	/*
+	 * BOTH openings go through here, so the three facts the closure test reads are
+	 * reset identically however a run starts (review round 1, R8). The head-cut
+	 * branch used to reset none of them while the user-row branch reset all three:
+	 * equivalent TODAY, because `open` is nulled only inside `flush` and `flush`
+	 * runs at a user row immediately before `open` is reassigned, so the head-cut
+	 * branch can only fire at index 0 where all three are already at their initial
+	 * values - and a silent trap the day that reachability moves.
+	 */
+	const openRun = (
+		index: number,
+		openingUserIndex: number | null,
+	): TurnSpan => {
+		last = null;
+		sawTerminal = false;
+		sawWork = false;
+		return {
+			openingIndex: index,
+			endIndex: index,
+			openingUserIndex,
+			boundary: "end",
+			closingAnswerId: null,
+		};
+	};
 
 	items.forEach((item, index) => {
 		const record = recordOf(item);
@@ -237,16 +261,7 @@ function walkTurns<T>(
 				if (open !== null) {
 					flush(settledTail() ? "answer" : "marker", index - 1);
 				}
-				open = {
-					openingIndex: index,
-					endIndex: index,
-					openingUserIndex: index,
-					boundary: "end",
-					closingAnswerId: null,
-				};
-				last = null;
-				sawTerminal = false;
-				sawWork = false;
+				open = openRun(index, index);
 			}
 			/*
 			 * Either way the user item itself is never the run's "last content": a
@@ -263,13 +278,7 @@ function walkTurns<T>(
 			 * how `runsOf` reports it and how the collapse refuses to build a bar
 			 * over a turn it cannot show the whole of.
 			 */
-			open = {
-				openingIndex: index,
-				endIndex: index,
-				openingUserIndex: null,
-				boundary: "end",
-				closingAnswerId: null,
-			};
+			open = openRun(index, null);
 		}
 		if (paintsSomething(record) && !isStatementRow(record)) last = record;
 		if (isTerminalMarker(record)) sawTerminal = true;
