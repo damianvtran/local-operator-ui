@@ -3089,7 +3089,11 @@ const BRANCH_RECORDS = [
 	 * `44249a6796` (#726 the provider-suggestions lane), taken before the
 	 * final push so the head is clean. Registered for the same reason as its
 	 * siblings: a fold resolved from main's copy would drop the statement of
-	 * what this sync carried and the `package.json` union shape it resolved.
+	 * what this sync carried and the `package.json` union shape it resolved -
+	 * and, since agent review round 8 (R11), the record's own account of the
+	 * key that union read missed (`check-themes`, dropped by this fold and
+	 * restored by the remediation commit) so main's copy cannot lose the
+	 * correction either.
 	 */
 	"foldOnto44249a6796Note",
 	/*
