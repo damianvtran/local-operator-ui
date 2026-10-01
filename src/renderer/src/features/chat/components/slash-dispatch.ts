@@ -1652,25 +1652,56 @@ export function useSlashDispatch({
 		 */
 		if (target?.kind !== "picker" && target?.kind !== "machine-panel") return;
 		/*
-		 * No invoking control: the row that asked for this closed with the palette,
-		 * and the palette restores focus to its own door. Leaving a stale element in
-		 * `invoker` would send Escape's focus somewhere unrelated.
+		 * No invoking control for the palette: the row that asked for this closed
+		 * with the palette, and the palette restores focus to its own door. Leaving
+		 * a stale element in `invoker` would send Escape's focus somewhere
+		 * unrelated.
+		 *
+		 * A request that NAMES a conversation comes from a door outside the pane
+		 * (the sidebar's row, #739) and carries that door: it is the only party
+		 * that still holds it, and `closePicker` already falls back to the composer
+		 * when the node has gone. Without it, closing the picker would leave the
+		 * caret wherever the menu's own close put it, with nothing deciding.
 		 */
-		invoker.current = null;
+		invoker.current = panelRequest.sessionId ? panelRequest.invoker : null;
+		/*
+		 * WHICH CONVERSATION THE PANEL ADDRESSES: the request's own, then the pane's.
+		 *
+		 * A requester outside the pane (the sidebar's row menu, #739) names the
+		 * conversation it means, and it is generally NOT this pane's — right-click ->
+		 * Fork works on a row the user never opened. The pane must not substitute its
+		 * own `sessionId` for it: a fork of the wrong conversation succeeds, and is
+		 * indistinguishable from the right one until someone reads it. The palette
+		 * names none, so its requests resolve to the pane's conversation exactly as
+		 * before. The same value feeds BOTH the action and the context, because the
+		 * pickers read the context's and the action's is what a dispatched follow-up
+		 * would carry - two answers to "which conversation" is the defect.
+		 *
+		 * Empty on a draft pane with no named conversation, which the session-scoped
+		 * panels are never offered from; the machine panels read it as "no
+		 * conversation in front of the user" and drop their conversation half for it.
+		 *
+		 * EVERYTHING ELSE STAYS THE PANE'S (canonical handle, commands, note,
+		 * dispatch) - the request names a subject, not a second way to present one -
+		 * and so does `rebind`, which is `openConversation`: completing a fork from a
+		 * row's menu therefore NAVIGATES to the new fork. That is the shipped `/fork`
+		 * semantics, reused deliberately. Archive and Pin do not navigate because they
+		 * press a row control; a fork's whole product is a child conversation, and the
+		 * picker's own receipt names it, so handing the user the child is the act
+		 * finishing rather than a side effect. The original is untouched.
+		 */
+		const addressed = panelRequest.sessionId ?? sessionId ?? "";
 		setPicker({
 			action: {
 				kind: "native_action",
 				destination: panelRequest.destination,
-				// Empty on a draft pane, which the session-scoped panels are never
-				// offered from; the machine panels read it as "no conversation in front
-				// of the user" and drop their conversation half for it.
-				session_id: sessionId ?? "",
+				session_id: addressed,
 				args: "",
 				fields: [],
 				data: {},
 			},
 			spec: draftPickerSpec(panelRequest.destination, commandsQuery.data),
-			sessionId: sessionId ?? "",
+			sessionId: addressed,
 			canonical,
 			commands: commandsQuery.data ?? [],
 			onClose: closePicker,

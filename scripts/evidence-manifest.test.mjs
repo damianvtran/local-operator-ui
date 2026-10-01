@@ -3147,6 +3147,18 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntoaf6fffa899Note",
 	/*
+	 * And the lane's TWENTY-FIRST fold record: the sync onto `origin/main` =
+	 * `bc642ccd49` (#757 the row menu's Fork item) - the second fold of one
+	 * push cycle, forced when main moved while the previous fold's capture and
+	 * gates were still running. Its resolution carries the deep-union class:
+	 * `countsMean` chains unioned (main's unique leads appended), the
+	 * `refreshedStories` union grown by main's two `fork-*` directories, and
+	 * main's `rowForkMenuNote` spliced whole - so a fold resolved from main's
+	 * copy would drop this branch's chains, and one resolved from this
+	 * branch's alone would drop main's.
+	 */
+	"foldOntobc642ccd49Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
@@ -3155,6 +3167,18 @@ const BRANCH_RECORDS = [
 	 * would drop it without a word.
 	 */
 	"streamSmoothRestampNote",
+	/*
+	 * And by the row menu's Fork item (#739), this branch's own newest top-level
+	 * record: the note that states the set was re-taken whole (24 frames, the ten
+	 * #694 states with the third row drawn plus `fork-withheld` and `fork-pressed`),
+	 * that the design record moved with it, and the two facts a re-capturer needs -
+	 * the pointer states' story now waits for the rig's pointer before opening the
+	 * menu (the modal body's `pointer-events: none` made the old timer a race the
+	 * fold lost), and why `dirtyWorkingTree` reads `true`. It quotes no tree-hash
+	 * pair (commit SHAs only), so it joins this list and not
+	 * `STAMP_BINDING_NOTES`.
+	 */
+	"rowForkMenuNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
