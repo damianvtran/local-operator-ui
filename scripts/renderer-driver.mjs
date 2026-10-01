@@ -4640,7 +4640,7 @@ async function sceneSessionArchive(cdp) {
 	check(
 		"and the question is the REVERSIBLE one: the body states the way back, and neither button is painted in the danger role the delete dialog keeps for itself",
 		(confirmState.text ?? "").includes(
-			"It leaves your lists. You can undo for 8 seconds; after that, search the sidebar for it and turn on “Include archived” to find it and restore it.",
+			"It leaves your lists. You can undo for 8 seconds; after that, search above your chats, turn on “Include archived”, then Unarchive it.",
 		) && !/danger/.test(confirmState.confirmClass ?? ""),
 		JSON.stringify(confirmState),
 	);

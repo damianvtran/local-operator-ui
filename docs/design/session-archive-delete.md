@@ -107,8 +107,8 @@ can never outlive its route. The pane's title, which the dialog used to receive 
 conversations the list does not draw, now rides the candidate (`title`).
 
 **THE BODY SENTENCE (design round 1, D1; UX round 1, U3 and a NIT).** `It leaves your lists.
-You can undo for 8 seconds; after that, search the sidebar for it and turn on “Include archived”
-to find it and restore it.` It leads with the consequence, states the duration the toast really
+You can undo for 8 seconds; after that, search above your chats, turn on “Include archived”,
+then Unarchive it.` It leads with the consequence, states the duration the toast really
 runs on (the number is interpolated from `ARCHIVE_UNDO_TOAST_MS`, so the copy and the timer
 cannot drift), and does not contradict itself: the first draft said the conversation leaves
 "your lists and search" and then that "search finds it again". The control is named where it

@@ -200,12 +200,17 @@ replaces wrote that formula without the 28 and so computed 104 (review round 2 c
 about **12 characters** of a pinned title at the measured 6.31px per character, in both palettes.
 `sidebar-row-space.md` §15 states what this reading does to its revisit trigger.
 
-> **Second and third folds (2026-10-01).** After the fold below the branch was folded onto
-> `e1eb22cd58` (`a191f2e928`) and `81a621f8af` (`9d1f54a9ae`); the only file resolved by hand each time
-> is `docs/evidence/manifest.json` (main's copy taken whole, the stamp pair re-derived). The frames
-> in this set other than the two `220` ones are the ones the first fold's comparison below describes;
-> they were NOT re-shot for the later folds, and the later folds changed no file the pinned strip
-> reads (a rows-region comparison was not repeated for them).
+> **Second, third and fourth folds (2026-10-01).** After the fold below (the first: `5bea768188`
+> onto `8e73cb8721`) the branch was folded onto `e1eb22cd58` (`a191f2e928`), `81a621f8af`
+> (`9d1f54a9ae`) and `44e4812b31` (`d08936c26e`); the only file resolved by hand each time is
+> `docs/evidence/manifest.json` (main's copy taken whole, the stamp pair re-derived). The frames in
+> this set other than the two `220` ones are the ones the first fold's comparison below describes;
+> they were NOT re-shot for the later folds. **Fold 4 DID touch files the pinned strip reads**
+> (`chat-sidebar.tsx` - team labels in the row slot and the search arm, and a `title` on the row's
+> name span - the canonical sessions store and the chat header auto-merged), so an earlier line here
+> that said no such file changed was wrong. A rows-region comparison of this set against the folded
+> tree is recorded below if it was run; until then the only same-tree evidence is the row-space
+> set's 17 of 17 byte-identical rows regions.
 
 ### After the fold onto `origin/main` (2026-10-01)
 

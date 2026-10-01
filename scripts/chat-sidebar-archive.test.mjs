@@ -828,7 +828,7 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 */
 	assert.match(
 		copy,
-		/export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists\. You can undo for \$\{ARCHIVE_UNDO_TOAST_MS \/ 1000\} seconds; after that, search the sidebar for it and turn on \\u201cInclude archived\\u201d to find it and restore it\.`;/,
+		/export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists\. You can undo for \$\{ARCHIVE_UNDO_TOAST_MS \/ 1000\} seconds; after that, search above your chats, turn on \\u201cInclude archived\\u201d, then Unarchive it\.`;/,
 		"the body leads with the consequence and INTERPOLATES the timer, so the copy cannot drift from it",
 	);
 	assert.match(

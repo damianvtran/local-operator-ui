@@ -183,8 +183,8 @@ section its last step presses).
 
 > **ROUND 1 REMEDIATION FRAMES (2026-10-01), shot on the app source of `9d1f54a9ae`** (this commit's only `src/` change is the dev driver's width clamp, which draws nothing in the app).
 > `archive-confirm` was re-shot in both palettes with the reworded body (`It leaves your lists. You
-> can undo for 8 seconds; after that, search the sidebar for it and turn on “Include archived” to
-> find it and restore it.`), and `archive-confirm-settings` is new: the same press made on
+> can undo for 8 seconds; after that, search above your chats, turn on “Include archived”, then
+> Unarchive it.`), and `archive-confirm-settings` is new: the same press made on
 > `/settings`, which asks THERE (UX round 1, U1). The scene was run on one build in both palettes:
 > **dark 74 PASS / 0 FAIL, light 74 PASS / 0 FAIL**, including the header-door cancel leg in its
 > FINAL form (the `fromHeader` flag on the candidate): the light palette is the one that failed
@@ -192,11 +192,15 @@ section its last step presses).
 > menu trigger in both. The long-name frame belongs to the row-space set
 > (`sidebar-row-space/after/archive-confirm-long`).
 >
-> **FOLDS.** The branch was folded twice since the first frames (`5bea768188` onto `8e73cb8721`,
-> `a191f2e928` onto `e1eb22cd58`, `9d1f54a9ae` onto `81a621f8af`); the fold commits hand-resolve
-> exactly one file, `docs/evidence/manifest.json`, taking main's copy and re-deriving the stamp
-> pair. The earlier paragraph below, comparing the first fold's rows region, is unchanged and still
-> describes that comparison only.
+> **FOLDS (one ledger, shared by the three evidence READMEs).** The branch has been folded FOUR times
+> since the first frames: (1) `5bea768188` onto `8e73cb8721`, (2) `a191f2e928` onto `e1eb22cd58`,
+> (3) `9d1f54a9ae` onto `81a621f8af`, (4) `d08936c26e` onto `44e4812b31`. Each fold commit
+> hand-resolves exactly one file, `docs/evidence/manifest.json`, taking main's copy and re-deriving
+> the stamp pair; fold 4 also auto-merged upstream's team-label and hub-mark changes into
+> `chat-sidebar.tsx`, `chat-header.tsx` and the canonical sessions store. The paragraph above, comparing
+> the first fold's rows region, describes THAT comparison only. Fold 4 has been compared for the
+> row-space set (17 of 17 rows regions byte-identical, dark); a comparison for THIS set is recorded
+> below if it was run.
 
 ## What each frame is, and what it is not
 
