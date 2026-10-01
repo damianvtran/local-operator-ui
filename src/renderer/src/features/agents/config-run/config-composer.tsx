@@ -420,6 +420,22 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
 	);
 }
 
+/**
+ * THE BOX'S KEY, MINTED ONCE FOR THE APP.
+ *
+ * It was minted per page MOUNT, which is what the composer needs (it refuses to
+ * submit without a key) but not what the operator needs: the draft lives in the
+ * composer's persisted input store under this key, so a key that dies with the
+ * mount takes the draft with it — leaving /agents and coming back startled a
+ * half-typed request away (UX exploration, U2; the module-scope
+ * `config-run-store` this mount replaced held the draft across route changes).
+ *
+ * It is still NOT a session id and still never a conversation: it names the
+ * page's one box, for the whole life of the app. See the note § 3.3.1 for the
+ * decision it satisfies (key (a)) and § 3.7 for the leak row it appears in.
+ */
+const CONFIG_BOX_KEY = `agents-config:${crypto.randomUUID()}`;
+
 export function ConfigComposer({
 	run,
 	hero = false,
@@ -459,7 +475,8 @@ export function ConfigComposer({
 	 * identity, which is deliberately not a session", §1.4), minted once per page
 	 * mount, and the run never becomes a canonical row under it.
 	 */
-	const [boxKey] = useState(() => `agents-config:${crypto.randomUUID()}`);
+	// U2: the key outlives the mount, so the draft does too (see CONFIG_BOX_KEY).
+	const boxKey = CONFIG_BOX_KEY;
 	/** The composer owns the box's text; this writes into the same key it reads. */
 	const setBoxText = (value: string) =>
 		useConversationInputStore.getState().setCurrentInput(boxKey, value);
@@ -645,7 +662,12 @@ export function ConfigComposer({
 					 * on this machine" state, and it would put chat's copy and a
 					 * transcript-only notice id on this page (m1).
 					 */
-					blocksInput: !run.enabled || Boolean(blockedReason),
+					/*
+					 * `live` is in the term deliberately (U1): the strip's Stop is not
+					 * the only door onto a second send — the box's own Enter is, and a
+					 * second send is a second registry write.
+					 */
+					blocksInput: !run.enabled || Boolean(blockedReason) || live,
 					placeholder: hostPlaceholder,
 					node: (
 						/*
@@ -726,9 +748,14 @@ export function ConfigComposer({
 					))}
 				</div>
 			) : null}
-			{blockedReason ? (
-				<p className="mt-2 text-meta text-warning">{blockedReason}</p>
-			) : null}
+			{/*
+			 * U4: the blocked sentence is said ONCE, in the box's own placeholder
+			 * (D1). The paragraph that repeated it verbatim — at the card's foot,
+			 * further from the caret than the box and shouting in warning ink — is
+			 * what "Finish or cancel your edit first." twice on one card looked
+			 * like. The affordance that frees the box (U5) needs a page-level
+			 * answer and is deferred; see the remediation comment, not a copy here.
+			 */}
 		</div>
 	);
 }
