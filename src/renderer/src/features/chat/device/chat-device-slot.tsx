@@ -126,6 +126,18 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	const move = useChatDeviceStore((state) =>
 		sessionId ? state.moves[sessionId] : undefined,
 	);
+	/*
+	 * THE LIVE CONVERSATION'S OWN ROW, for the one fact the pane cannot carry
+	 * itself: where it was created. The row is where `createSession` landed the
+	 * peer's placement (see that action), and the row outlives both the draft and
+	 * the send that made it - which is what the chip needs and the draft could
+	 * not give it (the revert-to-local defect).
+	 */
+	const row = useCanonicalSessionsStore((state) =>
+		sessionId
+			? state.sessions.find((candidate) => candidate.session_id === sessionId)
+			: undefined,
+	);
 	const beginMove = useChatDeviceStore((state) => state.beginMove);
 	const settleMove = useChatDeviceStore((state) => state.settleMove);
 	const refuseMove = useChatDeviceStore((state) => state.refuseMove);
@@ -157,6 +169,29 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 			})
 		: "";
 
+	/*
+	 * WHERE THE ROW SAYS THE CONVERSATION LIVES. Only `locality: "remote"` is a
+	 * claim - it is the wire's single "where" field, and a local row or a row
+	 * that stated nothing must keep today's fallback - and the device id is what
+	 * a transfer addresses, so the NAME is resolved from the mesh reads by the
+	 * same helper the draft's own destination uses (`deviceNameFor`), with the
+	 * row's name used first when it carries one.
+	 */
+	const host = useMemo(() => {
+		if (!row || row.locality !== "remote") return null;
+		const deviceId =
+			typeof row.owner_device === "string" ? row.owner_device : "";
+		if (!deviceId) return null;
+		const named =
+			typeof row.owner_device_name === "string" ? row.owner_device_name : "";
+		return {
+			deviceId,
+			name:
+				named.trim() ||
+				deviceNameFor({ deviceId, networks: networkList, peers: peerList }),
+		};
+	}, [row, networkList, peerList]);
+
 	const placement = useMemo(
 		() =>
 			panePlacement({
@@ -165,6 +200,7 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 					: destination
 						? { deviceId: destination, name: destinationName }
 						: { deviceId: null, name: "" },
+				host,
 				move,
 				reachableFor: (deviceId) => {
 					const peer = peerList.find((row) => row.device_id === deviceId);
@@ -178,7 +214,15 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 					return null;
 				},
 			}),
-		[destination, destinationName, sessionId, move, peerList, networkList],
+		[
+			destination,
+			destinationName,
+			sessionId,
+			move,
+			host,
+			peerList,
+			networkList,
+		],
 	);
 
 	const model = useMemo(

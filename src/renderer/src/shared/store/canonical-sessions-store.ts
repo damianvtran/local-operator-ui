@@ -5830,6 +5830,29 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						session_id: result.session_id,
 						cwd,
 						binding: result.binding,
+						/*
+						 * A CONVERSATION BORN ON A PEER SAYS SO ON ITS ROW, and this is
+						 * the write the chat header's device control reads back
+						 * (`chat-device-slot.tsx` takes `locality`/`owner_device` into
+						 * `panePlacement`'s `host`). The fields are the wire's own - the
+						 * same pair a peer-aware listing publishes (`mesh-types.ts`)
+						 * - so nothing downstream learns a second vocabulary, and a
+						 * later page row settles a stale `remote` mark the same way it
+						 * would an owner's.
+						 *
+						 * THE DEFECT THIS FEEDS: on create success the send patches
+						 * `sessionId` and `finishDraft` retires the draft, so the
+						 * pane's only placement facts used to be "not a move issued
+						 * here" - and the chip fell through to `On this device` over a
+						 * conversation the peer had just minted (operator report,
+						 * 2026-09-30). The create RESOLVED with `peer` set, so the peer
+						 * owns it; the row is where that fact survives the draft.
+						 *
+						 * OMITTED ENTIRELY FOR A LOCAL CREATE: its row is byte-for-byte
+						 * what it was before this field existed, and no arm of the
+						 * control consults it.
+						 */
+						...(peer ? { locality: "remote", owner_device: peer } : {}),
 					});
 					return result.session_id;
 				} catch (error) {

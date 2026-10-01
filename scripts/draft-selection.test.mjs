@@ -425,6 +425,68 @@ test("a changed DESTINATION gets a fresh at-most-once key too, and a same-value 
 	);
 });
 
+test("a create that named a peer stamps the peer on the session row; a local create's row says nothing new", async () => {
+	/*
+	 * THE STORE HALF OF THE REVERT DEFECT (operator report, 2026-09-30). On create
+	 * success the send patches `sessionId` and, once the message lands,
+	 * `finishDraft` retires the row the destination lived on - so the placement
+	 * fact the chip needs after the send must be ON THE SESSION ROW, written by
+	 * the one action that knows the create named a peer. The fields are the
+	 * wire's own (`SessionCatalogueRow.locality`/`owner_device`), which is what
+	 * the chat header's slot reads back (`chat-device-slot.tsx`).
+	 */
+	const store = useCanonicalSessionsStore.getState();
+
+	// AIMED: the peer pick rides the create body (the destination test above)
+	// AND lands on the row that create mints.
+	calls.length = 0;
+	reply = (request) =>
+		request.op === "sessions.create"
+			? { result: { session_id: "facefeed0001", binding: { kind: "none" } } }
+			: { result: {} };
+	const aimedKey = store.stageDraft();
+	store.setDraftPeer(aimedKey, "d_build");
+	const aimedId = await admitChatDraft(aimedKey, {
+		text: "what OS are you on",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	assert.equal(aimedId, "facefeed0001");
+	const aimedRow = useCanonicalSessionsStore
+		.getState()
+		.sessions.find((row) => row.session_id === aimedId);
+	assert.equal(aimedRow?.locality, "remote");
+	assert.equal(aimedRow?.owner_device, "d_build");
+
+	// NEVER PICKED: no placement fields AT ALL - absent, not null - so the row is
+	// the one every pre-peer create has always written.
+	calls.length = 0;
+	reply = (request) =>
+		request.op === "sessions.create"
+			? { result: { session_id: "facefeed0002", binding: { kind: "none" } } }
+			: { result: {} };
+	const plainKey = store.stageDraft();
+	const plainId = await admitChatDraft(plainKey, {
+		text: "hello",
+		attachments: [],
+		images: [],
+		mode: "prompt",
+		cwd: CWD,
+	});
+	assert.equal(plainId, "facefeed0002");
+	const plainRow = useCanonicalSessionsStore
+		.getState()
+		.sessions.find((row) => row.session_id === plainId);
+	assert.ok(plainRow, "the create's row is on the list");
+	assert.ok(
+		!("locality" in plainRow),
+		"a local create's row carries no locality",
+	);
+	assert.ok(!("owner_device" in plainRow), "...and no owner");
+});
+
 test("a pick on a discarded pane records nothing, and never resurrects the row", () => {
 	const store = useCanonicalSessionsStore.getState();
 	const gone = "draft:00000000-0000-4000-8000-000000000000";
