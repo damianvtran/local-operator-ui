@@ -31,6 +31,14 @@
  * answer is not loaded yet. `scripts/transcript-loader.test.mjs` pins the
  * head-arrival case.
  *
+ * THIS IS NOT `TurnRun.key`, and since the run identity change they differ on
+ * purpose: a run's key is its OPENING USER ROW once that row is loaded (so a wake
+ * re-closing the run cannot move the bar's identity), while the outline's id stays
+ * the closing answer, which is what a caller addressing a turn by its answer
+ * (the rail, a jump) holds. The outline only reads `run.key` as the last fallback
+ * of a head-cut run with no answer and no first row, where it is the same row it
+ * always was.
+ *
  * The walk's shape is `reveal-record.ts`'s near path, generalized: load until
  * the row is held, fetch the margin's page while the store ends at the row (a
  * centred landing needs rows ABOVE the target; QA Q-2's measured −254 px

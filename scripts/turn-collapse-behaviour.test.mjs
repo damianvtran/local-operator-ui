@@ -842,6 +842,119 @@ test("the head arriving later keeps the cut run's expansion: its key does not mo
 	assert.ok(bar(mounted), "the bar is still the run's summary");
 });
 
+test("the reader's expansion survives a later answer re-closing the run (PR-5: identity is the opener)", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * THE EXPANSION HALF OF THE REMOUNT. The run's key used to be its closing
+	 * answer's id, so work arriving after an answer (a wake, a job result) moved the
+	 * key answer:1 -> answer:2: the bar's React key changed (a remount) and the
+	 * reader's stored expansion named nothing. Here the later work folds into the
+	 * same bar (one span, so one bar whose own key is the run's), which is the shape
+	 * where the identity alone decides the outcome. The reader opens the bar, the
+	 * run is re-closed by a LATER answer, and the rows must still be open.
+	 */
+	const first = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+	];
+	const frontend = { session_id: "chat-reclose" };
+	const mounted = await mount(t, first, { frontend });
+	assert.ok(bar(mounted), "the settled run condenses on arrival");
+	assert.equal(rowBox(mounted, "tool:1"), null, "and arrives collapsed");
+	const barBefore = bar(mounted);
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "the reader opened it");
+	await mounted.render(
+		[
+			...first,
+			toolRecord("tool:3", { ts: TS + 4_000 }),
+			answerRecord("answer:2", { ts: TS + 5_000, settledAt: TS + 5_000 }),
+		],
+		{ frontend },
+	);
+	await flushFrames();
+	assert.ok(
+		rowBox(mounted, "tool:1") && rowBox(mounted, "tool:3"),
+		"the expansion survives the run being re-closed by a later answer",
+	);
+	assert.equal(
+		bar(mounted),
+		barBefore,
+		"and the bar is the same element: it was not remounted",
+	);
+});
+
+test("a stale stored key (one no run produces) renders collapsed and opens nothing", async (t) => {
+	__resetTurnCollapseOpen();
+	const frontend = { session_id: "chat-stale" };
+	/* Keys of runs that no longer exist (evicted, or from another shape). */
+	writeRunExpanded("chat-stale", "gone:1", true);
+	writeRunExpanded("chat-stale", "gone:1#tool:9", true);
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			toolRecord("tool:1", { ts: TS + 1_000 }),
+			answerRecord("answer:1", { ts: TS + 3_000, settledAt: TS + 3_000 }),
+		],
+		{ frontend },
+	);
+	assert.ok(bar(mounted), "the run condenses");
+	assert.equal(
+		rowBox(mounted, "tool:1"),
+		null,
+		"the stale key opens nothing: the bar is in its shipped default",
+	);
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "and the reader can still open it");
+});
+
+test("the reader's expansion survives BOTH a wake re-closing a head-cut run AND the head landing", async (t) => {
+	__resetTurnCollapseOpen();
+	/*
+	 * Acceptance (b): the two moves of a run's identity in one reader session. A
+	 * head-cut run is keyed by its tail (answer:1); the head lands and the key
+	 * becomes the opener (carried by the alias); a later answer then re-closes the
+	 * run, which the opener identity does not notice. The reader's single press must
+	 * still be open at the end. NOT covered, and stated: a wake that re-closes a run
+	 * while its head is STILL cut moves the tail anchor (answer:1 -> answer:2) and
+	 * drops the expansion exactly as the pre-PR key did - no row is stable there.
+	 */
+	const frontend = { session_id: "chat-both" };
+	const cut = [
+		toolRecord("tool:0", { ts: TS + 500 }),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		answerRecord("answer:1", { ts: TS + 2_000, settledAt: TS + 2_000 }),
+	];
+	const mounted = await mount(t, cut, { frontend });
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:0"), "the reader opened the cut bar");
+	await mounted.render([userRecord("user:0", { ts: TS + 100 }), ...cut], {
+		frontend,
+	});
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:0"), "still open after the head landed");
+	await mounted.render(
+		[
+			userRecord("user:0", { ts: TS + 100 }),
+			...cut,
+			toolRecord("tool:2", { ts: TS + 3_000 }),
+			answerRecord("answer:2", { ts: TS + 4_000, settledAt: TS + 4_000 }),
+		],
+		{ frontend },
+	);
+	await flushFrames();
+	assert.ok(
+		rowBox(mounted, "tool:0") && rowBox(mounted, "tool:2"),
+		"still open after a later answer re-closed the run",
+	);
+});
+
 test("a settle does not fold the run out from under the reader's focus", async (t) => {
 	__resetTurnCollapseOpen();
 	/*
