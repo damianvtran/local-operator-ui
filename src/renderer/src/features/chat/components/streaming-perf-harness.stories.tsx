@@ -396,11 +396,15 @@ export const BlockSplitFast: Story = {
  */
 
 type ComposerFlushReport = {
+	/** Which arm produced these numbers; also names the falsifier. */
+	arm: "held" | "fresh-probe";
 	flushes: number;
 	composerRenders: number;
 	renderedFlushes: number;
 	profilerCommits: number;
 	composerCommitMs: number;
+	/** The worst single commit in the run (ms). */
+	composerWorstCommitMs: number;
 	composerRenderedCommitMs: number;
 	wallMs: number;
 };
@@ -432,10 +436,20 @@ const NO_SUGGESTIONS: readonly string[] = [];
  */
 const ComposerFlushBench = ({
 	flushes = 200,
+	runs = 1,
 	freshProbe = false,
+	autoRun = false,
 }: {
 	flushes?: number;
+	/** How many measured passes to run and report, so one page load gives repeats. */
+	runs?: number;
 	freshProbe?: boolean;
+	/**
+	 * Run the loop once on mount, so an automated driver reads the report from
+	 * the DOM without a click. Measurement-only; the interactive stories leave it
+	 * false.
+	 */
+	autoRun?: boolean;
 }) => {
 	const queryClient = useQueryClient();
 	/*
@@ -457,8 +471,13 @@ const ComposerFlushBench = ({
 
 	const [flushIndex, setFlushIndex] = useState(0);
 	const [running, setRunning] = useState(false);
-	const [report, setReport] = useState<ComposerFlushReport | null>(null);
-	const collecting = useRef<{ commits: number; ms: number } | null>(null);
+	const [reports, setReports] = useState<ComposerFlushReport[]>([]);
+	const collecting = useRef<{
+		commits: number;
+		ms: number;
+		worst: number;
+	} | null>(null);
+	const runRef = useRef<() => void>(() => {});
 
 	/*
 	 * The frozen call-site shapes. `useCallback`/`useMemo` stand in for the
@@ -488,40 +507,45 @@ const ComposerFlushBench = ({
 	const run = () => {
 		if (running) return;
 		setRunning(true);
-		setReport(null);
+		setReports([]);
 		/*
 		 * One frame to paint the running state, then the measured loop: one
 		 * `flushSync` commit per flush, the same cadence the pane's batch commit
 		 * drives.
 		 */
 		window.requestAnimationFrame(() => {
-			const rendersBefore = messageInputRenderCount.current;
-			const collector = { commits: 0, ms: 0 };
-			collecting.current = collector;
-			let renderedFlushes = 0;
-			let composerRenderedCommitMs = 0;
-			const startedAt = performance.now();
-			for (let index = 0; index < flushes; index += 1) {
-				const rendersBeforeFlush = messageInputRenderCount.current;
-				const msBeforeFlush = collector.ms;
-				flushSync(() => setFlushIndex((n) => n + 1));
-				if (messageInputRenderCount.current !== rendersBeforeFlush) {
-					renderedFlushes += 1;
-					composerRenderedCommitMs += collector.ms - msBeforeFlush;
+			const results: ComposerFlushReport[] = [];
+			for (let pass = 0; pass < runs; pass += 1) {
+				const rendersBefore = messageInputRenderCount.current;
+				const collector = { commits: 0, ms: 0, worst: 0 };
+				collecting.current = collector;
+				let renderedFlushes = 0;
+				let composerRenderedCommitMs = 0;
+				const startedAt = performance.now();
+				for (let index = 0; index < flushes; index += 1) {
+					const rendersBeforeFlush = messageInputRenderCount.current;
+					const msBeforeFlush = collector.ms;
+					flushSync(() => setFlushIndex((n) => n + 1));
+					if (messageInputRenderCount.current !== rendersBeforeFlush) {
+						renderedFlushes += 1;
+						composerRenderedCommitMs += collector.ms - msBeforeFlush;
+					}
 				}
+				const wallMs = performance.now() - startedAt;
+				collecting.current = null;
+				results.push({
+					arm: freshProbe ? "fresh-probe" : "held",
+					flushes,
+					composerRenders: messageInputRenderCount.current - rendersBefore,
+					renderedFlushes,
+					profilerCommits: collector.commits,
+					composerCommitMs: Number(collector.ms.toFixed(3)),
+					composerWorstCommitMs: Number(collector.worst.toFixed(3)),
+					composerRenderedCommitMs: Number(composerRenderedCommitMs.toFixed(3)),
+					wallMs: Number(wallMs.toFixed(1)),
+				});
 			}
-			const wallMs = performance.now() - startedAt;
-			collecting.current = null;
-			const next: ComposerFlushReport = {
-				flushes,
-				composerRenders: messageInputRenderCount.current - rendersBefore,
-				renderedFlushes,
-				profilerCommits: collector.commits,
-				composerCommitMs: Number(collector.ms.toFixed(3)),
-				composerRenderedCommitMs: Number(composerRenderedCommitMs.toFixed(3)),
-				wallMs: Number(wallMs.toFixed(1)),
-			};
-			setReport(next);
+			setReports(results);
 			setRunning(false);
 			/*
 			 * Written to `window` too, so an automated driver can read the numbers
@@ -530,9 +554,25 @@ const ComposerFlushBench = ({
 			 */
 			(
 				window as unknown as { __composerFlushBench?: unknown }
-			).__composerFlushBench = { freshProbe, ...next };
+			).__composerFlushBench = { freshProbe, results };
 		});
 	};
+
+	/*
+	 * The auto-run arm: fire the measured loop once after the first paint, so an
+	 * automated driver only has to load the story and read the report out of the
+	 * DOM (the driver has no script-eval step). `run` is read through a ref so the
+	 * effect depends on nothing that changes per render — a dependency on it would
+	 * re-fire the loop on every flush commit.
+	 */
+	useEffect(() => {
+		runRef.current = run;
+	});
+	useEffect(() => {
+		if (!autoRun) return undefined;
+		const id = window.setTimeout(() => runRef.current(), 60);
+		return () => window.clearTimeout(id);
+	}, [autoRun]);
 
 	return (
 		<div className="p-4">
@@ -557,6 +597,9 @@ const ComposerFlushBench = ({
 					if (!collector || phase !== "update") return;
 					collector.commits += 1;
 					collector.ms += actualDuration;
+					if (actualDuration > collector.worst) {
+						collector.worst = actualDuration;
+					}
 				}}
 			>
 				<MessageInput
@@ -599,12 +642,12 @@ const ComposerFlushBench = ({
 					initialSuggestions={NO_SUGGESTIONS}
 				/>
 			</Profiler>
-			{report && (
+			{reports.length > 0 && (
 				<pre
 					data-composer-flush-bench=""
 					className="mt-4 rounded-md border border-hairline bg-surface p-3 text-body-sm"
 				>
-					{JSON.stringify(report, null, 2)}
+					{JSON.stringify(reports, null, 2)}
 				</pre>
 			)}
 		</div>
@@ -619,7 +662,7 @@ const ComposerFlushBench = ({
  * committed every flush.
  */
 export const ComposerFlushBoundary: Story = {
-	render: () => <ComposerFlushBench />,
+	render: () => <ComposerFlushBench autoRun runs={2} />,
 };
 
 /**
@@ -628,5 +671,5 @@ export const ComposerFlushBoundary: Story = {
  * reading is shown to be a reading at all rather than a bench that cannot fail.
  */
 export const ComposerFlushBoundaryFreshProbe: Story = {
-	render: () => <ComposerFlushBench freshProbe />,
+	render: () => <ComposerFlushBench freshProbe autoRun runs={2} />,
 };
