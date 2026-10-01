@@ -1,14 +1,15 @@
 /**
  * The reader's expanded turn summaries, per conversation.
  *
- * WHY THIS EXISTS OUTSIDE THE COMPONENT. A bar's React identity is its run's
- * opening user row, and that row legitimately leaves and re-enters the render
- * window while the reader scrolls (the transcript mounts only the newest
- * `WINDOW` rows, and the edge walks). Component-local `useState` would lose the
- * reader's expansion on the scroll back, and the transcript component itself
- * must survive a session switch without dropping it — so the state lives here,
- * keyed by conversation, exactly as the paint cache (`paint-cache.ts`) keeps
- * its per-conversation rows for the renderer's lifetime.
+ * WHY THIS EXISTS OUTSIDE THE COMPONENT. A bar's identity is its span's anchor
+ * row (`SegmentPlan.key` in `turn-collapse-model.ts`), and a bar legitimately
+ * leaves and re-enters the render window while the reader scrolls (the
+ * transcript mounts only the newest `WINDOW` rows, and the edge walks).
+ * Component-local `useState` would lose the reader's expansion on the scroll
+ * back, and the transcript component itself must survive a session switch
+ * without dropping it — so the state lives here, keyed by conversation, exactly
+ * as the paint cache (`paint-cache.ts`) keeps its per-conversation rows for the
+ * renderer's lifetime.
  *
  * WHAT IT IS NOT: not reload-persistent. A reload returns to the shipped
  * default (collapsed) — the confirmed design's choice (`turn-summary` bars
