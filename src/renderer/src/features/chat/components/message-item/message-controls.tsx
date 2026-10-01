@@ -6,21 +6,37 @@
  * noisy half was always on and the useful half was hidden. Both now live in
  * the same strip, revealed together by the parent's `group` class.
  *
- * Visibility is driven by the parent's `group`: the strip stays at
- * `opacity-0` until `group-hover`, and the streaming state hides it with
- * `invisible` from the call site — visibility wins over the hover opacity
- * rule regardless of utility order, which a second opacity class would not.
+ * THE REVEAL IS THE SHARED ONE. Visibility used to be spelled here as its own
+ * pair of classes (opacity plus `group-hover`), which meant the strip alone
+ * lacked the two rules the other action rows now carry: a state that PINS the
+ * strip visible (a press that is loading, playing or showing `Copied` must not
+ * fade out from under the reader) and the touch exception (`@media
+ * (hover:none)` - a touch reader can never hover, so a hover-only strip is a
+ * strip that does not exist for them). Both live in
+ * `ACTION_ROW_REVEAL_CLASSES` now (`../../canonical/message-actions`), beside the
+ * answer and user rows that share them. The streaming state still hides the
+ * strip with `invisible` from the call site - visibility wins over the hover
+ * opacity rule regardless of utility order, which a second opacity class would
+ * not.
+ *
+ * THE SPEAK CONTROL IS THE SHARED ONE (`useSpeakControl`): gate, tooltip
+ * ladder, label states and the press, all read from the store rather than
+ * inlined here. The strip used to carry its own copy of that ladder (including
+ * `Replay speech`, which the shared control keeps) and had already drifted
+ * from the other surfaces in spinner size and disabled copy.
  */
 
-import { Spinner } from "@shared/components/common/spinner";
+import {
+	SpeakButton,
+	useSpeakControl,
+} from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
-import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
-import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
-import { useSpeechStore } from "@shared/store/speech-store";
-import { Copy, Square, Volume2 } from "lucide-react";
+import { messageSpeechKey, useSpeechStore } from "@shared/store/speech-store";
+import { Copy } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
+import { actionRowVisibility } from "../../canonical/message-actions";
 import { MessageTimestamp } from "./message-timestamp";
 
 // Props for the MessageControls component
@@ -45,28 +61,22 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	timestamp,
 }) => {
 	const [copied, setCopied] = useState(false);
-	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
-	const {
-		playSpeech,
-		stopSpeech,
-		replaySpeech,
-		loadingMessageId,
-		playingMessageId,
-		audioCache,
-	} = useSpeechStore();
+	const { playSpeech } = useSpeechStore();
+	const speechControl = useSpeakControl({
+		key: messageSpeechKey(messageId),
+		getText: () => content ?? null,
+		play: ({ text }) => {
+			if (agentId) playSpeech(messageId, agentId, text);
+		},
+		available: Boolean(agentId),
+	});
 
-	const isPlaying = playingMessageId === messageId;
-	const isLoading = loadingMessageId === messageId;
-	const hasAudio = audioCache.has(messageId);
-
-	const canEnableSpeechFeature = canUseRadientSpeech;
-
-	// The sentence for a disabled control comes from the one copy table the five
-	// speech surfaces share (`@shared/lib/speech-gate`), and `sign-in` is
-	// unreachable for a signed-in reader by construction: only an ANSWERED "no
-	// account" or a refused credential earns it (issue #674; design round 1,
-	// D1).
-	const speechTooltip = speechUnavailableReason("speaking-aloud", speechBlock);
+	/*
+	 * A `Copied` tick or a Speak that is loading or playing is the reader's own
+	 * press talking back; the strip stays up until the state is done rather than
+	 * fading when the pointer leaves.
+	 */
+	const pinned = copied || speechControl.active;
 
 	// Only show copy button for assistant messages
 	const showCopyButton = content;
@@ -87,20 +97,6 @@ export const MessageControls: FC<MessageControlsProps> = ({
 		}
 	};
 
-	const handlePlay = () => {
-		if (agentId && content) {
-			playSpeech(messageId, agentId, content);
-		}
-	};
-
-	const handleReplay = () => {
-		replaySpeech(messageId);
-	};
-
-	const handleStop = () => {
-		stopSpeech();
-	};
-
 	const buttonClass = "text-ink-dim hover:bg-accent-wash hover:text-accent";
 
 	return (
@@ -118,8 +114,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 							// hairline is what makes it read as floating — § 2 keeps the
 							// one shadow for objects that genuinely leave the flow.
 							"message-controls absolute -top-2 right-0 z-10 h-8 rounded-md border border-hairline bg-elevated px-1",
-							"pointer-events-none opacity-0 transition-opacity duration-fast ease-out-quart",
-							"group-hover:pointer-events-auto group-hover:opacity-100",
+							actionRowVisibility(pinned),
 						),
 				className,
 			)}
@@ -138,48 +133,7 @@ export const MessageControls: FC<MessageControlsProps> = ({
 							<Copy />
 						</Button>
 					</Tooltip>
-					{!isUser &&
-						(isPlaying ? (
-							<Tooltip content="Stop" side="top">
-								<Button
-									variant="ghost"
-									size="icon-sm"
-									aria-label="Stop speech"
-									className={buttonClass}
-									onClick={handleStop}
-								>
-									<Square />
-								</Button>
-							</Tooltip>
-						) : (
-							<Tooltip
-								content={
-									!canEnableSpeechFeature
-										? speechTooltip
-										: isLoading
-											? "Loading"
-											: hasAudio
-												? "Replay speech"
-												: "Speak aloud"
-								}
-								side="top"
-							>
-								{/* The span wrapper keeps the tooltip alive on the disabled
-								 * button, which swallows its own pointer events. */}
-								<span>
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										aria-label={hasAudio ? "Replay speech" : "Speak aloud"}
-										className={buttonClass}
-										onClick={hasAudio ? handleReplay : handlePlay}
-										disabled={isLoading || !canEnableSpeechFeature}
-									>
-										{isLoading ? <Spinner size="sm" /> : <Volume2 />}
-									</Button>
-								</span>
-							</Tooltip>
-						))}
+					{!isUser && <SpeakButton control={speechControl} side="top" />}
 				</div>
 			)}
 			{/* Additional button wrappers can be added here in the future */}

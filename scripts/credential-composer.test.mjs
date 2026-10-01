@@ -5619,9 +5619,7 @@ test("neither a session nor a key: the sign-in sentence, and only for that machi
 			() => micButton().hasAttribute("disabled"),
 			"the mic to settle off",
 		);
-		await openMicTooltip(
-			"Sign in to Radient in the settings page to enable recording",
-		);
+		await openMicTooltip("Sign in to Radient in Settings to enable recording");
 	} finally {
 		transportOverride = null;
 	}
