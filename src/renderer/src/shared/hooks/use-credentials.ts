@@ -11,7 +11,7 @@ import type { CredentialListResult } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { radientSpeechBlock } from "@shared/lib/speech-gate";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { useConnectivityGate } from "./use-connectivity-gate";
 import { useRadientAuth } from "./use-radient-auth";
 
@@ -217,14 +217,29 @@ export const useRadientCredentialProbe = () => {
 		capabilitiesState,
 	});
 
-	return {
-		hasRadientApiKey,
-		hasRadientSession,
-		/** The probe could not answer. Offline, not unconfigured. */
-		isUnavailable,
-		/** Whether a speech surface (dictation, speak-aloud) may be enabled. */
-		canUseRadientSpeech,
-		/** The disabled tooltip's class (see speech-gate.ts). */
-		speechBlock,
-	};
+	/*
+	 * ONE OBJECT PER ANSWER, NOT PER RENDER (C1). This used to return a fresh
+	 * object literal, and the composer subtree it feeds is memoised against its
+	 * props: the pane re-renders once per stream flush, so the fresh literal
+	 * alone was enough to re-render the whole composer once per chunk of every
+	 * streaming answer. Every member is a primitive — three booleans and the
+	 * gate's own string — so the key is exact and the value moves only when an
+	 * answer does.
+	 */
+	return useMemo(
+		() => ({
+			hasRadientApiKey,
+			hasRadientSession,
+			isUnavailable,
+			canUseRadientSpeech,
+			speechBlock,
+		}),
+		[
+			hasRadientApiKey,
+			hasRadientSession,
+			isUnavailable,
+			canUseRadientSpeech,
+			speechBlock,
+		],
+	);
 };
