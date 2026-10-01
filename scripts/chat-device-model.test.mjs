@@ -300,6 +300,7 @@ test("a draft never consults the session's state, and a move this pane issued wi
 		panePlacement({
 			draft: { deviceId: null, name: "" },
 			move: undefined,
+			host: null,
 			reachableFor: () => true,
 		}),
 		{ kind: "draft", deviceId: null, name: "" },
@@ -308,6 +309,7 @@ test("a draft never consults the session's state, and a move this pane issued wi
 	const moving = panePlacement({
 		draft: null,
 		move: { kind: "moving", deviceId: BUILD, name: "build-box" },
+		host: null,
 		reachableFor: () => true,
 	});
 	assert.equal(moving.kind, "moving");
@@ -330,6 +332,7 @@ test("a draft never consults the session's state, and a move this pane issued wi
 				phases: [],
 			},
 		},
+		host: null,
 		reachableFor: () => true,
 	});
 	assert.equal(gone.kind, "gone");
@@ -354,6 +357,7 @@ test("a draft never consults the session's state, and a move this pane issued wi
 				phases: [],
 			},
 		},
+		host: null,
 		reachableFor: () => true,
 	});
 	assert.equal(copied.kind, "remote");
@@ -361,8 +365,131 @@ test("a draft never consults the session's state, and a move this pane issued wi
 	// Nothing known: this device's conversation, which is what a pane with a live
 	// session and no move outcome IS.
 	assert.deepEqual(
-		panePlacement({ draft: null, move: undefined, reachableFor: () => true }),
+		panePlacement({
+			draft: null,
+			host: null,
+			move: undefined,
+			reachableFor: () => true,
+		}),
 		{ kind: "local" },
+	);
+});
+
+test("a conversation born on a peer keeps that device once the draft is gone, and a move outranks the row", () => {
+	/*
+	 * THE OPERATOR'S REPORT, pinned as a value (2026-09-30): "he selected the
+	 * remote device in the new-chat window ... on hitting enter, the device
+	 * selection reverted to local". The mechanism was the draft's retirement:
+	 * `finishDraft` deletes the row the destination lived on, so the pane's
+	 * remaining facts were its own move state - and the chip fell through to
+	 * `local` over a conversation a peer had just minted. The `host` arm is the
+	 * ROW's own answer, read from `locality: "remote"` + `owner_device` (the
+	 * fields `createSession` stamps when the create named a peer).
+	 */
+	const born = panePlacement({
+		draft: null,
+		move: undefined,
+		host: { deviceId: BUILD, name: "build-box" },
+		reachableFor: () => true,
+	});
+	assert.deepEqual(born, {
+		kind: "remote",
+		deviceId: BUILD,
+		name: "build-box",
+		reachable: true,
+		reason: "",
+	});
+	// The chip's own words: `On`, not `New` - the conversation exists now.
+	assert.equal(placementLabel(born), "On build-box");
+
+	/*
+	 * REACHABILITY IS THE MOVE ARMS' OWN TRI-STATE, which is the "never claim
+	 * remote when the row says otherwise" half: a read nobody made draws no dot,
+	 * and a device that did not answer says so.
+	 */
+	assert.equal(
+		panePlacement({
+			draft: null,
+			move: undefined,
+			host: { deviceId: BUILD, name: "build-box" },
+			reachableFor: () => null,
+		}).reachable,
+		null,
+	);
+	assert.equal(
+		panePlacement({
+			draft: null,
+			move: undefined,
+			host: { deviceId: BUILD, name: "build-box" },
+			reachableFor: () => false,
+		}).reachable,
+		false,
+	);
+
+	/*
+	 * A MOVE THIS PANE ISSUED STILL WINS over the row: the receipt is what may
+	 * move a chip, and a recall that lands home reads local even while the row
+	 * still carries the remote mark a later listing settles.
+	 */
+	const recalled = panePlacement({
+		draft: null,
+		host: { deviceId: BUILD, name: "build-box" },
+		move: {
+			kind: "moved",
+			deviceId: "local",
+			name: "this device",
+			from: BUILD,
+			engaged: null,
+			receipt: {
+				locality: "local",
+				owner_device: "local",
+				source_retired: true,
+				session_id: "s",
+				new_session_id: "s",
+				mode: "move",
+				phases: [],
+			},
+		},
+		reachableFor: () => null,
+	});
+	assert.deepEqual(recalled, { kind: "local" });
+	assert.equal(
+		panePlacement({
+			draft: null,
+			host: { deviceId: BUILD, name: "build-box" },
+			move: { kind: "moving", deviceId: BUILD, name: "build-box" },
+			reachableFor: () => true,
+		}).kind,
+		"moving",
+	);
+
+	/*
+	 * AND THE SEAM THAT FEEDS IT IS A SOURCE FACT THIS FILE CAN SEE. The model is
+	 * correct for whatever `host` it is handed; the store half (a create naming a
+	 * peer stamps the row) and the slot half (only `locality: "remote"` becomes a
+	 * host) are call-site facts, so they are read as source - the trade this
+	 * file's own header states for the pick's address (review round 2's blocker).
+	 */
+	const slot = code(
+		"src/renderer/src/features/chat/device/chat-device-slot.tsx",
+	);
+	assert.match(
+		slot,
+		/if \(!row \|\| row\.locality !== "remote"\) return null;/,
+		"a host exists only where the row itself says remote",
+	);
+	assert.match(
+		slot,
+		/\bhost,\s*\n\s*move,/,
+		"the slot hands the host to panePlacement",
+	);
+	const store = code(
+		"src/renderer/src/shared/store/canonical-sessions-store.ts",
+	);
+	assert.match(
+		store,
+		/locality: "remote", owner_device: peer/,
+		"a create that named a peer stamps the peer on the row",
 	);
 });
 
@@ -384,6 +511,7 @@ test("a reachability with no read behind it draws no dot, so it is neither true 
 				phases: [],
 			},
 		},
+		host: null,
 		reachableFor: () => null,
 	});
 	assert.equal(placement.kind, "remote");
@@ -569,6 +697,7 @@ test("a recall lands the pane back on this device, and never in the peer arm", (
 				phases: [],
 			},
 		},
+		host: null,
 		reachableFor: () => null,
 	});
 	assert.deepEqual(recalled, { kind: "local" });
