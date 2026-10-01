@@ -142,6 +142,9 @@ export const obsidian: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 4.75.
 		 */
 		hairline: "#424244",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.85:1 there against `hairline`'s 1.71:1.
+		hairlineStrong: "#474749",
 		// Zinc 500 measures 2.86:1 on zinc 800, a hair under the structural floor,
 		// so it is lifted by one level. The old theme bounded inputs with zinc 50 at
 		// 20 percent alpha, about 1.8:1.

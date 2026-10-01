@@ -183,6 +183,7 @@ import {
 	runsOf,
 	splitFirstLine,
 } from "./transcript-rows";
+import { turnAnswerMarkClass } from "./turn-answer-rail";
 import {
 	type RunCollapsePlan,
 	type SegmentPlan,
@@ -202,6 +203,7 @@ import { useCheckpoints } from "./use-checkpoints";
 import { useCrossSessionHidden } from "./use-cross-session-hidden";
 import { useLinkSubject } from "./use-link-subject";
 import { useScrollPaging } from "./use-scroll-paging";
+import { useTurnAnswerRail } from "./use-turn-answer-rail";
 import {
 	type WorkingLineState,
 	deriveWorkingLine,
@@ -916,6 +918,7 @@ const AssistantRow = memo(function AssistantRow({
 	record,
 	isSmallView,
 	closesTurn,
+	answerRail,
 	foot = null,
 	closingLineSuppressed = false,
 	conversationId,
@@ -923,6 +926,14 @@ const AssistantRow = memo(function AssistantRow({
 	record: Extract<TranscriptRecord, { kind: "assistant" }>;
 	isSmallView: boolean;
 	closesTurn: boolean;
+	/**
+	 * Whether the opt-in rail is on, resolved ONCE for the transcript and handed
+	 * down (see `CanonicalTranscript`'s `answerRail`): it is one query answering
+	 * one question about one row, so a subscription per assistant row would
+	 * N cache reads for it, and a prop keeps every memoised row's identity stable
+	 * until the reader actually flips the switch.
+	 */
+	answerRail: boolean;
 	/** §E3's foot line data, on the row that closes the turn. */
 	foot?: TurnFoot | null;
 	/**
@@ -976,26 +987,16 @@ const AssistantRow = memo(function AssistantRow({
 				className={cn(
 					"relative break-words text-ink",
 					/*
-					 * THE ANSWER'S OWN MARK (issue #665): a 2px rule in the margin the row
-					 * already has, on the turn's ELECTED answer only (`closesTurn` is the
-					 * segments module's election, so a post-dispose status reply never
-					 * wears it). `-ml-2` + `border-l-2` + `pl-1.5` net to zero, so the
-					 * prose box does not move: no second left edge, no second measure, no
-					 * card and no ground (docs/branding.md section 7 forbids each). It is
-					 * `ink-dim` because that role is already asserted at the 3:1 non-text
-					 * floor on every ground, so this adds no token and no contract row.
-					 * `data-turn-answer` is the hook rigs and tests read instead of a
-					 * class name.
+					 * THE ANSWER'S OWN MARK (issue #665), now an OPT-IN: the backend key
+					 * `display.turn_answer_rail`, default off (operator report, 2026-09-30:
+					 * the 2px always-on rule "looks ugly" and "cramped"). `closesTurn` is
+					 * the segments module's election, so a post-dispose status reply never
+					 * wears it. The classes, and why the prose box never moves between on
+					 * and off, are `turnAnswerMarkClass`'s. `data-turn-answer` below is
+					 * the hook rigs and tests read instead of a class name, and it is set
+					 * from the election alone so it does not depend on the setting.
 					 */
-					/*
-					 * AUTO WIDTH ON THE MARKED ROW, `w-full` otherwise. A block with a
-					 * negative left margin and auto width grows LEFT by exactly the margin
-					 * and keeps its right edge; `w-full` pinned the width, so the same
-					 * margin slid the box left and left the prose 8px short on the right
-					 * (measured: 802px against the row's 810). Left edge and right edge
-					 * both stay where an unmarked row's are.
-					 */
-					closesTurn ? "-ml-2 border-l-2 border-ink-dim pl-1.5" : "w-full",
+					turnAnswerMarkClass(closesTurn, answerRail),
 				)}
 				data-turn-answer={closesTurn || undefined}
 				aria-busy={record.streaming || undefined}
@@ -1918,6 +1919,7 @@ const TranscriptRow = memo(function TranscriptRow({
 	 * `outputFallbackLine`, and why dropping this prop would silently restore the
 	 * bug #490 fixed (`bash  … {"text": 200…` drawn as if it were the command).
 	 */
+	answerRail = false,
 	foot = null,
 	closingLineSuppressed = false,
 	labelPending = false,
@@ -1929,6 +1931,12 @@ const TranscriptRow = memo(function TranscriptRow({
 	isSmallView: boolean;
 	scope: AttachmentScope | null;
 	conversationId?: string;
+	/**
+	 * The transcript's one read of the rail setting. A BOOLEAN rather than the
+	 * query, for the reason `labelPending` documents below: the rows are
+	 * memoised, and the value changes only when the reader flips the switch.
+	 */
+	answerRail?: boolean;
 	/** The turn's own foot line, on the row that closes it (§E3). */
 	foot?: TurnFoot | null;
 	/** The run above carries a bar; see `AssistantRow`'s copy of this prop. */
@@ -1971,6 +1979,7 @@ const TranscriptRow = memo(function TranscriptRow({
 					record={record}
 					isSmallView={isSmallView}
 					closesTurn={row.closesTurn}
+					answerRail={answerRail}
 					foot={foot}
 					closingLineSuppressed={closingLineSuppressed}
 					conversationId={conversationId}
@@ -2168,6 +2177,13 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * flip the pane's empty state.
 	 */
 	const hide = useCrossSessionHidden();
+	/*
+	 * ONE read of the rail setting for the whole transcript, handed to the rows as
+	 * a boolean prop: the elected answer is the only row that consumes it, so a
+	 * hook per assistant row would subscribe to the Settings query once per row
+	 * for one fact (agent review round 1, R4).
+	 */
+	const answerRail = useTurnAnswerRail();
 	const shownRecords = useMemo(
 		() => visibleRecords(painted.records, hide),
 		[painted.records, hide],
@@ -3649,6 +3665,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 						}
 						closingLineSuppressed={suppressClosingLine}
 						undelivered={undelivered}
+						answerRail={answerRail}
 					/>
 				))}
 			</TraceFold>
@@ -3673,6 +3690,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				}
 				closingLineSuppressed={suppressClosingLine}
 				undelivered={undelivered}
+				answerRail={answerRail}
 			/>
 		);
 
