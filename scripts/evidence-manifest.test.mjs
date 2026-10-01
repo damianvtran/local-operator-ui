@@ -2894,6 +2894,17 @@ const BRANCH_RECORDS = [
 	"sttRecordingDisplayFoldSixNote",
 	"sttRecordingDisplayFoldSevenNote",
 	/*
+	 * And by the TEAM LABELS lane (2026-09-30): its re-stamp is the branch's
+	 * newest top-level record, holding the two stamps this branch's delta moved
+	 * (the whole label read path under `src/` - the new `team-display.ts` and
+	 * its readers - and the three source-anchor tests plus three new cases
+	 * under `scripts/`). Listed for the reason this list exists: a fold that
+	 * started from main's copy would drop it first, and with it the only
+	 * statement of what the re-stamp read. The note spells its pair as bare
+	 * SHAs, so it adds no name to the quoting ledger.
+	 */
+	"teamLabelsRestampNote",
+	/*
 	 * AND THIS BRANCH'S OWN (feat/mesh-canvas-redesign, 2026-09-30): the two records
 	 * of the mesh canvas redesign - `meshCanvasRedesignRestampNote` (the pass: the
 	 * whole mesh-tab set re-captured at 42 frames through the repo's own sweep, the
@@ -2924,6 +2935,12 @@ const BRANCH_RECORDS = [
 	"meshCanvasRedesignFoldNote",
 	"rebaseOntoA298bfb120Note",
 	"meshCanvasRedesignRemediationNote",
+	/*
+	 * Grown by the device-chip pass, whose top-level record is the set it ships
+	 * (`chatDevicePersistNote`): registered so a later fold unions it back by
+	 * name rather than dropping it.
+	 */
+	"chatDevicePersistNote",
 	/*
 	 * And by THIS lane too - the pass record's lineage gate: this branch's own
 	 * fix, whose note is the branch's newest top-level record. It is listed for
