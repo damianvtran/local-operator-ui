@@ -8088,6 +8088,39 @@ export const STORIES = [
 		520,
 		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
 	],
+	/*
+	 * `fork-withheld` (#739): the same row (s2) with a never-sent draft holding its
+	 * id, which is the one condition that withholds the menu's third item. The
+	 * frame is the pair's two rows with NO Fork row - absent, not greyed - and its
+	 * readout lists what the product mounted.
+	 */
+	[
+		"chat-sidebar-row-context-menu--fork-withheld",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	/*
+	 * `fork-pressed` (#739): Fork is pressed on s2 and the readout prints what the
+	 * press asked for - the request in the panel-presentation store names
+	 * `session.fork` for s2 (the ROW's conversation; this story has no pane), its
+	 * invoker is s2's own button, and the route is `/chat`. The shutter waits for
+	 * the request to exist so a frame filed under this name cannot be the state
+	 * before the press.
+	 */
+	[
+		"chat-sidebar-row-context-menu--fork-pressed",
+		780,
+		520,
+		{
+			hover: '[data-session-row="s2"]',
+			hoverSettleMs: 1200,
+			expectSentence: {
+				selector: "[data-readout-list]",
+				includes: "fork request: session.fork for s2",
+			},
+		},
+	],
 	[
 		"chat-sidebar-row-context-menu--flyout-dwelled",
 		780,

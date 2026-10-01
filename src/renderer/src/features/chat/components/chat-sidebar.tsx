@@ -57,6 +57,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
@@ -74,6 +75,7 @@ import {
 	ChevronUp,
 	FileText,
 	FolderPlus,
+	GitFork,
 	GripVertical,
 	Hourglass,
 	LoaderCircle,
@@ -109,7 +111,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
 import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
@@ -994,6 +996,8 @@ export function ChatSidebar({
 	onStageDraft,
 }: Props) {
 	const navigate = useNavigate();
+	const location = useLocation();
+	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
 	/*
@@ -3880,6 +3884,30 @@ export function ChatSidebar({
 		 * returns before it), and this is what keeps its clause off that row.
 		 */
 		const menuEnabled = pinsEnabled || archiveEnabled;
+		/*
+		 * WHETHER THE MENU OFFERS FORK ON THIS ROW - the one named predicate, read
+		 * once, for the item below. A fork copies a conversation's TRANSCRIPT, and the
+		 * backend refuses a session that has none ("has no transcript to fork",
+		 * `fork.py::fork_session`). `unstarted` is this sidebar's own, existing
+		 * statement of that state: a draft that holds this conversation's id and has
+		 * never carried a message (the row reads `, not sent yet`) - the real-but-empty
+		 * session a first send that failed after allocation leaves behind, and "proof it
+		 * never carried a message" is what its own comment says. Offering Fork there
+		 * would open a picker whose only possible answer is that refusal, so the item
+		 * is WITHHELD (never disabled), by a statement the row already makes rather
+		 * than a condition invented for the menu.
+		 *
+		 * What is NOT a gate, checked rather than assumed: `row.pending`. It is the
+		 * live record's "waiting for a person" word (`approval`/`ask`, a parked gate:
+		 * `session/runtime/types.py`, written by the runtime and surfaced by
+		 * `sessions.list`'s row builder in `session/catalog.py`), which only a session
+		 * that has already run a turn can carry - one with a transcript - and the
+		 * route does not refuse it: a session that is mid-turn takes the fork at its
+		 * next safe boundary (the picker's own copy says so), an idle or cold one is
+		 * cloned at once, read-only against the parent. No other state of a catalogue
+		 * row makes the route refuse, so this is the menu's only withheld condition.
+		 */
+		const forkable = !unstarted.has(row.session_id);
 		/**
 		 * WHICH CHORD SPELLING THIS PLATFORM PRINTS, read once for the row's two
 		 * items. `chatRowActCapJoined` takes `isMac` rather than reading the
@@ -5454,20 +5482,29 @@ export function ChatSidebar({
 					row.session_id,
 				)}
 				{/*
-				 * THE ITEMS: the row's own acts in the pair's measured order - the archive
-				 * glyph is `order-first` in the strip, so the menu reads Archive then Pin
-				 * and the two surfaces cannot present the same pair backwards - drawn from
-				 * THE SAME PREDICATES the pair reads (`archiveEnabled`,
+				 * THE ITEMS, at most three (design § 7's budget): Archive, Pin, Fork.
+				 *
+				 * ARCHIVE THEN PIN is the strip's measured order and is preserved - the
+				 * archive glyph is `order-first` in the strip, so the menu reads Archive
+				 * then Pin and the two surfaces cannot present the same pair backwards. Both
+				 * are drawn from THE SAME PREDICATES the pair reads (`archiveEnabled`,
 				 * `row.pinned !== undefined`), so the two cannot disagree about what a row
 				 * offers. WITHDRAWN, NEVER DISABLED: an act the row cannot take is an
 				 * absent row, not a greyed one, the rule the row's controls already
-				 * follow.
-				 *
-				 * Each item presses the row's own control through `pressRowAct`, so the
+				 * follow. Each presses the row's own control through `pressRowAct`, so the
 				 * write, its guards and its focus correction arrive unchanged; the chord
 				 * cap is the `+`-joined spelling `KeyboardShortcut` splits (`joined`
 				 * suppresses the printed `+`), and it stays in the item's accessible name
 				 * - the discovery this menu exists to spend.
+				 *
+				 * FORK IS THE RESERVED THIRD ROW, NOW SPENT (#739), and it differs from the
+				 * pair in mechanism: there is no row control to press, so it opens the
+				 * register's own `session.fork` picker for THIS row's conversation through
+				 * the panel-presentation store (see its `onSelect`). It carries NO chord,
+				 * because fork has none - `/fork` and the palette are its other doors - so
+				 * it has no `KeyboardShortcut` and no accessible-name suffix; a printed
+				 * chord would be a hint for a gesture that does nothing. The menu is now at
+				 * its budget: the next act replaces one or finds another surface.
 				 */}
 				<ContextMenuContent
 					onFocus={(event) => {
@@ -5567,6 +5604,42 @@ export function ChatSidebar({
 									joined
 								/>
 							</span>
+						</ContextMenuItem>
+					)}
+					{forkable && (
+						/*
+						 * HOW IT OPENS: the picker is mounted by the chat PANE (`PickerOutlet`,
+						 * fed by `useSlashDispatch`), and the sidebar owns no presenter - so the
+						 * item ASKS, the way the command palette does (`command-palette.tsx`'s
+						 * `panel` case): it writes a request that NAMES THIS ROW's conversation,
+						 * because the pane's own session is generally not the row's and the
+						 * presenter must not substitute it, then routes to `/chat` only when no
+						 * pane is mounted to consume it. Completing the fork NAVIGATES to the
+						 * new fork (the pane's `rebind` is `openConversation` - the shipped
+						 * `/fork` semantics, reused deliberately; see `slash-dispatch.ts`).
+						 *
+						 * THE INVOKER IS THE ROW'S OWN BUTTON, not the item: the item unmounts
+						 * with the menu, and the row's button is the node the menu's own close
+						 * returns to, so Escape from the picker lands where Escape from the menu
+						 * would have.
+						 */
+						<ContextMenuItem
+							onSelect={() => {
+								requestPanel(
+									"session.fork",
+									document.querySelector<HTMLElement>(
+										`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+									),
+									row.session_id,
+								);
+								// The palette's own two lines, for the same reason: the request is
+								// written first (one written after the navigation would race the
+								// pane's mount), and the route moves only when no pane is there.
+								if (!location.pathname.startsWith("/chat")) navigate("/chat");
+							}}
+						>
+							<GitFork aria-hidden="true" />
+							<span>Fork conversation</span>
 						</ContextMenuItem>
 					)}
 				</ContextMenuContent>
