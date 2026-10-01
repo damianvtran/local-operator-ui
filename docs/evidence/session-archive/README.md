@@ -173,6 +173,14 @@ section its last step presses).
 > `node docs/evidence/session-archive/harness/stub-daemon.mjs --port <n> --records <scratch>`.
 > The scene reads **73 PASS, 0 FAIL in both palettes** on this change's tree.
 
+> **AFTER THE FOLD (2026-10-01).** The frames were shot at `56bfefa3ec` and the branch was then
+> folded onto `origin/main` as `5bea768188` (#663's `Open agent` control shifts the band's toolbar,
+> which is out of subject here). The scene was re-run on the folded build in the **dark palette
+> (73 PASS, 0 FAIL)** and the one frame this change added, `archive-confirm`, was compared over the
+> rows region below the toolbar: **byte-identical (dark)**. Only that frame was compared - the
+> older frames in this set are not this change's and were not re-checked - and the light palette
+> was not re-run after the fold.
+
 ## What each frame is, and what it is not
 
 Every frame is the real renderer: the real sidebar, the real canonical-sessions

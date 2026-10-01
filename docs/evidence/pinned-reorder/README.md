@@ -175,6 +175,42 @@ palettes). Two states are changed in MEANING, not just in pixels:
 logs its readings and the file is the four slices' logs re-keyed. The shape and key order are the
 committed ones; only the readings changed.
 
+### After the fold onto `origin/main` (2026-10-01)
+
+The frames above were shot at `56bfefa3ec`. The branch was then folded onto `origin/main`
+(`8e73cb8721`) as `5bea768188`, and main carries #663's Agents roster, whose `Open agent` (`@`)
+control joins the band's toolbar and shifts the panel's top. That delta is OUT OF SUBJECT here, so
+the set was not re-shot; the claim that matters is that the rows, the strip and the glyphs below
+the toolbar did not move, and it was checked rather than assumed: the three dark slices (`three`,
+`many`, `single`) were re-run on the folded build (scenes **54 / 17 / 13 PASS, 0 FAIL**) and
+compared pixel for pixel with the committed frames over everything below the band (device
+y >= 1040). The comparison found content unchanged and NOTHING ELSE than the classes below;
+the **light palette was not re-run**, so none of this is claimed for it.
+
+- **Rows, strip, glyphs, flyout, drag line and held ring**: unchanged. `grip-hover-260/280/320`,
+  `order-before-280`, `search-after-drop` and `search-filtered` are byte-identical in that region.
+- **The set's known 66px composer caret strip** (x 858-939, y 1597-1629, recorded above as
+  run-to-run noise) is the whole difference in `after-drop`, `order-before-260/320` and
+  `single-pin-hover`, and the only difference besides the ring in `grip-hover-240`.
+- **x 33-61, 5-19 pixels per frame, at most 6/255 in any channel**: anti-aliasing on the edge of
+  the leading status ring (`drag-top`, `drag-mid`, `search-drag-mid`, `grip-hover-240`,
+  `order-before-240`, `current-drag-mid`). Cropped side by side the ring is identical; it is
+  sub-pixel resampling of a circle, not a change.
+- **The list's overlay-scrollbar thumb** (device x 448-463 or 528-543, and x 2744-2759 for the
+  page's own): present in the committed frames, absent in 5 of the folded run's frames
+  (`order-before-240`, `order-relaunch`, `current-drag-mid` in the `three` slice, `many-pins`,
+  `single-pin`); the rows, counts and glyphs beside it are identical. **Its cause is NOT
+  established, and this paragraph does not claim it is noise.** What was measured: the thumb is
+  present in 13 of the folded `three` run's 16 frames, so it is not systematically gone; the
+  designer's consultation set (`fb565e2b8a`) and the committed set (`56bfefa3ec`) BOTH draw it in
+  all 16 of the `three` slice's frames (the consultation set carries that slice only), so the two
+  earlier sets do not show it varying there; the committed `many` / `single` frames all draw it; and the folded `row-space` scenes
+  (dark and light) match their committed frames INCLUDING this region, on the same tree. A
+  macOS overlay scrollbar fades on its own clock, which fits a capture-timing reading, and the
+  scene edits in this change added no wait or step near these frames (they re-point the cluster
+  expectations only) - but a difference that appears on 3 of 16 `three` frames and on none of the 32 earlier ones
+  (16 + 16), and on 2 of the 4 `many` / `single` frames, is a reading, not a finding. A reviewer who wants it closed should re-shoot those
+  five labels once and compare.
 ## Round 1's re-shoot, and how it compares to the set before it
 
 Every frame in the round-1 set was re-shot on the round-1 tree, so each one was a picture of
