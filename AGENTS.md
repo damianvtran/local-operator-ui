@@ -273,6 +273,39 @@ exception. The sweep was not performed: out of scope for the change that recorde
 it, and the fleet was under disk pressure at the time. No issue was filed - this
 repository's convention is that deferred findings live in the PR thread.
 
+**Bound your rigs: the desktop suite is memory-bounded, and so should anything
+else you run unattended.** On 2026-09-30 a `node --test` run grew to a ~198 GB
+owned footprint while `ps` showed ~1.4 GB; swap pegged and about a dozen agent
+sessions died before a person killed it by hand. `timeout` bounds time, not
+memory, and `--max-old-space-size` does not bound Buffers (measured: a
+128 MB heap cap still held 1,536 MB of Buffers and exited 0), so neither is a
+net. `scripts/run-desktop-tests.mjs` is. **Run the desktop tests through it
+(`pnpm test:desktop`, or `node scripts/run-desktop-tests.mjs <files>`), never a
+bare `node --test`**: it starts the suite in its own process group and, every
+2 s, sums the group's `max(phys footprint, RSS)` (footprint from
+`/usr/bin/footprint` on macOS - RSS alone is blind to compressed/swapped pages;
+the reasoning, probe costs and constants are in
+`scripts/desktop-test-memory-guard.mjs`).
+
+- **What a kill looks like.** One line on stderr, `desktop tests: MEMORY LIMIT
+  EXCEEDED - killed process group <pid> (<n> processes): <X> owned (...) >=
+  budget <Y>`, and exit status **137**. It means the whole group was SIGKILLed
+  (including grandchildren such as an app or backend a test launched) because a
+  successful reading was at or over the budget. Read the figure first: a test
+  that legitimately needs more is a reason to raise the budget; one that holds
+  gigabytes is a leak, and the budget did its job.
+- **The budget** is `max(6 GB, 25% of RAM)` capped at 50% of RAM - five times the
+  suite's measured ~1.2 GB tree peak - and it stays ACTIVE on CI (unlike the
+  concurrency governor): a runaway there is otherwise a 35-minute timeout and a
+  nameless OOM kill. Override with `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>`
+  (honoured unclamped) or `=off` (announced on stdout).
+- **A blind watchdog says so.** A probe that fails or times out skips that tick
+  (unknown never kills, and a starved `ps` must not wedge the run); after five
+  skipped ticks the runner prints that the run is NOT currently bounded.
+- **Do not hand-roll an unbounded runner** for another long-lived test or rig. If
+  it cannot go through this runner, give it its own process group and a
+  footprint-based watchdog that kills the group, not a pid.
+
 **Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
 exports it into every test-file process, and a nested `node --test` that inherits
 it does not run the files at all: it warns (`node:test run() is being called
