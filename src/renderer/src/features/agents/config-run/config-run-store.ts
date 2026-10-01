@@ -39,6 +39,8 @@ export type ConfigRunStatus =
 /** One definition the run is working on, as its tool rows named it. */
 export type RunTarget = { kind: "agent" | "team"; name: string };
 
+import type { WireImage } from "@features/chat/utils/bound-image";
+
 /** A catalogue field that changed, in the operator's words. */
 export type RunChange = { label: string; before: string; after: string };
 
@@ -120,8 +122,23 @@ export type ConfigRunStore = {
 
 	setDraft: (draft: string) => void;
 	setAbout: (about: RunTarget | null) => void;
+	/**
+	 * The encoded images the ACCEPTED request carried, so a retry repeats it.
+	 *
+	 * The retry rule is that it re-sends the same body byte-for-byte or answers 409
+	 * (`Prompt`, `desktop_sessions.py:1030`), and an attachment-carrying send whose
+	 * retry dropped the images would be a different request — the silent payload
+	 * drop the mount exists to avoid. Kept beside `topic`, which is that rule's
+	 * other half.
+	 */
+	images: WireImage[];
 	/** A run exists and is live. Does NOT spend the draft — see `acceptDraft`. */
-	adopt: (sessionId: string, topic: string, before: unknown) => void;
+	adopt: (
+		sessionId: string,
+		topic: string,
+		before: unknown,
+		images?: WireImage[],
+	) => void;
 	/** The send was accepted: now the box is spent. */
 	acceptDraft: () => void;
 	noteTouched: (target: RunTarget) => void;
@@ -152,6 +169,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	sessionId: null,
 	status: "idle",
 	topic: "",
+	images: [],
 	draft: "",
 	about: null,
 	error: null,
@@ -168,11 +186,12 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	setDraft: (draft) => set({ draft }),
 	setAbout: (about) => set({ about }),
 
-	adopt: (sessionId, topic, before) =>
+	adopt: (sessionId, topic, before, images = []) =>
 		set({
 			sessionId,
 			status: "running",
 			topic,
+			images,
 			error: null,
 			stopError: null,
 			startedAt: Date.now(),
@@ -232,6 +251,8 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 				created: result.created,
 			})),
 			sessionId: null,
+			// A settled run has no request left to repeat, images included.
+			images: [],
 			// A run that settled has nothing left to refuse: the stop is moot.
 			stopError: null,
 			// `before` is spent by the diff it was taken for.
@@ -266,6 +287,7 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			stopError: null,
 			unsent: false,
 			topic: "",
+			images: [],
 			touched: [],
 			results: [],
 			answer: "",
