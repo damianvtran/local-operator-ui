@@ -62,11 +62,12 @@
  *                                                disclosed
  *
  * Making those rows visible is the sibling completion-visibility change (V3 in the
- * design note, PR #737), not this predicate fix, so this file pins today's
- * behaviour there instead of claiming a wider invariant. A future reader adding a
- * shape above must know which side of that line it is on: the helper below asserts
- * the strict invariant, so a shape that legitimately hides a user row belongs in
- * its own case with the reason spelled out, not in `FRESH_SHAPES`.
+ * design note, PR #737). The list above is the pre-#737 measurement: with both
+ * changes in the tree (as here) user rows are visible in place, and the mid-work
+ * steer case below asserts that for `U T U T A` (it used to pin the steer row
+ * hidden behind a labelled bar). The other two listed shapes are not asserted
+ * here. A future reader adding a shape above must know the helper below asserts
+ * the strict invariant (no user row is hidden).
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -456,15 +457,21 @@ test("a stale openRuns key is inert: the bar simply renders collapsed", () => {
 	);
 });
 
-test("a genuine mid-work steer keeps today's behaviour (no widening)", () => {
+test("a genuine mid-work steer stays one run and its row is visible in place", () => {
 	/*
 	 * `U T U T A`: the second message arrives while the run is working, so it IS a
 	 * steer and the run stays one run. This is the compatibility case for the
 	 * predicate change - widening the closure test must not turn a steer into a new
-	 * run. Its row is hidden behind a labelled bar, which is the shipped shape (the
-	 * word is `labelOfSegment`'s, and it is deliberately not asserted as a literal
-	 * here); V3 in the sibling design note - PR #737's user-row visibility change -
-	 * is what makes that row visible, and it is NOT folded into this predicate fix.
+	 * run.
+	 *
+	 * SUPERSEDED EXPECTATION (this case was written for #736 alone): the steer row
+	 * was asserted to sit INSIDE a planned span, hidden behind a labelled bar, "the
+	 * shipped shape". PR #737 (V3 - every user row is visible) composes with this
+	 * change: #736 decides where a run opens, #737 decides what is visible inside
+	 * it, so with both in the tree the steer row is never hidden. The plan for this
+	 * shape is therefore ONE run holding TWO tool-only spans (`T1` and `T3`, split
+	 * by the visible steer row `U2`), neither of which contains a user row and so
+	 * neither of which carries the "names a hidden message" label (`null`).
 	 */
 	const { rows, runs, plan } = partitionOf("U T U T A");
 	assert.equal(runs.length, 1, "a steer mid-work does not open a second run");
@@ -473,27 +480,28 @@ test("a genuine mid-work steer keeps today's behaviour (no widening)", () => {
 		true,
 		"and the run still opens at the reader's first message",
 	);
+	assert.equal(plan.runs.length, 1, "the plan carries that one run");
 	const steer = rows.filter((row) => row.record.kind === "user")[1].record.id;
 	const segments = plan.runs.flatMap((run) => run.segments);
-	assert.ok(
-		segments.some((segment) => segment.segmentIds.includes(steer)),
-		"the steer row is inside a planned span",
+	assert.equal(
+		segments.length,
+		2,
+		"the visible steer row splits the run's hidden work into two spans",
 	);
-	/*
-	 * THE CONTRACT IS THAT THE BAR IS NAMED, not the word it is named with (review
-	 * round 1, R7). The copy is `labelOfSegment`'s (`turn-segments.ts` names a span
-	 * holding one of the reader's own rows), so an assertion on the literal would
-	 * stop checking anything the day it is reworded; what must hold is that a span
-	 * which hides the reader's OWN message cannot do it silently.
-	 */
-	for (const segment of segments) {
-		if (!segment.rows.some((row) => row.record.kind === "user")) continue;
-		assert.notEqual(
-			segment.label,
-			null,
-			`the span over ${segment.segmentIds.join(",")} hides one of the reader's own rows and must be named`,
-		);
-	}
+	assert.ok(
+		segments.every((segment) => !segment.segmentIds.includes(steer)),
+		"the steer row is not inside any planned span: it is visible in place",
+	);
+	assert.ok(
+		segments.every((segment) =>
+			segment.rows.every((row) => row.record.kind === "tool"),
+		),
+		"the hidden rows are the two tool rows only - no user row is hidden",
+	);
+	assert.ok(
+		segments.every((segment) => segment.label === null),
+		"so no span is labelled for hiding the reader's own message",
+	);
 });
 
 test("an answered run still closes on its answer (no regression)", () => {
