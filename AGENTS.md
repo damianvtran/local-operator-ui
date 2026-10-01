@@ -290,21 +290,49 @@ the reasoning, probe costs and constants are in
 - **What a kill looks like.** One line on stderr, `desktop tests: MEMORY LIMIT
   EXCEEDED — killed process group <pid> (<n> processes): <X> owned (...) >=
   budget <Y>`, and exit status **137**. It means the whole group was SIGKILLed
-  (including grandchildren such as an app or backend a test launched) because a
-  successful reading was at or over the budget. Read the figure first: a test
-  that legitimately needs more is a reason to raise the budget; one that holds
-  gigabytes is a leak, and the budget did its job.
-- **The budget** is `max(6 GB, 25% of RAM)` capped at 50% of RAM - five times the
-  suite's measured ~1.2 GB tree peak - and it stays ACTIVE on CI (unlike the
-  concurrency governor): a runaway there is otherwise a 35-minute timeout and a
-  nameless OOM kill. Override with `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>`
-  (honoured unclamped) or `=off` (announced on stdout).
-- **A blind watchdog says so.** A probe that fails or times out skips that tick
-  (unknown never kills, and a starved `ps` must not wedge the run); after five
-  skipped ticks the runner prints that the run is NOT currently bounded.
+  (including grandchildren such as an app or backend a test launched, and any
+  that left the group, which are re-verified by start time before being signalled
+  by pid) because a successful reading was at or over the budget. The line also
+  says when something was NOT done: out-of-group processes it could not verify
+  (check for strays), kill errors, or that the process table was unreadable so the
+  figure may undercount. Read the figure first: a test that legitimately needs
+  more is a reason to raise the budget; one that holds gigabytes is a leak, and
+  the budget did its job.
+- **The budget** is `max(8 GB, 25% of RAM)` capped at 50% of RAM. The floor is
+  2.7x the real suite's measured peak: one full `pnpm test:desktop` (330 files,
+  concurrency 7) peaked at **3,041 MB** of `max(footprint, RSS)` across the tree.
+  It stays ACTIVE on CI (unlike the concurrency governor): a runaway there is
+  otherwise a 35-minute timeout and a nameless OOM kill. Override with
+  `LOCAL_OPERATOR_UI_TEST_MEMORY_BUDGET_MB=<MB>` (honoured unclamped) or `=off`
+  (announced on stdout).
+- **When the watchdog cannot see the whole tree it says so, and the bound is
+  narrower.** A probe that fails or times out skips that tick (unknown never
+  kills, and a starved `ps` must not wedge the run). If the process-table read
+  fails the watchdog falls back to walking `pgrep -P` from the leader and keeps
+  enforcing on whatever footprints it could read; if that finds nothing it is
+  reading only the ~17 MB `node --test` coordinator, which is NOT a bound on the
+  test-file processes that hold the memory. Any such tick (and any tick with no
+  footprint reading) counts as **blind**; after five in a row the runner prints
+  `WARNING … the run is NOT reliably bounded`. A reading that is over budget
+  still kills, blind or not.
+- **If the runner itself is killed**, a small keeper process
+  (`scripts/desktop-test-keeper.mjs`, its own session, tethered by a pipe the
+  kernel closes however the runner dies) SIGKILLs the test group, so a harness's
+  `kill -9` of the runner's group no longer leaves the tree running unwatched. It
+  covers the group only, and not the keeper itself being killed.
+- **Ctrl-C/SIGTERM** are forwarded to the test group; a descendant that called
+  `setsid` (an Electron a rig launched `detached`) is not reached by them, as
+  under plain `node --test`. Only a memory trip walks out-of-group descendants.
 - **Do not hand-roll an unbounded runner** for another long-lived test or rig. If
   it cannot go through this runner, give it its own process group and a
   footprint-based watchdog that kills the group, not a pid.
+- **Site a rig's `node_modules` by the symlink shape, never a copy.** Do not
+  `cp -Rc` a pnpm tree: its store hardlinks materialise as real files on copy
+  (measured: ~7.6 GB of real allocation, and ENOSPC at 3.3 GB logical on this
+  host). Use an in-repo `.worktrees/<name>` with `ln -s ../../node_modules
+  node_modules` (~0 bytes). pnpm refuses a symlinked `node_modules`, so scripts in
+  such a worktree must call `node_modules/.bin/<tool>` directly rather than
+  `pnpm <tool>`.
 
 **Anything that spawns `node --test` must drop `NODE_TEST_CONTEXT`.** Node
 exports it into every test-file process, and a nested `node --test` that inherits
