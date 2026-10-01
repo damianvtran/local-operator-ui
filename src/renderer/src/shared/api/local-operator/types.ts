@@ -813,6 +813,13 @@ export type AgentSpeechRequest = {
 	input_text: string;
 	/** The format of the audio response. Default: "mp3". */
 	response_format?: string;
+	/**
+	 * ISO 639-1 language code (e.g. "en", "es"). Optional and forwarded only
+	 * when a caller sets it; the UI sends none yet - the field is here so the
+	 * selection/message surfaces can pass a language without a second request
+	 * shape. Dropped server-side for models that do not accept it.
+	 */
+	language_code?: string;
 };
 
 // --- End Speech API Types ---

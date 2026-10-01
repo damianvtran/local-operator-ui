@@ -691,7 +691,7 @@ const UserRow = memo(function UserRow({
 			 * on the bubble because the toolkit's own trigger has to sit inside it
 			 * too; this column keeps the stamp out of it either way.
 			 */}
-			<div className={cn("flex w-full flex-col items-end gap-1")}>
+			<div className={cn("group flex w-full flex-col items-end gap-1")}>
 				<div ref={turnRef} className="group relative flex w-full justify-end">
 					<div
 						className={cn(
@@ -841,6 +841,30 @@ const UserRow = memo(function UserRow({
 						/>
 					)}
 				</div>
+				{/*
+				 * THE USER TURN'S ACTION ROW (the operator's ask on the speak-aloud
+				 * round), mounted from the column and NOT from inside `turnRef`: that
+				 * element is a single flex ROW holding the bubble, and a second flow
+				 * child would sit beside the bubble rather than under it. The row is
+				 * the same component the answer's foot carries, in its `user` role
+				 * (Copy alone - see `message-actions.ts` for why a user turn offers no
+				 * Speak), so the copy press, the reveal and the toolbar semantics are
+				 * one implementation rather than a second one beside it.
+				 *
+				 * Its `group` is the column above, so hovering anywhere on the turn
+				 * reveals it; the row keeps its place at rest (opacity only), which is
+				 * why nothing moves when it appears. `isQuotable` is the same "this
+				 * turn has words to offer" gate the quote control reads - a turn with
+				 * no words has nothing to copy.
+				 */}
+				{isQuotable(record, remainingContent) && (
+					<AnswerActionRow
+						kind="user"
+						bodyText={remainingContent}
+						revealId={record.id}
+						revealAt={record.ts}
+					/>
+				)}
 				{/*
 				 * §F3's LINE, ONE ROW UNDER THE BLOCK IT IS ABOUT.
 				 *
@@ -1210,6 +1234,8 @@ const AssistantRow = memo(function AssistantRow({
 							bodyText={remainingContent}
 							agentId={conversationId}
 							speechId={record.id}
+							revealId={record.id}
+							revealAt={record.ts}
 						/>
 					)}
 					{!closingLineSuppressed && foot && foot.actions > 0 && (

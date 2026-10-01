@@ -9,11 +9,10 @@
  * The census names rows by their registry METHOD label ("xAI (Grok API key)",
  * "Anthropic (Claude Pro/Max)"), which is right for a terminal picker and wrong
  * for a list of brands: the settings page printed "Z.AI (GLM API key)" above a
- * "Sign in or API key" chip (design D3, UX U4). The design asks for a backend
- * `brand`/`label` pair (P1, backend-owned); until a backend sends one, the
- * brand is the registry name with its parenthetical removed, which is exactly
- * how every row is spelled today. When the backend field lands, `brandOf` is
- * the one place that starts preferring it.
+ * "Sign in or API key" chip (design D3, UX U4). The backend `brand`/`label`
+ * pair has since landed (the census's `brand`, `provider_brand` in the
+ * provider registry), and `brandOf` reads it first; the derivation below is the
+ * fallback for a row an older backend sends without one.
  *
  * Pure functions only, so `scripts/provider-catalog.test.mjs` can pin them in
  * Node without a DOM.
@@ -55,10 +54,20 @@ export const FEATURED_PROVIDER_IDS = [
 export function brandOf(provider: {
 	name: string;
 	id?: string;
+	brand?: string;
 }): string {
+	/*
+	 * The backend's own brand first (the census's `brand` field, `provider_brand`
+	 * in the provider registry): it is the one answer both hosts read, and the
+	 * derivation below is its documented fallback for rows an older backend
+	 * sends without one.
+	 */
+	const explicit = provider.brand?.trim();
+	if (explicit) return explicit;
 	// A registry entry whose display name carries the PLAN rather than the brand
 	// ("QwenCloud Token Plan"): the plan is the method, and this string is used
-	// as a brand in the list, the tabs and the success sentence.
+	// as a brand in the list, the tabs and the success sentence. Fallback-only
+	// now that the backend can say so itself; delete after two releases.
 	const override = provider.id ? BRAND_OVERRIDES[provider.id] : undefined;
 	if (override) return override;
 	const stripped = provider.name.replace(TRAILING_PARENTHETICAL, "").trim();
