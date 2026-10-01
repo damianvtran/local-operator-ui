@@ -1635,10 +1635,23 @@ tolerates and needs the npm registry, and the pack and launch legs need the four
 `git push` runs `.githooks/pre-push`, a DELTA-SCOPED gate: it costs what the diff
 costs, not what the tree costs. It is wired per clone by
 `scripts/hooks-install.mjs` (run from `prepare`, and by hand as
-`pnpm hooks:install`; `pnpm hooks:check` reports read-only and exits non-zero when
-pushes from a checkout are not gated). Full detail and the wiring's failure modes:
+`pnpm hooks:install`). `prepare` passes `--tolerate-failure`, because an install
+must never be broken by a hook helper, and it says loudly what is not gated when it
+cannot wire; `hooks:install` and `hooks:check` are the spellings that exit non-zero.
+The config is written to the LOCAL scope explicitly, a `core.hooksPath` configured
+elsewhere is named rather than replaced in silence, and `.git/hooks/` being disowned
+by that setting is said out loud. Full detail and the wiring's failure modes:
 `docs/hooks.md`.
 
+- **Its subject is the ref being pushed, not `HEAD`.** Git writes the refs to the
+  hook's stdin and that is what gets classified, so `git push origin other`, `--all`
+  and a worktree whose `HEAD` is another branch are gated against the commits they
+  actually carry. Uncommitted edits are NOT part of the subject (`pnpm
+  check-changed` is the spelling that sees them), and a pushed ref this checkout
+  does not carry is refused rather than gated against the wrong bytes. The two
+  positional arguments git appends (the remote's name and URL) are accepted and
+  ignored; an earlier revision forwarded them into the gate's parser and refused
+  every push.
 - **It runs three legs, and `scripts/ci-scope.mjs` decides whether each applies.**
   `scripts/` files this change touches go through the `lint:scripts` ratchet;
   changed `src/`/`bin/` files go through the same `biome` `pnpm lint` names, over
@@ -1675,12 +1688,17 @@ commands are:
 ```
 
 What HAS been executed: `node --test --test-concurrency=1
-scripts/pre-push-gate.test.mjs` — 8 tests, 8 passing, ~93 s wall, all against real
-scratch clones and real `git push` runs (refusal on a missing hook, the hook's own
-exit status propagating, the disclosed bypass, idempotent wiring, and the
-refusals for an unresolvable base and a missing tool). Those fixtures carry no
-`node_modules`, so they exercise the wiring and the refusal paths, not the lint or
-`tsc` legs.
+scripts/pre-push-gate.test.mjs` against real scratch clones, the REAL tracked hook,
+the REAL dispatcher and REAL `git push` runs: an inert push SUCCEEDING (the
+regression for the revision whose launcher forwarded git's own arguments and
+therefore refused every push), a violating change FAILING the push, a clean change
+passing, the subject being the pushed ref rather than `HEAD`, a foreign ref and a
+missing hook refused, a deletion carrying nothing to read, the disclosed bypass and
+its empty-reason refusal, idempotent local wiring, a wiring failure not failing an
+install, and the refusals for an unresolvable base and a missing tool. The fixtures
+link this checkout's `node_modules`, so the `scripts/` lint leg runs the
+repository's own biome; the `tsc` leg is out of reach there and rests on the
+classifier's tests and CI.
 
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 

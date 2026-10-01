@@ -84,10 +84,15 @@ const HOOK_NAME = "pre-push";
 const BYPASS_VAR = "PREPUSH_BYPASS";
 
 const USAGE = [
-	"usage: node scripts/hooks-install.mjs [--check] [--help]",
+	"usage: node scripts/hooks-install.mjs [--check] [--tolerate-failure] [--help]",
 	"",
 	"  --check   report whether this clone's pushes are wired, and exit",
 	"            non-zero with what to run when they are not. Writes nothing.",
+	"  --tolerate-failure",
+	"            print a loud warning instead of failing. This is how `prepare`",
+	"            invokes it: an install must never be broken by a hook helper.",
+	"            `pnpm hooks:install` and `pnpm hooks:check` are the spellings",
+	"            that DO fail, and the warning states exactly what is not gated.",
 	"  --help    print this.",
 	"",
 	"Writes <common-git-dir>/lop-hooks/pre-push: a dispatcher that runs the",
@@ -119,8 +124,19 @@ const DISPATCHER_LINES = [
 	"set -u",
 	"",
 	`if [ -n "\${${BYPASS_VAR}:-}" ]; then`,
-	`	printf '%s\\n' "pre-push: BYPASSED by ${BYPASS_VAR}=\\"\${${BYPASS_VAR}}\\" - nothing was checked. CI is still the authority, and a bypass is an unverified push; say so in the PR rather than leaving it implicit." >&2`,
-	"	exit 0",
+	"\t# A bypass must NAME a reason. Whitespace is not one, and a gate that",
+	"\t# accepted it would be a bypass nobody had to think about - the point of",
+	"\t# the variable is that the disclosed path stays disclosed.",
+	`\tcase "\${${BYPASS_VAR}}" in`,
+	"\t*[![:space:]]*)",
+	`\t\tprintf '%s\\n' "pre-push: BYPASSED by ${BYPASS_VAR}=[\${${BYPASS_VAR}}] - nothing was checked. CI is still the authority, and a bypass is an unverified push; say so in the PR rather than leaving it implicit." >&2`,
+	"\t\texit 0",
+	"\t\t;;",
+	"\t*)",
+	`\t\tprintf '%s\\n' "${BYPASS_VAR} is set but names no reason (whitespace only), so it is NOT a bypass: nothing was checked and this push is refused. Name the reason, or unset it." >&2`,
+	"\t\texit 1",
+	"\t\t;;",
+	"\tesac",
 	"fi",
 	"",
 	"top=$(git rev-parse --show-toplevel 2>/dev/null) || {",
@@ -167,10 +183,11 @@ function gitProbe(args, cwd) {
 }
 
 function parseArguments(argv) {
-	const options = { check: false, help: false };
+	const options = { check: false, tolerateFailure: false, help: false };
 	for (const argument of argv) {
 		if (argument === "--help" || argument === "-h") options.help = true;
 		else if (argument === "--check") options.check = true;
+		else if (argument === "--tolerate-failure") options.tolerateFailure = true;
 		else throw new Error(`unknown argument '${argument}'\n\n${USAGE}`);
 	}
 	return options;
@@ -204,7 +221,28 @@ function main(argv) {
 		console.log(USAGE);
 		return 0;
 	}
+	if (!options.tolerateFailure) return wire(options);
 
+	// `prepare` runs inside `pnpm install`, and AN INSTALL MUST NEVER BE BROKEN BY
+	// A HOOK HELPER: a repository whose install fails because a git directory was
+	// read-only has a worse defect than an ungated push. The failure is still
+	// LOUD - it names exactly what is not gated - and `pnpm hooks:check` is the
+	// spelling that exits non-zero.
+	try {
+		return wire(options);
+	} catch (error) {
+		console.warn(
+			`hooks: WARNING - this clone's pushes are NOT gated: ${error.message}`,
+		);
+		console.warn(
+			"hooks: this is the `prepare` path, so the install is NOT failed by it. Run `pnpm hooks:check` for the read-only answer, and `pnpm hooks:install` once the cause is fixed.",
+		);
+		return 0;
+	}
+}
+
+/** The wiring itself: strict about every step it cannot verify. */
+function wire(options) {
 	const cwd = process.cwd();
 	const top = gitProbe(["rev-parse", "--show-toplevel"], cwd);
 	if (!top) {
@@ -222,7 +260,8 @@ function main(argv) {
 		return 0;
 	}
 
-	const hooksDir = join(sharedGitDirectory(top), HOOKS_DIR_NAME);
+	const commonDir = sharedGitDirectory(top);
+	const hooksDir = join(commonDir, HOOKS_DIR_NAME);
 	const dispatcher = join(hooksDir, HOOK_NAME);
 	const tracked = join(top, ".githooks", HOOK_NAME);
 
@@ -247,27 +286,49 @@ function main(argv) {
 		);
 	}
 
-	// The value is shared across every worktree of this clone (no `--worktree`),
+	// THE LOCAL SCOPE, NAMED EXPLICITLY. A bare `git config core.hooksPath X`
+	// writes wherever the ambient configuration points - a rig's
+	// `GIT_CONFIG_GLOBAL`, or another repository's config - which is how a nested
+	// checkout can poison the OUTER repository's pushes instead of wiring its own.
+	// `--local` is this repository's own config file, shared by its worktrees,
 	// which is what makes one install wire all of them.
-	const wired = gitProbe(["config", "--get", "core.hooksPath"], top);
-	if (wired === hooksDir) {
+	const local = gitProbe(["config", "--local", "--get", "core.hooksPath"], top);
+	const effective = gitProbe(["config", "--get", "core.hooksPath"], top);
+	if (local === hooksDir) {
 		console.log(`hooks: core.hooksPath already points at ${hooksDir}.`);
 	} else {
-		const set = git(["config", "core.hooksPath", hooksDir], top);
+		const set = git(["config", "--local", "core.hooksPath", hooksDir], top);
 		if (set.status !== 0) {
 			throw new Error(
-				`git config core.hooksPath failed (${(set.stderr || "").trim() || "no output"}), so pushes from this clone would stay ungated`,
+				`git config --local core.hooksPath failed (${(set.stderr || "").trim() || "no output"}), so pushes from this clone would stay ungated`,
 			);
 		}
 		console.log(
-			wired
-				? `hooks: core.hooksPath was ${wired}; it now points at ${hooksDir}.`
-				: `hooks: set core.hooksPath to ${hooksDir}.`,
+			local
+				? `hooks: the local core.hooksPath was ${local}; it now points at ${hooksDir}.`
+				: `hooks: set the local core.hooksPath to ${hooksDir}.`,
 		);
+		if (effective && effective !== local) {
+			// Replaced in the open rather than in silence: the local value wins, so
+			// whatever configured hooksPath elsewhere is now inert for this clone.
+			console.warn(
+				`hooks: WARNING - a core.hooksPath is ALSO configured elsewhere (${effective}); the local value takes precedence, so this clone's pushes run this repository's hook and not that one.`,
+			);
+		}
+		const disowned = join(commonDir, "hooks", HOOK_NAME);
+		if (existsSync(disowned)) {
+			// git ignores the hooks directory entirely once core.hooksPath is set,
+			// so a pre-push that used to run there is not chained, it is disowned.
+			console.warn(
+				`hooks: WARNING - ${disowned} exists, and git IGNORES the whole hooks directory once core.hooksPath is set: that hook is disowned, not chained. Move it to .githooks/${HOOK_NAME} if it still needs to run.`,
+			);
+		}
 	}
-	if (gitProbe(["config", "--get", "core.hooksPath"], top) !== hooksDir) {
+	if (
+		gitProbe(["config", "--local", "--get", "core.hooksPath"], top) !== hooksDir
+	) {
 		throw new Error(
-			`core.hooksPath does not read back as ${hooksDir} after writing it; pushes from this clone would run the wrong hook or none at all`,
+			`the local core.hooksPath does not read back as ${hooksDir} after writing it; pushes from this clone would run the wrong hook or none at all`,
 		);
 	}
 
@@ -288,7 +349,7 @@ function main(argv) {
 
 /** `--check`: report, change nothing, exit non-zero when pushes are not gated. */
 function check({ top, hooksDir, dispatcher, tracked }) {
-	const wired = gitProbe(["config", "--get", "core.hooksPath"], top);
+	const wired = gitProbe(["config", "--local", "--get", "core.hooksPath"], top);
 	const problems = [];
 	if (wired !== hooksDir) {
 		problems.push(

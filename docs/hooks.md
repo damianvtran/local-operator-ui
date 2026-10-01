@@ -26,6 +26,27 @@ Which legs apply is not decided here: `scripts/ci-scope.mjs` — the same module
 `Change Scope` CI job and `pnpm check-changed` run — classifies the diff, and the
 gate runs the legs its flags select. A prose-only diff runs nothing.
 
+**The subject is the ref being pushed, not `HEAD`.** Git writes the refs it is
+about to push to the hook's stdin (`<local ref> <local sha> <remote ref> <remote
+sha>` per line) and that is what this gate classifies, so `git push origin other`,
+`--all`, a tag or a worktree whose `HEAD` is another branch are all gated against
+the commits they actually carry. Two consequences worth knowing:
+
+- **Uncommitted edits are not part of the subject.** They are not what a push
+  carries; `pnpm check-changed` and `pnpm lint:scripts` are the spellings that see
+  them.
+- **A pushed ref this checkout does not carry is refused**, not gated against the
+  wrong bytes: the legs read files on disk, so a foreign branch (one not reachable
+  from `HEAD`) cannot be linted here. The refusal names the ref and says to push it
+  from a worktree that has it — or to run the legs by hand and say so.
+
+The two positional arguments git appends to a pre-push hook (the remote's name and
+URL) are **accepted and ignored**, and more than those two is refused rather than
+dropped. This is not decoration: an earlier revision forwarded them into the
+gate's parser, which threw on them, so every push from a correctly wired clone was
+refused with `unknown argument 'origin'` — the failure mode this whole gate exists
+to remove, in the gate itself.
+
 The types leg is the exception to "cost proportional to the diff" and it is kept
 anyway, deliberately: TypeScript has no per-file mode, so this leg costs the tree.
 It therefore runs only when a diff touches a TypeScript file, and its two projects
@@ -47,6 +68,12 @@ and as of 2026-10-01 they are recorded there as NOT RUN, because the host was
 below the fleet's floor when this landed. The commands are in that section; do not
 quote a number this file does not carry.
 
+The gate's own contract is `scripts/pre-push-gate.test.mjs`, run inside
+`pnpm test:desktop`. Its fixtures carry the REAL hook, the REAL dispatcher, the
+REAL gate and the REAL classifier, copied from the checkout under test, and push
+for real: a stub standing in for the hook is what let a gate that refused every
+push pass a green suite once already.
+
 This is a macOS/Linux gate: the tracked hook is a `#!/usr/bin/env node` script, so
 a Windows checkout without a Node-aware hook runner is not gated. Say so rather
 than assuming it is.
@@ -54,10 +81,15 @@ than assuming it is.
 ## Wiring, and what happens in a fresh worktree
 
 ```sh
-pnpm install            # runs `prepare` -> node scripts/hooks-install.mjs
-pnpm hooks:install      # the same thing, run by hand
+pnpm install            # runs `prepare` -> node scripts/hooks-install.mjs --tolerate-failure
+pnpm hooks:install      # the same thing, run by hand, strict: exit 1 when it cannot wire
 pnpm hooks:check        # read-only: are pushes from this clone gated?
 ```
+
+`prepare` passes `--tolerate-failure` on purpose: **an install must never be broken
+by a hook helper.** A wiring that cannot be verified still says so loudly (the
+warning names exactly what is not gated) but does not fail `pnpm install`; the
+`hooks:install` and `hooks:check` spellings are the ones that exit non-zero.
 
 `hooks-install.mjs` creates `<common git dir>/lop-hooks/pre-push` and points
 `core.hooksPath` at it. The path is **absolute** and lives in the clone's *shared*
@@ -70,6 +102,19 @@ branch predates `.githooks/pre-push` is therefore *refused*, loudly, naming how 
 fix it — it does not push ungated. This is the state the fleet hit: a worktree with
 no hook directory, a `core.hooksPath` pointing at nothing, and a push that ran no
 check while reporting no problem.
+
+Three details of the wiring that are there for a reason:
+
+- **The config is written to the LOCAL scope explicitly** (`git config --local`). A
+  bare `git config` writes wherever the ambient configuration points, so a nested
+  checkout under a rig's `GIT_CONFIG_GLOBAL` could set the OUTER repository's
+  `core.hooksPath` and gate a repository nobody was working in.
+- **A `core.hooksPath` configured elsewhere is named, not replaced in silence.**
+  The local value wins; the warning says which value it superseded.
+- **`.git/hooks/pre-push` being disowned is said out loud.** git ignores the hooks
+  directory entirely once `core.hooksPath` is set, so an existing hook there is not
+  chained, it stops running; the warning names the file and says to move it into
+  `.githooks/` if it still needs to run.
 
 ## When a leg cannot run: never `--no-verify`
 
@@ -89,7 +134,9 @@ node_modules/.bin/tsc --noEmit -p tsconfig.app.json
 `PREPUSH_BYPASS="<reason>"` is the disclosed form of a bypass: it prints a banner
 naming the reason on the push itself, and it exists so the disclosed path is
 cheaper than the silent one. It is honoured by both the dispatcher and the gate,
-and it is only for a leg that could not run — never for one that failed.
+and it is only for a leg that could not run — never for one that failed. A reason
+is required in both places: whitespace-only is refused rather than treated as a
+bypass, because a bypass nobody had to think about is not a disclosure.
 
 A worktree with no `node_modules` needs none installed: the fleet convention is to
 link the primary checkout's tree —
