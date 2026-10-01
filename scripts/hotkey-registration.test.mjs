@@ -599,3 +599,120 @@ test("DEFAULT_QUICK_SEND_VALUE equals keymap.quick_send's default in the committ
 		"the row must declare the desktop scope the capture rules switch on",
 	);
 });
+
+/* ------------------------------------------------------------------ *
+ * The popup's presentation gate and its failure card (round 3)
+ * ------------------------------------------------------------------ */
+
+test("presentation waits for the renderer's first commit - and never shows a blank card", () => {
+	/*
+	 * THE SHIPPED WHITE-CARD DEFECT's guard, driven on the pure decision.
+	 *
+	 * `focus` + not painted + not timed out is the arm that did not exist: the
+	 * window module presented whenever the plan allowed it, with no idea whether
+	 * the document behind it had painted anything. "wait" is that state.
+	 */
+	assert.equal(
+		mini.miniViewPresentationFor({
+			show: "focus",
+			painted: false,
+			timedOut: false,
+		}),
+		"wait",
+		"a summon whose document has not committed must not present anything yet",
+	);
+	assert.equal(
+		mini.miniViewPresentationFor({
+			show: "focus",
+			painted: true,
+			timedOut: false,
+		}),
+		"present",
+		"the signal is what releases the presentation",
+	);
+	assert.equal(
+		mini.miniViewPresentationFor({
+			show: "focus",
+			painted: false,
+			timedOut: true,
+		}),
+		"error-surface",
+		"a load that never commits gets the card instead of a white rectangle",
+	);
+	/*
+	 * And a plan that may not present NEVER waits: there is no card to protect
+	 * (nothing will be shown), and holding a timer there would be a headless run
+	 * accumulating a pending timeout per summon.
+	 */
+	for (const show of ["never", "inactive"]) {
+		assert.equal(
+			mini.miniViewPresentationFor({ show, painted: false, timedOut: false }),
+			"present",
+			`${show} has nothing to wait for`,
+		);
+	}
+});
+
+test("the failure card is a dark, scriptless document that cannot fail with the bundle", () => {
+	const html = mini.miniViewErrorSurfaceHtml();
+	assert.ok(
+		html.includes(mini.MINI_VIEW_GROUND),
+		"the card paints the app's own dark ground, not the platform's white",
+	);
+	assert.ok(
+		!html.includes("<script"),
+		"the card carries no script: nothing for a CSP to block and nothing to throw",
+	);
+	assert.match(
+		html,
+		/Quick send could not open\./,
+		"the card says what happened rather than leaving a void",
+	);
+	assert.ok(
+		html.includes("Try the hotkey again"),
+		"and it names the next move",
+	);
+	assert.match(
+		html,
+		/color-scheme: dark/,
+		"declared dark, so the platform does not draw white chrome around it",
+	);
+});
+
+test("the load-failure and renderer-death paths are wired, and the window has a ground", () => {
+	/*
+	 * SOURCE PINS, for the halves the electron stub deliberately cannot drive:
+	 * `mini-view-electron-stub.ts` refuses to construct a window, and standing a
+	 * real one up is the evidence scene's business. What is pinned here is that
+	 * the shipped module attaches the two failure listeners, paints its own
+	 * ground before any document lands, and takes the ready signal from the
+	 * renderer - so a later refactor that drops one of them has a failing case.
+	 */
+	const source = readFileSync("src/main/mini-view.ts", "utf8");
+	assert.ok(
+		source.includes('"did-fail-load"') &&
+			source.includes('"render-process-gone"'),
+		"a load that failed or a renderer that died must reach the card, not a white void",
+	);
+	assert.ok(
+		source.includes("backgroundColor: MINI_VIEW_GROUND"),
+		"the window paints the dark ground itself, for the frames before any document lands",
+	);
+	assert.ok(
+		source.includes("MINI_VIEW_PAINTED"),
+		"presentation is gated on the renderer's own first-commit signal",
+	);
+	const frame = readFileSync(
+		"src/renderer/src/mini-view/mini-composer.tsx",
+		"utf8",
+	);
+	assert.ok(
+		frame.includes("miniView?.painted?.()"),
+		"the frame sends the signal it is gated on",
+	);
+	assert.match(
+		frame,
+		/useLayoutEffect\(\(\) => \{\s*window\.api\?\.miniView\?\.painted\?\.\(\);\s*\}, \[\]\)/,
+		"and sends it from the COMMIT, not from a frame a never-shown window may never run",
+	);
+});

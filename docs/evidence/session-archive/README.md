@@ -153,6 +153,68 @@ presses would not be drawn), and it EXPANDS `Previous chats` once and relies on
 the sidebar persisting that disclosure (a second toggle would collapse the
 section its last step presses).
 
+> **ARCHIVING ASKS NOW (2026-09-30, `docs/design/session-archive-delete.md`, "Archiving asks first").**
+> Every archive press in the scene that used to write goes through the confirmation first, so the
+> frames that follow it - `archive-refused`, `undo-offer`, `header-archived` - are the state AFTER
+> the answer, and the question has its own frame, `archive-confirm`. It is taken in its own step
+> (7b) rather than at the raising press on purpose: the refusal the earlier step reads lives ten
+> seconds and the walk's later steps spend most of them, so a capture at the press made the retry
+> read an expired message. The press is a CANCEL there, which is the other half of the claim.
+>
+> **THE ARCHIVE SCENE NEEDS ITS OWN STUB, `harness/stub-daemon.mjs` IN THIS DIRECTORY, and a run
+> against the row-space set's stub does not behave the way it reads.** The two fixtures differ in one
+> way the refusal steps depend on: this set's `Migration checklist` row carries `live_claim: true`,
+> which is what makes the daemon answer 409 to that row's archive and delete; the row-space stub has
+> no `live_claim` at all. Pointed at it, the scene boots, draws, and fails at the first refusal with
+> "nothing matches [data-sonner-toast]" - a harness mismatch that reads as an app defect. (The
+> mismatch was measured on this change's first run of the scene; the design consultation's
+> unmodified recipe used the row-space stub and so reported the archive scene as failing in the
+> light palette and "throwing after five frames" in the dark.) The run line is:
+> `node docs/evidence/session-archive/harness/stub-daemon.mjs --port <n> --records <scratch>`.
+> The scene reads **73 PASS, 0 FAIL in both palettes** on this change's tree.
+
+> **AFTER THE FOLD (2026-10-01).** The frames were shot at `56bfefa3ec` and the branch was then
+> folded onto `origin/main` as `5bea768188` (#663's `Open agent` control shifts the band's toolbar,
+> which is out of subject here). The scene was re-run on the folded build in the **dark palette
+> (73 PASS, 0 FAIL)** and the one frame this change added, `archive-confirm`, was compared over the
+> rows region below the toolbar: **byte-identical (dark)**. Only that frame was compared - the
+> older frames in this set are not this change's and were not re-checked - and the light palette
+> was not re-run after the fold.
+
+> **ROUND 1 REMEDIATION FRAMES (2026-10-01), shot on the app source of `9d1f54a9ae`** (this commit's only `src/` change is the dev driver's width clamp, which draws nothing in the app).
+> `archive-confirm` was re-shot in both palettes with the reworded body (`It leaves your lists. You
+> can undo for 8 seconds; after that, search above your chats, turn on “Include archived”, then
+> Unarchive it.`), and `archive-confirm-settings` is new: the same press made on
+> `/settings`, which asks THERE (UX round 1, U1). The scene was run on one build in both palettes:
+> **dark 74 PASS / 0 FAIL, light 74 PASS / 0 FAIL**, including the header-door cancel leg in its
+> FINAL form (the `fromHeader` flag on the candidate): the light palette is the one that failed
+> before that change (`active: BUTTON`, 35 PASS / 2 FAIL), and it now returns focus to the header's
+> menu trigger in both. **The final body renders on TWO lines** in all four dialog frames (design
+> round 2, D11), and the frames were re-shot once more after the fourth fold with the copy the
+> branch ships. The long-name frame belongs to the row-space set
+> (`sidebar-row-space/after/archive-confirm-long`).
+>
+> **FOLDS (one ledger, shared by the three evidence READMEs; six, per design round 3's D15).** The
+> branch has SIX fold commits on its first-parent chain: (1) `5bea768188` onto `8e73cb8721`,
+> (2) `a191f2e928` onto `e1eb22cd58`, (3) `9d1f54a9ae` onto `81a621f8af`, (4) `d08936c26e` onto
+> `44e4812b31`, (5) `034a7277a8` onto `53c5cfec6b`, (6) `637fb83d81` onto `44249a6796`. Each fold
+> commit hand-resolves exactly one file, `docs/evidence/manifest.json`, taking main's copy and
+> re-deriving the stamp pair; fold 4 also auto-merged upstream's team-label and hub-mark changes into
+> `chat-sidebar.tsx`, `chat-header.tsx` and the canonical sessions store. **Folds five and six brought
+> in no change to any surface this set photographs** - neither `44e4812b31..53c5cfec6b` nor
+> `53c5cfec6b..44249a6796` touches the sidebar, the dialog, the pins, the header or the store - so the
+> comparisons below still describe the current head's rows. The paragraph above, comparing the first
+> fold's rows region, describes THAT comparison only.
+
+**FOURTH-FOLD COMPARISON (2026-10-01).** Only TWO frames in this set are the same capture size as
+this round's runs: `archive-confirm` and `archive-confirm-settings` (the round-1 remediation
+re-shoot, 2760x1800 device). Both are **panel byte-identical** (device x < 700, below the toolbar)
+and differ only in the chat pane, which main's 63 commits reworked and which is not this set's
+subject. Every other frame here is the older `2760x1736` capture from #430's head (stated at
+line 247 below), so it is not comparable to a 1800-row run at all - a size difference, not a
+content one; `settle-probe`, the one diagnostic frame that is 1800 rows, is a scroll-offset
+difference of the same kind the pinned set shows.
+
 ## What each frame is, and what it is not
 
 Every frame is the real renderer: the real sidebar, the real canonical-sessions
@@ -183,6 +245,8 @@ line, the lane, the Retry) is what those frames are of.
 | `settle-probe/{dark,light}` | the helper's own still, taken immediately before the arrival sequence | **the frame this set used to carry unnamed** (design round 9's D26 filed the row-space set's copy as identical to another frame and cited by neither README nor manifest): it is the settled list the arrival probes perturb, kept so the pre-arrival state is a picture rather than a claim, and it is named here for that reason | a plain `capture` through the arrival helper, before any press |
 | `delete-dialog/{dark,light}` | the header's conversation menu → `Delete conversation…` | the one permanent delete asks with the danger role, names the conversation, says the transcript cannot be undone, and does nothing on its own | two real clicks (the trigger, then the item), then the dialog's box is measured |
 | `delete-refused/{dark,light}` | the same dialog, `Delete` pressed on a conversation a live session claims | the refusal stays **in the dialog that asked**, the route's sentence is quoted and the window's own remedy follows it, and the keyboard is back on **Cancel** | the stub answers 409 for one conversation `live_claim: true`; the scene presses Confirm and then measures `[data-cancel-action]` for `focused` |
+| `archive-confirm/{dark,light}` | the archive control pressed on a live row, nothing answered yet (2026-09-30) | **archiving asks first**: the pane's one confirmation is up over the panel, titled `Archive “Migration checklist”?` with the name quoted, the body states the way back (round 1 reworded it from `It leaves your lists and search. Undo brings it back for a few seconds, and “Include archived” in search finds it again.`, which said "search" twice with opposite meanings; the frame and the scene's check carry the new wording), **Cancel holds the keyboard** (the safe action, ringed) and **Archive is the primary, not the danger role** - the delete dialog beside it keeps that role for the act that cannot be undone. The scene reads each of those from the DOM, then PRESSES Cancel and asserts that no archive request reached the daemon (`POST .../archive` count read from the stub's own log, equal before and after the press) | the `session-archive` scene's step 7b, `confirmArchiveDialog` and the daemon log |
+| `archive-confirm-settings/{dark,light}` | the same press made on `/settings` (2026-10-01, UX round 1, U1) | **the question is asked where the press is made**: the dialog is up over the Settings route, naming `Migration checklist`, Cancel focused. The scene asserts it, then cancels and asserts that no archive request reached the daemon and that no dialog is waiting when `/chat` is shown again | the `session-archive` scene, after step 7b |
 | `archive-refused/{dark,light}` | the archive control pressed on the conversation a running session claims, so the daemon refuses it | a refused archive is reported with the **Retry** that re-sends the desired state; when these frames were taken it was the panel's own **toast lane** (the `[data-archive-toast-band]` shape, since retired 2026-09-27 - the message is an ordinary bottom-right sonner toast again, with live frames under `docs/evidence/undo-toasts-lane-retired/` and the record in `docs/design/sidebar-row-space.md` §10: one container, outside the panel, no band element). The register line this row used to describe, and the `[data-session-archive-failure]` selector it used to cite, are both gone from the tree | the scene clicks the row's control and asserts the refusal's Retry is in the viewport and hit-testable |
 | `archive-refused-chats-only/{dark,light}` | **RETIRED (round 1 of the #534 remediation, Q3/R4-1)** - the refused archive with the entity region collapsed by the panel's own control, the mode the walk used to drive | kept as the record of R4-1's proof: the refusal is reported in the lane the panel draws at its own root, so no region's unmounting can take it with them - which the walk now asserts on the drawn node (`lane.closest("[data-sidebar-region]") === null`) instead of driving a control that no longer exists | the frame's producing steps (hover + press the cluster's hide control, then the restore row) were deleted with the split; the walk no longer writes this frame |
 | `header-archived/{dark,light}` | the open conversation archived from its own menu, no dialog open | archiving the OPEN conversation keeps the pane open and adds the header's `Archived` pill with its restore control beside it | the scene archives from the menu, asserts the pill is in the viewport AND `activeSessionId` is still that conversation, and waits out the offer's 15s ceiling so nothing transient is over the pill's ink |

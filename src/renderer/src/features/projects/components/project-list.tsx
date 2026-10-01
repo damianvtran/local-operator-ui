@@ -10,8 +10,12 @@
  * columns and the timeline run, headers pinned `top-0` inside the scroller so
  * the current team stays named while its rows scroll under it and the next
  * header pushes it out — the ordinary sticky contract, which is all the
- * "pin and push" behaviour needs. A header's ground is `canvas` because that
- * IS the view's ground now; `surface` would float a band over the rows.
+ * "pin and push" behaviour needs. A header's ground is the `surface` rung, one
+ * lightness step above the rows' `canvas` (issue #703, reshaped on operator
+ * direction to a List-only division): the opaque fill spans the rows' own box,
+ * so what scrolls under it is fully covered, and `TeamSectionHeader`'s comment
+ * carries the measurement and the rejected rungs. The band carries no rule:
+ * the step is the division.
  *
  * THE COLUMNS ARE THE DESIGN'S OWN LIST, in its order — name, status chip,
  * target date, estimate, milestone `n/m`, live count, progress age with the
@@ -38,9 +42,9 @@
 import { Badge } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
+import { useId } from "react";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import {
-	NO_TEAM_LABEL,
 	PROGRESS_STALE_LABEL,
 	groupByTeam,
 	listRowMeta,
@@ -52,6 +56,7 @@ import {
 	projectTeamName,
 } from "../project-model";
 import { ProjectStatusBadge } from "./project-status-badge";
+import { TeamSectionHeader } from "./team-section-header";
 
 type ProjectListProps = {
 	projects: DesktopProject[];
@@ -128,6 +133,16 @@ export const ProjectList: FC<ProjectListProps> = ({
 	teamLabelFor = (name) => name,
 }) => {
 	const groups = groupByTeam(projects, projectTeamName);
+	/* The prefix every section heading's id is built from (U2). */
+	const listId = useId();
+	/*
+	 * Each section's heading id, and the name its own list points at (UX review
+	 * round 1, U2). `useId` rather than the team name: a name is user data (it can
+	 * be blank, repeat, or hold spaces and quotes) while an id has to be unique in
+	 * the document, and the index is stable because the sections render in one
+	 * pass from `groups`.
+	 */
+	const sectionHeadingId = (index: number) => `${listId}-team-${index}`;
 	return (
 		<div
 			className="@container flex min-h-0 flex-1 flex-col"
@@ -151,25 +166,26 @@ export const ProjectList: FC<ProjectListProps> = ({
 				))}
 			</div>
 			<ul className="min-h-0 flex-1 overflow-y-auto px-6">
-				{groups.map((group) => (
+				{groups.map((group, index) => (
 					<li key={group.team ?? ""}>
-						<div
-							className="sticky top-0 z-10 flex items-center gap-2 bg-canvas px-3 py-1.5 text-meta"
+						<TeamSectionHeader
+							/*
+							 * The RESOLVED name (`teamLabelFor`, wired from the page by main's
+							 * #716 exactly as the board and detail get it), never the raw
+							 * binding: with a catalogue loaded the band prints the team's
+							 * readable label, and with none it prints the slug, which is
+							 * this surface's behaviour before labels existed.
+							 */
+							team={group.team == null ? null : teamLabelFor(group.team)}
+							count={group.items.length}
+							headingId={sectionHeadingId(index)}
+							className="sticky top-0 z-10"
 							data-project-team={group.team ?? ""}
+						/>
+						<ul
+							aria-labelledby={sectionHeadingId(index)}
+							className="divide-y divide-hairline"
 						>
-							<span className="truncate text-ink">
-								{/*
-								 * The heading reads the team the way the rows' `Managed by`
-								 * line does (round 1, D5) - one team, one name across the
-								 * screen; the bucket keeps its own label.
-								 */}
-								{group.team == null ? NO_TEAM_LABEL : teamLabelFor(group.team)}
-							</span>
-							<span className="shrink-0 text-ink-muted">
-								{group.items.length}
-							</span>
-						</div>
-						<ul className="divide-y divide-hairline">
 							{group.items.map((project) => {
 								const meta = new Map(
 									listRowMeta(
