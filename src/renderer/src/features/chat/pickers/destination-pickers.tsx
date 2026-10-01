@@ -3049,7 +3049,13 @@ export const LoginPicker: FC<PickerContext> = ({ onClose, action }) => {
 	);
 };
 
-type StoredAccount = {
+/*
+ * `/v1/auth/status`'s row shape. Exported because the composer's `/logout`
+ * argument list reads the same route under the same query key
+ * (`slash-commands.tsx`), and a second spelling of this wire shape is how the
+ * two readers drift.
+ */
+export type StoredAccount = {
 	id: number;
 	provider: string;
 	type: string;

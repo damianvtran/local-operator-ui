@@ -3085,6 +3085,14 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto53c5cfec6bNote",
 	/*
+	 * And the lane's FIFTEENTH fold record: the sync onto `origin/main` =
+	 * `44249a6796` (#726 the provider-suggestions lane), taken before the
+	 * final push so the head is clean. Registered for the same reason as its
+	 * siblings: a fold resolved from main's copy would drop the statement of
+	 * what this sync carried and the `package.json` union shape it resolved.
+	 */
+	"foldOnto44249a6796Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
