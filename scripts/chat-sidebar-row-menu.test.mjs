@@ -146,6 +146,117 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 	);
 });
 
+test("Fork is the third item: its order, copy, withheld condition and wiring (#739)", () => {
+	/*
+	 * THE RESERVED THIRD ROW, SPENT. Fork is not a press on a row control (there
+	 * is none), so the pins below read the three things that make it THIS menu's
+	 * item rather than a second fork implementation: where it sits, what it asks
+	 * for, and the one condition that withholds it.
+	 */
+	const forkItem = between(MENU, "{forkable && (", "</ContextMenuItem>");
+	/*
+	 * ORDER: Archive, Pin, Fork. The first two are the strip's measured order and
+	 * are untouched; the third is appended, never interleaved.
+	 */
+	const archiveAt = MENU.indexOf('pressRowAct(row.session_id, "archive")');
+	const pinAt = MENU.indexOf('pressRowAct(row.session_id, "pin")');
+	const forkAt = MENU.indexOf('"session.fork"');
+	assert.ok(
+		archiveAt !== -1 && archiveAt < pinAt && pinAt < forkAt,
+		"the menu no longer reads Archive, then Pin, then Fork",
+	);
+	assert.equal(
+		MENU.split("<ContextMenuItem").length - 1,
+		3,
+		"the menu is past its three-row budget (design \u00a77) - the next act replaces one or finds another surface",
+	);
+	/*
+	 * COPY: verb + object, the pair's register, with the icon `aria-hidden` like
+	 * its siblings - and NO chord, because fork has none. A `KeyboardShortcut`
+	 * here would print a hint for a gesture that does nothing.
+	 */
+	assert.ok(
+		forkItem.includes("<span>Fork conversation</span>"),
+		"the fork item no longer reads `Fork conversation`",
+	);
+	assert.ok(
+		forkItem.includes('<GitFork aria-hidden="true" />'),
+		"the fork item lost its aria-hidden glyph",
+	);
+	assert.equal(
+		forkItem.includes("KeyboardShortcut"),
+		false,
+		"the fork item prints a chord, but fork has none",
+	);
+	/*
+	 * THE WITHHELD CONDITION: one named predicate, read once, and it is the
+	 * sidebar's own `unstarted` statement - the draft that holds this row's id and
+	 * never carried a message, i.e. the session the backend refuses ("has no
+	 * transcript to fork"). `row.pending` is deliberately NOT the gate: it names
+	 * a parked approval/ask, which only a session with a transcript can carry.
+	 */
+	assert.ok(
+		SIDEBAR_CODE.includes("const forkable = !unstarted.has(row.session_id);"),
+		"the fork predicate is no longer the row's own `unstarted` statement",
+	);
+	assert.equal(
+		SIDEBAR_CODE.split("forkable").length - 1,
+		2,
+		"`forkable` is spelled more than once at its definition and its one use - two copies are two chances to disagree",
+	);
+	assert.equal(
+		/row\.pending/.test(MENU) || /forkable[^;]*pending/.test(SIDEBAR_CODE),
+		false,
+		"the fork gate reads `row.pending`, which names a parked gate and not a session without a transcript",
+	);
+	assert.equal(
+		MENU.includes("disabled"),
+		false,
+		"the fork item is disabled rather than withheld",
+	);
+	/*
+	 * THE WIRING: the register's own picker, asked for through the
+	 * panel-presentation store (the palette's idiom) with THIS row's id as the
+	 * third argument - the pane's session is generally not the row's - and the
+	 * palette's two navigation lines. The invoker is the row's own button, not
+	 * the item, which unmounts with the menu.
+	 */
+	assert.ok(
+		forkItem.includes("requestPanel("),
+		"the fork item no longer asks the panel-presentation store",
+	);
+	const request = between(forkItem, "requestPanel(", ");");
+	assert.ok(
+		request.includes('"session.fork"') &&
+			request.includes("[data-chat-row]") &&
+			request.includes("row.session_id,"),
+		"the request no longer names the register's fork picker, the row's own button as the invoker, and the row's conversation",
+	);
+	assert.ok(
+		request.trimEnd().endsWith("row.session_id,"),
+		"the row's session id is no longer the request's LAST argument (the addressed conversation)",
+	);
+	assert.ok(
+		forkItem.includes(
+			'if (!location.pathname.startsWith("/chat")) navigate("/chat");',
+		),
+		"the fork item no longer routes to the pane only when none is mounted (the palette's idiom)",
+	);
+	assert.ok(
+		forkItem.indexOf("requestPanel(") < forkItem.indexOf('navigate("/chat")'),
+		"the request must be written BEFORE the navigation, or it races the pane's mount",
+	);
+	/*
+	 * NO SECOND FORK IMPLEMENTATION: the sidebar neither imports the picker nor
+	 * posts the op.
+	 */
+	assert.equal(
+		/ForkPicker|sessions\.fork|desktopResult/.test(SIDEBAR_CODE),
+		false,
+		"the sidebar carries its own fork - the picker is the register's and the pane presents it",
+	);
+});
+
 test("no rule on the row box is authored against `data-state`", () => {
 	/*
 	 * THE GUARD §3 REQUIRES (UX round, U-D3). The row's box is ALREADY a Radix
