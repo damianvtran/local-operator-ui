@@ -484,14 +484,14 @@ export const InstallSummary: Story = {
 /* ---------------------------------------------- the roster's navigation */
 
 /**
- * A roster of twelve agents, past the section's eight-row cap, with the five
- * conversations spread across four of them.
+ * A roster of twelve agents, past the section's eight-row cap, with six
+ * conversations spread across five of them (`builder` holds two).
  *
  * `source: "installed"` on every row, deliberately, for the reason
  * `chat-sidebar-sections.stories.tsx` states at its own fixture: a `builtin`
  * profile is not drawn as a row at all - it is grouped behind the built-ins
  * shortcut - so a fixture built out of builtins would photograph an empty
- * entity region. The five sessions are what makes the RECENCY half of the
+ * entity region. The six sessions are what makes the RECENCY half of the
  * ordering a fact a reader can check in the frame: builder is newest, then
  * release-captain, bug-intake, docs-writer, scout, and the seven agents nobody
  * has used have their roster order kept at the tail.
@@ -532,12 +532,21 @@ const ROSTER_SESSIONS = [
 	}),
 ];
 
-/** The roster's first drawn name, read out of the DOM rather than assumed. */
+/**
+ * The roster's first drawn name, read from the row's own name SPAN rather than
+ * the button's whole `textContent` (QA round 1, Q-1): the button also carries
+ * the group-count badge, so the button's text is the name PLUS a trailing
+ * count, and the exact comparisons below only held in the race window before
+ * the badge painted - which could refuse a capture on a slower machine.
+ * `span.truncate` is the label alone.
+ */
 const firstEntityName = () =>
-	document.querySelector("[data-entity-name]")?.textContent?.trim() ?? "";
+	document
+		.querySelector("[data-entity-name] span.truncate")
+		?.textContent?.trim() ?? "";
 
 const drawnEntityNames = () =>
-	[...document.querySelectorAll("[data-entity-name]")].map(
+	[...document.querySelectorAll("[data-entity-name] span.truncate")].map(
 		(node) => node.textContent?.trim() ?? "",
 	);
 
@@ -642,5 +651,69 @@ export const PinnedFirst: Story = {
 		await userEvent.click(pin);
 		await waitFor(() => firstEntityName() === "ledger-auditor");
 		expect(pin.getAttribute("aria-pressed")).toBe("true");
+	},
+};
+
+/**
+ * THE PIN AT REST (design round 1's D3a): `pinned-first` photographs the press
+ * with its focus ring and the row's reveal glyphs showing, so the state a
+ * reader actually lives with - the mark filled, nothing pointing at the row -
+ * was never a frame. The play presses the same control and then takes focus off
+ * it (`blur`, not a second click: the state under test must not be unmade by
+ * the gesture that lights it), so the shutter catches the pin alone.
+ */
+export const PinnedAtRest: Story = {
+	render: () => {
+		installBridge({ profiles: ROSTER, sessions: ROSTER_SESSIONS });
+		return <Page />;
+	},
+	play: async () => {
+		await screen.findByLabelText("Filter agents");
+		const pin = await waitFor(() => {
+			const control = document.querySelector(
+				'[data-agent-pin="ledger-auditor"]',
+			);
+			if (!(control instanceof HTMLButtonElement))
+				throw new Error("the ledger-auditor pin control is not drawn yet");
+			return control;
+		});
+		await userEvent.click(pin);
+		await waitFor(() => firstEntityName() === "ledger-auditor");
+		pin.blur();
+		expect(pin.getAttribute("aria-pressed")).toBe("true");
+		expect(document.activeElement).not.toBe(pin);
+	},
+};
+
+/**
+ * THE TRUNCATING NAME (design round 1's D3b): every agent row now reserves the
+ * pin's 24px slot plus its gap at rest, so the name column is narrower than the
+ * frames taken before this change - and the longest name in `ROSTER`
+ * (`metrics-analyst`) never reaches the edge. This roster carries one name long
+ * enough to truncate at the panel's own 360px, made the MOST RECENT so the row
+ * is drawn at the top of the cap where the truncation is unmissable.
+ */
+const LONG_NAME = "release-captain-and-incident-commander";
+
+const LONG_NAME_ROSTER = [...ROSTER, profile(LONG_NAME, "role", "installed")];
+
+const LONG_NAME_SESSIONS = [
+	...ROSTER_SESSIONS,
+	row("ro-7", "Command the release train", 1_760_004_100, {
+		binding: { agent: LONG_NAME, team: null },
+	}),
+];
+
+export const TruncatingName: Story = {
+	render: () => {
+		installBridge({
+			profiles: LONG_NAME_ROSTER,
+			sessions: LONG_NAME_SESSIONS,
+		});
+		return <Page />;
+	},
+	play: async () => {
+		await screen.findByLabelText("Filter agents");
+		await waitFor(() => firstEntityName() === LONG_NAME);
 	},
 };

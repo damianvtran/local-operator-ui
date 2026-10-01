@@ -163,6 +163,7 @@ import {
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
 	entityMore,
+	entityQueryAdmits,
 	entityRows,
 	entitySectionGap,
 	groupRows,
@@ -1363,9 +1364,10 @@ export function ChatSidebar({
 	 * of the list: `query` above narrows the whole column through the backend
 	 * search, so reusing it here would make filtering agents empty the chats
 	 * list beside them - the exact confusion the operator's report is about. Its
-	 * field is drawn only while the section is cap-bound (see
-	 * `rosterFilterShown`), cleared by its own control or Escape, and the rules
-	 * it feeds live in `chat-sidebar-agents.ts`.
+	 * field is drawn while the section is expanded and (the roster is cap-bound
+	 * OR a filter is applied - `rosterFilterShown` below carries the lifecycle
+	 * rule and the bug it closes), cleared by its own control or Escape, and the
+	 * rules it feeds live in `chat-sidebar-agents.ts`.
 	 */
 	const rosterFilterRef = useRef<HTMLInputElement>(null);
 	const [rosterFilter, setRosterFilter] = useState("");
@@ -3405,12 +3407,56 @@ export function ChatSidebar({
 			),
 		[ownAgents, view.pinnedAgents, sessions],
 	);
+	/*
+	 * WHETHER THE ROSTER'S FIELD IS DRAWN - and with it whether the filter it
+	 * carries may NARROW anything, because the two move together.
+	 *
+	 * THE LIFECYCLE BUG THIS CLOSES (design round 1's D2, agent review's B3, UX
+	 * round 1's U3 are one defect): the first cut gated the field on the cap
+	 * alone, so a filter could outlive its field - collapse Agents and type in
+	 * the list search (which force-opens the rows without expanding the
+	 * section), or let the roster shrink to the cap while a filter is applied -
+	 * and the section then drew a narrowed subset, or the empty sentence, under
+	 * a field that was not on screen, with no X and no Escape to clear it.
+	 *
+	 * THE GATE IS THE FIELD'S OWN QUESTION, so `rosterFilter` joins it: the
+	 * field draws while the section is expanded AND (the roster is cap-bound
+	 * OR a filter is applied). A filter that survives a shrink of the roster
+	 * therefore keeps its field - the pair stays on screen together and the
+	 * reader keeps the control that clears it - rather than the filter being
+	 * silently dropped, which would be a second surprise. And the rows branch
+	 * below reads THIS value rather than re-testing `rosterFilter`, so there is
+	 * exactly one spelling of "the filter applies": whenever it is false (the
+	 * section collapsed, the section hidden, the field not drawn) the section
+	 * draws its cap path and no stored filter can narrow anything invisibly.
+	 */
 	const rosterFilterShown =
-		isOpen("agents", true) && ownAgents.length > SIDEBAR_SECTION_ROWS;
+		isOpen("agents", true) &&
+		(ownAgents.length > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== "");
 	const filteredAgents = useMemo(
 		() => filterAgentRows(agentRows, rosterFilter),
 		[agentRows, rosterFilter],
 	);
+	/*
+	 * THE MATCHES THAT ACTUALLY DRAW (UX round 1's U1), which is a different set
+	 * from the matches: the LIST's query narrows the whole column, and an entity
+	 * whose name carries neither the query nor any surviving row is dropped by
+	 * `entity`'s own gate. The empty sentence must count what DRAWS, or it goes
+	 * silent in the one state the two filters make together - roster filter on,
+	 * list query excludes every admitted agent - and the section is a blank gap
+	 * under a field that says nothing. `entityQueryAdmits` is the gate's own
+	 * rule, called by both the row and this count so the two cannot drift.
+	 */
+	const drawnFilteredAgents =
+		rosterFilterShown && rosterFilter.trim()
+			? filteredAgents.filter((row) =>
+					entityQueryAdmits(
+						row.name,
+						scopeRows("agent", row.name).length,
+						query,
+					),
+				)
+			: [];
 	/*
 	 * THE VIEW AS `entity` CAN SEE IT. The roster's pin control needs the PARSED
 	 * view, and `entity`'s own body already names `view` for the group's chats
@@ -5528,12 +5574,13 @@ export function ChatSidebar({
 				pressShowMore(kind, name, key, held, view.addCount);
 			}
 		};
-		if (
-			query &&
-			!name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) &&
-			!rows.length
-		)
-			return null;
+		/*
+		 * THE QUERY'S GATE OVER ENTITY ROWS, in the module rather than here (issue
+		 * #663, UX round 1's U1): the roster filter's empty sentence has to count
+		 * what actually draws, so the row and the count share ONE spelling of the
+		 * rule - `entityQueryAdmits` carries it and its reasons.
+		 */
+		if (!entityQueryAdmits(name, rows.length, query)) return null;
 		const Icon = kind === "team" ? Users : Bot;
 		/*
 		 * Whether THIS entity is the row a staged draft belongs to.
@@ -5692,10 +5739,36 @@ export function ChatSidebar({
 					 * the `MessageSquarePlus` glyph three elements up - while a PINNED
 					 * row draws its mark AT REST (`opacity-100`, `ink`, and the same
 					 * `fill` idiom the conversation row's pin uses) so the pinned set
-					 * reads without the pointer. `aria-pressed` carries the state and
-					 * the label names the ACTION, matching the conversation pin: the
-					 * control is what a reader reaches for, the state is what it
-					 * reports.
+					 * reads without the pointer.
+					 *
+					 * THE LABEL NAMES THE SUBJECT; THE STATE IS `aria-pressed` (agent review
+					 * round 1's B2, UX round 1's U7). The label used to swap Pin/Unpin AND
+					 * carry `aria-pressed`, which a screen reader reads as "Unpin agent,
+					 * pressed" - an action and a state arguing - and it never said WHICH
+					 * agent, while every sibling control on the row does (`Expand ${name}
+					 * chats`, `Manage ${name}`). It is now the constant `Pin “name”` with
+					 * `aria-pressed` reporting the state - the toggle pattern a screen
+					 * reader expects - and the ACTION lives in the tooltip, where the
+					 * pointer user who asks for it can read it.
+					 *
+					 * IT CARRIES THE APP'S OWN TOOLTIP (design round 1's D7, UX's U8), not a
+					 * native `title`: the four band controls directly above use `Tooltip`,
+					 * and two tooltip systems one inch apart in the same column was the
+					 * note both lanes landed. The wrapper is `asChild`, so the button
+					 * keeps its exact place in the row - no wrapper element, and the row
+					 * structure the selection suite walks is unchanged.
+					 *
+					 * THE MOVED ROW AND THE POINTER (UX round 1's U4). The button is keyed
+					 * by the row's own stable key, so when pinning lifts the row React
+					 * moves the SAME element and keyboard focus travels with it: the next
+					 * Space unpins the agent the reader pinned, not a neighbour. The
+					 * pointer is not promised the same - the row leaves from under the
+					 * cursor and whatever lands there belongs to another agent, so a
+					 * second press must be re-aimed. A settle delay was considered and
+					 * refused: a press the reader makes is a press the reader means, and
+					 * time-locking a control is a worse lie than a row that moves. The
+					 * lifted row goes to the TOP of the section, so it cannot leave the
+					 * scroll it was pressed in.
 					 *
 					 * The ground is the row state (`hover:bg-row-hover`, guarded
 					 * `!staged` exactly like the two 24px controls beside it), never a
@@ -5703,34 +5776,37 @@ export function ChatSidebar({
 					 * `hover:bg-*` in the panel and this control is one of them.
 					 */}
 					{kind === "agent" && (
-						<button
-							type="button"
-							data-agent-pin={pinKey}
-							className={cn(
-								"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:text-ink-muted",
-								!staged && "hover:bg-row-hover",
-								pinnedAgent ? "opacity-100" : "opacity-0",
-								// The duration governs the transition INTO the current state,
-								// so the reveal is quick and the leave is gentler - the
-								// `MessageSquarePlus` rule, restated by use rather than by
-								// a second explanation.
-								"transition-opacity duration-base ease-out-quart",
-								"group-hover:opacity-100 group-hover:duration-fast",
-								"group-focus-within:opacity-100 group-focus-within:duration-fast",
-							)}
-							aria-pressed={pinnedAgent}
-							aria-label={pinnedAgent ? "Unpin agent" : "Pin agent"}
-							title={pinnedAgent ? "Unpin agent" : "Pin agent"}
-							onClick={() =>
-								setChatSidebarView(togglePinnedAgent(sidebarView, pinKey))
-							}
+						<Tooltip
+							content={pinnedAgent ? `Unpin “${name}”` : `Pin “${name}”`}
 						>
-							<Pin
-								aria-hidden="true"
-								className={cn("size-4", pinnedAgent && "text-ink")}
-								fill={pinnedAgent ? "currentColor" : "none"}
-							/>
-						</button>
+							<button
+								type="button"
+								data-agent-pin={pinKey}
+								className={cn(
+									"flex size-6 shrink-0 items-center justify-center rounded-md text-ink-dim hover:text-ink-muted",
+									!staged && "hover:bg-row-hover",
+									pinnedAgent ? "opacity-100" : "opacity-0",
+									// The duration governs the transition INTO the current state,
+									// so the reveal is quick and the leave is gentler - the
+									// `MessageSquarePlus` rule, restated by use rather than by
+									// a second explanation.
+									"transition-opacity duration-base ease-out-quart",
+									"group-hover:opacity-100 group-hover:duration-fast",
+									"group-focus-within:opacity-100 group-focus-within:duration-fast",
+								)}
+								aria-pressed={pinnedAgent}
+								aria-label={`Pin “${name}”`}
+								onClick={() =>
+									setChatSidebarView(togglePinnedAgent(sidebarView, pinKey))
+								}
+							>
+								<Pin
+									aria-hidden="true"
+									className={cn("size-4", pinnedAgent && "text-ink")}
+									fill={pinnedAgent ? "currentColor" : "none"}
+								/>
+							</button>
+						</Tooltip>
 					)}
 					<button
 						type="button"
@@ -6560,6 +6636,34 @@ export function ChatSidebar({
 			return;
 		}
 		/*
+		 * THE PAIR'S UPWARD HALF (UX round 1's U9). The roster field's ArrowDown
+		 * enters the first agent row; the way back was not symmetric: the field is
+		 * not one of the walk's `[data-chat-row]` stops, so ArrowUp from that first
+		 * row moved to the section's OWN heading - a stop the reader reaches FROM
+		 * the field, not the other way round. When the FIRST entity row of a
+		 * section carrying a roster field has focus, the arrow goes to that field;
+		 * a section without a drawn field (the whole column below the cap) keeps
+		 * the walk exactly as it was.
+		 */
+		if (event.key === "ArrowUp" && target.hasAttribute("data-entity-name")) {
+			const entity = target.closest("[data-entity]");
+			const section = entity?.closest("section");
+			if (
+				entity &&
+				section &&
+				section.querySelector("[data-entity]") === entity
+			) {
+				const field = section.querySelector<HTMLElement>(
+					"[data-roster-filter]",
+				);
+				if (field) {
+					event.preventDefault();
+					field.focus();
+					return;
+				}
+			}
+		}
+		/*
 		 * AND THE WALK SKIPS WHAT CANNOT TAKE THE CARET (agent review round 2's R7,
 		 * remediation). A `disabled` control cannot: `focus()` on it is a no-op, so the
 		 * step landed on nothing and the walk dead-stopped at the boundary, and
@@ -6876,7 +6980,10 @@ export function ChatSidebar({
 										 * to the list's would be furniture; past the cap the section's
 										 * own `Show N more` stops being a way to FIND one agent, which
 										 * is the friction this field removes. So the chrome appears
-										 * exactly when the section is cap-bound.
+										 * exactly when the section is cap-bound OR a filter is applied
+										 * (`rosterFilterShown` carries the lifecycle rule and the bug it
+										 * closes): a filter always keeps its field, so the pair cannot
+										 * come apart.
 										 *
 										 * IT READS THE DISCLOSURE, NOT A QUERY. A list query force-opens
 										 * the rows (`query || isOpen`) but is not the reader expanding
@@ -6902,10 +7009,15 @@ export function ChatSidebar({
 										 * matching rows, and ArrowUp/Home/End keep their default
 										 * (the panel's walk would otherwise land the caret on the
 										 * list's first or last row).
+										 *
+										 * `mt-1` ABOVE IT is design round 1's D5: the field sat
+										 * flush against the heading's own bottom edge, reading
+										 * closer to `Agents` than to the rows it filters.
 										 */
-										<div className="relative mb-2">
+										<div className="relative mt-1 mb-2">
 											<input
 												ref={rosterFilterRef}
+												data-roster-filter
 												aria-label="Filter agents"
 												placeholder="Filter agents"
 												className="h-8 w-full rounded-md bg-row-hover pr-9 pl-2 text-body-sm"
@@ -7085,7 +7197,7 @@ export function ChatSidebar({
 															</p>
 														)}
 													</>
-												) : rosterFilter.trim() ? (
+												) : rosterFilterShown && rosterFilter.trim() ? (
 													/*
 													 * WHILE THE ROSTER FILTER IS APPLIED THE CAP IS BYPASSED, the
 													 * promise the list's own search makes one level up
@@ -7096,9 +7208,23 @@ export function ChatSidebar({
 													 * the section is not on. An empty answer says so rather
 													 * than falling back to the full roster, which would read
 													 * as "the filter did nothing".
+													 *
+													 * THE BRANCH READS `rosterFilterShown` (the field's own gate),
+													 * not `rosterFilter` alone: it is the one spelling of "the
+													 * filter applies", so a stored filter can never narrow a
+													 * section whose field is not on screen (design D2 / B3 / U3).
+													 *
+													 * AND THE SENTENCE COUNTS `drawnFilteredAgents` (UX round 1's
+													 * U1), not the matches: a LIST query can drop every admitted
+													 * agent's row (name misses, no rows survive), and testing the
+													 * matches alone left the section a blank gap under a field
+													 * that said nothing. The two sets this file carries are the
+													 * matches (`filteredAgents`) and the rows that draw
+													 * (`drawnFilteredAgents`); the sentence is about the
+													 * second, which is what the reader sees.
 													 */
-													filteredAgents.length > 0 ? (
-														filteredAgents.map((row) =>
+													drawnFilteredAgents.length > 0 ? (
+														drawnFilteredAgents.map((row) =>
 															entity("agent", row.name, row.id),
 														)
 													) : (
@@ -8297,12 +8423,22 @@ export function ChatSidebar({
 							 * `openCommandPalette` only raises `isCommandPaletteOpen` - it
 							 * does not touch the query (`ui-preferences-store.ts`, verified
 							 * rather than assumed) - and `closeCommandPalette` clears the
-							 * query on every close, so a previous session's seed can never
-							 * leak into a later, unseeded opening. The seed goes in AFTER
-							 * the open so both writes land in one commit, which is what
-							 * the palette's open-time sync reads; a palette already open
-							 * moves to the agents view rather than toggling shut - the
-							 * promise #659's Cmd+P door makes for its own seed.
+							 * query on every close. The seed goes in AFTER the open so both
+							 * writes land in one commit, which is what the palette's open-time
+							 * sync reads; a palette already open moves to the agents view
+							 * rather than toggling shut - the promise #659's Cmd+P door makes
+							 * for its own seed.
+							 *
+							 * ONE CLOSE PATH KEEPS THE QUERY, AND THAT IS THE STORE'S OWN CALL
+							 * (agent review round 1, B1). Cmd+K closes through
+							 * `toggleCommandPalette`, which RETAINS the query on close by design
+							 * ("Retain when closing"), so a seeded `@` can outlive a
+							 * toggle-close and reappear at the next unseeded door - the rail's
+							 * own Search row, for one. That reach path belongs to ANY query this
+							 * store has ever held, not to this control, and narrowing it means
+							 * changing the toggle's retain - a store-level decision this control
+							 * records rather than makes. What the comment above may NOT claim is
+							 * that no seed can leak, and its first version did.
 							 *
 							 * NO NEW CHORD rides with it: the two keyboard doors stay the
 							 * palette's own, and a gesture nobody can discover from the

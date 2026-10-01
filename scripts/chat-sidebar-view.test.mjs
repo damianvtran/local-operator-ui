@@ -116,6 +116,7 @@ const {
 	isActiveRow,
 	entityRows,
 	entityMore,
+	entityQueryAdmits,
 	entitySectionGap,
 	ENTITY_SECTION_GAP,
 	ENTITY_SECTION_GAP_COLLAPSED,
@@ -377,6 +378,45 @@ test("the gap below a section is conditional on whether that section drew rows",
 	 * differently. That is the case a per-count rule gets wrong.
 	 */
 	assert.equal(entitySectionGap(false), entitySectionGap(false));
+});
+
+/*
+ * AN ENTITY'S QUERY GATE, hoisted into the module so the row and the roster
+ * filter's empty sentence cannot drift (issue #663, UX round 1's U1): a list
+ * query admits an entity when its NAME carries the query, or when it still has
+ * rows to draw.
+ */
+test("an entity survives the list query by its name or by the rows it holds", () => {
+	assert.equal(
+		entityQueryAdmits("builder", 0, ""),
+		true,
+		"an empty query admits everything",
+	);
+	assert.equal(
+		entityQueryAdmits("builder", 0, "build"),
+		true,
+		"the name carries the query",
+	);
+	assert.equal(
+		entityQueryAdmits("builder", 2, "scout"),
+		true,
+		"rows survive even when the name does not",
+	);
+	assert.equal(
+		entityQueryAdmits("builder", 0, "scout"),
+		false,
+		"no name hit and no rows is the drop",
+	);
+	assert.equal(
+		entityQueryAdmits("Patch-Reviewer", 0, "patch"),
+		true,
+		"the comparison is case-insensitive on both sides",
+	);
+	assert.equal(
+		entityQueryAdmits("patch-reviewer", 0, "reviewer"),
+		true,
+		"a substring, not a prefix",
+	);
 });
 
 test("invariant 1: the viewed conversation is on screen past the page's end", () => {
@@ -902,7 +942,90 @@ test("the band's agent jump opens the palette and seeds it to the agent scope", 
 	assert.ok(
 		control.indexOf("openCommandPalette()") <
 			control.indexOf("setCommandPaletteQuery("),
-		"the seed is written before the open, so an open-time reset would clobber it",
+		"the order fails: `openCommandPalette()` must come before `setCommandPaletteQuery(...)`, so both writes land in the one commit the palette's open-time sync reads",
+	);
+});
+
+/*
+ * THE ROSTER FILTER'S LIFECYCLE (issue #663, remediation round 1): the filter
+ * may narrow the section only while its FIELD is drawn. Design round 1 (D2),
+ * the agent review (B3) and the UX walk (U3) filed one defect three ways - a
+ * stored filter outliving its field (collapse Agents and type in the list
+ * search, which force-opens the rows; or let the roster shrink to the cap) and
+ * silently narrowing a list whose control was not on screen.
+ *
+ * WHAT THIS FILE CAN SAY about a component it cannot render: the gate and the
+ * branch are ONE expression each way - `rosterFilterShown` (the field's own
+ * render gate) is what the rows branch reads, and the field's gate answers
+ * "cap-bound OR filter applied", so the pair cannot come apart. The behaviour
+ * the pair produces is the story set's frames and QA's walk.
+ */
+test("the roster filter narrows only while its field is drawn", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.ok(
+		source.includes(
+			'ownAgents.length > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== ""',
+		),
+		"the field's gate no longer keeps a filter's own field alive",
+	);
+	assert.ok(
+		source.includes("rosterFilterShown && rosterFilter.trim()"),
+		"the rows branch narrows on the filter alone, so a stored filter can outlive its field",
+	);
+	assert.ok(
+		source.includes("data-roster-filter"),
+		"the roster field has no stable hook for the keyboard walk",
+	);
+});
+
+test("the empty sentence counts the rows that draw, not the matches", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.ok(
+		source.includes("drawnFilteredAgents.length > 0"),
+		"the sentence still tests the matches, so a list query can blank the section silently",
+	);
+	assert.ok(
+		source.includes("entityQueryAdmits(") &&
+			source.includes('scopeRows("agent", row.name).length'),
+		"the drawn set is not computed with the row gate's own rule",
+	);
+});
+
+/*
+ * THE PIN CONTROL'S CONTRACT (agent review's B2, UX's U7/U8, design's D7): the
+ * label names the SUBJECT and is constant, the state is `aria-pressed`, and the
+ * tooltip is the app's own component rather than a native `title`.
+ */
+test("the pin's label is the subject and the state is aria-pressed", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	const at = source.indexOf("data-agent-pin={pinKey}");
+	assert.notEqual(at, -1, "the roster's pin control is gone");
+	/*
+	 * THE SLICE IS ANCHORED AT THE TOOLTIP, because the absence it asserts
+	 * (`title=`) is only meaningful over this control: the slice must start at
+	 * the pin's own wrapper, not at an offset that could swallow the name
+	 * button's `title` above it (which is deliberate - a truncated name needs
+	 * one - and would fail this test for the wrong reason). If the wrapper is
+	 * ever dropped, the anchor walks back to some distant Tooltip and the
+	 * distance check below fails as "not wrapped", which is the finding.
+	 */
+	const tooltipAt = source.lastIndexOf("<Tooltip", at);
+	assert.ok(
+		at - tooltipAt < 600,
+		"the pin is not wrapped in the app's own Tooltip",
+	);
+	const control = source.slice(tooltipAt, at + 900);
+	assert.ok(
+		control.includes("aria-label={`Pin “${name}”`}"),
+		"the pin's label no longer names the agent it pins",
+	);
+	assert.ok(
+		control.includes("aria-pressed={pinnedAgent}"),
+		"the pin's state left aria-pressed",
+	);
+	assert.ok(
+		!control.includes("title="),
+		"the pin carries a native title again beside the app's Tooltip",
 	);
 });
 

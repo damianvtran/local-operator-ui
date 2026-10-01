@@ -557,6 +557,39 @@ export function entitySectionGap(previousDrawsRows: boolean): string {
 	return previousDrawsRows ? ENTITY_SECTION_GAP : ENTITY_SECTION_GAP_COLLAPSED;
 }
 
+/**
+ * Whether an ENTITY row survives the list's query (issue #663, UX round 1's U1).
+ *
+ * The rule has been the entity region's since the redesign: a query narrows the
+ * whole column, and an entity whose NAME does not carry the query is dropped
+ * unless it still has rows to draw (`!name.includes(query) && !rowCount`), so a
+ * query for a conversation inside a group keeps the group, and a query for an
+ * agent's name keeps the agent.
+ *
+ * WHY IT IS A FUNCTION NOW. The roster filter's empty sentence said "No agents
+ * match" off `filteredAgents` alone, so it went quiet in the one state the two
+ * filters make together: the roster filter admits an agent, the LIST query drops
+ * every admitted agent's row (name misses, no rows survive the query), and the
+ * section drew a blank gap under a field that said nothing - the reviewer's
+ * `refresh f10` frame. The sentence is honest only when it counts what actually
+ * DRAWS, and that is this predicate rather than a second, drifting copy of it:
+ * the row itself (`entity`) and the sentence's count both call it.
+ *
+ * SEMANTICS ARE THE GATE'S OWN, deliberately untidied: the query is NOT trimmed
+ * here (the caller's is), and the comparison is `toLocaleLowerCase` on both
+ * sides, which is the same case rule `chat-search.ts` states for the list.
+ */
+export function entityQueryAdmits(
+	name: string,
+	rowCount: number,
+	query: string,
+): boolean {
+	if (!query) return true;
+	return (
+		name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) || rowCount > 0
+	);
+}
+
 /** One group of the agent-grouped list. */
 export type SidebarRowGroup = {
 	key: string;

@@ -4880,6 +4880,14 @@ export const STORIES = [
 	["chat-sidebar-agents--roster-filtered", 420, 760],
 	["chat-sidebar-agents--roster-no-match", 420, 760],
 	["chat-sidebar-agents--pinned-first", 420, 760],
+	/*
+	 * The remediation re-shoot adds the two states design round 1's D3 named:
+	 * `pinned-at-rest` is the persistent pin with no pointer or focus on the row,
+	 * and `truncating-name` is the one name long enough to reach the row's edge
+	 * at 360px now that the pin's slot is reserved on every agent row.
+	 */
+	["chat-sidebar-agents--pinned-at-rest", 420, 760],
+	["chat-sidebar-agents--truncating-name", 420, 760],
 
 	/*
 	 * The chat sidebar's sections, MERGED (operator report, 2026-09-26): one
