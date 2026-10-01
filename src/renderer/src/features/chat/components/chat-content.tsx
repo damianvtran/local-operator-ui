@@ -654,6 +654,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				}),
 			[queryClient],
 		);
+		/*
+		 * A MEMOISED STOP, for the reason the probe above is memoised at its source:
+		 * this object is handed to the composer, whose memo boundary compares props
+		 * shallowly, and it used to be rebuilt inline on every render of this
+		 * component — which is once per stream flush. Frozen on the three values it
+		 * is made of, so it is rebuilt exactly when one of them moves: `onStop` is
+		 * the page's `stop` callback, stable since its own `useCallback` fix.
+		 */
+		const canonicalStop = useMemo(
+			() =>
+				canonical?.stopAvailable
+					? { active: canonical.busy, onStop: canonical.onStop }
+					: undefined,
+			[canonical?.stopAvailable, canonical?.busy, canonical?.onStop],
+		);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
 		/*
@@ -1854,11 +1869,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								unavailable={conversationUnavailable}
 								currentJobId={canonical ? null : currentJobId}
 								onCancelJob={onCancelJob}
-								canonicalStop={
-									canonical?.stopAvailable
-										? { active: canonical.busy, onStop: canonical.onStop }
-										: undefined
-								}
+								canonicalStop={canonicalStop}
 								/*
 								 * The aside panel's two reads, handed down as the two facts they are rather
 								 * than as a handle to re-derive them from: the SESSION the panel is keyed by

@@ -45,6 +45,7 @@ export type { radientUserKeys } from "./use-radient-user-query";
 export { useRadientUserQuery } from "./use-radient-user-query";
 export { useAgentRouteParam, useCurrentView } from "./use-route-params";
 export { useScrollToBottom } from "./use-scroll-to-bottom";
+export { useStableCallback } from "./use-stable-callback";
 export { systemPromptQueryKey, useSystemPrompt } from "./use-system-prompt";
 export { useUpdateAgent } from "./use-update-agent";
 export { useUpdateConfig } from "./use-update-config";

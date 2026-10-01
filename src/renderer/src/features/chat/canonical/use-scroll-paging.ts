@@ -212,6 +212,18 @@ export type ScrollPagingHandle = {
 	 */
 	mayAutoWalk: () => boolean;
 	/**
+	 * Whether the reader is at the tail RIGHT NOW, without the input clock.
+	 *
+	 * `mayAutoWalk` answers two questions at once — "has the reader been quiet for
+	 * `SETTLE_MS`" AND "are they at the tail" — and its callers sometimes need to
+	 * tell them apart. The completion walk's settle wake does (agent review round 2,
+	 * R2-1): it exists for the case where THE CLOCK is the only missing clause, and
+	 * a walk that is off the tail must wait for a real transition rather than re-arm
+	 * a timer forever against a clause nothing will change. Reading the tail half
+	 * alone is what makes "the clock is the only thing left" decidable.
+	 */
+	followingTail: () => boolean;
+	/**
 	 * Acknowledge a write to the scroller's offset that THIS HOOK did not make,
 	 * so the `scroll` event it fires is read as our own motion rather than as
 	 * reader input (clause A).
@@ -1192,6 +1204,17 @@ export function useScrollPaging({
 		if (performance.now() - state.current.lastInputAt < SETTLE_MS) return false;
 		return measure()?.followingTail === true;
 	}, [measure]);
+	/** The tail half alone, for callers that already hold the clock (see the type). */
+	const followingTail = useCallback(
+		(): boolean => measure()?.followingTail === true,
+		[measure],
+	);
 
-	return { slotState, requestOlder, mayAutoWalk, acknowledgeOwnWrite };
+	return {
+		slotState,
+		requestOlder,
+		mayAutoWalk,
+		followingTail,
+		acknowledgeOwnWrite,
+	};
 }
