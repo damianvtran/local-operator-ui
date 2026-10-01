@@ -28,6 +28,12 @@ RULES, and they are enforced rather than advisory:
    button produces a merge commit that `--merges` sees, while a squashed PR is a
    single-parent commit that it silently drops - so a wrong window is not empty,
    it is partially listed, and a partial window looks right.
+   **The release's own bump PR is not listed.** It merges into the very range
+   you derive, so its `chore(release): bump version to X.Y.Z` PR appears in
+   `v<PREV>..origin/main` once merged - exclude it by number; `## PRs` is the
+   window's content PRs. Every release since v0.31.24 has done this; the one
+   sweep that collected it (v0.31.28) was corrected before the build read it,
+   which is the defect this sentence exists to prevent.
 3. `## What's New` states what the version does FOR A USER, in prose. No commit
    subjects and no PR numbers in that section - the numbers belong under
    `## PRs`, the subjects are quoted there verbatim, and each bullet carries the
