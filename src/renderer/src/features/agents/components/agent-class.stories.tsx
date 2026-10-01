@@ -127,7 +127,12 @@ const CAPABILITIES = {
 	desktop_contract: 1,
 	desktop_available: true,
 	desktop_auth: "bearer",
-	features: { profile_catalogue: 1, team_catalogue: 1 },
+	/*
+	 * `aida` IS ON THE CAPABILITY LIST because the page now reads her control
+	 * state: the roster prints her configured name rather than the registry key
+	 * (UX round 2, U3), and `useAidaDisplayName` is gated on exactly this flag.
+	 */
+	features: { profile_catalogue: 1, team_catalogue: 1, aida: 1 },
 };
 
 type BridgeOptions = {
@@ -135,6 +140,12 @@ type BridgeOptions = {
 	refuseClassWrite?: boolean;
 	/** Never answer a detail read, for the loading frame. */
 	holdDetail?: boolean;
+	/**
+	 * Her display name as `aida.status` answers it (`DesktopAidaState.name`). The
+	 * shipped default is what an older backend answers by omitting the field, so
+	 * that is what a story that says nothing gets.
+	 */
+	aidaName?: string;
 };
 
 /**
@@ -147,12 +158,29 @@ type BridgeOptions = {
  */
 const installBridge = (
 	rows: WorldProfile[],
-	{ refuseClassWrite = false, holdDetail = false }: BridgeOptions = {},
+	{
+		refuseClassWrite = false,
+		holdDetail = false,
+		aidaName = "Aida",
+	}: BridgeOptions = {},
 ) => {
 	const handler = async (request: DesktopRequest): Promise<DesktopResponse> => {
 		switch (request.op) {
 			case "capabilities":
 				return envelope(CAPABILITIES);
+			/*
+			 * HER CONTROL STATE, which the page reads - and the op this rig would
+			 * otherwise THROW on, exactly as it should: a page that grows a read has to
+			 * be answered here or the frame is a picture of an empty shell.
+			 */
+			case "aida.status":
+				return envelope({
+					enabled: true,
+					name: aidaName,
+					session_id: "session-aida",
+					paused: false,
+					greeted: true,
+				});
 			case "profiles.list":
 				return envelope({ profiles: rows });
 			case "profiles.get": {
@@ -234,12 +262,14 @@ const Scene: FC<{
 	refuseClassWrite?: boolean;
 	holdDetail?: boolean;
 	packaged?: boolean;
+	aidaName?: string;
 	children?: ReactNode;
 }> = ({
 	at,
 	refuseClassWrite = false,
 	holdDetail = false,
 	packaged = false,
+	aidaName = "Aida",
 	children,
 }) => {
 	const rows = useRef<WorldProfile[] | null>(null);
@@ -253,8 +283,9 @@ const Scene: FC<{
 		installBridge(rows.current as WorldProfile[], {
 			refuseClassWrite,
 			holdDetail,
+			aidaName,
 		});
-	}, [refuseClassWrite, holdDetail]);
+	}, [refuseClassWrite, holdDetail, aidaName]);
 	return (
 		<div className="flex h-screen overflow-hidden bg-canvas">
 			<RouteTo path={at}>
@@ -316,6 +347,14 @@ const rowSaysProactive = (name: string) =>
 		document
 			.querySelector(`[data-testid="roster-row-${name}"]`)
 			?.textContent?.includes("Proactive"),
+	);
+
+/** Whether a receipt naming `name` is on screen (sonner's own container). */
+const toastNames = (name: string) =>
+	Boolean(
+		document
+			.querySelector("[data-sonner-toaster]")
+			?.textContent?.includes(name),
 	);
 
 const meta: Meta = {
@@ -416,4 +455,60 @@ export const Loading: Story = {
 /** EMPTY: nothing selected, so the pane that names what the page is for. */
 export const Empty: Story = {
 	render: () => <Scene at="/agents?kind=agent" />,
+};
+
+/**
+ * A RENAMED SEAT: the same row, in the name the operator gave her.
+ *
+ * UX ROUND 2, U3. The seat is a role like any other and the roster lists it
+ * under the REGISTRY key it is addressed by (`aida` — what every route, receipt
+ * and test id still uses), but the words a reader sees are hers: the row, the
+ * heading and the receipt all read `Nova` here. A frame where those disagree is
+ * exactly the defect this cell exists to catch, and the row's test id staying
+ * `roster-row-aida` beside the printed `Nova` is that distinction, photographed.
+ *
+ * The name arrives on `aida.status` (`DesktopAidaState.name`), which is the same
+ * field the rail's seat row reads — a second source would be a second answer.
+ */
+export const RenamedSeat: Story = {
+	render: () => <Scene at="/agents?kind=agent&name=aida" aidaName="Nova" />,
+};
+
+/**
+ * AND THE RECEIPT, after a press: the toast names her too.
+ *
+ * The switch's own sentence is the one place the change is announced away from
+ * the control, so a receipt still saying `aida` after a rename would be the same
+ * defect one surface along. The shutter is held on the toast naming her, which
+ * only exists once the write has come back.
+ *
+ * THE PRESS GOES THE OTHER WAY HERE, and the latch has to know it: the seat
+ * ships proactive (her starter's frontmatter carries the class), so the one
+ * press this control offers turns the messaging OFF. That is also the case the
+ * operator asked for in so many words — "stop messaging" as a control the user
+ * has — so the receipt this cell photographs is the stopping one.
+ */
+export const RenamedSeatSwitched: Story = {
+	render: () => (
+		<Scene at="/agents?kind=agent&name=aida" aidaName="Nova">
+			<HoldShutterUntil done={() => !switchIsOn() && toastNames("Nova")} />
+		</Scene>
+	),
+};
+
+/**
+ * A LONG NAME, at the width where the row has to give (design round 2, D2).
+ *
+ * The designer could not sign off the row below 1280 px because no frame existed
+ * there, and a name that is longer than the column is the case that decides it:
+ * the row must truncate rather than wrap or push the controls out of reach. The
+ * width itself is this story's row in `capture-evidence.mjs`.
+ */
+export const LongNamedSeat: Story = {
+	render: () => (
+		<Scene
+			at="/agents?kind=agent&name=aida"
+			aidaName="Alexandria, Chief of Staff"
+		/>
+	),
 };
