@@ -84,6 +84,27 @@ export function projectStatusMeta(status: string): ChipMeta {
 }
 
 /**
+ * The status vocabulary in its one order, as options for the two surfaces that
+ * offer a choice of status (the create form's select and the detail's inline
+ * select): labels come from `PROJECT_STATUS_META` so a menu and a chip cannot
+ * spell a state differently. The sequence is the lifecycle order `PROJECT_STATUSES`
+ * declares in the wire contract - planning -> active -> qa -> validation ->
+ * done, then the two side states - written once here rather than per list.
+ */
+export const PROJECT_STATUS_OPTIONS: ReadonlyArray<{
+	value: string;
+	label: string;
+}> = [
+	"planning",
+	"active",
+	"qa",
+	"validation",
+	"done",
+	"paused",
+	"archived",
+].map((value) => ({ value, label: projectStatusMeta(value).label }));
+
+/**
  * Whether the status's chip carries a check BESIDE its colour.
  *
  * WHY `done` AND ONLY `done` (design round 1, D1): active maps to `accent` and
