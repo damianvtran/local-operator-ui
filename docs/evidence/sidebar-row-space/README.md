@@ -374,6 +374,15 @@ transition: a pointer that crosses the row inside the dwell leaves no transform 
 The keyboard walk was re-pointed with the strip: a Tab from the row's button now LEAVES the row
 (both acts are out of the Tab ring), and the chord path is `⌘⇧P` on the row.
 
+**AFTER THE FOLD (2026-10-01).** These frames were shot at `56bfefa3ec`; the branch was then
+folded onto `origin/main` as `5bea768188`, where #663's `Open agent` (`@`) control joins the band's
+toolbar and shifts the panel's top, so every FULL frame now differs from the committed one by that
+control. That delta is out of subject. The scene was re-run on the folded build in **both
+palettes (58 PASS, 0 FAIL each)** and every `after/` label was compared over the rows region below
+the toolbar (device y >= 1040): **the rows region is byte-identical, 16 of 16 labels, in both
+palettes** - including the scrollbar thumb's column - so the strip, the title clips, the flyout and
+the toasts are unchanged and the set was not re-shot.
+
 What that buys at 280, on the row the operator was looking at: at rest the title
 goes **180 -> 228** (+48 on this machine: +56 before the gutter, -8 for it), and
 the acts cost 56 of it under the pointer rather than always. On a pinned row the
