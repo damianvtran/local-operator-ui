@@ -4025,6 +4025,15 @@ type CanonicalSessionsState = {
 	) => void;
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
+	/**
+	 * SETTLE A ROW'S PLACEMENT FROM A MOVE'S RECEIPT (see the implementation
+	 * for why the receipt and not the ask). `locality`/`owner_device` only:
+	 * the placement pair is the whole of what a receipt says about the row.
+	 */
+	settlePlacement: (
+		sessionId: string,
+		placement: { locality: "local" | "remote"; owner_device: string },
+	) => void;
 };
 
 function mergeRow(
@@ -5836,9 +5845,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						 * (`chat-device-slot.tsx` takes `locality`/`owner_device` into
 						 * `panePlacement`'s `host`). The fields are the wire's own - the
 						 * same pair a peer-aware listing publishes (`mesh-types.ts`)
-						 * - so nothing downstream learns a second vocabulary, and a
-						 * later page row settles a stale `remote` mark the same way it
-						 * would an owner's.
+						 * - so nothing downstream learns a second vocabulary. A mark this
+						 * stamp made is SETTLED BY THE MOVE THAT OUTDATES IT:
+						 * `settlePlacement` (below) takes the receipt's own `locality`/
+						 * `owner_device`, because the receipt is the wire's "where it lives
+						 * NOW" and a plain listing never speaks about placement at all
+						 * (`fetchSessions` does not ask for peers - agent review F1).
 						 *
 						 * THE DEFECT THIS FEEDS: on create success the send patches
 						 * `sessionId` and `finishDraft` retires the draft, so the
@@ -7037,6 +7049,51 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							: [...state.sessions, row],
 					};
 				}),
+			/*
+			 * THE RECEIPT OWNS THE ROW'S PLACEMENT ONCE A MOVE LANDS (agent review F1).
+			 *
+			 * WHY IT HAS TO EXIST. The create stamp above is durable - the row outlives
+			 * the draft AND the pane's own move record - but nothing ever rewrote it:
+			 * a conversation carried home again kept its `locality: "remote"` row, and
+			 * the chip stayed correct only while the move's own receipt lived in
+			 * `useChatDeviceStore`. Dismiss the arrival notice (`dismissMove` drops the
+			 * entry) and the chip fell through to the host arm reading the stale row -
+			 * `On cloud-node-1` over a conversation that was already back on this
+			 * device, with the picker re-offering a recall of a session that was home.
+			 * The chain is: pick a peer, send, recall home, dismiss - every step the
+			 * operator's own flow. Before this action the same chain ended on the
+			 * fallback's `On this device` by accident; the create stamp turned the
+			 * accident into a claim. So the move that lands writes what it knows.
+			 *
+			 * WHY THE RECEIPT AND NOT THE ASK. `move.deviceId` is what this window
+			 * REQUESTED, and a request can be refused, held or answered long after the
+			 * pane moved on - a receipt is the only statement of where the session
+			 * actually lives (`TransferReceipt.locality`: "local when it landed
+			 * here"). Both call sites settle only on a `moved` outcome, which is the
+			 * same honesty rule `settleMove` already follows one store over.
+			 *
+			 * A ROW THE LIST DOES NOT CARRY IS NOT INVENTED: a receipt settles the row
+			 * the pane's conversation already had, and there is nothing on this surface
+			 * to correct when there is no row (a wiped list re-owns the truth from the
+			 * next listing, which is where every other row fact comes from).
+			 *
+			 * AND THE NAME IS NOT WRITTEN HERE: a settle can arrive from a window that
+			 * never read the peers list, so the reader keeps resolving the name it does
+			 * not have (`chat-device-slot.tsx`'s `deviceNameFor`, which already prefers
+			 * `owner_device_name` when a create's row carries one).
+			 */
+			settlePlacement: (sessionId, placement) =>
+				set((state) => ({
+					sessions: state.sessions.map((item) =>
+						item.session_id === sessionId
+							? mergeRow(item, {
+									session_id: sessionId,
+									locality: placement.locality,
+									owner_device: placement.owner_device,
+								})
+							: item,
+					),
+				})),
 		}),
 		{
 			name: "canonical-sessions-storage",
