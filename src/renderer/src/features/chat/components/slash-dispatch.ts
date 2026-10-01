@@ -947,10 +947,32 @@ export function useSlashDispatch({
 						);
 						return "consumed";
 					}
+					/*
+					 * ARCHIVE ASKS FIRST (2026-09-30), and it stages exactly the way
+					 * `/delete` does one branch down: the write is not issued here at all, the
+					 * pane's one `ArchiveConversationDialog` reads the candidate, and no typed
+					 * word can be the gesture that hides a conversation from the lists and the
+					 * search without an answer. `fromRow: false` is the SURFACE: the reader is
+					 * in the composer, so the caret comes back here rather than following a
+					 * successor row.
+					 *
+					 * `/UNARCHIVE` IS NOT STAGED, and the split is here rather than inside the
+					 * write because it is a rule about the two acts: the restore is one press on
+					 * every surface that offers it, and a question in front of it would be a
+					 * confirmation for the safe half of the pair.
+					 */
+					if (archived) {
+						store.requestArchiveConfirm({
+							sessionId,
+							fromRow: false,
+							title: row?.title || undefined,
+						});
+						return "consumed";
+					}
 					const title = row?.title ?? undefined;
 					const accepted = await store.setSessionArchived(
 						sessionId,
-						archived,
+						false,
 						title,
 					);
 					/*
