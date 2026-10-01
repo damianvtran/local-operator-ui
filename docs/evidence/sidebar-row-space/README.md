@@ -342,6 +342,87 @@ spec then decided to reserve the gutter anyway (§ 11).
 | **280** (default) | 256 | 228 | **228** | 200 | **172** | `0x0` | 52 | 24, painted |
 | **320** | 296 | 268 | **268** | 240 | **212** | `0x0` | 52 | 24, painted |
 
+**RE-READ ON 2026-09-30 (the archive-confirm and pinned-strip change), and the table above is
+the record of the earlier head rather than of this one.** The `after/` frames and
+`measurements/row-space-geometry-<theme>-after.json` were re-taken on this change's tree - the
+arrow pair is gone from the pinned strip, the grip's width shed is deleted, and the scene's own
+stale expectations are refreshed (it reported 8 FAILs on the base it started from, and reads
+**58 PASS, 0 FAIL in both palettes** now). The numbers below are the scene's readings, on a row
+box of **208 / 248 / 288** at the 240 / 280 / 320 settings:
+
+| Panel | Row box | Title under the pointer, unpinned long row | Title under the pointer, pinned row | Button, pinned row hovered | Cluster |
+| --- | --- | --- | --- | --- | --- |
+| **240** | 208 | **124** | **124** | 152 | archive + mark = **52** |
+| **280** | 248 | **164** | **164** | 192 | **52** |
+| **320** | 288 | **204** | **204** | 232 | **52** |
+
+Those three are the design's own AFTER column (`docs/design/sidebar-row-space.md` §3), and the
+scene ASSERTS them rather than leaving them to a reader's subtraction. A pinned row hovered in
+this fixture is the only pin in its section, so no grip is drawn on it - the 80px cluster with the
+grip is photographed in `docs/evidence/pinned-reorder/` (96 / 116 / 136 / 176 at 240 / 260 / 280 /
+320), where the section has three pins. **At rest the fixture's rows read 146.4 / 186.4 / 226.4
+unpinned and 118.4 / 158.4 / 198.4 pinned** - each 33.6px below the arithmetic, which is the
+trailing statement the fixture's rows carry (`56y, last active 56 years ago`) and a hovered row
+does not; the scene reads the acts' cost on the BUTTON (56 unpinned, 28 pinned) for that reason.
+
+**Two checks the scene gained are about what did NOT need changing.** The flyout opens
+**6px clear of the row's right edge at every width** (the card is anchored to the row's box, which
+does not shrink when the acts reveal), and the scene asserts the consult spec's bound
+(`flyout.left >= row.right + 4`) so a later move of that anchor fails a check rather than ships.
+And the pan is serialised behind the reveal because the reveal is a display switch with no
+transition: a pointer that crosses the row inside the dwell leaves no transform and no mask.
+The keyboard walk was re-pointed with the strip: a Tab from the row's button now LEAVES the row
+(both acts are out of the Tab ring), and the chord path is `⌘⇧P` on the row.
+
+**ROUND 1 REMEDIATION (2026-10-01): `after/archive-confirm-long`, both palettes.** SUPERSEDED BODY
+WORDING (design round 3, D14): this frame was shot before the copy's final pass, so the sentence
+inside the dialog is the earlier three-line form. **Its subject is the TITLE** - the ellipsis, the
+kept verb and quotation marks, and the gap to the close control - and every one of those readings
+still holds; the body wording it draws is superseded by the re-shot `archive-confirm` pair in
+`session-archive/`, which carries the shipped two-line copy. It was not re-shot here: free disk read
+5.6 GiB, under the 8 GiB floor, when this note was written. The archive
+dialog on the fixture's 56-character title (`Quarterly retention sweep and the transcripts it
+dropped`), cancelled so the fixture is unchanged. The scene reads three claims as boxes: the NAME is
+cut (`scrollWidth` 422 against `clientWidth` 281), the verb, BOTH quotation marks and the question
+mark are all still on screen (only the words ellipsise), and the question stops short of the dialog's
+own close control. The first run of this frame found a real defect - the closing quote was inside
+the truncating box and was cut with the name - which is fixed in the dialog; the second found the
+scene's own selector matching the wrapper instead of the verb, which is fixed in the scene. The
+scene on the final build: **58 PASS / 0 FAIL in both palettes**.
+
+**FOLD FOUR (2026-10-01), onto `44e4812b31` (`d08936c26e`).** Upstream's team-label and hub-mark work
+auto-merged into `chat-sidebar.tsx`, `chat-header.tsx` and the canonical sessions store; the one
+hand-resolved file is `docs/evidence/manifest.json`. The scene was re-run on the folded build (dark,
+**58 PASS / 0 FAIL**) and compared with every committed `after/` label over the rows region below
+the toolbar (device y >= 1040): **17 of 17 byte-identical**, including `archive-confirm-long`. The
+light palette was not re-run for this fold.
+
+**THE FOLD LEDGER, in one count (design round 3, D15).** The branch has six fold commits on its
+first-parent chain: `5bea768188` onto `8e73cb8721`, `a191f2e928` onto `e1eb22cd58`, `9d1f54a9ae` onto `81a621f8af`, `d08936c26e` onto `44e4812b31`, `034a7277a8` onto `53c5cfec6b`, and `637fb83d81` onto `44249a6796`. The first four each hand-resolved exactly
+`docs/evidence/manifest.json`; folds five and six did the same (the pair is re-derived at each tip).
+**Folds five and six brought in no change to any surface these sets photograph**: neither
+`44e4812b31..53c5cfec6b` nor `53c5cfec6b..44249a6796` touches `chat-sidebar.tsx`,
+`archive-confirm.ts`, `chat-pin-order.ts`, `chat-header.tsx` or the canonical sessions store (main's
+delta in those two windows is the chat pane's composer stop, the provider suggestions and the
+actions row). The same ledger is in the session-archive and pinned-reorder READMEs.
+
+**THE PANEL COMPARISON (2026-10-01; run on the fold-five tip `034a7277a8`, which for our surfaces is
+the content of the current head).** Re-run on the folded build in both palettes, every label
+compared against the committed `after/` frame over the panel band (device x < 700, below the toolbar,
+which is the sidebar and nothing else): **17 of 17 panel regions byte-identical, both palettes**. The
+chat pane (device x >= 700) differs in 12 frames - `rest-*`, `hover-*` and `archive-confirm-long`
+each ~7.8k device pixels - because main's 63 commits since the previous fold reworked the chat pane
+(its composer stop, the actions row, the speech control); that region is not this set's subject.
+
+**AFTER THE FOLD (2026-10-01).** These frames were shot at `56bfefa3ec`; the branch was then
+folded onto `origin/main` as `5bea768188`, where #663's `Open agent` (`@`) control joins the band's
+toolbar and shifts the panel's top, so every FULL frame now differs from the committed one by that
+control. That delta is out of subject. The scene was re-run on the folded build in **both
+palettes (58 PASS, 0 FAIL each)** and every `after/` label was compared over the rows region below
+the toolbar (device y >= 1040): **the rows region is byte-identical, 16 of 16 labels, in both
+palettes** - including the scrollbar thumb's column - so the strip, the title clips, the flyout and
+the toasts are unchanged and the set was not re-shot.
+
 What that buys at 280, on the row the operator was looking at: at rest the title
 goes **180 -> 228** (+48 on this machine: +56 before the gutter, -8 for it), and
 the acts cost 56 of it under the pointer rather than always. On a pinned row the

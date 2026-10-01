@@ -904,6 +904,45 @@ test("the delete candidate is the dialog's whole state", async () => {
 });
 
 /*
+ * THE ARCHIVE'S OWN CANDIDATE (2026-09-30), and it is a SECOND slot rather than the
+ * delete's with a `kind`: the two questions have different copy and different buttons,
+ * and one slot would let a staged archive be replaced by a staged delete (or the
+ * reverse) while its own dialog was open - the user would then confirm one act and get
+ * the other.
+ */
+test("the archive candidate is the confirmation's whole state, and it carries the door", () => {
+	const { requestArchiveConfirm } = store.getState();
+	requestArchiveConfirm(null);
+	assert.equal(store.getState().archiveCandidate, null);
+	requestArchiveConfirm({ sessionId: SESSION, fromRow: true });
+	assert.deepEqual(store.getState().archiveCandidate, {
+		sessionId: SESSION,
+		fromRow: true,
+	});
+	/*
+	 * A SECOND DOOR REPLACES THE FIRST rather than queueing behind it - there is one
+	 * dialog, so it can only ever be asking about one conversation - and the DOOR travels
+	 * with the candidate, because the row door's caret correction must not be applied to a
+	 * conversation the reader asked about from the composer.
+	 */
+	requestArchiveConfirm({ sessionId: "another", fromRow: false });
+	assert.deepEqual(store.getState().archiveCandidate, {
+		sessionId: "another",
+		fromRow: false,
+	});
+	requestArchiveConfirm(null);
+	assert.equal(store.getState().archiveCandidate, null);
+	// And it is NOT the delete's slot: clearing one leaves the other alone, which is the
+	// whole reason they are two fields.
+	store.getState().requestSessionDelete(SESSION);
+	requestArchiveConfirm({ sessionId: "another", fromRow: true });
+	assert.equal(store.getState().deleteCandidate, SESSION);
+	assert.equal(store.getState().archiveCandidate.sessionId, "another");
+	store.getState().requestSessionDelete(null);
+	requestArchiveConfirm(null);
+});
+
+/*
  * THE DELETED-ROW CURRENCY, which is the shape agent review round 1 (M1)
  * reproduced: `forgetSession` filtered the array and recorded nothing, so a page
  * whose request had already started landed afterwards through
