@@ -1652,3 +1652,178 @@ test("RESIDUAL (named): an undeclared answer that a later non-trigger step demot
 	);
 	assert.deepEqual(stopAfter[0].segmentIds, ["T1", "T2"]);
 });
+
+/* ------------ case 2: a bar's identity belongs to its span alone ------------ */
+
+/*
+ * THE LANE'S CASE-2 REMOUNT. A wake / peer message / job result re-opens the
+ * run that had just settled, and its reply re-closes it - moving the elected
+ * answer, and with it every key that used to embed the run's own key: each bar
+ * of the run was RENAMED, its React element remounted, and the reader's stored
+ * expansion dropped. The replacement rule (`SegmentPlan.key`) anchors a span to
+ * the row that ends it, which neither of the two places rows can arrive - above
+ * the loaded head and at the tail - moves.
+ */
+
+test("case 2: a wake's reply moves the ANSWER, not the bar - the first span keeps its key", () => {
+	const before = planFor("U T T A", false)[0];
+	const after = planFor("U T T A W T T A", false)[0];
+	const beforeKey = before.segments[0].key;
+	assert.equal(
+		beforeKey,
+		"seg:A3",
+		"the key is the visible row that ends the span",
+	);
+	const first = after.segments.find((s) => s.segmentIds.includes("T1"));
+	assert.equal(
+		first.key,
+		beforeKey,
+		"the same span keeps its name after the wake",
+	);
+	const second = after.segments.find((s) => s.segmentIds.includes("T5"));
+	assert.notEqual(second.key, beforeKey, "the new span has its own name");
+	const all = after.segments.map((s) => s.key);
+	assert.equal(new Set(all).size, all.length, "keys are unique within the run");
+	// A stale key of an older shape names nothing: the bar renders collapsed.
+	const stale = planFor("U T T A W T T A", false, {
+		openRuns: new Set(["A7", "A3", "A3#T2", "S1#T2", "seg:", "seg:nope"]),
+	})[0];
+	assert.ok(
+		stale.segments.every((s) => s.collapsed),
+		"a stale key renders collapsed and opens no bar",
+	);
+});
+
+test("case 2: the anchor is the VISIBLE row that ends the span, so no two spans can share a key", () => {
+	/*
+	 * The key rule's own invariant, asserted rather than stated: a span is a
+	 * maximal HIDDEN stretch, so the row that ends it is visible and belongs to no
+	 * segment - no two spans share a key and a key never names a hidden row. Rows
+	 * inside the span appearing or vanishing do not move it.
+	 */
+	for (const spec of [
+		"U T T A",
+		"U T C T A",
+		"U T A W T A",
+		"U T A W T T A K",
+		"U T M W T T A",
+	]) {
+		const run = planFor(spec, false)[0];
+		const hidden = new Set(run.segments.flatMap((s) => s.segmentIds));
+		const records = seq(spec);
+		for (const segment of run.segments.filter((s) => !s.afterAnswer)) {
+			const last = records.findIndex((r) => r.id === segment.segmentIds.at(-1));
+			const after = records[last + 1];
+			assert.equal(segment.key, `seg:${after.id}`, `${spec}: ${segment.key}`);
+			assert.equal(
+				hidden.has(after.id),
+				false,
+				`${spec}: ${after.id} is visible`,
+			);
+		}
+		const keys = run.segments.map((s) => s.key);
+		assert.equal(new Set(keys).size, keys.length, `${spec}: keys are unique`);
+	}
+});
+
+test("case 2: hiding a receipt inside a span does not move the bar that hides it", () => {
+	/*
+	 * The cross-session filter hides a peer/wake receipt the moment its setting
+	 * flips - a LOAD-time event. Under the old `<run key>#<its last row>` key the
+	 * span's own last row moved with the receipt and the bar was renamed (remount,
+	 * expansion lost); the row that ENDS the span is outside it and does not move.
+	 */
+	const all = seq("U T T P C T A");
+	const withoutReceipt = all.filter((record) => record.id !== "P3");
+	const keysOf = (records) =>
+		collapsePlan(buildRows(records, []), { live: false }).runs[0].segments.map(
+			(s) => s.key,
+		);
+	assert.deepEqual(
+		keysOf(all),
+		["seg:C4", "seg:A6"],
+		"with the receipt on hand (hidden inside the span)",
+	);
+	assert.deepEqual(
+		keysOf(withoutReceipt),
+		["seg:C4", "seg:A6"],
+		"the same two bars under the same names, once the filter hides it",
+	);
+});
+
+test("case 2: a cycle settling does not rename the bars around it", () => {
+	const head = `U ${repeat("T", 4)} A`;
+	const keysOf = (spec, live) =>
+		planFor(spec, live)[0].segments.map((s) => s.key);
+	const streaming = keysOf(`${head} W T T`, true);
+	const settled = keysOf(`${head} W T T A`, true);
+	const done = keysOf(`${head} W T T A K`, false);
+	assert.equal(streaming[0], settled[0]);
+	assert.equal(
+		settled[0],
+		done[0],
+		"the first bar's key is the same in every state",
+	);
+	assert.equal(
+		settled[1],
+		done[1],
+		"and the settled tail bar keeps its key when the turn ends",
+	);
+});
+
+test("case 2 RESIDUAL (named): an undeclared answer a later step demotes is absorbed into its span - its key MOVES, and the old key names nothing", () => {
+	/*
+	 * `U T T N T N2` with `N` carrying NO `stopReason`: N was a close (and the
+	 * span's anchor) until a step arrived after it with no trigger between, which
+	 * makes it narration INSIDE the span. No visible row survives to anchor on, so
+	 * the key moves from the old end to the new one. Real journals never produce it
+	 * (every text-bearing assistant row carries its `stop_reason`, and a `stop` row
+	 * stays visible so it is a stable anchor - the sibling below), only hand-built
+	 * fixtures and the ~0.11 % of rows that declare `length`/`aborted`. What IS
+	 * guaranteed is the safe failure: the old key is on no bar.
+	 */
+	const before = planFor("U T T N", false)[0].segments;
+	const after = planFor("U T T N T N", false)[0].segments;
+	assert.equal(before[0].key, "seg:N3");
+	assert.equal(after.length, 1, "one absorbed span");
+	assert.equal(after[0].key, "seg:N5", "the key moved with the span's end");
+	assert.ok(
+		after.every((s) => s.key !== before[0].key),
+		"and no span inherited the old key",
+	);
+	// The declared sibling is stable: the `stop` row stays visible and anchors.
+	const stopBefore = planFor("U T T A", false)[0].segments;
+	const stopAfter = planFor("U T T A T A", false)[0].segments;
+	assert.equal(
+		stopAfter[0].key,
+		stopBefore[0].key,
+		"a declared answer anchors",
+	);
+	assert.deepEqual(stopAfter[0].segmentIds, ["T1", "T2"]);
+});
+
+/* ---- case 2: the operator's 11:25 turn - two peers between two answers ---- */
+
+/*
+ * THE OPERATOR'S OWN TURN, reduced to its skeleton: the reader's message opens a
+ * cycle, a `stop` answer closes it, TWO peer receipts land, and a second `stop`
+ * answer closes those. The peers are a span of their own, anchored on the row
+ * that ENDS it - the second answer - so the bar cannot take the first answer with
+ * it: the first answer is neither hidden inside the span nor renamed by the
+ * second one arriving. Kept synthetic: the ids come from `seq()`, not a journal.
+ */
+test("case 2: two peer receipts between two stop answers bar on their own, and the first answer stays visible", () => {
+	const [run] = planFor("U A P P A", false);
+	assert.deepEqual(
+		run.segments.map((s) => [s.key, s.segmentIds, s.collapsed]),
+		[["seg:A4", ["P2", "P3"], true]],
+		"one span, anchored on the second answer and holding exactly the two peers",
+	);
+	const hidden = new Set(run.segments.flatMap((s) => s.segmentIds));
+	assert.equal(hidden.has("A1"), false, "the first answer is not swallowed");
+	assert.equal(
+		hidden.has("A4"),
+		false,
+		"the second answer anchors its own span",
+	);
+});
