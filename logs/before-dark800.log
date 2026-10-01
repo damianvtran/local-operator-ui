@@ -1,0 +1,113 @@
+[build] current: assets 2026-10-01T00:18:01.858Z >= sources 2026-09-30T23:42:12.090Z
+[note] abandoned scratch trees
+        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/b971f070ad2d/scratchpad/rig-0930/config/run/serve   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/settings-rail-color-0930-df1a
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-90780
+  frames        /Users/damian/.local-operator/sessions/b971f070ad2d/scratchpad/rig-0930/frames-before-dark800
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-90780/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/settings-rail-color-0930-df1a/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the app is in the palette this run photographs (localOperatorDark)
+[PASS] the app is on /chat
+[note] the top of /chat
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":null,"bandDisplay":null,"sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /settings
+[note] the top of /settings
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(50, 45, 34)","stop":56},{"colour":"rgb(50, 45, 34)","stop":104},{"colour":"rgb(34, 32, 28)","stop":104},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":48,"height":568},"leadingColumnGround":"rgb(50, 45, 34)","leadingColumnRule":"0px","registeredColumn":{"top":32,"left":56,"width":48,"height":568},"registeredRule":"0px","markerValue":"elevated","markerGround":"rgb(50, 45, 34)","surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":{"top":32,"left":56,"width":48,"height":568},"settingsContent":{"top":32,"left":104,"width":696,"height":568}}
+[PASS] the app is on /settings?section=integrations
+[note] the top of /settings?section=integrations
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(50, 45, 34)","stop":56},{"colour":"rgb(50, 45, 34)","stop":104},{"colour":"rgb(34, 32, 28)","stop":104},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":48,"height":568},"leadingColumnGround":"rgb(50, 45, 34)","leadingColumnRule":"0px","registeredColumn":{"top":32,"left":56,"width":48,"height":568},"registeredRule":"0px","markerValue":"elevated","markerGround":"rgb(50, 45, 34)","surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":{"top":32,"left":56,"width":48,"height":568},"settingsContent":{"top":32,"left":104,"width":696,"height":568}}
+[PASS] the app is on /agents
+[note] the top of /agents
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":344},{"colour":"rgb(34, 32, 28)","stop":344},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":288,"height":568},"leadingColumnGround":"rgb(43, 39, 33)","leadingColumnRule":"0px","registeredColumn":{"top":32,"left":56,"width":288,"height":568},"registeredRule":"0px","markerValue":"surface","markerGround":"rgb(43, 39, 33)","surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agents/local-operator
+[note] the top of /agents/local-operator
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":336},{"colour":"rgb(34, 32, 28)","stop":336},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":{"top":32,"left":56,"width":280,"height":568},"leadingColumnGround":"rgb(43, 39, 33)","leadingColumnRule":"0px","registeredColumn":{"top":32,"left":56,"width":280,"height":568},"registeredRule":"0px","markerValue":"surface","markerGround":"rgb(43, 39, 33)","surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /agent-hub
+[note] the top of /agent-hub
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /schedules
+[note] the top of /schedules
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /projects
+[note] the top of /projects
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":{"top":0,"left":0,"width":0,"height":0},"bandDisplay":"none","sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] the app is on /browser
+[note] the top of /browser
+        {"platform":"mac","mode":"integrated","viewport":{"width":800,"height":600},"lane":{"top":0,"left":0,"width":800,"height":32},"laneDisplay":"block","laneStops":[{"colour":"rgb(43, 39, 33)","stop":56},{"colour":"rgb(34, 32, 28)","stop":56},{"colour":"rgb(34, 32, 28)","stop":800},{"colour":"rgb(50, 45, 34)","stop":800}],"band":null,"bandDisplay":null,"sidebar":null,"route":{"top":32,"left":56,"width":744,"height":568},"routeTag":"div","leadingColumn":null,"leadingColumnGround":null,"leadingColumnRule":null,"registeredColumn":null,"registeredRule":null,"markerValue":null,"markerGround":null,"surfaceGround":"rgb(43, 39, 33)","elevatedGround":"rgb(50, 45, 34)","canvasGround":"rgb(34, 32, 28)","hairlineGround":"rgb(64, 59, 44)","settingsRail":null,"settingsContent":null}
+[PASS] /chat: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /settings: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y 32, settings content y 32
+[PASS] /settings?section=integrations: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y 32, settings content y 32
+[PASS] /agents: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /agents/local-operator: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /agent-hub: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /schedules: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /projects: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /browser: the route's own first box starts on the lane's bottom edge (32px)
+        route y 32, sidebar y (none), settings rail y (none), settings content y (none)
+[PASS] /chat: no rule is painted in the lane
+[PASS] /settings: no rule is painted in the lane
+[PASS] /settings: the route's leading column is handed to the shell
+[PASS] /settings: the shell is handed the rung the column is painted in
+[PASS] /settings: neither the column nor its hand-over draws a right rule
+[PASS] /settings: the lane carries the column's own ground across its width
+[PASS] /settings: the lane's canvas resumes at the column's right edge (104px)
+[PASS] /settings?section=integrations: no rule is painted in the lane
+[PASS] /settings?section=integrations: the route's leading column is handed to the shell
+[PASS] /settings?section=integrations: the shell is handed the rung the column is painted in
+[PASS] /settings?section=integrations: neither the column nor its hand-over draws a right rule
+[PASS] /settings?section=integrations: the lane carries the column's own ground across its width
+[PASS] /settings?section=integrations: the lane's canvas resumes at the column's right edge (104px)
+[PASS] /agents: no rule is painted in the lane
+[PASS] /agents: the route's leading column is handed to the shell
+[PASS] /agents: the shell is handed the rung the column is painted in
+[PASS] /agents: neither the column nor its hand-over draws a right rule
+[PASS] /agents: the lane carries the column's own ground across its width
+[PASS] /agents: the lane's canvas resumes at the column's right edge (344px)
+[PASS] /agents/local-operator: no rule is painted in the lane
+[PASS] /agents/local-operator: the route's leading column is handed to the shell
+[PASS] /agents/local-operator: the shell is handed the rung the column is painted in
+[PASS] /agents/local-operator: neither the column nor its hand-over draws a right rule
+[PASS] /agents/local-operator: the lane carries the column's own ground across its width
+[PASS] /agents/local-operator: the lane's canvas resumes at the column's right edge (336px)
+[PASS] /agent-hub: no rule is painted in the lane
+[PASS] /schedules: no rule is painted in the lane
+[PASS] /projects: no rule is painted in the lane
+[PASS] /browser: no rule is painted in the lane
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every capture wrote a PNG of the window's own size
+[PASS] no process from this run outlived its boot
+
+frames: route-tops-agent-hub-before-dark800.png, route-tops-agents-before-dark800.png, route-tops-agents-detail-before-dark800.png, route-tops-browser-before-dark800.png, route-tops-chat-before-dark800.png, route-tops-projects-before-dark800.png, route-tops-schedules-before-dark800.png, route-tops-settings-before-dark800.png, route-tops-settings-integrations-before-dark800.png
+frames directory: /Users/damian/.local-operator/sessions/b971f070ad2d/scratchpad/rig-0930/frames-before-dark800
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-90780/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-90780 (the frames are also in --out)
+
+ALL CHECKS PASSED
