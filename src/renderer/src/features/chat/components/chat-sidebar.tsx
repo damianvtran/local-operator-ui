@@ -2825,6 +2825,12 @@ export function ChatSidebar({
 	 * Silence there would read as a broken key, which is the failure
 	 * `project-board.tsx` names for its own grip.
 	 */
+	const moveBoundarySentence = (sessionId: string) =>
+		pinMoveBoundaryNote(
+			rowLabel(sessionId),
+			pinnedIndex.get(sessionId) ?? 0,
+			pinnedDrawnIds.length,
+		);
 	const movePinnedRow = (
 		sessionId: string,
 		direction: PinMoveStep,
@@ -2834,7 +2840,7 @@ export function ChatSidebar({
 		if (at === undefined) return;
 		const label = rowLabel(sessionId);
 		if (!canMovePinnedRow(pinnedDrawnIds, sessionId, direction)) {
-			announcePinMove(pinMoveBoundaryNote(label, at, pinnedDrawnIds.length));
+			announcePinMove(moveBoundarySentence(sessionId));
 			return;
 		}
 		const next = movePinnedOrder(
@@ -4801,8 +4807,9 @@ export function ChatSidebar({
 										 * parked. `flex` and the revealed ink come from `openMenuRowId`
 										 * and stay until the menu closes. EVERY site that authors the
 										 * reveal carries the clause - this glyph, the archive's own,
-										 * the pair wrapper, and the move pair and grip #697 adds to
-										 * the pinned strip (folded in together) - because a hold on
+										 * the pair wrapper, and #697's grip on the pinned strip (the
+										 * move pair that once sat beside it is deleted; its acts are
+										 * the row menu's items) - because a hold on
 										 * the wrapper alone renders a `flex` box with nothing in it,
 										 * and one on a glyph alone is a revealed control inside a
 										 * `hidden` parent.
@@ -5373,9 +5380,19 @@ export function ChatSidebar({
 							 * `pinMoveBoundaryNote` through the live region. The class list is what
 							 * makes the two states LOOK different, since Radix only paints
 							 * `data-[disabled]` for the prop this does not pass.
+							 *
+							 * THE SENTENCE IS ALSO VISIBLE (UX round 1, U6): the live region is the
+							 * ONLY other channel, and it is `sr-only`, so a sighted reader who pressed
+							 * a greyed item watched the menu close with nothing said. The deleted pair
+							 * carried this same sentence as its `title`, so the item takes it the same
+							 * way - a pointer reader gets the tooltip BEFORE pressing, which is the
+							 * better half of the answer. It is set only at a boundary: an applicable
+							 * item has nothing to explain and the app's idiom is no tooltip on a menu
+							 * item that does what it says.
 							 */}
 							<ContextMenuItem
 								aria-disabled={!up}
+								title={!up ? moveBoundarySentence(row.session_id) : undefined}
 								onSelect={() => movePinnedRow(row.session_id, -1, true)}
 								className={cn(
 									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
@@ -5393,6 +5410,7 @@ export function ChatSidebar({
 							</ContextMenuItem>
 							<ContextMenuItem
 								aria-disabled={!down}
+								title={!down ? moveBoundarySentence(row.session_id) : undefined}
 								onSelect={() => movePinnedRow(row.session_id, 1, true)}
 								className={cn(
 									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
@@ -8270,14 +8288,13 @@ export function ChatSidebar({
 			 * measured against is gone with the shed: this panel no longer changes what it draws by
 			 * width.
 			 *
-			 * THE CONTAINER COMES BACK FOR ONE MEMBER (design round 1, D2, measured at the 240 clamp;
-			 * issue #697). "One rule at every width" is still the rule for the ACTS - the pin, the
-			 * archive and the move pair are drawn at every width - but the GRIP sheds at or below 278px
-			 * of panel, because at the clamp the revealed cluster left the title 40px of the row's 208
-			 * with the grip in it, and the pair's own 56px is the part WCAG 2.5.7 asks for while the
-			 * grip's 28px is an accelerator for a gesture the arrows already perform. The name is the
-			 * one the deleted shed used, so the class on the grip reads the same way it always did and
-			 * the frame that shows the shed absent is committed with this change.
+			 * ONE WIDTH QUERY DID COME BACK FOR A WHILE, AND IT IS GONE AGAIN (issue #697, then the
+			 * 2026-09-30 archive-confirm lane). The grip was shed at or below 278px of panel because,
+			 * with the move pair beside it, the revealed cluster left the title 40px of the row's 208
+			 * at the clamp. The pair is deleted - its two acts are the `Move conversation` items in
+			 * the row's menu - so the cluster is `[archive][grip][pin]` (80px) and the grip is drawn
+			 * at EVERY width: the shed, and the container declaration it measured against, went
+			 * with it. This panel does not change what it draws by width.
 			 */
 			className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}

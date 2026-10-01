@@ -962,7 +962,11 @@ export function useSlashDispatch({
 					 * confirmation for the safe half of the pair.
 					 */
 					if (archived) {
-						store.requestArchiveConfirm({ sessionId, fromRow: false });
+						store.requestArchiveConfirm({
+							sessionId,
+							fromRow: false,
+							title: row?.title || undefined,
+						});
 						return "consumed";
 					}
 					const title = row?.title ?? undefined;

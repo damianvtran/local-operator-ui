@@ -306,6 +306,29 @@ export type ArchiveConfirmCandidate = {
 	sessionId: string;
 	/** True when a ROW's own control (or its menu item, or the chord) asked. */
 	fromRow: boolean;
+	/**
+	 * True when the pane HEADER's menu item asked, so the caret goes back to that menu's
+	 * trigger and nowhere else (UX round 1, U4).
+	 *
+	 * A SEPARATE FLAG rather than an inference from `fromRow: false`, because the typed door
+	 * is also `fromRow: false` and goes back to the composer. And rather than trusting the
+	 * element that held focus when the dialog opened: the header's menu item is unmounted as
+	 * the menu shuts, so what `document.activeElement` was at that instant depends on the
+	 * order Radix closes the menu and mounts the dialog - measured, the same press returned
+	 * to the trigger in one palette's run and to a sidebar row in the other's.
+	 */
+	fromHeader?: boolean;
+	/**
+	 * The name to ask about when the store holds no row for `sessionId`.
+	 *
+	 * CARRIED BY THE CANDIDATE since the dialog moved to the app shell (UX round 1, U1):
+	 * it used to be a prop from `ChatContent`, which owns the open conversation's
+	 * title - and a dialog that has to work on EVERY route has no such parent. The two
+	 * doors that can name a conversation the list is not drawing (a typed `/archive`
+	 * and the header's item) know the pane's title and pass it; a row door always has
+	 * a row, so it leaves this out.
+	 */
+	title?: string;
 };
 
 /**

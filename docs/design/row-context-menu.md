@@ -84,8 +84,9 @@ kind, not only in place:
 - **The pair's target is 24px and appears after a reflow.** It is `display:
   none` at rest on an ordinary row, and revealing it takes 56px out of the
   title (`pair children … :215w24`, `:243w24` against a 255px box); a pinned
-  row's strip is now four controls and takes **108px** (§ 7's shipped
-  measurements; `pinned-row`). The menu's own
+  row's strip WAS four controls and took **108px** (§ 7's shipped measurements as of
+  #697); the two arrow buttons moved into this menu on 2026-09-30, so it is three
+  controls and takes **80px** with the grip and **52px** without it. The menu's own
   rows are the panel's content rows, not the strip's 24 × 24 controls: the shipped
   panels measure **273 × 81** (two rows) and **273 × 46** (one row) -
   `pointer-open` and `pin-state-unknown` - and the pointer opens the menu over
@@ -325,7 +326,7 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 | open at the pointer, normal row | 2 rows, archive then pin, chords drawn | reveal held, hover ground held | `pointer-open` |
 | the same, the pointer moved onto the first item | 2 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
 | the same, hold rule **not** applied (the design round's control) | 2 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
-| open at the pointer, pinned row | 4 rows: archive, pin, `Move conversation up`, `Move conversation down` (the two Move rows carry the boundary ink when the row is at an end) | the pair is drawn at rest (the mark is the state), with nothing else revealed: the move pair moved into this menu on 2026-09-30 | `pinned-row` |
+| open at the pointer, pinned row | 4 rows: archive, pin, `Move conversation up`, `Move conversation down` (the two Move rows carry the boundary ink when the row is at an end, and the boundary sentence as their `title`) | the pair is drawn at rest (the mark is the state), with nothing else revealed: the move pair moved into this menu on 2026-09-30 | `pinned-row` (this cell's frame is from the set shot BEFORE the Move rows existed - the set was not re-shot for them, see the height table's note above) |
 | open via keyboard | same 2 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
 | `row.pinned === undefined` | **one row** (archive); the pin row is withheld | row draws no pin control either | `pin-state-unknown` |
 | `archiveEnabled` false | **one row** (pin); the archive row is withheld | archive control absent | `archive-withheld` |
@@ -565,6 +566,14 @@ the same pair reads **5.95:1** / **5.4:1** on `accent-wash`.
 ---
 
 ## 7. #693 — the slot, and the arithmetic, decided
+
+> **SUPERSEDED, 2026-09-30.** This section records the slot arithmetic as it stood when #693's
+> controls were decided to live on the row. They later moved HERE: the menu now carries
+> `Move conversation up` / `Move conversation down` (WCAG 2.5.7's single-pointer path)
+> beside the two mirrored acts, which is exactly the "2 mirrored rows + 2 move rows = 4"
+> case worked out below, and the cap is **four rows**, as the top of this file says. The
+> reasoning that follows is kept as the record of what was weighed; its present-tense
+> statements about a three-row budget and the arrow strip no longer describe the build.
 
 **#693's move controls are not coming to this menu.** The owner's decision on
 #693 (2026-09-29) took path (b), a desktop-local order, with the interaction

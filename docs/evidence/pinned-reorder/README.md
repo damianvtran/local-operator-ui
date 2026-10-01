@@ -175,6 +175,16 @@ palettes). Two states are changed in MEANING, not just in pixels:
 logs its readings and the file is the four slices' logs re-keyed. The shape and key order are the
 committed ones; only the readings changed.
 
+### `grip-hover-220`: PENDING (round 1, design D4)
+
+The clamp's real floor is 220 (`SIDEBAR_MIN_WIDTH`), and the scene now photographs and READS it
+(`PINNED_WIDTHS` gained 220: `order-before-220` and `grip-hover-220`, with the same grip-drawn,
+out-of-the-Tab-ring and cluster checks as the other widths). The frames and the title reading are
+**not committed yet**: the host's free disk stayed under the rig's start line when the run was due.
+The arithmetic that the reading will be compared to is `row - 4 - 80`: about 76px of title under the
+pointer with two or more pins (about 104px with one), which `sidebar-row-space.md` §15 states as its
+revisit trigger (a reading under about 80px at 220).
+
 ### After the fold onto `origin/main` (2026-10-01)
 
 The frames above were shot at `56bfefa3ec`. The branch was then folded onto `origin/main`

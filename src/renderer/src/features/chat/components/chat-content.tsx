@@ -83,7 +83,6 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import type { Message } from "../types/message";
-import { ArchiveConversationDialog } from "./archive-conversation-dialog";
 import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
@@ -790,7 +789,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					void setSessionArchived(sessionId, false, agentName);
 					return;
 				}
-				requestArchiveConfirm({ sessionId, fromRow: false });
+				requestArchiveConfirm({
+					sessionId,
+					fromRow: false,
+					fromHeader: true,
+					title: agentName,
+				});
 			},
 			[sessionId, agentName, setSessionArchived, requestArchiveConfirm],
 		);
@@ -1538,19 +1542,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							/>
 						)}
 						{/*
-						 * The one ARCHIVE confirmation, beside the delete one and for the same
-						 * reason: this component owns the conversation the question names
-						 * (`title`, the fallback when the store holds no row for the candidate).
-						 * It renders nothing while no candidate is staged, and all five doors
-						 * reach it by staging one.
-						 *
-						 * GATED ON THE CAPABILITY rather than rendered unconditionally, like the
-						 * delete dialog above it: a panel built without the archive store has no
-						 * door that can stage a candidate, so the component would be dead code
-						 * on that backend (and `chat-sidebar-archive.test.mjs` holds the
-						 * fail-closed reading of the same gate, one subtree over).
+						 * THE ARCHIVE CONFIRMATION IS NOT RENDERED HERE (UX round 1, U1). The
+						 * row's control and `⌘⇧A` work on every route - the sidebar is on all of
+						 * them - and this component exists only on `/chat`, so a dialog mounted
+						 * here left a press from Settings staged with no host and then asked the
+						 * question on the next visit to the chat. It is mounted once in
+						 * `app.tsx`, beside the other app-wide dialogs; the two doors that start
+						 * from this pane pass the pane's title on the candidate instead of as a
+						 * prop.
 						 */}
-						{archiveEnabled && <ArchiveConversationDialog title={agentName} />}
 						{/* Chat Options Sidebar */}
 						{!canonical && (
 							<ChatOptionsSidebar

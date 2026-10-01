@@ -87,13 +87,33 @@ dialog, exactly as `requestSessionDelete`/`deleteCandidate` work.
 | 1 | the row's hover control (pinned and regular rows) | `{ sessionId, fromRow: true }` |
 | 2 | the row's context-menu item | the same control, pressed — so the same candidate |
 | 3 | the `⌘⇧A` chord | the same control, pressed |
-| 4 | typed `/archive` | `{ sessionId, fromRow: false }` |
-| 5 | the pane header's menu item | `{ sessionId, fromRow: false }` |
+| 4 | typed `/archive` | `{ sessionId, fromRow: false, title }` |
+| 5 | the pane header's menu item | `{ sessionId, fromRow: false, title }` |
 
 `fromRow` is the SURFACE and not a hint: a row's press acts on a row that is about to
 leave the list the reader is standing in, so the caret follows it to the successor row;
 the other three doors are answered where the reader already is — the composer, or the
 menu that shut.
+
+**WHERE THE DIALOG IS MOUNTED, and why it is not the pane (UX round 1, U1, a MAJOR).** The
+delete dialog lives in `ChatContent` because both of its doors start from that pane. The
+archive's do not: the row's control, its menu item and `⌘⇧A` work on EVERY route, because the
+sidebar does. A dialog hosted by the pane left a press from Settings staged with nothing to
+draw it - no feedback of any kind - and then asked the question, unprompted, on the next visit
+to `/chat`: a regression against the one-press write this act used to be. So the dialog is
+mounted once in `app.tsx`, beside the other app-wide dialogs, gated on the same
+`session_archive` capability, and a staged candidate is cleared on any path change so that it
+can never outlive its route. The pane's title, which the dialog used to receive as a prop for the
+conversations the list does not draw, now rides the candidate (`title`).
+
+**THE BODY SENTENCE (design round 1, D1; UX round 1, U3 and a NIT).** `It leaves your lists.
+You can undo for 8 seconds; after that, search the sidebar for it and turn on “Include archived”
+to find it and restore it.` It leads with the consequence, states the duration the toast really
+runs on (the number is interpolated from `ARCHIVE_UNDO_TOAST_MS`, so the copy and the timer
+cannot drift), and does not contradict itself: the first draft said the conversation leaves
+"your lists and search" and then that "search finds it again". The control is named where it
+lives - it is drawn only once a query is typed, in the sidebar's search block, and not in the
+`Search` palette row - so the sentence sends the reader to a search first.
 
 **UNARCHIVE NEVER CONFIRMS**, on any surface that offers it (the row's control, the
 header's `Archived` pill, `/unarchive`). A question in front of the act that puts a

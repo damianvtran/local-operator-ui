@@ -1,3 +1,5 @@
+import { ARCHIVE_UNDO_TOAST_MS } from "./archive-undo";
+
 /**
  * What a CONFIRMED archive says, and what it does to the reader's place.
  *
@@ -25,25 +27,38 @@
 /**
  * The archive confirmation's body, and the only place it is written.
  *
- * ONE SENTENCE, sentence case, no second question: `docs/branding.md`'s modal copy
- * asks the question once in the title and states the consequence here, and the
- * delete dialog beside it is the precedent for the shape (a statement of what
- * happens, not a second "are you sure").
+ * SHAPE: the CONSEQUENCE first, then the way back (design round 1, D1; UX round 1,
+ * U3 and its NIT). The first draft led with a clause that contradicted its own
+ * third ("leaves your lists and search" ... "search finds it again"), buried the
+ * act's one fact - it leaves your lists - behind recovery copy, and said "a few
+ * seconds" for a number the build can state. Sentence case, one statement, no second
+ * question: `docs/branding.md`'s modal copy asks the question once in the title.
  *
- * IT NAMES THE WAY BACK RATHER THAN THE DANGER, and the order matters. This is the
- * REVERSIBLE sibling: the delete dialog's own copy module says "This cannot be
- * undone", so the two dialogs have to be told apart by what they promise, not only
- * by a colour. Both halves of the way back are named because they are different
- * doors - Undo is the immediate one and it EXPIRES, the search block's `Include
- * archived` is the one that still works tomorrow - and a reader who is told only
- * about the toast has been told about a few seconds.
+ * THE DURATION IS INTERPOLATED from `ARCHIVE_UNDO_TOAST_MS`, so the copy and the
+ * timer that makes it true cannot drift: a claim a reader can time with a watch has
+ * to be the number the toast actually runs on (`docs/branding.md` §8, "every claim
+ * checkable").
+ *
+ * BOTH WAYS BACK ARE NAMED because they are different doors - Undo is the immediate
+ * one and it EXPIRES, the search block's `Include archived` is the one that still
+ * works tomorrow - and the second names what to DO, not where a thing "is found":
+ * the control exists only inside a search (the sidebar's search block draws it once
+ * a query is typed), so the sentence says "search for it" first. It lives in the
+ * sidebar's search, not in the `Search` palette row, which is why the sentence says
+ * where.
  *
  * `\u201cInclude archived\u201d` in curly quotes is the control's own label, spelled
  * exactly as the search block draws it, so the sentence sends the reader to a thing
  * they can find by the name they were given.
  */
-export const ARCHIVE_CONFIRM_MESSAGE =
-	"It leaves your lists and search. Undo brings it back for a few seconds, and “Include archived” in search finds it again.";
+export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists. You can undo for ${ARCHIVE_UNDO_TOAST_MS / 1000} seconds; after that, search the sidebar for it and turn on \u201cInclude archived\u201d to find it and restore it.`;
+
+/**
+ * What the question names when nobody can say which conversation it is: the store
+ * holds no row for it and the asking surface carried no title. A question that put
+ * nothing inside curly quotes would read as a bug, and this reads as the act.
+ */
+export const ARCHIVE_CONFIRM_UNNAMED = "this conversation";
 
 /**
  * The verb the question opens with. The NAME is the caller's and it ellipsises;
