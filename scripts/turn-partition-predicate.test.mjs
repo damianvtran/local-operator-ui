@@ -23,26 +23,50 @@
  * and the reader's own first message - arriving while `closed()` was false - was
  * absorbed as a STEER: hidden inside the very first bar and labelled "Steered".
  *
- * BOTH CLAUSES ARE COVERED, because the two shapes fail for different reasons:
+ * WHICH CLAUSE EACH SHAPE PINS, stated as measured rather than as intended
+ * (agent review round 1, R2 - the earlier version of this paragraph claimed the
+ * two prefix shapes covered both clauses, and the round showed they do not):
  *
- * - shape (a) `I U T T A` (`I` = `session_incident`, level `error`): the prefix IS
- *   a terminal marker, so widening the predicate to `isTerminalMarker` closes the
- *   prefix's run;
- * - shape (b) `Q U T T A` (`Q` = `session_mcp_unavailable`, level `info`): the
- *   prefix is NOT a boundary at all (`boundaryKindOf` is null for an info custom),
- *   so the vocabulary clause alone cannot fix it. What fixes it is
- *   `nothingHasRunYet`: a run that has done no WORK of its own (no tool row, no
- *   assistant row) is not a turn in flight, so a following user message OPENS its
- *   own run instead of steering into it. A steer is a message to an agent that is
- *   working; an empty preamble is not working.
+ * - shape (b) `Q U T T A` (`Q` = `session_mcp_unavailable`, level `info`) pins
+ *   `nothingHasRunYet` on its own. The prefix is NOT a boundary at all
+ *   (`boundaryKindOf` is null for an info custom), so no vocabulary change can fix
+ *   it: a run that has done no WORK of its own (no tool row, no assistant row) is
+ *   not a turn in flight, so a following user message OPENS its own run instead of
+ *   steering into it. A steer is a message to an agent that is working; an empty
+ *   preamble is not working;
+ * - shape (a) `I U T T A` (`I` = `session_incident`, level `error`) pins the
+ *   VOCABULARY arm only in combination with the one below - on its own it is
+ *   head-cut AND empty, so `nothingHasRunYet` closes it before the vocabulary
+ *   clause is asked (measured: reverting the vocabulary arm alone left this suite
+ *   9/9 green, which is the hole R2 named);
+ * - shape (c) `U T I U T A`, pinned in its own section below, is the shape that
+ *   isolates the vocabulary arm: a turn that has already painted work, killed by an
+ *   error-level `session_incident`, then retried. `nothingHasRunYet` cannot reach
+ *   it (`sawWork` is true), so the narrow local copy leaves ONE run and hides the
+ *   reader's retry behind a "Steered" bar. Reverting the arm is what proves that
+ *   rather than asserting it - it is the one mutation in this file the suite can
+ *   see.
  *
  * THE INVARIANT, for every shape here: the reader's own message is never inside a
- * hidden span. A genuine mid-work steer (`U T U T A`, pinned below as the
- * compatibility case) is the ONE shape where a user row is legitimately absorbed
- * into its run and hidden behind a labelled bar; making THAT row visible is a
- * separate change in the sibling completion-visibility PR (V3 in the design
- * note), not this predicate fix, so this file pins the current behaviour there
- * rather than silently claiming a wider invariant.
+ * hidden span. That is NOT a claim that no user row is ever hidden, and the class
+ * is stated rather than narrowed (agent review round 1, R4): a run that has
+ * painted work and was not closed by an answer or a terminal marker still hides
+ * the user row inside it. Measured on this head, three shapes do:
+ *
+ *   `U T U T A` (a genuine mid-work steer)      hides the SECOND message
+ *   `U U`       (two messages, no work between) hides the SECOND message - the
+ *                                                turn is in flight either way
+ *   `T U T A`   (a HEAD-CUT run that had already painted) hides the reader's
+ *                                                message, the shape the round
+ *                                                found beside the one this PR
+ *                                                disclosed
+ *
+ * Making those rows visible is the sibling completion-visibility change (V3 in the
+ * design note, PR #737), not this predicate fix, so this file pins today's
+ * behaviour there instead of claiming a wider invariant. A future reader adding a
+ * shape above must know which side of that line it is on: the helper below asserts
+ * the strict invariant, so a shape that legitimately hides a user row belongs in
+ * its own case with the reason spelled out, not in `FRESH_SHAPES`.
  */
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -180,14 +204,23 @@ function assertUserRowsStayVisible({ rows, plan }, shape) {
 	}
 	for (const run of plan.runs) {
 		for (const segment of run.segments) {
-			assert.notEqual(
-				segment.label,
-				"Steered",
-				`${shape}: a bar over ${segment.segmentIds.join(",")} must not be labelled "Steered"`,
-			);
 			assert.ok(
 				!segment.rows.some((row) => row.record.kind === "user"),
 				`${shape}: a hidden span must never contain a user row`,
+			);
+			/*
+			 * A fresh shape's bars are UNNAMED, and that is the bound the label
+			 * vocabulary actually lives at: `labelOfSegment` (`turn-segments.ts`) names
+			 * a span that holds one of the reader's own rows, or one a trigger opened,
+			 * and these shapes have neither. Stated as "no label" rather than "not the
+			 * word Steered" - the literal is a copy test that stops checking anything
+			 * the day the word is reworded (review round 1, R7), while the structural
+			 * claim beside it is the invariant either way.
+			 */
+			assert.equal(
+				segment.label,
+				null,
+				`${shape}: a bar over ${segment.segmentIds.join(",")} must not be named`,
 			);
 		}
 	}
@@ -234,11 +267,57 @@ for (const [name, shape] of FRESH_SHAPES) {
 		);
 	});
 
-	test(`no bar is labelled "Steered" and no user row is hidden: ${name}`, () => {
+	test(`no bar is named and no user row is hidden: ${name}`, () => {
 		const partition = partitionOf(shape);
 		assertUserRowsStayVisible(partition, shape);
 	});
 }
+
+/* ------------------- the vocabulary arm's own shape --------------------- */
+
+test("a killed turn's retry opens its own run (the vocabulary arm)", () => {
+	/*
+	 * `U T I U T A`: a turn that has already painted work, killed by an error-level
+	 * `session_incident`, then retried by the reader - the operator's defect one
+	 * turn later, in its more damaging form.
+	 *
+	 * WHY THIS SHAPE EXISTS (agent review round 1, R2). The two prefix shapes above
+	 * are head-cut AND empty, so `nothingHasRunYet` closes them before the
+	 * vocabulary clause is asked; with the vocabulary arm reverted to the old
+	 * `notice && complete === true` copy this suite stayed 9/9 green. Here the run
+	 * has painted, so the empty-preamble clause cannot fire, and `I2` being a
+	 * terminal marker is the ONLY thing that closes the killed turn. The mutation is
+	 * captured on the PR beside this test's green run: without the arm the retry is
+	 * absorbed as a steer, one run, and the reader's own row is hidden inside a
+	 * "Steered" bar.
+	 */
+	const { rows, runs, plan } = partitionOf("U T I U T A");
+	const users = rows.filter((row) => row.record.kind === "user");
+	assert.equal(users.length, 2, "the fixture holds the reader's two messages");
+	const retry = users[1].record.id;
+	assert.equal(retry, "U3", "the retry is the row every id below names");
+	const retryAt = rows.findIndex((row) => row.record.id === retry);
+	assert.ok(retryAt >= 0, "the retry row is in the list");
+	const retryRun = runs.find((run) => run.openingIndex === retryAt);
+	assert.ok(
+		retryRun,
+		`the retry must open its own run, but runsOf gave ${JSON.stringify(
+			runs.map((run) => ({
+				openingIndex: run.openingIndex,
+				opensWithUserRow: run.opensWithUserRow,
+				endIndex: run.endIndex,
+			})),
+		)}`,
+	);
+	assert.equal(retryRun.opensWithUserRow, true);
+	assert.equal(runs.length, 2, "the incident is the only thing that closed it");
+	assert.equal(
+		runs[0].boundary,
+		"marker",
+		"the killed turn closed on the marker, not on an answer",
+	);
+	assertUserRowsStayVisible({ rows, plan }, "U T I U T A");
+});
 
 /* ------------------------------ invariant ------------------------------- */
 
@@ -297,29 +376,82 @@ test("a stale openRuns key is inert: the bar simply renders collapsed", () => {
 	 * before the fix names a key that no longer exists. The renderer reads
 	 * `openRuns.has(segment.key)`, so a stale key matches nothing and the bar is
 	 * drawn collapsed - it must not throw and must not force anything open.
+	 *
+	 * WHY THIS FIXTURE CARRIES A FOCUS HOLD (agent review round 1, R3). `planRun`
+	 * consults `openRuns` ONLY inside the `focusHold` branch, so at the default
+	 * `focusHold: null` the set is dead code and the equality below held for the
+	 * real key, for a bogus key and for no set alike - a tautology wearing a
+	 * migration test's name, which is what the round measured. The hold is what
+	 * makes the argument live, and the three readings then separate:
+	 *
+	 *   no set       -> the span the hold points into does NOT collapse: the plan
+	 *                   declines to hide the row the keyboard focus is in
+	 *   a STALE set  -> identical to no set - the key names no bar, so it neither
+	 *                   holds anything open nor protects anything
+	 *   the REAL key -> the span DOES collapse: the reader holds that bar open, so
+	 *                   its rows are already on screen and the hold protects nothing
+	 *
+	 * The last one is the CONTROL, and without it "a stale key changes nothing"
+	 * would be true of an argument nobody reads.
 	 */
 	const rows = rowsOf("Q U T T A");
 	const userAt = userRowIndex(rows);
-	const fresh = collapsePlan(rows, { live: false });
-	const stale = collapsePlan(rows, {
-		live: false,
-		openRuns: new Set(["entry-that-no-longer-exists", "U1#T3"]),
-	});
+	const hold = "T2";
+	const staleOpen = new Set(["entry-that-no-longer-exists", "U1#T3"]);
 	const collapsedOf = (plan) =>
 		plan.runs.flatMap((run) =>
 			run.segments.map((seg) => [seg.key, seg.collapsed]),
 		);
+	const fresh = collapsePlan(rows, { live: false, focusHold: hold });
+	const stale = collapsePlan(rows, {
+		live: false,
+		focusHold: hold,
+		openRuns: staleOpen,
+	});
 	assert.deepEqual(
 		collapsedOf(stale),
 		collapsedOf(fresh),
 		"a key that matches no bar changes nothing",
 	);
-	const run = fresh.runs.find(
+	/*
+	 * The renderer's own expression, over the same set - `open={openRuns.has(
+	 * entry.segment.key)}` in `canonical-transcript.tsx` - so the claim is stated
+	 * where the migration concern actually lives rather than only through the plan.
+	 */
+	const keys = fresh.runs.flatMap((run) => run.segments.map((seg) => seg.key));
+	assert.ok(keys.length > 0, "the fixture plans at least one bar");
+	for (const key of keys) {
+		assert.equal(
+			staleOpen.has(key),
+			false,
+			`the stale set must not name the bar ${key}`,
+		);
+	}
+	const heldKey = fresh.runs
+		.flatMap((run) => run.segments)
+		.find((seg) => seg.segmentIds.includes(hold)).key;
+	assert.notDeepEqual(
+		collapsedOf(
+			collapsePlan(rows, {
+				live: false,
+				focusHold: hold,
+				openRuns: new Set([heldKey]),
+			}),
+		),
+		collapsedOf(fresh),
+		"the control: the real key DOES change the plan, so the equality above is not vacuous",
+	);
+	/*
+	 * And the default reading - no hold, no expansions - is the one a stale key has
+	 * to leave alone: the reader's own run renders collapsed, bar and all.
+	 */
+	const plain = collapsePlan(rows, { live: false });
+	const plainRun = plain.runs.find(
 		(candidate) => candidate.run.openingIndex === userAt,
 	);
-	assert.ok(run, "the reader's run is planned");
+	assert.ok(plainRun, "the reader's run is planned");
 	assert.ok(
-		run.segments.every((segment) => segment.collapsed),
+		plainRun.segments.every((segment) => segment.collapsed),
 		"and with no expansion of its own, every bar of it renders collapsed",
 	);
 });
@@ -329,9 +461,10 @@ test("a genuine mid-work steer keeps today's behaviour (no widening)", () => {
 	 * `U T U T A`: the second message arrives while the run is working, so it IS a
 	 * steer and the run stays one run. This is the compatibility case for the
 	 * predicate change - widening the closure test must not turn a steer into a new
-	 * run. Its row is hidden behind a bar labelled "Steered", which is the shipped
-	 * shape; V3 in the sibling design note is the change that makes that row
-	 * visible, and it is deliberately NOT folded into this predicate fix.
+	 * run. Its row is hidden behind a labelled bar, which is the shipped shape (the
+	 * word is `labelOfSegment`'s, and it is deliberately not asserted as a literal
+	 * here); V3 in the sibling design note - PR #737's user-row visibility change -
+	 * is what makes that row visible, and it is NOT folded into this predicate fix.
 	 */
 	const { rows, runs, plan } = partitionOf("U T U T A");
 	assert.equal(runs.length, 1, "a steer mid-work does not open a second run");
@@ -341,14 +474,26 @@ test("a genuine mid-work steer keeps today's behaviour (no widening)", () => {
 		"and the run still opens at the reader's first message",
 	);
 	const steer = rows.filter((row) => row.record.kind === "user")[1].record.id;
-	const labelled = plan.runs
-		.flatMap((run) => run.segments)
-		.find((segment) => segment.label === "Steered");
-	assert.ok(labelled, "the steer's bar still says so");
+	const segments = plan.runs.flatMap((run) => run.segments);
 	assert.ok(
-		labelled.segmentIds.includes(steer),
-		"the steer row is the one the labelled bar hides",
+		segments.some((segment) => segment.segmentIds.includes(steer)),
+		"the steer row is inside a planned span",
 	);
+	/*
+	 * THE CONTRACT IS THAT THE BAR IS NAMED, not the word it is named with (review
+	 * round 1, R7). The copy is `labelOfSegment`'s (`turn-segments.ts` names a span
+	 * holding one of the reader's own rows), so an assertion on the literal would
+	 * stop checking anything the day it is reworded; what must hold is that a span
+	 * which hides the reader's OWN message cannot do it silently.
+	 */
+	for (const segment of segments) {
+		if (!segment.rows.some((row) => row.record.kind === "user")) continue;
+		assert.notEqual(
+			segment.label,
+			null,
+			`the span over ${segment.segmentIds.join(",")} hides one of the reader's own rows and must be named`,
+		);
+	}
 });
 
 test("an answered run still closes on its answer (no regression)", () => {
