@@ -1205,16 +1205,9 @@ test("segment keys are STABLE while pages land above the run's head", async () =
 		pages += 1;
 		await reader.loadOlder();
 		const next = keysNow();
-		// A key may DISAPPEAR only by being MERGED into a longer span when the head
-		// arrives; it must never be renamed. The invariant that matters to the
-		// reader is that the run's own key (the answer's) survives every page.
-		assert.ok(
-			next.has("entry-001196"),
-			`page ${pages}: the run's own key (the answer) must survive`,
-		);
+		// A key is its span's own anchor row, so a page landing above the head can
+		// neither rename nor lose it.
 		for (const key of seen) {
-			const suffix = key.includes("#") ? key.split("#")[1] : null;
-			if (suffix === null) continue;
 			assert.ok(
 				next.has(key),
 				`page ${pages}: segment key ${key} was renamed or lost when older rows landed`,
@@ -1242,15 +1235,10 @@ test("a head-cut run's cut span keeps the same key once the head lands", () => {
 		"T T | C | T: the compaction splits the loaded span",
 	);
 	assert.deepEqual(before, after, "the same two keys, in the same order");
-	assert.equal(
-		before.at(-1),
-		"A6",
-		"the span nearest the answer keeps the run's own key",
-	);
-	assert.equal(
-		before[0],
-		"A6#T3",
-		"an earlier span is keyed by its LAST row, which cannot change",
+	assert.deepEqual(
+		before,
+		["seg:C4", "seg:A6"],
+		"every span is keyed by the VISIBLE row that ends it, which cannot change",
 	);
 });
 
@@ -1291,7 +1279,7 @@ test("focus hold is per segment: only the span holding the focused row stays ope
 	const open = collapsePlan(rows, {
 		live: false,
 		focusHold: "T3",
-		openRuns: new Set(["A4"]),
+		openRuns: new Set(["seg:A4"]),
 	}).runs[0];
 	assert.deepEqual(
 		open.segments.map((s) => s.collapsed),
@@ -1299,8 +1287,9 @@ test("focus hold is per segment: only the span holding the focused row stays ope
 	);
 });
 
-test("a live run never collapses any segment", () => {
-	const rows = seq("U T C T A").map((record) => ({
+test("a live run with nothing settled never collapses any segment", () => {
+	// Liveness is the in-flight cycle's (PR-4): this run has no settled close yet.
+	const rows = seq("U T C T S").map((record) => ({
 		record,
 		gap: "item",
 		closesTurn: false,
@@ -1339,4 +1328,206 @@ test("one definition of a completion marker: the partition, the pin list and the
 	assert.equal(closesRun(marker), true);
 	assert.equal(closesRun(closed), true);
 	assert.equal(closesRun(plain), false);
+});
+
+/* ------- liveness is the in-flight CYCLE's, not the whole run's (PR-4) ------- */
+
+/*
+ * THE OPERATOR'S JITTER REPORT (2026-10-01): "messages are condensed, and then if
+ * a peer message or job completes and the agent goes into thinking, the last
+ * condensed sequence suddenly UN-CONDENSES". A wake / peer / job result does not
+ * open a run (only a `user` row does), so the event RE-OPENS the run that had just
+ * settled, which is now the newest run; the pane's `live` used to be spent on the
+ * whole newest run, so a bar the reader had just read vanished while the agent
+ * thought and came back when it stopped. `live` now covers only the rows of the
+ * cycle still being written.
+ */
+const planFor = (spec, live, options = {}) =>
+	collapsePlan(buildRows(seq(spec), []), { live, ...options }).runs;
+const barsOfRun = (run) =>
+	run.segments.map((segment) => [
+		segment.rows.map((r) => r.record.id).join(","),
+		segment.collapsed,
+	]);
+
+test("PR-4 F2: the settled sequence stays condensed when a wake starts the next cycle (the operator's shape)", () => {
+	// `U T88 A1(stop) W T3 A2(stop) K`, stepped through the states the pane shows.
+	const states = [
+		[
+			"the wake receipt just landed, the agent is thinking",
+			"U " + repeat("T", 88) + " A W",
+			1,
+		],
+		["the reply is streaming", "U " + repeat("T", 88) + " A W S", 2],
+		[
+			"the reply's tool calls are running",
+			"U " + repeat("T", 88) + " A W T T T",
+			2,
+		],
+	];
+	for (const [name, spec, count] of states) {
+		const [run] = planFor(spec, true);
+		const first = run.segments[0];
+		assert.equal(
+			first.collapsed,
+			true,
+			`${name}: the sequence the reader had condensed stays condensed`,
+		);
+		assert.equal(first.rows.length, 88, `${name}: it is the 88-action bar`);
+		assert.equal(run.segments.length, count, `${name}: span count`);
+		// A lone receipt after the answer is a trailing statement: it stays visible
+		// and there is no in-flight span yet. Otherwise the tail span is the cycle.
+		const tail = count === 2 ? run.segments[1] : null;
+		if (tail !== null) {
+			assert.equal(
+				tail.collapsed,
+				false,
+				`${name}: only the in-flight cycle draws in place`,
+			);
+			assert.ok(
+				!tail.rows.some((r) => first.segmentIds.includes(r.record.id)),
+				`${name}: the two are disjoint spans`,
+			);
+		}
+	}
+});
+
+test("PR-4 F2: nothing above the in-flight cycle changes between the wake landing and the cycle settling", () => {
+	const head = "U " + repeat("T", 88) + " A";
+	const steps = [
+		planFor(head + " W", true)[0],
+		planFor(head + " W S", true)[0],
+		planFor(head + " W T T T", true)[0],
+		planFor(head + " W T T T A", true)[0],
+		planFor(head + " W T T T A K", false)[0],
+	];
+	const aboveOf = (run) => {
+		const first = run.segments[0];
+		return [first.key, first.collapsed, first.segmentIds.length];
+	};
+	const baseline = aboveOf(steps[0]);
+	for (const [i, run] of steps.entries()) {
+		assert.deepEqual(
+			aboveOf(run),
+			baseline,
+			`step ${i}: the first bar is the same bar`,
+		);
+	}
+	// The settle adds exactly one bar, at the tail, and it condenses once the cycle's close exists.
+	assert.equal(
+		steps[2].segments.length,
+		2,
+		"the wake cycle is one in-flight span",
+	);
+	assert.equal(steps[2].segments[1].collapsed, false);
+	assert.equal(steps[3].segments.length, 2);
+	assert.equal(
+		steps[3].segments[1].collapsed,
+		true,
+		"its close exists: the cycle has settled",
+	);
+	assert.equal(steps[4].segments[1].collapsed, true);
+});
+
+test("PR-4 F2: segment keys do not change when a cycle settles", () => {
+	const head = "U " + repeat("T", 4) + " A";
+	const keysOf = (spec, live) =>
+		planFor(spec, live)[0].segments.map((s) => s.key);
+	const streaming = keysOf(head + " W T T", true);
+	const settled = keysOf(head + " W T T A", true);
+	const done = keysOf(head + " W T T A K", false);
+	assert.equal(streaming[0], settled[0]);
+	assert.equal(
+		settled[0],
+		done[0],
+		"the first bar's key is the same in every state",
+	);
+	assert.equal(
+		settled[1],
+		done[1],
+		"and the settled tail bar keeps its key when the turn ends",
+	);
+});
+
+test("PR-4 control: `U T A U2` - the next message opens its own run, the settled one condenses as it always did", () => {
+	const runs = planFor("U T A U T", true);
+	assert.equal(runs.length, 2);
+	assert.equal(runs[0].collapses, true, "the earlier turn condenses");
+	assert.equal(
+		runs[1].collapses,
+		false,
+		"the run being written draws in place",
+	);
+});
+
+test("PR-4: a first turn with no settled close is live as a whole (shipped behaviour)", () => {
+	const run = planFor("U T N T T S", true)[0];
+	assert.equal(run.collapses, false);
+	assert.ok(run.segments.every((s) => s.collapsed === false));
+});
+
+test("PR-4: a lead-in that has not yet been followed by its call is not a settle (stopReason toolUse)", () => {
+	/*
+	 * The frame that carries text AND tool calls settles its prose a moment before
+	 * its tool row paints, and for that moment the lead-in is the last row, which
+	 * `cyclesOf` reads as a close. Condensing at that instant and expanding the
+	 * moment the call arrived would be the very flip this change removes, so a
+	 * close the provider declared `toolUse` is positive evidence the cycle goes on.
+	 */
+	const before = planFor("U T T L", true)[0];
+	const after = planFor("U T T L T", true)[0];
+	for (const run of [before, after]) {
+		assert.equal(run.collapses, false, "nothing condenses around a lead-in");
+	}
+	// The same shape with an absent declaration is the design's boundary: a close.
+	const unknown = planFor("U T T N", true)[0];
+	assert.equal(unknown.segments[0].collapsed, true);
+});
+
+test("PR-4: a segment is live only when it lies wholly after the last settled close; a focus hold and an open bar still apply per segment", () => {
+	const run = planFor("U T A W T T", true, { focusHold: "T1" })[0];
+	assert.deepEqual(barsOfRun(run), [
+		["T1", false],
+		["W3,T4,T5", false],
+	]);
+	const open = planFor("U T A W T T", true, {
+		openRuns: new Set(["seg:A2"]),
+	})[0];
+	assert.deepEqual(barsOfRun(open), [
+		["T1", true],
+		["W3,T4,T5", false],
+	]);
+});
+
+test("PR-4: a pre-answer span is keyed by the visible row that ends it, so no later span can inherit its key", () => {
+	// Today's bare run key went to the span nearest the answer. After a wake the
+	// span that used to be nearest is no longer, and a NEW span becomes nearest:
+	// under a bare-key rule an expansion stored for the first bar would open the
+	// second. Every pre-answer key now names its own last row.
+	const before = planFor("U T T A", false)[0];
+	const after = planFor("U T T A W T T A", false)[0];
+	const beforeKey = before.segments[0].key;
+	assert.equal(
+		beforeKey,
+		"seg:A3",
+		"the key is the visible row that ends the span",
+	);
+	const first = after.segments.find((s) => s.segmentIds.includes("T1"));
+	assert.equal(
+		first.key,
+		beforeKey,
+		"the same span keeps its name after the wake",
+	);
+	const second = after.segments.find((s) => s.segmentIds.includes("T5"));
+	assert.notEqual(second.key, beforeKey, "the new span has its own name");
+	const all = after.segments.map((s) => s.key);
+	assert.equal(new Set(all).size, all.length, "keys are unique within the run");
+	// A stale key of the older shape (the bare run key) names nothing.
+	const stale = planFor("U T T A W T T A", false, {
+		openRuns: new Set(["A7", "A3", "A3#T2", "S1#T2", "seg:", "seg:nope"]),
+	})[0];
+	assert.ok(
+		stale.segments.every((s) => s.collapsed),
+		"a stale key renders collapsed and opens no bar",
+	);
 });

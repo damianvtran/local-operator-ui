@@ -2176,3 +2176,180 @@ test("QA-2: closing a bar returns the reader's place, one acknowledged write per
 	);
 	assert.equal(region.scrollTop, 0, "the reader's place is returned to them");
 });
+
+/* ----- liveness is the in-flight cycle's: a wake does not un-condense (PR-4) ---- */
+
+/*
+ * THE OPERATOR'S JITTER REPORT (2026-10-01), mounted: "messages are condensed,
+ * and then if a peer message or job completes and the agent goes into thinking,
+ * the last condensed sequence suddenly un-condenses". A wake does not open a run
+ * (only a user row does), so it re-opens the run that had just settled, and the
+ * pane's `waiting` used to expand the whole of it.
+ */
+const settledTurn = [
+	userRecord("user:1"),
+	toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+	answerRecord("answer:1", {
+		ts: TS + 3_000,
+		settledAt: TS + 3_000,
+		stopReason: "stop",
+	}),
+];
+const wakeCycle = (extra = []) => [
+	wakeRecord("wake:1", { ts: TS + 10_000 }),
+	...extra,
+];
+
+test("PR-4: a wake re-opening a settled turn keeps its bar - the same element, still condensed - while the agent thinks", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, settledTurn);
+	const first = bar(mounted);
+	assert.ok(first, "the settled turn arrives condensed");
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	const states = [
+		[...settledTurn, ...wakeCycle()],
+		[
+			...settledTurn,
+			...wakeCycle([
+				answerRecord("answer:2", {
+					ts: TS + 11_000,
+					streaming: true,
+					text: "Checking the stag",
+				}),
+			]),
+		],
+		[
+			...settledTurn,
+			...wakeCycle([
+				toolRecord("tool:2", {
+					ts: TS + 11_000,
+					phase: "running",
+					output: null,
+				}),
+			]),
+		],
+	];
+	for (const [i, records] of states.entries()) {
+		await mounted.render(records, { waiting: true });
+		assert.equal(
+			bar(mounted),
+			first,
+			`state ${i}: the bar is the same element`,
+		);
+		assert.equal(
+			rowBox(mounted, "tool:1"),
+			null,
+			`state ${i}: its work is still unmounted`,
+		);
+		assert.equal(
+			region(),
+			"",
+			`state ${i}: nothing is announced while the cycle runs`,
+		);
+	}
+	// The in-flight cycle's own rows draw in place, below the bar.
+	assert.ok(rowBox(mounted, "tool:2"), "the running call draws in place");
+});
+
+test("PR-4: the cycle settling adds ONE bar at the tail, announces once, and moves nothing above it", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, settledTurn);
+	const first = bar(mounted);
+	const running = [
+		...settledTurn,
+		...wakeCycle([toolRecord("tool:2", { ts: TS + 11_000, durationS: 4 })]),
+	];
+	await mounted.render(running, { waiting: true });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(barsOf(mounted).length, 1, "one bar while the cycle runs");
+	const settled = [
+		...running,
+		answerRecord("answer:2", {
+			ts: TS + 15_000,
+			settledAt: TS + 15_000,
+			stopReason: "stop",
+		}),
+	];
+	await mounted.render(settled, { waiting: false });
+	assert.equal(barsOf(mounted).length, 2, "the settled cycle is now a bar");
+	assert.equal(barsOf(mounted)[0], first, "the first bar is the same element");
+	assert.equal(
+		barsOf(mounted)[1].getAttribute("data-record-id"),
+		"wake:1",
+		"the new bar sits at the tail, in the cycle's own first slot",
+	);
+	assert.equal(
+		region(),
+		"Wake: took 4s, 1 action.",
+		"exactly one sentence, for the one new bar, in its own words (a labelled bar does not say 'Turn condensed' again)",
+	);
+	// Another token-less commit changes nothing.
+	await mounted.render([...settled], { waiting: false });
+	assert.equal(barsOf(mounted).length, 2);
+});
+
+test("PR-4: a bar the reader opened stays that bar, and open, across the wake and the settle", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, settledTurn);
+	await click(barTrigger(mounted));
+	const opened = bar(mounted);
+	assert.ok(rowBox(mounted, "tool:1"), "the reader opened the first bar");
+	const running = [
+		...settledTurn,
+		...wakeCycle([toolRecord("tool:2", { ts: TS + 11_000, durationS: 4 })]),
+	];
+	await mounted.render(running, { waiting: true });
+	assert.equal(bar(mounted), opened, "the wake keeps the SAME bar element");
+	assert.ok(rowBox(mounted, "tool:1"), "and it is still the one that is open");
+	await mounted.render(
+		[
+			...running,
+			answerRecord("answer:2", {
+				ts: TS + 15_000,
+				settledAt: TS + 15_000,
+				stopReason: "stop",
+			}),
+		],
+		{ waiting: false },
+	);
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 2);
+	assert.equal(bars[0], opened, "the settle keeps it too");
+	assert.equal(
+		bars[0].querySelector("button").getAttribute("aria-expanded"),
+		"true",
+	);
+	assert.equal(
+		bars[1].querySelector("button").getAttribute("aria-expanded"),
+		"false",
+		"the NEW bar is not the open one: no stored key names a different span",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"the first span's row is still on screen",
+	);
+	assert.equal(rowBox(mounted, "tool:2"), null, "the new span is condensed");
+});
+
+test("PR-4: a stale expansion key of an older shape renders collapsed and does not throw", async (t) => {
+	__resetTurnCollapseOpen();
+	// What the in-memory store could still hold from the previous key shape: the
+	// run's bare key (the answer's id) and a `<run key>#<row>` pair.
+	writeRunExpanded("chat-stale", "answer:1", true);
+	writeRunExpanded("chat-stale", "answer:1#tool:1", true);
+	writeRunExpanded("chat-stale", "seg:no-such-row", true);
+	const mounted = await mount(t, settledTurn, {
+		frontend: { session_id: "chat-stale" },
+	});
+	assert.ok(bar(mounted), "the bar renders");
+	assert.equal(
+		bar(mounted).querySelector("button").getAttribute("aria-expanded"),
+		"false",
+		"a key that names nothing opens nothing",
+	);
+	assert.equal(rowBox(mounted, "tool:1"), null);
+});
