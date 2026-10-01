@@ -69,8 +69,10 @@ import {
 	type SegmentSpan,
 	type TurnCycle,
 	boundaryKindOf,
+	isTerminalMarker,
 	labelOfSegment,
 	partitionRun,
+	reportsCompletedThought,
 	segmentIsCompleted,
 } from "./turn-segments";
 
@@ -945,28 +947,56 @@ function factsOf(
 }
 
 /**
- * The index (in the run's record list) of the last close the reader has seen
+ * The index (in the run's record list) of the last row the reader has seen
  * SETTLE - everything up to and including it is finished work - or -1 when the
  * run has none (a first turn that has not answered yet: all of it is in flight).
  *
- * A close the provider declared `stopReason: "toolUse"` is not a settle. That is
- * the lead-in frame: its prose settles a moment BEFORE its own tool row paints,
- * and for that moment it is the run's last row, which `cyclesOf` reads as a close.
- * Treating it as one would condense the cycle's work, then un-condense it the
- * instant the call arrives - the flip this function exists to prevent. Absent or
- * any other declaration counts as settled (the unknown-is-absent rule the
- * segments module states for `reportsCompletedThought`).
+ * THREE KINDS OF ROW SETTLE, and the largest index wins:
+ *
+ * - a CLOSE of a cycle (`cyclesOf`: an assistant row with no step after it before
+ *   the next trigger), except one the provider declared `stopReason: "toolUse"`.
+ *   That is the lead-in frame: its prose settles a moment BEFORE its own tool row
+ *   paints, and for that moment it is the run's last row, which `cyclesOf` reads
+ *   as a close. Treating it as one would condense the cycle's work, then
+ *   un-condense it the instant the call arrives - the flip this function exists
+ *   to prevent. Absent or any other declaration counts as settled (the
+ *   unknown-is-absent rule the segments module states for
+ *   `reportsCompletedThought`);
+ * - a TERMINAL marker (`isTerminalMarker`: `Stopped with an error`, `Interrupted`,
+ *   the `closed` / `retired` receipts, a session incident). A turn that ended in
+ *   one has no assistant close at all, so reading only closes left it "all in
+ *   flight" the moment a wake or peer message re-opened the run - the operator's
+ *   complaint, in the shape of an interrupted or failed turn. It is the segments
+ *   module's own boundary vocabulary, not a second list;
+ * - an assistant row the provider declared FINISHED (`reportsCompletedThought`).
+ *   `partitionRun` already keeps such a row on screen as a settled thing (V4), and
+ *   it is not always a close: the todo guardrail re-enters the loop after a
+ *   `stop` yield, so `[U T T A(stop) T]` has tool work after it and no new trigger,
+ *   which `cyclesOf` reads as narration. Without this clause the idle plan
+ *   (`U T T A`) condensed the first span and the live plan (`U T T A T`) drew it
+ *   in place again - the same flip, with no wake in it.
  */
 function settledCloseOf(
 	records: readonly TranscriptRecord[],
 	cycles: readonly TurnCycle[],
 ): number {
+	let settled = -1;
 	for (let i = cycles.length - 1; i >= 0; i -= 1) {
 		const close = records[cycles[i].closeIndex];
 		if (close.kind === "assistant" && close.stopReason === "toolUse") continue;
-		return cycles[i].closeIndex;
+		settled = cycles[i].closeIndex;
+		break;
 	}
-	return -1;
+	for (let i = records.length - 1; i > settled; i -= 1) {
+		const record = records[i];
+		if (
+			isTerminalMarker(record) ||
+			(paintsSomething(record) && reportsCompletedThought(record))
+		) {
+			return i;
+		}
+	}
+	return settled;
 }
 
 function planRun(

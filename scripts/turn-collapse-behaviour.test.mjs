@@ -2353,3 +2353,266 @@ test("PR-4: a stale expansion key of an older shape renders collapsed and does n
 	);
 	assert.equal(rowBox(mounted, "tool:1"), null);
 });
+
+/* -------- reconciliation of #744 and #745: a bar keeps its identity (PR-4/PR-5) -------- */
+
+/*
+ * A bar's identity is DOM identity, so these tests tag the element the reader
+ * pressed with an expando and look for the tag afterwards: a remount builds a new
+ * element, so the tag is gone and the test fails, which a key-text assertion
+ * cannot do (the review that prompted this found the earlier "same element"
+ * assertion was never reached on base). `data-mount-tag` is an own property of the
+ * jsdom element, never an attribute React could re-render.
+ */
+const tagged = (mounted) => {
+	const element = bar(mounted);
+	element.__mountTag = "pressed";
+	return element;
+};
+const pressedBar = (mounted) =>
+	barsOf(mounted).find((element) => element.__mountTag === "pressed") ?? null;
+
+/*
+ * Answers are declared `stop`, as every text-bearing assistant row in a journal is
+ * (`transcript-reducer.ts` keeps the provider's stop_reason). That is not
+ * decoration: an answer with NO declaration that a later step follows (no trigger
+ * between them) is demoted to narration and absorbed into its span, which moves
+ * the span's end and so its key - a hand-built-fixture-only shape, named as a
+ * residual in `turn-segments.test.mjs`. #744's own tests used undeclared answers
+ * and expected the later work to fold into the SAME bar; with a declared `stop` the
+ * first answer stays on screen, so the later work is a SECOND bar after it.
+ */
+const stopAnswer = (id, ts) =>
+	answerRecord(id, { ts, settledAt: ts, stopReason: "stop" });
+
+test("RECONCILE (a): the bar the reader pressed is the SAME element - not a remount - after a wake and after the wake settles, and it is the one that is open", async (t) => {
+	__resetTurnCollapseOpen();
+	const first = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		stopAnswer("answer:1", TS + 3_000),
+	];
+	const frontend = { session_id: "chat-reconcile-a" };
+	const mounted = await mount(t, first, { frontend });
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "the reader opened it");
+	const pressed = tagged(mounted);
+	const wakeStates = [
+		[...first, wakeRecord("wake:1", { ts: TS + 10_000 })],
+		[
+			...first,
+			wakeRecord("wake:1", { ts: TS + 10_000 }),
+			toolRecord("tool:3", { ts: TS + 11_000, phase: "running", output: null }),
+		],
+		[
+			...first,
+			wakeRecord("wake:1", { ts: TS + 10_000 }),
+			toolRecord("tool:3", { ts: TS + 11_000 }),
+			stopAnswer("answer:2", TS + 12_000),
+		],
+	];
+	for (const [i, records] of wakeStates.entries()) {
+		await mounted.render(records, { frontend, waiting: i < 2 });
+		await flushFrames();
+		assert.equal(
+			pressedBar(mounted),
+			pressed,
+			`state ${i}: the pressed bar is the element that was mounted (no remount)`,
+		);
+		assert.equal(
+			pressed.querySelector("button").getAttribute("aria-expanded"),
+			"true",
+			`state ${i}: and it is still the open one`,
+		);
+		assert.ok(rowBox(mounted, "tool:1"), `state ${i}: its rows are shown`);
+	}
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 2, "the settled wake cycle is a second bar");
+	assert.equal(
+		bars[1].querySelector("button").getAttribute("aria-expanded"),
+		"false",
+		"the stored key names the FIRST bar only; the wake's bar is not opened by it",
+	);
+	assert.equal(rowBox(mounted, "tool:3"), null, "the wake's work is condensed");
+});
+
+test("RECONCILE (a'): a later answer with no wake row between leaves the pressed bar mounted and open, and the later work is its own bar", async (t) => {
+	__resetTurnCollapseOpen();
+	const first = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		stopAnswer("answer:1", TS + 3_000),
+	];
+	const frontend = { session_id: "chat-reconcile-a2" };
+	const mounted = await mount(t, first, { frontend });
+	await click(barTrigger(mounted));
+	await flushFrames();
+	const pressed = tagged(mounted);
+	await mounted.render(
+		[
+			...first,
+			toolRecord("tool:3", { ts: TS + 4_000 }),
+			stopAnswer("answer:2", TS + 5_000),
+		],
+		{ frontend },
+	);
+	await flushFrames();
+	assert.equal(
+		pressedBar(mounted),
+		pressed,
+		"the pressed bar was not remounted",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1") && rowBox(mounted, "tool:2"),
+		"still open",
+	);
+	assert.equal(
+		rowBox(mounted, "tool:3"),
+		null,
+		"the later work is its own, condensed bar",
+	);
+	assert.equal(barsOf(mounted).length, 2);
+});
+
+test("RECONCILE (b)+(a): a head-cut bar the reader opened stays open and mounted when the head lands, and again when a later answer arrives", async (t) => {
+	__resetTurnCollapseOpen();
+	const frontend = { session_id: "chat-reconcile-b" };
+	const cut = [
+		toolRecord("tool:0", { ts: TS + 500 }),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		stopAnswer("answer:1", TS + 2_000),
+	];
+	const mounted = await mount(t, cut, { frontend });
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:0"), "the reader opened the cut bar");
+	const pressed = tagged(mounted);
+	const headed = [userRecord("user:0", { ts: TS + 100 }), ...cut];
+	await mounted.render(headed, { frontend });
+	await flushFrames();
+	assert.equal(
+		pressedBar(mounted),
+		pressed,
+		"the head landing did not remount it",
+	);
+	assert.ok(rowBox(mounted, "tool:0"), "and it is still open");
+	await mounted.render(
+		[
+			...headed,
+			toolRecord("tool:2", { ts: TS + 3_000 }),
+			stopAnswer("answer:2", TS + 4_000),
+		],
+		{ frontend },
+	);
+	await flushFrames();
+	assert.equal(pressedBar(mounted), pressed, "nor did the later answer");
+	assert.ok(
+		rowBox(mounted, "tool:0") && rowBox(mounted, "tool:1"),
+		"still open",
+	);
+});
+
+test("RECONCILE (d): keys of an older shape, a gone run and a neighbour's row render collapsed and open nothing - the bare run key of the PREVIOUS shape never names the wake's bar", async (t) => {
+	__resetTurnCollapseOpen();
+	const frontend = { session_id: "chat-reconcile-d" };
+	/* Under the old shape `answer:1` / `answer:2` named bars; under this one they
+	 * are visible rows, never bars, and `seg:answer:2` names the bar ENDING at
+	 * answer:2 - which a stored `answer:2#...` must not reach. */
+	for (const key of [
+		"answer:1",
+		"answer:2",
+		"answer:1#tool:1",
+		"answer:2#wake:1",
+		"user:1",
+		"gone:1",
+		"gone:1#tool:9",
+		"seg:",
+		"seg:no-such-row",
+	]) {
+		writeRunExpanded("chat-reconcile-d", key, true);
+	}
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			toolRecord("tool:1", { ts: TS + 1_000 }),
+			stopAnswer("answer:1", TS + 3_000),
+			wakeRecord("wake:1", { ts: TS + 10_000 }),
+			toolRecord("tool:3", { ts: TS + 11_000 }),
+			stopAnswer("answer:2", TS + 12_000),
+		],
+		{ frontend },
+	);
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 2, "both spans condense");
+	for (const element of bars) {
+		assert.equal(
+			element.querySelector("button").getAttribute("aria-expanded"),
+			"false",
+			"no stale key opens either bar",
+		);
+	}
+	assert.equal(rowBox(mounted, "tool:1"), null);
+	assert.equal(rowBox(mounted, "tool:3"), null);
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "the reader can still open one");
+	assert.equal(rowBox(mounted, "tool:3"), null, "and only that one");
+});
+
+test("PR-4: a turn closed by a terminal marker stays condensed when a wake re-opens it (no assistant close to settle on)", async (t) => {
+	__resetTurnCollapseOpen();
+	const closed = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		noticeRecord("marker:1", { ts: TS + 3_000 }),
+	];
+	const mounted = await mount(t, closed);
+	const first = bar(mounted);
+	assert.ok(first, "the interrupted turn condenses on arrival");
+	await mounted.render(
+		[
+			...closed,
+			wakeRecord("wake:1", { ts: TS + 10_000 }),
+			toolRecord("tool:3", { ts: TS + 11_000, phase: "running", output: null }),
+		],
+		{ waiting: true },
+	);
+	assert.equal(bar(mounted), first, "the same bar element");
+	assert.equal(rowBox(mounted, "tool:1"), null, "still condensed");
+	assert.ok(
+		rowBox(mounted, "tool:3"),
+		"only the cycle being written draws in place",
+	);
+});
+
+test("PR-4: a lead-in (stopReason toolUse) is not a settle: nothing condenses while it waits for its call, nor when the call arrives", async (t) => {
+	__resetTurnCollapseOpen();
+	const turn = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		answerRecord("lead:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "toolUse",
+			text: "Let me check the staging table.",
+		}),
+	];
+	const mounted = await mount(t, turn, { waiting: true });
+	assert.equal(bar(mounted), null, "no bar around a lead-in");
+	assert.ok(rowBox(mounted, "tool:1"), "the work is drawn in place");
+	await mounted.render(
+		[
+			...turn,
+			toolRecord("tool:3", { ts: TS + 4_000, phase: "running", output: null }),
+		],
+		{ waiting: true },
+	);
+	assert.equal(bar(mounted), null, "and the call's arrival changes nothing");
+	assert.ok(rowBox(mounted, "tool:1"), "the work never flipped");
+});
