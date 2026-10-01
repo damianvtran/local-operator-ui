@@ -652,6 +652,18 @@ test("a blocked box that already holds a draft still says why", async () => {
 		const text = host.textContent ?? "";
 		const shown = text.match(/Finish or cancel your edit first\./g) ?? [];
 		assert.equal(shown.length, 1, "the reason is said exactly once");
+		/*
+		 * NIT-1: the sentence a reader with a draft meets must also be PROGRAMMATIC,
+		 * because the placeholder is not announced on a control that has a value.
+		 */
+		const named = host.querySelectorAll("#composer-host-blocked-reason");
+		assert.equal(named.length, 1, "the reason's node is named exactly once");
+		assert.ok(
+			(box.getAttribute("aria-describedby") ?? "").includes(
+				"composer-host-blocked-reason",
+			),
+			`the box is described by it (got ${box.getAttribute("aria-describedby")})`,
+		);
 	} finally {
 		await act(async () => root.unmount());
 	}
@@ -677,6 +689,12 @@ test("an unblocked box with a draft explains nothing", async () => {
 			box.getAttribute("placeholder") ?? "",
 			/Finish or cancel your edit first\./,
 			"and the box invites rather than refuses",
+		);
+		assert.ok(
+			!(box.getAttribute("aria-describedby") ?? "").includes(
+				"composer-host-blocked-reason",
+			),
+			"and the reason's id is absent from the box's description",
 		);
 	} finally {
 		await act(async () => root.unmount());

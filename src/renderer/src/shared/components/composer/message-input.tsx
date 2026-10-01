@@ -235,6 +235,19 @@ const SECRET_CLOSURE_NOTICE =
 const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
 
 /**
+ * THE HOST'S BLOCKED-REASON SENTENCE'S ID (agent review round 4, NIT-1).
+ *
+ * That sentence reaches the box as a PLACEHOLDER, and a placeholder is announced
+ * only while the control is EMPTY — so a reader who arrives with a draft in the
+ * box and meets a refused one had the reason visually (the band node added for
+ * the F4 finding) and nothing programmatic. This names the band node, and the
+ * box's `aria-describedby` joins it while — and ONLY while — that node renders,
+ * so the empty-box state and every host that passes no `hostNotice` (chat) are
+ * exactly as they were.
+ */
+const HOST_BLOCKED_REASON_ID = "composer-host-blocked-reason";
+
+/**
  * The id the delivery remedies' hint carries, so the field it describes can
  * name it (UX round 1, U3).
  *
@@ -6694,7 +6707,10 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				{hostNotice?.blocksInput &&
 				hostNotice.placeholder &&
 				newMessage.trim().length > 0 ? (
-					<p className="mb-2 text-meta text-ink-muted">
+					<p
+						id={HOST_BLOCKED_REASON_ID}
+						className="mb-2 text-meta text-ink-muted"
+					>
 						{hostNotice.placeholder}
 					</p>
 				) : null}
@@ -7625,6 +7641,17 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 										 */
 										[
 											hostNotice ? hostNotice.id : null,
+											/*
+											 * The host's blocked reason, while its band node is the
+											 * only place it can be read (the box holds text, so the
+											 * placeholder is not painted). Same condition as the node
+											 * itself, so the reference cannot outlive its target.
+											 */
+											hostNotice?.blocksInput &&
+											hostNotice.placeholder &&
+											newMessage.trim().length > 0
+												? HOST_BLOCKED_REASON_ID
+												: null,
 											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
 											secretClosureNotice ? SECRET_CLOSURE_NOTICE_ID : null,
 											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,
