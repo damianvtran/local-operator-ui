@@ -164,10 +164,33 @@ function abandonFetch(digest: string) {
  * render that "unavailable" does not — and a local blob resolves in a frame or
  * two, which is under the threshold where a distinct state would be legible.
  */
+/**
+ * Where a canonical image's bytes come from, as of this render.
+ *
+ * THREE STATES, NOT TWO, and the distinction belongs to the caller because the
+ * caller is what has something different to draw for each. This used to return
+ * `null` for "still resolving" and "failed" alike, on the reasoning that a
+ * loading state would have nothing to render that "unavailable" does not - true
+ * while the receipt was the only thing a caller could paint for either, and false
+ * the moment a caller has a BOX to reserve. The condensed group's tile is 115x76 (117x78 with its border) by
+ * construction, so a durable picture's first paint was a sentence-shaped receipt
+ * that swapped to a tile a frame later, in the one surface whose whole point is
+ * that the artifact is on screen (agent review round 1, P3). The cold path is the
+ * NORMAL path there: a condensed fold unmounts the rows that would otherwise have
+ * warmed the cache.
+ *
+ * `resolving` is every state before an attempt has come back empty, `missing` is
+ * the state after one has. Only `missing` may paint the receipt.
+ */
+export type AttachmentSource =
+	| { state: "ready"; url: string }
+	| { state: "resolving" }
+	| { state: "missing" };
+
 export function useAttachmentUrl(
 	image: TranscriptImage,
 	scope: AttachmentScope | null,
-): string | null {
+): AttachmentSource {
 	// An inline image needs no state at all: the URI is a pure function of the
 	// bytes already in memory, so it is correct on the very first render and
 	// never re-renders the row.
@@ -183,6 +206,13 @@ export function useAttachmentUrl(
 	const [resolved, setResolved] = useState<string | null>(() =>
 		image.attachment ? peek(image.attachment) : null,
 	);
+	/**
+	 * Whether an attempt has come back EMPTY, which is the only fact that separates
+	 * "late" from "absent". It is not derived from `resolved === null`, because a
+	 * cold mount and a 404 are the same value there - the conflation this exists to
+	 * end.
+	 */
+	const [failed, setFailed] = useState(false);
 	/*
 	 * The scope's two ids as PRIMITIVES, read once.
 	 *
@@ -204,6 +234,7 @@ export function useAttachmentUrl(
 		const cached = retain(digest);
 		if (cached) {
 			setResolved(cached);
+			setFailed(false);
 			return () => {
 				live = false;
 				release(digest);
@@ -214,6 +245,10 @@ export function useAttachmentUrl(
 		// entry was revoked between the render-phase peek and this effect, and
 		// there it drops a URL that is already dead rather than painting it.
 		setResolved(null);
+		// THIS attempt is not the last attempt's failure: clearing the flag is what
+		// lets the box be reserved again rather than the receipt re-painted over a
+		// picture that is on its way (a retry after a dropped relay frame).
+		setFailed(false);
 		// Tracks whether this mount is still party to the fetch it started.
 		// `inflight` is keyed by DIGEST, not by attempt, so once our own attempt
 		// settles and deletes its record, a later row retrying the same digest
@@ -232,7 +267,14 @@ export function useAttachmentUrl(
 			digest,
 		).then((url) => {
 			joined = false;
-			if (!live || !url) return;
+			if (!live) return;
+			if (!url) {
+				// The bytes are absent rather than late - `desktopMedia` answers any
+				// non-2xx or transport failure with an error, and this is the only
+				// path allowed to say so.
+				setFailed(true);
+				return;
+			}
 			// Retain AFTER the fetch, so the count reflects holders rather than
 			// requests: a row unmounted mid-flight never retained and must not
 			// release.
@@ -250,5 +292,14 @@ export function useAttachmentUrl(
 		};
 	}, [image.attachment, inline, scopeSessionId, scopeChildId]);
 
-	return inline ?? resolved;
+	const url = inline ?? resolved;
+	if (url) return { state: "ready", url };
+	/*
+	 * No URL. An image with a digest and a scope to fetch it within is RESOLVING
+	 * until an attempt comes back empty; anything else - no digest at all, or no
+	 * scope to ask - can never produce one, and says so on the first render.
+	 */
+	return image.attachment && scopeSessionId && !failed
+		? { state: "resolving" }
+		: { state: "missing" };
 }

@@ -146,6 +146,104 @@ test("the loop loads pages until the row is in the model, then mounts to it", as
 	assert.deepEqual(state.mounts, [3], "mounted by the row's own distance");
 });
 
+test("a page-leading target fetches its margin's page before mounting (QA Q-2)", async () => {
+	/*
+	 * The row arrives as the store's OLDEST row - the leading row of the page
+	 * that fetched it - and mounting it there centres clamped at the content's
+	 * top (QA Q-2: -254 px, the first ~8 rows of every fetched page). The
+	 * margin callback reports the shortfall, the loop spends ONE more page of
+	 * its existing budget, and the mount follows once the margin exists.
+	 */
+	const state = {
+		reachable: false,
+		rowAt: null,
+		loaded: 0,
+		margin: false,
+		mounts: [],
+	};
+	const result = await ensureReachable({
+		isReachable: () => state.reachable,
+		rowDistance: () => state.rowAt,
+		hasHeadroom: () => state.margin,
+		mount: (distance) => {
+			state.mounts.push(distance);
+			state.reachable = true;
+		},
+		loadOlder: async () => {
+			state.loaded += 1;
+			// The fetching page lands the row as the store's leader: no margin.
+			if (state.loaded === 1) state.rowAt = 40;
+			// The margin's page lands the older rows above it.
+			if (state.loaded === 2) state.margin = true;
+			return true;
+		},
+	});
+	assert.equal(result, true);
+	assert.equal(
+		state.loaded,
+		2,
+		"the margin is one page of history, not a poll",
+	);
+	assert.deepEqual(
+		state.mounts,
+		[40],
+		"the mount stays the row's distance; the margin is rows, not window",
+	);
+});
+
+test("a margin the store never grows spends the page budget once, then mounts (N1)", async () => {
+	/*
+	 * The spent-budget edge: the row is in the store, the margin callback keeps
+	 * reporting short, and the loop spends its pages then falls through to the
+	 * mount rather than looping forever. One mount, one refusal-free return.
+	 */
+	const state = { loaded: 0, mounts: [] };
+	const result = await ensureReachable({
+		isReachable: () => state.mounts.length > 0,
+		rowDistance: () => 40,
+		hasHeadroom: () => false,
+		mount: (distance) => state.mounts.push(distance),
+		loadOlder: async () => {
+			state.loaded += 1;
+			return true;
+		},
+	});
+	assert.equal(result, true);
+	assert.equal(
+		state.loaded,
+		JUMP_MAX_PAGES,
+		"exactly the page budget, then the fall-through",
+	);
+	assert.deepEqual(state.mounts, [40], "one mount, not a spin");
+});
+
+test("a margin that cannot grow falls through to the clamped mount, never a refusal", async () => {
+	/*
+	 * The row IS in the store; a refused page means the history ends at it, so
+	 * the landing is clamped at the content's top - which, at the start of
+	 * history, is where the row is. Refusing the jump would be the -254 px
+	 * finding turned into a dead end.
+	 */
+	const state = { rowAt: 40, loaded: 0, mounts: [] };
+	const result = await ensureReachable({
+		isReachable: () => state.mounts.length > 0,
+		rowDistance: () => state.rowAt,
+		hasHeadroom: () => false,
+		mount: (distance) => state.mounts.push(distance),
+		loadOlder: async () => {
+			state.loaded += 1;
+			return false;
+		},
+	});
+	assert.equal(
+		result,
+		true,
+		"a row the store holds must land (clamped), not refuse",
+	);
+	assert.deepEqual(state.mounts, [40]);
+	assert.equal(state.loaded, 1, "one attempt, then the mount");
+});
+
 test("a row beyond the mount budget is refused without loading or mounting", async () => {
 	const state = { loaded: 0, mounts: [] };
 	const result = await ensureReachable({
@@ -212,7 +310,7 @@ test("a page that fails to apply stops the loop", async () => {
  * written for.
  */
 
-test("a row behind a collapsed bar: the bar opens, the row centres, the flash lands", async () => {
+test("a row behind a collapsed bar: the bar opens, the row anchors, the flash lands", async () => {
 	const { root, region } = makeDom(`
 		<div data-turn-summary data-run-ids="u9 c9" data-record-id="u9">
 			<button aria-expanded="false">turn</button>
@@ -236,9 +334,29 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 		trigger.setAttribute("aria-expanded", "true");
 		const row = document.createElement("div");
 		row.setAttribute("data-record-id", "u9");
-		// The row's geometry, known the moment it exists: 500px into the
-		// content, 100px tall.
-		measure(row, { top: -800, height: 100 });
+		/*
+		 * THE ROW MOVES WITH THE SCROLL. The anchor settle (issue #680)
+		 * re-measures over frames, so a static stub would be a page that never
+		 * answers a re-apply and the loop would diverge frame by frame instead
+		 * of settling. The real contract on this axis: a scroll of `S` places
+		 * the row's top at `-1400 - S` (its -600-era position, plus the
+		 * distance scrolled - more negative moves content DOWN), so the
+		 * geometry is a function of `region.scrollTop`, not a constant.
+		 */
+		row.getBoundingClientRect = () => {
+			const top = -1400 - region.scrollTop;
+			return {
+				top,
+				height: 100,
+				bottom: top + 100,
+				left: 0,
+				right: 0,
+				width: 0,
+				x: 0,
+				y: top,
+				toJSON() {},
+			};
+		};
 		root.appendChild(row);
 	});
 
@@ -252,9 +370,18 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 		const outcome = await jumpToEntry(root, region, "u9");
 		assert.equal(outcome, "landed");
 		assert.equal(clicks, 1, "the bar was opened exactly once");
-		// -600 + (-800 - 100 - 1) - (600 - 100) / 2 = -1751, and it must be
-		// ALLOWED to land there: clamping at zero is the no-op D1 measured.
-		assert.equal(region.scrollTop, -1751, "the row's centre met the region's");
+		// The anchor: -600 + (-800 - 100 - 1) - 24 = -1525 puts the row's TOP at
+		// the scrollport's top PLUS the top-fade depth (the fixed anchored
+		// landing, issue #680 design round 1's D1: the inset is the mask's own
+		// depth, so the row sits where the ramp is fully open), and the settle
+		// re-measures against a page that moves with the scroll to confirm it.
+		// The centring era's -1751 (the row's centre met the region's) is gone
+		// by decision.
+		assert.equal(
+			region.scrollTop,
+			-1525,
+			"the row's top met the region's top plus the fade depth",
+		);
 		const row = root.querySelector(
 			'[data-record-id="u9"]:not([data-turn-summary])',
 		);
@@ -269,6 +396,401 @@ test("a row behind a collapsed bar: the bar opens, the row centres, the flash la
 	} finally {
 		window.setTimeout = realSetTimeout;
 	}
+});
+
+test("a row in the SECOND of a run's bars opens that bar, not the first (segments)", async () => {
+	/*
+	 * A run's hidden span is partitioned into several bars, and each carries the
+	 * WHOLE run's ids in `data-run-ids` (the existing contract) plus its own in
+	 * `data-segment-ids`. Reading only the run's ids matched the FIRST bar for a row
+	 * living in the second, so the reveal opened the wrong bar and then, finding the
+	 * row still absent, had to open the next one: one unrequested expansion per bar
+	 * in between. `data-segment-ids` decides when present.
+	 */
+	const { root, region } = makeDom(`
+		<div data-turn-summary data-run-ids="u9 t1 t2 c9" data-segment-ids="t1" data-record-id="t1">
+			<button id="first" aria-expanded="false">first</button>
+		</div>
+		<div data-turn-summary data-run-ids="u9 t1 t2 c9" data-segment-ids="t2" data-record-id="t2">
+			<button id="second" aria-expanded="false">second</button>
+		</div>
+	`);
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
+	const opened = [];
+	for (const id of ["first", "second"]) {
+		const trigger = root.querySelector(`#${id}`);
+		trigger.addEventListener("click", () => {
+			opened.push(id);
+			trigger.setAttribute("aria-expanded", "true");
+			if (id === "second") {
+				const row = document.createElement("div");
+				row.setAttribute("data-record-id", "t2");
+				measure(row, { top: -800, height: 100 });
+				root.appendChild(row);
+			}
+		});
+	}
+	assert.equal(await jumpToEntry(root, region, "t2"), "landed");
+	assert.deepEqual(
+		opened,
+		["second"],
+		"only the bar that holds the row opened",
+	);
+});
+
+/*
+ * The settle's two bounds, driven directly: the frame budget, and the reader.
+ * Both use a row that NEVER answers the re-measure (a static rect is a page
+ * that does not move with the scroll), so the loop cannot converge - which is
+ * exactly the shape that proves the bounds rather than the convergence the
+ * case above already covers.
+ */
+test("a page that never answers the re-measure is left after the frame budget", async () => {
+	const { root, region } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assigned = 0;
+	let value = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => value,
+		set: (next) => {
+			assigned += 1;
+			value = next;
+		},
+	});
+	const outcome = await jumpToEntry(root, region, "u9");
+	assert.equal(outcome, "landed", "the jump still resolves");
+	// The first assignment plus one per frame of the budget (JUMP_SETTLE_FRAMES
+	// + 2), and no more: a pathological layout costs frames, not a hang.
+	assert.equal(assigned, 1 + 8, "the settle spent its budget and stopped");
+});
+
+test("a reader's gesture during the settle stops the re-apply", async () => {
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assigned = 0;
+	let value = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => value,
+		set: (next) => {
+			assigned += 1;
+			value = next;
+		},
+	});
+	const pending = jumpToEntry(root, region, "u9");
+	// The anchor's first assignment and the gesture listeners arm in one task,
+	// so waiting for the assignment guarantees the listener can see the wheel.
+	for (let i = 0; i < 60 && assigned === 0; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	region.dispatchEvent(new window.Event("wheel"));
+	const outcome = await pending;
+	assert.equal(outcome, "landed", "the jump still resolves");
+	// At most the initial apply plus one frame that was already in flight when
+	// the wheel landed; the budget's 1 + 8 would mean the yield was ignored.
+	assert.ok(
+		assigned <= 2,
+		`the loop stopped touching scrollTop (assigned ${assigned})`,
+	);
+});
+
+test("a scroll key during the settle stops the re-apply (review round 2)", async () => {
+	/*
+	 * The keyboard arm of the yield set: the rail's own jump is a keyboard
+	 * gesture (focus a tick, Enter), so the next press is a scroll key more
+	 * often than not - and a settle that ignores it yanks the view out from
+	 * under the reader exactly like an ignored wheel would.
+	 */
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assigned = 0;
+	let value = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => value,
+		set: (next) => {
+			assigned += 1;
+			value = next;
+		},
+	});
+	const pending = jumpToEntry(root, region, "u9");
+	for (let i = 0; i < 60 && assigned === 0; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	window.dispatchEvent(
+		new window.KeyboardEvent("keydown", { key: "PageDown", bubbles: true }),
+	);
+	const outcome = await pending;
+	assert.equal(outcome, "landed", "the jump still resolves");
+	assert.ok(
+		assigned <= 2,
+		`the loop stopped touching scrollTop (assigned ${assigned})`,
+	);
+});
+
+test("a newer settle supersedes an older one's loop (review round 2)", async () => {
+	/*
+	 * Two jumps in flight (a rapid tick-then-tick, or a rail jump ahead of a
+	 * search hit): A's page never answers the re-measure, so its loop writes
+	 * one scrollTop per frame, and B's page settles normally. Without the
+	 * generation token A keeps spending its budget alongside B, visibly
+	 * contending for the anchor; with it A stops on its next frame check.
+	 */
+	const { window, region, root } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assignedA = 0;
+	let valueA = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => valueA,
+		set: (next) => {
+			assignedA += 1;
+			valueA = next;
+		},
+	});
+	const pendingA = jumpToEntry(root, region, "u9");
+	for (let i = 0; i < 60 && assignedA === 0; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	/* Let A enter its loop (its first apply plus a couple of frames). */
+	for (let i = 0; i < 3; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	const aBefore = assignedA;
+	/* B: a second region whose page moves with the scroll, so it settles. */
+	const regionB = window.document.createElement("div");
+	const rootB = window.document.createElement("div");
+	rootB.innerHTML = `<div data-record-id="u8"></div>`;
+	regionB.appendChild(rootB);
+	window.document.body.appendChild(regionB);
+	measure(regionB, { top: 100, height: 600 });
+	Object.defineProperty(regionB, "clientTop", { value: 1 });
+	Object.defineProperty(regionB, "clientHeight", { value: 600 });
+	Object.defineProperty(regionB, "scrollTop", { value: -600, writable: true });
+	const rowB = rootB.querySelector('[data-record-id="u8"]');
+	rowB.getBoundingClientRect = () => {
+		const top = -1400 - regionB.scrollTop;
+		return {
+			top,
+			height: 100,
+			bottom: top + 100,
+			left: 0,
+			right: 0,
+			width: 0,
+			x: 0,
+			y: top,
+			toJSON() {},
+		};
+	};
+	const pendingB = jumpToEntry(rootB, regionB, "u8");
+	/* Enough frames for a loop that ignored the supersede to spend its budget. */
+	for (let i = 0; i < 14; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	const [outA, outB] = await Promise.all([pendingA, pendingB]);
+	assert.equal(outA, "landed", "the superseded jump still resolves");
+	assert.equal(outB, "landed");
+	assert.ok(
+		assignedA <= aBefore + 1,
+		`the superseded settle stopped touching its region (${aBefore} -> ${assignedA})`,
+	);
+});
+
+test("a wash stripped mid-settle is re-asserted at the landing (QA round 2)", async () => {
+	/*
+	 * The fate the QA round measured: a late mount commit replaces the row and
+	 * strips the wash before the reader sees it (cold far jumps >1s under load,
+	 * 4/4). The settle resolve is the landing, so a target with no wash gets a
+	 * fresh one there; this drives the strip explicitly.
+	 */
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	const timers = [];
+	const realSetTimeout = window.setTimeout;
+	window.setTimeout = (fn, ms) => {
+		timers.push({ fn, ms });
+		return timers.length;
+	};
+	try {
+		const pending = jumpToEntry(root, region, "u9");
+		// The wash paints at the reveal; wait for it, then strip it as the mount
+		// commit would, while the settle is still running.
+		for (let i = 0; i < 60 && !row.hasAttribute(JUMP_HIGHLIGHT_ATTR); i += 1) {
+			await new Promise((resolve) =>
+				window.requestAnimationFrame(() => resolve()),
+			);
+		}
+		assert.ok(row.hasAttribute(JUMP_HIGHLIGHT_ATTR), "the wash painted first");
+		row.removeAttribute(JUMP_HIGHLIGHT_ATTR);
+		const outcome = await pending;
+		assert.equal(outcome, "landed");
+		assert.ok(
+			row.hasAttribute(JUMP_HIGHLIGHT_ATTR),
+			"the wash is back at the landing",
+		);
+		assert.equal(timers.length, 2, "a second paint re-armed the timer");
+	} finally {
+		window.setTimeout = realSetTimeout;
+	}
+});
+
+test("the settle's resolve asks the rail for one fresh reading (QA round 5)", async () => {
+	/*
+	 * The settle's later re-applies can write the scrollTop they already hold,
+	 * so no scroll event leaves the scroller after the last moving write and the
+	 * rail's cue can stay on the pre-landing reading. One synthetic scroll at
+	 * the resolve is the re-read; jsdom dispatches no scroll on scrollTop
+	 * writes, so the count here is exactly the dispatch's own.
+	 */
+	const { root, region } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	Object.defineProperty(region, "scrollTop", { value: -600, writable: true });
+	let scrolls = 0;
+	region.addEventListener("scroll", () => {
+		scrolls += 1;
+	});
+	const outcome = await jumpToEntry(root, region, "u9");
+	assert.equal(outcome, "landed");
+	assert.equal(scrolls, 1, "one scroll event left the region at the landing");
+});
+
+test("a reader's gesture superseding the settle gets no synthetic re-read (QA round 5)", async () => {
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	measure(region, { top: 100, height: 600 });
+	Object.defineProperty(region, "clientTop", { value: 1 });
+	Object.defineProperty(region, "clientHeight", { value: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	measure(row, { top: -800, height: 100 });
+	let assigned = 0;
+	let value = -600;
+	Object.defineProperty(region, "scrollTop", {
+		get: () => value,
+		set: (next) => {
+			assigned += 1;
+			value = next;
+		},
+	});
+	let scrolls = 0;
+	region.addEventListener("scroll", () => {
+		scrolls += 1;
+	});
+	const pending = jumpToEntry(root, region, "u9");
+	for (let i = 0; i < 60 && assigned === 0; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	region.dispatchEvent(new window.Event("wheel"));
+	const outcome = await pending;
+	assert.equal(outcome, "landed");
+	assert.equal(
+		scrolls,
+		0,
+		"the reader's own events drive the cue; no synthetic one",
+	);
+});
+
+test("a stale write after the settle is corrected by the landing guard (QA round 6)", async () => {
+	/*
+	 * The measured race (short oldest-end, 1/5): the settle resolves on the
+	 * anchor, three frames later a pass computed against a stale content height
+	 * overwrites it 109px short, and nothing corrects it. The guard watches the
+	 * resolved anchor for its bounded window and re-applies against the
+	 * CURRENT rects.
+	 */
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	row.getBoundingClientRect = () => {
+		const top = -1400 - region.scrollTop;
+		return {
+			top,
+			height: 100,
+			bottom: top + 100,
+			left: 0,
+			right: 0,
+			width: 0,
+			x: 0,
+			y: top,
+			toJSON() {},
+		};
+	};
+	const outcome = await jumpToEntry(root, region, "u9");
+	assert.equal(outcome, "landed");
+	const anchored = region.scrollTop;
+	assert.equal(anchored, -1525, "the settle resolved on the anchor");
+	/* The stale writer, 109px short of the anchor (133 against 24). */
+	region.scrollTop = anchored + 109;
+	for (let i = 0; i < 12; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	assert.equal(region.scrollTop, -1525, "the guard restored the anchor");
+});
+
+test("a reader's gesture during the guard stops it (QA round 6)", async () => {
+	const { root, region, window } = makeDom(`<div data-record-id="u9"></div>`);
+	regionAt(region, { scroll: -600, top: 100, clientTop: 1, clientHeight: 600 });
+	const row = root.querySelector('[data-record-id="u9"]');
+	row.getBoundingClientRect = () => {
+		const top = -1400 - region.scrollTop;
+		return {
+			top,
+			height: 100,
+			bottom: top + 100,
+			left: 0,
+			right: 0,
+			width: 0,
+			x: 0,
+			y: top,
+			toJSON() {},
+		};
+	};
+	const outcome = await jumpToEntry(root, region, "u9");
+	assert.equal(outcome, "landed");
+	/* The reader takes over: the guard must not fight their steering. */
+	region.dispatchEvent(new window.Event("wheel"));
+	region.scrollTop = -1525 + 109;
+	for (let i = 0; i < 12; i += 1) {
+		await new Promise((resolve) =>
+			window.requestAnimationFrame(() => resolve()),
+		);
+	}
+	assert.equal(
+		region.scrollTop,
+		-1525 + 109,
+		"the guard left the reader's position alone",
+	);
 });
 
 test("a row behind a bar AND a fold: both open, outermost first", async () => {

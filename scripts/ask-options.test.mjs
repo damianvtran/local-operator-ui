@@ -100,7 +100,25 @@ const bundle = await build({
 	// dynamic `require("stream")` that esbuild's ESM output cannot satisfy, and
 	// two React copies would give the component a different dispatcher than the
 	// renderer this test imports.
-	external: ["react", "react-dom", "react-dom/server", "react/jsx-runtime"],
+	/*
+	 * The renderer's `import.meta.env`, which these bundles did not need until the
+	 * canonical transcript's answer action row read the speech credential probe
+	 * (`@shared/hooks/use-credentials` -> `@shared/config`): `loadConfig` runs
+	 * `Object.entries(import.meta.env)` at module scope, so without this define the
+	 * bundle throws `Cannot convert undefined or null to object` at import time and
+	 * the whole file fails before a test runs. `{}` is what `shared-composer.test.mjs`
+	 * bakes for the same reason: nothing here reads a VITE_ variable.
+	 */
+	define: { "import.meta.env": "{}" },
+	external: [
+		"react",
+		"react-dom",
+		"react-dom/server",
+		"react/jsx-runtime",
+		/* One copy with the provider the renders wrap in; the hook inside the
+		 * bundle must find the client. */
+		"@tanstack/react-query",
+	],
 });
 
 // Written to a real file rather than imported as a `data:` URL: React DOM's
@@ -112,6 +130,18 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 
 const { createElement } = await import("react");
 const { renderToStaticMarkup } = await import("react-dom/server");
+const { QueryClient, QueryClientProvider } = await import(
+	"@tanstack/react-query"
+);
+/*
+ * The transcript reads its cross-session visibility through react-query; in a
+ * server render the hooks resolve to their loading state, whose fail-closed
+ * answer is "show everything". The provider is external to the bundle so this
+ * client and the `useQuery` inside it are one copy.
+ */
+const queryClient = new QueryClient({
+	defaultOptions: { queries: { retry: false } },
+});
 const {
 	QuestionDock,
 	questionDockHint,
@@ -846,7 +876,7 @@ test("a winning press consumes an answer-shaped draft, and never a message", () 
 	);
 	const inputSource = strip(
 		readFileSync(
-			"src/renderer/src/features/chat/components/message-input.tsx",
+			"src/renderer/src/shared/components/composer/message-input.tsx",
 			"utf8",
 		),
 	);
@@ -1600,18 +1630,22 @@ test("the transcript no longer draws the question: it is docked (§F1)", () => {
 	 * would be the same question twice, one of them unreachable.
 	 */
 	const markup = renderToStaticMarkup(
-		createElement(CanonicalTranscript, {
-			transcript: EMPTY_TRANSCRIPT,
-			gate: gate({ recommended: 0 }),
-			waiting: false,
-			loadingOlder: false,
-			onLoadOlder: async () => true,
-			containerRef: { current: null },
-			isSmallView: false,
-			status: "live",
-			awaitingHydration: false,
-			error: null,
-		}),
+		createElement(
+			QueryClientProvider,
+			{ client: queryClient },
+			createElement(CanonicalTranscript, {
+				transcript: EMPTY_TRANSCRIPT,
+				gate: gate({ recommended: 0 }),
+				waiting: false,
+				loadingOlder: false,
+				onLoadOlder: async () => true,
+				containerRef: { current: null },
+				isSmallView: false,
+				status: "live",
+				awaitingHydration: false,
+				error: null,
+			}),
+		),
 	);
 	assert.ok(!markup.includes('aria-label="Answer options"'));
 	assert.ok(!markup.includes("Popup is not open"));

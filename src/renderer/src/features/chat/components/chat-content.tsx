@@ -5,14 +5,21 @@ import { useConsoleBlipPulse } from "@features/console/hooks/use-console-attenti
 import { useProviderStatus } from "@features/providers/use-provider-status";
 import {
 	desktopFeatureEnabled,
+	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { BackendCompatibilityBanner } from "@shared/components/common/backend-compatibility-banner";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { ResizableDivider } from "@shared/components/common/resizable-divider";
+import {
+	type ComposerSendError,
+	MessageInput,
+	type MessageInputHandle,
+} from "@shared/components/composer/message-input";
 import { TabPanel } from "@shared/components/ui";
 import type { CanonicalSessionHandle } from "@shared/hooks/use-canonical-session";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import type { SendOutcome } from "@shared/hooks/use-message-input";
 /*
  * The mode-dependent classes on the canvas's wrapper below are the first
@@ -24,13 +31,17 @@ import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
+	BROWSER_PANEL_MIN_PX,
+	CONSOLE_PANEL_MIN_PX,
 	DEFAULT_BROWSER_PANEL_WIDTH,
 	DEFAULT_CONSOLE_PANEL_WIDTH,
 	DEFAULT_RUN_PANEL_WIDTH,
+	RUN_PANEL_MIN_PX,
 	resolveRightSlotWidth,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { isDevelopmentMode } from "@shared/utils/env-utils";
+import { useQueryClient } from "@tanstack/react-query";
 import React, {
 	type FC,
 	type ReactNode,
@@ -61,7 +72,12 @@ import {
 	CHAT_COLUMN_INSET,
 	CHAT_MEASURE,
 } from "../chat-measure";
-import { CHAT_PANE_MIN_PX, canvasPaneMode } from "../chat-sidebar-layout";
+import {
+	CANVAS_PANE_MIN_PX,
+	CHAT_PANE_MIN_PX,
+	canvasDockWidth,
+	canvasPaneMode,
+} from "../chat-sidebar-layout";
 import type {
 	DraftPickerDestination,
 	DraftResolution,
@@ -83,14 +99,10 @@ import {
 import { DEFAULT_MESSAGE_SUGGESTIONS } from "./composer-suggestions";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
 import type { DirectoryWritePath } from "./directory-indicator";
-import {
-	type ComposerSendError,
-	MessageInput,
-	type MessageInputHandle,
-} from "./message-input";
 import { RawInfoView } from "./raw-info-view";
 import { type McpServerRow, type RunDetails, RunPanel } from "./run-details";
 import type { McpRemedyControls } from "./run-details/use-mcp-remedy";
+import type { MonitorControls } from "./run-details/use-monitor-controls";
 import type { SlashDispatchOutcome } from "./slash-dispatch";
 import type { SlashCommandInvocation } from "./slash-submit";
 import { QuestionDock } from "./trace/question-dock";
@@ -112,6 +124,27 @@ type ChatContentProps = {
 	 * an identity question it cannot answer.
 	 */
 	identity?: HeaderIdentityData | null;
+	/**
+	 * The chat header's device control, composed by the page that owns the session
+	 * and the draft; see `ChatHeaderProps.deviceSlot`, which explains why the header
+	 * takes a node rather than the facts behind it.
+	 */
+	deviceSlot?: React.ReactNode;
+	/**
+	 * What the last move did, in the row under the header's band.
+	 *
+	 * A SEPARATE SLOT BECAUSE IT IS A SEPARATE PLACE: the chip answers "where does
+	 * this run" in the title block, and the outcome of one move is a line under the
+	 * header, where the transcript begins. Both are composed from ONE store keyed by
+	 * this pane, so the two cannot disagree about what happened.
+	 */
+	deviceNotice?: React.ReactNode;
+	/**
+	 * The composer's hold during a move (§2.4), composed by the page from the same
+	 * store as `deviceNotice`: the notice says what the move is doing under the
+	 * header, the hold says it in the one place a user is about to type.
+	 */
+	deviceHold?: React.ReactNode;
 	/**
 	 * The session the header's inline rename writes to; see
 	 * `ChatHeaderProps.renameSessionId`. Passed straight through from the page
@@ -400,6 +433,13 @@ type ChatContentProps = {
 	 */
 	mcpRemedy: McpRemedyControls;
 	/**
+	 * The pane's monitor write controls (`use-monitor-controls.ts`), the same
+	 * threading as `mcpRemedy`: the Monitors section's confirmation and refusal
+	 * live in the section, and the write belongs to the level that owns the
+	 * session identity.
+	 */
+	monitorControls: MonitorControls;
+	/**
 	 * Whether a child's row can be opened: the `subagent_transcript` capability
 	 * (`§ 10.2`). False leaves the roster visible and quiet rather than lit and
 	 * inert.
@@ -495,14 +535,17 @@ const defaultCanvasState = {
  * The run pane's own contract floor, in pixels: the design's 320/420/640 range
  * (`docs/run-sidebar.md` § 8) starts at 320.
  *
- * ONE home for that number, because it is the floor of two different things: the
- * width the divider lets the user DRAG the pane's preference down to, and the
+ * ONE home for that number, because it is the floor of THREE different things:
+ * the width the divider lets the user DRAG the pane's preference down to, the
  * width flex may SHRINK the rendered pane down to when the row cannot host the
- * preference. Two literals here would drift the moment either moves, and the
- * second one is the whole of the fix below: a preference pinned as a floor is not
- * a floor, it is a promise the row cannot keep.
+ * preference, and — since the #677 review round (D2) — the floor the slot's
+ * RESOLVER holds the shared width to for this pane. The home is the STORE's
+ * (`RUN_PANEL_MIN_PX`, beside `resolveRightSlotWidth`), because the resolver
+ * needs it and the resolver cannot import this file; two literals would drift the
+ * moment either moves, and the second thing above is the whole of the fix below:
+ * a preference pinned as a floor is not a floor, it is a promise the row cannot
+ * keep.
  */
-const RUN_PANEL_MIN_PX = 320;
 
 /**
  * The other end of that contract range: 640 is the widest the pane may ask for
@@ -539,6 +582,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		description,
 		descriptionPending,
 		identity,
+		deviceSlot,
+		deviceNotice,
+		deviceHold,
 		renameSessionId,
 		onOpenOptions,
 		isOptionsSidebarOpen,
@@ -576,6 +622,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		mcpServers = [],
 		mcpGrantRunning = false,
 		mcpRemedy,
+		monitorControls,
 		childrenOpenable = false,
 		/*
 		 * The composer's `@` affordance, folded by the page that owns both halves of
@@ -588,6 +635,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		pulses,
 	}) => {
 		const [isSmallView, setIsSmallView] = useState(false);
+		/*
+		 * THE COMPOSER'S TWO HOST SEAMS (the shared-composer lift). The credential
+		 * probe and the credentials-cache invalidation used to live INSIDE
+		 * `MessageInput`, as react-query reads - which made a provider a mount
+		 * requirement for every document, and the shared composer must mount in
+		 * the mini view's document, which carries none. The shell is the host for
+		 * both: this component is always inside the app's provider, and the
+		 * composer rendered below takes the answers as props, so a providerless
+		 * consumer supplies its own instead.
+		 */
+		const recordingProbe = useRadientCredentialProbe();
+		const queryClient = useQueryClient();
+		const invalidateStoredCredentials = useCallback(
+			(sessionId: string) =>
+				queryClient.invalidateQueries({
+					queryKey: desktopKeys.credentials(sessionId),
+				}),
+			[queryClient],
+		);
 		const chatContainerRef = useRef<HTMLDivElement>(null);
 		const canvasContainerRef = useRef<HTMLDivElement>(null);
 		/*
@@ -737,9 +803,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			};
 		}, []);
 
-		const setCanvasPanelWidth = useUiPreferencesStore((s) => s.setCanvasWidth);
-		const restoreDefaultCanvasPanelWidth = useUiPreferencesStore(
-			(s) => s.restoreDefaultCanvasWidth,
+		/*
+		 * THE RIGHT SLOT'S ONE WIDTH (#677), declared here because this is the
+		 * first of the four panes to read it and every later cluster below reads
+		 * the same value: one column, one width, whichever pane is on screen.
+		 * `rightSlotWidth` in the store carries the rule (0 = unset, each pane's
+		 * own `DEFAULT_*_WIDTH` is its first-open seed).
+		 */
+		const rightSlotWidth = useUiPreferencesStore((s) => s.rightSlotWidth);
+		const setRightSlotWidth = useUiPreferencesStore((s) => s.setRightSlotWidth);
+		const restoreDefaultRightSlotWidth = useUiPreferencesStore(
+			(s) => s.restoreDefaultRightSlotWidth,
 		);
 
 		// Get canvas state for the current conversation
@@ -848,8 +922,6 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * for their own reason, which is what a union of the two sides has to settle).
 		 */
 		const isRunPanelOpen = useUiPreferencesStore((s) => s.isRunPanelOpen);
-		const runPanelWidth = useUiPreferencesStore((s) => s.runPanelWidth);
-		const setRunPanelWidth = useUiPreferencesStore((s) => s.setRunPanelWidth);
 		const setRunPanelOpen = useUiPreferencesStore((s) => s.setRunPanelOpen);
 		/*
 		 * The pane's VIEW state — which of its two views is showing — and the reason it
@@ -879,12 +951,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const mentionedFileCount = (canvasState ?? defaultCanvasState)
 			.mentionedFiles.length;
 
-		// The run panel's own zero-fallback is its default rather than the canvas's
-		// 450: the two panes are deliberately different widths, and an unset
-		// preference should land the run panel on the design's default. Both numbers
-		// live in the store, where the slot's own resolver reads them too.
-		const effectiveRunPanelWidth =
-			runPanelWidth === 0 ? DEFAULT_RUN_PANEL_WIDTH : runPanelWidth;
+		// The run panel's own SEED, not the canvas's 800: the panes are
+		// deliberately different first-open widths, and an unset slot should land
+		// the run panel on the design's default. Once any pane has been dragged,
+		// the shared width is what every pane renders — that is #677 — held up to
+		// THIS pane's floor so a width dragged from a smaller pane can never draw
+		// this one under its own contract range (review round 1, D2).
+		const effectiveRunPanelWidth = Math.max(
+			RUN_PANEL_MIN_PX,
+			rightSlotWidth === 0 ? DEFAULT_RUN_PANEL_WIDTH : rightSlotWidth,
+		);
 
 		/*
 		 * The browser pane: the third occupant of the same slot
@@ -899,18 +975,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const setBrowserPaneOpen = useUiPreferencesStore(
 			(s) => s.setBrowserPaneOpen,
 		);
-		const browserPanelWidth = useUiPreferencesStore((s) => s.browserPanelWidth);
-		const setBrowserPanelWidth = useUiPreferencesStore(
-			(s) => s.setBrowserPanelWidth,
+		// Same seed shape as its neighbours above, and the same reason: an unset
+		// slot should land the browser on the design's 640 (a page's room) rather
+		// than on whichever pane's number happens to be first — and, like them,
+		// held up to this pane's 480 floor: a shared width dragged down from the
+		// run pane's 320 must never draw a page as a mobile column again
+		// (review round 1, D2), and the separator below announces the same 480.
+		const effectiveBrowserPanelWidth = Math.max(
+			BROWSER_PANEL_MIN_PX,
+			rightSlotWidth === 0 ? DEFAULT_BROWSER_PANEL_WIDTH : rightSlotWidth,
 		);
-		const restoreDefaultBrowserPanelWidth = useUiPreferencesStore(
-			(s) => s.restoreDefaultBrowserPanelWidth,
-		);
-		// Same zero-fallback shape as its neighbours above, and the same reason: an
-		// unset preference should land the browser on the design's 640 (a page's room)
-		// rather than on whichever pane's number happens to be first.
-		const effectiveBrowserPanelWidth =
-			browserPanelWidth === 0 ? DEFAULT_BROWSER_PANEL_WIDTH : browserPanelWidth;
 
 		/*
 		 * The console pane: the FOURTH occupant of the same slot (design 6.1), read
@@ -918,11 +992,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * trigger and the pane must answer "is it up" from ONE field, or the trigger
 		 * and what is on screen can disagree.
 		 *
-		 * The zero-fallback is that same shape and a different number on purpose: the
+		 * The SEED is that same shape and a different number on purpose: the
 		 * console's default is DERIVED from the measured advance of the shipped mono
 		 * face times the design's 100-column grid (see `DEFAULT_CONSOLE_PANEL_WIDTH`), so
-		 * an unset preference lands the pane on the grid the design names rather than on
-		 * whichever sibling's number happens to be first.
+		 * an unset slot lands the pane on the grid the design names rather than on
+		 * whichever sibling's number happens to be first — and a dragged width, once
+		 * there is one, is the shared one every pane renders (#677).
 		 */
 		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 		/*
@@ -946,15 +1021,10 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const requestConsoleOpen = useUiPreferencesStore(
 			(s) => s.requestConsoleOpen,
 		);
-		const consolePanelWidth = useUiPreferencesStore((s) => s.consolePanelWidth);
-		const setConsolePanelWidth = useUiPreferencesStore(
-			(s) => s.setConsolePanelWidth,
+		const effectiveConsolePanelWidth = Math.max(
+			CONSOLE_PANEL_MIN_PX,
+			rightSlotWidth === 0 ? DEFAULT_CONSOLE_PANEL_WIDTH : rightSlotWidth,
 		);
-		const restoreDefaultConsolePanelWidth = useUiPreferencesStore(
-			(s) => s.restoreDefaultConsolePanelWidth,
-		);
-		const effectiveConsolePanelWidth =
-			consolePanelWidth === 0 ? DEFAULT_CONSOLE_PANEL_WIDTH : consolePanelWidth;
 
 		/*
 		 * How much THIS conversation's console has finished unseen, for the header's
@@ -1138,23 +1208,27 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const handleRunPanelWidthChange = useCallback(
 			(width: number) => {
 				if (runPanelCapacity < RUN_PANEL_MIN_PX) return;
-				setRunPanelWidth(width);
+				setRightSlotWidth(width);
 			},
-			[runPanelCapacity, setRunPanelWidth],
+			[runPanelCapacity, setRightSlotWidth],
 		);
 		/*
-		 * A RESET IS A DRAG to the design's default — the separator's double-click,
-		 * and its Enter, both land here — so it goes through the SAME clamped write a
-		 * drag does. The store's own reset writes the preference directly and knows
-		 * nothing about the row, which is round 2's U6 on a different gesture: at
-		 * 1024x673 with the rail expanded a reset would store 420 while the pane went
-		 * on rendering 304, and the number the control hands back would be one the
-		 * pane does not use. Routing the default through the clamp leaves the stored
-		 * preference alone in that state — the same refusal a drag gets — and stores
-		 * the default wherever the row can host it.
+		 * A RESET IS A DRAG, to the shared width's UNSET state — the separator's
+		 * double-click, and its Enter, both land here — so it goes through the SAME
+		 * clamped write a drag does. Since #677 the reset means "forget the shared
+		 * width": every pane goes back to opening at its own seed, which is the
+		 * only reading of "this pane back to how it opens" that does not hand this
+		 * pane's default to its three siblings. The store's own reset writes the
+		 * preference directly and knows nothing about the row, which is round 2's
+		 * U6 on a different gesture: at 1024x673 with the rail expanded a direct
+		 * write would unset the width while the pane went on rendering 304 and the
+		 * number the control hands back would be one the pane does not use. Routing
+		 * UNSET through the clamp leaves the stored preference alone in that state —
+		 * the same refusal a drag gets — and forgets it wherever the row can host
+		 * the pane's seed.
 		 */
 		const handleRunPanelWidthReset = useCallback(() => {
-			handleRunPanelWidthChange(DEFAULT_RUN_PANEL_WIDTH);
+			handleRunPanelWidthChange(0);
 		}, [handleRunPanelWidthChange]);
 
 		const handleChangeActiveDocument = useCallback(
@@ -1325,6 +1399,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							description={description}
 							descriptionPending={descriptionPending}
 							identity={identity}
+							deviceSlot={deviceSlot}
 							renameSessionId={renameSessionId}
 							onOpenOptions={onOpenOptions}
 							runDetails={runDetails}
@@ -1398,6 +1473,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							consoleUnseenPulsing={consoleUnseenPulsing}
 						/>
 						{/*
+						 * WHAT THE LAST MOVE DID, directly under the header that issued it: the notice
+						 * is about a request this pane made, so it belongs in the pane, above the
+						 * transcript - not over the window's chrome, which belongs to the app.
+						 */}
+						{deviceNotice}
+						{/*
 						 * THE STATUS STRIP AND THE COMPATIBILITY BAND, IN THE PANE (§F2, D3).
 						 *
 						 * Both used to mount in the SHELL ROOT, above the window: the bands sat
@@ -1467,7 +1548,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										startingSince={canonical.startingSince ?? null}
 										loadingOlder={canonical.view.loadingOlder}
 										onLoadOlder={canonical.view.loadOlder}
+										onLoadOlderOutcome={canonical.view.loadOlderDetailed}
+										olderFailed={canonical.view.olderFailed}
 										containerRef={messagesContainerRef}
+										/* The chat page is the one mount that owns the measure; the run pane's
+										 * child reader deliberately does not opt in (see the prop's note). */
+										measureHandle
 										isSmallView={isSmallView}
 										status={canonical.view.status}
 										failure={canonical.view.failure}
@@ -1612,6 +1698,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								initialSuggestions={DEFAULT_MESSAGE_SUGGESTIONS}
 								noProvider={needsProvider}
 								noModel={needsModel}
+								deviceHold={deviceHold}
 								/*
 								 * THE WAY BACK TO THE FAILED ROW'S CONTROLS (UX round 1, U3): the
 								 * line is on screen in this transcript, and the composer names it for
@@ -1620,6 +1707,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * stand-down read, so the hint cannot outlive the line.
 								 */
 								deliveryRemediesReachable={undeliveredOnScreen !== null}
+								/*
+								 * The two host seams, straight from the reads above: the
+								 * credential probe's answer and the callback that invalidates
+								 * the credentials key the picker reads after a store. See
+								 * `MessageInputProps.onCredentialsStored`/`recordingProbe`
+								 * for why they live out here now.
+								 */
+								onCredentialsStored={invalidateStoredCredentials}
+								recordingProbe={recordingProbe}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)
@@ -1833,12 +1929,25 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						{canvasDocked && (
 							<ResizableDivider
 								sidebarWidth={canvasWidth}
-								onSidebarWidthChange={setCanvasPanelWidth}
-								minWidth={400}
-								maxWidth={1200}
+								onSidebarWidthChange={setRightSlotWidth}
+								minWidth={CANVAS_PANE_MIN_PX}
+								/*
+								 * THE RANGE IS WHAT THE PANE RENDERS (review round 1, U2): the
+								 * canvas draws `min(preference, dock cap)`, so a divider accepting up
+								 * to 1200 let one drag store 660/760/960/1200 while the canvas stayed
+								 * at its 560 cap — numbers the BROWSER pane then rendered, i.e. a drag
+								 * that moved a pane that was not on screen. Capped at the same
+								 * `canvasDockWidth` the resolver uses; before the row is measured the
+								 * range collapses onto the floor until a row exists, the run
+								 * divider's own shape.
+								 */
+								maxWidth={Math.max(
+									CANVAS_PANE_MIN_PX,
+									canvasDockWidth(paneRowWidth),
+								)}
 								side="left"
-								onDoubleClick={restoreDefaultCanvasPanelWidth}
-								label="Resize canvas"
+								onDoubleClick={restoreDefaultRightSlotWidth}
+								label="Resize canvas. Double-click resets the shared pane width."
 							/>
 						)}
 						<PaneSlot
@@ -1940,7 +2049,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							}
 							side="left"
 							onDoubleClick={handleRunPanelWidthReset}
-							label="Resize run details"
+							label="Resize run details. Double-click resets the shared pane width."
 						/>
 						<PaneSlot
 							ref={runPanelRef}
@@ -1952,9 +2061,23 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								mcpServers={mcpServers}
 								mcpGrantRunning={mcpGrantRunning}
 								mcpRemedy={mcpRemedy}
+								monitorControls={monitorControls}
 								sessionId={canonical?.view.frontend?.session_id ?? null}
 								pulses={pulses ?? EMPTY_PULSES}
 								childrenOpenable={childrenOpenable}
+								/*
+								 * The session's own transport truth, and the SAME predicate the
+								 * transcript above hands its own slot (`status !== "live"`). The
+								 * child reader's page is a read-only GET with no stream of its
+								 * own, so its older-history row can only know this by being told,
+								 * and one transport must not be read two ways in one window
+								 * (design round 1, D2). A window with no canonical session has
+								 * no stream to be down — no child reader can be open in it —
+								 * and reads as live.
+								 */
+								olderTransportDown={
+									(canonical?.view.status ?? "live") !== "live"
+								}
 								/*
 								 * The pane's own width, in pixels: the box it is actually drawn in
 								 * (`renderedRunPanelWidth`, measured on the wrapper above), not the
@@ -2000,12 +2123,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					<>
 						<ResizableDivider
 							sidebarWidth={effectiveBrowserPanelWidth}
-							onSidebarWidthChange={setBrowserPanelWidth}
-							minWidth={480}
+							onSidebarWidthChange={setRightSlotWidth}
+							minWidth={BROWSER_PANEL_MIN_PX}
 							maxWidth={1200}
 							side="left"
-							onDoubleClick={restoreDefaultBrowserPanelWidth}
-							label="Resize browser"
+							onDoubleClick={restoreDefaultRightSlotWidth}
+							label="Resize browser. Double-click resets the shared pane width."
 						/>
 						<PaneSlot
 							width={effectiveBrowserPanelWidth}
@@ -2042,12 +2165,12 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 					<>
 						<ResizableDivider
 							sidebarWidth={effectiveConsolePanelWidth}
-							onSidebarWidthChange={setConsolePanelWidth}
-							minWidth={480}
+							onSidebarWidthChange={setRightSlotWidth}
+							minWidth={CONSOLE_PANEL_MIN_PX}
 							maxWidth={1200}
 							side="left"
-							onDoubleClick={restoreDefaultConsolePanelWidth}
-							label="Resize console"
+							onDoubleClick={restoreDefaultRightSlotWidth}
+							label="Resize console. Double-click resets the shared pane width."
 						/>
 						<PaneSlot
 							width={effectiveConsolePanelWidth}

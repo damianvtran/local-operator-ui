@@ -1,12 +1,18 @@
-# The sidebar's view popover — its four groups, and the two clocks the sections read
+# The chat sidebar's controls and states — the popover, the ladder, the caps, the group bound and the section gap
 
-The frames in this set photograph the sidebar's view panel (`data-sidebar-view-panel`)
-in the states the operator drives it through: the panel at rest, a section
-switched off, the reorder rail, the page ladder — and, since 2026-09-28, the
-**Time basis** control the operator asked for ("default it should bin by last
-active and not creation date … maybe we can also add configurability for how
-that works within the sidebar configuration") together with the rail's own
-repair (design direction D1).
+The frames in this set photograph the sidebar's view panel
+(`data-sidebar-view-panel`) in the states the operator drives it through — the
+panel at rest, a section switched off, the reorder rail, the page ladder — and,
+since 2026-09-28, the **Time basis** control the operator asked for ("default it
+should bin by last active and not creation date … maybe we can also add
+configurability for how that works within the sidebar configuration") together
+with the rail's own repair (design direction D1). This set is
+`chat-sidebar-view-menu.stories.tsx`, which began as the surfaces design round 3
+(D28) found with no rendered frame: the view popover, the page ladder, the
+section caps' `Show N more` feet, an expanded entity group, the band's hover
+tooltips, and the sidebar's own voice on a route with no status strip. Three
+groups were added on 2026-09-27 for the operator's two reports below: the bound
+on an expanded group, and the collapsed section's gap.
 
 ## What produced these frames
 
@@ -41,6 +47,26 @@ vite transforms the component graph; a re-run of the same command succeeds. One
 capture in this pass also died to a watch reload of `docs/evidence/manifest.json`
 mid-play — the next run of the same command took all 24 frames — which is a flake
 of the rig, not of the state.
+
+THE GROUP BOUND AND THE SECTION GAP (the operator's two reports below) were shot
+by this branch's own passes through the same capturer:
+
+```
+pnpm exec storybook dev -p <free port> --no-open --quiet
+node scripts/capture-evidence.mjs http://localhost:<port> \
+  --only=chat-sidebar-view-menu --dirs=<dir> \
+  --themes=localOperatorDark,localOperatorLight --allow-backend
+```
+
+`--allow-backend` for the same reason as above — a neighbour session's
+`local-operator serve` answered on 1111 for the whole pass — and no surface here
+talks to it either: `window.api.desktop.request` is stubbed by the story
+(`capabilities`, `sessions.list`, `profiles.list`, `teams.list`, `sessions.search`)
+and anything else is refused by name. **Twenty-six frames** — thirteen states in both
+palettes: seven in `group-bound/`, three in `section-gap/` and the same three in
+`section-gap-before/`. The manifest keeps the capture's own readings in
+`captureOrigin`; the `srcTree`/`scriptsTree` stamps beside it are re-derived at
+each folded tip rather than frozen at the capture.
 
 ## What each frame is
 
@@ -120,12 +146,88 @@ draw. The model's rule is asserted in `scripts/chat-sidebar-view.test.mjs`
 (both ends, the empty-source mirror, and the predicate-less geometric form);
 these frames are the same rule seen from the pointer's side.
 
+## The two reports, and what each group of frames is
+
+### `group-bound/` — an expanded team, bounded to the ladder
+
+Operator, 2026-09-27: *"there's far too many team/agent messages shown on screen
+at once when expanded, can you have max 10 at first sorted by most recent/active
+then click to load more."* His screenshot has `minervadev` expanded with 41
+sessions running past the pane. Every frame here is that team: 41 conversations
+bound to it, one bound elsewhere, the rest of the sidebar as it ships.
+
+| frame | what it shows |
+| --- | --- |
+| `group-bound/ten/` | The report answered: **ten rows** drawn under `minervadev`, the badge still `41`, and the foot reading **`Show 15 more chats · 10 of 41`**. Before this change the same state drew all forty-one. |
+| `group-bound/after-one/` | After **one real press** on that foot: twenty-five rows, the foot reading `Show 16 more chats · 25 of 41`. The press is a click on the control the first frame draws, not a seeded state. |
+| `group-bound/after-two/` | After **two presses**: the third rung is fifty against forty-one held, so the group is fully drawn and **the foot is gone** — the other half of the count agreeing with the disclosure, since a reader seeing no control is seeing all of it. |
+| `group-bound/current-lifted/` | The reader is IN `team-0034` — the group's 35th row, which the bound withholds. It is **lifted to the head of the group** under the panel's own `CURRENT CHAT` label rather than admitted in place (admitting it would draw the thirty-four rows between: the complaint this change answers). Eleven rows are drawn and the foot says `11 of 41`, because eleven is what is on screen. The row itself wears the current fill and weight, not just the label — the render seeds the store's `activeDraftKey: null` / `activeSessionId: team-0034`, the state the app reaches by opening the chat (design round 1, D1's re-shoot). |
+| `group-bound/current-settled/` | The other end of that movement, driven by two real presses (10 → 25 → 50 against forty-one held): the ladder has drawn past `team-0034`, so the lift and its label are **gone** and the row sits where the catalogue sorts it. The pair is design round 1's D6 as two stills. |
+| `group-bound/running-exempt/` | Design D4's case, framed: `team-0034` is **busy**, and a live row costs no quota, so eleven rows are drawn — the ten-row prefix plus the busy one in place — and the foot counts it: `Show 15 more chats · 11 of 41`. |
+| `group-bound/foot-hover/` | The foot under a real pointer (`:hover` asserted before the shutter): the idle `ink-dim` steps to `ink`, **12.8:1** dark / **15.23:1** light. The foot's focus still is not here — it is a roving stop (`tabindex=-1`, reached by the region's ArrowDown walk) and this rig's focus primitive is a Tab walk that cannot aim at it; recorded in the design-round remediation rather than faked. |
+
+**Withdrawn: `group-bound/search-finds-unloaded` has NO frame, deliberately.** The
+claim it existed for — a query reaches a row the bound has not loaded, which is
+the operator's "search should still be able to search and find" — is asserted in
+`scripts/chat-sidebar-view.test.mjs` ("a query is never bounded: the bound cannot
+hide a hit"), over a 41-row group. Its frame could not be made reproducible: six
+captures of that story on one clean tree produced **two distinct end states**,
+the pixel diff spanning the whole panel rather than one label, and neither a
+settle-wait on the layout nor an assertion on the story's own facts removed it.
+A frame that photographs one of two states under a caption claiming one is worse
+than no frame. The story stays in Storybook, documented, for a human to look at;
+it is not in `STORIES`.
+
+### `section-gap-before/` and `section-gap/` — the collapsed section's gap
+
+Operator, 2026-09-27: *"shrink the gap between agents and teams headers when
+agents is collapsed, there's an extra gap wasting space there."*
+
+| pair | what it shows |
+| --- | --- |
+| `section-gap-before/agents-collapsed-teams-expanded/` vs `section-gap/…` | His exact case: `Agents` collapsed above `Teams` expanded. **16.0px → 8.0px.** |
+| `section-gap-before/both-collapsed/` vs `section-gap/…` | Both collapsed — the "collapsed with zero items vs collapsed with items" case. **16.0px → 8.0px**, and identical to the pair above, because the condition is "the section above draws no rows" and not a row count. |
+| `section-gap-before/both-expanded/` vs `section-gap/…` | Both expanded, the case a shortened constant would tighten unasked. **16.0px → 16.0px**, unchanged. |
+
+The `-before` arm is this branch with the spacing line reverted, not a frame
+taken at `origin/main` — the stories are new, so there is no `origin/main` frame
+of them to pair against. The gap change is layout-only and does not touch the
+bound, so the two groups are independent.
+
+## The measurements, as the frames' own readout prints them
+
+Panel 360px + 380px readout = 741px wide.
+
+| term | value |
+| --- | --- |
+| entity row (`minervadev`, `content`) | **32px** |
+| chat row inside a group | **36px** |
+| `Agents` section heading | 28px |
+| gap between the two section headings, `Agents` collapsed | **16.0px before → 8.0px after** |
+| gap between the two section headings, `Agents` expanded | **16.0px before → 16.0px after** (shared, hence the conditional value) |
+| heading-to-first-entry distance, inside a section | 0.0px |
+| `minervadev` section height with 41 rows drawn | **1436px** of a 900px frame, so the group is 20 screens' worth of a 848px region — which is the complaint |
+| entity section height in the gap pair | 28px collapsed, 124px when `Teams` is expanded (heading 28 + three 32px rows) |
+| scroller content/box, `Agents` collapsed + `Teams` expanded | **588/568 before → 580/568 after** |
+| scroller content/box with 41 rows drawn | **2028/848** |
+| scroll layers (of which overflowing) | **6 (1)** — one real layer, the entity region; the other five are Storybook's own 0/0 decorators. The count is 6 (0) in `search-finds-unloaded`, where the query narrows the list until it fits. |
+
+**The bound does not introduce a second scroller.** The overflow count is 1 in
+every frame, and the one scroller is the entity region #534 established; the
+group's own rows are a flow of it. The gap fix moves the content height by
+exactly the 8px it removes (588 → 580) and the region still overflows (12px), so
+nothing traded a header gap for a phantom scroll region.
+
 ## What these frames do NOT prove
 
 - **Latency.** Nothing here carries a timing; the completion-to-bin reading is in
   `../chat-sidebar-status-feed/README.md` (26.3 s before the fix, 1 ms after).
 - **Focus and hover states.** A hidden window has no focus, and hover is pointer
-  state; the band's own hover frames live in this set from earlier passes.
+  state; the band's own hover frames live in this set from earlier passes, and
+  the group foot's hover is `group-bound/foot-hover` (design round 1, D3's hover
+  half). The foot's focus still is deliberately not faked: it is a roving stop
+  reached by the region's arrow walk, and this rig's focus primitive is a Tab
+  walk that cannot aim at it — the record lives in the design-round remediation.
 - **Where the before half of the popover lives.** It is this set's previous
   revision in git (the three-group panel, captured under
   `remediationRound4EvidenceNote`'s pass); round 1 re-shoots `popover-open`, the
@@ -145,3 +247,25 @@ these frames are the same rule seen from the pointer's side.
   exist (round 1's Q-2, reproduced independently). `popover-open-narrow`
   (1100x600) is the frame for the reachable shape; the short one is kept because
   the contract it tests is at that size, and its numbers are the contract's.
+- **The search claim has no frame at all**, for the reproducibility reason stated
+  in the `group-bound/` section; it is a test claim only.
+- **They are not the paged path.** Every story here runs against a stub with no
+  `session_catalogue_page` in its capabilities — which is what the shipped daemon
+  advertises (`local_operator/server/routes/capabilities.py` has
+  `session_catalogue: 3` and no paging key). So these frames are the WITHDRAWN
+  path: the group's rows are a filter of the one page the client holds, which is
+  what the operator's own app does. The paged path's own behaviour is unchanged
+  and its scenes are in `scripts/renderer-driver.mjs`.
+- **The bound's and the gap's frames are not a gesture** except where the play
+  drives one. `after-one` and `after-two` press the real control; the rest are
+  resolved states seeded through the panel's own disclosure record.
+
+## Note on `node scripts/check-evidence.mjs`
+
+On this branch it reports **7 pre-existing failures**, none of them in this
+branch's own sets — `supplementary[8]` (`browser-approval-badges`, "claims 49
+frames; 0 are on disk") and `supplementary[25]` (`chat-header-identity/before-main`,
+no `source`/`why`/`capturedAt`). Both manifest entries are **byte-identical to
+the base this branch folds onto**, and neither set is touched by this change, so
+they are not this branch's to answer for. Stated rather than left to a reader who
+would otherwise assume the new frames broke them.

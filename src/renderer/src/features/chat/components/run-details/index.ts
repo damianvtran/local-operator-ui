@@ -17,6 +17,7 @@ export {
 	childStateLabel,
 	deriveChildWorkingLine,
 	deriveMcpServers,
+	deriveMonitors,
 	deriveRunDetails,
 	deriveWakes,
 	foldBrief,
@@ -33,6 +34,8 @@ export {
 	mcpErrorTexts,
 	mcpProblemNames,
 	mcpServersAreCold,
+	MONITOR_ROW_CAP,
+	monitorClause,
 	NOTHING_SEEN,
 	onScreenFailures,
 	OPEN_CHILD_STATUSES,
@@ -49,6 +52,7 @@ export {
 	unseenFailures,
 	unseenMcpProblems,
 	visibleFailures,
+	visibleMonitors,
 	visibleSubagents,
 	visibleTodoPhases,
 	visibleWakes,
@@ -60,6 +64,7 @@ export type {
 	ChildStatus,
 	McpServerRow,
 	McpStatus,
+	MonitorRow,
 	RunDetails,
 	RunDetailsInput,
 	SeenFailures,
@@ -74,6 +79,7 @@ export { RunChildReader } from "./run-child-reader";
 export type { RunChildReaderProps } from "./run-child-reader";
 export { RunDetailJobs } from "./run-detail-jobs";
 export { RunDetailMcp } from "./run-detail-mcp";
+export { RunDetailMonitors } from "./run-detail-monitors";
 export { RunDetailSubagents } from "./run-detail-subagents";
 export { RunDetailTodos } from "./run-detail-todos";
 export { RunDetailWakes } from "./run-detail-wakes";
@@ -89,3 +95,8 @@ export type {
 	McpRefusal,
 	McpRemedyControls,
 } from "./use-mcp-remedy";
+export { useMonitorControls } from "./use-monitor-controls";
+export type {
+	MonitorCancelOutcome,
+	MonitorControls,
+} from "./use-monitor-controls";

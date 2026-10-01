@@ -70,12 +70,16 @@ const {
 	childCountLabel,
 	childOpenable,
 	childrenOf,
+	deriveMonitors,
 	deriveWakes,
 	formatWakeCadence,
 	formatWakeDue,
 	formatWakeDuration,
+	monitorClause,
 	wakeClause,
+	visibleMonitors,
 	visibleWakes,
+	MONITOR_ROW_CAP,
 	WAKE_ROW_CAP,
 	reconcileLaunchTurns,
 	retimeChildRow,
@@ -3859,5 +3863,277 @@ test("no wakes is absence, and absence is not a state either surface renders", (
 		hasRunDetails(wakesOnly),
 		false,
 		"an armed wake is not 'something asking for something right now'",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* Monitors (the monitor design doc § 12)                             */
+/* ------------------------------------------------------------------ */
+
+/** A minute, so the watches below read as arithmetic rather than as literals. */
+const MONITOR_MINUTE = 60_000;
+
+/**
+ * One wire monitor, in `MonitorState`'s own shape: the spec's identity joined
+ * with the health counters, which is what the scheduler's `index_rows()`
+ * publishes (design § 10.2).
+ *
+ * `next_due_at` and `last_check_at` are epoch MILLISECONDS, the trap beside the
+ * job rows: those carry epoch SECONDS and the model divides them by 1000.
+ */
+const monitor = (over) => ({
+	id: "m1",
+	name: "loom-pr-1710",
+	tool: "bash",
+	arguments: {},
+	every_ms: 60_000,
+	until_at: null,
+	description: "",
+	created_at: WAKE_NOW - 60_000,
+	next_due_at: WAKE_NOW + MONITOR_MINUTE,
+	last_check_at: WAKE_NOW - MONITOR_MINUTE,
+	checks: 1,
+	deliveries: 0,
+	consecutive_failures: 0,
+	disabled: false,
+	disabled_reason: "",
+	...over,
+});
+
+test("monitors come off the wire soonest-first, with no-due rows last", () => {
+	const wires = [
+		monitor({
+			id: "m3",
+			name: "third",
+			next_due_at: WAKE_NOW + 3 * MONITOR_MINUTE,
+		}),
+		monitor({
+			id: "m1",
+			name: "first",
+			next_due_at: WAKE_NOW + MONITOR_MINUTE,
+		}),
+		monitor({ id: "m2", name: "second", next_due_at: "soon" }),
+		monitor({ id: "m4", name: "parked", next_due_at: null, disabled: true }),
+	];
+	assert.deepEqual(
+		deriveMonitors(wires, WAKE_NOW).map((row) => row.id),
+		["m1", "m3", "m2", "m4"],
+		"the dated rows lead by instant; the unreadable and the absent sort last",
+	);
+	/*
+	 * ...and through the REAL entry point, which is where the renderer reads it:
+	 * the page hands the canonical list to `deriveRunDetails` and the chip and the
+	 * section both read the field it produces.
+	 */
+	const details = deriveRunDetails({
+		jobs: [],
+		todos: [],
+		monitors: wires,
+		nowMs: WAKE_NOW,
+	});
+	assert.deepEqual(
+		details.monitors.map((row) => row.id),
+		["m1", "m3", "m2", "m4"],
+		"one list, ordered once",
+	);
+});
+
+test("the monitor count clause is ONE spelling, and the singular is right", () => {
+	assert.equal(monitorClause(1), "1 monitor armed");
+	assert.equal(monitorClause(2), "2 monitors armed");
+	assert.equal(monitorClause(9), "9 monitors armed");
+	/* The defect the shared function exists to make unreachable. */
+	assert.equal(
+		monitorClause(1).includes("monitors"),
+		false,
+		"the plural is never printed against a count of one",
+	);
+});
+
+test("a monitor's health is the band's own vocabulary, and disabled wins", () => {
+	const rows = deriveMonitors(
+		[
+			monitor({ id: "m1", name: "steady" }),
+			monitor({ id: "m2", name: "failing", consecutive_failures: 3 }),
+			monitor({
+				id: "m3",
+				name: "parked",
+				next_due_at: null,
+				disabled: true,
+				consecutive_failures: 7,
+				disabled_reason: "  connection\n refused  ",
+			}),
+			monitor({ id: "m4", name: "waiting", next_due_at: null }),
+		],
+		WAKE_NOW,
+	);
+	const byId = new Map(rows.map((row) => [row.id, row]));
+
+	const steady = byId.get("m1");
+	assert.equal(steady.healthLabel, "", "a healthy watch says nothing");
+	assert.equal(steady.alerting, false);
+	assert.equal(steady.interval, "every 1m");
+	assert.equal(
+		steady.whenLabel,
+		formatWakeDue(WAKE_NOW + MONITOR_MINUTE, WAKE_NOW),
+		"the due slot is the same local formatter the wakes use",
+	);
+	assert.equal(
+		steady.lastCheckLabel,
+		`last check ${formatWakeDue(WAKE_NOW - MONITOR_MINUTE, WAKE_NOW)}`,
+		"last check is an ABSOLUTE instant: the pane does not tick",
+	);
+	assert.equal(steady.checks, 1, "the figures ride the row beside the labels");
+
+	const failing = byId.get("m2");
+	assert.equal(failing.healthLabel, "3 failed");
+	assert.equal(failing.alerting, true, "mid-ladder takes the warning ink");
+
+	const parked = byId.get("m3");
+	assert.equal(
+		parked.whenLabel,
+		"disabled",
+		"the due slot becomes the state word",
+	);
+	assert.equal(
+		parked.healthLabel,
+		"connection refused",
+		"and the tail is the reason, whitespace-normalised to one line",
+	);
+	assert.equal(
+		parked.alerting,
+		true,
+		"disabled wins over the failure count it also carries",
+	);
+	assert.equal(parked.disabled, true);
+
+	const waiting = byId.get("m4");
+	assert.equal(waiting.whenLabel, "waiting");
+	assert.equal(waiting.healthLabel, "");
+});
+
+test("a monitor with no check yet carries no last-check clause", () => {
+	const [row] = deriveMonitors(
+		[monitor({ last_check_at: 0, checks: 0 })],
+		WAKE_NOW,
+	);
+	assert.equal(row.lastCheckLabel, "", "nothing has run, so nothing is dated");
+	assert.equal(row.checks, 0);
+});
+
+test("the interval label ports the wake duration grammar", () => {
+	const [row] = deriveMonitors(
+		[monitor({ every_ms: 90 * MONITOR_MINUTE })],
+		WAKE_NOW,
+	);
+	assert.equal(row.interval, "every 1h30m");
+});
+
+test("a malformed or partial monitor row degrades rather than blanking the list", () => {
+	/*
+	 * The failure paths, which this file exists for: `deriveRunDetails` reads
+	 * `Array<Record<string, unknown>>`, so a runtime older or newer than this
+	 * renderer is normal. The survival rule is the name OR a readable instant, and
+	 * the two ways to get it wrong are both silent — dropping a row hides a watch
+	 * the user armed, and keeping an empty one draws a row with no content under a
+	 * heading that counts it.
+	 */
+	const rows = deriveMonitors(
+		[
+			{},
+			{ id: "x" },
+			monitor({ id: "m2", name: undefined, description: "dated but nameless" }),
+			monitor({
+				id: 42,
+				name: "",
+				next_due_at: WAKE_NOW,
+				description: "odd id",
+			}),
+			monitor({ id: "m5", name: "odd interval", every_ms: 0 }),
+		],
+		WAKE_NOW,
+	);
+	assert.deepEqual(
+		rows.map((row) => row.id),
+		["monitor-3", "m2", "m5"],
+		"the two empty records are dropped; the rest survive, position-keyed where nameless",
+	);
+	assert.equal(
+		rows[0].description,
+		"odd id",
+		"a row with no name is kept when it has an instant",
+	);
+	assert.equal(rows[1].name, "", "a nameless row is a real wire state");
+	assert.equal(
+		rows[2].interval,
+		"once",
+		"a non-positive interval is not a recurrence",
+	);
+
+	/* Non-records in the list are the wire's business, not the row's. */
+	assert.deepEqual(
+		deriveRunDetails({ jobs: [], todos: [], monitors: [{}, null, "x", 7] })
+			.monitors,
+		[],
+	);
+});
+
+test("the Monitors section renders the full arm path's load, and caps past eight", () => {
+	const rows = deriveMonitors(
+		Array.from({ length: 9 }, (_, index) =>
+			monitor({
+				id: `m${index + 1}`,
+				name: `watch ${index + 1}`,
+				next_due_at: WAKE_NOW + (index + 1) * MONITOR_MINUTE,
+			}),
+		),
+		WAKE_NOW,
+	);
+	/*
+	 * The cap is the arm path's own `values.monitor.maxMonitors` default of eight,
+	 * so nine is one PAST a full session and the marker is the footer for a payload
+	 * past the declared bound rather than a routine truncation of the shipping wire.
+	 */
+	const full = visibleMonitors(rows);
+	assert.equal(full.rows.length, MONITOR_ROW_CAP);
+	assert.equal(MONITOR_ROW_CAP, 8);
+	assert.equal(full.hidden, 1);
+	assert.deepEqual(
+		full.rows.map((row) => row.id),
+		["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"],
+		"the cap keeps the rows that check first",
+	);
+	/* Under the cap nothing is hidden, and the slice is not the caller's list. */
+	const three = visibleMonitors(rows.slice(0, 3));
+	assert.equal(three.hidden, 0);
+	assert.equal(three.rows.length, 3);
+});
+
+test("no monitors is absence, and absence is not a state either surface renders", () => {
+	assert.deepEqual(deriveMonitors([], WAKE_NOW), []);
+	assert.deepEqual(deriveRunDetails({ jobs: [], todos: [] }).monitors, []);
+	assert.deepEqual(
+		deriveRunDetails({ jobs: [], todos: [], monitors: [] }).monitors,
+		[],
+	);
+	/*
+	 * ...and `hasRunDetails` is deliberately NOT widened to cover them, the wakes
+	 * decision one list over: its meaning is "is anything asking for something right
+	 * now" (`run-detail-model.ts`), and an armed monitor is a standing WATCH rather
+	 * than a request — so a monitors-only session answers false here, and the pane
+	 * still shows something because the SECTION renders. Widening this would answer
+	 * a different question under the same name.
+	 */
+	const monitorsOnly = deriveRunDetails({
+		jobs: [],
+		todos: [],
+		monitors: [monitor({ id: "m1" })],
+		nowMs: WAKE_NOW,
+	});
+	assert.equal(monitorsOnly.monitors.length, 1);
+	assert.equal(
+		hasRunDetails(monitorsOnly),
+		false,
+		"an armed watch is not 'something asking for something right now'",
 	);
 });

@@ -53,6 +53,7 @@
  */
 
 import { displayName, toolRowLabel } from "../components/trace/tool-row-model";
+import type { TranscriptImage } from "./transcript-reducer";
 import type { Row } from "./transcript-rows";
 
 /** §E2: a run of three or more consecutive actions folds. */
@@ -329,6 +330,7 @@ const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
 	web_read: { noun: "page", plural: "pages" },
 	list_variables: { noun: "variable lookup", plural: "variable lookups" },
 	read_variable: { noun: "variable read", plural: "variable reads" },
+	sessions: { noun: "session", plural: "sessions" },
 };
 
 export function foldCounts(actions: FoldableAction[]): string {
@@ -635,6 +637,182 @@ export function foldRuns(
 	}
 	flush();
 	return groups;
+}
+
+/**
+ * The images a run produced, in row order.
+ *
+ * A folded run UNMOUNTS the rows that would show these, so the artifacts a turn
+ * produced went with them: the reader had to expand the group to see the
+ * screenshot a command wrote, which is the cost condensing was supposed to
+ * remove. This is which of them the condensed group has to carry instead.
+ *
+ * ONLY TOOL ROWS CONTRIBUTE, and that is the whole rule rather than a filter
+ * that happens to be here. A run is a run of ACTIONS (§E2) and an action's
+ * images are its product - the screenshot a shell command wrote, the frame a
+ * browser call captured. A row that is not an action breaks a run rather than
+ * joining it (`foldRuns`' `isFoldable`), so no other kind of record can be
+ * inside one; the test is stated anyway so the claim is checkable against the
+ * record union rather than inferred from the caller's options.
+ */
+export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
+	const images: TranscriptImage[] = [];
+	for (const row of rows) {
+		if (row.record.kind === "tool") images.push(...row.record.images);
+	}
+	return images;
+};
+
+/**
+ * How many SLOTS a condensed group's strip draws in its one row: up to four
+ * tiles and the `+N` count.
+ *
+ * THE ROW IS THE BUDGET, and the number is measured rather than chosen. A tile is
+ * 117px on an 8px gutter (`gap-2`), and the last slot is the `+N` control rather
+ * than a picture: the count takes the slot the FIFTH picture would have had. The
+ * narrowest column this strip renders in was measured at 556px of strip width (a
+ * 640px window: 576px of column minus the strip's own 20px indent; the live
+ * window's column is wider), so the arithmetic is, in strip terms:
+ *
+ *     4 x 117 + 4 x 8 + control = 500 + control <= 556   =>   control <= 56px
+ *
+ * and the control is 33.6px (`+4`), 39.3px (`+10`), 41.4px (`+99`): the row is
+ * 541.4px at its worst (`+99`), 14.6px inside the column. In WINDOW terms - which
+ * is how a reader meets it - the strip is the window minus 84px (the transcript's
+ * 2 x `p-8` and the strip's `ml-5`), so the row needs a window of 541.4 + 84 =
+ * ~626px at its worst and 533.6 + 84 = ~618px for `+4`. Against the row this
+ * replaces - 98px tiles and `+N more images`, 111.1px at `+4` and 118.9px at
+ * `+99` - that is 535.1 / 542.9px of strip, ~619 / ~627px of window (the UX round
+ * measured the old floor between a 620px and a 600px window), so like for like the
+ * floor does not rise: it falls by ~1.5px at either digit count, while the tile
+ * gets 42% more area. The narrow label is what pays for it: with the full noun the
+ * same 117px tile would need 4 x 117 + 32 + 118.9 = 618.9px of strip, ~703px of
+ * window, which is past the 640px window this layout is modelled on.
+ *
+ * Because a tile is this wide, FIVE tiles (617px) no longer fit one row: the
+ * cap is therefore the slot count, and a run of exactly five pictures draws four
+ * tiles and a `+1`, the same shape every larger count has. Capping at all is
+ * what keeps the height at one row for any count: without it a run of 25-30
+ * pictures costs ~391px at the old size, more than the ~338.7px an EXPANDED group
+ * costs - the one case where condensing would be the taller choice (design review
+ * round 1, D3).
+ */
+export const FOLD_MEDIA_LIMIT = 5;
+
+/**
+ * How many tiles the strip draws, and how many the `+N` slot stands for.
+ *
+ * When the run produced more than a row of tiles can hold, the LAST slot is the
+ * count itself rather than a fifth picture: the row stays one row either way, and
+ * the reader is told how many they are not seeing instead of being left to infer
+ * it from a clipped row. The count is also in the condensed header
+ * (`foldMediaClause`) and in the strip's own accessible name, so no reader - with
+ * or without a pointer - has to count tiles to learn it.
+ *
+ * `uncapped` is the U8 escape: the spanning bar's sole image-bearing group
+ * shows its whole set, because the `+N more images` press that opened the bar
+ * has already asked for it - see the option's own comment.
+ */
+export const foldMediaSlots = (
+	count: number,
+	{ uncapped = false } = {},
+): { shown: number; more: number } =>
+	uncapped
+		? /* The caller asked for every picture (U8): the bar's own children's case
+		   when the group IS the span's whole image story - the reader pressed
+		   `+N more images` on the bar, and making them press a second time for a
+		   group that holds the same set is the dead end the round-2 UX pass
+		   found. The cap still bounds every strip the reader has NOT asked to
+		   expand. */
+			{ shown: Math.max(count, 0), more: 0 }
+		: /* `<`, not `<=`: the limit counts SLOTS, and the fifth slot is the count,
+		     so a run of exactly FOLD_MEDIA_LIMIT pictures no longer fits as tiles
+		     (5 x 117 + 32 = 617px against the 556px column) and takes the count
+		     slot as every larger run does. */
+			count < FOLD_MEDIA_LIMIT
+			? { shown: Math.max(count, 0), more: 0 }
+			: {
+					shown: FOLD_MEDIA_LIMIT - 1,
+					more: count - (FOLD_MEDIA_LIMIT - 1),
+				};
+
+/**
+ * How the UNCAPPED strip breaks its tiles into rows: the length of each row.
+ *
+ * The capped row is four tiles wide, so the uncapped strip wraps at the same four
+ * and the width of a row is one constant in both. A plain four-per-row wrap strands
+ * a lone tile whenever the count leaves a remainder of one (5 -> 4+1, 9 -> 4,4,1,
+ * 13 -> 4,4,4,1), and a one-tile second row reads as an accident (design round,
+ * D5: the old strip wrapped 7+1 at 1280px). So when the final row would hold one
+ * tile, the last TWO rows are rebalanced to 3+2 (5 -> 3,2; 9 -> 4,3,2): the rule
+ * is "no row of one, unless the whole strip is one tile". Returned as lengths
+ * rather than a column count so the strip can place each tile explicitly: CSS
+ * auto-placement cannot produce an uneven last pair.
+ */
+export const foldMediaRows = (count: number): number[] => {
+	const perRow = FOLD_MEDIA_LIMIT - 1;
+	if (count <= 0) return [];
+	if (count <= perRow) return [count];
+	const rows = Array.from({ length: Math.floor(count / perRow) }, () => perRow);
+	const remainder = count % perRow;
+	if (remainder === 1) {
+		// Take one tile from the last full row so the remainder row holds two.
+		rows[rows.length - 1] = perRow - 1;
+		rows.push(2);
+	} else if (remainder > 1) {
+		rows.push(remainder);
+	}
+	return rows;
+};
+
+/**
+ * The condensed header's clause for the media a run produced, or `null` for a run
+ * that produced none.
+ *
+ * The strip is a PRESENCE CUE rather than a reader of the pictures - a 64px tile
+ * cannot carry a label or a chart's axis, and the frames say so - so the count
+ * belongs in the text layer, where it is legible at any tile size and reachable
+ * without a pointer. It is also what keeps the sighted reader from getting less
+ * than the screen-reader user, whose `aria-label` on the strip has carried the
+ * count since the first cut (design review round 1, D3). A run with no pictures
+ * gets no clause, which is what keeps that header byte-identical.
+ */
+export const foldMediaClause = (count: number): string | null => {
+	if (count <= 0) return null;
+	return `${count} image${count === 1 ? "" : "s"}`;
+};
+
+/**
+ * THE ONE DEFINITION OF "HOW LONG THE WORK TOOK": the seconds a call itself
+ * reported, summed (design review round 1 on #708, D1).
+ *
+ * The turn's foot (`Worked for 8m17s`) and every condensed bar (`Took 4m43s`) state
+ * THIS quantity - model time, queueing and waiting for the reader are not in it -
+ * because a ladder shows both on one screen and the action counts on them
+ * reconcile exactly (236 + 101 + 78 = 415), which invites the reader to add the
+ * durations too. The bars used to state a wall span (opening row to the latest end
+ * instant) beside a foot stating this sum, and on the operator-shaped journal the
+ * two were 16.7x apart with nothing on screen to say why. Both sides now call the
+ * two functions below, so bars + the rest of the turn add up to the foot within
+ * the rounding of each printed figure (`formatDuration` floors), and no third
+ * derivation can reappear beside them. The words differ (`Took` / `Worked for`)
+ * and are the design round's to judge; the quantity does not.
+ *
+ * A call that reported nothing contributes nothing, and a span in which NO call
+ * reported a figure states none (null) - never a `0s` claim.
+ */
+export function workedSecondsOf(row: Row): number | null {
+	return row.record.kind === "tool" ? row.record.durationS : null;
+}
+
+/** The sum of `workedSecondsOf` over rows; null when no row reported one. */
+export function workedSeconds(rows: readonly Row[]): number | null {
+	let total: number | null = null;
+	for (const row of rows) {
+		const seconds = workedSecondsOf(row);
+		if (typeof seconds === "number") total = (total ?? 0) + seconds;
+	}
+	return total;
 }
 
 /** What a finished turn's foot line reports (§E3). */

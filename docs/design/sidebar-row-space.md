@@ -27,15 +27,20 @@ rules it currently follows are built on the reservation that is going away.
 
 Panel widths are written through the divider's own action (`setSidebarWidth`),
 because a row's width is the user's preference (`chatSidebarWidth`, clamped
-240..360, default 280) and not a function of the window. Contrast this with
+**220..320**, default **260**) and not a function of the window. Contrast this with
 `docs/evidence/session-archive/README.md`'s "the shipped 320px panel" - that
 record corrected itself to 280, and 320 is a width the panel really can be put
 at, so all three are photographed here.
 
-The panel is `p-2` (8px), so a 280px panel gives a 264px row. Inside the row:
+The panel is `p-2` (8px), so on this document's ORIGINAL basis a 280px panel gives a
+264px row - and the SHIPPED row box measures **248px** there, because the list carries an
+inset of its own on top of the panel's (`panel - 32`, not `panel - 16`). Round 3's design
+review (D12) is why both are named from here on: the `Row box` column in the table below is
+the measured element and the columns beside it are on the original basis, so read the DELTA
+down a column and never a number across the two. Inside the row:
 
 ```
-row box   "flex h-8 items-center gap-1 rounded-md"          264
+row box   "flex h-8 items-center gap-1 rounded-md"          264   <- original basis; 248 measured
   button  rowStyle + px-1 (4+4)  "min-w-0 grow"             208
     status slot  ChatSessionStatus, size-4                  16
     gap (gap-1)                                              4
@@ -47,19 +52,22 @@ row box   "flex h-8 items-center gap-1 rounded-md"          264
     archive                size-6                           24   <- never painted at rest
 ```
 
-Measured on the committed frames, identical in both palettes:
+Identical in both palettes, and on the two bases this section now names (round 3, D12):
+the `Row box` column is the MEASURED `[data-session-row]` element (`panel - 32`, the reading
+`docs/evidence/pinned-reorder/measurements/` carries, and §3's basis), and every other column
+is this document's original basis (`panel - 16`), so those columns read 16px wide against it.
 
-| Panel | Row box | Button | Title | Tail after the title | Pair | Pin | Archive | Shared trigger |
+| Panel | Row box (MEASURED) | Button | Title | Tail after the title | Pair | Pin | Archive | Shared trigger |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 240 (clamp min) | 224 | 196 | **168** | 32 | `0x0` shipped shed | `0x0` | `0x0` | 24, unpainted |
-| 280 (default) | 264 | 208 | **180** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
-| 320 | 304 | 248 | **220** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
+| 240 (a below-default step) | 208 | 196 | **168** | 32 | `0x0` shipped shed | `0x0` | `0x0` | 24, unpainted |
+| 280 (widened past the default) | 248 | 208 | **180** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
+| 320 | 288 | 248 | **220** | 60 | 52 | 24, painted iff pinned | 24, unpainted | `0x0` |
 
-What that costs, at rest, inside the 264px row:
+What that costs, at rest, inside the row (264px on this document's original basis, 248px on the measured one at a 280px panel):
 
 | Row class | Painted in the trailing 60px | Paints nothing |
 | --- | --- | --- |
-| unpinned | - | **56px (21.2% of the row)** |
+| unpinned | - | **56px (21.2% of the original-basis row, 22.6% of the measured one)** |
 | pinned | the 24px pin glyph | 32px |
 | current | - | 56px |
 
@@ -114,7 +122,7 @@ between the button and the cluster, is **4px** - so **one control costs the titl
 | **unpinned** | rest | **196** | **236** | **276** | nothing |
 | **unpinned** | hover / focus-within | **140** | **180** | **220** | archive, then the pin (56px + the 4px row gap) - the ORDER is the design, see below |
 | **pinned** | rest | **168** | **208** | **248** | the pin mark (24px + the 4px row gap) |
-| **pinned** | hover / focus-within | **140** | **180** | **220** | the archive, revealed beside the mark |
+| **pinned** | hover / focus-within | **68** | **80** | **120** | at 279px and above: the archive, the grip, the move pair, then the mark (136px). At or below 278px: the same cluster with the GRIP SHED (108px) - see #693, #697 and §8's round-1 subsection. **These three are MEASURED on the shipped DOM** (issue #697's evidence pass, `docs/evidence/pinned-reorder/measurements/`), on a row box of 208/248/288px; the rows above them are on this document's own earlier basis, so read the DELTA as the cost of a control (28px: 24 + the 4px gap) rather than comparing the absolute columns across rows |
 | **current** | rest | as its class | as its class | as its class | as its class; the ground stays `rowSelected` |
 | **current** | hover / focus-within | as its class | as its class | as its class | both acts reveal; the hover ground is still dropped |
 | any | narrow (panel <= 278) | - | - | - | **the same rule as every other width** (D9) |
@@ -127,8 +135,57 @@ first time.
 
 **The px budget per state**, as the arithmetic a reviewer can re-check: the title
 is `row - 4 (the row's gap) - cluster - 28`, where `cluster` is `0` at rest on an
-unpinned row, `24` at rest on a pinned one, and `52` under the pointer; at 240/280
-/320 the row box is 224/264/304.
+unpinned row, `24` at rest on a pinned one, `52` under the pointer on an unpinned
+row and `108` under the pointer on a PINNED one - the archive, the move pair and
+the mark, 4 x 24 + 3 x 4 (issue #693; that is the cluster at or below a 278px panel, where
+the grip is shed); at 240/280/320 the row box MEASURED on the shipped DOM is
+208/248/288, the numbers the evidence JSON carries (the 224/264/304 these lines used to
+state is the panel minus its own 16px of `p-2`, one box further out). At 279px and above
+a pinned row's revealed cluster is `136` (issue #697).
+
+**THE FIFTH CONTROL, AND WHAT THE GRIP COSTS (issue #697, measured).** The pinned row's
+revealed cluster grew again when the drag handle arrived: `archive + grip + move up + move
+down + mark` is **136px** of controls in a row box of **208 / 248 / 288px** at the 240 / 280 /
+320 panel settings, so the title has **40 / 80 / 120px** under the pointer against the
+**126 / 166 / 206px** it has at rest - the grip takes **28px** (its 24px box plus the cluster's
+4px gap) off the title at every width, exactly what one control costs, and nothing at rest
+(the handle is reveal-only, like the pair it sits beside). **At the 240 clamp that leaves 40px
+of title, about five characters** - measured, not derived
+(`docs/evidence/pinned-reorder/measurements/pinned-reorder-geometry-<theme>.json`, and the
+`grip-hover-240` frame). That is the number a designer should weigh against the alternatives:
+a shed for the handle alone at the clamp, the handle drawn only where the row is already
+truncating, or the moves left to the chords alone (which is what the keyboard path already
+offers). What the code refuses is the same thing the pair refuses - an `order` class - and the
+indicator's own width is not part of this arithmetic (it is a 2px line inside the section's own
+coordinates, drawn only while a gesture runs).
+
+**ROUND 1 CHANGED TWO OF THESE NUMBERS (design D2 and D3, 2026-09-30).** The 40px at the
+240 clamp was judged too expensive and the grip now sheds at or below a 278px panel (263 in
+the container query's own arithmetic - see §8), so
+the 240 column is **68px** - the pair's own cost - and 40px survives only as the reading
+that motivated the shed (§8's round-1 subsection). The grip is also drawn only when at
+least two pinned rows are SHOWN, so the single-pin and one-result-filtered states lose it
+entirely (there is no second slot to drop onto). The re-shot frames carry both: the
+`grip-hover-240` pair shows the grip ABSENT in both palettes, and `single-pin` /
+`single-pin-hover` show the pair and the mark alone. What did NOT change: the grip's 28px
+where it is drawn, the mark's position on the row's right edge, and one control's cost
+(28px) as the unit this table is arithmetic over.
+
+**THE FOURTH CONTROL, AND WHAT IT COSTS (issue #693).** A pinned row's revealed
+cluster grew from 52 to 108 when the pinned section became reorderable by hand:
+two arrow controls, `size-6`, drawn only on the rows that offer a move (a pinned
+row in the section arrangement). The title therefore pays for three revealed acts
+rather than one, and at the 240 clamp that is 84px of title under the pointer (before
+the grip, and on this document's earlier 224px row basis - the measured row is 208, so
+the same cluster leaves 68px there, which is the figure the frames carry) - about ten
+characters, with the pan (§5) carrying the rest. The narrower band is
+where this is felt first, and the pair is drawn only under the pointer or under
+focus: at rest the numbers in the table above are unchanged, which is the state
+the operator's own ask was about. A designer reviewing this surface should weigh
+the 240 hover against the alternative spellings (a shed for the pair alone, or
+the moves on the row's own chord with no control at all); what the code refuses
+is `order`, which cannot be spelled safely for both wrapper shapes - see the
+comment on the pair in `chat-sidebar.tsx`.
 
 **Which control is drawn FIRST in the pair is part of the design, and the code
 orders the ARCHIVE first** (design round 2, folded here as D12; the sentence this
@@ -393,6 +450,87 @@ directories; and the narrow steps of `scripts/renderer-driver.mjs`'s
 `session-archive` scene with the assertions behind them
 (`scripts/chat-sidebar-archive.test.mjs`: the D10 shared-control test and the
 container-query test both read text that will no longer exist).
+
+### Reinstated for ONE member (round 1, 2026-09-30, PR #697): the grip alone sheds below 279
+
+The rule above is about the ACTS and it stands unchanged: the pin, the archive and the
+move pair are drawn at every width. The **grip** is the one exception, and it is the
+exception this section's own reasoning was willing to make - it is the only member of the
+cluster that is an ACCELERATOR rather than a path. The pair is WCAG 2.5.7's single-pointer
+alternative to the gesture; the grip is a faster way to do what the pair already does.
+Measured at the 240 clamp with all five controls revealed, the title had 40px of the row's
+208 (design round 1's D2 reading of `grip-hover-240`; §3); with the grip shed it has 68px,
+the pair's own cost. So ONE width query is back, in the name this section deleted:
+`@container/chatsidebar` on the panel root and `@max-[263px]/chatsidebar:hidden!` on the
+grip - one class, one control, one break. The number is 263 rather than 279 because a
+container query measures the container's CONTENT box and the panel root carries `p-2`: a
+280px panel reports 264, so a 279 in the query shed the grip at 280 as well (measured on
+this change's first re-shoot). The trailing `!` is the second measured correction - the
+reveal rules are two-class selectors (`group-hover:flex`), so a one-class container rule
+lost the cascade and the grip stayed drawn at the clamp with the pointer inside the row.
+The frames of both states are committed
+(`docs/evidence/pinned-reorder/grip-hover-240`: grip absent; `grip-hover-280/320`: drawn).
+**The width this leaves the drag at is a product fact, and it is stated plainly (design round
+2, D8).** A panel the user has never resized opens at the **260** default
+(`SIDEBAR_DEFAULT_WIDTH`) and the overlay sheet is a fixed 260 as well, and both are below the
+shed's break - so **at the default width the reorder path is the move pair plus the keyboard
+chords, and there is no drag handle**; the handle is drawn once the docked panel is widened
+to 279 or more. The headline claim still holds, because reordering is available at EVERY width
+- the pair is drawn at every width and is WCAG 2.5.7's single-pointer path - and the DRAG is
+the width-gated accelerator. Moving the break down to cover the default was measured and
+rejected: with the grip drawn the title gets `panel - 200` and shed it gets `panel - 172`, so a
+break at 259 would put a **60px** title on the default, i.e. WORSE than the 68px the clamp
+minimum carries, and a reader widening the panel from 240 to 260 would watch the title shrink
+8px before it grew again at 279. The 260 default has its own frame in the evidence set
+(`docs/evidence/pinned-reorder/grip-hover-260`: the grip absent, the cluster 108px, the title
+88px under the pointer and 146px at rest), because 240/280/320 bracket the default without
+ever photographing it.
+
+The grip is drawn only when **at least two pinned rows are shown** as well (design D3,
+whose premise held up: measured, a one-row drag can be started, always lands on slot 0 and
+writes nothing), and it is `aria-hidden` because it is pointer-only (agent review R5). The
+pair still answers with the boundary sentence in the single-pin state, which is why the
+pair is not shed with it.
+
+### Round 2 (PR #697, design D7 + UX U6, agent N1): the held row is marked by a ring, not a fill
+
+**THE HELD ROW'S CUE MOVED OFF THE TWO FILLS THE LADDER HAS.** A held row that is ALSO the
+current one used to take the `rowHover` ground, and that is the exact fill the row under the
+pointer wears: the two are on screen together for the whole gesture (row boxes are contiguous,
+so a drag pointer is always over some row), and the held row also LOST the `rowSelected` fill
+that says "this is the conversation you are in". Measured in both palettes: held current
+`rgb(48,45,41)` dark / `rgb(237,236,231)` light - the hover role - against the drop target's own
+hover ground, one reading for two rows.
+
+The held state is now carried by a **1px inset outline** off `[data-dragging]`
+(`outline outline-1 outline-offset-[-1px] outline-ink-dim`) and the fill underneath is the row's
+own role, unchanged: the drag's `rowSelected` step. A held row is therefore distinct from a
+merely hovered one in both row states, and "you are here" survives the gesture. Inset by 1px, so
+there is no layout shift and nothing hangs outside the row's own rounded box; a role rather than
+a hex, so both palettes resolve it from one declaration (`ink-dim` is the role the panel's own
+rounded-row ring reads - `#a6a091` dark, `#656056` light).
+
+**WHY IT IS AN OUTLINE AND NOT AN INSET `ring-1` (round 3, design D10).** The first spelling was
+a box-shadow, and a box-shadow is painted UNDER the element's children: the CURRENT row's own
+button carries `rowCurrent`'s opaque `bg-row-selected`, so it erased the mark everywhere it
+reached. An outline paints after the element's descendants, so the button cannot cover it, and the
+`-1px` offset keeps it inside the box.
+
+**THE ONE SET OF COVERAGE NUMBERS (design round 4, D13 - every place that quotes them quotes
+these).** The measurement is the ink within ±6 per channel of the mark's colour, inside the
+outermost 3 device px of the held row's box (device x24-519, y1123-1186 on these frames): a
+**complete outline** on a held row that is NOT current reads **60.2%** of that band (the 66%/55%
+per-edge figures are below 100% because the band includes the rounded corners), the held CURRENT
+row read **5.3%** before this fix - a fragment along the right-hand slot, which is exactly the
+state round 2's D7 was filed about - and reads **32.1%** after it, in both palettes. The 32.1% is
+three of the row's four edges: the top edge is where the drop indicator sits, so it is the
+insertion line's, not the mark's.
+
+**AND THE GRIP REVEALS ON HOVER ONLY (agent review round 2, N1).** It is `aria-hidden` and
+`tabIndex={-1}`, so a `group-focus-within` term was showing a sighted keyboard reader a handle
+they can neither focus nor operate - the two decisions pointed opposite ways and the reveal
+yields. The PAIR keeps its own focus-within term: the chords press it, and it is the 2.5.7
+single-pointer path.
 
 ## 9. Accessibility (D10)
 

@@ -6,7 +6,7 @@ frame was painted under; the six frames of the first pass were committed under t
 they show instead, and were renamed in place - the bytes are untouched. Frames added since
 are named in their own sections below.
 
-Eleven frames from `scripts/browser-chrome-proof.mjs`, which is the only path in this
+Fourteen frames from `scripts/browser-chrome-proof.mjs`, which is the only path in this
 repository that photographs the browser feature the way a user meets it: the real
 chrome over a real page, in one frame, at the window size the app actually runs.
 
@@ -29,7 +29,7 @@ Storybook story cannot answer any of them (a fourth and a fifth arrive in the
 |---|---|
 | `03-surface-populated/localOperatorDark.webp` | the strip over the USER's own tab, whose page has no handle to composite — chrome and the content rectangle only. The "over a real page" claim is carried by `12-approvals-queue/` and `18-approvals-dock/`, and the "user tab beside an agent tab" claim by `12-approvals-queue/`, `17-tab-actions-popout/` and `18-approvals-dock/`; this frame is here for the strip's own grammar |
 | `12-approvals-queue/localOperatorDark.webp` | the band with a numbered queue: the count, the chips, the selected request's card |
-| `12-restored-after-restart/localOperatorDark.webp` | the relaunch after the quit (2026-09-28 pass): the healthy tabs back with their `Restored` marker, and the tab that was showing a load failure when the session ended NOT restored — the accumulation engine's other end, photographed |
+| `12-restored-after-restart/localOperatorDark.webp` | the relaunch after the quit (2026-09-28 pass; RE-SHOT IN THE 2026-09-29 PASS): the healthy tab back with its `Restored` marker, the tab that was showing a load failure NOT restored, and — new on this head — the non-active agent row SKIPPED rather than brought back as a user tab. The re-shoot is owed because the state the previous pixels showed (the agent's tab back among the restored) no longer exists on this tree; the frame's own scenario is where the large run meets the skip, and this run records it: `healthy at quit 2 (of which 1 agent-owned and not active), restorable 1, restored 1`. The `Agent`-marked `Proof page two` row beside it is the run's own re-open after the restart (the designed recovery), not a restored row |
 | `17-tab-actions-popout/localOperatorDark.webp` | REPLACES `17-tab-actions-in-band/` (2026-09-28 pass): the tab actions as a portaled popout — free of the strip's box (`menuBox.bottom 225` against `stripBottom 69`), over the suppressed content area with the paused note behind it, the badge in situ (D3, D4) and the strip's height and the page's rectangle unchanged while it is open |
 | `17b-actions-page-restored/localOperatorDark.webp` | the dismissal (2026-09-28 pass): after Escape the menu is gone, no suppression is left and the paused note has yielded; the user tab's page has no handle to composite, so the content area is chrome-only, as in `03` |
 | `18-approvals-dock/localOperatorDark.webp` | the dock open, the page still visible and narrowed, no suppression (D2, D9) |
@@ -38,6 +38,9 @@ Storybook story cannot answer any of them (a fourth and a fifth arrive in the
 | `21-dead-tabs-in-strip/localOperatorDark.webp` | the mess, made deliberately (2026-09-28 pass): two tabs driven at the dead port, both marked `Failed` in the strip (`tabIds [13,14]`), the active one's failure panel behind them |
 | `22-close-failed-tabs/localOperatorDark.webp` | the counted cleanup AND THE D2 CLEARANCE PHOTOGRAPH (round 2, 2026-09-28): `Close 2 failed tabs` — the count IS the disclosure — offered from the dead tab itself (the strip's right end), with the paused note behind the open menu. Measured in the very state this frame photographs: the panel's right edge at CSS 1273 against the Approvals pill's leading content at 1275.3 — the pill's icon and label stay clear and it no longer reads `pprovals`; the shift's own cap is the anchor's 28px (QA round 2, Q2-2), so the panel's edge sits on the pill's transparent padding |
 | `23-dead-tabs-cleared/localOperatorDark.webp` | the strip after ONE press (2026-09-28 pass): the failed set is gone (`failed tabs after the press: []`) |
+| `24-restore-boundary-before/localOperatorDark.webp` | the BASE build on the seeded fixture (2026-09-29 pass): the tab the killed session left behind is back as an ordinary `Restored` user tab (`…/linger`, beside the user's own `…/index.html`), and the budget's queued stragglers are blank — `14` of the `18` stalled rows with `url: ""` — with no `Failed` chip anywhere (`failed 0`). The accumulation, photographed on the before side |
+| `25-restore-boundary-after/localOperatorDark.webp` | the fix, same fixture (2026-09-29 pass; RE-SHOT in round 1): the agent's row is skipped and pruned (the relaunch's own log counts it: `1 recorded tab(s) were opened by an agent…; not restored`), every stalled row's load is started (none `about:blank`), and the `4` that timed out carry `Failed` chips (`stall-0`…`stall-3`) while the drained `14` show as loading. The round-1 re-shoot carries the two fixes on top: the `Failed` marks sit beside a STATIC glyph (D1), and this run's own log proves the drained stragglers are not left behind — `every drained straggler reaches a terminal state within one launch: failed 18 of 18` |
+| `26-restore-boundary-settled/localOperatorDark.webp` | the SAME run, settled (round-1 F1/D4/U1): the drain's bounded wait has marked every straggler — `failed 18 of 18 stalled rows` — and the counted close, opened on the last row, reads `Close 18 failed tabs`: one launch converges to one honest, one-press-clearable set instead of a spinner tail |
 
 Source, exactly:
 
@@ -253,3 +256,67 @@ ONE bounded harness run (`scripts/browser-chrome-proof.mjs --keep`) at the round
 
 Both frames ride the same run's numbers recorded in the manifest note
 `browserTabCleanupRoundTwoPass`.
+
+## The restore boundary (2026-09-29): the residue a killed session leaves, and the stragglers
+
+THE THIRD REPORT ON THIS SURFACE, and the mechanical half of the second one. #624 (above)
+stopped a tab that was ALREADY dead when the app quit from being restored. Two shapes of
+dead tab survived it, and the third had never been in its scope:
+
+- a tab an agent session left behind at the quit — nothing closes an agent's tab when its
+  session goes away, because there is no session-death signal by design (`ownership.ts`:
+  a guess that closes the wrong tab is worse than a leak the user can see) — came back as
+  a USER tab at every launch, and the capture AFTER that restore rewrote its row as the
+  user's, so each restart added one more unattributed chip (measured on the field's own
+  file: `[('user',5),('agent',29-ish)]`, and `restoring 20 of 24` at a boot);
+- a restore that never committed a page — a server that accepts and never answers —
+  produced no `did-fail-load` (the 10 s per-tab timeout fires instead), so it was never
+  marked, and its row came back at every launch to time out again;
+- and when the restore budget expired mid-pass, every row still queued got NO load at all
+  and sat `about:blank` until the next restart — the deployed logs' `14 tab(s) still
+  loading` at expiry is up to 14 blank tabs from one launch.
+
+WHAT MOVED IN THE PRODUCT (`local-operator-ui` PR #662): at the restore boundary,
+`readSession` skips an agent-owned row that was not the active tab at the capture (the
+one agent tab the user was plausibly on survives), and `captureTabs` writes a tab that was
+under hand-over at the quit as the user's, so the skip cannot lose the user's own tab; a
+hydration that failed without committing a page records a load failure (the Failed chip,
+the counted close, `lastLoadFailed` on the next capture, and the ordinary clear wiring
+keeps it self-healing); and the budget drain STARTS every still-queued tab's load. `MAX_
+RESTORED_TABS` / the budget / the per-tab timeout / the concurrency are deliberately
+untouched.
+
+THE PAIR. Both frames are the run's own `restore-boundary` frame, from ONE scenario staged
+against two builds — the base at `0ab50df2a8` and the fix — with the same command (see
+below), which is the shape §19b's check already uses for its own before/after:
+
+| frame | what it proves |
+|---|---|
+| `24-restore-boundary-before/` | the base build on the seeded fixture: the killed session's tab back as a user tab beside the user's own, the `18` stalled rows' queue `14`-deep and BLANK (`url: ""`), NO `Failed` chip anywhere, and the skipped-row and budget lines absent from the relaunch's log |
+| `25-restore-boundary-after/` | the fix, same fixture: the agent row SKIPPED and PRUNED (`rows on disk now: 19`), the budget line `the 8000ms restore budget expired with 14 tab(s) still queued; they start loading in the background`, every stalled row's load started, and `failed 4` — the in-flight wave, `stall-0`…`stall-3` — with the drained `14` still loading. RE-SHOT in round 1: the same frame after the remediation, whose additions the run's own transcript carries — `every drained straggler reaches a terminal state within one launch: failed 18 of 18` and the drained mark on the same bounded wait the wave gets |
+| `26-restore-boundary-settled/` | the SAME round-1 run, settled: the drain's bounded wait has marked every straggler (`failed 18 of 18`), and the last row's menu reads `Close 18 failed tabs` — the settled set is closed by ONE counted press |
+| `12-restored-after-restart/` | RE-SHOT from the fix run: the set's own relaunch, where the skip now fires (`restored 1`), replacing pixels whose state no longer exists |
+
+THE SCENARIO (§20 of the harness): an agent tab is opened through the app's own RPC and
+left; the app quits and its row is asserted in the file; the file is then SEEDED with `18`
+rows at a server that accepts and never answers (`stalledServer`), which is what the
+operator's own file held; the relaunch is the fixture both frames photograph.
+
+THE RUNS, EXACTLY. Both from this branch, `--keep`:
+
+```
+pnpm build
+env -u CMUX_WORKSPACE_ID -u CMUX_SESSION_ID -u CMUX_TERM -u CMUX_SOCKET -u LOP_SESSION_ID \
+  node scripts/browser-chrome-proof.mjs --keep
+```
+
+- the fix: `102 PASS / 0 FAIL / ALL CHECKS PASSED`;
+- the base, same harness run from a worktree at `0ab50df2a8` (`git worktree add ~/local-operator-ui-worktrees/<name> 0ab50df2a8`, its own `pnpm build`, the branch's
+  harness with `cwd` there): `94 PASS / 8 FAIL`, and every one of the 8 is one of THIS
+  pass's own expectations — `healthy at quit 2 (…1 agent-owned and not active), restorable
+  1, restored 2`; the agent-skip log line absent; `urls: […index.html, …linger, …stall-0,
+  …, "", "", "", …]` with the budget line absent; `failed 0`; the row still on disk.
+  That is the before reading, not a regression: none of the other 94 checks moves.
+
+The numbers the frames carry travel with the manifest note
+`browserRestoreBoundaryPass`.

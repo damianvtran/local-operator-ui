@@ -1109,6 +1109,63 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE RAIL'S QUIET COUNT (operator ask, 2026-09-30) — the borderless
+		 * register of the approval mark, worn by the sidebar's Browser row and by
+		 * Aida's, i.e. on the same four grounds the row above lists. It is a
+		 * separate row rather than a `fill`/`border` change to the row above,
+		 * because the two marks differ in what carries them: the bordered mark's
+		 * edge WAS its boundary (its wash measured 1.00-1.19:1 on the grounds), so
+		 * this one draws no edge at all and the NUMERAL is the whole mark.
+		 *
+		 * THE INK IS THE MARK, so the ink is what this row asserts: `inkDim` on
+		 * `elevated`, 5.01:1 at worst over the fifty-nine palettes (measured from
+		 * `scripts/palette-source.mjs` with this file's own ratio, the same way the
+		 * row above's figures were) — clear of the 4.5:1 text floor the `CONTROLS`
+		 * loop applies to a control's label, which is the floor that matters here
+		 * because the numeral is READ rather than merely seen. It is the role the
+		 * count lines the operator compared against already wear (11-13px
+		 * metadata), and it is deliberately quieter than the bordered mark's `ink`.
+		 *
+		 * THE EDGE IS DECLARED AWAY, and the declaration is honest rather than a
+		 * convenience: the mark provably cannot carry one across every palette.
+		 * Its `elevated` fill steps ΔE00 3.29 off `surface` in the dark brand
+		 * palette and 2.50 in the light — the ground the user actually sees — and 2.02
+		 * at worst over the fifty-nine (arcade), but it falls to 0.47 off `rowSelected`
+		 * (duskfox) and 0.00 off `rowHover` (arcade): on a hovered or current row it can
+		 * merge into the ground entirely, and no single role fixes that at both ends
+		 * (over the four grounds `elevated` spans 0.00-11.64, `sunken` 0.44-14.88). The
+		 * old mark's own `warningWash` was not exempt either: its per-ground minima span
+		 * 0.87-2.27 across the fifty-nine, and the wash family — all six roles
+		 * (`warningWash`, `successWash`, `dangerWash`, `infoWash`, `accentWash`,
+		 * `accentAltWash`) over the four grounds — runs 0.53-30.71, so a wash does not
+		 * fix the deep rows either. (Scope note, review round 1 F1 and round 2 F7: the
+		 * narrower 0.87-2.27 belongs to `warningWash` alone, per ground; the family's
+		 * per-(wash, ground) minima span 0.53-2.69 and its whole span is 0.53-30.71 —
+		 * 25.83 is the five-role reading, which drops `accentAltWash`, and that is why
+		 * the membership is named here rather than left to the reader.) What keeps the count legible is the numeral's own floor above;
+		 * what keeps it a MARK rather than plain label text is that a quiet row
+		 * draws nothing at all. The step is therefore a cue on the plain grounds and
+		 * absent on the deep ones, which is the same deal the sidebar's count lines
+		 * strike, and `edge: false` moves the claim to the instrument that can state
+		 * it (the ink floor here) rather than inventing a border the design removed
+		 * on purpose.
+		 *
+		 * NOT AS CONTRASTED AS WHAT IT REPLACES, stated as the two steps the
+		 * operator compared — in the brand palettes, which is where that comparison was
+		 * made: the old bordered mark's `warningWash` stepped ΔE00 5.22 off `surface` in
+		 * the dark palette and 5.44 in the light; this one steps 3.29 and 2.50 (2.02 at
+		 * worst over the fifty-nine). Same ground, roughly half the separation — the
+		 * "slightly contrasted but not as contrasted" the report asked for.
+		 */
+		name: "rail approval badge (quiet)",
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
+		/*
 		 * THE PANE'S SCOPE SWITCH (spec §7.2), which is the one control PR 2 adds, and
 		 * the reason it needs a row of its own: it is the segmented primitive ON A
 		 * `sunken` GROUND, where the primitive's own track role (`sunken`) is the ground
@@ -1208,8 +1265,8 @@ const CONTROLS = [
 		 * loop would then assert every ink on it including the two that fail.
 		 *
 		 * `on` names every ground rather than one, and that is the measured fact rather
-		 * than caution: the row is a sibling of the consent band and the popup notice in
-		 * the same strip, and the ground behind the strip is whichever one the route
+		 * than caution: the row is a sibling of the consent band in the same strip, and
+		 * the ground behind the strip is whichever one the route
 		 * paints (the pane draws `canvas`, the surface draws `surface`), so the wash is
 		 * asserted against all four.
 		 */
@@ -1388,18 +1445,80 @@ const CONTROLS = [
 		 * visible, and no role pair in either palette measures 1.44. The edge is right; the
 		 * number that justified it was not, and the frames agree with the corrected one.
 		 *
-		 * The stripe carries STATUS: `hairline` at rest (a deliberate quiet bar, ΔE00 9.19 /
-		 * 4.80 against the fill), `warning` when unreachable, `danger` when suspect. THIS
-		 * DEVICE IS A RING RATHER THAN A STRIPE (design round 1, D6) - `ring-2
-		 * ring-accent` - so identity and status are different channels instead of the
-		 * accent sharing the stripe the three anomalies spend. The ink edge a selected node
-		 * takes is state too, measured as ink on this fill, already above its floor.
+		 * The stripe carries REACH, not `state` (mesh redesign, design round's D2): `hairline`
+		 * at rest and for the two neutral states (`not-attempted` - the app never dialled -
+		 * and `unknown` - no read named it), `warning` when the device was asked and did not
+		 * answer, `danger` for a suspect identity, which outranks every probe result. The
+		 * stripe used to be keyed on `state`, which painted a device nobody had dialled the
+		 * amber of `unreachable`. THIS DEVICE IS A RING RATHER THAN A STRIPE (design round
+		 * 1, D6) - `ring-2 ring-accent` - so identity and status are different channels
+		 * instead of the accent sharing the stripe the anomalies spend. The ink edge a
+		 * selected node takes is state too, measured as ink on this fill, already above its
+		 * floor.
 		 */
 		name: "mesh device node",
 		on: ["sunken"],
 		fill: "elevated",
 		border: "borderControl",
 		ink: "ink",
+	},
+	{
+		/*
+		 * THE SETUP WINDOW'S RAIL, and the row is here because the surface was
+		 * unlisted when it mattered (design round 2, D7): the palette half of the
+		 * working ring's stroke was always legal, while the CLASS picked the faintest
+		 * token in the system - and "green output on an unlisted component is not
+		 * evidence about that component" is this file's own warning.
+		 *
+		 * The rail's three ring markers - the waiting ring, the running step's
+		 * marker, and the head mark, the last two being one object - are strokes
+		 * with no fill, so their boundary IS the token this row asserts:
+		 * `borderControl` against `canvas`, measured 3.13-3.42:1 light /
+		 * 3.49-4.00:1 dark on the committed frames. The working marks shipped in
+		 * `hairline` and measured 1.22-1.50:1 there - ~2.8x below the rings that
+		 * mean "not yet", the faintest object in the column - which is the pair
+		 * this row would have failed; the class strings are pinned beside it in
+		 * `STRUCTURAL_CALL_SITES` so the token the component picks cannot regress
+		 * silently either.
+		 *
+		 * `ink` is the rail's label (`text-ink` on `canvas`); the markers paint no
+		 * text themselves. The accent quadrant and the finished dot spend `accent`
+		 * on this ground, the same fill pair the `primary button` row asserts.
+		 */
+		name: "installer rail ring markers",
+		on: ["canvas"],
+		fill: null,
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
+		 * The Mesh canvas's scope layer: the SOLID enclosure around a group of devices whose
+		 * published addresses support a claim (`mesh-scope-layer.tsx`).
+		 *
+		 * WHY THE SOLID TIER NEEDS A ROW AND THE DASHED ONE DOES NOT. The two tiers must not
+		 * be told apart by hue, so the difference is the DASH - and that makes the solid
+		 * enclosure the only visual marker of a verified grouping, i.e. its removal loses
+		 * information. It is therefore structural and takes `border-control` rather than the
+		 * decorative `hairline` the dashed tier uses; the dashed tier spends `hairline`
+		 * (no floor, decoration) and its `ink-dim` label is measured by this file's ink
+		 * floors already (`inkDim` on `sunken` is 5.00:1 at worst, `rosePineDawn`).
+		 *
+		 * The enclosure has NO FILL - it is a frame around nodes that keep their own
+		 * `elevated` fill - so `fill: null` makes the ink assertion "this file's label ink on
+		 * the ground it is drawn on", which is what the tier's label is: on `sunken`, beside
+		 * the frame, never on a control's own fill.
+		 *
+		 * MEASURED across the 59 palettes: the edge (`borderControl` on `sunken`) is 4.14:1 on
+		 * `localOperatorDark` and 3.20:1 on `localOperatorLight`, 3.01:1 at worst
+		 * (`rosePineDawn`) - above the 3:1 a boundary owes. The label (`inkMuted` on `sunken`)
+		 * is 9.08 / 7.18, 5.53:1 at worst (`kanagawaLotus`), above its own floor.
+		 */
+		name: "mesh scope boundary (solid)",
+		on: ["sunken"],
+		fill: null,
+		border: "borderControl",
+		ink: "inkMuted",
 	},
 ];
 
@@ -1454,6 +1573,16 @@ const ADJACENT = [
  * set of semantics that passes on average is not a set of semantics.
  */
 const GRAPHICS = [
+	{
+		/*
+		 * The completion mark on a follow-up turn bar (`turn-summary.tsx`'s
+		 * `CircleCheck`): `success` ink drawn straight on the transcript's canvas,
+		 * the pair the checkpoint rail already paints for `complete`.
+		 */
+		name: "turn bar complete mark",
+		on: ["canvas"],
+		fg: "success",
+	},
 	...["success", "warning", "danger"].map((role) => ({
 		name: `usage bar fill (${role})`,
 		/* Drawn inside the track, which is `sunken`. */
@@ -1564,7 +1693,8 @@ const GRAPHICS = [
 	},
 	{
 		/*
-		 * The checkpoint rail's ticks (`checkpoint-rail.tsx`; design D5).
+		 * The checkpoint rail's marks (`checkpoint-model.ts` holds the role
+		 * map the rail paints; design D5, dsh rework 2026-09-29).
 		 *
 		 * A mark that is ALSO a control: each tick is a 3px bar inside a 24x12
 		 * invisible hit target, and it has to be findable at a glance — the rail
@@ -1627,6 +1757,22 @@ const GRAPHICS = [
 		 * repeating a pairing another loop covers.
 		 */
 		name: "link toolbar action icon (hovered)",
+		on: ["accentWash"],
+		fg: "accent",
+	},
+	{
+		/*
+		 * The search overlay's ACTIVE result row: the 2px accent bar on its
+		 * leading edge.
+		 *
+		 * The same pairing the link toolbar's row above asserts (`accent` on
+		 * `accentWash`, 4.53:1 at worst), listed under its own name because it is
+		 * a new component's mark and this file's rule is that green output about
+		 * a component nobody listed is no evidence about that component. The bar
+		 * is what distinguishes the row Enter opens from the pointer's own tint
+		 * on the ground where the wash alone cannot.
+		 */
+		name: "search result active bar (accent)",
 		on: ["accentWash"],
 		fg: "accent",
 	},
@@ -1774,6 +1920,30 @@ const PERCEPTIBLE = [
 		pairedWith: "sunken",
 		maxWeightChange: 2.0,
 		against: "sunken",
+	},
+	{
+		/*
+		 * THE TURN-ANSWER RAIL (`turn-answer-rail.ts`, opt-in `display.turn_answer_rail`):
+		 * a 1px `border-hairline` rule beside the elected answer, on the transcript's
+		 * `canvas`. It is decorative - the layout already identifies the answer - so
+		 * it owes being SEEN rather than a 3:1 floor, and it is the quieter of the
+		 * two roles that could carry it (#708 used `ink-dim` at 2px, which the
+		 * operator found ugly).
+		 *
+		 * THE FLOOR IS 4.0, NOT THE PRESET THRESHOLD, and that is the design round's
+		 * finding rather than taste: measured across all 59 palettes this pair is
+		 * ΔE00 4.42 at its weakest (`rosePineDawn`, 1.20:1 - a rule a reader could
+		 * take for a rendering artefact) and 9.39 at the median. A 3.0 floor would
+		 * sit 1.4 BELOW the weakest palette that ships today, so it could not catch a
+		 * palette drifting toward invisible - which is the only reason to write the
+		 * row at all. 4.0 pins what ships with 0.42 of headroom and still leaves the
+		 * step to be re-argued if a future palette cannot clear it (design round 1,
+		 * D1).
+		 */
+		name: "turn answer rail",
+		role: "hairline",
+		on: ["canvas"],
+		minDeltaE: 4.0,
 	},
 	{
 		name: "context wheel track, empty state",
@@ -2200,7 +2370,7 @@ const STRUCTURAL_CALL_SITES = [
 		 * and the mention chip's fill is now measured against `elevated`.
 		 */
 		what: "composer box ground",
-		file: "src/renderer/src/features/chat/components/message-input.tsx",
+		file: "src/renderer/src/shared/components/composer/message-input.tsx",
 		must: '"mx-auto flex w-full flex-col bg-elevated"',
 		why: "the mention chip's fill step is measured against the box's own ground and the box's separation from the column is that ground step, not an edge: repainting it `canvas` merges the composer into the transcript and takes the chip's step below its floor in obsidian, and neither is visible in any single file",
 	},
@@ -2419,6 +2589,12 @@ const STRUCTURAL_CALL_SITES = [
 		why: "the pointer's mark and the in-flight mark must be perceivable in every theme, which a wash-based mark is not: the role it needs is asserted as `picker row pointer mark` above, and this pin is what proves the row renders it (design D12)",
 	},
 	{
+		what: "turn answer rail role",
+		file: "src/renderer/src/features/chat/canonical/turn-answer-rail.ts",
+		must: '"-ml-[13px] border-hairline border-l pl-3"',
+		why: "PERCEPTIBLE measures hairline against canvas as `turn answer rail`; nothing otherwise proves the rail renders that role, and a swap to a louder or fainter ink would keep the gate green",
+	},
+	{
 		what: "context wheel empty track role",
 		file: "src/renderer/src/features/chat/session-status/context-wheel.tsx",
 		must: 'hasArc ? "stroke-sunken" : "stroke-hairline"',
@@ -2610,7 +2786,8 @@ const STRUCTURAL_CALL_SITES = [
 	{
 		/*
 		 * The settings rail's current row, which was the same defect on the same
-		 * ground: the rail's root is `bg-surface` (`settings-sidebar.tsx`) and it
+		 * ground: the rows read against `surface`, which the rail's group lists
+		 * carry (the root moved to `bg-elevated` on 2026-09-27), and it
 		 * marked its current section with `accent-wash` — ΔE00 1.05 in tokyoNight
 		 * (`#262B3F` on `#24283B`), a row with no ground at all, identifiable only by
 		 * its accent glyph and weight. It is here rather than in a set of its own
@@ -2726,6 +2903,37 @@ const STRUCTURAL_CALL_SITES = [
 	},
 	{
 		/*
+		 * The condensed action group's media tile: THE EDGE RETURNS WHERE THE TILE IS
+		 * A CONTROL (design review round 1, D2; re-decided by the operator's "drop the
+		 * ring" change, where the design round's D1 recorded the trade).
+		 *
+		 * The tile IS a focusable `<button>`, so when its edge is drawn it is a control
+		 * boundary and answers to 3:1 (SC 1.4.11) rather than to taste. The palette
+		 * rows above already prove the COLOUR clears the floor - "outline control"
+		 * measures `borderControl` on all four grounds - and what only this pin can
+		 * see is the edit that puts the returning edge on the decorative `hairline`
+		 * (1.25:1 against the light transcript, no floor) or drops the focus half: a
+		 * keyboard reader has NO other resting boundary on a borderless tile, so the
+		 * `focus-visible` arm is the one that must not be deleted unseen.
+		 */
+		what: "condensed group media tile edge (hover and keyboard focus)",
+		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
+		must: '"group-hover/tile:border-control group-focus-visible/tile:border-control"',
+		why: "a media tile is a button whose edge now appears only on hover and keyboard focus; dropping either arm, or moving it to `hairline`, leaves the pair green in every palette row while the tile loses the boundary of the state in which it is a control, which no ratio in this file can see",
+	},
+	{
+		/*
+		 * The failed receipt keeps the edge AT REST: a card in a state keeps its edge
+		 * because the state is the information, and with no picture the receipt has no
+		 * other extent (branding section 2).
+		 */
+		what: "condensed group failed-tile receipt edge",
+		file: "src/renderer/src/features/chat/components/message-item/attachment-frame.tsx",
+		must: "rounded-sm border border-control bg-sunken",
+		why: "the compact receipt has no picture to give it an extent, so its `border-control` is its only boundary; removing it with the working tile's edge (which the operator asked to drop) would leave a bare glyph in a well",
+	},
+	{
+		/*
 		 * THE STATUS BAND'S REMEDY, the same class of pin as the failure alert's
 		 * above and mirrored from it deliberately: the palette rows
 		 * ("primary button on the danger wash", "primary remedy on the warning
@@ -2759,16 +2967,81 @@ const STRUCTURAL_CALL_SITES = [
 		 * The checkpoint rail tick's fill, at its call site.
 		 *
 		 * The GRAPHICS row of the same name proves `inkDim` clears the floor on
-		 * `canvas`; only this pin can see the edit that repaints the 3px bar in a
-		 * role nothing floors — `inkDisabled` (exempt from every floor by `§ 6`,
+		 * `canvas`; only this pin can see the edit that repaints the rest mark in
+		 * a role nothing floors — `inkDisabled` (exempt from every floor by `§ 6`,
 		 * the role the usage mark above actually shipped in) or `hairline` (capped
 		 * below 2:1 by design). Either edit keeps every palette assertion green
-		 * while the rail's ticks stop being findable.
+		 * while the rail's ticks stop being findable. The class string lives in
+		 * `checkpoint-model.ts`'s role map (the dsh rework extracted it from the
+		 * component); the pin follows the string, not the file it used to sit in.
 		 */
 		what: "checkpoint rail tick fill",
-		file: "src/renderer/src/features/chat/canonical/checkpoint-rail.tsx",
+		file: "src/renderer/src/features/chat/canonical/checkpoint-model.ts",
 		must: "bg-ink-dim",
 		why: "the tick's fill is its whole visible affordance — a mark with no label and no edge — so repainting it to a floor-exempt role erases the rail's navigation with no palette assertion able to see it",
+	},
+	{
+		/*
+		 * The search overlay's ACTIVE result row, at its call site.
+		 *
+		 * The row Enter opens is the one the reader is deciding about, and the
+		 * family's own history is why this pin exists: a selection carried by
+		 * `accent-wash` alone is ΔE00 0.77 on `elevated` in obsidian (1.014:1) —
+		 * the defect D12 records for the picker and the slash popup — so the wash
+		 * is paired with a 2px `accent` bar on the leading edge, the same second
+		 * signal `slash-commands.tsx` and `at-picker.tsx` draw. The bar is the
+		 * non-luminance mark, so the pin holds the composed class: dropping the
+		 * bar leaves every palette row green while the row Enter will open stops
+		 * being distinguishable in the themes the wash collapses in.
+		 */
+		what: "search result row active mark",
+		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		must: "before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-accent",
+		why: "the active row's fill is a wash that collapses onto the panel's own ground in four of twelve themes; the 2px accent bar is its second, non-luminance signal, and only this pin can see the class string that draws it",
+	},
+	{
+		/*
+		 * The marked runs inside a result's snippet.
+		 *
+		 * `bg-accent-wash text-ink` is the app's find-match idiom (the WYSIWYG
+		 * editor's `FIND_MATCH_CLASS`), and the ink half is what keeps it legal:
+		 * the INKS loop asserts `ink` on `accentWash` at the strong-text floor.
+		 * The rest of the string is deliberately pinned too, because the frames
+		 * proved the fill cannot carry the mark alone: on the panel's `elevated`
+		 * ground the wash measures ΔE00 0.77 in obsidian (2 mentions of the
+		 * matched word, no mark), so the ACCENT UNDERLINE is the signal that
+		 * cannot collapse — `accent` is asserted at the 3:1 structural floor on
+		 * every ground by this file's `STRUCTURAL` list — and `font-medium` is
+		 * what keeps the mark readable on the two row states whose fill is the
+		 * same wash. A repaint that keeps the fill but drops the underline or
+		 * the weight keeps every palette assertion green while the match stops
+		 * being findable in four of twelve themes.
+		 */
+		what: "search match mark in a snippet",
+		file: "src/renderer/src/features/chat/canonical/thread-search-overlay.tsx",
+		must: "bg-accent-wash font-medium text-ink underline decoration-accent decoration-2 underline-offset-2",
+		why: "the match mark is the one place the query's own characters are shown, and a wash-only mark is invisible on the panel's own ground in the themes the neighbour pin lists; the accent underline is the non-luminance half and the weight covers the row states that share the wash",
+	},
+	{
+		/*
+		 * The setup rail's two working marks - one pin per site, because a substring
+		 * check cannot see WHICH occurrence of a shared class string survived and a
+		 * single pin would stay green while the other site regressed (design round
+		 * 2, D7). Under `hairline` the two measured 1.22-1.50:1 against the waiting
+		 * rings' 3.13-3.42:1: the mark that says "working" was the faintest object
+		 * in the column, and no palette row can see which token the class picked.
+		 * The palette half of the pair is the `installer rail ring markers` row.
+		 */
+		what: "the installer rail's running mark stroke",
+		file: "src/renderer/src/features/installer/components/installer-panel.tsx",
+		must: "size-3 animate-install-turn rounded-full border-2 border-control border-t-accent",
+		why: "the running mark is a stroke with no fill, so this token is its only boundary; `hairline` here was 1.22:1 against the waiting rings' 3.13-3.42:1, and only this pin sees the class edit the palette row cannot",
+	},
+	{
+		what: "the installer rail's head mark stroke",
+		file: "src/renderer/src/features/installer/components/installer-panel.tsx",
+		must: "animate-install-turn absolute -top-2.5 left-0.5 size-3 rounded-full border-2 border-control border-t-accent",
+		why: "the head mark is the running mark at the rail's head - the same object in the same stroke - and a single pin would stay green while this site regressed",
 	},
 ];
 
