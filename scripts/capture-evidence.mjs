@@ -991,6 +991,15 @@ export const STORIES = [
 		},
 	],
 	["chat-turn-collapse--parked", 1280, 900],
+	/*
+	 * THE COMPLETION-VISIBILITY CELL (`CompletionsBothVisible`): the operator's
+	 * shape `U T88 A1(stop) W T3 A2(stop) K` - a fulsome completion, a wake, a
+	 * short reply - with both completions visible and the work between them
+	 * condensed. The before half is the same cell captured from the base tree
+	 * (the story file copied into a base worktree), where the fulsome close is
+	 * inside the bar.
+	 */
+	["chat-turn-collapse--completions-both-visible", 1280, 900],
 
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence

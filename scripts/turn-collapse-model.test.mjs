@@ -1849,9 +1849,36 @@ test("#665: the answer is never hidden behind the bar", () => {
 		false,
 		"and so does the run's LAST close (V2): the post-dispose reply is the last word",
 	);
-	assert.ok(
-		plan.runs[0].hidden.length > 0,
-		"the follow-up's own work still condenses into its bar",
+	/*
+	 * THE BAR'S CONTENTS, not only its existence (agent review round 1, finding 4):
+	 * `hidden.length > 0` keeps passing if a later widening of the visible set eats
+	 * the follow-up's own bar down to one row. The follow-up's span is the run's
+	 * LAST segment, and its `segmentIds` are exactly the rows that bar stands in
+	 * for - the post-answer receipts and the calls they prompted.
+	 */
+	const followUp = plan.runs[0].segments.at(-1);
+	assert.equal(followUp?.afterAnswer, true, "the last bar is the follow-up's");
+	assert.deepEqual(
+		followUp?.segmentIds,
+		[
+			"entry-001203",
+			"entry-001204",
+			"entry-001206",
+			"entry-001208",
+			"tool:call-1208-0",
+			"entry-001211",
+			"tool:call-1211-0",
+			"entry-001214",
+			"tool:call-1214-0",
+			"tool:call-1217-0",
+			"tool:call-1220-0",
+			"entry-001223",
+			"tool:call-1223-0",
+			"entry-001226",
+			"tool:call-1226-0",
+			"tool:call-1226-1",
+		],
+		"the follow-up's own work still condenses into its bar, row for row",
 	);
 });
 

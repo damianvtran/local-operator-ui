@@ -40,10 +40,16 @@
  *
  * WHAT STAYS ON SCREEN is a SEPARATE question from what the answer is, and it has
  * its own invariant (see `partitionRun`): a settled, text-bearing row stays
- * visible unless it is a lead-in to the call that follows it, and a `user` row is
- * never hidden at all. Several of those closes can therefore be visible at once
- * while the turn still has exactly one elected answer - the answer is what the
- * foot, the stamp and the caption key on, and nothing here changes that.
+ * visible when it is the close of a RESPONSE cycle (V1), the run's LAST close
+ * whatever its class (V2), a `user` row (V3), or a row the provider declared
+ * finished (V4) - plus the pinned rows, as before. NOT COVERED, stated plainly
+ * because a review round found it: a COMMENTARY close that is neither the run's
+ * last close nor `stop`-declared, with nothing but more assistant text after it,
+ * still hides. That is one row in 15,125 runs on this machine's journals - rare
+ * but real, and it is the original complaint in miniature (the close shown after
+ * it is shorter than the one hidden). Several closes can therefore be visible at
+ * once while the turn still has exactly one elected answer - the answer is what
+ * the foot, the stamp and the caption key on, and nothing here changes that.
  */
 
 import type { TranscriptRecord } from "./transcript-reducer";
@@ -147,11 +153,26 @@ export type BoundaryKind = "compaction" | "terminal";
  * would happen to separate them, and is still the wrong instrument: a phase says
  * what the model MEANT, and it keeps working for a terse report (the 261-character
  * wake reply in the operator's own journal is the whole complaint). Measured on
- * this machine's own journals (10,324 journals, 14,354 runs), the rows this rule
- * adds stay at 2.5 % of prose rows and 0.39 per run.
+ * this machine's own journals (the frozen 2026-10-01 recount recorded on PR #737:
+ * 10,367 journals, 15,130 runs, 254,999 prose rows), the rows this rule adds stay
+ * at 3,841 = 1.51 % of prose rows and 0.254 per run.
+ *
+ * THE PHASE AND THE SHAPE BARELY DISAGREE, WHICH IS THE POINT. On the same frozen
+ * corpus 20,933 rows declare `stop` and 233,783 declare `toolUse`, and the two
+ * populations are almost disjoint in shape: only **4** of the 20,933 `stop` rows
+ * carry their OWN `tool_calls` (the lead-in frame), and exactly **1** of the
+ * 233,783 `toolUse` rows is not followed by a call. So a length test would happen
+ * to separate them too - and would still be the wrong instrument, because it reads
+ * the symptom while the phase reads what the model MEANT. The price of reading the
+ * declaration is those 4 leading-in `stop` rows staying visible; the price of
+ * reading the shape would be every terse report hiding again.
  *
  * UNKNOWN IS ABSENT. `null`/`undefined` never fires, so a record built without the
- * field behaves exactly as it did before this predicate existed.
+ * field behaves exactly as it did before this predicate existed. Where it bites: on
+ * this machine's journals NO text-bearing assistant row lacks the field at all
+ * (`null`/`undefined`: 0 rows; other reasons such as `aborted` / `length`: 285 =
+ * 0.11 %), so this clause is exercised by fixtures and by callers that build
+ * records by hand - it is compatibility, not a live path.
  */
 export function reportsCompletedThought(record: TranscriptRecord): boolean {
 	return (
@@ -404,6 +425,15 @@ export type RunPartition = {
  *   admit it (`labelOfSegment`); the surveyed harnesses all keep the reader's own
  *   message in place, and the cost is measured (11.6 % of runs gain one bar);
  * - V4, a settled row the provider declared finished (`reportsCompletedThought`).
+ *
+ * WHAT THE FOUR CLAUSES DO NOT COVER (the falsifier agent review round 1 on PR
+ * #737 produced, and it is real): a COMMENTARY close that is neither the run's
+ * last close (V2) nor `stop`-declared (V4), with no call after it, still hides -
+ * e.g. `[N0][W][K][N3][N4]`, where `n3` is commentary and the row after it is
+ * another assistant row, not a call. Incidence on this machine's journals: exactly
+ * 1 row in 15,125 runs. It is kept as a known residual rather than closed, because
+ * the clause that would cover it - "any commentary close, visible" - would un-hide
+ * the ambient chatter V1/V2 were already shaped to fold.
  *
  * A V4 ROW IS STILL NOT A CLOSE. It is visible while the run has more work after
  * it, so it splits its segment without splitting its cycle - `isClose`, `cyclesOf`
