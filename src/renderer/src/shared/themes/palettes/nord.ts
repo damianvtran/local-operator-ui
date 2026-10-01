@@ -104,6 +104,9 @@ export const nord: ThemeDefinition = {
 		// Nord has no rule colour. This holds ΔE00 4.1 from every ground and 1.21-1.68:1
 		// against them: a 1px line, not a border.
 		hairline: "#474E5F",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.82:1 there against `hairline`'s 1.68:1.
+		hairlineStrong: "#4C5364",
 		// Nord3 4C566A is 1.36:1 against the grounds — an inactive-tone value in a
 		// structural role. Lifted along the same blue-grey to 3.1:1 on the lightest
 		// ground.

@@ -114,6 +114,12 @@ export const oneLight: ThemeDefinition = {
 		inkDisabled: "#A0A1A7",
 
 		hairline: "#CECED1",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.52:1 there against `hairline`'s 1.19:1.
+
+		hairlineStrong: "#B7B7BB",
 		// Canonical mono-2, which clears the 3:1 structural floor on all four grounds
 		// where it could not clear 4.5 as text.
 		borderControl: "#696C77",

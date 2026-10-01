@@ -153,6 +153,9 @@ export const catppuccinMocha: ThemeDefinition = {
 		 * lands at 1.16:1 against `elevated` at its tightest.
 		 */
 		hairline: "#3F3F5D",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.66:1 there against `hairline`'s 1.51:1.
+		hairlineStrong: "#444563",
 		// Upstream surface1 45475A is 1.54:1 against the lightest ground — a decorative value
 		// in a structural role, and the one role a palette is most likely to get wrong.
 		// Walked away from the grounds along the same slate to 3.1:1, which is where every

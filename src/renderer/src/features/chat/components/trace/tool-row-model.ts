@@ -207,6 +207,352 @@ function sendSummary(args: Record<string, unknown>): string {
 }
 
 /**
+ * How a `send` call's delivery ended, as the core states it in
+ * `details.delivery.state`.
+ *
+ * FOUR states, because the sender can only learn two facts independently - did
+ * the message land, and did the wake get answered - and collapsing the middle
+ * two would force the row into a claim it cannot back:
+ *
+ * - `delivered`: landed, and the wake (if one was asked for) was answered.
+ * - `mailbox`: landed (the recipient's transcript holds it) but the wake got no
+ *   answer; it reads the message on its next turn. NOT a failure.
+ * - `unconfirmed`: no answer and no evidence it landed. It may still arrive, so
+ *   the row says neither "sent" nor "failed".
+ * - `failed`: nothing landed. The only state the core flags `is_error`.
+ *
+ * Read from structured `details`, never from the result text: the text is prose
+ * the core is free to reword, and sniffing it is how a renderer ends up
+ * claiming a delivery it cannot verify. An ABSENT or UNKNOWN value is `null`,
+ * which every caller treats as "no statement" and so falls back to exactly what
+ * the row did before this field existed (old transcripts, old cores, and a
+ * future core's new state all degrade to the plain tick/failure pathway).
+ */
+export type SendDeliveryState =
+	| "delivered"
+	| "mailbox"
+	| "unconfirmed"
+	| "failed";
+
+const SEND_DELIVERY_STATES: ReadonlySet<string> = new Set([
+	"delivered",
+	"mailbox",
+	"unconfirmed",
+	"failed",
+]);
+
+/** The delivery state a result's `details` states, or `null` when it states none. */
+export function deliveryStateFromDetails(
+	details: unknown,
+): SendDeliveryState | null {
+	if (!details || typeof details !== "object") return null;
+	const delivery = (details as Record<string, unknown>).delivery;
+	if (!delivery || typeof delivery !== "object") return null;
+	const state = (delivery as Record<string, unknown>).state;
+	return typeof state === "string" && SEND_DELIVERY_STATES.has(state)
+		? (state as SendDeliveryState)
+		: null;
+}
+
+/**
+ * The delivery state a row should hold after a frame, under `preferDiff`'s
+ * "absent vs stated" rule: a frame with NO `details` object (the live-event
+ * budget strips it above a quarter of the row's share) says nothing and keeps
+ * `previous`, while a frame WITH one is the producer's statement and wins -
+ * including a statement that names no state.
+ */
+export function preferDeliveryState(
+	details: unknown,
+	previous: SendDeliveryState | null | undefined,
+): SendDeliveryState | null {
+	if (!details || typeof details !== "object") return previous ?? null;
+	return deliveryStateFromDetails(details);
+}
+
+/**
+ * The trailing word a send row prints for a state, in the slot a failure's word
+ * takes. Only the three states that need saying have one: a delivered row is
+ * silent like every other success. Each word is distinct from the others with
+ * the colour off, and none is `failed` - "Sent ... failed" reads as a statement
+ * about the message, while `not delivered` states the fact the reader acts on
+ * (the same precedent as `never ran`).
+ *
+ * BOTH AMBER WORDS NAME THEIR SUBJECT (agent review round 1 / UX U2). The fourth
+ * state drew the bare `unconfirmed` for one round, which is a VERDICT at the row's
+ * trailing edge - `Sent ... unconfirmed` reads as "it did not go", the single
+ * reading that leads to the resend this state exists to prevent - and it was
+ * also the vaguer, shorter word for the state where a wrong guess costs a
+ * duplicate delivery. `unconfirmed` is what the word is ABOUT, never the word:
+ * either it stands where the row's name gives it a subject (`wake unconfirmed`)
+ * or it carries its own (`delivery unconfirmed`).
+ */
+export const SEND_DELIVERY_WORD: Readonly<
+	Partial<Record<SendDeliveryState, string>>
+> = {
+	mailbox: "wake unconfirmed",
+	unconfirmed: "delivery unconfirmed",
+	failed: "not delivered",
+};
+
+/**
+ * The hover text on the word, for the two amber states whose word alone
+ * under-tells them.
+ *
+ * WHICH OF THESE ARE QUOTED AND WHICH ARE OURS (agent review round 1). The
+ * `mailbox` sentence is the frozen interface's, verbatim. The `unconfirmed` one
+ * is THIS PR's OWN composition - the frozen interface fixes a hover for
+ * `mailbox` alone - and the design round records it in its own note in round 2;
+ * until then it is copy this change authored, and no test may cite it as a
+ * requirement (see `scripts/tool-row.test.mjs`). `failed` needs none: its word
+ * is the whole statement, and a hover would only repeat it.
+ */
+export const SEND_DELIVERY_TITLE: Readonly<
+	Partial<Record<SendDeliveryState, string>>
+> = {
+	mailbox:
+		"In their mailbox. The wake got no answer, so they will read it on their next turn.",
+	unconfirmed:
+		"No wake answer and not yet in their transcript — it may still arrive. Check before resending.",
+};
+
+/**
+ * The wrapping, reader-facing sentence the EXPANSION prints for a state.
+ *
+ * Why it exists at all (UX round 1, U1/U4 - major). The result text is a
+ * machine line: it is one `whitespace-pre` line inside an `overflow-x: auto`
+ * box, so at ordinary widths the half that tells the reader what to DO sits off
+ * the right edge behind a scrollbar macOS does not even draw - measured on the
+ * round-1 frames as 811 px of the mailbox sentence and 1423 px of the
+ * `unconfirmed` one. The reader who expanded the row precisely to find out what
+ * to do got `… — the wake`.
+ *
+ * So the instruction gets its own line, and this is the UI's copy rather than
+ * the core's: it WRAPS (so it cannot be clipped), it names the reader's own
+ * actions, and it carries no agent API - `sessions(op="peek", …)` belongs to the
+ * model-facing string, where the reader is a model. The raw result text is NOT
+ * removed: it stays as the row's `Output` block, which is where the pid, the
+ * message id and the attempt count live for anyone who wants them.
+ *
+ * `delivered` has no entry by design: a success says nothing, and the expansion
+ * of a delivered send is the row it always was.
+ */
+export const SEND_DELIVERY_NOTE: Readonly<
+	Partial<Record<SendDeliveryState, string>>
+> = {
+	mailbox:
+		"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
+	unconfirmed:
+		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
+	failed:
+		"Nothing was delivered. Fix the cause named below, or retry the send.",
+};
+
+/**
+ * What assistive tech hears for each state (the word is drawn, this is spoken).
+ *
+ * The AMBER state's spoken sentence carries the hedge its hover carries (UX
+ * round 1, U3): the drawn word is `aria-hidden` whenever the two differ, so the
+ * label is the whole of what a reader with no screen sees - and `delivery
+ * unconfirmed` on its own is "it did not go", the reading the hover exists to
+ * correct. A hedge that only a mouse can reach is not a hedge.
+ *
+ * `failed` has no entry: its drawn word IS the announcement, so an entry here
+ * would be a string nothing renders (agent review round 1, residue).
+ */
+export const SEND_DELIVERY_LABEL: Readonly<
+	Partial<Record<SendDeliveryState, string>>
+> = {
+	mailbox: "delivered, wake unconfirmed",
+	unconfirmed:
+		"delivery unconfirmed — it may still arrive, so check before resending",
+};
+
+/**
+ * Whether a state is the AMBER middle: settled without a failure claim, yet not
+ * the plain success either.
+ */
+export function isPartialDelivery(
+	state: SendDeliveryState | null | undefined,
+): state is "mailbox" | "unconfirmed" {
+	return state === "mailbox" || state === "unconfirmed";
+}
+
+/**
+ * The row outcome a `send` delivery state earns, or `null` when it earns none.
+ *
+ * `null` is the answer for `delivered` (a success draws nothing, so the row keeps
+ * the outcome it already had), for an absent or unknown state, and for every
+ * non-`send` row - which is what keeps an old transcript on exactly the path it
+ * had before this field existed.
+ *
+ * `failed` maps to `null` too, and NOT to `error`: the failed row's outcome is
+ * the one it already had (`isError`), and the word it prints comes from
+ * `SEND_DELIVERY_WORD` inside the status cluster. An `"error"` return existed
+ * for one round with no production caller (agent review round 1, residue), and a
+ * branch that describes a caller that does not exist is a future edit that
+ * silently does nothing.
+ */
+export function deliveryRowOutcome(
+	state: SendDeliveryState | null | undefined,
+): "partial" | null {
+	return isPartialDelivery(state) ? "partial" : null;
+}
+
+/**
+ * The settled VERB a `send` row prints when its delivery did not happen, or
+ * `null` when the tool's own verb stands.
+ *
+ * `Attempted` for `failed` alone, and the reason is the row's own sentence (UX
+ * round 1, U8): the ledger's settled verb is `Sent`, so the one state that says
+ * `not delivered` read `Sent … not delivered` - the row contradicting itself in
+ * six words, on the state whose whole job is to be unambiguous. The settled verb
+ * is there to name the ATTEMPT (the design note's own convention, which is why
+ * the amber rows keep `Sent`), and an attempt that provably delivered nothing is
+ * exactly that: an attempt.
+ *
+ * Deliberately not the amber states: `Sent … wake unconfirmed` claims only that
+ * the attempt was made, which is true there - the message is in the mailbox.
+ */
+export function deliverySettledVerb(
+	state: SendDeliveryState | null | undefined,
+): string | null {
+	return state === "failed" ? "Attempted" : null;
+}
+
+/**
+ * Whether a settled result is a FAILURE for the counts that mean it: the fold's
+ * `N failed`, the turn foot's `· N failed`, and the row the failed-row jump
+ * targets.
+ *
+ * `isError` alone is the whole answer for every tool this row model knows, and
+ * it stays the answer here - the core leaves `is_error` false for `mailbox` and
+ * `unconfirmed`. The predicate exists so the exception is STATED at the sites
+ * that count rather than ASSUMED of the producer: a partial `send` settled
+ * without failing, and a count that read one as a failure would jump the reader
+ * to a message that is sitting in the peer's inbox, which is the claim the whole
+ * state model was added to stop making.
+ *
+ * The sibling rule (`turn-collapse-model.ts`'s `isFailedCall`) carries the other
+ * exclusions - never-sent, stopped, interrupted. Both read the same two facts,
+ * so a partial result is excluded by both.
+ */
+export function isFailedResult(
+	isError: boolean | null | undefined,
+	delivery: SendDeliveryState | null | undefined,
+): boolean {
+	if (isError !== true) return false;
+	return !isPartialDelivery(delivery);
+}
+
+/**
+ * The one thing an addressed `sessions` call acts on, in the resolver's order.
+ *
+ * `pid`, then the exact session id, then the name/cwd substring - the same
+ * precedence the tool's own resolver uses (`docs/design/sessions-tool.md` §3.2
+ * in `damianvtran/local-operator`, and the TUI's `_sessions_address`), so the
+ * row cannot disagree with the call about WHICH session it names. `?` rather
+ * than blank when an addressed op names no address: the row is painted before
+ * the call settles, and a blank slot reads as though the next field were the
+ * target (the send row's rule).
+ *
+ * The `session ` prefix the send row spells is dropped here because the VERB
+ * already carries the noun (`Stopped session session 5d3f2a9c` stutters); `pid`
+ * keeps its marker, which the number alone would not say.
+ *
+ * `pid` reads through `numberFrom` for the reason `steps`/`head` do: the
+ * schema's lax int executes `"48213"` and `"48213.0"` as pid 48213, so a row
+ * painting `?` for a call that executed is the one disagreement this function
+ * exists to prevent - while a non-integer float, which the schema REFUSES,
+ * must not paint a `pid` at all and falls through to the address ladder
+ * (review round 1, R-3).
+ */
+function sessionsAddress(args: Record<string, unknown>): string {
+	const pid = numberFrom(args.pid);
+	if (pid !== null && Number.isInteger(pid)) return `pid ${pid}`;
+	return scalarText(args.session) || scalarText(args.target) || "?";
+}
+
+/**
+ * The peek row's window, in the op's own words (`last 12` / `first 20`).
+ *
+ * Mirrors `_sessions_peek_window` (`harness/rows.py`, sibling PR
+ * `damianvtran/local-operator` #1825) and the tool's own validation: `query` is
+ * tested FIRST because it is the discriminator that survives beside `steps` -
+ * the tool keeps `steps` as the SIZE of the match window (`query` + `steps=6`
+ * reads six steps around the match, not the tail), so asking for `steps` first
+ * would paint `last 6`, a read the call never makes, and drop the search term.
+ * Numbers arrive as numeric strings in the wild too (the tools' lax ints), so
+ * `numberFrom` feeds the renderers either spelling. Empty when the call names
+ * no window: the tool's default applies, and the row must not claim a value
+ * nobody read (the `hub` peek count's rule, one tool over).
+ */
+function sessionsPeekWindow(args: Record<string, unknown>): string {
+	const query = scalarText(args.query);
+	if (query) {
+		const steps = numberFrom(args.steps);
+		return steps !== null && Number.isInteger(steps) && steps >= 0
+			? `search ${query} · ${steps} around`
+			: `search ${query}`;
+	}
+	const steps = numberFrom(args.steps);
+	if (steps !== null && Number.isInteger(steps) && steps >= 0)
+		return `last ${steps}`;
+	const head = numberFrom(args.head);
+	if (head !== null && Number.isInteger(head) && head >= 0)
+		return `first ${head}`;
+	if (args.digest === true) return "digest";
+	const before = scalarText(args.before_id);
+	if (before) return `before ${before}`;
+	const around = scalarText(args.around_id);
+	return around ? `around ${around}` : "";
+}
+
+/**
+ * `sessions`' summary: the discriminator leads, and the verb carries the op.
+ *
+ * The TUI and the phone draw ONE shared sentence for this tool
+ * (`sessions_row_summary`, `harness/rows.py`; sibling PR
+ * `damianvtran/local-operator` #1825) whose own doc says why the op leads: both
+ * rows shed from the right, and `stop` and `peek` on one session painted
+ * byte-identical rows without it. THIS row's grammar is verb + object, so the
+ * op lives in the verb (`Spawned session`) and the object carries everything
+ * else: `spawn` its visibility FIRST - both values, the default spelled -
+ * because the invisible disposition is the incident the tool exists to
+ * prevent, and an omitted flag must not be the one thing a narrow row drops
+ * (the `send` row's discriminator rule, one layer down); the addressed ops
+ * their target; `peek` its window; `list` its `stored`/`query` markers.
+ *
+ * Null for an operation this build does not know, so the call falls through to
+ * the generic scan (`Called sessions <scalars>`, the `agent` precedent, which
+ * never guesses a neighbouring claim). Empty string when a known op names
+ * nothing (a bare `list`): the caller reads it as the tool's own name, and a
+ * bare name keeps an empty object rather than echoing itself.
+ */
+function sessionsSummary(args: Record<string, unknown>): string | null {
+	const op = toolOp(args);
+	if (op === "spawn") {
+		const visibility = scalarText(args.visibility) || "workstream";
+		const name = scalarText(args.name) || scalarText(args.prompt);
+		return [visibility, name].filter(Boolean).join(" · ");
+	}
+	if (op === "stop" || op === "resume" || op === "info")
+		return sessionsAddress(args);
+	if (op === "peek") {
+		return [sessionsAddress(args), sessionsPeekWindow(args)]
+			.filter(Boolean)
+			.join(" · ");
+	}
+	if (op === "list") {
+		const parts: string[] = [];
+		if (args.include_stored === true) parts.push("stored");
+		const query = scalarText(args.query);
+		if (query) parts.push(query);
+		return parts.join(" · ");
+	}
+	return null;
+}
+
+/**
  * One-line summary of WHAT the call is acting on.
  *
  * `_summary_from_args` (tool_card.py:492-515): identity arguments first, in
@@ -221,6 +567,13 @@ export function summaryFromArgs(
 	const name = toolName.trim();
 	if (!args) return name;
 	if (name === "send") return sendSummary(args) || name;
+	// Case-folded like every other lookup in this module: the name is
+	// model-controlled, and `Sessions` must not lose its discriminator to the
+	// generic scan.
+	if (name.toLowerCase() === "sessions") {
+		const summary = sessionsSummary(args);
+		if (summary !== null) return summary || name;
+	}
 	/*
 	 * The operation selector is not an object, once a verb table reads it.
 	 *
@@ -556,6 +909,7 @@ const CATEGORIES: Record<string, ToolCategory> = {
 	project: "meta",
 	team_delete: "meta",
 	project_delete: "meta",
+	sessions: "meta",
 };
 
 /**
@@ -876,6 +1230,23 @@ const TOOL_OP_VERBS: Record<string, Record<string, Omit<ToolVerb, "named">>> = {
 			running: "Previewing rename",
 		},
 	},
+	sessions: {
+		// The `sessions` tool's six ops (`tools/builtin.py`, the design note
+		// `docs/design/sessions-tool.md` §3.1): a lifecycle ladder whose rungs
+		// differ materially - reading a listing, inspecting, spawning,
+		// resuming, stopping, peeking - which is why the verb is keyed by op
+		// rather than the name alone (the operator's 2026-09-27 report's rule).
+		// Every verb carries the noun the way `agent`'s rows do, because the
+		// object column then never has to say `session` twice; `peek` keeps the
+		// family's act-word (`hub`/`jobs` say `Peeked at`) with the noun beside
+		// it so the row reads as the read it is.
+		list: { settled: "Listed sessions", running: "Listing sessions" },
+		info: { settled: "Viewed session", running: "Viewing session" },
+		spawn: { settled: "Spawned session", running: "Spawning session" },
+		resume: { settled: "Resumed session", running: "Resuming session" },
+		stop: { settled: "Stopped session", running: "Stopping session" },
+		peek: { settled: "Peeked at session", running: "Peeking at session" },
+	},
 };
 
 /**
@@ -929,13 +1300,20 @@ export function toolRowLabel(
 	summaryFallback: string | null,
 	running: boolean,
 	op = "",
+	/**
+	 * The settled verb a result STATES, over the tool's own (see
+	 * `deliverySettledVerb`). `null` for every row but a `send` that provably
+	 * delivered nothing, which is the one case the tool's own verb would
+	 * contradict the trailing word beside it.
+	 */
+	settledVerb: string | null = null,
 ): ToolRowLabel {
 	const verb = toolVerb(toolName, op);
 	const bare = isBareToolName(summary, toolName)
 		? (summaryFallback ?? "")
 		: summary;
 	return {
-		verb: running ? verb.running : verb.settled,
+		verb: running ? verb.running : (settledVerb ?? verb.settled),
 		object: verb.named
 			? bare
 			: [displayName(toolName), bare].filter(Boolean).join(" "),
