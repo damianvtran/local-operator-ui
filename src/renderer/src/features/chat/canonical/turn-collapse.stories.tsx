@@ -918,9 +918,11 @@ type CycleTrigger = "wake" | "peer";
  * sequence suddenly un-condenses". A wake or a peer receipt does not open a run -
  * only a `user` row does - so it RE-OPENS the run that had just settled, which is
  * then the newest run and therefore `live`. The shipped rule spent `live` on the
- * WHOLE run, so the bar the reader had just read unfolded into its 88 rows the
- * moment the agent started thinking again, and folded back when it stopped: motion,
- * twice, with no reader action. `planRun` now spends `live` on the IN-FLIGHT CYCLE
+ * WHOLE run, so the bar the reader had just read came apart the moment the agent
+ * started thinking again, and folded back when it stopped: motion, twice, with no
+ * reader action. What replaced that bar is NOT 88 drawn rows - see the base-frame
+ * paragraph below, which is what the pair photographs. `planRun` now spends `live`
+ * on the IN-FLIGHT CYCLE
  * only - the rows after the last settled close (`turn-collapse-model.ts`'s
  * `settledCloseOf`) - so everything the reader has watched settle keeps its bar,
  * and the one thing drawn in place is the cycle still being written.
@@ -939,13 +941,27 @@ type CycleTrigger = "wake" | "peer";
  * last call arrives as the live frame the harness sends it with - the same two
  * doors `FreshConversation` mixes, for the same reason. Everything imported here is
  * shipped on both trees, so the before half is this file copied into a base worktree
- * (§10's method): there `live` re-opens the whole run again and the same rows paint
- * as 88 tool rows under a still-live `A1`.
+ * (§10's method).
+ *
+ * THE BASE CLAIM IS TWO CLAIMS, AND ONLY ONE OF THEM IS TRUE OF THE PIXELS (design
+ * round 2, D1). The MODEL reading is `collapses: false`: driven through the shipped
+ * plan, the base tree spends `live` on the WHOLE run again while the trigger's cycle
+ * is out, where this tree answers one bar hiding the 88 calls. What the base FRAME
+ * paints is not 88 rows - it is ONE COLLAPSED TRACE FOLD, `Explored 29 files, ran 59
+ * commands`, with NO turn-collapse bar at all and `A1` (the receipt and everything
+ * below it with it) 13.00 px HIGHER than here. 29 + 59 = 88: the fold and the bar
+ * count the SAME 88 rows in two idioms (`29 files / 59 commands` against `88
+ * actions`), so the two numbers do not disagree - they are the same work, condensed
+ * by different mechanisms (the trace group vs the turn summary). The reader-visible
+ * base defect is therefore that fold, its swapped vocabulary and chevron side, and
+ * the 13.00 px reflow of the answer - real motion, and fixed here, but an order of
+ * magnitude smaller than an unbarred wall of 88 rows.
  *
  * WHAT THE FRAME MUST SHOW: one bar (88 actions) above `A1`, `A1` whole, the receipt
- * the trigger left, and the cycle's three calls - the first two settled, the third
- * still out. The bar and `A1` must not move when the trigger lands; that stillness
- * is the fix.
+ * the trigger left, and the cycle drawn in place as ONE live trace fold over its
+ * three calls (`Explored 1 file, ran 2 commands`, the third still out - three calls,
+ * one row, because the trace group condenses them) above the working line. The bar
+ * and `A1` must not move when the trigger lands; that stillness is the fix.
  *
  * THE CLOCK IS `NOW`, NOT THE FROZEN `TS`: a call is still out, so this is a live
  * frame and its whole turn is anchored on the capture's own clock the way `Running`
@@ -1348,7 +1364,7 @@ export const WakeMidCycle: Story = {
 	render: () => (
 		<Frame
 			transcript={midCycleTurn("wake")}
-			caption="A turn that answered, was woken, and is running its next cycle — the first completion, the wake, and three calls in flight."
+			caption="A turn that answered, was woken, and is running its next cycle — the first completion, the wake, and that cycle in flight as one live trace row over its three calls."
 			waiting={true}
 		/>
 	),
@@ -1364,7 +1380,7 @@ export const PeerMidCycle: Story = {
 	render: () => (
 		<Frame
 			transcript={midCycleTurn("peer")}
-			caption="The same turn, re-opened by a peer message instead — the first completion, the receipt, and three calls in flight."
+			caption="The same turn, re-opened by a peer message instead — the first completion, the receipt, and the new cycle in flight as one live trace row over its three calls."
 			waiting={true}
 		/>
 	),
