@@ -765,6 +765,31 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 				className={cn(
 					"flex h-5 min-w-0 flex-1 items-baseline gap-x-2 overflow-clip @[13.5rem]/chathdr:min-w-10",
 					!identity && "flex-wrap",
+					/*
+					 * THE CLIP EARNS FOUR PIXELS OF MARGIN WHILE A DEVICE CONTROL IS INSIDE IT
+					 * (design review round 2, D1). The device chip finished this round sitting
+					 * 2.2px LOWER than the band it lives in: the baseline join the alignment fix
+					 * restores puts its 20px box at y 44.2 against this row's y 42, so the box's
+					 * last two pixels - and with them the bottom stroke of its own inset focus
+					 * ring and the bottom edge of its hover fill - fell under `overflow-clip`
+					 * (measured in `docs/evidence/chat-device-persist/`: the ring's top and side
+					 * strokes present, the bottom stroke absent; the scan lives in the set's
+					 * `harness/drive.mjs`). `overflow-clip` is the right mechanism here (see
+					 * above - it was chosen because `hidden` is a scrollport that scrolled under
+					 * focus); `overflow-clip-margin` is the spec's own knob for keeping it while
+					 * granting an edge a little ink room.
+					 *
+					 * GATED ON WHAT IS ACTUALLY INSIDE THE ROW (`has-[...]`), not on the prop and
+					 * not unconditionally. The margin's reason is the device chip's own box, and
+					 * the chip is rendered by `deviceSlot` INSIDE the flex line rather than as a
+					 * prop (`chat-header.tsx`'s own device-slot comment says so) - so `identity`
+					 * would have missed exactly the draft state this round is fixing (measured:
+					 * the first attempt gated on `identity` and the after arm still read an open
+					 * ring). The `:has()` form keeps the margin off every other composition -
+					 * the plain-title case and any row without a device control keep today's
+					 * exact clip, which is what the wrapped second line needs.
+					 */
+					"has-[[data-device-chip]]:[overflow-clip-margin:4px]",
 				)}
 			>
 				{/* `text-body` (14), not `text-heading` (16) and not `text-title` (20):
