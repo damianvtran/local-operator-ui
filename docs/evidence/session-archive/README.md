@@ -189,7 +189,9 @@ section its last step presses).
 > **dark 74 PASS / 0 FAIL, light 74 PASS / 0 FAIL**, including the header-door cancel leg in its
 > FINAL form (the `fromHeader` flag on the candidate): the light palette is the one that failed
 > before that change (`active: BUTTON`, 35 PASS / 2 FAIL), and it now returns focus to the header's
-> menu trigger in both. The long-name frame belongs to the row-space set
+> menu trigger in both. **The final body renders on TWO lines** in all four dialog frames (design
+> round 2, D11), and the frames were re-shot once more after the fourth fold with the copy the
+> branch ships. The long-name frame belongs to the row-space set
 > (`sidebar-row-space/after/archive-confirm-long`).
 >
 > **FOLDS (one ledger, shared by the three evidence READMEs).** The branch has been folded FOUR times
@@ -199,8 +201,16 @@ section its last step presses).
 > the stamp pair; fold 4 also auto-merged upstream's team-label and hub-mark changes into
 > `chat-sidebar.tsx`, `chat-header.tsx` and the canonical sessions store. The paragraph above, comparing
 > the first fold's rows region, describes THAT comparison only. Fold 4 has been compared for the
-> row-space set (17 of 17 rows regions byte-identical, dark); a comparison for THIS set is recorded
-> below if it was run.
+> row-space set (17 of 17 panel regions byte-identical, both palettes).
+
+**FOURTH-FOLD COMPARISON (2026-10-01).** Only TWO frames in this set are the same capture size as
+this round's runs: `archive-confirm` and `archive-confirm-settings` (the round-1 remediation
+re-shoot, 2760x1800 device). Both are **panel byte-identical** (device x < 700, below the toolbar)
+and differ only in the chat pane, which main's 63 commits reworked and which is not this set's
+subject. Every other frame here is the older `2760x1736` capture from #430's head (stated at
+line 247 below), so it is not comparable to a 1800-row run at all - a size difference, not a
+content one; `settle-probe`, the one diagnostic frame that is 1800 rows, is a scroll-offset
+difference of the same kind the pinned set shows.
 
 ## What each frame is, and what it is not
 

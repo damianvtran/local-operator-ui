@@ -208,9 +208,18 @@ about **12 characters** of a pinned title at the measured 6.31px per character, 
 > they were NOT re-shot for the later folds. **Fold 4 DID touch files the pinned strip reads**
 > (`chat-sidebar.tsx` - team labels in the row slot and the search arm, and a `title` on the row's
 > name span - the canonical sessions store and the chat header auto-merged), so an earlier line here
-> that said no such file changed was wrong. A rows-region comparison of this set against the folded
-> tree is recorded below if it was run; until then the only same-tree evidence is the row-space
-> set's 17 of 17 byte-identical rows regions.
+> that said no such file changed was wrong. > **The comparison was then run on the folded build (dark, `three` slice, 56 PASS / 0 FAIL)**:
+> over the panel band (device x < 700, below the toolbar) **6 of 18 frames are byte-identical** -
+> `after-drop`, `drag-mid`, `grip-hover-220`, `grip-hover-320`, `order-before-220`,
+> `search-after-drop`. The differences are the classes this set already carries plus one new one:
+> the list's overlay scrollbar thumb (bands at x448-503 / 528-543 / 608-623, the same reading the
+> fold's own report below classifies as chrome), the leading status ring's antialiasing
+> (x33-61, 7-19px), and **`order-before-240` / `current-drag-mid` / `grip-hover-240/260`, whose
+> difference is a LIST-SCROLL OFFSET rather than content**: `order-before-240`'s panel matches the
+> committed frame exactly when the committed ink is sampled 213 device pixels lower, so the two
+> runs parked the list about 106 CSS pixels apart. `order-before-260/280/320`, `order-relaunch` and
+> `search-filtered` differ only in that thumb band. No frame differs in the rows' content, the
+> strip, or the glyphs.
 
 ### After the fold onto `origin/main` (2026-10-01)
 
