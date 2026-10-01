@@ -83,10 +83,7 @@ import type {
 import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
-import {
-	DESTINATIONS,
-	destinationNeedsSession,
-} from "@features/chat/pickers/picker-registry";
+import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
 import {
@@ -754,6 +751,22 @@ export type MessageInputProps = {
 	 */
 	cwdPendingAccepted?: boolean;
 	isSmallView?: boolean;
+
+	/**
+	 * THE HOST PROVIDES ITS OWN HORIZONTAL GUTTER (mini restyle, design D1/D2).
+	 *
+	 * `CHAT_COLUMN_INSET` exists to put the composer's outer edge on the SAME line
+	 * as the transcript above it - 16px of transcript padding plus the 8px
+	 * scrollbar gutter it reserves - and its own comment forbids compacting it,
+	 * because compacting one side of a shared edge is a misalignment. A host with
+	 * no transcript has no such edge to match: the mini frame's own padding IS the
+	 * edge, and inheriting the chat's inset put the box 24px in from the header
+	 * and the hint that sit at the frame's edge (measured: 12 / 12 / 36 in a 640
+	 * window). Declared here rather than papered over with a negative margin. It is
+	 * an OPT-IN, defaulted false, so every existing host keeps the shared edge it
+	 * has today and only a host that is its own gutter says so (reviewer R2-1).
+	 */
+	ownGutter?: boolean;
 	/**
 	 * History has not resolved yet, so "no messages" is not yet a FACT.
 	 * The empty state is a claim about the conversation; making it before the
@@ -761,6 +774,19 @@ export type MessageInputProps = {
 	 * then repainted (design D7).
 	 */
 	isHydrating?: boolean;
+	/**
+	 * This host has NO transcript at all, so the empty-chat prompt is never drawn.
+	 *
+	 * THE MINI VIEW'S OWN FACT, and the reason it is not `isHydrating`: that prop
+	 * says "a page is still owed" (a moment), while a transcriptless host owes no
+	 * page in any state - the composer is a send box and the host paints
+	 * everything around it. `messages: []` alone would render the greeting, the
+	 * brand mark and the suggestion chips (the empty chat's splash), which a
+	 * hotkey-summoned quick-send view must not claim. This suppresses the splash
+	 * and bottom-anchors the box; the transcript-bearing hosts keep their
+	 * splash by leaving it off.
+	 */
+	transcriptless?: boolean;
 	/**
 	 * Whether the `@` affordance may be offered at all — see
 	 * `UseAtPickerArgs.enabled` for the two states this folds and why it fails
@@ -1482,7 +1508,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			cwdPending,
 			cwdPendingAccepted,
 			isSmallView = false,
+			ownGutter = false,
 			isHydrating = false,
+			transcriptless = false,
 			unavailable = false,
 			mentionsEnabled = false,
 			mentionsUnsupported = false,
@@ -1699,7 +1727,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * itself stays docked at the band's foot in every state (§G2), which is what
 		 * keeps the first send from moving it.
 		 */
-		const bandCentred = messages.length === 0 && !isHydrating;
+		const bandCentred =
+			!transcriptless && messages.length === 0 && !isHydrating;
 
 		/*
 		 * THE SPLASH IS NOT GATED ON THE COLUMN'S WIDTH (design round 2, D22).
@@ -2328,8 +2357,46 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 */
 				if (draftModelUnresolved) {
 					sessionStatus?.onOpenDraftPicker?.("session.model");
-					return;
+					/*
+					 * And the same `false`: this gate refuses the press too - it hands it to the
+					 * picker instead - so the box must keep its text. It was a bare `return`
+					 * (QA Q4's finding, one gate over), which retired a draft the user still
+					 * had to send once they had chosen a model.
+					 */
+					return false;
 				}
+				/*
+				 * A LIVE TAKE OWNS THE KEY (UX review round 1, U2).
+				 *
+				 * While a recording is up, Enter's job is to CONFIRM THE TAKE - the
+				 * recording branch below is that door, and the footer says so
+				 * ("Recording. Press the stop button when you're done."). It was not
+				 * the only door: the window-level recording listener runs after
+				 * React's delegated textarea handler, so the submit had already been
+				 * decided by the time the take's own Enter arrived, and the press
+				 * posted the TYPED draft while the take's words were never written
+				 * (measured live, 3/3: the daemon's history carried the typed text,
+				 * `input_mode: typed`, and no transcript). The dictating user's most
+				 * likely press sent a different message than the one they were
+				 * composing.
+				 *
+				 * Refused HERE, beside the model gate and for its reason: this is the
+				 * one function both doors (the form's submit control and the Enter
+				 * key) reach, so a second gate on the key alone is how the two start
+				 * disagreeing. `isTranscribing` is included because a transcript is
+				 * still landing - a send then would race the take's own write for the
+				 * same box.
+				 */
+				/*
+				 * `return false`, NOT a bare `return` (UX round 2 / QA Q4). `useMessageInput`
+				 * reads only `outcome === false` as a refusal (`use-message-input.ts`) and
+				 * treats `undefined` as an ACCEPTED send: it cleared the box, retired the
+				 * draft and logged the payload with no request ever made - the take's words
+				 * lost and the typed draft gone with them, silently (measured live, 3/3).
+				 * This is the shape the Esc-cancel path already refuses in, so the press now
+				 * leaves the text exactly where the user left it.
+				 */
+				if (isRecording || isTranscribing) return false;
 				// Assembled by the same function the composer compares against, so the
 				// string sent, stored, guarded and reasoned about by the copy is one
 				// string on the reply path too. Building the prefix inline here put it
@@ -2604,6 +2671,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				// The stamp read at the press (see `inputModeForSend`); a memo that
 				// did not read it would keep sending the value captured at mount.
 				inputModeForSend,
+				// The live-take gate above (UX round 1, U2): a memo that captured
+				// these at mount would keep posting the typed draft while a take is
+				// up, which is the defect the gate exists for.
+				isRecording,
+				isTranscribing,
 				// The `$skill` expansion (issue #664): the cache a body is read
 				// through, the folder the read addresses (the sessionless seam
 				// reads `cwd`, not a session), and the note surface for a skill
@@ -2758,6 +2830,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			activeSpec:
 				sessionStatus?.frontend?.effective_model ??
 				sessionStatus?.frontend?.selected_model,
+			/*
+			 * The pane's working directory, for the sessionless MCP catalog read the
+			 * argument list makes — the document it answers depends on this and on
+			 * the session (its query key is `(cwd, sessionId)`).
+			 */
+			cwd,
 		});
 
 		/*
@@ -4441,13 +4519,21 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * `transcript.clear` and `session.compact` keep their TWO-Enter path — a
 				 * single keystroke never detaches the app or clears the transcript view,
 				 * which is the behaviour they already had.
+				 *
+				 * THE ENTRY IS THE EFFECTIVE ONE (`slash.effectiveEntry`, resolved against
+				 * the capability answer in the hook), which is what keeps `/login`,
+				 * `/logout` and `/mcp` clicking through to their pickers on a backend that
+				 * does not license the inline lists: the hook reports no inline for them,
+				 * so the destination runs exactly as it did before the lists existed.
+				 * The two `runs: false` sources complete on a click — that flag is the
+				 * pointer's whole floor, and it must stay false (spec §4.1).
 				 */
 				const shouldRun =
 					disposition.run &&
 					(row.kind === "command"
 						? pointerPickRuns(
 								row.command.destination,
-								DESTINATIONS[row.command.destination],
+								slash.effectiveEntry(row.command.destination),
 							)
 						: (slash.inline?.runs ?? false)) &&
 					Boolean(onSlashCommand);
@@ -6664,15 +6750,27 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								? true
 								: undefined
 						}
+						/*
+						 * ONE ROW, THE SENTENCE AND ITS CONTROLS TOGETHER (design review
+						 * round 1, D3). The alert used to stack a sentence line over an
+						 * actions line: 42 px of a 168 px mini window for one sentence and
+						 * one link, and the field moved ~47 px under the user's caret when
+						 * it appeared. Inline is the same information in one wrapping row -
+						 * a long sentence (a store refusal, an unreadable file's name) still
+						 * wraps, and its control wraps with it. The regressions this must
+						 * not reintroduce are the ones the old comment names: the controls
+						 * keep their own hit targets (`min-h-6`, the 24 px floor) and the
+						 * sentence keeps `min-w-0 break-words`.
+						 */
 						className={cn(
 							CHAT_MEASURE,
-							"flex flex-col gap-1 text-body-sm",
+							"flex flex-wrap items-center gap-x-3 gap-y-1 text-body-sm",
 							isSmallView ? "px-2 pb-1" : "px-4 pb-2",
 						)}
 					>
 						<p
 							className={cn(
-								"flex items-start gap-1.5",
+								"flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1",
 								composerAlert.muted ? "text-ink-muted" : "text-danger",
 							)}
 						>
@@ -6699,14 +6797,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						{(composerAlert.retry ||
 							composerAlert.clear ||
 							composerAlert.actions.length > 0) && (
-							<div className="flex min-h-6 flex-wrap items-center gap-3">
+							<>
 								{composerAlert.actions.map((action) => (
 									<Button
 										key={action.label}
 										type="button"
 										variant="link"
 										size="sm"
-										className={cn("cursor-pointer text-body-sm underline")}
+										className={cn(
+											"min-h-6 cursor-pointer text-body-sm underline",
+										)}
 										onClick={action.onClick}
 									>
 										{action.label}
@@ -6735,7 +6835,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											 * `composer-alert-geometry` at 500 for both, which is
 											 * exactly the D2 finding the class was meant to answer.
 											 */
-											"cursor-pointer font-semibold text-body-sm underline",
+											"min-h-6 cursor-pointer font-semibold text-body-sm underline",
 										)}
 										onClick={() => sendError.onRetry?.()}
 									>
@@ -6755,14 +6855,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										 */
 										aria-label="Clear message"
 										className={cn(
-											"cursor-pointer text-ink-dim text-body-sm underline",
+											"min-h-6 cursor-pointer text-ink-dim text-body-sm underline",
 										)}
 										onClick={() => sendError.onClear?.()}
 									>
 										{CLEAR_LABEL}
 									</Button>
 								)}
-							</div>
+							</>
 						)}
 					</div>
 				)}
@@ -6935,7 +7035,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * already at the newest row (`isFarFromBottom`), so the two states that
 					 * own this strip are never drawn together.
 					 */}
-					{!slash.open && !at.open && !skills.open && (
+					{/*
+					 * NOT IN A TRANSCRIPTLESS HOST (design review round 1, N3): a
+					 * document with no transcript has nothing to scroll back to, and the
+					 * control was mounted hidden - 32x32, `tabIndex -1`, inside an
+					 * `aria-hidden` wrapper - which is dead DOM in the mini view and a
+					 * phantom in any rig that counts controls. The `$` list's own guard
+					 * arrived with the skill expansion (#664) and is kept: both are reasons
+					 * not to draw the disc, so the union is the condition.
+					 */}
+					{!transcriptless && !slash.open && !at.open && !skills.open && (
 						<ScrollToBottomButton
 							visible={isFarFromBottom}
 							onClick={scrollToBottom}
@@ -8340,7 +8449,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					// `CHAT_COLUMN_INSET`. Only the VERTICAL padding compacts in the
 					// small view -- vertical space is what a short window is short of,
 					// and compacting it moves no edge the transcript also owns.
-					CHAT_COLUMN_INSET,
+					ownGutter ? undefined : CHAT_COLUMN_INSET,
 					isSmallView ? "pb-1 pt-0.5" : "pb-4 pt-2",
 				)}
 				data-lo-composer-band={true}

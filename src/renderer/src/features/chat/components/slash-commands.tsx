@@ -33,12 +33,20 @@
  *     (`editor.py:_sync_picker_if_phase_changed`).
  */
 
+import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import type { DesktopProvider } from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	desktopKeys,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import {
+	fetchMcpCatalog,
+	mcpCatalogKeys,
+	mcpTransportCwd,
+	mcpTransportSession,
+} from "@shared/api/local-operator/mcp-catalog";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -56,7 +64,10 @@ import {
 } from "react";
 import type { CanonicalModel } from "../../../../../shared/desktop-session-contract";
 import { archiveDestinationApplies } from "../chat-archived";
-import { useEntities } from "../pickers/destination-pickers";
+import {
+	type StoredAccount,
+	useEntities,
+} from "../pickers/destination-pickers";
 import {
 	DESTINATIONS,
 	type InlineArgumentSource,
@@ -72,15 +83,20 @@ import {
 	type ArgumentRow,
 	type ArgumentSource,
 	FLAG_LIST_SOURCES,
+	MCP_EMPTY_SLOT_COPY,
 	argumentRows,
+	effectiveInlineArgument,
 	flagTokenDraws,
 	flagTokenSelects,
 	isRendererLocalSource,
+	isSessionlessBackendSource,
+	mcpInServerSlot,
 	modelDefaultActionRow,
 	shouldRunArgumentAction,
 	showsUnmatchedList,
 } from "./slash-argument-rows";
 import {
+	type PickDestination,
 	activeRowRuns,
 	argumentEmptyCopy,
 	candidateKey,
@@ -219,6 +235,14 @@ export function resolveCommand(
  * Derived from the `inline` field rather than from a second list of command
  * names, so a new registry row fails in one place (`picker-registry.tsx` states
  * why the table is keyed by destination).
+ *
+ * It reads the RAW table, without the capability resolution the hook applies to
+ * every list it opens: the vocabulary's jobs are completion spans and the
+ * planner's word set, and whether a list actually opens is decided downstream
+ * (`useSlashCompletion`'s effective inline). Filtering here would need the
+ * capability answer a module function cannot hold, for a difference no surface
+ * can see — a word this names on a backend that lacks the list simply opens
+ * nothing, exactly as it did before the row existed.
  */
 function argumentVocabulary(commands: readonly SlashCommandMeta[]): {
 	words: string[];
@@ -246,6 +270,14 @@ export type SlashArgumentListState = {
 	error: string | null;
 	/** No live session, so no entity source can answer. */
 	needsSession: boolean;
+	/**
+	 * A more specific empty state than `argumentEmptyCopy`'s generic sentences,
+	 * when the source can name the fact: the `/mcp` server slot with nothing
+	 * eligible (empty BY DESIGN, not unreported — U2), or a `/logout` query
+	 * naming a provider with no stored credential (U4). Set from the query or
+	 * the slot, read only in the empty state; it wins over both generic lines.
+	 */
+	emptyCopy?: string;
 };
 
 export type SlashCompletionState = {
@@ -259,8 +291,21 @@ export type SlashCompletionState = {
 	/** The command word whose argument list is up, when in the argument phase. */
 	argumentCommand: string | null;
 	/** The inline disposition of that command. Presence is the whole of
-	 *  "completing its word opens a list". */
+	 *  "completing its word opens a list".
+	 *
+	 *  It is the EFFECTIVE disposition: `effectiveInlineArgument` has already
+	 *  dropped a list the backend does not license, so every reader — the two
+	 *  footers and the pick gate, here and in `message-input.tsx` — reads one
+	 *  answer for a feature-absent backend. */
 	inline: InlineArgumentSource | undefined;
+	/**
+	 * The destination entry a pick of the ACTIVE command row routes through —
+	 * `DESTINATIONS` with the same capability resolution applied to its inline
+	 * list, so `pointerPickRuns` cannot flip a command row to completes-only on
+	 * a backend that never had the list. Returned for every kind of
+	 * destination; only picker entries carry an inline at all.
+	 */
+	effectiveEntry(destination: string | undefined): PickDestination | undefined;
 	/** The argument text typed so far, for the ambiguity gate. */
 	argumentQuery: string;
 	/**
@@ -316,9 +361,10 @@ export type SlashCompletionState = {
 	 * `required`, read off the same `SlashCommandMeta` the planner is handed.
 	 *
 	 * It exists because the other two sets are narrower than the field they were
-	 * standing in for: `/login`, `/logout`, `/stop`, `/fast` and `/move` declare
-	 * an argument and carry no inline list, so a union of the other two read
-	 * their whole-draft forms as prose (review round 1, R1).
+	 * standing in for: `/stop`, `/fast` and `/move` declare an argument and carry
+	 * neither a prompt nor a list, and `/login`/`/logout` carry their lists only
+	 * while the backend licenses them (`provider_catalogue`) — so a union of the
+	 * other two read those whole-draft forms as prose (review round 1, R1).
 	 */
 	argumentCommands: ReadonlySet<string>;
 	/**
@@ -362,24 +408,118 @@ export type SlashCompletionState = {
  * the same `@shared/themes` table its dialog reads, and `title-refresh` is a
  * fixed spelling list. Both are answered from a local read and reported as
  * loaded, because "nothing to ask" must not render as "not reported yet".
+ *
+ * The SESSIONLESS sources (`SESSIONLESS_BACKEND_SOURCES`) fetch the three
+ * sessionless routes — the LoginPicker's and LogoutPicker's own reads, and the
+ * MCP catalog Settings > Integrations owns — under the SAME query keys, so an
+ * existing invalidation (a sign-in, a removed account, an MCP control) reaches
+ * the composer's list and one cache entry serves both surfaces.
+ * `needsSession: false` on all three: none of these routes is scoped to a
+ * conversation, which is the point of the category — a draft pane can answer
+ * them without a session to ask.
+ *
+ * The three queries are declared UNCONDITIONALLY (hooks cannot be called
+ * conditionally) and merely DISABLED while their source is not the active one.
+ * They do not re-ask the capability question: a backend that does not advertise
+ * the source's feature never resolves `source` at all (`effectiveInlineArgument`
+ * upstream), and a second gate here would be a second answer.
  */
 function useArgumentRows(
 	source: ArgumentSource | undefined,
 	sessionId: string | undefined,
+	/*
+	 * The pane's working directory and the typed argument text — the two inputs
+	 * the sessionless sources add. `cwd` keys the MCP catalog read (its key is
+	 * `(cwd, sessionId)` exactly as the controls' `setQueryData` writes it), and
+	 * the argument text is what the `mcp` slot split reads (`/mcp ` offers the
+	 * verbs, `/mcp login ` their servers).
+	 */
+	cwd: string | undefined,
+	argument: string,
 	activeTeam: unknown,
 	activeAgent: unknown,
 	enabled: boolean,
 ): SlashArgumentListState {
 	const themeName = useUiPreferencesStore((state) => state.themeName);
+	const { client, provided } = useOptionalQueryClient();
 	// Hooks cannot be called conditionally, so the entity query always runs and
-	// is merely DISABLED for a renderer-local source.
+	// is merely DISABLED for a renderer-local or sessionless source — the entity
+	// route is session-bound, and a sessionless id reaching it would ask the
+	// wrong route for a list it does not serve.
 	const local = isRendererLocalSource(source);
-	const entitySource = source && !local ? source : "model";
+	const sessionless = isSessionlessBackendSource(source);
+	const entitySource = source && !local && !sessionless ? source : "model";
 	const entities = useEntities(
 		sessionId ?? "",
 		entitySource,
 		undefined,
-		enabled && Boolean(source) && !local && Boolean(sessionId),
+		enabled && Boolean(source) && !local && !sessionless && Boolean(sessionId),
+	);
+	/*
+	 * The LoginPicker's own read, restated rather than reached through
+	 * `useDesktopProviders` because that hook mounts a plain `useQuery`: this
+	 * composer is reachable in documents without a `QueryClientProvider` (the
+	 * mini view), where the fallback client must not fetch
+	 * (`useOptionalQueryClient`). Same key, same fetch, same options, so one
+	 * cache entry serves both surfaces. Enabled for `/logout` (`provider-accounts`)
+	 * as well since round 1 (U4/D5): that list joins the census for the brand it
+	 * names a provider by and the aliases it finds one with — the accounts route
+	 * carries neither, and a second name for one provider is a second answer.
+	 */
+	const providers = useQuery(
+		{
+			queryKey: desktopKeys.providers,
+			queryFn: () =>
+				desktopResult<{ providers: DesktopProvider[] }>({
+					op: "providers.list",
+				}).then((result) => result.providers ?? []),
+			enabled:
+				enabled &&
+				provided &&
+				(source === "providers" || source === "provider-accounts"),
+			staleTime: 30_000,
+			retry: retryDesktopQuery,
+		},
+		client,
+	);
+	/* The LogoutPicker's query, same key and same shape, under the fallback client. */
+	const accounts = useQuery(
+		{
+			queryKey: desktopKeys.accounts,
+			queryFn: () =>
+				desktopResult<{ accounts: StoredAccount[] }>({
+					op: "accounts.list",
+				}).then((result) => result.accounts ?? []),
+			enabled: enabled && provided && source === "provider-accounts",
+		},
+		client,
+	);
+	/*
+	 * The sessionless catalog read, under the integrations page's own key and
+	 * fetch — `(cwd, sessionId)` is what makes the overlay answer a live status
+	 * where one exists and degrade silently where one does not. Same freshness
+	 * window as that page's read; no polling, because a composer list is not a
+	 * status surface.
+	 *
+	 * THE TWO VALUES ARE COERCED FIRST (round 1, QA Q-1): the pane's `cwd` is a
+	 * display token ("~") and a draft pane's session is a synthetic key
+	 * ("draft:<uuid>"), and the op schema refuses both BEFORE the wire — the
+	 * live app's read 422'd and `/mcp` drew an empty list while every
+	 * fixture-staged run passed. Coerced ONCE here so the query key and the
+	 * payload are the same two values, and so the key cannot hold a cache entry
+	 * for a document that can never be fetched beside the one Settings reads for
+	 * the same home.
+	 */
+	const mcpWireCwd = mcpTransportCwd(cwd);
+	const mcpWireSession = mcpTransportSession(sessionId);
+	const mcp = useQuery(
+		{
+			queryKey: mcpCatalogKeys.catalog(mcpWireCwd, mcpWireSession),
+			queryFn: () => fetchMcpCatalog(mcpWireCwd, mcpWireSession),
+			enabled: enabled && provided && source === "mcp",
+			staleTime: 10_000,
+		},
+		client,
 	);
 	const localThemes = useMemo(
 		() =>
@@ -436,6 +576,97 @@ function useArgumentRows(
 				needsSession: false,
 			};
 		}
+		if (source === "providers") {
+			return {
+				rows: argumentRows("providers", providers.data ?? [], null),
+				loading: providers.isLoading,
+				error: providers.isError
+					? "The list could not be loaded. Try again."
+					: null,
+				needsSession: false,
+			};
+		}
+		if (source === "provider-accounts") {
+			const rows = argumentRows(
+				"provider-accounts",
+				accounts.data ?? [],
+				null,
+				{
+					providers: providers.data,
+				},
+			);
+			/*
+			 * U4's second half: `/logout deepseek` said "No matches. Enter runs the
+			 * command." for a provider the CENSUS knows and the accounts route cannot
+			 * answer, because an env key is not a store row. The honest sentence is a
+			 * fact about this provider, not about the matcher: let the census say
+			 * whether the typed word names one of its rows with nothing stored.
+			 * `matchChoices` is the same matcher the LIST itself uses, so "names"
+			 * means what it means everywhere else — subsequence and aliases included.
+			 *
+			 * The copy is set from the QUERY alone — `rows` here is the whole
+			 * filtered-ready list, and whether the query leaves any MATCH is the
+			 * popup's answer, not this branch's: the sentence replaces "No matches"
+			 * in the states where that sentence would be shown, and is invisible in
+			 * every state where a row is drawn.
+			 */
+			let emptyCopy: string | undefined;
+			if (argument.trim() && providers.data) {
+				/*
+				 * Match on the SHAPED rows (brand names and aliases, exactly what
+				 * `/login` matches on) and carry the count beside them: the shaped row
+				 * is an `ArgumentRow`, which deliberately has no count field.
+				 */
+				const storedById = new Map(
+					providers.data.map((row) => [row.id, row.stored_credentials ?? 0]),
+				);
+				const named = matchChoices(
+					argument,
+					argumentRows("providers", providers.data, null),
+				)[0]?.choice.value;
+				if (named && (storedById.get(named) ?? 0) <= 0) {
+					emptyCopy = "No stored credential to remove.";
+				}
+			}
+			return {
+				rows,
+				emptyCopy,
+				/*
+				 * Both reads are this list's data: the accounts route answers its rows,
+				 * and the census join answers the names, aliases and the "nothing
+				 * stored" fact the empty state uses — so the honest "Loading…" covers
+				 * whichever of the two is still in flight, not just the first.
+				 */
+				loading: accounts.isLoading || providers.isLoading,
+				error: accounts.isError
+					? "The list could not be loaded. Try again."
+					: null,
+				needsSession: false,
+			};
+		}
+		if (source === "mcp") {
+			const rows = argumentRows("mcp", mcp.data?.servers ?? [], null, {
+				argument,
+				verbs: mcp.data?.verbs,
+			});
+			return {
+				rows,
+				/*
+				 * U2: the SERVER slot with nothing eligible is empty by design — `list`
+				 * and `add` offer no server at all, an unknown verb names no list, and a
+				 * verb whose filter matches nothing has simply nothing eligible. The
+				 * generic "Not reported yet" claimed the route never answered; this says
+				 * what is actually true and keeps the route sentence.
+				 */
+				emptyCopy:
+					rows.length === 0 && mcpInServerSlot(argument)
+						? MCP_EMPTY_SLOT_COPY
+						: undefined,
+				loading: mcp.isLoading,
+				error: mcp.isError ? "The list could not be loaded. Try again." : null,
+				needsSession: false,
+			};
+		}
 		if (!sessionId) {
 			// No session, no entity source. Called out rather than rendered as an
 			// empty list, because "not reported yet" would be a lie about a
@@ -456,6 +687,16 @@ function useArgumentRows(
 		entities.data,
 		entities.isLoading,
 		entities.isError,
+		providers.data,
+		providers.isLoading,
+		providers.isError,
+		accounts.data,
+		accounts.isLoading,
+		accounts.isError,
+		mcp.data,
+		mcp.isLoading,
+		mcp.isError,
+		argument,
 		current,
 		sessionId,
 	]);
@@ -466,6 +707,12 @@ export type SlashCompletionArgs = {
 	selectionStart: number;
 	/** The live canonical session id, or undefined for a draft. */
 	sessionId?: string;
+	/*
+	 * The pane's working directory, passed through to the sessionless MCP
+	 * catalog read — its query key is `(cwd, sessionId)` and the document it
+	 * answers depends on both (`mcp-catalog.ts`). Absent on a pane with none.
+	 */
+	cwd?: string;
 	/** The session's active profile, for the roster lists' current marker. */
 	activeProfile?: { team?: unknown; agent?: unknown };
 	/** The active session model, used only to describe `/model default`. */
@@ -498,6 +745,7 @@ export function useSlashCompletion({
 	inputValue,
 	selectionStart,
 	sessionId,
+	cwd,
 	activeProfile,
 	activeModel,
 	activeSpec,
@@ -709,6 +957,34 @@ export function useSlashCompletion({
 	}, [argumentWord, registry]);
 
 	/*
+	 * THE EFFECTIVE INLINE — the one resolution every reader below, and the pick
+	 * gate in `message-input.tsx` through this hook's returned state, shares:
+	 * the declaration above, minus a list the backend does not license
+	 * (`effectiveInlineArgument`). A feature-absent backend therefore cannot
+	 * have the fetch ask for rows, a footer promise a list, or the gate run a
+	 * pick whose list does not exist — all four read this one answer.
+	 */
+	const effectiveInline = useMemo(
+		() => effectiveInlineArgument(inline, capabilities.data),
+		[inline, capabilities.data],
+	);
+	/*
+	 * The same resolution for a COMMAND row's destination: the entry a pick
+	 * routes through, with its inline list dropped when unlicensed — which is
+	 * what keeps `/login`'s pick running its picker on a backend without
+	 * `provider_catalogue`, exactly as it does today.
+	 */
+	const effectiveEntry = useCallback(
+		(destination: string | undefined) => {
+			const entry = destination ? DESTINATIONS[destination] : undefined;
+			if (!entry || entry.kind !== "picker") return entry;
+			const resolved = effectiveInlineArgument(entry.inline, capabilities.data);
+			return resolved === entry.inline ? entry : { ...entry, inline: resolved };
+		},
+		[capabilities.data],
+	);
+
+	/*
 	 * Whether a pick of the active row would HOIST this draft: text that survives
 	 * the caret's token, so the command moves to the front with that text as its
 	 * argument (`planSlashArming`) instead of the pick only completing its word.
@@ -775,21 +1051,23 @@ export function useSlashCompletion({
 	}, [commandContext, registry, openArchived, archiveEnabled, activeSpec]);
 
 	const argumentList = useArgumentRows(
-		inline?.source,
+		effectiveInline?.source,
 		sessionId,
+		cwd,
+		argumentContext?.value ?? "",
 		activeProfile?.team,
 		activeProfile?.agent,
 		enabled,
 	);
 
 	const argumentMatches = useMemo(() => {
-		if (!inline || !argumentContext) return [];
+		if (!effectiveInline || !argumentContext) return [];
 		/*
 		 * `default` is a direct machine-setting operation, not a model catalogue
 		 * entry. It replaces the catalogue matches so fuzzy survivors can never
 		 * take index zero and switch the model when the user intended the action.
 		 */
-		if (inline.source === "model") {
+		if (effectiveInline.source === "model") {
 			const action = modelDefaultActionRow(
 				argumentContext.value,
 				activeModel,
@@ -803,7 +1081,7 @@ export function useSlashCompletion({
 			({ choice }) => ({ kind: "argument" as const, row: choice }),
 		);
 	}, [
-		inline,
+		effectiveInline,
 		argumentContext,
 		argumentList.rows,
 		activeModel,
@@ -836,12 +1114,12 @@ export function useSlashCompletion({
 	 * word, so whitespace is exactly the signal.
 	 */
 	const nameComplete =
-		inline?.nameThenMessage === true &&
+		effectiveInline?.nameThenMessage === true &&
 		argumentContext !== null &&
 		SEPARATOR.test(argumentContext.value);
 	const phase: SlashCompletionState["phase"] =
 		purePhase === "argument"
-			? inline && !nameComplete
+			? effectiveInline && !nameComplete
 				? "argument"
 				: null
 			: purePhase === "command" && commandMatches.length > 0
@@ -873,9 +1151,14 @@ export function useSlashCompletion({
 	 * so a title-shaped token cannot draw the row at all, whoever's mistake reaches
 	 * it. Every other source keeps its behaviour exactly.
 	 */
-	const flagDraw = flagTokenDraws(inline?.source, argumentContext?.value ?? "");
+	const flagDraw = flagTokenDraws(
+		effectiveInline?.source,
+		argumentContext?.value ?? "",
+	);
 	const phaseWithFlagList =
-		phase === "argument" && !showsUnmatchedList(inline?.source) && !flagDraw
+		phase === "argument" &&
+		!showsUnmatchedList(effectiveInline?.source) &&
+		!flagDraw
 			? null
 			: phase;
 
@@ -987,7 +1270,8 @@ export function useSlashCompletion({
 				? `${listId}-${rowId(matches[state.active])}`
 				: null,
 		argumentCommand: argumentWord,
-		inline,
+		inline: effectiveInline,
+		effectiveEntry,
 		argumentQuery: argumentContext?.value ?? "",
 		commandQuery: commandContext?.query ?? "",
 		argumentList,
@@ -1043,6 +1327,17 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 }) => {
 	const listId = state.listId;
 	const activeRef = useRef<HTMLLIElement | null>(null);
+	/*
+	 * THE POINTER'S LAST RECORDED POSITION (round 2, U2.1).
+	 *
+	 * A pick re-lays the popup out under a stationary cursor, and the browser
+	 * fires `mouseenter` on whatever row the new layout puts there — for a
+	 * `/mcp` verb pick that could be the THIRD server row, so the first Enter
+	 * filled a row the user never pointed at. A hover only COUNTS as a move
+	 * when the coordinates actually change: the click records its own point
+	 * here, and an enter at the same point is the re-layout, not the user.
+	 */
+	const lastPointer = useRef<{ x: number; y: number } | null>(null);
 
 	// Keep the active row in view without scrolling the page or transcript.
 	// state.active is a trigger (the ref is read, not the state), so the
@@ -1096,12 +1391,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 	 */
 	const activeDestination =
 		activeRow?.kind === "command" ? activeRow.command.destination : undefined;
+	/*
+	 * The EFFECTIVE entry for that destination — `DESTINATIONS` with the inline
+	 * resolved against the capability answer — is what both readers below route
+	 * through, read once so the pick's route and the footer's description cannot
+	 * come from different tables.
+	 */
+	const activeEntry = state.effectiveEntry(activeDestination);
 	const pickRuns = activeRowRuns({
 		destination: activeDestination,
-		entry:
-			activeRow?.kind === "command"
-				? DESTINATIONS[activeRow.command.destination]
-				: undefined,
+		entry: activeEntry,
 		inlineRuns: state.inline?.runs ?? false,
 	});
 	const footer = activeAction
@@ -1118,17 +1417,28 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 				nameThenMessage: state.inline?.nameThenMessage ?? false,
 				runs: pickRuns,
 				/*
-				 * Whether this row's completion OPENS a list, asked of the registry table the
-				 * composer itself reads (`inlineArgumentFor`) rather than of a second list of
-				 * command names. It separates the two `runs: false` command states the copy
-				 * has to word differently (UX round 1, U4): `/model` completes and opens its
-				 * list, `/clear` completes and is run by the NEXT Enter.
+				 * Whether this row's completion OPENS a list — asked of the SAME effective
+				 * entry the pick routes through (`activeEntry`), never of a second table,
+				 * so the copy and the gesture cannot disagree about the same row. It
+				 * separates the two `runs: false` command states the copy has to word
+				 * differently (UX round 1, U4): `/model` completes and opens its list,
+				 * `/clear` completes and is run by the NEXT Enter.
 				 */
 				opensList: Boolean(
-					activeCommand && inlineArgumentFor(activeCommand.command.destination),
+					activeEntry?.kind === "picker" && activeEntry.inline !== undefined,
 				),
 				value: activeArgument?.value ?? "",
 				matched: Boolean(activeRow),
+				/*
+				 * The filled state on a `runs: false` source: the row's value is ALREADY
+				 * what the box holds, so this Enter writes nothing and only closes the
+				 * list — the line has to say so rather than promise a completion that
+				 * will not change a character (round 1, U3). Read off `argumentQuery`
+				 * (the same value the router's gate reads) and the active row's value.
+				 */
+				complete:
+					activeArgument !== null &&
+					state.argumentQuery === activeArgument.value,
 				/*
 				 * The arming's own two inputs, read off the row's ROUTE (`pickArmsCommand`)
 				 * and off the draft (`state.hoists`) rather than written as a command name:
@@ -1250,7 +1560,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 			 * (round 1 D3 / UX U3). One word, sentence case, an existing role.
 			 */}
 			<div className="border-b border-hairline px-3 py-1 text-meta text-ink-dim">
-				{phaseLabel(argument ? "argument" : "command", state.inline?.source)}
+				{phaseLabel(
+					argument ? "argument" : "command",
+					state.inline?.source,
+					/*
+					 * The typed argument, for the one per-SLOT label: `/mcp`'s verb list is
+					 * drawn under "Commands" and only the server slot says "Servers"
+					 * (round 1, D6/U7). Every other source ignores it.
+					 */
+					state.argumentQuery,
+				)}
 			</div>
 			{/*
 			 * The row region owns the scroller, and its max-height is a whole number
@@ -1317,7 +1636,16 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									// the row would drop before the handler could read them.
 									event.preventDefault();
 								}}
-								onClick={() => {
+								onClick={(event) => {
+									/*
+									 * The pick's own coordinates, recorded BEFORE it acts: the re-layout it
+									 * causes must not count as a pointer move onto whatever row lands
+									 * under the cursor (round 2, U2.1).
+									 */
+									lastPointer.current = {
+										x: event.clientX,
+										y: event.clientY,
+									};
 									// A COMPLETED click, not pointer-down: a press the user
 									// aborts by dragging off the row must not act, and the acting
 									// set includes destinations that leave the chat (U11).
@@ -1333,13 +1661,20 @@ export const SlashSuggestionsPopup: FC<SlashSuggestionsPopupProps> = ({
 									}
 									onPick(row, { run: true });
 								}}
-								onMouseEnter={() => state.setActiveHover(index)}
+								onMouseEnter={(event) => {
+									const point = { x: event.clientX, y: event.clientY };
+									const last = lastPointer.current;
+									lastPointer.current = point;
+									/* The re-layout under a still pointer — not a move. */
+									if (last && last.x === point.x && last.y === point.y) return;
+									state.setActiveHover(index);
+								}}
 							>
 								{row.kind === "command"
 									? commandRowContent(row)
 									: row.kind === "action"
 										? actionRowContent(row.row)
-										: argumentRowContent(row)}
+										: argumentRowContent(row, state.inline?.source)}
 							</li>
 						))}
 					</ul>
@@ -1428,8 +1763,19 @@ function actionRowContent(row: ArgumentActionRow) {
 	);
 }
 
-function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
+function argumentRowContent(
+	row: Extract<CompletionRow, { kind: "argument" }>,
+	/*
+	 * The active source, for the ONE presentation rule that is per-source: a
+	 * `/mcp <verb> <server>` row's detail is a config PATH, and the row reads
+	 * worse than unreadable when the NAME truncates first (`remove p…` for every
+	 * server — round 1, D2). The name keeps a floor there and the path gives way
+	 * instead; every other source keeps the numbers-shed-first rule below.
+	 */
+	source: ArgumentSource | undefined,
+) {
 	const value = row.row;
+	const mcp = source === "mcp";
 	return (
 		<>
 			{/*
@@ -1460,6 +1806,29 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 					 * by rides the adjacent token below instead.
 					 */
 					!value.slug && "font-mono",
+					/*
+					 * The floor is what makes D2 hold: the name may shrink from its own
+					 * width down to 24ch, and the PATH detail below absorbs the rest, so
+					 * the server is identifiable before its path is. Twenty-four, not
+					 * twelve (round 2, D2.1): the compound name carries the VERB's own 7ch
+					 * prefix ("remove "), so 12ch guaranteed ~5 characters of the server
+					 * and near-twin names still collapsed at ordinary composer width;
+					 * 24ch leaves ~17 for the name, which is where the path has already
+					 * begun ellipsising. The base owns `min-w-0`; this later
+					 * `min-w-[24ch]` wins through twMerge for `/mcp` rows only.
+					 */
+					mcp && "min-w-[24ch]",
+					/*
+					 * THE DANGER CUE LIVES ON THE NAME, not on the detail (round 1, D3/
+					 * D4/U5): a `/logout` row and a destructive `/mcp` row show exactly
+					 * which thing the gesture would destroy, and the cue survives the
+					 * narrow widths where the detail column is shed (`hidden` below the
+					 * 24rem container), which is where the safety information used to
+					 * disappear entirely. Verb rows carry it too — `remove`/`logout`/
+					 * `reauth` used to look identical to `list`/`add`/`login` until a
+					 * second keystroke.
+					 */
+					value.alert ? "text-danger" : "text-ink",
 				)}
 			>
 				{value.name}
@@ -1490,12 +1859,29 @@ function argumentRowContent(row: Extract<CompletionRow, { kind: "argument" }>) {
 				   `200k · $0.075/0.3` measured NARROWER than the 16-character
 				   `1m · usage-based`, which no monospace face can produce (round 1
 				   D4).
+
+				   `ml-auto` keeps a fixed RIGHT edge on every row: `flex-1` on the
+				   description used to be the only thing absorbing the slack, so a row
+				   without one put its state straight after the name while its
+				   neighbours right-aligned theirs — the same word in two columns, and
+				   a `needs login` scan had to read every row's middle (round 1, D1).
+
+				   INK-DIM ON EVERY ROW, alerts included (round 1, D4): the danger
+				   role moved to the name spans above, because with the whole row red
+				   red stopped discriminating — and on `/mcp remove` rows it tinted a
+				   FILE PATH, which reads as an error about the file rather than as
+				   "removing this deletes it from that file".
+
+				   `min-w-0 shrink truncate` for the `/mcp` compound rows is D2's
+				   other half: this is the column that gives way under the name's
+				   floor, so the path is the thing that ellipsises.
 				 */
 				<span
 					className={cn(
-						"hidden shrink-0 font-mono text-meta",
+						"ml-auto hidden font-mono text-meta",
 						NUMBERS_MIN,
-						value.alert ? "text-danger" : "text-ink-dim",
+						mcp ? "min-w-0 shrink truncate" : "shrink-0",
+						"text-ink-dim",
 					)}
 				>
 					{value.detail}
