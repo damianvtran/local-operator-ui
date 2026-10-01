@@ -620,6 +620,14 @@ export type InfoFrontend = {
 export function conversationRows(
 	frontend: InfoFrontend | null,
 	sessionId: string,
+	/**
+	 * The team's readable name, when the caller can resolve one (round 1,
+	 * R1-3b). An argument rather than a lookup because this module is pure and
+	 * the caller owns the catalogue read (`InfoView` passes the shared
+	 * resolver); absent - a test, or a gate with no catalogue - the slug
+	 * renders exactly as it always did.
+	 */
+	teamLabelFor?: (slug: string) => string,
 ): InfoRow[] {
 	if (!frontend) return [];
 	const selected = formatModelSpec(frontend.selected_model);
@@ -630,8 +638,17 @@ export function conversationRows(
 			: `${formatCount(frontend.context_tokens)} / ${formatWindow(frontend.context_window)} (${formatPercent(
 					frontend.context_tokens / frontend.context_window,
 				)})`;
-	const active = frontend.active_team
-		? `team ${frontend.active_team}`
+	/*
+	 * The Active row reads the team the way the header chip on the same screen
+	 * does: the label when one resolves, the slug otherwise (round 1, R1-3b
+	 * measured the two surfaces naming one team two ways). The agent half names
+	 * a profile, which has no label to prefer.
+	 */
+	const activeTeam = frontend.active_team
+		? (teamLabelFor?.(frontend.active_team) ?? frontend.active_team)
+		: null;
+	const active = activeTeam
+		? `team ${activeTeam}`
 		: frontend.active_agent
 			? `agent ${frontend.active_agent}`
 			: "";
