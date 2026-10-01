@@ -2976,6 +2976,7 @@ const BRANCH_RECORDS = [
 	 * records and its re-stamped notes, resolved per `citationConvention`.
 	 */
 	"foldOnto689efa1eb4Note",
+	/*
 	 * Grown by the device-chip pass, whose top-level record is the set it ships
 	 * (`chatDevicePersistNote`): registered so a later fold unions it back by
 	 * name rather than dropping it.
