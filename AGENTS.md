@@ -1645,13 +1645,15 @@ by that setting is said out loud. Full detail and the wiring's failure modes:
 
 - **Its subject is the ref being pushed, not `HEAD`.** Git writes the refs to the
   hook's stdin and that is what gets classified, so `git push origin other`, `--all`
-  and a worktree whose `HEAD` is another branch are gated against the commits they
-  actually carry. Uncommitted edits are NOT part of the subject (`pnpm
-  check-changed` is the spelling that sees them), and a pushed ref this checkout
-  does not carry is refused rather than gated against the wrong bytes. The two
-  positional arguments git appends (the remote's name and URL) are accepted and
-  ignored; an earlier revision forwarded them into the gate's parser and refused
-  every push.
+  and tags are gated against the commits they carry. **Anything that would make the
+  legs read bytes other than the pushed ones is refused, loudly**: a subject other
+  than the checked-out `HEAD` (a foreign branch, a tag, or an ancestor whose files
+  the worktree has since changed — an old violating commit pushed from a fixed
+  worktree once reported a pass), a file a leg would read that has uncommitted
+  edits, and a stdin that exists but cannot be read (no fallback to `HEAD`). The
+  two positional arguments git appends (the remote's name and URL) are accepted,
+  ignored **and named in the report**; a third is refused, and an unknown flag
+  still is.
 - **It runs three legs, and `scripts/ci-scope.mjs` decides whether each applies.**
   `scripts/` files this change touches go through the `lint:scripts` ratchet;
   changed `src/`/`bin/` files go through the same `biome` `pnpm lint` names, over

@@ -29,16 +29,37 @@ gate runs the legs its flags select. A prose-only diff runs nothing.
 **The subject is the ref being pushed, not `HEAD`.** Git writes the refs it is
 about to push to the hook's stdin (`<local ref> <local sha> <remote ref> <remote
 sha>` per line) and that is what this gate classifies, so `git push origin other`,
-`--all`, a tag or a worktree whose `HEAD` is another branch are all gated against
-the commits they actually carry. Two consequences worth knowing:
+`--all` and tags are all gated against the commits they actually carry — and not
+against whatever `HEAD` happens to be. `--ref <sha>` is the by-hand spelling for a
+checkout with no push in flight.
 
-- **Uncommitted edits are not part of the subject.** They are not what a push
-  carries; `pnpm check-changed` and `pnpm lint:scripts` are the spellings that see
-  them.
-- **A pushed ref this checkout does not carry is refused**, not gated against the
-  wrong bytes: the legs read files on disk, so a foreign branch (one not reachable
-  from `HEAD`) cannot be linted here. The refusal names the ref and says to push it
-  from a worktree that has it — or to run the legs by hand and say so.
+**And the gate only speaks when it is reading exactly what is being pushed.** The
+legs run the repository's own tools over **files on disk**, so anything that would
+make those files something other than the pushed blobs is refused, loudly, rather
+than judged:
+
+- **A subject other than the checked-out `HEAD`** — a foreign branch, a tag, or an
+  **ancestor of `HEAD` whose files the working tree has since changed**. An
+  ancestor looks safe (the checkout carries it) and is not: pushing an old commit
+  while the worktree holds its fix reported "lint (scripts/) passed" for content
+  the gate never examined. Only the commit the checkout *is* can be judged from
+  disk.
+- **A file a leg would read that has uncommitted edits.** biome and `tsc` would
+  judge the worktree's copy while the push carries the committed blob — a verdict
+  about somebody else's bytes, in *either* direction, so it refuses and names the
+  files. `pnpm check-changed` and `pnpm lint:scripts` are the spellings that see
+  uncommitted work.
+- **A stdin that exists but cannot be read.** git wrote refs this gate could not
+  read, so it does not know what is being pushed; it does not fall back to `HEAD`.
+  (A terminal, or a pipe with nothing in it, is the by-hand case, and that *is*
+  answered as "check `HEAD`", saying so.)
+
+One deliberate asymmetry, said rather than discovered: **the `scripts/` leg ADDS
+files instead of substituting them.** It is `scripts/check-scripts-lint.mjs`, the
+repository's worktree-scoped ratchet — the same spelling `pnpm lint:scripts` runs —
+so it also lints *untracked* scripts. Those can only add files to the check, never
+remove one: they can refuse about a file you have not committed, and can never
+pass about a file you are pushing.
 
 The two positional arguments git appends to a pre-push hook (the remote's name and
 URL) are **accepted and ignored**, and more than those two is refused rather than

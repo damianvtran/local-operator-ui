@@ -45,9 +45,21 @@
  * ITS SUBJECT IS THE PUSHED REF, NOT `HEAD`, AND NOT ITS OWN ARGUMENTS. Git
  * writes the refs being pushed to stdin and a false green is one `git push
  * origin other` away from a gate that diffs `HEAD`. The two positional arguments
- * git appends (the remote's name and URL) are accepted and ignored rather than
- * refused: an earlier revision of this file threw on them, and because the
- * dispatcher forwards what git gave the hook, that refused EVERY push.
+ * git appends (the remote's name and URL) are accepted, named in the report and
+ * ignored rather than refused: an earlier revision of this file threw on them,
+ * and because the dispatcher forwards what git gave the hook, that refused EVERY
+ * push.
+ *
+ * AND IT ONLY SPEAKS WHEN IT IS READING WHAT IS BEING PUSHED. The legs run the
+ * repository's tools over files on disk, so every case where those files would
+ * not be the pushed blobs REFUSES instead of judging: a subject that is not the
+ * commit this checkout IS (a foreign branch, a tag, or an ancestor whose files
+ * the worktree has since changed - pushing an old violating commit from a fixed
+ * worktree used to report a pass), a file a leg would read that has uncommitted
+ * edits, a stdin that exists but cannot be read, a base or tool that cannot be
+ * reached. "I could not look" never reads as "nothing to see" anywhere in this
+ * file; that is the property the whole exercise is about, and it is the property
+ * each round of review has found one step narrower.
  *
  * WHAT IT CANNOT SEE, SAID HERE RATHER THAN IMPLIED. Pre-existing violations in
  * files this change does not touch. Anything about behaviour: no test runs here,
@@ -256,19 +268,26 @@ function resolveBaseRef(top, requested) {
  * passed to tools that would fail on a file that no longer exists.
  *
  * A TTY IS NOT WAITED ON. Run by hand there are no refs to read, and reading a
- * terminal would block until EOF, so a TTY (or an unreadable stdin) is answered
- * as "no refs", and the caller decides what that means - `--ref <sha>` for a
- * named commit, or HEAD with the report saying so.
+ * terminal would block until EOF, so a TTY is answered as "no refs" and the caller
+ * decides what that means - `--ref <sha>` for a named commit, or HEAD with the
+ * report saying so. A stdin that exists but CANNOT BE READ is a different answer
+ * and gets one: this gate does not know what is being pushed, so it refuses rather
+ * than answering about HEAD.
  */
 function pushedSubjects() {
-	if (process.stdin.isTTY) return { subjects: [], source: "a terminal" };
+	if (process.stdin.isTTY)
+		return { subjects: [], source: "a terminal", readable: true };
 	let text = "";
 	try {
 		text = readFileSync(0, "utf8");
 	} catch (error) {
+		// NOT a fallback to HEAD. git wrote refs this gate could not read, so it
+		// does not know what is being pushed - and a gate that answers about HEAD
+		// because it could not look is the defect class this file is about.
 		return {
 			subjects: [],
-			source: `unreadable (${error.code ?? error.message})`,
+			source: `${error.code ?? error.message}`,
+			readable: false,
 		};
 	}
 	const subjects = [];
@@ -294,6 +313,7 @@ function pushedSubjects() {
 		source: subjects.length
 			? "stdin"
 			: "a pipe git wrote nothing to (a by-hand run)",
+		readable: true,
 	};
 }
 
@@ -477,26 +497,75 @@ function assertSubjectsReadable(top, resolved) {
 			"HEAD is not a commit here, so this gate cannot tell whether the pushed commits are the ones this checkout carries",
 		);
 	}
-	const foreign = [];
-	for (const subject of resolved) {
-		if (subject.commit === head) continue;
-		const probe = run(
-			"git",
-			["merge-base", "--is-ancestor", subject.commit, head],
-			top,
-		);
-		// 0 = an ancestor, 1 = not an ancestor, anything else = git could not answer.
-		if (probe.status === 0) continue;
-		if (probe.status !== 1) {
-			throw new GateRefused(
-				`git could not tell whether ${subject.localRef} (${subject.commit.slice(0, 7)}) is part of this checkout's history (${(probe.stderr || "").trim() || "no output"}), so this gate will not guess which bytes it would be linting`,
-			);
-		}
-		foreign.push(subject);
-	}
-	if (!foreign.length) return head;
+	// EXACTLY HEAD, NOT "AN ANCESTOR OF HEAD". An ancestor once looked safe -
+	// the checkout carries it, so the bytes are here - and it is not: the legs
+	// read the WORKING TREE, so pushing an older commit while the worktree holds
+	// its fix reports a pass over the fixed copies and publishes the violating
+	// blobs (reproduced: commit V breaks formatting, commit F fixes it, and
+	// `git push <V>:refs/heads/x` reported "lint (scripts/) passed"). Only the
+	// commit the checkout IS can be judged from the files on disk, so anything
+	// else is refused with the reason.
+	const refused = resolved.filter((subject) => subject.commit !== head);
+	if (!refused.length) return head;
 	throw new GateRefused(
-		`the push carries ${foreign.map((subject) => `${subject.localRef} (${subject.commit.slice(0, 7)})`).join(", ")}, which this checkout does not carry: the lint and typecheck legs read files on disk, so they would be checking different bytes than the ones being pushed. Check that ref out in a worktree that has it and push from there, or run the legs by hand over it and record that - and if you must push from here anyway, say so with PREPUSH_BYPASS="<reason>" rather than --no-verify.`,
+		`this push carries ${refused
+			.map((subject) => `${subject.localRef} (${subject.commit.slice(0, 7)})`)
+			.join(
+				", ",
+			)}, and the only commit this checkout can be judged from is HEAD (${head.slice(0, 7)}): the lint and typecheck legs read files on disk, so any other commit - a foreign branch, a tag, or an ANCESTOR whose files the working tree has since changed - would be checked against bytes other than the ones being pushed. Check that ref out in a worktree that has it and push from there, or run the legs by hand over it and record that - and if you must push from here anyway, say so with PREPUSH_BYPASS="<reason>" rather than --no-verify.`,
+	);
+}
+
+/**
+ * Refuse when a file a leg would read is not the file being pushed.
+ *
+ * The same class as the subject rule above, one step narrower: a file the push
+ * changes but that has UNCOMMITTED edits means biome or `tsc` reads the worktree's
+ * copy while the push carries the committed blob - a verdict about bytes nobody
+ * is pushing, in either direction (a false pass when the fix is uncommitted, a
+ * false refusal when the breakage is). So the paths a leg would hand its tool are
+ * required to match the subject exactly.
+ *
+ * THE `scripts/` LEG ADDS FILES RATHER THAN SUBSTITUTING THEM, and that asymmetry
+ * is deliberate rather than a hole: that leg IS `scripts/check-scripts-lint.mjs`,
+ * the repository's worktree-scoped ratchet and the same spelling `pnpm
+ * lint:scripts` runs, so it also lints untracked scripts. Those can only ADD
+ * files to the check - never remove one - so they can refuse about a file you
+ * have not committed, and can never pass about a file you are pushing. Said in
+ * `docs/hooks.md` rather than left for a reader to discover.
+ */
+function assertLegsReadTheSubject(top, head, paths, flags) {
+	const targets = [];
+	if (flags.lint) {
+		targets.push(...onDisk(top, paths, ["scripts/"]).present);
+		targets.push(...onDisk(top, paths, SOURCE_PREFIXES).present);
+	}
+	if (flags.types) {
+		targets.push(
+			...paths.filter(
+				(path) => TYPESCRIPT_RE.test(path) && existsSync(join(top, path)),
+			),
+		);
+	}
+	const wanted = [...new Set(targets)];
+	if (!wanted.length) return;
+	const result = run(
+		"git",
+		["diff", "--name-only", head, "--", ...wanted],
+		top,
+	);
+	if (result.status !== 0) {
+		throw new GateRefused(
+			`git could not compare the working tree with ${head.slice(0, 7)} for the files this gate would read (${(result.stderr || "").trim() || "no output"}), so this gate will not guess which bytes it would be judging`,
+		);
+	}
+	const dirty = result.stdout
+		.split("\n")
+		.map((line) => line.trim())
+		.filter(Boolean);
+	if (!dirty.length) return;
+	throw new GateRefused(
+		`the working tree differs from ${head.slice(0, 7)} for ${dirty.length} file(s) this gate would read: ${dirty.join(", ")}. Those legs read files on disk, so they would judge a version that is not the one being pushed - commit or stash them, or run the legs by hand over the pushed commit and record that - and if you must push with them as they are, say so with PREPUSH_BYPASS="<reason>" rather than --no-verify.`,
 	);
 }
 
@@ -587,12 +656,30 @@ function main(argv) {
 	}
 
 	const top = repoTop();
+	if (options.positional.length) {
+		// Said out loud rather than dropped in silence: git appends these, they are
+		// not this gate's arguments, and a reader of the report is entitled to know
+		// what was ignored on their behalf.
+		console.log(
+			`pre-push gate: ignoring git's ${options.positional.length} pre-push argument(s) (${options.positional.join(", ")}): they name the remote, not the subject - the refs on stdin do.`,
+		);
+	}
 	const { ref, commit: baseCommit } = resolveBaseRef(top, options.base);
 	const against = `${ref} (${baseCommit.slice(0, 7)})`;
 
 	// THE SUBJECT: the refs git says are being pushed, or the commit a by-hand run
 	// named. See `pushedSubjects` for why HEAD is only ever the last resort.
-	const pushed = pushedSubjects();
+	// A caller who NAMES the subject does not need stdin at all, so `--ref` does
+	// not read it (reading a closed descriptor would otherwise refuse a by-hand run
+	// over a stream it never needed).
+	const pushed = options.ref
+		? { subjects: [], source: "--ref names the subject", readable: true }
+		: pushedSubjects();
+	if (!pushed.readable) {
+		throw new GateRefused(
+			`git's pre-push refs could not be read from stdin (${pushed.source}), so this gate cannot tell which commit it is being asked about - and it will not fall back to HEAD, because a verdict about a commit nobody queried is worse than no verdict. Name the commit with --ref <sha>, or run the legs by hand over the pushed commit and record that, or bypass deliberately with PREPUSH_BYPASS="<reason>".`,
+		);
+	}
 	const named = options.ref
 		? [
 				{
@@ -692,6 +779,7 @@ function main(argv) {
 	// base with HEAD, to the working tree - is a superset of what this push
 	// carries, and never a smaller set than the subject's own changes.
 	const head = assertSubjectsReadable(top, resolved);
+	assertLegsReadTheSubject(top, head, paths, flags);
 	const since = gitProbe(["merge-base", baseCommit, head], top) ?? baseCommit;
 	const legs = buildLegs({ top, since, paths, flags });
 	if (!legs.length) {
