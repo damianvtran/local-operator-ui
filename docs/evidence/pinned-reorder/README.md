@@ -11,7 +11,7 @@ Forty frames across **20 states** and two palettes:
 | Frame | State | The claim it carries |
 | --- | --- | --- |
 | `order-before-240/260/280/320` | three pins, catalogue order, pointer parked | nothing at rest: no grip, no pair, no indicator is painted; the section is the catalogue's own order passed through (rule 1) |
-| `grip-hover-240/260/280/320` | pointer on the middle pinned row | the reveal. At **280 and 320**: grip + move pair + archive appear on ONE row and no other. At **240 and 260 the grip is SHED** (design round 1 D2; the 260 default is round 2's D8) and the pair stays — see "The numbers" |
+| `grip-hover-240/260/280/320` | pointer on the middle pinned row | the reveal. At **every width**, and since round 4 (2026-09-30) on the same strip: archive, grip, then the mark — three controls on ONE row and no other. The arrow pair that used to sit between the grip and the mark is gone (the row's menu carries the moves), and the shed that hid the grip at 240 and 260 went with it — see "The numbers" and "Round 4" |
 | `drag-mid` | pointer down on the grip, moved one place | the held row wears BOTH halves of the held state — the selected ground step and its **inset outline** (round 2's D7/U6, drawn as an outline since round 3's D10) — while the row under the pointer wears the hover fill and no mark; the section draws the insertion line in the gap the row would land in; nothing has been written yet |
 | `current-drag-mid` | the conversation the reader is IN, dragged, with the pointer over the next row | the state round 1 could not photograph and round 2 (D7/U6) fixed: the held row KEEPS its `row-selected` fill, so "you are here" survives the gesture, and it is told apart from the hovered drop target by the OUTLINE alone — two rows, two readings, one frame, and the outline covers the row's whole box on this state too (D10's measurement, below) |
 | `drag-top` | a drag held ABOVE the first pinned row (round 1, D5b) | slot 0's line: drawn at the first row's own top edge, under the `Pinned chats` heading, with the last row held |
@@ -20,7 +20,7 @@ Forty frames across **20 states** and two palettes:
 | `search-filtered` | the panel's own search field, query `Chat 00` | the section draws two of the three pins; the third is hidden, not forgotten |
 | `search-drag-mid`, `search-after-drop` | a drop under that filter | the move crosses the SHOWN neighbour while the hidden id keeps its stored slot (the stored order stays a permutation of the full list) |
 | `many-pins`, `many-pins-drag` | fifteen pins, at 280 | the section overflows the scroller; a drag held at the scroller's edge scrolls it (722.5px of scroll, measured) and the line stays inside the section |
-| `single-pin`, `single-pin-hover` | one pin, at 280 | the state where both move controls are inapplicable at once AND the grip is not offered at all (design round 1, D3: with one row there is no second slot a drop could land on). Shot at 280 so the absence is attributable to the count rule, not to the width shed |
+| `single-pin`, `single-pin-hover` | one pin, at 280 | the state where both of the row menu's Move items are inapplicable at once AND the grip is not offered at all (design round 1, D3: with one row there is no second slot a drop could land on). Shot at 280 so the absence is attributable to the count rule, not to the width shed |
 
 The `keys` **slice** produces no frames: it is a readings-only launch (the keyboard walk
 after a chord, and the live region's mutation count), and its readings are quoted below.
@@ -32,28 +32,37 @@ Measured on the shipped DOM at four panel settings, on a pinned row of a three-p
 
 | Panel | Row box | Title at rest | Title under the pointer | Revealed cluster |
 | --- | --- | --- | --- | --- |
-| **240** (a below-default step) | 208 | **126** | **68** | archive + up + down + mark = **108** (the grip is shed) |
-| **260** (THE DEFAULT) | 228 | **146** | **88** | the same **108** (the grip is shed) |
-| **280** (widened past the default) | 248 | **166** | **80** | the same **108** + the grip = **136** |
-| **320** (the clamp maximum) | 288 | **206** | **120** | **136** |
+| **240** (a below-default step) | 208 | **126** | **96** | archive + grip + mark = **80** |
+| **260** (THE DEFAULT) | 228 | **146** | **116** | the same **80** |
+| **280** (widened past the default) | 248 | **166** | **136** | the same **80** |
+| **320** (the clamp maximum) | 288 | **206** | **176** | the same **80** |
 
-**WHAT THE WIDTHS ACTUALLY ARE (round 2, design D8).** The panel's clamp is `220..320`
+**ROUND 4 (2026-09-30) REWROTE THIS TABLE.** It read 68 / 88 / 80 / 120 under the pointer with a
+108-136 cluster: the two arrow buttons were in the strip, and the grip was shed at or below a
+278px panel to give the title back. Both are gone - the move is offered by the row's own context
+menu (`Move conversation up` / `down`, with `⌘⇧↑` / `⌘⇧↓` beside them, which is WCAG 2.5.7's
+single-pointer path) and by the same chords, and the shed's premise went with the pair it was
+protecting. The title under the pointer is `row - 4 - 80 - 24`: **+28 at 240 and 260** against the
+round-3 shed, **+56 at 280 and 320** against round 3's drawn grip. Where no grip is drawn (a single
+pin, or a filtered section that shows one) the cluster is 52 - archive and mark - and the title
+under the pointer is 124 at 240.
+
+**WHAT THE WIDTHS ACTUALLY ARE (round 2, design D8; the rest of this paragraph is round 2's
+record and is SUPERSEDED in its last two sentences by round 4 - see below).** The panel's clamp is `220..320`
 (`SIDEBAR_MIN_WIDTH`/`SIDEBAR_MAX_WIDTH`), the width a reader who has never resized it opens
 at is **260** (`SIDEBAR_DEFAULT_WIDTH`), and the overlay arrangement's sheet is a fixed 260
 as well (`SIDEBAR_SHEET_WIDTH`). Round 1's frame table called 280 "(default)" and 240
 "(clamp min)"; neither is true — 280 is a panel WIDENED past the default, 240 is a step
 BELOW it, and the two widths the app actually opens in had no frame at all until 260 was
-added here. That matters because the shed's break sits between them: **at the default 260
-(and in the sheet) the grip is not drawn, so the reorder path there is the move pair plus
-the keyboard chords** — the drag handle appears only once the docked panel is widened to 279
-or more. Reordering is available at every width; the DRAG is the width-gated accelerator,
-and `docs/design/sidebar-row-space.md` §3 and §8 carry the rule, the 263-vs-279 arithmetic,
-the load-bearing `!` and the measured reason the break was not moved down to cover 260.
+added here. **Round 2 said the grip was shed at the 260 default, and that sentence is retired:**
+since round 4 the shed is deleted (`docs/design/sidebar-row-space.md` §8, "Deleted again"), so
+the default 260 and the overlay sheet carry the drag handle like every other width, and the
+reorder path there is the handle, the row's menu and the chords.
 
 So the handle costs the title **28px** (its 24px box plus the cluster's 4px gap) where it is
-drawn, and **nothing at rest** — it is reveal-only, like the pair it sits beside. At 240 and
-260 it is not drawn at all, which is why those columns read 68 and 88 rather than the 40 the
-first pass measured with the grip in the cluster.
+drawn, and **nothing at rest** — it is reveal-only, like the archive beside it. It is drawn at
+every width now, which is why the 240 column reads 96 and not the 124 a grip-less cluster would
+leave: the 28px is the handle's, measured, not derived.
 
 ## The held row, and how it reads
 
@@ -112,7 +121,7 @@ The gesture's own readings, from the same runs:
 - The **scrolled drop** (round 1, R3): a second drag at that scrolled list, released —
   `scrollTop` 722.5 → **722.5** with the order moving `p000` from first to last, so the
   post-commit correction no longer shifts a scrolled list by a row.
-- `single-pin`: one row in the section, both move controls `aria-disabled`, **no grip**.
+- `single-pin`: one row in the section, both of the row menu's Move items `aria-disabled`, **no grip**.
 - `keys` (readings only): after `⌘⇧↑` the caret is on the **moved row's own button**
   (`tag BUTTON`, `data-chat-row`, not the pin mark), and a bare `↓` walks on to another
   row in the same list rather than to the panel's first stop; the live region produced
@@ -144,6 +153,27 @@ node scripts/renderer-driver.mjs --scene pinned-reorder --pinned-state three \
 drawn at all, so the single-pin frame's absent handle is the count rule and not the width
 shed. The `three` slice sweeps 240/260/280/320, which is where the width table above comes
 from.
+
+## Round 4's re-shoot (2026-09-30): the strip after the chevrons go
+
+Every frame in this directory was re-shot on the tree of the change that deleted the arrow pair
+and the grip's width shed (40 frames, 20 states x two palettes; the `three`, `many`, `single`
+and `keys` slices, one launch each, per palette: **53 + 16 + 12 + 14 checks, 0 FAIL**, both
+palettes). Two states are changed in MEANING, not just in pixels:
+
+- `grip-hover-240` and `grip-hover-260` photographed the grip ABSENT and the pair drawn; they now
+  photograph the grip DRAWN and the pair gone - `archive, grip, mark` on one row at every width.
+  Read them against the table above: 96 and 116 under the pointer where they were 68 and 88.
+- `many-pins`, `single-pin`, `single-pin-hover` and the drag labels are the same STATES as before
+  on a strip without the arrow pair; the `keys` slice's readings are unchanged (the caret on the
+  moved row's own button, 15 mutations to the boundary, 4 on a repeat press) - the chord now
+  calls the same write path the menu items call, and the reading is the proof it kept its
+  behaviour through the rewire.
+
+**The measurement files are re-assembled, not hand-edited**: this directory's
+`measurements/pinned-reorder-geometry-<theme>.json` has no writer inside the driver - each slice
+logs its readings and the file is the four slices' logs re-keyed. The shape and key order are the
+committed ones; only the readings changed.
 
 ## Round 1's re-shoot, and how it compares to the set before it
 
