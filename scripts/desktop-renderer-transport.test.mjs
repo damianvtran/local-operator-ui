@@ -880,24 +880,32 @@ test("an over-long paste is refused in characters, the unit the schema caps", as
 
 test("the send path refuses on an unreadable attachment, before admission", () => {
 	/*
-	 * The wiring, not the sentence: `encodeImageAttachments` lives in
-	 * `chat-page.tsx`, which needs a mounted renderer (React, a router, the
-	 * canonical store) and has no harness here - the instrument
-	 * `composer-readings.test.mjs` argues for on the same grounds. What it pins is
-	 * the half that was missing: a failed read is RECORDED, and the send stops on
-	 * the record instead of proceeding without the file. Comments are stripped so
-	 * a sentence describing the rule cannot stand in for implementing it.
+	 * The wiring, not the sentence. The encoder MOVED (the shared-composer
+	 * restyle lifted it out of `chat-page.tsx` so the mini view could send the
+	 * same way), and this reader follows it: `attachment-encode.ts` is a plain
+	 * module with no renderer behind it, so the instrument reads the file the
+	 * function actually lives in. The call-site half below still reads
+	 * `chat-page.tsx`, which is where the refusal is raised. What it pins is the
+	 * half that was missing: a failed read is RECORDED, and the send stops on the
+	 * record instead of proceeding without the file. Comments are stripped so a
+	 * sentence describing the rule cannot stand in for implementing it.
 	 */
 	const page = readFileSync(
 		"src/renderer/src/features/chat/components/chat-page.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
-	// Bounded by the next top-level declaration, so the slice is the encoder and
-	// nothing else: `boundImagesForBudget` is imported at the top of the file, so
-	// searching for the name would find the import and slice to nothing.
-	const encoder = page.slice(
-		page.indexOf("async function encodeImageAttachments"),
-		page.indexOf("function SessionPanel"),
+	const encoderSource = readFileSync(
+		"src/renderer/src/features/chat/utils/attachment-encode.ts",
+		"utf8",
+	).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	/*
+	 * To the END of the file rather than to a following declaration: the encoder is
+	 * the module's last top-level function, and an end bound naming a symbol from
+	 * the file it used to live in (`SessionPanel`) would slice to nothing - which is
+	 * exactly the failure this reader shipped with when the function moved.
+	 */
+	const encoder = encoderSource.slice(
+		encoderSource.indexOf("async function encodeImageAttachments"),
 	);
 	assert.match(
 		encoder,
