@@ -149,6 +149,9 @@ export const gruvboxLight: ThemeDefinition = {
 		 * `sunken` is the tightest ground at ΔE00 4.09.
 		 */
 		hairline: "#DDD2B0",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.59:1 there against `hairline`'s 1.17:1.
+		hairlineStrong: "#C0B499",
 		// Canonical dark4, which clears the 3:1 structural floor on every ground where
 		// the lighter rules could not.
 		borderControl: "#7C6F64",

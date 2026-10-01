@@ -16,6 +16,14 @@
  * what this thing IS versus where it stands right now.
  */
 
+/*
+ * The shared display rule, imported RELATIVELY rather than through the
+ * `@shared` alias: this module is bundled by `slash-row-format.test.mjs` and
+ * `slash-contract.test.mjs` with no path aliases configured, the same
+ * constraint `chat-header-identity-model.ts` records beside its own import of
+ * the same leaf.
+ */
+import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
 import { activeModelForDefault } from "../pickers/model-default-settings";
 import { effortDisplay } from "../session-status/session-model";
 import { pyTrim } from "./slash-token";
@@ -49,6 +57,21 @@ export type ArgumentRow = {
 	/** Paints `detail` in the danger tint. */
 	alert?: boolean;
 	current?: boolean;
+	/**
+	 * The team's ADDRESS — its slug — when `name` displays a LABEL instead.
+	 *
+	 * Two facts in one field, and both are needed by the popup rather than by
+	 * this shaper (design round 1, D2/D3): the renderer draws it as the quiet
+	 * mono token beside the name, so the string a pick will WRITE is readable
+	 * at the moment of choosing rather than discovered in the composer; and its
+	 * PRESENCE is also what tells the renderer the name is prose and takes the
+	 * human face, so a slug row keeps the machine face it always had.
+	 *
+	 * Unset on every other row (agents, models, the title suffixes), and unset
+	 * when the display already IS the slug — a token repeating the name would
+	 * be noise.
+	 */
+	slug?: string;
 };
 
 /** A direct operation in an argument list, never a catalogue value to complete. */
@@ -471,6 +494,15 @@ type ProfileEntity = {
 	description?: unknown;
 	kind?: unknown;
 	members?: unknown;
+	/**
+	 * A team's free-text display name, when the row carries one. Typed here
+	 * though only `team` rows use it: the same `commands.entities` payload
+	 * serves `/agent`, and a row without a label reads exactly as before.
+	 */
+	label?: unknown;
+	/** Extra TUI-safe keys a team resolves under. Not read here - addressing
+	 * stays on `value` - but the type states the wire shape in one place. */
+	aliases?: unknown;
 };
 
 type ValueEntity = { value?: unknown };
@@ -649,9 +681,34 @@ export function argumentRows(
 			return entities.map((raw) => {
 				const row = raw as ProfileEntity;
 				const value = asText(row.value) || asText(row.name);
+				const label = asText(row.label);
+				/*
+				 * THE DISPLAY PREFERS THE LABEL, THE VALUE STAYS THE SLUG — through the
+				 * app's ONE statement of that rule, not a copy of it: round 1's R1-2
+				 * measured this row as the one place that had replicated `label ||
+				 * name` WITHOUT the helper's trim, so a padded label rendered padded
+				 * and a whitespace-only one blanked the row, where every other surface
+				 * falls back to the slug. `value` — what a pick WRITES and a run SENDS
+				 * through `completionFor` — is untouched, so a row that shows
+				 * "Local Operator Dev" still inserts `lopdev`.
+				 *
+				 * The slug is REPUBLISHED AS AN ALIAS whenever the display differs
+				 * from it, because `matchChoices` scores against name AND aliases but
+				 * displays `name`: without the alias, the team's actual key would stop
+				 * finding the row the moment the row started showing its label, and a
+				 * user who learned the key from every other surface (`/team lopdev`,
+				 * bindings, the agents route) would be told nothing matches. An alias
+				 * buys RANK and never rewrites what the row writes. The `slug` field is
+				 * its display-side twin (the token the popup draws, and the flag that
+				 * the name is prose — see the type).
+				 */
+				const base = asText(row.name) || value;
+				const name = teamDisplayName({ name: base, label });
 				return {
 					value,
-					name: asText(row.name) || value,
+					name,
+					slug: name !== value ? value : undefined,
+					aliases: label?.trim() && name !== value ? [value] : undefined,
 					description: asText(row.description),
 					// The TUI's own row detail for these lists is the profile
 					// KIND (role/specialist) — the fact a user picks a hat by. A

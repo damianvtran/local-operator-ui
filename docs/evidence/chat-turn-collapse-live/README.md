@@ -5,16 +5,19 @@ driver scene `--scene turn-collapse` (`scripts/renderer-driver.mjs`). The story
 set (`../chat-turn-collapse/`) photographs the states; this set is the
 interaction a still cannot state: a run parked on the reader's gate, the same
 run while it is live, the turn the moment its answer settles, the reader's
-press, the reload, and the bar at a narrow window.
+press, the reload, and the bar at a narrow window. Each frame is committed at
+`turn-collapse-<state>/localOperatorDark.webp`: the six frames are one theme (the
+dark brand palette), so the palette that would spell a light half is absent by
+measurement rather than by omission.
 
 | file | state | what it shows |
 | --- | --- | --- |
-| `turn-collapse-parked.png` | parked on the approval | the question card docked above the composer, the held call's row ticking — and NO bar: a turn waiting on the gate is unsettled (the scene asserts `bars: 0` here) |
-| `turn-collapse-live-no-bar.png` | mid-run, after the approval | the user row, `Running sleep 12` ticking, the working line — and NO bar: nothing condenses while the turn is live |
-| `turn-collapse-completed.png` | completed | the same turn as one quiet line — `Took 13s · 1 action` with the turn's stamp (`6:19 PM`) and the chevron — over the answer |
-| `turn-collapse-expanded.png` | the reader's press | the bar is the toggle: the press reveals `>_ Ran sleep 12 … 13s` in place; the bar keeps its stamp and chevron. The scene measures the expansion's own step here: bar→row1 centre Δ26.8px, the ledger's rhythm (the round-1 review measured Δ57px before the fix) |
-| `turn-collapse-reloaded.png` | reload | the durable re-read arrives collapsed with the SAME run ids and the SAME `Took 13s · 1 action` — the live span (`settledAt`) and the durable span (the row's commit `ts`) agree on this run |
-| `turn-collapse-narrow-completed.png` | completed at `800x600` | the same scene at the narrow window the review asked for: the bar's clauses fit (no truncation, no stamp/chevron collision) — `Took 13s · 1 action` and the stamp on one line |
+| `turn-collapse-parked/localOperatorDark.webp` | parked on the approval | the question card docked above the composer, the held call's row ticking — and NO bar: a turn waiting on the gate is unsettled (the scene asserts `bars: 0` here) |
+| `turn-collapse-live-no-bar/localOperatorDark.webp` | mid-run, after the approval | the user row, `Running sleep 12` ticking, the working line — and NO bar: nothing condenses while the turn is live |
+| `turn-collapse-completed/localOperatorDark.webp` | completed | the same turn as one quiet line — `Took 13s · 1 action` with the turn's stamp (`6:19 PM`) and the chevron — over the answer |
+| `turn-collapse-expanded/localOperatorDark.webp` | the reader's press | the bar is the toggle: the press reveals `>_ Ran sleep 12 … 13s` in place; the bar keeps its stamp and chevron. The scene measures the expansion's own step here: bar→row1 centre Δ26.8px, the ledger's rhythm (the round-1 review measured Δ57px before the fix) |
+| `turn-collapse-reloaded/localOperatorDark.webp` | reload | the durable re-read arrives collapsed with the SAME run ids and the SAME `Took 13s · 1 action` — the live span (`settledAt`) and the durable span (the row's commit `ts`) agree on this run |
+| `turn-collapse-narrow-completed/localOperatorDark.webp` | completed at `800x600` | the same scene at the narrow window the review asked for: the bar's clauses fit (no truncation, no stamp/chevron collision) — `Took 13s · 1 action` and the stamp on one line |
 
 ## What produced them
 

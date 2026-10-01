@@ -107,7 +107,7 @@ the chat column's and composer's `left`, and the pane's `left`:
 | 800x600 (800x568) | expanded | before-fix | dark | **0 → 221** | 500 → **279** | 500 → **279** | 500..919 |
 | 800x600 | expanded | before-fix | light | **0 → 221** | 500 → **279** | 500 → **279** | 500..919 |
 | 800x600 | expanded | after-fix | dark | 0 → **0** | 500 → **500** | 500 → **500** | 721..800 |
-| 800x600 | expanded | after-fix | light | 0 → **0** | 500 → **500** | 500 → **500** | 721..800 |
+| 800x600 | strip | after-fix | light | 0 → **0** | 56 → **56** | 56 → **56** | 536..800 |
 | 800x600 | collapsed | after-fix | dark | 0 → **0** | 500 → 500 | 500 → 500 | 549..800 |
 | 1380x900 (1380x868) | expanded | before-fix | dark | 0 → 0 | 500 → 500 | 500 → 500 | 961..1380 |
 | 1380x900 | expanded | after-fix | dark | 0 → 0 | 500 → 500 | 500 → 500 | 961..1380 |
@@ -155,7 +155,7 @@ directions, and its sign depends on the width the column had before the press:
 | --- | --- | --- | --- | --- |
 | 1024x673 | expanded | 524 → 220 | 483 → 457 (**26 up**) | 158 → 184 |
 | 1024x673 | collapsed | 696 → 276 | 441 → 483 (**42 down**) | 200 → 158 |
-| 800x600 | expanded | 300 → 220 | 410 → 384 (**26 up**) | 158 → 184 |
+| 800x600 | strip | 744 → 480 | 434 → 476 (**42 down**) | 166 → 124 |
 | 800x600 | collapsed | 472 → 220 | 410 → 384 (**26 up**) | 158 → 184 |
 | 1380x900 | expanded | 880 → 460 | 700 → 710 (**10 down**) | 168 → 158 |
 
@@ -511,7 +511,7 @@ states driven, exactly as on this head.
 | collapsed, dark | this head | 0 | 605..1024 | 0 | yes / yes | 0 | 0 |
 | 800x600 expanded, dark | base `5c53e1c75`\* | 0 | 721..1140 | **340** | no / no | **4** | n/a |
 | 800x600 expanded, dark | this head | 0 | 721..**800** | **0** | yes / yes | **0** | 0 |
-| 800x600 expanded, light | this head | 0 | 721..800 | 0 | yes / yes | 0 | 0 |
+| 800x600 strip, light | re-shot `dad1778e14` | 0 | 536..800 | 0 | yes / yes | 0 | 0 |
 | 800x600 collapsed, dark | this head | 0 | 549..800 | 0 | yes / yes | 0 | 0 |
 | 1380x900 expanded, dark | base `5c53e1c75`\* | 0 | 961..1380 | 0 | yes / yes | 0 | n/a |
 | 1380x900 expanded, dark | this head | 0 | 961..1380 | 0 | yes / yes | 0 | 0 |
@@ -659,12 +659,35 @@ Owed:
 
 - **re-capturing the frames.** No `.webp` in this set was re-taken for the
   re-integration or for round 2, so the committed frames still show `8bd51bd03`'s
-  build. This is a decision rather than a gap: the readings this head produces are
-  in the readbacks under `readbacks/` and tabulated above, and the frames are kept
-  as the record of what the frames were evidence FOR. Nothing above is contradicted
-  by them — but a reader comparing a frame to a number in the table is comparing
-  two different builds, which is why the table names itself as readbacks and the
-  frame listing names its own provenance;
+  build — **with exactly one exception, added 2026-09-30.**
+  `press-800x600-after-fix/localOperatorLight.webp` was re-shot on `dad1778e14`,
+  because its committed capture had recorded the DARK palette under the light
+  name: dominant colour `#1E1A15`, ΔE00 **81.86** from the nearest
+  `localOperatorLight` ground and **2.19** from `localOperatorDark`'s — the dark
+  sibling's own mode, and not a byte-identical file, so it was a distinct capture
+  whose light leg never applied the theme. That is the frame `pnpm check-evidence`
+  failed as "this frame is not a picture of the app". The replacement's dominant
+  colour is `#F2EDE3`, ΔE00 **0.00** from the light ground, at 0.466 coverage
+  (ceiling 0.985), so the same per-frame predicate passes; the JSON beside it is
+  that run's, verbatim. What it now shows is the app at 800x600 with the pane OPEN
+  and nothing clipped — pane `536..800`, `clipPx` 0, `cutRows` 0, close control
+  inside and hit-testable, `movers: []`, `todosOffsetInRegion` 0 — which is the
+  same claim the row above states, on the current tree. Two things came from the
+  tree rather than from the fix, and both are why the numbers in the tables moved:
+  an 800x600 window's content viewport is now **800x600** (it was 800x568 when the
+  set was shot; the window chrome changed), and **the docked/expanded 800x600 state
+  this directory was shot in no longer exists at that width** — below 1024px the
+  sidebar is the 56px icon strip whatever the user's preference
+  (`chat-sidebar-layout.ts`), so `--rail=expanded` has no state to reach there (the
+  rig's `nav.group` selector is no longer the rail either). The re-shot frame is
+  therefore the app's own 800x600 state today — **strip** — and its dark sibling is
+  still the older expanded-rail capture: this one directory is now two builds and
+  two rail states, which is stated here rather than papered over. The rest of the
+  bullet stands: for every other frame, the readings this head produces are in the
+  readbacks under `readbacks/` and tabulated above, and the frames are kept as the
+  record of what the frames were evidence FOR. A reader comparing a frame to a
+  number in the table is comparing two different builds, which is why the table
+  names itself as readbacks and the frame listing names its own provenance;
 - **`--reader=first`** (round 2's Q3, QA round 3's BLOCKED): still cannot reach an
   openable roster on this fixture — the seeded roster renders only in the cold
   projection, and warming the session replaces the store it comes from. Recorded as
@@ -717,5 +740,7 @@ in both rail states; the Escape pair; `pnpm lint`, `pnpm lint:scripts`,
   re-derived in the table below (clip 116 → 0 at the operator's size, 340 → 0 at
   the app's floor, rows cut at a hard edge 4 → 0, close control reachable in both).
   What remains unfixed is the pane's WIDTH where the row cannot host it: 79px at
-  800x600 with the rail expanded, which is the chrome decision the record states
+  800x600 with the rail expanded (a state the current tree no longer reaches at
+  that width — see *What was NOT re-run, and why*), which is the chrome decision
+  the record states
   as open rather than made (`docs/run-sidebar.md` § 8).

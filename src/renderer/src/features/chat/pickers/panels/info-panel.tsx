@@ -2,6 +2,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useTeamLabelFor } from "@shared/api/local-operator/profile-hooks";
 import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
@@ -57,6 +58,13 @@ export type InfoPanelProps = {
 	onClose: () => void;
 	/** Whole-body gate: the op is never called when false. */
 	gated: boolean;
+	/**
+	 * The team's readable name for the Active row (round 1, R1-3b). An ARGUMENT
+	 * and not a lookup here, because this component renders; the adapter that
+	 * mounts it owns the catalogue read (`useTeamLabelFor`), and absent means
+	 * the slug renders exactly as it always did.
+	 */
+	teamLabelFor?: (slug: string) => string;
 };
 
 /**
@@ -204,6 +212,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 	sessionId,
 	onClose,
 	gated,
+	teamLabelFor,
 }) => {
 	const install = data ? installFacts(data.install) : null;
 	const sessions = data?.sessions;
@@ -524,7 +533,7 @@ export const InfoPanel: FC<InfoPanelProps> = ({
 							>
 								<FactsTable
 									label="This conversation"
-									rows={conversationRows(frontend, sessionId)}
+									rows={conversationRows(frontend, sessionId, teamLabelFor)}
 								/>
 							</PanelSection>
 						) : null}
@@ -623,6 +632,16 @@ export const InfoView: FC<MachinePanelContext> = ({
 	const capabilities = useDesktopCapabilities();
 	const gated = !desktopFeatureEnabled(capabilities.data, "diagnostics", 1);
 	const query = useQuery({ ...infoQueryOptions(), enabled: !gated });
+	/*
+	 * The Active row reads the team the way the header chip on the same screen
+	 * does (round 1, R1-3b): the chip was resolved through this same catalogue
+	 * while the row beneath it printed the raw slug. Same hook family every
+	 * resolved surface uses, same gate, and a slug the catalogue cannot resolve
+	 * renders as itself.
+	 */
+	const teamLabelFor = useTeamLabelFor(
+		desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+	);
 	return (
 		<InfoPanel
 			data={query.data?.data ?? null}
@@ -632,6 +651,7 @@ export const InfoView: FC<MachinePanelContext> = ({
 			sessionId={sessionId}
 			onClose={onClose}
 			gated={gated}
+			teamLabelFor={teamLabelFor}
 		/>
 	);
 };

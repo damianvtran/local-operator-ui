@@ -94,16 +94,33 @@ export const NODE_WIDTH = 200;
  */
 export const NETWORK_HEIGHT = 48;
 /**
- * A DEVICE NODE'S HEIGHT, chip band included WHETHER OR NOT IT HOLDS ANYTHING.
+ * The three rows a device node's own text occupies, with the node's own padding.
+ *
+ * 72 px is identity + the metric rail + the state line, measured on the redesign's
+ * frame (19.5, 17.4 and 15.7 px of line) plus the node's own padding. It is named
+ * apart from `DEVICE_HEIGHT` because "how tall is the node" and "how much room does
+ * its text have" are two questions, and the band answers only the first.
+ */
+export const NODE_BODY_HEIGHT = 72;
+/**
+ * The chip band, reserved WHETHER OR NOT IT HOLDS ANYTHING.
  *
  * THE BAND IS RESERVED, and that is the plan's "a node must not breathe on a poll"
  * applied to the second axis: a node that grew when its first conversation appeared
  * would move every node below it in the column at that moment - the reshuffle this
- * module exists to prevent - and it would do it under the reader's pointer. 48 px is
- * slice 1's node; the extra 24 px is the band (`NODE_CHIP_BAND`).
+ * module exists to prevent - and it would do it under the reader's pointer.
  */
 export const NODE_CHIP_BAND = 24;
-export const DEVICE_HEIGHT = 72;
+/**
+ * A DEVICE NODE'S HEIGHT: the body the text occupies, then the band.
+ *
+ * The expression is the reservation, kept as one so a later reader cannot move the
+ * band out of the box that reserves it. 48 px is slice 1's body and 72 px is the
+ * redesign's; 96 rather than 72 is the ONE geometry number this slice moves, and its
+ * cost is measured rather than argued: at the shipped 1380x900 the `k = 1` guarantee
+ * moves from six devices to FIVE (`MIN_FIT_SCALE` is the other half of that).
+ */
+export const DEVICE_HEIGHT = NODE_BODY_HEIGHT + NODE_CHIP_BAND;
 /**
  * The node height a caller means when it does not say, kept as the device's.
  *
@@ -120,6 +137,69 @@ export const ROW_GAP = 16;
 export const COLUMN_GAP = 200;
 export const PAD = 24;
 
+/**
+ * The enclosure's standoff, its label's band, and the room a row that opens one must
+ * clear: THE ONE PLACE THE LABEL'S ROOM CAN BE RESERVED IS THE LAYOUT.
+ *
+ * `SCOPE_ENCLOSURE_PAD` is how far a frame stands off the boxes it wraps. 10 px rather
+ * than the graph's own `ROW_GAP`: this is not a gap between things, it is a frame AROUND
+ * things, and a frame that touched its contents would read as a third edge of the node
+ * (measured: 8-12 px reads as "around", 4 px as "attached to").
+ *
+ * The label above the frame's top edge (`mesh-scope-layer.tsx`) is `text-meta` (12 px x
+ * 1.45 = 17.4 px) sitting 2 px up: a 19.4 px BAND, rounded up to `SCOPE_LABEL_BAND`.
+ * `SCOPE_OPEN_GAP` is what a row that OPENS an enclosure - the topmost member of a scope
+ * group - must have above it: pad, band and 2 px of clearance, and `scopeOpenGap` prices
+ * a STACK of levels on the same scale. Without the reservation
+ * the label renders BEHIND the node above, which paints over the scope layer (DOM order
+ * scope -> edges -> nodes): round 1 measured 13.4 px of the 19.4 px band behind the node
+ * on both palettes, two ink rows of ten surviving.
+ */
+export const SCOPE_ENCLOSURE_PAD = 10;
+export const SCOPE_LABEL_BAND = 20;
+export const SCOPE_OPEN_GAP = SCOPE_ENCLOSURE_PAD + SCOPE_LABEL_BAND + 2;
+/**
+ * THE STACK'S PITCH, and the reason the nesting rule can draw a staircase: one level of
+ * an enclosure stack sits 26 px above the level inside it (`SCOPE_LABEL_BAND` + 6, so
+ * consecutive 17.4 px labels keep more than their own line of gap), and each outer
+ * level stands 4 px wider on the left and right and reaches 4 px further down - a RING,
+ * not a second frame on the same point. The design ruling of round 2 (NEST + STAGGER)
+ * answered two enclosures sharing one opener and overprinting their labels with exactly
+ * this geometry. The layer reads both numbers; they live here because the layout and the
+ * label band are one reservation (see `scopeOpenGap`).
+ */
+export const SCOPE_LEVEL_STEP = SCOPE_LABEL_BAND + 6;
+export const SCOPE_LEVEL_INSET = 4;
+/**
+ * The strip above a row that opens `levels` enclosure levels.
+ *
+ * One level costs `SCOPE_OPEN_GAP` - pad, band and clearance - and every level above it
+ * sits `SCOPE_LEVEL_STEP` higher, so the reservation grows WITH the stack instead of
+ * being one label's cost: the round-2 review measured two labels overprinting at one
+ * anchor because the band was priced as a single label. No cap - a row opens as many
+ * levels as the groups whose topmost member it is, which the grouping bounds.
+ */
+export const scopeOpenGap = (levels: number) =>
+	SCOPE_OPEN_GAP + SCOPE_LEVEL_STEP * (levels - 1);
+/**
+ * The same strip at the TOP of a column whose first row opens `levels` levels.
+ *
+ * The world's own edge is the other cause of a clipped label - the 1024x768 frame ran
+ * the topmost label 4.4 px of 13.9 px behind the canvas's own top edge - and that edge
+ * cannot be moved by a row gap. The centring already gives the device column `PAD` at
+ * the top, so this is the difference between `PAD` and the strip a label needs; a label
+ * then sits inside the world at every viewport the fit can produce.
+ *
+ * THE + 8 IS THE FIT FLOOR'S MARGIN (round-2 convergence, M3). When the floor binds,
+ * the world is taller than the viewport and the fit now TOP-ALIGNS instead of centring
+ * (see `fitTransform`), so the world's top edge sits ON the canvas's own: the label's
+ * clearance then has to survive the 0.8 scale, and 8 world px is 6.4 screen px at the
+ * floor - the margin the reviewed frame needed (it measured the label's glyph tops
+ * sliced flat by the canvas edge before this).
+ */
+export const scopeTopClearance = (levels: number) =>
+	scopeOpenGap(levels) - PAD + 8;
+
 /** A node's box in world coordinates, with the height its own kind of node uses. */
 export type NodeBox = { key: string; x: number; y: number; height: number };
 
@@ -132,29 +212,47 @@ export type ColumnGeometry = {
 /** The world's extent, from the two columns. */
 export type MeshBounds = { width: number; height: number };
 
-function column(slots: SlotMap, x: number, nodeHeight: number): ColumnGeometry {
-	const boxes = new Map<string, NodeBox>();
-	for (const [key, slot] of slots) {
-		// No padding here: the COLUMN does not own the world's margin. `meshGeometry`
-		// places the column inside the world, which is what lets a short column be
-		// centred against a tall one.
-		boxes.set(key, {
-			key,
-			x,
-			y: slot * (nodeHeight + ROW_GAP),
-			height: nodeHeight,
-		});
-	}
-	/*
-	 * The span the column's SLOTS occupy, not the count of nodes: a gap at slot 3
-	 * still takes three rows of height, and compressing it away would move the
-	 * nodes above it on the next poll - the one thing slots exist to prevent.
+function column(
+	slots: SlotMap,
+	x: number,
+	nodeHeight: number,
+	/**
+	 * THE ROWS A SCOPE STACK SITS ABOVE, by device id, TO THE NUMBER OF LEVELS each opens
+	 * (`mesh-scope.ts`'s `openingLevels`). A row clears `scopeOpenGap(levels)` instead of
+	 * `ROW_GAP` above itself, and a COLUMN whose first row opens a stack clears
+	 * `scopeTopClearance(levels)` at the top, so every level's label band is inside the
+	 * world before the fit ever sees it. Networks never open an enclosure, so this is
+	 * passed only for the device column.
 	 */
-	const used = slots.size === 0 ? 0 : Math.max(...slots.values()) + 1;
-	return {
-		boxes,
-		height: used === 0 ? 0 : used * nodeHeight + (used - 1) * ROW_GAP,
-	};
+	openers?: ReadonlyMap<string, number>,
+): ColumnGeometry {
+	const boxes = new Map<string, NodeBox>();
+	/*
+	 * Ascending slot order, so the gaps can DIFFER per transition. The placement is
+	 * still cumulative in slot pitch - an empty slot costs its own row, exactly as the
+	 * fixed-pitch layout did - and a row that opens an enclosure buys the label's band
+	 * out of the gap above it. `mesh-tab.test.mjs` pins both the pitch and the band.
+	 */
+	const rows = [...slots.entries()].sort((a, b) => a[1] - b[1]);
+	let cursor = 0;
+	let previous: number | null = null;
+	for (const [key, slot] of rows) {
+		const levels = openers?.get(key) ?? 0;
+		if (previous === null) {
+			if (levels > 0) cursor += scopeTopClearance(levels);
+		} else {
+			cursor +=
+				(slot - previous - 1) * (nodeHeight + ROW_GAP) +
+				(levels > 0 ? scopeOpenGap(levels) : ROW_GAP);
+		}
+		// No padding of its own: the COLUMN does not own the world's margin.
+		// `meshGeometry` places the column inside the world, which is what lets a short
+		// column be centred against a tall one.
+		boxes.set(key, { key, x, y: cursor, height: nodeHeight });
+		cursor += nodeHeight;
+		previous = slot;
+	}
+	return { boxes, height: cursor };
 }
 
 export type MeshGeometry = {
@@ -170,12 +268,25 @@ export type MeshGeometry = {
  * computed before either is placed: with one network and three devices, the
  * network sits at the second device's row rather than at the top of the world.
  */
-export function meshGeometry(slots: MeshSlots): MeshGeometry {
+export function meshGeometry(
+	slots: MeshSlots,
+	/**
+	 * The rows that open scope stacks, to the number of levels each opens
+	 * (`mesh-scope.ts`'s `openingLevels`). Each such row reserves the whole stack's band
+	 * above itself - `scopeOpenGap(levels)`, so a row opening two nested levels clears
+	 * 58 px rather than one label's 32 - and the first such row reserves it at the
+	 * world's top edge, where the 1024x768 frame measured the label clipped by the canvas
+	 * itself. Passing nothing is the plain grid the pre-scope layout drew, which is what
+	 * the fit table and the geometry tests still rebuild.
+	 */
+	openingLevels?: ReadonlyMap<string, number>,
+): MeshGeometry {
 	const networkColumn = column(slots.networks, PAD, NETWORK_HEIGHT);
 	const deviceColumn = column(
 		slots.devices,
 		PAD + NODE_WIDTH + COLUMN_GAP,
 		DEVICE_HEIGHT,
+		openingLevels,
 	);
 	const span = Math.max(networkColumn.height, deviceColumn.height);
 	const height = PAD * 2 + span;
@@ -235,11 +346,43 @@ export const MAX_SCALE = 3;
 export const MAX_FIT_SCALE = 1;
 
 /**
+ * The FIT's own floor: the canvas refuses to fit past the point of legibility.
+ *
+ * WHY A FLOOR RATHER THAN ONLY `MIN_SCALE`. The user's zoom clamps at 0.25, which is
+ * right - a reader may zoom out as far as they like to see the shape of a large mesh
+ * - but the AUTOMATIC fit is a decision the app makes FOR them, and at six devices
+ * that decision put the node's 12 px meta line at 10.8 px while at nine it put it at
+ * **7.34 px**, below the 10 px floor `design-qa`'s `tiny-text` check fails on. This is
+ * pre-existing (the 72 px node reached the same 7.34 px one device later); the taller
+ * node reaches it sooner, which is why the floor lands WITH the taller node rather
+ * than after it.
+ *
+ * 0.8 is where the node's own type stays readable at the shipped window size: the
+ * 12 px meta renders at 9.6 px and the 13 px label at 10.4 px.
+ *
+ * THE COST, STATED RATHER THAN DISCOVERED: a graph too large to fit at 0.8 now
+ * EXTENDS PAST THE VIEWPORT instead of being shrunk into it. That is the trade this
+ * constant makes deliberately - a graph that extends past the viewport is pannable
+ * and zoomable (the pan is the canvas's own gesture and its cursor says so), while a
+ * canvas whose text is 7 px at rest is not readable at all. At the shipped 1380x900
+ * the fit measures 1.0 up to five devices, 0.90344 at six, and the floor first binds
+ * at seven, whose raw fit is 0.77941 (nine's raw fit would have been 0.61156).
+ */
+export const MIN_FIT_SCALE = 0.8;
+
+/**
  * The transform that fits `bounds` inside a viewport, with a margin.
  *
  * Used by "fit" (double-click on empty ground, and the initial view) and NOT by a
  * poll: a poll never changes the viewport transform, which is the classic
  * refetch-resets-zoom defect. Pure, so the fit can be asserted without pixels.
+ *
+ * THE FLOOR IS `MIN_FIT_SCALE`, not `scaleRange.min`, and the two answer different
+ * questions: `scaleRange` is what a USER may zoom to, and the floor here is what
+ * this function may DECIDE. A fit that would land below the legibility floor stops
+ * at the floor and lets the graph extend past the viewport, where panning reaches it -
+ * and it TOP-ALIGNS rather than centres when it does, so the edge that stays on screen
+ * is the one the label band butts against (see the `ty` in the return).
  */
 export function fitTransform(
 	bounds: MeshBounds,
@@ -253,6 +396,7 @@ export function fitTransform(
 		MAX_FIT_SCALE,
 		Math.max(
 			scaleRange.min,
+			MIN_FIT_SCALE,
 			Math.min(
 				viewport.width / Math.max(1, bounds.width),
 				viewport.height / Math.max(1, bounds.height),
@@ -262,7 +406,21 @@ export function fitTransform(
 	return {
 		k,
 		tx: (viewport.width - bounds.width * k) / 2,
-		ty: (viewport.height - bounds.height * k) / 2,
+		/*
+		 * TOP-ALIGNED WHEN THE FLOOR OVERFLOWS (round-2 convergence, M3). Past
+		 * `MIN_FIT_SCALE` the world is taller than the viewport, and CENTRING it then cuts
+		 * it at BOTH edges - measured on `scopes-narrow`: the topmost boundary label's
+		 * glyph rows rendered flat against the canvas's own top edge while the overflow it
+		 * was paying for fell on the blank bottom margin. `0` keeps the world's top edge -
+		 * where the reserved label band sits - on screen and lets the excess hang past the
+		 * bottom, which panning already reaches. The horizontal side is unchanged: a wide
+		 * world still centres. The comparison is strict, so the exactly-fitting case keeps
+		 * the centred form (at which the two agree).
+		 */
+		ty:
+			bounds.height * k > viewport.height
+				? 0
+				: (viewport.height - bounds.height * k) / 2,
 	};
 }
 

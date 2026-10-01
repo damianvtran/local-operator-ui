@@ -265,7 +265,12 @@ export const AgentHubPage: React.FC = () => {
 	const pairingCause = usePairingCause();
 	const orgState = desktopFeatureState(capabilities.data, "radient_org");
 	const orgNotice = isAuthenticated
-		? orgSurfaceNotice(orgState, pairingCause)
+		? /*
+			 * `?? null`: `undefined` (no answer yet) owes the same nothing as `null`
+			 * (no cause) on this surface — see the hook's three states; only a
+			 * consumer that FIRES work on the answer reads the third state.
+			 */
+			orgSurfaceNotice(orgState, pairingCause ?? null)
 		: null;
 	/*
 	 * The viewer's organizations (§4.1), read once for the whole surface.

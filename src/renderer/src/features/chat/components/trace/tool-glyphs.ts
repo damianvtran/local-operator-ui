@@ -32,6 +32,8 @@ import {
 	Inbox,
 	ListChecks,
 	type LucideIcon,
+	MailQuestion,
+	Mailbox,
 	Monitor,
 	PictureInPicture2,
 	Plug,
@@ -134,7 +136,41 @@ export function toolIcon(toolName: string): LucideIcon {
  * There is deliberately no fourth entry for a running row. A running row shows
  * NO outcome glyph — the empty status column is what says "still running" — and
  * a glyph invented for it would be the one thing that breaks that rule.
+ *
+ * ## The two `send` delivery marks, and why they are not the tick or the cross
+ *
+ * A `send` can settle in two ways that are neither: the message landed but the
+ * wake got no answer (`mailbox`), or nothing confirmed that it landed at all
+ * (`unconfirmed`). Both are non-errors, so painting them `✗` would be the false
+ * non-delivery claim the core stopped making; both are not successes, so `✓`
+ * would claim an answered wake the sender never got.
+ *
+ * They take a SHAPE of their own so the two read apart with the colour off,
+ * which is the same reason the pair above is three shapes and not three tints:
+ * `Mailbox` is the noun the state is named for (the message is sitting in the
+ * recipient's tray), and `MailQuestion` is a message carrying a question - "we do
+ * not know where this one is" - chosen over the dashed circle the fourth state
+ * first drew (UX round 1, U5).
+ *
+ * WHY THE CIRCLE WENT, stated with the precedent that actually holds (agent
+ * review round 2, MINOR-3 - the first version of this comment cited a spinner in
+ * `chat-session-status.tsx` that is not a `CircleDashed`). Every busy shape in
+ * this app IS a ring: `chat-session-status.tsx:39,126` spins `LoaderCircle`
+ * (`motion-safe:animate-spin`) and `chat-status-strip.tsx:177` spins `Loader2`.
+ * A ring therefore reads as MOTION before it reads as anything else, and two
+ * settled states wearing one (`run-detail-mcp.tsx:71` for `cold`,
+ * `run-detail-row-parts.tsx:55` for `gone`) is exactly the confusion a settled
+ * delivery row must not add to: `unconfirmed` is the state that means STOP and
+ * CHECK, and `MailQuestion` states that with a shape no spinner in the app can
+ * be mistaken for. The dashed circle is also the only one of the pair that would
+ * have to be read as "in progress" against the row's own `Sent` verb.
+ *
+ * Neither is `Inbox` (`peer`'s own tool glyph)
+ * nor `Send` (`send`'s), so a row's mark and its tool glyph cannot be read as each
+ * other.
  */
 export const SuccessGlyph = Check;
 export const ErrorGlyph = X;
 export const InterruptedGlyph = CircleSlash;
+export const MailboxGlyph = Mailbox;
+export const DeliveryUnconfirmedGlyph = MailQuestion;

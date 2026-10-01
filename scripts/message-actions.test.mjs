@@ -125,6 +125,13 @@ const bundle = await build({
 			 * The probe, answered statically. `speech` selects which half of it
 			 * the mount sees, so one bundle covers "configured" and "not
 			 * configured" without a second build.
+			 * THE SHAPE IS THE SHIPPED ONE (issue #674): the consumers read the
+			 * shared capability and the disabled tooltip's class, not the file
+			 * question the probe used to answer alone. A fixture that answers the
+			 * old shape leaves `canUseRadientSpeech` undefined, so the row renders
+			 * its control disabled whatever `speechConfigured` says — the assertion
+			 * below then fails for a contract the fixture never spoke, which is how
+			 * this file was found (its run also ended in the memory guard's kill).
 			 */
 			name: "credential-probe-fixture",
 			setup(builder) {
@@ -137,7 +144,13 @@ const bundle = await build({
 					contents: `
 						export const useRadientCredentialProbe = () => ({
 							canUseRadientSpeech: globalThis.__speechConfigured === true,
-							speechBlock: "sign-in",
+							/*
+							 * An ANSWERED "no key" is the sign-in class's own arm; a
+							 * configured probe never renders a block at all.
+							 */
+							speechBlock: globalThis.__speechConfigured === true
+								? "could-not-check"
+								: "sign-in",
 						});
 					`,
 				}));
