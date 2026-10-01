@@ -152,6 +152,59 @@ export const askSettledAnswers = (
 		answers: (ask.answers?.[question.id] ?? []).slice(),
 	}));
 
+/**
+ * The wait a timeout row reports, in the backend's own units.
+ *
+ * A COPY of `harness/rows.gate_waited_text`, deliberately and exactly: the TUI
+ * and the phone fold paint this sentence from that function, and a desktop row
+ * that rounded differently would be a third answer to "how long did I leave the
+ * agent waiting". The rule it exists for is that whatever a reader is told must
+ * be the wait that ACTUALLY happened - so an absent or unreadable value says so
+ * rather than rounding up to an hour.
+ */
+export const askWaitedText = (seconds: number): string => {
+	if (!Number.isFinite(seconds) || seconds <= 0) return "a while";
+	if (seconds < 60) return `${Math.trunc(seconds)}s`;
+	if (seconds < 3600) return `${Math.trunc(seconds / 60)}m`;
+	if (seconds < 86400) return `${Math.trunc(seconds / 3600)}h`;
+	return `${Math.trunc(seconds / 86400)}d`;
+};
+
+/**
+ * The one-liner for an `ask_response` receipt.
+ *
+ * Mirrors `harness/rows.ask_response_notice` verbatim for the same reason
+ * `askWaitedText` mirrors its sibling: the TUI fold and the phone fold already
+ * paint these sentences, and a third phrasing here would mean the same event
+ * reads three ways depending on which surface a person happens to open.
+ *
+ * The three statuses stay distinguishable to a HUMAN even though they ride one
+ * message type: a person reading back a conversation needs to know whether their
+ * answer landed in time, landed late, or was a decline.
+ */
+export const askResponseSummary = (receipt: {
+	askId: string;
+	status: string;
+}): string => {
+	if (receipt.status === "declined")
+		return `Ask ${receipt.askId} declined — the agent was told`;
+	if (receipt.status === "late")
+		return `Answered late — the agent was told (ask ${receipt.askId})`;
+	return `Answered — delivering (ask ${receipt.askId})`;
+};
+
+/**
+ * The one-liner for an `ask_timeout` receipt (`harness/rows.ask_timeout_notice`).
+ *
+ * It names BOTH halves on purpose: "timed out" alone reads as finished, and
+ * "you can still answer" alone hides that the agent stopped waiting.
+ */
+export const askTimeoutSummary = (receipt: {
+	askId: string;
+	waitedS: number;
+}): string =>
+	`Timed out after ${askWaitedText(receipt.waitedS)} — the agent moved on; you can still answer (ask ${receipt.askId})`;
+
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
 
 export const presentAsk = (ask: PendingAsk): AskPresentation => {
