@@ -1,18 +1,18 @@
 {
  "scene": "pinned-reorder",
  "theme": "localOperatorDark",
- "round": "round 3 remediation (PR #697), re-shot on the twice-folded tree: the held row's mark is now an inset OUTLINE (round 3, D10 - the inset box-shadow ring was painted UNDER the current row's own opaque button, so it survived at 5.3% on exactly the row round 2 was about); everything else carries over - the 260 default width, the current-row drag, the held ground, the shed at 240, the grip count rule, the scrolled drop and the keyboard walk",
+ "round": "round 4 (2026-09-30, the archive-confirm and pinned-strip change): the arrow pair is gone from the strip (the row's menu carries the moves) and the grip is drawn at every width, so the 240 and 260 frames now show it; everything else carries over - the held ring, the current-row drag, the grip count rule, the scrolled drop and the keyboard walk",
  "slices": {
   "three": {
    "checks": {
-    "pass": 57,
+    "pass": 53,
     "fail": 0,
     "failures": []
    },
    "frames": [
     {
      "label": "order-before-240",
-     "bytes": 192712,
+     "bytes": 192733,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -22,7 +22,7 @@
     },
     {
      "label": "grip-hover-240",
-     "bytes": 206012,
+     "bytes": 206119,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -42,7 +42,7 @@
     },
     {
      "label": "grip-hover-260",
-     "bytes": 205989,
+     "bytes": 206096,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -52,7 +52,7 @@
     },
     {
      "label": "order-before-280",
-     "bytes": 196943,
+     "bytes": 197361,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -62,7 +62,7 @@
     },
     {
      "label": "grip-hover-280",
-     "bytes": 206398,
+     "bytes": 206617,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -72,7 +72,7 @@
     },
     {
      "label": "order-before-320",
-     "bytes": 196950,
+     "bytes": 197375,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -82,7 +82,7 @@
     },
     {
      "label": "grip-hover-320",
-     "bytes": 206389,
+     "bytes": 206610,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -92,7 +92,7 @@
     },
     {
      "label": "drag-mid",
-     "bytes": 197598,
+     "bytes": 198438,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -102,7 +102,7 @@
     },
     {
      "label": "after-drop",
-     "bytes": 196895,
+     "bytes": 197241,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -122,7 +122,7 @@
     },
     {
      "label": "drag-top",
-     "bytes": 199708,
+     "bytes": 199689,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -132,7 +132,7 @@
     },
     {
      "label": "search-filtered",
-     "bytes": 195548,
+     "bytes": 195586,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -142,7 +142,7 @@
     },
     {
      "label": "search-drag-mid",
-     "bytes": 197030,
+     "bytes": 196747,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -152,7 +152,7 @@
     },
     {
      "label": "search-after-drop",
-     "bytes": 196036,
+     "bytes": 195305,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -162,7 +162,7 @@
     },
     {
      "label": "current-drag-mid",
-     "bytes": 165988,
+     "bytes": 165682,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -190,7 +190,7 @@
       },
       "hoverGround": "rgb(48, 45, 41)",
       "restGround": "rgba(0, 0, 0, 0)",
-      "gripPainted": false,
+      "gripPainted": true,
       "restTitles": {
        "p000": 126,
        "p005": 126,
@@ -198,13 +198,16 @@
       },
       "hoverTitles": {
        "p000": 126,
-       "p005": 68,
+       "p005": 96,
        "p010": 126
       },
       "hoveredCluster": {
-       "grip": null,
-       "up": true,
-       "down": true,
+       "grip": {
+        "x": 168,
+        "y": 566,
+        "w": 24,
+        "h": 24
+       },
        "archive": true,
        "pin": true
       }
@@ -226,7 +229,7 @@
       },
       "hoverGround": "rgb(48, 45, 41)",
       "restGround": "rgba(0, 0, 0, 0)",
-      "gripPainted": false,
+      "gripPainted": true,
       "restTitles": {
        "p000": 146,
        "p005": 146,
@@ -234,13 +237,16 @@
       },
       "hoverTitles": {
        "p000": 146,
-       "p005": 88,
+       "p005": 116,
        "p010": 146
       },
       "hoveredCluster": {
-       "grip": null,
-       "up": true,
-       "down": true,
+       "grip": {
+        "x": 188,
+        "y": 566,
+        "w": 24,
+        "h": 24
+       },
        "archive": true,
        "pin": true
       }
@@ -270,18 +276,16 @@
       },
       "hoverTitles": {
        "p000": 166,
-       "p005": 80,
+       "p005": 136,
        "p010": 166
       },
       "hoveredCluster": {
        "grip": {
-        "x": 152,
+        "x": 208,
         "y": 566,
         "w": 24,
         "h": 24
        },
-       "up": true,
-       "down": true,
        "archive": true,
        "pin": true
       }
@@ -311,18 +315,16 @@
       },
       "hoverTitles": {
        "p000": 206,
-       "p005": 120,
+       "p005": 176,
        "p010": 206
       },
       "hoveredCluster": {
        "grip": {
-        "x": 192,
+        "x": 248,
         "y": 566,
         "w": 24,
         "h": 24
        },
-       "up": true,
-       "down": true,
        "archive": true,
        "pin": true
       }
@@ -370,10 +372,15 @@
      "hoverTitle": {
       "x": 36,
       "y": 568,
-      "w": 68,
+      "w": 96,
       "h": 20
      },
-     "grip": null
+     "grip": {
+      "x": 168,
+      "y": 566,
+      "w": 24,
+      "h": 24
+     }
     },
     {
      "width": 260,
@@ -392,10 +399,15 @@
      "hoverTitle": {
       "x": 36,
       "y": 568,
-      "w": 88,
+      "w": 116,
       "h": 20
      },
-     "grip": null
+     "grip": {
+      "x": 188,
+      "y": 566,
+      "w": 24,
+      "h": 24
+     }
     },
     {
      "width": 280,
@@ -414,11 +426,11 @@
      "hoverTitle": {
       "x": 36,
       "y": 568,
-      "w": 80,
+      "w": 136,
       "h": 20
      },
      "grip": {
-      "x": 152,
+      "x": 208,
       "y": 566,
       "w": 24,
       "h": 24
@@ -441,11 +453,11 @@
      "hoverTitle": {
       "x": 36,
       "y": 568,
-      "w": 120,
+      "w": 176,
       "h": 20
      },
      "grip": {
-      "x": 192,
+      "x": 248,
       "y": 566,
       "w": 24,
       "h": 24
@@ -455,11 +467,11 @@
    "readings": [
     {
      "title": "abandoned scratch trees",
-     "payload": "9 seen, 0 owned by a live pid (kept), 9 younger than 30m (kept), 0 removed"
+     "payload": "1 seen, 0 owned by a live pid (kept), 1 younger than 30m (kept), 0 removed"
     },
     {
      "title": "csp for this run's backend",
-     "payload": "out/renderer/index.html: http://127.0.0.1:18349 added to frame-src and media-src (build output only; src/ untouched)"
+     "payload": "already widened for http://127.0.0.1:18345"
     },
     {
      "title": "the app's default backend port (127.0.0.1:1111)",
@@ -483,8 +495,8 @@
     {
      "title": "renderer's api base URL at hello, against --backend",
      "payload": {
-      "apiBaseUrl": "http://127.0.0.1:18349",
-      "backend": "http://127.0.0.1:18349"
+      "apiBaseUrl": "http://127.0.0.1:18345",
+      "backend": "http://127.0.0.1:18345"
      }
     },
     {
@@ -558,6 +570,7 @@
         "onboarding-storage",
         "chat-sidebar-disclosures",
         "canonical-sessions-storage",
+        "update-notice-storage",
         "ui-preferences-storage"
        ],
        "stateKeys": [
@@ -568,7 +581,7 @@
         "chatSidebarListHeight",
         "chatSidebarOrder"
        ],
-       "rawView": "{\"isCommandPaletteOpen\":false,\"commandPaletteQuery\":\"\",\"isSidebarCollapsed\":false,\"showAgentReasoning\":false,\"themeName\":\"localOperatorDark\",\"canvasWidth\":800,\"chatSidebarWidth\":280,\"chatSidebarRegions\":\"both\",\"chatSidebarView\":{\"hidden\":[],\"order\":[\"pinned\",\"running\",\"today\",\"week\",\"older\",\"agents\",\"teams\"],\"groupBy\":\"section\",\"basis\":\"active\",\"orderBy\":\"active-first\",\"loads\":0,\"pins\":[\"p005\",\"p0"
+       "rawView": "{\"isCommandPaletteOpen\":false,\"commandPaletteQuery\":\"\",\"isSidebarCollapsed\":false,\"showAgentReasoning\":false,\"themeName\":\"localOperatorDark\",\"rightSlotWidth\":0,\"chatSidebarWidth\":280,\"chatSidebarRegions\":\"both\",\"chatSidebarView\":{\"hidden\":[],\"order\":[\"pinned\",\"running\",\"today\",\"week\",\"older\",\"agents\",\"teams\"],\"groupBy\":\"section\",\"basis\":\"active\",\"orderBy\":\"active-first\",\"loads\":0,\"pins\":[\"p005\",\"p"
       }
      }
     },
@@ -577,9 +590,9 @@
      "payload": {
       "focused": true,
       "door": {
-       "x": 66,
+       "x": 94,
        "y": 578,
-       "w": 108,
+       "w": 164,
        "h": 32
       },
       "route": {
@@ -613,7 +626,7 @@
    "frames": [
     {
      "label": "many-pins",
-     "bytes": 197405,
+     "bytes": 197418,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -623,7 +636,7 @@
     },
     {
      "label": "many-pins-drag",
-     "bytes": 230661,
+     "bytes": 230664,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -646,11 +659,11 @@
    "readings": [
     {
      "title": "abandoned scratch trees",
-     "payload": "3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed"
+     "payload": "1 seen, 0 owned by a live pid (kept), 0 younger than 30m (kept), 1 removed: lo-renderer-driver-20179"
     },
     {
      "title": "csp for this run's backend",
-     "payload": "already widened for http://127.0.0.1:18349"
+     "payload": "out/renderer/index.html: http://127.0.0.1:18345 added to frame-src and media-src (build output only; src/ untouched)"
     },
     {
      "title": "the app's default backend port (127.0.0.1:1111)",
@@ -674,8 +687,8 @@
     {
      "title": "renderer's api base URL at hello, against --backend",
      "payload": {
-      "apiBaseUrl": "http://127.0.0.1:18349",
-      "backend": "http://127.0.0.1:18349"
+      "apiBaseUrl": "http://127.0.0.1:18345",
+      "backend": "http://127.0.0.1:18345"
      }
     },
     {
@@ -734,7 +747,7 @@
    "frames": [
     {
      "label": "single-pin",
-     "bytes": 192445,
+     "bytes": 192467,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -744,7 +757,7 @@
     },
     {
      "label": "single-pin-hover",
-     "bytes": 204666,
+     "bytes": 204480,
      "pixels": {
       "width": 2760,
       "height": 1800
@@ -762,12 +775,8 @@
    "perWidth": [],
    "readings": [
     {
-     "title": "abandoned scratch trees",
-     "payload": "5 seen, 0 owned by a live pid (kept), 5 younger than 30m (kept), 0 removed"
-    },
-    {
      "title": "csp for this run's backend",
-     "payload": "already widened for http://127.0.0.1:18349"
+     "payload": "already widened for http://127.0.0.1:18345"
     },
     {
      "title": "the app's default backend port (127.0.0.1:1111)",
@@ -791,8 +800,8 @@
     {
      "title": "renderer's api base URL at hello, against --backend",
      "payload": {
-      "apiBaseUrl": "http://127.0.0.1:18349",
-      "backend": "http://127.0.0.1:18349"
+      "apiBaseUrl": "http://127.0.0.1:18345",
+      "backend": "http://127.0.0.1:18345"
      }
     },
     {
@@ -829,12 +838,8 @@
    "perWidth": [],
    "readings": [
     {
-     "title": "abandoned scratch trees",
-     "payload": "7 seen, 0 owned by a live pid (kept), 7 younger than 30m (kept), 0 removed"
-    },
-    {
      "title": "csp for this run's backend",
-     "payload": "already widened for http://127.0.0.1:18349"
+     "payload": "already widened for http://127.0.0.1:18345"
     },
     {
      "title": "the app's default backend port (127.0.0.1:1111)",
@@ -858,8 +863,8 @@
     {
      "title": "renderer's api base URL at hello, against --backend",
      "payload": {
-      "apiBaseUrl": "http://127.0.0.1:18349",
-      "backend": "http://127.0.0.1:18349"
+      "apiBaseUrl": "http://127.0.0.1:18345",
+      "backend": "http://127.0.0.1:18345"
      }
     },
     {
