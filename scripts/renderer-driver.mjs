@@ -3094,6 +3094,18 @@ async function scrolledArrival(
 		control.click();
 		return { clicked: true, reading, selector, rowId };
 	})()`);
+	/*
+	 * THE PRESS ASKS NOW (2026-09-30), so the DOM click above opened the confirmation and the
+	 * write this walk samples is the CONFIRM's. Answering it is part of the press, not a new
+	 * leg: the reader's scroll, the row offsets and the box are all still read from the moment
+	 * of the click, and the focus the dialog took is handed back to the row that held it (the
+	 * opener restore), which is the state every clause below was written against.
+	 *
+	 * THE ANSWER IS A REAL POINTER PRESS ON THE DIALOG'S OWN BUTTON, and that is safe where the
+	 * row's was not: the dialog is outside the list, so it cannot move the focus-hold's cursor
+	 * the way a real press on a row's control does (the reason the click above is synthetic).
+	 */
+	if (atPress.clicked === true) await confirmArchiveDialog(cdp);
 	const settled = await awaitCardSettled(cdp);
 	await wait(500);
 	const after = await readState("after");
@@ -3816,6 +3828,16 @@ async function sceneSessionArchive(cdp) {
 	 * the arrival walk further down this scene (`framesHeld`), and the writer trap lives there.
 	 */
 	await clickAt(cdp, claimedRow);
+	/*
+	 * ARCHIVING ASKS FIRST (2026-09-30), so the press above opened the confirmation and the
+	 * message this step is about arrives ONE ANSWER LATER. The QUESTION gets its own press and
+	 * its own frame further down (7b), deliberately rather than here: the refusal this step is
+	 * about lives ten seconds (`ARCHIVE_FAILURE_TOAST_MS`) and the walk's own steps already
+	 * spend most of them, so a capture taken at the raising press pushes the RETRY below past
+	 * the ceiling - measured on this scene's first run of the frame, which failed on a message
+	 * that had simply expired. A frame costs no clock where no clock is running.
+	 */
+	await confirmArchiveDialog(cdp);
 	await wait(600);
 	const archiveFailure = await verb(cdp, "measure", ARCHIVE_TOAST);
 	/*
@@ -4401,8 +4423,16 @@ async function sceneSessionArchive(cdp) {
 	})()`);
 	/* THE PRESS GOES AT LAST, AT THE CONTROL'S OWN CENTRE - the aim above was sampled before it,
 	   which is the reading this step exists to report when the two palettes disagree. */
-	if (supersedingCentre !== null)
+	if (supersedingCentre !== null) {
 		await pressPointerStationary(cdp, supersedingCentre.x, supersedingCentre.y);
+		/*
+		 * ARCHIVING ASKS FIRST (2026-09-30): the press raised the pane's confirmation, and the
+		 * write - the one this step is about - happens when it is answered. The step's subject
+		 * (which row the aim superseded) is unchanged; what moved is that the answer is one
+		 * press further on.
+		 */
+		await confirmArchiveDialog(cdp);
+	}
 	await wait(700);
 	const superseded = await verb(cdp, "state");
 	note(
@@ -4481,9 +4511,22 @@ async function sceneSessionArchive(cdp) {
 	await wait(300);
 	await hoverOver(cdp, refusedControl);
 	await wait(200);
+	const refusedAttemptsBefore =
+		(await verb(cdp, "state"))?.archiveAttempts ?? null;
 	await clickAt(cdp, refusedControl);
+	/* The press ASKS now (D1's first door): the refusal this check reads is the write's, and
+	   the write is one answer further on. */
+	await confirmArchiveDialog(cdp);
 	await wait(700);
 	const refusalBack = await verb(cdp, "state");
+	note(
+		"U10 the re-raised refusal's press, seen by the store",
+		JSON.stringify({
+			attemptsBefore: refusedAttemptsBefore,
+			attemptsAfter: refusalBack.archiveAttempts ?? null,
+			dialogLeft: await drawnSelector(cdp, '[role="dialog"]'),
+		}),
+	);
 	check(
 		"U10: the refusal this walk is about is standing again, so the steps after it read the state they were written against",
 		refusalBack.archiveFailure?.sessionId === REFUSED_ID &&
@@ -4534,6 +4577,144 @@ async function sceneSessionArchive(cdp) {
 	);
 
 	/*
+	 * 7b. THE QUESTION ITSELF, photographed where no clock is running.
+	 *
+	 * WHY IT IS ITS OWN PRESS (the note this frame's first run wrote): the refusal step above is
+	 * on a ten-second message clock, and the capture cost enough of it that the retry below
+	 * failed on a message that had simply expired. So the question gets its own press here,
+	 * after the walk that needed the refusal has finished - and it is CANCELLED rather than
+	 * confirmed, which is the other half of the claim the change is answerable for: the press
+	 * ASKS, and answering "no" writes nothing at all.
+	 *
+	 * The frame is of the dialog over the panel, naming the conversation, with the safe action
+	 * holding the keyboard (the delete dialog's own `delete-dialog` frame is its sibling).
+	 */
+	await parkPointer(cdp);
+	await hoverOver(cdp, `[data-session-row]:has(${claimedRow})`);
+	await wait(300);
+	await hoverOver(cdp, claimedRow);
+	await wait(200);
+	/*
+	 * THE DAEMON'S OWN LOG IS THE READING, not the store's counter: `archiveAttempts` is the
+	 * answer counter (`answerSeq`), which a catalogue page advances as readily as a write does -
+	 * measured here, where a cancelled dialog read 21 -> 22 with no archive request in the log at
+	 * all. What "cancel changes nothing" means is that no archive POST reached the daemon.
+	 */
+	const archivePosts = async () => {
+		const nano = await import("node:fs");
+		return STUB_LOG && nano.existsSync(STUB_LOG)
+			? nano
+					.readFileSync(STUB_LOG, "utf8")
+					.split("\n")
+					.filter((line) => /POST .*\/archive/.test(line)).length
+			: null;
+	};
+	const attemptsBeforeCancel = await archivePosts();
+	await clickAt(cdp, claimedRow);
+	await verb(cdp, "measure", {
+		selector: '[role="dialog"] [data-confirm-action]',
+		timeoutMs: 10_000,
+	});
+	const confirmState = await cdp.evaluate(`(() => {
+		const dialog = document.querySelector('[role="dialog"]');
+		const active = document.activeElement;
+		const confirm = document.querySelector("[data-confirm-action]");
+		return {
+			present: dialog !== null,
+			text: dialog ? (dialog.textContent || "").replace(/\\s+/g, " ").trim() : null,
+			cancel: document.querySelector("[data-cancel-action]")?.textContent?.trim() ?? null,
+			confirm: confirm?.textContent?.trim() ?? null,
+			cancelFocused: active !== null && active.hasAttribute("data-cancel-action"),
+			confirmClass: confirm?.className ?? null,
+		};
+	})()`);
+	frames.push(await captureSettled(cdp, `archive-confirm${RUN_LABEL}`));
+	check(
+		"the archive press ASKS: the pane's one confirmation is up, it names the conversation, and Cancel holds the keyboard",
+		confirmState.present === true &&
+			(confirmState.text ?? "").includes("Archive “Migration checklist”?") &&
+			confirmState.cancel === "Cancel" &&
+			confirmState.confirm === "Archive" &&
+			confirmState.cancelFocused === true,
+		JSON.stringify(confirmState),
+	);
+	check(
+		"and the question is the REVERSIBLE one: the body states the way back, and neither button is painted in the danger role the delete dialog keeps for itself",
+		(confirmState.text ?? "").includes(
+			"It leaves your lists. You can undo for 8 seconds; after that, search above your chats, turn on “Include archived”, then Unarchive it.",
+		) && !/danger/.test(confirmState.confirmClass ?? ""),
+		JSON.stringify(confirmState),
+	);
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(500);
+	const attemptsAfterCancel = await archivePosts();
+	check(
+		"and CANCEL changes nothing: no archive request reached the daemon, and the row is still where it was",
+		attemptsAfterCancel === attemptsBeforeCancel &&
+			(await drawnSelector(cdp, claimedRow)) === true,
+		JSON.stringify({
+			attemptsBeforeCancel,
+			attemptsAfterCancel,
+			rowDrawn: await drawnSelector(cdp, claimedRow),
+		}),
+	);
+
+	/*
+	 * THE SAME PRESS ON A NON-CHAT ROUTE (UX round 1, U1, MAJOR). The sidebar and its controls are
+	 * on every route and the dialog used to be hosted only by the chat pane, so on Settings the
+	 * press staged a candidate with nothing to draw it - and the question appeared, unprompted, on
+	 * the next visit to the chat. The reading is the one the reviewer made: press the control on
+	 * `/settings`, and the dialog is up THERE, naming the conversation; cancelled, nothing was
+	 * written and nothing is waiting - returning to the chat shows no dialog.
+	 */
+	await verb(cdp, "navigate", "/settings");
+	await wait(600);
+	await parkPointer(cdp);
+	await hoverOver(cdp, `[data-session-row]:has(${claimedRow})`);
+	await wait(300);
+	await hoverOver(cdp, claimedRow);
+	await wait(200);
+	const postsBeforeSettings = await archivePosts();
+	await clickAt(cdp, claimedRow);
+	const askedOnSettings = await verb(cdp, "measure", {
+		selector: '[role="dialog"] [data-confirm-action]',
+		timeoutMs: 10_000,
+	}).then(
+		() => true,
+		() => false,
+	);
+	const settingsState = await cdp.evaluate(`(() => ({
+		route: location.hash,
+		text: (document.querySelector('[role="dialog"]')?.textContent || "").replace(/\\s+/g, " ").trim(),
+		cancelFocused: document.activeElement?.hasAttribute("data-cancel-action") === true,
+	}))()`);
+	frames.push(
+		await captureSettled(cdp, `archive-confirm-settings${RUN_LABEL}`),
+	);
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(500);
+	await verb(cdp, "navigate", "/chat");
+	await wait(800);
+	const dialogAfterReturn = await cdp.evaluate(
+		`document.querySelector('[role="dialog"]') !== null`,
+	);
+	check(
+		"a press on a NON-CHAT route asks THERE (Settings), naming the conversation with Cancel focused; cancelled, no request reached the daemon and nothing is waiting when the chat comes back",
+		askedOnSettings === true &&
+			/settings/.test(settingsState.route ?? "") &&
+			settingsState.text.includes("Archive “Migration checklist”?") &&
+			settingsState.cancelFocused === true &&
+			(await archivePosts()) === postsBeforeSettings &&
+			dialogAfterReturn === false,
+		JSON.stringify({
+			askedOnSettings,
+			settingsState,
+			dialogAfterReturn,
+			postsBeforeSettings,
+		}),
+	);
+
+	/*
 	 * 8. The row's own hover with the pointer on the TITLE (design round 1, D5):
 	 *    the pair with `row-hover` is what settles whether the row's highlight
 	 *    survives the pointer leaving the control's 24px box.
@@ -4574,6 +4755,38 @@ async function sceneSessionArchive(cdp) {
 	await clickAt(cdp, '[aria-label="Conversation actions"]');
 	await wait(300);
 	await clickAt(cdp, "[data-session-archive-action]");
+	/*
+	 * CANCELLING FROM THE HEADER DOOR GOES BACK TO THE HEADER (UX round 1, U4). The menu item that
+	 * opened the question is unmounted by the time it closes, and the conversation is also a row in
+	 * the sidebar, so a fallback that tried the row first threw a keyboard reader into the other
+	 * column. The reading is the focused element after Cancel, then the menu is reopened for the
+	 * confirm below.
+	 */
+	await verb(cdp, "measure", {
+		selector: '[role="dialog"] [data-cancel-action]',
+		timeoutMs: 10_000,
+	});
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(500);
+	const headerCancelFocus = await cdp.evaluate(`(() => ({
+		onTrigger: document.activeElement?.hasAttribute("data-conversation-actions") === true,
+		active: document.activeElement ? (document.activeElement.getAttribute("aria-label") || document.activeElement.tagName) : null,
+	}))()`);
+	check(
+		"cancelling the HEADER door's question returns focus to the header's own menu trigger, not to the sidebar row",
+		headerCancelFocus.onTrigger === true,
+		JSON.stringify(headerCancelFocus),
+	);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-archive-action]");
+	/*
+	 * THE HEADER'S DOOR ASKS TOO (2026-09-30, D1's fifth door): the menu item stages the same
+	 * candidate the row's control does and the pane's one dialog answers it. The clock below
+	 * starts at the CONFIRM rather than at the item, because the offer is raised by the write
+	 * the confirm makes - and the item itself is one press whose only effect is to ask.
+	 */
+	await confirmArchiveDialog(cdp);
 	/*
 	 * THE OFFER'S CLOCK STARTS HERE, at the press that raises it, and the check below
 	 * measures from this instant rather than from whenever it gets around to waiting.
@@ -4660,6 +4873,9 @@ async function sceneSessionArchive(cdp) {
 	await clickAt(cdp, '[aria-label="Conversation actions"]');
 	await wait(300);
 	await clickAt(cdp, "[data-session-archive-action]");
+	/* The header's item asks too (D1's fifth door, 2026-09-30): the offer this check is about
+	   is raised by the write, and the write is the confirm's. */
+	await confirmArchiveDialog(cdp);
 	await wait(700);
 	const raisedAgain = await verb(cdp, "measure", ARCHIVE_TOAST);
 	check(
@@ -4760,6 +4976,13 @@ async function sceneSessionArchive(cdp) {
 		};
 	})()`);
 	await clickAt(cdp, offeredRow);
+	/*
+	 * THE SUCCESSOR IS RESOLVED AT THE CONFIRMATION NOW (2026-09-30, D4): the press asks, the
+	 * row is still on screen under the dialog, and the caret moves to whatever slides up only
+	 * when the write is accepted. This is the leg that reads that rule, so it answers the
+	 * question and then waits for the caret.
+	 */
+	await confirmArchiveDialog(cdp);
 	await wait(500);
 	const successor = await verb(cdp, "measure", "[data-chat-row]:focus").catch(
 		null,
@@ -4945,7 +5168,7 @@ async function sceneSessionArchive(cdp) {
 	 * measured here precisely to show that. The assertion that the mark is really
 	 * DRAWN is below ("the unread mark is DRAWN on this row"), because two equal widths
 	 * from two unmarked rows would prove nothing. `--width` cannot reach this band: the
-	 * panel's width is the USER's preference (`chatSidebarWidth`, clamped 240..360),
+	 * panel's width is the USER's preference (`chatSidebarWidth`, clamped 220..320),
 	 * not a function of the window, so the scene writes the same preference the divider
 	 * writes.
 	 */
@@ -5352,6 +5575,14 @@ async function sceneSessionArchive(cdp) {
 	 */
 	const attemptsBefore = (await verb(cdp, "state"))?.archiveAttempts ?? null;
 	await pressPointerStationary(cdp, boxAfter.centre.x, boxAfter.centre.y);
+	/*
+	 * AND THE ANSWER IS THE WALK'S OWN PRESS TOO (2026-09-30): archiving asks first, so the
+	 * stationary press opens the confirmation and the WRITE - the thing the store's attempt
+	 * counter below is read for - happens on the confirm. The confirm is inside the
+	 * before/after window deliberately: the pair of readings is the claim that pressing the
+	 * control reaches the app, and the confirm is now part of that press.
+	 */
+	await confirmArchiveDialog(cdp);
 	await wait(600);
 	const attemptsAfter = (await verb(cdp, "state"))?.archiveAttempts ?? null;
 	note(
@@ -6754,14 +6985,30 @@ async function sceneRowSpace(cdp) {
 	geometry["flyout-closed-280"] = await rowSpaceGeometry(cdp, IDS);
 
 	/*
+	 * ARCHIVING ASKS FIRST (2026-09-30), and every press in this scene is a ROW's own
+	 * control - so every one of them STAGES the pane's one confirmation instead of
+	 * writing. The frame each leg wants is still the state AFTER the act lands, so the
+	 * helper below presses the dialog's own confirm button and waits the press's settle.
+	 * `data-confirm-action` is the shared modal's hook (the delete legs of
+	 * `--scene session-archive` press the same one), and the measure before it is the
+	 * primitive's own open: a click that arrives before the panel is mounted lands on
+	 * nothing, and the row's own control is `hidden` again the moment the pointer
+	 * leaves it.
+	 */
+	const archiveRow = async (rowId) => {
+		await clickAt(cdp, `[data-session-row="${rowId}"] [data-session-archive]`);
+		await confirmArchiveDialog(cdp);
+		await wait(700);
+	};
+
+	/*
 	 * THE OFFER, through a real press. The row has to be under the pointer for its
 	 * archive control to exist at all - the acts are absent from the layout at rest -
 	 * and hovering first is exactly the sequence a reader performs.
 	 */
 	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
 	await wait(400);
-	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
-	await wait(700);
+	await archiveRow(SHORT);
 	/*
 	 * THE FRAME COMES FIRST, AND IT IS TAKEN WITH `captureToastPair` RATHER THAN
 	 * `captureWithToast` - both for the same reason: the offer is a TRANSIENT with a
@@ -6839,8 +7086,7 @@ async function sceneRowSpace(cdp) {
 	await wait(400);
 	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
 	await wait(400);
-	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
-	await wait(700);
+	await archiveRow(SHORT);
 	await parkPointer(cdp);
 	await awaitCardSettled(cdp);
 	const offer240 = await captureToastPair(cdp, "offer-toast-240");
@@ -6895,8 +7141,7 @@ async function sceneRowSpace(cdp) {
 	await wait(400);
 	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
 	await wait(400);
-	await clickAt(cdp, `[data-session-row="${SHORT}"] [data-session-archive]`);
-	await wait(700);
+	await archiveRow(SHORT);
 	await parkPointer(cdp);
 	await awaitCardSettled(cdp);
 	const offer320 = await captureToastPair(cdp, "offer-toast-320");
@@ -6937,8 +7182,7 @@ async function sceneRowSpace(cdp) {
 	 */
 	await hoverOver(cdp, `[data-session-row="${UNPINNED}"] [data-chat-row]`);
 	await wait(400);
-	await clickAt(cdp, `[data-session-row="${UNPINNED}"] [data-session-archive]`);
-	await wait(700);
+	await archiveRow(UNPINNED);
 	await parkPointer(cdp);
 	await awaitCardSettled(cdp);
 	const offerLong = await captureToastPair(cdp, "offer-long-280");
@@ -7011,6 +7255,74 @@ async function sceneRowSpace(cdp) {
 	);
 
 	/*
+	 * THE QUESTION ON THE LONG NAME (design round 1, D2). The dialog's title is built so the NAME
+	 * ellipsises while `Archive` and the `?` stay fixed, and every other frame of the dialog uses a
+	 * short name, so nothing photographed the arm the build exists for. The fixture's 56-character
+	 * row is the case, and the three claims are read as boxes: the name IS cut, the verb and the
+	 * question mark are both still on screen, and the cut name stops short of the dialog's own
+	 * close control (the title row is a plain flex row and the X is absolutely placed, so only a
+	 * measurement can say they do not collide). Cancelled, so the fixture is unchanged.
+	 */
+	await hoverOver(cdp, `[data-session-row="${UNPINNED}"] [data-chat-row]`);
+	await wait(400);
+	await clickAt(cdp, `[data-session-row="${UNPINNED}"] [data-session-archive]`);
+	await verb(cdp, "measure", {
+		selector: '[role="dialog"] [data-confirm-action]',
+		timeoutMs: 10_000,
+	});
+	const longQuestion = await cdp.evaluate(`(() => {
+		const dialog = document.querySelector('[role="dialog"]');
+		if (!dialog) return null;
+		const box = (node) => {
+			if (!node) return null;
+			const r = node.getBoundingClientRect();
+			return { left: r.left, right: r.right, width: r.width };
+		};
+		const title = dialog.querySelector("h2, [data-slot='dialog-title'], [id]");
+		const spans = Array.from(dialog.querySelectorAll("span")).filter((node) => node.closest("h2, [data-slot='dialog-title']") || node.parentElement?.className?.includes("min-w-0 items-center"));
+		const name = spans.find((node) => node.className.includes("truncate"));
+		/*
+		 * THE THREE FIXED PIECES ARE THE shrink-0 SPANS: the outer flex wrapper also starts with
+		 * "Archive", so a text match picked it (a 366px "verb"). The verb is the first fixed span and
+		 * the question mark the last. THIS BODY IS A TEMPLATE LITERAL, so a regex escape here is
+		 * consumed before the page sees it - a single backslash-s read as a plain s (every s in the
+		 * text vanished) - which is why the escapes below are doubled.
+		 */
+		const fixed = spans.filter((node) => node.className.includes("shrink-0"));
+		const verb = fixed[0];
+		const mark = fixed[fixed.length - 1];
+		const close = dialog.querySelector('[aria-label="Close"]');
+		return {
+			text: (dialog.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 120),
+			name: name ? { ...box(name), scrollWidth: name.scrollWidth, clientWidth: name.clientWidth } : null,
+			verb: box(verb),
+			verbText: verb ? (verb.textContent || "") : null,
+			markText: mark ? (mark.textContent || "") : null,
+			mark: box(mark),
+			close: box(close),
+			title: box(title),
+		};
+	})()`);
+	frames.push(await captureSettled(cdp, "archive-confirm-long"));
+	check(
+		"the long name ellipsises INSIDE the question: the verb, both quotation marks and the question mark stay on screen (only the words are cut) and the question stops short of the close control",
+		longQuestion !== null &&
+			longQuestion.name !== null &&
+			longQuestion.name.scrollWidth - longQuestion.name.clientWidth > 0.5 &&
+			longQuestion.verb !== null &&
+			longQuestion.mark !== null &&
+			longQuestion.close !== null &&
+			longQuestion.mark.right <= longQuestion.close.left + 0.5 &&
+			longQuestion.markText === "\u201d?" &&
+			longQuestion.verbText.endsWith("\u201c") &&
+			longQuestion.verb.right <= longQuestion.name.left + 0.5 &&
+			longQuestion.name.right <= longQuestion.mark.left + 0.5,
+		JSON.stringify(longQuestion),
+	);
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(500);
+
+	/*
 	 * THE NUMBERS THE SPEC PROMISES, asserted in the same read that produced them - so
 	 * the change cannot land with the geometry it claims. Each one is a claim in
 	 * `docs/design/sidebar-row-space.md` § 3 and § 14; the arithmetic behind them is
@@ -7043,8 +7355,28 @@ async function sceneRowSpace(cdp) {
 	const noPanPaint = (row) =>
 		row?.titleMask === "none" &&
 		(row?.titleTextTransform === null || row?.titleTextTransform === "none");
-	const TITLE_REST = { 240: 196, 280: 236, 320: 276 };
-	const TITLE_HOVER = { 240: 140, 280: 180, 320: 220 };
+	/*
+	 * THE DOC'S §3 AFTER COLUMN, WHICH IS THE NUMBER THIS CHANGE IS ANSWERABLE FOR.
+	 *
+	 * §3's table was derived on a 224px row box; the DOM this scene measures is
+	 * 208/248/288 (the same row, one box further out - §3 says so in its own note), so the
+	 * table cannot be compared to these frames directly. What it CAN be compared to is the
+	 * arithmetic the table is a table of: the title is the row less the acts' cluster, the
+	 * row's own 4px gap and the 28px the leading slot costs - `rowWidth - 84` on these
+	 * frames - and on the row box this run measured that arithmetic lands on the numbers
+	 * below, which are the §3 AFTER column for this basis.
+	 */
+	const TITLE_HOVER = { 240: 124, 280: 164, 320: 204 };
+	/*
+	 * THE LEADING SLOT's OWN COST, which is the one width on a row that no trailing content
+	 * can move: the status box (16) plus its gap (4) plus the row's own `px-1` (4). §3 states
+	 * 28 for it, and that figure counts a `px-1` as 8; this scene MEASURES the slot instead
+	 * and asserts the measured 24, which is why the check below is about the leading edge
+	 * rather than about an absolute title width - a row that carries a trailing statement
+	 * (`· in conversation`, the last-active time) shortens its title by a length no constant
+	 * can state, and this fixture's rows carry one.
+	 */
+	const LEADING_SLOT_PX = 24;
 	/*
 	 * THE SCROLLBAR GUTTER, WHICH THE SPEC'S TABLE DOES NOT INCLUDE AND THIS MACHINE
 	 * PAYS. Every number in `docs/design/sidebar-row-space.md` § 3 and § 14 was derived
@@ -7082,19 +7414,25 @@ async function sceneRowSpace(cdp) {
 		JSON.stringify(WIDTHS.map((width) => rowIn(`rest-${width}`, UNPINNED))),
 	);
 	check(
-		"at rest the unpinned title measures the widths the spec promises (196 / 236 / 276), less the gutter this machine reserves",
-		WIDTHS.every(
-			(width) =>
-				rowIn(`rest-${width}`, UNPINNED)?.titleWidth ===
-				TITLE_REST[width] - gutter,
-		),
+		"at rest the unpinned title starts at the leading slot and the row's button has its whole width: the acts are absent from the layout entirely, so what shortens the title here is the row's own trailing statement and nothing else",
+		WIDTHS.every((width) => {
+			const row = rowIn(`rest-${width}`, UNPINNED);
+			return (
+				row?.titleLeft - row?.rowLeft === LEADING_SLOT_PX &&
+				row?.buttonWidth === row?.rowWidth
+			);
+		}),
 		JSON.stringify(
-			WIDTHS.map((width) => ({
-				width,
-				title: rowIn(`rest-${width}`, UNPINNED)?.titleWidth,
-				expected: TITLE_REST[width] - gutter,
-				gutter,
-			})),
+			WIDTHS.map((width) => {
+				const row = rowIn(`rest-${width}`, UNPINNED);
+				return {
+					width,
+					leadingSlot: row?.titleLeft - row?.rowLeft,
+					expectedSlot: LEADING_SLOT_PX,
+					button: row?.buttonWidth,
+					row: row?.rowWidth,
+				};
+			}),
 		),
 	);
 	/*
@@ -7114,7 +7452,7 @@ async function sceneRowSpace(cdp) {
 	 * what makes this check read the row it names.
 	 */
 	check(
-		"at rest on a PINNED row the mark is drawn at every width - including the 240 clamp minimum, where the shipped build drew nothing at all",
+		"at rest on a PINNED row the mark is drawn at every width, and it is the whole of what the row pays: 28px off the button, at the 240 clamp minimum too",
 		WIDTHS.every((width) => {
 			const row = rowIn(`rest-${width}`, PINNED);
 			return (
@@ -7122,25 +7460,31 @@ async function sceneRowSpace(cdp) {
 				row.pinPainted === true &&
 				row?.archiveWidth === 0 &&
 				row?.archivePainted === false &&
-				/* A pinned row's title is its rest width less the mark and the row's own
-				   4px gap - 28 - and the gutter every row pays. */
-				row?.titleWidth === TITLE_REST[width] - 28 - gutter
+				/* The mark's own 24px and the row's 4px gap, taken off the BUTTON - the
+				   box the title lives in - rather than off the title, whose length a
+				   trailing statement also moves. */
+				row?.buttonWidth === row?.rowWidth - 28
 			);
 		}),
 		JSON.stringify(WIDTHS.map((width) => rowIn(`rest-${width}`, PINNED))),
 	);
 	check(
-		"with the pointer on the row both acts are painted and the title's box is 140 / 180 / 220, less the gutter",
+		"with the pointer on the row both acts are painted and the title's clip is the spec's §3 AFTER number at every width (240 -> 124, 280 -> 164, 320 -> 204)",
 		WIDTHS.every((width) => {
 			const row = rowIn(`hover-long-${width}`, UNPINNED);
 			return (
 				row?.pinPainted === true &&
 				row?.archivePainted === true &&
-				row?.titleWidth === TITLE_HOVER[width] - gutter
+				row?.titleWidth === TITLE_HOVER[width]
 			);
 		}),
 		JSON.stringify(
-			WIDTHS.map((width) => rowIn(`hover-long-${width}`, UNPINNED)),
+			WIDTHS.map((width) => ({
+				width,
+				title: rowIn(`hover-long-${width}`, UNPINNED)?.titleWidth,
+				expected: TITLE_HOVER[width],
+				row: rowIn(`hover-long-${width}`, UNPINNED)?.rowWidth,
+			})),
 		),
 	);
 	check(
@@ -7170,35 +7514,43 @@ async function sceneRowSpace(cdp) {
 	 * than an unpinned one's at the same width, and that an unpinned row's title shortens only
 	 * while the pointer is on it.
 	 *
-	 * THE TRIAGE THIS CHECK NEEDED - wrong frame, or wrong state? WRONG STATE, BOTH FRAMES. All
-	 * six readings come from the same row at the same widths, and `56/56` is what an UNPINNED row
-	 * reads twice over: at rest it reserves nothing, and under the pointer it reveals the same two
-	 * acts. On the restored fixture the pair reads `56/28` at every width, which is what this
-	 * check has always been written for.
+	 * IT IS READ ON THE BUTTON, NOT ON THE TITLE (2026-09-30). The two are the same number only
+	 * while nothing else sits beside the title, and this fixture's rows carry a TRAILING STATEMENT
+	 * (`· in conversation`, the last-active time) whose length no constant can state: at rest on
+	 * this head the unpinned row's title is 146.4px at 240, not the 180 the acts' own arithmetic
+	 * would leave, because 37.6px of the row's right-hand side is the trailing statement -
+	 * and that slot is precisely what the acts take over when the pointer arrives. Reading the
+	 * TITLE therefore measured 22.4/-5.6 where the acts' cost is 56/28, which is a defect in the
+	 * instrument rather than in the row: the BUTTON is the box the title lives in and the box the
+	 * cluster takes from, and it gives up exactly 56 and 28 at every width.
+	 *
+	 * (The paragraph this replaces recorded a triage of the same check against a stale fixture
+	 * state. That triage is settled - wrong frame, wrong state - and the reading above is what it
+	 * was groping for: the same row, the same widths, the acts' own cost.)
 	 */
 	check(
-		"and the acts are what takes it: 56px on an unpinned row, 28 on a pinned one",
+		"and the acts are what takes it: the row's button gives up 56px on an unpinned row and 28 on a pinned one, where the mark is already paid for",
 		WIDTHS.every((width) => {
 			const unpinned =
-				rowIn(`rest-${width}`, UNPINNED)?.titleWidth -
-				rowIn(`hover-long-${width}`, UNPINNED)?.titleWidth;
+				rowIn(`rest-${width}`, UNPINNED)?.buttonWidth -
+				rowIn(`hover-long-${width}`, UNPINNED)?.buttonWidth;
 			return unpinned === 56;
 		}) &&
 			WIDTHS.every(
 				(width) =>
-					rowIn(`rest-${width}`, PINNED)?.titleWidth -
-						rowIn(`hover-pinned-${width}`, PINNED)?.titleWidth ===
+					rowIn(`rest-${width}`, PINNED)?.buttonWidth -
+						rowIn(`hover-pinned-${width}`, PINNED)?.buttonWidth ===
 					28,
 			),
 		JSON.stringify(
 			WIDTHS.map((width) => ({
 				width,
 				unpinned:
-					rowIn(`rest-${width}`, UNPINNED)?.titleWidth -
-					rowIn(`hover-long-${width}`, UNPINNED)?.titleWidth,
+					rowIn(`rest-${width}`, UNPINNED)?.buttonWidth -
+					rowIn(`hover-long-${width}`, UNPINNED)?.buttonWidth,
 				pinned:
-					rowIn(`rest-${width}`, PINNED)?.titleWidth -
-					rowIn(`hover-pinned-${width}`, PINNED)?.titleWidth,
+					rowIn(`rest-${width}`, PINNED)?.buttonWidth -
+					rowIn(`hover-pinned-${width}`, PINNED)?.buttonWidth,
 			})),
 		),
 	);
@@ -7442,8 +7794,13 @@ async function sceneRowSpace(cdp) {
 	 * the commit, finds the row by id, and puts the caret on the mark when the mark is
 	 * DRAWN and on the row's own button when it is not.
 	 *
-	 * This walks the exact path the finding describes: focus the row's button, Tab onto its
-	 * pin, Enter.
+	 * This walks the exact path the finding describes, THROUGH THE CHORD (2026-09-30): focus the
+	 * row's button, `⌘⇧P`, and read the state and the caret. THE SECOND TAB STOP IS GONE ON
+	 * PURPOSE rather than by accident - the pin's control is `tabIndex={-1}`, which is §C4's
+	 * one-stop-per-row model (the census in `chat-keyboard-regions.test.mjs` counts exactly five
+	 * deliberate `-1`s in this panel) - so the chord is the keyboard's path to the pin and a Tab
+	 * that reached it would be the regression. The check below reads that half too: one Tab from
+	 * the row's button LEAVES the row.
 	 *
 	 * Read last, because it changes the row's state: everything photographed and asserted
 	 * above is already on disk by the time this runs.
@@ -7461,23 +7818,33 @@ async function sceneRowSpace(cdp) {
 	await pressChord(cdp, { key: "Tab", code: "Tab", virtualKeyCode: 9 });
 	await wait(200);
 	const onThePin = await cdp.evaluate(
-		`(() => { const el = document.activeElement; return { label: el ? el.getAttribute('aria-label') : null, pressed: el ? el.getAttribute('aria-pressed') : null }; })()`,
+		`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); const el = document.activeElement; return { label: el ? el.getAttribute('aria-label') : null, pressed: el ? el.getAttribute('aria-pressed') : null, insideRow: !!(row && el && row.contains(el)), tag: el ? el.tagName : null }; })()`,
 	);
 	/*
-	 * THE WALK STARTS FROM A PINNED ROW, AND THAT IS A PRECONDITION RATHER THAN DECORATION. The
-	 * reading that made this look wrong was `{"label":"Pin ...","pressed":"false"}` - the
-	 * fixture's own row, unpinned, because the U6 press had flipped it earlier in the run. The
-	 * instrument reached the pin (the label names THIS row) and the pin reported itself honestly;
-	 * only the starting state was wrong, and the restore above the width loop is what fixes it. A
-	 * run that fails here now is a run whose restore or whose row-move correction is at fault, and
-	 * those are different files.
+	 * ONE STOP PER ROW, AND THE ACTS ON CHORDS (§C4, U2). Both act controls are
+	 * `tabIndex={-1}`, so a Tab from the row's button does NOT land on the pin - and that is the
+	 * shipped model rather than a regression: the row keeps one stop and answers its acts by
+	 * chord, which is the half asserted below. This check asserted the opposite until
+	 * 2026-09-30, and had been failing since the acts left the ring.
 	 */
 	check(
-		"one Tab from the row's button lands on its pin, drawn for focus alone",
-		typeof onThePin.label === "string" &&
-			onThePin.label.startsWith("Unpin") &&
-			onThePin.pressed === "true",
+		"one Tab from the row's button LEAVES the row: both acts are out of the Tab ring by design, and the chords are the keyboard's path to them",
+		onThePin.insideRow === false,
 		JSON.stringify(onThePin),
+	);
+	/*
+	 * AND THE CARET GOES BACK INTO THE ROW FOR THE CHORD HALF. The chord resolves its target
+	 * from the focused element's own row (`chatRowActControl`), so a walk that left the caret
+	 * outside the row after reading the Tab stop would be pressing the chord on a row it is not
+	 * aimed at - a green run about the wrong row.
+	 */
+	const reseeded = await cdp.evaluate(
+		`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); const button = row && row.querySelector('[data-chat-row]'); if (!button) return null; button.focus(); return document.activeElement === button; })()`,
+	);
+	check(
+		"and the caret is back on the row's own button for the chord half",
+		reseeded === true,
+		String(reseeded),
 	);
 	/*
 	 * THE DELIVERY PRECONDITION, RECORDED FROM THE PAGE (agent review round 3, on the first
@@ -7485,10 +7852,14 @@ async function sceneRowSpace(cdp) {
 	 * `{"pressed":"true","pairDisplay":"flex","focusInsideRow":true}` — the two clauses this
 	 * fix owns were TRUE and the state had not moved, which is ALSO the reading of a control
 	 * that was never activated. A check that cannot tell those apart sends the next reader to
-	 * the wrong file, so the chord's delivery is recorded from the page's own events before
-	 * it is asserted: `pressChord` now carries each key's character (see `keyText` for why
-	 * that is what activation needs), and this reads whether the chord reached the pin and
-	 * produced its activation at all.
+	 * the wrong file, so the chord's delivery is recorded from the page's own events before it
+	 * is asserted.
+	 *
+	 * WHAT "DELIVERED" MEANS FOR A CHORD RATHER THAN FOR A FOCUSED BUTTON (2026-09-30): the
+	 * pin is `tabIndex={-1}` and is never focused, so the keydown lands on the row's BUTTON and
+	 * the activation arrives as a `click` on the pin - `chatRowAct` finds the control in the
+	 * row and `.click()`s it. `pinKeydown` is therefore expected to be 0 here, and the pin's
+	 * own `click` counter is the delivery this walk asserts.
 	 *
 	 * The listeners are capture-phase on the document, because the question is what the
 	 * PLATFORM sent rather than what a handler chose to do with it.
@@ -7502,16 +7873,24 @@ async function sceneRowSpace(cdp) {
 		document.addEventListener("keydown", (event) => { if (isPin(event)) seen.pinKeydown += 1; }, true);
 		document.addEventListener("keypress", (event) => { if (isPin(event)) seen.pinKeypress += 1; }, true);
 		document.addEventListener("click", (event) => { seen.anyClick += 1; if (isPin(event)) seen.pinClick += 1; }, true);
-		return { installed: window.__u2Walk !== undefined, pin: pin !== null, focused: document.activeElement === pin };
+		return { installed: window.__u2Walk !== undefined, pin: pin !== null, insideRow: !!(row && document.activeElement && row.contains(document.activeElement)) };
 	})()`);
 	check(
-		"the recorder is installed, the pin is on the panel, and the pin is what has focus - the state the Enter chord is about to be sent into",
+		"the recorder is installed, the pin is on the panel, and the caret is inside the row the ⌘⇧P chord is about to act on",
 		recorder.installed === true &&
 			recorder.pin === true &&
-			recorder.focused === true,
+			recorder.insideRow === true,
 		JSON.stringify({ ...recorder, ...onThePin }),
 	);
-	await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+	/* `12` is CDP's Meta|Shift: ⌘⇧P is the pin's own chord on macOS (`chatRowAct`,
+	   `chat-regions.ts`), and it is the keyboard's path to a control that is out of the
+	   Tab ring. */
+	await pressChord(cdp, {
+		key: "P",
+		code: "KeyP",
+		virtualKeyCode: 80,
+		modifiers: 12,
+	});
 	await wait(500);
 	geometry["keyboard-unpin-280"] = await rowSpaceGeometry(cdp, IDS);
 	const afterUnpin = await cdp.evaluate(
@@ -7533,30 +7912,28 @@ async function sceneRowSpace(cdp) {
 	);
 	/*
 	 * THE INSTRUMENT'S HALF, ASSERTED SEPARATELY (agent review round 3): a chord that cannot
-	 * activate a button must fail as the rig's fault, not as the app's. This is the check
-	 * that says which half is which, and the behaviour check below carries the same two
-	 * clauses so it cannot pass while activation was never delivered.
+	 * activate a control must fail as the rig's fault, not as the app's. This is the check that
+	 * says which half is which, and the behaviour check below carries the same clause so it
+	 * cannot pass while activation was never delivered.
 	 */
 	check(
-		"the Enter chord reached the focused pin through Chromium's input pipeline and produced its activation - the precondition the walk below depends on (the instrument's own claim, not the app's)",
-		delivered !== null && delivered.pinKeydown > 0 && delivered.pinClick > 0,
+		"the ⌘⇧P chord reached the row's own pin control through the app's dispatch and produced its activation - the precondition the walk below depends on (the instrument's own claim, not the app's)",
+		delivered !== null && delivered.pinClick > 0,
 		JSON.stringify({ delivered, activeTag: afterUnpin.activeTag }),
 	);
 	/*
 	 * AND THE VERDICT IS NAMED. Three different faults produce the same pixels on this step,
-	 * and the reading has to say which one the run found: the chord never arriving, the
-	 * chord arriving without activation, and the app not moving a state it was told to move.
+	 * and the reading has to say which one the run found: the chord never arriving, the chord
+	 * arriving without activation, and the app not moving a state it was told to move.
 	 */
 	const verdict =
 		delivered === null
 			? "rig: the recorder is gone"
-			: delivered.pinKeydown === 0
-				? "rig: the Enter chord never reached the pin (no keydown on it)"
-				: delivered.pinClick === 0
-					? "rig: the chord reached the pin and produced no activation (keydown, no click)"
-					: afterUnpin.pressed === "false"
-						? "app: activation delivered, the state moved"
-						: "app: activation delivered, the state did not move";
+			: delivered.pinClick === 0
+				? "rig: the ⌘⇧P chord produced no activation on the pin (no click on it)"
+				: afterUnpin.pressed === "false"
+					? "app: activation delivered, the state moved"
+					: "app: activation delivered, the state did not move";
 	/*
 	 * THE SAME PRECONDITION, SEEN FROM THE OTHER SIDE. The verdict string below separates the
 	 * three ways this step fails - the chord never arriving, arriving without activation, and the
@@ -7566,9 +7943,8 @@ async function sceneRowSpace(cdp) {
 	 * pinned already. With the fixture restored, `false` here means the unpin happened.
 	 */
 	check(
-		"unpinning from the keyboard flips the state and keeps the row's place: the activation was delivered, the pair stays displayed and focus stays inside the row (U2)",
+		"unpinning from the chord flips the state and keeps the row's place: the activation was delivered, the pair stays displayed and focus stays inside the row (U2)",
 		delivered !== null &&
-			delivered.pinKeydown > 0 &&
 			delivered.pinClick > 0 &&
 			afterUnpin.pressed === "false" &&
 			afterUnpin.pairDisplay === "flex" &&
@@ -7580,7 +7956,7 @@ async function sceneRowSpace(cdp) {
 	 * THE CLOSING READ THAT MAKES "NO archive FOR THIS CONVERSATION ANYWHERE IN THE RUN" TRUE
 	 * RATHER THAN TRUE-SO-FAR. The U6 press clause reads the daemon's log at its own moment, and
 	 * two interactions with this row follow it - the restore's press and the keyboard walk's
-	 * Enter - either of which could, if it missed the mark, land on the archive control instead.
+	 * chord - either of which could, if it missed the mark, land on the archive control instead.
 	 * That is exactly the hazard U6 exists for, so the question is asked again once every press
 	 * is spent, from the same source and by the same code.
 	 */
@@ -14109,7 +14485,13 @@ async function scenePinnedReorder(cdp) {
 	 * 220..320, `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
 	 * the README called 280 "the default", which is not a width the app opens at.
 	 */
-	const PINNED_WIDTHS = [240, 260, 280, 320];
+	/*
+	 * 220 IS THE CLAMP'S REAL FLOOR (design round 1, D4), and it is the width where the shed's
+	 * deletion is least obvious: the grip is drawn here now, and the title under the pointer is
+	 * what the arithmetic says it is (row - 4 - the 80px cluster). It is photographed and READ as
+	 * a number rather than inferred from the widths around it.
+	 */
+	const PINNED_WIDTHS = [220, 240, 260, 280, 320];
 	await wait(PINNED_SETTLE_MS);
 
 	/**
@@ -14203,8 +14585,6 @@ async function scenePinnedReorder(cdp) {
 							node.querySelector("[data-chat-row][aria-current='page']") !== null,
 						title: title ? box(title) : null,
 						grip: painted(node.querySelector("[data-session-pin-grip]")) ? box(node.querySelector("[data-session-pin-grip]")) : null,
-						up: painted(node.querySelector("[data-session-move-up]")),
-						down: painted(node.querySelector("[data-session-move-down]")),
 						pin: painted(node.querySelector("[data-session-pin]")),
 						archive: painted(node.querySelector("[data-session-archive]")),
 						dragging: node.hasAttribute("data-dragging"),
@@ -14475,13 +14855,9 @@ async function scenePinnedReorder(cdp) {
 		);
 		check(
 			"no move control is painted at rest",
-			boot.rows.every((row) => row.grip === null && !row.up && !row.down),
+			boot.rows.every((row) => row.grip === null),
 			JSON.stringify(
-				boot.rows.map((row) => ({
-					id: row.id,
-					grip: row.grip !== null,
-					up: row.up,
-				})),
+				boot.rows.map((row) => ({ id: row.id, grip: row.grip !== null })),
 			),
 		);
 		/*
@@ -14513,30 +14889,19 @@ async function scenePinnedReorder(cdp) {
 			);
 			const hoveredRow = hovered.rows.find((row) => row.id === PINNED_IDS[1]);
 			/*
-			 * THE SHED IS WIDTH-DEPENDENT (round 1, design D2, rounded to the measured edge
-			 * in round 2): the grip is DRAWN at a 279px panel and above and shed at 278 and
-			 * below - QA measured 277/278 shed and 279/280 drawn, which is what the shipped
-			 * `@max-[263px]/chatsidebar:hidden!` decides once the panel's own `p-2` is taken
-			 * off (the container query reads a content box 16px narrower than the panel) -
-			 * because at the 240 clamp the revealed cluster left the title 40px of the row's
-			 * 208. The PAIR STAYS at every width - it is WCAG 2.5.7's single-pointer
-			 * alternative - so the check is two claims, one per band, rather than one claim
-			 * with an exception.
+			 * THE GRIP IS DRAWN AT EVERY WIDTH NOW (2026-09-30). Round 1's shed - the grip
+			 * alone, absent at or below a 278px panel because the FIVE-control cluster left
+			 * the 240 clamp a 40px title - is deleted with the arrow pair that made the
+			 * cluster five wide, so these frames' meaning changes rather than their pixels
+			 * alone: `grip-hover-240` used to be the frame that showed the shed, and it now
+			 * shows the same cluster as every other width.
 			 */
-			const gripExpected = width >= 279;
 			check(
-				`${width}: the pointer reveals ${gripExpected ? "the grip, " : ""}the pair, the archive and the mark on one row`,
-				(hoveredRow.grip !== null) === gripExpected &&
-					hoveredRow.up === true &&
-					hoveredRow.down === true &&
+				`${width}: the pointer reveals the grip, the archive and the mark on one row`,
+				hoveredRow.grip !== null &&
 					hoveredRow.archive === true &&
 					hoveredRow.pin === true,
-				JSON.stringify({ width, gripExpected, row: hoveredRow }),
-			);
-			check(
-				`${width}: the shed leaves the pair in place`,
-				hoveredRow.up === true && hoveredRow.down === true,
-				JSON.stringify({ width, up: hoveredRow.up, down: hoveredRow.down }),
+				JSON.stringify({ width, row: hoveredRow }),
 			);
 			check(
 				`${width}: the grip is out of the Tab ring`,
@@ -14547,7 +14912,7 @@ async function scenePinnedReorder(cdp) {
 				`${width}: the revealed cluster leaves the rest of the section alone`,
 				hovered.rows
 					.filter((row) => row.id !== PINNED_IDS[1])
-					.every((row) => row.grip === null && !row.up),
+					.every((row) => row.grip === null),
 				JSON.stringify(
 					hovered.rows.map((row) => ({ id: row.id, grip: row.grip !== null })),
 				),
@@ -14566,8 +14931,6 @@ async function scenePinnedReorder(cdp) {
 				hoverTitles: titleWidths(hovered),
 				hoveredCluster: {
 					grip: hoveredRow.grip,
-					up: hoveredRow.up,
-					down: hoveredRow.down,
 					archive: hoveredRow.archive,
 					pin: hoveredRow.pin,
 				},
@@ -15357,7 +15720,7 @@ async function scenePinnedReorder(cdp) {
 		const singleFrame = await captureSettled(cdp, "single-pin");
 		note("frame", JSON.stringify({ label: "single-pin", ...singleFrame }));
 		check(
-			"the section is down to one pin, and both move controls are inapplicable",
+			"the section is down to one pin",
 			single.order.length === 1,
 			JSON.stringify(single.order),
 		);
@@ -15374,14 +15737,18 @@ async function scenePinnedReorder(cdp) {
 		 * README's claim about it). With one row there is no second slot a drop could land
 		 * on - measured, a one-row drag can be started, always lands on slot 0 and writes
 		 * nothing - so the handle was an affordance for a gesture that cannot change
-		 * anything. The PAIR stays: it still answers with the boundary sentence, which is
-		 * the sentence this state's frame is about.
+		 * anything.
+		 *
+		 * THE ARROW PAIR THAT USED TO SIT BESIDE IT IS DELETED (2026-09-30), and with it
+		 * this frame's old reading (`up`/`down` drawn inapplicable). The boundary sentence
+		 * is the row menu's two Move items' now, and this scene does not open a menu: that
+		 * claim is asserted in `scripts/sidebar-pin-order.test.mjs`, which drives the
+		 * predicate and the writer the items read. What the frame still proves is the
+		 * grip's own count rule.
 		 */
 		check(
-			"the only pin draws its two arrows inapplicable and offers no grip",
-			singleRow.grip === null &&
-				singleRow.up === true &&
-				singleRow.down === true,
+			"the only pin offers no grip",
+			singleRow.grip === null,
 			JSON.stringify(singleRow),
 		);
 		note(
@@ -16328,6 +16695,75 @@ async function setBackendPin(sessionId, pinned) {
 		);
 	}
 	return response.json();
+}
+
+/**
+ * Answer the archive confirmation a row's press has just raised.
+ *
+ * WHY IT IS SHARED, AND WHY IT EXISTS AT ALL (2026-09-30): archiving asks first now, so
+ * every scene that MEANS to archive a conversation has to answer the dialog its press
+ * opened - and the answer is one button behind one hook (`data-confirm-action`, the
+ * shared modal's, which the delete legs of `--scene session-archive` already press). Two
+ * scenes spell the press differently (one clicks the control, one presses it
+ * stationarily at a measured point) and both end here, which is the point: the QUESTION
+ * is one thing, however the door was opened.
+ *
+ * The measure before the click is the primitive's own open: a click that arrives before
+ * the panel is mounted lands on nothing, and the panel mounts a frame after the press.
+ */
+async function confirmArchiveDialog(cdp) {
+	/*
+	 * IT WAITS FOR THE ARCHIVE'S OWN DIALOG, not for "a dialog": the delete confirmation shares
+	 * the same hooks, and one that is still animating out when a press lands is a dialog this
+	 * helper would otherwise take for its own - the click then goes to a button that is about to
+	 * unmount, and the archive's write never happens (measured: a run whose earlier step had just
+	 * cancelled the delete dialog saw no archive request reach the daemon at all).
+	 */
+	const deadline = Date.now() + 10_000;
+	let asked = false;
+	while (Date.now() < deadline) {
+		asked = await cdp.evaluate(`(() => {
+			const dialogs = Array.from(document.querySelectorAll('[role="dialog"]'));
+			return dialogs.some((dialog) =>
+				dialog.getAttribute("data-state") !== "closed" &&
+				/^\\s*Archive\\s+[\u201c"]/.test(dialog.textContent || "") &&
+				dialog.querySelector("[data-confirm-action]") !== null,
+			);
+		})()`);
+		if (asked) break;
+		await wait(100);
+	}
+	if (!asked) {
+		throw new Error(
+			"the archive confirmation never opened for the press that should have asked",
+		);
+	}
+	/*
+	 * THE BUTTON IS PRESSED WHERE IT HAS STOPPED, and the press is checked rather than assumed.
+	 * The dialog zooms in on open, so a centre measured on the frame it mounted is a centre the
+	 * button is about to leave: the click lands on the dialog's padding, nothing is confirmed,
+	 * and the scene then waits ten seconds for a write that was never made (measured: two runs
+	 * of the same scene, one green and one with NO archive request in the daemon's log). Two
+	 * equal readings 120ms apart is the settle, and the dialog having gone is the proof the
+	 * confirm was the thing pressed.
+	 */
+	for (let attempt = 0; attempt < 3; attempt += 1) {
+		let previous = null;
+		for (let i = 0; i < 20; i += 1) {
+			const box = await verb(cdp, "measure", "[data-confirm-action]");
+			const key = JSON.stringify(box.centre);
+			if (key === previous) break;
+			previous = key;
+			await wait(120);
+		}
+		await clickAt(cdp, "[data-confirm-action]");
+		await wait(350);
+		const gone = await cdp.evaluate(
+			`document.querySelector('[data-confirm-action]') === null`,
+		);
+		if (gone) return;
+	}
+	throw new Error("the archive confirmation did not close after three presses");
 }
 
 /**
@@ -28384,7 +28820,7 @@ async function sceneSidebarLazyChats(cdp) {
 		 * earlier attempt to narrow this surface set a WINDOW size rather than the
 		 * panel's own width, so the panel was boxed at x 438-955 in both frames and
 		 * nothing was narrower. `240` is the floor the preference is clamped to
-		 * (`chatSidebarWidth`, clamped 240..360), set through the driver's own
+		 * (`chatSidebarWidth`, clamped 220..320), set through the driver's own
 		 * preference verb, so the frame is of the app's real floor. It is restored
 		 * before the press: a control whose box the width change has just moved is a
 		 * press that lands on nothing, which is what the first attempt measured.
@@ -35141,18 +35577,20 @@ const MINI_FAKE_RECORDER_SOURCE = [
  * photographed mid-transition, so their colours were a phase of a 120 ms fade
  * rather than the surface's paint.
  *
- * THE LIVE SEND, AND THE TWO AIDS THAT MAKE ITS STILLS POSSIBLE (M-B1).
- * Because the window is the app's own, its requests pass the desktop plane's
- * frame gate, and with `--backend` the whole send path is real: the daemon is
- * the run's own, the message it admits is read back from its history route,
- * and the two transient states are photographed with disclosed harness aids —
- * the daemon's process is PAUSED by exact pid for the `sending` frame and
- * resumed in a `finally` (the same request then completes), and the composer's
- * own 600 ms flash timer is stretched in the page for the `sent` frame. Both
- * aids are page/process-level, neither changes shipped code, and the README
- * names them beside the frames. Without `--backend` the send ends in the
- * transport refusal — the error state with the draft kept — and the `sending`
- * / `sent` frames are simply not taken.
+ * THE LIVE SEND, AND THE ONE HARNESS AID THAT MAKES ITS STILL POSSIBLE (M-B1;
+ * QA round 2, Q5/Q6). Because the window is the app's own, its requests pass
+ * the desktop plane's frame gate, and with `--backend` the whole send path is
+ * real: the daemon is the run's own, the message it admits is read back from
+ * its history route, and the `sent` state is photographed by stretching the
+ * composer's own 600 ms flash timer in the page — a page-level aid, disclosed
+ * here and in the README, not a shipped change. A `sending` frame is NOT taken
+ * here, and no daemon is ever paused: the technique that used to hold one
+ * (SIGSTOP by exact pid) photographed the resting box because no in-flight
+ * state exists on this surface, and it was unreliable on its own terms — the
+ * send walk below carries that evidence. The real sending state is QA's
+ * with-backend capture, taken from the app's own signal. Without `--backend`
+ * the send ends in the transport refusal — the error state with the draft kept
+ * — and the `sent` frame is simply not taken.
  *
  * WHAT THIS SCENE CANNOT PROVE, said here so no report implies otherwise: that
  * a real ⌘⌥⇧Space reaches the registrar (no synthetic OS chord crosses a
@@ -35207,6 +35645,10 @@ async function sceneMiniView(app, cdp) {
 		"src/shared/mini-view.ts",
 		"MINI_VIEW_HEIGHT",
 	);
+	const maxHeight = declaredNumberIn(
+		"src/shared/mini-view.ts",
+		"MINI_VIEW_MAX_HEIGHT",
+	);
 
 	/*
 	 * The sentences the assertions read are read from the copy module for the
@@ -35230,9 +35672,29 @@ async function sceneMiniView(app, cdp) {
 	};
 	const hintSentence = copySentence("hint");
 	const recordingSentence = copySentence("recording");
-	const dictationStopSentence = copySentence("dictationStop");
-	const dictationStartSentence = copySentence("dictationStart");
 	const sentSentence = copySentence("sent");
+	/*
+	 * The mic control's three faces come from the SHARED composer's own labels
+	 * (`message-input.tsx`), read as text for the same reason every other string
+	 * here is: a hardcoded "Start recording" would keep passing after the
+	 * composer renamed it. The frame's `recording` sentence above is still the
+	 * mini's own - it is what the frame's status line says while a take is live.
+	 */
+	const composerLabels = readFileSync(
+		"src/renderer/src/shared/components/composer/message-input.tsx",
+		"utf8",
+	);
+	const composerLabel = (name) => {
+		const match = composerLabels.match(new RegExp(`aria-label="${name}"`));
+		if (!match) {
+			throw new Error(
+				`the shared composer no longer declares aria-label="${name}"; the mini-view scene reads it, so update this reader with the declaration`,
+			);
+		}
+		return name;
+	};
+	const dictationStartSentence = composerLabel("Start recording");
+	const dictationStopSentence = composerLabel("Confirm recording");
 	/*
 	 * The invalid-state sentence is the registrationCopy arm the toast probe
 	 * asserts; it is a `case` return rather than a `key: "…"` entry, so it gets
@@ -35320,10 +35782,20 @@ async function sceneMiniView(app, cdp) {
 		owned?.mini?.visible === false && owned?.mini?.focused === false,
 		JSON.stringify(owned?.mini),
 	);
+	/*
+	 * THE WIDTH IS THE INVARIANT NOW, and the height is a RANGE (design R2). The
+	 * window is CREATED at the base pair; a frame with real chrome then measures
+	 * itself and asks main for the height it needs (clamped to the ceiling), so
+	 * asserting the base height after that would fail on a window that is
+	 * working exactly as designed. What must hold at every moment: the content
+	 * WIDTH is the fixed base - the composer is laid out for 640 and the design
+	 * reads frames at it - and the height never leaves [base, ceiling].
+	 */
 	check(
-		"the app's own creation used the design's fixed content size",
+		"the app's own window carries the fixed width inside the height range",
 		owned?.mini?.bounds?.width === width &&
-			owned?.mini?.bounds?.height === height,
+			owned?.mini?.bounds?.height >= height &&
+			owned?.mini?.bounds?.height <= maxHeight,
 		JSON.stringify(owned?.mini?.bounds),
 	);
 	check(
@@ -35355,19 +35827,79 @@ async function sceneMiniView(app, cdp) {
 
 		const select = (tag) =>
 			`document.querySelector('[data-tour-tag="${tag}"]')`;
+		/*
+		 * THE SHARED COMPOSER'S OWN CONTROLS (restyle, 2026-09-29). The mini document
+		 * no longer draws a private textarea, mic or Send button: it mounts
+		 * `@shared/components/composer`, so the scene addresses the composer's own
+		 * accessible names - the same handles a screen reader and the chat's own
+		 * suites use. The frame's own anchors (`mini-frame`, `mini-seat`,
+		 * `mini-composer-status`) stay as they were.
+		 */
+		const composerField = `document.querySelector('textarea[aria-label="Message"]')`;
+		const composerSend = `document.querySelector('button[aria-label="Send message"]')`;
+		const composerMicStart = `document.querySelector('button[aria-label="Start recording"]')`;
+		const composerMicConfirm = `document.querySelector('button[aria-label="Confirm recording"]')`;
+		const composerAlert = `document.querySelector('[role="alert"]')`;
+		/*
+		 * THE PALETTE THIS SCENE PHOTOGRAPHS (design N2). `--theme` reached only the MAIN
+		 * window (`verb(cdp, "setTheme", ...)`), while the mini document publishes its own
+		 * palette from the persisted preference - so every still was dark whatever the
+		 * flag said, and the twelve-theme promise had no frame behind it. The same
+		 * attribute `applyThemeToDocument` writes is set here, on the mini's own
+		 * documentElement, and asserted below: two documents, one palette name.
+		 */
+		/*
+		 * THE PALETTE, AT ATTACH AND AFTER EVERY RELOAD (design N2/D6). The mini
+		 * document publishes its palette from the persisted preference, and a
+		 * `Page.reload` re-publishes the STORE'S value - so the error state, which this
+		 * walk reaches through a reload, was photographed DARK in the light run. One
+		 * helper, called at both points, and the frame check asserts the result.
+		 */
+		const applyMiniTheme = async () => {
+			if (!THEME) return;
+			/*
+			 * NO-OP WHILE THE DOCUMENT IS BETWEEN NAVIGATIONS: a `Page.reload` answer
+			 * arrives before the new document exists, and `documentElement` is null until
+			 * it does - the first light-palette run threw exactly there.
+			 */
+			try {
+				await mini.evaluate(
+					`(() => { const root = document.documentElement; if (!root) return true; root.dataset.theme = ${JSON.stringify(THEME)}; return true; })()`,
+				);
+			} catch {
+				/* A document that is gone: the next call, after it has remounted, sets it. */
+			}
+		};
+		await applyMiniTheme();
+
 		const pageState = await mini.evaluate(
-			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${select("mini-composer-input")}?.placeholder ?? null, sendDisabled: ${select("mini-composer-send")}?.disabled ?? null })`,
+			`({ width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio, theme: document.documentElement.dataset.theme ?? null, dismissBridge: typeof window.api?.miniView?.dismiss === "function", placeholder: ${composerField}?.placeholder ?? null, sendDisabled: ${composerSend}?.disabled ?? null })`,
 		);
 		check(
-			"the mini document rendered at the app's fixed viewport",
-			pageState?.width === width && pageState?.height === height,
+			"the mini document rendered at the fixed viewport width",
+			pageState?.width === width &&
+				pageState?.height >= height &&
+				pageState?.height <= maxHeight,
 			JSON.stringify(pageState),
 		);
 		check(
 			"the mini document mounted the app's palette",
-			typeof pageState?.theme === "string" && pageState.theme.length > 0,
-			`data-theme = ${JSON.stringify(pageState?.theme)}`,
+			typeof pageState?.theme === "string" &&
+				pageState.theme.length > 0 &&
+				(THEME === null || pageState.theme === THEME),
+			`data-theme = ${JSON.stringify(pageState?.theme)}${THEME ? ` (asked for ${THEME})` : ""}`,
 		);
+
+		/*
+		 * THE COLUMN'S LEFT EDGES, PRINTED (design D2). The header, the hint and the box
+		 * were measured apart (12 / 12 / 36) in the design round; these are the frame's
+		 * own numbers, taken in the document they describe, so a later alignment claim
+		 * has a reading behind it rather than a class name.
+		 */
+		const edges = await mini.evaluate(
+			`(() => { const box = ${composerField}?.closest("div[class*=bg-elevated]"); const rect = (element) => element ? Math.round(element.getBoundingClientRect().x * 10) / 10 : null; const chain = []; let node = box; while (node && chain.length < 8) {   const style = getComputedStyle(node);   chain.push({ tag: node.tagName.toLowerCase() + (node.dataset.tourTag ? "#" + node.dataset.tourTag : ""), x: rect(node), padLeft: style.paddingLeft, width: Math.round(node.getBoundingClientRect().width) });   node = node.parentElement; } return { header: rect(document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-seat" + String.fromCharCode(34) + String.fromCharCode(93))), status: rect(document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-composer-status" + String.fromCharCode(34) + String.fromCharCode(93))), field: rect(${composerField}), box: rect(box), boxRight: box ? Math.round(box.getBoundingClientRect().right * 10) / 10 : null, chain }; })()`,
+		);
+		note("the column left edges (css px)", JSON.stringify(edges));
 		check(
 			"the mini document has the preload's bridge",
 			pageState?.dismissBridge === true,
@@ -35452,11 +35984,18 @@ async function sceneMiniView(app, cdp) {
 				].join("\n"),
 			);
 			const dpr = record?.viewport?.dpr ?? 1;
+			/*
+			 * THE WIDTH IS PINNED PER FRAME, the height only bounded: every still
+			 * must be of a window at the design's width (so two themes and two
+			 * states are comparable), while the measured resize may legitimately
+			 * have grown the window for the state being photographed.
+			 */
 			check(
-				`the ${label} frame was captured at actual size`,
+				`the ${label} frame was captured at the fixed width`,
 				record?.ok === true &&
 					record?.pixels?.width === width * dpr &&
-					record?.pixels?.height === height * dpr,
+					(record?.pixels?.height ?? 0) >= height * dpr &&
+					(record?.pixels?.height ?? 0) <= maxHeight * dpr,
 				JSON.stringify(record),
 			);
 			/*
@@ -35506,8 +36045,8 @@ async function sceneMiniView(app, cdp) {
 		 */
 		const settleMini = async () => {
 			const record = await mini.evaluate(`(async () => {
-				const box = ${select("mini-composer-input")};
-				const send = ${select("mini-composer-send")};
+				const box = ${composerField};
+				const send = ${composerSend};
 				const read = () =>
 					box && send
 						? [
@@ -35537,22 +36076,66 @@ async function sceneMiniView(app, cdp) {
 			return record;
 		};
 
+		/*
+		 * TYPE INTO AN EMPTY BOX. The shared composer's draft is STORE-BACKED and
+		 * persists across reloads, so a walk that typed over whatever the last
+		 * state left would photograph a concatenation - and `Input.insertText`
+		 * appends at the caret rather than replacing. The box is emptied first
+		 * through the page's own selection, then the text is inserted, so each
+		 * state's draft is exactly the string this walk names.
+		 */
 		const type = async (text) => {
-			await mini.evaluate(`${select("mini-composer-input")}.focus(); true`);
-			await mini.send("Input.insertText", { text });
-			return mini.evaluate(`${select("mini-composer-input")}.value`);
+			/*
+			 * TYPE UNTIL THE BOX HOLDS IT (QA round 2, Q8). Every window in this rig is
+			 * unfocused, so the draft store's cross-document sync may absorb the other
+			 * document's copy between the insert and the next read - measured: the box was
+			 * emptied under the walk and a run sent an older draft. Insert, verify, and
+			 * type again if something else won the row.
+			 */
+			for (let attempt = 0; attempt < 3; attempt += 1) {
+				await mini.evaluate(
+					`(() => { const box = ${composerField}; box.focus(); box.select(); return true; })()`,
+				);
+				await mini.send("Input.dispatchKeyEvent", {
+					type: "keyDown",
+					key: "Backspace",
+					code: "Backspace",
+					windowsVirtualKeyCode: 8,
+				});
+				await mini.send("Input.dispatchKeyEvent", {
+					type: "keyUp",
+					key: "Backspace",
+					code: "Backspace",
+					windowsVirtualKeyCode: 8,
+				});
+				await mini.send("Input.insertText", { text });
+				const settled = await pollMini(
+					`${composerField}?.value ?? null`,
+					(value) => value === text,
+					"the box to hold the typed draft",
+					3_000,
+				);
+				if (settled.ok) return text;
+			}
+			return mini.evaluate(`${composerField}.value`);
 		};
 
 		/* ---- the resting state ------------------------------------------------- */
+		const restingLine = await mini.evaluate(
+			`${select("mini-composer-status")}?.textContent ?? null`,
+		);
+		check(
+			"the resting frame says the hint rather than a notice",
+			restingLine === hintSentence,
+			`status=${JSON.stringify(restingLine)} hint=${JSON.stringify(hintSentence)}`,
+		);
 		await captureMini("mini-view-empty");
 
 		/* ---- a draft ----------------------------------------------------------- */
 		const draft = "Lunch at one tomorrow? Book the room if it is free.";
 		const typed = await type(draft);
 		check("the draft reached the box", typed === draft, JSON.stringify(typed));
-		const sendDisabled = await mini.evaluate(
-			`${select("mini-composer-send")}.disabled`,
-		);
+		const sendDisabled = await mini.evaluate(`${composerSend}.disabled`);
 		check(
 			"Send became available once there was a draft",
 			sendDisabled === false,
@@ -35569,120 +36152,330 @@ async function sceneMiniView(app, cdp) {
 			"If the order should be different, say so and I will re-plan the morning.",
 		].join("\n");
 		await type(longDraft);
-		const growth = await mini.evaluate(
-			`(() => { const box = ${select("mini-composer-input")}; const frame = document.body.getBoundingClientRect(); return { scrolls: box.scrollHeight > box.clientHeight, bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height) }; })()`,
+		/*
+		 * SETTLED FIRST, THEN READ (QA round 2, Q7). Under load the observer's post lands
+		 * after a single read, so run 1 caught the window mid-growth ({"innerHeight":299,
+		 * "columnScrollHeight":521}). The property the resize exists to hold is polled to,
+		 * and only then are the numbers taken - so a frame is never read while it is still
+		 * arriving.
+		 */
+		await pollMini(
+			`(() => { const column = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-frame-content" + String.fromCharCode(34) + String.fromCharCode(93)); return Boolean(column) && column.scrollHeight <= window.innerHeight; })()`,
+			(value) => value === true,
+			"the long draft to fit the window",
+			8_000,
 		);
+		const growth = await mini.evaluate(
+			`(() => { const box = ${composerField}; const column = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-frame-content" + String.fromCharCode(34) + String.fromCharCode(93)); const frame = document.body.getBoundingClientRect(); return { bodyWidth: Math.round(frame.width), bodyHeight: Math.round(frame.height), innerHeight: window.innerHeight, columnScrollHeight: column?.scrollHeight ?? null, columnBoxHeight: column ? Math.round(column.getBoundingClientRect().height) : null }; })()`,
+		);
+		/*
+		 * THE RESIZE CONTRACT (design R2), replacing the old "the window never
+		 * moves" assertion. The restyle grows the frame for its chrome, so what
+		 * must hold is the PAIR: the WIDTH is the fixed base in every state (the
+		 * composer is laid out for 640 and the design reads frames at it), and
+		 * the HEIGHT stays inside [base, ceiling] - a long draft may push the
+		 * window taller, and must never push it past the ceiling that keeps a
+		 * quick-send surface from becoming a panel.
+		 */
 		check(
-			"a long draft scrolls inside the fixed box rather than growing the window",
-			growth?.scrolls === true &&
-				growth?.bodyWidth === width &&
-				growth?.bodyHeight === height,
+			"a long draft keeps the fixed width, fits inside the window, and stays in range",
+			growth?.bodyWidth === width &&
+				growth?.bodyHeight >= height &&
+				growth?.bodyHeight <= maxHeight &&
+				typeof growth?.columnScrollHeight === "number" &&
+				typeof growth?.innerHeight === "number" &&
+				growth.columnScrollHeight <= growth.innerHeight,
 			JSON.stringify(growth),
 		);
 		await captureMini("mini-view-long");
 
+		/* ---- the seat's name, and the compact sheet ---------------------------- */
+		/*
+		 * THE NAME IS RESOLVED, NEVER LITERAL (operator directive, 2026-09-29).
+		 * The frame's "To:" line and the box's placeholder both render the name
+		 * the seat resolution answered with, so this asserts the SHAPE (a
+		 * non-empty name after "To: ") and that the placeholder names the same
+		 * one - a literal role in either would fail the second half, because the
+		 * frame interpolates one value into both.
+		 */
+		const seatLine = await mini.evaluate(
+			`${select("mini-seat")}?.textContent ?? null`,
+		);
+		const namedPlaceholder = await mini.evaluate(
+			`${composerField}?.placeholder ?? null`,
+		);
+		const seatName =
+			typeof seatLine === "string" && seatLine.startsWith("To: ")
+				? seatLine.slice("To: ".length).trim()
+				: "";
+		check(
+			"the frame addresses the seat by its resolved name",
+			seatName.length > 0 && !seatName.includes("chief of staff"),
+			`seat line=${JSON.stringify(seatLine)}`,
+		);
+		check(
+			"the placeholder names the same resolved name",
+			typeof namedPlaceholder === "string" &&
+				seatName.length > 0 &&
+				namedPlaceholder.includes(seatName),
+			`placeholder=${JSON.stringify(namedPlaceholder)} seat=${JSON.stringify(seatName)}`,
+		);
+		note("the seat's resolved name", seatName);
+		if (BACKEND) {
+			/*
+			 * THE NAME CONTRACT, CROSS-CHECKED against the source that owns it
+			 * (operator directive, 2026-09-29): the frame renders the name
+			 * `aida.status` answers with - the same field the sidebar, the resume
+			 * picker and the splash resolve - so the two must agree at the same
+			 * moment. A literal in the frame, or a second source, would show up
+			 * here as a mismatch rather than passing a shape check.
+			 */
+			/*
+			 * THE GET IS THE SHAPE THAT CARRIES `name` (QA Q1-a): the POST's op answer is
+			 * `AidaOpState` (session/paused/greeted), and reading `name` off it returned null
+			 * on every backend - so this check failed for the harness's reason rather than the
+			 * app's. `GET /v1/desktop/aida` answers `AidaState`, the record the sidebar reads.
+			 */
+			const named = await daemonGet("/v1/desktop/aida");
+			const resolvedName = named?.json?.result?.name ?? null;
+			check(
+				"the frame renders the name the backend resolves, not a literal",
+				typeof resolvedName === "string" &&
+					resolvedName.length > 0 &&
+					seatName === resolvedName,
+				`frame=${JSON.stringify(seatName)} backend=${JSON.stringify(resolvedName)}`,
+			);
+		}
+
+		/*
+		 * THE COMPACT SHEET (design R2's picker-fit question). The model chip
+		 * dispatches its command through the composer's `sessionStatus.onCommand`
+		 * - the same route `/model` typed takes - and the frame opens its own
+		 * in-frame sheet because a dialog cannot fit the window. Clicking the
+		 * chip is the real door; the sheet's presence is the assertion.
+		 */
+		if (BACKEND) {
+			const chipClicked = await mini.evaluate(
+				`(() => { const chip = document.querySelector('[data-lo-session-strip] button[aria-label^="Model:"]'); if (!chip) return false; chip.click(); return true; })()`,
+			);
+			check(
+				"the readings strip offers a model chip to press",
+				chipClicked === true,
+				`chipClicked=${chipClicked}`,
+			);
+			const sheetOpen = await pollMini(
+				`Boolean(${select("mini-sheet")})`,
+				(value) => value === true,
+				"the compact sheet",
+				8_000,
+			);
+			check(
+				"the chip opened the frame's own compact sheet",
+				sheetOpen.ok,
+				JSON.stringify(sheetOpen.value),
+			);
+			await captureMini("mini-view-sheet");
+			/*
+			 * THE SHEET FITS TOO (design D1 / UX U1: 261 px of it was painted outside the
+			 * window). The same reading the long-draft state takes, on the state that made the
+			 * defect visible: nothing inside the frame extends past the window's own edge.
+			 */
+			const sheetFit = await mini.evaluate(
+				`(() => { const column = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-frame-content" + String.fromCharCode(34) + String.fromCharCode(93)); const list = document.querySelector(String.fromCharCode(91) + "data-tour-tag=" + String.fromCharCode(34) + "mini-sheet" + String.fromCharCode(34) + String.fromCharCode(93)); return { innerHeight: window.innerHeight, columnScrollHeight: column?.scrollHeight ?? null, sheetBottom: list ? Math.round(list.getBoundingClientRect().bottom) : null }; })()`,
+			);
+			check(
+				"the sheet state fits inside the window",
+				typeof sheetFit?.innerHeight === "number" &&
+					typeof sheetFit?.columnScrollHeight === "number" &&
+					sheetFit.columnScrollHeight <= sheetFit.innerHeight &&
+					(sheetFit.sheetBottom === null ||
+						sheetFit.sheetBottom <= sheetFit.innerHeight),
+				JSON.stringify(sheetFit),
+			);
+			const sheetRows = await mini.evaluate(
+				`document.querySelectorAll('[data-tour-tag="mini-sheet"] [role="option"]').length`,
+			);
+			note("the sheet's rows", String(sheetRows));
+			/* Esc closes the SHEET, not the window: the frame's ladder owns that. */
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Escape",
+				code: "Escape",
+				windowsVirtualKeyCode: 27,
+			});
+			const sheetClosed = await pollMini(
+				`!${select("mini-sheet")}`,
+				(value) => value === true,
+				"the sheet's dismissal on Escape",
+				8_000,
+			);
+			check(
+				"Escape closed the sheet rather than the window",
+				sheetClosed.ok,
+				JSON.stringify(sheetClosed.value),
+			);
+		} else {
+			/*
+			 * NO SEAT, NO SHEET: the chip's command addresses a session, and a run
+			 * with no backend has none - the frame says so in its own note line
+			 * instead of opening an empty list. Disclosed here rather than
+			 * asserted away, and the with-backend run is where this state is
+			 * photographed.
+			 */
+			const chipPressed = await mini.evaluate(
+				`(() => { const chip = document.querySelector('[data-lo-session-strip] button[aria-label^="Model:"]'); if (!chip) return "no-chip"; chip.click(); return "pressed"; })()`,
+			);
+			note("the model chip without a backend", String(chipPressed));
+		}
+
 		/* ---- dictating (a fake recorder; see the constant) --------------------- */
-		await mini.send("Page.addScriptToEvaluateOnNewDocument", {
-			source: MINI_FAKE_RECORDER_SOURCE,
-		});
-		await mini.send("Page.reload");
-		const remounted = await pollMini(
-			`Boolean(${select("mini-composer-input")})`,
-			(value) => value === true,
-			"the composer remounted",
-		);
-		check(
-			"the composer remounted after the reload",
-			remounted.ok,
-			JSON.stringify(remounted.value),
-		);
 		/*
-		 * A DRAFT BEFORE THE MIC (UX round 1, U2's other half): with words in the
-		 * box, an Enter that wrongly sent would file a message missing the spoken
-		 * words — so the walk below presses exactly that key and asserts the draft
-		 * stayed.
+		 * THE MIC NEEDS A LIVE CREDENTIAL PROBE. The composer gates its dictation
+		 * on the host's probe (`recordingProbe`), which the mini reads from the
+		 * backend - the server's reachability, the capabilities negotiation, the
+		 * Radient session and the legacy key: with no daemon the probe cannot
+		 * answer, the control is disabled by design, and a walk that pressed it
+		 * would be asserting a state this run cannot produce. Disclosed rather
+		 * than asserted away - the with-backend run is where the recording state
+		 * is photographed.
 		 */
-		const recordingDraft = "Draft kept while dictating";
-		const draftBeforeMic = await type(recordingDraft);
-		check(
-			"the box holds a draft while the recording starts",
-			draftBeforeMic === recordingDraft,
-			JSON.stringify(draftBeforeMic),
-		);
-		await mini.evaluate(`${select("mini-composer-mic")}.click(); true`);
-		const recordingState = await pollMini(
-			`${select("mini-composer-status")}.textContent`,
-			(text) => text === recordingSentence,
-			"the recording state",
-		);
-		check(
-			"the mic press put the surface into recording",
-			recordingState.ok,
-			JSON.stringify(recordingState.value),
-		);
-		const stopLabel = await mini.evaluate(
-			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
-		);
-		check(
-			"the mic control now offers to stop",
-			stopLabel === dictationStopSentence,
-			`aria-label=${JSON.stringify(stopLabel)}`,
-		);
-		await captureMini("mini-view-dictating");
-		/*
-		 * ENTER CONFIRMS A RECORDING (UX round 1, U2). While the mic is live,
-		 * Enter must not send: it stops the recording (stop → transcribe →
-		 * append), and no send path may hide the window while a recording is
-		 * live. The pre-press reading is the new guard — Send disabled while
-		 * recording — and the post-press reading is that no in-flight state
-		 * ever appeared: the textarea is never disabled by a send and the
-		 * draft is byte-identical.
-		 */
-		const beforeEnter = await mini.evaluate(
-			`({ sendDisabled: ${select("mini-composer-send")}.disabled, mic: ${select("mini-composer-mic")}.getAttribute("aria-label") })`,
-		);
-		check(
-			"Send is disabled while a recording is live",
-			beforeEnter?.sendDisabled === true &&
-				beforeEnter?.mic === dictationStopSentence,
-			JSON.stringify(beforeEnter),
-		);
-		await mini.send("Input.dispatchKeyEvent", {
-			type: "keyDown",
-			key: "Enter",
-			code: "Enter",
-			windowsVirtualKeyCode: 13,
-		});
-		await mini.send("Input.dispatchKeyEvent", {
-			type: "keyUp",
-			key: "Enter",
-			code: "Enter",
-			windowsVirtualKeyCode: 13,
-		});
-		const recordingEnded = await pollMini(
-			`${select("mini-composer-mic")}.getAttribute("aria-label")`,
-			(value) => value === dictationStartSentence,
-			"the recording to end via Enter",
-			8_000,
-		);
-		const afterEnter = await mini.evaluate(
-			`({ text: ${select("mini-composer-input")}.value, disabled: ${select("mini-composer-input")}.disabled, status: ${select("mini-composer-status")}.textContent })`,
-		);
-		check(
-			"Enter confirmed the recording instead of sending",
-			recordingEnded.ok &&
-				afterEnter?.text === recordingDraft &&
-				afterEnter?.status !== sentSentence,
-			JSON.stringify({ ended: recordingEnded.value, ...afterEnter }),
-		);
+		if (BACKEND) {
+			await mini.send("Page.addScriptToEvaluateOnNewDocument", {
+				source: MINI_FAKE_RECORDER_SOURCE,
+			});
+			await mini.send("Page.reload");
+			const remounted = await pollMini(
+				`Boolean(${composerField})`,
+				(value) => value === true,
+				"the composer remounted",
+			);
+			/* Now that the new document is up: the reload republishes the STORE's palette
+			   (dark), so this run's is asked for again - D6's light error frame. */
+			await applyMiniTheme();
+			check(
+				"the composer remounted after the reload",
+				remounted.ok,
+				JSON.stringify(remounted.value),
+			);
+			/*
+			 * A DRAFT BEFORE THE MIC (UX round 1, U2's other half): with words in the
+			 * box, an Enter that wrongly sent would file a message missing the spoken
+			 * words — so the walk below presses exactly that key and asserts the draft
+			 * stayed.
+			 */
+			const recordingDraft = "Draft kept while dictating";
+			const draftBeforeMic = await type(recordingDraft);
+			check(
+				"the box holds a draft while the recording starts",
+				draftBeforeMic === recordingDraft,
+				JSON.stringify(draftBeforeMic),
+			);
+			/*
+			 * THE MIC NEEDS ITS PROBE TO HAVE SETTLED (QA Q1-e): one press in four no-op'd when
+			 * clicked immediately after `type()`, because the control stays disabled until the
+			 * credential read answers.
+			 */
+			const micReady = await pollMini(
+				`Boolean(${composerMicStart}) && ${composerMicStart}.disabled === false`,
+				(value) => value === true,
+				"the mic control to be pressable",
+				10_000,
+			);
+			check(
+				"the mic is enabled before the walk presses it",
+				micReady.ok,
+				JSON.stringify(micReady.value),
+			);
+			await mini.evaluate(`${composerMicStart}.click(); true`);
+			const recordingState = await pollMini(
+				`${select("mini-composer-status")}.textContent`,
+				(text) => text === recordingSentence,
+				"the recording state",
+			);
+			check(
+				"the mic press put the surface into recording",
+				recordingState.ok,
+				JSON.stringify(recordingState.value),
+			);
+			const stopLabel = await mini.evaluate(
+				`${composerMicConfirm}?.getAttribute("aria-label") ?? null`,
+			);
+			check(
+				"the mic control now offers to stop",
+				stopLabel === dictationStopSentence,
+				`aria-label=${JSON.stringify(stopLabel)}`,
+			);
+			await captureMini("mini-view-dictating");
+			/*
+			 * ENTER CONFIRMS A RECORDING (UX round 1, U2). While the mic is live,
+			 * Enter must not send: it stops the recording (stop → transcribe →
+			 * append), and no send path may hide the window while a recording is
+			 * live. The pre-press reading is the new guard — Send disabled while
+			 * recording — and the post-press reading is that no in-flight state
+			 * ever appeared: the textarea is never disabled by a send and the
+			 * draft is byte-identical.
+			 */
+			const beforeEnter = await mini.evaluate(
+				`({ sendControl: Boolean(${composerSend}), mic: ${composerMicConfirm}?.getAttribute("aria-label") ?? null })`,
+			);
+			check(
+				"no Send control stands while a recording is live",
+				beforeEnter?.sendControl === false &&
+					beforeEnter?.mic === dictationStopSentence,
+				JSON.stringify(beforeEnter),
+			);
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyDown",
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+			});
+			await mini.send("Input.dispatchKeyEvent", {
+				type: "keyUp",
+				key: "Enter",
+				code: "Enter",
+				windowsVirtualKeyCode: 13,
+			});
+			const recordingEnded = await pollMini(
+				`${composerMicStart}?.getAttribute("aria-label") ?? null`,
+				(value) => value === dictationStartSentence,
+				"the recording to end via Enter",
+				8_000,
+			);
+			const afterEnter = await mini.evaluate(
+				`({ text: ${composerField}.value, readOnly: ${composerField}.readOnly, sendControl: Boolean(${composerSend}), status: ${select("mini-composer-status")}?.textContent ?? null })`,
+			);
+			check(
+				"Enter confirmed the recording instead of sending",
+				recordingEnded.ok &&
+					afterEnter?.text === recordingDraft &&
+					afterEnter?.status !== sentSentence,
+				JSON.stringify({ ended: recordingEnded.value, ...afterEnter }),
+			);
+		} else {
+			note(
+				"the dictation walk needs a backend (the credential probe gates the mic)",
+				"skipped",
+			);
+		}
 
 		/* ---- sending / sent, or the refusal the no-backend run shows ----------- */
 		await mini.send("Page.reload");
 		await pollMini(
-			`Boolean(${select("mini-composer-input")})`,
+			`Boolean(${composerField})`,
 			(value) => value === true,
 			"the composer remounted",
 		);
+		/* THE STATE OF THE LIGHT RUN: this reload is what the error state follows, and
+		   it republishes the persisted (dark) palette, so the frame was photographed
+		   dark before this call existed (design D6). */
+		await applyMiniTheme();
 		const message = "Lunch at one tomorrow? Book the room if it is free.";
 		const held = await type(message);
 		check(
@@ -35692,70 +36485,56 @@ async function sceneMiniView(app, cdp) {
 		);
 
 		/*
-		 * THE SEND, walked on the app's OWN window — which is what makes both
-		 * arms honest now that the exerciser exists (M-B1). The window this
-		 * scene drives was created by the app, so the desktop plane's gate
-		 * (`desktop-ipc.ts`, admits by frame) ADMITS its requests; where the
-		 * request then goes is the run's own backend or, without one, the dead
-		 * port — and the surface shows the outcome the machine can produce.
+		 * THE SEND, walked on the app's OWN window. The window this scene drives
+		 * was created by the app, so the desktop plane's gate (`desktop-ipc.ts`,
+		 * admits by frame) ADMITS its requests; where the request then goes is the
+		 * run's own backend or, without one, the dead port.
 		 *
-		 * WITH `--backend`, the live pair. The `sending` frame needs the
-		 * in-flight state to outlive a loopback round trip, so the harness
-		 * pauses the run's OWN daemon process (SIGSTOP, exact pid from the serve
-		 * record the run linked, resumed in a `finally`) for the frame's
-		 * duration and resumes it before the same request completes: the request
-		 * is a real one, the `sent` frame is its admission, and the history
-		 * read-back below is the daemon's own receipt. The 600 ms flash is held
-		 * open long enough to photograph by stretching the composer's OWN timer
-		 * (`SENT_FLASH_MS`, read from its declaration) in this window's page — a
-		 * harness aid, disclosed here and in the README, not a shipped change.
+		 * WITH `--backend`, the live send: the press is a real one, the `sent`
+		 * frame is its real admission, and the history read-back below is the
+		 * daemon's own receipt. The 600 ms flash is held open long enough to
+		 * photograph by stretching the composer's OWN timer (`SENT_FLASH_MS`, read
+		 * from its declaration) in this window's page - a harness aid, disclosed
+		 * here and in the README, not a shipped change.
 		 *
-		 * WITHOUT one, the fail-closed arm: the transport refusal, draft kept —
-		 * the frame the PR's error state has always been.
+		 * NO `sending` FRAME, and no paused daemon (QA round 2, Q5/Q6). The old
+		 * arm SIGSTOPped the run's own daemon to hold the answer open long enough
+		 * to photograph an in-flight state - and that state does not exist on this
+		 * surface: the composer's only send-related refusal term is
+		 * `isBusy = isLoading && currentJobId` (`message-input.tsx`), and a
+		 * quick-send frame has no job id, so `readOnly` never flips (twelve
+		 * seconds of 400 ms samples across a paused send: unchanged, no alert, no
+		 * status change). The captured "sending" still was the resting box. The
+		 * pause technique is also unreliable on its own terms: on v0.64.10 the
+		 * held request never landed at all, and on v0.64.9 its recovery was
+		 * timing-dependent (QA's own runs and probes disagree), so a rig built on
+		 * it would fail a shipped PR for the harness's reason. What is claimed
+		 * here instead is the pair this surface really produces.
+		 *
+		 * WITHOUT a backend, the fail-closed arm: the transport refusal, draft
+		 * kept - the frame the PR's error state has always been.
 		 */
 		if (BACKEND) {
 			await mini.evaluate(
 				`(() => { const original = window.setTimeout; window.setTimeout = (fn, ms, ...rest) => original(fn, ms === ${sentFlashMs} ? 5000 : ms, ...rest); return true; })()`,
 			);
-			const daemonPids = runDaemonPids();
-			let paused = 0;
-			try {
-				for (const pid of daemonPids) {
-					try {
-						process.kill(pid, "SIGSTOP");
-						paused += 1;
-					} catch {
-						/* Already gone: nothing to hold, and the send will show it. */
-					}
-				}
-				check(
-					"the run's own daemon was paused for the sending frame",
-					paused > 0,
-					`paused ${paused} of ${JSON.stringify(daemonPids)}`,
-				);
-				await wait(150);
-				await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
-				const inFlight = await pollMini(
-					`({ editable: !${select("mini-composer-input")}.disabled, sendDisabled: ${select("mini-composer-send")}.disabled })`,
-					(value) => value?.editable === false,
-					"the in-flight state",
-					6_000,
-				);
-				check(
-					"the send is in flight while the daemon holds the answer",
-					inFlight.ok,
-					JSON.stringify(inFlight.value),
-				);
-				await captureMini("mini-view-sending");
-			} finally {
-				for (const pid of daemonPids) {
-					try {
-						process.kill(pid, "SIGCONT");
-					} catch {
-						/* A pid that died while paused has nothing to resume. */
-					}
-				}
-			}
+			/*
+			 * SETTLE AND RE-VERIFY IMMEDIATELY BEFORE THE CLICK (QA Q1-d). Every window in
+			 * this rig is unfocused, so the draft store's cross-document sync (R5) may absorb
+			 * the OTHER document's copy between `type()` and the press - measured: the run
+			 * sent an older draft while the harness watched for the new one. The box is
+			 * pinned here, and a mismatch refuses rather than sending a message this walk is
+			 * not describing.
+			 */
+			const pinned = await mini.evaluate(
+				`(() => { const box = ${composerField}; box.focus(); return box.value === ${JSON.stringify(message)}; })()`,
+			);
+			check(
+				"the box still holds the message at the press",
+				pinned === true,
+				`pinned=${pinned}`,
+			);
+			await mini.evaluate(`${composerSend}.click(); true`);
 			const admitted = await pollMini(
 				`${select("mini-composer-status")}.textContent`,
 				(text) => text === sentSentence,
@@ -35797,11 +36576,18 @@ async function sceneMiniView(app, cdp) {
 				),
 			);
 		} else {
-			await mini.evaluate(`${select("mini-composer-send")}.click(); true`);
+			await mini.evaluate(`${composerSend}.click(); true`);
+			/*
+			 * THE REFUSAL IS THE COMPOSER'S NOW, and that is the restyle's own
+			 * point: the shared composer renders a failed send against itself
+			 * (`sendError`, `role="alert"`) rather than through a host's private
+			 * status line, so the mini and the chat cannot say two different
+			 * things about one refusal. The frame's line stays the resting hint,
+			 * which is why this polls the alert and not the status row.
+			 */
 			const refused = await pollMini(
-				`${select("mini-composer-status")}.textContent`,
-				(text) =>
-					typeof text === "string" && text !== "" && text !== hintSentence,
+				`${composerAlert}?.textContent ?? null`,
+				(text) => typeof text === "string" && text.trim().length > 0,
 				"the refusal sentence",
 			);
 			check(
@@ -35810,7 +36596,7 @@ async function sceneMiniView(app, cdp) {
 				JSON.stringify(refused.value),
 			);
 			const after = await mini.evaluate(
-				`({ text: ${select("mini-composer-input")}.value, retry: Boolean(${select("mini-composer-retry")}), sendDisabled: ${select("mini-composer-send")}.disabled })`,
+				`({ text: ${composerField}.value, retry: Boolean(${composerAlert}), sendDisabled: ${composerSend}.disabled })`,
 			);
 			check(
 				"the refusal kept the draft: nothing was lost to the failure",
@@ -35839,8 +36625,8 @@ async function sceneMiniView(app, cdp) {
 			`(() => { const window = globalThis.__lopMiniSceneWindow; window.webContents.send(${JSON.stringify(summonChannel)}, { at: Date.now() }); return true; })()`,
 		);
 		const summonedFocus = await pollMini(
-			"document.activeElement?.dataset?.tourTag ?? null",
-			(value) => value === "mini-composer-input",
+			'document.activeElement?.getAttribute?.("aria-label") ?? null',
+			(value) => value === "Message",
 			"the summon focused the composer",
 		);
 		check(
@@ -35929,6 +36715,63 @@ async function sceneMiniView(app, cdp) {
 				windows.every((window) => window.visible === false),
 			JSON.stringify(windows),
 		);
+		/*
+		 * THE FAILURE CARD, photographed (round 3's robustness set).
+		 *
+		 * The card is main's own `data:` document, loaded when the document cannot
+		 * be (see `mini-view.ts`), and the honest way to reach it from a rig is to
+		 * make a load FAIL rather than to call the loader: the window is pointed at
+		 * a file that does not exist, `did-fail-load` fires the module's own handler,
+		 * and the frame is captured from the hidden window like every other. The
+		 * real document is then loaded again, so the app is left as the run found
+		 * it and a later scene step (or a person) sees the composer.
+		 */
+		const failed = await main.evaluate(
+			[
+				"(() => {",
+				"\tconst window = globalThis.__lopMiniSceneWindow;",
+				"\tif (!window || window.isDestroyed()) return null;",
+				"\t/* The URL to come back to, remembered before the deliberate failure. */",
+				"\tglobalThis.__lopMiniSceneUrl = window.webContents.getURL();",
+				'\tvoid window.loadURL("file:///nonexistent-local-operator-mini-view.html");',
+				"\treturn true;",
+				"})()",
+			].join("\n"),
+		);
+		check(
+			"the scene can make the mini document fail to load",
+			failed === true,
+			`failed=${failed}`,
+		);
+		const cardShown = await pollMini(
+			'document.body?.innerText ?? ""',
+			(value) => typeof value === "string" && value.includes("could not open"),
+			"the failure card",
+			10_000,
+		);
+		check(
+			"a failed load shows the card rather than a white document",
+			cardShown.ok,
+			JSON.stringify(cardShown.value),
+		);
+		const cardGround = await mini.evaluate(
+			'(() => ({ background: getComputedStyle(document.body).backgroundColor, hasScript: document.querySelectorAll("script").length, text: document.body.innerText }))()',
+		);
+		check(
+			"the card is dark, scriptless, and neither blank nor white",
+			typeof cardGround?.background === "string" &&
+				cardGround.background !== "rgb(255, 255, 255)" &&
+				cardGround.hasScript === 0 &&
+				typeof cardGround.text === "string" &&
+				cardGround.text.trim().length > 0,
+			JSON.stringify(cardGround),
+		);
+		await captureMini("mini-view-error-card");
+		/* Leave the app as the run found it. */
+		await main.evaluate(
+			'(() => { const window = globalThis.__lopMiniSceneWindow; if (!window || window.isDestroyed()) return null; void window.loadURL(globalThis.__lopMiniSceneUrl ?? "about:blank"); return true; })()',
+		);
+
 		const memory = await main.evaluate(
 			'(() => { const electron = process.mainModule?.require("electron") ?? globalThis.require?.("electron"); const window = globalThis.__lopMiniSceneWindow; if (!electron || !window || window.isDestroyed()) return null; const pid = window.webContents.getOSProcessId(); const metric = electron.app.getAppMetrics().find((entry) => entry.pid === pid); return metric ? { pid, type: metric.type, workingSetKb: metric.memory?.workingSetSize, peakWorkingSetKb: metric.memory?.peakWorkingSetSize, privateKb: metric.memory?.privateBytes } : null; })()',
 		);
@@ -36194,7 +37037,7 @@ async function main() {
 	}
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
-			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the sending frame is held by pausing that daemon's own process, whose pid the record carries",
+			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the live send walks that daemon's own routes through the record the run linked",
 		);
 	}
 	if (SCENE === "pins-search" && (TUI_PYTHON === null || TUI_CONFIG === null)) {
