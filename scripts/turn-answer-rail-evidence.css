@@ -1,0 +1,10 @@
+/*
+ * The stylesheet entry for the turn-answer rail harness. See
+ * `diff-body-evidence.css` for why the explicit `@source` is load-bearing: the
+ * vite root here is `scripts/`, so without it every role utility on the
+ * transcript's rows compiles as nothing and the frame would show a layout
+ * regression that is not there.
+ */
+@import "@renderer/styles/index.css";
+
+@source "../src/renderer/src";
