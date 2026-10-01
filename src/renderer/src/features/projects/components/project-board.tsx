@@ -46,6 +46,10 @@
 
 import { Badge, Button } from "@shared/components/ui";
 import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
+import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
@@ -87,6 +91,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import { openConversation } from "../../chat/open-conversation";
+import { useRequestProjectUpdate } from "../hooks/use-request-update";
 import { useProjectDetail } from "../hooks/use-projects-queries";
 import {
 	BOARD_COLUMNS,
@@ -811,6 +816,18 @@ const BoardCard: FC<BoardCardProps> = ({
 		typeof navigator === "undefined" ? undefined : navigator.language,
 	);
 	/*
+	 * THE CARD'S CHECK-IN DOOR (design note §1). The capability is read per card
+	 * through the shared react-query cache (one answer for every card), and the
+	 * item is MOUNTED or NOTHING - never mounted-and-disabled, the same
+	 * fail-closed rule the page's own gate follows.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const requestUpdate = useRequestProjectUpdate();
+	const requestUpdateEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects_request_update",
+	);
+	/*
 	 * THE TITLE IS THE IDENTITY (grounded finding, this slice): the board, the
 	 * list and the timeline all rendered the machine KEY, while the detail sheet
 	 * rendered `projectDisplayName` — the same rule the sheet uses now reads on
@@ -1063,6 +1080,21 @@ const BoardCard: FC<BoardCardProps> = ({
 								</DropdownMenuRadioGroup>
 							</DropdownMenuSubContent>
 						</DropdownMenuSub>
+						{/*
+						 * THE CHECK-IN ITEM, directly after `Set status` and above the
+						 * separator: both first-group actions keep the project's state
+						 * current, one done by you and one delegated outward to the
+						 * sessions; the record-editing pair stays after the rule. No icon -
+						 * no sibling carries one, and a lone icon would misalign the text
+						 * column (design note §1). ALWAYS ENABLED: a greyed item with no
+						 * reason is a defect, and both the empty answer and "already
+						 * requested" come back as the result toast.
+						 */}
+						{requestUpdateEnabled && (
+							<DropdownMenuItem onSelect={() => requestUpdate(project)}>
+								Request update
+							</DropdownMenuItem>
+						)}
 						<DropdownMenuSeparator />
 						<DropdownMenuItem onSelect={onEdit}>Edit</DropdownMenuItem>
 						<DropdownMenuItem onSelect={onDelete}>Delete</DropdownMenuItem>

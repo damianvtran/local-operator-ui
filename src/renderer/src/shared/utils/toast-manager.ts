@@ -128,6 +128,29 @@ const getErrorGroup = (message: string): string | null => {
 };
 
 /**
+ * Show a loading toast - a card that exists to be REPLACED.
+ *
+ * WHY IT EXISTS AS A CHANNEL FUNCTION: sonner renders a `type: 'loading'` card
+ * without a close button, so a loading toast that is never superseded is a
+ * spinner the user cannot dismiss. Every caller therefore passes a stable `id`
+ * and replaces it with the outcome's own toast (or retires it, the one branch
+ * with no outcome to show). Routing it through the manager keeps that
+ * obligation stated in one place, next to `dismissToast`, rather than at each
+ * call site.
+ *
+ * @param message - The loading message to display
+ * @param options - Sonner toast options (ExternalToast); `id` is required in
+ * every call site of this app's one user (the request-update flow).
+ * @returns The toast ID
+ */
+export const showLoadingToast = (
+	message: ReactNode,
+	options?: ExternalToast,
+): string | number => {
+	return toast.loading(message, options);
+};
+
+/**
  * Show an error toast with deduplication and rate limiting
  *
  * @param message - The error message to display
