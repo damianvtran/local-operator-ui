@@ -3106,6 +3106,16 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto26a814c2c2Note",
 	/*
+	 * And the lane's SEVENTEENTH fold record: the sync onto `origin/main` =
+	 * `b909366d94` (#710 the team-header register). Registered for the same
+	 * reason as its siblings, and this one's statement is the load-bearing
+	 * kind: the fold is a COMPOSITION - both lanes' source changes on the
+	 * projects surface - so a fold resolved from main's copy would drop the
+	 * statement of what this sync carried and how the two sides' behaviour
+	 * was composed.
+	 */
+	"foldOntoB909366d94Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
