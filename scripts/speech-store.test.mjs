@@ -372,9 +372,11 @@ test("a designed refusal reaches the reader verbatim through the one toast chann
 test("every designed refusal is kept verbatim (the daemon's set, pinned across repos)", () => {
 	/*
 	 * The full set `local-operator` #1835 ships, plus agent-server's own base 503
-	 * (which can leak through during deploy skew), so the mapper's allowlist and
-	 * the daemon's sentences cannot drift apart silently. A change on either side
-	 * must move both - that is the point of pinning the literals here.
+	 * and the two spellings #1835's `bcca80808` retired (both skew entries, kept
+	 * because the shipped daemons in the field still emit them until that PR
+	 * reaches users), so the mapper's allowlist and the daemon's sentences
+	 * cannot drift apart silently. A change on either side must move both - that
+	 * is the point of pinning the literals here.
 	 */
 	const designed = [
 		"Your Radient sign-in has stopped working. Sign in again in Settings.",
@@ -384,6 +386,8 @@ test("every designed refusal is kept verbatim (the daemon's set, pinned across r
 		"Speech is temporarily unavailable.",
 		"Sign in to Radient in Settings to enable speaking aloud.",
 		"This conversation's agent is no longer available.",
+		"Your Radient sign-in has stopped working. Sign in again in the settings page.",
+		"Sign in to Radient in the settings page to enable text to speech.",
 	];
 	return (async () => {
 		for (const sentence of designed) {
