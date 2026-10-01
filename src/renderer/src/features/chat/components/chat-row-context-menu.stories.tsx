@@ -1,6 +1,9 @@
 /**
  * The row context menu, as shipped - the story `docs/evidence/chat-sidebar-row-context-menu/`
- * is captured from.
+ * is captured from. It draws Archive, Pin and Fork on an ordinary row, and FIVE
+ * items on a pinned one - the conditional Move pair trails Fork, and
+ * `chat-sidebar.tsx`'s items comment carries the order rule; the readout lists
+ * whatever the product mounted, so no frame states a count the app does not hold.
  *
  * THIS STORY DRIVES THE REAL THING, and the one simulation is named rather than
  * hidden. The menu is opened THROUGH THE REAL TRIGGER: a dispatched `contextmenu`
@@ -34,9 +37,12 @@
  * reads `Unarchive conversation`, the widest label this panel draws.
  */
 
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
+import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { type FC, useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import { DEFAULT_SIDEBAR_VIEW } from "../chat-sidebar-view";
 import { ChatSidebar } from "./chat-sidebar";
@@ -212,13 +218,68 @@ const waitFor = async <T extends Element>(
 	return null;
 };
 
-const resetStores = () => {
+/**
+ * Wait until the pointer is ON this element, then give up (and say so) rather
+ * than hanging a run.
+ *
+ * WHY THE POINTER STATES WAIT FOR THEIR OWN HOVER, and it is a requirement rather
+ * than tidiness. The menu is modal, so Radix puts `pointer-events: none` on the
+ * body while it is open - which means the row cannot be hovered AT ALL once the
+ * panel is up, however the pointer is parked (the design record states it, and it
+ * is why the hold exists: the held ground is React state, not `:hover`). The
+ * capture rig moves a REAL pointer onto the row and then requires the row to
+ * match `:hover` before it will open the shutter. So a story that opened the menu
+ * on a timer after the row appeared was racing that: whichever came first won,
+ * and a scene where the timer won files a frame whose own gate can never be
+ * satisfied - the rig reports "the pointer is on `[data-session-row="s2"]` but the
+ * element does not match :hover", which is exactly what the fold onto
+ * `origin/main` (a larger sidebar, a slower first paint) produced for the whole
+ * set. Waiting for the hover removes the race: the menu cannot open before the
+ * pointer is on the row.
+ *
+ * IT IS ALSO THE HONEST GESTURE. A right-click happens on a row the pointer is
+ * already over; the pointer arrives first and the menu follows. The timer was
+ * standing in for a person who had already done that.
+ */
+const waitForHover = async (element: Element): Promise<boolean> => {
+	for (let i = 0; i < 200; i++) {
+		if (element.matches(":hover")) return true;
+		await sleep(50);
+	}
+	return false;
+};
+
+/**
+ * A draft that holds a LISTED conversation's id and never carried a message - the
+ * sidebar's own `unstarted` statement (`chat-sidebar.tsx`), which is the one
+ * condition that withholds the menu's Fork item: the backend refuses to fork a
+ * session with no transcript. It is the real store shape rather than a prop, so
+ * the frame is the product's predicate answering and not the story asserting.
+ */
+const unstartedDraft = (sessionId: string) => ({
+	"draft-unstarted": {
+		key: "draft-unstarted",
+		createRequestId: "create-unstarted",
+		admissionRequestId: "admission-unstarted",
+		sessionId,
+	},
+});
+
+const resetStores = (unstartedSessionId?: string) => {
 	useUiPreferencesStore.setState({
 		chatSidebarView: { ...DEFAULT_SIDEBAR_VIEW },
 		chatSidebarRegions: "both",
 		chatSidebarListHeight: null,
 		chatSidebarOrder: "entities-first",
 	});
+	// Set on every state, `{}` included, so a state that names an unstarted row
+	// cannot leak its draft into the next one in the same document.
+	useCanonicalSessionsStore.setState({
+		drafts: unstartedSessionId ? unstartedDraft(unstartedSessionId) : {},
+	});
+	// A request written by a previous state's Fork press would otherwise read as
+	// this one's.
+	usePanelPresentationStore.setState({ request: null });
 };
 
 /* ---------------------------------------------------------------- the rig */
@@ -258,7 +319,26 @@ const Panel: FC<{
 	 * archived conversations and the default lists do not draw them.
 	 */
 	search?: string;
-}> = ({ sessionId, spot, delayMs = 250, noMenu = false, search }) => {
+	/**
+	 * Press the menu's Fork item once it is open (#739), and let the readout print
+	 * what the press asked for.
+	 *
+	 * There is no chat pane in this story, so no picker can open - and that is the
+	 * point of the readout: the sidebar's half of the wiring is a REQUEST in the
+	 * panel-presentation store plus a route change, and both are observable here
+	 * on the real component. The pane's half (consuming it for the NAMED
+	 * conversation, not its own) is `slash-dispatch.ts` and is asserted in
+	 * `scripts/panel-presentation.test.mjs`; the story does not pretend to show it.
+	 */
+	pressFork?: boolean;
+}> = ({
+	sessionId,
+	spot,
+	delayMs = 250,
+	noMenu = false,
+	search,
+	pressFork = false,
+}) => {
 	useEffect(() => {
 		let cancelled = false;
 		void (async () => {
@@ -300,6 +380,12 @@ const Panel: FC<{
 			 */
 			box.scrollIntoView({ block: "center" });
 			await sleep(60);
+			/*
+			 * THE POINTER FIRST (see `waitForHover`). Only the states a real pointer
+			 * drives wait: the keyboard state opens on a keypress with no pointer
+			 * involved, and waiting there would stall the scene.
+			 */
+			if (spot === "pointer") await waitForHover(box);
 			if (delayMs > 0) await sleep(delayMs);
 			if (cancelled || noMenu) return;
 			const rect = box.getBoundingClientRect();
@@ -323,6 +409,24 @@ const Panel: FC<{
 						clientY: y,
 					}),
 				);
+				if (pressFork) {
+					const item = await waitFor(
+						() =>
+							[
+								...document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+							].find((node) =>
+								node.textContent?.includes("Fork conversation"),
+							) ?? null,
+					);
+					if (!item || cancelled) return;
+					await sleep(300);
+					/*
+					 * A real click, which is what Radix turns into the item's `onSelect`.
+					 * Pressed after a beat so the open menu is on screen first and the
+					 * readout's `items:` line can be compared with the after state.
+					 */
+					item.click();
+				}
 				return;
 			}
 			/*
@@ -354,9 +458,9 @@ const Panel: FC<{
 		return () => {
 			cancelled = true;
 		};
-	}, [sessionId, spot, delayMs, noMenu, search]);
+	}, [sessionId, spot, delayMs, noMenu, search, pressFork]);
 
-	return <Readout sessionId={sessionId} />;
+	return <Readout sessionId={sessionId} showFork={pressFork} />;
 };
 
 /**
@@ -367,8 +471,14 @@ const Panel: FC<{
  * anchor is a fact about the dispatch and leaves no trace in the DOM once the
  * primitive has positioned from it.
  */
-const Readout: FC<{ sessionId: string }> = ({ sessionId }) => {
+const Readout: FC<{ sessionId: string; showFork: boolean }> = ({
+	sessionId,
+	showFork,
+}) => {
 	const [lines, setLines] = useState<string[]>([]);
+	// The sampler runs outside React's render, so the route is a dependency of the
+	// effect that owns it rather than something it can read each frame.
+	const route = useLocation().pathname;
 	const [anchor, setAnchor] = useState("none");
 
 	useEffect(() => {
@@ -405,6 +515,34 @@ const Readout: FC<{ sessionId: string }> = ({ sessionId }) => {
 				: [];
 			const firstItem = menu?.querySelector<HTMLElement>('[role="menuitem"]');
 			const active = document.activeElement;
+			/*
+			 * THE FORK PRESS'S TWO OBSERVABLE EFFECTS, only in the state that presses it:
+			 * the request the item wrote to the panel-presentation store (the
+			 * destination and the conversation it NAMES - the row's, which is not the
+			 * pane's) and the route (`/chat` is the palette's own rule, moved only when
+			 * no pane is mounted). The store holds a request until a presenter consumes
+			 * it, and this story has no pane, so it stays readable.
+			 */
+			const request = usePanelPresentationStore.getState().request;
+			const fork = showFork
+				? [
+						`fork request: ${
+							request
+								? `${request.destination} for ${request.sessionId ?? "(pane's own)"}`
+								: "none"
+						}`,
+						`invoker: ${
+							request?.invoker
+								? `${request.invoker.tagName.toLowerCase()}[${
+										request.invoker.hasAttribute("data-chat-row")
+											? "data-chat-row"
+											: "?"
+									}] in ${request.invoker.closest("[data-session-row]")?.getAttribute("data-session-row") ?? "?"}`
+								: "none"
+						}`,
+						`route: ${route}`,
+					]
+				: [];
 			return [
 				`anchor point: ${anchor}`,
 				menu
@@ -483,6 +621,7 @@ const Readout: FC<{ sessionId: string }> = ({ sessionId }) => {
 							: "not highlighted"
 						: "none"
 				}`,
+				...fork,
 			];
 		};
 		/*
@@ -506,10 +645,13 @@ const Readout: FC<{ sessionId: string }> = ({ sessionId }) => {
 			window.cancelAnimationFrame(raf);
 			window.removeEventListener("row-menu-anchor", onAnchor);
 		};
-	}, [anchor, sessionId]);
+	}, [anchor, sessionId, showFork, route]);
 
 	return (
-		<div className="overflow-hidden p-3 font-mono text-meta text-ink-dim">
+		<div
+			data-readout-list=""
+			className="overflow-hidden p-3 font-mono text-meta text-ink-dim"
+		>
 			{lines.map((line) => (
 				<p key={line} data-readout="">
 					{line}
@@ -527,7 +669,8 @@ const Page: FC<{
 	delayMs?: number;
 	noMenu?: boolean;
 	search?: string;
-}> = ({ sessionId, spot, delayMs, noMenu, search }) => (
+	pressFork?: boolean;
+}> = ({ sessionId, spot, delayMs, noMenu, search, pressFork }) => (
 	<div className="flex h-screen overflow-hidden bg-canvas text-ink">
 		{/* The panel's own column: the app's 280px sidebar width, the width every
 		    row-space decision in this change was measured at. */}
@@ -552,6 +695,7 @@ const Page: FC<{
 				delayMs={delayMs}
 				noMenu={noMenu}
 				search={search}
+				pressFork={pressFork}
 			/>
 		</div>
 	</div>
@@ -576,12 +720,16 @@ const state = (
 		delayMs?: number;
 		noMenu?: boolean;
 		search?: string;
+		/** The listed conversation a never-sent draft holds the id of (Fork withheld). */
+		unstarted?: string;
+		/** Press Fork once the menu is open and read the request it wrote. */
+		pressFork?: boolean;
 		features: { pins: boolean; archive: boolean };
 	},
 ): Story => ({
 	name,
 	render: () => {
-		resetStores();
+		resetStores(args.unstarted);
 		bridge(args.features);
 		return (
 			<Page
@@ -590,6 +738,7 @@ const state = (
 				delayMs={args.delayMs}
 				noMenu={args.noMenu}
 				search={args.search}
+				pressFork={args.pressFork}
 			/>
 		);
 	},
@@ -629,6 +778,31 @@ export const ArchiveWithheld = state("Archive capability withheld", {
 	sessionId: "s2",
 	spot: "pointer",
 	features: ARCHIVE_OFF,
+});
+
+/**
+ * The row is a never-sent draft's conversation: Fork is withheld - two rows, the
+ * pair - because the backend has no transcript to copy, not disabled.
+ */
+export const ForkWithheld = state("Fork withheld, row never sent", {
+	sessionId: "s2",
+	spot: "pointer",
+	unstarted: "s2",
+	features: BOTH,
+});
+
+/**
+ * Fork pressed on s2 - a conversation that is NOT the pane's (there is no pane
+ * here at all). The readout is the sidebar's half of the contract: the request in
+ * the panel-presentation store names `session.fork` FOR s2, the invoker is s2's
+ * own row button, and the route has moved to `/chat` because nothing was mounted
+ * to present it.
+ */
+export const ForkPressed = state("Fork pressed, request names the row", {
+	sessionId: "s2",
+	spot: "pointer",
+	pressFork: true,
+	features: BOTH,
 });
 
 /** The dwelled flyout, then the menu: the flyout is absent under the open menu. */
