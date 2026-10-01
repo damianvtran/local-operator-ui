@@ -13,7 +13,7 @@ import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config";
 import { useConfig } from "@shared/hooks/use-config";
-import { useCredentials } from "@shared/hooks/use-credentials";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { joinTranscript } from "@shared/hooks/use-message-input";
 import {
 	SpeechToTextPriority,
@@ -21,6 +21,7 @@ import {
 	setDictationActive,
 	useSpeechToTextManager,
 } from "@shared/hooks/use-speech-to-text-manager";
+import { speechUnavailableReason } from "@shared/lib/speech-gate";
 import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { normalizePath } from "@shared/utils/path-utils";
@@ -247,18 +248,17 @@ export const InlineEdit: FC<InlineEditProps> = ({
 		onRejectAll,
 	]);
 
-	const { data: credentialsData, isLoading: isLoadingCredentials } =
-		useCredentials();
-
-	const isRadientApiKeyConfigured = useMemo(
-		() => credentialsData?.keys?.includes("RADIENT_API_KEY"),
-		[credentialsData?.keys],
-	);
-
-	const canEnableRecordingFeature = useMemo(
-		() => isRadientApiKeyConfigured && !isLoadingCredentials,
-		[isRadientApiKeyConfigured, isLoadingCredentials],
-	);
+	/*
+	 * THE SAME CAPABILITY THE COMPOSER READS (issue #674): a Radient sign-in
+	 * counts, not only the legacy key. This surface used to gate on the raw key
+	 * list and `!isLoading`, so — unlike the composer — it folded "could not
+	 * ask" into the sign-in sentence and told a signed-in user to sign in. The
+	 * shared probe answers both questions once, and the shared copy table
+	 * (`@shared/lib/speech-gate`) states the reason for a disabled control —
+	 * offline, checking, or the account's own answer (issue #674).
+	 */
+	const { canUseRadientSpeech, speechBlock } = useRadientCredentialProbe();
+	const canEnableRecordingFeature = canUseRadientSpeech;
 
 	const shortcutText = useMemo(() => {
 		if (platform === "darwin") {
@@ -921,7 +921,7 @@ export const InlineEdit: FC<InlineEditProps> = ({
 								<Tooltip
 									content={
 										!canEnableRecordingFeature
-											? "Sign in to Radient in the settings page to enable audio recording"
+											? speechUnavailableReason("recording", speechBlock)
 											: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
 									}
 								>
