@@ -18,15 +18,17 @@
  *   - the COMPONENT half is read off the shipped source, in the idiom
  *     `chat-sidebar-pins.test.mjs` established: the sidebar cannot be rendered by
  *     this suite (it reads the router, the canonical-sessions store and the
- *     desktop capability hooks), so "one tab stop per row, a chord that presses
- *     the control, a live region for the announcement" is asserted where it is
- *     written rather than described.
+ *     desktop capability hooks), so "one tab stop per row, a chord and a menu item
+ *     that reach the same write, a live region for the announcement" is asserted
+ *     where it is written rather than described.
  *
- * WHAT IS NOT HERE, and is deliberately elsewhere: that the pair is DRAWN, that
- * the rows actually swap on screen, and that the caret and the line come back
- * afterwards. Those are claims about pixels and about a commit, and they are
- * answered by a rendered capture and by the driver's own walk - a green assertion
- * about a class string is not evidence that anything moved.
+ * WHAT IS NOT HERE, and is deliberately elsewhere: that the grip is DRAWN and the
+ * menu's two Move items are painted (they are the frames' job,
+ * `docs/evidence/pinned-reorder/`), that the rows actually swap on screen, and that
+ * the caret and the line come back afterwards. Those are claims about pixels and
+ * about a commit, and they are answered by a rendered capture and by the driver's
+ * own walk - a green assertion about a class string is not evidence that anything
+ * moved.
  */
 
 import assert from "node:assert/strict";
@@ -82,12 +84,10 @@ const bundle = await build({
 });
 
 const {
-	CHAT_PIN_MOVE_ATTR,
 	canMovePinnedRow,
-	chatPinMoveAttr,
 	chatPinMoveCap,
 	chatPinMoveChord,
-	chatPinMoveControl,
+	chatPinMoveRowId,
 	forgetPinnedOrder,
 	movePinnedOrder,
 	movePinnedOrderTo,
@@ -320,9 +320,9 @@ test("a row from a search answer is still an addressable neighbour", () => {
 });
 
 /*
- * RULE 5, the boundary. Both controls are drawn inapplicable at the ends, and
+ * RULE 5, the boundary. Both Move items are drawn inapplicable at the ends, and
  * the chord has to SAY so rather than do nothing - a key that silently does
- * nothing reads as a broken key. The three sentences are the pair's whole
+ * nothing reads as a broken key. The three sentences are the move's whole
  * vocabulary, and the "only" case is its own because a single pinned row is both
  * boundaries at once.
  */
@@ -356,10 +356,11 @@ test("rule 5: a boundary cannot move, and says which boundary it is", () => {
 });
 
 /*
- * THE THIRD ANSWER: A ROW WITH NO PAIR (UX round 1, U4; measured on a live run).
+ * THE THIRD ANSWER: A ROW THAT OFFERS NO MOVE (UX round 1, U4; measured on a live
+ * run).
  *
  * A chord pressed on a row that is not pinned is CONSUMED - a modified arrow is this
- * panel's chord namespace - but it is ANSWERED in the pair's own voice rather than
+ * panel's chord namespace - but it is ANSWERED in the move's own voice rather than
  * leaving the region holding whatever sentence an earlier press left there, which the
  * UX round measured as a sentence about a DIFFERENT row: stale, and untrue of the row
  * under the caret.
@@ -444,7 +445,7 @@ test("rule 6: the order is a validated preference and survives a relaunch", () =
 });
 
 /*
- * THE CHORDS. `⌘⇧↑` / `⌘⇧↓` are the pair's, and the refusals are as much of the
+ * THE CHORDS. `⌘⇧↑` / `⌘⇧↓` are the move's, and the refusals are as much of the
  * contract as the presses: the region walk's `⌘⌥↓`/`⌘⌥↑` carry `alt`, the row's
  * acts are letters, the list's arrow walk reads a BARE arrow (so a shifted one
  * must not be taken as one), and an unmodified arrow must stay the walk's.
@@ -497,42 +498,35 @@ test("the move chords are the shifted arrows and nothing else", () => {
 		chatPinMoveChord(press("a", { metaKey: true, shiftKey: true })),
 		null,
 	);
-	// The spelling the controls would print.
+	// The spelling the row menu prints.
 	assert.equal(chatPinMoveCap(-1, true), "⌘⇧↑");
 	assert.equal(chatPinMoveCap(1, false), "Ctrl+Shift+↓");
-	assert.equal(chatPinMoveAttr(-1), CHAT_PIN_MOVE_ATTR.up);
-	assert.equal(chatPinMoveAttr(1), CHAT_PIN_MOVE_ATTR.down);
 });
 
 /*
- * The chord's own dispatch, as a lookup: the press starts at the row's BOX (the
- * controls are siblings of the row's button, and that is where the reader's
- * focus usually is) and answers null for a row that offers no pair.
+ * The chord's own target lookup: the press starts at the row's BOX (the reader's
+ * focus is usually on the row's button) and answers the row's ID - never an
+ * element, because the two arrow controls this used to resolve are deleted and the
+ * chord calls the write itself.
  */
-test("a chord finds the control on the row's own box, or nothing", () => {
-	const up = { tag: "up" };
-	const down = { tag: "down" };
-	const rowEl = {
-		querySelector: (selector) =>
-			selector === "[data-session-move-up]"
-				? up
-				: selector === "[data-session-move-down]"
-					? down
-					: null,
-	};
+test("a chord names the row on its own box, or nothing", () => {
 	const inside = {
-		closest: (selector) => (selector === "[data-session-row]" ? rowEl : null),
+		closest: (selector) =>
+			selector === "[data-session-row]"
+				? {
+						getAttribute: (name) => (name === "data-session-row" ? "s1" : null),
+					}
+				: null,
 	};
-	assert.equal(chatPinMoveControl(inside, -1), up);
-	assert.equal(chatPinMoveControl(inside, 1), down);
+	assert.equal(chatPinMoveRowId(inside), "s1");
 	assert.equal(
-		chatPinMoveControl({ closest: () => null }, 1),
+		chatPinMoveRowId({ closest: () => null }),
 		null,
-		"a row with no pair answers with no control",
+		"a press outside a row names no row, and the chord stands down",
 	);
-	assert.equal(chatPinMoveControl(null, 1), null);
+	assert.equal(chatPinMoveRowId(null), null);
 	assert.equal(
-		chatPinMoveControl({}, 1),
+		chatPinMoveRowId({}),
 		null,
 		"a target with no `closest` belongs to nobody",
 	);
@@ -540,29 +534,65 @@ test("a chord finds the control on the row's own box, or nothing", () => {
 
 /*
  * THE COMPONENT HALF, read rather than rendered: the sidebar cannot be mounted by
- * this suite, so the three claims that make the pair a ROW control rather than a
- * new kind of affordance are asserted where they are written.
+ * this suite, so the claims that make the move a ROW control rather than a new kind
+ * of affordance are asserted where they are written.
+ *
+ * THE ARROW PAIR THAT STOOD HERE IS DELETED (2026-09-30). WCAG 2.5.7's
+ * single-pointer path is the two `Move conversation` items in the row's own menu,
+ * with the chords printed beside them, and the CHORD reaches the same write rather
+ * than clicking a control that no longer exists. So the pair's two structural
+ * assertions are replaced by the items' own and by the chord's call.
  */
-test("the pair is a row control: one stop per row, a chord, and a live region", () => {
+test("the move is a row control: a menu, a chord, and a live region", () => {
 	const source = SOURCE(SIDEBAR);
-	// Out of the Tab ring, on the row's own one-stop model, and not in the arrow
-	// ring either (`data-chat-row` is what that walk collects).
-	for (const anchor of ["data-session-move-up\n", "data-session-move-down\n"]) {
-		const at = source.indexOf(anchor);
-		assert.notEqual(at, -1, `${anchor.trim()} is not in the sidebar`);
-		const control = source.slice(at, source.indexOf("</button>", at));
-		assert.match(control, /tabIndex=\{-1\}/);
+	// The two items, each with its own boundary state, its own write and its own
+	// cap. The window runs back to the item's opening tag, so the assertion is
+	// about THAT item rather than about the menu.
+	for (const [label, step, cap] of [
+		["Move conversation up", -1, "chatPinMoveCap(-1, isMac)"],
+		["Move conversation down", 1, "chatPinMoveCap(1, isMac)"],
+	]) {
+		const at = source.indexOf(`<span>${label}</span>`);
+		assert.notEqual(at, -1, `${label} is not in the row menu`);
+		const item = source.slice(
+			source.lastIndexOf("<ContextMenuItem", at),
+			source.indexOf("</ContextMenuItem>", at),
+		);
+		assert.match(
+			item,
+			/aria-disabled=\{!(?:up|down)\}/,
+			`${label} no longer states its boundary`,
+		);
+		assert.ok(item.includes(cap), `${label} no longer prints its chord`);
+		assert.ok(
+			item.includes(`movePinnedRow(row.session_id, ${step}, true)`),
+			`${label} no longer calls the move's one write`,
+		);
 		assert.equal(
-			control.includes("data-chat-row"),
+			/\sdisabled=\{/.test(item),
 			false,
-			"the move pair must not join the arrow ring",
+			`${label} is disabled rather than drawn inapplicable`,
 		);
 	}
-	// The chords are `chat-pin-order.ts`'s, and the press goes through the CONTROL
-	// rather than reimplementing the move - the row acts' own rule.
+	// THE CONTROLS AND THEIR ATTRIBUTES ARE GONE rather than left unused: a scene
+	// that still queried them would photograph nothing and report success.
+	for (const gone of [
+		"data-session-move-up",
+		"data-session-move-down",
+		"data-session-pin-move",
+		"chatPinMoveControl",
+	]) {
+		assert.equal(
+			source.includes(gone),
+			false,
+			`the deleted arrow pair is still in the panel: ${gone}`,
+		);
+	}
+	// The chords are `chat-pin-order.ts`'s, and the press calls the SAME write the
+	// items call rather than a second spelling of the move.
 	assert.match(source, /const move = chatPinMoveChord\(event\);/);
-	assert.match(source, /chatPinMoveControl\(target, move\)/);
-	assert.match(source, /control\.click\(\);/);
+	assert.match(source, /chatPinMoveRowId\(target\)/);
+	assert.match(source, /movePinnedRow\(rowId, move, true\)/);
 	// The announcement has a mounted, stable live region to land in.
 	assert.match(
 		source,
@@ -583,13 +613,16 @@ test("the pair is a row control: one stop per row, a chord, and a live region", 
 		source,
 		/pinned && view\.pins\.includes\(row\.session_id\)[\s\S]{0,120}?forgetPinnedOrder\(view\.pins, row\.session_id\)/,
 	);
-	// The pair is offered only where the section's own order is on screen.
+	// THE OFFER IS ONE PREDICATE the grip and the menu items both read, and its
+	// terms are the section's: the arrangement and a drawn position in it.
 	assert.match(
 		source,
-		/!nested &&\s*pinsEnabled &&\s*view\.groupBy === "section" &&/,
+		/const offersMove = offersPinnedMove\(row\.session_id, nested\);/,
 	);
-	// And it is drawn for PINNED rows only.
-	assert.match(source, /\{row\.pinned === true &&/);
+	assert.match(
+		source,
+		/const offersPinnedMove = \(sessionId: string, nested = false\) =>\s*pinsEnabled &&\s*view\.groupBy === "section" &&\s*!nested &&\s*pinnedIndex\.has\(sessionId\)/,
+	);
 	// The row it renders is the ordered one: the section draws the permutation,
 	// not the catalogue list it was computed from.
 	assert.match(
@@ -625,8 +658,9 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	 * grip used to carry the pair's `group-focus-within` term as well, and that is the one
 	 * thing this test asserted differently before this round: the control is `aria-hidden`
 	 * and `tabIndex={-1}`, so revealing it for the keyboard showed a sighted keyboard
-	 * reader a handle they can neither focus nor operate. The PAIR keeps its own term, and
-	 * that half is asserted below on the pair's own class list.
+	 * reader a handle they can neither focus nor operate. The keyboard's own reach is the
+	 * row menu's two Move items (with the chords beside them), asserted above on the
+	 * menu's own item lists.
 	 */
 	assert.match(grip, /"group-hover:flex group-hover:text-ink-muted",/);
 	assert.equal(
@@ -656,10 +690,10 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	// clear - and a window wide enough to span it would also span the chord's write.
 	assert.match(source, /movePinnedOrderTo\(/);
 	/*
-	 * TWO WRITES IN THE FILE, which is one per GESTURE and no more: the chord and the
-	 * pair reach `movePinnedRow` (one write) and the drop reaches `dropPinnedRow` (one
-	 * write). Three would mean a path double-writes; one would mean a gesture that
-	 * cannot record its own arrangement.
+	 * TWO WRITES IN THE FILE, which is one per GESTURE and no more: the two Move items
+	 * and the chord reach `movePinnedRow` (one write) and the drop reaches
+	 * `dropPinnedRow` (one write). Three would mean a path double-writes; one would
+	 * mean a gesture that cannot record its own arrangement.
 	 */
 	assert.equal(
 		(source.match(/setChatSidebarView\(\{ \.\.\.view, pins: next \}\)/g) ?? [])
@@ -781,7 +815,7 @@ test("round 1's fixes are where they are written", () => {
 		/requestAnimationFrame\(\(\) => \{[\s\S]{0,120}?setPinMoveAnnouncement\(sentence\);/,
 	);
 
-	// U4 + R4: the chord answers on a row with no pair.
+	// U4 + R4: the chord answers on a row that offers no move.
 	assert.match(
 		source,
 		/announcePinMove\(pinMoveUntargetedNote\(rowLabel\(rowId\)\)\);/,
@@ -790,15 +824,25 @@ test("round 1's fixes are where they are written", () => {
 	// D4: the row's flyout is suppressed while the drag is armed.
 	assert.match(source, /disabled=\{pinDrag !== null\}/);
 
-	// D2, D3, R5 and D6: the shed, the count, the control's a11y shape and its tooltip.
-	// 263 is the PANEL break (279) minus the panel root's own `p-2`: a container
-	// query measures the container's content box, so a 279 in the query shed the grip
-	// at a 280px panel too (measured on the first re-shoot). The `!` is the second
-	// correction: the reveal rules are two-class selectors (`group-hover:flex`), so a
-	// one-class container rule lost the cascade at the clamp.
-	assert.match(source, /"@max-\[263px\]\/chatsidebar:hidden!",/);
-	assert.match(source, /@container\/chatsidebar relative flex h-full/);
+	// D3, R5 and D6: the grip's COUNT, its a11y shape and its tooltip. The SHED this
+	// block used to assert (`@max-[263px]/chatsidebar:hidden!` and the panel root's
+	// `@container/chatsidebar` that existed only to be its reader) is deleted with the
+	// arrow pair: round 1 shed the grip because the FIVE-control cluster left the 240
+	// clamp a 40px title, and the pair's removal leaves 124px there, so the grip is
+	// drawn at every width and a scene that measured the break would measure nothing.
 	assert.match(source, /pinnedDrawnIds\.length >= 2 &&/);
+	assert.equal(
+		/@container\/chatsidebar relative flex/.test(source),
+		false,
+		"the grip's width break is deleted, and the container declaration with it",
+	);
+	assert.equal(
+		/["'`][^"'`]*max-\[[0-9]+px\]\/chatsidebar/.test(
+			source.replace(/\/\*[\s\S]*?\*\//g, ""),
+		),
+		false,
+		"a width break on the container query is back on a class list",
+	);
 	assert.match(
 		source,
 		/aria-hidden="true"[\s\S]{0,120}?title="Drag to reorder · Esc cancels"/,

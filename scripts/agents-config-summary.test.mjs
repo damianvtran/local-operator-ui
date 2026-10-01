@@ -247,3 +247,49 @@ test("an empty tool list and an absent one are the same fact", () => {
 		[],
 	);
 });
+
+test("a class change is reported, and its direction is said out loud", () => {
+	/*
+	 * The class is a definition field the run can write (`agent_tool`'s
+	 * `action_class`), and a signature that left it out would report a run that
+	 * flipped an agent to proactive as one whose "list fields did not move" — the
+	 * summary quietly endorsing an agent that has just started messaging the
+	 * operator. The direction is in the sentence because it is the half that
+	 * carries a consequence.
+	 */
+	const before = snapshotCatalogue([agent()], []);
+	const after = snapshotCatalogue([agent({ action_class: "proactive" })], []);
+	const [result] = diffCatalogue(before, after, [
+		{ kind: "agent", name: "reviewer" },
+	]);
+	assert.deepEqual(
+		result.changes.map((change) => change.label),
+		["class changed to proactive"],
+	);
+	/*
+	 * And the absent spelling is `reactive`, so a payload that simply omits the
+	 * field is not a change away from a stored `reactive` — the same collapse the
+	 * wire makes.
+	 */
+	assert.deepEqual(
+		snapshotCatalogue([agent()], []).agents.reviewer.action_class,
+		"reactive",
+	);
+	assert.deepEqual(
+		diffCatalogue(
+			snapshotCatalogue([agent()], []),
+			snapshotCatalogue([agent({ action_class: "reactive" })], []),
+			[{ kind: "agent", name: "reviewer" }],
+		)[0].changes,
+		[],
+	);
+	const [back] = diffCatalogue(
+		snapshotCatalogue([agent({ action_class: "proactive" })], []),
+		snapshotCatalogue([agent()], []),
+		[{ kind: "agent", name: "reviewer" }],
+	);
+	assert.deepEqual(
+		back.changes.map((change) => change.label),
+		["class changed to reactive — proactive messaging stopped"],
+	);
+});

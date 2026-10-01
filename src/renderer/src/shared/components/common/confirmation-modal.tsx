@@ -16,8 +16,14 @@ type ConfirmationModalProps = {
 	open: boolean;
 	/**
 	 * Title of the confirmation modal
+	 *
+	 * `ReactNode` rather than a `string` since 2026-09-30, for the archive
+	 * confirmation's question: it names the conversation, and the NAME is the part
+	 * that gives when the question is too wide for the panel - so the caller has to
+	 * be able to put the name in its own truncating box while the verb and the
+	 * question mark stay fixed. Every other caller passes a string exactly as it did.
 	 */
-	title: string;
+	title: ReactNode;
 	/**
 	 * Message to display in the confirmation modal
 	 */
@@ -121,8 +127,15 @@ export const ConfirmationModal: FC<ConfirmationModalProps> = ({
 	 * tabbable - which is Cancel - so pressing Enter on a visibly focused
 	 * "Cancel" ran the destructive action instead, and ran it FIRST: keydown
 	 * reaches document before the browser dispatches the button's activation
-	 * click, so both fired and the delete won. Every one of the six dialogs
-	 * that use this component is destructive.
+	 * click, so both fired and the delete won.
+	 *
+	 * THAT HISTORY IS WHY THIS RULE IS UNCONDITIONAL NOW, and the archive
+	 * confirmation (2026-09-30) is the case that shows it: it is the first caller of
+	 * this component whose act is REVERSIBLE (`isDangerous={false}`, an `Archive`
+	 * button), and the trap is worse for it rather than milder - a stray Return that
+	 * archives a conversation the reader was reading is exactly the accident the act
+	 * just gained a question to prevent. So the rule is stated for the component, not
+	 * for the destructive majority it was measured on.
 	 *
 	 * Enter now does what it does everywhere else - activates the focused
 	 * button. Cancel is focused, so Enter cancels; Tab then Enter confirms.

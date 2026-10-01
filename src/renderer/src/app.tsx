@@ -11,6 +11,7 @@ import {
 import { useConsentAttentionLifetime } from "@features/browser/hooks/use-consent-attention-lifetime";
 // ChatPage is the boot route (/ redirects to /chat), so it stays statically
 // imported: lazy-loading it would put a Suspense fallback on first paint.
+import { ArchiveConversationDialog } from "@features/chat/components/archive-conversation-dialog";
 import { ChatPage } from "@features/chat/components/chat-page";
 import { useHeldDraftResolution } from "@features/chat/hooks/use-held-draft-resolution";
 import { shouldStartNewChat } from "@features/chat/new-chat-shortcut";
@@ -194,6 +195,22 @@ const App: FC = () => {
 		"session_catalogue",
 		2,
 	);
+	const archiveEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"session_archive",
+	);
+	/*
+	 * A STAGED ARCHIVE QUESTION NEVER OUTLIVES ITS ROUTE (UX round 1, U1). The dialog
+	 * is modal, so a navigation while it is open is rare - a chord the modal does not
+	 * trap, a deep link, a main-process route - but a candidate that survived one would
+	 * be a question about a press the reader has stopped looking at, answered by an
+	 * Archive button that hides a conversation. Clearing on the PATH is the whole rule;
+	 * it is a no-op while nothing is staged, which is every render but one.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `pathname` is the TRIGGER and not a value the body reads - the effect must re-run when the route changes, which is the whole rule.
+	useEffect(() => {
+		useCanonicalSessionsStore.getState().requestArchiveConfirm(null);
+	}, [pathname]);
 	/*
 	 * The Mesh tab's gate, read as the TRI-STATE and not as the boolean.
 	 *
@@ -643,6 +660,22 @@ const App: FC = () => {
 					    through `useConnectProviderStore` (empty chat, composer line,
 					    the no-provider notice, the palette). Mounted once, here. */}
 					<ConnectProviderDialog />
+
+					{/*
+					 * THE ARCHIVE CONFIRMATION, mounted here and not in the chat pane (UX round
+					 * 1, U1). Its doors are the sidebar row's control and menu item, `⌘⇧A`, a
+					 * typed `/archive` and the pane header's item, and the first three work on
+					 * EVERY route because the sidebar does: a dialog that only the chat pane
+					 * hosted left a press from Settings staged with nothing to draw it, and the
+					 * question then appeared, unprompted, on the next visit to `/chat` - a
+					 * regression against the one-press write this act used to be. It renders
+					 * nothing while no candidate is staged.
+					 *
+					 * GATED ON THE CAPABILITY like every other reader of the archive store: a
+					 * backend without `session_archive` has no door that can stage a candidate,
+					 * so the component would be dead code there.
+					 */}
+					{archiveEnabled && <ArchiveConversationDialog />}
 
 					<UpdateNotification />
 
