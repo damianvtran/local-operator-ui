@@ -1531,3 +1531,128 @@ test("PR-4: a pre-answer span is keyed by the visible row that ends it, so no la
 		"a stale key renders collapsed and opens no bar",
 	);
 });
+
+/* ------ what SETTLES a cycle: markers, and a `stop` row followed by more work ------ */
+
+test("PR-4: a turn closed by a terminal or completion marker stays condensed when a wake or peer message re-opens it", () => {
+	/*
+	 * The operator's report in the shape of an interrupted, failed or receipt-closed
+	 * turn: there is NO assistant close, so reading only closes left the whole run
+	 * "in flight" the moment a wake landed and the earlier bar un-condensed.
+	 * M = `Stopped with an error`, K = the `closed` receipt (both `isTerminalMarker`).
+	 */
+	for (const spec of [
+		"U T T M W T",
+		"U T T K W",
+		"U T T K W T T",
+		"U T T M P T",
+		"U T T I W T",
+	]) {
+		const idle = planFor(spec.split(" ").slice(0, 4).join(" "), false)[0];
+		assert.equal(idle.segments[0].collapsed, true, `${spec}: idle, condensed`);
+		const run = planFor(spec, true)[0];
+		const first = run.segments[0];
+		assert.deepEqual(
+			first.segmentIds,
+			["T1", "T2"],
+			`${spec}: the settled span is the same span`,
+		);
+		assert.equal(first.collapsed, true, `${spec}: and it stays condensed`);
+		assert.ok(
+			run.segments.slice(1).every((s) => s.collapsed === false),
+			`${spec}: only the in-flight cycle draws in place`,
+		);
+	}
+});
+
+test("PR-4: a `stop` row followed by more work with no new trigger (the todo guardrail's re-entry) does not flip the span above it", () => {
+	/*
+	 * `U T T A T`: cyclesOf reads A as narration (a step follows it), so the close
+	 * list alone said nothing had settled and the live plan drew [T1,T2] in place
+	 * while the idle plan (`U T T A`) and the idle plan after (`U T T A T`)
+	 * condensed it. The pane IS live across that gap (the harness is working), so
+	 * the declared `stop` is what says the first span is finished.
+	 */
+	for (const spec of ["U T T A T", "U T T A T T", "U T T A S"]) {
+		const run = planFor(spec, true)[0];
+		const first = run.segments[0];
+		assert.deepEqual(first.segmentIds, ["T1", "T2"], `${spec}: same span`);
+		assert.equal(first.collapsed, true, `${spec}: stays condensed`);
+		assert.ok(
+			run.segments.slice(1).every((s) => s.collapsed === false),
+			`${spec}: only what follows the stop draws in place`,
+		);
+	}
+	// An undeclared row is NOT a settle (unknown is absent): a mid-cycle narration
+	// followed by a step is still work in flight.
+	const undeclared = planFor("U T N T", true)[0];
+	assert.equal(
+		undeclared.collapses,
+		false,
+		"undeclared narration settles nothing",
+	);
+});
+
+test("PR-4: a pre-answer key is `seg:<the visible row after the span>` - and that row is never hidden, so no span can hold it", () => {
+	/*
+	 * The key rule's own invariant, asserted rather than stated: the anchor is the
+	 * row that ENDS the span, and a span is a maximal HIDDEN stretch, so that row is
+	 * visible - it is in no segment, so no two spans share a key and a key never
+	 * names a row that hides. It is stable exactly while that row keeps its id and
+	 * stays visible; rows inside the span appearing or vanishing do not move it.
+	 */
+	for (const spec of [
+		"U T T A",
+		"U T C T A",
+		"U T A W T A",
+		"U T A W T T A K",
+		"U T M W T T A",
+	]) {
+		const run = planFor(spec, false)[0];
+		const hidden = new Set(run.segments.flatMap((s) => s.segmentIds));
+		const records = seq(spec);
+		for (const segment of run.segments.filter((s) => !s.afterAnswer)) {
+			const last = records.findIndex((r) => r.id === segment.segmentIds.at(-1));
+			const after = records[last + 1];
+			assert.equal(segment.key, `seg:${after.id}`, `${spec}: ${segment.key}`);
+			assert.equal(
+				hidden.has(after.id),
+				false,
+				`${spec}: ${after.id} is visible`,
+			);
+		}
+		const keys = run.segments.map((s) => s.key);
+		assert.equal(new Set(keys).size, keys.length, `${spec}: keys are unique`);
+	}
+});
+
+test("RESIDUAL (named): an undeclared answer that a later non-trigger step demotes is absorbed into its span, so that span's key MOVES - and the old key names nothing", () => {
+	/*
+	 * `U T T N T N2` with `N` carrying NO `stopReason`: N was a close (and the
+	 * span's anchor) until a step arrived after it with no trigger between, which
+	 * makes it narration INSIDE the span. No visible row survives to anchor on, so
+	 * the key moves from the old end to the new one. Real journals never produce it
+	 * (every text-bearing assistant row carries its `stop_reason`, and a `stop` row
+	 * stays visible so it is a stable anchor - the sibling case below), only
+	 * hand-built fixtures and the 0.11 % of rows that declare `length`/`aborted`.
+	 * What IS guaranteed is the safe failure: the old key is on no bar.
+	 */
+	const before = planFor("U T T N", false)[0].segments;
+	const after = planFor("U T T N T N", false)[0].segments;
+	assert.equal(before[0].key, "seg:N3");
+	assert.equal(after.length, 1, "one absorbed span");
+	assert.equal(after[0].key, "seg:N5", "the key moved with the span's end");
+	assert.ok(
+		after.every((s) => s.key !== before[0].key),
+		"and no span inherited the old key",
+	);
+	// The declared sibling is stable: the `stop` row stays visible and anchors.
+	const stopBefore = planFor("U T T A", false)[0].segments;
+	const stopAfter = planFor("U T T A T A", false)[0].segments;
+	assert.equal(
+		stopAfter[0].key,
+		stopBefore[0].key,
+		"a declared answer anchors",
+	);
+	assert.deepEqual(stopAfter[0].segmentIds, ["T1", "T2"]);
+});
