@@ -513,17 +513,21 @@ test("one press sends one op with the row's key, and the loading card waits for 
 			}),
 	);
 	const pending = flow.sendRequestUpdate(TARGET);
-	/* A second press while the first is in flight is IGNORED, not queued: the
-	 * guard is shared, so neither door can start a second batch. */
+	/* A second press while the first is in flight dials NOTHING and answers
+	 * with the loading card on the stable id (UX round 1, U3) - it is the
+	 * feedback the board door lacked; the FIRST press's own 400 ms card has
+	 * not appeared yet, so the one recorded call is the re-press's. */
 	await flow.sendRequestUpdate(TARGET);
 	await new Promise((resolve) => setTimeout(resolve, 50));
 	assert.equal(calls.requestUpdate, 1, "one press, one op");
 	assert.equal(calls.keys[0], "p1");
+	const early = flow.toastCalls.filter((call) => call.kind === "loading");
 	assert.equal(
-		flow.toastCalls.filter((call) => call.kind === "loading").length,
-		0,
-		"no loading card before 400 ms",
+		early.length,
+		1,
+		"the in-flight re-press raises the loading card",
 	);
+	assert.equal(early[0].id, "project-request-update-p1");
 	resolveAnswer();
 	await pending;
 	const result = flow.toastCalls.filter((call) => call.kind === "success");
@@ -659,6 +663,41 @@ test("a route failure keeps the uncertainty, persists, and leaves the window una
 	assert.equal(flow.requestUpdateCooldown("p1"), undefined);
 });
 
+test("a second press while the first is dialling answers on the board, not silence", async () => {
+	flow.resetRequestUpdateState();
+	flow.toastCalls.length = 0;
+	let resolveAnswer;
+	const calls = installBridge(
+		{ projects: 1, projects_request_update: 1 },
+		() =>
+			new Promise((resolve) => {
+				resolveAnswer = () =>
+					resolve(ok(sentAnswer([session("a", "One", "delivered", "")])));
+			}),
+	);
+	const first = flow.sendRequestUpdate(TARGET);
+	await flow.sendRequestUpdate(TARGET);
+	/*
+	 * The in-flight press must SAY something (UX round 1, U3): the detail door
+	 * shows Requesting…, the board door has no per-card state, so the loading
+	 * card on the stable id is the feedback - and no second dial may leave.
+	 */
+	const loading = flow.toastCalls.filter((call) => call.kind === "loading");
+	assert.equal(
+		loading.length,
+		1,
+		"the in-flight press raises the loading card",
+	);
+	assert.equal(
+		loading[0].id,
+		"project-request-update-p1",
+		"the same stable id a pending card sits at, so a repeat replaces",
+	);
+	assert.equal(calls.requestUpdate, 1, "still exactly one dial");
+	resolveAnswer();
+	await first;
+});
+
 /* ------------------------------------------- bundle: the shipped components */
 
 /*
@@ -751,6 +790,103 @@ const componentsPath = new URL(
 );
 await writeFile(componentsPath, componentBundle.outputFiles[0].text);
 const components = await import(componentsPath.href);
+
+/* ------------------------------------------- probe: the button's tooltip prop */
+
+/*
+ * THE TOOLTIP'S CONTENT, PINNED AT THE PROP. Radix renders the content only
+ * while the tooltip is open, and re-opening it in jsdom re-runs the slow
+ * Floating settle (measured ~1.5 min for one reopened tooltip in this file),
+ * so the cooling-state assertion lives here instead: the app's `Tooltip` is
+ * replaced by a recorder and the REAL button's prop is read across states.
+ * The idle state is also asserted on the real Radix tooltip in the three-states
+ * test, so the recorder never stands in for the shipped widget wholesale.
+ */
+const uiStubPath = new URL(
+	`./_request-update-ui-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(
+	uiStubPath,
+	`import { createElement } from "react";
+export const tooltipContents = [];
+export const Button = (props) => {
+	const { children, ...rest } = props;
+	return createElement("button", { type: "button", ...rest }, children);
+};
+export const Tooltip = ({ content, children }) => {
+	tooltipContents.push(content);
+	return createElement("div", null, children);
+};
+`,
+);
+process.on("exit", () => {
+	try {
+		unlinkSync(uiStubPath.pathname);
+	} catch {
+		// already gone
+	}
+});
+
+const probeBundle = await build({
+	stdin: {
+		contents: `
+			import { createElement } from "react";
+			import { createRoot } from "react-dom/client";
+			import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+			import { MemoryRouter } from "react-router-dom";
+			import { ProjectRequestUpdateButton } from "./src/renderer/src/features/projects/components/project-request-update-button";
+			export { armRequestUpdateCooldown, resetRequestUpdateState } from "./src/renderer/src/features/projects/request-update";
+			export { tooltipContents } from "@shared/components/ui";
+
+			export function mount(container, project) {
+				const client = new QueryClient({
+					defaultOptions: { queries: { retry: false, gcTime: 0 } },
+				});
+				const root = createRoot(container);
+				root.render(
+					createElement(
+						QueryClientProvider,
+						{ client },
+						createElement(
+							MemoryRouter,
+							null,
+							createElement(ProjectRequestUpdateButton, { project }),
+						),
+					),
+				);
+				return { root, client };
+			}
+		`,
+		resolveDir: ROOT,
+		sourcefile: "request-update-tooltip-probe.mjs",
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	packages: "external",
+	jsx: "automatic",
+	loader: { ".css": "empty" },
+	alias: {
+		"@shared": `${ROOT}/src/renderer/src/shared`,
+		"@features": `${ROOT}/src/renderer/src/features`,
+		"@shared/components/ui": uiStubPath.pathname,
+	},
+	write: false,
+});
+const probePath = new URL(
+	`./_request-update-probe-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(probePath, probeBundle.outputFiles[0].text);
+const probe = await import(probePath.href);
+process.on("exit", () => {
+	try {
+		unlinkSync(probePath.pathname);
+	} catch {
+		// already gone
+	}
+});
 process.on("exit", () => {
 	try {
 		unlinkSync(componentsPath.pathname);
@@ -846,6 +982,10 @@ test("the button's three states: idle, sending (aria-busy), cooling (Requested +
 		button(),
 		"the harness focused the button",
 	);
+	/* U2's idle half: the open tooltip carries the invitation. */
+	const idleTip = document.querySelector('[role="tooltip"]');
+	assert.ok(idleTip, "focusing the trigger opens the tooltip");
+	assert.equal(idleTip.textContent, model.REQUEST_UPDATE_TOOLTIP);
 	await act(() => button().click());
 	assert.equal(button().textContent, "Requesting…", "the sending label");
 	assert.equal(button().getAttribute("aria-busy"), "true");
@@ -876,6 +1016,10 @@ test("the button's three states: idle, sending (aria-busy), cooling (Requested +
 		sentence.textContent,
 		/^Update already requested \d+ s ago on Payments migration\. Try again in \d+ s\.$/,
 	);
+	/* U2's cooling half is pinned at the prop level by the dedicated probe
+	 * below ("the tooltip's content follows the button's state"): re-opening
+	 * Radix's tooltip here would re-run the slow Floating settle, which is not
+	 * a cost this suite should pay twice. */
 	/* A press while cooling explains itself and sends nothing new. */
 	await act(() => button().click());
 	assert.equal(calls.requestUpdate, 1, "no second dial from the button");
@@ -885,6 +1029,39 @@ test("the button's three states: idle, sending (aria-busy), cooling (Requested +
 	await act(() => handle.root.unmount());
 	handle.client.clear();
 	host.remove();
+});
+
+test("the tooltip's content follows the button's state (U2)", async () => {
+	probe.resetRequestUpdateState();
+	probe.tooltipContents.length = 0;
+	installBridge({ projects: 1, projects_request_update: 1 }, () => ok({}));
+	const host = document.createElement("div");
+	document.body.append(host);
+	const handle = await act(() =>
+		probe.mount(host, {
+			id: "p1",
+			name: "payments-migration",
+			title: "Payments migration",
+		}),
+	);
+	await flush();
+	assert.equal(
+		probe.tooltipContents.at(-1),
+		model.REQUEST_UPDATE_TOOLTIP,
+		"idle: the tooltip carries the invitation",
+	);
+	const nowMs = Date.now();
+	probe.armRequestUpdateCooldown("p1", nowMs, nowMs + 40_000);
+	await flush();
+	assert.match(
+		probe.tooltipContents.at(-1) ?? "",
+		/^Update already requested \d+ s ago on Payments migration\. Try again in \d+ s\.$/,
+		"cooling: the tooltip carries the sentence, not the invitation",
+	);
+	await act(() => handle.root.unmount());
+	handle.client.clear();
+	host.remove();
+	probe.resetRequestUpdateState();
 });
 
 test("the board's menu item is wired after Set status, gated on its own key, and enabled", () => {
@@ -1032,6 +1209,90 @@ test("two presses inside one window leave ONE card, not a stack", async () => {
 	);
 	/* Retire the card and unmount so no sonner timer outlives the file. */
 	real.dismissToast("project-request-cooldown-p1");
+	await settleFrames();
+	await act(() => reactRoot.unmount());
+	host.remove();
+	real.resetRequestUpdateState();
+});
+
+test("a repeated route failure never strands the loading card (R1-1)", async () => {
+	real.resetRequestUpdateState();
+	const host = document.createElement("div");
+	document.body.append(host);
+	const { createRoot } = await import("react-dom/client");
+	const reactRoot = createRoot(host);
+	await act(() =>
+		reactRoot.render(React.createElement(real.ThemedToastContainer, {})),
+	);
+	await settleFrames();
+
+	let resolveFailure;
+	installBridge(
+		{ projects: 1, projects_request_update: 1 },
+		() =>
+			new Promise((resolve) => {
+				resolveFailure = () =>
+					resolve({
+						status: 500,
+						body: { detail: "the server could not be reached" },
+					});
+			}),
+	);
+	const target = {
+		id: "p1",
+		name: "payments-migration",
+		title: "Payments migration",
+	};
+	/*
+	 * "RETIRED" IN JSDOM IS `data-removed`, NOT ABSENCE. A dismissed sonner
+	 * card keeps its node (and its text) for the exit animation; jsdom fires
+	 * no animationend, and the node survives with `data-removed="true"` - the
+	 * undo-toasts suite's own reading. A STRANDED card is the one still live:
+	 * no `data-removed`, text intact.
+	 */
+	const strandedSpinner = () =>
+		Array.from(document.querySelectorAll("[data-sonner-toast]")).some(
+			(node) =>
+				node.getAttribute("data-removed") !== "true" &&
+				(node.textContent ?? "").includes("Requesting updates…"),
+		);
+
+	/* Failure 1, slow enough that the 400 ms loading card is on screen. */
+	const first = real.sendRequestUpdate(target);
+	await new Promise((resolve) => setTimeout(resolve, 650));
+	resolveFailure();
+	await first;
+	await settleFrames();
+	assert.equal(
+		strandedSpinner(),
+		false,
+		"the first failure retired the loading card",
+	);
+	assert.match(
+		document.body.textContent ?? "",
+		/Could not request updates: the server could not be reached\./,
+	);
+
+	/* Failure 2, same sentence, well inside the manager's 5 s window: the
+	 * manager suppresses the error, and the card must STILL be retired - the
+	 * exact stranding R1-1 reproduced (red without the dismiss). */
+	const second = real.sendRequestUpdate(target);
+	await new Promise((resolve) => setTimeout(resolve, 650));
+	resolveFailure();
+	await second;
+	/* The dismissal lands on sonner's own queue: give it its frame and its
+	 * no-animationend fallback before reading the card's state in jsdom (the
+	 * undo-toasts suite documents the same rAF + 200 ms exit). */
+	await new Promise((resolve) => setTimeout(resolve, 350));
+	await settleFrames();
+	assert.equal(
+		strandedSpinner(),
+		false,
+		"a deduped repeat leaves no stranded Requesting updates… card",
+	);
+
+	/* Retire cards and unmount so no sonner timer outlives the file. */
+	real.dismissToast("project-request-update-p1");
 	await settleFrames();
 	await act(() => reactRoot.unmount());
 	host.remove();
