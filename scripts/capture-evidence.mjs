@@ -1016,6 +1016,30 @@ export const STORIES = [
 	["chat-turn-collapse--fresh-conversation", 1280, 900],
 
 	/*
+	 * THE JITTER'S OWN PAIR (`WakeMidCycle`, `PeerMidCycle`), added with PR-4's
+	 * liveness change: the operator's `U T88 A1(stop)` prefix, a trigger that
+	 * RE-OPENS the run (`wake_prompt` in one cell, `peer_message` in the other,
+	 * because the report names both and the reproduction was the peer one), and the
+	 * cycle it starts - two calls settled and the third still out, so the pane is
+	 * live when the shutter opens. That liveness is the whole point of the pair:
+	 * with nothing in flight both trees condense, so the row this file already had
+	 * (`chat-turn-collapse--completions-both-visible`, the same shape settled)
+	 * cannot show this defect at all. Before the change the settled 88-call
+	 * sequence un-condenses the moment the trigger lands - the whole run is drawn
+	 * again, which is the motion the operator reported; after it the bar stays and
+	 * only the cycle being written is drawn in place. The before half is this same
+	 * story file copied into a base worktree (§10's method), measured rather than
+	 * assumed: driven through the shipped plan the base tree answers `collapses:
+	 * false` for both cells, where this tree answers one bar hiding the 88 calls.
+	 *
+	 * NO FRAME IS CAPTURED FOR EITHER ROW YET: the sweep is a separate pass (one
+	 * rig at a time, the design round's), and these two rows are what let it drive
+	 * the transition the report is about.
+	 */
+	["chat-turn-collapse--wake-mid-cycle", 1280, 900],
+	["chat-turn-collapse--peer-mid-cycle", 1280, 900],
+
+	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
 	 * but not whole, and the mark is the whole change on screen. `before-join` is
