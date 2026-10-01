@@ -3073,6 +3073,26 @@ const BRANCH_RECORDS = [
 	 * supplementary set, resolved per `citationConvention`.
 	 */
 	"foldOnto44e4812b31Note",
+	/*
+	 * And the lane's FOURTEENTH fold record: the sync onto `origin/main` =
+	 * `53c5cfec6b` (#714 the speak-aloud pass, over #538's stream-smooth train),
+	 * taken when QA found the branch's `test:desktop` back in the pre-#733
+	 * `node --test` form. THE RESOLUTION KEEPS MAIN'S FORM: main's harness
+	 * prefix and arming, this branch's four test files appended to its list -
+	 * the union of a LIST is not the union of its SHAPE. Registered for the
+	 * usual reason: a fold from main's copy would drop the eight speak-aloud /
+	 * stream-smooth records this sync carried.
+	 */
+	"foldOnto53c5cfec6bNote",
+	/*
+	 * And by the streaming-smoothness change, this branch's newest top-level
+	 * record: the note that states which commits moved which trees, that the
+	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
+	 * and where the design round's captured pair is carried (D3). It is listed
+	 * for the reason the list exists - a fold that started from main's manifest
+	 * would drop it without a word.
+	 */
+	"streamSmoothRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
