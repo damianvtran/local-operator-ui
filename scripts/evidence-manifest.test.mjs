@@ -3116,6 +3116,16 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntoB909366d94Note",
 	/*
+	 * And the lane's EIGHTEENTH fold record: the sync onto `origin/main` =
+	 * `396fd472f3` (#743 the sidebar archive confirm lane, #751's release-notes
+	 * scan over it). The same reason as its siblings again, one level sharper:
+	 * this fold's conflict was this file alone and the union it resolved needed
+	 * no growth - a fold resolved from main's copy would still drop the record
+	 * that says so, and with it the check that the branch's listings were
+	 * recomputed against main's rather than assumed to be the superset.
+	 */
+	"foldOnto396fd472f3Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),

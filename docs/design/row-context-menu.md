@@ -19,13 +19,14 @@ sequence, and it deliberately does not restate the reasons that live in
 ## 1. What the menu is
 
 A right-click (or `ContextMenu`/`Shift+F10`) on a chat row opens a Radix
-context menu holding the row's own acts, at most **three rows**:
+context menu holding the row's own acts, at most **four rows**:
 
 | # | Row | Chord | Withheld when |
 |---|---|---|---|
 | 1 | `Archive conversation` / `Unarchive conversation` | `⌘⇧A` · `Ctrl+Shift+A` | `archiveEnabled` is false |
 | 2 | `Pin conversation` / `Unpin conversation` | `⌘⇧P` · `Ctrl+Shift+P` | `row.pinned === undefined` |
-| 3 | — reserved — | — | — |
+| 3 | `Move conversation up` | `⌘⇧↑` · `Ctrl+Shift+↑` | the row is not offered a move at all (`offersPinnedMove`: it is pinned AND in the section the order belongs to) |
+| 4 | `Move conversation down` | `⌘⇧↓` · `Ctrl+Shift+↓` | the same |
 
 **For the acts this menu carries, the order is the strip's order, left to
 right, and that is measured rather than argued.** In the row, the archive
@@ -41,10 +42,25 @@ read backwards depending on how the user opened them.
 **Nothing else is in it, and each exclusion is a decision rather than a
 ranking** — rename (an editing surface on a 280px row; its write path is the
 open conversation's, `chat-header.tsx:500`), delete (`session-archive-delete.md`,
-"Delete asks, and never on the row"), move controls (#693, §6 below), and the
-four acts with no product ask anywhere in #694/#693 (duplicate, copy link, open
-in new window, mark unread). The reserved row is reserved so that the next act
-that earns a place has somewhere to go without a redesign.
+"Delete asks, and never on the row"), and the four acts with no product ask
+anywhere in #694/#693 (duplicate, copy link, open in new window, mark unread).
+
+**THE MOVE PAIR MOVED IN (2026-09-30), and it used to be in that exclusion list.**
+`#693` put the act on the row - two arrow buttons in the hovered cluster - and the
+operator's report on the pinned strip is that the cluster was crowded at the narrow
+end; the arrows were the pair that made it so. WCAG 2.5.7 asks for a single-pointer
+path to an act, so the path could not simply be dropped, and this menu is the
+surface the row's other acts already live on: one door, four acts, and the row keeps
+its width back. Items 1-2 keep their order (the strip's own order, left to right,
+measured rather than argued); 3-4 follow them, first up then down.
+
+**A BOUNDARY IS A SENTENCE, NOT A DEAD ITEM.** At the first or last pinned slot the
+item stays drawn and actionable, carrying `aria-disabled` and the boundary's own
+ink; pressing it calls the same `movePinnedRow` the act does and answers with
+`pinMoveBoundaryNote` through the live region. A real `disabled` would drop the item
+out of the focus order a keyboard reader walks AND stop the activation, so the why
+would be unannounceable - the trade the drafts' discard act refuses
+(`chat-sidebar.tsx`'s note on the item is the authority).
 
 ### The menu repeats the hover pair, and the reason has to be on the record
 
@@ -68,8 +84,9 @@ kind, not only in place:
 - **The pair's target is 24px and appears after a reflow.** It is `display:
   none` at rest on an ordinary row, and revealing it takes 56px out of the
   title (`pair children … :215w24`, `:243w24` against a 255px box); a pinned
-  row's strip is now four controls and takes **108px** (§ 7's shipped
-  measurements; `pinned-row`). The menu's own
+  row's strip WAS four controls and took **108px** (§ 7's shipped measurements as of
+  #697); the two arrow buttons moved into this menu on 2026-09-30, so it is three
+  controls and takes **80px** with the grip and **52px** without it. The menu's own
   rows are the panel's content rows, not the strip's 24 × 24 controls: the shipped
   panels measure **273 × 81** (two rows) and **273 × 46** (one row) -
   `pointer-open` and `pin-state-unknown` - and the pointer opens the menu over
@@ -148,6 +165,16 @@ bind in any of the measured states.
 | unarchive + pin (the archived row's widest label) | **288 × 81** | 2 |
 | archive alone (unknown pin state) | **273 × 46** | 1 |
 | pin alone (archive capability withheld) | **246 × 46** | 1 |
+
+**THE FOUR-ITEM CASE IS NOT IN THIS TABLE, AND THAT IS STATED RATHER THAN IMPLIED
+(2026-09-30).** A pinned row in the moved-from section draws `archive` + `unpin` +
+`Move conversation up` + `Move conversation down`; the two Move rows are 35 each (the
+measured item step above), so the panel's height arithmetic is `46 + 3 × 35 = 151` at
+the archive row's own width, and its widest label is still `Unarchive conversation`
+(288). No frame on this head carries it - the `row-context-menu` set is not one this
+change re-shot - so the number is ARITHMETIC over this table's own rows rather than a
+measurement, and the design round should read it as such: re-shooting that set is a
+`docs/`-only follow-up if the height is ever in question.
 
 The 273 is the archive row's own length: `px-2` 16 + icon 16 + `gap-2` 8 +
 label + `pl-6` 24 + chord ≈ 60 + `px-2` 16. `Unarchive conversation` is the
@@ -299,7 +326,7 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 | open at the pointer, normal row | 2 rows, archive then pin, chords drawn | reveal held, hover ground held | `pointer-open` |
 | the same, the pointer moved onto the first item | 2 rows; item 1 carries `data-highlighted`, and the same `:focus-visible` outline the keyboard state draws (measured; see § 2) | reveal held | `pointer-hover` |
 | the same, hold rule **not** applied (the design round's control) | 2 rows | **pair `none`, ground transparent** | `pointer-open-unheld`, on the design branch's proposal set - the shipped set does not reproduce a state the hold exists to remove |
-| open at the pointer, pinned row | 2 rows, item 2 reads `Unpin conversation` | the pair is drawn at rest (the mark is the state), and #697's move pair reveals with it — four children, all held under the menu | `pinned-row` |
+| open at the pointer, pinned row | 4 rows: archive, pin, `Move conversation up`, `Move conversation down` (the two Move rows carry the boundary ink when the row is at an end, and the boundary sentence as their `title`) | the pair is drawn at rest (the mark is the state), with nothing else revealed: the move pair moved into this menu on 2026-09-30 | `pinned-row` (this cell's frame is from the set shot BEFORE the Move rows existed - the set was not re-shot for them, see the height table's note above) |
 | open via keyboard | same 2 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
 | `row.pinned === undefined` | **one row** (archive); the pin row is withheld | row draws no pin control either | `pin-state-unknown` |
 | `archiveEnabled` false | **one row** (pin); the archive row is withheld | archive control absent | `archive-withheld` |
@@ -408,6 +435,16 @@ truncate it and push the chord off the row's trailing edge.
 |---|---|---|
 | `Archive conversation` / `Unarchive conversation` | `⌘⇧A` | `Ctrl+Shift+A` |
 | `Pin conversation` / `Unpin conversation` | `⌘⇧P` | `Ctrl+Shift+P` |
+| `Move conversation up` | `⌘⇧↑` | `Ctrl+Shift+↑` |
+| `Move conversation down` | `⌘⇧↓` | `Ctrl+Shift+↓` |
+
+**THE TWO MOVE CHORDS ARE THE SHIPPED ONES, NOT NEW ONES (2026-09-30).** `⌘⇧↑/↓`
+were `#693`'s own chords for the row's arrow buttons, and they ride that change
+unchanged: the menu items and the chord both call the one write path
+(`movePinnedRow`), through one shared handler, so the item and the key cannot drift
+about what a move is. The only thing that went with the buttons is the pair itself -
+`chatPinMoveChord`, the cap drawn beside the item, the live-region announcements and
+the repeat behaviour all stand.
 
 **`Unarchive`, not `Restore`.** The wire destination (`sessions.unarchive`), the
 palette rows (`/archive`, `/unarchive`) and the row's own control
@@ -529,6 +566,14 @@ the same pair reads **5.95:1** / **5.4:1** on `accent-wash`.
 ---
 
 ## 7. #693 — the slot, and the arithmetic, decided
+
+> **SUPERSEDED, 2026-09-30.** This section records the slot arithmetic as it stood when #693's
+> controls were decided to live on the row. They later moved HERE: the menu now carries
+> `Move conversation up` / `Move conversation down` (WCAG 2.5.7's single-pointer path)
+> beside the two mirrored acts, which is exactly the "2 mirrored rows + 2 move rows = 4"
+> case worked out below, and the cap is **four rows**, as the top of this file says. The
+> reasoning that follows is kept as the record of what was weighed; its present-tense
+> statements about a three-row budget and the arrow strip no longer describe the build.
 
 **#693's move controls are not coming to this menu.** The owner's decision on
 #693 (2026-09-29) took path (b), a desktop-local order, with the interaction
