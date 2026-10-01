@@ -2936,6 +2936,15 @@ const BRANCH_RECORDS = [
 	 * adds no name to the quoting ledger.
 	 */
 	"foldOnto4ea1635904Note",
+	/*
+	 * And the lane's second fold record, added the same evening: the sync onto
+	 * `origin/main` = `f95910d7bc80` (#722, the fold-media train), which moved main
+	 * past `4ea1635904` within the hour and went CONFLICTING while the remediation
+	 * round was mid-flight. Registered for the same reason as its sibling above: a
+	 * fold resolved from main's copy of the manifest would drop the only statement
+	 * of what this branch's second sync did and which tree its counts describe.
+	 */
+	"foldOntoF95910d7bcNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
