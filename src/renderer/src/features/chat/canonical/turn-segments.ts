@@ -37,6 +37,13 @@
  * finishing work it had started) or COMMENTARY (the agent reacting to something
  * ambient after the answer was already handed over). The turn's ANSWER is the
  * close of the LAST response cycle - not the last message emitted.
+ *
+ * WHAT STAYS ON SCREEN is a SEPARATE question from what the answer is, and it has
+ * its own invariant (see `partitionRun`): a settled, text-bearing row stays
+ * visible unless it is a lead-in to the call that follows it, and a `user` row is
+ * never hidden at all. Several of those closes can therefore be visible at once
+ * while the turn still has exactly one elected answer - the answer is what the
+ * foot, the stamp and the caption key on, and nothing here changes that.
  */
 
 import type { TranscriptRecord } from "./transcript-reducer";
@@ -121,6 +128,38 @@ export function triggerOf(record: TranscriptRecord): TriggerKind | null {
  *   verbatim.
  */
 export type BoundaryKind = "compaction" | "terminal";
+
+/**
+ * A settled assistant row whose OWN PROVIDER DECLARATION says it had finished:
+ * `stop_reason: "stop"` (Codex ships the same idea as a phase field,
+ * `MessagePhase::Commentary | FinalAnswer` - and its own warning, "providers do
+ * not emit this consistently, so callers must treat `None` as phase unknown").
+ * The durable reducer keeps that field on every text-bearing assistant row
+ * (`transcript-reducer.ts:2264`), so this reads a fact the record already states.
+ *
+ * WHY A DECLARATION AND NOT A LENGTH. The rows this rescues are the ones the
+ * harness continued past: a `stop`-then-more-work pair is what the todo guardrail
+ * manufactures by re-entering the loop after a no-tool-call yield. A corpus read
+ * (the design note behind this change: 10,308 journals, 13,932 runs) found those
+ * rows at 0.23 per run and a median 2,540 characters, while the narration that
+ * must KEEP hiding (text carried in the same frame as its own `tool_calls`,
+ * `stop_reason: "toolUse"`) numbered 203,412 at a median 122 - so "is it long"
+ * would happen to separate them, and is still the wrong instrument: a phase says
+ * what the model MEANT, and it keeps working for a terse report (the 261-character
+ * wake reply in the operator's own journal is the whole complaint). Measured on
+ * this machine's own journals (10,324 journals, 14,354 runs), the rows this rule
+ * adds stay at 2.5 % of prose rows and 0.39 per run.
+ *
+ * UNKNOWN IS ABSENT. `null`/`undefined` never fires, so a record built without the
+ * field behaves exactly as it did before this predicate existed.
+ */
+export function reportsCompletedThought(record: TranscriptRecord): boolean {
+	return (
+		record.kind === "assistant" &&
+		!record.streaming &&
+		record.stopReason === "stop"
+	);
+}
 
 /**
  * A durable COMPLETION MARKER: the notice the transcript paints for a completion
@@ -339,12 +378,38 @@ export type RunPartition = {
 /**
  * Partition one run into the rows that stay and the SEGMENTS that hide.
  *
- * WHAT STAYS VISIBLE, in one sentence: every pinned row (compaction, a
- * completion marker, an error incident - `pinned`), the ANSWER row itself, and
- * the run's trailing statements (a receipt or notice after the last close, which
- * the reader is owed exactly as before). EVERYTHING ELSE in the span hides - the
- * turn's work, its narration, and every commentary cycle - and hides as
- * SEGMENTS: the maximal contiguous hidden spans between the visible rows.
+ * WHAT STAYS VISIBLE, in one sentence: the rows the reader is owed - every pinned
+ * row (compaction, a completion marker, an error incident - `pinned`), the ANSWER
+ * row itself, the run's trailing statements (a receipt or notice after the last
+ * close), every close of a RESPONSE cycle, the run's LAST close whatever its class,
+ * every `user` row in the span, and any settled row whose own provider declaration
+ * is `stop_reason: "stop"`. EVERYTHING ELSE in the span hides - the turn's work,
+ * its narration, and every commentary cycle - and hides as SEGMENTS: the maximal
+ * contiguous hidden spans between the visible rows.
+ *
+ * WHY MORE THAN THE ANSWER (the operator's report, "a fulsome response with
+ * completion details that we'd want to see, but I have to click to expand"). The
+ * old rule kept exactly one close, so a turn that answered, was continued past, and
+ * answered again hid the FIRST answer - the one carrying the substance - inside the
+ * bar, and the reader had to expand it to read what the agent had already handed
+ * over. The four clauses below are the invariant that replaces it, in row-list
+ * terms:
+ *
+ * - V1, a RESPONSE cycle's close: the agent answered something (the request, a job,
+ *   a hub relay, a monitor prompt), so the reader is owed it;
+ * - V2, the run's LAST close: the reader is owed the last word even when that cycle
+ *   is commentary;
+ * - V3, a `user` row: the one row in the span the READER wrote. A mid-turn steer
+ *   used to be hidden with the work it steered and the bar had to say `Steered` to
+ *   admit it (`labelOfSegment`); the surveyed harnesses all keep the reader's own
+ *   message in place, and the cost is measured (11.6 % of runs gain one bar);
+ * - V4, a settled row the provider declared finished (`reportsCompletedThought`).
+ *
+ * A V4 ROW IS STILL NOT A CLOSE. It is visible while the run has more work after
+ * it, so it splits its segment without splitting its cycle - `isClose`, `cyclesOf`
+ * and `electAnswer` are untouched, and the turn keeps exactly ONE answer to carry
+ * `closesTurn` (the foot and the one stamp). The segment machinery already renders
+ * a visible group between two bars, so nothing else has to learn about it.
  *
  * WHY SEGMENTS AND NOT ONE BAR. A pinned row between two hidden spans (40% of the
  * runs in the journals sampled) used to render AFTER a bar that stood where the
@@ -382,6 +447,24 @@ export function partitionRun(
 			visible.add(i);
 		}
 	}
+
+	/*
+	 * THE VISIBILITY INVARIANT (see the doc above): a response close (V1), the
+	 * run's last close (V2), the reader's own row (V3), and a row the provider
+	 * declared finished (V4). V1 and V2 must not be folded into the answer check:
+	 * a run can have several response closes and all of them stay.
+	 */
+	for (const cycle of cycles) {
+		if (cycle.class === "response") visible.add(cycle.closeIndex);
+	}
+	if (cycles.length > 0) visible.add(cycles[cycles.length - 1].closeIndex);
+	records.forEach((record, index) => {
+		if (index < options.from) return;
+		if (record.kind === "user") visible.add(index);
+		else if (options.paints(record) && reportsCompletedThought(record)) {
+			visible.add(index);
+		}
+	});
 
 	const segments: SegmentSpan[] = [];
 	let open: number | null = null;
@@ -424,14 +507,20 @@ export function partitionRun(
  * | a cycle opened by a job result             | Job result     |
  * | anything else (the reader's own request)   | none           |
  *
- * `Steered` COMES FIRST AND IS THE REASON THIS TAKES THE RECORDS (agent review
- * round 1 on #708, R1-2). A steer is an ordinary user row inside a run, and the
- * partition hides it with the work it steered (pinning it would split every
- * steered turn into two bars - more reshaping than the segments change should
- * carry). A reader's OWN message disappearing behind an unlabelled bar is the
- * failure, so the bar must say so, and the word outranks the others because it is
- * the one row in the span the reader wrote. A follow-up the reader opened with a
- * visible message needs no word: the message above the bar already says it.
+ * `Steered` IS NOW A BACKSTOP, AND KEPT RATHER THAN DELETED. It shipped (agent
+ * review round 1 on #708, R1-2) as the answer to "a reader's OWN message must not
+ * disappear behind an unlabelled bar": the partition then hid a steer with the
+ * work it steered, because pinning it would have split every steered turn into two
+ * bars. The visibility invariant (V3, see `partitionRun`) took that trade back -
+ * a `user` row is now never inside a span at all - so the arm above cannot fire
+ * for a partition this module built, and its comment is the record of why.
+ *
+ * It stays because the FUNCTION is what promises the message is never swallowed:
+ * `labelOfSegment` is exported and called on caller-supplied spans (and the
+ * head-cut/first-page spans the loader can hand it), so removing the arm would
+ * trade a one-word redundancy for the exact failure it was written to prevent.
+ * `scripts/turn-segments.test.mjs` asserts both halves: no bar over a steer is
+ * produced, and the word is what a span holding a user row would still be called.
  */
 export function labelOfSegment(
 	records: readonly TranscriptRecord[],
