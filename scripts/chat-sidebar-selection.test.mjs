@@ -480,6 +480,25 @@ const CURRENT = [
 	},
 	{
 		/*
+		 * The entity row's PIN control, added with the agents roster (issue #663).
+		 * It sits in the same trailing cluster as the manage control above and
+		 * answers the pointer the same way, so it is a row surface for the same
+		 * reason: `hover:bg-row-hover` is its only sanctioned ground and the
+		 * `!staged` guard is what keeps the pointer from painting over the ground
+		 * while the row is the staged one. It is revealed by OPACITY, like the
+		 * `MessageSquarePlus` glyph, which is why the merge is asked for the hover
+		 * step even though the element is transparent at rest - opacity paints
+		 * nothing, the ground under the pointer is still the row's.
+		 */
+		what: "the entity row's pin control",
+		file: SIDEBAR,
+		expression: () => expressionAfter(SIDEBAR, "data-agent-pin={pinKey}"),
+		stubs: { revealArmed: true, staged: true, pinnedAgent: false },
+		ground: false,
+		notCurrent: { revealArmed: true, staged: false, pinnedAgent: false },
+	},
+	{
+		/*
 		 * The conversation row's pin control, added with the pinned section. It sits
 		 * INSIDE a row that can be current, which is exactly the case this table's
 		 * count exists to force somebody to notice: it carries `hover:bg-elevated`
@@ -999,7 +1018,15 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// OUTLINE (`rowDraggingMark`), which is not a ground role and so is not counted
 				// here - the ground underneath is the row's own, `rowDragging`'s selected
 				// step, and that spelling is still the literal PLUS ONE below.
-				"hover:bg-row-hover": 17,
+				// EIGHTEEN (the agents roster, issue #663): the entity row's pin control
+				// takes the ROW state - its ground is `hover:bg-row-hover`, guarded
+				// `!staged` - for the same reason the two 24px controls beside it do: it
+				// is a control inside the row's box, so a menu ground would leak a
+				// popover's surface into the list. Its own `CURRENT` entry above is what
+				// keeps it from being resolved by nobody. The two narratives' numbers
+				// MEET here rather than either replacing the other: #693/#697's
+				// seventeen and this feature's one literal are additive.
+				"hover:bg-row-hover": 18,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own
