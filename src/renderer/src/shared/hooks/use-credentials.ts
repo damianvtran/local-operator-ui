@@ -9,7 +9,7 @@ import { createLocalOperatorClient } from "@shared/api/local-operator";
 import type { CredentialListResult } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useConnectivityGate } from "./use-connectivity-gate";
 
 /**
@@ -94,10 +94,21 @@ export const useCredentials = () => {
  */
 export const useRadientCredentialProbe = () => {
 	const { data, isError, isPending, fetchStatus } = useCredentials();
+	const hasRadientApiKey = Boolean(data?.keys?.includes("RADIENT_API_KEY"));
+	/** The probe could not answer. Offline, not unconfigured. */
+	const isUnavailable = isError || (isPending && fetchStatus === "idle");
 
-	return {
-		hasRadientApiKey: Boolean(data?.keys?.includes("RADIENT_API_KEY")),
-		/** The probe could not answer. Offline, not unconfigured. */
-		isUnavailable: isError || (isPending && fetchStatus === "idle"),
-	};
+	/*
+	 * ONE OBJECT PER ANSWER, NOT PER RENDER. This used to return a fresh object
+	 * literal, and the composer subtree it feeds is memoised against its props:
+	 * the pane re-renders once per stream flush, so the fresh literal alone was
+	 * enough to re-render the whole composer once per chunk of every streaming
+	 * answer. Keyed on the two ANSWERS rather than the query result, so a refetch
+	 * that changes nothing observable (a new `data` object with the same keys)
+	 * does not hand the boundary a new identity either.
+	 */
+	return useMemo(
+		() => ({ hasRadientApiKey, isUnavailable }),
+		[hasRadientApiKey, isUnavailable],
+	);
 };
