@@ -23,6 +23,10 @@
 import { openConversation } from "@features/chat/open-conversation";
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import type { NavigateFunction } from "react-router-dom";
@@ -37,6 +41,52 @@ import type { AidaControlAction } from "./aida-control";
  * the dispatcher) shares the answer and a control's invalidation reaches both.
  */
 export const aidaStatusKey = ["desktop", "aida"] as const;
+
+/**
+ * The REGISTRY name of her seat: the attachment key, never a label.
+ *
+ * The Agents view lists her like any other role, under the name the registry
+ * knows her by, and that name is what the profile routes address her with — so
+ * the roster, the detail pane and the receipts all keep addressing her by it
+ * while PRINTING whatever `useAidaDisplayName` answers. Measured on the
+ * operator's install (core's `agent_profiles.py`): the row is the `aida` row,
+ * whatever she is called.
+ */
+export const AIDA_SEAT_NAME = "aida";
+
+/**
+ * Her display name, for the surfaces that print it.
+ *
+ * WHY THIS IS A READ AND NOT A STRING. The name is the operator's
+ * (`local_operator.aida.naming`), the desktop publishes it on `aida.status`
+ * (`DesktopAidaState.name`), and the sidebar's seat row already renders it from
+ * that field. The Agents view lists the same seat, so it reads the same field
+ * rather than printing the registry key: a roster row saying `aida` beside a
+ * rail row saying the configured name is one agent wearing two names.
+ *
+ * THE FALLBACK IS THE SHIPPED DEFAULT, not a literal this module invents: an
+ * absent field (a backend older than the rename slice), a null, or the read
+ * still in flight all answer "Aida", exactly as the seat row does.
+ */
+export function useAidaDisplayName(): string {
+	const capabilities = useDesktopCapabilities();
+	const aida = useAidaTarget(
+		desktopFeatureEnabled(capabilities.data, "aida", 1),
+	);
+	return aida.data?.name ?? "Aida";
+}
+
+/**
+ * The name to PRINT for a row: her configured name for her seat, its own for
+ * every other row.
+ *
+ * Split as a pure function because two surfaces need the same decision (the
+ * roster's rows and the open record's heading, plus the receipt a switch shows)
+ * and a second inline ternary is how one of them drifts.
+ */
+export function displayNameFor(registryName: string, aidaName: string): string {
+	return registryName === AIDA_SEAT_NAME ? aidaName : registryName;
+}
 
 /**
  * Her control state, read while the caller's capability gate is open.
