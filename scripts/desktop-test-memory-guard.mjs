@@ -98,7 +98,7 @@ export const MEMORY_BUDGET_OVERRIDE_ENV =
  * sizes a politeness share out of what is free. A kill threshold derived from
  * available memory moves with whatever the fleet is doing: on this host
  * "available" swings 4-6 GB minute to minute, so a budget of half of it would
- * kill a legitimate 1.2 GB suite on a bad minute. A budget that can flake a
+ * kill a legitimate multi-GB suite on a bad minute. A budget that can flake a
  * correct run teaches people to turn it off, which is worse than no bound.
  */
 export const _TOTAL_SHARE = 0.25;
@@ -410,6 +410,45 @@ async function walkDescendants(leaderPid, run) {
 			members.push({ pid, ppid: 0, pgid: null, rssBytes: 0, lstart: null });
 		}
 	}
+	if (members.length > 1) {
+		// IDENTITY AT WALK TIME (Q5). A walked member's start time has to be on
+		// record BEFORE the group is killed: once it is, a `setsid` descendant is
+		// re-parented to pid 1 and the "my parent is still in this tree" fallback can
+		// never match it, so the breach would leave it running. One narrow
+		// `ps -p` read - the same shape the pre-kill re-check uses, which has been
+		// the one that survives where the full table does not - fills in
+		// pgid/rss/lstart. If it fails the members keep `lstart: null` and are
+		// skipped-and-counted at kill time rather than guessed at.
+		const text = await run(
+			"ps",
+			[
+				"-o",
+				"pid=,ppid=,pgid=,rss=,lstart=",
+				"-p",
+				members
+					.slice(1)
+					.map((member) => member.pid)
+					.join(","),
+			],
+			_PGREP_TIMEOUT_MS,
+			[1],
+		);
+		if (text !== null) {
+			const rows = new Map(
+				parseProcessTable(text).map((row) => [row.pid, row]),
+			);
+			for (const member of members.slice(1)) {
+				const row = rows.get(member.pid);
+				if (row === undefined) continue;
+				Object.assign(member, {
+					ppid: row.ppid,
+					pgid: row.pgid,
+					rssBytes: row.rssBytes,
+					lstart: row.lstart,
+				});
+			}
+		}
+	}
 	return members;
 }
 
@@ -580,7 +619,11 @@ export async function killTree(
  * The watchdog loop. `tick()` is exposed so tests drive it without timers.
  *
  * `sample`, `kill` and the timer functions are injected for the same reason.
- * `onBreach(reading)` is called once, AFTER the kill, and the loop stops.
+ * `onTrip(reading)` fires once, BEFORE the kill starts (so the caller can mark the
+ * coming child exit as a verdict); `kill(members)` may be async and its result
+ * `{ signalled, skipped, errors }` is passed on; `onBreach(reading, outcome)`
+ * fires once, AFTER the kill, and the loop stops. `onBlind(ticks)` fires once
+ * after `_BLIND_TICKS_WARN` consecutive blind ticks.
  */
 export function createMemoryWatchdog({
 	leaderPid,
