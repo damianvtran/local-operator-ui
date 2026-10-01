@@ -31669,7 +31669,11 @@ async function assertBuildIsCurrent() {
  * ("a slightly different background shade to differentiate from the main sidebar"), so
  * the lane must carry that rung across the rail's width from y0 down - the readings
  * below assert the lane's resolved STOP LIST (colour/position pairs, read back off the
- * computed gradient) against each column's painted ground - and every route column's
+ * computed gradient) against each column's painted ground. The rail gave the rung up
+ * again on 2026-09-30 (flat `surface`, after the split it required was reported as
+ * mismatched blocks), so every column standing on today's tree is on `surface`; the
+ * assertion is about the rule rather than the value and is unchanged. And every
+ * route column's
  * RIGHT RULE was removed ("either make it extend all the way up or remove the right
  * border"), because a rule cannot reach y0 from inside the clipped content column, so
  * the scene refuses the hairline role anywhere in the lane.
@@ -31800,7 +31804,10 @@ async function sceneRouteTops(cdp) {
 			 *
 			 * SURFACE AND ELEVATED ARE BOTH RUNG GROUNDS the derivation accepts
 			 * (2026-09-27): the lane is a MIRROR of whatever rung it finds, so it has
-			 * to find both, and the settings rail moved one rung up. A canvas
+			 * to find both. The settings rail's round on elevated (2026-09-27, given
+			 * up again on 2026-09-30) is what widened the set from surface alone,
+			 * and the value it accepts is the rung the column is painted in rather
+			 * than a value any tree is expected to carry. A canvas
 			 * column would be the content ground the lane already paints and is not
 			 * a distinct case. The browser pane's elevated arrived from #590 after
 			 * QA round 1 and is the case the width term exists for: a full-width
@@ -31968,16 +31975,18 @@ async function sceneRouteTops(cdp) {
 		}
 		/*
 		 * THE LANE CARRIES EVERY GROUND BESIDE IT, and since 2026-09-27 that means
-		 * each column's OWN rung rather than an assumed `surface`: the settings rail
-		 * took `elevated` to separate it from the app sidebar, so the lane paints the
-		 * sidebar's width in `surface`, the rail's width in `elevated`, then `canvas` -
-		 * the rail is INSIDE the clipped content column and cannot paint above its own
-		 * top edge, so the lane is the only thing that can carry its rung to y0. The
+		 * each column's OWN rung rather than an assumed `surface`. On the rail that
+		 * rung is `surface` again (it held `elevated` from 2026-09-27 to 2026-09-30,
+		 * and gave it up when the split it required was reported as mismatched
+		 * blocks inside the rail), so on this tree the lane paints the sidebar's
+		 * width in `surface`, the rail's width in `surface` too, then `canvas` - and
+		 * the two agent rosters have always been `surface`. The rule is what is
+		 * asserted rather than today's value: the rail is INSIDE the clipped content
+		 * column and cannot paint above its own top edge, so the lane is the only
+		 * thing that can carry its ground to y0, and the check below fails if the lane
+		 * paints anything but the rung the column is actually standing on. The
 		 * operator reported the band half of this twice (2026-09-26, and again
-		 * 2026-09-27 as still true); the rung half is the same report's second
-		 * sentence - "a slightly different background shade to differentiate from the
-		 * main sidebar" - which fails if the lane paints anything but the rung the
-		 * column is actually standing on.
+		 * 2026-09-27 as still true).
 		 *
 		 * THE RULES ARE GONE, and this is where the half a source test cannot see it
 		 * is refused: no stop in the lane's resolved gradient may paint the hairline
