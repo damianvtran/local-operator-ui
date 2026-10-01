@@ -89,11 +89,12 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|none>
  *                          which built-in scene to run (default: states)
- *   --project <key>        (with --scene project-detail) the seeded project the
- *                          detail scene drives; the seed decides the name and a
- *                          default would photograph whatever it happened to use
+ *   --project <key>        (with --scene project-detail or project-inline-edit)
+ *                          the seeded project the scene drives; the seed decides
+ *                          the name and a default would photograph whatever it
+ *                          happened to use
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
@@ -32731,6 +32732,783 @@ async function sceneProjectDetail(cdp) {
 	await captureSettled(cdp, `project-detail-${size}-${theme}-linked`);
 }
 
+/* ------------------------------------------------------------------------ *
+ * The inline editors on a project (the inline-edit slice, 2026-09-30).
+ * ------------------------------------------------------------------------ */
+
+/**
+ * One PATCH to the daemon's project route, from THIS script's Node process.
+ *
+ * The out-of-band writer the conflict case needs: the note's § 2.4 rule is
+ * about a field a SECOND writer moved while the window's draft is dirty, and
+ * the only honest way to be that writer is the daemon's own route rather than
+ * the window — a change driven through the window's own bridge would be the
+ * same author the rule is about holding. `ProjectPatch`'s `model_fields_set`
+ * semantics are the wire's: only the keys present move.
+ */
+async function projectPatch(key, fields) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/projects/${encodeURIComponent(key)}`,
+		{
+			method: "PATCH",
+			headers: {
+				"content-type": "application/json",
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+			body: JSON.stringify(fields),
+		},
+	);
+	const body = await response.json().catch(() => null);
+	return { status: response.status, body };
+}
+
+/** A pointer MOVE only — the hover a click helper never performs by itself. */
+async function hoverAt(cdp, selector) {
+	const box = await verb(cdp, "measure", selector);
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: box.centre.x,
+		y: box.centre.y,
+		button: "none",
+		buttons: 0,
+	});
+	return box;
+}
+
+/**
+ * A real double-click: a count-1 pair, then the count-2 pair the DOM reads as
+ * `dblclick`. Chromium only fires it on the second release when the two pairs
+ * land within the platform's multi-click window, which two back-to-back CDP
+ * dispatches do.
+ */
+async function doubleClickAt(cdp, selector) {
+	const box = await verb(cdp, "measure", selector);
+	const { x, y } = box.centre;
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		button: "none",
+		buttons: 0,
+	});
+	for (const clickCount of [1, 2]) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mousePressed",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+			clickCount,
+		});
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseReleased",
+			x,
+			y,
+			button: "left",
+			buttons: 0,
+			clickCount,
+		});
+	}
+	return box;
+}
+
+/**
+ * Focus an editing control, select all of its text, and let the input
+ * pipeline's own insert replace it.
+ *
+ * WHY NOT `clickAt` ALONE: the click places the caret, and a click that lands
+ * mid-text then types in the middle of the value — the QA-round-2 lesson the
+ * `commands: ["selectAll"]` chord exists for (a bare modifier+key pair performs
+ * no edit, so the next insert appended at the caret instead of replacing).
+ */
+async function replaceAllText(cdp, selector, text) {
+	await clickAt(cdp, selector);
+	await pressChord(cdp, {
+		key: "a",
+		code: "KeyA",
+		virtualKeyCode: 65,
+		modifiers: 4,
+		commands: ["selectAll"],
+	});
+	await cdp.send("Input.insertText", { text });
+}
+
+/**
+ * `project-inline-edit`: the per-field editors on a project's own page, driven
+ * and photographed against an isolated daemon.
+ *
+ * WHAT THIS SCENE IS FOR. The change it evidences replaced one modal with an
+ * editing language (the note's § 2 contract, `docs/design/
+ * agents-inplace-shared-composer.md`): every field on the detail is edited in
+ * place, a field's write is a PARTIAL patch of only the changed keys, and the
+ * four rules that make that safe — blur accepts iff changed+valid, Esc reverts
+ * the field, a refusal stays beside the field, and a field that moved
+ * out-of-band holds its commit — are claims about behaviour across daemon,
+ * window and keyboard. A unit test can falsify the pure halves (and does:
+ * `scripts/projects-inline-edit.test.mjs`); what only this scene can show is
+ * that the SHIPPED surface runs those halves against the real daemon — the
+ * reads below are the daemon's own answers, not the window's echo — and what
+ * the states look like, in both palettes, for the design round that adjudicates
+ * the layout (§ B of the slice).
+ *
+ * WHAT IT DRIVES, in order: the hover reveal and the focus-within reveal (two
+ * honest doors); entering by affordance-click AND by double-click; a dirty
+ * draft reverted by Esc; a single-line Enter accept; the check-accept and the
+ * x-cancel; a blur accept; the description's Enter-is-a-newline /
+ * ⌘-Enter-accepts pair with its Write/Preview toggle; a status move to `qa`
+ * and the done-gate REFUSAL (the seeded milestone is incomplete, so the
+ * daemon's own sentence comes back and the field re-speaks it); a duplicate
+ * key refused with the wire's 409; a local validation refusal that never
+ * reaches the daemon; the conflict hold with a real out-of-band PATCH from
+ * this process; the saving state held by pausing the run's own daemon (the
+ * SIGSTOP device `mini-view` uses); and a field BORN inline through the
+ * properties block's `+ Add` menu.
+ *
+ * WHAT IT CANNOT PROVE, said here so no report implies otherwise: nothing
+ * about a second window (the conflict is one writer against one window; two
+ * live windows are a manual QA item), and nothing about the pointer's hover on
+ * a touchpad — the hover frames are CDP pointer moves, which is the same input
+ * pipeline a mouse feeds but still synthetic.
+ */
+async function sceneProjectInlineEdit(cdp) {
+	const FIELD = (name) => `[data-project-field="${name}"]`;
+	const CONTROL = (name, which) =>
+		`${FIELD(name)} [data-inline-edit-control="${which}"]`;
+	const SLOT = (name) => `${FIELD(name)} [data-inline-edit-slot]`;
+	const ENTRY = (name) => `${FIELD(name)} input, ${FIELD(name)} textarea`;
+	const EXISTS = (selector) =>
+		`document.querySelector(${JSON.stringify(selector)}) !== null`;
+	const need = async (selector, label, timeoutMs = 8_000) => {
+		const waited = await waitForCondition(cdp, EXISTS(selector), timeoutMs);
+		if (!waited.ok)
+			throw new Error(`the scene expected ${label}: ${selector} never appeared`);
+		return waited;
+	};
+	const clickControl = async (name, which) => {
+		const selector = CONTROL(name, which);
+		await need(selector, `${name}'s ${which} control`);
+		await cdp.evaluate(
+			`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block: 'center'}); true`,
+		);
+		await wait(200);
+		await clickAt(cdp, selector);
+	};
+	const slotPhase = async (name) =>
+		cdp.evaluate(
+			`document.querySelector(${JSON.stringify(SLOT(name))})?.getAttribute('data-inline-edit-slot') ?? null`,
+		);
+	const paneText = async () =>
+		cdp.evaluate(`document.body.textContent ?? ""`);
+	const stored = async () => {
+		const view = await fetchProjectView(PROJECT);
+		return view?.body?.result?.project ?? null;
+	};
+
+	const headless = await factsOf.headless(cdp);
+	check(
+		"the window is the headless launch, not a raised one",
+		headless,
+		`factsOf.headless said ${headless}`,
+	);
+	await verb(cdp, "setTheme", THEME);
+	const theme = (await verb(cdp, "state", "themeName")) ?? "unknown";
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	note(
+		"the page's own reads",
+		`theme=${theme} size=${size} project=${PROJECT}`,
+	);
+
+	/*
+	 * PRECONDITIONS, read from the daemon before a single click: the seed's
+	 * shape is what half the checks below are ABOUT (a title that exists, a
+	 * second row to collide with, an incomplete milestone for the done-gate),
+	 * and a seed that changed under this scene must fail loudly here rather
+	 * than photograph a state the README no longer describes.
+	 */
+	const before = await fetchProjectView(PROJECT);
+	const seeded = before?.body?.result?.project ?? null;
+	check(
+		"the daemon holds the seeded project",
+		before.status === 200 && seeded !== null,
+		`status=${before.status} project=${JSON.stringify(seeded?.name ?? null)}`,
+	);
+	check(
+		"the seed has a title and a start date (the conflict case needs both)",
+		Boolean(seeded?.title) && Boolean(seeded?.start_date),
+		`title=${JSON.stringify(seeded?.title ?? null)} start_date=${JSON.stringify(seeded?.start_date ?? null)}`,
+	);
+	const listResponse = await fetch(`${BACKEND}/v1/desktop/projects`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const listBody = await listResponse.json().catch(() => null);
+	const rows = listBody?.result?.projects ?? [];
+	const other = rows.find((row) => row?.name && row.name !== PROJECT) ?? null;
+	check(
+		"the seed holds a second project, for the duplicate-key refusal",
+		other !== null,
+		`rows=${JSON.stringify(rows.map((row) => row?.name))}`,
+	);
+	const milestones = seeded?.milestones ?? [];
+	check(
+		"the seed holds an incomplete milestone (the done-gate arm)",
+		milestones.some((milestone) => !milestone?.completed_at),
+		`milestones=${JSON.stringify(milestones.map((m) => [m?.name, m?.completed_at ?? null]))}`,
+	);
+
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	await need("[data-project-title]", "the detail's heading");
+
+	const titleBase = seeded.title;
+	const stamp = String(Date.now()).slice(-6);
+	const nextTitle = `${titleBase} ${stamp}`.slice(0, 80);
+
+	/*
+	 * 1. THE HOVER REVEAL, at the pointer. The pencil starts at `opacity-0`
+	 * (measured below, before the move) and a CDP pointer move over the field
+	 * must take it to `1` — the operator's "edit indicator on each field on
+	 * hover". The keyboard half of the same gate is asserted after, because
+	 * `focus-within` is a different branch of the same CSS and one frame
+	 * cannot prove both.
+	 */
+	const pencil = CONTROL("title", "begin");
+	await need(pencil, "the title pencil");
+	const restOpacity = await cdp.evaluate(
+		`getComputedStyle(document.querySelector(${JSON.stringify(pencil)})).opacity`,
+	);
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(FIELD("title"))}).scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	await hoverAt(cdp, FIELD("title"));
+	const hovered = await waitForCondition(
+		cdp,
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(pencil)})).opacity)`,
+		4_000,
+	);
+	check(
+		"the title's pencil is hidden at rest and the pointer's hover reveals it",
+		restOpacity === "0" && hovered.ok && Number(hovered.last) >= 0.99,
+		`rest=${restOpacity} hovered=${hovered.last}`,
+		`rest=${restOpacity} hovered=${hovered.last}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-hover`);
+
+	/*
+	 * 2. THE KEYBOARD REVEAL: focus alone (no pointer) must reveal the pencil
+	 * on another field — the `focus-within` gate a keyboard walk depends on.
+	 */
+	const keyPencil = CONTROL("key", "begin");
+	await need(keyPencil, "the key pencil");
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(keyPencil)}).focus(); true`,
+	);
+	const focusedReveal = await waitForCondition(
+		cdp,
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(keyPencil)})).opacity)`,
+		4_000,
+	);
+	check(
+		"focus alone reveals the key row's pencil (the keyboard door)",
+		focusedReveal.ok && Number(focusedReveal.last) >= 0.99,
+		`opacity=${focusedReveal.last}`,
+		`opacity=${focusedReveal.last}`,
+	);
+
+	/*
+	 * 3. ENTERING BY AFFORDANCE-CLICK: the pencil opens the editor, focus
+	 * lands IN it (not on body — the commit below returns it to the slot, and
+	 * a walk that lost focus between the two would be the defect).
+	 */
+	await clickControl("title", "begin");
+	await need(ENTRY("title"), "the title editor");
+	const editorFocused = await waitForCondition(
+		cdp,
+		`document.activeElement === document.querySelector(${JSON.stringify(ENTRY("title"))})`,
+		4_000,
+	);
+	check(
+		"the title editor opens focused",
+		editorFocused.ok && editorFocused.last === true,
+		`activeElement matched: ${editorFocused.last}`,
+		`activeElement matched: ${editorFocused.last}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-editing`);
+
+	/*
+	 * 4. THE DIRTY DRAFT, REVERTED BY ESC. The draft text is IN the input; Esc
+	 * must close the editor, restore the stored title, and leave the daemon
+	 * untouched (read back, not inferred).
+	 */
+	await replaceAllText(cdp, ENTRY("title"), "a draft nobody kept");
+	const dirtyValue = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(ENTRY("title"))}).value`,
+	);
+	check(
+		"the editor holds the draft",
+		dirtyValue === "a draft nobody kept",
+		`value=${JSON.stringify(dirtyValue)}`,
+		`value=${JSON.stringify(dirtyValue)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-dirty`);
+	await pressChord(cdp, {
+		key: "Escape",
+		code: "Escape",
+		virtualKeyCode: 27,
+	});
+	await waitForCondition(cdp, `document.querySelector(${JSON.stringify(ENTRY("title"))}) === null`, 4_000);
+	const afterEsc = await stored();
+	const escHeading = await cdp.evaluate(
+		`document.querySelector("[data-project-title]").textContent`,
+	);
+	check(
+		"Esc reverts the field: stored title restored, no write sent",
+		afterEsc?.title === titleBase && escHeading === titleBase,
+		`title=${JSON.stringify(afterEsc?.title ?? null)} heading=${JSON.stringify(escHeading)}`,
+		`title=${JSON.stringify(afterEsc?.title ?? null)} heading=${JSON.stringify(escHeading)}`,
+	);
+
+	/*
+	 * 5. ENTERING BY DOUBLE-CLICK on the VALUE (the operator's second door),
+	 * then a single-line ENTER accept. The daemon read is the check: the
+	 * heading changing is the window's claim, the stored title is the record's.
+	 */
+	await doubleClickAt(cdp, FIELD("title"));
+	await need(ENTRY("title"), "the title editor (double-click)");
+	check(
+		"double-clicking the title value opens its editor",
+		true,
+		undefined,
+		"the editor appeared",
+	);
+	await replaceAllText(cdp, ENTRY("title"), nextTitle);
+	await pressChord(cdp, {
+		key: "Enter",
+		code: "Enter",
+		virtualKeyCode: 13,
+	});
+	const savedCaption = await waitForCondition(
+		cdp,
+		`document.querySelector('[data-inline-edit-feedback="saved"]') !== null`,
+		8_000,
+	);
+	check(
+		"Enter accepts a single-line field, and the transient saved caption shows",
+		savedCaption.ok,
+		`the caption never appeared (waited ${savedCaption.waitedMs}ms)`,
+		`the caption appeared after ${savedCaption.waitedMs}ms`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-saved`);
+	const afterEnter = await stored();
+	check(
+		"the daemon holds the accepted title",
+		afterEnter?.title === nextTitle,
+		`title=${JSON.stringify(afterEnter?.title ?? null)}`,
+		`title=${JSON.stringify(afterEnter?.title ?? null)}`,
+	);
+	const announcement = await cdp.evaluate(
+		`document.querySelector("[data-inline-edit-announcement]")?.textContent ?? ""`,
+	);
+	check(
+		"the pane's one live region carries the acknowledgement",
+		theme && typeof announcement === "string" && announcement.length > 0,
+		`announcement=${JSON.stringify(announcement)}`,
+		`announcement=${JSON.stringify(announcement)}`,
+	);
+
+	/*
+	 * 6. CHECK-ACCEPT AND X-CANCEL, on the Start date row: x leaves the stored
+	 * value and sends nothing; the check then commits the same edit.
+	 */
+	await clickControl("start", "begin");
+	await need(ENTRY("start"), "the start-date editor");
+	await replaceAllText(cdp, ENTRY("start"), "2026-09-05");
+	await clickControl("start", "cancel");
+	await waitForCondition(cdp, `document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`, 4_000);
+	const afterCancel = await stored();
+	check(
+		"the x cancels: the stored start date stands, nothing was written",
+		afterCancel?.start_date === seeded.start_date,
+		`start_date=${JSON.stringify(afterCancel?.start_date ?? null)}`,
+		`start_date=${JSON.stringify(afterCancel?.start_date ?? null)}`,
+	);
+	await clickControl("start", "begin");
+	await need(ENTRY("start"), "the start-date editor again");
+	await replaceAllText(cdp, ENTRY("start"), "2026-09-05");
+	await clickControl("start", "accept");
+	await waitForCondition(cdp, `document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`, 8_000);
+	const afterCheck = await stored();
+	check(
+		"the check accepts: the daemon holds the new start date",
+		afterCheck?.start_date === "2026-09-05",
+		`start_date=${JSON.stringify(afterCheck?.start_date ?? null)}`,
+		`start_date=${JSON.stringify(afterCheck?.start_date ?? null)}`,
+	);
+
+	/*
+	 * 7. BLUR ACCEPTS, on Owner: a plain click somewhere else while dirty and
+	 * valid must commit the field (§ 2.2's blur rule; no request when
+	 * unchanged — the next step's cancel already proved the unchanged arm).
+	 */
+	await clickControl("owner", "begin");
+	await need(ENTRY("owner"), "the owner editor");
+	await replaceAllText(cdp, ENTRY("owner"), `rig-owner-${stamp}`);
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(FIELD("description"))}).scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	await clickAt(cdp, FIELD("description"));
+	await waitForCondition(cdp, `document.querySelector(${JSON.stringify(ENTRY("owner"))}) === null`, 8_000);
+	const afterBlur = await stored();
+	check(
+		"blur on a dirty, valid field commits it",
+		afterBlur?.owner === `rig-owner-${stamp}`,
+		`owner=${JSON.stringify(afterBlur?.owner ?? null)}`,
+		`owner=${JSON.stringify(afterBlur?.owner ?? null)}`,
+	);
+
+	/*
+	 * 8. THE DESCRIPTION: Enter is a NEWLINE (the field does not accept on it),
+	 * ⌘-Enter accepts, and the Write/Preview toggle renders the markdown. The
+	 * daemon read waits for the newline count to grow — the same check the
+	 * contract's § 2.2 states as "multiline = Enter is a newline".
+	 */
+	await clickControl("description", "begin");
+	await need(ENTRY("description"), "the description editor");
+	await replaceAllText(cdp, ENTRY("description"), `rig note line one\nsecond line ${stamp}`);
+	const beforeEnterCount = await cdp.evaluate(
+		`(document.querySelector(${JSON.stringify(ENTRY("description"))}).value.match(/\\n/g) ?? []).length`,
+	);
+	await pressChord(cdp, {
+		key: "Enter",
+		code: "Enter",
+		virtualKeyCode: 13,
+	});
+	await wait(150);
+	const afterEnterCount = await cdp.evaluate(
+		`(document.querySelector(${JSON.stringify(ENTRY("description"))}).value.match(/\\n/g) ?? []).length`,
+	);
+	const stillEditing = (await slotPhase("description")) === "editing" || (await slotPhase("description")) === "dirty";
+	check(
+		"Enter in the description is a newline: still editing, the text grew a line",
+		afterEnterCount === beforeEnterCount + 1 && stillEditing,
+		`newlines ${beforeEnterCount} -> ${afterEnterCount}, slot=${await slotPhase("description")}`,
+		`newlines ${beforeEnterCount} -> ${afterEnterCount}, slot=${await slotPhase("description")}`,
+	);
+	const midDraft = await stored();
+	check(
+		"no write was sent for the still-open draft",
+		midDraft?.description === seeded.description,
+		`description=${JSON.stringify(midDraft?.description ?? null).slice(0, 80)}`,
+		`description=${JSON.stringify(midDraft?.description ?? null).slice(0, 80)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-description`);
+	await cdp.evaluate(
+		`document.querySelector('[data-project-description-mode="preview"]').click(); true`,
+	);
+	const previewed = await waitForCondition(
+		cdp,
+		`document.querySelector("[data-project-description-preview]") !== null`,
+		4_000,
+	);
+	check(
+		"the Write/Preview toggle renders the draft as markdown",
+		previewed.ok,
+		"the preview never appeared",
+		"the preview appeared",
+	);
+	await cdp.evaluate(
+		`document.querySelector('[data-project-description-mode="write"]').click(); true`,
+	);
+	await wait(150);
+	await pressChord(cdp, {
+		key: "Enter",
+		code: "Enter",
+		virtualKeyCode: 13,
+		modifiers: 4,
+	});
+	const descriptionSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("description"))}) === null`,
+		8_000,
+	);
+	const afterDescription = await stored();
+	check(
+		"Cmd+Enter accepts the description",
+		descriptionSaved.ok &&
+			afterDescription?.description?.includes(`second line ${stamp}`),
+		`description=${JSON.stringify(afterDescription?.description ?? null).slice(0, 120)}`,
+		`description=${JSON.stringify(afterDescription?.description ?? null).slice(0, 120)}`,
+	);
+
+	/*
+	 * 9. THE STATUS: the badge opens the select, `qa` commits from the menu,
+	 * and picking `done` with an incomplete milestone gets the daemon's own
+	 * done-gate sentence back — re-spoken beside the control through
+	 * `refusalCopy` (the tail is swapped for the app's sentence; § 2.5).
+	 */
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(FIELD("status"))}).scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	await clickAt(cdp, `[data-project-status]`);
+	await need(`[data-project-status-option="qa"]`, "the status menu");
+	await clickAt(cdp, `[data-project-status-option="qa"]`);
+	const statusCommitted = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(FIELD("status"))}).textContent`,
+		8_000,
+	);
+	const afterStatus = await stored();
+	check(
+		"the status select commits from the menu",
+		afterStatus?.status === "qa" && String(statusCommitted.last).includes("QA"),
+		`status=${JSON.stringify(afterStatus?.status ?? null)} badge=${JSON.stringify(statusCommitted.last)}`,
+		`status=${JSON.stringify(afterStatus?.status ?? null)} badge=${JSON.stringify(statusCommitted.last)}`,
+	);
+	await clickAt(cdp, `[data-project-status]`);
+	await need(`[data-project-status-option="done"]`, "the done option");
+	await clickAt(cdp, `[data-project-status-option="done"]`);
+	const doneRefusal = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("complete or remove the incomplete milestones, then mark it done")`,
+		8_000,
+	);
+	check(
+		"the done gate's refusal is re-spoken beside the status control",
+		doneRefusal.ok,
+		"the re-spoken sentence never appeared",
+		"the re-spoken sentence appeared",
+	);
+	const stillQa = await stored();
+	check(
+		"the refused status move wrote nothing",
+		stillQa?.status === "qa",
+		`status=${JSON.stringify(stillQa?.status ?? null)}`,
+		`status=${JSON.stringify(stillQa?.status ?? null)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-refused-status`);
+	await clickControl("status", "cancel");
+	const statusReverted = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(FIELD("status"))})?.textContent?.trim()`,
+		5_000,
+	);
+	check(
+		"x reverts the refused status to the stored value",
+		String(statusReverted.last).includes("QA"),
+		`field text=${JSON.stringify(statusReverted.last)}`,
+		`field text=${JSON.stringify(statusReverted.last)}`,
+	);
+
+	/*
+	 * 10. THE DUPLICATE KEY, refused with the wire's own 409. The target name
+	 * is the OTHER seeded row's — a name this daemon already holds — so the
+	 * refusal is the store's, not an invented client-side one.
+	 */
+	await clickControl("key", "begin");
+	await need(ENTRY("key"), "the key editor");
+	await replaceAllText(cdp, ENTRY("key"), other.name);
+	await clickControl("key", "accept");
+	const keyRefusal = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("A project with this key already exists.")`,
+		8_000,
+	);
+	check(
+		"a duplicate key is refused in-field with the app's crafted sentence",
+		keyRefusal.ok,
+		"the in-field sentence never appeared",
+		"the in-field sentence appeared",
+	);
+	const keyHeld = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(ENTRY("key"))}).value`,
+	);
+	check(
+		"the refused key keeps the attempted value in the editor (§ 2.3)",
+		keyHeld === other.name,
+		`value=${JSON.stringify(keyHeld)}`,
+		`value=${JSON.stringify(keyHeld)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-refused-key`);
+	await clickControl("key", "cancel");
+	const afterKeyRevert = await stored();
+	check(
+		"x on the refused key restores the record's name",
+		afterKeyRevert?.name === PROJECT,
+		`name=${JSON.stringify(afterKeyRevert?.name ?? null)}`,
+		`name=${JSON.stringify(afterKeyRevert?.name ?? null)}`,
+	);
+
+	/*
+	 * 11. A LOCAL VALIDATION REFUSAL, which never reaches the daemon: a
+	 * title over 80 characters fails the shared rule before a request, and the
+	 * daemon's stored title is the proof no request was sent.
+	 */
+	await clickControl("title", "begin");
+	await need(ENTRY("title"), "the title editor (validation)");
+	await replaceAllText(cdp, ENTRY("title"), "x".repeat(81));
+	await clickControl("title", "accept");
+	const validationSentence = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("Titles are at most 80 characters.")`,
+		4_000,
+	);
+	const afterValidation = await stored();
+	check(
+		"an over-long title is refused locally, with the daemon untouched",
+		validationSentence.ok && afterValidation?.title === nextTitle,
+		`title=${JSON.stringify(afterValidation?.title ?? null)}`,
+		`title=${JSON.stringify(afterValidation?.title ?? null)}`,
+	);
+	await clickControl("title", "cancel");
+
+	/*
+	 * 12. THE CONFLICT HOLD, with the out-of-band writer being THIS process
+	 * (§ 2.4 case 3): a dirty draft on the start date, the record moved behind
+	 * it by a real PATCH, and the app's own focus-refetch path delivering the
+	 * moved record. The commit must be HELD, not forced and not silently
+	 * overwritten, until "Keep mine" answers it.
+	 */
+	const conflictStart = "2026-10-01";
+	const outOfBandStart = "2026-09-30";
+	await clickControl("start", "begin");
+	await need(ENTRY("start"), "the start-date editor (conflict)");
+	await replaceAllText(cdp, ENTRY("start"), conflictStart);
+	const patched = await projectPatch(PROJECT, { start_date: outOfBandStart });
+	check(
+		"the out-of-band write landed (this process, the daemon's own route)",
+		patched.status === 200,
+		`status=${patched.status} body=${JSON.stringify(patched.body).slice(0, 200)}`,
+		`status=${patched.status}`,
+	);
+	/*
+	 * Past the detail query's own `staleTime` (10s), then the door a real
+	 * editor learns through: a window-focus event, the same one React Query's
+	 * focus manager listens for. The wait is the query's contract, not a
+	 * sleep for its own sake — a focus refetch only touches a STALE query.
+	 */
+	await wait(10_500);
+	await cdp.evaluate(`window.dispatchEvent(new Event("focus")); true`);
+	const conflictShown = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("Changed elsewhere.")`,
+		8_000,
+	);
+	const draftHeld = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(ENTRY("start"))})?.value ?? null`,
+	);
+	check(
+		"a field that moved out-of-band holds the commit, draft intact",
+		conflictShown.ok && draftHeld === conflictStart,
+		`conflict=${conflictShown.ok} draft=${JSON.stringify(draftHeld)}`,
+		`conflict=${conflictShown.ok} draft=${JSON.stringify(draftHeld)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-conflict`);
+	await clickAt(cdp, `${FIELD("start")} [data-inline-edit-control="keep-mine"]`);
+	const keptMine = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`,
+		8_000,
+	);
+	const afterKeepMine = await stored();
+	check(
+		"Keep mine commits the draft over the out-of-band value",
+		keptMine.ok && afterKeepMine?.start_date === conflictStart,
+		`start_date=${JSON.stringify(afterKeepMine?.start_date ?? null)}`,
+		`start_date=${JSON.stringify(afterKeepMine?.start_date ?? null)}`,
+	);
+
+	/*
+	 * 13. THE SAVING STATE, HELD: the run's own daemon is paused by exact pid
+	 * (SIGSTOP, the `mini-view` device) so the in-flight write spans the frame,
+	 * and resumed in a `finally` so the same request then completes.
+	 */
+	const daemonPids = runDaemonPids();
+	check(
+		"the run's own daemon is identifiable by pid (never 1111)",
+		daemonPids.length > 0,
+		`pids=${JSON.stringify(daemonPids)}`,
+		`pids=${JSON.stringify(daemonPids)}`,
+	);
+	await clickControl("target", "begin");
+	await need(ENTRY("target"), "the target-date editor");
+	await replaceAllText(cdp, ENTRY("target"), "2026-11-15");
+	let paused = 0;
+	try {
+		for (const pid of daemonPids) {
+			try {
+				process.kill(pid, "SIGSTOP");
+				paused += 1;
+			} catch {
+				/* Already gone: nothing to hold, and the save will show it. */
+			}
+		}
+		await clickControl("target", "accept");
+		const inFlight = await waitForCondition(
+			cdp,
+			`document.querySelector(${JSON.stringify(SLOT("target"))})?.getAttribute('data-inline-edit-slot')`,
+			6_000,
+		);
+		check(
+			"the saving state holds while the daemon answers nothing",
+			paused > 0 && inFlight.ok && inFlight.last === "saving",
+			`paused=${paused} slot=${inFlight.last}`,
+			`paused=${paused} slot=${inFlight.last}`,
+		);
+		await captureSettled(cdp, `project-inline-${size}-${theme}-saving`);
+	} finally {
+		for (const pid of daemonPids) {
+			try {
+				process.kill(pid, "SIGCONT");
+			} catch {
+				/* A pid that died while paused has nothing to resume. */
+			}
+		}
+	}
+	const targetSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("target"))}) === null`,
+		10_000,
+	);
+	const afterTarget = await stored();
+	check(
+		"the same write completes once the daemon resumes",
+		targetSaved.ok && afterTarget?.target_date === "2026-11-15",
+		`target_date=${JSON.stringify(afterTarget?.target_date ?? null)}`,
+		`target_date=${JSON.stringify(afterTarget?.target_date ?? null)}`,
+	);
+
+	/*
+	 * 14. A FIELD BORN INLINE, through the properties block's `+ Add` menu: the
+	 * seed leaves Team absent, and the menu's Team row must open its editor so
+	 * a fact with no value yet can be written without a dialog.
+	 */
+	await cdp.evaluate(
+		`document.querySelector("[data-project-add-field]").scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	await clickAt(cdp, "[data-project-add-field]");
+	await need('[data-project-add-option="team"]', "the add-field menu");
+	await clickAt(cdp, '[data-project-add-option="team"]');
+	await need(ENTRY("team"), "the team editor born from the menu");
+	await replaceAllText(cdp, ENTRY("team"), `rig-team-${stamp}`);
+	await clickControl("team", "accept");
+	const teamSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("team"))}) === null`,
+		8_000,
+	);
+	const afterTeam = await stored();
+	check(
+		"a missing field is born inline from the + Add menu",
+		teamSaved.ok && afterTeam?.team === `rig-team-${stamp}`,
+		`team=${JSON.stringify(afterTeam?.team ?? null)}`,
+		`team=${JSON.stringify(afterTeam?.team ?? null)}`,
+	);
+}
+
 /**
  * The fake recorder the mini view's dictating frame is driven with.
  *
@@ -33844,6 +34622,18 @@ async function main() {
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
 	}
+	if (SCENE === "project-inline-edit") {
+		if (BACKEND === null || BACKEND_RECORDS === null) {
+			throw new Error(
+				"--scene project-inline-edit needs --backend and --backend-records: every save it makes is asserted against the daemon this run owns (a read the window's echo cannot fake), and the saving frame is held by pausing that daemon's own process - SIGSTOP by exact pid - whose pid only the serve record carries",
+			);
+		}
+		if (PROJECT === null) {
+			throw new Error(
+				"--scene project-inline-edit needs --project: the seeded row's key is what every daemon read addresses, and a default would assert against whichever row the seed happened to create",
+			);
+		}
+	}
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
 			"--scene mini-view with --backend needs --backend-records: the app admits only a daemon a serve record describes, and the sending frame is held by pausing that daemon's own process, whose pid the record carries",
@@ -34023,6 +34813,8 @@ async function main() {
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "project-inline-edit")
+				await sceneProjectInlineEdit(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
 			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);

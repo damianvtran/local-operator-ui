@@ -1,0 +1,130 @@
+/**
+ * The per-field inline editor's pure model: the phase vocabulary, the
+ * keyboard contract, and the never-clobber re-seed rule, as functions with no
+ * React and no feature in them, so `scripts/projects-inline-edit.test.mjs` can
+ * pin every case in Node rather than by eye.
+ *
+ * WHY A SHARED MODULE, AND WHY IT LOOKS LIKE THIS. The app has exactly one
+ * editing language for catalogue records, and the agents/teams lane is
+ * expected to be its next consumer (`docs/design/agents-inplace-shared-composer.md`
+ * § 2, PR #725): a field edits in place, blur accepts, Enter accepts (Cmd/Ctrl
+ * + Enter where a bare Enter is a newline), Escape reverts the FIELD, a dirty
+ * field is never silently clobbered by an out-of-band write, and the chrome is
+ * a check and an x. This module is the machine half of that contract; the
+ * hook (`use-inline-edit.ts`) and the chrome (`inline-edit-controls.tsx`,
+ * `inline-edit-feedback.tsx`, `inline-edit-pane.tsx`) are the other three
+ * quarters. Every consumer names its current phase in the same words, so the
+ * chrome and the state machine cannot disagree.
+ *
+ * THE FOUR CASES the re-seed rule encodes, from § 2.4 of the note, in the
+ * order the hook asks them (the record's fresh value has just arrived):
+ *
+ *   1. the field is not dirty            -> adopt silently;
+ *   2. the field is dirty, the record
+ *      moved, this field did not         -> commit normally (partial PATCH);
+ *   3. the field is dirty, this field
+ *      moved out-of-band                 -> hold the commit and show the
+ *      "changed elsewhere" choice;
+ *   4. a whole-record replacement        -> same rule, per field.
+ *
+ * The decision is a function of the values ALONE rather than of a stored
+ * dirty flag: a draft equal to its base cannot lose anything by adopting, and
+ * that is checked first so a save racing a re-seed cannot hold a phantom
+ * conflict.
+ */
+
+/** One field's phase. `dirty` is deliberately not a phase: it is derived. */
+export type InlineEditPhase = "idle" | "editing" | "saving" | "saved" | "error";
+
+/**
+ * Whether the editor control is the thing on screen. `saved` is NOT editing:
+ * the write has landed and the field shows the record again, with a transient
+ * acknowledgement beside it. `error` stays in the editor, holding the
+ * attempted value for a retry or a revert.
+ */
+export function inlineEditEditorShown(phase: InlineEditPhase): boolean {
+	return phase === "editing" || phase === "saving" || phase === "error";
+}
+
+/**
+ * Whether a draft differs from the value it is compared against.
+ *
+ * `equals` is a parameter for the same reason `formatProjectDay` takes its
+ * locale: a field whose draft is not a string (an estimate plus its unit) has
+ * to say what identity means for it, and a caller that owns no identity gets
+ * `Object.is`, which is right for every string draft.
+ */
+export function inlineEditDirty<T>(
+	base: T,
+	draft: T,
+	equals: (a: T, b: T) => boolean = Object.is,
+): boolean {
+	return !equals(base, draft);
+}
+
+/** What a key press means to a field. `null` means "the control's own". */
+export type InlineEditKeyAction = "accept" | "revert" | null;
+
+/**
+ * The keyboard contract, as a function.
+ *
+ * - Escape reverts the field, ALWAYS, and the caller `preventDefault`s it so
+ *   nothing downstream (a turn interrupt, a dialog's close) also consumes it.
+ * - Enter accepts a single-line field and is a NEWLINE in a multiline one,
+ *   where Cmd/Ctrl+Enter accepts instead. A multiline field that accepted a
+ *   bare Enter could never hold a second line.
+ * - `keyboardCommit: false` is for controls where Enter belongs to the control
+ *   (a select trigger opening its menu); their own activation is the accept.
+ * - `onEditor` scopes Enter acceptance to the editing control itself: Enter on
+ *   the check/x button must stay the button's own activation, or one press
+ *   would fire the machine AND the button.
+ */
+export function inlineEditKeyAction(
+	event: { key: string; metaKey?: boolean; ctrlKey?: boolean },
+	options: { multiline: boolean; keyboardCommit: boolean; onEditor: boolean },
+): InlineEditKeyAction {
+	if (event.key === "Escape") return "revert";
+	if (event.key !== "Enter") return null;
+	if (!options.keyboardCommit || !options.onEditor) return null;
+	if (options.multiline && !(event.metaKey || event.ctrlKey)) return null;
+	return "accept";
+}
+
+/** What to do when the record's fresh value for this field arrives. */
+export type InlineEditReseed = "none" | "adopt" | "conflict";
+
+/**
+ * The re-seed decision (§ 2.4), as a function of the phase and the three
+ * values. `fresh` is the record's value on this render; `base` is what the
+ * draft was last compared against; `draft` is what the field holds.
+ *
+ * A write in flight owns the field until it settles (`saving`), and `saved` is
+ * the write's own acknowledgement, so both stand still; the values reconcile
+ * on the next transition, when the phase is `idle` again.
+ */
+export function inlineEditReseed<T>(input: {
+	phase: InlineEditPhase;
+	base: T;
+	draft: T;
+	fresh: T;
+	equals: (a: T, b: T) => boolean;
+}): InlineEditReseed {
+	const { phase, base, draft, fresh, equals } = input;
+	if (phase === "saving" || phase === "saved") return "none";
+	if (equals(base, fresh)) return "none";
+	if (phase === "idle") return "adopt";
+	/* A clean draft has nothing to lose; a draft that already IS the fresh
+	 * value (someone else wrote exactly what is typed) has nothing to answer. */
+	if (equals(draft, base)) return "adopt";
+	if (equals(draft, fresh)) return "adopt";
+	return "conflict";
+}
+
+/** Whether an accept would send anything. Unchanged accepts just close. */
+export function inlineEditAcceptSends<T>(
+	base: T,
+	draft: T,
+	equals: (a: T, b: T) => boolean = Object.is,
+): boolean {
+	return !equals(base, draft);
+}

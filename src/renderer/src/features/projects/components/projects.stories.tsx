@@ -31,6 +31,7 @@ import type {
 	DesktopProjectDetail,
 	DesktopProjectMilestone,
 	DesktopProjectUpdate,
+	DesktopProjectView,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
 import {
@@ -556,6 +557,12 @@ type StubState = {
 	hang: boolean;
 	/** `projects.update` fails with this sentence (the follow-up-refusal arm). */
 	failPatch: string | null;
+	/** The refused patch's status, when the story is about a coded refusal. */
+	failPatchStatus?: number;
+	/** The refused patch's machine code (`project_name_exists`, say). */
+	failPatchCode?: string;
+	/** `projects.update` never settles: the inline editor's saving state. */
+	hangPatch?: boolean;
 };
 
 let stub: StubState = {
@@ -574,6 +581,47 @@ let stub: StubState = {
  * neither op ran, and a toast is not in the tree.
  */
 let bridgeOps: { op: string; request: Record<string, unknown> }[] = [];
+
+/** A plain-object test for the stub's field application (no zod in stories). */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null;
+
+/**
+ * Apply one `projects.update` fields object to the fixture row, the way the
+ * daemon's partial patch would: only the keys present move, and `""` clears
+ * the nullable ones. It exists so a story's re-read after a save shows the
+ * record the save produced — without it the re-read returns the old fixture
+ * and the saved frame would show the value snapping back under its own
+ * acknowledgement, an artefact a design round would read as a defect.
+ */
+const applyFields = (
+	project: DesktopProjectView,
+	fields: Record<string, unknown>,
+): void => {
+	const text = (key: string): string | undefined =>
+		typeof fields[key] === "string" ? (fields[key] as string) : undefined;
+	if (text("name") !== undefined) project.name = text("name") as string;
+	if (text("description") !== undefined)
+		project.description = text("description") as string;
+	// `""` is the wire's clear for owner/team/title/dates (`_edit_date`, and
+	// `_short_text_or_none` reading an emptied label as unset).
+	const owner = text("owner");
+	if (owner !== undefined) project.owner = owner.trim() ? owner : null;
+	const team = text("team");
+	if (team !== undefined) project.team = team.trim() ? team : null;
+	const title = text("title");
+	if (title !== undefined) project.title = title.trim() ? title : null;
+	if (text("status") !== undefined) project.status = text("status") as string;
+	if (Array.isArray(fields.tags))
+		project.tags = (fields.tags as unknown[]).map((tag) => String(tag));
+	const start = text("start_date");
+	if (start !== undefined) project.start_date = start || null;
+	const target = text("target_date");
+	if (target !== undefined) project.target_date = target || null;
+	if (typeof fields.estimate === "number") project.estimate = fields.estimate;
+	const unit = text("estimate_unit");
+	if (unit !== undefined) project.estimate_unit = unit;
+};
 
 const answer = (request: {
 	op: string;
@@ -643,9 +691,34 @@ const answer = (request: {
 			return { status: 200, body: { result: created } };
 		}
 		case "projects.update":
+			/*
+			 * `hangPatch` is the SAVING state's fixture: a write that never
+			 * settles is the only honest way a story can hold the spinner, and
+			 * it mirrors the real reason that state exists (a daemon under
+			 * load). `failPatchStatus`/`failPatchCode` let a refusal carry the
+			 * wire's own envelope — a 409 `project_name_exists` is the coded
+			 * refusal the key editor maps to its crafted sentence.
+			 */
+			if (stub.hangPatch) return new Promise(() => {});
 			bridgeOps.push({ op: request.op, request });
 			if (stub.failPatch)
-				return { status: 422, body: { detail: stub.failPatch } };
+				return {
+					status: stub.failPatchStatus ?? 422,
+					body: {
+						detail: stub.failPatchCode
+							? { code: stub.failPatchCode, message: stub.failPatch }
+							: stub.failPatch,
+					},
+				};
+			/*
+			 * A LANDED PATCH CHANGES THE RECORD, as the daemon's would: without
+			 * this the re-read after a save returns the old fixture and the
+			 * saved frame would show the record snapping back while its
+			 * acknowledgement says otherwise — an artefact of the stub that a
+			 * design round would read as a defect of the editor.
+			 */
+			if (stub.detail && isRecord(request.fields))
+				applyFields(stub.detail.project, request.fields);
 			return { status: 200, body: { result: stub.projects[0] ?? null } };
 		case "projects.delete":
 			return { status: 200, body: { result: { deleted: true } } };
@@ -866,11 +939,13 @@ const expectBoardKeys = (expected: string[], what: string) => {
  * The plays race `RouteTo`'s navigation: the story's first render is the
  * unmatched route (nothing mounted), the swap happens in an effect, and the
  * detail's own query settles after that. Every play on a detail screen waits
- * here first, so its first click targets a control that exists.
+ * here first, so its first click targets a control that exists. The heading's
+ * `data-project-title` is the marker because it only exists on the detail
+ * (the header is `project-editors.tsx`'s), unlike text the list also paints.
  */
 const waitForDetail = () =>
 	poll(
-		() => document.querySelector('[data-tour-tag="project-edit"]') !== null,
+		() => document.querySelector("[data-project-title]") !== null,
 		"the detail screen",
 	);
 
@@ -882,10 +957,11 @@ const waitForDetail = () =>
  * WHY THE ROUTES AND NOT JUST THE NAVIGATION: the global `MemoryRouter` the
  * preview provides has no route table of its own, and `useParams` yields
  * nothing unless some `<Route>` matched — so a story that only navigated kept
- * rendering the list under the detail's URL (measured: `project-edit` never
- * appeared while the frame showed the list's own header). Both routes are
- * declared here, matching `app.tsx`'s pair, and the navigation replaces the
- * entry so the history holds one location, as the app's own entry would.
+ * rendering the list under the detail's URL (measured: the detail's own
+ * heading never appeared while the frame showed the list's own header). Both
+ * routes are declared here, matching `app.tsx`'s pair, and the navigation
+ * replaces the entry so the history holds one location, as the app's own
+ * entry would.
  */
 const RouteTo = ({
 	path,
@@ -1086,10 +1162,7 @@ export const Detail: Story = {
 		// The DETAIL screen's own control, not the row name: the list also paints
 		// `payments-migration`, so a text predicate would pass before the route
 		// swap and photograph the list wearing the detail's name.
-		await poll(
-			() => document.querySelector('[data-tour-tag="project-edit"]') !== null,
-			"the detail to render",
-		);
+		await waitForDetail();
 	}),
 };
 
@@ -1136,7 +1209,7 @@ export const DetailLoadError: Story = {
 			() =>
 				(document.body.textContent ?? "").includes(
 					"This project could not be found.",
-				) && document.querySelector('[data-tour-tag="project-edit"]') === null,
+				) && document.querySelector("[data-project-title]") === null,
 			"the detail refusal",
 		);
 	}),
@@ -1392,20 +1465,223 @@ export const CreateDialog: Story = {
 };
 
 /** The edit dialog, opened from the detail's own button. */
-export const EditDialog: Story = {
+/* ------------------------------------------------------- inline field editing */
+
+/**
+ * The title field's affordance REVEALED — the keyboard half of it.
+ *
+ * A Storybook play cannot paint `:hover` (a synthetic pointer event does not
+ * set the browser's own hover state, which is what `group-hover` resolves
+ * against), so the reveal this story photographs is `focus-within`'s: the
+ * pencil is focused and the frame shows what a keyboard reader sees. The
+ * POINTER half is captured in the live driver scene
+ * (`--scene project-inline-edit`), where CDP's input pipeline really hovers.
+ */
+export const InlineEditReveal: Story = {
 	render: () => (
 		<RouteTo path="/projects/p1">
 			{page({ projects: THREE, detail: DETAIL })}
 		</RouteTo>
 	),
-	play: playOnce("edit-dialog", async () => {
+	play: playOnce("inline-edit-reveal", async () => {
 		await waitForDetail();
-		await clickWhen('[data-tour-tag="project-edit"]');
+		const pencil = need<HTMLElement>(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		pencil.focus();
 		await poll(
 			() =>
-				document.querySelector('[data-tour-tag="project-edit-dialog"]') !==
-				null,
-			"the edit dialog",
+				getComputedStyle(
+					need('[data-project-field="title"] [data-inline-edit-control="begin"]'),
+				).opacity === "1",
+			"the revealed pencil",
+		);
+	}),
+};
+
+/**
+ * The title field OPEN: the h1 has become its own input, the x and the check
+ * sit beside it, and the resting text is gone — the frame the operator's
+ * "edit is inline" is about.
+ */
+export const InlineEditOpen: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-open", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		await poll(
+			() => document.querySelector('[data-project-field="title"] input') !== null,
+			"the title editor",
+		);
+	}),
+};
+
+/**
+ * The title field TYPED over: the draft is visible in the input and the value
+ * on screen is the user's, not the record's — the state a save or a revert is
+ * answered from.
+ */
+export const InlineEditTyped: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-typed", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+	}),
+};
+
+/**
+ * The SAVING state, held: `hangPatch` makes `projects.update` a promise that
+ * never settles, so the spinner in the check's slot is a real in-flight write
+ * rather than a photographed fabrication — the same device the refusal story
+ * uses for its `Saving…` arm.
+ */
+export const InlineEditSaving: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL, hangPatch: true })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-saving", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="accept"]',
+		);
+		await poll(
+			() =>
+				document.querySelector(
+					'[data-project-field="title"] [data-inline-edit-slot="saving"]',
+				) !== null,
+			"the saving slot",
+		);
+	}),
+};
+
+/**
+ * A save that LANDED, inside its transient window: the record value is back in
+ * the read view, the acknowledgement sits beside it, and the panel's one live
+ * region carries the same words (note § 2.6). The play races the 1.2s dwell on
+ * purpose — a story that missed it would show the resting state and say
+ * nothing about the acknowledgement existing.
+ */
+export const InlineEditSaved: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-saved", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+		input.focus();
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document.querySelector('[data-inline-edit-feedback="saved"]') !== null,
+			"the saved acknowledgement",
+		);
+	}),
+};
+
+/**
+ * A refused save HELD beside the field: the Key row renames to a name the
+ * daemon already holds, the stub answers the wire's own 409 envelope
+ * (`project_name_exists`), and the field keeps the attempted value with the
+ * app's crafted sentence under it and the check re-attempting / x reverting
+ * in the slot. The frame is the refusal being IN the field rather than a
+ * banner somewhere else — the #704 rule this editor was built to.
+ */
+export const InlineEditRefused: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({
+				projects: THREE,
+				detail: DETAIL,
+				failPatch: "project 'invoices-rework' already exists",
+				failPatchStatus: 409,
+				failPatchCode: "project_name_exists",
+			})}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-refused", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="key"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="key"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "invoices-rework");
+		await clickWhen(
+			'[data-project-field="key"] [data-inline-edit-control="accept"]',
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"A project with this key already exists.",
+				),
+			"the in-field refusal",
+		);
+	}),
+};
+
+/**
+ * THE ONE THAT MUST NEVER CLOBBER: a Start date is half-typed, the record
+ * moves out-of-band (the play mutates the fixture exactly as another window
+ * would have written it), and the app's own focus-refetch path delivers the
+ * new record while the draft is dirty. The commit is HELD and the choice row
+ * is on screen. The wait is the query's own `staleTime` (10s) — a focus
+ * refetch only notices a STALE query, and the play waits it out rather than
+ * faking the delivery.
+ */
+export const InlineEditConflict: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-conflict", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="start"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="start"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "2026-09-05");
+		/* The out-of-band write, from the play's own hands. */
+		if (stub.detail) stub.detail.project.start_date = "2026-09-03";
+		/* Past the detail query's 10s staleTime, then the app's own door: a
+		 * window-focus event, which is how a real editor learns the record moved. */
+		await new Promise((resolve) => setTimeout(resolve, 10_500));
+		window.dispatchEvent(new Event("focus"));
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes("Changed elsewhere."),
+			"the conflict hold",
 		);
 	}),
 };
