@@ -158,8 +158,7 @@ const sentAnswer = (sessions) => ({
 	counts: {
 		total: sessions.length,
 		delivered: sessions.filter((row) => row.outcome === "delivered").length,
-		unconfirmed: sessions.filter((row) => row.outcome === "unconfirmed")
-			.length,
+		unconfirmed: sessions.filter((row) => row.outcome === "unconfirmed").length,
 		failed: sessions.filter((row) => row.outcome === "failed").length,
 	},
 	sessions,
@@ -197,11 +196,18 @@ test("the success card counts sessions, with the D=1 singular", () => {
 		"Requested updates from 3 sessions on Payments migration.",
 	);
 	assert.equal(three.variant, "success");
-	assert.equal(three.duration, undefined, "success rides the container default");
+	assert.equal(
+		three.duration,
+		undefined,
+		"success rides the container default",
+	);
 	const one = model.requestUpdateResultToast(
 		sentAnswer([session("a", "One", "delivered")]),
 	);
-	assert.equal(one.title, "Requested an update from 1 session on Payments migration.");
+	assert.equal(
+		one.title,
+		"Requested an update from 1 session on Payments migration.",
+	);
 });
 
 test("the partial card names failures and unconfirmed deliveries in their own clauses", () => {
@@ -213,7 +219,11 @@ test("the partial card names failures and unconfirmed deliveries in their own cl
 		]),
 	);
 	assert.equal(card.variant, "warning");
-	assert.equal(card.duration, Infinity, "a partial result persists until dismissed");
+	assert.equal(
+		card.duration,
+		Number.POSITIVE_INFINITY,
+		"a partial result persists until dismissed",
+	);
 	assert.equal(
 		card.title,
 		"Requested updates from 1 of 3 sessions on Payments migration. Old cutover notes could not be reached. Delivery to API parity checks could not be confirmed.",
@@ -244,7 +254,11 @@ test("a full refusal is the all-failed sentence; a session with no title reads a
 		]),
 	);
 	assert.equal(card.variant, "error");
-	assert.equal(card.duration, Infinity, "an all-failed result persists until dismissed");
+	assert.equal(
+		card.duration,
+		Number.POSITIVE_INFINITY,
+		"an all-failed result persists until dismissed",
+	);
 	assert.equal(
 		card.title,
 		"Could not reach any of the 2 linked sessions on Payments migration.",
@@ -298,7 +312,7 @@ test("an all-unconfirmed batch keeps the uncertainty, and a mixed zero-delivery 
 		card.title,
 		"Could not confirm delivery on Payments migration — the requests may still reach its sessions.",
 	);
-	assert.equal(card.duration, Infinity);
+	assert.equal(card.duration, Number.POSITIVE_INFINITY);
 	const mixed = model.requestUpdateResultToast(
 		sentAnswer([
 			session("a", "One", "failed", "stale"),
@@ -313,7 +327,11 @@ test("an all-unconfirmed batch keeps the uncertainty, and a mixed zero-delivery 
 
 test("the empty and cooldown answers carry the frozen lines and a ~6 s lifetime", () => {
 	const empty = model.requestUpdateResultToast({
-		project: { id: "p1", key: "payments-migration", title: "Payments migration" },
+		project: {
+			id: "p1",
+			key: "payments-migration",
+			title: "Payments migration",
+		},
 		state: "empty",
 		requested_at: null,
 		cooldown_remaining_s: null,
@@ -327,7 +345,11 @@ test("the empty and cooldown answers carry the frozen lines and a ~6 s lifetime"
 	assert.equal(empty.duration, model.REQUEST_UPDATE_TOAST_DURATION_MS);
 
 	const cold = model.requestUpdateResultToast({
-		project: { id: "p1", key: "payments-migration", title: "Payments migration" },
+		project: {
+			id: "p1",
+			key: "payments-migration",
+			title: "Payments migration",
+		},
 		state: "cooldown",
 		requested_at: null,
 		cooldown_remaining_s: 40,
@@ -431,7 +453,11 @@ const flowPath = new URL(
 );
 const flow = await import(flowPath.href);
 
-const TARGET = { id: "p1", name: "payments-migration", title: "Payments migration" };
+const TARGET = {
+	id: "p1",
+	name: "payments-migration",
+	title: "Payments migration",
+};
 
 /** Install a bridge that answers capabilities + one scripted request_update. */
 const installBridge = (features, handler) => {
@@ -482,7 +508,8 @@ test("one press sends one op with the row's key, and the loading card waits for 
 		{ projects: 1, projects_request_update: 1 },
 		() =>
 			new Promise((resolve) => {
-				resolveAnswer = () => resolve(ok(sentAnswer([session("a", "One", "delivered")])));
+				resolveAnswer = () =>
+					resolve(ok(sentAnswer([session("a", "One", "delivered")])));
 			}),
 	);
 	const pending = flow.sendRequestUpdate(TARGET);
@@ -510,10 +537,17 @@ test("one press sends one op with the row's key, and the loading card waits for 
 	 * with the cooldown sentence. */
 	const before = calls.requestUpdate;
 	await flow.sendRequestUpdate(TARGET);
-	assert.equal(calls.requestUpdate, before, "a press inside the window dials nothing");
+	assert.equal(
+		calls.requestUpdate,
+		before,
+		"a press inside the window dials nothing",
+	);
 	const info = flow.toastCalls.filter((call) => call.kind === "info");
 	assert.equal(info.length, 1);
-	assert.match(info[0].message, /^Update already requested \d+ s ago on Payments migration\. Try again in \d+ s\.$/);
+	assert.match(
+		info[0].message,
+		/^Update already requested \d+ s ago on Payments migration\. Try again in \d+ s\.$/,
+	);
 	assert.equal(info[0].id, "project-request-cooldown-p1");
 	assert.equal(info[0].duration, model.REQUEST_UPDATE_TOAST_DURATION_MS);
 });
@@ -581,7 +615,11 @@ test("the route's own cooldown answer re-arms the shared window", async () => {
 	flow.toastCalls.length = 0;
 	installBridge({ projects: 1, projects_request_update: 1 }, () =>
 		ok({
-			project: { id: "p1", key: "payments-migration", title: "Payments migration" },
+			project: {
+				id: "p1",
+				key: "payments-migration",
+				title: "Payments migration",
+			},
 			state: "cooldown",
 			requested_at: new Date().toISOString(),
 			cooldown_remaining_s: 40,
@@ -617,7 +655,7 @@ test("a route failure keeps the uncertainty, persists, and leaves the window una
 		error[0].message,
 		"Could not request updates: the server could not be reached.",
 	);
-	assert.equal(error[0].duration, Infinity);
+	assert.equal(error[0].duration, Number.POSITIVE_INFINITY);
 	assert.equal(flow.requestUpdateCooldown("p1"), undefined);
 });
 
@@ -761,11 +799,15 @@ test("the button's three states: idle, sending (aria-busy), cooling (Requested +
 	 */
 	components.toastCalls.length = 0;
 	let resolveAnswer;
-	const calls = installBridge({ projects: 1, projects_request_update: 1 }, () =>
-		new Promise((resolve) => {
-			resolveAnswer = () =>
-				resolve(ok(sentAnswer([session("a", "Payments cutover", "delivered")])));
-		}),
+	const calls = installBridge(
+		{ projects: 1, projects_request_update: 1 },
+		() =>
+			new Promise((resolve) => {
+				resolveAnswer = () =>
+					resolve(
+						ok(sentAnswer([session("a", "Payments cutover", "delivered")])),
+					);
+			}),
 	);
 	const host = document.createElement("div");
 	document.body.append(host);
@@ -799,7 +841,11 @@ test("the button's three states: idle, sending (aria-busy), cooling (Requested +
 	 * runs after it, on the settled tree.
 	 */
 	await act(() => button().focus());
-	assert.equal(document.activeElement, button(), "the harness focused the button");
+	assert.equal(
+		document.activeElement,
+		button(),
+		"the harness focused the button",
+	);
 	await act(() => button().click());
 	assert.equal(button().textContent, "Requesting…", "the sending label");
 	assert.equal(button().getAttribute("aria-busy"), "true");
@@ -808,7 +854,11 @@ test("the button's three states: idle, sending (aria-busy), cooling (Requested +
 		false,
 		"never the disabled attribute - focus survives",
 	);
-	assert.equal(document.activeElement, button(), "focus survives the pending state");
+	assert.equal(
+		document.activeElement,
+		button(),
+		"focus survives the pending state",
+	);
 	assert.ok(calls.requestUpdate === 1, "the press sent exactly one op");
 
 	resolveAnswer();
@@ -857,7 +907,7 @@ test("the board's menu item is wired after Set status, gated on its own key, and
 	);
 	assert.ok(
 		board.includes("requestUpdateEnabled && (") &&
-			board.includes('desktopFeatureEnabled(') &&
+			board.includes("desktopFeatureEnabled(") &&
 			board.includes('"projects_request_update"'),
 		"the item is mounted only under its own capability key",
 	);
@@ -951,7 +1001,9 @@ test("two presses inside one window leave ONE card, not a stack", async () => {
 	document.body.append(host);
 	const { createRoot } = await import("react-dom/client");
 	const reactRoot = createRoot(host);
-	await act(() => reactRoot.render(React.createElement(real.ThemedToastContainer, {})));
+	await act(() =>
+		reactRoot.render(React.createElement(real.ThemedToastContainer, {})),
+	);
 	await settleFrames();
 
 	const nowMs = Date.now();
