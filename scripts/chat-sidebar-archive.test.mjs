@@ -752,7 +752,7 @@ test("a typed /archive STAGES the confirmation, and /unarchive still writes stra
 	 */
 	assert.match(
 		branch,
-		/if \(archived\) \{\s*store\.requestArchiveConfirm\(\{\s*sessionId,\s*fromRow: false,?\s*\}\);\s*return "consumed";/,
+		/if \(archived\) \{\s*store\.requestArchiveConfirm\(\{\s*sessionId,\s*fromRow: false,\s*title: row\?\.title \|\| undefined,?\s*\}\);\s*return "consumed";/,
 	);
 	/*
 	 * AND `/unarchive` KEEPS ITS OWN PRESS: the restore is one press on every surface
@@ -826,7 +826,17 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 */
 	assert.match(
 		copy,
-		/export const ARCHIVE_CONFIRM_MESSAGE =\s+"It leaves your lists and search\. Undo brings it back for a few seconds, and “Include archived” in search finds it again\.";/,
+		/export const ARCHIVE_CONFIRM_MESSAGE = `It leaves your lists\. You can undo for \$\{ARCHIVE_UNDO_TOAST_MS \/ 1000\} seconds; after that, search the sidebar for it and turn on \\u201cInclude archived\\u201d to find it and restore it\.`;/,
+		"the body leads with the consequence and INTERPOLATES the timer, so the copy cannot drift from it",
+	);
+	assert.match(
+		copy,
+		/import \{ ARCHIVE_UNDO_TOAST_MS \} from "\.\/archive-undo";/,
+	);
+	assert.equal(
+		/few seconds/.test(copy.replace(/\/\*[\s\S]*?\*\//g, "")),
+		false,
+		"a vague 'few seconds' came back where the build can say the number",
 	);
 	assert.match(copy, /export const ARCHIVE_CONFIRM_VERB = "Archive";/);
 	// And the dialog RENDERS it rather than restating it: two copies of the sentence would be
@@ -840,11 +850,19 @@ test("the confirmation asks the reversible question, and the copy is written in 
 	 * carries for the row's own control label (agent review round 2, R2-3), applied to the
 	 * modal.
 	 */
-	assert.match(dialog, /className="shrink-0">\{\`\$\{ARCHIVE_CONFIRM_VERB\}/);
+	assert.match(dialog, /className="shrink-0">\s*\{`\$\{ARCHIVE_CONFIRM_VERB\}/);
 	assert.match(
 		dialog,
-		/className="min-w-0 truncate">\{\`“\$\{candidateTitle\}”\`\}/,
+		/candidateTitle === null \? ARCHIVE_CONFIRM_UNNAMED : candidateTitle/,
 	);
+	/*
+	 * THE QUOTES ARE OUTSIDE THE CUT (design round 1, D2, read off the long-name frame): quoted
+	 * inside the truncating box the closing quote was cut with the name. The opening one rides
+	 * the verb and the closing one rides the question mark, both `shrink-0`.
+	 */
+	assert.match(dialog, /\$\{candidateTitle === null \? "" : "\\u201c"\}/);
+	assert.match(dialog, /candidateTitle === null \? "\?" : "\\u201d\?"/);
+	assert.match(dialog, /className="min-w-0 truncate"/);
 	/*
 	 * AND IT IS NOT THE DANGER DIALOG. `isDangerous={false}` is this component's default, which
 	 * is exactly why it is spelled at the call site: the archive is reversible and the danger
@@ -992,6 +1010,28 @@ test("the row's press asks first, the restore does not, and the confirm keeps th
 	assert.match(dialog, /archiveRowBox\(row\)/);
 	assert.match(dialog, /\[data-chat-row\]/);
 	assert.match(dialog, /\[data-conversation-actions\]/);
+	/*
+	 * AND THE ORDER OF THE FALLBACK IS THE DOOR'S (UX round 1, U4). The header's menu item is
+	 * unmounted when the dialog closes, so a header-door cancel always falls through - and the
+	 * old order (the row's button first) threw a keyboard user into the OTHER column whenever the
+	 * same conversation was also listed. The header's trigger is first for every door that is not
+	 * a row; a row door keeps its own button first.
+	 */
+	assert.match(dialog, /askedFromRow\.current = candidate\.fromRow;/);
+	assert.match(
+		dialog,
+		/const element = fromHeader \? null : opener\.current;/,
+		"the header door must not trust the element that held focus when the dialog opened",
+	);
+	assert.match(
+		dialog,
+		/askedFromHeader\.current = candidate\.fromHeader === true;/,
+	);
+	assert.match(
+		dialog,
+		/\(fromRow \? \(rowButton \?\? trigger\) : \(trigger \?\? rowButton\)\)\?\.focus\(/,
+		"a header-door cancel must return to the header's trigger before the sidebar row",
+	);
 	/*
 	 * AND A CONFIRM CLOSES THE DIALOG BEFORE IT WRITES (D3): the candidate is cleared
 	 * first, so nothing about the write is rendered inside a dialog that has shut - the
@@ -1177,5 +1217,133 @@ test("the shed is gone, and what replaced it is a display switch with no reserve
 	assert.match(
 		pairWrapper,
 		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
+	);
+});
+
+/* ------------------------------------------- where the question is asked (UX round 1, U1) */
+
+const APP = "src/renderer/src/app.tsx";
+
+test("the confirmation is mounted at the app shell, so a press asks WHERE IT WAS MADE", () => {
+	/*
+	 * THE REGRESSION THIS PINS (UX round 1, U1, MAJOR). The row's control and `⌘⇧A` work on every
+	 * route - the sidebar is on all of them - and the dialog used to be mounted inside
+	 * `ChatContent`, which exists only on `/chat`: a press from Settings staged a candidate with
+	 * no host, did nothing visible, and the question then appeared unprompted on the next visit
+	 * to the chat. The write used to be immediate from any route, so that was a loss of function.
+	 * The host is `app.tsx`, which renders on every route, beside the other app-wide dialogs.
+	 */
+	const app = code(APP);
+	assert.match(
+		app,
+		/import \{ ArchiveConversationDialog \} from "@features\/chat\/components\/archive-conversation-dialog";/,
+	);
+	assert.match(app, /\{archiveEnabled && <ArchiveConversationDialog \/>\}/);
+	assert.match(
+		app,
+		/desktopFeatureEnabled\(\s*capabilities\.data,\s*"session_archive",\s*\)/,
+		"the shell's host is gated on the same capability every other archive reader is",
+	);
+	// And the pane is NOT a second host: two dialogs on one candidate would be two questions.
+	const content = code(CONTENT);
+	assert.equal(
+		content.includes("ArchiveConversationDialog"),
+		false,
+		"the chat pane mounts the archive dialog again, which makes a press on every other route ask nothing",
+	);
+	/*
+	 * AND A STAGED CANDIDATE NEVER OUTLIVES ITS ROUTE. The effect is keyed on the path and clears
+	 * through the store's own action; it is a no-op while nothing is staged, so it costs nothing
+	 * on the renders that are not a navigation.
+	 */
+	assert.match(
+		app,
+		/useEffect\(\(\) => \{\s*useCanonicalSessionsStore\.getState\(\)\.requestArchiveConfirm\(null\);\s*\}, \[pathname\]\);/,
+	);
+	// The title the pane used to hand the dialog as a prop now rides the candidate.
+	assert.match(
+		content,
+		/requestArchiveConfirm\(\{\s*sessionId,\s*fromRow: false,\s*fromHeader: true,\s*title: agentName,?\s*\}\)/,
+	);
+	assert.match(code(DISPATCH), /title: row\?\.title \|\| undefined,/);
+	assert.match(
+		code(ARCHIVE_DIALOG),
+		/export const ArchiveConversationDialog: FC = \(\) =>/,
+	);
+});
+
+test("every one of the five doors STAGES and none of them writes (G1)", () => {
+	/*
+	 * ONE ASSERTION PER DOOR, at suite level (QA round 1, G1), because the scenes drive some
+	 * doors end to end and the rest used to be pinned only by the shape of a neighbour. The three
+	 * row doors share a write path by construction - the menu item and the chord both PRESS the
+	 * row's control - and each is asserted at the place it is authored.
+	 */
+	const sidebar = code(SIDEBAR);
+	// 1. the row's hover control, pinned and unpinned: ONE button authors both.
+	assert.equal(
+		(sidebar.match(/data-session-archive\b/g) ?? []).length,
+		1,
+		"a second archive control would be a door this test does not cover",
+	);
+	assert.match(
+		sidebar,
+		/if \(!archived\) \{\s*requestArchiveConfirm\(\{\s*sessionId: row\.session_id,\s*fromRow: true,?\s*\}\);\s*return;\s*\}/,
+	);
+	// 2. the row's menu item presses that control (so it cannot write on its own)...
+	assert.match(
+		sidebar,
+		/onSelect=\{\(\) => pressRowAct\(row\.session_id, "archive"\)\}/,
+	);
+	// 3. ...and so does the chord, which only dispatches the same act.
+	assert.match(sidebar, /pressRowAct\(/);
+	// 4. a typed /archive stages, and ends before any write.
+	const typed = between(
+		DISPATCH,
+		"if (archived) {",
+		"const title = row?.title",
+	);
+	assert.match(typed, /store\.requestArchiveConfirm\(/);
+	assert.equal(typed.includes("setSessionArchived"), false);
+	// 5. the header's item stages when archiving and writes only when RESTORING.
+	const header = between(
+		CONTENT,
+		"const archiveFromHeader = useCallback(",
+		"const requestSessionDelete",
+	);
+	assert.match(
+		header,
+		/if \(!next\) \{\s*void setSessionArchived\(sessionId, false, agentName\);\s*return;\s*\}/,
+	);
+	assert.match(header, /requestArchiveConfirm\(\{/);
+	// The ONLY archive=true write in the renderer is the dialog's confirm.
+	for (const path of [SIDEBAR, CONTENT, DISPATCH, HEADER]) {
+		assert.equal(
+			/setSessionArchived\([^)]*\btrue\b/.test(code(path)),
+			false,
+			`${path} writes an archive without asking`,
+		);
+	}
+	assert.match(
+		code(ARCHIVE_DIALOG),
+		/setSessionArchived\(\s*sessionId,\s*true,/,
+	);
+});
+
+test("a greyed Move item says why where a sighted reader can see it (U6)", () => {
+	const sidebar = code(SIDEBAR);
+	for (const flag of ["up", "down"]) {
+		assert.match(
+			sidebar,
+			new RegExp(
+				`aria-disabled=\\{!${flag}\\}\\s*title=\\{!${flag} \\? moveBoundarySentence\\(row\\.session_id\\) : undefined\\}`,
+			),
+		);
+	}
+	// The live region and the tooltip are ONE sentence from one function, so they cannot disagree.
+	assert.match(sidebar, /announcePinMove\(moveBoundarySentence\(sessionId\)\)/);
+	assert.match(
+		sidebar,
+		/const moveBoundarySentence = \(sessionId: string\) =>\s*pinMoveBoundaryNote\(/,
 	);
 });

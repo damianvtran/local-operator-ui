@@ -976,18 +976,27 @@ than from a green test.
 ## 15. Not addressed
 
 - **T1 - deferring the grip to the trailing band, or to a 250ms dwell: DEFERRED, with the
-  tradeoff stated (2026-09-30).** The stretch item from the consult spec, and the reason it is
-  not here is measured rather than argued. The grip is drawn only when at least two pinned rows
-  are shown, and the crowded state T1 was written about is gone: at the 240 clamp the revealed
-  cluster is 52px with no grip and 80px with it, so the title reads 124px or 96px against the
-  **40px** the five-control cluster left. What a band would buy is a further 28px in the
-  two-pin case; what it costs is a second place for the same handle to live (a trailing-band
-  variant the drag and the flyout both have to know about), and the clean mechanisms are all
-  gone - a CSS-only version cannot express "after the pointer has dwelt here", and the
-  JavaScript version is per-row pointer state in a file the perf-audit lane is watching. The
-  design round should weigh that trade with the frames rather than take this note's word for
-  it; if the two-pin 240 case is judged crowded, the cheapest next step is a band for the grip
-  ALONE (one control, one more position), not a redesign of the reveal.
+  tradeoff stated in the number the reader sees (2026-09-30; reworded after design round 1,
+  D5).** The stretch item from the consult spec. The crowded state it was written about is
+  gone, but the honest baseline is what a reader with two or more pinned rows gets, not the
+  40px the five-control cluster once left. The grip is drawn at every width when two or more
+  pinned rows are shown, so the title under the pointer reads **116px at the 260 default and
+  96px at 240** (measured: `pinned-reorder/README.md`'s three-pin table; the 124 / 164 / 204
+  readings are the single-pin case, where there is no grip and the cluster is 52px). A band
+  for the grip would give back **28px - about 29% of a 96px title, and 24% of a 116px one**,
+  which is not a marginal amount, and the case for it is real. What it costs is a second place
+  for the same handle to live (a trailing-band variant the drag and the flyout both have to
+  know about), and every clean mechanism is gone: a CSS-only version cannot express "after the
+  pointer has dwelt here", and the JavaScript version is per-row pointer state in a file whose
+  hover path another lane is auditing. The reveal is still a single step, the cluster's arrival
+  cost fell 108 -> 80 at 260 and 136 -> 80 at 280 and above, and the operator's complaint (the
+  pop-out) is improved at every width.
+
+  **REVISIT WHEN**: a title reading under about **100px at the default width** (260) with two
+  or more pins, or under about **80px at the 220 floor** (`grip-hover-220` is the reading), or
+  a report that the grip is still hit by accident in the trailing band. Until then the next
+  step stays what it was: a band for the grip ALONE (one control, one more position), not a
+  redesign of the reveal.
 - **T3 and T2 are NOT deferred - they are met, and their readings are pinned in §14.** T3's
   bound (`flyout.left >= row.right + 4`) measures **+6 at every width** on this head, because
   the card is anchored to the row's BOX, which does not shrink when the acts reveal; the

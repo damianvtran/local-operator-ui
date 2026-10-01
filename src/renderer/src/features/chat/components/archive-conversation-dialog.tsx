@@ -3,6 +3,7 @@ import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-stor
 import { type FC, useEffect, useRef } from "react";
 import {
 	ARCHIVE_CONFIRM_MESSAGE,
+	ARCHIVE_CONFIRM_UNNAMED,
 	ARCHIVE_CONFIRM_VERB,
 	archiveRowBox,
 	focusRowAfterRemoval,
@@ -38,15 +39,7 @@ import {
  * holds a write the user must be told about because it cannot be undone, and this
  * one has a band that answers it a moment later.
  */
-export const ArchiveConversationDialog: FC<{
-	/**
-	 * The open conversation's title, used only when the store holds no row for the
-	 * candidate: a conversation found through search may be off this client's
-	 * catalogue page, and the dialog still has to name what it is asking about. The
-	 * delete dialog's fallback, for the same reason.
-	 */
-	title: string;
-}> = ({ title }) => {
+export const ArchiveConversationDialog: FC = () => {
 	const candidate = useCanonicalSessionsStore(
 		(state) => state.archiveCandidate,
 	);
@@ -78,17 +71,29 @@ export const ArchiveConversationDialog: FC<{
 	 */
 	const opener = useRef<HTMLElement | null>(null);
 	const askedFor = useRef<string | null>(null);
+	const askedFromRow = useRef(false);
+	const askedFromHeader = useRef(false);
 	useEffect(() => {
 		if (candidate !== null) {
 			askedFor.current = candidate.sessionId;
+			askedFromRow.current = candidate.fromRow;
+			askedFromHeader.current = candidate.fromHeader === true;
 			opener.current =
 				document.activeElement instanceof HTMLElement
 					? document.activeElement
 					: null;
 			return;
 		}
-		const element = opener.current;
+		/*
+		 * THE HEADER DOOR DOES NOT USE THE REMEMBERED ELEMENT AT ALL (UX round 1, U4): its item
+		 * is unmounted as the menu shuts, and what held focus at the instant the dialog opened
+		 * depended on the order the menu closed and the dialog mounted - the same press went back
+		 * to the trigger in one run and to a sidebar row in another. The trigger is the answer.
+		 */
 		const row = askedFor.current;
+		const fromRow = askedFromRow.current;
+		const fromHeader = askedFromHeader.current;
+		const element = fromHeader ? null : opener.current;
 		opener.current = null;
 		askedFor.current = null;
 		/*
@@ -108,23 +113,40 @@ export const ArchiveConversationDialog: FC<{
 			 */
 			if (document.activeElement === element) return;
 		}
-		const fallback =
+		/*
+		 * WHICH FALLBACK IS FIRST DEPENDS ON THE DOOR (UX round 1, U4). The header's
+		 * menu item is UNMOUNTED by the time the dialog closes - the menu shuts when the
+		 * item is pressed - so a header-door cancel always lands here, and the old order
+		 * (row first) threw a keyboard user from the header into the OTHER column
+		 * whenever the same conversation was also listed in the sidebar. The reader
+		 * opened this from the header's `Conversation actions` trigger, so that is where
+		 * they go back to: the delete dialog's own `[data-conversation-actions]`. A ROW
+		 * door keeps the row's button first, for the reason above.
+		 */
+		const rowButton =
 			row === null
 				? null
-				: archiveRowBox(row)?.querySelector<HTMLElement>("[data-chat-row]");
-		/*
-		 * The header's own trigger is the last resort, and it is the delete dialog's
-		 * `[data-conversation-actions]`: that menu is where the header's archive item
-		 * lives, and it is the successor of the same act.
-		 */
-		(
-			fallback ??
-			document.querySelector<HTMLElement>("[data-conversation-actions]")
-		)?.focus({ preventScroll: true });
+				: (archiveRowBox(row)?.querySelector<HTMLElement>("[data-chat-row]") ??
+					null);
+		const trigger = document.querySelector<HTMLElement>(
+			"[data-conversation-actions]",
+		);
+		(fromRow ? (rowButton ?? trigger) : (trigger ?? rowButton))?.focus({
+			preventScroll: true,
+		});
 	}, [candidate]);
+	/*
+	 * THE NAME, in the order of how much the client knows: the store's row, then the
+	 * title the asking surface carried on the candidate (a conversation found through
+	 * search may be off this client's catalogue page, and a typed `/archive` in such a
+	 * pane has no row at all), then nothing - and "nothing" is spoken as `this
+	 * conversation` rather than as an empty pair of quotes, because a question that
+	 * names nothing in curly quotes reads as a bug.
+	 */
 	const candidateTitle =
 		sessions.find((row) => row.session_id === candidate?.sessionId)?.title ||
-		title;
+		candidate?.title ||
+		null;
 	return (
 		<ConfirmationModal
 			open={candidate !== null}
@@ -136,12 +158,25 @@ export const ArchiveConversationDialog: FC<{
 			 * eventually leave "Archive…" - not a question - on screen, which is the
 			 * rule `archiveOfferedName` already carries for the row's control label,
 			 * applied to the modal.
+			 *
+			 * THE QUOTES ARE OUTSIDE THE CUT TOO (design round 1, D2, read off the
+			 * long-name frame): the first build quoted the name INSIDE the truncating box,
+			 * so a long one rendered `“Quarterly retention sweep and the tr… ?` - the
+			 * closing quote gone, the same defect the offer toast's R2-3 fixed. The opening
+			 * quote rides the verb and the closing one rides the question mark, so what
+			 * ellipsises is only the words.
 			 */
 			title={
 				<span className="flex min-w-0 items-center">
-					<span className="shrink-0">{`${ARCHIVE_CONFIRM_VERB}\u00a0`}</span>
-					<span className="min-w-0 truncate">{`“${candidateTitle}”`}</span>
-					<span className="shrink-0">?</span>
+					<span className="shrink-0">
+						{`${ARCHIVE_CONFIRM_VERB}\u00a0${candidateTitle === null ? "" : "\u201c"}`}
+					</span>
+					<span className="min-w-0 truncate">
+						{candidateTitle === null ? ARCHIVE_CONFIRM_UNNAMED : candidateTitle}
+					</span>
+					<span className="shrink-0">
+						{candidateTitle === null ? "?" : "\u201d?"}
+					</span>
 				</span>
 			}
 			message={<p>{ARCHIVE_CONFIRM_MESSAGE}</p>}

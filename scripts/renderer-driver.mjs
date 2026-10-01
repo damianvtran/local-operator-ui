@@ -4640,7 +4640,7 @@ async function sceneSessionArchive(cdp) {
 	check(
 		"and the question is the REVERSIBLE one: the body states the way back, and neither button is painted in the danger role the delete dialog keeps for itself",
 		(confirmState.text ?? "").includes(
-			"It leaves your lists and search. Undo brings it back for a few seconds, and “Include archived” in search finds it again.",
+			"It leaves your lists. You can undo for 8 seconds; after that, search the sidebar for it and turn on “Include archived” to find it and restore it.",
 		) && !/danger/.test(confirmState.confirmClass ?? ""),
 		JSON.stringify(confirmState),
 	);
@@ -4655,6 +4655,61 @@ async function sceneSessionArchive(cdp) {
 			attemptsBeforeCancel,
 			attemptsAfterCancel,
 			rowDrawn: await drawnSelector(cdp, claimedRow),
+		}),
+	);
+
+	/*
+	 * THE SAME PRESS ON A NON-CHAT ROUTE (UX round 1, U1, MAJOR). The sidebar and its controls are
+	 * on every route and the dialog used to be hosted only by the chat pane, so on Settings the
+	 * press staged a candidate with nothing to draw it - and the question appeared, unprompted, on
+	 * the next visit to the chat. The reading is the one the reviewer made: press the control on
+	 * `/settings`, and the dialog is up THERE, naming the conversation; cancelled, nothing was
+	 * written and nothing is waiting - returning to the chat shows no dialog.
+	 */
+	await verb(cdp, "navigate", "/settings");
+	await wait(600);
+	await parkPointer(cdp);
+	await hoverOver(cdp, `[data-session-row]:has(${claimedRow})`);
+	await wait(300);
+	await hoverOver(cdp, claimedRow);
+	await wait(200);
+	const postsBeforeSettings = await archivePosts();
+	await clickAt(cdp, claimedRow);
+	const askedOnSettings = await verb(cdp, "measure", {
+		selector: '[role="dialog"] [data-confirm-action]',
+		timeoutMs: 10_000,
+	}).then(
+		() => true,
+		() => false,
+	);
+	const settingsState = await cdp.evaluate(`(() => ({
+		route: location.hash,
+		text: (document.querySelector('[role="dialog"]')?.textContent || "").replace(/\\s+/g, " ").trim(),
+		cancelFocused: document.activeElement?.hasAttribute("data-cancel-action") === true,
+	}))()`);
+	frames.push(
+		await captureSettled(cdp, `archive-confirm-settings${RUN_LABEL}`),
+	);
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(500);
+	await verb(cdp, "navigate", "/chat");
+	await wait(800);
+	const dialogAfterReturn = await cdp.evaluate(
+		`document.querySelector('[role="dialog"]') !== null`,
+	);
+	check(
+		"a press on a NON-CHAT route asks THERE (Settings), naming the conversation with Cancel focused; cancelled, no request reached the daemon and nothing is waiting when the chat comes back",
+		askedOnSettings === true &&
+			/settings/.test(settingsState.route ?? "") &&
+			settingsState.text.includes("Archive “Migration checklist”?") &&
+			settingsState.cancelFocused === true &&
+			(await archivePosts()) === postsBeforeSettings &&
+			dialogAfterReturn === false,
+		JSON.stringify({
+			askedOnSettings,
+			settingsState,
+			dialogAfterReturn,
+			postsBeforeSettings,
 		}),
 	);
 
@@ -4696,6 +4751,31 @@ async function sceneSessionArchive(cdp) {
 	await parkPointer(cdp);
 	await verb(cdp, "navigate", "/chat/2d5ad5da0025");
 	await wait(400);
+	await clickAt(cdp, '[aria-label="Conversation actions"]');
+	await wait(300);
+	await clickAt(cdp, "[data-session-archive-action]");
+	/*
+	 * CANCELLING FROM THE HEADER DOOR GOES BACK TO THE HEADER (UX round 1, U4). The menu item that
+	 * opened the question is unmounted by the time it closes, and the conversation is also a row in
+	 * the sidebar, so a fallback that tried the row first threw a keyboard reader into the other
+	 * column. The reading is the focused element after Cancel, then the menu is reopened for the
+	 * confirm below.
+	 */
+	await verb(cdp, "measure", {
+		selector: '[role="dialog"] [data-cancel-action]',
+		timeoutMs: 10_000,
+	});
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(500);
+	const headerCancelFocus = await cdp.evaluate(`(() => ({
+		onTrigger: document.activeElement?.hasAttribute("data-conversation-actions") === true,
+		active: document.activeElement ? (document.activeElement.getAttribute("aria-label") || document.activeElement.tagName) : null,
+	}))()`);
+	check(
+		"cancelling the HEADER door's question returns focus to the header's own menu trigger, not to the sidebar row",
+		headerCancelFocus.onTrigger === true,
+		JSON.stringify(headerCancelFocus),
+	);
 	await clickAt(cdp, '[aria-label="Conversation actions"]');
 	await wait(300);
 	await clickAt(cdp, "[data-session-archive-action]");
@@ -7172,6 +7252,64 @@ async function sceneRowSpace(cdp) {
 			restoredLong.toasts.total === 0,
 		JSON.stringify({ rows: restoredLong.rows, toasts: restoredLong.toasts }),
 	);
+
+	/*
+	 * THE QUESTION ON THE LONG NAME (design round 1, D2). The dialog's title is built so the NAME
+	 * ellipsises while `Archive` and the `?` stay fixed, and every other frame of the dialog uses a
+	 * short name, so nothing photographed the arm the build exists for. The fixture's 56-character
+	 * row is the case, and the three claims are read as boxes: the name IS cut, the verb and the
+	 * question mark are both still on screen, and the cut name stops short of the dialog's own
+	 * close control (the title row is a plain flex row and the X is absolutely placed, so only a
+	 * measurement can say they do not collide). Cancelled, so the fixture is unchanged.
+	 */
+	await hoverOver(cdp, `[data-session-row="${UNPINNED}"] [data-chat-row]`);
+	await wait(400);
+	await clickAt(cdp, `[data-session-row="${UNPINNED}"] [data-session-archive]`);
+	await verb(cdp, "measure", {
+		selector: '[role="dialog"] [data-confirm-action]',
+		timeoutMs: 10_000,
+	});
+	const longQuestion = await cdp.evaluate(`(() => {
+		const dialog = document.querySelector('[role="dialog"]');
+		if (!dialog) return null;
+		const box = (node) => {
+			if (!node) return null;
+			const r = node.getBoundingClientRect();
+			return { left: r.left, right: r.right, width: r.width };
+		};
+		const title = dialog.querySelector("h2, [data-slot='dialog-title'], [id]");
+		const spans = Array.from(dialog.querySelectorAll("span")).filter((node) => node.closest("h2, [data-slot='dialog-title']") || node.parentElement?.className?.includes("min-w-0 items-center"));
+		const name = spans.find((node) => node.className.includes("truncate"));
+		const verb = spans.find((node) => /^Archive/.test((node.textContent || "").trim()));
+		const mark = spans.find((node) => /^[\u201d"]?\?$/.test((node.textContent || "").trim()));
+		const close = dialog.querySelector('[aria-label="Close"]');
+		return {
+			text: (dialog.textContent || "").replace(/\s+/g, " ").trim().slice(0, 120),
+			name: name ? { ...box(name), scrollWidth: name.scrollWidth, clientWidth: name.clientWidth } : null,
+			verb: box(verb),
+			verbText: verb ? (verb.textContent || "") : null,
+			markText: mark ? (mark.textContent || "") : null,
+			mark: box(mark),
+			close: box(close),
+			title: box(title),
+		};
+	})()`);
+	frames.push(await captureSettled(cdp, "archive-confirm-long"));
+	check(
+		"the long name ellipsises INSIDE the question: the verb, both quotation marks and the question mark stay on screen (only the words are cut) and the question stops short of the close control",
+		longQuestion !== null &&
+			longQuestion.name !== null &&
+			longQuestion.name.scrollWidth - longQuestion.name.clientWidth > 0.5 &&
+			longQuestion.verb !== null &&
+			longQuestion.mark !== null &&
+			longQuestion.close !== null &&
+			longQuestion.mark.right <= longQuestion.close.left + 0.5 &&
+			longQuestion.markText === "\u201d?" &&
+			longQuestion.verbText.endsWith("\u201c"),
+		JSON.stringify(longQuestion),
+	);
+	await clickAt(cdp, "[data-cancel-action]");
+	await wait(500);
 
 	/*
 	 * THE NUMBERS THE SPEC PROMISES, asserted in the same read that produced them - so
@@ -14336,7 +14474,13 @@ async function scenePinnedReorder(cdp) {
 	 * 220..320, `chat-sidebar-layout.ts`). Before this the set photographed 240/280/320 and
 	 * the README called 280 "the default", which is not a width the app opens at.
 	 */
-	const PINNED_WIDTHS = [240, 260, 280, 320];
+	/*
+	 * 220 IS THE CLAMP'S REAL FLOOR (design round 1, D4), and it is the width where the shed's
+	 * deletion is least obvious: the grip is drawn here now, and the title under the pointer is
+	 * what the arithmetic says it is (row - 4 - the 80px cluster). It is photographed and READ as
+	 * a number rather than inferred from the widths around it.
+	 */
+	const PINNED_WIDTHS = [220, 240, 260, 280, 320];
 	await wait(PINNED_SETTLE_MS);
 
 	/**
