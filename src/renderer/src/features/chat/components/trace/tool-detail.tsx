@@ -69,6 +69,7 @@
 import { cn } from "@shared/lib/utils";
 import {
 	type FC,
+	type ReactNode,
 	type RefObject,
 	useLayoutEffect,
 	useRef,
@@ -146,6 +147,21 @@ export type ToolDetailProps = {
 	 * danger treatment for any state that somehow did.
 	 */
 	interrupted?: boolean;
+	/**
+	 * A reader-facing sentence about the RESULT, printed between the arguments and
+	 * the result body.
+	 *
+	 * It exists because the result body cannot carry one (UX round 1, U1): the
+	 * output block is one `whitespace-pre` line in an `overflow-x: auto` box, and
+	 * the half of a long result that says what to DO sits off the right edge behind
+	 * a scrollbar macOS does not draw at rest. A caller whose result means
+	 * something to a READER - the `send` row's delivery states are the first - puts
+	 * that sentence here, where it WRAPS, and leaves the machine line below as it
+	 * is. `null`/absent keeps every other tool's expansion exactly as it was, and
+	 * the slot is a node rather than a string so it stays this component's own
+	 * geometry with the caller's own copy.
+	 */
+	note?: ReactNode;
 };
 
 /**
@@ -327,6 +343,7 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 	output,
 	isError,
 	interrupted = false,
+	note = null,
 }) => {
 	const input = argumentLines(args);
 	const structured = resultLines(output);
@@ -344,7 +361,7 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 	 * with a bordered, padded, empty `sunken` box, which is what QA's Q-2
 	 * photographed, so the pane refuses to draw one whatever it was asked.
 	 */
-	if (input.length === 0 && !output) return null;
+	if (input.length === 0 && !output && !note) return null;
 
 	return (
 		<div
@@ -365,6 +382,26 @@ export const ToolDetail: FC<ToolDetailProps> = ({
 						lines={inputBelow.lines}
 						overflowing={inputBelow.overflowing}
 					/>
+				</div>
+			)}
+			{note && (
+				/*
+				 * The reader's sentence, in the reader's voice: `font-sans` because the
+				 * whole box is `font-mono` (the machine payload's face), and
+				 * `whitespace-normal` because the point of this slot is that it WRAPS.
+				 * Positioned after the arguments and before the result body, which is the
+				 * order the design note fixes for a delivery note (`target`,
+				 * `message`, then the note) and the order the reader asked for: what they
+				 * are told to DO, then the machine line that proves it.
+				 */
+				<div
+					className={cn(
+						"whitespace-normal font-sans text-body-sm text-ink-muted",
+						input.length > 0 && "mt-3",
+					)}
+					data-detail-section="note"
+				>
+					{note}
 				</div>
 			)}
 			{output && (
