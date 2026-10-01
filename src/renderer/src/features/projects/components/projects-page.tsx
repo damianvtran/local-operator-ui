@@ -113,6 +113,13 @@ import {
 	writeProjectsView,
 } from "./projects-view-switcher";
 
+/**
+ * The live region's dwell, the chat sidebar's 4 s (its pin-move announcement):
+ * long enough that a polite region has spoken before anything touches it,
+ * short enough that the sentence cannot stand over the reader's next actions.
+ */
+const ANNOUNCEMENT_DWELL_MS = 4000;
+
 const GATE_COPY: Record<string, string> = {
 	unpaired:
 		"This app is not paired with the Local Operator server, so Projects are unavailable.",
@@ -173,8 +180,79 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const [query, setQuery] = useState("");
 	const [filters, setFilters] = useState<FilterState>(NO_FILTERS);
 	const [sort, setSort] = useState<SortSpec | null>(() => readProjectsSort());
-	/* The sentence a sort change feeds the live region; see `changeSort`. */
+	/*
+	 * THE SENTENCE A SORT CHANGE OR A CLEAR FEEDS THE LIVE REGION (U15), and
+	 * the shape that keeps it AUDIBLE EVERY TIME and HONEST BETWEEN TIMES
+	 * (U16). A live region is read from its MUTATIONS, so three rules sit
+	 * behind `announceSortText`: (1) a sentence that repeats while the region
+	 * still holds it is cleared and re-set across a FRAME — two mutations, so
+	 * the platform speaks it again (the chat sidebar's pin-move idiom, born
+	 * of the same silence there: setting a region to the string it already
+	 * holds is not a change React, the DOM or a screen reader sees); (2) the
+	 * region EMPTIES on a dwell once it has had time to be read, so it does
+	 * not stand over later states; (3) an action that is not itself announced
+	 * — a keystroke, a facet toggle — retires it immediately, so the region
+	 * never narrates a clear the reader has moved past.
+	 */
 	const [sortAnnouncementText, setSortAnnouncementText] = useState("");
+	/** The sentence the region holds now; `""` once retired or never spoken. */
+	const announcementHeldRef = useRef("");
+	/** The pending clear-then-re-set frame, while a repeat is mid-flight. */
+	const announcementFrameRef = useRef<number | null>(null);
+	/** The dwell that retires a spoken sentence; reset by every announcement. */
+	const announcementDwellRef = useRef<number | null>(null);
+	const announceSortText = (sentence: string) => {
+		if (announcementFrameRef.current !== null) {
+			window.cancelAnimationFrame(announcementFrameRef.current);
+			announcementFrameRef.current = null;
+		}
+		if (sentence !== "" && sentence === announcementHeldRef.current) {
+			setSortAnnouncementText("");
+			announcementFrameRef.current = window.requestAnimationFrame(() => {
+				announcementFrameRef.current = null;
+				setSortAnnouncementText(sentence);
+			});
+		} else {
+			setSortAnnouncementText(sentence);
+		}
+		announcementHeldRef.current = sentence;
+		if (announcementDwellRef.current !== null) {
+			window.clearTimeout(announcementDwellRef.current);
+		}
+		announcementDwellRef.current = window.setTimeout(() => {
+			announcementDwellRef.current = null;
+			announcementHeldRef.current = "";
+			setSortAnnouncementText("");
+		}, ANNOUNCEMENT_DWELL_MS);
+	};
+	/** Retire the standing sentence — the unrelated-action door (U16). */
+	const retireSortAnnouncement = () => {
+		if (announcementFrameRef.current !== null) {
+			window.cancelAnimationFrame(announcementFrameRef.current);
+			announcementFrameRef.current = null;
+		}
+		if (announcementDwellRef.current !== null) {
+			window.clearTimeout(announcementDwellRef.current);
+			announcementDwellRef.current = null;
+		}
+		announcementHeldRef.current = "";
+		setSortAnnouncementText("");
+	};
+	/*
+	 * The doors that change search state WITHOUT announcing supersede any
+	 * standing clear sentence, so they retire it: a query edit and a facet
+	 * change through the two wrappers below, and the list rows' own toggle in
+	 * place. The announced doors — a sort change, Clear all — never retire:
+	 * their own sentence replaces the standing one in the same commit.
+	 */
+	const changeQuery = (next: string) => {
+		setQuery(next);
+		retireSortAnnouncement();
+	};
+	const changeFilters = (next: FilterState) => {
+		setFilters(next);
+		retireSortAnnouncement();
+	};
 	/** The page's handle for `/`, ⌘F and the no-match body's Clear all. */
 	const searchFieldRef = useRef<HTMLInputElement>(null);
 	/* The caret's hand-back after a status move; see `moveTo` and the hook. */
@@ -345,10 +423,11 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const changeSort = (next: SortSpec | null) => {
 		setSort(next);
 		writeProjectsSort(next);
-		setSortAnnouncementText(sortAnnouncement(next));
+		announceSortText(sortAnnouncement(next));
 	};
 	const toggleFilter = (facet: FilterFacetKey, value: FilterOptionValue) => {
 		setFilters((current) => toggleFilterValue(current, facet, value));
+		retireSortAnnouncement();
 	};
 	/* `Clear all`'s action wherever it sits: the query, every facet AND the sort
 	 * (→ Default). The sort is not a facet, but leaving it out made Clear all a
@@ -367,7 +446,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 		 * own announcement would name only itself, and the query and facets
 		 * cleared silently beside it. Overwrites `changeSort`'s text in the
 		 * same commit, so the region speaks once. */
-		setSortAnnouncementText(
+		announceSortText(
 			clearAllAnnouncement({
 				search: hadSearch,
 				filters: hadFilters,
@@ -533,9 +612,9 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						<ProjectsSearchControls
 							projects={projects}
 							query={query}
-							onQueryChange={setQuery}
+							onQueryChange={changeQuery}
 							filters={filters}
-							onFiltersChange={setFilters}
+							onFiltersChange={changeFilters}
 							onClearAll={clearSearchAndFilters}
 							todayMs={todayMs}
 							resultText={resultText}
@@ -574,7 +653,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					<ProjectsFilterChips
 						filters={filters}
 						sort={sort}
-						onFiltersChange={setFilters}
+						onFiltersChange={changeFilters}
 						onSortChange={changeSort}
 						onClearAll={clearSearchAndFilters}
 						/* The no-match block below carries its own Clear all (U14). */
@@ -585,9 +664,16 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					 * ONE POLITE LIVE REGION for sort changes (U3): `aria-sort` states the
 					 * sort a reader lands on, but not the CHANGE, and a reader who was not
 					 * on the header when a chip cleared the sort would otherwise learn
-					 * nothing. `<output>` is this tree's own announcement element.
+					 * nothing. `<output>` is this tree's own announcement element. The data
+					 * attribute is what tells this region from the toolbar's count
+					 * announcement (both are `output`s with `aria-live`), for a rig and for
+					 * the behaviour suite.
 					 */}
-					<output className="sr-only" aria-live="polite">
+					<output
+						data-project-announcement=""
+						className="sr-only"
+						aria-live="polite"
+					>
 						{sortAnnouncementText}
 					</output>
 				</div>

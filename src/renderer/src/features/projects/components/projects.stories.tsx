@@ -1152,7 +1152,15 @@ export const SearchActive: Story = {
 	}),
 };
 
-/** The Filters popover complete (the toolbar entry point): all nine facets. */
+/**
+ * The Filters popover complete (the toolbar entry point): all nine facets.
+ *
+ * The play then pins U12's focus handoff, the fact a still cannot show: it
+ * sets a facet so the header's Clear all exists, presses it, and fails unless
+ * the popover CLOSES with focus landed on the search field (the pre-fix code
+ * left the popover open with focus on `<body>`). It re-opens the popover so
+ * the frame is still the open panel.
+ */
 export const FiltersOpen: Story = {
 	render: () => page({ view: "list", projects: MANY }),
 	play: playOnce("filters-open", async () => {
@@ -1160,6 +1168,46 @@ export const FiltersOpen: Story = {
 		await poll(
 			() => document.querySelector('[role="dialog"]') !== null,
 			"the Filters popover to open",
+		);
+		/* U12's pin, first half: give the popover header something to clear. */
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		if (!option) throw new Error("the Active option is absent");
+		option.click();
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the chip for the Active facet",
+		);
+		const headerClear = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] button'),
+		].find((node) => node.textContent?.trim() === "Clear all");
+		if (!headerClear) {
+			throw new Error("the popover header's Clear all is absent");
+		}
+		headerClear.click();
+		/* U12's pin, second half: the popover closes, the facet clears, and the
+		 * handoff lands focus on the search field - each of the three fails on
+		 * the code this pin was born against. */
+		await poll(
+			() => document.querySelector('[role="dialog"]') === null,
+			"the popover to close on the header Clear all",
+		);
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 0,
+			"the facet to clear",
+		);
+		await poll(
+			() =>
+				document.activeElement?.getAttribute("aria-label") ===
+				"Search projects",
+			"focus to land on the search field",
+		);
+		/* Re-open for the frame: the panel with its nine facets, none selected. */
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the Filters popover to re-open",
 		);
 	}),
 };
@@ -1243,6 +1291,14 @@ export const FilterAndSortChips: Story = {
  * every chip is gone and the Status header's `aria-sort` is back to
  * `none` — the same end state the sort chip's own removal path reaches
  * (U6), asserted here rather than argued.
+ *
+ * The play then pins U16 (and R10's composed sentence): a MutationObserver
+ * on the page's live region records every sentence it holds, the composed
+ * clear is read off that log, and the facet-only clear is made TWICE — a
+ * repeat of the SAME sentence, which a region read from its mutations only
+ * speaks again if the re-set before it emptied the region instead of
+ * leaving the string standing. The end state is the `no chips, the strip at
+ * rest` this frame exists to show.
  */
 export const ClearAllClearsSort: Story = {
 	render: () =>
@@ -1269,9 +1325,31 @@ export const ClearAllClearsSort: Story = {
 			() => document.querySelectorAll("[data-project-chip]").length === 2,
 			"the facet chip and the sort chip",
 		);
-		const clear = [...document.querySelectorAll("button")].find(
-			(node) => node.textContent?.trim() === "Clear all",
-		);
+		/*
+		 * THE ANNOUNCEMENT LOG (U16's pin, and R10's composed sentence): a
+		 * MutationObserver records every non-empty sentence the page's live
+		 * region holds from here on — assertions about what was SPOKEN are read
+		 * off the log rather than off the region "now", because the region is
+		 * emptied by design (a dwell) and a play reading it late would race its
+		 * own clock.
+		 */
+		const region = document.querySelector("[data-project-announcement]");
+		if (!region) throw new Error("the announcement region is absent");
+		const spoken: string[] = [];
+		const observer = new MutationObserver(() => {
+			const text = (region.textContent ?? "").trim();
+			if (text !== "") spoken.push(text);
+		});
+		observer.observe(region, {
+			childList: true,
+			characterData: true,
+			subtree: true,
+		});
+		const clearAllButton = () =>
+			[...document.querySelectorAll<HTMLElement>("button")].find(
+				(node) => node.textContent?.trim() === "Clear all",
+			);
+		const clear = clearAllButton();
 		if (!clear) throw new Error("the chips row's Clear all is absent");
 		clear.click();
 		await poll(
@@ -1282,6 +1360,57 @@ export const ClearAllClearsSort: Story = {
 		if (header?.closest("th")?.getAttribute("aria-sort") !== "none") {
 			throw new Error(
 				`Clear all left the sort standing: aria-sort=${header?.closest("th")?.getAttribute("aria-sort")}`,
+			);
+		}
+		/* R10's composed sentence, capitalised (U17): the first clear named the
+		 * facet AND the sort, in the doors' own order. */
+		await poll(
+			() => spoken.includes("Filters and sort cleared."),
+			"the composed clear sentence",
+		);
+		/* U16's pin: the same clear, twice. Each round re-sets the facet - an
+		 * action that is not itself announced, so it supersedes the standing
+		 * sentence (polled empty below) - and then clears again. The second
+		 * `Filters cleared.` only reaches the log if the repeat SPEAKS: the
+		 * string it would otherwise re-set is the one already standing, and a
+		 * region read from its mutations has nothing to read. */
+		for (let round = 0; round < 2; round++) {
+			await clickWhen("[data-project-filters-button]");
+			await poll(
+				() =>
+					[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+						node.textContent?.trim().startsWith("Active"),
+					),
+				"the Active option",
+			);
+			const setActive = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith("Active"));
+			if (!setActive) throw new Error("the Active option is absent");
+			setActive.click();
+			await userEvent.keyboard("{Escape}");
+			await poll(
+				() => document.querySelectorAll("[data-project-chip]").length === 1,
+				"the facet chip",
+			);
+			await poll(
+				() => (region.textContent ?? "").trim() === "",
+				"the standing sentence to empty as the re-set supersedes it",
+			);
+			const again = clearAllButton();
+			if (!again) throw new Error("the chips row's Clear all is absent");
+			again.click();
+			await poll(
+				() => document.querySelectorAll("[data-project-chip]").length === 0,
+				"every chip to clear",
+			);
+			await poll(
+				() =>
+					spoken.filter((line) => line === "Filters cleared.").length >=
+					round + 1,
+				round === 0
+					? "the first facet-only clear"
+					: "the REPEAT to speak again",
 			);
 		}
 	}),
@@ -1481,6 +1610,15 @@ export const ColumnMenuOpen: Story = {
  * (here the List), the field stays above it, and the subline names what a v1
  * query does and does not read — so a word that lives in an update is not
  * mistaken for a project that does not exist.
+ *
+ * The play walks the block's OTHER door and back (agent review round 7, R10;
+ * design round 4, D10): it clears the query, sets the pair of facets whose
+ * intersection is empty, and checks the FILTER-only variant — its own heading
+ * and recovery sentence, and exactly ONE Clear all on screen. U14's count is
+ * the one the chips row cannot pass: with the block up the row keeps its
+ * chips and hides its copy, where the screen this pin was born against held
+ * two identically labelled buttons. The walk restores the query state so the
+ * frame is the variant the directory has always shown.
  */
 export const NoMatch: Story = {
 	render: () => page({ view: "list", projects: MANY }),
@@ -1508,6 +1646,86 @@ export const NoMatch: Story = {
 				text.includes("Clearing the search and filters restores the list.")
 			);
 		}, "the search disclaimer and the recovery sentence");
+		/* R10/U14's count, query side: the field's own clear is the exit, so
+		 * the block carries the only Clear all. */
+		const clearAlls = () =>
+			[...document.querySelectorAll<HTMLElement>("button")].filter(
+				(node) => node.textContent?.trim() === "Clear all",
+			);
+		await poll(
+			() => clearAlls().length === 1,
+			"exactly one Clear all in the query no-match state",
+		);
+		/* D10's walk, door one: clear the query, leaving the list in charge. */
+		const bodyClear = clearAlls()[0];
+		if (!bodyClear) throw new Error("the block's Clear all is absent");
+		bodyClear.click();
+		await poll(
+			() => !(document.body.textContent ?? "").includes("No projects match"),
+			"the block to retire on its own Clear all",
+		);
+		/* Door two: the facet pair whose intersection is empty (Done rows have no
+		 * live sessions), with no query typed — the variant nothing showed. */
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Done"),
+				),
+			"the Done option",
+		);
+		for (const [index, label] of ["Done", "Has live sessions"].entries()) {
+			const option = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith(label));
+			if (!option) throw new Error(`the ${label} option is absent`);
+			option.click();
+			/* ONE faceted click per commit: the panel's `onToggle` closes over
+			 * the filters of ITS render, so two clicks in one tick write the
+			 * second state from the first's absence (this walk measured exactly
+			 * that - the pair collapsed to the live facet alone). Waiting for
+			 * the chip commits the first press before the second, which is the
+			 * pace a reader's own hands give for free. */
+			await poll(
+				() =>
+					document.querySelectorAll("[data-project-chip]").length === index + 1,
+				`the ${label} chip`,
+			);
+		}
+		await userEvent.keyboard("{Escape}");
+		/* The filter-only heading names no query, and U14's count is what
+		 * discriminates — two buttons stood here before the fix. */
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("No projects match.") &&
+				text.includes("Try removing a filter.") &&
+				text.includes("Clearing the filters restores the list.")
+			);
+		}, "the filter-only heading and recovery sentence");
+		await poll(
+			() => clearAlls().length === 1,
+			"exactly one Clear all in the filter-only no-match state",
+		);
+		/* Restore the query variant the frame exists for. */
+		const restoreClear = clearAlls()[0];
+		if (!restoreClear) throw new Error("the block's Clear all is absent");
+		restoreClear.click();
+		await poll(
+			() => !(document.body.textContent ?? "").includes("No projects match"),
+			"the block to retire",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"zzznothing",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					'No projects match "zzznothing".',
+				),
+			"the query no-match state to return",
+		);
 	}),
 };
 
