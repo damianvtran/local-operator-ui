@@ -44,11 +44,11 @@
  * (`openConversation`, the chat feature's one owner of that URL write).
  */
 
-import { Badge, Button } from "@shared/components/ui";
 import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { Badge, Button } from "@shared/components/ui";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -91,8 +91,8 @@ import {
 import { useNavigate } from "react-router-dom";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import { openConversation } from "../../chat/open-conversation";
-import { useRequestProjectUpdate } from "../hooks/use-request-update";
 import { useProjectDetail } from "../hooks/use-projects-queries";
+import { useRequestProjectUpdate } from "../hooks/use-request-update";
 import {
 	BOARD_COLUMNS,
 	BOARD_SIDE_COLUMNS,

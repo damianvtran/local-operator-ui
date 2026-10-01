@@ -39,7 +39,6 @@
  * doors honest against an answer the user did not produce themselves.
  */
 
-import { useCallback, useSyncExternalStore } from "react";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
 	dismissToast,
@@ -49,6 +48,7 @@ import {
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
+import { useCallback, useSyncExternalStore } from "react";
 import type { DesktopProjectRequestUpdateResult } from "../../../../../shared/desktop-control-contract";
 import { projectDisplayName } from "../project-model";
 import {
@@ -103,7 +103,11 @@ function armFromAnswer(
 		result.state === "sent" &&
 		(result.counts.delivered >= 1 || result.counts.unconfirmed >= 1)
 	) {
-		armRequestUpdateCooldown(projectId, nowMs, nowMs + REQUEST_UPDATE_COOLDOWN_MS);
+		armRequestUpdateCooldown(
+			projectId,
+			nowMs,
+			nowMs + REQUEST_UPDATE_COOLDOWN_MS,
+		);
 	}
 }
 
@@ -184,7 +188,7 @@ export async function sendRequestUpdate(
 			message
 				? `Could not request updates: ${endedSentence(message)}`
 				: "The request could not be confirmed.",
-			{ id: toastId, duration: Infinity },
+			{ id: toastId, duration: Number.POSITIVE_INFINITY },
 		);
 	} finally {
 		clearTimeout(loadingTimer);
@@ -193,7 +197,9 @@ export async function sendRequestUpdate(
 }
 
 /** The door's action: fire the flow, keep React out of the way. */
-export function useRequestProjectUpdate(): (target: RequestUpdateTarget) => void {
+export function useRequestProjectUpdate(): (
+	target: RequestUpdateTarget,
+) => void {
 	return useCallback((target: RequestUpdateTarget) => {
 		void sendRequestUpdate(target);
 	}, []);
@@ -221,7 +227,12 @@ export function useRequestUpdateState(projectId: string): {
 	);
 	const sending = isRequestUpdateInFlight(projectId);
 	const cooldown = requestUpdateCooldown(projectId);
-	const remainingMs = cooldown !== undefined ? cooldown.untilMs - Date.now() : 0;
+	const remainingMs =
+		cooldown !== undefined ? cooldown.untilMs - Date.now() : 0;
 	const cooling = remainingMs > 0;
-	return { sending, cooling, cooldownRemainingMs: cooling ? remainingMs : null };
+	return {
+		sending,
+		cooling,
+		cooldownRemainingMs: cooling ? remainingMs : null,
+	};
 }
