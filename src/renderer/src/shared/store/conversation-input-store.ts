@@ -1414,9 +1414,16 @@ export const useConversationInputStore = create<ConversationInputStoreState>()(
 						[conversationId]: {
 							...existing,
 							currentInput: value,
-							// The redaction count belongs to the text it was measured on, so it
-							// goes with the text it described rather than across the swap.
-							unredactedChars: 0,
+							/*
+							 * KEPT, NOT ZEROED (agent review round 2, N-3): the store's own
+							 * convention, set by `beginInFlight`, is that a disclosure survives
+							 * a box write that does not CONSUME the text it measured
+							 * (`textLeaves ? 0 : row.unredactedChars`). The swap moves text
+							 * between buffers without sending any, so clearing here told the
+							 * user a plaintext disclosure was gone while the characters it
+							 * described were still on the row.
+							 */
+							unredactedChars: existing.unredactedChars ?? 0,
 							textRevision: (existing.textRevision ?? 0) + 1,
 						},
 					},

@@ -1637,7 +1637,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
 										undelivered={undeliveredOnScreen}
-										gate={canonical.view.frontend?.pending_gate ?? null}
+										/*
+										 * THE ONE DERIVATION, here too (agent review
+										 * round 2, N-1). This feeds the transcript's OWN
+										 * working line and its liveness term, so reading
+										 * the raw field left the one surface that DRAWS
+										 * "the agent is parked on you" answering from the
+										 * mirrored ask while the composer's term
+										 * answered from `gate`.
+										 */
+										gate={gate}
 										waiting={canonical.busy}
 										starting={canonical.starting === true}
 										startingAfterId={canonical.startingAfterId ?? null}

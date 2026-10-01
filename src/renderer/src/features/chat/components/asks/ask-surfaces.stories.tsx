@@ -279,6 +279,14 @@ export const UnsupportedBackend: Story = {
 export const Refused: Story = {
 	args: {
 		frontend: frontend([ONE]),
+		/*
+		 * EXPANDED, or the story photographs the wrong surface: without it the panel
+		 * never mounts and the refusal sentence it exists for is not painted at all
+		 * - which is why the design round could not review the refused row from any
+		 * frame in the set (design round 2, D15). The state is "the row that was
+		 * pressed shows the backend's refusal", and the row is in the panel.
+		 */
+		expanded: true,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -289,5 +297,30 @@ export const Refused: Story = {
 					"That question was already settled, so your answer was not sent.",
 			},
 		},
+	},
+};
+
+/**
+ * THE ANSWERABLE STATE (design round 2, D15): a complete draft, so the primary
+ * action is ENABLED.
+ *
+ * The designer could not reach it from any story - `Expanded` deliberately owns no
+ * draft - and an enabled control is exactly the state a disabled-state frame cannot
+ * vouch for: the two differ by ground AND, since D7, by edge, so a reader comparing
+ * the pair is checking a real difference rather than one frame twice.
+ */
+export const AnswerReady: Story = {
+	args: {
+		frontend: frontend([ONE]),
+		/* The panel opens on the same door the app uses. */
+		expanded: true,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		/*
+		 * A COMPLETE draft for the ask's only question: `askAnswerMap` returns a body
+		 * for exactly this shape, which is the condition `Send answer` enables on.
+		 */
+		drafts: { "a-7f3c": { target: ["staging"] } },
 	},
 };

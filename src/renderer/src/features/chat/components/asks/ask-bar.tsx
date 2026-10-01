@@ -31,7 +31,7 @@
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { AskQueueView } from "../../ask-queue";
-import { askBarText } from "../../ask-queue";
+import { askBarLabel, askBarText } from "../../ask-queue";
 
 export type AskBarProps = {
 	view: AskQueueView;
@@ -83,12 +83,30 @@ export const AskBar = ({
 		>
 			<button
 				type="button"
+				/*
+				 * Addressed by `AskSurfaces` on collapse, to hand focus back here (UX
+				 * round 2, U6): the control that opened the panel is the control a
+				 * keyboard user expects to return to, and a `data-` handle keeps that
+				 * without a ref plumbed through a presentational component.
+				 */
+				data-lo-ask-bar-toggle=""
 				onClick={onToggle}
 				/* The bar is a control, so it says what pressing it does rather than
 				 * restating its own visible text - the label a screen reader reads is
 				 * the sentence plus the action. */
 				aria-expanded={expanded}
-				aria-label={`${label}. ${expanded ? "Collapse" : "Expand to answer"}.`}
+				/*
+				 * Q-3 (QA round 2): the sentence may already end in a full stop - a
+				 * question does ("…the staging cluster?") - so appending one produced
+				 * "cluster.. Collapse." A trailing stop is only added when the sentence
+				 * does not already supply one.
+				 */
+				/*
+				 * Composed in `ask-queue`'s `askBarLabel` rather than inline, so the
+				 * full-stop rule (a question already ends in one - QA round 2, Q-3) is
+				 * assertable without opening a story.
+				 */
+				aria-label={askBarLabel(view, expanded)}
 				className={cn(
 					"flex w-full min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-left",
 					// The composer status chip's own triple: a `surface` fill with a
@@ -107,10 +125,12 @@ export const AskBar = ({
 						// The accent's one spend in this row, and the design's own choice of
 						// what it means: this glyph is what says a question is outstanding.
 						// Persistent, never animated.
-						// `ink` rather than `muted` on the settled arm for the same reason as
-						// the sentence below (design round 1, D3): the muted role is under AA
-						// on this surface in both palettes.
-						settledOnly ? "text-ink" : "text-accent",
+						// The GLYPH keeps the muted role: round 1's D3 premise (the muted pair
+						// failing AA here) was refuted by the design round's own re-measurement
+						// (7.85:1 dark / 8.19:1 light, contract-floored at 5.5:1), so the
+						// sentence alone keeps the brighter `ink` it was explicitly allowed to
+						// keep (design round 2, D12).
+						settledOnly ? "text-ink-muted" : "text-accent",
 					)}
 				>
 					?

@@ -154,12 +154,36 @@ export const AskSurfaces = ({
 		if (!wasPopulated || !expanded) return;
 		setExpanded(false);
 	});
+	/*
+	 * FOCUS COMES BACK TO THE BAR (UX round 2, U6).
+	 *
+	 * Escape out of the panel unmounts the option that held focus, so
+	 * `document.activeElement` is the BODY and a keyboard user's next Tab starts at
+	 * the top of the document - on a surface they had just left deliberately.
+	 *
+	 * NARROW ON PURPOSE: it fires only when focus actually fell to the body. A
+	 * collapse from the COMPOSER (the same key, the other focus stop) leaves focus
+	 * in the box where the user is typing, and moving it to the bar there would be
+	 * the focus theft this whole surface is built to avoid.
+	 */
+	const rootRef = useRef<HTMLDivElement | null>(null);
+	const wasExpanded = useRef(false);
+	useEffect(() => {
+		const was = wasExpanded.current;
+		wasExpanded.current = expanded;
+		if (!was || expanded) return;
+		const active = document.activeElement;
+		if (active !== null && active !== document.body) return;
+		rootRef.current
+			?.querySelector<HTMLButtonElement>("[data-lo-ask-bar-toggle]")
+			?.focus();
+	}, [expanded]);
 	// An absent queue is not an empty one: `sessionAsks` returns null when this
 	// backend does not publish queued asks, and nothing mounts at all.
 	if (sessionAsks(frontend) === null) return null;
 
 	return (
-		<div className={className}>
+		<div className={className} ref={rootRef}>
 			<AskBar
 				view={view}
 				expanded={expanded}

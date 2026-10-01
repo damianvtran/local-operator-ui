@@ -98,7 +98,7 @@ import {
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askQueueView,
-	askRefusalFallback,
+	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
 import {
@@ -129,6 +129,7 @@ import {
 	interruptUnavailableNotice,
 	sessionInterruptEnabled,
 } from "../interrupt-turn";
+import { pressLandsOnOverlay } from "../keyboard-scopes";
 import {
 	MOVE_NOT_READY_REASON,
 	MOVE_UNAVAILABLE_REASON,
@@ -439,6 +440,23 @@ function SessionPanel({
 	 * disagree about which mode the user is in.
 	 */
 	const [askExpanded, setAskExpanded] = useState(false);
+	/*
+	 * ANSWERING IS NOT THE SAME AS EXPANDED (UX round 2, U7).
+	 *
+	 * A settled-only queue can still be expanded - the history is worth reading -
+	 * but there is nothing to answer into it, and the composer used to enter ask
+	 * mode anyway: the sentence promised an answer the Enter key could not send, and
+	 * the press left the text sitting in a box whose send control was painted in its
+	 * live accent. `sendToAsk` refused correctly (nothing was misrouted), so the
+	 * defect was the promise rather than the route.
+	 *
+	 * Derived from the SAME view the panel and the routing read, so the sentence,
+	 * the control and the route cannot disagree about whether there is an ask to
+	 * answer: with nothing answerable the box keeps the ordinary invitation and
+	 * Enter goes to the conversation, which is the only thing it could mean.
+	 */
+	const askAnswering =
+		askExpanded && Boolean(askQueueView(canonical.frontend).head?.canAnswer);
 	/*
 	 * The two DRAFTS, kept apart (design §5.0's invariant).
 	 *
@@ -1537,7 +1555,7 @@ function SessionPanel({
 		 * ask composer is focused follows the same routing" true by construction
 		 * rather than by a second key handler that could drift from this one.
 		 */
-		if (askExpanded) return await sendToAsk(content);
+		if (askAnswering) return await sendToAsk(content);
 		const store = useCanonicalSessionsStore.getState();
 		// Same ROW the view reads, so a send can never address a different draft
 		// than the one whose retained text and Discard control are shown. The
@@ -2496,12 +2514,12 @@ function SessionPanel({
 					sending: false,
 					/*
 					 * The OWNER's sentence when it sent one; the app's own, CHOSEN BY THE
-					 * STATE the refusal reports, when it did not (agent review F5, QA Q-2).
+					 * STATE the refusal reports, when it did not (agent review F5, QA rounds
+					 * 1 and 2). The choice lives in `askRefusalSentence` because the
+					 * fallback ARGUMENT of `userFacingMessage` is never consulted for a
+					 * `DesktopControlError` - which is what made the first version dead.
 					 */
-					refused: userFacingMessage(
-						outcome.error,
-						askRefusalFallback(outcome.error),
-					),
+					refused: askRefusalSentence(outcome.error),
 				},
 			}));
 			return;
@@ -2800,14 +2818,28 @@ function SessionPanel({
 	 * turn while the panel stayed open. A queued ask exists precisely while a turn
 	 * is live, so that was the common case, not an edge.
 	 *
-	 * TWO MECHANISMS, both the codebase's own:
+	 * THREE GUARDS, and each one answers a way the first version took a key that was
+	 * not its to take (agent review N-2, UX round 2 U5):
 	 *
-	 *  - CAPTURE PHASE, so this runs before the ladder's `window` bubble listener
-	 *    whatever order the two mounted in;
-	 *  - `preventDefault()`, which IS the ladder's claim signal - it reads
-	 *    `defaultPrevented` one microtask after the dispatch, so a claimed press is
-	 *    not an interrupt by the ladder's own rule rather than by a second list of
-	 *    exceptions kept here.
+	 *  - `pressLandsOnOverlay(event.target)` - the app's own predicate, imported
+	 *    from `keyboard-scopes` rather than re-listed here, exactly as
+	 *    `canvas/index.tsx` asks it for the same class of press. This is the
+	 *    measured defect: with the panel expanded, Cmd-K then Escape collapsed the
+	 *    ask panel and left the palette open, so the key fell to a surface that did
+	 *    not have focus.
+	 *  - `event.defaultPrevented` - the ladder's own claim signal. A surface that
+	 *    already claimed the press keeps it.
+	 *  - BUBBLE PHASE, not capture. Capture runs ahead of React's root listener and
+	 *    of every element handler, so a React `onKeyDown` Escape (the aside panel,
+	 *    the thread-search overlay) could never claim the key first; on the bubble
+	 *    phase those run before this one and their `preventDefault()` is visible
+	 *    here.
+	 *
+	 * `stopPropagation()` is GONE. On window it terminates the propagation path at
+	 * the top, so nothing deeper ever saw the event - the shadowing in its purest
+	 * form. It was never load-bearing for the ladder: the ladder stands down on
+	 * `defaultPrevented` (it re-reads it one microtask after the dispatch), so
+	 * `preventDefault()` alone is the whole claim.
 	 *
 	 * Collapsing is the only meaning: design §5.1 asks that Escape on a queued ask
 	 * never carry an inherited blocking-card meaning, and stopping a turn stays
@@ -2817,12 +2849,13 @@ function SessionPanel({
 		if (!askExpanded) return;
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (event.key !== "Escape" || event.isComposing) return;
+			if (event.defaultPrevented) return;
+			if (pressLandsOnOverlay(event.target)) return;
 			event.preventDefault();
-			event.stopPropagation();
 			toggleAskExpanded(false);
 		};
-		window.addEventListener("keydown", onKeyDown, true);
-		return () => window.removeEventListener("keydown", onKeyDown, true);
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
 	}, [askExpanded, toggleAskExpanded]);
 	/*
 	 * Escape is the control's accelerator, attached HERE because this component
@@ -4071,7 +4104,7 @@ function SessionPanel({
 						askDrafts,
 						onAskDraftChange: (askId: string, next: AskDraft) =>
 							setAskDrafts((drafts) => ({ ...drafts, [askId]: next })),
-						askComposerPlaceholder: askExpanded
+						askComposerPlaceholder: askAnswering
 							? ASK_COMPOSER_PLACEHOLDER
 							: undefined,
 					}}
