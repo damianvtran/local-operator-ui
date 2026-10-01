@@ -650,7 +650,10 @@ const StatusCluster = ({
 	 * the call worked. The gate is the same breakpoint as the word's on purpose:
 	 * one number for "the row's trailing edge sheds", rather than a second
 	 * breakpoint a hair away that nothing could derive. The frames the design
-	 * measured (390px) sit above it (342px = 21.4rem), so they are unchanged.
+	 * measured (390px) sit above it - measured, the frame's row is 310px =
+	 * 19.375rem against the 304px breakpoint, so the margin is 6px and not the
+	 * 38px the story's 48px inset would suggest (design round 3, D6: the frame's
+	 * row inset is 80px) - so they are unchanged.
 	 */
 	const wordClass = cn(
 		"font-medium text-meta",
@@ -739,7 +742,25 @@ const StatusCluster = ({
 					{word}
 				</span>
 			) : null}
-			<span className={cn("flex size-3.5 shrink-0 [&_svg]:size-3.5", glyphInk)}>
+			{/*
+			 * THE MARK SLOT ONLY RESERVES A BOX WHEN THERE IS A MARK IN IT (design
+			 * round 3, D5). `size-3.5` used to be unconditional, so a `failed` row -
+			 * which draws no glyph by design, having no non-colour mark of its own -
+			 * paid 14px plus this cluster's gap for an empty box until the row was at
+			 * its floor (320px), where that 20px starved the summary cell to a single
+			 * character (`Attempted w not delivered`). With the box collapsed the
+			 * summary gets its characters back. The sr-only children inside cannot
+			 * hold the box open themselves - `sr-only` is absolutely positioned - so
+			 * nothing is lost when the slot shrinks, and rows that DO draw a mark
+			 * (`running` draws none either, for the same reason) are unchanged.
+			 */}
+			<span
+				className={cn(
+					"flex shrink-0 [&_svg]:size-3.5",
+					Glyph && "size-3.5",
+					glyphInk,
+				)}
+			>
 				{Glyph ? <Glyph aria-hidden={true} /> : null}
 				{/*
 				 * The outcome in words, for a reader who cannot see the glyph.

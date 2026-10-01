@@ -4248,6 +4248,35 @@ test("the partial delivery pair paints an amber word and its own mark, and never
 		[DURATION_SLOT],
 		"the refusal's row sheds the duration too - it is the failed word's containment",
 	);
+	/*
+	 * ...AND A ROW WITH NO MARK RESERVES NO MARK BOX (design round 3, D5). The
+	 * status cluster's slot is 14px plus its 6px gap, and `failed` draws no glyph by
+	 * design, so at the floor that unspent 20px starved the summary cell to ONE
+	 * character (`Attempted w not delivered`). The slot itself stays: it holds the
+	 * sr-only sentence, which is absolutely positioned and cannot hold the box open.
+	 *
+	 * Counted rather than matched, because the row has TWO slots with this class
+	 * list - the leading tool icon, which always holds a glyph, and the status
+	 * cluster's - so a bare `!includes` would pass on either one. The filter is on
+	 * the class TOKENS and not on the variant: React escapes the `&` in
+	 * `[&_svg]:size-3.5` to `[&amp;_svg]:size-3.5` in the rendered attribute, so a
+	 * regex written against the source spelling matches nothing at all.
+	 */
+	const sizedSlots = (markup) =>
+		[...markup.matchAll(/<span class="([^"]*)"/g)]
+			.map((m) => m[1].split(/\s+/))
+			.filter((list) => list.includes("shrink-0") && list.includes("size-3.5"));
+	assert.deepEqual(
+		sizedSlots(renderRow("send", "error", { deliveryState: "failed" })).length,
+		1,
+		"a row that draws no mark reserves no mark's box: only the tool icon is sized",
+	);
+	assert.deepEqual(
+		sizedSlots(renderRow("send", "partial", { deliveryState: "mailbox" }))
+			.length,
+		2,
+		"...while a row that DOES draw one keeps its box",
+	);
 });
 
 /*
