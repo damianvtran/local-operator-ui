@@ -599,9 +599,7 @@ export function entityQueryAdmits(
 	if (!query) return true;
 	return (
 		name.toLocaleLowerCase().includes(query.toLocaleLowerCase()) ||
-		(label ?? "")
-			.toLocaleLowerCase()
-			.includes(query.toLocaleLowerCase()) ||
+		(label ?? "").toLocaleLowerCase().includes(query.toLocaleLowerCase()) ||
 		rowCount > 0
 	);
 }
