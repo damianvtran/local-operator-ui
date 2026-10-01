@@ -125,9 +125,13 @@ export function inlineEditReseed<T>(input: {
 	if (equals(base, fresh)) return "none";
 	if (phase === "idle") return "adopt";
 	/* A clean draft has nothing to lose; a draft that already IS the fresh
-	 * value (someone else wrote exactly what is typed) has nothing to answer. */
-	if (equals(draft, base)) return "adopt";
-	if (equals(draft, fresh)) return "adopt";
+	 * value (someone else wrote exactly what is typed) has nothing to answer.
+	 * The DRAFT is the SECOND argument in both comparisons - the order the
+	 * comparator's directional rule is defined over - so an emptied draft
+	 * adopts a moved record instead of holding a conflict over a request it
+	 * would never send (review round 2, m-A). */
+	if (equals(base, draft)) return "adopt";
+	if (equals(fresh, draft)) return "adopt";
 	return "conflict";
 }
 
