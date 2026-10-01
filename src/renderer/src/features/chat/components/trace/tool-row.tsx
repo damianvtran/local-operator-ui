@@ -638,6 +638,19 @@ const StatusCluster = ({
 	 * carrier (`not delivered`), so shedding it at a narrow width would leave the
 	 * danger WASH - colour alone - saying the row had failed. That row keeps
 	 * today's behaviour exactly: the word is always drawn.
+	 *
+	 * WHAT CONTAINS THE FAILURE ROW INSTEAD (QA round 2, Q1). At 320px the refusal
+	 * measured 259px of content in a 240px box - a 19px overflow, and it is THIS
+	 * branch's longer word that caused it (`not delivered` is 75.6px against the
+	 * 31.9px `failed` `origin/main` prints). The word is frozen and the mark is not
+	 * available to it, so the slot that gives way above it is the DURATION: below
+	 * this width the trailing `0.1s` is shed on every row. That is the app's own
+	 * shed order - `DiffCounters` hides on the same container four lines up - and
+	 * the duration is the one thing in the cluster that says nothing about whether
+	 * the call worked. The gate is the same breakpoint as the word's on purpose:
+	 * one number for "the row's trailing edge sheds", rather than a second
+	 * breakpoint a hair away that nothing could derive. The frames the design
+	 * measured (390px) sit above it (342px = 21.4rem), so they are unchanged.
 	 */
 	const wordClass = cn(
 		"font-medium text-meta",
@@ -751,7 +764,7 @@ const StatusCluster = ({
 			</span>
 			<span
 				className={cn(
-					"w-[5ch] text-right font-mono text-ink-dim text-mono-sm tabular-nums",
+					"hidden w-[5ch] text-right font-mono text-ink-dim text-mono-sm tabular-nums @[19rem]/toolrow:inline",
 				)}
 			>
 				{text}

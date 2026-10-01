@@ -262,6 +262,17 @@ test("a send row's delivery state is read from details, and absent or unknown is
 		// says that instead. Either way there is an action in the sentence.
 		assert.match(note, /again|resending|retry/i);
 	}
+	/*
+	 * ...AND THE DIRECTION A NOTE POINTS MUST BE THE DIRECTION THE CARD RENDERS
+	 * (agent review round 2, MINOR-1 / design D2 / UX U9). The note is drawn ABOVE
+	 * the result block (`[target][message][wake][note][label][machine line]`), so a
+	 * "cause above" sent the reader to the arguments grid while the cause is named
+	 * in the machine line BELOW it. Pinned as a direction rather than as the
+	 * sentence, so the copy can still be rewritten without the pointer drifting
+	 * back.
+	 */
+	assert.doesNotMatch(SEND_DELIVERY_NOTE.failed, /cause above/i);
+	assert.match(SEND_DELIVERY_NOTE.failed, /cause named below/i);
 
 	/*
 	 * Which outcome each state earns, and the COUNT rule that follows from it: the
@@ -4204,6 +4215,38 @@ test("the partial delivery pair paints an amber word and its own mark, and never
 			"@[19rem]/toolrow:inline",
 		),
 		"the word is gated on the ROW's own container, so the row sheds it rather than the summary",
+	);
+	/*
+	 * ...AND THE DURATION IS WHAT GIVES WAY WHEN THE FAILED ROW CANNOT (QA round 2,
+	 * Q1): the refusal's word is frozen and it has no mark to fall back on, so at
+	 * 320px its 259px of content overflowed the 240px box by 19px and the trailing
+	 * `0.4s` is the slot that sheds instead. Pinned EXACTLY, on both a partial row
+	 * and a refusal: a gate removed, moved to another breakpoint or applied to only
+	 * one of them fails here rather than passing on the tokens that survive.
+	 */
+	const DURATION_SLOT = [
+		"hidden",
+		"w-[5ch]",
+		"text-right",
+		"font-mono",
+		"text-ink-dim",
+		"text-mono-sm",
+		"tabular-nums",
+		"@[19rem]/toolrow:inline",
+	];
+	const durationClasses = (markup) =>
+		[...markup.matchAll(/<span class="([^"]*w-\[5ch\][^"]*)"/g)].map((m) =>
+			m[1].split(/\s+/),
+		);
+	assert.deepEqual(
+		durationClasses(narrow),
+		[DURATION_SLOT],
+		"the duration sheds on the same container the word does",
+	);
+	assert.deepEqual(
+		durationClasses(renderRow("send", "error", { deliveryState: "failed" })),
+		[DURATION_SLOT],
+		"the refusal's row sheds the duration too - it is the failed word's containment",
 	);
 });
 

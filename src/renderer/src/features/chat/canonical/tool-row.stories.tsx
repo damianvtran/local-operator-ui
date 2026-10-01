@@ -3560,14 +3560,17 @@ const prose = (id: string, text: string): TranscriptRecord => ({
  *
  * - `delivered` is silent, exactly as it was: the ledger's success draws nothing.
  * - `mailbox` and `unconfirmed` wear the WARNING word and a mark of their own
- *   (`mailbox` / a dashed circle) on the PLAIN ground — never the danger wash,
- *   and never the silent tick, which is the incident's own complaint.
- * - The three states are distinguishable with the colour turned off: three
- *   different words and three different shapes.
+ *   (`mailbox` / `MailQuestion`, an envelope carrying a question) on the PLAIN
+ *   ground — never the danger wash, and never the silent tick, which is the
+ *   incident's own complaint.
+ * - The four states are distinguishable with the colour turned off: four
+ *   different leading words and, for the two partials, two different shapes.
  * - `failed` keeps the danger pathway and the word `not delivered`, which is the
- *   fact (`Sent ... failed` read as a statement about the message).
+ *   fact; its settled verb is `Attempted`, because `Sent … not delivered` is the
+ *   row contradicting itself (UX round 1, U8).
  * - The word never truncates and never wraps: the summary above it is the half
- *   that goes first.
+ *   that goes first, and below 19rem the partial words drop whole while their
+ *   marks and spoken sentences stay (UX round 1, U7).
  */
 const sendDeliveryRows = (): TranscriptRecord[] => [
 	prose("send:prose:0", "Handing the version bump to the release owner."),
@@ -3621,7 +3624,7 @@ const sendDeliveryRows = (): TranscriptRecord[] => [
 			wake: true,
 		},
 		output:
-			"could not deliver to ghost-session: this session cannot receive peer messages. Nothing was delivered (id peer-5f4e3d2c1b0a99887766554433221100) — fix the cause or retry the send.",
+			"could not deliver to ghost-session (pid 37321): this session cannot receive peer messages. Nothing was delivered (id peer-5f4e3d2c1b0a99887766554433221100) — fix the cause or retry the send.",
 		durationS: 0.1,
 		isError: true,
 		delivery: "failed",
@@ -3668,8 +3671,11 @@ export const SendDeliveriesOpen: Story = {
  * cannot act on twice without duplicating a delivery.
  *
  * This frame is the U1 measurement in picture form: the wrapped delivery
- * sentence sits above the arguments, and the machine line under it (the one that
- * continues off the right edge) is no longer the only carrier of what to do.
+ * sentence follows the arguments (the line order the card renders is
+ * `[target][message][wake][note][label][machine line]`, agent review round 2,
+ * D3 — an earlier version of this docstring said the note sat above them), and
+ * the machine line under it (the one that continues off the right edge) is no
+ * longer the only carrier of what to do.
  */
 export const SendDeliveriesUnconfirmedOpen: Story = {
 	render: () => (
@@ -3688,14 +3694,23 @@ export const SendDeliveriesUnconfirmedOpen: Story = {
  *
  * Note the verb: the settled row reads `Attempted`, not `Sent` (UX round 1, U8),
  * because `Sent … not delivered` is the row contradicting itself.
+ *
+ * ONE ROW IN ITS OWN PROSE, and the box is sized to it (design round 2, D1): with
+ * all four rows above it the expanded card ran past the frame and the `Error`
+ * block this frame is CITED for - the label "Error", the cause line naming the
+ * refusal - fell outside the pixels (a whole-frame ink scan found nothing below
+ * the cut). A frame that does not contain the thing it is offered as evidence of
+ * is not evidence, so this one carries the prose around the refusal and the
+ * refusal alone, and the reader can see the block.
  */
 export const SendDeliveriesFailureOpen: Story = {
 	render: () => (
 		<Frame
-			height={460}
+			height={420}
 			openRows
-			keepClosed={[0, 1, 2]}
-			records={sendDeliveryRows()}
+			records={sendDeliveryRows().filter(
+				(record) => record.id === "send:prose:3" || record.id === "send:failed",
+			)}
 		/>
 	),
 };

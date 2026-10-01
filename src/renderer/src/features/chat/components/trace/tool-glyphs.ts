@@ -150,9 +150,22 @@ export function toolIcon(toolName: string): LucideIcon {
  * `Mailbox` is the noun the state is named for (the message is sitting in the
  * recipient's tray), and `MailQuestion` is a message carrying a question - "we do
  * not know where this one is" - chosen over the dashed circle the fourth state
- * first drew, which is the app's BUSY silhouette (`chat-session-status.tsx`'s and
- * `chat-status-strip.tsx`'s spinning loader circle) and so said "still working"
- * on a settled row (UX round 1, U5). Neither is `Inbox` (`peer`'s own tool glyph)
+ * first drew (UX round 1, U5).
+ *
+ * WHY THE CIRCLE WENT, stated with the precedent that actually holds (agent
+ * review round 2, MINOR-3 - the first version of this comment cited a spinner in
+ * `chat-session-status.tsx` that is not a `CircleDashed`). Every busy shape in
+ * this app IS a ring: `chat-session-status.tsx:39,126` spins `LoaderCircle`
+ * (`motion-safe:animate-spin`) and `chat-status-strip.tsx:177` spins `Loader2`.
+ * A ring therefore reads as MOTION before it reads as anything else, and two
+ * settled states wearing one (`run-detail-mcp.tsx:71` for `cold`,
+ * `run-detail-row-parts.tsx:55` for `gone`) is exactly the confusion a settled
+ * delivery row must not add to: `unconfirmed` is the state that means STOP and
+ * CHECK, and `MailQuestion` states that with a shape no spinner in the app can
+ * be mistaken for. The dashed circle is also the only one of the pair that would
+ * have to be read as "in progress" against the row's own `Sent` verb.
+ *
+ * Neither is `Inbox` (`peer`'s own tool glyph)
  * nor `Send` (`send`'s), so a row's mark and its tool glyph cannot be read as each
  * other.
  */

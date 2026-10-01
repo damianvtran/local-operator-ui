@@ -343,7 +343,8 @@ export const SEND_DELIVERY_NOTE: Readonly<
 		"Delivered to their mailbox. The wake got no answer, so they will read the message on their next turn. Do not send it again.",
 	unconfirmed:
 		"Not confirmed: there was no answer and the message is not in their transcript. It may still arrive, so check before resending.",
-	failed: "Nothing was delivered. Fix the cause above or retry the send.",
+	failed:
+		"Nothing was delivered. Fix the cause named below, or retry the send.",
 };
 
 /**
