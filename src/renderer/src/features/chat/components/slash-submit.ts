@@ -297,12 +297,14 @@ export type SlashSubmissionArgs = {
 	 *
 	 * THE THIRD SOURCE, and it is not a convenience: the other two are narrower
 	 * than the field they approximate. `/login openai` is `arguments:
-	 * "required"` with no inline list and no free-text prompt — the desktop
-	 * forwards the typed word as the SELECTION
-	 * (`desktop_commands.py:127`, `selection=args`) — so a union of those two
-	 * read `/login openai` as prose and stopped a command that runs today
-	 * (review round 1, R1; QA Q1 measured the live consequence: the send was
-	 * refused, because a message may not start with `/`).
+	 * "required"` and the desktop forwards the typed word as the SELECTION
+	 * (`desktop_commands.py:127`, `selection=args`) — the provider list covers
+	 * it only while a backend licenses that list (`provider_catalogue`), and
+	 * `/stop`, `/fast` and `/move` carry no list at all — so a union of those two
+	 * read `/login openai` (and their whole-draft forms) as prose and stopped
+	 * commands that run today (review round 1, R1; QA Q1 measured the live
+	 * consequence: the send was refused, because a message may not start with
+	 * `/`).
 	 *
 	 * Optional so a caller that has not wired it composes exactly as before
 	 * rather than failing to build; the composer wires it.
@@ -548,7 +550,9 @@ function tokenLineEnd(draft: string, index: number): number {
  * planner approximated that rule with — `consumes_prompt`, an inline argument
  * list, and `arguments` — are each NARROWER than the field they stand in for, so
  * the two hosts could disagree about one draft: `/login openai` is `required`
- * with no inline list and no prompt, and a sentence whose first two words are a
+ * whose inline list is a licensed suggestion surface rather than the field's
+ * meaning (absent on a backend without the capability, and not what admits the
+ * draft), and a sentence whose first two words are a
  * valid subcommand invocation (`/mcp logout seems to cause a crash`) reads as a
  * command to any test that only looks at the leading token.
  */

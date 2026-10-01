@@ -83,10 +83,7 @@ import type {
 import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
-import {
-	DESTINATIONS,
-	destinationNeedsSession,
-} from "@features/chat/pickers/picker-registry";
+import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
 import {
@@ -156,6 +153,7 @@ import {
 } from "lucide-react";
 import {
 	forwardRef,
+	memo,
 	useCallback,
 	useEffect,
 	useImperativeHandle,
@@ -1456,10 +1454,27 @@ const COMPOSER_BOX = cn(
 	"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
 );
 
+/*
+ * Development render counter — the same instrument `canonical-transcript.tsx`
+ * carries for its rows, and read by the composer's perf harness: incremented in
+ * the render body, so a commit in which the memo boundary below bails out does
+ * NOT count, which is exactly the difference the harness measures. Also exposed
+ * on `window` in development builds, because an automated browser driving the
+ * app cannot import this module's exports.
+ */
+export const messageInputRenderCount: { current: number } = { current: 0 };
+if (import.meta.env.DEV && typeof window !== "undefined") {
+	(
+		window as unknown as {
+			__messageInputRenders?: typeof messageInputRenderCount;
+		}
+	).__messageInputRenders = messageInputRenderCount;
+}
+
 /**
  * MessageInput component
  */
-export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
+const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 	(
 		{
 			onSendMessage,
@@ -1511,6 +1526,7 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 		},
 		ref,
 	) => {
+		messageInputRenderCount.current += 1;
 		/*
 		 * The canonical session's cwd is the answer where there is one; the legacy
 		 * agent record is the fallback so the old backend path keeps its chip.
@@ -2814,6 +2830,12 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 			activeSpec:
 				sessionStatus?.frontend?.effective_model ??
 				sessionStatus?.frontend?.selected_model,
+			/*
+			 * The pane's working directory, for the sessionless MCP catalog read the
+			 * argument list makes — the document it answers depends on this and on
+			 * the session (its query key is `(cwd, sessionId)`).
+			 */
+			cwd,
 		});
 
 		/*
@@ -4497,13 +4519,21 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * `transcript.clear` and `session.compact` keep their TWO-Enter path — a
 				 * single keystroke never detaches the app or clears the transcript view,
 				 * which is the behaviour they already had.
+				 *
+				 * THE ENTRY IS THE EFFECTIVE ONE (`slash.effectiveEntry`, resolved against
+				 * the capability answer in the hook), which is what keeps `/login`,
+				 * `/logout` and `/mcp` clicking through to their pickers on a backend that
+				 * does not license the inline lists: the hook reports no inline for them,
+				 * so the destination runs exactly as it did before the lists existed.
+				 * The two `runs: false` sources complete on a click — that flag is the
+				 * pointer's whole floor, and it must stay false (spec §4.1).
 				 */
 				const shouldRun =
 					disposition.run &&
 					(row.kind === "command"
 						? pointerPickRuns(
 								row.command.destination,
-								DESTINATIONS[row.command.destination],
+								slash.effectiveEntry(row.command.destination),
 							)
 						: (slash.inline?.runs ?? false)) &&
 					Boolean(onSlashCommand);
@@ -8571,4 +8601,19 @@ export const MessageInput = forwardRef<MessageInputHandle, MessageInputProps>(
 	},
 );
 
+/*
+ * THE MEMO BOUNDARY (C1). This component sits under the chat pane, which
+ * re-renders at stream-flush cadence, and it used to re-execute its whole
+ * render on every one of those commits — once per chunk of every streaming
+ * answer — even though a flush changes nothing this box reads. The boundary is
+ * shallow-prop memoisation, so every prop whose identity the pane rebuilds had
+ * to be frozen at its source first (`recordingProbe` in `use-credentials.ts`,
+ * `canonicalStop` in `chat-content.tsx`, and `send`/`dispatchFromControl` in
+ * `chat-page.tsx` via `useStableCallback`); a prop that is still rebuilt per
+ * render would defeat this line, which is why those identities are part of the
+ * contract rather than an optimisation. This changes WHEN the render runs,
+ * never what it produces: everything the box reads reactively — its stores,
+ * its own state — still re-renders it on its own schedule.
+ */
+export const MessageInput = memo(MessageInputForwarded);
 MessageInput.displayName = "MessageInput";

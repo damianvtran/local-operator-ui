@@ -2962,6 +2962,15 @@ const BRANCH_RECORDS = [
 	 * the pair from the tree that includes it.
 	 */
 	"runClosureVocabularyRestampNote",
+	/*
+	 * And by the streaming-smoothness change, this branch's newest top-level
+	 * record: the note that states which commits moved which trees, that the
+	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
+	 * and where the design round's captured pair is carried (D3). It is listed
+	 * for the reason the list exists - a fold that started from main's manifest
+	 * would drop it without a word.
+	 */
+	"streamSmoothRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
