@@ -788,6 +788,19 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			`/v1/desktop/skills?session_id=${sessionId}&name=fixture`,
 			"GET",
 		],
+		/*
+		 * The SESSIONLESS arm: `cwd` travels as the folder to discover from (the
+		 * URLSearchParams encoding is the contract's, not a caller's), the literal
+		 * `~` the staged draft default carries is accepted whole, and NEITHER
+		 * parameter is the home-roots read — never a malformed request.
+		 */
+		[
+			{ op: "skills.list", cwd: "/tmp/skill-folder", name: "fixture" },
+			"/v1/desktop/skills?cwd=%2Ftmp%2Fskill-folder&name=fixture",
+			"GET",
+		],
+		[{ op: "skills.list", cwd: "~" }, "/v1/desktop/skills?cwd=%7E", "GET"],
+		[{ op: "skills.list" }, "/v1/desktop/skills", "GET"],
 		[
 			{ op: "sessions.failovers", sessionId },
 			`/v1/desktop/sessions/${sessionId}/failovers`,
