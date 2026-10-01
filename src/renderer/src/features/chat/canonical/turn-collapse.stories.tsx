@@ -1197,3 +1197,92 @@ export const CompletionsBothVisible: Story = {
 		/>
 	),
 };
+
+/**
+ * THE OPERATOR'S FRESH CONVERSATION (the shape the run-closure predicate change
+ * is about, 2026-09-30).
+ *
+ * WHY THIS CELL EXISTS. The defect the predicate change fixes is only visible on
+ * a conversation that has just started: the transcript's FIRST row is a harness
+ * statement, not a `user` row, and `walkTurns` used to open a head-cut run on it
+ * whose `openingUserIndex` was null - so the reader's own first message arrived
+ * with `closed()` false, was absorbed as a STEER, and disappeared inside the very
+ * first bar under the label `Steered`. The operator's report was exactly this:
+ * "my initial message ended up condensed, which is unexpected". A frame is the
+ * evidence for a row that was hidden and a label that was wrong, and no shipped
+ * story rendered this shape (design's own finding, agent review round 1's frame
+ * prerequisite), which is why the capture could not exist until this cell did.
+ *
+ * THE ROW IS THE ONE THE OPERATOR SAW: `session_mcp_unavailable` at level `info`
+ * (`transcript-reducer.ts`'s `customRow`), the harness's MCP verdict - a
+ * statement that paints and is NOT a boundary, which is why the vocabulary clause
+ * alone cannot fix this shape and `nothingHasRunYet` is the clause that has to
+ * (`scripts/turn-partition-predicate.test.mjs`, shape (b)).
+ *
+ * BUILT THROUGH THE LIVE DOOR, because that is the door a fresh conversation's
+ * prefix row comes through: a harness custom has no live event of its own - the
+ * `applyEvent` switch has no `custom` arm - so it arrives as a `history_delta`
+ * row, the same projection `applyHistoryPage` paints (`payload.kind` is derived
+ * from `custom_type` there). The reader's message and the answer then arrive as
+ * ordinary live frames, stamped from the same frozen instant as every other cell
+ * so the frames stay byte-reproducible.
+ *
+ * WHAT THE PAIR DIFFERS BY (the capture is deferred - see the PR's evidence
+ * section: the disk floor aborted the sweep at 4.4 GiB free against 8 GiB). The
+ * before half is this same cell on the pre-change tree, where the statement, the
+ * message and the call fold into ONE bar that says `Steered` and hides the
+ * reader's own sentence; after the change the statement stands on its own (an
+ * empty preamble never condenses) and the reader's turn keeps its own bar over
+ * its own work.
+ */
+const MCP_WARNING =
+	"[session warning] MCP server 'minerva-qa' is unavailable: its tools are gone for now.\nReason: /mcp reauth minerva-qa — sign-in expired\nIts tools are not callable until the user restores it, and the agent should not retry them in a loop.";
+
+const FRESH_ANSWER =
+	"It is unavailable until you run the reauth command, so I will work without it.";
+
+const freshConversationTurn = (): TranscriptState => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "history_delta",
+			messages: [
+				{
+					id: "w1",
+					custom_type: "session_mcp_unavailable",
+					details: { text: MCP_WARNING },
+				},
+			],
+		},
+		TS,
+	);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: userMessage("u1", QUESTION) },
+		TS + 1_000,
+	);
+	state = runCalls(state, [CALL_B], TS + 3_000);
+	state = applyEvent(
+		state,
+		{ type: "message_start", message: assistantMessage("a1", "") },
+		TS + 9_000,
+	);
+	return applyEvent(
+		state,
+		{ type: "message_end", message: assistantMessage("a1", FRESH_ANSWER) },
+		TS + 10_000,
+	);
+};
+
+/**
+ * The cell itself. `caption` names the fixture rather than the claim, per this
+ * file's rule, so it reads true on both halves of the deferred pair.
+ */
+export const FreshConversation: Story = {
+	render: () => (
+		<Frame
+			transcript={freshConversationTurn()}
+			caption="A fresh conversation — the harness's MCP warning above the reader's own first message and a short answer."
+		/>
+	),
+};
