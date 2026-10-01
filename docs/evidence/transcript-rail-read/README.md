@@ -99,7 +99,9 @@ on both runs.
 ## Why the counts gate does not move
 
 The frames ship as PNG, and `check-evidence.mjs`'s sweep counts `.webp` frames
-only — the same reason the rail's own `docs/evidence/transcript-rail/*.png` set
-does not enter its counts. The full `check-evidence` sweep itself stands
-DEFERRED at capture time (another sweep held the machine lease), which is its
-own documented state; the manifest suite runs on this head and is green.
+only — the same reason the rail's own `docs/evidence/transcript-rail/` set did
+not enter its counts when this run was taken (that set has since been re-encoded
+to lossless WebP on the canonical layout — 2026-09-30, `8b9b827d70`). The full
+`check-evidence` sweep itself stands DEFERRED at capture time (another sweep
+held the machine lease), which is its own documented state; the manifest suite
+runs on this head and is green.
