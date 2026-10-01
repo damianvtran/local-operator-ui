@@ -84,12 +84,15 @@ import {
 	type SendLock,
 	answerGateOption,
 	answerGateSecret,
+	answerQueuedAsk,
 	answerReport,
 	answerValue,
 	approvalAnswerValue,
 	createSendLock,
+	declineQueuedAsk,
 	gateIsSecret,
 } from "../ask-answer";
+import { ASK_ALREADY_SETTLED_MESSAGE } from "../ask-queue";
 import {
 	ownerAnswered,
 	stoppedAfterAdmission,
@@ -398,6 +401,20 @@ function SessionPanel({
 		 */
 		muted: boolean;
 	} | null>(null);
+	/**
+	 * The queued-ask outcomes, keyed by ASK ID.
+	 *
+	 * A separate record from `answerState` rather than a second key in it, because
+	 * the two are keyed by different identities: a gate's record is keyed by the
+	 * gate (so the next question clears it by construction), while a queued ask IS
+	 * the identity - it may be answered long after the frame that carried it, and
+	 * the next ask is a different id rather than a new question of the same one.
+	 * Folding them would leave a gate's stale key able to match an ask id and
+	 * vice versa.
+	 */
+	const [askOutcomes, setAskOutcomes] = useState<
+		Record<string, { sending: boolean; refused: string | null }>
+	>({});
 	/*
 	 * The gate this panel is showing, and this panel's own record of having
 	 * pressed it.
@@ -2396,6 +2413,84 @@ function SessionPanel({
 		settleGateAnswer(outcome, key);
 	};
 	/*
+	 * THE QUEUED-ASK DOORS.
+	 *
+	 * Both post to the session's `/answers` route by `ask_id` and share the gate
+	 * answer's lock, so one answer is in flight at a time across every surface of
+	 * this session whichever shape it is - the property `answerGateOption`'s own
+	 * note states as "one answer per question, whichever surface starts it".
+	 *
+	 * NO EPOCH, deliberately: a queued ask outlives the owner that queued it, and
+	 * the route skips the epoch comparison for this shape (see `answerQueuedAsk`).
+	 * Sending `canonical.ownerEpoch` here would not be harmless caution - it would
+	 * be the one thing that breaks the feature's durability claim, because the
+	 * client answering a reaped runtime's ask holds a stale epoch BY CONSTRUCTION.
+	 *
+	 * The refusal sentence is the OWNER's when it sent one. Every refusal in this
+	 * family is a specific state (`expired`, `already answered by <surface>`,
+	 * `already declined`) and only the backend can tell them apart, so this reads
+	 * its words and falls back to the app's own sentence for the case where a
+	 * refusal crossed the wire without one.
+	 */
+	const settleAskOutcome = (taskId: string, outcome: AnswerOutcome) => {
+		if (outcome.status === "failed") {
+			setAskOutcomes((current) => ({
+				...current,
+				[taskId]: {
+					sending: false,
+					refused: userFacingMessage(
+						outcome.error,
+						ASK_ALREADY_SETTLED_MESSAGE,
+					),
+				},
+			}));
+			return;
+		}
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: false, refused: null },
+		}));
+	};
+	const answerAsk = async (
+		taskId: string,
+		answers: Record<string, string[]>,
+	) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await answerQueuedAsk(
+				{ taskId, answers, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleAskOutcome(taskId, outcome);
+	};
+	const declineAsk = async (taskId: string) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await declineQueuedAsk(
+				{ taskId, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleAskOutcome(taskId, outcome);
+	};
+	/*
 	 * Put focus back after a keyboard answer.
 	 *
 	 * The pressed option unmounts when the gate clears, so focus falls to the
@@ -3765,6 +3860,15 @@ function SessionPanel({
 						 */
 						onAnswerSecret: (value: string) => void answerWithSecret(value),
 						answer: answerForThisGate,
+						/*
+						 * The queued-ask doors. Forwarded by id, because that is the identity the
+						 * panel addresses and the only one an ask keeps across a runtime restart
+						 * (see `askOutcomes` above for why this is a record of its own).
+						 */
+						onAnswerAsk: (taskId: string, answers: Record<string, string[]>) =>
+							void answerAsk(taskId, answers),
+						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
+						askOutcomes,
 					}}
 				/>
 			</div>
