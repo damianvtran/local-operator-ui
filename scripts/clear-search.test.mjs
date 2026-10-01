@@ -177,10 +177,18 @@ test("Escape clears the field and hands focus to the list, and comes back from i
 	 * its clear-half: the query is still emptied on the same press, so nothing
 	 * about what the control DOES was lost, only where the caret lands.
 	 */
+	/*
+	 * THE ANCHOR MOVED WITH ISSUE #663: the roster's own filter made the panel
+	 * hold a second input, so the branch that answers the SEARCH field is scoped
+	 * to the field BY REFERENCE (`target === searchRef.current`) rather than by
+	 * tag name - a tag-name test read the roster field's keys as this field's.
+	 * The contract this case pins is the same one: Escape in the search field
+	 * still clears the query on that press.
+	 */
 	assert.match(
 		keyDown,
-		/target\.tagName === "INPUT"\) \{[\s\S]*?event\.key === "Escape"\) \{\s*setQuery\(""\);/,
-		"the input's Escape branch must still clear the query",
+		/target === searchRef\.current\) \{[\s\S]*?event\.key === "Escape"\) \{\s*setQuery\(""\);/,
+		"the search field's Escape branch must still clear the query",
 	);
 	assert.match(
 		keyDown,

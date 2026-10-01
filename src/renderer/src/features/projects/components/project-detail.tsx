@@ -49,6 +49,7 @@ import {
 	desktopFeatureEnabled,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { useTeamLabelFor } from "@shared/api/local-operator/profile-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { InlineEditPane } from "@shared/components/inline-edit";
 import { Alert, Badge, Button } from "@shared/components/ui";
@@ -119,6 +120,16 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const capabilities = useDesktopCapabilities();
+	/*
+	 * The team the `Managed by` line names, read the way every other human-read
+	 * surface reads it (round 1, R1-3/D5): the same catalogue and gate as
+	 * `teamDisplayName`, so this page cannot name a team differently from the
+	 * start-session picker on top of it. A slug with no resolvable row renders
+	 * as itself.
+	 */
+	const teamLabelFor = useTeamLabelFor(
+		desktopFeatureEnabled(capabilities.data, "team_catalogue"),
+	);
 	const detail = useProjectDetail(projectKey, true);
 	const update = useUpdateProject();
 	const remove = useDeleteProject();
@@ -207,6 +218,17 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 		update
 			.mutateAsync({ key: project.id, fields })
 			.then(() => undefined);
+	/*
+	 * THE TEAM'S HUMAN NAME (the team-labels lane, `69d088ec52`, carried through
+	 * this slice's restructure): the Properties Team row DISPLAYS the
+	 * catalogue's label - resolved through the same `useTeamLabelFor` hook and
+	 * feature gate every other human-read surface uses, so this page cannot
+	 * name a team differently from the start-session picker on top of it - while
+	 * the field still EDITS the raw slug the wire stores. The header's
+	 * `Managed by` line, this resolution's original site, retired with the
+	 * inline-edit slice; the row below is where it moved.
+	 */
+	const teamLabel = project.team ? teamLabelFor(project.team) : null;
 	const milestoneSummary = milestoneSummaryLabel(
 		project.milestones.filter((item) => item.completed_at !== null).length,
 		project.milestones.length,
@@ -363,6 +385,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					project={project}
 					nowMs={nowMs}
 					commit={commitFields}
+					teamLabel={teamLabel}
 				/>
 
 			{/*

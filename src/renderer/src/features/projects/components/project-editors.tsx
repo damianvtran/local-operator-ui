@@ -737,14 +737,23 @@ export const ProjectOwnerField: FC<{
 export const ProjectTeamField: FC<{
 	project: DesktopProjectView;
 	commit: CommitProjectFields;
+	/**
+	 * The catalogue's label for the slug the row EDITS (resolved by the page,
+	 * `useTeamLabelFor`). Display-only: the editor still edits the slug, and
+	 * `null`/absent falls back to it - a slug with no resolvable row renders as
+	 * itself, the hook's own contract.
+	 */
+	label?: string | null;
 	autoBegin?: boolean;
 	onRetire?: () => void;
-}> = ({ project, commit, autoBegin = false, onRetire }) => (
+}> = ({ project, commit, label = null, autoBegin = false, onRetire }) => (
 	<TextField
 		field="team"
 		value={project.team ?? ""}
 		label="Team"
-		display={<span className="text-body-sm text-ink">{project.team}</span>}
+		display={
+			<span className="text-body-sm text-ink">{label ?? project.team}</span>
+		}
 		commitFields={(next) => ({ team: next.trim() })}
 		validate={(next) => projectAttributionRule(next, "team")}
 		labels={editLabels("team", "Team")}

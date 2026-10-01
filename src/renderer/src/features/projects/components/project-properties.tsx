@@ -40,6 +40,14 @@ export type ProjectPropertiesProps = {
 	project: DesktopProjectView;
 	nowMs: number;
 	commit: CommitProjectFields;
+	/**
+	 * The team slug's human label, resolved by the page through the team
+	 * catalogue (`useTeamLabelFor`, the team-labels lane): the row DISPLAYS
+	 * this while editing still edits the slug. `null` when the record has no
+	 * team; the row falls back to the slug when the catalogue cannot resolve
+	 * one (the hook's own contract).
+	 */
+	teamLabel?: string | null;
 };
 
 /** The rows the + Add menu can birth, in the order the menu lists them. */
@@ -69,6 +77,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 	project,
 	nowMs,
 	commit,
+	teamLabel = null,
 }) => {
 	const locale =
 		typeof navigator === "undefined" ? undefined : navigator.language;
@@ -172,6 +181,7 @@ export const ProjectProperties: FC<ProjectPropertiesProps> = ({
 						<ProjectTeamField
 							project={project}
 							commit={commit}
+							label={teamLabel}
 							autoBegin={adding === "team"}
 							onRetire={() => retire("team")}
 						/>
