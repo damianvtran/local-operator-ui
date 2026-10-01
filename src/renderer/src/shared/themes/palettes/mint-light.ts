@@ -138,6 +138,9 @@ export const mintLight: ThemeDefinition = {
 		// border (2:1 at most). Here it is 1.21:1 at its quietest.
 		hairline: "#C6D4C9",
 
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.53:1 there against `hairline`'s 1.20:1.
+		hairlineStrong: "#AEBDB2",
 		// Derived, and the one role the TUI cannot supply. Upstream `edge-hi` is a
 		// decorative edge at about 2:1; here it is the only boundary an input, select
 		// or outlined button has, so it is lifted until it clears 3:1 on every ground

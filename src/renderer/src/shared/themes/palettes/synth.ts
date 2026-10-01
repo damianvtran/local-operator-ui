@@ -129,6 +129,9 @@ export const synth: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 13.03.
 		 */
 		hairline: "#64224E",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.66:1 there against `hairline`'s 1.54:1.
+		hairlineStrong: "#682854",
 		// Derived. The old theme bounded inputs with neon blue at 25 percent alpha,
 		// about 1.5:1.
 		borderControl: "#8A7BA0",

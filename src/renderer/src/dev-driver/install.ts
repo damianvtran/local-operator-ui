@@ -28,6 +28,7 @@
  * answer a gate would make every "it works" captured through it worthless.
  */
 
+import { publishStagedProjection } from "@features/browser/model/browser-projection-store";
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { getFileTypeFromPath } from "@features/chat/utils/file-types";
 import { READ_ENCODING, viewerFor } from "@features/chat/utils/viewer-routing";
@@ -861,6 +862,63 @@ export function installDevDriver(): string[] {
 				contentLength: document.content.length,
 				encoding,
 			};
+		},
+
+		/**
+		 * Stage `count` live consent requests in the browser projection.
+		 *
+		 * WHY THIS VERB EXISTS, and why it stages the PROJECTION rather than a badge:
+		 * main's access queue caps at 16 (`ACCESS_QUEUE_CAP`, `src/main/browser/
+		 * vendor/driver/access-queue.ts`), and every counted badge host — the rail's
+		 * Browser row, the chat header's globe, the URL bar, the approvals dock —
+		 * derives its number from this snapshot's pending set, so a THREE-DIGIT count
+		 * is unreachable by any real request and a design pass cannot be served by
+		 * raising more of them. The snapshot written here is the shape main pushes,
+		 * published through the store's own path (`publishStagedProjection`), so the
+		 * count arithmetic, the badge and its accessible name are all the shipped
+		 * code — the synthetic half is the INPUT, and the evidence that uses this
+		 * verb discloses it rather than letting the frame read as a live state.
+		 *
+		 * WHAT IT MAY NEVER BECOME: a way to answer a gate. It stages pending
+		 * REQUESTS (things waiting for the operator), not approvals — nothing here
+		 * grants, withdraws or decides a consent, which is the line this module's
+		 * header draws for every verb in this table.
+		 */
+		stageLiveConsents: async (payload) => {
+			const request = payload as { count?: unknown } | null;
+			const count = request?.count;
+			if (typeof count !== "number" || !Number.isInteger(count) || count < 0) {
+				throw new Error(
+					`stageLiveConsents count must be a non-negative integer (got ${JSON.stringify(count)})`,
+				);
+			}
+			const now = Date.now();
+			publishStagedProjection({
+				tabs: [],
+				activeTabId: null,
+				url: "",
+				title: "",
+				loading: false,
+				canGoBack: false,
+				canGoForward: false,
+				/*
+				 * Ten minutes of life, the host's own admission window, so
+				 * `liveApprovalCount` counts every one of them at any moment the scene
+				 * captures: an `expiresAt` in the past would render zero.
+				 */
+				pendingConsent: Array.from({ length: count }, (_, index) => ({
+					entryId: `dev-driver-probe-${index + 1}`,
+					origin: `https://dev-driver-probe-${index + 1}.example.com`,
+					authority: `dev-driver-probe-${index + 1}.example.com`,
+					broad: null,
+					expiresAt: now + 10 * 60_000,
+					requesterSessionId: null,
+				})),
+				approvals: [],
+				navFailure: null,
+			});
+			await nextFrame();
+			return { count };
 		},
 	});
 }

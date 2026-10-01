@@ -664,32 +664,48 @@ export const foldImages = (rows: readonly Row[]): TranscriptImage[] => {
 };
 
 /**
- * How many tiles a condensed group's strip draws in its one row.
+ * How many SLOTS a condensed group's strip draws in its one row: up to four
+ * tiles and the `+N` count.
  *
- * THE ROW IS THE BUDGET, and the number is measured rather than chosen: a tile is
- * 98px on an 8px gutter (`gap-2`, and eight ground pixels between the tile boxes
- * in the committed frames, which put them at x52/158/264/370), and the last slot
- * is the `+N more` TEXT rather than a picture: the count takes the slot the FIFTH
- * picture would have had, which is why the cap is 5 slots. Five slots are 4x98 + 3x8 + the count's
- * own ink + one 8px gap, which the committed eight-picture frame measures at 472px
- * end to end (its `+4 more` is 48px of ink), and the narrowest column this strip
- * renders in was measured at 576px (a 640px window: `max-w-[760px]` minus the
- * transcript's own `p-8`) with the live window at 638px - so the row holds at
- * every width this surface reaches, and the height is 91px for any count.
+ * THE ROW IS THE BUDGET, and the number is measured rather than chosen. A tile is
+ * 117px on an 8px gutter (`gap-2`), and the last slot is the `+N` control rather
+ * than a picture: the count takes the slot the FIFTH picture would have had. The
+ * narrowest column this strip renders in was measured at 556px of strip width (a
+ * 640px window: 576px of column minus the strip's own 20px indent; the live
+ * window's column is wider), so the arithmetic is, in strip terms:
  *
- * Capping at all is what makes that claim unconditional: without it a run of 25-30
- * pictures costs ~391px, which is past the ~338.7px an EXPANDED group costs - the
- * one case where condensing would be the taller choice (design review round 1, D3).
+ *     4 x 117 + 4 x 8 + control = 500 + control <= 556   =>   control <= 56px
+ *
+ * and the control is 33.6px (`+4`), 39.3px (`+10`), 41.4px (`+99`): the row is
+ * 541.4px at its worst (`+99`), 14.6px inside the column. In WINDOW terms - which
+ * is how a reader meets it - the strip is the window minus 84px (the transcript's
+ * 2 x `p-8` and the strip's `ml-5`), so the row needs a window of 541.4 + 84 =
+ * ~626px at its worst and 533.6 + 84 = ~618px for `+4`. Against the row this
+ * replaces - 98px tiles and `+N more images`, 111.1px at `+4` and 118.9px at
+ * `+99` - that is 535.1 / 542.9px of strip, ~619 / ~627px of window (the UX round
+ * measured the old floor between a 620px and a 600px window), so like for like the
+ * floor does not rise: it falls by ~1.5px at either digit count, while the tile
+ * gets 42% more area. The narrow label is what pays for it: with the full noun the
+ * same 117px tile would need 4 x 117 + 32 + 118.9 = 618.9px of strip, ~703px of
+ * window, which is past the 640px window this layout is modelled on.
+ *
+ * Because a tile is this wide, FIVE tiles (617px) no longer fit one row: the
+ * cap is therefore the slot count, and a run of exactly five pictures draws four
+ * tiles and a `+1`, the same shape every larger count has. Capping at all is
+ * what keeps the height at one row for any count: without it a run of 25-30
+ * pictures costs ~391px at the old size, more than the ~338.7px an EXPANDED group
+ * costs - the one case where condensing would be the taller choice (design review
+ * round 1, D3).
  */
 export const FOLD_MEDIA_LIMIT = 5;
 
 /**
- * How many tiles the strip draws, and how many the `+N more` slot stands for.
+ * How many tiles the strip draws, and how many the `+N` slot stands for.
  *
- * When the run produced more than a row can hold, the LAST slot is the count
- * itself rather than a fifth picture: the row stays one row either way, and the
- * reader is told how many they are not seeing instead of being left to infer it
- * from a clipped row. The count is also in the condensed header
+ * When the run produced more than a row of tiles can hold, the LAST slot is the
+ * count itself rather than a fifth picture: the row stays one row either way, and
+ * the reader is told how many they are not seeing instead of being left to infer
+ * it from a clipped row. The count is also in the condensed header
  * (`foldMediaClause`) and in the strip's own accessible name, so no reader - with
  * or without a pointer - has to count tiles to learn it.
  *
@@ -709,12 +725,45 @@ export const foldMediaSlots = (
 		   found. The cap still bounds every strip the reader has NOT asked to
 		   expand. */
 			{ shown: Math.max(count, 0), more: 0 }
-		: count <= FOLD_MEDIA_LIMIT
+		: /* `<`, not `<=`: the limit counts SLOTS, and the fifth slot is the count,
+		     so a run of exactly FOLD_MEDIA_LIMIT pictures no longer fits as tiles
+		     (5 x 117 + 32 = 617px against the 556px column) and takes the count
+		     slot as every larger run does. */
+			count < FOLD_MEDIA_LIMIT
 			? { shown: Math.max(count, 0), more: 0 }
 			: {
 					shown: FOLD_MEDIA_LIMIT - 1,
 					more: count - (FOLD_MEDIA_LIMIT - 1),
 				};
+
+/**
+ * How the UNCAPPED strip breaks its tiles into rows: the length of each row.
+ *
+ * The capped row is four tiles wide, so the uncapped strip wraps at the same four
+ * and the width of a row is one constant in both. A plain four-per-row wrap strands
+ * a lone tile whenever the count leaves a remainder of one (5 -> 4+1, 9 -> 4,4,1,
+ * 13 -> 4,4,4,1), and a one-tile second row reads as an accident (design round,
+ * D5: the old strip wrapped 7+1 at 1280px). So when the final row would hold one
+ * tile, the last TWO rows are rebalanced to 3+2 (5 -> 3,2; 9 -> 4,3,2): the rule
+ * is "no row of one, unless the whole strip is one tile". Returned as lengths
+ * rather than a column count so the strip can place each tile explicitly: CSS
+ * auto-placement cannot produce an uneven last pair.
+ */
+export const foldMediaRows = (count: number): number[] => {
+	const perRow = FOLD_MEDIA_LIMIT - 1;
+	if (count <= 0) return [];
+	if (count <= perRow) return [count];
+	const rows = Array.from({ length: Math.floor(count / perRow) }, () => perRow);
+	const remainder = count % perRow;
+	if (remainder === 1) {
+		// Take one tile from the last full row so the remainder row holds two.
+		rows[rows.length - 1] = perRow - 1;
+		rows.push(2);
+	} else if (remainder > 1) {
+		rows.push(remainder);
+	}
+	return rows;
+};
 
 /**
  * The condensed header's clause for the media a run produced, or `null` for a run

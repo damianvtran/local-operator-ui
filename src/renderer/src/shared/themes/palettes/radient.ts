@@ -118,6 +118,9 @@ export const radient: ThemeDefinition = {
 		 * `elevated` is the tightest ground at ΔE00 6.98.
 		 */
 		hairline: "#3C404F",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.83:1 there against `hairline`'s 1.69:1.
+		hairlineStrong: "#404555",
 		// Derived. The old theme bounded inputs with white at 20 percent alpha,
 		// which measured about 1.5:1 on the page ground.
 		borderControl: "#7A8CA3",

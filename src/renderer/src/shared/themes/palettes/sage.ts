@@ -121,6 +121,12 @@ export const sage: ThemeDefinition = {
 		inkDisabled: "#96A088",
 
 		hairline: "#D5D3C5",
+
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+
+		// `sunken`: 1.58:1 there against `hairline`'s 1.15:1.
+
+		hairlineStrong: "#B5B6A6",
 		// Sage's darker sage 8DA985, darkened to clear 3:1 on the lightest ground.
 		// The old theme bounded inputs at 12 percent black, about 1.2:1.
 		borderControl: "#68865F",
