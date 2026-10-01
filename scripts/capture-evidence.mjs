@@ -693,10 +693,13 @@ export const STORIES = [
 	 * absent MEANS), the second is the same run carrying it. `images-three` is the
 	 * same height again - one picture and three cost the same row - which is the
 	 * compactness claim this change makes and the one a reader of the diff should
-	 * be able to see. The extra 71px over the header-only states is the strip: 67
-	 * measured (a 64px picture in the frame's 66px box, plus the row's own line
-	 * box) and 4 of the fold's own `mt-1`. Both numbers are the rig's
-	 * (`condensed-group-media-geometry.mjs`), not this comment's arithmetic.
+	 * be able to see. The extra 87px over the header-only states is the strip: 79
+	 * measured (a 76px picture in the frame's 78px box, plus the row's own line
+	 * box) and 8 of the fold's own `mt-2` (RE-DERIVED FOR THE POLISH PASS: the
+	 * tile went 98x66 -> 117x78, so the pre-change reading here was 67 and 4 -
+	 * the 66px box this comment used to quote is the OLD tile). Both numbers are
+	 * the rig's (`condensed-group-media-geometry.mjs`), not this comment's
+	 * arithmetic.
 	 *
 	 * `image-live` is the other window a reader meets the strip in - the picture
 	 * has landed and the run has not finished - and `image-expanded` is the price
@@ -721,7 +724,8 @@ export const STORIES = [
 	 *   holds a picture whose own canvas IS the page's ground, so the tile's edge
 	 *   is the only thing that gives it an extent.
 	 * - `image-unavailable` is the compact receipt, the one tile state whose SHAPE
-	 *   is new (prose would blow the 66px strip).
+	 *   is new (prose would blow the 78px strip - it was 66px before the tile
+	 *   grew).
 	 *
 	 * `images-many` is now ONE row at 91px, because the cap answers it: the first
 	 * cut let eight pictures wrap to 166px and 25-30 reach ~391px, past the price
@@ -736,6 +740,56 @@ export const STORIES = [
 	["chat-trace-fold--image-tones", 1280, 200],
 	["chat-trace-fold--image-unavailable", 1280, 200],
 	["chat-trace-fold--image-live", 1280, 200],
+	/*
+	 * THE POLISH PASS'S OWN STATES (operator, 2026-09-30). Two frames answer the
+	 * question a still cannot: the tile is BORDERLESS AT REST and its edge returns
+	 * only while the pointer is on it, with the picture zoomed inside the frame
+	 * that clips it. `images-many-hover` is that state - its RESTING partner is
+	 * the `images-many` frame beside it, byte-identical to the before-hover frame
+	 * because the pre-change tile had no hover treatment at all (measured by the
+	 * design round: with `:hover` matched, every computed property was byte-equal
+	 * to rest). `images-many-hover-reduced-motion` is the same state with
+	 * `prefers-reduced-motion: reduce` emulated, where the ZOOM IS ABSENT (it is
+	 * `motion-safe:` only) and the EDGE IS STILL THERE - the cue that always reads
+	 * is a state, not a movement.
+	 */
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-many-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-many-hover-reduced-motion",
+			hoverSettleMs: 400,
+			reducedMotion: true,
+		},
+	],
+	/*
+	 * THE KEYBOARD ARM (design review round 1, D1 - the one MAJOR of that round).
+	 *
+	 * The tile's edge is a hover state AND a keyboard one, and the ring the app
+	 * draws on the focused button is - with the resting edge gone - the ONLY
+	 * control boundary a keyboard reader gets at rest. `tabTo` presses real Tab
+	 * keys until the tile's own button holds focus (and FAILS the run if it never
+	 * does), so these frames show the D4 fix as pixels: the 2px accent ring
+	 * following the frame's 6px radius rather than boxing it square.
+	 */
+	[
+		"chat-trace-fold--images-many",
+		1280,
+		200,
+		{ tabTo: "[data-fold-media] li button", dir: "images-many-focus" },
+	],
 	[
 		"chat-trace-fold--image-expanded",
 		1280,
@@ -848,7 +902,8 @@ export const STORIES = [
 	 * cell (three pictures - one landscape, one portrait, one plot - in one
 	 * capped row of tiles), its `press` row is the expanded state whose price
 	 * the strip replaces, and `images-many` is the overflow count's own frame
-	 * (eight pictures, four tiles and the `+4 more images` control).
+	 * (eight pictures, four tiles and the `+4` count control, whose accessible
+	 * name and title read `4 more images`).
 	 * `images-many-expanded` is that control's press (U8): the bar opens onto
 	 * its sole image-bearing group, whose strip shows the WHOLE set - one
 	 * press reaches the pictures the count stood for. The before half is the
@@ -867,6 +922,65 @@ export const STORIES = [
 		},
 	],
 	["chat-turn-collapse--images-many", 1280, 900],
+	/*
+	 * The bar's three proof states for the same pass: the hover (the tile's edge
+	 * and zoom, which a resting still cannot show), the same under
+	 * `prefers-reduced-motion: reduce` (edge only - the pin the design round can
+	 * check against a frame rather than against code), and the NARROW column, where
+	 * the one-row invariant is the claim: at a 640px window the strip is 556px and
+	 * four 117px tiles plus their gutters and the `+N` are 533.6px, 22.4px inside
+	 * it (measured by `condensed-group-media-geometry.mjs`).
+	 */
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-hover",
+			hoverSettleMs: 400,
+		},
+	],
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{
+			hover: "[data-fold-media] li button",
+			dir: "images-hover-reduced-motion",
+			hoverSettleMs: 400,
+			reducedMotion: true,
+		},
+	],
+	["chat-turn-collapse--images", 640, 900, { dir: "images-narrow" }],
+	/*
+	 * The COUNT at the narrowest column, which is the row the whole size decision
+	 * rests on: four 117px tiles, their four 8px gutters and the `+4` control are
+	 * 533.6px of the 556px the strip has at a 640px window (slack 22.4px, and
+	 * 541.4px worst case at `+99`) - measured by
+	 * `condensed-group-media-geometry.mjs`, and framed here so the wrap claim can
+	 * be seen rather than only computed.
+	 */
+	["chat-turn-collapse--images-many", 640, 900, { dir: "images-many-narrow" }],
+	/* The bar's own keyboard arm, and the uncapped grid's - both callers of the
+	   same tile, so the ring is checked where the strip is flush and where it is
+	   a four-column grid rather than on the group fold alone. */
+	[
+		"chat-turn-collapse--images",
+		1280,
+		900,
+		{ tabTo: "[data-fold-media] li button", dir: "images-focus" },
+	],
+	[
+		"chat-turn-collapse--images-many",
+		1280,
+		900,
+		{
+			press: '[data-turn-summary] button[aria-expanded="false"]',
+			tabTo: "[data-fold-media] li button",
+			dir: "images-many-expanded-focus",
+		},
+	],
 	[
 		"chat-turn-collapse--images-many",
 		1280,
@@ -7566,6 +7680,59 @@ export const STORIES = [
 	["mesh-tab--single-device", 1380, 900],
 	["mesh-tab--two-devices", 1380, 900],
 	["mesh-tab--overlapping-networks", 1380, 900],
+	/*
+	 * THE REACH MODEL'S OWN FRAME (feat/mesh-canvas-redesign): five reach states and one
+	 * working device on one canvas, including the three the shipped set could not produce -
+	 * a budget-exhausted peer, a busy conversation, and a drawn device no read named. The
+	 * story carries the relay's own sentences rather than invented ones.
+	 */
+	["mesh-tab--reach-states", 1380, 900],
+	/*
+	 * THE LIST'S OWN REACH FRAME (agent review round 1, M1/D1/U1/U2): the same fixture behind
+	 * one press on `List`. The list-ink fix has two faces - a not-attempted device must read
+	 * `not asked` with NO hue, and a suspect one must carry its reach word plus the shield
+	 * and badge - and neither face existed on the list in any committed frame before this
+	 * row, because `list-view`'s members can produce neither.
+	 */
+	["mesh-tab--reach-states-list", 1380, 900],
+	/*
+	 * THE SCOPE LAYER'S DRAWN TIERS, on addresses that make the collision real: two peers on
+	 * WireGuard's default subnet (dashed, `same prefix`), one on this device's own (solid,
+	 * `shared with this device`), and two that group with nothing.
+	 *
+	 * AND AT BOTH WIDTHS (agent review round 1, D2/U3): the band the layout reserves is the
+	 * fix for two measured causes - a label behind the node above at 1380x900, and the
+	 * topmost label behind the CANVAS'S own top edge at 1024x768 - so the narrow pass is the
+	 * second cause's proof, the same way `two-devices-narrow` is the responsive claim's.
+	 */
+	["mesh-tab--scopes", 1380, 900],
+	["mesh-tab--scopes", 1024, 768, { dir: "scopes-narrow" }],
+	/*
+	 * THE DECLARED TIER, WHICH NO INSTALL CAN RENDER (design review round 1, D6): the
+	 * story sets the membership field the client half reads (`scope`), so the shipped
+	 * styling is verifiable; the README states, in the same words, that no backend sends
+	 * the field yet.
+	 */
+	["mesh-tab--scopes-declared", 1380, 900],
+	/*
+	 * THE SHARED OPENER (agent review round 2, M4): a peer publishing a LAN address and a
+	 * tunnel address is topmost in TWO groups at once - the collision the reviewer's
+	 * repro measured as two labels on one anchor, with no frame to show it. The state is
+	 * the M4 case itself (two levels), at both widths because the narrow pass is where
+	 * the fit's floor binds; `scopes-nested` is the ruling's "n = 3 if cheap" - three
+	 * INFERRED levels on the same row (a declared tier can never nest: an authored scope
+	 * excludes the device from the prefix arithmetic, which is why that draft was
+	 * replaced) - so the staircase's full pitch is on disk too.
+	 */
+	["mesh-tab--scopes-shared-top", 1380, 900],
+	[
+		"mesh-tab--scopes-shared-top",
+		1024,
+		768,
+		{ dir: "scopes-shared-top-narrow" },
+	],
+	["mesh-tab--scopes-nested", 1380, 900],
+	["mesh-tab--scopes-nested", 1024, 768, { dir: "scopes-nested-narrow" }],
 	["mesh-tab--misconfigured", 1380, 900],
 	["mesh-tab--virgin-device", 1380, 900],
 	["mesh-tab--reads-failed", 1380, 900],
@@ -7707,6 +7874,12 @@ export const STORIES = [
 	// The narrow case, with the panel open: the column and the canvas have to fit
 	// together at the width the app's own sidebar clamps for.
 	["mesh-tab--device-panel", 1024, 768, { dir: "device-panel-narrow" }],
+	/*
+	 * AND THE PANEL'S `never` (design review round 1, D6): a null `Last status frame` on
+	 * the single-device fixture, which every other panel story's stamp kept out of the
+	 * committed set. The play presses the node's own button and waits for the words.
+	 */
+	["mesh-tab--single-device-panel", 1380, 900],
 	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped

@@ -121,6 +121,9 @@ export const githubLight: ThemeDefinition = {
 		// 1.15:1 a 1px line is held to. This holds ΔE00 4.2 from every ground and
 		// 1.19-1.55:1 against them.
 		hairline: "#CBD0D6",
+		// `hairline` stepped toward `inkDim`, so it reads on this palette's own
+		// `sunken`: 1.51:1 there against `hairline`'s 1.19:1.
+		hairlineStrong: "#B4B9C0",
 		// Primer's border.muted AFB8C1 is 1.54:1 against the grounds, and
 		// border.default is no better in a structural role. The edge is walked to 3.1:1
 		// on the darkest ground instead.
