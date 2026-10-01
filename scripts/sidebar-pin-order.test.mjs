@@ -86,6 +86,7 @@ const bundle = await build({
 const {
 	canMovePinnedRow,
 	chatPinMoveCap,
+	chatPinMoveCapJoined,
 	chatPinMoveChord,
 	chatPinMoveRowId,
 	forgetPinnedOrder,
@@ -501,6 +502,21 @@ test("the move chords are the shifted arrows and nothing else", () => {
 	// The spelling the row menu prints.
 	assert.equal(chatPinMoveCap(-1, true), "⌘⇧↑");
 	assert.equal(chatPinMoveCap(1, false), "Ctrl+Shift+↓");
+	/*
+	 * AND THE JOINED SIBLING IS WHAT IT ACTUALLY PRINTS (round-1 design review,
+	 * D1): `KeyboardShortcut` splits its prop on `+`, so the handler's spelling fed
+	 * to it renders as ONE cap three glyphs wide. The property that keeps the two
+	 * from drifting: split the joined form on `+` and the parts concatenate back to
+	 * the handler's spelling. `scripts/chat-keyboard-regions.test.mjs` owns the cap
+	 * pair itself; this file owns what the two items pass to the component.
+	 */
+	assert.equal(chatPinMoveCapJoined(-1, true), "⌘+⇧+↑");
+	assert.equal(chatPinMoveCapJoined(1, true), "⌘+⇧+↓");
+	assert.equal(
+		chatPinMoveCapJoined(-1, true).split("+").join(""),
+		chatPinMoveCap(-1, true),
+	);
+	assert.equal(chatPinMoveCapJoined(1, false), "Ctrl+Shift+↓");
 });
 
 /*
@@ -549,8 +565,10 @@ test("the move is a row control: a menu, a chord, and a live region", () => {
 	// cap. The window runs back to the item's opening tag, so the assertion is
 	// about THAT item rather than about the menu.
 	for (const [label, step, cap] of [
-		["Move conversation up", -1, "chatPinMoveCap(-1, isMac)"],
-		["Move conversation down", 1, "chatPinMoveCap(1, isMac)"],
+		// The JOINED sibling, not the handler's spelling: the item renders caps
+		// through `KeyboardShortcut`, which splits on `+` (D1).
+		["Move conversation up", -1, "chatPinMoveCapJoined(-1, isMac)"],
+		["Move conversation down", 1, "chatPinMoveCapJoined(1, isMac)"],
 	]) {
 		const at = source.indexOf(`<span>${label}</span>`);
 		assert.notEqual(at, -1, `${label} is not in the row menu`);
