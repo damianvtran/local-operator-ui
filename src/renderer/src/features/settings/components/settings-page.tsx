@@ -271,7 +271,7 @@ const RadientSectionTitle: FC = () => (
 );
 
 export const SettingsPage: FC = () => {
-	const laneLeadingColumn = useLaneLeadingColumn("elevated");
+	const laneLeadingColumn = useLaneLeadingColumn("surface");
 	const showAgentReasoning = useUiPreferencesStore(
 		(state) => state.showAgentReasoning,
 	);
@@ -876,7 +876,7 @@ export const SettingsPage: FC = () => {
 	return (
 		<div className="flex h-full w-full overflow-hidden bg-canvas">
 			{/*
-			 * No edge on this wrapper any more. The rail took `elevated` (see
+			 * No edge on this wrapper any more. The rail is `surface` (see
 			 * `settings-sidebar`'s ground note), so the boundary beside the content
 			 * is the tone step it makes against `canvas` — and a drawn line over a
 			 * tone step is the redundant second mark the operator reported as
@@ -884,9 +884,10 @@ export const SettingsPage: FC = () => {
 			 * or remove the right border". It is removed rather than extended,
 			 * because extending would have the shell's lane paint a fence for a
 			 * boundary that already reads (the pass that took the dock's own
-			 * leading rule, #564, removed exactly this kind of mark) while the
-			 * lateral boundaries here — sidebar|rail and rail|content — are both
-			 * tone steps the rail's rung supplies.
+			 * leading rule, #564, removed exactly this kind of mark). The lateral
+			 * boundary on the rail's other side is no boundary at all — the rail
+			 * and the app sidebar are both `surface`, the flat join the agents
+			 * roster makes beside it.
 			 *
 			 * Two widths, and the `min-[1040px]:` step is paired with the
 			 * `(min-width: 1040px)` query inside `SettingsSidebar`, which is what
@@ -903,7 +904,7 @@ export const SettingsPage: FC = () => {
 			<div
 				/*
 				 * The shell puts this rail's ground behind the window's top strip: the
-				 * rail is a leading column standing on `elevated`, and nothing a route
+				 * rail is a leading column standing on `surface`, and nothing a route
 				 * renders can reach y0 itself (the column is inside two clipped
 				 * ancestors), so the lane above the shell's columns paints this
 				 * column's own ground across its width — without the hand-over the lane
