@@ -2971,6 +2971,18 @@ const BRANCH_RECORDS = [
 	 * would drop it without a word.
 	 */
 	"streamSmoothRestampNote",
+	/*
+	 * And by the row menu's Fork item (#739), this branch's own newest top-level
+	 * record: the note that states the set was re-taken whole (24 frames, the ten
+	 * #694 states with the third row drawn plus `fork-withheld` and `fork-pressed`),
+	 * that the design record moved with it, and the two facts a re-capturer needs -
+	 * the pointer states' story now waits for the rig's pointer before opening the
+	 * menu (the modal body's `pointer-events: none` made the old timer a race the
+	 * fold lost), and why `dirtyWorkingTree` reads `true`. It quotes no tree-hash
+	 * pair (commit SHAs only), so it joins this list and not
+	 * `STAMP_BINDING_NOTES`.
+	 */
+	"rowForkMenuNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
