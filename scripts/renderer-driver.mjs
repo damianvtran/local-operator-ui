@@ -34912,11 +34912,13 @@ async function sceneMiniView(app, cdp) {
 		/* ---- dictating (a fake recorder; see the constant) --------------------- */
 		/*
 		 * THE MIC NEEDS A LIVE CREDENTIAL PROBE. The composer gates its dictation
-		 * on the Radient key (`recordingProbe`), which is a read from the backend:
-		 * with no daemon the probe cannot answer, the control is disabled by
-		 * design, and a walk that pressed it would be asserting a state this run
-		 * cannot produce. Disclosed rather than asserted away - the with-backend
-		 * run is where the recording state is photographed.
+		 * on the host's probe (`recordingProbe`), which the mini reads from the
+		 * backend - the server's reachability, the capabilities negotiation, the
+		 * Radient session and the legacy key: with no daemon the probe cannot
+		 * answer, the control is disabled by design, and a walk that pressed it
+		 * would be asserting a state this run cannot produce. Disclosed rather
+		 * than asserted away - the with-backend run is where the recording state
+		 * is photographed.
 		 */
 		if (BACKEND) {
 			await mini.send("Page.addScriptToEvaluateOnNewDocument", {
