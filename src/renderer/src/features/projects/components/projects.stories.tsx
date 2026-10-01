@@ -696,6 +696,7 @@ const TEAMS: ReusableTeam[] = [
 	{
 		id: "t1",
 		name: "atlas",
+		label: "Atlas Payments",
 		description: "The payments platform team",
 		manager: "manager",
 		members: [{ role: "coder", count: 2, kind: "agent" }],
@@ -706,6 +707,20 @@ const TEAMS: ReusableTeam[] = [
 		description: "Infrastructure and releases",
 		manager: "manager",
 		members: [],
+	},
+	/*
+	 * The team the project fixtures actually name (`team: "platform"`): without
+	 * it in the catalogue the D5 frames would show the fallback, not the fix —
+	 * the list group heading and the detail's `Managed by` line resolve through
+	 * this roster, and a third row here is what makes them resolve at all.
+	 */
+	{
+		id: "t3",
+		name: "platform",
+		label: "Platform Delivery",
+		description: "Ships the platform releases",
+		manager: "manager",
+		members: [{ role: "reviewer", count: 1, kind: "agent" }],
 	},
 ];
 
@@ -836,6 +851,13 @@ const roleGround = (role: string): string => {
  * operable, because a band is a label and the row-style hover it once resembled
  * is what the reporter read as broken.
  *
+ * The last clause is the fold's own (#716's team labels, folded in): the band
+ * prints the RESOLVED name - `teamLabelFor` wired from the page - and never the
+ * raw binding, so a fixture whose label differs from its slug is what makes the
+ * integration falsifiable at all. The fixture is main's own catalogue entry
+ * (`platform` -> `Platform Delivery`), which is the smallest thing that can
+ * exercise it: the same stories, the same lanes, one resolved name.
+ *
  * Each clause can fail on its own, and each is the shape the change made:
  * `main` draws a `canvas` span with a `py-1.5` box and no heading, so the height
  * clause and the heading clause fail there; the register the first pass shipped
@@ -844,7 +866,11 @@ const roleGround = (role: string): string => {
  * count's accessible name, and the association between the section's heading and
  * the list it labels - the two places the visual grouping does not reach.
  */
-const assertTeamBand = (selector: string, expectedLabel: string) => {
+const assertTeamBand = (
+	selector: string,
+	expectedLabel: string,
+	slug: string,
+) => {
 	const bands = [...document.querySelectorAll<HTMLElement>(selector)];
 	if (bands.length === 0) throw new Error(`no team band matches ${selector}`);
 	const surface = roleGround("bg-surface");
@@ -934,7 +960,21 @@ const assertTeamBand = (selector: string, expectedLabel: string) => {
 	);
 	if (!exact) {
 		throw new Error(
-			`${selector}: no band prints the fixture's team name "${expectedLabel}" exactly - a register that re-cases user data fails here`,
+			`${selector}: no band prints the resolved name "${expectedLabel}" exactly - a register that re-cases user data fails here`,
+		);
+	}
+	/*
+	 * AND THE SLUG MUST NOT BE WHAT IS PRINTED (the fold onto main's team labels,
+	 * #716). The catalogue in this file resolves `platform` to `Platform
+	 * Delivery`, so a band that prints the BINDING rather than the resolved name
+	 * is a silent regression to the pre-label behaviour - the failure mode the
+	 * integration exists to prevent, and one no colour or geometry clause can see.
+	 */
+	if (
+		bands.some((band) => (band.querySelector("h3")?.textContent ?? "") === slug)
+	) {
+		throw new Error(
+			`${selector}: a band prints the raw slug "${slug}" where the catalogue has a label`,
 		);
 	}
 };
@@ -1153,7 +1193,7 @@ export const Populated: Story = {
 	render: () => page({ projects: THREE }),
 	play: playOnce("populated-band", async () => {
 		await bandsReady();
-		assertTeamBand("[data-project-team]", "platform");
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
 	}),
 };
 
@@ -1171,7 +1211,7 @@ export const NarrowColumns: Story = {
 	render: () => page({ projects: THREE }),
 	play: playOnce("narrow-columns-band", async () => {
 		await bandsReady();
-		assertTeamBand("[data-project-team]", "platform");
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
 	}),
 };
 
@@ -1180,7 +1220,7 @@ export const Many: Story = {
 	render: () => page({ projects: MANY }),
 	play: playOnce("many-band", async () => {
 		await bandsReady();
-		assertTeamBand("[data-project-team]", "platform");
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
 	}),
 };
 
@@ -1216,7 +1256,7 @@ export const ListTeamsSticky: Story = {
 				`fewer than two team headers rendered (${headers.length})`,
 			);
 		}
-		assertTeamBand("[data-project-team]", "platform");
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
 		const second = headers[1];
 		element.scrollTop +=
 			second.getBoundingClientRect().top - element.getBoundingClientRect().top;

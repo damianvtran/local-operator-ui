@@ -63,6 +63,13 @@ type ProjectListProps = {
 	/** Read once per render by the page, the schedules page's own rule. */
 	nowMs: number;
 	onOpen: (project: DesktopProject) => void;
+	/**
+	 * The team's readable name for the group headings (round 1, D5). A PROP
+	 * rather than a query in here, because this list renders and the page owns
+	 * the reads (the same rule `nowMs` follows); absent - a test, a story with
+	 * no catalogue - the slug renders exactly as it always did.
+	 */
+	teamLabelFor?: (slug: string) => string;
 };
 
 /** One column's plan: how it sheds, and how wide it is when it is shown. */
@@ -123,6 +130,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 	projects,
 	nowMs,
 	onOpen,
+	teamLabelFor = (name) => name,
 }) => {
 	const groups = groupByTeam(projects, projectTeamName);
 	/* The prefix every section heading's id is built from (U2). */
@@ -161,7 +169,14 @@ export const ProjectList: FC<ProjectListProps> = ({
 				{groups.map((group, index) => (
 					<li key={group.team ?? ""}>
 						<TeamSectionHeader
-							team={group.team}
+							/*
+							 * The RESOLVED name (`teamLabelFor`, wired from the page by main's
+							 * #716 exactly as the board and detail get it), never the raw
+							 * binding: with a catalogue loaded the band prints the team's
+							 * readable label, and with none it prints the slug, which is
+							 * this surface's behaviour before labels existed.
+							 */
+							team={group.team == null ? null : teamLabelFor(group.team)}
 							count={group.items.length}
 							headingId={sectionHeadingId(index)}
 							className="sticky top-0 z-10"
