@@ -42,6 +42,12 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/chat-regions";',
 			'export * from "./src/renderer/src/features/chat/draft-rows";',
+			/*
+			 * The Move pair's chord spellings live with the move order, not with the
+			 * row acts: `chat-pin-order.ts` owns them and this bundle has to reach them
+			 * to assert the joined sibling (round-1 design review, D1).
+			 */
+			'export * from "./src/renderer/src/features/chat/chat-pin-order";',
 			'export * from "./src/renderer/src/features/chat/canvas-shortcut";',
 		].join("\n"),
 		resolveDir: ROOT,
@@ -254,6 +260,53 @@ test("the cap and the attribute the chord presses are one spelling", () => {
 	assert.equal(
 		mod.chatRowActCapJoined("pin", false).split("+").join(""),
 		"CtrlShiftP",
+	);
+	/*
+	 * AND THE MOVE PAIR'S JOINED SIBLING (round-1 design review, D1). The row
+	 * menu's two Move items were the one place feeding `KeyboardShortcut` the
+	 * handler's spelling - `chatPinMoveCap` returns `⌘⇧↑`, which the component
+	 * splits into ONE cap three glyphs wide, so the two rows drew a 21px cap where
+	 * the rows above them drew three caps across 52px. Same property as the pair
+	 * above: reconstruct the handler's spelling by splitting the joined form, and
+	 * pin the non-mac bytes (whose joined form IS the handler's string, so the
+	 * assertion has to name the literal or it cannot fail).
+	 */
+	assert.equal(mod.chatPinMoveCap(-1, true), "⌘⇧↑");
+	assert.equal(mod.chatPinMoveCap(1, true), "⌘⇧↓");
+	assert.equal(mod.chatPinMoveCapJoined(-1, true), "⌘+⇧+↑");
+	assert.equal(mod.chatPinMoveCapJoined(1, true), "⌘+⇧+↓");
+	assert.equal(
+		mod.chatPinMoveCapJoined(-1, true).split("+").join(""),
+		mod.chatPinMoveCap(-1, true),
+	);
+	assert.equal(
+		mod.chatPinMoveCapJoined(1, true).split("+").join(""),
+		mod.chatPinMoveCap(1, true),
+	);
+	assert.equal(mod.chatPinMoveCapJoined(-1, false), "Ctrl+Shift+↑");
+	assert.equal(
+		mod.chatPinMoveCapJoined(1, false).split("+").join(""),
+		"CtrlShift↓",
+	);
+	/*
+	 * AND THE MENU PRINTS THROUGH IT. The property the two functions cannot state
+	 * on their own: the sidebar's two Move items call the joined sibling, not the
+	 * handler's spelling - which is what D1 found and what a future edit to either
+	 * row could undo silently.
+	 */
+	const sidebar = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.equal(
+		sidebar.includes("shortcut={chatPinMoveCap("),
+		false,
+		"a Move item feeds `KeyboardShortcut` the handler's spelling again - it renders as ONE cap three glyphs wide (D1)",
+	);
+	assert.equal(
+		sidebar.split("chatPinMoveCapJoined(").length - 1,
+		2,
+		"the two Move items no longer both print their chord through the joined sibling",
 	);
 	assert.equal(mod.CHAT_ROW_ACT_ATTR.pin, "data-session-pin");
 	assert.equal(mod.CHAT_ROW_ACT_ATTR.archive, "data-session-archive");

@@ -53,15 +53,27 @@
  * page (§ 8) — so `shellHostAction` yields on the REQUEST's destination and
  * leaves the claim to the branch that also asks what this host can present.
  *
- * ## The one race, and why there is not one
+ * ## The one race, and why there is STILL not one — with two writers
  *
  * A request written in the same React commit that mounts a pane would be decided
  * before the pane's claim ran, because effects fire child-first in tree order
- * and this host is mounted before `<main>`. It cannot happen: the only writer of
- * a request is the command palette (`command-palette.tsx`), and for a
- * `machine-panel` destination it deliberately does NOT navigate — so a machine
- * panel request never arrives in a commit that mounts a pane. A pane that is
- * already up claimed long ago, which is the case the guard above is for.
+ * and this host is mounted before `<main>`.
+ *
+ * There are TWO writers of a request now, and the second one is the reason this
+ * paragraph was rewritten (round-1 agent review, MINOR 3): the command palette
+ * (`command-palette.tsx`) does not navigate for a `machine-panel` destination, so
+ * its machine-panel requests never arrive in a commit that mounts a pane — but
+ * #739's row menu writes a PANE-ONLY request and then routes to `/chat`
+ * (`chat-sidebar.tsx`), i.e. it arrives in exactly the commit that mounts a pane.
+ *
+ * What makes that safe is the ORDER inside `shellHostAction` rather than the
+ * identity of the writer: a request this host cannot present returns `yield`
+ * BEFORE the claim is read (`panel-presentation-store.ts`), so it is left in the
+ * store for the pane to consume instead of being retired here. That is a fact
+ * about the request, not about which host's effect React ran first — the same
+ * property that made the single-writer case safe, and it holds unchanged for a
+ * writer that navigates. A pane that is already up claimed long ago, which is the
+ * case the guard above is for.
  */
 
 import {
@@ -138,14 +150,15 @@ export const PanelOutlet: FC = () => {
 		}
 		if (action !== "present") return;
 		/*
-		 * The invoker comes off the REQUEST when the requester could name one. The
-		 * palette does, and it is the only writer: its focus lives in its own search
-		 * field, which unmounts in this same commit, so reading
-		 * `document.activeElement` here would record a node that is already gone and
-		 * closing the panel would strand the keyboard on `body` (UX round 1, U1).
-		 * The fallback stays for a request written by anything without a control to
-		 * name — the onboarding tour driving the store, a future second requester —
-		 * where whatever is focused now is the honest answer.
+		 * The invoker comes off the REQUEST when the requester could name one, and
+		 * both writers do: the palette names its own search field, whose focus
+		 * unmounts in this same commit, so reading `document.activeElement` here
+		 * would record a node that is already gone and closing the panel would strand
+		 * the keyboard on `body` (UX round 1, U1); #739's row menu names the row's own
+		 * button, which is the node the menu's own close returns to. The fallback
+		 * stays for a request written by anything without a control to name — the
+		 * onboarding tour driving the store, a future third requester — where
+		 * whatever is focused now is the honest answer.
 		 */
 		invoker.current =
 			request.invoker ??
