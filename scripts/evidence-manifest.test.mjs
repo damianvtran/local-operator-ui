@@ -2976,6 +2976,11 @@ const BRANCH_RECORDS = [
 	 * records and its re-stamped notes, resolved per `citationConvention`.
 	 */
 	"foldOnto689efa1eb4Note",
+	 * Grown by the device-chip pass, whose top-level record is the set it ships
+	 * (`chatDevicePersistNote`): registered so a later fold unions it back by
+	 * name rather than dropping it.
+	 */
+	"chatDevicePersistNote",
 	/*
 	 * And by THIS lane too - the pass record's lineage gate: this branch's own
 	 * fix, whose note is the branch's newest top-level record. It is listed for
@@ -3057,6 +3062,16 @@ const BRANCH_RECORDS = [
 	 * carried - main's `teamLabelsRestampNote` and its two team-identity rows.
 	 */
 	"foldOnto69d088ec52Note",
+	/*
+	 * And the lane's THIRTEENTH fold record: the sync onto `origin/main` =
+	 * `44e4812b31` (#686 the STT mic gate, #735 the chat device selection),
+	 * taken while the UX round's fixes were mid-flight so a clean head can run
+	 * CI. Registered for the same completeness reason as its siblings: a fold
+	 * resolved from main's copy would drop the statement of what this sync
+	 * carried - main's `chatDevicePersistNote` and its `chat-device-persist`
+	 * supplementary set, resolved per `citationConvention`.
+	 */
+	"foldOnto44e4812b31Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

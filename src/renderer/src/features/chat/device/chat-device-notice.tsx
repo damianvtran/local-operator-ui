@@ -17,6 +17,7 @@
  * the remedy. Both sentences are real; see `arrivalCopy`.
  */
 
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import type { FC } from "react";
 import { MoveNotice } from "../../mesh/mesh-actions";
 import {
@@ -48,6 +49,9 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 	const settleMove = useChatDeviceStore((state) => state.settleMove);
 	const refuseMove = useChatDeviceStore((state) => state.refuseMove);
 	const dismiss = useChatDeviceStore((state) => state.dismissMove);
+	const settlePlacement = useCanonicalSessionsStore(
+		(state) => state.settlePlacement,
+	);
 	const transfer = useMeshTransfer();
 	/*
 	 * THE SAME TWO READS THE PICKER ALREADY HOLDS, from the store's own cache keys: a
@@ -114,6 +118,13 @@ export const ChatDeviceNotice: FC<{ sessionId?: string }> = ({ sessionId }) => {
 							{
 								onSuccess: (outcome) => {
 									if (outcome.kind === "moved") {
+										/*
+										 * THE ROW SETTLES WITH THE RE-ISSUED MOVE TOO (agent review F1),
+										 * exactly as the pane's own pick does (`chat-device-slot.tsx`):
+										 * a remedy that lands a move without correcting the row leaves
+										 * the stale mark the dismissal would resurrect.
+										 */
+										settlePlacement(sessionId, outcome.receipt);
 										settleMove(sessionId, {
 											kind: "moved",
 											deviceId: move.to,
