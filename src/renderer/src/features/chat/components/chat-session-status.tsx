@@ -55,16 +55,22 @@ export function ChatAsksOutstanding({ row }: { row: CanonicalSessionRow }) {
 	if (typeof open !== "number" || !Number.isFinite(open) || open <= 0)
 		return null;
 	return (
+		/*
+		 * ONE NAME, ONE PLACE (agent review round 1, NIT-2). This node used to carry
+		 * the same sentence twice - a `title` AND an `sr-only` span - and a screen
+		 * reader reads the tooltip as a description, so the user heard it twice. The
+		 * `aria-label` states it once and, because a label REPLACES a node's content,
+		 * the visible count is not read a second time either. The name a reviewer
+		 * measured (`2 asks outstanding. The agent is not blocked on you.`) is
+		 * unchanged.
+		 */
 		<span
+			role="img"
+			aria-label={`${asksOutstandingLabel(open)} outstanding. The agent is not blocked on you.`}
 			className={cn("inline-flex shrink-0 items-center gap-0.5 text-ink-muted")}
-			title={`${asksOutstandingLabel(open)} outstanding. The agent is not blocked on you.`}
 		>
 			<MessageCircleQuestion aria-hidden="true" size={14} />
 			<span className={cn("tabular-nums text-xs")}>{open}</span>
-			<span className={cn("sr-only")}>
-				{asksOutstandingLabel(open)} outstanding. The agent is not blocked on
-				you.
-			</span>
 		</span>
 	);
 }

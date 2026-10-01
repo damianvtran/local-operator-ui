@@ -605,6 +605,25 @@ export function labelOfSegment(
 		case "job_result":
 			return "Job result";
 		default:
+			/*
+			 * THE ASK RECEIPTS GET A NAME OF THEIR OWN.
+			 *
+			 * A segment made of `ask_response`/`ask_timeout` rows has no opener among
+			 * the trigger kinds above, so the bar came back `null` and drew a bare rule
+			 * with a chevron: the reader was shown a control with nothing to invite them
+			 * in and the accessibility tree carried a button with NO accessible name,
+			 * while the two receipts it held - the questions the agent asked and the
+			 * answers it was given - sat behind it (design round 1, D2, measured on the
+			 * rendered story).
+			 *
+			 * The arm is deliberately the LAST one: a segment that already reads as a
+			 * wake, a peer message or a job result keeps that name, and only the
+			 * otherwise-nameless case borrows this one.
+			 */
+			for (let i = span.from; i <= span.to; i += 1) {
+				const kind = records[i].kind;
+				if (kind === "ask_response" || kind === "ask_timeout") return "Ask";
+			}
 			return null;
 	}
 }

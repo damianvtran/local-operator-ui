@@ -93,12 +93,13 @@ import {
 	gateIsSecret,
 } from "../ask-answer";
 import {
-	ASK_ALREADY_SETTLED_MESSAGE,
 	ASK_COMPOSER_PLACEHOLDER,
 	type AskDraft,
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askQueueView,
+	askRefusalFallback,
+	effectiveGate,
 } from "../ask-queue";
 import {
 	ownerAnswered,
@@ -1648,7 +1649,10 @@ function SessionPanel({
 			 * (QA round 2, Q4). Prose is prose: it goes to the model.
 			 */
 			if (!draftKey && !sessionId) return false;
-			const gate = canonical.frontend?.pending_gate;
+			// The ONE derivation (agent review F3): the mirror rule is applied in
+			// `effectiveGate`, so this door cannot answer a mirrored ask by index
+			// while the ask lane is live.
+			const gate = effectiveGate(canonical.frontend);
 			if (gate && canonical.ownerEpoch && sessionId) {
 				/*
 				 * A SECRET GATE TAKES NO COMPOSER ANSWER, and this is the door that
@@ -2490,9 +2494,13 @@ function SessionPanel({
 				...current,
 				[taskId]: {
 					sending: false,
+					/*
+					 * The OWNER's sentence when it sent one; the app's own, CHOSEN BY THE
+					 * STATE the refusal reports, when it did not (agent review F5, QA Q-2).
+					 */
 					refused: userFacingMessage(
 						outcome.error,
-						ASK_ALREADY_SETTLED_MESSAGE,
+						askRefusalFallback(outcome.error),
 					),
 				},
 			}));
@@ -2553,17 +2561,50 @@ function SessionPanel({
 	 * answer sent as chat, is the accident this swap makes impossible rather than
 	 * merely unlikely.
 	 */
-	const toggleAskExpanded = (next: boolean) => {
-		const store = useConversationInputStore.getState();
-		if (next) {
-			chatBuffer.current = store.getCurrentInput(identity);
-			store.setCurrentInput(identity, askBuffer.current);
-		} else {
-			askBuffer.current = store.getCurrentInput(identity);
-			store.setCurrentInput(identity, chatBuffer.current);
-		}
-		setAskExpanded(next);
-	};
+	/*
+	 * MEMOISED, because it is a dependency of the Escape claim's effect below:
+	 * a fresh closure per render would re-register the window listener on every
+	 * render, and the claim would be a listener churn rather than a claim.
+	 */
+	const toggleAskExpanded = useCallback(
+		(next: boolean) => {
+			/*
+			 * IDEMPOTENT, AND THAT GUARD IS THE WHOLE SAFETY OF THE SWAP.
+			 *
+			 * A door that says "collapsed" while the page is already collapsed used to
+			 * move the user's chat text into the ask buffer and write the (empty) ask
+			 * buffer into the conversation's composer row - destroying a message the user
+			 * was typing, with no sign on screen (agent review F1). Two ordinary paths
+			 * reach it: the queue empties while the user is collapsed, and every pane
+			 * MOUNT of an ask-free conversation. Both are the default state of a normal
+			 * session, so this is not an edge case.
+			 *
+			 * Guarding on "the mode did not change" makes the swap a function of the
+			 * TRANSITION rather than of the call, which is also what makes the buffers
+			 * meaningful: there is nothing to exchange when the mode is not moving.
+			 */
+			if (next === askExpanded) return;
+			const store = useConversationInputStore.getState();
+			if (next) {
+				chatBuffer.current = store.getCurrentInput(identity);
+				/*
+				 * `setComposerText`, not `setCurrentInput`: the box must MOVE, and only the
+				 * revision-bumping writer makes the composer adopt store text. Writing the
+				 * keystroke path here left the old text standing in the box under the new
+				 * mode's placeholder, so it was sent down the other channel (agent review
+				 * F1 / QA Q-1 / UX U1).
+				 */
+				store.setComposerText(identity, askBuffer.current);
+			} else {
+				askBuffer.current = store.getCurrentInput(identity);
+				store.setComposerText(identity, chatBuffer.current);
+			}
+			setAskExpanded(next);
+		},
+		// `askExpanded` is READ in the guard, so it belongs in the list: the callback
+		// must see the mode it is about to leave, not the one it was created in.
+		[identity, askExpanded],
+	);
 	/*
 	 * THE COMPOSER'S ASK ROUTING (design §5.0).
 	 *
@@ -2747,6 +2788,42 @@ function SessionPanel({
 			if (sessionId) clearTurnStopped(sessionId);
 		}
 	}, [busy, sessionId, clearTurnStopped]);
+	/*
+	 * ESCAPE MEANS COLLAPSE WHILE AN ASK IS EXPANDED, and this is where that claim
+	 * is made (design §5.0's R7, agent review F2, UX round 1 U2).
+	 *
+	 * The composer's own sentence promises "Esc to collapse", and nothing claimed
+	 * the key: the only Escape handler was on the panel's non-focusable div, which
+	 * never sees a press made in the box. Worse, the press then fell through to the
+	 * interrupt ladder - `ownsEscapeOutsideComposer` EXEMPTS the composer textarea,
+	 * so `interruptEscapeApplies` was true and Esc in the box stopped the running
+	 * turn while the panel stayed open. A queued ask exists precisely while a turn
+	 * is live, so that was the common case, not an edge.
+	 *
+	 * TWO MECHANISMS, both the codebase's own:
+	 *
+	 *  - CAPTURE PHASE, so this runs before the ladder's `window` bubble listener
+	 *    whatever order the two mounted in;
+	 *  - `preventDefault()`, which IS the ladder's claim signal - it reads
+	 *    `defaultPrevented` one microtask after the dispatch, so a claimed press is
+	 *    not an interrupt by the ladder's own rule rather than by a second list of
+	 *    exceptions kept here.
+	 *
+	 * Collapsing is the only meaning: design §5.1 asks that Escape on a queued ask
+	 * never carry an inherited blocking-card meaning, and stopping a turn stays
+	 * available from the stop control while the panel is open.
+	 */
+	useEffect(() => {
+		if (!askExpanded) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.isComposing) return;
+			event.preventDefault();
+			event.stopPropagation();
+			toggleAskExpanded(false);
+		};
+		window.addEventListener("keydown", onKeyDown, true);
+		return () => window.removeEventListener("keydown", onKeyDown, true);
+	}, [askExpanded, toggleAskExpanded]);
 	/*
 	 * Escape is the control's accelerator, attached HERE because this component
 	 * owns both halves the predicate reads - `busy` and `stop` - and the ladder it

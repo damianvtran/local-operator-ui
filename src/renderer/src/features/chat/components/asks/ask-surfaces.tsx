@@ -130,25 +130,30 @@ export const AskSurfaces = ({
 	 * nothing is a surface the user has to dismiss, and the section's own rule is
 	 * that the affordance disappears at zero asks.
 	 *
-	 * IT FIRES ON THE TRANSITION TO EMPTY, not on every render while empty, and
-	 * that guard is load-bearing rather than an optimisation. The caller's door is
-	 * an unstable closure (the page's own handler is), so an effect keyed on it
-	 * would run on every render for as long as the queue stayed empty - and each
-	 * run would swap the composer's two DRAFTS, silently trading the user's chat
-	 * text for their answer text behind their back. The reference holds the last
-	 * observed state, so exactly one collapse is delivered per emptying.
+	 * TWO GUARDS, and both are load-bearing rather than tidy-up (agent review F1,
+	 * QA Q-1):
+	 *
+	 *  - `hadRows.current === null` is "not yet observed", so a MOUNT into an
+	 *    empty-but-published queue is not an emptying. The first version started at
+	 *    `true`, so every pane mount fired the door - and `SessionPanel` is keyed by
+	 *    conversation, so that is every conversation switch.
+	 *  - `expanded` is tested before collapsing, because a door that says
+	 *    "collapsed" to a page that is already collapsed makes the caller's draft
+	 *    swap run for no reason at all. The caller guards too (the swap is a
+	 *    no-op when the mode does not move); this half keeps the call itself honest,
+	 *    so a future caller without that guard cannot be hurt by us.
 	 */
-	const hadRows = useRef(true);
+	const hadRows = useRef<boolean | null>(null);
 	useEffect(() => {
 		if (view.rows.length > 0) {
 			hadRows.current = true;
 			return;
 		}
-		if (!hadRows.current) return;
+		const wasPopulated = hadRows.current === true;
 		hadRows.current = false;
+		if (!wasPopulated || !expanded) return;
 		setExpanded(false);
 	});
-
 	// An absent queue is not an empty one: `sessionAsks` returns null when this
 	// backend does not publish queued asks, and nothing mounts at all.
 	if (sessionAsks(frontend) === null) return null;

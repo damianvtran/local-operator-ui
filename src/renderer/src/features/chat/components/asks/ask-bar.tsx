@@ -31,7 +31,7 @@
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { AskQueueView } from "../../ask-queue";
-import { askCountLabel, askHeadline } from "../../ask-queue";
+import { askBarText } from "../../ask-queue";
 
 export type AskBarProps = {
 	view: AskQueueView;
@@ -49,12 +49,6 @@ export type AskBarProps = {
  * Kept as a function so the story and the suite can assert the line without a
  * DOM, which is the same reason `questionDockHint` is one.
  */
-export const askBarText = (view: AskQueueView): string => {
-	if (view.open <= 0) return "No asks outstanding";
-	const count = askCountLabel(view.open);
-	if (view.head === null) return count;
-	return `${count} — ${askHeadline(view.head.ask)}`;
-};
 
 export const AskBar = ({
 	view,
@@ -70,10 +64,17 @@ export const AskBar = ({
 	// for the bar: the affordance disappears at zero).
 	if (view.rows.length === 0) return null;
 
-	const head = view.head;
+	/*
+	 * ONE SENTENCE, TWO READERS. The line drawn and the name announced come from the
+	 * same function, because they used to diverge: with only settled asks the bar
+	 * painted "1 settled" beside an accessible name that said "No asks
+	 * outstanding" - the screen reader was told about a state the screen was not in
+	 * (agent review F6, UX U3). Deriving both from `askBarText` makes the two
+	 * readings agree by construction rather than by a reviewer noticing.
+	 */
+	const label = askBarText(view);
 	const settledOnly = view.open === 0;
 	const Chevron = expanded ? ChevronUp : ChevronDown;
-	const label = askBarText(view);
 
 	return (
 		<div
@@ -106,17 +107,22 @@ export const AskBar = ({
 						// The accent's one spend in this row, and the design's own choice of
 						// what it means: this glyph is what says a question is outstanding.
 						// Persistent, never animated.
-						settledOnly ? "text-ink-muted" : "text-accent",
+						// `ink` rather than `muted` on the settled arm for the same reason as
+						// the sentence below (design round 1, D3): the muted role is under AA
+						// on this surface in both palettes.
+						settledOnly ? "text-ink" : "text-accent",
 					)}
 				>
 					?
 				</span>
-				<span className="min-w-0 flex-1 truncate text-ink">
-					{settledOnly ? `${view.total} settled` : askCountLabel(view.open)}
-					{head ? (
-						<span className="text-ink-muted"> — {askHeadline(head.ask)}</span>
-					) : null}
-				</span>
+				{/*
+				 * `text-ink`, not `text-ink-muted`: measured on the bar's own
+				 * `surface`, the muted role is 3.59:1 dark / 3.66:1 light, under AA for
+				 * the 14px sentence that carries the whole point of the chip (design
+				 * round 1, D3). `ink` clears it in both palettes, and the accent glyph
+				 * carries the emphasis instead of a second text role.
+				 */}
+				<span className="min-w-0 flex-1 truncate text-ink">{label}</span>
 				{view.truncated ? (
 					/*
 					 * The truncation is stated rather than hidden. The wire caps the list
@@ -124,15 +130,11 @@ export const AskBar = ({
 					 * would be a list that lies by omission - and the count is published
 					 * separately for exactly this case (design §4, A2 addendum).
 					 */
-					<span className="shrink-0 text-ink-muted text-xs">
+					<span className="shrink-0 text-ink text-xs">
 						showing {view.rows.length} of {view.open}
 					</span>
 				) : null}
-				<Chevron
-					aria-hidden="true"
-					className="shrink-0 text-ink-muted"
-					size={16}
-				/>
+				<Chevron aria-hidden="true" className="shrink-0 text-ink" size={16} />
 			</button>
 		</div>
 	);

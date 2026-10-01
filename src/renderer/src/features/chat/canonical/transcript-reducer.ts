@@ -2575,8 +2575,11 @@ const NON_ENTRY_ID = /^(?:tool|compaction|local):/;
  * rewrite, and the page below it is exactly the one they have not seen.
  *
  * WHICH RECORD IDS ARE JOURNAL ENTRY IDS - the constraint that makes this a
- * function and not a `records[0]`. `user`, `assistant`, `custom`, `peer`, `wake`
- * and `compaction` records are keyed by their entry id. A `tool` record is
+ * function and not a `records[0]`. `user`, `assistant`, `custom`, `peer`, `wake`,
+ * `compaction` and the two ask RECEIPTS (`ask_response`/`ask_timeout`) records are
+ * keyed by their entry id - the receipts were missing from this list, so an
+ * anchoring pass that landed on one skipped past it to a younger row (agent review
+ * round 1, NIT-3). A `tool` record is
  * `tool:<toolCallId>`, a completion-marker `notice` is keyed by
  * `details.anchor`, a live compaction line is `compaction:<generation>:...`, and
  * the app's own echoes are `local:...`: none of those is an entry id, and asking
@@ -2593,6 +2596,10 @@ export function reanchorCandidate(
 			case "peer":
 			case "wake":
 			case "compaction":
+			// The ask receipts are JOURNAL entries like the six above: both are keyed
+			// by their own entry id, so both may anchor a page.
+			case "ask_response":
+			case "ask_timeout":
 				break;
 			default:
 				continue;
