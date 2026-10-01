@@ -11,17 +11,23 @@
  * without a DOM, and the component only maps their answers onto pixels.
  */
 
+import { teamDisplayName } from "../../../shared/api/local-operator/team-display";
+
 /**
- * One team as the label resolver needs it: the name the binding uses, and the
- * manager the runtime would run for it.
+ * One team as the label resolver needs it: the name the binding uses, the
+ * manager the runtime would run for it, and - when the record carries one - the
+ * label a person reads in place of the slug.
  *
  * `manager` is optional ONLY because the list may be absent or still loading;
  * every row the backend publishes carries it (the runtime's own `Team` model
  * declares `manager: str = "manager"`), which is where the fallback below
- * takes its value from rather than inventing one.
+ * takes its value from rather than inventing one. `label` is optional by
+ * CONTRACT as well - it is additive, and a backend that predates it omits the
+ * field, which reads exactly as the slug did before (`teamDisplayName`).
  */
 export type HeaderIdentityTeam = {
 	name: string;
+	label?: string | null;
 	manager?: string | null;
 };
 
@@ -39,6 +45,10 @@ export type HeaderIdentityInput = {
 export type HeaderIdentityView = {
 	/** The team the control's label reports; `null` renders the assign affordance. */
 	teamValue: string | null;
+	/**
+	 * The words the control SHOWS for `teamValue`: the catalogue row's label
+	 * when it has one, the slug otherwise. Never the value a command sends.
+	 */
 	teamLabel: string;
 	/** The agent the control's label reports; `null` renders the assign affordance. */
 	agentValue: string | null;
@@ -101,14 +111,25 @@ export function resolveHeaderIdentity(
 	input: HeaderIdentityInput,
 ): HeaderIdentityView {
 	const teamValue = input.activeTeam || input.boundTeam || null;
+	/*
+	 * The catalogue row, read ONCE for the two answers it holds: the team's
+	 * readable name (the label below) and the manager (the agent fallback). A
+	 * team the list does not know - the query is off, still landing, or the row
+	 * was deleted since it was bound - leaves both answers to their existing
+	 * fallbacks rather than blanking either.
+	 */
+	const teamRow = teamValue
+		? input.teams?.find((team) => team.name === teamValue)
+		: undefined;
 	let agentValue = input.activeAgent || input.boundAgent || null;
 	if (!agentValue && teamValue) {
-		const row = input.teams?.find((team) => team.name === teamValue);
-		agentValue = row?.manager || DEFAULT_TEAM_MANAGER;
+		agentValue = teamRow?.manager || DEFAULT_TEAM_MANAGER;
 	}
 	return {
 		teamValue,
-		teamLabel: teamValue ?? NO_TEAM_LABEL,
+		teamLabel: teamValue
+			? teamDisplayName(teamRow ?? { name: teamValue })
+			: NO_TEAM_LABEL,
 		agentValue,
 		agentLabel: agentValue ?? NO_AGENT_LABEL,
 	};

@@ -61,24 +61,40 @@ export type ChatSearchOutcome = {
 	synthesized: Set<string>;
 };
 
-/** A row's own searchable text, the same fields the pre-search filter used. */
-function labelHaystack(row: CanonicalSessionRow): string {
-	return `${row.title ?? ""} ${row.binding?.agent ?? ""} ${row.binding?.team ?? ""}`.toLocaleLowerCase();
+/**
+ * A row's own searchable text, the same fields the pre-search filter used,
+ * plus the team's readable name when the caller can resolve one (round 1,
+ * R1-3c): a row DRAWN as `· Release Engineering` has to be findable by the
+ * words now on screen, not only by the slug the row no longer shows.
+ */
+function labelHaystack(
+	row: CanonicalSessionRow,
+	teamLabelFor?: (slug: string) => string,
+): string {
+	const team = row.binding?.team ?? "";
+	return `${row.title ?? ""} ${row.binding?.agent ?? ""} ${team} ${
+		team && teamLabelFor ? teamLabelFor(team) : ""
+	}`.toLocaleLowerCase();
 }
 
 /**
  * Whether the LOCAL fields answer the query — a case-insensitive substring of
- * the title, agent or team.
+ * the title, agent or team (the team's label counts when the caller resolves
+ * one; the slug always does).
  *
  * Deliberately exact substring and deliberately not folded into the backend
  * search: those fields are what the sidebar shows, the backend does not know a
  * row's agent or team, and this is the half of the search that must keep working
  * when the backend cannot answer at all (an older backend, a failed request).
  */
-export function matchesLabel(row: CanonicalSessionRow, query: string): boolean {
+export function matchesLabel(
+	row: CanonicalSessionRow,
+	query: string,
+	teamLabelFor?: (slug: string) => string,
+): boolean {
 	const needle = query.trim().toLocaleLowerCase();
 	if (!needle) return false;
-	return labelHaystack(row).includes(needle);
+	return labelHaystack(row, teamLabelFor).includes(needle);
 }
 
 /**
@@ -185,6 +201,15 @@ export function searchChats(
 	 * the wire did not say and neither does the client.
 	 */
 	bindingOf?: (id: string) => CanonicalSessionRow["binding"],
+	/**
+	 * The team's readable name for the LOCAL label arm (round 1, R1-3c): the
+	 * join's own haystack matched the binding's SLUG only, so a row drawn as
+	 * `· Release Engineering` was found by `release-crew` but not by the words
+	 * a reader sees — the same fix the sidebar/roster filters already carry.
+	 * A resolver rather than a map because the module is pure and the caller
+	 * owns the lookup; absent means slug-only, exactly today's behaviour.
+	 */
+	teamLabelFor?: (slug: string) => string,
 ): ChatSearchOutcome {
 	const needle = query.trim();
 	/*
@@ -223,7 +248,7 @@ export function searchChats(
 	const seen = new Set<string>();
 	for (const row of liveRows) {
 		const hit = byId.get(row.session_id);
-		const labelMatch = matchesLabel(row, needle);
+		const labelMatch = matchesLabel(row, needle, teamLabelFor);
 		if (!hit && !labelMatch) continue;
 		seen.add(row.session_id);
 		// The marker explains a row the query cannot be seen to match. A row whose

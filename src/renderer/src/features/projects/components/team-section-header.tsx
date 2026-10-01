@@ -79,7 +79,12 @@ export type TeamSectionHeaderProps = Omit<
 	HTMLAttributes<HTMLDivElement>,
 	"children"
 > & {
-	/** The team's name, or `null` for the no-team section (drawn as "No team"). */
+	/**
+	 * The team's READABLE name, already resolved by the caller - or `null` for
+	 * the no-team section (drawn as "No team"). The component does not resolve
+	 * it: the page owns that read (#716's `teamLabelFor`) and hands the result
+	 * down, which is what keeps one team to one name across the screen.
+	 */
 	team: string | null;
 	/** How many projects the section holds. */
 	count: number;
