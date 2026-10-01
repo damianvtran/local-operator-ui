@@ -201,6 +201,7 @@ bind in any of the measured states.
 | archive + fork (unknown pin state) | **273 × 77** | 2 |
 | pin + fork (archive capability withheld) | **246 × 77** | 2 |
 | archive + pin (fork withheld: a never-sent row) | **273 × 81** | 2 |
+| archive + unpin + move up + move down + fork (a pinned row in the moved-from section) | **273 × 178** | 5 |
 
 **THE FOUR-ITEM CASE IS NOT IN THIS TABLE, AND THAT IS STATED RATHER THAN IMPLIED
 (2026-09-30).** A pinned row in the moved-from section draws `archive` + `unpin` +
@@ -212,12 +213,24 @@ change re-shot - so the number is ARITHMETIC over this table's own rows rather t
 measurement, and the design round should read it as such: re-shooting that set is a
 `docs/`-only follow-up if the height is ever in question.
 
-**THE FIVE-ITEM CASE (#743's Move pair plus #739's Fork) IS MEASURED, where the
-four-item case above is arithmetic.** `pinned-row` is re-taken at #739's fold and
-reads the full panel below, because Fork is the fifth row and the Move pair is
-rows 3-4. The ordinary-row states are unaffected by the Move pair (`offersMove`
-is false unless the row is pinned and in the section the order belongs to), which
-is why they stay at three rows; the one-capability-withheld states stay at two.
+**THE FIVE-ITEM CASE (#743's Move pair plus #739's Fork) IS NOW MEASURED, where
+the four-item case above is arithmetic (2026-10-01, #739's re-shoot).** `pinned-row`
+draws `archive`, `unpin`, `Move conversation up`, `Move conversation down` and `Fork
+conversation` in **273 × 178 at 142,297**, anchored at `140,297`, with the two Move
+rows boundary-inked and `aria-disabled` (the row is pinned and in the section the
+order belongs to, so neither direction is available) and the row's own pair back to
+TWO children - `button[pin]:flex:243w24 | button[archive]:flex:215w24` - because the
+arrows left the strip for this menu. The ordinary-row states are unaffected by the
+Move pair (`offersMove` is false unless the row is pinned and in the section the
+order belongs to), which is why they stay at three rows; the
+one-capability-withheld states stay at two.
+
+**The row step this set measures is 32-33px, and it is worth stating because #743's
+four-item arithmetic used 35.** Two rows read 81, three read 113 and five read 178:
++32 for the second row, +65 for the next two. That supersedes `46 + 3 × 35 = 151`
+rather than confirming it - and Fork's own row is the shorter one of the two kinds,
+because a row with no `KeyboardShortcut` is a plain text row where every chord row
+above it carries the cap that is the tallest thing in a row that has one.
 The 273 is the archive row's own length: `px-2` 16 + icon 16 + `gap-2` 8 +
 label + `pl-6` 24 + chord ≈ 60 + `px-2` 16. `Unarchive conversation` is the
 widest label the menu draws, and its state measures the widest panel:
@@ -373,7 +386,7 @@ default deliberately and the frames say so (`pointer-open`: `focus: menu`,
 | open via keyboard | same 2 rows; anchored at the row's bottom-left | reveal held, no pointer needed | `keyboard-open` |
 | `row.pinned === undefined` | **one row** (archive); the pin row is withheld | row draws no pin control either | `pin-state-unknown` |
 | `archiveEnabled` false | **one row** (pin); the archive row is withheld | archive control absent | `archive-withheld` |
-| the same, on a pinned row in the moved-from section | **five rows**: archive, pin, `Unpin conversation`, `Move conversation up`, `Move conversation down`, `Fork conversation` (#739's Fork appended to #743's four) | reveal held | `pinned-row` |
+| the same, on a pinned row in the moved-from section | **five rows**: `Unarchive conversation` / `Unpin conversation`, `Move conversation up`, `Move conversation down` (both `aria-disabled` and boundary-inked at a pinned row's ends) and #739's appended `Fork conversation` | reveal held | `pinned-row` |
 | Fork pressed (#739) | closes; the request is in the store naming the row's conversation, and the route is `/chat` when no pane was mounted | unchanged; the picker (the pane's) opens for the row's conversation, not the pane's | `fork-pressed` |
 | the row is a never-sent draft's conversation (#739) | **two rows** (archive, pin); Fork is **absent, not greyed** - the backend has no transcript to copy | the row reads `, not sent yet` | `fork-withheld` |
 | open at the pointer, normal row | 3 rows, archive, pin, then fork; chords on the first two, none on fork (#739) | reveal held, hover ground held | `pointer-open` |
@@ -736,13 +749,13 @@ app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520:
 | | `pointer-open` | `pointer-hover` | `keyboard-open` | `archived-row` | `pinned-row` | `pin-state-unknown` | `archive-withheld` |
 |---|---|---|---|---|---|---|---|
 | anchor point | 140,369 | 140,369 | 12,371 | 140,362 | 140,297 | 140,401 | 140,369 |
-| panel | 273 × 113 at 142,369 | 273 × 113 at 142,369 | 273 × 113 at 14,370 | 288 × 113 at 142,362 | 273 × 113 at 142,297 | 273 × 77 at 142,401 | 246 × 77 at 142,369 |
-| items | 3 | 3 | 3 | 3 (`Unarchive conversation`) | 3 (`Unpin conversation`) | 2 (archive, fork) | 2 (`Pin conversation`, fork) |
+| panel | 273 × 113 at 142,369 | 273 × 113 at 142,369 | 273 × 113 at 14,370 | 288 × 113 at 142,362 | **273 × 178** at 142,297 | 273 × 77 at 142,401 | 246 × 77 at 142,369 |
+| items | 3 | 3 | 3 | 3 (`Unarchive conversation`) | **5** (`Unpin conversation`, + `Move conversation up`, `Move conversation down`) | 2 (archive, fork) | 2 (`Pin conversation`, fork) |
 | row | 255 × 32 at 12,340 | same (s2) | same (s2) | 255 × 32 at 12,333 (s4) | 255 × 32 at 12,268 (s1) | 255 × 32 at 12,372 (s3) | s2 |
 | ground | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` |
 | `data-state` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` |
 | pair | `flex` | `flex` | `flex` | `flex` | `flex` | `flex` | `not mounted` |
-| pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | as `pointer-open` | up `flex:187w24`, down `flex:215w24`, pin `flex:243w24`, archive `flex:159w24` (the #739 re-take reads the children in DOM order, which `main` reordered while this branch was open; the same four controls, the same four widths) | archive `flex:243w24` | — |
+| pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | as `pointer-open` | pin `flex:243w24`, archive `flex:215w24` - two children, not four: #743 moved the arrow pair into this menu | archive `flex:243w24` | — |
 | flyout | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` |
 | focus | menu; first item not highlighted | **first item, `data-highlighted`** | **first item, `data-highlighted`** | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted |
 

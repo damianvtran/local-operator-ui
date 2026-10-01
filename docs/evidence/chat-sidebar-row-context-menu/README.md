@@ -33,7 +33,11 @@ Round 1's two remediation states (`pointer-hover`, `archived-row`) were
 captured with the same command narrowed by `--dirs=pointer-hover,archived-row`,
 so no existing frame was re-taken.
 
-**The frames ship from the FOLDED tip** (`bec29a5f5`, the fold onto
+**The frames ship from the SECOND folded tip** (`009100e05`, the fold onto
+`origin/main` = `054ea59fe5` - #743, the archive-confirm lane, which landed a
+second change on this same menu: it moved the pinned row's move pair IN as rows
+3-4, WCAG 2.5.7's single-pointer path). That fold is why the FIRST take on the
+first folded tip is not what ships (`bec29a5f5`, the fold onto
 `origin/main` = `490c2079fb`). The first #739 take was on this branch before the
 fold, and the fold broke the pointer states' own gate rather than their pixels:
 a story that opened the menu on a timer was RACING the rig's hover check, and
@@ -43,10 +47,19 @@ pointer is on `[data-session-row="s2"]` but the element does not match :hover".
 The story now WAITS for the pointer before it opens the menu, which is both the
 race's fix and the honest gesture (a right-click happens on a row the pointer is
 already over; the menu is modal, so the row cannot be hovered once the panel is
-up). The set was then re-taken in full at the folded tip, and only
-`archived-row/localOperatorLight` and the two `fork-pressed` frames differ
+up). The set was then re-taken in full at the filled tip, and only
+`archived-row/localOperatorLight` and the two `fork-pressed` frames differed
 byte-for-byte from the pre-fold take - the deterministic scenes reproduced
 themselves.
+
+**And #743's fold moved exactly ONE frame.** After the fold onto `054ea59fe5` the
+set was re-taken whole a third time: **twenty-two of the twenty-four files came
+back byte-identical** and only `pinned-row` (both themes) changed, because that is
+the one state that draws the five-row menu - `archive`, `unpin`, `Move conversation
+up`, `Move conversation down`, `Fork conversation` - in **273 × 178**, up from 273 ×
+113 when the same state drew three. The ordinary-row states do not draw the Move
+pair at all (`offersMove` is false unless the row is pinned and in the section the
+order belongs to), which is why their pixels are untouched by #743.
 
 **The story drives the real feature, not a composition over it.** The menu is
 opened through the real trigger: a dispatched `contextmenu` at the row's own
@@ -84,7 +97,7 @@ numbers below are what the final frames read.
 | `pointer-open` | the menu at the pointer on s2, reveal and hover ground held |
 | `pointer-hover` | the same scene with the pointer moved onto the first item: `data-highlighted`, and the focus ring the primitive's own focus draws |
 | `keyboard-open` | the keyboard opener: anchor at the row's box edge, focus in the first item |
-| `pinned-row` | `Unpin conversation` on s1, the row that draws its mark at rest — re-shot at the #697 fold with its revealed move pair (both arrows boundary-inked while one pinned row is shown), the pair held under the open menu. Evidence basis: the hold's five clauses are the code plus the suite's five-clause assertion, and the grip-under-menu combination is code-and-test only — the grip is shed at this width, so no frame photographs it |
+| `pinned-row` | the five-row state on s1: `Unpin conversation`, `Move conversation up` and `Move conversation down` (both boundary-inked and `aria-disabled`, because the one pinned row is at both ends), then #739's `Fork conversation` — **273 × 178 at 142,297**. Re-shot at #739's second fold, after #743 moved the move pair out of the strip and into this menu: the row's own children are back to two (`pin`, `archive`) |
 | `pin-state-unknown` | s3, `pinned === undefined`: one row, and the row draws no pin control |
 | `archive-withheld` | `session_archive` absent: one row (`Pin conversation`), not a disabled one |
 | `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation` (288 × 81, the widest state) |
@@ -127,7 +140,16 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
 - **The flyout.** `flyout-dwelled` (menu opened after the flyout had drawn)
   reads `flyout: absent`, and `flyout-alone` reads `present` in the same scene:
   the modal portal is what removes it, and the pair reads as the measurement.
-- **The pointer's own highlight.** `pointer-hover` reads
+- **The five-row panel, and the fold that produced it.** `pinned-row` reads
+`panel: 273x178 at 142,297`, `items: 5 — Archive conversation⌘⇧A | Unpin
+conversation⌘⇧P | Move conversation up⌘⇧↑ | Move conversation down⌘⇧↓ | Fork
+conversation`, the row at `255x32 at 12,268` and `pair children: button[pin]:flex:243w24
+| button[archive]:flex:215w24` — two children, where the #697-era take read four,
+because the arrows left the strip for this menu (#743). The row step this set
+measures is 32-33px per row (81 → 113 → 178), and Fork's own row is the shorter
+kind: it carries no chord cap.
+
+**The pointer's own highlight.** `pointer-hover` reads
   `focus: menuitem “Archive conversation⌘⇧A”` and
   `first item: data-highlighted`, in a panel measured 273 × 113 at `142,369`
   (273 × 81 when #694 shipped, before Fork) —
