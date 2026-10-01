@@ -57,7 +57,16 @@ set was re-taken whole a third time: **twenty-two of the twenty-four files came
 back byte-identical** and only `pinned-row` (both themes) changed, because that is
 the one state that draws the five-row menu - `archive`, `unpin`, `Move conversation
 up`, `Move conversation down`, `Fork conversation` - in **273 × 178**, up from 273 ×
-113 when the same state drew three. The ordinary-row states do not draw the Move
+113 when the same state drew three.
+
+**And the round-1 remediation re-took that same one frame again (D1/D2).**
+`pinned-row` is now **296 × 184** in the order `archive · unpin · Fork · Move up ·
+Move down`: the two Move rows print their chord through the joined sibling
+(`chatPinMoveCapJoined`) like the rows above them, which widens the menu's chord
+column past every label (273 → 296) and makes those rows a full chord row tall
+(33 → 36), and Fork has moved to row 3. Twenty-three of the twenty-four files are
+byte-identical to the previous take; this is the only state that draws either the
+Move pair or Fork beside it. The ordinary-row states do not draw the Move
 pair at all (`offersMove` is false unless the row is pinned and in the section the
 order belongs to), which is why their pixels are untouched by #743.
 
@@ -97,10 +106,10 @@ numbers below are what the final frames read.
 | `pointer-open` | the menu at the pointer on s2, reveal and hover ground held |
 | `pointer-hover` | the same scene with the pointer moved onto the first item: `data-highlighted`, and the focus ring the primitive's own focus draws |
 | `keyboard-open` | the keyboard opener: anchor at the row's box edge, focus in the first item |
-| `pinned-row` | the five-row state on s1: `Unpin conversation`, `Move conversation up` and `Move conversation down` (both boundary-inked and `aria-disabled`, because the one pinned row is at both ends), then #739's `Fork conversation` — **273 × 178 at 142,297**. Re-shot at #739's second fold, after #743 moved the move pair out of the strip and into this menu: the row's own children are back to two (`pin`, `archive`) |
-| `pin-state-unknown` | s3, `pinned === undefined`: one row, and the row draws no pin control |
-| `archive-withheld` | `session_archive` absent: one row (`Pin conversation`), not a disabled one |
-| `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation` (288 × 81, the widest state) |
+| `pinned-row` | the five-row state on s1, in the shipped order: `Unpin conversation`, `Fork conversation` (row 3, #739), then `Move conversation up` and `Move conversation down` (both boundary-inked and `aria-disabled`, because the one pinned row is at both ends) — **296 × 184 at 142,297**. Re-shot for the round-1 remediation: the Move rows' chords are joined like the pair's above them (D1) and Fork sits third (D2), after #743 moved the move pair out of the strip and into this menu, so the row's own children are back to two (`pin`, `archive`) |
+| `pin-state-unknown` | s3, `pinned === undefined`: two rows (Archive, Fork) in 273 × 77, and the row draws no pin control |
+| `archive-withheld` | `session_archive` absent: two rows (`Pin conversation`, Fork) in 246 × 77, not a disabled one |
+| `archived-row` | the row behind `Include archived`: item 1 reads `Unarchive conversation`, three rows in 288 × 113 (the widest LABEL the menu draws) |
 | `flyout-dwelled` | the flyout given 1800ms to dwell, then the menu: flyout `absent` |
 | `flyout-alone` | the control: the same row (s2), same hover, same dwell, no menu |
 | `menu-closed` | `pointer-open`'s before/after partner: same scene, same settle, no open — and the open state drops the flyout band itself (see `flyout-dwelled`) |
@@ -118,10 +127,11 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   `rect.bottom - 1`, exactly what § 3 prescribes, and no code path read the
   ambient event's coordinates. The panel sits 2px right of its anchor because
   the primitive hard-codes `sideOffset: 2`; it has no caller-facing option. On
-  the keyboard path that placement leaves the panel's outer right edge (286)
-  over the sidebar divider's hairline (x 279) by **7px** — the accepted
-  straddle's smallest case, recorded with the findings that measured it
-  (design round 1, D4).
+  the keyboard path that placement leaves the panel spanning 14..287 (its ink to
+  286) over the sidebar divider's hairline (x 279) by **8px** of box, 7px of ink —
+  the accepted straddle's smallest case, and the pointer states straddle far
+  further (136px and 151px, § 3 of the design record), recorded with the findings
+  that measured them (design round 1, D4/D7).
 - **The hold.** `pointer-open` reads `ground rgb(48, 45, 41) · pair: flex`,
   `pair children: button[pin]:flex:243w24 | button[archive]:flex:215w24` —
   identically to `menu-closed`, the same scene with no menu under the pointer.
@@ -140,14 +150,23 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
 - **The flyout.** `flyout-dwelled` (menu opened after the flyout had drawn)
   reads `flyout: absent`, and `flyout-alone` reads `present` in the same scene:
   the modal portal is what removes it, and the pair reads as the measurement.
-- **The five-row panel, and the fold that produced it.** `pinned-row` reads
-`panel: 273x178 at 142,297`, `items: 5 — Archive conversation⌘⇧A | Unpin
-conversation⌘⇧P | Move conversation up⌘⇧↑ | Move conversation down⌘⇧↓ | Fork
-conversation`, the row at `255x32 at 12,268` and `pair children: button[pin]:flex:243w24
-| button[archive]:flex:215w24` — two children, where the #697-era take read four,
-because the arrows left the strip for this menu (#743). The row step this set
-measures is 32-33px per row (81 → 113 → 178), and Fork's own row is the shorter
-kind: it carries no chord cap.
+- **The five-row panel now reads 296 × 184, and the round-1 remediation is why.**
+`pinned-row` reads `panel: 296x184 at 142,297`, `items: 5 — Archive
+conversation⌘⇧A | Unpin conversation⌘⇧P | Fork conversation | Move conversation
+up⌘⇧↑ | Move conversation down⌘⇧↓`, the row at `255x32 at 12,268` and `pair
+children: button[pin]:flex:243w24 | button[archive]:flex:215w24` — two children,
+where the #697-era take read four, because the arrows left the strip for this menu
+(#743). Measured A/B on the same story, one variable: with the Move rows printing
+the handler's spelling they were one cap wide and the panel was 273 × 178; with the
+joined sibling each prints three caps, the Move rows become the widest rows in the
+menu (296, past `Unarchive conversation`'s 288) and a full chord row tall
+(33 → 36). This is now the widest panel in the set.
+- **The row kinds, measured — and the 6px that used to be called a step.** A chord
+row is **36** and a plain (chord-less) row is **32**, with 8px of panel padding, and
+every panel in the set reproduces from those within 1px of sub-pixel rounding
+(36+36+32+8 = 112 → 113; 36+32+8 = 76 → 77; 36+36+8 = 80 → 81; 36+36+32+36+36+8 =
+184). The "32-33px step" the first take recorded was the two Move rows at 33, a
+single-cap row; with their chords joined they are 36 like every other chord row.
 
 **The pointer's own highlight.** `pointer-hover` reads
   `focus: menuitem “Archive conversation⌘⇧A”` and
@@ -190,10 +209,12 @@ kind: it carries no chord cap.
 - **A real right-button press, or the real OS key event.** The trigger is the
   product's and the events are the product's own event types, but the rig
   cannot originate a right-button press or a `ContextMenu`/`Shift+F10` key
-  from the platform; that is QA's check over CDP against the same build — and
-  QA round 1 carried it: real right-clicks opened the menu, and real
-  `Shift+F10` and `ContextMenu` presses both opened it with focus in the first
-  item (round 1's QA report, on the PR).
+  from the platform; that is QA's check over CDP against the same build — and it is
+  carried for THIS head by QA round 1's report on PR #757 (its C1, C3, C3b and C7):
+  real right-clicks opened the menu, and real `Shift+F10` and `ContextMenu` presses
+  both opened it with focus in the first item. The sentence was written for #694's
+  round, so read it as "this is QA's check, and here is the round that ran it" rather
+  than as a claim that predates #757's review.
 - **Latency or motion.** A hidden window has no focus; nothing here is a
   timing measurement, and `prefers-reduced-motion` behaviour is the
   components' (no entrance animation is authored anywhere in this menu).

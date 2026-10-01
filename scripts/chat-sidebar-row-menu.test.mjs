@@ -203,22 +203,26 @@ test("Fork is the menu's newest row: its order, copy, withheld condition and wir
 	 */
 	const forkItem = between(MENU, "{forkable && (", "</ContextMenuItem>");
 	/*
-	 * ORDER: Archive, Pin, Move up, Move down, Fork (#743's four, then #739's
-	 * appended fifth). Every earlier item keeps the position it already had, and
-	 * Fork is APPENDED - it is never interleaved into a pair.
+	 * ORDER: Archive, Pin, Fork, then the conditional Move pair (round-1 design
+	 * review, D2). The principle, stated so the next act has something to apply:
+	 * rows 1-2 are the mirrored pair in the strip's own order, row 3 is the
+	 * UNCONDITIONAL singleton - so the third slot keeps one identity in every
+	 * state instead of changing between Fork and `Move conversation up` - and the
+	 * conditional block trails it. The two Move items stay adjacent to each other
+	 * under either arrangement.
 	 */
 	const archiveAt = MENU.indexOf('pressRowAct(row.session_id, "archive")');
 	const pinAt = MENU.indexOf('pressRowAct(row.session_id, "pin")');
+	const forkAt = MENU.indexOf('"session.fork"');
 	const moveUpAt = MENU.indexOf("movePinnedRow(row.session_id, -1, true)");
 	const moveDownAt = MENU.indexOf("movePinnedRow(row.session_id, 1, true)");
-	const forkAt = MENU.indexOf('"session.fork"');
 	assert.ok(
 		archiveAt !== -1 &&
 			archiveAt < pinAt &&
-			pinAt < moveUpAt &&
-			moveUpAt < moveDownAt &&
-			moveDownAt < forkAt,
-		"the menu no longer reads Archive, Pin, Move up, Move down, Fork - #739 appends, it does not interleave",
+			pinAt < forkAt &&
+			forkAt < moveUpAt &&
+			moveUpAt < moveDownAt,
+		"the menu no longer reads Archive, Pin, Fork, Move up, Move down (D2) - the mirrored pair, the unconditional singleton, then the conditional block",
 	);
 	assert.equal(
 		MENU.split("<ContextMenuItem").length - 1,

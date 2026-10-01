@@ -1,8 +1,9 @@
 /**
  * The row context menu, as shipped - the story `docs/evidence/chat-sidebar-row-context-menu/`
- * is captured from. It draws up to THREE items (Archive, Pin, and Fork, #739);
- * the readout lists whatever the product mounted, so no frame states a count the
- * app does not hold.
+ * is captured from. It draws Archive, Pin and Fork on an ordinary row, and FIVE
+ * items on a pinned one - the conditional Move pair trails Fork, and
+ * `chat-sidebar.tsx`'s items comment carries the order rule; the readout lists
+ * whatever the product mounted, so no frame states a count the app does not hold.
  *
  * THIS STORY DRIVES THE REAL THING, and the one simulation is named rather than
  * hidden. The menu is opened THROUGH THE REAL TRIGGER: a dispatched `contextmenu`
