@@ -33,6 +33,21 @@ Round 1's two remediation states (`pointer-hover`, `archived-row`) were
 captured with the same command narrowed by `--dirs=pointer-hover,archived-row`,
 so no existing frame was re-taken.
 
+**The frames ship from the FOLDED tip** (`bec29a5f5`, the fold onto
+`origin/main` = `490c2079fb`). The first #739 take was on this branch before the
+fold, and the fold broke the pointer states' own gate rather than their pixels:
+a story that opened the menu on a timer was RACING the rig's hover check, and
+the larger sidebar the fold brought (a slower first paint, more rows, a fourth
+toolbar control) lost that race for every state - the rig refused with "the
+pointer is on `[data-session-row="s2"]` but the element does not match :hover".
+The story now WAITS for the pointer before it opens the menu, which is both the
+race's fix and the honest gesture (a right-click happens on a row the pointer is
+already over; the menu is modal, so the row cannot be hovered once the panel is
+up). The set was then re-taken in full at the folded tip, and only
+`archived-row/localOperatorLight` and the two `fork-pressed` frames differ
+byte-for-byte from the pre-fold take - the deterministic scenes reproduced
+themselves.
+
 **The story drives the real feature, not a composition over it.** The menu is
 opened through the real trigger: a dispatched `contextmenu` at the row's own
 box (the event the primitive's `handleOpen` anchors from) for the pointer
@@ -184,6 +199,15 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   `@` mention control) that the #694 frames, taken earlier, do not. That is the
   base moving, not this change; the frames that differ for Fork alone are the
   menu panels themselves.
+- **The fixture waits for the pointer (#739, the fold's repair).** The story's
+  pointer states now poll `:hover` on the row and open the menu only once the
+  pointer is on it (`waitForHover`, `chat-row-context-menu.stories.tsx`); the
+  keyboard state does not wait, because no pointer is involved. Recorded here
+  because it changes what the frames are: the menu is now photographed opening
+  under a pointer that is genuinely on the row, and the gate the rig applies
+  (`the element must match :hover`) is satisfiable by construction rather than by
+  winning a ~300ms race. The rig confirms the same fact independently - every
+  pointer frame in this set passed that gate at the tip named above.
 - **Capture clocks — the whole set is one now (#739).** Every frame was
   re-taken for #739 over rows dated minutes before, so all of them read `TODAY`;
   what follows is why the #694 half once read otherwise, kept because the
@@ -201,7 +225,12 @@ Every number is read out of the DOM by the story; `docs/design/row-context-menu.
   `design/row-context-menu-694` as the record of what was proposed — its
   `pointer-open-unheld` control reproduces a defect the shipped hold removes,
   and nothing in this set re-photographs it.
-- **The fold.** The branch carries eight merges of `origin/main` (`0044c53422`,
+- **The fold (#739's own).** This branch folded onto `origin/main` =
+  `490c2079fb` by a merge commit (`bec29a5f58`) while the frames were being
+  taken; `docs/evidence/manifest.json` was the only conflicted path (main's copy
+  taken whole, this branch's records re-laid by the capture pass), and
+  `scripts/capture-evidence.mjs` auto-merged with this branch's two new STORIES
+  rows intact. The branch also carries eight earlier merges of `origin/main` (`0044c53422`,
   `9dd18ab318`, `0f35e824ac`, `1cb4a2a8b3`, `8712e8684c`, `2e866d5d49`,
   `efca9e16fc` and `50b9daf8fe` — the round-2 and round-3 folds, the last two
   landed as `64202be19f` and `c88736f3b4`); the two remediation states were

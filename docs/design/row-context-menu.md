@@ -671,7 +671,7 @@ app does not hold. `localOperatorDark`, 280px sidebar, 780 × 520:
 | ground | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` | `rgb(48, 45, 41)` |
 | `data-state` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` | `closed` |
 | pair | `flex` | `flex` | `flex` | `flex` | `flex` | `flex` | `not mounted` |
-| pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | as `pointer-open` | archive `flex:159w24`, up `flex:187w24`, down `flex:215w24`, mark `flex:243w24` | archive `flex:243w24` | — |
+| pair children | pin `flex:243w24`, archive `flex:215w24` | as `pointer-open` | as `pointer-open` | as `pointer-open` | up `flex:187w24`, down `flex:215w24`, pin `flex:243w24`, archive `flex:159w24` (the #739 re-take reads the children in DOM order, which `main` reordered while this branch was open; the same four controls, the same four widths) | archive `flex:243w24` | — |
 | flyout | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` | `absent` |
 | focus | menu; first item not highlighted | **first item, `data-highlighted`** | **first item, `data-highlighted`** | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted | menu; first item not highlighted |
 

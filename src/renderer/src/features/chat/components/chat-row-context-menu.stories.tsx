@@ -218,6 +218,37 @@ const waitFor = async <T extends Element>(
 };
 
 /**
+ * Wait until the pointer is ON this element, then give up (and say so) rather
+ * than hanging a run.
+ *
+ * WHY THE POINTER STATES WAIT FOR THEIR OWN HOVER, and it is a requirement rather
+ * than tidiness. The menu is modal, so Radix puts `pointer-events: none` on the
+ * body while it is open - which means the row cannot be hovered AT ALL once the
+ * panel is up, however the pointer is parked (the design record states it, and it
+ * is why the hold exists: the held ground is React state, not `:hover`). The
+ * capture rig moves a REAL pointer onto the row and then requires the row to
+ * match `:hover` before it will open the shutter. So a story that opened the menu
+ * on a timer after the row appeared was racing that: whichever came first won,
+ * and a scene where the timer won files a frame whose own gate can never be
+ * satisfied - the rig reports "the pointer is on `[data-session-row="s2"]` but the
+ * element does not match :hover", which is exactly what the fold onto
+ * `origin/main` (a larger sidebar, a slower first paint) produced for the whole
+ * set. Waiting for the hover removes the race: the menu cannot open before the
+ * pointer is on the row.
+ *
+ * IT IS ALSO THE HONEST GESTURE. A right-click happens on a row the pointer is
+ * already over; the pointer arrives first and the menu follows. The timer was
+ * standing in for a person who had already done that.
+ */
+const waitForHover = async (element: Element): Promise<boolean> => {
+	for (let i = 0; i < 200; i++) {
+		if (element.matches(":hover")) return true;
+		await sleep(50);
+	}
+	return false;
+};
+
+/**
  * A draft that holds a LISTED conversation's id and never carried a message - the
  * sidebar's own `unstarted` statement (`chat-sidebar.tsx`), which is the one
  * condition that withholds the menu's Fork item: the backend refuses to fork a
@@ -348,6 +379,12 @@ const Panel: FC<{
 			 */
 			box.scrollIntoView({ block: "center" });
 			await sleep(60);
+			/*
+			 * THE POINTER FIRST (see `waitForHover`). Only the states a real pointer
+			 * drives wait: the keyboard state opens on a keypress with no pointer
+			 * involved, and waiting there would stall the scene.
+			 */
+			if (spot === "pointer") await waitForHover(box);
 			if (delayMs > 0) await sleep(delayMs);
 			if (cancelled || noMenu) return;
 			const rect = box.getBoundingClientRect();
