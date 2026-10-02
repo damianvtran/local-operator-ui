@@ -37,6 +37,22 @@
  * Usage:
  *   node scripts/console-host-proof.mjs [--keep] [--out <dir>]
  *   node scripts/console-host-proof.mjs --packaged "/Applications/Local Operator.app"
+ *   node scripts/console-host-proof.mjs --pair <port>
+ *
+ * `--pair <port>` LETS THIS RIG SUPPLY THE PRECONDITION THE PANE CELLS NEED, by
+ * standing up a daemon it owns and handing the app that daemon's own serve record.
+ * The app discovers it in this run's scratch config root and pairs through the same
+ * claim route it uses for a daemon the operator started (`attach-frame-evidence.mjs`
+ * is the committed proof of that route). The tree must be BUILT for the same
+ * address, because the renderer's copy is inlined at build time:
+ *
+ *     VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:<port> pnpm build
+ *
+ * Without this flag the pane cells block exactly as before (no backend to serve a
+ * conversation) and every other cell still runs; with it, a run from a clean
+ * profile is a full pass. The port is refused at 1111, the operator's own daemon,
+ * and the daemon runs with this run's scratch HOME/config/logs, so nothing it does
+ * can reach the operator's state.
  *
  * The packaged mode is the second half of P13: it asserts the two packing traps in a
  * tree electron-builder produced (`stat -f %Sp` on the unpacked helper, and the
@@ -70,6 +86,9 @@ import { withTelemetryOff } from "./telemetry-off.mjs";
 const argv = process.argv.slice(2);
 const KEEP = argv.includes("--keep");
 const PACKAGED = argValue("--packaged");
+/** The port `--pair` names for this run's own daemon; refused at 1111 (the
+ * operator's own) and validated in `main`. */
+const PAIR_PORT = argValue("--pair");
 const ROOT = process.cwd();
 
 /** The value after a flag, or undefined. Named `argValue` rather than `valueOf`,
@@ -191,8 +210,12 @@ const HISTORY_DIR = join(CONFIG_DIR, "run", "ui-console", "history");
  * readable name, which is why the pane could not be mounted: `--open-session=proof-session`
  * validated to nothing, the window opened on the catalogue, and the run's own diagnostic
  * showed `activeSessionId: null` with no `console-pane` element in the DOM (Q-5).
+ *
+ * A `let`, because `--pair` REPLACES it with the id of the conversation this run seeds
+ * into its own daemon: the app shows the conversation the DAEMON knows, and the console
+ * surfaces this rig creates have to belong to that same id.
  */
-const SESSION = "abcdef012345";
+let SESSION = "abcdef012345";
 
 const transcript = [];
 let failures = 0;
@@ -446,6 +469,115 @@ async function stopApp() {
 	app = null;
 	stopping.flush();
 	await stopping.stop();
+}
+
+/* --------------------------------------------------------- the paired daemon */
+
+/**
+ * This run's own daemon (`--pair <port>`), or null.
+ *
+ * WHY THE RIG STARTS ONE AT ALL, when its docstring used to say pairing was
+ * outside its reach: the pane cells need a conversation the APP can read, and an
+ * app reads conversations from a backend it is paired with. `--pair` makes this
+ * run supply that backend instead of hoping the machine has one: a `lop serve`
+ * child on this run's own scratch HOME/config/logs, whose own serve record the
+ * app discovers in the same scratch config root - the claim route a daemon
+ * started by a TUI uses, and the route `attach-frame-evidence.mjs` already runs
+ * in CI. The operator's daemon (1111) is refused rather than borrowed, so a bad
+ * argument cannot point this rig at the live server.
+ */
+let daemon = null;
+
+/** The conversation this run seeds into its own daemon, so the app has one to
+ * show. Returns its id (12 hex characters, the shape the app's launch intent
+ * validates). */
+function seedPairedConversation() {
+	const seeded = execFileSync(
+		process.execPath,
+		["scripts/seed-paging-session.mjs", CONFIG_DIR, "8", "console close"],
+		{ cwd: ROOT, env: { ...process.env, HOME: HOME_DIR }, encoding: "utf8" },
+	);
+	const { sessionId } = JSON.parse(seeded);
+	return sessionId;
+}
+
+async function startPairedDaemon(port) {
+	/*
+	 * THE VALUES THE FLAGS IMPLY, WRITTEN BEFORE THE DAEMON STARTS: a fresh config
+	 * root gets no hosting from `--hosting`, and the trap `docs/agent-driver.md`
+	 * records - every turn dying in the daemon with HostingNotConfiguredError -
+	 * costs a whole pass when it fires. This flow needs no provider at all; the
+	 * values are what make the daemon's session and desktop routes normal.
+	 */
+	writeFileSync(
+		join(CONFIG_DIR, "config.yml"),
+		"values:\n  hosting: test\n  model_name: mock-model\n",
+	);
+	const env = withNotificationsOff({
+		...process.env,
+		HOME: HOME_DIR,
+		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
+		VITE_LOCAL_OPERATOR_API_URL: `http://127.0.0.1:${port}`,
+	});
+	withTelemetryOff(env);
+	for (const key of Object.keys(env)) {
+		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
+	}
+	const child = spawn(
+		"lop",
+		[
+			"serve",
+			"--host",
+			"127.0.0.1",
+			"--port",
+			String(port),
+			"--hosting",
+			"test",
+			"--model",
+			"mock-model",
+		],
+		{ env, cwd: ROOT, stdio: ["ignore", "pipe", "pipe"], detached: true },
+	);
+	const stream = [];
+	child.stdout.on("data", (chunk) => stream.push(chunk.toString()));
+	child.stderr.on("data", (chunk) => stream.push(chunk.toString()));
+	const record = join(CONFIG_DIR, "run", "serve", `${child.pid}.json`);
+	const started = Date.now();
+	while (!existsSync(record) && Date.now() - started < 60_000) {
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+	if (!existsSync(record)) {
+		throw new Error(
+			`the paired daemon wrote no serve record in 60 s; its output follows\n${stream.join("").slice(-2000)}`,
+		);
+	}
+	return { child, record, text: () => stream.join("") };
+}
+
+async function stopDaemon() {
+	if (!daemon) return;
+	const stopping = daemon;
+	daemon = null;
+	await new Promise((resolve) => {
+		const killTree = (signal) => {
+			try {
+				process.kill(-stopping.child.pid, signal);
+			} catch {
+				try {
+					stopping.child.kill(signal);
+				} catch {
+					/* already dead */
+				}
+			}
+		};
+		stopping.child.once("exit", resolve);
+		killTree("SIGTERM");
+		setTimeout(() => {
+			killTree("SIGKILL");
+			resolve();
+		}, 5000);
+	});
 }
 
 function pickDevtoolsPort() {
@@ -965,6 +1097,105 @@ async function mountConversation(timeoutMs) {
 }
 
 /**
+ * The element's own `click()`, for the pane's own controls.
+ *
+ * Measured above (the pane cells): a compositor press does not reach a window that is
+ * never shown, and the element's own `click()` is the path that runs; `openedByPress`
+ * records which one did where that matters.
+ */
+const pressDom = (selector) =>
+	rendererEvaluate(
+		`(() => { const el = document.querySelector('${selector}'); if (!el) return false; el.click(); return true; })()`,
+	);
+
+/** The strip's rows as the live DOM has them: each close control's accessible name,
+ * computed opacity (the reveal) and box. A reader for the #754 cells, both of which
+ * (the close block and the restart block) call it. */
+const rowsReading = () =>
+	rendererEvaluate(`(() => {
+		return [...document.querySelectorAll('[data-surface]')].map((row) => {
+			const close = row.querySelector('[data-tour-tag="console-surface-close"]');
+			const box = close ? close.getBoundingClientRect() : null;
+			return {
+				surface: row.getAttribute('data-surface'),
+				label: close ? close.getAttribute('aria-label') : null,
+				opacity: close ? getComputedStyle(close).opacity : null,
+				width: box ? box.width : null,
+				height: box ? box.height : null,
+			};
+		});
+	})()`);
+
+/** The close question as the DOM has it (Radix's portal included). */
+const questionReading = () =>
+	rendererEvaluate(`(() => {
+		const dialog = document.querySelector('[role="dialog"]');
+		if (!dialog) return null;
+		return {
+			text: (dialog.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 200),
+			cancel: Boolean(dialog.querySelector('[data-cancel-action]')),
+			confirm: Boolean(dialog.querySelector('[data-confirm-action]')),
+		};
+	})()`);
+
+const waitForQuestion = async (timeoutMs = 10_000) => {
+	const started = Date.now();
+	for (;;) {
+		const found = await questionReading().catch(() => null);
+		if (found) return found;
+		if (Date.now() - started > timeoutMs) return null;
+		await sleep(150);
+	}
+};
+
+const surfacesOf = async (state) =>
+	(await rpcOk(state, "console_list", { session_id: SESSION })).surfaces;
+
+/** A surface the USER asked for, through the pane's own `+` control. */
+const createUserSurface = async (state) => {
+	const before = new Set((await surfacesOf(state)).map((row) => row.surface));
+	await pressDom('[data-tour-tag="console-new-surface"]');
+	const started = Date.now();
+	for (;;) {
+		const fresh = (await surfacesOf(state)).find(
+			(row) => !before.has(row.surface),
+		);
+		if (fresh) return fresh.surface;
+		if (Date.now() - started > 15_000) {
+			throw new Error("the pane's + never produced a user surface");
+		}
+		await sleep(250);
+	}
+};
+
+/** The close control's selector for one surface. */
+const closeSelectorFor = (surface) =>
+	`[data-surface="${surface.replace(/"/g, '\\"')}"] [data-tour-tag="console-surface-close"]`;
+
+/** A window-level frame through CDP, for moments the pane's own crop cannot show
+ * (the close question is a modal over the whole window, not an xterm frame). */
+const captureAppFrame = async (name) => {
+	const shot = await withRendererSession((call) =>
+		call("Page.captureScreenshot", { format: "png" }),
+	);
+	const png = Buffer.from(shot.data, "base64");
+	const file = join(OUT_DIR, name);
+	writeFileSync(file, png);
+	record(`frame ${name}`, {
+		file,
+		bytes: png.length,
+		size: pngSize(png),
+		viewport: await rendererEvaluate(
+			"(() => ({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio }))()",
+		),
+		sha256: createHash("sha256").update(png).digest("hex"),
+	});
+};
+
+/** The history file's own name for a surface or session (`history.ts`'s `fileStem`). */
+const fileStemOf = (value) => value.replace(/[^A-Za-z0-9_-]/g, "_");
+
+/**
  * A REAL PRESS at a page coordinate, through Chromium's own input pipeline.
  *
  * `Input.dispatchMouseEvent` rather than a synthetic `element.click()`: the pane's trigger
@@ -1139,6 +1370,34 @@ async function main() {
 	);
 	const helperPresent = existsSync(devHelper);
 	if (helperPresent) chmodSync(devHelper, 0o644);
+
+	/*
+	 * THE PANE CELLS' PRECONDITION, supplied when the run was asked for it
+	 * (`--pair <port>`): this rig's own daemon, seeded with one conversation, its
+	 * serve record left in this run's scratch config root so the app pairs through
+	 * the same claim route a TUI-started daemon uses. Started BEFORE the app,
+	 * because discovery happens at boot. 1111 is refused: that is the operator's
+	 * own daemon and borrowing it is the thing the isolation exists for.
+	 */
+	if (PAIR_PORT !== undefined) {
+		const port = Number(PAIR_PORT);
+		if (!Number.isInteger(port) || port <= 0 || port > 65_535) {
+			throw new Error(
+				`--pair must name a port, got ${JSON.stringify(PAIR_PORT)}`,
+			);
+		}
+		if (port === 1111) {
+			throw new Error("--pair refuses 1111: that is the operator's own daemon");
+		}
+		mkdirSync(LOG_DIR, { recursive: true });
+		SESSION = seedPairedConversation();
+		daemon = await startPairedDaemon(port);
+		check(
+			"--pair supplied a daemon and a conversation for the pane cells",
+			existsSync(daemon.record),
+			{ port, session: SESSION, record: daemon.record },
+		);
+	}
 
 	app = await launchApp();
 	const state = await waitForState();
@@ -1474,6 +1733,11 @@ async function main() {
 	 * cells that need the pane are BLOCKED BY NAME, every other cell still runs, the summary
 	 * counts what actually ran, and the run exits non-zero — a partial pass can no longer be
 	 * reported as a pass.
+	 *
+	 * `--pair` SUPPLIES THAT PRECONDITION RATHER THAN FAKING IT (see the header): a real
+	 * `lop serve` on this run's own scratch root, its serve record where the app looks for
+	 * one, and the same claim route a TUI-started daemon pairs through. The blocked path
+	 * above remains for a run without the flag.
 	 */
 	const mounted = await mountConversation(Math.max(30_000, WAIT_MS ?? 0));
 	const paneAvailable = mounted !== null && mounted.failed !== true;
@@ -1623,6 +1887,199 @@ async function main() {
 				bytes: png.length,
 			},
 		);
+	}
+
+	// ---- #754: the per-surface close path -----------------------------------
+	/*
+	 * The strip's own close control, driven the way the pane's other controls are: the
+	 * element's own `click()` (measured above: a compositor press does not reach a
+	 * never-shown window, so the DOM path is the one that runs), and the question's buttons
+	 * pressed the same way.
+	 *
+	 * THE SURFACES ARE THE USER'S OWN, created through the pane's `+`, because the two
+	 * behaviours under test are origin-dependent: a user's surface is retained (design
+	 * 7.2), and that is what lets the restart cells tell a DISMISSAL from a CLOSE — the
+	 * close keeps the record for the next launch, the dismissal removes it. An agent's
+	 * surface (`retain: false`) erases that difference.
+	 */
+	let closeCase = null;
+	if (paneAvailable) {
+		// 1. the affordance: on the row, named for the terminal, revealed by state
+		const runningSurface = await createUserSurface(state);
+		await pressDom(`[data-surface="${runningSurface}"] [role="tab"]`);
+		await sleep(300);
+		const reading = await rowsReading();
+		const runningRow = reading.find((row) => row.surface === runningSurface);
+		check(
+			"the strip's close control is on the row, named for its terminal (#754)",
+			typeof runningRow?.label === "string" &&
+				runningRow.label.startsWith("Close ") &&
+				runningRow.width > 0 &&
+				runningRow.height > 0,
+			{ runningSurface, reading },
+		);
+		check(
+			"the active row's control is revealed; an inactive row's waits for hover or focus",
+			runningRow?.opacity === "1" &&
+				reading.some(
+					(row) => row.surface !== runningSurface && row.opacity === "0",
+				),
+			reading,
+		);
+		await captureAppFrame("close-affordance.png");
+
+		// 2. the question, and nothing dead before it is answered
+		await pressDom(closeSelectorFor(runningSurface));
+		const question = await waitForQuestion();
+		check(
+			"a running surface's close asks first, in the shared dialog's own copy (#754)",
+			typeof question?.text === "string" &&
+				question.text.includes("Close this terminal?") &&
+				question.text.includes(
+					"This ends the program running here and removes its tab.",
+				) &&
+				question.cancel === true &&
+				question.confirm === true,
+			question,
+		);
+		const statusWhileAsked = await rpcOk(state, "console_status", {
+			surface: runningSurface,
+		});
+		check(
+			"the question signals nothing: the surface is still running while it stands",
+			statusWhileAsked.running === true,
+			{ running: statusWhileAsked.running, live: statusWhileAsked.live },
+		);
+		await captureAppFrame("close-question.png");
+
+		// 3. Cancel changes nothing
+		await pressDom("[data-cancel-action]");
+		await sleep(400);
+		const afterCancel = await questionReading();
+		check(
+			"the question's Cancel changes nothing: no dialog, still running, still listed",
+			afterCancel === null &&
+				(await rpcOk(state, "console_status", { surface: runningSurface }))
+					.running === true &&
+				(await surfacesOf(state)).some((row) => row.surface === runningSurface),
+			{ afterCancel },
+		);
+
+		// 4. confirm kills it, and only then
+		const historyLog = join(
+			HISTORY_DIR,
+			fileStemOf(SESSION),
+			`${fileStemOf(runningSurface)}.log`,
+		);
+		check(
+			"a retained user surface has history on disk before the close (the restart cell's discriminant)",
+			existsSync(historyLog),
+			{ historyLog },
+		);
+		await pressDom(closeSelectorFor(runningSurface));
+		const questionAgain = await waitForQuestion();
+		check(
+			"the question opens again after a cancel (the press is repeatable)",
+			questionAgain !== null,
+			questionAgain,
+		);
+		const confirmAt = Date.now();
+		await pressDom("[data-confirm-action]");
+		let closedList = await surfacesOf(state);
+		const closeDeadline = Date.now() + 20_000;
+		while (
+			closedList.some((row) => row.surface === runningSurface) &&
+			Date.now() < closeDeadline
+		) {
+			await sleep(250);
+			closedList = await surfacesOf(state);
+		}
+		const closedStatus = await rpc(state, "console_status", {
+			surface: runningSurface,
+		});
+		check(
+			"confirming the question kills the surface: gone from the listing, refused by name",
+			closedList.every((row) => row.surface !== runningSurface) &&
+				closedStatus.json?.error?.code === "surface_unavailable",
+			{
+				gone: closedList.every((row) => row.surface !== runningSurface),
+				status: closedStatus.json,
+				elapsedMs: Date.now() - confirmAt,
+			},
+		);
+		check(
+			"a close keeps a retained surface's history (the dismissal below is what removes it)",
+			existsSync(historyLog),
+			{ historyLog },
+		);
+		await captureAppFrame("close-closed.png");
+		const afterClose = await questionReading();
+		check(
+			"the question is gone once it has been answered",
+			afterClose === null,
+			afterClose,
+		);
+
+		// 5. an ended surface dismisses outright, and its history goes with it
+		const dismissedSurface = await createUserSurface(state);
+		await rpcOk(state, "console_input", {
+			surface: dismissedSurface,
+			text: "exit\r",
+		});
+		const ended = await waitForExit(state, dismissedSurface, 0);
+		const dismissedLog = join(
+			HISTORY_DIR,
+			fileStemOf(SESSION),
+			`${fileStemOf(dismissedSurface)}.log`,
+		);
+		const dismissLabelDeadline = Date.now() + 10_000;
+		let dismissLabel = null;
+		while (Date.now() < dismissLabelDeadline) {
+			dismissLabel =
+				(await rowsReading()).find((row) => row.surface === dismissedSurface)
+					?.label ?? null;
+			if (dismissLabel?.startsWith("Dismiss ")) break;
+			await sleep(250);
+		}
+		check(
+			"an ended row's control names the DISMISSAL, not the kill (#754's two states)",
+			typeof dismissLabel === "string" && dismissLabel.startsWith("Dismiss "),
+			{ dismissLabel, ended },
+		);
+		check(
+			"the ended surface's retained history is on disk before the dismissal",
+			existsSync(dismissedLog),
+			{ dismissedLog },
+		);
+		await pressDom(closeSelectorFor(dismissedSurface));
+		const dismissQuestion = await questionReading();
+		check(
+			"a dismissal asks nothing (there is no process left to protect)",
+			dismissQuestion === null,
+			{ question: dismissQuestion },
+		);
+		let dismissedList = await surfacesOf(state);
+		const dismissDeadline = Date.now() + 15_000;
+		while (
+			dismissedList.some((row) => row.surface === dismissedSurface) &&
+			Date.now() < dismissDeadline
+		) {
+			await sleep(250);
+			dismissedList = await surfacesOf(state);
+		}
+		check(
+			"the dismissal removed the surface from the registry AND its history from disk",
+			dismissedList.every((row) => row.surface !== dismissedSurface) &&
+				!existsSync(dismissedLog),
+			{
+				gone: dismissedList.every((row) => row.surface !== dismissedSurface),
+				historyRemoved: !existsSync(dismissedLog),
+				dismissedLog,
+			},
+		);
+		await captureAppFrame("close-dismissed.png");
+
+		closeCase = { running: runningSurface, dismissed: dismissedSurface };
 	}
 
 	/*
@@ -2392,6 +2849,83 @@ async function main() {
 		},
 	);
 
+	// ---- #754: the restart the issue's repro is about ------------------------
+	/*
+	 * THE HALF A UNIT TEST CANNOT ANSWER, run on a real relaunch: a dismissed ended
+	 * surface must NOT come back (#754's own repro - a retained surface is restored at
+	 * launch, which is why dismissal has to remove the record rather than hide it), while
+	 * a surface CLOSED WHILE RUNNING keeps its history and is restored as ended, because
+	 * that is what the close reserved for it (design 7.3). Both assertions read the
+	 * restarted app's own listing, and the app's own log line names the count it restored.
+	 */
+	if (closeCase) {
+		await stopApp();
+		await sleep(500);
+		app = await launchApp();
+		const restarted = await waitForState();
+		const restoredList = await surfacesOf(restarted);
+		const restoredRunning = restoredList.find(
+			(row) => row.surface === closeCase.running,
+		);
+		check(
+			"a surface closed while running is restored as ENDED after a relaunch (design 7.3)",
+			restoredRunning !== undefined &&
+				restoredRunning.running === false &&
+				restoredRunning.live === false,
+			{
+				restored: restoredRunning ?? null,
+				count: restoredList.length,
+				surfaces: restoredList.map((row) => row.surface),
+			},
+		);
+		check(
+			"the dismissed ended surface does NOT come back (#754's restart repro)",
+			restoredList.every((row) => row.surface !== closeCase.dismissed),
+			{
+				dismissed: closeCase.dismissed,
+				present: restoredList.some(
+					(row) => row.surface === closeCase.dismissed,
+				),
+			},
+		);
+		const restoredLog = appLogText();
+		check(
+			"the relaunch restored exactly one retained surface, in the app's own words",
+			restoredLog.includes("restored 1 retained surface(s) from history"),
+			{
+				lines: restoredLog
+					.split("\n")
+					.filter((line) => line.includes("restored"))
+					.slice(-3),
+			},
+		);
+		// The pane again, on the restarted app, so the restored row is a FRAME rather
+		// than a listing: the mount path is the same one the pane cells use.
+		await mountConversation(bounded(null, 30_000));
+		await pressDom('[data-tour-tag="console-pane-trigger"]');
+		const reopened = await waitForConsolePane(bounded(null, 15_000));
+		const restoredRowDeadline = Date.now() + 15_000;
+		let restoredRow = null;
+		while (Date.now() < restoredRowDeadline) {
+			restoredRow =
+				(await rowsReading()).find(
+					(row) => row.surface === closeCase.running,
+				) ?? null;
+			if (restoredRow) break;
+			await sleep(250);
+		}
+		check(
+			"the restored ended surface is a row in the strip after the relaunch, offering its Dismiss",
+			reopened !== null &&
+				reopened.failed !== true &&
+				restoredRow !== null &&
+				typeof restoredRow.label === "string" &&
+				restoredRow.label.startsWith("Dismiss "),
+			{ reopened, restoredRow },
+		);
+		await captureAppFrame("close-relaunch.png");
+	}
+
 	finish();
 }
 
@@ -2462,6 +2996,9 @@ main()
 	.finally(async () => {
 		// A failed run must not leave an app behind holding a state file and a pty.
 		await stopApp();
+		// Nor the daemon `--pair` started: it lives under this run's scratch tree and
+		// is stopped by pid before that tree is removed.
+		await stopDaemon();
 		if (!KEEP && !PACKAGED) {
 			// The scratch tree is this run's own, under the system temp dir: removing it
 			// is the "do not leave a sandbox behind" rule, and nothing outside it is
