@@ -115,11 +115,11 @@ cycle's click.
   the resting composer - mic present, no recording controls, no indicator. **The
   two panes are not the same state, and the pair is about the COMPOSER rather
   than the transcript**: `01` was taken while the conversation was still loading
-  ("Loading conversation...") and `02` after it settled. What the two carry is
+  ("Loading conversation...") and `02` after it settled, so what the two carry is
   that the composer's own region is byte-identical between them - nothing in it
-  changed during the wait - which is why they are filed as a pair at all
-  (design round 2, D7: the bullets used to leave the difference unsaid). These two frames ARE the report: ~0.4 s into a wait the run says
-  lasts 866 ms, nothing on screen has changed.
+  changed during the wait (design round 2, D7: the bullets used to leave that
+  difference unsaid). These two frames ARE the report: ~0.4 s into a wait the run
+  says lasts 866 ms, nothing on screen has changed.
 - `before/03-recording/`: after the flip, settled 650 ms - the recording lane.
 - `after/01-ack-just-after-click/` (+41 ms), `after/02-ack-300ms-into-wait/`
   (+414 ms), `after/03-ack-600ms-into-wait/` (+600 ms): **the FIRST treatment**
