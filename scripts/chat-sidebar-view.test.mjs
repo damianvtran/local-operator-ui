@@ -65,6 +65,47 @@ const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
  */
 const SECTION_PRESS_WIRING = /toggleSectionDisclosure\([^)]*Boolean\(query\)/;
 
+/*
+ * ROUND 2'S PATTERNS (UX round 1's U1-U5 and N1; design round 1's D1-D3), top-level
+ * constants for the same reason `SECTION_PRESS_WIRING` is one - biome's
+ * `useTopLevelRegex` - and each named after the claim it carries so a test below
+ * reads as the finding it answers rather than as a pattern.
+ */
+/** The grown heading's two channels and the one sentence behind both (U1/D1). */
+const GROWN_HINT_TITLE = /title=\{grownHint \?\? undefined\}/;
+const GROWN_HINT_DESCRIBED_BY =
+	/aria-describedby=\{grownHint \? sectionGrownHintId\(key\) : undefined\}/;
+const GROWN_HINT_PREDICATE =
+	/const grownHint = sectionIsGrown\(sectionCaps\[key\]\)/;
+const GROWN_HINT_ELEMENT =
+	/<span id=\{sectionGrownHintId\(key\)\} className="sr-only">/;
+/**
+ * The section foot's walk stamp, ANCHORED TO A LINE OF ITS OWN: the comment above
+ * the attribute names `[data-chat-row]` while explaining why the foot joins the
+ * walk, so an unanchored pattern would be satisfied by the prose and would keep
+ * passing after the attribute itself was deleted (measured: dropping the attribute
+ * left this test green until the anchor was added).
+ */
+const FOOT_WALK_STAMP = /^[ \t]*data-chat-row[ \t]*$/m;
+const FOOT_NAME = /aria-label=\{footName\}/;
+const FOOT_FOCUS_RECORD = /sectionFootFocusRef\.current = \{ key, at: cap \}/;
+/** The focus effect: the list it reads, its target, its fallback, its one action (U3/D3). */
+const FOCUS_READS_ROWS = /querySelectorAll<HTMLElement>\("\[data-entity\]"\)/;
+const FOCUS_TARGET_ROW =
+	/revealed\?\.querySelector<HTMLElement>\("\[data-chat-row\]"\)/;
+const FOCUS_HEADING_FALLBACK = /heading \?\?/;
+const FOCUS_APPLIES = /target\?\.focus\(\)/;
+/** The query-forced field's gate, both halves (U2). */
+const ROSTER_FIELD_QUERY_TERM =
+	/isOpen\("agents", true\) \|\| \(query !== "" && rosterFilter\.trim\(\) !== ""\)/;
+const ROSTER_FIELD_CAP_TERM =
+	/ownAgents\.length > SIDEBAR_SECTION_ROWS \|\| rosterFilter\.trim\(\) !== ""/;
+/** The copy contract on the hint itself (U1/D1). */
+const HINT_NAMES_GESTURE = /collapse/i;
+const HINT_NAMES_COST = /reopen/i;
+const HINT_SENTENCE_CASE = /^[A-Z]/;
+const HINT_ID_KEYED = /agents/;
+
 const bundle = await build({
 	stdin: {
 		contents: [
@@ -132,6 +173,11 @@ const {
 	entitySectionGap,
 	ENTITY_SECTION_GAP,
 	ENTITY_SECTION_GAP_COLLAPSED,
+	SECTION_GROWN_HINT,
+	sectionGrownHintId,
+	sectionIsGrown,
+	sectionMoreLabel,
+	sectionMoreName,
 	CHAT_LIST_SECTIONS,
 	PINNED_AGENTS_MAX,
 	togglePinnedAgent,
@@ -609,6 +655,187 @@ test("the section press routes through the one disclosure transition", () => {
  * the fix is a conditional value; a smaller constant would tighten the expanded
  * case, where the rhythm is doing real work.
  */
+/*
+ * ROUND 2 - THE RESET'S NAME AND THE FOOT'S CONTRACT (UX round 1's U1, U3, U4,
+ * U5 and N1; design round 1's D1, D2 and D3).
+ *
+ * Every one of those findings sits on a surface this suite cannot render (the
+ * file's header says why), so each is pinned in one of the two shapes the rest of
+ * this file uses: the COPY and the STATE QUESTION are pure logic and are driven
+ * directly (`SECTION_GROWN_HINT`, `sectionIsGrown`, `sectionMoreLabel`,
+ * `sectionMoreName`, `sectionGrownHintId`), and the WIRING - which element
+ * carries the sentence, which record the press leaves behind, where the focus
+ * effect sends the reader - is read out of the source, SCOPED to the block that
+ * holds it so a match somewhere else in this file cannot stand in for the claim.
+ */
+test("the grown section's hint names both halves of the reset", () => {
+	assert.match(
+		SECTION_GROWN_HINT,
+		HINT_NAMES_GESTURE,
+		"the hint does not name the gesture that puts the cap back (U1/D1)",
+	);
+	assert.match(
+		SECTION_GROWN_HINT,
+		HINT_NAMES_COST,
+		"the hint does not name the inverse cost, so it promises the raised rows back across a collapse",
+	);
+	assert.match(
+		SECTION_GROWN_HINT,
+		HINT_SENTENCE_CASE,
+		"the hint is not sentence case (D1's least-chrome remedy is copy, so its voice is the remedy)",
+	);
+	assert.ok(
+		!SECTION_GROWN_HINT.includes(". "),
+		"the hint is more than one sentence; a control's description is one",
+	);
+});
+
+test("the grown question is the draw's own question", () => {
+	assert.equal(
+		sectionIsGrown(undefined),
+		false,
+		"a section nobody raised is not grown",
+	);
+	assert.equal(
+		sectionIsGrown(SIDEBAR_SECTION_ROWS),
+		false,
+		"an entry at the shipped count IS the shipped list, not a raise",
+	);
+	assert.equal(
+		sectionIsGrown(SIDEBAR_SECTION_ROWS + 1),
+		true,
+		"one row past the shipped cap is grown",
+	);
+	/*
+	 * And it agrees with the state machine's own edges, which is the claim that
+	 * matters: the heading can only say "grown" in a state `cappedRows` also draws
+	 * past the cap, because one raise makes it grown and the close edge that
+	 * `releaseSectionCap` performs takes it back.
+	 */
+	const raised = raiseSectionCap({}, "agents");
+	assert.equal(sectionIsGrown(raised.agents), true);
+	assert.equal(
+		sectionIsGrown(releaseSectionCap(raised, "agents").agents),
+		false,
+		"a released cap still reads as grown, so the heading would name a raise that is gone",
+	);
+});
+
+test("the section foot's name carries its section, and its label heads that name", () => {
+	assert.equal(sectionMoreLabel(1), "Show 1 more");
+	assert.equal(sectionMoreLabel(4), "Show 4 more");
+	assert.equal(sectionMoreName(1, "agents"), "Show 1 more agents");
+	assert.equal(sectionMoreName(4, "teams"), "Show 4 more teams");
+	/*
+	 * The visible label is the HEAD of the accessible name, so the two cannot
+	 * describe different remainders - the defect N1 measured was not a wrong name
+	 * but NO name, which left two sections' feet announcing the same bare label.
+	 */
+	for (const hidden of [1, 4, 26]) {
+		assert.ok(
+			sectionMoreName(hidden, "agents").startsWith(sectionMoreLabel(hidden)),
+			"the name and the label disagree about the remainder",
+		);
+	}
+});
+
+test("the grown hint's id is keyed, so two sections cannot describe each other", () => {
+	assert.notEqual(sectionGrownHintId("agents"), sectionGrownHintId("teams"));
+	assert.match(sectionGrownHintId("agents"), HINT_ID_KEYED);
+});
+
+test("a grown heading carries the reset on both channels, from one sentence", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		GROWN_HINT_TITLE,
+		"the grown heading has no pointer channel for the reset (U1/D1)",
+	);
+	assert.match(
+		source,
+		GROWN_HINT_DESCRIBED_BY,
+		"the grown heading describes itself to no screen reader (U1/D1)",
+	);
+	assert.match(
+		source,
+		GROWN_HINT_PREDICATE,
+		"the hint is not read from the same map `cappedRows` slices rows with",
+	);
+	assert.match(
+		source,
+		GROWN_HINT_ELEMENT,
+		"no element carries the sentence the heading points at",
+	);
+	assert.ok(
+		!source.includes("Collapse to restore the compact list"),
+		"the sentence is spelled in the component as well as in the view module; one copy is the rule",
+	);
+});
+
+test("the section foot is named, joins the arrow walk, and leaves a focus record", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	const at = source.indexOf("data-sidebar-section-more={key}");
+	assert.ok(at !== -1, "the section foot's stamp is gone");
+	const foot = source.slice(at, source.indexOf("</button>", at));
+	assert.match(
+		foot,
+		FOOT_WALK_STAMP,
+		"the section foot is not a stop of the arrow walk, unlike the group foot below it (U4)",
+	);
+	assert.match(
+		foot,
+		FOOT_NAME,
+		"the foot still announces a bare remainder with no section (N1)",
+	);
+	assert.match(
+		foot,
+		FOOT_FOCUS_RECORD,
+		"the press leaves no record of the rows it just revealed (U3/D3)",
+	);
+});
+
+test("the foot's focus goes to the row the press revealed, never the body", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	const at = source.indexOf("const pending = sectionFootFocusRef.current");
+	assert.ok(at !== -1, "nothing reads the section foot's focus record (U3/D3)");
+	const effect = source.slice(at, source.indexOf("}, [sectionCaps]);", at));
+	assert.match(
+		effect,
+		FOCUS_READS_ROWS,
+		"the effect does not read the list `cappedRows` slices, so an expanded row's sessions would be counted as revealed rows",
+	);
+	assert.match(
+		effect,
+		FOCUS_TARGET_ROW,
+		"the revealed row's own control is not the target",
+	);
+	assert.match(
+		effect,
+		FOCUS_HEADING_FALLBACK,
+		"no fallback to the section's own heading, so a vanished row drops the reader to the body",
+	);
+	assert.match(effect, FOCUS_APPLIES);
+	assert.ok(
+		!source.includes("document.body.focus("),
+		"a press sends focus to the document body",
+	);
+});
+
+test("a query that keeps the section drawn keeps its filter field", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		ROSTER_FIELD_QUERY_TERM,
+		"the field is still gated on the disclosure alone, so a heading press under a query removes it (U2)",
+	);
+	/*
+	 * AND THE SECOND HALF IS UNTOUCHED: a query alone still opens no field, which is
+	 * the reason the fix is written as the reader's own state rather than as
+	 * `query || isOpen(...)`.
+	 */
+	assert.match(source, ROSTER_FIELD_CAP_TERM);
+});
+
 test("the gap below a section is conditional on whether that section drew rows", () => {
 	assert.equal(entitySectionGap(true), ENTITY_SECTION_GAP);
 	assert.equal(entitySectionGap(false), ENTITY_SECTION_GAP_COLLAPSED);

@@ -245,6 +245,91 @@ export function toggleSectionDisclosure(
 	};
 }
 
+/**
+ * A GROWN SECTION'S OWN NAME FOR ITS RESET (issue #765; UX round 1's U1, design
+ * round 1's D1).
+ *
+ * WHY THE RESET NEEDS NAMING AT ALL. Growing a section is one press of
+ * `Show N more`; the way back is the section heading pressed TWICE - the first
+ * press closes the section (twelve rows to none, 488px to 28px) and the second
+ * reopens it on the shipped cap. Both review streams measured that nothing on the
+ * surface connects the two: in the grown state the foot is GONE (`foot: null`) and
+ * the heading carried `title: null` and `aria-describedby: null`. So the reader
+ * who never read the diff cannot find the shrink path, and the press they would
+ * find by accident reads as "you closed it" rather than "you are shrinking it".
+ *
+ * IT NAMES BOTH HALVES, because both are surprises with no notice: the collapse is
+ * the reset, AND the raised rows are not kept across it (the invariant
+ * `releaseSectionCap` implements - "a collapsed section is compact"). Naming only
+ * the first would promise a reader their rows back on reopen; naming only the
+ * second explains a loss without naming the gesture. Sentence case and no
+ * imperative beyond the one gesture that exists, so it reads as a description of
+ * the control rather than as a second control's label.
+ *
+ * ONE COPY, TWO CHANNELS: this string is the heading's `title` (the pointer's
+ * channel) AND the `sr-only` element the heading points its `aria-describedby` at
+ * (every other reader) - the two-channel rule `SENDING_DISCARD_WHY` states in the
+ * component, because `title` alone reaches no keyboard reader and is the channel
+ * engines are least reliable about.
+ */
+export const SECTION_GROWN_HINT =
+	"Collapse to restore the compact list; reopening draws the compact list again";
+
+/**
+ * IS THIS SECTION DRAWN PAST THE SHIPPED CAP? The one spelling of the question,
+ * read by the heading's hint and by `scripts/chat-sidebar-view.test.mjs`;
+ * `cappedRows` asks the same thing of the same map (`caps[key] ??
+ * SIDEBAR_SECTION_ROWS`) when it slices the rows, so the hint cannot claim a
+ * section is grown while the draw says it is not.
+ *
+ * THE ABSENT KEY IS THE SHIPPED CAP, exactly as in `cappedRows`: a section nobody
+ * raised is not grown, and neither is one whose entry sits at the shipped count (a
+ * raise always steps FROM the shipped cap by a whole page, so an entry at or below
+ * it is the shipped list).
+ */
+export function sectionIsGrown(cap: number | undefined): boolean {
+	return (cap ?? SIDEBAR_SECTION_ROWS) > SIDEBAR_SECTION_ROWS;
+}
+
+/**
+ * The heading's description element id, KEYED like the panel's other
+ * `aria-describedby` targets (`draftWhyId`, `rowMenuClauseId`), so two sections
+ * cannot describe themselves with each other's sentence.
+ *
+ * IT IS RENDERED ONLY WHILE THE HINT APPLIES and the attribute points at it only
+ * while it is: a dangling id resolves to no description at all, which is the rule
+ * the attribute's own comment in the component states.
+ */
+export const sectionGrownHintId = (key: string) => `section-grown-hint-${key}`;
+
+/**
+ * THE SECTION FOOT'S VISIBLE LABEL, in one spelling (the singular was inline in
+ * the component and the plural was its template). `Show 1 more` is its own
+ * sentence rather than a pluralised one because that is what the panel's other
+ * remainders say.
+ */
+export const sectionMoreLabel = (hidden: number) =>
+	hidden === 1 ? "Show 1 more" : `Show ${hidden} more`;
+
+/**
+ * THE SECTION FOOT'S ACCESSIBLE NAME (UX round 1's N1): the visible label names
+ * the REMAINDER but not the section, and two sections can each carry a foot, so a
+ * screen reader heard a bare `Show 4 more` twice over on one panel (both streams
+ * measured `aria-label: null` and `title: null` on it).
+ *
+ * THE GROUP FOOT ONE LEVEL DOWN ALREADY FIXED THIS, in its own words
+ * (`"<foot.aria> in <name>"`); this control's shape is not that one because a
+ * section is not a container the reader owns - it IS the list - so the name reads
+ * as the remainder plus what the remainder is made of.
+ *
+ * `unit` comes from the section's own key at the call site (`agents`, `teams`),
+ * which is the string `data-sidebar-section-more` already carries: one word for the
+ * section, not a second vocabulary beside it.
+ */
+export function sectionMoreName(hidden: number, unit: string): string {
+	return `${sectionMoreLabel(hidden)} ${unit}`;
+}
+
 export type SidebarGroupBy = "section" | "agent" | "flat";
 
 /**
