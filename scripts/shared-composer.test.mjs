@@ -75,8 +75,30 @@ globalThis.setInterval = tracked(realSetInterval);
  * whose `onstop` fires as a microtask after `stop`, which is the real machine's
  * order. The mini's dictation suite drives the same pair.
  */
-const mic = { next: null, calls: 0 };
+const mic = { next: null, calls: 0, recorders: [] };
 const fakeStream = () => ({ getTracks: () => [{ stop: () => {} }] });
+/*
+ * A stream whose track stop is observable, for the cases that are ABOUT the
+ * teardown (the unmount settle): `fakeStream` discards it, so a case asserting
+ * "the microphone was closed" needs its own reading rather than a no-op
+ * substitute, and the fake recorder above is captured in `mic.recorders` so
+ * "no recorder was ever built" is answerable too.
+ */
+const stoppingStream = () => {
+	const stopped = [];
+	return {
+		stopped,
+		stream: {
+			getTracks: () => [
+				{
+					stop: () => {
+						stopped.push("track");
+					},
+				},
+			],
+		},
+	};
+};
 
 for (const [key, value] of Object.entries({
 	window,
@@ -104,6 +126,12 @@ for (const [key, value] of Object.entries({
 			this.state = "inactive";
 			this.ondataavailable = null;
 			this.onstop = null;
+			/*
+			 * Recorded so a case can ask whether a recorder was built at all, and
+			 * what state it was left in - the question the unmount settle's first arm
+			 * ("no recorder on a dead tree") is exactly about. Other cases ignore it.
+			 */
+			mic.recorders.push(this);
 		}
 		start() {
 			this.state = "recording";
@@ -1288,6 +1316,99 @@ test("a refusal belonging to an abandoned press leaves the successor's attempt a
 	await act(async () => {
 		root.unmount();
 	});
+	mic.next = null;
+});
+
+/*
+ * AN UNMOUNT SETTLES THE PRESS IT OWNS (round 2 follow-up, M3). The attempt and
+ * the recorder live in refs the composer owns, and nothing else nulls them, so
+ * before this the two arms below were the same leak in two shapes: an unmount
+ * inside the acquisition window left the ref pointing at the attempt, the
+ * arriving stream passed the resolve arm's identity check, and a recorder was
+ * built and started for a tree that no longer exists - a live microphone with no
+ * control left to end it - while an unmount mid-take left the running recorder
+ * behind the same way. Both cases drive the shipped wiring, and both fail on the
+ * pre-fix tree: the stream's track is never stopped, and in the first a recorder
+ * is constructed at all.
+ */
+test("an unmount inside the acquisition window abandons the press, and the stream it lands on is stopped", async () => {
+	mic.calls = 0;
+	mic.recorders = [];
+	const { stream, stopped } = stoppingStream();
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(stream);
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+
+	await act(async () => {
+		frame.container.querySelector('[aria-label="Start recording"]').click();
+	});
+	assert.equal(mic.calls, 1, "the press reached the microphone");
+	assert.ok(preparing(), "and it is acknowledged while the stream is pending");
+
+	await act(async () => {
+		root.unmount();
+	});
+
+	/* The acquisition lands AFTER the unmount - the window this arm exists for. */
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.deepEqual(
+		stopped,
+		["track"],
+		"the abandoned press's stream was stopped rather than left open",
+	);
+	assert.equal(
+		mic.recorders.length,
+		0,
+		"and no recorder was ever built for the unmounted tree",
+	);
+	mic.next = null;
+});
+
+test("an unmount during a live take stops the recorder rather than leaving the microphone open", async () => {
+	mic.calls = 0;
+	mic.recorders = [];
+	const { stream, stopped } = stoppingStream();
+	mic.next = async () => stream;
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	await act(async () => {
+		frame.container.querySelector('[aria-label="Start recording"]').click();
+	});
+	await settle();
+	assert.ok(confirm(), "the press reached the recording state");
+	assert.equal(mic.recorders.length, 1, "one recorder carries the take");
+	assert.equal(mic.recorders[0].state, "recording", "and it is running");
+
+	await act(async () => {
+		root.unmount();
+	});
+	await settle();
+	assert.equal(
+		mic.recorders[0].state,
+		"inactive",
+		"the unmount stopped the take instead of leaving it running",
+	);
+	assert.deepEqual(stopped, ["track"], "and its track with it");
 	mic.next = null;
 });
 
