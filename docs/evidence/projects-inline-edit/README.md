@@ -6,7 +6,7 @@ through the app's own `capturePage()` in the `headless` window mode) are
 committed beside this file: `dark/project-inline-1380x900-local-operator-dark-<state>.png`
 and the `light/` siblings, for `hover`, `editing`, `dirty`, `saved`,
 `description`, `saving`, `refused-key`, `refused-status` and `conflict`.
-The run printed **53 PASS lines and 0 FAIL per palette and `ALL CHECKS
+The run printed **54 PASS lines and 0 FAIL per palette and `ALL CHECKS
 PASSED`**, and its last check — no process from this run outlived its boot —
 passed. The seed, the command and the check list below are the record.
 
@@ -29,9 +29,11 @@ changed, and why:
   (U2), both pointer facts a still cannot carry.
 - `hover-*` - unchanged look; the fixed-height slot is present at rest (D3).
 
-The scene grew six checks in the same round: the fixed-height slot, the
+The scene grew seven checks in the same round: the fixed-height slot, the
 chip's-slot opening, the dirty-gate, the input-time title cap, the local key
-refusal, and the x/✓ adjacency (53 per palette, from 47).
+refusal, the x/✓ adjacency, and - exercising UX round 1's U1 / QA round 1's
+Q1 on the real path - the `Use theirs` door (focus hand-back, slot to rest,
+record adopted). 54 per palette, from 47.
 
 ## What the frames are evidence for, and what they are not
 
@@ -117,7 +119,7 @@ by construction).
 ## The scene's own checks
 
 The scene prints one PASS/FAIL line per check and exits non-zero on any FAIL.
-**The run recorded `ALL CHECKS PASSED` on both palettes (53 PASS lines each,
+**The run recorded `ALL CHECKS PASSED` on both palettes (54 PASS lines each,
 0 FAIL)** - the full list it printed, in order (the boot block's own checks
 first - the pinned Electron, the scratch port, the armed launch, the backend
 isolation pair, the headless window - then the seed preconditions and the
@@ -167,6 +169,7 @@ a grammar-invalid key is refused locally, with the daemon untouched
 the out-of-band write landed (this process, the daemon's own route)
 a field that moved out-of-band holds the commit, draft intact
 Keep mine commits the draft over the out-of-band value
+Use theirs closes the field, hands focus back and adopts the record
 the run's own daemon is identifiable by pid (never 1111)
 the saving state holds while the daemon answers nothing
 the same write completes once the daemon resumes
