@@ -41,8 +41,8 @@ import {
 	writeBoardColumnOrder,
 	writeBoardWindow,
 } from "../project-model";
-import { REQUEST_UPDATE_NEVER_STARTED_DETAIL } from "../request-update";
 import { type SortSpec, writeProjectsSort } from "../project-sort";
+import { REQUEST_UPDATE_NEVER_STARTED_DETAIL } from "../request-update";
 import { BOARD_WINDOW_HINT } from "./board-window-select";
 import { ProjectsPage } from "./projects-page";
 
