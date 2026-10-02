@@ -3211,6 +3211,17 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntoa7a108e972Note",
 	/*
+	 * And the lane's TWENTY-FIFTH fold record: the sync onto `origin/main` =
+	 * `5737a884d5` (#734 the queued-ask lane) - the SECOND fold of one push
+	 * cycle, taken because main moved while the first fold was being pushed and
+	 * a conflicting head starts no checks. Registered for its siblings' reason:
+	 * it carries the `test:desktop` list union (main's form, this branch's four
+	 * suites appended - 353 entries) together with this branch's `check-themes`
+	 * key main still lacks, so a fold laid from main's copy alone would drop one,
+	 * and from this branch's alone would drop main's two ask-rig rows.
+	 */
+	"foldOnto5737a884d5Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
