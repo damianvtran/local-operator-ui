@@ -58,6 +58,20 @@ export const SPEECH_FAILURE_COPY = "Couldn't speak this aloud. Try again.";
 export const SPEECH_PLAYBACK_COPY = "Couldn't speak this aloud. Try again.";
 
 /**
+ * The daemon's sentence for an `agent_id` its registry does not hold.
+ *
+ * NAMED RATHER THAN ONLY LISTED, because the press path has to RECOGNISE this
+ * refusal instead of rendering it: it is the one designed sentence whose remedy
+ * is a different request rather than a different attempt (see
+ * `fetchSpeechFor` in `@shared/store/speech-store`, which fails a stale binding
+ * over to the agent-less route). The membership of
+ * {@link DESIGNED_SPEECH_SENTENCES} is unchanged - the set spells this member
+ * with this constant so the two ends of that rule cannot drift.
+ */
+export const SPEECH_UNKNOWN_AGENT_COPY =
+	"This conversation's agent is no longer available.";
+
+/**
  * The `detail` sentences the speech route answers with, verbatim from
  * `local-operator` PR #1835 (`_SPEECH_REFUSAL_SENTENCES` plus the route's two
  * named constants). A change there is a change here - the strings are the
@@ -99,7 +113,7 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	 */
 	"Speech is temporarily unavailable.",
 	"Sign in to Radient in Settings to enable speaking aloud.",
-	"This conversation's agent is no longer available.",
+	SPEECH_UNKNOWN_AGENT_COPY,
 	/*
 	 * The BYO vendor refusals (`local-operator` PR #1922 at its round-2
 	 * remediation head `e4f8d9e8`, `_VENDOR_REFUSAL_SENTENCES` formatted with
@@ -146,4 +160,21 @@ export function speechFailureCopy(error: unknown): string {
 	if (DESIGNED_SPEECH_SENTENCES.has(raw)) return raw;
 	console.error(`${SPEECH_FAILURE_DETAIL_PREFIX} ${raw}`);
 	return SPEECH_FAILURE_COPY;
+}
+
+/**
+ * Whether a refusal is the daemon's unknown-agent sentence.
+ *
+ * EXACT, on the same rule the mapper above uses, and for the same reason: this
+ * one decides whether a press is RETRIED against a different target, and a
+ * substring match would retry on a sentence that only shared a phrase.
+ *
+ * The relay collapses the daemon's envelope to the sentence it carries
+ * (`mediaError` -> `new Error(result.detail)`), so the sentence is the whole of
+ * what the press path can recognise; the status it arrived on is not preserved.
+ * That is why the constant above is the contract rather than a copy of it.
+ */
+export function isUnknownAgentSpeechRefusal(error: unknown): boolean {
+	const raw = error instanceof Error ? error.message : String(error);
+	return raw === SPEECH_UNKNOWN_AGENT_COPY;
 }

@@ -63,6 +63,20 @@ const h = React.createElement;
  */
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
+/*
+ * The persisted stores (the canonical sessions store reaches this bundle through
+ * the row's speech target) resolve their storage ONCE, at module evaluation,
+ * before this file's own mount creates a jsdom window - so the storage has to
+ * exist here, ahead of the bundle import, or the store's write path throws on
+ * `undefined.setItem`.
+ */
+const persisted = new Map();
+globalThis.localStorage = {
+	getItem: (key) => persisted.get(key) ?? null,
+	setItem: (key, value) => persisted.set(key, value),
+	removeItem: (key) => persisted.delete(key),
+};
+
 const ROW_SOURCE = readFileSync(
 	"src/renderer/src/features/chat/canonical/message-actions-row.tsx",
 	"utf8",
@@ -104,6 +118,7 @@ const bundle = await build({
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
 			export { useSpeechStore } from "@shared/store/speech-store";
 			export { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
+			export { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -185,29 +200,26 @@ await unlink(bundlePath);
 /* ------------------------------------------------------------ the rules */
 
 test("copy is always offered, and it is first", () => {
-	assert.deepEqual(mod.answerActionsFor({ agentId: undefined }), ["copy"]);
-	assert.deepEqual(mod.answerActionsFor({ agentId: "c1" }), ["copy", "speak"]);
+	assert.deepEqual(mod.answerActionsFor(), ["copy", "speak"]);
+	assert.deepEqual(mod.answerActionsFor({ role: "answer" }), ["copy", "speak"]);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "user" }),
+		["copy"],
+		"the reader's own turn offers Copy alone",
+	);
 });
 
 test("fork is offered LAST, and only for a row with a cut point", () => {
-	/*
-	 * The gate is the caller's answer, so the model is asserted in all four
-	 * combinations: a row is either a cut point or it is not, and an answer
-	 * either has an agent to speak with or it does not. Copy keeps the left edge
-	 * in every one of them (the anchor rule the module states).
-	 */
-	for (const agentId of [undefined, "c1"]) {
-		assert.deepEqual(
-			mod.answerActionsFor({ agentId }).at(-1),
-			agentId ? "speak" : "copy",
-			"nothing is appended for a row with no cut point",
-		);
-		assert.deepEqual(
-			mod.answerActionsFor({ agentId, forkable: true }),
-			agentId ? ["copy", "speak", "fork"] : ["copy", "fork"],
-			"fork joins the row last when the record is a cut point",
-		);
-	}
+	assert.deepEqual(
+		mod.answerActionsFor({}),
+		["copy", "speak"],
+		"nothing is appended for a row with no cut point",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ forkable: true }),
+		["copy", "speak", "fork"],
+		"fork joins the row last when the record is a cut point",
+	);
 	assert.deepEqual(
 		mod.answerActionsFor({ role: "user" }),
 		["copy"],
@@ -218,6 +230,15 @@ test("fork is offered LAST, and only for a row with a cut point", () => {
 		["copy", "fork"],
 		"the user arm takes fork too, and still never takes speak",
 	);
+});
+
+test("the row is capped at two actions, and Quote is not one of them", () => {
+	for (const role of ["answer", undefined]) {
+		assert.ok(
+			mod.answerActionsFor({ role }).length <= 2,
+			"the model caps the row at two",
+		);
+	}
 });
 
 test("which records carry a fork cut point, and which do not", () => {
@@ -898,7 +919,7 @@ test("unmounting the row clears the feedback timer the press armed", async () =>
 
 /* ------------------------------------------------------------ the speech arm */
 
-test("a configured service arms Speak, and the press reaches it", async () => {
+test("a configured service arms Speak, and the press reaches the conversation's ROLE AGENT", async () => {
 	/*
 	 * The store's own `playSpeech` is replaced BEFORE the mount, not after:
 	 * the row captures the function it renders with, so a wrapper installed
@@ -913,9 +934,26 @@ test("a configured service arms Speak, and the press reaches it", async () => {
 		},
 	});
 	try {
+		/*
+		 * ARM 1, AND THE ONE THE OPERATOR MET: the conversation is mounted with the
+		 * pane identity (`c1`) and the catalogue row carries NO agent binding - the
+		 * ordinary shape of a conversation the reader opened himself. The press must
+		 * still reach the store (the control is not disabled for want of a binding),
+		 * and its target must be `null`, which is the agent-less route - NOT `c1`,
+		 * which is a session id the daemon's registry cannot hold.
+		 *
+		 * The binding is written AFTER the mount, not before: the sessions store
+		 * persists through `localStorage`, which the jsdom window this rig builds
+		 * supplies (a `setState` ahead of it throws on the store's own write path).
+		 */
 		const { dom, button, unmount } = await mount({ speechConfigured: true });
+		await act(async () => {
+			mod.useCanonicalSessionsStore.setState({
+				sessions: [{ session_id: "c1", binding: { agent: null, team: null } }],
+			});
+		});
 		const speak = button("Speak aloud");
-		assert.ok(speak, "Speak is present when an agent id resolves");
+		assert.ok(speak, "Speak is present on an answer row");
 		assert.equal(
 			speak.disabled,
 			false,
@@ -926,8 +964,8 @@ test("a configured service arms Speak, and the press reaches it", async () => {
 		 * `loadingKey`: `playSpeech` sets that field and then clears it when
 		 * the fetch it starts fails, and this rig has no Speech service - so reading
 		 * it after the `act` window would read the cleared value rather than the
-		 * call. What is asserted is the call itself: this answer's id, the
-		 * conversation, and the text the reader can see.
+		 * call. What is asserted is the call itself: this answer's id, the resolved
+		 * target, and the text the reader can see.
 		 */
 		await act(async () => {
 			speak.dispatchEvent(
@@ -936,10 +974,47 @@ test("a configured service arms Speak, and the press reaches it", async () => {
 		});
 		assert.deepEqual(
 			calls,
-			[["a1", "c1", "Four were late, and the oldest is 41 days behind."]],
-			"the press reached the speech store keyed by THIS answer, with the visible text",
+			[["a1", null, "Four were late, and the oldest is 41 days behind."]],
+			"a conversation with no binding presses through the agent-less route, keyed by THIS answer",
 		);
 		await unmount();
+
+		/*
+		 * ARM 2: the same row, with the catalogue naming a role agent. The press
+		 * carries THAT id - the target the daemon's registry can resolve.
+		 */
+		calls.length = 0;
+		const second = await mount({ speechConfigured: true });
+		/*
+		 * INSIDE `act`, so the row RE-RENDERS with the binding before the press: the
+		 * press closure reads the target the row last rendered with, and a store
+		 * written outside a flush would be pressed against the previous value.
+		 */
+		await act(async () => {
+			mod.useCanonicalSessionsStore.setState({
+				sessions: [
+					{ session_id: "c1", binding: { agent: "agent-9", team: null } },
+				],
+			});
+		});
+		assert.equal(
+			mod.useCanonicalSessionsStore.getState().sessions[0]?.binding?.agent,
+			"agent-9",
+			"the catalogue holds the binding the press is about to resolve",
+		);
+		const armed = second.button("Speak aloud");
+		assert.ok(armed, "Speak is present on the bound conversation's row too");
+		await act(async () => {
+			armed.dispatchEvent(
+				new second.dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		assert.deepEqual(
+			calls,
+			[["a1", "agent-9", "Four were late, and the oldest is 41 days behind."]],
+			"a bound conversation presses its role agent, not the pane identity",
+		);
+		await second.unmount();
 	} finally {
 		mod.useSpeechStore.setState({ playSpeech });
 	}

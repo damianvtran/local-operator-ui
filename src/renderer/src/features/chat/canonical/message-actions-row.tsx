@@ -55,9 +55,11 @@
  * never reads `record.text` itself: one derivation, one answer, and the payload
  * cannot drift from what the reader is looking at.
  *
- * `agentId` is the conversation the speech engine synthesises against, and its
- * ABSENCE is what keeps Speak off the row altogether (`answerActionsFor`): a
- * button whose every press would be a no-op is not offered. `speechId` keys this
+ * `agentId` is the CONVERSATION this row is drawn in - the pane identity, which
+ * is what the speech scope and the quote key are built from. It is deliberately
+ * NOT what the Speak press is aimed at: the daemon resolves speech targets in its
+ * agent registry and a conversation is not in it, so the target is read from the
+ * catalogue's binding instead (`@shared/lib/speech-target`). `speechId` keys this
  * row in the speech store (`msg:<id>`), so the button's busy and playing states
  * belong to this answer and cannot be claimed by another. The Speak CONTROL
  * itself - gate, tooltip, labels, press - is `useSpeakControl`, shared with the
@@ -72,6 +74,7 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { useSpeechAgentFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { messageSpeechKey, useSpeechStore } from "@shared/store/speech-store";
@@ -107,7 +110,11 @@ export type AnswerActionRowProps = {
 	 * own name (`answerActionsFor({ role })`).
 	 */
 	kind?: ActionRowRole;
-	/** The conversation the speech engine synthesises against, when there is one. */
+	/**
+	 * The conversation this row is drawn in (the pane identity), when there is
+	 * one. The Speak press reads its target from the catalogue binding keyed on
+	 * this value; see the header.
+	 */
 	agentId?: string;
 	/** This row's key in the speech store. */
 	speechId?: string;
@@ -207,11 +214,19 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	const arrivalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const { playSpeech } = useSpeechStore();
+	/*
+	 * THE TARGET IS THE CONVERSATION'S ROLE AGENT, not the id this row is handed
+	 * (`@shared/lib/speech-target` carries the whole argument): `agentId` here is
+	 * the pane identity, which the daemon's speech route cannot resolve. Read
+	 * live from the catalogue, so a binding that arrives or moves under the
+	 * mounted row is picked up by the next press.
+	 */
+	const speechAgent = useSpeechAgentFor(agentId ?? null);
 	const speechControl = useSpeakControl({
 		key: speechId ? messageSpeechKey(speechId) : null,
 		getText: () => bodyText,
 		play: ({ text }) => {
-			if (agentId && speechId) playSpeech(speechId, agentId, text);
+			if (speechId) playSpeech(speechId, speechAgent, text);
 		},
 	});
 
@@ -223,11 +238,12 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	 * other is not a weaker fork, it is a request that can only be refused - so
 	 * the action is WITHDRAWN rather than disabled, the convention every
 	 * inapplicable action in these toolbars follows (`linkToolbarModel` omits the
-	 * actions a target cannot carry, and `answerActionsFor` omits Speak when no
-	 * agent resolves).
+	 * actions a target cannot carry, and an answer's row always offers Speak,
+	 * bound to an agent or not).
 	 */
 	const forkable = Boolean(conversationId && entryId);
-	const actions = answerActionsFor({ role: kind, agentId, forkable });
+	const actions = answerActionsFor({ role: kind, forkable });
+
 	/*
 	 * The row is kept up while anything it owns is mid-state: a `Copied` tick
 	 * or a Speak that is loading or playing is the reader's own press talking

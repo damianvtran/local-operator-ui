@@ -4,9 +4,10 @@ import {
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
 import { clipForSpeech } from "@shared/lib/speech-clip";
+import { useSpeechAgentFor } from "@shared/lib/speech-target";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
-	fetchAgentSpeech,
+	fetchSpeechFor,
 	selectionSpeechKey,
 	useSpeechStore,
 } from "@shared/store/speech-store";
@@ -90,8 +91,17 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	 * `docs/branding.md` refuses. The key is this selection's own words, clipped
 	 * first; `scope` falls back to the agent id when no conversation id rides in,
 	 * so two surfaces that speak the same context agree on the one cache entry.
+	 *
+	 * THE SCOPE AND THE TARGET ARE TWO DIFFERENT QUESTIONS, which is what
+	 * `@shared/lib/speech-target` separates: the scope keys the cache (the
+	 * conversation's identity), and the TARGET is the conversation's role agent -
+	 * resolved from the same id, and `null` for a conversation with no binding,
+	 * which speaks through the agent-less route rather than being disabled. There
+	 * is deliberately no `available` gate here any more: the old one was
+	 * `Boolean(agentId)`, so it read "no agent" as "nothing to say".
 	 */
 	const speechScope = conversationId ?? agentId ?? null;
+	const speechAgent = useSpeechAgentFor(speechScope);
 	const speechControl = useSpeakControl({
 		key:
 			selection.text && speechScope
@@ -99,14 +109,13 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 				: null,
 		getText: () => selection.text || null,
 		play: ({ text }) => {
-			if (speechScope && agentId) {
+			if (speechScope) {
 				speak(
 					selectionSpeechKey(speechScope, text),
-					fetchAgentSpeech(agentId, text),
+					fetchSpeechFor(speechAgent, text),
 				);
 			}
 		},
-		available: Boolean(agentId),
 	});
 	const handleMouseUp = useCallback(() => {
 		if (!targetRef.current) {

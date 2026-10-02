@@ -417,9 +417,8 @@ test("the selection's toolbar offers Speak beside Quote, and speaks exactly the 
 		requests,
 		[
 			{
-				op: "speech.agent",
-				agentId: "conv-1",
-				request: { input_text: "quick brown fox" },
+				op: "speech.create",
+				request: { input: "quick brown fox" },
 			},
 		],
 		"the request is the highlight itself - no timestamp, no turn",
@@ -596,9 +595,8 @@ test("a highlight inside a link offers Speak on the link toolbar, speaking exact
 		requests,
 		[
 			{
-				op: "speech.agent",
-				agentId: "conv-1",
-				request: { input_text: "report" },
+				op: "speech.create",
+				request: { input: "report" },
 			},
 		],
 		"the words are the highlight, not the link's whole label",
@@ -635,9 +633,8 @@ test("with no highlight, the link toolbar's Speak answers with the link's own te
 		requests,
 		[
 			{
-				op: "speech.agent",
-				agentId: "conv-1",
-				request: { input_text: "report.txt" },
+				op: "speech.create",
+				request: { input: "report.txt" },
 			},
 		],
 		"the fallback is the link's visible text, read at press time",

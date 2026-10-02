@@ -63,6 +63,7 @@ import { apiConfig } from "@shared/config";
 import {
 	SPEECH_FAILURE_DETAIL_PREFIX,
 	SPEECH_PLAYBACK_COPY,
+	isUnknownAgentSpeechRefusal,
 	speechFailureCopy,
 } from "@shared/lib/speech-errors";
 import { showErrorToast } from "@shared/utils/toast-manager";
@@ -119,10 +120,42 @@ export const selectionSpeechKey = (scope: string, text: string): string =>
  * request path - the desktop relay attaches the auth the renderer cannot
  * (`speech-api.ts`), and a second spelling of the call is how the two ends
  * drift.
+ *
+ * THE TWO ROUTES, AND WHICH ONE A PRESS TAKES (`@shared/lib/speech-target`
+ * carries the full argument): `agentId` is the conversation's ROLE AGENT, and
+ * the agent route is the more specific target - it is the daemon's own
+ * voice selection that runs on it (`determine_voice` classifies the agent's
+ * name and description). A conversation with no binding takes the agent-less
+ * route, which needs no registry entry and is therefore always resolvable.
+ *
+ * THE UNKNOWN-AGENT REFUSAL IS THE LAST RUNG. A binding can go stale under a
+ * mounted transcript (the agent deleted, the daemon's config root moved), and
+ * the daemon answers that with the unknown-agent sentence - a sentence whose
+ * remedy is a DIFFERENT REQUEST, not a different attempt. So that one refusal
+ * fails over to the agent-less route: the reader asked to hear the conversation,
+ * not for an agent that happens to be spelled correctly, and every other refusal
+ * (a credit gate, a rate limit, a transport failure) propagates untouched - the
+ * toast must keep saying what actually went wrong.
+ *
+ * THE AGENT-LESS BODY NAMES NO MODEL AND NO VOICE, deliberately. The daemon owns
+ * both for this route, the way `radient_client.create_speech` already omits them
+ * when a caller named none ("the hub owns the speech model choice, and a caller
+ * that named no voice must not have one invented client-side"), and a fallback
+ * that invented a vendor model or a fixed voice would pin the product to a
+ * provider's roster - the class of defect the agent route's alias-based voice
+ * exists to avoid.
  */
-export const fetchAgentSpeech =
-	(agentId: string, inputText: string) => (): Promise<Blob | null> =>
-		client.speech.createForAgent(agentId, { input_text: inputText });
+export const fetchSpeechFor =
+	(agentId: string | null, inputText: string) => (): Promise<Blob | null> => {
+		const agentless = () => client.speech.create({ input: inputText });
+		if (agentId === null) return agentless();
+		return client.speech
+			.createForAgent(agentId, { input_text: inputText })
+			.catch((error: unknown) => {
+				if (!isUnknownAgentSpeechRefusal(error)) throw error;
+				return agentless();
+			});
+	};
 
 type SpeechState = {
 	/** Utterances by key, most recently used last. Capped; see the header. */
@@ -166,12 +199,19 @@ type SpeechActions = {
 	 */
 	dismiss: (key: string) => void;
 	/**
-	 * A message's own words, kept for its existing callers and tests. A press
-	 * whose key is already cached replays that entry without a fetch.
+	 * A message's own words, under the message's key.
+	 *
+	 * The wrapper the message surfaces call (`canonical-transcript.tsx`'s answer
+	 * row, the legacy strip): it only names the key and hands on the fetch, so
+	 * every message press shares the selection surfaces' `speak` - one request
+	 * path, one cache, one generation guard.
+	 *
+	 * `agentId` is the conversation's ROLE AGENT, or `null` for a conversation
+	 * with none; `fetchSpeechFor` owns what each of those means.
 	 */
 	playSpeech: (
 		messageId: string,
-		agentId: string,
+		agentId: string | null,
 		inputText: string,
 	) => Promise<void>;
 };
@@ -400,7 +440,7 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 		playSpeech: async (messageId, agentId, inputText) => {
 			await get().speak(
 				messageSpeechKey(messageId),
-				fetchAgentSpeech(agentId, inputText),
+				fetchSpeechFor(agentId, inputText),
 			);
 		},
 	}),
