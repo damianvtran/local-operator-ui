@@ -50,13 +50,19 @@ import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store
  *      pinned set (`forgetPinnedOrder`), so re-pinning is a NEW pin and arrives at
  *      the top: the alternative is a slot the reader freed by unpinning, which
  *      would be invisible state they never asked to keep.
- *   5. **A boundary is a sentence, not a silence.** The two controls are drawn
- *      inapplicable at the ends (`canMovePinnedRow` is the one predicate the
- *      control's state and the press both read) and the CHORD answers with
- *      `pinMoveBoundaryNote` - "already the first pinned chat", "already the last",
- *      or "the only pinned chat" when a single row is both ends at once. A key
- *      that does nothing reads as a broken key (`project-board.tsx`'s own rule for
- *      its grip).
+ *   5. **A boundary is a sentence, not a silence.** The row menu's two Move
+ *      items are drawn inapplicable at the ends (`canMovePinnedRow` is the one
+ *      predicate the item's `aria-disabled` and the press both read) and both
+ *      they and the CHORD answer with `pinMoveBoundaryNote` - "already the first
+ *      pinned chat", "already the last", or "the only pinned chat" when a single
+ *      row is both ends at once. A key that does nothing reads as a broken key
+ *      (`project-board.tsx`'s own rule for its grip).
+ *
+ *      THE CHORD IS NOW THE ONLY ROW-LEVEL SPELLING, and that is why it reaches
+ *      the write through the component's shared handler rather than by pressing a
+ *      control: the two arrow buttons it used to `.click()` are deleted (WCAG
+ *      2.5.7's single-pointer path moved into the row menu), so there is no
+ *      element left to press and `chatPinMoveControl` went with them.
  *   6. **It survives a relaunch.** Not this module's to implement, and stated here
  *      because it is a rule of the change: the order is a field of the sidebar's
  *      view preference (`SidebarView.pins`), so it is written by the store's own
@@ -392,20 +398,6 @@ export function pinMoveUntargetedNote(label: string): string {
 }
 
 /**
- * The attribute each move control carries, so a scene can find them and so the
- * pair cannot be spelled twice.
- *
- * THEY ARE DELIBERATELY NOT `data-chat-row`, and that is the row's own rule
- * rather than a new one: the arrow walk collects that attribute and focuses what
- * it finds, so a control wearing it would join the ring the rows share and become
- * a second Tab stop per row - the regression §C4's chord exists to avoid.
- */
-export const CHAT_PIN_MOVE_ATTR = {
-	up: "data-session-move-up",
-	down: "data-session-move-down",
-} as const;
-
-/**
  * The chord: `⌘⇧↑` / `⌘⇧↓` on macOS, `Ctrl+Shift+↑` / `Ctrl+Shift+↓` elsewhere.
  *
  * WHY IT IS SHARED WITH THE PIN'S SHAPE (`chatRowAct`'s modifier set exactly): a
@@ -416,8 +408,9 @@ export const CHAT_PIN_MOVE_ATTR = {
  * (`chat-regions.ts`) takes `⌘⌥↓`/`⌘⌥↑` and is refused here by `altKey`, the row's
  * acts (`⌘⇧P`/`⌘⇧A`) are letters, the transcript's paging keys are bare, and the
  * app's own document chords are `⌘N`, `⌘B`, `⌘P`/`⌘K` and `⌘O` - none is a
- * shifted arrow. The arrow is what makes the pair readable as "move this row",
- * which is the whole of what it does.
+ * shifted arrow. The arrow is what makes the move readable as "move this row",
+ * which is the whole of what it does, and the cap below is the spelling the row
+ * menu prints beside each item.
  */
 export const chatPinMoveChord = (event: {
 	key: string;
@@ -434,44 +427,65 @@ export const chatPinMoveChord = (event: {
 };
 
 /**
- * The chord's own spelling, so the cap a control prints and the handler that
+ * The chord's own spelling, so the cap the row menu prints and the handler that
  * answers it cannot drift (`chatRowActCap`'s reason).
+ *
+ * THIS IS THE HANDLER'S SPELLING, not a rendered one - the same split
+ * `chatRowActCap`'s docstring states, and the same failure if it is ignored:
+ * `KeyboardShortcut` splits its prop on `+`, so `⌘⇧↑` fed to it renders as ONE
+ * cap three glyphs wide. The row menu prints through the joined sibling below.
  */
 export const chatPinMoveCap = (step: PinMoveStep, isMac: boolean): string => {
 	const key = step === -1 ? "↑" : "↓";
 	return isMac ? `⌘⇧${key}` : `Ctrl+Shift+${key}`;
 };
 
-/** The attribute one step's control carries. */
-export const chatPinMoveAttr = (step: PinMoveStep): string =>
-	step === -1 ? CHAT_PIN_MOVE_ATTR.up : CHAT_PIN_MOVE_ATTR.down;
+/**
+ * The same chord as `+`-joined prop text for `KeyboardShortcut` - the sibling
+ * `chatRowActCapJoined` is for the mirrored pair, and for its reason.
+ *
+ * WHY IT IS A SECOND FUNCTION rather than a splice at the call site: the
+ * separator IS the `+`, so the string a renderer needs is not a transformation
+ * of the string the handler matches - it is the same fact spelled for a
+ * different consumer, and deriving one from the other at the call site would be
+ * a second parsing rule for the next consumer to learn. The non-mac form already
+ * carries its separators, so it is `chatPinMoveCap`'s own string.
+ *
+ * IT WAS MISSING UNTIL THE ROUND-1 DESIGN REVIEW (D1), and the defect is exactly
+ * the one `chatRowActCap`'s docstring predicted: the two Move rows were the only
+ * items in this menu feeding the component the handler's spelling, so they drew
+ * a single 21px cap where the rows above them drew three caps across 52px - one
+ * item's chord disagreeing with its neighbours' in the same panel.
+ */
+export const chatPinMoveCapJoined = (
+	step: PinMoveStep,
+	isMac: boolean,
+): string =>
+	isMac ? `⌘+⇧+${step === -1 ? "↑" : "↓"}` : chatPinMoveCap(step, isMac);
 
 /**
- * The control a chord should press, or null when the row does not offer it.
+ * The row a chord press is aimed at, or null when the press belongs to nobody.
  *
- * THE CHORD PRESSES THE CONTROL rather than calling the move itself, which is
- * `chatRowActControl`'s rule for the row's two acts and for the same reason: the
- * press the keyboard makes then takes the SAME path a press on the control takes
- * - the repeat-press guard, the boundary announcement and the caret correction
- * all included - and the two paths cannot drift.
+ * THE SEARCH STARTS AT THE ROW'S BOX (`[data-session-row]`) rather than at the
+ * element the press landed on, because the row's button is usually what holds the
+ * caret and `closest` is what makes a press anywhere inside the row name the row.
+ * It answers an ID rather than an element because the elements the chord used to
+ * press are deleted: both Move acts now live in the row's context menu (WCAG
+ * 2.5.7's single-pointer path moved there with them) and the chord calls the same
+ * `movePinnedRow` the menu items call, so there is nothing on the row to click.
  *
- * The search starts at the row's BOX (`[data-session-row]`) rather than at the
- * element the press landed on, because the controls are siblings of the row's
- * button and the reader's focus is usually on that button: `closest` is what
- * makes a press anywhere inside the row find them.
- *
- * A row that offers no move (an unpinned row, or one drawn by the grouped
- * arrangement) answers null, and the caller then leaves the press alone - which is
- * what a chord with no target on this row should do.
+ * WHAT IT DOES NOT DECIDE: whether the row OFFERS a move. That is the caller's
+ * own predicate (`pinsEnabled`, the section arrangement, and the row's place in
+ * the drawn order), because it is a fact about the panel's state rather than about
+ * the DOM, and the two must not be able to disagree.
  */
-export const chatPinMoveControl = (
-	target: EventTarget | null,
-	step: PinMoveStep,
-): HTMLElement | null => {
+export const chatPinMoveRowId = (target: EventTarget | null): string | null => {
 	const element = target as {
 		closest?: (selector: string) => Element | null;
 	} | null;
 	if (typeof element?.closest !== "function") return null;
-	const row = element.closest("[data-session-row]");
-	return row?.querySelector<HTMLElement>(`[${chatPinMoveAttr(step)}]`) ?? null;
+	return (
+		element.closest("[data-session-row]")?.getAttribute("data-session-row") ??
+		null
+	);
 };

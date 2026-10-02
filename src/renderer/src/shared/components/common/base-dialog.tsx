@@ -123,7 +123,15 @@ export const BaseDialog: FC<BaseDialogProps> = ({
 		}
 		const opener = openerRef.current;
 		openerRef.current = null;
-		if (opener && document.contains(opener)) opener.focus();
+		/*
+		 * `preventScroll`: the restore puts the keyboard back, it does not get to move
+		 * the page - an opener half inside a scroller's clip (a sidebar row's button)
+		 * was scrolled fully into view by a plain `focus()` as the dialog closed, which
+		 * moved the reader's place under a press that is pinned never to (the archive
+		 * confirmation's scrolled-arrival walk measured 84 -> 107.5).
+		 */
+		if (opener && document.contains(opener))
+			opener.focus({ preventScroll: true });
 	}, [open]);
 	/*
 	 * `className` is lifted out of the escape hatch and merged: spread after

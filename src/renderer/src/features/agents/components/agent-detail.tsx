@@ -61,6 +61,16 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+	type ActionClass,
+	BUILTIN_SWITCH_DISCLOSURE,
+	CLASS_MEANING,
+	CLASS_SWITCH_EFFECT,
+	ClassSwitchError,
+	classOf,
+	classSwitchFailure,
+	switchAgentClass,
+} from "../utils/agent-class";
+import {
 	type FieldTarget,
 	duplicateNameCandidates,
 	refusalCopy,
@@ -148,6 +158,223 @@ function AgentChips({ profile }: { profile: ReusableProfile }) {
 				</Badge>
 			) : null}
 		</div>
+	);
+}
+
+/**
+ * The class control: what the agent's class means, and the one press that
+ * changes it.
+ *
+ * WHY IT IS NOT PART OF THE EDIT FORM. Everything else on this pane is a FIELD
+ * of the definition — read it, change it, save it. The class is not: it is a
+ * platform switch that takes effect on a running session at its next decision
+ * point, it is the one thing on this pane whose wrong value, by the time you read
+ * it, is an agent already messaging you, and it has a consequence the operator
+ * needs BEFORE the press rather than in a diff afterwards. Burying it behind Edit
+ * and Save would put a bounded delay between the intent and the outcome for no
+ * gain, so it writes on the press, through the same profile route the rest of the
+ * pane uses.
+ *
+ * THE PAYLOAD IS THE AUTHORITY, and the optimistic value is only ever a bridge to
+ * it. The switch paints the class the operator asked for immediately — a switch
+ * that waits for a round trip reads as broken — and then defers to the READ the
+ * moment the two agree, so an out-of-band change (another window, a
+ * configuration run, `/agent class` in the terminal) is never masked by a value
+ * this component once painted. A refused write CLEARS the optimistic value, which
+ * is what makes the displayed state revert rather than sit on a lie, and the
+ * refusal is stated beside the switch.
+ */
+/**
+ * WHETHER A PRESS STILL OWES FOCUS TO THE SWITCH, and why it cannot live in the
+ * component's state.
+ *
+ * The page keys `AgentDetail` on the fetched record, so the re-read that follows
+ * every switch REMOUNTS this control: the instance that was pressed is gone by
+ * the time the write settles, and any `useState` in it goes with the mount. A
+ * module-scope intent is what survives the remount, and the first mount whose
+ * record matches CONSUMES it and clears it.
+ *
+ * IT CARRIES THE TIME IT WAS SET, because an intent nobody consumed must not
+ * lie in wait: a press whose pane is navigated away from would otherwise pull
+ * focus to a switch the next time that agent's definition is opened, minutes
+ * later, for a press the reader has long forgotten.
+ */
+const CLASS_FOCUS_INTENT_MS = 5_000;
+let classSwitchFocusIntent: { name: string; at: number } | null = null;
+
+function AgentClassControl({
+	profile,
+	displayedName,
+	notice,
+	onNotice,
+	onChanged,
+}: {
+	profile: ReusableProfile;
+	/** The name to PRINT (her configured name for the seat; the registry name otherwise). */
+	displayedName: string;
+	/**
+	 * What the last failed press said, or null. OWNED BY THE PAGE, and that is
+	 * load-bearing rather than tidy: the re-read that every failure now performs
+	 * remounts this pane (the page keys `AgentDetail` on the record), so a
+	 * `useState` here would be erased by the very re-read that corrects the
+	 * switch - the failure sentence would flash and vanish on exactly the
+	 * ambiguous case it exists for. The page is the level that survives its own
+	 * refresh, so the sentence lives there.
+	 */
+	notice: string | null;
+	onNotice: (copy: string | null) => void;
+	/** The record may have moved; re-read it. The same contract `Install` uses. */
+	onChanged: (name: string) => void;
+}) {
+	const current = classOf(profile);
+	const [optimistic, setOptimistic] = useState<ActionClass | null>(null);
+	const [pending, setPending] = useState(false);
+	const switchRef = useRef<HTMLButtonElement>(null);
+	const labelId = useId();
+
+	useEffect(() => {
+		if (optimistic !== null && current === optimistic) setOptimistic(null);
+	}, [current, optimistic]);
+
+	/*
+	 * FOCUS SURVIVES THE PRESS (UX round 2, U4). Two things used to lose it: the
+	 * switch was `disabled` while the write was open - and Chrome blurs a button
+	 * the moment `disabled` lands, the rule the sidebar's mark-all-read control
+	 * already states - and the re-read then remounted the pane. The intent above
+	 * answers the second; `aria-disabled` below answers the first, with the press
+	 * ignored while the promise is open instead of prevented.
+	 */
+	useEffect(() => {
+		const intent = classSwitchFocusIntent;
+		if (!intent || intent.name !== profile.name) return;
+		classSwitchFocusIntent = null;
+		if (Date.now() - intent.at > CLASS_FOCUS_INTENT_MS) return;
+		switchRef.current?.focus();
+	}, [profile.name]);
+
+	const shown = optimistic ?? current;
+
+	const flip = async (next: ActionClass) => {
+		if (pending || next === shown) return;
+		classSwitchFocusIntent = { name: profile.name, at: Date.now() };
+		/* A new press replaces the old sentence rather than stacking on it. */
+		onNotice(null);
+		setOptimistic(next);
+		setPending(true);
+		try {
+			await switchAgentClass(profile, next, (step, requestId) =>
+				step.op === "profiles.install"
+					? desktopResult<ReusableProfile>({
+							op: "profiles.install",
+							name: step.name,
+							requestId,
+						})
+					: desktopResult<ReusableProfile>({
+							op: "profiles.update",
+							name: step.name,
+							requestId,
+							fields: step.fields ?? {},
+						}),
+			);
+			onChanged(profile.name);
+			showSuccessToast(
+				next === "proactive"
+					? `${displayedName} is now proactive — it may message you on its own.`
+					: `${displayedName} is now reactive — proactive messaging stopped.`,
+			);
+		} catch (caught) {
+			/*
+			 * REVERT FIRST, then RE-READ, then say what happened - in that order and on
+			 * EVERY failure, which is the fix UX round 2 asked for (U1, the code-side
+			 * half of the same finding): the re-read used to be conditional on an
+			 * install having completed, so a write that failed AFTER the backend
+			 * committed (a timeout, a dropped response) left the control painting the
+			 * old value with nothing on screen to correct it. Someone who had just
+			 * turned proactive messaging ON could read "the class was not changed" and
+			 * believe the agent was silent while it was in fact nudging them.
+			 *
+			 * The re-read is the only reader of the truth in that case, and it is
+			 * unconditional now: whatever the backend holds is what the switch shows,
+			 * including nothing having changed.
+			 */
+			setOptimistic(null);
+			const completed =
+				caught instanceof ClassSwitchError ? caught.completed : [];
+			const copy = classSwitchFailure(caught, completed);
+			onNotice(copy);
+			showErrorToast(copy);
+			onChanged(profile.name);
+		} finally {
+			setPending(false);
+		}
+	};
+
+	return (
+		<>
+			{/*
+			 * ONE CONTROL, AND THE WHOLE ROW ANSWERS THE PRESS (design round 2, D5).
+			 * The label was a `span` beside a 36x20 track, so the words read as part of
+			 * the row and behaved like nothing - and the ways to fix that are narrower
+			 * than they look: a `label`/`htmlFor` pair associates with nothing here (the
+			 * switch is a `button`, which does not take a label association - the same
+			 * reason `ToggleSetting` uses `aria-labelledby`), a `<div onClick>` fails the
+			 * a11y lint the repo keeps on, and a button nested in a button shares one hit
+			 * area (the sidebar's rule). So the track carries an invisible overlay: the
+			 * pseudo-element is part of the SWITCH, which means a press anywhere in the
+			 * row activates the one control, keeps one tab stop, and leaves the
+			 * accessible name on the words a reader can see.
+			 */}
+			<div className="relative flex items-center gap-2 text-body-sm">
+				<Switch
+					ref={switchRef}
+					checked={shown === "proactive"}
+					/*
+					 * `aria-disabled` and NOT `disabled`: see the focus effect above. The
+					 * press is ignored while the promise is open rather than refused, and the
+					 * row says `Switching…` while that is true.
+					 */
+					aria-disabled={pending}
+					aria-labelledby={labelId}
+					data-testid="agent-class-switch"
+					className="after:absolute after:inset-0 after:content-['']"
+					onCheckedChange={(checked) =>
+						void flip(checked ? "proactive" : "reactive")
+					}
+				/>
+				{/*
+				 * THE SWITCH, SAID IN THE READER'S WORDS (D5). "Proactive" was the third
+				 * time the row said the same word (the label, the live value, and the
+				 * sentence below it - D4), and it named the mechanism rather than the
+				 * consequence. The value is now On/Off, which is what a switch shows, and
+				 * the sentence below carries what the state means.
+				 */}
+				<span id={labelId} className="text-ink">
+					Can message me on its own
+				</span>
+				<span aria-live="polite" className="text-ink-muted">
+					{pending ? "Switching…" : shown === "proactive" ? "On" : "Off"}
+				</span>
+			</div>
+			<p className="text-body-sm text-ink">{CLASS_MEANING[shown]}</p>
+			<p className="text-meta text-ink-muted">{CLASS_SWITCH_EFFECT[shown]}</p>
+			{profile.source === "builtin" ? (
+				<p className="text-meta text-ink-muted">{BUILTIN_SWITCH_DISCLOSURE}</p>
+			) : null}
+			{notice ? (
+				<Alert variant="danger" role="alert" data-testid="agent-class-error">
+					{/*
+					 * THE TITLE SAYS WHAT IS KNOWN AND THE BODY SAYS WHY (UX round 2, U1 and
+					 * U5/D3). "The class was not changed" asserted an outcome nobody had
+					 * verified - a failed write may have landed - and the body was a lowercase
+					 * restatement of it. What this pair knows is that the press did not
+					 * complete, and the read above has since put the switch in whatever
+					 * position the backend actually holds.
+					 */}
+					<AlertTitle>The switch did not go through</AlertTitle>
+					<AlertDescription>{notice}</AlertDescription>
+				</Alert>
+			) : null}
+		</>
 	);
 }
 
@@ -276,6 +503,9 @@ function ToolsEditor({
 
 export function AgentDetail({
 	profile,
+	displayedName,
+	classNotice,
+	onClassNotice,
 	teams,
 	effortTiers,
 	askEnabled,
@@ -286,6 +516,15 @@ export function AgentDetail({
 	onDirtyChange,
 }: {
 	profile: ReusableProfile;
+	/**
+	 * The name to PRINT for this definition: her configured name when the record
+	 * is the seat, the registry name otherwise. The registry name still addresses
+	 * every route and test id under this pane - this is what a reader reads.
+	 */
+	displayedName: string;
+	/** The class switch's failure sentence, held by the page (see the control). */
+	classNotice: string | null;
+	onClassNotice: (copy: string | null) => void;
 	teams: readonly ReusableTeam[] | undefined;
 	effortTiers: readonly string[];
 	/** Whether the conversational path is available on this backend (scope B). */
@@ -548,7 +787,7 @@ export function AgentDetail({
 							tabIndex={-1}
 							className="text-title focus:outline-none"
 						>
-							{profile.name}
+							{displayedName}
 						</h2>
 						{/*
 						 * THE DESCRIPTION IS SAID ONCE. It sat here AND in the "When to use it"
@@ -794,6 +1033,31 @@ export function AgentDetail({
 							<p className="text-body-sm text-ink-muted">
 								Effort tier: {profile.effort ?? "inherit"}
 							</p>
+						</Section>
+						{/*
+						 * The class sits with the other BEHAVIOUR facts — what this agent does
+						 * between your messages is the same kind of statement as whether it
+						 * delegates and how hard it works — and above "Used by", which is a
+						 * footnote about where the definition is referenced.
+						 */}
+						<Section
+							/*
+							 * "MESSAGING", NOT "CLASS" (design round 2, D5). The word the backend
+							 * uses is the word this UI's own badge and receipts use, but as a SECTION
+							 * TITLE it named the mechanism to a reader who came for the consequence;
+							 * the description carries both vocabulary words once, so the badge the
+							 * roster shows and the switch below stay one idea.
+							 */
+							title="Messaging"
+							description="Reactive agents only reply. Proactive agents may also message you first."
+						>
+							<AgentClassControl
+								profile={profile}
+								displayedName={displayedName}
+								notice={classNotice}
+								onNotice={onClassNotice}
+								onChanged={onSaved}
+							/>
 						</Section>
 						<Section
 							title="Used by"
