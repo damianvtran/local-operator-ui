@@ -75,6 +75,15 @@ command line the successor runs is the losing launch's, minus argv[0], with
 `--window-mode` pinned when that command line carried none — the loser's
 ENVIRONMENT does not cross the instance boundary, so an env-born mode must be
 pinned or the successor re-resolves a different plan than the request declared.
+A refused DOCK CLICK names no losing launch at all, so its successor is composed
+from the DYING process's own command line — and only for a packaged build is
+that `[]` (macOS starts the bundle exactly as the user's own launch did); a
+dev-shaped process replays its own vector, so the app path and the launch's
+enclosure (`--user-data-dir`, a named mode, the inspector) travel instead of
+bare Electron starting on the machine-default profile (review F1). The
+completion also reaches the two exits OUTSIDE the `will-quit` pass that could
+once strand a record — the headless exit deadline and the `uncaughtException`
+handler call the same idempotent helper before they go (review F2).
 The reporter's workaround — close it again, wait several seconds, try again —
 is gone: the reopen completes itself.
 
@@ -97,7 +106,12 @@ is gone: the reopen completes itself.
    freed lock, one visible window, its own log lines (the replay contract is
    proven by S answering there at all). The same port is held closed as the
    negative while A still tears down;
-5. instance **C** is the relaunch after S has lived and quit: the control that
+5. in the `--activate` arm there is no B: the rig emits the `activate` EVENT
+   into A mid-teardown (the Dock click, refused whole and recorded), and the
+   successor is read on A's OWN port — its argv asserted to carry the app path
+   and the run's scratch enclosure (the review-F1 carriage), booting under the
+   replayed headless plan with one window that is never shown;
+6. instance **C** is the relaunch after S has lived and quit: the control that
    a refusal is a refusal, not a permanent state.
 
 B declares `inactive` rather than going undeclared (a person's relaunch, which
@@ -105,7 +119,11 @@ is `focus`): taking the operator's focus is the one thing this repository's rigs
 may not do, and the plan differs only in the presentation call the dying
 instance makes (`showInactive()` instead of `show()`+`focus()`) — the same
 request through the same code path. A `headless` B would be a different request
-(`never` creates nothing even before the fix) and would prove nothing.
+(`never` creates nothing even before the fix) and would prove nothing. The
+activate arm's dying process names `headless` for the same repo rule: the plan a
+click asks for is `focus`, which no rig may boot, so the arm's command line
+names a mode and the replay keeps what the line names; the pin rule (`focus` →
+`normal` when a line names none) stays a suite-level pin.
 
 | reading | before (base tree) | after (the fix) |
 | --- | --- | --- |
@@ -115,11 +133,12 @@ request through the same code path. A `headless` B would be a different request
 | A's own teardown | exit 0, +5228 ms | exit 0, +5069 ms |
 
 The raw runs are [`transcript-before.txt`](transcript-before.txt) and
-[`transcript-after.txt`](transcript-after.txt); the before run is the failing
-one (2 failing checks — the window, and the missing refusal line), the after run
-is `OK: 0 failing check(s)`. The before transcript predates the
-working-directory move described above, which is why its `cwd=` names the
-checkout while the after run's names the run's scratch tree.
+[`transcript-after.txt`](transcript-after.txt) (the second-launch arm), with the
+Dock-click arm beside them in [`transcript-activate.txt`](transcript-activate.txt);
+the before run is the failing one (2 failing checks — the window, and the
+missing refusal line), the after run is `OK: 0 failing check(s)`. The before
+transcript predates the working-directory move described above, which is why its
+`cwd=` names the checkout while the after run's names the run's scratch tree.
 
 The #755 arm adds the successor readings, and `--no-reopen` runs its control
 (the same quit with nothing refused — nothing may be spawned, so the scratch
@@ -134,9 +153,14 @@ no `reopen=deferred` line exists):
 | exactly-once | S's window list stays at one; the lock is S's; the scratch profile carries one instance |
 | S's own quit | spawns nothing (no request was refused during it) |
 | `--no-reopen` control | quiet for the 5 s grace: no process, no listener, no token, no `[relaunch]` line; C opens normally |
+| the click (`--activate` arm) | `[window-raise] trigger=activate … applied=skipped+quitting reopen=deferred`; A's window list still `[]` |
+| while A tears down | only A on the scratch profile; no `[relaunch]` line yet |
+| the successor | answers on A's own replayed port: fresh pid, the freed lock, argv carrying the app path and the scratch enclosure (`--user-data-dir`, `--window-mode=headless`, `--inspect`), one window never shown (`visible: false`), the headless launcher policy line in the log |
 
 ```
-node scripts/relaunch-during-quit-proof.mjs
+node scripts/relaunch-during-quit-proof.mjs             # the second-launch arm
+node scripts/relaunch-during-quit-proof.mjs --activate  # the Dock-click arm
+node scripts/relaunch-during-quit-proof.mjs --no-reopen # the control arm
 ```
 
 The rig needs a BUILT tree (`pnpm build`) and is run from that tree's root; it
@@ -164,11 +188,18 @@ itself.
   have a narrower window.
 - The frame is PNG, not a swept `.webp`: no supplementary set is declared and the
   manifest's `frames` count does not move.
-- The #755 arm's residuals, documented rather than repaired: a hard kill (or a
-  crash) before the quit's terminal loses the record — the lock is simply free
-  and the person's next launch opens normally; a refusal landing in the
-  sub-millisecond sliver after the last terminal call is dropped the same way;
-  and the `uncaughtException` path's `process.exit(1)` bypasses the terminals
-  entirely (there was no record for it to complete). The successor this rig
-  observes is `inactive` (visible, unfocused) — the same envelope B and C run
-  under; a packaged successor is `normal`.
+- The #755 arm's residuals, documented rather than repaired: a hard kill
+  (SIGKILL, power loss) before the quit's terminal loses the record — the lock
+  is simply free and the person's next launch opens normally; and a refusal
+  arriving after the successor was already scheduled (the sub-millisecond
+  sliver after the last terminal call) rides the earlier request's plan — its
+  line still says `reopen=deferred`, but the schedule is latched and completes
+  only the request that was already on the record. The two exits outside the
+  `will-quit` pass that could once strand a record — the headless exit deadline
+  and the `uncaughtException` handler — now complete it through the same helper
+  before they go (review F2). The successor the second-launch arm observes is
+  `inactive` (visible, unfocused) — the same envelope B and C run under — and
+  the activate arm's is `headless`: a `focus` successor, which is what the
+  recorded click asks for, is not bootable by any rig here, so the arm's dying
+  command line names its mode and the replay keeps it. A packaged plain reopen
+  is `[]` (macOS starts the bundle, so its successor comes up `normal`).

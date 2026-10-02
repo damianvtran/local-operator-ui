@@ -116,8 +116,13 @@ test("the rig arms B's replayed inspect port and reads the successor there (#755
 	);
 	assert.match(
 		rig,
-		/CdpClient\.attach\(inspectS, 30_000\)/,
-		"the successor is read on it after A exits",
+		/const successorPort = ACTIVATE \? inspectA : inspectS;/,
+		"the successor is read on the arm's own port after A exits",
+	);
+	assert.match(
+		rig,
+		/CdpClient\.attach\(successorPort, 30_000\)/,
+		"the attach goes through that resolution rather than a hard-coded port",
 	);
 	assert.match(
 		rig,
@@ -191,5 +196,52 @@ test("the control arm runs with nothing refused and pins the absence (#755)", ()
 	assert.ok(
 		rig.includes("nothing was even scheduled"),
 		"and the token/schedule absence is pinned too",
+	);
+});
+
+test("the activate arm exercises a refused Dock click in a dev-shaped run (#755 review F1)", () => {
+	/*
+	 * The second-launch arm's replay rides on B; a refused Dock click names no
+	 * loser, so its successor is composed from the DYING process's own command
+	 * line (a dev-shaped plain reopen) and read on A's OWN port — the carriage
+	 * that keeps the app path and the scratch enclosure in the successor's argv
+	 * (`args: []` would be bare Electron, i.e. the default-app window on the
+	 * machine-default profile, which is the defect this arm exists to falsify).
+	 */
+	assert.match(
+		rig,
+		/const ACTIVATE = process\.argv\.includes\("--activate"\);/,
+		"the arm is a flag",
+	);
+	assert.ok(
+		rig.includes("--no-reopen and --activate select different arms"),
+		"and the two arms cannot be selected together",
+	);
+	assert.ok(
+		rig.includes("app.emit('activate')"),
+		"the arm delivers the click the OS would emit",
+	);
+	assert.ok(
+		rig.includes(
+			"A answered the Dock click without creating or raising a window",
+		),
+		"the refusal is asserted by name",
+	);
+	assert.ok(
+		rig.includes("the successor replays the dying process's own command line"),
+		"and so is the F1 carriage",
+	);
+	assert.ok(
+		rig.includes("sArgv.includes(APP_ROOT)"),
+		"with the app path at the centre of the argv assertion",
+	);
+	assert.ok(
+		rig.includes("the successor boots under the replayed plan (headless"),
+		"and the presentation it booted under asserted rather than assumed",
+	);
+	assert.match(
+		rig,
+		/LAUNCHER_HEADLESS_LINE/,
+		"the headless launcher-policy line is the arm's own reading",
 	);
 });

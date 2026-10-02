@@ -9,9 +9,11 @@
  * tried again ("you have to close it again... wait at least several seconds").
  * This module is the COMPLETION half of that refusal: the two refusal sites
  * that mean "the user asked for the app" — a second launch and a macOS Dock
- * click — record what was asked for, and the quit's existing terminal (the
- * `will-quit` pass that already names itself "the completion") schedules one
- * successor with `app.relaunch` just before it exits. The successor starts
+ * click — record what was asked for, and the quit's terminals — the `will-quit`
+ * pass that already names itself "the completion", plus the exits outside that
+ * pass that can still strand a record (the headless exit deadline and the
+ * `uncaughtException` handler; review F2) — schedule one successor with
+ * `app.relaunch` just before the process exits. The successor starts
  * after this process is gone, takes the freed single-instance lock, and boots
  * as an ordinary launch under the recorded plan. No window is held open, nothing
  * waits on the quit, and the loser still exits immediately.
@@ -65,12 +67,42 @@ export interface PendingReopen {
 	show: WindowShow;
 	/**
 	 * The losing launch's full command line (argv[0] included; the successor
-	 * runs `argv.slice(1)`), or null for `activate`.
+	 * runs `argv.slice(1)`), or null for `activate` — whose composition then
+	 * reads the process's own shape instead (see `successorArgs`).
 	 */
 	argv: readonly string[] | null;
 }
 
+/**
+ * The process facts the successor's argv depends on.
+ *
+ * Injected rather than read inline so the dev-shaped cases (the F1 correction)
+ * can be driven without building a packaged app: the default reads the real
+ * process, a test substitutes its own. `process.defaultApp` and `process.argv`
+ * are exactly the facts Electron launches from — the app path sits wherever
+ * Electron put it in the vector (measured here: second for a rig-shaped launch,
+ * last for a second-instance-forwarded one), which is why the composition replays the
+ * whole vector rather than a guessed index.
+ */
+export interface SuccessorFacts {
+	/** `process.defaultApp`: true when started as `electron <appDirectory>`. */
+	defaultApp: boolean;
+	/** This process's own command line, argv[0] included. */
+	argv: readonly string[];
+}
+
+export interface RelaunchPendingOptions {
+	/** Defaults to the real process. */
+	facts?: () => SuccessorFacts;
+}
+
 export interface RelaunchPending {
+	/**
+	 * Whether a record is waiting for a terminal. The install guard reads it so
+	 * its stand-down line reports a RECORDED reopen being left unspent rather
+	 * than printing on every terminal of an install-owned quit (review F3).
+	 */
+	hasPending(): boolean;
 	/**
 	 * Record a refused reopen. Returns true when the record was TAKEN — and the
 	 * refusal line says `reopen=deferred` exactly when this is true, so the log
@@ -106,9 +138,11 @@ export interface RelaunchPending {
 }
 
 /**
- * The successor's argv, composed the way the shape was ratified (memo §1.2/5):
+ * The successor's argv, composed the way the shape was ratified (memo §1.2/5)
+ * with one correction the first pass could not see (review F1 — `app.relaunch`
+ * with `args` present REPLACES the command line, and the macOS relauncher
+ * execs it verbatim, so nothing travels that is not in `args`):
  *
- * - `activate` is a plain reopen: `[]`. Nothing asked for anything to replay.
  * - `second-instance` replays the LOSING launch's command line minus argv[0] —
  *   the same command a person's relaunch carries — and appends
  *   `--window-mode=<the recorded show plan>` only when that command line does
@@ -118,24 +152,61 @@ export interface RelaunchPending {
  *   would re-resolve to this process's plan instead of the request's. The
  *   mapping is the same one the raise line prints (`MODE_OF_SHOW`), so a mode
  *   token in the log and in the successor's argv can never disagree.
+ * - `activate` is a plain reopen, and what "plain" means depends on the SHAPE:
+ *   for a PACKAGED build it is `[]` — macOS starts the bundle exactly as the
+ *   user's own launch did, and a Dock click has no switches. For a dev-shaped
+ *   process (`process.defaultApp` — `pnpm dev`, every rig in this repo) `[]`
+ *   would build a command line of `[execPath]` alone: bare Electron with NO app
+ *   path, i.e. Electron's default-app window on the machine-default profile.
+ *   So a dev-shaped plain reopen replays its OWN command line minus argv[0],
+ *   under the same pin rule as the replay above — the app path AND the
+ *   launch's enclosure (`--user-data-dir`, a named mode, the inspector) travel.
  */
-function successorArgs(entry: PendingReopen): readonly string[] {
-	if (entry.kind === "activate" || entry.argv === null) return [];
-	const args = entry.argv.slice(1);
+function successorArgs(
+	entry: PendingReopen,
+	facts: SuccessorFacts,
+): readonly string[] {
+	if (entry.kind === "activate") {
+		if (!facts.defaultApp) return [];
+		return withModePin(facts.argv.slice(1), entry.show);
+	}
+	if (entry.argv === null) return [];
+	return withModePin(entry.argv.slice(1), entry.show);
+}
+
+/**
+ * The pin rule, shared by both replays: append the recorded plan's mode — the
+ * SAME token the raise line prints (`MODE_OF_SHOW`) — only when the command
+ * line does not already name one. A copy in both branches so a replay can
+ * never alias `process.argv` or the record's vector.
+ */
+function withModePin(
+	args: readonly string[],
+	show: WindowShow,
+): readonly string[] {
 	const namesAMode = args.some(
 		(argument) =>
 			argument === WINDOW_MODE_FLAG ||
 			argument.startsWith(`${WINDOW_MODE_FLAG}=`),
 	);
 	return namesAMode
-		? args
-		: [...args, `${WINDOW_MODE_FLAG}=${MODE_OF_SHOW[entry.show]}`];
+		? [...args]
+		: [...args, `${WINDOW_MODE_FLAG}=${MODE_OF_SHOW[show]}`];
 }
 
-export function createRelaunchPending(): RelaunchPending {
+/** The facts the shipped app composes with: this very process. */
+function defaultSuccessorFacts(): SuccessorFacts {
+	return { defaultApp: process.defaultApp === true, argv: process.argv };
+}
+
+export function createRelaunchPending(
+	options: RelaunchPendingOptions = {},
+): RelaunchPending {
+	const facts = options.facts ?? defaultSuccessorFacts;
 	let pending: PendingReopen | null = null;
 	let scheduled = false;
 	return {
+		hasPending: () => pending !== null,
 		record: (entry) => {
 			if (!canCreateWindowFor(entry.show)) return false;
 			pending = {
@@ -164,7 +235,7 @@ export function createRelaunchPending(): RelaunchPending {
 			 * terminal site call it a second time — one reopen, one call.
 			 */
 			scheduled = true;
-			relaunch(successorArgs(entry));
+			relaunch(successorArgs(entry, facts()));
 		},
 	};
 }
