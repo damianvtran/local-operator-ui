@@ -8420,12 +8420,7 @@ export const STORIES = [
 	 * allowed it - the bar above carries `1 action`, the line under the answer
 	 * carries the actions alone. See the story's own comment for the chain.
 	 */
-	[
-		"chat-canonical-message-actions--one-call-turn",
-		1024,
-		560,
-		{ touch: true },
-	],
+	["chat-canonical-message-actions--one-call-turn", 1024, 560, { touch: true }],
 	["chat-canonical-message-actions--narrow", 420, 620, { touch: true }],
 
 	/*

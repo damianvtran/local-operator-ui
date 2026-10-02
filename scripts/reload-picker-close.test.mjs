@@ -155,6 +155,16 @@ const PICKERS =
 const FORK_WHOLE_CONVERSATION_ADVICE = /fork the whole conversation/i;
 const FORK_CUT_VERB = /(cannot be )?cut\b/i;
 const FORK_CUT_NOTE_CALL_SITE = /cutEntryId \? FORK_CUT_NOTE : undefined/;
+/*
+ * Two more this file already used inside callbacks, hoisted for the same rule
+ * now that a change touches this file: every path in this tree is burnt down as
+ * it is touched (`scripts/check-scripts-lint.mjs`), so the `useTopLevelRegex`
+ * findings that were already here had to go with the edit rather than ride
+ * along beside it.
+ */
+const ANY_MODULE = /.*/;
+const RELOAD_FAILURE_LINE =
+	/The conversation could not be reopened: the owner is not running/;
 
 /** The answer the faked transport gives for the NEXT `sessions.get`. */
 let nextAnswer = () => Promise.reject(new Error("no answer installed"));
@@ -231,11 +241,14 @@ const bundle = await build({
 						namespace: "picker-seam",
 					}),
 				);
-				builder.onLoad({ filter: /.*/, namespace: "picker-seam" }, (args) => ({
-					contents: stubs[args.path],
-					loader: "js",
-					resolveDir: ROOT,
-				}));
+				builder.onLoad(
+					{ filter: ANY_MODULE, namespace: "picker-seam" },
+					(args) => ({
+						contents: stubs[args.path],
+						loader: "js",
+						resolveDir: ROOT,
+					}),
+				);
 			},
 		},
 	],
@@ -406,9 +419,12 @@ test("a refused cut keeps the owner's reason and adds only the note this side ca
 		);
 		assert.ok(
 			text.startsWith(`The fork was not created: ${sentence}`),
-		"the owner's own sentence survives whole, whatever cause it names",
+			"the owner's own sentence survives whole, whatever cause it names",
 		);
-		assert.ok(text.endsWith(FORK_CUT_NOTE), "and the note is added, not substituted");
+		assert.ok(
+			text.endsWith(FORK_CUT_NOTE),
+			"and the note is added, not substituted",
+		);
 	}
 	/*
 	 * The two things the failing shape did, each asserted so neither can come back
@@ -485,7 +501,7 @@ test("a failed reload keeps the dialog and its own reason, and rebinds nothing",
 	assert.equal(toasts.length, 0, "and it does not claim success");
 	assert.match(
 		document.body.textContent ?? "",
-		/The conversation could not be reopened: the owner is not running/,
+		RELOAD_FAILURE_LINE,
 		"the reason is still readable in the dialog",
 	);
 	assert.ok(buttonByText("Reload"), "and the action is still offered");
