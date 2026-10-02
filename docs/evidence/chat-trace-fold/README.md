@@ -199,9 +199,16 @@ always runs it, `--allow-backend` because the operator's live daemon answers on
 fixture).
 
 **The whole set was re-taken on the folded tree** (after this branch folded
-`origin/main` = `0d4db85a5e`), again after the yield factors were corrected, and
-again for this round's units change — so the frames this record owns are the ones
-the shipped code paints.
+`origin/main` = `0d4db85a5e`), again after the yield factors were corrected, again
+for this round's units change, **and once more, whole, in round 5's remediation**
+— at this set's documented two-palette budget (`--themes=localOperatorDark,localOperatorLight`,
+23 states × 2 = **46 frames**), because that pass had left it at the rig's DEFAULT
+twelve palettes (**276 frames**) while this README still documented the two; the
+strays are deleted and `scripts/check-evidence-palettes.mjs` asserts the budget per
+directory now. Every fold since has been measured against the six surfaces these
+frames photograph and moved none of them, so the frames this record owns are the
+ones the shipped code paints (QA round 6, Q-r6-1: this paragraph did not record the
+round-5 re-shoot at all).
 
 WHAT THE UNITS CHANGE DID TO THE PIXELS, measured rather than asserted, because
 it re-shapes every header: each unit is its own text run now, so Chrome re-rastered
