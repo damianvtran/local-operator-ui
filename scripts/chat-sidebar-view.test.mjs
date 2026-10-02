@@ -116,6 +116,9 @@ const {
 	isActiveRow,
 	entityRows,
 	entityMore,
+	raiseSectionCap,
+	releaseSectionCap,
+	SIDEBAR_SECTION_ROWS,
 	entityQueryAdmits,
 	entitySectionGap,
 	ENTITY_SECTION_GAP,
@@ -347,6 +350,156 @@ test("the group's foot names the next page AND the position it is drawn from", (
 	);
 	/* Nothing withheld and no cursor: no control, so `10 of 10` is never printed. */
 	assert.equal(entityMore({ add: 0, drawn: 10, total: 10 }), null);
+});
+
+/*
+ * A COLLAPSED SECTION IS COMPACT AGAIN (issue #765). `Show more` raised one
+ * section's cap and nothing brought it back down: collapse, re-expand, and the
+ * grown list was still on screen until a relaunch. The rules now live in the
+ * view module as the two edges of one state machine, and the cycle is asserted
+ * here rather than described, because the failure was a MISSING EDGE in a
+ * transition no test could reach from the JSX.
+ */
+test("closing a section releases its raised cap back to the shipped one", () => {
+	/* The ladder, one rung per press: `agents` goes 8 -> 16 -> 24. */
+	let caps = {};
+	caps = raiseSectionCap(caps, "agents");
+	assert.equal(caps.agents, SIDEBAR_SECTION_ROWS * 2);
+	caps = raiseSectionCap(caps, "agents");
+	assert.equal(caps.agents, SIDEBAR_SECTION_ROWS * 3);
+
+	/* The collapse. */
+	caps = releaseSectionCap(caps, "agents");
+	assert.equal(
+		caps.agents ?? SIDEBAR_SECTION_ROWS,
+		SIDEBAR_SECTION_ROWS,
+		"a re-expand after a collapse must draw the shipped compact form",
+	);
+	/*
+	 * The entry must be GONE, not merely unreachable: a stored `16` is exactly the
+	 * grown list #765 is about, and `cappedRows` would read it on the next expand.
+	 */
+	assert.ok(
+		!("agents" in caps),
+		"the reset stored a number instead of removing the key",
+	);
+});
+
+/*
+ * THE PARTIAL RUNG (issue #765's second half). A press reveals the rows that
+ * EXIST - `hidden` counts them, so a 10-row section under the shipped cap shows
+ * `Show 2 more` and lands on a cap of 16, a number no row count would reach by
+ * subtracting a page. The reset must not care: the invariant is "a collapsed
+ * section is compact", not "a collapsed section is one step shorter".
+ */
+test("a reset lands on the shipped cap after a partial rung", () => {
+	const rows = 10;
+	let caps = raiseSectionCap({}, "teams");
+	assert.equal(caps.teams, SIDEBAR_SECTION_ROWS * 2);
+	assert.equal(
+		rows - SIDEBAR_SECTION_ROWS,
+		2,
+		"the fixture: the press revealed fewer rows than a page",
+	);
+	assert.ok(
+		caps.teams > rows,
+		"the fixture: the raised cap outran the rows it was capping",
+	);
+
+	caps = releaseSectionCap(caps, "teams");
+	assert.equal(caps.teams ?? SIDEBAR_SECTION_ROWS, SIDEBAR_SECTION_ROWS);
+	assert.ok(
+		rows - (caps.teams ?? SIDEBAR_SECTION_ROWS) > 0,
+		"the re-expanded section is cap-bound again, so the foot is drawn again",
+	);
+});
+
+/*
+ * AND THE CLIMB STARTS OVER. A press after a reset is a FRESH rung from the
+ * shipped cap, never a resume of the grown value: a reader who had reached 24,
+ * collapsed, and re-expanded would otherwise be one press from 32 with nothing
+ * on screen explaining the number.
+ */
+test("a press after a reset climbs from the shipped cap, not from the grown one", () => {
+	const rows = 20;
+	let caps = raiseSectionCap(raiseSectionCap({}, "agents"), "agents");
+	caps = releaseSectionCap(caps, "agents");
+
+	const firstDraw = Math.min(rows, caps.agents ?? SIDEBAR_SECTION_ROWS);
+	assert.equal(firstDraw, SIDEBAR_SECTION_ROWS);
+	assert.ok(rows - firstDraw > 0, "the foot is offered again after the reset");
+
+	const again = raiseSectionCap(caps, "agents");
+	assert.equal(again.agents, SIDEBAR_SECTION_ROWS * 2);
+	assert.equal(rows - again.agents, rows - SIDEBAR_SECTION_ROWS * 2);
+	assert.equal(again.agents, firstDraw + SIDEBAR_SECTION_ROWS);
+});
+
+/*
+ * KEYED, LIKE THE MAP ITSELF: closing Teams must not shrink a widened Agents,
+ * which is the reason `sectionCaps` is keyed at all (the operator's note in
+ * `chat-sidebar.tsx`: "a reader who wants the eleventh agent does not also open
+ * the eleventh team").
+ */
+test("releasing one section's cap leaves the other section's alone", () => {
+	const caps = raiseSectionCap(raiseSectionCap({}, "agents"), "teams");
+	assert.deepEqual(caps, {
+		agents: SIDEBAR_SECTION_ROWS * 2,
+		teams: SIDEBAR_SECTION_ROWS * 2,
+	});
+	const after = releaseSectionCap(caps, "agents");
+	assert.deepEqual(after, { teams: SIDEBAR_SECTION_ROWS * 2 });
+	assert.equal(after.agents ?? SIDEBAR_SECTION_ROWS, SIDEBAR_SECTION_ROWS);
+	assert.equal(
+		caps.agents,
+		SIDEBAR_SECTION_ROWS * 2,
+		"the release mutated the map it was handed",
+	);
+});
+
+/*
+ * A CLOSE OF A SECTION NOBODY WIDENED IS NOT A STATE CHANGE. React re-renders on
+ * identity, and a reader collapses sections constantly, so returning a fresh `{}`
+ * here would re-render the whole column for a close that changed nothing.
+ */
+test("closing a section nobody widened returns the same map", () => {
+	const caps = {};
+	assert.equal(releaseSectionCap(caps, "agents"), caps);
+});
+
+/*
+ * THE CAP IS MOMENT STATE, NOT A PREFERENCE. The design note on `sectionCaps`
+ * says why (a cap remembered from June would make the column permanently
+ * longer); this asserts the other half - the persisted view a relaunch reads
+ * carries no cap field for it to come back through.
+ */
+test("the persisted view carries no section cap", () => {
+	const view = parseSidebarView(
+		persistedUiPreferences(useUiPreferencesStore.getState()).chatSidebarView,
+	);
+	assert.ok(!("sectionCaps" in view));
+	assert.ok(!("caps" in view));
+});
+
+/*
+ * AND THE CLOSE EDGE IS WIRED. The rules above are only reachable if the
+ * disclosure's close calls the reset - the defect was precisely a pure state
+ * transition nothing invoked. This file's ROSTER-FILTER cases read the source
+ * for the same reason: the component cannot be rendered here, so the wiring is
+ * read rather than driven, and the rule itself is driven directly above.
+ */
+test("the section disclosure releases the cap on its close edge", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.ok(
+		source.includes(
+			"setSectionCaps((previous) => releaseSectionCap(previous, key))",
+		),
+		"nothing releases a section's raised cap, so the grown list outlives the collapse (#765)",
+	);
+	assert.ok(
+		source.includes("if (!next) setSectionCaps"),
+		"the release is not guarded to the close edge, so an open narrows under the reader",
+	);
 });
 
 /*

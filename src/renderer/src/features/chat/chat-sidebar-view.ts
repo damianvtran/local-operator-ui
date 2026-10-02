@@ -142,6 +142,65 @@ export function isEntitySection(key: SidebarSectionKey): boolean {
  */
 export const SIDEBAR_SECTION_ROWS = 8;
 
+/**
+ * The two transitions of a section's raised cap (issue #765).
+ *
+ * WHY THEY ARE HERE AND NOT INLINE IN THE COMPONENT. The cap is a state machine
+ * with two edges, and the sidebar cannot be rendered by this repository's
+ * `node:test` suite (see this file's header), so an edge written inline in JSX
+ * is an edge no test can reach. `scripts/chat-sidebar-view.test.mjs` drives the
+ * cycle below.
+ *
+ * WHY `releaseSectionCap` DELETES THE ENTRY. The cap map stores only what the
+ * reader RAISED; the shipped `SIDEBAR_SECTION_ROWS` is what an absent key means
+ * (`cappedRows` reads `caps[key] ?? SIDEBAR_SECTION_ROWS`). Collapsing a section
+ * is the reader asking for the compact form back, so the entry goes rather than
+ * coming down by a step: a reader who climbed three rungs (8 to 32) and a reader
+ * whose last press revealed fewer rows than a page (the ladder's top rung, where
+ * the control drew only the rows that existed) both land exactly on the shipped
+ * cap, which a subtract-a-page would leave short of or short by - the invariant
+ * is "a collapsed section is compact", not "a collapsed section is one page
+ * shorter". Removing the key also re-derives the cap for free on the next expand
+ * through the same `??`, so there is one spelling of "the shipped cap".
+ *
+ * WHY IT RETURNS THE SAME MAP WHEN NOTHING IS RAISED. React re-renders on an
+ * identity change, and a close of a section nobody widened is not a state
+ * change - the same reason `toggle`'s setter folds untouched keys.
+ *
+ * THE RAISED ROWS ARE NOT DISCARDED, only the cap that drew them: the sections'
+ * rows come from the catalogue the reader already loaded, so a re-expand after a
+ * reset costs no fetch (`entityLoads`, the per-group paging ladder, is a
+ * different map and is deliberately untouched here).
+ */
+export function releaseSectionCap(
+	caps: Record<string, number>,
+	key: string,
+): Record<string, number> {
+	if (!(key in caps)) return caps;
+	const next = { ...caps };
+	delete next[key];
+	return next;
+}
+
+/**
+ * The `Show N more` press: raise ONE section's cap by one rung.
+ *
+ * Keyed, never global - the operator's own note on `sectionCaps` states the
+ * reason: a reader who wants the eleventh agent must not also open the eleventh
+ * team. The step is `SIDEBAR_SECTION_ROWS` from whatever the section is at, so a
+ * section still on the shipped cap (no entry) steps from that cap rather than
+ * from zero.
+ */
+export function raiseSectionCap(
+	caps: Record<string, number>,
+	key: string,
+): Record<string, number> {
+	return {
+		...caps,
+		[key]: (caps[key] ?? SIDEBAR_SECTION_ROWS) + SIDEBAR_SECTION_ROWS,
+	};
+}
+
 export type SidebarGroupBy = "section" | "agent" | "flat";
 
 /**
