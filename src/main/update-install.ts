@@ -4644,9 +4644,12 @@ export function resolveGlobalInstallPlan(input: {
 			 * no cost at all before the click (review U3). It named the restart as its
 			 * cost for the same reason - it was the one destructive thing this path
 			 * did. It no longer is: on the generation layout the install lands beside
-			 * the running build and the server keeps serving the build it loaded until
-			 * its own next idle, so the cost is the install and the wait, and no
-			 * sentence here may describe a turn being dropped.
+			 * the running build and the server MOVES ONTO IT as part of the update -
+			 * the in-place serve reload, verified by the serving process's own record
+			 * (a restart remains only the fallback for a reload that cannot be proven
+			 * to land, and even that cuts no turn) - so the cost is the install and
+			 * the wait, and no sentence here may describe a turn being dropped or
+			 * defer the move to some later idle.
 			 *
 			 * Source build - the same disclosure with the one difference that matters:
 			 * this route DOES rewrite a tree a live runtime is reading, so its sentence
@@ -4666,7 +4669,7 @@ export function resolveGlobalInstallPlan(input: {
 			 * so the promise landed on the wrong line (review D5).
 			 */
 			remedy: managed
-				? "The app installs the new build beside the one in use and leaves the server you are using on the build it loaded, so nothing in flight is cut off. The server moves onto the new build when it is next idle."
+				? "The app installs the new build beside the one in use and moves the server onto it immediately, so nothing in flight is cut off."
 				: sourceRebuildRoute
 					? "Rebuilds this checkout with `lop-update`. The app waits for the turns running on this machine to finish first, and the rebuild then reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take up to half an hour. This install keeps reporting the checkout's version, not the release the app offered."
 					: "This install predates the non-disruptive installer, so update it once from your terminal; that updater rewrites the shared environment in place, which can interrupt sessions mid-turn. The app manages updates after that.",

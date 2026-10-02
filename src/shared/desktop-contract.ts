@@ -940,6 +940,27 @@ const hubItemKind = z.enum(["agent", "team"]);
 
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
+	/*
+	 * THE MACHINE'S RUNTIME ROSTER, read for the straggler census a completed
+	 * server update reports (`GET /v1/desktop/runtimes`). A GET with a fixed
+	 * shape, so the whole request is the op.
+	 *
+	 * It reads the INVENTORY (`probe=false` in the path composer): the census
+	 * asks every row what build it booted with, and the route's per-row loopback
+	 * connects answer a different question ("did it answer?") that nothing here
+	 * acts on. Skipping them also keeps the response inside the control budget
+	 * without depending on the probe pool's own deadline logic.
+	 *
+	 * THE CONTROL BUDGET IS THE RIGHT ONE, and it is a bound rather than a hope:
+	 * the route's own ceiling is the two external reads in front of the
+	 * composition (5 s process table + 3 s socket table, stated in `roster.py`),
+	 * and `probe=false` skips the per-row connects entirely - so the worst case
+	 * is ~8 s, well under the 20 s control deadline. It is NOT on the long-read
+	 * list: nothing here fans out to a provider or walks a ledger.
+	 */
+	z
+		.object({ op: z.literal("runtimes.list") })
+		.strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
 	z.object({ op: z.literal("profiles.get"), name: profileName }).strict(),
 	z
@@ -1483,12 +1504,45 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("sessions.answer"),
 			sessionId,
-			epoch: id,
-			requestId: id,
+			/**
+			 * The owner epoch, for the two GATE shapes. Optional here because a queued
+			 * ask has no epoch to give — `ask_id` is the other selector and the checks
+			 * below require exactly one of the pair.
+			 */
+			epoch: id.optional(),
+			requestId: id.optional(),
 			value: z.string().max(32768).optional(),
 			approved: z.boolean().optional(),
 			questionIndex: z.number().int().min(0).optional(),
+			/**
+			 * The queued ask's id (`a-3f9c`). Its presence selects the THIRD body shape —
+			 * `{ask_id, answers}` or `{ask_id, decline}` — and, per the backend's own
+			 * contract, makes `epoch` irrelevant rather than optional-but-checked: an ask
+			 * outlives the owner that queued it, so requiring an epoch would refuse
+			 * exactly the case the feature exists for (a cold session whose asks are
+			 * still open). The single-winner rule that the epoch check used to provide
+			 * now lives on the ask log, where the first `answered` event wins.
+			 */
+			askId: id.optional(),
+			/**
+			 * The WHOLE ask's answers, keyed by question id, each a list because a
+			 * question may be multi-select.
+			 *
+			 * One atomic body rather than a per-question stream: the blocking path
+			 * answered one question at a time over the wire, and a client that died
+			 * part-way left an ask half-settled — the exact state the atomic submit
+			 * exists to make unrepresentable.
+			 */
+			answers: z.record(z.string(), z.array(z.string().max(32768))).optional(),
+			/** "No answer — decide yourself", the explicit form of today's Esc. */
+			decline: z.boolean().optional(),
 		})
+		/*
+		 * A PLAIN `ZodObject`, with the mutual-exclusion rules on the UNION below.
+		 * `z.discriminatedUnion` accepts only `ZodObject` options and a `.superRefine`
+		 * member is a `ZodEffects` — this file already states that at
+		 * `desktopRequestSchema`, and the member form does not compile.
+		 */
 		.strict(),
 	z
 		.object({
@@ -2060,7 +2114,25 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			requestId,
 			message: z.string().max(200000).optional(),
-			boundary: z.literal("next_safe").optional(),
+			/*
+			 * WHERE THE COPY STOPS. `next_safe` is the historical form and the default
+			 * (the whole committed conversation, waiting for a turn boundary);
+			 * `at_entry` cuts through `entryId` and needs no boundary, because a named
+			 * point is already committed.
+			 *
+			 * `entryId` is bounded rather than patterned for the route's reason -
+			 * entry ids are minted in more than one shape and existence in the
+			 * CONVERSATION is what decides whether one is real (the route answers an
+			 * unknown or foreign id with a refusal, never a fork of the wrong
+			 * history) - so this client validates the shape it can and lets the
+			 * backend adjudicate the rest.
+			 *
+			 * BOTH ARE OPTIONAL AND ABSENT IS THE OLD CALL, key for key: a typed
+			 * `/fork` and the palette's fork send neither, and the body builder below
+			 * omits `entry_id` entirely rather than sending it as null.
+			 */
+			boundary: z.enum(["next_safe", "at_entry"]).optional(),
+			entryId: z.string().max(128).optional(),
 		})
 		.strict(),
 	z
@@ -2679,6 +2751,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * The check-in fan-out (`POST /v1/desktop/projects/{project}/request-update`):
+	 * ask every linked session to post a progress update. APPENDED to the union
+	 * like its siblings, and gated by its OWN capability key
+	 * (`features.projects_request_update`) rather than a bump of `projects`: the
+	 * tab renders perfectly well against a backend that cannot ask its sessions
+	 * for anything, so the version would hide a working surface behind an update
+	 * it does not need (the `session_search` rule above). The key is the row's
+	 * address (id or name) - the same shape every other projects op takes.
+	 */
+	z
+		.object({
+			op: z.literal("projects.request_update"),
+			key: projectKey,
+		})
+		.strict(),
+	/*
 	 * AIDA'S CONTROL PLANE: one read and one control op on the same route
 	 * (`/v1/desktop/aida`), because the rail's row and the composer's `/aida`
 	 * need the SAME state and a second spelling of it would be a second answer
@@ -2725,6 +2813,71 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
  */
 export const desktopRequestSchema = desktopRequestUnion.superRefine(
 	(request, ctx) => {
+		/*
+		 * AN ANSWER CARRIES ONE OF THREE SHAPES, and which one is decided by two
+		 * mutually exclusive selectors: `askId` (a queued ask) or `epoch`+`requestId`
+		 * (a gate). The rule lives HERE rather than on the member for the reason this
+		 * whole callback exists — a refined member is a `ZodEffects` and
+		 * `z.discriminatedUnion` accepts only `ZodObject` options.
+		 *
+		 * It is checked on the client at all because the alternative is a 422: a body
+		 * the app composed itself would come back as a refusal, and the user would be
+		 * told their answer failed when nothing was ever sent. The backend restates
+		 * these rules (`Answer.one_answer`) because it cannot trust a caller; this one
+		 * exists to keep the user's sentence honest, not to replace that.
+		 */
+		if (request.op === "sessions.answer") {
+			if (request.askId !== undefined) {
+				if (!request.askId)
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "ask_id must be a non-empty string",
+						path: ["askId"],
+					});
+				/*
+				 * `decline: false` is NOT a way to say "answer with nothing": the shape that
+				 * carries neither answers nor a decline is malformed rather than merely
+				 * empty, and the two together are contradictory rather than redundant.
+				 */
+				if (request.decline !== true && !request.answers)
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "A queued-ask answer needs answers or decline",
+						path: ["answers"],
+					});
+				else if (request.decline === true && request.answers !== undefined)
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "Supply either answers or decline",
+						path: ["decline"],
+					});
+				else if (
+					request.answers !== undefined &&
+					Object.keys(request.answers).length === 0
+				)
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "answers must name at least one question",
+						path: ["answers"],
+					});
+				return;
+			}
+			// The gate shape keeps its epoch identity; a queued ask is the only answer
+			// that may omit it, because an ask outlives the owner that queued it.
+			if (!request.epoch)
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "An epoch is required to answer a gate",
+					path: ["epoch"],
+				});
+			if (!request.requestId)
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "A request id is required to answer a gate",
+					path: ["requestId"],
+				});
+			return;
+		}
 		/*
 		 * A CONVERSATION NEEDS A FOLDER; A CONFIGURATION RUN DOES NOT.
 		 *
@@ -3806,6 +3959,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"profiles.get",
 	"profiles.list",
 	"providers.list",
+	// A reader that changes nothing (the route's own docstring): the straggler
+	// census, and the app re-reads it rather than caching a stale count.
+	"runtimes.list",
 	"sessions.aside.get",
 	"sessions.checkpoints",
 	"sessions.failovers",
@@ -4561,6 +4717,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 	switch (request.op) {
 		case "capabilities":
 			return { path: "/v1/capabilities", method: "GET" };
+		case "runtimes.list":
+			// `probe=false` is load-bearing rather than an optimisation: the census
+			// reads BUILD VERSIONS, and a probed row spends a loopback connect per
+			// runtime on a machine that can hold dozens.
+			return { path: "/v1/desktop/runtimes?probe=false", method: "GET" };
 		/*
 		 * The mesh reads. Both are plain GETs with no parameters at all - the backend
 		 * reads THIS device's own relay, so there is nothing for the client to scope it
@@ -4942,6 +5103,23 @@ export function desktopEndpoint(request: DesktopRequest): {
 				},
 			};
 		case "sessions.answer":
+			/*
+			 * ONE PATH, THREE BODIES. The queued-ask shape sends `ask_id` plus either
+			 * `answers` or `decline`, and deliberately sends NEITHER `epoch` nor
+			 * `request_id`: the backend ignores an epoch when `ask_id` is set, and a
+			 * reviewer reading a body that carried both would be right to ask which one
+			 * the server honoured. The gate shape is byte-for-byte what it was.
+			 */
+			if (request.askId !== undefined)
+				return {
+					path: `/v1/desktop/sessions/${request.sessionId}/answers`,
+					method: "POST",
+					body: {
+						ask_id: request.askId,
+						answers: request.answers,
+						decline: request.decline,
+					},
+				};
 			return {
 				path: `/v1/desktop/sessions/${request.sessionId}/answers`,
 				method: "POST",
@@ -5433,6 +5611,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					message: request.message,
 					boundary: request.boundary,
+					/*
+					 * The route validates the two TOGETHER: `entry_id` with `next_safe`
+					 * is a 422, and `at_entry` without one is a 422. This builder does
+					 * not police that pairing (the schema above is what a renderer may
+					 * send; the route is what adjudicates it), but it does keep the
+					 * absent case byte-identical to the call that shipped before the
+					 * cut existed - `undefined` is dropped by `JSON.stringify`, so a
+					 * `next_safe` fork sends no `entry_id` key at all.
+					 */
+					entry_id: request.entryId,
 				},
 			};
 		case "sessions.stop":
@@ -5673,6 +5861,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/milestones/${encodeURIComponent(request.name)}`,
 				method: "DELETE",
+			};
+		case "projects.request_update":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/request-update`,
+				method: "POST",
 			};
 		case "aida.status":
 			return { path: "/v1/desktop/aida", method: "GET" };

@@ -3470,6 +3470,18 @@ export const STORIES = [
 	 * assertions in `pnpm check-themes` and in no frame at all.
 	 */
 	["chat-sidebar-current-row--bound-row-current", 780, 560],
+	/*
+	 * THE TEAM MARK ON A SELECTED ROW (design round 1, D5), and it is the one frame
+	 * of this component's own contract nobody had looked at: the mark's plate is
+	 * `sunken`, the selected row paints `rowSelected`, and in `localOperatorLight`
+	 * those two are 1.005:1 apart - the mark is carried by its 1px edge alone. The
+	 * `bound-row-current` entry above cannot reach it, because that row binds an
+	 * AGENT and an agent binding stays text; this story binds a TEAM, which is what
+	 * puts a mark in the trailing slot. Shoot it in the light palette as well as the
+	 * sweep's own (`--themes=localOperatorLight,localOperatorDark`) - the pairing is
+	 * tightest there.
+	 */
+	["chat-sidebar-current-row--team-bound-row-current", 780, 560],
 	["chat-sidebar-current-row--nested-row-current", 780, 560],
 	/*
 	 * The SAME story with a real pointer on the neighbour row ABOVE the current
@@ -5119,8 +5131,126 @@ export const STORIES = [
 	["chat-sidebar-sections--resting-default", 741, 760],
 	/* The panel at its own width clamp, where the rows wrap hardest. */
 	["chat-sidebar-sections--narrow-240", 621, 760],
-	/* A query that finds one agent and one conversation, both regions drawn. */
-	["chat-sidebar-sections--query-while-collapsed", 741, 460],
+	/*
+	 * A query that finds one team and one conversation, both regions drawn, and the
+	 * mark on the row the query MATCHED.
+	 *
+	 * THE QUERY IS DRIVEN FROM HERE, not from the story's play, and that is a
+	 * measured decision rather than a preference: the play cannot reach the filtered
+	 * state under the capture harness. Two mechanisms were tried against this rig -
+	 * `@storybook/test`'s `userEvent` (press the control, then type into the field)
+	 * and a direct native-setter plus `input` dispatch on the same field - and BOTH
+	 * left the panel unfiltered at the shutter while the play was still asserting:
+	 * both frames came back at 18642 bytes, `Rows drawn: 10 entity - 8 chats`, with
+	 * no field drawn. `press` + `insertText` is the path this rig has always used for
+	 * typed states (the rename and token frames), it goes through the real input
+	 * pipeline, and it is what produced this state's first shipped frame.
+	 *
+	 * `expectPresent` IS THE D4 ASSERTION, at the shutter: the row the query matched
+	 * draws a team mark. A filtered frame whose matched row carries no mark fails the
+	 * run rather than being filed.
+	 */
+	[
+		"chat-sidebar-sections--query-while-collapsed",
+		741,
+		460,
+		{
+			press: "[data-sidebar-search]",
+			/*
+			 * The field mounts on the frame after the press and focuses itself in a
+			 * `requestAnimationFrame`, so `insertText` - which types into whatever holds
+			 * the caret - lands in the body if it runs immediately: measured, the frame
+			 * came back with the field OPEN and EMPTY beside an unfiltered list.
+			 */
+			pressSettleMs: 400,
+			insertText: "helpdesk",
+			insertTextSettleMs: 900,
+			expectPresent: "[data-chat-row] [data-team-bubble]",
+		},
+	],
+	/*
+	 * THE TRUE MINIMUM (operator ask, 2026-10-01). `SIDEBAR_MIN_WIDTH` is 220
+	 * (`chat-sidebar-layout.ts`), so `narrow-240` above is a width the panel can be
+	 * dragged TO, not the floor it is clamped at. The team-mark change is a claim
+	 * about the width a row has LEFT for its title, so the frame that has to exist
+	 * is the one where the row has least - 220 - beside the 240 the older change
+	 * was priced at. Width is the panel plus the 380px readout, as the three above
+	 * are.
+	 */
+	["chat-sidebar-sections--narrow-min-220", 601, 760],
+	/*
+	 * THE TEAM MARK'S TWO CHANNELS (operator ask, 2026-10-01): the pointer and the
+	 * keyboard, both on the resting panel, both hovering/focusing the FIRST bubble
+	 * in the drawer - the pinned row's, which the fixture binds to `data-quality`.
+	 *
+	 * BOTH FRAMES ASSERT BOTH HALVES OF THE ONE-SURFACE RULE. `expectPresent` on
+	 * `[data-side="top"]` is the mark's own tooltip (our `Tooltip` defaults to
+	 * `top`); `expectGone` on `[data-side="right"]` is the row's flyout, whose
+	 * `side="right"` the row sets. The row's flyout trigger is the row's own box
+	 * and the mark sits inside it, so without the row's stand-down a single hover
+	 * opens BOTH panels - the doubling D7 deleted the native `title` for. A run that
+	 * loses either half fails rather than filing a frame whose caption is wrong.
+	 *
+	 * `hoverSettleMs` is 1200, three times the 400ms open delay, because this frame
+	 * has to outlive the delay AND any settle the suppression causes: a shorter
+	 * wait would photograph a state before the surface that must NOT be there has
+	 * had its chance to appear.
+	 */
+	[
+		"chat-sidebar-sections--resting-default",
+		741,
+		760,
+		{
+			hover: "[data-team-bubble]",
+			dir: "sidebar-team-mark-hover",
+			hoverSettleMs: 1200,
+			expectPresent: '[role="tooltip"][data-side="top"]',
+			expectGone: '[role="tooltip"][data-side="right"]',
+		},
+	],
+	/*
+	 * THE KEYBOARD HALF, AND WHY IT IS TAKEN OVER THE QUERY STATE rather than the
+	 * resting panel: the rig's Tab walk is bounded at 24 presses (it has to fail
+	 * loudly on a selector that matches nothing instead of walking every focusable
+	 * in Storybook's chrome), and the resting panel's tab order - four header
+	 * controls, two entity sections with ten rows and their own controls - puts the
+	 * FIRST chat row's mark past that bound. Measured: `tabTo: "[data-team-bubble]"`
+	 * on `resting-default` throws "never took focus in 40 Tab presses". The query
+	 * state is the same surface with the same mark on a real row and a tab order
+	 * short enough to walk, which makes the claim - focus reaches the mark and names
+	 * the team - one the rig can actually make. The resting panel's keyboard order
+	 * is NOT claimed by any frame here.
+	 */
+	[
+		"chat-sidebar-sections--query-while-collapsed",
+		741,
+		460,
+		{
+			tabTo: "[data-team-bubble]",
+			dir: "sidebar-team-mark-focus",
+			/**
+			 * A TOOLTIP ON SCREEN, AND THE ROW'S CARD NOT - deliberately not "the tooltip at
+			 * `data-side=top`", which is what this entry asserted in round 1 and what it failed
+			 * on in the remediation round: same code, same walk, and the strict selector found
+			 * nothing while this one finds the panel (measured back to back:
+			 * `[role="tooltip"][data-side="top"]` missing, then `[role="tooltip"]` present on
+			 * the very next run). Which side a panel resolves to is Radix's collision answer
+			 * about where there is room, not a claim this change makes, and asserting it turned
+			 * a working frame into a refused one.
+			 */
+			expectPresent: '[role="tooltip"]',
+			expectGone: '[role="tooltip"][data-side="right"]',
+		},
+	],
+	/*
+	 * THE MARK ITSELF, in every shape its rule has plus the three image states
+	 * (operator ask, 2026-10-01): 20px in a 320px panel is not a frame a reviewer can
+	 * read letters off, and the image-ready half of the contract - a URL renders, an
+	 * absent URL and a FAILED one both fall back - has no fixture on the row surface
+	 * to show, since no team carries an icon field yet. `team-avatar-bubble.stories.tsx`
+	 * states what this frame can and cannot claim.
+	 */
+	["chat-team-avatar-bubble--marks", 900, 760],
 
 	/* ------------------------------------------------------------------ *
 	 * D28: the view popover, the page ladder, the section caps, an expanded
@@ -5781,6 +5911,40 @@ export const STORIES = [
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
 	/*
+	 * The check-in states (PR-B, `feat/projects-request-update`): the card
+	 * menu's item and the detail button are ONE flow, so the frames raise the
+	 * same `projects.request_update` fixture in the route's own vocabulary.
+	 * `-sending` is the hung-request state (button `Requesting…` + the
+	 * >400 ms loading card); `-cooldown` waits the success card out, leaving
+	 * the button's `Requested` label as the durable half. Every play asserts its
+	 * own sentence before the shutter, so a copy change fails the capture
+	 * rather than filing a frame of the wrong state. The keyboard entry is
+	 * the U5 pin: focus must return to the card's trigger when the menu
+	 * closes, before the request settles.
+	 */
+	["projects-tab--detail-request-update-sending", 1280, 900],
+	["projects-tab--detail-request-update-cooldown", 1280, 900],
+	["projects-tab--request-update-success", 1280, 900],
+	["projects-tab--request-update-partial", 1280, 900],
+	["projects-tab--request-update-all-failed", 1280, 900],
+	["projects-tab--request-update-never-started", 1280, 900],
+	["projects-tab--request-update-empty", 1280, 900],
+	["projects-tab--request-update-cooldown", 1280, 900],
+	["projects-tab--board-request-update-keyboard", 1280, 900],
+	/* Design round 2's D1: the two zero-delivery warning ends the suite had no
+	 * still for - all-unconfirmed, and the mixed refusal+uncertain sentence
+	 * (the longest titles the fixture can produce) - plus the narrow-window
+	 * persistent card (partial, four lines, `duration: Infinity`) at the
+	 * 560 px width the round-1 header geometry was checked at. */
+	["projects-tab--request-update-all-unconfirmed", 1280, 900],
+	["projects-tab--request-update-mixed-zero-delivery", 1280, 900],
+	[
+		"projects-tab--request-update-partial",
+		560,
+		900,
+		{ dir: "request-update-partial-narrow" },
+	],
+	/*
 	 * The board's time window (feat/board-time-window): one frame per rung plus
 	 * the states around it. Each play asserts the visible card set - and the R5
 	 * frame's 12d-old progress line under a 24h window - so a capture whose
@@ -5962,6 +6126,63 @@ export const STORIES = [
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],
+	/*
+	 * The search, filters and sorting round (PR-A). The pair `search-idle` /
+	 * `search-active` is the no-new-row claim in two frames: the first puts the
+	 * field, the Filters button and no count on the switcher row with nothing
+	 * typed, the second types a query and the result line appears INSIDE that
+	 * row while the rows narrow under it — no new row mounts on the first
+	 * keystroke (U1). `filters-open` is the complete popover; `filter-chips`
+	 * the chips row (U1's state 2) with the count still up top. The pair
+	 * `column-menu-open` / `sorted-nulls-last` asserts before the shutter:
+	 * taking Target's sort radio lands `aria-sort=descending` (a date column's
+	 * first direction) with the menu still open, and the Estimate sort's
+	 * rendered order puts the three estimates first, descending (unit, value),
+	 * with the two nulls after them. `no-match` is the state U5/M3 fixed the
+	 * copy for; `board-search-active` is U5's windowed count on the board
+	 * (`10 of 12` at the default week); `default-board` is the default-view
+	 * flip's own frame — nothing stored, so the page derives the board.
+	 */
+	["projects-tab--search-idle", 1280, 900],
+	["projects-tab--search-active", 1280, 900],
+	["projects-tab--filters-open", 1280, 900],
+	["projects-tab--filter-chips", 1280, 900],
+	["projects-tab--column-menu-open", 1280, 900],
+	["projects-tab--sorted-status", 1280, 900],
+	["projects-tab--sorted-nulls-last", 1280, 900],
+	["projects-tab--no-match", 1280, 900],
+	/*
+	 * D10's frame: the FILTER-only no-match variant, which `NoMatch`'s own walk
+	 * passes through and restores away. The story's play holds the filter
+	 * door's output (no query typed) and asserts the variant's heading, its
+	 * recovery sentence and the one Clear all before the shutter.
+	 */
+	["projects-tab--no-match-filter", 1280, 900],
+	["projects-tab--board-search-active", 1280, 900],
+	["projects-tab--default-board", 1280, 900],
+	/* The no-dates callout, expanded over a dated chart: the collapsed line the
+	 * other timeline frames hold, opened to its names. */
+	["projects-tab--timeline-callout-expanded", 1280, 900],
+	/*
+	 * The round-1 remediation's own states. `board-search-off-window` is R1's
+	 * case photographed: the Board under a search whose matches ALL fall
+	 * outside the window — the no-match block keeps U5's precedence and gains
+	 * the window's own recovery (`Show all time`) beneath Clear all; its play
+	 * asserts the block, both actions and the count's `in window` words (U10).
+	 * `filter-and-sort-chips` is D2a's composition (facet chip first, sort
+	 * chip last, the order read off the rendered row); `sorted-shed-column` is
+	 * D2b's, at 560 where the sorted column itself is gone and the chip is the
+	 * only door; `narrow-search-active` is U7's, at 560, where the play takes
+	 * the switcher row's height and the list's top either side of the first
+	 * keystroke and fails if either moves (the count sheds instead).
+	 */
+	["projects-tab--board-search-off-window", 1280, 900],
+	["projects-tab--filter-and-sort-chips", 1280, 900],
+	["projects-tab--sorted-shed-column", 560, 600],
+	["projects-tab--narrow-search-active", 560, 600],
+	/* D7's pin: the frame is the state AFTER Clear all - no chips, the strip at
+	 * rest - which is the fact the state exists to show. */
+	["projects-tab--clear-all-clears-sort", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
@@ -8158,8 +8379,30 @@ export const STORIES = [
 	 * extremes, the two smallest ground steps in the fleet (where an on-canvas
 	 * icon row is hardest to find), the lowest canvas (`obsidian`, L* 12) and the
 	 * widest step (`radient`, which must NOT move). A `--themes=` narrowed run.
+	 *
+	 * THE NINE RESTING STATES ARE CAPTURED IN THE HOVER-LESS ARM - `touch: true`,
+	 * which is `Emulation.setTouchEmulationEnabled` in the loop (its comment has
+	 * the measurement that chose it) - and the four interaction states after them
+	 * are NOT. WHY THE ARM MATTERS HERE: the row's reveal is `opacity-0 …
+	 * group-hover:opacity-100 … [@media(hover:none)]:opacity-100`, so in a renderer
+	 * that can hover the row is absent from every pointer-less frame, and a resting
+	 * state exists to show the row on that line - which is the whole of what these
+	 * nine are for. The four interaction states keep a hover-capable renderer
+	 * because their subject is the pointer or the keyboard, and both need one to
+	 * mean anything (Tailwind's `hover:` variant is itself gated on `hover: hover`).
+	 * Design round 2 on #1002 asked for exactly this - the resting entries
+	 * re-captured under ONE DECLARED arm - after a refresh left the row out of all
+	 * nine; the set README says which states ship under which arm, and WHY the older
+	 * generation could not simply be reproduced (its frames predate the reveal
+	 * itself: it landed in `3d03a2f3e63`, after those frames were taken).
 	 */
-	["chat-canonical-message-actions--rest", 1024, 560],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		/* The discoverability claim itself: the row ON SCREEN with no pointer. */
+		{ touch: true },
+	],
 	[
 		"chat-canonical-message-actions--rest",
 		1024,
@@ -8209,20 +8452,25 @@ export const STORIES = [
 			dir: "copied",
 		},
 	],
-	["chat-canonical-message-actions--short-answer", 1024, 320],
-	["chat-canonical-message-actions--refused", 1024, 380],
-	["chat-canonical-message-actions--truncated", 1024, 400],
-	["chat-canonical-message-actions--streaming", 1024, 620],
-	["chat-canonical-message-actions--multi-answer", 1024, 640],
-	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	["chat-canonical-message-actions--short-answer", 1024, 320, { touch: true }],
+	["chat-canonical-message-actions--refused", 1024, 380, { touch: true }],
+	["chat-canonical-message-actions--truncated", 1024, 400, { touch: true }],
+	["chat-canonical-message-actions--streaming", 1024, 620, { touch: true }],
+	["chat-canonical-message-actions--multi-answer", 1024, 640, { touch: true }],
+	[
+		"chat-canonical-message-actions--bar-suppressed",
+		1024,
+		640,
+		{ touch: true },
+	],
 	/*
 	 * The minimum-action state (design round 1, D1): one call, so the frame shows
 	 * what the app paints where a caption beside the actions would sit if the rule
 	 * allowed it - the bar above carries `1 action`, the line under the answer
 	 * carries the actions alone. See the story's own comment for the chain.
 	 */
-	["chat-canonical-message-actions--one-call-turn", 1024, 560],
-	["chat-canonical-message-actions--narrow", 420, 620],
+	["chat-canonical-message-actions--one-call-turn", 1024, 560, { touch: true }],
+	["chat-canonical-message-actions--narrow", 420, 620, { touch: true }],
 
 	/*
 	 * THE ROW'S CONTEXT MENU (#694), the FINAL set - captured from the shipped
@@ -8374,6 +8622,40 @@ export const STORIES = [
 			},
 		},
 	],
+	/*
+	 * THE ROLLOVER LANE'S TWO NEW SURFACES (round-1 remediation, design D2).
+	 *
+	 * The foot icon and the on-demand band are declared so a design round can
+	 * re-capture them "the ordinary way" (`--only=common-updatefooticon--` used to
+	 * throw "matched no story"), and so a later full sweep produces them rather
+	 * than leaving their directories unexplained. Viewports are tight to the
+	 * surface: both are small chrome in a canvas, and a window-sized frame would
+	 * cross `check-evidence`'s uniformity ceiling photographing ground.
+	 *
+	 * FIVE foot rows, not the story file's six: `common-updatefooticon--hidden`
+	 * is deliberately NOT here. Hidden is zero pixels by design, and the rig's
+	 * own `storyDrew` floor refuses a story that draws nothing (`drawn:false`
+	 * with ~2 counted elements) - a declared row that no sweep can ever satisfy
+	 * would break the next full run. The "hidden returns nothing" claim is
+	 * pinned in `scripts/update-indicator-segments.test.mjs` instead, and the
+	 * strip variant (D4) is the fifth row here.
+	 */
+	["common-updatefooticon--server-update", 560, 360],
+	["common-updatefooticon--both-surfaces", 560, 360],
+	["common-updatefooticon--server-in-flight", 560, 360],
+	["common-updatefooticon--downloading", 560, 360],
+	["common-updatefooticon--strip-variant", 560, 360],
+	/*
+	 * The band's own states, in the design round's own enumeration (round-2
+	 * review, the D2 residual): the LONGEST version string the band can meet - the
+	 * wide case the truncation fix is about - both surfaces (the separator's
+	 * frame), and the view-direct drawing state that bypasses the gate. This
+	 * replaces the round-1 pick of `app-update`, so the declared set and the
+	 * design's list agree; the row count is unchanged.
+	 */
+	["common-updatequietindicator--long-version", 760, 200],
+	["common-updatequietindicator--both-surfaces", 760, 200],
+	["common-updatequietindicator--drawing-both-controls", 760, 200],
 	/*
 	 * THE CHAT HEADER'S DEVICE CONTROL (feat/chat-move-control), one surface, in the
 	 * states the design's own spec names. WHAT EACH ROW CLAIMS, because a frame's name
@@ -9413,6 +9695,40 @@ const main = async () => {
 				features: options?.reducedMotion
 					? [{ name: "prefers-reduced-motion", value: "reduce" }]
 					: [],
+			});
+			/*
+			 * THE HOVER-LESS ARM IS A TOUCH RENDERER, and this is the lever that
+			 * reaches it (design round 2 on #1002, D1).
+			 *
+			 * WHY AN ARM IS NEEDED AT ALL: `message-actions.ts` reveals the action
+			 * row with `opacity-0 … group-hover:opacity-100 …
+			 * [@media(hover:none)]:opacity-100`, so in a renderer that CAN hover the
+			 * row is absent from every pointer-less frame - and nine of
+			 * `chat-canonical-message-actions`'s states exist to show the row in its
+			 * context. The arm is the app's own: a reader whose primary input cannot
+			 * hover gets the row unconditionally, which is why the arrival animation
+			 * beside it is gated on `hover: hover` (`styles/index.css`).
+			 *
+			 * WHY TOUCH EMULATION RATHER THAN A MEDIA OVERRIDE, measured rather than
+			 * assumed (2026-10-02, Chrome 154.0.8037.93):
+			 * `Emulation.setEmulatedMedia` ACCEPTS `{name:"hover", value:"none"}`
+			 * without an error and ignores it - `matchMedia("(hover: none)")` stays
+			 * `false` - and every `--blink-settings=primaryHoverType=…` spelling tried
+			 * either left it false or made BOTH `hover` and `hover: hover` false.
+			 * `Emulation.setTouchEmulationEnabled({ enabled: true, maxTouchPoints: 1 })`
+			 * is the one that moves it: the same probe then reads
+			 * `true,false,true,1` for `(hover: none)`, `(hover: hover)`,
+			 * `(pointer: coarse)` and `navigator.maxTouchPoints`.
+			 *
+			 * It is sent for EVERY entry, on or off, for the reason the media call
+			 * above is: a leak would silently arm the next frame's arm. The
+			 * interaction states leave it OFF - their subject is a real pointer or a
+			 * real keyboard, and Tailwind's `hover:` variant is itself gated on
+			 * `hover: hover`, so a touch frame could not show the hover ground at all.
+			 */
+			await cdp.send("Emulation.setTouchEmulationEnabled", {
+				enabled: Boolean(options?.touch),
+				...(options?.touch ? { maxTouchPoints: 1 } : {}),
 			});
 			await cdp.send("Emulation.setDeviceMetricsOverride", {
 				width,
@@ -11177,7 +11493,18 @@ const main = async () => {
 						})
 					).result.value === true;
 				let reached = false;
-				for (let i = 0; i < 24 && !reached; i++) {
+				/*
+				 * FORTY, NOT TWENTY-FOUR, and the number is measured rather than
+				 * chosen: the chat sidebar draws its controls before its rows, so a
+				 * walk that starts in Storybook's own chrome reaches the first chat
+				 * row's team mark at 31 presses (`sidebar-team-mark-focus`, measured
+				 * by widening this bound to 200 and printing the count). Twenty-four
+				 * was already too tight for a legitimate walk on this surface, which
+				 * makes the bound a guard against an unbounded walk rather than a
+				 * budget for one. Forty keeps that property and ~1.3x headroom; the
+				 * error text names it so a future failure is not read as the old 24.
+				 */
+				for (let i = 0; i < 40 && !reached; i++) {
 					for (const type of ["rawKeyDown", "keyUp"]) {
 						await cdp.send("Input.dispatchKeyEvent", {
 							type,
@@ -11996,6 +12323,21 @@ const main = async () => {
 	 *      main's side under any name: main's manifest still has
 	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
 	 *      main's keys this branch lacks re-introduces it.
+	 *   6. EVERY MERGED JSON/CONFIG FILE IS KEY-CHECKED before the fold is pushed,
+	 *      because the union rule is "no key may be lost and no form may be
+	 *      re-imposed" and a LIST-union read is blind to both halves: `node
+	 *      scripts/check-fold-keys.mjs` (no argument scans every fold on this
+	 *      branch, one argument checks a single merge) compares the merged key set
+	 *      against BOTH parents', nested objects walked and arrays read through
+	 *      their elements' key union. A BRANCH-side vanish is a fault unless the
+	 *      fold's record states the deliberate carry: the fold onto `44249a6796`
+	 *      took main's copy as the base for its list union, main had lost
+	 *      `check-themes` at `53c5cfec6b` (#714) while this branch carried it, and
+	 *      the key vanished without a word while that fold reported a clean union
+	 *      - `pnpm check-themes` stopped resolving until agent review round 8
+	 *      (R11) restored it. A MAIN-side vanish must be either group (5) of
+	 *      `citationConvention` or a stated repair. The check does NOT see form,
+	 *      so a clean run is not the whole rule - re-read the lists too.
 	 *
 	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
 	 * what it does ask are worth naming so this is auditable rather than a summary:

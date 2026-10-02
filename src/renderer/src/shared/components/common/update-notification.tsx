@@ -922,10 +922,21 @@ const managedCostSentence = (info: {
  * on the old build move onto the new build when they next stop or go idle. N >= 2
  * reads "N sessions ... they will", N = 1 reads "1 session ... it will", and
  * N = 0 draws NOTHING - the notice stays exactly today's. A null count is "not
- * measured" (the producer had no readable fleet snapshot, or the re-engage never
- * ran) and draws the numberless sentence, which cannot be false; an absent field
- * reads as null for the same reason, so an older producer keeps a true sentence
- * rather than an invented zero.
+ * measured" (the producer had no readable count) and draws the numberless
+ * sentence, which cannot be false; an absent field reads as null for the same
+ * reason, so an older producer keeps a true sentence rather than an invented
+ * zero.
+ *
+ * ONE TERM, ONE SENTENCE, VERBATIM (designer copy consult, 2026-09-30): the
+ * update family's noun is SESSION, and these four arms are the shipped strings
+ * kept verbatim. The producer's census may now be a per-RUNTIME build reading
+ * (`sessionsOnOldBuildSource: "build"`), and the consult's ruling is
+ * deliberate: the producer's vocabulary belongs in the payload field, never in
+ * the sentence - the reader's question is "what happened to my work", and the
+ * idle-switch promise is the whole reason a count is tolerable rather than
+ * alarming. A count that would read "0" must stay distinct from null: a
+ * measured zero draws nothing, and the numberless sentence may never stand in
+ * for it.
  */
 const completionSessionsLine = (
 	count: number | null | undefined,
@@ -1070,6 +1081,20 @@ export const UpdateNotification = ({
 	);
 	const slowDownload = useElapsedSince(
 		downloading,
+		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
+	);
+	/*
+	 * The third long wait (2026-09-30): the server rollover itself. The install
+	 * frame used to carry a hard-coded "This can take a minute or two" from its
+	 * first second - a description of the slow path presented as the normal one -
+	 * and the rollover lane's whole point is that the ordinary press is one
+	 * reload away from done. The estimate moved here, behind the same threshold
+	 * every other wait's hint uses: under `SLOW_WAIT_HINT_MS` the frame promises
+	 * nothing about duration, and past it the reader gets the acknowledgement a
+	 * stalled-looking panel owes them.
+	 */
+	const slowUpdate = useElapsedSince(
+		updatingBackend,
 		slowWaitHintMs ?? SLOW_WAIT_HINT_MS,
 	);
 
@@ -1325,6 +1350,41 @@ export const UpdateNotification = ({
 	const noteRunningVersion = useUpdateNoticeStore(
 		(state) => state.noteRunningVersion,
 	);
+	const noteInFlight = useUpdateNoticeStore((state) => state.noteInFlight);
+	const noteDownloadPercent = useUpdateNoticeStore(
+		(state) => state.noteDownloadPercent,
+	);
+
+	/*
+	 * THE FOOT ICON'S IN-FLIGHT STATE (2026-09-30). The icon lives in the sidebar
+	 * and cannot see this component's state, so the two facts its arc needs are
+	 * mirrored into the notice store while they are true - and only while they
+	 * are: the effects run on every flip, and the cleanup is not needed because
+	 * each effect states the CURRENT fact rather than a transition. `installing`
+	 * rides with `downloading`: from the user's side the app bundle's download
+	 * and its install are one continuous wait, and there is no cancel in either
+	 * half (the consult's one non-interactive arm).
+	 */
+	useEffect(() => {
+		noteInFlight(UpdateType.UI, downloading || installing);
+	}, [downloading, installing, noteInFlight]);
+	useEffect(() => {
+		noteInFlight(UpdateType.BACKEND, updatingBackend);
+	}, [updatingBackend, noteInFlight]);
+	/*
+	 * The percent travels separately from the flag because it arrives at its own
+	 * cadence (a `download-progress` per chunk): null while nothing is measured,
+	 * so the arc's name never says "0%" about a download whose first progress
+	 * event has not landed.
+	 */
+	useEffect(() => {
+		noteDownloadPercent(
+			UpdateType.UI,
+			downloading && downloadProgress
+				? Math.round(downloadProgress.percent)
+				: null,
+		);
+	}, [downloading, downloadProgress, noteDownloadPercent]);
 
 	// Keep a ref to the latest backendUpdateInfo for use in event handlers
 	const backendUpdateInfoRef = useRef<BackendUpdateInfo | null>(null);
@@ -2217,6 +2277,14 @@ export const UpdateNotification = ({
 					);
 					noteQuietOffer(UpdateType.BACKEND, {
 						version: enhancedInfo.latestVersion,
+						/*
+						 * The one-line release lead, when the producer's lookup read it
+						 * (`ServerReleaseNotes.summary`): the foot icon's tooltip shows it so a
+						 * hover answers "what's new" without opening the card, and the card
+						 * itself is one press away for the full text. Null when the lookup could
+						 * not read it - omitted there rather than guessed from raw notes.
+						 */
+						summary: enhancedInfo.releaseNotes?.summary ?? null,
 					});
 					/*
 					 * A new offer SUPERSEDES the failure notice, exactly as it supersedes
@@ -2369,6 +2437,15 @@ export const UpdateNotification = ({
 				if (
 					completion &&
 					(!completion.restarted || completion.unattended === true) &&
+					/*
+					 * A completion that PROVED the server moved is never a skew, whatever the
+					 * two readings say: `moved: true` on a non-restarted completion is the
+					 * rollover that landed by itself (the serving process's own record shows
+					 * the move), and a newer install that landed beside it is next check's
+					 * business rather than this panel's (2026-09-30). Older producers send
+					 * no field, and their funnel is exactly what it was.
+					 */
+					completion.moved !== true &&
 					announceBackendSkew({
 						installVersion: completion.installVersion,
 						runningVersion: completion.runningVersion,
@@ -2769,26 +2846,23 @@ export const UpdateNotification = ({
 									*/
 									`Rebuilding the server from this machine's checkout. The app waited for the turns running on this machine to finish first, and the rebuild reinstalls this install in place - so a turn started while it runs can still be interrupted - and it can take several minutes (up to half an hour). It can't be interrupted once it has started.`
 								: /*
-									 * THE INSTALL PHASE of a global update (UX U4). It is the long one -
-									 * ~47 s cold, against ~15 s for the restart - and the old single
-									 * sentence described only the restart, so a user watching the panel
-									 * for a minute could not tell this phase from a hang, nor from the
-									 * phase that had not started. The server really is still serving here:
-									 * under generations nothing running is rewritten.
+									 * THE ROLLOVER'S OWN SENTENCE (copy consult, 2026-09-30): the
+									 * designer's recommended form, verbatim - "the server"
+									 * (not "and its daemons": a producer noun), the family's
+									 * " - " separator for its honesty clause, and the present
+									 * tense the shipped restarting sentence established ("the
+									 * turns running on this machine keep running"). The
+									 * no-cancel disclosure is appended because the consult's
+									 * table was drawn against the proposed string alone and
+									 * every neighbouring arm keeps it (UX U2's copy half names
+									 * the rule this very frame is the place for); the old
+									 * "restarts once the install lands" clause and the
+									 * "minute or two" estimate are BOTH gone - the restart
+									 * is a fallback the completion reports, and the duration
+									 * admission lives in the slow-wait line below, behind
+									 * the real threshold.
 									 */
-									`Installing the new server build. The server you are using keeps serving while this runs${
-										/*
-										 * THE CLAUSE IS THE PROMISE (UX U13). It is true when the app will
-										 * bounce the daemon the reader is talking to, and false on a machine
-										 * where discovery adopted one - where the offer two seconds earlier
-										 * already said so, and where the app's own completion notice says it
-										 * again ("Local Operator does not restart a server it did not
-										 * start"). The sentence keeps every other fact either way.
-										 */
-										serverRestartsWithInstall(backendUpdateInfo)
-											? ", and it restarts once the install lands"
-											: ""
-									}. This can take a minute or two on a normal connection, and longer on a slow one, and the update can't be interrupted once it has started.`
+									`Rolling the server onto ${readableVersion(backendUpdateInfo?.latestVersion) ?? "the new build"}. Nothing in flight is cut off - the turns running on this machine keep running. The update can't be interrupted once it has started.`
 							: backendUpdatePhase === "restarting"
 								? /*
 									 * THE SENTENCE COVERS THE WHOLE restarting PHASE, WHICH IS LONGER THAN
@@ -2828,6 +2902,25 @@ export const UpdateNotification = ({
 						a minute and a half - the app stops waiting on its own.
 					</p>
 				)}
+				{/*
+				 * THE STILL-INSTALLING LINE (2026-09-30). The rollover frame no longer
+				 * claims a duration up front (see the sentence above), so this is where a
+				 * wait that has outlasted the threshold gets acknowledged - the same
+				 * `SLOW_WAIT_HINT_MS` every other wait uses, and the same shape as the
+				 * still-checking line below it. The install budget the app enforces is
+				 * fifteen minutes (`GLOBAL_UPDATE_TIMEOUT_MS`, main); "a few minutes" is
+				 * the honest register for a line that exists to prove the app is alive,
+				 * not to promise when it will finish.
+				 */}
+				{slowUpdate &&
+					updatingBackend &&
+					backendUpdatePhase === "installing" &&
+					!rebuildInFlight && (
+						<p className="mt-1 text-body-sm text-ink-muted">
+							Still installing. A slow connection or a cold cache can hold this
+							longer - the app stops waiting on its own.
+						</p>
+					)}
 				{/*
 				 * THE ELAPSED READING (design D3). The wait can run to ten minutes and the
 				 * rest of this frame does not move: without this line a working wait and a

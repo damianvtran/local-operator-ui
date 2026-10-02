@@ -94,6 +94,7 @@ import {
 import { ProjectLinks } from "./project-links";
 import { ProjectMilestones } from "./project-milestones";
 import { ProjectProperties } from "./project-properties";
+import { ProjectRequestUpdateButton } from "./project-request-update-button";
 import {
 	ProjectStartSessionDialog,
 	type StartSessionSelection,
@@ -358,13 +359,13 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						</div>
 						<div className="flex items-center gap-2">
 							{/*
-							 * THE ACTIONS CLUSTER keeps a slot for the sibling lane's
-							 * "Request update" secondary button (leftmost of the cluster,
-							 * `data-tour-tag="project-request-update"`): this file just
-							 * renders {slot}{delete}, so the branch landing it inserts
-							 * before Delete without moving anything here. Edit retired
-							 * with the inline edits - every field edits in place now.
+							 * THE ACTIONS CLUSTER, left to right: the sibling lane's
+							 * "Request update" secondary button (landed; its component owns
+							 * the capability gate and the request states), then Delete.
+							 * Edit retired with the inline edits - every field edits in
+							 * place now.
 							 */}
+							<ProjectRequestUpdateButton project={project} />
 							<Button
 								variant="secondary"
 								onClick={() => setDeleting(true)}
