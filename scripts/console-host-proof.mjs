@@ -1072,7 +1072,17 @@ async function mountConversation(timeoutMs) {
 					state: { activeSessionId: SESSION, activeDraftKey: null },
 					version: 0,
 				}),
-			)}); } catch (error) {}`,
+			)});
+			/*
+			 * THE FIRST-RUN WIZARD, MARKED DONE, and it is not this rig's subject: it is a
+			 * MODAL, and a modal swallows every press and sits in front of every frame. A
+			 * paired daemon on a scratch config is a first-run user by construction, so
+			 * without this flag the pane cells photograph the wizard instead of the pane
+			 * (measured 2026-10-02: "Connect a model provider" was the first role=dialog
+			 * element in the DOM, and every dialog read found it). The shape is
+			 * renderer-driver.mjs's seedOnboardingComplete, key and all.
+			 */
+			window.localStorage.setItem("onboarding-storage", JSON.stringify({ state: { isModalComplete: true, isTourComplete: true, currentStep: "create_agent" }, version: 0 })); } catch (error) {}`,
 		});
 		await call("Page.reload", { ignoreCache: false });
 		const started = Date.now();
@@ -1122,14 +1132,38 @@ const rowsReading = () =>
 				opacity: close ? getComputedStyle(close).opacity : null,
 				width: box ? box.width : null,
 				height: box ? box.height : null,
+				/*
+				 * The keyboard question, read off the element: a real button is in the tab order
+				 * and activates on Enter/Space by the platform's own behaviour, which is what
+				 * "ready for keyboard" means; a div with a click handler would answer neither,
+				 * and the next cell would name it.
+				 */
+				tag: close ? close.tagName.toLowerCase() : null,
+				tabIndex: close ? close.tabIndex : null,
 			};
 		});
 	})()`);
 
-/** The close question as the DOM has it (Radix's portal included). */
+/** Which row the strip says is selected, read from the tab the pane marks
+ * `aria-selected` — the same fact the eye reads, not a store value, so the cells
+ * below assert what a user sees rather than what the pane believes. */
+const selectedSurface = () =>
+	rendererEvaluate(`(() => {
+		const tab = document.querySelector('[data-surface] [role="tab"][aria-selected="true"]');
+		return tab ? tab.closest('[data-surface]').getAttribute('data-surface') : null;
+	})()`);
+
+/** The close question as the DOM has it (Radix's portal included).
+ *
+ * FOUND BY ITS CONFIRM ACTION, not as the first `role="dialog"`: the app can have
+ * other dialogs up (a first-run wizard is one), and a reader that took whichever
+ * dialog was first reported the wrong text and made "the question is gone" fail
+ * on a dialog that was never the close question. */
 const questionReading = () =>
 	rendererEvaluate(`(() => {
-		const dialog = document.querySelector('[role="dialog"]');
+		const dialog = [...document.querySelectorAll('[role="dialog"]')].find(
+			(candidate) => candidate.querySelector('[data-confirm-action]'),
+		);
 		if (!dialog) return null;
 		return {
 			text: (dialog.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 200),
@@ -1908,6 +1942,41 @@ async function main() {
 		const runningSurface = await createUserSurface(state);
 		await pressDom(`[data-surface="${runningSurface}"] [role="tab"]`);
 		await sleep(300);
+		check(
+			"pressing a tab selects it (#754 leaves select-on-click alone)",
+			(await selectedSurface()) === runningSurface,
+			{ runningSurface, selected: await selectedSurface() },
+		);
+		/*
+		 * THE PANE'S OWN Close console IS NOT THIS CONTROL, and this cell is here to keep
+		 * the two apart: the header's closes the PANE and the surface keeps running (design
+		 * 6.4) - the sentence #754's row control exists beside. It runs FIRST, on the
+		 * running surface the affordance cell then photographs, and the re-open lands the
+		 * pane back on that surface's row.
+		 */
+		await pressDom(
+			'[data-tour-tag="console-pane"] [data-tour-tag="console-pane-close"]',
+		);
+		const paneGoneDeadline = Date.now() + 10_000;
+		let paneGone = false;
+		while (Date.now() < paneGoneDeadline && !paneGone) {
+			paneGone =
+				(await rendererEvaluate(
+					`Boolean(document.querySelector('[data-tour-tag="console-pane"]'))`,
+				)) === false;
+			if (!paneGone) await sleep(200);
+		}
+		const afterPaneClose = await rpcOk(state, "console_status", {
+			surface: runningSurface,
+		});
+		check(
+			"the pane's own Close console still closes the PANE, not the surface (design 6.4)",
+			paneGone === true && afterPaneClose.running === true,
+			{ paneGone, running: afterPaneClose.running },
+		);
+		await pressDom('[data-tour-tag="console-pane-trigger"]');
+		await waitForConsolePane(bounded(null, 30_000));
+		await sleep(300);
 		const reading = await rowsReading();
 		const runningRow = reading.find((row) => row.surface === runningSurface);
 		check(
@@ -1917,6 +1986,13 @@ async function main() {
 				runningRow.width > 0 &&
 				runningRow.height > 0,
 			{ runningSurface, reading },
+		);
+		check(
+			"the control is a real button, so a keyboard reaches it (tab order; Enter activates)",
+			runningRow?.tag === "button" &&
+				typeof runningRow.tabIndex === "number" &&
+				runningRow.tabIndex >= 0,
+			runningRow,
 		);
 		check(
 			"the active row's control is revealed; an inactive row's waits for hover or focus",
@@ -1929,6 +2005,17 @@ async function main() {
 		await captureAppFrame("close-affordance.png");
 
 		// 2. the question, and nothing dead before it is answered
+		/*
+		 * A DIFFERENT ROW IS SELECTED WHILE THE QUESTION IS ASKED, and it stays selected:
+		 * the close control is a SIBLING of the tab (see the row's own note), and this is
+		 * the cell that would catch it becoming a child - a press on it must not become a
+		 * press on the row it lives beside.
+		 */
+		const otherSurface = reading.find(
+			(row) => row.surface !== runningSurface,
+		)?.surface;
+		await pressDom(`[data-surface="${otherSurface}"] [role="tab"]`);
+		await sleep(200);
 		await pressDom(closeSelectorFor(runningSurface));
 		const question = await waitForQuestion();
 		check(
@@ -1946,9 +2033,14 @@ async function main() {
 			surface: runningSurface,
 		});
 		check(
-			"the question signals nothing: the surface is still running while it stands",
-			statusWhileAsked.running === true,
-			{ running: statusWhileAsked.running, live: statusWhileAsked.live },
+			"the question signals nothing: the surface still runs, and the other row stays selected",
+			statusWhileAsked.running === true &&
+				(await selectedSurface()) === otherSurface,
+			{
+				running: statusWhileAsked.running,
+				live: statusWhileAsked.live,
+				selected: await selectedSurface(),
+			},
 		);
 		await captureAppFrame("close-question.png");
 
@@ -1976,6 +2068,8 @@ async function main() {
 			existsSync(historyLog),
 			{ historyLog },
 		);
+		await pressDom(`[data-surface="${runningSurface}"] [role="tab"]`);
+		await sleep(200);
 		await pressDom(closeSelectorFor(runningSurface));
 		const questionAgain = await waitForQuestion();
 		check(
@@ -2007,6 +2101,25 @@ async function main() {
 				elapsedMs: Date.now() - confirmAt,
 			},
 		);
+		/*
+		 * THE DEAD LENS, #754's own acceptance clause: the surface that was SELECTED was the
+		 * one just closed, so the pane must move to a neighbour - `pickActiveSurface`'s own
+		 * fallback - rather than keep a selection that is no longer in the listing.
+		 */
+		const selectionDeadline = Date.now() + 10_000;
+		let selectedAfterClose = await selectedSurface();
+		while (
+			(selectedAfterClose === null || selectedAfterClose === runningSurface) &&
+			Date.now() < selectionDeadline
+		) {
+			await sleep(200);
+			selectedAfterClose = await selectedSurface();
+		}
+		check(
+			"the closed surface's selection moves to a neighbour, never a dead lens (#754)",
+			selectedAfterClose !== null && selectedAfterClose !== runningSurface,
+			{ closed: runningSurface, selectedAfterClose },
+		);
 		check(
 			"a close keeps a retained surface's history (the dismissal below is what removes it)",
 			existsSync(historyLog),
@@ -2022,9 +2135,16 @@ async function main() {
 
 		// 5. an ended surface dismisses outright, and its history goes with it
 		const dismissedSurface = await createUserSurface(state);
+		/*
+		 * `exit 0` rather than a bare `exit`: THIS HOST's interactive zsh exits 1 on a
+		 * typed `exit` with no prior command (measured: `printf 'exit\r' | script -q
+		 * /dev/null /bin/zsh -i` answers 1 while /bin/sh answers 0), and the cell's claim
+		 * is about the DISMISSAL, not about a shell's exit status. The explicit code is
+		 * the one fact the cell needs to be about.
+		 */
 		await rpcOk(state, "console_input", {
 			surface: dismissedSurface,
-			text: "exit\r",
+			text: "exit 0\r",
 		});
 		const ended = await waitForExit(state, dismissedSurface, 0);
 		const dismissedLog = join(
@@ -2051,6 +2171,8 @@ async function main() {
 			existsSync(dismissedLog),
 			{ dismissedLog },
 		);
+		await pressDom(`[data-surface="${dismissedSurface}"] [role="tab"]`);
+		await sleep(200);
 		await pressDom(closeSelectorFor(dismissedSurface));
 		const dismissQuestion = await questionReading();
 		check(
@@ -2076,6 +2198,27 @@ async function main() {
 				historyRemoved: !existsSync(dismissedLog),
 				dismissedLog,
 			},
+		);
+		/*
+		 * The same dead-lens clause for the OTHER act: a dismissed surface is removed from
+		 * the listing too, so a selection still naming it would be the same defect wearing
+		 * the dismissal's clothes.
+		 */
+		const dismissSelectionDeadline = Date.now() + 10_000;
+		let selectedAfterDismiss = await selectedSurface();
+		while (
+			(selectedAfterDismiss === null ||
+				selectedAfterDismiss === dismissedSurface) &&
+			Date.now() < dismissSelectionDeadline
+		) {
+			await sleep(200);
+			selectedAfterDismiss = await selectedSurface();
+		}
+		check(
+			"the dismissed surface's selection moves to a neighbour too (#754)",
+			selectedAfterDismiss !== null &&
+				selectedAfterDismiss !== dismissedSurface,
+			{ dismissed: dismissedSurface, selectedAfterDismiss },
 		);
 		await captureAppFrame("close-dismissed.png");
 
@@ -2889,10 +3032,26 @@ async function main() {
 			},
 		);
 		const restoredLog = appLogText();
+		/*
+		 * THE COUNT IS THE RUN'S OWN, not a number this cell predicts: later cells retain
+		 * their own agent surfaces (§19.1's flood surfaces are retained deliberately), so
+		 * "exactly one" was this cell counting its own subject and the app counting
+		 * everything the run kept - measured 4 restored here (con:5 plus the flood and
+		 * secure cells' surfaces). The claim that holds for any run is the log line, the
+		 * listing and the design's "none of them is running" agreeing on the same set.
+		 */
+		const restoredCount = restoredList.length;
 		check(
-			"the relaunch restored exactly one retained surface, in the app's own words",
-			restoredLog.includes("restored 1 retained surface(s) from history"),
+			"the relaunch restored every retained surface, in the app's own words, and none is running",
+			restoredCount > 0 &&
+				restoredList.every(
+					(row) => row.running === false && row.live === false,
+				) &&
+				restoredLog.includes(
+					`restored ${restoredCount} retained surface(s) from history`,
+				),
 			{
+				count: restoredCount,
 				lines: restoredLog
 					.split("\n")
 					.filter((line) => line.includes("restored"))
