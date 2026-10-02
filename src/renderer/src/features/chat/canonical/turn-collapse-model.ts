@@ -48,6 +48,7 @@
  */
 
 import { isPartialDelivery } from "../components/trace/tool-row-model";
+import type { TranscriptDisplayMode } from "../transcript-display-mode";
 import {
 	type FoldableAction,
 	foldSummary,
@@ -405,6 +406,13 @@ export function collapsePlan(
 		live: boolean;
 		focusHold?: string | null;
 		openRuns?: ReadonlySet<string>;
+		/**
+		 * The reader's transcript display mode (issue #756). Threaded VERBATIM to
+		 * `partitionRun` and consulted there; this function has no rule of its own
+		 * over it, so the plan cannot grow a second opinion about what a mode means.
+		 * Omitted is the shipped `by-turn` condensation.
+		 */
+		mode?: TranscriptDisplayMode;
 	},
 ): CollapsePlan {
 	dbgCollapsePlanCalls.count += 1;
@@ -428,6 +436,7 @@ export function collapsePlan(
 				index === runs.length - 1 && options.live,
 				focusHold,
 				openRuns,
+				options.mode,
 			),
 		),
 	};
@@ -1080,6 +1089,13 @@ function planRun(
 	live: boolean,
 	focusHold: string | null,
 	openRuns: ReadonlySet<string>,
+	/*
+	 * The reader's display mode, threaded straight through to `partitionRun` and
+	 * nowhere else: this function owns the key rule, the live split and the stamp,
+	 * none of which a mode may move, so it neither reads nor reinterprets the
+	 * value. See `collapsePlan`'s option for why the plan keeps no rule of its own.
+	 */
+	mode?: TranscriptDisplayMode,
 ): RunCollapsePlan {
 	const runRows = rows.slice(run.openingIndex, run.endIndex + 1);
 	const records = runRows.map((row) => row.record);
@@ -1097,6 +1113,7 @@ function planRun(
 		paints: paintsSomething,
 		isStatement: isStatementRow,
 		pinned: staysVisibleWhileCollapsed,
+		mode,
 	});
 	const answerAt = partition.answer?.closeIndex ?? null;
 	const answerId = answerAt === null ? null : records[answerAt].id;

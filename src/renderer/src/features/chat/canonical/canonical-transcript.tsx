@@ -130,6 +130,7 @@ import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import { parseTranscriptDisplayMode } from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
@@ -3339,6 +3340,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
 		(state) => state.restoreDefaultChatMeasureWidth,
 	);
+	/*
+	 * The reader's transcript display mode (issue #756): read as the RAW stored
+	 * value and parsed at the one call site that consumes it (`collapsePlan`
+	 * below), so a tampered or future token is judged where it is used rather
+	 * than trusted on the way in.
+	 */
+	const transcriptDisplayMode = useUiPreferencesStore(
+		(state) => state.transcriptDisplayMode,
+	);
 	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
 	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
@@ -3569,8 +3579,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				live: working !== null || gate !== null,
 				focusHold: focusedRecordId,
 				openRuns,
+				/*
+				 * THE READER'S DISPLAY MODE (issue #756), read HERE and parsed on the way
+				 * in: the store rehydrates past its setters, so a token this build does
+				 * not know must land on the default rather than reach the partition.
+				 * `parseTranscriptDisplayMode` is the one judge of that (the read-side
+				 * pattern `parseSidebarView` sets one surface over).
+				 */
+				mode: parseTranscriptDisplayMode(transcriptDisplayMode),
 			}),
-		[visible, working, gate, focusedRecordId, openRuns],
+		[visible, working, gate, focusedRecordId, openRuns, transcriptDisplayMode],
 	);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
