@@ -3255,6 +3255,18 @@ const BRANCH_RECORDS = [
 	 * `STAMP_BINDING_NOTES`.
 	 */
 	"rowForkMenuNote",
+	/*
+	 * And by the transcript display mode's round-1 remediation (PR #775), this
+	 * branch's newest top-level record: the note that answers design round 1's
+	 * D1-D4 - the cell whose pair CANNOT be identical and the pixel reading that
+	 * says so, the live-app set behind the Settings row and the isolation the run
+	 * printed, the checked row's new mark, and the layout reading the round
+	 * recorded without fixing. It is listed for the reason the list exists: a fold
+	 * that started from main's manifest would drop it, and with it the only
+	 * statement of which two trees this round moved and which frames it does NOT
+	 * claim (the stale `chat-header-cluster/no-approval` siblings among them).
+	 */
+	"transcriptDisplayModesRoundOneRemediationNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
