@@ -98,21 +98,21 @@ node scripts/chat-alignment-geometry.mjs http://127.0.0.1:6077 --json
 
 | story | prose.left | content.left (gutter) | caption.left (the rail) | actions.left | first button | stamp.left | line box | line height |
 |---|---|---|---|---|---|---|---|---|
-| `chat-canonical-message-actions--rest` | 107 | 107 (0px) | — | 726.8 | 726.8 | 794.8 | 107→917 | 28 |
-| `chat-canonical-message-actions--bar-suppressed` | 107 | 107 (0px) | — | 857 | 857 | — | 107→917 | 28 |
-| `chat-canonical-message-actions--compacted-run` | 107 | 107 (0px) | **107** | 726.6 | 726.6 | 794.6 | 107→917 | 28 |
-| `chat-canonical-message-actions--compacted-run` (hover) | 107 | 107 (0px) | **107** | 726.6 | 726.6 | 794.6 | 107→917 | 28 |
+| `chat-canonical-message-actions--rest` | 107 | 107 (0px) | — | 694.8 | 694.8 | 794.8 | 107→917 | 28 |
+| `chat-canonical-message-actions--bar-suppressed` | 107 | 107 (0px) | — | 825 | 825 | — | 107→917 | 28 |
+| `chat-canonical-message-actions--compacted-run` | 107 | 107 (0px) | **107** | 694.6 | 694.6 | 794.6 | 107→917 | 28 |
+| `chat-canonical-message-actions--compacted-run` (hover) | 107 | 107 (0px) | **107** | 694.6 | 694.6 | 794.6 | 107→917 | 28 |
 
 **The user row and the small view (design round 1, D2), as numbers.** The probe
 reads the user turn's own row now, and two 420px states:
 
 | state | reading |
 | --- | --- |
-| `user-row/` @1024 | row `889 → 917`, first button `889`, buttons `1 [Copy]`, bubble right `917`, delta **0** |
+| `user-row/` @1024 | row `857 → 917`, first button `857`, buttons `2 [Copy, Fork from this message]`, bubble right `917`, delta **0** |
 | `user-row-hover/` @1024 | the same boxes, the control revealed |
-| `user-row-small/` @420 | row `360 → 388`, buttons `1 [Copy]`, bubble right `388`, delta **0** |
+| `user-row-small/` @420 | row `328 → 388`, buttons `2 [Copy, Fork from this message]`, bubble right `388`, delta **0** |
 | `user-row-small-hover/` @420 | the same boxes, the control revealed |
-| `compacted-run-small/` @420 | caption left **32** (the `isSmallView` rail), actions `197.6`, line `32 → 388` |
+| `compacted-run-small/` @420 | caption left **32** (the `isSmallView` rail), actions `165.6`, line `32 → 388` (height 34.8) |
 
 The user row's right edge is its bubble's, and the row carries `Copy` alone at both
 widths — which is R4's ruling measured rather than restated. The 420 story had to
@@ -147,9 +147,25 @@ rightmost, the shape every state already had), pushed by the actions' own
 | reading | before (`af6fffa899` + this set's story cell) | after (this branch) |
 |---|---|---|
 | caption.left (`compacted-run`) | **175** | **107** |
-| actions.left (`compacted-run`) | 107 | 726.6 |
+| actions.left (`compacted-run`) | 107 | 694.6 |
 | stamp.left (`compacted-run`) | 794.5 | 794.6 |
 | caption/actions/stamp, idle vs hovered | identical | **identical** |
+
+**FOLDED ONTO `origin/main` = `9d9cd4be63` (76 commits), AND THE ROW GREW A THIRD
+CONTROL.** The fold's one content conflict was `canonical-transcript.tsx`: `main`
+had added the Fork point to the answer row (#739 / #1002) while this branch held
+that row moved to the line's far end. The resolution keeps ONE row per answer on
+the right rail, so `main`'s `conversationId`/`entryId` ride this branch's
+instance, and the numbers above are the folded head's own reading rather than the
+pre-fold ones. Every frame in this set was re-shot on the folded tree; **44 of
+them moved and the rest came back byte-identical**, and the moved ones are exactly
+the four states that paint the row in a pointer-capable arm (`rest/`,
+`hover-copy/`, `hover-answer-no-corner-control/`, `focus-copy/`) — the states
+captured in the hover-less arm show the row's box and are unaffected by a control
+that only changes what that box contains. The `-foot-before` sibling is
+deliberately NOT re-shot: it is the operator's pre-change state on the cut point
+`af6fffa899`, where the row carried two controls, and re-shooting it would destroy
+the comparison it exists to make.
 
 **No layout shift on hover, and that is the numbers' claim rather than the
 frames'.** `ACTION_ROW_REVEAL_CLASSES` is opacity-only, so the boxes above are
@@ -158,9 +174,16 @@ byte-equal between the idle and hovered readings of the same state (the
 the pre-change tree and is equal too). The buttons' arrival is the only thing that
 changes in `compacted-run-hover/`.
 
-Two buttons, `size-7` (`icon-sm`) each with a 4px gap: the toolbar measures 60×28
-and its first button 28×28 — the 60px box the caption used to trail, plus the
-line's own 8px gap.
+**Three buttons — Copy, Speak, and `Fork from this message` — and the count is the
+probe's own output rather than this sentence's arithmetic:** `actions.buttons`
+reads **3** on every entry above, and the user row's own row reads **2** (`Copy`,
+`Fork from this message`). The fork control joined both rows on `main` (#739 /
+#1002, the fork-from-this-message work) while this branch held the arrangement, so
+the folded head re-measured every cell here: `size-7` (`icon-sm`) each with a 4px
+gap, the toolbar now **92×28** (28×3 + 4×2) with its first button at 28×28, and
+the cluster's left edge moving 32px left on exactly the states that paint it — the
+answer's own rail (107) and stamp (794.6) are untouched, and so is the hover
+proof below, because the box is what the reveal holds.
 
 ## The accepted cost, restated honestly
 
