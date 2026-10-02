@@ -266,3 +266,38 @@ test("the index gate is version 2 of the projects capability", () => {
 	// contract suite: the number is what decides which engine serves.
 	assert.equal(search.PROJECTS_SEARCH_MIN_VERSION, 2);
 });
+
+test("the query BOTH engines are asked is trimmed and bounded, once", () => {
+	const { projectsSearchQuery } = search;
+	// Identity for anything a board search is actually typed with: the bound is
+	// the route's, and it must not touch an ordinary box.
+	assert.equal(projectsSearchQuery("  payments  "), "payments");
+	assert.equal(projectsSearchQuery(""), "");
+	assert.equal(projectsSearchQuery("   "), "");
+	// Bounded at the route's own number, and trimmed FIRST so the bound counts
+	// the string that would be sent rather than the box's own whitespace.
+	const long = `${" ".repeat(10)}${"a".repeat(400)}`;
+	assert.equal(projectsSearchQuery(long).length, 256);
+	assert.equal(
+		projectsSearchQuery("a".repeat(256)),
+		"a".repeat(256),
+		"exactly at the bound is not over it",
+	);
+	assert.equal(projectsSearchQuery("a".repeat(257)).length, 256);
+	/*
+	 * THE REASON THIS IS A FUNCTION rather than a slice at each call site: the
+	 * FALLBACK must rank this same string, or a paste over the bound makes the
+	 * two engines answer different questions (review round 1, MINOR-2). The page
+	 * and the hook both call it, and this asserts the one property that makes
+	 * that safe — that the result is a prefix of the trimmed box, so the index
+	 * and the Client matcher cannot disagree about the box itself.
+	 */
+	const box = `${"a".repeat(300)} needletail`;
+	const bounded = projectsSearchQuery(box);
+	assert.equal(box.trim().startsWith(bounded), true);
+	// And the row the two strings disagree about, as the page-level suite builds
+	// it: an exact hit under the bounded string, unreachable under the box.
+	const exact = project("x", { name: bounded });
+	assert.ok(searchMatch(exact, bounded) > 0);
+	assert.equal(searchMatch(exact, box), 0);
+});

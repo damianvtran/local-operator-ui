@@ -98,6 +98,7 @@ import {
 	PROJECTS_SEARCH_MIN_VERSION,
 	SEARCH_SUBLINE,
 	projectsForHits,
+	projectsSearchQuery,
 	searchProjects,
 } from "../project-search";
 import {
@@ -316,16 +317,26 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 * because the no-match copy below has to be TRUE of them and the two engines
 	 * search different fields.
 	 */
+	/*
+	 * THE ONE STRING BOTH ENGINES ARE ASKED: the index's request, the echo it is
+	 * checked against and the FALLBACK's own ranking all take this value
+	 * (`projectsSearchQuery`), so a paste longer than the route's 256-character
+	 * bound cannot make the engines answer different questions — the case where
+	 * the list would change when the index's answer landed, for a reason that has
+	 * nothing to do with the store (review round 1, MINOR-2). `queryActive` is
+	 * this string's emptiness rather than the raw box's, for the same reason.
+	 */
+	const asked = projectsSearchQuery(query);
 	const backendRows = useMemo(
 		() =>
 			search.answer ? projectsForHits(projects, search.answer.projects) : null,
 		[projects, search.answer],
 	);
-	const queryActive = query.trim() !== "";
+	const queryActive = asked !== "";
 	const matchedProjects = useMemo(() => {
 		if (!queryActive) return projects;
-		return backendRows ?? searchProjects(projects, query);
-	}, [projects, query, queryActive, backendRows]);
+		return backendRows ?? searchProjects(projects, asked);
+	}, [projects, asked, queryActive, backendRows]);
 	const searchEngine: "backend" | "client" =
 		backendRows === null ? "client" : "backend";
 	const visibleProjects = useMemo(
@@ -343,7 +354,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 */
 	const searchAwaiting = searchIndexAvailable && queryActive && search.pending;
 	/* Whether the toolbar's count and chips are live — its own "is a search on" predicate. */
-	const searchActive = query.trim() !== "" || !isFilterEmpty(filters);
+	const searchActive = queryActive || !isFilterEmpty(filters);
 	/*
 	 * THE WINDOW NARROWS THE BOARD, ON TOP OF THE FILTERS (U5). `boardProjects`
 	 * is the board's underlying set — every row the window admits — and is the

@@ -49,11 +49,34 @@
  * once (`searchEngine`) rather than a distinction a row could draw.
  */
 
+import { PROJECTS_SEARCH_MAX_CHARS } from "../../../../shared/desktop-contract";
 import type {
 	DesktopProject,
 	DesktopProjectSearchHit,
 } from "../../../../shared/desktop-control-contract";
 import { projectDisplayName } from "./project-model";
+
+/**
+ * THE ONE STRING BOTH ENGINES ARE ASKED, and the reason it is a function rather
+ * than a slice at each call site.
+ *
+ * The route bounds `q` at {@link PROJECTS_SEARCH_MAX_CHARS}, and the box carries
+ * no `maxLength` because a paste must be SEARCHED rather than silently dropped.
+ * So the bound is applied by cutting the string here, once — and the SAME string
+ * has to reach the client matcher, or the two engines answer different
+ * questions: a 300-character paste would be searched in full by the fallback and
+ * in its first 256 characters by the index, and the list would change the moment
+ * the index's answer landed, for a reason that has nothing to do with the store.
+ * That was review round 1's MINOR-2, and the fix is this function plus every
+ * caller using it: the hook asks it and the page's fallback ranks it.
+ *
+ * Trimmed as well as cut, because the route's own empty-`q` arm is not a search
+ * and the box's whitespace is not a question. The result is what the echo is
+ * compared against, so the gate, the wire and the fallback cannot disagree.
+ */
+export function projectsSearchQuery(box: string): string {
+	return box.trim().slice(0, PROJECTS_SEARCH_MAX_CHARS);
+}
 
 /**
  * The NO-MATCH subline, PER ENGINE — because one sentence cannot be true of

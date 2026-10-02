@@ -1,11 +1,9 @@
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import { useQuery } from "@tanstack/react-query";
-import {
-	PROJECTS_SEARCH_DEFAULT_LIMIT,
-	PROJECTS_SEARCH_MAX_CHARS,
-} from "../../../../../shared/desktop-contract";
+import { PROJECTS_SEARCH_DEFAULT_LIMIT } from "../../../../../shared/desktop-contract";
 import type { DesktopProjectSearchResults } from "../../../../../shared/desktop-control-contract";
+import { projectsSearchQuery } from "../project-search";
 
 /**
  * The Projects search's BACKEND engine: the box, debounced, asked of
@@ -69,10 +67,19 @@ export type UseProjectsSearchResult = {
 	 * A non-null answer is authoritative: the page paints its rows.
 	 */
 	answer: DesktopProjectSearchResults | null;
-	/** The box's value has no answer yet and none has failed: a request is due. */
+	/**
+	 * The box's value has no answer yet and none has failed: a request is due.
+	 *
+	 * THIS IS THE WHOLE CALLER-FACING CONTRACT, and the failure arm is
+	 * deliberately not a third field: a failure is not a state the page renders
+	 * differently — it is the FALLBACK ENGINE's rows, which the page already
+	 * paints whenever `answer` is null, and whose honesty is carried by the
+	 * per-engine no-match sentence rather than by a flag nobody would read
+	 * (review round 1, MINOR-1). `failed` is computed below because `pending`
+	 * cannot be: both are answered by "the answer is absent", and they are told
+	 * apart by whether the request ERRORED.
+	 */
 	pending: boolean;
-	/** The request for the box's value failed; the caller falls back for good. */
-	failed: boolean;
 };
 
 /**
@@ -87,17 +94,7 @@ export function useProjectsSearch(
 	query: string,
 	enabled: boolean,
 ): UseProjectsSearchResult {
-	const box = query.trim();
-	/*
-	 * Sliced, not refused: the box carries no `maxLength`, so a paste must be
-	 * SEARCHED rather than silently dropped, and the route's own bound is the
-	 * schema's. Cutting here keeps an over-long query off the wire — where it
-	 * would earn the transport's generic 422, which names neither the field nor
-	 * the length — and the same string is what is asked and what the echo is
-	 * compared against, so the gate and the wire cannot disagree. The
-	 * thread-find client's rule for the same bound, for the same reason.
-	 */
-	const asked = box.slice(0, PROJECTS_SEARCH_MAX_CHARS);
+	const asked = projectsSearchQuery(query);
 	const debounced = useDebouncedValue(asked, PROJECTS_SEARCH_DEBOUNCE_MS);
 	const result = useQuery({
 		queryKey: ["desktop", "projects", "search", debounced] as const,
@@ -132,6 +129,5 @@ export function useProjectsSearch(
 	return {
 		answer,
 		pending: enabled && asked.length > 0 && !answer && !failed,
-		failed,
 	};
 }
