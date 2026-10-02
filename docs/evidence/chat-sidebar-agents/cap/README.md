@@ -9,44 +9,50 @@ section's raised cap and a re-expand lands back on the shipped
 operator's.
 
 This directory is the rendered half of that claim: what the affordance looks
-like at each state, on both trees, with the numbers behind it.
+like at each state, on both trees, with the numbers behind it. It was re-shot for
+the design re-check on the remediation head, which also added the query-forced
+states the first round had no frame for.
 
 ## What produced these frames
 
-Storybook, from this branch, through the repo's own capturer. The story is
+Storybook served by this worktree's own `storybook dev` on a loopback port,
+driven by the repo's own capturer. The story is
 `chat-sidebar-agents--long-roster` — the ONE shipped scene that carries a
 cap-bound, collapsible section (twelve agents against the eight-row cap, so a
 `Show 4 more` foot to press and a `data-chat-section="agents"` disclosure to
-close). No new story was authored: the state under test is a PRESS SEQUENCE on a
-scene that already exists, which is what an entry's `press` array is for.
+close) — and `chat-sidebar-agents--roster-filtered` for the states that need the
+section's own filter applied as well. No new story was authored: the states under
+test are PRESS SEQUENCES on scenes that already exist, which is what an entry's
+`press` array is for.
 
 ```
-# the branch half, from this worktree
-pnpm build-storybook && npx http-server storybook-static -p <port> --silent
-node scripts/capture-evidence.mjs http://localhost:<port> \
-  --only=chat-sidebar-agents --dirs=cap/resting,cap/grown,cap/reopened \
-  --themes=localOperatorDark,localOperatorLight --allow-backend \
-  --theme-settle-ms=180000
-
-# the base half — a detached worktree of the PR's base (`20fa9c1db29`), the same
-# dependency tree linked in, its own Storybook build, and `cap-baseline/` for the
-# two `dir`s (the same entries with the foot's assertion inverted, because on
-# this tree the reopen leaves the raised cap standing):
-cd <base worktree> && pnpm build-storybook
-node scripts/capture-evidence.mjs http://localhost:<port> \
-  --only=chat-sidebar-agents --dirs=cap-baseline/grown,cap-baseline/reopened \
+# one run, one private browser, both palettes
+node_modules/.bin/storybook dev -p <port> --ci --no-open --quiet
+node scripts/capture-evidence.mjs http://127.0.0.1:<port> \
+  --only=chat-sidebar-agents \
+  --dirs=cap/resting,cap/grown,cap/collapsed,cap/reopened,cap/grown-again,\
+cap/list-query-resting,cap/list-query-pressed,cap/filter-query-resting,\
+cap/filter-query-pressed \
   --themes=localOperatorDark,localOperatorLight --allow-backend \
   --theme-settle-ms=180000
 ```
 
-`--theme-settle-ms=180000` is the raised budget this host's load requires: at the
-shipped 10s the theme guard refused the first attempt with `document carries
+`--theme-settle-ms=180000` is the raised budget this host's load requires: at
+the shipped 10s the theme guard refused the first attempt with `document carries
 theme ""` on both trees.
 
-`harness/measure.mjs` is the geometry instrument: it launches the same private
-headless Chrome the capturer launches, opens the same story, drives the same
-three presses, reads the DOM, and exits. It takes no frame. Its two records are
-committed beside it (`cap-geometry-branch.json`, `cap-geometry-baseline.json`).
+Two things about this pass's rig are worth stating rather than leaving in the
+command line. **A `storybook dev` server served it, not a static build**: the
+static build this lane used for round 1 came back with one story chunk that
+`import()` refused on this host while `fetch()` served it (`200`, 23,782 bytes),
+so the iframe rendered Storybook's own failure display and the harness timed out
+on a story that genuinely had not drawn — diagnosed with a scratch probe, not
+guessed at. The development server served the same story without that failure,
+and the control below shows its output is the same picture the static build
+produced. **The capturer's frames are one entry per state, and this pass added an
+opt-in `resetDisclosures`** (see *What these frames do NOT prove*) because the
+states whose press sequence ends on the close edge could not otherwise be
+photographed in both palettes at all.
 
 ## What each frame is
 
@@ -54,7 +60,13 @@ committed beside it (`cap-geometry-branch.json`, `cap-geometry-baseline.json`).
 | --- | --- | --- |
 | `resting/` | no press. The shipped compact form: eight rows, the `Show 4 more` foot. | this branch |
 | `grown/` | after ONE press of the section's own foot: the cap goes 8 → 16, all twelve rows draw, the foot is GONE. | both halves |
-| `reopened/` | after the foot press, then a press on the section heading (close) and another (open) — the fix's own claim: eight rows and the foot back. | this branch |
+| `collapsed/` | after the foot press, then ONE press on the section heading: the close edge the reset passes through, zero rows, `aria-expanded` false. | this branch |
+| `reopened/` | the foot press, then the section heading twice (close, open): eight rows and the foot back. | this branch |
+| `grown-again/` | the same three presses, then the foot a SECOND time: twelve rows again, which is the release not having disarmed the raise. | this branch |
+| `list-query-resting/` | a LIST query (`b`) in force, no section filter: four rows drawn by the query, the `Filter agents` field drawn by the cap-bound roster. | this branch |
+| `list-query-pressed/` | the same state, then the heading pressed — the press the panel documents as a no-op on the raised cap. **The field is gone and the section has moved up by the field's own height.** | this branch |
+| `filter-query-resting/` | a LIST query (`b`) AND the section's own filter (`er`): two rows, the field drawn, with the reader's own question in it. | this branch |
+| `filter-query-pressed/` | the same state, then the heading pressed: **the field an already-filtering reader had on screen survives**, and nothing else moves. | this branch |
 | `baseline/grown/` | the same press on the pre-fix tree. **Byte-identical to `grown/`** — see below. | pre-fix |
 | `baseline/reopened/` | the same two heading presses on the pre-fix tree: **twelve rows, no foot** — the grown list surviving the reopen, which is the defect. | pre-fix |
 
@@ -68,83 +80,149 @@ set beside that one.
 Read out of the live DOM by `harness/measure.mjs` (one sample per state, all of
 it in the committed JSON):
 
-| state | agent rows drawn | foot | section box | Teams heading top | chats region top | scroller content/box |
-| --- | --- | --- | --- | --- | --- | --- |
-| resting (branch) | 8 | `Show 4 more` | 388px | 452 | 536 | 712 / 361 |
-| grown (branch) | 12 | — | 488px | 552 | 636 | 812 / 361 |
-| collapsed (branch) | 0 | — | 28px | 84 | 168 | 361 / 361 |
-| reopened (branch) | 8 | `Show 4 more` | 388px | 452 | 536 | 712 / 361 |
-| resting (pre-fix) | 8 | `Show 4 more` | 388px | 452 | 536 | 712 / 361 |
-| grown (pre-fix) | 12 | — | 488px | 552 | 636 | 812 / 361 |
-| **reopened (pre-fix)** | **12** | **—** | **488px** | **552** | **636** | **812 / 361** |
+| state | agent rows drawn | foot | section box | Teams heading top |
+| --- | --- | --- | --- | --- |
+| resting (branch) | 8 | `Show 4 more` | 388px | 452 |
+| grown (branch) | 12 | — | 488px | 549 |
+| collapsed (branch) | 0 | — | 28px | 84 |
+| reopened (branch) | 8 | `Show 4 more` | 388px | 452 |
+| grown-again (branch) | 12 | — | 488px | 549 |
+| grown (pre-fix) | 12 | — | 488px | 549 |
+| **reopened (pre-fix)** | **12** | **—** | **488px** | **549** |
 
-- **The reopen on this branch is the resting state, on every one of those
-  numbers**, and its eight drawn names are the same eight in the same order. The
-  deltas the harness prints are all zero (`rows +0`, `Teams heading top +0`,
-  `section box +0`, scroller `712/361` both).
+- **The reopen is the resting state, on every one of those numbers**, and its
+  eight drawn names are the same eight in the same order. The deltas the harness
+  prints are all zero (`rows +0`, `Teams heading top +0`, `section box +0`).
+- **The release does not disarm the raise**: `grown-again/` against `grown/` is
+  `rows +0`, `section box +0`, `Teams heading top +0`, and the grown state's own
+  name (below) comes back with it.
 - **Nothing shifts beyond the intended rows.** The growth is `+4 × 32px = 128px`
   of rows and `−28px` of foot, so every boundary below the section moves by
-  exactly **+100px** — the Teams heading, the chats region and the first chat row
-  all move 100, and the section box grows 100. The 16px gap between the section's
-  box and the Teams heading is the same in both states, so the raise does not
-  disturb the panel's rhythm; it moves it.
+  exactly **+100px** — the Teams heading and the section box both move 100 — and
+  the 16px gap under the section is unchanged, so the raise does not disturb the
+  panel's rhythm; it moves it.
 - **The pre-fix half is the defect, measured**: after the identical presses its
   reopen carries 12 rows, no foot, a 488px section and a 100px-shifted panel
   below it — the state `reopened/` shows undone.
-- **The collapsed state costs the whole section** (0 rows, 28px, `aria-expanded`
-  false) — that is the state the shrink path passes through, and it is why the
-  reset's discoverability is this set's one design finding.
+
+### The reset's own name, and where it lives
+
+The grown heading carries `SECTION_GROWN_HINT` — *"Collapse to restore the
+compact list; reopening draws the compact list again"* — and the harness reads it
+per state rather than inferring it:
+
+| state | heading `title` | `aria-describedby` → text |
+| --- | --- | --- |
+| resting | `null` | `null` |
+| grown | the sentence | `section-grown-hint-agents` → the sentence |
+| collapsed | `null` | `null` |
+| reopened | `null` | `null` |
+| grown-again | the sentence | `section-grown-hint-agents` → the sentence |
+
+Both channels are real and both are invisible in a still: `title` is a
+browser/OS overlay the page never paints, and the `sr-only` element the id points
+at is clipped to a pixel. **No frame here shows the hint, and none can** — the
+`grown/` heading band is `AE` **0** against `resting/` in both palettes, which is
+the state of affairs round 1's D2 measured. The hint on the FOOT (for a raised
+section that still draws one) is not reachable from this fixture: twelve agents
+against a 16-row cap leave no foot while grown.
+
+The foot's own accessible name is read the same way: `Show 4 more agents` at
+rest, `aria-label` and `title` both, which is round 1's N1 closed.
+
+### The query-forced press (round 1's U2), re-measured
+
+Three sequences, each driven in the live DOM with the sidebar query, the
+section's own filter, or both, then the heading pressed. The harness presses the
+heading twice in each case — once as the page's own synthetic click and once as a
+real CDP pointer press at the heading's centre — because the frame rig cannot
+stage the order and the measurement must not rest on its own event path. Both
+give the same answer.
+
+| sequence | rows before → after | section box before → after | `Filter agents` before → after |
+| --- | --- | --- | --- |
+| LIST query only (`b`) | 4 → 4 | 413px → **369px** | present → **absent** |
+| LIST query (`b`) + section filter (`er`) | 2 → 2 | 264px → 264px | present → **present** |
+| section filter only (`er`) | 4 → 0 | 232px → 28px | present → absent |
+
+- The third row is not a defect: with no list query the press really does close
+  the section (0 rows, 28px, `aria-expanded` false), so a filter field leaving
+  with the list it filters is correct.
+- **The first row is the defect round 1 photographed, and it is still there on
+  this head.** The press the panel documents as a no-op removes the field and
+  moves the section up by exactly the field's own height, **−44px**, with the rows
+  and the chevron untouched. `list-query-resting/` and `list-query-pressed/` are
+  that measurement's two frames.
+- The middle row is the state the remedy's gate actually names
+  (`query !== "" && rosterFilter.trim() !== ""`), and there the field survives:
+  `filter-query-resting/` and `filter-query-pressed/` are that pair.
+- **So the remedy covers the conjunction, not the state the finding measured.**
+  Recorded in the PR thread as a `D`-finding rather than as a passing round; the
+  minimal change that satisfies it is the section-body term the remedy's own note
+  already names (`isOpen("agents", true) || query !== ""`), whose second clause
+  would keep the field limited to a cap-bound roster or an applied filter.
+
+### Where the keyboard goes
+
+Read after each press, with the instrument's own control (it focuses the control
+before activating it) checked first:
+
+| press | `document.activeElement` |
+| --- | --- |
+| the section's `Show N more` foot | a **BUTTON with `data-entity-name`**, `New chat with translator` — the FIRST row the raise added |
+| the section heading | the heading button (`data-chat-section="agents"`) |
+
+That is round 1's U3/D3 closed: the foot's press used to leave the reader on
+`<body>` when the foot unmounted, and it now lands on the row the press revealed.
 
 ## The pair, and what is measurable about it
 
 - **The control is byte-identical across the two trees.** `grown/` and
-  `baseline/grown/` are `cmp`-clean in both palettes: the `Show N more` press is
-  untouched by this change, so the pair's only difference is the reopen.
-- **`reopened/` against `resting/` is a near-identical frame**, and the residual
-  is characterised rather than waved at: `AE` 25,651 (dark) / 23,302 (light)
-  pixels differ, with a **mean of 0.28 / 0.31 of 255** and a **maximum of
-  17 / 19** — and it is concentrated on the `Agents` heading row (band mean
-  5.7 / 7.1 against 0.13 / 0.11 for the rest of the panel). That band is the
-  pointer: the entry's last press is on the heading, so the frame carries the
-  heading's hover step. The geometry above is the claim; the residual is one
-  hovered row and WebP encoding.
-- **The `grown/` frame carries the pointer on `translator`'s row**, because the
-  foot that was pressed unmounts and the row that took its place is under the
-  pointer — the row's hover ground and its two reveal controls are what that
-  highlight is. It is not a selection.
+  `baseline/grown/` are `cmp`-clean in both palettes — re-verified on this head,
+  across a `storybook dev` build rather than round 1's static one: the `Show N
+  more` press is untouched by this change, so the pair's only difference is the
+  reopen.
 - **A raised section has no mark of its own.** The heading band is `AE` **0**
   between `resting/` and `grown/` in both palettes: an eight-row section and a
   twelve-row one draw the same heading, and the only on-screen difference is the
-  row count and the foot's disappearance.
+  row count and the foot's disappearance. The grown state is announced, not
+  drawn — see the table above and the design re-check's adjudication in the PR
+  thread.
 
 ## What these frames do NOT prove
 
-- **They are not the query-forced case.** While a list query is in force the
-  sections are force-DRAWN, and a press there is a deliberate no-op on the raised
-  cap (agent review round 1's M1, QA round 1's QA-F1). No frame here photographs
-  that state — the branch's own `scripts/chat-sidebar-view.test.mjs` pins it at
-  the model level and QA drove it — and the fixture would need a query entry to
-  reach it from this story.
-- **They are not a chevron-collapse frame.** There is no committed still of the
-  collapsed section, deliberately: `localStorage['chat-sidebar-disclosures']` is
-  written by every chevron press and is NOT the key the capturer re-seeds per
-  frame, so a `press` on the section heading persists `{agents:false}` and the
-  NEXT capture in the same sweep starts with the Agents section collapsed. The
-  other stories that mount this sidebar reset that key themselves for exactly this
-  reason (`chat-sidebar-view-menu.stories.tsx`); an entry here would have been the
-  first press in the shared script to leave it set. The state's geometry is in the
-  numbers above instead, and the two frames on either side of it
-  (`grown/`, `reopened/`) are the pair the claim is about.
+- **They are not a focus-ring capture, except where they are.** A hidden window
+  draws no focus ring for a pointer press. Three of these frames
+  (`collapsed/`, `list-query-pressed/`, `filter-query-pressed/`) are driven by a
+  real keyboard activation (the heading is Tab-focused, then Enter) because the
+  press has to follow a typed query, so they DO carry the heading's focus ring —
+  which is visible evidence that the press landed.
+- **The order the rig cannot stage.** The capturer has no way to press a control
+  after typing into a field except through the keyboard, so the query-forced
+  frames are keyboard presses; the geometry table above is the same sequence
+  driven by a real pointer press as well, which is why the claim does not rest on
+  that limit. A `pressKey` on a NATIVE button does not activate it at all (its
+  `rawKeyDown` carries no keypress, so no default action runs — the run refused
+  the frame when this lane first tried it); `keys` with `text` is the spelling
+  that does.
+- **`resetDisclosures` is new, and it is why the collapsed state has a frame
+  now.** `localStorage['chat-sidebar-disclosures']` is written by every chevron
+  press and outlives the document, so a state whose sequence ends on the close
+  edge left the NEXT frame — and the next PALETTE of the same entry — loading
+  into an already-shut section. Round 1 dropped the collapsed still for exactly
+  that reason and recorded the numbers instead. The option clears that one key on
+  every new document for the entries that ask for it, so each frame is a function
+  of its story rather than of whichever entry ran before it; it is opt-in because
+  the frames whose claim IS the persisted disclosure must keep inheriting it.
 - **They are not the ladder.** The story's fixture holds twelve agents, so the
   deepest reachable rung is the one press this set photographs; the multi-rung
   cycle (8 → 16 → 24 → 32 → 8) is pinned in
   `scripts/chat-sidebar-view.test.mjs`, not here.
 - **They are two palettes of fifty-nine.** Two is the brief's minimum. This
-  change introduces no colour, spacing, type or radius value — the diff's only
-  edited `className` is the foot's existing one — so the theme axes are a floor
+  change introduces no colour, spacing, type or radius value, and the diff's only
+  edited `className` is the foot's existing one, so the theme axes are a floor
   rather than a risk.
-- **They are not a focus capture.** A hidden window has no focus ring, so nothing
-  here shows one. What the harness does record is where the keyboard ENDED UP
-  after each press, and the answer is in the JSON: `BODY` after the foot press
-  (the foot unmounts and nothing claims the focus), the heading button after the
-  heading press.
+- **`harness/cap-geometry-baseline.json` is round 1's record**, taken with the
+  pre-remediation harness against a detached worktree of the base; it predates
+  the `query` section this pass added and is kept as the pre-fix measurement it
+  is.
