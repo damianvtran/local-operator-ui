@@ -1111,14 +1111,19 @@ export const STORIES = [
 	 * feature adds.
 	 *
 	 * WHAT EACH PAIR IS FOR. `completions-both-visible` is the settled two-answer
-	 * turn (a fulsome close, a wake, a short reply): `by-turn` keeps the first close
-	 * inside the bar, `by-response` puts it on screen with the elected answer still
-	 * the one the caption and the foot key on. `narration` is the narration-only
-	 * span, which is the case the Settings copy makes a claim about ("by turn folds
-	 * it behind the turn's bars, by response keeps it on screen"). The mid-cycle
-	 * pair is the operator's own reported state - a turn that answered, was woken,
-	 * and is running its next cycle - which is where a mode that widened the
-	 * visible set could plausibly disturb the live split the jitter fix protects.
+	 * turn (a fulsome close, a wake, a short reply) and it is ALSO the pair that
+	 * taught the mode's evidence what it could not show (design review round 1,
+	 * D1): both of its closes are RESPONSE closes, and V1 keeps every response
+	 * close visible in BOTH modes, so its two frames are byte-identical and must
+	 * be - this cell states that the widening left V1 alone rather than that the
+	 * mode does nothing. `narration` is the narration-only span, which is the case
+	 * the Settings copy makes a claim about ("by turn folds it behind the turn's
+	 * bars, by response keeps it on screen"). The mid-cycle pair is the operator's
+	 * own reported state - a turn that answered, was woken, and is running its next
+	 * cycle - which is where a mode that widened the visible set could plausibly
+	 * disturb the live split the jitter fix protects. The cell whose pair CANNOT
+	 * match is `substance-then-addendum` below, because it is the one fixture whose
+	 * text-bearing row is not a close.
 	 *
 	 * THE `by-turn` HALF IS ALREADY COMMITTED: the entries above, with no `prefs`,
 	 * ARE that half, and `partitionRun`'s by-turn path is pinned byte-for-byte by
@@ -1130,25 +1135,37 @@ export const STORIES = [
 		"chat-turn-collapse--completions-both-visible",
 		1280,
 		900,
-		{ prefs: { transcriptDisplayMode: "by-response" }, dir: "completions-both-visible-response" },
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "completions-both-visible-response",
+		},
 	],
 	[
 		"chat-turn-collapse--narration",
 		1280,
 		900,
-		{ prefs: { transcriptDisplayMode: "by-response" }, dir: "narration-response" },
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "narration-response",
+		},
 	],
 	[
 		"chat-turn-collapse--wake-mid-cycle",
 		1280,
 		900,
-		{ prefs: { transcriptDisplayMode: "by-response" }, dir: "wake-mid-cycle-response" },
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "wake-mid-cycle-response",
+		},
 	],
 	[
 		"chat-turn-collapse--peer-mid-cycle",
 		1280,
 		900,
-		{ prefs: { transcriptDisplayMode: "by-response" }, dir: "peer-mid-cycle-response" },
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "peer-mid-cycle-response",
+		},
 	],
 	/*
 	 * THE REPORTER'S OWN SHAPE, as close as a shipped fixture gets: the fulsome
@@ -1163,9 +1180,39 @@ export const STORIES = [
 		"chat-turn-collapse--long-run",
 		1280,
 		900,
-		{ prefs: { transcriptDisplayMode: "by-response" }, dir: "long-run-response" },
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "long-run-response",
+		},
 	],
-
+	/*
+	 * THE ONE PAIR THAT MUST DIFFER, and the answer to design review round 1's D1.
+	 *
+	 * Every pair above is legitimately identical on its settled cells - V1 keeps
+	 * every response close, so widening the visible set adds nothing there - and
+	 * that is what made the design round unable to see the feature work: a reader
+	 * who switches to `By response` and watches nothing move reads the control as
+	 * broken. The mode IS observable, on exactly one shape: a settled,
+	 * text-bearing assistant row that is neither a close nor `stop`-declared.
+	 * `chat-turn-collapse--substance-then-addendum` is that shape built as the
+	 * issue's own report (substance prose mid-work, the addendum as the last
+	 * message), so this pair is the round's evidence that the second mode changes
+	 * the screen rather than only the store.
+	 *
+	 * THE TWO `by-turn` CELLS ABOVE ARE NOT RE-TAKEN BY THIS ENTRY, and the pair's
+	 * halves are still one run: the first entry is the story with no `prefs` - the
+	 * shipped mode - and the second is the same story in the other mode.
+	 */
+	["chat-turn-collapse--substance-then-addendum", 1280, 900],
+	[
+		"chat-turn-collapse--substance-then-addendum",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "substance-then-addendum-response",
+		},
+	],
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
