@@ -1161,6 +1161,91 @@ test("a multi-line draft is never recalled over, caret on line 1 included", asyn
 	assert.equal(frame.draft(), "one\ntwo");
 });
 
+/* ------------------------------------------------------------------ */
+/* The ArrowDown swallow (issue #764)                                  */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE LAST-LINE GUARD COUNTS LOGICAL LINES; THE DEFECT LIVED IN VISUAL ONES.
+ * `isCursorAtLastLine()` is `line === totalLines` over `\n` counts, so a
+ * single-paragraph draft reports "last line" at EVERY caret position — and the
+ * ArrowDown arm ran `preventDefault` unconditionally inside that guard while
+ * its recall walk only runs once a recall is engaged (`historyIndex !== null`).
+ * With none engaged the key was eaten doing nothing: ArrowDown could not
+ * traverse a wrapped draft's visual rows, the report's central repro. The fix
+ * is the mirror of #673's rule — the arm captures only the walk it can serve,
+ * handing the key back BEFORE `preventDefault` when no recall is engaged.
+ *
+ * jsdom has no layout engine, so the WRAP itself is not reachable here; these
+ * cases drive the state the wrap collapses to in the guard's arithmetic (one
+ * logical line, "last" at any caret) and read the one fact a value assertion
+ * cannot see — whether the composer claimed the key ("not claimed" is the
+ * composer DELEGATING the move, per `arrowKey` above). The byte shape of the
+ * defect is pinned in `scripts/composer-seeding.test.mjs`.
+ */
+
+test("ArrowDown on a draft with no recall engaged is never claimed (issue #764)", async () => {
+	const frame = await mount();
+	useConversationInputStore
+		.getState()
+		.addSubmittedMessage(frame.conversationId, "the sent entry");
+	await settle();
+	const draftText = "a draft that would wrap";
+	await type(frame, draftText);
+	/*
+	 * At EVERY caret position: `line === totalLines` is true wherever the caret
+	 * sits on a single-paragraph draft, which is the reproduction's "the guard
+	 * fires everywhere" — and the swallowed key with it.
+	 */
+	for (const at of [0, 6, draftText.length]) {
+		await placeCaret(frame, at);
+		assert.equal(
+			await arrowKey(frame, "ArrowDown"),
+			false,
+			`the arrow stays the textarea's with the caret at ${at}`,
+		);
+		assert.equal(
+			frame.value(),
+			draftText,
+			`the draft is intact with the caret at ${at}`,
+		);
+	}
+	assert.equal(
+		frame.draft(),
+		draftText,
+		"and the persisted draft is untouched",
+	);
+});
+
+test("with the recall engaged, ArrowDown still walks and is claimed (issue #764)", async () => {
+	const frame = await mount();
+	const store = useConversationInputStore.getState();
+	store.addSubmittedMessage(frame.conversationId, "the older entry");
+	store.addSubmittedMessage(frame.conversationId, "the newer entry");
+	await settle();
+	assert.equal(await arrowKey(frame, "ArrowUp"), true);
+	assert.equal(await arrowKey(frame, "ArrowUp"), true);
+	assert.equal(
+		frame.value(),
+		"the older entry",
+		"the walk reached the older entry",
+	);
+	/*
+	 * THE BOX HOLDS RECALLED TEXT AND MUST STILL WALK. That is the state where
+	 * a guard reading the CONTENT — `historyRecallEngages` says a non-empty box
+	 * never engages — would block the very walk it exists to protect; the fix
+	 * keys the capture on the walk's own state instead.
+	 */
+	assert.equal(
+		await arrowKey(frame, "ArrowDown"),
+		true,
+		"the engaged walk still claims the arrow",
+	);
+	assert.equal(frame.value(), "the newer entry", "and steps back down");
+	assert.equal(await arrowKey(frame, "ArrowDown"), true);
+	assert.equal(frame.value(), "", "past the newest restores the stashed draft");
+});
+
 test("the submit's own clear ends a live capture", async () => {
 	const frame = await mount({ onSlashCommand: async () => "consumed" });
 	await type(frame, "/credential ");
