@@ -64,7 +64,10 @@
  * compete with the acquisition under heavy load); LO_ACK_PROBE=1 runs two
  * bare getUserMedia calls and exits (a mic-health probe with no UI involved,
  * which is how a 127 s cold acquisition under swap exhaustion was told apart
- * from a UI defect); LO_ACK_LABEL names the run in the record.
+ * from a UI defect); LO_ACK_LABEL names the run in the record; LO_ACK_THEME
+ * (localOperatorDark | localOperatorLight) is the palette this run photographs;
+ * LO_ACK_HOLD_MS holds the acquisition open so the pending state can be
+ * photographed - and VOIDS this run's numbers, which is why it is recorded.
  */
 import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -79,6 +82,23 @@ const REPO = process.env.LO_ACK_REPO ?? process.cwd();
 const BACKEND = process.env.LO_ACK_BACKEND ?? "http://127.0.0.1:11877";
 const TOKEN = process.env.LO_ACK_TOKEN ?? "";
 if (!TOKEN) throw new Error("LO_ACK_TOKEN is required");
+/*
+ * THE THEME THIS RUN PHOTOGRAPHS (design round 1, D4 / UX round 1, U5): one
+ * theme per run, the driver's own rule - the palette is a document-root
+ * attribute, so the pair of frames a visual round asks for is two runs.
+ */
+const THEME = process.env.LO_ACK_THEME ?? null;
+/*
+ * A CAPTURE HOLD, IN MS, AND IT INVALIDATES THIS RUN'S NUMBERS. The
+ * acknowledgment is on screen for as long as the acquisition takes, which on a
+ * warm cycle is a handful of milliseconds - long enough to measure, too short
+ * to photograph without racing it. With this set the rig wraps `getUserMedia`
+ * in the page to wait that long before touching the real one, so the pending
+ * state stands still for the frames; every timing figure a run with it set
+ * produces describes the hold, NOT the app. The numbers come from runs that
+ * leave it unset, which is also why they are recorded beside it.
+ */
+const HOLD_MS = Number(process.env.LO_ACK_HOLD_MS ?? 0);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -202,6 +222,8 @@ class Cdp {
 }
 
 const report = {
+	theme: THEME,
+	holdMs: HOLD_MS,
 	rig: { label: process.env.LO_ACK_LABEL ?? "run", cdpPort },
 	cycles: [],
 };
@@ -377,6 +399,27 @@ try {
 	if (!ready) throw new Error("the composer never appeared");
 	await sleep(900);
 
+	/* --- the palette this run photographs ---------------------------------- */
+	if (THEME) {
+		await cdp.evaluate(
+			`(() => { document.documentElement.dataset.theme = ${JSON.stringify(THEME)}; return true; })()`,
+		);
+		await sleep(300);
+	}
+	record("palette", {
+		asked: THEME,
+		applied: await cdp.evaluate(
+			"document.documentElement.dataset.theme ?? null",
+		),
+		/* The composer's own ground, read rather than assumed: a light run whose
+		 * ground is the dark one would be the frame check lying about itself. */
+		composerGround: await cdp.evaluate(
+			"(() => { const el = document.querySelector('[data-lo-composer-measure]'); return el ? getComputedStyle(el).backgroundColor : null; })()",
+		),
+		documentGround: await cdp.evaluate(
+			"getComputedStyle(document.body).backgroundColor",
+		),
+	});
 	/* --- the instrument ---------------------------------------------------- */
 	const instrument = `(() => {
 		const m = (window.__m = window.__m || { events: [], cycle: null, cycles: [], seq: 0 });
@@ -395,6 +438,9 @@ try {
 			const orig = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
 			navigator.mediaDevices.getUserMedia = async (constraints) => {
 				push("gum.called", { constraints: JSON.stringify(constraints) });
+				/* The capture hold (see LO_ACK_HOLD_MS): inside the wrapper, so
+				 * the pending state the check above stamps is the REAL one. */
+				if (${HOLD_MS} > 0) { push("gum.held", { ms: ${HOLD_MS} }); await new Promise((r) => setTimeout(r, ${HOLD_MS})); }
 				try {
 					const stream = await orig(constraints);
 					push("gum.resolved", { tracks: stream.getTracks().length });
@@ -439,6 +485,26 @@ try {
 			transcribing: !!document.querySelector('[data-transcribing-indicator]'),
 		});
 		m.read = read;
+		/*
+		 * THE GEOMETRY, IN THE DOCUMENT THAT OWNS IT (design round 1, D2). The
+		 * card is bottom-pinned, so what "the composer moved" means is its TOP
+		 * edge and its height - plus the control's own rect, which is what says
+		 * whether the acknowledgment displaced the row it was added to.
+		 */
+		m.geom = () => {
+			const box = (el) => { if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.x * 10) / 10, y: Math.round(r.y * 10) / 10, w: Math.round(r.width * 10) / 10, h: Math.round(r.height * 10) / 10, bottom: Math.round(r.bottom * 10) / 10 }; };
+			const measure = document.querySelector('[data-lo-composer-measure]');
+			const mic = document.querySelector(MIC);
+			const ring = mic ? mic.querySelector('span[class*="animate-spin"]') : null;
+			const style = ring ? getComputedStyle(ring) : null;
+			return {
+				box: box(measure),
+				mic: box(mic),
+				indicator: box(document.querySelector('[data-preparing-indicator]')),
+				lane: box(document.querySelector('[data-recording-indicator]')),
+				ring: style ? { w: box(ring).w, h: box(ring).h, track: style.borderRightColor, quadrant: style.borderTopColor, ground: getComputedStyle(mic).backgroundColor } : null,
+			};
+		};
 		m.mark = () => m.events.length;
 		m.arm = (i) => {
 			const c = { i, t0: null, markIndex: m.events.length, ack: null, ackPaint: null, flip: null, flipPaint: null, sampleFirst: null, mutAck: null, mutFlip: null };
@@ -506,6 +572,25 @@ try {
 	const warnState = async (label) =>
 		record(`state.${label}`, await readState());
 
+	/*
+	 * A WARM-UP CALL, AND IT IS NOT PART OF ANY NUMBER (`LO_ACK_WARMUP=1`). The
+	 * FIRST `getUserMedia` in a fresh profile is the cold one - measured 0.8 s to
+	 * 9 s on this fleet, and over two minutes under swap exhaustion - and the
+	 * frame runs are deliberately short-lived: a warm-up primes the device path
+	 * so a capture run's OWN acquisition is the warm one (milliseconds), which is
+	 * what lets a capture finish inside the windows this host leaves a rig. The
+	 * runs that MEASURE the acquisition leave it off, so the cold number they
+	 * report is a real first-use one.
+	 */
+	if (process.env.LO_ACK_WARMUP === "1") {
+		record(
+			"warmup.ms",
+			await cdp.evaluate(
+				`(async () => { const t0 = performance.now(); try { const s = await navigator.mediaDevices.getUserMedia({ audio: true }); for (const t of s.getTracks()) t.stop(); return Math.round(performance.now() - t0); } catch (e) { return "failed: " + String(e && e.name); } })()`,
+			),
+		);
+	}
+
 	/* The mic must be enabled for the true path. */
 	let micReady = false;
 	const micDeadline = Date.now() + 45_000;
@@ -528,6 +613,10 @@ try {
 	}
 
 	/* idle frame */
+	record(
+		"geom.rest",
+		JSON.parse(await cdp.evaluate("JSON.stringify(window.__m.geom())")),
+	);
 	await cdp.shot("00-idle");
 
 	const clickMic = async () => {
@@ -650,10 +739,14 @@ try {
 			 */
 			const atMs = await cdp.evaluate("performance.now()");
 			const beforeState = await readState();
+			const geomBefore = JSON.parse(
+				await cdp.evaluate("JSON.stringify(window.__m.geom())"),
+			);
 			await cdp.shot(shot.name);
 			record(`shot.${shot.name}`, {
 				atMs,
 				stateBefore: beforeState,
+				geomBefore,
 				stateAfter: await readState(),
 			});
 		}
@@ -753,11 +846,16 @@ try {
 					: [];
 			})(),
 		};
+		cycleRecord.holdMs = HOLD_MS;
 		report.cycles.push(cycleRecord);
 		console.error(`[cycle ${i}] ${JSON.stringify(cycleRecord)}`);
 		/* paint settle before the recording frame */
 		if (flipped && i === 1) {
 			await sleep(650);
+			record(
+				`cycle${i}.geomRecording`,
+				JSON.parse(await cdp.evaluate("JSON.stringify(window.__m.geom())")),
+			);
 			await cdp.shot(`c${i}-recording`);
 		}
 		/* cancel the take and let the composer come back */

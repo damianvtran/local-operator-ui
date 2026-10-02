@@ -268,7 +268,7 @@ const bundle = await build({
 				COMPOSER_PLACEHOLDER,
 				composerPlaceholder,
 			} from "./src/renderer/src/shared/hooks/use-message-input";
-			export { resolvePushToTalkBinding } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
+			export { resolvePushToTalkBinding, isDictationActive } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		resolveDir: worktree,
@@ -305,6 +305,7 @@ const {
 	COMPOSER_PLACEHOLDER,
 	MessageInput,
 	composerPlaceholder,
+	isDictationActive,
 	resolvePushToTalkBinding,
 	useConversationInputStore,
 } = await import(bundlePath.href);
@@ -955,9 +956,32 @@ test("the mic acknowledges the press while the stream is still pending, and the 
 		"the control itself carries the busy state",
 	);
 	assert.equal(
+		micControl()?.disabled,
+		false,
+		"the control stays pressable while it acknowledges (design round 1, D1): the guard is the handler's, not a `disabled` that makes the control the user just pressed inert",
+	);
+	assert.equal(
+		isDictationActive(),
+		true,
+		"the Escape ladder's presence covers the press window, not only a live take (UX round 1, U1)",
+	);
+	assert.equal(
 		confirm(),
 		null,
 		"no recording control exists before the stream resolves",
+	);
+	/*
+	 * The distinction the assertion above buys: a second press inside the window
+	 * is refused by the HANDLER's own guard, which is the door the hold contract
+	 * also reaches - so `disabled` was never what protected the attempt.
+	 */
+	await act(async () => {
+		micControl().click();
+	});
+	assert.equal(
+		mic.calls,
+		1,
+		"a second press inside the window does not double the acquisition",
 	);
 
 	/* The indicator's own analyser acquisition resolves too, once recording starts. */
@@ -968,6 +992,86 @@ test("the mic acknowledges the press while the stream is still pending, and the 
 	await settle();
 	assert.equal(preparing(), null, "the acknowledgment gives way");
 	assert.ok(confirm(), "the recording state arrives");
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+/*
+ * ESCAPE SETTLES THE ACKNOWLEDGMENT WINDOW (UX round 1, U1). The key was inert
+ * while the stream was pending, so a press the user took back still landed; and
+ * because the ladder reads `isDictationActive()` at KEY TIME, the composer has
+ * to claim the window for the press rather than leave the turn to answer it.
+ * The stream is still released afterwards, which is the arm that must discard
+ * it: an Escape is a settle, not a leak.
+ */
+test("Escape settles the acknowledgment window and the discarded stream never becomes a recording", async () => {
+	mic.calls = 0;
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(fakeStream());
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	await act(async () => {
+		micControl().click();
+	});
+	assert.ok(preparing(), "the acknowledgment is up before the escape");
+
+	const escapeKey = new window.KeyboardEvent("keydown", {
+		key: "Escape",
+		bubbles: true,
+		cancelable: true,
+	});
+	await act(async () => {
+		window.dispatchEvent(escapeKey);
+	});
+	assert.equal(
+		escapeKey.defaultPrevented,
+		true,
+		"the composer claims the key, so the page's ladder does not read it as the turn's",
+	);
+	assert.equal(
+		preparing(),
+		null,
+		"the acknowledgment answers the key in the frame it arrives in",
+	);
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		null,
+		"and the control returns to rest",
+	);
+
+	/* The pending acquisition lands anyway - the marked attempt is what it lands on. */
+	mic.next = async () => fakeStream();
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.equal(
+		confirm(),
+		null,
+		"a cancelled press never becomes a recording state",
+	);
+	assert.equal(
+		preparing(),
+		null,
+		"nor does it come back when the stream resolves",
+	);
 
 	await act(async () => {
 		root.unmount();
