@@ -68,6 +68,17 @@ const EMPTY_MESSAGES: MessageInputProps["messages"] = [];
  */
 const ASIDE_NOTICE_ID = "config-composer-note";
 
+/**
+ * THE BOX'S OWN LINE FOR THE DISABLED GATE (design review round 3, D9 = UX review
+ * round 3, U1), shared by the two slots that can carry it.
+ *
+ * It DESCRIBES the surface rather than asking for a press, because the box refuses
+ * every keystroke in this state — and it is deliberately NOT `run.disabledReason`:
+ * the notice band is that sentence's single carrier (round 2, D7), so repeating it
+ * here would put the same 66-character sentence on the card twice, 8 px apart.
+ */
+const DISABLED_GATE_LINE = "Configure agents by conversation";
+
 /** Three things an operator actually asks for, as one-press examples. */
 const EXAMPLES = [
 	"A reviewer that only reads code",
@@ -630,18 +641,39 @@ export function ConfigComposer({
 	 * well as rendered in the notice band, so the operator read the same 66-character
 	 * sentence twice, 8 px apart — same string, the second copy in the dim ink. One
 	 * carrier is enough, and the band is the one that says it at 7.88:1, so the box
-	 * keeps its own disabled-state line (`placeholder` below) instead.
+	 * keeps its own line for the state instead.
+	 *
+	 * THE DISABLED GATE STILL NEEDS AN ARM, AND THROUGH THIS SLOT (design review
+	 * round 3, D9 = UX review round 3, U1). Dropping the arm re-opened round 1's D1
+	 * on the one state D1 named: with no host line the resolution chain in
+	 * `composerPlaceholder` falls through to `COMPOSER_PLACEHOLDER.busy` — "Agent is
+	 * busy" — while nothing is running, on a box that is refused because the backend
+	 * could not be reached. The `idle` slot (`placeholderOverride`, below) cannot
+	 * carry the fix: it is read LAST, after `inputDisabled`, so a refused box never
+	 * reaches it. `hostLine` is the channel that does, and it is the same one the
+	 * dirty-edit gate already speaks through above.
 	 */
 	const hostPlaceholder = blockedReason
 		? blockedReason
 		: live
 			? "Working on your request…"
-			: undefined;
+			: run.enabled
+				? undefined
+				: DISABLED_GATE_LINE;
+	/*
+	 * THE INVITATION IS THE SAME WORDS ON BOTH PANES (UX review round 3, U2). The
+	 * heading above this box says "Ask for an agent" or "Ask for a team" depending
+	 * on the tab, but the box serves both, so an invitation that names either object
+	 * first reads as a contradiction on the other pane — the Teams pane's box used to
+	 * open with "a new agent". Naming no object keeps it true on both, and it matches
+	 * the sentence the pane itself gives the operator: "Describe what you want and a
+	 * configuration run sets it up."
+	 */
 	const placeholder = about
 		? `Change ${about.name}…`
 		: run.enabled
-			? "Ask for a new agent or change a team…"
-			: "Configure agents by conversation";
+			? "Describe what you want…"
+			: DISABLED_GATE_LINE;
 
 	/*
 	 * "ASK FOR A CHANGE" ARRIVES FROM ELSEWHERE, so the caret has to land here.
