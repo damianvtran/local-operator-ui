@@ -68,8 +68,23 @@ import type { FC } from "react";
  * THE MARK'S GEOMETRY IS THE BADGE'S, so the PICTURE renders inside that same
  * geometry: the `Avatar` takes the badge's height (`h-4`) and is sized by its own
  * content (`size-4` for a loaded picture, the initials' own width otherwise)
- * rather than by the old `size-5` circle. The one thing this round changes about
- * the image path is that rendered size, 20px -> 16px; the mechanism is untouched.
+ * rather than by the old `size-5` circle.
+ *
+ * WHAT THAT DOES TO THE PICTURE CASE, stated whole because "20px -> 16px" is not
+ * the whole of it: the thumbnail is still a circular crop, now 16px inside the
+ * badge's 24x16 stadium - the badge's own `px-1` leaves a 4px collar of `elevated`
+ * on each side of it (measured at head, in css: fill 2.0-4.5, crop 4.5-20.5, fill
+ * 20.5-24.0). Before, the 1px `border-control` sat ON the 20px circle, so there was
+ * no collar at all. The picture's mechanism - Radix's `AvatarImage` and the load
+ * error it reports back to the root - is untouched, and its rendered size is the
+ * one thing about it this round moves.
+ *
+ * THE INITIALS GOT SUBTLER, NOT SMALLER, which is worth knowing because the
+ * report asked for both: the glyphs keep the rail badge's own `text-meta-sm`
+ * (11px; cap height 8.5-9.0 css, against the rail's own numeral at 8.0), because
+ * moving the type step would break the shared `badgeVariants` call that makes the
+ * two faces one family. So "smaller, more subtle" landed as subtler - weight
+ * 500 -> 400 and `ink` -> `ink-dim` - and as a smaller MARK (20 -> 16px tall).
  *
  * WHY IT TAKES A `showTooltip` FLAG. The sidebar row is the case the tooltip
  * exists for: there the bubble is the ONLY thing naming the team, so hover and

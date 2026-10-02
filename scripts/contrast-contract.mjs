@@ -409,9 +409,11 @@ const CONTROLS = [
 		 * 5.01:1 at worst over the fifty-nine palettes, the same figure the rail row
 		 * quotes - which is the floor that matters because the letters are READ. The
 		 * edge is declared away with `edge: false`, for the reason that row states:
-		 * the fill provably cannot carry a boundary across every palette (it steps
-		 * 2.02 ΔE00 at worst over the fifty-nine and falls to 0.00 on `rowHover`,
-		 * `arcade`), so what keeps the mark legible is the letters' own floor, and what
+		 * the fill provably cannot carry a boundary across every palette: it merges
+		 * with a row's own ground at 0.00-0.47 ΔE00 on the row-state grounds at worst
+		 * (`arcade` byte-identical on `rowHover`, `duskfox` 0.47 on `rowSelected`; four
+		 * of the fifty-nine sit inside ΔE00 2.0 there and sixteen on the selection), so
+		 * what keeps the mark legible is the letters' own floor, and what
 		 * keeps it a MARK rather than plain label text is that a quiet row draws
 		 * nothing at all. The class half - that the mark still wears this composition,
 		 * through the component boundary the discovery scan cannot see - is in
