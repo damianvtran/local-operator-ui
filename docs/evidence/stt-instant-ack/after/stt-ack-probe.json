@@ -1,0 +1,25 @@
+{
+  "rig": {
+    "label": "run",
+    "cdpPort": 9656
+  },
+  "cycles": [],
+  "capabilities.desktop_available": true,
+  "instrument": {
+    "gum": true,
+    "mr": true,
+    "bridge": true,
+    "fetch": true
+  },
+  "mic.enabled": true,
+  "micDisabledSample": false,
+  "probe.round1": {
+    "ok": true,
+    "ms": 126955
+  },
+  "probe.round2": {
+    "ok": true,
+    "ms": 5
+  },
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}"
+}
