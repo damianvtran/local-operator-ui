@@ -147,7 +147,12 @@ pnpm evidence:fold           # resolve + re-derive + stage, one commit
 
 `scripts/evidence-fold.mjs` resolves `docs/evidence/manifest.json` a FIELD at a time
 from the three sides git already holds (pass-describing fields are this branch's,
-listings are the union, the derived fields are re-derived from the merged tree -
+listings are the union, ANY object both sides hold is merged per key at every
+depth - never taken wholesale from the side that moved it, which is how a nested
+key the other side still carries used to vanish (`main` lost
+`partialCapture.addedSurfacesNote` at PR #748's merge, and the next fold onto this
+branch propagated the loss) - and the derived fields are re-derived from the
+merged tree -
 that includes `partialCapture.refreshedFrames`, re-derived whenever the merged
 file carries a `partialCapture` at all and counted over the frames OUTSIDE every
 declared `supplementary` set, which is the denominator its own guard asks it

@@ -46,7 +46,9 @@
  *      that did not run in it.
  *   3. Inside a `supplementary` entry both sides have, the AUTHORED keys come
  *      from ours and the listing-ish sub-arrays are unioned - an entry is a
- *      record this branch wrote, not a listing.
+ *      record this branch wrote, not a listing. A nested object INSIDE an entry
+ *      is merged per key like every other object (round 3): the entry rule says
+ *      which keys win, not how deep the merge stops.
  *   4. Derived fields are RE-DERIVED from the merged tree and taken from neither
  *      side: `srcTree`, `scriptsTree`, `frames`, `surfaces`, `themes`,
  *      `partialCapture.refreshedFrames` and the LEADING paragraph of every
@@ -64,7 +66,25 @@
  *      (main's manifest still carries `refreshedAtHeadNote`, a spelling this
  *      lineage retired) - while every key THIS branch carries survives, which is
  *      the clause `BRANCH_RECORDS` in `scripts/evidence-manifest.test.mjs` now
- *      fails on. Implemented in `mergedKeys`.
+ *      fails on. Implemented in `mergedKeys`. A key the OTHER side deleted is
+ *      KEPT (round 3, below) and both decisions are reported.
+ *
+ * NO KEY MAY BE LOST, AT ANY DEPTH (round 3, gated by
+ * `scripts/check-fold-keys.mjs`). ANY non-array object both sides hold is merged
+ * PER KEY, recursively and without a container list: `partialCapture`,
+ * `captureOrigin`, nested records, entries inside `supplementary` - all of it.
+ * It used to be taken WHOLESALE from whichever side moved it, unless the key was
+ * one of a named few, so a nested key the other side still carried vanished:
+ * `main` lost `partialCapture.addedSurfacesNote` at PR #748's merge
+ * `8b2b499a13c` (another lane's silent fold loss), this branch still carried it,
+ * and the next fold onto this branch handed the container back without it. Two
+ * consequences worth stating, because they change what a fold KEEPS: a key the
+ * other side deleted is now kept (its value resolved by the ordinary per-key
+ * rules), and each such decision - and each of group (5)'s deliberate drops - is
+ * PRINTED by the run (`kept <path> - the other side deleted it`,
+ * `dropped <path> - this branch retired it`) so the fold's author states it
+ * instead of leaving a reader to infer it. `main`'s own losses are still flagged
+ * by the gate as `LOST[main]`, for the repair commit to answer.
  *
  * KEY ORDER IS DETERMINISTIC AND DOCUMENTED, because a resolver that reorders
  * a 500-key file makes every later fold's diff positional. `mergedKeys` returns
@@ -281,16 +301,22 @@ const DERIVED_TOP = new Set([
 ]);
 
 /*
- * The only containers a resolver descends into when both sides changed them.
+ * NO CONTAINER LIST, deliberately, because the list was the defect.
  *
- * `partialCapture` has to be per-FIELD - it holds group 1's pass fields, group
- * 2's listings and group 4's `refreshedFrames` all at once, which is why the
- * manifest's own rule says "per FIELD and not per entry". Everything else in
- * this file is a record a pass wrote, and a record that both sides rewrote is
- * this branch's: descending into `preRebaseRecord` or a rename's note would
- * union two histories into one that never happened.
+ * A resolver used to take the side that moved a key WHOLESALE unless the key
+ * was one of a named few, so a nested key the other side still carried vanished:
+ * `main` lost `partialCapture.addedSurfacesNote` from its own copy (PR #748's
+ * merge `8b2b499a13c`, another lane's silent fold loss), this branch still had
+ * it, and the fold that moved `partialCapture` handed the whole container back
+ * with the key gone - the loss propagated, with `main`'s move as the excuse.
+ *
+ * So the rule is now structural and recursive: ANY non-array object both sides
+ * hold is merged per key, at every depth. The key set comes from `mergedKeys`
+ * (this branch's keys always survive; a key this branch RETIRED stays dropped;
+ * a key the OTHER side deleted is kept, and reported). Values - strings,
+ * numbers, arrays, and a key one side does not hold at all - still resolve by
+ * the three-way rule below.
  */
-const CONTAINERS = new Set(["partialCapture"]);
 
 /**
  * The key set of the merged file (group 5, and its converse).
@@ -308,15 +334,43 @@ const CONTAINERS = new Set(["partialCapture"]);
  * `KEY ORDER IS DETERMINISTIC` paragraph for why main-only keys append rather
  * than splicing into main's position.
  */
-export const mergedKeys = (base, ours, theirs) => {
+export const mergedKeys = (base, ours, theirs, path = "", decisions = null) => {
 	const keys = Object.keys(ours);
+	for (const key of keys) {
+		/*
+		 * A key the OTHER side deleted that this branch still carries is KEPT - its
+		 * value goes through the ordinary per-key rules - and the decision is
+		 * RECORDED, because it is the one a reader has to state: the fold this
+		 * resolver replaced took the moved side's container whole and the key
+		 * disappeared with no line in the report (round-3 finding, kept from
+		 * `main`'s `partialCapture.addedSurfacesNote`).
+		 */
+		if (decisions && !(key in theirs) && key in base)
+			decisions.push({
+				path: childPath(path, key),
+				action: "kept",
+				why: "the other side deleted it",
+			});
+	}
 	for (const key of Object.keys(theirs)) {
 		if (key in ours) continue;
-		if (key in base) continue; // this branch deleted it - group (5)
+		if (key in base) {
+			// This branch deleted it - group (5), and a stated decision.
+			if (decisions)
+				decisions.push({
+					path: childPath(path, key),
+					action: "dropped",
+					why: "this branch retired it",
+				});
+			continue;
+		}
 		keys.push(key);
 	}
 	return keys;
 };
+
+/** `a.b` (or `b` at the document root), for a key decision's path. */
+const childPath = (path, key) => (path === "" ? key : `${path}.${key}`);
 
 /** Union of two listings, ours first, by structural identity. */
 const unionList = (ours = [], theirs = []) => {
@@ -354,7 +408,15 @@ const unionSets = (ours = [], theirs = []) => {
  * by `resolveManifest`, the only scope that can see the container surviving from
  * ANY side.
  */
-export const mergeValue = (key, base, ours, theirs, derived) => {
+export const mergeValue = (
+	key,
+	base,
+	ours,
+	theirs,
+	derived,
+	path = key,
+	decisions = null,
+) => {
 	/*
 	 * Group (4) is asked FIRST and not after the identity short-circuits below,
 	 * because a re-derivation must fire even when the two sides AGREE: a fold
@@ -393,53 +455,74 @@ export const mergeValue = (key, base, ours, theirs, derived) => {
 	}
 	if (theirs === undefined) return ours;
 	if (ours === undefined) return theirs;
+	/*
+	 * ANY OBJECT BOTH SIDES HOLD IS MERGED PER KEY, and this line has to sit
+	 * BEFORE the identity short-circuits: those return one side's value WHOLE
+	 * when the other side did not move it, which is how a nested key the other
+	 * side still carries disappears (see the note where the container list used
+	 * to be). Depth is unbounded - an object inside an object is another call -
+	 * and the key set it uses is `mergedKeys`', so KEY policies are unchanged:
+	 * this branch's keys always survive, a key this branch retired stays dropped,
+	 * a key the other side deleted is kept and reported.
+	 */
+	if (isObject(ours) && isObject(theirs))
+		return mergeObject(base ?? {}, ours, theirs, path, decisions);
 	if (deepEqual(ours, theirs)) return ours;
 	if (deepEqual(base, ours)) return theirs;
 	if (deepEqual(base, theirs)) return ours;
 
-	// Both sides moved this key.
-	if (CONTAINERS.has(key)) return mergeObject(base ?? {}, ours, theirs);
+	// Both sides moved this value, and it is not an object: group (1).
 	return ours;
 };
 
 /**
- * An object merged key by key, with the CONTAINER's own key set rules.
+ * An object merged key by key, at whatever depth the resolver reached it.
  *
- * Above `partialCapture` the key set is `mergedKeys` (group 5). Inside an entry
- * of a supplementary set it is group 3's: the entry's authored keys come from
- * ours, and its own sub-arrays union.
+ * The key set is `mergedKeys` at every level (group 5, and the round-3 rule
+ * that a key the other side deleted is kept and reported). Inside an entry of a
+ * supplementary set the entry's authored keys still come from ours and its own
+ * sub-arrays still union - that is `mergedKeys` plus the listing rules, not a
+ * separate policy.
  *
- * `null` for `derived`, deliberately, on the same terms `mergeEntry` states: a
- * key INSIDE the container is not the top-level field of the same name, and
- * handing the top-level derivation down would replace a nested `frames` with
- * the sweep's frame count. The container's own derived field is applied once, by
- * `resolveManifest`.
+ * `null` for `derived`, deliberately: a key INSIDE an object is not the
+ * top-level field of the same name, and handing the top-level derivation down
+ * would replace a nested `frames` with the sweep's frame count.
  */
-const mergeObject = (base, ours, theirs) => {
+const mergeObject = (base, ours, theirs, path, decisions) => {
 	const out = {};
-	for (const key of mergedKeys(base, ours, theirs)) {
+	for (const key of mergedKeys(base, ours, theirs, path, decisions)) {
 		const value = mergeValue(
 			key,
 			base?.[key],
 			ours?.[key],
 			theirs?.[key],
 			null,
+			childPath(path, key),
+			decisions,
 		);
 		if (value !== undefined) out[key] = value;
 	}
 	return out;
 };
 
-/** A `supplementary` entry present on both sides: group (3). */
-const mergeEntry = (base, ours, theirs) => {
+/**
+ * A `supplementary` entry present on both sides: group (3).
+ *
+ * `path` is the entry's identity in the report (`supplementary[<path>]`), and a
+ * nested object inside an entry recurses through `mergeValue` like any other -
+ * the entry rule says which keys win, not how deep the merge stops.
+ */
+const mergeEntry = (base, ours, theirs, path, decisions) => {
 	const out = {};
-	for (const key of mergedKeys(base ?? {}, ours, theirs)) {
+	for (const key of mergedKeys(base ?? {}, ours, theirs, path, decisions)) {
 		const value = mergeValue(
 			key,
 			base?.[key],
 			ours?.[key],
 			theirs?.[key],
 			null,
+			childPath(path, key),
+			decisions,
 		);
 		if (value !== undefined) out[key] = value;
 	}
@@ -528,12 +611,24 @@ export const leadParagraph = (text, lead) => {
  * silent one: the merge driver cannot know the merged tree (its commit does not
  * exist yet), so it leaves group 4 on our side and says so. Every other caller
  * passes it.
+ *
+ * `decisions` is an optional array the caller supplies to COLLECT the one-sided
+ * key decisions the merge made - `kept` (the other side deleted a key this
+ * branch still carries) and `dropped` (this branch retired a key). The run report
+ * prints them so the fold's author states them; nothing is decided differently
+ * for being collected, and a caller that omits the array gets the same file.
  */
-export const resolveManifest = ({ base, ours, theirs, derived = null }) => {
+export const resolveManifest = ({
+	base,
+	ours,
+	theirs,
+	derived = null,
+	decisions = [],
+}) => {
 	if (!isObject(ours) || !isObject(theirs))
 		throw new Error("both sides of the manifest must be JSON objects");
 	const out = {};
-	for (const key of mergedKeys(base ?? {}, ours, theirs)) {
+	for (const key of mergedKeys(base ?? {}, ours, theirs, "", decisions)) {
 		if (key === "countsMean") {
 			out[key] = resolveCountsMean(
 				base?.countsMean,
@@ -549,19 +644,23 @@ export const resolveManifest = ({ base, ours, theirs, derived = null }) => {
 			ours[key],
 			theirs?.[key],
 			derived,
+			key,
+			decisions,
 		);
 		if (value === undefined) continue;
 		/*
 		 * The container's own derived field, applied HERE and not inside
 		 * `mergeValue`, because the rule is "whenever the merged file carries a
-		 * `partialCapture`" and the three-way short-circuits below cannot see
-		 * that: a lane-only move, a main-only move and an identical pair all
-		 * return one side's container whole, so a `refreshedFrames` derived
-		 * inside the descent fires in exactly one of the four states.
+		 * `partialCapture`" and the identity short-circuits cannot see that: a
+		 * lane-only move and a main-only move both hand one side's container back,
+		 * so a `refreshedFrames` derived inside the per-key merge would fire in the
+		 * wrong subset of the four states.
 		 *
-		 * A COPY, never a mutation: `value` is frequently `ours.partialCapture`
-		 * ITSELF, and writing through it would edit the caller's side object -
-		 * `--dry-run`'s diff and the amend's field report both read it.
+		 * A COPY, never a mutation, for the case `mergeValue` legitimately returns
+		 * ONE SIDE'S OBJECT: a key the other side does not hold at all is not an
+		 * object-vs-object merge, so `value` can still be `ours.partialCapture`
+		 * ITSELF - and writing through it would edit the caller's side object, which
+		 * `--dry-run`'s diff reads.
 		 */
 		out[key] =
 			key === "partialCapture" &&
@@ -581,11 +680,17 @@ export const resolveManifest = ({ base, ours, theirs, derived = null }) => {
 		const theirSets = new Map(
 			(theirs.supplementary ?? []).map((set) => [set?.path, set]),
 		);
-		out.supplementary = out.supplementary.map((set) => {
+		out.supplementary = out.supplementary.map((set, index) => {
 			const o = ourSets.get(set?.path);
 			const t = theirSets.get(set?.path);
 			if (!o || !t) return set;
-			return mergeEntry(baseSets.get(set?.path), o, t);
+			return mergeEntry(
+				baseSets.get(set?.path),
+				o,
+				t,
+				`supplementary[${set?.path ?? index}]`,
+				decisions,
+			);
 		});
 	}
 	return out;
@@ -828,6 +933,7 @@ const completeMerge = async ({ dryRun }) => {
 
 	const baseSide = sideJson(base, "the merge base");
 	let resolved = resolveManifest({ base: baseSide, ours, theirs: theirSide });
+	const decisions = [];
 	const label = theirs.slice(0, 10);
 	/*
 	 * The manifest ITSELF is filtered out: it is the one conflict this tool
@@ -864,8 +970,11 @@ const completeMerge = async ({ dryRun }) => {
 				ours,
 				theirs: theirSide,
 				derived,
+				// The decision list belongs to the resolution the run reports.
+				decisions,
 			});
 		}
+		reportKeyDecisions(decisions);
 		reportDiff(ours, resolved, {
 			baseLabel: label,
 			derived: derived !== null,
@@ -919,6 +1028,8 @@ const completeMerge = async ({ dryRun }) => {
 		ours,
 		theirs: theirSide,
 		derived,
+		// Re-collected for THIS resolution - the one the run goes on to write.
+		decisions,
 	});
 	const { failures, notes } = await runGuards({
 		manifest: resolved,
@@ -980,6 +1091,7 @@ const completeMerge = async ({ dryRun }) => {
 	const alreadyResolved = entryContent === text;
 	writeFileSync(join(ROOT, MANIFEST_PATH), text);
 	stageManifest();
+	reportKeyDecisions(decisions);
 	reportDiff(ours, resolved, {
 		baseLabel: label,
 		derived: true,
@@ -1092,6 +1204,29 @@ const mergeBaseLabel = () => {
 	if (line === null) return "unknown";
 	const parents = line.split(" ").slice(1);
 	return (parents[1] ?? parents[0] ?? "unknown").slice(0, 10);
+};
+
+/**
+ * Name the one-sided key decisions this merge made.
+ *
+ * WHY THE FILE ALONE IS NOT ENOUGH: the round-3 policy keeps a key the OTHER
+ * side deleted and drops one THIS branch retired, and both readings are only
+ * correct if the fold's author says so. `main`'s copy lost
+ * `partialCapture.addedSurfacesNote` at PR #748's merge `8b2b499a13c` - another
+ * lane's silence - and the gate that caught it (`scripts/check-fold-keys.mjs`)
+ * asks for a stated decision rather than a guess. So each one is printed:
+ * `kept <path> - the other side deleted it`,
+ * `dropped <path> - this branch retired it`.
+ */
+const reportKeyDecisions = (decisions, write = console.log) => {
+	if (decisions.length === 0) return;
+	write(
+		`evidence-fold: ${decisions.length} one-sided key decision(s) in this merge (kept as stated here - the fold's record has to carry them):`,
+	);
+	for (const { path, action, why } of decisions.slice(0, 24))
+		write(`evidence-fold:   ${action} ${path} - ${why}`);
+	if (decisions.length > 24)
+		write(`evidence-fold:   ... and ${decisions.length - 24} more`);
 };
 
 const reportDiff = (before, after, { baseLabel, derived, note }) => {
@@ -1230,8 +1365,12 @@ const driver = ([basePath, oursPath, theirsPath]) => {
 	const base = readSide(basePath, "the merge base");
 	const ours = readSide(oursPath, "this branch's copy");
 	const theirs = readSide(theirsPath, "the incoming copy");
-	const resolved = resolveManifest({ base, ours, theirs });
+	const decisions = [];
+	const resolved = resolveManifest({ base, ours, theirs, decisions });
 	writeFileSync(oursPath, serialize(resolved));
+	// The driver reports the same one-sided key decisions the fold does: git shows
+	// this text beside the merge, which is where the author reads the fold.
+	reportKeyDecisions(decisions, (line) => console.error(line));
 	console.error(
 		"evidence-fold: resolved docs/evidence/manifest.json mechanically (groups 1, 2, 3, 5). The stamps still name the PRE-merge tree on purpose - run `pnpm evidence:fold` after the merge commits to re-derive them against the commit this fold produces.",
 	);
