@@ -2981,24 +2981,39 @@ export function ChatSidebar({
 		null,
 	);
 	/*
-	 * THE ROW WHOSE TEAM BUBBLE HOLDS THE POINTER OR THE KEYBOARD'S FOCUS, held by
-	 * the sidebar rather than by the row for the same reason `pinDrag` is: the
-	 * surface it has to displace is outside the row's own tree.
+	 * THE ROW WHOSE TEAM BUBBLE HOLDS THE POINTER, AND THE ROW WHOSE TEAM BUBBLE HOLDS
+	 * THE KEYBOARD'S FOCUS - two states rather than one, held by the sidebar rather
+	 * than by the row for the same reason `pinDrag` is: the surface they have to
+	 * displace is outside the row's own tree.
 	 *
-	 * WHY IT EXISTS. The row's flyout and the bubble's own tooltip are two pointer
+	 * WHY THEY EXIST. The row's flyout and the bubble's own tooltip are two pointer
 	 * surfaces opened by ONE hover - the flyout's trigger is the row's box and the
 	 * bubble sits inside it, so a pointer moving over the mark opens the card as
 	 * well as the mark's tooltip (measured on the `sidebar-team-bubble-hover` frame:
 	 * both panels stand). That is the same defect the row's native `title` was
 	 * deleted for (D7, "One pointer surface, not two"), and the resolution is the
-	 * flyout's own `disabled` - the suppression the pin gesture already uses, which
-	 * renders the box unwrapped while the gesture owns the pointer.
+	 * flyout's own `suppressed`, which keeps the trigger mounted and closes only the
+	 * panel - NOT its `disabled`, which renders the box unwrapped and takes the mark
+	 * (and the mark's tooltip) down with it (measured; see the call site).
+	 *
+	 * THEY ARE SEPARATE because the two channels do not end together. With one flag
+	 * cleared by either channel's exit, the sequence "focus the mark, then move the
+	 * pointer onto the row and off the mark" cleared it while the mark was still
+	 * focused and its own tooltip still drawn, so the flyout un-suppressed and the
+	 * next hover on the row re-created the two-panels state this exists to remove
+	 * (agent review round 1, R1-M5). Two channels, each cleared by its own exit, and
+	 * the flyout stands down while EITHER is on the row.
 	 *
 	 * KEYED BY SESSION ID rather than a boolean: only the row under the pointer
 	 * loses its card, and a state that outlives its row (a list that re-renders
 	 * under the pointer) can only ever leave a row that is not there suppressed.
 	 */
-	const [teamBubbleHot, setTeamBubbleHot] = useState<string | null>(null);
+	const [teamBubbleHovered, setTeamBubbleHovered] = useState<string | null>(
+		null,
+	);
+	const [teamBubbleFocused, setTeamBubbleFocused] = useState<string | null>(
+		null,
+	);
 	const pinDragAutoScrollRef = useRef<number | null>(null);
 	const pinDragYRef = useRef(0);
 	/**
@@ -3836,24 +3851,53 @@ export function ChatSidebar({
 		 *
 		 * The bubble owns its own tooltip (the full team name on hover and on focus),
 		 * and the row's box owns the flyout - so this wrapper is what reports which of
-		 * the two surfaces the pointer or the keyboard is on (`teamBubbleHot`), which
-		 * is what lets the flyout stand down while the mark is speaking.
+		 * the two surfaces the pointer or the keyboard is on (`teamBubbleHovered` /
+		 * `teamBubbleFocused`), which is what lets the flyout stand down while the mark
+		 * is speaking.
 		 *
 		 * `ml-1` sits on the wrapper rather than on the bubble so the gap is the same
 		 * 4px step the trailing slots before it used, and `inline-flex` keeps the row's
 		 * own flex line untouched. The four handlers are `onPointerEnter`/`Leave` and
 		 * `onFocus`/`onBlur` (the latter two bubble from the mark inside, which is the
-		 * element that takes focus).
+		 * element that takes focus), and they are deliberately not one pair: a pointer
+		 * that leaves the mark while the keyboard still holds it must not re-arm the
+		 * flyout (R1-M5).
+		 *
+		 * `onActivate` is the row's own press, so Enter or Space on the mark is the row's
+		 * act rather than a dead stop (UX round 1, U1).
 		 */
+		/**
+		 * THE ROW'S OWN PRESS, shared by the row's button and by the team mark inside it.
+		 *
+		 * Extracted for the mark's sake: the mark is a focus stop (below), and a stop
+		 * that does nothing when pressed is a dead one (UX round 1, U1 measured Enter on
+		 * it leaving the row's click listener unrun). Sharing the row's own handler -
+		 * rather than calling `onSelectConversation` from the mark - is what keeps the
+		 * drop-repeat guard and any later term in this press applying to both routes.
+		 *
+		 * `point` is the press's screen position, or `null` when there is none: the
+		 * row's button passes its event's coordinates, the keyboard passes `null`, which
+		 * is the same value the button's own Enter/Space press hands the guard.
+		 */
+		const pressRow = (point: { x: number; y: number } | null) => {
+			if (dropRepeatPress(point, row.session_id)) {
+				return;
+			}
+			onSelectConversation(row.session_id);
+		};
 		const teamMark = (name: string, slug: string) => (
 			<span
 				className="ml-1 inline-flex shrink-0"
-				onPointerEnter={() => setTeamBubbleHot(row.session_id)}
-				onPointerLeave={() => setTeamBubbleHot(null)}
-				onFocus={() => setTeamBubbleHot(row.session_id)}
-				onBlur={() => setTeamBubbleHot(null)}
+				onPointerEnter={() => setTeamBubbleHovered(row.session_id)}
+				onPointerLeave={() => setTeamBubbleHovered(null)}
+				onFocus={() => setTeamBubbleFocused(row.session_id)}
+				onBlur={() => setTeamBubbleFocused(null)}
 			>
-				<TeamAvatarBubble name={name} slug={slug} />
+				<TeamAvatarBubble
+					name={name}
+					slug={slug}
+					onActivate={() => pressRow(null)}
+				/>
 			</span>
 		);
 		/*
@@ -4140,18 +4184,13 @@ export function ChatSidebar({
 					 * reader pressed, and this row may simply have slid into its place. Opening a
 					 * conversation the reader never pointed at is the same hazard as pinning one,
 					 * and it is worse to undo.
+					 *
+					 * The press itself is `pressRow`, because the team mark inside this button
+					 * activates the row through the same handler.
 					 */
-					if (
-						dropRepeatPress(
-							event.detail === 0
-								? null
-								: { x: event.clientX, y: event.clientY },
-							row.session_id,
-						)
-					) {
-						return;
-					}
-					onSelectConversation(row.session_id);
+					pressRow(
+						event.detail === 0 ? null : { x: event.clientX, y: event.clientY },
+					);
 				}}
 			>
 				<ChatSessionStatus row={row} />
@@ -4583,12 +4622,17 @@ export function ChatSidebar({
 				 * mark's name lost), which is worse than the doubling it fixed. `suppressed`
 				 * keeps the trigger mounted and closes only the panel.
 				 *
-				 * The row that stands down is the one under the reader (`teamBubbleHot`); every
-				 * other row keeps its card, and the card returns the moment the pointer or the
-				 * focus leaves the mark.
+				 * The row that stands down is the one under the reader (`teamBubbleHovered` or
+				 * `teamBubbleFocused` - two channels, because a pointer leaving the mark while
+				 * the keyboard still holds it must not re-arm this card, R1-M5); every other row
+				 * keeps its card, and the card returns the moment the pointer AND the focus
+				 * have both left the mark.
 				 */
 				disabled={pinDrag !== null}
-				suppressed={teamBubbleHot === row.session_id}
+				suppressed={
+					teamBubbleHovered === row.session_id ||
+					teamBubbleFocused === row.session_id
+				}
 			>
 				{box}
 			</Tooltip>
