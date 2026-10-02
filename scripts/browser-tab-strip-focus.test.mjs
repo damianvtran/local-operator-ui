@@ -237,9 +237,25 @@ const bundlePath = new URL(
 	`./_strip-focus-${process.pid}.mjs`,
 	import.meta.url,
 );
-await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { mount } = await import(bundlePath.href);
-await unlink(bundlePath);
+/*
+ * WRITTEN AND REMOVED ON EVERY EXIT, INCLUDING A KILL (agent review round 1,
+ * MINOR-3, measured on the ask-answer worktree 2026-10-01). The bundle has to be
+ * a real file beside this test - esbuild's ESM output resolves `@shared` and
+ * `@features` through the alias table above, and a `data:` URL has no directory
+ * to resolve them from - so the unlink has to be a `finally` rather than the next
+ * statement. Without it, a run that is killed on the suite's own bound leaves
+ * `_strip-focus-<pid>.mjs` behind: 131 KB of esbuild output, untracked and not
+ * gitignored, which turns `biome check scripts/` red for whoever stages it next.
+ */
+let mount;
+try {
+	await writeFile(bundlePath, bundle.outputFiles[0].text);
+	({ mount } = await import(bundlePath.href));
+} finally {
+	// The import's own failure is the one that matters, so a failed unlink must not
+	// replace it - and there is nothing to remove if the write never happened.
+	await unlink(bundlePath).catch(() => {});
+}
 
 /** Mount one scenario and hand back the controls a test drives it with. */
 async function open(mode) {
