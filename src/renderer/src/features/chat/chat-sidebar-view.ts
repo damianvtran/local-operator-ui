@@ -246,6 +246,52 @@ export function toggleSectionDisclosure(
 }
 
 /**
+ * WHETHER THE ROSTER'S FIELD IS DRAWN - and with it whether the filter it carries may
+ * NARROW anything, because the two move together (design round 1's D2, agent review's
+ * B3, UX round 1's U2 and U3 are one defect seen four ways).
+ *
+ * WHY IT LIVES HERE, NOT INLINE IN THE COMPONENT. The question is asked by the field's
+ * render gate AND by the rows branch below it, and a rule written in JSX is a rule no
+ * test reaches (this file's header says why) - which is how U2 survived a pin that only
+ * matched the gate's SOURCE TEXT: a source-string assertion proves the line changed, not
+ * that the reader keeps their control. Hoisted for the same reason `entityQueryAdmits`
+ * and `toggleSectionDisclosure` were, so the press can be MODELLED by
+ * `scripts/chat-sidebar-view.test.mjs` - state in, answer out - rather than read.
+ *
+ * THE FIRST CLAUSE IS THE SECTION BODY'S OWN GATE. The body draws while
+ * `query || isOpen(...)`, and the field is that body's control, so the field draws while
+ * the body does. Reading the disclosure ALONE was U2: the heading press under a LIST
+ * QUERY is a documented no-op on the rows and the chevron - it must not release the
+ * raised cap - yet it still took `Filter agents` off the screen and stepped everything
+ * below up by the field's own height (measured: present -> absent, section box 413px ->
+ * 369px, rows unchanged). A control that vanishes under a press promising to change
+ * nothing on screen is the defect; this clause is the remedy.
+ *
+ * A NARROWER FORM THAT ALSO REQUIRED `rosterFilter` WAS SHIPPED AND REFUSED (round 3). It
+ * held the field only when the reader had typed their OWN filter, but U2's repro is a
+ * list query with NO section filter - the ordinary "search the sidebar, then press the
+ * section" - so the very state the finding measured still lost the control. The state
+ * that form added (query + filter + collapsed) is one where the reader's own filter
+ * should stay visible beside the query's matches, not a surface nobody owns.
+ *
+ * THE SECOND CLAUSE IS WHY A QUERY ALONE OPENS NOTHING: the field still needs a
+ * cap-bound roster or an applied filter, so a query over a SHORT roster draws no field at
+ * all. The rows branch reads THIS value rather than re-testing `rosterFilter`, so there
+ * is exactly one spelling of "the filter applies".
+ */
+export function rosterFieldShown(
+	isOpen: boolean,
+	query: string,
+	rosterFilter: string,
+	rosterLength: number,
+): boolean {
+	return (
+		(isOpen || query !== "") &&
+		(rosterLength > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== "")
+	);
+}
+
+/**
  * A GROWN SECTION'S OWN NAME FOR ITS RESET (issue #765; UX round 1's U1, design
  * round 1's D1).
  *
@@ -258,13 +304,18 @@ export function toggleSectionDisclosure(
  * who never read the diff cannot find the shrink path, and the press they would
  * find by accident reads as "you closed it" rather than "you are shrinking it".
  *
- * IT NAMES BOTH HALVES, because both are surprises with no notice: the collapse is
- * the reset, AND the raised rows are not kept across it (the invariant
- * `releaseSectionCap` implements - "a collapsed section is compact"). Naming only
- * the first would promise a reader their rows back on reopen; naming only the
- * second explains a loss without naming the gesture. Sentence case and no
- * imperative beyond the one gesture that exists, so it reads as a description of
- * the control rather than as a second control's label.
+ * IT NAMES THE TWO-GESTURE SEQUENCE, because the reset IS two presses and each
+ * alone surprises with no notice: the collapse alone draws ZERO rows (measured 12
+ * -> 0, 488px -> 28px), and it is the REOPEN that draws the compact eight - the
+ * raised rows are not kept across the collapse (the invariant
+ * `releaseSectionCap` implements: "a collapsed section is compact"). The first
+ * wording named collapse and reopen as separate clauses ("Collapse to restore the
+ * compact list; reopening draws the compact list again"), which agent review round
+ * 3 (R3-3) read as if the first clause alone got the list back, sending a reader
+ * who followed it into an empty section. Spelling the ORDER is what makes the copy
+ * match the measured journey. Sentence case and no imperative beyond the gestures
+ * that exist, so it reads as a description of the control rather than as a second
+ * control's label.
  *
  * ONE COPY, TWO CHANNELS: this string is the heading's `title` (the pointer's
  * channel) AND the `sr-only` element the heading points its `aria-describedby` at
@@ -273,7 +324,7 @@ export function toggleSectionDisclosure(
  * engines are least reliable about.
  */
 export const SECTION_GROWN_HINT =
-	"Collapse to restore the compact list; reopening draws the compact list again";
+	"Collapse, then reopen, to restore the compact list";
 
 /**
  * IS THIS SECTION DRAWN PAST THE SHIPPED CAP? The one spelling of the question,

@@ -194,6 +194,7 @@ import {
 	pageRows,
 	parseSidebarView,
 	raiseSectionCap,
+	rosterFieldShown,
 	sectionGrownHintId,
 	sectionIsGrown,
 	sectionMoreLabel,
@@ -3547,24 +3548,28 @@ export function ChatSidebar({
 	 * invisibly.
 	 *
 	 * AND A LIST QUERY THAT KEEPS THE SECTION DRAWN KEEPS ITS FIELD (UX round 1's
-	 * U2). The section BODY draws while `query || isOpen("agents", true)`; this gate
-	 * read the disclosure alone, so the heading press that the panel documents as a
-	 * deliberate no-op under a query - it must not release the raised cap - still
-	 * REMOVED the field under the reader (measured: `Filter agents` present ->
-	 * absent, section box 385px -> 341px, rows unchanged). A control that vanishes
-	 * under a press that promises to change nothing on screen is the defect; the
-	 * remedy is that a field ALREADY DRAWN cannot be taken away by that press.
+	 * U2, design re-check round 3). The section BODY draws while
+	 * `query || isOpen("agents", true)`; this gate read the disclosure alone, so the
+	 * heading press that the panel documents as a deliberate no-op under a query - it
+	 * must not release the raised cap - still REMOVED the field under the reader
+	 * (measured: `Filter agents` present -> absent, section box 413px -> 369px, rows
+	 * unchanged). A control that vanishes under a press that promises to change
+	 * nothing on screen is the defect, and the body's own gate is what fixes it.
 	 *
-	 * WRITTEN AS THE READER'S OWN STATE rather than as `query || isOpen(...)`: the
-	 * broader form would draw the field in a state this panel has never drawn it in -
-	 * a query over a COLLAPSED, cap-bound roster with no filter applied - which is a
-	 * new surface a fix for the disappearing control does not own. The second half of
-	 * the gate is untouched, so a query alone still opens nothing: the field is the
-	 * reader's, and what this clause says is only that their own filter keeps it.
+	 * THE RULE ITSELF LIVES IN `rosterFieldShown` (chat-sidebar-view), hoisted so the
+	 * press can be MODELLED by `scripts/chat-sidebar-view.test.mjs` instead of matched
+	 * as source text: the round-2 pin here was a source-string assertion and could not
+	 * see that a narrower clause - one that ALSO required `rosterFilter` - was inert in
+	 * U2's own state (a list query with no section filter). The first clause is the
+	 * body's gate; the second is untouched, so a query alone still opens nothing over a
+	 * short roster. This call site is the ONE place the component asks the question.
 	 */
-	const rosterFilterShown =
-		(isOpen("agents", true) || (query !== "" && rosterFilter.trim() !== "")) &&
-		(ownAgents.length > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== "");
+	const rosterFilterShown = rosterFieldShown(
+		isOpen("agents", true),
+		query,
+		rosterFilter,
+		ownAgents.length,
+	);
 	const filteredAgents = useMemo(
 		() => filterAgentRows(agentRows, rosterFilter),
 		[agentRows, rosterFilter],
