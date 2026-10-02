@@ -510,8 +510,11 @@ test("the pane presents the conversation a request names, before its own (#739)"
 		"a request from outside the pane no longer returns focus to its door (and the palette's must still return none)",
 	);
 	/*
-	 * The store carries the field and the third parameter, and only a non-empty
-	 * id becomes a key.
+	 * The store carries the field and the parameters, and only a non-empty id
+	 * becomes a key. The cut point rides along by the same rule (#1002):
+	 * `entryId` names the transcript entry a destination acts on, and the same
+	 * `«spread only when set»` treatment is what keeps a request that names none
+	 * byte-identical to the one the palette has always sent.
 	 */
 	const store = code(STORE);
 	assert.match(
@@ -521,8 +524,13 @@ test("the pane presents the conversation a request names, before its own (#739)"
 	);
 	assert.match(
 		store,
-		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,?\s*\) => void;/,
-		"requestPanel lost its third parameter",
+		/entryId\?: string;/,
+		"PanelRequest lost its optional addressed transcript entry",
+	);
+	assert.match(
+		store,
+		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,\s*entryId\?: string,?\s*\) => void;/,
+		"requestPanel lost a parameter - the entry id travels as the fourth",
 	);
 	/*
 	 * And the palette is untouched: it never names a conversation, so its request

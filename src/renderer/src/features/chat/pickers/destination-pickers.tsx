@@ -1919,12 +1919,43 @@ export const SkillsPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 
 // -------------------------------------------------------------------- fork
 
+/**
+ * The entry id a `session.fork` request was raised with, or `null`.
+ *
+ * Read defensively rather than cast. `action.data` is the action contract's open
+ * payload (the projects picker reads its own `mode` out of the same slot), so
+ * anything could be in it - and a non-string or blank value has to mean "no cut
+ * point", the whole-conversation form this picker has always shipped, rather
+ * than a body the route refuses with a 422 the reader cannot act on.
+ */
+function readForkEntryId(data: Record<string, unknown>): string | null {
+	const value = data.entryId;
+	return typeof value === "string" && value.trim() ? value : null;
+}
+
+/**
+ * Fork the conversation - all of it, or the prefix that ends at one message.
+ *
+ * TWO FORMS, ONE PICKER, and they are not two pickers because the form is the
+ * same form: a typed `/fork` names no entry (the next safe boundary), and a
+ * Fork raised from a message row names one (`at_entry` + the entry id, handed
+ * to this adapter on `action.data`). Two components would be two places the
+ * message field, the budget refusal and the rebind-on-success have to agree.
+ */
 export const ForkPicker: FC<PickerContext> = ({
 	sessionId,
 	onClose,
 	rebind,
 	action,
 }) => {
+	/*
+	 * The cut point this picker was opened FOR, or null for the whole-conversation
+	 * form. It is read off the REQUEST rather than re-derived here: the row that
+	 * raised the request is the only layer that knows which message the reader
+	 * pointed at, and it travels with the request (the same rule the conversation
+	 * itself follows - see `PanelRequest.entryId`).
+	 */
+	const cutEntryId = readForkEntryId(action.data);
 	const [message, setMessage] = useState(action.args ?? "");
 	const op = useOperation();
 	const submit = useCallback(async () => {
@@ -1947,6 +1978,14 @@ export const ForkPicker: FC<PickerContext> = ({
 						session_id: string;
 						parent_id: string;
 						boundary: string;
+						/*
+						 * WHERE THE COPY ACTUALLY STOPPED, present only on a cut. Equal to the
+						 * id this picker sent unless the safe cut landed at-or-before an
+						 * unfinished tool batch - the one case the child's first request cannot
+						 * start at the row the reader pointed at, which this picker says out
+						 * loud rather than letting the copy land somewhere unnoticed.
+						 */
+						cut_entry_id?: string;
 						admission?: { detail: string; duplicate: boolean };
 					};
 				}>({
@@ -1954,11 +1993,29 @@ export const ForkPicker: FC<PickerContext> = ({
 					sessionId,
 					requestId: uuidv4(),
 					message: message.trim() || undefined,
-					boundary: "next_safe",
+					/*
+					 * The pair the route validates together: `at_entry` WITHOUT an entry id is
+					 * refused, and an entry id WITH `next_safe` is refused. This branch is the
+					 * only place the UI can get it wrong, so it writes both or neither - and
+					 * the neither case is the exact call that shipped before cuts existed.
+					 */
+					...(cutEntryId
+						? { boundary: "at_entry" as const, entryId: cutEntryId }
+						: { boundary: "next_safe" as const }),
 				}),
 			(result) => ({
 				tone: "success",
-				text: `Forked at the next safe boundary into ${result.data.session_id}. The original conversation is unchanged.${
+				text: `${
+					cutEntryId
+						? `Forked from that message into ${result.data.session_id}. Everything after it stays in the original, which is unchanged.`
+						: `Forked at the next safe boundary into ${result.data.session_id}. The original conversation is unchanged.`
+				}${
+					cutEntryId &&
+					result.data.cut_entry_id &&
+					result.data.cut_entry_id !== cutEntryId
+						? "\nThe fork starts one message earlier than that: a cut cannot separate a tool call from its results."
+						: ""
+				}${
 					result.data.admission
 						? `\nYour message was admitted once: ${result.data.admission.detail}.`
 						: ""
@@ -1967,13 +2024,17 @@ export const ForkPicker: FC<PickerContext> = ({
 			"The fork was not created",
 		);
 		if (value) rebind(value.data.session_id);
-	}, [op, sessionId, message, rebind]);
+	}, [op, sessionId, message, rebind, cutEntryId]);
 	return (
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Fork this conversation"
-			description="Copies the complete history into a new conversation at the next safe boundary (after the current assistant step and its tool results). The original keeps running and is not modified."
+			title={cutEntryId ? "Fork from this message" : "Fork this conversation"}
+			description={
+				cutEntryId
+					? "Copies this conversation up to and including the message you chose into a new conversation. Everything after it is left behind, and the original keeps running and is not modified."
+					: "Copies the complete history into a new conversation at the next safe boundary (after the current assistant step and its tool results). The original keeps running and is not modified."
+			}
 			form={
 				<PickerField
 					label="First message in the fork (optional)"

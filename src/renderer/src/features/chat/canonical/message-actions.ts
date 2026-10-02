@@ -6,9 +6,16 @@
  * control" is a rule with a right answer, and a frame can only show the row it
  * DOES paint, never its absence on the twenty record kinds that must not have
  * one. `scripts/message-actions.test.mjs` asserts the rule directly instead.
+ *
+ * IT ALSO ANSWERS WHICH ROWS CAN BE FORKED FROM (`forkEntryId`), because that
+ * is the same kind of question: "this message is a point a fork can be cut
+ * at" is a fact about the RECORD, and the frame that shows a Fork button does
+ * not show the tool row that must not have one.
  */
 
-export type AnswerActionId = "copy" | "speak";
+import type { TranscriptRecord } from "./transcript-reducer";
+
+export type AnswerActionId = "copy" | "speak" | "fork";
 
 /**
  * Which row the action model is answering for.
@@ -52,18 +59,74 @@ export type ActionRowRole = "answer" | "user";
  *
  * QUOTE IS DELIBERATELY ABSENT. Its trigger is the selection, `canonical-
  * transcript.tsx` enforces one subject per row, and a Quote button here would
- * be a second way to raise the one control - so the cap at two is not a
- * shortage of ideas but the scope ruling (memo (d)).
+ * be a second way to raise the one control.
+ *
+ * FORK IS CONDITIONAL ON A FACT ABOUT THE ROW, not on the turn's role: a fork
+ * is cut through a named transcript entry, and only the two kinds this row is
+ * ever mounted for carry one in `record.id` (see `forkEntryId`). It is the
+ * caller's answer rather than something derived here for `linkToolbarModel`'s
+ * reason - whether a row is a cut point is a fact about the SURFACE, and the
+ * transcript is the only layer that knows which record it mounted for.
+ *
+ * FORK IS LAST on both arms, and that is the anchor rule above applied once
+ * more: the actions before it are the row's fixed, cheapest presses (Copy, and
+ * Speak where an agent resolves) and they keep the left edge whatever a later
+ * action does. Fork is a control the operator asked for on the message itself,
+ * and the row's own width test (`scripts/message-actions.test.mjs`) is what
+ * holds the line at three.
  */
 export function answerActionsFor({
 	role = "answer",
 	agentId,
+	forkable = false,
 }: {
 	role?: ActionRowRole;
 	agentId?: string;
+	/**
+	 * Whether this row's message is a point a fork can be cut at - the answer
+	 * `forkEntryId` gives the transcript for the record it is drawing.
+	 */
+	forkable?: boolean;
 }): AnswerActionId[] {
-	if (role === "user") return ["copy"];
-	return agentId ? ["copy", "speak"] : ["copy"];
+	/*
+	 * Spread rather than a trailing conditional so the two arms read identically
+	 * and a fourth conditional cannot be added to one of them alone.
+	 */
+	const fork: AnswerActionId[] = forkable ? ["fork"] : [];
+	if (role === "user") return ["copy", ...fork];
+	return agentId ? ["copy", "speak", ...fork] : ["copy", ...fork];
+}
+
+/**
+ * The transcript entry a Fork on this row would branch from, or `null` when
+ * this row has none to name.
+ *
+ * THE ROW'S ID IS THE JOURNAL ENTRY ID on exactly the two kinds the action row
+ * is ever mounted for, which is what makes the control possible at all:
+ * `transcript-reducer.ts` takes a user row's id from the entry envelope
+ * (`durableRecord`, `kind: "user"`) and an assistant row's the same way, while
+ * a tool row's is `tool:<tool_call_id>`. A tool-row id sent as a cut point is
+ * refused by the core (`has_entry` answers no for it), so the rule is stated
+ * here rather than left to the mount site to get right.
+ *
+ * A STREAMING ANSWER IS NOT A CUT POINT. Its id is the live row's, and the
+ * core's entry is only the durable row's: the settled twin carries the same id
+ * but the commit is what puts it in the journal. This is `isQuotable`'s
+ * settledness rule read for a second reason, and it is repeated rather than
+ * inherited because the gate that mounts the row can change without this rule
+ * being re-read.
+ *
+ * DELIBERATELY NOT GATED on `local`/`provisional`. A user row that is still the
+ * optimistic echo carries the ADMISSION REQUEST ID, and the owner's durable row
+ * coalesces onto that same id (`use-canonical-session.ts` appends the echo with
+ * `entry.id`) - so the id is a real cut point the moment the message commits,
+ * and until then the picker's own refusal sentence is the honest answer rather
+ * than a control that flickers in a moment later.
+ */
+export function forkEntryId(record: TranscriptRecord): string | null {
+	if (record.kind !== "user" && record.kind !== "assistant") return null;
+	if (record.kind === "assistant" && record.streaming) return null;
+	return record.id || null;
 }
 
 /**

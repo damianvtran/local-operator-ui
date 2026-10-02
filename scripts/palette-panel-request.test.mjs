@@ -198,6 +198,27 @@ test("a request can name the conversation it addresses, and the palette's names 
 	assert.equal("sessionId" in store().request, false);
 });
 
+test("a request can name the transcript entry it acts on", () => {
+	const row = { focus() {} };
+	store().requestPanel("session.fork", row, "0a1b2c3d4e5f", "4f2c1a");
+	assert.equal(store().request.entryId, "4f2c1a");
+	assert.equal(store().request.sessionId, "0a1b2c3d4e5f");
+	assert.equal(store().request.invoker, row);
+	/*
+	 * ABSENT IS THE OLD SHAPE, key for key. A request that names no entry has no
+	 * `entryId` KEY at all rather than an `undefined` the presenter would have to
+	 * tell apart from absent - which is the exact rule `sessionId` already
+	 * follows, and the reason it is asserted here rather than assumed.
+	 */
+	store().requestPanel("session.fork", row, "0a1b2c3d4e5f");
+	assert.equal("entryId" in store().request, false);
+	store().requestPanel("info");
+	assert.equal("entryId" in store().request, false);
+	// An empty id names no entry, exactly as an empty conversation id names none.
+	store().requestPanel("session.fork", row, "0a1b2c3d4e5f", "");
+	assert.equal("entryId" in store().request, false);
+});
+
 test("naming a conversation does not change the one-shot semantics", () => {
 	store().requestPanel("session.fork", null, "0a1b2c3d4e5f");
 	const named = store().request;
