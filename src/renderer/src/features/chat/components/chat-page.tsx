@@ -391,6 +391,12 @@ function SessionPanel({
 		 * send it twice (see `question-dock.tsx`).
 		 */
 		retryable: boolean;
+		/**
+		 * The arm's register, straight from `answerReport`: the retryable-busy
+		 * refusal is a failure the app is absorbing and paints muted, every other
+		 * arm is the user's to read as a failure (design round 1, D4).
+		 */
+		muted: boolean;
 	} | null>(null);
 	/*
 	 * The gate this panel is showing, and this panel's own record of having
@@ -457,6 +463,7 @@ function SessionPanel({
 					sending: answerState.sending,
 					refused: answerState.refused,
 					retryable: answerState.retryable,
+					muted: answerState.muted,
 				}
 			: null;
 	const lastCatalogueState = useRef("");
@@ -2165,6 +2172,7 @@ function SessionPanel({
 					refused: null,
 					// A sent answer has nothing to retry: the secret field clears.
 					retryable: false,
+					muted: false,
 				});
 				onSent?.();
 				return;
@@ -2185,6 +2193,7 @@ function SessionPanel({
 					sending: false,
 					refused: report.refused,
 					retryable: report.retryable,
+					muted: report.muted,
 				});
 				return;
 			case "composer":
@@ -2200,6 +2209,14 @@ function SessionPanel({
 				setAnswerState(null);
 				setSendError(report.message);
 				setSendErrorCode(report.code);
+				/*
+				 * AND THE OTHER TWO FIELDS THE ALERT READS, set rather than left alone:
+				 * they are the notice's register and its retry verdict, and a value left
+				 * over from the last send would paint this press's sentence in the wrong
+				 * ink or lay out a Retry control that sends the box (design round 1, D5).
+				 */
+				setSendErrorMuted(report.muted);
+				setSendErrorRetry(report.retry);
 				return;
 		}
 	};
@@ -2276,7 +2293,13 @@ function SessionPanel({
 			input.current?.focusInput();
 		}
 		setAdmitting(true);
-		setAnswerState({ key, sending: true, refused: null, retryable: false });
+		setAnswerState({
+			key,
+			sending: true,
+			refused: null,
+			retryable: false,
+			muted: false,
+		});
 		setSendError(null);
 		setSendErrorCode(undefined);
 		let outcome: AnswerOutcome;
@@ -2346,7 +2369,13 @@ function SessionPanel({
 			input.current?.focusInput();
 		}
 		setAdmitting(true);
-		setAnswerState({ key, sending: true, refused: null, retryable: false });
+		setAnswerState({
+			key,
+			sending: true,
+			refused: null,
+			retryable: false,
+			muted: false,
+		});
 		setSendError(null);
 		setSendErrorCode(undefined);
 		let outcome: AnswerOutcome;
