@@ -224,6 +224,7 @@ import {
 	HubSectionLines,
 	HubUpdateMark,
 } from "./hub-update-mark";
+import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /*
  * The ids the boundary's controls point at with `aria-controls`.
@@ -2979,6 +2980,25 @@ export function ChatSidebar({
 	const [pinDrag, setPinDrag] = useState<{ id: string; slot: number } | null>(
 		null,
 	);
+	/*
+	 * THE ROW WHOSE TEAM BUBBLE HOLDS THE POINTER OR THE KEYBOARD'S FOCUS, held by
+	 * the sidebar rather than by the row for the same reason `pinDrag` is: the
+	 * surface it has to displace is outside the row's own tree.
+	 *
+	 * WHY IT EXISTS. The row's flyout and the bubble's own tooltip are two pointer
+	 * surfaces opened by ONE hover - the flyout's trigger is the row's box and the
+	 * bubble sits inside it, so a pointer moving over the mark opens the card as
+	 * well as the mark's tooltip (measured on the `sidebar-team-bubble-hover` frame:
+	 * both panels stand). That is the same defect the row's native `title` was
+	 * deleted for (D7, "One pointer surface, not two"), and the resolution is the
+	 * flyout's own `disabled` - the suppression the pin gesture already uses, which
+	 * renders the box unwrapped while the gesture owns the pointer.
+	 *
+	 * KEYED BY SESSION ID rather than a boolean: only the row under the pointer
+	 * loses its card, and a state that outlives its row (a list that re-renders
+	 * under the pointer) can only ever leave a row that is not there suppressed.
+	 */
+	const [teamBubbleHot, setTeamBubbleHot] = useState<string | null>(null);
 	const pinDragAutoScrollRef = useRef<number | null>(null);
 	const pinDragYRef = useRef(0);
 	/**
@@ -3812,6 +3832,31 @@ export function ChatSidebar({
 		 */
 		const marks = subagentMarks(row);
 		/*
+		 * THE TEAM MARK, AND THE ONE THING THE ROW HAS TO TELL THE SIDEBAR ABOUT IT.
+		 *
+		 * The bubble owns its own tooltip (the full team name on hover and on focus),
+		 * and the row's box owns the flyout - so this wrapper is what reports which of
+		 * the two surfaces the pointer or the keyboard is on (`teamBubbleHot`), which
+		 * is what lets the flyout stand down while the mark is speaking.
+		 *
+		 * `ml-1` sits on the wrapper rather than on the bubble so the gap is the same
+		 * 4px step the trailing slots before it used, and `inline-flex` keeps the row's
+		 * own flex line untouched. The four handlers are `onPointerEnter`/`Leave` and
+		 * `onFocus`/`onBlur` (the latter two bubble from the mark inside, which is the
+		 * element that takes focus).
+		 */
+		const teamMark = (name: string, slug: string) => (
+			<span
+				className="ml-1 inline-flex shrink-0"
+				onPointerEnter={() => setTeamBubbleHot(row.session_id)}
+				onPointerLeave={() => setTeamBubbleHot(null)}
+				onFocus={() => setTeamBubbleHot(row.session_id)}
+				onBlur={() => setTeamBubbleHot(null)}
+			>
+				<TeamAvatarBubble name={name} slug={slug} />
+			</span>
+		);
+		/*
 		 * THE SENTENCE, computed once beside the marks because THREE call sites read
 		 * it - the row's `sr-only` name, the question of whether that name needs a
 		 * span at all, and the tooltip's own line - and this is a per-row derivation
@@ -4216,44 +4261,51 @@ export function ChatSidebar({
 			    has something more important to say (the paragraph above) says that
 			    instead. The row's flyout carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
-				{trailing === "team" && (
-					/* THE TEAM THE WORKSTREAM SERVES — what replaced the constant
-					   `· agent-opened` (operator ask, 2026-09-25; `rowTrailingStatement`
-					   records the policy and its why). Drawn with the SAME bounded,
-					   truncating treatment as the binding slot below: the team is
-					   user-authored text whose field accepts 64 characters, so it needs
-					   the cap and the clip that slot measured (review round 4, R21), not
-					   the fixed-literal treatment the marker had.
+				{trailing === "team" &&
+					/* THE TEAM THE WORKSTREAM SERVES, AS A BUBBLE (operator ask,
+					   2026-10-01; `rowTrailingStatement` still records the policy behind
+					   the slot itself). The drawn name it used to be cost the title
+					   whatever the team's own name was long — a share of the row, up to
+					   its 45% cap — so a reader on `Local Operator Development` had one
+					   fewer word of their own title than a reader on `docs-pod` did. The
+					   bubble's cost is fixed at the mark (20px plus the row's 4px gap),
+					   and the name is not lost: it is the bubble's tooltip, its
+					   `aria-label`, and still the flyout's binding clause.
 
-					   NOT `aria-hidden`, deliberately: the marker could hide its constant
-					   words behind the `sr-only` sentence, but the team is a drawn name and
-					   the accessible name must never be narrower than the pixels — a reader
-					   who cannot see the row hears the team with the rest of the row's
-					   sentence. The attribution sentence still renders where the marker's
-					   did (the `sr-only` block at the end of this group), so a row the
-					   marker used to speak for still says ", opened by coder" — and a
-					   marked or unstarted one reads exactly as before. */
-					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {teamLabelFor(teamName(row))}
-					</span>
-				)}
-				{trailing === "binding" && (
-					/* Bounded, like the team slot above and unlike the two literals
-					   below. `bindingName` is a user-authored agent or team name and the
-					   agent-name field
-					   accepts 64 characters, so `shrink-0` with no `truncate` left an
-					   UNBOUNDED slot: the title (floor of zero) absorbed all of it,
-					   which restored round 4's D18 at roughly 35 characters and
-					   overflowed the row at roughly 45 — reachable from the product's
-					   own input limit, with no dragging involved (review round 4,
-					   R21). The cap is a share of the row rather than a fixed width so
-					   it scales with the panel, and `truncate` clips inside it. The
-					   two literals are `shrink-0`: they cannot grow, so they cannot
-					   starve anything. */
-					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {bindingDisplayName(row)}
-					</span>
-				)}
+					   NAMING THE TEAM IS STILL NOT `aria-hidden`, deliberately, and the
+					   bubble is what keeps that true: the mark's `aria-label` is the
+					   full display name, so it contributes the same words to the row's
+					   accessible name the drawn label did — a reader who cannot see the
+					   row hears the team with the rest of the row's sentence. The
+					   attribution sentence still renders where it did (the `sr-only`
+					   block at the end of this group), so a row it speaks for still
+					   says ", opened by coder". */
+					teamMark(teamLabelFor(teamName(row)), teamName(row))}
+				{trailing === "binding" &&
+					/* THE BINDING SLOT, SPLIT BY WHAT IT NAMES (operator ask, 2026-10-01).
+					   A TEAM binding is the same fact the team slot above draws - a team
+					   this row serves - so it takes the same bubble, and a reader gets
+					   one treatment for "the team" wherever the row says it. An AGENT
+					   binding keeps its drawn name: no bubble is defined for an agent,
+					   the agent-name field accepts 64 characters, and the bounded,
+					   truncating slot below is the treatment that measured right for it.
+
+					   WHY THE AGENT SLOT STAYS BOUNDED and how it got that way (review
+					   round 4, R21): `shrink-0` with no `truncate` left an UNBOUNDED
+					   slot, so the title (floor of zero) absorbed all of it, which
+					   restored round 4's D18 at roughly 35 characters and overflowed
+					   the row at roughly 45 — reachable from the product's own input
+					   limit, with no dragging involved. The cap is a share of the row
+					   rather than a fixed width so it scales with the panel, and
+					   `truncate` clips inside it. The two literals below are
+					   `shrink-0`: they cannot grow, so they cannot starve anything. */
+					(row.binding?.team ? (
+						teamMark(teamLabelFor(row.binding.team), row.binding.team)
+					) : (
+						<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+							· {bindingDisplayName(row)}
+						</span>
+					))}
 				{trailing === "not_sent" && (
 					<span className="ml-1 shrink-0 text-meta text-ink-muted">
 						· Not sent yet
@@ -4515,8 +4567,28 @@ export function ChatSidebar({
 				 * unwrapped), which is what the pointer needs: Radix keeps a tooltip open while the
 				 * pointer stays inside its trigger, and the grip's pointer never leaves the row for
 				 * the whole gesture. It comes back by itself when the gesture settles.
+				 *
+				 * AND NO FLYOUT WHILE THE TEAM MARK OWNS THE POINTER (operator ask,
+				 * 2026-10-01): the mark is inside this trigger and carries a tooltip of its own,
+				 * so without this term one hover opens two panels — the row's card and the mark's
+				 * name — which is the doubling D7 deleted the native `title` for. Measured
+				 * before the term existed: hovering the mark left both `[role="tooltip"]` panels
+				 * standing, the card (`data-side="right"`) beside the name (`data-side="top"`).
+				 *
+				 * IT IS `suppressed`, NOT `disabled`, and the difference was measured rather
+				 * than reasoned about. `disabled` renders this subtree BARE, so the mark - which
+				 * lives INSIDE the box - is remounted along with everything else, and its own
+				 * tooltip dies on the very hover that opened it: the run reported the card gone
+				 * (the suppression working) and `[role="tooltip"][data-side="top"]` missing (the
+				 * mark's name lost), which is worse than the doubling it fixed. `suppressed`
+				 * keeps the trigger mounted and closes only the panel.
+				 *
+				 * The row that stands down is the one under the reader (`teamBubbleHot`); every
+				 * other row keeps its card, and the card returns the moment the pointer or the
+				 * focus leaves the mark.
 				 */
 				disabled={pinDrag !== null}
+				suppressed={teamBubbleHot === row.session_id}
 			>
 				{box}
 			</Tooltip>
