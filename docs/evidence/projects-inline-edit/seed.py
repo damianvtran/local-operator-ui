@@ -11,6 +11,13 @@ exactly:
                  properties block's `+ Add` menu has fields left to open.
 - `rig-inline-other`  a second row, so the duplicate-key refusal collides with
                  a name this daemon actually holds rather than an invented one.
+
+IT RESETS FIRST, so it is re-runnable: the scene MUTATES the subject row
+(title, dates, status, team/estimate/tags), and the run executes it once per
+brand palette against one daemon, so the second pass must start from this
+shape rather than from the first pass's leftovers (measured: the status pick
+is a no-op on the second pass when the row already holds the picked status,
+Radix never fires the change, and the editor stays open).
 """
 
 import json
@@ -39,6 +46,18 @@ def call(method, path, body=None):
     except urllib.error.HTTPError as error:
         return error.code, error.read().decode()
 
+
+def reset(name):
+    """Delete the row if it exists (DELETE echoes the name back as `confirm`).
+
+    A 404 is fine and silent: the first run of a fresh daemon has nothing to
+    delete, and `call` returns the code instead of raising.
+    """
+    call("DELETE", f"/v1/desktop/projects/{name}", {"confirm": name})
+
+
+reset("rig-inline")
+reset("rig-inline-other")
 
 call(
     "POST",

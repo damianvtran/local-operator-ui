@@ -34731,15 +34731,69 @@ async function sceneProjectInlineEdit(cdp) {
 		const view = await fetchProjectView(PROJECT);
 		return view?.body?.result?.project ?? null;
 	};
+	/*
+	 * THE DAEMON'S OWN RECORD, WAITED ON. Every write check asserts the wire
+	 * landed, and the window shows the change optimistically first, so a single
+	 * read can catch the PATCH in flight (measured on this scene's capture
+	 * pass: `status="active" badge="QA"` while the write was still landing).
+	 * The wait is bounded, and a write that never lands still fails its check.
+	 */
+	const waitForStored = async (predicate, timeoutMs = 8_000) => {
+		const deadline = Date.now() + timeoutMs;
+		let view = await stored();
+		while (view !== null && !predicate(view) && Date.now() < deadline) {
+			await wait(150);
+			view = await stored();
+		}
+		return view;
+	};
+	/*
+	 * THE + ADD DOOR, WITH A SETTLED RECT. The menu animates in and its items
+	 * move while it opens; a click measured mid-animation lands where the item
+	 * WAS and selects nothing - measured on this scene's capture pass, where
+	 * the target and estimate births missed and the team birth happened to
+	 * land. Two identical rects mean the item has stopped moving, and only
+	 * then does the click go out.
+	 */
+	const birthFromAddMenu = async (field) => {
+		await cdp.evaluate(
+			`document.querySelector("[data-project-add-field]").scrollIntoView({block: 'center'}); true`,
+		);
+		await wait(200);
+		await clickAt(cdp, "[data-project-add-field]");
+		const option = `[data-project-add-option="${field}"]`;
+		await need(option, `the add-field menu (${field})`);
+		let previous = null;
+		for (let attempt = 0; attempt < 20; attempt += 1) {
+			const rect = await cdp.evaluate(
+				`JSON.stringify((() => { const el = document.querySelector(${JSON.stringify(option)}); if (el === null) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; })())`,
+			);
+			if (rect === previous && rect !== null) break;
+			previous = rect;
+			await wait(120);
+		}
+		await clickAt(cdp, option);
+	};
 
-	const headless = await factsOf.headless(cdp);
+	const facts = await factsOf(cdp);
 	check(
 		"the window is the headless launch, not a raised one",
-		headless,
-		`factsOf.headless said ${headless}`,
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
 	);
 	await verb(cdp, "setTheme", THEME);
-	const theme = (await verb(cdp, "state", "themeName")) ?? "unknown";
+	/*
+	 * The app's OWN theme, read back rather than assumed. `state` answers the
+	 * whole object (it takes no key), so the name comes off `.theme`; and
+	 * frame labels are lowercase-only - the capture verb refuses anything
+	 * else - so the name is slugged the way the question-dock scene slugs it.
+	 */
+	const appState = await verb(cdp, "state");
+	const theme = String(appState?.theme ?? "unknown")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
 	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
 	note(
 		"the page's own reads",
@@ -34810,16 +34864,24 @@ async function sceneProjectInlineEdit(cdp) {
 	);
 	await wait(200);
 	await hoverAt(cdp, FIELD("title"));
+	/*
+	 * The wait IS the threshold, not any nonzero reading: the reveal is a
+	 * transition, and polling for "truthy then check >= 0.99" fails on its own
+	 * mid-transition sample (this scene's first capture pass read 0.894).
+	 */
 	const hovered = await waitForCondition(
 		cdp,
-		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(pencil)})).opacity)`,
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(pencil)})).opacity) >= 0.99`,
 		4_000,
+	);
+	const hoveredOpacity = await cdp.evaluate(
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(pencil)})).opacity)`,
 	);
 	check(
 		"the title's pencil is hidden at rest and the pointer's hover reveals it",
-		restOpacity === "0" && hovered.ok && Number(hovered.last) >= 0.99,
-		`rest=${restOpacity} hovered=${hovered.last}`,
-		`rest=${restOpacity} hovered=${hovered.last}`,
+		restOpacity === "0" && hovered.ok,
+		`rest=${restOpacity} hovered=${hoveredOpacity}`,
+		`rest=${restOpacity} hovered=${hoveredOpacity}`,
 	);
 	await captureSettled(cdp, `project-inline-${size}-${theme}-hover`);
 
@@ -34834,14 +34896,17 @@ async function sceneProjectInlineEdit(cdp) {
 	);
 	const focusedReveal = await waitForCondition(
 		cdp,
-		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(keyPencil)})).opacity)`,
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(keyPencil)})).opacity) >= 0.99`,
 		4_000,
+	);
+	const focusedOpacity = await cdp.evaluate(
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(keyPencil)})).opacity)`,
 	);
 	check(
 		"focus alone reveals the key row's pencil (the keyboard door)",
-		focusedReveal.ok && Number(focusedReveal.last) >= 0.99,
-		`opacity=${focusedReveal.last}`,
-		`opacity=${focusedReveal.last}`,
+		focusedReveal.ok,
+		`opacity=${focusedOpacity}`,
+		`opacity=${focusedOpacity}`,
 	);
 
 	/*
@@ -34932,7 +34997,7 @@ async function sceneProjectInlineEdit(cdp) {
 		`the caption appeared after ${savedCaption.waitedMs}ms`,
 	);
 	await captureSettled(cdp, `project-inline-${size}-${theme}-saved`);
-	const afterEnter = await stored();
+	const afterEnter = await waitForStored((p) => p?.title === nextTitle);
 	check(
 		"the daemon holds the accepted title",
 		afterEnter?.title === nextTitle,
@@ -34953,13 +35018,13 @@ async function sceneProjectInlineEdit(cdp) {
 	 * 6. CHECK-ACCEPT AND X-CANCEL, on the Start date row: x leaves the stored
 	 * value and sends nothing; the check then commits the same edit.
 	 */
-	await clickControl("start", "begin");
-	await need(ENTRY("start"), "the start-date editor");
-	await replaceAllText(cdp, ENTRY("start"), "2026-09-05");
-	await clickControl("start", "cancel");
+	await clickControl("start-date", "begin");
+	await need(ENTRY("start-date"), "the start-date editor");
+	await replaceAllText(cdp, ENTRY("start-date"), "2026-09-05");
+	await clickControl("start-date", "cancel");
 	await waitForCondition(
 		cdp,
-		`document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`,
+		`document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null`,
 		4_000,
 	);
 	const afterCancel = await stored();
@@ -34969,16 +35034,16 @@ async function sceneProjectInlineEdit(cdp) {
 		`start_date=${JSON.stringify(afterCancel?.start_date ?? null)}`,
 		`start_date=${JSON.stringify(afterCancel?.start_date ?? null)}`,
 	);
-	await clickControl("start", "begin");
-	await need(ENTRY("start"), "the start-date editor again");
-	await replaceAllText(cdp, ENTRY("start"), "2026-09-05");
-	await clickControl("start", "accept");
+	await clickControl("start-date", "begin");
+	await need(ENTRY("start-date"), "the start-date editor again");
+	await replaceAllText(cdp, ENTRY("start-date"), "2026-09-05");
+	await clickControl("start-date", "accept");
 	await waitForCondition(
 		cdp,
-		`document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`,
+		`document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null`,
 		8_000,
 	);
-	const afterCheck = await stored();
+	const afterCheck = await waitForStored((p) => p?.start_date === "2026-09-05");
 	check(
 		"the check accepts: the daemon holds the new start date",
 		afterCheck?.start_date === "2026-09-05",
@@ -35004,7 +35069,9 @@ async function sceneProjectInlineEdit(cdp) {
 		`document.querySelector(${JSON.stringify(ENTRY("owner"))}) === null`,
 		8_000,
 	);
-	const afterBlur = await stored();
+	const afterBlur = await waitForStored(
+		(p) => p?.owner === `rig-owner-${stamp}`,
+	);
 	check(
 		"blur on a dirty, valid field commits it",
 		afterBlur?.owner === `rig-owner-${stamp}`,
@@ -35083,7 +35150,11 @@ async function sceneProjectInlineEdit(cdp) {
 		`document.querySelector(${JSON.stringify(ENTRY("description"))}) === null`,
 		8_000,
 	);
-	const afterDescription = await stored();
+	const afterDescription = await waitForStored(
+		(p) =>
+			typeof p?.description === "string" &&
+			p.description.includes(`second line ${stamp}`),
+	);
 	check(
 		"Cmd+Enter accepts the description",
 		descriptionSaved.ok &&
@@ -35112,7 +35183,7 @@ async function sceneProjectInlineEdit(cdp) {
 		`document.querySelector(${JSON.stringify(FIELD("status"))}).textContent`,
 		8_000,
 	);
-	const afterStatus = await stored();
+	const afterStatus = await waitForStored((p) => p?.status === "qa");
 	check(
 		"the status select commits from the menu",
 		afterStatus?.status === "qa" && String(statusCommitted.last).includes("QA"),
@@ -35225,9 +35296,9 @@ async function sceneProjectInlineEdit(cdp) {
 	 */
 	const conflictStart = "2026-10-01";
 	const outOfBandStart = "2026-09-30";
-	await clickControl("start", "begin");
-	await need(ENTRY("start"), "the start-date editor (conflict)");
-	await replaceAllText(cdp, ENTRY("start"), conflictStart);
+	await clickControl("start-date", "begin");
+	await need(ENTRY("start-date"), "the start-date editor (conflict)");
+	await replaceAllText(cdp, ENTRY("start-date"), conflictStart);
 	const patched = await projectPatch(PROJECT, { start_date: outOfBandStart });
 	check(
 		"the out-of-band write landed (this process, the daemon's own route)",
@@ -35275,7 +35346,7 @@ async function sceneProjectInlineEdit(cdp) {
 		8_000,
 	);
 	const draftHeld = await cdp.evaluate(
-		`document.querySelector(${JSON.stringify(ENTRY("start"))})?.value ?? null`,
+		`document.querySelector(${JSON.stringify(ENTRY("start-date"))})?.value ?? null`,
 	);
 	check(
 		"a field that moved out-of-band holds the commit, draft intact",
@@ -35286,14 +35357,16 @@ async function sceneProjectInlineEdit(cdp) {
 	await captureSettled(cdp, `project-inline-${size}-${theme}-conflict`);
 	await clickAt(
 		cdp,
-		`${FIELD("start")} [data-inline-edit-control="keep-mine"]`,
+		`${FIELD("start-date")} [data-inline-edit-control="keep-mine"]`,
 	);
 	const keptMine = await waitForCondition(
 		cdp,
-		`document.querySelector(${JSON.stringify(ENTRY("start"))}) === null`,
+		`document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null`,
 		8_000,
 	);
-	const afterKeepMine = await stored();
+	const afterKeepMine = await waitForStored(
+		(p) => p?.start_date === conflictStart,
+	);
 	check(
 		"Keep mine commits the draft over the out-of-band value",
 		keptMine.ok && afterKeepMine?.start_date === conflictStart,
@@ -35313,9 +35386,19 @@ async function sceneProjectInlineEdit(cdp) {
 		`pids=${JSON.stringify(daemonPids)}`,
 		`pids=${JSON.stringify(daemonPids)}`,
 	);
-	await clickControl("target", "begin");
-	await need(ENTRY("target"), "the target-date editor");
-	await replaceAllText(cdp, ENTRY("target"), "2026-11-15");
+	/*
+	 * Target is ABSENT in the seed, so the row is BORN through the `+ Add`
+	 * menu and its editor opens directly (`autoBegin`) - the same door step
+	 * 14 uses for Team. Expecting a `begin` control here was this scene's
+	 * first-capture-pass rig bug: an absent row renders no affordance at all.
+	 */
+	await birthFromAddMenu("target");
+	await need(
+		ENTRY("target-date"),
+		"the target-date editor born from the menu",
+		10_000,
+	);
+	await replaceAllText(cdp, ENTRY("target-date"), "2026-11-15");
 	let paused = 0;
 	try {
 		for (const pid of daemonPids) {
@@ -35326,10 +35409,10 @@ async function sceneProjectInlineEdit(cdp) {
 				/* Already gone: nothing to hold, and the save will show it. */
 			}
 		}
-		await clickControl("target", "accept");
+		await clickControl("target-date", "accept");
 		const inFlight = await waitForCondition(
 			cdp,
-			`document.querySelector(${JSON.stringify(SLOT("target"))})?.getAttribute('data-inline-edit-slot')`,
+			`document.querySelector(${JSON.stringify(SLOT("target-date"))})?.getAttribute('data-inline-edit-slot')`,
 			6_000,
 		);
 		check(
@@ -35350,10 +35433,12 @@ async function sceneProjectInlineEdit(cdp) {
 	}
 	const targetSaved = await waitForCondition(
 		cdp,
-		`document.querySelector(${JSON.stringify(ENTRY("target"))}) === null`,
+		`document.querySelector(${JSON.stringify(ENTRY("target-date"))}) === null`,
 		10_000,
 	);
-	const afterTarget = await stored();
+	const afterTarget = await waitForStored(
+		(p) => p?.target_date === "2026-11-15",
+	);
 	check(
 		"the same write completes once the daemon resumes",
 		targetSaved.ok && afterTarget?.target_date === "2026-11-15",
@@ -35366,13 +35451,7 @@ async function sceneProjectInlineEdit(cdp) {
 	 * seed leaves Team absent, and the menu's Team row must open its editor so
 	 * a fact with no value yet can be written without a dialog.
 	 */
-	await cdp.evaluate(
-		`document.querySelector("[data-project-add-field]").scrollIntoView({block: 'center'}); true`,
-	);
-	await wait(200);
-	await clickAt(cdp, "[data-project-add-field]");
-	await need('[data-project-add-option="team"]', "the add-field menu");
-	await clickAt(cdp, '[data-project-add-option="team"]');
+	await birthFromAddMenu("team");
 	await need(ENTRY("team"), "the team editor born from the menu");
 	await replaceAllText(cdp, ENTRY("team"), `rig-team-${stamp}`);
 	await clickControl("team", "accept");
@@ -35381,7 +35460,7 @@ async function sceneProjectInlineEdit(cdp) {
 		`document.querySelector(${JSON.stringify(ENTRY("team"))}) === null`,
 		8_000,
 	);
-	const afterTeam = await stored();
+	const afterTeam = await waitForStored((p) => p?.team === `rig-team-${stamp}`);
 	check(
 		"a missing field is born inline from the + Add menu",
 		teamSaved.ok && afterTeam?.team === `rig-team-${stamp}`,
@@ -35396,16 +35475,7 @@ async function sceneProjectInlineEdit(cdp) {
 	 * draft dirty against its empty base, and the old symmetric one compared
 	 * it equal and retired the row without a request.
 	 */
-	await cdp.evaluate(
-		`document.querySelector("[data-project-add-field]").scrollIntoView({block: 'center'}); true`,
-	);
-	await wait(200);
-	await clickAt(cdp, "[data-project-add-field]");
-	await need(
-		'[data-project-add-option="estimate"]',
-		"the add-field menu (estimate)",
-	);
-	await clickAt(cdp, '[data-project-add-option="estimate"]');
+	await birthFromAddMenu("estimate");
 	await need(ENTRY("estimate"), "the estimate editor born from the menu");
 	await replaceAllText(cdp, ENTRY("estimate"), "5");
 	await clickControl("estimate", "accept");
@@ -35414,7 +35484,7 @@ async function sceneProjectInlineEdit(cdp) {
 		`document.querySelector(${JSON.stringify(ENTRY("estimate"))}) === null`,
 		8_000,
 	);
-	const afterEstimate = await stored();
+	const afterEstimate = await waitForStored((p) => p?.estimate === 5);
 	check(
 		"an estimate can be born from none (round 1, M1)",
 		estimateSaved.ok && afterEstimate?.estimate === 5,
@@ -35427,13 +35497,7 @@ async function sceneProjectInlineEdit(cdp) {
 	 * dirty: same `+ Add` birth, the comma text committed, the daemon read
 	 * back as the list.
 	 */
-	await cdp.evaluate(
-		`document.querySelector("[data-project-add-field]").scrollIntoView({block: 'center'}); true`,
-	);
-	await wait(200);
-	await clickAt(cdp, "[data-project-add-field]");
-	await need('[data-project-add-option="tags"]', "the add-field menu (tags)");
-	await clickAt(cdp, '[data-project-add-option="tags"]');
+	await birthFromAddMenu("tags");
 	await need(ENTRY("tags"), "the tags editor born from the menu");
 	await replaceAllText(cdp, ENTRY("tags"), "q4, payments");
 	await clickControl("tags", "accept");
@@ -35442,7 +35506,9 @@ async function sceneProjectInlineEdit(cdp) {
 		`document.querySelector(${JSON.stringify(ENTRY("tags"))}) === null`,
 		8_000,
 	);
-	const afterTags = await stored();
+	const afterTags = await waitForStored(
+		(p) => Array.isArray(p?.tags) && p.tags.join(",") === "q4,payments",
+	);
 	check(
 		"tags can be born from none",
 		tagsSaved.ok &&
@@ -35491,7 +35557,9 @@ async function sceneProjectInlineEdit(cdp) {
 		`(document.querySelector(${JSON.stringify(ENTRY("tags"))})?.value ?? "") === "a, z"`,
 		8_000,
 	);
-	const tagsAfterAdopt = await stored();
+	const tagsAfterAdopt = await waitForStored(
+		(p) => Array.isArray(p?.tags) && p.tags.join(",") === "a,z",
+	);
 	check(
 		"a clean tags draft adopts the moved record and cannot revert it",
 		tagsAdopted.ok &&
