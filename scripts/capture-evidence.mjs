@@ -5896,6 +5896,40 @@ export const STORIES = [
 	["projects-tab--board-sessions-popover", 1280, 900],
 	["projects-tab--board-card-menu", 1280, 900],
 	/*
+	 * The check-in states (PR-B, `feat/projects-request-update`): the card
+	 * menu's item and the detail button are ONE flow, so the frames raise the
+	 * same `projects.request_update` fixture in the route's own vocabulary.
+	 * `-sending` is the hung-request state (button `Requesting…` + the
+	 * >400 ms loading card); `-cooldown` waits the success card out, leaving
+	 * the button's `Requested` label as the durable half. Every play asserts its
+	 * own sentence before the shutter, so a copy change fails the capture
+	 * rather than filing a frame of the wrong state. The keyboard entry is
+	 * the U5 pin: focus must return to the card's trigger when the menu
+	 * closes, before the request settles.
+	 */
+	["projects-tab--detail-request-update-sending", 1280, 900],
+	["projects-tab--detail-request-update-cooldown", 1280, 900],
+	["projects-tab--request-update-success", 1280, 900],
+	["projects-tab--request-update-partial", 1280, 900],
+	["projects-tab--request-update-all-failed", 1280, 900],
+	["projects-tab--request-update-never-started", 1280, 900],
+	["projects-tab--request-update-empty", 1280, 900],
+	["projects-tab--request-update-cooldown", 1280, 900],
+	["projects-tab--board-request-update-keyboard", 1280, 900],
+	/* Design round 2's D1: the two zero-delivery warning ends the suite had no
+	 * still for - all-unconfirmed, and the mixed refusal+uncertain sentence
+	 * (the longest titles the fixture can produce) - plus the narrow-window
+	 * persistent card (partial, four lines, `duration: Infinity`) at the
+	 * 560 px width the round-1 header geometry was checked at. */
+	["projects-tab--request-update-all-unconfirmed", 1280, 900],
+	["projects-tab--request-update-mixed-zero-delivery", 1280, 900],
+	[
+		"projects-tab--request-update-partial",
+		560,
+		900,
+		{ dir: "request-update-partial-narrow" },
+	],
+	/*
 	 * The board's time window (feat/board-time-window): one frame per rung plus
 	 * the states around it. Each play asserts the visible card set - and the R5
 	 * frame's 12d-old progress line under a 24h window - so a capture whose

@@ -2751,6 +2751,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * The check-in fan-out (`POST /v1/desktop/projects/{project}/request-update`):
+	 * ask every linked session to post a progress update. APPENDED to the union
+	 * like its siblings, and gated by its OWN capability key
+	 * (`features.projects_request_update`) rather than a bump of `projects`: the
+	 * tab renders perfectly well against a backend that cannot ask its sessions
+	 * for anything, so the version would hide a working surface behind an update
+	 * it does not need (the `session_search` rule above). The key is the row's
+	 * address (id or name) - the same shape every other projects op takes.
+	 */
+	z
+		.object({
+			op: z.literal("projects.request_update"),
+			key: projectKey,
+		})
+		.strict(),
+	/*
 	 * AIDA'S CONTROL PLANE: one read and one control op on the same route
 	 * (`/v1/desktop/aida`), because the rail's row and the composer's `/aida`
 	 * need the SAME state and a second spelling of it would be a second answer
@@ -5845,6 +5861,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return {
 				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/milestones/${encodeURIComponent(request.name)}`,
 				method: "DELETE",
+			};
+		case "projects.request_update":
+			return {
+				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/request-update`,
+				method: "POST",
 			};
 		case "aida.status":
 			return { path: "/v1/desktop/aida", method: "GET" };
