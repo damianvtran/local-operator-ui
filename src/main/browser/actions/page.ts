@@ -290,9 +290,9 @@ export async function logs(
  * 15 s stall with no explanation is the worst version of that, so it is refused up
  * front and the refusal names the cause.
  *
- * The capture is ONE shape for every view — see the note at the call site for the
- * The retry's ceiling is unchanged; see `BACKGROUND_CAPTURE_ATTEMPT_MS` for the
- * measurement that kept it after the flag changed. */
+ * The capture is ONE shape for every view — the note at the call site carries the
+ * measurement — and the retry's ceiling is unchanged: `BACKGROUND_CAPTURE_ATTEMPT_MS`
+ * records the runs that kept it after the flag changed. */
 export async function screenshot(
 	ctx: BrowserActionContext,
 	params: Record<string, unknown>,
@@ -311,13 +311,17 @@ export async function screenshot(
 	// ONE SHAPE FOR EVERY VIEW, and `captureBeyondViewport: false` on a BACKGROUND
 	// tab is the reversal of what this file argued before. `true` asks Chromium to
 	// produce the capture beyond the viewport; combined with a `clip` that means
-	// emulating the clip box AS the viewport, and the measurement (the proof rig's
-	// `--capture-ladder` leg, Electron 44, 2026-10-02) is that this call RESIZED the
-	// renderer of a hidden 1280x720 view and fired TWO page `resize` events — on a
-	// page whose viewport already read 1280x720, so the capture was not even buying
-	// the shape it claimed. `false` copies the COMPOSITED surface: on the same hidden
-	// view it answered in 1.2 s with a viewport-sized PNG and fired NO `resize` at
-	// all. That difference is a correctness bug rather than a nicety, because a page
+	// emulating the clip box AS the viewport. Measured through the proof rig
+	// (Electron 44, 2026-10-02): that call RESIZED the renderer of a hidden 1280x720
+	// view and fired TWO page `resize` events, and the reading is §5d's own capture
+	// check (`a capture does not resize the page`, `resize 0 -> 2`,
+	// `lastResizeSize=1280x720`) — NOT the ladder, whose row for the same shapes is
+	// the opposite reading and no less informative: the clipped call answered
+	// NOTHING inside 20 s in both runs. The resize landed on a page whose viewport
+	// already read 1280x720, so the capture was not even buying the shape it claimed.
+	// `false` copies the COMPOSITED surface: on the same hidden view it answered in
+	// 1.2 s with a viewport-sized PNG and fired NO `resize` at all. That difference is
+	// a correctness bug rather than a nicety, because a page
 	// `resize` closes an open `radix-ui/react-select` popup (`SelectContentImpl`
 	// listens for it), so an agent's own screenshot dismissed the popup it was about
 	// to read — the same class of blindness as the popup that never painted, whose
@@ -330,8 +334,8 @@ export async function screenshot(
 	// was sized first does. The ladder row above is the re-measurement that settles
 	// it, and it is why the reverse argument is not kept as a fallback.
 	//
-	// The clip, the per-attempt ceiling and the retry are NOT what this fix removes —
-	// see the retry's own note below — only the flag and the clip are.
+	// The per-attempt ceiling and the retry are NOT what this fix removes — see the
+	// retry's own note below — only the flag and the clip are.
 	const attempts = record.presented ? 1 : 3;
 	let lastError: unknown;
 	for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -370,7 +374,16 @@ export async function screenshot(
  * first capture of a freshly-created hidden view stalled at its 15 s ceiling with
  * `captureBeyondViewport: false`, and the next attempt answered. Lazy frame
  * production belongs to a hidden view rather than to the clipped shape, so the
- * retry stays exactly as it was. */
+ * retry stays exactly as it was.
+ *
+ * DEFENCE IN DEPTH, and QA measured the arm this covers on the long run: the chosen
+ * shape can stall inside its own 20 s ceiling when it runs FIRST on a view left
+ * mutated by earlier beyond-viewport captures (the ladder's clipped and contrast legs
+ * leave such a view at the full content height), while the same shape answers
+ * immediately on a fresh view and on every shipped-path capture. The 3 x 5 s retry is
+ * what turns that arm into a recovered call instead of a failed action — reported as
+ * defence in depth rather than as an exercised path, because the stall did not
+ * reproduce on a fresh view. */
 const BACKGROUND_CAPTURE_ATTEMPT_MS = 5_000;
 
 /** Whether an error is the deadline helper's typed "no reply" arm.
