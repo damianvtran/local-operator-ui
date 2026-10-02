@@ -4,6 +4,7 @@ import {
 	UpdateType,
 	useDeferredUpdatesStore,
 } from "@shared/store/deferred-updates-store";
+import { useUpdateNoticeStore } from "@shared/store/update-notice-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import parse from "html-react-parser";
@@ -1676,6 +1677,21 @@ const Triggered = ({ flag }: { flag: UpdaterTriggerFlag }) => {
 	const [ready, setReady] = useState(false);
 	useEffect(() => {
 		window[flag] = true;
+		/*
+		 * AND THE PRESS THE FOOT ICON MAKES (design round 2, D1; 2026-10-01). The
+		 * offers live behind the foot icon since the standing notice became one: the
+		 * offer card's own gate is `detailOpen[type]` (update-notification.tsx:3545),
+		 * and in the app only the icon's press sets it. A harness that mounts the
+		 * component alone therefore leaves the detail closed and photographs NOTHING
+		 * - which is exactly what every backend story here did until this round. The
+		 * story's half of the press is the store's own `openDetail`, settled before
+		 * the component mounts, the same pre-ready pattern the deferral reset above
+		 * uses. Scoped to the backend flags: their two cards are the ones whose gate
+		 * is `detailOpen`; the app-updater panels answer to their own state.
+		 */
+		if (flag.startsWith("triggerBackendUpdate")) {
+			useUpdateNoticeStore.getState().openDetail(UpdateType.BACKEND);
+		}
 		setReady(true);
 	}, [flag]);
 	return ready ? <UpdateNotification autoCheck={false} /> : null;
@@ -1900,6 +1916,7 @@ const ServerBehindAppOwnedBuild = () => {
 			appOwnedEnvironment: true,
 		};
 		window.triggerBackendUpdateSkew = true;
+		useUpdateNoticeStore.getState().openDetail(UpdateType.BACKEND);
 		setReady(true);
 	}, []);
 	return ready ? <UpdateNotification autoCheck={false} /> : null;
@@ -2104,6 +2121,14 @@ const PressUpdateServer = ({
 			window.triggerBackendUpdateError = outcome === "failed";
 		}
 		window.triggerBackendUpdatePhase = phase ?? undefined;
+		/*
+		 * THE ICON'S PRESS, as in `Triggered` above: every outcome here is a backend
+		 * card, and both of its panes (the offer's and the in-flight panel's chain)
+		 * sit behind `detailOpen[UpdateType.BACKEND]` in the app. Without this the
+		 * harness times out polling for a button that never mounts - the empty frame
+		 * the round-2 design round measured (D1).
+		 */
+		useUpdateNoticeStore.getState().openDetail(UpdateType.BACKEND);
 		setReady(true);
 	}, [outcome, phase, variant]);
 	useEffect(() => {

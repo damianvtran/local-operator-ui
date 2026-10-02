@@ -144,6 +144,12 @@ const bundle = await build({
 				UpdateQuietIndicatorView,
 			} from "./src/renderer/src/shared/components/common/update-quiet-indicator";
 			export {
+				UpdateFootIcon,
+				UpdateFootIconView,
+				footIconAvailableName,
+				footIconInFlightName,
+			} from "./src/renderer/src/shared/components/common/update-foot-icon";
+			export {
 				quietOfferShown,
 				useUpdateNoticeStore,
 			} from "./src/renderer/src/shared/store/update-notice-store";
@@ -196,10 +202,14 @@ const {
 	CheckForUpdatesButton,
 	DEFAULT_FOLLOWED_SEGMENT,
 	FollowedSegment,
+	UpdateFootIcon,
+	UpdateFootIconView,
 	UpdateNotification,
 	UpdateQuietIndicator,
 	UpdateQuietIndicatorView,
 	UpdateType,
+	footIconAvailableName,
+	footIconInFlightName,
 	parseVersionTriple,
 	quietOfferShown,
 	segmentCrossed,
@@ -377,6 +387,13 @@ const mount = async () => {
 				null,
 				React.createElement(UpdateNotification, { autoCheck: false }),
 				React.createElement(UpdateQuietIndicator, null),
+				/*
+				 * THE FOOT ICON RIDES THE SAME TREE (2026-09-30). It is the standing
+				 * notice the band answers to now, so every flow case drives the real
+				 * hand-off - an offer raises the icon, the icon's press raises the
+				 * band - rather than reaching past it into the store.
+				 */
+				React.createElement(UpdateFootIcon, null),
 			),
 		);
 	});
@@ -401,6 +418,45 @@ const indicatorButtons = () => [
  */
 const bandIsQuiet = () =>
 	indicatorBand() !== null && indicatorButtons().length === 0;
+
+/*
+ * The standing notice's own queries (2026-09-30). `footIconState` reads the
+ * state the component stamps (`available` / `inflight`), and `pressFootIcon`
+ * drives the one press that raises the band now - every case that wants a band
+ * item to press goes through it first, which is the point of the change.
+ */
+const footIcon = () => document.querySelector("[data-update-foot-icon]");
+const footIconState = () =>
+	footIcon()?.getAttribute("data-update-foot-icon-state") ?? null;
+const pressFootIcon = async () => {
+	const icon = footIcon();
+	assert.ok(icon, "the foot icon must be up for the band to be reachable");
+	await act(async () => {
+		icon.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true }));
+	});
+};
+
+/**
+ * The icon's own flyout, opened the way a keyboard user opens it: focus the
+ * trigger and let the primitive commit, then read the portal panel BY NAME so a
+ * previous tooltip cannot be mistaken for this one (the `mark-all-read-control`
+ * helper's shape, adopted rather than invented). Null when it never opens.
+ */
+const footIconTooltip = async () => {
+	const icon = footIcon();
+	if (!icon) return null;
+	icon.dispatchEvent(new DOM.window.FocusEvent("focusout", { bubbles: true }));
+	await new Promise((resolve) => setTimeout(resolve, 60));
+	for (let attempt = 0; attempt < 40; attempt += 1) {
+		icon.dispatchEvent(new DOM.window.FocusEvent("focusin", { bubbles: true }));
+		await new Promise((resolve) => setTimeout(resolve, 50));
+		const tip = [...document.querySelectorAll('[role="tooltip"]')].find(
+			(element) => element.textContent?.includes("Show the update notice."),
+		);
+		if (tip) return tip;
+	}
+	return null;
+};
 
 const cardHeadings = () =>
 	[...document.querySelectorAll("h2")].map((node) => node.textContent ?? "");
@@ -682,11 +738,20 @@ test("the indicator draws no band at rest and one control per surface", () => {
 	 * while the announcement becomes reliable.
 	 */
 	const atRest = renderToStaticMarkup(
-		UpdateQuietIndicatorView({ offers: [], onOpen: () => undefined }),
+		UpdateQuietIndicatorView({
+			offers: [],
+			onOpen: () => undefined,
+			onDismiss: () => undefined,
+		}),
 	);
 	assert.match(atRest, /<output/, "the live region is mounted at rest");
 	assert.match(atRest, /data-update-indicator-count="0"/);
 	assert.doesNotMatch(atRest, /<button/, "with nothing to press");
+	assert.doesNotMatch(
+		atRest,
+		/data-update-indicator-dismiss/,
+		"and nothing to dismiss",
+	);
 	assert.doesNotMatch(
 		atRest,
 		/h-7|bg-surface|border-t|px-2/,
@@ -700,6 +765,7 @@ test("the indicator draws no band at rest and one control per surface", () => {
 				{ type: UpdateType.BACKEND, version: "0.55.10" },
 			],
 			onOpen: () => undefined,
+			onDismiss: () => undefined,
 		}),
 	);
 	assert.match(markup, /<output/, "the band is the status role itself");
@@ -714,11 +780,101 @@ test("the indicator draws no band at rest and one control per surface", () => {
 	// than a box-shadow ring the first `overflow: hidden` ancestor would clip.
 	assert.match(markup, /focus-visible:outline-2/);
 	assert.match(markup, /focus-visible:outline-accent/);
+	/*
+	 * THE DISMISS IS THE CLUSTER'S LAST CONTROL (2026-09-30): it follows the last
+	 * surface item at the same 24px box, and it is never the band's trailing edge
+	 * (the completion toast owns that corner). DOM order is the rendered order
+	 * here - the items and the dismiss are siblings, all leading-anchored.
+	 */
+	assert.match(markup, /data-update-indicator-dismiss=""/);
+	assert.match(markup, /aria-label="Dismiss update notice"/);
+	assert.ok(
+		markup.indexOf("data-update-indicator-dismiss") >
+			markup.lastIndexOf("data-update-indicator-open"),
+		"after the last surface item",
+	);
+});
+
+/* ------------------------------------- the foot icon, drawn as a unit (pure) */
+
+test("the foot icon draws nothing at rest, and one control per state otherwise", () => {
+	const atRest = renderToStaticMarkup(
+		UpdateFootIconView({
+			surfaces: [],
+			inflight: null,
+			onShow: () => undefined,
+		}),
+	);
+	assert.equal(
+		atRest,
+		"",
+		"hidden is zero pixels - the component returns nothing, not an empty box",
+	);
+
+	const available = renderToStaticMarkup(
+		UpdateFootIconView({
+			surfaces: [
+				{ type: UpdateType.UI, offer: { version: "0.30.1" } },
+				{ type: UpdateType.BACKEND, offer: { version: "0.55.10" } },
+			],
+			inflight: null,
+			onShow: () => undefined,
+		}),
+	);
+	assert.match(available, /data-update-foot-icon-state="available"/);
+	/*
+	 * ONE ICON FOR TWO SURFACES, with both versions in the name - the consult's
+	 * sentence, built from the band's own words so the two cannot drift.
+	 */
+	assert.equal(
+		(available.match(/<button/g) ?? []).length,
+		1,
+		"one control, however many surfaces wait",
+	);
+	assert.match(
+		available,
+		/aria-label="Application update 0\.30\.1 and server update 0\.55\.10 available\. Show the update notice\."/,
+	);
+	// The cluster's ink and hover wash: the gear's own classes, so the two 32px
+	// controls four pixels apart read as one system.
+	assert.match(available, /text-accent/);
+	assert.match(available, /hover:bg-row-hover/);
+	/*
+	 * (The tooltip's own lines are not in a static render - Radix mounts the panel
+	 * in a portal only while it is open - so the U4 truncation witness lives in the
+	 * DOM case below, which opens the flyout the way a keyboard user does.)
+	 */
+
+	const inflight = renderToStaticMarkup(
+		UpdateFootIconView({
+			surfaces: [],
+			inflight: { type: UpdateType.BACKEND, percent: null },
+			onShow: () => undefined,
+		}),
+	);
+	assert.match(inflight, /data-update-foot-icon-state="inflight"/);
+	assert.match(inflight, /<output/);
+	assert.doesNotMatch(
+		inflight,
+		/<button/,
+		"in flight there is nothing to press - no cancel, so no control",
+	);
+	assert.match(inflight, /motion-safe:animate-spin/);
+	assert.match(inflight, /aria-label="Server update in progress\."/);
+	assert.equal(
+		footIconInFlightName({ type: UpdateType.UI, percent: 42 }),
+		"Application update in progress, 42%.",
+	);
+	assert.equal(
+		footIconAvailableName([]),
+		" available. Show the update notice.",
+		"the join is the surfaces' words; an empty list is never rendered",
+	);
 });
 
 /* ----------------------------------------- the whole path in a real DOM */
 
-test("an unsolicited release raises the quiet band, and a press opens the card", async () => {
+test("an unsolicited release raises the quiet ICON; its press raises the band, whose press opens the card", async () => {
 	await reset();
 	const container = await mount();
 
@@ -727,24 +883,42 @@ test("an unsolicited release raises the quiet band, and a press opens the card",
 		releaseNotes: "Fixes.",
 	});
 
-	assert.ok(
-		indicatorBand(),
-		"the unsolicited release must be announced quietly",
+	/*
+	 * THE STANDING NOTICE IS THE FOOT ICON (2026-09-30). The release raises the
+	 * icon and NOTHING else: the band is the on-demand surface now, and the
+	 * designer consult's own rule is "a press shows the update notice" - so the
+	 * band's absence here is the claim, not an omission.
+	 */
+	assert.equal(
+		footIconState(),
+		"available",
+		"the unsolicited release must be announced quietly, in the foot",
 	);
-	assert.equal(indicatorButtons().length, 1);
-	assert.match(
-		container.textContent ?? "",
-		/Application update 0\.31\.0 available/,
-		"the band states the release is available, not merely its number",
+	assert.equal(
+		bandIsQuiet(),
+		true,
+		"and the band waits for its press rather than raising itself",
 	);
 	assert.equal(
 		cardHeadings().includes("Update available"),
 		false,
 		"the fixed card must NOT paint over the view for the app's own news",
 	);
+	assert.match(
+		footIcon()?.getAttribute("aria-label") ?? "",
+		/Application update 0\.31\.0 available\. Show the update notice\./,
+		"the icon's accessible name states the fact and the press's outcome",
+	);
 
-	// The press is what opens the release detail: the card is one press behind the
-	// indicator, never in front of the work.
+	// The icon's press raises the band; the band's item opens the detail: the
+	// card is two presses behind the news, never in front of the work.
+	await pressFootIcon();
+	assert.equal(bandIsQuiet(), false, "the press raises the band");
+	assert.match(
+		container.textContent ?? "",
+		/Application update 0\.31\.0 available/,
+		"the band states the release is available, not merely its number",
+	);
 	await act(async () => {
 		indicatorButtons()[0].dispatchEvent(
 			new DOM.window.MouseEvent("click", { bubbles: true }),
@@ -752,12 +926,235 @@ test("an unsolicited release raises the quiet band, and a press opens the card",
 	});
 	assert.ok(
 		cardHeadings().includes("Update available"),
-		"a press on the indicator opens the card",
+		"a press on the band's item opens the card",
 	);
 	assert.equal(
 		bandIsQuiet(),
 		true,
 		"and the band yields to it - the detail IS the notice",
+	);
+});
+
+test("the available tooltip ellipsises its version lines inside the panel", async () => {
+	/*
+	 * REVIEW ROUND 1'S U4: the version lines were `whitespace-nowrap` with no
+	 * truncate, and a long release line measured 327px of scrollWidth in the
+	 * panel's 238px content box - it ran out of the panel while the summary line
+	 * below it ellipsised correctly. One rule for every line is the fix; this case
+	 * is the witness, read from the open flyout because Radix mounts the panel in
+	 * a portal only while it is open.
+	 */
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+
+	const tip = await footIconTooltip();
+	assert.ok(tip, "focusing the icon opens its flyout");
+	const versionLines = [...tip.querySelectorAll("span")].filter((span) =>
+		(span.textContent ?? "").includes("available"),
+	);
+	assert.ok(versionLines.length >= 1, "the flyout carries the version line");
+	for (const line of versionLines) {
+		assert.match(
+			line.className,
+			/truncate/,
+			"a version line must clip with an ellipsis, not run out of the panel",
+		);
+		assert.doesNotMatch(
+			line.className,
+			/whitespace-nowrap/,
+			"`truncate` replaces the nowrap - both set it, only one clips",
+		);
+	}
+});
+
+test("Escape lowers the raised band from anywhere in it, and focus moves in on open and back on close", async () => {
+	/*
+	 * REVIEW ROUND 1'S U1/U2, the keyboard path out of the raised band. Before
+	 * this: Escape did nothing with focus on the icon or on the band's own ✕,
+	 * focus never entered the band on open, and closing dropped it to `<body>` -
+	 * the exit was 21 Tabs or nothing.
+	 */
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+
+	await pressFootIcon();
+	assert.equal(bandIsQuiet(), false, "the press raises the band");
+	/*
+	 * FOCUS MOVES INTO THE BAND ON OPEN: the press may have been Enter on the
+	 * icon, and a region that opens without taking focus leaves the reader
+	 * outside it with no announcement. The first control is the first item.
+	 */
+	assert.equal(
+		document.activeElement,
+		indicatorButtons()[0],
+		"the raised band takes focus",
+	);
+
+	await act(async () => {
+		document.activeElement?.dispatchEvent(
+			new DOM.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+			}),
+		);
+	});
+	assert.equal(bandIsQuiet(), true, "Escape lowers the band");
+	assert.equal(
+		document.activeElement,
+		footIcon(),
+		"and focus is handed back to the icon, not dropped to <body>",
+	);
+
+	/*
+	 * AND THE SAME KEY ON THE ICON, for a reader who tabbed back out: the band is
+	 * up, focus is on the icon, and Escape lowers it there too without moving
+	 * focus off the icon.
+	 */
+	await pressFootIcon();
+	assert.equal(bandIsQuiet(), false, "raised again");
+	/*
+	 * The reader tabs back out to the icon and presses Escape there: focus is
+	 * PLACED on the icon first, because raising the band moved it into the item
+	 * above - this is the second of the two places the key has to work.
+	 */
+	await act(async () => {
+		footIcon()?.focus();
+	});
+	await act(async () => {
+		footIcon()?.dispatchEvent(
+			new DOM.window.KeyboardEvent("keydown", {
+				key: "Escape",
+				bubbles: true,
+			}),
+		);
+	});
+	assert.equal(bandIsQuiet(), true, "Escape on the icon lowers the band");
+	assert.equal(document.activeElement, footIcon(), "and it stays on the icon");
+});
+
+test("the band's dismiss lowers it and keeps the offer, and the icon raises it again", async () => {
+	await reset();
+	await mount();
+	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await pressFootIcon();
+	const dismiss = document.querySelector("[data-update-indicator-dismiss]");
+	assert.ok(dismiss, "the reopened band carries its dismiss");
+	assert.equal(dismiss.getAttribute("aria-label"), "Dismiss update notice");
+
+	await act(async () => {
+		dismiss.dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	assert.equal(bandIsQuiet(), true, "the dismiss lowers the band");
+	/*
+	 * AND FOCUS GOES BACK TO THE ICON (review round 1's U2, measured by the mouse
+	 * path here and by Escape below): a close that drops focus to `<body>` strands
+	 * a keyboard reader at the top of the document.
+	 */
+	assert.equal(
+		document.activeElement,
+		footIcon(),
+		"the dismiss hands focus back to the icon that raised the band",
+	);
+	assert.equal(
+		footIconState(),
+		"available",
+		"and the offer survives it - the fact has not changed, so the icon stays",
+	);
+	assert.equal(
+		useUpdateNoticeStore.getState().offers[UpdateType.UI]?.version,
+		"0.31.0",
+		"and nothing was deferred or cleared",
+	);
+
+	await pressFootIcon();
+	assert.equal(bandIsQuiet(), false, "a second press raises the band again");
+});
+
+test("the icon's in-flight arc mirrors the server update and cannot be pressed", async () => {
+	await reset();
+	await mount();
+	await fire("backend-update-available", SERVER_OFFER);
+	assert.equal(footIconState(), "available");
+	/*
+	 * THROUGH THE REAL PRESS, not the store: the card's own "Update server" is
+	 * what puts `UpdateNotification` in flight, and the hand-off this change added
+	 * (`noteInFlight` in the component's effects) is what the icon reads. Setting
+	 * the store directly would assert the icon and not the wiring - the same
+	 * distinction the R1 cases make about `detailOpened()`.
+	 */
+	/*
+	 * THE INVOKE IS HELD OPEN ON PURPOSE. In the app, `update-backend` resolves when
+	 * the whole attempt ends, and the component's `finally` lowers its flag only
+	 * then - so the bridge here answers with a promise the case releases itself.
+	 * The suite's default `async () => true` resolves instantly (the attempt never
+	 * exists on screen), which is exactly why the hand-off could not be observed
+	 * through it.
+	 */
+	let releaseAttempt = null;
+	DOM.window.api.updater.updateBackend = () =>
+		new Promise((resolve) => {
+			releaseAttempt = resolve;
+		});
+	await pressFootIcon();
+	await act(async () => {
+		indicatorButtons()[0].dispatchEvent(
+			new DOM.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	await press("Update server");
+	assert.equal(
+		footIconState(),
+		"inflight",
+		"the arc mirrors the attempt the card just started",
+	);
+	assert.equal(
+		footIcon()?.getAttribute("aria-label"),
+		"Server update in progress.",
+	);
+	assert.equal(
+		footIcon()?.tagName.toLowerCase(),
+		"output",
+		"the status element, not a button: there is no cancel",
+	);
+	assert.equal(
+		(footIcon()?.outerHTML ?? "").includes("<button"),
+		false,
+		"and nothing inside it is pressable",
+	);
+	/*
+	 * THE ARC ANSWERS A HOVER (review round 1's U3): it rides the app's Tooltip
+	 * primitive now, which stamps its trigger's `data-state` onto the child if one
+	 * is open. Before this, the state a pointer user most wants to interrogate -
+	 * "what is happening?" - answered nothing on hover.
+	 */
+	assert.equal(
+		footIcon()?.hasAttribute("data-state"),
+		true,
+		"the in-flight element is a tooltip trigger - the arc answers a hover now",
+	);
+	/*
+	 * A press DURING the attempt reaches the icon's slot and finds no control - the
+	 * consult's "no cancel, so no dead end": the element is not a button, so there
+	 * is nothing for a click to hit.
+	 */
+	assert.equal(footIcon()?.querySelector("button"), null);
+
+	await act(async () => {
+		releaseAttempt?.(true);
+	});
+	await fire("backend-update-completed", {
+		installVersion: "0.55.10",
+		runningVersion: "0.55.10",
+		restarted: true,
+	});
+	assert.notEqual(
+		footIconState(),
+		"inflight",
+		"and the arc ends with the attempt it mirrors",
 	);
 });
 
@@ -775,6 +1172,7 @@ test("a release below the followed segment stays quiet", async () => {
 		true,
 		"a patch release is not news to a minor-following surface",
 	);
+	assert.equal(footIcon(), null, "and the standing icon is not raised either");
 	assert.equal(
 		cardHeadings().includes("Update available"),
 		false,
@@ -790,6 +1188,7 @@ test("an explicit check is still loud, even below the followed segment", async (
 	await mount();
 	await fire("update-available", { version: "0.30.1", releaseNotes: "Patch." });
 	assert.equal(bandIsQuiet(), true, "the app's own news is gated");
+	assert.equal(footIcon(), null, "and raises no standing icon either");
 
 	/*
 	 * What the settings button does after a check it ran: the verdict said the app
@@ -818,10 +1217,11 @@ test("a deferred version is not raised at all", async () => {
 		true,
 		"the deferral silences the indicator exactly as it silenced the card",
 	);
+	assert.equal(footIcon(), null, "and silences the standing icon");
 	assert.equal(cardHeadings().includes("Update available"), false);
 });
 
-test("a server release raises the same band, and its own version", async () => {
+test("a server release raises the same icon, and its press the same band", async () => {
 	await reset();
 	appVersion = "0.30.0";
 	const container = await mount();
@@ -836,7 +1236,16 @@ test("a server release raises the same band, and its own version", async () => {
 		updateMethod: "global",
 	});
 
-	assert.ok(indicatorBand(), "the server surface is announced the same way");
+	assert.equal(
+		footIconState(),
+		"available",
+		"the server surface is announced the same way",
+	);
+	assert.match(
+		footIcon()?.getAttribute("aria-label") ?? "",
+		/Server update 0\.55\.10 available\. Show the update notice\./,
+	);
+	await pressFootIcon();
 	assert.match(
 		container.textContent ?? "",
 		/Server update 0\.55\.10 available/,
@@ -847,6 +1256,7 @@ test("dismissing the card also takes the band away", async () => {
 	await reset();
 	const container = await mount();
 	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await pressFootIcon();
 	await act(async () => {
 		indicatorButtons()[0].dispatchEvent(
 			new DOM.window.MouseEvent("click", { bubbles: true }),
@@ -862,6 +1272,11 @@ test("dismissing the card also takes the band away", async () => {
 		later.dispatchEvent(new DOM.window.MouseEvent("click", { bubbles: true }));
 	});
 	assert.equal(bandIsQuiet(), true, "a waved-away notice is gone");
+	assert.equal(
+		footIcon(),
+		null,
+		"and the icon goes with it - the offer itself was cleared",
+	);
 	assert.equal(cardHeadings().includes("Update available"), false);
 	assert.equal(
 		useDeferredUpdatesStore.getState().uiDeferredVersion,
@@ -1066,6 +1481,7 @@ test("R2: the offer card's own check (the manual arm) keeps the detail up", asyn
 		canManageUpdate: false,
 		appOwned: false,
 	});
+	await pressFootIcon();
 	await act(async () => {
 		indicatorButtons()[0].dispatchEvent(
 			new DOM.window.MouseEvent("click", { bubbles: true }),
@@ -1094,6 +1510,7 @@ test("U1/U2: Escape closes the press-opened card and hands focus back to the ban
 	await reset();
 	const container = await mount();
 	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await pressFootIcon();
 	await act(async () => {
 		indicatorButtons()[0].dispatchEvent(
 			new DOM.window.MouseEvent("click", { bubbles: true }),
@@ -1150,6 +1567,7 @@ test("U1: the visible close control is the same exit", async () => {
 	await reset();
 	await mount();
 	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
+	await pressFootIcon();
 	await act(async () => {
 		indicatorButtons()[0].dispatchEvent(
 			new DOM.window.MouseEvent("click", { bubbles: true }),
@@ -1169,6 +1587,7 @@ test("U4: pressing the other surface switches the card rather than doing nothing
 	await mount();
 	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
 	await fire("backend-update-available", SERVER_OFFER);
+	await pressFootIcon();
 	assert.equal(indicatorButtons().length, 2, "both surfaces are offered");
 
 	await act(async () => {
@@ -1229,6 +1648,7 @@ test("R9: a verdict does not open a card for an offer the app is not holding", a
 	 * deferral lives on THIS side and main's check knows nothing about it.
 	 */
 	await fire("backend-update-available", SERVER_OFFER);
+	await pressFootIcon();
 	await act(async () => {
 		indicatorButtons()[0].dispatchEvent(
 			new DOM.window.MouseEvent("click", { bubbles: true }),
@@ -1286,6 +1706,7 @@ test("R9: a check that finds both channels opens one card and leaves the other i
 		canManageUpdate: false,
 		appOwned: false,
 	});
+	await pressFootIcon();
 	await act(async () => {
 		indicatorButtons()[0].dispatchEvent(
 			new DOM.window.MouseEvent("click", { bubbles: true }),
@@ -1336,6 +1757,7 @@ test("R10/U11: the hand-back returns to the surface the press came from, not the
 	await mount();
 	await fire("update-available", { version: "0.31.0", releaseNotes: "Fixes." });
 	await fire("backend-update-available", SERVER_OFFER);
+	await pressFootIcon();
 	assert.equal(indicatorButtons().length, 2, "both surfaces are offered");
 
 	const server = indicatorButtons().find(
@@ -1382,6 +1804,7 @@ for (const [from, to] of [
 			releaseNotes: "Fixes.",
 		});
 		await fire("backend-update-available", SERVER_OFFER);
+		await pressFootIcon();
 		const item = (type) =>
 			indicatorButtons().find(
 				(button) => button.getAttribute("data-update-indicator-open") === type,
@@ -1442,6 +1865,7 @@ test("U12: the close control is not inside the card's scrolling box", async () =
 	await reset();
 	const container = await mount();
 	await fire("backend-update-available", SERVER_OFFER);
+	await pressFootIcon();
 	await act(async () => {
 		indicatorButtons()[0].dispatchEvent(
 			new DOM.window.MouseEvent("click", { bubbles: true }),
