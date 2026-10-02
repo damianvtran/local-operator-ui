@@ -970,6 +970,75 @@ test("Ask for a change puts its own sentence in the box that renders (QA round 2
 	});
 });
 
+test("the seeded sentence leaves the box when its target does (agent review round 9, finding 2)", async () => {
+	await withPage(async (world) => {
+		const { container, root } = await mount(
+			"/agents?kind=agent&name=aida",
+			world,
+			{
+				aidaName: "Nova",
+				features: { agents_config: 1, session_interrupt: 1 },
+			},
+		);
+		const box = () => container.querySelector("textarea");
+		assert.ok(
+			await settle(() => Boolean(box())),
+			"the run's box never rendered",
+		);
+		const ask = buttonNamed(container, "Ask for a change");
+		assert.ok(ask, "the header action never rendered");
+		await act(async () => {
+			ask.click();
+		});
+		/*
+		 * THE BOX REALLY HOLDS THE SEED FIRST, or the empty box below proves nothing:
+		 * a box that was never seeded is empty for free.
+		 */
+		assert.equal(
+			box().value,
+			"Change the agent aida: ",
+			"the press did not seed the box, so this case cannot speak about the clear",
+		);
+		/*
+		 * THE ROW IS RE-QUERIED INSIDE THE WAIT, because the roster arrives from its
+		 * own read: the box above renders before the sidebar's rows do, so a single
+		 * query taken here would ratify whichever render happened to be up and then
+		 * wait on a node that was never going to appear.
+		 */
+		const reviewer = () =>
+			container.querySelector('[data-testid="roster-row-reviewer"]');
+		assert.ok(
+			await settle(() => Boolean(reviewer())),
+			"the roster row the switch needs never rendered",
+		);
+		await act(async () => {
+			reviewer().click();
+		});
+		/*
+		 * THE BADGE GOING IS WHAT SAYS THE EFFECT RAN. Without it an empty box could
+		 * just be a composer that never heard about the switch and cleared itself.
+		 */
+		assert.ok(
+			await settle(
+				() => !container.querySelector('[data-testid="config-composer-about"]'),
+			),
+			"the target was not left behind, so the clear was never asked for",
+		);
+		/*
+		 * THE BOX IS THE SUBJECT, NOT THE STORE. The defect was exactly the two
+		 * disagreeing - the row empty, the sentence on screen - so a store-only
+		 * assertion passes on it. This one fails on the bug: seen failing against the
+		 * `setCurrentInput` clear, with this message.
+		 */
+		assert.equal(
+			box().value,
+			"",
+			"the seeded sentence stayed in the box after its target was left behind",
+		);
+		await act(async () => root.unmount());
+	});
+});
+
 test("the discard question takes the focus its Cancel gave up (UX round 2, U1)", async () => {
 	await withPage(async (world) => {
 		const { container, root } = await mount(
