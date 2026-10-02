@@ -19,7 +19,9 @@ the state IS the pointer.
 
 **THE ARM, DECLARED (design round 1 D2, round 2 D1): the nine resting states
 ship in the HOVER-LESS arm (`touch: true` — `Emulation.setTouchEmulationEnabled`
-in the rig); the four interaction states ship in a hover-capable one.** Which arm
+in the rig); the seven interaction states ship in a hover-capable one, and the
+four states that declare no arm inherit the rig's renderer (`host` in the table
+below).** Which arm
 a capture renders under decides whether a pointer-less frame can show the row at
 all: its reveal is `opacity-0 … group-hover:opacity-100
 group-focus-within:opacity-100 [@media(hover:none)]:opacity-100`
@@ -196,7 +198,7 @@ state-to-state on the fact it exists to evidence.
 
 **This head's frames are ONE shoot, at the command below, whole set.** Every state
 is photographed under its declared arm — `touch: true` (the hover-less arm) for
-the nine resting states, a real pointer for the four interaction states — and the
+the nine resting states, a real pointer for the interaction states — and the
 rig's own `expectPresent: '[data-lo-answer-actions]'` is what makes a resting frame
 with no row on screen fail the run rather than ship (the check whose absence let
 the old generation's seven frames through). The palettes are the six the command
