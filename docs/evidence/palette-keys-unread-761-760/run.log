@@ -1,14 +1,14 @@
-[build] current: assets 2026-10-02T16:57:45.954Z >= sources 2026-10-02T16:44:30.896Z
+[build] current: assets 2026-10-02T20:53:15.961Z >= sources 2026-10-02T20:44:35.315Z
 [note] abandoned scratch trees
-        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+        3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed
 [note] csp for this run's backend
         already widened for http://127.0.0.1:8080
-  serve records 1 linked from /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/stub-records-iter3   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+  serve records 1 linked from /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/stub-records-rem3   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
 local-operator-ui renderer driver
   repo          /Users/damian/local-operator-ui-worktrees/palette-keys-unread-1002-84e8
-  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-53596
-  frames        /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-iter3
-  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-53596/cwd   (scratch: the repo's .env is not read)
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-15127
+  frames        /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-rem3
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-15127/cwd   (scratch: the repo's .env is not read)
   backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
   electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/palette-keys-unread-1002-84e8/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
   electron pin  44.3.0   (package.json optionalDependencies)
@@ -29,7 +29,7 @@ local-operator-ui renderer driver
 [note] hello
         {
   "armed": true,
-  "outDir": "/Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-iter3",
+  "outDir": "/Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-rem3",
   "title": "Local Operator",
   "route": "/chat",
   "href": "file:///Users/damian/local-operator-ui-worktrees/palette-keys-unread-1002-84e8/out/renderer/index.html#/chat",
@@ -64,7 +64,7 @@ local-operator-ui renderer driver
   "focused": false,
   "minimized": false,
   "frames": [],
-  "outDir": "/Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-iter3"
+  "outDir": "/Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-rem3"
 }
 [PASS] window mode is headless and the window is never shown
 [PASS] the catalogue answered with this set's fixture
@@ -94,8 +94,8 @@ local-operator-ui renderer driver
         {"headings":["Chats","Settings","Go to"],"options":[{"id":"chat-e059761608ae","selected":true,"text":"Release notes for 0.29Open↵"},{"id":"settings-section-updates","selected":false,"text":"Application updates"},{"id":"settings-section-providers","selected":false,"text":"Model providers"},{"id":"page-agent-hub","selected":false,"text":"Agent hub"}],"active":"chat-e059761608ae"}
 [PASS] a typed query drops the pin - it applies to the empty state only
 [note] the typed-search legend
-        {"caps":["↑","↓","Ctrl","N","Ctrl","P","↵","esc"],"text":"↑↓CtrlNCtrlPto move↵to runescto close"}
-[PASS] the legend teaches the Ctrl+N / Ctrl+P pair beside the arrows
+        {"caps":["↑","↓","Ctrl","N","↵","esc"],"text":"↑↓CtrlNto move↵to runescto close"}
+[PASS] the legend teaches the reachable walk cap beside the arrows (Ctrl+N; Ctrl+P stays bound but unreached here)
 [PASS] palette-legend-typed-dark draws the dark palette its name claims
         DOM localOperatorDark #22201c; mean luma 20.3 vs 32.1 own / 237.3 other
 [PASS] every capture is a frame the app held still for, with no toast on it
@@ -104,8 +104,8 @@ local-operator-ui renderer driver
 [PASS] no process from this run outlived its boot
 
 frames: palette-legend-typed-dark.png, palette-switcher-ctrl-n-dark.png, palette-switcher-unread-dark.png
-frames directory: /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-iter3
-app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-53596/app-scene.log
-scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-53596 (the frames are also in --out)
+frames directory: /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-rem3
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-15127/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-15127 (the frames are also in --out)
 
 ALL CHECKS PASSED
