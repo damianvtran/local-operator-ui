@@ -478,7 +478,26 @@ export function askForChange(
 	prompt: string,
 ): void {
 	run.setAbout(about);
-	useConversationInputStore.getState().setCurrentInput(CONFIG_BOX_KEY, prompt);
+	const store = useConversationInputStore.getState();
+	/*
+	 * THE SEED GOES THROUGH THE CHANNEL THAT CAN MOVE A BOX, and only into an
+	 * EMPTY one (agent review round 9, finding 2).
+	 *
+	 * A press here is the APP writing the box, so it uses `setComposerText` - the
+	 * writer that bumps `textRevision` and so reaches the composer - rather than
+	 * `setCurrentInput`, whose write the hook only ever adopts into an EMPTY box.
+	 * The pair therefore moves in both directions through the same channel, and the
+	 * row stays the box's own value, which is what makes the clear below sound: it
+	 * compares the row against the sentence it seeded.
+	 *
+	 * WORDS THE OPERATOR HAS ALREADY TYPED ARE THEIRS, the rule the clear's guard
+	 * enforces on the way out and this enforces on the way in: a started request is
+	 * left alone rather than replaced by a sentence that was only ever a starting
+	 * point. Nothing is written in that case, so the row still holds the DRAFT and
+	 * the guard cannot mistake it for the seed.
+	 */
+	if (store.getCurrentInput(CONFIG_BOX_KEY)) return;
+	store.setComposerText(CONFIG_BOX_KEY, prompt);
 }
 
 /**
@@ -498,7 +517,16 @@ export function discardSeededConfigBox(about: {
 		store.getCurrentInput(CONFIG_BOX_KEY).trim() ===
 		configSeedPrompt(about).trim()
 	) {
-		store.setCurrentInput(CONFIG_BOX_KEY, "");
+		/*
+		 * `setComposerText`, NOT `setCurrentInput` (agent review round 9, finding 2).
+		 * The silent keystroke path cannot EMPTY a filled box: the hook adopts
+		 * non-empty text into an empty composer and adopts an external clear ONLY
+		 * through `textRevision`, which `setCurrentInput` deliberately does not bump.
+		 * Written through it, this clear emptied the row and left the sentence on
+		 * screen, and the operator's next Enter sent it as the request while the run
+		 * was told about no agent at all.
+		 */
+		store.setComposerText(CONFIG_BOX_KEY, "");
 	}
 }
 
