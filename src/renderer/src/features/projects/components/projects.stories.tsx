@@ -30,6 +30,7 @@ import type {
 	DesktopProject,
 	DesktopProjectDetail,
 	DesktopProjectMilestone,
+	DesktopProjectRequestUpdateResult,
 	DesktopProjectUpdate,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
@@ -40,6 +41,8 @@ import {
 	writeBoardColumnOrder,
 	writeBoardWindow,
 } from "../project-model";
+import { type SortSpec, writeProjectsSort } from "../project-sort";
+import { REQUEST_UPDATE_NEVER_STARTED_DETAIL } from "../request-update";
 import { BOARD_WINDOW_HINT } from "./board-window-select";
 import { ProjectsPage } from "./projects-page";
 
@@ -540,6 +543,21 @@ const detailsFor = (projects: DesktopProject[]) =>
 		]),
 	);
 
+/**
+ * How the bridge answers `projects.request_update` in one story: the route's
+ * own vocabulary, scripted. `hang` holds the promise open forever - the
+ * sending/loading state's only honest shape, because a pending mutation cannot
+ * be faked into existence from outside.
+ */
+type RequestUpdateFixture = {
+	state: DesktopProjectRequestUpdateResult["state"];
+	/** One row per linked session the batch dialled; counts derive from these. */
+	sessions?: DesktopProjectRequestUpdateResult["sessions"];
+	cooldown_remaining_s?: number;
+	requested_at?: string | null;
+	hang?: boolean;
+};
+
 type StubState = {
 	projects: DesktopProject[];
 	detail: DesktopProjectDetail | null;
@@ -556,6 +574,12 @@ type StubState = {
 	hang: boolean;
 	/** `projects.update` fails with this sentence (the follow-up-refusal arm). */
 	failPatch: string | null;
+	/**
+	 * `projects.request_update`'s scripted answer (the check-in states). `null`
+	 * means no story configured it: a press without a fixture says so loudly
+	 * rather than faking a result.
+	 */
+	requestUpdate: RequestUpdateFixture | null;
 };
 
 let stub: StubState = {
@@ -565,6 +589,7 @@ let stub: StubState = {
 	failList: null,
 	hang: false,
 	failPatch: null,
+	requestUpdate: null,
 };
 
 /**
@@ -592,8 +617,15 @@ const answer = (request: {
 					//
 					// The two registries are ADVERTISED here so the start-session picker
 					// draws its real options; the plain-only degradation is a different
-					// state and has its own story.
-					features: { projects: 1, team_catalogue: 1, profile_catalogue: 1 },
+					// state and has its own story. `projects_request_update` is what
+					// MOUNTS the check-in item and button (PR-B) - a backend without it
+					// draws neither, which is the fail-closed state tests pin.
+					features: {
+						projects: 1,
+						projects_request_update: 1,
+						team_catalogue: 1,
+						profile_catalogue: 1,
+					},
 				},
 			},
 		};
@@ -682,6 +714,43 @@ const answer = (request: {
 				return { status: 200, body: { result: projectView } };
 			}
 			return { status: 404, body: { detail: "no such project" } };
+		/*
+		 * The check-in batch (PR-B), answered in the route's own vocabulary. The
+		 * counts are derived from the scripted session rows here rather than
+		 * written twice, so a fixture cannot contradict itself; `hang` is a
+		 * promise that never settles - the only way the sending state exists for
+		 * a frame.
+		 */
+		case "projects.request_update": {
+			const fixture = stub.requestUpdate;
+			if (!fixture) {
+				throw new Error(
+					"projects.request_update was pressed without a story fixture",
+				);
+			}
+			bridgeOps.push({ op: request.op, request });
+			if (fixture.hang) return new Promise(() => {});
+			const sessions = fixture.sessions ?? [];
+			const result: DesktopProjectRequestUpdateResult = {
+				project: {
+					id: String(request.key ?? "p1"),
+					key: "payments-migration",
+					title: "Payments migration",
+				},
+				state: fixture.state,
+				requested_at: fixture.requested_at ?? null,
+				cooldown_remaining_s: fixture.cooldown_remaining_s ?? null,
+				counts: {
+					total: sessions.length,
+					delivered: sessions.filter((s) => s.outcome === "delivered").length,
+					unconfirmed: sessions.filter((s) => s.outcome === "unconfirmed")
+						.length,
+					failed: sessions.filter((s) => s.outcome === "failed").length,
+				},
+				sessions,
+			};
+			return { status: 200, body: { result } };
+		}
 		default:
 			throw new Error(`unexpected desktop op in this story: ${request.op}`);
 	}
@@ -1106,6 +1175,7 @@ const page = (
 		view?: "list" | "board" | "timeline";
 		columnOrder?: string[];
 		window?: BoardWindow;
+		sort?: SortSpec | null;
 	},
 ) => {
 	stub = {
@@ -1115,6 +1185,9 @@ const page = (
 		failList: null,
 		hang: false,
 		failPatch: null,
+		/* Pinned like the defaults above: without it the spread's Optional half
+		 * keeps `undefined` in the inferred type, which a required field refuses. */
+		requestUpdate: null,
 		...state,
 	};
 	bridgeOps = [];
@@ -1154,6 +1227,14 @@ const page = (
 		}
 	}
 	/*
+	 * The sort is persisted the same way (U2: an explicit column sort persists
+	 * across a view switch), so every story states one or clears it: a stored
+	 * sort leaking into the next story would order its rows by the previous
+	 * story's column — the same defect the view, the order and the window
+	 * guard against.
+	 */
+	writeProjectsSort(state.sort ?? null);
+	/*
 	 * `h-screen`, the schedules page's rule: in the app this page is a full-height
 	 * column, and a story without the height photographs a panel hugging its own
 	 * content instead of the panel the app draws.
@@ -1166,14 +1247,14 @@ const page = (
 };
 
 /** Empty: no project anywhere on this machine. */
-export const Empty: Story = { render: () => page({}) };
+export const Empty: Story = { render: () => page({ view: "list" }) };
 
 /** Loading: the header stays, so nothing jumps when the rows arrive. */
 export const Loading: Story = {
 	render: () => (
 		<>
 			<HoldUntilPresent text="Loading projects" />
-			{page({ hang: true })}
+			{page({ view: "list", hang: true })}
 		</>
 	),
 };
@@ -1183,19 +1264,29 @@ export const LoadError: Story = {
 	render: () => (
 		<>
 			<HoldUntilPresent text="The backend did not answer." />
-			{page({ failList: "The backend did not answer." })}
+			{page({ view: "list", failList: "The backend did not answer." })}
 		</>
 	),
 };
 
 /** Three projects: the list's ordinary shape. */
 export const Populated: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("populated-band", async () => {
 		await bandsReady();
 		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
 	}),
 };
+
+/**
+ * THE DEFAULT VIEW'S FRAME (design item 3, as amended): nothing stored, so the
+ * page derives its default — the Board — and this is the only story that
+ * states NO view on purpose, which is what makes the derivation visible here
+ * and nowhere else. The flip is scoped to a NEVER-CHOSEN value: a reader who
+ * picked List or Timeline keeps it, and the stored key's format is unchanged,
+ * so no migration runs.
+ */
+export const DefaultBoard: Story = { render: () => page({ projects: THREE }) };
 
 /**
  * The same listing at the width the 800x600 window floor leaves the list once
@@ -1208,19 +1299,747 @@ export const Populated: Story = {
  * proof as well as the width proof.
  */
 export const NarrowColumns: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("narrow-columns-band", async () => {
 		await bandsReady();
 		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
 	}),
 };
 
+/**
+ * U7's fix, measured rather than described: at this width the count is SHED
+ * (it is the one item that appears on the first keystroke), so typing cannot
+ * wrap the switcher row or move the list — the same invariance U1 holds at
+ * wide widths, held at the narrow end where `flex-wrap` used to break it. The
+ * play takes both readings around the keystroke — the switcher row's height
+ * and the list's top — and fails on any move; it also asserts the shed itself,
+ * because a count that stayed visible here is the shape the bug returns in.
+ */
+export const NarrowSearchActive: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("narrow-search-active", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		const row = () => document.querySelector("[data-project-search-row]");
+		const list = () => document.querySelector('[data-testid="project-list"]');
+		const before = {
+			row: row()?.getBoundingClientRect().height ?? 0,
+			top: list()?.getBoundingClientRect().top ?? 0,
+		};
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelectorAll("[data-project-name]").length < 12,
+			"the rows to narrow to the matches",
+		);
+		const count = document.querySelector<HTMLElement>("[data-project-count]");
+		if (count !== null && getComputedStyle(count).display !== "none") {
+			throw new Error("the count did not shed at this width");
+		}
+		const after = {
+			row: row()?.getBoundingClientRect().height ?? 0,
+			top: list()?.getBoundingClientRect().top ?? 0,
+		};
+		if (Math.abs(before.row - after.row) > 0.5) {
+			throw new Error(
+				`the switcher row moved on the first keystroke: ${before.row}px -> ${after.row}px`,
+			);
+		}
+		if (Math.abs(before.top - after.top) > 0.5) {
+			throw new Error(
+				`the list top moved on the first keystroke: ${before.top}px -> ${after.top}px`,
+			);
+		}
+	}),
+};
+
 /** Twelve projects: the list under a scrollbar. */
 export const Many: Story = {
-	render: () => page({ projects: MANY }),
+	render: () => page({ view: "list", projects: MANY }),
 	play: playOnce("many-band", async () => {
 		await bandsReady();
 		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
+	}),
+};
+
+/**
+ * The search row at rest (U1's state 0): field, Filters with no count, no
+ * chips row, no result line — the before half of the no-new-row claim. The
+ * pair with `SearchActive` is the frame evidence that the first keystroke
+ * changes nothing about the row's height.
+ */
+export const SearchIdle: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+};
+
+/**
+ * The same row with a query in it (state 1): the result line appears in the
+ * switcher row's right cluster (`10 of 12 projects`), the rows narrow to the
+ * matches in relevance order, and still no chips row — nothing facet-shaped
+ * is set. Compare with `SearchIdle` for the no-new-row claim.
+ */
+export const SearchActive: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("search-active", async () => {
+		/* The field mounts with the page; a play that types into a missing
+		 * node reads as a broken story rather than a slow boot. */
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelector("[data-project-count]") !== null,
+			"the result count to appear",
+		);
+	}),
+};
+
+/**
+ * The Filters popover complete (the toolbar entry point): all nine facets.
+ *
+ * The play then pins U12's focus handoff, the fact a still cannot show: it
+ * sets a facet so the header's Clear all exists, presses it, and fails unless
+ * the popover CLOSES with focus landed on the search field (the pre-fix code
+ * left the popover open with focus on `<body>`). It re-opens the popover so
+ * the frame is still the open panel.
+ */
+export const FiltersOpen: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("filters-open", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the Filters popover to open",
+		);
+		/* U12's pin, first half: give the popover header something to clear. */
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		if (!option) throw new Error("the Active option is absent");
+		option.click();
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the chip for the Active facet",
+		);
+		const headerClear = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] button'),
+		].find((node) => node.textContent?.trim() === "Clear all");
+		if (!headerClear) {
+			throw new Error("the popover header's Clear all is absent");
+		}
+		headerClear.click();
+		/* U12's pin, second half: the popover closes, the facet clears, and the
+		 * handoff lands focus on the search field - each of the three fails on
+		 * the code this pin was born against. */
+		await poll(
+			() => document.querySelector('[role="dialog"]') === null,
+			"the popover to close on the header Clear all",
+		);
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 0,
+			"the facet to clear",
+		);
+		await poll(
+			() =>
+				document.activeElement?.getAttribute("aria-label") ===
+				"Search projects",
+			"focus to land on the search field",
+		);
+		/* Re-open for the frame: the panel with its nine facets, none selected. */
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the Filters popover to re-open",
+		);
+	}),
+};
+
+/**
+ * The chips row (state 2): a facet is on, so one chip per facet plus Clear all
+ * appears BELOW the switcher row while the result line lives in the row above
+ * — the U1 split, photographed in its on state.
+ */
+export const FilterChips: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("filter-chips", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the chip row to appear",
+		);
+	}),
+};
+
+/**
+ * D2a's composition, pinned in pixels and in order: a FACET chip and the SORT
+ * chip TOGETHER — the chips row's documented shape (`FACET_ORDER`'s chips
+ * first, the sort pushed last, one `flex flex-wrap` container). The play reads
+ * the rendered order rather than the source's: `Status · Active` first,
+ * `Sort: Status` after it.
+ */
+export const FilterAndSortChips: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+	play: playOnce("filter-and-sort-chips", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 2,
+			"the facet chip and the sort chip",
+		);
+		const chips = [...document.querySelectorAll("[data-project-chip]")].map(
+			(node) => node.textContent ?? "",
+		);
+		if (!chips[0]?.startsWith("Status · Active")) {
+			throw new Error(`the facet chip is not first: ${chips[0]}`);
+		}
+		if (!chips[1]?.startsWith("Sort: Status")) {
+			throw new Error(`the sort chip is not last: ${chips[1]}`);
+		}
+	}),
+};
+
+/**
+ * D7's pin: `Clear all` clears the query, the facets AND the sort. The
+ * play sets a facet through the popover (the story's sort is seeded by
+ * its own props), presses the chips row's Clear all, and fails unless
+ * every chip is gone and the Status header's `aria-sort` is back to
+ * `none` — the same end state the sort chip's own removal path reaches
+ * (U6), asserted here rather than argued.
+ *
+ * The play then pins U16 (and R10's composed sentence): a MutationObserver
+ * on the page's live region records every sentence it holds, the composed
+ * clear is read off that log, and the facet-only clear is made TWICE — a
+ * repeat of the SAME sentence, which a region read from its mutations only
+ * speaks again if the re-set before it emptied the region instead of
+ * leaving the string standing. The end state is the `no chips, the strip at
+ * rest` this frame exists to show.
+ */
+export const ClearAllClearsSort: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+	play: playOnce("clear-all-clears-sort", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 2,
+			"the facet chip and the sort chip",
+		);
+		/*
+		 * THE ANNOUNCEMENT LOG (U16's pin, and R10's composed sentence): a
+		 * MutationObserver records every non-empty sentence the page's live
+		 * region holds from here on — assertions about what was SPOKEN are read
+		 * off the log rather than off the region "now", because the region is
+		 * emptied by design (a dwell) and a play reading it late would race its
+		 * own clock.
+		 */
+		const region = document.querySelector("[data-project-announcement]");
+		if (!region) throw new Error("the announcement region is absent");
+		const spoken: string[] = [];
+		const observer = new MutationObserver(() => {
+			const text = (region.textContent ?? "").trim();
+			if (text !== "") spoken.push(text);
+		});
+		observer.observe(region, {
+			childList: true,
+			characterData: true,
+			subtree: true,
+		});
+		const clearAllButton = () =>
+			[...document.querySelectorAll<HTMLElement>("button")].find(
+				(node) => node.textContent?.trim() === "Clear all",
+			);
+		const clear = clearAllButton();
+		if (!clear) throw new Error("the chips row's Clear all is absent");
+		clear.click();
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 0,
+			"every chip to clear",
+		);
+		const header = document.querySelector('[data-project-column="status"]');
+		if (header?.closest("th")?.getAttribute("aria-sort") !== "none") {
+			throw new Error(
+				`Clear all left the sort standing: aria-sort=${header?.closest("th")?.getAttribute("aria-sort")}`,
+			);
+		}
+		/* R10's composed sentence, capitalised (U17): the first clear named the
+		 * facet AND the sort, in the doors' own order. */
+		await poll(
+			() => spoken.includes("Filters and sort cleared."),
+			"the composed clear sentence",
+		);
+		/* U16's pin: the same clear, twice. Each round re-sets the facet - an
+		 * action that is not itself announced, so it supersedes the standing
+		 * sentence (polled empty below) - and then clears again. The second
+		 * `Filters cleared.` only reaches the log if the repeat SPEAKS: the
+		 * string it would otherwise re-set is the one already standing, and a
+		 * region read from its mutations has nothing to read. */
+		for (let round = 0; round < 2; round++) {
+			await clickWhen("[data-project-filters-button]");
+			await poll(
+				() =>
+					[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+						node.textContent?.trim().startsWith("Active"),
+					),
+				"the Active option",
+			);
+			const setActive = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith("Active"));
+			if (!setActive) throw new Error("the Active option is absent");
+			setActive.click();
+			await userEvent.keyboard("{Escape}");
+			await poll(
+				() => document.querySelectorAll("[data-project-chip]").length === 1,
+				"the facet chip",
+			);
+			await poll(
+				() => (region.textContent ?? "").trim() === "",
+				"the standing sentence to empty as the re-set supersedes it",
+			);
+			const again = clearAllButton();
+			if (!again) throw new Error("the chips row's Clear all is absent");
+			again.click();
+			await poll(
+				() => document.querySelectorAll("[data-project-chip]").length === 0,
+				"every chip to clear",
+			);
+			await poll(
+				() =>
+					spoken.filter((line) => line === "Filters cleared.").length >=
+					round + 1,
+				round === 0
+					? "the first facet-only clear"
+					: "the REPEAT to speak again",
+			);
+		}
+	}),
+};
+
+/**
+ * A stored column sort, at rest: the strip's Status header carries the
+ * direction glyph and `aria-sort`, and the sort chip names it — the U6 door
+ * that stays reachable when the column itself has been shed.
+ */
+export const SortedStatus: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+};
+
+/**
+ * Nulls last, asserted as the rendered order rather than argued: one team's
+ * section with the Estimate sort DESCENDING, so the whole list is a single
+ * sequence — the three rows that carry an estimate lead, in the descending
+ * (unit, value) order, and the two that do not sit after them. The play reads
+ * the DOM's own row order and fails the story on any other sequence; the
+ * ascending half of the same rule is pinned by `scripts/projects-sort.test.mjs`
+ * where it costs nothing to run both directions.
+ */
+export const SortedNullsLast: Story = {
+	render: () => {
+		const team = "platform";
+		const rows = [
+			project("e1", "estimate-three", { team, estimate: 3 }),
+			project("e2", "estimate-eight", { team, estimate: 8 }),
+			project("e3", "estimate-five-days", {
+				team,
+				estimate: 5,
+				estimate_unit: "days",
+			}),
+			project("n1", "no-estimate-one", { team, estimate: null }),
+			project("n2", "no-estimate-two", { team, estimate: null }),
+		];
+		return page({
+			view: "list",
+			projects: rows,
+			sort: { key: "estimate", direction: "desc" },
+		});
+	},
+	play: playOnce("sorted-nulls-last", async () => {
+		const rows = () =>
+			[...document.querySelectorAll("[data-project-name]")].map((node) =>
+				node.getAttribute("data-project-name"),
+			);
+		await poll(() => rows().length === 5, "the five rows");
+		const expected = [
+			"estimate-five-days",
+			"estimate-eight",
+			"estimate-three",
+			"no-estimate-one",
+			"no-estimate-two",
+		];
+		await poll(
+			() => rows().join(",") === expected.join(","),
+			"the descending (unit, value) order with the nulls last",
+		);
+		if (rows().join(",") !== expected.join(",")) {
+			throw new Error(`the sort landed as: ${rows().join(",")}`);
+		}
+	}),
+};
+
+/**
+ * D2b's composition: a sort whose column has been SHED by the narrow width —
+ * U6's whole reason for existing. At this width the strip hides Target and
+ * Estimate (the container's own shed), so the header itself is unreachable;
+ * the sort chip is the only door, and the play asserts both halves: the shed
+ * column's button has no layout box, and the chip names the sort it cannot
+ * otherwise show.
+ */
+export const SortedShedColumn: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "estimate", direction: "desc" },
+		}),
+	play: playOnce("sorted-shed-column", async () => {
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the sort chip",
+		);
+		const header = document.querySelector<HTMLElement>(
+			'[data-project-column="estimate"]',
+		);
+		if (header === null) {
+			throw new Error("the estimate header did not render");
+		}
+		if (header.offsetParent !== null) {
+			throw new Error("the estimate column did not shed at this width");
+		}
+		const chip = document.querySelector("[data-project-chip]");
+		if (!chip?.textContent?.startsWith("Sort: Estimate")) {
+			throw new Error(
+				`the shed column's chip does not name it: ${chip?.textContent}`,
+			);
+		}
+	}),
+};
+
+/**
+ * A column's scoped menu, open (the second entry point of the one panel):
+ * `Target`'s sort actions above Target's facet options, with the counts the
+ * panel derives and the `Default (as listed)` way back to the store's order.
+ * The play then takes the sort radio and asserts the LANDING rather than
+ * describing it: a date column's first direction is descending (the ux round's
+ * folded NIT), so `aria-sort` must read `descending` on the Target header and
+ * the sort chip must be present — with the menu still open, which is the
+ * frame.
+ */
+export const ColumnMenuOpen: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("column-menu-open", async () => {
+		await clickWhen('[data-project-column="target"]');
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the column menu to open",
+		);
+		/* The sort item's own label TH states the direction a press applies. */
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.includes("Sort by Target, latest first"),
+				),
+			"the Target sort radio",
+		);
+		const sortItem = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) =>
+			node.textContent?.includes("Sort by Target, latest first"),
+		);
+		sortItem?.click();
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "descending",
+			"the Target header to report descending",
+		);
+		await poll(
+			() =>
+				[...document.querySelectorAll("[data-project-chip]")].some((node) =>
+					node.textContent?.startsWith("Sort: Target"),
+				),
+			"the sort chip",
+		);
+		/* U11's pin: the flip must be reachable from the KEYS. The checked
+		 * radio's own press is the flip, and Space/Enter on a checked radio
+		 * fire no click - the fix states the key path on the input. The play
+		 * flips twice so the frame's end state (Target, descending, menu
+		 * open) is unchanged, and both intermediate polls fail on the code
+		 * this pin was born against. */
+		const checked = [
+			...document.querySelectorAll<HTMLInputElement>(
+				'[role="dialog"] input[type="radio"]',
+			),
+		].find(
+			(node) =>
+				node.checked &&
+				node.closest("label")?.textContent?.includes("Sort by Target"),
+		);
+		if (!checked) throw new Error("the checked Target sort radio is absent");
+		checked.focus();
+		await userEvent.keyboard(" ");
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "ascending",
+			"the keyboard flip to ascending",
+		);
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "descending",
+			"the keyboard flip back to descending",
+		);
+	}),
+};
+
+/**
+ * The no-match block: with a search on and zero matches it REPLACES the view
+ * (here the List), the field stays above it, and the subline names what a v1
+ * query does and does not read — so a word that lives in an update is not
+ * mistaken for a project that does not exist.
+ *
+ * The play walks the block's OTHER door and back (agent review round 7, R10;
+ * design round 4, D10): it clears the query, sets the pair of facets whose
+ * intersection is empty, and checks the FILTER-only variant — its own heading
+ * and recovery sentence, and exactly ONE Clear all on screen. U14's count is
+ * the one the chips row cannot pass: with the block up the row keeps its
+ * chips and hides its copy, where the screen this pin was born against held
+ * two identically labelled buttons. The walk restores the query state so the
+ * frame is the variant the directory has always shown.
+ */
+export const NoMatch: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("no-match", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"zzznothing",
+		);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+		/* U13's pin: the query case keeps the search facts without the
+		 * roadmap word, and the recovery sentence stays (fails on the copy
+		 * this pin was born against, which said \"is not searched yet\"). */
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("Update text is not searched.") &&
+				text.includes("Clearing the search and filters restores the list.")
+			);
+		}, "the search disclaimer and the recovery sentence");
+		/* R10/U14's count, query side: the field's own clear is the exit, so
+		 * the block carries the only Clear all. */
+		const clearAlls = () =>
+			[...document.querySelectorAll<HTMLElement>("button")].filter(
+				(node) => node.textContent?.trim() === "Clear all",
+			);
+		await poll(
+			() => clearAlls().length === 1,
+			"exactly one Clear all in the query no-match state",
+		);
+		/* D10's walk, door one: clear the query, leaving the list in charge. */
+		const bodyClear = clearAlls()[0];
+		if (!bodyClear) throw new Error("the block's Clear all is absent");
+		bodyClear.click();
+		await poll(
+			() => !(document.body.textContent ?? "").includes("No projects match"),
+			"the block to retire on its own Clear all",
+		);
+		/* Door two: the facet pair whose intersection is empty (Done rows have no
+		 * live sessions), with no query typed — the variant nothing showed. */
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Done"),
+				),
+			"the Done option",
+		);
+		for (const [index, label] of ["Done", "Has live sessions"].entries()) {
+			const option = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith(label));
+			if (!option) throw new Error(`the ${label} option is absent`);
+			option.click();
+			/* ONE faceted click per commit: the panel's `onToggle` closes over
+			 * the filters of ITS render, so two clicks in one tick write the
+			 * second state from the first's absence (this walk measured exactly
+			 * that - the pair collapsed to the live facet alone). Waiting for
+			 * the chip commits the first press before the second, which is the
+			 * pace a reader's own hands give for free. */
+			await poll(
+				() =>
+					document.querySelectorAll("[data-project-chip]").length === index + 1,
+				`the ${label} chip`,
+			);
+		}
+		await userEvent.keyboard("{Escape}");
+		/* The filter-only heading names no query, and U14's count is what
+		 * discriminates — two buttons stood here before the fix. */
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("No projects match.") &&
+				text.includes("Try removing a filter.") &&
+				text.includes("Clearing the filters restores the list.")
+			);
+		}, "the filter-only heading and recovery sentence");
+		await poll(
+			() => clearAlls().length === 1,
+			"exactly one Clear all in the filter-only no-match state",
+		);
+		/* Restore the query variant the frame exists for. */
+		const restoreClear = clearAlls()[0];
+		if (!restoreClear) throw new Error("the block's Clear all is absent");
+		restoreClear.click();
+		await poll(
+			() => !(document.body.textContent ?? "").includes("No projects match"),
+			"the block to retire",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"zzznothing",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					'No projects match "zzznothing".',
+				),
+			"the query no-match state to return",
+		);
+	}),
+};
+
+/**
+ * D10's frame: the FILTER-only no-match state, held for the shutter (design
+ * round 4; agent review round 7's R10 added the pin this state lacked).
+ *
+ * `NoMatch`'s walk passes through this state and deliberately restores the
+ * query variant before returning - that directory has always shown the query
+ * case - so the state the filter door produces had no frame of its own. This
+ * story is the same walk with the restoration dropped: the pair whose
+ * intersection is empty, no query typed, the block's filter-only heading and
+ * recovery sentence on screen. The assertions are the ones that discriminate
+ * the variant (the heading names no query; the sentence names filters; exactly
+ * one Clear all, U14's count, which the chip row cannot pass).
+ */
+export const NoMatchFilter: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("no-match-filter", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Done"),
+				),
+			"the Done option",
+		);
+		for (const [index, label] of ["Done", "Has live sessions"].entries()) {
+			const option = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith(label));
+			if (!option) throw new Error(`the ${label} option is absent`);
+			option.click();
+			/* ONE faceted click per commit, the pace `NoMatch`'s walk measured:
+			 * the panel's `onToggle` closes over the filters of ITS render. */
+			await poll(
+				() =>
+					document.querySelectorAll("[data-project-chip]").length === index + 1,
+				`the ${label} chip`,
+			);
+		}
+		await userEvent.keyboard("{Escape}");
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("No projects match.") &&
+				text.includes("Try removing a filter.") &&
+				text.includes("Clearing the filters restores the list.")
+			);
+		}, "the filter-only heading and recovery sentence");
+		await poll(
+			() =>
+				[...document.querySelectorAll<HTMLElement>("button")].filter(
+					(node) => node.textContent?.trim() === "Clear all",
+				).length === 1,
+			"exactly one Clear all in the filter-only no-match state",
+		);
 	}),
 };
 
@@ -1236,7 +2055,7 @@ export const Many: Story = {
  * drift or a theme's metrics differ.
  */
 export const ListTeamsSticky: Story = {
-	render: () => page({ projects: MANY_LONG }),
+	render: () => page({ view: "list", projects: MANY_LONG }),
 	play: playOnce("list-teams-sticky", async () => {
 		const scroller = () =>
 			document.querySelector<HTMLElement>('[data-testid="project-list"] ul');
@@ -1582,7 +2401,7 @@ export const StartSessionDialog: Story = {
 
 /** The create dialog, opened from the page's own button. */
 export const CreateDialog: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-dialog", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1621,7 +2440,7 @@ export const EditDialog: Story = {
  * failure this story exists to catch.
  */
 export const CreateSheetPreview: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-preview", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1664,7 +2483,7 @@ export const CreateSheetPreview: Story = {
  * markdown — the one thing a plain paste could not produce.
  */
 export const CreateSheetPaste: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-paste", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1706,7 +2525,7 @@ export const CreateSheetPaste: Story = {
  * stayed muted until the submit bounced.
  */
 export const CreateSheetOverLimit: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-over-limit", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1755,7 +2574,11 @@ export const CreateSheetOverLimit: Story = {
  */
 export const CreateSheetFollowUpRefusal: Story = {
 	render: () =>
-		page({ projects: THREE, failPatch: "The target date must be a real day." }),
+		page({
+			view: "list",
+			projects: THREE,
+			failPatch: "The target date must be a real day.",
+		}),
 	play: playOnce("create-sheet-follow-up-refusal", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1799,7 +2622,7 @@ export const CreateSheetFollowUpRefusal: Story = {
  * dialog. A frame alone cannot prove any of that.
  */
 export const CreateSheetSubmit: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-submit", async () => {
 		/*
 		 * Poll for the button before pressing it (the delete confirm's
@@ -2000,6 +2823,7 @@ export const MilestoneToggle: Story = {
 export const StaleProgress: Story = {
 	render: () =>
 		page({
+			view: "list",
 			projects: [
 				project("s1", "stale-rollout", {
 					description: "One weekly line owed",
@@ -2044,6 +2868,89 @@ function HoldUntilPresent({
 }
 
 /* ---------------------------------------------------------- board + timeline */
+
+/**
+ * The board under a search (U5): the result line reports matches WITHIN the
+ * window (`10 of 12 projects` here, at the default week), and the cards that
+ * do not match are gone — the board cannot show a row the search excluded.
+ */
+export const BoardSearchActive: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [
+				...MANY,
+				project("old1", "migration-batch-old", {
+					updated_at: FIXTURE_NOW_MS / 1000 - 30 * DAY_S,
+				}),
+			],
+		}),
+	play: playOnce("board-search-active", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelector("[data-project-count]") !== null,
+			"the board's count line",
+		);
+	}),
+};
+
+/**
+ * R1's state, pinned rather than argued: on the Board, a search whose matches
+ * ALL fall outside the window. The no-match block still wins (U5) — the search
+ * DID match — and the window is what hid the matches, so the block carries the
+ * window's own recovery, `Show all time`, beneath Clear all. The play asserts
+ * the block, both actions, and the count's own words (`0 of 12 in window`,
+ * U10): the denominator is the window's population and the sentence says so.
+ */
+export const BoardSearchOffWindow: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [
+				...MANY,
+				project("old1", "migration-batch-old", {
+					updated_at: FIXTURE_NOW_MS / 1000 - 30 * DAY_S,
+				}),
+			],
+		}),
+	play: playOnce("board-search-off-window", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"batch-old",
+		);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+		const count = document.querySelector<HTMLElement>("[data-project-count]");
+		if (count?.textContent?.trim() !== "0 of 12 in window") {
+			throw new Error(
+				`the within-window count reads: ${count?.textContent?.trim() ?? "absent"}`,
+			);
+		}
+		const labels = [...document.querySelectorAll("button")].map((node) =>
+			node.textContent?.trim(),
+		);
+		if (!labels.includes("Show all time")) {
+			throw new Error(
+				"the within-window no-match block does not offer Show all time",
+			);
+		}
+	}),
+};
 
 /** The board with all three columns populated — the ordinary shape. */
 export const Board: Story = {
@@ -3190,9 +4097,14 @@ export const BoardTitleTooltip: Story = {
 				"the short title is clipped - the fixture no longer discriminates",
 			);
 		}
-		if (long.tabIndex !== 0) {
-			throw new Error("the clipped title has no tab stop");
-		}
+		/* The tab stop is REACT state behind the measurement effect, so it can
+		 * trail the DOM truth by a frame or two under capture load - measured
+		 * 2026-10-01: two sweeps of this family died here, one at `dune` and
+		 * one at `localOperatorDark`, while the DOM itself reported the title
+		 * clipped both times. Wait for the state instead of failing the story:
+		 * the assertion stands (a title that never becomes focusable still
+		 * fails), only the race goes. */
+		await poll(() => long.tabIndex === 0, "the clipped title's tab stop");
 		if (short.hasAttribute("tabindex")) {
 			throw new Error("the unclipped title grew a tab stop");
 		}
@@ -3358,4 +4270,432 @@ export const TimelineOverdue: Story = {
 			</>
 		);
 	},
+};
+
+/* ------------------------------------------------- request update (PR-B) */
+
+/*
+ * The check-in states: the board card's new menu item and the detail header's
+ * button run ONE flow (one window, one set of sentences), so these frames are
+ * raised from the same `projects.request_update` fixture answered in the
+ * route's own vocabulary. `hang` is the sending state's honest shape (the
+ * promise is held open, exactly as a slow route holds it); every other state
+ * resolves with its per-session rows and lets the REAL flow compose the card.
+ */
+
+const REQUEST_SESSION = (
+	session_id: string,
+	title: string | null,
+	outcome: DesktopProjectRequestUpdateResult["sessions"][number]["outcome"],
+	detail = "",
+): DesktopProjectRequestUpdateResult["sessions"][number] => ({
+	session_id,
+	title,
+	outcome,
+	detail,
+});
+
+/** The three engaged links of `DETAIL`'s fixture, all delivered. */
+const REQUEST_DELIVERED: DesktopProjectRequestUpdateResult["sessions"] = [
+	REQUEST_SESSION("4e92693767fa", "Payments cutover", "delivered"),
+	REQUEST_SESSION("a1a1a1a1a1a1", "API parity checks", "delivered"),
+	REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "delivered"),
+];
+
+/** The detail screen at `/projects/p1` with one scripted check-in answer. */
+const detailWithRequestUpdate = (
+	requestUpdate: RequestUpdateFixture,
+	detail: DesktopProjectDetail = DETAIL,
+) => (
+	<RouteTo path="/projects/p1">
+		{page({ projects: THREE, detail, requestUpdate })}
+	</RouteTo>
+);
+
+const requestUpdateButton = () =>
+	document.querySelector<HTMLElement>(
+		'[data-tour-tag="project-request-update"]',
+	);
+
+/**
+ * The press that never answers: the button holds `Requesting…` and the
+ * >400 ms loading card appears (and stays, because nothing supersedes it).
+ */
+export const DetailRequestUpdateSending: Story = {
+	render: () => detailWithRequestUpdate({ state: "sent", hang: true }),
+	play: playOnce("detail-request-update-sending", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() => (document.body.textContent ?? "").includes("Requesting updates…"),
+			"the loading card",
+		);
+		await poll(
+			() => requestUpdateButton()?.getAttribute("aria-busy") === "true",
+			"the button to report busy",
+		);
+	}),
+};
+
+/**
+ * The window after a delivered batch, the success card already retired: the
+ * DURABLE half of the state - the label says the request went out.
+ */
+export const DetailRequestUpdateCooldown: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "sent", sessions: REQUEST_DELIVERED }),
+	play: playOnce("detail-request-update-cooldown", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() => (requestUpdateButton()?.textContent ?? "").trim() === "Requested",
+			"the button to hold its Requested label",
+		);
+		await poll(
+			() => document.querySelector("[data-sonner-toast]") === null,
+			"the success card to auto-close",
+		);
+	}),
+};
+
+/** The success card, while the batch's window is armed. */
+export const RequestUpdateSuccess: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "sent", sessions: REQUEST_DELIVERED }),
+	play: playOnce("request-update-success", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Requested updates from 3 sessions on Payments migration.",
+				),
+			"the success card",
+		);
+	}),
+};
+
+/**
+ * A partial batch, both clauses in one card: one refusal ("could not be
+ * reached") and one unconfirmed delivery ("could not be confirmed") - the
+ * uncertainty the peer layer's own warning keeps, never collapsed into the
+ * failure wording (UX freeze condition U1).
+ */
+export const RequestUpdatePartial: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("4e92693767fa", "Payments cutover", "delivered"),
+				REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-partial", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Old cutover notes could not be reached.",
+				) &&
+				(document.body.textContent ?? "").includes(
+					"Delivery to API parity checks could not be confirmed.",
+				),
+			"the partial card's failure and uncertainty clauses",
+		);
+	}),
+};
+
+/** Every dial refused: the generic sentence, and no window is armed. */
+export const RequestUpdateAllFailed: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("4e92693767fa", "Payments cutover", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"failed",
+					"no longer exists",
+				),
+				REQUEST_SESSION(
+					"c3c3c3c3c3c3",
+					"Old cutover notes",
+					"failed",
+					"not started yet",
+				),
+			],
+		}),
+	play: playOnce("request-update-all-failed", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not reach any of the 3 linked sessions on Payments migration.",
+				),
+			"the all-failed card",
+		);
+	}),
+};
+
+/**
+ * Zero-delivery uncertainty (design round 2, D1): nobody refused and nobody
+ * confirmed, so the card asserts nothing about arrival - the longest pure
+ * sentence the vocabulary can produce, and one a string assertion cannot
+ * settle the wrap of.
+ */
+export const RequestUpdateAllUnconfirmed: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+				REQUEST_SESSION(
+					"b2b2b2b2b2b2",
+					"Cutover notes",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-all-unconfirmed", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not confirm delivery on Payments migration — the requests may still reach its sessions.",
+				),
+			"the all-unconfirmed card",
+		);
+	}),
+};
+
+/**
+ * The mixed zero-delivery end (design round 2, D1): one refusal and one
+ * uncertainty, nothing delivered - the other longest title, whose wrap the
+ * design asked to settle with a still.
+ */
+export const RequestUpdateMixedZeroDelivery: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-mixed-zero-delivery", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not reach 1 of the 2 linked sessions on Payments migration.",
+				) &&
+				(document.body.textContent ?? "").includes(
+					"Delivery to API parity checks could not be confirmed.",
+				),
+			"the mixed zero-delivery card",
+		);
+	}),
+};
+
+/**
+ * A project whose links were never engaged: the batch cannot be delivered to
+ * any of them, and the copy names the fix instead of sending the user to a
+ * control they already used (UX freeze condition U2).
+ */
+export const RequestUpdateNeverStarted: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION(
+					"4e92693767fa",
+					"Payments cutover",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+				REQUEST_SESSION(
+					"c3c3c3c3c3c3",
+					"Old cutover notes",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+			],
+		}),
+	play: playOnce("request-update-never-started", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"The 3 linked sessions have not started yet",
+				),
+			"the never-started card",
+		);
+	}),
+};
+
+/** No links at all: the card names the next action, and nothing is dialled. */
+export const RequestUpdateEmpty: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "empty" }, { ...DETAIL, links: [] }),
+	play: playOnce("request-update-empty", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"No linked sessions to ask. Link a session to Payments migration first.",
+				),
+			"the empty card",
+		);
+	}),
+};
+
+/**
+ * The route's own window: this press dialled nothing (another client asked
+ * first), the card says how long is left, and the button arms from the
+ * server's numbers so the two doors still agree.
+ */
+export const RequestUpdateCooldown: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "cooldown",
+			cooldown_remaining_s: 40,
+			requested_at: new Date(FIXTURE_NOW_MS - 20_000).toISOString(),
+		}),
+	play: playOnce("request-update-cooldown", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Update already requested 20 s ago on Payments migration. Try again in 40 s.",
+				),
+			"the cooldown card",
+		);
+	}),
+};
+
+/**
+ * The card menu's KEYBOARD path, end to end: open with Enter, walk to the item
+ * by its own highlight, commit it - and assert the focus RETURN while the
+ * request is still in flight (U5): the caret must land back on the trigger the
+ * moment the menu closes, because a caret on `body` restarts the next Tab at
+ * the top of the page. The frame is the select's settled state (menu closed,
+ * card focused, the batch's card up).
+ */
+export const BoardRequestUpdateKeyboard: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+			requestUpdate: { state: "sent", sessions: REQUEST_DELIVERED },
+		}),
+	play: playOnce("board-request-update-keyboard", async () => {
+		const selector = '[data-project-menu="p1"]';
+		await poll(() => document.querySelector(selector) !== null, selector);
+		const trigger = need<HTMLElement>(selector);
+		trigger.focus();
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() => document.querySelectorAll('[role="menuitem"]').length >= 4,
+			"the card menu",
+		);
+		/* Walk to the item by its own highlight rather than by a press count,
+		 * so a reordered menu cannot silently retarget the gesture. */
+		for (let attempt = 0; attempt < 6; attempt += 1) {
+			const highlighted = document.querySelector(
+				'[role="menuitem"][data-highlighted]',
+			);
+			if (highlighted?.textContent?.includes("Request update")) break;
+			await userEvent.keyboard("{ArrowDown}");
+		}
+		await poll(
+			() =>
+				document
+					.querySelector('[role="menuitem"][data-highlighted]')
+					?.textContent?.includes("Request update") === true,
+			"the Request update item to highlight",
+		);
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document.activeElement === trigger &&
+				document.querySelectorAll('[role="menuitem"]').length === 0,
+			"focus back on the trigger after the select",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Requested updates from 3 sessions on Payments migration.",
+				),
+			"the batch to land",
+		);
+	}),
+};
+/**
+ * The no-dates callout, expanded over a dated chart: the collapsed line
+ * (`2 projects without dates`) opens to the two names as buttons that still
+ * open their project. The panel is bounded (`max-h-24`, scrolling) because the
+ * list it replaces was the unbounded one the design retired.
+ */
+export const TimelineCalloutExpanded: Story = {
+	render: () => {
+		const dated = project("d1", "release-prep", {
+			start_date: "2026-08-20",
+			target_date: "2026-09-15",
+		});
+		const undated = project("u1", "papercuts", { description: "Small fixes" });
+		const other = project("u2", "onboarding-notes", { status: "paused" });
+		return (
+			<>
+				<HoldUntilPresent text="without dates" />
+				{page({
+					view: "timeline",
+					projects: [dated, undated, other],
+					details: {
+						d1: detailFor(dated),
+						u1: detailFor(undated),
+						u2: detailFor(other),
+					},
+				})}
+			</>
+		);
+	},
+	play: playOnce("timeline-callout-expanded", async () => {
+		await clickWhen("[data-project-undated-callout] button");
+		await poll(
+			() => (document.body.textContent ?? "").includes("papercuts"),
+			"the undated names to appear",
+		);
+	}),
 };

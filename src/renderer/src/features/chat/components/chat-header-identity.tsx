@@ -84,6 +84,7 @@ import { errorText, useSessionCommand } from "../pickers/use-picker-backend";
 import { IdentityMenu } from "./chat-header-identity-menu";
 import { identityMenuShowsList } from "./chat-header-identity-menu-model";
 import { resolveHeaderIdentity } from "./chat-header-identity-model";
+import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /** The identity fields the header passes through; all optional but the session. */
 export type HeaderIdentityData = {
@@ -387,6 +388,33 @@ const IdentityControl: FC<IdentityControlProps> = ({
 								: "Assign an agent"
 					}
 				>
+					{kind === "team" && assigned && (
+						/*
+						 * THE BUBBLE LEADS THE LABEL (operator ask, 2026-10-01): the chat
+						 * header and the sidebar name the same team, so they draw the same
+						 * mark rather than one surface inventing a second compact form.
+						 *
+						 * RENDERED ONLY FOR A TEAM (`kind`) AND ONLY WHEN ONE IS BOUND
+						 * (`assigned`): `No team` has no name to compress, and an agent is
+						 * not a team - the roadmap's compact mark is a team one, and an
+						 * agent's name stays text in the chips beside this one.
+						 *
+						 * NO TOOLTIP HERE, and that is the one place the bubble's own contract
+						 * is turned off: the chip draws the label IN FULL one gap to the
+						 * right of the mark, so a tooltip would say nothing a reader cannot
+						 * already see - and the chip is a `title`-carrying control, so a
+						 * second pointer surface inside it is exactly the native-tooltip /
+						 * app-tooltip doubling the row's flyout was built to remove (D7).
+						 * One pointer surface, and it is the chip's own. The mark keeps its
+						 * `aria-label`, so the team's name is still in the control's
+						 * accessible content.
+						 */
+						<TeamAvatarBubble
+							name={label}
+							slug={current ?? undefined}
+							showTooltip={false}
+						/>
+					)}
 					<span
 						className={cn(
 							/*
