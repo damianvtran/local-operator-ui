@@ -5678,11 +5678,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * capture went on recording with nobody left to end it. `released` is read
 		 * the instant the recorder starts, and the take is settled right there.
 		 */
-		const recordingAttemptRef = useRef<{
-			startedAt: number | null;
-			released: boolean;
-			aborted: boolean;
-		} | null>(null);
+		/*
+		 * THE ATTEMPT IS ITS OWN IDENTITY (UX round 2, U6). It used to carry
+		 * `released`/`aborted` flags, and the resolve arm read them to decide
+		 * discard-versus-keep; that pair went away with the change that made a
+		 * release ABANDON the attempt (nulling the ref) instead of marking it, so
+		 * what is left is the one fact the settle path needs: when the take began.
+		 */
+		const recordingAttemptRef = useRef<{ startedAt: number | null } | null>(
+			null,
+		);
 		/**
 		 * The minimum take, in milliseconds: below it the capture is the tail of a
 		 * press that was never speech (a right-Option tap used as a modifier, a
@@ -5792,8 +5797,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				const attempt = recordingAttemptRef.current;
 				if (!attempt) return;
 				if (attempt.startedAt === null) {
-					attempt.released = true;
-					attempt.aborted = reason === "abort";
+					/*
+					 * THE WINDOW RE-OPENS (UX round 2, U6). The attempt is ABANDONED, not merely
+					 * marked: leaving it in the ref made the next press a silent no-op on a
+					 * control that paints at rest - and a press that looks available and does
+					 * nothing is worse than one that is refused. Nulling it makes the next press a
+					 * fresh attempt (acknowledged again, its own acquisition), while the abandoned
+					 * stream is discarded by the identity check in the resolve arm.
+					 */
+					recordingAttemptRef.current = null;
 					/*
 					 * THE RELEASE ENDS THE ACKNOWLEDGMENT WINDOW TOO (agent review round 2,
 					 * MAJOR 1). This arm returns before `settleRecordingAttempt`, whose
@@ -5851,11 +5863,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * until the recorder is actually running - the mark a
 				 * release-before-start is read against below.
 				 */
-				recordingAttemptRef.current = {
-					startedAt: null,
-					released: false,
-					aborted: false,
-				};
+				const attempt: { startedAt: number | null } = { startedAt: null };
+				recordingAttemptRef.current = attempt;
 				/*
 				 * THE PRESS'S OWN FRAME. This must stay before the first `await`: the
 				 * discrete-event flush commits the acknowledgment in the same frame
@@ -5867,6 +5876,20 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					const stream = await navigator.mediaDevices.getUserMedia({
 						audio: true,
 					});
+					/*
+					 * THE STREAM BELONGS TO THE PRESS THAT ASKED FOR IT (UX round 2, U6). An
+					 * IDENTITY check rather than a flag, for the reason the release arm states: a
+					 * release inside the window abandons the attempt, and a flag on the object
+					 * cannot tell "my press was released" from "the ref now belongs to somebody
+					 * else's press". A stream nothing owns is STOPPED here - an orphan recorder is
+					 * a live microphone nothing can end.
+					 */
+					if (recordingAttemptRef.current !== attempt) {
+						for (const track of stream.getTracks()) {
+							track.stop();
+						}
+						return;
+					}
 					mediaRecorderRef.current = new MediaRecorder(stream);
 					audioChunksRef.current = [];
 
@@ -5886,13 +5909,23 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					};
 
 					mediaRecorderRef.current.start();
-					const attempt = recordingAttemptRef.current;
-					if (attempt) attempt.startedAt = performance.now();
+					/* `attempt` is this press's own object, still the ref's (the identity check above). */
+					attempt.startedAt = performance.now();
 					/*
 					 * One commit, both flags: the acknowledgment is replaced by the
 					 * recording state, never shown beside it.
 					 */
 					setIsPreparing(false);
+					/*
+					 * A TAKE THAT LANDS WHILE A TURN IS RUNNING IS KEPT, and that is a decision
+					 * rather than an oversight (UX round 2, U7). The alternative - discarding it
+					 * because the turn went busy inside the window - would throw away speech the
+					 * user asked for, and it would contradict the doctrine this composer already
+					 * keeps: dictation is a state OF this box, the box stays writable mid-turn,
+					 * and a mid-turn message rides the steer path. So the lane appears, Confirm
+					 * and Cancel are the doors, and the acknowledgment is not silently replaced by
+					 * silence. Pinned by `shared-composer.test.mjs`'s busy-transition case.
+					 */
 					setIsRecording(true);
 					setAudioBlob(null); // Clear previous blob
 					/*
@@ -5901,9 +5934,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * discards it - the correct outcome for a press that captured
 					 * nothing.
 					 */
-					if (attempt?.released) {
-						settleRecordingAttempt(attempt.aborted ? "abort" : "release");
-					}
+					/*
+					 * NOTHING TO SETTLE HERE ANY MORE (UX round 2, U6). The only path that
+					 * abandons an attempt is the release arm, and it nulls the ref - so a stream
+					 * whose press was released never reaches this line; it is stopped by the
+					 * identity check above. The flag-and-settle pair this replaces became
+					 * unreachable the moment the ref started being nulled.
+					 */
 				} catch (err) {
 					recordingAttemptRef.current = null;
 					setIsPreparing(false);
@@ -5918,7 +5955,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				   this did not choose a browser and cannot change it. */
 				showErrorToast("Dictation is not available on this device.");
 			}
-		}, [canEnableRecordingFeature, isInputDisabled, settleRecordingAttempt]);
+		}, [canEnableRecordingFeature, isInputDisabled]);
 
 		const handleConfirmRecording = useCallback(() => {
 			if (!isRecording) return;
@@ -6713,15 +6750,24 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/*
-		 * THE MIC CONTROL'S OWN VISIBILITY, NAMED ONCE (agent review round 2, minor
-		 * b). The acknowledgment's caption is a SIBLING of the control, so the two used
-		 * to answer different questions: the control hides while the turn is busy
-		 * (`isLoading && currentJobId`), and the caption did not - an orphan "Starting
-		 * recording" beside a button that is not there, if the turn went busy inside
-		 * the acquisition. One predicate, read by both.
+		 * THE ACKNOWLEDGMENT'S TWO HALVES, ON ONE PREDICATE, AND ONE OF THEM IS
+		 * LOAD-BEARING (agent review round 2 minor b, UX round 2's U7). The caption is
+		 * a SIBLING of the control, so both read this: they cannot desync into an
+		 * orphan caption beside a control that is not there.
+		 *
+		 * `isPreparing` IS AN EXPLICIT TERM, and that is the U7 fix rather than a
+		 * convenience. A turn that goes busy inside the acknowledgment window used to
+		 * REMOVE the acknowledgment (`isLoading && currentJobId` alone) - the very
+		 * silence this change exists to remove, one transition later - and the
+		 * deferred acquisition then landed as a live recording the user had no notice
+		 * of. While the composer is acquiring, this control is the acknowledgment's
+		 * carrier and the re-press door (U6), so it stays on screen for that window
+		 * whatever the turn is doing; the ordinary rule resumes the moment the window
+		 * closes.
 		 */
 		const micControlShown =
-			!isRecording && !isTranscribing && !(isLoading && currentJobId);
+			isPreparing ||
+			(!isRecording && !isTranscribing && !(isLoading && currentJobId));
 
 		const inputContent = (
 			<form
