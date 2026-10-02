@@ -1,5 +1,5 @@
 {
- "origin": "http://127.0.0.1:6318",
+ "origin": "http://127.0.0.1:6071",
  "story": "/iframe.html?id=chat-sidebar-agents--long-roster&viewMode=story",
  "states": {
   "resting": {
@@ -86,9 +86,9 @@
     "clientHeight": 361
    },
    "headingExpanded": "true",
-   "headingTitle": "Collapse to restore the compact list; reopening draws the compact list again",
+   "headingTitle": "Collapse, then reopen, to restore the compact list",
    "headingDescribedBy": "section-grown-hint-agents",
-   "hintText": "Collapse to restore the compact list; reopening draws the compact list again",
+   "hintText": "Collapse, then reopen, to restore the compact list",
    "rosterFilterPresent": true,
    "footName": null,
    "footTitle": null,
@@ -218,9 +218,9 @@
     "clientHeight": 361
    },
    "headingExpanded": "true",
-   "headingTitle": "Collapse to restore the compact list; reopening draws the compact list again",
+   "headingTitle": "Collapse, then reopen, to restore the compact list",
    "headingDescribedBy": "section-grown-hint-agents",
-   "hintText": "Collapse to restore the compact list; reopening draws the compact list again",
+   "hintText": "Collapse, then reopen, to restore the compact list",
    "rosterFilterPresent": true,
    "footName": null,
    "footTitle": null,
@@ -360,31 +360,31 @@
      "incident-scribe"
     ],
     "lastRowBox": {
-     "top": 383,
-     "bottom": 415,
+     "top": 427,
+     "bottom": 459,
      "height": 32
     },
     "section": {
      "top": 131,
-     "bottom": 500,
-     "height": 369
+     "bottom": 544,
+     "height": 413
     },
     "foot": {
      "label": "Show 4 more",
-     "bottom": 468
+     "bottom": 512
     },
-    "teamsTop": 516,
-    "chatsTop": 600,
-    "firstChatTop": 624,
+    "teamsTop": 560,
+    "chatsTop": 644,
+    "firstChatTop": 668,
     "scroller": {
-     "scrollHeight": 629,
+     "scrollHeight": 673,
      "clientHeight": 278
     },
     "headingExpanded": "true",
     "headingTitle": null,
     "headingDescribedBy": null,
     "hintText": null,
-    "rosterFilterPresent": false,
+    "rosterFilterPresent": true,
     "footName": "Show 4 more agents",
     "footTitle": "Show 4 more agents",
     "documentHeight": 413,
@@ -816,31 +816,31 @@
      "incident-scribe"
     ],
     "lastRowBox": {
-     "top": 383,
-     "bottom": 415,
+     "top": 427,
+     "bottom": 459,
      "height": 32
     },
     "section": {
      "top": 131,
-     "bottom": 500,
-     "height": 369
+     "bottom": 544,
+     "height": 413
     },
     "foot": {
      "label": "Show 4 more",
-     "bottom": 468
+     "bottom": 512
     },
-    "teamsTop": 516,
-    "chatsTop": 600,
-    "firstChatTop": 624,
+    "teamsTop": 560,
+    "chatsTop": 644,
+    "firstChatTop": 668,
     "scroller": {
-     "scrollHeight": 629,
+     "scrollHeight": 673,
      "clientHeight": 278
     },
     "headingExpanded": "true",
     "headingTitle": null,
     "headingDescribedBy": null,
     "hintText": null,
-    "rosterFilterPresent": false,
+    "rosterFilterPresent": true,
     "footName": "Show 4 more agents",
     "footTitle": "Show 4 more agents",
     "documentHeight": 413,
@@ -865,8 +865,8 @@
   "collapsed rows": 0,
   "collapsed heading aria-expanded": "false",
   "rows(grownAgain) - rows(grown)": 0,
-  "hint(grown)": "Collapse to restore the compact list; reopening draws the compact list again",
+  "hint(grown)": "Collapse, then reopen, to restore the compact list",
   "hint(reopened)": null,
-  "hint(grownAgain)": "Collapse to restore the compact list; reopening draws the compact list again"
+  "hint(grownAgain)": "Collapse, then reopen, to restore the compact list"
  }
 }
