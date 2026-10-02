@@ -87,8 +87,8 @@ it in the committed JSON):
 | collapsed (branch) | 0 | — | 28px | 84 |
 | reopened (branch) | 8 | `Show 4 more` | 388px | 452 |
 | grown-again (branch) | 12 | — | 488px | 549 |
-| grown (pre-fix) | 12 | — | 488px | 549 |
-| **reopened (pre-fix)** | **12** | **—** | **488px** | **549** |
+| grown (pre-fix) | 12 | — | 488px | 552 |
+| **reopened (pre-fix)** | **12** | **—** | **488px** | **552** |
 
 - **The reopen is the resting state, on every one of those numbers**, and its
   eight drawn names are the same eight in the same order. The deltas the harness
@@ -97,13 +97,23 @@ it in the committed JSON):
   `rows +0`, `section box +0`, `Teams heading top +0`, and the grown state's own
   name (below) comes back with it.
 - **Nothing shifts beyond the intended rows.** The growth is `+4 × 32px = 128px`
-  of rows and `−28px` of foot, so every boundary below the section moves by
-  exactly **+100px** — the Teams heading and the section box both move 100 — and
-  the 16px gap under the section is unchanged, so the raise does not disturb the
-  panel's rhythm; it moves it.
+  of rows and `−28px` of foot, so the section box grows by **+100px** (488 − 388).
+  The panel below it moves **+97px** (Teams heading 452 → 549), and the 3px
+  difference is the SECTION'S OWN TOP: 48px at rest and in the pre-fix record,
+  45px in this head's grown states (both palettes, and `grown-again/` too). This
+  pass reports the reading and does not claim a cause, because its own evidence
+  cuts both ways: the same instrument at the same press reads 48 on the PRE-FIX
+  tree and 45 on this one, which points at this change — and the new focus
+  contract's first-revealed-row focus is the only thing the press does here that
+  it did not do before — while `grown/` and `baseline/grown/` are `cmp`-clean
+  across the two trees, which a 3px scroll would not survive. What can be said
+  without either reading being stretched: the movement below the section is
+  97-100px against a change of 100px, and no boundary moves by anything else.
 - **The pre-fix half is the defect, measured**: after the identical presses its
-  reopen carries 12 rows, no foot, a 488px section and a 100px-shifted panel
-  below it — the state `reopened/` shows undone.
+  reopen carries 12 rows, no foot, a 488px section and the panel 100px further
+  down (Teams heading 552 against the resting 452, section top 48 throughout) —
+  the state `reopened/` shows undone. Those four numbers are round 1's record,
+  kept beside this pass's as `harness/cap-geometry-baseline.json`.
 
 ### The reset's own name, and where it lives
 
@@ -161,6 +171,12 @@ give the same answer.
   minimal change that satisfies it is the section-body term the remedy's own note
   already names (`isOpen("agents", true) || query !== ""`), whose second clause
   would keep the field limited to a cap-bound roster or an applied filter.
+- **`list-query-pressed/` is a picture of the PRE-FIX state, and its entry says
+  so**: `cap/list-query-pressed` asserts `expectGone: 'input[aria-label="Filter
+  agents"]'`, which is the truth on this head and is written to FAIL the moment
+  the defect is fixed. The fix round flips that assertion to `expectPresent`
+  (and `filter-query-pressed/` keeps the pair for the conjunction), and these two
+  frames are re-taken then — the stills and the numbers move together.
 
 ### Where the keyboard goes
 
