@@ -220,9 +220,12 @@ committed frames are the ones this set shipped and they describe the folded tree
 
 **Thirteen states, 78 frames.** `one-call-turn/` was added in round 1 (D1) and its
 six frames were taken on the fixed tree; the other twelve states were re-checked
-against it rather than re-taken — a re-capture of `rest/` after the round's
-component change (the Speak/Stop swap in `message-actions-row.tsx`) came back
-**byte-identical**, which is the claim that the change moves nothing at rest.
+against it rather than re-taken **in that round** — a re-capture of `rest/` then
+came back **byte-identical** after the round's component change (the Speak/Stop
+swap in `message-actions-row.tsx`), which was that round's claim that the change
+moves nothing at rest. **That is round 1's record, not this set's present state**:
+the nine resting states were re-shot in round 2 (D1) under the hover-less arm, so
+none of them is byte-identical to the round-1 generation any more.
 
 ## What this set is NOT
 

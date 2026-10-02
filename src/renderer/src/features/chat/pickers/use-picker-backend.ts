@@ -159,13 +159,21 @@ export function useSessionCommand(sessionId: string) {
  * sentence whose premise was false for one of them and whose advice was itself
  * refused by another. The detail is the owner's, so it stays; a note adds only
  * what the caller knows without claiming a cause.
+ *
+ * THE JOIN IS A LINE BREAK, not a space (design round 3, D1). The route's
+ * sentences carry NO terminal period - `"history is being rewritten; retry
+ * /fork when compaction finishes"` is quoted verbatim by the test beside this -
+ * so a space ran two clauses together mid-word: "...compaction finishes If that
+ * message...". `\n` is the separator the success path in `destination-pickers`
+ * already uses for its second clause, and it is pinned by that test so the two
+ * cannot drift apart again.
  */
 export function operationFailureText(
 	failurePrefix: string,
 	detail: string,
 	note?: string,
 ): string {
-	return `${failurePrefix}: ${detail}${note ? ` ${note}` : ""}`;
+	return `${failurePrefix}: ${detail}${note ? `\n${note}` : ""}`;
 }
 
 /** Generic async operation state for adapters that call non-command ops. */

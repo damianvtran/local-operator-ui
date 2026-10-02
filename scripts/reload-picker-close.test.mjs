@@ -425,6 +425,17 @@ test("a refused cut keeps the owner's reason and adds only the note this side ca
 			text.endsWith(FORK_CUT_NOTE),
 			"and the note is added, not substituted",
 		);
+		/*
+		 * THE CLAUSE BOUNDARY (design round 3, D1). The route's lines carry no
+		 * terminal period - the four above are quoted verbatim - so a bare-space
+		 * join ran two clauses together mid-word ("...compaction finishes If that
+		 * message..."). `startsWith`/`endsWith` both passed that, so the separator
+		 * is asserted itself rather than left implied by the note's presence.
+		 */
+		assert.ok(
+			text.includes(`\n${FORK_CUT_NOTE}`),
+			"the note starts on its own line rather than running into the owner's [redacted]",
+		);
 	}
 	/*
 	 * The two things the failing shape did, each asserted so neither can come back
