@@ -402,9 +402,11 @@ export const TraceFold = ({
 							 * bound that keeps them inside the box is the column floor rather than
 							 * a break: the narrowest column the app can give this header is ~350px
 							 * (`WINDOW_MIN_WIDTH` 800 and `CHAT_PANE_MIN_PX` 480), and the longest
-							 * unit a run can compose is the 230.6px
-							 * `1 workspace_get_gmail_thread_content` - measured in this Chrome, and
-							 * photographed by the `many-types-kept` cell this round adds at 420.
+							 * unit a run can compose is the **241.4px**
+							 * `1 workspace_get_gmail_thread_content` - the unit's own box on the live
+							 * component (its glyphs alone are 230.6px, which is what an earlier
+							 * draft quoted) - measured in this Chrome, and photographed by the
+							 * `many-types-kept` cell this round adds at 420.
 							 * On the PROSE form it is the property that does the work: a single
 							 * over-long word inside the clause breaks rather than painting past
 							 * the box. Round 1's comment claimed the property was protecting the

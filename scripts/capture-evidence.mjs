@@ -692,7 +692,7 @@ export const STORIES = [
 	["chat-trace-fold--many-types", 640, 130, { dir: "many-types-narrow" }],
 	/*
 	 * THE ≤5-TYPE RUN THAT KEEPS THE LONG KIND (design round 1's D1 ask, shot in
-	 * round 1's remediation as round 2's D3 - the same gap QA bounded as Q-r2-3).
+	 * round 2's remediation as D3 - the same gap QA bounded as Q-r2-3).
 	 *
 	 * `many-types` above CAPS `workspace_get_gmail_thread_content` into its tail,
 	 * so before this cell no committed frame painted that 36-character kind as a

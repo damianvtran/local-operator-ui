@@ -1024,7 +1024,7 @@ export const ManyTypes: Story = {
 };
 
 /**
- * THE RU N THAT KEEPS THE LONG KIND (design round 1's D1 ask, shot in round 2 as
+ * THE RUN THAT KEEPS THE LONG KIND (design round 1's D1 ask, shot in round 2's
  * D3, with the same gap QA bounded as Q-r2-3): FIVE types, so the cap keeps every
  * segment, and the last of them is `workspace_get_gmail_thread_content` - the
  * 36-character snake_case kind that is the longest unit this header can compose.
