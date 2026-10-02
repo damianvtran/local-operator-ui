@@ -1448,6 +1448,18 @@ const BRANCH_RECORDS = [
 	"streamGapHeldReadingsRestampNote",
 	"mentionsRemedyRestampNote",
 	/*
+	 * And by the answer-press copy pass - the pass this branch carries. It is the
+	 * case the entries above name: the note is the only statement of which two
+	 * trees the change moved (`src/` for the two coded refusals' own sentences and
+	 * the app's bounded repeat for the busy arm, `scripts/` for the two arms' rig
+	 * rows and their assertions), of the twelve frames added to a set that is not
+	 * swept, and of the six of them that are `origin/main`'s own rendering. A fold
+	 * resolved from main's copy would drop it, and the re-derived tokens would then
+	 * read as a claim about main's trees. It quotes no tree-hash pair, so
+	 * `BRANCH_RECORDS` is where it belongs.
+	 */
+	"answerNoticeArmsRestampNote",
+	/*
 	 * Grown by the U15 + D28 pass, which wrote this branch's newest top-level
 	 * record. It is listed for the reason the list exists: the pass moved BOTH
 	 * trees and added a frame set, and the record is the only statement of what
@@ -3183,6 +3195,21 @@ const BRANCH_RECORDS = [
 	 * `check-geometry-sources.test.mjs` row.
 	 */
 	"foldOnto756fb7b190Note",
+	/*
+	 * And the lane's TWENTY-FOURTH fold record: the sync onto `origin/main` =
+	 * `a7a108e972` (#746 the answer-press copy pass) - taken pre-merge because
+	 * main moved to that tip while the round-11 remediation was landing, and a
+	 * conflicting head starts no checks. Registered for its siblings' reason and
+	 * one of its own: it carries main's new `answerNoticeArmsRestampNote` spliced
+	 * WHOLE and the `srcTree`/`scriptsTree` pair re-derived from the merged tree,
+	 * so a fold laid from main's copy alone would drop this branch's record and
+	 * one laid from this branch's alone would drop main's - and its text is also
+	 * where the fold states that the three duplicate records round 11 filed
+	 * (R11-1) cannot recur here, both sides being single after the de-dup. It
+	 * quotes no tree-hash pair (base SHAs only), so it joins this list and not
+	 * `STAMP_BINDING_NOTES`.
+	 */
+	"foldOntoa7a108e972Note",
 	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
