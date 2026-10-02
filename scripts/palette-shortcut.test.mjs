@@ -3,9 +3,11 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * The palette's keyboard door, as a decision. Pure, so the rules that matter —
- * which keys toggle it, and which keystrokes belong to a surface that got there
- * first — are pinned here rather than inferred from a listener.
+ * The palette's keyboard decisions: the DOOR — which keys toggle it, and which
+ * keystrokes belong to a surface that got there first — and the WALK — the
+ * arrow and Ctrl+N/Ctrl+P presses that move the selection while it is open
+ * (issue #761). Pure, so the rules that matter are pinned here rather than
+ * inferred from a listener.
  */
 const bundle = await build({
 	stdin: {
@@ -25,6 +27,9 @@ const {
 	paletteShortcutCaps,
 	paletteShortcutIntent,
 	paletteShortcutLabel,
+	paletteStepCaps,
+	paletteStepIndex,
+	paletteStepIntent,
 	switcherShortcutLabel,
 } = module;
 
@@ -110,4 +115,118 @@ test("the copy and the key caps are the same spellings", () => {
 	// future cap: spelled here so a rebinding cannot leave stale `⌘P` copy.
 	assert.equal(switcherShortcutLabel(true), "⌘P");
 	assert.equal(switcherShortcutLabel(false), "Ctrl+P");
+});
+
+/* ------------------------------------------------------------------ *
+ * The walk (issue #761)
+ * ------------------------------------------------------------------ */
+
+/** A press, with everything unset unless the test asks for it. */
+const press = (overrides = {}) => ({
+	key: "n",
+	metaKey: false,
+	ctrlKey: false,
+	altKey: false,
+	shiftKey: false,
+	...overrides,
+});
+
+test("the arrows walk the list, exactly as they always did", () => {
+	assert.equal(paletteStepIntent(press({ key: "ArrowDown" })), "next");
+	assert.equal(paletteStepIntent(press({ key: "ArrowUp" })), "previous");
+	// Cmd+Arrow is still the list's: it has no caret meaning in this field.
+	assert.equal(
+		paletteStepIntent(press({ key: "ArrowDown", metaKey: true })),
+		"next",
+	);
+});
+
+test("a modified arrow is not the list's", () => {
+	/*
+	 * The guard that used to sit in the component's own branches, kept whole
+	 * where the decision moved: Shift+Arrow is the caret extending a selection,
+	 * Alt+Arrow is the OS's, and Ctrl+Arrow is the caret's word-jump on Windows
+	 * and Linux (UX round 2, U3; round 3's review caught the first guard was
+	 * macOS-only). None of the three is the walk — and this is the case that
+	 * fails if the pair's arrival ever weakens the arrows' ctrl refusal.
+	 */
+	for (const arrow of ["ArrowDown", "ArrowUp"]) {
+		assert.equal(
+			paletteStepIntent(press({ key: arrow, shiftKey: true })),
+			null,
+		);
+		assert.equal(paletteStepIntent(press({ key: arrow, altKey: true })), null);
+		assert.equal(paletteStepIntent(press({ key: arrow, ctrlKey: true })), null);
+	}
+});
+
+test("Ctrl+N / Ctrl+P step next / previous (issue #761)", () => {
+	assert.equal(paletteStepIntent(press({ key: "n", ctrlKey: true })), "next");
+	assert.equal(
+		paletteStepIntent(press({ key: "p", ctrlKey: true })),
+		"previous",
+	);
+	// The letter's case depends on the layout and the modifiers; read it
+	// case-insensitively, the way the door's chord reads K.
+	assert.equal(paletteStepIntent(press({ key: "N", ctrlKey: true })), "next");
+});
+
+test("the pair is Control's alone", () => {
+	// A bare letter is text the user is typing into the field.
+	assert.equal(paletteStepIntent(press({ key: "n" })), null);
+	/*
+	 * Cmd is refused deliberately: on macOS Cmd+N is the app's new-chat chord
+	 * and Cmd+P the switcher's — both with jobs that are not this one — so
+	 * claiming either inside the palette would silently re-bind a press the app
+	 * already means something by. On the pair, refusing meta mirrors the arrows
+	 * refusing ctrl.
+	 */
+	assert.equal(paletteStepIntent(press({ key: "n", metaKey: true })), null);
+	assert.equal(paletteStepIntent(press({ key: "p", metaKey: true })), null);
+	// Shift/Alt are refused for the pair as they are for the arrows: a chord
+	// this app does not implement stays available rather than firing the
+	// neighbouring one.
+	assert.equal(
+		paletteStepIntent(press({ key: "n", ctrlKey: true, shiftKey: true })),
+		null,
+	);
+	assert.equal(
+		paletteStepIntent(press({ key: "p", ctrlKey: true, altKey: true })),
+		null,
+	);
+	assert.equal(
+		paletteStepIntent(press({ key: "n", ctrlKey: true, metaKey: true })),
+		null,
+	);
+});
+
+test("the walk wraps at both ends, and an empty list does not move", () => {
+	assert.equal(paletteStepIndex(0, 3, "next"), 1);
+	assert.equal(paletteStepIndex(2, 3, "next"), 0);
+	assert.equal(paletteStepIndex(0, 3, "previous"), 2);
+	assert.equal(paletteStepIndex(1, 3, "previous"), 0);
+	/*
+	 * count = 0 answers null — the modulo-by-zero case, which used to compute
+	 * NaN and leave every row unselected with no way back. The handler treats
+	 * null as "stay where you are".
+	 */
+	assert.equal(paletteStepIndex(0, 0, "next"), null);
+	assert.equal(paletteStepIndex(0, 0, "previous"), null);
+});
+
+test("the caps are the binding's own spellings", () => {
+	const [nextCap, previousCap] = paletteStepCaps();
+	assert.equal(nextCap, "Ctrl+N");
+	assert.equal(previousCap, "Ctrl+P");
+	/*
+	 * Pinned by FEEDING each cap back through the decision, not by asserting
+	 * the literal alone: a rename of either side that stops the footer's copy
+	 * and the handler's binding agreeing fails here.
+	 */
+	const fromCap = (cap) => {
+		const [modifier, letter] = cap.split("+");
+		return press({ key: letter, ctrlKey: modifier === "Ctrl" });
+	};
+	assert.equal(paletteStepIntent(fromCap(nextCap)), "next");
+	assert.equal(paletteStepIntent(fromCap(previousCap)), "previous");
 });
