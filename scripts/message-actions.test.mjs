@@ -266,6 +266,17 @@ test("the row shows exactly the actions the model publishes, and Quote is not on
 	 * TWO SHAPES, because the fork arm is conditional: a row mounted with no cut
 	 * point (the child reader, a story, every test above) offers the two controls
 	 * it always did, and one mounted with both halves offers Fork last.
+	 *
+	 * WHICH IS WHERE THE OLD CAP NOW LIVES. This case replaces one named "the row
+	 * is capped at two actions, and Quote is not one of them", and it keeps that
+	 * case's grounds rather than dropping them with its name: the cap was a
+	 * statement about the line's width and about the slot #694 was reserving. The
+	 * arm without a cut point still pins exactly two, so that half of the old
+	 * case is unchanged; the cut-point arm is three, and the reason three is the
+	 * number the repository states - #694's overflow home having shipped as the
+	 * sidebar row context menu, and the only numbered cap being that menu's "two
+	 * at most, pushing it three" - is written out on `message-actions.ts`'s
+	 * `FORK` comment, which is what a reader of the ruling should open.
 	 */
 	const plain = await mount();
 	assert.deepEqual(

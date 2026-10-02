@@ -337,9 +337,6 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	 * AND the entry id: the entry is what makes this a cut rather than a whole-
 	 * conversation fork, and it travels because this row is the only layer that
 	 * knows which message it belongs to.
-	 *
-	 * The row itself is the invoker, so Escape from the picker comes back to the
-	 * control that opened it rather than to the composer.
 	 */
 	const handleFork = () => {
 		if (!conversationId || !entryId) return;

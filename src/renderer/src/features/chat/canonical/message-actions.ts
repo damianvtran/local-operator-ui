@@ -81,9 +81,13 @@ export type ActionRowRole = "answer" | "user";
  * text.
  *
  * THE CAP THIS ROW ASKS TO EXCEED, named where it is written: the row's two-
- * action shape is pinned by its own test (`scripts/message-actions.test.mjs`,
- * "the row is capped at two actions"), whose stated grounds are the line's
- * width and the slot #694 was reserving. #694's overflow home has since shipped
+ * action shape was pinned on `origin/main` by `scripts/message-actions.test.mjs`'s
+ * case "the row is capped at two actions, and Quote is not one of them", whose
+ * stated grounds are the line's width and the slot #694 was reserving - and
+ * that file's case now pins BOTH shapes ("exactly two controls on a row with no
+ * cut point, with no Quote among them" for the arm that has no cut point, and
+ * the three-control arm), with the original grounds still stated in it. #694's
+ * overflow home has since shipped
  * as the sidebar row context menu (Archive / Pin / Fork), and the only cap
  * carrying an explicit number is that menu's - "two at most, pushing it three"
  * (#694 / #739) - so three inline controls on this row is the number the
