@@ -31,6 +31,7 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
+import { useSpeechAgentFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import { messageSpeechKey, useSpeechStore } from "@shared/store/speech-store";
 import { Copy } from "lucide-react";
@@ -62,13 +63,17 @@ export const MessageControls: FC<MessageControlsProps> = ({
 }) => {
 	const [copied, setCopied] = useState(false);
 	const { playSpeech } = useSpeechStore();
+	/*
+	 * THE TARGET IS THE CONVERSATION'S ROLE AGENT, not the identity this strip is
+	 * handed (`@shared/lib/speech-target` carries the argument). `null` is a
+	 * conversation with no binding, which speaks through the agent-less route -
+	 * it is no longer a reason to disable the control.
+	 */
+	const speechAgent = useSpeechAgentFor(agentId ?? null);
 	const speechControl = useSpeakControl({
 		key: messageSpeechKey(messageId),
 		getText: () => content ?? null,
-		play: ({ text }) => {
-			if (agentId) playSpeech(messageId, agentId, text);
-		},
-		available: Boolean(agentId),
+		play: ({ text }) => playSpeech(messageId, speechAgent, text),
 	});
 
 	/*

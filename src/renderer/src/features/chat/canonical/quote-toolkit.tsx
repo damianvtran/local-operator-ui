@@ -72,9 +72,10 @@ import {
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
 import { clipForSpeech } from "@shared/lib/speech-clip";
+import { useSpeechAgentFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import {
-	fetchAgentSpeech,
+	fetchSpeechFor,
 	selectionSpeechKey,
 	useSpeechStore,
 } from "@shared/store/speech-store";
@@ -146,6 +147,13 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 	 * reason Quote does - the strip can outlive the drag that raised it.
 	 */
 	const { speak } = useSpeechStore();
+	/*
+	 * THE SCOPE IS NOT THE TARGET. `conversationId` keys the cache; the daemon
+	 * synthesises against the conversation's ROLE AGENT, which is a different
+	 * namespace (`@shared/lib/speech-target`) - and `null` for a conversation
+	 * with no binding, which speaks through the agent-less route.
+	 */
+	const speechAgent = useSpeechAgentFor(conversationId);
 	const speakKey =
 		highlight === null
 			? null
@@ -162,7 +170,7 @@ export const QuoteToolkit: FC<QuoteToolkitProps> = ({
 		play: ({ text }) =>
 			speak(
 				selectionSpeechKey(conversationId, text),
-				fetchAgentSpeech(conversationId, text),
+				fetchSpeechFor(speechAgent, text),
 			),
 	});
 
