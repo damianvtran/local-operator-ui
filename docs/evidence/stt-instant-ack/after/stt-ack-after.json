@@ -1,0 +1,204 @@
+{
+  "rig": {
+    "label": "run",
+    "cdpPort": 9584
+  },
+  "cycles": [
+    {
+      "i": 1,
+      "cold": true,
+      "flipped": true,
+      "t0": 5137.6,
+      "clickToGumCalledMs": 0.1,
+      "gumResolveMs": 792.8,
+      "gumRejected": [],
+      "resolvedToRecorderStartMs": 0.1,
+      "recorderStartToFlipMs": 3.5,
+      "clickToAckMs": 11,
+      "ackCommitMs": 1.6,
+      "flipCommitMs": 796,
+      "ackKind": "preparing",
+      "clickToAckPaintMs": 19.3,
+      "clickToFlipMs": 796.5,
+      "clickToFlipPaintMs": 809.9,
+      "bridgeCallsBeforeGum": [],
+      "fetchBeforeGum": []
+    },
+    {
+      "i": 2,
+      "cold": false,
+      "flipped": true,
+      "t0": 7674,
+      "clickToGumCalledMs": 0.1,
+      "gumResolveMs": 19.3,
+      "gumRejected": [],
+      "resolvedToRecorderStartMs": 0.1,
+      "recorderStartToFlipMs": 3.7,
+      "clickToAckMs": 12.3,
+      "ackCommitMs": 1.3,
+      "flipCommitMs": 22.7,
+      "ackKind": "preparing",
+      "clickToAckPaintMs": 28.5,
+      "clickToFlipMs": 23.2,
+      "clickToFlipPaintMs": 36.9,
+      "bridgeCallsBeforeGum": [],
+      "fetchBeforeGum": []
+    },
+    {
+      "i": 3,
+      "cold": false,
+      "flipped": true,
+      "t0": 8255.1,
+      "clickToGumCalledMs": 2,
+      "gumResolveMs": 9.6,
+      "gumRejected": [],
+      "resolvedToRecorderStartMs": 0.1,
+      "recorderStartToFlipMs": 3.1,
+      "clickToAckMs": 5.6,
+      "ackCommitMs": 3.3,
+      "flipCommitMs": 14.2,
+      "ackKind": "preparing",
+      "clickToAckPaintMs": 22.6,
+      "clickToFlipMs": 14.8,
+      "clickToFlipPaintMs": 30.9,
+      "bridgeCallsBeforeGum": [],
+      "fetchBeforeGum": []
+    }
+  ],
+  "capabilities.desktop_available": true,
+  "instrument": {
+    "gum": true,
+    "mr": true,
+    "bridge": true,
+    "fetch": true
+  },
+  "mic.enabled": true,
+  "micDisabledSample": false,
+  "shot.c1-just-after-click": {
+    "atMs": 5178.699999988079,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "shot.c1-post-click-150ms": {
+    "atMs": 5365.799999982119,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "shot.c1-post-click-300ms": {
+    "atMs": 5551.5999999940395,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "shot.c1-post-click-600ms": {
+    "atMs": 5737.5,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "shot.c1-post-click-1200ms": {
+    "atMs": 6338.5,
+    "stateBefore": {
+      "mic": false,
+      "confirm": true,
+      "cancel": true,
+      "indicator": true,
+      "preparing": false,
+      "micBusy": false,
+      "transcribing": false
+    },
+    "stateAfter": {
+      "mic": false,
+      "confirm": true,
+      "cancel": true,
+      "indicator": true,
+      "preparing": false,
+      "micBusy": false,
+      "transcribing": false
+    }
+  },
+  "shot.c2-post-click-80ms": {
+    "atMs": 7754.9000000059605,
+    "stateBefore": {
+      "mic": false,
+      "confirm": true,
+      "cancel": true,
+      "indicator": true,
+      "preparing": false,
+      "micBusy": false,
+      "transcribing": false
+    },
+    "stateAfter": {
+      "mic": false,
+      "confirm": true,
+      "cancel": true,
+      "indicator": true,
+      "preparing": false,
+      "micBusy": false,
+      "transcribing": false
+    }
+  },
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}"
+}

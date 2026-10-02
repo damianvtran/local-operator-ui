@@ -90,6 +90,8 @@ const CASES = [
 			"idle",
 			"notice",
 			"unreachable",
+			"answer-busy",
+			"answer-unreachable",
 			"too-large",
 			"too-long",
 			"gone",
@@ -104,6 +106,8 @@ const CASES = [
 			"idle",
 			"notice",
 			"unreachable",
+			"answer-busy",
+			"answer-unreachable",
 			"too-large",
 			"too-long",
 			"gone",
@@ -118,6 +122,8 @@ const CASES = [
 			"idle",
 			"notice",
 			"unreachable",
+			"answer-busy",
+			"answer-unreachable",
 			"too-large",
 			"too-long",
 			"gone",
@@ -147,6 +153,13 @@ const BASELINE_STATES = new Set(["idle", "edited-idle"]);
 const BORDER_BASELINE = {
 	notice: "idle",
 	unreachable: "idle",
+	/*
+	 * The answer press's two arms, and they are compared against `idle` for the
+	 * same reason as their neighbours: the same draft, no notice, so the delta is
+	 * the band rather than the box.
+	 */
+	"answer-busy": "idle",
+	"answer-unreachable": "idle",
 	"too-large": "idle",
 	"too-long": "idle",
 	gone: "idle",
@@ -163,6 +176,23 @@ const BORDER_BASELINE = {
 const ARM_CONTROLS = {
 	notice: { register: "danger", controls: ["Retry", "Clear"] },
 	unreachable: { register: "danger", controls: ["Retry", "Clear"] },
+	/*
+	 * THE ANSWER PRESS'S TWO ARMS (design round 1 on the answers route, D4/D5).
+	 *
+	 * NEITHER OFFERS A CONTROL, and on the composer's band that is the honest answer
+	 * for a press of any arm: the band's only retry control is Send over whatever the
+	 * BOX holds, and the question that failed was an option on a card, not the box.
+	 * The busy arm's own repeat is the APP's (`withBusyResends`), spent before this
+	 * sentence can paint, which is why the sentence says the answer is not confirmed
+	 * rather than asking the user to do anything.
+	 *
+	 * AND THE REGISTERS DIFFER, which is D4: the busy arm is a failure the app is
+	 * absorbing while it waits the owner out, so it takes the muted half of the
+	 * band's two-value register; the dead owner really may be a lost answer and keeps
+	 * `danger`.
+	 */
+	"answer-busy": { register: "muted", controls: [] },
+	"answer-unreachable": { register: "danger", controls: [] },
 	"too-large": { register: "danger", controls: ["Clear"] },
 	"too-long": { register: "danger", controls: ["Clear"] },
 	gone: { register: "danger", controls: ["Clear"] },
@@ -174,6 +204,19 @@ const ARM_CONTROLS = {
 const ARM_PHRASE = {
 	notice: "couldn't confirm",
 	unreachable: "couldn't reach local operator",
+	/*
+	 * The busy arm must NOT carry the not-sent lead or the backend's instruction
+	 * (D1/D2/D3), and the phrase below is the app's own: what is knowable, then the
+	 * app's noun for this owner. The jargon list further down is the other half of
+	 * the same claim, on the pixels rather than on the string.
+	 */
+	"answer-busy": "isn't confirmed yet",
+	/*
+	 * The dead-owner arm keeps the unknowable lead and drops the route's reason, so
+	 * the phrase is the app's replacement for "Reconnect and reconcile before
+	 * retrying" - a fact about what could not be reached, with no instruction.
+	 */
+	"answer-unreachable": "could not reach this chat's session",
 	"too-large": "too large",
 	"too-long": "characters",
 	gone: "no longer exists",

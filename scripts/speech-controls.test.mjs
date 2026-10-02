@@ -1150,6 +1150,13 @@ test("a user row offers Copy alone, fades like the answer row, and copies the us
 	const labels = [...rowEl.querySelectorAll("button")].map((node) =>
 		node.getAttribute("aria-label"),
 	);
+	/*
+	 * Copy alone HERE because this mount hands the row no cut point (no
+	 * `conversationId`, no `entryId`), which is the no-cut-point arm - the
+	 * property under test is the absent Speak. A mount that DOES name one carries
+	 * Fork too, and `scripts/speech-user-copy.test.mjs` is the case that renders
+	 * the transcript itself, where the row genuinely is a cut point.
+	 */
 	assert.deepEqual(labels, ["Copy"], "Copy alone: a user turn offers no Speak");
 	await press("Copy");
 	assert.deepEqual(written, ["Is the March import finished?"]);
