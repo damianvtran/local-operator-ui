@@ -78,7 +78,7 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
 import type { FoldLive, FoldSpan } from "../../canonical/trace-fold-model";
 import { formatSettledDuration } from "./tool-row-model";
@@ -95,8 +95,16 @@ const ROW_HEIGHT = "min-h-5 py-0";
 const FOLD_CLOCK_MS = 1000;
 
 export type TraceFoldProps = {
-	/** §E2's generated copy: `Explored 4 files, 1 search`, `3 shell · 1 python`. */
-	summary: string;
+	/**
+	 * §E2's generated copy, AS ITS UNITS: `Explored 4 files, 1 search` is one
+	 * unit, `3 shell · 1 python` is two, and a capped line's `and N other
+	 * actions` is one more. Each unit paints in its own `whitespace-nowrap` span
+	 * (design round 1, D1: the joined string let the browser break `and 4 other
+	 * actions` between the numeral and its noun at a narrow column, so a wrap must
+	 * fall at a ` · ` and nowhere else). The collapsed bar's `title`, which has no
+	 * DOM to paint, reads `foldSummary` - these units joined.
+	 */
+	summary: readonly string[];
 	actionCount: number;
 	/**
 	 * The run's wall-clock span (`foldSpan`), or null when it cannot date itself -
@@ -382,14 +390,33 @@ export const TraceFold = ({
 							 * `truncate` was the older rule and cut the counts; `shrink-0` could say
 							 * the first half of this rule and not the second.
 							 */
-							className={cn("min-w-0 text-body-sm text-ink-muted")}
+							/*
+							 * `break-words` IS THE LAST RESORT, and it is what makes `min-w-0`'s
+							 * promise true for a snake_case kind: the units below are nowrap, so a
+							 * wrap falls at a separator - but a single unit longer than the column
+							 * (the operator's own run contains `1 workspace_get_gmail_thread_content`)
+							 * has no separator to fall at, and without an `overflow-wrap` it would
+							 * paint past the box. This codebase's other wrapping blocks carry it
+							 * (`trace-line.tsx`, `tool-detail.tsx`); this span is the one whose
+							 * "never overflows" claim depends on it (agent review round 1, R1-4).
+							 */
+							className={cn("min-w-0 break-words text-body-sm text-ink-muted")}
 							title={`${actionCount} actions`}
 							data-fold-summary=""
 						>
 							{/*
-							 * What the run has done, by class or by kind (`foldSummary`).
+							 * What the run has done, by class or by kind (`foldSummary`), ONE UNIT PER
+							 * SPAN: the count line's segments and its `and N other actions` tail each
+							 * hold together, and the ` · ` between them is the only break opportunity
+							 * (design round 1, D1). A sentence summary arrives as a single unit and
+							 * paints exactly as it always did.
 							 */}
-							<span>{summary}</span>
+							{summary.map((unit, index) => (
+								<Fragment key={unit}>
+									{index > 0 && <span aria-hidden="true"> · </span>}
+									<span className={cn("whitespace-nowrap")}>{unit}</span>
+								</Fragment>
+							))}
 						</span>
 						{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
 						 * fold's `· N failed` chip is retired — a completed run's

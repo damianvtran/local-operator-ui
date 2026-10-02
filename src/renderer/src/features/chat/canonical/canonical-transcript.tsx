@@ -1011,9 +1011,11 @@ const AssistantRow = memo(function AssistantRow({
 	const refused = record.stopReason === "refusal" || record.error;
 	/*
 	 * Whether this answer has words to offer, asked ONCE for the row: the Quote
-	 * toolkit above the foot and the foot's own action row are two consumers of
-	 * one predicate (`isQuotable`), and one derivation is what keeps them from
-	 * ever disagreeing about the same answer.
+	 * toolkit above the foot and the foot's own action row are the two consumers
+	 * of this derivation, so the same answer cannot be judged quotable in one
+	 * place and not in the other - both read `quotable` (agent review round 1,
+	 * R1-5: the toolkit used to re-ask `isQuotable` itself, which is the same
+	 * call but a second place for the two to drift apart).
 	 */
 	const quotable = isQuotable(record, remainingContent);
 	return (
@@ -1151,11 +1153,9 @@ const AssistantRow = memo(function AssistantRow({
 				 * documents - when a link owns the highlight, the link toolbar carries
 				 * Quote and this control stays off screen.
 				 */}
-				{conversationId &&
-					isQuotable(record, remainingContent) &&
-					!link.quoteAvailable && (
-						<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
-					)}
+				{conversationId && quotable && !link.quoteAvailable && (
+					<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+				)}
 				{conversationId && link.subject && (
 					<LinkToolkit
 						conversationId={conversationId}

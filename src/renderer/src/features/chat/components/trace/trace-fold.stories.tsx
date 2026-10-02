@@ -46,7 +46,7 @@ import {
 import "../../../../styles/index.css";
 import { CanonicalImage } from "../../canonical/canonical-image";
 import { FoldMedia } from "../../canonical/fold-media";
-import { foldSummary } from "../../canonical/trace-fold-model";
+import { foldSummaryUnits } from "../../canonical/trace-fold-model";
 import type { TranscriptImage } from "../../canonical/transcript-reducer";
 import { ToolRow } from "./tool-row";
 import { toolRowLabel } from "./tool-row-model";
@@ -99,7 +99,7 @@ type RowSpec = {
 
 /**
  * The fold's props, derived exactly as `canonical-transcript.tsx` derives them:
- * the summary from the actions' own names (`foldSummary`), the counts from the
+ * the summary from the actions' own names (`foldSummaryUnits`), the counts from the
  * rows, and the live clause from the executing row's own label composition
  * (`toolRowLabel`). Nothing here is typed twice.
  */
@@ -113,7 +113,7 @@ const foldProps = (specs: RowSpec[]) => {
 		? toolRowLabel(executing.name, executing.object, null, true, executing.op)
 		: null;
 	return {
-		summary: foldSummary(actions),
+		summary: foldSummaryUnits(actions),
 		actionCount: specs.length,
 		live: label ? { verb: label.verb, object: label.object } : null,
 	};
