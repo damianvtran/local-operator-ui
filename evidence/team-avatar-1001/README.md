@@ -9,12 +9,13 @@ them; they are **not** in the PR's diff and not on `main`.
 | --- | --- | --- |
 | `before-sidebar-resting-default.webp` / `after-sidebar-resting-default.webp` | `origin/main` `af6fffa899` / the PR branch `52860d87fb` | the sidebar's resting panel at its default width (360): pinned and running rows bound to five different teams, plus the `data-quality`/`delphi-quality` collision pair |
 | `before-sidebar-narrow-min-220.webp` / `after-sidebar-narrow-min-220.webp` | same | the same panel at the app's TRUE minimum width — `SIDEBAR_MIN_WIDTH` is 220 (`chat-sidebar-layout.ts`), where the rows wrap hardest. (`chat-sidebar-sections--narrow-240`, the width the older change was priced at, is left exactly as it was and is not re-photographed here.) |
-| `before-sidebar-query-while-collapsed.webp` / `after-sidebar-query-while-collapsed.webp` | same | the panel with a query applied — see *what the frames do not show*: this state's play cannot reach its own state on EITHER tree, so both frames are the unfiltered panel and this pair is not evidence about the search surface |
+| `before-sidebar-query-while-collapsed.webp` / `after-sidebar-query-while-collapsed.webp` | `af6fffa899` / the PR branch `02fa5daa3d` | the panel with a query applied — the word `helpdesk`, one team and the one conversation bound to it: the AFTER half draws the `HE` mark on the matched row (readout `Rows drawn: 1 entity · 1 chats`, `Team marks drawn: 1`), the BEFORE half draws `· helpdesk` in the same slot. Re-taken in round 1's remediation (review R1-M2 = QA Q-F3 = design D4): the earlier before half was the unfiltered panel, so the pair read as a before/after of two different states |
 | `before-header-team-bound.webp` / `after-header-team-bound.webp` | same | the chat header's identity chip at rest, on a team-bound session (`LD · Local Operator Dev`) |
 | `before-header-long-label.webp` / `after-header-long-label.webp` | same | the chip against an eighty-character label at the 560 band, where the cap truncates and the title reads whole |
 | `before-header-narrow-fold.webp` / `after-header-narrow-fold.webp` | same | the chip in the narrow fold, where the block clips its second line |
 | `after-sidebar-team-mark-hover.webp` | `52860d87fb` | the pointer resting on the first row's mark: the mark's name is up, the row's flyout is NOT (after-only: old code has no mark and its tooltip cannot be photographed) |
-| `after-sidebar-team-mark-focus.webp` | `52860d87fb` | the same claim by keyboard: real Tab presses reach the mark and open the name (after-only, same reason) |
+| `after-sidebar-team-mark-focus.webp` | `9ca53ad356` | the same claim by keyboard: real Tab presses reach the mark and open the name (after-only, same reason). RE-TAKEN in round 1's remediation, where the frame's own pixels carried design D2: the ring around a 20px round mark was a 28x28 SQUARE (corners 4px off the object); the mark's focusable box now takes `rounded-full`, and this is the frame that shows it. This entry also answers with `[role="tooltip"]` rather than `[data-side="top"]` — see the note below |
+| `after-sidebar-selected-light.webp` | `fff55b33d8` | the team mark on a SELECTED row in `localOperatorLight`, the palette where the pairing is tightest: plate `sunken` `#ece6d8` against `rowSelected` `#EBE7D8` is 1.005:1, so the mark is carried by its 1px `border-control` edge alone (design round 1, D5 — the one pairing of this component nobody had looked at). Shot through the new `chat-sidebar-current-row--team-bound-row-current` entry; `bound-row-current` beside it cannot show this, because that row binds an AGENT and an agent binding stays text |
 | `after-bubble-marks.webp` | `52860d87fb` | the mark itself, at the size it ships (20px), for every shape its rule has plus the three image states (after-only: the component does not exist on old code) |
 | `after-header-long-label-min-width.webp` | `52860d87fb` | the chip at the app's 800 minimum window width (after-only) |
 
@@ -29,19 +30,25 @@ exactly what the mark changed, and nothing else.
 
 WHAT A PAIR DOES NOT SHOW, stated rather than smoothed over:
 
-- **The search-results surface is not photographed at all.** The
-  `query-while-collapsed` state's play types a query into the sidebar search, and
-  that play could not reach its own state on either tree: `getByLabelText("Search
-  chats and agents")` matches TWO elements (the sidebar's search icon button and
-  its field, `chat-sidebar.tsx`), so it threw "Found multiple elements" at its
-  first interaction — which the rig's pre-shutter play guard does not read, which
-  is why this state's shipped frame has always been the UNFILTERED panel with an
-  empty box. Re-cut by role (press the control that opens the field, then type
-  into the one `textbox`) the query DOES apply, and the list then draws ZERO rows
-  for the word used here — measured, the play's own wait for the matching row
-  timed out, and the state's play was left as it was rather than half-fixed. So
-  the mark's presence on a query-matched row rests on the code path and on the
-  row's own tests, not on a frame here.
+- **The search-results surface IS photographed, after-only in the rig's own hands.**
+  The `query-while-collapsed` entry drives the field itself (`press` on
+  `[data-sidebar-search]`, then `insertText` through the real input pipeline) rather
+  than relying on the story's play, and that is a measured decision: two play-driven
+  mechanisms were tried against this rig — `@storybook/test`'s `userEvent` (press the
+  control, then type into the field) and a direct native-setter plus `input` dispatch
+  on the same field — and neither reached the filtered state; the frame came back at
+  18642 bytes with `Rows drawn: 10 entity · 8 chats` and no field drawn. The entry
+  also needs a **400ms settle after the press** (`pressSettleMs`), because the field
+  mounts on the next frame and focuses itself in a `requestAnimationFrame`: without it
+  the frame came back at 19464 bytes with the field OPEN and EMPTY beside an
+  unfiltered list. The D4 assertion travels with the entry as `expectPresent:
+  "[data-chat-row] [data-team-bubble]"` — the row the query matched must DRAW a mark
+  or the run fails rather than filing the frame — which is the check the design round
+  asked for, kept in the rig because it is the rig that owns this state.
+  The BEFORE half is the same driven query on the old tree (the same story file, the
+  same entry with the one `expectPresent` term dropped, since a tree without the mark
+  cannot satisfy it): the old renderer draws `· helpdesk` where the after half draws
+  the mark, which is what makes the pair apposite.
 - **The mark's own story is after-only**, for the obvious reason: `TeamAvatarBubble`
   does not exist on the old tree, so there is no before half to take.
 - **The hover and focus frames are after-only** for the same reason, and their
@@ -52,9 +59,14 @@ WHAT A PAIR DOES NOT SHOW, stated rather than smoothed over:
   fails instead of filing a frame whose caption is wrong.
 - **One theme** (`localOperatorDark`) and one size per state; a theme this branch
   does not photograph is a theme this pair says nothing about.
-- **A `:focus-visible` ring is not visible in a hidden window** (the story's own
-  limit, declared there); the focus frame is evidence about the tooltip and the
-  mark's reachability, not about the ring's pixels.
+- **The focus frame's ring IS in the picture, and it is the frame design round 1's D2
+  was measured off** (28x28 square around the 20px circle, corners 4px off the object).
+  The earlier caption here said the ring was not visible in a window without focus and
+  that the frame claimed nothing about it; the numbers in that finding came from this
+  file's own pixels, so the caption was instructing a reviewer to discard its strongest
+  frame. What the frame cannot show is the ring's *appearance* under real focus
+  heuristics elsewhere in the app; what it does show is this mark's ring, which is
+  `rounded-full` as of round 1's remediation.
 
 ## How they were taken
 
