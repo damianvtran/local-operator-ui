@@ -3283,6 +3283,15 @@ const BRANCH_RECORDS = [
 	 * this set's surfaces.
 	 */
 	"foldOnto237733141d6Note",
+	/*
+	 * And by this lane's NEXT fold, the newest record now: the fold onto
+	 * `fef3d5443f1` (the owned-serve red fix, carrying #783/#785/#792's trains)
+	 * that re-lays the same set again and re-derives both stamps in its second,
+	 * docs-only commit. Listed for the same reason: a fold resolved from main's
+	 * copy would drop it first, and with it the only statement of what the four
+	 * trains moved against this set's surfaces.
+	 */
+	"foldOntoFef3d5443f1Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
