@@ -6,10 +6,11 @@
  * (`paletteShortcutIntent`). THE WALK — the presses that move the selection
  * while the palette is open: the arrows, and since issue #761 the Ctrl+N /
  * Ctrl+P pair (`paletteStepIntent`, with its arithmetic in
- * `paletteStepIndex`). Both decisions are pure and pinned in
- * `scripts/palette-shortcut.test.mjs`; the listeners live in
- * `use-command-palette-shortcut.ts` (the door) and `command-palette.tsx`
- * (the walk).
+ * `paletteStepIndex`). The pair is BOUND in full and ADVERTISED where it
+ * reaches (`paletteStepCaps` vs `paletteReachableStepCaps`, below); both
+ * decisions are pure and pinned in `scripts/palette-shortcut.test.mjs`, and
+ * the listeners live in `use-command-palette-shortcut.ts` (the door) and
+ * `command-palette.tsx` (the walk).
  *
  * ## Why the renderer owns this, and not the main process
  *
@@ -178,14 +179,43 @@ export function paletteStepIndex(
 }
 
 /**
- * The walk's pair, as `KeyboardShortcut` prop text, next then previous.
+ * The walk's pair, as `KeyboardShortcut` prop text, next then previous — the
+ * BOUND set: every spelling `paletteStepIntent` accepts.
  *
  * One spelling for the same reason the door's caps share one — and unlike
  * them, NO `isMac` split: the pair is Control's on every platform (see
  * `paletteStepIntent`), so the spelling that is true everywhere is the only
  * one. `scripts/palette-shortcut.test.mjs` pins each spelling by feeding it
  * back through the decision, so the copy cannot drift from the binding.
+ *
+ * The footer does NOT draw this set directly — see
+ * `paletteReachableStepCaps` below for why half of it must not be taught.
  */
 export function paletteStepCaps(): [string, string] {
 	return ["Ctrl+N", "Ctrl+P"];
+}
+
+/**
+ * The walk's caps as the footer ADVERTISES them: the halves that REACH the
+ * renderer in the packaged app.
+ *
+ * `Ctrl+N` is here alone. `Ctrl+P` is bound (`paletteStepCaps`) and steps
+ * wherever it arrives — the UX and QA rigs measured it stepping previous —
+ * but in the packaged app it never arrives while the window is focused and
+ * visible: main's `before-input-event` hook (`src/main/index.ts:3492-3500`)
+ * preventDefaults the press and answers it with `toggle-command-palette`,
+ * which the renderer turns into the `#` switcher seed
+ * (`use-command-palette-shortcut.ts`). So from the typed state this legend is
+ * drawn in, the press would discard the query rather than move the selection
+ * (design round 1, D1): teaching it as a movement key would promise something
+ * the app does not do.
+ *
+ * The asymmetry is deliberate and pinned in `scripts/palette-shortcut.test.mjs`
+ * (advertised ⊆ bound, `Ctrl+P` bound but not advertised) plus a wiring pin in
+ * `scripts/palette-contract.test.mjs`. If a main-process pass-through ever
+ * makes P reachable, this function is the single place the advertised set
+ * lives — that change is the operator's call, not a copy edit.
+ */
+export function paletteReachableStepCaps(): [string] {
+	return ["Ctrl+N"];
 }
