@@ -1608,6 +1608,22 @@ const GRAPHICS = [
 		on: ["canvas"],
 		fg: "success",
 	},
+	{
+		/*
+		 * THE SHARED SPINNER'S TRACK (`spinner.tsx`'s ring - the app's one
+		 * indeterminate-progress affordance, dropped onto every ground). Design round 1 on
+		 * the composer's acknowledgment measured this pair while the track was the
+		 * decorative `hairline`: 1.23:1 dark and 1.44:1 light, i.e. the whole visible
+		 * shape of a progress indicator below the floor. The track is `borderControl`
+		 * now, and this row is what holds it there. It is HERE rather than in
+		 * `CONTROLS` because that table's outline-control row states the same VALUE as a
+		 * CONTROL's boundary - a different claim about it - and this file's own note on
+		 * the context wheel says what a green gate about an unlisted pairing is worth.
+		 */
+		name: "spinner track against its ground",
+		on: GROUNDS,
+		fg: "borderControl",
+	},
 	...["success", "warning", "danger"].map((role) => ({
 		name: `usage bar fill (${role})`,
 		/* Drawn inside the track, which is `sunken`. */
