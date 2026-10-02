@@ -114,6 +114,31 @@ const quitStateModule = await import(
 const { createQuitState } = quitStateModule;
 
 /*
+ * The refused-reopen record, bundled the same way (#755): the object the two
+ * refusals write and the quit's terminal spends. Its transitions (record at a
+ * refusal, clear at a cancelled quit, at-most-one schedule at the terminal) are
+ * the #755 contract, so the tests below drive the SHIPPED object rather than
+ * describing it — the same discipline as the quit state just above.
+ */
+const relaunchPendingModule = await import(
+	`data:text/javascript;base64,${Buffer.from(
+		(
+			await build({
+				stdin: {
+					contents: 'export * from "./src/main/relaunch-pending";',
+					resolveDir: process.cwd(),
+				},
+				bundle: true,
+				format: "esm",
+				platform: "node",
+				write: false,
+			})
+		).outputFiles[0].text,
+	).toString("base64")}`
+);
+const { createRelaunchPending } = relaunchPendingModule;
+
+/*
  * The dev-driver arming decision, bundled the same way. It is here rather than
  * in `dev-driver-gate.test.mjs` because what is being asserted is the
  * COMPOSITION the driven shape makes reachable — a launch nobody told anything
@@ -2093,8 +2118,20 @@ test("the quit state has one setter and one release, and the release is the inst
 	);
 	assert.match(
 		construction,
-		/onQuitCancelled:\s*\(\)\s*=>\s*quitState\.cancel\(\),/,
+		/onQuitCancelled:\s*\(\)\s*=>\s*\{/,
 		"the release is the installer's onQuitCancelled callback — a cancelled quit lets go of the state beside its own cancellation",
+	);
+	const cancellation = construction.slice(
+		construction.indexOf("onQuitCancelled:"),
+		construction.indexOf("\t},", construction.indexOf("onQuitCancelled:")),
+	);
+	assert.ok(
+		cancellation.includes("quitState.cancel();"),
+		"the callback releases the quit state",
+	);
+	assert.ok(
+		cancellation.includes("relaunchPending.clear();"),
+		"and clears a refused reopen's record beside the release (#755): a cancelled quit must not leak a spawn into some later, unrelated exit",
 	);
 	const installer = readFileSync(
 		join("src", "main", "backend", "backend-installer.ts"),
@@ -2141,6 +2178,452 @@ test("the quit state has one setter and one release, and the release is the inst
 		activate,
 		/trigger: "activate",/,
 		"and the window it does create now presents under its own name",
+	);
+});
+
+test("a refused reopen is recorded — and ONE successor at the quit terminal completes it (#755)", () => {
+	/*
+	 * THE #755 SHAPE, DRIVEN ON THE SHIPPED OBJECT. A reopen refused during
+	 * teardown is recorded (newest wins); the quit's terminal — reached only
+	 * where the quit can no longer be cancelled — spends the record as exactly
+	 * ONE `app.relaunch` call, so the successor starts after this process exits
+	 * under the recorded plan. The exactly-once half is load-bearing rather than
+	 * tidiness: `app.relaunch` starts one instance per CALL (the #755 spike
+	 * measured two calls spawning two successors).
+	 */
+	const pending = createRelaunchPending();
+	const calls = [];
+	const schedule = () =>
+		pending.scheduleOnExit({ relaunch: (args) => calls.push(args) });
+
+	// An empty terminal call must NOT latch: the common sequence is will-quit's
+	// sync part running BEFORE the refusal lands, and the continuation after it
+	// completing the refusal that arrived mid-teardown.
+	schedule();
+	assert.deepEqual(calls, [], "no record yet — nothing to complete");
+	assert.equal(
+		pending.hasPending(),
+		false,
+		"and nothing is pending before any refusal",
+	);
+
+	assert.equal(
+		pending.record({
+			kind: "second-instance",
+			show: "inactive",
+			argv: ["electron", "/app", "--user-data-dir=/scratch"],
+		}),
+		true,
+		"an `inactive` request is recordable",
+	);
+	assert.equal(
+		pending.hasPending(),
+		true,
+		"a recorded refusal is pending until a terminal spends it (review F3's gate)",
+	);
+	schedule();
+	assert.deepEqual(
+		calls,
+		[["/app", "--user-data-dir=/scratch", "--window-mode=inactive"]],
+		"the successor replays the command line minus argv[0] and pins the recorded plan",
+	);
+
+	// Four terminal sites, one call: every later schedule call in the same quit
+	// is a no-op.
+	schedule();
+	schedule();
+	assert.equal(
+		calls.length,
+		1,
+		"one reopen means one instance however many terminals run",
+	);
+
+	// The command line wins when it already names a mode — no pin is appended,
+	// including the space spelling the app's own parser reads.
+	const named = createRelaunchPending();
+	const namedCalls = [];
+	named.record({
+		kind: "second-instance",
+		show: "focus",
+		argv: ["electron", "/app", "--window-mode", "headless"],
+	});
+	named.scheduleOnExit({ relaunch: (args) => namedCalls.push(args) });
+	assert.deepEqual(
+		namedCalls,
+		[["/app", "--window-mode", "headless"]],
+		"an argv that names a mode is replayed verbatim",
+	);
+
+	// The pin's mapping is the SAME one the raise line prints: focus -> normal.
+	const pinned = createRelaunchPending();
+	const pinnedCalls = [];
+	pinned.record({
+		kind: "second-instance",
+		show: "focus",
+		argv: ["electron", "/three"],
+	});
+	pinned.scheduleOnExit({ relaunch: (args) => pinnedCalls.push(args) });
+	assert.deepEqual(
+		pinnedCalls,
+		[["/three", "--window-mode=normal"]],
+		"`focus` pins `normal`",
+	);
+
+	// A Dock click names nothing to replay, and what "a plain launch" then means
+	// is the SHAPE's question (review F1): packaged — the default facts, which is
+	// what any non-Electron test process reads as — completes with `[]`, because
+	// macOS starts the bundle exactly as the user's own launch did.
+	const plain = createRelaunchPending();
+	const plainCalls = [];
+	plain.record({ kind: "activate", show: "focus", argv: null });
+	plain.scheduleOnExit({ relaunch: (args) => plainCalls.push(args) });
+	assert.deepEqual(
+		plainCalls,
+		[[]],
+		"a packaged activate completes as a plain reopen",
+	);
+
+	// …but a DEV-SHAPED process (`process.defaultApp`) must replay its own
+	// command line: `[]` builds `[execPath]` alone, which is bare Electron with
+	// NO app path — the default-app window on the machine-default profile. The
+	// app path AND the launch's enclosure travel, under the same pin rule as the
+	// second-instance replay.
+	const devPlain = createRelaunchPending({
+		facts: () => ({
+			defaultApp: true,
+			argv: [
+				"/Electron",
+				"--user-data-dir=/scratch",
+				"--window-mode=headless",
+				"--inspect=9229",
+				"/app",
+			],
+		}),
+	});
+	const devPlainCalls = [];
+	devPlain.record({ kind: "activate", show: "focus", argv: null });
+	devPlain.scheduleOnExit({ relaunch: (args) => devPlainCalls.push(args) });
+	assert.deepEqual(
+		devPlainCalls,
+		[
+			[
+				"--user-data-dir=/scratch",
+				"--window-mode=headless",
+				"--inspect=9229",
+				"/app",
+			],
+		],
+		"a dev-shaped activate replays its own command line so the app path and the enclosure travel",
+	);
+
+	// The pin rule reaches this replay too: a dev command line that names no mode
+	// gets the recorded plan's token (focus -> normal), so the successor's policy
+	// comes from the record rather than from a re-resolution.
+	const devPinned = createRelaunchPending({
+		facts: () => ({ defaultApp: true, argv: ["/Electron", "/app"] }),
+	});
+	const devPinnedCalls = [];
+	devPinned.record({ kind: "activate", show: "focus", argv: null });
+	devPinned.scheduleOnExit({ relaunch: (args) => devPinnedCalls.push(args) });
+	assert.deepEqual(
+		devPinnedCalls,
+		[["/app", "--window-mode=normal"]],
+		"a mode-less dev command line is pinned to the recorded plan",
+	);
+
+	// `never` is never recorded — a successor for it would be an invisible
+	// instance nobody asked to keep — so its refusal stays a refusal-with-a-line.
+	const headless = createRelaunchPending();
+	const headlessCalls = [];
+	assert.equal(
+		headless.record({ kind: "second-instance", show: "never", argv: ["/app"] }),
+		false,
+		"a `never` request is refused the record too",
+	);
+	headless.scheduleOnExit({ relaunch: (args) => headlessCalls.push(args) });
+	assert.deepEqual(headlessCalls, [], "and no successor exists to spawn");
+
+	// Newest wins: the later refusal is the more recent statement of the request.
+	const newest = createRelaunchPending();
+	const newestCalls = [];
+	newest.record({
+		kind: "second-instance",
+		show: "focus",
+		argv: ["electron", "/one"],
+	});
+	newest.record({
+		kind: "second-instance",
+		show: "inactive",
+		argv: ["electron", "/two", "--window-mode=inactive"],
+	});
+	newest.scheduleOnExit({ relaunch: (args) => newestCalls.push(args) });
+	assert.deepEqual(
+		newestCalls,
+		[["/two", "--window-mode=inactive"]],
+		"the later refusal is the request that stands",
+	);
+
+	// A cancelled quit clears it: nothing may spawn into a later, unrelated exit.
+	const cancelled = createRelaunchPending();
+	const cancelledCalls = [];
+	cancelled.record({ kind: "activate", show: "focus", argv: null });
+	cancelled.clear();
+	cancelled.scheduleOnExit({ relaunch: (args) => cancelledCalls.push(args) });
+	assert.deepEqual(
+		cancelledCalls,
+		[],
+		"a cancelled quit leaves nothing behind",
+	);
+});
+
+test("the refusal's completion token is the recorder's own answer (#755)", () => {
+	/*
+	 * The record and the line move together: `reopen=deferred` appears exactly
+	 * when the recorder took the record, so a refusal a successor will complete
+	 * and the line saying so cannot drift — and a request the recorder declines
+	 * (a `never` shape) claims no completion it will not get. Without a recorder
+	 * (every pre-#755 caller, most tests) the line is unchanged.
+	 */
+	const state = createQuitState();
+	state.begin();
+
+	const completed = { requests: [], lines: [] };
+	applySecondLaunch(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		{
+			window: null,
+			openConversation: null,
+			queue: () => {},
+			quitting: state.isQuitting(),
+			onRefusedWhileQuitting: (request) => {
+				completed.requests.push(request);
+				return true;
+			},
+			report: (line) => completed.lines.push(line),
+		},
+	);
+	assert.equal(
+		completed.requests.length,
+		1,
+		"the recorder is invoked beside the refusal, with the request",
+	);
+	assert.deepEqual(completed.lines, [
+		"trigger=second-instance mode=normal requested=focus applied=skipped+quitting reopen=deferred",
+	]);
+
+	const declined = { lines: [] };
+	applySecondLaunch(
+		readSecondLaunchRequest({ commandLine: ["electron", "."] }),
+		{
+			window: null,
+			openConversation: null,
+			queue: () => {},
+			quitting: state.isQuitting(),
+			onRefusedWhileQuitting: () => false,
+			report: (line) => declined.lines.push(line),
+		},
+	);
+	assert.deepEqual(declined.lines, [
+		"trigger=second-instance mode=normal requested=focus applied=skipped+quitting",
+	]);
+
+	// The create-gate refusals are NOT completed and claim nothing: driven on the
+	// shipped reporter, the same call the gate sites make.
+	const gate = [];
+	reportSkippedWhileQuitting(
+		{ trigger: "banner-click", report: (line) => gate.push(line) },
+		"focus",
+	);
+	assert.deepEqual(gate, [
+		"trigger=banner-click mode=normal requested=focus applied=skipped+quitting",
+	]);
+});
+
+test("#755's wiring: one relaunch call at the terminal, a record per request kind, one clear", () => {
+	/*
+	 * `index.ts` cannot be booted here, so the wiring is pinned at the source,
+	 * the same discipline as the quit-state setter/release pins above. The
+	 * load-bearing facts:
+	 *
+	 *  - `app.relaunch` is called from EXACTLY ONE place, the terminal helper,
+	 *    and never at a refusal site. That is the stale-spawn guard: a spawn
+	 *    arranged when the refusal was TAKEN would leak into some later,
+	 *    unrelated exit of a quit that got cancelled — scheduling at the
+	 *    terminal is what makes that impossible.
+	 *  - the two refusals that mean "the user asked for the app" record — and
+	 *    the second-instance one records THIS request's own command line, so the
+	 *    replay cannot drift from the refusal it belongs to;
+	 *  - the record is cleared beside the ONE quit cancellation;
+	 *  - all four quit terminals call the one idempotent helper, the first
+	 *    before `will-quit`'s early return (a refusal from the close phase) and
+	 *    the rest at the exits the continuation, the failsafe and the catch
+	 *    reach (a refusal that landed mid-teardown — the common case).
+	 */
+	const index = readFileSync(join("src", "main", "index.ts"), "utf8");
+	const code = blankComments(index);
+
+	assert.equal(
+		code.split("app.relaunch(").length - 1,
+		1,
+		"exactly one app.relaunch call in the file",
+	);
+	const scheduleAt = code.indexOf("const scheduleReopenAtQuitTerminal");
+	assert.ok(scheduleAt > 0, "the terminal helper is still there");
+	const helper = code.slice(
+		scheduleAt,
+		code.indexOf('app.on("will-quit"', scheduleAt),
+	);
+	assert.ok(
+		helper.includes("app.relaunch({") &&
+			helper.includes("relaunchPending.scheduleOnExit("),
+		"and the one call is inside it, reached only through the idempotent schedule",
+	);
+	assert.ok(
+		helper.includes("inFlightInstallOwnsRelaunch()"),
+		"the install guard stands the successor down when the update lane owns this quit's return",
+	);
+
+	const secondInstanceAt = code.indexOf('"second-instance",');
+	assert.ok(secondInstanceAt > 0, "the second-instance handler is still there");
+	const secondInstance = code.slice(
+		secondInstanceAt,
+		code.indexOf("void commandLine;", secondInstanceAt),
+	);
+	assert.equal(
+		secondInstance.split("onRefusedWhileQuitting:").length - 1,
+		1,
+		"the second-instance target carries the recorder",
+	);
+	assert.ok(
+		secondInstance.includes('kind: "second-instance"') &&
+			secondInstance.includes("argv: commandLine,"),
+		"and it records THIS request's own command line",
+	);
+	assert.ok(
+		!secondInstance.includes("app.relaunch"),
+		"nothing spawns at refusal time (the negative pin)",
+	);
+
+	const activateAt = code.indexOf('app.on("activate"');
+	assert.ok(activateAt > 0, "the activate handler is still there");
+	const activate = code.slice(
+		activateAt,
+		code.indexOf("\n\t\t});", activateAt),
+	);
+	assert.ok(
+		activate.includes("relaunchPending.record({") &&
+			activate.includes('kind: "activate"') &&
+			activate.includes("deferredReopen"),
+		"the Dock-click refusal records, and its line reports the recorder's answer",
+	);
+	assert.ok(
+		!activate.includes("app.relaunch"),
+		"nothing spawns at the Dock-click refusal either (the negative pin)",
+	);
+
+	const constructionAt = code.indexOf("new BackendInstaller(");
+	const construction = code.slice(
+		constructionAt,
+		code.indexOf("});", constructionAt),
+	);
+	assert.ok(
+		construction.includes("relaunchPending.clear();"),
+		"the one cancelled quit clears the record beside its own cancellation",
+	);
+
+	assert.equal(
+		code.split("scheduleReopenAtQuitTerminal();").length - 1,
+		6,
+		"every quit terminal calls the one helper: the four will-quit sites, the headless exit deadline and the crash exit",
+	);
+	const willQuitAt = code.indexOf('app.on("will-quit"');
+	const willQuit = code.slice(
+		willQuitAt,
+		code.indexOf('app.on("before-quit"', willQuitAt),
+	);
+	assert.equal(
+		willQuit.split("scheduleReopenAtQuitTerminal();").length - 1,
+		4,
+		"four of the six are inside the will-quit pass (the other two are the exits outside it)",
+	);
+	assert.ok(
+		willQuit.indexOf("scheduleReopenAtQuitTerminal();") <
+			willQuit.indexOf("isOwnedCleanupComplete()"),
+		"the first runs before the early return, so a refusal from the close phase is caught",
+	);
+	const thenBody = willQuit.slice(
+		willQuit.indexOf(".then(() => {"),
+		willQuit.indexOf(".catch((error) => {"),
+	);
+	assert.ok(
+		thenBody.includes("scheduleReopenAtQuitTerminal();") &&
+			thenBody.includes("app.exit(0)"),
+		"the continuation schedules before the clean exit",
+	);
+	const catchBody = willQuit.slice(willQuit.indexOf(".catch((error) => {"));
+	assert.ok(
+		catchBody.includes("scheduleReopenAtQuitTerminal();") &&
+			catchBody.includes("app.exit(1)"),
+		"the catch schedules before the failed exit",
+	);
+	const failsafeBody = willQuit.slice(
+		willQuit.indexOf("const failsafe = setTimeout"),
+		willQuit.indexOf("failsafe.unref()"),
+	);
+	assert.ok(
+		failsafeBody.includes("scheduleReopenAtQuitTerminal();") &&
+			failsafeBody.includes("app.exit(1)"),
+		"and the failsafe schedules before its own failed exit",
+	);
+
+	/*
+	 * REVIEW F2/F3. The two exits OUTSIDE the will-quit pass that can still strand
+	 * a record call the same idempotent helper before they go — the headless exit
+	 * deadline (whose forced exit used to drop a record the refusal line had
+	 * already called deferred) and the `uncaughtException` crash exit — and the
+	 * install guard's stand-down reports only a RECORDED reopen, once.
+	 */
+	const deadlineAt = code.indexOf("function armHeadlessExitDeadline");
+	assert.ok(deadlineAt > 0, "the headless exit deadline is still there");
+	const deadlineCallAt = code.indexOf(
+		"scheduleReopenAtQuitTerminal();",
+		deadlineAt,
+	);
+	const deadlineExitAt = code.indexOf("app.exit(0)", deadlineAt);
+	assert.ok(
+		deadlineCallAt > deadlineAt &&
+			deadlineExitAt > deadlineAt &&
+			deadlineCallAt < deadlineExitAt,
+		"the headless exit deadline completes a recorded reopen before its forced exit (review F2)",
+	);
+	const crashAt = code.indexOf('process.on("uncaughtException"');
+	assert.ok(crashAt > 0, "the crash handler is still there");
+	const crashCallAt = code.indexOf("scheduleReopenAtQuitTerminal();", crashAt);
+	const crashExitAt = code.indexOf("process.exit(1)", crashAt);
+	assert.ok(
+		crashCallAt > crashAt && crashExitAt > crashAt && crashCallAt < crashExitAt,
+		"and the crash exit does too, before process.exit(1) (review F2)",
+	);
+	assert.ok(
+		helper.includes("relaunchPending.hasPending()") &&
+			helper.includes("relaunchStandDownLogged"),
+		"the install stand-down reports only a RECORDED reopen, and once (review F3)",
+	);
+
+	const raiseSource = readFileSync(
+		join("src", "main", "window-raise.ts"),
+		"utf8",
+	);
+	const refusalAt = raiseSource.indexOf("if (target.quitting) {");
+	assert.ok(refusalAt > 0, "the second-instance refusal is still there");
+	const refusal = raiseSource.slice(
+		refusalAt,
+		raiseSource.indexOf("return;", refusalAt),
+	);
+	assert.ok(
+		refusal.indexOf("onRefusedWhileQuitting") <
+			refusal.indexOf("reportSkippedWhileQuitting("),
+		"the recorder is asked first; the line's token is its answer",
 	);
 });
 
