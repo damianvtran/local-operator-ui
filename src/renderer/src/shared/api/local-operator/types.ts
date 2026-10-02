@@ -793,10 +793,20 @@ export type SpeechRequest = {
 	input: string;
 	/** The instructions to use for generation. */
 	instructions?: string;
-	/** The model to use for generation. */
-	model: string;
-	/** The voice to use for generation. */
-	voice: string;
+	/**
+	 * The model to use for generation. Optional since the agent-less speech
+	 * press: the hub owns the speech model choice, and the daemon's own client
+	 * omits the field when a caller named none (`radient_client.create_speech`:
+	 * "a caller that named no voice must not have one invented client-side").
+	 * A caller that leaves it out is asking the daemon for its configured model.
+	 */
+	model?: string;
+	/**
+	 * The voice to use for generation, or the female/male ALIAS the hub resolves
+	 * to a voice id. Optional for the same reason `model` is: the daemon's
+	 * `speech.voice.*` settings govern when a caller names none.
+	 */
+	voice?: string;
 	/** The format of the audio response. Default: "mp3". */
 	response_format?: string;
 	/** The speed of the speech. Default: 1.0. */
