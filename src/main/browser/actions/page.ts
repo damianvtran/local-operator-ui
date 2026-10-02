@@ -53,8 +53,9 @@ export const ISOLATED_WORLD_ID = 999;
  */
 /** A selector that is not valid CSS reaches us as an isolated-world rejection with
  * this in the message. Module scope: the linter's top-level-regex rule, and there
- * is no reason to compile it per read. */
-const INVALID_SELECTOR = /SyntaxError|not a valid selector/i;
+ * is no reason to compile it per read. Shared with `geometry.ts`, whose
+ * selector-keyed reads raise the same refusal. */
+export const INVALID_SELECTOR = /SyntaxError|not a valid selector/i;
 
 const READ_FUNCTION = `function (selector) {
   const element = document.querySelector(selector);

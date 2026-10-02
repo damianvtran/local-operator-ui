@@ -1136,7 +1136,8 @@ const operationInProgress = () => {
 	if (existsSync(join(dir, "rebase-apply"))) return "rebase";
 	if (existsSync(join(dir, "CHERRY_PICK_HEAD"))) return "cherry-pick";
 	if (existsSync(join(dir, "REVERT_HEAD"))) return "revert";
-	if (existsSync(join(dir, "sequencer"))) return "a cherry-pick/revert sequence";
+	if (existsSync(join(dir, "sequencer")))
+		return "a cherry-pick/revert sequence";
 	return null;
 };
 
@@ -1189,7 +1190,8 @@ const driver = ([basePath, oursPath, theirsPath]) => {
 					`git handed the driver a path that does not exist (${path}), so the conflict could not be marked`,
 				);
 		}
-		const withNewline = (text) => (text.endsWith("\n") ? text : `${text}\n`);		writeFileSync(
+		const withNewline = (text) => (text.endsWith("\n") ? text : `${text}\n`);
+		writeFileSync(
 			oursPath,
 			`<<<<<<< ours (the ${operation} upstream side)\n${withNewline(
 				readFileSync(oursPath, "utf8"),

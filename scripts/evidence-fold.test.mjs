@@ -12,7 +12,11 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { after, test } from "node:test";
 import { fileURLToPath } from "node:url";
-import { countsMeanFailures, partialCaptureFailures, stampFailures } from "./check-evidence.mjs";
+import {
+	countsMeanFailures,
+	partialCaptureFailures,
+	stampFailures,
+} from "./check-evidence.mjs";
 import { mergedKeys, resolveManifest, runGuards } from "./evidence-fold.mjs";
 
 /*
@@ -111,7 +115,11 @@ const manifest = (fields) => ({
  * A repository old enough to fold: a base commit, a `lane` branch with its own
  * record, and a `main` branch that moved `src/` and `scripts/` under it.
  */
-const fixture = ({ laneRecord = true, mainRecord = true, attributes = false } = {}) => {
+const fixture = ({
+	laneRecord = true,
+	mainRecord = true,
+	attributes = false,
+} = {}) => {
 	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-fold-"));
 	scratch.push(dir);
 	git(dir, ["init", "--initial-branch=main", "-q"]);
@@ -263,7 +271,11 @@ const readManifest = (dir) =>
  * is how a disagreement between the writer and the guard stayed invisible.
  */
 const guardFailures = (dir) =>
-	stampFailures(readManifest(dir), readerFor(dir), join(dir, "docs", "evidence"));
+	stampFailures(
+		readManifest(dir),
+		readerFor(dir),
+		join(dir, "docs", "evidence"),
+	);
 
 /** The manifest a revision's tree carries, or null when the read failed. */
 const manifestAt = (dir, rev) => {
@@ -795,7 +807,10 @@ test("the merge driver refuses a cherry-pick too, and still resolves a merge", (
 	installDriver(merged);
 	const merge = gitCode(merged, ["merge", "main"]);
 	assert.equal(merge.code, 0, merge.out);
-	assert.match(merge.out, /resolved docs\/evidence\/manifest\.json mechanically/);
+	assert.match(
+		merge.out,
+		/resolved docs\/evidence\/manifest\.json mechanically/,
+	);
 });
 
 test("a hand run of the tool outside a merge refuses rather than taking HEAD's side", () => {
@@ -806,7 +821,10 @@ test("a hand run of the tool outside a merge refuses rather than taking HEAD's s
 	// commit being rebased ONTO, so "resolve from HEAD" would take that side.
 	const result = run(dir);
 	assert.equal(result.status, 1, result.out);
-	assert.match(result.out, /rebase .* is in progress|rebase \(or pull --rebase\) is in progress/);
+	assert.match(
+		result.out,
+		/rebase .* is in progress|rebase \(or pull --rebase\) is in progress/,
+	);
 	assert.match(result.out, /MERGE only/);
 });
 
@@ -872,7 +890,8 @@ const storyFixture = () => {
 			`docs/evidence/${id.replace("--", "/")}/localOperatorDark.webp`,
 			"not-a-real-webp",
 		);
-	const manifestJson = (m) => write("docs/evidence/manifest.json", `${JSON.stringify(m, null, 2)}\n`);
+	const manifestJson = (m) =>
+		write("docs/evidence/manifest.json", `${JSON.stringify(m, null, 2)}\n`);
 
 	// An INIT commit first, so `refreshedAtHead^` resolves and the pass-diff half
 	// of `partialCaptureFailures` can be asked rather than standing down.
@@ -1162,7 +1181,7 @@ test("--amend refuses a tip that is already on a remote-tracking ref", () => {
 	);
 	assert.match(
 		git(dir, ["status", "--porcelain"]),
-		/^M  docs\/evidence\/manifest\.json$/m,
+		/^M {2}docs\/evidence\/manifest\.json$/m,
 		"the values are still written and staged, so they can be committed on top",
 	);
 });

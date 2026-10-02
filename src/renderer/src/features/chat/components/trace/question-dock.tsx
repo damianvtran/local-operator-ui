@@ -110,6 +110,15 @@ export type QuestionDockProps = {
 		sending: boolean;
 		refused: string | null;
 		retryable?: boolean;
+		/**
+		 * The arm's register, straight from `answerReport` (design round 1, D4): the
+		 * retryable-busy refusal is a failure the app is absorbing, not one the user
+		 * must repair, so it paints in muted ink rather than the danger band it
+		 * shares with the dead-owner arm. Optional with `danger` as the default,
+		 * because a caller that did not classify a refusal is not entitled to
+		 * downgrade its ink either.
+		 */
+		muted?: boolean;
 	} | null;
 	/** Extra classes on the dock's outer box (the caller owns the measure). */
 	className?: string;
@@ -591,9 +600,19 @@ export const QuestionDock = ({
 				 * A refused answer lands on the card it was pressed on, outcome first,
 				 * and the card stays held so it cannot be pressed twice (QA round 1, Q3;
 				 * UX round 1, U4). `output` carries the status role implicitly.
+				 *
+				 * THE INK IS THE ARM'S, not this surface's: a retryable-busy refusal is a
+				 * moment the app is waiting out, so it takes the register the composer
+				 * band already uses for the send lock and a late delivery, and every other
+				 * arm keeps the danger band (design round 1, D4).
 				 */}
 				{answer?.refused && (
-					<output className="block text-body-sm text-danger">
+					<output
+						className={cn(
+							"block text-body-sm",
+							answer.muted ? "text-ink-muted" : "text-danger",
+						)}
+					>
 						{answer.refused}
 					</output>
 				)}
