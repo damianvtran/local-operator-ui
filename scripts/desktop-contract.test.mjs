@@ -891,6 +891,64 @@ test("control catalogues, lifecycle, MCP and Radient use closed main-owned trans
 			assert.deepEqual(JSON.parse(actual.body), operation.control);
 	}
 	/*
+	 * THE FORK BODY'S TWO FORMS, compared by BODY rather than by path alone.
+	 *
+	 * The route validates the pair TOGETHER - an entry id with `next_safe` is a
+	 * 422, `at_entry` without one is a 422 - so WHICH KEYS this builder sends is
+	 * the contract, not an implementation detail. The whole-conversation form must
+	 * send no `entry_id` key at all (the exact bytes a client that has never heard
+	 * of cuts sends, which is what keeps the old call byte-identical), and the cut
+	 * must send both halves of the pair.
+	 */
+	for (const [operation, expected] of [
+		[
+			{ op: "sessions.fork", sessionId, requestId, message: "Continue" },
+			{ request_id: requestId, message: "Continue" },
+		],
+		[
+			{
+				op: "sessions.fork",
+				sessionId,
+				requestId,
+				boundary: "at_entry",
+				entryId: "4f2c1a",
+			},
+			{
+				request_id: requestId,
+				boundary: "at_entry",
+				entry_id: "4f2c1a",
+			},
+		],
+	]) {
+		assert.equal((await requestDesktop(operation, url, token)).status, 200);
+		assert.deepEqual(
+			JSON.parse(seen.at(-1).body),
+			expected,
+			`${operation.boundary ?? "next_safe"} sends exactly the keys the route pairs`,
+		);
+	}
+	/*
+	 * A boundary the route does not know is refused BEFORE the transport, by the
+	 * schema's own enum: this is the one field a renderer could widen by typo, and
+	 * a typo that reached the route would be a 422 the reader cannot act on.
+	 */
+	const beforeBoundaryRefusal = seen.length;
+	await requestDesktopOutcome(
+		{
+			op: "sessions.fork",
+			sessionId,
+			requestId,
+			boundary: "at_next_safe",
+		},
+		url,
+		token,
+	);
+	assert.equal(
+		seen.length,
+		beforeBoundaryRefusal,
+		"an unknown boundary never reaches the transport",
+	);
+	/*
 	 * Code memory's write half, compared by BODY rather than by path alone:
 	 * create carries the key, update deliberately does not (once the name
 	 * exists it is immutable and travels in the path), and the body shape is the
