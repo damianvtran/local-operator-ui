@@ -210,6 +210,13 @@ const NO_REASON_GIVEN = /did not say why/;
 const TERMINAL = /zsh/;
 /** #754's question, as the one reading this file's close test needs. */
 const CLOSE_QUESTION = /Close this terminal\?/;
+/** U6's conditional sentence, asserted present for a retained row and absent for an
+ * agent's (its `retain` is off, so promising it would be a lie). */
+const OUTPUT_KEPT = /Its output is kept\./;
+/** The handler's own clause inside a refusal, and the channel's wrapper the reader
+ * must not be shown (U3). */
+const STILL_RUNNING = /is still running/;
+const IPC_WRAPPER = /Error invoking remote method/;
 
 const SESSION = "session-render-test";
 
@@ -768,14 +775,15 @@ test("a running close asks first and only the confirm reaches the bridge; an end
 			container.querySelector(
 				`[data-surface="${surface}"] [data-tour-tag="console-surface-close"]`,
 			);
-		// The control is on everery row, and its name follows the state.
+		// The control is on every row, and its name follows the state AND carries the
+		// tablist's own position, because two shells made two "Close sh" (UX round 1, U4).
 		assert.equal(
 			closeOf("con:1:running").getAttribute("aria-label"),
-			"Close zsh",
+			"Close zsh, tab 1 of 2",
 		);
 		assert.equal(
 			closeOf("con:2:ended").getAttribute("aria-label"),
-			"Dismiss zsh",
+			"Dismiss zsh, tab 2 of 2",
 		);
 
 		// A RUNNING close asks before it does anything.
@@ -785,6 +793,9 @@ test("a running close asks first and only the confirm reaches the bridge; an end
 			"the press did not open the close question",
 		);
 		assert.match(confirmDialog().textContent, CLOSE_QUESTION);
+		// The retained-output reassurance is said where the row's own `retain` says it is
+		// true (UX round 1, U6).
+		assert.match(confirmDialog().textContent, OUTPUT_KEPT);
 		assert.equal(
 			bridge.calls.close.length,
 			0,
@@ -815,6 +826,16 @@ test("a running close asks first and only the confirm reaches the bridge; an end
 			),
 		);
 		assert.equal(confirmDialog(), null, "the question stayed over the answer");
+		// THE HANDOFF (UX round 1, U1): the row that held the keyboard is gone, so the
+		// lens's neighbour has it — never `<body>`, where the next Tab restarts.
+		assert.ok(
+			await waitFor(
+				() =>
+					document.activeElement ===
+					container.querySelector('[data-surface="con:2:ended"] [role="tab"]'),
+			),
+			"the keyboard was left on the document body after the close",
+		);
 
 		// An ENDED close is a dismissal: no question, `retain: false`, gone.
 		await press(closeOf("con:2:ended"));
@@ -833,12 +854,211 @@ test("a running close asks first and only the confirm reaches the bridge; an end
 			),
 		);
 		// With no surface left the pane shows its empty state rather than a selection
-		// pointing at a terminal that no longer exists.
+		// pointing at a terminal that no longer exists — and the keyboard lands on the
+		// empty state's own control, not on `<body>`.
 		assert.ok(
 			await waitFor(() =>
 				container.textContent.includes("No console in this session"),
 			),
 			"the pane did not fall to its empty state",
+		);
+		assert.ok(
+			await waitFor(
+				() =>
+					document.activeElement ===
+					container.querySelector('[data-tour-tag="console-new-surface"]'),
+			),
+			"the keyboard was left on the document body after the dismissal",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("the question withdraws when its subject leaves the listing, and no close is sent", async () => {
+	/*
+	 * UX round 1's U2 and Agent review round 1's F1, first shape: the row leaves the
+	 * LISTING while the question stands (an agent's own console_close). The question
+	 * goes rather than confirming against a surface that is no longer there, and
+	 * nothing reaches the bridge.
+	 */
+	resetIntent();
+	const bridge = installBridge({ surfaces: [surfaceRow("con:1:running")] });
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:running"]'),
+		);
+		const closeOf = () =>
+			container.querySelector(
+				'[data-surface="con:1:running"] [data-tour-tag="console-surface-close"]',
+			);
+		await press(closeOf());
+		assert.ok(
+			await waitFor(() => confirmDialog() !== null),
+			"the press did not open the close question",
+		);
+		bridge.setListing([]);
+		bridge.fireStateChanged();
+		assert.ok(
+			await waitFor(() => confirmDialog() === null),
+			"the question stayed over a surface that left the listing",
+		);
+		assert.equal(
+			bridge.calls.close.length,
+			0,
+			"a withdrawn question reached the bridge",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("the question withdraws when its subject exits while it stands, and no close is sent", async () => {
+	/*
+	 * Second shape of the same rule, and the half the effect could not see before:
+	 * an EXITED row stays listed, so "not in the listing any more" never fired for
+	 * it — the question would sit there claiming to end something that had already
+	 * ended, and its confirm would send a kill to a surface with nothing to kill.
+	 */
+	resetIntent();
+	const bridge = installBridge({ surfaces: [surfaceRow("con:1:running")] });
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:running"]'),
+		);
+		const closeOf = () =>
+			container.querySelector(
+				'[data-surface="con:1:running"] [data-tour-tag="console-surface-close"]',
+			);
+		await press(closeOf());
+		assert.ok(
+			await waitFor(() => confirmDialog() !== null),
+			"the press did not open the close question",
+		);
+		bridge.setListing([
+			surfaceRow("con:1:running", {
+				running: false,
+				exit_code: 0,
+				live: false,
+			}),
+		]);
+		bridge.fireStateChanged();
+		assert.ok(
+			await waitFor(() => confirmDialog() === null),
+			"the question stayed over a terminal that had already ended",
+		);
+		// Withdrawn, not dismissed: the row is still there offering its Dismiss.
+		assert.ok(
+			container.querySelector('[data-surface="con:1:running"]'),
+			"the exited row was removed rather than left in the strip",
+		);
+		assert.equal(
+			bridge.calls.close.length,
+			0,
+			"a withdrawn question reached the bridge",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("a refused close keeps the question open, in the handler's own words, with the safe answer holding the keyboard", async () => {
+	/*
+	 * UX round 1's U3: the confirm used to clear in `.finally` as if every outcome
+	 * had succeeded — "I pressed Close and nothing happened". The dialog stays, the
+	 * refusal renders in the danger ink, and `focusCancelSignal` puts the keyboard
+	 * back on Cancel so the next Enter cannot repeat a refused act.
+	 */
+	resetIntent();
+	const bridge = installBridge({
+		surfaces: [surfaceRow("con:1:running")],
+		close: async () => {
+			// The shape a real rejection arrives in: the channel's own prefix around the
+			// handler's sentence, which is the half a person should not have to read.
+			throw new Error(
+				"Error invoking remote method 'console-close-surface': Error: con:1:running is still running; close it with kill: true, or wait for its process to exit",
+			);
+		},
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:running"]'),
+		);
+		await press(
+			container.querySelector(
+				'[data-surface="con:1:running"] [data-tour-tag="console-surface-close"]',
+			),
+		);
+		assert.ok(
+			await waitFor(() => confirmDialog() !== null),
+			"the press did not open the close question",
+		);
+		await press(confirmDialog().querySelector("[data-confirm-action]"));
+		assert.ok(await waitFor(() => bridge.calls.close.length === 1));
+		assert.ok(
+			await waitFor(() =>
+				STILL_RUNNING.test(confirmDialog()?.textContent ?? ""),
+			),
+			"a refused close cleared the question as if it had succeeded",
+		);
+		assert.doesNotMatch(
+			confirmDialog().textContent,
+			IPC_WRAPPER,
+			"the channel's wrapper prefix was shown to the reader",
+		);
+		const cancel = confirmDialog().querySelector("[data-cancel-action]");
+		assert.ok(
+			await waitFor(() => document.activeElement === cancel),
+			"the refusal left the keyboard on the destructive button",
+		);
+		await press(cancel);
+		assert.ok(
+			await waitFor(() => confirmDialog() === null),
+			"Cancel no longer closed a refused question",
+		);
+	} finally {
+		root.unmount();
+		container.remove();
+	}
+});
+
+test("the output reassurance is said only where the row says its history persists", async () => {
+	/*
+	 * UX round 1's U6, the half that would make the sentence a lie: an agent-owned
+	 * surface is not retained (§7.2), so its question must not promise the output is
+	 * kept. Same flow, the row's own `retain: false`.
+	 */
+	resetIntent();
+	// The bridge is the mount's dependency, not a handle: this test drives the dialog
+	// and reads its copy, and it sends nothing.
+	installBridge({
+		surfaces: [surfaceRow("con:1:agent", { agent_owned: true, retain: false })],
+	});
+	const { root, container } = await mountPane();
+	try {
+		await waitFor(() =>
+			container.querySelector('[data-surface="con:1:agent"]'),
+		);
+		await press(
+			container.querySelector(
+				'[data-surface="con:1:agent"] [data-tour-tag="console-surface-close"]',
+			),
+		);
+		assert.ok(
+			await waitFor(() => confirmDialog() !== null),
+			"the press did not open the close question",
+		);
+		assert.match(confirmDialog().textContent, CLOSE_QUESTION);
+		assert.doesNotMatch(
+			confirmDialog().textContent,
+			OUTPUT_KEPT,
+			"the question promised retention for a surface that is not retained",
 		);
 	} finally {
 		root.unmount();
