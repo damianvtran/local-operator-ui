@@ -84,12 +84,25 @@ import {
 	type SendLock,
 	answerGateOption,
 	answerGateSecret,
+	answerQueuedAsk,
 	answerReport,
 	answerValue,
 	approvalAnswerValue,
 	createSendLock,
+	declineQueuedAsk,
 	gateIsSecret,
 } from "../ask-answer";
+import {
+	ASK_COMPOSER_PLACEHOLDER,
+	type AskDraft,
+	EMPTY_DRAFT,
+	askAnswerMap,
+	askClaimsEscape,
+	askComposerAnswers,
+	askQueueView,
+	askRefusalSentence,
+	effectiveGate,
+} from "../ask-queue";
 import {
 	ownerAnswered,
 	stoppedAfterAdmission,
@@ -398,6 +411,74 @@ function SessionPanel({
 		 */
 		muted: boolean;
 	} | null>(null);
+	/**
+	 * The queued-ask outcomes, keyed by ASK ID.
+	 *
+	 * A separate record from `answerState` rather than a second key in it, because
+	 * the two are keyed by different identities: a gate's record is keyed by the
+	 * gate (so the next question clears it by construction), while a queued ask IS
+	 * the identity - it may be answered long after the frame that carried it, and
+	 * the next ask is a different id rather than a new question of the same one.
+	 * Folding them would leave a gate's stale key able to match an ask id and
+	 * vice versa.
+	 */
+	const [askOutcomes, setAskOutcomes] = useState<
+		Record<string, { sending: boolean; refused: string | null }>
+	>({});
+	/*
+	 * THE ASK COMPOSER'S OWN STATE (design §5.0, the operator's R7 amendment).
+	 *
+	 * A separate lane from everything the composer already does, and separate on
+	 * purpose: this does NOT extend the skill selector's machine or the gate's
+	 * swallow. The gate's swallow is the behaviour this feature replaces - it is
+	 * why the old design turned the composer into the answer box unconditionally -
+	 * so reusing its flag would carry the unconditional part along with it.
+	 *
+	 * `askExpanded` is the ONE flag the routing rule reads. While it is true the
+	 * composer answers the ask; while it is false the composer is an ordinary
+	 * conversation box. It is owned here, rather than inside `AskSurfaces`, for
+	 * the reason the design gives: the bar and the composer must not be able to
+	 * disagree about which mode the user is in.
+	 */
+	const [askExpanded, setAskExpanded] = useState(false);
+	/*
+	 * ANSWERING IS NOT THE SAME AS EXPANDED (UX round 2, U7).
+	 *
+	 * A settled-only queue can still be expanded - the history is worth reading -
+	 * but there is nothing to answer into it, and the composer used to enter ask
+	 * mode anyway: the sentence promised an answer the Enter key could not send, and
+	 * the press left the text sitting in a box whose send control was painted in its
+	 * live accent. `sendToAsk` refused correctly (nothing was misrouted), so the
+	 * defect was the promise rather than the route.
+	 *
+	 * Derived from the SAME view the panel and the routing read, so the sentence,
+	 * the control and the route cannot disagree about whether there is an ask to
+	 * answer: with nothing answerable the box keeps the ordinary invitation and
+	 * Enter goes to the conversation, which is the only thing it could mean.
+	 */
+	const asksView = useMemo(
+		() => askQueueView(canonical.frontend),
+		[canonical.frontend],
+	);
+	const askAnswering = askExpanded && askComposerAnswers(asksView);
+	/*
+	 * The two DRAFTS, kept apart (design §5.0's invariant).
+	 *
+	 * The composer holds one box and the user may be mid-sentence in either mode,
+	 * so toggling has to swap buffers rather than share one: a chat draft must
+	 * never become an answer and an answer must never be sent as chat. The chat
+	 * buffer lives in the input store (where the composer already reads it) and
+	 * the ask buffer lives beside this flag; the swap below moves each in and out
+	 * of the box.
+	 */
+	const askBuffer = useRef("");
+	const chatBuffer = useRef("");
+	/*
+	 * The in-flight answers, keyed by ask id then question id: ONE draft shared by
+	 * the panel's ticks and the composer's typed answer. Two would mean a composer
+	 * Enter discarding a ticked option, or a tick discarding what was typed.
+	 */
+	const [askDrafts, setAskDrafts] = useState<Record<string, AskDraft>>({});
 	/*
 	 * The gate this panel is showing, and this panel's own record of having
 	 * pressed it.
@@ -1468,6 +1549,17 @@ function SessionPanel({
 		 */
 		inputMode?: "typed" | "dictated" | "mixed",
 	): Promise<SendOutcome> => {
+		/*
+		 * THE ASK-MODE BRANCH, FIRST, and before every other door this function
+		 * offers (design §5.0). While the ask surface is expanded the composer is
+		 * the answer box, so nothing below this line may see the text: the slash
+		 * planner would run a command the user meant as an answer, and the gate
+		 * swallow would send it as a message. Enter and the Send button both land
+		 * here because both are this function, which is what makes "Enter while the
+		 * ask composer is focused follows the same routing" true by construction
+		 * rather than by a second key handler that could drift from this one.
+		 */
+		if (askAnswering) return await sendToAsk(content);
 		const store = useCanonicalSessionsStore.getState();
 		// Same ROW the view reads, so a send can never address a different draft
 		// than the one whose retained text and Discard control are shown. The
@@ -1579,7 +1671,10 @@ function SessionPanel({
 			 * (QA round 2, Q4). Prose is prose: it goes to the model.
 			 */
 			if (!draftKey && !sessionId) return false;
-			const gate = canonical.frontend?.pending_gate;
+			// The ONE derivation (agent review F3): the mirror rule is applied in
+			// `effectiveGate`, so this door cannot answer a mirrored ask by index
+			// while the ask lane is live.
+			const gate = effectiveGate(canonical.frontend);
 			if (gate && canonical.ownerEpoch && sessionId) {
 				/*
 				 * A SECRET GATE TAKES NO COMPOSER ANSWER, and this is the door that
@@ -2396,6 +2491,198 @@ function SessionPanel({
 		settleGateAnswer(outcome, key);
 	};
 	/*
+	 * THE QUEUED-ASK DOORS.
+	 *
+	 * Both post to the session's `/answers` route by `ask_id` and share the gate
+	 * answer's lock, so one answer is in flight at a time across every surface of
+	 * this session whichever shape it is - the property `answerGateOption`'s own
+	 * note states as "one answer per question, whichever surface starts it".
+	 *
+	 * NO EPOCH, deliberately: a queued ask outlives the owner that queued it, and
+	 * the route skips the epoch comparison for this shape (see `answerQueuedAsk`).
+	 * Sending `canonical.ownerEpoch` here would not be harmless caution - it would
+	 * be the one thing that breaks the feature's durability claim, because the
+	 * client answering a reaped runtime's ask holds a stale epoch BY CONSTRUCTION.
+	 *
+	 * The refusal sentence is the OWNER's when it sent one. Every refusal in this
+	 * family is a specific state (`expired`, `already answered by <surface>`,
+	 * `already declined`) and only the backend can tell them apart, so this reads
+	 * its words and falls back to the app's own sentence for the case where a
+	 * refusal crossed the wire without one.
+	 */
+	const settleAskOutcome = (taskId: string, outcome: AnswerOutcome) => {
+		if (outcome.status === "failed") {
+			setAskOutcomes((current) => ({
+				...current,
+				[taskId]: {
+					sending: false,
+					/*
+					 * The OWNER's sentence when it sent one; the app's own, CHOSEN BY THE
+					 * STATE the refusal reports, when it did not (agent review F5, QA rounds
+					 * 1 and 2). The choice lives in `askRefusalSentence` because the
+					 * fallback ARGUMENT of `userFacingMessage` is never consulted for a
+					 * `DesktopControlError` - which is what made the first version dead.
+					 */
+					refused: askRefusalSentence(outcome.error),
+				},
+			}));
+			return;
+		}
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: false, refused: null },
+		}));
+	};
+	const answerAsk = async (
+		taskId: string,
+		answers: Record<string, string[]>,
+	) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await answerQueuedAsk(
+				{ taskId, answers, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleAskOutcome(taskId, outcome);
+	};
+	const declineAsk = async (taskId: string) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await declineQueuedAsk(
+				{ taskId, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleAskOutcome(taskId, outcome);
+	};
+	/*
+	 * THE MODE TOGGLE, and the draft swap it has to perform.
+	 *
+	 * The bar and the panel both call this rather than flipping a flag of their
+	 * own, and the composer reads `askExpanded` - so there is one answer to "which
+	 * mode is the user in" on the whole screen. The two buffers are the design's
+	 * own invariant (§5.0): toggling preserves BOTH drafts, and neither may ever
+	 * be sent into the other's channel. A chat draft that became an answer, or an
+	 * answer sent as chat, is the accident this swap makes impossible rather than
+	 * merely unlikely.
+	 */
+	/*
+	 * MEMOISED, because it is a dependency of the Escape claim's effect below:
+	 * a fresh closure per render would re-register the window listener on every
+	 * render, and the claim would be a listener churn rather than a claim.
+	 */
+	/*
+	 * THE SWAP FOLLOWS THE MODE, NOT THE TOGGLE (agent review round 3, F1).
+	 *
+	 * `askAnswering` - not `askExpanded` - is what the composer's mode means, and
+	 * the buffers must exchange on THAT transition. Keying the swap on the toggle
+	 * left a hole: when the last open ask settled under an OPEN panel (answered from
+	 * the phone, declined, `late`), the mode silently flipped to chat, no swap ran,
+	 * and the box still held the ask-buffer answer - so one Enter posted it to the
+	 * conversation. That is the toggle's own stated invariant ("a chat draft must
+	 * never become an answer and an answer must never be sent as chat") broken by the
+	 * one path that did not go through the toggle.
+	 *
+	 * Every door - the bar, the panel's Escape, the queue emptying, a settle from
+	 * another surface - now reaches the swap by moving this one flag.
+	 *
+	 * `setComposerText`, not `setCurrentInput`: only the revision-bumping writer
+	 * makes the composer ADOPT store text (round 1's F1/Q-1/U1).
+	 */
+	const answeringRef = useRef(false);
+	useEffect(() => {
+		const was = answeringRef.current;
+		answeringRef.current = askAnswering;
+		if (was === askAnswering) return;
+		const store = useConversationInputStore.getState();
+		if (askAnswering) {
+			chatBuffer.current = store.getCurrentInput(identity);
+			store.setComposerText(identity, askBuffer.current);
+		} else {
+			askBuffer.current = store.getCurrentInput(identity);
+			store.setComposerText(identity, chatBuffer.current);
+		}
+	}, [askAnswering, identity]);
+	const toggleAskExpanded = useCallback(
+		(next: boolean) => {
+			if (next === askExpanded) return;
+			setAskExpanded(next);
+		},
+		[askExpanded],
+	);
+	/*
+	 * THE COMPOSER'S ASK ROUTING (design §5.0).
+	 *
+	 * While the ask surface is expanded, what the user types in the composer is an
+	 * ANSWER. It fills the FIRST unanswered question of the head ask and joins the
+	 * draft the panel's own ticks write to, so the two doors cannot hold different
+	 * versions of the same answer. The ask is submitted ATOMICALLY once every
+	 * question has one: the wire refuses a partial map, and a partial submit that
+	 * could only ever be refused is a control that lies.
+	 *
+	 * A SECRET question is SKIPPED. Its value is typed into the panel's masked
+	 * field, which is the only place on this side a credential may live, so a
+	 * composer Enter with one still open falls through to no send rather than
+	 * putting a credential into an ordinary text box.
+	 *
+	 * Returns false WITHOUT sending when there is nothing to answer into, which
+	 * leaves the user's text in the box - the alternative is swallowing a message
+	 * they typed, which is the failure this whole feature exists to end.
+	 */
+	const sendToAsk = async (content: string): Promise<SendOutcome> => {
+		const head = askQueueView(canonical.frontend).head;
+		if (!head || !head.canAnswer) return false;
+		const current = askDrafts[head.ask.ask_id] ?? EMPTY_DRAFT;
+		const target = head.ask.questions.find(
+			(question) =>
+				!question.secret && (current[question.id] ?? []).length === 0,
+		);
+		if (!target) {
+			/*
+			 * EVERY QUESTION IS ANSWERED, so Enter does what `Send answer` does (UX
+			 * round 3, U8). It used to be inert - the box kept the text and nothing
+			 * was sent - which made the keyboard door quieter than the control beside
+			 * it for the one state where there is nothing left to type.
+			 */
+			const complete = askAnswerMap(head.ask, current);
+			if (complete === null) return false;
+			await answerAsk(head.ask.ask_id, complete);
+			return true;
+		}
+		const next = { ...current, [target.id]: [content] };
+		setAskDrafts((drafts) => ({ ...drafts, [head.ask.ask_id]: next }));
+		/*
+		 * The box is consumed HERE rather than through the composer's echo seam:
+		 * there is no echo, because nothing was sent to the conversation.
+		 */
+		askBuffer.current = "";
+		useConversationInputStore.getState().setCurrentInput(identity, "");
+		const answers = askAnswerMap(head.ask, next);
+		// A question still unanswered: the draft is kept (the panel shows it) and
+		// the ask is not submitted - the legacy incremental card's behaviour, with
+		// the whole-ask body the new contract requires.
+		if (answers === null) return true;
+		await answerAsk(head.ask.ask_id, answers);
+		return true;
+	};
+	/*
 	 * Put focus back after a keyboard answer.
 	 *
 	 * The pressed option unmounts when the gate clears, so focus falls to the
@@ -2534,6 +2821,60 @@ function SessionPanel({
 			if (sessionId) clearTurnStopped(sessionId);
 		}
 	}, [busy, sessionId, clearTurnStopped]);
+	/*
+	 * ESCAPE MEANS COLLAPSE WHILE AN ASK IS EXPANDED, and this is where that claim
+	 * is made (design §5.0's R7, agent review F2, UX round 1 U2).
+	 *
+	 * The composer's own sentence promises "Esc to collapse", and nothing claimed
+	 * the key: the only Escape handler was on the panel's non-focusable div, which
+	 * never sees a press made in the box. Worse, the press then fell through to the
+	 * interrupt ladder - `ownsEscapeOutsideComposer` EXEMPTS the composer textarea,
+	 * so `interruptEscapeApplies` was true and Esc in the box stopped the running
+	 * turn while the panel stayed open. A queued ask exists precisely while a turn
+	 * is live, so that was the common case, not an edge.
+	 *
+	 * THREE GUARDS, and each one answers a way the first version took a key that was
+	 * not its to take (agent review N-2, UX round 2 U5):
+	 *
+	 *  - `pressLandsOnOverlay(event.target)` - the app's own predicate, imported
+	 *    from `keyboard-scopes` rather than re-listed here, exactly as
+	 *    `canvas/index.tsx` asks it for the same class of press. This is the
+	 *    measured defect: with the panel expanded, Cmd-K then Escape collapsed the
+	 *    ask panel and left the palette open, so the key fell to a surface that did
+	 *    not have focus.
+	 *  - `event.defaultPrevented` - the ladder's own claim signal. A surface that
+	 *    already claimed the press keeps it.
+	 *  - BUBBLE PHASE, not capture. Capture runs ahead of React's root listener and
+	 *    of every element handler, so a React `onKeyDown` Escape (the aside panel,
+	 *    the thread-search overlay) could never claim the key first; on the bubble
+	 *    phase those run before this one and their `preventDefault()` is visible
+	 *    here.
+	 *
+	 * `stopPropagation()` is GONE. On window it terminates the propagation path at
+	 * the top, so nothing deeper ever saw the event - the shadowing in its purest
+	 * form. It was never load-bearing for the ladder: the ladder stands down on
+	 * `defaultPrevented` (it re-reads it one microtask after the dispatch), so
+	 * `preventDefault()` alone is the whole claim.
+	 *
+	 * Collapsing is the only meaning: design §5.1 asks that Escape on a queued ask
+	 * never carry an inherited blocking-card meaning, and stopping a turn stays
+	 * available from the stop control while the panel is open.
+	 */
+	useEffect(() => {
+		if (!askExpanded) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			/*
+			 * The decision lives in `askClaimsEscape` so it can be exercised without a
+			 * walk (agent review round 3, NIT-2): every guard in it is a defect this
+			 * feature shipped, and it had only walk-through evidence.
+			 */
+			if (!askClaimsEscape(event)) return;
+			event.preventDefault();
+			toggleAskExpanded(false);
+		};
+		window.addEventListener("keydown", onKeyDown);
+		return () => window.removeEventListener("keydown", onKeyDown);
+	}, [askExpanded, toggleAskExpanded]);
 	/*
 	 * Escape is the control's accelerator, attached HERE because this component
 	 * owns both halves the predicate reads - `busy` and `stop` - and the ladder it
@@ -3765,6 +4106,25 @@ function SessionPanel({
 						 */
 						onAnswerSecret: (value: string) => void answerWithSecret(value),
 						answer: answerForThisGate,
+						/*
+						 * The queued-ask doors. Forwarded by id, because that is the identity the
+						 * panel addresses and the only one an ask keeps across a runtime restart
+						 * (see `askOutcomes` above for why this is a record of its own).
+						 */
+						onAnswerAsk: (taskId: string, answers: Record<string, string[]>) =>
+							void answerAsk(taskId, answers),
+						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
+						askOutcomes,
+						/* The ask-mode lane: the flag, its door, the shared draft, and
+						 * the composer's own sentence for the expanded state. */
+						askExpanded,
+						onAskToggle: toggleAskExpanded,
+						askDrafts,
+						onAskDraftChange: (askId: string, next: AskDraft) =>
+							setAskDrafts((drafts) => ({ ...drafts, [askId]: next })),
+						askComposerPlaceholder: askAnswering
+							? ASK_COMPOSER_PLACEHOLDER
+							: undefined,
 					}}
 				/>
 			</div>
