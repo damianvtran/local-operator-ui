@@ -60,6 +60,16 @@ is pinned in `scripts/shared-composer.test.mjs` ("the mic acknowledges the
 press while the stream is still pending..."); those cases drive the shipped
 React wiring with a deferred stream and are not visual evidence.
 
+Two further behaviours are pinned there and DECIDED here rather than left to the
+implementation (UX round 2): a release inside the window re-opens it, so the
+next press is a fresh acknowledged attempt rather than a silent no-op on a
+control that paints at rest - and the abandoned stream is stopped by an IDENTITY
+check in the resolve arm, because an orphan recorder is a live microphone
+nothing can end; and a take whose turn went busy inside the window is KEPT - the
+acknowledgment and its control survive the transition, and the deferred stream
+still becomes the recording state, since discarding it would throw away speech
+the user asked for in a composer that stays dictatable mid-turn.
+
 ## The frames, and WHICH HEAD each one is from
 
 **Read this before reading a frame as this head's.** The set holds two
@@ -102,8 +112,13 @@ quoted offsets are the page clock at capture request time, relative to that
 cycle's click.
 
 - `before/01-click-idle/` (+68 ms) and `before/02-click-still-idle/` (+381 ms):
-  identical to the resting composer - mic present, no recording controls, no
-  indicator. These two frames ARE the report: ~0.4 s into a wait the run says
+  the resting composer - mic present, no recording controls, no indicator. **The
+  two panes are not the same state, and the pair is about the COMPOSER rather
+  than the transcript**: `01` was taken while the conversation was still loading
+  ("Loading conversation...") and `02` after it settled. What the two carry is
+  that the composer's own region is byte-identical between them - nothing in it
+  changed during the wait - which is why they are filed as a pair at all
+  (design round 2, D7: the bullets used to leave the difference unsaid). These two frames ARE the report: ~0.4 s into a wait the run says
   lasts 866 ms, nothing on screen has changed.
 - `before/03-recording/`: after the flip, settled 650 ms - the recording lane.
 - `after/01-ack-just-after-click/` (+41 ms), `after/02-ack-300ms-into-wait/`
