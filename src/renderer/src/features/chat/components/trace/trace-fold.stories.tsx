@@ -46,7 +46,7 @@ import {
 import "../../../../styles/index.css";
 import { CanonicalImage } from "../../canonical/canonical-image";
 import { FoldMedia } from "../../canonical/fold-media";
-import { foldSummaryUnits } from "../../canonical/trace-fold-model";
+import { foldSummarySpec } from "../../canonical/trace-fold-model";
 import type { TranscriptImage } from "../../canonical/transcript-reducer";
 import { ToolRow } from "./tool-row";
 import { toolRowLabel } from "./tool-row-model";
@@ -99,7 +99,7 @@ type RowSpec = {
 
 /**
  * The fold's props, derived exactly as `canonical-transcript.tsx` derives them:
- * the summary from the actions' own names (`foldSummaryUnits`), the counts from the
+ * the summary from the actions' own names (`foldSummarySpec`), the counts from the
  * rows, and the live clause from the executing row's own label composition
  * (`toolRowLabel`). Nothing here is typed twice.
  */
@@ -113,7 +113,7 @@ const foldProps = (specs: RowSpec[]) => {
 		? toolRowLabel(executing.name, executing.object, null, true, executing.op)
 		: null;
 	return {
-		summary: foldSummaryUnits(actions),
+		summary: foldSummarySpec(actions),
 		actionCount: specs.length,
 		live: label ? { verb: label.verb, object: label.object } : null,
 	};
@@ -1020,5 +1020,41 @@ export const ManyTypes: Story = {
 		live: null,
 		recordIds: MANY_TYPES_ROWS.map((_, index) => `s${index + 1}`),
 		children: <FoldRows specs={MANY_TYPES_ROWS} />,
+	},
+};
+
+/**
+ * THE RU N THAT KEEPS THE LONG KIND (design round 1's D1 ask, shot in round 2 as
+ * D3, with the same gap QA bounded as Q-r2-3): FIVE types, so the cap keeps every
+ * segment, and the last of them is `workspace_get_gmail_thread_content` - the
+ * 36-character snake_case kind that is the longest unit this header can compose.
+ *
+ * WHY THIS STATE NEEDED ITS OWN FIXTURE. `ManyTypes` above is the operator's nine
+ * kinds, and the cap pushes this very kind into `and 4 other actions`; no other
+ * fold story has it at all. So every committed frame until this one capped the
+ * token into the tail, and the units' "never wraps, never overflows" guarantee - a
+ * nowrap unit that stays inside the column because the column is wider than the
+ * longest unit - rested on a class assertion rather than a picture.
+ */
+const MANY_TYPES_KEPT_ROWS: RowSpec[] = [
+	{ name: "read", object: "src/invoices/query.ts", durationS: 0.4 },
+	{ name: "web_fetch", object: "stripe.com/docs/invoices", durationS: 1.2 },
+	{ name: "search_the_web", object: "late invoice rules", durationS: 3.4 },
+	{ name: "bash", object: "pnpm vitest run", durationS: 12.5 },
+	{
+		name: "workspace_get_gmail_thread_content",
+		object: "thread 18c2",
+		durationS: 1.8,
+	},
+];
+
+/** Five kinds, the long one KEPT: the widest unit the count line can paint. */
+export const ManyTypesKept: Story = {
+	args: {
+		...foldProps(MANY_TYPES_KEPT_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 19_300, running: false },
+		live: null,
+		recordIds: MANY_TYPES_KEPT_ROWS.map((_, index) => `k${index + 1}`),
+		children: <FoldRows specs={MANY_TYPES_KEPT_ROWS} />,
 	},
 };
