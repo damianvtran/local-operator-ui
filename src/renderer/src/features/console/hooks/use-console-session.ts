@@ -80,6 +80,24 @@ export interface ConsoleSessionApi {
 	 * rather than thrown: a failed create is what `createError` is for, and the pane's own
 	 * create-failed state is what carries it. */
 	createSurface: () => Promise<boolean>;
+	/** Close or dismiss one surface (design 6.7, 7.3).
+	 *
+	 * `kill: true` ends a running surface's process, which the pane asks about
+	 * first; `retain: false` drops the surface's history, which is what makes a
+	 * dismissed ended surface stay gone across a relaunch.
+	 *
+	 * Resolves when the host has ANSWERED AND THE LISTING IS IN HAND, the same rule
+	 * `createSurface`'s promise observes and for the same reason: the pane holds its
+	 * dialog's busy state until the panel can show the result, and releasing on the
+	 * call alone would paint a listing that still contains the closed surface. A
+	 * REFUSED close is swallowed into that same re-read rather than reported: the
+	 * reachable refusals (`surface_unavailable` for a surface something else already
+	 * closed) are facts the listing shows, and there is no sentence to invent for
+	 * them that the host did not already say. */
+	closeSurface: (
+		surface: string,
+		options: { kill?: boolean; retain?: boolean },
+	) => Promise<void>;
 	/** Turn secure input on or off for one surface (§11.4). */
 	setSecure: (surface: string, on: boolean) => void;
 }
@@ -240,6 +258,23 @@ export const useConsoleSession = (
 			});
 	}, [sessionId, read]);
 
+	const closeSurface = useCallback(
+		(surface: string, options: { kill?: boolean; retain?: boolean } = {}) => {
+			const api = window.api?.console;
+			if (!api) return Promise.resolve();
+			return (
+				api
+					.closeSurface(surface, options)
+					/* A refusal is not reported here (see the interface's note): the re-read
+				   is the whole response, and the listing is the sentence. */
+					.catch(() => {})
+					.then(() => read())
+					.then(() => undefined)
+			);
+		},
+		[read],
+	);
+
 	const setSecure = useCallback(
 		(surface: string, on: boolean) => {
 			const api = window.api?.console;
@@ -263,6 +298,7 @@ export const useConsoleSession = (
 		showSurface,
 		reportContent,
 		createSurface,
+		closeSurface,
 		setSecure,
 	};
 };
