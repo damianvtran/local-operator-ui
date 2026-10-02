@@ -314,18 +314,18 @@ export const TraceFold = ({
 								<span
 									data-fold-live=""
 									/*
-									 * `shrink-[999]`: THE NAME IS THE ELEMENT THAT YIELDS. Its weight
-									 * against the summary's default 1 makes the deficit distribution
-									 * lexicographic in practice - flex divides it by `factor x basis`,
-									 * so this clause pays essentially all of it (to its own zero,
-									 * `min-w-0`), and only a deficit larger than the clause can pay
-									 * reaches the summary at all. That ordering is the D1 ruling and
-									 * is what keeps the counts on one line in every state the
-									 * committed frames show; the summary's wrap (its own comment)
-									 * is the backstop UNDER this, not a competitor to it (operator
-									 * report, 2026-10-01).
+									 * `shrink-[100000]`: THE NAME IS THE ELEMENT THAT YIELDS, and it yields to
+									 * its own zero (`min-w-0`) before the counts lose a pixel. Flex hands each
+									 * item a share of the deficit proportional to `factor x basis`, so this
+									 * weight against the summary's DEFAULT 1 leaves the counts a share that
+									 * rounds to zero layout units for as long as the clause has any width left
+									 * - D1's ruling, and the reason the `long-name` and `image-live` frames come
+									 * back byte-identical under the summary's own rule below. The ordering is
+									 * measured, not assumed: at 999 the summary still lost 0.05px and wrapped
+									 * (Chrome, 1280px, this story), so the weight is an order of magnitude
+									 * higher rather than one step.
 									 */
-									className={cn("min-w-0 shrink-[999] truncate")}
+									className={cn("min-w-0 shrink-[100000] truncate")}
 									/*
 									 * The name is the only element here that truncates, so the full text
 									 * would otherwise be reachable only by expanding the fold; the tooltip
@@ -371,20 +371,18 @@ export const TraceFold = ({
 							 * button is otherwise unaddressable), and
 							 * `scripts/chat-alignment-geometry.mjs` reads its box per width.
 							 *
-							 * `shrink-[0.01]` IS THE ORDERING, measured in the Chrome this ships
-							 * on: flex divides a deficit by `factor x basis`, so against the live
-							 * clause's `shrink-[999]` this share rounds to ZERO layout units in
-							 * every state the committed frames show - the summary holds its exact
-							 * one-line width while the name truncates, D1's priority, and a
-							 * squeezed summary is not what the long-name and image-live states
-							 * photograph any more. Only when the clause has yielded to nothing
-							 * (or there is no clause at all) does the deficit reach this span,
-							 * and then it wraps. `shrink-0` was the old way to say the first
-							 * half of that and could not say the second - hence the factor.
+							 * NO FACTOR OF ITS OWN, WHICH IS THE OTHER HALF OF THE ORDERING: the
+							 * clause above pays while it has width (its `shrink-[100000]`), and the
+							 * moment it has none - or never mounted, which is a settled header at a
+							 * narrow column - the deficit is this span's alone at the default 1, and
+							 * it takes ALL of it and wraps. Measured in the Chrome this ships on:
+							 * at the 640px window the capped line is 52.7px too wide and the row
+							 * ends exactly on its own right edge (`lastRight` == the line's right),
+							 * where a tuned low factor left the stamp and the time 52px past it.
+							 * `truncate` was the older rule and cut the counts; `shrink-0` could say
+							 * the first half of this rule and not the second.
 							 */
-							className={cn(
-								"min-w-0 shrink-[0.01] text-body-sm text-ink-muted",
-							)}
+							className={cn("min-w-0 text-body-sm text-ink-muted")}
 							title={`${actionCount} actions`}
 							data-fold-summary=""
 						>
