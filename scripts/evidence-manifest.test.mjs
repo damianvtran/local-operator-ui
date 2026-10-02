@@ -3159,6 +3159,19 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOntobc642ccd49Note",
 	/*
+	 * And the lane's TWENTY-SECOND fold record: the sync onto `origin/main` =
+	 * `0d4db85a5e` (#745 the live-cycle lane's rendered-evidence re-stamp) -
+	 * the second fold of one push cycle again, forced when main moved while the
+	 * round-10 review and the D12/D13 corrections were landing. Registered for
+	 * its siblings' reason and one of its own: it carries the `countsMean`
+	 * union (main's unique leads appended), the `refreshedStories` growth, and
+	 * the statement of the fold's ONE REPAIR - the byte-identical duplicate
+	 * `rowForkMenuNote` the previous fold's splice left behind, which no
+	 * key-SET gate can see - so a fold resolved from either side's copy alone
+	 * would drop the record that says what happened to it.
+	 */
+	"foldOnto0d4db85a5eNote",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),

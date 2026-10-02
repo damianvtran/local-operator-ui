@@ -907,6 +907,161 @@ const completionsBothVisibleTurn = (): TranscriptState => {
 	});
 };
 
+/** Which receipt RE-OPENS the settled run: the two the operator's report names. */
+type CycleTrigger = "wake" | "peer";
+
+/**
+ * THE OPERATOR'S JITTER, AS THE INSTANT IT HAPPENS (report, 2026-10-01).
+ *
+ * WHY THIS CELL EXISTS. The report: "messages are condensed, and then if a peer
+ * message or job completes and the agent goes into thinking, the last condensed
+ * sequence suddenly un-condenses". A wake or a peer receipt does not open a run -
+ * only a `user` row does - so it RE-OPENS the run that had just settled, which is
+ * then the newest run and therefore `live`. The shipped rule spent `live` on the
+ * WHOLE run, so the bar the reader had just read came apart the moment the agent
+ * started thinking again, and folded back when it stopped: motion, twice, with no
+ * reader action. What replaced that bar is NOT 88 drawn rows - see the base-frame
+ * paragraph below, which is what the pair photographs. `planRun` now spends `live`
+ * on the IN-FLIGHT CYCLE
+ * only - the rows after the last settled close (`turn-collapse-model.ts`'s
+ * `settledCloseOf`) - so everything the reader has watched settle keeps its bar,
+ * and the one thing drawn in place is the cycle still being written.
+ *
+ * THE SHAPE IS THE SIBLING CELL'S, HELD ONE INSTANT EARLIER.
+ * `CompletionsBothVisible` renders this same run settled (`U T88 A1(stop) W T3
+ * A2(stop) K`); this cell is that fixture held while the trigger's cycle is still
+ * running. A settled frame cannot show this defect at all - with nothing in flight
+ * `live` is false and both trees condense, so the pair would be identical, which is
+ * why the row this file already had was not enough.
+ *
+ * WHY THE CYCLE'S TAIL IS BUILT FROM LIVE FRAMES. The durable door cannot carry an
+ * in-flight row: `durableRecord` settles every tool row it reads (`phase: "done"`,
+ * `startedAt: null`), because a history page has no in-flight record to be. So the
+ * prefix arrives the way a reload paints it (`applyHistoryPage`) and the cycle's
+ * last call arrives as the live frame the harness sends it with - the same two
+ * doors `FreshConversation` mixes, for the same reason. Everything imported here is
+ * shipped on both trees, so the before half is this file copied into a base worktree
+ * (§10's method).
+ *
+ * THE BASE CLAIM IS TWO CLAIMS, AND ONLY ONE OF THEM IS TRUE OF THE PIXELS (design
+ * round 2, D1). The MODEL reading is `collapses: false`: driven through the shipped
+ * plan, the base tree spends `live` on the WHOLE run again while the trigger's cycle
+ * is out, where this tree answers one bar hiding the 88 calls. What the base FRAME
+ * paints is not 88 rows - it is ONE COLLAPSED TRACE FOLD, `Explored 29 files, ran 59
+ * commands`, with NO turn-collapse bar at all and `A1` (the receipt and everything
+ * below it with it) 13.00 px HIGHER than here. 29 + 59 = 88: the fold and the bar
+ * count the SAME 88 rows in two idioms (`29 files / 59 commands` against `88
+ * actions`), so the two numbers do not disagree - they are the same work, condensed
+ * by different mechanisms (the trace group vs the turn summary). The reader-visible
+ * base defect is therefore that fold, its swapped vocabulary and chevron side, and
+ * the 13.00 px reflow of the answer - real motion, and fixed here, but an order of
+ * magnitude smaller than an unbarred wall of 88 rows.
+ *
+ * WHAT THE FRAME MUST SHOW: one bar (88 actions) above `A1`, `A1` whole, the receipt
+ * the trigger left, and the cycle drawn in place as ONE live trace fold over its
+ * three calls (`Explored 1 file, ran 2 commands`, the third still out - three calls,
+ * one row, because the trace group condenses them) above the working line. The bar
+ * and `A1` must not move when the trigger lands; that stillness is the fix.
+ *
+ * THE CLOCK IS `NOW`, NOT THE FROZEN `TS`: a call is still out, so this is a live
+ * frame and its whole turn is anchored on the capture's own clock the way `Running`
+ * and `Parked` are. A fixture pinned to `TS` would paint the in-flight call's
+ * elapsed as `100d+` and put the turn's own stamp in last October. The turn opens
+ * 4m05s back, so the durable door's offsets below (`A1` at +3m05s, the trigger at
+ * +3m25s, the two settled calls at +3m35s/+3m38s) land inside it, ahead of the live
+ * call at -5s.
+ *
+ * TWO CELLS, ONE PER TRIGGER, because the operator's report names both and they are
+ * two different hidden rows (`peer_message`, `wake_prompt`) reaching the same rule -
+ * and the reproduction was the peer one, which is why the peer cell is not the
+ * footnote here.
+ *
+ * The prose is the sibling cell's `FULSOME_CLOSE`, so the pair differs by the
+ * instant and nothing else; no journal text is quoted.
+ */
+const midCycleTurn = (trigger: CycleTrigger): TranscriptState => {
+	type Entry = DesktopHistoryPage["entries"][number];
+	const S = Math.round(NOW / 1000) - 245;
+	const entry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "message", payload });
+	const call = (n: number, ts: number): Entry =>
+		entry(`t${n}`, ts, {
+			kind: "message",
+			role: "tool",
+			tool_call_id: `c${n}`,
+			tool_name: n % 3 === 0 ? "read" : "bash",
+			content: [{ type: "text", text: `c${n} done\n` }],
+			provider_payload: { duration_s: 1.5, details: {} },
+		});
+	const work = Array.from({ length: 88 }, (_, i) => call(i + 1, S + 2 + i * 2));
+	const settled = [89, 90].map((n, i) => call(n, S + 215 + i * 3));
+	const state = applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: QUESTION }],
+			}),
+			...work,
+			entry("a1", S + 185, {
+				kind: "message",
+				role: "assistant",
+				content: [{ type: "text", text: FULSOME_CLOSE }],
+				stop_reason: "stop",
+			}),
+			/*
+			 * The receipt goes through the `message` door with `kind: "custom"`, the two
+			 * fields the durable reader switches on - an entry `type: "custom"` is read
+			 * only for `completion_attention` and dropped otherwise, which is how the
+			 * first attempt at this cell lost its trigger row and drew the cycle as
+			 * bare calls.
+			 */
+			trigger === "wake"
+				? entry("w1", S + 205, {
+						kind: "custom",
+						custom_type: "wake_prompt",
+						details: {
+							text: "(alarm) Scheduled wake w-9 (1, every 6h)\n\nCollect the staged records.",
+						},
+					})
+				: entry("p1", S + 205, {
+						kind: "custom",
+						custom_type: "peer_message",
+						details: {
+							body: "window-collect: 140 records staged for the next batch.",
+							sender: {
+								pid: "",
+								conversationName: "ingest-rail",
+								cwd: "",
+								sessionId: "",
+								modelLabel: "",
+							},
+						},
+					}),
+			...settled,
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+	/*
+	 * The cycle's third call is the one still out (`holding`). The pane's own `waiting`
+	 * prop - `canonical.busy` in the app, true here because the owner is generating -
+	 * is what turns that running row into the working line the reader sees under the
+	 * last cycle; it is passed on the cell, the way `Running` passes it, and it is
+	 * half of what makes `live` true for the collapse plan.
+	 */
+	const collect: CallSpec = {
+		id: "c91",
+		name: "bash",
+		command: "records stage --window next",
+		durationS: 4.2,
+	};
+	return runCalls(state, [{ ...collect, holding: true }], NOW - 5_000);
+};
+
 const Frame = ({
 	transcript,
 	caption,
@@ -1194,6 +1349,39 @@ export const CompletionsBothVisible: Story = {
 		<Frame
 			transcript={completionsBothVisibleTurn()}
 			caption="A long run that answered, was woken, and replied again — the first completion, the wake, and the short reply."
+		/>
+	),
+};
+
+/**
+ * THE JITTER FRAME, WAKE HALF (see `midCycleTurn` for the row-by-row fixture).
+ * Captured while the wake's cycle is still running, so the settled bar over the
+ * first 88 calls and the whole of `A1` are both on screen beside it - the state
+ * the operator's report is about. The caption is fixture-level, so it reads true
+ * on the pre-change tree too, where the same rows paint expanded.
+ */
+export const WakeMidCycle: Story = {
+	render: () => (
+		<Frame
+			transcript={midCycleTurn("wake")}
+			caption="A turn that answered, was woken, and is running its next cycle — the first completion, the wake, and that cycle in flight as one live trace row over its three calls."
+			waiting={true}
+		/>
+	),
+};
+
+/**
+ * THE JITTER FRAME, PEER HALF: the same instant, with a peer message where the
+ * wake was - the operator's own reproduction ("if a peer message or job completes
+ * and the agent goes into thinking"). A peer receipt is a different hidden row
+ * reaching the same rule, so the pair is what says the fix is not wake-specific.
+ */
+export const PeerMidCycle: Story = {
+	render: () => (
+		<Frame
+			transcript={midCycleTurn("peer")}
+			caption="The same turn, re-opened by a peer message instead — the first completion, the receipt, and the new cycle in flight as one live trace row over its three calls."
+			waiting={true}
 		/>
 	),
 };
