@@ -21,21 +21,28 @@
  *  - `body`        the label column's box and its bottom edge against the
  *                  row's — `body.bottom > row.bottom` is the row failing to
  *                  include the wrapped description, i.e. the #762 defect.
+ *  - `overprint`   each column's bottom against the NEXT row's top; a positive
+ *                  number is the wrapped description painting into the box of
+ *                  the row below it, which is what the reporter's screenshot
+ *                  shows (the row boxes themselves do not intersect pre-fix —
+ *                  it is the CONTENT that overflows a too-short box).
  *  - `ordinal`     the keycap's box, and its centre against the label's own
- *                  FIRST line box (read off a Range over the label's first
- *                  character — a flex-item span is blockified, so its own
- *                  `getClientRects()` is one box for every line it wraps).
- *  - `gap`         the distance to the next row; negative is an intersection.
+ *                  FIRST line box. The box is built from the label's computed
+ *                  line-height rather than from a Range rect: a Range rect is
+ *                  the inline box from font metrics (measured 16px) while the
+ *                  keycap has to match the leaded line box (19.5px).
  *
  * AND IT JUDGES, IT DOES NOT ONLY PRINT, for the reason
  * `header-cluster-geometry.mjs` states: a table nobody compares against
- * anything exits 0. Three properties are asserted on every state, and any
+ * anything exits 0. Four properties are asserted on every state, and any
  * failure exits non-zero naming the rows:
  *
  *  1. every row's box CONTAINS its label column (the #762 regression itself);
- *  2. no two option row boxes intersect;
- *  3. every ordinal sits on the label column's first line, not against the
- *     block's centre and not on a later line.
+ *  2. no row's column overprints the next row's box (the same defect, seen
+ *     from the row below);
+ *  3. no two option row boxes intersect;
+ *  4. every ordinal sits on the label column's first line — its own line box
+ *     matches that line's, and its centre is inside it.
  *
  * THE PIN'S OWN PROOF is a pair of runs, not a green one: this command FAILS
  * on the pre-fix component (`items-baseline` on the row) and passes after, and
@@ -168,40 +175,40 @@ const PROBE = `(() => {
 	if (rows.length === 0) return { error: "no option rows rendered" };
 	const entries = rows.map((row, index) => {
 		const body = row.lastElementChild;
+		const bodyRect = body ? body.getBoundingClientRect() : null;
 		const labelRow = body ? body.firstElementChild : null;
 		const label = labelRow ? labelRow.firstElementChild : null;
 		/*
-		 * The label's own FIRST line box, from a one-character Range: the label
-		 * span is a flex item (blockified), so its own rect is one box for all of
-		 * its lines. Falls back to the computed line-height where the label has no
-		 * text node to range over, which keeps the assertion total.
+		 * The label's own FIRST line box: its top is the column's top (the label
+		 * opens the column) and its height is the label's OWN computed line-height
+		 * (text-body-sm at its own leading). The rect is built from those two
+		 * numbers rather than from a one-character Range, because a Range rect in
+		 * Chrome is the inline box from font metrics (measured 16px here) while the
+		 * box the keycap has to match is the leaded line box - the keycap's own
+		 * line box is asserted against this number, so the choice is load-bearing.
 		 */
 		let firstLine = null;
+		let labelLineHeight = null;
 		const textNode = label ? label.firstChild : null;
-		if (textNode && textNode.nodeType === 3 && textNode.length > 0) {
-			const range = document.createRange();
-			range.setStart(textNode, 0);
-			range.setEnd(textNode, Math.min(1, textNode.length));
-			const rect = range.getClientRects()[0];
-			if (rect) firstLine = box(rect);
-		}
-		if (!firstLine && label) {
+		if (bodyRect && label && textNode && textNode.nodeType === 3) {
 			const lineHeight = parseFloat(getComputedStyle(label).lineHeight);
-			const r = label.getBoundingClientRect();
-			firstLine = {
-				top: round(r.top),
-				bottom: round(r.top + lineHeight),
-				left: round(r.left),
-				right: round(r.right),
-				width: round(r.width),
-				height: round(lineHeight),
-			};
+			if (Number.isFinite(lineHeight)) {
+				labelLineHeight = round(lineHeight);
+				firstLine = {
+					top: round(bodyRect.top),
+					bottom: round(bodyRect.top + lineHeight),
+					left: round(bodyRect.left),
+					right: round(bodyRect.right),
+					width: round(bodyRect.width),
+					height: round(lineHeight),
+				};
+			}
 		}
 		const ordinal = row.firstElementChild;
 		return {
 			index: index + 1,
 			row: box(row.getBoundingClientRect()),
-			body: body ? box(body.getBoundingClientRect()) : null,
+			body: bodyRect ? box(bodyRect) : null,
 			ordinal: ordinal ? box(ordinal.getBoundingClientRect()) : null,
 			/*
 			 * Rows past nine carry an EMPTY spacer in the ordinal column (the app's
@@ -215,6 +222,7 @@ const PROBE = `(() => {
 					? box(body.lastElementChild.getBoundingClientRect())
 					: null,
 			firstLine,
+			labelLineHeight,
 		};
 	});
 	return { count: rows.length, entries };
@@ -246,6 +254,23 @@ const judge = ({ count, entries }, expected) => {
 		) {
 			failures.push(
 				`row ${e.index}: the label column (${JSON.stringify(e.body)}) is not inside its row (${JSON.stringify(e.row)})`,
+			);
+		}
+	}
+	/*
+	 * AND THE OVERPRINT ITSELF, row against next row: the defect #762 is about is
+	 * the wrapped description of one row painting into the box of the next, so
+	 * each column's own bottom is checked against the next row's top. That is NOT
+	 * the same question as "do the row boxes intersect" below - pre-fix they do
+	 * not, because it is the CONTENT that overflows a too-short box - and it is
+	 * the one the reporter's screenshot shows.
+	 */
+	for (let i = 0; i + 1 < entries.length; i++) {
+		const a = entries[i];
+		const b = entries[i + 1];
+		if (a.body && b.row && a.body.bottom > b.row.top + TOL) {
+			failures.push(
+				`rows ${i + 1} and ${i + 2}: the label column of row ${i + 1} overprints row ${i + 2} (column ends at ${a.body.bottom}, the next row starts at ${b.row.top} — ${round2(a.body.bottom - b.row.top)}px of overprint)`,
 			);
 		}
 	}
@@ -281,8 +306,10 @@ const judge = ({ count, entries }, expected) => {
 		 * measures the box itself rather than its position.
 		 */
 		const ordinalBox = e.ordinal.bottom - e.ordinal.top;
-		const firstLineBox = e.firstLine.bottom - e.firstLine.top;
-		if (Math.abs(ordinalBox - firstLineBox) > 1) {
+		const firstLineBox =
+			e.labelLineHeight ??
+			(e.firstLine ? e.firstLine.bottom - e.firstLine.top : null);
+		if (firstLineBox !== null && Math.abs(ordinalBox - firstLineBox) > 1) {
 			failures.push(
 				`row ${e.index}: the ordinal's line box is ${round2(ordinalBox)}px against the label's first line box ${round2(firstLineBox)}px — the keycap's leading no longer matches the label's first line`,
 			);
@@ -450,13 +477,16 @@ const main = async () => {
 					`   ${fits.padEnd(5)}  ${String(gap ?? "—").padStart(11)}   ${String(centre).padStart(13)}`,
 			);
 		});
+		const overprints = entry.failures.filter((f) =>
+			f.includes("overprints row"),
+		).length;
 		const intersections = entry.failures.filter((f) =>
 			f.includes("intersect"),
 		).length;
 		console.log(
 			entry.failures.length === 0
-				? `  PASS — ${entry.count} rows, 0 intersections, every row contains its column`
-				: `  FAIL — ${entry.failures.length} finding(s): ${intersections} intersection(s), ${entry.failures.length - intersections} other`,
+				? `  PASS — ${entry.count} rows, no overprint, no intersections, every row contains its column`
+				: `  FAIL — ${entry.failures.length} finding(s): ${overprints} overprint(s), ${intersections} intersection(s), ${entry.failures.length - overprints - intersections} other`,
 		);
 	}
 
@@ -466,7 +496,7 @@ const main = async () => {
 		);
 	}
 	console.log(
-		"\nAll measured states pass. (#762: rows grow with their wrapped descriptions.)",
+		"\nAll measured states pass. (#762: every row box holds its wrapped description — no compression, no overprint.)",
 	);
 };
 
