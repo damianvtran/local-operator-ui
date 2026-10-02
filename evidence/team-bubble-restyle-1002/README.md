@@ -99,8 +99,10 @@ Read from the DOM in the same run that took the frames.
 **The picture case wears a collar, stated whole** (agent review round 1, R1-2):
 "20px -> 16px" was not the whole of what moved. The thumbnail is still a circular
 crop, now 16px inside the badge's 24×16 stadium, so the badge's own `px-1` leaves
-**4px of `elevated` on each side of it** (measured at head, in css: fill 2.0-4.5,
-crop 4.5-20.5, fill 20.5-24.0). Before, the 1px `border-control` sat ON the 20px
+**4px of `elevated` on each side of it** (measured off the rendered frame at head,
+in css: the mark is x 24.0-48.0, and inside it the plate runs 24.0-28.0, the crop
+28.0-44.0, the plate again 44.0-48.0 - 4.0 each side). Before, the 1px
+`border-control` sat ON the 20px
 circle, so there was no collar at all. Visible in the image row of
 `after-marks-dark.png`.
 
@@ -135,6 +137,23 @@ frames (computed styles, css px):
 | the title band | `Install the pinned uv on …` truncates | **truncates at the same place** (see the frames) |
 
 So the header's pill is not wrong - only unframed, which this round fixes. The
+
+**The header frames are clipped by the HOST, not by the capture** (agent review
+round 2's R2-1, design round 2's D6). In all six header frames the ink stops at
+exactly css y 30.0 with a flat cut, and the DOM says why: the clipping ancestor
+is `div.flex.h-5.min-w-0.flex-1.items-baseline.overflow-clip` - the header's own
+shared middle slot (`chat-header.tsx`) - whose rect is **y 10.0, height 20.0, so
+its clip line is y 30.0**, while the chip's 20px box sits at y 12.7-32.7 (the
+baseline join places it 2.7px below the slot). Measured on **both** trees: the
+before circle loses its bottom **2.7px**, the after pill its bottom **0.7px**.
+The same ancestor and the same offsets hold at the story's other width (800), and
+a fresh capture of all six frames reproduces the committed files
+**byte-identical** (`sha256`) - so this is the header host's real behaviour on
+`origin/main`, not a viewport or rig artefact, and no capture can widen it: the
+host owns the knob (`overflow-clip-margin`, gated `has-[[data-device-chip]]` in
+`chat-header.tsx`, added for the device chip's own 2.2px overflow in an earlier
+round). Extending that gate to the identity chip is an app change and its own
+round; this change narrows the clipped strip from 2.7px to 0.7px on this host.
 chip's height is its own `h-5` (20px) in both trees and does not move; the chip
 grows **1.2px** wider for the same reason the sidebar row does (the mark is 20 ->
 21.2 wide at these initials) and it is right-anchored, so that 1.2px comes out of
