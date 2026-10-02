@@ -318,13 +318,16 @@ test("a group arrives condensed and names the running call", async (t) => {
 	 * The yield factor (see the summary's `data-fold-summary` pin): the live
 	 * clause pays the row's deficit, so the counts keep their one-line width
 	 * while the name truncates - D1's priority - and the summary's own wrap is
-	 * the backstop under it. `chat-alignment-geometry.mjs` is where the pair's
-	 * numbers are measured on the rendered DOM.
+	 * the backstop under it, taken only once this clause has no width left to
+	 * give. `chat-alignment-geometry.mjs` is where the pair's numbers are
+	 * measured on the rendered DOM; the factor is an order of magnitude above
+	 * the summary's default because 999 still left the counts 0.05px short and
+	 * wrapped them (measured, Chrome, 1280px).
 	 */
 	const clause = mounted.container.querySelector("[data-fold-live]");
 	assert.ok(clause, "the live clause is on screen");
 	assert.ok(
-		String(clause.className).includes("shrink-[999]"),
+		String(clause.className).includes("shrink-[100000]"),
 		"the name is the element that yields",
 	);
 });
@@ -576,14 +579,21 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 		"it shrinks below its content, so it wraps instead of overflowing",
 	);
 	/*
-	 * THE ORDERING PAIR, pinned as the two factors it is: the summary defers
-	 * (0.01) and the live clause pays (999, asserted where the clause mounts -
-	 * the live mounts below). A tuned factor is a re-derivation of the frames
-	 * under `docs/evidence/chat-trace-fold/`, which is why the numbers are here
-	 * rather than only in a comment.
+	 * THE ORDERING, pinned as the two factors it is: the live clause pays
+	 * (`shrink-[100000]`, asserted where the clause mounts) and the summary
+	 * carries NO factor - the default 1 takes the whole deficit once the clause
+	 * is out of the way, which is the wrap. A tuned factor here would be a
+	 * re-derivation of the frames under `docs/evidence/chat-trace-fold/`, which
+	 * is why the numbers are asserted rather than left to a comment: a low factor
+	 * (0.01) left the capped line 52.7px wider than its row at 640px and pushed
+	 * the stamp and the time off it (measured, Chrome).
 	 */
 	assert.ok(
-		classes.includes("shrink-[0.01]"),
-		"the summary yields only after the clause has",
+		!classes.includes("shrink-"),
+		"the summary carries no factor of its own, so it takes the whole deficit",
+	);
+	assert.ok(
+		!classes.includes("grow"),
+		"and it does not stretch either: it holds its content width while the clause has room",
 	);
 });
