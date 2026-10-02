@@ -919,7 +919,7 @@ test("unmounting the row clears the feedback timer the press armed", async () =>
 
 /* ------------------------------------------------------------ the speech arm */
 
-test("a configured service arms Speak, and the press reaches the conversation's ROLE AGENT", async () => {
+test("a configured service arms Speak, and the press carries the conversation's BINDING", async () => {
 	/*
 	 * The store's own `playSpeech` is replaced BEFORE the mount, not after:
 	 * the row captures the function it renders with, so a wrapper installed
@@ -939,8 +939,8 @@ test("a configured service arms Speak, and the press reaches the conversation's 
 		 * pane identity (`c1`) and the catalogue row carries NO agent binding - the
 		 * ordinary shape of a conversation the reader opened himself. The press must
 		 * still reach the store (the control is not disabled for want of a binding),
-		 * and its target must be `null`, which is the agent-less route - NOT `c1`,
-		 * which is a session id the daemon's registry cannot hold.
+		 * and its target must be `null` - no binding, which is the agent-less route -
+		 * NOT `c1`, which is a session id the daemon's registry cannot hold.
 		 *
 		 * The binding is written AFTER the mount, not before: the sessions store
 		 * persists through `localStorage`, which the jsdom window this rig builds
@@ -981,7 +981,10 @@ test("a configured service arms Speak, and the press reaches the conversation's 
 
 		/*
 		 * ARM 2: the same row, with the catalogue naming a role agent. The press
-		 * carries THAT id - the target the daemon's registry can resolve.
+		 * carries THAT BINDING - the daemon's attachment key, which is a display NAME
+		 * - and the store's own `fetchSpeechFor` resolves it to the registry id the
+		 * speech route takes (`speech-target.test.mjs` drives that resolution end to
+		 * end, against a catalogue stub with the daemon's own query semantics).
 		 */
 		calls.length = 0;
 		const second = await mount({ speechConfigured: true });

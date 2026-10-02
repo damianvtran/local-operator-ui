@@ -4,7 +4,7 @@ import {
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
 import { clipForSpeech } from "@shared/lib/speech-clip";
-import { useSpeechAgentFor } from "@shared/lib/speech-target";
+import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import {
 	fetchSpeechFor,
@@ -94,14 +94,21 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 	 *
 	 * THE SCOPE AND THE TARGET ARE TWO DIFFERENT QUESTIONS, which is what
 	 * `@shared/lib/speech-target` separates: the scope keys the cache (the
-	 * conversation's identity), and the TARGET is the conversation's role agent -
-	 * resolved from the same id, and `null` for a conversation with no binding,
-	 * which speaks through the agent-less route rather than being disabled. There
-	 * is deliberately no `available` gate here any more: the old one was
-	 * `Boolean(agentId)`, so it read "no agent" as "nothing to say".
+	 * conversation's identity), and the TARGET is the catalogue's binding for that
+	 * conversation - the role agent's display NAME, which the press resolves to a
+	 * registry id - and `null` for a conversation with no binding, which speaks
+	 * through the agent-less route rather than being disabled.
+	 *
+	 * `available` IS STILL THE HIGHLIGHT, AND ONLY THE HIGHLIGHT. The gate it
+	 * replaced was `Boolean(agentId)`, which read "no agent" as "nothing to say"
+	 * and so denied the press to every conversation with no role binding - the
+	 * ordinary shape. What remains true is the surface's own subject: with no
+	 * highlight (or no scope to key it under) this control has nothing to speak and
+	 * says so by being disabled, instead of offering a press that can only be a
+	 * no-op (agent review round 1, MINOR-2).
 	 */
 	const speechScope = conversationId ?? agentId ?? null;
-	const speechAgent = useSpeechAgentFor(speechScope);
+	const speechBinding = useSpeechBindingFor(speechScope);
 	const speechControl = useSpeakControl({
 		key:
 			selection.text && speechScope
@@ -112,10 +119,11 @@ export const TextSelectionControls: FC<TextSelectionControlsProps> = ({
 			if (speechScope) {
 				speak(
 					selectionSpeechKey(speechScope, text),
-					fetchSpeechFor(speechAgent, text),
+					fetchSpeechFor(speechBinding, text),
 				);
 			}
 		},
+		available: Boolean(selection.text && speechScope),
 	});
 	const handleMouseUp = useCallback(() => {
 		if (!targetRef.current) {

@@ -66,6 +66,7 @@ import {
 	isUnknownAgentSpeechRefusal,
 	speechFailureCopy,
 } from "@shared/lib/speech-errors";
+import { fetchSpeechAgentId } from "@shared/lib/speech-target";
 import { showErrorToast } from "@shared/utils/toast-manager";
 import { create } from "zustand";
 
@@ -122,15 +123,26 @@ export const selectionSpeechKey = (scope: string, text: string): string =>
  * drift.
  *
  * THE TWO ROUTES, AND WHICH ONE A PRESS TAKES (`@shared/lib/speech-target`
- * carries the full argument): `agentId` is the conversation's ROLE AGENT, and
- * the agent route is the more specific target - it is the daemon's own
- * voice selection that runs on it (`determine_voice` classifies the agent's
- * name and description). A conversation with no binding takes the agent-less
- * route, which needs no registry entry and is therefore always resolvable.
+ * carries the full argument): the agent route is the more specific target, and
+ * it is the daemon's own voice selection that runs on it (`determine_voice`
+ * classifies the agent's name and description). A conversation with no binding
+ * takes the agent-less route, which needs no registry entry and is therefore
+ * always resolvable.
  *
- * THE UNKNOWN-AGENT REFUSAL IS THE LAST RUNG. A binding can go stale under a
- * mounted transcript (the agent deleted, the daemon's config root moved), and
- * the daemon answers that with the unknown-agent sentence - a sentence whose
+ * `binding` IS THE CATALOGUE'S VALUE, NOT A REGISTRY ID - the two are different
+ * namespaces, and this is the seam between them: the daemon publishes the
+ * PROFILE name in the binding (the resolved launch target - `aida`, the name the
+ * `aida` profile row carries), while the route resolves registry ids, so the
+ * value is RESOLVED (`fetchSpeechAgentId`: the profile row's own `agent_id`, then
+ * the agents registry by name, then the value read as an id) before any request
+ * is aimed at it. Sending it verbatim is the defect this whole change exists to
+ * close, in its second half, and it is measured: `POST /v1/agents/aida/speech`
+ * answers 404 with the unknown-agent sentence where
+ * `POST /v1/agents/1d9c4467-.../speech` resolves the agent.
+ *
+ * THE UNKNOWN-AGENT REFUSAL IS THE LAST RUNG. A binding can go stale between
+ * the lookup and the call (the agent deleted, the daemon's config root moved),
+ * and the daemon answers that with the unknown-agent sentence - a sentence whose
  * remedy is a DIFFERENT REQUEST, not a different attempt. So that one refusal
  * fails over to the agent-less route: the reader asked to hear the conversation,
  * not for an agent that happens to be spelled correctly, and every other refusal
@@ -144,10 +156,23 @@ export const selectionSpeechKey = (scope: string, text: string): string =>
  * that invented a vendor model or a fixed voice would pin the product to a
  * provider's roster - the class of defect the agent route's alias-based voice
  * exists to avoid.
+ *
+ * THE ROUTE NEEDS `local-operator` #1922 TO SERVE THIS SHAPE; before it, the two
+ * fields were required and the request answers 422 (which the relay renders as
+ * the generic failure sentence - see the copy note on the fallback in the round-1
+ * PR). #1922's head is `e4f8d9e8e` ("fix(tts): round-2 remediation - body-
+ * classified refusals, credential-named copy, agent-less speech"), which makes
+ * `model` and `voice` optional AS A PAIR: both absent selects the descriptor path,
+ * and the legacy pass-through is untouched. Until it ships, a press on a
+ * conversation with no role agent fails into the ordinary toast rather than
+ * speaking; every bound conversation is unaffected, which is what this change
+ * fixes.
  */
 export const fetchSpeechFor =
-	(agentId: string | null, inputText: string) => (): Promise<Blob | null> => {
+	(binding: string | null, inputText: string) =>
+	async (): Promise<Blob | null> => {
 		const agentless = () => client.speech.create({ input: inputText });
+		const agentId = await fetchSpeechAgentId(binding);
 		if (agentId === null) return agentless();
 		return client.speech
 			.createForAgent(agentId, { input_text: inputText })
@@ -206,12 +231,14 @@ type SpeechActions = {
 	 * every message press shares the selection surfaces' `speak` - one request
 	 * path, one cache, one generation guard.
 	 *
-	 * `agentId` is the conversation's ROLE AGENT, or `null` for a conversation
-	 * with none; `fetchSpeechFor` owns what each of those means.
+	 * `binding` is the conversation's catalogue binding - the daemon's own
+	 * attachment key, a display NAME today - or `null` for a conversation with
+	 * none; `fetchSpeechFor` resolves it to a registry id and owns what each of
+	 * those means.
 	 */
 	playSpeech: (
 		messageId: string,
-		agentId: string | null,
+		binding: string | null,
 		inputText: string,
 	) => Promise<void>;
 };
@@ -437,10 +464,10 @@ export const useSpeechStore = create<SpeechState & SpeechActions>(
 			}
 		},
 
-		playSpeech: async (messageId, agentId, inputText) => {
+		playSpeech: async (messageId, binding, inputText) => {
 			await get().speak(
 				messageSpeechKey(messageId),
-				fetchSpeechFor(agentId, inputText),
+				fetchSpeechFor(binding, inputText),
 			);
 		},
 	}),

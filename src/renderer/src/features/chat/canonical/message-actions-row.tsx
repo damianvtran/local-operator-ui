@@ -58,8 +58,9 @@
  * `agentId` is the CONVERSATION this row is drawn in - the pane identity, which
  * is what the speech scope and the quote key are built from. It is deliberately
  * NOT what the Speak press is aimed at: the daemon resolves speech targets in its
- * agent registry and a conversation is not in it, so the target is read from the
- * catalogue's binding instead (`@shared/lib/speech-target`). `speechId` keys this
+ * agent registry and a conversation is not in it, so the press reads the
+ * catalogue's BINDING off this conversation instead and resolves it to a
+ * registry id (`@shared/lib/speech-target`). `speechId` keys this
  * row in the speech store (`msg:<id>`), so the button's busy and playing states
  * belong to this answer and cannot be claimed by another. The Speak CONTROL
  * itself - gate, tooltip, labels, press - is `useSpeakControl`, shared with the
@@ -74,7 +75,7 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
-import { useSpeechAgentFor } from "@shared/lib/speech-target";
+import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { messageSpeechKey, useSpeechStore } from "@shared/store/speech-store";
@@ -217,16 +218,18 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	/*
 	 * THE TARGET IS THE CONVERSATION'S ROLE AGENT, not the id this row is handed
 	 * (`@shared/lib/speech-target` carries the whole argument): `agentId` here is
-	 * the pane identity, which the daemon's speech route cannot resolve. Read
-	 * live from the catalogue, so a binding that arrives or moves under the
-	 * mounted row is picked up by the next press.
+	 * the pane identity, which the daemon's speech route cannot resolve. What is
+	 * read here is the catalogue's BINDING - the agent's display name - and the
+	 * press resolves it to the registry id the route takes. Read live, so a
+	 * binding that arrives or moves under the mounted row is picked up by the
+	 * next press.
 	 */
-	const speechAgent = useSpeechAgentFor(agentId ?? null);
+	const speechBinding = useSpeechBindingFor(agentId ?? null);
 	const speechControl = useSpeakControl({
 		key: speechId ? messageSpeechKey(speechId) : null,
 		getText: () => bodyText,
 		play: ({ text }) => {
-			if (speechId) playSpeech(speechId, speechAgent, text);
+			if (speechId) playSpeech(speechId, speechBinding, text);
 		},
 	});
 
