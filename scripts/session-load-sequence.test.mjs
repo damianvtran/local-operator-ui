@@ -769,6 +769,17 @@ test("the load sequence, mid-cycle: what each commit paints", async (t) => {
 		firstContentful.bars.some((bar) => bar.includes("88 actions")),
 		`the settled span is condensed in the first contentful commit: ${JSON.stringify(firstContentful.bars)}`,
 	);
+	/*
+	 * "COMMIT", not just "sample" (agent review round 1, minor 2): the content
+	 * appears in a NEW commit of the list - the per-commit mark count strictly
+	 * exceeds the previous sample's - rather than in a mutation between two
+	 * samples this file happened to take.
+	 */
+	const openSample = records.find((row) => row.step === "open");
+	assert.ok(
+		firstContentful.commit > openSample.commit,
+		`content arrived in a commit of its own: ${openSample.commit} -> ${firstContentful.commit}`,
+	);
 	assert.ok(
 		firstContentful.workingLine !== null,
 		"the in-flight cycle reads as live (working line) in the same commit",
@@ -899,7 +910,14 @@ test("the warm load: the window's memory stays off the screen until the page", a
 		console.log(`      ids: ${JSON.stringify(row.ids)}`);
 	}
 
-	/* The hold: the cache's rows may not paint before the page. */
+	/*
+	 * The hold: the cache's rows may not paint before the page - and `stale` is
+	 * asserted rather than logged (agent review round 1, minor 1), because
+	 * `rows === 0` alone cannot tell a HELD cached pane from a pane that never
+	 * had a cache: a seed discarded at mount would read identically. `stale`
+	 * true is the shipped statement that this pane knows of cached rows it is
+	 * withholding, and it clears in the page's own commit.
+	 */
 	const before = records.find((row) => row.step === "open");
 	assert.equal(
 		before.rows,
@@ -911,7 +929,17 @@ test("the warm load: the window's memory stays off the screen until the page", a
 		true,
 		"the hold's loading claim stands while the page is owed",
 	);
+	assert.equal(
+		before.diag?.stale,
+		true,
+		"the pane is withholding a cached paint, not missing one",
+	);
 	/* The page's commit is contentful, and the pane says which paint it is. */
 	const final = records.at(-1);
 	assert.ok(final.diag.records > 80, `final records: ${final.diag.records}`);
+	assert.equal(
+		final.diag?.stale,
+		false,
+		"the page's commit retires the cached-paint claim",
+	);
 });
