@@ -19,6 +19,8 @@ frame can show a sentence the app is unable to produce.
 |---|---|---|
 | `<w>-notice.*` | unknown outcome (the 20 s transport deadline's class) | the operator's own failure: the message and its chip are IN the box, and the notice is ONE sentence with `Retry` and `Clear` |
 | `<w>-unreachable.*` | nothing answered (`transport.failed`) | the same two controls, because a press is safe and the message may not have gone |
+| `<w>-answer-busy.*` | an ANSWER press the owner was too busy to confirm (`runtime_busy`) | the app's own sentence — "Your answer isn't confirmed yet. The agent is busy." — in the MUTED register, with NO controls: the repeat is the app's, and the band's only retry control would send the box rather than the option that failed |
+| `<w>-answer-unreachable.*` | an ANSWER press the daemon could not hand to the session's owner (`runtime_unreachable`) | the unknowable lead kept, the route's "Reconnect and reconcile before retrying" replaced by a fact, and `danger` ink — this one really may be a lost answer |
 | `<w>-too-large.*` | the transport's byte-budget backstop | the app's real sentence, and `Clear` only — a press meets the same limit |
 | `<w>-too-long.*` | the renderer's character pre-flight | the app's real sentence with its own numbers, and `Clear` only |
 | `<w>-gone.*` | a 404: the conversation does not exist | `Clear` only |
@@ -82,6 +84,44 @@ run from a detached worktree, and its chip is the old path, so the two halves
 differ in that icon. The difference is the RIG's, not the app's, and it is stated
 here rather than left for a reader to read as a product change; every geometry
 reading, every sentence and both halves' controls are the same pair as before.
+
+## The answer press's two arms, and their before half
+
+`<w>-answer-busy.*` and `<w>-answer-unreachable.*` are the two refusals the
+answers route answers with a CODE, rendered in the band that carries an option
+press whose card is already gone (design round 1 on that change, D1/D3/D4/D5).
+Both frames come from the SHIPPED `answerReport` — the function the chat pane
+itself calls — fed the failures the merged route produces, so neither sentence is
+written into this rig: the busy arm's body is `_runtime_busy_refusal()`'s own
+(`503`, `code: runtime_busy`, `retryable: true`, `retry_after_ms: 2000`) and the
+dead-owner arm's is the ladder's `runtime_unreachable`, both carrying the same
+sentence and differing only by their code, which is the app's job to read.
+
+The six `<w>-answer-*-before.png` frames ARE `origin/main`'s own rendering:
+the same rig, the same page, the same states, and the two state expectations set
+to what the pre-change tree paints (the pair was taken with `origin/main`'s
+`ask-answer.ts` checked out over this branch's, then restored — not a `git
+stash`, which is machine-wide in this repository's shared `.git`). **That run
+wrote its frames and then FAILED its own assertions, and the failure list is the
+evidence**: at every one of the three widths it named the false lead and the
+backend's vocabulary, on the rendered pixels —
+
+```
+892px: the notice's own words do not carry "isn't confirmed yet":
+  "Your answer was not sent. Session owner is unavailable. Reconnect and reconcile before retrying."
+892px: the notice is drawn as danger where this arm is muted
+892px: the notice says "owner", which is the app's word for its own machinery
+892px: the notice's own words do not carry "could not reach this chat's session":
+  "Whether your answer landed is not knowable. Session owner is unavailable. Reconnect and reconcile before retrying."
+```
+
+So the busy arm used to state a fact the answer route does not establish ("was
+not sent" over a write-then-wait request whose acknowledgement was lost), in the
+backend's noun, beside an instruction — "reconnect and reconcile before
+retrying" — that names no control on this screen and that the app had already
+carried out under its own bounded repeat. The `owner` line is the rig's
+pre-existing jargon assertion, which the band failed on the pre-change tree and
+passes on this one.
 
 The notice's structure, at the width the canvas pane leaves: 55.5px of notice at
 600px of column, one sentence, `Retry` then `Clear`, and the line the user is

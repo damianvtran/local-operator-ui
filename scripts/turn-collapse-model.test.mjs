@@ -57,7 +57,6 @@ const {
 	paintedRows,
 	runsOf,
 	snapWindowToRunBoundary,
-	WIDEN_MAX_STEPS,
 	staysVisibleWhileCollapsed,
 	widenTarget,
 	windowTopRun,
@@ -108,6 +107,16 @@ const answer = (id, extra = {}) =>
 	row(id, "assistant", { text: "done", streaming: false, ...extra }, "item");
 
 const planOf = (rows, live = false) => collapsePlan(rows, { live });
+
+/**
+ * Every bar's expansion key, as the reader's store would hold it. A segment key
+ * is derived from the span's own anchor row (\`SegmentPlan.key\`), NOT from the
+ * run's key, so a fixture that opens a bar names the bar's key rather than the run's.
+ */
+const segmentKeysOf = (rows) =>
+	collapsePlan(rows, { live: false }).runs.flatMap((run) =>
+		run.segments.map((segment) => segment.key),
+	);
 
 /* ------------------------- the run partition (F2) ------------------------ */
 
@@ -528,7 +537,7 @@ test("the focus hold keeps a run open while the reader's focus sits in a row it 
 		collapsePlan(rows, {
 			live: false,
 			focusHold: "t1",
-			openRuns: new Set(["a1"]),
+			openRuns: new Set(segmentKeysOf(rows)),
 		}).runs[0].collapses,
 		true,
 		"an OPEN run already renders its rows, so nothing is mid-transition",
@@ -1275,7 +1284,9 @@ const paintedAt = (
 		plan.runs.reduce(
 			(sum, run) =>
 				sum +
-				(run.collapses && !openRuns?.has(run.key) ? run.hidden.length : 0),
+				run.segments
+					.filter((s) => s.collapsed && !openRuns?.has(s.key))
+					.reduce((n, s) => n + s.rows.length, 0),
 			0,
 		)
 	);
@@ -1464,7 +1475,7 @@ test("widenTarget: an open run counts as painted, exactly as the render pass doe
 		snapMaxExtra: SNAP_MAX_EXTRA,
 		completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	};
-	const allOpen = new Set(runsOf(rows).map((run) => run.key));
+	const allOpen = new Set(segmentKeysOf(rows));
 	const openTarget = widenTarget(rows, 60, { ...options, openRuns: allOpen });
 	assert.equal(openTarget, 120, "one step is already a visible reveal");
 	assert.ok(
@@ -1702,7 +1713,10 @@ test("alignWalkRunKey: null for a headed run, a live run, and a bar the reader h
 	const key = alignWalkRunKey(cut, { live: false });
 	assert.equal(key, runsOf(cut)[0].key, "the cut run's own key");
 	assert.equal(
-		alignWalkRunKey(cut, { live: false, openRuns: new Set([key]) }),
+		alignWalkRunKey(cut, {
+			live: false,
+			openRuns: new Set(segmentKeysOf(cut)),
+		}),
 		null,
 		"a bar the reader has OPEN paints its rows: there is no partial statement to complete",
 	);

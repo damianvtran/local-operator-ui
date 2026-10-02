@@ -57,6 +57,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
@@ -74,6 +75,7 @@ import {
 	ChevronUp,
 	FileText,
 	FolderPlus,
+	GitFork,
 	GripVertical,
 	Hourglass,
 	LoaderCircle,
@@ -109,7 +111,7 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
 import { focusRowAfterRemoval } from "../archive-confirm";
@@ -136,7 +138,7 @@ import {
 import {
 	type PinMoveStep,
 	canMovePinnedRow,
-	chatPinMoveCap,
+	chatPinMoveCapJoined,
 	chatPinMoveChord,
 	chatPinMoveRowId,
 	forgetPinnedOrder,
@@ -650,7 +652,7 @@ import {
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
-import { ChatSessionStatus } from "./chat-session-status";
+import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -919,6 +921,8 @@ export function ChatSidebar({
 	onStageDraft,
 }: Props) {
 	const navigate = useNavigate();
+	const location = useLocation();
+	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
 	/*
@@ -3759,9 +3763,12 @@ export function ChatSidebar({
 	 */
 	// A first send that failed after allocation but before admission leaves a real
 	// but empty session. It is NOT hidden — it exists on the backend and hiding it
-	// would make the list lie — but an unfinished draft still holding its id is
-	// proof it never carried a message, so say so instead of showing it as an
-	// ordinary untitled chat.
+	// would make the list lie — but a draft still holding its id means no send has
+	// completed for it, so say so instead of showing it as an ordinary untitled
+	// chat. ("No send has completed" rather than the stronger "it never carried a
+	// message": `finishDraft` clears the draft on send COMPLETION, so a session
+	// whose first send is still in flight is drawn as unstarted for that window —
+	// the same caveat `forkable`'s own comment states.)
 	const unstarted = useMemo(
 		() =>
 			new Set(
@@ -3936,6 +3943,51 @@ export function ChatSidebar({
 		 * returns before it), and this is what keeps its clause off that row.
 		 */
 		const menuEnabled = pinsEnabled || archiveEnabled;
+		/*
+		 * WHETHER THE MENU OFFERS FORK ON THIS ROW - the one named predicate, read
+		 * once, for the item below. A fork copies a conversation's TRANSCRIPT, and the
+		 * backend refuses a session that has none ("has no transcript to fork",
+		 * `fork.py::fork_session`). `unstarted` is this sidebar's own, existing
+		 * statement of that state: a draft that holds this conversation's id (the row
+		 * reads `, not sent yet`) - the real-but-empty session a first send that failed
+		 * after allocation leaves behind. Offering Fork there would open a picker whose
+		 * only possible answer is that refusal, so the item is WITHHELD (never
+		 * disabled), by a statement the row already makes rather than a condition
+		 * invented for the menu.
+		 *
+		 * WHAT THE PREDICATE ACTUALLY READS, stated exactly (round-1 agent review, NIT
+		 * 6; QA round 1, Q1): a session with NO DRAFT ROW STILL HOLDING THIS ID. That
+		 * is not the same sentence as "it never carried a message". `finishDraft`
+		 * deletes the draft on SEND COMPLETION (`canonical-sessions-store.ts`), not
+		 * when the transcript appears, so during an in-flight first send - and until a
+		 * late delivery reconciles the draft - a session whose transcript already
+		 * exists is still withheld from Fork. The window is narrow and self-healing,
+		 * and the row says `, not sent yet` throughout it, so the trade is deliberate:
+		 * the refusal it avoids is the picker's dead end, and the alternative is an
+		 * item that opens onto an error.
+		 *
+		 * AND THE BOUNDARY, named rather than implied (QA round 1, Q1): a session with
+		 * no transcript and NO draft row at all - one another client created, or one
+		 * left after the drafts' own discard act, which deletes the draft and never
+		 * touches the session - is NOT distinguishable renderer-side, because the draft
+		 * store is the only local evidence of it. Fork is offered there and the
+		 * picker's answer is the backend's refusal sentence, which is the same refusal
+		 * any un-forkable session gets from `/fork` and the palette. A cheap true
+		 * signal would be a transcript-presence field on the catalogue row; there is
+		 * none today, and inventing a second local condition here would be a guess
+		 * where the route already answers.
+		 *
+		 * What is NOT a gate, checked rather than assumed: `row.pending`. It is the
+		 * live record's "waiting for a person" word (`approval`/`ask`, a parked gate:
+		 * `session/runtime/types.py`, written by the runtime and surfaced by
+		 * `sessions.list`'s row builder in `session/catalog.py`), which only a session
+		 * that has already run a turn can carry - one with a transcript - and the
+		 * route does not refuse it: a session that is mid-turn takes the fork at its
+		 * next safe boundary (the picker's own copy says so), an idle or cold one is
+		 * cloned at once, read-only against the parent. No other state of a catalogue
+		 * row makes the route refuse, so this is the menu's only withheld condition.
+		 */
+		const forkable = !unstarted.has(row.session_id);
 		/**
 		 * WHICH CHORD SPELLING THIS PLATFORM PRINTS, read once for the row's two
 		 * items. `chatRowActCapJoined` takes `isMac` rather than reading the
@@ -4194,6 +4246,15 @@ export function ChatSidebar({
 				}}
 			>
 				<ChatSessionStatus row={row} />
+				{/*
+				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
+				 * A leading fact rather than a trailing one, for the reason the archived
+				 * marker below states: the trailing slot admits exactly one statement, and
+				 * this is not competing for it. It draws nothing at zero (see
+				 * `ChatAsksOutstanding`), which is what keeps a backend that does not
+				 * publish queued asks on exactly today's row.
+				 */}
+				<ChatAsksOutstanding row={row} />
 				{/*
 				 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
 				 * answer for: IN FRONT of the title rather than in the trailing slot.
@@ -5432,10 +5493,18 @@ export function ChatSidebar({
 					row.session_id,
 				)}
 				{/*
-				 * THE ITEMS: the row's own acts in the strip's measured order - the archive glyph
-				 * is `order-first` in the strip, so the menu reads Archive then Pin then the two
-				 * Move items and the two surfaces cannot present the same acts backwards - drawn
-				 * from THE SAME PREDICATES the row's own controls read (`archiveEnabled`,
+				 * THE ITEMS, and the ORDER rule that places them: the mirrored pair first, in the
+				 * strip's own measured order (the archive glyph is `order-first`, so the menu reads
+				 * Archive then Pin and the two surfaces cannot present the same acts backwards);
+				 * then Fork, the UNCONDITIONAL singleton; then the CONDITIONAL block, which is the
+				 * Move pair. Rows 1-2 are the pair, and the third slot therefore keeps one identity
+				 * in every state - Fork on an ordinary row and Fork on a pinned one - instead of
+				 * changing which act a reader finds there (round-1 design review, D2; this replaces
+				 * the fold's append, under which the third slot was Fork only where no Move was
+				 * offered). Everything the two Move items need to stay adjacent to each other is
+				 * unaffected: the block trails as a unit.
+				 *
+				 * Drawn from THE SAME PREDICATES the row's own controls read (`archiveEnabled`,
 				 * `row.pinned !== undefined`, `offersMove`), so the two cannot disagree about
 				 * what a row offers. WITHDRAWN, NEVER DISABLED: an act the row cannot take is an
 				 * absent row, not a greyed one, the rule the row's controls already follow - and
@@ -5446,9 +5515,37 @@ export function ChatSidebar({
 				 * Each item presses the row's own control through `pressRowAct`, so the write,
 				 * its guards and its focus correction arrive unchanged; the two Move items reach
 				 * the SAME write by calling `movePinnedRow` directly, because there is no control
-				 * on the row left to press. The chord cap is the `+`-joined spelling
-				 * `KeyboardShortcut` splits (`joined` suppresses the printed `+`), and it stays in
-				 * the item's accessible name - the discovery this menu exists to spend.
+				 * on the row left to press - and each prints its chord through the `+`-joined
+				 * sibling of its handler's spelling (`chatPinMoveCapJoined`, the shape
+				 * `chatRowActCapJoined` already gives the pair above): `KeyboardShortcut` splits
+				 * its prop on `+`, so the handler's `⌘⇧↑` fed straight to it renders as ONE cap
+				 * three glyphs wide instead of three caps (round-1 design review, D1). The cap
+				 * stays in the item's accessible name either way - the discovery this menu exists
+				 * to spend.
+				 *
+				 * FORK IS THE THIRD ROW (#739, re-ordered by the round-1 design review, D2), and
+				 * it differs from the four around it in mechanism: there is no row control to
+				 * press, so it opens the register's own `session.fork` picker for THIS row's
+				 * conversation through the panel-presentation store (see its `onSelect`). It
+				 * carries NO chord, because fork has none - `/fork` and the palette are its other
+				 * doors - so it has no `KeyboardShortcut` and no accessible-name suffix; a printed
+				 * chord would be a hint for a gesture that does nothing. It is drawn from the
+				 * sidebar's own `unstarted` statement (`forkable`, above).
+				 *
+				 * THE MENU'S CAP IS FIVE ROWS, and the rule - not a number - is what the design
+				 * record now concludes with: a row earns its place by being an act on THIS row
+				 * that has NO OTHER DOOR THE USER CAN FIND. Archive and Pin qualify (the strip's
+				 * pair is `tabIndex={-1}` and reachable only through chords the row prints
+				 * nowhere); the Move pair qualifies as WCAG 2.5.7's single-pointer path, which the
+				 * deleted arrow buttons used to carry; Fork qualifies because it is the only door
+				 * that names the ROW's conversation - neither `/fork` nor the palette can, as both
+				 * act on the pane's. A sixth act is admitted only by passing that test; otherwise
+				 * it replaces a row or finds another surface. The cap costs **296 × 184** in its
+				 * widest state (a pinned row, where the Move rows draw their full chords) at a
+				 * 280px sidebar, and around eight rows or ~280px tall is where the answer changes
+				 * from "grow" to "submenu or another surface". `scripts/chat-sidebar-row-menu.test.mjs`
+				 * counts the items and pins their order, so a sixth is a failing assertion rather
+				 * than a quiet addition.
 				 */}
 				<ContextMenuContent
 					onFocus={(event) => {
@@ -5550,6 +5647,47 @@ export function ChatSidebar({
 							</span>
 						</ContextMenuItem>
 					)}
+					{forkable && (
+						/*
+						 * HOW IT OPENS: the picker is mounted by the chat PANE (`PickerOutlet`,
+						 * fed by `useSlashDispatch`), and the sidebar owns no presenter - so the
+						 * item ASKS, the way the command palette does (`command-palette.tsx`'s
+						 * `panel` case): it writes a request that NAMES THIS ROW's conversation,
+						 * because the pane's own session is generally not the row's and the
+						 * presenter must not substitute it, then routes to `/chat` only when no
+						 * pane is mounted to consume it. Completing the fork NAVIGATES to the
+						 * new fork (the pane's `rebind` is `openConversation` - the shipped
+						 * `/fork` semantics, reused deliberately; see `slash-dispatch.ts`).
+						 *
+						 * THE INVOKER IS THE ROW'S OWN BUTTON, not the item: the item unmounts
+						 * with the menu, and the row's button is the node the menu's own close
+						 * returns to, so Escape from the picker lands where Escape from the menu
+						 * would have.
+						 */
+						<ContextMenuItem
+							onSelect={() => {
+								requestPanel(
+									"session.fork",
+									document.querySelector<HTMLElement>(
+										`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+									),
+									row.session_id,
+								);
+								// The palette's own guard, minus its first clause: it asks
+								// `destinationNeedsSession(destination) &&
+								// !location.pathname.startsWith("/chat")`, and `session.fork`
+								// is a pane-only destination, so the first clause is already
+								// true here. The other two parts are as load-bearing as they
+								// are there: the request is written FIRST (one written after the
+								// navigation would race the pane's mount), and the route moves
+								// only when no pane is there to present it.
+								if (!location.pathname.startsWith("/chat")) navigate("/chat");
+							}}
+						>
+							<GitFork aria-hidden="true" />
+							<span>Fork conversation</span>
+						</ContextMenuItem>
+					)}
 					{offersMove && (
 						<>
 							{/*
@@ -5584,13 +5722,30 @@ export function ChatSidebar({
 								className={cn(
 									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
 									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
+									/*
+									 * THE CHORD FOLLOWS ITS ITEM (round-1 design review, D3). A cap
+									 * carries its own ink role (`KeyboardShortcut`'s `ink-dim`, the
+									 * one role legal on all four of its grounds), so `text-ink-disabled`
+									 * on the item recoloured the WORD and left the ACCESSORY at full
+									 * strength - measured as a 2.07x (light) / 2.64x (dark) inversion on
+									 * a boundary row, where the annotation outranked the label it
+									 * annotates and the item still read as live at a glance.
+									 *
+									 * HERE rather than in the shared component: `KeyboardShortcut`
+									 * deliberately takes no appearance prop (its own docstring retires
+									 * `className` for that reason), and this is not a re-skin - it is
+									 * the ITEM's state reaching its own descendants, which is the same
+									 * thing the two `aria-disabled:` rules above do. The `!` is required
+									 * because the cap's utility is on the `<kbd>` itself.
+									 */
+									"aria-disabled:[&_kbd]:text-ink-disabled!",
 								)}
 							>
 								<ChevronUp aria-hidden="true" />
 								<span>Move conversation up</span>
 								<span className="ml-auto pl-6">
 									<KeyboardShortcut
-										shortcut={chatPinMoveCap(-1, isMac)}
+										shortcut={chatPinMoveCapJoined(-1, isMac)}
 										joined
 									/>
 								</span>
@@ -5602,13 +5757,15 @@ export function ChatSidebar({
 								className={cn(
 									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
 									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
+									// The chord follows its item's disabled step - see the note on the row above.
+									"aria-disabled:[&_kbd]:text-ink-disabled!",
 								)}
 							>
 								<ChevronDown aria-hidden="true" />
 								<span>Move conversation down</span>
 								<span className="ml-auto pl-6">
 									<KeyboardShortcut
-										shortcut={chatPinMoveCap(1, isMac)}
+										shortcut={chatPinMoveCapJoined(1, isMac)}
 										joined
 									/>
 								</span>

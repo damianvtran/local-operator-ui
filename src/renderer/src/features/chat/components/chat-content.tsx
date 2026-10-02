@@ -59,6 +59,12 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { gateIsSecret } from "../ask-answer";
+import type { AskDraft } from "../ask-queue";
+import {
+	askComposerHoldsSecret,
+	askQueueView,
+	effectiveGate,
+} from "../ask-queue";
 import { CanonicalTranscript } from "../canonical/canonical-transcript";
 import type { UndeliveredTurn } from "../canonical/canonical-transcript";
 import { canonicalTranscriptSpeaks } from "../canonical/transcript-pane";
@@ -83,6 +89,7 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import type { Message } from "../types/message";
+import { AskSurfaces } from "./asks/ask-surfaces";
 import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
@@ -391,6 +398,44 @@ type ChatContentProps = {
 		 * request and its failure are, not re-derived here.
 		 */
 		answer?: { sending: boolean; refused: string | null } | null;
+		/**
+		 * Answer a QUEUED ask from a completed whole-ask draft (design §4/§5.2).
+		 *
+		 * The sibling of `onAnswer`, raised to `SessionPanel` for the same reason:
+		 * the lock and the error surface live there, so the answer has to reach it
+		 * rather than be posted from the panel that was clicked. It is a SEPARATE
+		 * prop from `onAnswer` because the two bodies are different shapes on the
+		 * wire - a gate answers one question by index + label, a queued ask answers
+		 * the whole ask by id - and folding them would leave this pane deciding which
+		 * machinery a payload belongs to from the ask it happens to render.
+		 */
+		onAnswerAsk?: (askId: string, answers: Record<string, string[]>) => void;
+		/** "No answer — decide yourself" for a queued ask. */
+		onDeclineAsk?: (taskId: string) => void;
+		/**
+		 * What `SessionPanel` knows about each queued ask it just answered, keyed by
+		 * ask id: the sentence the owner refused with, or `null` while it is live.
+		 *
+		 * Keyed rather than a single slot because a refusal belongs to ONE ask - a
+		 * single slot would put the previous ask's sentence on the next one, which is
+		 * the same defect the gate's per-question hold exists to avoid.
+		 */
+		askOutcomes?: Record<
+			string,
+			{ sending: boolean; refused: string | null } | undefined
+		>;
+		/*
+		 * THE ASK-MODE LANE (design §5.0). `askExpanded` is the one flag the
+		 * composer's routing rule reads, and the page owns it rather than the ask
+		 * surfaces so the bar and the composer cannot disagree about which mode the
+		 * user is in. `askComposerPlaceholder` is the page's sentence for the
+		 * expanded state, passed to the composer's own invitation slot.
+		 */
+		askExpanded?: boolean;
+		onAskToggle?: (next: boolean) => void;
+		askDrafts?: Record<string, AskDraft>;
+		onAskDraftChange?: (askId: string, next: AskDraft) => void;
+		askComposerPlaceholder?: string;
 	};
 	/**
 	 * The session's derived subagent and to-do view model (`run-details.md` § 8),
@@ -678,6 +723,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * failure). Computed once, here, because "the row exists" is a fact about
 		 * this transcript and computing it twice is how the two surfaces drift.
 		 */
+		/*
+		 * THE ONE GATE READING (agent review round 1, F3): with the legacy-mirror rule
+		 * applied in ONE place, every reader below - the dock, the composer's two
+		 * terms and the working line - sees the same value, so a mirrored ask cannot
+		 * be drawn once, named as a gate, and answered by index all at the same time.
+		 */
+		const gate = effectiveGate(canonical?.view.frontend);
 		const undeliveredOnScreen =
 			undelivered !== null &&
 			canonical.view.transcript.records.some(
@@ -1589,7 +1641,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										frontend={canonical.view.frontend}
 										transcript={canonical.view.transcript}
 										undelivered={undeliveredOnScreen}
-										gate={canonical.view.frontend?.pending_gate ?? null}
+										/*
+										 * THE ONE DERIVATION, here too (agent review
+										 * round 2, N-1). This feeds the transcript's OWN
+										 * working line and its liveness term, so reading
+										 * the raw field left the one surface that DRAWS
+										 * "the agent is parked on you" answering from the
+										 * mirrored ask while the composer's term
+										 * answered from `gate`.
+										 */
+										gate={gate}
 										waiting={canonical.busy}
 										starting={canonical.starting === true}
 										startingAfterId={canonical.startingAfterId ?? null}
@@ -1656,7 +1717,38 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * agent is blocked on. It sits on the composer band's own inset and
 						 * measure, so its edges are the composer's edges.
 						 */}
-						{canonical?.view.frontend?.pending_gate && (
+						{/*
+						 * THE QUEUED ASKS (design §5.0/§5.2). Mounted on the same band as the
+						 * blocking dock and gated on the WIRE rather than on a local flag: the
+						 * backend publishes `asks` only while its non-blocking feature is on, so
+						 * "the field is present" IS the capability, and `AskSurfaces` draws
+						 * nothing at all when it is absent. That is what keeps an old backend on
+						 * exactly today's path.
+						 */}
+						<AskSurfaces
+							className={cn(
+								CHAT_COLUMN_CONTAINER,
+								CHAT_COLUMN_INSET,
+								"w-full shrink-0 pt-2",
+							)}
+							frontend={canonical?.view.frontend ?? null}
+							onAnswer={canonical?.onAnswerAsk}
+							onDecline={canonical?.onDeclineAsk}
+							answering={Boolean(canonical?.admitting)}
+							outcomes={canonical?.askOutcomes}
+							expanded={canonical?.askExpanded}
+							onToggle={canonical?.onAskToggle}
+							drafts={canonical?.askDrafts}
+							onDraftChange={canonical?.onAskDraftChange}
+						/>
+						{/*
+						 * THE BLOCKING DOCK, and the one rule a reader of both must know: once the
+						 * queue is on the wire, an ask-shaped `pending_gate` is the backend's
+						 * LEGACY MIRROR of an ask already in `asks[]`, so drawing it would show the
+						 * same question twice (design §4, client rule N3). Approvals keep the
+						 * single slot untouched - they have no queue to appear in.
+						 */}
+						{gate !== null && (
 							<div
 								className={cn(
 									CHAT_COLUMN_CONTAINER,
@@ -1665,9 +1757,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								)}
 							>
 								<QuestionDock
-									key={canonical.view.frontend.pending_gate.request_id}
+									key={gate.request_id}
 									className={CHAT_MEASURE}
-									gate={canonical.view.frontend.pending_gate}
+									gate={gate}
 									onAnswer={canonical.onAnswer}
 									/*
 									 * The secret field's own door, forwarded untouched like `onAnswer`:
@@ -1765,6 +1857,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 */
 								onCredentialsStored={invalidateStoredCredentials}
 								recordingProbe={recordingProbe}
+								/*
+								 * THE ANSWER-MODE INVITATION (design §5.0). The composer's
+								 * own invitation slot, so every state sentence - a refusal,
+								 * the recording line, a gate - still outranks it: those
+								 * describe facts about the box that this copy cannot.
+								 */
+								placeholderOverride={canonical?.askComposerPlaceholder}
+								/*
+								 * AND IT IS A MODE, not an invitation (design §5.0). Without this
+								 * the turn's own sentence outranked the ask's while a turn ran -
+								 * "Steer the agent. Enter sends now. Esc stops." over a box whose
+								 * Enter posts the ANSWER (UX round 1, U2). The ranking itself is
+								 * `composerPlaceholder`'s `askMode` rung.
+								 */
+								askMode={Boolean(canonical?.askComposerPlaceholder)}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)
@@ -1804,7 +1911,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 												startingAfterId: canonical.startingAfterId ?? null,
 												startingSession: canonical.startingSession === true,
 												startingSince: canonical.startingSince ?? null,
-												gate: canonical.view.frontend?.pending_gate ?? null,
+												gate,
 												unavailable: canonicalSpeaking(canonical, gone),
 												records: canonical.view.transcript.records,
 											}),
@@ -1880,7 +1987,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * composer reading "Ask me for help" over a turn that is waiting
 								 * on the user (UX round 2, U8).
 								 */
-								awaitingAnswer={Boolean(canonical?.view.frontend?.pending_gate)}
+								awaitingAnswer={gate !== null}
 								/*
 								 * AND WHETHER THAT QUESTION TAKES A SECRET: the composer refuses
 								 * input while one waits (`message-input.tsx` reads this as
@@ -1892,9 +1999,19 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * value the wire means as secret cannot be masked on one surface
 								 * while this one stays open — the mix that re-opened the exposure.
 								 */
-								secretAnswer={gateIsSecret(
-									canonical?.view.frontend?.pending_gate,
-								)}
+								/*
+								 * AND AN OPEN ASK THAT IS SECRET-ONLY REFUSES IT TOO (agent review
+								 * round 3, F3). With `asks` on the wire the mirrored gate is
+								 * suppressed, so this term was false while a secret ask waited -
+								 * and because such an ask is deliberately NOT the composer's ask
+								 * mode, the box would otherwise have been an ordinary conversation
+								 * field, which is where a typed credential becomes a chat message.
+								 * The panel's masked field is the only door for it.
+								 */
+								secretAnswer={
+									gateIsSecret(gate) ||
+									askComposerHoldsSecret(askQueueView(canonical?.view.frontend))
+								}
 								// A conversation the backend says is gone is a KNOWN
 								// answer, so the composer refuses input rather than
 								// accepting a message that can only 404. The pane above

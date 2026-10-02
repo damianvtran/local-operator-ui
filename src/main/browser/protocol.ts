@@ -78,6 +78,14 @@ export const METHODS = [
 	"tabs",
 	"scroll",
 	"logs",
+	// The structured read actions (`styles`, `hit_test`, `ancestors`), in
+	// `protocol.py`'s tuple order: page-geometry reads answered by fixed
+	// self-contained page functions (the vendored `driver/geometry-read.ts`),
+	// capped and rounded in the page. This array is the wire's closed gate, so
+	// it must stay byte-comparable with the Python source it mirrors.
+	"styles",
+	"hit_test",
+	"ancestors",
 	"request_access",
 	"await_access",
 	"cancel_access",
@@ -133,6 +141,9 @@ export const COMMAND_TIMEOUTS_S: Record<Method, number> = {
 	tabs: 20.0,
 	scroll: 20.0,
 	logs: 20.0,
+	styles: 20.0,
+	hit_test: 20.0,
+	ancestors: 20.0,
 	request_access: 20.0,
 	await_access: 25.0,
 	cancel_access: 20.0,
@@ -260,10 +271,22 @@ export interface UploadResult {
  * (`state-file.ts`'s `capabilities`) and in `/health`, which is what lets the
  * harness degrade without opening a socket at all.
  *
+ * The structured reads (`styles`, `hit_test`, `ancestors`) ride this list for the
+ * same reason as the file verbs: a build that predates them answers their frames
+ * with a bare `internal` (its dispatch has no case), which the session can only
+ * render as "the bridge broke" — the capability turns the same peer into a
+ * typed, actionable refusal instead.
+ *
  * ONE constant, three writers: a second list beside this one is how a host starts
  * advertising something it does not serve.
  */
-export const HOST_CAPABILITIES: readonly Method[] = ["download", "upload"];
+export const HOST_CAPABILITIES: readonly Method[] = [
+	"styles",
+	"hit_test",
+	"ancestors",
+	"download",
+	"upload",
+];
 
 export interface Request {
 	id: string;
