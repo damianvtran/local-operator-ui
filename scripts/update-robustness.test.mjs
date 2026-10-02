@@ -13333,6 +13333,11 @@ test("a quit during an in-flight install takes the close over, and only then", a
 		// The same quit arriving twice - the window close, then `before-quit` - is
 		// still one takeover, and must not start a second watchdog.
 		assert.equal(live.quitForInFlightInstall("app quit"), true);
+		// #755: the same fact as a read-only question for the quit's terminal -
+		// whether the update lane owns the app's RETURN - so a successor launch
+		// scheduled at that terminal stands down instead of racing Squirrel's swap.
+		assert.equal(live.inFlightInstallOwnsRelaunch(), true);
+		assert.equal(idle.inFlightInstallOwnsRelaunch(), false);
 		// Nothing was cleared to make the promise true: the marker is the record of
 		// the install that is still running.
 		assert.equal(existsSync(pendingInstallMarkerPath(userData)), true);
@@ -13370,6 +13375,7 @@ test("a quit during an in-flight install takes the close over, and only then", a
 			).toISOString(),
 		);
 		assert.equal(aged.quitForInFlightInstall("last window closed"), false);
+		assert.equal(aged.inFlightInstallOwnsRelaunch(), false);
 	} finally {
 		for (const interval of intervals) {
 			if (interval) clearInterval(interval);
