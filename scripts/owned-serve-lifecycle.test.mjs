@@ -812,6 +812,20 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		vm.runInNewContext(code, {
 			app,
 			backendService,
+			/*
+			 * `scheduleReopenAtQuitTerminal` (#755) lives INSIDE this slice, and it reads
+			 * two module-scope handles that live above it in `index.ts`: the update service
+			 * and the relaunch record. The sandbox supplies them for the same reason it
+			 * supplies the viewer handles below - the slice is what is under test, not the
+			 * modules it reaches for. `null` is this test's state, not a stub: no update
+			 * install is in flight, so the install guard stands aside and the record is the
+			 * one that would schedule the successor, which is a no-op here.
+			 */
+			activeUpdateService: null,
+			relaunchPending: {
+				hasPending: () => false,
+				scheduleOnExit: () => {},
+			},
 			viewerEndpoint: viewerEndpointStub,
 			viewerRecord: viewerRecordStub,
 			logger: { error: (message) => errors.push(String(message)) },
@@ -1788,6 +1802,13 @@ test("fatal and synchronous exit use owned manager without selecting processes",
 		logger: { error() {} },
 		LogFileType: { BACKEND: "backend" },
 		posthogClient: { shutdown: () => calls.push(["telemetry"]) },
+		/*
+		 * The crash exit reaches `scheduleReopenAtQuitTerminal` (#755) before it goes, and
+		 * that helper is defined ABOVE this slice's start marker. Its own behaviour is
+		 * pinned by the quit slice, which contains it; what this case is about is the
+		 * manager and the telemetry call, so the handle is supplied rather than restated.
+		 */
+		scheduleReopenAtQuitTerminal: () => {},
 	});
 	processFixture.emit("uncaughtException", Error("fatal"));
 	await new Promise((r) => setImmediate(r));
