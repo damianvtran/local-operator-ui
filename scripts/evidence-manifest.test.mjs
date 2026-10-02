@@ -3222,6 +3222,19 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto5737a884d5Note",
 	/*
+	 * And the lane's TWENTY-SIXTH fold record: the sync onto `origin/main` =
+	 * `ed72ef0da4` (#729 the update-rollover lane) - the THIRD fold of one push
+	 * cycle, taken because main moved again while the second fold was being
+	 * pushed. Registered for its siblings' reason and one of its own: it is the
+	 * first fold where main's lane moved the COUNTERS, so its resolution carries
+	 * three regions rather than the usual one - the re-derived stamp pair, the
+	 * re-derived `frames`/`surfaces`/`countsMean` (with main's unique paragraphs
+	 * appended, not substituted), and `refreshedFrames` re-derived to the guard's
+	 * floor the `refreshedStories` union raised - plus the `test:desktop` list
+	 * union (354 entries) and this branch's `check-themes` key main still lacks.
+	 */
+	"foldOntoed72ef0da4Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
