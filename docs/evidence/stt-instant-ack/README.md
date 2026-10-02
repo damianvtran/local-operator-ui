@@ -52,10 +52,44 @@ than a beat: `after/stt-ack-probe.json` is a bare acquisition with no UI and
 no click involved, and it measured **126,955 ms** cold (5 ms warm).
 
 The acknowledgment's own lifecycle - on screen while the acquisition is
-pending, cleared by the resolve, a refusal, or a release inside the window -
+pending, cleared by the resolve, a refusal, or a release inside the window (the
+last of those is a fix of this round: the release arm returned before the arm
+that cleared the face, so a hold shorter than the acquisition left it up for
+the whole remaining wait until agent review round 2, MAJOR 1) -
 is pinned in `scripts/shared-composer.test.mjs` ("the mic acknowledges the
 press while the stream is still pending..."); those cases drive the shipped
 React wiring with a deferred stream and are not visual evidence.
+
+## The frames, and WHICH HEAD each one is from
+
+**Read this before reading a frame as this head's.** The set holds two
+treatments and one base:
+
+| frames | head | treatment |
+| --- | --- | --- |
+| `before/01-click-idle/`, `before/02-click-still-idle/`, `before/03-recording/` | `af6fffa899` (base tree, no acknowledgment) | the silence the report describes |
+| `after/01-ack-just-after-click/`, `after/02-ack-300ms-into-wait/`, `after/03-ack-600ms-into-wait/`, `after/04-recording/` | `94368b7057` (**the FIRST treatment**) | the acknowledgment as a line of its own in the lane's slot - **the placement design round 1's D2 deleted** |
+
+So the `after/` frames are NOT what this head does: they show the version that
+moved the composer on the press. **No frame of this head's treatment exists**
+(the host refused every app run on 2026-10-02 - see below), and this head is
+carried by numbers rather than by pixels:
+
+- the geometry table above (rest 774/110, preparing 774/110 at five samples,
+  lane 690/194, mic x 1141), measured on this head's own build;
+- the acknowledgment's own timing from the same record (`click -> ack`
+  committed 1.3 ms, 0 transport calls / 0 fetches before `getUserMedia`);
+- the pinned behaviour in `scripts/shared-composer.test.mjs`, which drives the
+  shipped wiring and is not a picture.
+
+The claim "**the press costs the composer 0 px**" is scoped to what was
+measured: 1380x900 @ dpr 2, the size every number here was taken at (agent
+review round 2, minor d - a second width was not measured, because the host
+allowed no further runs). The row the caption sits in is `flex-nowrap` with
+this row's own yield rules (the cwd chip truncates, the usage reading drops
+below 480px of composer), and the caption is `shrink-0`; a narrower width is
+therefore a thing to MEASURE rather than to assume, and it is the first thing a
+re-run should take.
 
 ## The frames
 
@@ -73,10 +107,12 @@ cycle's click.
   lasts 866 ms, nothing on screen has changed.
 - `before/03-recording/`: after the flip, settled 650 ms - the recording lane.
 - `after/01-ack-just-after-click/` (+41 ms), `after/02-ack-300ms-into-wait/`
-  (+414 ms), `after/03-ack-600ms-into-wait/` (+600 ms): the acknowledgment -
-  the "Starting recording" line in the lane's slot, the control showing its
-  busy spinner (`aria-busy`) - while the run's acquisition is still pending
-  (it resolved at +793 ms in this run).
+  (+414 ms), `after/03-ack-600ms-into-wait/` (+600 ms): **the FIRST treatment**
+  (`94368b7057`) - the acknowledgment as a line in the lane's slot, with the
+  control showing its busy spinner (`aria-busy`) - while that run's acquisition
+  is still pending (it resolved at +793 ms). This head puts the same words in
+  the control row instead, which is why there is no geometry movement; there is
+  no frame of it, and the table above is what says so.
 - `after/04-recording/`: the same recording lane as before, same treatment.
 
 ## Remediation round 1: the press costs the composer no geometry
