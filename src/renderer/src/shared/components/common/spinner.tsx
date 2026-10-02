@@ -35,7 +35,11 @@ import type { FC } from "react";
  * below the 3:1 non-text floor. `control` is the role this system gives that
  * floor to ("the sole visual boundary of an input, select, checkbox, or
  * outlined button. Floor 3:1 on all four grounds" - branding § 2), and the
- * contract row that asserts it is `CONTROLS` in `scripts/contrast-contract.mjs`.
+ * pairing is pinned where it belongs rather than borrowed: `CONTROLS` states the
+ * same VALUE as a control's edge, which is a different claim about it, so
+ * `scripts/contrast-contract.mjs`'s `GRAPHICS` table carries a row for this
+ * ring's track against every ground it is dropped onto (agent review round 2,
+ * minor c - the earlier citation named a row that measures a button's boundary).
  *
  * The role is set HERE rather than by a call site, and that is measured rather
  * than stylistic: `cn` merges the track and the quadrant as one border-colour

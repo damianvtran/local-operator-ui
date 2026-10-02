@@ -5794,6 +5794,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (attempt.startedAt === null) {
 					attempt.released = true;
 					attempt.aborted = reason === "abort";
+					/*
+					 * THE RELEASE ENDS THE ACKNOWLEDGMENT WINDOW TOO (agent review round 2,
+					 * MAJOR 1). This arm returns before `settleRecordingAttempt`, whose
+					 * `setIsPreparing(false)` was the only other place the face is cleared - so a
+					 * hold released inside the acquisition left the spinner and the caption up for
+					 * the whole remaining wait: the very silence this change exists to remove, on
+					 * the push-to-talk door. The attempt is NOT settled here, deliberately: its
+					 * stream is still in flight and the resolve arm is what discards it (a null ref
+					 * there would leave a live recorder nothing can stop). Ending the face is all
+					 * this arm owes - the press is over, and the take it was waiting for is already
+					 * marked discarded.
+					 */
+					setIsPreparing(false);
 					return;
 				}
 				settleRecordingAttempt(reason);
@@ -6698,6 +6711,17 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				/>
 			</output>
 		);
+
+		/*
+		 * THE MIC CONTROL'S OWN VISIBILITY, NAMED ONCE (agent review round 2, minor
+		 * b). The acknowledgment's caption is a SIBLING of the control, so the two used
+		 * to answer different questions: the control hides while the turn is busy
+		 * (`isLoading && currentJobId`), and the caption did not - an orphan "Starting
+		 * recording" beside a button that is not there, if the turn went busy inside
+		 * the acquisition. One predicate, read by both.
+		 */
+		const micControlShown =
+			!isRecording && !isTranscribing && !(isLoading && currentJobId);
 
 		const inputContent = (
 			<form
@@ -8089,9 +8113,20 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * and this line is words, so the acknowledgment is one live element
 									 * rather than two spinners for one wait (UX round 1, U4).
 									 */}
-									{isPreparing && (
-										<span
+									{isPreparing && micControlShown && (
+										<output
 											data-preparing-indicator=""
+											/*
+											 * THE STATE IS ANNOUNCED, not merely painted (agent review round 2,
+											 * minor a). `aria-busy` on the button is the control's half and screen
+											 * readers expose it inconsistently; the words are the other half, and they
+											 * are only announced if they ARE a live region - a bare span changes on
+											 * screen and says nothing to a reader that is not looking at it. The caption
+											 * carries the text, so the region goes here rather than on the ring - as an
+											 * `<output>` rather than a `role="status"` attribute, which is this file's
+											 * established spelling of the same thing (the interrupt notice and the
+											 * no-model hint both use the element).
+											 */
 											/*
 											 * The five-word copy is the composer's own; the SMALL VIEW's
 											 * shorter one is this row's existing yield rule rather than a
@@ -8105,85 +8140,83 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 											className="shrink-0 font-medium text-body-sm text-ink-muted"
 										>
 											{isSmallView ? "Starting" : "Starting recording"}
-										</span>
+										</output>
 									)}
-									{!isRecording &&
-										!isTranscribing &&
-										!(isLoading && currentJobId) && (
-											<Tooltip
-												content={
-													isPreparing
-														? "Starting recording"
-														: !canEnableRecordingFeature
-															? recordingUnavailableReason
-															: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
-												}
-											>
-												<span>
-													<Button
-														variant="ghost"
-														size={isSmallView ? "icon-sm" : "icon"}
-														className="text-ink-dim hover:bg-elevated hover:text-ink"
-														onPointerDown={holdCaretOnRefusedPress}
-														onClick={handleStartRecording}
-														aria-label="Start recording"
+									{micControlShown && (
+										<Tooltip
+											content={
+												isPreparing
+													? "Starting recording"
+													: !canEnableRecordingFeature
+														? recordingUnavailableReason
+														: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
+											}
+										>
+											<span>
+												<Button
+													variant="ghost"
+													size={isSmallView ? "icon-sm" : "icon"}
+													className="text-ink-dim hover:bg-elevated hover:text-ink"
+													onPointerDown={holdCaretOnRefusedPress}
+													onClick={handleStartRecording}
+													aria-label="Start recording"
+													/*
+													 * BUSY IS ITS OWN FACE (operator feedback via Aida,
+													 * 2026-10-01): while the recorder is being acquired the
+													 * control shows the acknowledgment instead of the mic glyph.
+													 * It is NOT disabled while it does (design round 1, D1) -
+													 * the handler's own guard is what refuses a second press,
+													 * and the hold contract reaches the same handler without
+													 * consulting `disabled` at all. The label stays "Start
+													 * recording" - the control IS still the start control, and
+													 * `aria-busy` plus the captioned line in this row carry the
+													 * state.
+													 * carry the state; the reader that keys on this label
+													 * (`scripts/renderer-driver.mjs`, the mini-view scene)
+													 * keeps resolving it.
+													 */
+													aria-busy={isPreparing || undefined}
+													/*
+													 * `isLoading` IS NOT A TERM HERE (the operator's report): the
+													 * composer's own writability is `isInputDisabled`, and a send in
+													 * flight does not make this box unwritable - mid-turn messages
+													 * ride the steer path, and dictation is a state OF this box. The
+													 * old term closed the control for the whole admit-to-first-answer
+													 * window while the box itself stayed writable; the manager's own
+													 * gate (the registration below) carries the same correction.
+													 *
+													 * `isPreparing` IS NOT A TERM EITHER (design round 1, D1):
+													 * disabling the control during the acknowledgment made the one
+													 * control the user just pressed go inert on a 32px target, and it
+													 * was redundant besides - a second press inside the acquisition
+													 * is refused by the handler's own `recordingAttemptRef` guard,
+													 * which is the door the hold contract reaches the same callback
+													 * through and which `disabled` never covered anyway. `aria-busy`
+													 * is what says the control is working, so no gate is needed to
+													 * say it twice.
+													 */
+													disabled={
+														isInputDisabled || !canEnableRecordingFeature
+													}
+												>
+													{isPreparing ? (
 														/*
-														 * BUSY IS ITS OWN FACE (operator feedback via Aida,
-														 * 2026-10-01): while the recorder is being acquired the
-														 * control shows the acknowledgment instead of the mic glyph.
-														 * It is NOT disabled while it does (design round 1, D1) -
-														 * the handler's own guard is what refuses a second press,
-														 * and the hold contract reaches the same handler without
-														 * consulting `disabled` at all. The label stays "Start
-														 * recording" - the control IS still the start control, and
-														 * `aria-busy` plus the captioned line in this row carry the
-														 * state.
-														 * carry the state; the reader that keys on this label
-														 * (`scripts/renderer-driver.mjs`, the mini-view scene)
-														 * keeps resolving it.
+														 * ONE RING ON THIS SURFACE (design round 1, D3): this is the composer's only
+														 * indeterminate element - the caption in the row beside it is words - which is
+														 * branding § 5's "one such element per surface". The track's ROLE is fixed in
+														 * `Spinner` itself rather than patched here, and that is measured: a call-site
+														 * `border-control` flattens this ring's accent quadrant (tailwind-merge merges
+														 * the track and the quadrant as one border colour), so the ring came back
+														 * `#837c6d` on both sides - a circle with nothing visibly rotating in it.
 														 */
-														aria-busy={isPreparing || undefined}
-														/*
-														 * `isLoading` IS NOT A TERM HERE (the operator's report): the
-														 * composer's own writability is `isInputDisabled`, and a send in
-														 * flight does not make this box unwritable - mid-turn messages
-														 * ride the steer path, and dictation is a state OF this box. The
-														 * old term closed the control for the whole admit-to-first-answer
-														 * window while the box itself stayed writable; the manager's own
-														 * gate (the registration below) carries the same correction.
-														 *
-														 * `isPreparing` IS NOT A TERM EITHER (design round 1, D1):
-														 * disabling the control during the acknowledgment made the one
-														 * control the user just pressed go inert on a 32px target, and it
-														 * was redundant besides - a second press inside the acquisition
-														 * is refused by the handler's own `recordingAttemptRef` guard,
-														 * which is the door the hold contract reaches the same callback
-														 * through and which `disabled` never covered anyway. `aria-busy`
-														 * is what says the control is working, so no gate is needed to
-														 * say it twice.
-														 */
-														disabled={
-															isInputDisabled || !canEnableRecordingFeature
-														}
-													>
-														{isPreparing ? (
-															/*
-															 * ONE RING ON THIS SURFACE (design round 1, D3): this is the composer's only
-															 * indeterminate element - the caption in the row beside it is words - which is
-															 * branding § 5's "one such element per surface". The track's ROLE is fixed in
-															 * `Spinner` itself rather than patched here, and that is measured: a call-site
-															 * `border-control` flattens this ring's accent quadrant (tailwind-merge merges
-															 * the track and the quadrant as one border colour), so the ring came back
-															 * `#837c6d` on both sides - a circle with nothing visibly rotating in it.
-															 */
-															<Spinner size="sm" />
-														) : (
-															<Mic aria-hidden="true" />
-														)}
-													</Button>
-												</span>
-											</Tooltip>
-										)}
+														<Spinner size="sm" />
+													) : (
+														<Mic aria-hidden="true" />
+													)}
+												</Button>
+											</span>
+										</Tooltip>
+									)}
 									{isRecording && (
 										<>
 											<Tooltip content="Confirm recording (Enter)">

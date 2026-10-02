@@ -1130,6 +1130,8 @@ test("a release inside the acquisition window clears the acknowledgment without 
 	});
 	const preparing = () =>
 		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
 	const confirm = () =>
 		frame.container.querySelector('[aria-label="Confirm recording"]');
 
@@ -1155,6 +1157,25 @@ test("a release inside the acquisition window clears the acknowledgment without 
 		);
 	});
 
+	/*
+	 * THE RELEASE IS THE SETTLE, BEFORE THE STREAM LANDS (agent review round 2,
+	 * MAJOR 1). This assertion used to be taken only after `release()`, so it
+	 * passed while the release arm returned early and left the face up for the
+	 * whole remaining acquisition: the state the reviewer reproduced
+	 * (`AFTER-RELEASE preparing present: true`). The stream is deliberately still
+	 * PENDING here - a hold shorter than the acquisition is the case.
+	 */
+	assert.equal(
+		preparing(),
+		null,
+		"the release itself ends the acknowledgment, while the stream is still pending",
+	);
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		null,
+		"and the control drops its busy state with it",
+	);
+
 	await act(async () => {
 		release();
 	});
@@ -1162,7 +1183,7 @@ test("a release inside the acquisition window clears the acknowledgment without 
 	assert.equal(
 		preparing(),
 		null,
-		"the acknowledgment ends when the attempt settles under it",
+		"the acknowledgment does not come back when the stream lands",
 	);
 	assert.equal(
 		confirm(),
