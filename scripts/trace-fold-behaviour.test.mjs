@@ -83,7 +83,7 @@ const bundle = await build({
 		contents: `
 			import { createElement } from "react";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
-			export { foldSummary } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
+			export { foldSummary, foldSummaryUnits } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -119,7 +119,8 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
 
-const { TraceFold, createElement, foldSummary } = await import(bundlePath.href);
+const { TraceFold, createElement, foldSummary, foldSummaryUnits } =
+	await import(bundlePath.href);
 
 /**
  * Controlled the way the transcript drives it, so the mount exercises the
@@ -148,7 +149,7 @@ const LIVE_SPAN_SECONDS = /^4[45]s$/;
 
 const element = (props) =>
 	createElement(ControlledFold, {
-		summary: "3 shell · 1 python",
+		summary: ["3 shell", "1 python"],
 		actionCount: 4,
 		recordIds: ["t0"],
 		...props,
@@ -346,7 +347,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	);
 	// The section keeps running and the counts update: nothing may close it.
 	await mounted.render({
-		summary: "4 shell · 1 python",
+		summary: ["4 shell", "1 python"],
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: true },
 		live: LIVE,
 	});
@@ -362,7 +363,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	 * report - and the fold is the reader's throughout.
 	 */
 	await mounted.render({
-		summary: "4 shell · 1 python",
+		summary: ["4 shell", "1 python"],
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
 		live: null,
 	});
@@ -379,7 +380,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	 * went `expanded true -> false` on this exact transition, at every turn end.
 	 */
 	await mounted.render({
-		summary: "4 shell · 1 python",
+		summary: ["4 shell", "1 python"],
 		span: { startedAtMs: 1_000, endedAtMs: 45_000, running: false },
 		live: null,
 	});
@@ -390,7 +391,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	);
 	// And the next turn's updates find it exactly as the reader left it.
 	await mounted.render({
-		summary: "4 shell · 1 python",
+		summary: ["4 shell", "1 python"],
 		span: { startedAtMs: 46_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -416,7 +417,7 @@ test("the reader's own press is the only close, in both directions", async (t) =
 	 * decision, not a default.
 	 */
 	await mounted.render({
-		summary: "5 shell · 1 python",
+		summary: ["5 shell", "1 python"],
 		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -429,7 +430,7 @@ test("the reader's own press is the only close, in both directions", async (t) =
 	// And their next press opens it again, for good.
 	await click(mounted);
 	await mounted.render({
-		summary: "6 shell · 1 python",
+		summary: ["6 shell", "1 python"],
 		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -552,7 +553,7 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 		"the model composes the capped line for the operator's run",
 	);
 	const mounted = await mount(t, {
-		summary: foldSummary(MANY_TYPES_ACTIONS),
+		summary: foldSummaryUnits(MANY_TYPES_ACTIONS),
 		actionCount: MANY_TYPES_ACTIONS.length,
 		span: null,
 		live: null,
@@ -577,6 +578,44 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 	assert.ok(
 		classes.includes("min-w-0"),
 		"it shrinks below its content, so it wraps instead of overflowing",
+	);
+	/*
+	 * THE UNITS, AS PAINTED (design round 1, D1; the code half is agent review
+	 * R1-4): one `whitespace-nowrap` span per unit, with the ` · ` between them as
+	 * its own node - so the only break opportunity the browser is given is a
+	 * separator. The 640px frame broke `and 4 other actions` between the numeral
+	 * and its noun before this, which is what these assertions pin mechanically
+	 * (jsdom has no layout engine; the frames are the rig's half).
+	 */
+	const painted = [...summary.querySelectorAll("span:not([aria-hidden])")];
+	assert.deepEqual(
+		painted.map((unit) => unit.textContent),
+		[
+			"6 searches",
+			"1 task",
+			"2 browser actions",
+			"1 ai_search",
+			"1 get_tool_access",
+			"and 4 other actions",
+		],
+		"one span per unit, in the line's own order",
+	);
+	assert.ok(
+		painted.every((unit) =>
+			String(unit.className).includes("whitespace-nowrap"),
+		),
+		"and every unit holds together, the tail phrase included",
+	);
+	assert.deepEqual(
+		[...summary.querySelectorAll("span[aria-hidden]")].map(
+			(node) => node.textContent,
+		),
+		Array.from({ length: 5 }, () => " · "),
+		"the separators are the line's only break opportunities",
+	);
+	assert.ok(
+		classes.includes("break-words"),
+		"and a unit longer than the column can still break rather than overflow",
 	);
 	/*
 	 * THE ORDERING, pinned as the two factors it is: the live clause pays

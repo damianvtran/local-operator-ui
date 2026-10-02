@@ -44,6 +44,7 @@ const {
 	FOLD_MIN_ACTIONS,
 	actionClass,
 	foldCounts,
+	foldCountUnits,
 	foldImages,
 	foldLive,
 	foldMediaClause,
@@ -52,6 +53,7 @@ const {
 	foldRuns,
 	foldSpan,
 	foldSummary,
+	foldSummaryUnits,
 	turnFeet,
 } = await import(moduleUrl);
 
@@ -457,6 +459,67 @@ test("the count line caps its segments and folds the tail into `and N other acti
 			...edits(3),
 		]),
 		"1 file · 1 search · 1 web search · 1 shell · 1 python · and 3 other actions",
+	);
+	/*
+	 * THE UNITS ARE THE MODEL'S, NOT THE RENDERER'S (design round 1, D1). The
+	 * header paints one unbreakable span per unit so a wrap can only fall at a
+	 * ` · ` - which means the line's composition has to be stated here, where the
+	 * cap is applied, rather than recovered by splitting a display string. The
+	 * tail is ONE unit: `and 4 other actions` is a single fact and the frame that
+	 * broke it between the numeral and its noun is the defect these assert against.
+	 */
+	const capped = [
+		...files(1),
+		...searches(1),
+		...web(1),
+		...commands(1),
+		...evals(1),
+		...edits(3),
+	];
+	assert.deepEqual(
+		foldCountUnits([
+			{ label: "1 file", count: 1 },
+			{ label: "1 search", count: 1 },
+			{ label: "1 web search", count: 1 },
+			{ label: "1 shell", count: 1 },
+			{ label: "1 python", count: 1 },
+		]),
+		["1 file", "1 search", "1 web search", "1 shell", "1 python"],
+		"at the cap the units ARE the segments' labels",
+	);
+	assert.deepEqual(
+		foldCountUnits([
+			{ label: "1 file", count: 1 },
+			{ label: "1 search", count: 1 },
+			{ label: "1 web search", count: 1 },
+			{ label: "1 shell", count: 1 },
+			{ label: "1 python", count: 1 },
+			{ label: "3 edits", count: 3 },
+		]),
+		[
+			"1 file",
+			"1 search",
+			"1 web search",
+			"1 shell",
+			"1 python",
+			"and 3 other actions",
+		],
+		"past the cap the tail is ONE unit, and it counts CALLS",
+	);
+	assert.equal(
+		foldSummaryUnits(capped).at(-1),
+		"and 3 other actions",
+		"the tail is ONE unit, so it cannot break inside itself",
+	);
+	assert.equal(
+		foldSummaryUnits(capped).join(" · "),
+		foldCounts(capped),
+		"the string consumers read is the units joined, so the two cannot drift",
+	);
+	assert.deepEqual(
+		foldSummaryUnits(files(4)),
+		["Explored 4 files"],
+		"and a SENTENCE is one unit: prose breaks wherever the browser wants",
 	);
 });
 

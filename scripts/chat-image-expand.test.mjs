@@ -1043,7 +1043,7 @@ const foldElement = (props, Fold = TraceFold) =>
 	React.createElement(
 		Fold,
 		{
-			summary: "Explored 1 file, ran 2 commands",
+			summary: ["Explored 1 file, ran 2 commands"],
 			actionCount: 3,
 			failedCount: 0,
 			/*

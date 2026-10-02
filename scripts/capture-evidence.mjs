@@ -8239,6 +8239,57 @@ export const STORIES = [
 		},
 	],
 	/*
+	 * THE TWO STATES THE ARRANGEMENT COULD REACH THAT NO FRAME SHOWED (design
+	 * round 1, D2).
+	 *
+	 * The USER TURN's own row, because the operator's note asked about it
+	 * explicitly ("same treatment ... if the same pattern exists there") and the
+	 * answer - it is `Copy` alone, with no caption and no stamp to share a line
+	 * with, so no rail moves - is a claim about a rail, which a still settles and
+	 * a comment does not. `user-row` is that row at rest (opacity-only, so the
+	 * frame is the bubble and the row's own empty box) and `user-row-hover` parks
+	 * a real pointer on the Copy button, which is the reveal; `user-row-small`
+	 * and `user-row-small-hover` are the same pair at 420, where the content rail
+	 * is 32 rather than 107.
+	 *
+	 * `compacted-run-small` is the CAPTION's rail at that width, which the set
+	 * could not state before: the only 420 frame (`narrow`) is a caption-less
+	 * turn, so `isSmallView` had no caption edge photographed at all.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560, { dir: "user-row" }],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-lo-user-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 300,
+			dir: "user-row-hover",
+		},
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{ dir: "user-row-small" },
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{
+			hover: '[data-lo-user-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 300,
+			dir: "user-row-small-hover",
+		},
+	],
+	[
+		"chat-canonical-message-actions--compacted-run-small",
+		420,
+		640,
+		{ dir: "compacted-run-small" },
+	],
+	/*
 	 * The minimum-action state (design round 1, D1): one call, so the frame shows
 	 * what the app paints where a caption beside the actions would sit if the rule
 	 * allowed it - the bar above carries `1 action`, the line under the answer

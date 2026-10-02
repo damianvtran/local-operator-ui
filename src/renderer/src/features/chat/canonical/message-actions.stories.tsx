@@ -426,7 +426,13 @@ export const OneCallTurn: Story = {
 	render: () => <Frame state={finishedTurn([CALL_A])} height={560} />,
 };
 
-/** The narrow column and the small view: one line, buttons intact, caption truncating. */
+/**
+ * The narrow column and the small view: one line, buttons intact, and NO caption
+ * - the turn's run folds into its bar, which states the numbers itself, so the
+ * closing line carries the actions alone (design round 1, Q3: this description
+ * used to say "caption truncating", and there is no caption in this state to
+ * truncate).
+ */
 export const Narrow: Story = {
 	render: () => (
 		<Frame state={transcriptOf(TURN)} width={420} height={620} isSmallView />
@@ -506,4 +512,20 @@ const compactedTurn = (): TranscriptState => {
 /** A turn split by a mid-run compaction: the closing line keeps its foot. */
 export const CompactedRun: Story = {
 	render: () => <Frame state={compactedTurn()} height={640} />,
+};
+
+/**
+ * The same turn at the SMALL VIEW (design round 1, D2).
+ *
+ * `isSmallView` is a PROP the transcript is told about, not something it infers
+ * from the window - so a 420px viewport running the 1024px story is the wide
+ * layout clipped by the frame, not the small view (measured: the caption and the
+ * actions report the same boxes at both widths). The caption's rail at
+ * `isSmallView` is what the design round asked for, and it needs a state that
+ * actually paints it.
+ */
+export const CompactedRunSmall: Story = {
+	render: () => (
+		<Frame state={compactedTurn()} width={420} height={640} isSmallView />
+	),
 };

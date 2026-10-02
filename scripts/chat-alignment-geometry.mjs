@@ -126,6 +126,33 @@ const STORIES = [
 			label: "chat-trace-fold--many-types (640px)",
 		},
 	],
+	/*
+	 * THE SMALL VIEW'S OWN TWO CELLS (design round 1, D2): the caption + controls
+	 * line at `isSmallView`, where the rail is 32 rather than 107 - and the same
+	 * window with the user turn on screen, so the user row's rail there is measured
+	 * rather than inferred from the 1024px reading. Both name a story that PAINTS
+	 * the small view (`isSmallView` is a prop, not a window width: the first cut of
+	 * this entry pointed at the 1024px story at a 420px viewport and measured the
+	 * wide layout clipped, which is the mistake this note exists to prevent).
+	 */
+	[
+		"chat-canonical-message-actions--compacted-run-small",
+		420,
+		640,
+		{
+			label: "chat-canonical-message-actions--compacted-run-small (420px)",
+			ready: "[data-lo-answer-actions]",
+		},
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{
+			label: "chat-canonical-message-actions--narrow (420px)",
+			ready: "[data-lo-user-actions]",
+		},
+	],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -235,8 +262,15 @@ const PROBE = `(() => {
 		const toolRow = box(toolEl);
 		/*
 		 * The answer's action row (#695): the toolbar's own box, its first button,
-		 * and the stamp at the line's far end. railDelta is the claim - the row's
-		 * left edge against the prose's, which must be the SAME edge.
+		 * and the stamp at the line's far end.
+		 *
+		 * 'actionsOffset' IS NOT A RAIL CLAIM, and reading it as one is the mistake
+		 * this field's name now prevents (agent review round 1, R1-2): it is the
+		 * distance from the prose's left edge to where the right cluster begins,
+		 * and the 2026-10-01 rearrangement moves it to the far end by design
+		 * ('726.6' where it used to be '0'). The rail claim is the CAPTION's -
+		 * 'line.caption.left' against 'prose.left', two fields up - because a
+		 * caption is the row's only left-anchored element.
 		 */
 		const actionsEl = scope.querySelector("[data-lo-answer-actions]");
 		const actions = box(actionsEl);
@@ -260,15 +294,48 @@ const PROBE = `(() => {
 						const b = actionsEl.querySelector("button");
 						return b ? getComputedStyle(b).color : null;
 					})(),
-					railDelta: prose ? round(actions.left - prose.left) : null,
-				}
+					actionsOffset: prose ? round(actions.left - prose.left) : null,				}
 			: null;
+		/*
+		 * THE USER TURN'S OWN ROW (design round 1, D2), which no frame in any set
+		 * showed: 'Copy' alone, mounted from the user turn's column under the bubble
+		 * rather than on a transcript line, so its rail is the BUBBLE's right edge
+		 * and not the content's left. The operator's note asked about this surface
+		 * explicitly, and a comment cannot settle a rail claim - so the bubble, the
+		 * row and the delta between them are numbers here.
+		 */
+		const userActionsEl = scope.querySelector("[data-lo-user-actions]");
+		const userRow = box(userActionsEl);
+		const userBubble = box(
+			userActionsEl ? userActionsEl.previousElementSibling : null,
+		);
+		const userActions =
+			userRow && userActionsEl
+				? {
+						...userRow,
+						firstButton: box(userActionsEl.querySelector("button")),
+						buttons: userActionsEl.querySelectorAll("button").length,
+						/*
+						 * The toolbar's labels are the cheap proof that the USER row is Copy
+						 * alone: a 'Speak aloud' appearing here would be a different row.
+						 */
+						labels: [...userActionsEl.querySelectorAll("button")].map((b) =>
+							(b.getAttribute("aria-label") ?? b.textContent ?? "").trim(),
+						),
+						bubble: userBubble,
+						bubbleDelta: userBubble
+							? round(userBubble.right - userRow.right)
+							: null,
+					}
+				: null;
+
 		out.push({
 			prose,
 			toolRow,
 			glyph: box(glyphEl),
 			content,
 			actions: actionsBox,
+			userActions,
 			line: (() => {
 				/*
 				 * The foot line the row rides: its box and height are what the
@@ -582,7 +649,12 @@ const main = async () => {
 			}
 			if (f.actions) {
 				console.log(
-					`    actions       wrapper.left=${f.actions.wrapper?.left ?? "?"}  toolbar.left=${f.actions.toolbar.left}  firstButton.left=${f.actions.firstButton?.left ?? "?"}  buttons=${f.actions.buttons}  railDelta=${f.actions.railDelta}`,
+					`    actions       wrapper.left=${f.actions.wrapper?.left ?? "?"}  toolbar.left=${f.actions.toolbar.left}  firstButton.left=${f.actions.firstButton?.left ?? "?"}  buttons=${f.actions.buttons}  actionsOffset=${f.actions.actionsOffset}`,
+				);
+			}
+			if (f.userActions) {
+				console.log(
+					`    user row      left=${f.userActions.left}  right=${f.userActions.right}  firstButton.left=${f.userActions.firstButton?.left ?? "?"}  buttons=${f.userActions.buttons} [${f.userActions.labels.join(", ")}]  bubble.right=${f.userActions.bubble?.right ?? "?"}  bubbleDelta=${f.userActions.bubbleDelta ?? "?"}`,
 				);
 			}
 			console.log(
