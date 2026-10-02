@@ -2,7 +2,7 @@
  * The team mark the chat surfaces draw, at the size it ships.
  *
  * WHY THIS STORY EXISTS. The sidebar's session rows are the change's real
- * surface, but a 20px mark inside a 320px panel is not a frame a reviewer can
+ * surface, but a 16px mark inside a 320px panel is not a frame a reviewer can
  * read letters off, and the mark's own contract - the initials a name draws, an
  * image URL replacing them, and a FAILED image falling back - is invisible in
  * any frame the row can produce (the row's fixture teams have no icon field to
@@ -104,11 +104,14 @@ const Page: FC = () => (
 		</section>
 		<section className="max-w-[60ch] space-y-1 text-meta-sm text-ink-muted">
 			<p>
-				The mark ships at 20px (`size-5`) because it has to fit the 32px session
-				row without moving its height. The image is Radix&rsquo;s `AvatarImage`,
-				so a missing, blocked, 404ing or undecodable URL is the same state as no
-				URL at all: the initials. No generation flow ships with this - the URL
-				is a field a team record will carry.
+				The mark is the shared Badge's own `attentionQuiet` / `pill` / `count`
+				composition - the same face as the sidebar rail's notification count -
+				so it is 16px tall (`h-4`) and its width follows the initials
+				(`min-w-4`, `px-1`); the rail badge beside a team's count lines is the
+				frame to compare it with. The image is Radix&rsquo;s `AvatarImage`, so a
+				missing, blocked, 404ing or undecodable URL is the same state as no URL
+				at all: the initials, on the same 16px face. No generation flow ships
+				with this - the URL is a field a team record will carry.
 			</p>
 		</section>
 	</div>
