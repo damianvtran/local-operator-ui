@@ -1982,9 +1982,20 @@ test("the transcript no longer draws the question: it is docked (§F1)", () => {
 		"src/renderer/src/features/chat/components/chat-content.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\//g, "");
-	assert.match(
-		pane,
-		/<QuestionDock[\s\S]{0,400}gate=\{canonical\.view\.frontend\.pending_gate\}/,
+	/*
+	 * AND IT IS FED THE ONE DERIVED GATE, not the raw field.
+	 *
+	 * Pinned as a REFUSAL as well as a match (agent review round 1, F3): the mirror
+	 * rule used to be applied at this render and nowhere else, so the dock was
+	 * correct while four other readers kept consuming the mirrored ask. `effectiveGate`
+	 * is now the single place the rule is applied, and a call site that went back to
+	 * reading `pending_gate` directly would reintroduce the divergence - so the
+	 * assertion names the value it must take and forbids the field it must not.
+	 */
+	assert.match(pane, /<QuestionDock[\s\S]{0,400}gate=\{gate\}/);
+	assert.ok(
+		!/<QuestionDock[\s\S]{0,400}gate=\{canonical/.test(pane),
+		"the dock takes the one derived gate, never the raw mirrored field",
 	);
 	assert.ok(
 		pane.indexOf("<QuestionDock") <
