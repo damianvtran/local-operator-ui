@@ -89,11 +89,12 @@ export interface ConsoleSessionApi {
 	 * Resolves when the host has ANSWERED AND THE LISTING IS IN HAND, the same rule
 	 * `createSurface`'s promise observes and for the same reason: the pane holds its
 	 * dialog's busy state until the panel can show the result, and releasing on the
-	 * call alone would paint a listing that still contains the closed surface. A
-	 * REFUSED close is swallowed into that same re-read rather than reported: the
-	 * reachable refusals (`surface_unavailable` for a surface something else already
-	 * closed) are facts the listing shows, and there is no sentence to invent for
-	 * them that the host did not already say. */
+	 * call alone would paint a listing that still contains the closed surface.
+	 *
+	 * A REFUSAL REJECTS, AFTER that same re-read (UX round 1, U3): the listing is the
+	 * fact either way, and the sentence the host said is handed to the caller rather
+	 * than swallowed — the dialog path shows it, and the dismissal path drops it
+	 * because "a surface something else already closed" is what its re-read says. */
 	closeSurface: (
 		surface: string,
 		options: { kill?: boolean; retain?: boolean },
@@ -262,14 +263,19 @@ export const useConsoleSession = (
 		(surface: string, options: { kill?: boolean; retain?: boolean } = {}) => {
 			const api = window.api?.console;
 			if (!api) return Promise.resolve();
-			return (
-				api
-					.closeSurface(surface, options)
-					/* A refusal is not reported here (see the interface's note): the re-read
-				   is the whole response, and the listing is the sentence. */
-					.catch(() => {})
-					.then(() => read())
-					.then(() => undefined)
+			return api.closeSurface(surface, options).then(
+				() => read().then(() => undefined),
+				/*
+				 * THE RE-READ HAPPENS EITHER WAY, THEN THE REFUSAL IS RE-THROWN (UX round 1,
+				 * U3): every refusal this call can produce is a fact the listing already
+				 * carries — a raced close of a surface that is already gone — so the caller
+				 * is told only AFTER the listing it would consult has settled. What each
+				 * caller does with it is the caller's to decide: the dialog keeps its
+				 * question up and states the sentence; the dismissal path has no sentence to
+				 * show and swallows it, because "already gone" is exactly what the listing
+				 * it just re-read says (the interface's note, now narrowed to that path).
+				 */
+				(failure: unknown) => read().then(() => Promise.reject(failure)),
 			);
 		},
 		[read],

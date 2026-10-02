@@ -1118,6 +1118,70 @@ const pressDom = (selector) =>
 		`(() => { const el = document.querySelector('${selector}'); if (!el) return false; el.click(); return true; })()`,
 	);
 
+/** Put the keyboard into a control the way a keyboard user arrives at it, so a removal
+ * cell can observe where the pane hands the keyboard afterwards. `focus()` alone does
+ * not arm `:focus-visible`; the `focusVisible` option does, which is the state the
+ * ring frame photographs (Chromium honours it). */
+const focusDom = (selector) =>
+	rendererEvaluate(
+		`(() => { const el = document.querySelector('${selector}'); if (!el) return false; el.focus({ focusVisible: true }); return document.activeElement === el; })()`,
+	);
+
+/** Which row's tab the keyboard is in right now, off the live document. */
+const focusedSurface = () =>
+	rendererEvaluate(`(() => {
+		const active = document.activeElement;
+		if (!active) return null;
+		const row = active.closest ? active.closest('[data-surface]') : null;
+		if (row) return row.getAttribute('data-surface');
+		return active.tagName.toLowerCase();
+	})()`);
+
+/** The close control's reveal, focus state and RING GEOMETRY against the strip's own
+ * clip (design round 1, D2: a `focus-visible` outline 3px beyond a 28px button that
+ * sits in a `px-2 py-1` scrolling strip is exactly how a ring gets trimmed). */
+const closeFocusReading = (surface) =>
+	rendererEvaluate(`(() => {
+		const row = document.querySelector('[data-surface="${surface.replace(/"/g, '\\"')}"]');
+		const close = row ? row.querySelector('[data-tour-tag="console-surface-close"]') : null;
+		const strip = document.querySelector('[role="tablist"]');
+		if (!close || !strip) return null;
+		const box = close.getBoundingClientRect();
+		const clip = strip.getBoundingClientRect();
+		const style = getComputedStyle(close);
+		const reach = (parseFloat(style.outlineWidth) || 0) + (parseFloat(style.outlineOffset) || 0);
+		return {
+			focused: document.activeElement === close,
+			focusVisible: close.matches(':focus-visible'),
+			opacity: style.opacity,
+			outline: style.outlineStyle + ' ' + style.outlineWidth + ' offset ' + style.outlineOffset,
+			ring: { top: box.top - reach, bottom: box.bottom + reach, left: box.left - reach, right: box.right + reach },
+			clip: { top: clip.top, bottom: clip.bottom, left: clip.left, right: clip.right },
+			fits: box.top - reach >= clip.top && box.bottom + reach <= clip.bottom && box.left - reach >= clip.left && box.right + reach <= clip.right,
+		};
+	})()`);
+
+/** A pointer MOVE at a control's centre through Chromium's own input pipeline - the
+ * same path measured above NOT to reach a never-shown window for presses; whether a
+ * move does is what this returns. */
+const hoverDom = async (selector) => {
+	const point = await rendererEvaluate(
+		`(() => { const el = document.querySelector('${selector}'); if (!el) return null; const box = el.getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + box.height / 2 }; })()`,
+	);
+	if (!point) return null;
+	await withRendererSession((call) =>
+		call("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: point.x,
+			y: point.y,
+		}),
+	);
+	await sleep(220);
+	return rendererEvaluate(
+		`(() => { const el = document.querySelector('${selector}'); if (!el) return null; return { hovered: el.matches(':hover'), opacity: getComputedStyle(el).opacity }; })()`,
+	);
+};
+
 /** The strip's rows as the live DOM has them: each close control's accessible name,
  * computed opacity (the reveal) and box. A reader for the #754 cells, both of which
  * (the close block and the restart block) call it. */
@@ -1205,6 +1269,11 @@ const createUserSurface = async (state) => {
 /** The close control's selector for one surface. */
 const closeSelectorFor = (surface) =>
 	`[data-surface="${surface.replace(/"/g, '\\"')}"] [data-tour-tag="console-surface-close"]`;
+
+/** One close control's accessible name ends with its tablist position (#754, UX
+ * round 1 U4): `Close zsh, tab 2 of 4`. Declared once so the label cell and the
+ * screen reader agree on the form. */
+const CLOSE_LABEL_POSITION = /, tab \d+ of \d+$/;
 
 /** A window-level frame through CDP, for moments the pane's own crop cannot show
  * (the close question is a modal over the whole window, not an xterm frame). */
@@ -2002,6 +2071,60 @@ async function main() {
 				),
 			reading,
 		);
+		/*
+		 * THE NAME IS UNIQUE ON THE STRIP THE RUN ACTUALLY HAS (UX round 1, U4): two shells
+		 * made two "Close sh" before the position suffix. Every label is read live and the
+		 * set asserted duplicate-free, each carrying its tab position.
+		 */
+		const labelSet = reading
+			.map((row) => row.label)
+			.filter((label) => typeof label === "string");
+		check(
+			"the close controls' accessible names are unique across the strip, each with its tab position (#754, UX round 1 U4)",
+			labelSet.length === reading.length &&
+				new Set(labelSet).size === labelSet.length &&
+				labelSet.every((label) => CLOSE_LABEL_POSITION.test(label)),
+			{ labels: labelSet },
+		);
+		/*
+		 * THE REVEAL'S TWO ARMS (design round 1, D2's unphotographed states). The hover arm
+		 * is attempted through Chromium's own input pipeline - the path measured below NOT
+		 * to reach a never-shown window for presses; whether a MOVE reaches is what the cell
+		 * records. The focus arm is the keyboard's own arrival: `focus({ focusVisible: true })`
+		 * reveals the control through `focus-within` and draws the ring the design round
+		 * asked to see - whose reach is then MEASURED against the strip's overflow clip,
+		 * because a trimmed ring is exactly how the device chip's own D2 went.
+		 */
+		const inactiveRow = reading.find(
+			(row) => row.surface !== runningSurface && typeof row.label === "string",
+		);
+		if (inactiveRow) {
+			const hover = await hoverDom(closeSelectorFor(inactiveRow.surface));
+			check(
+				"an inactive row's hidden control reveals under the pointer (or the window does not receive pointer moves - the press path's own measured limit)",
+				hover === null || hover.hovered === false || hover.opacity === "1",
+				{ surface: inactiveRow.surface, hover },
+			);
+			if (hover?.hovered === true && hover.opacity === "1") {
+				await captureAppFrame("close-hover-reveal.png");
+			}
+			await focusDom(closeSelectorFor(inactiveRow.surface));
+			await sleep(150);
+			const focusReading = await closeFocusReading(inactiveRow.surface);
+			check(
+				"focus reveals the hidden control with the ring drawn, and the ring fits inside the strip's clip (#754, design round 1 D2's focus state)",
+				focusReading !== null &&
+					focusReading.focused === true &&
+					focusReading.focusVisible === true &&
+					focusReading.opacity === "1" &&
+					focusReading.fits === true,
+				focusReading,
+			);
+			await captureAppFrame("close-focus-ring.png");
+			await rendererEvaluate(
+				"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+			);
+		}
 		await captureAppFrame("close-affordance.png");
 
 		// 2. the question, and nothing dead before it is answered
@@ -2025,6 +2148,12 @@ async function main() {
 				question.text.includes(
 					"This ends the program running here and removes its tab.",
 				) &&
+				/*
+				 * AND THE CONDITIONAL REASSURANCE (UX round 1, U6): this surface is a USER's, its
+				 * `retain` is on (design 7.2), so the question says the output is kept - the
+				 * sentence an agent-owned row must NOT get (the render suite's own cell).
+				 */
+				question.text.includes("Its output is kept.") &&
 				question.cancel === true &&
 				question.confirm === true,
 			question,
@@ -2120,6 +2249,24 @@ async function main() {
 			selectedAfterClose !== null && selectedAfterClose !== runningSurface,
 			{ closed: runningSurface, selectedAfterClose },
 		);
+		/*
+		 * THE HANDOFF (UX round 1, U1): the dialog closed onto a REMOVED opener - the one
+		 * arm the shared primitive cannot answer - so the pane hands the keyboard to the row
+		 * that inherited the lens. `<body>` is the failure this cell exists for.
+		 */
+		let handedOff = null;
+		const handoffDeadline = Date.now() + 10_000;
+		while (Date.now() < handoffDeadline) {
+			handedOff = await focusedSurface();
+			if (handedOff === selectedAfterClose) break;
+			await sleep(200);
+		}
+		check(
+			"after the close the keyboard is in the lens's row, not on the document body (UX round 1, U1)",
+			handedOff === selectedAfterClose,
+			{ selectedAfterClose, handedOff },
+		);
+		await captureAppFrame("close-focus-handoff.png");
 		check(
 			"a close keeps a retained surface's history (the dismissal below is what removes it)",
 			existsSync(historyLog),
@@ -2173,6 +2320,12 @@ async function main() {
 		);
 		await pressDom(`[data-surface="${dismissedSurface}"] [role="tab"]`);
 		await sleep(200);
+		/*
+		 * The keyboard goes INTO the control first: a pointer press on macOS never moves it
+		 * there, so a dismissal pressed that way has nothing to lose - and the handoff cell
+		 * below is about the keyboard path, which starts from the control itself.
+		 */
+		await focusDom(closeSelectorFor(dismissedSurface));
 		await pressDom(closeSelectorFor(dismissedSurface));
 		const dismissQuestion = await questionReading();
 		check(
@@ -2220,7 +2373,77 @@ async function main() {
 				selectedAfterDismiss !== dismissedSurface,
 			{ dismissed: dismissedSurface, selectedAfterDismiss },
 		);
+		/*
+		 * The same handoff clause for the dismissal: the acting control is removed while the
+		 * keyboard is in it, so the lens's row must take it (UX round 1, U1).
+		 */
+		let handedOffAfterDismiss = null;
+		const dismissHandoffDeadline = Date.now() + 10_000;
+		while (Date.now() < dismissHandoffDeadline) {
+			handedOffAfterDismiss = await focusedSurface();
+			if (handedOffAfterDismiss === selectedAfterDismiss) break;
+			await sleep(200);
+		}
+		check(
+			"after the dismissal the keyboard is handed on too, not dropped (UX round 1, U1)",
+			handedOffAfterDismiss === selectedAfterDismiss,
+			{ selectedAfterDismiss, handedOffAfterDismiss },
+		);
 		await captureAppFrame("close-dismissed.png");
+
+		/*
+		 * 6. THE QUESTION WITHDRAWS WHEN ITS SUBJECT EXITS UNDER IT (UX round 1, U2): an
+		 * ended row STAYS listed, so the listing-only rule kept a question whose copy
+		 * claimed to end something that had already ended. Nothing is confirmed - the
+		 * surface's own shell ends itself through the bridge while the question stands -
+		 * and the row must remain (withdrawn is not dismissed).
+		 */
+		const exitUnderQuestion = await createUserSurface(state);
+		await pressDom(`[data-surface="${exitUnderQuestion}"] [role="tab"]`);
+		await sleep(200);
+		await focusDom(closeSelectorFor(exitUnderQuestion));
+		await pressDom(closeSelectorFor(exitUnderQuestion));
+		const standingQuestion = await waitForQuestion();
+		await rpcOk(state, "console_input", {
+			surface: exitUnderQuestion,
+			text: "exit 0\r",
+		});
+		await waitForExit(state, exitUnderQuestion, 0);
+		let withdrew = false;
+		const withdrawDeadline = Date.now() + 10_000;
+		while (Date.now() < withdrawDeadline) {
+			withdrew = (await questionReading()) === null;
+			if (withdrew) break;
+			await sleep(200);
+		}
+		const exitRow = (await surfacesOf(state)).find(
+			(row) => row.surface === exitUnderQuestion,
+		);
+		check(
+			"the question withdraws when the surface exits under it - and the row is dismissed by nobody (still listed, ended) (#754, UX round 1 U2)",
+			standingQuestion !== null &&
+				withdrew === true &&
+				exitRow !== undefined &&
+				exitRow.running === false,
+			{ standingQuestion, withdrew, exitRow: exitRow ?? null },
+		);
+		/*
+		 * And the keyboard goes back to the row it came from: the question's opener (that
+		 * row's own control) is still in the DOM, so the shared primitive's own restore is
+		 * the mechanism - this cell is what would catch it regressing silently.
+		 */
+		let focusedAfterWithdraw = null;
+		const withdrawFocusDeadline = Date.now() + 10_000;
+		while (Date.now() < withdrawFocusDeadline) {
+			focusedAfterWithdraw = await focusedSurface();
+			if (focusedAfterWithdraw === exitUnderQuestion) break;
+			await sleep(200);
+		}
+		check(
+			"the withdrawn question returns the keyboard to the row it came from (UX round 1, U1's own restore case)",
+			focusedAfterWithdraw === exitUnderQuestion,
+			{ exitUnderQuestion, focusedAfterWithdraw },
+		);
 
 		closeCase = { running: runningSurface, dismissed: dismissedSurface };
 	}
@@ -3083,6 +3306,60 @@ async function main() {
 			{ reopened, restoredRow },
 		);
 		await captureAppFrame("close-relaunch.png");
+
+		/*
+		 * THE EMPTY STATE AFTER THE LAST DISMISSAL (design round 1, D2's third frame):
+		 * `surfaces.length > 0` gates the whole strip block, so the last dismissal removes
+		 * the strip and the pane falls to ConsoleEmpty - an unphotographed transition into
+		 * a different screen. Every restored row is ENDED, so each dismisses without a
+		 * question; the LAST removal is also the handoff's empty arm (U1), whose target is
+		 * the empty state's own New console.
+		 */
+		let remainingRows = await rowsReading();
+		const dismissAllDeadline = Date.now() + 60_000;
+		while (remainingRows.length > 0 && Date.now() < dismissAllDeadline) {
+			const target = remainingRows[0];
+			const last = remainingRows.length === 1;
+			await focusDom(closeSelectorFor(target.surface));
+			await pressDom(closeSelectorFor(target.surface));
+			const goneDeadline = Date.now() + 10_000;
+			for (;;) {
+				remainingRows = await rowsReading();
+				if (!remainingRows.some((row) => row.surface === target.surface)) break;
+				if (Date.now() > goneDeadline) break;
+				await sleep(200);
+			}
+			if (last) {
+				const empty = await rendererEvaluate(`(() => ({
+					emptyText: (document.body.textContent || '').includes('No console in this session'),
+					strip: Boolean(document.querySelector('[role="tablist"]')),
+					plus: Boolean(document.querySelector('[data-tour-tag="console-new-surface"]')),
+				}))()`);
+				let focusedEmpty = null;
+				const emptyFocusDeadline = Date.now() + 5_000;
+				while (Date.now() < emptyFocusDeadline) {
+					focusedEmpty = await rendererEvaluate(
+						"(() => { const a = document.activeElement; return a ? (a.getAttribute && a.getAttribute('data-tour-tag')) || a.tagName.toLowerCase() : null; })()",
+					);
+					if (focusedEmpty === "console-new-surface") break;
+					await sleep(150);
+				}
+				check(
+					"dismissing the last surface removes the strip, shows the empty state, and the keyboard lands on its own New console (#754, UX round 1 U1's empty arm)",
+					empty.emptyText === true &&
+						empty.strip === false &&
+						empty.plus === true &&
+						focusedEmpty === "console-new-surface",
+					{ empty, focusedEmpty },
+				);
+				await captureAppFrame("close-empty.png");
+			}
+		}
+		check(
+			"every restored surface was dismissible from the strip (the loop's own exit condition)",
+			remainingRows.length === 0,
+			{ remaining: remainingRows.map((row) => row.surface) },
+		);
 	}
 
 	finish();

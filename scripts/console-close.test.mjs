@@ -154,7 +154,7 @@ test("a running row's press asks first, and only the confirm kills", () => {
 	const runningBranch = between(
 		PANE_CODE,
 		"if (row.running) {",
-		"void session.closeSurface(row.surface, { retain: false });",
+		"void session.closeSurface(row.surface, { retain: false })",
 	);
 	assert.ok(
 		runningBranch.includes("setPendingClose(row.surface)"),
@@ -165,9 +165,7 @@ test("a running row's press asks first, and only the confirm kills", () => {
 		"a running row's press reaches the host before the question is answered",
 	);
 	assert.ok(
-		PANE_CODE.includes(
-			"void session.closeSurface(pendingClose, { kill: true })",
-		),
+		PANE_CODE.includes(".closeSurface(pendingClose, { kill: true })"),
 		"the confirm no longer sends kill: true",
 	);
 	// One kill in the file, and it is the dialog's.
@@ -285,9 +283,59 @@ test("the control is reachable by mouse and keyboard, and its label names the st
 	);
 	assert.ok(
 		PANE_CODE.includes(
-			'aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}`}',
+			'aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}`}',
 		),
-		"the accessible name no longer names the state and the terminal",
+		"the accessible name no longer names the state, the terminal and the position",
+	);
+	/*
+	 * THE POSITION IS WHAT MAKES THE NAME UNIQUE (UX round 1, U4): `Close sh` alone
+	 * collided for two shells, which is the ordinary strip. Asserted structurally —
+	 * the suffix is present for every row, not only for a collision — because a name
+	 * that changes with a neighbour's presence is a name a reader cannot rely on.
+	 */
+	assert.ok(
+		PANE_CODE.includes("tab ${index + 1} of ${surfaces.length}"),
+		"the accessible name no longer carries the tablist's own position",
+	);
+});
+
+test("the question withdraws when its subject stops being closeable, and the keyboard is handed on", () => {
+	/*
+	 * THE WITHDRAWAL'S CONDITION (UX round 1, U2; agent review round 1, F1). It used
+	 * to key on the LISTING alone, and an exited row stays listed — so the rule now
+	 * also fires when the pending surface stops RUNNING. Asserted at the source, with
+	 * the render suite executing both shapes.
+	 */
+	assert.ok(
+		PANE_CODE.includes("if (entry?.running) return;"),
+		"the question only withdraws when the row leaves the listing, not when it exits",
+	);
+	/*
+	 * AND THE HANDOFF (UX round 1, U1): the removal drops the keyboard to `<body>`
+	 * unless the pane hands it to the lens's row (or the empty state's own control),
+	 * so both the record and the write have to be there. The bounded re-check is the
+	 * mechanism that makes it land after a dialog's own exit releases the keyboard.
+	 */
+	assert.ok(
+		PANE_CODE.includes("focusAfterRemoval.current = row.surface;") &&
+			PANE_CODE.includes("focusAfterRemoval.current = null;") &&
+			PANE_CODE.includes("timer = setTimeout(handoff, 25);") &&
+			PANE_CODE.includes("target?.focus();"),
+		"a removal no longer hands the keyboard to the lens's row",
+	);
+	/*
+	 * AND THE REFUSAL (UX round 1, U3): the rejection is re-read then re-thrown by the
+	 * hook, and the pane shows the handler's own clause — the channel's wrapper prefix
+	 * is stripped rather than rendered.
+	 */
+	assert.ok(
+		code(SESSION_HOOK).includes("read().then(() => Promise.reject(failure))"),
+		"a refused close is swallowed instead of reaching the dialog that asked",
+	);
+	assert.ok(
+		PANE_CODE.includes('lastIndexOf("Error: ")') &&
+			PANE_CODE.includes("setCloseRefusal(refusalCopy(failure));"),
+		"the refusal is not rendered in the handler's own words",
 	);
 });
 
@@ -317,6 +365,24 @@ test("the dialog asks the question with the safe answer defaulted, and the pane'
 			) &&
 			dialog.includes('confirmText="Close terminal"'),
 		"the question's copy moved away from the contract this change committed",
+	);
+	/*
+	 * THE ROUND-1 ADDITIONS TO THE SAME DIALOG: the retention reassurance is
+	 * CONDITIONAL on the row's own retain flag (U6), and the refusal is rendered
+	 * inside the dialog that asked, with the keyboard handed back to Cancel (U3).
+	 */
+	assert.ok(
+		dialog.includes("keepsOutput") &&
+			dialog.includes("Its output is kept.") &&
+			dialog.includes("{refusal !== null ?") &&
+			dialog.includes("focusCancelSignal={refusalSeq}"),
+		"the refusal or the conditional reassurance left the dialog",
+	);
+	assert.ok(
+		PANE_CODE.includes("keepsOutput={pendingRow?.retain ?? false}") &&
+			PANE_CODE.includes("refusal={closeRefusal}") &&
+			PANE_CODE.includes("refusalSeq={closeRefusalSeq}"),
+		"the pane no longer feeds the dialog the row's own retention and its refusal",
 	);
 	/*
 	 * AND THE PANE'S OWN CLOSE IS STILL THE PANE'S: "Close console" keeps the

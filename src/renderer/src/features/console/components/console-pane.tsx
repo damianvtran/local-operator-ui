@@ -5,7 +5,7 @@ import {
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
 import { Bot, Lock, LockOpen, PanelRightClose, Plus, X } from "lucide-react";
-import { type FC, useEffect, useMemo, useState } from "react";
+import { type FC, useEffect, useMemo, useRef, useState } from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
@@ -158,6 +158,55 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 */
 	const [pendingClose, setPendingClose] = useState<string | null>(null);
 	const [closing, setClosing] = useState(false);
+	/**
+	 * The refusal of the last confirmed press, in main's own words, and the counter
+	 * that moves the keyboard back to the safe answer (UX round 1, U3): a refused
+	 * close must not read as a press that did nothing. A COUNTER rather than a
+	 * boolean because `ConfirmationModal` takes its `focusCancelSignal` as a change —
+	 * a second refusal must move the keyboard again. Cleared when a question opens
+	 * afresh and on cancel.
+	 */
+	const [closeRefusal, setCloseRefusal] = useState<string | null>(null);
+	const [closeRefusalSeq, setCloseRefusalSeq] = useState(0);
+	/**
+	 * The row the question is about, read fresh from the listing: `retain` is
+	 * published per row (§7.2) and the copy says the output is kept ONLY where that
+	 * flag says the history persists (UX round 1, U6) — a sentence the agent-owned
+	 * case would falsify.
+	 */
+	const pendingRow =
+		pendingClose === null
+			? null
+			: (surfaces.find((row) => row.surface === pendingClose) ?? null);
+	/**
+	 * WHERE THE KEYBOARD GOES WHEN THE ROW IT WAS IN LEAVES (UX round 1, U1).
+	 *
+	 * A close or a dismissal removes the control the keyboard was in — the row's X,
+	 * or the row a question came from — and the browser drops the focus it cannot
+	 * keep to `<body>`, so the reader's next Tab restarts at the top of the
+	 * document. This is the class the repo fixed for the delete dialog (`base-dialog`
+	 * restores an opener that still CONTAINS itself; a removed one is exactly the
+	 * arm it cannot answer), so the pane hands the keyboard over itself. It holds a
+	 * SURFACE ID rather than a boolean because it must survive until the listing
+	 * says the row is gone — the removal is asynchronous with the press.
+	 */
+	const focusAfterRemoval = useRef<string | null>(null);
+	/**
+	 * The refusal as a sentence for a person.
+	 *
+	 * THE IPC REJECTION WRAPS THE HANDLER'S ERROR in the channel's own prefix
+	 * (`Error invoking remote method 'console-close-surface': Error: …`), which is
+	 * not something to show anybody; the last `Error: ` clause is the handler's own
+	 * sentence and the one worth rendering — the monitor cancel's "the backend's own
+	 * sentence" rule, applied to a bridge that prefixes its own.
+	 */
+	const refusalCopy = (failure: unknown) => {
+		const raw =
+			failure instanceof Error ? failure.message : String(failure ?? "");
+		const at = raw.lastIndexOf("Error: ");
+		const detail = (at === -1 ? raw : raw.slice(at + "Error: ".length)).trim();
+		return detail === "" ? "The terminal could not be closed." : detail;
+	};
 
 	/**
 	 * The row's own close: a RUNNING surface asks first, an ENDED one is dismissed
@@ -176,11 +225,22 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	 * #754's repro reports ("restart the app: the ended tab is still in the strip").
 	 */
 	const requestSurfaceClose = (row: ConsoleSurface) => {
+		setCloseRefusal(null);
+		focusAfterRemoval.current = row.surface;
 		if (row.running) {
 			setPendingClose(row.surface);
 			return;
 		}
-		void session.closeSurface(row.surface, { retain: false });
+		void session.closeSurface(row.surface, { retain: false }).catch(() => {
+			/*
+			 * A dismissal that did NOT leave is a row that is still where it was: nothing
+			 * was removed, so nothing is owed a handoff — the reader's keyboard never left
+			 * the control they pressed. The one refusal this path can really produce, a
+			 * racer that removed the surface first, leaves through the branch above: the
+			 * row IS gone and the handoff stands.
+			 */
+			focusAfterRemoval.current = null;
+		});
 	};
 
 	/**
@@ -194,23 +254,99 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	const confirmSurfaceClose = () => {
 		if (pendingClose === null) return;
 		setClosing(true);
-		void session.closeSurface(pendingClose, { kill: true }).finally(() => {
-			setClosing(false);
-			setPendingClose(null);
-		});
+		setCloseRefusal(null);
+		void session
+			.closeSurface(pendingClose, { kill: true })
+			.then(() => setPendingClose(null))
+			.catch((failure: unknown) => {
+				/*
+				 * KEPT OPEN AND SAID OUT LOUD (UX round 1, U3): a refused confirm used to
+				 * clear the dialog as if it had succeeded, which reads as "I pressed Close
+				 * and nothing happened". The dialog stays, states the refusal in the danger
+				 * ink, and hands the keyboard back to Cancel (`closeRefusalSeq` is the
+				 * modal's `focusCancelSignal`). A refusal whose surface DID leave — the
+				 * racing case — needs none of this: the withdraw effect below closes the
+				 * question on the listing it just re-read.
+				 */
+				setCloseRefusal(refusalCopy(failure));
+				setCloseRefusalSeq((seq) => seq + 1);
+			})
+			.finally(() => setClosing(false));
 	};
 
 	/*
-	 * A surface something ELSE closed while the question stood (an agent's
-	 * `console_close`, or the process exiting on its own between the press and the
-	 * confirm): the question is about a terminal that is no longer in the listing, so
-	 * it goes rather than confirming against a ghost.
+	 * THE QUESTION WITHDRAWS WHEN ITS SUBJECT STOPS BEING CLOSEABLE: the row left the
+	 * listing (an agent's `console_close`, or a racer between the press and the
+	 * confirm) OR its process exited while the question stood (UX round 1, U2 — an
+	 * ended row STAYS listed, so the old listing-only test never fired for it and
+	 * the question would sit there claiming to end something that had already
+	 * ended).
 	 */
 	useEffect(() => {
 		if (pendingClose === null) return;
-		if (!surfaces.some((entry) => entry.surface === pendingClose))
-			setPendingClose(null);
+		const entry = surfaces.find((row) => row.surface === pendingClose);
+		if (entry?.running) return;
+		setPendingClose(null);
+		/*
+		 * The keyboard is owed a handoff only when the ROW is gone; a row that stayed
+		 * (it exited) keeps its own control, and the dialog's own restore lands on it.
+		 */
+		if (entry) focusAfterRemoval.current = null;
 	}, [pendingClose, surfaces]);
+
+	/*
+	 * THE HANDOFF (UX round 1, U1). The target is the row that now holds the lens —
+	 * `pickActiveSurface`'s fallback, so the closed surface's neighbour — or the
+	 * empty state's own New console when the strip has nothing left.
+	 *
+	 * WHY A BOUNDED RE-CHECK rather than a single pass, measured while writing its
+	 * test: the commit that removes the row can still carry the DIALOG on screen
+	 * with the keyboard inside it, and the dialog's own exit releases it a beat
+	 * later (Radix's presence unmounts on a later commit than the state change that
+	 * closed it; a detached opener is exactly the arm the primitive cannot restore).
+	 * The platform emits no event for "the focused element went away", so the retry
+	 * waits on the CONDITION — focus stranded on `<body>`, `null`, or a disconnected
+	 * node — and the bound only stops it when the keyboard has a real home elsewhere
+	 * (a pointer press on macOS never moved it into the control at all).
+	 */
+	useEffect(() => {
+		const removed = focusAfterRemoval.current;
+		if (removed === null) return;
+		/*
+		 * While a question stands the dialog holds the keyboard, so its own exit is
+		 * the moment this effect is waiting for — and the write must not happen
+		 * under an open modal.
+		 */
+		if (pendingClose !== null) return;
+		if (surfaces.some((row) => row.surface === removed)) return;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		let attempts = 0;
+		const handoff = () => {
+			timer = null;
+			const active = document.activeElement;
+			const stranded =
+				active === null || active === document.body || !active.isConnected;
+			if (!stranded) {
+				attempts += 1;
+				if (attempts <= 20) timer = setTimeout(handoff, 25);
+				return;
+			}
+			focusAfterRemoval.current = null;
+			const target =
+				surface === null
+					? document.querySelector<HTMLElement>(
+							'[data-tour-tag="console-new-surface"]',
+						)
+					: document.querySelector<HTMLElement>(
+							`[data-surface="${surface.surface}"] [role="tab"]`,
+						);
+			target?.focus();
+		};
+		handoff();
+		return () => {
+			if (timer !== null) clearTimeout(timer);
+		};
+	}, [surfaces, surface, pendingClose]);
 
 	/*
 	 * The lens follows what is actually shown, and that write is what makes the
@@ -749,7 +885,7 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					aria-label="Console surfaces"
 					data-tour-tag="console-surface-list"
 				>
-					{surfaces.map((row) => {
+					{surfaces.map((row, index) => {
 						const isActive = row.surface === surface?.surface;
 						return (
 							/*
@@ -863,7 +999,15 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 									<Button
 										variant="ghost"
 										size="icon-sm"
-										aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}`}
+										/*
+										 * LABEL NAMES THE STATE, THE TERMINAL, AND THE POSITION (UX round 1, U4):
+										 * `Close ${title}` alone collided on the ordinary strip — two shells made
+										 * two "Close sh" — so the tablist's own position ("tab 2 of 4") is the
+										 * disambiguator, always present so the name is a property of the row
+										 * rather than of a collision. The tooltip keeps the shorter sentence:
+										 * a pointer is already on the row it would act on.
+										 */
+										aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}`}
 										onClick={() => requestSurfaceClose(row)}
 										className={cn(
 											"me-0.5 transition-opacity",
@@ -889,8 +1033,15 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 			<ConsoleCloseDialog
 				open={pendingClose !== null}
 				busy={closing}
+				keepsOutput={pendingRow?.retain ?? false}
+				refusal={closeRefusal}
+				refusalSeq={closeRefusalSeq}
 				onConfirm={confirmSurfaceClose}
-				onCancel={() => setPendingClose(null)}
+				onCancel={() => {
+					focusAfterRemoval.current = null;
+					setCloseRefusal(null);
+					setPendingClose(null);
+				}}
 			/>
 		</div>
 	);
