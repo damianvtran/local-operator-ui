@@ -50,12 +50,33 @@
  *   4. Derived fields are RE-DERIVED from the merged tree and taken from neither
  *      side: `srcTree`, `scriptsTree`, `frames`, `surfaces`, `themes`,
  *      `partialCapture.refreshedFrames` and the LEADING paragraph of every
- *      `countsMean` cell.
+ *      `countsMean` cell. `refreshedFrames` is re-derived whenever the merged
+ *      file carries a `partialCapture` at all, not only when both sides moved
+ *      the container: it is a count of the merged tree, so "which side moved the
+ *      container" is not a question the field has an answer to, and a lane-only
+ *      or main-only move used to carry a stale number through the identity
+ *      short-circuits. It is also counted over the GUARD's own denominator -
+ *      the frames named by `refreshedStories` and standing OUTSIDE every
+ *      declared `supplementary` set (`inDeclaredSet`, shared with
+ *      `check-evidence.mjs`), because a declared set is declared precisely
+ *      because a sweep cannot produce its frames.
  *   5. No key main has that this branch deleted is carried back, under any name
  *      (main's manifest still carries `refreshedAtHeadNote`, a spelling this
  *      lineage retired) - while every key THIS branch carries survives, which is
  *      the clause `BRANCH_RECORDS` in `scripts/evidence-manifest.test.mjs` now
  *      fails on. Implemented in `mergedKeys`.
+ *
+ * KEY ORDER IS DETERMINISTIC AND DOCUMENTED, because a resolver that reorders
+ * a 500-key file makes every later fold's diff positional. `mergedKeys` returns
+ * this branch's keys in THIS BRANCH's order first, then appends the keys only
+ * main carries in main's order (it never re-sorts, and it never splices a
+ * main-only key into the middle). So the FIRST fold into a branch produces a
+ * large positional diff exactly once - main's records land at the end - and
+ * every fold after it is a no-op for the keys neither side moved. That is why
+ * main-only keys append rather than merging in place: honouring main's position
+ * for a key this branch has never seen would have to reorder this branch's own
+ * records around it, which is the same one-time diff paid against a different
+ * side every fold.
  *
  * THE WRITE-TREE TECHNIQUE, AND WHY MID-MERGE `HEAD:` IS THE TRAP. `srcTree` and
  * `scriptsTree` must name the MERGED tree - the tree of the commit the manifest
@@ -84,13 +105,35 @@
  * the SAME command resolves it, because every side is read from the OBJECT
  * STORE rather than from the conflicted working file.
  *
+ * THE DRIVER'S SIDE ASSIGNMENT IS ONLY TRUE INSIDE A MERGE, AND IT CHECKS.
+ * `%A` is "this branch" for `git merge` and for nothing else: `git rebase`,
+ * `pull --rebase`, cherry-pick, revert, `am` and stash-pop hand the driver the
+ * UPSTREAM side as `%A` and the commit being replayed as `%B`, and git gives a
+ * driver no way to tell. Resolving there would take the wrong side SILENTLY -
+ * the lane's pass fields replaced by main's and a retired key resurrected, with
+ * git reporting success, where before the driver existed the same operation
+ * stopped on the conflict. So the driver resolves ONLY when git is running a real
+ * merge, refuses otherwise (naming the operation wherever git records one),
+ * writes git's own conflict markers and exits non-zero - see
+ * `mergingForTheDriver`, which also records what a merge actually exports:
+ * `MERGE_HEAD` is written only AFTER the strategy finishes on git 2.55.0, so a
+ * driver testing for it alone would refuse every merge. A refused rebase is a
+ * stop the author resolves by hand or by re-merging - never a mechanically
+ * resolved manifest describing another side's tree.
+ *
  * WHEN IT REFUSES. (a) A side that is not JSON - the sides are read with `git
  * show`, so a file that does not parse is a state this script cannot reason
  * about, and guessing would be worse than the conflict git already showed.
  * (b) Other unmerged paths still in the index: the manifest is resolved and
  * staged, and the tool says which paths remain rather than deriving counts from
- * a half-merged tree. (c) A result that fails its own guards - it is not
- * written, and the guard's own text is printed.
+ * a half-merged tree. (c) A result that fails its own guards: the conflict on the
+ * manifest is RESTORED (`git checkout -m`), so `git status` shows the same
+ * unresolved path the author had before the run and nothing half-resolved is
+ * left staged for an accidental commit; the guard's own text is printed with the
+ * way forward. (d) The merge driver, on any operation that is not a real merge -
+ * see above: it names the operation wherever git records one, writes git's own
+ * conflict markers into the working file and exits non-zero, so the stop the
+ * author gets is the one they would have got without the driver installed.
  *
  * WHY THE DRIVER PATH MUST STAY IMPORT-LIGHT. `--driver` runs inside `git merge`,
  * potentially in a worktree with no `node_modules`; `check-evidence.mjs` imports
@@ -217,23 +260,16 @@ const LISTING_KEYS = new Set([
 ]);
 
 /*
- * Group (1), as the concrete names the two other homes spell out. Everything
- * else that is not a listing and not derived resolves to OUR side by default,
- * which is that group's rule stated once instead of as a list of ~120 `*Note`
- * keys that would go stale the first time a pass writes a new record.
+ * Group (1) has no constant, deliberately.
+ *
+ * The rule is "a pass-describing field is THIS BRANCH's when both sides changed
+ * it", and it is implemented as the DEFAULT for a conflicted key - which is
+ * what almost every key in this file is. A named list of ~120 `*Note` keys
+ * would go stale the first time a pass writes a new record, and a list that is
+ * never READ (as this one used to be) reads like enforcement while enforcing
+ * nothing. What must never be a default is the two cases below, so those are
+ * the ones named.
  */
-const PASS_KEYS = new Set([
-	"head",
-	"headNote",
-	"refreshedAt",
-	"refreshedAtHead",
-	"refreshedFromHead",
-	"addedAt",
-	"addedAtHead",
-	"addedFrames",
-	"note",
-	"passScopeNote",
-]);
 
 /** Group (4): re-derived from the merged tree, never carried from a side. */
 const DERIVED_TOP = new Set([
@@ -266,6 +302,11 @@ const CONTAINERS = new Set(["partialCapture"]);
  * key main still carries that this branch DELETED (present at base, absent from
  * ours) is a spelling this lineage retired and must not come back - main's
  * `refreshedAtHeadNote` is the named example.
+ *
+ * ORDER: this branch's keys first, in this branch's order, then the keys only
+ * main carries, in main's order. Deterministic and deliberate - see the header's
+ * `KEY ORDER IS DETERMINISTIC` paragraph for why main-only keys append rather
+ * than splicing into main's position.
  */
 export const mergedKeys = (base, ours, theirs) => {
 	const keys = Object.keys(ours);
@@ -306,6 +347,12 @@ const unionSets = (ours = [], theirs = []) => {
  * keeps this from being a policy free-for-all: a side that did not move its
  * value has nothing to say, and the side that moved wins. Everything below them
  * is a genuine both-changed case, where the groups decide.
+ *
+ * Group (4)'s container-scoped field - `partialCapture.refreshedFrames` - is NOT
+ * handled here: it must be re-derived whichever side moved the container, and
+ * the identity short-circuit below is exactly the case that hides. It is applied
+ * by `resolveManifest`, the only scope that can see the container surviving from
+ * ANY side.
  */
 export const mergeValue = (key, base, ours, theirs, derived) => {
 	/*
@@ -316,11 +363,8 @@ export const mergeValue = (key, base, ours, theirs, derived) => {
 	 * unanimous answer. The driver passes no `derived` at all (the merged tree
 	 * does not exist mid-merge) and falls through to the three-way rule.
 	 */
-	if (derived) {
-		if (key === "refreshedFrames" && derived.refreshedFrames !== undefined)
-			return derived.refreshedFrames;
-		if (DERIVED_TOP.has(key) && derived[key] !== undefined) return derived[key];
-	}
+	if (derived && DERIVED_TOP.has(key) && derived[key] !== undefined)
+		return derived[key];
 	/*
 	 * Group (2) is asked here too, and for a reason the history validation
 	 * found: the rule is a UNION of what both sides touched, not a three-way
@@ -354,8 +398,7 @@ export const mergeValue = (key, base, ours, theirs, derived) => {
 	if (deepEqual(base, theirs)) return ours;
 
 	// Both sides moved this key.
-	if (CONTAINERS.has(key))
-		return mergeObject(base ?? {}, ours, theirs, derived, key);
+	if (CONTAINERS.has(key)) return mergeObject(base ?? {}, ours, theirs);
 	return ours;
 };
 
@@ -365,8 +408,14 @@ export const mergeValue = (key, base, ours, theirs, derived) => {
  * Above `partialCapture` the key set is `mergedKeys` (group 5). Inside an entry
  * of a supplementary set it is group 3's: the entry's authored keys come from
  * ours, and its own sub-arrays union.
+ *
+ * `null` for `derived`, deliberately, on the same terms `mergeEntry` states: a
+ * key INSIDE the container is not the top-level field of the same name, and
+ * handing the top-level derivation down would replace a nested `frames` with
+ * the sweep's frame count. The container's own derived field is applied once, by
+ * `resolveManifest`.
  */
-const mergeObject = (base, ours, theirs, derived, container) => {
+const mergeObject = (base, ours, theirs) => {
 	const out = {};
 	for (const key of mergedKeys(base, ours, theirs)) {
 		const value = mergeValue(
@@ -374,12 +423,10 @@ const mergeObject = (base, ours, theirs, derived, container) => {
 			base?.[key],
 			ours?.[key],
 			theirs?.[key],
-			derived,
+			null,
 		);
 		if (value !== undefined) out[key] = value;
 	}
-	if (container === "partialCapture" && derived?.refreshedFrames !== undefined)
-		out.refreshedFrames = derived.refreshedFrames;
 	return out;
 };
 
@@ -503,7 +550,25 @@ export const resolveManifest = ({ base, ours, theirs, derived = null }) => {
 			theirs?.[key],
 			derived,
 		);
-		if (value !== undefined) out[key] = value;
+		if (value === undefined) continue;
+		/*
+		 * The container's own derived field, applied HERE and not inside
+		 * `mergeValue`, because the rule is "whenever the merged file carries a
+		 * `partialCapture`" and the three-way short-circuits below cannot see
+		 * that: a lane-only move, a main-only move and an identical pair all
+		 * return one side's container whole, so a `refreshedFrames` derived
+		 * inside the descent fires in exactly one of the four states.
+		 *
+		 * A COPY, never a mutation: `value` is frequently `ours.partialCapture`
+		 * ITSELF, and writing through it would edit the caller's side object -
+		 * `--dry-run`'s diff and the amend's field report both read it.
+		 */
+		out[key] =
+			key === "partialCapture" &&
+			derived?.refreshedFrames !== undefined &&
+			isObject(value)
+				? { ...value, refreshedFrames: derived.refreshedFrames }
+				: value;
 	}
 	// `supplementary` entries both sides carry: group 3 inside them.
 	if (Array.isArray(out.supplementary)) {
@@ -546,10 +611,11 @@ export const deriveFields = async ({
 	manifest,
 }) => {
 	const {
-		claimedStory,
 		declaredStoryRows,
 		declaredThemeNames,
 		frames: frameFiles,
+		inDeclaredSet,
+		namedByPass,
 	} = await import("./check-evidence.mjs");
 
 	const evidenceDir = join(root, "docs", "evidence");
@@ -566,27 +632,32 @@ export const deriveFields = async ({
 	);
 	const declaredDirs = sets.map((set) => join(evidenceDir, set.path));
 	const onDisk = frameFiles(evidenceDir);
-	const outside = onDisk.filter(
-		(file) => !declaredDirs.some((dir) => file.startsWith(`${dir}/`)),
-	);
+	// `inDeclaredSet` comes from the guard rather than being restated: this count
+	// and the `frames` field beside it must exclude the same directories.
+	const outside = onDisk.filter((file) => !inDeclaredSet(file, declaredDirs));
 	const stories = declaredStoryRows(capture);
 	const themes = declaredThemeNames(capture);
 
 	/*
 	 * `refreshedFrames`, re-derived rather than carried: the frames standing in
 	 * the directories `refreshedStories` names, at the tree under construction.
-	 * The directory test is the guard's own `claimedStory`, shared rather than
-	 * restated, so a story captured in a second state (a `dir` override, a
-	 * width-suffixed directory) counts here exactly as it is checked there.
+	 * BOTH halves of the question are the guard's own, shared rather than
+	 * restated - `namedByPass` for the directory (so a story captured in a second
+	 * state, a `dir` override or a width-suffixed directory, counts here exactly
+	 * as it is checked there) and `outside` for the pool.
+	 *
+	 * The pool is `outside`, NOT the whole walk: `partialCaptureFailures` asks
+	 * this field its own denominator (`ls-tree` frames named by the pass and not
+	 * in a declared set), so a field derived over a WIDER pool is a claim the
+	 * guard cannot see - one-sided by design, so an over-count passes silently.
+	 * Measured on this branch's shipped manifest (the fold onto `490c2079fb`):
+	 * the un-excluded walk derived 10862 against the guard's own 10418, and a
+	 * re-IMPLEMENTED directory matcher (rather than `namedByPass`) missed 62 more.
 	 */
 	const refreshedStories = manifest.partialCapture?.refreshedStories ?? [];
-	const refreshedFrames = onDisk.filter((file) => {
-		const segments = relative(evidenceDir, file).split("/");
-		if (segments.length < 3) return false;
-		const surface = segments[0];
-		const leaf = segments[1].replace(/@\d+$/, "");
-		return refreshedStories.some((entry) => claimedStory(entry, surface, leaf));
-	}).length;
+	const refreshedFrames = outside.filter((file) =>
+		namedByPass(relative(root, file), refreshedStories, root),
+	).length;
 
 	return {
 		srcTree,
@@ -596,7 +667,7 @@ export const deriveFields = async ({
 		themes,
 		refreshedFrames,
 		countsMean: {
-			frames: `RE-DERIVED FOR THIS FOLD (this branch folded onto \`origin/main\` = \`${baseLabel}\`): ${outside.length} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside.length} of them inside the sets). Nothing in this fold touches a surface these stories render, so nothing was re-shot.`,
+			frames: `RE-DERIVED FOR THIS FOLD (this branch folded onto \`origin/main\` = \`${baseLabel}\`): ${outside.length} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside.length} of them inside the sets). Whether this fold moved any frame a story renders is the AUTHOR's statement to make, not this tool's - the numbers above are what the walk found.`,
 			surfaces: `RE-DERIVED FOR THIS FOLD: ${stories} rows in \`HEAD:scripts/capture-evidence.mjs\`'s STORIES literal, counted the way \`check-evidence.mjs\` counts them (\`^\t\[\` rows inside the block, parsed from the tree rather than taken from the writer).`,
 			themes: `RE-DERIVED FOR THIS FOLD: ${themes} theme names in the \`THEMES\` literal, counted the same way.`,
 		},
@@ -617,14 +688,31 @@ export const deriveFields = async ({
  * "is this sha reachable" is a question about the repository, not about a tree.
  *
  * The frame and prose walks are pointed at `root`, so this can be run against a
- * tree other than the live one (`--root`, used by the validation rig). A
- * non-empty list is a refusal: nothing is written.
+ * tree other than the live one (the tests do exactly that).
+ *
+ * WHAT IS ACTUALLY ASKED, because the PR body and `AGENTS.md` used to name five
+ * guards while three ran. `stampFailures` IS the tree half and is asked once: it
+ * already folds `partialCaptureFailures` and `countsMeanFailures` in, and asking
+ * those again here printed every one of their failures twice. `citationFailures`
+ * - group 1's `head`/`refreshedAtHead`/`addedAtHead` reachability, which is
+ * precisely the half those values exist for - is asked of the repository reader.
+ * `citationAncestryFailures` cannot be answered in a SHALLOW clone (no ancestor
+ * of HEAD is present), so that half stands down there and says so in `notes`
+ * rather than reporting a failure it cannot know.
+ *
+ * Returns `{ failures, notes }`. A non-empty `failures` is a refusal: nothing is
+ * written, and `completeMerge` puts the conflict back.
  */
-export const runGuards = async ({ manifest, target, root = ROOT }) => {
-	const { countsMeanFailures, partialCaptureFailures, stampFailures } =
+export const runGuards = async ({
+	manifest,
+	target,
+	root = ROOT,
+	git: read = git,
+}) => {
+	const { citationAncestryFailures, citationFailures, stampFailures } =
 		await import("./check-evidence.mjs");
 	const at = (args) =>
-		git(
+		read(
 			args.map((argument) =>
 				argument === "HEAD"
 					? target
@@ -633,11 +721,19 @@ export const runGuards = async ({ manifest, target, root = ROOT }) => {
 						: argument,
 			),
 		);
-	return [
+	const failures = [
 		...stampFailures(manifest, at, join(root, "docs", "evidence")),
-		...countsMeanFailures(manifest, at, join(root, "docs", "evidence")),
-		...partialCaptureFailures(manifest, at),
+		...citationFailures(manifest, read),
 	];
+	const notes = [];
+	if (read(["rev-parse", "--is-shallow-repository"]) === "true") {
+		notes.push(
+			"the citation-ancestry guard stood down: this is a shallow clone, so no ancestor of HEAD is present to ask about. That is NOT a failure - the stamps are still guarded here and on every clone - and CI's full clone asks it.",
+		);
+	} else {
+		failures.push(...citationAncestryFailures(manifest, read));
+	}
+	return { failures, notes };
 };
 
 /* ------------------------------------------------------------------ *
@@ -698,6 +794,16 @@ const isMergeCommit = (rev) => {
 	);
 	return parents.length > 2;
 };
+
+/**
+ * Whether `rev` is already on a remote-tracking ref.
+ *
+ * `git branch -r --contains` answers it from the clone alone (no network call):
+ * a non-empty list means the tip has been pushed or fetched, which is the state
+ * `--amend` must refuse to rewrite.
+ */
+const reachesRemoteTracking = (rev) =>
+	(git(["branch", "-r", "--contains", rev]) ?? "") !== "";
 
 /* ------------------------------------------------------------------ *
  * The states
@@ -814,10 +920,38 @@ const completeMerge = async ({ dryRun }) => {
 		theirs: theirSide,
 		derived,
 	});
-	const failures = await runGuards({ manifest: resolved, target: tree });
+	const { failures, notes } = await runGuards({
+		manifest: resolved,
+		target: tree,
+	});
+	for (const note of notes) console.log(`evidence-fold: ${note}`);
 	if (failures.length > 0) {
+		/*
+		 * PUT THE CONFLICT BACK, because by now the half-resolved manifest IS in
+		 * the index: `write-tree` cannot hash an unmerged index, so the file was
+		 * written and staged before the merged tree could be named at all. A
+		 * refusal that simply returned would leave a conflict-free index whose
+		 * next `git commit` succeeds - the opposite of what refusing means, and
+		 * the reason this used to print "NOT written" about a file it had
+		 * written. `git checkout -m` restores the three index stages and the
+		 * markers, so the author sees exactly the state the run started in.
+		 */
+		const restored = gitStatus(["checkout", "-m", "--", MANIFEST_PATH]);
 		console.error(
-			`evidence-fold: the resolved manifest fails its own guards, so it was NOT written:\n  - ${failures.join("\n  - ")}`,
+			`evidence-fold: the resolved manifest fails its own guards:\n  - ${failures.join("\n  - ")}`,
+		);
+		if (restored) {
+			const staged = stagedPaths();
+			console.error(
+				`evidence-fold: the resolution was NOT kept - ${MANIFEST_PATH} is back to the merge's unresolved state (git status shows it unmerged), and nothing this run wrote is staged (${staged.length} path(s) are staged, git's own merge bookkeeping, ${MANIFEST_PATH} not among them).`,
+			);
+		} else {
+			console.error(
+				`evidence-fold: the conflict could NOT be restored, so the half-resolved copy IS STAGED at ${MANIFEST_PATH} - do not commit it as it stands.`,
+			);
+		}
+		console.error(
+			`evidence-fold: to proceed by hand, either fix the cause on this branch's HEAD and re-merge (main's copy is not the answer, and this tool cannot invent a record neither side carries), or resolve ${MANIFEST_PATH} yourself and commit WITHOUT this tool. A hand resolution is honoured only if the tool is not run again in this merge: every run re-resolves from the three git objects, so a re-run silently replaces a hand edit.`,
 		);
 		return 1;
 	}
@@ -883,10 +1017,17 @@ const restampAtHead = async ({ dryRun, amend }) => {
 		);
 		return 0;
 	}
-	const failures = await runGuards({ manifest: resolved, target: "HEAD" });
+	const { failures, notes } = await runGuards({
+		manifest: resolved,
+		target: "HEAD",
+	});
+	for (const note of notes) console.log(`evidence-fold: ${note}`);
 	if (failures.length > 0) {
 		console.error(
 			`evidence-fold: the re-derived manifest fails its own guards, so it was NOT written:\n  - ${failures.join("\n  - ")}`,
+		);
+		console.error(
+			`evidence-fold: fix the cause on this branch's HEAD (a record neither side carries cannot be re-derived), or edit ${MANIFEST_PATH} yourself and commit that - a later run re-derives from git and would replace a hand edit.`,
 		);
 		return 1;
 	}
@@ -901,10 +1042,23 @@ const restampAtHead = async ({ dryRun, amend }) => {
 	stageManifest();
 	reportDiff(ours, resolved, { baseLabel: mergeBaseLabel(), derived: true });
 
-	if (!amend || !isMergeCommit("HEAD")) {
+	/*
+	 * AMENDING A PUSHED TIP IS REFUSED, not warned about. The amend rewrites the
+	 * merge commit's SHA, which needs a force-push and unpins any review round
+	 * that names it (the fleet's own re-pinning rule exists for exactly that
+	 * cost). The values are still written and staged - the state `--no-amend`
+	 * leaves - so the author commits them on top instead.
+	 */
+	const mergeTip = amend && isMergeCommit("HEAD");
+	const pushed = mergeTip && reachesRemoteTracking("HEAD");
+	if (!mergeTip || pushed) {
 		console.log(
 			`evidence-fold: write a re-stamp commit carrying the values:\n  git commit -m "docs(evidence): re-derive the stamp pair over the folded tree"`,
 		);
+		if (pushed)
+			console.log(
+				"evidence-fold: and the tip was NOT amended - HEAD is already reachable from a remote-tracking ref, so an amend would rewrite published history and need a force-push, unpinning any review round that names that SHA. Run this before pushing; if it is already pushed, commit the values on top instead.",
+			);
 		return 0;
 	}
 	const staged = stagedPaths();
@@ -962,7 +1116,89 @@ const reportDiff = (before, after, { baseLabel, derived, note }) => {
  * a mismatched stamp is then caught by `pnpm test:desktop` or repaired by one
  * `pnpm evidence:fold` after the merge commits.
  */
+
+/**
+ * The operation git is in the middle of, or null when it is in the middle of
+ * none. `WHEN IT REFUSES` (d) above is why `driver()` asks.
+ *
+ * The markers are present WHILE the driver runs, measured on 2026-10-02 with
+ * git 2.55.0 (`ls` inside the driver): a rebase leaves `rebase-merge/`, an `am`
+ * leaves `rebase-apply/applying`, a multi-commit sequence leaves `sequencer/`.
+ * A SINGLE-COMMIT cherry-pick, a revert and a stash-pop leave NONE of them (git
+ * writes `CHERRY_PICK_HEAD`/`REVERT_HEAD` after the merge step it is running
+ * now), which is why they cannot be NAMED - they are refused by the positive
+ * test below instead.
+ */
+const operationInProgress = () => {
+	const dir = git(["rev-parse", "--absolute-git-dir"]) ?? join(ROOT, ".git");
+	if (existsSync(join(dir, "rebase-merge"))) return "rebase (or pull --rebase)";
+	if (existsSync(join(dir, "rebase-apply", "applying"))) return "git am";
+	if (existsSync(join(dir, "rebase-apply"))) return "rebase";
+	if (existsSync(join(dir, "CHERRY_PICK_HEAD"))) return "cherry-pick";
+	if (existsSync(join(dir, "REVERT_HEAD"))) return "revert";
+	if (existsSync(join(dir, "sequencer"))) return "a cherry-pick/revert sequence";
+	return null;
+};
+
+/**
+ * Whether git is handing the driver the sides of a real merge.
+ *
+ * THE `MERGE_HEAD` TEST THAT THE RULE WAS WRITTEN WITH DOES NOT HOLD, measured
+ * on 2026-10-02 with git 2.55.0: `MERGE_HEAD` is written only AFTER the merge
+ * strategy finishes, so it is ABSENT for the whole time the driver runs - in a
+ * real `git merge` exactly as in a rebase. A driver that required it would
+ * refuse every merge, including the one this file exists to resolve. What a
+ * merge DOES export, and what a rebase, a cherry-pick, a revert and a stash-pop
+ * do NOT, is `GITHEAD_<sha>` (git names the other side for the merge machinery),
+ * measured across all six operations; `git merge --squash` sets it too.
+ *
+ * So the test is POSITIVE, and its failure mode is a STOP: a clone whose git
+ * exports neither `MERGE_HEAD` early nor `GITHEAD_*` gets the driver refusing,
+ * git reports the conflict it would have reported without this driver, and
+ * `pnpm evidence:fold` still resolves the file correctly afterwards. The
+ * alternative - resolving on a signal we cannot verify - is the silent
+ * wrong-side resolution this whole check exists to prevent.
+ */
+const mergingForTheDriver = () =>
+	existsSync(join(ROOT, ".git", "MERGE_HEAD")) ||
+	git(["rev-parse", "-q", "--verify", "MERGE_HEAD"]) !== null ||
+	Object.keys(process.env).some((name) => name.startsWith("GITHEAD_"));
+
 const driver = ([basePath, oursPath, theirsPath]) => {
+	const operation = operationInProgress();
+	if (operation !== null || !mergingForTheDriver()) {
+		const named =
+			operation ??
+			"an operation that is not a merge (a cherry-pick, revert or stash-pop - git does not record which until this step finishes)";
+		console.error(
+			`evidence-fold: REFUSING to resolve docs/evidence/manifest.json during ${named}: outside a merge git hands a merge driver the UPSTREAM side as %A, so resolving here would take the wrong side without a word. Leaving the conflict, with git's own markers, exactly as it would have before this driver was installed. Finish it (resolving this file by hand if git stops), then re-derive with \`pnpm evidence:fold\`.`,
+		);
+		/*
+		 * AND LEAVE THE MARKERS GIT WOULD HAVE LEFT. Exiting non-zero is what makes
+		 * git record the conflict (all three index stages, and both `git commit`
+		 * and `rebase --continue` refuse), but git leaves the WORKING FILE holding
+		 * %A - one side's copy, which looks like a resolution to the next reader.
+		 * Git's own text merge would have written markers there, so this writes
+		 * them too; with the driver installed or not, the author opens the same
+		 * conflicted file. Writing to %A before a non-zero exit is supported: git
+		 * keeps the unmerged index either way.
+		 */
+		for (const path of [oursPath, theirsPath]) {
+			if (!existsSync(path))
+				throw new Error(
+					`git handed the driver a path that does not exist (${path}), so the conflict could not be marked`,
+				);
+		}
+		const withNewline = (text) => (text.endsWith("\n") ? text : `${text}\n`);		writeFileSync(
+			oursPath,
+			`<<<<<<< ours (the ${operation} upstream side)\n${withNewline(
+				readFileSync(oursPath, "utf8"),
+			)}=======\n${withNewline(
+				readFileSync(theirsPath, "utf8"),
+			)}>>>>>>> theirs (the commit being replayed)\n`,
+		);
+		return 1;
+	}
 	const readSide = (path, label) => {
 		if (!existsSync(path)) throw new Error(`${label} (${path}) does not exist`);
 		const text = readFileSync(path, "utf8").trim();
@@ -994,7 +1230,9 @@ const USAGE = [
 	"               merged tree, run the guards over the result and stage it.",
 	"  --dry-run    report the fields that would change; write and stage nothing.",
 	"  --no-amend   write and stage the re-derived values, but never amend the",
-	"               merge tip - print the commit command instead.",
+	"               merge tip - print the commit command instead. The amend is",
+	"               also refused when the tip is already on a remote-tracking",
+	"               ref, since that would rewrite published history.",
 	"  --install    point this clone's merge.evidence-fold.driver at this script,",
 	"               so `git merge` does not stop on a manifest conflict.",
 	"  --tolerate-failure",
@@ -1002,8 +1240,9 @@ const USAGE = [
 	"               wire the driver. This is how `prepare` invokes it: an install",
 	"               must never be broken by a helper, and `--check` is the",
 	"               spelling that DOES fail.",
-	"  --check      read-only: report whether that driver is installed, and exit",
-	"               non-zero with what to run when it is not.",
+	"  --check      read-only: report whether that merge driver is installed,",
+	"               and exit non-zero with what to run when it is not. It is the",
+	"               driver wiring only - the push hook is a different wiring.",
 	"  --driver     the merge driver git invokes; not for use by hand.",
 	"",
 	"After a fold the file is staged and the stamps describe the MERGED tree; the",
@@ -1086,6 +1325,20 @@ export const main = async (argv) => {
 	);
 	if (unknown.length > 0)
 		throw new Error(`unknown argument(s) ${unknown.join(", ")}\n\n${USAGE}`);
+	/*
+	 * The non-merge branch is reached through the SAME question the driver asks,
+	 * and for the same reason: during a conflicted rebase `HEAD` is the commit
+	 * being rebased ONTO, so resolving from `HEAD` would take that side by
+	 * default and stage a manifest that looks resolved while carrying another
+	 * side's records. Both entry points refuse rather than resolve the wrong
+	 * side; the author finishes the operation and re-derives afterwards. A clean
+	 * checkout has no marker and falls through to the ordinary re-stamp.
+	 */
+	const operation = operationInProgress();
+	if (operation !== null)
+		throw new Error(
+			`${operation} is in progress, and this tool resolves a MERGE only: while git is replaying a commit the sides it hands out are not "this branch" and "main" the way a merge's are, so a resolution now would take the wrong side without a word. Finish the ${operation} (resolving docs/evidence/manifest.json by hand if git stops on it), then run \`pnpm evidence:fold\` once it is done to re-derive the stamps over the result.`,
+		);
 	if (
 		existsSync(join(ROOT, ".git", "MERGE_HEAD")) ||
 		git(["rev-parse", "-q", "--verify", "MERGE_HEAD"]) !== null

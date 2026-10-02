@@ -109,7 +109,9 @@ ground where it does not.
   merged tree, runs the guards and stages the result - one commit per fold).
   `pnpm evidence:fold:install` wires the clone's merge driver once, so `git merge
   origin/main` does not stop on a manifest conflict at all; `pnpm evidence:fold:check`
-  is the read-only form. See the evidence section below.
+  is the read-only form (the merge-driver wiring, not the push hook). The driver
+  resolves a MERGE and nothing else - a rebase, cherry-pick or stash-pop still stops
+  on the manifest, by design (see the evidence section below).
 
 `pnpm check-evidence` admits **one sweep per machine**, across worktrees and
 isolated `HOME`/`TMPDIR` runs. It requires Python 3 with POSIX `flock` (macOS/Linux)
@@ -145,13 +147,30 @@ pnpm evidence:fold           # resolve + re-derive + stage, one commit
 
 `scripts/evidence-fold.mjs` resolves `docs/evidence/manifest.json` a FIELD at a time
 from the three sides git already holds (pass-describing fields are this branch's,
-listings are the union, the derived fields are re-derived from the merged tree), runs
-the guards this section names over the result and refuses to write a manifest that
-fails them, so the fold is one commit that carries correct values. `--install` wires
-its merge driver into the clone's local config (and `prepare` does it on install);
-`--check` is the read-only form and exits non-zero when pushes and folds are not
-wired. It does NOT weaken anything: the stamps stay stored in the manifest and are
-still compared against `HEAD` exactly as below.
+listings are the union, the derived fields are re-derived from the merged tree -
+that includes `partialCapture.refreshedFrames`, re-derived whenever the merged
+file carries a `partialCapture` at all and counted over the frames OUTSIDE every
+declared `supplementary` set, which is the denominator its own guard asks it
+about), runs the guards over the result and refuses to write a manifest that
+fails them: `stampFailures` (the tree half, which already folds the
+`partialCapture` and `countsMean` checks in) and `citationFailures`, plus
+`citationAncestryFailures` wherever the clone is deep enough to answer it - a
+shallow clone cannot, and the run SAYS so rather than reporting a failure it
+cannot know. A refusal leaves nothing half-resolved: the merge's conflict on the
+manifest is restored with `git checkout -m`, so `git status` shows the same
+unmerged path the run started with, and the refusal names the way forward.
+`--install` wires its merge driver into the clone's local config (and `prepare`
+does it on install); `--check` is the read-only form for THAT wiring - the merge
+driver, not the push hook - and exits non-zero with what to run when it is
+missing. The driver resolves a MERGE and nothing else: outside a merge git hands
+a driver the UPSTREAM side as `%A`, so under a rebase, `pull --rebase`,
+cherry-pick, revert, `am` or stash-pop it exits non-zero naming the operation and
+git stops on the conflict exactly as it did before the driver existed. Run the
+tool BEFORE pushing: it amends the merge tip, and it refuses to amend a tip that
+is already reachable from a remote-tracking ref (printing the `git commit`
+command instead, so the values ride a commit on top). It does NOT weaken
+anything: the stamps stay stored in the manifest and are still compared against
+`HEAD` exactly as below.
 
 `scripts/evidence-manifest.test.mjs` checks the stamp and
 needs no lease: it runs inside `pnpm test:desktop`, fails in well under a second, and
@@ -167,7 +186,10 @@ diff looks right, just not this one's (fold 11 shipped exactly that to `main`; f
 second parent's trees until a follow-up re-derived them). When the change also
 touches `scripts/`, that stamp cannot include the edit until the edit is committed,
 so the order is commit, derive, write the values in, `--amend` - the amendment moves
-`docs/` only, and the value written stays true.
+`docs/` only, and the value written stays true. **Run it BEFORE pushing**: the amend
+rewrites the tip, and the tool refuses to amend a tip that is already reachable from
+a remote-tracking ref (it prints the `git commit` command instead, so the values
+land on top rather than rewriting published history).
 
 **A note must not quote `srcTree`/`scriptsTree`.** A note that names the pair binds
 itself to a hash that every content commit moves, so every re-stamp has to rewrite
