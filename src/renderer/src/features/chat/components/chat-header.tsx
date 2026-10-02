@@ -5,7 +5,12 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 	Skeleton,
 	Tooltip,
@@ -24,6 +29,7 @@ import {
 	Info,
 	MoreHorizontal,
 	Pencil,
+	Rows3,
 	SquareTerminal,
 	Trash2,
 	X,
@@ -32,6 +38,10 @@ import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
 import { useSessionCommand } from "../pickers/use-picker-backend";
+import {
+	TRANSCRIPT_DISPLAY_MODE_OPTIONS,
+	parseTranscriptDisplayMode,
+} from "../transcript-display-mode";
 import {
 	ChatHeaderIdentity,
 	type HeaderIdentityData,
@@ -304,6 +314,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const badgeText = countLabel(browserAttentionCount, 9);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	/*
+	 * The transcript display mode (issue #756), read here for the OVERFLOW MENU so
+	 * the choice is reachable from the conversation the reader is looking at rather
+	 * than only from the Settings page. Read raw and parsed on the way in, the rule
+	 * every reader of a persisted union follows (see `parseTranscriptDisplayMode`).
+	 */
+	const transcriptDisplayMode = useUiPreferencesStore(
+		(s) => s.transcriptDisplayMode,
+	);
+	const setTranscriptDisplayMode = useUiPreferencesStore(
+		(s) => s.setTranscriptDisplayMode,
+	);
 	/*
 	 * The run panel's setter, read here for the OVERFLOW MENU rather than for the
 	 * cluster's own trigger (`RunDetailsTrigger` owns that button and its
@@ -1246,6 +1268,43 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="min-w-45">
+							{/*
+							 * THE TRANSCRIPT DISPLAY MODE (issue #756). The reader asked for the choice
+							 * to be surfaced where they read the conversation rather than only in
+							 * Settings, and this menu is the session's options surface (see the note
+							 * below) - so the mode lives here, first, because it changes how
+							 * everything under this row is drawn.
+							 *
+							 * A RADIO SUBMENU rather than one toggling item: the trigger is a stable
+							 * name, and the radio dot states the ACTIVE mode, where an item whose label
+							 * flipped with the state would make a screen reader ask what pressing it
+							 * does. It writes the SAME store field the Settings row writes, so the two
+							 * paths cannot disagree about the mode.
+							 */}
+							<DropdownMenuSub>
+								<DropdownMenuSubTrigger>
+									<Rows3 aria-hidden="true" />
+									<span>Transcript display</span>
+								</DropdownMenuSubTrigger>
+								<DropdownMenuSubContent>
+									<DropdownMenuRadioGroup
+										value={parseTranscriptDisplayMode(transcriptDisplayMode)}
+										onValueChange={(next) =>
+											setTranscriptDisplayMode(parseTranscriptDisplayMode(next))
+										}
+									>
+										{TRANSCRIPT_DISPLAY_MODE_OPTIONS.map((option) => (
+											<DropdownMenuRadioItem
+												key={option.value}
+												value={option.value}
+											>
+												{option.label}
+											</DropdownMenuRadioItem>
+										))}
+									</DropdownMenuRadioGroup>
+								</DropdownMenuSubContent>
+							</DropdownMenuSub>
+							<DropdownMenuSeparator />
 							{archiveEnabled && (
 								<DropdownMenuItem
 									/*
