@@ -505,6 +505,66 @@ export type TranscriptRecord =
 			text: string;
 	  }
 	| {
+			/**
+			 * A queued ask's RESPONSE receipt (`ask_response`, design §2.3/§4).
+			 *
+			 * Its own kind rather than a `custom` row for the reason `peer` gives: a
+			 * `custom` row paints `details.text`, and this row's `text` is the
+			 * MODEL-FACING report (`asks/render.response_text` — the question/answer
+			 * listing the model is handed). A person reading back a conversation needs
+			 * the questions and what they answered, not the envelope written for a
+			 * model, so the structured half is what this record keeps and the row
+			 * paints.
+			 *
+			 * ONE KIND FOR ALL THREE STATUSES, because the backend writes them as one
+			 * custom type with one id (`asks/queue._response_message`): a decline is a
+			 * response-shaped fact. What differs is the sentence and the ink, and that
+			 * split happens at paint time (`askStatusText`) rather than in the fold.
+			 */
+			kind: "ask_response";
+			id: string;
+			ts: number;
+			askId: string;
+			/** `answered` | `late` | `declined`. Read as a string, for the usual skew reason. */
+			status: string;
+			/**
+			 * The ask's questions, as the row carried them.
+			 *
+			 * Carried rather than looked up: the ask itself may be long gone from the
+			 * live queue (that is the point of the durable log), so a row that read the
+			 * queue would paint an empty receipt for exactly the answers a user most
+			 * wants to find again.
+			 */
+			questions: { id: string; question: string; secret?: boolean }[];
+			/** The answers, keyed by question id. A secret answer is `[<key>]`. */
+			answers: Record<string, string[]>;
+			/**
+			 * The session no longer holds a credential this row announced
+			 * (`secret_lost`, design §2.4). Stated ON THE ROW as well as in the text,
+			 * because a card must not say "in hand" for a key that is gone — and the
+			 * card cannot read the model's sentence to find out.
+			 */
+			secretLost: boolean;
+	  }
+	| {
+			/**
+			 * A queued ask's TIMEOUT notice (`ask_timeout`, design §2.5/§4).
+			 *
+			 * It says the agent MOVED ON and that the ask is still answerable, because
+			 * both halves are true and each is useless without the other: "timed out"
+			 * alone reads as finished, and "you can still answer" alone hides that the
+			 * agent stopped waiting. The row is the user's one record of that moment,
+			 * which is why it is a receipt of its own rather than a notice line.
+			 */
+			kind: "ask_timeout";
+			id: string;
+			ts: number;
+			askId: string;
+			/** The wait that actually happened, in seconds, as the queue measured it. */
+			waitedS: number;
+			urgent: boolean;
+	  }
+	| {
 			kind: "compaction";
 			id: string;
 			ts: number;
@@ -1450,6 +1510,16 @@ function collapseRecords(state: TranscriptState): TranscriptState {
  */
 const PEER_MESSAGE_CUSTOM_TYPE = "peer_message";
 /**
+ * The two queued-ask receipt types, matched by the wire names the harness
+ * writes (`harness/message_types.py`).
+ *
+ * Named here rather than inlined so the two rows that consume them and the
+ * branch that mints them cannot drift: a typo in one string would drop the row
+ * silently, which is the failure mode this constant exists to remove.
+ */
+const ASK_RESPONSE_CUSTOM_TYPE = "ask_response";
+const ASK_TIMEOUT_CUSTOM_TYPE = "ask_timeout";
+/**
  * The core's neutral closure copy (v2, 2026-09-29). A `closed` completion is a
  * disposal that caught a run which spent no provider round-trip: a receipt,
  * not a verdict. Byte-identical to `harness/rows.py::CLOSED_NOTICE_TEXT` in
@@ -2188,6 +2258,64 @@ function durableRecord(
 			if (!text.trim()) return null;
 			return { kind: "wake", id: entry.id, ts, text };
 		}
+		if (customType === ASK_RESPONSE_CUSTOM_TYPE) {
+			/*
+			 * The structured half is what a person needs; `details.text` is the
+			 * model-facing report (`response_text`) and is deliberately NOT painted.
+			 *
+			 * `answers` is rebuilt defensively rather than cast: it arrives from the
+			 * transcript store, and a row that trusted its shape would throw on the
+			 * whole pane for one malformed line (the reducer's standing rule for
+			 * every untyped wire field).
+			 */
+			const rawAnswers = details.answers;
+			const answers: Record<string, string[]> = {};
+			if (rawAnswers && typeof rawAnswers === "object")
+				for (const [key, values] of Object.entries(
+					rawAnswers as Record<string, unknown>,
+				))
+					answers[String(key)] = Array.isArray(values)
+						? values.map((value) => String(value))
+						: [];
+			const rawQuestions = details.questions;
+			const questions = Array.isArray(rawQuestions)
+				? rawQuestions.flatMap((entry) => {
+						if (!entry || typeof entry !== "object") return [];
+						const question = entry as Record<string, unknown>;
+						return [
+							{
+								id: String(question.id ?? ""),
+								question: String(question.question ?? ""),
+								secret: question.secret === true,
+							},
+						];
+					})
+				: [];
+			return {
+				kind: "ask_response",
+				id: entry.id,
+				ts,
+				askId: String(details.ask_id ?? ""),
+				status: String(details.status ?? "answered"),
+				questions,
+				answers,
+				secretLost: details.secret_lost === true,
+			};
+		}
+		if (customType === ASK_TIMEOUT_CUSTOM_TYPE) {
+			const waited = Number(details.waited_s);
+			return {
+				kind: "ask_timeout",
+				id: entry.id,
+				ts,
+				askId: String(details.ask_id ?? ""),
+				// A non-finite wait is reported as zero, which `askWaitedText` prints
+				// as "a while" rather than rounding up to an hour the row cannot
+				// substantiate - the whole reason that helper refuses to guess.
+				waitedS: Number.isFinite(waited) && waited > 0 ? waited : 0,
+				urgent: details.urgent === true,
+			};
+		}
 		const text = String(details.text ?? details.detail ?? "");
 		// A row with nothing to say paints nothing. `trim()` rather than a falsy
 		// test, because a whitespace-only body would otherwise reach `headlineOf`
@@ -2447,8 +2575,11 @@ const NON_ENTRY_ID = /^(?:tool|compaction|local):/;
  * rewrite, and the page below it is exactly the one they have not seen.
  *
  * WHICH RECORD IDS ARE JOURNAL ENTRY IDS - the constraint that makes this a
- * function and not a `records[0]`. `user`, `assistant`, `custom`, `peer`, `wake`
- * and `compaction` records are keyed by their entry id. A `tool` record is
+ * function and not a `records[0]`. `user`, `assistant`, `custom`, `peer`, `wake`,
+ * `compaction` and the two ask RECEIPTS (`ask_response`/`ask_timeout`) records are
+ * keyed by their entry id - the receipts were missing from this list, so an
+ * anchoring pass that landed on one skipped past it to a younger row (agent review
+ * round 1, NIT-3). A `tool` record is
  * `tool:<toolCallId>`, a completion-marker `notice` is keyed by
  * `details.anchor`, a live compaction line is `compaction:<generation>:...`, and
  * the app's own echoes are `local:...`: none of those is an entry id, and asking
@@ -2465,6 +2596,10 @@ export function reanchorCandidate(
 			case "peer":
 			case "wake":
 			case "compaction":
+			// The ask receipts are JOURNAL entries like the six above: both are keyed
+			// by their own entry id, so both may anchor a page.
+			case "ask_response":
+			case "ask_timeout":
 				break;
 			default:
 				continue;
