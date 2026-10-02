@@ -194,12 +194,13 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 				 * caption (§ 4: `text-meta` is "captions, timestamps, counts"; § 2:
 				 * `ink-dim` is the caption ink, 4.5:1 on every ground). `select-none`
 				 * because a stamp is not part of the turn's words: a selection drag
-				 * that sweeps it must not put a time into a quote. `cursor-help`
-				 * matches the hover row's stamp, so one gesture in this app means one
-				 * thing.
+				 * that sweeps it must not put a time into a quote. No cursor class: the
+				 * stamp is tooltip-only (nothing accepts a click), and the help cursor
+				 * this slot used to carry promised a gesture the app never means by
+				 * its tooltips.
 				 */
 				className={cn(
-					"shrink-0 cursor-help select-none whitespace-nowrap text-ink-dim text-meta",
+					"shrink-0 select-none whitespace-nowrap text-ink-dim text-meta",
 					className,
 				)}
 			>
