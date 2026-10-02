@@ -98,6 +98,7 @@ import {
 	withRememberedDirectory,
 } from "./picker-directory";
 import { createQuitState } from "./quit-state";
+import { createRelaunchPending } from "./relaunch-pending";
 import { createUserShellPath } from "./shell-path";
 import {
 	describeTelemetryLaunch,
@@ -254,6 +255,14 @@ function armHeadlessExitDeadline(why: string): void {
 		const line = `${why}; the quit did not finish within ${LAUNCHER_EXIT_DEADLINE_MS} ms, exiting`;
 		logger.error(`[window-mode] ${line}`, LogFileType.BACKEND);
 		console.log(`[window-mode] ${line}`);
+		/*
+		 * REVIEW F2: this forced exit is a terminal too — the bounded way a quit
+		 * that cannot finish ends — so a reopen refused during that teardown is
+		 * completed here exactly as at the `will-quit` sites (the one helper below:
+		 * idempotent, an empty call is a no-op). Without it, a record whose refusal
+		 * line already said `reopen=deferred` could die on this exit.
+		 */
+		scheduleReopenAtQuitTerminal();
 		app.exit(0);
 	}, LAUNCHER_EXIT_DEADLINE_MS);
 	// Never a reason for the process to stay alive by itself.
@@ -1102,10 +1111,26 @@ const backendService = new BackendServiceManager({ userShellPath });
  * the shipped installer.
  */
 const quitState = createQuitState();
+/*
+ * #755: THE RECORD OF A REOPEN REFUSED DURING THIS QUIT. The two refusals that
+ * mean "the user asked for the app" (a second launch, a Dock click) record what
+ * was asked for here; the quit's terminal (`will-quit`, which already names
+ * itself "the completion") spends the record by scheduling ONE successor
+ * instance, and the successor boots after this process exits under the
+ * recorded plan. `./relaunch-pending` owns the shape, the exactly-once rule
+ * and why the record is in-memory only.
+ */
+const relaunchPending = createRelaunchPending();
 const backendInstaller = new BackendInstaller({
 	// The installer's one route back from a cancelled quit: the declined dialog
-	// answer (`./quit-state` owns why there is exactly one such site).
-	onQuitCancelled: () => quitState.cancel(),
+	// answer (`./quit-state` owns why there is exactly one such site). The
+	// refused reopen's record is let go BESIDE that release: a cancelled quit
+	// must not leak a spawn into some later, unrelated exit
+	// (`./relaunch-pending` owns why scheduling happens only at the terminal).
+	onQuitCancelled: () => {
+		quitState.cancel();
+		relaunchPending.clear();
+	},
 });
 
 /**
@@ -1846,6 +1871,21 @@ if (!gotTheLock) {
 					 * `window-raise.ts` owns the refusal and its line).
 					 */
 					quitting: quitState.isQuitting(),
+					/*
+					 * #755: A REFUSED SECOND LAUNCH LEAVES A RECORD. The request that would have been
+					 * refused whole is one the user made, so beside the refusal it is recorded and
+					 * the quit's terminal completes it with one successor instance
+					 * (`./relaunch-pending` owns the shape and the exactly-once rule). `commandLine`
+					 * is THIS request's own, so what the successor replays cannot drift from what
+					 * was refused, and the recorder's answer is what makes the refusal line say
+					 * `reopen=deferred` (`window-raise.ts` owns the token).
+					 */
+					onRefusedWhileQuitting: (request) =>
+						relaunchPending.record({
+							kind: "second-instance",
+							show: request.show,
+							argv: commandLine,
+						}),
 					openConversation: openConversationInWindow
 						? (session, request) =>
 								openConversationInWindow?.(
@@ -3813,9 +3853,26 @@ app
 				 * process is gone, launches a window normally.
 				 */
 				if (quitState.isQuitting()) {
+					/*
+					 * #755: the click is refused and RECORDED — it is the operator asking for
+					 * the app, so the quit's terminal completes it with one successor instance
+					 * (`./relaunch-pending`). No argv HERE: a Dock click names nothing to
+					 * replay, and what "a plain launch" then means is the shape's question —
+					 * `[]` (macOS starts the bundle) for a packaged build, this process's own
+					 * command line for a dev-shaped one, or the successor would be bare
+					 * Electron with no app path (review F1; `relaunch-pending.ts` owns the
+					 * composition). The recorder's answer is what makes the refusal line say
+					 * `reopen=deferred`.
+					 */
+					const deferredReopen = relaunchPending.record({
+						kind: "activate",
+						show: OPERATOR_SHOW,
+						argv: null,
+					});
 					reportSkippedWhileQuitting(
 						{ trigger: "activate", report: reportRaise },
 						OPERATOR_SHOW,
+						deferredReopen,
 					);
 					return;
 				}
@@ -3966,6 +4023,74 @@ const QUIT_CLEANUP_FAILSAFE_MS =
 	READINESS_POLL_INTERVAL_MS +
 	QUIT_FAILSAFE_MARGIN_MS;
 let backendQuitPending = false;
+/*
+ * REVIEW F3: the install stand-down is worth exactly ONE line — it reports a
+ * RECORDED reopen left for the update lane, so it may not print when no record
+ * existed, nor once per terminal call when one did.
+ */
+let relaunchStandDownLogged = false;
+/*
+ * #755: THE ONE WAY A RECORDED REOPEN IS COMPLETED. Called at every terminal
+ * the quit owns — the synchronous `will-quit` pass (for a refusal that landed
+ * before it: during the session-cookie hold or the window close), the
+ * owned-cleanup continuation and its catch, and the failsafe — because the
+ * refusal that needs completing is the one that arrived DURING the teardown,
+ * i.e. after the first of these already ran — AND at the exits OUTSIDE that
+ * pass that can still strand a record (review F2): the headless exit deadline
+ * and the `uncaughtException` crash exit. The helper is idempotent
+ * (`./relaunch-pending`), so the order and repetition of the sites cannot
+ * multiply the successor; each one is an exit the quit cannot be cancelled
+ * from, which is why the spawn cannot leak into a later, unrelated exit.
+ */
+const scheduleReopenAtQuitTerminal = (): void => {
+	/*
+	 * #755's INSTALL GUARD (memo §1.2, ratified): when the update lane already
+	 * owns this quit's return — `quitForInFlightInstall` ran for a live pending
+	 * install and arranged the relaunch watchdog — a successor must not race it:
+	 * a running instance is what Squirrel's last check aborts the install on. The
+	 * record is left unspent and dies with the process; the update lane's own
+	 * watchdog is what brings the app back. The line below prints only when a
+	 * record was actually waiting, and once (review F3): with nothing recorded
+	 * there is nothing to account for, and the terminal calls must not read as
+	 * one event per call.
+	 */
+	if (activeUpdateService?.inFlightInstallOwnsRelaunch() === true) {
+		if (relaunchPending.hasPending() && !relaunchStandDownLogged) {
+			relaunchStandDownLogged = true;
+			logger.info(
+				"[relaunch] not scheduling a successor: an in-flight update install owns this quit's relaunch",
+				LogFileType.BACKEND,
+			);
+		}
+		return;
+	}
+	relaunchPending.scheduleOnExit({
+		relaunch: (args) => {
+			try {
+				app.relaunch({ args: [...args] });
+				logger.info(
+					`[relaunch] successor scheduled to complete the deferred reopen: ${
+						args.length === 0 ? "(plain reopen)" : args.join(" ")
+					}`,
+					LogFileType.BACKEND,
+				);
+			} catch (error) {
+				/*
+				 * WRAP IT, LOG IT, CONTINUE (memo I1): the exit that follows is the quit the
+				 * user asked for whether or not the successor could be arranged, and a throw
+				 * escaping a terminal is the one way this feature could cancel a quit it has
+				 * no business touching.
+				 */
+				logger.error(
+					"[relaunch] scheduling the successor failed; the quit continues",
+					LogFileType.BACKEND,
+					error,
+				);
+			}
+		},
+	});
+};
+
 app.on("will-quit", (event) => {
 	/*
 	 * The viewer record and endpoint are this branch's, and they go BEFORE the
@@ -3984,6 +4109,13 @@ app.on("will-quit", (event) => {
 	 */
 	viewerEndpoint?.close();
 	viewerRecord?.stop();
+	/*
+	 * #755: a refusal recorded BEFORE this pass — during the session-cookie hold
+	 * or the window close — is completed here; the three sites below catch the
+	 * refusal that lands after it, mid-teardown, which is the common case (the
+	 * helper is idempotent, `./relaunch-pending` owns why).
+	 */
+	scheduleReopenAtQuitTerminal();
 	if (backendService.isOwnedCleanupComplete()) return;
 	event.preventDefault();
 	if (backendQuitPending) return;
@@ -3993,6 +4125,8 @@ app.on("will-quit", (event) => {
 			`Owned backend cleanup did not finish within ${QUIT_CLEANUP_FAILSAFE_MS} ms; exiting with failure`,
 			LogFileType.BACKEND,
 		);
+		/* Even the failed exit completes a recorded reopen — no silent drops (#755). */
+		scheduleReopenAtQuitTerminal();
 		app.exit(1);
 	}, QUIT_CLEANUP_FAILSAFE_MS);
 	// It must not be a reason for the process to stay alive by itself: the cleanup
@@ -4002,6 +4136,13 @@ app.on("will-quit", (event) => {
 		.stop(false)
 		.then(() => {
 			clearTimeout(failsafe);
+			/*
+			 * #755: THE COMMON CASE — the refusal landed mid-teardown, after the
+			 * synchronous pass above already looked (`./relaunch-pending` owns why an
+			 * empty call must not latch). Idempotent: a refusal caught earlier is
+			 * scheduled once.
+			 */
+			scheduleReopenAtQuitTerminal();
 			/*
 			 * `app.exit(0)`, NOT `app.quit()`, AND THAT IS THE FIX.
 			 *
@@ -4043,6 +4184,8 @@ app.on("will-quit", (event) => {
 				LogFileType.BACKEND,
 				error,
 			);
+			/* No silent drops on the failure path either (#755). */
+			scheduleReopenAtQuitTerminal();
 			app.exit(1);
 		});
 });
@@ -4251,5 +4394,16 @@ process.on("uncaughtException", (error) => {
 				stopError,
 			);
 		})
-		.finally(() => process.exit(1));
+		.finally(() => {
+			/*
+			 * REVIEW F2: the crash exit is the other exit outside the `will-quit` pass,
+			 * and a record CAN exist when it fires — a refusal that landed during the
+			 * teardown, then a crash — so the record is spent here like at every other
+			 * terminal (idempotent; an empty call is a no-op) before the process goes.
+			 * The exit itself is unchanged, and the relauncher still waits for it: the
+			 * spike measured `app.relaunch` + `process.exit` → successor.
+			 */
+			scheduleReopenAtQuitTerminal();
+			process.exit(1);
+		});
 });
