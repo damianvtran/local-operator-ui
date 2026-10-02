@@ -170,7 +170,7 @@ const loaders = {
 const bundle = await build({
 	stdin: {
 		contents:
-			'export { speechBindingForRow, profileSpeechAgentId, resolveSpeechAgentId, fetchSpeechAgentId, SPEECH_AGENT_LOOKUP_PAGE } from "./src/renderer/src/shared/lib/speech-target";\n' +
+			'export { speechBindingForRow, resolveSpeechProfile, resolveSpeechAgentId, fetchSpeechAgentId, SPEECH_AGENT_LOOKUP_PAGE } from "./src/renderer/src/shared/lib/speech-target";\n' +
 			'export { fetchSpeechFor } from "./src/renderer/src/shared/store/speech-store";\n' +
 			'export { SPEECH_UNKNOWN_AGENT_COPY } from "./src/renderer/src/shared/lib/speech-errors";',
 		resolveDir: process.cwd(),
@@ -285,17 +285,27 @@ test("the binding is the daemon's ATTACHMENT KEY, and an empty one means none", 
 });
 
 test("a PROFILE name resolves through the profile row's own agent_id", () => {
-	assert.equal(
-		mod.profileSpeechAgentId("aida", [RIG_PROFILE]),
-		RIG_PROFILE.agent_id,
+	assert.deepEqual(
+		mod.resolveSpeechProfile("aida", [RIG_PROFILE]),
+		{ state: "agent", agentId: RIG_PROFILE.agent_id },
 		"the daemon publishes the registry id beside the name it writes into the binding",
 	);
-	assert.equal(
-		mod.profileSpeechAgentId("aida", [{ name: "aida", agent_id: null }]),
-		null,
+	/*
+	 * THREE ANSWERS, and the middle one is the pin for round 2's MINOR-1: a row
+	 * whose `agent_id` is null is the daemon saying "this role has no agent", which
+	 * is not the same fact as "no such profile" - only the third answer opens the
+	 * registry rungs.
+	 */
+	assert.deepEqual(
+		mod.resolveSpeechProfile("aida", [{ name: "aida", agent_id: null }]),
+		{ state: "role-without-agent" },
 		"a builtin that was never installed has no agent for the route to resolve",
 	);
-	assert.equal(mod.profileSpeechAgentId("nobody", [RIG_PROFILE]), null);
+	assert.deepEqual(
+		mod.resolveSpeechProfile("nobody", [RIG_PROFILE]),
+		{ state: "unknown" },
+		"a name the daemon does not hold is the state that falls through",
+	);
 });
 
 test("a NAMESAKE caught by the substring query is not this conversation's agent", () => {
@@ -376,16 +386,28 @@ test("a binding that names an AGENT resolves through the registry's name query",
 	);
 });
 
-test("a builtin with no agent is the agent-less route, not a refusal", async () => {
+test("a role with no agent takes the agent-less route, and never a NAMESAKE agent", async () => {
+	/*
+	 * THE PIN FOR ROUND 2's MINOR-1 (agent review). The daemon holds the profile
+	 * and says it has no agent, while the agents registry holds an INSTALLED AGENT
+	 * by the same name. The profile map is the daemon's own answer for a role
+	 * binding, so the press must take the agent-less route - not speak in a
+	 * different agent's voice because it shares the role's name.
+	 */
 	reset({
 		profiles: [{ name: "aida", agent_id: null }],
-		agents: [],
+		agents: [{ id: "9f2b1c7d-3e4f-4a5b-8c9d-0e1f2a3b4c5d", name: "aida" }],
 	});
 	await mod.fetchSpeechFor("aida", "Hello")();
 	assert.deepEqual(
 		globalThis.__speechCalls,
 		[{ route: "agentless", body: { input: "Hello" } }],
-		"a profile with no agent on disk still speaks - the reader asked to hear the conversation",
+		"the daemon's own map answers for its own role name; the registry is not consulted",
+	);
+	assert.deepEqual(
+		globalThis.__catalogueCalls,
+		[],
+		"and no registry lookup is spent on the namesake",
 	);
 });
 

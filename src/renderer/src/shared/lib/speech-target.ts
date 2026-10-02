@@ -125,14 +125,33 @@ export type SpeechProfileRow = {
 	agent_id?: string | null;
 };
 
-/** The registry id a profile row names, or `null` when it has no agent. */
-export function profileSpeechAgentId(
+/**
+ * What the daemon's own profile map says about a binding.
+ *
+ * THREE ANSWERS, NOT TWO, and the distinction is load-bearing (agent review
+ * round 2, MINOR-1). A profile row whose `agent_id` is null is the daemon saying
+ * "this role is not backed by an agent on disk" - a different fact from "no such
+ * profile", and the one that must NOT fall through to a namesake in the agents
+ * registry: a role called `coder` and an installed agent called `coder` are two
+ * different things, and speaking in the wrong one's voice is worse than not
+ * resolving. `unknown` is the only state that opens the other rungs.
+ */
+export type SpeechProfileResolution =
+	| { state: "agent"; agentId: string }
+	| { state: "role-without-agent" }
+	| { state: "unknown" };
+
+/** Resolve `binding` against the daemon's profile rows. */
+export function resolveSpeechProfile(
 	binding: string | null,
 	profiles: readonly SpeechProfileRow[] | null | undefined,
-): string | null {
-	if (!binding) return null;
+): SpeechProfileResolution {
+	if (!binding) return { state: "unknown" };
 	const row = (profiles ?? []).find((profile) => profile.name === binding);
-	return row?.agent_id ?? null;
+	if (!row) return { state: "unknown" };
+	return row.agent_id
+		? { state: "agent", agentId: row.agent_id }
+		: { state: "role-without-agent" };
 }
 
 /** As much of a `/v1/agents` row as the lookup reads. */
@@ -231,14 +250,20 @@ export async function fetchSpeechAgentId(
 		 * The list route the sidebar, the agents page and the project picker all
 		 * read - one query, the app's own, rather than a second spelling of it.
 		 * `desktopResult` throws on a non-2xx, which `quietly` turns into this
-		 * rung's `null`.
+		 * rung's "no answer", leaving the registry rungs below to try.
 		 */
 		const { profiles } = await desktopResult<{ profiles: SpeechProfileRow[] }>({
 			op: "profiles.list",
 		});
-		return profileSpeechAgentId(binding, profiles);
+		return resolveSpeechProfile(binding, profiles);
 	});
-	if (profile) return profile;
+	if (profile?.state === "agent") return profile.agentId;
+	/*
+	 * The daemon holds this profile and says it has no agent: that is the whole
+	 * answer, and the press takes the agent-less route rather than looking for a
+	 * namesake among installed agents.
+	 */
+	if (profile?.state === "role-without-agent") return null;
 
 	const catalogue = await quietly(async () => {
 		const answer = await client.agents.listAgents(
@@ -274,11 +299,14 @@ export async function fetchSpeechAgentId(
  * and takes the agent-less route: there is no binding to find, and the press
  * still works.
  *
- * THE CATALOGUE THE CLIENT HOLDS is the only source for a conversation's binding
- * (measured: `/v1/desktop/sessions` answers a page, not an id lookup, and a
- * session snapshot carries the transcript, not the row), so a conversation whose
- * row is not in the held page answers `null` here and speaks through the
- * agent-less route: a VOICE the press does not get, never a press it cannot make.
+ * THE CATALOGUE THE CLIENT HOLDS is the source a press can read (measured:
+ * `/v1/desktop/sessions` answers a page, not an id lookup, and a session snapshot
+ * carries the transcript, not the row). The one other place a binding arrives is
+ * the app's own `POST /v1/desktop/sessions` answer, whose `CreatedSession.binding`
+ * is folded into the row as the conversation is born - after that, the held page
+ * is all there is. So a conversation whose row is not in that page answers `null`
+ * here and speaks through the agent-less route: a VOICE the press does not get,
+ * never a press it cannot make.
  */
 export function useSpeechBindingFor(
 	conversationId: string | null | undefined,
