@@ -8331,26 +8331,28 @@ export const STORIES = [
 	 * icon row is hardest to find), the lowest canvas (`obsidian`, L* 12) and the
 	 * widest step (`radient`, which must NOT move). A `--themes=` narrowed run.
 	 *
-	 * THE NINE RESTING STATES ARE CAPTURED WITH `(hover: none)` EMULATED, and
-	 * that is `hoverNone` on each of them below. The row's reveal is
-	 * `opacity-0 … group-hover:opacity-100 group-focus-within:opacity-100
-	 * [@media(hover:none)]:opacity-100`, so in a hover-capable renderer the row is
-	 * ABSENT from every pointer-less frame - and a resting state exists to show the
-	 * row on that line, which is the whole of what these nine are for. The four
-	 * interaction states after them do NOT set the option: their subject is the
-	 * pointer or the keyboard, and both need a hover-capable renderer to mean
-	 * anything. Design round 2 on #1002 asked for exactly this - one declared arm
-	 * for the resting entries - after a refresh that inherited the host's own
-	 * media result lost the row from all nine; the set README records which states
-	 * ship under which arm, and the option's own comment says why the arm is
-	 * emulated rather than inherited.
+	 * THE NINE RESTING STATES ARE CAPTURED IN THE HOVER-LESS ARM - `touch: true`,
+	 * which is `Emulation.setTouchEmulationEnabled` in the loop (its comment has
+	 * the measurement that chose it) - and the four interaction states after them
+	 * are NOT. WHY THE ARM MATTERS HERE: the row's reveal is `opacity-0 …
+	 * group-hover:opacity-100 … [@media(hover:none)]:opacity-100`, so in a renderer
+	 * that can hover the row is absent from every pointer-less frame, and a resting
+	 * state exists to show the row on that line - which is the whole of what these
+	 * nine are for. The four interaction states keep a hover-capable renderer
+	 * because their subject is the pointer or the keyboard, and both need one to
+	 * mean anything (Tailwind's `hover:` variant is itself gated on `hover: hover`).
+	 * Design round 2 on #1002 asked for exactly this - the resting entries
+	 * re-captured under ONE DECLARED arm - after a refresh left the row out of all
+	 * nine; the set README says which states ship under which arm, and WHY the older
+	 * generation could not simply be reproduced (its frames predate the reveal
+	 * itself: it landed in `3d03a2f3e63`, after those frames were taken).
 	 */
 	[
 		"chat-canonical-message-actions--rest",
 		1024,
 		560,
 		/* The discoverability claim itself: the row ON SCREEN with no pointer. */
-		{ hoverNone: true },
+		{ touch: true },
 	],
 	[
 		"chat-canonical-message-actions--rest",
@@ -8401,16 +8403,16 @@ export const STORIES = [
 			dir: "copied",
 		},
 	],
-	["chat-canonical-message-actions--short-answer", 1024, 320, { hoverNone: true }],
-	["chat-canonical-message-actions--refused", 1024, 380, { hoverNone: true }],
-	["chat-canonical-message-actions--truncated", 1024, 400, { hoverNone: true }],
-	["chat-canonical-message-actions--streaming", 1024, 620, { hoverNone: true }],
-	["chat-canonical-message-actions--multi-answer", 1024, 640, { hoverNone: true }],
+	["chat-canonical-message-actions--short-answer", 1024, 320, { touch: true }],
+	["chat-canonical-message-actions--refused", 1024, 380, { touch: true }],
+	["chat-canonical-message-actions--truncated", 1024, 400, { touch: true }],
+	["chat-canonical-message-actions--streaming", 1024, 620, { touch: true }],
+	["chat-canonical-message-actions--multi-answer", 1024, 640, { touch: true }],
 	[
 		"chat-canonical-message-actions--bar-suppressed",
 		1024,
 		640,
-		{ hoverNone: true },
+		{ touch: true },
 	],
 	/*
 	 * The minimum-action state (design round 1, D1): one call, so the frame shows
@@ -8422,9 +8424,9 @@ export const STORIES = [
 		"chat-canonical-message-actions--one-call-turn",
 		1024,
 		560,
-		{ hoverNone: true },
+		{ touch: true },
 	],
-	["chat-canonical-message-actions--narrow", 420, 620, { hoverNone: true }],
+	["chat-canonical-message-actions--narrow", 420, 620, { touch: true }],
 
 	/*
 	 * THE ROW'S CONTEXT MENU (#694), the FINAL set - captured from the shipped
@@ -9644,30 +9646,45 @@ const main = async () => {
 			 * frame that faked the reduced style would be evidence about the fake.
 			 * Reset for every story, so one reduced-motion frame cannot leak its
 			 * media feature into the frames captured after it.
-			 *
-			 * `hover: none` is emulated for the same reason, and its absence is
-			 * what cost this repository a generation of frames (design round 2 on
-			 * #1002, D1): a media feature cannot be faked with a class, and a host
-			 * that happens to report `hover: hover` renders a hover-revealed row
-			 * invisible in every pointer-less frame. The previous capture of
-			 * `chat-canonical-message-actions` inherited whatever its host reported
-			 * - which is why the set showed the row at rest - so the arm is now
-			 * EMULATED AND DECLARED per entry (`hoverNone`) instead of being left to
-			 * the machine: the same run on a different host cannot silently move it
-			 * again.
 			 */
 			await cdp.send("Emulation.setEmulatedMedia", {
-				features: [
-					...(options?.reducedMotion
-						? [{ name: "prefers-reduced-motion", value: "reduce" }]
-						: []),
-					...(options?.hoverNone
-						? [
-								{ name: "hover", value: "none" },
-								{ name: "any-hover", value: "none" },
-							]
-						: []),
-				],
+				features: options?.reducedMotion
+					? [{ name: "prefers-reduced-motion", value: "reduce" }]
+					: [],
+			});
+			/*
+			 * THE HOVER-LESS ARM IS A TOUCH RENDERER, and this is the lever that
+			 * reaches it (design round 2 on #1002, D1).
+			 *
+			 * WHY AN ARM IS NEEDED AT ALL: `message-actions.ts` reveals the action
+			 * row with `opacity-0 … group-hover:opacity-100 …
+			 * [@media(hover:none)]:opacity-100`, so in a renderer that CAN hover the
+			 * row is absent from every pointer-less frame - and nine of
+			 * `chat-canonical-message-actions`'s states exist to show the row in its
+			 * context. The arm is the app's own: a reader whose primary input cannot
+			 * hover gets the row unconditionally, which is why the arrival animation
+			 * beside it is gated on `hover: hover` (`styles/index.css`).
+			 *
+			 * WHY TOUCH EMULATION RATHER THAN A MEDIA OVERRIDE, measured rather than
+			 * assumed (2026-10-02, Chrome 154.0.8037.93):
+			 * `Emulation.setEmulatedMedia` ACCEPTS `{name:"hover", value:"none"}`
+			 * without an error and ignores it - `matchMedia("(hover: none)")` stays
+			 * `false` - and every `--blink-settings=primaryHoverType=…` spelling tried
+			 * either left it false or made BOTH `hover` and `hover: hover` false.
+			 * `Emulation.setTouchEmulationEnabled({ enabled: true, maxTouchPoints: 1 })`
+			 * is the one that moves it: the same probe then reads
+			 * `true,false,true,1` for `(hover: none)`, `(hover: hover)`,
+			 * `(pointer: coarse)` and `navigator.maxTouchPoints`.
+			 *
+			 * It is sent for EVERY entry, on or off, for the reason the media call
+			 * above is: a leak would silently arm the next frame's arm. The
+			 * interaction states leave it OFF - their subject is a real pointer or a
+			 * real keyboard, and Tailwind's `hover:` variant is itself gated on
+			 * `hover: hover`, so a touch frame could not show the hover ground at all.
+			 */
+			await cdp.send("Emulation.setTouchEmulationEnabled", {
+				enabled: Boolean(options?.touch),
+				...(options?.touch ? { maxTouchPoints: 1 } : {}),
 			});
 			await cdp.send("Emulation.setDeviceMetricsOverride", {
 				width,
