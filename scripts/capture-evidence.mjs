@@ -5278,15 +5278,16 @@ export const STORIES = [
 			 */
 			keys: [{ key: "Enter", text: "\r", settleMs: 600 }],
 			/*
-			 * THE DEFECT'S OWN FRAME (design re-check, round 2). Measured on this head:
-			 * with a LIST query in force and NO section filter, the press still takes
-			 * `Filter agents` off the screen and drops the section box by 44px - the
-			 * field's own height - even though the fix's clause names a conjunction of
-			 * BOTH fields. The assertion states what the frame shows, so it fails the
-			 * moment the defect is closed and the frame is re-taken rather than
-			 * re-checked.
+			 * THE FIELD THAT SURVIVES THE PRESS (design re-check's prescription, round 3).
+			 * Measured on the pre-fix head: with a LIST query in force and NO section filter,
+			 * the press still took `Filter agents` off the screen and dropped the section box
+			 * by 44px - the field's own height - because the gate read the disclosure alone.
+			 * The gate now carries the section BODY's own term (`isOpen("agents", true) ||
+			 * query !== ""`), so a query that keeps the body drawn keeps its control; this
+			 * entry asserts that, so the frame cannot silently regress into the defect's
+			 * picture a second time.
 			 */
-			expectGone: 'input[aria-label="Filter agents"]',
+			expectPresent: 'input[aria-label="Filter agents"]',
 		},
 	],
 	/*

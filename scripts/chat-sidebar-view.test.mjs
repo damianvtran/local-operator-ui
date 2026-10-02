@@ -95,11 +95,14 @@ const FOCUS_TARGET_ROW =
 	/revealed\?\.querySelector<HTMLElement>\("\[data-chat-row\]"\)/;
 const FOCUS_HEADING_FALLBACK = /heading \?\?/;
 const FOCUS_APPLIES = /target\?\.focus\(\)/;
-/** The query-forced field's gate, both halves (U2). */
-const ROSTER_FIELD_QUERY_TERM =
-	/isOpen\("agents", true\) \|\| \(query !== "" && rosterFilter\.trim\(\) !== ""\)/;
-const ROSTER_FIELD_CAP_TERM =
-	/ownAgents\.length > SIDEBAR_SECTION_ROWS \|\| rosterFilter\.trim\(\) !== ""/;
+/**
+ * The field's gate is the MODULE's own question, asked once (U2). A WIRING pin only: the
+ * rule's BEHAVIOUR is driven below rather than matched here, because round 3 showed a
+ * source-string pin cannot see a gate that keeps its text but not its meaning - the
+ * round-2 form passed this pattern while being inert in the state U2 measured.
+ */
+const ROSTER_FIELD_WIRED =
+	/const rosterFilterShown = rosterFieldShown\(\s*isOpen\("agents", true\),\s*query,\s*rosterFilter,\s*ownAgents\.length,\s*\)/;
 /** The copy contract on the hint itself (U1/D1). */
 const HINT_NAMES_GESTURE = /collapse/i;
 const HINT_NAMES_COST = /reopen/i;
@@ -166,6 +169,7 @@ const {
 	entityRows,
 	entityMore,
 	raiseSectionCap,
+	rosterFieldShown,
 	releaseSectionCap,
 	SIDEBAR_SECTION_ROWS,
 	toggleSectionDisclosure,
@@ -821,19 +825,124 @@ test("the foot's focus goes to the row the press revealed, never the body", () =
 	);
 });
 
-test("a query that keeps the section drawn keeps its filter field", () => {
+/*
+ * U2, DRIVEN RATHER THAN READ (agent review round 3's R3-1, QA round 3's Q3-2). The
+ * round-2 pin was a source-string match on the gate, and it stayed green for a gate
+ * that kept its text while being inert in the state the finding measured. This test
+ * drives the two halves that make the state - the field's own predicate
+ * (`rosterFieldShown`) and the heading press (`toggleSectionDisclosure`) - and asks the
+ * predicate again of the state the press left behind. It is RED on the pre-fix gate and
+ * on the round-2 narrower form, GREEN on the body's own gate (both measured).
+ */
+test("a heading press under a list query keeps the roster's filter field drawn", () => {
+	/*
+	 * THE PRESS, SPELLED AS THE COMPONENT SPELLS IT (chat-sidebar.tsx:1751): the
+	 * disclosure and the cap move together, `forcedOpen` is `Boolean(query)`, and
+	 * `isOpen` is `expanded[key] ?? initial` with the section's own initial (`true`).
+	 */
+	const press = (state) => {
+		const next = toggleSectionDisclosure(
+			{ agents: state.isOpen },
+			{ agents: state.cap ?? SIDEBAR_SECTION_ROWS },
+			"agents",
+			true,
+			Boolean(state.query),
+		);
+		return {
+			isOpen: next.expanded.agents ?? true,
+			query: state.query,
+			rosterFilter: state.rosterFilter,
+			rosterLength: state.rosterLength,
+			caps: next.caps,
+		};
+	};
+	const drawn = (state) =>
+		rosterFieldShown(
+			state.isOpen,
+			state.query,
+			state.rosterFilter,
+			state.rosterLength,
+		);
+
+	/*
+	 * THE REPRO ITSELF: a LIST query in force, NO section filter, the roster
+	 * cap-bound (twelve agents against the eight-row cap). The section body still
+	 * draws under the query, so its own control must survive the press.
+	 */
+	const listQueryOnly = {
+		isOpen: true,
+		query: "b",
+		rosterFilter: "",
+		rosterLength: 12,
+	};
+	assert.equal(
+		drawn(listQueryOnly),
+		true,
+		"the repro's precondition: the field is drawn before the press",
+	);
+	const afterListQueryPress = press(listQueryOnly);
+	assert.equal(
+		afterListQueryPress.isOpen,
+		false,
+		"the press did not write the disclosure close it is documented to write",
+	);
+	assert.equal(
+		drawn(afterListQueryPress),
+		true,
+		"the heading press removed the field under a list query with no section filter (U2)",
+	);
+	/*
+	 * AND THE PRESS IS STILL THE DOCUMENTED NO-OP ON THE RAISE: `forcedOpen` is the
+	 * query, so the release edge does not fire and the drawn rows do not change.
+	 */
+	assert.equal(
+		afterListQueryPress.caps.agents,
+		SIDEBAR_SECTION_ROWS,
+		"a press under a query released the raised cap it must leave alone",
+	);
+
+	/*
+	 * THE SECOND HALF IS UNTOUCHED - a query over a SHORT roster draws nothing, so
+	 * the field is still the reader's and a query alone opens no surface.
+	 */
+	assert.equal(
+		drawn({ isOpen: false, query: "b", rosterFilter: "", rosterLength: 4 }),
+		false,
+		"a query alone now opens a field over a short roster",
+	);
+	/*
+	 * AND THE CASE THE NARROWER FORM ALREADY COVERED still holds: a reader with their
+	 * OWN filter applied keeps the field through the press.
+	 */
+	assert.equal(
+		drawn(
+			press({ isOpen: true, query: "b", rosterFilter: "er", rosterLength: 12 }),
+		),
+		true,
+	);
+
+	/*
+	 * THE CONTROL: with NO list query the press really does close the section (the
+	 * design re-check's third row - 4 rows to 0, `aria-expanded` false), so the field
+	 * leaving with the list it filters is correct. This is the case the gate must NOT
+	 * spare.
+	 */
+	assert.equal(
+		drawn(
+			press({ isOpen: true, query: "", rosterFilter: "er", rosterLength: 12 }),
+		),
+		false,
+		"a press that genuinely closes the section kept a field for a list that is gone",
+	);
+});
+
+test("the field's gate is the module's question, asked once", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
 	assert.match(
 		source,
-		ROSTER_FIELD_QUERY_TERM,
-		"the field is still gated on the disclosure alone, so a heading press under a query removes it (U2)",
+		ROSTER_FIELD_WIRED,
+		"the field is no longer drawn by `rosterFieldShown`, so the component's rule can drift from the tested one (U2)",
 	);
-	/*
-	 * AND THE SECOND HALF IS UNTOUCHED: a query alone still opens no field, which is
-	 * the reason the fix is written as the reader's own state rather than as
-	 * `query || isOpen(...)`.
-	 */
-	assert.match(source, ROSTER_FIELD_CAP_TERM);
 });
 
 test("the gap below a section is conditional on whether that section drew rows", () => {
@@ -1440,9 +1549,16 @@ test("the band's agent jump opens the palette and seeds it to the agent scope", 
  */
 test("the roster filter narrows only while its field is drawn", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
+	/*
+	 * THE CAP TERM NOW LIVES IN THE MODULE (the gate's own file), because the rule was
+	 * hoisted so it could be driven rather than read (U2). Read it where it lives.
+	 */
 	assert.ok(
-		source.includes(
-			'ownAgents.length > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== ""',
+		readFileSync(
+			"src/renderer/src/features/chat/chat-sidebar-view.ts",
+			"utf8",
+		).includes(
+			'(rosterLength > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== "")',
 		),
 		"the field's gate no longer keeps a filter's own field alive",
 	);
