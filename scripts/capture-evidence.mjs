@@ -5081,21 +5081,28 @@ export const STORIES = [
 	["chat-sidebar-sections--resting-default", 741, 760],
 	/* The panel at its own width clamp, where the rows wrap hardest. */
 	["chat-sidebar-sections--narrow-240", 621, 760],
-	/* A query that finds one team and one conversation, both regions drawn. */
+	/*
+	 * A query that finds one team and one conversation, both regions drawn, and
+	 * the mark on the row the query MATCHED.
+	 */
 	[
 		"chat-sidebar-sections--query-while-collapsed",
 		741,
 		460,
 		{
 			/*
-			 * THE QUERY IS DRIVEN FROM HERE, not from the story's play: see that play's
-			 * own note. `press` opens the field (the sidebar's search icon is what
-			 * reveals it) and `insertText` types the word through the input pipeline,
-			 * then waits out the box's 150ms debounce and the list's own answer.
+			 * THE QUERY IS DRIVEN BY THE STORY'S OWN PLAY, not from here as it was in the
+			 * first round: the play presses the sidebar's search control and types into
+			 * the one `textbox`, which is the path a reader takes and the only one that
+			 * can express the D4 assertion (the filtered row carries the mark) INSIDE the
+			 * story. Driving it twice - once here, once in the play - would type the word
+			 * into a field the play had already opened, so this entry no longer presses.
+			 *
+			 * `expectPresent` is that same D4 fact asserted at the shutter: a frame of the
+			 * filtered list whose matched row draws no mark is not the frame this entry
+			 * files.
 			 */
-			press: "[data-sidebar-search]",
-			insertText: "helpdesk",
-			insertTextSettleMs: 900,
+			expectPresent: "[data-chat-row] [data-team-bubble]",
 		},
 	],
 	/*

@@ -17,8 +17,12 @@
  *   - **It is not a gesture.** The split's drag had nothing left to size; the
  *     states here are resolved layouts, and the panel's own interactions (the
  *     view popover, the ladder) are the view-menu set's frames.
- *   - **It is not focus-dependent rendering.** A hidden window has no focus,
- *     so `:focus-visible` rings are not photographed here.
+ *   - **It is not a claim about the ring's PIXELS.** The frames here are taken in
+ *     a window without focus, and the app's `:focus-visible` styling is what the
+ *     focus frame's ring is read from anyway: design round 1 (D2) measured the
+ *     mark's ring off `sidebar-team-mark-focus` (a 28x28 square around the 20px
+ *     circle, now `rounded-full`), so the ring IS in that frame. What no frame
+ *     here shows is a ring on any OTHER control.
  *
  * ## What is stubbed, and what is not
  *
@@ -465,6 +469,21 @@ type SettleSpec = {
 	chats?: number | "absent";
 };
 
+/**
+ * The chat rows that draw a TEAM MARK, as the slugs the marks carry.
+ *
+ * Read from the DOM the way `entityRows` and `chatRows` are: the assertion this
+ * serves (design round 1, D4) is about what the filtered list DRAWS, not about
+ * which rows the search model picked - `data-team-slug` is the mark's own
+ * identity, written by `TeamAvatarBubble` for exactly this kind of reader.
+ */
+const markedChatRows = () =>
+	[
+		...document.querySelectorAll<HTMLElement>(
+			"[data-chat-row] [data-team-bubble]",
+		),
+	].map((node) => node.getAttribute("data-team-slug") ?? "");
+
 const settled = ({ entities, chats }: SettleSpec) =>
 	waitFor(() => {
 		const entityRegion = document.querySelector(
@@ -772,31 +791,43 @@ export const QueryWhileCollapsed: Story = {
 	},
 	play: async () => {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
+		/*
+		 * THE FIELD IS OPENED BY THE CONTROL THAT OWNS IT, then typed into - not
+		 * looked up by label. `aria-label="Search chats and agents"` is on TWO
+		 * elements in this sidebar (the search icon BUTTON and the field itself), so
+		 * `getByLabelText` throws "Found multiple elements" at this play's first
+		 * interaction and the state this story is NAMED for was never reached; the
+		 * by-role lookups below discriminate, because only one of the two is a button
+		 * and only one is a textbox. The ambiguity is base behaviour rather than this
+		 * change's (UX round 1 filed it separately; it is not fixed here), and driving
+		 * the field this way is what makes the shipped frame the FILTERED panel rather
+		 * than the resting one (agent review round 1, R1-M2 = QA Q-F3).
+		 */
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Search chats and agents" }),
+		);
 		await userEvent.type(
-			screen.getByLabelText("Search chats and agents"),
+			await screen.findByRole("textbox", { name: "Search chats and agents" }),
 			"helpdesk",
 		);
-		// The box debounces at 150ms and the frame is of the ANSWERED state, so
-		// this waits for the one team AND the one conversation the word matches
-		// to be on screen together, rather than for a duration.
 		/*
-		 * THE QUERY THIS PLAY TYPES IS A DISCLOSED GAP, and it is the state's own
-		 * rather than this change's: `getByLabelText("Search chats and agents")`
-		 * matches TWO elements (the sidebar's search icon button and its field), so
-		 * this lookup throws "Found multiple elements" at the play's first
-		 * interaction - which is why the frame this entry ships is the UNFILTERED
-		 * panel with an empty box, and why the assertion below never runs. Re-cut by
-		 * role (press the control that opens the field, then type into the one
-		 * `textbox`) the query DOES apply, and the list then draws ZERO rows for
-		 * `helpdesk`: measured on this branch and on its own base with the same story
-		 * file. The search-results surface is therefore NOT photographed for this
-		 * change; see the evidence README and the pull request's "not addressed".
+		 * The box debounces at 150ms and the frame is of the ANSWERED state: this
+		 * waits for the one team AND the one conversation the word matches to be on
+		 * screen together, rather than for a duration.
+		 *
+		 * THE LAST TERM IS THE ASSERTION THE DESIGN ROUND ASKED FOR (D4): the row a
+		 * query MATCHED carries the team mark. That closes the search surface with a
+		 * fact this file asserts rather than an inference from the shared row renderer
+		 * - and it is the one term a BEFORE tree cannot satisfy (the mark does not
+		 * exist there), which is why the evidence README says the before half's copy
+		 * drops it.
 		 */
 		await waitFor(
 			() =>
 				entityRows().length === 1 &&
 				entityRows()[0] === "helpdesk" &&
-				chatRows() === 1,
+				chatRows() === 1 &&
+				markedChatRows().join(",") === "helpdesk",
 		);
 		await readoutSettled();
 		await layoutSettled();
