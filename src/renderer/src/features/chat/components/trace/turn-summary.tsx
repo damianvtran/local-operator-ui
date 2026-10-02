@@ -51,6 +51,25 @@ import { formatDuration } from "./tool-row-model";
  * The dense ledger height the fold and tool rows share (see `trace-fold.tsx`:
  * the bar moves nothing below it by more than the rows it hides).
  */
+/*
+ * THE TARGET-SIZE EXEMPTION, RECORDED WHERE THE SIZE IS CHOSEN (design round 2, D14).
+ *
+ * `dom_audit` reports the bar's disclosure at 826x20 px against WCAG 2.5.8's 24 px
+ * floor, and it is right about the number. The height is the LEDGER's own dense row
+ * (`tool-row.tsx`'s `ROW_HEIGHT`, the same 20 px every condensed ledger row takes),
+ * so raising it here alone would move this bar off the rail the transcript is built
+ * on, and raising it in the ledger moves every tool row on every turn - a far larger
+ * change than the finding, on a surface the design round did not ask to revisit.
+ *
+ * The exemption is taken deliberately: the target is the WHOLE row (826 px wide),
+ * its height is set by the text's own line box rather than by a cramped hit area,
+ * and the 24 px floor exists for targets that are small in BOTH dimensions. The
+ * receipts bar is neither; it is one line across the column, and the collapsed
+ * state is the only way to read them.
+ *
+ * If the floor is wanted unconditionally, the lever is the ledger's shared row
+ * height, not this bar's.
+ */
 const ROW_HEIGHT = "min-h-5 py-0";
 
 export type TurnSummaryProps = {

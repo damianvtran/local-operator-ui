@@ -250,7 +250,7 @@ const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
  * store's error copy and the failure receipt both read them.
  */
 const STUB_CONTENTS = {
-	"@shared/api/local-operator/desktop-api": `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
 /*
