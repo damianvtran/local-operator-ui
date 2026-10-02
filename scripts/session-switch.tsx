@@ -66,6 +66,56 @@ const param = (name: string, fallback: number) => {
 	return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+/**
+ * The durable page a MID-RUN owner has written so far.
+ *
+ * Shaped `U R A W R` - a user row, the long settled run that answered it, the
+ * assistant row that CLOSED that round, the wake receipt that re-entered the
+ * run, and the calls settled since - and deliberately with NO closing assistant
+ * row: the turn has not ended, so the page stops where the owner last flushed.
+ *
+ * The call still out at the snapshot exists only in the live seed
+ * (`liveOwnerEvents` in the bridge), which is what makes this a join mid-run
+ * rather than a settled conversation: the pane paints this page first, and the
+ * seed's running call, the working line and the settled-run fold arrive with the
+ * snapshot behind it.
+ *
+ * Reached with `?live=1`; the settled fixtures are untouched.
+ */
+function inFlightSteps(): TranscriptStep[] {
+	return [
+		{
+			kind: "user",
+			text: "Invoice reconciliation: chase the four oldest late invoices and report back.",
+		},
+		{
+			kind: "toolRun",
+			calls: Array.from({ length: 6 }, (_, index) => ({
+				name: index % 2 === 0 ? "bash" : "read_file",
+				output: `step ${index + 1}: read 214 lines from the reconciliation ledger.`,
+			})),
+		},
+		{
+			kind: "assistant",
+			text: "I found four late invoices and have started on the oldest; the remaining three are queued behind it.",
+		},
+		{
+			kind: "wake",
+			text: "(alarm) Scheduled wake w-9 (1, every 6h)\n\nCollect the staged reconciliation records.",
+		},
+		{
+			kind: "toolRun",
+			calls: [
+				{ name: "bash", output: "records: 12 staged, 0 rejected." },
+				{
+					name: "read_file",
+					output: "ledger.json: 318 lines, last modified just now.",
+				},
+			],
+		},
+	];
+}
+
 const SESSION_COUNT = param("sessions", 24);
 /** Steps in the INCOMING session's transcript: the one whose paint we time. */
 const INCOMING_STEPS = param("steps", 200);
@@ -82,6 +132,18 @@ const OUTGOING_STEPS = param("outgoingSteps", 80);
  * PASS it did not earn).
  */
 const QUIET_MS = param("raceQuiet", 600);
+
+/**
+ * Whether this run times a switch into a conversation whose turn is STILL IN
+ * FLIGHT (`?live=1`), which is the state the operator's 2026-10-01 report is
+ * about.
+ *
+ * A query flag rather than a new arm in the driver's table, because the switch
+ * being measured is the same switch: what changes is only what the owner at the
+ * far end is doing while the subscription lands. Absent, every fixture keeps the
+ * cold shape every earlier measurement was taken on.
+ */
+const LIVE = new URLSearchParams(window.location.search).get("live") !== null;
 
 /**
  * A transcript of `count` steps, alternating turns with a tool call every third
@@ -139,14 +201,87 @@ const sessions: SessionFixture[] = SESSION_IDS.map((id, index) => ({
 			? "Invoice reconciliation"
 			: `Workspace session ${index + 1}`,
 	mtime: Date.now() / 1000 - index * 3600,
+	/*
+	 * The timed target is the live fixture under `?live=1`: the arm's question is
+	 * what a switch into a RUNNING conversation shows, and the row that carries
+	 * the answer is the one every even-numbered click lands on.
+	 */
+	...(LIVE && id === INCOMING ? { live: true } : {}),
 }));
 
 const stepsBySession: Record<string, TranscriptStep[]> = {};
 for (const id of SESSION_IDS) stepsBySession[id] = steps(6);
 stepsBySession[OUTGOING] = steps(OUTGOING_STEPS);
-stepsBySession[INCOMING] = steps(INCOMING_STEPS);
+/*
+ * The incoming page is the mid-run one under `?live=1`, and the settled page it
+ * was measured with otherwise. The OUTGOING session keeps its settled page in
+ * both arms, so the view being left is the same work in each run.
+ */
+stepsBySession[INCOMING] = LIVE ? inFlightSteps() : steps(INCOMING_STEPS);
 
 // ------------------------------------------------------------------ probe
+
+/**
+ * The session status strip's own reading, at one instant.
+ *
+ * Read through the strip's SHIPPED hook (`data-lo-session-strip`, which its
+ * component documents as the QA/E2E attribute precisely so a probe does not have
+ * to grep copy): the visible `innerText` is what the operator's report calls the
+ * readings text, and the group's `aria-label` is the same statement for a screen
+ * reader, present only while the strip is HELD over a snapshot it can no longer
+ * trust. `held`/`draft` are the strip's own attributes rather than a reading of
+ * its words.
+ */
+type StripCue = {
+	text: string;
+	label: string | null;
+	held: boolean;
+	draft: boolean;
+};
+
+/**
+ * The sidebar's state for the target conversation.
+ *
+ * `current` is the row's `aria-current`, the mark the design says acknowledges
+ * the switch. The two subagent markers and the archived flag are the row's other
+ * attributes; `status` is the row's status word, which the shipped markup carries
+ * ONLY in its `sr-only` name (there is no data attribute for the code), so it is
+ * read from the first `sr-only` span - which is the status slot's, since
+ * `ChatSessionStatus` is the row button's first child.
+ */
+type SidebarCue = {
+	current: string | null;
+	archived: boolean;
+	running: number;
+	queued: number;
+	status: string | null;
+};
+
+/**
+ * Everything a pane shows at one moment of a switch.
+ *
+ * `bars` are the folded-run summaries (`[data-turn-summary]`) - the condensation
+ * the operator's report is about - and `workingLine` is the live turn's activity
+ * line; both are read scoped to the transcript content, so a second mounted pane
+ * cannot be counted here.
+ */
+type PaneCues = {
+	/** Painted transcript rows (bars excluded: a bar has an id but no kind). */
+	rows: number;
+	bars: string[];
+	workingLine: string | null;
+	placeholder: boolean;
+	strip: StripCue | null;
+	sidebar: SidebarCue | null;
+};
+
+/** One `lop:transcript:render` commit after the switch, plus the settled end. */
+type CommitSample = PaneCues & {
+	/** `performance.now()` when the commit's mark fired, on the page's clock. */
+	at: number;
+	/** True for the single sample taken when the run settled. */
+	settled: boolean;
+};
 
 type Run = {
 	label: string;
@@ -181,6 +316,15 @@ type Run = {
 	/** Every request the switch issued, in order. */
 	requests: string[];
 	targetRequests: number;
+	/**
+	 * Every transcript commit after the click, in order, each with what the pane
+	 * showed at that moment (`paneCues`), and a final `settled: true` sample.
+	 *
+	 * The phase table says WHEN the switch settled; this series says WHAT it
+	 * painted on the way, which is the half the operator's report is about
+	 * (a preliminary state, then the in-flight one).
+	 */
+	commits: CommitSample[];
 	/** True when the run hit its deadline instead of settling. */
 	timedOut: boolean;
 };
@@ -518,6 +662,70 @@ const rowFor = (id: string) => {
 				title,
 		) ?? null
 	);
+};
+
+/*
+ * Run-and-fold whitespace, declared at module scope rather than built per read:
+ * `useTopLevelRegex` treats a regex literal inside a call as a per-call cost, and
+ * these are read once per transcript commit.
+ */
+const WHITESPACE_RUN = /\s+/g;
+
+/** One line from rendered text, so a reading is stable across wrapping. */
+const oneLine = (value: string | null | undefined) =>
+	(value ?? "").replace(WHITESPACE_RUN, " ").trim();
+
+/**
+ * The status strip's reading right now, or `null` when the pane has no strip
+ * (a draft pane, a conversation with no snapshot yet).
+ */
+const stripCue = (): StripCue | null => {
+	const strip = document.querySelector("[data-lo-session-strip]");
+	if (!(strip instanceof HTMLElement)) return null;
+	return {
+		text: oneLine(strip.innerText),
+		label: strip.getAttribute("aria-label"),
+		held: strip.hasAttribute("data-lo-session-strip-held"),
+		draft: strip.hasAttribute("data-lo-session-strip-draft"),
+	};
+};
+
+/** The sidebar's state for `id`, or `null` when its row is not on screen. */
+const sidebarCue = (id: string): SidebarCue | null => {
+	const row = rowFor(id);
+	if (!row) return null;
+	return {
+		current: row.getAttribute("aria-current"),
+		archived: row.hasAttribute("data-session-archived"),
+		running: row.querySelectorAll('[data-subagent-mark="running"]').length,
+		queued: row.querySelectorAll('[data-subagent-mark="queued"]').length,
+		status: oneLine(row.querySelector("span.sr-only")?.textContent) || null,
+	};
+};
+
+/**
+ * What the pane shows right now, for one commit of a switch.
+ *
+ * Scoped to `[data-lo-transcript-content]` where the transcript is what is being
+ * read: with two panes mounted for a race the unscoped query would count the
+ * other one's rows, and the report is about the pane the switch landed on.
+ * The placeholder and the sidebar are page-level facts and are read as such.
+ */
+const paneCues = (id: string): PaneCues => {
+	const root =
+		document.querySelector("[data-lo-transcript-content]") ?? document;
+	return {
+		rows: root.querySelectorAll("[data-record-id][data-record-kind]").length,
+		bars: [...root.querySelectorAll("[data-turn-summary]")].map((bar) =>
+			oneLine(bar.textContent),
+		),
+		workingLine:
+			oneLine(root.querySelector("[data-lo-working-line]")?.textContent) ||
+			null,
+		placeholder: placeholderPresent(),
+		strip: stripCue(),
+		sidebar: sidebarCue(id),
+	};
 };
 
 const probe = window as unknown as { __lopSwitch?: Probe };
@@ -1050,6 +1258,7 @@ const api: Probe = {
 				transcriptPaintedAt: null,
 				requests: [],
 				targetRequests: 0,
+				commits: [],
 				timedOut: false,
 			};
 			let settled = false;
@@ -1080,12 +1289,32 @@ const api: Probe = {
 					const rows = (
 						entry as PerformanceEntry & { detail?: { rows?: number } }
 					).detail?.rows;
-					if (!rows) continue;
 					/* `startTime >= run.committedAt` matters: the observer is created
 					 * before the click and `buffered: true` replays marks from earlier in
 					 * the page's life, so without the guard the settled view's own render
 					 * reads as this switch's first row (measured: a negative
 					 * `committed → rows` phase). */
+					if (run.committedAt !== null && entry.startTime >= run.committedAt) {
+						/*
+						 * EVERY commit after the switch, not only the first one. The operator's
+						 * report is about a switch that paints a preliminary state and then
+						 * re-renders (`commits` on the Run; `paneCues` says what each painted),
+						 * and a harness that kept only `firstRowAt` could not tell one commit
+						 * from two.
+						 *
+						 * The cues are read from the DOM when the entry is DELIVERED, while
+						 * `at` is the mark's own timestamp: the two can differ by a batch, so a
+						 * commit whose successor is delivered in the same batch reports the
+						 * later DOM. That is honest for a series that exists to say WHAT the
+						 * pane showed, and the ordered marks still bound WHEN.
+						 */
+						run.commits.push({
+							at: entry.startTime,
+							settled: false,
+							...paneCues(id),
+						});
+					}
+					if (!rows) continue;
 					if (
 						run.committedAt !== null &&
 						entry.startTime >= run.committedAt &&
@@ -1153,6 +1382,15 @@ const api: Probe = {
 				}
 				unsubscribe();
 				observer.disconnect();
+				/*
+				 * The settled end of the run, sampled the same way as each commit so the
+				 * series has a terminal reading to compare the intermediate ones against.
+				 */
+				run.commits.push({
+					at: performance.now(),
+					settled: true,
+					...paneCues(id),
+				});
 				resolve(run);
 			};
 			const row = rowFor(id);
