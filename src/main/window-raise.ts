@@ -133,7 +133,7 @@ export interface RaiseContext {
  * to every call site — and `focus` alone is not a mode, which is why the line
  * used to be ungreppable for the ordinary launch (review round 1).
  */
-const MODE_OF_SHOW: Record<WindowShow, string> = {
+export const MODE_OF_SHOW: Record<WindowShow, string> = {
 	focus: "normal",
 	inactive: "inactive",
 	never: "headless",
@@ -671,6 +671,7 @@ export function reportParksAtQuit(
 export function reportSkippedWhileQuitting(
 	context: RaiseContext,
 	requested: WindowShow,
+	deferredReopen = false,
 ): void {
 	context.report?.(
 		[
@@ -679,6 +680,14 @@ export function reportSkippedWhileQuitting(
 			`requested=${requested}`,
 			...requesterFields(context),
 			"applied=skipped+quitting",
+			/*
+			 * THE COMPLETION TOKEN (#755): this refusal was recorded and will be
+			 * completed by one successor instance at the quit's terminal. Present
+			 * exactly when the recorder took the record — the create-gate refusals
+			 * (banner click, consent reopen, viewer verbs) are not completed and say
+			 * nothing extra, and neither does a `never` request.
+			 */
+			...(deferredReopen ? ["reopen=deferred"] : []),
 		].join(" "),
 	);
 }
@@ -854,6 +863,20 @@ export interface SecondLaunchTarget {
 	 * caller's behaviour.
 	 */
 	quitting?: boolean;
+	/**
+	 * #755: record a reopen this refusal turns away, so the quit's terminal can
+	 * complete it with ONE successor instance (see `src/main/relaunch-pending.ts`
+	 * for the whole shape). Invoked beside `reportSkippedWhileQuitting` — the two
+	 * are one event, and the recorder's answer (true = the record was taken) is
+	 * what the refusal line's `reopen=deferred` token reports.
+	 *
+	 * WHY IT IS A CALLBACK HERE rather than a read of a store `index.ts` keeps:
+	 * `index.ts` supplies it with the handler's `commandLine` in scope, so the
+	 * argv that reaches the recorder is the request's own — the record cannot
+	 * drift from the refusal it belongs to. A caller with no recorder (this
+	 * module's other callers, most tests) keeps today's behaviour exactly.
+	 */
+	onRefusedWhileQuitting?: (request: SecondLaunchRequest) => boolean;
 	report?: RaiseReport;
 }
 
@@ -891,6 +914,17 @@ export function applySecondLaunch(
 	 * `reportSkippedWhileQuitting` for the defect it answers).
 	 */
 	if (target.quitting) {
+		/*
+		 * #755: THE RECORD AND THE LINE MOVE TOGETHER. The target may carry a
+		 * recorder (`onRefusedWhileQuitting`) that keeps the refused reopen so the
+		 * quit's terminal can complete it with one successor instance; its answer —
+		 * whether the record was taken — is what makes the refusal line say
+		 * `reopen=deferred`. Composing the token from the recorder's own return
+		 * value means a refusal that will be completed and the line saying so can
+		 * never drift, and a `never` request (never recorded, see
+		 * `canCreateWindowFor`) never claims a completion it will not get.
+		 */
+		const deferredReopen = target.onRefusedWhileQuitting?.(request) === true;
 		reportSkippedWhileQuitting(
 			{
 				trigger: "second-instance",
@@ -898,6 +932,7 @@ export function applySecondLaunch(
 				report: target.report,
 			},
 			request.show,
+			deferredReopen,
 		);
 		return;
 	}
