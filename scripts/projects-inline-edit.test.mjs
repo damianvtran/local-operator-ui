@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -41,6 +42,7 @@ const { machine, edit } = await import(
 
 const {
 	inlineEditAcceptSends,
+	inlineEditChromeShown,
 	inlineEditDirty,
 	inlineEditEditorShown,
 	inlineEditKeyAction,
@@ -80,6 +82,24 @@ test("the editor is shown for editing, saving and error - not for saved", () => 
 	/* `saved` is the write having landed: the read view is back. */
 	assert.equal(inlineEditEditorShown("saved"), false);
 	assert.equal(inlineEditEditorShown("idle"), false);
+});
+
+/*
+ * The § 2.2 dirty-gate (design round 1, D2): the check/x exist only while the
+ * draft differs from its base. The `editing` frame drew them on a merely
+ * focused, unchanged title, which read as "you have an unsaved change" the
+ * moment a field was clicked. `saving` and `error` keep their doors whatever
+ * the dirty reading says - and the pinned cases below spell that out, because
+ * a future simplification of this function to `dirty` alone would silently
+ * close the retry's door in `error`.
+ */
+test("the chrome gate: check/x only on a dirty draft", () => {
+	assert.equal(inlineEditChromeShown("editing", false), false);
+	assert.equal(inlineEditChromeShown("editing", true), true);
+	assert.equal(inlineEditChromeShown("saving", true), true);
+	assert.equal(inlineEditChromeShown("error", true), true);
+	assert.equal(inlineEditChromeShown("idle", false), false);
+	assert.equal(inlineEditChromeShown("saved", false), false);
 });
 
 test("the keyboard contract: Enter per field type, Escape always, modifiers", () => {
@@ -319,6 +339,22 @@ test("a refused write, as the sentence beside the field", () => {
 		projectRefusalCopy({ message: doneGate }),
 		"milestones paid, refunds are incomplete - complete or remove the incomplete milestones, then mark it done",
 	);
+	/*
+	 * The gate's OWN shape (design round 1, D4): the daemon's log-register head
+	 * is rewritten in the app's sentence, the count and the names kept verbatim
+	 * so the reader still learns exactly what blocks the close. Exact strings,
+	 * because this is copy a reviewer measured.
+	 */
+	const gate = (count) =>
+		`cannot set status 'done': ${count} milestone${count === 1 ? "" : "s"} still incomplete ('rig milestone') — complete them, or pass force_done=true to close with them open`;
+	assert.equal(
+		projectRefusalCopy({ message: gate(1) }),
+		"This can't be marked done yet: 1 milestone is still incomplete ('rig milestone'). Complete or remove the incomplete milestones, then mark it done.",
+	);
+	assert.equal(
+		projectRefusalCopy({ message: gate(2) }),
+		"This can't be marked done yet: 2 milestones are still incomplete ('rig milestone'). Complete or remove the incomplete milestones, then mark it done.",
+	);
 	/* Anything else passes through; nothing at all falls back honestly. */
 	assert.equal(
 		projectRefusalCopy({ message: "target_date must not precede start_date" }),
@@ -455,4 +491,48 @@ test("tagsDraftEquals compares the parsed list, so spacing alone is not a change
 	assert.equal(tagsDraftEquals([], ""), true);
 	assert.equal(tagsDraftEquals([], "q4"), false);
 	assert.equal(tagsDraftEquals(["q4"], "q4, q4"), false);
+});
+
+/* ------------------------------------------------- the wiring guards */
+
+/*
+ * THE RETRY'S PRESS IS NOT A VALUE (QA round 1, Q2, 4/4 runs). `onClick`
+ * hands the handler the MouseEvent, so `onClick={api.accept}` fed the event
+ * into the machine AS the new value: the status arm's payload carried it to
+ * the IPC boundary, died at structured clone, and surfaced as "could not
+ * reach the backend" with the daemon never seeing a request - while the key
+ * arm failed differently on the same wiring. The machine cannot police this
+ * (its `next` is generic by design), so the contract lives in the wiring and
+ * is pinned here at the source: an empty-call arrow, and no bare reference.
+ * A source read rather than a render, deliberately: there is no DOM in this
+ * suite, and the failure mode is exactly a one-character edit away.
+ */
+test("the feedback Retry never passes its press event as the value", () => {
+	const source = readFileSync(
+		"src/renderer/src/shared/components/inline-edit/inline-edit-feedback.tsx",
+		"utf8",
+	);
+	assert.ok(
+		source.includes("onClick={() => api.accept()}"),
+		"the Retry button must call accept with no arguments",
+	);
+	assert.ok(
+		!source.includes("onClick={api.accept}"),
+		"onClick={api.accept} passes the MouseEvent as the new value (Q2)",
+	);
+});
+
+/*
+ * THE ESCAPE-CONSUMED GUARD'S STRUCTURAL SIBLING (Scope A, G1) is pinned in
+ * the model's keyboard-contract test above; this guard is its wiring half:
+ * the feedback's conflict doors are plain handlers with no arguments to
+ * smuggle, and they must stay call-shaped if they ever grow one.
+ */
+test("the conflict doors are wired as calls, not references", () => {
+	const source = readFileSync(
+		"src/renderer/src/shared/components/inline-edit/inline-edit-feedback.tsx",
+		"utf8",
+	);
+	assert.ok(source.includes("onClick={api.keepMine}"));
+	assert.ok(source.includes("onClick={api.useTheirs}"));
 });

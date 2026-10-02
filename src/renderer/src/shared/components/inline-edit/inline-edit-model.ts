@@ -120,6 +120,27 @@ export function inlineEditKeyAction(
 	return options.onEditor ? "accept" : null;
 }
 
+/**
+ * Whether the slot's check/x are on screen, per § 2.2's dirty-gate: the two
+ * controls appear ONLY once the draft differs from its base, so a field that
+ * is merely focused on an unchanged value shows no accept/cancel at all
+ * (design round 1, D2 - the `editing` frame drew them on a clean draft and
+ * made the focused and dirty states indistinguishable).
+ *
+ * `saving` and `error` are their own doors and keep the chrome whatever the
+ * dirty reading says: the spinner reports the write in flight, and the check
+ * is the error's retry (§ 2.6). Both states only exist after an accept, which
+ * itself only runs on a changed draft, so in practice this clause is the
+ * explicit spelling of "their doors stay" rather than a live distinction.
+ */
+export function inlineEditChromeShown(
+	phase: InlineEditPhase,
+	dirty: boolean,
+): boolean {
+	if (phase === "saving" || phase === "error") return true;
+	return phase === "editing" && dirty;
+}
+
 /** What to do when the record's fresh value for this field arrives. */
 export type InlineEditReseed = "none" | "adopt" | "conflict";
 

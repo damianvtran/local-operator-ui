@@ -1246,21 +1246,32 @@ export function sessionTargetLabel(
 /**
  * The daemon's done-gate sentence, re-spoken for the desktop dialog.
  *
- * WHY (UX round 2, U4): the backend's refusal ends "— complete them, or pass
- * force_done=true to close with them open", and `force_done` is a tool-call
- * field the desktop update body does not carry - the dialog CANNOT send it,
- * so the tail offers a door this surface has no key to. The head (what is
- * still incomplete, by name) is kept verbatim; only that tail becomes the two
- * actions the dialog can actually do. Any other refusal passes through
- * untouched, so a message this function has never seen is shown as written
- * rather than silently reworded.
+ * WHY (UX round 2, U4; design round 1, D4): the backend's refusal reads
+ * "cannot set status 'done': 1 milestone still incomplete ('x') - complete
+ * them, or pass force_done=true to close with them open", and BOTH halves
+ * needed the app's voice once it reached a reader: `force_done` is a
+ * tool-call field the desktop update body does not carry (the dialog cannot
+ * send it, so the tail offered a door this surface has no key to), and the
+ * head is the daemon's log register, not prose. The detail - how many
+ * milestones and which, by name - is kept verbatim; the sentence around it
+ * is the app's, sentence case, the same grammar the other refusals speak.
+ * Any other refusal passes through untouched, so a message this function has
+ * never seen is shown as written rather than silently reworded.
  */
 const DONE_GATE_TAIL =
 	"complete them, or pass force_done=true to close with them open";
 const DONE_GATE_TAIL_COPY =
 	"complete or remove the incomplete milestones, then mark it done";
+/** The daemon's head, in the shape the gate raises it: count, plural, names. */
+const DONE_GATE_HEAD =
+	/^cannot set status 'done': (\d+) milestones? still incomplete \((.+)\) — /;
 
 export function refusalCopy(message: string): string {
+	const gate = message.match(DONE_GATE_HEAD);
+	if (gate) {
+		const count = Number(gate[1]);
+		return `This can't be marked done yet: ${count} milestone${count === 1 ? " is" : "s are"} still incomplete (${gate[2]}). Complete or remove the incomplete milestones, then mark it done.`;
+	}
 	if (!message.includes(DONE_GATE_TAIL)) return message;
 	return message.replace(DONE_GATE_TAIL, DONE_GATE_TAIL_COPY);
 }

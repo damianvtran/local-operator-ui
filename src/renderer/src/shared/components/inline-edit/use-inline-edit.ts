@@ -527,10 +527,21 @@ export function useInlineEdit<T>(
 	const useTheirs = useCallback(() => {
 		const fresh = conflictRef.current;
 		if (fresh === null) return;
-		setConflictBoth(null);
+		/*
+		 * Adopt the record's value, then CLOSE the field exactly the way an
+		 * unchanged accept does (design round 1 D1 / UX round 1 U1 / QA
+		 * round 1 Q1): the conflict row unmounts under the pointer, so a
+		 * solve that only re-seeded the values left the slot in `editing`
+		 * with focus on `<body>` - the button that had focus was gone, the
+		 * editor had no working keyboard exit, and only a route round trip
+		 * brought the pencil back. Adopting their value leaves nothing to
+		 * write, so the field settles to rest with focus on its own slot
+		 * control (`closeWithFocus`'s hand-back), same as `Keep mine` lands
+		 * on the pencil after its commit.
+		 */
 		setBaseBoth(fresh);
-		setDraftBoth(fresh);
-	}, [setBaseBoth, setConflictBoth, setDraftBoth]);
+		closeWithFocus(true);
+	}, [closeWithFocus, setBaseBoth]);
 
 	const handleKeyDown = useCallback(
 		(event: KeyboardEvent) => {

@@ -68,6 +68,9 @@ import type {
 } from "../../../../../shared/desktop-control-contract";
 import type { ProjectEditFields } from "../hooks/use-projects-queries";
 import {
+	PROJECT_ATTRIBUTION_MAX_CHARS,
+	PROJECT_KEY_MAX_CHARS,
+	PROJECT_TITLE_MAX_CHARS,
 	type ProjectEstimateDraft,
 	estimateChangedFields,
 	estimateDraftEquals,
@@ -147,6 +150,16 @@ type FieldShellProps = {
 	slot: InlineEditSlotHandle;
 	feedback: InlineEditFeedbackHandle;
 	controlsIdle?: "affordance" | "none";
+	/**
+	 * A field that lives INSIDE a wrapping row rather than on its own grid
+	 * line (the status cluster beside the title): the slot hugs its control -
+	 * value box and check/x adjacent, sized by content - instead of letting
+	 * a flexible value column push the controls to the row's far edge. The
+	 * feedback is capped so a long refusal sentence wraps under the cluster
+	 * rather than stretching it into the header's next line (design round 1,
+	 * D1: the escaped select moved the whole header and everything below).
+	 */
+	hug?: boolean;
 	className?: string;
 	controlsClassName?: string;
 };
@@ -172,6 +185,7 @@ const FieldShell: FC<FieldShellProps> = ({
 	slot,
 	feedback,
 	controlsIdle = "affordance",
+	hug = false,
 	className,
 	controlsClassName,
 }) => (
@@ -196,6 +210,9 @@ const FieldShell: FC<FieldShellProps> = ({
 		<div
 			className={cn(
 				"flex min-w-0 flex-col gap-1",
+				/* Hugging: the column shrinks to its children so the row can
+				 * size to content instead of to a stretched parent. */
+				hug && "items-start",
 				label !== undefined && "flex-1",
 			)}
 		>
@@ -209,7 +226,14 @@ const FieldShell: FC<FieldShellProps> = ({
 				 * stop stays the pencil.
 				 */}
 				<div
-					className="min-w-0 flex-1"
+					className={cn(
+						"min-w-0",
+						hug ? "w-fit" : "flex-1",
+						/* The value is the double-click door, so it reads as
+						 * text a pointer can work in (UX round 1, U4); the
+						 * pencil beside it keeps the pointer. */
+						!editing && "cursor-text",
+					)}
 					onDoubleClick={editing ? undefined : slot.begin}
 				>
 					{editing ? editor : display}
@@ -220,7 +244,18 @@ const FieldShell: FC<FieldShellProps> = ({
 					className={cn("shrink-0", controlsClassName)}
 				/>
 			</div>
-			<InlineEditFeedback api={feedback} />
+			{/*
+			 * THE FEEDBACK LINE IS A FIXED-HEIGHT SLOT, PRESENT WHETHER OR NOT
+			 * SOMETHING IS SHOWING (design round 1, D3, verbatim): the transient
+			 * "saved" caption used to be a child that came and went, so every
+			 * commit pushed the reader's content down and pulled it back. The
+			 * slot is part of every field's rhythm now, so the acknowledgement
+			 * lands INSIDE a line that already existed at rest - and one `lh`
+			 * is exactly the caption's own line box (`text-meta`, 1.45).
+			 */}
+			<div className={cn("min-h-[1lh] text-meta", hug && "max-w-96")}>
+				<InlineEditFeedback api={feedback} />
+			</div>
 		</div>
 	</div>
 );
@@ -245,6 +280,13 @@ type TextFieldProps = {
 	label?: string;
 	bare?: boolean;
 	autoBegin?: boolean;
+	/**
+	 * The wire's own hard cap, enforced as the value is TYPED (UX round 1,
+	 * U3: the title took 100 characters and was only refused at submit).
+	 * Omitted where the field has no hard cap (a date's rule explains
+	 * itself better than a silent stop).
+	 */
+	maxLength?: number;
 	/**
 	 * Why the row stopped being born: `cancelled` (Esc/x, the value kept out)
 	 * or `filled` (the committed value arrived). The consumer uses the reason
@@ -280,6 +322,7 @@ const TextField: FC<TextFieldProps> = ({
 	label,
 	bare = false,
 	autoBegin = false,
+	maxLength,
 	onRetire,
 	className,
 	controlsClassName,
@@ -337,6 +380,7 @@ const TextField: FC<TextFieldProps> = ({
 					{...api.editorAria}
 					value={api.draft}
 					readOnly={api.phase === "saving"}
+					maxLength={maxLength}
 					placeholder={placeholder}
 					aria-label={labels.name}
 					onChange={(event) => api.setDraft(event.target.value)}
@@ -400,6 +444,7 @@ export const ProjectHeaderIdentity: FC<{
 						validate={(next) => projectTitleRule(next)}
 						labels={editLabels("title", "Title")}
 						commit={commit}
+						maxLength={PROJECT_TITLE_MAX_CHARS}
 						placeholder="A short name for the workstream"
 						ramp="text-body"
 						bare
@@ -424,6 +469,7 @@ export const ProjectHeaderIdentity: FC<{
 						validate={(next) => projectNameRule(next.trim())}
 						labels={editLabels("key", "Key")}
 						commit={commit}
+						maxLength={PROJECT_KEY_MAX_CHARS}
 						placeholder="project-key"
 						ramp="text-body"
 						bare
@@ -440,6 +486,7 @@ export const ProjectHeaderIdentity: FC<{
 							validate={(next) => projectTitleRule(next)}
 							labels={editLabels("title", "Title")}
 							commit={commit}
+							maxLength={PROJECT_TITLE_MAX_CHARS}
 							placeholder={project.name}
 							ramp="text-body-sm"
 							bare
@@ -477,6 +524,7 @@ export const ProjectHeaderIdentity: FC<{
 					validate={(next) => projectNameRule(next.trim())}
 					labels={editLabels("key", "Key")}
 					commit={commit}
+					maxLength={PROJECT_KEY_MAX_CHARS}
 					placeholder="project-key"
 					mono
 				/>
@@ -527,6 +575,13 @@ export const ProjectStatusField: FC<{
 			display={<ProjectStatusBadge status={project.status} />}
 			slot={api}
 			feedback={api}
+			/*
+			 * HUGGING (design round 1, D1): the editor replaces the chip in the
+			 * CHIP'S OWN SLOT, with x/✓ adjacent, instead of a stretched value
+			 * column flinging the controls to the row's far edge and the header
+			 * re-wrapping around them.
+			 */
+			hug
 			editor={
 				<Select
 					open={menuOpen}
@@ -674,7 +729,7 @@ export const ProjectDescriptionBlock: FC<{
 								))}
 							</div>
 						</fieldset>
-						<InlineEditControls api={api} />
+						<InlineEditControls api={{ ...api, acceptBlocked: over }} />
 					</div>
 					{preview ? (
 						<div
@@ -724,11 +779,14 @@ export const ProjectDescriptionBlock: FC<{
 				</div>
 			) : (
 				<div className="flex min-w-0 flex-col gap-1">
-					{project.description.trim() ? (
+					{(project.description ?? "").trim() ? (
 						<div className="flex min-w-0 items-start gap-1.5">
-							<div className="min-w-0 flex-1" onDoubleClick={api.begin}>
+							<div
+								className="min-w-0 flex-1 cursor-text"
+								onDoubleClick={api.begin}
+							>
 								<ProjectMarkdown className="text-body">
-									{project.description}
+									{project.description ?? ""}
 								</ProjectMarkdown>
 							</div>
 							<InlineEditControls api={api} />
@@ -744,7 +802,15 @@ export const ProjectDescriptionBlock: FC<{
 							Add description
 						</button>
 					)}
-					<InlineEditFeedback api={api} />
+					{/*
+					 * The fixed-height slot, present whether or not something is
+					 * showing (design round 1, D3): the saved caption lands inside a
+					 * line that already existed at rest, so the commit never reflows
+					 * the rows below. One `lh` is the caption's own line box.
+					 */}
+					<div className="min-h-[1lh] text-meta">
+						<InlineEditFeedback api={api} />
+					</div>
 				</div>
 			)}
 		</div>
@@ -771,6 +837,7 @@ export const ProjectOwnerField: FC<{
 		validate={(next) => projectAttributionRule(next, "owner")}
 		labels={editLabels("owner", "Owner")}
 		commit={commit}
+		maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
 		placeholder="atlas"
 		autoBegin={autoBegin}
 		onRetire={onRetire}
@@ -802,6 +869,7 @@ export const ProjectTeamField: FC<{
 		validate={(next) => projectAttributionRule(next, "team")}
 		labels={editLabels("team", "Team")}
 		commit={commit}
+		maxLength={PROJECT_ATTRIBUTION_MAX_CHARS}
 		placeholder="platform"
 		autoBegin={autoBegin}
 		onRetire={onRetire}
