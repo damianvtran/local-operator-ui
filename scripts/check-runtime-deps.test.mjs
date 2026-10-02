@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -170,15 +170,15 @@ function duplicatedKey(source) {
 		let value = "";
 		while (cursor < source.length && source[cursor] !== '"') {
 			if (source[cursor] === "\\") {
-				const escape = source[cursor + 1];
-				if (escape === "u") {
+				const escaped = source[cursor + 1];
+				if (escaped === "u") {
 					value += String.fromCharCode(
 						Number.parseInt(source.slice(cursor + 2, cursor + 6), 16),
 					);
 					cursor += 6;
 					continue;
 				}
-				value += escape ?? "";
+				value += escaped ?? "";
 				cursor += 2;
 				continue;
 			}
@@ -207,14 +207,26 @@ test("the duplicate-key scanner fires on a duplicate, and not on siblings that s
 		null,
 		"sibling objects may hold the same key",
 	);
-	assert.equal(duplicatedKey('{"a": {"a": 1}}'), null, "a nested key is a different key");
+	assert.equal(
+		duplicatedKey('{"a": {"a": 1}}'),
+		null,
+		"a nested key is a different key",
+	);
 	assert.equal(
 		duplicatedKey('{"a\\u0062": 1, "ab": 2}'),
 		"ab",
 		"escapes are decoded, or a duplicate could hide behind one",
 	);
-	assert.equal(duplicatedKey('{"l": [{"k": 1}, {"k": 1}]}'), null, "array elements are separate objects");
-	assert.equal(duplicatedKey('{"i": 1, "s": "a:b", "t": "}"}'), null, "a colon or a brace inside a string is content");
+	assert.equal(
+		duplicatedKey('{"l": [{"k": 1}, {"k": 1}]}'),
+		null,
+		"array elements are separate objects",
+	);
+	assert.equal(
+		duplicatedKey('{"i": 1, "s": "a:b", "t": "}"}'),
+		null,
+		"a colon or a brace inside a string is content",
+	);
 });
 
 test("the repository's own manifest declares no key twice", () => {
@@ -231,4 +243,52 @@ test("the repository's own manifest declares no key twice", () => {
 	// one key duplicated, finds it.
 	const tampered = source.replace('  "name":', '  "name": null,\n  "name":');
 	assert.equal(duplicatedKey(tampered), "name");
+});
+
+/**
+ * The evidence tree's committed JSON must not declare a key twice either.
+ *
+ * WHY THE SCANNER IS POINTED HERE, not only at `package.json`: the evidence
+ * manifest is the repository's other hand-merged JSON, so it is where the #170
+ * shape actually recurs - two branches each add a record, a fold unions them,
+ * and BOTH copies survive. The window's own fold of `origin/main` =
+ * `f39e683024` shipped three such pairs (`sendWakeCardRestampNote`,
+ * `runClosureVocabularyRestampNote`, `transcriptPerflushRestampNote`), and the
+ * reason it reached a review round instead of a check is that none of these can
+ * see it: `JSON.parse` keeps the last value, `require` resolves either one,
+ * `check-fold-keys.mjs` compares key SETS through `JSON.parse` (a duplicate
+ * collapses there), and a strict-parse assertion passes on a file with a
+ * duplicate where it fails on a file with a syntax error. The raw text is the
+ * only place the defect exists, so it needs the raw-text scanner (agent review
+ * round 11, R11-1, whose recommendation this test implements).
+ *
+ * The walk covers `docs/evidence` rather than the manifest alone because that
+ * is the tree the evidence system owns - every `.json` under it is committed
+ * evidence - and the wider net costs nothing measurable: measured over the tree
+ * at the folding head, the manifest was the only file with a duplicate, so this
+ * test is a strict no-op today and catches the next one wherever in the tree it
+ * lands.
+ */
+test("the evidence tree's committed JSON declares no key twice", () => {
+	// The trailing slash matters: without it `new URL(file, evidence)` replaces
+	// the last segment and resolves the tree's own paths against `docs/`.
+	const evidence = new URL("../docs/evidence/", import.meta.url);
+	const jsonFiles = readdirSync(evidence, { recursive: true })
+		.filter((entry) => entry.endsWith(".json"))
+		.sort();
+	assert.ok(
+		jsonFiles.length > 0,
+		"the evidence tree must ship JSON for this check to mean anything",
+	);
+	const offenders = jsonFiles
+		.map((file) => ({
+			file,
+			key: duplicatedKey(readFileSync(new URL(file, evidence), "utf8")),
+		}))
+		.filter(({ key }) => key !== null);
+	assert.deepEqual(
+		offenders,
+		[],
+		"a committed evidence JSON declares a key twice; JSON.parse keeps the last one silently and every key-SET gate is blind to it",
+	);
 });
