@@ -127,6 +127,23 @@ const STORIES = [
 		},
 	],
 	/*
+	 * THE LONG KIND AS A KEPT UNIT, AT THE NARROWEST CELL (design round 1's D1
+	 * ask, shot in round 1's remediation as round 2's D3 / Q-r2-3). This is the
+	 * reading that says the units' guarantee holds where it matters: the summary's
+	 * box and the row's last right edge at 420 with
+	 * `1 workspace_get_gmail_thread_content` painted as a unit rather than folded
+	 * into the tail - the only state where that token is visible at all.
+	 */
+	[
+		"chat-trace-fold--many-types-kept",
+		420,
+		130,
+		{
+			ready: "[data-fold-summary]",
+			label: "chat-trace-fold--many-types-kept (420px)",
+		},
+	],
+	/*
 	 * THE SMALL VIEW'S OWN TWO CELLS (design round 1, D2): the caption + controls
 	 * line at `isSmallView`, where the rail is 32 rather than 107 - and the same
 	 * window with the user turn on screen, so the user row's rail there is measured
@@ -294,7 +311,8 @@ const PROBE = `(() => {
 						const b = actionsEl.querySelector("button");
 						return b ? getComputedStyle(b).color : null;
 					})(),
-					actionsOffset: prose ? round(actions.left - prose.left) : null,				}
+					actionsOffset: prose ? round(actions.left - prose.left) : null,
+				}
 			: null;
 		/*
 		 * THE USER TURN'S OWN ROW (design round 1, D2), which no frame in any set

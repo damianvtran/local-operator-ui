@@ -53,6 +53,7 @@ const {
 	foldRuns,
 	foldSpan,
 	foldSummary,
+	foldSummarySpec,
 	foldSummaryUnits,
 	turnFeet,
 } = await import(moduleUrl);
@@ -519,7 +520,34 @@ test("the count line caps its segments and folds the tail into `and N other acti
 	assert.deepEqual(
 		foldSummaryUnits(files(4)),
 		["Explored 4 files"],
-		"and a SENTENCE is one unit: prose breaks wherever the browser wants",
+		"and a SENTENCE is one unit",
+	);
+	/*
+	 * THE SHAPE IS PART OF THE CONTRACT (agent review round 2, R2-1): the header
+	 * cannot infer it from the unit count, because a one-segment count line
+	 * (`6 searches`) is ALSO one unit and MUST stay whole, while the sentence's
+	 * clause must break at its own spaces. So the model states which it is, and
+	 * these assertions are what keep the renderer honest about it.
+	 */
+	assert.equal(
+		foldSummarySpec(files(4)).prose,
+		true,
+		"a class sentence is prose: its own spaces are the right breaks",
+	);
+	assert.equal(
+		foldSummarySpec([...commands(3), ...evals(1)]).prose,
+		false,
+		"a one-class-of-kind count line is NOT prose: it must hold together",
+	);
+	assert.equal(
+		foldSummarySpec(capped).prose,
+		false,
+		"nor is the capped line, whose tail phrase may never split",
+	);
+	assert.equal(
+		foldSummarySpec(capped).units.join(" · "),
+		foldSummary(capped),
+		"and the joined string consumers read is still these units",
 	);
 });
 

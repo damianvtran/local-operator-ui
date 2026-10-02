@@ -80,7 +80,11 @@ import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
-import type { FoldLive, FoldSpan } from "../../canonical/trace-fold-model";
+import type {
+	FoldLive,
+	FoldSpan,
+	FoldSummarySpec,
+} from "../../canonical/trace-fold-model";
 import { formatSettledDuration } from "./tool-row-model";
 
 /**
@@ -96,15 +100,15 @@ const FOLD_CLOCK_MS = 1000;
 
 export type TraceFoldProps = {
 	/**
-	 * §E2's generated copy, AS ITS UNITS: `Explored 4 files, 1 search` is one
-	 * unit, `3 shell · 1 python` is two, and a capped line's `and N other
-	 * actions` is one more. Each unit paints in its own `whitespace-nowrap` span
-	 * (design round 1, D1: the joined string let the browser break `and 4 other
-	 * actions` between the numeral and its noun at a narrow column, so a wrap must
-	 * fall at a ` · ` and nowhere else). The collapsed bar's `title`, which has no
-	 * DOM to paint, reads `foldSummary` - these units joined.
+	 * §E2's generated copy AS THE HEADER MUST PAINT IT: the units, and which shape
+	 * they are (`FoldSummarySpec`). A COUNT LINE's units are painted unbreakable,
+	 * so its wraps fall at a ` · ` and never inside a phrase (design round 1, D1);
+	 * a SENTENCE is painted to wrap at its own spaces, exactly as it did before
+	 * this branch (round 2, R2-1: painting it nowrap made prose unbreakable and
+	 * left the summary's `break-words` inert). The collapsed bar's `title`, which
+	 * has no DOM to paint, reads `foldSummary` - the units joined.
 	 */
-	summary: readonly string[];
+	summary: FoldSummarySpec;
 	actionCount: number;
 	/**
 	 * The run's wall-clock span (`foldSpan`), or null when it cannot date itself -
@@ -391,14 +395,20 @@ export const TraceFold = ({
 							 * the first half of this rule and not the second.
 							 */
 							/*
-							 * `break-words` IS THE LAST RESORT, and it is what makes `min-w-0`'s
-							 * promise true for a snake_case kind: the units below are nowrap, so a
-							 * wrap falls at a separator - but a single unit longer than the column
-							 * (the operator's own run contains `1 workspace_get_gmail_thread_content`)
-							 * has no separator to fall at, and without an `overflow-wrap` it would
-							 * paint past the box. This codebase's other wrapping blocks carry it
-							 * (`trace-line.tsx`, `tool-detail.tsx`); this span is the one whose
-							 * "never overflows" claim depends on it (agent review round 1, R1-4).
+							 * WHAT `break-words` DOES AND DOES NOT DO HERE (agent review round 2,
+							 * R2-1, and QA's Q-r2-3, which measured it served): `overflow-wrap`
+							 * cannot act inside a `white-space: nowrap` box, so on the COUNT
+							 * LINE's units it is deliberately inert - those hold together, and the
+							 * bound that keeps them inside the box is the column floor rather than
+							 * a break: the narrowest column the app can give this header is ~350px
+							 * (`WINDOW_MIN_WIDTH` 800 and `CHAT_PANE_MIN_PX` 480), and the longest
+							 * unit a run can compose is the 230.6px
+							 * `1 workspace_get_gmail_thread_content` - measured in this Chrome, and
+							 * photographed by the `many-types-kept` cell this round adds at 420.
+							 * On the PROSE form it is the property that does the work: a single
+							 * over-long word inside the clause breaks rather than painting past
+							 * the box. Round 1's comment claimed the property was protecting the
+							 * units, which is exactly the claim this round had to correct.
 							 */
 							className={cn("min-w-0 break-words text-body-sm text-ink-muted")}
 							title={`${actionCount} actions`}
@@ -406,15 +416,23 @@ export const TraceFold = ({
 						>
 							{/*
 							 * What the run has done, by class or by kind (`foldSummary`), ONE UNIT PER
-							 * SPAN: the count line's segments and its `and N other actions` tail each
-							 * hold together, and the ` · ` between them is the only break opportunity
-							 * (design round 1, D1). A sentence summary arrives as a single unit and
-							 * paints exactly as it always did.
+							 * SPAN - and the SHAPE decides whether a span may break (R2-1). A count
+							 * line's units are unbreakable so its wraps fall at the ` · ` separators
+							 * and never inside a phrase (design round 1, D1, where `and 4 other
+							 * actions` broke between the numeral and its noun); a SENTENCE is one
+							 * unit painted to wrap at its own spaces, which is how prose painted
+							 * before this branch and has to keep painting.
 							 */}
-							{summary.map((unit, index) => (
+							{summary.units.map((unit, index) => (
 								<Fragment key={unit}>
 									{index > 0 && <span aria-hidden="true"> · </span>}
-									<span className={cn("whitespace-nowrap")}>{unit}</span>
+									<span
+										className={cn(
+											summary.prose ? "whitespace-normal" : "whitespace-nowrap",
+										)}
+									>
+										{unit}
+									</span>
 								</Fragment>
 							))}
 						</span>

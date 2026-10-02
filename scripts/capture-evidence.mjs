@@ -690,6 +690,19 @@ export const STORIES = [
 	 */
 	["chat-trace-fold--many-types", 1280, 130],
 	["chat-trace-fold--many-types", 640, 130, { dir: "many-types-narrow" }],
+	/*
+	 * THE ≤5-TYPE RUN THAT KEEPS THE LONG KIND (design round 1's D1 ask, shot in
+	 * round 1's remediation as round 2's D3 - the same gap QA bounded as Q-r2-3).
+	 *
+	 * `many-types` above CAPS `workspace_get_gmail_thread_content` into its tail,
+	 * so before this cell no committed frame painted that 36-character kind as a
+	 * VISIBLE unit at any width - and it is the longest unit the count line can
+	 * compose. This is it at 420, the narrowest cell in the set: five types, so
+	 * the cap keeps every segment, with the long kind as the last of them. The
+	 * units' guarantee - a nowrap unit holds together and the column holds the
+	 * unit - is what the frame, and the geometry readout beside it, are for.
+	 */
+	["chat-trace-fold--many-types-kept", 420, 130],
 	[
 		"chat-trace-fold--expanded",
 		1280,

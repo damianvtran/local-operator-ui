@@ -83,7 +83,7 @@ const bundle = await build({
 		contents: `
 			import { createElement } from "react";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
-			export { foldSummary, foldSummaryUnits } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
+			export { foldSummary, foldSummarySpec } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -119,8 +119,9 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
 
-const { TraceFold, createElement, foldSummary, foldSummaryUnits } =
-	await import(bundlePath.href);
+const { TraceFold, createElement, foldSummary, foldSummarySpec } = await import(
+	bundlePath.href
+);
 
 /**
  * Controlled the way the transcript drives it, so the mount exercises the
@@ -149,7 +150,7 @@ const LIVE_SPAN_SECONDS = /^4[45]s$/;
 
 const element = (props) =>
 	createElement(ControlledFold, {
-		summary: ["3 shell", "1 python"],
+		summary: { units: ["3 shell", "1 python"], prose: false },
 		actionCount: 4,
 		recordIds: ["t0"],
 		...props,
@@ -347,7 +348,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	);
 	// The section keeps running and the counts update: nothing may close it.
 	await mounted.render({
-		summary: ["4 shell", "1 python"],
+		summary: { units: ["4 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: true },
 		live: LIVE,
 	});
@@ -363,7 +364,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	 * report - and the fold is the reader's throughout.
 	 */
 	await mounted.render({
-		summary: ["4 shell", "1 python"],
+		summary: { units: ["4 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
 		live: null,
 	});
@@ -380,7 +381,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	 * went `expanded true -> false` on this exact transition, at every turn end.
 	 */
 	await mounted.render({
-		summary: ["4 shell", "1 python"],
+		summary: { units: ["4 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: 45_000, running: false },
 		live: null,
 	});
@@ -391,7 +392,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	);
 	// And the next turn's updates find it exactly as the reader left it.
 	await mounted.render({
-		summary: ["4 shell", "1 python"],
+		summary: { units: ["4 shell", "1 python"], prose: false },
 		span: { startedAtMs: 46_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -417,7 +418,7 @@ test("the reader's own press is the only close, in both directions", async (t) =
 	 * decision, not a default.
 	 */
 	await mounted.render({
-		summary: ["5 shell", "1 python"],
+		summary: { units: ["5 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -430,7 +431,7 @@ test("the reader's own press is the only close, in both directions", async (t) =
 	// And their next press opens it again, for good.
 	await click(mounted);
 	await mounted.render({
-		summary: ["6 shell", "1 python"],
+		summary: { units: ["6 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -553,7 +554,7 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 		"the model composes the capped line for the operator's run",
 	);
 	const mounted = await mount(t, {
-		summary: foldSummaryUnits(MANY_TYPES_ACTIONS),
+		summary: foldSummarySpec(MANY_TYPES_ACTIONS),
 		actionCount: MANY_TYPES_ACTIONS.length,
 		span: null,
 		live: null,
@@ -613,9 +614,25 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 		Array.from({ length: 5 }, () => " · "),
 		"the separators are the line's only break opportunities",
 	);
+	/*
+	 * AND THE SHAPE DECIDES THE BREAKING (agent review round 2, R2-1; QA bounded
+	 * the same defect as Q-r2-3). `break-words` cannot act inside a nowrap box, so
+	 * these two assertions together state what actually holds: the count line's
+	 * units ARE unbreakable (the wrap may only fall at a separator, which is D1's
+	 * guarantee) and the property is present for the PROSE form, where a
+	 * single over-long word inside the clause breaks instead of painting past the
+	 * box. The next test pins the prose half on the rendered DOM, because a class
+	 * string alone is exactly what round 1 got wrong here.
+	 */
 	assert.ok(
 		classes.includes("break-words"),
-		"and a unit longer than the column can still break rather than overflow",
+		"the summary carries `break-words` for the prose form's own breaks",
+	);
+	assert.ok(
+		painted.every((unit) =>
+			String(unit.className).includes("whitespace-nowrap"),
+		),
+		"and the count line's units are unbreakable, which is what keeps a wrap at a ` · `",
 	);
 	/*
 	 * THE ORDERING, pinned as the two factors it is: the live clause pays
@@ -634,5 +651,45 @@ test("the painted count line is the capped one, and it may wrap", async (t) => {
 	assert.ok(
 		!classes.includes("grow"),
 		"and it does not stretch either: it holds its content width while the clause has room",
+	);
+});
+
+/**
+ * THE PROSE FORM WRAPS AS PROSE (agent review round 2, R2-1).
+ *
+ * Round 1 painted every unit `whitespace-nowrap`, which made the sentence form's
+ * clause unbreakable - a behaviour change that diff did not intend: the same
+ * string was plain, wrappable text before it. The header is now told the shape,
+ * and this is the rendered half of that contract: the sentence's one unit
+ * carries `whitespace-normal`, so the browser's own line breaking applies (jsdom
+ * has no layout engine, so the break itself is the rig's; what is asserted here
+ * is the CSS the break rides on).
+ */
+test("a sentence summary is painted to wrap, not held whole", async (t) => {
+	const sentence = "Explored 4 files, delegated 3 tasks";
+	const mounted = await mount(t, {
+		summary: { units: [sentence], prose: true },
+		actionCount: 7,
+		span: null,
+		live: null,
+		sectionLive: false,
+	});
+	const summary = mounted.container.querySelector("[data-fold-summary]");
+	assert.ok(summary, "the header's summary span is on screen");
+	assert.equal(summary.textContent, sentence, "it paints the clause verbatim");
+	const painted = [...summary.querySelectorAll("span:not([aria-hidden])")];
+	assert.equal(painted.length, 1, "a sentence is ONE unit");
+	assert.ok(
+		String(painted[0].className).includes("whitespace-normal"),
+		"and it is NOT held whole: the browser breaks it at its own spaces",
+	);
+	assert.ok(
+		!String(painted[0].className).includes("whitespace-nowrap"),
+		"the nowrap the count line needs must not reach the prose",
+	);
+	assert.equal(
+		summary.querySelectorAll("span[aria-hidden]").length,
+		0,
+		"and a sentence carries no ` · ` separators to break at",
 	);
 });

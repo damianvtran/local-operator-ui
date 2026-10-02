@@ -130,12 +130,12 @@ export type FoldGroup =
 			rows: Row[];
 			actions: FoldableAction[];
 			/**
-			 * The header's summary AS ITS UNITS, in the painted order: the count line's
-			 * segments and its `and N other actions` tail, or a one-element array for the
-			 * sentence form. The header paints one unbreakable span per unit, so a wrap
-			 * can only fall at a ` · ` (see `foldSummaryUnits`).
+			 * The header's summary as its units AND its shape: the count line's segments
+			 * and its `and N other actions` tail, or the one flowing clause of the sentence
+			 * form (see `foldSummarySpec` for why the shape has to be stated rather than
+			 * inferred).
 			 */
-			summary: string[];
+			summary: FoldSummarySpec;
 			failedCount: number;
 			/** The wall-clock span, when the run can date itself (see `foldSpan`). */
 			span: FoldSpan | null;
@@ -232,17 +232,29 @@ export const actionClass = (
  * python").
  */
 /**
- * What the run has done, AS ITS UNITS - the form the header paints (each unit is
- * one unbreakable span, so a wrap falls at a ` · ` and never inside a phrase;
- * design round 1, D1).
+ * The summary AS THE HEADER MUST PAINT IT: its units, and which SHAPE it is.
  *
- * The count-line shape is `foldCountUnits`; the SENTENCE shape is ONE unit, and
- * that is deliberate: `Explored 4 files, delegated 3 tasks` is prose, so the
- * browser's own line breaking is right for it and there is no ` · ` inside it to
- * break at. `foldSummary` is these units joined, which is what a consumer with
- * no DOM to paint (the collapsed bar's `title`) reads.
+ * WHY THE SHAPE IS PART OF THE CONTRACT (agent review round 2, R2-1, and the same
+ * defect QA bounded as Q-r2-3): the count line's units have to hold together - a
+ * wrap there may only fall at a `·` - so the header paints each one unbreakable.
+ * The SENTENCE is the opposite case: `Explored 4 files, delegated 3 tasks` is
+ * prose, its own word spaces are the right places to break, and that is how it
+ * painted before this branch. Round 1's first cut painted every unit nowrap,
+ * which silently made the sentence unbreakable and left the `break-words` on the
+ * span inert (it cannot act inside `white-space: nowrap`). The header is told
+ * which shape it has rather than inferring it from the unit count: `6 searches`
+ * is one unit too, and it must stay whole.
  */
-export const foldSummaryUnits = (actions: FoldableAction[]): string[] => {
+export type FoldSummarySpec = {
+	units: string[];
+	/**
+	 * True for the SENTENCE form (a single flowing clause): the browser's own
+	 * line breaking is correct for it, so the header does NOT hold it whole.
+	 */
+	prose: boolean;
+};
+
+export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 	const counts = new Map<string, number>();
 	let unknown = 0;
 	for (const action of actions) {
@@ -253,7 +265,10 @@ export const foldSummaryUnits = (actions: FoldableAction[]): string[] => {
 	if (unknown > 0 || counts.size > 2) {
 		const units = foldCountUnits(foldCountSegments(actions));
 		// Only reachable for an empty run, which `foldRuns` never emits a summary for.
-		return units.length === 0 ? [`${actions.length} actions`] : units;
+		return {
+			units: units.length === 0 ? [`${actions.length} actions`] : units,
+			prose: false,
+		};
 	}
 
 	/*
@@ -280,16 +295,24 @@ export const foldSummaryUnits = (actions: FoldableAction[]): string[] => {
 		if (cls === "delegated")
 			parts.push(`Delegated ${count} task${count === 1 ? "" : "s"}`);
 	}
-	if (parts.length === 0) return [`${actions.length} actions`];
+	if (parts.length === 0)
+		return { units: [`${actions.length} actions`], prose: true };
 	// A two-class sentence reads as "Explored 4 files, 1 search"; the second part
 	// keeps the join's own lowercase, which is why the first part is the only one
 	// that capitalises.
-	return [
-		parts.length === 1
-			? parts[0]
-			: `${parts[0]}, ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}`,
-	];
+	return {
+		units: [
+			parts.length === 1
+				? parts[0]
+				: `${parts[0]}, ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}`,
+		],
+		prose: true,
+	};
 };
+
+/** The units the header paints, in order. */
+export const foldSummaryUnits = (actions: FoldableAction[]): string[] =>
+	foldSummarySpec(actions).units;
 
 /** The units joined with the ` · ` the renderer draws between them. */
 export function foldSummary(actions: FoldableAction[]): string {
@@ -719,7 +742,7 @@ export function foldRuns(
 				gap: run[0].gap,
 				rows: run,
 				actions,
-				summary: foldSummaryUnits(actions),
+				summary: foldSummarySpec(actions),
 				failedCount: actions.filter((action) => action.failed).length,
 				span: foldSpan(actions),
 				live: foldLive(actions),
