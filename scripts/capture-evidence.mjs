@@ -5090,6 +5090,82 @@ export const STORIES = [
 	 * never-used agent above the most recently used one.
 	 */
 	["chat-sidebar-agents--long-roster", 420, 760],
+	/*
+	 * THE SECTION'S RAISED CAP, AND ITS RELEASE (issue #765) - the two states the
+	 * shrink affordance is judged on, taken on the ONE shipped story that carries
+	 * a cap-bound, collapsible section: `chat-sidebar-agents--long-roster` draws
+	 * twelve agents against the shipped eight-row cap, so it is the only scene in
+	 * the sweep with both a `Show N more` foot to press and a
+	 * `data-chat-section="agents"` disclosure to close. No new story was authored
+	 * for this pair: the state under test is a PRESS SEQUENCE on an existing scene
+	 * (what an entry's `press` array is for), and a fixture with rungs past
+	 * twelve would have been a source change this lane does not own - so the
+	 * ladder's deepest reachable rung is the one rung the fixture holds.
+	 *
+	 * `cap/grown` is that raised state: one press of the section's own foot, which
+	 * takes the cap from 8 to 16, draws all twelve rows and REMOVES the foot
+	 * (`expectGone` asserts it at the shutter, so a frame that still shows the
+	 * foot fails rather than being filed as the grown state). The raise itself is
+	 * untouched by this change, which is why the same frame is ALSO taken on the
+	 * base tree (`cap-baseline/grown`) as the pair's control: a difference between
+	 * those two halves would be a regression this fix owes an answer for.
+	 *
+	 * `cap/reopened` is the fix's own claim. The foot is pressed first (the cap is
+	 * now raised), then the section's heading is pressed TWICE - the first press
+	 * collapses the section, which is the edge the fix hangs the release on, the
+	 * second re-expands it. The shipped shape must come BACK: eight rows and the
+	 * `Show 4 more` foot again, which is what `expectPresent` demands at the
+	 * shutter. On the base tree the same presses leave the raised cap in place -
+	 * the defect issue #765 reports - and that half (`cap-baseline/reopened`)
+	 * carries the same entries with the foot's assertion inverted, spelling the
+	 * defect as the frame's own claim rather than as an absence a reader has to
+	 * notice.
+	 */
+	/*
+	 * `cap/resting` is the same story with NO press: the shipped compact form, in
+	 * THIS pass's own generation. It exists so the fix's claim is a comparison
+	 * rather than an impression - `cap/reopened` must equal this frame, because a
+	 * released cap means the section re-derives the shipped cap through the same
+	 * `??` the resting render uses, so the two renders are the same render. The
+	 * committed `long-roster/` frame is the same state from an older generation
+	 * (head `9216759e7d`), and a cross-generation diff would report that set's own
+	 * rasterization drift as this change, which is the trap
+	 * `docs/evidence/chat-sidebar-sections-baseline/README.md` records.
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/resting",
+		},
+	],
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/grown",
+			press: '[data-sidebar-section-more="agents"]',
+			pressSettleMs: 400,
+			expectGone: '[data-sidebar-section-more="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/reopened",
+			press: [
+				'[data-sidebar-section-more="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			],
+			pressSettleMs: 400,
+			expectPresent: '[data-sidebar-section-more="agents"]',
+		},
+	],
 	["chat-sidebar-agents--roster-filtered", 420, 760],
 	["chat-sidebar-agents--roster-no-match", 420, 760],
 	["chat-sidebar-agents--pinned-first", 420, 760],
