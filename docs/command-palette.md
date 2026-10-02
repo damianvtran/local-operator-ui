@@ -128,12 +128,18 @@ names no terms, its list empty or full — and for a typed search that found
 nothing: the states where a hint is worth its pixels.
 
 The footer draws ONE legend at a time, and the split is deliberate (design round
-1, D2): a browse carries the scope legend, a typed search carries the movement
-legend (`↑ ↓ Ctrl+N`), and both do not fit — the scope legend inks 351px and
-leaves 158px free before `esc to close` in a footer with ~585px of usable
-width, while the movement legend needs 264px on its own. The empty state
-therefore omits the walk and the typed state omits the scope prefixes;
-re-arranging that budget is a footer-layout decision, not a copy edit.
+1, D2, with its widths re-derived over this copy in design round 2's D7):
+measured from the committed frames (grayscale ink runs at luma >= 110, css =
+device px / 2, inclusive runs), the scope legend inks 365.5px and leaves
+158.5px free before `esc to close` in a footer with ~585px of usable width,
+while the movement legend's ink — `↑ ↓ Ctrl N to move` — measures 152.5px (it
+was 215px while the dead `Ctrl P` half was still drawn). Both do not fit: the
+152.5px of ink against the 158.5px of free space is a single-digit margin
+before any separation gap, and the legend's own interior spacing (14px measured
+between `Ctrl N` and `to move`, 22.5px between `to move` and `↵`) pushes it
+over — so a scope entry would have to go. The empty state therefore omits the
+walk and the typed state omits the scope prefixes; re-arranging that budget is
+a footer-layout decision, not a copy edit.
 
 ## What it searches
 
