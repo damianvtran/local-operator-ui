@@ -942,8 +942,15 @@ const completeMerge = async ({ dryRun }) => {
 		);
 		if (restored) {
 			const staged = stagedPaths();
+			/*
+			 * WHAT IS STAGED, MEASURED: git lists the restored path in
+			 * `diff --cached --name-only` as its UNMERGED entry, so a parenthetical
+			 * saying the manifest is "not among" the staged paths was false (QA
+			 * round-2 Q4). The distinction that matters is unmerged-vs-resolution,
+			 * not present-vs-absent, and that is what this says.
+			 */
 			console.error(
-				`evidence-fold: the resolution was NOT kept - ${MANIFEST_PATH} is back to the merge's unresolved state (git status shows it unmerged), and nothing this run wrote is staged (${staged.length} path(s) are staged, git's own merge bookkeeping, ${MANIFEST_PATH} not among them).`,
+				`evidence-fold: the resolution was NOT kept - ${MANIFEST_PATH} is back to the merge's unresolved state, so git will not commit it as a resolution. The ${staged.length} path(s) git lists as staged are the merge's own bookkeeping, and ${MANIFEST_PATH} appears among them as that UNMERGED path rather than as a resolved one.`,
 			);
 		} else {
 			console.error(
@@ -1191,13 +1198,26 @@ const driver = ([basePath, oursPath, theirsPath]) => {
 				);
 		}
 		const withNewline = (text) => (text.endsWith("\n") ? text : `${text}\n`);
+		/*
+		 * The labels name the sides git actually handed us. `%A` is NOT this branch
+		 * outside a merge - that is the whole reason this path refuses - and
+		 * `operation` is null for the operations git records no marker for, so it
+		 * must not be interpolated as if it were a name (that printed "the null
+		 * upstream side").
+		 */
+		const oursLabel =
+			operation === null
+				? "git's %A - not this branch (no merge in progress)"
+				: `git's %A, the upstream side during ${operation}`;
+		const theirsLabel =
+			"git's %B - the commit being replayed, or the stashed change";
 		writeFileSync(
 			oursPath,
-			`<<<<<<< ours (the ${operation} upstream side)\n${withNewline(
+			`<<<<<<< ${oursLabel}\n${withNewline(
 				readFileSync(oursPath, "utf8"),
 			)}=======\n${withNewline(
 				readFileSync(theirsPath, "utf8"),
-			)}>>>>>>> theirs (the commit being replayed)\n`,
+			)}>>>>>>> ${theirsLabel}\n`,
 		);
 		return 1;
 	}
