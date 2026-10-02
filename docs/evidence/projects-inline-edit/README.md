@@ -6,9 +6,32 @@ through the app's own `capturePage()` in the `headless` window mode) are
 committed beside this file: `dark/project-inline-1380x900-local-operator-dark-<state>.png`
 and the `light/` siblings, for `hover`, `editing`, `dirty`, `saved`,
 `description`, `saving`, `refused-key`, `refused-status` and `conflict`.
-The run printed **47 PASS lines and 0 FAIL per palette and `ALL CHECKS
+The run printed **53 PASS lines and 0 FAIL per palette and `ALL CHECKS
 PASSED`**, and its last check — no process from this run outlived its boot —
 passed. The seed, the command and the check list below are the record.
+
+## Round 1 remediation re-capture
+
+These frames are the REMEDIATION head's, re-taken for design review round 1
+(D1-D5), UX round 1 (U1-U4) and QA round 1 (Q1-Q3). The states whose LOOK
+changed, and why:
+
+- `editing-*` - the clean focused field now shows NO check/x (D2: § 2.2's
+  dirty-gate; the chrome used to appear the moment a field was clicked).
+- `refused-status-*` - the status editor opens in the chip's own slot with its
+  x/✓ hugging the control and the actions cluster pinned (D1), and the
+  done-gate sentence speaks the app's crafted prose (D4).
+- `saved-*`, `description-*` - the acknowledgement lands in a fixed-height
+  slot that is present whether or not something is showing, so a commit never
+  reflows the rows below (D3).
+- `dirty-*`, `saving-*`, `refused-key-*`, `conflict-*` - unchanged look; the
+  slot's hit areas are now disjoint (D5) and the pencil's target is 32x32
+  (U2), both pointer facts a still cannot carry.
+- `hover-*` - unchanged look; the fixed-height slot is present at rest (D3).
+
+The scene grew six checks in the same round: the fixed-height slot, the
+chip's-slot opening, the dirty-gate, the input-time title cap, the local key
+refusal, and the x/✓ adjacency (53 per palette, from 47).
 
 ## What the frames are evidence for, and what they are not
 
@@ -94,13 +117,19 @@ by construction).
 ## The scene's own checks
 
 The scene prints one PASS/FAIL line per check and exits non-zero on any FAIL.
-**The run recorded `ALL CHECKS PASSED` on both palettes (47 PASS lines each,
-0 FAIL)** - the checklist below in order, plus the boot block's own checks
-(the pinned Electron, the scratch port, the armed launch, the backend
-isolation pair, the headless window, and the four seed preconditions).
-The checklist, in order:
+**The run recorded `ALL CHECKS PASSED` on both palettes (53 PASS lines each,
+0 FAIL)** - the full list it printed, in order (the boot block's own checks
+first - the pinned Electron, the scratch port, the armed launch, the backend
+isolation pair, the headless window - then the seed preconditions and the
+lifecycle):
 
 ```
+the harness is driving the Electron this branch pins
+the scratch backend port is dead
+the armed launch said so on stdout
+the app's logs went to this run's scratch tree, not the operator's
+the app holds a connection to this run's backend (http://127.0.0.1:8080)
+the app holds NO connection to the operator's own backend (http://localhost:1111)
 the window is the headless launch, not a raised one
 the daemon holds the seeded project
 the seed has a title and a start date (the conflict case needs both)
@@ -109,26 +138,32 @@ the seed holds an incomplete milestone (the done-gate arm)
 the title's pencil is hidden at rest and the pointer's hover reveals it
 focus alone reveals the key row's pencil (the keyboard door)
 the title editor opens focused
-double-clicking the title value opens its editor
+the editor holds the draft
 Esc reverts the field: stored title restored, no write sent
+double-clicking the title value opens its editor
 Enter accepts a single-line field, and the transient saved caption shows
 the daemon holds the accepted title
 the pane's one live region carries the acknowledgement
 the x cancels: the stored start date stands, nothing was written
+the saved caption lands inside the fixed-height slot: the row does not move
 the check accepts: the daemon holds the new start date
 blur on a dirty, valid field commits it
 Enter in the description is a newline: still editing, the text grew a line
 no write was sent for the still-open draft
 the Write/Preview toggle renders the draft as markdown
 Cmd+Enter accepts the description
+the status editor opens in the chip's own slot: no header reflow
+a clean status edit draws no accept/cancel chrome (the 2.2 dirty-gate)
 the status select commits from the menu
-the done gate's refusal is re-spoken beside the status control
+the done gate's refusal speaks the app's sentence, not the daemon's register
+the status check/x hug the control in the chip's own slot
 the refused status move wrote nothing
 x reverts the refused status to the stored value
 a duplicate key is refused in-field with the app's crafted sentence
 the refused key keeps the attempted value in the editor (§ 2.3)
 x on the refused key restores the record's name
-an over-long title is refused locally, with the daemon untouched
+the over-long title is stopped at input: the field holds at most 80 characters
+a grammar-invalid key is refused locally, with the daemon untouched
 the out-of-band write landed (this process, the daemon's own route)
 a field that moved out-of-band holds the commit, draft intact
 Keep mine commits the draft over the out-of-band value
@@ -140,6 +175,7 @@ an estimate can be born from none (round 1, M1)
 tags can be born from none
 the out-of-band tags write landed
 a clean tags draft adopts the moved record and cannot revert it
+a blur on the adopted (clean) tags draft writes nothing
 no process from this run outlived its boot
 ```
 
