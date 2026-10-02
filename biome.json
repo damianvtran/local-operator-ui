@@ -13,7 +13,8 @@
 			"out/**",
 			"node_modules/**",
 			"src/renderer/src/styles/themes.generated.css",
-			"src/main/browser/vendor/**"
+			"src/main/browser/vendor/**",
+			"src/main/browser/actions/geometry-sources.gen.ts"
 		]
 	},
 	"formatter": {
