@@ -49,8 +49,7 @@ if (!ORIGIN) {
 	console.error("usage: measure.mjs http://127.0.0.1:<port>");
 	process.exit(2);
 }
-const STORY =
-	"/iframe.html?id=chat-sidebar-agents--long-roster&viewMode=story";
+const STORY = "/iframe.html?id=chat-sidebar-agents--long-roster&viewMode=story";
 
 /** A minimal CDP client: `send(method, params)` against one page target. */
 class Cdp {
@@ -120,6 +119,36 @@ const READ = `(() => {
 		firstChatTop: box(firstChat)?.top ?? null,
 		scroller: scroller ? { scrollHeight: scroller.scrollHeight, clientHeight: scroller.clientHeight } : null,
 		headingExpanded: document.querySelector('[data-chat-section="agents"]')?.getAttribute('aria-expanded') ?? null,
+		/*
+		 * THE RESET'S OWN NAME, in each of the two channels it ships on (design
+		 * re-check, D1): the toggle's title attribute (the pointer's channel), the
+		 * id its aria-describedby points at, and the TEXT of that element (the
+		 * channel every other reader gets). A still cannot carry either of them -
+		 * the title is a browser/OS overlay the page never paints and the sr-only
+		 * element is clipped to a pixel - so the hint is read here rather than
+		 * photographed, and a frame claiming the hint is present is not evidence
+		 * of it either way.
+		 */
+		headingTitle:
+			document.querySelector('[data-chat-section="agents"]')?.getAttribute('title') ?? null,
+		headingDescribedBy:
+			document
+				.querySelector('[data-chat-section="agents"]')
+				?.getAttribute('aria-describedby') ?? null,
+		hintText: (() => {
+			const heading = document.querySelector('[data-chat-section="agents"]');
+			const id = heading?.getAttribute('aria-describedby');
+			return id ? (document.getElementById(id)?.textContent ?? null) : null;
+		})(),
+		/*
+		 * THE SECTION'S OWN FILTER FIELD (UX round 1's U2). The heading press is
+		 * documented as a no-op under a list query; whether the field SURVIVES it is
+		 * the question, and it is a DOM fact rather than a pixel one.
+		 */
+		rosterFilterPresent: Boolean(document.querySelector('input[aria-label="Filter agents"]')),
+		/* The foot's own name and hint, while a raise leaves a foot drawn. */
+		footName: document.querySelector('[data-sidebar-section-more="agents"]')?.getAttribute('aria-label') ?? null,
+		footTitle: document.querySelector('[data-sidebar-section-more="agents"]')?.getAttribute('title') ?? null,
 		documentHeight: document.documentElement.getBoundingClientRect().height,
 		/*
 		 * WHERE THE KEYBOARD WENT AFTER THE PRESS. The section's own show-more foot
@@ -257,7 +286,6 @@ try {
 	}
 	if (!booted) throw failure;
 
-
 	/* The press the entry `cap/grown` makes, and read the state it lands in. */
 	out.pressFoot = await cdp.evaluate(
 		PRESS('[data-sidebar-section-more="agents"]'),
@@ -277,7 +305,137 @@ try {
 	await settle(500);
 	out.states.reopened = await cdp.evaluate(READ);
 
-	const { resting, grown, collapsed, reopened } = out.states;
+	/*
+	 * THE JOURNEY'S LAST RUNG (design re-check): the foot pressed AGAIN on the
+	 * reopened section. The release must not have disarmed the raise - a reader who
+	 * collapses and reopens and then asks for the long list again must get it, and
+	 * the hint must come back with it.
+	 */
+	out.pressFootAgain = await cdp.evaluate(
+		PRESS('[data-sidebar-section-more="agents"]'),
+	);
+	await settle(500);
+	out.states.grownAgain = await cdp.evaluate(READ);
+
+	/*
+	 * THE QUERY-FORCED STATE (UX round 1's U2), measured rather than reasoned about.
+	 *
+	 * WHY BOTH VARIANTS. The fix's gate is `isOpen("agents", true) || (query !== ""
+	 * && rosterFilter.trim() !== "")` - a CONJUNCTION of the sidebar list query and
+	 * the section's own filter. UX's repro typed into ONE field; which one it was is
+	 * not recoverable from the thread, so both shapes are driven here: the sidebar
+	 * query alone, and the sidebar query with the roster filter beside it. The
+	 * frame's claim turns on which of them keeps the field across the press.
+	 */
+	const click = (selector) => cdp.evaluate(PRESS(selector));
+	/*
+	 * A REAL POINTER PRESS at the element's own centre, through the input pipeline
+	 * (`Input.dispatchMouseEvent`), for the one comparison the trust question turns
+	 * on: the frame rig cannot press the heading AFTER typing a query, so the
+	 * frame's silence on the pressed state is a rig limit rather than evidence - a
+	 * CDP mouse press is the reader's own click, and if it moves the field the way
+	 * `el.click()` does, the instrument is reading the product and not its own
+	 * synthetic event.
+	 */
+	const clickAt = async (selector) => {
+		const { result } = await cdp.send("Runtime.evaluate", {
+			returnByValue: true,
+			expression: `(() => {
+				const el = document.querySelector(${JSON.stringify(selector)});
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return { x: Math.round(r.left + r.width / 2), y: Math.round(r.top + r.height / 2) };
+			})()`,
+		});
+		if (!result.result.value)
+			throw new Error(`clickAt: ${selector} matched nothing`);
+		const { x, y } = result.result.value;
+		for (const [type, buttons] of [
+			["mousePressed", 1],
+			["mouseReleased", 0],
+		]) {
+			await cdp.send("Input.dispatchMouseEvent", {
+				type,
+				x,
+				y,
+				button: "left",
+				buttons,
+				clickCount: 1,
+			});
+		}
+		return { pressed: true, x, y };
+	};
+	const insert = async (text, settleMs = 900) => {
+		await cdp.send("Input.insertText", { text });
+		await settle(settleMs);
+	};
+	const freshStory = async () => {
+		/*
+		 * THE DISCLOSURE KEY IS A LEFTOVER FROM THE JOURNEY ABOVE, and every chevron
+		 * press writes it - so a fresh load of the SAME story id would open with the
+		 * section in whatever state the last press left it (measured: the first
+		 * attempt at this scenario reloaded into a COLLAPSED section and never drew a
+		 * row). It is seeded to the shipped state rather than deleted, so the load is
+		 * the story's own default and not a missing-key branch.
+		 */
+		try {
+			await cdp.evaluate(
+				'(() => { try { localStorage.setItem("chat-sidebar-disclosures", "{}"); } catch {} return true; })()',
+			);
+		} catch {}
+		await cdp.send("Page.navigate", { url: `${ORIGIN}${STORY}` });
+		await settle(1500);
+		return waitSettled(cdp, 25_000);
+	};
+	const HEADING =
+		'[data-sidebar-region="entities"] [data-chat-section="agents"]';
+	const queryScenario = async (
+		withRosterFilter,
+		rosterFilterOnly = false,
+		realMouse = false,
+	) => {
+		const seen = { resting: await freshStory() };
+		if (rosterFilterOnly) {
+			await click('input[aria-label="Filter agents"]');
+			await settle(300);
+			await insert("er");
+			seen.filterInForce = await cdp.evaluate(READ);
+		} else {
+			await click("[data-sidebar-search]");
+			await settle(600);
+			await insert("b");
+			seen.queryInForce = await cdp.evaluate(READ);
+			if (withRosterFilter) {
+				await click('input[aria-label="Filter agents"]');
+				await settle(300);
+				await insert("er");
+				seen.filterInForce = await cdp.evaluate(READ);
+			}
+		}
+		seen.pressHeading = realMouse
+			? await clickAt(HEADING)
+			: await click(HEADING);
+		await settle(700);
+		seen.afterHeadingPress = await cdp.evaluate(READ);
+		return seen;
+	};
+	const guarded = async (fn) => {
+		try {
+			return await fn();
+		} catch (error) {
+			return { error: String(error?.message ?? error) };
+		}
+	};
+	out.query = {
+		sidebarQueryOnly: await guarded(() => queryScenario(false)),
+		sidebarQueryAndRosterFilter: await guarded(() => queryScenario(true)),
+		rosterFilterOnly: await guarded(() => queryScenario(false, true)),
+		sidebarQueryOnlyRealPointer: await guarded(() =>
+			queryScenario(false, false, true),
+		),
+	};
+
+	const { resting, grown, collapsed, reopened, grownAgain } = out.states;
 	out.deltas = {
 		"rows(grown) - rows(resting)": grown.rows - resting.rows,
 		"rows(reopened) - rows(resting)": reopened.rows - resting.rows,
@@ -291,6 +449,10 @@ try {
 		"collapsed section height": collapsed.section?.height ?? null,
 		"collapsed rows": collapsed.rows,
 		"collapsed heading aria-expanded": collapsed.headingExpanded,
+		"rows(grownAgain) - rows(grown)": (grownAgain?.rows ?? 0) - grown.rows,
+		"hint(grown)": grown.hintText,
+		"hint(reopened)": reopened.hintText,
+		"hint(grownAgain)": grownAgain?.hintText ?? null,
 	};
 	console.log(JSON.stringify(out, null, 1));
 } finally {
