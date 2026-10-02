@@ -4418,7 +4418,10 @@ export function ChatSidebar({
 					   whatever the team's own name was long — a share of the row, up to
 					   its 45% cap — so a reader on `Local Operator Development` had one
 					   fewer word of their own title than a reader on `docs-pod` did. The
-					   bubble's cost is fixed at the mark (20px plus the row's 4px gap),
+					   bubble's cost is the mark plus the row's 4px gap, and the NAME no
+					   longer enters it: the mark's width follows its two initials (measured
+					   at head: 22px for `LD`, 24-25px for `DQ`, against the 20px circle the
+					   badge-family round replaced - a ~3px swing by initials, not by name),
 					   and the name is not lost: it is the bubble's tooltip, its
 					   `aria-label`, and still the flyout's binding clause.
 
@@ -7642,11 +7645,19 @@ export function ChatSidebar({
 										 * closes): a filter always keeps its field, so the pair cannot
 										 * come apart.
 										 *
-										 * IT READS THE DISCLOSURE, NOT A QUERY. A list query force-opens
-										 * the rows (`query || isOpen`) but is not the reader expanding
-										 * the roster - and the query already narrows agents by name
-										 * through the backend search, so a second field under it would
-										 * be two filters arguing about one list.
+										 * AND THE FIELD ALSO RIDES A LIST QUERY (UX round 1's U2,
+										 * design re-check round 3). A list query force-opens the rows
+										 * (`query || isOpen`) and this field is that body's own control,
+										 * so it draws while the body does - reading the disclosure ALONE
+										 * was U2: the heading press under a query is the panel's
+										 * documented no-op on the rows and the chevron, yet it took
+										 * `Filter agents` off the screen and stepped everything below it
+										 * up by the field's own height. The query still narrows agents by
+										 * name through the backend search; this field narrows the ROSTER
+										 * in place on top of it, so the reader keeps the control that
+										 * clears their own filter. THE SECOND CLAUSE IS UNTOUCHED: the
+										 * field still needs a cap-bound roster or an applied filter, so a
+										 * query alone draws nothing over a short roster.
 										 *
 										 * IT IS NOT THE LIST'S FIELD one level up, and that separation
 										 * is the point: the list's query goes through the backend and

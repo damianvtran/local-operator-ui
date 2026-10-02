@@ -5492,7 +5492,7 @@ export const STORIES = [
 	],
 	/*
 	 * THE MARK ITSELF, in every shape its rule has plus the three image states
-	 * (operator ask, 2026-10-01): 20px in a 320px panel is not a frame a reviewer can
+	 * (operator ask, 2026-10-01): 16px in a 320px panel is not a frame a reviewer can
 	 * read letters off, and the image-ready half of the contract - a URL renders, an
 	 * absent URL and a FAILED one both fall back - has no fixture on the row surface
 	 * to show, since no team carries an icon field yet. `team-avatar-bubble.stories.tsx`
