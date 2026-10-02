@@ -43,7 +43,6 @@
 
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent } from "@storybook/test";
 import { type FC, useEffect, useState } from "react";
 import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 import { ChatSidebar } from "./chat-sidebar";
@@ -469,21 +468,6 @@ type SettleSpec = {
 	chats?: number | "absent";
 };
 
-/**
- * The chat rows that draw a TEAM MARK, as the slugs the marks carry.
- *
- * Read from the DOM the way `entityRows` and `chatRows` are: the assertion this
- * serves (design round 1, D4) is about what the filtered list DRAWS, not about
- * which rows the search model picked - `data-team-slug` is the mark's own
- * identity, written by `TeamAvatarBubble` for exactly this kind of reader.
- */
-const markedChatRows = () =>
-	[
-		...document.querySelectorAll<HTMLElement>(
-			"[data-chat-row] [data-team-bubble]",
-		),
-	].map((node) => node.getAttribute("data-team-slug") ?? "");
-
 const settled = ({ entities, chats }: SettleSpec) =>
 	waitFor(() => {
 		const entityRegion = document.querySelector(
@@ -775,6 +759,18 @@ export const NarrowMin220: Story = {
  * be photographed over the split's persisted collapse; the collapse is gone,
  * and the query's own claim is what is left.)
  *
+ * THE QUERY IS DRIVEN BY THE CAPTURE ENTRY (`scripts/capture-evidence.mjs`), not
+ * by this play: two play-driven mechanisms were measured against the rig —
+ * `@storybook/test`'s `userEvent` (press the control, then type into the field)
+ * and a direct native-setter plus `input` dispatch on the same field — and neither
+ * reached the filtered state (the frame came back at 18642 bytes with ten entity
+ * rows and no field drawn). The entry presses the control, waits out the field's
+ * own mount-and-focus frame (`pressSettleMs: 400`), types through the real input
+ * pipeline, and asserts the D4 fact at the shutter: the row the query matched
+ * draws `[data-team-bubble]`. Opened by hand, this story therefore shows the
+ * resting panel; the FILTERED panel is the one the entry photographs, and the
+ * `QueryWhileCollapsed` frames in `evidence/team-avatar-1001/` are of that state.
+ *
  * THE WORD IS A TEAM'S, not an agent's: this change replaces the drawn team name
  * in the results with a mark, and the state that has to exist is the one where a
  * TEAM-BOUND row is drawn by a SEARCH. `helpdesk` carries no label, so the row is
@@ -791,44 +787,6 @@ export const QueryWhileCollapsed: Story = {
 	},
 	play: async () => {
 		await settled({ entities: ["coder", "reviewer", "architect"], chats: 3 });
-		/*
-		 * THE FIELD IS OPENED BY THE CONTROL THAT OWNS IT, then typed into - not
-		 * looked up by label. `aria-label="Search chats and agents"` is on TWO
-		 * elements in this sidebar (the search icon BUTTON and the field itself), so
-		 * `getByLabelText` throws "Found multiple elements" at this play's first
-		 * interaction and the state this story is NAMED for was never reached; the
-		 * by-role lookups below discriminate, because only one of the two is a button
-		 * and only one is a textbox. The ambiguity is base behaviour rather than this
-		 * change's (UX round 1 filed it separately; it is not fixed here), and driving
-		 * the field this way is what makes the shipped frame the FILTERED panel rather
-		 * than the resting one (agent review round 1, R1-M2 = QA Q-F3).
-		 */
-		await userEvent.click(
-			await screen.findByRole("button", { name: "Search chats and agents" }),
-		);
-		await userEvent.type(
-			await screen.findByRole("textbox", { name: "Search chats and agents" }),
-			"helpdesk",
-		);
-		/*
-		 * The box debounces at 150ms and the frame is of the ANSWERED state: this
-		 * waits for the one team AND the one conversation the word matches to be on
-		 * screen together, rather than for a duration.
-		 *
-		 * THE LAST TERM IS THE ASSERTION THE DESIGN ROUND ASKED FOR (D4): the row a
-		 * query MATCHED carries the team mark. That closes the search surface with a
-		 * fact this file asserts rather than an inference from the shared row renderer
-		 * - and it is the one term a BEFORE tree cannot satisfy (the mark does not
-		 * exist there), which is why the evidence README says the before half's copy
-		 * drops it.
-		 */
-		await waitFor(
-			() =>
-				entityRows().length === 1 &&
-				entityRows()[0] === "helpdesk" &&
-				chatRows() === 1 &&
-				markedChatRows().join(",") === "helpdesk",
-		);
 		await readoutSettled();
 		await layoutSettled();
 		await readoutSettled();
