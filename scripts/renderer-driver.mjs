@@ -35487,6 +35487,77 @@ async function sceneProjectInlineEdit(cdp) {
 	);
 
 	/*
+	 * 12b. USE THEIRS, the sibling door (UX round 1, U1 / QA round 1, Q1):
+	 * the conflict is re-armed on the same field and the record's value is
+	 * adopted this time. The DATA outcome was always right; the state left
+	 * behind was not - the button that had focus unmounted under the
+	 * pointer, the slot stayed `editing` with focus on <body>, and no
+	 * keyboard exit brought the field back until a route round trip. The
+	 * fix closes the field with the focus handed back to its own slot
+	 * control, exactly like `Keep mine`, so this check reads focus, the
+	 * slot's phase and the daemon's row in one pass.
+	 */
+	const useTheirsStart = "2026-10-02";
+	const useTheirsOutOfBand = "2026-10-03";
+	await clickControl("start-date", "begin");
+	await need(ENTRY("start-date"), "the start-date editor (use theirs)");
+	await replaceAllText(cdp, ENTRY("start-date"), useTheirsStart);
+	const patchedForUseTheirs = await projectPatch(PROJECT, {
+		start_date: useTheirsOutOfBand,
+	});
+	await wait(10_500);
+	await cdp.evaluate(`(() => {
+		if (!window.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => window.__inlineEditVisibility ?? "visible",
+			});
+			window.__inlineEditVisibilityPatched = true;
+		}
+		window.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.dispatchEvent(new Event("focus"));
+		return true;
+	})()`);
+	const conflictAgain = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("This changed while you were editing")`,
+		8_000,
+	);
+	await clickAt(
+		cdp,
+		`${FIELD("start-date")} [data-inline-edit-control="use-theirs"]`,
+	);
+	const useTheirsSettled = await waitForCondition(
+		cdp,
+		`(() => {
+			const field = document.querySelector(${JSON.stringify(FIELD("start-date"))});
+			const active = document.activeElement;
+			const control = active?.getAttribute?.("data-inline-edit-control") ?? null;
+			return (
+				Boolean(field) &&
+				document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null &&
+				field.contains(active) &&
+				control === "begin"
+			);
+		})()`,
+		8_000,
+	);
+	const afterUseTheirs = await waitForStored(
+		(p) => p?.start_date === useTheirsOutOfBand,
+	);
+	check(
+		"Use theirs closes the field, hands focus back and adopts the record",
+		conflictAgain.ok &&
+			useTheirsSettled.ok &&
+			afterUseTheirs?.start_date === useTheirsOutOfBand,
+		`conflict=${conflictAgain.ok} settled=${useTheirsSettled.ok} patch=${patchedForUseTheirs.status} start_date=${JSON.stringify(afterUseTheirs?.start_date ?? null)}`,
+		`conflict=${conflictAgain.ok} settled=${useTheirsSettled.ok} patch=${patchedForUseTheirs.status} start_date=${JSON.stringify(afterUseTheirs?.start_date ?? null)}`,
+	);
+
+	/*
 	 * 13. THE SAVING STATE, HELD: the run's own daemon is paused by exact pid
 	 * (SIGSTOP, the `mini-view` device) so the in-flight write spans the frame,
 	 * and resumed in a `finally` so the same request then completes.
