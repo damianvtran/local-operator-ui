@@ -47,7 +47,7 @@ import {
 	installBrowserSessionHandlers,
 	resolveBrowserSession,
 } from "./profile";
-import { TabRegistry, surfaceToken } from "./registry";
+import { BACKGROUND_VIEWPORT, TabRegistry, surfaceToken } from "./registry";
 import { type RpcServer, startRpcServer } from "./rpc";
 import {
 	type RestoreReport,
@@ -873,6 +873,15 @@ export async function startBrowserHost(
 			},
 		});
 		window.contentView.addChildView(view);
+		// SIZED BEFORE THE FIRST HIDE, and the order is load-bearing: measured on
+		// Electron 44, a WebContentsView that is hidden first and sized afterwards
+		// keeps a 0×0 layout viewport — its renderer reads `innerWidth === 0` and
+		// every point query (`document.elementsFromPoint`, the primitive behind the
+		// `hit_test` action) answers an empty stack. The registry's layout pass
+		// re-applies this same rect on creation, but too late to matter. The rect is
+		// its `BACKGROUND_VIEWPORT`, the size a tab that never becomes the surface
+		// is promised by design 11.4/6.4.
+		view.setBounds(BACKGROUND_VIEWPORT);
 		// Hidden until the registry's layout pass decides otherwise: only the active
 		// tab occupies the content rect, so a tab created in the background paints
 		// nothing over the app's own UI while it loads.
