@@ -796,6 +796,27 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 				this.stopped++;
 			},
 		};
+		/*
+		 * The quit helper `scheduleReopenAtQuitTerminal` (#755) sits INSIDE this slice
+		 * and reads two more module-scope handles that sit ABOVE it - main's own
+		 * `activeUpdateService` and `relaunchPending` from `./relaunch-pending` - so
+		 * the sandbox supplies them for the same reason it supplies the viewer pair
+		 * above. Without them the slice threw `activeUpdateService is not defined`
+		 * out of the helper before the handler under test ran a single line.
+		 *
+		 * `activeUpdateService: null` is the state this test means: no update install
+		 * owns the quit, so the terminal schedules the successor. The recorder proves
+		 * the helper is on the live path rather than a decorative stub (asserted
+		 * below); the record's own exactly-once rule is `relaunch-pending`'s and is
+		 * covered by `scripts/relaunch-during-quit-proof.test.mjs`, not restated here.
+		 */
+		const relaunchPendingStub = {
+			scheduled: [],
+			hasPending: () => false,
+			scheduleOnExit(plan) {
+				this.scheduled.push(plan);
+			},
+		};
 		const backendService = {
 			isOwnedCleanupComplete: () => done,
 			stop: () => {
@@ -814,6 +835,8 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 			backendService,
 			viewerEndpoint: viewerEndpointStub,
 			viewerRecord: viewerRecordStub,
+			activeUpdateService: null,
+			relaunchPending: relaunchPendingStub,
 			logger: { error: (message) => errors.push(String(message)) },
 			LogFileType: { BACKEND: "backend" },
 			// The derivation's terms, as the module under test imports them.
@@ -883,6 +906,17 @@ test("index quit preserves listeners, waits cleanup, bounds itself and exits non
 		assert.ok(
 			viewerRecordStub.stopped > stoppedBeforeEarlyReturn,
 			"the viewer record is removed on the early-return path too, so the teardown must sit above the guard",
+		);
+		/*
+		 * Called at least once, never counted exactly: the helper is reached on
+		 * every pass, and `app.quit()` re-enters the handler, so the number of
+		 * reaches is the passes' and not the record's - `relaunch-pending` is what
+		 * makes the effect once. What this pins is that the stub is the path the
+		 * slice really takes, not a binding supplied to stop a ReferenceError.
+		 */
+		assert.ok(
+			relaunchPendingStub.scheduled.length >= 1,
+			"the terminal completes a recorded reopen instead of stranding it (#755)",
 		);
 		// Pinned to the derivation, not to a literal (round 3, F12): the bound must
 		// cover every step the quit waits on, and it must not be an order of
@@ -1596,14 +1630,37 @@ test("Windows candidates cover the layouts an installer can produce, and drop wh
 });
 
 test("a probe against an interpreter that ignores SIGTERM is killed and reported, not left pending", async () => {
-	// A REAL child that ignores SIGTERM - the shape `execFile`'s single signal left
-	// pending for good (review round 2, F9). The shim execs into python, so the PID
-	// it records is the interpreter the probe signalled.
+	/*
+	 * A REAL child that ignores SIGTERM - the shape `execFile`'s single signal left
+	 * pending for good (review round 2, F9). The shim execs into python, so the PID
+	 * it records is the interpreter the probe signalled.
+	 *
+	 * THE SHELL ARMS THE FIXTURE, BEFORE THE INTERPRETER IS UP, and that ordering
+	 * is the point (measured 2026-10-02, when this test was red on `main`). A
+	 * fixture that arms itself IN PYTHON has to finish the interpreter's own cold
+	 * start inside the probe's ceiling - and did not: this exact shim reached its
+	 * pid file 1,256-1,525 ms after spawn on this host, against a bare
+	 * `python -c pass` at 670-720 ms and a plain `/bin/echo` spawn at 255-290 ms.
+	 * The old 900 ms ceiling therefore fired while the child still had SIGTERM at
+	 * its default disposition, so the probe's own SIGTERM killed it before python
+	 * had written the pid file and the read below failed with ENOENT on a file the
+	 * fixture never reached. That was a fixture racing the ceiling it is measured
+	 * against, not a signal the product failed to send - the product's escalation
+	 * bounded the probe exactly as asserted.
+	 *
+	 * `trap '' TERM` is inherited across `exec` (POSIX: an ignored disposition
+	 * survives it), so the child ignores SIGTERM from its FIRST instruction, and
+	 * the shell's `$$` is the pid the interpreter has after that exec - the file
+	 * therefore exists before the ceiling can arrive, however slowly this host
+	 * starts a process. The interpreter still states its own ignore, and the
+	 * ceiling rejection asserted below is what proves the child really was alive
+	 * and stubborn at the bound rather than dead on arrival.
+	 */
 	const pidFile = join(home, "stubborn.pid");
 	const stubborn = join(home, "bin", "stubborn-python");
 	writeFileSync(
 		stubborn,
-		`#!/bin/sh\nexec ${JSON.stringify(python)} -c "import os, signal, time; open(os.environ['STUBBORN_PID_FILE'], 'w').write(str(os.getpid())); signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)" "$@"\n`,
+		`#!/bin/sh\ntrap '' TERM\necho $$ > "$STUBBORN_PID_FILE"\nexec ${JSON.stringify(python)} -c "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)" "$@"\n`,
 	);
 	chmodSync(stubborn, 0o700);
 	const started = Date.now();
@@ -1613,7 +1670,18 @@ test("a probe against an interpreter that ignores SIGTERM is killed and reported
 			1234,
 			{ ...env, STUBBORN_PID_FILE: pidFile },
 			"darwin",
-			{ totalMs: 1_200, attemptMs: 900, graceMs: 150, slackMs: 150 },
+			/*
+			 * THE CEILING HAS TO CLEAR THE FIXTURE'S OWN SPAWN COST (see the shim's
+			 * note above). Arming now costs ~520 ms on this host - one `/bin/sh`
+			 * spawn and a builtin write - against the 900 ms this test used to allow,
+			 * which leaves the same race a few hundred ms of room to be lost by
+			 * again. `totalMs` is deliberately kept too small to afford a retry: the
+			 * kill lands at `attemptMs + graceMs` (2,150 ms), so the loop's next
+			 * `remaining` is `2,400 - 2,150 - 150 - 150 = -50` and it rethrows the
+			 * first ceiling instead of spawning a second child. One interpreter is
+			 * created, and the ceiling reported is the one configured.
+			 */
+			{ totalMs: 2_400, attemptMs: 2_000, graceMs: 150, slackMs: 150 },
 		),
 		/did not answer an identity probe within \d+ ms/, // the effective ceiling, not the configured one
 	);
@@ -1782,18 +1850,39 @@ test("fatal and synchronous exit use owned manager without selecting processes",
 			throw Error("unconfirmed");
 		},
 	};
+	/*
+	 * The slice is the file's LAST region, so the helper its crash exit calls -
+	 * `scheduleReopenAtQuitTerminal`, defined above the slice - is not in it
+	 * either. The region under test is the exit handler's own orchestration, not
+	 * the helper's body (the quit test above owns that), so the sandbox supplies
+	 * the helper as a recorder. Without the binding the handler threw
+	 * `scheduleReopenAtQuitTerminal is not defined` out of its `finally` and never
+	 * reached `process.exit(1)` at all.
+	 */
+	const reopens = [];
 	vm.runInNewContext(code, {
 		process: processFixture,
 		backendService,
 		logger: { error() {} },
 		LogFileType: { BACKEND: "backend" },
 		posthogClient: { shutdown: () => calls.push(["telemetry"]) },
+		scheduleReopenAtQuitTerminal: () => reopens.push("crash"),
 	});
 	processFixture.emit("uncaughtException", Error("fatal"));
 	await new Promise((r) => setImmediate(r));
 	assert.deepEqual(calls, [["stop"], ["exit", 1]]);
+	assert.equal(
+		reopens.length,
+		1,
+		"the crash exit completes a recorded reopen before the process goes (#755)",
+	);
 	processFixture.emit("exit");
 	assert.deepEqual(calls.slice(2), [["emergency"], ["telemetry"]]);
+	assert.equal(
+		reopens.length,
+		1,
+		"the plain exit is not a terminal for the reopen record",
+	);
 });
 
 /*
