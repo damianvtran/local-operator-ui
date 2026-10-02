@@ -1,6 +1,6 @@
 import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { ChatSessionStatus } from "./chat-session-status";
+import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
 
 /** Read/unread specimens, not a receipt transition. The receipt flow is the
  * isolated browser fixture; this matrix keeps every neighbouring status legible
@@ -198,6 +198,66 @@ export const Neighbours: Story = {
 					}),
 				)}
 			</div>
+		</div>
+	),
+};
+
+/**
+ * THE OUTSTANDING-ASKS MARK ON THE RAIL, at the counts that have to read
+ * differently (design round 1, D4).
+ *
+ * This mark shipped with no frame anywhere: no story set `asks_open` on a row, so
+ * the half of the change that answers "does a queued ask read as NOT-BLOCKING on
+ * the rail" was unreviewable from source, and the design round said so rather than
+ * judging it. The row below is the matrix that question needs: absent at zero and
+ * never a `0` badge, a count at one and at several, and - the point of the mark -
+ * a BUSY row that carries asks, so a reader can see that "the agent is working"
+ * and "questions are waiting" are stated as two separate facts rather than one
+ * "waiting for you".
+ */
+export const AsksOutstanding: Story = {
+	args: { row: { session_id: "specimen" } },
+	render: () => (
+		<div className="bg-surface text-ink p-6 flex flex-col gap-4">
+			<span className="text-ink-muted text-xs">
+				asks_open: absent, 0, 1, 2 - beside a busy row and an idle one
+			</span>
+			{[
+				{ code: "idle", label: "idle", asks_open: undefined },
+				{ code: "idle", label: "idle with a zero count", asks_open: 0 },
+				{ code: "idle", label: "idle with one ask", asks_open: 1 },
+				{ code: "idle", label: "idle with two asks", asks_open: 2 },
+				{ code: "busy", label: "busy with two asks", asks_open: 2 },
+			].map((specimen) => (
+				<div className="flex items-center gap-2" key={specimen.label}>
+					{/*
+					 * BOTH MARKS, in the sidebar's own composition (`chat-sidebar.tsx`):
+					 * the status mark and the asks mark are drawn side by side on one row,
+					 * so a frame with only the status mark would be a frame of the wrong
+					 * surface - which is what the first version of this story was, and it
+					 * is why the mark looked absent from the captured frame.
+					 */}
+					<ChatSessionStatus
+						row={
+							{
+								session_id: "specimen",
+								status: { code: specimen.code },
+								asks_open: specimen.asks_open,
+							} as CanonicalSessionRow
+						}
+					/>
+					<ChatAsksOutstanding
+						row={
+							{
+								session_id: "specimen",
+								status: { code: specimen.code },
+								asks_open: specimen.asks_open,
+							} as CanonicalSessionRow
+						}
+					/>
+					<span className="text-sm">{specimen.label}</span>
+				</div>
+			))}
 		</div>
 	),
 };
