@@ -1016,6 +1016,44 @@ export const STORIES = [
 	["chat-turn-collapse--fresh-conversation", 1280, 900],
 
 	/*
+	 * THE JITTER'S OWN PAIR (`WakeMidCycle`, `PeerMidCycle`), added with PR-4's
+	 * liveness change: the operator's `U T88 A1(stop)` prefix, a trigger that
+	 * RE-OPENS the run (`wake_prompt` in one cell, `peer_message` in the other,
+	 * because the report names both and the reproduction was the peer one), and the
+	 * cycle it starts - two calls settled and the third still out, so the pane is
+	 * live when the shutter opens. That liveness is the whole point of the pair:
+	 * with nothing in flight both trees condense, so the row this file already had
+	 * (`chat-turn-collapse--completions-both-visible`, the same shape settled)
+	 * cannot show this defect at all. Before the change the settled 88-call
+	 * sequence un-condensed the moment the trigger lands - and RENDERED, that base
+	 * frame draws no turn-collapse bar at all: the 88 calls come back as ONE
+	 * COLLAPSED TRACE FOLD (`Explored 29 files, ran 59 commands`, 29 + 59 = 88 -
+	 * the same 88 rows the bar counts as `88 actions`, two idioms for one set of
+	 * work), the row above `A1` swaps element, vocabulary and chevron side, and
+	 * `A1` with everything below it sits 13.00 px higher. That fold plus the reflow
+	 * (and the cycle arriving as one live trace row) is the motion the operator
+	 * reported, not an unbarred wall of 88 rows; after the change the bar stays
+	 * and only the cycle being written is drawn in place. The before half is this
+	 * same story file copied into a base worktree (§10's method), measured rather
+	 * than assumed: driven through the shipped plan the base tree answers
+	 * `collapses: false` for both cells - the MODEL reading, which is the claim
+	 * that is true of the plan rather than of the pixels the base frame paints -
+	 * where this tree answers one bar hiding the 88 calls.
+	 *
+	 * FRAMES FOR BOTH ROWS ARE COMMITTED WITH THIS CHANGE: the after half under
+	 * `../chat-turn-collapse/{wake,peer}-mid-cycle/` (swept, two themes each) and
+	 * the before half under the declared `../chat-turn-collapse-before/` set, so
+	 * the pair a reviewer reads is in the tree rather than in a session's scratch.
+	 * No rig is run here: the pixels are the design round's own capture (2026-10-01,
+	 * `--themes=localOperatorLight,localOperatorDark`, after from this tree, before
+	 * from a base worktree at `af6fffa899` with this same story file and script
+	 * copied in - §10's method, so the halves differ only by the three shipped
+	 * modules under review).
+	 */
+	["chat-turn-collapse--wake-mid-cycle", 1280, 900],
+	["chat-turn-collapse--peer-mid-cycle", 1280, 900],
+
+	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
 	 * but not whole, and the mark is the whole change on screen. `before-join` is
@@ -1866,9 +1904,10 @@ export const STORIES = [
 	 * The trigger's own pre-click states (design D4): pointer hover and the
 	 * keyboard's focus ring, each through the input path that makes the state
 	 * real - the hover via `Input.dispatchMouseEvent` (which the rig asserts
-	 * against `:hover` before the shutter), the focus via real Tab presses,
-	 * because Blink matches `:focus-visible` for a Tab walk and not for a
-	 * programmatic `focus()`.
+	 * against `:hover` before the shutter, on this path as well as the
+	 * `select.hover` one - agent review round 1, F1), the focus via real Tab
+	 * presses, because Blink matches `:focus-visible` for a Tab walk and not for
+	 * a programmatic `focus()`.
 	 */
 	[
 		"chat-header-identity--team-bound",
@@ -4481,6 +4520,110 @@ export const STORIES = [
 	["shell-app-shell--agents", 1000, 800],
 	["shell-app-shell--agents", 900, 800],
 	["shell-app-shell--agents", 800, 800],
+	/*
+	 * THE CLASS CONTROL, on the Agents view (`agent-class.stories.tsx`).
+	 *
+	 * WHY THESE ELEVEN AND NOT ONE. The brief asks for the four states a reader
+	 * meets on the page — loading, empty, error, populated — and the populated
+	 * state is two: the class an agent is in and the class the switch produces,
+	 * which are only judgeable as a PAIR. So `reactive` and `proactive` are the
+	 * two ends the section renders, `switched-on` and `switch-refused` are the
+	 * same pair reached by PRESSING the control (the round trip, and the revert),
+	 * and `loading`/`empty` are the page states the section has to behave itself
+	 * in.
+	 *
+	 * THE OTHER FIVE ANSWER ROUND 2 RATHER THAN THE BRIEF, and each one closes a
+	 * hole a reviewer named: `renamed-seat` and `renamed-seat-switched` because
+	 * the name a reader sees was never photographed (UX U3), `long-named-seat`
+	 * and the two narrow `proactive` rows because the row below 1280 px had no
+	 * frame at all and the designer could not sign it off (D2).
+	 *
+	 * THE NARROW ROWS CARRY THEIR OWN `dir`: one story can write several
+	 * directories, and the alternative - two rows over the same story id - would
+	 * have had the second overwrite the first's twelve frames at a different size,
+	 * which is the trap the STORIES header describes.
+	 *
+	 * THE PRESS ROWS PRESS THE CLASS SWITCH THROUGH THE INPUT PIPELINE, not with a
+	 * script call: `element.click()` is treated as keyboard-ish by Blink for
+	 * `:focus-visible`, so a programmatic switch would photograph a focus ring a
+	 * mouse user never sees on the one control these frames exist to judge (the
+	 * same distinction the credential-pill pressed row above states). The story
+	 * holds `data-capture-pending` until the pressed state has SETTLED, which is
+	 * what keeps the shutter off the pending window.
+	 */
+	["agents-class--reactive", 1280, 1000],
+	["agents-class--proactive", 1280, 1000],
+	/*
+	 * The packaged starter: a shipped agent nobody has installed, which is the
+	 * one state where the switch writes an INSTALL first (the profile route
+	 * updates a row, and a starter has none) and the only state that carries the
+	 * third sentence under the control. Twelve frames, and the state a fresh
+	 * install's chief of staff is actually in.
+	 */
+	["agents-class--packaged-starter", 1280, 1000],
+	[
+		"agents-class--switched-on",
+		1280,
+		1000,
+		{ press: '[data-testid="agent-class-switch"]' },
+	],
+	[
+		"agents-class--switch-refused",
+		1280,
+		1000,
+		{ press: '[data-testid="agent-class-switch"]' },
+	],
+	["agents-class--loading", 1280, 1000],
+	["agents-class--empty", 1280, 1000],
+	/*
+	 * The narrow pair, on the populated proactive row: the detail column takes the
+	 * full width under ~1000px, so these are the widths where the section's own
+	 * wrapping, the switch's target and the two sentences are stretched by a
+	 * layout the 1280 frames never show.
+	 */
+	/*
+	 * PARKED AT THE PANE'S END, not left at rest: the pane is taller than these
+	 * viewports, so the resting frame of a 600px window is the top of the page and
+	 * the section this change is about sits below it - a frame captioned with a
+	 * subject no pixel contains, which is the failure the `scrollTo` note in the
+	 * STORIES header records.
+	 *
+	 * WHY THE END RATHER THAN THE SECTION'S OWN TOP: the pane is too SHORT to park
+	 * the section against the top - at 800px the maximum scroll leaves it 208px
+	 * down, so `scrollTo` is refused by the rig's own guard instead of quietly
+	 * filing a frame that is not the state its name claims. Parking the end is
+	 * reachable and puts the section in view above the composer.
+	 */
+	[
+		"agents-class--proactive",
+		800,
+		800,
+		{ dir: "proactive-800", scrollToEnd: "[data-agents-pane]" },
+	],
+	[
+		"agents-class--proactive",
+		600,
+		800,
+		{ dir: "proactive-600", scrollToEnd: "[data-agents-pane]" },
+	],
+	["agents-class--renamed-seat", 1280, 1000],
+	[
+		"agents-class--renamed-seat-switched",
+		1280,
+		1000,
+		{ press: '[data-testid="agent-class-switch"]' },
+	],
+	/*
+	 * THE LONG NAME, AT REST, at both widths - and deliberately NOT parked like
+	 * the two rows above. The name is on the HEADER and the roster row, and the
+	 * pane's end is where neither of them is: a parked frame of this state would
+	 * be captioned with a subject it does not contain, which is the failure D2's
+	 * own note in the STORIES header describes. At 1280 the roster row is in the
+	 * frame beside the header; at 800 the roster steps aside and the header keeps
+	 * the name, which is the pair the designer judges truncation against.
+	 */
+	["agents-class--long-named-seat", 1280, 1000],
+	["agents-class--long-named-seat", 800, 800],
 	["shell-app-shell--settings-appearance", 1280, 800],
 	["shell-app-shell--settings", 1280, 800],
 	["shell-app-shell--agents-empty", 1280, 800],
@@ -5525,6 +5668,28 @@ export const STORIES = [
 	 * photographed, rather than the unshed full-width page. */
 	["projects-tab--narrow-columns", 560, 600],
 	["projects-tab--many", 1280, 900],
+	/* THE TEAM HEADER UNDER THE POINTER, and the row beside it (issue #703).
+	 * The claim is that a header is a label and does not react - so the frame
+	 * that proves it is the header WITH the pointer on it, filed against the
+	 * same pointer on a project row, which does step to `elevated`. A resting
+	 * frame cannot show that the absence is intended. Real
+	 * `Input.dispatchMouseEvent`, the rig's own `hover` option, not a scripted
+	 * class. */
+	[
+		"projects-tab--populated",
+		1280,
+		900,
+		{ hover: '[data-project-team="platform"]', dir: "team-header-hover" },
+	],
+	[
+		"projects-tab--populated",
+		1280,
+		900,
+		{
+			hover: '[data-project-name="payments-migration"]',
+			dir: "project-row-hover",
+		},
+	],
 	/* The sticky team headers, mid-scroll (slice 3): the one state a resting
 	 * frame cannot hold, because at rest every header is in its flow
 	 * position. The play brings the second header flush to the scroller's
@@ -8088,6 +8253,39 @@ export const STORIES = [
 		520,
 		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
 	],
+	/*
+	 * `fork-withheld` (#739): the same row (s2) with a never-sent draft holding its
+	 * id, which is the one condition that withholds the menu's third item. The
+	 * frame is the pair's two rows with NO Fork row - absent, not greyed - and its
+	 * readout lists what the product mounted.
+	 */
+	[
+		"chat-sidebar-row-context-menu--fork-withheld",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	/*
+	 * `fork-pressed` (#739): Fork is pressed on s2 and the readout prints what the
+	 * press asked for - the request in the panel-presentation store names
+	 * `session.fork` for s2 (the ROW's conversation; this story has no pane), its
+	 * invoker is s2's own button, and the route is `/chat`. The shutter waits for
+	 * the request to exist so a frame filed under this name cannot be the state
+	 * before the press.
+	 */
+	[
+		"chat-sidebar-row-context-menu--fork-pressed",
+		780,
+		520,
+		{
+			hover: '[data-session-row="s2"]',
+			hoverSettleMs: 1200,
+			expectSentence: {
+				selector: "[data-readout-list]",
+				includes: "fork request: session.fork for s2",
+			},
+		},
+	],
 	[
 		"chat-sidebar-row-context-menu--flyout-dwelled",
 		780,
@@ -10364,6 +10562,32 @@ const main = async () => {
 					modifiers: 0,
 					pointerType: "mouse",
 				});
+				/*
+				 * THE POINTER MUST ACTUALLY LAND (agent review round 1, F1).
+				 *
+				 * This branch used to dispatch the move and only sleep, so a frame whose
+				 * claim is a hover could be filed from a resting control - and for an
+				 * entry that exists to prove an ABSENCE (the team band's non-reaction to
+				 * the pointer) a move that never arrived produces the same bytes as the
+				 * absence itself, which is the one reading the pair cannot afford to be
+				 * wrong about. `select.hover` already asserts this; the read is polled
+				 * rather than taken once because the scene can still be settling under
+				 * the fleet's load.
+				 */
+				let landed = false;
+				for (let attempt = 0; attempt < 50 && !landed; attempt++) {
+					const { result } = await cdp.send("Runtime.evaluate", {
+						returnByValue: true,
+						expression: `document.querySelector(${JSON.stringify(options.hover)})?.matches(":hover") === true`,
+					});
+					landed = result.value === true;
+					if (!landed) await sleep(200);
+				}
+				if (!landed) {
+					throw new Error(
+						`${story} @ ${theme}: the pointer is on \`${options.hover}\` but the element does not match :hover, so the frame would be a resting control filed under a hover`,
+					);
+				}
 				/*
 				 * A TOOLTIP IS NOT A `:hover` GROUND, and this is what tells the two apart.
 				 *

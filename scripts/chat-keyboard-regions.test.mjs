@@ -42,6 +42,12 @@ const bundle = await build({
 		contents: [
 			'export * from "./src/renderer/src/features/chat/chat-regions";',
 			'export * from "./src/renderer/src/features/chat/draft-rows";',
+			/*
+			 * The Move pair's chord spellings live with the move order, not with the
+			 * row acts: `chat-pin-order.ts` owns them and this bundle has to reach them
+			 * to assert the joined sibling (round-1 design review, D1).
+			 */
+			'export * from "./src/renderer/src/features/chat/chat-pin-order";',
 			'export * from "./src/renderer/src/features/chat/canvas-shortcut";',
 		].join("\n"),
 		resolveDir: ROOT,
@@ -254,6 +260,53 @@ test("the cap and the attribute the chord presses are one spelling", () => {
 	assert.equal(
 		mod.chatRowActCapJoined("pin", false).split("+").join(""),
 		"CtrlShiftP",
+	);
+	/*
+	 * AND THE MOVE PAIR'S JOINED SIBLING (round-1 design review, D1). The row
+	 * menu's two Move items were the one place feeding `KeyboardShortcut` the
+	 * handler's spelling - `chatPinMoveCap` returns `⌘⇧↑`, which the component
+	 * splits into ONE cap three glyphs wide, so the two rows drew a 21px cap where
+	 * the rows above them drew three caps across 52px. Same property as the pair
+	 * above: reconstruct the handler's spelling by splitting the joined form, and
+	 * pin the non-mac bytes (whose joined form IS the handler's string, so the
+	 * assertion has to name the literal or it cannot fail).
+	 */
+	assert.equal(mod.chatPinMoveCap(-1, true), "⌘⇧↑");
+	assert.equal(mod.chatPinMoveCap(1, true), "⌘⇧↓");
+	assert.equal(mod.chatPinMoveCapJoined(-1, true), "⌘+⇧+↑");
+	assert.equal(mod.chatPinMoveCapJoined(1, true), "⌘+⇧+↓");
+	assert.equal(
+		mod.chatPinMoveCapJoined(-1, true).split("+").join(""),
+		mod.chatPinMoveCap(-1, true),
+	);
+	assert.equal(
+		mod.chatPinMoveCapJoined(1, true).split("+").join(""),
+		mod.chatPinMoveCap(1, true),
+	);
+	assert.equal(mod.chatPinMoveCapJoined(-1, false), "Ctrl+Shift+↑");
+	assert.equal(
+		mod.chatPinMoveCapJoined(1, false).split("+").join(""),
+		"CtrlShift↓",
+	);
+	/*
+	 * AND THE MENU PRINTS THROUGH IT. The property the two functions cannot state
+	 * on their own: the sidebar's two Move items call the joined sibling, not the
+	 * handler's spelling - which is what D1 found and what a future edit to either
+	 * row could undo silently.
+	 */
+	const sidebar = readFileSync(
+		"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+		"utf8",
+	);
+	assert.equal(
+		sidebar.includes("shortcut={chatPinMoveCap("),
+		false,
+		"a Move item feeds `KeyboardShortcut` the handler's spelling again - it renders as ONE cap three glyphs wide (D1)",
+	);
+	assert.equal(
+		sidebar.split("chatPinMoveCapJoined(").length - 1,
+		2,
+		"the two Move items no longer both print their chord through the joined sibling",
 	);
 	assert.equal(mod.CHAT_ROW_ACT_ATTR.pin, "data-session-pin");
 	assert.equal(mod.CHAT_ROW_ACT_ATTR.archive, "data-session-archive");
@@ -503,27 +556,24 @@ test("no chat row carries a tabIndex prop, so the roving stop is the only writer
 	 * somebody has to make - which is the point - and the message names the four so
 	 * the decision starts from what is already there.
 	 *
-	 * THE FIFTH AND SIXTH ARE THE PINNED ROW'S MOVE PAIR (issue #693), and they are
-	 * here for the two acts' own reason rather than as a new kind of site: the row
-	 * keeps ONE Tab stop and answers its acts by chord (`⌘⇧↑`/`⌘⇧↓` for the pair,
-	 * `chat-pin-order.ts`), so a control the reader must be able to reach WITHOUT a
-	 * second stop has to be out of the ring. They are drawn only on a pinned row in
-	 * the section arrangement, which is why they are the last two - and why they are
-	 * a decision somebody made rather than a count that drifted.
+	 * THE FIFTH AND SIXTH WERE THE PINNED ROW'S MOVE PAIR (issue #693), and they are
+	 * DELETED (2026-09-30): their acts are the two Move items in the row's own menu
+	 * now, with the chords reaching the same write, so the row keeps ONE Tab stop and
+	 * answers its moves from a surface that is not in the row at all.
 	 *
-	 * THE SEVENTH IS THE PIN DRAG HANDLE (issue #697), the pair's own case one
+	 * THE FIFTH IS THE PIN DRAG HANDLE (issue #697), the pair's own case one
 	 * control over: a drag is a POINTER gesture, so the handle has no chord to
-	 * answer it with (the chords are the pair's, and they are how a keyboard reader
-	 * reorders), and the row's one stop stays the row's. It is drawn on exactly the
-	 * rows the pair is drawn on, which is why it sits here rather than in a ring of
-	 * its own: a handle in the Tab ring would give every pinned row a second stop to
-	 * reach a gesture the keyboard cannot make.
+	 * answer it with (the chords are how a keyboard reader reorders), and the row's
+	 * one stop stays the row's. It is drawn on the rows the moves are offered on,
+	 * which is why it sits here rather than in a ring of its own: a handle in the
+	 * Tab ring would give every pinned row a second stop to reach a gesture the
+	 * keyboard cannot make.
 	 */
 	const props = [...sidebarSource.matchAll(/^\s*tabIndex=\{/gm)];
 	assert.equal(
 		props.length,
-		7,
-		`the sidebar declares ${props.length} tabIndex prop(s); the sanctioned seven are the nav's door, the two row acts (applyRowStop owns the rows), the chats scroller's own -1 (U16), the pinned row's two move controls (#693) and its drag handle (#697) - all seven are deliberately out of the ring`,
+		5,
+		`the sidebar declares ${props.length} tabIndex prop(s); the sanctioned five are the nav's door, the two row acts (applyRowStop owns the rows), the chats scroller's own -1 (U16) and the pinned row's drag handle (#697) - all five are deliberately out of the ring`,
 	);
 	/*
 	 * AND THE RING'S OWN EXCLUSION (agent review round 2's R7): a row the caret

@@ -21,6 +21,20 @@ export type ReusableProfile = {
 	tools: string[] | null;
 	effort: string | null;
 	delegate: boolean;
+	/**
+	 * The agent's action class, in its EFFECTIVE spelling (`reactive` |
+	 * `proactive`), as the backend's own `action_class.normalize` answers it.
+	 *
+	 * ADDITIVE and optional, the same shape as `already_installed` below and for
+	 * the same reason: the field shipped after this client did, so a backend
+	 * older than it answers a payload with no `action_class` at all. Absence is
+	 * not an unknown here — it IS `reactive`, which is what the wire encodes (the
+	 * backend writes a `class:proactive` tag and leaves it off otherwise) and
+	 * what every consumer in it reads for an unrecognised value. The reading
+	 * lives in `features/agents/utils/agent-class.ts` rather than at each call
+	 * site so the rule is stated once.
+	 */
+	action_class?: "reactive" | "proactive";
 	seed_origin?: string | null;
 	divergent_fields?: string[];
 	/**
