@@ -558,6 +558,16 @@ type RequestUpdateFixture = {
 	hang?: boolean;
 };
 
+type SearchIndexFixture = {
+	/** The ids the ranked answer names, in RANK ORDER (the answer's order is the
+	 * ranking; the page never re-sorts). */
+	ids: string[];
+	/** Hold the request open for ever: the in-flight state. */
+	hang?: boolean;
+	/** Fail the request with this sentence (the fallback's arm). */
+	fail?: string;
+};
+
 type StubState = {
 	projects: DesktopProject[];
 	detail: DesktopProjectDetail | null;
@@ -568,6 +578,15 @@ type StubState = {
 	 * stories use.
 	 */
 	details: Record<string, DesktopProjectDetail> | null;
+	/**
+	 * The `projects.search` script. `null` is the state every story above is in:
+	 * the capability advertises `projects: 1`, no index route exists, and the
+	 * client matcher serves — which is exactly what a backend older than the
+	 * core slice looks like. An object advertises `projects: 2` and answers the
+	 * route from its own ids, so a story can prove the page paints the INDEX's
+	 * membership and rank rather than the local matcher's.
+	 */
+	searchIndex: SearchIndexFixture | null;
 	/** The listing read fails with this sentence. */
 	failList: string | null;
 	/** The listing read never settles: the loading frame's only honest shape. */
@@ -586,6 +605,7 @@ let stub: StubState = {
 	projects: [],
 	detail: null,
 	details: null,
+	searchIndex: null,
 	failList: null,
 	hang: false,
 	failPatch: null,
@@ -621,7 +641,7 @@ const answer = (request: {
 					// MOUNTS the check-in item and button (PR-B) - a backend without it
 					// draws neither, which is the fail-closed state tests pin.
 					features: {
-						projects: 1,
+						projects: stub.searchIndex ? 2 : 1,
 						projects_request_update: 1,
 						team_catalogue: 1,
 						profile_catalogue: 1,
@@ -640,6 +660,37 @@ const answer = (request: {
 			const found = stub.details?.[String(request.key ?? "")] ?? stub.detail;
 			if (!found) return { status: 404, body: { detail: "no such project" } };
 			return { status: 200, body: { result: found } };
+		}
+		case "projects.search": {
+			/*
+			 * The index's answer, scripted rather than computed: this fixture's job is
+			 * to be the BACKEND's opinion — an id list in the backend's own rank order —
+			 * so a story can name a row the local matcher would never admit (its match
+			 * lives in update text) and assert that the page painted the answer rather
+			 * than re-deriving one. The echo is the request's own `q`, which is the
+			 * contract the hook checks before it applies an answer.
+			 */
+			const index = stub.searchIndex;
+			if (!index) return { status: 404, body: { detail: "no such route" } };
+			if (index.hang) return new Promise(() => {});
+			if (index.fail) return { status: 500, body: { detail: index.fail } };
+			const byId = new Map(stub.projects.map((row) => [row.id, row]));
+			const hits = index.ids.flatMap((id) => {
+				const row = byId.get(id);
+				return row
+					? [{ id: row.id, name: row.name, score: 1, fields: ["updates"] }]
+					: [];
+			});
+			return {
+				status: 200,
+				body: {
+					result: {
+						projects: hits,
+						query: String(request.q ?? ""),
+						count: hits.length,
+					},
+				},
+			};
 		}
 		case "projects.milestone": {
 			/*
@@ -1185,6 +1236,9 @@ const page = (
 		failList: null,
 		hang: false,
 		failPatch: null,
+		/* The search index: absent means `projects: 1`, the client matcher's
+		 * backend, which is every story that does not say otherwise. */
+		searchIndex: null,
 		/* Pinned like the defaults above: without it the spread's Optional half
 		 * keeps `undefined` in the inferred type, which a required field refuses. */
 		requestUpdate: null,
@@ -2039,6 +2093,199 @@ export const NoMatchFilter: Story = {
 					(node) => node.textContent?.trim() === "Clear all",
 				).length === 1,
 			"exactly one Clear all in the filter-only no-match state",
+		);
+	}),
+};
+
+/**
+ * The two rows the search-index stories are photographed on — and the PAIR is
+ * the point of the whole slice.
+ *
+ * `invoice-run` carries the query word in its own fields, so the CLIENT matcher
+ * finds it. `billing-cutover` says nothing about an invoice anywhere the listing
+ * carries, and the index finds it because its UPDATE text does — the field that
+ * is detail-only on the wire and the largest slice of the store, which is the
+ * reason a renderer-side matcher could never find it. One query, two engines,
+ * two answers: the index's answer names both, in the index's order.
+ */
+const SEARCH_ROWS: DesktopProject[] = [
+	project("s1", "invoice-run", {
+		description: "Nightly invoice run",
+		team: "platform",
+		status: "active",
+		updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
+	}),
+	project("s2", "billing-cutover", {
+		description: "Move the billing cutover to the new gate",
+		team: "atlas",
+		status: "planning",
+		updated_at: FIXTURE_NOW_MS / 1000 - 5 * DAY_S,
+	}),
+];
+
+/** The query ONE engine can answer: only the index knows the cutover's updates
+ * say "invoice". */
+const SEARCH_QUERY = "invoice";
+/** A query NEITHER engine can answer. */
+const SEARCH_NOTHING = "zzznothing";
+
+/** The List's rows in RENDERED order, by key — the page's own `data-project-name`
+ * hook, read rather than re-derived: an assertion about rank order has to read
+ * the order the reader sees. */
+const listRowKeys = () =>
+	[...document.querySelectorAll<HTMLElement>("[data-project-name]")].map(
+		(node) => node.getAttribute("data-project-name") ?? "",
+	);
+
+/** Type a query into the page's own field, once it exists. */
+const typeSearch = async (text: string) => {
+	await poll(
+		() =>
+			document.querySelector('input[aria-label="Search projects"]') !== null,
+		"the search field",
+	);
+	await userEvent.type(
+		need<HTMLInputElement>('input[aria-label="Search projects"]'),
+		text,
+	);
+};
+
+/**
+ * The index SERVES: the page paints the backend's own answer — its membership
+ * and its rank order, neither of which the local matcher could produce. The row
+ * that discriminates is `billing-cutover`, whose match lives in update text; the
+ * poll for it IS the poll for the index having served. The order claim is read
+ * off the rendered rows rather than asserted against the fixture, because an
+ * answer that arrived and was re-sorted locally would pass a membership check.
+ */
+export const SearchIndexServed: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: ["s2", "s1"] },
+		}),
+	play: playOnce("search-index-served", async () => {
+		await typeSearch(SEARCH_QUERY);
+		await poll(
+			() => listRowKeys().includes("billing-cutover"),
+			"the index's own hit (a row the local matcher cannot admit)",
+		);
+		const keys = listRowKeys();
+		if (keys.join(",") !== "billing-cutover,invoice-run") {
+			throw new Error(
+				`the answer's rank order was not painted: ${keys.join(",")}`,
+			);
+		}
+	}),
+};
+
+/**
+ * The index is OWED an answer, and the fallback engine's row is still drawn:
+ * the no-blank-list claim, photographed mid-flight. A page that showed nothing
+ * until the index answered would fail the row poll; a page that painted "nothing
+ * matches" would fail the second check.
+ */
+export const SearchIndexPending: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-pending", async () => {
+		await typeSearch(SEARCH_QUERY);
+		await poll(
+			() => listRowKeys().includes("invoice-run"),
+			"the fallback engine's row while the index is owed an answer",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				"the no-match block claimed a result the index has not answered for",
+			);
+		}
+	}),
+};
+
+/**
+ * The one state where the index is owed an answer AND the fallback found
+ * nothing: the quiet in-flight line, in place of a "nothing matches" the index
+ * may be about to contradict. Both polls discriminate — the first fails on a
+ * page that shows the no-match block here, the second on one that shows nothing
+ * at all.
+ */
+export const SearchIndexSearching: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-searching", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Searching"),
+			"the in-flight line",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				'"nothing matches" was claimed before the index answered',
+			);
+		}
+	}),
+};
+
+/**
+ * The copy this slice reconciled, on the engine that made it false: the index
+ * answered zero, and the block carries the INDEX's sentence. The second poll
+ * fails on the string this slice replaced ("Update text is not searched"), which
+ * is exactly the frame the designer round has to look at.
+ */
+export const SearchIndexNoMatch: Story = {
+	render: () =>
+		page({ view: "list", projects: SEARCH_ROWS, searchIndex: { ids: [] } }),
+	play: playOnce("search-index-no-match", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes(
+					"Searches names, descriptions, tags, owners, teams and update text.",
+				) && !text.includes("Update text is not searched.")
+			);
+		}, "the index's subline, and no claim the index cannot make");
+	}),
+};
+
+/**
+ * The FAILURE arm: the index is broken, the fallback serves, and the sentence is
+ * the client matcher's again — which is the whole reason the copy is per engine
+ * rather than one string chosen at build time. A page that kept the index's
+ * sentence here would be claiming a search it did not get.
+ */
+export const SearchIndexFailed: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], fail: "The index is unavailable." },
+		}),
+	play: playOnce("search-index-failed", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence on the fallback",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Update text is not searched.",
+				),
+			"the client matcher's own subline after the index failed",
 		);
 	}),
 };

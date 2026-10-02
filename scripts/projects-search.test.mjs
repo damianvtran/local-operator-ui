@@ -189,3 +189,70 @@ test("case-insensitive throughout", () => {
 	);
 	assert.equal(searchMatch(project("p", { title: "Billing" }), "billing"), 12);
 });
+
+/*
+ * The JOIN with the backend engine, and the copy that has to be true of
+ * whichever engine served — both pure, both here rather than in a frame,
+ * because a single still cannot show that a sentence is false.
+ */
+
+test("the backend's hits become this listing's rows, in the ANSWER's rank order", () => {
+	const rows = [
+		project("a", { name: "alpha" }),
+		project("b", { name: "beta" }),
+		project("c", { name: "gamma" }),
+	];
+	// The order is the answer's, not the listing's: rank is the backend's
+	// model, and re-deriving one here would be a second, disagreeing one.
+	assert.deepEqual(
+		search
+			.projectsForHits(rows, [{ id: "c" }, { id: "a" }, { id: "b" }])
+			.map((row) => row.id),
+		["c", "a", "b"],
+	);
+	// An id the listing does not hold is DROPPED, not invented: the store moved
+	// under the answer (a project deleted between the two reads).
+	assert.deepEqual(
+		search
+			.projectsForHits(rows, [{ id: "a" }, { id: "gone" }])
+			.map((row) => row.id),
+		["a"],
+	);
+	// No hits is no rows, and it never falls back to the listing.
+	assert.deepEqual(search.projectsForHits(rows, []), []);
+});
+
+test("each engine carries its own no-match subline, and neither lies about update text", () => {
+	const { SEARCH_SUBLINE } = search;
+	/*
+	 * THE CLAIM THIS PINS, mechanically: "Update text is not searched" is a fact
+	 * about the client matcher — `updates[]` is detail-only on the wire, so a
+	 * query ranked here cannot reach it — and the backend index DOES read it,
+	 * which is the whole reason it exists. So the sentence must not be shared,
+	 * and the engine that reads updates must not deny doing so.
+	 */
+	assert.match(SEARCH_SUBLINE.client, /Update text is not searched\./);
+	assert.doesNotMatch(
+		SEARCH_SUBLINE.backend,
+		/is not searched/,
+		"the index reads update text; a sentence denying it is false the moment it serves",
+	);
+	assert.match(SEARCH_SUBLINE.backend, /update text/);
+	// The one claim BOTH engines make, because both are the same box over the
+	// same listing: an empty result is undone by the same clear.
+	for (const engine of ["client", "backend"]) {
+		assert.match(
+			SEARCH_SUBLINE[engine],
+			/Clearing the search and filters restores the list\.$/,
+			`${engine}: the shared half of the sentence`,
+		);
+		assert.notEqual(SEARCH_SUBLINE[engine].trim(), "");
+	}
+	assert.notEqual(SEARCH_SUBLINE.client, SEARCH_SUBLINE.backend);
+});
+
+test("the index gate is version 2 of the projects capability", () => {
+	// Stated here, beside the fallback it gates, rather than only in the
+	// contract suite: the number is what decides which engine serves.
+	assert.equal(search.PROJECTS_SEARCH_MIN_VERSION, 2);
+});

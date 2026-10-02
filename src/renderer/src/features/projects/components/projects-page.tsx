@@ -34,6 +34,20 @@
  * (`3 of 6 in window`, U10); when a search's matches all fall outside the
  * window, the no-match block offers the window's recovery beside Clear all
  * (R1).
+ *
+ * TWO SEARCH ENGINES, ONE ROW SET. The query's membership is decided by
+ * exactly one engine at a time, and which one is a capability question rather
+ * than a preference: a backend advertising `projects` version 2 ships the
+ * derived index (`GET /v1/desktop/projects/search`), and that engine owns the
+ * box — its ranked answer replaces the client matcher's rows the moment it
+ * lands. A version-1 backend has no such route, so the client matcher
+ * (`project-search.ts`) answers, exactly as it shipped. The client matcher is
+ * ALSO the answer while the index's request is in flight or after one fails,
+ * which is what keeps the list from blanking on every keystroke: the fallback
+ * engine is a true answer to the same box, just an incomplete one (it cannot
+ * read the detail-only update text). `searchEngine` names which engine's rows
+ * are on screen, because the no-match copy has to be true of them and the two
+ * engines search different fields.
  */
 
 import {
@@ -61,6 +75,7 @@ import {
 	useProjectsList,
 	useUpdateProject,
 } from "../hooks/use-projects-queries";
+import { useProjectsSearch } from "../hooks/use-projects-search";
 import {
 	type FilterFacetKey,
 	type FilterOptionValue,
@@ -79,7 +94,12 @@ import {
 	refusalCopy,
 	writeBoardWindow,
 } from "../project-model";
-import { searchProjects } from "../project-search";
+import {
+	PROJECTS_SEARCH_MIN_VERSION,
+	SEARCH_SUBLINE,
+	projectsForHits,
+	searchProjects,
+} from "../project-search";
 import {
 	type SortSpec,
 	clearAllAnnouncement,
@@ -137,6 +157,18 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const capabilities = useDesktopCapabilities();
 	const gate = desktopFeatureState(capabilities.data, "projects", 1);
 	const enabled = gate === "enabled";
+	/*
+	 * THE SEARCH INDEX IS A VERSION OF `projects`, not a key of its own
+	 * (`routes/capabilities.py`: `"projects": 2`), because the two new reads rank
+	 * over the same store the listing reads and are additive by construction: a
+	 * version-1 backend is every backend that can serve the tab at all, and this
+	 * app asks it for exactly what it asked before.
+	 */
+	const searchIndexAvailable = desktopFeatureEnabled(
+		capabilities.data,
+		"projects",
+		PROJECTS_SEARCH_MIN_VERSION,
+	);
 	/*
 	 * The team names the list's group headings draw (round 1, D5). The page owns
 	 * the read and hands the resolver down, the same rule `nowMs` follows; the
@@ -261,17 +293,55 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	/* The page's one day basis for the target facet's windows (UTC, the store's own). */
 	const todayMs = todayUtcMs(nowMs);
 	/*
-	 * ONE DERIVATION, THREE VIEWS (design §2.7): the query joins first — the
-	 * matched rows in the store's order — then the facets narrow, and every
-	 * view below reads THIS array. The LIST is the only view that re-orders it
-	 * (relevance under a query, an explicit sort otherwise), which is what
-	 * "sorting is not page-wide" means in practice; the Board and the Timeline
-	 * keep their own spatial order and just draw fewer objects.
+	 * THE INDEX'S READ (the architecture's PR-B2), debounced and gated on the
+	 * capability: asked only when this backend advertises `projects` version 2
+	 * AND the page is past its own gate, and answered only for the box's current
+	 * value. The client matcher below is what the page paints until it answers.
 	 */
-	const visibleProjects = useMemo(
-		() => applyFilters(searchProjects(projects, query), filters, todayMs),
-		[projects, query, filters, todayMs],
+	const search = useProjectsSearch(query, enabled && searchIndexAvailable);
+	/*
+	 * ONE DERIVATION, THREE VIEWS (design §2.7): the query joins first — the
+	 * admitted rows, in the order the serving engine ranked them — then the
+	 * facets narrow, and every view below reads THIS array. The LIST is the only
+	 * view that re-orders it (relevance under a query, an explicit sort
+	 * otherwise), which is what "sorting is not page-wide" means in practice;
+	 * the Board and the Timeline keep their own spatial order and just draw
+	 * fewer objects.
+	 *
+	 * WHICH ENGINE WON THE JOIN is a capability, not a preference: with the
+	 * index advertised the backend's ranked answer IS the join the moment it
+	 * lands, and the client matcher's rows are the join while that request is in
+	 * flight, after it fails, and always on a version-1 backend (no route to
+	 * answer). `searchEngine` records which one produced the rows on screen,
+	 * because the no-match copy below has to be TRUE of them and the two engines
+	 * search different fields.
+	 */
+	const backendRows = useMemo(
+		() =>
+			search.answer ? projectsForHits(projects, search.answer.projects) : null,
+		[projects, search.answer],
 	);
+	const queryActive = query.trim() !== "";
+	const matchedProjects = useMemo(() => {
+		if (!queryActive) return projects;
+		return backendRows ?? searchProjects(projects, query);
+	}, [projects, query, queryActive, backendRows]);
+	const searchEngine: "backend" | "client" =
+		backendRows === null ? "client" : "backend";
+	const visibleProjects = useMemo(
+		() => applyFilters(matchedProjects, filters, todayMs),
+		[matchedProjects, filters, todayMs],
+	);
+	/*
+	 * Whether the box is still OWED an answer by the engine that owns it: the
+	 * index is advertised, a query is on, and the answer has neither landed nor
+	 * failed. Every zero-result state below is held back while this is true — a
+	 * "nothing matches" sentence painted a debounce before the index answers is
+	 * a claim the page cannot yet make, and it would flip the moment the answer
+	 * landed. The client matcher's rows are still drawn throughout, so the list
+	 * never blanks.
+	 */
+	const searchAwaiting = searchIndexAvailable && queryActive && search.pending;
 	/* Whether the toolbar's count and chips are live — its own "is a search on" predicate. */
 	const searchActive = query.trim() !== "" || !isFilterEmpty(filters);
 	/*
@@ -328,7 +398,19 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	 * block's recovery path verbatim; the no-match block's own comment below
 	 * states the same precedence in the copy's words.
 	 */
-	const noMatch = listReady && searchActive && matchCount === 0;
+	const noMatch =
+		listReady && searchActive && matchCount === 0 && !searchAwaiting;
+	/*
+	 * THE INDEX OWES THE BOX AN ANSWER AND HAS DRAWN NOTHING YET: the zero-RESULT
+	 * states are held back (`noMatch` above carries the same term, so the board
+	 * guard below keeps its `listReady && !noMatch` shape), and this is what
+	 * stands in their place. It is not a spinner over the list — the client
+	 * matcher's rows are still drawn the moment it has any — it is the honest
+	 * "still asking" for the one case where the FALLBACK engine also found
+	 * nothing, so a reader is never told "nothing matches" by a search that has
+	 * not finished.
+	 */
+	const searchPendingEmpty = searchAwaiting && matchCount === 0 && listReady;
 	/*
 	 * THE RECOVERY HANDS THE CARET BACK (UX round 1, U3). "Show all time"
 	 * unmounts the button the press came from, so focus falls to the body - a
@@ -610,7 +692,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							}}
 						/>
 						<ProjectsSearchControls
-							projects={projects}
+							projects={matchedProjects}
 							query={query}
 							onQueryChange={changeQuery}
 							filters={filters}
@@ -760,15 +842,44 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					</div>
 				)}
 
+				{searchPendingEmpty && (
+					/*
+					 * THE INDEX HAS NOT ANSWERED YET, AND THE FALLBACK FOUND NOTHING.
+					 * Every other zero-result state is held back while `searchAwaiting` is
+					 * true, so this stands in their place: the row region keeps the loading
+					 * state's own geometry and says the only thing that is true yet — the
+					 * search is still running — rather than "nothing matches", which the
+					 * index may be about to contradict.
+					 *
+					 * IT IS NOT A SPINNER OVER THE LIST. Whenever the fallback engine has
+					 * rows they are drawn normally (the views below are not gated on this),
+					 * and this block is unreachable — which is why it costs nothing at the
+					 * board's ordinary scale, where the client matcher almost always has
+					 * something to show within the debounce window.
+					 */
+					<div className="flex min-h-0 flex-1 flex-col">
+						<output className="px-9 py-2 text-meta text-ink-dim">
+							Searching…
+						</output>
+					</div>
+				)}
+
 				{listReady && noMatch && (
 					/*
 					 * THE NO-MATCH STATE (design §2.3 as amended): the search stays
 					 * visible and editable above, this block says what happened and what
-					 * to do — and its subline names the pool v1 actually searches (U5/M3)
-					 * so a reader whose word lives in an update is told why it is not
-					 * found, rather than concluding the project does not exist — and it
-					 * names the way back (D4/U8): clearing restores the list, and update
-					 * text is the one field a v1 query does not read.
+					 * to do — and its subline names the pool the SERVING ENGINE actually
+					 * searched (U5/M3), so a reader whose word was not found is told which
+					 * fields were read rather than concluding the project does not exist.
+					 *
+					 * THE SUBLINE IS THE ENGINE'S OWN (`SEARCH_SUBLINE`), and that is a
+					 * correction rather than a flourish: the shipped sentence said "Update
+					 * text is not searched", which is TRUE of the client matcher and FALSE
+					 * the moment the index serves — the index reads `updates[]` and the
+					 * progress snippet, which is the whole reason it exists (they are the
+					 * largest slice of the store). One string could not be honest under
+					 * both engines, so each engine carries its own, and `searchEngine`
+					 * (which produced the rows on screen) selects it.
 					 *
 					 * PRECEDENCE, in the copy's own words: this is "within-window zero
 					 * under a search" on the Board — the matches exist, the WINDOW hid
@@ -784,7 +895,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						</p>
 						<p className="max-w-140 text-center text-body-sm text-ink-muted">
 							{query.trim()
-								? "Searches names, descriptions, tags, owners and teams. Update text is not searched. Clearing the search and filters restores the list."
+								? SEARCH_SUBLINE[searchEngine]
 								: "Try removing a filter. Clearing the filters restores the list."}
 						</p>
 						<div className="flex flex-col items-center gap-2">
@@ -819,7 +930,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						onOpen={(project) => void navigate(`/projects/${project.id}`)}
 						sort={sort}
 						onSortChange={changeSort}
-						allProjects={projects}
+						searchPopulation={matchedProjects}
 						filters={filters}
 						query={query}
 						todayMs={todayMs}
@@ -851,6 +962,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 
 				{listReady &&
 					!noMatch &&
+					!searchPendingEmpty &&
 					view === "board" &&
 					boardVisible.length === 0 &&
 					boardWindowHeading !== null && (
@@ -866,6 +978,10 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						 * store-empty block's idiom class for class - same container, same
 						 * heading and body steps, one secondary action - and shares its
 						 * action with the board's within-window no-match (R1).
+						 *
+						 * Also held back while the index owes the box an answer
+						 * (`!searchPendingEmpty`): "the window hid them" is a claim about a
+						 * search result, and there is no search result yet.
 						 */
 						<div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
 							<p className="text-heading text-ink">{boardWindowHeading}</p>
