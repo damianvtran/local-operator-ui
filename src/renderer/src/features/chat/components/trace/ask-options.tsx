@@ -238,14 +238,22 @@ export const AskOptions = ({
 					disabled={busy}
 					onClick={() => onAnswer(option.label)}
 					className={cn(
-						// A full-width 34px row at radius 6 (§F1). `items-start`, NOT
-						// `items-baseline` (issue #762): a row baseline-aligned against this
-						// multi-line column did not grow with a wrapped description, so the
-						// next row's ordinal and label landed on top of it. The row's height
-						// is now the column's; the keycap rides the column's first line
-						// through its own line box (the ordinal's `leading` below) rather
-						// than through a baseline coupling across the whole block.
-						"flex min-h-[34px] w-full items-start gap-3 rounded-sm px-2 py-2 text-left",
+						// A full-width 34px row at radius 6 (§F1). TWO couplings keep its box
+						// around a wrapped description (issue #762), and the first is the
+						// defect the reporter's screenshot shows:
+						//
+						// 1. `shrink-0`: the band is a capped flex column (`max-h-[380px]`),
+						//    so without this a tall list is COMPRESSED to fit the cap
+						//    instead of scrolling — nine wrapped rows measure 372px of
+						//    content and each row's box ends ~37px short of its own column,
+						//    which is what puts the next row's ordinal and label on top of
+						//    the description above it. The band's `overflow-y-auto` is the
+						//    intended behaviour; the shrink was starving it.
+						// 2. `items-start`, NOT `items-baseline`: the keycap is aligned to
+						//    the column's first line by the ordinal's own line box (its
+						//    `leading` below), not by a baseline coupling across a column
+						//    that can be multi-line.
+						"flex min-h-[34px] w-full shrink-0 items-start gap-3 rounded-sm px-2 py-2 text-left",
 						// Colour-only transition: hover is a colour step, and nothing on
 						// this card lifts, scales or translates.
 						"transition-colors duration-fast ease-out-quart",
