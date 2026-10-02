@@ -3172,6 +3172,18 @@ const BRANCH_RECORDS = [
 	 */
 	"foldOnto0d4db85a5eNote",
 	/*
+	 * And the lane's TWENTY-THIRD fold record: the sync onto `origin/main` =
+	 * `756fb7b190` (#753 the browser read actions) - the THIRD fold of one push
+	 * cycle, taken because main moved twice while the earlier folds were being
+	 * pushed and a conflicting head starts no checks. Registered for its
+	 * siblings' reason: it carries the `test:desktop` list union (main's form,
+	 * this branch's four suites appended - 350 entries) and the `check-themes`
+	 * key main still lacks, so a fold laid from main's copy alone would drop
+	 * one, and from this branch's alone would drop main's
+	 * `check-geometry-sources.test.mjs` row.
+	 */
+	"foldOnto756fb7b190Note",
+	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
 	 * in-flight fidelity delta is ACCEPTED on the record (design round 1, D1),
