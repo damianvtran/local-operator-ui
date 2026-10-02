@@ -119,7 +119,8 @@ to webp q88), captured in the FROZEN `--window-mode=headless` (never shown,
 never focused). The main-window frames are 1380x900 @ dpr 2 (2760x1800 actual
 pixels) except `narrow/`, which is 800x900 @ dpr 2 (1600x1800); the mini frames
 are the mini document at its own fixed width (1280 px device = 640 CSS, heights
-168-480 device px = 84-240 CSS as the window sizes to content). A capture under
+336-480 device px = 168-240 CSS as the window sizes to content - the shortest,
+336 device px, is the 168 CSS base the mini table below reads at rest). A capture under
 load is not instantaneous, so every frame is labelled by the state read taken
 immediately before AND after it in the run record (`shot.*` keys); the quoted
 offsets are the page clock at capture request time, relative to that cycle's
