@@ -28,8 +28,9 @@ import React, { act } from "react";
  * the write plus the refetched listing re-parenting the card (`movingKeys`
  * turning on and the status changing), `settleMove` is the write settling, and
  * `handOff` is what `projects-page.tsx`'s `moveTo` does once its refetch
- * resolves. Modelled on `browser-tab-strip-focus.test.mjs`: jsdom, the shipped
- * modules, a generated harness.
+ * resolves. jsdom, the shipped modules, a generated harness; the teardown and
+ * client discipline follow `projects-card-click.test.mjs`, which is the file
+ * that already carries `gcTime: 0` plus a `client.clear()` for this hazard.
  */
 
 // React DOM feature-detects input events at import time, so the document has to
@@ -62,7 +63,9 @@ globalThis.IntersectionObserver = class {
 	disconnect() {}
 };
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-const { createRoot } = await import("react-dom/client");
+// Loaded for its import-time feature detection (above), not for `createRoot`:
+// the harness bundle owns the one root this file unmounts.
+await import("react-dom/client");
 after(() => {
 	dom.window.close();
 	globalThis.window = undefined;
@@ -102,8 +105,22 @@ const PROJECT = {
 
 export function mount(container) {
 	let api = null;
+	/*
+	 * gcTime: 0, AND THE CLIENT CLEAR IN TEARDOWN, ARE LOAD-BEARING rather than
+	 * tidy-up. A mounted query client holds ref'd timers: React Query's
+	 * five-minute collection timer, and the refetch interval of any query that
+	 * arms one - this tree subscribes through useDesktopCapabilities, whose
+	 * refetchInterval resolves to CAPABILITY_RENEGOTIATE_MS (15 s). query-core
+	 * arms both only when it does NOT resolve isServer, which the jsdom window
+	 * global defeats, so a harness is exactly the case that gets them. A client
+	 * left armed therefore outlives the last assertion, which the runner reports
+	 * as a file whose promise never resolves ("Promise resolution is still
+	 * pending but the event loop has already resolved", measured). Reverting
+	 * only gcTime/clear from this harness, keeping the corrected teardown,
+	 * re-hangs it - that pair is what makes the corrected teardown exit.
+	 */
 	const client = new QueryClient({
-		defaultOptions: { queries: { retry: false } },
+		defaultOptions: { queries: { retry: false, gcTime: 0 } },
 	});
 	const Harness = () => {
 		const [projects, setProjects] = useState([PROJECT]);
@@ -134,7 +151,15 @@ export function mount(container) {
 			movingKeys: moving,
 		});
 	};
-	createRoot(container).render(
+	/* The root is created HERE and handed back, so teardown unmounts the tree
+	 * that actually rendered. The page creates its root once; the pre-fix
+	 * harness created a second root on the same container and unmounted THAT,
+	 * so the rendered tree was never released and its observers stayed
+	 * subscribed (React warns about the recycled container). React empties the
+	 * container itself, so what survives the spare root's unmount is the fiber
+	 * tree, not the DOM. */
+	const root = createRoot(container);
+	root.render(
 		createElement(
 			QueryClientProvider,
 			{ client },
@@ -143,7 +168,7 @@ export function mount(container) {
 			createElement(MemoryRouter, null, createElement(Harness)),
 		),
 	);
-	return { api: () => api };
+	return { root, client, api: () => api };
 }
 `;
 
@@ -185,7 +210,6 @@ const TRIGGER = "BUTTON Actions for payments-migration";
 async function open() {
 	const container = document.getElementById("root");
 	container.innerHTML = "";
-	const root = createRoot(container);
 	let handle = null;
 	await act(() => {
 		handle = mount(container);
@@ -215,7 +239,13 @@ async function open() {
 		caret,
 		trigger,
 		unmount: async () => {
-			await act(() => root.unmount());
+			/* Unmount the root the harness owns and clear the client: the query's
+			 * refetch interval dies with the observer, the collection timer with
+			 * the cache. Either one left armed holds the event loop open. */
+			await act(() => {
+				handle.root.unmount();
+				handle.client.clear();
+			});
 			container.innerHTML = "";
 		},
 	};
@@ -223,48 +253,63 @@ async function open() {
 
 test("a status move lands the caret on the trigger in the NEW column, and nothing grabs it on the way", async () => {
 	const view = await open();
-	await view.focusTrigger();
-	const old = view.trigger();
-	assert.ok(old, "the card has a menu trigger");
-	assert.equal(view.caret(), TRIGGER);
+	/* Teardown runs on the RED path too, so a failing assertion reports and the
+	 * file still exits. Whether an unguarded teardown would hang instead is
+	 * host-dependent - it held to its bound for a mutated copy on this host
+	 * while the reviewer's runs of the pre-fix file all exited - so this is
+	 * written as the safe shape rather than as a reproduced failure. */
+	try {
+		await view.focusTrigger();
+		const old = view.trigger();
+		assert.ok(old, "the card has a menu trigger");
+		assert.equal(view.caret(), TRIGGER);
 
-	// THE MOVE: the write is in flight and the refetched listing re-parents the
-	// card. React DETACHES the node the caret was on - this is the relocation
-	// the round-1 pin never performed.
-	await view.beginMove();
-	assert.equal(
-		old.isConnected,
-		false,
-		"the move must re-parent the card (detaching the old trigger)",
-	);
-	// The relocated card must NOT take the caret when it mounts: nothing
-	// focuses it until the page hands the caret back. (This is the reviewer's
-	// guard-removal mutation, pinned.)
-	assert.notEqual(
-		view.caret(),
-		TRIGGER,
-		"the card must not grab the caret when it mounts in its new column",
-	);
+		// THE MOVE: the write is in flight and the refetched listing re-parents the
+		// card. React DETACHES the node the caret was on - this is the relocation
+		// the round-1 pin never performed.
+		await view.beginMove();
+		assert.equal(
+			old.isConnected,
+			false,
+			"the move must re-parent the card (detaching the old trigger)",
+		);
+		/*
+		 * BELT AND BRACES, NOT THE GUARD. This one cannot fail as written: the
+		 * relocated trigger is `disabled` while `movingKeys` lists the project,
+		 * and jsdom refuses focus on a disabled control, so nothing is able to
+		 * take the caret at this instant. The assertion that actually catches a
+		 * focus-grabbing mount is the no-steal pin below - the mutation that
+		 * re-focuses on every render fails there, not here. Kept because it starts
+		 * discriminating the day the trigger can be enabled while a move is in
+		 * flight, which is a contract worth pinning the moment it exists.
+		 */
+		assert.notEqual(
+			view.caret(),
+			TRIGGER,
+			"the card must not grab the caret when it mounts in its new column",
+		);
 
-	// The listing settles and the page hands the caret back.
-	await view.settleMove();
-	await view.handOff();
-	assert.equal(
-		view.caret(),
-		TRIGGER,
-		"the hand-off must land the caret on the trigger's new node",
-	);
-	const fresh = view.trigger();
-	assert.ok(fresh && fresh !== old && fresh.isConnected);
+		// The listing settles and the page hands the caret back.
+		await view.settleMove();
+		await view.handOff();
+		assert.equal(
+			view.caret(),
+			TRIGGER,
+			"the hand-off must land the caret on the trigger's new node",
+		);
+		const fresh = view.trigger();
+		assert.ok(fresh && fresh !== old && fresh.isConnected);
 
-	// A later render that moves nothing must not steal it back.
-	view.focusOutside();
-	assert.equal(view.caret(), "INPUT");
-	await view.noop();
-	assert.equal(
-		view.caret(),
-		"INPUT",
-		"an unrelated render must not steal the caret",
-	);
-	await view.unmount();
+		// A later render that moves nothing must not steal it back.
+		view.focusOutside();
+		assert.equal(view.caret(), "INPUT");
+		await view.noop();
+		assert.equal(
+			view.caret(),
+			"INPUT",
+			"an unrelated render must not steal the caret",
+		);
+	} finally {
+		await view.unmount();
+	}
 });
