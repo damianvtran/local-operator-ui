@@ -93,6 +93,13 @@ type Capture = {
 	notice?: string;
 	/** The session is mid-turn: the adopt gate's second term. */
 	sessionStreaming?: boolean;
+	/**
+	 * The panel's own small rung. The app resolves this from the pane's width
+	 * (`chat-content.tsx`), so a story that wants the small form has to say so -
+	 * a narrow viewport alone would render the WIDE panel in a narrow column,
+	 * which is not a state the app can be in.
+	 */
+	isSmallView?: boolean;
 };
 
 /**
@@ -169,7 +176,7 @@ const band = (capture: Capture) => {
 			isLoading={false}
 			messages={EMPTY}
 			conversationId={sessionId}
-			isSmallView={false}
+			isSmallView={capture.isSmallView ?? false}
 			onSendMessage={async () => true}
 			/*
 			 * The two props the app hands the composer from `chat-content.tsx`: the
@@ -220,6 +227,32 @@ export const Streaming: Story = {
 						question: "summarise the retry policy for me",
 						stream: streaming(
 							"The retry budget is per provider and counts\n\n- each transport failure\n- each 5xx from the owner",
+						),
+					},
+				],
+			})}
+		</Column>
+	),
+};
+
+/**
+ * The settled exchange at the SMALL rung (issue #763's second view size).
+ *
+ * The panel's small form is the compact type step and padding above and below
+ * the composer on a narrow pane; the marker and the question-against-answer
+ * register deliberate on it the same way. Captured at a phone-width viewport.
+ */
+export const SettledSmallView: Story = {
+	render: () => (
+		<Column label="settled, small rung: the exchange at the compact step">
+			{band({
+				story: "settled-small-view",
+				isSmallView: true,
+				turns: [
+					{
+						question: "what does the retry budget actually cap?",
+						stream: settled(
+							"Transport failures and owner 5xx responses, per provider, within a moving window. A 4xx never spends it.",
 						),
 					},
 				],
