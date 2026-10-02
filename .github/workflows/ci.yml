@@ -406,13 +406,38 @@ jobs:
     # being hit, not a hang, so the ceiling was clipping the suite this job
     # exists to run, and it is raised so the suite can finish and be read. Nothing else changes: the job still runs the suite once,
     # fails on any red, and the whole-tree count assertions stand.
+    #
+    # RAISED FROM 35 TO 60 on 2026-10-02, on the same measured argument. The
+    # suite outgrew the ceiling inside one fold window: this job ran 14m24s and
+    # PASSED on `d4d1d82f60` (the head before `main`'s 162-commit fold), then was
+    # CANCELLED at 35m20s on `6c971e1171` and 35m17s on `5057af4dc1`, the two
+    # heads after it - and the cancelled check-run's own annotation names the
+    # bound that fired: `The job has exceeded the maximum execution time of
+    # 35m0s`, with no test-failure annotation anywhere on it. The suite's own
+    # lane list grew 350 -> 357 across that same fold, every added lane arriving
+    # from `main`, so the growth is the suite's and not one branch's. 60 minutes
+    # is headroom over the observed runtime; the durable answer is to SHARD the
+    # suite so this bound stops being the whole run, and that is a follow-up -
+    # riding it here would rewrite the job this change exists to unblock.
+    #
+    # AND THE ONE READING THIS RAISE MUST NOT BE TAKEN AS: a truncated job log's
+    # tail is NOT evidence of a hang. This file already records that case (the
+    # step below cites attempt 1 of run 36287261534, whose log ended on a
+    # `completion-view-ack.test.mjs` error line and was hunted fleet-wide as a
+    # stall it never had, while the real failure sat elsewhere): everything the
+    # step prints comes AFTER the suite finishes, so it lands past a `gh run view
+    # --log` reader's cut and only the annotations cross it. The ceiling is
+    # raised to let the suite FINISH AND BE READ, not to paper over a stall - and
+    # if it still cancels at 60 minutes, that refutes "merely longer": the
+    # finding is then a slow or hanging LANE to diagnose, not a number to raise a
+    # third time.
     name: Desktop Tests
     needs: [changes]
     if: >-
       !cancelled() &&
       needs.changes.outputs.unit != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
