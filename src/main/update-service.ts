@@ -49,6 +49,13 @@ import {
 	servingInstallReadings,
 } from "./backend-version-drift";
 import type { BackendServiceManager } from "./backend/backend-service";
+import {
+	type UpdateReport,
+	daemonMoveOutcome,
+	parseUpdateReport,
+	runtimeStragglerCount,
+	serveMovedOntoBuild,
+} from "./update-rollover";
 
 import {
 	stripErrorPrefixes,
@@ -64,7 +71,9 @@ import {
 	FLEET_RETIRE_SETTLE_MS,
 	type FleetDrainOutcome,
 	type FleetReengageResult,
+	displacedSessions,
 	fleetDrainRefusalSentence,
+	isLiveRow,
 	reengageDisplacedSessions,
 	sessionHasRuntime,
 	unionFleetSnapshots,
@@ -246,6 +255,23 @@ const GLOBAL_UPDATE_TIMEOUT_MS = 15 * 60 * 1000;
  * applies: an expired budget stops the group rather than the direct child.
  */
 const SOURCE_REBUILD_TIMEOUT_MS = 30 * 60 * 1000;
+
+/**
+ * The SIGTERM grace the update fallback's restart gives the daemon it stops.
+ *
+ * THE DRAIN IS BOUNDED HERE BECAUSE THE SERVER'S IS NOT (2026-09-30). On
+ * shutdown uvicorn waits for every open connection - its own log says so
+ * ("Waiting for connections to close"), and the wait has no deadline on the
+ * serving side - and the measured cost of the restart leg's stop was ~10 s of
+ * exactly that, ended by the app's escalation. Half the ordinary restart grace
+ * keeps a quiet daemon's graceful exit intact (it exits in well under a
+ * second) while bounding a draining one: the same SIGTERM -> grace -> SIGKILL
+ * escalation stays, only the wait before it is shorter. Nothing in flight is
+ * cut by ending a drain early: the sessions are detached runtimes, and this
+ * stop is only ever reached when the serve reload could not be proven to have
+ * landed, so the process being stopped was about to be replaced anyway.
+ */
+const UPDATE_RESTART_STOP_GRACE_MS = 5_000;
 
 /** A reverse-DNS bundle identifier, and nothing else. */
 const BUNDLE_ID_REGEX = /^[\w.-]+$/;
@@ -1072,25 +1098,52 @@ export type BackendUpdateCompletion = {
 	 * The count the success notice's second line carries (2026-09-29, the
 	 * operator's own instruction: "we can just communicate in the popup that N
 	 * sessions are still running old versions but will get the updates when they
-	 * next stop or idle"). It is a POINT-IN-TIME COUNT OF LIVENESS, not a build
-	 * reading: the pre-swap live sessions still resident in the freshest fleet
-	 * read at the re-engage window's end - which in the ordinary flow is exactly
-	 * the sessions still running the old build, and a session with no live runtime
-	 * is not counted either, because it is already on the new build whenever it
-	 * next engages.
-	 *
-	 * THE ONE NARROW OVER-COUNT, named rather than papered over (review round 1,
-	 * m2): liveness does not prove the build, and the fleet roster carries none,
-	 * so a pre-swap session whose runtime came BACK inside the window (re-warmed
-	 * onto the NEW build) is still counted as still on the old one. Excluding it
-	 * would need a build read, which is deferred (`/v1/desktop/runtimes`).
+	 * next stop or idle"). Read the count from `sessionsOnOldBuildSource` beside
+	 * it: since 2026-09-30 the primary source is a BUILD read (the machine's
+	 * runtime roster, `GET /v1/desktop/runtimes`, counting `build_version` rows
+	 * that are not the build the server is on - an empty `build_version` is
+	 * UNKNOWN and is not counted, which is the roster journal's own rule). The
+	 * LIVENESS reading this field used to be - the pre-swap live sessions still
+	 * resident when a wait ended - remains the fallback when the roster does not
+	 * answer, and carries its documented over-count (a pre-swap session whose
+	 * runtime came back inside the window on the NEW build is still counted; the
+	 * fleet roster carries no build to exclude it with).
 	 *
 	 * 0 is a MEASURED zero (the notice draws no second line); null is "not
-	 * measured" (no readable fleet snapshot, or the re-engage never ran), which
-	 * the notice renders as the numberless sentence rather than inventing a zero.
+	 * measured" (no readable roster and no readable fleet reading), which the
+	 * notice renders as the numberless sentence rather than inventing a zero.
 	 * Optional so an older producer keeps working: an absent field reads as null.
 	 */
 	sessionsOnOldBuild?: number | null;
+	/**
+	 * Where `sessionsOnOldBuild` was read from: `"build"` (the runtime roster's
+	 * per-runtime `build_version` census) or `"liveness"` (the fallback: pre-swap
+	 * sessions still resident). Null means "not measured", and is always paired
+	 * with a null count. Absent on an older producer.
+	 *
+	 * The COUNT travels with its source for the record and for any later reader
+	 * that needs to know how it was measured; the notice's SENTENCE deliberately
+	 * does not vary with it (the designer copy consult, 2026-09-30) - one term,
+	 * "session", and the shipped sentences verbatim. A source-honest sentence was
+	 * drafted and rejected: the reader's question is what happened to their work,
+	 * and forking the wording by measurement method would say more about the app's
+	 * bookkeeping than about their sessions.
+	 */
+	sessionsOnOldBuildSource?: "build" | "liveness" | null;
+	/**
+	 * Whether the SERVER SERVING THIS APP provably moved onto the new build
+	 * during this attempt, without the app restarting it (2026-09-30).
+	 *
+	 * `restarted: false, moved: true` is the rollover that landed by itself - the
+	 * updater reloaded the serving process in place (the serve record shows a
+	 * changed `instance_id` on a build at-or-past the target, and `/health`
+	 * answered) - so the app did NOT bounce it and the panel must not announce a
+	 * skew: the two readings agree and the restart leg never ran. `moved: false`
+	 * on a non-restarted completion is the installed-but-not-serving case the
+	 * skew panel exists for; an absent field is an older producer, which the
+	 * renderer reads from the two readings exactly as before.
+	 */
+	moved?: boolean;
 };
 
 export type BackendUpdateErrorReport = {
@@ -1204,12 +1257,18 @@ export type BackendUpdateInfo = {
 	 *
 	 * `restartable` says the daemon serving this app is one the app STARTED, and
 	 * every sentence that promised a restart used it as the predicate - true on a
-	 * generation install too, where the press no longer restarts anything: the new
-	 * build lands in a tree no running process is reading and the server adopts it
-	 * at its own next idle. The two readings differ exactly there, so the offer
-	 * carries the second one rather than leaving the panel to infer a bounce from
-	 * ownership. Absent means an older main process, and `serverRestartsWithInstall`
-	 * falls back to the old rule for it.
+	 * generation install too, where the ordinary press no longer restarts
+	 * anything: the install lands in a tree no running process is reading, the
+	 * updater reloads the serving process IN PLACE, and the post-condition
+	 * (2026-09-30: the serve record must prove the move) only falls back to a
+	 * restart when that reload cannot be proven to have landed. The two readings
+	 * differ in the ordinary case, so the offer carries the second one - false on
+	 * a generation install, which is what its cost sentence states: the press
+	 * MOVES the server, it does not bounce it. (The unproven-reload fallback is a
+	 * property of the attempt, not of the layout, and cannot be read off this
+	 * field; it is the completion's `moved`/`restarted` pair that reports it.)
+	 * Absent means an older main process, and `serverRestartsWithInstall` falls
+	 * back to the old rule for it.
 	 */
 	restartsServer?: boolean;
 	/**
@@ -7869,6 +7928,256 @@ export class UpdateService {
 	}
 
 	/**
+	 * The serving process's own record, both fields from ONE read.
+	 *
+	 * The post-swap move proof compares an instance token against the pre-swap
+	 * one, and a pair assembled from two reads can straddle a republish (a new
+	 * instance under the OLD version string, or the reverse) - so the two fields
+	 * come out of a single `servingInstall()` call, which reads the record file
+	 * once. Absence is both-fields-null, never a papered-over reading: a record
+	 * that could not be read proves nothing and the verdict says so.
+	 */
+	private servingRecordReadings(): {
+		bootVersion: string | null;
+		instanceId: string | null;
+	} {
+		const readings =
+			this.backendService?.servingInstall().readings ??
+			servingInstallReadings(null);
+		return {
+			bootVersion: readings.bootVersion,
+			instanceId: readings.instanceId,
+		};
+	}
+
+	/**
+	 * The pre-swap rows still resident in a fresh read, or null when unreadable.
+	 *
+	 * The liveness count's own arithmetic, in one place because two callers need
+	 * it in different shapes (the restart fallback counts from this, the moved
+	 * path's fallback counts THROUGH it). A read that could not be taken is null
+	 * rather than an empty set: "nothing resident" would be a measured zero, and
+	 * an unanswered roster is not a measurement. A cold row (an empty
+	 * `liveState`, the catalogue's spelling for a session with no runtime) is not
+	 * resident - `isLiveRow` owns that rule, the same one the engagement diff
+	 * uses.
+	 */
+	private stillResidentRows(
+		before: readonly FleetRosterRow[],
+		after: readonly FleetRosterRow[] | null,
+	): FleetRosterRow[] | null {
+		if (after === null) return null;
+		const liveNow = new Set(
+			after.filter((row) => isLiveRow(row)).map((row) => row.sessionId),
+		);
+		return before.filter((row) => isLiveRow(row) && liveNow.has(row.sessionId));
+	}
+
+	/**
+	 * The BUILD-accurate straggler count: runtimes not on the build the server
+	 * is on, from the machine's runtime roster, or null when it did not answer.
+	 *
+	 * THIS IS THE PRIMARY CENSUS since 2026-09-30 (design §5): `GET
+	 * /v1/desktop/runtimes?probe=false` returns one row per live runtime with the
+	 * `build_version` the runtime's own record (or boot record) carries, so the
+	 * count answers the question the notice's sentence makes - "still on the old
+	 * version" - from a build reading rather than from a liveness proxy. An empty
+	 * `build_version` is UNKNOWN and is not counted (the roster journal's own
+	 * rule), and a row whose build equals the current one has already rolled.
+	 *
+	 * Null (unreadable body, non-200, a transport failure, or no current build to
+	 * compare against) sends the caller to the liveness fallback; the failure is
+	 * logged here, where the transport error is still in hand. The read is
+	 * deliberately per-call rather than cached: it is the one reading whose whole
+	 * point is that it moves as runtimes roll, so every completion asks the
+	 * machine again. A notice-reopen re-read is NOT wired (review round 1's A1):
+	 * no renderer->main census channel exists yet, so the count travels with the
+	 * completion it was measured for - recorded as deferred on the PR rather
+	 * than claimed here.
+	 */
+	private async readRuntimeCensus(
+		backend: BackendServiceManager,
+		current: string | null,
+	): Promise<number | null> {
+		try {
+			const response = await backend.requestDesktop({ op: "runtimes.list" });
+			if (response.status !== 200) {
+				logger.info(
+					`Runtime roster did not answer (${response.status}); the straggler count falls back to the liveness reading`,
+					LogFileType.UPDATE_SERVICE,
+				);
+				return null;
+			}
+			const count = runtimeStragglerCount(response.body, current);
+			if (count === null) {
+				logger.info(
+					"Runtime roster answered with no usable rows; the straggler count falls back to the liveness reading",
+					LogFileType.UPDATE_SERVICE,
+				);
+			}
+			return count;
+		} catch (error) {
+			logger.info(
+				`Runtime roster read failed (${error instanceof Error ? error.message : String(error)}); the straggler count falls back to the liveness reading`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return null;
+		}
+	}
+
+	/**
+	 * The straggler count and where it came from: build first, liveness second.
+	 *
+	 * The build count (`readRuntimeCensus`) is the primary. When the roster does
+	 * not answer, the fallback is the EXISTING liveness reading, in whichever
+	 * shape the path already has it: the restart fallback passes the rows its own
+	 * post-restart read found resident (`resident`), while the moved path passes
+	 * the pre-update snapshot (`before`) and this takes one fresh fleet read to
+	 * count it. A path with neither - no snapshot, or a fleet read that failed -
+	 * answers null/null, which the notice renders as the numberless sentence: a
+	 * count that cannot be measured is not a zero.
+	 *
+	 * The source travels with the count for the RECORD, and for any later reader
+	 * that needs to know how it was measured - it does not choose the notice's
+	 * words. The notice keeps ONE session-family sentence for both sources
+	 * (designer copy consult, 2026-09-30: the producer's vocabulary belongs in
+	 * the payload field, never in the reader's sentence), so a build count is not
+	 * printed as "N runtimes" and the liveness reading's documented over-count
+	 * rides the field beside the count instead of changing the sentence.
+	 */
+	private async readStragglerCensus(input: {
+		backend: BackendServiceManager;
+		/** The build the server is on now: the comparison's right side. */
+		current: string | null;
+		/** Pre-swap rows from before the update, for a fresh liveness count. */
+		before?: readonly FleetRosterRow[] | null;
+		/** Resident rows this path's own read already found. */
+		resident?: FleetRosterRow[] | null;
+	}): Promise<{
+		count: number | null;
+		source: "build" | "liveness" | null;
+	}> {
+		const build = await this.readRuntimeCensus(input.backend, input.current);
+		if (build !== null) return { count: build, source: "build" };
+		let resident: FleetRosterRow[] | null;
+		if (input.resident !== undefined) {
+			resident = input.resident;
+		} else if (input.before != null) {
+			resident = this.stillResidentRows(
+				input.before,
+				await this.readFleetSnapshot(input.backend),
+			);
+		} else {
+			resident = null;
+		}
+		if (resident === null) return { count: null, source: null };
+		logger.info(
+			`Straggler count from the liveness reading: ${resident.length} pre-swap session(s) still resident`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		return { count: resident.length, source: "liveness" };
+	}
+
+	/**
+	 * The restart fallback's tail for a generation install: ONE read, the
+	 * engage, and the resident set - no retire wait (2026-09-30).
+	 *
+	 * WHY THERE IS NO WAIT HERE. The rebuild route's `reengageDisplacedSessions`
+	 * waits for the pre-swap set to retire because a rebuild rewrites the tree a
+	 * runtime is reading, so runtimes really do die under it and the wave takes
+	 * ~35 s to pass. A serve restart displaces nothing by itself - session
+	 * runtimes are detached and survived the bounce (they retire on their own
+	 * build check, whenever their next idle is) - and the measured ordinary shape
+	 * was an idle-gated fleet that never moved, so the wait burned its full 60 s
+	 * grace for an engage it never performed. The re-engage opportunity it
+	 * represented is idle's job now (the 2026-09-29 directive), and the honest
+	 * statement replaces the wait: engage only the sessions THIS read shows
+	 * without a runtime, and count the rest as still resident.
+	 *
+	 * IDEMPOTENT BY THE SAME READ: the engage set is the difference the one read
+	 * shows, so a runtime that came back on its own is never spawned twice.
+	 * Returns null when the read could not be taken - not measured, which the
+	 * census and the caller's log both carry as such.
+	 */
+	private async engageDisplacedAfterFallbackRestart(
+		backend: BackendServiceManager,
+		snapshot: readonly FleetRosterRow[] | null,
+	): Promise<FleetRosterRow[] | null> {
+		if (snapshot === null) return null;
+		if (snapshot.length === 0) return [];
+		const after = await this.readFleetSnapshot(backend);
+		const displaced = displacedSessions(snapshot, after);
+		const engaged: string[] = [];
+		const failed: { sessionId: string; reason: string }[] = [];
+		for (const row of displaced) {
+			try {
+				if (await this.engageSessionRuntime(backend, row))
+					engaged.push(row.sessionId);
+				else
+					failed.push({
+						sessionId: row.sessionId,
+						reason: "the server did not take the engage",
+					});
+			} catch (error) {
+				failed.push({
+					sessionId: row.sessionId,
+					reason: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+		logger.info(
+			`Re-engaged ${engaged.length} of ${displaced.length} session(s) displaced by the restart${failed.length > 0 ? `; ${failed.length} did not answer (${failed.map((row) => row.sessionId).join(", ")})` : ""}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		if (after === null) return null;
+		return this.stillResidentRows(snapshot, after);
+	}
+
+	/**
+	 * Say the rollover's evidence, once, where a post-mortem reads it.
+	 *
+	 * THE HONEST DEGRADE IS THE POINT (task §3): with the updater's structured
+	 * report absent - any core build before `update.report.v1` - serve is proven
+	 * by its own record and the daemons are BEST-EFFORT. That is said in exactly
+	 * those words rather than faked from a line that is not there, because the
+	 * alternative (treating an absent report as "daemons fine") is how a
+	 * user-visible claim gets made with no evidence behind it. A report that NAMES a
+	 * failed daemon is surfaced as a warning beside the same line.
+	 *
+	 * Names the three inputs the verdict read - the instance pair, the boot
+	 * reading, the `/health` answer - so a wrong verdict can be reconstructed
+	 * from the log without re-running anything.
+	 */
+	private logRolloverEvidence(input: {
+		report: UpdateReport | null;
+		moved: boolean;
+		instanceBefore: string | null;
+		recordAfter: { bootVersion: string | null; instanceId: string | null };
+		healthOk: boolean;
+	}): void {
+		const verdict = input.moved ? "proven moved" : "not proven moved";
+		const facts = `instance ${input.instanceBefore ?? "no reading"} -> ${input.recordAfter.instanceId ?? "no reading"}, boot ${input.recordAfter.bootVersion ?? "no reading"}, /health ${input.healthOk ? "answered" : "did not answer"}`;
+		const daemons = daemonMoveOutcome(input.report);
+		if (daemons === null) {
+			logger.info(
+				`Rollover evidence: serve ${verdict} (${facts}); the updater printed no update.report.v1 line, so the daemons are best-effort with no evidence either way`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			return;
+		}
+		logger.info(
+			`Rollover evidence: serve ${verdict} (${facts}); the updater's report says ${daemons.moved ? "every supervised daemon is refreshed or already current" : `these daemons did not refresh: ${daemons.failed.join(", ")}`}`,
+			LogFileType.UPDATE_SERVICE,
+		);
+		if (!daemons.moved) {
+			logger.warn(
+				`Daemon refresh incomplete after the update: ${daemons.failed.join(", ")} (named by the update.report.v1 line; serve's own move is a separate reading)`,
+				LogFileType.UPDATE_SERVICE,
+			);
+		}
+	}
+
+	/**
 	 * The build the daemon serving this app BOOTED with, or null when its record
 	 * carries no reading.
 	 *
@@ -7889,7 +8198,7 @@ export class UpdateService {
 	 * the same pair rather than about two different questions.
 	 */
 	private servingBootVersion(): string | null {
-		return this.backendService?.servingInstall().readings.bootVersion ?? null;
+		return this.servingRecordReadings().bootVersion;
 	}
 
 	/**
@@ -8450,6 +8759,14 @@ export class UpdateService {
 		});
 		const rebuildRoute =
 			freshPlan.managedRoute === "source-build" && rebuildPath !== null;
+		/*
+		 * THE GENERATION ROUTE, decided once here because TWO readings depend on it
+		 * before the updater starts (below) and the branch that consumes them runs
+		 * after it exits. `entry-point` is the managed generation layout - the
+		 * install lands beside every running process - and it is the route whose
+		 * serve reload is proven by post-condition rather than assumed.
+		 */
+		const generationInstall = freshPlan.managedRoute === "entry-point";
 		if (!consolePath && !rebuildRoute) {
 			this.sendToRenderer("backend-update-error", {
 				message:
@@ -8497,6 +8814,31 @@ export class UpdateService {
 		 * misses every session created after it.
 		 */
 		const fleetBeforeInstall = rebuildRoute
+			? await this.readFleetSnapshot(backend)
+			: null;
+		/*
+		 * THE PRE-SWAP READINGS THE POST-CONDITION NEEDS (2026-09-30, generation
+		 * installs only):
+		 *
+		 *  - the serving PROCESS's instance token, read before the run - the left
+		 *    half of the move proof. It has to be taken HERE because by the time
+		 *    the updater exits it has already reloaded the process (that is the
+		 *    reload this reads), and the pre-swap identity is gone;
+		 *  - the fleet as it is now, the liveness fallback's BEFORE-set for the
+		 *    straggler census. The census prefers the build-accurate runtime roster
+		 *    (`readRuntimeCensus`); this is what it falls back to when the roster
+		 *    does not answer, and a snapshot taken after the run could not say
+		 *    which sessions were already live when the rollover started.
+		 *
+		 * Both are absences when unreadable, and the verdict treats them as such:
+		 * no instance reading means "not proven moved" (restart fallback for an
+		 * app-owned daemon), and a null snapshot means the liveness fallback
+		 * measures nothing rather than inventing a count.
+		 */
+		const serveInstanceBefore = generationInstall
+			? this.servingRecordReadings().instanceId
+			: null;
+		const fleetBeforeUpdate = generationInstall
 			? await this.readFleetSnapshot(backend)
 			: null;
 		if (
@@ -8652,38 +8994,122 @@ export class UpdateService {
 		);
 
 		/*
-		 * A daemon this app did not start is NOT the app's to bounce. It keeps
-		 * serving the build it loaded - the backend refuses the handover contract in
-		 * production (`local_operator/server/retire.py`), and this app's own
-		 * observation of the build announcement deliberately does not act on it - so
-		 * the app reports the skew and leaves the process alone. A supervised daemon
-		 * has already been refreshed by `lop update` itself
-		 * (`refresh_daemons_after_upgrade`), and the existing probe loop re-attaches.
+		 * THE POST-CONDITION DECISION (2026-09-30). What used to decide this branch
+		 * was a DIFF of the install's versions (`installAlreadyCurrent` =
+		 * `before === after`), and that is racy by construction on a machine where
+		 * several actors install concurrently: measured 2026-09-30, a concurrent
+		 * installer flipped the `current` pointer before the app's `before` read,
+		 * the app saw `0.64.10 -> 0.64.10`, read "nothing left to install", took
+		 * the restart branch, and KILLED the serve its own updater had just
+		 * reloaded onto the new build - paying ~20 s of restart plus the 60 s
+		 * retire wait after a rollover that had already landed.
 		 *
-		 * THE GENERATION RULE, and it is what makes this route non-disruptive. On the
-		 * generation layout the install landed in a tree no running process is
-		 * reading and the pointer moved, so the daemon serving this app keeps serving
-		 * correctly on the generation it booted from; a running backend on an older
-		 * generation is an accepted steady state, and its runtime adopts the new
-		 * build at its own next idle. A restart here would spend a bounce - and drop
-		 * whatever is in flight - to buy nothing, so the app reports the skew and
-		 * leaves the process alone.
+		 * The replacement reads the machine, not the expectation. After the updater
+		 * exits, `serveMovedOntoBuild` proves the move from the serving process's
+		 * OWN record (a changed `instance_id` - the reload machinery's own proof -
+		 * on a build at-or-past the target) plus `/health` liveness. `/health`'s
+		 * `version` is never read: it is computed from the metadata on disk when it
+		 * ANSWERS, so it reports the newer install while a process serves old code
+		 * from memory. Proven moved → complete without bouncing the process. Not
+		 * proven and the daemon is the app's → the restart fallback below. Not
+		 * proven and the daemon is adopted → the skew report, exactly as before: a
+		 * process this app did not start is not the app's to bounce.
 		 *
-		 * THE ONE PRESS THAT STILL MOVES IT is one with nothing left to install:
-		 * the skew panel's own "restart the server onto the new build" control
-		 * reaches this method with the install already current, and there the restart
-		 * IS the work the reader asked for. It no longer waits on the fleet (the
-		 * 2026-09-29 directive removed the restart-leg drains; `drainFleetForUpdate`
-		 * guards only the rebuild install leg now), and its sessions are re-engaged
-		 * afterwards like any other restart's.
+		 * RACE-PROOF BY CONSTRUCTION: nothing in the verdict compares the two
+		 * INSTALL readings, so an install that was already current when the app
+		 * looked (a concurrent actor flipped it) still takes the no-restart path
+		 * when the serving process is provably on the new build - while the press
+		 * that has genuinely nothing to move (the skew panel's "restart the server
+		 * onto the new build" control over a process that never moved) still
+		 * restarts, because an unchanged instance is not proof of a move.
+		 *
+		 * The updater's structured report (`update.report.v1`) joins as evidence
+		 * where the record cannot speak: its `serve[0].instance` is the token
+		 * fallback when no record could be read, and its `daemons` array is the
+		 * only daemon-moved evidence that exists (tunnel and wakes have no surface
+		 * this app can read). With no report line - a core build that predates it -
+		 * the log says so plainly and the daemons are best-effort: serve is proven
+		 * by its record alone.
 		 */
-		const generationInstall = freshPlan.managedRoute === "entry-point";
-		const installAlreadyCurrent =
-			!rebuildRoute && before !== null && after !== null && before === after;
-		if (
-			backend.isUsingExternalBackend() ||
-			(generationInstall && !installAlreadyCurrent)
-		) {
+		const updateReport = generationInstall
+			? parseUpdateReport(run.stdout)
+			: null;
+		let serveRecordAfter: {
+			bootVersion: string | null;
+			instanceId: string | null;
+		} = { bootVersion: null, instanceId: null };
+		let serveHealthOk: boolean | null = null;
+		let serveMovedWithoutRestart = false;
+		if (generationInstall) {
+			serveRecordAfter = this.servingRecordReadings();
+			serveHealthOk = await this.checkBackendHealth();
+			serveMovedWithoutRestart = serveMovedOntoBuild({
+				instanceBefore: serveInstanceBefore,
+				recordAfter: serveRecordAfter,
+				installVersion: after,
+				target,
+				reportServe: updateReport?.serve[0] ?? null,
+				healthOk: serveHealthOk,
+			});
+			this.logRolloverEvidence({
+				report: updateReport,
+				moved: serveMovedWithoutRestart,
+				instanceBefore: serveInstanceBefore,
+				recordAfter: serveRecordAfter,
+				healthOk: serveHealthOk,
+			});
+		}
+		if (serveMovedWithoutRestart) {
+			/*
+			 * THE ROLLOVER LANDED BY ITSELF: the updater reloaded the serving
+			 * process in place, so the app completes WITHOUT bouncing it. No restart
+			 * means no retire wait - the tail is ONE straggler census read, and the
+			 * sessions it counts keep their runtimes and roll onto the new build at
+			 * their own next idle (the 2026-09-29 directive: idle is what switches
+			 * them, and nothing here waits on that).
+			 */
+			const census = await this.readStragglerCensus({
+				backend,
+				current: serveRecordAfter.bootVersion ?? after ?? target,
+				before: fleetBeforeUpdate,
+			});
+			logger.info(
+				`The server serving this app moved onto ${serveRecordAfter.bootVersion ?? "the new build"} without a restart (instance changed, /health answered, ${census.count ?? "no"} straggler(s) counted from ${census.source ?? "no"} reading); completing without bouncing it`,
+				LogFileType.UPDATE_SERVICE,
+			);
+			this.sendToRenderer("backend-update-completed", {
+				installVersion: after,
+				/*
+				 * THE RECORD's reading, not `/health`'s (round 2, T1): the panel
+				 * compares these two strings, and only the process's own record
+				 * names the build it actually loaded. The moved verdict requires
+				 * a boot reading, so this arm cannot send a null it proved.
+				 */
+				runningVersion: serveRecordAfter.bootVersion,
+				moved: true,
+				restarted: false,
+				restartable: this.backendIsAppOwned(),
+				/*
+				 * FALSE BY CONSTRUCTION, and stated rather than left absent: this arm is
+				 * the global install's own updater, so the environment it moved is never
+				 * the app's managed one (design D5).
+				 */
+				appOwnedEnvironment: false,
+				sessionsOnOldBuild: census.count,
+				sessionsOnOldBuildSource: census.source,
+			});
+			return true;
+		}
+		if (backend.isUsingExternalBackend()) {
+			/*
+			 * A daemon this app did not start is NOT the app's to bounce. It keeps
+			 * serving the build it loaded - the backend refuses the handover contract in
+			 * production (`local_operator/server/retire.py`), and this app's own
+			 * observation of the build announcement deliberately does not act on it - so
+			 * the app reports the skew and leaves the process alone. A supervised daemon
+			 * has already been refreshed by `lop update` itself
+			 * (`refresh_daemons_after_upgrade`), and the existing probe loop re-attaches.
+			 */
 			const health = await this.getInstalledBackendVersion();
 			/*
 			 * The reading that travels is the PROCESS's own, not `/health`'s (round 2,
@@ -8706,11 +9132,14 @@ export class UpdateService {
 			 * QA Q-2, UX U1). `restarted: false` is the whole reason the panel has
 			 * something to say: the app deliberately does not bounce a daemon it did not
 			 * start, so the honest report is "the install moved; this server has not".
+			 * `moved: false` states the same fact as a distinction the panel can key
+			 * copy from (2026-09-30) rather than inferring it from two readings.
 			 */
 			this.sendToRenderer("backend-update-completed", {
 				installVersion: after,
 				runningVersion: running,
 				restarted: false,
+				moved: false,
 				restartable: this.backendIsAppOwned(),
 				/*
 				 * FALSE BY CONSTRUCTION, and stated rather than left absent: this arm is
@@ -8720,6 +9149,12 @@ export class UpdateService {
 				appOwnedEnvironment: false,
 			});
 			return true;
+		}
+		if (generationInstall) {
+			logger.info(
+				`Install moved to ${after ?? "unknown"}; the serving process's own record does not prove it moved onto the new build (instance ${serveInstanceBefore ?? "no reading"} -> ${serveRecordAfter.instanceId ?? "no reading"}, boot ${serveRecordAfter.bootVersion ?? "no reading"}, /health ${serveHealthOk ? "answered" : "did not answer"}); restarting the daemon this app owns onto it`,
+				LogFileType.UPDATE_SERVICE,
+			);
 		}
 
 		/*
@@ -8757,7 +9192,19 @@ export class UpdateService {
 		 * began and does not now".
 		 */
 		const fleetBeforeRestart = await this.readFleetSnapshot(backend);
-		const restartSuccess = await backend.restart();
+		/*
+		 * THE STOP'S DRAIN IS BOUNDED HERE (2026-09-30). This is the update
+		 * fallback - reached only when the serve reload was NOT proven to have
+		 * landed - so the process being stopped is about to be replaced, and
+		 * waiting out uvicorn's unbounded connection drain in full (measured
+		 * ~10 s, ended by escalation anyway) is pure cost. The escalation itself
+		 * is unchanged: SIGTERM, the shorter grace, SIGKILL, the force wait. The
+		 * ordinary restart callers (the drift repair, the app-owned environment
+		 * path) keep the default grace.
+		 */
+		const restartSuccess = await backend.restart({
+			stopGraceMs: UPDATE_RESTART_STOP_GRACE_MS,
+		});
 		if (!restartSuccess) {
 			logger.error(
 				"Backend service restart failed after the global install update",
@@ -8818,34 +9265,79 @@ export class UpdateService {
 		 * a restart that leaves a runtime gone is the half nothing else repairs, and
 		 * the unwatched `daemon`-kind sessions in particular have no viewer to
 		 * re-engage them. Before the completion, because a "finished" that outranks
-		 * the repair would be the wrong claim - and the wait this adds (the harness's
-		 * own convergence) is why the phase above says minutes, not seconds.
+		 * the repair would be the wrong claim.
 		 */
 		const reengageSnapshot = unionFleetSnapshots(
 			fleetBeforeInstall,
 			fleetBeforeRestart,
 		);
 		/*
-		 * THE FLEET COUNT RIDES THE COMPLETION (2026-09-29; `stillResident` is the
-		 * primary source). What is still resident when the re-engage window ends
-		 * is, in the ordinary flow, "sessions still on the old build": pre-swap
-		 * runtimes that did not move during the window, on their way out at their
-		 * own next idle. Null -
-		 * not measured - when no snapshot was readable or the re-engage failed, and
-		 * the notice then degrades to the numberless sentence rather than inventing
-		 * a zero. The completion is ALWAYS sent: a count is a reading, and a landed
-		 * update may not be turned into an error by a reading that could not be
-		 * taken.
+		 * TWO TAILS, BY ROUTE (2026-09-30).
+		 *
+		 * REBUILD keeps the existing retire wait, unchanged: a rebuild rewrites the
+		 * tree a live runtime is reading, so runtimes really do die under it and the
+		 * wait's own convergence horizon is the interval the re-engage is for
+		 * (design §7.1: "keep `reengageDisplacedSessions` semantics for the rebuild
+		 * route, where the drain legitimately stays").
+		 *
+		 * THE GENERATION FALLBACK gets ONE read instead: engage only the sessions
+		 * that read shows without a runtime, then stop. A serve bounce displaces
+		 * nothing by itself - session runtimes are detached and survive it, retiring
+		 * on their own build check whenever their next idle is - and the measured
+		 * ordinary shape (2026-09-30) was an idle-gated fleet that never moved, so
+		 * the 60 s grace expired in full with nothing engaged while the press-to-end
+		 * took 108.75 s. The wait's opportunity is idle's job now (the 2026-09-29
+		 * directive); the honest statement replaces it.
+		 *
+		 * THE COUNT IS THE BUILD-ACCURATE CENSUS (design §5) on both routes: the
+		 * machine's runtime roster counts runtimes whose own `build_version` is not
+		 * the build the server is on, falling back - when the roster does not answer
+		 * - to the liveness reading this field always was (the pre-swap sessions
+		 * still resident), tagged with its source so the notice's words match the
+		 * reading. Null - not measured - when neither source answers; the completion
+		 * is ALWAYS sent, because a reading that could not be taken may not turn a
+		 * landed update into an error.
 		 */
-		const reengage =
-			reengageSnapshot !== null
-				? await this.reengageFleetAfterRestart(backend, reengageSnapshot)
-				: null;
+		let sessionsOnOldBuild: number | null;
+		let sessionsOnOldBuildSource: "build" | "liveness" | null;
+		if (rebuildRoute) {
+			const reengage =
+				reengageSnapshot !== null
+					? await this.reengageFleetAfterRestart(backend, reengageSnapshot)
+					: null;
+			const census = await this.readStragglerCensus({
+				backend,
+				current: after ?? target,
+				resident: reengage !== null ? reengage.stillResident : null,
+			});
+			sessionsOnOldBuild = census.count;
+			sessionsOnOldBuildSource = census.source;
+		} else {
+			const resident = await this.engageDisplacedAfterFallbackRestart(
+				backend,
+				reengageSnapshot,
+			);
+			const census = await this.readStragglerCensus({
+				backend,
+				current: reported ?? after ?? target,
+				resident,
+			});
+			sessionsOnOldBuild = census.count;
+			sessionsOnOldBuildSource = census.source;
+		}
 		this.sendToRenderer("backend-update-completed", {
 			installVersion: after,
 			runningVersion: reported,
 			restarted: true,
-			sessionsOnOldBuild: reengage?.stillResident.length ?? null,
+			/*
+			 * The app moved this daemon onto the new build with the restart, and the
+			 * distinction is stated where it was proven (`reported` was held
+			 * at-or-past the target above). Absent on the rebuild route, which keeps
+			 * its version and its own sentence.
+			 */
+			...(rebuildRoute ? {} : { moved: true }),
+			sessionsOnOldBuild,
+			sessionsOnOldBuildSource,
 		});
 		return true;
 	}
