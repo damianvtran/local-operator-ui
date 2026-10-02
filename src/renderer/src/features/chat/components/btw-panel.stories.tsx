@@ -281,6 +281,33 @@ export const Settled: Story = {
 };
 
 /**
+ * The settled exchange with a question long enough to WRAP: the marker indents
+ * the question's first line by its own advance (28px measured), the wrapped
+ * lines return flush to the panel's rail, and the exchange cap absorbs the
+ * extra line through its measured term rather than clipping it. Captured at
+ * both rungs rather than argued, because the first line is where a reader sees
+ * whose half is whose and it is the only line the indent moves.
+ */
+export const SettledWrappedQuestion: Story = {
+	render: () => (
+		<Column label="settled, wrapping question: the marker seats a first line that continues">
+			{band({
+				story: "settled-wrapped-question",
+				turns: [
+					{
+						question:
+							"what does the retry budget actually cap, and which of the owner errors spend it before the window resets after a transport failure happens partway through a long streaming answer nobody is reading?",
+						stream: settled(
+							"Transport failures and owner 5xx responses, per provider, within a moving window. A 4xx never spends it.",
+						),
+					},
+				],
+			})}
+		</Column>
+	),
+};
+
+/**
  * The gate's other half: the answer is in hand, the CONVERSATION is working, and
  * the panel says why the control is not live rather than going quietly dead
  * (the TUI's `_aside_can_fork`, and its own rule that the refusing surface says

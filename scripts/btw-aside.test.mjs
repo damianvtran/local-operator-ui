@@ -3146,10 +3146,13 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 		/aria-hidden=\{true\} className="mr-1 text-meta text-ink-dim">\s*You:\s*<\/span>/,
 	);
 	/*
-	 * And it stays box-neutral: no block, no padding, no ground - the classes a
-	 * future edit would reach for, each of which moves the measured box the cap
-	 * is built on. `mr-1` is horizontal-only, which is why a margin is allowed
-	 * here where the vertical ones are not.
+	 * And it stays box-neutral: no block, no ground, no padding, no vertical
+	 * margin, no `leading-*`, and no type step other than the two the marker
+	 * uses (`text-meta`, the shared line box, and an `ink-*` colour) - every
+	 * one of those moves the measured box the cap is built on. `mr-1` is
+	 * horizontal-only, which is why a margin is allowed here where the
+	 * vertical ones are not. An unrecognised `text-*` token fails too: the two
+	 * spellings proved safe on this line box are the only ones admitted.
 	 */
 	const marker = panel.match(
 		/<span aria-hidden=\{true\} className="([^"]*)">\s*You:/,
@@ -3157,7 +3160,7 @@ test("the question side names its speaker, visibly and for assistive tech", () =
 	assert.ok(marker, "the visible marker is one span with its own classes");
 	for (const token of marker[1].split(/\s+/)) {
 		assert.ok(
-			!/^(block|bg-|p[xy]?-|m[tyb]-)/.test(token),
+			!/^(block|bg-|p[xy]?-|m[tyb]-|leading-|text-(?!meta$|ink-))/.test(token),
 			`the marker must not carry ${token}: it would move the measured box the exchange cap reads`,
 		);
 	}

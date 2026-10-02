@@ -80,10 +80,13 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  *  - `wrapped-density` is THE PIN: nine options, every description wrapping.
  *  - `wrapping-labels` is the same question one step milder — two options,
  *    both label and description long enough to wrap.
- *  - `many-options` is the CONTROL: eight options with single-line
- *    descriptions, the state that always rendered correctly. It must stay
- *    clean, and it is the case a fix that over-corrected (e.g. a row height
- *    pinned to something arbitrary) would visibly move.
+ *  - `many-options` is the DENSITY CONTROL: eight options with single-line
+ *    descriptions. It is the rung that must stay clean at head - not a state
+ *    the defect spares, since it fails pre-fix too (23 findings per theme:
+ *    eight rows at 44.75px against 57px, the same flex compression, because
+ *    the list is over the 380px cap as well). It is the case a fix that
+ *    over-corrected (e.g. a row height pinned to something arbitrary) would
+ *    visibly move.
  */
 const STATES = [
 	["chat-ask-options--wrapped-density", 1024, 620, 9],
