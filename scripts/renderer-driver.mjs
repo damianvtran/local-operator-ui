@@ -35428,7 +35428,7 @@ async function sceneMiniView(app, cdp) {
 			};
 			const miniResting = await miniGeom("at rest");
 			await mini.evaluate(
-				`(() => { window.__miniMicGate = new Promise((resolve) => { window.__miniMicRelease = resolve; }); return true; })()`,
+				"(() => { window.__miniMicGate = new Promise((resolve) => { window.__miniMicRelease = resolve; }); return true; })()",
 			);
 			await mini.evaluate(`${composerMicStart}.click(); true`);
 			const miniPending = await pollMini(
@@ -35452,7 +35452,7 @@ async function sceneMiniView(app, cdp) {
 			);
 			await captureMini("mini-view-starting");
 			await mini.evaluate(
-				`(() => { if (window.__miniMicRelease) window.__miniMicRelease(); return true; })()`,
+				"(() => { if (window.__miniMicRelease) window.__miniMicRelease(); return true; })()",
 			);
 			const recordingState = await pollMini(
 				`${select("mini-composer-status")}.textContent`,
