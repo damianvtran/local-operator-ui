@@ -450,7 +450,11 @@ const HIDDEN_VIEWPORT_PAGE = `<!doctype html>
   /* Radix's available-height binding. The 0 default is the failure shape: on a 0x0
      viewport the content collapses to nothing and the sentinel never paints. */
   #popper-content { min-width: 240px; max-height: var(--viewport-available-height, 0px);
-    overflow: hidden; border-radius: 8px; border: 1px solid #4a505a; background: #1c2027; }
+    /* The border is the popup's only boundary against the page, and the design round
+       measured the first value at 2.21:1 on this page - below the 3:1 non-text floor,
+       which makes an agent- and human-facing frame harder to read than it needs to be.
+       This one measures 3.72:1 on the page and 3.38:1 on the panel fill. */
+    overflow: hidden; border-radius: 8px; border: 1px solid #6b7280; background: #1c2027; }
   [role="option"] { padding: 10px 12px; }
   [role="option"] + [role="option"] { border-top: 1px solid #2a2f37; }
   #sentinel { width: 120px; height: 40px; background: rgb(255, 0, 255); }
@@ -1074,6 +1078,13 @@ async function openTargetSession(target) {
  * same question with the engine that produced them, and keeps this rig runnable on
  * its own - the property the rig's header asks for. The bitmap arrives as a Blob
  * rather than a `data:` URL so no CSP `img-src` applies.
+ *
+ * TOLERANCE, NOT EQUALITY, and the reason is not slackness: the captures carry an
+ * embedded Display-P3 ICC profile (the design round measured it: `mntr`, RGB/XYZ,
+ * red primary 0.5151/0.2412), so the fixture's `rgb(255, 0, 255)` is STORED as
+ * `#EA33F7` and a strict `=== #ff00ff` check would fail on this host. The tagging is
+ * identical before and after the fix, so it says nothing about the change; the range
+ * below is what keeps this check about the sentinel rather than about the profile.
  */
 async function magentaPixels(base64) {
 	const result = await rendererEvaluate(`(async () => {
@@ -1110,6 +1121,12 @@ async function magentaPixels(base64) {
  * `captureBeyondViewport: false` copies the COMPOSITED surface, which a hidden view
  * was measured to lack before the view was sized before its first hide, and
  * `fromSurface: false` is the historical renderer-side capture.
+ *
+ * EVERY ROW HERE IS A COMPARISON, NOT A CHECK: this leg asserts nothing and its rows
+ * pass or fail no part of the run. The shipped shape's own pass/fail reading lives in
+ * §5d (`a capture does not resize the page`), which is where the `resize 0 -> 2`
+ * number comes from — the clipped row below is the same shape ANSWERING NOTHING inside
+ * 20 s in that run, so a reader looking for the resize count here will not find it.
  */
 async function measureCaptureLadder(state, tab, fixtureUrl) {
 	const target = await waitForTarget(
@@ -1129,7 +1146,7 @@ async function measureCaptureLadder(state, tab, fixtureUrl) {
 		evaluate("document.getElementById('metrics').textContent");
 	const candidates = [
 		[
-			"today: captureBeyondViewport + clip to the view bounds",
+			"the shape this PR removed: captureBeyondViewport + clip to the view bounds",
 			{
 				format: "png",
 				captureBeyondViewport: true,
@@ -2005,6 +2022,7 @@ async function main() {
 			docElWidth: number(/docEl=(-?\d+)x/),
 			viewportWidth: number(/vv=(-?\d+)x/),
 			resize: number(/resize=(-?\d+)/),
+			dpr: number(/dpr=(-?\d+)/),
 			lastResizeSize: /lastResizeSize=(\S+)/.exec(text)?.[1] ?? "",
 			open: /open=(true|false)/.exec(text)?.[1] === "true",
 		};
@@ -2083,10 +2101,21 @@ async function main() {
 		`open before=${openedMetrics.open} after=${afterPopupShot.open}\nbefore: ${openedMetrics.text}\nafter:  ${afterPopupShot.text}\nframe: ${popupFrame}`,
 	);
 	const magenta = await magentaPixels(popupShot.data);
+	// The GEOMETRY is gated with the pixels, and the two claims need each other: the
+	// capture no longer carries a clip, so "a viewport-sized PNG" is the property that
+	// says the composited surface was the view's own box rather than the whole
+	// document — and a capture that silently returned 1280x720 css at the WRONG ratio,
+	// or 1280x3778, would pass on the pixel count alone. 1280x720 is
+	// `BACKGROUND_VIEWPORT`; the ratio is read from the page rather than assumed from
+	// this host.
+	const expectedWidth = 1280 * navigatedMetrics.dpr;
+	const expectedHeight = 720 * navigatedMetrics.dpr;
 	check(
 		"the popup's own pixels are in the capture",
-		(magenta.magenta ?? 0) > 1_000,
-		`frame ${popupFrame}: ${JSON.stringify(magenta)} (the fixture's #sentinel is 120x40 css)`,
+		(magenta.magenta ?? 0) > 1_000 &&
+			magenta.width === expectedWidth &&
+			magenta.height === expectedHeight,
+		`frame ${popupFrame}: ${JSON.stringify(magenta)} — expected the 1280x720 view at dpr ${navigatedMetrics.dpr} = ${expectedWidth}x${expectedHeight} (the fixture's #sentinel is 120x40 css)`,
 	);
 
 	if (process.argv.includes("--capture-ladder")) {

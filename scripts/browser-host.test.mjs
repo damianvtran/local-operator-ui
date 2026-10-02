@@ -3894,11 +3894,12 @@ test("a background tab captures without a route, without activation, through the
 	assert.equal(shot.data, "iVBORw0KGgo=");
 	// ONE SHAPE, and `false` is the whole contract: `true` makes Chromium produce the
 	// capture beyond the viewport, which with a clip means EMULATING the clip box as
-	// the viewport — measured through the proof rig (--capture-ladder, Electron 44):
-	// it resized a hidden 1280x720 view's renderer and fired page `resize` events,
-	// which closes an open Radix select popup. `false` copies the composited surface
-	// and fires none. There is no clip either: the composited surface IS the
-	// viewport, so a clip could only reshape it.
+	// the viewport — measured through the proof rig (its §5d capture check,
+	// Electron 44: `resize 0 -> 2`, `lastResizeSize=1280x720`), and it resized a hidden
+	// 1280x720 view's renderer and fired page `resize` events, which closes an open
+	// Radix select popup. `false` copies the composited surface and fires none. There
+	// is no clip either: the composited surface IS the viewport, so a clip could only
+	// reshape it.
 	assert.deepEqual(
 		cdp.calls.filter((call) => call.method === "Page.captureScreenshot").at(-1)
 			?.params,
