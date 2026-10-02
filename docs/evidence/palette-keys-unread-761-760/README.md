@@ -50,10 +50,11 @@ files are `cwebp -q 90` conversions of the run's PNGs, un-resized.
 | `legend-typed/localOperatorDark.webp` | `9c4de08fbdb37018d09458fd74605201` | A typed query (`release`): the pin is gone - it belongs to the `#`-seeded (chats-scoped) switcher state alone, not to every empty query - and the footer's key legend is the typed-search variant: `↑ ↓ Ctrl N` to move, `↵` to run, `esc` to close. The legend teaches `Ctrl+N` alone on purpose (design round 1, D1): `Ctrl+P` is bound - it steps wherever it arrives, and the QA/UX rigs measured that - but unreachable in the packaged app, where main's `before-input-event` owns the press and answers it with the switcher seed; advertising it as a movement key would promise something the app does not do. The footer draws ONE legend at a time - scope in a browse, this movement legend in a typed search - and that split is a recorded trade-off, not an oversight (design round 1, D2; the measured widths are in `docs/command-palette.md`). This frame was re-taken over the remediation's copy and is the design round's artifact of record. |
 
 A repeat run of the same command at the same head reproduced both switcher
-frames byte for byte (`md5 3b2a3189a90271a73beef852bdd5d135`,
-`c1a237af0b24adeec4c3b02fb676d6aa`) - and they also stand byte-identical to the
-original capture, so their md5s in the table above are unchanged through this
-remediation. `legend-typed` carries a small re-render variance floor: the two
+frames' PNGs byte for byte (`md5 3b2a3189a90271a73beef852bdd5d135`,
+`c1a237af0b24adeec4c3b02fb676d6aa` - the run's PNGs, un-resized; the table
+above lists the committed `.webp` conversions of them, a different pair for the
+same frames) - and they also stand byte-identical to the original capture, so
+their md5s in the table above are unchanged through this remediation. `legend-typed` carries a small re-render variance floor: the two
 runs' PNGs differ in 68 pixels of 4,968,000, all of them one 2x34px vertical
 glyph edge in the footer's key legend (antialiasing; RMSE 0.27%). The committed
 legend frame is one of two equivalent settled states, not a byte-diff
