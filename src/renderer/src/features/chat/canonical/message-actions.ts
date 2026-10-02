@@ -6,9 +6,16 @@
  * control" is a rule with a right answer, and a frame can only show the row it
  * DOES paint, never its absence on the twenty record kinds that must not have
  * one. `scripts/message-actions.test.mjs` asserts the rule directly instead.
+ *
+ * IT ALSO ANSWERS WHICH ROWS CAN BE FORKED FROM (`forkEntryId`), because that
+ * is the same kind of question: "this message is a point a fork can be cut
+ * at" is a fact about the RECORD, and the frame that shows a Fork button does
+ * not show the tool row that must not have one.
  */
 
-export type AnswerActionId = "copy" | "speak";
+import type { TranscriptRecord } from "./transcript-reducer";
+
+export type AnswerActionId = "copy" | "speak" | "fork";
 
 /**
  * Which row the action model is answering for.
@@ -52,18 +59,131 @@ export type ActionRowRole = "answer" | "user";
  *
  * QUOTE IS DELIBERATELY ABSENT. Its trigger is the selection, `canonical-
  * transcript.tsx` enforces one subject per row, and a Quote button here would
- * be a second way to raise the one control - so the cap at two is not a
- * shortage of ideas but the scope ruling (memo (d)).
+ * be a second way to raise the one control.
+ *
+ * FORK IS CONDITIONAL ON A FACT ABOUT THE ROW, not on the turn's role: a fork
+ * is cut through a named transcript entry, and only the two kinds this row is
+ * ever mounted for carry one in `record.id` (see `forkEntryId`). It is the
+ * caller's answer rather than something derived here for `linkToolbarModel`'s
+ * reason - whether a row is a cut point is a fact about the SURFACE, and the
+ * transcript is the only layer that knows which record it mounted for.
+ *
+ * FORK TAKES THE ROW'S FREE END, and that is the rule rather than "it keeps
+ * the left edge". The row's own order is the anchor rule applied once more -
+ * the actions before it are the cheapest, fixed presses (Copy, and Speak where
+ * an agent resolves) - but the two arms are anchored differently, so "last"
+ * lands on two different edges: the answer's line is left-anchored
+ * (`canonical-transcript.tsx`'s foot line runs from the prose rail), where Fork
+ * extends the row rightward and moves nothing; the user column is
+ * `items-end`, where the row is right-anchored and an appended control takes
+ * the anchored edge and shifts Copy and Speak left by one pitch. Both mount
+ * sites put Fork at the row's free end and neither moves the answer's own
+ * text.
+ *
+ * THE CAP THIS ROW ASKS TO EXCEED, named where it is written: the row's two-
+ * action shape was pinned on `origin/main` by `scripts/message-actions.test.mjs`'s
+ * case "the row is capped at two actions, and Quote is not one of them", whose
+ * stated grounds are the line's width and the slot #694 was reserving - and
+ * that file's case now pins BOTH shapes ("exactly two controls on a row with no
+ * cut point, with no Quote among them" for the arm that has no cut point, and
+ * the three-control arm), with the original grounds still stated in it. #694's
+ * overflow home has since shipped
+ * as the sidebar row context menu (Archive / Pin / Fork), and the only cap
+ * carrying an explicit number is that menu's - "two at most, pushing it three"
+ * (#694 / #739) - so three inline controls on this row is the number the
+ * repository actually states, not a raised one. The three is also the surface
+ * budget's ceiling: a fourth goes behind an overflow rather than into the row.
+ *
+ * WHAT IT DOES NOT COVER, declared rather than implied: the row is mounted only
+ * under `isQuotable` (both mount sites in `canonical-transcript.tsx`), so a
+ * message with no words at all - an image-only user turn, an answer whose whole
+ * body is reply markup - offers no Fork even though it is a committed journal
+ * entry and a legal cut point. That is the cost of riding the copy row, and it
+ * is recorded here so the next reader meets it as a decision rather than as a
+ * gap.
  */
 export function answerActionsFor({
 	role = "answer",
-	agentId,
+	forkable = false,
 }: {
 	role?: ActionRowRole;
-	agentId?: string;
-}): AnswerActionId[] {
-	if (role === "user") return ["copy"];
-	return agentId ? ["copy", "speak"] : ["copy"];
+	/**
+	 * Whether this row's message is a point a fork can be cut at - the answer
+	 * `forkEntryId` gives the transcript for the record it is drawing.
+	 */
+	forkable?: boolean;
+} = {}): AnswerActionId[] {
+	/*
+	 * Spread rather than a trailing conditional so the two arms read identically
+	 * and a fourth conditional cannot be added to one of them alone.
+	 */
+	const fork: AnswerActionId[] = forkable ? ["fork"] : [];
+	if (role === "user") return ["copy", ...fork];
+	/*
+	 * SPEAK IS ALWAYS LISTED, and the row carries no agent gate. The gate this
+	 * replaced tested an agent id that in this app is the PANE's identity - not
+	 * anything the speech route can resolve - so it offered the control on
+	 * conversations that could not use it and withheld it from ones that could.
+	 * What a press needs is a resolvable target, and that is the press's own
+	 * business (`speech-target.ts`).
+	 */
+	return ["copy", "speak", ...fork];
+}
+
+/**
+ * The transcript entry a Fork on this row would branch from, or `null` when
+ * this row has none to name.
+ *
+ * THE ROW'S ID IS THE JOURNAL ENTRY ID on exactly the two kinds the action row
+ * is ever mounted for, which is what makes the control possible at all:
+ * `transcript-reducer.ts` takes a user row's id from the entry envelope
+ * (`durableRecord`, `kind: "user"`) and an assistant row's the same way, while
+ * a tool row's is `tool:<tool_call_id>`. A tool-row id sent as a cut point is
+ * refused by the core (`has_entry` answers no for it), so the rule is stated
+ * here rather than left to the mount site to get right.
+ *
+ * A STREAMING ANSWER IS NOT A CUT POINT. Its id is the live row's, and the
+ * core's entry is only the durable row's: the settled twin carries the same id
+ * but the commit is what puts it in the journal. This is `isQuotable`'s
+ * settledness rule read for a second reason, and it is repeated rather than
+ * inherited because the gate that mounts the row can change without this rule
+ * being re-read.
+ *
+ * DELIBERATELY NOT GATED on `local`/`provisional`. A user row that is still the
+ * optimistic echo carries the ADMISSION REQUEST ID, and the owner's durable row
+ * coalesces onto that same id (`use-canonical-session.ts` appends the echo with
+ * `entry.id`) - so the id is a real cut point the moment the message commits,
+ * and until then the picker's own refusal sentence is the honest answer rather
+ * than a control that flickers in a moment later.
+ */
+export function forkEntryId(record: TranscriptRecord): string | null {
+	if (record.kind !== "user" && record.kind !== "assistant") return null;
+	if (record.kind === "assistant" && record.streaming) return null;
+	return record.id || null;
+}
+
+/**
+ * How much of the chosen message the fork flow repeats back to the reader.
+ *
+ * WHY THE FLOW HAS TO SAY WHICH MESSAGE AT ALL: the control is a hover-revealed
+ * row and the picker is a modal over the transcript, so by the time the reader
+ * can check the cut point the row it names is covered. "The message you chose"
+ * is therefore a phrase with no referent on screen - the irreversible-ish step
+ * has to be checkable BEFORE it is taken, and only an excerpt of the row's own
+ * words does that.
+ *
+ * A plain clamp rather than a middle-elide: the opening words are what
+ * identifies a message to its author, which is the same reasoning
+ * `missingNote` states for keeping a path's basename. Whitespace is collapsed
+ * so a message that opens with a fenced block or a wrapped line does not spend
+ * the budget on newlines.
+ */
+export const FORK_EXCERPT_MAX_CHARS = 96;
+
+export function forkExcerpt(text: string): string {
+	const flat = text.replace(/\s+/g, " ").trim();
+	if (flat.length <= FORK_EXCERPT_MAX_CHARS) return flat;
+	return `${flat.slice(0, FORK_EXCERPT_MAX_CHARS - 1).trimEnd()}\u2026`;
 }
 
 /**

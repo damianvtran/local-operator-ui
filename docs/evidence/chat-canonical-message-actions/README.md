@@ -14,8 +14,36 @@ This set is the change's own evidence, and its pair under
 [`../chat-canonical-message-actions-before/`](../chat-canonical-message-actions-before/)
 is half the claim: a frame of the row alone cannot show that the reader used to
 have nothing on that line. **The row is discoverable because it is ON SCREEN at
-rest**, so every state below is photographed with no pointer in the frame unless
+rest** — in the arm the resting states are captured under, declared immediately
+below — so every state below is photographed with no pointer in the frame unless
 the state IS the pointer.
+
+**THE ARM, DECLARED (design round 1 D2, round 2 D1): the nine resting states
+ship in the HOVER-LESS arm (`touch: true` — `Emulation.setTouchEmulationEnabled`
+in the rig); the four interaction states ship in a hover-capable one.** Which arm
+a capture renders under decides whether a pointer-less frame can show the row at
+all: its reveal is `opacity-0 … group-hover:opacity-100
+group-focus-within:opacity-100 [@media(hover:none)]:opacity-100`
+(`message-actions.ts`), so under the product's own pointer arm the row is
+invisible until the pointer or the keyboard arrives — and nine of this set's
+states exist precisely to show the row in its context. The hover-less arm is the
+app's own, not an invention of the rig: the arrival animation beside the reveal
+is gated on `hover: hover` for exactly the opposite reason
+(`styles/index.css`).
+
+**The older generation was not this arm, and could not be reproduced as it
+stood:** its resting frames predate the reveal itself — `opacity-0` and the
+`(hover: none)` exception landed in `3d03a2f3e63`, after those frames were taken
+— so they show the row because nothing hid it then, under a hover-capable host.
+That is why round 1's reading (and the sentence that briefly stood here, calling
+it "the rig's headless Chrome reports no hover capability") was wrong, and why a
+refresh that simply inherited the host's media result lost the row from all nine.
+The arm is now SET BY THE RIG and declared per entry (`touch`), so a different
+host cannot move it silently.
+
+**And the product's pointer arm has no resting frame at all** — by design, not by
+omission: to a reader with a mouse the row is one hover or one Tab away, and the
+`hover-copy/` and `focus-copy/` entries are that arm's own evidence.
 
 ## What is in it
 
@@ -70,8 +98,11 @@ left standing beside a frame that contradicts it. **The answer and the ledger
 share the rail; the caption follows the actions on the same line when there is
 one.**
 
-Two buttons, `size-7` (`icon-sm`) each with a 4px gap: the toolbar measures
-60×28 and its first button 28×28.
+Three buttons, `size-7` (`icon-sm`) each with a 4px gap: the toolbar measures
+**92×28** (28×3 + 4×2, and `actions.buttons` reads 3 on both entries — the
+number in the geometry probe's own output, not arithmetic done here), its first
+button 28×28, and the pitch between buttons is 32px. Re-measured after #1002's
+Fork joined the row; the row and the line keep their rail and their 28px.
 
 ## The accepted cost, restated honestly
 
@@ -133,12 +164,32 @@ focus kept). Nothing in this set claims otherwise.
 
 ## How they were taken
 
+TWO RUNS, because the set ships TWO ARMS and the arm is a property of the
+renderer rather than of the story (see *The arm, declared* above):
+
 ```sh
+# The nine RESTING states, in the hover-less arm: `touch: true` on those entries,
+# which is how the row is on screen at rest.
 node scripts/capture-evidence.mjs http://127.0.0.1:6077 \
   --only=chat-canonical-message-actions-- \
+  --dirs=rest,short-answer,refused,truncated,streaming,multi-answer,bar-suppressed,one-call-turn,narrow \
+  --themes=localOperatorLight,localOperatorDark,sage,catppuccinMacchiato,obsidian,radient \
+  --allow-backend --theme-settle-ms=180000
+
+# The four INTERACTION states, in a hover-capable arm: a real pointer moves
+# (`hover`), real Tabs are pressed (`tabTo`), a real press (`press`).
+node scripts/capture-evidence.mjs http://127.0.0.1:6077 \
+  --only=chat-canonical-message-actions-- \
+  --dirs=hover-answer-no-corner-control,hover-copy,focus-copy,copied \
   --themes=localOperatorLight,localOperatorDark,sage,catppuccinMacchiato,obsidian,radient \
   --allow-backend --theme-settle-ms=180000
 ```
+
+Both runs write the same directory; the split is by `--dirs=`, and no entry's
+arm can be set by the environment: the rig sends the touch emulation for every
+entry, on or off. The interaction states must stay hover-capable rather than
+merely preferring it — Tailwind's `hover:` variant is gated on `hover: hover`,
+so under the resting arm's own emulation the hover ground could not paint at all.
 
 Storybook 8.6.12 on the shipped `.storybook/main.ts` (which sets
 `reactDocgen: "react-docgen"`; the stale paragraph in `capture-evidence.mjs`'s
@@ -161,14 +212,20 @@ folded tree (`origin/main` = `9dd18ab318`, which moved `canonical-transcript.tsx
 `transcript-reducer.ts` and the scroll pager under this branch) and every frame
 came back byte-identical except the `streaming/` working line's animated mark —
 19 pixels in a 4x12 box, against 16 pixels in the same box between two captures of
-the SAME tree, so the difference is the mark's phase rather than the tree. The
+the SAME tree, so the difference is the mark's phase rather than the tree. **That
+was the state before round 2 of #1002; the nine resting frames were re-shot since
+(design round 2 D1 — see *The arm, declared*), so byte-identity with the previous
+generation no longer holds for them.** The
 committed frames are the ones this set shipped and they describe the folded tree.
 
 **Thirteen states, 78 frames.** `one-call-turn/` was added in round 1 (D1) and its
 six frames were taken on the fixed tree; the other twelve states were re-checked
-against it rather than re-taken — a re-capture of `rest/` after the round's
-component change (the Speak/Stop swap in `message-actions-row.tsx`) came back
-**byte-identical**, which is the claim that the change moves nothing at rest.
+against it rather than re-taken **in that round** — a re-capture of `rest/` then
+came back **byte-identical** after the round's component change (the Speak/Stop
+swap in `message-actions-row.tsx`), which was that round's claim that the change
+moves nothing at rest. **That is round 1's record, not this set's present state**:
+the nine resting states were re-shot in round 2 (D1) under the hover-less arm, so
+none of them is byte-identical to the round-1 generation any more.
 
 ## What this set is NOT
 

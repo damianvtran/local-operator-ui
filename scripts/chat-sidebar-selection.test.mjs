@@ -1692,6 +1692,8 @@ test("the settings rail's group lists carry no ground of their own", () => {
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
+const TEAM_BUBBLE =
+	"src/renderer/src/features/chat/components/team-avatar-bubble.tsx";
 
 test("the account row's plate carries an edge a row state cannot overrun", () => {
 	const row = sourceOf(ACCOUNT_ROW);
@@ -1713,6 +1715,43 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
 	assert.ok(
 		plate.includes("border-control"),
 		`the account row's plate is back on a FILL ALONE — it reads ${JSON.stringify(plate)} and carries no \`border-control\`, which is the one property a row's fill cannot overrun. \`elevated\` against \`rowHover\` is ΔE00 0.00 on \`arcade\` (byte-identical), 1.14 \`gruvbox\`, 1.21 \`obsidian\` and 1.90 \`everforest\`: hovering the row turns the plate into a disc of the row's own hover colour. The edge is the carrier, and the palette half of the pair is in \`scripts/contrast-contract.mjs\``,
+	);
+});
+
+/*
+ * THE THIRD PLATE, AND WHY IT IS ASSERTED HERE INSTEAD OF DISCOVERED.
+ *
+ * The team avatar bubble (the compact initials mark the chat sidebar's session
+ * rows draw, operator ask 2026-10-01) is an object with a ground of its own that
+ * sits inside a row state - `TeamAvatarBubble` is rendered inside the row whose
+ * box takes `rowCurrent` and `hover:bg-row-hover`. The scan above cannot see it,
+ * and that is a BOUNDARY rather than an oversight: the bubble is written in its
+ * own module, so `carriersInsideRowStates` reads an element with no `className`
+ * of its own where the bubble is USED and never enters the subtree that carries
+ * the ground. It is the same shape as `CARRIED_GROUNDS` (a ground that lives in
+ * another file) and it takes the same remedy: name the carrier, read its class
+ * text from the file it is written in, and assert the fact here.
+ *
+ * THE PAIR IT RESTS ON is the one the agents sidebar's plate already uses, which
+ * is why no new palette arithmetic was added for it: `sunken` fill plus a
+ * `borderControl` edge against the row's own `rowHover` and `rowSelected`, per
+ * palette, in `scripts/contrast-contract.mjs`. What this test adds is the half a
+ * palette cannot see - that the shipped class text is still that pair.
+ */
+test("the team avatar bubble keeps its edge and its ground", () => {
+	const edge = literalClassAt(TEAM_BUBBLE, "<Avatar ", "after")
+		.split(/\s+/)
+		.filter((token) => token.length > 0);
+	assert.ok(
+		edge.includes("border") && edge.includes("border-control"),
+		`the team avatar bubble's edge is gone — <Avatar> in ${TEAM_BUBBLE} reads ${JSON.stringify(edge)}. The edge is on the ROOT rather than on the fallback because the picture REPLACES the fallback when a generated avatar loads: an edge drawn on the fallback would vanish exactly when the mark stops being a fill. \`sunken\` and the row's own states collide inside the field floor on some palettes (\`alucard\` 0.44 on \`rowSelected\`), so the edge is the carrier - the palette half of the pair is in \`scripts/contrast-contract.mjs\``,
+	);
+	const plate = literalClassAt(TEAM_BUBBLE, "<AvatarFallback ", "after")
+		.split(/\s+/)
+		.filter((token) => token.length > 0);
+	assert.ok(
+		plate.includes("bg-sunken"),
+		`the team avatar bubble's plate no longer paints \`bg-sunken\` — <AvatarFallback> in ${TEAM_BUBBLE} reads ${JSON.stringify(plate)}. \`scripts/contrast-contract.mjs\` measures this plate's fill and edge against the row's states, so a re-role here has to move there too`,
 	);
 });
 
