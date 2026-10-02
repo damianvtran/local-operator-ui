@@ -22,10 +22,30 @@ import type { FC } from "react";
  *
  * ## Paint
  *
- * The ring is `hairline` with a single `accent` quadrant rather than a full
- * accent ring: a full ring reads as a filled shape at small sizes, and the gap
- * is what makes the rotation legible. Borders rather than an SVG arc, so there
- * is nothing to colour outside the role palette.
+ * The ring is a `control` track with a single `accent` quadrant rather than
+ * a full accent ring: a full ring reads as a filled shape at small sizes,
+ * and the gap is what makes the rotation legible. Borders rather than an SVG
+ * arc, so there is nothing to colour outside the role palette.
+ *
+ * THE TRACK IS `control` AND NOT `hairline` (design round 1 on the
+ * composer's acknowledgment, D3). `hairline` is the decorative line: it owes
+ * being seen and carries no floor at all, and the three decorative quarters
+ * of this ring measured 1.23:1 on `localOperatorDark` and 1.44:1 on
+ * `localOperatorLight` - a progress affordance whose whole visible shape sat
+ * below the 3:1 non-text floor. `control` is the role this system gives that
+ * floor to ("the sole visual boundary of an input, select, checkbox, or
+ * outlined button. Floor 3:1 on all four grounds" - branding § 2), and the
+ * pairing is pinned where it belongs rather than borrowed: `CONTROLS` states the
+ * same VALUE as a control's edge, which is a different claim about it, so
+ * `scripts/contrast-contract.mjs`'s `GRAPHICS` table carries a row for this
+ * ring's track against every ground it is dropped onto (agent review round 2,
+ * minor c - the earlier citation named a row that measures a button's boundary).
+ *
+ * The role is set HERE rather than by a call site, and that is measured rather
+ * than stylistic: `cn` merges the track and the quadrant as one border-colour
+ * group, so a caller passing a stronger track (`border-control`) silently
+ * flattened the accent quadrant too - the ring came back `#837c6d` on both
+ * sides, i.e. a circle with nothing visibly rotating in it.
  *
  * Under `prefers-reduced-motion` the global cap in `styles/index.css` freezes
  * the rotation. That is deliberate, and it is the other reason `label` carries
@@ -52,7 +72,7 @@ const SIZES = {
 } as const;
 
 const RING =
-	"inline-block shrink-0 animate-spin rounded-full border-hairline border-t-accent";
+	"inline-block shrink-0 animate-spin rounded-full border-control border-t-accent";
 
 export const Spinner: FC<SpinnerProps> = ({
 	size = "md",

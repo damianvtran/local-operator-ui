@@ -34535,7 +34535,15 @@ const MINI_FAKE_RECORDER_SOURCE = [
 	"(() => {",
 	"\tconst stream = { getTracks: () => [{ stop() {} }] };",
 	"\tif (navigator.mediaDevices) {",
-	"\t\tnavigator.mediaDevices.getUserMedia = async () => stream;",
+	"\t\tnavigator.mediaDevices.getUserMedia = async () => {",
+	/* THE GATE (the acknowledgment's own frame, 2026-10-02): the fake resolves in
+	 * the same turn, so the pending state - where the shared composer now answers
+	 * the press - is never on screen long enough to photograph. A promise the walk
+	 * resolves by hand holds that state still; with no gate installed the recorder
+	 * behaves exactly as it did. */
+	"\t\t\tif (window.__miniMicGate) await window.__miniMicGate;",
+	"\t\t\treturn stream;",
+	"\t\t};",
 	"\t}",
 	"\tclass FakeMediaRecorder {",
 	"\t\tstatic isTypeSupported() {",
@@ -35403,7 +35411,49 @@ async function sceneMiniView(app, cdp) {
 				micReady.ok,
 				JSON.stringify(micReady.value),
 			);
+			/*
+			 * THE PRESS, BEFORE THE RECORDER EXISTS (design round 1, D2 / UX round 1,
+			 * U3). The shared composer answers the press immediately, and this walk
+			 * holds the acquisition open to photograph that answer in the MINI's own
+			 * window - the surface whose height is measured, so "the acknowledgment
+			 * costs no height" is a reading here rather than an assumption. The
+			 * gesture is released below and the walk continues unchanged.
+			 */
+			const miniGeom = async (label) => {
+				const reading = await mini.evaluate(
+					`({ height: window.innerHeight, width: window.innerWidth, box: (() => { const el = ${composerField}?.closest("div[class*=bg-elevated]"); if (!el) return null; const r = el.getBoundingClientRect(); return { y: Math.round(r.y * 10) / 10, h: Math.round(r.height * 10) / 10 }; })(), mic: (() => { const el = ${composerMicStart}; if (!el) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.x * 10) / 10, y: Math.round(r.y * 10) / 10 }; })() })`,
+				);
+				note(`the mini window while ${label}`, JSON.stringify(reading));
+				return reading;
+			};
+			const miniResting = await miniGeom("at rest");
+			await mini.evaluate(
+				"(() => { window.__miniMicGate = new Promise((resolve) => { window.__miniMicRelease = resolve; }); return true; })()",
+			);
 			await mini.evaluate(`${composerMicStart}.click(); true`);
+			const miniPending = await pollMini(
+				`${composerMicStart}.getAttribute("aria-busy")`,
+				(value) => value === "true",
+				"the microphone control to acknowledge the press",
+				10_000,
+			);
+			check(
+				"the press is acknowledged before the recorder exists",
+				miniPending.ok,
+				JSON.stringify(miniPending.value),
+			);
+			const miniPendingGeom = await miniGeom("acknowledging the press");
+			check(
+				"the acknowledgment costs the mini window no height",
+				miniPendingGeom?.height === miniResting?.height &&
+					miniPendingGeom?.box?.h === miniResting?.box?.h &&
+					miniPendingGeom?.mic?.x === miniResting?.mic?.x,
+				`rest=${JSON.stringify(miniResting)} pending=${JSON.stringify(miniPendingGeom)}`,
+			);
+			await captureMini("mini-view-starting");
+			await mini.evaluate(
+				"(() => { if (window.__miniMicRelease) window.__miniMicRelease(); return true; })()",
+			);
 			const recordingState = await pollMini(
 				`${select("mini-composer-status")}.textContent`,
 				(text) => text === recordingSentence,
