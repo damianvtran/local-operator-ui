@@ -245,6 +245,10 @@ const asideExchangeCap = (
  *
  * Memoized because `parseReplies` mints an id per quote, and this panel re-renders on
  * every chunk of the answer below it.
+ *
+ * Both role labels live HERE: the sr-only `Question: ` prefix for assistive tech
+ * and the visible `You:` marker for sight (issue #763) - the marker's own note at
+ * the render says why it is inline and box-neutral.
  */
 const AsideQuestion: FC<{ question: string }> = ({ question }) => {
 	const { replies, remainingContent } = useMemo(
@@ -254,6 +258,32 @@ const AsideQuestion: FC<{ question: string }> = ({ question }) => {
 	return (
 		<>
 			<span className="sr-only">Question: </span>
+			{/*
+			 * THE VISIBLE HALF OF THE SAME FACT (issue #763). The sr-only prefix
+			 * above is the reader's copy and stays; this is the one a sighted reader
+			 * gets, because "quieter" alone left both halves of the exchange in one
+			 * prose register with nothing saying whose was whose at reading distance.
+			 *
+			 * INLINE, AND BOX-NEUTRAL BY CONSTRUCTION. The exchange cap measures this
+			 * paragraph's own box (`asideExchangeCap` takes the question block as
+			 * measured) and `ASIDE_QUESTION_MIN_BOX` is the floor for the pass before
+			 * that measurement exists, so the marker is built to move neither: an
+			 * inline span adds no padding, no ground and no line box of its own - at
+			 * `text-meta` its 17.4px leaded box is shorter than the question's own
+			 * 19.5px line, so a line it shares cannot grow, and a question is still
+			 * at least one line, so the floor still holds. A block-level label (a row
+			 * of its own, the composer's `Replying to` idiom) would have moved both,
+			 * which is why this is not one.
+			 *
+			 * `aria-hidden` because the sr-only prefix would otherwise be read twice;
+			 * the visible word names the SPEAKER ("You:") where the sr-only one names
+			 * the role ("Question: ") - the same fact in the two nouns each audience
+			 * reads best, and the same meta-step, quiet marker idiom the ask card's
+			 * `Recommended` uses.
+			 */}
+			<span aria-hidden={true} className="mr-1 text-meta text-ink-dim">
+				You:
+			</span>
 			{replies.map((reply) => (
 				<span
 					key={reply.id}
@@ -736,10 +766,15 @@ export const AsidePanel: FC<AsidePanelProps> = ({
 							className="flex flex-col gap-1"
 						>
 							{/*
-							 * The question is quieter than the answer on purpose, and the
-							 * label is `sr-only` because the ink step already says it to a
-							 * sighted reader: § 7 keeps the hierarchy in the type, not in
-							 * extra chrome.
+							 * The question is quieter than the answer on purpose (it is the
+							 * prompt; the answer is the document) - but the ink step alone was
+							 * not a role cue a sighted reader could find (issue #763): both
+							 * halves read as one prose register. The question now carries BOTH
+							 * labels - the sr-only `Question: ` prefix stays for assistive
+							 * tech, and the visible `You:` beside it names the speaker for
+							 * sight. § 7's hierarchy is still carried by the type (13px muted
+							 * against the answer's 14px ink); the marker is identity, not a
+							 * second register.
 							 *
 							 * The ref is the NEWEST turn's only: the cap above the region is a
 							 * promise about the block directly above the answer its edge is
