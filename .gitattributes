@@ -19,6 +19,19 @@
 # because the resolver reads the three sides from GIT OBJECTS rather than from
 # the conflict-marked working file.
 #
+# IT RESOLVES A MERGE AND NOTHING ELSE, AND THE DRIVER ENFORCES THAT. `%A` is
+# "this branch" only for `git merge`; under `git rebase`, `pull --rebase`,
+# cherry-pick, revert, `am` and stash-pop git hands the driver the UPSTREAM side
+# as `%A` and gives it no way to tell, so the driver refuses (it resolves only
+# when `MERGE_HEAD` exists), names the operation on stderr, writes git's own
+# conflict markers into the working file and exits non-zero - which makes git
+# stop on the conflict, with the same markers and the same unmerged index the
+# author would have seen before this driver existed. A rebase onto a moved `main`
+# therefore still stops on the manifest. That is the intended trade: the
+# alternative is a silently wrong-side resolution, where the lane's pass fields
+# are replaced by main's and a retired key comes back, with git reporting
+# success.
+#
 # WHY NOT `merge=ours` / `merge=binary`: both exist to avoid thinking about the
 # file, which is the defect. The merged manifest carries BOTH sides' records
 # and is re-derived against the merged tree; neither side's copy is the answer.

@@ -358,8 +358,8 @@ const shaReaders = (git) => ({
  * only prefixes (`chat-tool-rows--expanded-overflow-narrow` writes
  * `expanded-overflow-narrow-end`), which `claimedStory` covers.
  */
-const frameStoryId = (file) => {
-	const segments = relative(ROOT, file).split("/").slice(2, -1);
+const frameStoryId = (file, root = ROOT) => {
+	const segments = relative(root, file).split("/").slice(2, -1);
 	if (segments.length < 2) return null;
 	const [surface, ...leaf] = segments;
 	return `${surface}--${leaf.join("/").replace(/@\d+$/, "")}`;
@@ -410,25 +410,50 @@ export const claimedStory = (id, surface, leaf) => {
 	return name === leaf || overrideDirFor(id) === leaf;
 };
 
-/** Whether a committed evidence path sits inside a declared `supplementary` set. */
-const inDeclaredSet = (file, declared) =>
+/**
+ * Whether a committed evidence path sits inside a declared `supplementary` set.
+ *
+ * Exported because `evidence-fold.mjs` derives `partialCapture.refreshedFrames`
+ * against this exact denominator: the derived field and the guard that reads it
+ * back must agree about WHICH frames the field is a claim about, and two copies
+ * of the rule would drift the first time a set is declared. A declared set is
+ * declared precisely because a sweep cannot produce its frames, so a field that
+ * claimed them would claim frames no run wrote.
+ */
+export const inDeclaredSet = (file, declared) =>
 	declared.some((dir) => file.startsWith(`${dir}/`));
 
 /**
  * The story directory a committed frame's repository-relative path sits in, as
  * `refreshedStories` spells it (`<surface>--<leaf>`), or null for a path that
  * is not a frame at a story's depth.
+ *
+ * `root` is injectable for the same reason `stampFailures` takes an evidence
+ * directory: `evidence-fold.mjs` re-derives `partialCapture.refreshedFrames`
+ * against a tree that is not this checkout, and the derived number must be the
+ * number THIS matcher feeds the guard - a second walker would agree with itself
+ * whatever the guard asked. It defaults to this repository's root, so every
+ * caller here reads exactly what it always read.
  */
-const storyOf = (file) => {
-	const id = frameStoryId(join(ROOT, file));
+const storyOf = (file, root = ROOT) => {
+	const id = frameStoryId(join(root, file), root);
 	if (id === null) return null;
 	const cut = id.indexOf("--");
 	return { id, surface: id.slice(0, cut), leaf: id.slice(cut + 2) };
 };
 
-/** Whether some `refreshedStories` entry names the directory this frame is in. */
-const namedByPass = (file, stories) => {
-	const story = storyOf(file);
+/**
+ * Whether some `refreshedStories` entry names the directory this frame is in.
+ *
+ * Exported because the writer of `partialCapture.refreshedFrames` has to ask the
+ * field's question with THIS predicate: the field and the guard that reads it
+ * back must agree about which frames the pass claims, and restating the
+ * directory rule in the writer is how the two drift (the first version of the
+ * re-derivation matched a two-level `<leaf>/<state>` directory this matcher does
+ * not, and so counted 62 frames the guard never sees).
+ */
+export const namedByPass = (file, stories, root = ROOT) => {
+	const story = storyOf(file, root);
 	return (
 		story !== null &&
 		stories.some((entry) => claimedStory(entry, story.surface, story.leaf))
