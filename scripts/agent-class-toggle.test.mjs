@@ -20,6 +20,15 @@ import { build } from "esbuild";
  * would revert a description edited in another window; a switch that installed
  * twice would report an idempotent no-op as work; a switch that read `""` or
  * `"PROACTIVE"` as proactive would be the nagging bug the class exists to end.
+ *
+ * THIS FILE ALSO CARRIES THE TWO PANE <-> COMPOSER HANDOFFS (QA round 2, Q1;
+ * UX round 2, U1): "Ask for a change" has to reach the box that RENDERS it, and
+ * the edit gate's discard question has to take the focus its `Cancel` gave up.
+ * They live here for one reason - this is the tree's only harness that mounts the
+ * real `AgentsPage` (`installBridge` + `mount` below), so a case that presses a
+ * detail pane's header action and then reads the composer's own field has nowhere
+ * else to run. Both are about a control whose effect is a fact about ANOTHER
+ * component's tree, which is exactly what a mount can prove and a still cannot.
  */
 const bundle = await build({
 	stdin: {
@@ -323,6 +332,11 @@ const pageBundle = await build({
 		contents: [
 			'export { AgentsPage } from "./src/renderer/src/features/agents/components/agents-page";',
 			'export { AIDA_SEAT_NAME, displayNameFor } from "./src/renderer/src/features/aida/use-aida-target";',
+			/*
+			 * The box's own store, so the storage below can be given to THAT store and no
+			 * other (see the note under the import).
+			 */
+			'export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -388,6 +402,45 @@ const pageBundlePath = new URL(
 await writeFile(pageBundlePath, pageBundle.outputFiles[0].text);
 const PAGE = await import(pageBundlePath.href);
 await unlink(pageBundlePath);
+
+/*
+ * WHY THE DOM AND ITS STORAGE ARRIVE AFTER THE BUNDLE, AND WHAT THAT COSTS THE
+ * ONE CASE THAT NEEDS THEM EARLIER (QA round 2, Q1).
+ *
+ * zustand's `persist` resolves its storage ONCE, when the store module is
+ * evaluated - and this page's stores are created at import time. Installing
+ * jsdom's `localStorage` BEFORE the import was measured to hang this file: with a
+ * storage in place the persisted stores REHYDRATE, which mounts a long-lived 5 s
+ * connectivity poller (`useInternetConnectivity`), and the file then never exits
+ * (`Promise resolution is still pending but the event loop has already resolved`,
+ * with react-query's "Query data cannot be undefined" once per interval). The
+ * ordering therefore stays as it was: the import first, the DOM after.
+ *
+ * The cost is that `useConversationInputStore` captured `undefined` as its
+ * storage, so the box's own text threw `Cannot read properties of undefined
+ * (reading 'setItem')` on every write - a harness failure that looks EXACTLY
+ * like the Q1 defect (a press that leaves the box empty), which is why it is
+ * fixed here rather than tolerated: the store is given an in-memory storage of
+ * its own, which is the smallest thing that makes the write path real without
+ * rehydrating anything the other stores persist. It is set on that store alone,
+ * so no other test in this file changes behaviour.
+ */
+const memoryStorage = {
+	getItem: () => null,
+	setItem: () => undefined,
+	removeItem: () => undefined,
+};
+PAGE.useConversationInputStore.persist.setOptions({ storage: memoryStorage });
+/*
+ * AND A HYDRATION THAT CAN COMPLETE. The hook whose box this is adopts a store
+ * write only once `persist.hasHydrated()` is true (`use-message-input.ts`'s
+ * "adopt a draft written from outside this hook" effect), and the failed
+ * hydration at import time left that flag FALSE - so the seed would land in the
+ * store and never reach the field. The storage above is what makes this
+ * rehydrate resolve; it is awaited before any mount, so no test sees a
+ * half-hydrated store.
+ */
+await PAGE.useConversationInputStore.persist.rehydrate();
 
 const { JSDOM } = await import("jsdom");
 const dom = new JSDOM("<!doctype html>", { url: "http://localhost/" });
@@ -502,6 +555,7 @@ for (const [key, value] of Object.entries(shims)) {
 	});
 }
 window.matchMedia ??= shims.matchMedia;
+
 const { createRoot } = await import("react-dom/client");
 const { act, createElement: h } = await import("react");
 const { MemoryRouter, Route, Routes } = await import("react-router-dom");
@@ -538,13 +592,27 @@ const row = (over = {}) => ({
  * user actually hits, and the one U1 is about, because the state on disk has
  * moved while the client is told the write failed.
  */
-const installBridge = (rows, { failWrite = null, aidaName = "Aida" } = {}) => {
+const installBridge = (rows, { failWrite = null, aidaName = "Aida", features = {} } = {}) => {
 	const calls = [];
 	const handler = async (request) => {
 		calls.push(request.op);
 		switch (request.op) {
 			case "capabilities":
-				return { status: 200, body: { result: CAPABILITIES } };
+				return {
+					status: 200,
+					body: {
+						result: {
+							...CAPABILITIES,
+							/*
+							 * PER-MOUNT FEATURE KEYS, added for the seed case below: the
+							 * configuration run needs its own key plus `session_interrupt`
+							 * (`configRunEnabled`), and turning them on for the OTHER mounts
+							 * would change what they render.
+							 */
+							features: { ...CAPABILITIES.features, ...features },
+						},
+					},
+				};
 			case "aida.status":
 				return {
 					status: 200,
@@ -666,6 +734,12 @@ const settle = async (done, budgetMs = 4_000) => {
 
 const switchEl = (container) =>
 	container.querySelector('[data-testid="agent-class-switch"]');
+
+/** A control by its own visible name, inside a given scope (never the document). */
+const buttonNamed = (scope, name) =>
+	[...(scope?.querySelectorAll("button") ?? [])].find(
+		(button) => button.textContent?.trim() === name,
+	) ?? null;
 
 const rosterSaysProactive = (container, name) =>
 	Boolean(
@@ -838,6 +912,117 @@ test("a write that failed AFTER the backend committed is corrected by the re-rea
 			rosterSaysProactive(container, "aida"),
 			"the roster badge did not follow the re-read",
 		);
+	});
+});
+
+test("Ask for a change puts its own sentence in the box that renders (QA round 2, Q1)", async () => {
+	await withPage(async (world) => {
+		const { container, root } = await mount("/agents?kind=agent&name=aida", world, {
+			aidaName: "Nova",
+			features: { agents_config: 1, session_interrupt: 1 },
+		});
+		const box = () => container.querySelector("textarea");
+		assert.ok(await settle(() => Boolean(box())), "the run's box never rendered");
+		const ask = buttonNamed(container, "Ask for a change");
+		assert.ok(ask, "the header action never rendered");
+		/*
+		 * THE BOX MUST START EMPTY or this case proves nothing: the sentence is what
+		 * the PRESS is supposed to put there, and a value another mount left behind
+		 * would let a broken seed pass. The assertion below is the rendered `value`,
+		 * not the store — the defect was a seed that reached a store nothing renders.
+		 */
+		assert.equal(box().value, "", "the box was not empty before the press");
+		await act(async () => {
+			ask.click();
+		});
+		/*
+		 * THE BADGE IS THE HALF THAT KEPT WORKING, and asserting it here is what
+		 * tells the two halves apart when this case fails: a missing badge means the
+		 * press never reached the page's handler, a missing sentence with the badge
+		 * present means the handler seeded a store the box does not read.
+		 */
+		assert.match(
+			container.textContent ?? "",
+			/About agent aida/,
+			"the press did not reach the page's handler at all (no target named)",
+		);
+		assert.equal(
+			box().value,
+			"Change the agent aida: ",
+			"the press seeded a store the box does not render: the sentence is not in the box",
+		);
+		assert.equal(
+			document.activeElement,
+			box(),
+			"the caret did not land in the box the sentence arrived in",
+		);
+		await act(async () => root.unmount());
+	});
+});
+
+test("the discard question takes the focus its Cancel gave up (UX round 2, U1)", async () => {
+	await withPage(async (world) => {
+		const { container, root } = await mount("/agents?kind=agent&name=aida", world, {
+			aidaName: "Nova",
+		});
+		const footer = () => container.querySelector('[data-testid="edit-footer"]');
+		assert.ok(
+			await settle(() => Boolean(buttonNamed(container, "Edit"))),
+			"the pane never rendered its read view",
+		);
+		/*
+		 * THE FOOTER IS THE EDITOR'S, so the editor is opened BEFORE it is waited for:
+		 * the read view has no `Cancel` at all, and a wait that ran first would time
+		 * out on a pane that is behaving.
+		 */
+		await act(async () => {
+			buttonNamed(container, "Edit")?.click();
+		});
+		assert.ok(
+			await settle(() => Boolean(footer())),
+			"the editor never rendered its footer",
+		);
+		/*
+		 * A REAL DRAFT FIELD HAS TO CHANGE: `dirty` is value-based
+		 * (`JSON.stringify(draft) !== JSON.stringify(base)`), so the state UX reached
+		 * by typing a character into Instructions is reached here with the delegation
+		 * switch - the same kind of edit, through a control this harness can drive
+		 * (a real press), rather than a synthesised keystroke into a React-controlled
+		 * textarea. What the case is about is the FOCUS the confirm takes, not which
+		 * field made the draft dirty.
+		 */
+		const delegate = container.querySelector(
+			'[aria-label="May delegate to subagents"]',
+		);
+		assert.ok(delegate, "the edit form's delegation switch is not mounted");
+		await act(async () => {
+			delegate.click();
+		});
+		assert.match(
+			footer().textContent ?? "",
+			/Unsaved changes/,
+			"the draft never became dirty, so the confirm under test would never open",
+		);
+		const cancel = buttonNamed(footer(), "Cancel");
+		assert.ok(cancel, "the editor's Cancel is not in the footer");
+		/*
+		 * FOCUS FIRST, THEN PRESS. The defect is what happens to the FOCUSED node when
+		 * its row is replaced, so a press that never held focus would test nothing: a
+		 * keyboard user reaches this button with Shift+Tab from the box and presses
+		 * Enter, and jsdom has no tab order to walk, so the focus is set directly.
+		 */
+		cancel.focus();
+		await act(async () => {
+			cancel.click();
+		});
+		const keep = buttonNamed(footer(), "Keep editing");
+		assert.ok(keep, "the discard question never opened");
+		assert.equal(
+			document.activeElement,
+			keep,
+			"focus fell out of the question, so the next Tab reaches Discard changes",
+		);
+		await act(async () => root.unmount());
 	});
 });
 

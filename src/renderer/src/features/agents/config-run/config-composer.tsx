@@ -438,7 +438,69 @@ function RunSummary({ run }: { run: ConfigRunHandle }) {
  * It is still NOT a session id and still never a conversation. See the note
  * § 3.3.1 for the decision it satisfies (key (a)) and § 3.7 for the leak row.
  */
-const CONFIG_BOX_KEY = "agents-config";
+export const CONFIG_BOX_KEY = "agents-config";
+
+/**
+ * THE SENTENCE "ASK FOR A CHANGE" PUTS IN THE BOX, built in one place.
+ *
+ * The pane's own button builds the same words (`agent-detail.tsx`, `team-detail.tsx`)
+ * and the page's cleanup compares against them, so the shape lives here as a
+ * function rather than as three copies of a template string: a change to the
+ * sentence that missed one copy would leave a seeded draft the cleanup no longer
+ * recognises as seeded, and the operator's next row click would keep it.
+ */
+export const configSeedPrompt = (about: {
+	kind: "agent" | "team";
+	name: string;
+}): string => `Change the ${about.kind} ${about.name}: `;
+
+/**
+ * THE ONE WRITER OF THE BOX'S TEXT OUTSIDE THE COMPOSER, and the fix for QA
+ * round 2's Q1.
+ *
+ * WHAT WENT WRONG. The detail panes' "Ask for a change" set the About badge and
+ * seeded the run store's `draft`, which nothing rendered any more: the box's
+ * text had moved to `useConversationInputStore[CONFIG_BOX_KEY]` (the store the
+ * example chips and every keystroke write), so the button produced a badge, a
+ * caret in an EMPTY box, and an operator who had to type the request they had
+ * just asked for. Measured by QA: the box's own row was live and writable — six
+ * run sends landed in its `submittedMessages` while `currentInput` stayed `""` —
+ * and no `agents-config` row was ever written by the press.
+ *
+ * WHY THE FIX IS A FUNCTION RATHER THAN A LINE AT EACH CALL SITE. The defect was
+ * a caller writing to a store the box does not read, and the defence against the
+ * next one is to make the seed and the target ONE action that cannot be half
+ * applied: a call site has nothing left to get wrong.
+ */
+export function askForChange(
+	run: ConfigRunHandle,
+	about: { kind: "agent" | "team"; name: string },
+	prompt: string,
+): void {
+	run.setAbout(about);
+	useConversationInputStore.getState().setCurrentInput(CONFIG_BOX_KEY, prompt);
+}
+
+/**
+ * THE SEEDED SENTENCE GOES WITH ITS TARGET, and only the seeded one.
+ *
+ * Text the operator typed is theirs, and deleting it because they clicked another
+ * row would be a worse bug than the stale chip (review round 1, U6/D2) — so this
+ * clears the box only when it still holds exactly what `configSeedPrompt` wrote
+ * for the target being left behind, and leaves a hand-typed request alone.
+ */
+export function discardSeededConfigBox(about: {
+	kind: "agent" | "team";
+	name: string;
+}): void {
+	const store = useConversationInputStore.getState();
+	if (
+		store.getCurrentInput(CONFIG_BOX_KEY).trim() ===
+		configSeedPrompt(about).trim()
+	) {
+		store.setCurrentInput(CONFIG_BOX_KEY, "");
+	}
+}
 
 export function ConfigComposer({
 	run,
@@ -514,12 +576,15 @@ export function ConfigComposer({
 	);
 	const live = run.status === "running" || run.status === "stopping";
 	/*
-	 * THE BOX NO LONGER GOES DEAD WHILE A RUN IS LIVE, and that is deliberate: the
-	 * shared composer is a real composer, and the run's Stop lives on the strip
-	 * above it (B1). A second send during a live run is answered by the backend's
-	 * own single-flight rule — a 409 carrying the active run's id, which is the
-	 * attach path below — so the refused keystroke was never what kept the run
-	 * single. `disabled` survives for the states that really cannot send anything.
+	 * WHY THE BOX REFUSES INPUT WHILE A RUN IS LIVE, and what that refusal is NOT.
+	 * The strip's Stop is not the only door onto a second send — the box's own Enter
+	 * is, and a second send is a second registry write — so `live` joins
+	 * `blocksInput` below (U1) and the field goes `readOnly` with the ink stepped.
+	 * `disabled` survives for the states that cannot send at all (no capability, a
+	 * dirty edit holding the page), which is the term the box's own "unavailable"
+	 * sentences and the example chips read. The keystrokes typed into a refused live
+	 * box are NOT queued: they are dropped, which UX review round 2's U2 records as
+	 * a follow-up (the refusal is visible in four channels; the discard is not).
 	 */
 	const disabled = !run.enabled || Boolean(blockedReason);
 	/*
@@ -531,14 +596,19 @@ export function ConfigComposer({
 	 * waiting on is a configuration run. The host supplies the sentence for those
 	 * two states and nothing else — the invitation and every other state still
 	 * come from the composer.
+	 *
+	 * THE BAND OWNS THE BACKEND'S REFUSAL SENTENCE, not the box (design review
+	 * round 2, D7). `run.disabledReason` used to be set here as the placeholder as
+	 * well as rendered in the notice band, so the operator read the same 66-character
+	 * sentence twice, 8 px apart — same string, the second copy in the dim ink. One
+	 * carrier is enough, and the band is the one that says it at 7.88:1, so the box
+	 * keeps its own disabled-state line (`placeholder` below) instead.
 	 */
 	const hostPlaceholder = blockedReason
 		? blockedReason
-		: !run.enabled
-			? (run.disabledReason ?? undefined)
-			: live
-				? "Working on your request…"
-				: undefined;
+		: live
+			? "Working on your request…"
+			: undefined;
 	const placeholder = about
 		? `Change ${about.name}…`
 		: run.enabled
@@ -547,10 +617,10 @@ export function ConfigComposer({
 
 	/*
 	 * "ASK FOR A CHANGE" ARRIVES FROM ELSEWHERE, so the caret has to land here.
-	 * The detail pane's own button seeds the draft and names the target; the
-	 * operator's next keystroke belongs in this box, and without this the focus
-	 * stayed on `BODY` — a keyboard user had no cue that anything had happened
-	 * (review round 1, D9).
+	 * The detail pane's own button (`askForChange`) puts the sentence in this box
+	 * and names the target; the operator's next keystroke belongs in this box, and
+	 * without this the focus stayed on `BODY` — a keyboard user had no cue that
+	 * anything had happened (review round 1, D9).
 	 */
 	const aboutKey = about ? `${about.kind}:${about.name}` : null;
 	useEffect(() => {

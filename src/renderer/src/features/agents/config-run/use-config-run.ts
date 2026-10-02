@@ -192,8 +192,6 @@ export type ConfigRunHandle = {
 	sessionId: string | null;
 	topic: string;
 	error: string | null;
-	draft: string;
-	setDraft: (draft: string) => void;
 	about: RunTarget | null;
 	setAbout: (about: RunTarget | null) => void;
 	touched: RunTarget[];
@@ -516,7 +514,9 @@ export function useConfigRun(): ConfigRunHandle {
 	 * and its attachment chips are the operator's until a send the backend took
 	 * returns `true` (design note §3.3.1, the seam `use-message-input.ts:182-196`
 	 * already answers; M2's "the draft is spent only by an accepted send" survives
-	 * here rather than in a run-level `acceptDraft` call).
+	 * here rather than in a run-store call of its own: the text is the composer's,
+	 * in `useConversationInputStore`, and this hook only reports whether the send
+	 * landed).
 	 *
 	 * `attachments` ARE CARRIED END-TO-END (M2, §3.3.4): the composer hands over the
 	 * same path/data-URL list the chat's send receives, they are encoded by the
@@ -612,13 +612,12 @@ export function useConfigRun(): ConfigRunHandle {
 			 */
 			await sendMessage(sessionId, body, images);
 			/*
-			 * THE DRAFT IS SPENT ONLY NOW — by a send the backend actually took. It
-			 * used to be cleared by `adopt`, before the message call, so every
-			 * failure below it left a sentence promising text that was gone, and the
-			 * single-flight attach path emptied the very box it said still held the
-			 * request (review round 1, M2).
+			 * NOTHING IS CLEARED HERE, and that is the M2 rule rather than an
+			 * omission: the box's text is spent by the composer's own store when the
+			 * send it made is accepted (review round 1, M2). The run store's `draft`
+			 * copy this used to empty was rendered by nothing, so it was removed in QA
+			 * round 2 (Q1).
 			 */
-			store.acceptDraft();
 			return true;
 		} catch (caught) {
 			const sessionId = useConfigRunStore.getState().sessionId;
@@ -698,7 +697,6 @@ export function useConfigRun(): ConfigRunHandle {
 		setStarting(true);
 		try {
 			await sendMessage(state.sessionId, state.topic, state.images);
-			store.acceptDraft();
 			/*
 			 * Back to live. `adopt` is the one door that sets `running`, and the run id
 			 * and topic it needs are the ones already in hand — so the retry re-arms
@@ -763,8 +761,6 @@ export function useConfigRun(): ConfigRunHandle {
 		topic: store.topic,
 		error: store.error,
 		stopError: store.stopError,
-		draft: store.draft,
-		setDraft: store.setDraft,
 		about: store.about,
 		setAbout: store.setAbout,
 		touched: store.touched,

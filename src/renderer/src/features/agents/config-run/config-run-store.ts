@@ -63,17 +63,6 @@ export type ConfigRunStore = {
 	status: ConfigRunStatus;
 	/** What the operator asked for, so the strip can say it back. */
 	topic: string;
-	/**
-	 * The compose box's text, retained across a refusal.
-	 *
-	 * A draft that survives a failure is the difference between "the backend was
-	 * down" and "I lost what I typed" (UX brief, must-nots), and the box is
-	 * cleared only by a send that was actually accepted — `acceptDraft`, called
-	 * AFTER `sessions.message` resolves, and never by the create alone (review
-	 * round 1, M2: the attach path says "it is still in the box" and then emptied
-	 * it, and a failed message call kept the sentence while dropping the text).
-	 */
-	draft: string;
 	/** The row the next send is about, when one is selected on the page. */
 	about: RunTarget | null;
 	error: string | null;
@@ -120,7 +109,6 @@ export type ConfigRunStore = {
 	/** Signature of the catalogues at send time, for the settle-time diff. */
 	before: unknown;
 
-	setDraft: (draft: string) => void;
 	setAbout: (about: RunTarget | null) => void;
 	/**
 	 * The encoded images the ACCEPTED request carried, so a retry repeats it.
@@ -132,15 +120,23 @@ export type ConfigRunStore = {
 	 * other half.
 	 */
 	images: WireImage[];
-	/** A run exists and is live. Does NOT spend the draft — see `acceptDraft`. */
+	/**
+	 * A run exists and is live.
+	 *
+	 * THE DRAFT IS NOT SPENT HERE, and that is the rule this store used to hold with
+	 * a `draft` field of its own: the box's text lives in `useConversationInputStore`
+	 * (keyed `agents-config`), which spends it only on a send the backend actually
+	 * took — never on the create alone (review round 1, M2: the attach path said
+	 * "it is still in the box" and then emptied it). The store's own `draft` field
+	 * was left behind by that move and rendered by nothing, so it was removed in QA
+	 * round 2 (Q1) rather than kept as a second, silent copy of the operator's text.
+	 */
 	adopt: (
 		sessionId: string,
 		topic: string,
 		before: unknown,
 		images?: WireImage[],
 	) => void;
-	/** The send was accepted: now the box is spent. */
-	acceptDraft: () => void;
 	noteTouched: (target: RunTarget) => void;
 	stopping: () => void;
 	/** The interrupt was refused: the run is still going, and the strip says so. */
@@ -170,7 +166,6 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	status: "idle",
 	topic: "",
 	images: [],
-	draft: "",
 	about: null,
 	error: null,
 	stopError: null,
@@ -183,7 +178,6 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 	marks: [],
 	before: null,
 
-	setDraft: (draft) => set({ draft }),
 	setAbout: (about) => set({ about }),
 
 	adopt: (sessionId, topic, before, images = []) =>
@@ -202,8 +196,6 @@ export const useConfigRunStore = create<ConfigRunStore>((set) => ({
 			before,
 			unsent: false,
 		}),
-
-	acceptDraft: () => set({ draft: "" }),
 
 	noteTouched: (target) =>
 		set((state) =>
