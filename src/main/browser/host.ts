@@ -2,6 +2,7 @@ import type { BrowserActionContext, HostFacts } from "./actions/context";
 import { requesterOf } from "./actions/context";
 import * as downloadActions from "./actions/download";
 import { withOriginGate } from "./actions/gate";
+import * as geometryActions from "./actions/geometry";
 import * as inputActions from "./actions/input";
 import * as pageActions from "./actions/page";
 import * as tabActions from "./actions/tabs";
@@ -40,6 +41,12 @@ import { safeHttpUrl } from "./vendor/driver/origin-policy";
  */
 const DOCUMENT_SCOPED: ReadonlySet<string> = new Set([
 	"read",
+	// The structured reads (`styles`, `hit_test`, `ancestors`) describe the
+	// CURRENT document exactly as `read` does, so a result that raced a
+	// navigation it did not cause must be discarded the same way.
+	"styles",
+	"hit_test",
+	"ancestors",
 	"snapshot",
 	"screenshot",
 	"click",
@@ -138,6 +145,9 @@ const NAVIGATION_ACTIONS: ReadonlySet<string> = new Set(["click", "type"]);
 const TAB_SCOPED: ReadonlySet<string> = new Set([
 	"goto",
 	"read",
+	"styles",
+	"hit_test",
+	"ancestors",
 	"snapshot",
 	"screenshot",
 	"click",
@@ -524,6 +534,12 @@ export class BrowserHost implements BrowserActionContext {
 				return tabActions.retitle();
 			case "read":
 				return pageActions.read(this, params);
+			case "styles":
+				return geometryActions.styles(this, params);
+			case "hit_test":
+				return geometryActions.hitTest(this, params);
+			case "ancestors":
+				return geometryActions.ancestors(this, params);
 			case "snapshot":
 				return pageActions.snapshot(this, params);
 			case "scroll":
