@@ -238,9 +238,14 @@ export const AskOptions = ({
 					disabled={busy}
 					onClick={() => onAnswer(option.label)}
 					className={cn(
-						// A full-width 34px row at radius 6 (§F1). `items-baseline` keeps
-						// the keycap on the label's first line when the label wraps.
-						"flex min-h-[34px] w-full items-baseline gap-3 rounded-sm px-2 py-2 text-left",
+						// A full-width 34px row at radius 6 (§F1). `items-start`, NOT
+						// `items-baseline` (issue #762): a row baseline-aligned against this
+						// multi-line column did not grow with a wrapped description, so the
+						// next row's ordinal and label landed on top of it. The row's height
+						// is now the column's; the keycap rides the column's first line
+						// through its own line box (the ordinal's `leading` below) rather
+						// than through a baseline coupling across the whole block.
+						"flex min-h-[34px] w-full items-start gap-3 rounded-sm px-2 py-2 text-left",
 						// Colour-only transition: hover is a colour step, and nothing on
 						// this card lifts, scales or translates.
 						"transition-colors duration-fast ease-out-quart",
@@ -281,6 +286,13 @@ export const AskOptions = ({
 								// The keycap column: a fixed width so every label starts on one
 								// edge, `ink-dim` because it is a hint rather than content.
 								"w-4 shrink-0 text-center font-mono text-mono-sm",
+								// The numeral rides the label column's FIRST line through its
+								// line box, now that the row no longer baseline-aligns it
+								// (issue #762): `text-body-sm` at its own leading is that first
+								// line box, and `leading` utilities are em-relative, so the
+								// label's own tokens are what has to be named. A later change
+								// to the label step carries the keycap with it.
+								"leading-[calc(var(--text-body-sm)*var(--text-body-sm--line-height))]",
 								busy ? "text-ink-disabled" : "text-ink-dim",
 							)}
 						>
