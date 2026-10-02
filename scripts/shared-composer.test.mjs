@@ -355,26 +355,37 @@ async function mount({
 	const container = window.document.createElement("div");
 	window.document.body.appendChild(container);
 	root = createRoot(container);
+	/*
+	 * `undefined` is the ordinary ACCEPTED outcome (`SendOutcome`). A plain object
+	 * is the off-record-ask shape and the guard reads any object as one, so a
+	 * `{ ok: true }` stub crashes the first case that actually submits
+	 * (`.offRecord.then`).
+	 */
+	const mountProps = {
+		conversationId,
+		messages,
+		isLoading: false,
+		onSendMessage: async () => undefined,
+		...composerProps,
+	};
 	await act(async () => {
-		root.render(
-			h(MessageInput, {
-				conversationId,
-				messages,
-				isLoading: false,
-				/*
-				 * `undefined` is the ordinary ACCEPTED outcome (`SendOutcome`). A
-				 * plain object is the off-record-ask shape and the guard reads any
-				 * object as one, so a `{ ok: true }` stub crashes the first case that
-				 * actually submits (`.offRecord.then`).
-				 */
-				onSendMessage: async () => undefined,
-				...composerProps,
-			}),
-		);
+		root.render(h(MessageInput, mountProps));
 	});
 	await settle();
 	return {
 		container,
+		/*
+		 * A RE-RENDER WITH NEW PROPS, keeping whatever the case did not name: a
+		 * transition INTO a busy turn is a state the composer is rendered into, and
+		 * there is no event in jsdom that produces one (the acknowledgment's U7 case
+		 * is the caller).
+		 */
+		rerender: async (next) => {
+			await act(async () => {
+				root.render(h(MessageInput, { ...mountProps, ...next }));
+			});
+			await settle();
+		},
 		/*
 		 * CONTAINER-SCOPED, not `document`-scoped, and it is load-bearing: a case
 		 * that throws before its own unmount leaves its tree mounted, and a
@@ -1072,6 +1083,186 @@ test("Escape settles the acknowledgment window and the discarded stream never be
 		null,
 		"nor does it come back when the stream resolves",
 	);
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+/*
+ * THE WINDOW RE-OPENS, AND A PRESS THAT LOOKS AVAILABLE IS NOT DEAD (UX round 2,
+ * U6). A release inside the acquisition used to leave the attempt in the ref, so
+ * the control painted at rest and silently swallowed the next press - both
+ * doors, no acknowledgment, no acquisition - for the rest of the wait. The
+ * abandoned attempt is now dropped from the ref, which makes the next press a
+ * fresh one, and the abandoned stream is discarded by IDENTITY in the resolve
+ * arm (which is what keeps the fix from orphaning a live recorder).
+ */
+test("a release inside the window re-opens it: the next press is a fresh attempt, and the abandoned stream is discarded", async () => {
+	mic.calls = 0;
+	const resolvers = [];
+	const stopped = [];
+	mic.next = () =>
+		new Promise((resolve) => {
+			resolvers.push(() =>
+				resolve({ getTracks: () => [{ stop: () => stopped.push(1) }] }),
+			);
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	/* The hold door: pressed and released inside the acquisition. */
+	const { code } = resolvePushToTalkBinding();
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	assert.ok(preparing(), "the hold's press is acknowledged");
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	assert.equal(
+		preparing(),
+		null,
+		"the release ends the acknowledgment window (MAJOR 1)",
+	);
+
+	/* THE PRESS THAT LOOKS AVAILABLE MUST NOT BE DEAD. */
+	await act(async () => {
+		micControl().click();
+	});
+	assert.equal(
+		mic.calls,
+		2,
+		"a second press inside the abandoned window reaches the microphone",
+	);
+	assert.ok(
+		preparing(),
+		"and it is acknowledged in its own frame, like any other press",
+	);
+
+	/* The abandoned acquisition lands: it must be stopped, and it must not record. */
+	await act(async () => {
+		resolvers[0]();
+	});
+	await settle();
+	assert.equal(
+		confirm(),
+		null,
+		"the abandoned stream never becomes a recording",
+	);
+	assert.ok(
+		stopped.length >= 1,
+		"and its tracks are stopped rather than left live (the orphan the release used to avoid by keeping the ref)",
+	);
+	assert.ok(
+		preparing(),
+		"the second press's own acknowledgment is still the one on screen",
+	);
+
+	/* While the second press's own acquisition still lands normally. */
+	mic.next = async () => fakeStream();
+	await act(async () => {
+		resolvers[1]();
+	});
+	await settle();
+	assert.ok(
+		confirm(),
+		"the second press becomes a recording when its stream arrives",
+	);
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+/*
+ * THE ACKNOWLEDGMENT SURVIVES A BUSY TURN, AND THE TAKE IT WAS WAITING FOR IS
+ * KEPT (UX round 2, U7). Two decisions, both recorded in `message-input.tsx`:
+ * the acknowledgment's control and caption stay on screen while the composer is
+ * acquiring (the turn going busy used to remove them - the same silence this
+ * change exists to remove, one transition later), and a take that lands after
+ * that transition still becomes the recording state, because discarding it
+ * would throw away speech the user asked for while the composer stays writable
+ * mid-turn.
+ */
+test("the acknowledgment survives the turn going busy, and the deferred take still lands", async () => {
+	mic.calls = 0;
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(fakeStream());
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+	const lane = () =>
+		frame.container.querySelector("[data-recording-indicator]");
+
+	await act(async () => {
+		micControl().click();
+	});
+	assert.ok(preparing(), "the press is acknowledged");
+
+	/* The turn goes busy inside the window. */
+	await frame.rerender({ isLoading: true, currentJobId: "job-u7" });
+	assert.ok(
+		preparing(),
+		"the acknowledgment survives the turn going busy rather than being removed",
+	);
+	assert.ok(
+		micControl(),
+		"and its control stays with it, so the two halves still agree",
+	);
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		"true",
+		"the control is still the busy one",
+	);
+
+	mic.next = async () => fakeStream();
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.ok(
+		confirm(),
+		"the deferred take lands as the recording state rather than vanishing",
+	);
+	assert.ok(lane(), "with the lane the user confirms or cancels");
+	assert.equal(preparing(), null, "and the acknowledgment gives way to it");
 
 	await act(async () => {
 		root.unmount();
