@@ -4,6 +4,7 @@ import {
 	AvatarFallback,
 	AvatarImage,
 } from "@shared/components/ui/avatar";
+import { badgeVariants } from "@shared/components/ui/badge";
 import { Tooltip } from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
@@ -40,16 +41,51 @@ import type { FC } from "react";
  * flow (no generation call, no upload, no cache) and reads only the field.
  * Callers that have no such field yet pass `null` and get the initials.
  *
- * THE BUBBLE KEEPS ITS OWN EDGE, and the edge is on the ROOT rather than on the
- * fallback, which is a deliberate difference from the app's two other avatar
- * plates (`user-profile-sidebar.tsx`, `agents-sidebar.tsx`, whose fallback IS
- * the whole object). Here the picture REPLACES the fallback when it loads, so an
- * edge drawn on the fallback would vanish exactly when the mark stops being a
- * fill - and the edge is what keeps a `sunken` plate legible inside a row the
- * pointer or the selection has painted a rung over (`scripts/contrast-contract.mjs`
- * measures the pair against `rowHover` and `rowSelected`; that pair is
- * satisfiable only with the edge, because `sunken` and the row's states collide
- * inside the field floor on some palettes).
+ * THE MARK IS THE SHARED BADGE'S OWN COMPOSITION (operator round, 2026-10-02).
+ * The report, verbatim: the ringed `LD`/`RD` bubbles "should probably be more
+ * similar to the borderless bubble of the sidebar notification counts — slight
+ * contrast vs backdrop, smaller more subtle text, in the case there's no
+ * picture. Currently it looks kind of ugly." That bubble is the sidebar rail's
+ * `attentionQuiet` register (`shared/components/navigation/sidebar-navigation.tsx`),
+ * itself the result of an identical earlier round (2026-09-30: "borderless ...
+ * smaller font size ... subtler font treatment ... instead of the janky
+ * bubble"). It is why this is a COMPOSITION rather than a set of literals: the
+ * face is `badgeVariants({ variant: "attentionQuiet", shape: "pill",
+ * size: "count" })` - the very call the rail makes - so the two read as one
+ * family today and cannot drift apart the way a copied class string does.
+ *
+ * WHAT CARRIES THE MARK NOW THAT THE EDGE IS GONE, which is the argument
+ * `badge.tsx` already made for this register: the mark's information is the
+ * INITIALS, and they keep their own floor (`ink-dim` on `elevated`, 5.01:1 worst
+ * over the fifty-nine palettes); `elevated` is the whisper of a shape that groups
+ * the letters as a MARK rather than as label text, and where that fill merges
+ * with a row's ground the letters alone read - the deal the sidebar's own count
+ * lines strike. The `border-control` edge existed because a `sunken` plate WAS
+ * the whole boundary (it collides with the row states inside the field floor on
+ * some palettes, `alucard` 0.44 on `rowSelected`); nothing about the initials is
+ * lost with it, because the letters are what the row reads.
+ *
+ * THE MARK'S GEOMETRY IS THE BADGE'S, so the PICTURE renders inside that same
+ * geometry: the `Avatar` takes the badge's height (`h-4`) and is sized by its own
+ * content (`size-4` for a loaded picture, the initials' own width otherwise)
+ * rather than by the old `size-5` circle.
+ *
+ * WHAT THAT DOES TO THE PICTURE CASE, stated whole because "20px -> 16px" is not
+ * the whole of it: the thumbnail is still a circular crop, now 16px inside the
+ * badge's 24x16 stadium - the badge's own `px-1` leaves a 4px collar of `elevated`
+ * on each side of it. Measured off the rendered frame at head, in css: the mark is
+ * x 24.0-48.0, and inside it the plate runs 24.0-28.0, the crop 28.0-44.0, and the
+ * plate again 44.0-48.0 - 4.0 each side. Before, the 1px `border-control` sat ON
+ * the 20px circle, so there was no collar at all. The picture's mechanism - Radix's
+ * `AvatarImage` and the load error it reports back to the root - is untouched, and
+ * its rendered size is the one thing about it this round moves.
+ *
+ * THE INITIALS GOT SUBTLER, NOT SMALLER, which is worth knowing because the
+ * report asked for both: the glyphs keep the rail badge's own `text-meta-sm`
+ * (11px; cap height 8.5-9.0 css, against the rail's own numeral at 8.0), because
+ * moving the type step would break the shared `badgeVariants` call that makes the
+ * two faces one family. So "smaller, more subtle" landed as subtler - weight
+ * 500 -> 400 and `ink` -> `ink-dim` - and as a smaller MARK (20 -> 16px tall).
  *
  * WHY IT TAKES A `showTooltip` FLAG. The sidebar row is the case the tooltip
  * exists for: there the bubble is the ONLY thing naming the team, so hover and
@@ -162,17 +198,46 @@ export const TeamAvatarBubble: FC<TeamAvatarBubbleProps> = ({
 			 * radius the app's 2px focus ring was a 28x28 SQUARE around a 20px round
 			 * mark (design round 1, D2 - measured off the focus frame: corners 4px off
 			 * the object). `styles/index.css` states the rule: an outline follows the
-			 * element's own `border-radius`. */
-			className={cn("inline-flex shrink-0 rounded-full", className)}
+			 * element's own `border-radius` - which is now the badge's `shape="pill"`,
+			 * so the ring and the mark's own corner move together rather than
+			 * `rounded-full` being spelled a second time here. */
+			className={cn(
+				badgeVariants({
+					variant: "attentionQuiet",
+					shape: "pill",
+					size: "count",
+				}),
+				className,
+			)}
 		>
-			<Avatar className="size-5 border border-control">
+			{/*
+			 * THE PICTURE SITS IN THE MARK'S GEOMETRY rather than in a box of its own:
+			 * the badge's height (`h-4`) is the avatar's, and the avatar is sized by its
+			 * content - `size-4` for a loaded picture, the initials otherwise - so the
+			 * mark's width follows the letters the way the rail's count badge does
+			 * (`min-w-4` is the badge's floor and is on the root). `overflow-hidden` and
+			 * `rounded-full` are the primitive's own, which is what clips the picture to
+			 * the circle.
+			 */}
+			<Avatar className="h-4 w-fit">
 				{/*
 				 * `alt=""` on purpose: the accessible name is the outer span's
 				 * `aria-label`, and a second name inside the same mark would be the
 				 * same fact announced twice.
 				 */}
-				{imageUrl ? <AvatarImage src={imageUrl} alt="" /> : null}
-				<AvatarFallback className="bg-sunken text-ink text-meta-sm">
+				{imageUrl ? (
+					<AvatarImage src={imageUrl} alt="" className="size-4" />
+				) : null}
+				{/*
+				 * The fallback is TRANSPARENT and inherits the mark's ink and type step from
+				 * the badge composition on the root (`bg-transparent font-normal
+				 * text-inherit text-meta-sm`), rather than painting a plate of its own. The
+				 * primitive's defaults (`bg-sunken`, `font-medium`, `text-ink-muted`,
+				 * `text-meta`) are what these four override, so an absent URL, a 404, a
+				 * blocked request and a decoding failure all land on ONE face - the badge's
+				 * - which is the property this component's docstring states.
+				 */}
+				<AvatarFallback className="h-full w-auto bg-transparent font-normal text-inherit text-meta-sm">
 					{initials}
 				</AvatarFallback>
 			</Avatar>

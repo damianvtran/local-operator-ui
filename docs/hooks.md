@@ -163,7 +163,13 @@ node_modules/.bin/tsc --noEmit -p tsconfig.app.json
 `PREPUSH_BYPASS="<reason>"` is the disclosed form of a bypass: it prints a banner
 naming the reason on the push itself, and it exists so the disclosed path is
 cheaper than the silent one. It is honoured by both the dispatcher and the gate,
-and it is only for a leg that could not run — never for one that failed. A reason
+and it is only for a leg that could not run — never for one that failed. **It is
+not a per-leg skip: it skips EVERY leg at once**, so the push it admits is
+ungated end to end. The banner says so and names each leg it dropped, because the
+failure mode this variable's wording caused was a report that read as "only the
+`tsc` leg was skipped" when the `scripts/` and `biome` legs went unrun with it —
+so the PR carries the equivalent runs and the reason, never a claim that the one
+missing leg was the only thing bypassed. A reason
 is required in both places: whitespace-only is refused rather than treated as a
 bypass, because a bypass nobody had to think about is not a disclosure.
 
