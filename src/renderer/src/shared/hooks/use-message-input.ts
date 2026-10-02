@@ -571,6 +571,17 @@ type UseMessageInputOptions = {
 };
 
 /**
+ * The slice of zustand's persist API this hook reads, which some hosts do not
+ * have. See the hydration block inside `useMessageInput` for why its absence is
+ * a state to render in rather than an error.
+ */
+type ConversationInputPersistence = {
+	hasHydrated: () => boolean;
+	onHydrate: (fn: () => void) => () => void;
+	onFinishHydration: (fn: () => void) => () => void;
+};
+
+/**
  * Hook for managing message input with robust per-conversation persistence and log-based history navigation.
  */
 export const useMessageInput = ({
@@ -613,13 +624,31 @@ export const useMessageInput = ({
 		(s) => s.adoptReturnedText,
 	);
 
-	// Hydration state
+	/*
+	 * Hydration state.
+	 *
+	 * THE PERSIST API IS NOT ALWAYS THERE, AND RENDERING WITHOUT IT IS A STATE
+	 * THIS HOOK ALREADY PROMISES TO HANDLE - the effect below has always had the
+	 * branch for it (no persist API: settle the box as hydrated and let the store
+	 * live in memory). Zustand only attaches `api.persist` when its storage
+	 * factory RETURNED a storage; with the middleware's default
+	 * `() => localStorage` a host that evaluates this store where `localStorage`
+	 * is not a global - a DOM-less desktop-suite harness, an SSR render, a window
+	 * with storage disabled - takes the middleware's no-storage branch and hands
+	 * back the bare store. Reading `.hasHydrated` THROUGH the missing API is what
+	 * took the whole page down the first time a composer mounted OUTSIDE chat
+	 * (`AgentsPage` -> `ConfigComposer` -> `MessageInput`, in
+	 * `agent-class-toggle.test.mjs`): the effect tolerated it, this line did not.
+	 * `conversation-input-sync.ts` reads the same API optionally, so the tolerance
+	 * is the house rule, not an accommodation here: no persistence means no
+	 * restored draft, never a broken page.
+	 */
 	const [hydrated, setHydrated] = useState(
 		(
-			useConversationInputStore.persist as unknown as {
-				hasHydrated: () => boolean;
-			}
-		).hasHydrated?.() ?? false,
+			useConversationInputStore.persist as unknown as
+				| ConversationInputPersistence
+				| undefined
+		)?.hasHydrated?.() ?? false,
 	);
 	const initializedRef = useRef<string | undefined>(undefined);
 	/*
@@ -634,11 +663,9 @@ export const useMessageInput = ({
 	const [inputValue, setInputValue] = useState<string>("");
 
 	useEffect(() => {
-		const persist = useConversationInputStore.persist as unknown as {
-			onHydrate: (fn: () => void) => () => void;
-			onFinishHydration: (fn: () => void) => () => void;
-			hasHydrated: () => boolean;
-		};
+		const persist = useConversationInputStore.persist as unknown as
+			| ConversationInputPersistence
+			| undefined;
 		let unsubHydrate: (() => void) | undefined;
 		let unsubFinish: (() => void) | undefined;
 		if (
