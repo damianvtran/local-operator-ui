@@ -1,0 +1,49 @@
+scratch: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-32707
+A: 32716 (headless, inspector on 62967)
+A windows before the quit: [{"id":1,"visible":false,"destroyed":false}]
+[PASS] A owns a backend of its own, so its teardown has real work to do
+        http://127.0.0.1:62968
+A's window is gone +208ms after app.quit()
+inspector socket closed (no wire is held into a process that is tearing itself down)
+[PASS] A is still tearing down when the click lands (the premise)
+        A alive +209ms after app.quit(), its window already closed
+A's own command line (what the dev-shaped replay carries): ["/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron","/Users/damian/local-operator-ui/.worktrees/quit-relaunch-755","--user-data-dir=/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-32707/userdata","--window-mode=headless","--inspect=62967"]
+[PASS] the Dock click was delivered to the quitting process
+        activate emitted
+[PASS] A answered the Dock click without creating or raising a window
+        A's windows 213ms after app.quit(): []
+[PASS] no successor exists before A exits (only A is on the scratch profile)
+        A alive: true; scratch-profile processes: [{"pid":32716,"ppid":32707,"command":"/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron /Users/damian/local-operator-ui/.worktrees/quit-relaunch-755 --user-data-dir=/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-32707/userdata --window-mode=headless --inspect=62967"}]
+[PASS] nothing is scheduled at refusal time (no [relaunch] line while A tears down)
+        no [relaunch] line yet; the terminal has not run
+[PASS] the refusal is on the record (applied=skipped+quitting)
+        [2026-10-02 18:18:14.292] [info]  [window-raise] trigger=activate mode=normal requested=focus applied=skipped+quitting reopen=deferred
+[PASS] the refusal carries the completion token (reopen=deferred — one successor will complete it)
+        [2026-10-02 18:18:14.292] [info]  [window-raise] trigger=activate mode=normal requested=focus applied=skipped+quitting reopen=deferred
+[PASS] A exits cleanly, well inside this rig's bound
+        exit 0 5359ms after app.quit()
+[PASS] the teardown window was real (A outlived its window by more than a second)
+        window gone +208ms, process gone +5359ms
+[PASS] the successor starts after A exits, on the replayed inspect port
+        observed on 62967
+[PASS] the successor is a fresh process (a new pid, not A's or B's)
+        S pid=33336; A pid=32716; B pid=?
+[PASS] the successor replays the dying process's own command line — the app path and the enclosure travel (review F1)
+        ["/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron","/Users/damian/local-operator-ui/.worktrees/quit-relaunch-755","--user-data-dir=/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-32707/userdata","--window-mode=headless","--inspect=62967"]
+[PASS] the successor took the freed single-instance lock (a second spawn would have lost it)
+        hasSingleInstanceLock() = true
+[PASS] the successor boots under the replayed plan (headless: one window, never shown — no focus is ever taken)
+        [{"id":1,"visible":false,"destroyed":false}]
+[PASS] exactly one app instance is on the scratch profile (the successor)
+        [{"pid":33336,"ppid":1,"command":"/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron /Users/damian/local-operator-ui/.worktrees/quit-relaunch-755 --user-data-dir=/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-32707/userdata --window-mode=headless --inspect=62967"}]
+[PASS] the successor's own log lines are on the record (daemon, headless launcher policy)
+        daemon registrations: 2; launcher policy (headless): true
+[PASS] the successor's window list stays length 1 (exactly one successor)
+        [{"id":1,"visible":false,"destroyed":false}]
+[PASS] S's own quit spawned nothing (a quit with no recorded reopen completes no successor)
+        []
+C: 33898 (inactive; the next launch after everything above settled)
+[PASS] the next relaunch opens and shows its window
+        [{"id":1,"visible":true,"destroyed":false}]
+
+OK: 0 failing check(s) of this run.
