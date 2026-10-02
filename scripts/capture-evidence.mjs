@@ -6077,6 +6077,63 @@ export const STORIES = [
 	["projects-tab--timeline", 1280, 900],
 	["projects-tab--timeline-no-dates", 1280, 900],
 	["projects-tab--timeline-overdue", 1280, 900],
+	/*
+	 * The search, filters and sorting round (PR-A). The pair `search-idle` /
+	 * `search-active` is the no-new-row claim in two frames: the first puts the
+	 * field, the Filters button and no count on the switcher row with nothing
+	 * typed, the second types a query and the result line appears INSIDE that
+	 * row while the rows narrow under it — no new row mounts on the first
+	 * keystroke (U1). `filters-open` is the complete popover; `filter-chips`
+	 * the chips row (U1's state 2) with the count still up top. The pair
+	 * `column-menu-open` / `sorted-nulls-last` asserts before the shutter:
+	 * taking Target's sort radio lands `aria-sort=descending` (a date column's
+	 * first direction) with the menu still open, and the Estimate sort's
+	 * rendered order puts the three estimates first, descending (unit, value),
+	 * with the two nulls after them. `no-match` is the state U5/M3 fixed the
+	 * copy for; `board-search-active` is U5's windowed count on the board
+	 * (`10 of 12` at the default week); `default-board` is the default-view
+	 * flip's own frame — nothing stored, so the page derives the board.
+	 */
+	["projects-tab--search-idle", 1280, 900],
+	["projects-tab--search-active", 1280, 900],
+	["projects-tab--filters-open", 1280, 900],
+	["projects-tab--filter-chips", 1280, 900],
+	["projects-tab--column-menu-open", 1280, 900],
+	["projects-tab--sorted-status", 1280, 900],
+	["projects-tab--sorted-nulls-last", 1280, 900],
+	["projects-tab--no-match", 1280, 900],
+	/*
+	 * D10's frame: the FILTER-only no-match variant, which `NoMatch`'s own walk
+	 * passes through and restores away. The story's play holds the filter
+	 * door's output (no query typed) and asserts the variant's heading, its
+	 * recovery sentence and the one Clear all before the shutter.
+	 */
+	["projects-tab--no-match-filter", 1280, 900],
+	["projects-tab--board-search-active", 1280, 900],
+	["projects-tab--default-board", 1280, 900],
+	/* The no-dates callout, expanded over a dated chart: the collapsed line the
+	 * other timeline frames hold, opened to its names. */
+	["projects-tab--timeline-callout-expanded", 1280, 900],
+	/*
+	 * The round-1 remediation's own states. `board-search-off-window` is R1's
+	 * case photographed: the Board under a search whose matches ALL fall
+	 * outside the window — the no-match block keeps U5's precedence and gains
+	 * the window's own recovery (`Show all time`) beneath Clear all; its play
+	 * asserts the block, both actions and the count's `in window` words (U10).
+	 * `filter-and-sort-chips` is D2a's composition (facet chip first, sort
+	 * chip last, the order read off the rendered row); `sorted-shed-column` is
+	 * D2b's, at 560 where the sorted column itself is gone and the chip is the
+	 * only door; `narrow-search-active` is U7's, at 560, where the play takes
+	 * the switcher row's height and the list's top either side of the first
+	 * keystroke and fails if either moves (the count sheds instead).
+	 */
+	["projects-tab--board-search-off-window", 1280, 900],
+	["projects-tab--filter-and-sort-chips", 1280, 900],
+	["projects-tab--sorted-shed-column", 560, 600],
+	["projects-tab--narrow-search-active", 560, 600],
+	/* D7's pin: the frame is the state AFTER Clear all - no chips, the strip at
+	 * rest - which is the fact the state exists to show. */
+	["projects-tab--clear-all-clears-sort", 1280, 900],
 	["common-confirmationmodal--dangerous", 1280, 900],
 	/* The operator's own alert, over the screen they were working on: their
 	   update-service.log holds this exact transport code at 09:03:12 on
@@ -12156,6 +12213,21 @@ const main = async () => {
 	 *      main's side under any name: main's manifest still has
 	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
 	 *      main's keys this branch lacks re-introduces it.
+	 *   6. EVERY MERGED JSON/CONFIG FILE IS KEY-CHECKED before the fold is pushed,
+	 *      because the union rule is "no key may be lost and no form may be
+	 *      re-imposed" and a LIST-union read is blind to both halves: `node
+	 *      scripts/check-fold-keys.mjs` (no argument scans every fold on this
+	 *      branch, one argument checks a single merge) compares the merged key set
+	 *      against BOTH parents', nested objects walked and arrays read through
+	 *      their elements' key union. A BRANCH-side vanish is a fault unless the
+	 *      fold's record states the deliberate carry: the fold onto `44249a6796`
+	 *      took main's copy as the base for its list union, main had lost
+	 *      `check-themes` at `53c5cfec6b` (#714) while this branch carried it, and
+	 *      the key vanished without a word while that fold reported a clean union
+	 *      - `pnpm check-themes` stopped resolving until agent review round 8
+	 *      (R11) restored it. A MAIN-side vanish must be either group (5) of
+	 *      `citationConvention` or a stated repair. The check does NOT see form,
+	 *      so a clean run is not the whole rule - re-read the lists too.
 	 *
 	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
 	 * what it does ask are worth naming so this is auditable rather than a summary:

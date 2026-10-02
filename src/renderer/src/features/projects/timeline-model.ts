@@ -167,6 +167,16 @@ export function timelineSections(items: TimelineItem[]): {
 }
 
 /**
+ * The no-dates callout's label: "25 projects without dates" / "1 project
+ * without dates". Pluralised here rather than in the component so a test can
+ * hold both spellings, and phrased as the design fixed it: the number IS the
+ * label (no `No dates (25):`, no parenthetical count, no trailing colon).
+ */
+export function undatedCountLabel(count: number): string {
+	return `${count} project${count === 1 ? "" : "s"} without dates`;
+}
+
+/**
  * A project's bar, or `null` when there is nothing to span.
  *
  * THE RULE IS THE TUI'S, character for character: `begin` is `start_date` or
