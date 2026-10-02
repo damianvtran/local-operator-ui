@@ -1,9 +1,9 @@
 {
   "source_repo": "damianvtran/local-operator",
-  "source_ref": "90992a61aadd9dcb1cf7b558dcd31d843499787c",
+  "source_ref": "c3b2500bfcdd9d1b1ffc42348bde8c20bfe88c0c",
   "proto_version": 1,
   "app_proto_version": 1,
-  "inputs_sha256": "5fd0f837c47a9d32abd980bf53dcd7d050e433ac388354f85623be70a01d4147",
+  "inputs_sha256": "79df820ab3a72c895feed73469249d2bc6213e634ff4a5ce740b0082f3c10e16",
   "generator": "scripts/sync-vendored.mjs",
   "patches": [
     {
@@ -21,9 +21,10 @@
     "driver/ax-compact.ts": "3152510cca3f0c24570aef28a9e269cbef74766bad51af8f5aaf16df276876d6",
     "driver/deadline.ts": "18cbe85e22a16f340cf92c8d86a42f963a19d40d4f442bccf7b3d07d87c4f5f0",
     "driver/errors.ts": "7465167cbc0b285b5d813ff458b74eeb43ad96a359cd07ed9602245d1feb80dd",
-    "driver/file-transfer-policy.ts": "6e6f7bbe33cca2d8d4f73e4d7903744f6da60682657add3f54ca76b63492a4b9",
-    "driver/file-transfer.tables.gen.ts": "533e07c67b7e0dc71b948d0b5e467bc4347812679bc253ce6a64b2dd77b10214",
+    "driver/file-transfer-policy.ts": "b095a962a103266b5679754d7cf3e9a028abd334ba71b6fb3405a70a52e67055",
+    "driver/file-transfer.tables.gen.ts": "ac1fab019fe87082248081d8e7251108441f1160fc8ed69ef32860cb78014d11",
     "driver/origin-policy.ts": "aa441ccd0fa3486ec6d0c8c0979abe552920982fc734b83e92a39c4ad87fae35",
-    "driver/scroll-expressions.ts": "1ec22ec38898030f228a5adcfd4d1d2a81150d4acefe0ec99104ba7e3b7c46f5"
+    "driver/scroll-expressions.ts": "1ec22ec38898030f228a5adcfd4d1d2a81150d4acefe0ec99104ba7e3b7c46f5",
+    "driver/geometry-read.ts": "1eeed74a2bc45308e0a60f16ad50cd8bb7d4928e82ac73947de333e7119d0208"
   }
 }
