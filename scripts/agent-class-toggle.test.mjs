@@ -430,17 +430,47 @@ const memoryStorage = {
 	setItem: () => undefined,
 	removeItem: () => undefined,
 };
-PAGE.useConversationInputStore.persist.setOptions({ storage: memoryStorage });
 /*
- * AND A HYDRATION THAT CAN COMPLETE. The hook whose box this is adopts a store
- * write only once `persist.hasHydrated()` is true (`use-message-input.ts`'s
- * "adopt a draft written from outside this hook" effect), and the failed
- * hydration at import time left that flag FALSE - so the seed would land in the
- * store and never reach the field. The storage above is what makes this
- * rehydrate resolve; it is awaited before any mount, so no test sees a
- * half-hydrated store.
+ * WHETHER THERE IS A `persist` API AT ALL IS A PROPERTY OF THE NODE RUNTIME, AND
+ * CI RUNS A DIFFERENT ONE (agent review round 10, B1). zustand attaches
+ * `api.persist` only when the middleware's storage factory RETURNED a storage,
+ * and that factory defaults to `() => localStorage`. Node 22 - what `ci.yml`
+ * sets up - has no `localStorage` global at all, so the reference THROWS,
+ * `createJSONStorage` returns undefined, and the middleware takes its no-storage
+ * branch: the store comes back bare, with no `.persist` to configure and no
+ * hydration to await. Node 26 DECLARES the global (it is `undefined` without
+ * `--localstorage-file`), so the same factory returns undefined instead of
+ * throwing, zustand wraps it, and `.persist` exists with a storage whose first
+ * write rejects. Calling the missing API is what took this file down on CI: the
+ * `TypeError ... reading 'setOptions'` was raised HERE, during module evaluation,
+ * so the file died before its seven jsdom cases - the round-9 case among them -
+ * ever registered.
+ *
+ * The guard makes both runtimes correct instead of picking one. Where the API
+ * exists (the local runtime) the store is given the in-memory storage, exactly as
+ * before. Where it does not (CI) there is nothing to configure and nothing to
+ * rehydrate: the middleware has ALREADY degraded the store to in-memory with no
+ * storage at all, and `use-message-input.ts` documents that as a state it renders
+ * in ("no persistence means no restored draft, never a broken page") - its effect
+ * settles the box as hydrated when `persist` is absent, which is what lets the
+ * seeded sentence reach the field there. Declaring a `localStorage` global before
+ * the import would give the store a storage on both runtimes, and is the hazard
+ * the block above was written about.
  */
-await PAGE.useConversationInputStore.persist.rehydrate();
+const persistApi = PAGE.useConversationInputStore.persist;
+if (persistApi) {
+	persistApi.setOptions({ storage: memoryStorage });
+	/*
+	 * AND A HYDRATION THAT CAN COMPLETE. The hook whose box this is adopts a store
+	 * write only once `persist.hasHydrated()` is true (`use-message-input.ts`'s
+	 * "adopt a draft written from outside this hook" effect), and the failed
+	 * hydration at import time left that flag FALSE - so the seed would land in the
+	 * store and never reach the field. The storage above is what makes this
+	 * rehydrate resolve; it is awaited before any mount, so no test sees a
+	 * half-hydrated store.
+	 */
+	await persistApi.rehydrate();
+}
 
 const { JSDOM } = await import("jsdom");
 const dom = new JSDOM("<!doctype html>", { url: "http://localhost/" });
