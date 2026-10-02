@@ -19,7 +19,11 @@ uses.
 | `before-sidebar-light.png` / `after-sidebar-light.png` | same | same story, `localOperatorLight` |
 | `before-marks-dark.png` / `after-marks-dark.png` | same | `chat-team-avatar-bubble--marks` — every initials shape plus the three image states (a URL renders, an absent URL, a URL that FAILS), `localOperatorDark` |
 | `before-marks-light.png` / `after-marks-light.png` | same | same story, `localOperatorLight` |
-| `after-family-dark.png` / `after-family-light.png` | the PR branch | the mark and the rail's own `attentionQuiet` count badge in one frame, on `surface`, `row-hover` and `row-selected` — the "one family" claim, checkable |
+| `before-header-team-bound-dark.png` / `after-header-team-bound-dark.png` *(and `-light`)* | `origin/main` `9b4822de106` / the PR branch | `chat-header-identity--team-bound` 560×84 — the component's **second production host**, the header identity chip (design round 1, D1) |
+| `before-header-long-label-*.png` / `after-header-long-label-*.png` | same | `chat-header-identity--long-label` 560×84 — the 80-character label at the chip's `24ch` cap |
+| `before-header-narrow-fold-*.png` / `after-header-narrow-fold-*.png` | same | `chat-header-identity--narrow-fold` 560×84 — the same chip where the title truncates hardest |
+| `before-focus-sidebar-team-mark-focus-*.webp` / `after-focus-sidebar-team-mark-focus-*.webp` | same | `chat-sidebar-sections--query-while-collapsed` 741×460 — the rig's own registered `sidebar-team-mark-focus` row (a Tab walk to the mark), the frame design round 1's D2/R1-3 found cited but never filed |
+| `after-family-*` | the PR branch | the mark and the rail's own `attentionQuiet` count badge in one frame, on `surface`, `row-hover` and `row-selected` — the "one family" claim, checkable |
 
 ## Which rig, and why not the built app
 
@@ -66,6 +70,16 @@ origin/main -- src/renderer/src/features/chat/components/team-avatar-bubble.tsx`
 re-capture, restore. Nothing else in the tree differed between the pairs, so the
 only variable is the mark's own source.
 
+**The two focus frames come from the repository's own rig**, not the scratch
+probe: `scripts/capture-evidence.mjs` was run against the same Storybook with its
+own registered row — `--only=chat-sidebar-sections--query-while-collapsed
+--dirs=sidebar-team-mark-focus` — so the Tab walk, the 741×460 size and the
+expected-panel assertions are the ones this repository already pins for that row
+(`capture-evidence.mjs:5225`). It writes into `docs/evidence/`, which is **not**
+where these frames ship: the run's output was copied here and the swept tree
+restored (`git checkout -- docs/evidence`) in the same round, so the committed
+set keeps the images `main` holds and the PR's diff carries no frame.
+
 ## The pair, as measurements (not just pixels)
 
 Read from the DOM in the same run that took the frames.
@@ -82,6 +96,21 @@ Read from the DOM in the same run that took the frames.
 | `Ship the session-avatar round` | client 217 | client 215 |
 | `Reconcile the supplier ledger` | client 279 | client 274.39 |
 
+**The picture case wears a collar, stated whole** (agent review round 1, R1-2):
+"20px -> 16px" was not the whole of what moved. The thumbnail is still a circular
+crop, now 16px inside the badge's 24×16 stadium, so the badge's own `px-1` leaves
+**4px of `elevated` on each side of it** (measured at head, in css: fill 2.0-4.5,
+crop 4.5-20.5, fill 20.5-24.0). Before, the 1px `border-control` sat ON the 20px
+circle, so there was no collar at all. Visible in the image row of
+`after-marks-dark.png`.
+
+**"Smaller, more subtle text" landed as subtler, not smaller** (design round 1,
+D3): the glyphs keep the rail badge's own `text-meta-sm` (11px, cap height
+8.5-9.0 css against the rail numeral's 8.0), because moving the type step would
+break the shared `badgeVariants` call that makes the two faces one family. The
+letters went weight 500 -> 400 and `ink` -> `ink-dim`; the MARK went 20 -> 16px
+tall.
+
 **The title does NOT gain width, and this frame set is the evidence.** The brief
 expected a small gain; measured, the title's available width moves by exactly the
 mark's width delta, and the badge's own `px-1` plus two 11px initials
@@ -91,6 +120,26 @@ If the width cost is unwanted, the lever is the badge's geometry, not this
 component: the mark composes the rail's own `badgeVariants` call, so narrowing it
 means narrowing the rail's count badge too — which is the point of composing it
 rather than copying it.
+
+**The chat header's chip (D1's fix: frame it, and the verdict).** The change lives
+on the shared root, so the header's identity chip wears it too, and the header is
+the host with its own constraint - a `shrink-0` mark leading a `min-w-0
+max-w-[24ch] truncate` label in a one-line block. Measured before/after off these
+frames (computed styles, css px):
+
+| | before | after |
+| --- | --- | --- |
+| chip box (`[data-header-identity=team]`) | 159.27×**20.00** / 231.41×20.00 (long label) | 160.47×**20.00** / 232.61×20.00 |
+| mark | 20.00×20.00, 1px `border-control` edge, no fill | 21.20×16.00, `border-0`, `elevated` fill, `ink-dim` |
+| the capped label's own box (long-label frame) | 181.41 wide, client 181, scroll 468 | **identical**: 181.41 / 181 / 468 |
+| the title band | `Install the pinned uv on …` truncates | **truncates at the same place** (see the frames) |
+
+So the header's pill is not wrong - only unframed, which this round fixes. The
+chip's height is its own `h-5` (20px) in both trees and does not move; the chip
+grows **1.2px** wider for the same reason the sidebar row does (the mark is 20 ->
+21.2 wide at these initials) and it is right-anchored, so that 1.2px comes out of
+the leading gap. The chip's own label is at its `24ch` cap in both trees in the
+long-label frame, which is why the cap case shows no change at all.
 
 ## Contrast, measured over all 59 palettes
 
@@ -111,6 +160,14 @@ Computed from `scripts/palette-source.mjs` + `scripts/color.mjs` in the same run
 - For the record, the pair it left: `sunken` vs `rowHover` min ΔE00 1.86
   (`iceberg`) and `border-control` on `rowHover` 2.92:1 at worst — under the 3:1
   non-text floor, which is why the old row rested on the edge arm.
+- **The full-merge palette, named rather than framed** (design round 1, D5):
+  `arcade`'s `elevated` is byte-identical to its `rowHover` (ΔE00 0.00), and four
+  of the fifty-nine palettes sit inside ΔE00 2.0 on that ground (`gruvbox` 1.14,
+  `obsidian` 1.21, `everforest` 1.90); sixteen sit inside 2.0 on `rowSelected`
+  (`duskfox` 0.47 at worst). There the letters are the whole mark, and they clear
+  the text floor on the GROUND itself — `ink-dim` on `arcade`'s `rowHover` is
+  5.29:1 — which is the deal the rail's count badge strikes on the same four
+  grounds.
 
 ## What these frames do NOT prove
 
@@ -119,9 +176,12 @@ Computed from `scripts/palette-source.mjs` + `scripts/color.mjs` in the same run
   flyout suppression are the surface's own behaviours and are unchanged by this
   round; a still cannot show any of them.
 - **Not a focus ring.** These run in a window without focus; `:focus-visible`
-  styling is measured in the `sidebar-team-mark-focus` frames, and the ring now
-  traces the mark's own pill (`rounded-full` from the badge's `shape="pill"`)
-  rather than the old circle.
+  styling is what the `before|after-focus-sidebar-team-mark-focus` frames in this
+directory measure - the rig's own registered row, filed here at this head rather
+  than in the swept set - and the ring traces the mark's own pill
+  (`rounded-full` from the badge's `shape="pill"`) instead of the old circle.
+  Round 1 of this PR's review found the previous wording citing those frames while
+  no such frame was filed anywhere; this round files them.
 - **Not the real app.** See "Which rig" above: the frames are Storybook, the
   RUNNING row is a fixture, and `window.api.desktop.request` is stubbed by the
   story. No frame here is a picture of a live backend's replies.
