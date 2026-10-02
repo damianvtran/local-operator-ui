@@ -8394,6 +8394,40 @@ export const STORIES = [
 		},
 	],
 	/*
+	 * THE ROLLOVER LANE'S TWO NEW SURFACES (round-1 remediation, design D2).
+	 *
+	 * The foot icon and the on-demand band are declared so a design round can
+	 * re-capture them "the ordinary way" (`--only=common-updatefooticon--` used to
+	 * throw "matched no story"), and so a later full sweep produces them rather
+	 * than leaving their directories unexplained. Viewports are tight to the
+	 * surface: both are small chrome in a canvas, and a window-sized frame would
+	 * cross `check-evidence`'s uniformity ceiling photographing ground.
+	 *
+	 * FIVE foot rows, not the story file's six: `common-updatefooticon--hidden`
+	 * is deliberately NOT here. Hidden is zero pixels by design, and the rig's
+	 * own `storyDrew` floor refuses a story that draws nothing (`drawn:false`
+	 * with ~2 counted elements) - a declared row that no sweep can ever satisfy
+	 * would break the next full run. The "hidden returns nothing" claim is
+	 * pinned in `scripts/update-indicator-segments.test.mjs` instead, and the
+	 * strip variant (D4) is the fifth row here.
+	 */
+	["common-updatefooticon--server-update", 560, 360],
+	["common-updatefooticon--both-surfaces", 560, 360],
+	["common-updatefooticon--server-in-flight", 560, 360],
+	["common-updatefooticon--downloading", 560, 360],
+	["common-updatefooticon--strip-variant", 560, 360],
+	/*
+	 * The band's own states, in the design round's own enumeration (round-2
+	 * review, the D2 residual): the LONGEST version string the band can meet - the
+	 * wide case the truncation fix is about - both surfaces (the separator's
+	 * frame), and the view-direct drawing state that bypasses the gate. This
+	 * replaces the round-1 pick of `app-update`, so the declared set and the
+	 * design's list agree; the row count is unchanged.
+	 */
+	["common-updatequietindicator--long-version", 760, 200],
+	["common-updatequietindicator--both-surfaces", 760, 200],
+	["common-updatequietindicator--drawing-both-controls", 760, 200],
+	/*
 	 * THE CHAT HEADER'S DEVICE CONTROL (feat/chat-move-control), one surface, in the
 	 * states the design's own spec names. WHAT EACH ROW CLAIMS, because a frame's name
 	 * has to be true rather than aspirational:
