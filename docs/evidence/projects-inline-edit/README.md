@@ -1,14 +1,14 @@
 # The project detail page, edited in place: the inline-edit scene's frames
 
-**Status: the scene is written and pinned; its frames are owed to the capture
-pass.** At this head the directory carries this README and `seed.py`; the
-run below has not executed under the fleet hold, and the eighteen PNGs (nine
-states x two brand palettes, `dark/` = `localOperatorDark`, `light/` =
-`localOperatorLight`, 1380x900 through the app's own `capturePage()` in the
-`headless` window mode) are committed by that pass beside this file — a
-committed frame is the one a later round can still read. Until then the
-STATES TABLE, the seed and the command are the evidence-of-record, and the
-scene's own PASS/FAIL lines are the checklist at the foot of this file.
+**Status: captured.** The eighteen PNGs (nine states x two brand palettes,
+`dark/` = `localOperatorDark`, `light/` = `localOperatorLight`, 1380x900
+through the app's own `capturePage()` in the `headless` window mode) are
+committed beside this file: `dark/project-inline-1380x900-local-operator-dark-<state>.png`
+and the `light/` siblings, for `hover`, `editing`, `dirty`, `saved`,
+`description`, `saving`, `refused-key`, `refused-status` and `conflict`.
+The run printed **47 PASS lines and 0 FAIL per palette and `ALL CHECKS
+PASSED`**, and its last check — no process from this run outlived its boot —
+passed. The seed, the command and the check list below are the record.
 
 ## What the frames are evidence for, and what they are not
 
@@ -45,6 +45,8 @@ VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 \
 # 2. the daemon: a scratch config root, and the HOSTING written into it.
 #    (A fresh config root holds no hosting, and every turn dies in
 #    `HostingNotConfiguredError` without this file - see docs/agent-driver.md.)
+#    token.hex is this run's own bearer written beside seed.py; both go with the
+#    scratch root - neither is committed.
 mkdir -p "$ROOT" && printf 'values:\n  hosting: test\n  model_name: mock-model\n' > "$ROOT/config.yml"
 LOCAL_OPERATOR_CONFIG_DIR="$ROOT" LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat token.hex)" \
   local-operator serve --port 8080 --hosting test --model mock-model
@@ -62,7 +64,12 @@ node scripts/renderer-driver.mjs --scene project-inline-edit \
   --project rig-inline \
   --out "$LOCAL_OPERATOR_SCRATCHPAD/frames" \
   --seed-onboarding-complete --window-size 1380x900
-# ... and again with --theme localOperatorLight
+# ... and the LIGHT pass: RE-RUN THE SEED FIRST - `python3 seed.py` deletes
+# both rows and recreates them - then the same command with
+# `--theme localOperatorLight`. The re-seed is required, not hygiene: the
+# scene mutates the record and is not idempotent, and the second pass's
+# status pick is a no-op without it (the editor sticks open and the run
+# never reaches its frames).
 ```
 
 `--backend-records` is not optional for this scene: the saving frame exists
@@ -87,8 +94,11 @@ by construction).
 ## The scene's own checks
 
 The scene prints one PASS/FAIL line per check and exits non-zero on any FAIL.
-The checklist, in order (the capture pass records the run's final
-`ALL CHECKS PASSED` line here when it executes):
+**The run recorded `ALL CHECKS PASSED` on both palettes (47 PASS lines each,
+0 FAIL)** - the checklist below in order, plus the boot block's own checks
+(the pinned Electron, the scratch port, the armed launch, the backend
+isolation pair, the headless window, and the four seed preconditions).
+The checklist, in order:
 
 ```
 the window is the headless launch, not a raised one
