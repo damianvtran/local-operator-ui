@@ -244,7 +244,10 @@ const bundle = await build({
 			 * canonical.busy and the same expression, canonical.frontend?.streaming
 			 * === true), loadingOlder, onLoadOlder, onLoadOlderOutcome, olderFailed,
 			 * status, failure, awaitingHydration, conversationId, the three label
-			 * sets, onReconnect and stale. The values a load with NO admitted send
+			 * sets, onReconnect, stale and containerRef (the rig's own div). NOT an
+			 * exhaustive prop list - only the ones this rig's fidelity question is
+			 * about (agent review round 2, nit); the interface itself is the
+			 * authority. The values a load with NO admitted send
 			 * holds are undelivered null, isSmallView false, missing false and the
 			 * starting quartet false/null - the panel's own send latches, which
 			 * never fire without a send. measureHandle is deliberately OMITTED: the
