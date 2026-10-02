@@ -341,7 +341,7 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 					</button>
 
 					<div className="flex flex-wrap items-start justify-between gap-4">
-						<div className="flex min-w-0 flex-wrap items-start gap-x-3 gap-y-2">
+						<div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
 							{/*
 							 * THE IDENTITY BLOCK: the h1 and, under it, whichever of the
 							 * title/key pair is not the heading (`project-editors.tsx` owns
@@ -357,13 +357,18 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 								)}
 							</div>
 						</div>
-						<div className="flex items-center gap-2">
+						<div className="flex shrink-0 items-center gap-2">
 							{/*
 							 * THE ACTIONS CLUSTER, left to right: the sibling lane's
 							 * "Request update" secondary button (landed; its component owns
 							 * the capability gate and the request states), then Delete.
 							 * Edit retired with the inline edits - every field edits in
-							 * place now.
+							 * place now. The column is NON-WRAPPING and shrink-0 (design
+							 * round 1, D1's own words): the status cluster beside the title
+							 * can widen while it edits or while a refusal shows, and the
+							 * LEFT column (flex-1) absorbs that instead of these two
+							 * buttons wrapping to a second line and dragging the header's
+							 * whole geometry with them.
 							 */}
 							<ProjectRequestUpdateButton project={project} />
 							<Button

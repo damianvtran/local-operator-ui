@@ -94,7 +94,18 @@ export const InlineEditFeedback: FC<InlineEditFeedbackProps> = ({
 				<button
 					type="button"
 					data-inline-edit-control="retry"
-					onClick={api.accept}
+					/*
+					 * THE PRESS'S EVENT IS NOT THE VALUE (QA round 1, Q2): the button
+					 * used to hand `api.accept` straight to onClick, so the machine
+					 * received the MouseEvent as its `next` and every downstream
+					 * layer believed it was a value - the status arm's payload
+					 * carried the event object to the IPC boundary, died at
+					 * structured clone, and surfaced as "could not reach the
+					 * backend" with the daemon never seeing a request (4/4 runs).
+					 * The empty-call arrow is the whole fix; do not regress it to a
+					 * bare reference.
+					 */
+					onClick={() => api.accept()}
 					className="cursor-pointer text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:text-ink"
 				>
 					Retry

@@ -35034,6 +35034,18 @@ async function sceneProjectInlineEdit(cdp) {
 		`start_date=${JSON.stringify(afterCancel?.start_date ?? null)}`,
 		`start_date=${JSON.stringify(afterCancel?.start_date ?? null)}`,
 	);
+	/*
+	 * D3's stability sample (design round 1): the row's height AT REST (the
+	 * x-cancel above left it at rest) against the same row once the caption
+	 * shows. The feedback line is a fixed-height slot present whether or not
+	 * something is showing, so a save acknowledges IN PLACE and the rows
+	 * below never move.
+	 */
+	const startRowHeight = async () =>
+		cdp.evaluate(
+			`document.querySelector(${JSON.stringify(FIELD("start-date"))})?.getBoundingClientRect().height ?? null`,
+		);
+	const startHeightRest = await startRowHeight();
 	await clickControl("start-date", "begin");
 	await need(ENTRY("start-date"), "the start-date editor again");
 	await replaceAllText(cdp, ENTRY("start-date"), "2026-09-05");
@@ -35042,6 +35054,15 @@ async function sceneProjectInlineEdit(cdp) {
 		cdp,
 		`document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null`,
 		8_000,
+	);
+	const startHeightSaved = await startRowHeight();
+	check(
+		"the saved caption lands inside the fixed-height slot: the row does not move",
+		startHeightRest !== null &&
+			startHeightSaved !== null &&
+			Math.abs(startHeightSaved - startHeightRest) <= 1,
+		`rest=${JSON.stringify(startHeightRest)} saved=${JSON.stringify(startHeightSaved)}`,
+		`rest=${JSON.stringify(startHeightRest)} saved=${JSON.stringify(startHeightSaved)}`,
 	);
 	const afterCheck = await waitForStored((p) => p?.start_date === "2026-09-05");
 	check(
@@ -35168,15 +35189,58 @@ async function sceneProjectInlineEdit(cdp) {
 	 * DOUBLE click - the value gesture everywhere in this file; a single
 	 * click on the badge deliberately begins nothing, round 1), `qa` commits
 	 * from the menu, and picking `done` with an incomplete milestone gets the
-	 * daemon's own done-gate sentence back — re-spoken beside the control
-	 * through `refusalCopy` (the tail is swapped for the app's sentence; § 2.5).
+	 * done gate's refusal back - re-spoken in the app's own sentence (design
+	 * round 1, D4: the daemon's log register is gone, the count and the
+	 * milestone names are kept). The geometry samples pin D1 (the editor
+	 * occupies the chip's own slot; beginning an edit reflows nothing) and
+	 * paragraph 2.2's dirty-gate (D2: a clean edit draws no chrome at all).
 	 */
 	await cdp.evaluate(
 		`document.querySelector(${JSON.stringify(FIELD("status"))}).scrollIntoView({block: 'center'}); true`,
 	);
 	await wait(200);
+	const statusRestGeometry = await cdp.evaluate(
+		`(() => {
+			const status = document.querySelector(${JSON.stringify(FIELD("status"))});
+			const owner = document.querySelector(${JSON.stringify(FIELD("owner"))});
+			return {
+				statusTop: status?.getBoundingClientRect().top ?? null,
+				ownerTop: owner?.getBoundingClientRect().top ?? null,
+			};
+		})()`,
+	);
 	await clickControl("status", "begin");
 	await need(`[data-project-status-option="qa"]`, "the status menu");
+	const statusEditGeometry = await cdp.evaluate(
+		`(() => {
+			const status = document.querySelector(${JSON.stringify(FIELD("status"))});
+			const owner = document.querySelector(${JSON.stringify(FIELD("owner"))});
+			return {
+				statusTop: status?.getBoundingClientRect().top ?? null,
+				ownerTop: owner?.getBoundingClientRect().top ?? null,
+				select: Boolean(document.querySelector("[data-project-status]")),
+				chrome: Boolean(document.querySelector(${JSON.stringify(`${FIELD("status")} [data-inline-edit-control="accept"]`)})),
+			};
+		})()`,
+	);
+	check(
+		"the status editor opens in the chip's own slot: no header reflow",
+		statusRestGeometry.statusTop !== null &&
+			statusEditGeometry.statusTop !== null &&
+			Math.abs(statusEditGeometry.statusTop - statusRestGeometry.statusTop) <=
+				2 &&
+			Math.abs(statusEditGeometry.ownerTop - statusRestGeometry.ownerTop) <=
+				2 &&
+			statusEditGeometry.select === true,
+		`statusTop ${JSON.stringify(statusRestGeometry.statusTop)} -> ${JSON.stringify(statusEditGeometry.statusTop)}; ownerTop ${JSON.stringify(statusRestGeometry.ownerTop)} -> ${JSON.stringify(statusEditGeometry.ownerTop)}`,
+		`statusTop ${JSON.stringify(statusRestGeometry.statusTop)} -> ${JSON.stringify(statusEditGeometry.statusTop)}; ownerTop ${JSON.stringify(statusRestGeometry.ownerTop)} -> ${JSON.stringify(statusEditGeometry.ownerTop)}`,
+	);
+	check(
+		"a clean status edit draws no accept/cancel chrome (the 2.2 dirty-gate)",
+		statusEditGeometry.chrome === false,
+		"accept drawn on an unchanged draft",
+		"no chrome while clean",
+	);
 	await clickAt(cdp, `[data-project-status-option="qa"]`);
 	const statusCommitted = await waitForCondition(
 		cdp,
@@ -35195,14 +35259,47 @@ async function sceneProjectInlineEdit(cdp) {
 	await clickAt(cdp, `[data-project-status-option="done"]`);
 	const doneRefusal = await waitForCondition(
 		cdp,
-		`(document.body.textContent ?? "").includes("complete or remove the incomplete milestones, then mark it done")`,
+		`(document.body.textContent ?? "").includes("This can't be marked done yet:")`,
 		8_000,
 	);
+	const refusalText = await cdp.evaluate(`document.body.textContent ?? ""`);
 	check(
-		"the done gate's refusal is re-spoken beside the status control",
-		doneRefusal.ok,
-		"the re-spoken sentence never appeared",
-		"the re-spoken sentence appeared",
+		"the done gate's refusal speaks the app's sentence, not the daemon's register",
+		doneRefusal.ok &&
+			refusalText.includes(
+				"This can't be marked done yet: 1 milestone is still incomplete (",
+			) &&
+			refusalText.includes(
+				"Complete or remove the incomplete milestones, then mark it done.",
+			) &&
+			!refusalText.includes("cannot set status 'done'"),
+		`present=${doneRefusal.ok}`,
+		`present=${doneRefusal.ok}`,
+	);
+	/*
+	 * D1's adjacency claim, measured at its worst moment (the refusal): the x
+	 * hugs the select in the chip's slot instead of sitting at the pane's far
+	 * edge - the measured 621.5px escape this round exists to close.
+	 */
+	const statusChrome = await cdp.evaluate(
+		`(() => {
+			const select = document.querySelector("[data-project-status]");
+			const x = document.querySelector(${JSON.stringify(`${FIELD("status")} [data-inline-edit-control="cancel"]`)});
+			const accept = document.querySelector(${JSON.stringify(`${FIELD("status")} [data-inline-edit-control="accept"]`)});
+			if (!select) return { gap: null, x: Boolean(x), accept: Boolean(accept) };
+			const s = select.getBoundingClientRect();
+			const xr = x?.getBoundingClientRect() ?? null;
+			return { gap: xr ? xr.left - s.right : null, x: Boolean(x), accept: Boolean(accept) };
+		})()`,
+	);
+	check(
+		"the status check/x hug the control in the chip's own slot",
+		statusChrome.gap !== null &&
+			statusChrome.gap <= 10 &&
+			statusChrome.x &&
+			statusChrome.accept,
+		`gap=${JSON.stringify(statusChrome.gap)} x=${JSON.stringify(statusChrome.x)} accept=${JSON.stringify(statusChrome.accept)}`,
+		`gap=${JSON.stringify(statusChrome.gap)} x=${JSON.stringify(statusChrome.x)} accept=${JSON.stringify(statusChrome.accept)}`,
 	);
 	const stillQa = await stored();
 	check(
@@ -35265,27 +35362,42 @@ async function sceneProjectInlineEdit(cdp) {
 	);
 
 	/*
-	 * 11. A LOCAL VALIDATION REFUSAL, which never reaches the daemon: a
-	 * title over 80 characters fails the shared rule before a request, and the
-	 * daemon's stored title is the proof no request was sent.
+	 * 11. LIMITS AT INPUT, which never reach the daemon. The TITLE is capped
+	 * by maxLength as it is typed (design round 1 / UX round 1, U3: it used to take 100 characters and only
+	 * fail at submit), and the KEY's grammar gets a LOCAL refusal before a
+	 * request - the daemon's stored title and name are the proof nothing
+	 * was sent.
 	 */
 	await clickControl("title", "begin");
-	await need(ENTRY("title"), "the title editor (validation)");
-	await replaceAllText(cdp, ENTRY("title"), "x".repeat(81));
-	await clickControl("title", "accept");
+	await need(ENTRY("title"), "the title editor (limits)");
+	await replaceAllText(cdp, ENTRY("title"), "x".repeat(100));
+	const titleHeld = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(ENTRY("title"))})?.value ?? null`,
+	);
+	check(
+		"the over-long title is stopped at input: the field holds at most 80 characters",
+		typeof titleHeld === "string" && titleHeld.length === 80,
+		`length=${typeof titleHeld === "string" ? titleHeld.length : JSON.stringify(titleHeld)}`,
+		`length=${typeof titleHeld === "string" ? titleHeld.length : JSON.stringify(titleHeld)}`,
+	);
+	await clickControl("title", "cancel");
+	await clickControl("key", "begin");
+	await need(ENTRY("key"), "the key editor (local refusal)");
+	await replaceAllText(cdp, ENTRY("key"), "bad key!");
+	await clickControl("key", "accept");
 	const validationSentence = await waitForCondition(
 		cdp,
-		`(document.body.textContent ?? "").includes("Titles are at most 80 characters.")`,
+		`(document.body.textContent ?? "").includes("Names start with a letter or digit")`,
 		4_000,
 	);
 	const afterValidation = await stored();
 	check(
-		"an over-long title is refused locally, with the daemon untouched",
-		validationSentence.ok && afterValidation?.title === nextTitle,
-		`title=${JSON.stringify(afterValidation?.title ?? null)}`,
-		`title=${JSON.stringify(afterValidation?.title ?? null)}`,
+		"a grammar-invalid key is refused locally, with the daemon untouched",
+		validationSentence.ok && afterValidation?.name === PROJECT,
+		`name=${JSON.stringify(afterValidation?.name ?? null)}`,
+		`name=${JSON.stringify(afterValidation?.name ?? null)}`,
 	);
-	await clickControl("title", "cancel");
+	await clickControl("key", "cancel");
 
 	/*
 	 * 12. THE CONFLICT HOLD, with the out-of-band writer being THIS process
@@ -35568,7 +35680,27 @@ async function sceneProjectInlineEdit(cdp) {
 		`value=${JSON.stringify(tagsAdopted.last)} tags=${JSON.stringify(tagsAfterAdopt?.tags ?? null)}`,
 		`value=${JSON.stringify(tagsAdopted.last)} tags=${JSON.stringify(tagsAfterAdopt?.tags ?? null)}`,
 	);
-	await clickControl("tags", "cancel");
+	/*
+	 * The adopted draft is CLEAN, and 2.2's dirty-gate means a clean field
+	 * draws no chrome to close it with - the way out is the BLUR the rule
+	 * describes (an unchanged blur leaves edit state with no request), so the
+	 * scene closes it the way a reader would: a click on the title's own
+	 * value, a gesture that does nothing else.
+	 */
+	await clickAt(cdp, FIELD("title"));
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("tags"))}) === null`,
+		4_000,
+	);
+	const tagsAfterClose = await stored();
+	check(
+		"a blur on the adopted (clean) tags draft writes nothing",
+		Array.isArray(tagsAfterClose?.tags) &&
+			tagsAfterClose.tags.join(",") === "a,z",
+		`tags=${JSON.stringify(tagsAfterClose?.tags ?? null)}`,
+		`tags=${JSON.stringify(tagsAfterClose?.tags ?? null)}`,
+	);
 }
 
 /**

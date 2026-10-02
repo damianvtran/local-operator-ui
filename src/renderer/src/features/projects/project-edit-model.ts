@@ -43,6 +43,17 @@ export function parseProjectTags(raw: string): string[] {
 /** The store's `TITLE_MAX`, said where a field can name it. */
 export const PROJECT_TITLE_MAX_CHARS = 80;
 
+/** The store's `ATTRIBUTION_MAX`: the same ceiling for owner and team. */
+export const PROJECT_ATTRIBUTION_MAX_CHARS = 80;
+
+/**
+ * The key's length ceiling, read off the wire's own grammar
+ * (`^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`): one leading character plus up to 63
+ * - 64 in total. Exported so the inline editor can stop the value as it is
+ * typed rather than refusing it after (UX round 1, U3).
+ */
+export const PROJECT_KEY_MAX_CHARS = 64;
+
 /** The store's tag cap (`≤8 tags`); the grammar lives in `projectTagRule`. */
 export const PROJECT_TAGS_MAX = 8;
 
@@ -72,8 +83,8 @@ export function projectAttributionRule(
 	value: string,
 	field: "owner" | "team",
 ): string | null {
-	if (value.trim().length > 80)
-		return `${field === "owner" ? "Owners" : "Teams"} are at most 80 characters.`;
+	if (value.trim().length > PROJECT_ATTRIBUTION_MAX_CHARS)
+		return `${field === "owner" ? "Owners" : "Teams"} are at most ${PROJECT_ATTRIBUTION_MAX_CHARS} characters.`;
 	return null;
 }
 

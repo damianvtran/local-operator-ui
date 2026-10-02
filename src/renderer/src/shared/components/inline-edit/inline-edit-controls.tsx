@@ -33,6 +33,7 @@ import { cn } from "@shared/lib/utils";
 import { Check, Pencil, X } from "lucide-react";
 import type { FC, RefObject } from "react";
 import type { InlineEditPhase } from "./inline-edit-model";
+import { inlineEditChromeShown } from "./inline-edit-model";
 
 /**
  * The wrapper class that arms the reveal gates, exported so a consumer cannot
@@ -45,6 +46,8 @@ export const INLINE_EDIT_GROUP = "group/inline-edit";
 /** The structural subset of the hook's API the slot needs - nothing generic. */
 export type InlineEditSlotHandle = {
 	phase: InlineEditPhase;
+	/** The dirty reading § 2.2's chrome gate turns on (never derived here). */
+	dirty: boolean;
 	labels: {
 		begin: string;
 		accept: string;
@@ -56,6 +59,13 @@ export type InlineEditSlotHandle = {
 	accept: () => void;
 	cancel: () => void;
 	slotRef: RefObject<HTMLButtonElement>;
+	/**
+	 * The field's own rule says this accept cannot send (the description over
+	 * its cap, UX round 1 U3): the check dims and no-ops, and the signal that
+	 * explains it lives beside the field (the counter). The keyboard paths
+	 * still run the machine's validate and speak their sentence.
+	 */
+	acceptBlocked?: boolean;
 };
 
 export type InlineEditControlsProps = {
@@ -81,9 +91,23 @@ const SLOT_BUTTON =
  * (`docs/branding.md`; nothing grows, lifts or reflows when a row enters
  * edit) and a pointer still gets the composer's target size (review round 1,
  * m4).
+ *
+ * THE PAIR IS SPLIT, and that is the D5 fix (design round 1): two full-extent
+ * 32x32 targets on a 22px centre pitch overlap by 10px, and the later sibling
+ * paints on top - so the cancel button's right edge fired ACCEPT. Each button
+ * now extends only on the side facing AWAY from its sibling, clipped at the
+ * neighbour's edge: the overlap is zero, the vertical extent stays 32, and
+ * the horizontal stays 26 - still above the 24px minimum on both axes. The
+ * lone pencil keeps the full box: it has no sibling to collide with.
  */
 const SLOT_HIT_AREA =
 	"relative before:absolute before:-inset-1.5 before:content-['']";
+/** The x's half: extends left/top/bottom, stops at the check's edge. */
+const SLOT_HIT_AREA_LEFT =
+	"relative before:absolute before:-top-1.5 before:-bottom-1.5 before:-left-1.5 before:right-0 before:content-['']";
+/** The check's half: extends right/top/bottom, stops at the x's edge. */
+const SLOT_HIT_AREA_RIGHT =
+	"relative before:absolute before:-top-1.5 before:-bottom-1.5 before:-right-1.5 before:left-0 before:content-['']";
 
 export const InlineEditControls: FC<InlineEditControlsProps> = ({
 	api,
@@ -93,12 +117,20 @@ export const InlineEditControls: FC<InlineEditControlsProps> = ({
 	const { phase, labels } = api;
 	const editing =
 		phase === "editing" || phase === "saving" || phase === "error";
+	/*
+	 * The chrome gate (§ 2.2, design round 1 D2): check/x exist only on a dirty
+	 * draft. An `editing` field that is still clean renders an EMPTY slot - the
+	 * editor itself is the whole state, and the controls arrive with the first
+	 * real change. `saving`/`error` keep their doors (see the model's gate).
+	 */
+	const chrome = inlineEditChromeShown(phase, api.dirty);
+	const blocked = api.acceptBlocked === true;
 	return (
 		<span
 			data-inline-edit-slot={phase}
 			className={cn("inline-flex shrink-0 items-center gap-0.5", className)}
 		>
-			{editing ? (
+			{chrome ? (
 				<>
 					{/*
 					 * The x. While the write is in flight it is present but
@@ -121,7 +153,7 @@ export const InlineEditControls: FC<InlineEditControlsProps> = ({
 						}}
 						className={cn(
 							SLOT_BUTTON,
-							SLOT_HIT_AREA,
+							SLOT_HIT_AREA_LEFT,
 							phase === "saving" && "cursor-default text-ink-disabled",
 						)}
 					>
@@ -141,7 +173,9 @@ export const InlineEditControls: FC<InlineEditControlsProps> = ({
 							type="button"
 							data-inline-edit-control="accept"
 							/* In `error` the check re-attempts the write, and its
-							 * name says so; the slot's own door out of error. */
+							 * name says so; the slot's own door out of error. A
+							 * blocked accept keeps the name (what it would do) and
+							 * states its state in aria-disabled. */
 							aria-label={
 								phase === "error"
 									? (labels.retry ?? labels.accept)
@@ -152,18 +186,26 @@ export const InlineEditControls: FC<InlineEditControlsProps> = ({
 									? (labels.retry ?? labels.accept)
 									: labels.accept
 							}
+							aria-disabled={blocked || undefined}
 							onMouseDown={(event) => event.preventDefault()}
 							onClick={(event) => {
 								if (event.detail > 1) return;
+								/* The field's own rule blocks the send (UX round 1,
+								 * U3): the counter beside the field is why. */
+								if (blocked) return;
 								api.accept();
 							}}
-							className={cn(SLOT_BUTTON, SLOT_HIT_AREA)}
+							className={cn(
+								SLOT_BUTTON,
+								SLOT_HIT_AREA_RIGHT,
+								blocked && "cursor-default text-ink-disabled",
+							)}
 						>
 							<Check className="size-3" aria-hidden="true" />
 						</button>
 					)}
 				</>
-			) : idle === "affordance" ? (
+			) : editing ? null : idle === "affordance" ? (
 				/*
 				 * The pencil. Its reveal is the module's own contract: hidden
 				 * until the pointer is over the field or focus is within it, and
@@ -182,6 +224,11 @@ export const InlineEditControls: FC<InlineEditControlsProps> = ({
 					}}
 					className={cn(
 						SLOT_BUTTON,
+						/* The full 32x32 box is safe here: the pencil is alone in
+						 * its slot, and this is the U2 fix (WCAG 2.2 AA's 24x24
+						 * minimum - the glyph stays `size-3`, the target grows,
+						 * which is the check/x pattern applied to the door). */
+						SLOT_HIT_AREA,
 						/* The reveal, gated on the field's own group. */
 						"opacity-0 transition-opacity duration-base ease-out-quart",
 						"group-hover/inline-edit:opacity-100 group-hover/inline-edit:duration-fast",
