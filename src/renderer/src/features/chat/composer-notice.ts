@@ -189,6 +189,22 @@ export function retryOfferedForFailureCode(code: string | undefined): boolean {
  * predicate instead: a window that answers `"failed"` the moment it is asked re-refuses
  * the press and re-paints the same sentence, so offering it is the loop, not a second
  * instruction. Both rules now answer the read window the same way - no press.
+ *
+ * THIS SET AND `withholdsRetryHint` ANSWER TWO DIFFERENT QUESTIONS ABOUT
+ * `RUNTIME_BUSY_CODE`, AND BOTH ANSWERS ARE RIGHT (agent review round 1, MINOR-1:
+ * "one machine code, two verdicts"). The code stays here because the question
+ * this set answers is "can a press work for THIS FAILURE" and the failure it is
+ * read for is a SEND's: `composerNoticeFor` consults it at the line where the
+ * pane's own classified verdict is ANDed in, and for a send the control is the
+ * message in the box, which the refusal is about. `withholdsRetryHint` answers
+ * the PRESS's version of the question and says no, because a press's only control
+ * would be Send over bytes the press was never about. The caller that reconciles
+ * the two is `composerNoticeFor`: it ANDs the classified verdict with this set
+ * (`input.retry && retryOfferedForFailureCode(input.code)`), so the send's own
+ * `retry: true` survives and a press's `retry: false` withholds regardless - the
+ * verdict never comes from this set alone. Both arms are executed side by side in
+ * `scripts/composer-send-failure.test.mjs`, including through `composerNoticeFor`
+ * itself, so neither can be "fixed" into the other.
  */
 const RETRYABLE_FAILURE_CODES = new Set([
 	DESKTOP_DEADLINE_EXCEEDED_CODE,
