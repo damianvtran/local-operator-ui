@@ -20,9 +20,11 @@
  *   - **It is not a claim about the ring's PIXELS.** The frames here are taken in
  *     a window without focus, and the app's `:focus-visible` styling is what the
  *     focus frame's ring is read from anyway: design round 1 (D2) measured the
- *     mark's ring off `sidebar-team-mark-focus` (a 28x28 square around the 20px
- *     circle, now `rounded-full`), so the ring IS in that frame. What no frame
- *     here shows is a ring on any OTHER control.
+ *     mark's ring off `sidebar-team-mark-focus`, and the defect it caught was a
+ *     28x28 square drawn around what was then a 20px circle - fixed with
+ *     `rounded-full`, and since 2026-10-02 the ring traces the mark's own pill
+ *     (16px tall, `rounded-full` from the badge's `shape="pill"`), so the ring
+ *     IS in that frame. What no frame here shows is a ring on any OTHER control.
  *
  * ## What is stubbed, and what is not
  *

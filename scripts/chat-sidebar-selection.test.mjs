@@ -1695,6 +1695,15 @@ const ACCOUNT_ROW =
 const TEAM_BUBBLE =
 	"src/renderer/src/features/chat/components/team-avatar-bubble.tsx";
 
+/**
+ * The mark's face, as the module writes it: the badge's own exported call with
+ * the quiet-count triple. A PATTERN rather than a byte string so the formatter
+ * may break the arguments across lines without failing this assertion - the
+ * property is "composes the shared register", not "spells it on one line".
+ */
+const TEAM_BUBBLE_COMPOSITION =
+	/badgeVariants\(\{[\s\S]*?variant:\s*"attentionQuiet"[\s\S]*?shape:\s*"pill"[\s\S]*?size:\s*"count"/;
+
 test("the account row's plate carries an edge a row state cannot overrun", () => {
 	const row = sourceOf(ACCOUNT_ROW);
 	assert.ok(
@@ -1719,39 +1728,71 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
 });
 
 /*
- * THE THIRD PLATE, AND WHY IT IS ASSERTED HERE INSTEAD OF DISCOVERED.
+ * THE TEAM MARK, AND WHY IT IS ASSERTED HERE INSTEAD OF DISCOVERED.
  *
  * The team avatar bubble (the compact initials mark the chat sidebar's session
- * rows draw, operator ask 2026-10-01) is an object with a ground of its own that
- * sits inside a row state - `TeamAvatarBubble` is rendered inside the row whose
- * box takes `rowCurrent` and `hover:bg-row-hover`. The scan above cannot see it,
- * and that is a BOUNDARY rather than an oversight: the bubble is written in its
- * own module, so `carriersInsideRowStates` reads an element with no `className`
- * of its own where the bubble is USED and never enters the subtree that carries
- * the ground. It is the same shape as `CARRIED_GROUNDS` (a ground that lives in
+ * rows draw, operator ask 2026-10-01) is a site the scan above cannot see, and
+ * that is a BOUNDARY rather than an oversight: the bubble is written in its own
+ * module, so `carriersInsideRowStates` reads an element with no `className` of
+ * its own where the bubble is USED and never enters the subtree that carries the
+ * ground. It is the same shape as `CARRIED_GROUNDS` (a ground that lives in
  * another file) and it takes the same remedy: name the carrier, read its class
  * text from the file it is written in, and assert the fact here.
  *
- * THE PAIR IT RESTS ON is the one the agents sidebar's plate already uses, which
- * is why no new palette arithmetic was added for it: `sunken` fill plus a
- * `borderControl` edge against the row's own `rowHover` and `rowSelected`, per
- * palette, in `scripts/contrast-contract.mjs`. What this test adds is the half a
- * palette cannot see - that the shipped class text is still that pair.
+ * IT LEFT THE CLASS ABOVE ON 2026-10-02. It used to be a `sunken` plate with its
+ * own `borderControl` edge, resting on the agents sidebar's pair; the operator's
+ * report replaced that face with the rail's quiet-count register (verbatim:
+ * "should probably be more similar to the borderless bubble of the sidebar
+ * notification counts — slight contrast vs backdrop, smaller more subtle text,
+ * in the case there's no picture. Currently it looks kind of ugly"). The mark is
+ * no longer an object whose boundary has to survive a row state's fill, so the
+ * rule that block states does not apply to it: its legibility is the INITIALS'
+ * own floor (`inkDim` on `elevated`, asserted per palette in
+ * `scripts/contrast-contract.mjs`) and its identity is the SHARED call it
+ * composes - `badgeVariants({ variant: "attentionQuiet", shape: "pill", size:
+ * "count" })`, the same composition the sidebar rail's notification count makes.
+ *
+ * WHAT THIS TEST ADDS is the half a colour gate cannot see: that the shipped
+ * class text is still that composition, and that the image path still renders
+ * through the same mark. A palette assertion cannot read a `className`, and a
+ * copied class string is exactly what the composition exists to prevent, so the
+ * two halves are separate and neither file can make the other's assertion.
  */
-test("the team avatar bubble keeps its edge and its ground", () => {
-	const edge = literalClassAt(TEAM_BUBBLE, "<Avatar ", "after")
-		.split(/\s+/)
-		.filter((token) => token.length > 0);
+test("the team avatar bubble wears the shared badge's composition", () => {
+	const source = sourceOf(TEAM_BUBBLE);
+	/*
+	 * The face is the badge's own exported call, read as a pattern rather than a
+	 * byte string so the formatter may break the arguments across lines.
+	 */
 	assert.ok(
-		edge.includes("border") && edge.includes("border-control"),
-		`the team avatar bubble's edge is gone — <Avatar> in ${TEAM_BUBBLE} reads ${JSON.stringify(edge)}. The edge is on the ROOT rather than on the fallback because the picture REPLACES the fallback when a generated avatar loads: an edge drawn on the fallback would vanish exactly when the mark stops being a fill. \`sunken\` and the row's own states collide inside the field floor on some palettes (\`alucard\` 0.44 on \`rowSelected\`), so the edge is the carrier - the palette half of the pair is in \`scripts/contrast-contract.mjs\``,
+		TEAM_BUBBLE_COMPOSITION.test(source),
+		`${TEAM_BUBBLE} no longer composes the badge's quiet-count register - the call that turns the mark into the same face as the sidebar rail's notification count is gone. The mark must be \`badgeVariants({ variant: "attentionQuiet", shape: "pill", size: "count" })\` (operator report, 2026-10-02), which is why the pair it wears is asserted in \`scripts/contrast-contract.mjs\` under \`team avatar bubble\``,
 	);
-	const plate = literalClassAt(TEAM_BUBBLE, "<AvatarFallback ", "after")
+	const avatar = literalClassAt(TEAM_BUBBLE, "<Avatar ", "after")
 		.split(/\s+/)
 		.filter((token) => token.length > 0);
 	assert.ok(
-		plate.includes("bg-sunken"),
-		`the team avatar bubble's plate no longer paints \`bg-sunken\` — <AvatarFallback> in ${TEAM_BUBBLE} reads ${JSON.stringify(plate)}. \`scripts/contrast-contract.mjs\` measures this plate's fill and edge against the row's states, so a re-role here has to move there too`,
+		avatar.includes("h-4"),
+		`the team avatar bubble's avatar is no longer the badge's height - <Avatar> in ${TEAM_BUBBLE} reads ${JSON.stringify(avatar)}. The mark's geometry IS the badge's (16px), and the picture is meant to render inside it; the old \`size-5\` circle is what the operator's 2026-10-02 report asked to be brought into the badge family`,
+	);
+	assert.ok(
+		!avatar.some((token) => token === "border" || token === "border-control"),
+		`the team avatar bubble is back on an edge - <Avatar> in ${TEAM_BUBBLE} reads ${JSON.stringify(avatar)}. The mark is borderless now: its boundary is the initials' own ink floor, per the rail badge's register and its row in \`scripts/contrast-contract.mjs\` (\`edge: false\`)`,
+	);
+	const fallback = literalClassAt(TEAM_BUBBLE, "<AvatarFallback ", "after")
+		.split(/\s+/)
+		.filter((token) => token.length > 0);
+	assert.ok(
+		fallback.includes("bg-transparent"),
+		`the team avatar bubble's fallback no longer defers to the mark's own ground - <AvatarFallback> in ${TEAM_BUBBLE} reads ${JSON.stringify(fallback)}. It has to override the primitive's \`bg-sunken\` with \`bg-transparent\`, so the initials sit on the root's \`elevated\`: an absent URL, a 404, a blocked request and a decoding failure all land on ONE face, which is what \`scripts/contrast-contract.mjs\` measures`,
+	);
+	assert.ok(
+		!fallback.includes("bg-sunken"),
+		`the team avatar bubble's fallback is back on the \`sunken\` plate - <AvatarFallback> in ${TEAM_BUBBLE} reads ${JSON.stringify(fallback)}. That plate (with its edge) is the pair the 2026-10-02 operator report called ugly and the row in \`scripts/contrast-contract.mjs\` was moved off`,
+	);
+	assert.ok(
+		fallback.includes("text-inherit"),
+		`the team avatar bubble's fallback pins its own ink instead of inheriting the mark's - <AvatarFallback> in ${TEAM_BUBBLE} reads ${JSON.stringify(fallback)}. \`text-inherit\` is what keeps the letters on the composition's \`ink-dim\` and stops the primitive's \`text-ink-muted\` from taking over`,
 	);
 });
 

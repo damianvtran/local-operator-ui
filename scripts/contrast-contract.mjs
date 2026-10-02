@@ -388,28 +388,47 @@ const CONTROLS = [
 	},
 	{
 		/*
-		 * THE TEAM AVATAR BUBBLE (operator ask, 2026-10-01): the compact initials mark
-		 * the chat sidebar's session rows and the chat header's team chip draw, the
-		 * replacement for a drawn team name that was costing the row's title whatever
-		 * the name was long. It is a component with its own fill AND its own edge,
-		 * which is the condition this table exists for.
+		 * THE TEAM AVATAR BUBBLE (operator ask, 2026-10-01), RE-ROLED INTO THE BADGE
+		 * FAMILY (operator round, 2026-10-02): the compact initials mark the chat
+		 * sidebar's session rows and the chat header's team chip draw, the replacement
+		 * for a drawn team name that was costing the row's title whatever the name was
+		 * long.
 		 *
-		 * ITS OWN PAIR IS WIDER THAN THIS TABLE CAN EXPRESS, and both halves are
-		 * asserted rather than one. Here: the initials' `ink` on the plate's `sunken`,
-		 * and the `sunken` fill or the `borderControl` edge against every ground the
-		 * bubble is painted on. The row-state half - the same fill and edge against
-		 * `rowHover` and `rowSelected`, which are states rather than rungs of
-		 * `GROUNDS` - is the "second plate inside a row" block below, the pair the
-		 * agents sidebar's avatar already rests on, which is why this change added a
-		 * ROW to the table and no new arithmetic. The class half (that the bubble
-		 * still wears these roles, through the component boundary the discovery scan
-		 * cannot see) is in `scripts/chat-sidebar-selection.test.mjs`.
+		 * ITS FACE IS THE RAIL'S QUIET COUNT, so this row is deliberately the twin of
+		 * "rail approval badge (quiet)" further down - same `elevated` fill, same
+		 * `inkDim` ink, same missing edge, same four grounds. The mark composes the
+		 * same `badgeVariants({ variant: "attentionQuiet", shape: "pill", size:
+		 * "count" })` call the rail makes rather than copying its class string, so a
+		 * change to one that is not made to the other fails here instead of in a
+		 * reader's eyes. The old row attested `sunken` + `borderControl` + `ink`, which
+		 * is the pair the operator's 2026-10-02 report called ugly ("borderless bubble
+		 * of the sidebar notification counts ... slight contrast vs backdrop, smaller
+		 * more subtle text").
+		 *
+		 * WHAT IT ASSERTS NOW. The initials' `inkDim` on the mark's own `elevated` -
+		 * 5.01:1 at worst over the fifty-nine palettes, the same figure the rail row
+		 * quotes - which is the floor that matters because the letters are READ. The
+		 * edge is declared away with `edge: false`, for the reason that row states:
+		 * the fill provably cannot carry a boundary across every palette (it steps
+		 * 2.02 ΔE00 at worst over the fifty-nine and falls to 0.00 on `rowHover`,
+		 * `arcade`), so what keeps the mark legible is the letters' own floor, and what
+		 * keeps it a MARK rather than plain label text is that a quiet row draws
+		 * nothing at all. The class half - that the mark still wears this composition,
+		 * through the component boundary the discovery scan cannot see - is in
+		 * `scripts/chat-sidebar-selection.test.mjs`.
+		 *
+		 * THE FOUR GROUNDS ARE THE HOSTS the mark can be painted on: the chat panel's
+		 * `surface` (the session list), the header chip's `canvas`, and the two STATES
+		 * the list's rows paint under the pointer and under a selection. They are named
+		 * rather than left to `GROUNDS` because the state grounds are not rungs of that
+		 * ladder - the same reason the rail's row names them.
 		 */
 		name: "team avatar bubble",
-		on: GROUNDS,
-		fill: "sunken",
-		border: "borderControl",
-		ink: "ink",
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkDim",
+		edge: false,
 	},
 	{
 		name: "input field",
@@ -4805,17 +4824,12 @@ for (const { id, palette: p } of palettes) {
 	 * "an object inside a row state with a ground of its own" is enumerated rather
 	 * than assumed — is in `scripts/chat-sidebar-selection.test.mjs`.
 	 *
-	 * A THIRD SITE RESTS ON THIS SAME PAIR (operator ask, 2026-10-01): the team
-	 * avatar bubble, the compact initials mark a chat sidebar session row draws in
-	 * place of a team's name. It is the same `sunken` plate with the same
-	 * `borderControl` edge, on the same two row states, so its legality is this
-	 * block's arithmetic and nothing new was added for it - it is named here
-	 * because a reviewer looking for the bubble's own measurement would otherwise
-	 * find only the CONTROLS row above, which asserts the rungs and not the states.
-	 * The site is discovered by hand rather than by the scan for a stated reason:
-	 * the bubble is written in its own module, so the element the row renders
-	 * carries no class of its own (see the note beside `TEAM_BUBBLE` in
-	 * `scripts/chat-sidebar-selection.test.mjs`).
+	 * THE TEAM AVATAR BUBBLE LEFT THIS PAIR on 2026-10-02: it wore the same
+	 * `sunken` plate and `borderControl` edge, and the operator's report replaced
+	 * both with the rail's quiet-count register (`elevated` + `inkDim`, no edge),
+	 * which moved its row up in `CONTROLS` and took it out from under this block's
+	 * arithmetic. Named here so a reader who remembers it resting here finds where
+	 * it went rather than nothing.
 	 */
 	if (
 		isHex(p.sunken) &&
