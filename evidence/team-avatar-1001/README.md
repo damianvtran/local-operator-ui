@@ -52,19 +52,29 @@ WHAT A PAIR DOES NOT SHOW, stated rather than smoothed over:
 - **The mark's own story is after-only**, for the obvious reason: `TeamAvatarBubble`
   does not exist on the old tree, so there is no before half to take.
 - **The hover and focus frames are after-only** for the same reason, and their
-  claims are asserted rather than left to the eye: each entry requires
-  `[role="tooltip"][data-side="top"]` present (the mark's name — our `Tooltip`
-  defaults to `top`) AND `[role="tooltip"][data-side="right"]` absent (the row's
-  flyout, which the row sets to `side="right"`). A run that loses either half
-  fails instead of filing a frame whose caption is wrong.
+  claims are asserted rather than left to the eye: BOTH entries require
+  `[role="tooltip"][data-side="right"]` absent (the row's flyout, which the row
+  sets to `side="right"`), and the halves are asserted differently by design:
+  the HOVER entry requires `[role="tooltip"][data-side="top"]` present (the
+  mark's name — our `Tooltip` defaults to `top`), while the FOCUS entry requires
+  `[role="tooltip"]` and does not name a side. The side is not this change's
+  claim and asserting it refused a working frame: measured back to back on the
+  same code and the same walk, `[data-side="top"]` found nothing and
+  `[role="tooltip"]` found the panel on the very next run (the entry's own
+  comment carries the measurement). A run that loses either half fails instead
+  of filing a frame whose caption is wrong.
 - **One theme** (`localOperatorDark`) and one size per state; a theme this branch
   does not photograph is a theme this pair says nothing about.
 - **The focus frame's ring IS in the picture, and it is the frame design round 1's D2
-  was measured off** (28x28 square around the 20px circle, corners 4px off the object).
-  The earlier caption here said the ring was not visible in a window without focus and
-  that the frame claimed nothing about it; the numbers in that finding came from this
-  file's own pixels, so the caption was instructing a reviewer to discard its strongest
-  frame. What the frame cannot show is the ring's *appearance* under real focus
+  was measured off** (28x28 square around the 20px circle, corners 4px off the object)
+  — measured off the PREVIOUS capture of this state, which this round replaced: the
+  file here is the RE-TAKEN one, after the mark's focusable box took `rounded-full`,
+  so its ring is a circle of the same 28x28 box and the square described above is no
+  longer in the repository (the pixels differ: `after-sidebar-team-mark-focus` was
+  21816 bytes then and is 22040 now). The earlier caption said the ring was not
+  visible in a window without focus and that the frame claimed nothing about it; the
+  numbers in that finding came from this file's own pixels, so the caption was
+  instructing a reviewer to discard its strongest frame. What the frame cannot show is the ring's *appearance* under real focus
   heuristics elsewhere in the app; what it does show is this mark's ring, which is
   `rounded-full` as of round 1's remediation.
 
@@ -135,6 +145,17 @@ report was that the name was taking the width the title needed, and the row it
 was taking it from is the first row of the pinned section (the long realistic
 title `Install the pinned uv on Windows arm64 via the bootstrap script`).
 
+**One caption reads a different number, and it is a different row.** The focus
+frame's readout says `First title clip: 251px` where this table says 217px at the
+same width. It is not a contradiction and it is not motion: the focus frame is
+taken on the `query-while-collapsed` story, whose first row draws **no
+relative-time label** in its trailing slot (the resting fixture's first row draws
+`51w`), so that row's trailing content is 34px narrower and its clip 34px wider —
+measured off the two frames' own pixels: the resting first row's title ink runs
+37..233 with the mark at 264..278, the focus frame's runs 37..268 with its ring at
+291..318. Two fixtures' rows, one caption shape; `before|after` for the clip
+number are the two resting frames above.
+
 The frames also caption `Team marks drawn: 7` on this branch against `0` on
 `origin/main` — seven rows carry a mark, one per team the fixture binds, with one
 team-bound row in each list section and one agent-bound row that keeps its text.
@@ -160,6 +181,9 @@ opens two panels unless something stands one down. Measured, in order:
    DOM node is the same before and after. The committed hover and focus entries
    assert the resolved state: the mark's name present, the row's card gone.
 
-The row reports the engagement itself (`teamBubbleHot`, the sidebar-level state
-the mark's wrapper sets on pointer-enter/leave and focus/blur), so only the row
-under the reader stands down and every other row keeps its card.
+The row reports the engagement itself — `teamBubbleHovered` and
+`teamBubbleFocused`, the two sidebar-level states the mark's wrapper sets on
+pointer-enter/leave and focus/blur respectively, kept separately so that a
+pointer leaving the mark while the keyboard still holds it cannot re-arm the
+card — so only the row under the reader stands down and every other row keeps its
+card.
