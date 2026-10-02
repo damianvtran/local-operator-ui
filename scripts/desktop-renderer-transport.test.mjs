@@ -190,6 +190,58 @@ test("the store's failure ladder arrives classified, on the status each arm rais
 	}
 });
 
+// QA Q-4 (the agent PR's round): a refusal whose sentence arrives as a STRING
+// `detail` must not be dropped. `desktopResult` reads a body's `detail` whichever
+// shape it arrives in -- an object carrying `code`/`message`, or the bare string
+// the owner wrote -- and puts it where `userFacingMessage` can find it. The press
+// path keys its codeless-409 arms on "did a sentence cross the wire", so a shape
+// that lands in `message` but leaves `detail` undefined is read as "there was no
+// sentence" and the app paints its own constant over the owner's text. The answer
+// route's epoch-rollover refusal is exactly this body: `409 {"detail": "This
+// answer belongs to an earlier session owner"}`, a string and no code.
+//
+// The half asserted here is the TRANSPORT half; that the sentence then survives to
+// the sentence a user reads is pinned in `ask-options.test.mjs`.
+test("a refusal whose sentence arrives as a string detail is not dropped", async () => {
+	const sentence = "This answer belongs to an earlier session owner";
+	const { desktopResult, DesktopControlError, userFacingMessage } =
+		await loadTransport(async () => ({
+			status: 409,
+			body: { detail: sentence },
+		}));
+	const failure = await desktopResult({
+		op: "sessions.answer",
+		sessionId: "111111111111",
+		epoch: "ffffffffffffffffffffffffffffffff",
+		requestId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+		value: "Option A",
+		questionIndex: 0,
+	}).then(
+		() => null,
+		(error) => error,
+	);
+	assert.ok(
+		failure instanceof DesktopControlError,
+		"a 409 must reject as the transport's own error rather than resolve",
+	);
+	assert.equal(failure.status, 409);
+	assert.equal(
+		failure.code,
+		undefined,
+		"a 409 names no code: only the answering process can say WHICH conflict this is",
+	);
+	assert.equal(
+		failure.message,
+		sentence,
+		"the owner's sentence must reach the error rather than a status-derived fallback",
+	);
+	assert.equal(
+		userFacingMessage(failure, "The request could not be completed."),
+		sentence,
+		"and it must survive the translator the surfaces read, not be replaced by the fallback",
+	);
+});
+
 // The image ladder is renderer code with no transport of its own, but it is the
 // reason a message fits: without it, an 8.5 MB Retina screenshot fails at any
 // budget this pipe can offer. It is bundled and driven here rather than mocked,
