@@ -4378,6 +4378,8 @@ export const STORIES = [
 	*/
 	["chat-aside-panel--settled", 1024, 700],
 	["chat-aside-panel--settled-small-view", 440, 700],
+	["chat-aside-panel--settled-wrapped-question", 1024, 700],
+	["chat-aside-panel--settled-wrapped-question", 440, 700],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
