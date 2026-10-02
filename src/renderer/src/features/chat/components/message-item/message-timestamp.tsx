@@ -53,7 +53,7 @@ export const MessageTimestamp: FC<MessageTimestampProps> = ({
 	>
 		<span
 			className={cn(
-				"shrink-0 cursor-help whitespace-nowrap text-ink-dim text-meta",
+				"shrink-0 whitespace-nowrap text-ink-dim text-meta",
 				className,
 			)}
 		>
