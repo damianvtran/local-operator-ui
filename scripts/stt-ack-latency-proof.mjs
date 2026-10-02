@@ -67,7 +67,9 @@
  * from a UI defect); LO_ACK_LABEL names the run in the record; LO_ACK_THEME
  * (localOperatorDark | localOperatorLight) is the palette this run photographs;
  * LO_ACK_HOLD_MS holds the acquisition open so the pending state can be
- * photographed - and VOIDS this run's numbers, which is why it is recorded.
+ * photographed - and VOIDS this run's numbers, which is why it is recorded;
+ * LO_ACK_WINDOW_SIZE (`WxH`, default 1380x900) is the window the run opens, for
+ * the narrow-width pass (the app clamps to its own 800x600 floor).
  */
 import { execFileSync, spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -99,6 +101,16 @@ const THEME = process.env.LO_ACK_THEME ?? null;
  * leave it unset, which is also why they are recorded beside it.
  */
 const HOLD_MS = Number(process.env.LO_ACK_HOLD_MS ?? 0);
+/*
+ * THE WINDOW THIS RUN PHOTOGRAPHS, `WxH` (round 2 follow-up). The committed pair
+ * was taken at 1380x900 only, and the shipped acknowledgment is a `shrink-0`
+ * caption inside a `flex-nowrap` control row - the shape that gives way last, so
+ * "the press costs the composer 0 px" is a claim about ONE width until a second
+ * one is measured. It is an env var rather than a constant for that reason; the
+ * app clamps a request below its own `WINDOW_MIN_WIDTH`/`HEIGHT` floor (800x600,
+ * `src/main/window-mode.ts`), so the floor is what a narrower request lands on.
+ */
+const WINDOW_SIZE = process.env.LO_ACK_WINDOW_SIZE ?? "1380x900";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -162,7 +174,7 @@ const app = spawn(
 		`--remote-debugging-port=${cdpPort}`,
 		`--user-data-dir=${USER_DATA}`,
 		"--window-mode=headless",
-		"--window-size=1380x900",
+		`--window-size=${WINDOW_SIZE}`,
 		"--use-fake-device-for-media-stream",
 	],
 	{
@@ -224,6 +236,9 @@ class Cdp {
 const report = {
 	theme: THEME,
 	holdMs: HOLD_MS,
+	/* The size ASKED FOR; `viewport` below is the one the page reports, which is
+	 * what a clamped or scaled request makes worth recording both. */
+	windowSize: WINDOW_SIZE,
 	rig: { label: process.env.LO_ACK_LABEL ?? "run", cdpPort },
 	cycles: [],
 };

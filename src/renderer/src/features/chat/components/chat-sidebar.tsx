@@ -4368,7 +4368,10 @@ export function ChatSidebar({
 					   whatever the team's own name was long — a share of the row, up to
 					   its 45% cap — so a reader on `Local Operator Development` had one
 					   fewer word of their own title than a reader on `docs-pod` did. The
-					   bubble's cost is fixed at the mark (20px plus the row's 4px gap),
+					   bubble's cost is the mark plus the row's 4px gap, and the NAME no
+					   longer enters it: the mark's width follows its two initials (measured
+					   at head: 22px for `LD`, 24-25px for `DQ`, against the 20px circle the
+					   badge-family round replaced - a ~3px swing by initials, not by name),
 					   and the name is not lost: it is the bubble's tooltip, its
 					   `aria-label`, and still the flyout's binding clause.
 
