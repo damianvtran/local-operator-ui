@@ -7575,7 +7575,23 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										// this element any more, and deleting the pair would let a
 										// future `disabled` state ship with no ink step at all - the
 										// exact defect the pair was added for.
-										"read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+										//
+										// A HOST THAT REFUSES DOES NOT WEAR THAT INK (design review
+										// round 2, D6). `ink-disabled` measures 1.99:1 on the box's
+										// `elevated` fill in the dark brand and 2.96:1 in the
+										// light one, and the exemption it carries assumes the
+										// state's MEANING is carried somewhere else that meets the
+										// floor - the transcript, in chat. On a host page the box's
+										// own words can be the only carrier of the reason (the
+										// Agents page's "Finish or cancel your edit first."), so
+										// with `blocksInput` the box steps to `ink-muted` the way
+										// the host's band sentence does. The refusal still reads
+										// as one: dimmer than a draft's `ink`, `cursor:
+										// not-allowed`, `aria-disabled`, plus the band and the
+										// strip.
+										hostNotice?.blocksInput
+											? "read-only:text-ink-muted read-only:placeholder:text-ink-muted disabled:text-ink-disabled disabled:placeholder:text-ink-disabled"
+											: "read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
 									)}
 									placeholder={
 										/*
