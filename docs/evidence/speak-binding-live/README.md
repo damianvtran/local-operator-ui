@@ -33,16 +33,14 @@ committed — this file is the record of what it did.
 
 | file | what it is |
 | --- | --- |
-| `<arm>-before-press.png` | the answer row with its Speak control, at rest, before any press |
-| `<arm>-hovered.png` | the pointer on the control: the row is a hover reveal, and this is the moment before the press |
+| `<arm>-before-press.png` | the answer row with its Speak control, at rest, before any press - **in the `open` arm this frame carries no row at all** (measured: 0 lit pixels in the row band against 790 in the `bound` arm's), so that set's first frame showing the row is its `hovered`. The two arms' `before-press` frames are two different app states, not a regression between them: the `open` arm installs no role profile, so its sidebar list differs (35,072 device px), and its transcript had not painted the row when the frame was taken |
+| `<arm>-hovered.png` | the pointer on the control: the row's actions are painted at rest on this head (measured 790 lit pixels in the row band at `before-press`, unchanged by the hover), so the hover paints the row's wash rather than revealing it. This is the moment before the press |
 | `<arm>-loading.png` | **the press itself**: the control in its busy state |
 | `<arm>-after-press.png` | **the reader's sentence**, on screen (a raw capture held on the toast) |
 | `<arm>-selection-raised.png` | a real drag across the answer's text, which raises the selection toolbar |
-| `<arm>-selection-after-press.png` | the toolbar's own press: the toolkit raised over the selection and the row's control in its busy state. The **`bound`** frame also carries the sentence; in the **`open`** frame the notice is not in the picture - it was read by the run out of the app's own toast DOM and had gone by the time the capture landed, so the sentence for that press is quoted from that read, not from the pixels |
+| `<arm>-selection-after-press.png` | the toolbar's own press: the toolkit raised over the selection, with the selection still shown. The **`bound`** frame carries the sentence on a card caught **mid-entrance** (dimmed, sitting low, running to the frame's last row) - the entrance state, not the settled one. In the **`open`** frame the notice is not in the picture at all: the run reads it out of the app's own toast DOM and it has gone before the capture lands, so that press's sentence is quoted from the read, not from the pixels. Both are stated in the frame table rather than explained twice below |
 | `speak-binding-disabled.png` | a daemon with **no speech credential**: the control is rendered disabled, and the run records that state instead of pressing an inert button |
 
-Two `before-press` frames are two different app states, not a regression between
-them: the `open` arm installs no role profile, so its sidebar list differs.
 
 **How the outcome frames were taken, because the round-1 set got this wrong.**
 `captureSettled` — the helper every layout frame here uses — waits for the screen to
@@ -61,12 +59,9 @@ never show a press's result (design round 1, D1; UX round 1, U2 — the round-1
 - `-after-press` waits for the toast to **arrive** (`firstToast` polls the app's own
   sonner DOM) and then 500 ms past its entrance, so the card is not photographed
   mid-slide. That is what the row frames do, and the card is in them.
-- The toolbar press is the one frame where the sentence is **not** in the pixels: the
-  run reads it there too, but the notice is gone before the capture lands (the row's
-  identical sentence has just been dismissed, and this one lives inside the same
-  short window). The frame is captioned for what it shows - the press, the raised
-  toolbar and the row's busy control - and the sentence is quoted from the run's own
-  read rather than claimed of the image.
+- The toolbar press's sentence is **not** in the `open` frame, and the `bound` one
+  catches its card mid-entrance; both are stated in the frame table above, and the
+  sentence the run read is quoted there rather than claimed of the image.
 - The toolbar press waits for the row's toast to clear **and** for
   `DEFAULT_ERROR_COOLDOWN` to expire first: `toast-manager.ts` drops an identical
   message inside those 5 s, and this arm's two presses produce the same sentence, so
