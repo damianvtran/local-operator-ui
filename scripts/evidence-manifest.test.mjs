@@ -1448,6 +1448,18 @@ const BRANCH_RECORDS = [
 	"streamGapHeldReadingsRestampNote",
 	"mentionsRemedyRestampNote",
 	/*
+	 * And by the answer-press copy pass - the pass this branch carries. It is the
+	 * case the entries above name: the note is the only statement of which two
+	 * trees the change moved (`src/` for the two coded refusals' own sentences and
+	 * the app's bounded repeat for the busy arm, `scripts/` for the two arms' rig
+	 * rows and their assertions), of the twelve frames added to a set that is not
+	 * swept, and of the six of them that are `origin/main`'s own rendering. A fold
+	 * resolved from main's copy would drop it, and the re-derived tokens would then
+	 * read as a claim about main's trees. It quotes no tree-hash pair, so
+	 * `BRANCH_RECORDS` is where it belongs.
+	 */
+	"answerNoticeArmsRestampNote",
+	/*
 	 * Grown by the U15 + D28 pass, which wrote this branch's newest top-level
 	 * record. It is listed for the reason the list exists: the pass moved BOTH
 	 * trees and added a frame set, and the record is the only statement of what
@@ -2971,6 +2983,18 @@ const BRANCH_RECORDS = [
 	 * would drop it without a word.
 	 */
 	"streamSmoothRestampNote",
+	/*
+	 * And by the row menu's Fork item (#739), this branch's own newest top-level
+	 * record: the note that states the set was re-taken whole (24 frames, the ten
+	 * #694 states with the third row drawn plus `fork-withheld` and `fork-pressed`),
+	 * that the design record moved with it, and the two facts a re-capturer needs -
+	 * the pointer states' story now waits for the rig's pointer before opening the
+	 * menu (the modal body's `pointer-events: none` made the old timer a race the
+	 * fold lost), and why `dirtyWorkingTree` reads `true`. It quotes no tree-hash
+	 * pair (commit SHAs only), so it joins this list and not
+	 * `STAMP_BINDING_NOTES`.
+	 */
+	"rowForkMenuNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

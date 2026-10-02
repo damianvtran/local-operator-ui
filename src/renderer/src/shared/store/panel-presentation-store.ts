@@ -71,11 +71,34 @@ export type PanelRequest = {
 	 * (`command-palette.tsx`), and that is exactly the node both gestures should
 	 * return to, so it is passed rather than rediscovered.
 	 *
-	 * Read by the SHELL host. The pane's own close path keeps its rule (null here,
-	 * composer on close, `slash-dispatch.ts`) because the pane has a composer to
-	 * fall back to and is where the user's hand already is.
+	 * Read by the SHELL host. The pane's own close path keeps its rule for the
+	 * palette (null here, composer on close, `slash-dispatch.ts`) because the pane
+	 * has a composer to fall back to and is where the user's hand already is. A
+	 * request that names a `sessionId` comes from a door outside the pane, and the
+	 * pane returns focus to THAT door (the composer remains the fallback when the
+	 * node is gone).
 	 */
 	invoker: HTMLElement | null;
+	/**
+	 * The conversation this request ADDRESSES, when its requester is not the pane.
+	 *
+	 * ABSENT FOR THE PALETTE, and that is the rule, not a gap: the palette acts on
+	 * "the conversation in front of the user", which is the pane's own `sessionId`,
+	 * so it has nothing to name. A requester OUTSIDE the pane — the sidebar's row
+	 * menu (#739) — acts on a row that is generally NOT the pane's conversation
+	 * (right-click -> Fork works without opening the row first), so the request has
+	 * to carry which conversation it means.
+	 *
+	 * THE PRESENTER MUST NOT SUBSTITUTE ITS OWN when this is set: a fork of the
+	 * wrong conversation is a silent success — a new, plausible conversation that
+	 * is a copy of something the user did not point at. `slash-dispatch.ts`'s
+	 * consume effect reads `request.sessionId ?? paneSessionId`, in that order.
+	 *
+	 * Everything else about presenting stays the pane's (canonical handle, command
+	 * catalogue, note line, dispatch, rebind): the request names a SUBJECT, not a
+	 * second way to present one.
+	 */
+	sessionId?: string;
 };
 
 /**
@@ -94,8 +117,14 @@ type PanelPresentationState = {
 	 *
 	 * `invoker` is the control to hand focus back to when the panel closes
 	 * (see `PanelRequest.invoker`); omitted only where the caller has none to name.
+	 * `sessionId` names the conversation the request addresses when the requester
+	 * is outside the pane (see `PanelRequest.sessionId`); the palette never passes it.
 	 */
-	requestPanel: (destination: string, invoker?: HTMLElement | null) => void;
+	requestPanel: (
+		destination: string,
+		invoker?: HTMLElement | null,
+		sessionId?: string,
+	) => void;
 	/** Retire a request, by nonce. */
 	consumePanel: (nonce: number) => void;
 	/**
@@ -180,7 +209,7 @@ let claims = 0;
 export const usePanelPresentationStore = create<PanelPresentationState>(
 	(set) => ({
 		request: null,
-		requestPanel: (destination, invoker) => {
+		requestPanel: (destination, invoker, sessionId) => {
 			nextNonce += 1;
 			set({
 				request: {
@@ -188,6 +217,9 @@ export const usePanelPresentationStore = create<PanelPresentationState>(
 					nonce: nextNonce,
 					requestedAt: Date.now(),
 					invoker: invoker ?? null,
+					// Spread, not `sessionId: undefined`: the palette's request keeps the
+					// exact shape it has always had, key for key.
+					...(sessionId ? { sessionId } : {}),
 				},
 			});
 		},
