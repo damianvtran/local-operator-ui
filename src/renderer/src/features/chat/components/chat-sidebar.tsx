@@ -192,6 +192,8 @@ import {
 	pageOrder,
 	pageRows,
 	parseSidebarView,
+	raiseSectionCap,
+	releaseSectionCap,
 	shownSections,
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
@@ -1723,11 +1725,23 @@ export function ChatSidebar({
 		},
 		[catalogueScopes],
 	);
-	const toggle = (key: string, initial = false) =>
+	const toggle = (key: string, initial = false) => {
+		const next = !isOpen(key, initial);
 		setExpanded((current) => ({
 			...current,
-			[key]: !(current[key] ?? initial),
+			[key]: next,
 		}));
+		/*
+		 * CLOSING RELEASES THE SECTION'S RAISED CAP (issue #765): the reader who
+		 * pressed `Show more` four times and then collapsed the section asked for
+		 * the compact form back, and the raised cap used to outlive the disclosure
+		 * until a relaunch. `releaseSectionCap` owns the rule and its reasons (delete,
+		 * not decrement); this is the only edge that writes it, and only on a CLOSE,
+		 * so an open - which draws the rows the press added - never narrows under the
+		 * reader.
+		 */
+		if (!next) setSectionCaps((previous) => releaseSectionCap(previous, key));
+	};
 	/*
 	 * The bulk read receipt: one control, one gesture, no shortcut.
 	 *
@@ -6669,12 +6683,7 @@ export function ChatSidebar({
 						type="button"
 						data-sidebar-section-more={key}
 						onClick={() =>
-							setSectionCaps((previous) => ({
-								...previous,
-								[key]:
-									(previous[key] ?? SIDEBAR_SECTION_ROWS) +
-									SIDEBAR_SECTION_ROWS,
-							}))
+							setSectionCaps((previous) => raiseSectionCap(previous, key))
 						}
 						className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 					>
