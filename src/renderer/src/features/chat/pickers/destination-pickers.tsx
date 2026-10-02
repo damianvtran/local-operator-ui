@@ -1946,23 +1946,39 @@ function readForkEntryExcerpt(data: Record<string, unknown>): string | null {
 }
 
 /**
- * What a refused CUT says, in the reader's terms.
+ * What the cut arm adds to a refused fork, WITHOUT speaking for the cause.
  *
- * WHY IT IS NOT THE BACKEND'S SENTENCE (UX round 1, U3 / agent review M4): the
- * core answers every cut refusal with one sentence - *"that message is not part
- * of this conversation; pick a message from this session to fork from"* - and
- * for the case this control can actually produce that sentence is FALSE. A row
- * that is still an uncommitted echo (an in-flight send, or an undelivered one
- * that stays on screen) IS part of the conversation to the reader and is not in
- * the journal yet, so the reader is told their own message is foreign. The
- * core's own cause-classified copy is the in-flight slice this PR's body
- * declares as a dependency; until it lands, this is the one sentence that is
- * true of every cause the route refuses (unknown or foreign id, a point before
- * the newest summary's anchor, an unfinished tool batch, a compaction pass in
- * flight): the cut cannot be taken right now, here are the two ways forward.
+ * WHY IT IS APPENDED AND NOT SUBSTITUTED (agent review round 2, MAJOR-1). The
+ * first shape of this copy replaced the failure text whenever a cut was in play,
+ * and that was wrong twice over:
+ *
+ *   - `perform` returns null for EVERY throw, so the replacement covered a
+ *     transport failure, a timeout and the schema refusal this file documents
+ *     (“Invalid desktop operation.”) as well as the route's refusals. A sentence
+ *     about the message is a lie for a backend that never answered.
+ *   - the route classifies a cut refusal in PROSE, not one sentence: compaction
+ *     in flight (“retry /fork when compaction finishes”), an unknown or foreign
+ *     id (“that message is not part of this conversation”), a point before the
+ *     newest summary's anchor (“fork from a message after the summary”) and a
+ *     boundary inside an unfinished tool batch (“retry after the original
+ *     finishes that batch”). Three of the four already name the reader's own
+ *     fix, so dropping them lost information.
+ *
+ * What is left for this side to say is the one thing the core cannot know and
+ * the reader can: for a row that is still an uncommitted echo (an in-flight
+ * send, or an undelivered one that stays on screen) the refusal reads as “that
+ * message is not part of this conversation” about a message that plainly is.
+ * The note names that window without asserting it - “may”, conditional on the
+ * reader having just sent it - and it advises NOTHING, because every action it
+ * could name can itself be refused: while a compaction pass is in flight the
+ * route refuses *every* cut, including the whole-conversation one, so the
+ * earlier “or fork the whole conversation instead” was advice that could not
+ * work. The core's own sentence carries the fix; this note explains the one
+ * gap. The typed-code mapping that would replace this note lands with the core
+ * slice (in flight in `damianvtran/local-operator`) and is declared on the PR.
  */
-const FORK_CUT_REFUSAL =
-	"The fork was not created. This conversation cannot be cut at that message right now - it may not be committed yet, or a step just after it may still be in flight. Pick another message, or fork the whole conversation instead.";
+export const FORK_CUT_NOTE =
+	"If that message was sent just now, it may not be in the conversation's history yet.";
 
 /**
  * Fork the conversation - all of it, or the prefix that ends at one message.
@@ -2069,16 +2085,13 @@ export const ForkPicker: FC<PickerContext> = ({
 				}`,
 			}),
 			"The fork was not created",
+			/*
+			 * Appended to the owner's own detail rather than replacing it; see
+			 * `FORK_CUT_NOTE` for the two reasons and for what the note deliberately
+			 * does NOT say.
+			 */
+			cutEntryId ? FORK_CUT_NOTE : undefined,
 		);
-		/*
-		 * The cut arm's refusal is REPLACED, not appended to: see
-		 * `FORK_CUT_REFUSAL` for why the backend's sentence is dropped here (it
-		 * claims the reader's own message is foreign) and why one true sentence is
-		 * the honest thing until the core's cause-classified copy lands.
-		 */
-		if (!value && cutEntryId) {
-			op.setResult({ tone: "error", text: FORK_CUT_REFUSAL });
-		}
 		if (value) rebind(value.data.session_id);
 	}, [op, sessionId, message, rebind, cutEntryId]);
 	return (
