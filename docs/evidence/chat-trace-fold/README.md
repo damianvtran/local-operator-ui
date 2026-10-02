@@ -75,18 +75,35 @@ hid — so at a minimum-width column, or beside a live clause whose object is lo
 the counts wrap onto the next line and the row grows (`min-h-5`, so the ledger
 pitch opens only where a line genuinely needs it).
 
-**The wrap falls at a ` · ` and never inside a phrase, and that is a shape rather
-than a hope.** `foldSummaryUnits` returns the line as its UNITS — each kept
-segment, and the `and N other actions` tail as one unit — and the header paints
-one `whitespace-nowrap` span per unit with the separators between them, so the
-browser's only break opportunity is a separator. The joined string still exists
-for consumers with no DOM to paint (`foldSummary`, the collapsed bar's `title`).
-The first cut returned one joined string, and the 640px frame broke `and 4 other
-actions` between the numeral and its noun, leaving `other actions` alone on line 2
-— design round 1's D1, measured in the frame. The summary span also carries
-`break-words`, so a single unit longer than the column (the operator's own run
-holds `1 workspace_get_gmail_thread_content`) breaks inside itself instead of
-painting past the box (agent review round 1, R1-4).
+**The COUNT LINE wraps at a ` · ` and never inside a phrase, and that is a shape
+rather than a hope.** `foldSummarySpec` returns the line as its UNITS — each kept
+segment, and the `and N other actions` tail as one unit — and says which SHAPE the
+summary is. The header paints each count-line unit in a `whitespace-nowrap` span
+with the separators between them, so the browser's only break opportunity is a
+separator. The joined string still exists for consumers with no DOM to paint
+(`foldSummary`, the collapsed bar's `title`). The first cut returned one joined
+string, and the 640px frame broke `and 4 other actions` between the numeral and
+its noun, leaving `other actions` alone on line 2 — design round 1's D1, measured
+in the frame.
+
+**What bounds a count-line unit is the column floor, NOT a break.** Round 1's
+comment claimed `break-words` let an over-long unit break inside itself; it cannot.
+`overflow-wrap` does not act inside a `white-space: nowrap` box, so on these units
+the property is inert by design — agent review round 2's R2-1 is the finding, and
+QA measured the served markup and bounded the consequence as Q-r2-3. The real
+bound is arithmetic: the narrowest column the app can give this header is ~350px
+(`WINDOW_MIN_WIDTH` 800 and `CHAT_PANE_MIN_PX` 480), and the longest unit a run can
+compose is the 230.6px `1 workspace_get_gmail_thread_content` — so a unit always
+fits and the units never break. The `many-types-kept/` cell photographs exactly
+that state at 420 (five types, the long kind KEPT rather than folded into the
+tail), with the geometry readout beside it.
+
+**`break-words` on the span is for the SENTENCE, and a sentence must wrap.** The
+header is told which shape it has (`FoldSummarySpec.prose`): a count line's units
+hold together, a sentence is painted to break at its own spaces — which is how
+`Explored 4 files, delegated 3 tasks` painted before this branch, and round 1's
+first cut made it unbreakable by painting it nowrap too (R2-1's second half). Where
+the sentence breaks, `break-words` is what keeps one over-long word inside the box.
 
 **The yield order is the two flex factors, and both halves were measured in the
 Chrome this ships on rather than reasoned about.** Flex hands each item a share of
@@ -118,7 +135,8 @@ failing test rather than a silent re-derivation of the evidence.
 | frames | tree | what they show |
 | --- | --- | --- |
 | `many-types/` — 2 frames (1280×130) | this branch | the operator's nine-type run, capped and on ONE line: `6 searches · 1 task · 2 browser actions · 1 ai_search · 1 get_tool_access · and 4 other actions`, the `1h` span intact at the far end |
-| `many-types-narrow/` — 2 frames (640×130) | this branch | the same capped header at the 640px window: two lines, and the break lands on a ` · ` — `6 searches · 1 task · 2 browser actions · 1 ai_search · 1 get_tool_access ·` / `and 4 other actions`, the tail whole on line 2 and the `1h` span still inside the row |
+| `many-types-narrow/` — 2 frames (**640×131** after, 640×130 before) | this branch | the same capped header at the 640px window: two lines, and the break lands on a ` · ` — `6 searches · 1 task · 2 browser actions · 1 ai_search · 1 get_tool_access ·` / `and 4 other actions`, the tail whole on line 2 and the `1h` span still inside the row. The wrap is what grows the row by the extra pixel (round 2, Q-r2-2: this row said `640×130` for the after half too, which the committed frames contradict) |
+| `many-types-kept/` — 2 frames (**420×150**) | this branch | the ≤5-type run that KEEPS the long kind at the narrowest cell (round 2, design D3 / QA Q-r2-3): `1 file · 1 search · 1 web search · 1 shell · 1 workspace_get_gmail_thread_content` with every unit whole and the row inside its own right edge |
 | [`../chat-trace-fold-before/many-types/` + `many-types-narrow/`](../chat-trace-fold-before/) — 4 frames | `af6fffa899` (this branch's cut point) with ONLY the new story cell and its sweep rows added | the UNCAPPED line: nine segments, ellipsised (`1 query_…` at 1280; truncated mid-word at 640) — the state the report quotes |
 
 The before half's base is the branch's cut point, the same convention
@@ -139,6 +157,7 @@ node scripts/chat-alignment-geometry.mjs http://127.0.0.1:6077
 | --- | --- | --- | --- | --- | --- | --- |
 | `many-types` @1280 — after | 52 → 610.8 | 558.8 | 19.5 | **1** | 52 → 712 | 644.8 |
 | `many-types-narrow` @640 — after | 52 → 558 | 506 | 39 | **2** | 52 → 592 | **592** (fits) |
+| `many-types-kept` @420 — the long kind as a KEPT unit | 52 → 330.8 | 278.8 | 39 | **2** | 52 → 372 | **372** (fits; ink right 371 dark / 364 light) |
 | `many-types` @1280 — before | 52 → 678 | 626 | 19.5 | 1 (ellipsised) | — | — |
 | `many-types-narrow` @640 — before | 52 → 558 | 506 | 19.5 | 1 (truncated) | — | — |
 
@@ -183,19 +202,33 @@ the shipped code paints.
 
 WHAT THE UNITS CHANGE DID TO THE PIXELS, measured rather than asserted, because
 it re-shapes every header: each unit is its own text run now, so Chrome re-rastered
-the glyphs. Of the 44 frames, 21 moved and every one of them is glyph-level —
-`compare -metric AE` reports a few hundred to a few thousand pixels, and with a
-15% per-channel fuzz **the difference is 0 on all of them**, while the ink extents
-are byte-for-byte the same (measured on `many-types` and `agent-ops`: both
-`591×12+53+4` and `147×12+53+4` before and after). So the words and their places
-are unchanged; only the antialiasing differs. The one frame whose LAYOUT changed
-is `many-types-narrow/` (the break inside the tail phrase became a break at a
-separator), and the one whose content changed is the pair itself (`many-types/`
-and `many-types-narrow/` are this round's reason for re-taking).
+the glyphs — and this paragraph names its BASELINE for every count, because a
+count without one is what round 2's R2-2 / Q-r2-1 and R2-3 caught here.
 
-Beyond those, the set behaves as the previous pass found: the three hover/focus
-cells of the picture strip move inside the ≤5/255 class a re-capture on the
-*unmodified* tree reproduces — `images-many-hover-reduced-motion/localOperatorDark`
-(390 px), `images-many-hover/localOperatorDark` (390 px) and
-`images-many-hover-reduced-motion/localOperatorLight` (1,171 px) — and the strip
-they sit on is untouched by every change in this branch.
+*Against the pre-round tree (`a3dde2d266`, the last head before this round's code
+change):* **18 of the 44 frames differ.** Sixteen are glyph-level — `compare
+-metric AE` reports a few hundred to a few thousand pixels and with a 15%
+per-channel fuzz **the difference is 0 on all sixteen**, while the ink extents are
+byte-for-byte the same (measured on `many-types` and `agent-ops`: both
+`591×12+53+4` and `147×12+53+4` before and after), so the words and their places
+are unchanged and only the antialiasing differs. The other two are the LAYOUT
+change this round is about: `many-types-narrow/{localOperatorDark,localOperatorLight}`
+at **448 / 462** under the same 15% fuzz (the break inside the tail phrase became a
+break at a separator).
+
+*The re-take commit (`f21e8bab627`) and its body, corrected here (agent review round
+2, R2-3):* its diff stages **20** frames of this set (plus this README), and of
+those, **2 differ from the tree they replaced** — `images-many-focus/localOperatorDark`
+(**472**) and `images-many-hover-reduced-motion/localOperatorDark` (**390**), both
+**0** under a 15% fuzz — while the other 18 came back byte-identical. The commit
+body claims *"the fold set came back byte-identical, all 44 frames"*; that is
+false, and the sample behind it is the mistake: the re-take was checked on the two
+cells this change is about (`many-types`, `many-types-narrow` — genuinely
+byte-identical) and the sentence generalised them to the whole set. The four
+picture-strip cells that have moved at some point in this round, named rather
+than implied: `images-many-hover-reduced-motion/localOperatorDark` (390),
+`images-many-hover-reduced-motion/localOperatorLight` (1,171),
+`images-many-hover/localOperatorDark` (390) and `images-many-focus/localOperatorDark`
+(472) — every one of them 0 under the 15% fuzz, in the class a re-capture on the
+*unmodified* tree reproduces, and the strip they sit on is untouched by every
+change in this branch.
