@@ -2086,11 +2086,13 @@ async function main() {
 				labelSet.every((label) => CLOSE_LABEL_POSITION.test(label)),
 			{ labels: labelSet },
 		);
+		await captureAppFrame("close-affordance.png");
 		/*
-		 * THE REVEAL'S TWO ARMS (design round 1, D2's unphotographed states). The hover arm
-		 * is attempted through Chromium's own input pipeline - the path measured below NOT
-		 * to reach a never-shown window for presses; whether a MOVE reaches is what the cell
-		 * records. The focus arm is the keyboard's own arrival: `focus({ focusVisible: true })`
+		 * THE REVEAL'S TWO ARMS (design round 1, D2's unphotographed states), captured
+		 * AFTER the affordance frame so the strip it photographs is the pristine one - a
+		 * pointer parked on a row for these cells would leave its reveal in every frame
+		 * that follows. The hover arm is attempted through Chromium's own input pipeline;
+		 * the focus arm is the keyboard's own arrival: `focus({ focusVisible: true })`
 		 * reveals the control through `focus-within` and draws the ring the design round
 		 * asked to see - whose reach is then MEASURED against the strip's overflow clip,
 		 * because a trimmed ring is exactly how the device chip's own D2 went.
@@ -2124,8 +2126,28 @@ async function main() {
 			await rendererEvaluate(
 				"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
 			);
+			/*
+			 * AND THE POINTER IS PARKED OFF THE ROWS, with an assertion that the strip has
+			 * gone back to its resting state - every later frame in this set photographs a
+			 * strip nobody is pointing at.
+			 */
+			await withRendererSession((call) =>
+				call("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: 900,
+					y: 400,
+				}),
+			);
+			await sleep(220);
+			const resting = await rowsReading();
+			check(
+				"the pointer is parked off the strip and the inactive controls wait again (#754's frames after this one hold a strip nobody points at)",
+				resting.some(
+					(row) => row.surface !== runningSurface && row.opacity === "0",
+				),
+				resting,
+			);
 		}
-		await captureAppFrame("close-affordance.png");
 
 		// 2. the question, and nothing dead before it is answered
 		/*
@@ -2266,13 +2288,26 @@ async function main() {
 			handedOff === selectedAfterClose,
 			{ selectedAfterClose, handedOff },
 		);
+		await captureAppFrame("close-closed.png");
+		/*
+		 * THE HANDOFF'S OWN FRAME, drawn as the keyboard draws it: the app's capture of the
+		 * handoff is a DOM write no synthetic press can make paint (the click's heuristic
+		 * says pointer, so no `:focus-visible` ring), so the frame re-focuses THE SAME TAB
+		 * the handoff chose with `focus({ focusVisible: true })` - the state a keyboard user
+		 * lands in, on the row the next Tab would reach. The check above is the claim; this
+		 * is what the claim looks like.
+		 */
+		await focusDom(`[data-surface="${selectedAfterClose}"] [role="tab"]`);
+		await sleep(150);
 		await captureAppFrame("close-focus-handoff.png");
+		await rendererEvaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
 		check(
 			"a close keeps a retained surface's history (the dismissal below is what removes it)",
 			existsSync(historyLog),
 			{ historyLog },
 		);
-		await captureAppFrame("close-closed.png");
 		const afterClose = await questionReading();
 		check(
 			"the question is gone once it has been answered",
