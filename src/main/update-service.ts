@@ -3381,6 +3381,22 @@ export class UpdateService {
 	}
 
 	/**
+	 * Whether this quit's RELAUNCH is already owned by the update lane, as a
+	 * read-only question for the quit's own terminal.
+	 *
+	 * The same fact `quitForInFlightInstall` decides: when a live pending install
+	 * exists, the app quits so Squirrel's swap can proceed and the relaunch
+	 * watchdog is what brings it back. A second return path arriving at that swap
+	 * is exactly the failure both lanes guard against — Squirrel's last check
+	 * aborts an install when any instance of the target app is running — so #755's
+	 * successor launch (a reopen refused during the quit, completed with
+	 * `app.relaunch` at the quit terminal) must stand down while this is true.
+	 */
+	public inFlightInstallOwnsRelaunch(): boolean {
+		return this.inFlightQuitWatchdogEnsured;
+	}
+
+	/**
 	 * Kill a watchdog still running from the recorded install attempt.
 	 *
 	 * Killing by pid alone would be unsafe after a pid reuse, so the process's
