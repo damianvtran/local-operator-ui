@@ -9765,6 +9765,27 @@ const driveGlobalUpdate = async ({
 	restartOk = true,
 	runGate = null,
 	/*
+	 * THE SERVE RECORD'S OWN READINGS (2026-09-30, the rollover lane): the
+	 * post-condition verify reads the serving process's record before and after
+	 * the updater - the instance token and the boot version - so a case about
+	 * "the reload landed" / "it did not" scripts them here. One entry per read,
+	 * anything after the queue repeats the last one; the default is the
+	 * unreadable record this fixture's world has always had (no record
+	 * planted), which is exactly "not proven moved".
+	 */
+	serveInstances = [],
+	serveBootVersions = [],
+	/*
+	 * The machine's runtime roster (`GET /v1/desktop/runtimes`) for the
+	 * straggler census, as the CRUDResponse's `result` object
+	 * (`{ runtimes: [...] }`). Null - the default - leaves `requestDesktop`
+	 * absent, so the census falls back to the liveness reading, which is the
+	 * shape every pre-existing case keeps.
+	 */
+	runtimeRoster = null,
+	/* A roster read that cannot be taken, for the fallback's own arm. */
+	fleetUnreadable = false,
+	/*
 	 * The post-restart version poll is stubbed by default: the shipped one waits up
 	 * to 60 s, which no case should pay. `stubWait: false` runs the shipped poll
 	 * against the scripted `/health` reading, which is what the R2-1 case needs - the
@@ -9781,6 +9802,27 @@ const driveGlobalUpdate = async ({
 	 */
 	workState = "idle",
 	fleet = [],
+	/*
+	 * THE ROSTER AFTER THE BOUNCE (review round 1's A4). Every read answers `fleet`
+	 * until the fixture's own restart recorder has a restart in it, and
+	 * `fleetAfter` (default null = nothing moved) from then on - so a case can
+	 * model a machine where the move left a session without a runtime, which is
+	 * the before/after pair the generation tail's displaced set is computed from.
+	 */
+	fleetAfter = null,
+	/*
+	 * A WORKING ENGAGE STUB (review round 1's A4), off by default: the cases that
+	 * came before never drove the engage, and switching it on everywhere would put
+	 * the rebuild route's long-standing cases onto a path they were not written
+	 * for. On, it gives the backend the two surfaces
+	 * `engageSessionThroughStream` needs - a stream that announces a subscription
+	 * id, and desktop watch/warm answering 200 - and marks a session resident the
+	 * moment it is warmed, so a displaced session comes back on the first poll
+	 * rather than paying the real hold. The LEASE protocol itself is under test in
+	 * the app-owned cases against a real daemon (R2-M1); this stub exists so the
+	 * generation tail's SELECTION - which sessions, how many reads - is drivable.
+	 */
+	engageStub = false,
 	drainBudgetMs = 5,
 	drainPollMs = 1,
 	/*
@@ -9811,15 +9853,37 @@ const driveGlobalUpdate = async ({
 	 * which is what the refusal case pins the window with.
 	 */
 	let autoUpdating = false;
+	/** The sessions the engage stub has warmed, resident from the next read. */
+	const engagedIds = new Set();
 	const calls = {
 		installers: [],
 		/** The budget each reach for an installer was given, in the order taken. */
 		budgets: [],
 		restarts: 0,
+		/** The `stopGraceMs` each restart was given, in order (A4). */
+		restartStopGraceMs: [],
+		/** Every desktop request the engage stub answered, in order (A4). */
+		desktop: [],
 		starts: 0,
 		autoUpdating: [],
 		holdAtFleetRead: [],
+		/** Every `runtimes.list` the census took, in order (design §5). */
+		runtimeReads: [],
 	};
+	/*
+	 * The serve-record queue: one entry per `servingInstall()` call, and anything
+	 * after the queue repeats the last one - so `["i-before", "i-after"]` means
+	 * "the first read sees the old instance, every later read the new one",
+	 * regardless of how many incidental reads the flow takes.
+	 */
+	const serveQueues = {
+		bootVersions: [...serveBootVersions],
+		instances: [...serveInstances],
+	};
+	const shiftServe = (key, fallback) =>
+		serveQueues[key].length > 1
+			? serveQueues[key].shift()
+			: (serveQueues[key][0] ?? fallback);
 	const backend = {
 		getStartupMode: () => service.LocalOperatorStartupMode.GLOBAL_INSTALL,
 		getBackendUrl: () => "http://127.0.0.1:9",
@@ -9828,8 +9892,14 @@ const driveGlobalUpdate = async ({
 			autoUpdating = value;
 			calls.autoUpdating.push(value);
 		},
-		restart: async () => {
+		restart: async (options = {}) => {
 			calls.restarts += 1;
+			/*
+			 * THE BOUND IS RECORDED, NOT ASSUMED (review round 1's A4): the fallback's
+			 * stop drain is the ONE restart in the app that passes a shorter grace, and
+			 * a fixture that dropped the argument could not tell it from the default.
+			 */
+			calls.restartStopGraceMs.push(options?.stopGraceMs ?? null);
 			return restartOk;
 		},
 		start: async () => {
@@ -9847,7 +9917,8 @@ const driveGlobalUpdate = async ({
 		 */
 		servingInstall: () => ({
 			readings: {
-				bootVersion: null,
+				bootVersion: shiftServe("bootVersions", null),
+				instanceId: shiftServe("instances", null),
 				prefix: "",
 				installKind: "",
 				startedByApp: false,
@@ -9865,8 +9936,89 @@ const driveGlobalUpdate = async ({
 		 * The roster, in the WIRE's own field names, converted by the shipped parse -
 		 * the same read and the same shape the gate sees in the app.
 		 */
-		servingSessionFleet: async () =>
-			service.fleetRosterFromSessions({ result: { sessions: fleet } }),
+		servingSessionFleet: async () => {
+			if (fleetUnreadable) return null;
+			const wire =
+				fleetAfter === null ? fleet : calls.restarts > 0 ? fleetAfter : fleet;
+			/*
+			 * A WARMED SESSION IS RESIDENT FROM THE NEXT READ (the engage stub's half
+			 * of "the runtime came up"): without this the poll would wait out the real
+			 * hold to learn what the stub already decided.
+			 */
+			const rows = engageStub
+				? [
+						...wire,
+						...[...engagedIds].map((id) => ({
+							id,
+							name: `engaged ${id}`,
+							kind: "daemon",
+							live_state: "idle",
+						})),
+					]
+				: wire;
+			return service.fleetRosterFromSessions({ result: { sessions: rows } });
+		},
+		/*
+		 * The roster read, present only when a case gives one: with `runtimeRoster`
+		 * null this stays off the mock entirely and the census falls back the way it
+		 * must on a backend that cannot answer (the catch in
+		 * `UpdateService.readRuntimeCensus` covers the absence).
+		 */
+		...(runtimeRoster || engageStub
+			? {
+					requestDesktop: async (request) => {
+						calls.runtimeReads.push(request?.op ?? "?");
+						/*
+						 * THE ENGAGE'S TWO OPS, answered 200 by the stub (A4): the warm is what
+						 * marks the session resident for the poll above.
+						 */
+						if (
+							engageStub &&
+							(request?.op === "sessions.watch" ||
+								request?.op === "sessions.warm")
+						) {
+							calls.desktop.push(request);
+							if (
+								request.op === "sessions.warm" &&
+								typeof request.sessionId === "string"
+							) {
+								engagedIds.add(request.sessionId);
+							}
+							return { status: 200, body: { status: 200, message: "" } };
+						}
+						return {
+							status: 200,
+							body: { status: 200, message: "", result: runtimeRoster },
+						};
+					},
+				}
+			: {}),
+		/*
+		 * THE STUB STREAM (A4): `engageSessionThroughStream` waits for the open frame
+		 * that carries the subscription id, so this announces one - synchronously, so
+		 * the engage skips its own open-wait sleep. The id is shared across sessions
+		 * ON PURPOSE: the lease protocol's realism belongs to the app-owned cases,
+		 * not here.
+		 */
+		...(engageStub
+			? {
+					getStreamRelay: () => ({
+						subscribe: (_options, emit) => {
+							emit({
+								kind: "data",
+								data: JSON.stringify({
+									type: "open",
+									payload: {
+										subscription_id: "0123456789abcdef0123456789abcdef",
+									},
+								}),
+							});
+							return { streamId: "stub-engage-stream" };
+						},
+						unsubscribe: () => {},
+					}),
+				}
+			: {}),
 		hasOpenSessionStreams: () => false,
 		checkIsAutoUpdating: () => autoUpdating,
 	};
@@ -10098,8 +10250,16 @@ test("an update that lands installs first and restarts the app's own daemon afte
 		assert.deepEqual(completed.payload, {
 			installVersion: "0.56.0",
 			runningVersion: "0.56.0",
+			/*
+			 * THE RESTART ARM'S OWN TWO FIELDS (2026-09-30): `moved` states where the
+			 * daemon ended up (it reports the target, which this fixture's poll
+			 * returns), and the count's source is the liveness fallback on a world
+			 * with no runtime roster to read.
+			 */
+			moved: true,
 			restarted: true,
 			sessionsOnOldBuild: 0,
+			sessionsOnOldBuildSource: "liveness",
 		});
 	} finally {
 		run.dispose();
@@ -16864,20 +17024,31 @@ const syntheticGenerationInstall = (id = "g0001") => {
 	return { root, prefix, script: join(prefix, "bin", "local-operator") };
 };
 
-test("a generation install announces and leaves the app-owned daemon on its build", async () => {
+test("a generation install whose serve did not move is restarted onto the new build", async () => {
 	/*
-	 * The harness installs into per-generation roots behind a `current` pointer, and
-	 * the daemon keeps serving the generation it booted from - the install lands in a
-	 * tree no running process is reading. Restarting it would spend a bounce, and
-	 * whatever is in flight, to buy nothing: the runtime adopts the new build at its
-	 * own next idle. So the press reports the skew and leaves the process alone.
+	 * THE RESTART FALLBACK, WHICH THE POST-CONDITION NOW DECIDES (2026-09-30).
+	 *
+	 * The old rule was a static property of the layout: a generation install never
+	 * restarted the daemon ("a restart would spend a bounce to buy nothing"). That
+	 * was right about the layout and blind about the PROCESS - the updater's cheap
+	 * serve reload is what makes the move happen without a bounce, and on the days
+	 * it does not land (this fixture's world: no record, so no proof) the skeleton
+	 * it leaves is a daemon still serving old code with a completion that says
+	 * nothing was restarted. The rule is a post-condition now: the serving
+	 * process's own record must prove the move, and this case is the arm where it
+	 * does not - so the restart runs, and the payload says so.
+	 *
+	 * /health IS SCRIPTED TO SPEAK THE NEW BUILD while the record proves nothing:
+	 * its version is computed from the metadata on disk when it answers
+	 * (`backend-version-drift.ts`'s trap), so it may never be the proof of a move -
+	 * and this arm would be wrong (silent success over a stale server) if it were.
 	 */
 	const install = syntheticGenerationInstall();
 	const run = await driveGlobalUpdate({
 		before: "0.55.10",
 		after: "0.56.0",
 		target: "0.56.0",
-		daemonReports: "0.55.10",
+		daemonReports: "0.56.0",
 		servingPrefix: install.prefix,
 	});
 	try {
@@ -16889,19 +17060,201 @@ test("a generation install announces and leaves the app-owned daemon on its buil
 		);
 		assert.equal(
 			run.calls.restarts,
-			0,
-			"a generation install may not restart the daemon it started",
+			1,
+			"an unproven move on the app-owned daemon is the restart fallback",
+		);
+		assert.deepEqual(
+			run.calls.restartStopGraceMs,
+			[5_000],
+			"the fallback's stop drain is BOUNDED to the 5s grace (review round 1's A4): the process is being replaced anyway, and the default grace is what the other restart callers keep",
+		);
+		assert.deepEqual(backendPhases(run.sent), ["installing", "restarting"]);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.restarted, true);
+		assert.equal(completed.payload.moved, true);
+		assert.equal(completed.payload.installVersion, "0.56.0");
+		assert.equal(
+			completed.payload.runningVersion,
+			"0.56.0",
+			"the restarted daemon reports the target, and the payload names it",
+		);
+		assert.deepEqual(backendErrors(run.sent), []);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a generation fallback restart re-engages only the sessions its one read shows displaced", async () => {
+	/*
+	 * REVIEW ROUND 1'S A4: every generation case passed `fleet: []`, so the
+	 * fallback tail's engage-displaced path was never driven - the code that
+	 * decides WHICH sessions come back ran only in the app-owned cases, against a
+	 * different tail. This case gives the fallback a fleet: a working session and
+	 * an unwatched `daemon`-kind one before the bounce, the daemon one without a
+	 * runtime after it - exactly the session nothing else revives - and asserts
+	 * that only it is engaged, once, off the ONE read the tail takes.
+	 */
+	const install = syntheticGenerationInstall();
+	const run = await driveGlobalUpdate({
+		before: "0.55.10",
+		after: "0.56.0",
+		target: "0.56.0",
+		daemonReports: "0.56.0",
+		servingPrefix: install.prefix,
+		fleet: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "busy" },
+			{
+				id: "ccccccccccc3",
+				name: "Delegated run",
+				kind: "daemon",
+				live_state: "idle",
+			},
+		],
+		fleetAfter: [
+			{ id: "aaaaaaaaaaa1", name: "Working", kind: "tui", live_state: "idle" },
+		],
+		engageStub: true,
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.equal(
+			run.calls.restarts,
+			1,
+			"the unproven move takes the restart fallback",
+		);
+		assert.deepEqual(
+			run.calls.desktop.map((request) => `${request.op}:${request.sessionId}`),
+			["sessions.watch:ccccccccccc3", "sessions.warm:ccccccccccc3"],
+			"one lease and one warm, for the displaced daemon session only - a1 stayed resident and is never re-engaged",
 		);
 		const completed = backendCompletion(run.sent);
 		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.restarted, true);
+		assert.equal(completed.payload.moved, true);
+		assert.deepEqual(backendErrors(run.sent), []);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a serve the updater reloaded is proven by its own record, and nothing restarts", async () => {
+	/*
+	 * TODAY'S MISBRANCH, AS A CASE (2026-09-30). The updater reloads the serving
+	 * process in place - its record shows a new instance on the target build - and
+	 * the app used to decide from the INSTALL's before/after diff, which a
+	 * concurrent installer can flip under it (`before === after` read as "nothing
+	 * left to install" and KILLED the freshly reloaded serve for a restart plus the
+	 * retire wait). The post-condition replaced the diff: the record proves the
+	 * move, no restart phase is drawn, and the tail is ONE census read.
+	 *
+	 * /health IS SCRIPTED TO SPEAK THE OLD BUILD on purpose: it is the reading this
+	 * verdict may NOT come from (its version is computed from disk metadata and
+	 * reports the newer install while the process serves old code from memory), so
+	 * the case would still pass even if the record and /health disagreed - which is
+	 * exactly what the day the trap was found looked like.
+	 */
+	const install = syntheticGenerationInstall("g0003");
+	const run = await driveGlobalUpdate({
+		before: "0.55.10",
+		after: "0.56.0",
+		target: "0.56.0",
+		daemonReports: "0.55.10",
+		servingPrefix: install.prefix,
+		serveInstances: ["i-before", "i-after"],
+		serveBootVersions: [null, "0.56.0"],
+		/*
+		 * The roster the census reads: one runtime on the new build, two on the old,
+		 * one whose build is UNKNOWN (an empty string is not old - the roster
+		 * journal's rule - and the count must skip it).
+		 */
+		runtimeRoster: {
+			runtimes: [
+				{ pid: 1, build_version: "0.56.0" },
+				{ pid: 2, build_version: "0.55.10" },
+				{ pid: 3, build_version: "0.55.10" },
+				{ pid: 4, build_version: "" },
+			],
+		},
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.equal(run.calls.restarts, 0, "a proven reload restarts nothing");
+		assert.deepEqual(
+			backendPhases(run.sent),
+			["installing"],
+			"no restarting phase, because no restart ran",
+		);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.moved, true);
 		assert.equal(completed.payload.restarted, false);
 		assert.equal(completed.payload.installVersion, "0.56.0");
 		assert.equal(
 			completed.payload.runningVersion,
-			"0.55.10",
-			"the server keeps running the build it loaded, and the payload says which",
+			"0.56.0",
+			"the RECORD's build - not /health's stale reading",
+		);
+		assert.equal(
+			completed.payload.sessionsOnOldBuild,
+			2,
+			"two runtimes are still on the old build; the unknown one is not counted",
+		);
+		assert.equal(completed.payload.sessionsOnOldBuildSource, "build");
+		assert.equal(
+			run.calls.runtimeReads.length,
+			1,
+			"the census is ONE roster read, never a wait",
 		);
 		assert.deepEqual(backendErrors(run.sent), []);
+	} finally {
+		run.dispose();
+	}
+});
+
+test("a pointer flip under the press cannot force a restart, and a dead roster is unmeasured", async () => {
+	/*
+	 * THE RACE, EXACTLY AS THE OPERATOR'S MACHINE PRODUCED IT (2026-09-30): a
+	 * concurrent installer flips `current` before the app's own before-read, so the
+	 * install reads `0.56.0 -> 0.56.0` - "nothing left to install" was the whole
+	 * verdict then, and the press killed the serve the updater had just reloaded.
+	 * Now the record decides: the instance changed, the process boots the target,
+	 * and the completion is a success without a restart.
+	 *
+	 * The census in the SAME case is the one that cannot be measured: no runtime
+	 * roster answers and the fleet read is unreadable, so the count is NULL - not a
+	 * zero, which would draw no line at all, and not a number, which would invent
+	 * one. Null is the numberless sentence's own arm (design §2e).
+	 */
+	const install = syntheticGenerationInstall("g0004");
+	const run = await driveGlobalUpdate({
+		before: "0.56.0",
+		after: "0.56.0",
+		target: "0.56.0",
+		daemonReports: "0.55.10",
+		servingPrefix: install.prefix,
+		fleetUnreadable: true,
+		serveInstances: ["i-before", "i-after"],
+		serveBootVersions: [null, "0.56.0"],
+	});
+	try {
+		assert.equal(await run.updateService.updateBackend("0.56.0"), true);
+		assert.equal(
+			run.calls.restarts,
+			0,
+			"the already-current readings are not a restart sentence any more",
+		);
+		assert.deepEqual(backendPhases(run.sent), ["installing"]);
+		const completed = backendCompletion(run.sent);
+		assert.ok(completed, JSON.stringify(run.sent.map((c) => c.channel)));
+		assert.equal(completed.payload.moved, true);
+		assert.equal(completed.payload.restarted, false);
+		assert.equal(
+			completed.payload.sessionsOnOldBuild,
+			null,
+			"no roster and no fleet read is UNMEASURED, never a zero",
+		);
+		assert.equal(completed.payload.sessionsOnOldBuildSource, null);
 	} finally {
 		run.dispose();
 	}

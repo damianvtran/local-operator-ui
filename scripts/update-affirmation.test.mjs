@@ -2234,6 +2234,92 @@ test("a completed install the notice declines still answers the press", () => {
 });
 
 /**
+ * THE COUNT'S FOUR ARMS, from the producer's own field (design §2a/§2d,
+ * 2026-09-29; consult-verbatim 2026-09-30).
+ *
+ * N>=2, N=1, N=0 and unreadable are four arms of ONE string builder, and the
+ * consult's ruling is that the shipped sentences stay verbatim - ONE TERM
+ * ("session"), the idle-switch promise, and a measured zero that draws NOTHING
+ * (a measured silence is not the same sentence as an unmeasured one, and the
+ * numberless arm may never stand in for it). The producer's own `moved` reading
+ * rides the same event and is what the panel now keys its skew decision from:
+ * a completion that PROVED the move is a success even when a newer install landed
+ * beside it mid-press (that is the next check's offer, not this panel's).
+ */
+test("the completion's count arms and moved reading are one sentence builder", () => {
+	const completion = (payload) => {
+		const handle = mountNotification();
+		startServerUpdate(handle);
+		updater.emit("backend-update-completed", {
+			installVersion: "0.56.2",
+			runningVersion: "0.56.2",
+			restarted: true,
+			...payload,
+		});
+		handle.render();
+		const shown = visible(handle);
+		assert.equal(
+			shown.length,
+			1,
+			`the completion must paint exactly one notice: ${JSON.stringify(shown)}`,
+		);
+		return shown[0].text;
+	};
+
+	const behind = completion({ sessionsOnOldBuild: 3 });
+	assert.match(behind, /Server update completed successfully/, behind);
+	assert.match(
+		behind,
+		/3 sessions are still running the old build; they will move onto the new build when they next stop or go idle\./,
+		behind,
+	);
+
+	const one = completion({ sessionsOnOldBuild: 1 });
+	assert.match(
+		one,
+		/1 session is still running the old build; it will move onto the new build when it next stops or goes idle\./,
+		one,
+	);
+
+	/*
+	 * A MEASURED ZERO DRAWS NOTHING. The heading alone is the right report for
+	 * "everything is on the new build": it is a claim about a fleet measured
+	 * moments after a restart, and the arm has nothing for the reader to wait for.
+	 */
+	const zero = completion({ sessionsOnOldBuild: 0 });
+	assert.equal(
+		zero,
+		"Server update completed successfully",
+		"a measured zero is silence, not a sentence",
+	);
+
+	const unreadable = completion({ sessionsOnOldBuild: null });
+	assert.match(
+		unreadable,
+		/Sessions that are still running the old build will move onto the new build when they next stop or go idle\./,
+		unreadable,
+	);
+
+	/*
+	 * THE PRODUCER'S PROOF BEATS ITS OWN READINGS' DISAGREEMENT (2026-09-30): a
+	 * `moved: true` completion is the reload that landed, and a pair that differs
+	 * because a NEWER release landed mid-press is the next check's offer - the
+	 * panel must not answer a press that achieved its target with a skew notice.
+	 */
+	const movedAhead = completion({
+		installVersion: "0.56.3",
+		moved: true,
+		restarted: false,
+	});
+	assert.match(movedAhead, /Server update completed successfully/, movedAhead);
+	assert.equal(
+		/older build than the install/.test(movedAhead),
+		false,
+		`a proven move is never a skew: ${movedAhead}`,
+	);
+});
+
+/**
  * R2-5: the phase lives in the same cleanup as the flags that put the panel up.
  *
  * `updateBackend`'s `finally` clears `checking`/`updatingBackend` unconditionally
@@ -2243,15 +2329,19 @@ test("a completed install the notice declines still answers the press", () => {
  * the previous attempt's sentence.
  */
 /**
- * U13: the panel that follows the click carries the same reading as the offer.
+ * U13, re-scoped by the rollover lane (2026-09-30): the in-flight panel is
+ * restart-neutral, on both arms.
  *
- * The offer learned to stop promising a restart it cannot perform (U9), and the
- * in-flight install panel went on making the same promise two seconds later, on
- * the same machine, from a constant chosen by the install's LAYOUT. Both ask
- * `serverRestartsWithInstall` now, so this case pins both arms of the SAME
- * payload, before and after the press.
+ * The offer learned to stop promising a restart it cannot perform (U9) by asking
+ * `serverRestartsWithInstall`. The rollover's fast path then made even the OFFER's
+ * restart clause obsolete - the install lands beside the running build and the
+ * serve reloads in place, cutting nothing, with the restart demoted to a
+ * fallback only the completion can report - so the installing arm no longer
+ * carries any restart promise on either arm. This case files both arms of the
+ * same payload, before and after the press, and pins the neutrality the copy
+ * consult specified.
  */
-test("the in-flight install panel promises a restart only where one is coming", () => {
+test("the in-flight install panel is restart-neutral on both arms", () => {
 	const press = (restartable) => {
 		const handle = mountNotification();
 		updater.emit("backend-update-available", {
@@ -2282,12 +2372,32 @@ test("the in-flight install panel promises a restart only where one is coming", 
 		`an adopted server is not taken offline: ${adoptedAmbientCopy}`,
 	);
 
-	// And the install phase itself, which is where the reviewer found it.
+	/*
+	 * And the install phase itself, which is where the reviewer found it - and
+	 * which is now RESTART-NEUTRAL ON BOTH ARMS (copy consult, 2026-09-30). The
+	 * old sentence ("... and it restarts once the install lands") keyed off
+	 * `serverRestartsWithInstall`; the rollover's fast path is an in-place reload
+	 * that cuts nothing and the restart is a FALLBACK only the completion can
+	 * report, so no arm of this panel may announce either outcome in advance. The
+	 * ownership reading still decides the OFFER's sentence and the ambient
+	 * fallback below; it no longer reaches this arm, and these assertions pin
+	 * that rather than the promise they used to.
+	 */
 	const owned = press(true);
 	updater.emit("backend-update-progress", { phase: "installing" });
 	owned.render();
 	const ownedCopy = allCopy(owned).join(" ");
-	assert.match(ownedCopy, /and it restarts once the install lands/, ownedCopy);
+	assert.match(ownedCopy, /Rolling the server onto/, ownedCopy);
+	assert.match(
+		ownedCopy,
+		/Nothing in flight is cut off - the turns running on this machine keep running/,
+		ownedCopy,
+	);
+	assert.equal(
+		/restarts once the install lands/.test(ownedCopy),
+		false,
+		`no arm announces a restart in advance: ${ownedCopy}`,
+	);
 
 	const adopted = press(false);
 	updater.emit("backend-update-progress", { phase: "installing" });
@@ -2298,12 +2408,27 @@ test("the in-flight install panel promises a restart only where one is coming", 
 		false,
 		`the panel must not re-promise the restart: ${adoptedCopy}`,
 	);
-	// The rest of the sentence still stands.
-	assert.match(adoptedCopy, /keeps serving while this runs/, adoptedCopy);
+	// The rest of the sentence still stands, on the adopted arm too.
+	assert.match(adoptedCopy, /Rolling the server onto/, adoptedCopy);
 	assert.match(
 		adoptedCopy,
 		/can't be interrupted once it has started/,
 		adoptedCopy,
+	);
+	assert.equal(
+		/will temporarily go offline/.test(adoptedCopy),
+		false,
+		`an adopted server is not announced offline: ${adoptedCopy}`,
+	);
+	/*
+	 * AND THE TWO ARMS AGREE, which is the new invariant this case exists for:
+	 * the installing sentence no longer varies by ownership, so the drift between
+	 * what the offer promised and what the panel kept can no longer open here.
+	 */
+	assert.equal(
+		ownedCopy,
+		adoptedCopy,
+		"the installing sentence is one sentence on both arms",
 	);
 });
 
@@ -2390,9 +2515,7 @@ test("a phase from an attempt answered elsewhere cannot leak into the next", asy
 	updater.emit("backend-update-progress", { phase: "installing" });
 	handle.render();
 	assert.ok(
-		allCopy(handle).some((text) =>
-			/Installing the new server build/.test(text),
-		),
+		allCopy(handle).some((text) => /Rolling the server onto/.test(text)),
 		JSON.stringify(allCopy(handle)),
 	);
 
@@ -2410,7 +2533,7 @@ test("a phase from an attempt answered elsewhere cannot leak into the next", asy
 	handle.render();
 	const copy = allCopy(handle).join(" ");
 	assert.equal(
-		/Installing the new server build/.test(copy),
+		/Rolling the server onto/.test(copy),
 		false,
 		`the new attempt must not open on the old attempt's phase: ${copy}`,
 	);
