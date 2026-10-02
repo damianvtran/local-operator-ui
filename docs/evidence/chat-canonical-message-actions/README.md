@@ -17,6 +17,33 @@ have nothing on that line. **The row is discoverable because it is ON SCREEN at
 rest**, so every state below is photographed with no pointer in the frame unless
 the state IS the pointer.
 
+**THE ARM, DECLARED (design round 1 D2, round 2 D1): the nine resting states
+ship in the HOVER-LESS arm (`touch: true` — `Emulation.setTouchEmulationEnabled`
+in the rig); the four interaction states ship in a hover-capable one.** Which arm
+a capture renders under decides whether a pointer-less frame can show the row at
+all: its reveal is `opacity-0 … group-hover:opacity-100
+group-focus-within:opacity-100 [@media(hover:none)]:opacity-100`
+(`message-actions.ts`), so under the product's own pointer arm the row is
+invisible until the pointer or the keyboard arrives — and nine of this set's
+states exist precisely to show the row in its context. The hover-less arm is the
+app's own, not an invention of the rig: the arrival animation beside the reveal
+is gated on `hover: hover` for exactly the opposite reason
+(`styles/index.css`).
+
+**The older generation was not this arm, and could not be reproduced as it
+stood:** its resting frames predate the reveal itself — `opacity-0` and the
+`(hover: none)` exception landed in `3d03a2f3e63`, after those frames were taken
+— so they show the row because nothing hid it then, under a hover-capable host.
+That is why round 1's reading (and the sentence that briefly stood here, calling
+it "the rig's headless Chrome reports no hover capability") was wrong, and why a
+refresh that simply inherited the host's media result lost the row from all nine.
+The arm is now SET BY THE RIG and declared per entry (`touch`), so a different
+host cannot move it silently.
+
+**And the product's pointer arm has no resting frame at all** — by design, not by
+omission: to a reader with a mouse the row is one hover or one Tab away, and the
+`hover-copy/` and `focus-copy/` entries are that arm's own evidence.
+
 **This set also carries the 2026-10-01 REARRANGEMENT of its own line** (operator
 direction: the caption to the content's own left rail, the action row and the
 stamp as the line's right cluster), and the before half of that pair is the
