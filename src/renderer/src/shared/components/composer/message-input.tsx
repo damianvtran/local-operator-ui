@@ -5799,25 +5799,39 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * attempt, the arriving stream passes the resolve arm's identity check, and a
 		 * recorder is created and started (with its state setters called) for a tree
 		 * that no longer exists: a live microphone nothing on screen can end. An
-		 * unmount mid-take leaves the running recorder behind the same way. The
-		 * abandon has to happen BEFORE the ref is cleared: nulling it is exactly what
-		 * makes the resolve arm discard the in-flight stream by identity and stop its
-		 * tracks, which is the only teardown available while the take has no recorder
-		 * yet. The recorder half reuses `settleRecordingAttempt`'s abort arm (tracks
-		 * stopped, blob dropped, no transcription request), so a discarded take dies
-		 * here the same way it dies at Escape. It is an unmount-only effect, and the
-		 * attempt is null at mount, so React's StrictMode double-invoke is a no-op.
+		 * unmount mid-take leaves the running recorder behind the same way. Nulling
+		 * the attempt ref IS the abandon, and while the take has no recorder yet it is
+		 * the only teardown available - the resolve arm's identity check is what then
+		 * discards the in-flight stream and stops its tracks. The recorder half reuses
+		 * `settleRecordingAttempt`'s abort arm (tracks stopped, blob dropped, no
+		 * transcription request), so a discarded take dies here the same way it dies
+		 * at Escape. It is an unmount-only effect, and the attempt is null at mount,
+		 * so React's StrictMode double-invoke is a no-op.
 		 */
 		useEffect(() => {
 			return () => {
-				const ownsAttempt = recordingAttemptRef.current !== null;
-				const ownsRecorder = mediaRecorderRef.current !== null;
+				const hadAttempt = recordingAttemptRef.current !== null;
+				/*
+				 * The abandon, first: this ref is what the resolve arm's identity check
+				 * reads, so it is cleared before any settle can run.
+				 */
 				recordingAttemptRef.current = null;
-				if (ownsRecorder) {
+				/*
+				 * NOT A LIVENESS READING (agent review round 1, minor): nothing nulls
+				 * `mediaRecorderRef` when a take settles, so from the first recording
+				 * onward it points at a STOPPED recorder on every later unmount, and "is
+				 * there a recorder" would be true - and would run a settle for a take that
+				 * ended long ago - for the rest of the component's life. Whether a take is
+				 * still RUNNING is what this cleanup needs to know, and only the recorder's
+				 * own state answers that. The ref is deliberately left in place:
+				 * `settleRecordingAttempt` reads it itself.
+				 */
+				const recorder = mediaRecorderRef.current;
+				if (recorder && recorder.state !== "inactive") {
 					settleRecordingAttempt("abort");
 					return;
 				}
-				if (ownsAttempt) setIsPreparing(false);
+				if (hadAttempt) setIsPreparing(false);
 			};
 		}, [settleRecordingAttempt]);
 
