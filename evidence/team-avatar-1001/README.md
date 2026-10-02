@@ -75,7 +75,7 @@ binary invocation (never `pnpm run`, whose dependency verification would try to
 reinstall the shared tree):
 
 ```sh
-# on the PR branch (worktree team-avatar-1001-73f8, head 52860d87fb)
+# on the PR branch (worktree team-avatar-1001-73f8)
 ./node_modules/.bin/storybook dev -p 6142 --ci --disable-telemetry --no-version-updates
 # and, in a worktree of origin/main (af6fffa899) holding the same story file and
 # the same rig, the same command on -p 6143
@@ -84,6 +84,23 @@ node scripts/capture-evidence.mjs http://localhost:<port> \
   --only=<story id> --dirs=<the frames to take> \
   --themes=localOperatorDark --allow-backend
 ```
+
+ROUND 1'S REMEDIATION re-took four of these frames (the focus pair's after half,
+both halves of the search pair, and the new light selected-row frame) on ports
+6201, 6213 and 6217, one storybook at a time, each reaped by exact pid. Two
+things that cost a run each and are worth not re-deriving:
+
+- **The base worktree needs `--theme-settle-ms=60000`.** The rig waits 10s
+  (shipped) for the decorator to put the theme on the document; on a worktree
+  whose Vite cache is cold, the story had not mounted by then and the run refused
+  the frame ("document carries theme \"\" after 10s"). The knob exists for exactly
+  this - see its own note in `capture-evidence.mjs`.
+- **The search state's query is driven by its entry, with a settle.** `press` on
+  `[data-sidebar-search]` opens the field, which focuses itself in a
+  `requestAnimationFrame` on the NEXT frame; `insertText` with no `pressSettleMs`
+  types into the body and the frame comes back with the field OPEN and EMPTY
+  (19464 bytes, measured). Every claim above about which frames exist and what
+  they carry comes from a run whose output was read, not inferred.
 
 `--dirs` is what keeps a before run off the states that cannot exist on old code
 (the mark's hover and focus frames, and the bubble's own story). The rig writes
