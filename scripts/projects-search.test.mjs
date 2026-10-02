@@ -222,6 +222,16 @@ test("the backend's hits become this listing's rows, in the ANSWER's rank order"
 	assert.deepEqual(search.projectsForHits(rows, []), []);
 });
 
+/*
+ * The claims the per-engine copy is held to, hoisted to module scope because a
+ * literal re-allocated per assertion is the thing `useTopLevelRegex` refuses —
+ * and these are the sentence's own words, so they read better named.
+ */
+const CLIENT_DISCLAIMER = /Update text is not searched\./;
+const ANY_DISCLAIMER = /is not searched/;
+const NAMES_UPDATES = /update text/;
+const SHARED_RECOVERY = /Clearing the search and filters restores the list\.$/;
+
 test("each engine carries its own no-match subline, and neither lies about update text", () => {
 	const { SEARCH_SUBLINE } = search;
 	/*
@@ -231,19 +241,19 @@ test("each engine carries its own no-match subline, and neither lies about updat
 	 * which is the whole reason it exists. So the sentence must not be shared,
 	 * and the engine that reads updates must not deny doing so.
 	 */
-	assert.match(SEARCH_SUBLINE.client, /Update text is not searched\./);
+	assert.match(SEARCH_SUBLINE.client, CLIENT_DISCLAIMER);
 	assert.doesNotMatch(
 		SEARCH_SUBLINE.backend,
-		/is not searched/,
+		ANY_DISCLAIMER,
 		"the index reads update text; a sentence denying it is false the moment it serves",
 	);
-	assert.match(SEARCH_SUBLINE.backend, /update text/);
+	assert.match(SEARCH_SUBLINE.backend, NAMES_UPDATES);
 	// The one claim BOTH engines make, because both are the same box over the
 	// same listing: an empty result is undone by the same clear.
 	for (const engine of ["client", "backend"]) {
 		assert.match(
 			SEARCH_SUBLINE[engine],
-			/Clearing the search and filters restores the list\.$/,
+			SHARED_RECOVERY,
 			`${engine}: the shared half of the sentence`,
 		);
 		assert.notEqual(SEARCH_SUBLINE[engine].trim(), "");
