@@ -90,6 +90,28 @@ const bundle = await build({
 			import { useRef, useState } from "react";
 			import { QuoteToolkit } from "./src/renderer/src/features/chat/canonical/quote-toolkit";
 			import { LinkToolkit } from "./src/renderer/src/features/chat/canonical/link-toolkit";
+			import { TextSelectionControls } from "./src/renderer/src/shared/components/common/text-selection-controls";
+
+			/*
+			 * The selection toolbar mounted on its own subject, with whatever the DOM
+			 * currently holds selected - so a case can mount it with NO highlight, which
+			 * is the state its enabled gate has to tell the truth about.
+			 */
+			export const SelectionHarness = ({ conversationId, text }) => {
+				const turnRef = useRef(null);
+				return (
+					<div id="selection-harness">
+						<div ref={turnRef}>
+							<p>{text}</p>
+						</div>
+						<TextSelectionControls
+							targetRef={turnRef}
+							conversationId={conversationId}
+							showSpeech
+						/>
+					</div>
+				);
+			};
 
 			export const QuoteHarness = ({ conversationId, text }) => {
 				const turnRef = useRef(null);
@@ -417,9 +439,8 @@ test("the selection's toolbar offers Speak beside Quote, and speaks exactly the 
 		requests,
 		[
 			{
-				op: "speech.agent",
-				agentId: "conv-1",
-				request: { input_text: "quick brown fox" },
+				op: "speech.create",
+				request: { input: "quick brown fox" },
 			},
 		],
 		"the request is the highlight itself - no timestamp, no turn",
@@ -439,6 +460,78 @@ test("the selection's toolbar offers Speak beside Quote, and speaks exactly the 
 		"the press leaves the reader's highlight alone",
 	);
 	await unmount();
+});
+
+test("the toolbar's Speak is DISABLED when there is no scope to speak under (MINOR-2)", async () => {
+	/*
+	 * The state the finding names: a highlight the toolbar can act on, and NO scope
+	 * to key the utterance under (`conversationId` and `agentId` both absent), so
+	 * the press has nothing to say and no key to say it on. The gate this replaced
+	 * - `Boolean(agentId)` - was the wrong question asked of the right button; the
+	 * right one is the surface's own subject.
+	 */
+	const text = "The quick brown fox jumps over the lazy dog.";
+	/*
+	 * jsdom HAS NO LAYOUT, so `Range.getBoundingClientRect` - the rect the toolbar
+	 * positions itself from, and the field it refuses to render without - is not
+	 * implemented at all. A stand-in rect is what lets this rig reach the state the
+	 * finding is about; the geometry is not what is under test here.
+	 */
+	const rect = () => ({
+		x: 0,
+		y: 0,
+		top: 0,
+		left: 0,
+		right: 10,
+		bottom: 10,
+		width: 10,
+		height: 10,
+		toJSON: () => ({}),
+	});
+	/*
+	 * The highlight is raised the way the component reads one: a real DOM range,
+	 * then the `mouseup` its own listener waits for (it settles inside a
+	 * `setTimeout(0)`, so the flush after it is part of the gesture).
+	 */
+	const highlight = async (harness) => {
+		harness.dom.window.Range.prototype.getBoundingClientRect = rect;
+		const node = harness.dom.window.document.querySelector("p").firstChild;
+		await harness.select(node, 4, node, 19);
+		await act(async () => {
+			harness.dom.window.document.dispatchEvent(
+				new harness.dom.window.MouseEvent("mouseup", { bubbles: true }),
+			);
+		});
+		await harness.flush();
+	};
+	const rootless = await mount(mod.SelectionHarness, { text });
+	await highlight(rootless);
+	const inert = buttonIn(rootless.dom, "#selection-harness", "Speak aloud");
+	assert.ok(inert, "the highlight still raises the toolbar");
+	assert.equal(
+		inert.disabled,
+		true,
+		"no scope: the press could only be a no-op, and the control says so",
+	);
+	await rootless.unmount();
+
+	/*
+	 * And the same highlight WITH a scope is pressable - the gate is the surface's
+	 * subject, not the conversation's agent binding, which is what the arm beside
+	 * this one pins.
+	 */
+	const scoped = await mount(mod.SelectionHarness, {
+		conversationId: "conv-1",
+		text,
+	});
+	await highlight(scoped);
+	const pressable = buttonIn(scoped.dom, "#selection-harness", "Speak aloud");
+	assert.equal(
+		pressable?.disabled,
+		false,
+		"a scope makes the same highlight speakable",
+	);
+	await scoped.unmount();
 });
 
 test("clearing the highlight takes the selection's audio with it (UX round 1, U1)", async () => {
@@ -596,9 +689,8 @@ test("a highlight inside a link offers Speak on the link toolbar, speaking exact
 		requests,
 		[
 			{
-				op: "speech.agent",
-				agentId: "conv-1",
-				request: { input_text: "report" },
+				op: "speech.create",
+				request: { input: "report" },
 			},
 		],
 		"the words are the highlight, not the link's whole label",
@@ -635,9 +727,8 @@ test("with no highlight, the link toolbar's Speak answers with the link's own te
 		requests,
 		[
 			{
-				op: "speech.agent",
-				agentId: "conv-1",
-				request: { input_text: "report.txt" },
+				op: "speech.create",
+				request: { input: "report.txt" },
 			},
 		],
 		"the fallback is the link's visible text, read at press time",
