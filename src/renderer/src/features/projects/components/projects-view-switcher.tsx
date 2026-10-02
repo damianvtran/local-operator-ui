@@ -35,7 +35,14 @@ const VIEWS: { value: ProjectsView; label: string }[] = [
 	{ value: "timeline", label: "Timeline" },
 ];
 
-/** The stored choice, or `list` — the design's default — for anything else. */
+/**
+ * The stored choice, or `board` for anything else — the design's default,
+ * which since the search/filter workstream is the BOARD: a missing key or an
+ * unrecognised token reads as "never chosen", and only a never-chosen value
+ * takes the new default. A reader who chose `list` or `timeline` keeps their
+ * choice, because "unset" and "explicitly list" are different states (the
+ * storage key and its format are unchanged — no migration, no new key).
+ */
 export function readProjectsView(): ProjectsView {
 	try {
 		const stored = localStorage.getItem(PROJECTS_VIEW_STORAGE_KEY);
@@ -44,7 +51,7 @@ export function readProjectsView(): ProjectsView {
 	} catch {
 		/* storage unavailable: the default is the honest answer */
 	}
-	return "list";
+	return "board";
 }
 
 export function writeProjectsView(view: ProjectsView): void {
