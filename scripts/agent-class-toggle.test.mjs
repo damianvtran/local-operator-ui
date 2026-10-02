@@ -592,7 +592,10 @@ const row = (over = {}) => ({
  * user actually hits, and the one U1 is about, because the state on disk has
  * moved while the client is told the write failed.
  */
-const installBridge = (rows, { failWrite = null, aidaName = "Aida", features = {} } = {}) => {
+const installBridge = (
+	rows,
+	{ failWrite = null, aidaName = "Aida", features = {} } = {},
+) => {
 	const calls = [];
 	const handler = async (request) => {
 		calls.push(request.op);
@@ -917,12 +920,19 @@ test("a write that failed AFTER the backend committed is corrected by the re-rea
 
 test("Ask for a change puts its own sentence in the box that renders (QA round 2, Q1)", async () => {
 	await withPage(async (world) => {
-		const { container, root } = await mount("/agents?kind=agent&name=aida", world, {
-			aidaName: "Nova",
-			features: { agents_config: 1, session_interrupt: 1 },
-		});
+		const { container, root } = await mount(
+			"/agents?kind=agent&name=aida",
+			world,
+			{
+				aidaName: "Nova",
+				features: { agents_config: 1, session_interrupt: 1 },
+			},
+		);
 		const box = () => container.querySelector("textarea");
-		assert.ok(await settle(() => Boolean(box())), "the run's box never rendered");
+		assert.ok(
+			await settle(() => Boolean(box())),
+			"the run's box never rendered",
+		);
 		const ask = buttonNamed(container, "Ask for a change");
 		assert.ok(ask, "the header action never rendered");
 		/*
@@ -962,9 +972,13 @@ test("Ask for a change puts its own sentence in the box that renders (QA round 2
 
 test("the discard question takes the focus its Cancel gave up (UX round 2, U1)", async () => {
 	await withPage(async (world) => {
-		const { container, root } = await mount("/agents?kind=agent&name=aida", world, {
-			aidaName: "Nova",
-		});
+		const { container, root } = await mount(
+			"/agents?kind=agent&name=aida",
+			world,
+			{
+				aidaName: "Nova",
+			},
+		);
 		const footer = () => container.querySelector('[data-testid="edit-footer"]');
 		assert.ok(
 			await settle(() => Boolean(buttonNamed(container, "Edit"))),
