@@ -189,6 +189,24 @@ export type TooltipProps = {
 	delayDuration?: number;
 	/** Render the child bare, with no tooltip at all. */
 	disabled?: boolean;
+	/**
+	 * Keep the trigger mounted and simply do not open. The difference from
+	 * `disabled` is the TREE, and it is the whole reason this prop exists:
+	 * `disabled` renders the child BARE, which replaces the trigger element (and
+	 * every element under it) with a fresh one, so a page whose trigger CONTAINS a
+	 * second tooltip's trigger has that panel remounted and closed on the same
+	 * hover that opened it - measured on the chat sidebar's team mark (operator ask
+	 * 2026-10-01): hovering the mark with the row's flyout `disabled` left the row's
+	 * card suppressed and the mark's own tooltip GONE, because the mark was
+	 * remounted with its `Tooltip.Root`.
+	 *
+	 * `suppressed` holds the root mounted and passes `open={false}` down it, so the
+	 * trigger is the same DOM node before and after; Radix's own handlers still run,
+	 * they just cannot open anything while the caller says no. Use it when the panel
+	 * must stand down for a reason INSIDE the trigger's own subtree; `disabled`
+	 * stays the verb for "the panel must not exist" (a drag owning the pointer).
+	 */
+	suppressed?: boolean;
 	/** Applied to the tooltip panel, not to the trigger. */
 	className?: string;
 	/* No `defaultOpen`: it was added here to photograph tooltip strings, then
@@ -208,6 +226,7 @@ export const Tooltip = ({
 	disableHoverableContent = false,
 	collisionPadding,
 	disabled = false,
+	suppressed = false,
 	className,
 }: TooltipProps) => {
 	const hasProvider = useContext(TooltipProviderPresence);
@@ -218,6 +237,14 @@ export const Tooltip = ({
 
 	const tooltip = (
 		<TooltipRoot
+			/*
+			 * `undefined` rather than `false` when the caller is not suppressing: a
+			 * Radix root left UNCONTROLLED behaves exactly as it always did, while a
+			 * root pinned to `false` would ignore every hover for the rest of the
+			 * mount. Radix reads `prop !== undefined` per render, so the two states
+			 * coexist on one root across a hover - which is the shape this needs.
+			 */
+			open={suppressed ? false : undefined}
 			delayDuration={delayDuration}
 			disableHoverableContent={disableHoverableContent}
 		>
