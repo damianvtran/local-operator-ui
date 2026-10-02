@@ -7,6 +7,7 @@ import {
 	createContext,
 	forwardRef,
 	useContext,
+	useState,
 } from "react";
 
 /**
@@ -187,7 +188,21 @@ export type TooltipProps = {
 	 */
 	disableHoverableContent?: boolean;
 	delayDuration?: number;
-	/** Render the child bare, with no tooltip at all. */
+	/**
+	 * Render the child bare, with no tooltip at all.
+	 *
+	 * It is outranked by an ACTIVE suppression, deliberately: `disabled` is the
+	 * "this panel must not exist" verb (a drag owns the pointer), while an active
+	 * `suppressed` is a structural claim - the trigger's subtree must survive
+	 * because something inside it owns the pointer - and rendering the child bare
+	 * is the one thing that breaks it. Measured on the chat sidebar's team mark:
+	 * with the row's flyout `disabled` and the mark hot, the row's card stood down
+	 * and the mark's own tooltip was gone with it, because the mark was remounted
+	 * along with the bare subtree. A row that is dragging AND mark-hot is not
+	 * reachable today (a drag captures the pointer, so `pointerenter` on the mark
+	 * cannot fire); the precedence is written down so the next reader does not have
+	 * to find out whether it is reachable.
+	 */
 	disabled?: boolean;
 	/**
 	 * Keep the trigger mounted and simply do not open. The difference from
@@ -200,11 +215,23 @@ export type TooltipProps = {
 	 * card suppressed and the mark's own tooltip GONE, because the mark was
 	 * remounted with its `Tooltip.Root`.
 	 *
-	 * `suppressed` holds the root mounted and passes `open={false}` down it, so the
-	 * trigger is the same DOM node before and after; Radix's own handlers still run,
-	 * they just cannot open anything while the caller says no. Use it when the panel
-	 * must stand down for a reason INSIDE the trigger's own subtree; `disabled`
-	 * stays the verb for "the panel must not exist" (a drag owning the pointer).
+	 * `suppressed` holds the root mounted and closes the panel, so the trigger is
+	 * the same DOM node before and after; Radix's own handlers still run, they just
+	 * cannot open anything while the caller says no. Use it when the panel must
+	 * stand down for a reason INSIDE the trigger's own subtree; `disabled` stays
+	 * the verb for "the panel must not exist" (a drag owning the pointer).
+	 *
+	 * PASSING IT AT ALL is what puts the root under this component's control, and
+	 * that decision has to be stable across the mount or Radix objects: its
+	 * `useControllableState` reads `prop !== undefined` on every render and warns
+	 * when the answer changes ("changing from uncontrolled to controlled"), which a
+	 * prop that appears only while the mark is hot would do on every hover. So the
+	 * absence of the prop is the uncontrolled path - unchanged for every existing
+	 * call site - and a call site that passes it passes a boolean in every state
+	 * (`suppressed={hot === row.id}`), which is controlled from the first render.
+	 * Measured on the previous shape (`open={suppressed ? false : undefined}`, with
+	 * `suppressed` defaulted to `false`): two Radix warnings on one hover, one per
+	 * transition, in the development build Storybook runs.
 	 */
 	suppressed?: boolean;
 	/** Applied to the tooltip panel, not to the trigger. */
@@ -226,25 +253,40 @@ export const Tooltip = ({
 	disableHoverableContent = false,
 	collisionPadding,
 	disabled = false,
-	suppressed = false,
+	suppressed,
 	className,
 }: TooltipProps) => {
 	const hasProvider = useContext(TooltipProviderPresence);
+	/*
+	 * The panel's open state for the controlled path, declared BEFORE the early
+	 * returns below: a hook cannot sit behind a branch, and this one runs on every
+	 * render whether or not the caller is suppressing.
+	 */
+	const [open, setOpen] = useState(false);
+	const controlling = suppressed !== undefined;
 
-	if (disabled || content === null || content === undefined || content === "") {
+	if (
+		(disabled && !suppressed) ||
+		content === null ||
+		content === undefined ||
+		content === ""
+	) {
 		return <>{children}</>;
 	}
 
 	const tooltip = (
 		<TooltipRoot
 			/*
-			 * `undefined` rather than `false` when the caller is not suppressing: a
-			 * Radix root left UNCONTROLLED behaves exactly as it always did, while a
+			 * `undefined` rather than `false` when the caller never passes `suppressed`:
+			 * a Radix root left UNCONTROLLED behaves exactly as it always did, while a
 			 * root pinned to `false` would ignore every hover for the rest of the
-			 * mount. Radix reads `prop !== undefined` per render, so the two states
-			 * coexist on one root across a hover - which is the shape this needs.
+			 * mount. Once a caller DOES pass the prop the root is controlled for the
+			 * whole mount (see the prop's note) - this component owns the open state it
+			 * then switches between, so suppression closes the panel and the ordinary
+			 * hover/focus opens still go through `onOpenChange`.
 			 */
-			open={suppressed ? false : undefined}
+			open={controlling ? (suppressed ? false : open) : undefined}
+			onOpenChange={controlling ? setOpen : undefined}
 			delayDuration={delayDuration}
 			disableHoverableContent={disableHoverableContent}
 		>
