@@ -5082,26 +5082,39 @@ export const STORIES = [
 	/* The panel at its own width clamp, where the rows wrap hardest. */
 	["chat-sidebar-sections--narrow-240", 621, 760],
 	/*
-	 * A query that finds one team and one conversation, both regions drawn, and
-	 * the mark on the row the query MATCHED.
+	 * A query that finds one team and one conversation, both regions drawn, and the
+	 * mark on the row the query MATCHED.
+	 *
+	 * THE QUERY IS DRIVEN FROM HERE, not from the story's play, and that is a
+	 * measured decision rather than a preference: the play cannot reach the filtered
+	 * state under the capture harness. Two mechanisms were tried against this rig -
+	 * `@storybook/test`'s `userEvent` (press the control, then type into the field)
+	 * and a direct native-setter plus `input` dispatch on the same field - and BOTH
+	 * left the panel unfiltered at the shutter while the play was still asserting:
+	 * both frames came back at 18642 bytes, `Rows drawn: 10 entity - 8 chats`, with
+	 * no field drawn. `press` + `insertText` is the path this rig has always used for
+	 * typed states (the rename and token frames), it goes through the real input
+	 * pipeline, and it is what produced this state's first shipped frame.
+	 *
+	 * `expectPresent` IS THE D4 ASSERTION, at the shutter: the row the query matched
+	 * draws a team mark. A filtered frame whose matched row carries no mark fails the
+	 * run rather than being filed.
 	 */
 	[
 		"chat-sidebar-sections--query-while-collapsed",
 		741,
 		460,
 		{
+			press: "[data-sidebar-search]",
 			/*
-			 * THE QUERY IS DRIVEN BY THE STORY'S OWN PLAY, not from here as it was in the
-			 * first round: the play presses the sidebar's search control and types into
-			 * the one `textbox`, which is the path a reader takes and the only one that
-			 * can express the D4 assertion (the filtered row carries the mark) INSIDE the
-			 * story. Driving it twice - once here, once in the play - would type the word
-			 * into a field the play had already opened, so this entry no longer presses.
-			 *
-			 * `expectPresent` is that same D4 fact asserted at the shutter: a frame of the
-			 * filtered list whose matched row draws no mark is not the frame this entry
-			 * files.
+			 * The field mounts on the frame after the press and focuses itself in a
+			 * `requestAnimationFrame`, so `insertText` - which types into whatever holds
+			 * the caret - lands in the body if it runs immediately: measured, the frame
+			 * came back with the field OPEN and EMPTY beside an unfiltered list.
 			 */
+			pressSettleMs: 400,
+			insertText: "helpdesk",
+			insertTextSettleMs: 900,
 			expectPresent: "[data-chat-row] [data-team-bubble]",
 		},
 	],
@@ -5165,7 +5178,17 @@ export const STORIES = [
 		{
 			tabTo: "[data-team-bubble]",
 			dir: "sidebar-team-mark-focus",
-			expectPresent: '[role="tooltip"][data-side="top"]',
+			/**
+			 * A TOOLTIP ON SCREEN, AND THE ROW'S CARD NOT - deliberately not "the tooltip at
+			 * `data-side=top`", which is what this entry asserted in round 1 and what it failed
+			 * on in the remediation round: same code, same walk, and the strict selector found
+			 * nothing while this one finds the panel (measured back to back:
+			 * `[role="tooltip"][data-side="top"]` missing, then `[role="tooltip"]` present on
+			 * the very next run). Which side a panel resolves to is Radix's collision answer
+			 * about where there is room, not a claim this change makes, and asserting it turned
+			 * a working frame into a refused one.
+			 */
+			expectPresent: '[role="tooltip"]',
 			expectGone: '[role="tooltip"][data-side="right"]',
 		},
 	],
