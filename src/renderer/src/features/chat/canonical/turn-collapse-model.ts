@@ -746,6 +746,20 @@ export function paintedRows(
 		step: number;
 		live?: boolean;
 		openRuns?: ReadonlySet<string>;
+		/**
+		 * The reader's transcript display mode (issue #756; agent review round 1, M1,
+		 * and QA round 1's Q1 -- the same finding, from the other instrument).
+		 * Threaded VERBATIM into the `collapsePlan` below, for the same reason
+		 * `completedRunMaxExtra` above is required: this count is the widen's currency,
+		 * and a currency the render does not use is not the reader's. The plan's mode
+		 * is optional and absent means `by-turn`, so leaving it off would make a
+		 * `by-response` render's narration rows read as hidden here while the reader
+		 * looks straight at them -- the metric under-reporting the paint by exactly the
+		 * rows the mode keeps, which is what let the widen step past the size that
+		 * actually revealed a window. Omitted is the shipped `by-turn` condensation,
+		 * byte for byte.
+		 */
+		mode?: TranscriptDisplayMode;
 		snapMaxExtra: number;
 		completedRunMaxExtra: number;
 	},
@@ -767,6 +781,11 @@ export function paintedRows(
 	const plan = collapsePlan(visible, {
 		live: options.live ?? false,
 		openRuns: options.openRuns,
+		/*
+		 * The reader's own mode, passed straight through: this function has no rule of
+		 * its own about what a mode means (see the option's doc).
+		 */
+		mode: options.mode,
 	});
 	let hidden = 0;
 	for (const run of plan.runs) {
@@ -835,6 +854,14 @@ export function widenTarget(
 		maxRows?: number;
 		live?: boolean;
 		openRuns?: ReadonlySet<string>;
+		/**
+		 * The reader's display mode, forwarded to `paintedRows` unchanged (M1/Q1). It
+		 * is declared here so a caller cannot narrow the search's currency to a mode
+		 * the render is not painting in -- the stop is a statement about what the
+		 * READER sees, and the mode decides which rows those are. Omitted is the
+		 * shipped `by-turn`.
+		 */
+		mode?: TranscriptDisplayMode;
 		snapMaxExtra: number;
 		completedRunMaxExtra: number;
 	},

@@ -1261,7 +1261,7 @@ export const SettingsPage: FC = () => {
 								<ToggleSetting
 									value={showAgentReasoning}
 									label="Show agent reasoning"
-									description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one. Reasoning only: narration the agent writes as prose mid-turn is transcript content, not reasoning, so neither display mode hides it."
+									description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one. Reasoning only: narration the agent writes as prose mid-turn is transcript content, not reasoning — never removed by either display mode (by turn folds it behind the turn's bars, by response keeps it on screen)."
 									onChange={async (next) => setShowAgentReasoning(next)}
 								/>
 								{/*

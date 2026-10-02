@@ -41,6 +41,7 @@ import { useSessionCommand } from "../pickers/use-picker-backend";
 import {
 	TRANSCRIPT_DISPLAY_MODE_OPTIONS,
 	parseTranscriptDisplayMode,
+	transcriptDisplayModeLabel,
 } from "../transcript-display-mode";
 import {
 	ChatHeaderIdentity,
@@ -322,6 +323,15 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 */
 	const transcriptDisplayMode = useUiPreferencesStore(
 		(s) => s.transcriptDisplayMode,
+	);
+	/*
+	 * The active mode, judged once for every reader in this file (agent review
+	 * round 1, m3): the submenu trigger NAMES it so the control describes its own
+	 * state, and the radio group marks it - one parse, so the two cannot disagree
+	 * about which mode the menu is stating.
+	 */
+	const activeTranscriptDisplayMode = parseTranscriptDisplayMode(
+		transcriptDisplayMode,
 	);
 	const setTranscriptDisplayMode = useUiPreferencesStore(
 		(s) => s.setTranscriptDisplayMode,
@@ -1285,10 +1295,22 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 								<DropdownMenuSubTrigger>
 									<Rows3 aria-hidden="true" />
 									<span>Transcript display</span>
+									{/*
+									 * THE ACTIVE MODE, named beside the stable name (agent review round 1,
+									 * m3). The trigger's own words stay fixed, so a reader who learned the
+									 * control still knows it; the state rides next to it, muted, rather than
+									 * being folded into the label an item or a screen reader would read as the
+									 * control's name. `transcriptDisplayModeLabel` is the one place a mode's
+									 * words are spelled (`transcript-display-mode.ts`), so this surface and
+									 * the Settings row cannot name the same mode differently.
+									 */}
+									<span className="text-body-sm text-ink-dim">
+										{transcriptDisplayModeLabel(activeTranscriptDisplayMode)}
+									</span>
 								</DropdownMenuSubTrigger>
 								<DropdownMenuSubContent>
 									<DropdownMenuRadioGroup
-										value={parseTranscriptDisplayMode(transcriptDisplayMode)}
+										value={activeTranscriptDisplayMode}
 										onValueChange={(next) =>
 											setTranscriptDisplayMode(parseTranscriptDisplayMode(next))
 										}
