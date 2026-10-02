@@ -1,0 +1,188 @@
+{
+ "origin": "http://127.0.0.1:6051",
+ "story": "/iframe.html?id=chat-sidebar-agents--long-roster&viewMode=story",
+ "states": {
+  "resting": {
+   "rows": 8,
+   "rowNames": [
+    "builder",
+    "release-captain",
+    "bug-intake",
+    "docs-writer",
+    "scout",
+    "ledger-auditor",
+    "incident-scribe",
+    "metrics-analyst"
+   ],
+   "lastRowBox": {
+    "top": 344,
+    "bottom": 376,
+    "height": 32
+   },
+   "section": {
+    "top": 48,
+    "bottom": 436,
+    "height": 388
+   },
+   "foot": {
+    "label": "Show 4 more",
+    "bottom": 404
+   },
+   "teamsTop": 452,
+   "chatsTop": 536,
+   "firstChatTop": 560,
+   "scroller": {
+    "scrollHeight": 712,
+    "clientHeight": 361
+   },
+   "headingExpanded": "true",
+   "documentHeight": 413,
+   "active": {
+    "tag": "BODY",
+    "name": null,
+    "sectionKey": null,
+    "moreKey": null,
+    "entityName": false
+   }
+  },
+  "grown": {
+   "rows": 12,
+   "rowNames": [
+    "builder",
+    "release-captain",
+    "bug-intake",
+    "docs-writer",
+    "scout",
+    "ledger-auditor",
+    "incident-scribe",
+    "metrics-analyst",
+    "translator",
+    "patch-reviewer",
+    "night-shift",
+    "archivist"
+   ],
+   "lastRowBox": {
+    "top": 472,
+    "bottom": 504,
+    "height": 32
+   },
+   "section": {
+    "top": 48,
+    "bottom": 536,
+    "height": 488
+   },
+   "foot": null,
+   "teamsTop": 552,
+   "chatsTop": 636,
+   "firstChatTop": 660,
+   "scroller": {
+    "scrollHeight": 812,
+    "clientHeight": 361
+   },
+   "headingExpanded": "true",
+   "documentHeight": 413,
+   "active": {
+    "tag": "BODY",
+    "name": null,
+    "sectionKey": null,
+    "moreKey": null,
+    "entityName": false
+   }
+  },
+  "collapsed": {
+   "rows": 0,
+   "rowNames": [],
+   "lastRowBox": null,
+   "section": {
+    "top": 48,
+    "bottom": 76,
+    "height": 28
+   },
+   "foot": null,
+   "teamsTop": 84,
+   "chatsTop": 168,
+   "firstChatTop": 192,
+   "scroller": {
+    "scrollHeight": 361,
+    "clientHeight": 361
+   },
+   "headingExpanded": "false",
+   "documentHeight": 413,
+   "active": {
+    "tag": "BUTTON",
+    "name": null,
+    "sectionKey": "agents",
+    "moreKey": null,
+    "entityName": false
+   }
+  },
+  "reopened": {
+   "rows": 12,
+   "rowNames": [
+    "builder",
+    "release-captain",
+    "bug-intake",
+    "docs-writer",
+    "scout",
+    "ledger-auditor",
+    "incident-scribe",
+    "metrics-analyst",
+    "translator",
+    "patch-reviewer",
+    "night-shift",
+    "archivist"
+   ],
+   "lastRowBox": {
+    "top": 472,
+    "bottom": 504,
+    "height": 32
+   },
+   "section": {
+    "top": 48,
+    "bottom": 536,
+    "height": 488
+   },
+   "foot": null,
+   "teamsTop": 552,
+   "chatsTop": 636,
+   "firstChatTop": 660,
+   "scroller": {
+    "scrollHeight": 812,
+    "clientHeight": 361
+   },
+   "headingExpanded": "true",
+   "documentHeight": 413,
+   "active": {
+    "tag": "BUTTON",
+    "name": null,
+    "sectionKey": "agents",
+    "moreKey": null,
+    "entityName": false
+   }
+  }
+ },
+ "navigationAttempts": 2,
+ "pressFoot": {
+  "pressed": true,
+  "focused": true
+ },
+ "pressClose": {
+  "pressed": true,
+  "focused": true
+ },
+ "pressOpen": {
+  "pressed": true,
+  "focused": true
+ },
+ "deltas": {
+  "rows(grown) - rows(resting)": 4,
+  "rows(reopened) - rows(resting)": 4,
+  "teamsTop(grown) - teamsTop(resting)": 100,
+  "teamsTop(reopened) - teamsTop(resting)": 100,
+  "sectionHeight(grown) - sectionHeight(resting)": 100,
+  "sectionHeight(reopened) - sectionHeight(resting)": 100,
+  "collapsed section height": 28,
+  "collapsed rows": 0,
+  "collapsed heading aria-expanded": "false"
+ }
+}
