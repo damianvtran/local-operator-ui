@@ -67,9 +67,12 @@ import {
 } from "./transcript-rows";
 import {
 	type SegmentSpan,
+	type TurnCycle,
 	boundaryKindOf,
+	isTerminalMarker,
 	labelOfSegment,
 	partitionRun,
+	reportsCompletedThought,
 	segmentIsCompleted,
 } from "./turn-segments";
 
@@ -215,19 +218,47 @@ export type SegmentPlan = {
 	/**
 	 * The reader's expansion key for THIS bar (the value `openRuns` holds).
 	 *
-	 * WHICH END OF THE SPAN IS THE STABLE ONE decides the key, and it differs by
-	 * side of the answer, because rows only ever arrive at two places: ABOVE the
-	 * loaded head (a page landing) and at the TAIL (a live turn).
+	 * A KEY NAMES ONE SPAN FOR THE LIFE OF THE CONVERSATION, so it is derived from
+	 * the span's OWN anchor row and from nothing else - not from the run's key, and
+	 * not from the span's position among its neighbours.
+	 *
+	 * Two things used to break that, and the second is the operator's jitter:
+	 *
+	 * - the span nearest the answer inherited the bare run key. A wake after the
+	 *   answer makes a NEW span the nearest one, which took the bare key, so a
+	 *   reader's stored expansion of the first bar named the second;
+	 * - every key was prefixed with `TurnRun.key`, which is the closing answer's id
+	 *   (or, while a turn is being written and has none, its LAST row's id). A wake
+	 *   reply moves the answer and a streamed row moves the last row, so every bar
+	 *   of the run was renamed - its React element remounted and its stored
+	 *   expansion dropped - at exactly the moment the agent started thinking again.
+	 *
+	 * WHICH ROW ANCHORS A SPAN depends on the side of the answer, because rows
+	 * only ever arrive at two places: ABOVE the loaded head (a page landing) and
+	 * at the TAIL (a live turn). The anchor must be a row that neither of those
+	 * moves, and that survives rows INSIDE the span appearing or disappearing (the
+	 * cross-session filter hides a receipt and a send row from the span the
+	 * moment the setting flips, which moves the span's own last row):
 	 *
 	 * - a span BEFORE the answer can grow upward when a page lands - the head-cut
-	 *   span is exactly that - so its FIRST row is not stable, but its LAST row (the
-	 *   row before the visible one that ends it) never changes. The span nearest the
-	 *   answer keeps the run's own key (`TurnRun.key`, the answer's id), which is
-	 *   what every persisted expansion already names; each earlier one is
-	 *   `<run key>#<its last row>`.
+	 *   span is exactly that - so its FIRST row is not stable. What ends it is a
+	 *   VISIBLE row (a span is a maximal hidden stretch, so a visible row follows
+	 *   it), and that row is anchored in place: `seg:<the visible row after it>`.
+	 *   A span with nothing after it (an answerless run's tail, which is either
+	 *   still in flight - so not a bar - or idle) falls back to its own last row;
 	 * - a span AFTER the answer grows at the tail while the follow-up is being
-	 *   written and never upward, so its FIRST row is the stable one:
-	 *   `<run key>#<its first row>`.
+	 *   written and never upward, so its FIRST row is the stable one: `seg:<its
+	 *   first row>`.
+	 *
+	 * A row is in exactly one span, so two spans can never share a key. A key of an
+	 * older shape (the run key, or `<run key>#<row>`) never starts `seg:`, so it
+	 * names nothing: the bar renders collapsed, which is the safe failure for a
+	 * stored expansion whose bar is gone. Expansion state is memory-only
+	 * (`turn-collapse-open.ts`), so a new shape simply renders every bar collapsed
+	 * once - there is never a key to migrate.
+	 *
+	 * A span still IN FLIGHT (see `planRun`) is not a bar yet, so no reader can hold
+	 * its key; the key it has when it settles is the one it keeps.
 	 */
 	key: string;
 	/** The hidden rows, in order. */
@@ -331,13 +362,26 @@ export type CollapsePlan = {
  * span starts at the run's first LOADED row, which is exactly what makes an
  * end-loaded bar describe only rows on hand.
  *
+ * LIVENESS IS THE IN-FLIGHT CYCLE'S, NOT THE RUN'S (operator report, 2026-10-01:
+ * "messages are condensed, and then if a peer message or job completes and the
+ * agent goes into thinking, the last condensed sequence suddenly un-condenses").
+ * A wake / peer / job result does not open a run - only a `user` row does - so it
+ * RE-OPENS the run that had just settled, which is then the newest run and
+ * `live`. Spending `live` on the whole run expanded a bar the reader had just
+ * read while the agent thought, and condensed it again when the agent stopped.
+ * `planRun` now spends it only on the rows after the last SETTLED close (see
+ * `settledCloseOf`): everything the reader has already seen settle keeps its bar,
+ * and the one thing drawn in place is the cycle still being written. When that
+ * cycle settles its span becomes a bar at the TAIL, below everything that was
+ * already condensed, so nothing above it reflows.
+ *
  * THE FOCUS HOLD (`options.focusHold` / `options.openRuns`). A collapse is a
  * transition the reader did not initiate, and it UNMOUNTS rows - a reader
  * whose keyboard focus sits inside a row this pass would hide loses focus to
  * the body. The caller passes the record id holding focus inside the
  * transcript (or null) and the keys of the bars the reader has opened
- * (`openRuns` holds SEGMENT keys; a run's nearest-to-answer segment keeps the
- * run's own key, so a pre-segment expansion still names a real bar); a segment
+ * (`openRuns` holds SEGMENT keys, each derived from the span's own anchor row;
+ * a key of an older shape names nothing and simply renders collapsed); a segment
  * that would hide the focused row and is NOT open simply does not collapse this
  * pass. The plan still states what it WOULD hide, and the next pass - focus
  * moved on - folds it. Deliberately narrower than "no collapse while focused":
@@ -370,7 +414,8 @@ export function collapsePlan(
 	 * behaves like one even when a later turn is streaming above the reader's
 	 * place (§4.5's live rule, which `TraceFold`'s `sectionLive` states for
 	 * folds as "a run in an OLDER turn must not open itself because a LATER turn
-	 * happens to be running").
+	 * happens to be running"). Within that run `planRun` spends `live` on the
+	 * in-flight CYCLE only, not on the whole run.
 	 */
 	const runs = runsOf(rows);
 	const focusHold = options.focusHold ?? null;
@@ -976,6 +1021,59 @@ function factsOf(
 	};
 }
 
+/**
+ * The index (in the run's record list) of the last row the reader has seen
+ * SETTLE - everything up to and including it is finished work - or -1 when the
+ * run has none (a first turn that has not answered yet: all of it is in flight).
+ *
+ * THREE KINDS OF ROW SETTLE, and the largest index wins:
+ *
+ * - a CLOSE of a cycle (`cyclesOf`: an assistant row with no step after it before
+ *   the next trigger), except one the provider declared `stopReason: "toolUse"`.
+ *   That is the lead-in frame: its prose settles a moment BEFORE its own tool row
+ *   paints, and for that moment it is the run's last row, which `cyclesOf` reads
+ *   as a close. Treating it as one would condense the cycle's work, then
+ *   un-condense it the instant the call arrives - the flip this function exists
+ *   to prevent. Absent or any other declaration counts as settled (the
+ *   unknown-is-absent rule the segments module states for
+ *   `reportsCompletedThought`);
+ * - a TERMINAL marker (`isTerminalMarker`: `Stopped with an error`, `Interrupted`,
+ *   the `closed` / `retired` receipts, a session incident). A turn that ended in
+ *   one has no assistant close at all, so reading only closes left it "all in
+ *   flight" the moment a wake or peer message re-opened the run - the operator's
+ *   complaint, in the shape of an interrupted or failed turn. It is the segments
+ *   module's own boundary vocabulary, not a second list;
+ * - an assistant row the provider declared FINISHED (`reportsCompletedThought`).
+ *   `partitionRun` already keeps such a row on screen as a settled thing (V4), and
+ *   it is not always a close: the todo guardrail re-enters the loop after a
+ *   `stop` yield, so `[U T T A(stop) T]` has tool work after it and no new trigger,
+ *   which `cyclesOf` reads as narration. Without this clause the idle plan
+ *   (`U T T A`) condensed the first span and the live plan (`U T T A T`) drew it
+ *   in place again - the same flip, with no wake in it.
+ */
+function settledCloseOf(
+	records: readonly TranscriptRecord[],
+	cycles: readonly TurnCycle[],
+): number {
+	let settled = -1;
+	for (let i = cycles.length - 1; i >= 0; i -= 1) {
+		const close = records[cycles[i].closeIndex];
+		if (close.kind === "assistant" && close.stopReason === "toolUse") continue;
+		settled = cycles[i].closeIndex;
+		break;
+	}
+	for (let i = records.length - 1; i > settled; i -= 1) {
+		const record = records[i];
+		if (
+			isTerminalMarker(record) ||
+			(paintsSomething(record) && reportsCompletedThought(record))
+		) {
+			return i;
+		}
+	}
+	return settled;
+}
+
 function planRun(
 	rows: Row[],
 	run: TurnRun,
@@ -1003,7 +1101,7 @@ function planRun(
 	const answerAt = partition.answer?.closeIndex ?? null;
 	const answerId = answerAt === null ? null : records[answerAt].id;
 
-	/* The pre-answer span nearest the answer keeps the run's own key. */
+	/* The pre-answer span nearest the answer carries the turn's one stamp. */
 	let nearest = -1;
 	partition.segments.forEach((span, i) => {
 		if (answerAt === null || span.to < answerAt) nearest = i;
@@ -1014,19 +1112,23 @@ function planRun(
 	).length;
 	const collapsible =
 		partition.segments.length > 0 &&
-		(run.opensWithUserRow || run.closingAnswerId !== null) &&
-		!live;
+		(run.opensWithUserRow || run.closingAnswerId !== null);
+	/*
+	 * Rows at or after this index belong to the cycle still being written; -1
+	 * means nothing is in flight (the pane is not live), so every span may condense.
+	 */
+	const liveFrom = live ? settledCloseOf(records, partition.cycles) + 1 : -1;
 
 	const segments: SegmentPlan[] = partition.segments.map(
 		(span: SegmentSpan, i): SegmentPlan => {
 			const segRows = runRows.slice(span.from, span.to + 1);
 			const afterAnswer = answerAt !== null && span.from > answerAt;
-			const key =
-				i === nearest
-					? run.key
-					: afterAnswer
-						? `${run.key}#${segRows[0].record.id}`
-						: `${run.key}#${segRows[segRows.length - 1].record.id}`;
+			/* The key's rule (and the aliasing it prevents) is `SegmentPlan.key`'s. */
+			const key = `seg:${
+				afterAnswer
+					? segRows[0].record.id
+					: (runRows[span.to + 1] ?? segRows[segRows.length - 1]).record.id
+			}`;
 
 			/*
 			 * A span whose head is the loaded edge (the head-cut run's first span) states
@@ -1038,6 +1140,7 @@ function planRun(
 			const label = labelOfSegment(records, partition.cycles, span);
 			const collapsedHere =
 				collapsible &&
+				(liveFrom < 0 || span.to < liveFrom) &&
 				!(
 					focusHold !== null &&
 					!openRuns.has(key) &&
