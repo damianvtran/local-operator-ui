@@ -17,6 +17,7 @@ import {
 	partialCaptureFailures,
 	stampFailures,
 } from "./check-evidence.mjs";
+import { keyPaths } from "./check-fold-keys.mjs";
 import { mergedKeys, resolveManifest, runGuards } from "./evidence-fold.mjs";
 
 /*
@@ -48,6 +49,16 @@ const SCRIPT = resolve(
 	dirname(fileURLToPath(import.meta.url)),
 	"evidence-fold.mjs",
 );
+
+/**
+ * The key-set gate, runnable over a FIXTURE's merge commit.
+ *
+ * `scripts/check-fold-keys.mjs` is the rule the round-3 fix answers ("no key may
+ * be lost and no form may be re-imposed"), and it takes a merge SHA and runs git
+ * in the CURRENT directory - so a fixture can be checked with the real gate
+ * rather than with a re-implementation of it in this file.
+ */
+const KEY_GATE = resolve(dirname(SCRIPT), "check-fold-keys.mjs");
 
 const scratch = [];
 after(() => {
@@ -874,7 +885,7 @@ test("refreshedFrames is re-derived whenever the merged file carries a partialCa
  * directories match no story id, which is why `partialCaptureFailures` stood
  * down (its `refreshedAtHead` guard) on every case that existed before this one.
  */
-const storyFixture = () => {
+const storyFixture = ({ mainDropsNestedKey = false } = {}) => {
 	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-fold-story-"));
 	scratch.push(dir);
 	git(dir, ["init", "--initial-branch=main", "-q"]);
@@ -933,6 +944,7 @@ const storyFixture = () => {
 				refreshedAt: "2026-01-01T00:00:00Z",
 				refreshedAtHead: initSha,
 				note: "the base's pass",
+				addedSurfacesNote: "the base's added-surfaces note",
 			},
 			extra: { baseRecord: "the base pass" },
 		}),
@@ -962,6 +974,7 @@ const storyFixture = () => {
 				refreshedAt: "2026-02-02T00:00:00Z",
 				refreshedAtHead: baseSha,
 				note: "THE LANE'S pass",
+				addedSurfacesNote: "THE LANE'S added-surfaces note",
 			},
 			extra: { baseRecord: "the base pass", laneRecord: "THE LANE'S RECORD" },
 		}),
@@ -991,6 +1004,15 @@ const storyFixture = () => {
 				refreshedAtHead: baseSha,
 				note: "MAIN'S pass",
 				addedFrames: 5,
+				/*
+				 * The round-3 regression, on request: `main`'s copy LACKS the key that
+				 * base and the lane both carry - the shape PR #748's merge `8b2b499a13c`
+				 * left on the real main for `partialCapture.addedSurfacesNote`, and the
+				 * shape the old resolver propagated into the next fold.
+				 */
+				...(mainDropsNestedKey
+					? {}
+					: { addedSurfacesNote: "MAIN'S added-surfaces note" }),
 			},
 			extra: { baseRecord: "the base pass", mainRecord: "MAIN'S RECORD" },
 		}),
@@ -1249,5 +1271,253 @@ test("mergedKeys keeps this branch's order and appends main-only keys", () => {
 		mergedKeys({}, { a: 1 }, { a: 2, b: 3 })[0],
 		"a",
 		"the order does not depend on which side moved",
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * Round 3: no key may be lost at any depth (scripts/check-fold-keys.mjs)
+ * ------------------------------------------------------------------ */
+
+/*
+ * THE REGRESSION, NAMED FOR THE KEY IT LOST. `main` dropped
+ * `partialCapture.addedSurfacesNote` at PR #748's merge `8b2b499a13c`, this
+ * branch still carried it, and the old resolver - which handed back the WHOLE
+ * container whenever the OTHER side was the one that moved it - propagated the
+ * loss into the next fold, with no line in the report. Here main is the side
+ * that moved `partialCapture`, and the keys inside it are the question.
+ */
+test("a nested key main deleted survives the fold, and the run names the decision", () => {
+	const base = manifest({
+		partialCapture: {
+			refreshedStories: ["chat--one"],
+			refreshedFrames: 1,
+			addedSurfacesNote: "the base's note",
+			note: "the base's pass",
+		},
+	});
+	const ours = manifest({
+		partialCapture: {
+			refreshedStories: ["chat--one"],
+			refreshedFrames: 1,
+			addedSurfacesNote: "THE BRANCH'S NOTE",
+			note: "the base's pass",
+		},
+	});
+	const theirs = manifest({
+		partialCapture: {
+			refreshedStories: ["chat--one"],
+			refreshedFrames: 1,
+			note: "MAIN'S pass",
+		},
+	});
+	assert.equal(
+		"addedSurfacesNote" in theirs.partialCapture,
+		false,
+		"the fixture is only a regression if MAIN's copy lacks the key",
+	);
+
+	const decisions = [];
+	const resolved = resolveManifest({ base, ours, theirs, decisions });
+	assert.equal(
+		resolved.partialCapture.addedSurfacesNote,
+		"THE BRANCH'S NOTE",
+		"a key main deleted must not take this branch's copy with it",
+	);
+	// NOT "ours wins": `note` is base===ours, so main's pass field still wins -
+	// the fix is the key set, not a change of direction.
+	assert.equal(resolved.partialCapture.note, "MAIN'S pass");
+	assert.deepEqual(decisions, [
+		{
+			path: "partialCapture.addedSurfacesNote",
+			action: "kept",
+			why: "the other side deleted it",
+		},
+	]);
+});
+
+/* Group (5) is unchanged by the round-3 rule: a key THIS branch retired stays
+ * retired, even though main still carries it - and the drop is a stated
+ * decision rather than a silence. */
+test("a key this branch retired stays dropped, and the run states it", () => {
+	const base = manifest({
+		partialCapture: {
+			refreshedStories: ["chat--one"],
+			refreshedFrames: 1,
+			retiredNote: "the retired spelling",
+		},
+	});
+	const ours = manifest({
+		partialCapture: { refreshedStories: ["chat--one"], refreshedFrames: 1 },
+	});
+	const theirs = manifest({
+		partialCapture: {
+			refreshedStories: ["chat--one"],
+			refreshedFrames: 1,
+			retiredNote: "MAIN STILL CARRIES IT",
+		},
+	});
+
+	const decisions = [];
+	const resolved = resolveManifest({ base, ours, theirs, decisions });
+	assert.equal(
+		"retiredNote" in resolved.partialCapture,
+		false,
+		"group (5): a spelling this branch retired does not come back",
+	);
+	assert.deepEqual(decisions, [
+		{
+			path: "partialCapture.retiredNote",
+			action: "dropped",
+			why: "this branch retired it",
+		},
+	]);
+});
+
+/*
+ * THE GATE'S PROPERTY, asked of the resolver at every depth.
+ *
+ * `keyPaths` is `scripts/check-fold-keys.mjs`'s own walker, imported here rather
+ * than re-implemented: the property is exactly the rule the gate enforces for a
+ * real fold ("no key may be lost"), with the one allowance the gate also makes -
+ * a key THIS branch retired. The control at the end is what keeps it honest.
+ */
+test("both parents' key sets survive the resolution at every depth", () => {
+	const base = {
+		head: "a".repeat(40),
+		partialCapture: {
+			refreshedStories: ["chat--one"],
+			nested: { deep: "BASE", deeper: { leaf: "BASE" }, retired: "BASE" },
+			keptInBase: "BASE",
+			addedSurfacesNote: "BASE'S NOTE",
+		},
+		captureOrigin: { host: "BASE", legacy: "BASE" },
+	};
+	const ours = {
+		head: "a".repeat(40),
+		partialCapture: {
+			refreshedStories: ["chat--one"],
+			nested: { deep: "OURS", deeper: { leaf: "OURS" }, retired: "OURS" },
+			keptInBase: "OURS",
+			addedSurfacesNote: "THE BRANCH'S NOTE",
+		},
+		// `captureOrigin.legacy` is absent HERE: this branch retired it.
+		captureOrigin: { host: "OURS" },
+		branchRecord: "ours",
+	};
+	const theirs = {
+		head: "b".repeat(40),
+		partialCapture: {
+			refreshedStories: ["chat--one"],
+			nested: {
+				deep: "THEIRS",
+				deeper: { leaf: "THEIRS" },
+				extra: "MAIN ADDED",
+			},
+			keptInBase: "THEIRS",
+		},
+		captureOrigin: { host: "THEIRS", legacy: "MAIN STILL CARRIES IT" },
+		mainRecord: "main",
+	};
+
+	const decisions = [];
+	const resolved = resolveManifest({ base, ours, theirs, decisions });
+	const paths = (doc) => keyPaths(JSON.stringify(doc));
+	const resolvedPaths = paths(resolved);
+	const lostFrom = (source) =>
+		[...paths(source)].filter((path) => !resolvedPaths.has(path));
+
+	// (1) THIS branch loses nothing, at any depth.
+	assert.deepEqual(
+		lostFrom(ours),
+		[],
+		"every key this branch carries must survive the fold",
+	);
+	// (2) main loses only what this branch retired, and each drop is reported.
+	const retired = new Set(
+		[...paths(base)].filter((path) => !paths(ours).has(path)),
+	);
+	assert.deepEqual(
+		lostFrom(theirs).filter((path) => !retired.has(path)),
+		[],
+		"main loses nothing this branch did not deliberately retire",
+	);
+	assert.deepEqual([...retired], ["captureOrigin.legacy"]);
+	assert.deepEqual(
+		decisions
+			.filter((decision) => decision.action === "dropped")
+			.map((decision) => decision.path),
+		["captureOrigin.legacy"],
+		"the drop is a stated decision, not a silence",
+	);
+	// (3) A key MAIN deleted is kept, from this branch, and reported.
+	assert.deepEqual(
+		decisions
+			.filter((decision) => decision.action === "kept")
+			.map((decision) => decision.path)
+			.sort(),
+		["partialCapture.addedSurfacesNote", "partialCapture.nested.retired"],
+	);
+	assert.equal(resolved.partialCapture.nested.retired, "OURS");
+	assert.equal(resolved.partialCapture.nested.extra, "MAIN ADDED");
+	assert.equal(resolved.partialCapture.nested.deeper.leaf, "OURS");
+	assert.equal(resolved.captureOrigin.host, "OURS");
+	assert.equal(resolved.branchRecord, "ours");
+	assert.equal(resolved.mainRecord, "main");
+
+	// THE CONTROL: the rule this replaced took the moved side's object WHOLE - the
+	// shape `main`'s loss travelled in - and it must FAIL the property, or this
+	// test is checking nothing.
+	const wholesale = { ...ours, partialCapture: theirs.partialCapture };
+	assert.deepEqual(
+		[...paths(ours)].filter((path) => !paths(wholesale).has(path)).sort(),
+		["partialCapture.addedSurfacesNote", "partialCapture.nested.retired"],
+		"a resolver that takes the moved side's container whole loses the branch's nested keys",
+	);
+});
+
+/*
+ * THE SAME RULE ON THE REAL PATH: a git merge whose main dropped the nested key,
+ * folded by the tool itself, committed, then checked with the shipped gate -
+ * which is how this defect was found in the first place, on this branch's own
+ * fold of `origin/main` = `20fa9c1db2`.
+ */
+test("the fold of a main that dropped a nested key keeps it, names it, and passes the key gate", () => {
+	const { dir } = storyFixture({ mainDropsNestedKey: true });
+	const lane = manifestAt(dir, "HEAD");
+	assert.equal(
+		"addedSurfacesNote" in lane.partialCapture,
+		true,
+		"the lane carries the key, so the merge has something to lose",
+	);
+	git(dir, ["merge", "main"]);
+
+	const result = run(dir);
+	assert.equal(result.status, 0, result.out);
+	assert.match(
+		result.out,
+		/kept partialCapture\.addedSurfacesNote - the other side deleted it/,
+		"the run states the one-sided key decision",
+	);
+	git(dir, ["commit", "-qm", "chore(merge): fold main"]);
+
+	const merged = readManifest(dir);
+	assert.equal(
+		merged.partialCapture.addedSurfacesNote,
+		lane.partialCapture.addedSurfacesNote,
+		"the merged file keeps this branch's value for the key main lost",
+	);
+	const gate = spawnSync(
+		process.execPath,
+		[KEY_GATE, git(dir, ["rev-parse", "HEAD"])],
+		{ cwd: dir, encoding: "utf8" },
+	);
+	assert.equal(
+		gate.status,
+		0,
+		`check-fold-keys must be clean over this fold: ${gate.stdout}${gate.stderr}`,
+	);
+	assert.match(
+		gate.stdout,
+		/clean - every key of both parents survives the merge/,
 	);
 });
