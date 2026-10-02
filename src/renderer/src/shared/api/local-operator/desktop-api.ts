@@ -167,6 +167,19 @@ function withDeadline(
  * were indistinguishable -- and the compatibility banner asserted the first for
  * all three, offering an "Update backend" action that fixes only one of them.
  */
+/**
+ * What the transport says when a refusal carried NO sentence of its own.
+ *
+ * Exported because it is also the one reliable signal that separates "the backend
+ * sent prose" from "nothing crossed the wire" - `DesktopControlError.detail` cannot
+ * answer that on its own: it is set only when the body's `detail` is an OBJECT, so a
+ * `{detail: "..."}` payload carries its sentence in `message` and leaves the field
+ * undefined (QA round 3, Q-4). A second literal at the reader would be a second
+ * thing to drift from this one.
+ */
+export const DESKTOP_REFUSAL_PLACEHOLDER =
+	"This server did not answer the request for its desktop controls.";
+
 export class DesktopControlError extends Error {
 	/**
 	 * The HTTP status, or `null` when the request never produced one.
@@ -359,8 +372,7 @@ export async function desktopResult<T>(request: DesktopRequest): Promise<T> {
 			 * a server that predates a route is exactly that (design round 1, D7).
 			 * The app states what it observed and stops.
 			 */
-			detail ??
-				"This server did not answer the request for its desktop controls.",
+			detail ?? DESKTOP_REFUSAL_PLACEHOLDER,
 			undefined,
 			desktopErrorMessageCode(
 				request,

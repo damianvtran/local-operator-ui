@@ -59,6 +59,21 @@ export type SessionCatalogueRow = {
 	preview: string;
 	live_state: string;
 	pending: string | null;
+	/**
+	 * How many QUEUED asks this conversation has open — the sidebar's
+	 * outstanding-asks state.
+	 *
+	 * A SECOND state beside `pending`, never a widening of it: `pending` is the
+	 * APPROVAL queue (the thing that is genuinely blocking), and the whole point of
+	 * the split is that a session with asks outstanding may be happily WORKING.
+	 * Folding the two would make the sidebar call a working session
+	 * "waiting for you", which is the mislabel design §5 header forbids.
+	 *
+	 * ABSENT and `0` are the same answer (no badge), and absence is the ordinary
+	 * case on a backend that does not publish queued asks at all — the affordance
+	 * disappears at zero rather than drawing a zero badge.
+	 */
+	asks_open?: number | null;
 	active: boolean;
 	/**
 	 * Whether this conversation is pinned, as the BACKEND's pin store holds it.
@@ -520,6 +535,144 @@ export type PendingDesktopGate = {
 	session_name?: string | null;
 };
 /**
+ * One option of one queued ask's question, as `PendingAsk.question.options`
+ * carries it.
+ *
+ * `recommended` travels INSIDE the option rather than as an index beside the
+ * list (the shape the blocking gate uses for `PendingDesktopGate.recommended`),
+ * because a queued ask's option objects survive a restart through the ask log
+ * while an index into a re-ordered list does not. Reading it is still
+ * "a flag or nothing": a backend that predates the field omits it, and
+ * defaulting would badge an option the model never recommended.
+ */
+export type PendingAskOption = {
+	label: string;
+	description?: string;
+	recommended?: boolean;
+	[key: string]: unknown;
+};
+/**
+ * One question of a queued ask.
+ *
+ * `id` is the answer KEY (`answers[qid]`), not a display ordinal: the answer
+ * body is keyed by it, and it is also the credential key for a `secret`
+ * question (`AskQuestion.id` *is* the key in the harness), which is why a
+ * secret ask is refused when its key is already open in the session.
+ *
+ * `multi` is what makes an answer a list: a single-select question still
+ * answers with a one-element list on the wire (`answers[qid] = [label]`), so a
+ * renderer never has to branch on the shape of the value it sends back.
+ */
+export type PendingAskQuestion = {
+	id: string;
+	question: string;
+	options?: PendingAskOption[];
+	multi?: boolean;
+	secret?: boolean;
+	persist?: boolean;
+	[key: string]: unknown;
+};
+/**
+ * One queued ask, as the frontend state, the mobile projection and the
+ * aggregate index all publish it (design `docs/design/ask-nonblocking.md` §4).
+ *
+ * ## Why this exists beside `PendingDesktopGate`
+ *
+ * A gate is one blocking card and dies with the turn that is parked on it. A
+ * queued ask OUTLIVES the runtime that asked it: `ask` returns a receipt
+ * immediately, the agent keeps working, and the question waits in a durable log
+ * for an answer that may arrive hours later, from another surface, or not at
+ * all (which is a timeout, and answerable anyway — `late`). So the two shapes
+ * are different questions: the gate says "the agent is stopped on you", and
+ * this says "the agent asked and moved on".
+ *
+ * ## Status is derived, never stored
+ *
+ * `status` is the backend's fold of the ask log against the clock, and every
+ * value is reachable: `open`, `answered`, `declined`, `timed_out`, `late`,
+ * `dismissed`, `expired`. This client NEVER re-derives it from `expires_at` — a
+ * countdown is a rendered reading of the clock (see the copy contract), but
+ * which controls are live is the backend's answer, because only the backend
+ * knows whether a late answer is still accepted.
+ *
+ * ## Presence of `asks` IS the capability flag
+ *
+ * The backend publishes `asks`/`asks_open` only while its non-blocking feature
+ * flag is on, and omits the fields entirely otherwise — deliberately, so that
+ * "the field is absent" means exactly "this backend does not do queued asks".
+ * Its own addendum sharpens that: presence means the flag is on AND this frame
+ * carries at least one row; an empty list is published as ABSENCE, so a client
+ * must never read an absent `asks` as "no asks" in the sense of "render an
+ * empty list" — it means "this frame has nothing to say about asks", and the
+ * only safe read is `frontend.asks ?? null` (see `sessionAsks` in
+ * `ask-queue.ts`, which is the one place that rule is applied).
+ *
+ * The companion `asks_truncated` closes the one dishonest state the rule could
+ * otherwise produce: a frame whose byte bound dropped rows would draw a prefix
+ * beside a full count and call it complete.
+ */
+export type PendingAsk = {
+	/**
+	 * The ask's own id (`a-3f9c`). The key an answer is ADDRESSED by, and the one
+	 * identity every surface agrees on: a late answer carries the same id as the
+	 * original, which is what makes "answered late" attributable rather than a
+	 * second ask.
+	 */
+	ask_id: string;
+	/**
+	 * The conversation this ask belongs to. Present on the AGGREGATE route's rows
+	 * (a cross-session view has to name the conversation without opening it) and
+	 * absent on a session's own frontend state, where the session is the context.
+	 */
+	session_id?: string | null;
+	/** Epoch milliseconds the ask was queued. */
+	created_at?: number;
+	/**
+	 * Epoch milliseconds the deadline falls at. The COUNTDOWN is rendered from
+	 * this on the client clock; the STATUS never is (the backend's fold owns it).
+	 */
+	expires_at?: number;
+	timeout_s?: number;
+	/**
+	 * Derived, not authored: the backend marks an ask urgent when its window is
+	 * short (`timeout <= 900`), which is what earns the card its warning ink.
+	 */
+	urgent?: boolean;
+	/** The backend's folded state. See the type's own note on why this is read, never derived. */
+	status: string;
+	/** Epoch milliseconds the answer landed, when one did. */
+	answered_at?: number | null;
+	/**
+	 * Whether the transcript rows THIS status requires have actually been written.
+	 *
+	 * STICKY: it never flips back to `false` once true, and it is `false` for
+	 * `open` by construction. It is what separates "Answered — delivering" from a
+	 * settled ask whose response the model never received, which is the difference
+	 * between a receipt and a promise.
+	 */
+	delivered?: boolean;
+	questions: PendingAskQuestion[];
+	/**
+	 * The answers, keyed by question id; each a LIST because a question may be
+	 * multi-select. A SECRET answer holds `[<key>]` only — the value never leaves
+	 * the session's memory store, so it can never ride this field and no renderer
+	 * may expect to find it.
+	 */
+	answers?: Record<string, string[]> | null;
+	/** Which surface settled it (`terminal`, `phone`, `desktop`). */
+	answered_by?: { surface?: string; [key: string]: unknown } | null;
+	/**
+	 * Ids of questions whose answers are drafted but NOT yet settled, on the
+	 * legacy single-question mirror's path (design §4, A2 addendum).
+	 *
+	 * A draft is not an answer: a runtime death returns the ask to open, and the
+	 * index and aggregate routes never carry drafts. A renderer uses it only to
+	 * advance a per-question card to the next unanswered question.
+	 */
+	draft_question_ids?: string[] | null;
+	[key: string]: unknown;
+};
+/**
  * One composed notification, as the backend rendered it.
  *
  * The strings are authoritative: the backend owns wording parity across the
@@ -841,7 +994,47 @@ export type CanonicalFrontendState = {
 	streaming: boolean;
 	loop?: import("./desktop-control-contract").DesktopLoopState | null;
 	generation: number;
+	/**
+	 * The BLOCKING gate: an approval, or — from a backend whose queued-ask flag is
+	 * off, and from a new backend's one-release legacy mirror — an ask.
+	 *
+	 * This stays exactly what it always was, and the queued-ask fields below are
+	 * ADDITIVE beside it. The one rule a reader of both owes: once `asks` is
+	 * present on a frame, a `pending_gate` whose `kind` is `"ask"` is the LEGACY
+	 * MIRROR of an ask already in `asks[]`, and rendering both draws the same
+	 * question twice (design §4, client rule N3). Approvals are unaffected and
+	 * keep the single slot. `sessionAsks` in `ask-queue.ts` is the one place that
+	 * rule is applied, so no surface has to remember it.
+	 */
 	pending_gate: PendingDesktopGate | null;
+	/**
+	 * The session's queued asks, newest first with open ones ahead of settled
+	 * ones, or absent when this backend does not publish them.
+	 *
+	 * ABSENT IS NOT EMPTY — see `PendingAsk`'s note: presence is the capability
+	 * flag, and an empty list is published as absence. A renderer that treated
+	 * absent as empty would draw an asks affordance against every old backend.
+	 * Read it through `sessionAsks`.
+	 */
+	asks?: PendingAsk[] | null;
+	/**
+	 * How many of this session's asks are still OPEN — the count the badge and the
+	 * sidebar row read. Absent in the same frames `asks` is.
+	 *
+	 * It is published BESIDE `asks` rather than derived from it on purpose: the
+	 * list is capped on the wire (20 newest) and may be truncated, while the count
+	 * stays the truth about the queue. A badge derived from a capped list would
+	 * quietly under-report, which is the one thing a count badge may not do.
+	 */
+	asks_open?: number | null;
+	/**
+	 * True only when the wire bound dropped ask rows from THIS frame (design §4,
+	 * A2 addendum). Absent means the list is complete.
+	 *
+	 * It exists so a truncated list can never be drawn beside a full count and
+	 * called complete: the view says so instead.
+	 */
+	asks_truncated?: boolean | null;
 	history_cursor: string | null;
 	live_events: Array<Record<string, unknown>>;
 	queued_steering: Array<Record<string, unknown>>;
