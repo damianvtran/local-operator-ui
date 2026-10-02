@@ -19,10 +19,15 @@
  *     view popover, the ladder) are the view-menu set's frames.
  *   - **It is not a claim about the ring's PIXELS.** The frames here are taken in
  *     a window without focus, and the app's `:focus-visible` styling is what the
- *     focus frame's ring is read from anyway: design round 1 (D2) measured the
- *     mark's ring off `sidebar-team-mark-focus` (a 28x28 square around the 20px
- *     circle, now `rounded-full`), so the ring IS in that frame. What no frame
- *     here shows is a ring on any OTHER control.
+ *     focus frame's ring is read from anyway. That frame is the rig's own
+ *     registered `sidebar-team-mark-focus` row (`scripts/capture-evidence.mjs`,
+ *     the Tab walk over `chat-sidebar-sections--query-while-collapsed`), filed at
+ *     this head - with its before half - on
+ *     `evidence/team-bubble-restyle-1002`, not in this swept directory. The defect
+ *     design round 1 (D2) caught there was a 28x28 square drawn around what was
+ *     then a 20px circle, fixed with `rounded-full`; since 2026-10-02 the ring
+ *     traces the mark's own pill (`rounded-full` from the badge's `shape="pill"`).
+ *     What no frame here shows is a ring on any OTHER control.
  *
  * ## What is stubbed, and what is not
  *
