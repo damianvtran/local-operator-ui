@@ -1200,6 +1200,98 @@ test("a release inside the window re-opens it: the next press is a fresh attempt
 });
 
 /*
+ * AN ABANDONED PRESS'S REFUSAL IS NOT THE SUCCESSOR'S (convergence round 1,
+ * MAJOR). The resolve arm's identity check was the U6 fix, and the CATCH arm
+ * needed the same one: an abandoned acquisition that REJECTS used to null
+ * `recordingAttemptRef` and clear the face, so the second press's acknowledgment
+ * vanished and its own arriving stream was then discarded by the very check
+ * meant to protect it (reviewer's probe: `press2BecameRecording=false`), with a
+ * stale error toast about a press the user had already replaced. Both legs of the
+ * U6 case above RESOLVE, which is why this one is separate.
+ */
+test("a refusal belonging to an abandoned press leaves the successor's attempt alone", async () => {
+	mic.calls = 0;
+	const pending = [];
+	mic.next = () =>
+		new Promise((resolve, reject) => {
+			pending.push({ resolve, reject });
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+	const lane = () =>
+		frame.container.querySelector("[data-recording-indicator]");
+
+	/* Press 1 on the hold door, released inside the window: abandoned. */
+	const { code } = resolvePushToTalkBinding();
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+
+	/* Press 2 on the click door: a fresh attempt, acknowledged. */
+	await act(async () => {
+		micControl().click();
+	});
+	assert.equal(mic.calls, 2, "the second press acquired the microphone");
+	assert.ok(preparing(), "and it is acknowledged");
+
+	/* Now the ABANDONED acquisition refuses, after the successor exists. */
+	await act(async () => {
+		pending[0].reject(new Error("NotAllowedError"));
+	});
+	await settle();
+	assert.ok(
+		preparing(),
+		"the successor's acknowledgment is still on screen - the refusal is not its own",
+	);
+	assert.equal(
+		confirm(),
+		null,
+		"and the refusal did not settle it into a recording",
+	);
+
+	/* And the successor's own stream still lands, which is what the guard protects. */
+	await act(async () => {
+		pending[1].resolve(fakeStream());
+	});
+	await settle();
+	assert.ok(
+		confirm(),
+		"the second press becomes a recording when its own stream arrives",
+	);
+	assert.ok(lane(), "with the lane the user confirms or cancels");
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+/*
  * THE ACKNOWLEDGMENT SURVIVES A BUSY TURN, AND THE TAKE IT WAS WAITING FOR IS
  * KEPT (UX round 2, U7). Two decisions, both recorded in `message-input.tsx`:
  * the acknowledgment's control and caption stay on screen while the composer is

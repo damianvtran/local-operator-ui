@@ -5670,13 +5670,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		/*
 		 * THE RECORDING ATTEMPT: the span between a start request and the moment
-		 * its recorder is actually running.
+		 * its recorder is actually running, held as the ref so a release landing
+		 * inside that span has something to act on.
 		 *
-		 * A push-to-talk release can land inside that span, while `getUserMedia`
-		 * is still resolving. The old shape called the recorder's own stop there -
-		 * a no-op when nothing is recording yet - so the release was LOST and the
-		 * capture went on recording with nobody left to end it. `released` is read
-		 * the instant the recorder starts, and the take is settled right there.
+		 * A push-to-talk release can land there, while `getUserMedia` is still
+		 * resolving. The old shape called the recorder's own stop - a no-op when
+		 * nothing is recording yet - so the release was LOST and the capture went
+		 * on recording with nobody left to end it, and the two fixes since have
+		 * both been about that window: the release now ABANDONS the attempt (the
+		 * ref goes null, so the next press is a fresh one), and the resolving arm
+		 * discards a stream whose attempt is no longer the ref's - the identity
+		 * check below, which is also what stops the microphone a release would
+		 * otherwise leave live.
 		 */
 		/*
 		 * THE ATTEMPT IS ITS OWN IDENTITY (UX round 2, U6). It used to carry
@@ -5929,12 +5934,6 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					setIsRecording(true);
 					setAudioBlob(null); // Clear previous blob
 					/*
-					 * RELEASED BEFORE THE RECORDER EXISTED: end it now rather than
-					 * orphan it. The take is ~0 ms old, so the minimum-clip rule
-					 * discards it - the correct outcome for a press that captured
-					 * nothing.
-					 */
-					/*
 					 * NOTHING TO SETTLE HERE ANY MORE (UX round 2, U6). The only path that
 					 * abandons an attempt is the release arm, and it nulls the ref - so a stream
 					 * whose press was released never reaches this line; it is stopped by the
@@ -5942,6 +5941,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * unreachable the moment the ref started being nulled.
 					 */
 				} catch (err) {
+					/*
+					 * THE SAME OWNERSHIP GUARD AS THE RESOLVE ARM (convergence round
+					 * 1, MAJOR). A refusal belongs to the press that asked for it: an
+					 * abandoned attempt's `getUserMedia` rejection must not null the
+					 * ref its SUCCESSOR put there, or the successor's acknowledgment
+					 * vanishes and its own arriving stream is then discarded by the
+					 * very identity check that exists to protect it - plus an error
+					 * toast about a press the user has already replaced.
+					 */
+					if (recordingAttemptRef.current !== attempt) return;
 					recordingAttemptRef.current = null;
 					setIsPreparing(false);
 					console.error("Error accessing microphone:", err);
@@ -5994,18 +6003,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				if (event.key !== "Escape") return;
 				event.preventDefault();
 				/*
-				 * MARK THE ATTEMPT, THEN CLEAR THE FACE. The mark is what makes the
-				 * acquisition harmless when it resolves - `handleStopRecording`
-				 * sets `released`/`aborted` on an attempt whose recorder is not up
-				 * yet, and the resolve arm discards that take instead of starting a
-				 * recorder nothing would settle. The flag clears now rather than when
-				 * the promise lands so the acknowledgment answers the key in the
-				 * frame it arrives in: a cancel that leaves the spinner running for
-				 * another 800 ms reads as a key that did not work.
+				 * ABANDON THE ATTEMPT, THEN CLEAR THE FACE. `handleStopRecording`
+				 * nulls the ref for an attempt whose recorder is not up yet; the
+				 * resolving arm then discards that acquisition by IDENTITY instead of
+				 * starting a recorder nothing would settle, and STOPS its tracks on
+				 * the way out. The face clears now rather than when the promise lands
+				 * so the acknowledgment answers the key in the frame it arrives in: a
+				 * cancel that leaves the spinner running for another 800 ms reads as
+				 * a key that did not work.
 				 *
-				 * The attempt REF is deliberately not nulled here: the resolving
-				 * arm reads it to decide discard-versus-keep, and a null ref there
-				 * would leave a live microphone nothing can stop.
+				 * Nulling the ref here is what the acquisition's identity check exists
+				 * for - it is the same arm a push-to-talk release takes, and it is why
+				 * a cancel is safe to make on a stream that has not arrived yet.
 				 */
 				handleStopRecording("abort");
 				setIsPreparing(false);
