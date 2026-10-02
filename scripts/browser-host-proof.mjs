@@ -116,6 +116,14 @@ async function freeDevtoolsPort(timeoutMs = 10_000) {
 
 const transcript = [];
 let failures = 0;
+/** Checks this host could not make at all — the frontmost sampler is the one that
+ * skips on a loaded machine. Declared here rather than at its first use because the
+ * reference at that site had no declaration: the branch that increments it threw
+ * `ReferenceError: skips is not defined`, which killed the run while it wrote its
+ * summary and took every reading the run had already made with it (measured on this
+ * host, 2026-10-02 — the `osascript` sampler never answered a sample, the skip
+ * branch fired, and the run died after its last check had passed). */
+let skips = 0;
 
 function record(label, body) {
 	transcript.push(`### ${label}\n\n\`\`\`\n${body}\n\`\`\`\n`);
@@ -2417,7 +2425,7 @@ async function main() {
 		"",
 		`Scratch: \`${SCRATCH}\``,
 		"Runs: two (a clean quit, then a restart against the same profile)",
-		`Result: ${failures === 0 ? "every check passed" : `${failures} check(s) FAILED`}`,
+		`Result: ${failures === 0 ? "every check passed" : `${failures} check(s) FAILED`}${skips ? ` (${skips} skipped)` : ""}`,
 		"",
 		transcript.join("\n"),
 	].join("\n");
