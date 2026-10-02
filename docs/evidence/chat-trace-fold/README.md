@@ -34,9 +34,15 @@ photographs, ellipsised from `1 query_…` on.
 
 - **Five segments, then a tail.** The line shows at most `FOLD_COUNT_LIMIT` (5)
   unique action-type segments; the kept ones are the first five in the line's own
-  order — the sentence's class order (files, searches, web, shell, python, edits,
-  tasks), then the meta kinds by count and name — so whatever falls into the tail
-  is what that order already ranked least-major.
+  order, which is the `order` array in `trace-fold-model.ts` and nothing else —
+  the sentence's class slots (files, searches, web, the command kinds `shell` and
+  `python` in the `commands` slot, edits, delegated), then the three named meta
+  kinds the operator's report used (`agent`, `team`, `hub`), and every other kind
+  after those sorted by count and then by noun. So whatever falls into the tail is
+  what that order already ranked least-major — which also means a run with many
+  `agent` calls can push a rarer named kind into the tail (agent review round 1,
+  R1-6: this paragraph used to say "the meta kinds by count and name", which is
+  not what the array implements).
 - **The tail counts CALLS, not types** (`and N other actions`): the same unit
   every other number on the line counts (the bar's `N actions`, the foot's `N
   actions`), so a reader who adds the kept segments to the tail still reaches the
@@ -49,8 +55,13 @@ photographs, ellipsised from `1 query_…` on.
   unedited.
 - **Expansion stays lossless**: the summary was never the record — the rows
   behind the trigger are, and one press still shows every one of them.
-- **The header's `title` tooltip carries the same string**, so hovering a folded
-  group reads exactly what its header paints.
+- **The header's `title` tooltip is the bare total** (`13 actions`), NOT the capped
+  line the header paints (`trace-fold.tsx` sets it from `actionCount`). The string
+  that reads the same words as the header is the COLLAPSED TURN BAR's own title
+  (`turn-collapse-model.ts` composes it through `foldSummary`), which is a
+  different surface — this bullet used to claim the fold header's tooltip carried
+  the capped line, and agent review round 1 (R1-1) and QA round 1 (Q1) both
+  measured it as false.
 
 The operator's own run composes to `6 searches · 1 task · 2 browser actions · 1
 ai_search · 1 get_tool_access · and 4 other actions` — it is the first case in
@@ -63,6 +74,19 @@ it is what the report replaced — a cut count line cannot say which actions the
 hid — so at a minimum-width column, or beside a live clause whose object is long,
 the counts wrap onto the next line and the row grows (`min-h-5`, so the ledger
 pitch opens only where a line genuinely needs it).
+
+**The wrap falls at a ` · ` and never inside a phrase, and that is a shape rather
+than a hope.** `foldSummaryUnits` returns the line as its UNITS — each kept
+segment, and the `and N other actions` tail as one unit — and the header paints
+one `whitespace-nowrap` span per unit with the separators between them, so the
+browser's only break opportunity is a separator. The joined string still exists
+for consumers with no DOM to paint (`foldSummary`, the collapsed bar's `title`).
+The first cut returned one joined string, and the 640px frame broke `and 4 other
+actions` between the numeral and its noun, leaving `other actions` alone on line 2
+— design round 1's D1, measured in the frame. The summary span also carries
+`break-words`, so a single unit longer than the column (the operator's own run
+holds `1 workspace_get_gmail_thread_content`) breaks inside itself instead of
+painting past the box (agent review round 1, R1-4).
 
 **The yield order is the two flex factors, and both halves were measured in the
 Chrome this ships on rather than reasoned about.** Flex hands each item a share of
@@ -94,7 +118,7 @@ failing test rather than a silent re-derivation of the evidence.
 | frames | tree | what they show |
 | --- | --- | --- |
 | `many-types/` — 2 frames (1280×130) | this branch | the operator's nine-type run, capped and on ONE line: `6 searches · 1 task · 2 browser actions · 1 ai_search · 1 get_tool_access · and 4 other actions`, the `1h` span intact at the far end |
-| `many-types-narrow/` — 2 frames (640×130) | this branch | the same capped header at the 640px window: two lines (`… · and 4` / `other actions`), the `1h` span still inside the row |
+| `many-types-narrow/` — 2 frames (640×130) | this branch | the same capped header at the 640px window: two lines, and the break lands on a ` · ` — `6 searches · 1 task · 2 browser actions · 1 ai_search · 1 get_tool_access ·` / `and 4 other actions`, the tail whole on line 2 and the `1h` span still inside the row |
 | [`../chat-trace-fold-before/many-types/` + `many-types-narrow/`](../chat-trace-fold-before/) — 4 frames | `af6fffa899` (this branch's cut point) with ONLY the new story cell and its sweep rows added | the UNCAPPED line: nine segments, ellipsised (`1 query_…` at 1280; truncated mid-word at 640) — the state the report quotes |
 
 The before half's base is the branch's cut point, the same convention
@@ -113,10 +137,18 @@ node scripts/chat-alignment-geometry.mjs http://127.0.0.1:6077
 
 | state | summary (left→right) | width | height | lines | line (left→right) | last item right |
 | --- | --- | --- | --- | --- | --- | --- |
-| `many-types` @1280 — after | 52 → 610.7 | 558.7 | 19.5 | **1** | 52 → 712 | 644.7 |
+| `many-types` @1280 — after | 52 → 610.8 | 558.8 | 19.5 | **1** | 52 → 712 | 644.8 |
 | `many-types-narrow` @640 — after | 52 → 558 | 506 | 39 | **2** | 52 → 592 | **592** (fits) |
 | `many-types` @1280 — before | 52 → 678 | 626 | 19.5 | 1 (ellipsised) | — | — |
 | `many-types-narrow` @640 — before | 52 → 558 | 506 | 19.5 | 1 (truncated) | — | — |
+
+**The units hold, and the break lands on a separator.** The same two-line box at
+640 is what the units change re-took: the old break was inside the tail phrase
+(`… · and 4` / `other actions`, D1), and the frame now reads `… · 1 get_tool_access ·`
+/ `and 4 other actions` — the wrap at the last separator, the whole tail on line 2.
+The box is the same size because a wrap is what both were; the difference a still
+shows is WHERE it falls. The `lastRight` reading is what says the row still fits:
+`592 == 592`, the summary's own line's right edge.
 
 The before rows are read the same way, except that the marker does not exist on
 the pre-change span: the rig-only attribute was added to it by hand for that
@@ -145,11 +177,25 @@ always runs it, `--allow-backend` because the operator's live daemon answers on
 fixture).
 
 **The whole set was re-taken on the folded tree** (after this branch folded
-`origin/main` = `0d4db85a5e`), not only the two new cells, and again after the
-yield factors were corrected — so the frames this record owns are the ones the
-shipped code paints. Every frame came back byte-identical across those passes
-except the cells the correction is about (`many-types-narrow/`, where the row
-stops overflowing) and `images-many-hover-reduced-motion/localOperatorDark`
-(390 pixels at ≤5/255 — the same difference a re-capture on the *unmodified* tree
-reproduces, measured, so it is the environment's encode rather than this change;
-the strip it sits on is untouched by both).
+`origin/main` = `0d4db85a5e`), again after the yield factors were corrected, and
+again for this round's units change — so the frames this record owns are the ones
+the shipped code paints.
+
+WHAT THE UNITS CHANGE DID TO THE PIXELS, measured rather than asserted, because
+it re-shapes every header: each unit is its own text run now, so Chrome re-rastered
+the glyphs. Of the 44 frames, 21 moved and every one of them is glyph-level —
+`compare -metric AE` reports a few hundred to a few thousand pixels, and with a
+15% per-channel fuzz **the difference is 0 on all of them**, while the ink extents
+are byte-for-byte the same (measured on `many-types` and `agent-ops`: both
+`591×12+53+4` and `147×12+53+4` before and after). So the words and their places
+are unchanged; only the antialiasing differs. The one frame whose LAYOUT changed
+is `many-types-narrow/` (the break inside the tail phrase became a break at a
+separator), and the one whose content changed is the pair itself (`many-types/`
+and `many-types-narrow/` are this round's reason for re-taking).
+
+Beyond those, the set behaves as the previous pass found: the three hover/focus
+cells of the picture strip move inside the ≤5/255 class a re-capture on the
+*unmodified* tree reproduces — `images-many-hover-reduced-motion/localOperatorDark`
+(390 px), `images-many-hover/localOperatorDark` (390 px) and
+`images-many-hover-reduced-motion/localOperatorLight` (1,171 px) — and the strip
+they sit on is untouched by every change in this branch.

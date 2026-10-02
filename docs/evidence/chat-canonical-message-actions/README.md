@@ -44,6 +44,10 @@ the idle and hovered boxes being identical — are in *The measured rail* below.
 | `compacted-run/` | a turn split by a mid-run compaction | the shape where the caption and the row paint TOGETHER: `Worked for 12s · 2 actions` at the content's left rail, the buttons at the far end |
 | `compacted-run-hover/` | the same state, pointer on the answer | the reveal: the buttons arrive at the right cluster and NOTHING moves — every box is identical to the idle reading above |
 | `narrow/` | 420px, `isSmallView` | one line, buttons intact, no wrap, focus reachable |
+| `user-row/` | the USER turn's own row (design round 1, D2) | `Copy` alone, mounted under the bubble: the reveal box is at rest, so the frame is the bubble and the row's own empty box |
+| `user-row-hover/` | the same, pointer on that row's Copy | the reveal, with the row's right edge on the bubble's |
+| `user-row-small/` + `user-row-small-hover/` | the same pair at 420 | the same shape where the content rail is 32 rather than 107 |
+| `compacted-run-small/` | `compacted-run` at 420 | the caption's rail at `isSmallView` — no frame had a caption at this width before (design round 1, D2) |
 
 Six themes, chosen by the memo's logic rather than by taste: `localOperatorLight`
 and `localOperatorDark` (the brand), `sage` and `catppuccinMacchiato` (the two
@@ -71,6 +75,24 @@ node scripts/chat-alignment-geometry.mjs http://127.0.0.1:6077 --json
 | `chat-canonical-message-actions--bar-suppressed` | 107 | 107 (0px) | — | 857 | 857 | — | 107→917 | 28 |
 | `chat-canonical-message-actions--compacted-run` | 107 | 107 (0px) | **107** | 726.6 | 726.6 | 794.6 | 107→917 | 28 |
 | `chat-canonical-message-actions--compacted-run` (hover) | 107 | 107 (0px) | **107** | 726.6 | 726.6 | 794.6 | 107→917 | 28 |
+
+**The user row and the small view (design round 1, D2), as numbers.** The probe
+reads the user turn's own row now, and two 420px states:
+
+| state | reading |
+| --- | --- |
+| `user-row/` @1024 | row `889 → 917`, first button `889`, buttons `1 [Copy]`, bubble right `917`, delta **0** |
+| `user-row-hover/` @1024 | the same boxes, the control revealed |
+| `user-row-small/` @420 | row `360 → 388`, buttons `1 [Copy]`, bubble right `388`, delta **0** |
+| `user-row-small-hover/` @420 | the same boxes, the control revealed |
+| `compacted-run-small/` @420 | caption left **32** (the `isSmallView` rail), actions `197.6`, line `32 → 388` |
+
+The user row's right edge is its bubble's, and the row carries `Copy` alone at both
+widths — which is R4's ruling measured rather than restated. The 420 story had to
+be BUILT for this: `isSmallView` is a prop the transcript is told about, not a
+window width, so running the 1024px story at a 420px viewport photographs the wide
+layout clipped (the probe showed the caption and the actions reporting their 1024px
+boxes); `compacted-run-small` is the new story that paints it.
 
 **Q1, answered and closed.** The shipped head paints NO agent glyph and no gutter:
 `content.gutterPx` is **0** for every state, `MessageContainer` is `relative
@@ -220,6 +242,13 @@ the box moved. The two states this change adds — `compacted-run/`,
 `compacted-run-hover/` — are new frames, and their half of the pair is the sibling
 `../chat-canonical-message-actions-foot-before/`, whose README states which states
 it carries and why.
+
+**And five more states, for design round 1's D2** (`user-row/`, `user-row-hover/`,
+`user-row-small/`, `user-row-small-hover/`, `compacted-run-small/`), which is what
+takes this set to **twenty states and 120 frames**. They are captures rather than
+re-shoots: nothing in that round moves the pixels the existing fifteen paint (the
+round's spot-check of `rest/` and `compacted-run/` in all six themes came back
+byte-identical, `compare -metric AE` = 0 on twelve frames).
 
 **The earlier re-verify note is superseded.** Round 1's pass re-captured the same
 set on its own fold (`origin/main` = `9dd18ab318`) and every frame came back
