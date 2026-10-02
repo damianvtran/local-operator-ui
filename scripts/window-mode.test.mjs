@@ -2201,6 +2201,11 @@ test("a refused reopen is recorded — and ONE successor at the quit terminal co
 	// completing the refusal that arrived mid-teardown.
 	schedule();
 	assert.deepEqual(calls, [], "no record yet — nothing to complete");
+	assert.equal(
+		pending.hasPending(),
+		false,
+		"and nothing is pending before any refusal",
+	);
 
 	assert.equal(
 		pending.record({
@@ -2210,6 +2215,11 @@ test("a refused reopen is recorded — and ONE successor at the quit terminal co
 		}),
 		true,
 		"an `inactive` request is recordable",
+	);
+	assert.equal(
+		pending.hasPending(),
+		true,
+		"a recorded refusal is pending until a terminal spends it (review F3's gate)",
 	);
 	schedule();
 	assert.deepEqual(
@@ -2259,12 +2269,67 @@ test("a refused reopen is recorded — and ONE successor at the quit terminal co
 		"`focus` pins `normal`",
 	);
 
-	// A Dock click names nothing to replay: the successor is a plain reopen.
+	// A Dock click names nothing to replay, and what "a plain launch" then means
+	// is the SHAPE's question (review F1): packaged — the default facts, which is
+	// what any non-Electron test process reads as — completes with `[]`, because
+	// macOS starts the bundle exactly as the user's own launch did.
 	const plain = createRelaunchPending();
 	const plainCalls = [];
 	plain.record({ kind: "activate", show: "focus", argv: null });
 	plain.scheduleOnExit({ relaunch: (args) => plainCalls.push(args) });
-	assert.deepEqual(plainCalls, [[]], "activate completes as a plain launch");
+	assert.deepEqual(
+		plainCalls,
+		[[]],
+		"a packaged activate completes as a plain reopen",
+	);
+
+	// …but a DEV-SHAPED process (`process.defaultApp`) must replay its own
+	// command line: `[]` builds `[execPath]` alone, which is bare Electron with
+	// NO app path — the default-app window on the machine-default profile. The
+	// app path AND the launch's enclosure travel, under the same pin rule as the
+	// second-instance replay.
+	const devPlain = createRelaunchPending({
+		facts: () => ({
+			defaultApp: true,
+			argv: [
+				"/Electron",
+				"--user-data-dir=/scratch",
+				"--window-mode=headless",
+				"--inspect=9229",
+				"/app",
+			],
+		}),
+	});
+	const devPlainCalls = [];
+	devPlain.record({ kind: "activate", show: "focus", argv: null });
+	devPlain.scheduleOnExit({ relaunch: (args) => devPlainCalls.push(args) });
+	assert.deepEqual(
+		devPlainCalls,
+		[
+			[
+				"--user-data-dir=/scratch",
+				"--window-mode=headless",
+				"--inspect=9229",
+				"/app",
+			],
+		],
+		"a dev-shaped activate replays its own command line so the app path and the enclosure travel",
+	);
+
+	// The pin rule reaches this replay too: a dev command line that names no mode
+	// gets the recorded plan's token (focus -> normal), so the successor's policy
+	// comes from the record rather than from a re-resolution.
+	const devPinned = createRelaunchPending({
+		facts: () => ({ defaultApp: true, argv: ["/Electron", "/app"] }),
+	});
+	const devPinnedCalls = [];
+	devPinned.record({ kind: "activate", show: "focus", argv: null });
+	devPinned.scheduleOnExit({ relaunch: (args) => devPinnedCalls.push(args) });
+	assert.deepEqual(
+		devPinnedCalls,
+		[["/app", "--window-mode=normal"]],
+		"a mode-less dev command line is pinned to the recorded plan",
+	);
 
 	// `never` is never recorded — a successor for it would be an invisible
 	// instance nobody asked to keep — so its refusal stays a refusal-with-a-line.
@@ -2468,8 +2533,8 @@ test("#755's wiring: one relaunch call at the terminal, a record per request kin
 
 	assert.equal(
 		code.split("scheduleReopenAtQuitTerminal();").length - 1,
-		4,
-		"all four quit terminals call the one helper",
+		6,
+		"every quit terminal calls the one helper: the four will-quit sites, the headless exit deadline and the crash exit",
 	);
 	const willQuitAt = code.indexOf('app.on("will-quit"');
 	const willQuit = code.slice(
@@ -2479,7 +2544,7 @@ test("#755's wiring: one relaunch call at the terminal, a record per request kin
 	assert.equal(
 		willQuit.split("scheduleReopenAtQuitTerminal();").length - 1,
 		4,
-		"and all four are inside the will-quit pass",
+		"four of the six are inside the will-quit pass (the other two are the exits outside it)",
 	);
 	assert.ok(
 		willQuit.indexOf("scheduleReopenAtQuitTerminal();") <
@@ -2509,6 +2574,40 @@ test("#755's wiring: one relaunch call at the terminal, a record per request kin
 		failsafeBody.includes("scheduleReopenAtQuitTerminal();") &&
 			failsafeBody.includes("app.exit(1)"),
 		"and the failsafe schedules before its own failed exit",
+	);
+
+	/*
+	 * REVIEW F2/F3. The two exits OUTSIDE the will-quit pass that can still strand
+	 * a record call the same idempotent helper before they go — the headless exit
+	 * deadline (whose forced exit used to drop a record the refusal line had
+	 * already called deferred) and the `uncaughtException` crash exit — and the
+	 * install guard's stand-down reports only a RECORDED reopen, once.
+	 */
+	const deadlineAt = code.indexOf("function armHeadlessExitDeadline");
+	assert.ok(deadlineAt > 0, "the headless exit deadline is still there");
+	const deadlineCallAt = code.indexOf(
+		"scheduleReopenAtQuitTerminal();",
+		deadlineAt,
+	);
+	const deadlineExitAt = code.indexOf("app.exit(0)", deadlineAt);
+	assert.ok(
+		deadlineCallAt > deadlineAt &&
+			deadlineExitAt > deadlineAt &&
+			deadlineCallAt < deadlineExitAt,
+		"the headless exit deadline completes a recorded reopen before its forced exit (review F2)",
+	);
+	const crashAt = code.indexOf('process.on("uncaughtException"');
+	assert.ok(crashAt > 0, "the crash handler is still there");
+	const crashCallAt = code.indexOf("scheduleReopenAtQuitTerminal();", crashAt);
+	const crashExitAt = code.indexOf("process.exit(1)", crashAt);
+	assert.ok(
+		crashCallAt > crashAt && crashExitAt > crashAt && crashCallAt < crashExitAt,
+		"and the crash exit does too, before process.exit(1) (review F2)",
+	);
+	assert.ok(
+		helper.includes("relaunchPending.hasPending()") &&
+			helper.includes("relaunchStandDownLogged"),
+		"the install stand-down reports only a RECORDED reopen, and once (review F3)",
 	);
 
 	const raiseSource = readFileSync(

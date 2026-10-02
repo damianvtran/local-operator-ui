@@ -37,6 +37,20 @@
  * port stays closed, and no `reopen=deferred` line exists — and the next launch
  * opens normally.
  *
+ * `--activate` runs the DOCK-CLICK arm instead of the second-launch one: no B
+ * exists, and the rig emits `app.emit('activate')` into A while it tears down —
+ * the handler that refuses a Dock click mid-quit. Its successor cannot replay a
+ * loser's command line (a click names none), so it is composed from the DYING
+ * process's own — a dev-shaped plain reopen (review F1: `args: []` builds
+ * `[execPath]` alone, i.e. bare Electron with no app path, which is why the
+ * app path and the launch's enclosure travel instead). The successor is read on
+ * A's OWN `--inspect` port for the same reason: that port rides the replay,
+ * and a bare-Electron default-app successor could not answer on it under the
+ * scratch profile at all. A packaged plain reopen stays `[]` (macOS starts the
+ * bundle exactly as the user's own launch did) and is pinned in the suites:
+ * every run this repo boots is dev-shaped, which is the shape that needed the
+ * correction.
+ *
  * WHAT THIS RIG DRIVES, so the evidence is about the shipped path and not about
  * this script:
  *   - instance A: the BUILT app, headless, on a scratch profile, with the state
@@ -57,6 +71,10 @@
  *   - instance S (#755): the successor A's quit terminal schedules — a NEW
  *     process that takes the freed lock after A exits, opens under the recorded
  *     (inactive) plan, and is read over the replayed inspect port;
+ *   - instance S2 (#755 review F1, `--activate`): the successor a refused Dock
+ *     click completes — read on A's own replay port, booted WITH the app path
+ *     and the run's scratch enclosure in its argv, under the headless plan the
+ *     dying command line named;
  *   - instance C: after A is gone and S has lived and quit, the NEXT launch —
  *     the control that a refusal is a refusal and not a permanent state: C is
  *     expected to open and show its window.
@@ -73,9 +91,11 @@
  * quit through the inspector rather than through a real Cmd+Q keystroke, so the
  * EVIDENCE for the menu path is that the chain entered is the same one
  * (`before-quit` → window close → `will-quit` → exit, read from A's own log),
- * not that a keystroke was synthesized. And it measures one machine's teardown
- * timing: the window it needs is the owned backend's stop, which takes seconds
- * here and could be near-empty on a machine with nothing to stop.
+ * not that a keystroke was synthesized. The Dock-click arm is the same class of
+ * limit in one more place: the click is delivered as the `activate` EVENT the
+ * OS would emit, not by clicking the tile. And it measures one machine's
+ * teardown timing: the window it needs is the owned backend's stop, which takes
+ * seconds here and could be near-empty on a machine with nothing to stop.
  *
  * ISOLATION, the same discipline as `scripts/session-cookie-restart-proof.mjs`:
  * HOME, `LOCAL_OPERATOR_CONFIG_DIR`, `LOCAL_OPERATOR_LOG_DIR` and the Electron
@@ -117,11 +137,17 @@
  *
  * Usage:
  *   node scripts/relaunch-during-quit-proof.mjs [--window-wait <ms>]
- *     [--keep] [--record <path>] [--label <name>] [--no-reopen]
+ *     [--keep] [--record <path>] [--label <name>] [--no-reopen] [--activate]
  *
  * `--no-reopen` runs the control arm instead of the main one: A quits with no
  * relaunch during its teardown, and the rig asserts nothing is ever spawned
  * (the negative that proves a successor only follows a refused reopen).
+ *
+ * `--activate` runs the Dock-click arm instead of the second-launch one: A
+ * quits, the rig emits `app.emit('activate')` into it mid-teardown (the refused
+ * Dock click), and the successor is asserted to carry the app path and the
+ * scratch enclosure, on A's own replayed inspector port, under the replayed
+ * headless plan. `--no-reopen` and `--activate` are mutually exclusive.
  *
  * `--record` writes the transcript to a file as well as stdout (the committed
  * artifacts under docs/evidence/relaunch-during-quit are two such files, one
@@ -159,6 +185,7 @@ const KEEP = process.argv.includes("--keep");
  * successor reading its meaning (see the header).
  */
 const NO_REOPEN = process.argv.includes("--no-reopen");
+const ACTIVATE = process.argv.includes("--activate");
 const flagValue = (flag, fallback) => {
 	const at = process.argv.indexOf(flag);
 	return at === -1 ? fallback : process.argv[at + 1];
@@ -381,8 +408,11 @@ const REOPEN_DEFERRED = /reopen=deferred/;
 const SUCCESSOR_SCHEDULED_LINE = /\[relaunch\] successor scheduled/;
 const RAISE_INITIAL_PRESENT_INACTIVE =
 	/\[window-raise\] trigger=initial-present mode=inactive/;
+const RAISE_ACTIVATE_LINE = /\[window-raise\] trigger=activate/;
 const LAUNCHER_INACTIVE_LINE =
 	/\[window-mode\] window mode inactive is not launcher-bound/;
+const LAUNCHER_HEADLESS_LINE =
+	/\[window-mode\] headless run (?:already detached \(no launcher to outlive\)|launched by pid \d+)/;
 /* Top-level so the scan below is not compiling them per row (the lint rule). */
 const PS_ROW = /^(\d+)\s+(\d+)\s+(.*)$/;
 const DAEMON_REGISTERED_ALL = /Registered this app's own daemon/g;
@@ -602,6 +632,13 @@ async function main() {
 		process.exitCode = 1;
 		return;
 	}
+	if (NO_REOPEN && ACTIVATE) {
+		say(
+			"FAILED: --no-reopen and --activate select different arms; pass at most one.",
+		);
+		process.exitCode = 1;
+		return;
+	}
 	rmSync(SCRATCH, { recursive: true, force: true });
 	for (const dir of [HOME_DIR, CONFIG_DIR, LOG_DIR, USER_DATA, APP_CWD]) {
 		mkdirSync(dir, { recursive: true });
@@ -687,7 +724,10 @@ async function main() {
 	 * The main arm's relaunch slot and the port its successor will answer on are
 	 * reserved here, outside the arm branch, because the successor section below
 	 * reads them. The control arm never launches B; for it the SAME port is the
-	 * designated port that must stay silent (nothing was ever told about it).
+	 * designated port that must stay silent (nothing was ever told about it). The
+	 * activate arm has no B and needs no new port: its successor replays A's own
+	 * command line, so it answers on A's own inspector port (`inspectA`), and the
+	 * successor section reads it there.
 	 */
 	let b = null;
 	const inspectS = await freePort();
@@ -699,6 +739,108 @@ async function main() {
 		 * observe here. The shared A-exit section below and the quiet-window
 		 * readings after it are this arm's own evidence.
 		 */
+	} else if (ACTIVATE) {
+		/* ---- the Dock click, emitted into the quitting process (review F1) --- */
+
+		/*
+		 * The refused Dock click, driven into A while it tears down: the shipped
+		 * `activate` handler sees zero windows and a quit in progress, so it refuses
+		 * the click whole — creating nothing — and RECORDS it; the quit's terminal
+		 * completes it with the successor read below on A's own port.
+		 *
+		 * The re-attach is the only wire into the dying process (closed again
+		 * immediately, for the reason the header states: an attached socket has kept
+		 * a quitting app from exiting). A's own command line is read here too: it is
+		 * what a dev-shaped plain reopen replays, so the successor's argv is
+		 * asserted against a recorded reading rather than a guess.
+		 */
+		const aAliveAtClick = pidAlive(a.child.pid);
+		check(
+			"A is still tearing down when the click lands (the premise)",
+			aAliveAtClick,
+			aAliveAtClick
+				? `A alive +${Date.now() - quitAt}ms after app.quit(), its window already closed`
+				: "A had already exited, so this run proves nothing about the completion",
+		);
+		let aArgv = null;
+		let windowsAfterClick = null;
+		let activateEmitted = null;
+		if (aAliveAtClick) {
+			try {
+				const prober = await CdpClient.attach(inspectA, 5_000);
+				aArgv = await prober.evaluate("process.argv");
+				activateEmitted = await prober.evaluate(
+					"(() => { process.mainModule.require('electron').app.emit('activate'); return 'activate emitted'; })()",
+				);
+				// The handler's refusal is synchronous; the window reading is taken
+				// right after so "created nothing" is A's own answer, not a glance.
+				windowsAfterClick = await prober.evaluate(WINDOW_READING);
+				prober.close();
+			} catch (error) {
+				say(`activate re-attach failed: ${String(error)}`);
+			}
+		}
+		say(
+			`A's own command line (what the dev-shaped replay carries): ${JSON.stringify(aArgv)}`,
+		);
+		check(
+			"the Dock click was delivered to the quitting process",
+			activateEmitted === "activate emitted",
+			String(activateEmitted),
+		);
+		check(
+			"A answered the Dock click without creating or raising a window",
+			Array.isArray(windowsAfterClick) && windowsAfterClick.length === 0,
+			windowsAfterClick === null
+				? "no reading could be taken"
+				: `A's windows ${Date.now() - quitAt}ms after app.quit(): ${JSON.stringify(windowsAfterClick)}`,
+		);
+
+		/*
+		 * The negatives, the same ones the second-launch arm pins: no process may
+		 * exist beyond A, and no schedule may be on the record while A still tears
+		 * down (it runs at the terminal, seconds away). A's OWN inspector port is
+		 * open by design here — it is A's — so the outside readings are the scratch
+		 * profile and the schedule line rather than a port probe.
+		 */
+		const aAliveAtNoSProbe = pidAlive(a.child.pid);
+		const scratchAtClick = scratchProfileProcesses();
+		check(
+			"no successor exists before A exits (only A is on the scratch profile)",
+			aAliveAtNoSProbe &&
+				scratchAtClick.length === 1 &&
+				scratchAtClick[0].pid === a.child.pid,
+			`A alive: ${aAliveAtNoSProbe}; scratch-profile processes: ${JSON.stringify(scratchAtClick)}`,
+		);
+		check(
+			"nothing is scheduled at refusal time (no [relaunch] line while A tears down)",
+			!SUCCESSOR_SCHEDULED_LINE.test(appLog()),
+			SUCCESSOR_SCHEDULED_LINE.test(appLog())
+				? "a [relaunch] successor scheduled line exists while A is still alive — the schedule moved off the terminal"
+				: "no [relaunch] line yet; the terminal has not run",
+		);
+
+		// A's own record of what it did with the click.
+		await waitFor(
+			() => RAISE_ACTIVATE_LINE.test(appLog()),
+			"a window-raise line for the Dock click",
+			10_000,
+		).catch(() => {});
+		const activateLine =
+			appLog()
+				.split("\n")
+				.filter((line) => line.includes("trigger=activate"))
+				.slice(-1)[0] ?? "(none)";
+		check(
+			"the refusal is on the record (applied=skipped+quitting)",
+			APPLIED_SKIPPED_WHILE_QUITTING.test(activateLine),
+			activateLine,
+		);
+		check(
+			"the refusal carries the completion token (reopen=deferred — one successor will complete it)",
+			REOPEN_DEFERRED.test(activateLine),
+			activateLine,
+		);
 	} else {
 		/* ---- B: the immediate relaunch, while A is still tearing down ------ */
 
@@ -928,16 +1070,23 @@ async function main() {
 		/*
 		 * ---- S: the successor A's quit terminal spawned (#755) --------------
 		 *
-		 * A's terminal scheduled ONE successor via `app.relaunch`; its argv replays
-		 * B's command line, so it answers on B's inspect port. S starts after A is
-		 * fully gone (the relaunch contract, measured by the #755 spike), takes the
-		 * freed single-instance lock and opens under the recorded (inactive) plan.
-		 * A successor that never started leaves the attach to time out — the
-		 * check's detail will say so.
+		 * A's terminal scheduled ONE successor via `app.relaunch`; where it answers
+		 * depends on the arm, and that difference is the point of the activate arm
+		 * (review F1): a refused second launch replays the LOSING launch's command
+		 * line, so the successor answers on B's replayed port; a refused Dock click
+		 * replays the dying process's OWN (a dev-shaped plain reopen), so it answers
+		 * on A's port — which is what makes "boots with the app path" observable: a
+		 * bare-Electron default-app successor could not answer there, under the
+		 * scratch profile, at all. Either way it starts after A is fully gone (the
+		 * relaunch contract, measured by the #755 spike), takes the freed
+		 * single-instance lock, and boots under the plan its replayed command line
+		 * settles. A successor that never started leaves the attach to time out —
+		 * the check's detail will say so.
 		 */
+		const successorPort = ACTIVATE ? inspectA : inspectS;
 		let mainS = null;
 		try {
-			mainS = await CdpClient.attach(inspectS, 30_000);
+			mainS = await CdpClient.attach(successorPort, 30_000);
 		} catch (error) {
 			say(`successor attach failed: ${String(error)}`);
 		}
@@ -945,8 +1094,8 @@ async function main() {
 			"the successor starts after A exits, on the replayed inspect port",
 			mainS !== null,
 			mainS === null
-				? `nothing answered on 127.0.0.1:${inspectS} within 30s of A's exit — no successor was spawned`
-				: `observed on ${inspectS}`,
+				? `nothing answered on 127.0.0.1:${successorPort} within 30s of A's exit — no successor was spawned`
+				: `observed on ${successorPort}`,
 		);
 		let sPid = null;
 		if (mainS !== null) {
@@ -960,11 +1109,19 @@ async function main() {
 				`S pid=${sPid}; A pid=${a.child.pid}; B pid=${b === null ? "?" : b.child.pid}`,
 			);
 			check(
-				"the successor replays B's command line under the recorded plan",
-				Array.isArray(sArgv) &&
-					sArgv.includes(`--inspect=${inspectS}`) &&
-					sArgv.includes("--window-mode=inactive") &&
-					sArgv.includes(`--user-data-dir=${USER_DATA}`),
+				ACTIVATE
+					? "the successor replays the dying process's own command line — the app path and the enclosure travel (review F1)"
+					: "the successor replays B's command line under the recorded plan",
+				ACTIVATE
+					? Array.isArray(sArgv) &&
+							sArgv.includes(APP_ROOT) &&
+							sArgv.includes(`--inspect=${inspectA}`) &&
+							sArgv.includes("--window-mode=headless") &&
+							sArgv.includes(`--user-data-dir=${USER_DATA}`)
+					: Array.isArray(sArgv) &&
+							sArgv.includes(`--inspect=${inspectS}`) &&
+							sArgv.includes("--window-mode=inactive") &&
+							sArgv.includes(`--user-data-dir=${USER_DATA}`),
 				JSON.stringify(sArgv),
 			);
 			const sLock = await mainS
@@ -977,10 +1134,23 @@ async function main() {
 				sLock === true,
 				`hasSingleInstanceLock() = ${sLock}`,
 			);
+			/*
+			 * The expected presentation is the arm's own: the second-launch arm's
+			 * successor opens under the recorded `inactive` plan (one visible,
+			 * unfocused window — the rig's envelope), and the activate arm's successor
+			 * boots under the plan its replayed command line names (headless: the
+			 * window exists and is never shown). A `focus` successor is what the
+			 * recorded click actually asks for; no rig may boot one — the one thing the
+			 * repo's rig rule forbids — which is why the arm's dying process names a
+			 * mode at all.
+			 */
+			const expectVisible = !ACTIVATE;
 			const sWindow = await waitFor(
 				async () => {
 					const list = await mainS.evaluate(WINDOW_READING).catch(() => null);
-					return Array.isArray(list) && list.length === 1 && list[0].visible
+					return Array.isArray(list) &&
+						list.length === 1 &&
+						list[0].visible === expectVisible
 						? list
 						: null;
 				},
@@ -988,7 +1158,9 @@ async function main() {
 				windowWaitMs,
 			);
 			check(
-				"the successor opens exactly one visible window under the recorded plan",
+				ACTIVATE
+					? "the successor boots under the replayed plan (headless: one window, never shown — no focus is ever taken)"
+					: "the successor opens exactly one visible window under the recorded plan",
 				sWindow !== null,
 				JSON.stringify(sWindow),
 			);
@@ -1004,6 +1176,13 @@ async function main() {
 			// its initial-present raise, its launcher policy — appended after A
 			// exited. A writes no raise (headless raises nothing), B never got that
 			// far, and C has not launched: what appears here is the successor's.
+			/*
+			 * The successor's own lines, arm by arm: the second-launch arm's boots
+			 * `inactive`, so its initial-present raise and its launcher policy both
+			 * land; the activate arm's boots `headless`, which raises nothing (a mode
+			 * that raises nothing writes nothing) — its launcher policy line is the
+			 * headless one, and that line is the policy assertion.
+			 */
 			const daemonRegistrationCount = () =>
 				(appLog().match(DAEMON_REGISTERED_ALL) ?? []).length;
 			await waitFor(
@@ -1012,11 +1191,17 @@ async function main() {
 				60_000,
 			).catch(() => {});
 			check(
-				"the successor's own log lines are on the record (daemon, raise, launcher policy)",
+				ACTIVATE
+					? "the successor's own log lines are on the record (daemon, headless launcher policy)"
+					: "the successor's own log lines are on the record (daemon, raise, launcher policy)",
 				daemonRegistrationCount() >= 2 &&
-					RAISE_INITIAL_PRESENT_INACTIVE.test(appLog()) &&
-					LAUNCHER_INACTIVE_LINE.test(appLog()),
-				`daemon registrations: ${daemonRegistrationCount()}; initial-present raise: ${RAISE_INITIAL_PRESENT_INACTIVE.test(appLog())}; launcher policy: ${LAUNCHER_INACTIVE_LINE.test(appLog())}`,
+					(ACTIVATE
+						? LAUNCHER_HEADLESS_LINE.test(appLog())
+						: RAISE_INITIAL_PRESENT_INACTIVE.test(appLog()) &&
+							LAUNCHER_INACTIVE_LINE.test(appLog())),
+				ACTIVATE
+					? `daemon registrations: ${daemonRegistrationCount()}; launcher policy (headless): ${LAUNCHER_HEADLESS_LINE.test(appLog())}`
+					: `daemon registrations: ${daemonRegistrationCount()}; initial-present raise: ${RAISE_INITIAL_PRESENT_INACTIVE.test(appLog())}; launcher policy: ${LAUNCHER_INACTIVE_LINE.test(appLog())}`,
 			);
 			// Second reading of S's window list: it must STAY at one — a second
 			// successor would have lost the lock and exited, and nothing else may
