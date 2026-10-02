@@ -99,6 +99,24 @@ export type PanelRequest = {
 	 * second way to present one.
 	 */
 	sessionId?: string;
+	/**
+	 * The transcript entry this request addresses, when its requester acts on one.
+	 *
+	 * THE SAME RULE AS `sessionId` ONE LEVEL DOWN: `sessionId` names WHICH
+	 * conversation the request is about (a requester outside the pane cannot let
+	 * the pane guess), and this names WHY, for the destinations whose act is
+	 * about a row inside it. Today there is exactly one - `session.fork` cuts
+	 * through a named entry instead of at the next safe boundary - and the
+	 * presenter hands it to the adapter rather than the adapter re-deriving it:
+	 * the row that raised the request is the only layer that knows which message
+	 * it belongs to, and re-deriving it from the pane's own view would fork the
+	 * wrong message whenever the two disagree.
+	 *
+	 * Absent is the whole of the existing behaviour: a typed `/fork`, the
+	 * palette and the sidebar row menu name no entry and the copy is the
+	 * whole-conversation fork they have always had.
+	 */
+	entryId?: string;
 };
 
 /**
@@ -119,11 +137,14 @@ type PanelPresentationState = {
 	 * (see `PanelRequest.invoker`); omitted only where the caller has none to name.
 	 * `sessionId` names the conversation the request addresses when the requester
 	 * is outside the pane (see `PanelRequest.sessionId`); the palette never passes it.
+	 * `entryId` names the transcript entry the destination acts on, when it acts
+	 * on one (see `PanelRequest.entryId`).
 	 */
 	requestPanel: (
 		destination: string,
 		invoker?: HTMLElement | null,
 		sessionId?: string,
+		entryId?: string,
 	) => void;
 	/** Retire a request, by nonce. */
 	consumePanel: (nonce: number) => void;
@@ -209,7 +230,7 @@ let claims = 0;
 export const usePanelPresentationStore = create<PanelPresentationState>(
 	(set) => ({
 		request: null,
-		requestPanel: (destination, invoker, sessionId) => {
+		requestPanel: (destination, invoker, sessionId, entryId) => {
 			nextNonce += 1;
 			set({
 				request: {
@@ -220,6 +241,9 @@ export const usePanelPresentationStore = create<PanelPresentationState>(
 					// Spread, not `sessionId: undefined`: the palette's request keeps the
 					// exact shape it has always had, key for key.
 					...(sessionId ? { sessionId } : {}),
+					// The same rule one level down: an empty id names no entry, so it
+					// is absent rather than a blank the presenter has to tell apart.
+					...(entryId ? { entryId } : {}),
 				},
 			});
 		},

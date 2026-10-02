@@ -4,11 +4,13 @@
  *
  * FOUR THINGS LIVE HERE, and they are the parts a frame cannot settle:
  *
- * 1. WHICH ACTIONS THE ROW OFFERS (`answerActionsFor`) - copy always and first,
- *    speak only when an agent id resolves, never more than those two. A frame
- *    shows one row's worth of buttons; it cannot show the row that must NOT have
- *    a Speak, or that the cap holds.
- * 2. WHAT COPY WRITES - the answer's VISIBLE text (`parseReplies`'s
+ * 1. WHICH ACTIONS THE ROW OFFERS (`answerActionsFor`) - copy always and
+ *    first, speak only when an agent id resolves, and fork only for a row the
+ *    transcript can name a cut point for.
+ * 2. WHICH ROWS ARE CUT POINTS (`forkEntryId`) - the settled user and assistant
+ *    rows carry the journal entry id a fork is cut through; a tool row's id is
+ *    `tool:<call id>` and is not one.
+ * 3. WHAT COPY WRITES - the answer's VISIBLE text (`parseReplies`'s
  *    `remainingContent`), markdown verbatim and without a reply-quote's
  *    `<reply-to>` transport markup. Asserted against the SHIPPED parser with a
  *    fixture that carries all three shapes (a reply block, a fence, a table),
@@ -20,9 +22,13 @@
  *    subject changing; this row's subject never changes while it is mounted).
  *    Mounted in JSDOM against the real component and the real clipboard call
  *    site, because "the press copies" is not a claim a source scan can carry.
- * 4. THE FAILURE PATH - a refused write leaves the label alone. `Copied` on a
+ * 4. WHAT THE FORK PRESS ASKS FOR - a presentation request naming THIS row's
+ *    conversation and THIS row's entry, against the real store the pane
+ *    consumes. "The press carries the row's id" is a fact about an argument no
+ *    frame can show.
+ * 5. THE FAILURE PATH - a refused write leaves the label alone. `Copied` on a
  *    press the browser discarded is the one outcome this row must not produce.
- * 5. THE MOUNT GATE - the row appears only where the transcript's `isQuotable`
+ * 6. THE MOUNT GATE - the row appears only where the transcript's `isQuotable`
  *    says there are words to copy. Asserted by RENDERING the real transcript
  *    with an answer still streaming and with an answer whose whole body is
  *    reply markup, because a gate read off the source is a gate a single
@@ -92,11 +98,12 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
-			export { answerActionsFor, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
+			export { answerActionsFor, forkEntryId, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
 			export { useSpeechStore } from "@shared/store/speech-store";
+			export { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -182,30 +189,117 @@ test("copy is always offered, and it is first", () => {
 	assert.deepEqual(mod.answerActionsFor({ agentId: "c1" }), ["copy", "speak"]);
 });
 
-test("the row is capped at two actions, and Quote is not one of them", async () => {
+test("fork is offered LAST, and only for a row with a cut point", () => {
+	/*
+	 * The gate is the caller's answer, so the model is asserted in all four
+	 * combinations: a row is either a cut point or it is not, and an answer
+	 * either has an agent to speak with or it does not. Copy keeps the left edge
+	 * in every one of them (the anchor rule the module states).
+	 */
 	for (const agentId of [undefined, "c1"]) {
-		assert.ok(
-			mod.answerActionsFor({ agentId }).length <= 2,
-			"the model caps the row at two",
+		assert.deepEqual(
+			mod.answerActionsFor({ agentId }).at(-1),
+			agentId ? "speak" : "copy",
+			"nothing is appended for a row with no cut point",
+		);
+		assert.deepEqual(
+			mod.answerActionsFor({ agentId, forkable: true }),
+			agentId ? ["copy", "speak", "fork"] : ["copy", "fork"],
+			"fork joins the row last when the record is a cut point",
 		);
 	}
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "user" }),
+		["copy"],
+		"the user arm is Copy alone until the row is a cut point - never Speak",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "user", forkable: true }),
+		["copy", "fork"],
+		"the user arm takes fork too, and still never takes speak",
+	);
+});
+
+test("which records carry a fork cut point, and which do not", () => {
+	const user = { kind: "user", id: "4a1b", ts: 1, text: "hi", images: [] };
+	const answer = {
+		kind: "assistant",
+		id: "9c2d",
+		ts: 1,
+		text: "there",
+		streaming: false,
+	};
+	assert.equal(mod.forkEntryId(user), "4a1b", "a user row's id is the entry");
+	assert.equal(mod.forkEntryId(answer), "9c2d", "and so is a settled answer's");
+	/*
+	 * THE THREE REFUSALS, each for its own reason: a tool row's id is
+	 * `tool:<call id>` (the core answers `has_entry` no for it), a streaming
+	 * answer's id is the LIVE row's - the commit is what puts it in the journal -
+	 * and the machine-voice kinds are not conversation rows at all.
+	 */
+	assert.equal(
+		mod.forkEntryId({ kind: "tool", id: "tool:abc", ts: 1 }),
+		null,
+		"a tool row is not a cut point, whatever its id looks like",
+	);
+	for (const kind of ["notice", "peer", "wake", "custom", "compaction"]) {
+		assert.equal(
+			mod.forkEntryId({ kind, id: "e1", ts: 1 }),
+			null,
+			`a ${kind} row is not a cut point`,
+		);
+	}
+	assert.equal(
+		mod.forkEntryId({ ...answer, streaming: true }),
+		null,
+		"a row still receiving deltas names no committed entry",
+	);
+});
+
+test("the row shows exactly the actions the model publishes, and Quote is not one of them", async () => {
 	/*
 	 * Read off the RENDER, because the model's own answer cannot fail this: the
-	 * list is typed `("copy" | "speak")[]`, so asserting "no quote" against it
-	 * asserts the compiler. What the cap protects is the line's width and the
-	 * slot #694 will want, and both are facts about which buttons are on the
-	 * DOM - a third action added to the row shows up here and nowhere else.
+	 * list is typed, so asserting "no quote" against it asserts the compiler.
+	 * What the model decides is which buttons are on the DOM, and that is the
+	 * fact a third action would show up in and nowhere else.
+	 *
+	 * TWO SHAPES, because the fork arm is conditional: a row mounted with no cut
+	 * point (the child reader, a story, every test above) offers the two controls
+	 * it always did, and one mounted with both halves offers Fork last.
 	 */
-	const { dom, unmount } = await mount();
-	const labels = [
-		...dom.window.document.querySelectorAll("[data-lo-answer-actions] button"),
-	].map((node) => node.getAttribute("aria-label"));
+	const plain = await mount();
 	assert.deepEqual(
-		labels,
+		[
+			...plain.dom.window.document.querySelectorAll(
+				"[data-lo-answer-actions] button",
+			),
+		].map((node) => node.getAttribute("aria-label")),
 		["Copy", "Speak aloud"],
-		"exactly two controls, in that order, with no Quote among them",
+		"exactly two controls on a row with no cut point, with no Quote among them",
 	);
-	await unmount();
+	assert.equal(
+		plain.dom.window.document.querySelector(
+			'[data-lo-answer-actions] button[aria-label="Fork from this message"]',
+		),
+		null,
+		"and no Fork, withdrawn rather than disabled",
+	);
+	await plain.unmount();
+
+	const row = await mount({
+		conversationId: "c1",
+		entryId: "entry-a1",
+	});
+	assert.deepEqual(
+		[
+			...row.dom.window.document.querySelectorAll(
+				"[data-lo-answer-actions] button",
+			),
+		].map((node) => node.getAttribute("aria-label")),
+		["Copy", "Speak aloud", "Fork from this message"],
+		"Fork joins the row LAST when the record is a cut point",
+	);
+	await row.unmount();
 });
 
 /* ------------------------------------------------- what Copy writes */
@@ -264,6 +358,8 @@ test("an answer with no reply block copies its own text, trimmed", () => {
 const mount = async ({
 	speechConfigured = false,
 	refuseWrite = false,
+	conversationId,
+	entryId,
 } = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
@@ -322,6 +418,8 @@ const mount = async ({
 				bodyText: "Four were late, and the oldest is 41 days behind.",
 				agentId: "c1",
 				speechId: "a1",
+				conversationId,
+				entryId,
 			}),
 		);
 	});
@@ -404,6 +502,42 @@ test("a refused write does not claim success", async () => {
 	assert.ok(button("Copy"), "the label is unchanged");
 	assert.equal(button("Copied"), null, "a failed press must not claim success");
 	await unmount();
+});
+
+/* ---------------------------------------------------- the fork press */
+
+test("the fork press asks the pane for session.fork with THIS row's entry", async () => {
+	const { dom, button, unmount } = await mount({
+		conversationId: "c9",
+		entryId: "entry-a1",
+	});
+	const store = mod.usePanelPresentationStore;
+	/* A request left by an earlier test in this file would be the same trap. */
+	store.setState({ request: null });
+	await act(async () => {
+		button("Fork from this message").dispatchEvent(
+			new dom.window.MouseEvent("click", { bubbles: true }),
+		);
+	});
+	const request = store.getState().request;
+	assert.ok(request, "the press wrote a request");
+	assert.equal(request.destination, "session.fork");
+	assert.equal(
+		request.sessionId,
+		"c9",
+		"the request names the row's conversation, so the pane cannot substitute its own",
+	);
+	assert.equal(
+		request.entryId,
+		"entry-a1",
+		"and the row's own transcript entry - which is what makes the picker a cut",
+	);
+	assert.ok(
+		request.invoker instanceof dom.window.HTMLElement,
+		"the row travels as the invoker, so Escape from the picker comes back to it",
+	);
+	await unmount();
+	store.setState({ request: null });
 });
 
 test("Speak is offered when there is an agent to speak with, and disabled when speech is not configured", async () => {

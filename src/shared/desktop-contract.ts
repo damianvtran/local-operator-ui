@@ -2060,7 +2060,25 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			requestId,
 			message: z.string().max(200000).optional(),
-			boundary: z.literal("next_safe").optional(),
+			/*
+			 * WHERE THE COPY STOPS. `next_safe` is the historical form and the default
+			 * (the whole committed conversation, waiting for a turn boundary);
+			 * `at_entry` cuts through `entryId` and needs no boundary, because a named
+			 * point is already committed.
+			 *
+			 * `entryId` is bounded rather than patterned for the route's reason -
+			 * entry ids are minted in more than one shape and existence in the
+			 * CONVERSATION is what decides whether one is real (the route answers an
+			 * unknown or foreign id with a refusal, never a fork of the wrong
+			 * history) - so this client validates the shape it can and lets the
+			 * backend adjudicate the rest.
+			 *
+			 * BOTH ARE OPTIONAL AND ABSENT IS THE OLD CALL, key for key: a typed
+			 * `/fork` and the palette's fork send neither, and the body builder below
+			 * omits `entry_id` entirely rather than sending it as null.
+			 */
+			boundary: z.enum(["next_safe", "at_entry"]).optional(),
+			entryId: z.string().max(128).optional(),
 		})
 		.strict(),
 	z
@@ -5433,6 +5451,16 @@ export function desktopEndpoint(request: DesktopRequest): {
 					request_id: request.requestId,
 					message: request.message,
 					boundary: request.boundary,
+					/*
+					 * The route validates the two TOGETHER: `entry_id` with `next_safe`
+					 * is a 422, and `at_entry` without one is a 422. This builder does
+					 * not police that pairing (the schema above is what a renderer may
+					 * send; the route is what adjudicates it), but it does keep the
+					 * absent case byte-identical to the call that shipped before the
+					 * cut existed - `undefined` is dropped by `JSON.stringify`, so a
+					 * `next_safe` fork sends no `entry_id` key at all.
+					 */
+					entry_id: request.entryId,
 				},
 			};
 		case "sessions.stop":

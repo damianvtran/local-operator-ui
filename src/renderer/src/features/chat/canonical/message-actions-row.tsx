@@ -1,6 +1,13 @@
 /**
- * The row of actions under a turn: Copy, and - on an answer with a speech
- * target - Speak.
+ * The row of actions under a turn: Copy, Speak on an answer with a speech
+ * target, and Fork on any message that is a point a fork can be cut at.
+ *
+ * THE FORK PRESS ASKS THE PANE TO PRESENT THE PICKER, it does not open one
+ * itself: the pane owns the presentation slot and the picker's adapter needs
+ * the pane's canonical handle, command catalogue and rebind path
+ * (`panel-presentation-store.ts` carries the argument for a request over a
+ * function call). What this row contributes is the two facts only it holds -
+ * which conversation, and which transcript entry - and they ride the request.
  *
  * WHY THIS IS NOT THE LINK TOOLBAR'S COMPONENT. That strip floats over what the
  * pointer is on, takes the elevated ground and the one overlay shadow, and
@@ -61,13 +68,22 @@ import {
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
 import { cn } from "@shared/lib/utils";
+import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { messageSpeechKey, useSpeechStore } from "@shared/store/speech-store";
-import { Check, Copy } from "lucide-react";
-import { memo, useEffect, useRef, useState } from "react";
+import { Check, Copy, GitFork } from "lucide-react";
+import {
+	Fragment,
+	type ReactNode,
+	memo,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
 import { copyTarget } from "../utils/link-open";
 import {
 	ANSWER_ACTIONS_LABEL,
 	type ActionRowRole,
+	type AnswerActionId,
 	COPY_FEEDBACK_MS,
 	USER_ACTIONS_LABEL,
 	actionRowVisibility,
@@ -96,6 +112,25 @@ export type AnswerActionRowProps = {
 	revealId?: string;
 	/** The record's own timestamp; the arrival reveal's recency window reads it. */
 	revealAt?: number;
+	/**
+	 * The conversation this row's message belongs to, when there is one.
+	 *
+	 * REQUIRED FOR FORK AND ABSENT ELSEWHERE, which is why it is its own prop
+	 * rather than a second name for `agentId`: a user row offers no Speak, so it
+	 * is handed no agent, and reusing that prop would state something false about
+	 * the row to reach a fact about the fork. A row mounted without it (the
+	 * run-details child reader, the story surfaces, tests) simply offers no Fork.
+	 */
+	conversationId?: string;
+	/**
+	 * The transcript entry this row's message IS, when the record carries one.
+	 *
+	 * WHAT IT ADDRESSES: the point a fork is cut at - `forkEntryId` in
+	 * `message-actions.ts` is the rule, and the transcript calls it for the
+	 * record it is drawing. Absent means this row is not a cut point (or is a
+	 * surface with no transcript behind it), and the row offers no Fork for it.
+	 */
+	entryId?: string;
 };
 
 /**
@@ -149,6 +184,8 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	speechId,
 	revealId,
 	revealAt,
+	conversationId,
+	entryId,
 }: AnswerActionRowProps) {
 	const [copied, setCopied] = useState(false);
 	const [arriving, setArriving] = useState(false);
@@ -170,7 +207,19 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 		},
 	});
 
-	const actions = answerActionsFor({ role: kind, agentId });
+	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
+
+	/*
+	 * A fork needs BOTH halves to be offered at all: the conversation it would
+	 * copy (the picker's subject) and the entry it would cut at. One without the
+	 * other is not a weaker fork, it is a request that can only be refused - so
+	 * the action is WITHDRAWN rather than disabled, the convention every
+	 * inapplicable action in these toolbars follows (`linkToolbarModel` omits the
+	 * actions a target cannot carry, and `answerActionsFor` omits Speak when no
+	 * agent resolves).
+	 */
+	const forkable = Boolean(conversationId && entryId);
+	const actions = answerActionsFor({ role: kind, agentId, forkable });
 	/*
 	 * The row is kept up while anything it owns is mid-state: a `Copied` tick
 	 * or a Speak that is loading or playing is the reader's own press talking
@@ -268,6 +317,84 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 		}, COPY_FEEDBACK_MS);
 	};
 
+	/**
+	 * Present the fork picker for THIS row's message - "fork from this message
+	 * on", without the reader having to type `/fork` or re-find the message in
+	 * the picker.
+	 *
+	 * THE ROW ASKS, IT DOES NOT OPEN. A destination's adapter needs the pane's
+	 * canonical handle, command catalogue and rebind path, so the pane owns the
+	 * presentation slot (`slash-dispatch.ts`); a control writing picker state
+	 * directly would be a second presenter. The request carries the conversation
+	 * AND the entry id: the entry is what makes this a cut rather than a whole-
+	 * conversation fork, and it travels because this row is the only layer that
+	 * knows which message it belongs to.
+	 *
+	 * The row itself is the invoker, so Escape from the picker comes back to the
+	 * control that opened it rather than to the composer.
+	 */
+	const handleFork = () => {
+		if (!conversationId || !entryId) return;
+		requestPanel("session.fork", revealRef.current, conversationId, entryId);
+	};
+
+	/*
+	 * One control per action id, chosen by the id the MODEL published rather than
+	 * by a second list of buttons here. It is `link-toolkit.tsx`'s shape (`icons`
+	 * / `presses` keyed by `LinkActionId`) for that file's reason: the model
+	 * decides what is OFFERED - including that a row with no fork point offers no
+	 * Fork - and this file decides only what each offer looks like. A hard-coded
+	 * button list here would be a second place that has to agree with the model,
+	 * which is the defect that convention exists to prevent.
+	 *
+	 * The `Record` is exhaustive over `AnswerActionId` on purpose: a fifth action
+	 * added to the union fails the typecheck here rather than rendering nothing,
+	 * which is how a withdrawn action stays a decision rather than an omission.
+	 */
+	const controls: Record<AnswerActionId, ReactNode> = {
+		copy: (
+			/*
+			 * `side="bottom"` is design round 1's D5: the tooltip at `top`
+			 * opened over the turn's own last prose line (measured against the
+			 * frame pair); below is the stamp band, quieter ground to cover.
+			 * The design delta verifies it against frames and reverts if the
+			 * stamp band reads worse.
+			 */
+			<Tooltip content={copied ? "Copied" : "Copy"} side="bottom">
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label={copied ? "Copied" : "Copy"}
+					className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
+					onClick={handleCopy}
+				>
+					{copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+				</Button>
+			</Tooltip>
+		),
+		speak: <SpeakButton control={speechControl} side="bottom" />,
+		fork: (
+			/*
+			 * THE GLYPH IS THE SIDEBAR'S. `chat-sidebar.tsx`'s row menu offers the
+			 * same verb (`Fork conversation`) with `GitFork`, and two marks for one
+			 * action would read as two different actions; this one names the
+			 * DIRECTION the sidebar's cannot (the cut is at this message, not at
+			 * the end), so the label carries the rest.
+			 */
+			<Tooltip content="Fork from this message" side="bottom">
+				<Button
+					variant="ghost"
+					size="icon-sm"
+					aria-label="Fork from this message"
+					className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
+					onClick={handleFork}
+				>
+					<GitFork aria-hidden="true" />
+				</Button>
+			</Tooltip>
+		),
+	};
+
 	return (
 		<div
 			role="toolbar"
@@ -304,40 +431,14 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 				actionRowVisibility(pinned),
 			)}
 		>
-			{actions.map((action) =>
-				action === "copy" ? (
-					/*
-					 * `side="bottom"` is design round 1's D5: the tooltip at `top`
-					 * opened over the turn's own last prose line (measured against the
-					 * frame pair); below is the stamp band, quieter ground to cover.
-					 * The design delta verifies it against frames and reverts if the
-					 * stamp band reads worse.
-					 */
-					<Tooltip
-						key={action}
-						content={copied ? "Copied" : "Copy"}
-						side="bottom"
-					>
-						<Button
-							variant="ghost"
-							size="icon-sm"
-							aria-label={copied ? "Copied" : "Copy"}
-							className={cn(
-								"text-ink-dim hover:bg-accent-wash hover:text-accent",
-							)}
-							onClick={handleCopy}
-						>
-							{copied ? (
-								<Check aria-hidden="true" />
-							) : (
-								<Copy aria-hidden="true" />
-							)}
-						</Button>
-					</Tooltip>
-				) : (
-					<SpeakButton key={action} control={speechControl} side="bottom" />
-				),
-			)}
+			{actions.map((action) => (
+				/*
+				 * A `Fragment` per action keeps the DOM identical to the flat list the
+				 * row rendered before the map existed: no wrapper element is added
+				 * between the toolbar and its buttons.
+				 */
+				<Fragment key={action}>{controls[action]}</Fragment>
+			))}
 		</div>
 	);
 });
