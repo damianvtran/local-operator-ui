@@ -39,13 +39,18 @@ import {
 import { useLocation, useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import {
-	PALETTE_GROUP_TITLES,
+	PALETTE_SECTION_TITLES,
 	type PaletteItem,
 	type PaletteMatch,
 	SCOPE_LEGEND,
 	paletteEmptyStateCopy,
 	searchPalette,
 } from "../palette-search";
+import {
+	paletteStepCaps,
+	paletteStepIndex,
+	paletteStepIntent,
+} from "../palette-shortcut";
 import { usePaletteItems } from "../use-palette-sources";
 import { PaletteIcon } from "./palette-icons";
 
@@ -617,29 +622,22 @@ export const CommandPalette: FC = () => {
 			 */
 			if ((event.target as HTMLElement | null)?.id !== INPUT_ID) return;
 			/*
-			 * Modulo by zero is NaN, and a NaN index leaves every row unselected
-			 * with no way back — reachable by typing a query that matches nothing
-			 * and pressing Down.
+			 * The list's walk — the arrows, and since #761 the Ctrl+N / Ctrl+P pair
+			 * — is a pure decision and a pure arithmetic, both in
+			 * `palette-shortcut.ts` (`paletteStepIntent` / `paletteStepIndex`,
+			 * pinned in `scripts/palette-shortcut.test.mjs`). The refusals that used
+			 * to be written here (modified arrows; a metacized pair) moved with the
+			 * decision, and the empty-list guard with them: `paletteStepIndex`
+			 * answers null where the old modulo produced NaN. The handler cannot
+			 * drift from the rule the tests pin.
 			 */
 			const count = matches.length;
-			if (event.key === "ArrowDown") {
-				/*
-				 * A MODIFIED arrow is not the list's. Shift+Arrow is the caret
-				 * extending a selection, Alt+Arrow is the OS's, and on Windows and
-				 * Linux Ctrl+Arrow is the caret's word-jump — all three reached the
-				 * list and none of them belongs to it (UX round 2, U3; round 3's
-				 * review caught that the first guard was macOS-only). `meta+Arrow`
-				 * is left to the list, because Cmd+Arrow has no caret meaning here.
-				 */
-				if (event.shiftKey || event.altKey || event.ctrlKey) return;
+			const step = paletteStepIntent(event);
+			if (step !== null) {
 				event.preventDefault();
-				if (count > 0) setSelectedIndex((current) => (current + 1) % count);
-			} else if (event.key === "ArrowUp") {
-				if (event.shiftKey || event.altKey || event.ctrlKey) return;
-				event.preventDefault();
-				if (count > 0) {
-					setSelectedIndex((current) => (current - 1 + count) % count);
-				}
+				setSelectedIndex(
+					(current) => paletteStepIndex(current, count, step) ?? current,
+				);
 			} else if (event.key === "Enter") {
 				event.preventDefault();
 				const match = matches[selectedIndex];
@@ -652,7 +650,8 @@ export const CommandPalette: FC = () => {
 			 * Home and End are deliberately NOT intercepted. They are the field's
 			 * own keys — the caret's ends — and this surface's whole premise is
 			 * that the user can keep editing the query while walking the list.
-			 * The list is walked with the arrows, which cost no caret position.
+			 * The list is walked with the arrows (and the Ctrl+N/P pair since
+			 * #761), which cost no caret position.
 			 */
 		};
 		window.addEventListener("keydown", onKeyDown);
@@ -689,6 +688,12 @@ export const CommandPalette: FC = () => {
 
 	const activeItem = activeMatch?.item;
 	const showScopeLegend = !hasTerms || !hasResults;
+	/*
+	 * The walk's pair as the footer draws it (issue #761). Read through the
+	 * decision's own module so the copy cannot drift from the binding — the
+	 * test file pins each cap by feeding it back through `paletteStepIntent`.
+	 */
+	const stepCaps = paletteStepCaps();
 
 	return (
 		<>
@@ -886,7 +891,7 @@ export const CommandPalette: FC = () => {
 													sectionIndex === 0 ? "pt-1" : "pt-3",
 												)}
 											>
-												{PALETTE_GROUP_TITLES[section.group]}
+												{PALETTE_SECTION_TITLES[section.group]}
 											</div>
 											{section.items.map((match) => (
 												<PaletteRow
@@ -1001,6 +1006,14 @@ export const CommandPalette: FC = () => {
 								<span className="flex items-center gap-1.5">
 									<KeyboardShortcut shortcut="↑" />
 									<KeyboardShortcut shortcut="↓" />
+									{/*
+									 * The walk's second spelling (issue #761), drawn joined the way
+									 * the rail's chords draw — no spaced `+` between the caps, the
+									 * three-marks reading design round 1 fixed for ⌘K.
+									 */}
+									{stepCaps.map((cap) => (
+										<KeyboardShortcut key={cap} shortcut={cap} joined />
+									))}
 									to move
 								</span>
 								<span className="flex items-center gap-1.5">

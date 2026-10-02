@@ -30,6 +30,15 @@ is open the scope names itself beside the field — a `# Chats` chip built from 
 same legend table the footer draws, shown whenever a scope is applied — because
 a bare glyph stops explaining itself once the reader is inside a scope.
 
+**On an empty query the switcher pins what needs reading** (issue #760): an
+**Unread** section above the browse list, sourced from the same predicate behind
+the sidebar's own mark (`unreadMarkKind`, decided at the source in
+`use-palette-sources.ts` — one fact, one derivation). It draws before the tiers
+and they subtract what it took, from the same 48-row budget, so `clipped` stays
+a statement about the list rather than a section sitting outside the caps. A
+typed query drops the pin; it is the switcher's alone, and widening it to the
+un-scoped `Cmd/Ctrl+K` browse is the open design question on the issue.
+
 The **rail row** is the third door, and it exists because the chord is invisible:
 a user who never learns `Cmd+K` would use the palette once, if at all. The row is
 the only control the rail carries besides the account row, it is on screen on
@@ -216,6 +225,13 @@ a network round trip:
 - `Up`/`Down` walk the list; `Enter` runs the active row; `Esc` closes.
   `Home`/`End` are **not** intercepted — they move the caret, because a user who
   cannot fix a typo without leaving the list has lost the surface's whole premise.
+- Since issue #761 `Ctrl+N` / `Ctrl+P` walk the list too — the Emacs pair the
+  arrows' guard leaves free. `Shift`/`Alt` are refused as they are for the
+  arrows, and `Cmd` is refused deliberately: `Cmd+N` is the app's New chat chord
+  and `Cmd+P` the switcher's, so accepting either here would silently re-bind a
+  press the app already means something by. The app's own New chat press already
+  stands down for a press inside the open dialog (`pressLandsOnOverlay` in
+  `new-chat-shortcut.ts`), so the two bindings cannot both answer one press.
 - Closing restores focus to whatever had it before the palette opened, falling
   back to the rail's Search row. This is explicit rather than inherited: a Radix
   modal ends by focusing its trigger, this surface has none, and before this the
