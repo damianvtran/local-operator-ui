@@ -1031,6 +1031,44 @@ export const STORIES = [
 	["chat-turn-collapse--fresh-conversation", 1280, 900],
 
 	/*
+	 * THE JITTER'S OWN PAIR (`WakeMidCycle`, `PeerMidCycle`), added with PR-4's
+	 * liveness change: the operator's `U T88 A1(stop)` prefix, a trigger that
+	 * RE-OPENS the run (`wake_prompt` in one cell, `peer_message` in the other,
+	 * because the report names both and the reproduction was the peer one), and the
+	 * cycle it starts - two calls settled and the third still out, so the pane is
+	 * live when the shutter opens. That liveness is the whole point of the pair:
+	 * with nothing in flight both trees condense, so the row this file already had
+	 * (`chat-turn-collapse--completions-both-visible`, the same shape settled)
+	 * cannot show this defect at all. Before the change the settled 88-call
+	 * sequence un-condensed the moment the trigger lands - and RENDERED, that base
+	 * frame draws no turn-collapse bar at all: the 88 calls come back as ONE
+	 * COLLAPSED TRACE FOLD (`Explored 29 files, ran 59 commands`, 29 + 59 = 88 -
+	 * the same 88 rows the bar counts as `88 actions`, two idioms for one set of
+	 * work), the row above `A1` swaps element, vocabulary and chevron side, and
+	 * `A1` with everything below it sits 13.00 px higher. That fold plus the reflow
+	 * (and the cycle arriving as one live trace row) is the motion the operator
+	 * reported, not an unbarred wall of 88 rows; after the change the bar stays
+	 * and only the cycle being written is drawn in place. The before half is this
+	 * same story file copied into a base worktree (§10's method), measured rather
+	 * than assumed: driven through the shipped plan the base tree answers
+	 * `collapses: false` for both cells - the MODEL reading, which is the claim
+	 * that is true of the plan rather than of the pixels the base frame paints -
+	 * where this tree answers one bar hiding the 88 calls.
+	 *
+	 * FRAMES FOR BOTH ROWS ARE COMMITTED WITH THIS CHANGE: the after half under
+	 * `../chat-turn-collapse/{wake,peer}-mid-cycle/` (swept, two themes each) and
+	 * the before half under the declared `../chat-turn-collapse-before/` set, so
+	 * the pair a reviewer reads is in the tree rather than in a session's scratch.
+	 * No rig is run here: the pixels are the design round's own capture (2026-10-01,
+	 * `--themes=localOperatorLight,localOperatorDark`, after from this tree, before
+	 * from a base worktree at `af6fffa899` with this same story file and script
+	 * copied in - §10's method, so the halves differ only by the three shipped
+	 * modules under review).
+	 */
+	["chat-turn-collapse--wake-mid-cycle", 1280, 900],
+	["chat-turn-collapse--peer-mid-cycle", 1280, 900],
+
+	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
 	 * but not whole, and the mark is the whole change on screen. `before-join` is
@@ -8252,6 +8290,39 @@ export const STORIES = [
 		780,
 		520,
 		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	/*
+	 * `fork-withheld` (#739): the same row (s2) with a never-sent draft holding its
+	 * id, which is the one condition that withholds the menu's third item. The
+	 * frame is the pair's two rows with NO Fork row - absent, not greyed - and its
+	 * readout lists what the product mounted.
+	 */
+	[
+		"chat-sidebar-row-context-menu--fork-withheld",
+		780,
+		520,
+		{ hover: '[data-session-row="s2"]', hoverSettleMs: 1200 },
+	],
+	/*
+	 * `fork-pressed` (#739): Fork is pressed on s2 and the readout prints what the
+	 * press asked for - the request in the panel-presentation store names
+	 * `session.fork` for s2 (the ROW's conversation; this story has no pane), its
+	 * invoker is s2's own button, and the route is `/chat`. The shutter waits for
+	 * the request to exist so a frame filed under this name cannot be the state
+	 * before the press.
+	 */
+	[
+		"chat-sidebar-row-context-menu--fork-pressed",
+		780,
+		520,
+		{
+			hover: '[data-session-row="s2"]',
+			hoverSettleMs: 1200,
+			expectSentence: {
+				selector: "[data-readout-list]",
+				includes: "fork request: session.fork for s2",
+			},
+		},
 	],
 	[
 		"chat-sidebar-row-context-menu--flyout-dwelled",

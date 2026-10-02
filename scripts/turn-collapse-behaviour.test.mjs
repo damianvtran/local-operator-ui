@@ -43,6 +43,33 @@ const bootstrapDOM = new JSDOM("<!doctype html>", {
 });
 const { window } = bootstrapDOM;
 const originals = new Map();
+/*
+ * Patterns the assertions below match against, hoisted to module scope so each
+ * is compiled once (`lint/performance/useTopLevelRegex`). None carries the `g`
+ * or `y` flag, so reusing one across calls has no `lastIndex` state to leak.
+ */
+const BORDER_HAIRLINE_RE = /\bborder-hairline\b/;
+const BORDER_L_RE = /\bborder-l\b/;
+const FAILED_I_RE = /failed/i;
+const IMAGE_COUNT_RE = /\d+ images?/;
+const MORE_IMAGES_RE = /more images?/;
+const NEGATIVE_MARGIN_13PX_RE = /-ml-\[13px\]/;
+const ONE_ACTION_RE = /1 action/;
+const PEER_MESSAGE_RE = /Peer message/;
+const PEER_NOTE_RE = /Peer note/;
+const PLUS_ACTIONS_RE = /\+ actions/;
+const PL_3_RE = /\bpl-3\b/;
+const RETIRED_RULE_CLASSES_RE = /border-l-2|border-ink-dim|pl-1\.5/;
+const THREE_IMAGES_RE = /3 images/;
+const TOOK_3S_RE = /Took 3s/;
+const TOOK_4S_RE = /Took 4s/;
+const TOOK_6S_RE = /Took 6s/;
+const TOOK_RE = /Took/;
+const TURN_CONDENSED_RE = /Turn condensed: took 3s, 1 action\./;
+const TWO_IMAGES_RE = /2 images/;
+const TWO_PLUS_ACTIONS_RE = /2\+ actions/;
+const WORKED_RE = /Worked/;
+
 /** The frames the app queued but the test has not run yet. */
 const rafQueue = [];
 const scrollCalls = [];
@@ -448,10 +475,10 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 	);
 	assert.match(
 		summary.textContent,
-		/Took 3s/,
+		TOOK_3S_RE,
 		"the call's own reported seconds - the foot's quantity, not a wall span",
 	);
-	assert.match(summary.textContent, /1 action/);
+	assert.match(summary.textContent, ONE_ACTION_RE);
 	assert.equal(
 		rowBox(mounted, "tool:1"),
 		null,
@@ -461,7 +488,7 @@ test("a completed run arrives collapsed: one bar, the work unmounted, the answer
 	assert.ok(rowBox(mounted, "answer:1"), "and so does the answer");
 	assert.doesNotMatch(
 		mounted.container.textContent,
-		/Worked/,
+		WORKED_RE,
 		"the foot line yields to the bar: one summary per turn",
 	);
 	const stamps = mounted.container.querySelectorAll("time");
@@ -494,7 +521,7 @@ test("the press opens the run in place, and puts it back", async (t) => {
 	assert.ok(bar(mounted), "the bar stays as the toggle");
 	assert.doesNotMatch(
 		mounted.container.textContent,
-		/Worked/,
+		WORKED_RE,
 		"and the foot stays suppressed while open: the bar is still the summary",
 	);
 	await click(barTrigger(mounted));
@@ -575,7 +602,7 @@ test("no failure tally renders: the bar stands in for the failing run, the row i
 	assert.ok(summary, "the run collapsed");
 	assert.doesNotMatch(
 		summary.textContent ?? "",
-		/failed/i,
+		FAILED_I_RE,
 		"the tally is gone from the bar",
 	);
 	assert.equal(
@@ -589,7 +616,7 @@ test("no failure tally renders: the bar stands in for the failing run, the row i
 	assert.ok(failedRow, "the failed row mounts on the press");
 	assert.match(
 		failedRow.textContent ?? "",
-		/failed/i,
+		FAILED_I_RE,
 		"the row itself still carries the state",
 	);
 });
@@ -651,12 +678,12 @@ test("a run the window edge cut only at its opening row aligns and condenses on 
 	);
 	assert.doesNotMatch(
 		mounted.container.textContent,
-		/Worked/,
+		WORKED_RE,
 		"the bar replaces the foot line, as on any completed run",
 	);
 	assert.doesNotMatch(
 		bar(mounted)?.textContent ?? "",
-		/\+ actions/,
+		PLUS_ACTIONS_RE,
 		"and a COMPLETE run carries no marker: its count is a total",
 	);
 });
@@ -959,12 +986,12 @@ test("a run whose head the LOADED rows cut off condenses from the loaded span: c
 	 */
 	assert.match(
 		summary.textContent ?? "",
-		/2\+ actions/,
+		TWO_PLUS_ACTIONS_RE,
 		"a partial count is marked: `2+ actions`",
 	);
 	assert.doesNotMatch(
 		summary.textContent ?? "",
-		/Took/,
+		TOOK_RE,
 		"no duration: it would be fabricated from the first loaded row",
 	);
 	const partialLabel = [...summary.querySelectorAll("*")]
@@ -977,7 +1004,7 @@ test("a run whose head the LOADED rows cut off condenses from the loaded span: c
 	);
 	assert.doesNotMatch(
 		mounted.container.textContent ?? "",
-		/Worked/,
+		WORKED_RE,
 		"the bar replaces the foot line, as on any completed run",
 	);
 });
@@ -1120,7 +1147,7 @@ test("a settle announces the new bar politely, in the bar's own words", async (t
 	);
 	assert.match(
 		region(),
-		/Turn condensed: took 3s, 1 action\./,
+		TURN_CONDENSED_RE,
 		"the settle states the bar's own facts",
 	);
 });
@@ -1335,7 +1362,7 @@ test("a collapsed span that produced pictures keeps them under the bar", async (
 	);
 	assert.match(
 		bar(mounted)?.textContent ?? "",
-		/2 images/,
+		TWO_IMAGES_RE,
 		"and the count is a clause on the bar's own line",
 	);
 	assert.equal(
@@ -1376,7 +1403,7 @@ test("a span with no pictures is the bar it was: no strip, no clause", async (t)
 	);
 	assert.doesNotMatch(
 		bar(mounted)?.textContent ?? "",
-		/\d+ images?/,
+		IMAGE_COUNT_RE,
 		"and no count clause either",
 	);
 	assert.equal(
@@ -1431,7 +1458,7 @@ test("the strip caps at four tiles and counts the rest", async (t) => {
 	 * of opening the run.
 	 */
 	const more = [...strip.querySelectorAll("button")].find((control) =>
-		/more images?/.test(control.getAttribute("aria-label") ?? ""),
+		MORE_IMAGES_RE.test(control.getAttribute("aria-label") ?? ""),
 	);
 	assert.ok(more, "the count slot is a button, not inert text");
 	await click(more);
@@ -1517,12 +1544,12 @@ test("the group's clause drops only when it repeats the bar's number (D3/U6)", a
 	assert.ok(group, "the run's own fold mounts under the bar");
 	assert.match(
 		bar(mounted)?.textContent ?? "",
-		/3 images/,
+		THREE_IMAGES_RE,
 		"the bar states the span's count",
 	);
 	assert.doesNotMatch(
 		group.textContent ?? "",
-		/\d+ images?/,
+		IMAGE_COUNT_RE,
 		"and the group does not repeat the same number one line below",
 	);
 });
@@ -1561,7 +1588,7 @@ test("a group holding only part of the span keeps its own clause (D3/U6, keep br
 	const groups = [...(bar(mounted)?.querySelectorAll("[data-fold-ids]") ?? [])];
 	assert.equal(groups.length, 2, "two runs sit under the bar");
 	assert.deepEqual(
-		groups.map((node) => (node.textContent ?? "").match(/\d+ images?/)?.[0]),
+		groups.map((node) => (node.textContent ?? "").match(IMAGE_COUNT_RE)?.[0]),
 		["2 images", "2 images"],
 		"each group keeps its own count: neither repeats the bar's 4",
 	);
@@ -1593,7 +1620,7 @@ test("one press on the bar's count reaches the whole set (U8)", async (t) => {
 	]);
 	const strip = bar(mounted)?.querySelector("[data-fold-media]");
 	const more = [...(strip?.querySelectorAll("button") ?? [])].find((control) =>
-		/more images?/.test(control.getAttribute("aria-label") ?? ""),
+		MORE_IMAGES_RE.test(control.getAttribute("aria-label") ?? ""),
 	);
 	assert.ok(more, "the collapsed bar shows four tiles and the count control");
 	await click(more);
@@ -1606,7 +1633,7 @@ test("one press on the bar's count reaches the whole set (U8)", async (t) => {
 	);
 	assert.equal(
 		[...groupStrip.querySelectorAll("button")].filter((control) =>
-			/more images?/.test(control.getAttribute("aria-label") ?? ""),
+			MORE_IMAGES_RE.test(control.getAttribute("aria-label") ?? ""),
 		).length,
 		0,
 		"with no second count control left to press",
@@ -1922,7 +1949,7 @@ test("one stamp per turn with several bars: the answer's foot keeps it", async (
 		rowBox(mounted, "answer:1").querySelector("time"),
 		"the stamp is on the answer's own foot, since no single bar states the turn",
 	);
-	assert.match(rowBox(mounted, "answer:1").textContent, /Worked/);
+	assert.match(rowBox(mounted, "answer:1").textContent, WORKED_RE);
 });
 
 test("a post-terminal reply is a follow-up bar AFTER the answer, with the completion mark", async (t) => {
@@ -1957,8 +1984,8 @@ test("a post-terminal reply is a follow-up bar AFTER the answer, with the comple
 		"true",
 		"only the follow-up is marked complete",
 	);
-	assert.match(bars[1].textContent, /Peer message/);
-	assert.doesNotMatch(bars[1].textContent, /Peer note/, "the retired word");
+	assert.match(bars[1].textContent, PEER_MESSAGE_RE);
+	assert.doesNotMatch(bars[1].textContent, PEER_NOTE_RE, "the retired word");
 	assert.ok(rowBox(mounted, "answer:1"), "the ANSWER stays mounted");
 	assert.ok(
 		rowBox(mounted, "answer:1").hasAttribute("data-turn-answer") ||
@@ -2021,11 +2048,15 @@ test("the answer's rail is an opt-in setting: off by default, on under the key, 
 	};
 	await seed([{ key: "display.turn_answer_rail", value: true }]);
 	const on = answerEl(mounted).className;
-	assert.match(on, /\bborder-hairline\b/);
-	assert.match(on, /\bborder-l\b/);
-	assert.match(on, /\bpl-3\b/);
-	assert.match(on, /-ml-\[13px\]/, "margin nets rule + padding to zero");
-	assert.doesNotMatch(on, /border-l-2|border-ink-dim|pl-1\.5/, "not #708's");
+	assert.match(on, BORDER_HAIRLINE_RE);
+	assert.match(on, BORDER_L_RE);
+	assert.match(on, PL_3_RE);
+	assert.match(
+		on,
+		NEGATIVE_MARGIN_13PX_RE,
+		"margin nets rule + padding to zero",
+	);
+	assert.doesNotMatch(on, RETIRED_RULE_CLASSES_RE, "not #708's");
 	assert.equal(
 		mounted.container.querySelectorAll("[data-turn-answer]").length,
 		1,
@@ -2067,7 +2098,7 @@ test("the answer's rail is an opt-in setting: off by default, on under the key, 
 	await flushFrames();
 	assert.match(
 		answerEl(mounted).className,
-		/\bborder-hairline\b/,
+		BORDER_HAIRLINE_RE,
 		"the rail returns when the plane advertises `settings` again",
 	);
 
@@ -2181,8 +2212,8 @@ test("D5: a turn still running keeps every row while the turns above it wear the
 		bars.map((node) => node.getAttribute("data-segment-ids")),
 		["tool:1", "tool:2"],
 	);
-	assert.match(bars[0].textContent, /Took 4s/);
-	assert.match(bars[1].textContent, /Took 6s/);
+	assert.match(bars[0].textContent, TOOK_4S_RE);
+	assert.match(bars[1].textContent, TOOK_6S_RE);
 	for (const id of ["tool:3", "compaction:2", "tool:4"]) {
 		assert.ok(rowBox(mounted, id), `${id} stays mounted while the turn runs`);
 	}
@@ -2343,4 +2374,496 @@ test("QA-2: closing a bar returns the reader's place, one acknowledged write per
 		"the open writes where the bar moved to, the close writes the reader's place back",
 	);
 	assert.equal(region.scrollTop, 0, "the reader's place is returned to them");
+});
+
+/* ----- liveness is the in-flight cycle's: a wake does not un-condense (PR-4) ---- */
+
+/*
+ * THE OPERATOR'S JITTER REPORT (2026-10-01), mounted: "messages are condensed,
+ * and then if a peer message or job completes and the agent goes into thinking,
+ * the last condensed sequence suddenly un-condenses". A wake does not open a run
+ * (only a user row does), so it re-opens the run that had just settled, and the
+ * pane's `waiting` used to expand the whole of it.
+ */
+const settledTurn = [
+	userRecord("user:1"),
+	toolRecord("tool:1", { ts: TS + 1_000, durationS: 3 }),
+	answerRecord("answer:1", {
+		ts: TS + 3_000,
+		settledAt: TS + 3_000,
+		stopReason: "stop",
+	}),
+];
+const wakeCycle = (extra = []) => [
+	wakeRecord("wake:1", { ts: TS + 10_000 }),
+	...extra,
+];
+
+test("PR-4: a wake re-opening a settled turn keeps its bar - the same element, still condensed - while the agent thinks", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, settledTurn);
+	const first = bar(mounted);
+	assert.ok(first, "the settled turn arrives condensed");
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	const states = [
+		[...settledTurn, ...wakeCycle()],
+		[
+			...settledTurn,
+			...wakeCycle([
+				answerRecord("answer:2", {
+					ts: TS + 11_000,
+					streaming: true,
+					text: "Checking the stag",
+				}),
+			]),
+		],
+		[
+			...settledTurn,
+			...wakeCycle([
+				toolRecord("tool:2", {
+					ts: TS + 11_000,
+					phase: "running",
+					output: null,
+				}),
+			]),
+		],
+	];
+	for (const [i, records] of states.entries()) {
+		await mounted.render(records, { waiting: true });
+		assert.equal(
+			bar(mounted),
+			first,
+			`state ${i}: the bar is the same element`,
+		);
+		assert.equal(
+			rowBox(mounted, "tool:1"),
+			null,
+			`state ${i}: its work is still unmounted`,
+		);
+		assert.equal(
+			region(),
+			"",
+			`state ${i}: nothing is announced while the cycle runs`,
+		);
+	}
+	// The in-flight cycle's own rows draw in place, below the bar.
+	assert.ok(rowBox(mounted, "tool:2"), "the running call draws in place");
+});
+
+test("PR-4: the cycle settling adds ONE bar at the tail, announces once, and moves nothing above it", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, settledTurn);
+	const first = bar(mounted);
+	const running = [
+		...settledTurn,
+		...wakeCycle([toolRecord("tool:2", { ts: TS + 11_000, durationS: 4 })]),
+	];
+	await mounted.render(running, { waiting: true });
+	const region = () =>
+		mounted.container.querySelector("[data-condense-announcement]")
+			?.textContent ?? "";
+	assert.equal(barsOf(mounted).length, 1, "one bar while the cycle runs");
+	const settled = [
+		...running,
+		answerRecord("answer:2", {
+			ts: TS + 15_000,
+			settledAt: TS + 15_000,
+			stopReason: "stop",
+		}),
+	];
+	await mounted.render(settled, { waiting: false });
+	assert.equal(barsOf(mounted).length, 2, "the settled cycle is now a bar");
+	assert.equal(barsOf(mounted)[0], first, "the first bar is the same element");
+	assert.equal(
+		barsOf(mounted)[1].getAttribute("data-record-id"),
+		"wake:1",
+		"the new bar sits at the tail, in the cycle's own first slot",
+	);
+	assert.equal(
+		region(),
+		"Wake: took 4s, 1 action.",
+		"exactly one sentence, for the one new bar, in its own words (a labelled bar does not say 'Turn condensed' again)",
+	);
+	// Another token-less commit changes nothing.
+	await mounted.render([...settled], { waiting: false });
+	assert.equal(barsOf(mounted).length, 2);
+});
+
+test("PR-4: a bar the reader opened stays that bar, and open, across the wake and the settle", async (t) => {
+	__resetTurnCollapseOpen();
+	const mounted = await mount(t, settledTurn);
+	await click(barTrigger(mounted));
+	const opened = bar(mounted);
+	assert.ok(rowBox(mounted, "tool:1"), "the reader opened the first bar");
+	const running = [
+		...settledTurn,
+		...wakeCycle([toolRecord("tool:2", { ts: TS + 11_000, durationS: 4 })]),
+	];
+	await mounted.render(running, { waiting: true });
+	assert.equal(bar(mounted), opened, "the wake keeps the SAME bar element");
+	assert.ok(rowBox(mounted, "tool:1"), "and it is still the one that is open");
+	await mounted.render(
+		[
+			...running,
+			answerRecord("answer:2", {
+				ts: TS + 15_000,
+				settledAt: TS + 15_000,
+				stopReason: "stop",
+			}),
+		],
+		{ waiting: false },
+	);
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 2);
+	assert.equal(bars[0], opened, "the settle keeps it too");
+	assert.equal(
+		bars[0].querySelector("button").getAttribute("aria-expanded"),
+		"true",
+	);
+	assert.equal(
+		bars[1].querySelector("button").getAttribute("aria-expanded"),
+		"false",
+		"the NEW bar is not the open one: no stored key names a different span",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"the first span's row is still on screen",
+	);
+	assert.equal(rowBox(mounted, "tool:2"), null, "the new span is condensed");
+});
+
+test("PR-4: a stale expansion key of an older shape renders collapsed and does not throw", async (t) => {
+	__resetTurnCollapseOpen();
+	// What the in-memory store could still hold from the previous key shape: the
+	// run's bare key (the answer's id) and a `<run key>#<row>` pair.
+	writeRunExpanded("chat-stale", "answer:1", true);
+	writeRunExpanded("chat-stale", "answer:1#tool:1", true);
+	writeRunExpanded("chat-stale", "seg:no-such-row", true);
+	const mounted = await mount(t, settledTurn, {
+		frontend: { session_id: "chat-stale" },
+	});
+	assert.ok(bar(mounted), "the bar renders");
+	assert.equal(
+		bar(mounted).querySelector("button").getAttribute("aria-expanded"),
+		"false",
+		"a key that names nothing opens nothing",
+	);
+	assert.equal(rowBox(mounted, "tool:1"), null);
+});
+
+/* -------- reconciliation of #744 and #745: a bar keeps its identity (PR-4/PR-5) -------- */
+
+/*
+ * A bar's identity is DOM identity, so these tests tag the element the reader
+ * pressed with an expando and look for the tag afterwards: a remount builds a new
+ * element, so the tag is gone and the test fails, which a key-text assertion
+ * cannot do (the review that prompted this found the earlier "same element"
+ * assertion was never reached on base). `data-mount-tag` is an own property of the
+ * jsdom element, never an attribute React could re-render.
+ */
+const tagged = (mounted) => {
+	const element = bar(mounted);
+	element.__mountTag = "pressed";
+	return element;
+};
+const pressedBar = (mounted) =>
+	barsOf(mounted).find((element) => element.__mountTag === "pressed") ?? null;
+
+/*
+ * Answers are declared `stop`, as every text-bearing assistant row in a journal is
+ * (`transcript-reducer.ts` keeps the provider's stop_reason). That is not
+ * decoration: an answer with NO declaration that a later step follows (no trigger
+ * between them) is demoted to narration and absorbed into its span, which moves
+ * the span's end and so its key - a hand-built-fixture-only shape, named as a
+ * residual in `turn-segments.test.mjs`. #744's own tests used undeclared answers
+ * and expected the later work to fold into the SAME bar; with a declared `stop` the
+ * first answer stays on screen, so the later work is a SECOND bar after it.
+ */
+const stopAnswer = (id, ts) =>
+	answerRecord(id, { ts, settledAt: ts, stopReason: "stop" });
+
+test("RECONCILE (a): the bar the reader pressed is the SAME element - not a remount - after a wake and after the wake settles, and it is the one that is open", async (t) => {
+	__resetTurnCollapseOpen();
+	const first = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		stopAnswer("answer:1", TS + 3_000),
+	];
+	const frontend = { session_id: "chat-reconcile-a" };
+	const mounted = await mount(t, first, { frontend });
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "the reader opened it");
+	const pressed = tagged(mounted);
+	const wakeStates = [
+		[...first, wakeRecord("wake:1", { ts: TS + 10_000 })],
+		[
+			...first,
+			wakeRecord("wake:1", { ts: TS + 10_000 }),
+			toolRecord("tool:3", { ts: TS + 11_000, phase: "running", output: null }),
+		],
+		[
+			...first,
+			wakeRecord("wake:1", { ts: TS + 10_000 }),
+			toolRecord("tool:3", { ts: TS + 11_000 }),
+			stopAnswer("answer:2", TS + 12_000),
+		],
+	];
+	for (const [i, records] of wakeStates.entries()) {
+		await mounted.render(records, { frontend, waiting: i < 2 });
+		await flushFrames();
+		assert.equal(
+			pressedBar(mounted),
+			pressed,
+			`state ${i}: the pressed bar is the element that was mounted (no remount)`,
+		);
+		assert.equal(
+			pressed.querySelector("button").getAttribute("aria-expanded"),
+			"true",
+			`state ${i}: and it is still the open one`,
+		);
+		assert.ok(rowBox(mounted, "tool:1"), `state ${i}: its rows are shown`);
+	}
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 2, "the settled wake cycle is a second bar");
+	assert.equal(
+		bars[1].querySelector("button").getAttribute("aria-expanded"),
+		"false",
+		"the stored key names the FIRST bar only; the wake's bar is not opened by it",
+	);
+	assert.equal(rowBox(mounted, "tool:3"), null, "the wake's work is condensed");
+});
+
+test("RECONCILE (a'): a later answer with no wake row between leaves the pressed bar mounted and open, and the later work is its own bar", async (t) => {
+	__resetTurnCollapseOpen();
+	const first = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		stopAnswer("answer:1", TS + 3_000),
+	];
+	const frontend = { session_id: "chat-reconcile-a2" };
+	const mounted = await mount(t, first, { frontend });
+	await click(barTrigger(mounted));
+	await flushFrames();
+	const pressed = tagged(mounted);
+	await mounted.render(
+		[
+			...first,
+			toolRecord("tool:3", { ts: TS + 4_000 }),
+			stopAnswer("answer:2", TS + 5_000),
+		],
+		{ frontend },
+	);
+	await flushFrames();
+	assert.equal(
+		pressedBar(mounted),
+		pressed,
+		"the pressed bar was not remounted",
+	);
+	assert.ok(
+		rowBox(mounted, "tool:1") && rowBox(mounted, "tool:2"),
+		"still open",
+	);
+	assert.equal(
+		rowBox(mounted, "tool:3"),
+		null,
+		"the later work is its own, condensed bar",
+	);
+	assert.equal(barsOf(mounted).length, 2);
+});
+
+test("RECONCILE (b)+(a): a head-cut bar the reader opened stays open and mounted when the head lands, and again when a later answer arrives", async (t) => {
+	__resetTurnCollapseOpen();
+	const frontend = { session_id: "chat-reconcile-b" };
+	const cut = [
+		toolRecord("tool:0", { ts: TS + 500 }),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		stopAnswer("answer:1", TS + 2_000),
+	];
+	const mounted = await mount(t, cut, { frontend });
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:0"), "the reader opened the cut bar");
+	const pressed = tagged(mounted);
+	const headed = [userRecord("user:0", { ts: TS + 100 }), ...cut];
+	await mounted.render(headed, { frontend });
+	await flushFrames();
+	assert.equal(
+		pressedBar(mounted),
+		pressed,
+		"the head landing did not remount it",
+	);
+	assert.ok(rowBox(mounted, "tool:0"), "and it is still open");
+	await mounted.render(
+		[
+			...headed,
+			toolRecord("tool:2", { ts: TS + 3_000 }),
+			stopAnswer("answer:2", TS + 4_000),
+		],
+		{ frontend },
+	);
+	await flushFrames();
+	assert.equal(pressedBar(mounted), pressed, "nor did the later answer");
+	assert.ok(
+		rowBox(mounted, "tool:0") && rowBox(mounted, "tool:1"),
+		"still open",
+	);
+});
+
+test("RECONCILE (d): keys of an older shape, a gone run and a neighbour's row render collapsed and open nothing - the bare run key of the PREVIOUS shape never names the wake's bar", async (t) => {
+	__resetTurnCollapseOpen();
+	const frontend = { session_id: "chat-reconcile-d" };
+	/* Under the old shape `answer:1` / `answer:2` named bars; under this one they
+	 * are visible rows, never bars, and `seg:answer:2` names the bar ENDING at
+	 * answer:2 - which a stored `answer:2#...` must not reach. */
+	for (const key of [
+		"answer:1",
+		"answer:2",
+		"answer:1#tool:1",
+		"answer:2#wake:1",
+		"user:1",
+		"gone:1",
+		"gone:1#tool:9",
+		"seg:",
+		"seg:no-such-row",
+	]) {
+		writeRunExpanded("chat-reconcile-d", key, true);
+	}
+	const mounted = await mount(
+		t,
+		[
+			userRecord("user:1"),
+			toolRecord("tool:1", { ts: TS + 1_000 }),
+			stopAnswer("answer:1", TS + 3_000),
+			wakeRecord("wake:1", { ts: TS + 10_000 }),
+			toolRecord("tool:3", { ts: TS + 11_000 }),
+			stopAnswer("answer:2", TS + 12_000),
+		],
+		{ frontend },
+	);
+	const bars = barsOf(mounted);
+	assert.equal(bars.length, 2, "both spans condense");
+	for (const element of bars) {
+		assert.equal(
+			element.querySelector("button").getAttribute("aria-expanded"),
+			"false",
+			"no stale key opens either bar",
+		);
+	}
+	assert.equal(rowBox(mounted, "tool:1"), null);
+	assert.equal(rowBox(mounted, "tool:3"), null);
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "the reader can still open one");
+	assert.equal(rowBox(mounted, "tool:3"), null, "and only that one");
+});
+
+test("PR-4: a turn closed by a terminal marker stays condensed when a wake re-opens it (no assistant close to settle on)", async (t) => {
+	__resetTurnCollapseOpen();
+	const closed = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		noticeRecord("marker:1", { ts: TS + 3_000 }),
+	];
+	const mounted = await mount(t, closed);
+	const first = bar(mounted);
+	assert.ok(first, "the interrupted turn condenses on arrival");
+	await mounted.render(
+		[
+			...closed,
+			wakeRecord("wake:1", { ts: TS + 10_000 }),
+			toolRecord("tool:3", { ts: TS + 11_000, phase: "running", output: null }),
+		],
+		{ waiting: true },
+	);
+	assert.equal(bar(mounted), first, "the same bar element");
+	assert.equal(rowBox(mounted, "tool:1"), null, "still condensed");
+	assert.ok(
+		rowBox(mounted, "tool:3"),
+		"only the cycle being written draws in place",
+	);
+});
+
+test("PR-4: a lead-in (stopReason toolUse) is not a settle: nothing condenses while it waits for its call, nor when the call arrives", async (t) => {
+	__resetTurnCollapseOpen();
+	const turn = [
+		userRecord("user:1"),
+		toolRecord("tool:1", { ts: TS + 1_000 }),
+		toolRecord("tool:2", { ts: TS + 2_000 }),
+		answerRecord("lead:1", {
+			ts: TS + 3_000,
+			settledAt: TS + 3_000,
+			stopReason: "toolUse",
+			text: "Let me check the staging table.",
+		}),
+	];
+	const mounted = await mount(t, turn, { waiting: true });
+	assert.equal(bar(mounted), null, "no bar around a lead-in");
+	assert.ok(rowBox(mounted, "tool:1"), "the work is drawn in place");
+	await mounted.render(
+		[
+			...turn,
+			toolRecord("tool:3", { ts: TS + 4_000, phase: "running", output: null }),
+		],
+		{ waiting: true },
+	);
+	assert.equal(bar(mounted), null, "and the call's arrival changes nothing");
+	assert.ok(rowBox(mounted, "tool:1"), "the work never flipped");
+});
+
+/* -------- case 2: the expanded bar survives a wake re-closing the run ------- */
+
+test("case 2: a wake's reply re-closes the run, and the expanded bar stays the same element", async (t) => {
+	/*
+	 * The lane's case-2 remount through the shipped transcript: the wake lands, its
+	 * reply cycle re-closes the run, the elected answer moves - and under the old
+	 * rule the bar the reader had expanded was RENAMED, so React unmounted it and
+	 * the press was lost. The span's own anchor does not move, so the same element
+	 * stays, still open. (The pane's liveness while the reply streams is covered by
+	 * PR-4's mounted cases; this test isolates the identity across the same settle
+	 * the reader sees.)
+	 */
+	__resetTurnCollapseOpen();
+	const before = [
+		userRecord("user:1"),
+		toolRecord("tool:1"),
+		answerRecord("answer:1"),
+	];
+	const after = [
+		...before,
+		wakeRecord("wake:1"),
+		toolRecord("tool:2", { ts: TS + 5_000 }),
+		answerRecord("answer:2", { ts: TS + 6_000 }),
+	];
+	const mounted = await mount(t, before);
+	const bars = () => [
+		...mounted.container.querySelectorAll("[data-turn-summary]"),
+	];
+	assert.equal(bars().length, 1, "the settled run condenses on load");
+	await click(barTrigger(mounted));
+	await flushFrames();
+	assert.ok(rowBox(mounted, "tool:1"), "the press opens the run");
+	/* Tagged by IDENTITY, not by key text: a remount is a new element. */
+	bars()[0].__caseTwoProbe = "kept";
+	await mounted.render(after);
+	await flushFrames();
+	assert.equal(bars().length, 2, "the wake's reply cycle adds its own bar");
+	assert.ok(
+		rowBox(mounted, "tool:1"),
+		"the reader's expansion is still open on the first bar",
+	);
+	assert.equal(
+		bars()[0].__caseTwoProbe,
+		"kept",
+		"and it is the same element, not a remount",
+	);
+	assert.ok(
+		expandedRunsOf(null).has("seg:answer:1"),
+		"the stored expansion still names the first bar",
+	);
 });
