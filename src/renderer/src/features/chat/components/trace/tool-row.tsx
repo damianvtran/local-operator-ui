@@ -214,6 +214,11 @@ export type ToolRowProps = {
 	 * yet - a composing row - which takes the generic verb rather than guessing.
 	 */
 	op?: string;
+	/**
+	 * Draw the row with NO verb column, for a receipt whose summary is already a
+	 * complete sentence (see the destructured `verbless` for why).
+	 */
+	verbless?: boolean;
 	/** Pre-derived argument summary (`summaryFromArgs`). */
 	summary: string;
 	/**
@@ -801,6 +806,22 @@ const StatusCluster = ({
 export const ToolRow = ({
 	toolName,
 	op = "",
+	/*
+	 * THE ROW'S SENTENCE IS ITS WHOLE LABEL (design round 2, D13).
+	 *
+	 * A receipt whose summary already opens with the receipt's own verb stuttered:
+	 * `ask_response` painted "Asked Answered late - the agent was told (ask a-91be)",
+	 * the name column's verb running straight into the sentence's first word. This is
+	 * the designer's own first remedy - drop the label when the sentence already
+	 * carries it - applied to the ask receipt FAMILY rather than keyed on the leading
+	 * word, because the timeout row reads better without it too ("Timed out after 15m
+	 * - the agent moved on; you can still answer") and a string test would have to
+	 * know each sentence's first word.
+	 *
+	 * The verb column is SKIPPED rather than blanked, so the row's gap does not hold
+	 * a space for a word that is not there.
+	 */
+	verbless = false,
 	summary,
 	summaryFallback = null,
 	summaryHold = false,
@@ -880,18 +901,20 @@ export const ToolRow = ({
 			 * `shrink-0` so the object is the half that truncates: a verb is at most
 			 * three short words, and it is the half that says what happened.
 			 */}
-			<span
-				data-trace-verb=""
-				className={cn(
-					// §E1: the verb is a word, so it takes the sans ramp at
-					// `text-body-sm`/13; the monospace belongs to the OBJECT.
-					"shrink-0 whitespace-nowrap text-body-sm",
-					nameInk(outcome),
-				)}
-				title={name}
-			>
-				{verbText}
-			</span>
+			{verbless ? null : (
+				<span
+					data-trace-verb=""
+					className={cn(
+						// §E1: the verb is a word, so it takes the sans ramp at
+						// `text-body-sm`/13; the monospace belongs to the OBJECT.
+						"shrink-0 whitespace-nowrap text-body-sm",
+						nameInk(outcome),
+					)}
+					title={name}
+				>
+					{verbText}
+				</span>
+			)}
 			<span
 				className={cn(
 					// §E1: the object is `text-mono-sm`/12 `ink-muted` in EVERY state. It
