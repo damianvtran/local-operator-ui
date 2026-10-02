@@ -1,24 +1,48 @@
-scratch: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-43578
-A: 43611 (headless, inspector on 49196)
+scratch: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-34586
+A: 34602 (headless, inspector on 63513)
 A windows before the quit: [{"id":1,"visible":false,"destroyed":false}]
 [PASS] A owns a backend of its own, so its teardown has real work to do
-        http://127.0.0.1:49197
-A's window is gone +214ms after app.quit()
+        http://127.0.0.1:63514
+A's window is gone +208ms after app.quit()
 inspector socket closed (no wire is held into a process that is tearing itself down)
-B: 44687 (inactive — its request is A's to answer)
+B: 34921 (inactive; its argv carries --inspect=63597, which its successor replays)
 [PASS] A still holds the single-instance lock while it tears down (the premise)
-        A alive +2818ms after app.quit(), its window already closed
+        A alive +2812ms after app.quit(), its window already closed
 [PASS] A answered the relaunch without creating or raising a window
-        A's windows 2825ms after app.quit(): []
+        A's windows 2815ms after app.quit(): []
+[PASS] no successor exists before A exits (its replay port is closed, and only A is on the scratch profile)
+        A alive: true; port 63597 listening: false; scratch-profile processes: [{"pid":34602,"ppid":34586,"command":"/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron /Users/damian/local-operator-ui/.worktrees/quit-relaunch-755 --user-data-dir=/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-34586/userdata --window-mode=headless --inspect=63513"}]
+[PASS] nothing is scheduled at refusal time (no [relaunch] line while A tears down)
+        no [relaunch] line yet; the terminal has not run
 [PASS] the refusal is on the record (applied=skipped+quitting)
-        [2026-09-29 03:10:53.552] [info]  [window-raise] trigger=second-instance mode=inactive requested=inactive pid=44687 cwd=/private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-43578/app-cwd applied=skipped+quitting
+        [2026-10-02 18:18:50.978] [info]  [window-raise] trigger=second-instance mode=inactive requested=inactive pid=34921 cwd=/private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-34586/app-cwd applied=skipped+quitting reopen=deferred
+[PASS] the refusal carries the completion token (reopen=deferred — one successor will complete it)
+        [2026-10-02 18:18:50.978] [info]  [window-raise] trigger=second-instance mode=inactive requested=inactive pid=34921 cwd=/private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-34586/app-cwd applied=skipped+quitting reopen=deferred
 [PASS] B never started a window of its own
-        [second-instance] this launch did not start a window of its own: the app already open is the instance answering (profile: /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-43578/userdata), and this launch's window mode (inactive) was handed to it — it named no conversation; the app may order its window forward without activating it. Quit that app to start a fresh instance. Exiting.
+        [second-instance] this launch did not start a window of its own: the app already open is the instance answering (profile: /private/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-34586/userdata), and this launch's window mode (inactive) was handed to it — it named no conversation; the app may order its window forward without activating it. Quit that app to start a fresh instance. Exiting.
 [PASS] A exits cleanly, well inside this rig's bound
-        exit 0 5069ms after app.quit()
+        exit 0 5360ms after app.quit()
 [PASS] the teardown window was real (A outlived its window by more than a second)
-        window gone +214ms, process gone +5069ms
-C: 45301 (inactive; the relaunch the operator makes after the quit finished)
+        window gone +208ms, process gone +5360ms
+[PASS] the successor starts after A exits, on the replayed inspect port
+        observed on 63597
+[PASS] the successor is a fresh process (a new pid, not A's or B's)
+        S pid=35172; A pid=34602; B pid=34921
+[PASS] the successor replays B's command line under the recorded plan
+        ["/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron","--user-data-dir=/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-34586/userdata","--window-mode=inactive","--inspect=63597","--allow-file-access-from-files","--enable-avfoundation","/Users/damian/local-operator-ui/.worktrees/quit-relaunch-755"]
+[PASS] the successor took the freed single-instance lock (a second spawn would have lost it)
+        hasSingleInstanceLock() = true
+[PASS] the successor opens exactly one visible window under the recorded plan
+        [{"id":1,"visible":true,"destroyed":false}]
+[PASS] exactly one app instance is on the scratch profile (the successor)
+        [{"pid":35172,"ppid":1,"command":"/Users/damian/local-operator-ui/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron --user-data-dir=/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-relaunch-during-quit-34586/userdata --window-mode=inactive --inspect=63597 --allow-file-access-from-files --enable-avfoundation /Users/damian/local-operator-ui/.worktrees/quit-relaunch-755"}]
+[PASS] the successor's own log lines are on the record (daemon, raise, launcher policy)
+        daemon registrations: 2; initial-present raise: true; launcher policy: true
+[PASS] the successor's window list stays length 1 (exactly one successor)
+        [{"id":1,"visible":true,"destroyed":false}]
+[PASS] S's own quit spawned nothing (a quit with no recorded reopen completes no successor)
+        []
+C: 35843 (inactive; the next launch after everything above settled)
 [PASS] the next relaunch opens and shows its window
         [{"id":1,"visible":true,"destroyed":false}]
 
