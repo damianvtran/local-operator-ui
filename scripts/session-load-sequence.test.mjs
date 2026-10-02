@@ -135,6 +135,20 @@ let timerSeq = 0;
  * (frontend-replace.test.mjs) stub the same way, for the same reason:
  * synchronous drive, explicit frame queue.
  */
+/*
+ * jsdom has no canvas, and the shipped console-measure module asks for a 2d
+ * context at import time: without this the run prints "Not implemented:
+ * HTMLCanvasElement.prototype.getContext" - benign, jsdom's virtual console,
+ * but a reader grepping CI for "Error" hits it (agent review round 1, nit 5).
+ * The shim is the house pattern (`console-mirror.test.mjs`) and its metrics are
+ * a deterministic stand-in rather than layout evidence: jsdom has no layout.
+ */
+window.HTMLCanvasElement.prototype.getContext = function getContext() {
+	return {
+		font: "",
+		measureText: (text) => ({ width: String(text).length * 6 }),
+	};
+};
 window.setTimeout = () => {
 	timerSeq += 1;
 	return timerSeq;
@@ -221,10 +235,21 @@ const bundle = await build({
 			export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 
 			/*
-			 * The same composition chat-content.tsx performs, with the same
-			 * expressions, because a second spelling of the call-site is how a
-			 * harness stops measuring the app: every prop below is copied from
-			 * the transcript's own mount there.
+			 * The composition chat-content.tsx performs, with the call site's own
+			 * expressions where this rig uses them, because a second spelling of
+			 * the call site is how a harness stops measuring the app. WHICH PROPS
+			 * ARE THE CALL SITE'S AND WHICH ARE A NO-SEND LOAD'S OWN, stated
+			 * rather than implied (agent review round 1, nit 3): read straight off
+			 * the handle are frontend, transcript, gate, waiting (the call site's
+			 * canonical.busy and the same expression, canonical.frontend?.streaming
+			 * === true), loadingOlder, onLoadOlder, onLoadOlderOutcome, olderFailed,
+			 * status, failure, awaitingHydration, conversationId, the three label
+			 * sets, onReconnect and stale. The values a load with NO admitted send
+			 * holds are undelivered null, isSmallView false, missing false and the
+			 * starting quartet false/null - the panel's own send latches, which
+			 * never fire without a send. measureHandle is deliberately OMITTED: the
+			 * call site's opt-in for the measure's drag handles, which the run
+			 * panel's child reader does not pass either.
 			 */
 			export function LoadPane({ sessionId, containerRef }) {
 				/*
@@ -574,10 +599,41 @@ const flushFrames = async () => {
 	}
 };
 
-/* ------------------------------------------------------------------- the arm */
+/* ------------------------------------------------------ the shared arm setup */
 
-test("the load sequence, mid-cycle: what each commit paints", async (t) => {
-	const records = [];
+/*
+ * The owner at the far end of the transport, as every op this graph reaches
+ * needs it answered. Hoisted so the two arms answer identically (agent review
+ * round 1, nit 4): a stub that lived in one arm only would let the pair drift,
+ * and the drift would show up as a mysterious difference between them rather
+ * than as a missing stub.
+ */
+const answerNetwork = async (request) => {
+	if (request.op === "sessions.history") {
+		return { entries: [], has_more: false, cursor_missing: false };
+	}
+	if (request.op === "sessions.list") return { sessions: [] };
+	if (request.op === "config.get") return { values: { hosting: "" } };
+	if (request.op === "credentials.list") return { credentials: [] };
+	if (request.op === "sessions.checkpoints") {
+		return {
+			session_id: SESSION,
+			index: { state: "ready" },
+			checkpoints: [],
+		};
+	}
+	return {};
+};
+
+/*
+ * Mount one arm and return its recorder: the pane, a fresh query client, the
+ * scripted owner, and `send`/`record` bound to this mount.
+ *
+ * `label` is the first sample's step name, because the two arms name their own
+ * first sample differently (a cold mount and a mount that found a cached paint
+ * are different states, and the table should say which one it read).
+ */
+const mountArm = async (t, label = "mount") => {
 	const container = document.createElement("div");
 	document.body.appendChild(container);
 	const client = new QueryClient({
@@ -585,11 +641,11 @@ test("the load sequence, mid-cycle: what each commit paints", async (t) => {
 		 * `gcTime: Infinity` is load-bearing for the RUNNER, not the render: the
 		 * default 5-minute gc schedules a timer per query at unmount
 		 * (`Query.scheduleGc`), and under `scripts/run-desktop-tests.mjs` - which
-		 * passes no `--test-force-exit` - those pending timers keep the worker alive
-		 * after the last test (measured here: 8 pending timers, "Promise resolution is
-		 * still pending but the event loop has already resolved"). The same rule the
-		 * socket-reaping note in `update-robustness.test.mjs` states. Nothing here
-		 * waits on gc.
+		 * passes no `--test-force-exit` - those pending timers keep the worker
+		 * alive after the last test (measured here: 8 pending timers, "Promise
+		 * resolution is still pending but the event loop has already resolved").
+		 * The same rule the socket-reaping note in `update-robustness.test.mjs`
+		 * states. Nothing here waits on gc.
 		 */
 		defaultOptions: {
 			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
@@ -603,23 +659,8 @@ test("the load sequence, mid-cycle: what each commit paints", async (t) => {
 		client.clear();
 		container.remove();
 	});
-	globalThis.__loadNet.network = async (request) => {
-		if (request.op === "sessions.history") {
-			return { entries: [], has_more: false, cursor_missing: false };
-		}
-		if (request.op === "sessions.list") return { sessions: [] };
-		if (request.op === "config.get") return { values: { hosting: "" } };
-		if (request.op === "credentials.list") return { credentials: [] };
-		if (request.op === "sessions.checkpoints") {
-			return {
-				session_id: SESSION,
-				index: { state: "ready" },
-				checkpoints: [],
-			};
-		}
-		return {};
-	};
-
+	globalThis.__loadNet.network = answerNetwork;
+	const records = [];
 	const record = async (step) => {
 		await flushFrames();
 		records.push({
@@ -635,7 +676,6 @@ test("the load sequence, mid-cycle: what each commit paints", async (t) => {
 				.slice(0, 400),
 		});
 	};
-
 	await act(async () => {
 		root = createRoot(container);
 	});
@@ -651,14 +691,20 @@ test("the load sequence, mid-cycle: what each commit paints", async (t) => {
 			),
 		);
 	});
-	await record("mount");
-
-	const subscription = globalThis.__loadNet.subscriptions.at(-1);
+	await record(label);
 	const send = async (next) => {
+		const subscription = globalThis.__loadNet.subscriptions.at(-1);
 		await act(async () => {
 			subscription.onEvent({ kind: "data", data: JSON.stringify(next) });
 		});
 	};
+	return { container, records, record, send };
+};
+
+/* ------------------------------------------------------------------- the arm */
+
+test("the load sequence, mid-cycle: what each commit paints", async (t) => {
+	const { records, record, send } = await mountArm(t);
 
 	await send(openFrame);
 	await record("open");
@@ -818,85 +864,8 @@ test("the warm load: the window's memory stays off the screen until the page", a
 	});
 	writePaint(SESSION, { transcript: seeded });
 
-	const records = [];
-	const container = document.createElement("div");
-	document.body.appendChild(container);
-	const client = new QueryClient({
-		/*
-		 * `gcTime: Infinity` is load-bearing for the RUNNER, not the render: the
-		 * default 5-minute gc schedules a timer per query at unmount
-		 * (`Query.scheduleGc`), and under `scripts/run-desktop-tests.mjs` - which
-		 * passes no `--test-force-exit` - those pending timers keep the worker alive
-		 * after the last test (measured here: 8 pending timers, "Promise resolution is
-		 * still pending but the event loop has already resolved"). The same rule the
-		 * socket-reaping note in `update-robustness.test.mjs` states. Nothing here
-		 * waits on gc.
-		 */
-		defaultOptions: {
-			queries: { retry: false, gcTime: Number.POSITIVE_INFINITY },
-		},
-	});
-	let root;
-	t.after(async () => {
-		await act(async () => {
-			root?.unmount();
-		});
-		client.clear();
-		container.remove();
-	});
-	globalThis.__loadNet.network = async (request) => {
-		if (request.op === "sessions.history") {
-			return { entries: [], has_more: false, cursor_missing: false };
-		}
-		if (request.op === "sessions.list") return { sessions: [] };
-		if (request.op === "config.get") return { values: { hosting: "" } };
-		if (request.op === "credentials.list") return { credentials: [] };
-		if (request.op === "sessions.checkpoints") {
-			return {
-				session_id: SESSION,
-				index: { state: "ready" },
-				checkpoints: [],
-			};
-		}
-		return {};
-	};
+	const { records, record, send } = await mountArm(t, "mount (cached)");
 
-	const record = async (step) => {
-		await flushFrames();
-		records.push({
-			step,
-			...readView(container),
-			commit: markCount(),
-			diag: globalThis.__loadDiag,
-			ids: [...container.querySelectorAll("[data-record-id]")]
-				.map((node) => node.getAttribute("data-record-id"))
-				.slice(0, 120),
-		});
-	};
-
-	await act(async () => {
-		root = createRoot(container);
-	});
-	await act(async () => {
-		root.render(
-			h(
-				QueryClientProvider,
-				{ client },
-				h(LoadPane, {
-					sessionId: SESSION,
-					containerRef: { current: container },
-				}),
-			),
-		);
-	});
-	await record("mount (cached)");
-
-	const subscription = globalThis.__loadNet.subscriptions.at(-1);
-	const send = async (next) => {
-		await act(async () => {
-			subscription.onEvent({ kind: "data", data: JSON.stringify(next) });
-		});
-	};
 	await send(openFrame);
 	await record("open");
 	await send(snapshotFrame);
