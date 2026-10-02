@@ -3177,7 +3177,7 @@ const BRANCH_RECORDS = [
 	 * cycle, taken because main moved twice while the earlier folds were being
 	 * pushed and a conflicting head starts no checks. Registered for its
 	 * siblings' reason: it carries the `test:desktop` list union (main's form,
-	 * this branch's four suites appended - 350 entries) and the `check-themes`
+	 * this branch's four suites appended - 351 entries) and the `check-themes`
 	 * key main still lacks, so a fold laid from main's copy alone would drop
 	 * one, and from this branch's alone would drop main's
 	 * `check-geometry-sources.test.mjs` row.
