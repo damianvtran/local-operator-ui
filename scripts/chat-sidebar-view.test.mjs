@@ -57,6 +57,14 @@ globalThis.localStorage = {
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 
+/*
+ * THE WIRING PATTERN the section-press source read below matches: the transition
+ * called, with `Boolean(query)` among its arguments (the forced-open input M1's
+ * fix turns on). A top-level constant rather than an inline literal because
+ * biome's `useTopLevelRegex` asks for it and this file carries no such warning.
+ */
+const SECTION_PRESS_WIRING = /toggleSectionDisclosure\([^)]*Boolean\(query\)/;
+
 const bundle = await build({
 	stdin: {
 		contents: [
@@ -119,6 +127,7 @@ const {
 	raiseSectionCap,
 	releaseSectionCap,
 	SIDEBAR_SECTION_ROWS,
+	toggleSectionDisclosure,
 	entityQueryAdmits,
 	entitySectionGap,
 	ENTITY_SECTION_GAP,
@@ -482,23 +491,112 @@ test("the persisted view carries no section cap", () => {
 });
 
 /*
- * AND THE CLOSE EDGE IS WIRED. The rules above are only reachable if the
- * disclosure's close calls the reset - the defect was precisely a pure state
- * transition nothing invoked. This file's ROSTER-FILTER cases read the source
- * for the same reason: the component cannot be rendered here, so the wiring is
- * read rather than driven, and the rule itself is driven directly above.
+ * AND THE CLOSE EDGE IS DRIVEN, NOT GREPPED (agent review round 1, m1). The
+ * transition now covers BOTH maps, so the case the round-1 substring could not
+ * see - a press on a section a LIST QUERY force-draws (`query || isOpen(...)` in
+ * the component) - is asserted here by driving it, on the slice `cappedRows`
+ * applies (`caps[key] ?? SIDEBAR_SECTION_ROWS`), because "nothing narrows" is a
+ * claim about the drawn count and not about the map.
+ *
+ * THE DEFECT THIS PINS (round 1's M1, QA round 1's QA-F1): the round-1 shape
+ * released the raised cap on that press too, dropping the drawn rows back to
+ * `SIDEBAR_SECTION_ROWS` under a reader whose section never went away.
  */
-test("the section disclosure releases the cap on its close edge", () => {
-	const source = readFileSync(SIDEBAR, "utf8");
+test("a press on a query-forced-open section leaves the drawn rows alone", () => {
+	const rows = 24;
+	const caps = raiseSectionCap(raiseSectionCap({}, "agents"), "agents");
+	assert.equal(caps.agents, SIDEBAR_SECTION_ROWS * 3);
+
+	const pressed = toggleSectionDisclosure({}, caps, "agents", true, true);
+	assert.equal(
+		pressed.caps,
+		caps,
+		"the press released the cap of a section the query keeps drawn",
+	);
+	assert.equal(
+		Math.min(rows, pressed.caps.agents ?? SIDEBAR_SECTION_ROWS),
+		SIDEBAR_SECTION_ROWS * 3,
+		"a section the query force-draws narrowed under the reader",
+	);
+	/*
+	 * The DISCLOSURE is still written under a query, which is pre-existing
+	 * behaviour this fix deliberately leaves alone (round 1 scoped it out): the
+	 * press keeps its own meaning once the query is cleared.
+	 */
+	assert.equal(pressed.expanded.agents, false);
+
+	/* And a forced-open press on a section nobody widened is a true no-op. */
+	const untouched = {};
+	assert.equal(
+		toggleSectionDisclosure({}, untouched, "teams", true, true).caps,
+		untouched,
+		"a forced-open press on an untouched section rebuilt the caps map",
+	);
+});
+
+/*
+ * AND THE GATE IS NOT A BLANKET AMNITY: with no query in force the same press is
+ * #765's own case, and the release must still happen. Without this, the guard
+ * above could be satisfied by deleting the release altogether.
+ */
+test("a press that really closes the section still releases its cap", () => {
+	const caps = raiseSectionCap(raiseSectionCap({}, "teams"), "teams");
+	const pressed = toggleSectionDisclosure(
+		{ teams: true },
+		caps,
+		"teams",
+		true,
+		false,
+	);
+	assert.equal(pressed.expanded.teams, false);
 	assert.ok(
-		source.includes(
-			"setSectionCaps((previous) => releaseSectionCap(previous, key))",
-		),
-		"nothing releases a section's raised cap, so the grown list outlives the collapse (#765)",
+		!("teams" in pressed.caps),
+		"a real close stopped releasing the raised cap, so #765 is back",
+	);
+	assert.equal(
+		pressed.caps.teams ?? SIDEBAR_SECTION_ROWS,
+		SIDEBAR_SECTION_ROWS,
+	);
+});
+
+/* An OPENING press is not a close either, query or no query. */
+test("a press that opens a section never releases a cap", () => {
+	const caps = raiseSectionCap({}, "agents");
+	const pressed = toggleSectionDisclosure(
+		{ agents: false },
+		caps,
+		"agents",
+		false,
+		false,
+	);
+	assert.equal(pressed.expanded.agents, true);
+	assert.equal(
+		pressed.caps,
+		caps,
+		"an open narrowed the section under the reader",
+	);
+});
+
+/*
+ * AND THE COMPONENT ROUTES BOTH MAPS THROUGH THAT ONE TRANSITION. The rules above
+ * are driven; the WIRING is still read, because the component cannot be rendered
+ * here - and the read now adds what the round-1 substring could not: the press
+ * must hand the transition the forced-open input (`Boolean(query)`, the same
+ * truthiness the row draw uses), and the component must carry no SECOND spelling
+ * of the release edge. A read that only looked for the call would pass while an
+ * inline `releaseSectionCap` sat beside it - the drift the hoist exists to
+ * prevent (agent review round 1, m1).
+ */
+test("the section press routes through the one disclosure transition", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		SECTION_PRESS_WIRING,
+		"the press does not route through the transition with the query's forced-open input, so a query-forced close releases the cap again (M1)",
 	);
 	assert.ok(
-		source.includes("if (!next) setSectionCaps"),
-		"the release is not guarded to the close edge, so an open narrows under the reader",
+		!source.includes("releaseSectionCap("),
+		"a second, inline spelling of the cap release lives in the component; the rule belongs to the transition",
 	);
 });
 

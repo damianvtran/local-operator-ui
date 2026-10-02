@@ -165,7 +165,10 @@ export const SIDEBAR_SECTION_ROWS = 8;
  *
  * WHY IT RETURNS THE SAME MAP WHEN NOTHING IS RAISED. React re-renders on an
  * identity change, and a close of a section nobody widened is not a state
- * change - the same reason `toggle`'s setter folds untouched keys.
+ * change. The disclosure map CANNOT be given the same property (agent review
+ * round 1, n1): a toggle always flips its key's value, so every press of that map
+ * is a real change, while the cap map has a press - the close of a section nobody
+ * widened - that leaves the state alone.
  *
  * THE RAISED ROWS ARE NOT DISCARDED, only the cap that drew them: the sections'
  * rows come from the catalogue the reader already loaded, so a re-expand after a
@@ -198,6 +201,47 @@ export function raiseSectionCap(
 	return {
 		...caps,
 		[key]: (caps[key] ?? SIDEBAR_SECTION_ROWS) + SIDEBAR_SECTION_ROWS,
+	};
+}
+
+/**
+ * A PRESS ON A SECTION HEADING: the disclosure and the raised cap move TOGETHER.
+ *
+ * WHY THE TWO MAPS ARE ONE TRANSITION. The cap's release edge belongs to the
+ * disclosure's close (issue #765), so a press that wrote the disclosure alone -
+ * or released the cap alone - would be half of one state change. Written inline
+ * in the component, the two halves are reachable by neither test nor reader
+ * (this file's header says why), which is how the missing edge shipped; the
+ * round-1 review (m1) asked for the transition itself to be executable, and
+ * `scripts/chat-sidebar-view.test.mjs` drives both edges through this function.
+ *
+ * WHY THE RELEASE IS ALSO GATED ON `forcedOpen` (agent review round 1, M1; QA
+ * round 1, QA-F1). The sections are force-DRAWN while a LIST QUERY is in force
+ * (`query || isOpen(...)` in the component), so a heading press under a query
+ * records a close while the section stays on screen. The round-1 shape released
+ * the raised cap on that press, dropping the drawn rows back to
+ * `SIDEBAR_SECTION_ROWS` - narrowing a section under a reader who never saw it
+ * go away, on the one edge the release exists to make safe. The release is
+ * therefore tied to the section ACTUALLY closing: the disclosure records a close
+ * AND nothing else keeps the section drawn.
+ *
+ * THE DISCLOSURE IS STILL WRITTEN under a query, which keeps the press's own
+ * meaning once the query is cleared - that write is pre-existing behaviour and
+ * deliberately out of this fix's scope (round 1 scoped it so).
+ */
+export function toggleSectionDisclosure(
+	expanded: Record<string, boolean>,
+	caps: Record<string, number>,
+	key: string,
+	initial: boolean,
+	forcedOpen: boolean,
+): { expanded: Record<string, boolean>; caps: Record<string, number> } {
+	const next = !(expanded[key] ?? initial);
+	return {
+		expanded: { ...expanded, [key]: next },
+		/* `!next` is the close edge; `!forcedOpen` is the section still being on
+		 * screen for a reason the press did not ask about. */
+		caps: !next && !forcedOpen ? releaseSectionCap(caps, key) : caps,
 	};
 }
 

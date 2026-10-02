@@ -193,8 +193,8 @@ import {
 	pageRows,
 	parseSidebarView,
 	raiseSectionCap,
-	releaseSectionCap,
 	shownSections,
+	toggleSectionDisclosure,
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
@@ -1726,21 +1726,31 @@ export function ChatSidebar({
 		[catalogueScopes],
 	);
 	const toggle = (key: string, initial = false) => {
-		const next = !isOpen(key, initial);
-		setExpanded((current) => ({
-			...current,
-			[key]: next,
-		}));
 		/*
-		 * CLOSING RELEASES THE SECTION'S RAISED CAP (issue #765): the reader who
-		 * pressed `Show more` four times and then collapsed the section asked for
-		 * the compact form back, and the raised cap used to outlive the disclosure
-		 * until a relaunch. `releaseSectionCap` owns the rule and its reasons (delete,
-		 * not decrement); this is the only edge that writes it, and only on a CLOSE,
-		 * so an open - which draws the rows the press added - never narrows under the
-		 * reader.
+		 * BOTH MAPS MOVE THROUGH ONE TRANSITION (issue #765; agent review round 1's
+		 * M1 and m1). `toggleSectionDisclosure` owns the rule and its reasons -
+		 * including why a press on a section a LIST QUERY force-draws is NOT a
+		 * release - so the transition is executable from
+		 * `scripts/chat-sidebar-view.test.mjs` instead of being a condition this
+		 * JSX states and no test can reach.
+		 *
+		 * THE READS ARE HOISTED TO RENDER SCOPE (round 1, n2), where the close edge
+		 * used to read the latest disclosure inside a functional update: one pure
+		 * call takes both maps, so the disclosure read shares this snapshot. Nothing
+		 * calls `toggle` twice in a tick today, so the hoist is inert; the
+		 * alternative - a functional update per map - would read the OTHER map at
+		 * render scope anyway, which is the same freshness question left accidental
+		 * rather than stated.
 		 */
-		if (!next) setSectionCaps((previous) => releaseSectionCap(previous, key));
+		const next = toggleSectionDisclosure(
+			expanded,
+			sectionCaps,
+			key,
+			initial,
+			Boolean(query),
+		);
+		setExpanded(next.expanded);
+		setSectionCaps(next.caps);
 	};
 	/*
 	 * The bulk read receipt: one control, one gesture, no shortcut.
