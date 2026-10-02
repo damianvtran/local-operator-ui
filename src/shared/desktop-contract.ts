@@ -940,6 +940,27 @@ const hubItemKind = z.enum(["agent", "team"]);
 
 const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("capabilities") }).strict(),
+	/*
+	 * THE MACHINE'S RUNTIME ROSTER, read for the straggler census a completed
+	 * server update reports (`GET /v1/desktop/runtimes`). A GET with a fixed
+	 * shape, so the whole request is the op.
+	 *
+	 * It reads the INVENTORY (`probe=false` in the path composer): the census
+	 * asks every row what build it booted with, and the route's per-row loopback
+	 * connects answer a different question ("did it answer?") that nothing here
+	 * acts on. Skipping them also keeps the response inside the control budget
+	 * without depending on the probe pool's own deadline logic.
+	 *
+	 * THE CONTROL BUDGET IS THE RIGHT ONE, and it is a bound rather than a hope:
+	 * the route's own ceiling is the two external reads in front of the
+	 * composition (5 s process table + 3 s socket table, stated in `roster.py`),
+	 * and `probe=false` skips the per-row connects entirely - so the worst case
+	 * is ~8 s, well under the 20 s control deadline. It is NOT on the long-read
+	 * list: nothing here fans out to a provider or walks a ledger.
+	 */
+	z
+		.object({ op: z.literal("runtimes.list") })
+		.strict(),
 	z.object({ op: z.literal("profiles.list") }).strict(),
 	z.object({ op: z.literal("profiles.get"), name: profileName }).strict(),
 	z
@@ -3904,6 +3925,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"profiles.get",
 	"profiles.list",
 	"providers.list",
+	// A reader that changes nothing (the route's own docstring): the straggler
+	// census, and the app re-reads it rather than caching a stale count.
+	"runtimes.list",
 	"sessions.aside.get",
 	"sessions.checkpoints",
 	"sessions.failovers",
@@ -4659,6 +4683,11 @@ export function desktopEndpoint(request: DesktopRequest): {
 	switch (request.op) {
 		case "capabilities":
 			return { path: "/v1/capabilities", method: "GET" };
+		case "runtimes.list":
+			// `probe=false` is load-bearing rather than an optimisation: the census
+			// reads BUILD VERSIONS, and a probed row spends a loopback connect per
+			// runtime on a machine that can hold dozens.
+			return { path: "/v1/desktop/runtimes?probe=false", method: "GET" };
 		/*
 		 * The mesh reads. Both are plain GETs with no parameters at all - the backend
 		 * reads THIS device's own relay, so there is nothing for the client to scope it

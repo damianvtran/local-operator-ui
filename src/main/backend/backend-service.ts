@@ -3318,13 +3318,17 @@ export class BackendServiceManager {
 	 * Stop only the captured serve generation, including failed startups. A port
 	 * or process name is not ownership. Unconfirmed exit blocks replacement.
 	 */
-	async stop(isRestart = false): Promise<void> {
+	async stop(
+		isRestart = false,
+		options: { graceMs?: number } = {},
+	): Promise<void> {
 		this.startEpoch++;
 		if (!isRestart) this.isAppClosing = true;
 		this.disposeStreamRelay();
 		this.stopHealthCheck();
 		const generation = this.ownedServe;
-		if (generation) await this.stopGeneration(generation, isRestart);
+		if (generation)
+			await this.stopGeneration(generation, isRestart, options.graceMs);
 		// Resolver/readiness work must observe cancellation before an installer
 		// is allowed to replace files, even when stop arrived before spawn.
 		await this.startPromise;
@@ -3419,10 +3423,20 @@ export class BackendServiceManager {
 	 * "we signalled it and moved on" would authorise exactly the double-serve
 	 * this class exists to prevent. An unconfirmed exit keeps ownership, and the
 	 * caller reports failure instead of proceeding.
+	 *
+	 * `graceMs` OVERRIDES THE RESTART GRACE FOR ONE CALL (2026-09-30), added for
+	 * the update fallback: a serve being stopped because its reload could not be
+	 * proven drains for as long as uvicorn waits for its connections (the
+	 * server's own wait has no deadline), and the caller that knows the process
+	 * is about to be replaced may bound that wait. The ESCALATION is unchanged -
+	 * SIGTERM, the (possibly shorter) grace, SIGKILL, the force wait - so an
+	 * unresponsive process still fails closed, and a caller that passes nothing
+	 * gets the same grace it always got.
 	 */
 	private stopGeneration(
 		generation: OwnedServe,
 		isRestart: boolean,
+		graceMs?: number,
 	): Promise<void> {
 		if (generation.stop) return generation.stop;
 		generation.stop = (async () => {
@@ -3444,9 +3458,11 @@ export class BackendServiceManager {
 					});
 				});
 			if (this.canSignal(generation)) generation.child.kill("SIGTERM");
-			const grace = isRestart
-				? this.shutdownTimeoutMs.restart
-				: this.shutdownTimeoutMs.normal;
+			const grace =
+				graceMs ??
+				(isRestart
+					? this.shutdownTimeoutMs.restart
+					: this.shutdownTimeoutMs.normal);
 			if (!(await waitForExit(grace))) {
 				if (this.canSignal(generation)) generation.child.kill("SIGKILL");
 				if (!(await waitForExit(this.shutdownTimeoutMs.force))) {
@@ -4900,13 +4916,18 @@ export class BackendServiceManager {
 	 * Restart the backend service
 	 * This method properly handles the restart process to ensure that any pending
 	 * timeouts from the stop operation don't affect the newly started process
+	 *
+	 * `options.stopGraceMs` bounds ONE restart's SIGTERM grace (see
+	 * `stopGeneration`); it exists for the update fallback, whose process is
+	 * already known to be replaced, and callers that pass nothing keep the
+	 * default grace exactly as before.
 	 * @returns Promise resolving to true if the restart was successful, false otherwise
 	 */
-	restart(): Promise<boolean> {
+	restart(options: { stopGraceMs?: number } = {}): Promise<boolean> {
 		if (this.restartPromise) return this.restartPromise;
 		this.restartPromise = (async () => {
 			try {
-				await this.stop(true);
+				await this.stop(true, { graceMs: options.stopGraceMs });
 				if (this.isAppClosing) return false;
 				return await this.start();
 			} catch (error) {
