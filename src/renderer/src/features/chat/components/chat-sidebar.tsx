@@ -3853,6 +3853,25 @@ export function ChatSidebar({
 		 * keeps the pointer and screen-reader channels no narrower than the pixels.
 		 */
 		const marks = subagentMarks(row);
+		/**
+		 * THE ROW'S OWN PRESS, shared by the row's button and by the team mark inside it.
+		 *
+		 * Extracted for the mark's sake: the mark is a focus stop (below), and a stop
+		 * that does nothing when pressed is a dead one (UX round 1, U1 measured Enter on
+		 * it leaving the row's click listener unrun). Sharing the row's own handler -
+		 * rather than calling `onSelectConversation` from the mark - is what keeps the
+		 * drop-repeat guard and any later term in this press applying to both routes.
+		 *
+		 * `point` is the press's screen position, or `null` when there is none: the
+		 * row's button passes its event's coordinates, the keyboard passes `null`, which
+		 * is the same value the button's own Enter/Space press hands the guard.
+		 */
+		const pressRow = (point: { x: number; y: number } | null) => {
+			if (dropRepeatPress(point, row.session_id)) {
+				return;
+			}
+			onSelectConversation(row.session_id);
+		};
 		/*
 		 * THE TEAM MARK, AND THE ONE THING THE ROW HAS TO TELL THE SIDEBAR ABOUT IT.
 		 *
@@ -3873,25 +3892,6 @@ export function ChatSidebar({
 		 * `onActivate` is the row's own press, so Enter or Space on the mark is the row's
 		 * act rather than a dead stop (UX round 1, U1).
 		 */
-		/**
-		 * THE ROW'S OWN PRESS, shared by the row's button and by the team mark inside it.
-		 *
-		 * Extracted for the mark's sake: the mark is a focus stop (below), and a stop
-		 * that does nothing when pressed is a dead one (UX round 1, U1 measured Enter on
-		 * it leaving the row's click listener unrun). Sharing the row's own handler -
-		 * rather than calling `onSelectConversation` from the mark - is what keeps the
-		 * drop-repeat guard and any later term in this press applying to both routes.
-		 *
-		 * `point` is the press's screen position, or `null` when there is none: the
-		 * row's button passes its event's coordinates, the keyboard passes `null`, which
-		 * is the same value the button's own Enter/Space press hands the guard.
-		 */
-		const pressRow = (point: { x: number; y: number } | null) => {
-			if (dropRepeatPress(point, row.session_id)) {
-				return;
-			}
-			onSelectConversation(row.session_id);
-		};
 		const teamMark = (name: string, slug: string) => (
 			<span
 				className="ml-1 inline-flex shrink-0"
