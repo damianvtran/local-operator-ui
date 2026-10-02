@@ -11,7 +11,9 @@ operator's.
 This directory is the rendered half of that claim: what the affordance looks
 like at each state, on both trees, with the numbers behind it. It was re-shot for
 the design re-check on the remediation head, which also added the query-forced
-states the first round had no frame for.
+states the first round had no frame for; the query-forced PRESSED pair was re-taken
+once more when the round-3 fix landed, because its pre-fix assertion
+(`expectGone`) was written to fail the moment the defect closed.
 
 ## What produced these frames
 
@@ -64,7 +66,7 @@ photographed in both palettes at all.
 | `reopened/` | the foot press, then the section heading twice (close, open): eight rows and the foot back. | this branch |
 | `grown-again/` | the same three presses, then the foot a SECOND time: twelve rows again, which is the release not having disarmed the raise. | this branch |
 | `list-query-resting/` | a LIST query (`b`) in force, no section filter: four rows drawn by the query, the `Filter agents` field drawn by the cap-bound roster. | this branch |
-| `list-query-pressed/` | the same state, then the heading pressed — the press the panel documents as a no-op on the raised cap. **The field is gone and the section has moved up by the field's own height.** | this branch |
+| `list-query-pressed/` | the same state, then the heading pressed — the press the panel documents as a no-op on the raised cap. **The `Filter agents` field survives**, the section box is unmoved and every boundary below it stays put. | this branch |
 | `filter-query-resting/` | a LIST query (`b`) AND the section's own filter (`er`): two rows, the field drawn, with the reader's own question in it. | this branch |
 | `filter-query-pressed/` | the same state, then the heading pressed: **the field an already-filtering reader had on screen survives**, and nothing else moves. | this branch |
 | `baseline/grown/` | the same press on the pre-fix tree. **Byte-identical to `grown/`** — see below. | pre-fix |
@@ -117,9 +119,8 @@ it in the committed JSON):
 
 ### The reset's own name, and where it lives
 
-The grown heading carries `SECTION_GROWN_HINT` — *"Collapse to restore the
-compact list; reopening draws the compact list again"* — and the harness reads it
-per state rather than inferring it:
+The grown heading carries `SECTION_GROWN_HINT` — *"Collapse, then reopen, to restore the
+compact list"* — and the harness reads it per state rather than inferring it:
 
 | state | heading `title` | `aria-describedby` → text |
 | --- | --- | --- |
@@ -140,7 +141,7 @@ against a 16-row cap leave no foot while grown.
 The foot's own accessible name is read the same way: `Show 4 more agents` at
 rest, `aria-label` and `title` both, which is round 1's N1 closed.
 
-### The query-forced press (round 1's U2), re-measured
+### The query-forced press (round 1's U2), re-measured after the fix
 
 Three sequences, each driven in the live DOM with the sidebar query, the
 section's own filter, or both, then the heading pressed. The harness presses the
@@ -151,32 +152,37 @@ give the same answer.
 
 | sequence | rows before → after | section box before → after | `Filter agents` before → after |
 | --- | --- | --- | --- |
-| LIST query only (`b`) | 4 → 4 | 413px → **369px** | present → **absent** |
+| LIST query only (`b`) | 4 → 4 | 413px → **413px** | present → **present** |
 | LIST query (`b`) + section filter (`er`) | 2 → 2 | 264px → 264px | present → **present** |
 | section filter only (`er`) | 4 → 0 | 232px → 28px | present → absent |
 
+- **The first row is the repro, and it is closed.** Round 1 photographed this
+  press taking the field away and moving the section up by exactly the field's own
+  height (**−44px**, box 413px → 369px) with the rows and the chevron untouched.
+  At this head the press leaves the field, the box and every boundary below it
+  where they were (Teams heading top 560 → 560, `chatsTop` 644 → 644). The gate
+  now reads the section BODY's own term — `isOpen("agents", true) || query !== ""`
+  — so a query that keeps the body drawn keeps its control. That pre-fix reading
+  lives in this file's history (the previous revision of
+  `harness/cap-geometry-branch.json`, which this pass replaced in place) rather than
+  beside the fixed one, because both are the same instrument at the same story.
+- `list-query-resting/` and `list-query-pressed/` are the pair, and the entry
+  `cap/list-query-pressed` asserts `expectPresent` on the field, so the frame
+  cannot silently regress back into the defect's picture a second time.
+- The middle row is the conjunction the round-2 remedy named
+  (`query !== "" && rosterFilter.trim() !== ""`), and the field survives the press
+  there too: `filter-query-resting/` and `filter-query-pressed/` are that pair.
 - The third row is not a defect: with no list query the press really does close
-  the section (0 rows, 28px, `aria-expanded` false), so a filter field leaving
-  with the list it filters is correct.
-- **The first row is the defect round 1 photographed, and it is still there on
-  this head.** The press the panel documents as a no-op removes the field and
-  moves the section up by exactly the field's own height, **−44px**, with the rows
-  and the chevron untouched. `list-query-resting/` and `list-query-pressed/` are
-  that measurement's two frames.
-- The middle row is the state the remedy's gate actually names
-  (`query !== "" && rosterFilter.trim() !== ""`), and there the field survives:
-  `filter-query-resting/` and `filter-query-pressed/` are that pair.
-- **So the remedy covers the conjunction, not the state the finding measured.**
-  Recorded in the PR thread as a `D`-finding rather than as a passing round; the
-  minimal change that satisfies it is the section-body term the remedy's own note
-  already names (`isOpen("agents", true) || query !== ""`), whose second clause
-  would keep the field limited to a cap-bound roster or an applied filter.
-- **`list-query-pressed/` is a picture of the PRE-FIX state, and its entry says
-  so**: `cap/list-query-pressed` asserts `expectGone: 'input[aria-label="Filter
-  agents"]'`, which is the truth on this head and is written to FAIL the moment
-  the defect is fixed. The fix round flips that assertion to `expectPresent`
-  (and `filter-query-pressed/` keeps the pair for the conjunction), and these two
-  frames are re-taken then — the stills and the numbers move together.
+  the section (0 rows, 28px, `aria-expanded` false), so a filter field leaving with
+  the list it filters is correct. It is the case the gate must NOT spare, and it is
+  pinned behaviourally in `scripts/chat-sidebar-view.test.mjs` beside the repro.
+
+Round 3's finding (`U2`, agent review `R3-1` and QA `Q3-2`) was that the round-2
+remedy was INERT in this first row: its clause held the field only when the reader
+had typed the section's own filter, and the repro is a list query with no section
+filter. What closes it is the body's own term, and the suite now drives the press
+rather than matching the gate's source text — a source-string pin stayed green over
+that inert clause, which is why the defect survived a round.
 
 ### Where the keyboard goes
 
