@@ -93,9 +93,10 @@ the property is inert by design — agent review round 2's R2-1 is the finding, 
 QA measured the served markup and bounded the consequence as Q-r2-3. The real
 bound is arithmetic: the narrowest column the app can give this header is ~350px
 (`WINDOW_MIN_WIDTH` 800 and `CHAT_PANE_MIN_PX` 480), and the longest unit a run can
-compose is the **241.4px** `1 workspace_get_gmail_thread_content` — the unit's own
-box, measured on the live component; the token's glyphs alone are 230.6px, which is
-the number an earlier draft quoted, and the unit is what has to fit (round 3's D4b).
+compose is the **241.4px** `1 workspace_get_gmail_thread_content` — its own box, its text
+range and a canvas measure of the same string all read 241.4 on the live component
+(round 3's D4b named the unit as the claim; round 4's Q-r4-3 removed an earlier
+draft's 230.6px, which reproduces under no reading of the component).
 So a unit always fits and the units never break. The `many-types-kept/` cell
 photographs exactly that state at 420 (five types, the long kind KEPT rather than
 folded into the tail), with the geometry readout beside it.
