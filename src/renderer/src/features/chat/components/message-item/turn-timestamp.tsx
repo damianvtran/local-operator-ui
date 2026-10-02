@@ -86,13 +86,16 @@
  * same full instant the tooltip does, because "3:42 PM" alone loses the day for
  * a reader who cannot see which card it sits under (review round 1, R7). The
  * tooltip is POINTER-ONLY, though - the shared `Tooltip`'s trigger takes no
- * `tabIndex`, so it cannot be reached from the keyboard - which is why the
+ * `tabIndex`, so the TOOLTIP cannot be reached from the keyboard (the element
+ * itself may sit inside a focusable control - the turn-summary bar - where the
+ * keyboard operates that control and not the tooltip). That is why the
  * `aria-label` above is the accessible path rather than a second way to the same
- * panel (design round 2, D2-4). The full date and time come from
- * `formatCalendarDateTime` with `hour12` forced, so the tooltip and the label
- * agree with the 12-hour text the operator asked for rather than taking the
- * locale's own clock — on a 24-hour machine the two halves of one element used
- * to state the same instant in two conventions (review round 1, R3).
+ * panel (design round 2, D2-4; the scope of the keyboard claim corrected for
+ * the bar carrier in the cursor sweep's design review, D1). The full date and
+ * time come from `formatCalendarDateTime` with `hour12` forced, so the tooltip
+ * and the label agree with the 12-hour text the operator asked for rather than
+ * taking the locale's own clock — on a 24-hour machine the two halves of one
+ * element used to state the same instant in two conventions (review round 1, R3).
  */
 
 import { Tooltip } from "@shared/components/ui";
@@ -194,12 +197,16 @@ export const TurnTimestamp: FC<TurnTimestampProps> = ({
 				 * caption (§ 4: `text-meta` is "captions, timestamps, counts"; § 2:
 				 * `ink-dim` is the caption ink, 4.5:1 on every ground). `select-none`
 				 * because a stamp is not part of the turn's words: a selection drag
-				 * that sweeps it must not put a time into a quote. `cursor-help`
-				 * matches the hover row's stamp, so one gesture in this app means one
-				 * thing.
+				 * that sweeps it must not put a time into a quote. No cursor class,
+				 * deliberately: the stamp is tooltip-only AS AN ELEMENT, so the cursor
+				 * is the context's - the platform default at a turn's foot, and the
+				 * turn-summary bar's own `pointer` where that bar wraps it, because a
+				 * click on the bar (its trigger, `disclosure.tsx`) is what the pointer
+				 * states there. The help cursor this slot used to carry promised a
+				 * gesture the app never means by its tooltips.
 				 */
 				className={cn(
-					"shrink-0 cursor-help select-none whitespace-nowrap text-ink-dim text-meta",
+					"shrink-0 select-none whitespace-nowrap text-ink-dim text-meta",
 					className,
 				)}
 			>
