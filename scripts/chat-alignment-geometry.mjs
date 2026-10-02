@@ -121,7 +121,10 @@ const STORIES = [
 		"chat-trace-fold--many-types",
 		640,
 		130,
-		{ ready: "[data-fold-summary]", label: "chat-trace-fold--many-types (640px)" },
+		{
+			ready: "[data-fold-summary]",
+			label: "chat-trace-fold--many-types (640px)",
+		},
 	],
 ];
 
@@ -344,6 +347,25 @@ const PROBE = `(() => {
 			lineHeight: round(lh),
 			lines: Math.max(1, Math.round(r.height / lh)),
 			text: (foldEl.textContent ?? "").trim(),
+			/*
+			 * THE LINE THAT HOLDS IT, and its last child's right edge: the wrap
+			 * claim is 'the line wraps rather than overflowing the container', and
+			 * these two numbers are what 'overflowing' would look like - a last
+			 * child ending past the line's own right edge.
+			 */
+			line: (() => {
+				const parent = foldEl.parentElement;
+				if (!parent) return null;
+				const pr = parent.getBoundingClientRect();
+				const kids = [...parent.children];
+				const last = kids[kids.length - 1];
+				return {
+					left: round(pr.left),
+					right: round(pr.right),
+					width: round(pr.width),
+					lastRight: last ? round(last.getBoundingClientRect().right) : null,
+				};
+			})(),
 		};
 	})();
 	return { transcripts: out, fold };
@@ -518,6 +540,10 @@ const main = async () => {
 			console.log(
 				`  fold summary  left=${fold.left}  right=${fold.right}  width=${fold.width}  height=${fold.height}  lines=${fold.lines} (lh ${fold.lineHeight})`,
 			);
+			if (fold.line)
+				console.log(
+					`    line        left=${fold.line.left}  right=${fold.line.right}  width=${fold.line.width}  lastRight=${fold.line.lastRight}`,
+				);
 			console.log(`    text        "${fold.text}"`);
 		}
 		frames.forEach((f, i) => {
