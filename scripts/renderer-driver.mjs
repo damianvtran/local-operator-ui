@@ -25586,6 +25586,350 @@ async function scenePalette(cdp) {
 	return frames;
 }
 
+/*
+ * ---- the palette's Ctrl+N / Ctrl+P walk and its Unread pin (issues #761, #760) ----
+ *
+ * WHY A SISTER SCENE RATHER THAN AN EXTENSION OF `palette`. `--scene palette`
+ * photographs the door, the open, one typed query and the Escape; its frames are
+ * the record of the surface's existence. Two claims this change ships are
+ * different in kind. The Ctrl+N / Ctrl+P pair moves the SELECTION, and a still
+ * carries that only as a before/after PAIR around a real chord; the switcher's
+ * empty state pins an Unread section over the catalogue's own unread fact, which
+ * needs a backend that carries one (this set's frames run against the row-space
+ * set's stand-in daemon, whose fixture carries exactly one unseen completion).
+ * Extending the existing scene would move its frames' meaning; this scene keeps
+ * both records honest.
+ *
+ * WHAT A STILL HERE CANNOT CARRY, stated beside the frames rather than implied:
+ * the chord is DISCRIMINATED by the two frames' `aria-activedescendant` readings
+ * in this run's log (the selection moves between them), not by the pixels alone;
+ * the walk's arithmetic (wrap at both ends, the shift/alt refusals, the refused
+ * modified arrows) is pinned in `scripts/palette-shortcut.test.mjs`, and the
+ * Ctrl+P half of the pair is deliberately NOT pressed here - with a window that
+ * is focused and visible, main's `before-input-event` owns that chord, and this
+ * rig's headless window is neither focused nor visible, so a press here would
+ * photograph a path the operator's app never takes. The set's README says so
+ * where the frames are read.
+ *
+ * THE FIXTURE'S UNREAD FACT IS READ ON THE SIDEBAR FIRST: this scene asserts the
+ * mark is DRAWN there (the same `unreadMarkKind` verdict the palette consumes)
+ * before it opens the palette, so the pin's frames are a second reading of one
+ * fact rather than a palette drawn over a fact nothing else in the room can see.
+ */
+async function scenePaletteUnread(cdp) {
+	const frames = [];
+	/* The fixture's unseen conversation (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`). */
+	const UNREAD_ID = "b3f1a09c7d52";
+
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered with this set's fixture",
+		state.sessionCount >= 5,
+		`sessionCount is ${state.sessionCount}`,
+	);
+	const rowsDrawn = await drawAtLeast(cdp, 5);
+	note("rows drawn before anything is photographed", String(rowsDrawn));
+
+	/*
+	 * THE FACT THE PIN CONSUMES, ON THE SURFACE THAT ALREADY DRAWS IT. "Drawn"
+	 * means painted - the three clauses the archive scene spells for the same
+	 * glyph (a box, and none of display:none / visibility:hidden / opacity 0) -
+	 * and "and nowhere else" is the half that makes the read discriminating
+	 * rather than a tautology about a class name that is in the file.
+	 */
+	const mark = await cdp.evaluate(`(() => {
+		const marked = document.querySelector('[data-session-row="${UNREAD_ID}"]');
+		if (!marked) return { present: false };
+		const glyph = marked.querySelector(".text-success");
+		const r = glyph?.getBoundingClientRect() ?? null;
+		const style = glyph ? getComputedStyle(glyph) : null;
+		const elsewhere = [...document.querySelectorAll("[data-session-row] .text-success")].filter(
+			(el) => !marked.contains(el),
+		).length;
+		return {
+			present: true,
+			drawn:
+				!!r &&
+				r.width > 0 &&
+				r.height > 0 &&
+				style !== null &&
+				style.display !== "none" &&
+				style.visibility !== "hidden" &&
+				Number(style.opacity) > 0,
+			width: r?.width ?? 0,
+			height: r?.height ?? 0,
+			elsewhere,
+		};
+	})()`);
+	note(
+		"the sidebar's unread mark on the fixture's unseen row",
+		JSON.stringify(mark),
+	);
+	check(
+		"the fixture's unread fact is DRAWN where the palette reads it: the sidebar's mark on that row, and nowhere else in the list",
+		mark.present === true && mark.drawn === true && mark.elsewhere === 0,
+		JSON.stringify(mark),
+	);
+
+	/*
+	 * The open, the way `--scene palette` opens it: a real pointer sequence at
+	 * the rail row's painted centre. The press cannot move focus
+	 * (`dispatchEvent` does not activate the way a real click does), which is
+	 * why the field's own focus is asserted next - the palette seats it itself.
+	 */
+	const opened = await verb(cdp, "press", "[data-command-palette-trigger]");
+	check(
+		"the rail's Search row is what received the press",
+		opened.hitTest === true,
+		JSON.stringify(opened),
+	);
+	const openedState = await cdp.evaluate(
+		`({ active: document.activeElement?.id ?? null, dialog: Boolean(document.querySelector('[data-tour-tag="command-palette-dialog"]')) })`,
+	);
+	check(
+		"pressing it opened the palette, with focus in the query field",
+		openedState.dialog === true &&
+			openedState.active === "command-palette-input",
+		JSON.stringify(openedState),
+	);
+
+	/*
+	 * THE SWITCHER'S OWN SEED, TYPED. `Cmd/Ctrl+P` is main's hook
+	 * (`src/main/index.ts`), and a headless window - never shown, never focused -
+	 * cannot reach it (the driver's own documentation records this limit,
+	 * measured while pinning the palette's second chord). Typing `#` produces
+	 * the same state the hook produces: the seed IS `#`.
+	 */
+	await cdp.send("Input.insertText", { text: "#" });
+
+	const readList = async () =>
+		cdp.evaluate(`(() => {
+			const list = document.querySelector("#command-palette-results");
+			if (!list) return null;
+			return {
+				headings: [...list.querySelectorAll('[role="presentation"]')].map((node) =>
+					(node.textContent || "").trim(),
+				),
+				options: [...list.querySelectorAll('[role="option"]')].map((row) => ({
+					id: row.id,
+					selected: row.getAttribute("aria-selected") === "true",
+					text: (row.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 64),
+				})),
+				/*
+				 * The active row lives on the FIELD, not on the list: the input carries
+				 * \`role="combobox"\` and \`aria-activedescendant\` because focus never
+				 * leaves it (the one-element walk this surface exists for), and the
+				 * listbox is only \`aria-controls\`'d. Reading the attribute off the list
+				 * answered null on the first run of this scene - measured, and the fix
+				 * is here.
+				 */
+				active:
+					document
+						.getElementById("command-palette-input")
+						?.getAttribute("aria-activedescendant") ?? null,
+			};
+		})()`);
+
+	const switcher = await readList();
+	note("the switcher's empty (#) state", JSON.stringify(switcher));
+	if (switcher === null)
+		throw new Error(
+			"the switcher's list was not in the DOM after typing the seed",
+		);
+	check(
+		"the switcher's empty state pins an Unread section ABOVE the chats",
+		switcher.headings[0] === "Unread" && switcher.headings.includes("Chats"),
+		JSON.stringify(switcher.headings),
+	);
+	check(
+		"the unread conversation is the list's first row, and the tier below does not repeat it",
+		switcher.options[0]?.id === `chat-${UNREAD_ID}` &&
+			switcher.options.filter((row) => row.id === `chat-${UNREAD_ID}`)
+				.length === 1,
+		JSON.stringify(switcher.options.map((row) => row.id)),
+	);
+	check(
+		"the selection starts on the unread row",
+		switcher.options[0]?.selected === true &&
+			switcher.active === switcher.options[0]?.id,
+		`active is ${switcher.active}, first row ${JSON.stringify(switcher.options[0])}`,
+	);
+	/*
+	 * THE PAIR'S FIRST FRAME: the switcher's empty state exactly as the checks
+	 * above read it.
+	 */
+	frames.push(await captureSettled(cdp, "palette-switcher-unread-dark"));
+
+	/*
+	 * THE CHORD, THROUGH CHROMIUM'S OWN INPUT PIPELINE (`Input.dispatchKeyEvent`,
+	 * never a KeyboardEvent built inside the page): the whole claim is that the
+	 * press reaches the app's listener, so a synthetic event from inside would
+	 * skip everything between the key and the handler. Ctrl+N - CDP's Control
+	 * bit, no text on the event, the way a command chord travels.
+	 */
+	const draftBefore = await stagedDraft(cdp);
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.ctrl,
+	});
+	await wait(150);
+	const stepped = await readList();
+	note("after a real Ctrl+N", JSON.stringify(stepped));
+	if (stepped === null)
+		throw new Error("the switcher's list vanished around the chord");
+	check(
+		"Ctrl+N walked the selection one row down, into the chats tier below the pin",
+		stepped.active !== switcher.active &&
+			stepped.active === stepped.options[1]?.id &&
+			stepped.options[1]?.selected === true,
+		`active ${switcher.active} -> ${stepped.active}; second row ${stepped.options[1]?.id}`,
+	);
+	/*
+	 * AND THE OTHER BINDING ON THIS CHORD STOOD DOWN. `new-chat-shortcut.ts`
+	 * accepts meta|ctrl + n app-wide and yields on `event.defaultPrevented` and
+	 * on a press inside a modal surface; with the palette open the field is the
+	 * target, so BOTH guards apply and the app must not have started a chat -
+	 * no staged draft. This is the coherence half of #761 on the real app,
+	 * beside the pure-function pins.
+	 */
+	const draftAfter = await stagedDraft(cdp);
+	check(
+		"the press did NOT start a new chat - the app-level chord yields to the open palette",
+		draftAfter === draftBefore,
+		`activeDraftKey ${JSON.stringify(draftAfter)} (was ${JSON.stringify(draftBefore)})`,
+	);
+	frames.push(await captureSettled(cdp, "palette-switcher-ctrl-n-dark"));
+
+	/*
+	 * ESCAPE, THEN THE TYPED SEARCH - the legend's own state. The store clears
+	 * the query on close (`closeCommandPalette`), so the reopen types into an
+	 * empty field, and a typed query with results is where the caps legend (the
+	 * footer whose copy this PR touches) is drawn rather than the prefixes.
+	 */
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+	const closed = await waitForScene(
+		cdp,
+		`!document.querySelector('[data-tour-tag="command-palette-dialog"]')`,
+	);
+	check("Escape closed the palette before the typed pass", closed === true);
+	await verb(cdp, "press", "[data-command-palette-trigger]");
+	await waitForScene(
+		cdp,
+		`document.activeElement?.id === "command-palette-input"`,
+	);
+	await cdp.send("Input.insertText", { text: "release" });
+	const rowsArrived = await waitForScene(
+		cdp,
+		`document.querySelectorAll('#command-palette-results [role="option"]').length > 0`,
+	);
+	check("the typed query found the fixture's row", rowsArrived === true);
+	const typed = await readList();
+	note("a typed search", JSON.stringify(typed));
+	check(
+		"a typed query drops the pin - it applies to the empty state only",
+		typed !== null && !typed.headings.includes("Unread"),
+		JSON.stringify(typed?.headings),
+	);
+	const legend = await cdp.evaluate(`(() => {
+		const dialog = document.querySelector('[data-tour-tag="command-palette-dialog"]');
+		if (!dialog) return null;
+		const bar = [...dialog.querySelectorAll("div")].find(
+			(node) =>
+				(node.textContent || "").includes("to close") &&
+				[...node.querySelectorAll("kbd")].some(
+					(cap) => cap.textContent.trim() === "esc",
+				),
+		);
+		if (!bar) return null;
+		return {
+			caps: [...bar.querySelectorAll("kbd")].map((cap) => cap.textContent.trim()),
+			text: (bar.textContent || "").replace(/\\s+/g, " ").trim(),
+		};
+	})()`);
+	note("the typed-search legend", JSON.stringify(legend));
+	check(
+		"the legend teaches the Ctrl+N / Ctrl+P pair beside the arrows",
+		legend !== null &&
+			["↑", "↓", "Ctrl", "N", "Ctrl", "P"].every(
+				(cap, index) => legend.caps[index] === cap,
+			) &&
+			legend.text.includes("to move"),
+		JSON.stringify(legend),
+	);
+	frames.push(await captureSettled(cdp, "palette-legend-typed-dark"));
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}, waited ${frame.toastWaitMs}ms for toasts`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	/*
+	 * The switcher pair has to be TWO RENDERS, the check `--scene states` and
+	 * `--scene palette` both make: a before/after that is one frame written twice
+	 * once shipped in this repository, and a selection that moved without moving
+	 * a pixel would be the same defect mirrored.
+	 */
+	check(
+		"the switcher pair is two renders, not one frame written twice",
+		!readFileSync(frames[0].path).equals(readFileSync(frames[1].path)),
+		`${frames[0].bytes}B vs ${frames[1].bytes}B`,
+	);
+	return frames;
+}
+
 // ---- the composer's @ mentions -------------------------------------------------
 
 /*
@@ -36000,6 +36344,11 @@ async function main() {
 			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
 		);
 	}
+	if (SCENE === "palette-unread" && BACKEND === null) {
+		throw new Error(
+			"--scene palette-unread needs --backend: the Unread pin is composed from the catalogue's own rows, so a run with no backend has no conversation the fixture could carry an unread fact on",
+		);
+	}
 	if (SCENE === "question-dock" && BACKEND === null) {
 		throw new Error(
 			"--scene question-dock needs --backend: the card docks on a gate a live owner parks, and a run with none has no turn to pause",
@@ -36264,6 +36613,7 @@ async function main() {
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
+			else if (SCENE === "palette-unread") await scenePaletteUnread(cdp);
 			else if (SCENE === "scrollbar-fade") await sceneScrollbarFade(cdp);
 			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);
