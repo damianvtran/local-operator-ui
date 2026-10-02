@@ -4355,6 +4355,29 @@ export const STORIES = [
 	],
 	["chat-ask-options--approval", 1024, 360],
 	["chat-ask-options--approval-answer-in-flight", 1024, 360],
+	/*
+	   THE NINE-OPTION ALL-WRAPPED STATE, captured as issue #762's before/after
+	   pair. Each description runs to a second line at the 1024 column, and the row
+	   box has to grow with it or the next row's ordinal and label overprint it.
+	   The story ships WITH the fix, so both halves of the pair render the same
+	   story state: `before` is the pre-fix component in that story, `after` is the
+	   fixed one, and `scripts/ask-options-geometry.mjs` measures both runs -
+	   exiting non-zero on the pre-fix code, which is the pin's proof. 620 matches
+	   the story's own `Frame height`.
+	*/
+	["chat-ask-options--wrapped-density", 1024, 620],
+
+	/*
+	   THE ASIDE PANEL'S QUESTION SIDE, captured as issue #763's pair: the settled
+	   exchange at both rungs, so the visible role marker (`You:`) can be read
+	   against the answer beside it. The small row is the compact step at a
+	   phone-width viewport - `isSmallView` is the story's own prop, because a
+	   narrow column alone would render the wide panel, which is not a state the
+	   app can be in. 700 tall shows the whole panel and the composer box it sits
+	   above at both rungs.
+	*/
+	["chat-aside-panel--settled", 1024, 700],
+	["chat-aside-panel--settled-small-view", 440, 700],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
