@@ -145,6 +145,37 @@ export function useSessionCommand(sessionId: string) {
 	return { run, busy, result, outcome, setResult };
 }
 
+/**
+ * How a failed picker operation reads: the caller's prefix, the error's own
+ * detail, and - when the caller has one - a note it can add.
+ *
+ * WHY THE NOTE IS APPENDED AND NOT A REPLACEMENT (agent review round 2,
+ * MAJOR-1): `perform` returns null for EVERY throw, so a caller cannot tell a
+ * refusal the route classified from a transport failure, a timeout or a schema
+ * refusal. A caller that substituted its own sentence therefore spoke for
+ * causes it could not see - and the fork picker's did, replacing the core's
+ * four distinct refusal sentences (compaction in flight, unknown id, a point
+ * before the last summary, a boundary inside an unfinished tool batch) with one
+ * sentence whose premise was false for one of them and whose advice was itself
+ * refused by another. The detail is the owner's, so it stays; a note adds only
+ * what the caller knows without claiming a cause.
+ *
+ * THE JOIN IS A LINE BREAK, not a space (design round 3, D1). The route's
+ * sentences carry NO terminal period - `"history is being rewritten; retry
+ * /fork when compaction finishes"` is quoted verbatim by the test beside this -
+ * so a space ran two clauses together mid-word: "...compaction finishes If that
+ * message...". `\n` is the separator the success path in `destination-pickers`
+ * already uses for its second clause, and it is pinned by that test so the two
+ * cannot drift apart again.
+ */
+export function operationFailureText(
+	failurePrefix: string,
+	detail: string,
+	note?: string,
+): string {
+	return `${failurePrefix}: ${detail}${note ? `\n${note}` : ""}`;
+}
+
 /** Generic async operation state for adapters that call non-command ops. */
 export function useOperation() {
 	const [busy, setBusy] = useState(false);
@@ -154,6 +185,7 @@ export function useOperation() {
 			work: () => Promise<T>,
 			describe: (value: T) => PickerResult,
 			failurePrefix: string,
+			failureNote?: string,
 		): Promise<T | null> => {
 			setBusy(true);
 			setResult(null);
@@ -164,7 +196,11 @@ export function useOperation() {
 			} catch (error) {
 				setResult({
 					tone: "error",
-					text: `${failurePrefix}: ${errorText(error)}`,
+					text: operationFailureText(
+						failurePrefix,
+						errorText(error),
+						failureNote,
+					),
 				});
 				return null;
 			} finally {
