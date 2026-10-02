@@ -3255,6 +3255,16 @@ const BRANCH_RECORDS = [
 	 * `STAMP_BINDING_NOTES`.
 	 */
 	"rowForkMenuNote",
+	/*
+	 * And by the composer ArrowDown capture pass (#764), this branch's newest
+	 * top-level record: the fold onto `9b4822de10` (the speak-binding lane) that
+	 * re-lays this lane's one capture set - two composer-state frames - and
+	 * re-derives both stamps in its second, docs-only commit. It is listed for
+	 * the reason the list exists: a fold that resolved from main's copy would
+	 * drop it, and with it the only statement that no frame here was re-taken
+	 * and the diff that supports that reading.
+	 */
+	"foldOnto9b4822de10Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
