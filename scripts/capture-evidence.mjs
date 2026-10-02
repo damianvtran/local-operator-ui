@@ -8408,13 +8408,23 @@ export const STORIES = [
 	 * nine; the set README says which states ship under which arm, and WHY the older
 	 * generation could not simply be reproduced (its frames predate the reveal
 	 * itself: it landed in `3d03a2f3e63`, after those frames were taken).
+	 *
+	 * AND THE ARM NOW ASSERTS ITSELF, per shot rather than per pass: each of the
+	 * nine carries `expectPresent: '[data-lo-answer-actions]'`, so a shutter that
+	 * finds no row on that line FAILS the run instead of filing a resting frame
+	 * that cannot show what it is for. The transcript-line pass's round-5 re-shoot
+	 * shipped exactly that failure class - seven of the nine still carried frames
+	 * from the generation before the arm was set, which is how a set can pass a
+	 * palette check and a byte-compare while contradicting its own claim (design
+	 * round 5, D5) - so the claim is now mechanical rather than re-read from the
+	 * frames.
 	 */
 	[
 		"chat-canonical-message-actions--rest",
 		1024,
 		560,
 		/* The discoverability claim itself: the row ON SCREEN with no pointer. */
-		{ touch: true },
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
 	],
 	[
 		"chat-canonical-message-actions--rest",
@@ -8465,16 +8475,41 @@ export const STORIES = [
 			dir: "copied",
 		},
 	],
-	["chat-canonical-message-actions--short-answer", 1024, 320, { touch: true }],
-	["chat-canonical-message-actions--refused", 1024, 380, { touch: true }],
-	["chat-canonical-message-actions--truncated", 1024, 400, { touch: true }],
-	["chat-canonical-message-actions--streaming", 1024, 620, { touch: true }],
-	["chat-canonical-message-actions--multi-answer", 1024, 640, { touch: true }],
+	[
+		"chat-canonical-message-actions--short-answer",
+		1024,
+		320,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--refused",
+		1024,
+		380,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--truncated",
+		1024,
+		400,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--streaming",
+		1024,
+		620,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--multi-answer",
+		1024,
+		640,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
 	[
 		"chat-canonical-message-actions--bar-suppressed",
 		1024,
 		640,
-		{ touch: true },
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
 	],
 	/*
 	 * THE OPERATOR'S FOOT-LINE STATE (2026-10-01 report: "now that the action
@@ -8556,8 +8591,18 @@ export const STORIES = [
 	 * allowed it - the bar above carries `1 action`, the line under the answer
 	 * carries the actions alone. See the story's own comment for the chain.
 	 */
-	["chat-canonical-message-actions--one-call-turn", 1024, 560, { touch: true }],
-	["chat-canonical-message-actions--narrow", 420, 620, { touch: true }],
+	[
+		"chat-canonical-message-actions--one-call-turn",
+		1024,
+		560,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
 
 	/*
 	 * THE ROW'S CONTEXT MENU (#694), the FINAL set - captured from the shipped

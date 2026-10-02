@@ -54,27 +54,45 @@ the idle and hovered boxes being identical — are in *The measured rail* below.
 
 ## What is in it
 
-| directory | state | what it is for |
-|---|---|---|
-| `rest/` | a settled answer, no pointer | the discoverability claim itself |
-| `hover-answer-no-corner-control/` | the pointer parked on the answer | the superseded pattern's own region, with `expectPresent: '[data-lo-answer-actions]'` and `expectGone: '[data-lo-link-toolbar]'` asserted |
-| `hover-copy/` | the pointer on Copy | the hover step: `accent-wash` ground, `accent` ink |
-| `focus-copy/` | Tab-reached Copy, real presses | the focus ring, and the "Copy" tooltip |
-| `copied/` | Copy pressed | the tick and the `Copied` name, asserted by `expectAttribute` |
-| `short-answer/` | a one-line answer | the row must not read as a second sentence |
-| `refused/` | a refusal | the row is present; the danger ink stays on the prose |
-| `truncated/` | a partly-received answer | the caption above, the row below |
-| `streaming/` | a settled turn beside an in-flight one | the row on the settled answer, and NONE on the in-flight turn's rows |
-| `multi-answer/` | two settled answers in one turn | exactly one row, on the closing answer |
-| `bar-suppressed/` | a turn folded into its bar | the actions still on the line, the bar keeping its numbers and stamp |
-| `one-call-turn/` | the minimum action count: one call, settled | one call is one hidden span, so the turn folds into a single bar and the bar above states `1 action`; the closing line keeps the row with no caption beside it |
-| `compacted-run/` | a turn split by a mid-run compaction | the shape where the caption and the row paint TOGETHER: `Worked for 12s · 2 actions` at the content's left rail, the buttons at the far end |
-| `compacted-run-hover/` | the same state, pointer on the answer | the reveal: the buttons arrive at the right cluster and NOTHING moves — every box is identical to the idle reading above |
-| `narrow/` | 420px, `isSmallView` | one line, buttons intact, no wrap, focus reachable |
-| `user-row/` | the USER turn's own row (design round 1, D2) | `Copy` alone, mounted under the bubble: the reveal box is at rest, so the frame is the bubble and the row's own empty box |
-| `user-row-hover/` | the same, pointer on that row's Copy | the reveal, with the row's right edge on the bubble's |
-| `user-row-small/` + `user-row-small-hover/` | the same pair at 420 | the same shape where the content rail is 32 rather than 107 |
-| `compacted-run-small/` | `compacted-run` at 420 | the caption's rail at `isSmallView` — no frame had a caption at this width before (design round 1, D2) |
+| directory | state | arm | what it is for |
+|---|---|---|---|
+| `rest/` | a settled answer, no pointer | **hover-less** | the discoverability claim itself: the row ON SCREEN, asserted per shot |
+| `hover-answer-no-corner-control/` | the pointer parked on the answer | pointer | the superseded pattern's own region, with `expectPresent: '[data-lo-answer-actions]'` and `expectGone: '[data-lo-link-toolbar]'` asserted |
+| `hover-copy/` | the pointer on Copy | pointer | the hover step: `accent-wash` ground, `accent` ink |
+| `focus-copy/` | Tab-reached Copy, real presses | pointer | the focus ring, and the "Copy" tooltip |
+| `copied/` | Copy pressed | pointer | the tick and the `Copied` name, asserted by `expectAttribute` |
+| `short-answer/` | a one-line answer | **hover-less** | the row must not read as a second sentence |
+| `refused/` | a refusal | **hover-less** | the row is present; the danger ink stays on the prose |
+| `truncated/` | a partly-received answer | **hover-less** | the caption above, the row below |
+| `streaming/` | a settled turn beside an in-flight one | **hover-less** | the row on the settled answer, and NONE on the in-flight turn's rows |
+| `multi-answer/` | two settled answers in one turn | **hover-less** | exactly one row, on the closing answer |
+| `bar-suppressed/` | a turn folded into its bar | **hover-less** | the actions still on the line, the bar keeping its numbers and stamp |
+| `one-call-turn/` | the minimum action count: one call, settled | **hover-less** | one call is one hidden span, so the turn folds into a single bar and the bar above states `1 action`; the closing line keeps the row with no caption beside it |
+| `compacted-run/` | a turn split by a mid-run compaction | host | the caption at the content's rail — `Worked for 12s · 2 actions` — with the row's box at rest inside the rig's hover-capable renderer; the REVEAL is the sibling below, and the caption/actions/stamp boxes are identical between the two |
+| `compacted-run-hover/` | the same state, pointer on the answer | pointer | the reveal: the buttons arrive at the right cluster and NOTHING moves — every box is identical to the idle reading above |
+| `narrow/` | 420px, `isSmallView` | **hover-less** | one line, buttons intact, no wrap, focus reachable |
+| `user-row/` | the USER turn's own row (design round 1, D2) | host | `Copy`, and `Fork from this message` since the fold brought #739's control to the row, mounted under the bubble: the reveal box is at rest, so the frame is the bubble and the row's own box |
+| `user-row-hover/` | the same, pointer on that row's Copy | pointer | the reveal, with the row's right edge on the bubble's |
+| `user-row-small/` + `user-row-small-hover/` | the same pair at 420 | host / pointer | the same shape where the content rail is 32 rather than 107 |
+| `compacted-run-small/` | `compacted-run` at 420 | host | the caption's rail at `isSmallView` — no frame had a caption at this width before (design round 1, D2) |
+
+**The `arm` column is the rig's own declaration, one state at a time** (design round
+5, D5/D6: "one arm per shot, every state restating its arm"). **hover-less** is
+`touch: true` (`Emulation.setTouchEmulationEnabled` in the loop) — the row is
+visible with no pointer in the frame, which is what a *resting* state is for, and
+each of those nine entries now carries `expectPresent: '[data-lo-answer-actions]'`
+so a shutter that finds no row on that line FAILS the run rather than filing a
+frame that cannot show what it exists to show. **pointer** is a real pointer, Tab
+walk or press, and needs a hover-capable renderer to mean anything. **host** is
+the four entries that declare no arm (they were added before the rule and their
+pairs straddle it): the rig's renderer decides, and on this rig that is
+hover-capable, so their row is present but unpainted at rest and the *reveal* is
+the sibling frame — which is why the table names the sibling rather than claiming
+a row on screen it does not paint. Before round 5 this set shipped seven of its
+nine hover-less states from a generation where the arm was not yet set, so the
+claim above was carried by `rest/` alone while the other seven showed a closing
+line whose only ink was the stamp; the whole set was re-shot at the head this
+record describes, and that is the difference the frames now show.
 
 Six themes, chosen by the memo's logic rather than by taste: `localOperatorLight`
 and `localOperatorDark` (the brand), `sage` and `catppuccinMacchiato` (the two
@@ -114,8 +132,13 @@ reads the user turn's own row now, and two 420px states:
 | `user-row-small-hover/` @420 | the same boxes, the control revealed |
 | `compacted-run-small/` @420 | caption left **32** (the `isSmallView` rail), actions `165.6`, line `32 → 388` (height 34.8) |
 
-The user row's right edge is its bubble's, and the row carries `Copy` alone at both
-widths — which is R4's ruling measured rather than restated. The 420 story had to
+The user row's right edge is its bubble's, and the row carries `Copy` and
+`Fork from this message` at both widths — **two** controls, which the table above
+and the frames now agree on. The row was `Copy` alone when design round 1's R4
+ruled its format correct as-is; the fork control joined it on `main` (#739) and
+the fold re-shot these four states at that head, so this sentence and the probe's
+`buttons 2` describe one tree (design round 5, D8c, caught them disagreeing). The
+420 story had to
 be BUILT for this: `isSmallView` is a prop the transcript is told about, not a
 window width, so running the 1024px story at a 420px viewport photographs the wide
 layout clipped (the probe showed the caption and the actions reporting their 1024px
@@ -151,21 +174,39 @@ rightmost, the shape every state already had), pushed by the actions' own
 | stamp.left (`compacted-run`) | 794.5 | 794.6 |
 | caption/actions/stamp, idle vs hovered | identical | **identical** |
 
-**FOLDED ONTO `origin/main` = `9d9cd4be63` (76 commits), AND THE ROW GREW A THIRD
-CONTROL.** The fold's one content conflict was `canonical-transcript.tsx`: `main`
-had added the Fork point to the answer row (#739 / #1002) while this branch held
-that row moved to the line's far end. The resolution keeps ONE row per answer on
-the right rail, so `main`'s `conversationId`/`entryId` ride this branch's
-instance, and the numbers above are the folded head's own reading rather than the
-pre-fold ones. Every frame in this set was re-shot on the folded tree; **44 of
-them moved and the rest came back byte-identical**, and the moved ones are exactly
-the four states that paint the row in a pointer-capable arm (`rest/`,
-`hover-copy/`, `hover-answer-no-corner-control/`, `focus-copy/`) — the states
-captured in the hover-less arm show the row's box and are unaffected by a control
-that only changes what that box contains. The `-foot-before` sibling is
-deliberately NOT re-shot: it is the operator's pre-change state on the cut point
-`af6fffa899`, where the row carried two controls, and re-shooting it would destroy
-the comparison it exists to make.
+**FOLDED ONTO `origin/main` = `9d9cd4be63` (76 commits), AND RE-SHOT WHOLE AT THAT
+HEAD — after a first pass that got it wrong** (design round 5, D5–D8; agent review
+R5-2/R5-4; QA Q-r5-1..Q-r5-3). The fold's one content conflict was
+`canonical-transcript.tsx`: `main` had added the Fork point to the answer row
+(#739 / #1002) while this branch held that row moved to the line's far end, so one
+row per answer rides the right rail, with `main`'s `conversationId`/`entryId` on
+THIS branch's instance.
+
+The Fork control is a fact about the frames — the cluster is one control wider —
+so the set was re-shot, and the first attempt is what those findings are about:
+it ran `--only=` with **no** `--themes=`, which leaves the rig's DEFAULT twelve
+palettes in place (four states went from six palettes to thirteen, and
+`focus-copy/` stopped at eleven on a six-palette budget), and it left sixteen of
+the twenty states untouched — seven of them still carrying the generation that
+painted **no row at rest**, which is the one thing this set's own claim cannot
+survive. It also never re-shot the four states that paint a row in a
+pointer-capable arm besides the two it did (`copied/`, `compacted-run-hover/`,
+`user-row-hover/`, `user-row-small-hover/`), so the set contradicted itself
+state-to-state on the fact it exists to evidence.
+
+**This head's frames are ONE shoot, at the command below, whole set.** Every state
+is photographed under its declared arm — `touch: true` (the hover-less arm) for
+the nine resting states, a real pointer for the four interaction states — and the
+rig's own `expectPresent: '[data-lo-answer-actions]'` is what makes a resting frame
+with no row on screen fail the run rather than ship (the check whose absence let
+the old generation's seven frames through). The palettes are the six the command
+names, state by state: `scripts/check-evidence-palettes.mjs` asserts that budget
+per directory and runs inside `pnpm test:desktop`, because a `--only=` run without
+`--themes=` is exactly how the strays got committed in the first place.
+
+The `-foot-before` sibling is deliberately NOT re-shot: it is the operator's
+pre-change state on the cut point `af6fffa899`, where the row carried two
+controls, and re-shooting it would destroy the comparison it exists to make.
 
 **No layout shift on hover, and that is the numbers' claim rather than the
 frames'.** `ACTION_ROW_REVEAL_CLASSES` is opacity-only, so the boxes above are
