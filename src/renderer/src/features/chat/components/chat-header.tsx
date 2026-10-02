@@ -24,6 +24,7 @@ import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
 import {
 	Archive,
 	ArchiveRestore,
+	Check,
 	FileText,
 	Globe,
 	Info,
@@ -1320,7 +1321,34 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 												key={option.value}
 												value={option.value}
 											>
-												{option.label}
+												<span>{option.label}</span>
+												{/*
+												 * THE CHECK ON THE CHOSEN ROW (design review round 1, D3). The
+												 * primitive's own mark for a checked radio row is the small status
+												 * dot at the leading edge, and the frame measured the trap: on
+												 * open, Radix roving-focuses the FIRST row, so the unchecked row
+												 * wears the accent WASH while the checked one wears a plain ground
+												 * and a dot - read together, "By turn is highlighted, By response
+												 * is dotted", for a stored value of `by-response`.
+												 *
+												 * The wash is FOCUS and cannot be dropped without taking the focus
+												 * affordance away from a keyboard reader, so the checked row gains
+												 * a mark the wash cannot imitate: a check glyph at the TRAILING
+												 * edge, which no focus state draws. The dot stays where the
+												 * primitive puts it, so the chosen row reads as chosen whichever
+												 * row holds focus, and checked / unchecked / focused stay three
+												 * distinguishable states.
+												 *
+												 * `ml-auto` rather than a spacer, because the panel hugs its
+												 * content: the mark sits at the row's end and the panel's own
+												 * `min-w-32` still owns its floor.
+												 */}
+												{activeTranscriptDisplayMode === option.value && (
+													<Check
+														aria-hidden="true"
+														className="ml-auto text-accent"
+													/>
+												)}
 											</DropdownMenuRadioItem>
 										))}
 									</DropdownMenuRadioGroup>
