@@ -36,6 +36,7 @@
 
 import { existsSync, readdirSync } from "node:fs";
 import { join } from "node:path";
+import { isEntryPoint } from "./entry-point.mjs";
 
 /** Set path under `docs/evidence` -> the palettes its `--themes=` command names. */
 export const SET_BUDGETS = {
@@ -122,7 +123,15 @@ export function checkPaletteBudgets(root = "docs/evidence", only = null) {
 	return { sets: names, frames, problems };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+/*
+ * The entry-point test is the SHARED one rather than a comparison of this file's
+ * own URL against `argv[1]`: that spelling is silent through a symlinked
+ * directory (macOS's `/tmp`), where the script loads, prints nothing and exits 0 -
+ * and an evidence check that says nothing and passes is the failure this whole
+ * file exists to remove. `scripts/entry-point.test.mjs` binds it, and CI's release
+ * contracts step is what caught this file resolving its own path (round 6).
+ */
+if (isEntryPoint(import.meta.url)) {
 	const only = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? null;
 	const { sets, frames, problems } = checkPaletteBudgets(undefined, only);
 	for (const line of problems) process.stdout.write(`  ${line}\n`);
