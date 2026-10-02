@@ -17,6 +17,14 @@ have nothing on that line. **The row is discoverable because it is ON SCREEN at
 rest**, so every state below is photographed with no pointer in the frame unless
 the state IS the pointer.
 
+**This set also carries the 2026-10-01 REARRANGEMENT of its own line** (operator
+direction: the caption to the content's own left rail, the action row and the
+stamp as the line's right cluster), and the before half of that pair is the
+sibling
+[`../chat-canonical-message-actions-foot-before/`](../chat-canonical-message-actions-foot-before/).
+The arrangement's numbers — including the hover proof, which is not a still but
+the idle and hovered boxes being identical — are in *The measured rail* below.
+
 ## What is in it
 
 | directory | state | what it is for |
@@ -32,7 +40,9 @@ the state IS the pointer.
 | `streaming/` | a settled turn beside an in-flight one | the row on the settled answer, and NONE on the in-flight turn's rows |
 | `multi-answer/` | two settled answers in one turn | exactly one row, on the closing answer |
 | `bar-suppressed/` | a turn folded into its bar | the actions still on the line, the bar keeping its numbers and stamp |
-| `one-call-turn/` | the minimum action count: one call, settled | where the caption would sit if the line could carry it beside the actions — it cannot, and the bar above states `1 action` instead (D1) |
+| `one-call-turn/` | the minimum action count: one call, settled | one call is one hidden span, so the turn folds into a single bar and the bar above states `1 action`; the closing line keeps the row with no caption beside it |
+| `compacted-run/` | a turn split by a mid-run compaction | the shape where the caption and the row paint TOGETHER: `Worked for 12s · 2 actions` at the content's left rail, the buttons at the far end |
+| `compacted-run-hover/` | the same state, pointer on the answer | the reveal: the buttons arrive at the right cluster and NOTHING moves — every box is identical to the idle reading above |
 | `narrow/` | 420px, `isSmallView` | one line, buttons intact, no wrap, focus reachable |
 
 Six themes, chosen by the memo's logic rather than by taste: `localOperatorLight`
@@ -43,35 +53,65 @@ smallest ground steps in the fleet — ΔE00 2.05 and 2.08 against the contract'
 which must **not** move). The other 53 palettes are covered by
 `pnpm check-themes`, which reads all of them.
 
-## The measured rail (the memo's Q1)
+## The measured rail (the memo's Q1), and the 2026-10-01 rearrangement
 
 A still cannot settle an edge claim, so these numbers come from the rendered DOM:
-`scripts/chat-alignment-geometry.mjs` gained this set's two entries and an
-`actions`/`line` measurement, and the command is re-runnable.
+`scripts/chat-alignment-geometry.mjs` gained this set's entries, an
+`actions`/`line` measurement, a real pointer for the hover pass, and the fold
+entries' own `line`/`lastRight` reading (that claim is the fold record's), and
+the command is re-runnable.
 
 ```sh
 node scripts/chat-alignment-geometry.mjs http://127.0.0.1:6077 --json
 ```
 
-| story | prose.left | content.left (gutter) | toolbar.left | first button | railDelta | line box | line height | meta span | stamp.left |
-|---|---|---|---|---|---|---|---|---|---|
-| `chat-canonical-message-actions--rest` | 107 | 107 (0px) | 107 | 107 | **0** | 107→917 | 28 | 17.4 | 794.7 |
-| `chat-canonical-message-actions--bar-suppressed` | 107 | 107 (0px) | 107 | 107 | **0** | 107→917 | 28 | — | — |
+| story | prose.left | content.left (gutter) | caption.left (the rail) | actions.left | first button | stamp.left | line box | line height |
+|---|---|---|---|---|---|---|---|---|
+| `chat-canonical-message-actions--rest` | 107 | 107 (0px) | — | 726.8 | 726.8 | 794.8 | 107→917 | 28 |
+| `chat-canonical-message-actions--bar-suppressed` | 107 | 107 (0px) | — | 857 | 857 | — | 107→917 | 28 |
+| `chat-canonical-message-actions--compacted-run` | 107 | 107 (0px) | **107** | 726.6 | 726.6 | 794.6 | 107→917 | 28 |
+| `chat-canonical-message-actions--compacted-run` (hover) | 107 | 107 (0px) | **107** | 726.6 | 726.6 | 794.6 | 107→917 | 28 |
 
 **Q1, answered and closed.** The shipped head paints NO agent glyph and no gutter:
-`content.gutterPx` is **0** for both states, `MessageContainer` is `relative
+`content.gutterPx` is **0** for every state, `MessageContainer` is `relative
 w-full` for an agent row (its own header states D11 — the 40px gutter and the
 avatar are deleted, and `message-avatar.tsx` has no importer), and the row is a
-SIBLING of the answer's content box inside that container, so toolbar.left and
-the prose's left edge are the same 107px by construction rather than by a second
-measurement. The comment on the foot-line region that named a `pl-10` gutter —
-the stale claim the memo's D1 flagged — is corrected in this change rather than
-left standing beside a frame that contradicts it. **The answer and the ledger
-share the rail; the caption follows the actions on the same line when there is
-one.**
+SIBLING of the answer's content box inside that container, so the caption's left
+edge and the prose's left edge are the same 107px by construction rather than by
+a second measurement. The comment on the foot-line region that named a `pl-10`
+gutter — the stale claim the memo's D1 flagged — is corrected in this change
+rather than left standing beside a frame that contradicts it. **The answer and
+the ledger share the rail; the caption keeps it and the actions and the stamp
+ride the line's far end.**
 
-Two buttons, `size-7` (`icon-sm`) each with a 4px gap: the toolbar measures
-60×28 and its first button 28×28.
+**THE REARRANGEMENT (operator direction, 2026-10-01).** The operator's sentence —
+"now that the action buttons only show up on hover, the Worked for and action
+count looks a bit weird — rearrange so those are on the leftmost extent and the
+action buttons are to the right" — is the change this pair photographs. Until it,
+the ACTIONS took the line's left edge and the caption followed them: the buttons
+are opacity-only-hidden at rest but hold their 60px box, so the caption read
+indented by 68px of nothing, under prose it belongs to. Now the caption starts at
+the content's own left edge and the right cluster is `[actions][stamp]` (stamp
+rightmost, the shape every state already had), pushed by the actions' own
+`ml-auto` wrapper.
+
+| reading | before (`af6fffa899` + this set's story cell) | after (this branch) |
+|---|---|---|
+| caption.left (`compacted-run`) | **175** | **107** |
+| actions.left (`compacted-run`) | 107 | 726.6 |
+| stamp.left (`compacted-run`) | 794.5 | 794.6 |
+| caption/actions/stamp, idle vs hovered | identical | **identical** |
+
+**No layout shift on hover, and that is the numbers' claim rather than the
+frames'.** `ACTION_ROW_REVEAL_CLASSES` is opacity-only, so the boxes above are
+byte-equal between the idle and hovered readings of the same state (the
+`compacted-run` pair in the table; the before column was measured the same way on
+the pre-change tree and is equal too). The buttons' arrival is the only thing that
+changes in `compacted-run-hover/`.
+
+Two buttons, `size-7` (`icon-sm`) each with a 4px gap: the toolbar measures 60×28
+and its first button 28×28 — the 60px box the caption used to trail, plus the
+line's own 8px gap.
 
 ## The accepted cost, restated honestly
 
@@ -87,30 +127,42 @@ so those turns gain the actions' 28px line plus its 4px margin. That is the stat
 `bar-suppressed/` photographs; it is called out here rather than averaged into
 the 10.6px above.
 
-## The caption beside the actions: why no frame shows it (design round 1, D1)
+## The caption beside the actions: the shape that does paint it (operator direction, 2026-10-01)
 
-The memo's sketch puts the actions on the same line as `Worked for 1m 12s · 8
-actions`. The app cannot paint that composition, and the reason is structural
-rather than rare — a chain worth stating in full, because "the sketch's shape is
-missing" is otherwise indistinguishable from "nobody captured it":
+Round 1 (design memo D1) ruled that the app cannot paint the memo's sketch — the
+caption and the action row on ONE line — and this record used to explain why no
+frame showed it. That finding was right about the states it looked at and wrong as
+a general claim: there IS a shape that keeps the foot on a barred turn, and it is
+the one the operator's report is photographed in (`compacted-run/`).
 
-1. The caption's own gate is `foot.actions > 0` (`canonical-transcript.tsx`),
-   and `foot.actions` counts a turn's **tool rows**. A turn with no calls has no
-   numbers to state, so the caption is absent by that gate — `rest/` and
-   `short-answer/` are exactly those turns, and they paint **actions + stamp**.
+The chain, restated with its third case:
+
+1. The caption's own gate is `foot.actions > 0` (`canonical-transcript.tsx`), and
+   `foot.actions` counts a turn's **tool rows**. A turn with no calls has no
+   numbers to state — `rest/` and `short-answer/` are those turns, and they paint
+   **actions + stamp**.
 2. A turn WITH a call always gives its run something to hide. `planRun`
    (`turn-collapse-model.ts`) builds `hidden` from every row between the opening
    user row and the closing answer that is not pinned, and
    `staysVisibleWhileCollapsed` is `true` for `compaction`, a complete `notice`
-   and an error `custom` — **never for a `tool` row**. `collapses` is
+   and an error `custom` — never for a `tool` row. `collapses` is
    `hidden.length > 0 && … && !live`, so one call is enough.
-3. A collapsed run withholds the caption AND the stamp from the closing line:
-   `suppressClosingLine` reaches the row as `closingLineSuppressed`, the caller
-   hands `foot: null` for those turns, and the bar states the numbers and the
-   stamp instead (`TurnSummary`).
+3. **A collapsed run withholds the caption and the stamp from the closing line —
+   but only while its hidden span is ONE pre-answer segment.** The model sets a
+   segment's `stampTs` — the turn's instant, which its bar paints and which is
+   what suppresses the closing line's own foot — **only when that segment is the
+   run's sole pre-answer segment**: the shape where the bar's totals ARE the
+   turn's totals. A run whose span partitions into two or more segments (a pinned
+   statement between its calls: the `compaction` row here, a complete notice or
+   an error `custom` in the same class) leaves every segment without the stamp,
+   so `closingLineSuppressed` stays false and the closing line keeps its foot —
+   it is where the turn's totals and instant go when the bars state only parts.
 
-So the two halves of the line that do exist are **actions + stamp** (no calls)
-and **actions alone** (calls, bar above). `one-call-turn/` is the tightest
+So the line has three shapes, one per state: **actions + stamp** (`rest/`,
+`short-answer/` — no calls), **actions alone** (`bar-suppressed/`,
+`one-call-turn/` — one hidden segment, the bar states the numbers), and
+**caption + actions + stamp** (`compacted-run/` — the run split around a pinned
+row, the shape the operator's report is about). `one-call-turn/` is the tightest
 rendering of the second: one call is the smallest count that makes the turn
 foldable, and the frame shows the bar reading `1 action` while the closing line
 carries the row with no caption beside it. `hover-answer-no-corner-control/` and
@@ -156,19 +208,35 @@ hover, focus and press entries are real input through the input pipeline —
 focus, `press` is a real press — because a class that faked either state would
 photograph the story.
 
-**Re-verified on the fold, not re-shot.** The whole set was re-captured on the
-folded tree (`origin/main` = `9dd18ab318`, which moved `canonical-transcript.tsx`,
-`transcript-reducer.ts` and the scroll pager under this branch) and every frame
-came back byte-identical except the `streaming/` working line's animated mark —
-19 pixels in a 4x12 box, against 16 pixels in the same box between two captures of
-the SAME tree, so the difference is the mark's phase rather than the tree. The
-committed frames are the ones this set shipped and they describe the folded tree.
+**Re-taken WHOLE on the folded tree (2026-10-01).** The branch folded
+`origin/main` = `0d4db85a5e` (29 commits) and the set was re-captured in one pass
+on the folded tree — **fifteen states × six themes, 90 frames** — because this
+change moves the line every state paints. All 78 frames the set shipped were
+rewritten: the committed ones predate the at-rest reveal (the controls were
+faintly painted in that capture and hold their box invisibly now) and this change
+moved that box to the line's far end; `rest/` after the round-1 Speak/Stop swap
+had already been re-checked byte-identical once, and this pass moves it because
+the box moved. The two states this change adds — `compacted-run/`,
+`compacted-run-hover/` — are new frames, and their half of the pair is the sibling
+`../chat-canonical-message-actions-foot-before/`, whose README states which states
+it carries and why.
 
-**Thirteen states, 78 frames.** `one-call-turn/` was added in round 1 (D1) and its
-six frames were taken on the fixed tree; the other twelve states were re-checked
-against it rather than re-taken — a re-capture of `rest/` after the round's
-component change (the Speak/Stop swap in `message-actions-row.tsx`) came back
-**byte-identical**, which is the claim that the change moves nothing at rest.
+**The earlier re-verify note is superseded.** Round 1's pass re-captured the same
+set on its own fold (`origin/main` = `9dd18ab318`) and every frame came back
+byte-identical except the `streaming/` working line's animated mark — 19 pixels in
+a 4x12 box against 16 pixels in the same box between two captures of the SAME
+tree, so that difference was the mark's phase rather than the tree. That finding
+still holds for what it measured; it is not a claim about the tree this change
+ships, and the frames above are the ones this change's code paints.
+
+**The fold-header correction did not move this set (spot-checked).** The same pass
+that shipped these frames also corrected the fold header's yield factors (it is
+`chat-trace-fold/`'s claim, and its record is there). None of these states renders
+a trace fold, so the correction cannot move them — checked rather than assumed:
+`rest/`, `compacted-run/` and `compacted-run-hover/` were re-captured at the
+corrected head in all six themes (**18 frames**) and came back byte-identical but
+for `rest/sage`'s 73 pixels (0.0001 of the frame, the environmental encode the
+`images-many-hover` cells show too).
 
 ## What this set is NOT
 
