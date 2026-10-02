@@ -3432,6 +3432,18 @@ export const STORIES = [
 	 * assertions in `pnpm check-themes` and in no frame at all.
 	 */
 	["chat-sidebar-current-row--bound-row-current", 780, 560],
+	/*
+	 * THE TEAM MARK ON A SELECTED ROW (design round 1, D5), and it is the one frame
+	 * of this component's own contract nobody had looked at: the mark's plate is
+	 * `sunken`, the selected row paints `rowSelected`, and in `localOperatorLight`
+	 * those two are 1.005:1 apart - the mark is carried by its 1px edge alone. The
+	 * `bound-row-current` entry above cannot reach it, because that row binds an
+	 * AGENT and an agent binding stays text; this story binds a TEAM, which is what
+	 * puts a mark in the trailing slot. Shoot it in the light palette as well as the
+	 * sweep's own (`--themes=localOperatorLight,localOperatorDark`) - the pairing is
+	 * tightest there.
+	 */
+	["chat-sidebar-current-row--team-bound-row-current", 780, 560],
 	["chat-sidebar-current-row--nested-row-current", 780, 560],
 	/*
 	 * The SAME story with a real pointer on the neighbour row ABOVE the current
