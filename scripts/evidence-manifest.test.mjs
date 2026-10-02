@@ -3267,6 +3267,15 @@ const BRANCH_RECORDS = [
 	 * claim (the stale `chat-header-cluster/no-approval` siblings among them).
 	 */
 	"transcriptDisplayModesRoundOneRemediationNote",
+	/*
+	 * And by this branch's first fold onto a moved `origin/main`, which is the
+	 * case the list exists for and the one that just happened: the fold resolved
+	 * this file by hand (main's copy whole, this branch's deltas re-laid), and
+	 * the record it adds is the only statement of what the fold moved, what it
+	 * deliberately did NOT re-take, and why the two refusals of main's arrival - a
+	 * renderer file and a re-shot frame - both hold.
+	 */
+	"foldOnto9d9cd4be63fNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
