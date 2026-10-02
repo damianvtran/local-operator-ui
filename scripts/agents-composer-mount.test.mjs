@@ -514,6 +514,83 @@ test("a blocked box says the page's reason, never chat's 'Agent is busy'", async
 	}
 });
 
+test("the disabled gate's box never claims an agent is busy", async () => {
+	/*
+	 * D9 (design review round 3) = U1 (UX review round 3). The band owns the
+	 * backend's refusal sentence (round 2's D7), and the box still has to say
+	 * something TRUE in that state. With no host line the composer's own chain
+	 * answers with `COMPOSER_PLACEHOLDER.busy` — chat's "Agent is busy" — over a
+	 * box refused because the backend is unreachable and no turn is running: the
+	 * exact defect round 1's D1 named, on the exact state D1 named.
+	 *
+	 * The fix can only travel through `hostNotice.placeholder` (`hostLine`), the
+	 * slot that outranks `inputDisabled`; the invitation slot is read LAST by
+	 * `composerPlaceholder`, so a refused box never reaches it. That is what makes
+	 * this case discriminating: it asserts the WORDS on the box, so a change that
+	 * re-opens D1 fails here instead of in a frame.
+	 */
+	const reason =
+		"The backend could not be reached, so the composer is unavailable for now.";
+	const { run } = handle({ enabled: false, disabledReason: reason });
+	const { host, root } = await mount(run);
+	try {
+		const box = host.querySelector("textarea");
+		assert.ok(box, "the shared composer's box is mounted");
+		const placeholder = box.getAttribute("placeholder") ?? "";
+		assert.doesNotMatch(
+			placeholder,
+			/busy/i,
+			`nothing is busy on the disabled gate (got ${placeholder})`,
+		);
+		assert.equal(
+			placeholder,
+			"Configure agents by conversation",
+			"the box speaks the host's own line for the state",
+		);
+		assert.equal(
+			box.disabled || box.readOnly,
+			true,
+			"and the box still refuses input",
+		);
+		/*
+		 * D7 STAYS TRUE IN THE SAME BREATH: the band is the reason's single carrier,
+		 * so the fix must not route `run.disabledReason` through the box as well.
+		 */
+		const note = host.querySelector('[data-testid="config-composer-note"]');
+		assert.equal(
+			note?.textContent?.trim(),
+			reason,
+			"the band still carries the reason",
+		);
+		assert.notEqual(placeholder, reason, "and the box does not repeat it");
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
+test("the invitation names no object, so neither pane contradicts itself", async () => {
+	/*
+	 * U2 (UX review round 3): the heading above the box is per-pane ("Ask for an
+	 * agent" / "Ask for a team") while the box serves both, so an invitation that
+	 * names either object first makes the Teams pane's focal control ask for an
+	 * AGENT. A wording that names no object is true on both; this pins it, and
+	 * pins that it is the object-neutral one rather than a re-order.
+	 */
+	const { run } = handle();
+	const { host, root } = await mount(run);
+	try {
+		const placeholder =
+			host.querySelector("textarea")?.getAttribute("placeholder") ?? "";
+		assert.doesNotMatch(
+			placeholder,
+			/agent|team/i,
+			`the invitation names no object (got ${placeholder})`,
+		);
+	} finally {
+		await act(async () => root.unmount());
+	}
+});
+
 test("an accepted send empties the box, so a second Enter cannot send twice", async () => {
 	/*
 	 * U1 (a BLOCKER on this page, because a run WRITES the registries). This host
