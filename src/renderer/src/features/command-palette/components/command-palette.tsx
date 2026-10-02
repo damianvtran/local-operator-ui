@@ -47,7 +47,7 @@ import {
 	searchPalette,
 } from "../palette-search";
 import {
-	paletteStepCaps,
+	paletteReachableStepCaps,
 	paletteStepIndex,
 	paletteStepIntent,
 } from "../palette-shortcut";
@@ -689,11 +689,15 @@ export const CommandPalette: FC = () => {
 	const activeItem = activeMatch?.item;
 	const showScopeLegend = !hasTerms || !hasResults;
 	/*
-	 * The walk's pair as the footer draws it (issue #761). Read through the
-	 * decision's own module so the copy cannot drift from the binding — the
-	 * test file pins each cap by feeding it back through `paletteStepIntent`.
+	 * The walk's caps as the footer draws them (issue #761): the REACHABLE set
+	 * only. `Ctrl+P` is bound and steps wherever it arrives, but in the
+	 * packaged app main's `before-input-event` owns the press
+	 * (`src/main/index.ts:3492-3500`, focused + visible windows) and answers it
+	 * with the switcher seed — so this legend teaches `Ctrl+N` alone, and
+	 * `paletteReachableStepCaps` is the one place that set lives (design round
+	 * 1, D1).
 	 */
-	const stepCaps = paletteStepCaps();
+	const stepCaps = paletteReachableStepCaps();
 
 	return (
 		<>

@@ -24,6 +24,7 @@ const module = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 const {
+	paletteReachableStepCaps,
 	paletteShortcutCaps,
 	paletteShortcutIntent,
 	paletteShortcutLabel,
@@ -131,6 +132,16 @@ const press = (overrides = {}) => ({
 	...overrides,
 });
 
+/**
+ * A cap fed back through the walk's decision: `"Ctrl+N"` -> the press it
+ * spells. Shared by the bound-set and advertised-set pins below so both read
+ * the same spelling convention.
+ */
+const fromCap = (cap) => {
+	const [modifier, letter] = cap.split("+");
+	return press({ key: letter, ctrlKey: modifier === "Ctrl" });
+};
+
 test("the arrows walk the list, exactly as they always did", () => {
 	assert.equal(paletteStepIntent(press({ key: "ArrowDown" })), "next");
 	assert.equal(paletteStepIntent(press({ key: "ArrowUp" })), "previous");
@@ -219,14 +230,33 @@ test("the caps are the binding's own spellings", () => {
 	assert.equal(nextCap, "Ctrl+N");
 	assert.equal(previousCap, "Ctrl+P");
 	/*
-	 * Pinned by FEEDING each cap back through the decision, not by asserting
-	 * the literal alone: a rename of either side that stops the footer's copy
-	 * and the handler's binding agreeing fails here.
+	 * This is the BOUND set — every spelling the decision accepts — pinned by
+	 * FEEDING each cap back through the decision, not by asserting the literal
+	 * alone: a rename of either side that stops the handler's binding and the
+	 * spelled pair agreeing fails here. It is deliberately NOT the set the
+	 * footer draws; the advertised set is pinned by the next case.
 	 */
-	const fromCap = (cap) => {
-		const [modifier, letter] = cap.split("+");
-		return press({ key: letter, ctrlKey: modifier === "Ctrl" });
-	};
 	assert.equal(paletteStepIntent(fromCap(nextCap)), "next");
 	assert.equal(paletteStepIntent(fromCap(previousCap)), "previous");
+});
+
+test("the advertised caps are the reachable set - Ctrl+P is bound but unreachable", () => {
+	const advertised = paletteReachableStepCaps();
+	assert.deepEqual(advertised, ["Ctrl+N"]);
+	// Reachable implies bound: every advertised cap steps.
+	for (const cap of advertised)
+		assert.equal(paletteStepIntent(fromCap(cap)), "next");
+	/*
+	 * The asymmetry, recorded where it can be seen (design round 1, D1). The
+	 * binding keeps Ctrl+P — it steps wherever it arrives, and the UX/QA rigs
+	 * measured that — but the footer must not advertise it: in the packaged
+	 * app main's `before-input-event` owns the press (`src/main/index.ts`
+	 * :3492-3500) and answers it with the `#` switcher seed rather than a move,
+	 * so from a typed search it would discard the query. This case fails if
+	 * Ctrl+P is re-advertised; the bound-set case above fails if it is unbound;
+	 * `scripts/palette-contract.test.mjs` pins the component drawing the
+	 * advertised set.
+	 */
+	assert.ok(paletteStepCaps().includes("Ctrl+P"));
+	assert.ok(!advertised.includes("Ctrl+P"));
 });

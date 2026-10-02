@@ -25608,8 +25608,10 @@ async function scenePalette(cdp) {
  * Ctrl+P half of the pair is deliberately NOT pressed here - with a window that
  * is focused and visible, main's `before-input-event` owns that chord, and this
  * rig's headless window is neither focused nor visible, so a press here would
- * photograph a path the operator's app never takes. The set's README says so
- * where the frames are read.
+ * photograph a path the operator's app never takes. The footer advertises only
+ * the reachable half (`Ctrl+N`) since design round 1's D1, and the legend check
+ * reads exactly that - a P cap back in the copy would fail it. The set's README
+ * says so where the frames are read.
  *
  * THE FIXTURE'S UNREAD FACT IS READ ON THE SIDEBAR FIRST: this scene asserts the
  * mark is DRAWN there (the same `unreadMarkKind` verdict the palette consumes)
@@ -25880,11 +25882,12 @@ async function scenePaletteUnread(cdp) {
 	})()`);
 	note("the typed-search legend", JSON.stringify(legend));
 	check(
-		"the legend teaches the Ctrl+N / Ctrl+P pair beside the arrows",
+		"the legend teaches the reachable walk cap beside the arrows (Ctrl+N; Ctrl+P stays bound but unreached here)",
 		legend !== null &&
-			["↑", "↓", "Ctrl", "N", "Ctrl", "P"].every(
+			["↑", "↓", "Ctrl", "N"].every(
 				(cap, index) => legend.caps[index] === cap,
 			) &&
+			!legend.caps.includes("P") &&
 			legend.text.includes("to move"),
 		JSON.stringify(legend),
 	);

@@ -127,6 +127,14 @@ The scope legend is rendered in the palette's footer for a browse — a query th
 names no terms, its list empty or full — and for a typed search that found
 nothing: the states where a hint is worth its pixels.
 
+The footer draws ONE legend at a time, and the split is deliberate (design round
+1, D2): a browse carries the scope legend, a typed search carries the movement
+legend (`↑ ↓ Ctrl+N`), and both do not fit — the scope legend inks 351px and
+leaves 158px free before `esc to close` in a footer with ~585px of usable
+width, while the movement legend needs 264px on its own. The empty state
+therefore omits the walk and the typed state omits the scope prefixes;
+re-arranging that budget is a footer-layout decision, not a copy edit.
+
 ## What it searches
 
 | Group | Source | Where the answer comes from |
@@ -226,7 +234,17 @@ a network round trip:
   `Home`/`End` are **not** intercepted — they move the caret, because a user who
   cannot fix a typo without leaving the list has lost the surface's whole premise.
 - Since issue #761 `Ctrl+N` / `Ctrl+P` walk the list too — the Emacs pair the
-  arrows' guard leaves free. `Shift`/`Alt` are refused as they are for the
+  arrows' guard leaves free. Of the pair, only `Ctrl+N` is REACHED in the
+  packaged app, and only `Ctrl+N` is advertised: `paletteReachableStepCaps` is
+  what the footer draws, while `paletteStepCaps` stays the bound set. `Ctrl+P`
+  is bound here too and steps wherever it arrives, but while the window is
+  focused and visible the press never arrives — main's `before-input-event`
+  owns `Cmd/Ctrl+P` outright (the table above, row `Cmd/Ctrl+P`) and answers it
+  with the switcher seed, so from a typed search it would drop the query rather
+  than move the selection. The asymmetry is pinned in
+  `scripts/palette-shortcut.test.mjs` and `scripts/palette-contract.test.mjs`;
+  design round 1's D1 is exactly the dead half being un-taught.
+  `Shift`/`Alt` are refused as they are for the
   arrows, and `Cmd` is refused deliberately: `Cmd+N` is the app's New chat chord
   and `Cmd+P` the switcher's, so accepting either here would silently re-bind a
   press the app already means something by. The app's own New chat press already
