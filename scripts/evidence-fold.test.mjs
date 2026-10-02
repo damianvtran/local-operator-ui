@@ -18,7 +18,12 @@ import {
 	stampFailures,
 } from "./check-evidence.mjs";
 import { keyPaths } from "./check-fold-keys.mjs";
-import { mergedKeys, resolveManifest, runGuards } from "./evidence-fold.mjs";
+import {
+	deepEqual,
+	mergedKeys,
+	resolveManifest,
+	runGuards,
+} from "./evidence-fold.mjs";
 
 /*
  * The fold resolver, exercised in SYNTHETIC GIT REPOSITORIES.
@@ -885,7 +890,7 @@ test("refreshedFrames is re-derived whenever the merged file carries a partialCa
  * directories match no story id, which is why `partialCaptureFailures` stood
  * down (its `refreshedAtHead` guard) on every case that existed before this one.
  */
-const storyFixture = ({ mainDropsNestedKey = false } = {}) => {
+const storyFixture = ({ mainLostNestedKeys = false } = {}) => {
 	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-fold-story-"));
 	scratch.push(dir);
 	git(dir, ["init", "--initial-branch=main", "-q"]);
@@ -915,6 +920,26 @@ const storyFixture = ({ mainDropsNestedKey = false } = {}) => {
 	write("src/app.ts", "export const one = 1;\n");
 	write("scripts/capture-evidence.mjs", captureSource(stories));
 	for (const id of stories) frame(id);
+	/*
+	 * The PRODUCTION SHAPE the `mainLostNestedKeys` option exists for (round-3
+	 * test remediation): with it the LANE leaves `partialCapture` exactly as the
+	 * base wrote it - the real defect had THIS branch's container unchanged while
+	 * the OTHER side moved it - and `main`'s copy has moved and lost
+	 * `addedSurfacesNote` along with a depth-3 leaf. Without the option both sides
+	 * carry every key, which is the shape this fixture's other tests want: when
+	 * BOTH containers moved the pre-fix rule still reached its per-key descent, so
+	 * only the unchanged-lane shape can tell the two rules apart.
+	 */
+	const basePartialCapture = {
+		refreshedStories: ["chat--one"],
+		refreshedThemes: ["localOperatorDark"],
+		refreshedFrames: 1,
+		refreshedAt: "2026-01-01T00:00:00Z",
+		refreshedAtHead: initSha,
+		note: "the base's pass",
+		addedSurfacesNote: "the base's added-surfaces note",
+		nested: { deep: { leaf: "the base's leaf" } },
+	};
 	manifestJson(
 		manifest({
 			head: initSha,
@@ -937,15 +962,7 @@ const storyFixture = ({ mainDropsNestedKey = false } = {}) => {
 					refreshedStories: ["chat--one"],
 				},
 			],
-			partialCapture: {
-				refreshedStories: ["chat--one"],
-				refreshedThemes: ["localOperatorDark"],
-				refreshedFrames: 1,
-				refreshedAt: "2026-01-01T00:00:00Z",
-				refreshedAtHead: initSha,
-				note: "the base's pass",
-				addedSurfacesNote: "the base's added-surfaces note",
-			},
+			partialCapture: basePartialCapture,
 			extra: { baseRecord: "the base pass" },
 		}),
 	);
@@ -954,7 +971,14 @@ const storyFixture = ({ mainDropsNestedKey = false } = {}) => {
 	const baseSha = git(dir, ["rev-parse", "HEAD"]);
 
 	git(dir, ["checkout", "-q", "-b", "lane"]);
-	frame("chat--three");
+	/*
+	 * In the production shape the lane's pass is a fold, not a re-shoot: it does not
+	 * add a story frame, so the base's `refreshedStories`/`refreshedFrames` stay
+	 * TRUE for it - which is the point of leaving the container unchanged (a lane
+	 * that added a frame while claiming the base's story list would be caught by
+	 * `partialCaptureFailures`, correctly).
+	 */
+	if (!mainLostNestedKeys) frame("chat--three");
 	manifestJson(
 		manifest({
 			head: baseSha,
@@ -967,15 +991,19 @@ const storyFixture = ({ mainDropsNestedKey = false } = {}) => {
 					refreshedStories: ["chat--one", "chat--declared"],
 				},
 			],
-			partialCapture: {
-				refreshedStories: ["chat--one", "chat--three", "chat--declared"],
-				refreshedThemes: ["localOperatorDark"],
-				refreshedFrames: 99,
-				refreshedAt: "2026-02-02T00:00:00Z",
-				refreshedAtHead: baseSha,
-				note: "THE LANE'S pass",
-				addedSurfacesNote: "THE LANE'S added-surfaces note",
-			},
+			partialCapture: mainLostNestedKeys
+				? // The lane never touched its container: the base's object, verbatim.
+					basePartialCapture
+				: {
+						refreshedStories: ["chat--one", "chat--three", "chat--declared"],
+						refreshedThemes: ["localOperatorDark"],
+						refreshedFrames: 99,
+						refreshedAt: "2026-02-02T00:00:00Z",
+						refreshedAtHead: baseSha,
+						note: "THE LANE'S pass",
+						addedSurfacesNote: "THE LANE'S added-surfaces note",
+						nested: { deep: { leaf: "the lane's leaf" } },
+					},
 			extra: { baseRecord: "the base pass", laneRecord: "THE LANE'S RECORD" },
 		}),
 	);
@@ -984,6 +1012,26 @@ const storyFixture = ({ mainDropsNestedKey = false } = {}) => {
 
 	git(dir, ["checkout", "-q", "main"]);
 	write("src/app.ts", "export const one = 2;\n");
+	const mainPartialCapture = {
+		refreshedStories: ["chat--two"],
+		refreshedThemes: ["localOperatorDark"],
+		refreshedFrames: 77,
+		refreshedAt: "2026-03-03T00:00:00Z",
+		refreshedAtHead: baseSha,
+		note: "MAIN'S pass",
+		addedFrames: 5,
+		nested: { deep: mainLostNestedKeys ? {} : { leaf: "main's leaf" } },
+		/*
+		 * The round-3 regression, on request: `main`'s copy LACKS the key that base
+		 * and the lane both carry - the shape PR #748's merge `8b2b499a13c` left on
+		 * the real main for `partialCapture.addedSurfacesNote`, and the shape the old
+		 * resolver propagated into the next fold. With the option on it loses the
+		 * depth-3 leaf as well.
+		 */
+		...(mainLostNestedKeys
+			? {}
+			: { addedSurfacesNote: "MAIN'S added-surfaces note" }),
+	};
 	manifestJson(
 		manifest({
 			head: baseSha,
@@ -996,24 +1044,7 @@ const storyFixture = ({ mainDropsNestedKey = false } = {}) => {
 					refreshedStories: ["chat--two"],
 				},
 			],
-			partialCapture: {
-				refreshedStories: ["chat--two"],
-				refreshedThemes: ["localOperatorDark"],
-				refreshedFrames: 77,
-				refreshedAt: "2026-03-03T00:00:00Z",
-				refreshedAtHead: baseSha,
-				note: "MAIN'S pass",
-				addedFrames: 5,
-				/*
-				 * The round-3 regression, on request: `main`'s copy LACKS the key that
-				 * base and the lane both carry - the shape PR #748's merge `8b2b499a13c`
-				 * left on the real main for `partialCapture.addedSurfacesNote`, and the
-				 * shape the old resolver propagated into the next fold.
-				 */
-				...(mainDropsNestedKey
-					? {}
-					: { addedSurfacesNote: "MAIN'S added-surfaces note" }),
-			},
+			partialCapture: mainPartialCapture,
 			extra: { baseRecord: "the base pass", mainRecord: "MAIN'S RECORD" },
 		}),
 	);
@@ -1275,60 +1306,212 @@ test("mergedKeys keeps this branch's order and appends main-only keys", () => {
 });
 
 /* ------------------------------------------------------------------ *
+ * The PRE-FIX rule, transcribed so a control can RUN it
+ * ------------------------------------------------------------------ */
+
+/*
+ * WHY A TRANSCRIPTION AND NOT A HAND-BUILT OBJECT. The two tests below are named
+ * for the round-3 defect, and the shape that defect actually occurred in is
+ * "THIS branch's `partialCapture` UNCHANGED from the merge base, the OTHER side
+ * moved it and lost a nested key". In that shape the pre-fix rule is decided by
+ * one line - `deepEqual(base, ours) → return theirs` - so a control has to
+ * EXECUTE that rule on the same three sides. The first version of these tests
+ * compared against `{ ...ours, partialCapture: theirs.partialCapture }`, a
+ * hand-built object that proves nothing about any resolver (and the fixtures
+ * themselves had BOTH sides moving the container, which the pre-fix rule handled
+ * correctly - so the tests passed before the fix).
+ *
+ * The functions below are COPIED from `scripts/evidence-fold.mjs` at
+ * `535b05c8196`, the last head before the fix: the three-way identity
+ * short-circuits, `CONTAINERS = new Set(["partialCapture"])`, and a `mergedKeys`
+ * with NO decision channel. The group-4 (`derived`) branch is omitted because
+ * these fixtures pass no `derived` - the driver's own state - and the two union
+ * helpers are the shipped ones' bodies. A mutant has to be a rule that RUNS, and
+ * this one is.
+ */
+const LEGACY_CONTAINERS = new Set(["partialCapture"]);
+const LEGACY_LISTINGS = new Set([
+	"supplementary",
+	"refreshedStories",
+	"refreshedThemes",
+	"addedSurfaces",
+]);
+const legacyUnionList = (ours = [], theirs = []) => {
+	const out = [...ours];
+	for (const item of theirs)
+		if (!out.some((seen) => deepEqual(seen, item))) out.push(item);
+	return out;
+};
+const legacyUnionSets = (ours = [], theirs = []) => {
+	const out = [...ours];
+	for (const entry of theirs)
+		if (!out.some((seen) => seen?.path === entry?.path)) out.push(entry);
+	return out;
+};
+const legacyMergedKeys = (base, ours, theirs) => {
+	const keys = Object.keys(ours);
+	for (const key of Object.keys(theirs)) {
+		if (key in ours) continue;
+		if (key in base) continue; // this branch deleted it - group (5)
+		keys.push(key);
+	}
+	return keys;
+};
+const legacyMergeValue = (key, base, ours, theirs) => {
+	if (key === "supplementary") {
+		if (ours === undefined) return theirs;
+		if (theirs === undefined) return ours;
+		return Array.isArray(ours) && Array.isArray(theirs)
+			? legacyUnionSets(ours, theirs)
+			: ours;
+	}
+	if (LEGACY_LISTINGS.has(key)) {
+		if (ours === undefined) return theirs;
+		if (theirs === undefined) return ours;
+		return Array.isArray(ours) && Array.isArray(theirs)
+			? legacyUnionList(ours, theirs)
+			: ours;
+	}
+	if (theirs === undefined) return ours;
+	if (ours === undefined) return theirs;
+	if (deepEqual(ours, theirs)) return ours;
+	if (deepEqual(base, ours)) return theirs;
+	if (deepEqual(base, theirs)) return ours;
+	// Both sides moved this key.
+	if (LEGACY_CONTAINERS.has(key))
+		return legacyMergeObject(base ?? {}, ours, theirs);
+	return ours;
+};
+const legacyMergeObject = (base, ours, theirs) => {
+	const out = {};
+	for (const key of legacyMergedKeys(base, ours, theirs)) {
+		const value = legacyMergeValue(
+			key,
+			base?.[key],
+			ours?.[key],
+			theirs?.[key],
+		);
+		if (value !== undefined) out[key] = value;
+	}
+	return out;
+};
+/** The pre-fix entry point: no `derived`, and NO decision channel at all. */
+const legacyResolveManifest = ({ base, ours, theirs }) => {
+	const out = {};
+	for (const key of legacyMergedKeys(base ?? {}, ours, theirs)) {
+		const value = legacyMergeValue(key, base?.[key], ours[key], theirs?.[key]);
+		if (value === undefined) continue;
+		out[key] = value;
+	}
+	if (Array.isArray(out.supplementary)) {
+		const baseSets = new Map(
+			(base?.supplementary ?? []).map((set) => [set?.path, set]),
+		);
+		const ourSets = new Map(
+			(ours.supplementary ?? []).map((set) => [set?.path, set]),
+		);
+		const theirSets = new Map(
+			(theirs.supplementary ?? []).map((set) => [set?.path, set]),
+		);
+		out.supplementary = out.supplementary.map((set) => {
+			const o = ourSets.get(set?.path);
+			const t = theirSets.get(set?.path);
+			if (!o || !t) return set;
+			return legacyMergeObject(baseSets.get(set?.path) ?? {}, o, t);
+		});
+	}
+	return out;
+};
+
+/* ------------------------------------------------------------------ *
  * Round 3: no key may be lost at any depth (scripts/check-fold-keys.mjs)
  * ------------------------------------------------------------------ */
 
 /*
- * THE REGRESSION, NAMED FOR THE KEY IT LOST. `main` dropped
- * `partialCapture.addedSurfacesNote` at PR #748's merge `8b2b499a13c`, this
- * branch still carried it, and the old resolver - which handed back the WHOLE
- * container whenever the OTHER side was the one that moved it - propagated the
- * loss into the next fold, with no line in the report. Here main is the side
- * that moved `partialCapture`, and the keys inside it are the question.
+ * THE REGRESSION, NAMED FOR THE KEY IT LOST, IN THE SHAPE IT OCCURRED: the lane's
+ * container is byte-identical to the base's (it never moved), main's moved and is
+ * missing `addedSurfacesNote` - `main` dropped it at PR #748's merge
+ * `8b2b499a13c` - along with a depth-3 leaf. That asymmetry is the whole point:
+ * the pre-fix rule is then decided by `deepEqual(base, ours) → return theirs`, so
+ * the control below loses both keys, while with BOTH sides moving the container
+ * the pre-fix rule reached its per-key descent and passed.
  */
 test("a nested key main deleted survives the fold, and the run names the decision", () => {
 	const base = manifest({
 		partialCapture: {
 			refreshedStories: ["chat--one"],
 			refreshedFrames: 1,
-			addedSurfacesNote: "the base's note",
 			note: "the base's pass",
+			addedSurfacesNote: "THE BASE'S note",
+			nested: { deep: { leaf: "THE BASE'S leaf" } },
 		},
 	});
+	// The lane never touched its container: byte-identical to base's copy, which is
+	// how the real defect presented (the branch's copy WAS the base's copy).
 	const ours = manifest({
 		partialCapture: {
 			refreshedStories: ["chat--one"],
 			refreshedFrames: 1,
-			addedSurfacesNote: "THE BRANCH'S NOTE",
 			note: "the base's pass",
+			addedSurfacesNote: "THE BASE'S note",
+			nested: { deep: { leaf: "THE BASE'S leaf" } },
 		},
 	});
+	// Main moved the container AND lost the note and the depth-3 leaf.
 	const theirs = manifest({
 		partialCapture: {
 			refreshedStories: ["chat--one"],
-			refreshedFrames: 1,
+			refreshedFrames: 77,
 			note: "MAIN'S pass",
+			nested: { deep: {} },
 		},
 	});
+	assert.deepEqual(
+		ours.partialCapture,
+		base.partialCapture,
+		"the fixture is the production shape only because THIS branch's container did not move",
+	);
+	assert.equal("addedSurfacesNote" in theirs.partialCapture, false);
+	assert.equal("leaf" in theirs.partialCapture.nested.deep, false);
+
+	// THE CONTROL: the pre-fix rule RUN on these same three sides loses both keys.
+	const legacy = legacyResolveManifest({ base, ours, theirs });
 	assert.equal(
-		"addedSurfacesNote" in theirs.partialCapture,
+		"addedSurfacesNote" in legacy.partialCapture,
 		false,
-		"the fixture is only a regression if MAIN's copy lacks the key",
+		"the pre-fix rule hands the moved side's container back whole and the branch's key goes with it",
+	);
+	assert.equal(
+		"leaf" in (legacy.partialCapture.nested?.deep ?? {}),
+		false,
+		"nor does anything reach into it: `partialCapture` was the container it descended into, and only when BOTH sides moved",
+	);
+	assert.equal(
+		legacy.partialCapture.note,
+		"MAIN'S pass",
+		"and it is main's pass that wins in the container it returned",
 	);
 
+	// THE SHIPPED RULE: merged per key at every depth, both keys kept (from this
+	// branch), and both decisions named rather than inferred.
 	const decisions = [];
 	const resolved = resolveManifest({ base, ours, theirs, decisions });
+	assert.equal(resolved.partialCapture.addedSurfacesNote, "THE BASE'S note");
+	assert.equal(resolved.partialCapture.nested.deep.leaf, "THE BASE'S leaf");
 	assert.equal(
-		resolved.partialCapture.addedSurfacesNote,
-		"THE BRANCH'S NOTE",
-		"a key main deleted must not take this branch's copy with it",
+		resolved.partialCapture.refreshedFrames,
+		77,
+		"the key SET is the fix, not a change of direction: main's moved value still wins",
 	);
-	// NOT "ours wins": `note` is base===ours, so main's pass field still wins -
-	// the fix is the key set, not a change of direction.
 	assert.equal(resolved.partialCapture.note, "MAIN'S pass");
 	assert.deepEqual(decisions, [
 		{
 			path: "partialCapture.addedSurfacesNote",
+			action: "kept",
+			why: "the other side deleted it",
+		},
+		{
+			path: "partialCapture.nested.deep.leaf",
 			action: "kept",
 			why: "the other side deleted it",
 		},
@@ -1464,33 +1647,49 @@ test("both parents' key sets survive the resolution at every depth", () => {
 	assert.equal(resolved.branchRecord, "ours");
 	assert.equal(resolved.mainRecord, "main");
 
-	// THE CONTROL: the rule this replaced took the moved side's object WHOLE - the
-	// shape `main`'s loss travelled in - and it must FAIL the property, or this
-	// test is checking nothing.
-	const wholesale = { ...ours, partialCapture: theirs.partialCapture };
+	// THE CONTROL: the rule this replaced IS the mutation - RUN it on the same
+	// three sides, and the property must FAIL for what it produces. It does: the
+	// pre-fix rule descends only into a named container both sides moved, so a key
+	// nested one level deeper that main still carries (`nested.extra`) is lost
+	// with no decision channel to say so. A hand-built object here proved nothing
+	// about any resolver; this runs the rule.
+	const legacy = legacyResolveManifest({ base, ours, theirs });
+	const legacyPaths = paths(legacy);
 	assert.deepEqual(
-		[...paths(ours)].filter((path) => !paths(wholesale).has(path)).sort(),
-		["partialCapture.addedSurfacesNote", "partialCapture.nested.retired"],
-		"a resolver that takes the moved side's container whole loses the branch's nested keys",
+		[...paths(theirs)].filter(
+			(path) => !legacyPaths.has(path) && !retired.has(path),
+		),
+		["partialCapture.nested.extra"],
+		"the pre-fix rule loses a key main still carries - exactly the property this test asks of the shipped resolver",
 	);
 });
 
 /*
- * THE SAME RULE ON THE REAL PATH: a git merge whose main dropped the nested key,
- * folded by the tool itself, committed, then checked with the shipped gate -
- * which is how this defect was found in the first place, on this branch's own
- * fold of `origin/main` = `20fa9c1db2`.
+ * THE SAME SHAPE ON THE REAL PATH, and the control run on the fixture's OWN three
+ * sides: the lane never touched its container, main moved it and lost the note
+ * and the depth-3 leaf, and the fold is performed by the tool itself, committed,
+ * then checked with the shipped gate - which is how this defect was found, on
+ * this branch's own fold of `20fa9c1db2`.
  */
 test("the fold of a main that dropped a nested key keeps it, names it, and passes the key gate", () => {
-	const { dir } = storyFixture({ mainDropsNestedKey: true });
+	const { dir } = storyFixture({ mainLostNestedKeys: true });
 	const lane = manifestAt(dir, "HEAD");
-	assert.equal(
-		"addedSurfacesNote" in lane.partialCapture,
-		true,
-		"the lane carries the key, so the merge has something to lose",
+	const main = manifestAt(dir, "main");
+	const base = manifestAt(dir, git(dir, ["merge-base", "HEAD", "main"]));
+	assert.deepEqual(
+		lane.partialCapture,
+		base.partialCapture,
+		"the production shape: THIS branch's container is unchanged from the base",
 	);
-	git(dir, ["merge", "main"]);
+	assert.equal("addedSurfacesNote" in main.partialCapture, false);
+	assert.equal("leaf" in main.partialCapture.nested.deep, false);
 
+	// The control on the fixture's own sides: the pre-fix rule loses both keys.
+	const legacy = legacyResolveManifest({ base, ours: lane, theirs: main });
+	assert.equal("addedSurfacesNote" in legacy.partialCapture, false);
+	assert.equal("leaf" in (legacy.partialCapture.nested?.deep ?? {}), false);
+
+	git(dir, ["merge", "main"]);
 	const result = run(dir);
 	assert.equal(result.status, 0, result.out);
 	assert.match(
@@ -1498,13 +1697,23 @@ test("the fold of a main that dropped a nested key keeps it, names it, and passe
 		/kept partialCapture\.addedSurfacesNote - the other side deleted it/,
 		"the run states the one-sided key decision",
 	);
+	assert.match(
+		result.out,
+		/kept partialCapture\.nested\.deep\.leaf - the other side deleted it/,
+		"and the depth-3 one, by path",
+	);
 	git(dir, ["commit", "-qm", "chore(merge): fold main"]);
 
 	const merged = readManifest(dir);
 	assert.equal(
 		merged.partialCapture.addedSurfacesNote,
-		lane.partialCapture.addedSurfacesNote,
+		base.partialCapture.addedSurfacesNote,
 		"the merged file keeps this branch's value for the key main lost",
+	);
+	assert.equal(
+		merged.partialCapture.nested.deep.leaf,
+		base.partialCapture.nested.deep.leaf,
+		"down to the depth-3 leaf",
 	);
 	const gate = spawnSync(
 		process.execPath,
