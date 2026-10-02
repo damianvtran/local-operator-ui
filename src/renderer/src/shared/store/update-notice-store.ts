@@ -57,10 +57,16 @@ import { UpdateType } from "./deferred-updates-store";
 /**
  * One surface's waiting release.
  *
- * The version only: the indicator prints it and nothing else, and the card's own
- * detail (notes, installer output, remedies) stays where it is produced.
+ * The version only - the indicator prints it and nothing else, and the card's
+ * own detail (notes, installer output, remedies) stays where it is produced -
+ * plus, since 2026-09-30, the producer's one-line release lead when it has one:
+ * the foot icon's tooltip names what is waiting in one line a person can read
+ * without opening the card (design consult §3.3), and the server channel's
+ * lookup already produces that line (`ServerReleaseNotes.summary`). A surface
+ * whose payload carries none leaves it null and the tooltip omits the line
+ * rather than guessing one from raw release notes.
  */
-export type QuietOffer = { version: string };
+export type QuietOffer = { version: string; summary?: string | null };
 
 /** The surfaces, in the order the indicator lists them. */
 export const NOTICE_SURFACES: readonly UpdateType[] = [
@@ -91,12 +97,58 @@ type UpdateNoticeState = {
 	offers: Record<UpdateType, QuietOffer | null>;
 	/** Whether the release detail is on screen for a surface (the card). */
 	detailOpen: Record<UpdateType, boolean>;
+	/**
+	 * Whether the notice BAND is on screen, because the reader asked for it.
+	 *
+	 * The band used to be the standing notice - it drew itself whenever a surface
+	 * had news - and since 2026-09-30 the standing notice is the foot ICON: an
+	 * offer makes the icon appear (accent ink) and the band is raised only by a
+	 * press on it (design consult, `banner-reopened`), stays until its dismiss,
+	 * and can be raised again. The offer survives a dismissal untouched - the
+	 * fact has not changed - which is why this flag lives beside `offers` rather
+	 * than replacing anything in it, and why clearing a surface's offer also
+	 * clears this once nothing is left to draw: a band reopened for one release
+	 * must not still be up - or reopen itself - for the next one.
+	 */
+	noticeOpen: boolean;
+	/**
+	 * Whether a surface is mid-update right now (downloading or installing).
+	 *
+	 * The ICON's fifth state (design consult §3.4): while this is set the mark
+	 * becomes an indeterminate arc and stops being a control - there is no
+	 * cancel, and a spinner that answers a click with nothing is the dead end
+	 * the app's copy rules refuse. Set by `UpdateNotification` (the component
+	 * that receives the download/install events) and read by the foot icon.
+	 */
+	inflight: Record<UpdateType, boolean>;
+	/**
+	 * The app download's last measured percent, for the in-flight arc's name.
+	 *
+	 * The ONE progress number any updater surface has (`download-progress`
+	 * events); the server update reports phases, not percentages, so its arm
+	 * stays numberless. Null when nothing is measured - "Updating the
+	 * application" with no suffix is true, "0%" would not be.
+	 */
+	downloadPercent: Record<UpdateType, number | null>;
 
 	setFollowedSegment: (type: UpdateType, segment: FollowedSegment) => void;
 	followedSegment: (type: UpdateType) => FollowedSegment;
 	noteRunningVersion: (type: UpdateType, version: string | null) => void;
 	noteQuietOffer: (type: UpdateType, offer: QuietOffer) => void;
 	clearQuietOffer: (type: UpdateType) => void;
+	/** Raise the notice band, for as long as an offer is left to draw. */
+	openNotice: () => void;
+	/**
+	 * Lower the band and keep every offer.
+	 *
+	 * The dismiss's whole contract (design consult): the fact has not changed, so
+	 * the icon stays and its next press raises the band again.
+	 */
+	dismissNotice: () => void;
+	/** Mark a surface in flight (or not), for the icon's arc state. */
+	noteInFlight: (type: UpdateType, active: boolean) => void;
+	/** The app download's measured percent, or null when nothing is measured. */
+	noteDownloadPercent: (type: UpdateType, percent: number | null) => void;
 	/**
 	 * Forget everything transient about a surface: its offer and its open detail.
 	 *
@@ -159,6 +211,9 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()(
 			running: perSurface(() => null),
 			offers: perSurface(() => null),
 			detailOpen: perSurface(() => false),
+			noticeOpen: false,
+			inflight: perSurface(() => false),
+			downloadPercent: perSurface(() => null),
 
 			setFollowedSegment: (type, segment) =>
 				set((state) => ({ followed: { ...state.followed, [type]: segment } })),
@@ -172,13 +227,48 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()(
 				set((state) => ({ offers: { ...state.offers, [type]: offer } })),
 
 			clearQuietOffer: (type) =>
-				set((state) => ({ offers: { ...state.offers, [type]: null } })),
+				set((state) => {
+					const offers = { ...state.offers, [type]: null };
+					return {
+						offers,
+						/*
+						 * NO OFFERS, NO BAND (review of the 2026-09-30 change). A reopened band
+						 * whose release is then consumed must not wait for the next release to
+						 * fall down - it would draw that next release unasked. The offer set is
+						 * the band's own reason to be up, so it is read here rather than
+						 * stamped by each producer that clears an offer.
+						 */
+						noticeOpen:
+							Object.values(offers).some((offer) => offer !== null) &&
+							state.noticeOpen,
+					};
+				}),
+
+			openNotice: () => set({ noticeOpen: true }),
+
+			dismissNotice: () => set({ noticeOpen: false }),
+
+			noteInFlight: (type, active) =>
+				set((state) => ({ inflight: { ...state.inflight, [type]: active } })),
+
+			noteDownloadPercent: (type, percent) =>
+				set((state) => ({
+					downloadPercent: { ...state.downloadPercent, [type]: percent },
+				})),
 
 			clearSurface: (type) =>
-				set((state) => ({
-					offers: { ...state.offers, [type]: null },
-					detailOpen: { ...state.detailOpen, [type]: false },
-				})),
+				set((state) => {
+					const offers = { ...state.offers, [type]: null };
+					return {
+						offers,
+						detailOpen: { ...state.detailOpen, [type]: false },
+						// `clearQuietOffer`'s rule, for the other action that drops an offer:
+						// the band falls with the last one rather than waiting for it.
+						noticeOpen:
+							Object.values(offers).some((offer) => offer !== null) &&
+							state.noticeOpen,
+					};
+				}),
 
 			openDetail: (type) =>
 				set(() => ({
@@ -194,6 +284,9 @@ export const useUpdateNoticeStore = create<UpdateNoticeState>()(
 				set({
 					offers: perSurface(() => null),
 					detailOpen: perSurface(() => false),
+					noticeOpen: false,
+					inflight: perSurface(() => false),
+					downloadPercent: perSurface(() => null),
 				}),
 		}),
 		{
