@@ -93,10 +93,12 @@ the property is inert by design — agent review round 2's R2-1 is the finding, 
 QA measured the served markup and bounded the consequence as Q-r2-3. The real
 bound is arithmetic: the narrowest column the app can give this header is ~350px
 (`WINDOW_MIN_WIDTH` 800 and `CHAT_PANE_MIN_PX` 480), and the longest unit a run can
-compose is the 230.6px `1 workspace_get_gmail_thread_content` — so a unit always
-fits and the units never break. The `many-types-kept/` cell photographs exactly
-that state at 420 (five types, the long kind KEPT rather than folded into the
-tail), with the geometry readout beside it.
+compose is the **241.4px** `1 workspace_get_gmail_thread_content` — the unit's own
+box, measured on the live component; the token's glyphs alone are 230.6px, which is
+the number an earlier draft quoted, and the unit is what has to fit (round 3's D4b).
+So a unit always fits and the units never break. The `many-types-kept/` cell
+photographs exactly that state at 420 (five types, the long kind KEPT rather than
+folded into the tail), with the geometry readout beside it.
 
 **`break-words` on the span is for the SENTENCE, and a sentence must wrap.** The
 header is told which shape it has (`FoldSummarySpec.prose`): a count line's units
@@ -157,7 +159,7 @@ node scripts/chat-alignment-geometry.mjs http://127.0.0.1:6077
 | --- | --- | --- | --- | --- | --- | --- |
 | `many-types` @1280 — after | 52 → 610.8 | 558.8 | 19.5 | **1** | 52 → 712 | 644.8 |
 | `many-types-narrow` @640 — after | 52 → 558 | 506 | 39 | **2** | 52 → 592 | **592** (fits) |
-| `many-types-kept` @420 — the long kind as a KEPT unit | 52 → 330.8 | 278.8 | 39 | **2** | 52 → 372 | **372** (fits; ink right 371 dark / 364 light) |
+| `many-types-kept` @420 — the long kind as a KEPT unit | 52 → 330.8 | 278.8 | 39 | **2** | 52 → 372 | **372** (fits; ink right **370 in both palettes**, per-channel |Δ| > 28 from the modal ground) |
 | `many-types` @1280 — before | 52 → 678 | 626 | 19.5 | 1 (ellipsised) | — | — |
 | `many-types-narrow` @640 — before | 52 → 558 | 506 | 19.5 | 1 (truncated) | — | — |
 
@@ -206,27 +208,34 @@ the glyphs — and this paragraph names its BASELINE for every count, because a
 count without one is what round 2's R2-2 / Q-r2-1 and R2-3 caught here.
 
 *Against the pre-round tree (`a3dde2d266`, the last head before this round's code
-change):* **18 of the 44 frames differ.** Sixteen are glyph-level — `compare
--metric AE` reports a few hundred to a few thousand pixels and with a 15%
-per-channel fuzz **the difference is 0 on all sixteen**, while the ink extents are
-byte-for-byte the same (measured on `many-types` and `agent-ops`: both
-`591×12+53+4` and `147×12+53+4` before and after), so the words and their places
-are unchanged and only the antialiasing differs. The other two are the LAYOUT
-change this round is about: `many-types-narrow/{localOperatorDark,localOperatorLight}`
-at **448 / 462** under the same 15% fuzz (the break inside the tail phrase became a
-break at a separator).
+change):* **20 of the 44 frames differ, and 24 are byte-identical.** Eighteen of the
+twenty are glyph-level — `compare -metric AE` reports a few hundred to a few
+thousand pixels and with a 15% per-channel fuzz **the difference is 0 on all
+eighteen**, while the ink extents are byte-for-byte the same (measured on
+`many-types` and `agent-ops`: both `591×12+53+4` and `147×12+53+4` before and
+after), so the words and their places are unchanged and only the antialiasing
+differs. The other two are the LAYOUT change this round is about:
+`many-types-narrow/{localOperatorDark,localOperatorLight}` at **448 / 462** under
+the same 15% fuzz (the break inside the tail phrase became a break at a separator).
+The eighteen include the two picture-strip cells the next paragraph names
+(`images-many-focus/localOperatorDark` 472 and
+`images-many-hover-reduced-motion/localOperatorDark` 390) — round 3's R3-1 is the
+finding that an earlier draft of this paragraph left them out of the headline while
+naming them below it.
 
-*The re-take commit (`f21e8bab627`) and its body, corrected here (agent review round
-2, R2-3):* its diff stages **20** frames of this set (plus this README), and of
-those, **2 differ from the tree they replaced** — `images-many-focus/localOperatorDark`
-(**472**) and `images-many-hover-reduced-motion/localOperatorDark` (**390**), both
-**0** under a 15% fuzz — while the other 18 came back byte-identical. The commit
-body claims *"the fold set came back byte-identical, all 44 frames"*; that is
-false, and the sample behind it is the mistake: the re-take was checked on the two
-cells this change is about (`many-types`, `many-types-narrow` — genuinely
-byte-identical) and the sentence generalised them to the whole set. The four
-picture-strip cells that have moved at some point in this round, named rather
-than implied: `images-many-hover-reduced-motion/localOperatorDark` (390),
+*The re-take, attributed correctly (round 3's R3-2 corrects what R2-3's fix got
+wrong).* The commit that re-took this set is **`331100ac18a`** — its diff is the
+twenty frames above plus this README, and it is where the twenty-one paths live.
+**`f21e8bab627`**, one commit later, is the FOLD re-take: it moves **2** of this
+set's frames (`images-many-focus/localOperatorDark` **472** and
+`images-many-hover-reduced-motion/localOperatorDark` **390**, both 0 under a 15%
+fuzz) and no README — **2 changed / 42 byte-identical** of the 44. Its commit body
+claims *"the fold set came back byte-identical, all 44 frames"*; that is false for
+exactly those two, and the sample behind the sentence is the mistake: the re-take
+was checked on the two cells this change is about (`many-types`, `many-types-narrow`
+— genuinely byte-identical) and the sentence generalised them to the whole set.
+The four picture-strip cells that have moved at some point in this round, named
+rather than implied: `images-many-hover-reduced-motion/localOperatorDark` (390),
 `images-many-hover-reduced-motion/localOperatorLight` (1,171),
 `images-many-hover/localOperatorDark` (390) and `images-many-focus/localOperatorDark`
 (472) — every one of them 0 under the 15% fuzz, in the class a re-capture on the

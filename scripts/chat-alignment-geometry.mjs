@@ -128,7 +128,7 @@ const STORIES = [
 	],
 	/*
 	 * THE LONG KIND AS A KEPT UNIT, AT THE NARROWEST CELL (design round 1's D1
-	 * ask, shot in round 1's remediation as round 2's D3 / Q-r2-3). This is the
+	 * ask, shot in round 2's remediation as D3 (with QA's Q-r2-3). This is the
 	 * reading that says the units' guarantee holds where it matters: the summary's
 	 * box and the row's last right edge at 420 with
 	 * `1 workspace_get_gmail_thread_content` painted as a unit rather than folded
