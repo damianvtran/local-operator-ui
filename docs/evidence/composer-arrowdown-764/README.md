@@ -45,8 +45,9 @@ contract belongs to the theme gates.
 
 The built app, launched by its own Electron in `headless` window mode, driven by
 a TEMPORARY scene in `scripts/renderer-driver.mjs` (**`composer-arrowdown-764`;
-the scene is NOT in this diff** — the #771 precedent — and is kept with the
-branch's capture rig) and photographed with `webContents.capturePage()`. The run
+the scene is NOT in this diff** — the #771 precedent — and its patch is posted
+on the PR thread with the capture records, so a re-run can re-apply it) and
+photographed with `webContents.capturePage()`. The run
 asserts `visible=false focused=false`, and its log recorded **18 PASS / 0 FAIL,
 ALL CHECKS PASSED**.
 
