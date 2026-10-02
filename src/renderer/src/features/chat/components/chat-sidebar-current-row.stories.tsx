@@ -126,12 +126,16 @@ const BOUND_ROSTER = [
 /*
  * A roster whose CURRENT row is bound to a TEAM rather than to an agent.
  *
- * It exists for one frame: the team mark's own SELECTED state. In light the
- * plate is `sunken` `#ece6d8` against `rowSelected` `#EBE7D8` - 1.005:1, the
- * tightest pair this component is measured against in either palette, where the
- * mark is carried by its 1px edge alone (design round 1, D5: "the one pairing
- * nobody has looked at"). `BoundRowCurrent` above cannot show it, because that
- * row binds an AGENT and the agent binding stays text.
+ * It exists for one frame: the team mark's own SELECTED state. The mark wears the
+ * shared badge's quiet-count register (borderless, `elevated` fill, `ink-dim`
+ * initials - the badge-family round, 2026-10-02), and in light its `elevated`
+ * `#fefdfa` stands ΔE00 7.00 off `rowSelected` `#EBE7D8`, so the fill is what
+ * ranks it here; the initials keep their own floor on that ground either way
+ * (`ink-dim` 5.04:1 in light, 5.05:1 in dark). The pair this story used to
+ * document - a `sunken` plate 1.005:1 from `rowSelected`, carried by its 1px
+ * `border-control` edge (design round 1, D5, "the one pairing nobody has looked
+ * at") - is retired with that plate. `BoundRowCurrent` above cannot show the
+ * mark, because that row binds an AGENT and the agent binding stays text.
  */
 const TEAM_BOUND_ROSTER = [
 	wireRow(LEDGER, "Reconcile the supplier ledger", 1_760_000_300),
@@ -447,15 +451,21 @@ export const BoundRowCurrent: Story = {
 /**
  * A TEAM-bound row is current, and it is the mark's own SELECTED state.
  *
- * WHY IT EXISTS. The mark's plate is `sunken` and the selected row paints
- * `rowSelected`; in `localOperatorLight` those two are 1.005:1 apart, so on a
- * selected row the mark is carried by its 1px `border-control` edge and nothing
- * else. That is legal against the contract (the edge holds 3.22:1 there) and it
- * was the one pairing of this component nobody had looked at in either theme
- * (design round 1, D5). The row in this frame is the same selection state
- * `BoundRowCurrent` photographs, with the agent binding swapped for a team one,
- * which is the substitution that puts a MARK in the trailing slot instead of
- * text.
+ * WHY IT EXISTS. The mark wears the shared badge's quiet-count register: no
+ * edge, an `elevated` fill, and the initials in `ink-dim`. On a selected row the
+ * fill is what ranks it in light (`elevated` `#fefdfa` is ΔE00 7.00 off
+ * `rowSelected` `#EBE7D8`), and where a palette sends those two together the
+ * LETTERS are the mark's whole signal - `ink-dim` measures 5.04:1 on that ground
+ * in light and 5.05:1 in dark, clear of the text floor the contract asserts, and
+ * `scripts/contrast-contract.mjs` carries the row (`edge: false`, the four
+ * grounds this mark can sit on). That is the property this frame photographs:
+ * the selected row's mark, which the round before the badge-family change
+ * measured as a `sunken` plate 1.005:1 apart from its row and carried by a 1px
+ * `border-control` edge (design round 1, D5 - the one pairing of this component
+ * nobody had looked at in either theme). The row here is the same selection
+ * state `BoundRowCurrent` photographs, with the agent binding swapped for a team
+ * one, which is the substitution that puts a MARK in the trailing slot instead
+ * of text.
  */
 export const TeamBoundRowCurrent: Story = {
 	render: () => {
