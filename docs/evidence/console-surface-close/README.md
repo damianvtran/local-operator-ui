@@ -24,23 +24,40 @@ node scripts/console-host-proof.mjs --pair 47391 --keep \
   --out "$PWD/docs/evidence/console-surface-close"
 ```
 
-`proof.md` is that run's own transcript, printed by the rig: 71 checks, all of
-the #754 cells passing, and the two cells named under "Known red on this host"
+`proof.md` is that run's own transcript, printed by the rig: 81 checks — every
+#754 cell passing — with the two cells named under "Known red on this host"
 below.
 
 ## The frames, and what each one is evidence of
 
-All five are the app's own window (CDP `Page.captureScreenshot` of the built
-app), full-window at 2760x1800 (1380x900 at dpr 2), captured by the rig while
-the state under test is on screen.
+All nine `close-*.png` are the app's own window (CDP `Page.captureScreenshot` of
+the built app), full-window at 2760x1800 (1380x900 at dpr 2), captured by the
+rig while the state under test is on screen. The first five carried round 1's
+review; the last four are round 1's remediation, and every frame after the
+hover cells holds a strip nobody is pointing at (the rig parks the pointer off
+the rows and asserts the resting opacities).
 
 | frame | the state | what it shows |
 | --- | --- | --- |
-| `close-affordance.png` | the strip, a running user surface selected | the row's close control, revealed on the active row and named for its terminal (`Close zsh`); an inactive row's control waits at opacity 0 |
-| `close-question.png` | the confirmation over the pane | "Close this terminal?" / "This ends the program running here and removes its tab.", Cancel and Close; the surface is still running while it stands |
-| `close-closed.png` | after Confirm | the killed surface is gone from the strip; the selection has moved to a neighbour, not to a dead lens |
-| `close-dismissed.png` | after the ended surface's dismissal | the ended surface is gone; nothing asked, because there was no process left to protect |
+| `close-affordance.png` | the strip at rest, a running user surface selected | the row's close control, revealed on the active row and named for its terminal AND its tablist position (`Close zsh, tab 1 of 4` — UX round 1's U4); every inactive row's control waits at opacity 0 |
+| `close-hover-reveal.png` | an inactive row's × under the pointer | the reveal's HOVER arm: the hidden control steps to opacity 1 under a real pointer move through Chromium's own input pipeline — this host DOES deliver `Input.dispatchMouseEvent` moves to the never-shown window (measured `hovered: true, opacity: "1"`), even though a press is not delivered |
+| `close-focus-ring.png` | the same control, keyboard-focused | the reveal's FOCUS arm: `focus-within` reveals it and the 2px ring sits 3px beyond the 28px button, measured against the strip's overflow clip — ring top 73 / bottom 107 in a clip spanning 72–109: it fits by 1px and nothing is trimmed (`fits: true`) |
+| `close-question.png` | the confirmation over the pane | "Close this terminal?" / "This ends the program running here and removes its tab." / "Its output is kept." — the last said only where the pending row's own `retain` says the history persists (UX round 1's U6) — buttons Cancel and **Close terminal**; the surface is still running while it stands |
+| `close-closed.png` | after Confirm — a surface **killed while running** | the killed surface is gone from the strip; the selection has moved to a neighbour, not to a dead lens |
+| `close-focus-handoff.png` | the same moment, drawn as the keyboard draws it | where the keyboard goes: the pane hands it to the row the lens moved to (UX round 1's U1); the frame focuses that tab with `focus({ focusVisible: true })`, because the app's own write cannot arm the ring under a synthetic press — the state a keyboard user lands in is what is shown |
+| `close-dismissed.png` | after the ended surface's **dismissal** | the ended surface is gone; nothing asked, because there was no process left to protect |
 | `close-relaunch.png` | after an app relaunch | the surface closed while RUNNING is restored as an ended row (design 7.3), and the dismissed one did NOT come back (#754's own restart repro) |
+| `close-empty.png` | after every restored row was dismissed from the strip | the last dismissal removes the strip and the pane falls to `ConsoleEmpty`; the keyboard lands on its own `New console` (UX round 1's U1, the empty arm) |
+
+The remediation's live cells (UX round 1), with the readings `proof.md` carries:
+the question now WITHDRAWS when its surface exits under it — the run ends a
+surface through the bridge while its question stands and reads the dialog gone,
+the row still listed and ended, and the keyboard back on that row's own control;
+the strip's accessible names are read live and asserted duplicate-free, each with
+its tab position; and the reveal's two arms are the two frames above. The
+refusal path (U3) is the render suite's, not the rig's — a refusal needs the
+bridge to say no, which the scripted bridge in `console-pane-render.test.mjs`
+can do and a real, healthy host cannot be asked for.
 
 `console-con_1_*.png` are the pane's screenshot cells from the same run
 (`console_screenshot`): the displayed capture cropped to the pane's rect, and

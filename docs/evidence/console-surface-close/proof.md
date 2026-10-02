@@ -1,7 +1,7 @@
 # Console host end-to-end proof
 
-Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826`
-Result: 2 of 71 check(s) FAILED
+Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622`
+Result: 2 of 81 check(s) FAILED
 Reaped stray spawn-helper processes: 0
 
 
@@ -10,8 +10,8 @@ Reaped stray spawn-helper processes: 0
 ```
 {
   "port": 47391,
-  "session": "3aedd02be7f7",
-  "record": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/config/run/serve/54878.json"
+  "session": "88e2b4a2093b",
+  "record": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/serve/90799.json"
 }
 ```
 
@@ -22,7 +22,7 @@ Reaped stray spawn-helper processes: 0
   "console": true,
   "console_surfaces": 0,
   "console_agent_surfaces": 0,
-  "pid": 54989,
+  "pid": 91216,
   "proto": 1
 }
 ```
@@ -33,7 +33,7 @@ Reaped stray spawn-helper processes: 0
 {
   "host": "ui",
   "proto": 1,
-  "pid": 54989,
+  "pid": 91216,
   "console": true,
   "capabilities": [
     "styles",
@@ -86,10 +86,10 @@ Reaped stray spawn-helper processes: 0
 
 ```
 {
-  "surface": "con:1:2CPPMz9R2U6dvH_azY0mkA",
+  "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
   "cols": 120,
   "rows": 40,
-  "pid": 55709,
+  "pid": 92396,
   "live": true,
   "reveal": "none",
   "revealed": false
@@ -100,10 +100,10 @@ Reaped stray spawn-helper processes: 0
 
 ```
 {
-  "surface": "con:1:2CPPMz9R2U6dvH_azY0mkA",
+  "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
   "cols": 120,
   "rows": 40,
-  "pid": 55709,
+  "pid": 92396,
   "live": true,
   "reveal": "none",
   "revealed": false
@@ -113,7 +113,7 @@ Reaped stray spawn-helper processes: 0
 ## PASS — the handle names its host
 
 ```
-con:1:2CPPMz9R2U6dvH_azY0mkA
+con:1:R7IUkqIw3c2y_Mg4QqFn7w
 ```
 
 ## PASS — the runtime restored the helper's exec bit (trap 1)
@@ -302,7 +302,7 @@ localOperatorDark
   "rows": 46,
   "theme": "localOperatorDark",
   "live": true,
-  "bytes": 47690,
+  "bytes": 47651,
   "frame": {
     "width": 1248,
     "height": 1582
@@ -320,8 +320,8 @@ localOperatorDark
     "height": 791
   },
   "dpr": 2,
-  "sha256": "877422b5c9e5afd4c592669fcdeff99c0e341341b89f3cdaa7245364e6811618",
-  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/console-con_1_2CPPMz9R2U6dvH_azY0mkA.png"
+  "sha256": "69e0e4ac07083927d384da872510f7029acdef1d1a4851f30788962f8083abc8",
+  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/console-con_1_R7IUkqIw3c2y_Mg4QqFn7w.png"
 }
 ```
 
@@ -343,7 +343,7 @@ localOperatorDark
     "height": 791
   },
   "dpr": 2,
-  "bytes": 47690
+  "bytes": 47651
 }
 ```
 
@@ -351,8 +351,8 @@ localOperatorDark
 
 ```
 {
-  "runningSurface": "con:5:HPrmfYrneP4qlCcM3WaRWw",
-  "selected": "con:5:HPrmfYrneP4qlCcM3WaRWw"
+  "runningSurface": "con:5:twBhVs8fBecW_xEVUdthrw",
+  "selected": "con:5:twBhVs8fBecW_xEVUdthrw"
 }
 ```
 
@@ -369,11 +369,11 @@ localOperatorDark
 
 ```
 {
-  "runningSurface": "con:5:HPrmfYrneP4qlCcM3WaRWw",
+  "runningSurface": "con:5:twBhVs8fBecW_xEVUdthrw",
   "reading": [
     {
-      "surface": "con:5:HPrmfYrneP4qlCcM3WaRWw",
-      "label": "Close zsh",
+      "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+      "label": "Close zsh, tab 1 of 4",
       "opacity": "1",
       "width": 28,
       "height": 28,
@@ -381,8 +381,8 @@ localOperatorDark
       "tabIndex": 0
     },
     {
-      "surface": "con:1:2CPPMz9R2U6dvH_azY0mkA",
-      "label": "Close sh",
+      "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+      "label": "Close sh, tab 2 of 4",
       "opacity": "0",
       "width": 28,
       "height": 28,
@@ -390,8 +390,8 @@ localOperatorDark
       "tabIndex": 0
     },
     {
-      "surface": "con:3:r8p2oHG5DICXbcFNiJ8XnA",
-      "label": "Dismiss sh",
+      "surface": "con:3:s575rhFDQR_H0y49HXTOAw",
+      "label": "Dismiss sh, tab 3 of 4",
       "opacity": "0",
       "width": 28,
       "height": 28,
@@ -399,8 +399,8 @@ localOperatorDark
       "tabIndex": 0
     },
     {
-      "surface": "con:2:FLAKYXxdiuCtagifz-1GJg",
-      "label": "Dismiss sh",
+      "surface": "con:2:AYwgbmdx9PZI8E26T5NFzA",
+      "label": "Dismiss sh, tab 4 of 4",
       "opacity": "0",
       "width": 28,
       "height": 28,
@@ -415,8 +415,8 @@ localOperatorDark
 
 ```
 {
-  "surface": "con:5:HPrmfYrneP4qlCcM3WaRWw",
-  "label": "Close zsh",
+  "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+  "label": "Close zsh, tab 1 of 4",
   "opacity": "1",
   "width": 28,
   "height": 28,
@@ -430,8 +430,8 @@ localOperatorDark
 ```
 [
   {
-    "surface": "con:5:HPrmfYrneP4qlCcM3WaRWw",
-    "label": "Close zsh",
+    "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+    "label": "Close zsh, tab 1 of 4",
     "opacity": "1",
     "width": 28,
     "height": 28,
@@ -439,8 +439,8 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:1:2CPPMz9R2U6dvH_azY0mkA",
-    "label": "Close sh",
+    "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+    "label": "Close sh, tab 2 of 4",
     "opacity": "0",
     "width": 28,
     "height": 28,
@@ -448,8 +448,8 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:3:r8p2oHG5DICXbcFNiJ8XnA",
-    "label": "Dismiss sh",
+    "surface": "con:3:s575rhFDQR_H0y49HXTOAw",
+    "label": "Dismiss sh, tab 3 of 4",
     "opacity": "0",
     "width": 28,
     "height": 28,
@@ -457,8 +457,8 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:2:FLAKYXxdiuCtagifz-1GJg",
-    "label": "Dismiss sh",
+    "surface": "con:2:AYwgbmdx9PZI8E26T5NFzA",
+    "label": "Dismiss sh, tab 4 of 4",
     "opacity": "0",
     "width": 28,
     "height": 28,
@@ -468,12 +468,25 @@ localOperatorDark
 ]
 ```
 
+## PASS — the close controls' accessible names are unique across the strip, each with its tab position (#754, UX round 1 U4)
+
+```
+{
+  "labels": [
+    "Close zsh, tab 1 of 4",
+    "Close sh, tab 2 of 4",
+    "Dismiss sh, tab 3 of 4",
+    "Dismiss sh, tab 4 of 4"
+  ]
+}
+```
+
 ## frame close-affordance.png
 
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-affordance.png",
-  "bytes": 369168,
+  "bytes": 368435,
   "size": {
     "width": 2760,
     "height": 1800
@@ -483,15 +496,132 @@ localOperatorDark
     "height": 900,
     "dpr": 2
   },
-  "sha256": "1a36eab6561261437e577a7ada0cfbd6ecb3ab0843d36a6ed5bf6e7934009ee4"
+  "sha256": "7fb447e3146a1dfe0d0cc953a09ad69fa401ae7520446acb9e578f4049566196"
 }
+```
+
+## PASS — an inactive row's hidden control reveals under the pointer (or the window does not receive pointer moves - the press path's own measured limit)
+
+```
+{
+  "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+  "hover": {
+    "hovered": true,
+    "opacity": "1"
+  }
+}
+```
+
+## frame close-hover-reveal.png
+
+```
+{
+  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-hover-reveal.png",
+  "bytes": 369962,
+  "size": {
+    "width": 2760,
+    "height": 1800
+  },
+  "viewport": {
+    "width": 1380,
+    "height": 900,
+    "dpr": 2
+  },
+  "sha256": "091b79b4931a6ad62d3d994c55ed5f98da55d081d64071953ab0cde849fa4883"
+}
+```
+
+## PASS — focus reveals the hidden control with the ring drawn, and the ring fits inside the strip's clip (#754, design round 1 D2's focus state)
+
+```
+{
+  "focused": true,
+  "focusVisible": true,
+  "opacity": "1",
+  "outline": "solid 2px offset 1px",
+  "ring": {
+    "top": 73,
+    "bottom": 107,
+    "left": 858.15625,
+    "right": 892.15625
+  },
+  "clip": {
+    "top": 72,
+    "bottom": 109,
+    "left": 740,
+    "right": 1380
+  },
+  "fits": true
+}
+```
+
+## frame close-focus-ring.png
+
+```
+{
+  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-focus-ring.png",
+  "bytes": 376545,
+  "size": {
+    "width": 2760,
+    "height": 1800
+  },
+  "viewport": {
+    "width": 1380,
+    "height": 900,
+    "dpr": 2
+  },
+  "sha256": "d624e436ad61ca1b08709a6e51ce842f013d27672c5a4867b4628ca022aed82d"
+}
+```
+
+## PASS — the pointer is parked off the strip and the inactive controls wait again (#754's frames after this one hold a strip nobody points at)
+
+```
+[
+  {
+    "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+    "label": "Close zsh, tab 1 of 4",
+    "opacity": "1",
+    "width": 28,
+    "height": 28,
+    "tag": "button",
+    "tabIndex": 0
+  },
+  {
+    "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+    "label": "Close sh, tab 2 of 4",
+    "opacity": "0",
+    "width": 28,
+    "height": 28,
+    "tag": "button",
+    "tabIndex": 0
+  },
+  {
+    "surface": "con:3:s575rhFDQR_H0y49HXTOAw",
+    "label": "Dismiss sh, tab 3 of 4",
+    "opacity": "0",
+    "width": 28,
+    "height": 28,
+    "tag": "button",
+    "tabIndex": 0
+  },
+  {
+    "surface": "con:2:AYwgbmdx9PZI8E26T5NFzA",
+    "label": "Dismiss sh, tab 4 of 4",
+    "opacity": "0",
+    "width": 28,
+    "height": 28,
+    "tag": "button",
+    "tabIndex": 0
+  }
+]
 ```
 
 ## PASS — a running surface's close asks first, in the shared dialog's own copy (#754)
 
 ```
 {
-  "text": "Close this terminal?This ends the program running here and removes its tab.CancelClose terminal",
+  "text": "Close this terminal?This ends the program running here and removes its tab.Its output is kept.CancelClose terminal",
   "cancel": true,
   "confirm": true
 }
@@ -503,7 +633,7 @@ localOperatorDark
 {
   "running": true,
   "live": true,
-  "selected": "con:1:2CPPMz9R2U6dvH_azY0mkA"
+  "selected": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
 }
 ```
 
@@ -512,7 +642,7 @@ localOperatorDark
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-question.png",
-  "bytes": 368934,
+  "bytes": 372674,
   "size": {
     "width": 2760,
     "height": 1800
@@ -522,7 +652,7 @@ localOperatorDark
     "height": 900,
     "dpr": 2
   },
-  "sha256": "ebf4610e265b824e1ec742507b6c83426e12ca10900119dd0f5ddfe03214b813"
+  "sha256": "fdce208d002471271494f5d1fd693329e41985fd2fcd830a543f9431524556b8"
 }
 ```
 
@@ -538,7 +668,7 @@ localOperatorDark
 
 ```
 {
-  "historyLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/config/run/ui-console/history/3aedd02be7f7/con_5_HPrmfYrneP4qlCcM3WaRWw.log"
+  "historyLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_5_twBhVs8fBecW_xEVUdthrw.log"
 }
 ```
 
@@ -546,7 +676,7 @@ localOperatorDark
 
 ```
 {
-  "text": "Close this terminal?This ends the program running here and removes its tab.CancelClose terminal",
+  "text": "Close this terminal?This ends the program running here and removes its tab.Its output is kept.CancelClose terminal",
   "cancel": true,
   "confirm": true
 }
@@ -562,14 +692,14 @@ localOperatorDark
     "ok": false,
     "error": {
       "code": "surface_unavailable",
-      "message": "no console surface named con:5:HPrmfY…; 3 exist",
+      "message": "no console surface named con:5:twBhVs…; 3 exist",
       "data": {
-        "surface": "con:5:HPrmfY…",
+        "surface": "con:5:twBhVs…",
         "count": 3
       }
     }
   },
-  "elapsedMs": 6052
+  "elapsedMs": 8407
 }
 ```
 
@@ -577,16 +707,17 @@ localOperatorDark
 
 ```
 {
-  "closed": "con:5:HPrmfYrneP4qlCcM3WaRWw",
-  "selectedAfterClose": "con:1:2CPPMz9R2U6dvH_azY0mkA"
+  "closed": "con:5:twBhVs8fBecW_xEVUdthrw",
+  "selectedAfterClose": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
 }
 ```
 
-## PASS — a close keeps a retained surface's history (the dismissal below is what removes it)
+## PASS — after the close the keyboard is in the lens's row, not on the document body (UX round 1, U1)
 
 ```
 {
-  "historyLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/config/run/ui-console/history/3aedd02be7f7/con_5_HPrmfYrneP4qlCcM3WaRWw.log"
+  "selectedAfterClose": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+  "handedOff": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
 }
 ```
 
@@ -595,7 +726,7 @@ localOperatorDark
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-closed.png",
-  "bytes": 399759,
+  "bytes": 398714,
   "size": {
     "width": 2760,
     "height": 1800
@@ -605,7 +736,34 @@ localOperatorDark
     "height": 900,
     "dpr": 2
   },
-  "sha256": "41579647d4dc1205779a17c6492de3dd2c59908e6e7f83c3821e374f6efd308d"
+  "sha256": "dbdd3ced3cbaff8de1bb36bf4ab019ae8348d8b34c4a3050812a65b0b4929cb6"
+}
+```
+
+## frame close-focus-handoff.png
+
+```
+{
+  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-focus-handoff.png",
+  "bytes": 398829,
+  "size": {
+    "width": 2760,
+    "height": 1800
+  },
+  "viewport": {
+    "width": 1380,
+    "height": 900,
+    "dpr": 2
+  },
+  "sha256": "bb969f6133479fe57e3aea474c94c3c1a9538063dbc49b02344cf154dcb14943"
+}
+```
+
+## PASS — a close keeps a retained surface's history (the dismissal below is what removes it)
+
+```
+{
+  "historyLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_5_twBhVs8fBecW_xEVUdthrw.log"
 }
 ```
 
@@ -619,7 +777,7 @@ null
 
 ```
 {
-  "dismissLabel": "Dismiss zsh",
+  "dismissLabel": "Dismiss zsh, tab 1 of 4",
   "ended": {
     "running": false,
     "exit_code": 0,
@@ -638,12 +796,12 @@ null
       "x": 0,
       "y": 1
     },
-    "last_activity": 1790960921.451,
+    "last_activity": 1790975206.62,
     "retain": true,
     "secure": false,
     "env_marker": {
       "name": "LOCAL_OPERATOR_CONSOLE_SURFACE",
-      "value": "con:6:DAaPGBfkuHr0HMwro4CQLQ"
+      "value": "con:6:eYOAXVSd6iRcAYLLPCskUw"
     }
   }
 }
@@ -653,7 +811,7 @@ null
 
 ```
 {
-  "dismissedLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/config/run/ui-console/history/3aedd02be7f7/con_6_DAaPGBfkuHr0HMwro4CQLQ.log"
+  "dismissedLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_6_eYOAXVSd6iRcAYLLPCskUw.log"
 }
 ```
 
@@ -671,7 +829,7 @@ null
 {
   "gone": true,
   "historyRemoved": true,
-  "dismissedLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/config/run/ui-console/history/3aedd02be7f7/con_6_DAaPGBfkuHr0HMwro4CQLQ.log"
+  "dismissedLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_6_eYOAXVSd6iRcAYLLPCskUw.log"
 }
 ```
 
@@ -679,8 +837,17 @@ null
 
 ```
 {
-  "dismissed": "con:6:DAaPGBfkuHr0HMwro4CQLQ",
-  "selectedAfterDismiss": "con:1:2CPPMz9R2U6dvH_azY0mkA"
+  "dismissed": "con:6:eYOAXVSd6iRcAYLLPCskUw",
+  "selectedAfterDismiss": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
+}
+```
+
+## PASS — after the dismissal the keyboard is handed on too, not dropped (UX round 1, U1)
+
+```
+{
+  "selectedAfterDismiss": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+  "handedOffAfterDismiss": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
 }
 ```
 
@@ -689,7 +856,7 @@ null
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-dismissed.png",
-  "bytes": 399409,
+  "bytes": 398406,
   "size": {
     "width": 2760,
     "height": 1800
@@ -699,7 +866,45 @@ null
     "height": 900,
     "dpr": 2
   },
-  "sha256": "c2a29c2f789233d1b44f127c144c2b871a0f1e5cb6b6de1f0f5694aa3676392e"
+  "sha256": "bebd98ffa58a7e2bd80e189d756897a7f54a23864c8c1d0be71ea78684acd752"
+}
+```
+
+## PASS — the question withdraws when the surface exits under it - and the row is dismissed by nobody (still listed, ended) (#754, UX round 1 U2)
+
+```
+{
+  "standingQuestion": {
+    "text": "Close this terminal?This ends the program running here and removes its tab.Its output is kept.CancelClose terminal",
+    "cancel": true,
+    "confirm": true
+  },
+  "withdrew": true,
+  "exitRow": {
+    "surface": "con:7:zGX0-TEVT0xF1neNZCcbXw",
+    "session_id": "88e2b4a2093b",
+    "origin": "user",
+    "command": "zsh",
+    "argv_tail": "",
+    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+    "cols": 80,
+    "rows": 44,
+    "running": false,
+    "exit_code": 0,
+    "last_activity": 1790975297.728,
+    "live": true,
+    "agent_owned": false,
+    "last_actor": "agent"
+  }
+}
+```
+
+## PASS — the withdrawn question returns the keyboard to the row it came from (UX round 1, U1's own restore case)
+
+```
+{
+  "exitUnderQuestion": "con:7:zGX0-TEVT0xF1neNZCcbXw",
+  "focusedAfterWithdraw": "con:7:zGX0-TEVT0xF1neNZCcbXw"
 }
 ```
 
@@ -714,7 +919,7 @@ null
   "rows": 46,
   "bytes": 47039,
   "sha256": "50365f2d44072772781fea53b26d17251957a3786ef58579745fd624925770bd",
-  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/console-con_1_2CPPMz9R2U6dvH_azY0mkA-offscreen.png"
+  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/console-con_1_R7IUkqIw3c2y_Mg4QqFn7w-offscreen.png"
 }
 ```
 
@@ -740,20 +945,20 @@ null
 ```
 {
   "alpha1": {
-    "sha": "64b0b5a4c6cbd52a2f9374b99ac6c8b7f8cc6e854af47525bea8bca78aed0626",
-    "bytes": 12834,
+    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
+    "bytes": 13090,
     "rendered": "offscreen",
     "attempts": 1
   },
   "beta": {
-    "sha": "8f2b50536b186261f239832841012311739b867e8a4271995a5e636a17e6848f",
-    "bytes": 12498,
+    "sha": "0f2c0ff933df3ad29f198ecdb54aef55b706216f1225baabe1dadbb7d2bdbebb",
+    "bytes": 12765,
     "rendered": "offscreen",
     "attempts": 1
   },
   "alpha2": {
-    "sha": "64b0b5a4c6cbd52a2f9374b99ac6c8b7f8cc6e854af47525bea8bca78aed0626",
-    "bytes": 12834,
+    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
+    "bytes": 13090,
     "rendered": "offscreen",
     "attempts": 1
   },
@@ -771,14 +976,14 @@ null
 ```
 {
   "alpha1": {
-    "sha": "64b0b5a4c6cbd52a2f9374b99ac6c8b7f8cc6e854af47525bea8bca78aed0626",
-    "bytes": 12834,
+    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
+    "bytes": 13090,
     "rendered": "offscreen",
     "attempts": 1
   },
   "beta": {
-    "sha": "8f2b50536b186261f239832841012311739b867e8a4271995a5e636a17e6848f",
-    "bytes": 12498,
+    "sha": "0f2c0ff933df3ad29f198ecdb54aef55b706216f1225baabe1dadbb7d2bdbebb",
+    "bytes": 12765,
     "rendered": "offscreen",
     "attempts": 1
   }
@@ -790,14 +995,14 @@ null
 ```
 {
   "alpha1": {
-    "sha": "64b0b5a4c6cbd52a2f9374b99ac6c8b7f8cc6e854af47525bea8bca78aed0626",
-    "bytes": 12834,
+    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
+    "bytes": 13090,
     "rendered": "offscreen",
     "attempts": 1
   },
   "alpha2": {
-    "sha": "64b0b5a4c6cbd52a2f9374b99ac6c8b7f8cc6e854af47525bea8bca78aed0626",
-    "bytes": 12834,
+    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
+    "bytes": 13090,
     "rendered": "offscreen",
     "attempts": 1
   }
@@ -814,8 +1019,8 @@ null
     "rendered": "offscreen",
     "attempts": 1
   },
-  "alphaBytes": 12834,
-  "betaBytes": 12498
+  "alphaBytes": 13090,
+  "betaBytes": 12765
 }
 ```
 
@@ -824,32 +1029,32 @@ null
 ```
 [
   {
+    "sha": "b03cf1a2a788a64f5ee32f8df6ff803f0f1810c1f95ef0810292d48e08806e02",
+    "bytes": 81631,
+    "rendered": "offscreen",
+    "attempts": 1
+  },
+  {
+    "sha": "2318dab95bd2b976a9cca847f942d8f34030c895d251e2eb8d54d9522bd5f0b1",
+    "bytes": 81780,
+    "rendered": "offscreen",
+    "attempts": 1
+  },
+  {
+    "sha": "a1a57f94a12ff4d941a61c3d245c68f004658c5c81f1ae975cec19460ff08573",
+    "bytes": 81668,
+    "rendered": "offscreen",
+    "attempts": 1
+  },
+  {
     "sha": "fbfd72336edb6f59743d4408e8c00bcebbc40e1a2ee9e22722a51fbf5c978668",
     "bytes": 81555,
     "rendered": "offscreen",
     "attempts": 1
   },
   {
-    "sha": "98fe1c887cffea0d24e80f15cabb023ffbbda03b6000e3c5cd2c43b3b4a88ada",
-    "bytes": 81750,
-    "rendered": "offscreen",
-    "attempts": 1
-  },
-  {
-    "sha": "5bf794523082fb10a2d18d25185d8e47ab101599a366ea01dbba25a11efc48d1",
-    "bytes": 81579,
-    "rendered": "offscreen",
-    "attempts": 1
-  },
-  {
-    "sha": "82df16963f9f4b36c86b2524ac27708f28f33d4bc0867ce8334fd75b20b9af6b",
-    "bytes": 81669,
-    "rendered": "offscreen",
-    "attempts": 1
-  },
-  {
-    "sha": "b917c23377fad1f2ab70e13cbd798938940a4a14a24c1f2f9e15059aa5df7a50",
-    "bytes": 81585,
+    "sha": "0041d6089569cf901424f24a8384eff5795ccd9c315865e79962f7ef674cb553",
+    "bytes": 81570,
     "rendered": "offscreen",
     "attempts": 1
   }
@@ -861,32 +1066,32 @@ null
 ```
 [
   {
+    "sha": "b03cf1a2a788a64f5ee32f8df6ff803f0f1810c1f95ef0810292d48e08806e02",
+    "bytes": 81631,
+    "rendered": "offscreen",
+    "attempts": 1
+  },
+  {
+    "sha": "2318dab95bd2b976a9cca847f942d8f34030c895d251e2eb8d54d9522bd5f0b1",
+    "bytes": 81780,
+    "rendered": "offscreen",
+    "attempts": 1
+  },
+  {
+    "sha": "a1a57f94a12ff4d941a61c3d245c68f004658c5c81f1ae975cec19460ff08573",
+    "bytes": 81668,
+    "rendered": "offscreen",
+    "attempts": 1
+  },
+  {
     "sha": "fbfd72336edb6f59743d4408e8c00bcebbc40e1a2ee9e22722a51fbf5c978668",
     "bytes": 81555,
     "rendered": "offscreen",
     "attempts": 1
   },
   {
-    "sha": "98fe1c887cffea0d24e80f15cabb023ffbbda03b6000e3c5cd2c43b3b4a88ada",
-    "bytes": 81750,
-    "rendered": "offscreen",
-    "attempts": 1
-  },
-  {
-    "sha": "5bf794523082fb10a2d18d25185d8e47ab101599a366ea01dbba25a11efc48d1",
-    "bytes": 81579,
-    "rendered": "offscreen",
-    "attempts": 1
-  },
-  {
-    "sha": "82df16963f9f4b36c86b2524ac27708f28f33d4bc0867ce8334fd75b20b9af6b",
-    "bytes": 81669,
-    "rendered": "offscreen",
-    "attempts": 1
-  },
-  {
-    "sha": "b917c23377fad1f2ab70e13cbd798938940a4a14a24c1f2f9e15059aa5df7a50",
-    "bytes": 81585,
+    "sha": "0041d6089569cf901424f24a8384eff5795ccd9c315865e79962f7ef674cb553",
+    "bytes": 81570,
     "rendered": "offscreen",
     "attempts": 1
   }
@@ -909,17 +1114,17 @@ armed
     "rows": 33
   },
   "paneGrid": {
-    "surface": "con:1:2CPPMz9R2U6dvH_azY0mkA",
-    "session_id": "3aedd02be7f7",
+    "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+    "session_id": "88e2b4a2093b",
     "origin": "agent",
     "command": "sh",
     "argv_tail": "-f -i",
-    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
+    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
     "cols": 110,
     "rows": 33,
     "running": true,
     "exit_code": null,
-    "last_activity": 1790961139.891,
+    "last_activity": 1790975478.86,
     "live": true,
     "agent_owned": true,
     "last_actor": "agent",
@@ -938,14 +1143,14 @@ armed
 {
   "read": {
     "code": "secure_input_active",
-    "message": "con:1:2CPPMz… is in secure input; reads and captures are refused until it is turned off",
+    "message": "con:1:R7IUkq… is in secure input; reads and captures are refused until it is turned off",
     "data": {
       "secure": true
     }
   },
   "screenshot": {
     "code": "secure_input_active",
-    "message": "con:1:2CPPMz… is in secure input; reads and captures are refused until it is turned off",
+    "message": "con:1:R7IUkq… is in secure input; reads and captures are refused until it is turned off",
     "data": {
       "secure": true
     }
@@ -961,7 +1166,7 @@ armed
   "bytesAfter": 13,
   "truncatedWhileSecure": false,
   "reopenedHoldsMarker": true,
-  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/config/run/ui-console/history/3aedd02be7f7/con_11_mx6JSBNvICZDG5OzqMgMgg.log"
+  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_12__IiN5OFEsB3x5e9YO9miXg.log"
 }
 ```
 
@@ -970,10 +1175,10 @@ armed
 ```
 {
   "code": "surface_unavailable",
-  "message": "no console surface named con:99:nope…; 3 exist",
+  "message": "no console surface named con:99:nope…; 4 exist",
   "data": {
     "surface": "con:99:nope…",
-    "count": 3
+    "count": 4
   }
 }
 ```
@@ -1089,12 +1294,12 @@ armed
     "x": 0,
     "y": 1
   },
-  "last_activity": 1790961166.017,
+  "last_activity": 1790975503.765,
   "retain": false,
   "secure": false,
   "env_marker": {
     "name": "LOCAL_OPERATOR_CONSOLE_SURFACE",
-    "value": "con:12:8djZd_K3vRHjFl1LJ6f3Jw"
+    "value": "con:13:0v_wNdgr_n9uJO_kcNPP6w"
   }
 }
 ```
@@ -1130,7 +1335,7 @@ armed
 ```
 {
   "code": "process_exited",
-  "message": "con:12:8djZd_… has exited with code 5; its output is still readable",
+  "message": "con:13:0v_wNd… has exited with code 5; its output is still readable",
   "data": {
     "exit_code": 5,
     "retain": false
@@ -1151,7 +1356,7 @@ armed
 
 ```
 {
-  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/config/run/ui-console/history/3aedd02be7f7/con_13_GM4UG1wTLewqQwZkZNec3Q.log",
+  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_14_-sDh8Ed0TdA1_GqTYG4Uhw.log",
   "mode": 384
 }
 ```
@@ -1169,14 +1374,14 @@ armed
 ```
 {
   "baselineMs": {
-    "max": 1067,
-    "median": 1051
+    "max": 1208,
+    "median": 1060
   },
   "floodMs": {
     "answered": 1,
-    "median": 1059,
-    "p95": 1059,
-    "max": 1059
+    "median": 1048,
+    "p95": 1048,
+    "max": 1048
   },
   "ceilings": {
     "median": 100,
@@ -1186,9 +1391,9 @@ armed
   "exit_epoch": 1,
   "bytes": 8388608,
   "producerExitCode": 0,
-  "subscriberAttached": "con:14:QEujGNfhxQbgHDSANxHGhA",
-  "replayBytesAtSubscribe": 2745528,
-  "surface": "con:14:QEujGNfhxQbgHDSANxHGhA"
+  "subscriberAttached": "con:15:-GPjYTyvAd99W9e8A21RxQ",
+  "replayBytesAtSubscribe": 3138396,
+  "surface": "con:15:-GPjYTyvAd99W9e8A21RxQ"
 }
 ```
 
@@ -1196,10 +1401,10 @@ armed
 
 ```
 {
-  "rssBeforeBytes": 584581120,
-  "rssPeakBytes": 584695808,
+  "rssBeforeBytes": 773570560,
+  "rssPeakBytes": 773570560,
   "ceilingBytes": 268435456,
-  "growthBytes": 114688
+  "growthBytes": 0
 }
 ```
 
@@ -1235,119 +1440,135 @@ armed
 {
   "surfaces": [
     {
-      "surface": "con:2:FLAKYXxdiuCtagifz-1GJg",
-      "session_id": "3aedd02be7f7",
+      "surface": "con:2:AYwgbmdx9PZI8E26T5NFzA",
+      "session_id": "88e2b4a2093b",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf '日本\\n'",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790960650.261,
+      "last_activity": 1790974754.447,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:3:r8p2oHG5DICXbcFNiJ8XnA",
-      "session_id": "3aedd02be7f7",
+      "surface": "con:3:s575rhFDQR_H0y49HXTOAw",
+      "session_id": "88e2b4a2093b",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf '\\346\\227'; sleep 0.3; printf '\\245\\n'",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790960652.914,
+      "last_activity": 1790974757.505,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:12:8djZd_K3vRHjFl1LJ6f3Jw",
-      "session_id": "3aedd02be7f7",
-      "origin": "agent",
-      "command": "sh",
-      "argv_tail": "-c printf 'exited-marker\\n'; exit 5",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
-      "cols": 80,
-      "rows": 24,
-      "running": false,
-      "exit_code": 5,
-      "last_activity": 1790961166.017,
-      "live": true,
-      "agent_owned": true,
-      "last_actor": null
-    },
-    {
-      "surface": "con:15:86AozwSV6WOu5oXsN8uCiQ",
-      "session_id": "3aedd02be7f7",
-      "origin": "agent",
-      "command": "sh",
-      "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
-      "cols": 100,
-      "rows": 30,
-      "running": false,
-      "exit_code": 0,
-      "last_activity": 1790961292.916,
-      "live": true,
-      "agent_owned": true,
-      "last_actor": null
-    },
-    {
-      "surface": "con:16:ZGMkLtuuBs_YSWBxiCZENQ",
-      "session_id": "3aedd02be7f7",
-      "origin": "agent",
-      "command": "sh",
-      "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
+      "surface": "con:7:zGX0-TEVT0xF1neNZCcbXw",
+      "session_id": "88e2b4a2093b",
+      "origin": "user",
+      "command": "zsh",
+      "argv_tail": "",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
       "cols": 80,
       "rows": 44,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790961293.924,
+      "last_activity": 1790975297.728,
+      "live": true,
+      "agent_owned": false,
+      "last_actor": "agent"
+    },
+    {
+      "surface": "con:13:0v_wNdgr_n9uJO_kcNPP6w",
+      "session_id": "88e2b4a2093b",
+      "origin": "agent",
+      "command": "sh",
+      "argv_tail": "-c printf 'exited-marker\\n'; exit 5",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cols": 80,
+      "rows": 24,
+      "running": false,
+      "exit_code": 5,
+      "last_activity": 1790975503.765,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:17:-A6ppJnIQo3HqivqkwWUHw",
-      "session_id": "3aedd02be7f7",
+      "surface": "con:16:ZCpmSpJtc8_ZlJJ6T2TsLQ",
+      "session_id": "88e2b4a2093b",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
       "cols": 100,
       "rows": 30,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790961294.94,
+      "last_activity": 1790975644.416,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:18:G2nkFH6jDQKxdajdUSOaYQ",
-      "session_id": "3aedd02be7f7",
+      "surface": "con:17:Fmojb15cd_Ji_AqgEG9TKw",
+      "session_id": "88e2b4a2093b",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cols": 100,
+      "rows": 30,
+      "running": false,
+      "exit_code": 0,
+      "last_activity": 1790975645.486,
+      "live": true,
+      "agent_owned": true,
+      "last_actor": null
+    },
+    {
+      "surface": "con:18:nQtyr2McQ3pdzKvrfMe_Hw",
+      "session_id": "88e2b4a2093b",
+      "origin": "agent",
+      "command": "sh",
+      "argv_tail": "-c sleep 3",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cols": 100,
+      "rows": 30,
+      "running": false,
+      "exit_code": 0,
+      "last_activity": 1790975646.666,
+      "live": true,
+      "agent_owned": true,
+      "last_actor": null
+    },
+    {
+      "surface": "con:19:CxJR5NqIwSSYROQWvqZw1w",
+      "session_id": "88e2b4a2093b",
+      "origin": "agent",
+      "command": "sh",
+      "argv_tail": "-c sleep 3",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1790961291.95,
+      "last_activity": 1790975643.71,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     }
   ],
-  "count": 7
+  "count": 8
 }
 ```
 
@@ -1355,7 +1576,7 @@ armed
 
 ```
 {
-  "count": 7
+  "count": 8
 }
 ```
 
@@ -1363,7 +1584,7 @@ armed
 
 ```
 {
-  "samples": 1232,
+  "samples": 1566,
   "frontmostOurs": 0,
   "distinct": [
     null
@@ -1376,18 +1597,18 @@ armed
 ```
 {
   "lines": [
-    "18:03:56.175 › [console] restored the exec bit on /Users/damian/local-operator-ui/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
-    "18:03:56.176 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
-    "18:04:01.631 › [console] surface con:1:2CPPMz… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home at 120x40 (agent)",
-    "18:04:06.313 › [console] surface con:1:2CPPMz… resized 100x30",
-    "18:04:09.497 › [console] surface con:2:FLAKYX… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home at 80x24 (agent)",
-    "18:04:10.261 › [console] surface con:2:FLAKYX… exited 0",
-    "18:04:11.558 › [console] surface con:3:r8p2oH… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home at 80x24 (agent)",
-    "18:04:12.914 › [console] surface con:3:r8p2oH… exited 0",
-    "18:04:15.170 › [console] surface con:4:ysju5P… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home at 80x24 (agent)",
-    "18:04:20.444 › [console] surface con:4:ysju5P… exited 0",
-    "18:04:20.445 › [console] surface con:4:ysju5P… closed with exit 0",
-    "18:05:16.582 › [console] surface con:1:2CPPMz… resized 80x46"
+    "21:58:59.324 › [console] restored the exec bit on /Users/damian/local-operator-ui/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
+    "21:58:59.325 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "21:59:04.914 › [console] surface con:1:R7IUkq… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home at 120x40 (agent)",
+    "21:59:10.130 › [console] surface con:1:R7IUkq… resized 100x30",
+    "21:59:13.677 › [console] surface con:2:AYwgbm… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home at 80x24 (agent)",
+    "21:59:14.447 › [console] surface con:2:AYwgbm… exited 0",
+    "21:59:15.880 › [console] surface con:3:s575rh… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home at 80x24 (agent)",
+    "21:59:17.505 › [console] surface con:3:s575rh… exited 0",
+    "21:59:19.984 › [console] surface con:4:O62Fez… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home at 80x24 (agent)",
+    "21:59:25.751 › [console] surface con:4:O62Fez… exited 0",
+    "21:59:25.753 › [console] surface con:4:O62Fez… closed with exit 0",
+    "22:00:23.365 › [console] surface con:1:R7IUkq… resized 80x46"
   ]
 }
 ```
@@ -1397,27 +1618,28 @@ armed
 ```
 {
   "restored": {
-    "surface": "con:5:HPrmfYrneP4qlCcM3WaRWw",
-    "session_id": "3aedd02be7f7",
+    "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+    "session_id": "88e2b4a2093b",
     "origin": "user",
     "command": "zsh",
     "argv_tail": "",
-    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-54826/home",
+    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
     "cols": 80,
     "rows": 46,
     "running": false,
     "exit_code": 1,
-    "last_activity": 1790960876.455,
+    "last_activity": 1790975112.16,
     "live": false,
     "agent_owned": false,
     "last_actor": null
   },
-  "count": 4,
+  "count": 5,
   "surfaces": [
-    "con:14:QEujGNfhxQbgHDSANxHGhA",
-    "con:13:GM4UG1wTLewqQwZkZNec3Q",
-    "con:11:mx6JSBNvICZDG5OzqMgMgg",
-    "con:5:HPrmfYrneP4qlCcM3WaRWw"
+    "con:15:-GPjYTyvAd99W9e8A21RxQ",
+    "con:14:-sDh8Ed0TdA1_GqTYG4Uhw",
+    "con:12:_IiN5OFEsB3x5e9YO9miXg",
+    "con:7:zGX0-TEVT0xF1neNZCcbXw",
+    "con:5:twBhVs8fBecW_xEVUdthrw"
   ]
 }
 ```
@@ -1426,7 +1648,7 @@ armed
 
 ```
 {
-  "dismissed": "con:6:DAaPGBfkuHr0HMwro4CQLQ",
+  "dismissed": "con:6:eYOAXVSd6iRcAYLLPCskUw",
   "present": false
 }
 ```
@@ -1435,11 +1657,11 @@ armed
 
 ```
 {
-  "count": 4,
+  "count": 5,
   "lines": [
-    "18:14:58.794 › [console] restored 4 retained surface(s) from history; none of them is running",
-    "[2026-10-02 18:03:56.175] [info]  [console] restored the exec bit on /Users/damian/local-operator-ui/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
-    "[2026-10-02 18:14:58.794] [info]  [console] restored 4 retained surface(s) from history; none of them is running"
+    "22:14:10.747 › [console] restored 5 retained surface(s) from history; none of them is running",
+    "[2026-10-02 21:58:59.324] [info]  [console] restored the exec bit on /Users/damian/local-operator-ui/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
+    "[2026-10-02 22:14:10.747] [info]  [console] restored 5 retained surface(s) from history; none of them is running"
   ]
 }
 ```
@@ -1463,8 +1685,8 @@ armed
     }
   },
   "restoredRow": {
-    "surface": "con:5:HPrmfYrneP4qlCcM3WaRWw",
-    "label": "Dismiss zsh",
+    "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+    "label": "Dismiss zsh, tab 5 of 5",
     "opacity": "0",
     "width": 28,
     "height": 28,
@@ -1479,7 +1701,7 @@ armed
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-relaunch.png",
-  "bytes": 392507,
+  "bytes": 383234,
   "size": {
     "width": 2760,
     "height": 1800
@@ -1489,6 +1711,46 @@ armed
     "height": 900,
     "dpr": 2
   },
-  "sha256": "703939fea7e8a34550ce8626a93425f2dbd9c682ccd99f333b9e3bb997511caf"
+  "sha256": "24c67b6bf19d22d6e0d281e8df587ecc025effbcd8659e2cece17301429de15b"
+}
+```
+
+## PASS — dismissing the last surface removes the strip, shows the empty state, and the keyboard lands on its own New console (#754, UX round 1 U1's empty arm)
+
+```
+{
+  "empty": {
+    "emptyText": true,
+    "strip": false,
+    "plus": true
+  },
+  "focusedEmpty": "console-new-surface"
+}
+```
+
+## frame close-empty.png
+
+```
+{
+  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-empty.png",
+  "bytes": 378544,
+  "size": {
+    "width": 2760,
+    "height": 1800
+  },
+  "viewport": {
+    "width": 1380,
+    "height": 900,
+    "dpr": 2
+  },
+  "sha256": "cf4350550eb822f6971746ae8fe24ec3c00c90454263c7fc8a20b2cacf8e0450"
+}
+```
+
+## PASS — every restored surface was dismissible from the strip (the loop's own exit condition)
+
+```
+{
+  "remaining": []
 }
 ```
