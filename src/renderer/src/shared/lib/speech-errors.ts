@@ -70,6 +70,20 @@ export const SPEECH_PLAYBACK_COPY = "Couldn't speak this aloud. Try again.";
  * entries: the daemon side of #1835 is unmerged at this head, so every daemon
  * in the field still answers the retired spellings, and they retire from this
  * set only once the shipped daemon's floor is past `bcca80808`.
+ *
+ * THE BYO REFUSALS ARE A SECOND FAMILY, added by `local-operator` PR #1922
+ * (read at its round-2 remediation head `e4f8d9e8`, the S2 daemon TTS work).
+ * When the refused leg is served by the reader's OWN vendor key, the daemon
+ * answers in the vendor's words instead of the Radient sentences above: on a
+ * BYO-only machine there may be no Radient account in the exchange at all, and
+ * telling someone their Radient sign-in broke when their own ElevenLabs key was
+ * refused sends them to fix the wrong thing. These four are ADDITIVE pins - the
+ * Radient sentences stay for the Radient rung - and they ride the same skew
+ * rule as the retired spellings below, in the opposite direction: #1922 is
+ * unmerged at this head, so no shipped daemon can emit the vendor sentences
+ * yet, and because the strings are pinned to an unmerged head they are a moving
+ * target - if the vendor sentences change before the daemon ships, this set
+ * moves with them.
  */
 const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	"Your Radient sign-in has stopped working. Sign in again in Settings.",
@@ -86,6 +100,26 @@ const DESIGNED_SPEECH_SENTENCES: ReadonlySet<string> = new Set([
 	"Speech is temporarily unavailable.",
 	"Sign in to Radient in Settings to enable speaking aloud.",
 	"This conversation's agent is no longer available.",
+	/*
+	 * The BYO vendor refusals (`local-operator` PR #1922 at its round-2
+	 * remediation head `e4f8d9e8`, `_VENDOR_REFUSAL_SENTENCES` formatted with
+	 * `_RUNG_VENDOR_LABELS`): the pair per vendor the route can pick. The
+	 * daemon classifies the CONDITION from the vendor's response BODY, not the
+	 * status - ElevenLabs reports an exhausted quota as 401 and OpenAI as 429 -
+	 * and answers a credit refusal as 402 and a leftover 401 as the key one.
+	 * Both are stable sentences, and #1922's route states the contract outright:
+	 * `detail` is always one of these fixed sentences, never an upstream code or
+	 * body, precisely because this module maps exact strings. They therefore
+	 * arrive as the same plain `detail` the Radient refusals do and the mapper
+	 * needs no new rule - exact membership is the whole match (the store hands
+	 * `err.message` straight through and `mediaError` builds that Error from the
+	 * response's `detail`, so a vendor sentence reaches this set verbatim). A
+	 * third vendor on the route is a third pair here, not a code change.
+	 */
+	"ElevenLabs refused your API key. Replace it.",
+	"Your ElevenLabs credit balance is too low for speech. Add credits with ElevenLabs to continue.",
+	"OpenAI refused your API key. Replace it.",
+	"Your OpenAI credit balance is too low for speech. Add credits with OpenAI to continue.",
 	/*
 	 * The two spellings `bcca80808` retired, kept as skew entries on the same
 	 * rule as agent-server's base 503 above: `local-operator` #1835 is not
