@@ -98,6 +98,7 @@ import {
 } from "@shared/api/local-operator/transcription-failure";
 import type { AgentDetails } from "@shared/api/local-operator/types";
 import { ErrorBoundary } from "@shared/components/common/error-boundary";
+import { Spinner } from "@shared/components/common/spinner";
 import { Button, Tooltip } from "@shared/components/ui";
 import { apiConfig } from "@shared/config/api-config";
 import {
@@ -1695,6 +1696,24 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			onCredentialsStoredRef.current = onCredentialsStored;
 		});
 		const [isRecording, setIsRecording] = useState(false);
+		/*
+		 * THE ACKNOWLEDGMENT THE PRESS GETS BEFORE THE RECORDER EXISTS (operator
+		 * feedback via Aida, 2026-10-01: the mic "sometimes lags on click").
+		 *
+		 * The click path itself is cheap, measured on this fleet: 0-15 ms from
+		 * the click to `getUserMedia` being called (the provider gates are
+		 * already-resolved booleans and contribute 0 transport calls - 8/8
+		 * cycles), and ~1-4 ms from the resolved stream to a started recorder.
+		 * The wait is the acquisition: 5-25 ms warm, but 830 ms to over 2.6 s
+		 * cold, because a session's first `getUserMedia` pays the capture-device
+		 * setup. NOTHING used to change on screen during that window, so the
+		 * press read as dropped. This flag is set synchronously inside the
+		 * press's own handler (before any await), so React's discrete-event
+		 * flush commits it in the click's own frame, and cleared in the same
+		 * commit that turns `isRecording` on - or when the attempt settles
+		 * (release/abort/failure), so it cannot outlive its attempt.
+		 */
+		const [isPreparing, setIsPreparing] = useState(false);
 		const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
 		const [isTranscribing, setIsTranscribing] = useState(false);
 		/*
@@ -5719,19 +5738,29 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 
 		/*
 		 * THE RECORDING ATTEMPT: the span between a start request and the moment
-		 * its recorder is actually running.
+		 * its recorder is actually running, held as the ref so a release landing
+		 * inside that span has something to act on.
 		 *
-		 * A push-to-talk release can land inside that span, while `getUserMedia`
-		 * is still resolving. The old shape called the recorder's own stop there -
-		 * a no-op when nothing is recording yet - so the release was LOST and the
-		 * capture went on recording with nobody left to end it. `released` is read
-		 * the instant the recorder starts, and the take is settled right there.
+		 * A push-to-talk release can land there, while `getUserMedia` is still
+		 * resolving. The old shape called the recorder's own stop - a no-op when
+		 * nothing is recording yet - so the release was LOST and the capture went
+		 * on recording with nobody left to end it, and the two fixes since have
+		 * both been about that window: the release now ABANDONS the attempt (the
+		 * ref goes null, so the next press is a fresh one), and the resolving arm
+		 * discards a stream whose attempt is no longer the ref's - the identity
+		 * check below, which is also what stops the microphone a release would
+		 * otherwise leave live.
 		 */
-		const recordingAttemptRef = useRef<{
-			startedAt: number | null;
-			released: boolean;
-			aborted: boolean;
-		} | null>(null);
+		/*
+		 * THE ATTEMPT IS ITS OWN IDENTITY (UX round 2, U6). It used to carry
+		 * `released`/`aborted` flags, and the resolve arm read them to decide
+		 * discard-versus-keep; that pair went away with the change that made a
+		 * release ABANDON the attempt (nulling the ref) instead of marking it, so
+		 * what is left is the one fact the settle path needs: when the take began.
+		 */
+		const recordingAttemptRef = useRef<{ startedAt: number | null } | null>(
+			null,
+		);
 		/**
 		 * The minimum take, in milliseconds: below it the capture is the tail of a
 		 * press that was never speech (a right-Option tap used as a modifier, a
@@ -5753,10 +5782,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		useEffect(() => {
 			onDictationStateChangeRef.current = onDictationStateChange;
 		});
+		/**
+		 * THE PRESENCE COVERS THE PRESS, THE CALLBACK COVERS THE TAKE (UX round
+		 * 1, U1). The Escape ladder's rung 4 reads this set at KEY TIME, and
+		 * during the acknowledgment window Escape must settle the PENDING START
+		 * rather than kill the turn - the user who presses Esc while the mic is
+		 * being acquired is cancelling that press, never the run. A presence
+		 * that only counted `isRecording` left that window answering the turn's
+		 * question instead (the keyboard listener below carries the other half).
+		 *
+		 * TWO EFFECTS, NOT ONE (remediation round 1). The presence is about the
+		 * GESTURE and the host callback is about the TAKE - its consumers read it
+		 * as "a take is live" (the mini frame prints its recording sentence from
+		 * it, and would print "Recording" while the microphone is still being
+		 * acquired). Held in one effect, the press's own flip would re-run the
+		 * body and hand the host a second `false` edge before the `true`.
+		 */
 		useEffect(() => {
-			setDictationActive("message-input", isRecording);
-			onDictationStateChangeRef.current?.(isRecording);
+			setDictationActive("message-input", isRecording || isPreparing);
 			return () => setDictationActive("message-input", false);
+		}, [isRecording, isPreparing]);
+		useEffect(() => {
+			onDictationStateChangeRef.current?.(isRecording);
 		}, [isRecording]);
 
 		/**
@@ -5767,6 +5814,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 */
 		const settleRecordingAttempt = useCallback(
 			(reason: "release" | "abort") => {
+				/*
+				 * A settle ends the PREPARING window too: the attempt can be
+				 * released inside `getUserMedia` (a hold shorter than the
+				 * acquisition), aborted, or run a live take - in every one of those
+				 * the acknowledgment must not outlive the attempt it belongs to.
+				 */
+				setIsPreparing(false);
 				const recorder = mediaRecorderRef.current;
 				if (!recorder) return;
 				const startedAt = recordingAttemptRef.current?.startedAt ?? null;
@@ -5816,8 +5870,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				const attempt = recordingAttemptRef.current;
 				if (!attempt) return;
 				if (attempt.startedAt === null) {
-					attempt.released = true;
-					attempt.aborted = reason === "abort";
+					/*
+					 * THE WINDOW RE-OPENS (UX round 2, U6). The attempt is ABANDONED, not merely
+					 * marked: leaving it in the ref made the next press a silent no-op on a
+					 * control that paints at rest - and a press that looks available and does
+					 * nothing is worse than one that is refused. Nulling it makes the next press a
+					 * fresh attempt (acknowledged again, its own acquisition), while the abandoned
+					 * stream is discarded by the identity check in the resolve arm.
+					 */
+					recordingAttemptRef.current = null;
+					/*
+					 * THE RELEASE ENDS THE ACKNOWLEDGMENT WINDOW TOO (agent review round 2,
+					 * MAJOR 1). This arm returns before `settleRecordingAttempt`, whose
+					 * `setIsPreparing(false)` was the only other place the face is cleared - so a
+					 * hold released inside the acquisition left the spinner and the caption up for
+					 * the whole remaining wait: the very silence this change exists to remove, on
+					 * the push-to-talk door. The attempt is NOT settled here, deliberately: its
+					 * stream is still in flight and the resolve arm is what discards it (a null ref
+					 * there would leave a live recorder nothing can stop). Ending the face is all
+					 * this arm owes - the press is over, and the take it was waiting for is already
+					 * marked discarded.
+					 */
+					setIsPreparing(false);
 					return;
 				}
 				settleRecordingAttempt(reason);
@@ -5862,15 +5936,33 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * until the recorder is actually running - the mark a
 				 * release-before-start is read against below.
 				 */
-				recordingAttemptRef.current = {
-					startedAt: null,
-					released: false,
-					aborted: false,
-				};
+				const attempt: { startedAt: number | null } = { startedAt: null };
+				recordingAttemptRef.current = attempt;
+				/*
+				 * THE PRESS'S OWN FRAME. This must stay before the first `await`: the
+				 * discrete-event flush commits the acknowledgment in the same frame
+				 * the click arrives in, which is the whole fix - the acquisition
+				 * wait below stays as long as it is, but it is no longer silent.
+				 */
+				setIsPreparing(true);
 				try {
 					const stream = await navigator.mediaDevices.getUserMedia({
 						audio: true,
 					});
+					/*
+					 * THE STREAM BELONGS TO THE PRESS THAT ASKED FOR IT (UX round 2, U6). An
+					 * IDENTITY check rather than a flag, for the reason the release arm states: a
+					 * release inside the window abandons the attempt, and a flag on the object
+					 * cannot tell "my press was released" from "the ref now belongs to somebody
+					 * else's press". A stream nothing owns is STOPPED here - an orphan recorder is
+					 * a live microphone nothing can end.
+					 */
+					if (recordingAttemptRef.current !== attempt) {
+						for (const track of stream.getTracks()) {
+							track.stop();
+						}
+						return;
+					}
 					mediaRecorderRef.current = new MediaRecorder(stream);
 					audioChunksRef.current = [];
 
@@ -5890,21 +5982,45 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					};
 
 					mediaRecorderRef.current.start();
-					const attempt = recordingAttemptRef.current;
-					if (attempt) attempt.startedAt = performance.now();
+					/* `attempt` is this press's own object, still the ref's (the identity check above). */
+					attempt.startedAt = performance.now();
+					/*
+					 * One commit, both flags: the acknowledgment is replaced by the
+					 * recording state, never shown beside it.
+					 */
+					setIsPreparing(false);
+					/*
+					 * A TAKE THAT LANDS WHILE A TURN IS RUNNING IS KEPT, and that is a decision
+					 * rather than an oversight (UX round 2, U7). The alternative - discarding it
+					 * because the turn went busy inside the window - would throw away speech the
+					 * user asked for, and it would contradict the doctrine this composer already
+					 * keeps: dictation is a state OF this box, the box stays writable mid-turn,
+					 * and a mid-turn message rides the steer path. So the lane appears, Confirm
+					 * and Cancel are the doors, and the acknowledgment is not silently replaced by
+					 * silence. Pinned by `shared-composer.test.mjs`'s busy-transition case.
+					 */
 					setIsRecording(true);
 					setAudioBlob(null); // Clear previous blob
 					/*
-					 * RELEASED BEFORE THE RECORDER EXISTED: end it now rather than
-					 * orphan it. The take is ~0 ms old, so the minimum-clip rule
-					 * discards it - the correct outcome for a press that captured
-					 * nothing.
+					 * NOTHING TO SETTLE HERE ANY MORE (UX round 2, U6). The only path that
+					 * abandons an attempt is the release arm, and it nulls the ref - so a stream
+					 * whose press was released never reaches this line; it is stopped by the
+					 * identity check above. The flag-and-settle pair this replaces became
+					 * unreachable the moment the ref started being nulled.
 					 */
-					if (attempt?.released) {
-						settleRecordingAttempt(attempt.aborted ? "abort" : "release");
-					}
 				} catch (err) {
+					/*
+					 * THE SAME OWNERSHIP GUARD AS THE RESOLVE ARM (convergence round
+					 * 1, MAJOR). A refusal belongs to the press that asked for it: an
+					 * abandoned attempt's `getUserMedia` rejection must not null the
+					 * ref its SUCCESSOR put there, or the successor's acknowledgment
+					 * vanishes and its own arriving stream is then discarded by the
+					 * very identity check that exists to protect it - plus an error
+					 * toast about a press the user has already replaced.
+					 */
+					if (recordingAttemptRef.current !== attempt) return;
 					recordingAttemptRef.current = null;
+					setIsPreparing(false);
 					console.error("Error accessing microphone:", err);
 					showErrorToast(
 						"Error accessing microphone. Please ensure microphone permissions are granted.",
@@ -5916,7 +6032,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				   this did not choose a browser and cannot change it. */
 				showErrorToast("Dictation is not available on this device.");
 			}
-		}, [canEnableRecordingFeature, isInputDisabled, settleRecordingAttempt]);
+		}, [canEnableRecordingFeature, isInputDisabled]);
 
 		const handleConfirmRecording = useCallback(() => {
 			if (!isRecording) return;
@@ -5929,8 +6045,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [isRecording, settleRecordingAttempt]);
 
 		useEffect(() => {
-			if (isRecording) {
-				const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+			/*
+			 * THE WINDOW BEFORE THE RECORDER EXISTS HAS ITS OWN SETTLE KEY (UX round
+			 * 1, U1). While `isPreparing`, Escape cancels the pending start; it must
+			 * not be inert (the press the user is taking back would otherwise land)
+			 * and it must not reach the page's interrupt ladder (the turn is not what
+			 * they are cancelling - the presence above is what tells the ladder so).
+			 * Enter is deliberately NOT claimed here: there is nothing yet to confirm,
+			 * and the box is writable, so Enter stays the draft's key.
+			 */
+			if (!isRecording && !isPreparing) return undefined;
+
+			const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+				if (isRecording) {
 					if (event.key === "Enter") {
 						event.preventDefault();
 						handleConfirmRecording();
@@ -5938,17 +6065,41 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						event.preventDefault();
 						handleCancelRecording();
 					}
-				};
+					return;
+				}
 
-				window.addEventListener("keydown", handleKeyDown);
+				if (event.key !== "Escape") return;
+				event.preventDefault();
+				/*
+				 * ABANDON THE ATTEMPT, THEN CLEAR THE FACE. `handleStopRecording`
+				 * nulls the ref for an attempt whose recorder is not up yet; the
+				 * resolving arm then discards that acquisition by IDENTITY instead of
+				 * starting a recorder nothing would settle, and STOPS its tracks on
+				 * the way out. The face clears now rather than when the promise lands
+				 * so the acknowledgment answers the key in the frame it arrives in: a
+				 * cancel that leaves the spinner running for another 800 ms reads as
+				 * a key that did not work.
+				 *
+				 * Nulling the ref here is what the acquisition's identity check exists
+				 * for - it is the same arm a push-to-talk release takes, and it is why
+				 * a cancel is safe to make on a stream that has not arrived yet.
+				 */
+				handleStopRecording("abort");
+				setIsPreparing(false);
+			};
 
-				return () => {
-					window.removeEventListener("keydown", handleKeyDown);
-				};
-			}
+			window.addEventListener("keydown", handleKeyDown);
 
-			return undefined;
-		}, [isRecording, handleConfirmRecording, handleCancelRecording]);
+			return () => {
+				window.removeEventListener("keydown", handleKeyDown);
+			};
+		}, [
+			isRecording,
+			isPreparing,
+			handleConfirmRecording,
+			handleCancelRecording,
+			handleStopRecording,
+		]);
 
 		const handleSendAudio = useCallback(async () => {
 			if (!audioBlob) return;
@@ -6674,6 +6825,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				/>
 			</output>
 		);
+
+		/*
+		 * THE ACKNOWLEDGMENT'S TWO HALVES, ON ONE PREDICATE, AND ONE OF THEM IS
+		 * LOAD-BEARING (agent review round 2 minor b, UX round 2's U7). The caption is
+		 * a SIBLING of the control, so both read this: they cannot desync into an
+		 * orphan caption beside a control that is not there.
+		 *
+		 * `isPreparing` IS AN EXPLICIT TERM, and that is the U7 fix rather than a
+		 * convenience. A turn that goes busy inside the acknowledgment window used to
+		 * REMOVE the acknowledgment (`isLoading && currentJobId` alone) - the very
+		 * silence this change exists to remove, one transition later - and the
+		 * deferred acquisition then landed as a live recording the user had no notice
+		 * of. While the composer is acquiring, this control is the acknowledgment's
+		 * carrier and the re-press door (U6), so it stays on screen for that window
+		 * whatever the turn is doing; the ordinary rule resumes the moment the window
+		 * closes.
+		 */
+		const micControlShown =
+			isPreparing ||
+			(!isRecording && !isTranscribing && !(isLoading && currentJobId));
 
 		const inputContent = (
 			<form
@@ -7803,6 +7974,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							/>
 						</div>
 						{/*
+						 * NO PREPARING STRIP IN THIS SLOT, and the slot is the reason rather
+						 * than tidiness (design round 1, D2). The acknowledgment used to be a
+						 * one-line strip here - "the same slot the recording lane takes" - and
+						 * that claim was false as geometry: the lane is 84px tall where the
+						 * strip was 40px with its gap, so a press moved the composer TWICE
+						 * (card top 774 -> 734 while preparing, then 690 at handover) inside a
+						 * card whose bottom edge is pinned. The acknowledgment now rides in
+						 * the control row below - a row that exists at every width and in
+						 * every state - so a press costs the composer exactly 0px, and the
+						 * only movement left is the recording lane's own, unchanged
+						 * appearance (the lane's drawn geometry is not part of this fix).
+						 *
+						 * AN `absolute` OVERLAY IN THIS SLOT was the alternative and it is
+						 * rejected on the record: the next thing in this box's flow is the
+						 * control row itself, so a line drawn over the slot would cover the
+						 * controls it exists to answer. The row is where a line can be added
+						 * without buying height - see the acknowledgment below, which is a
+						 * child of that row and not of this one.
+						 */}
+						{/*
 						 * THE RECORDING STATE, as a full-width block under the field it belongs
 						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
 						 * field's own content column, its label row sits over it, and nothing
@@ -8067,42 +8258,131 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * [readings][mic][send] out of a DOM whose first child is the cluster.
 								 */}
 								<div className="ml-auto flex order-3 items-center gap-1">
-									{!isRecording &&
-										!isTranscribing &&
-										!(isLoading && currentJobId) && (
-											<Tooltip
-												content={
-													!canEnableRecordingFeature
+									{/*
+									 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
+									 * via Aida, 2026-10-01). The microphone acquisition is the one part
+									 * of the click path that is genuinely slow - 830 ms cold on this
+									 * fleet, and measured past two minutes under swap exhaustion - and it
+									 * used to be silent: the screen looked exactly as it did before the
+									 * press. This line, with the control's own busy face beside it, is
+									 * that window's answer, both written in the click's own frame.
+									 *
+									 * IT LIVES IN THIS ROW, NOT UNDER THE FIELD (design round 1, D2): a
+									 * line of its own grew the card on the press. This row is 32px in
+									 * every state, so an ~18px child cannot make it taller - and the line
+									 * is added to the LEFT of a group this row right-anchors with
+									 * `ml-auto`, so the mic and send controls keep the x they had: the
+									 * free space between the readings and this group is what pays.
+									 *
+									 * ONE INDETERMINATE ELEMENT ON THIS SURFACE (branding § 5's
+									 * "one such element per surface"): the ring is on the control below
+									 * and this line is words, so the acknowledgment is one live element
+									 * rather than two spinners for one wait (UX round 1, U4).
+									 */}
+									{isPreparing && micControlShown && (
+										<output
+											data-preparing-indicator=""
+											/*
+											 * THE STATE IS ANNOUNCED, not merely painted (agent review round 2,
+											 * minor a). `aria-busy` on the button is the control's half and screen
+											 * readers expose it inconsistently; the words are the other half, and they
+											 * are only announced if they ARE a live region - a bare span changes on
+											 * screen and says nothing to a reader that is not looking at it. The caption
+											 * carries the text, so the region goes here rather than on the ring - as an
+											 * `<output>` rather than a `role="status"` attribute, which is this file's
+											 * established spelling of the same thing (the interrupt notice and the
+											 * no-model hint both use the element).
+											 */
+											/*
+											 * The five-word copy is the composer's own; the SMALL VIEW's
+											 * shorter one is this row's existing yield rule rather than a
+											 * second wording - the model selector shortens to its glyph, the
+											 * usage reading drops below 480px of composer and the cwd chip
+											 * truncates at the same pressure, and a truncated "Starting
+											 * recor..." is not a sentence. `shrink-0` puts this line on the
+											 * yielding side of that bargain rather than letting it compress
+											 * into an ellipsis of its own.
+											 */
+											className="shrink-0 font-medium text-body-sm text-ink-muted"
+										>
+											{isSmallView ? "Starting" : "Starting recording"}
+										</output>
+									)}
+									{micControlShown && (
+										<Tooltip
+											content={
+												isPreparing
+													? "Starting recording"
+													: !canEnableRecordingFeature
 														? recordingUnavailableReason
 														: `Start recording (${shortcutText} or hold ${resolvePushToTalkBinding().label})`
-												}
-											>
-												<span>
-													<Button
-														variant="ghost"
-														size={isSmallView ? "icon-sm" : "icon"}
-														className="text-ink-dim hover:bg-elevated hover:text-ink"
-														onPointerDown={holdCaretOnRefusedPress}
-														onClick={handleStartRecording}
-														aria-label="Start recording"
+											}
+										>
+											<span>
+												<Button
+													variant="ghost"
+													size={isSmallView ? "icon-sm" : "icon"}
+													className="text-ink-dim hover:bg-elevated hover:text-ink"
+													onPointerDown={holdCaretOnRefusedPress}
+													onClick={handleStartRecording}
+													aria-label="Start recording"
+													/*
+													 * BUSY IS ITS OWN FACE (operator feedback via Aida,
+													 * 2026-10-01): while the recorder is being acquired the
+													 * control shows the acknowledgment instead of the mic glyph.
+													 * It is NOT disabled while it does (design round 1, D1) -
+													 * the handler's own guard is what refuses a second press,
+													 * and the hold contract reaches the same handler without
+													 * consulting `disabled` at all. The label stays "Start
+													 * recording" - the control IS still the start control, and
+													 * `aria-busy` plus the captioned line in this row carry the
+													 * state.
+													 * carry the state; the reader that keys on this label
+													 * (`scripts/renderer-driver.mjs`, the mini-view scene)
+													 * keeps resolving it.
+													 */
+													aria-busy={isPreparing || undefined}
+													/*
+													 * `isLoading` IS NOT A TERM HERE (the operator's report): the
+													 * composer's own writability is `isInputDisabled`, and a send in
+													 * flight does not make this box unwritable - mid-turn messages
+													 * ride the steer path, and dictation is a state OF this box. The
+													 * old term closed the control for the whole admit-to-first-answer
+													 * window while the box itself stayed writable; the manager's own
+													 * gate (the registration below) carries the same correction.
+													 *
+													 * `isPreparing` IS NOT A TERM EITHER (design round 1, D1):
+													 * disabling the control during the acknowledgment made the one
+													 * control the user just pressed go inert on a 32px target, and it
+													 * was redundant besides - a second press inside the acquisition
+													 * is refused by the handler's own `recordingAttemptRef` guard,
+													 * which is the door the hold contract reaches the same callback
+													 * through and which `disabled` never covered anyway. `aria-busy`
+													 * is what says the control is working, so no gate is needed to
+													 * say it twice.
+													 */
+													disabled={
+														isInputDisabled || !canEnableRecordingFeature
+													}
+												>
+													{isPreparing ? (
 														/*
-														 * `isLoading` IS NOT A TERM HERE (the operator's report): the
-														 * composer's own writability is `isInputDisabled`, and a send in
-														 * flight does not make this box unwritable - mid-turn messages
-														 * ride the steer path, and dictation is a state OF this box. The
-														 * old term closed the control for the whole admit-to-first-answer
-														 * window while the box itself stayed writable; the manager's own
-														 * gate (the registration below) carries the same correction.
+														 * ONE RING ON THIS SURFACE (design round 1, D3): this is the composer's only
+														 * indeterminate element - the caption in the row beside it is words - which is
+														 * branding § 5's "one such element per surface". The track's ROLE is fixed in
+														 * `Spinner` itself rather than patched here, and that is measured: a call-site
+														 * `border-control` flattens this ring's accent quadrant (tailwind-merge merges
+														 * the track and the quadrant as one border colour), so the ring came back
+														 * `#837c6d` on both sides - a circle with nothing visibly rotating in it.
 														 */
-														disabled={
-															isInputDisabled || !canEnableRecordingFeature
-														}
-													>
+														<Spinner size="sm" />
+													) : (
 														<Mic aria-hidden="true" />
-													</Button>
-												</span>
-											</Tooltip>
-										)}
+													)}
+												</Button>
+											</span>
+										</Tooltip>
+									)}
 									{isRecording && (
 										<>
 											<Tooltip content="Confirm recording (Enter)">
