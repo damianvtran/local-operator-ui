@@ -393,6 +393,36 @@ const { JSDOM } = await import("jsdom");
 const dom = new JSDOM("<!doctype html>", { url: "http://localhost/" });
 const { window } = dom;
 /*
+ * THE DESKTOP BRIDGE, INERT.
+ *
+ * `window.electron` is a renderer global that only the app's preload writes
+ * (`src/preload/index.ts`), so a DOM-less harness that mounts a page reaching it
+ * has to supply its own — there is no other owner. `MessageInput` reaches it from
+ * a passive effect on mount (the platform whose send chord it renders, and the
+ * dialog behind attach), and this branch mounts that composer on `AgentsPage`
+ * (`AgentPage` -> `ConfigComposer` -> `MessageInput`), which is how this file
+ * came to need one: before that, nothing it rendered touched the bridge.
+ *
+ * The stand-in answers and nothing else, the shape
+ * `agents-composer-mount.test.mjs` uses for the same composer and
+ * `src/renderer/src/features/chat/components/story-electron-shim.ts` documents
+ * for the stories ("Storybook's preview mocks `window.api` and not
+ * `window.electron` ... so there is no other owner to restore it for"). The
+ * transport this file is actually about is installed per mount, in
+ * `installBridge` below, as `window.api`.
+ */
+window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener: () => window.electron.ipcRenderer,
+		send: () => {},
+		invoke: async (channel) =>
+			channel === "get-platform-info"
+				? { platform: "darwin" }
+				: { canceled: true, filePaths: [] },
+	},
+};
+/*
  * EVERY DOM CONSTRUCTOR THE TREE CAN NAME, copied by name rather than listed by
  * hand: the page reaches for `HTMLFormElement` and friends inside effects, and a
  * missing global surfaces there as a `ReferenceError` inside a React commit -
