@@ -387,6 +387,31 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	{
+		/*
+		 * THE TEAM AVATAR BUBBLE (operator ask, 2026-10-01): the compact initials mark
+		 * the chat sidebar's session rows and the chat header's team chip draw, the
+		 * replacement for a drawn team name that was costing the row's title whatever
+		 * the name was long. It is a component with its own fill AND its own edge,
+		 * which is the condition this table exists for.
+		 *
+		 * ITS OWN PAIR IS WIDER THAN THIS TABLE CAN EXPRESS, and both halves are
+		 * asserted rather than one. Here: the initials' `ink` on the plate's `sunken`,
+		 * and the `sunken` fill or the `borderControl` edge against every ground the
+		 * bubble is painted on. The row-state half - the same fill and edge against
+		 * `rowHover` and `rowSelected`, which are states rather than rungs of
+		 * `GROUNDS` - is the "second plate inside a row" block below, the pair the
+		 * agents sidebar's avatar already rests on, which is why this change added a
+		 * ROW to the table and no new arithmetic. The class half (that the bubble
+		 * still wears these roles, through the component boundary the discovery scan
+		 * cannot see) is in `scripts/chat-sidebar-selection.test.mjs`.
+		 */
+		name: "team avatar bubble",
+		on: GROUNDS,
+		fill: "sunken",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
 		name: "input field",
 		on: GROUNDS,
 		fill: "surface",
@@ -1582,6 +1607,22 @@ const GRAPHICS = [
 		name: "turn bar complete mark",
 		on: ["canvas"],
 		fg: "success",
+	},
+	{
+		/*
+		 * THE SHARED SPINNER'S TRACK (`spinner.tsx`'s ring - the app's one
+		 * indeterminate-progress affordance, dropped onto every ground). Design round 1 on
+		 * the composer's acknowledgment measured this pair while the track was the
+		 * decorative `hairline`: 1.23:1 dark and 1.44:1 light, i.e. the whole visible
+		 * shape of a progress indicator below the floor. The track is `borderControl`
+		 * now, and this row is what holds it there. It is HERE rather than in
+		 * `CONTROLS` because that table's outline-control row states the same VALUE as a
+		 * CONTROL's boundary - a different claim about it - and this file's own note on
+		 * the context wheel says what a green gate about an unlisted pairing is worth.
+		 */
+		name: "spinner track against its ground",
+		on: GROUNDS,
+		fg: "borderControl",
 	},
 	...["success", "warning", "danger"].map((role) => ({
 		name: `usage bar fill (${role})`,
@@ -4763,6 +4804,18 @@ for (const { id, palette: p } of palettes) {
 	 * The class half — that the plate still wears the edge, and that the class of
 	 * "an object inside a row state with a ground of its own" is enumerated rather
 	 * than assumed — is in `scripts/chat-sidebar-selection.test.mjs`.
+	 *
+	 * A THIRD SITE RESTS ON THIS SAME PAIR (operator ask, 2026-10-01): the team
+	 * avatar bubble, the compact initials mark a chat sidebar session row draws in
+	 * place of a team's name. It is the same `sunken` plate with the same
+	 * `borderControl` edge, on the same two row states, so its legality is this
+	 * block's arithmetic and nothing new was added for it - it is named here
+	 * because a reviewer looking for the bubble's own measurement would otherwise
+	 * find only the CONTROLS row above, which asserts the rungs and not the states.
+	 * The site is discovered by hand rather than by the scan for a stated reason:
+	 * the bubble is written in its own module, so the element the row renders
+	 * carries no class of its own (see the note beside `TEAM_BUBBLE` in
+	 * `scripts/chat-sidebar-selection.test.mjs`).
 	 */
 	if (
 		isHex(p.sunken) &&

@@ -2948,6 +2948,47 @@ const BRANCH_RECORDS = [
 	"rebaseOntoA298bfb120Note",
 	"meshCanvasRedesignRemediationNote",
 	/*
+	 * AND THE PROJECTS SEARCH/FILTERS LANE'S OWN FOLD RECORD, added by that
+	 * branch's sync onto `origin/main` = `4ea1635904` (#621, the mesh-canvas
+	 * redesign). It is listed for the list's usual reason: this fold's
+	 * resolution took main's records at the top level and kept this branch's,
+	 * and a LATER fold resolved from main's copy of the manifest would drop
+	 * this key unless the list names it - the twelfth-fold incident this list
+	 * exists for, caught here at the list's own edge rather than by the round
+	 * that next reads the note. It spells its identity as bare SHAs, so it
+	 * adds no name to the quoting ledger.
+	 */
+	"foldOnto4ea1635904Note",
+	/*
+	 * And the lane's second fold record, added the same evening: the sync onto
+	 * `origin/main` = `f95910d7bc80` (#722, the fold-media train), which moved main
+	 * past `4ea1635904` within the hour and went CONFLICTING while the remediation
+	 * round was mid-flight. Registered for the same reason as its sibling above: a
+	 * fold resolved from main's copy of the manifest would drop the only statement
+	 * of what this branch's second sync did and which tree its counts describe.
+	 */
+	"foldOntoF95910d7bcNote",
+	/*
+	 * And the lane's THIRD fold record, written the same evening: the sync onto
+	 * `origin/main` = `6154018fdc` (#723 the evidence-record clearing, #721 the
+	 * sidebar-badge restyle), which moved main twice more while the remediation
+	 * round was in flight. Registered for the same completeness reason as its two
+	 * siblings: a fold resolved from main's copy would drop the statement of what
+	 * this sync carried - including the clearing pass's revisions of its own
+	 * sets' records, which this tree now needs because it carries those sets.
+	 */
+	"foldOnto6154018fdcNote",
+	/*
+	 * And the lane's FOURTH fold record, the same evening: the sync onto
+	 * `origin/main` = `689efa1eb4` (#667 the hub-update indicators, #730 the
+	 * settings-rail colour fix, #713 the scrollbar fade), which moved main twice
+	 * more while the round was in flight. Registered for the same completeness
+	 * reason as its siblings: a fold resolved from main's copy would drop the
+	 * statement of what this sync carried - main's five revised supplementary
+	 * records and its re-stamped notes, resolved per `citationConvention`.
+	 */
+	"foldOnto689efa1eb4Note",
+	/*
 	 * Grown by the device-chip pass, whose top-level record is the set it ships
 	 * (`chatDevicePersistNote`): registered so a later fold unions it back by
 	 * name rather than dropping it.
@@ -2964,6 +3005,47 @@ const BRANCH_RECORDS = [
 	 */
 	"partialCaptureContinuityRestampNote",
 	/*
+	 * And the lane's FIFTH fold record, the same evening: the sync onto
+	 * `origin/main` = `7b984851a0` (#733 the bounded desktop tests, #725 the
+	 * AGENTS in-place/composer note, #719 the send row's delivery states), which
+	 * moved main again while CI was still queued on the last head. Registered for
+	 * the same completeness reason as its siblings: a fold resolved from main's
+	 * copy would drop the statement of what this sync carried - main's three new
+	 * records and the package.json union - resolved per `citationConvention`.
+	 */
+	"foldOnto7b984851a0Note",
+	/*
+	 * And the lane's SIXTH fold record, the same evening: the sync onto
+	 * `origin/main` = `d10b50764d` (#738 the 0.31.27 release window, #732 the
+	 * agents-roster navigation), taken while CI was still queued on the previous
+	 * head. Registered for the same completeness reason as its siblings: a fold
+	 * resolved from main's copy would drop the statement of what this sync
+	 * carried - the refreshedStories union and the package.json union - resolved
+	 * per `citationConvention`.
+	 */
+	"foldOntod10b50764dNote",
+	/*
+	 * And the lane's SEVENTH fold record, the same evening: the sync onto
+	 * `origin/main` = `8e73cb8721` (#728 the hub-org-sharing teardown). Its delta
+	 * is three files: the manifest resolution, the agent-hub suite's `gcTime` pin
+	 * (`22bd23fd9b`, which arrived at that fold and moved `scripts/`), and the
+	 * BRANCH_RECORDS registration. (The `15 insertions, 1 deletion` this entry's
+	 * first revision attributed to the manifest is that TEST FILE's stat - agent
+	 * review R9.) Registered for the same completeness reason as its siblings: a
+	 * fold resolved from main's copy would drop the statement of what this sync
+	 * carried.
+	 */
+	"foldOnto8e73cb8721Note",
+	/*
+	 * And the lane's EIGHTH fold record, the next morning: the sync onto
+	 * `origin/main` = `eda575325e` (#736 the turn-partition predicate), taken so a
+	 * clean head can run CI. Registered for the same completeness reason as its
+	 * siblings: a fold resolved from main's copy would drop the statement of what
+	 * this sync carried - main's `runClosureVocabularyRestampNote` and the
+	 * package.json union, resolved per `citationConvention`.
+	 */
+	"foldOntoeda575325eNote",
+	/*
 	 * AND BY THE FOLD ITSELF, once - which is the list earning its keep. The
 	 * vocabulary round's note moves `scripts/` only and takes no frame, and the
 	 * fold onto `origin/main` (443ad13c70) took main's manifest whole exactly as
@@ -2974,6 +3056,184 @@ const BRANCH_RECORDS = [
 	 * the pair from the tree that includes it.
 	 */
 	"runClosureVocabularyRestampNote",
+	/*
+	 * And the lane's NINTH fold record: the sync onto `origin/main` =
+	 * `e1eb22cd58` (#737 the turn's visible completion), taken so the head is
+	 * clean and CI can run. Registered for the same completeness reason as its
+	 * siblings: a fold resolved from main's copy would drop the statement of
+	 * what this sync carried - main's `turnVisibleRestampNote` and its new
+	 * STORIES row, resolved per `citationConvention`.
+	 */
+	"foldOntoe1eb22cd58Note",
+	/*
+	 * And the lane's TWELFTH fold record, its first source fold: the sync onto
+	 * `origin/main` = `69d088ec52` (#716 the team-labels lane) conflicted in
+	 * `project-list.tsx` and `projects-page.tsx`, so the resolution is a union
+	 * of BEHAVIOUR (search/sort/filters props AND `teamLabelFor`), recorded in
+	 * the note. Registered for the same completeness reason as its siblings: a
+	 * fold resolved from main's copy would drop the statement of what this sync
+	 * carried - main's `teamLabelsRestampNote` and its two team-identity rows.
+	 */
+	"foldOnto69d088ec52Note",
+	/*
+	 * And the lane's THIRTEENTH fold record: the sync onto `origin/main` =
+	 * `44e4812b31` (#686 the STT mic gate, #735 the chat device selection),
+	 * taken while the UX round's fixes were mid-flight so a clean head can run
+	 * CI. Registered for the same completeness reason as its siblings: a fold
+	 * resolved from main's copy would drop the statement of what this sync
+	 * carried - main's `chatDevicePersistNote` and its `chat-device-persist`
+	 * supplementary set, resolved per `citationConvention`.
+	 */
+	"foldOnto44e4812b31Note",
+	/*
+	 * And the lane's FOURTEENTH fold record: the sync onto `origin/main` =
+	 * `53c5cfec6b` (#714 the speak-aloud pass, over #538's stream-smooth train),
+	 * taken when QA found the branch's `test:desktop` back in the pre-#733
+	 * `node --test` form. THE RESOLUTION KEEPS MAIN'S FORM: main's harness
+	 * prefix and arming, this branch's four test files appended to its list -
+	 * the union of a LIST is not the union of its SHAPE. Registered for the
+	 * usual reason: a fold from main's copy would drop the eight speak-aloud /
+	 * stream-smooth records this sync carried.
+	 */
+	"foldOnto53c5cfec6bNote",
+	/*
+	 * And the lane's FIFTEENTH fold record: the sync onto `origin/main` =
+	 * `44249a6796` (#726 the provider-suggestions lane), taken before the
+	 * final push so the head is clean. Registered for the same reason as its
+	 * siblings: a fold resolved from main's copy would drop the statement of
+	 * what this sync carried and the `package.json` union shape it resolved -
+	 * and, since agent review round 8 (R11), the record's own account of the
+	 * key that union read missed (`check-themes`, dropped by this fold and
+	 * restored by the remediation commit) so main's copy cannot lose the
+	 * correction either.
+	 */
+	"foldOnto44249a6796Note",
+	/*
+	 * And the lane's SIXTEENTH fold record: the sync onto `origin/main` =
+	 * `26a814c2c2` (#705 the mini-view restyle), taken because the first fold's
+	 * push left the PR dirty again when main advanced once more. Registered
+	 * for the same reason as its siblings: a fold resolved from main's copy
+	 * would drop the statement of what this sync carried and the countsMean
+	 * union it resolved.
+	 */
+	"foldOnto26a814c2c2Note",
+	/*
+	 * And the lane's SEVENTEENTH fold record: the sync onto `origin/main` =
+	 * `b909366d94` (#710 the team-header register). Registered for the same
+	 * reason as its siblings, and this one's statement is the load-bearing
+	 * kind: the fold is a COMPOSITION - both lanes' source changes on the
+	 * projects surface - so a fold resolved from main's copy would drop the
+	 * statement of what this sync carried and how the two sides' behaviour
+	 * was composed.
+	 */
+	"foldOntoB909366d94Note",
+	/*
+	 * And the lane's EIGHTEENTH fold record: the sync onto `origin/main` =
+	 * `396fd472f3` (#743 the sidebar archive confirm lane, #751's release-notes
+	 * scan over it). The same reason as its siblings again, one level sharper:
+	 * this fold's conflict was this file alone and the union it resolved needed
+	 * no growth - a fold resolved from main's copy would still drop the record
+	 * that says so, and with it the check that the branch's listings were
+	 * recomputed against main's rather than assumed to be the superset.
+	 */
+	"foldOnto396fd472f3Note",
+	/*
+	 * And the lane's NINETEENTH fold record: the sync onto `origin/main` =
+	 * `6f2e9b7838` (#731 the agent-class toggle). The second fold of one push
+	 * cycle - main moved while the `396fd472f3` fold was being pushed - and the
+	 * one whose `package.json` resolution the round-8 gate exists for: main
+	 * lacks this branch's `check-themes` and `check-fold-keys` keys, so a fold
+	 * laid from main's copy would drop one again. Registered so the statement
+	 * of the union that kept them survives any fold resolved from main.
+	 */
+	"foldOnto6f2e9b7838Note",
+	/*
+	 * And the lane's TWENTIETH fold record: the sync onto `origin/main` =
+	 * `af6fffa899` (#752 the delta-scoped pre-push gate). Its `package.json`
+	 * resolution closes the same class from both directions - main lacks this
+	 * branch's `check-themes` (the R11 repair) and `check-fold-keys`, and this
+	 * branch lacks main's five new `prepare`/`hooks:*` keys - so a fold laid
+	 * from either side's copy alone drops keys the merged tree must carry.
+	 * Registered so the statement of the union survives any fold resolved
+	 * from main.
+	 */
+	"foldOntoaf6fffa899Note",
+	/*
+	 * And the lane's TWENTY-FIRST fold record: the sync onto `origin/main` =
+	 * `bc642ccd49` (#757 the row menu's Fork item) - the second fold of one
+	 * push cycle, forced when main moved while the previous fold's capture and
+	 * gates were still running. Its resolution carries the deep-union class:
+	 * `countsMean` chains unioned (main's unique leads appended), the
+	 * `refreshedStories` union grown by main's two `fork-*` directories, and
+	 * main's `rowForkMenuNote` spliced whole - so a fold resolved from main's
+	 * copy would drop this branch's chains, and one resolved from this
+	 * branch's alone would drop main's.
+	 */
+	"foldOntobc642ccd49Note",
+	/*
+	 * And the lane's TWENTY-SECOND fold record: the sync onto `origin/main` =
+	 * `0d4db85a5e` (#745 the live-cycle lane's rendered-evidence re-stamp) -
+	 * the second fold of one push cycle again, forced when main moved while the
+	 * round-10 review and the D12/D13 corrections were landing. Registered for
+	 * its siblings' reason and one of its own: it carries the `countsMean`
+	 * union (main's unique leads appended), the `refreshedStories` growth, and
+	 * the statement of the fold's ONE REPAIR - the byte-identical duplicate
+	 * `rowForkMenuNote` the previous fold's splice left behind, which no
+	 * key-SET gate can see - so a fold resolved from either side's copy alone
+	 * would drop the record that says what happened to it.
+	 */
+	"foldOnto0d4db85a5eNote",
+	/*
+	 * And the lane's TWENTY-THIRD fold record: the sync onto `origin/main` =
+	 * `756fb7b190` (#753 the browser read actions) - the THIRD fold of one push
+	 * cycle, taken because main moved twice while the earlier folds were being
+	 * pushed and a conflicting head starts no checks. Registered for its
+	 * siblings' reason: it carries the `test:desktop` list union (main's form,
+	 * this branch's four suites appended - 351 entries) and the `check-themes`
+	 * key main still lacks, so a fold laid from main's copy alone would drop
+	 * one, and from this branch's alone would drop main's
+	 * `check-geometry-sources.test.mjs` row.
+	 */
+	"foldOnto756fb7b190Note",
+	/*
+	 * And the lane's TWENTY-FOURTH fold record: the sync onto `origin/main` =
+	 * `a7a108e972` (#746 the answer-press copy pass) - taken pre-merge because
+	 * main moved to that tip while the round-11 remediation was landing, and a
+	 * conflicting head starts no checks. Registered for its siblings' reason and
+	 * one of its own: it carries main's new `answerNoticeArmsRestampNote` spliced
+	 * WHOLE and the `srcTree`/`scriptsTree` pair re-derived from the merged tree,
+	 * so a fold laid from main's copy alone would drop this branch's record and
+	 * one laid from this branch's alone would drop main's - and its text is also
+	 * where the fold states that the three duplicate records round 11 filed
+	 * (R11-1) cannot recur here, both sides being single after the de-dup. It
+	 * quotes no tree-hash pair (base SHAs only), so it joins this list and not
+	 * `STAMP_BINDING_NOTES`.
+	 */
+	"foldOntoa7a108e972Note",
+	/*
+	 * And the lane's TWENTY-FIFTH fold record: the sync onto `origin/main` =
+	 * `5737a884d5` (#734 the queued-ask lane) - the SECOND fold of one push
+	 * cycle, taken because main moved while the first fold was being pushed and
+	 * a conflicting head starts no checks. Registered for its siblings' reason:
+	 * it carries the `test:desktop` list union (main's form, this branch's four
+	 * suites appended - 353 entries) together with this branch's `check-themes`
+	 * key main still lacks, so a fold laid from main's copy alone would drop one,
+	 * and from this branch's alone would drop main's two ask-rig rows.
+	 */
+	"foldOnto5737a884d5Note",
+	/*
+	 * And the lane's TWENTY-SIXTH fold record: the sync onto `origin/main` =
+	 * `ed72ef0da4` (#729 the update-rollover lane) - the THIRD fold of one push
+	 * cycle, taken because main moved again while the second fold was being
+	 * pushed. Registered for its siblings' reason and one of its own: it is the
+	 * first fold where main's lane moved the COUNTERS, so its resolution carries
+	 * three regions rather than the usual one - the re-derived stamp pair, the
+	 * re-derived `frames`/`surfaces`/`countsMean` (with main's unique paragraphs
+	 * appended, not substituted), and `refreshedFrames` re-derived to the guard's
+	 * floor the `refreshedStories` union raised - plus the `test:desktop` list
+	 * union (354 entries) and this branch's `check-themes` key main still lacks.
+	 */
+	"foldOntoed72ef0da4Note",
 	/*
 	 * And by the streaming-smoothness change, this branch's newest top-level
 	 * record: the note that states which commits moved which trees, that the
