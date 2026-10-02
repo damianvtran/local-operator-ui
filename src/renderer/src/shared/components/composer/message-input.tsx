@@ -5696,10 +5696,28 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		useEffect(() => {
 			onDictationStateChangeRef.current = onDictationStateChange;
 		});
+		/**
+		 * THE PRESENCE COVERS THE PRESS, THE CALLBACK COVERS THE TAKE (UX round
+		 * 1, U1). The Escape ladder's rung 4 reads this set at KEY TIME, and
+		 * during the acknowledgment window Escape must settle the PENDING START
+		 * rather than kill the turn - the user who presses Esc while the mic is
+		 * being acquired is cancelling that press, never the run. A presence
+		 * that only counted `isRecording` left that window answering the turn's
+		 * question instead (the keyboard listener below carries the other half).
+		 *
+		 * TWO EFFECTS, NOT ONE (remediation round 1). The presence is about the
+		 * GESTURE and the host callback is about the TAKE - its consumers read it
+		 * as "a take is live" (the mini frame prints its recording sentence from
+		 * it, and would print "Recording" while the microphone is still being
+		 * acquired). Held in one effect, the press's own flip would re-run the
+		 * body and hand the host a second `false` edge before the `true`.
+		 */
 		useEffect(() => {
-			setDictationActive("message-input", isRecording);
-			onDictationStateChangeRef.current?.(isRecording);
+			setDictationActive("message-input", isRecording || isPreparing);
 			return () => setDictationActive("message-input", false);
+		}, [isRecording, isPreparing]);
+		useEffect(() => {
+			onDictationStateChangeRef.current?.(isRecording);
 		}, [isRecording]);
 
 		/**
@@ -5892,8 +5910,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		}, [isRecording, settleRecordingAttempt]);
 
 		useEffect(() => {
-			if (isRecording) {
-				const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+			/*
+			 * THE WINDOW BEFORE THE RECORDER EXISTS HAS ITS OWN SETTLE KEY (UX round
+			 * 1, U1). While `isPreparing`, Escape cancels the pending start; it must
+			 * not be inert (the press the user is taking back would otherwise land)
+			 * and it must not reach the page's interrupt ladder (the turn is not what
+			 * they are cancelling - the presence above is what tells the ladder so).
+			 * Enter is deliberately NOT claimed here: there is nothing yet to confirm,
+			 * and the box is writable, so Enter stays the draft's key.
+			 */
+			if (!isRecording && !isPreparing) return undefined;
+
+			const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+				if (isRecording) {
 					if (event.key === "Enter") {
 						event.preventDefault();
 						handleConfirmRecording();
@@ -5901,17 +5930,41 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						event.preventDefault();
 						handleCancelRecording();
 					}
-				};
+					return;
+				}
 
-				window.addEventListener("keydown", handleKeyDown);
+				if (event.key !== "Escape") return;
+				event.preventDefault();
+				/*
+				 * MARK THE ATTEMPT, THEN CLEAR THE FACE. The mark is what makes the
+				 * acquisition harmless when it resolves - `handleStopRecording`
+				 * sets `released`/`aborted` on an attempt whose recorder is not up
+				 * yet, and the resolve arm discards that take instead of starting a
+				 * recorder nothing would settle. The flag clears now rather than when
+				 * the promise lands so the acknowledgment answers the key in the
+				 * frame it arrives in: a cancel that leaves the spinner running for
+				 * another 800 ms reads as a key that did not work.
+				 *
+				 * The attempt REF is deliberately not nulled here: the resolving
+				 * arm reads it to decide discard-versus-keep, and a null ref there
+				 * would leave a live microphone nothing can stop.
+				 */
+				handleStopRecording("abort");
+				setIsPreparing(false);
+			};
 
-				return () => {
-					window.removeEventListener("keydown", handleKeyDown);
-				};
-			}
+			window.addEventListener("keydown", handleKeyDown);
 
-			return undefined;
-		}, [isRecording, handleConfirmRecording, handleCancelRecording]);
+			return () => {
+				window.removeEventListener("keydown", handleKeyDown);
+			};
+		}, [
+			isRecording,
+			isPreparing,
+			handleConfirmRecording,
+			handleCancelRecording,
+			handleStopRecording,
+		]);
 
 		const handleSendAudio = useCallback(async () => {
 			if (!audioBlob) return;
@@ -7717,30 +7770,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							/>
 						</div>
 						{/*
-						 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
-						 * via Aida, 2026-10-01). The microphone acquisition is the one part of
-						 * the click path that is genuinely slow - 830 ms to over 2.6 s on a
-						 * cold `getUserMedia` on this fleet - and it used to be silent: the
-						 * screen looked exactly as it did before the press. This line is that
-						 * window's own face, in the same slot the recording lane takes, while
-						 * the mic control itself carries the same state as a busy spinner
-						 * (see the control cluster below) - so the acknowledgment reads
-						 * wherever the eye is. It mirrors the transcribing strip's shape
-						 * deliberately (one transient one-line state, same inset and rhythm)
-						 * and gives way to the recording lane in the same commit that clears
-						 * `isPreparing`.
+						 * NO PREPARING STRIP IN THIS SLOT, and the slot is the reason rather
+						 * than tidiness (design round 1, D2). The acknowledgment used to be a
+						 * one-line strip here - "the same slot the recording lane takes" - and
+						 * that claim was false as geometry: the lane is 84px tall where the
+						 * strip was 40px with its gap, so a press moved the composer TWICE
+						 * (card top 774 -> 734 while preparing, then 690 at handover) inside a
+						 * card whose bottom edge is pinned. The acknowledgment now rides in
+						 * the control row below - a row that exists at every width and in
+						 * every state - so a press costs the composer exactly 0px, and the
+						 * only movement left is the recording lane's own, unchanged
+						 * appearance (the lane's drawn geometry is not part of this fix).
+						 *
+						 * AN `absolute` OVERLAY IN THIS SLOT was the alternative and it is
+						 * rejected on the record: the next thing in this box's flow is the
+						 * control row itself, so a line drawn over the slot would cover the
+						 * controls it exists to answer. The row is where a line can be added
+						 * without buying height - see the acknowledgment below, which is a
+						 * child of that row and not of this one.
 						 */}
-						{isPreparing && (
-							<div
-								data-preparing-indicator=""
-								className="mt-1 flex items-center gap-2 px-2 [min-height:1.5rem]"
-							>
-								<Spinner size="sm" />
-								<span className="font-medium text-body-sm text-ink-muted">
-									Starting recording
-								</span>
-							</div>
-						)}
 						{/*
 						 * THE RECORDING STATE, as a full-width block under the field it belongs
 						 * to (operator feedback via Aida, 2026-09-29): the lane spans the
@@ -8006,6 +8054,45 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * [readings][mic][send] out of a DOM whose first child is the cluster.
 								 */}
 								<div className="ml-auto flex order-3 items-center gap-1">
+									{/*
+									 * THE PRESS IS ANSWERED BEFORE THE RECORDER EXISTS (operator feedback
+									 * via Aida, 2026-10-01). The microphone acquisition is the one part
+									 * of the click path that is genuinely slow - 830 ms cold on this
+									 * fleet, and measured past two minutes under swap exhaustion - and it
+									 * used to be silent: the screen looked exactly as it did before the
+									 * press. This line, with the control's own busy face beside it, is
+									 * that window's answer, both written in the click's own frame.
+									 *
+									 * IT LIVES IN THIS ROW, NOT UNDER THE FIELD (design round 1, D2): a
+									 * line of its own grew the card on the press. This row is 32px in
+									 * every state, so an ~18px child cannot make it taller - and the line
+									 * is added to the LEFT of a group this row right-anchors with
+									 * `ml-auto`, so the mic and send controls keep the x they had: the
+									 * free space between the readings and this group is what pays.
+									 *
+									 * ONE INDETERMINATE ELEMENT ON THIS SURFACE (branding § 5's
+									 * "one such element per surface"): the ring is on the control below
+									 * and this line is words, so the acknowledgment is one live element
+									 * rather than two spinners for one wait (UX round 1, U4).
+									 */}
+									{isPreparing && (
+										<span
+											data-preparing-indicator=""
+											/*
+											 * The five-word copy is the composer's own; the SMALL VIEW's
+											 * shorter one is this row's existing yield rule rather than a
+											 * second wording - the model selector shortens to its glyph, the
+											 * usage reading drops below 480px of composer and the cwd chip
+											 * truncates at the same pressure, and a truncated "Starting
+											 * recor..." is not a sentence. `shrink-0` puts this line on the
+											 * yielding side of that bargain rather than letting it compress
+											 * into an ellipsis of its own.
+											 */
+											className="shrink-0 font-medium text-body-sm text-ink-muted"
+										>
+											{isSmallView ? "Starting" : "Starting recording"}
+										</span>
+									)}
 									{!isRecording &&
 										!isTranscribing &&
 										!(isLoading && currentJobId) && (
@@ -8029,11 +8116,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														/*
 														 * BUSY IS ITS OWN FACE (operator feedback via Aida,
 														 * 2026-10-01): while the recorder is being acquired the
-														 * control shows the acknowledgment instead of the mic glyph,
-														 * and `disabled` keeps a second press from doubling the
-														 * attempt (the handler's own guard is the second door).
-														 * The label stays "Start recording" - the control IS still
-														 * the start control, and `aria-busy` plus the strip above
+														 * control shows the acknowledgment instead of the mic glyph.
+														 * It is NOT disabled while it does (design round 1, D1) -
+														 * the handler's own guard is what refuses a second press,
+														 * and the hold contract reaches the same handler without
+														 * consulting `disabled` at all. The label stays "Start
+														 * recording" - the control IS still the start control, and
+														 * `aria-busy` plus the captioned line in this row carry the
+														 * state.
 														 * carry the state; the reader that keys on this label
 														 * (`scripts/renderer-driver.mjs`, the mini-view scene)
 														 * keeps resolving it.
@@ -8047,14 +8137,31 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 														 * old term closed the control for the whole admit-to-first-answer
 														 * window while the box itself stayed writable; the manager's own
 														 * gate (the registration below) carries the same correction.
+														 *
+														 * `isPreparing` IS NOT A TERM EITHER (design round 1, D1):
+														 * disabling the control during the acknowledgment made the one
+														 * control the user just pressed go inert on a 32px target, and it
+														 * was redundant besides - a second press inside the acquisition
+														 * is refused by the handler's own `recordingAttemptRef` guard,
+														 * which is the door the hold contract reaches the same callback
+														 * through and which `disabled` never covered anyway. `aria-busy`
+														 * is what says the control is working, so no gate is needed to
+														 * say it twice.
 														 */
 														disabled={
-															isInputDisabled ||
-															!canEnableRecordingFeature ||
-															isPreparing
+															isInputDisabled || !canEnableRecordingFeature
 														}
 													>
 														{isPreparing ? (
+															/*
+															 * ONE RING ON THIS SURFACE (design round 1, D3): this is the composer's only
+															 * indeterminate element - the caption in the row beside it is words - which is
+															 * branding § 5's "one such element per surface". The track's ROLE is fixed in
+															 * `Spinner` itself rather than patched here, and that is measured: a call-site
+															 * `border-control` flattens this ring's accent quadrant (tailwind-merge merges
+															 * the track and the quadrant as one border colour), so the ring came back
+															 * `#837c6d` on both sides - a circle with nothing visibly rotating in it.
+															 */
 															<Spinner size="sm" />
 														) : (
 															<Mic aria-hidden="true" />
