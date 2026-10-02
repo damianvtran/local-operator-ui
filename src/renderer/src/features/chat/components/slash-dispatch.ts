@@ -1698,7 +1698,34 @@ export function useSlashDispatch({
 				session_id: addressed,
 				args: "",
 				fields: [],
-				data: {},
+				/*
+				 * The destination-specific half of the request, and the same rule as
+				 * `addressed` above: the requester holds a fact the presenter would
+				 * otherwise have to guess. Today that is one entry id, for
+				 * `session.fork`'s cut - the row that asked names the message it is
+				 * on, and a `ForkPicker` re-deriving it from the pane's own view
+				 * would cut a different message whenever the two disagree.
+				 *
+				 * It rides `data` rather than a field of its own because `data` IS
+				 * the per-destination slot the action contract already carries (the
+				 * projects picker reads its own `mode` out of it), and a second
+				 * field here would be a second way to say "this action has
+				 * arguments".
+				 */
+				data: panelRequest.entryId
+					? {
+							entryId: panelRequest.entryId,
+							/*
+							 * The requester's own words for that entry, when it has any, so the
+							 * adapter can name the message back to the reader. Absent is a key
+							 * the adapter reads as "no label", never an empty string it would
+							 * have to tell apart from a real one.
+							 */
+							...(panelRequest.entryExcerpt
+								? { entryExcerpt: panelRequest.entryExcerpt }
+								: {}),
+						}
+					: {},
 			},
 			spec: draftPickerSpec(panelRequest.destination, commandsQuery.data),
 			sessionId: addressed,

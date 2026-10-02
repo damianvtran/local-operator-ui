@@ -4,11 +4,13 @@
  *
  * FOUR THINGS LIVE HERE, and they are the parts a frame cannot settle:
  *
- * 1. WHICH ACTIONS THE ROW OFFERS (`answerActionsFor`) - copy always and first,
- *    speak only when an agent id resolves, never more than those two. A frame
- *    shows one row's worth of buttons; it cannot show the row that must NOT have
- *    a Speak, or that the cap holds.
- * 2. WHAT COPY WRITES - the answer's VISIBLE text (`parseReplies`'s
+ * 1. WHICH ACTIONS THE ROW OFFERS (`answerActionsFor`) - copy always and
+ *    first, speak only when an agent id resolves, and fork only for a row the
+ *    transcript can name a cut point for.
+ * 2. WHICH ROWS ARE CUT POINTS (`forkEntryId`) - the settled user and assistant
+ *    rows carry the journal entry id a fork is cut through; a tool row's id is
+ *    `tool:<call id>` and is not one.
+ * 3. WHAT COPY WRITES - the answer's VISIBLE text (`parseReplies`'s
  *    `remainingContent`), markdown verbatim and without a reply-quote's
  *    `<reply-to>` transport markup. Asserted against the SHIPPED parser with a
  *    fixture that carries all three shapes (a reply block, a fence, a table),
@@ -20,9 +22,13 @@
  *    subject changing; this row's subject never changes while it is mounted).
  *    Mounted in JSDOM against the real component and the real clipboard call
  *    site, because "the press copies" is not a claim a source scan can carry.
- * 4. THE FAILURE PATH - a refused write leaves the label alone. `Copied` on a
+ * 4. WHAT THE FORK PRESS ASKS FOR - a presentation request naming THIS row's
+ *    conversation and THIS row's entry, against the real store the pane
+ *    consumes. "The press carries the row's id" is a fact about an argument no
+ *    frame can show.
+ * 5. THE FAILURE PATH - a refused write leaves the label alone. `Copied` on a
  *    press the browser discarded is the one outcome this row must not produce.
- * 5. THE MOUNT GATE - the row appears only where the transcript's `isQuotable`
+ * 6. THE MOUNT GATE - the row appears only where the transcript's `isQuotable`
  *    says there are words to copy. Asserted by RENDERING the real transcript
  *    with an answer still streaming and with an answer whose whole body is
  *    reply markup, because a gate read off the source is a gate a single
@@ -56,6 +62,20 @@ const h = React.createElement;
  * the component.
  */
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+/*
+ * The persisted stores (the canonical sessions store reaches this bundle through
+ * the row's speech target) resolve their storage ONCE, at module evaluation,
+ * before this file's own mount creates a jsdom window - so the storage has to
+ * exist here, ahead of the bundle import, or the store's write path throws on
+ * `undefined.setItem`.
+ */
+const persisted = new Map();
+globalThis.localStorage = {
+	getItem: (key) => persisted.get(key) ?? null,
+	setItem: (key, value) => persisted.set(key, value),
+	removeItem: (key) => persisted.delete(key),
+};
 
 const ROW_SOURCE = readFileSync(
 	"src/renderer/src/features/chat/canonical/message-actions-row.tsx",
@@ -92,11 +112,13 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
-			export { answerActionsFor, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
+			export { answerActionsFor, forkEntryId, forkExcerpt, FORK_EXCERPT_MAX_CHARS, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
 			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
 			export { useSpeechStore } from "@shared/store/speech-store";
+			export { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
+			export { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -178,34 +200,138 @@ await unlink(bundlePath);
 /* ------------------------------------------------------------ the rules */
 
 test("copy is always offered, and it is first", () => {
-	assert.deepEqual(mod.answerActionsFor({ agentId: undefined }), ["copy"]);
-	assert.deepEqual(mod.answerActionsFor({ agentId: "c1" }), ["copy", "speak"]);
+	assert.deepEqual(mod.answerActionsFor(), ["copy", "speak"]);
+	assert.deepEqual(mod.answerActionsFor({ role: "answer" }), ["copy", "speak"]);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "user" }),
+		["copy"],
+		"the reader's own turn offers Copy alone",
+	);
 });
 
-test("the row is capped at two actions, and Quote is not one of them", async () => {
-	for (const agentId of [undefined, "c1"]) {
+test("fork is offered LAST, and only for a row with a cut point", () => {
+	assert.deepEqual(
+		mod.answerActionsFor({}),
+		["copy", "speak"],
+		"nothing is appended for a row with no cut point",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ forkable: true }),
+		["copy", "speak", "fork"],
+		"fork joins the row last when the record is a cut point",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "user" }),
+		["copy"],
+		"the user arm is Copy alone until the row is a cut point - never Speak",
+	);
+	assert.deepEqual(
+		mod.answerActionsFor({ role: "user", forkable: true }),
+		["copy", "fork"],
+		"the user arm takes fork too, and still never takes speak",
+	);
+});
+
+test("the row is capped at two actions, and Quote is not one of them", () => {
+	for (const role of ["answer", undefined]) {
 		assert.ok(
-			mod.answerActionsFor({ agentId }).length <= 2,
+			mod.answerActionsFor({ role }).length <= 2,
 			"the model caps the row at two",
 		);
 	}
+});
+
+test("which records carry a fork cut point, and which do not", () => {
+	const user = { kind: "user", id: "4a1b", ts: 1, text: "hi", images: [] };
+	const answer = {
+		kind: "assistant",
+		id: "9c2d",
+		ts: 1,
+		text: "there",
+		streaming: false,
+	};
+	assert.equal(mod.forkEntryId(user), "4a1b", "a user row's id is the entry");
+	assert.equal(mod.forkEntryId(answer), "9c2d", "and so is a settled answer's");
+	/*
+	 * THE THREE REFUSALS, each for its own reason: a tool row's id is
+	 * `tool:<call id>` (the core answers `has_entry` no for it), a streaming
+	 * answer's id is the LIVE row's - the commit is what puts it in the journal -
+	 * and the machine-voice kinds are not conversation rows at all.
+	 */
+	assert.equal(
+		mod.forkEntryId({ kind: "tool", id: "tool:abc", ts: 1 }),
+		null,
+		"a tool row is not a cut point, whatever its id looks like",
+	);
+	for (const kind of ["notice", "peer", "wake", "custom", "compaction"]) {
+		assert.equal(
+			mod.forkEntryId({ kind, id: "e1", ts: 1 }),
+			null,
+			`a ${kind} row is not a cut point`,
+		);
+	}
+	assert.equal(
+		mod.forkEntryId({ ...answer, streaming: true }),
+		null,
+		"a row still receiving deltas names no committed entry",
+	);
+});
+
+test("the row shows exactly the actions the model publishes, and Quote is not one of them", async () => {
 	/*
 	 * Read off the RENDER, because the model's own answer cannot fail this: the
-	 * list is typed `("copy" | "speak")[]`, so asserting "no quote" against it
-	 * asserts the compiler. What the cap protects is the line's width and the
-	 * slot #694 will want, and both are facts about which buttons are on the
-	 * DOM - a third action added to the row shows up here and nowhere else.
+	 * list is typed, so asserting "no quote" against it asserts the compiler.
+	 * What the model decides is which buttons are on the DOM, and that is the
+	 * fact a third action would show up in and nowhere else.
+	 *
+	 * TWO SHAPES, because the fork arm is conditional: a row mounted with no cut
+	 * point (the child reader, a story, every test above) offers the two controls
+	 * it always did, and one mounted with both halves offers Fork last.
+	 *
+	 * WHICH IS WHERE THE OLD CAP NOW LIVES. This case replaces one named "the row
+	 * is capped at two actions, and Quote is not one of them", and it keeps that
+	 * case's grounds rather than dropping them with its name: the cap was a
+	 * statement about the line's width and about the slot #694 was reserving. The
+	 * arm without a cut point still pins exactly two, so that half of the old
+	 * case is unchanged; the cut-point arm is three, and the reason three is the
+	 * number the repository states - #694's overflow home having shipped as the
+	 * sidebar row context menu, and the only numbered cap being that menu's "two
+	 * at most, pushing it three" - is written out on `message-actions.ts`'s
+	 * `FORK` comment, which is what a reader of the ruling should open.
 	 */
-	const { dom, unmount } = await mount();
-	const labels = [
-		...dom.window.document.querySelectorAll("[data-lo-answer-actions] button"),
-	].map((node) => node.getAttribute("aria-label"));
+	const plain = await mount();
 	assert.deepEqual(
-		labels,
+		[
+			...plain.dom.window.document.querySelectorAll(
+				"[data-lo-answer-actions] button",
+			),
+		].map((node) => node.getAttribute("aria-label")),
 		["Copy", "Speak aloud"],
-		"exactly two controls, in that order, with no Quote among them",
+		"exactly two controls on a row with no cut point, with no Quote among them",
 	);
-	await unmount();
+	assert.equal(
+		plain.dom.window.document.querySelector(
+			'[data-lo-answer-actions] button[aria-label="Fork from this message"]',
+		),
+		null,
+		"and no Fork, withdrawn rather than disabled",
+	);
+	await plain.unmount();
+
+	const row = await mount({
+		conversationId: "c1",
+		entryId: "entry-a1",
+	});
+	assert.deepEqual(
+		[
+			...row.dom.window.document.querySelectorAll(
+				"[data-lo-answer-actions] button",
+			),
+		].map((node) => node.getAttribute("aria-label")),
+		["Copy", "Speak aloud", "Fork from this message"],
+		"Fork joins the row LAST when the record is a cut point",
+	);
+	await row.unmount();
 });
 
 /* ------------------------------------------------- what Copy writes */
@@ -264,6 +390,8 @@ test("an answer with no reply block copies its own text, trimmed", () => {
 const mount = async ({
 	speechConfigured = false,
 	refuseWrite = false,
+	conversationId,
+	entryId,
 } = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		url: "http://localhost/",
@@ -322,6 +450,8 @@ const mount = async ({
 				bodyText: "Four were late, and the oldest is 41 days behind.",
 				agentId: "c1",
 				speechId: "a1",
+				conversationId,
+				entryId,
 			}),
 		);
 	});
@@ -404,6 +534,84 @@ test("a refused write does not claim success", async () => {
 	assert.ok(button("Copy"), "the label is unchanged");
 	assert.equal(button("Copied"), null, "a failed press must not claim success");
 	await unmount();
+});
+
+/* ---------------------------------------------------- the fork press */
+
+test("the fork press asks the pane for session.fork with THIS row's entry", async () => {
+	const { dom, button, unmount } = await mount({
+		conversationId: "c9",
+		entryId: "entry-a1",
+	});
+	const store = mod.usePanelPresentationStore;
+	/* A request left by an earlier test in this file would be the same trap. */
+	store.setState({ request: null });
+	const fork = button("Fork from this message");
+	await act(async () => {
+		fork.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
+	});
+	const request = store.getState().request;
+	assert.ok(request, "the press wrote a request");
+	assert.equal(request.destination, "session.fork");
+	assert.equal(
+		request.sessionId,
+		"c9",
+		"the request names the row's conversation, so the pane cannot substitute its own",
+	);
+	assert.equal(
+		request.entryId,
+		"entry-a1",
+		"and the row's own transcript entry - which is what makes the picker a cut",
+	);
+	/*
+	 * THE LABEL THE PICKER REPEATS BACK (UX round 1, U1): the row is
+	 * hover-revealed and the panel covers it, so the excerpt is the only thing
+	 * that can tell the reader which message the cut is at.
+	 */
+	assert.equal(
+		request.entryExcerpt,
+		"Four were late, and the oldest is 41 days behind.",
+		"and how to name that entry back to the reader",
+	);
+	/*
+	 * THE INVOKER IS THE BUTTON, and this is the assertion that discriminates
+	 * (UX round 1, U2): the pane restores focus with `origin.focus()`, which a
+	 * `role="toolbar"` div without a tabindex silently ignores. Asserting the
+	 * tag alone would not settle it - the real claim is that focusing what the
+	 * row hands over MOVES focus, so it is exercised.
+	 */
+	assert.equal(
+		request.invoker?.tagName,
+		"BUTTON",
+		"the pressed control travels as the invoker, not the row's toolbar box",
+	);
+	assert.equal(
+		request.invoker?.getAttribute("aria-label"),
+		"Fork from this message",
+		"and it is THIS control, so Escape returns to what was pressed",
+	);
+	request.invoker.focus();
+	assert.equal(
+		dom.window.document.activeElement,
+		request.invoker,
+		"the invoker is genuinely focusable - the pane's restore is not a no-op",
+	);
+	await unmount();
+	store.setState({ request: null });
+});
+
+test("the excerpt the picker repeats is the row's own words, clamped", () => {
+	assert.equal(mod.forkExcerpt("  a\n b   c "), "a b c");
+	const long = mod.forkExcerpt("word ".repeat(60));
+	assert.ok(
+		long.length <= mod.FORK_EXCERPT_MAX_CHARS,
+		"a long message is clamped to the declared budget, ellipsis included",
+	);
+	assert.ok(long.endsWith("\u2026"), "and says so with an ellipsis");
+	assert.ok(
+		!long.includes("  "),
+		"the clamp never leaves the collapsed-whitespace guarantee behind",
+	);
 });
 
 test("Speak is offered when there is an agent to speak with, and disabled when speech is not configured", async () => {
@@ -506,7 +714,7 @@ const gateAnswer = (id, text, extra = {}) => ({
 	...extra,
 });
 
-const transcriptMarkup = (records) =>
+const transcriptMarkup = (records, conversationId = "story-conversation") =>
 	renderToStaticMarkup(
 		h(
 			QueryClientProvider,
@@ -533,10 +741,27 @@ const transcriptMarkup = (records) =>
 				failure: null,
 				awaitingHydration: false,
 				onReconnect: () => {},
-				conversationId: "story-conversation",
+				/* `null` is the run-details child reader's own mount: no conversation. */
+				conversationId: conversationId ?? undefined,
 			}),
 		),
 	);
+
+/**
+ * The aria-labels of one row's buttons, read out of static markup.
+ *
+ * Static markup is enough for this and is the cheap half of the same claim
+ * `scripts/speech-user-copy.test.mjs` makes with a live jsdom mount: the row's
+ * controls and their order are decided by `answerActionsFor` at render, so the
+ * labels are in the HTML - and this file runs on a host where that one cannot.
+ */
+const rowLabelsOf = (html, attr) => {
+	const row = html.match(new RegExp(`<div[^>]*${attr}[^>]*>[\\s\\S]*?</div>`));
+	if (!row) return null;
+	return [...row[0].matchAll(/<button[^>]*aria-label="([^"]*)"/g)].map(
+		(m) => m[1],
+	);
+};
 
 /** How many action rows the markup carries. */
 const actionRowsIn = (html) =>
@@ -631,6 +856,52 @@ test("the closing line keeps the caption at its left and the actions at its righ
 	assert.ok(
 		stampAt > actionsAt,
 		"and the stamp closes the line, rightmost, exactly as it did before the rearrangement",
+	);
+});
+
+/*
+ * THE COMPOSITION, at the level that caught nothing before: which controls the
+ * real transcript puts on each row. This is the assertion `scripts/speech-user-
+ * copy.test.mjs` makes with a live jsdom mount (agent review round 1, B1 - it
+ * went stale because only its file, and not this one, carried the two-row
+ * shape), restated here in static markup so the claim is covered by a file that
+ * runs on a loaded host as well.
+ *
+ * BOTH ARMS OF `forkable` at the mount site, because the gate is the mount's
+ * answer (the record's own id) and not the row's: with a conversation and two
+ * journalled records each row gains Fork last, and with no conversation the
+ * transcript hands the row nothing to cut at and Fork is withdrawn.
+ */
+test("each row offers the controls its record can carry, Fork last", () => {
+	const html = transcriptMarkup([
+		gateUser("u1", "Is the March import finished?"),
+		gateAnswer("a1", "It finished with the same four invoices outstanding."),
+	]);
+	assert.deepEqual(
+		rowLabelsOf(html, "data-lo-user-actions"),
+		["Copy", "Fork from this message"],
+		"the reader's own message: Copy first, Fork last, and never Speak",
+	);
+	assert.deepEqual(
+		rowLabelsOf(html, "data-lo-answer-actions"),
+		["Copy", "Speak aloud", "Fork from this message"],
+		"the answer: Copy, Speak, then the appended Fork",
+	);
+	/*
+	 * And with no conversation there is no cut point to name, so the action is
+	 * withdrawn rather than disabled - the same row, one control fewer.
+	 */
+	const bare = transcriptMarkup(
+		[
+			gateUser("u1", "Is the March import finished?"),
+			gateAnswer("a1", "It finished with the same four invoices outstanding."),
+		],
+		null,
+	);
+	assert.deepEqual(
+		rowLabelsOf(bare, "data-lo-user-actions"),
+		["Copy"],
+		"a transcript with no conversation offers no Fork",
 	);
 });
 
@@ -732,7 +1003,7 @@ test("unmounting the row clears the feedback timer the press armed", async () =>
 
 /* ------------------------------------------------------------ the speech arm */
 
-test("a configured service arms Speak, and the press reaches it", async () => {
+test("a configured service arms Speak, and the press carries the conversation's BINDING", async () => {
 	/*
 	 * The store's own `playSpeech` is replaced BEFORE the mount, not after:
 	 * the row captures the function it renders with, so a wrapper installed
@@ -747,9 +1018,26 @@ test("a configured service arms Speak, and the press reaches it", async () => {
 		},
 	});
 	try {
+		/*
+		 * ARM 1, AND THE ONE THE OPERATOR MET: the conversation is mounted with the
+		 * pane identity (`c1`) and the catalogue row carries NO agent binding - the
+		 * ordinary shape of a conversation the reader opened himself. The press must
+		 * still reach the store (the control is not disabled for want of a binding),
+		 * and its target must be `null` - no binding, which is the agent-less route -
+		 * NOT `c1`, which is a session id the daemon's registry cannot hold.
+		 *
+		 * The binding is written AFTER the mount, not before: the sessions store
+		 * persists through `localStorage`, which the jsdom window this rig builds
+		 * supplies (a `setState` ahead of it throws on the store's own write path).
+		 */
 		const { dom, button, unmount } = await mount({ speechConfigured: true });
+		await act(async () => {
+			mod.useCanonicalSessionsStore.setState({
+				sessions: [{ session_id: "c1", binding: { agent: null, team: null } }],
+			});
+		});
 		const speak = button("Speak aloud");
-		assert.ok(speak, "Speak is present when an agent id resolves");
+		assert.ok(speak, "Speak is present on an answer row");
 		assert.equal(
 			speak.disabled,
 			false,
@@ -760,8 +1048,8 @@ test("a configured service arms Speak, and the press reaches it", async () => {
 		 * `loadingKey`: `playSpeech` sets that field and then clears it when
 		 * the fetch it starts fails, and this rig has no Speech service - so reading
 		 * it after the `act` window would read the cleared value rather than the
-		 * call. What is asserted is the call itself: this answer's id, the
-		 * conversation, and the text the reader can see.
+		 * call. What is asserted is the call itself: this answer's id, the resolved
+		 * target, and the text the reader can see.
 		 */
 		await act(async () => {
 			speak.dispatchEvent(
@@ -770,10 +1058,50 @@ test("a configured service arms Speak, and the press reaches it", async () => {
 		});
 		assert.deepEqual(
 			calls,
-			[["a1", "c1", "Four were late, and the oldest is 41 days behind."]],
-			"the press reached the speech store keyed by THIS answer, with the visible text",
+			[["a1", null, "Four were late, and the oldest is 41 days behind."]],
+			"a conversation with no binding presses through the agent-less route, keyed by THIS answer",
 		);
 		await unmount();
+
+		/*
+		 * ARM 2: the same row, with the catalogue naming a role agent. The press
+		 * carries THAT BINDING - the daemon's attachment key, which is a display NAME
+		 * - and the store's own `fetchSpeechFor` resolves it to the registry id the
+		 * speech route takes (`speech-target.test.mjs` drives that resolution end to
+		 * end, against a catalogue stub with the daemon's own query semantics).
+		 */
+		calls.length = 0;
+		const second = await mount({ speechConfigured: true });
+		/*
+		 * INSIDE `act`, so the row RE-RENDERS with the binding before the press: the
+		 * press closure reads the target the row last rendered with, and a store
+		 * written outside a flush would be pressed against the previous value.
+		 */
+		await act(async () => {
+			mod.useCanonicalSessionsStore.setState({
+				sessions: [
+					{ session_id: "c1", binding: { agent: "agent-9", team: null } },
+				],
+			});
+		});
+		assert.equal(
+			mod.useCanonicalSessionsStore.getState().sessions[0]?.binding?.agent,
+			"agent-9",
+			"the catalogue holds the binding the press is about to resolve",
+		);
+		const armed = second.button("Speak aloud");
+		assert.ok(armed, "Speak is present on the bound conversation's row too");
+		await act(async () => {
+			armed.dispatchEvent(
+				new second.dom.window.MouseEvent("click", { bubbles: true }),
+			);
+		});
+		assert.deepEqual(
+			calls,
+			[["a1", "agent-9", "Four were late, and the oldest is 41 days behind."]],
+			"a bound conversation presses its role agent, not the pane identity",
+		);
+		await second.unmount();
 	} finally {
 		mod.useSpeechStore.setState({ playSpeech });
 	}

@@ -1919,12 +1919,99 @@ export const SkillsPicker: FC<PickerContext> = ({ sessionId, onClose }) => {
 
 // -------------------------------------------------------------------- fork
 
+/**
+ * The entry id a `session.fork` request was raised with, or `null`.
+ *
+ * Read defensively rather than cast. `action.data` is the action contract's open
+ * payload (the projects picker reads its own `mode` out of the same slot), so
+ * anything could be in it - and a non-string or blank value has to mean "no cut
+ * point", the whole-conversation form this picker has always shipped, rather
+ * than a body the route refuses with a 422 the reader cannot act on.
+ */
+function readForkEntryId(data: Record<string, unknown>): string | null {
+	const value = data.entryId;
+	return typeof value === "string" && value.trim() ? value : null;
+}
+
+/**
+ * The requester's own label for that entry, when it sent one.
+ *
+ * Same defensive read, same rule: absent or blank means "no label", and the
+ * picker's copy falls back to naming the cut point without it rather than
+ * printing an empty quotation.
+ */
+function readForkEntryExcerpt(data: Record<string, unknown>): string | null {
+	const value = data.entryExcerpt;
+	return typeof value === "string" && value.trim() ? value : null;
+}
+
+/**
+ * What the cut arm adds to a refused fork, WITHOUT speaking for the cause.
+ *
+ * WHY IT IS APPENDED AND NOT SUBSTITUTED (agent review round 2, MAJOR-1). The
+ * first shape of this copy replaced the failure text whenever a cut was in play,
+ * and that was wrong twice over:
+ *
+ *   - `perform` returns null for EVERY throw, so the replacement covered a
+ *     transport failure, a timeout and the schema refusal this file documents
+ *     (“Invalid desktop operation.”) as well as the route's refusals. A sentence
+ *     about the message is a lie for a backend that never answered.
+ *   - the route classifies a cut refusal in PROSE, not one sentence: compaction
+ *     in flight (“retry /fork when compaction finishes”), an unknown or foreign
+ *     id (“that message is not part of this conversation”), a point before the
+ *     newest summary's anchor (“fork from a message after the summary”) and a
+ *     boundary inside an unfinished tool batch (“retry after the original
+ *     finishes that batch”). Three of the four already name the reader's own
+ *     fix, so dropping them lost information.
+ *
+ * What is left for this side to say is the one thing the core cannot know and
+ * the reader can: for a row that is still an uncommitted echo (an in-flight
+ * send, or an undelivered one that stays on screen) the refusal reads as “that
+ * message is not part of this conversation” about a message that plainly is.
+ * The note names that window without asserting it - “may”, conditional on the
+ * reader having just sent it - and it advises NOTHING, because every action it
+ * could name can itself be refused: while a compaction pass is in flight the
+ * route refuses *every* cut, including the whole-conversation one, so the
+ * earlier “or fork the whole conversation instead” was advice that could not
+ * work. The core's own sentence carries the fix; this note explains the one
+ * gap. The typed-code mapping that would replace this note lands with the core
+ * slice (in flight in `damianvtran/local-operator`) and is declared on the PR.
+ */
+export const FORK_CUT_NOTE =
+	"If that message was sent just now, it may not be in the conversation's history yet.";
+
+/**
+ * Fork the conversation - all of it, or the prefix that ends at one message.
+ *
+ * TWO FORMS, ONE PICKER, and they are not two pickers because the form is the
+ * same form: a typed `/fork` names no entry (the next safe boundary), and a
+ * Fork raised from a message row names one (`at_entry` + the entry id, handed
+ * to this adapter on `action.data`). Two components would be two places the
+ * message field, the budget refusal and the rebind-on-success have to agree.
+ *
+ * THE CUT ARM NAMES THE MESSAGE IT WORKS ON (UX round 1, U1). It can, because
+ * the request carries the row's own words (`entryExcerpt`), and it must: the
+ * control lives on a hover-revealed row and this panel covers the transcript, so
+ * "the message you chose" is otherwise a phrase with no referent on screen at the
+ * one moment the reader could still check it. Both success sentences also name
+ * NO SESSION ID (U5) - the flow takes the reader to the child (`rebind`), and a
+ * raw token was the only thing the old copy said about where it went.
+ */
 export const ForkPicker: FC<PickerContext> = ({
 	sessionId,
 	onClose,
 	rebind,
 	action,
 }) => {
+	/*
+	 * The cut point this picker was opened FOR, or null for the whole-conversation
+	 * form. It is read off the REQUEST rather than re-derived here: the row that
+	 * raised the request is the only layer that knows which message the reader
+	 * pointed at, and it travels with the request (the same rule the conversation
+	 * itself follows - see `PanelRequest.entryId`).
+	 */
+	const cutEntryId = readForkEntryId(action.data);
+	const cutExcerpt = readForkEntryExcerpt(action.data);
 	const [message, setMessage] = useState(action.args ?? "");
 	const op = useOperation();
 	const submit = useCallback(async () => {
@@ -1947,6 +2034,14 @@ export const ForkPicker: FC<PickerContext> = ({
 						session_id: string;
 						parent_id: string;
 						boundary: string;
+						/*
+						 * WHERE THE COPY ACTUALLY STOPPED, present only on a cut. Equal to the
+						 * id this picker sent unless the safe cut landed at-or-before an
+						 * unfinished tool batch - the one case the child's first request cannot
+						 * start at the row the reader pointed at, which this picker says out
+						 * loud rather than letting the copy land somewhere unnoticed.
+						 */
+						cut_entry_id?: string;
 						admission?: { detail: string; duplicate: boolean };
 					};
 				}>({
@@ -1954,26 +2049,65 @@ export const ForkPicker: FC<PickerContext> = ({
 					sessionId,
 					requestId: uuidv4(),
 					message: message.trim() || undefined,
-					boundary: "next_safe",
+					/*
+					 * The pair the route validates together: `at_entry` WITHOUT an entry id is
+					 * refused, and an entry id WITH `next_safe` is refused. This branch is the
+					 * only place the UI can get it wrong, so it writes both or neither - and
+					 * the neither case is the exact call that shipped before cuts existed.
+					 */
+					...(cutEntryId
+						? { boundary: "at_entry" as const, entryId: cutEntryId }
+						: { boundary: "next_safe" as const }),
 				}),
+			/*
+			 * THE SUCCESS SENTENCE NAMES NO SESSION ID (UX round 1, U5). The child's id
+			 * was the only thing the old sentence said about where the new conversation
+			 * is, and an opaque token answers nothing for a reader - the flow already
+			 * takes them there (`rebind` is `openConversation`), which is why the
+			 * receipt states the outcome instead of an address.
+			 */
 			(result) => ({
 				tone: "success",
-				text: `Forked at the next safe boundary into ${result.data.session_id}. The original conversation is unchanged.${
+				text: `${
+					cutEntryId
+						? "Forked from this message. Everything after it stays in the original, which is unchanged."
+						: "Forked at the next safe boundary into a new conversation. The original conversation is unchanged."
+				}${
+					cutEntryId &&
+					result.data.cut_entry_id &&
+					result.data.cut_entry_id !== cutEntryId
+						? "\nThe fork starts before the message you chose: a cut cannot separate a tool call from its results."
+						: ""
+				}${
 					result.data.admission
 						? `\nYour message was admitted once: ${result.data.admission.detail}.`
 						: ""
 				}`,
 			}),
 			"The fork was not created",
+			/*
+			 * Appended to the owner's own detail rather than replacing it; see
+			 * `FORK_CUT_NOTE` for the two reasons and for what the note deliberately
+			 * does NOT say.
+			 */
+			cutEntryId ? FORK_CUT_NOTE : undefined,
 		);
 		if (value) rebind(value.data.session_id);
-	}, [op, sessionId, message, rebind]);
+	}, [op, sessionId, message, rebind, cutEntryId]);
 	return (
 		<PickerHost
 			open
 			onClose={onClose}
-			title="Fork this conversation"
-			description="Copies the complete history into a new conversation at the next safe boundary (after the current assistant step and its tool results). The original keeps running and is not modified."
+			title={cutEntryId ? "Fork from this message" : "Fork this conversation"}
+			description={
+				cutEntryId
+					? `Copies this conversation up to and including ${
+							cutExcerpt
+								? `this message: "${cutExcerpt}"`
+								: "the message you chose"
+						}. Everything after it is left behind, and the original keeps running and is not modified.`
+					: "Copies the complete history into a new conversation at the next safe boundary (after the current assistant step and its tool results). The original keeps running and is not modified."
+			}
 			form={
 				<PickerField
 					label="First message in the fork (optional)"

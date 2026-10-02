@@ -85,6 +85,7 @@ import { ProjectFormDialog } from "./project-form-dialog";
 import { ProjectLinks } from "./project-links";
 import { ProjectMilestones } from "./project-milestones";
 import { ProjectProperties } from "./project-properties";
+import { ProjectRequestUpdateButton } from "./project-request-update-button";
 import {
 	ProjectStartSessionDialog,
 	type StartSessionSelection,
@@ -348,6 +349,14 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 						)}
 					</div>
 					<div className="flex items-center gap-2">
+						{/*
+						 * LEADS the cluster: the action is outward-facing and
+						 * non-destructive, so Delete stays rightmost and Edit/Delete keep
+						 * their own tags and positions (design note §2). Absent capability
+						 * means this renders nothing at all - the component owns that
+						 * gate.
+						 */}
+						<ProjectRequestUpdateButton project={project} />
 						<Button
 							variant="secondary"
 							onClick={() => setEditing(true)}

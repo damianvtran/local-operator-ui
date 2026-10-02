@@ -510,8 +510,11 @@ test("the pane presents the conversation a request names, before its own (#739)"
 		"a request from outside the pane no longer returns focus to its door (and the palette's must still return none)",
 	);
 	/*
-	 * The store carries the field and the third parameter, and only a non-empty
-	 * id becomes a key.
+	 * The store carries the field and the parameters, and only a non-empty id
+	 * becomes a key. The cut point rides along by the same rule (#1002):
+	 * `entryId` names the transcript entry a destination acts on, and the same
+	 * `«spread only when set»` treatment is what keeps a request that names none
+	 * byte-identical to the one the palette has always sent.
 	 */
 	const store = code(STORE);
 	assert.match(
@@ -521,9 +524,18 @@ test("the pane presents the conversation a request names, before its own (#739)"
 	);
 	assert.match(
 		store,
-		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,?\s*\) => void;/,
-		"requestPanel lost its third parameter",
+		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,\s*entry\?: \{ id: string; excerpt\?: string \},?\s*\) => void;/,
+		"requestPanel lost a parameter - the cut point travels as the fourth, as one object",
 	);
+	/*
+	 * THIS IS A SIGNATURE PIN, and deliberately no more (agent review round 1,
+	 * N3): a source regex cannot fail for a store that keeps the field and drops
+	 * the value, so the BEHAVIOUR - the key present when named, absent when not,
+	 * and the label following its target - is asserted against the real store in
+	 * `scripts/palette-panel-request.test.mjs`. What this guard adds is the one
+	 * thing that file cannot see: that the widening sits in the parameter list a
+	 * caller writes against.
+	 */
 	/*
 	 * And the palette is untouched: it never names a conversation, so its request
 	 * resolves to the pane's own exactly as before.
