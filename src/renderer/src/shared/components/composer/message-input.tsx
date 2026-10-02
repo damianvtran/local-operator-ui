@@ -5792,6 +5792,36 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		);
 
 		/**
+		 * AN UNMOUNT SETTLES THE PRESS THIS COMPONENT OWNS (round 2 follow-up, M3).
+		 * Both the attempt and the recorder live in refs that belong to THIS
+		 * component, and no other code path nulls them - so without this cleanup an
+		 * unmount inside the acquisition window leaves the ref still pointing at the
+		 * attempt, the arriving stream passes the resolve arm's identity check, and a
+		 * recorder is created and started (with its state setters called) for a tree
+		 * that no longer exists: a live microphone nothing on screen can end. An
+		 * unmount mid-take leaves the running recorder behind the same way. The
+		 * abandon has to happen BEFORE the ref is cleared: nulling it is exactly what
+		 * makes the resolve arm discard the in-flight stream by identity and stop its
+		 * tracks, which is the only teardown available while the take has no recorder
+		 * yet. The recorder half reuses `settleRecordingAttempt`'s abort arm (tracks
+		 * stopped, blob dropped, no transcription request), so a discarded take dies
+		 * here the same way it dies at Escape. It is an unmount-only effect, and the
+		 * attempt is null at mount, so React's StrictMode double-invoke is a no-op.
+		 */
+		useEffect(() => {
+			return () => {
+				const ownsAttempt = recordingAttemptRef.current !== null;
+				const ownsRecorder = mediaRecorderRef.current !== null;
+				recordingAttemptRef.current = null;
+				if (ownsRecorder) {
+					settleRecordingAttempt("abort");
+					return;
+				}
+				if (ownsAttempt) setIsPreparing(false);
+			};
+		}, [settleRecordingAttempt]);
+
+		/**
 		 * The hold contract's stop. The REASON is load-bearing: a release keeps the
 		 * take, an abort discards it - and BOTH must end a take whose recorder is
 		 * not up yet (the attempt above), which is the release-before-start case the
@@ -5818,10 +5848,13 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					 * hold released inside the acquisition left the spinner and the caption up for
 					 * the whole remaining wait: the very silence this change exists to remove, on
 					 * the push-to-talk door. The attempt is NOT settled here, deliberately: its
-					 * stream is still in flight and the resolve arm is what discards it (a null ref
-					 * there would leave a live recorder nothing can stop). Ending the face is all
-					 * this arm owes - the press is over, and the take it was waiting for is already
-					 * marked discarded.
+					 * stream is still in flight and no recorder exists to stop yet, so a settle has
+					 * nothing to end - the ref nulled above is what makes the resolve arm's identity
+					 * check discard that stream and stop its tracks on the way out (round 2
+					 * follow-up, M2: this parenthetical used to claim a null ref would orphan a live
+					 * recorder, which is the opposite of what the identity check does). Ending the
+					 * face is all this arm owes - the press is over, and the take it was waiting for
+					 * is already marked discarded.
 					 */
 					setIsPreparing(false);
 					return;
