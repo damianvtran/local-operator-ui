@@ -3265,6 +3265,15 @@ const BRANCH_RECORDS = [
 	 * and the diff that supports that reading.
 	 */
 	"foldOnto9b4822de10Note",
+	/*
+	 * And by the same lane's later fold, this branch's NEWEST top-level record: the
+	 * fold onto `9d9cd4be63f` (the relaunch-during-quit lane) that re-lays the same
+	 * one capture set and re-derives both stamps in its second, docs-only commit.
+	 * It is listed for the reason the list exists: a fold that resolved from main's
+	 * copy would drop it, and with it the only statement of what the relaunch lane
+	 * moved against this set's surfaces.
+	 */
+	"foldOnto9d9cd4be63fNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
