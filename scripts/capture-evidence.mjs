@@ -3470,6 +3470,18 @@ export const STORIES = [
 	 * assertions in `pnpm check-themes` and in no frame at all.
 	 */
 	["chat-sidebar-current-row--bound-row-current", 780, 560],
+	/*
+	 * THE TEAM MARK ON A SELECTED ROW (design round 1, D5), and it is the one frame
+	 * of this component's own contract nobody had looked at: the mark's plate is
+	 * `sunken`, the selected row paints `rowSelected`, and in `localOperatorLight`
+	 * those two are 1.005:1 apart - the mark is carried by its 1px edge alone. The
+	 * `bound-row-current` entry above cannot reach it, because that row binds an
+	 * AGENT and an agent binding stays text; this story binds a TEAM, which is what
+	 * puts a mark in the trailing slot. Shoot it in the light palette as well as the
+	 * sweep's own (`--themes=localOperatorLight,localOperatorDark`) - the pairing is
+	 * tightest there.
+	 */
+	["chat-sidebar-current-row--team-bound-row-current", 780, 560],
 	["chat-sidebar-current-row--nested-row-current", 780, 560],
 	/*
 	 * The SAME story with a real pointer on the neighbour row ABOVE the current
@@ -5119,8 +5131,126 @@ export const STORIES = [
 	["chat-sidebar-sections--resting-default", 741, 760],
 	/* The panel at its own width clamp, where the rows wrap hardest. */
 	["chat-sidebar-sections--narrow-240", 621, 760],
-	/* A query that finds one agent and one conversation, both regions drawn. */
-	["chat-sidebar-sections--query-while-collapsed", 741, 460],
+	/*
+	 * A query that finds one team and one conversation, both regions drawn, and the
+	 * mark on the row the query MATCHED.
+	 *
+	 * THE QUERY IS DRIVEN FROM HERE, not from the story's play, and that is a
+	 * measured decision rather than a preference: the play cannot reach the filtered
+	 * state under the capture harness. Two mechanisms were tried against this rig -
+	 * `@storybook/test`'s `userEvent` (press the control, then type into the field)
+	 * and a direct native-setter plus `input` dispatch on the same field - and BOTH
+	 * left the panel unfiltered at the shutter while the play was still asserting:
+	 * both frames came back at 18642 bytes, `Rows drawn: 10 entity - 8 chats`, with
+	 * no field drawn. `press` + `insertText` is the path this rig has always used for
+	 * typed states (the rename and token frames), it goes through the real input
+	 * pipeline, and it is what produced this state's first shipped frame.
+	 *
+	 * `expectPresent` IS THE D4 ASSERTION, at the shutter: the row the query matched
+	 * draws a team mark. A filtered frame whose matched row carries no mark fails the
+	 * run rather than being filed.
+	 */
+	[
+		"chat-sidebar-sections--query-while-collapsed",
+		741,
+		460,
+		{
+			press: "[data-sidebar-search]",
+			/*
+			 * The field mounts on the frame after the press and focuses itself in a
+			 * `requestAnimationFrame`, so `insertText` - which types into whatever holds
+			 * the caret - lands in the body if it runs immediately: measured, the frame
+			 * came back with the field OPEN and EMPTY beside an unfiltered list.
+			 */
+			pressSettleMs: 400,
+			insertText: "helpdesk",
+			insertTextSettleMs: 900,
+			expectPresent: "[data-chat-row] [data-team-bubble]",
+		},
+	],
+	/*
+	 * THE TRUE MINIMUM (operator ask, 2026-10-01). `SIDEBAR_MIN_WIDTH` is 220
+	 * (`chat-sidebar-layout.ts`), so `narrow-240` above is a width the panel can be
+	 * dragged TO, not the floor it is clamped at. The team-mark change is a claim
+	 * about the width a row has LEFT for its title, so the frame that has to exist
+	 * is the one where the row has least - 220 - beside the 240 the older change
+	 * was priced at. Width is the panel plus the 380px readout, as the three above
+	 * are.
+	 */
+	["chat-sidebar-sections--narrow-min-220", 601, 760],
+	/*
+	 * THE TEAM MARK'S TWO CHANNELS (operator ask, 2026-10-01): the pointer and the
+	 * keyboard, both on the resting panel, both hovering/focusing the FIRST bubble
+	 * in the drawer - the pinned row's, which the fixture binds to `data-quality`.
+	 *
+	 * BOTH FRAMES ASSERT BOTH HALVES OF THE ONE-SURFACE RULE. `expectPresent` on
+	 * `[data-side="top"]` is the mark's own tooltip (our `Tooltip` defaults to
+	 * `top`); `expectGone` on `[data-side="right"]` is the row's flyout, whose
+	 * `side="right"` the row sets. The row's flyout trigger is the row's own box
+	 * and the mark sits inside it, so without the row's stand-down a single hover
+	 * opens BOTH panels - the doubling D7 deleted the native `title` for. A run that
+	 * loses either half fails rather than filing a frame whose caption is wrong.
+	 *
+	 * `hoverSettleMs` is 1200, three times the 400ms open delay, because this frame
+	 * has to outlive the delay AND any settle the suppression causes: a shorter
+	 * wait would photograph a state before the surface that must NOT be there has
+	 * had its chance to appear.
+	 */
+	[
+		"chat-sidebar-sections--resting-default",
+		741,
+		760,
+		{
+			hover: "[data-team-bubble]",
+			dir: "sidebar-team-mark-hover",
+			hoverSettleMs: 1200,
+			expectPresent: '[role="tooltip"][data-side="top"]',
+			expectGone: '[role="tooltip"][data-side="right"]',
+		},
+	],
+	/*
+	 * THE KEYBOARD HALF, AND WHY IT IS TAKEN OVER THE QUERY STATE rather than the
+	 * resting panel: the rig's Tab walk is bounded at 24 presses (it has to fail
+	 * loudly on a selector that matches nothing instead of walking every focusable
+	 * in Storybook's chrome), and the resting panel's tab order - four header
+	 * controls, two entity sections with ten rows and their own controls - puts the
+	 * FIRST chat row's mark past that bound. Measured: `tabTo: "[data-team-bubble]"`
+	 * on `resting-default` throws "never took focus in 40 Tab presses". The query
+	 * state is the same surface with the same mark on a real row and a tab order
+	 * short enough to walk, which makes the claim - focus reaches the mark and names
+	 * the team - one the rig can actually make. The resting panel's keyboard order
+	 * is NOT claimed by any frame here.
+	 */
+	[
+		"chat-sidebar-sections--query-while-collapsed",
+		741,
+		460,
+		{
+			tabTo: "[data-team-bubble]",
+			dir: "sidebar-team-mark-focus",
+			/**
+			 * A TOOLTIP ON SCREEN, AND THE ROW'S CARD NOT - deliberately not "the tooltip at
+			 * `data-side=top`", which is what this entry asserted in round 1 and what it failed
+			 * on in the remediation round: same code, same walk, and the strict selector found
+			 * nothing while this one finds the panel (measured back to back:
+			 * `[role="tooltip"][data-side="top"]` missing, then `[role="tooltip"]` present on
+			 * the very next run). Which side a panel resolves to is Radix's collision answer
+			 * about where there is room, not a claim this change makes, and asserting it turned
+			 * a working frame into a refused one.
+			 */
+			expectPresent: '[role="tooltip"]',
+			expectGone: '[role="tooltip"][data-side="right"]',
+		},
+	],
+	/*
+	 * THE MARK ITSELF, in every shape its rule has plus the three image states
+	 * (operator ask, 2026-10-01): 20px in a 320px panel is not a frame a reviewer can
+	 * read letters off, and the image-ready half of the contract - a URL renders, an
+	 * absent URL and a FAILED one both fall back - has no fixture on the row surface
+	 * to show, since no team carries an icon field yet. `team-avatar-bubble.stories.tsx`
+	 * states what this frame can and cannot claim.
+	 */
+	["chat-team-avatar-bubble--marks", 900, 760],
 
 	/* ------------------------------------------------------------------ *
 	 * D28: the view popover, the page ladder, the section caps, an expanded
@@ -11253,7 +11383,18 @@ const main = async () => {
 						})
 					).result.value === true;
 				let reached = false;
-				for (let i = 0; i < 24 && !reached; i++) {
+				/*
+				 * FORTY, NOT TWENTY-FOUR, and the number is measured rather than
+				 * chosen: the chat sidebar draws its controls before its rows, so a
+				 * walk that starts in Storybook's own chrome reaches the first chat
+				 * row's team mark at 31 presses (`sidebar-team-mark-focus`, measured
+				 * by widening this bound to 200 and printing the count). Twenty-four
+				 * was already too tight for a legitimate walk on this surface, which
+				 * makes the bound a guard against an unbounded walk rather than a
+				 * budget for one. Forty keeps that property and ~1.3x headroom; the
+				 * error text names it so a future failure is not read as the old 24.
+				 */
+				for (let i = 0; i < 40 && !reached; i++) {
 					for (const type of ["rawKeyDown", "keyUp"]) {
 						await cdp.send("Input.dispatchKeyEvent", {
 							type,
