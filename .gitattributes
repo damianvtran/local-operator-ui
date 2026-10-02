@@ -22,12 +22,20 @@
 # IT RESOLVES A MERGE AND NOTHING ELSE, AND THE DRIVER ENFORCES THAT. `%A` is
 # "this branch" only for `git merge`; under `git rebase`, `pull --rebase`,
 # cherry-pick, revert, `am` and stash-pop git hands the driver the UPSTREAM side
-# as `%A` and gives it no way to tell, so the driver refuses (it resolves only
-# when `MERGE_HEAD` exists), names the operation on stderr, writes git's own
-# conflict markers into the working file and exits non-zero - which makes git
-# stop on the conflict, with the same markers and the same unmerged index the
-# author would have seen before this driver existed. A rebase onto a moved `main`
-# therefore still stops on the manifest. That is the intended trade: the
+# as `%A` and gives it no way to tell. So the driver resolves ONLY when it can SEE
+# a real merge: `MERGE_HEAD` on a git that writes it early, or - on this git
+# (2.55.0), which writes `MERGE_HEAD` only AFTER the strategy finishes and so
+# never while a driver runs - the `GITHEAD_<sha>` a real merge exports and those
+# five replaying operations do not. Anything else is refused: the operation is
+# named where git leaves a marker the driver can read (`rebase-merge/`,
+# `rebase-apply/applying`, `rebase-apply/`, `sequencer/`, `CHERRY_PICK_HEAD`,
+# `REVERT_HEAD`), git's own conflict markers are written into the working file,
+# and the driver exits non-zero - which makes git stop on the conflict, with the
+# same markers and the same unmerged index the author would have seen before this
+# driver existed. A single-commit cherry-pick, a revert and a stash-pop record no
+# marker until the step they are running finishes, so those get a refusal that
+# says so instead of a name; they are refused either way. A rebase onto a moved
+# `main` therefore still stops on the manifest. That is the intended trade: the
 # alternative is a silently wrong-side resolution, where the lane's pass fields
 # are replaced by main's and a retired key comes back, with git reporting
 # success.

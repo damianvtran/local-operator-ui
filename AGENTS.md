@@ -164,8 +164,12 @@ does it on install); `--check` is the read-only form for THAT wiring - the merge
 driver, not the push hook - and exits non-zero with what to run when it is
 missing. The driver resolves a MERGE and nothing else: outside a merge git hands
 a driver the UPSTREAM side as `%A`, so under a rebase, `pull --rebase`,
-cherry-pick, revert, `am` or stash-pop it exits non-zero naming the operation and
-git stops on the conflict exactly as it did before the driver existed. Run the
+cherry-pick, revert, `am` or stash-pop it exits non-zero and git stops on the
+conflict exactly as it did before the driver existed. It can name the operation
+where git leaves a marker it can read - `rebase`/`pull --rebase` and `am` - and
+refuses the rest generically: a single-commit cherry-pick, a revert and a
+stash-pop record no marker until the step they are running finishes, so those
+refusals say that rather than guess. Run the
 tool BEFORE pushing: it amends the merge tip, and it refuses to amend a tip that
 is already reachable from a remote-tracking ref (printing the `git commit`
 command instead, so the values ride a commit on top). It does NOT weaken
