@@ -1267,6 +1267,7 @@ const paintedAt = (
 	{
 		live = false,
 		openRuns,
+		mode,
 		completedRunMaxExtra = WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
 	} = {},
 ) => {
@@ -1278,7 +1279,7 @@ const paintedAt = (
 		completedRunMaxExtra,
 	);
 	const visible = total > align ? rows.slice(total - align) : rows;
-	const plan = collapsePlan(visible, { live, openRuns });
+	const plan = collapsePlan(visible, { live, openRuns, mode });
 	return (
 		visible.length -
 		plan.runs.reduce(
@@ -1487,6 +1488,202 @@ test("widenTarget: an open run counts as painted, exactly as the render pass doe
 	assert.ok(
 		openTarget < widenTarget(rows, 60, options),
 		`an open run reaches the reader sooner than a collapsed one (${openTarget} < ${widenTarget(rows, 60, options)})`,
+	);
+});
+
+/* ------------- the paint count's own mode (M1 / Q1, issue #756) ------------- */
+
+/*
+ * WHAT THESE PIN. `paintedRows` is the widen's currency - the step keeps walking
+ * while the window has not PAINTED `minVisibleRows` more rows - and it reads the
+ * same `collapsePlan` the render paints from. The plan's mode is an OPTIONAL
+ * field, so leaving it off means `by-turn`; a render in `by-response` whose
+ * metric was built without one therefore counted the narration rows as hidden
+ * while the reader was looking at them, and the search could step past the size
+ * that actually painted a reveal (agent review round 1 M1, QA round 1 Q1). The
+ * two cases below are the two halves of the fix: the metric must read the
+ * reader's mode, and its absence must still be exactly the shipped arithmetic.
+ *
+ * The fixture is the reviewer's own shape - a settled turn that NARRATED
+ * mid-turn, 30 rows a turn, so the window really cuts: by-turn hides the
+ * narration inside the bar, by-response keeps it on screen.
+ */
+const narratedTurns = (turns) => {
+	const rows = [];
+	for (let turn = 0; turn < turns; turn += 1) {
+		const at = TS + turn * 100_000;
+		rows.push(user(`nu${turn}`, { ts: at }));
+		for (let i = 0; i < 13; i += 1)
+			rows.push(tool(`nt${turn}-${i}`, { ts: at + 1_000 + i }, "trace"));
+		/*
+		 * The narration: settled assistant text with no `stopReason` and a call after
+		 * it, so `cyclesOf` reads it as narration rather than a close - hidden by
+		 * `by-turn`, kept by `by-response`. That difference is the whole fixture.
+		 */
+		rows.push(answer(`nn${turn}`, { ts: at + 50_000, text: "still working" }));
+		for (let i = 0; i < 14; i += 1)
+			rows.push(tool(`nb${turn}-${i}`, { ts: at + 60_000 + i }, "trace"));
+		rows.push(answer(`na${turn}`, { ts: at + 90_000 }));
+	}
+	return rows;
+};
+
+const MODE_OPTIONS = {
+	step: 20,
+	live: false,
+	snapMaxExtra: SNAP_MAX_EXTRA,
+	completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+};
+
+/*
+ * THE PRE-MODE ARITHMETIC, verbatim: `paintedRows` exactly as it shipped before
+ * the mode existed, calling `collapsePlan` with no mode field at all. The
+ * default-untouched proof compares the threaded function against THIS rather
+ * than against its own by-turn branch, so "absent means the shipped behaviour"
+ * is pinned as a property of the code and not restated in prose.
+ */
+const paintedRowsBeforeModes = (rows, windowSize, options) => {
+	const total = rows.length;
+	const alignSize = snapWindowToRunBoundary(
+		rows,
+		windowSize,
+		options.snapMaxExtra,
+		options.completedRunMaxExtra,
+		options.live ?? false,
+	);
+	const visible = total > alignSize ? rows.slice(total - alignSize) : rows;
+	const plan = collapsePlan(visible, {
+		live: options.live ?? false,
+		openRuns: options.openRuns,
+	});
+	let hidden = 0;
+	for (const run of plan.runs) {
+		for (const segment of run.segments) {
+			if (segment.collapsed && !options.openRuns?.has(segment.key)) {
+				hidden += segment.rows.length;
+			}
+		}
+	}
+	return visible.length - hidden;
+};
+
+/** The shipped `widenTarget`, verbatim, over the pre-mode count. */
+const widenTargetBeforeModes = (rows, mountedSize, options) => {
+	const total = rows.length;
+	const minVisibleRows = options.minVisibleRows ?? 8;
+	const maxRows = Math.min(total, options.maxRows ?? total);
+	const { step } = options;
+	const before = paintedRowsBeforeModes(rows, mountedSize, options);
+	let size = Math.min(maxRows, mountedSize + step);
+	while (
+		size < maxRows &&
+		paintedRowsBeforeModes(rows, size, options) - before < minVisibleRows
+	) {
+		size = Math.min(maxRows, size + step);
+	}
+	return size;
+};
+
+/**
+ * The smallest candidate a mode's own paint count calls a reveal: the definition
+ * `widenTarget` states, written here over `paintedAt` so the assertion is
+ * against the reader's paint rather than against the function's own arithmetic.
+ */
+const smallestReveal = (rows, mountedSize, options, mode) => {
+	const minVisibleRows = options.minVisibleRows ?? 8;
+	const maxRows = Math.min(rows.length, options.maxRows ?? rows.length);
+	const before = paintedAt(rows, mountedSize, { mode });
+	let size = Math.min(maxRows, mountedSize + options.step);
+	while (
+		size < maxRows &&
+		paintedAt(rows, size, { mode }) - before < minVisibleRows
+	) {
+		size = Math.min(maxRows, size + options.step);
+	}
+	return size;
+};
+
+test("paintedRows: the count is the READER's mode, so by-response matches the by-response paint (M1/Q1)", () => {
+	const rows = narratedTurns(30);
+	for (const size of [20, 40, 60, 120, 200, 320]) {
+		const before = paintedRowsBeforeModes(rows, size, MODE_OPTIONS);
+		const byTurn = paintedRows(rows, size, {
+			...MODE_OPTIONS,
+			mode: "by-turn",
+		});
+		const byResponse = paintedRows(rows, size, {
+			...MODE_OPTIONS,
+			mode: "by-response",
+		});
+		assert.equal(
+			byTurn,
+			before,
+			`an explicit by-turn is the pre-mode arithmetic at window ${size}`,
+		);
+		assert.equal(
+			byResponse,
+			paintedAt(rows, size, { mode: "by-response" }),
+			`the metric must match the by-response paint at window ${size}`,
+		);
+		assert.ok(
+			byResponse > byTurn,
+			`${size}: the narration by-response keeps on screen is not counted as hidden (${byTurn} -> ${byResponse})`,
+		);
+	}
+});
+
+test("widenTarget: the step's stop is measured in the reader's mode, not a by-turn opinion (M1/Q1)", () => {
+	const rows = narratedTurns(30);
+	const mounted = 60;
+	const byTurnTarget = widenTarget(rows, mounted, MODE_OPTIONS);
+	const byResponseTarget = widenTarget(rows, mounted, {
+		...MODE_OPTIONS,
+		mode: "by-response",
+	});
+	assert.equal(
+		byTurnTarget,
+		smallestReveal(rows, mounted, MODE_OPTIONS, "by-turn"),
+	);
+	assert.equal(
+		byResponseTarget,
+		smallestReveal(rows, mounted, MODE_OPTIONS, "by-response"),
+		"the by-response step must stop on the size that paints eight more by-response rows",
+	);
+	assert.ok(
+		paintedAt(rows, byResponseTarget, { mode: "by-response" }) -
+			paintedAt(rows, mounted, { mode: "by-response" }) >=
+			8,
+		"and that size really is a reveal in the reader's own currency",
+	);
+	assert.ok(
+		byResponseTarget < byTurnTarget,
+		`by-response reaches a reveal sooner than the by-turn opinion does (${byResponseTarget} < ${byTurnTarget})`,
+	);
+});
+
+test("paintedRows/widenTarget: absent, and explicit by-turn, are the shipped arithmetic byte for byte (M1 default-untouched proof)", () => {
+	const rows = narratedTurns(30);
+	for (const size of [20, 60, 120, 320]) {
+		assert.equal(
+			paintedRows(rows, size, MODE_OPTIONS),
+			paintedRowsBeforeModes(rows, size, MODE_OPTIONS),
+			`no mode is the pre-mode count at window ${size}`,
+		);
+		assert.equal(
+			paintedRows(rows, size, { ...MODE_OPTIONS, mode: "by-turn" }),
+			paintedRowsBeforeModes(rows, size, MODE_OPTIONS),
+			`an explicit by-turn is the pre-mode count at window ${size}`,
+		);
+	}
+	assert.equal(
+		widenTarget(rows, 60, MODE_OPTIONS),
+		widenTargetBeforeModes(rows, 60, MODE_OPTIONS),
+		"no mode is the pre-mode step",
+	);
+	assert.equal(
+		widenTarget(rows, 60, { ...MODE_OPTIONS, mode: "by-turn" }),
+		widenTargetBeforeModes(rows, 60, MODE_OPTIONS),
+		"an explicit by-turn is the pre-mode step",
 	);
 });
 

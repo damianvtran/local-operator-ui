@@ -15,15 +15,27 @@
  * THE DESCRIPTION STATES THE SCOPE, which is half of what the issue asks for:
  * this preference changes how *responses* are drawn, and the neighbouring
  * `showAgentReasoning` switch hides *reasoning* only — mid-turn narration the
- * agent writes as prose is transcript content and is not folded into either.
+ * agent writes as prose is transcript content, not reasoning, so it is never
+ * REMOVED by either mode: `by turn` folds it behind the turn's bars (the shipped
+ * condensation), `by response` keeps it on screen. Stating the fold is the point
+ * — "neither mode hides it" would be the opposite claim, and the transcript
+ * would contradict the very sentence that describes it.
+ *
+ * THE VISIBLE LABEL NAMES THE CONTROL (agent review round 1, n5). The row's own
+ * text is what a reader sees; naming the tablist by it with `aria-labelledby` - an
+ * id from `useId` rather than a prop, because there is exactly one such row per
+ * settings page and a caller-supplied id was a knob nobody ever turned - is what
+ * makes the control announced as "Transcript display" instead of by a duplicate
+ * `aria-label` that could drift from the visible words.
  */
 
 import {
 	TRANSCRIPT_DISPLAY_MODE_OPTIONS,
 	type TranscriptDisplayMode,
+	parseTranscriptDisplayMode,
 } from "@features/chat/transcript-display-mode";
 import { Tabs, TabsList, TabsTrigger } from "@shared/components/ui";
-import type { FC } from "react";
+import { type FC, useId } from "react";
 
 type TranscriptDisplayModeSettingProps = {
 	/** The active mode. */
@@ -31,42 +43,48 @@ type TranscriptDisplayModeSettingProps = {
 
 	/** Called with the mode the reader chose. */
 	onChange: (mode: TranscriptDisplayMode) => void;
-
-	/** Optional id for the label, so the control can be named by it. */
-	labelId?: string;
 };
 
 export const TranscriptDisplayModeSetting: FC<
 	TranscriptDisplayModeSettingProps
-> = ({ value, onChange, labelId }) => (
-	<div className="flex items-start justify-between gap-4">
-		<div className="min-w-0 flex-1">
-			<span
-				id={labelId}
-				className="flex min-h-6 items-center text-body text-ink"
-			>
-				Transcript display
-			</span>
-			<p className="mt-0.5 max-w-2xl text-body-sm text-ink-muted">
-				By turn condenses each turn to its answer. By response keeps every
-				settled response on screen, with the turn's final answer still marked.
-			</p>
+> = ({ value, onChange }) => {
+	const labelId = useId();
+	return (
+		<div className="flex items-start justify-between gap-4">
+			<div className="min-w-0 flex-1">
+				<span
+					id={labelId}
+					className="flex min-h-6 items-center text-body text-ink"
+				>
+					Transcript display
+				</span>
+				<p className="mt-0.5 max-w-2xl text-body-sm text-ink-muted">
+					By turn condenses each turn to its answer. By response keeps every
+					settled response on screen, with the turn's final answer still marked.
+				</p>
+			</div>
+			{/* Fixed height, matching `ToggleSetting`: swapping control shapes between
+			    modes must not move the row's own baseline. */}
+			<div className="flex h-6 shrink-0 items-center">
+				<Tabs
+					value={value}
+					/*
+					 * The chosen token is PARSED on the way out, the same rule the header's
+					 * submenu states (agent review round 1, m4): every writer of this field
+					 * judges its value, so a control driven by a list that later gains or
+					 * renames a value cannot write a token nothing understands.
+					 */
+					onValueChange={(next) => onChange(parseTranscriptDisplayMode(next))}
+				>
+					<TabsList aria-labelledby={labelId}>
+						{TRANSCRIPT_DISPLAY_MODE_OPTIONS.map((option) => (
+							<TabsTrigger key={option.value} value={option.value}>
+								{option.label}
+							</TabsTrigger>
+						))}
+					</TabsList>
+				</Tabs>
+			</div>
 		</div>
-		{/* Fixed height, matching `ToggleSetting`: swapping control shapes between
-		    modes must not move the row's own baseline. */}
-		<div className="flex h-6 shrink-0 items-center">
-			<Tabs
-				value={value}
-				onValueChange={(next) => onChange(next as TranscriptDisplayMode)}
-			>
-				<TabsList aria-label="Transcript display">
-					{TRANSCRIPT_DISPLAY_MODE_OPTIONS.map((option) => (
-						<TabsTrigger key={option.value} value={option.value}>
-							{option.label}
-						</TabsTrigger>
-					))}
-				</TabsList>
-			</Tabs>
-		</div>
-	</div>
-);
+	);
+};
