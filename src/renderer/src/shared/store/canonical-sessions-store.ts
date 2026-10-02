@@ -73,6 +73,23 @@ export type CanonicalSessionRow = {
 	attention?: CompletionAttention;
 	live_state?: string;
 	pending?: string | null;
+	/**
+	 * How many QUEUED asks this conversation has open, as the catalogue row
+	 * carried it (`SessionCatalogueRow.asks_open`).
+	 *
+	 * Declared explicitly beside `pending` for the reason that comment gives about
+	 * `pinned`: this row type has an index signature, so without a declaration
+	 * every read of it is `unknown` at the one place that draws the chip. It is a
+	 * SECOND state rather than a widening of `pending`, which stays the approval
+	 * queue: a session with asks outstanding may be working perfectly well, and
+	 * folding the two would make the rail call a working session "waiting for
+	 * you" - the mislabel the design's §5 header forbids.
+	 *
+	 * OPTIONAL AND ABSENT TOGETHER with the wire field, for the same skew reason as
+	 * the rest of the queued-ask contract: a backend without the feature never
+	 * sends it, and absent and `0` are the same answer (no chip).
+	 */
+	asks_open?: number | null;
 	active?: boolean;
 	/**
 	 * The backend's pin state for this conversation, as the catalogue row carried

@@ -1287,3 +1287,87 @@ export const answerGateSecret = async (
 		lock.release();
 	}
 };
+
+/**
+ * Send a QUEUED ask's whole answer — every question, atomically.
+ *
+ * A SIBLING of `answerGateOption`, for the reasons that method gives for its own
+ * extraction (the body and the one-answer-in-flight lock must be assertable
+ * without a DOM, and they cannot be while they live in a component). What
+ * differs is the ADDRESS and the SHAPE:
+ *
+ * - **`ask_id`, not `request_id`.** A queued ask outlives the owner epoch that
+ *   raised it, so this path deliberately carries no epoch - the route skips the
+ *   epoch comparison for this shape and the single-winner rule lives on the ask
+ *   log. Requiring one here would refuse exactly the case the feature exists for
+ *   (a cold session whose asks are still open).
+ * - **The WHOLE ask, not one question.** `answers` is keyed by question id, and
+ *   the queue refuses a partial map, so a press that could only ever be refused
+ *   is refused HERE, before the lock is taken - which is what keeps the Submit
+ *   control honest rather than merely disabled-looking.
+ *
+ * The lock is taken before the build and released in a `finally`, with no
+ * `await` between the test and the claim: that ordering is the whole
+ * one-answer-in-flight guarantee, exactly as it is for the gate.
+ */
+export const answerQueuedAsk = async (
+	deps: {
+		taskId: string;
+		answers: Record<string, string[]>;
+		sessionId?: string | null;
+		lock: SendLock;
+	},
+	send: (request: GateAnswerRequest) => Promise<unknown>,
+): Promise<AnswerOutcome> => {
+	const { taskId, answers, sessionId, lock } = deps;
+	// Preconditions first, for the reason `answerGateOption` states: taking the lock
+	// for a request that was never sent leaves the submit refused until a reload.
+	if (!sessionId || !taskId) return { status: "refused" };
+	if (Object.keys(answers).length === 0) return { status: "refused" };
+	if (!lock.tryAcquire()) return { status: "refused" };
+	const request: GateAnswerRequest = {
+		op: "sessions.answer",
+		sessionId,
+		askId: taskId,
+		answers,
+	};
+	try {
+		await send(request);
+		return { status: "sent" };
+	} catch (error) {
+		return { status: "failed", request, error };
+	} finally {
+		lock.release();
+	}
+};
+
+/**
+ * Decline a QUEUED ask: the explicit "no answer — decide yourself".
+ *
+ * The same act as the blocking card's Esc, promoted to a control of its own
+ * because a queued ask's Esc means COLLAPSE (design §5.0/§5.1 D5): the user's
+ * "I am not answering this" has to be said on purpose rather than as a side
+ * effect of wanting their transcript back.
+ */
+export const declineQueuedAsk = async (
+	deps: { taskId: string; sessionId?: string | null; lock: SendLock },
+	send: (request: GateAnswerRequest) => Promise<unknown>,
+): Promise<AnswerOutcome> => {
+	const { taskId, sessionId, lock } = deps;
+	if (!sessionId || !taskId) return { status: "refused" };
+	if (!lock.tryAcquire()) return { status: "refused" };
+	const request: GateAnswerRequest = {
+		op: "sessions.answer",
+		sessionId,
+		askId: taskId,
+		decline: true,
+	};
+	try {
+		await send(request);
+		return { status: "sent" };
+	} catch (error) {
+		return { status: "failed", request, error };
+	} finally {
+		lock.release();
+	}
+};
