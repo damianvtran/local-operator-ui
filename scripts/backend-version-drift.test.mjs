@@ -482,6 +482,13 @@ test("the boot reading comes from the daemon's own record", () => {
 	assert.equal(parsed.install_kind, "pip");
 	assert.deepEqual(servingInstallReadings(parsed), {
 		bootVersion: "0.56.2",
+		/*
+		 * AND THE PROCESS'S OWN IDENTITY (2026-09-30): the instance token is the
+		 * reload's proof of a move - execve keeps the pid, so only a changed token
+		 * under the same record says "this process re-exec'd onto the new build",
+		 * and the update service's post-condition reads it from here.
+		 */
+		instanceId: record().instance_id,
 		prefix: record().prefix,
 		installKind: "pip",
 		startedByApp: true,

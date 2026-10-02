@@ -15,6 +15,14 @@
  * `UpdateQuietIndicatorView` is rendered directly by the states that are about
  * the DRAWING rather than about the gate.
  *
+ * THE BAND IS ON DEMAND (2026-09-30, `banner-reopened`): the standing notice is
+ * now the foot icon (`update-foot-icon.tsx`), and the band draws only after a
+ * press on it. These stories depict the pressed state - the frame a press
+ * raises - which is why the drawing stories pass `shown` directly; the shell's
+ * `noticeOpen` gate is the connected component's and has its own case in
+ * `update-indicator-segments.test.mjs`. `Dismiss` is the control the press
+ * added, and it is part of every band frame now, as shipped.
+ *
  * `AtRest` is a frame OF THE ABSENCE, which is the claim: a user who is not being
  * offered anything sees no band, no reserved row and no pixels at all.
  */
@@ -78,6 +86,7 @@ const Stage: FC<{
 		<UpdateQuietIndicatorView
 			offers={viewOffers ?? shown}
 			onOpen={() => undefined}
+			onDismiss={() => undefined}
 		/>
 	);
 };
