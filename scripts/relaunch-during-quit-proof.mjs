@@ -22,6 +22,21 @@
  * one that finds the process gone — opens normally, which the third instance
  * below measures.
  *
+ * THE COMPLETION (#755). The refusal stays whole; the dying process now also
+ * RECORDS what was refused and, at the quit's terminal, schedules ONE successor
+ * instance (`app.relaunch`, `src/main/relaunch-pending.ts`) that boots after
+ * this process exits, takes the freed lock and opens under the recorded plan.
+ * This rig proves it end to end: B carries an `--inspect=<S>` port in its argv,
+ * B's argv is what the record replays, so the SUCCESSOR becomes observable on
+ * that same port once A is gone — the replay contract is proven by S being
+ * observable at all. The rig also pins the negatives: nothing listens on that
+ * port and only A is on the scratch profile while A still tears down (no
+ * successor exists before the old process exits, i.e. nothing was spawned at
+ * refusal time). `--no-reopen` runs the control arm: a quit with nothing
+ * refused spawns nothing — no process on the scratch profile, the designated
+ * port stays closed, and no `reopen=deferred` line exists — and the next launch
+ * opens normally.
+ *
  * WHAT THIS RIG DRIVES, so the evidence is about the shipped path and not about
  * this script:
  *   - instance A: the BUILT app, headless, on a scratch profile, with the state
@@ -37,9 +52,14 @@
  *   - instance B: the relaunch, anchored on the READING "A's window is gone"
  *     rather than on a sleep, sharing A's scratch profile so it loses the
  *     single-instance lock exactly as a double-click on the Dock icon would;
- *   - instance C: after A is gone, the NEXT relaunch — the control that a
- *     refusal is a refusal and not a permanent state: C is expected to open and
- *     show its window.
+ *     B's argv carries an `--inspect` port so its replayed successor is
+ *     observable (see THE COMPLETION);
+ *   - instance S (#755): the successor A's quit terminal schedules — a NEW
+ *     process that takes the freed lock after A exits, opens under the recorded
+ *     (inactive) plan, and is read over the replayed inspect port;
+ *   - instance C: after A is gone and S has lived and quit, the NEXT launch —
+ *     the control that a refusal is a refusal and not a permanent state: C is
+ *     expected to open and show its window.
  *
  * WHY B DECLARES A MODE. An undeclared relaunch is a person double-clicking the
  * app, and its plan is `focus` — `show()` + `focus()` for the window A creates.
@@ -97,7 +117,11 @@
  *
  * Usage:
  *   node scripts/relaunch-during-quit-proof.mjs [--window-wait <ms>]
- *     [--keep] [--record <path>] [--label <name>]
+ *     [--keep] [--record <path>] [--label <name>] [--no-reopen]
+ *
+ * `--no-reopen` runs the control arm instead of the main one: A quits with no
+ * relaunch during its teardown, and the rig asserts nothing is ever spawned
+ * (the negative that proves a successor only follows a refused reopen).
  *
  * `--record` writes the transcript to a file as well as stdout (the committed
  * artifacts under docs/evidence/relaunch-during-quit are two such files, one
@@ -105,7 +129,7 @@
  * survives an interrupt, and its path is printed, so the log can be read.
  */
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -116,7 +140,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
-import { createServer } from "node:net";
+import { createConnection, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { withNotificationsOff } from "./notifications-off.mjs";
@@ -129,6 +153,12 @@ const electronPath = createRequire(join(process.cwd(), "package.json"))(
 );
 
 const KEEP = process.argv.includes("--keep");
+/*
+ * #755's second arm: the no-reopen control. A quit with nothing refused must
+ * spawn nothing at all — that is the negative that gives the main arm's
+ * successor reading its meaning (see the header).
+ */
+const NO_REOPEN = process.argv.includes("--no-reopen");
 const flagValue = (flag, fallback) => {
 	const at = process.argv.indexOf(flag);
 	return at === -1 ? fallback : process.argv[at + 1];
@@ -339,6 +369,23 @@ const RAISE_SECOND_INSTANCE_LINE = /\[window-raise\] trigger=second-instance/;
 const APPLIED_SKIPPED_WHILE_QUITTING = /applied=skipped\+quitting/;
 const SECOND_INSTANCE_LOSER_LINE =
 	/\[second-instance\] this launch did not start a window of its own/;
+/*
+ * #755's readings. The completion token is the refusal line's half of the
+ * contract (`reopen=deferred` says a successor will complete this refusal), the
+ * schedule line is the dying process saying it arranged one, and the successor
+ * names itself on the replay port — with the initial-present raise and the
+ * launcher policy arriving in the same log. Kept as literals here so the rig's
+ * vocabulary matches the product's and a wording change is one diff.
+ */
+const REOPEN_DEFERRED = /reopen=deferred/;
+const SUCCESSOR_SCHEDULED_LINE = /\[relaunch\] successor scheduled/;
+const RAISE_INITIAL_PRESENT_INACTIVE =
+	/\[window-raise\] trigger=initial-present mode=inactive/;
+const LAUNCHER_INACTIVE_LINE =
+	/\[window-mode\] window mode inactive is not launcher-bound/;
+/* Top-level so the scan below is not compiling them per row (the lint rule). */
+const PS_ROW = /^(\d+)\s+(\d+)\s+(.*)$/;
+const DAEMON_REGISTERED_ALL = /Registered this app's own daemon/g;
 
 /** The environment every launch below is handed. */
 function makeEnv() {
@@ -418,6 +465,50 @@ const appLog = () =>
 		.map((name) => readFileSync(join(LOG_DIR, name), "utf8"))
 		.join("\n");
 
+/**
+ * The OUTSIDE view of "which app instances are on this run's scratch profile":
+ * a ps scan for the profile path, Chromium's children excluded (`--type=` marks
+ * a helper; the main process carries none), so one entry is one app INSTANCE.
+ * It is what pins "no successor exists before A exits" and the control arm's
+ * "nothing was ever spawned" — a spawn that the product was not supposed to
+ * make would appear here whatever port it did or did not open.
+ */
+function scratchProfileProcesses() {
+	const ps = spawnSync("ps", ["-axo", "pid,ppid,command"], {
+		encoding: "utf8",
+	});
+	return (ps.stdout ?? "")
+		.split("\n")
+		.filter((line) => line.includes(`--user-data-dir=${USER_DATA}`))
+		.filter((line) => !line.includes("--type="))
+		.map((line) => {
+			const match = line.trim().match(PS_ROW);
+			return match === null
+				? { pid: null, command: line.trim() }
+				: { pid: Number(match[1]), ppid: Number(match[2]), command: match[3] };
+		});
+}
+
+/**
+ * Whether something is LISTENING on a port — a connect probe, never an attach:
+ * the socket half of the replay contract. B carried it, the successor replays
+ * it, and between B's exit and A's exit nothing may be on it (no successor
+ * exists before the old process is gone).
+ */
+function listeningOn(port) {
+	return new Promise((resolve) => {
+		const socket = createConnection({ host: "127.0.0.1", port });
+		const done = (value) => {
+			socket.destroy();
+			resolve(value);
+		};
+		socket.setTimeout(1500);
+		socket.once("connect", () => done(true));
+		socket.once("error", () => done(false));
+		socket.once("timeout", () => done(false));
+	});
+}
+
 async function waitFor(fn, label, timeoutMs) {
 	const started = Date.now();
 	for (;;) {
@@ -439,6 +530,62 @@ async function waitFor(fn, label, timeoutMs) {
 
 const WINDOW_READING =
 	"(() => { const { BrowserWindow } = process.mainModule.require('electron'); return BrowserWindow.getAllWindows().map((w) => ({ id: w.id, visible: w.isVisible(), destroyed: w.isDestroyed() })); })()";
+
+/*
+ * THE NEXT-LAUNCH CONTROL, shared by both arms (#755): once everything above
+ * has settled — A gone, and in the main arm S lived and quit too — a fresh
+ * launch opens and shows its window. That is the "a refusal is a refusal, not a
+ * permanent state; later launches are ordinary" reading, unchanged from the
+ * base; what moved is only WHEN it runs (after the whole hand-off completed).
+ */
+async function runNextLaunchControl(windowWaitMs) {
+	const inspectC = await freePort();
+	const c = launchApp({ mode: "inactive", inspectPort: inspectC, label: "c" });
+	say(
+		`C: ${c.child.pid} (inactive; the next launch after everything above settled)`,
+	);
+	let cWindow = null;
+	try {
+		const mainC = await CdpClient.attach(inspectC);
+		cWindow = await waitFor(
+			async () => {
+				const list = await mainC.evaluate(WINDOW_READING).catch(() => null);
+				return Array.isArray(list) && list.length === 1 && list[0].visible
+					? list
+					: null;
+			},
+			"C's window",
+			windowWaitMs,
+		);
+		check(
+			"the next relaunch opens and shows its window",
+			cWindow !== null,
+			JSON.stringify(cWindow),
+		);
+		await mainC.evaluate(
+			"(() => { process.mainModule.require('electron').app.quit(); return 'quit requested'; })()",
+		);
+		await waitFor(
+			async () => {
+				const list = await mainC.evaluate(WINDOW_READING).catch(() => null);
+				return Array.isArray(list) && list.length === 0 ? true : null;
+			},
+			"C's window closing",
+			20_000,
+		).catch(() => {});
+		mainC.close();
+	} catch (error) {
+		check("the next relaunch opens and shows its window", false, String(error));
+	}
+	if (c.exitedAt === null) {
+		await waitFor(
+			() => c.exitedAt !== null || !pidAlive(c.child.pid),
+			"C to exit",
+			60_000,
+		).catch(() => {});
+	}
+	if (c.exitedAt === null) await stopApp(c.child, { sigkill: true });
+}
 
 /** Let the app quit itself through the same chain Cmd+Q takes, then watch. */
 async function main() {
@@ -536,100 +683,174 @@ async function main() {
 		"inspector socket closed (no wire is held into a process that is tearing itself down)",
 	);
 
-	/* ---- B: the immediate relaunch, while A is still tearing down -------- */
+	/*
+	 * The main arm's relaunch slot and the port its successor will answer on are
+	 * reserved here, outside the arm branch, because the successor section below
+	 * reads them. The control arm never launches B; for it the SAME port is the
+	 * designated port that must stay silent (nothing was ever told about it).
+	 */
+	let b = null;
+	const inspectS = await freePort();
 
-	const b = launchApp({ mode: "inactive", inspectPort: null, label: "b" });
-	say(`B: ${b.child.pid} (inactive — its request is A's to answer)`);
-	// Long enough for B to boot, lose the lock and be answered, still well inside
-	// A's teardown; the alive readings below are the authoritative anchors.
-	await sleep(2600);
+	if (NO_REOPEN) {
+		/*
+		 * The control arm (#755's `--no-reopen`) has no B: nothing asks for the app
+		 * during the teardown, so there is nothing to hand off and nothing to
+		 * observe here. The shared A-exit section below and the quiet-window
+		 * readings after it are this arm's own evidence.
+		 */
+	} else {
+		/* ---- B: the immediate relaunch, while A is still tearing down ------ */
 
-	const aAliveAtProbe = pidAlive(a.child.pid);
-	check(
-		"A still holds the single-instance lock while it tears down (the premise)",
-		aAliveAtProbe,
-		aAliveAtProbe
-			? `A alive +${Date.now() - quitAt}ms after app.quit(), its window already closed`
-			: "A had already exited, so this run proves nothing about the hand-off",
-	);
-
-	let windowsAfter = null;
-	let doomedFrame = null;
-	if (aAliveAtProbe) {
-		try {
-			const prober = await CdpClient.attach(inspectA, 5_000);
-			windowsAfter = await prober.evaluate(WINDOW_READING);
-			if (Array.isArray(windowsAfter) && windowsAfter.length > 0) {
-				// The defect's own evidence: the window A was killed for, captured by
-				// the app itself (never `screencapture`). Best effort — the window is
-				// mid-load and half the time the page is not paintable yet.
-				doomedFrame = await prober
-					.evaluate(
-						"(() => { const { BrowserWindow } = process.mainModule.require('electron'); const w = BrowserWindow.getAllWindows()[0]; if (!w) return null; return w.webContents.capturePage().then((img) => img.toPNG().toString('base64'), (error) => 'capture failed: ' + String(error)); })()",
-					)
-					.catch(() => null);
-				if (
-					typeof doomedFrame === "string" &&
-					!doomedFrame.startsWith("capture")
-				) {
-					writeFileSync(
-						join(SCRATCH, "doomed-window.png"),
-						Buffer.from(doomedFrame, "base64"),
-					);
-				}
-			}
-			prober.close();
-		} catch (error) {
-			say(`re-attach failed: ${String(error)}`);
-		}
-	}
-
-	check(
-		"A answered the relaunch without creating or raising a window",
-		Array.isArray(windowsAfter) && windowsAfter.length === 0,
-		windowsAfter === null
-			? "no reading could be taken"
-			: `A's windows ${Date.now() - quitAt}ms after app.quit(): ${JSON.stringify(windowsAfter)}`,
-	);
-	if (Array.isArray(windowsAfter) && windowsAfter.length > 0) {
+		/*
+		 * B's argv carries `--inspect=<inspectS>` so the SUCCESSOR is observable: the
+		 * record replays B's command line, so whatever port B declares is the port
+		 * the successor opens — the replay contract is proven by S answering there
+		 * at all (#755). The same port is the negative's probe: after B exits and
+		 * while A still tears down, nothing may be listening on it.
+		 */
+		const b2 = launchApp({
+			mode: "inactive",
+			inspectPort: inspectS,
+			label: "b",
+		});
+		b = b2;
 		say(
-			"        ^ the defect: that window is A's answer to B's request, and it dies when A exits",
+			`B: ${b2.child.pid} (inactive; its argv carries --inspect=${inspectS}, which its successor replays)`,
 		);
-		if (
-			doomedFrame !== null ||
-			existsSync(join(SCRATCH, "doomed-window.png"))
-		) {
-			say(
-				`        captured by the app itself: ${join(SCRATCH, "doomed-window.png")}`,
-			);
+		// Long enough for B to boot, lose the lock and be answered, still well inside
+		// A's teardown; the alive readings below are the authoritative anchors.
+		await sleep(2600);
+
+		const aAliveAtProbe = pidAlive(a.child.pid);
+		check(
+			"A still holds the single-instance lock while it tears down (the premise)",
+			aAliveAtProbe,
+			aAliveAtProbe
+				? `A alive +${Date.now() - quitAt}ms after app.quit(), its window already closed`
+				: "A had already exited, so this run proves nothing about the hand-off",
+		);
+
+		let windowsAfter = null;
+		let doomedFrame = null;
+		if (aAliveAtProbe) {
+			try {
+				const prober = await CdpClient.attach(inspectA, 5_000);
+				windowsAfter = await prober.evaluate(WINDOW_READING);
+				if (Array.isArray(windowsAfter) && windowsAfter.length > 0) {
+					// The defect's own evidence: the window A was killed for, captured by
+					// the app itself (never `screencapture`). Best effort — the window is
+					// mid-load and half the time the page is not paintable yet.
+					doomedFrame = await prober
+						.evaluate(
+							"(() => { const { BrowserWindow } = process.mainModule.require('electron'); const w = BrowserWindow.getAllWindows()[0]; if (!w) return null; return w.webContents.capturePage().then((img) => img.toPNG().toString('base64'), (error) => 'capture failed: ' + String(error)); })()",
+						)
+						.catch(() => null);
+					if (
+						typeof doomedFrame === "string" &&
+						!doomedFrame.startsWith("capture")
+					) {
+						writeFileSync(
+							join(SCRATCH, "doomed-window.png"),
+							Buffer.from(doomedFrame, "base64"),
+						);
+					}
+				}
+				prober.close();
+			} catch (error) {
+				say(`re-attach failed: ${String(error)}`);
+			}
 		}
+
+		check(
+			"A answered the relaunch without creating or raising a window",
+			Array.isArray(windowsAfter) && windowsAfter.length === 0,
+			windowsAfter === null
+				? "no reading could be taken"
+				: `A's windows ${Date.now() - quitAt}ms after app.quit(): ${JSON.stringify(windowsAfter)}`,
+		);
+		if (Array.isArray(windowsAfter) && windowsAfter.length > 0) {
+			say(
+				"        ^ the defect: that window is A's answer to B's request, and it dies when A exits",
+			);
+			if (
+				doomedFrame !== null ||
+				existsSync(join(SCRATCH, "doomed-window.png"))
+			) {
+				say(
+					`        captured by the app itself: ${join(SCRATCH, "doomed-window.png")}`,
+				);
+			}
+		}
+
+		/*
+		 * THE NEGATIVE SIDE (#755). B is the last process that may exist before A
+		 * exits: wait for it to be gone, then take the outside readings that pin "no
+		 * successor exists yet" — and so "nothing was spawned at refusal time" —
+		 * while A is still alive. The schedule line is read the same moment: it is
+		 * written at the quit's TERMINAL (`will-quit`'s continuation or its catch),
+		 * so while A still tears down it cannot legitimately be on the record yet.
+		 */
+		if (b.exitedAt === null) {
+			await waitFor(
+				() => b.exitedAt !== null || !pidAlive(b.child.pid),
+				"B to exit",
+				30_000,
+			).catch(() => {});
+		}
+		const aAliveAtNoSProbe = pidAlive(a.child.pid);
+		const noSuccessorReadings = {
+			aAlive: aAliveAtNoSProbe,
+			portListening: await listeningOn(inspectS),
+			scratchProcesses: scratchProfileProcesses(),
+		};
+		check(
+			"no successor exists before A exits (its replay port is closed, and only A is on the scratch profile)",
+			noSuccessorReadings.aAlive &&
+				noSuccessorReadings.portListening === false &&
+				noSuccessorReadings.scratchProcesses.length === 1 &&
+				noSuccessorReadings.scratchProcesses[0].pid === a.child.pid,
+			`A alive: ${noSuccessorReadings.aAlive}; port ${inspectS} listening: ${noSuccessorReadings.portListening}; scratch-profile processes: ${JSON.stringify(noSuccessorReadings.scratchProcesses)}`,
+		);
+		check(
+			"nothing is scheduled at refusal time (no [relaunch] line while A tears down)",
+			!SUCCESSOR_SCHEDULED_LINE.test(appLog()),
+			SUCCESSOR_SCHEDULED_LINE.test(appLog())
+				? "a [relaunch] successor scheduled line exists while A is still alive — the schedule moved off the terminal"
+				: "no [relaunch] line yet; the terminal has not run",
+		);
+
+		// A's own record of what it did with B's request.
+		await waitFor(
+			() => RAISE_SECOND_INSTANCE_LINE.test(appLog()),
+			"a window-raise line for B's request",
+			10_000,
+		).catch(() => {});
+		const raiseLine =
+			appLog()
+				.split("\n")
+				.filter((line) => line.includes("trigger=second-instance"))
+				.slice(-1)[0] ?? "(none)";
+		check(
+			"the refusal is on the record (applied=skipped+quitting)",
+			APPLIED_SKIPPED_WHILE_QUITTING.test(raiseLine),
+			raiseLine,
+		);
+		check(
+			"the refusal carries the completion token (reopen=deferred — one successor will complete it)",
+			REOPEN_DEFERRED.test(raiseLine),
+			raiseLine,
+		);
+
+		check(
+			"B never started a window of its own",
+			SECOND_INSTANCE_LOSER_LINE.test(stdoutOf(b)),
+			stdoutOf(b)
+				.split("\n")
+				.filter((line) => line.includes("[second-instance]"))
+				.join("\n") || "(no second-instance line on B's stdout)",
+		);
 	}
-
-	// A's own record of what it did with B's request.
-	await waitFor(
-		() => RAISE_SECOND_INSTANCE_LINE.test(appLog()),
-		"a window-raise line for B's request",
-		10_000,
-	).catch(() => {});
-	const raiseLine =
-		appLog()
-			.split("\n")
-			.filter((line) => line.includes("trigger=second-instance"))
-			.slice(-1)[0] ?? "(none)";
-	check(
-		"the refusal is on the record (applied=skipped+quitting)",
-		APPLIED_SKIPPED_WHILE_QUITTING.test(raiseLine),
-		raiseLine,
-	);
-
-	check(
-		"B never started a window of its own",
-		SECOND_INSTANCE_LOSER_LINE.test(stdoutOf(b)),
-		stdoutOf(b)
-			.split("\n")
-			.filter((line) => line.includes("[second-instance]"))
-			.join("\n") || "(no second-instance line on B's stdout)",
-	);
 
 	// A must leave, and the timing is the reading that shows the window the
 	// relaunch landed in.
@@ -658,62 +879,197 @@ async function main() {
 			: `window gone +${windowsGoneAt - quitAt}ms, process gone +${teardownMs}ms`,
 	);
 
-	if (b.exitedAt === null) {
-		await waitFor(
-			() => b.exitedAt !== null || !pidAlive(b.child.pid),
-			"B to exit",
-			30_000,
-		).catch(() => {});
-	}
+	/* ---- the completion: S (main arm), or the quiet window (control arm) -- */
 
-	/* ---- C: the next relaunch, after the old process is gone ------------- */
-
-	const inspectC = await freePort();
-	const c = launchApp({ mode: "inactive", inspectPort: inspectC, label: "c" });
-	say(
-		`C: ${c.child.pid} (inactive; the relaunch the operator makes after the quit finished)`,
-	);
-	let cWindow = null;
-	try {
-		const mainC = await CdpClient.attach(inspectC);
-		cWindow = await waitFor(
-			async () => {
-				const list = await mainC.evaluate(WINDOW_READING).catch(() => null);
-				return Array.isArray(list) && list.length === 1 && list[0].visible
-					? list
-					: null;
-			},
-			"C's window",
-			windowWaitMs,
+	if (NO_REOPEN) {
+		/*
+		 * ---- the no-reopen control (#755's `--no-reopen` arm) ---------------
+		 *
+		 * The same quit, with nothing refused: no successor may be spawned at all.
+		 * The readings are the negative of the main arm's — any process wrongly
+		 * spawned would show on the scratch profile, and anything it replayed would
+		 * have to open a listener; the designated port is a fresh one nothing was
+		 * ever told about. Both are sampled across the grace window rather than at
+		 * one instant, so a late appearance cannot slip past a single glance.
+		 */
+		/*
+		 * The designated port is `inspectS` — the very port B would have carried and
+		 * its successor would have opened. In this arm nothing was ever told about
+		 * it, so it must stay silent; see the reservation above the arm branch.
+		 */
+		const designatedPort = inspectS;
+		say(
+			`no-reopen control: A quit with nothing to complete; port ${designatedPort} and the scratch profile must stay quiet`,
+		);
+		let quietViolation = null;
+		const quietDeadline = Date.now() + 5_000;
+		while (Date.now() < quietDeadline && quietViolation === null) {
+			const processes = scratchProfileProcesses();
+			if (processes.length > 0) {
+				quietViolation = `a process appeared on the scratch profile: ${JSON.stringify(processes)}`;
+			} else if (await listeningOn(designatedPort)) {
+				quietViolation = `something is listening on ${designatedPort}`;
+			} else {
+				await sleep(250);
+			}
+		}
+		check(
+			"no successor appears when no reopen was refused (scratch profile quiet, designated port closed for 5s)",
+			quietViolation === null,
+			quietViolation ?? "quiet for 5000ms",
 		);
 		check(
-			"the next relaunch opens and shows its window",
-			cWindow !== null,
-			JSON.stringify(cWindow),
+			"nothing was even scheduled (no completion token, no [relaunch] line)",
+			!REOPEN_DEFERRED.test(appLog()) &&
+				!SUCCESSOR_SCHEDULED_LINE.test(appLog()),
+			`reopen=deferred: ${REOPEN_DEFERRED.test(appLog())}; [relaunch] line: ${SUCCESSOR_SCHEDULED_LINE.test(appLog())}`,
 		);
-		await mainC.evaluate(
-			"(() => { process.mainModule.require('electron').app.quit(); return 'quit requested'; })()",
+	} else {
+		/*
+		 * ---- S: the successor A's quit terminal spawned (#755) --------------
+		 *
+		 * A's terminal scheduled ONE successor via `app.relaunch`; its argv replays
+		 * B's command line, so it answers on B's inspect port. S starts after A is
+		 * fully gone (the relaunch contract, measured by the #755 spike), takes the
+		 * freed single-instance lock and opens under the recorded (inactive) plan.
+		 * A successor that never started leaves the attach to time out — the
+		 * check's detail will say so.
+		 */
+		let mainS = null;
+		try {
+			mainS = await CdpClient.attach(inspectS, 30_000);
+		} catch (error) {
+			say(`successor attach failed: ${String(error)}`);
+		}
+		check(
+			"the successor starts after A exits, on the replayed inspect port",
+			mainS !== null,
+			mainS === null
+				? `nothing answered on 127.0.0.1:${inspectS} within 30s of A's exit — no successor was spawned`
+				: `observed on ${inspectS}`,
 		);
-		await waitFor(
-			async () => {
-				const list = await mainC.evaluate(WINDOW_READING).catch(() => null);
-				return Array.isArray(list) && list.length === 0 ? true : null;
-			},
-			"C's window closing",
-			20_000,
-		).catch(() => {});
-		mainC.close();
-	} catch (error) {
-		check("the next relaunch opens and shows its window", false, String(error));
+		let sPid = null;
+		if (mainS !== null) {
+			sPid = await mainS.evaluate("process.pid").catch(() => null);
+			const sArgv = await mainS.evaluate("process.argv").catch(() => null);
+			check(
+				"the successor is a fresh process (a new pid, not A's or B's)",
+				typeof sPid === "number" &&
+					sPid !== a.child.pid &&
+					sPid !== (b === null ? null : b.child.pid),
+				`S pid=${sPid}; A pid=${a.child.pid}; B pid=${b === null ? "?" : b.child.pid}`,
+			);
+			check(
+				"the successor replays B's command line under the recorded plan",
+				Array.isArray(sArgv) &&
+					sArgv.includes(`--inspect=${inspectS}`) &&
+					sArgv.includes("--window-mode=inactive") &&
+					sArgv.includes(`--user-data-dir=${USER_DATA}`),
+				JSON.stringify(sArgv),
+			);
+			const sLock = await mainS
+				.evaluate(
+					"(() => { const { app } = process.mainModule.require('electron'); return app.hasSingleInstanceLock(); })()",
+				)
+				.catch(() => null);
+			check(
+				"the successor took the freed single-instance lock (a second spawn would have lost it)",
+				sLock === true,
+				`hasSingleInstanceLock() = ${sLock}`,
+			);
+			const sWindow = await waitFor(
+				async () => {
+					const list = await mainS.evaluate(WINDOW_READING).catch(() => null);
+					return Array.isArray(list) && list.length === 1 && list[0].visible
+						? list
+						: null;
+				},
+				"S's window",
+				windowWaitMs,
+			);
+			check(
+				"the successor opens exactly one visible window under the recorded plan",
+				sWindow !== null,
+				JSON.stringify(sWindow),
+			);
+			// The outside view agrees: exactly the successor is on the scratch
+			// profile now.
+			const sScratch = scratchProfileProcesses();
+			check(
+				"exactly one app instance is on the scratch profile (the successor)",
+				sScratch.length === 1 && sScratch[0].pid === sPid,
+				JSON.stringify(sScratch),
+			);
+			// And the app's own log holds S's lines — a second daemon registration,
+			// its initial-present raise, its launcher policy — appended after A
+			// exited. A writes no raise (headless raises nothing), B never got that
+			// far, and C has not launched: what appears here is the successor's.
+			const daemonRegistrationCount = () =>
+				(appLog().match(DAEMON_REGISTERED_ALL) ?? []).length;
+			await waitFor(
+				() => daemonRegistrationCount() >= 2,
+				"S's daemon registration",
+				60_000,
+			).catch(() => {});
+			check(
+				"the successor's own log lines are on the record (daemon, raise, launcher policy)",
+				daemonRegistrationCount() >= 2 &&
+					RAISE_INITIAL_PRESENT_INACTIVE.test(appLog()) &&
+					LAUNCHER_INACTIVE_LINE.test(appLog()),
+				`daemon registrations: ${daemonRegistrationCount()}; initial-present raise: ${RAISE_INITIAL_PRESENT_INACTIVE.test(appLog())}; launcher policy: ${LAUNCHER_INACTIVE_LINE.test(appLog())}`,
+			);
+			// Second reading of S's window list: it must STAY at one — a second
+			// successor would have lost the lock and exited, and nothing else may
+			// join it (exactly-once).
+			const sWindowAgain = await mainS
+				.evaluate(WINDOW_READING)
+				.catch(() => null);
+			check(
+				"the successor's window list stays length 1 (exactly one successor)",
+				Array.isArray(sWindowAgain) && sWindowAgain.length === 1,
+				JSON.stringify(sWindowAgain),
+			);
+			// S quits before C: its own quit has no recorded reopen, so it must
+			// spawn nothing, and C must find the lock free.
+			await mainS
+				.evaluate(
+					"(() => { process.mainModule.require('electron').app.quit(); return 'quit requested'; })()",
+				)
+				.catch(() => {});
+			await waitFor(
+				async () => {
+					const list = await mainS.evaluate(WINDOW_READING).catch(() => null);
+					return Array.isArray(list) && list.length === 0 ? true : null;
+				},
+				"S's window closing",
+				20_000,
+			).catch(() => {});
+			mainS.close();
+		}
+		if (sPid !== null) {
+			await waitFor(() => !pidAlive(sPid), "S to exit", 60_000).catch(() => {});
+			if (pidAlive(sPid)) {
+				/*
+				 * Exact-pid reap of a process this run caused to exist (its own launcher,
+				 * A, is gone). Only the pid S proved it owns is touched.
+				 */
+				try {
+					process.kill(sPid, "SIGKILL");
+				} catch {}
+				await waitFor(() => !pidAlive(sPid), "S to reap", 10_000).catch(
+					() => {},
+				);
+			}
+			const ghosts = scratchProfileProcesses();
+			check(
+				"S's own quit spawned nothing (a quit with no recorded reopen completes no successor)",
+				ghosts.length === 0,
+				JSON.stringify(ghosts),
+			);
+		}
 	}
-	if (c.exitedAt === null) {
-		await waitFor(
-			() => c.exitedAt !== null || !pidAlive(c.child.pid),
-			"C to exit",
-			60_000,
-		).catch(() => {});
-	}
-	if (c.exitedAt === null) await stopApp(c.child, { sigkill: true });
+
+	await runNextLaunchControl(windowWaitMs);
 
 	/* ---- verdict, reaping, artifacts -------------------------------------- */
 

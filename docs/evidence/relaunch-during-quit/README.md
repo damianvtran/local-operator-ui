@@ -56,7 +56,27 @@ with a window consults it:
   cancellation a running quit has — so a cancelled quit refuses nothing later.
 
 The next launch — the one that finds the process gone — opens normally, which
-the rig's third instance measures.
+the rig's final control measures.
+
+**And the refusal is now COMPLETED — bounded taking-over (#755).** The refusal
+stays whole; what changed is what happens to the request. A refusal from the two
+sites that mean "the user asked for the app" — a second launch and a macOS Dock
+click — is recorded in memory (`src/main/relaunch-pending.ts`), and the quit's
+EXISTING terminal — the `will-quit` pass that already names itself "the
+completion" — schedules exactly ONE successor instance (`app.relaunch`) before
+it exits. The successor starts after this process is gone, takes the freed
+single-instance lock, and opens as an ordinary launch under the recorded plan.
+The refusal line says so (`reopen=deferred`); the schedule is idempotent
+because `app.relaunch` starts one instance PER CALL; a quit that is cancelled
+clears the record beside its own cancellation; and a quit whose return is
+already owned by an in-flight update install stands the successor down (a
+running instance is what Squirrel's last check aborts the install on). The
+command line the successor runs is the losing launch's, minus argv[0], with
+`--window-mode` pinned when that command line carried none — the loser's
+ENVIRONMENT does not cross the instance boundary, so an env-born mode must be
+pinned or the successor re-resolves a different plan than the request declared.
+The reporter's workaround — close it again, wait several seconds, try again —
+is gone: the reopen completes itself.
 
 ## The evidence
 
@@ -70,9 +90,15 @@ the rig's third instance measures.
    exit, read from A's own log);
 3. instance **B** is the relaunch, anchored on the reading *"A's window is
    gone"* rather than a sleep, sharing A's scratch profile so it loses the
-   lock exactly as a second launch does;
-4. instance **C** is the relaunch after the quit finished: the control that a
-   refusal is a refusal, not a permanent state.
+   lock exactly as a second launch does — and carrying an `--inspect` port,
+   which the recorded request replays to the successor (#755);
+4. in the #755 arm, the successor **S** — the one process A's quit terminal
+   schedules — is read on that same port after A is gone: a fresh pid, the
+   freed lock, one visible window, its own log lines (the replay contract is
+   proven by S answering there at all). The same port is held closed as the
+   negative while A still tears down;
+5. instance **C** is the relaunch after S has lived and quit: the control that
+   a refusal is a refusal, not a permanent state.
 
 B declares `inactive` rather than going undeclared (a person's relaunch, which
 is `focus`): taking the operator's focus is the one thing this repository's rigs
@@ -95,6 +121,20 @@ is `OK: 0 failing check(s)`. The before transcript predates the
 working-directory move described above, which is why its `cwd=` names the
 checkout while the after run's names the run's scratch tree.
 
+The #755 arm adds the successor readings, and `--no-reopen` runs its control
+(the same quit with nothing refused — nothing may be spawned, so the scratch
+profile stays quiet for the grace window, the designated port stays closed, and
+no `reopen=deferred` line exists):
+
+| reading (#755 arm) | the recorded run |
+| --- | --- |
+| A's refusal of B's request | `[window-raise] trigger=second-instance … applied=skipped+quitting reopen=deferred` |
+| while A still tears down | nothing listens on B's replayed port; only A is on the scratch profile; no `[relaunch]` line yet |
+| after A exits | S answers on the replayed port: a fresh pid, `hasSingleInstanceLock() = true`, one visible window, its daemon/raise/launcher lines in the log |
+| exactly-once | S's window list stays at one; the lock is S's; the scratch profile carries one instance |
+| S's own quit | spawns nothing (no request was refused during it) |
+| `--no-reopen` control | quiet for the 5 s grace: no process, no listener, no token, no `[relaunch]` line; C opens normally |
+
 ```
 node scripts/relaunch-during-quit-proof.mjs
 ```
@@ -116,9 +156,19 @@ itself.
 
 - No real Cmd+Q keystroke is synthesized: the quit is driven over the main
   inspector, and the evidence for the menu path is that the chain entered is the
-  same one, read from A's own log.
+  same one, read from A's own log. The macOS Dock-click `activate` path is the
+  same class of limit: it is exercised handler-side, and the OS path is not
+  synthesizable.
 - It measures one machine's teardown timing. The window this bug lives in is the
   owned backend's stop — seconds here — and a machine with nothing to stop would
   have a narrower window.
 - The frame is PNG, not a swept `.webp`: no supplementary set is declared and the
   manifest's `frames` count does not move.
+- The #755 arm's residuals, documented rather than repaired: a hard kill (or a
+  crash) before the quit's terminal loses the record — the lock is simply free
+  and the person's next launch opens normally; a refusal landing in the
+  sub-millisecond sliver after the last terminal call is dropped the same way;
+  and the `uncaughtException` path's `process.exit(1)` bypasses the terminals
+  entirely (there was no record for it to complete). The successor this rig
+  observes is `inactive` (visible, unfocused) — the same envelope B and C run
+  under; a packaged successor is `normal`.
