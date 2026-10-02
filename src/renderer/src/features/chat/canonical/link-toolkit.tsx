@@ -86,7 +86,7 @@ import {
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
 import { clipForSpeech } from "@shared/lib/speech-clip";
-import { useSpeechAgentFor } from "@shared/lib/speech-target";
+import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import {
 	fetchSpeechFor,
@@ -182,11 +182,13 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 	const { speak } = useSpeechStore();
 	/*
 	 * THE SCOPE IS NOT THE TARGET. `conversationId` keys the cache; the daemon
-	 * synthesises against the conversation's ROLE AGENT, which is a different
-	 * namespace (`@shared/lib/speech-target`) - and `null` for a conversation
-	 * with no binding, which speaks through the agent-less route.
+	 * synthesises against the conversation's ROLE AGENT, and it reaches that
+	 * agent as a REGISTRY ID (`@shared/lib/speech-target` carries the argument) -
+	 * so the press resolves the catalogue's BINDING, the agent's display name, to
+	 * that id. `null` is a conversation with no binding, which speaks through the
+	 * agent-less route.
 	 */
-	const speechAgent = useSpeechAgentFor(conversationId);
+	const speechBinding = useSpeechBindingFor(conversationId);
 	const speakText = highlight ?? linkText();
 	const speakKey =
 		speakText === null
@@ -205,7 +207,7 @@ export const LinkToolkit: FC<LinkToolkitProps> = ({
 		play: ({ text }) =>
 			speak(
 				selectionSpeechKey(conversationId, text),
-				fetchSpeechFor(speechAgent, text),
+				fetchSpeechFor(speechBinding, text),
 			),
 	});
 	const [copied, setCopied] = useState(false);

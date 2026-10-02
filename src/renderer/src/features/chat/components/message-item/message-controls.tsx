@@ -31,7 +31,7 @@ import {
 	useSpeakControl,
 } from "@shared/components/common/speak-control";
 import { Button, Tooltip } from "@shared/components/ui";
-import { useSpeechAgentFor } from "@shared/lib/speech-target";
+import { useSpeechBindingFor } from "@shared/lib/speech-target";
 import { cn } from "@shared/lib/utils";
 import { messageSpeechKey, useSpeechStore } from "@shared/store/speech-store";
 import { Copy } from "lucide-react";
@@ -65,15 +65,22 @@ export const MessageControls: FC<MessageControlsProps> = ({
 	const { playSpeech } = useSpeechStore();
 	/*
 	 * THE TARGET IS THE CONVERSATION'S ROLE AGENT, not the identity this strip is
-	 * handed (`@shared/lib/speech-target` carries the argument). `null` is a
-	 * conversation with no binding, which speaks through the agent-less route -
-	 * it is no longer a reason to disable the control.
+	 * handed (`@shared/lib/speech-target` carries the argument). What is read here
+	 * is the catalogue's BINDING for that conversation - the agent's display NAME -
+	 * which the press resolves to a registry id; `null` is a conversation with no
+	 * binding, which speaks through the agent-less route. It is no longer a reason
+	 * to disable the control.
+	 *
+	 * `available` is this strip's own subject, the strip's TEXT - a message with no
+	 * words has nothing to speak, and the press would be a no-op (agent review
+	 * round 1, MINOR-2).
 	 */
-	const speechAgent = useSpeechAgentFor(agentId ?? null);
+	const speechBinding = useSpeechBindingFor(agentId ?? null);
 	const speechControl = useSpeakControl({
 		key: messageSpeechKey(messageId),
 		getText: () => content ?? null,
-		play: ({ text }) => playSpeech(messageId, speechAgent, text),
+		play: ({ text }) => playSpeech(messageId, speechBinding, text),
+		available: Boolean(content),
 	});
 
 	/*
