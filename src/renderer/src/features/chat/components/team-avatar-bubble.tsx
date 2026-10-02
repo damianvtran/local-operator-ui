@@ -73,11 +73,12 @@ import type { FC } from "react";
  * WHAT THAT DOES TO THE PICTURE CASE, stated whole because "20px -> 16px" is not
  * the whole of it: the thumbnail is still a circular crop, now 16px inside the
  * badge's 24x16 stadium - the badge's own `px-1` leaves a 4px collar of `elevated`
- * on each side of it (measured at head, in css: fill 2.0-4.5, crop 4.5-20.5, fill
- * 20.5-24.0). Before, the 1px `border-control` sat ON the 20px circle, so there was
- * no collar at all. The picture's mechanism - Radix's `AvatarImage` and the load
- * error it reports back to the root - is untouched, and its rendered size is the
- * one thing about it this round moves.
+ * on each side of it. Measured off the rendered frame at head, in css: the mark is
+ * x 24.0-48.0, and inside it the plate runs 24.0-28.0, the crop 28.0-44.0, and the
+ * plate again 44.0-48.0 - 4.0 each side. Before, the 1px `border-control` sat ON
+ * the 20px circle, so there was no collar at all. The picture's mechanism - Radix's
+ * `AvatarImage` and the load error it reports back to the root - is untouched, and
+ * its rendered size is the one thing about it this round moves.
  *
  * THE INITIALS GOT SUBTLER, NOT SMALLER, which is worth knowing because the
  * report asked for both: the glyphs keep the rail badge's own `text-meta-sm`
