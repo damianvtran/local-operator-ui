@@ -87,6 +87,17 @@ export const VENDORED_FILES = [
 		from: "extension/src/driver/scroll-expressions.ts",
 		to: "driver/scroll-expressions.ts",
 	},
+	// The structured-read page functions (`styles`, `hit_test`, `ancestors`).
+	// They are FUNCTION EXPRESSIONS rather than strings because the extension
+	// hands them to `chrome.scripting.executeScript({func})` and this host
+	// reproduces the same call as `({fn}.toString())(...)`: self-contained (no
+	// imports, no closures) so the source round-trips through both boundaries,
+	// and one implementation means the two hosts answer with the same caps,
+	// rounding and property lists.
+	{
+		from: "extension/src/driver/geometry-read.ts",
+		to: "driver/geometry-read.ts",
+	},
 ];
 
 /**
@@ -344,6 +355,20 @@ async function main() {
 	console.log(
 		`PROVENANCE.json: proto_version=${provenance.proto_version} inputs_sha256=${provenance.inputs_sha256}`,
 	);
+
+	// The page-function sources the browser host injects are DERIVED from the
+	// vendored geometry driver, so a re-pin is not complete until they are
+	// re-derived: without this, every pin leaves `geometry-sources.gen.ts` stale
+	// and the freshness gate red until somebody remembers the second command.
+	// Conditional on purpose — only the geometry driver has a derived artifact,
+	// and the condition reads as the dependency rather than hiding it.
+	if (VENDORED_FILES.some((entry) => entry.to === "driver/geometry-read.ts")) {
+		execFileSync(
+			process.execPath,
+			[join(ROOT, "scripts", "generate-geometry-sources.mjs")],
+			{ stdio: "inherit", cwd: ROOT },
+		);
+	}
 	console.log(
 		"note: this proves nothing about drift against lop — run scripts/check-vendored.mjs for the in-repo gate.",
 	);
