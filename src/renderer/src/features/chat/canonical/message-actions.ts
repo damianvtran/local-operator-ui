@@ -104,24 +104,30 @@ export type ActionRowRole = "answer" | "user";
  */
 export function answerActionsFor({
 	role = "answer",
-	agentId,
 	forkable = false,
 }: {
 	role?: ActionRowRole;
-	agentId?: string;
 	/**
 	 * Whether this row's message is a point a fork can be cut at - the answer
 	 * `forkEntryId` gives the transcript for the record it is drawing.
 	 */
 	forkable?: boolean;
-}): AnswerActionId[] {
+} = {}): AnswerActionId[] {
 	/*
 	 * Spread rather than a trailing conditional so the two arms read identically
 	 * and a fourth conditional cannot be added to one of them alone.
 	 */
 	const fork: AnswerActionId[] = forkable ? ["fork"] : [];
 	if (role === "user") return ["copy", ...fork];
-	return agentId ? ["copy", "speak", ...fork] : ["copy", ...fork];
+	/*
+	 * SPEAK IS ALWAYS LISTED, and the row carries no agent gate. The gate this
+	 * replaced tested an agent id that in this app is the PANE's identity - not
+	 * anything the speech route can resolve - so it offered the control on
+	 * conversations that could not use it and withheld it from ones that could.
+	 * What a press needs is a resolvable target, and that is the press's own
+	 * business (`speech-target.ts`).
+	 */
+	return ["copy", "speak", ...fork];
 }
 
 /**
