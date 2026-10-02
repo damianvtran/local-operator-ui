@@ -68,12 +68,35 @@ export type ActionRowRole = "answer" | "user";
  * reason - whether a row is a cut point is a fact about the SURFACE, and the
  * transcript is the only layer that knows which record it mounted for.
  *
- * FORK IS LAST on both arms, and that is the anchor rule above applied once
- * more: the actions before it are the row's fixed, cheapest presses (Copy, and
- * Speak where an agent resolves) and they keep the left edge whatever a later
- * action does. Fork is a control the operator asked for on the message itself,
- * and the row's own width test (`scripts/message-actions.test.mjs`) is what
- * holds the line at three.
+ * FORK TAKES THE ROW'S FREE END, and that is the rule rather than "it keeps
+ * the left edge". The row's own order is the anchor rule applied once more -
+ * the actions before it are the cheapest, fixed presses (Copy, and Speak where
+ * an agent resolves) - but the two arms are anchored differently, so "last"
+ * lands on two different edges: the answer's line is left-anchored
+ * (`canonical-transcript.tsx`'s foot line runs from the prose rail), where Fork
+ * extends the row rightward and moves nothing; the user column is
+ * `items-end`, where the row is right-anchored and an appended control takes
+ * the anchored edge and shifts Copy and Speak left by one pitch. Both mount
+ * sites put Fork at the row's free end and neither moves the answer's own
+ * text.
+ *
+ * THE CAP THIS ROW ASKS TO EXCEED, named where it is written: the row's two-
+ * action shape is pinned by its own test (`scripts/message-actions.test.mjs`,
+ * "the row is capped at two actions"), whose stated grounds are the line's
+ * width and the slot #694 was reserving. #694's overflow home has since shipped
+ * as the sidebar row context menu (Archive / Pin / Fork), and the only cap
+ * carrying an explicit number is that menu's - "two at most, pushing it three"
+ * (#694 / #739) - so three inline controls on this row is the number the
+ * repository actually states, not a raised one. The three is also the surface
+ * budget's ceiling: a fourth goes behind an overflow rather than into the row.
+ *
+ * WHAT IT DOES NOT COVER, declared rather than implied: the row is mounted only
+ * under `isQuotable` (both mount sites in `canonical-transcript.tsx`), so a
+ * message with no words at all - an image-only user turn, an answer whose whole
+ * body is reply markup - offers no Fork even though it is a committed journal
+ * entry and a legal cut point. That is the cost of riding the copy row, and it
+ * is recorded here so the next reader meets it as a decision rather than as a
+ * gap.
  */
 export function answerActionsFor({
 	role = "answer",
@@ -127,6 +150,30 @@ export function forkEntryId(record: TranscriptRecord): string | null {
 	if (record.kind !== "user" && record.kind !== "assistant") return null;
 	if (record.kind === "assistant" && record.streaming) return null;
 	return record.id || null;
+}
+
+/**
+ * How much of the chosen message the fork flow repeats back to the reader.
+ *
+ * WHY THE FLOW HAS TO SAY WHICH MESSAGE AT ALL: the control is a hover-revealed
+ * row and the picker is a modal over the transcript, so by the time the reader
+ * can check the cut point the row it names is covered. "The message you chose"
+ * is therefore a phrase with no referent on screen - the irreversible-ish step
+ * has to be checkable BEFORE it is taken, and only an excerpt of the row's own
+ * words does that.
+ *
+ * A plain clamp rather than a middle-elide: the opening words are what
+ * identifies a message to its author, which is the same reasoning
+ * `missingNote` states for keeping a path's basename. Whitespace is collapsed
+ * so a message that opens with a fenced block or a wrapped line does not spend
+ * the budget on newlines.
+ */
+export const FORK_EXCERPT_MAX_CHARS = 96;
+
+export function forkExcerpt(text: string): string {
+	const flat = text.replace(/\s+/g, " ").trim();
+	if (flat.length <= FORK_EXCERPT_MAX_CHARS) return flat;
+	return `${flat.slice(0, FORK_EXCERPT_MAX_CHARS - 1).trimEnd()}\u2026`;
 }
 
 /**

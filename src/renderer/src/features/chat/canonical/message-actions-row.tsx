@@ -6,8 +6,12 @@
  * itself: the pane owns the presentation slot and the picker's adapter needs
  * the pane's canonical handle, command catalogue and rebind path
  * (`panel-presentation-store.ts` carries the argument for a request over a
- * function call). What this row contributes is the two facts only it holds -
- * which conversation, and which transcript entry - and they ride the request.
+ * function call). What this row contributes is what only it holds - which
+ * conversation, which transcript entry, and the words to name that entry back
+ * to the reader - and they ride the request. The control it hands over as the
+ * request's invoker is the BUTTON it pressed, not this row's box: the pane
+ * restores focus by calling `focus()`, and only a focusable node makes that
+ * real (UX round 1, U2).
  *
  * WHY THIS IS NOT THE LINK TOOLBAR'S COMPONENT. That strip floats over what the
  * pointer is on, takes the elevated ground and the one overlay shadow, and
@@ -37,7 +41,8 @@
  *
  * ONE COMPONENT, TWO KINDS. `kind` decides what the row offers
  * (`answerActionsFor`), which marker it carries and what its accessible name
- * is; an answer row offers Copy + Speak, a user row offers Copy alone. The
+ * is; an answer row offers Copy + Speak + Fork, a user row Copy + Fork - Speak
+ * is the one action the answer arm owns alone. The
  * user arm exists because the operator asked for a copy affordance on their
  * own messages, and it is this component rather than a second one because
  * everything here - the copy press, the reveal, the toolbar semantics - is the
@@ -88,6 +93,7 @@ import {
 	USER_ACTIONS_LABEL,
 	actionRowVisibility,
 	answerActionsFor,
+	forkExcerpt,
 } from "./message-actions";
 
 export type AnswerActionRowProps = {
@@ -196,6 +202,8 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	 */
 	const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const revealRef = useRef<HTMLDivElement | null>(null);
+	/* The control Escape must return focus to; see `handleFork`. */
+	const forkButtonRef = useRef<HTMLButtonElement | null>(null);
 	const arrivalTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const { playSpeech } = useSpeechStore();
@@ -335,7 +343,25 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 	 */
 	const handleFork = () => {
 		if (!conversationId || !entryId) return;
-		requestPanel("session.fork", revealRef.current, conversationId, entryId);
+		/*
+		 * THE INVOKER IS THE BUTTON, not the row's toolbar box, and the difference
+		 * is measured rather than stylistic (UX round 1, U2): the pane restores
+		 * focus by calling `origin.focus()` (`slash-dispatch.ts`'s `closePicker`),
+		 * and a `role="toolbar"` div with no `tabindex` is not focusable, so the
+		 * call was a silent no-op and Escape dropped the reader on `document.body`.
+		 * A `<button>` is focusable by construction, which is what makes the row's
+		 * "Escape comes back to the control that opened it" true.
+		 */
+		requestPanel("session.fork", forkButtonRef.current, conversationId, {
+			id: entryId,
+			/*
+			 * The reader's own words, so the picker can name the cut point back to
+			 * them (UX round 1, U1): the row is a hover-revealed surface and the
+			 * picker covers the transcript, so an excerpt is the only thing that can
+			 * answer "did I point at the right message?" before the fork is taken.
+			 */
+			excerpt: forkExcerpt(bodyText),
+		});
 	};
 
 	/*
@@ -386,6 +412,7 @@ export const AnswerActionRow = memo(function AnswerActionRow({
 					variant="ghost"
 					size="icon-sm"
 					aria-label="Fork from this message"
+					ref={forkButtonRef}
 					className={cn("text-ink-dim hover:bg-accent-wash hover:text-accent")}
 					onClick={handleFork}
 				>

@@ -117,6 +117,18 @@ export type PanelRequest = {
 	 * whole-conversation fork they have always had.
 	 */
 	entryId?: string;
+	/**
+	 * How to name that entry BACK TO THE READER, as the requester would name it.
+	 *
+	 * A REQUESTER'S COPY OF THE FACT, not something the presenter can derive:
+	 * the presenter holds a pane, not the row that was pointed at, and the whole
+	 * reason `entryId` travels is that the row is the only party that knows which
+	 * message it is. Today it is an excerpt of the row's own words, so a
+	 * destination can say which message it is about to act on - the row is
+	 * hover-revealed and the panel covers it, so nothing else in the flow can
+	 * answer that question.
+	 */
+	entryExcerpt?: string;
 };
 
 /**
@@ -138,13 +150,17 @@ type PanelPresentationState = {
 	 * `sessionId` names the conversation the request addresses when the requester
 	 * is outside the pane (see `PanelRequest.sessionId`); the palette never passes it.
 	 * `entryId` names the transcript entry the destination acts on, when it acts
-	 * on one (see `PanelRequest.entryId`).
+	 * on one, and `entry.excerpt` is how to name it back to the reader (see
+	 * `PanelRequest.entryExcerpt`). The object rather than two positional strings
+	 * because they are two halves of one fact: a cut point is useless to a
+	 * destination that cannot say WHICH message it is, and a position whose only
+	 * caller passes both by construction is the shape that cannot drift apart.
 	 */
 	requestPanel: (
 		destination: string,
 		invoker?: HTMLElement | null,
 		sessionId?: string,
-		entryId?: string,
+		entry?: { id: string; excerpt?: string },
 	) => void;
 	/** Retire a request, by nonce. */
 	consumePanel: (nonce: number) => void;
@@ -230,7 +246,7 @@ let claims = 0;
 export const usePanelPresentationStore = create<PanelPresentationState>(
 	(set) => ({
 		request: null,
-		requestPanel: (destination, invoker, sessionId, entryId) => {
+		requestPanel: (destination, invoker, sessionId, entry) => {
 			nextNonce += 1;
 			set({
 				request: {
@@ -241,9 +257,16 @@ export const usePanelPresentationStore = create<PanelPresentationState>(
 					// Spread, not `sessionId: undefined`: the palette's request keeps the
 					// exact shape it has always had, key for key.
 					...(sessionId ? { sessionId } : {}),
-					// The same rule one level down: an empty id names no entry, so it
-					// is absent rather than a blank the presenter has to tell apart.
-					...(entryId ? { entryId } : {}),
+					/*
+					 * The same rule one level down, and the same reason it is a spread: an
+					 * empty id names no entry, so it is ABSENT rather than a blank the
+					 * presenter has to tell apart from "no cut point". The excerpt follows
+					 * the id - a label for a target that is not there names nothing.
+					 */
+					...(entry?.id ? { entryId: entry.id } : {}),
+					...(entry?.id && entry.excerpt
+						? { entryExcerpt: entry.excerpt }
+						: {}),
 				},
 			});
 		},
