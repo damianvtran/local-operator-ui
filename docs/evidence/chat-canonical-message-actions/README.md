@@ -17,6 +17,17 @@ have nothing on that line. **The row is discoverable because it is ON SCREEN at
 rest**, so every state below is photographed with no pointer in the frame unless
 the state IS the pointer.
 
+**The `rest/` frames are the capture renderer's state, not a pointer user's**
+(design round 1 on #1002, D2). The row's reveal is
+`opacity-0 … group-hover:opacity-100 group-focus-within:opacity-100
+[@media(hover:none)]:opacity-100` (`message-actions.ts`), and the rig's headless
+Chrome reports no hover capability, so `rest/` photographs the `hover:none` arm —
+the state a touch or hover-less renderer gets. In a hover-capable browser the same
+story paints **no row at all** until the pointer or the keyboard arrives, which is
+what `hover-copy/` and `focus-copy/` are for and why they exist in the set. Both
+statements are true of the product: the row is always on screen for a renderer
+that cannot hover, and one hover away for the one that can.
+
 ## What is in it
 
 | directory | state | what it is for |
@@ -70,8 +81,11 @@ left standing beside a frame that contradicts it. **The answer and the ledger
 share the rail; the caption follows the actions on the same line when there is
 one.**
 
-Two buttons, `size-7` (`icon-sm`) each with a 4px gap: the toolbar measures
-60×28 and its first button 28×28.
+Three buttons, `size-7` (`icon-sm`) each with a 4px gap: the toolbar measures
+**92×28** (28×3 + 4×2, and `actions.buttons` reads 3 on both entries — the
+number in the geometry probe's own output, not arithmetic done here), its first
+button 28×28, and the pitch between buttons is 32px. Re-measured after #1002's
+Fork joined the row; the row and the line keep their rail and their 28px.
 
 ## The accepted cost, restated honestly
 

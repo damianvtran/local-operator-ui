@@ -524,14 +524,18 @@ test("the pane presents the conversation a request names, before its own (#739)"
 	);
 	assert.match(
 		store,
-		/entryId\?: string;/,
-		"PanelRequest lost its optional addressed transcript entry",
+		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,\s*entry\?: \{ id: string; excerpt\?: string \},?\s*\) => void;/,
+		"requestPanel lost a parameter - the cut point travels as the fourth, as one object",
 	);
-	assert.match(
-		store,
-		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,\s*entryId\?: string,?\s*\) => void;/,
-		"requestPanel lost a parameter - the entry id travels as the fourth",
-	);
+	/*
+	 * THIS IS A SIGNATURE PIN, and deliberately no more (agent review round 1,
+	 * N3): a source regex cannot fail for a store that keeps the field and drops
+	 * the value, so the BEHAVIOUR - the key present when named, absent when not,
+	 * and the label following its target - is asserted against the real store in
+	 * `scripts/palette-panel-request.test.mjs`. What this guard adds is the one
+	 * thing that file cannot see: that the widening sits in the parameter list a
+	 * caller writes against.
+	 */
 	/*
 	 * And the palette is untouched: it never names a conversation, so its request
 	 * resolves to the pane's own exactly as before.

@@ -98,7 +98,7 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
-			export { answerActionsFor, forkEntryId, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
+			export { answerActionsFor, forkEntryId, forkExcerpt, FORK_EXCERPT_MAX_CHARS, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
 			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
@@ -514,10 +514,9 @@ test("the fork press asks the pane for session.fork with THIS row's entry", asyn
 	const store = mod.usePanelPresentationStore;
 	/* A request left by an earlier test in this file would be the same trap. */
 	store.setState({ request: null });
+	const fork = button("Fork from this message");
 	await act(async () => {
-		button("Fork from this message").dispatchEvent(
-			new dom.window.MouseEvent("click", { bubbles: true }),
-		);
+		fork.dispatchEvent(new dom.window.MouseEvent("click", { bubbles: true }));
 	});
 	const request = store.getState().request;
 	assert.ok(request, "the press wrote a request");
@@ -532,12 +531,55 @@ test("the fork press asks the pane for session.fork with THIS row's entry", asyn
 		"entry-a1",
 		"and the row's own transcript entry - which is what makes the picker a cut",
 	);
-	assert.ok(
-		request.invoker instanceof dom.window.HTMLElement,
-		"the row travels as the invoker, so Escape from the picker comes back to it",
+	/*
+	 * THE LABEL THE PICKER REPEATS BACK (UX round 1, U1): the row is
+	 * hover-revealed and the panel covers it, so the excerpt is the only thing
+	 * that can tell the reader which message the cut is at.
+	 */
+	assert.equal(
+		request.entryExcerpt,
+		"Four were late, and the oldest is 41 days behind.",
+		"and how to name that entry back to the reader",
+	);
+	/*
+	 * THE INVOKER IS THE BUTTON, and this is the assertion that discriminates
+	 * (UX round 1, U2): the pane restores focus with `origin.focus()`, which a
+	 * `role="toolbar"` div without a tabindex silently ignores. Asserting the
+	 * tag alone would not settle it - the real claim is that focusing what the
+	 * row hands over MOVES focus, so it is exercised.
+	 */
+	assert.equal(
+		request.invoker?.tagName,
+		"BUTTON",
+		"the pressed control travels as the invoker, not the row's toolbar box",
+	);
+	assert.equal(
+		request.invoker?.getAttribute("aria-label"),
+		"Fork from this message",
+		"and it is THIS control, so Escape returns to what was pressed",
+	);
+	request.invoker.focus();
+	assert.equal(
+		dom.window.document.activeElement,
+		request.invoker,
+		"the invoker is genuinely focusable - the pane's restore is not a no-op",
 	);
 	await unmount();
 	store.setState({ request: null });
+});
+
+test("the excerpt the picker repeats is the row's own words, clamped", () => {
+	assert.equal(mod.forkExcerpt("  a\n b   c "), "a b c");
+	const long = mod.forkExcerpt("word ".repeat(60));
+	assert.ok(
+		long.length <= mod.FORK_EXCERPT_MAX_CHARS,
+		"a long message is clamped to the declared budget, ellipsis included",
+	);
+	assert.ok(long.endsWith("\u2026"), "and says so with an ellipsis");
+	assert.ok(
+		!long.includes("  "),
+		"the clamp never leaves the collapsed-whitespace guarantee behind",
+	);
 });
 
 test("Speak is offered when there is an agent to speak with, and disabled when speech is not configured", async () => {
@@ -640,7 +682,7 @@ const gateAnswer = (id, text, extra = {}) => ({
 	...extra,
 });
 
-const transcriptMarkup = (records) =>
+const transcriptMarkup = (records, conversationId = "story-conversation") =>
 	renderToStaticMarkup(
 		h(
 			QueryClientProvider,
@@ -667,10 +709,27 @@ const transcriptMarkup = (records) =>
 				failure: null,
 				awaitingHydration: false,
 				onReconnect: () => {},
-				conversationId: "story-conversation",
+				/* `null` is the run-details child reader's own mount: no conversation. */
+				conversationId: conversationId ?? undefined,
 			}),
 		),
 	);
+
+/**
+ * The aria-labels of one row's buttons, read out of static markup.
+ *
+ * Static markup is enough for this and is the cheap half of the same claim
+ * `scripts/speech-user-copy.test.mjs` makes with a live jsdom mount: the row's
+ * controls and their order are decided by `answerActionsFor` at render, so the
+ * labels are in the HTML - and this file runs on a host where that one cannot.
+ */
+const rowLabelsOf = (html, attr) => {
+	const row = html.match(new RegExp(`<div[^>]*${attr}[^>]*>[\\s\\S]*?</div>`));
+	if (!row) return null;
+	return [...row[0].matchAll(/<button[^>]*aria-label="([^"]*)"/g)].map(
+		(m) => m[1],
+	);
+};
 
 /** How many action rows the markup carries. */
 const actionRowsIn = (html) =>
@@ -682,6 +741,52 @@ test("a settled answer carries the row, and the row is the transcript's own", ()
 		gateAnswer("a1", "It finished with the same four invoices outstanding."),
 	]);
 	assert.equal(actionRowsIn(html), 1, "the settled answer carries one row");
+});
+
+/*
+ * THE COMPOSITION, at the level that caught nothing before: which controls the
+ * real transcript puts on each row. This is the assertion `scripts/speech-user-
+ * copy.test.mjs` makes with a live jsdom mount (agent review round 1, B1 - it
+ * went stale because only its file, and not this one, carried the two-row
+ * shape), restated here in static markup so the claim is covered by a file that
+ * runs on a loaded host as well.
+ *
+ * BOTH ARMS OF `forkable` at the mount site, because the gate is the mount's
+ * answer (the record's own id) and not the row's: with a conversation and two
+ * journalled records each row gains Fork last, and with no conversation the
+ * transcript hands the row nothing to cut at and Fork is withdrawn.
+ */
+test("each row offers the controls its record can carry, Fork last", () => {
+	const html = transcriptMarkup([
+		gateUser("u1", "Is the March import finished?"),
+		gateAnswer("a1", "It finished with the same four invoices outstanding."),
+	]);
+	assert.deepEqual(
+		rowLabelsOf(html, "data-lo-user-actions"),
+		["Copy", "Fork from this message"],
+		"the reader's own message: Copy first, Fork last, and never Speak",
+	);
+	assert.deepEqual(
+		rowLabelsOf(html, "data-lo-answer-actions"),
+		["Copy", "Speak aloud", "Fork from this message"],
+		"the answer: Copy, Speak, then the appended Fork",
+	);
+	/*
+	 * And with no conversation there is no cut point to name, so the action is
+	 * withdrawn rather than disabled - the same row, one control fewer.
+	 */
+	const bare = transcriptMarkup(
+		[
+			gateUser("u1", "Is the March import finished?"),
+			gateAnswer("a1", "It finished with the same four invoices outstanding."),
+		],
+		null,
+	);
+	assert.deepEqual(
+		rowLabelsOf(bare, "data-lo-user-actions"),
+		["Copy"],
+		"a transcript with no conversation offers no Fork",
+	);
 });
 
 /*

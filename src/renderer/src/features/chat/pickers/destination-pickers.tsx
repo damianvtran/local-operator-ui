@@ -1934,6 +1934,37 @@ function readForkEntryId(data: Record<string, unknown>): string | null {
 }
 
 /**
+ * The requester's own label for that entry, when it sent one.
+ *
+ * Same defensive read, same rule: absent or blank means "no label", and the
+ * picker's copy falls back to naming the cut point without it rather than
+ * printing an empty quotation.
+ */
+function readForkEntryExcerpt(data: Record<string, unknown>): string | null {
+	const value = data.entryExcerpt;
+	return typeof value === "string" && value.trim() ? value : null;
+}
+
+/**
+ * What a refused CUT says, in the reader's terms.
+ *
+ * WHY IT IS NOT THE BACKEND'S SENTENCE (UX round 1, U3 / agent review M4): the
+ * core answers every cut refusal with one sentence - *"that message is not part
+ * of this conversation; pick a message from this session to fork from"* - and
+ * for the case this control can actually produce that sentence is FALSE. A row
+ * that is still an uncommitted echo (an in-flight send, or an undelivered one
+ * that stays on screen) IS part of the conversation to the reader and is not in
+ * the journal yet, so the reader is told their own message is foreign. The
+ * core's own cause-classified copy is the in-flight slice this PR's body
+ * declares as a dependency; until it lands, this is the one sentence that is
+ * true of every cause the route refuses (unknown or foreign id, a point before
+ * the newest summary's anchor, an unfinished tool batch, a compaction pass in
+ * flight): the cut cannot be taken right now, here are the two ways forward.
+ */
+const FORK_CUT_REFUSAL =
+	"The fork was not created. This conversation cannot be cut at that message right now - it may not be committed yet, or a step just after it may still be in flight. Pick another message, or fork the whole conversation instead.";
+
+/**
  * Fork the conversation - all of it, or the prefix that ends at one message.
  *
  * TWO FORMS, ONE PICKER, and they are not two pickers because the form is the
@@ -1941,6 +1972,14 @@ function readForkEntryId(data: Record<string, unknown>): string | null {
  * Fork raised from a message row names one (`at_entry` + the entry id, handed
  * to this adapter on `action.data`). Two components would be two places the
  * message field, the budget refusal and the rebind-on-success have to agree.
+ *
+ * THE CUT ARM NAMES THE MESSAGE IT WORKS ON (UX round 1, U1). It can, because
+ * the request carries the row's own words (`entryExcerpt`), and it must: the
+ * control lives on a hover-revealed row and this panel covers the transcript, so
+ * "the message you chose" is otherwise a phrase with no referent on screen at the
+ * one moment the reader could still check it. Both success sentences also name
+ * NO SESSION ID (U5) - the flow takes the reader to the child (`rebind`), and a
+ * raw token was the only thing the old copy said about where it went.
  */
 export const ForkPicker: FC<PickerContext> = ({
 	sessionId,
@@ -1956,6 +1995,7 @@ export const ForkPicker: FC<PickerContext> = ({
 	 * itself follows - see `PanelRequest.entryId`).
 	 */
 	const cutEntryId = readForkEntryId(action.data);
+	const cutExcerpt = readForkEntryExcerpt(action.data);
 	const [message, setMessage] = useState(action.args ?? "");
 	const op = useOperation();
 	const submit = useCallback(async () => {
@@ -2003,17 +2043,24 @@ export const ForkPicker: FC<PickerContext> = ({
 						? { boundary: "at_entry" as const, entryId: cutEntryId }
 						: { boundary: "next_safe" as const }),
 				}),
+			/*
+			 * THE SUCCESS SENTENCE NAMES NO SESSION ID (UX round 1, U5). The child's id
+			 * was the only thing the old sentence said about where the new conversation
+			 * is, and an opaque token answers nothing for a reader - the flow already
+			 * takes them there (`rebind` is `openConversation`), which is why the
+			 * receipt states the outcome instead of an address.
+			 */
 			(result) => ({
 				tone: "success",
 				text: `${
 					cutEntryId
-						? `Forked from that message into ${result.data.session_id}. Everything after it stays in the original, which is unchanged.`
-						: `Forked at the next safe boundary into ${result.data.session_id}. The original conversation is unchanged.`
+						? "Forked from this message. Everything after it stays in the original, which is unchanged."
+						: "Forked at the next safe boundary into a new conversation. The original conversation is unchanged."
 				}${
 					cutEntryId &&
 					result.data.cut_entry_id &&
 					result.data.cut_entry_id !== cutEntryId
-						? "\nThe fork starts one message earlier than that: a cut cannot separate a tool call from its results."
+						? "\nThe fork starts before the message you chose: a cut cannot separate a tool call from its results."
 						: ""
 				}${
 					result.data.admission
@@ -2023,6 +2070,15 @@ export const ForkPicker: FC<PickerContext> = ({
 			}),
 			"The fork was not created",
 		);
+		/*
+		 * The cut arm's refusal is REPLACED, not appended to: see
+		 * `FORK_CUT_REFUSAL` for why the backend's sentence is dropped here (it
+		 * claims the reader's own message is foreign) and why one true sentence is
+		 * the honest thing until the core's cause-classified copy lands.
+		 */
+		if (!value && cutEntryId) {
+			op.setResult({ tone: "error", text: FORK_CUT_REFUSAL });
+		}
 		if (value) rebind(value.data.session_id);
 	}, [op, sessionId, message, rebind, cutEntryId]);
 	return (
@@ -2032,7 +2088,11 @@ export const ForkPicker: FC<PickerContext> = ({
 			title={cutEntryId ? "Fork from this message" : "Fork this conversation"}
 			description={
 				cutEntryId
-					? "Copies this conversation up to and including the message you chose into a new conversation. Everything after it is left behind, and the original keeps running and is not modified."
+					? `Copies this conversation up to and including ${
+							cutExcerpt
+								? `this message: "${cutExcerpt}"`
+								: "the message you chose"
+						}. Everything after it is left behind, and the original keeps running and is not modified.`
 					: "Copies the complete history into a new conversation at the next safe boundary (after the current assistant step and its tool results). The original keeps running and is not modified."
 			}
 			form={
