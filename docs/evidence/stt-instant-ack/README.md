@@ -79,6 +79,77 @@ cycle's click.
   (it resolved at +793 ms in this run).
 - `after/04-recording/`: the same recording lane as before, same treatment.
 
+## Remediation round 1: the press costs the composer no geometry
+
+The agent review's first round on #766 found the acknowledgment had bought its
+frame with layout: a line of its own, in the slot the recording lane takes.
+Card top, measured by the design round on the base tree, against a bottom edge
+pinned at 884: **774 at rest -> 734 while preparing (+40) -> 690 at the
+recording lane (+44 more)** - two movements for one press, one of them new.
+
+The acknowledgment now rides in the control row, which exists at every width
+and in every state, so the press costs **0 px** and the only movement left is
+the recording lane's own, unchanged. Re-measured on the fixed head by the
+committed rig (`after/stt-ack-remediation.json`, 1380x900 @ dpr 2; the same
+`data-lo-composer-measure` box and the same `[aria-label="Start recording"]`
+control the design round measured):
+
+| state | card top | card height | card bottom | mic control x | ack caption |
+| --- | --- | --- | --- | --- | --- |
+| at rest | **774** | **110** | 884 | 1141 | - |
+| preparing +41 ms | **774** | **110** | 884 | 1141 | x 1024.4, 112.6x19.5 |
+| preparing +150 ms | **774** | **110** | 884 | 1141 | x 1024.4 |
+| preparing +300 ms | **774** | **110** | 884 | 1141 | x 1024.4 |
+| preparing +600 ms | **774** | **110** | 884 | 1141 | x 1024.4 |
+| preparing +1200 ms | **774** | **110** | 884 | 1141 | x 1024.4 |
+| recording, settled | 690 | 194 | 884 | (start control absent) | - |
+
+So: idle and preparing are the SAME box, to the tenth of a pixel, at five
+sample points across the wait; the caption sits inside the 32px row it was
+added to (y 842.3-861.8, ending 4px - the row's own gap - left of the mic);
+and the recording lane's geometry is the pre-existing one (`y 760, 64px`),
+which is what "the lane stays as it was" means as a number rather than a claim.
+
+The same record carries the acknowledgment's own timing with the acquisition
+HELD open (the capture hold below, so the numbers that describe the wait are
+not this run's): `click -> ack` committed **1.3 ms** after the click (painted
+75.4 ms under a load average above 60) with `ackKind: "preparing"`, and **0
+desktop-transport calls and 0 fetches** between the click and `getUserMedia` -
+the gates are read, not called, so the press is not waiting on them.
+
+The lifecycle the findings pinned is in `scripts/shared-composer.test.mjs`:
+not-`disabled` with a second press refused by the handler's own guard, the
+Escape ladder's presence covering the press window, and Escape settling the
+pending start (the stream still lands, and it lands on a discarded take).
+
+## What this round could not re-shoot, and why
+
+The design round asked for this head's frames in BOTH themes, a re-paired
+before pair, and a mini-view frame with the mini window's height before and
+after. **The host refused all four on 2026-10-02.** Between 12:03 and 12:07
+local, with the fleet's load average at 91-137, `vm.swapusage` at 46.7 GB of
+48.1 GB used and ~5,100 free pages (≈80 MB), every app run was SIGKILLed
+within seconds of its click phase - six attempts, including one with the
+harness's memory ceiling disabled, plus one jsdom suite - while the same rig
+had completed a full run an hour earlier at load 25. The app is the only
+instrument that can produce these frames (AGENTS.md: a hand-built substitute
+cannot reach the desktop plane, and a rendered frame is the evidence), so what
+is NOT here is stated rather than implied:
+
+- the `after/` frames and the `before/` frames in this set are the PREVIOUS
+  round's dark ones, captured at `af6fffa899`; the light pair, the re-paired
+  before stills and the mini-view frame are **not** re-shot on this head;
+- the numbers above ARE re-measured on this head (`after/stt-ack-remediation.json`),
+  with one caveat stated: that run's build predates one line of the D3 fix -
+  the spinner's track role - which is a border COLOUR and moves no geometry;
+- the mini's own capture is wired and unrun: `scripts/renderer-driver.mjs`'s
+  mini-view scene now gates the fake acquisition (`window.__miniMicGate`) so the
+  acknowledgment can be photographed in the mini window, and asserts
+  `miniPendingGeom.height === miniResting.height` while it is on screen. The
+  command is `--scene mini-view --backend http://127.0.0.1:11877
+  --backend-records <config>/run/serve --theme localOperatorDark`, and it needs
+  the same quiet host.
+
 ## Records
 
 - `before/stt-ack-before.json` - the base-tree run: 8 click cycles, the three
@@ -89,6 +160,11 @@ cycle's click.
   (`LO_ACK_SHOTS=off`; under heavy load the capture requests themselves slow
   the acquisition they are photographing).
 - `after/stt-ack-probe.json` - the mic-health probe described above.
+- `after/stt-ack-remediation.json` - the remediation round's run on this head:
+  one click cycle with the acquisition HELD (the capture hold), which is where
+  the geometry table above and its `click -> ack` timings come from. Its
+  acquisition figures are the hold's and are not quotable as the app's; the
+  numbers that describe the acquisition are the earlier runs'.
 
 ## How to re-run it
 
@@ -121,6 +197,21 @@ LO_ACK_REPO=<worktree> LO_ACK_BACKEND=http://127.0.0.1:11877 \
 #    environment probe, if wanted:
 LO_ACK_SHOTS=off ... node scripts/stt-ack-latency-proof.mjs <out-dir> 8
 LO_ACK_PROBE=1  ... node scripts/stt-ack-latency-proof.mjs <out-dir> 0
+
+# 4. the remediation round's two switches, both of which the record carries:
+#    LO_ACK_THEME=localOperatorDark|LocalOperatorLight is the palette the run
+#    photographs (one per run - the pair of frames a visual round asks for is
+#    two runs), and LO_ACK_HOLD_MS=<ms> holds the acquisition open inside the
+#    page (a `getUserMedia` wrapper the rig installs) so the pending state can
+#    be PHOTOGRAPHED - and it makes that run's acquisition numbers the hold's,
+#    which is why they are read only from runs that leave it unset.
+LO_ACK_THEME=localOperatorLight LO_ACK_SHOTS=on ...
+LO_ACK_HOLD_MS=2500 LO_ACK_SHOTS=on ...
+#    LO_ACK_WARMUP=1 primes the device path with one bare acquisition first, so
+#    a short capture run's own acquisition is the warm one (milliseconds) and
+#    the run finishes inside the windows a loaded host leaves a rig. Capture
+#    runs only: a run that measures the acquisition leaves it off, or it would
+#    be measuring its own warm-up.
 ```
 
 The rig keeps the scratch tree, writes `stt-ack.json` + `app.log` beside the
