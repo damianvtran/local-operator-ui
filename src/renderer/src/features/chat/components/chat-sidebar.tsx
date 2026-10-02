@@ -651,7 +651,7 @@ import {
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
-import { ChatSessionStatus } from "./chat-session-status";
+import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -4162,6 +4162,15 @@ export function ChatSidebar({
 				}}
 			>
 				<ChatSessionStatus row={row} />
+				{/*
+				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
+				 * A leading fact rather than a trailing one, for the reason the archived
+				 * marker below states: the trailing slot admits exactly one statement, and
+				 * this is not competing for it. It draws nothing at zero (see
+				 * `ChatAsksOutstanding`), which is what keeps a backend that does not
+				 * publish queued asks on exactly today's row.
+				 */}
+				<ChatAsksOutstanding row={row} />
 				{/*
 				 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
 				 * answer for: IN FRONT of the title rather than in the trailing slot.
