@@ -331,8 +331,10 @@ export async function screenshot(
 	// view" (6 s, 8 s and 15 s ceilings) was real, and it predates sizing a view
 	// BEFORE its first hide (`index.ts`'s `setBounds(BACKGROUND_VIEWPORT)`). A view
 	// that was hidden before it was ever sized has no surface to composite; one that
-	// was sized first does. The ladder row above is the re-measurement that settles
-	// it, and it is why the reverse argument is not kept as a fallback.
+	// was sized first does. The ladder's COMPOSITED row is the re-measurement that
+	// settles it — it answered with no resize at all on both runs (1205 ms, then
+	// 100 ms) — and its CLIPPED row, which answered NOTHING inside 20 s, is the other
+	// half of why the reverse argument is not kept as a fallback.
 	//
 	// The per-attempt ceiling and the retry are NOT what this fix removes — see the
 	// retry's own note below — only the flag and the clip are.
