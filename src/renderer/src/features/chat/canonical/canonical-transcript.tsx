@@ -140,6 +140,7 @@ import { FoldMedia } from "./fold-media";
 import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
+import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
@@ -864,6 +865,21 @@ const UserRow = memo(function UserRow({
 						bodyText={remainingContent}
 						revealId={record.id}
 						revealAt={record.ts}
+						/*
+						 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
+						 * (#739): "fork the conversation from this message on". The entry id
+						 * is `forkEntryId`'s answer for THIS record - the journal entry a
+						 * cut can land at, which is what makes the picker a cut rather than
+						 * a whole-conversation copy. `conversationId` is the picker's
+						 * subject and is deliberately explicit: this transcript can be
+						 * rendered for a conversation that is not the pane's own, and a
+						 * request must never be answered with a substituted conversation.
+						 *
+						 * A transcript mounted with no conversation (the run-details child
+						 * reader) passes neither, so the row offers no Fork there.
+						 */
+						conversationId={conversationId}
+						entryId={forkEntryId(record) ?? undefined}
 					/>
 				)}
 				{/*
@@ -1237,6 +1253,10 @@ const AssistantRow = memo(function AssistantRow({
 							speechId={record.id}
 							revealId={record.id}
 							revealAt={record.ts}
+							/* The user row's note above states the rule; the answer row is the
+							 * same fork point, on the message the turn ended at. */
+							conversationId={conversationId}
+							entryId={forkEntryId(record) ?? undefined}
 						/>
 					)}
 					{!closingLineSuppressed && foot && foot.actions > 0 && (
