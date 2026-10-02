@@ -354,6 +354,14 @@ const APP_SPAWN_SITES = [
 		"drives the composer's dictation end to end in the real app - a hold, a transcript, a mid-turn steer, and the transcript-in-echo-window ordering - against a daemon the caller starts",
 		/withTelemetryOff\(spawnEnv\);/,
 	),
+	guarded(
+		"scripts/stt-ack-latency-proof.mjs",
+		"spawn",
+		1,
+		/env:\s*spawnEnv,/,
+		"drives the composer's dictation press end to end in the built app to time the acknowledgment, so the renderer's provider is live in it and would report the run as a session",
+		/withTelemetryOff\(spawnEnv\);/,
+	),
 	exempt(
 		"scripts/session-cookie-electron.test.mjs",
 		"spawn",

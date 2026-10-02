@@ -268,7 +268,7 @@ const bundle = await build({
 				COMPOSER_PLACEHOLDER,
 				composerPlaceholder,
 			} from "./src/renderer/src/shared/hooks/use-message-input";
-			export { resolvePushToTalkBinding } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
+			export { resolvePushToTalkBinding, isDictationActive } from "./src/renderer/src/shared/hooks/use-speech-to-text-manager";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		resolveDir: worktree,
@@ -305,6 +305,7 @@ const {
 	COMPOSER_PLACEHOLDER,
 	MessageInput,
 	composerPlaceholder,
+	isDictationActive,
 	resolvePushToTalkBinding,
 	useConversationInputStore,
 } = await import(bundlePath.href);
@@ -354,26 +355,37 @@ async function mount({
 	const container = window.document.createElement("div");
 	window.document.body.appendChild(container);
 	root = createRoot(container);
+	/*
+	 * `undefined` is the ordinary ACCEPTED outcome (`SendOutcome`). A plain object
+	 * is the off-record-ask shape and the guard reads any object as one, so a
+	 * `{ ok: true }` stub crashes the first case that actually submits
+	 * (`.offRecord.then`).
+	 */
+	const mountProps = {
+		conversationId,
+		messages,
+		isLoading: false,
+		onSendMessage: async () => undefined,
+		...composerProps,
+	};
 	await act(async () => {
-		root.render(
-			h(MessageInput, {
-				conversationId,
-				messages,
-				isLoading: false,
-				/*
-				 * `undefined` is the ordinary ACCEPTED outcome (`SendOutcome`). A
-				 * plain object is the off-record-ask shape and the guard reads any
-				 * object as one, so a `{ ok: true }` stub crashes the first case that
-				 * actually submits (`.offRecord.then`).
-				 */
-				onSendMessage: async () => undefined,
-				...composerProps,
-			}),
-		);
+		root.render(h(MessageInput, mountProps));
 	});
 	await settle();
 	return {
 		container,
+		/*
+		 * A RE-RENDER WITH NEW PROPS, keeping whatever the case did not name: a
+		 * transition INTO a busy turn is a state the composer is rendered into, and
+		 * there is no event in jsdom that produces one (the acknowledgment's U7 case
+		 * is the caller).
+		 */
+		rerender: async (next) => {
+			await act(async () => {
+				root.render(h(MessageInput, { ...mountProps, ...next }));
+			});
+			await settle();
+		},
 		/*
 		 * CONTAINER-SCOPED, not `document`-scoped, and it is load-bearing: a case
 		 * that throws before its own unmount leaves its tree mounted, and a
@@ -906,6 +918,565 @@ test("onDictationStateChange reports the take's start and end", async () => {
 	});
 	const mountedText = frame.textarea();
 	assert.ok(mountedText === null, "unmount completed");
+	mic.next = null;
+});
+
+/*
+ * INSTANT ACKNOWLEDGMENT (operator feedback via Aida, 2026-10-01: the mic
+ * "sometimes lags on click"). The acquisition window is the slow part of the
+ * click path - a cold `getUserMedia` has measured 830 ms to over 2.6 s on this
+ * fleet - and NOTHING used to change on screen during it, so the press read as
+ * dropped. The three cases below drive the SHIPPED React wiring with a
+ * DEFERRED stream: they hold the acquisition pending and read what the
+ * composer shows DURING that window, then let the stream land, fail, or be
+ * released-under. They pin the lifecycle, not the pixels: whether the
+ * acknowledgment reads clearly is the evidence rig's half.
+ */
+test("the mic acknowledges the press while the stream is still pending, and the acknowledgment becomes the recording state", async () => {
+	mic.calls = 0;
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(fakeStream());
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	assert.ok(micControl(), "the mic control is mounted");
+	await act(async () => {
+		micControl().click();
+	});
+	assert.equal(mic.calls, 1, "the press reached the microphone");
+	assert.ok(
+		preparing(),
+		"the acknowledgment is on screen while getUserMedia is still pending",
+	);
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		"true",
+		"the control itself carries the busy state",
+	);
+	assert.equal(
+		micControl()?.disabled,
+		false,
+		"the control stays pressable while it acknowledges (design round 1, D1): the guard is the handler's, not a `disabled` that makes the control the user just pressed inert",
+	);
+	assert.equal(
+		isDictationActive(),
+		true,
+		"the Escape ladder's presence covers the press window, not only a live take (UX round 1, U1)",
+	);
+	assert.equal(
+		confirm(),
+		null,
+		"no recording control exists before the stream resolves",
+	);
+	/*
+	 * The distinction the assertion above buys: a second press inside the window
+	 * is refused by the HANDLER's own guard, which is the door the hold contract
+	 * also reaches - so `disabled` was never what protected the attempt.
+	 */
+	await act(async () => {
+		micControl().click();
+	});
+	assert.equal(
+		mic.calls,
+		1,
+		"a second press inside the window does not double the acquisition",
+	);
+
+	/* The indicator's own analyser acquisition resolves too, once recording starts. */
+	mic.next = async () => fakeStream();
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.equal(preparing(), null, "the acknowledgment gives way");
+	assert.ok(confirm(), "the recording state arrives");
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+/*
+ * ESCAPE SETTLES THE ACKNOWLEDGMENT WINDOW (UX round 1, U1). The key was inert
+ * while the stream was pending, so a press the user took back still landed; and
+ * because the ladder reads `isDictationActive()` at KEY TIME, the composer has
+ * to claim the window for the press rather than leave the turn to answer it.
+ * The stream is still released afterwards, which is the arm that must discard
+ * it: an Escape is a settle, not a leak.
+ */
+test("Escape settles the acknowledgment window and the discarded stream never becomes a recording", async () => {
+	mic.calls = 0;
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(fakeStream());
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	await act(async () => {
+		micControl().click();
+	});
+	assert.ok(preparing(), "the acknowledgment is up before the escape");
+
+	const escapeKey = new window.KeyboardEvent("keydown", {
+		key: "Escape",
+		bubbles: true,
+		cancelable: true,
+	});
+	await act(async () => {
+		window.dispatchEvent(escapeKey);
+	});
+	assert.equal(
+		escapeKey.defaultPrevented,
+		true,
+		"the composer claims the key, so the page's ladder does not read it as the turn's",
+	);
+	assert.equal(
+		preparing(),
+		null,
+		"the acknowledgment answers the key in the frame it arrives in",
+	);
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		null,
+		"and the control returns to rest",
+	);
+
+	/* The pending acquisition lands anyway - the marked attempt is what it lands on. */
+	mic.next = async () => fakeStream();
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.equal(
+		confirm(),
+		null,
+		"a cancelled press never becomes a recording state",
+	);
+	assert.equal(
+		preparing(),
+		null,
+		"nor does it come back when the stream resolves",
+	);
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+/*
+ * THE WINDOW RE-OPENS, AND A PRESS THAT LOOKS AVAILABLE IS NOT DEAD (UX round 2,
+ * U6). A release inside the acquisition used to leave the attempt in the ref, so
+ * the control painted at rest and silently swallowed the next press - both
+ * doors, no acknowledgment, no acquisition - for the rest of the wait. The
+ * abandoned attempt is now dropped from the ref, which makes the next press a
+ * fresh one, and the abandoned stream is discarded by IDENTITY in the resolve
+ * arm (which is what keeps the fix from orphaning a live recorder).
+ */
+test("a release inside the window re-opens it: the next press is a fresh attempt, and the abandoned stream is discarded", async () => {
+	mic.calls = 0;
+	const resolvers = [];
+	const stopped = [];
+	mic.next = () =>
+		new Promise((resolve) => {
+			resolvers.push(() =>
+				resolve({ getTracks: () => [{ stop: () => stopped.push(1) }] }),
+			);
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	/* The hold door: pressed and released inside the acquisition. */
+	const { code } = resolvePushToTalkBinding();
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	assert.ok(preparing(), "the hold's press is acknowledged");
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	assert.equal(
+		preparing(),
+		null,
+		"the release ends the acknowledgment window (MAJOR 1)",
+	);
+
+	/* THE PRESS THAT LOOKS AVAILABLE MUST NOT BE DEAD. */
+	await act(async () => {
+		micControl().click();
+	});
+	assert.equal(
+		mic.calls,
+		2,
+		"a second press inside the abandoned window reaches the microphone",
+	);
+	assert.ok(
+		preparing(),
+		"and it is acknowledged in its own frame, like any other press",
+	);
+
+	/* The abandoned acquisition lands: it must be stopped, and it must not record. */
+	await act(async () => {
+		resolvers[0]();
+	});
+	await settle();
+	assert.equal(
+		confirm(),
+		null,
+		"the abandoned stream never becomes a recording",
+	);
+	assert.ok(
+		stopped.length >= 1,
+		"and its tracks are stopped rather than left live (the orphan the release used to avoid by keeping the ref)",
+	);
+	assert.ok(
+		preparing(),
+		"the second press's own acknowledgment is still the one on screen",
+	);
+
+	/* While the second press's own acquisition still lands normally. */
+	mic.next = async () => fakeStream();
+	await act(async () => {
+		resolvers[1]();
+	});
+	await settle();
+	assert.ok(
+		confirm(),
+		"the second press becomes a recording when its stream arrives",
+	);
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+/*
+ * AN ABANDONED PRESS'S REFUSAL IS NOT THE SUCCESSOR'S (convergence round 1,
+ * MAJOR). The resolve arm's identity check was the U6 fix, and the CATCH arm
+ * needed the same one: an abandoned acquisition that REJECTS used to null
+ * `recordingAttemptRef` and clear the face, so the second press's acknowledgment
+ * vanished and its own arriving stream was then discarded by the very check
+ * meant to protect it (reviewer's probe: `press2BecameRecording=false`), with a
+ * stale error toast about a press the user had already replaced. Both legs of the
+ * U6 case above RESOLVE, which is why this one is separate.
+ */
+test("a refusal belonging to an abandoned press leaves the successor's attempt alone", async () => {
+	mic.calls = 0;
+	const pending = [];
+	mic.next = () =>
+		new Promise((resolve, reject) => {
+			pending.push({ resolve, reject });
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+	const lane = () =>
+		frame.container.querySelector("[data-recording-indicator]");
+
+	/* Press 1 on the hold door, released inside the window: abandoned. */
+	const { code } = resolvePushToTalkBinding();
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+
+	/* Press 2 on the click door: a fresh attempt, acknowledged. */
+	await act(async () => {
+		micControl().click();
+	});
+	assert.equal(mic.calls, 2, "the second press acquired the microphone");
+	assert.ok(preparing(), "and it is acknowledged");
+
+	/* Now the ABANDONED acquisition refuses, after the successor exists. */
+	await act(async () => {
+		pending[0].reject(new Error("NotAllowedError"));
+	});
+	await settle();
+	assert.ok(
+		preparing(),
+		"the successor's acknowledgment is still on screen - the refusal is not its own",
+	);
+	assert.equal(
+		confirm(),
+		null,
+		"and the refusal did not settle it into a recording",
+	);
+
+	/* And the successor's own stream still lands, which is what the guard protects. */
+	await act(async () => {
+		pending[1].resolve(fakeStream());
+	});
+	await settle();
+	assert.ok(
+		confirm(),
+		"the second press becomes a recording when its own stream arrives",
+	);
+	assert.ok(lane(), "with the lane the user confirms or cancels");
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+/*
+ * THE ACKNOWLEDGMENT SURVIVES A BUSY TURN, AND THE TAKE IT WAS WAITING FOR IS
+ * KEPT (UX round 2, U7). Two decisions, both recorded in `message-input.tsx`:
+ * the acknowledgment's control and caption stay on screen while the composer is
+ * acquiring (the turn going busy used to remove them - the same silence this
+ * change exists to remove, one transition later), and a take that lands after
+ * that transition still becomes the recording state, because discarding it
+ * would throw away speech the user asked for while the composer stays writable
+ * mid-turn.
+ */
+test("the acknowledgment survives the turn going busy, and the deferred take still lands", async () => {
+	mic.calls = 0;
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(fakeStream());
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+	const lane = () =>
+		frame.container.querySelector("[data-recording-indicator]");
+
+	await act(async () => {
+		micControl().click();
+	});
+	assert.ok(preparing(), "the press is acknowledged");
+
+	/* The turn goes busy inside the window. */
+	await frame.rerender({ isLoading: true, currentJobId: "job-u7" });
+	assert.ok(
+		preparing(),
+		"the acknowledgment survives the turn going busy rather than being removed",
+	);
+	assert.ok(
+		micControl(),
+		"and its control stays with it, so the two halves still agree",
+	);
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		"true",
+		"the control is still the busy one",
+	);
+
+	mic.next = async () => fakeStream();
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.ok(
+		confirm(),
+		"the deferred take lands as the recording state rather than vanishing",
+	);
+	assert.ok(lane(), "with the lane the user confirms or cancels");
+	assert.equal(preparing(), null, "and the acknowledgment gives way to it");
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+test("a refused acquisition clears the acknowledgment and the control returns to rest", async () => {
+	mic.calls = 0;
+	mic.next = () => Promise.reject(new Error("denied"));
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+
+	await act(async () => {
+		micControl().click();
+	});
+	await settle();
+	assert.equal(
+		preparing(),
+		null,
+		"the acknowledgment does not outlive the refusal",
+	);
+	assert.ok(micControl(), "the mic is back to rest");
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		null,
+		"the busy state is off again",
+	);
+
+	await act(async () => {
+		root.unmount();
+	});
+	mic.next = null;
+});
+
+test("a release inside the acquisition window clears the acknowledgment without a recording state", async () => {
+	mic.calls = 0;
+	let release = () => {};
+	mic.next = () =>
+		new Promise((resolve) => {
+			release = () => resolve(fakeStream());
+		});
+	const frame = await mount({
+		recordingProbe: {
+			canUseRadientSpeech: true,
+			speechBlock: "could-not-check",
+		},
+	});
+	const preparing = () =>
+		frame.container.querySelector("[data-preparing-indicator]");
+	const micControl = () =>
+		frame.container.querySelector('[aria-label="Start recording"]');
+	const confirm = () =>
+		frame.container.querySelector('[aria-label="Confirm recording"]');
+
+	/* The hold door: the real manager's capture dispatch, released mid-acquisition. */
+	const { code } = resolvePushToTalkBinding();
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keydown", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+	assert.ok(preparing(), "the hold's press is acknowledged too");
+	await act(async () => {
+		window.dispatchEvent(
+			new window.KeyboardEvent("keyup", {
+				code,
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
+	});
+
+	/*
+	 * THE RELEASE IS THE SETTLE, BEFORE THE STREAM LANDS (agent review round 2,
+	 * MAJOR 1). This assertion used to be taken only after `release()`, so it
+	 * passed while the release arm returned early and left the face up for the
+	 * whole remaining acquisition: the state the reviewer reproduced
+	 * (`AFTER-RELEASE preparing present: true`). The stream is deliberately still
+	 * PENDING here - a hold shorter than the acquisition is the case.
+	 */
+	assert.equal(
+		preparing(),
+		null,
+		"the release itself ends the acknowledgment, while the stream is still pending",
+	);
+	assert.equal(
+		micControl()?.getAttribute("aria-busy"),
+		null,
+		"and the control drops its busy state with it",
+	);
+
+	await act(async () => {
+		release();
+	});
+	await settle();
+	assert.equal(
+		preparing(),
+		null,
+		"the acknowledgment does not come back when the stream lands",
+	);
+	assert.equal(
+		confirm(),
+		null,
+		"a release inside the acquisition window never becomes a recording",
+	);
+
+	await act(async () => {
+		root.unmount();
+	});
 	mic.next = null;
 });
 
