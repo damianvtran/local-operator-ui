@@ -84,6 +84,16 @@ export type TeamAvatarBubbleProps = {
 	 * row (the bubble is the only name there); off where the name is drawn beside
 	 * it and the surrounding control owns the pointer surface. */
 	showTooltip?: boolean;
+	/** What a press or an Enter/Space on the mark does.
+	 *
+	 * The mark is a focus stop inside the row's `<button>`, and a focus stop that
+	 * activates nothing is a dead one: UX round 1 (U1) measured Enter on it leaving
+	 * `activeElement` on the mark with the row's click listener never firing, so a
+	 * reader who tabbed onto it (the same gesture they use on the row's Pin and
+	 * Manage controls, which DO act) got no answer. The sidebar passes the row's own
+	 * press, so the mark's keyboard activation is the row's, guard included, rather
+	 * than a second way of opening a conversation. */
+	onActivate?: () => void;
 	className?: string;
 };
 
@@ -92,6 +102,7 @@ export const TeamAvatarBubble: FC<TeamAvatarBubbleProps> = ({
 	imageUrl,
 	slug,
 	showTooltip = true,
+	onActivate,
 	className,
 }) => {
 	const initials = teamInitials(name);
@@ -109,16 +120,50 @@ export const TeamAvatarBubble: FC<TeamAvatarBubbleProps> = ({
 			 * A focusable READOUT rather than a control, the arrangement
 			 * `session-status-strip.tsx` states for its own tooltip: what it opens
 			 * is a reading (which team this is), never an action, so a `button`
-			 * would announce a press that does not exist. The tab stop is the
-			 * honest form - without it the tooltip is reachable only by pointer -
-			 * and it is why the rule's own remedy (dropping the tabindex) is the
-			 * wrong one here. The tab stop exists only where a tooltip does: the
-			 * header's bubble, which has none, adds no stop to that control.
+			 * would announce a press that does not exist - and a second `button`
+			 * inside the row's own `<button>` is invalid markup.
+			 *
+			 * WHERE THE PRECEDENT DOES NOT CARRY OVER, since it is the part a reader
+			 * has to know: that readout stands on a strip, while this one is a
+			 * descendant of the row's `<button>` (`data-chat-row`). A tabbable
+			 * descendant of a button is the shape the HTML content model calls
+			 * interactive content inside interactive content - legal in no browser's
+			 * parser terms today (it parses, and Chromium walks it: the focus frame
+			 * and the focus-ordering are both measured working), but a shape a reader
+			 * should not "clean up" without paying for it. The alternative the
+			 * reviewer offered - move the mark OUT of the button and put the row's
+			 * team name into an `aria-label` on it - costs the property this row
+			 * states above itself ("the accessible name must never be narrower than
+			 * the pixels"): the row's name is composed from its own content, and
+			 * every later slot that joins that content would have to be restated by
+			 * hand. Kept, and disclosed rather than silently accepted (agent review
+			 * round 1, R1-M4).
 			 */
 			tabIndex={showTooltip ? 0 : undefined}
 			role="img"
 			aria-label={name}
-			className={cn("inline-flex shrink-0", className)}
+			/*
+			 * Enter and Space, because a stop that only shows a reading still has an
+			 * obvious answer to "what happens if I press it" inside a row: the row.
+			 * Space is prevented because its default is a scroll.
+			 */
+			onKeyDown={(event) => {
+				if (!onActivate) return;
+				if (
+					event.key !== "Enter" &&
+					event.key !== " " &&
+					event.key !== "Spacebar"
+				)
+					return;
+				event.preventDefault();
+				onActivate();
+			}}
+			/* The ring follows the circle: `outline` traces this box, and without a
+			 * radius the app's 2px focus ring was a 28x28 SQUARE around a 20px round
+			 * mark (design round 1, D2 - measured off the focus frame: corners 4px off
+			 * the object). `styles/index.css` states the rule: an outline follows the
+			 * element's own `border-radius`. */
+			className={cn("inline-flex shrink-0 rounded-full", className)}
 		>
 			<Avatar className="size-5 border border-control">
 				{/*
@@ -134,5 +179,22 @@ export const TeamAvatarBubble: FC<TeamAvatarBubbleProps> = ({
 		</span>
 	);
 	if (!showTooltip) return mark;
-	return <Tooltip content={name}>{mark}</Tooltip>;
+	return (
+		<Tooltip
+			/*
+			 * The same name, in a wrapper `aria-hidden` from assistive technology.
+			 * Radix points the trigger's `aria-describedby` at this panel whenever it
+			 * is open, so an unmarked body means the name arrives twice on one focus:
+			 * once as the trigger's own label and again as its description (agent
+			 * review round 1, R1-M6). The panel is the visual echo of a name the
+			 * focusable element already carries, so the hide costs nothing a screen
+			 * reader had - and the zero-size cost is why the precedent cited for the
+			 * shape does not need it (its tooltip body is a longer reading than its
+			 * label, so its two announcements differ).
+			 */
+			content={<span aria-hidden="true">{name}</span>}
+		>
+			{mark}
+		</Tooltip>
+	);
 };
