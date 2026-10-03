@@ -31,13 +31,14 @@
 import { Alert, Badge, Button } from "@shared/components/ui";
 import { ShieldCheck } from "lucide-react";
 import type { FC } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import {
 	type ApprovalDecision,
 	type MeshApprovalRow,
 	approvalHostKeyLabel,
 	approvalRemainingLabel,
 	approvalRequesterLabel,
+	approvalScopeGlosses,
 	approvalScopeLabels,
 	approvalScopeTone,
 	approvalStateLabel,
@@ -101,11 +102,12 @@ function stateHint(state: string): string | null {
 function stateHintTerm(state: string): string {
 	switch (state) {
 		case "requested":
-			return "Approving";
+			return "Signing";
 		case "approved":
+			/** No gloss opening repeats its own term (design round 2, D11). */
 			return "Next";
 		case "connecting":
-			return "Denying now";
+			return "Stop";
 		case "failed":
 			return "After a stop";
 		default:
@@ -147,6 +149,13 @@ export interface MeshApprovalsTrayProps {
 	onRetry: () => void;
 	/** The read's own stamp, for the expiry lines (the page owns the clock reading). */
 	nowSeconds: number;
+	/**
+	 * Network id -> the name the page already shows for it (UX round 1, U1). The
+	 * approvals read and the mesh read are independent queries, so this is
+	 * OPTIONAL: a tray that painted before the canvas falls back to the id, and
+	 * the chip never renders a blank.
+	 */
+	networkNames?: ReadonlyMap<string, string>;
 }
 
 export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
@@ -157,6 +166,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	onDecide,
 	onRetry,
 	nowSeconds,
+	networkNames,
 }) => {
 	/*
 	 * THE BUSY GATE IS THE SURFACE'S, not the row's (agent review round 1,
@@ -254,6 +264,7 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 							refusal={refusal?.approvalId === row.approvalId ? refusal : null}
 							onDecide={onDecide}
 							nowSeconds={nowSeconds}
+							networkNames={networkNames}
 						/>
 					))}
 				</ul>
@@ -286,11 +297,14 @@ const MeshApprovalCard: FC<{
 	refusal: { code: string; sentence: string } | null;
 	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
 	nowSeconds: number;
-}> = ({ row, pending, busy, refusal, onDecide, nowSeconds }) => {
+	/** Id -> name, for the join chip (UX round 1, U1); absent until the mesh read lands. */
+	networkNames?: ReadonlyMap<string, string>;
+}> = ({ row, pending, busy, refusal, onDecide, nowSeconds, networkNames }) => {
 	const where = approvalWhereLabel(row);
 	const hostKey = approvalHostKeyLabel(row);
 	const requester = approvalRequesterLabel(row);
-	const scopes = approvalScopeLabels(row);
+	const scopes = approvalScopeLabels(row, networkNames);
+	const glosses = approvalScopeGlosses(row);
 	const remaining = approvalRemainingLabel(row.expiresAt, nowSeconds);
 	const hint = stateHint(row.state);
 	const canApprove = canApproveApproval(row.state);
@@ -333,15 +347,37 @@ const MeshApprovalCard: FC<{
 
 			{requester && <p className="text-meta text-ink-dim">{requester}</p>}
 
+			{/*
+			 * WHAT EACH TRUST-BEARING SCOPE MEANS (UX round 1, U2). The card's single
+			 * sentence explains the GESTURE; nothing explained the scopes, and the two
+			 * the design made salient are exactly the two a non-expert cannot read.
+			 */}
+			{glosses.length > 0 && (
+				<dl
+					className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
+					data-tour-tag="mesh-approval-scope-glosses"
+				>
+					{glosses.map((entry) => (
+						<Fragment key={entry.term}>
+							<dt className="text-ink-muted">{entry.term}</dt>
+							<dd>{entry.gloss}</dd>
+						</Fragment>
+					))}
+				</dl>
+			)}
+
 			{/* Provenance above, consequence here, as its own labelled gloss - the
 			    house shape for a consent surface (design round 1, D2). */}
 			{hint && (
 				<dl
-					className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
+					className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta"
 					data-tour-tag="mesh-approval-consequence"
 				>
 					<dt className="text-ink-muted">{stateHintTerm(row.state)}</dt>
-					<dd>{hint}</dd>
+					{/* The gloss shares the term's register (design round 2, D13): at
+					    `ink-dim` the row read as one more line of metadata rather than
+					    as the consequence it is. */}
+					<dd className="text-ink-muted">{hint}</dd>
 				</dl>
 			)}
 
