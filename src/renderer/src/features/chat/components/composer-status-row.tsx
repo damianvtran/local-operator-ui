@@ -114,6 +114,7 @@ import {
 	AlarmClock,
 	Check,
 	CircleCheck,
+	HelpCircle,
 	Info,
 	Repeat,
 	ScanEye,
@@ -132,6 +133,12 @@ import {
 	goalCapability,
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
+import {
+	askChipClause,
+	askChipLabel,
+	askQueueView,
+	sessionAsks,
+} from "../ask-queue";
 import { CAPPED_BLOCK, CHAT_MEASURE } from "../chat-measure";
 import {
 	GOAL_CLEAR_ARGS,
@@ -1124,8 +1131,21 @@ export type ComposerStatusRowProps = {
 	 * header trigger.
 	 */
 	runDetails: RunDetails | null | undefined;
-	/** The composer's small-view step; see `MessageInputProps`. */
+	/**
+	 * The composer's small-view step; see `MessageInputProps`.
+	 */
 	isSmallView?: boolean;
+	/**
+	 * The ask lane's expanded flag and its door, as the row item needs them.
+	 *
+	 * OPTIONAL and CONTROLLED when supplied, exactly as `AskSurfaces` takes the
+	 * same pair: the page that owns the composer owns the flag (the composer's
+	 * routing rule is what it means), so the app path always passes chat-page's
+	 * single `askExpanded`. A story that renders the row on its own lets this
+	 * component own it, so the item's own press still opens the panel there.
+	 */
+	askExpanded?: boolean;
+	onAskToggle?: (next: boolean) => void;
 	/**
 	 * Puts focus back in the composer when a control of this row unmounts under it.
 	 *
@@ -1158,9 +1178,24 @@ export const ComposerStatusRow = ({
 	frontend,
 	runDetails,
 	isSmallView = false,
+	askExpanded: askExpandedProp,
+	onAskToggle,
 	onFocusComposer,
 	onNote,
 }: ComposerStatusRowProps) => {
+	/*
+	 * CONTROLLED WHEN THE CALLER SUPPLIES IT (see `askExpanded` on the props). The
+	 * uncontrolled fallback exists for stories only: in the app chat-page always
+	 * passes the flag, and a second source of truth here is the one thing the ask
+	 * lane forbids - the composer's routing reads the page's copy, so the item that
+	 * flips it must read the page's copy too.
+	 */
+	const [uncontrolledAskExpanded, setUncontrolledAskExpanded] = useState(false);
+	const askExpanded = askExpandedProp ?? uncontrolledAskExpanded;
+	const setAskExpanded = (next: boolean) => {
+		setUncontrolledAskExpanded(next);
+		onAskToggle?.(next);
+	};
 	const revealPlan = useUiPreferencesStore(
 		(state) => state.revealRunPanelSection,
 	);
@@ -1323,6 +1358,44 @@ export const ComposerStatusRow = ({
 	 */
 	const monitors = runDetails?.monitors ?? [];
 	const showMonitors = monitors.length > 0;
+	/*
+	 * The ask item's gate: a host that WIRES the lane, the lane is bounded by the WIRE,
+	 * and the queue must actually carry a row.
+	 *
+	 * THE DOOR IS THE FIRST CLAUSE AND THE LOAD-BEARING ONE (agent review round 1,
+	 * F1). The item is a TOGGLE: it reports `aria-expanded`, renames itself on press
+	 * and claims to open the ask history - and the panel it opens is mounted by
+	 * exactly one host (chat-content, fed by chat-page's flag). Two other hosts mount
+	 * this same row through `MessageInput` with a canonical frontend that can carry
+	 * `asks` and no lane at all - the mini quick-send window and the agent-config
+	 * composer - and there the item used to render as a focusable, labelled control
+	 * whose only effect was local: it flipped its own state, announced "Collapse the
+	 * ask history", opened nothing, and left the composer in chat mode. A dead
+	 * affordance is what this codebase refuses elsewhere (the panel's own note on the
+	 * missing dismiss door), so the item renders only where `onAskToggle` is supplied:
+	 * that prop is what says the panel exists in this document.
+	 *
+	 * The remaining two clauses are this row's own rules: `sessionAsks(frontend) !==
+	 * null` is presence-vs-emptiness (`asks` is absent on a backend that does not do
+	 * queued asks, and an affordance such a backend can never satisfy must not be
+	 * drawn), and `rows.length > 0` is the app's zero rule (`All to-dos resolved`
+	 * keeps a finished plan; an empty queue keeps nothing). SETTLED asks DO render:
+	 * like a resolved plan, a finished queue is worth keeping on screen, and the panel
+	 * is where its history lives.
+	 */
+	const askView = askQueueView(frontend);
+	const showAsks =
+		onAskToggle !== undefined &&
+		sessionAsks(frontend) !== null &&
+		askView.rows.length > 0;
+	/*
+	 * The one state that carries urgency emphasis. NOT `open` - the backend's
+	 * outstanding set folds `timed_out` in - because a moved-on ask's window has
+	 * closed: the item may read `N questions moved on` quietly, but a chip painted
+	 * with the accent for an ask the operator can no longer catch would spend the
+	 * row's one urgency cue on a question nobody is waiting on.
+	 */
+	const askAttention = askView.waiting > 0;
 	/*
 	 * The LOOP chip's gate: a state that is not `idle`, off the one wire field that
 	 * carries it (`frontend.loop`, `DesktopLoopState`).
@@ -1652,6 +1725,7 @@ export const ComposerStatusRow = ({
 		!showGoal &&
 		!showLoop &&
 		!showPlan &&
+		!showAsks &&
 		!showWakes &&
 		!showMonitors &&
 		!children &&
@@ -1663,6 +1737,7 @@ export const ComposerStatusRow = ({
 	const planLabel = runDetails ? planChipLabel(runDetails) : "";
 	const wakeLabel = showWakes ? wakeChipLabel(wakes.length) : "";
 	const monitorLabel = showMonitors ? monitorsChipLabel(monitors.length) : "";
+	const askLabel = showAsks ? askChipLabel(askView, askExpanded) : "";
 	const subagentLabel = children ? subagentChipLabel(children) : "";
 	const jobLabel = jobs ? jobChipLabel(jobs) : "";
 	/*
@@ -1722,7 +1797,8 @@ export const ComposerStatusRow = ({
 	 */
 	const loopFirst = !showGoal;
 	const groupIsFirst = !showGoal && !showLoop;
-	const wakesFirst = groupIsFirst && !showPlan;
+	const asksFirst = groupIsFirst && !showPlan;
+	const wakesFirst = asksFirst && !showAsks;
 	const monitorsFirst = wakesFirst && !showWakes;
 	const subagentsFirst = monitorsFirst && !showMonitors;
 	/*
@@ -2423,7 +2499,12 @@ export const ComposerStatusRow = ({
 			 * it — and the group's flex-basis being its content is what makes the ROW
 			 * wrap it below the goal when the column cannot hold both.
 			 */}
-			{(showPlan || showWakes || showMonitors || children || jobs) && (
+			{(showPlan ||
+				showAsks ||
+				showWakes ||
+				showMonitors ||
+				children ||
+				jobs) && (
 				<div
 					className={cn(
 						"flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5",
@@ -2487,6 +2568,72 @@ export const ComposerStatusRow = ({
 								 */}
 								<Info aria-hidden={true} className={cn("size-3.5 shrink-0")} />
 								{todoClause(runDetails)}
+							</button>
+						</Tooltip>
+					)}
+
+					{/*
+					 * The ASK item: the queued-ask lane as one chip in this row, between the
+					 * standing facts (the plan) and the armed schedules (the wakes).
+					 *
+					 * WHY IT LIVES HERE rather than as a strip of its own above the composer:
+					 * the ask queue is one more thing a session has outstanding, so it belongs in
+					 * the register that lists those things rather than in a banner the reader has
+					 * to learn (design §5.0's one-line rule). It is a PEER of the chips beside it:
+					 * the same control box, the same gaps, the same type step, no fill and no edge
+					 * at rest. The only thing that ever differs between its states is COLOUR - the
+					 * label steps to `ink` and the mark to `accent` while an ask is genuinely
+					 * waiting - so the row's height cannot move between them.
+					 *
+					 * IT IS A TOGGLE, unlike its neighbours, and that is the one structural
+					 * difference the row carries: pressing it opens the ask history IN PLACE
+					 * (the panel), so `aria-expanded` is truthful here where a reveal navigation
+					 * could not use it. `data-lo-ask-item` mirrors that state for the rigs, and
+					 * `data-lo-ask-item-toggle` is the handle the panel's own focus-return and its
+					 * focus-INTO-the-panel move both address, from across the two React trees, and
+					 * `askClaimsEscape` accepts it as the lane's trigger - which is why the item
+					 * carries no `data-lo-ask-surfaces`: that marker is the PANEL's, and a probe
+					 * for "is the panel open?" must not match a closed chip (UX round 1, U3).
+					 *
+					 * `HelpCircle` is the panel's own glyph for an open ask, so one glyph in this
+					 * row means one thing; the alternatives the plan and wake chips rejected
+					 * (`Info`, `Clock`, `AlarmClock`) are rejected here for the same collisions.
+					 * Its ink is `accent` ONLY while an ask is waiting - the row's one urgency
+					 * spend - and `ink` in the attention state is the label's, not the mark's.
+					 *
+					 * `accent` BESIDE `success` IS A RECORDED TENSION rather than an oversight:
+					 * the two are ΔE00 5.07 apart in the dark brand palette and 2.22 in the light
+					 * one, and the palette file records what that means and why `accent` is still
+					 * the right role here (`themes/palettes/local-operator.ts`, the accent note -
+					 * agent review round 1/D1). What keeps the pair legible on screen is the
+					 * separation the surfaces keep: this mark means "a question is waiting" and
+					 * always sits beside the word, while `success` is the panel's check on a
+					 * settled row, and no frame shows both as bare marks in one row.
+					 */}
+					{showAsks && (
+						<Tooltip content={askLabel} side="top">
+							<button
+								type="button"
+								aria-expanded={askExpanded}
+								aria-label={askLabel}
+								data-status-asks=""
+								data-lo-ask-item={askExpanded ? "expanded" : "minimized"}
+								data-lo-ask-item-toggle=""
+								onClick={() => setAskExpanded(!askExpanded)}
+								className={cn(
+									CHIP_CONTROL,
+									askAttention ? "text-ink" : undefined,
+									asksFirst ? FIRST_CHIP : undefined,
+								)}
+							>
+								<HelpCircle
+									aria-hidden={true}
+									className={cn(
+										"size-3.5 shrink-0",
+										askAttention ? "text-accent" : undefined,
+									)}
+								/>
+								{askChipClause(askView)}
 							</button>
 						</Tooltip>
 					)}
