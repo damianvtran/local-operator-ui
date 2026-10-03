@@ -58,13 +58,20 @@ asserted:
    the head this set ships in).
 2. **The other ten are `origin/main`'s 0.31.34 release**, folded in after the
    capture - the chat, projects and mini-view work plus
-   `shared/desktop-contract.ts`. Re-runnable check that nothing else in this
-   surface's graph moved:
+   `shared/desktop-contract.ts`. That last one is the exception worth naming,
+   because it is the one main-touched file that IS in this surface's graph: the
+    `tts.paths` op lives on it. The fold auto-merged it, and the two sides' hunks
+    are in disjoint regions, so both survive - main's
+    `DESKTOP_MESSAGE_MAX_IMAGES` and this branch's op are both present, and the
+    head-vs-main diff of the file is 94 lines, the same 94 as this branch's
+    pre-fold diff of it (re-derived, `git diff 3a41b05ea46 <head> --
+    src/shared/desktop-contract.ts`). The re-runnable check below is therefore
+    written to SEE it rather than to step past it:
 
 ```
 git diff --name-only c20c74ff011 <head> -- src | \
-  grep -E 'features/settings|shared/lib/speech-gate|shared/hooks/use-credentials|shared/components/common/error-boundary'
-# the branch's own two files above, and nothing else
+  grep -E 'features/settings|shared/lib/speech-gate|shared/hooks/use-credentials|shared/components/common/error-boundary|shared/desktop-contract'
+# exactly three: this branch's two files above, and the contract the tts op lands on
 ```
 
 WHY THEY WERE RE-SHOT, and what the first set had wrong. `unreadable/`
