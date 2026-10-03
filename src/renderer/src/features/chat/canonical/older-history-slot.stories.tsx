@@ -101,9 +101,10 @@ export const EveryState: Story = {
  * 252px is not a hypothetical. It is what the transcript's content box measures
  * at the window's 800px minimum: 800 minus the 220px app rail, minus the chat
  * list pane's 280px default, minus the transcript's `p-4` (32px) and the 16px
- * its `scrollbar-gutter: stable both-edges` reserves. The chat column itself
- * floors lower still (220px), and opening the canvas panel reaches these widths
- * at any window size — so this is a width the app routinely has, not an edge.
+ * its `scrollbar-gutter: stable both-edges` reserves. The chat column floors
+ * still (480px today; 220px when these boards were drawn), and opening the
+ * canvas panel reaches these widths at any window size — so this is a width the
+ * app routinely has, not an edge.
  *
  * A reviewer should be able to SEE the invariant hold at the narrow measure
  * rather than derive it from three constants, which is the difference between
@@ -121,7 +122,8 @@ export const AppMinimumWidth: Story = {
 				<Ruled key={state} state={state} caption={caption} width="252px" />
 			))}
 			<p className="max-w-[46rem] pt-2 text-ink-muted text-meta">
-				And at 220px, the chat column's own floor.
+				And at 220px, the floor this board draws — the column's own floor when it
+				was drawn, 480px since §I.
 			</p>
 			{STATES.filter(
 				(entry) => entry.state === "failed" || entry.state === "loading",
