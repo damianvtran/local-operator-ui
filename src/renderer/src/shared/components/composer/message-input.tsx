@@ -238,6 +238,19 @@ const SECRET_CLOSURE_NOTICE =
 const MENTION_OUTSIDE_NOTICE_ID = "composer-mention-outside-notice";
 
 /**
+ * THE HOST'S BLOCKED-REASON SENTENCE'S ID (agent review round 4, NIT-1).
+ *
+ * That sentence reaches the box as a PLACEHOLDER, and a placeholder is announced
+ * only while the control is EMPTY — so a reader who arrives with a draft in the
+ * box and meets a refused one had the reason visually (the band node added for
+ * the F4 finding) and nothing programmatic. This names the band node, and the
+ * box's `aria-describedby` joins it while — and ONLY while — that node renders,
+ * so the empty-box state and every host that passes no `hostNotice` (chat) are
+ * exactly as they were.
+ */
+const HOST_BLOCKED_REASON_ID = "composer-host-blocked-reason";
+
+/**
  * The id the delivery remedies' hint carries, so the field it describes can
  * name it (UX round 1, U3).
  *
@@ -559,6 +572,54 @@ export type MessageInputProps = {
 	 * The page composes it from the same store the chip and the notice read.
 	 */
 	deviceHold?: React.ReactNode;
+	/**
+	 * Host chrome that has to live INSIDE this composer's notice band, carrying the
+	 * id the box's `aria-describedby` names it by.
+	 *
+	 * WHY THE HOST DOES NOT RENDER IT ITSELF. The band is inside the composer's own
+	 * chrome, immediately outboard of the box, and only a node in there can be the
+	 * box's `aria-describedby` target — which is the whole requirement for the
+	 * configuration run's standing sentence ("Runs in the background. This does not
+	 * appear in your conversation."): a permanent footnote that a screen reader
+	 * reaches from the box, never an invitation dressed as a placeholder (design
+	 * note §3.3.2, U4; the note's alternative (a), chosen over reusing `deviceHold`
+	 * — that prop is a device-move hold, and one prop may not mean two things).
+	 *
+	 * ONE PROP FOR BOTH HALVES because they are one fact: an id this component
+	 * cannot invent and a node the host cannot place are useless apart.
+	 */
+	hostNotice?: {
+		id: string;
+		node: React.ReactNode;
+		/**
+		 * Whether this host chrome REFUSES the box's input, the way `unavailable`
+		 * and `secretAnswer` do.
+		 *
+		 * WHY IT IS PART OF THE SAME PROP. The Agents page has a state of exactly
+		 * this shape — a dirty edit elsewhere on the page blocks a new request, and
+		 * the reason is a host sentence — and the host already has to supply the
+		 * node; a second boolean prop would be the same fact split in two. It joins
+		 * `isInputDisabled`, which is the ONE term every writer and submitter on
+		 * this composer reads, so typing, paste, dictation, the popups and the
+		 * form's own submit are refused together rather than one door at a time.
+		 *
+		 * THE HOST OWNS THE SENTENCE, deliberately: this component knows nothing
+		 * about a page's edit state, and the alternative — borrowing
+		 * `unavailable` — renders CHAT's "this conversation is gone" copy and names
+		 * a transcript notice that is not on the host's page at all (code review
+		 * round 1, m1).
+		 */
+		blocksInput?: boolean;
+		/**
+		 * The host's own placeholder for the states this notice describes (D1/D5).
+		 *
+		 * It is the same fact as `blocksInput` — the host knows why its box is
+		 * refusing, or what its own outstanding request means — and it travels in
+		 * the same prop so the words and the refusal cannot disagree. `undefined`
+		 * leaves the app's own sentences exactly as they are.
+		 */
+		placeholder?: string;
+	};
 	/**
 	 * A pending question takes a SECRET answer, and the composer is not where it
 	 * goes.
@@ -1491,6 +1552,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			awaitingAnswer = false,
 			deliveryRemediesReachable = false,
 			deviceHold,
+			hostNotice,
 			secretAnswer = false,
 			asideSessionId,
 			asideStreaming = false,
@@ -2761,6 +2823,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			scrollToBottom,
 			// §6: no persisted draft write while a masked capture is open.
 			draftHeld: isTyping(capture),
+			// U1: a host with no transcript retires its own box on an accepted send.
+			transcriptless,
 			/*
 			 * §5/§6's disclosure travels WITH the draft it describes, on every write
 			 * this hook makes — including the keystrokes that follow the cancel, which
@@ -4321,7 +4385,11 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * card above.
 		 */
 		const secretAnswerPending = Boolean(secretAnswer);
-		const isInputDisabled = unavailable || isBusy || secretAnswerPending;
+		const isInputDisabled =
+			unavailable ||
+			isBusy ||
+			secretAnswerPending ||
+			Boolean(hostNotice?.blocksInput);
 		/*
 		 * THE TWO TERMS THAT REFUSE A SEND, AND THE SENTENCE THEY RAISE, IN ONE PLACE (UX
 		 * round 7, U27).
@@ -6910,6 +6978,34 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * because it is a state of the conversation and not an outcome of one send.
 				 */}
 				{deviceHold}
+				{/*
+				 * THE HOST'S OWN STANDING LINE, in the band with the other STANDING
+				 * statements rather than beside the transient alert (see `hostNotice`).
+				 * It renders before the alert for the same reason `deviceHold` does: a
+				 * state of the surface outlives the outcome of one send.
+				 */}
+				{/*
+				 * THE HOST'S REASON WHEN ITS PLACEHOLDER CANNOT BE READ (there is one
+				 * only while the box is EMPTY — the browser stops painting a
+				 * placeholder the moment the control has a value), and the host's
+				 * reason is otherwise only ever in that attribute. A draft now
+				 * survives leaving the page, so a reader can arrive with text in the
+				 * box and then meet a readOnly box they cannot explain; this puts the
+				 * host's own sentence in the band for exactly that state, and only
+				 * for a host that supplied one. Chat passes no `hostNotice`, so this
+				 * node is unreachable there.
+				 */}
+				{hostNotice?.blocksInput &&
+				hostNotice.placeholder &&
+				newMessage.trim().length > 0 ? (
+					<p
+						id={HOST_BLOCKED_REASON_ID}
+						className="mb-2 text-meta text-ink-muted"
+					>
+						{hostNotice.placeholder}
+					</p>
+				) : null}
+				{hostNotice?.node}
 				{composerAlert.message !== undefined && (
 					/*
 					 * ONE SENTENCE, AT MOST TWO CONTROLS. THE WHOLE OF IT.
@@ -7526,7 +7622,23 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										// this element any more, and deleting the pair would let a
 										// future `disabled` state ship with no ink step at all - the
 										// exact defect the pair was added for.
-										"read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
+										//
+										// A HOST THAT REFUSES DOES NOT WEAR THAT INK (design review
+										// round 2, D6). `ink-disabled` measures 1.99:1 on the box's
+										// `elevated` fill in the dark brand and 2.96:1 in the
+										// light one, and the exemption it carries assumes the
+										// state's MEANING is carried somewhere else that meets the
+										// floor - the transcript, in chat. On a host page the box's
+										// own words can be the only carrier of the reason (the
+										// Agents page's "Finish or cancel your edit first."), so
+										// with `blocksInput` the box steps to `ink-muted` the way
+										// the host's band sentence does. The refusal still reads
+										// as one: dimmer than a draft's `ink`, `cursor:
+										// not-allowed`, `aria-disabled`, plus the band and the
+										// strip.
+										hostNotice?.blocksInput
+											? "read-only:text-ink-muted read-only:placeholder:text-ink-muted disabled:text-ink-disabled disabled:placeholder:text-ink-disabled"
+											: "read-only:text-ink-disabled read-only:placeholder:text-ink-disabled disabled:text-ink-disabled disabled:placeholder:text-ink-disabled",
 									)}
 									placeholder={
 										/*
@@ -7588,6 +7700,9 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 													 * own idle line.
 													 */
 													idle: placeholderOverride,
+													// The host's own words for its own states (D1/D5); absent on
+													// every chat mount, which is what keeps chat unchanged.
+													hostLine: hostNotice?.placeholder ?? null,
 													/*
 													 * In ask mode the host's sentence is the MODE's, not the invitation's,
 													 * so it is read on the run above the turn's own lines rather than at
@@ -7838,6 +7953,18 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										 * cannot be verified without an AT in this environment.
 										 */
 										[
+											hostNotice ? hostNotice.id : null,
+											/*
+											 * The host's blocked reason, while its band node is the
+											 * only place it can be read (the box holds text, so the
+											 * placeholder is not painted). Same condition as the node
+											 * itself, so the reference cannot outlive its target.
+											 */
+											hostNotice?.blocksInput &&
+											hostNotice.placeholder &&
+											newMessage.trim().length > 0
+												? HOST_BLOCKED_REASON_ID
+												: null,
 											credentialNotice ? CREDENTIAL_NOTICE_ID : null,
 											secretClosureNotice ? SECRET_CLOSURE_NOTICE_ID : null,
 											outsideMentions > 0 ? MENTION_OUTSIDE_NOTICE_ID : null,

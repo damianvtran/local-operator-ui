@@ -390,6 +390,19 @@ export const composerPlaceholder = (state: {
 	 */
 	idle?: string;
 	/**
+	 * The HOST's own sentence for the states the host owns (design review round 1,
+	 * D1/D5).
+	 *
+	 * WHY THIS OUTRANKS `inputDisabled`/`sendingUnsettled`/`awaitingReply`, and
+	 * only those: "Agent is busy" and "Sending your message" are facts about a
+	 * CHAT purpose. A host that refuses input for its own reason (the Agents page's
+	 * dirty-edit gate, a backend without the capability) or that has its own
+	 * request outstanding says its own words there, while every other sentence —
+	 * `unavailable`, `secretAnswer`, the invitation — still outranks this one.
+	 * ABSENT MEANS NOTHING CHANGES: no chat mount passes it.
+	 */
+	hostLine?: string | null;
+	/**
 	 * The ASK lane's own sentence, while the composer is answering a queued ask.
 	 *
 	 * Ranked ABOVE `awaitingAnswer`/`sendingUnsettled`/`awaitingReply`, and that is
@@ -408,6 +421,11 @@ export const composerPlaceholder = (state: {
 }): string => {
 	if (state.unavailable) return COMPOSER_PLACEHOLDER.unavailable;
 	if (state.secretAnswer) return COMPOSER_PLACEHOLDER.secretAnswer;
+	if (
+		state.hostLine &&
+		(state.inputDisabled || state.sendingUnsettled || state.awaitingReply)
+	)
+		return state.hostLine;
 	if (state.inputDisabled) return COMPOSER_PLACEHOLDER.busy;
 	if (state.askMode) return state.askMode;
 	if (state.awaitingAnswer) return COMPOSER_PLACEHOLDER.answer;
@@ -549,6 +567,11 @@ type UseMessageInputOptions = {
 	 */
 	draftUnredacted?: (value: string) => number;
 	/**
+	 * See `useMessageInput`'s own note: a host that paints no transcript relies on
+	 * its accepted send to retire its box, because it has no echo to do it.
+	 */
+	transcriptless?: boolean;
+	/**
 	 * Submits the message.
 	 *
 	 * `onEchoPainted` is the seam that lets the composer clear itself at the
@@ -565,6 +588,17 @@ type UseMessageInputOptions = {
 };
 
 /**
+ * The slice of zustand's persist API this hook reads, which some hosts do not
+ * have. See the hydration block inside `useMessageInput` for why its absence is
+ * a state to render in rather than an error.
+ */
+type ConversationInputPersistence = {
+	hasHydrated: () => boolean;
+	onHydrate: (fn: () => void) => () => void;
+	onFinishHydration: (fn: () => void) => () => void;
+};
+
+/**
  * Hook for managing message input with robust per-conversation persistence and log-based history navigation.
  */
 export const useMessageInput = ({
@@ -573,6 +607,16 @@ export const useMessageInput = ({
 	scrollToBottom,
 	draftHeld = false,
 	draftUnredacted = noDisclosure,
+	/*
+	 * Whether the host paints NO transcript for this box (UX exploration, U1).
+	 *
+	 * The box's text is normally retired by the ECHO: the row appears in the
+	 * transcript and `clearOnce` empties the box in the same commit. A host with
+	 * no transcript has no echo, so its accepted send must retire the box itself —
+	 * see the gate on `clearOnce` — and only such a host passes this. Absent means
+	 * the echo path, i.e. every chat composer, byte-identical.
+	 */
+	transcriptless = false,
 }: UseMessageInputOptions) => {
 	// Store selectors
 	const getCurrentInput = useConversationInputStore((s) => s.getCurrentInput);
@@ -597,13 +641,31 @@ export const useMessageInput = ({
 		(s) => s.adoptReturnedText,
 	);
 
-	// Hydration state
+	/*
+	 * Hydration state.
+	 *
+	 * THE PERSIST API IS NOT ALWAYS THERE, AND RENDERING WITHOUT IT IS A STATE
+	 * THIS HOOK ALREADY PROMISES TO HANDLE - the effect below has always had the
+	 * branch for it (no persist API: settle the box as hydrated and let the store
+	 * live in memory). Zustand only attaches `api.persist` when its storage
+	 * factory RETURNED a storage; with the middleware's default
+	 * `() => localStorage` a host that evaluates this store where `localStorage`
+	 * is not a global - a DOM-less desktop-suite harness, an SSR render, a window
+	 * with storage disabled - takes the middleware's no-storage branch and hands
+	 * back the bare store. Reading `.hasHydrated` THROUGH the missing API is what
+	 * took the whole page down the first time a composer mounted OUTSIDE chat
+	 * (`AgentsPage` -> `ConfigComposer` -> `MessageInput`, in
+	 * `agent-class-toggle.test.mjs`): the effect tolerated it, this line did not.
+	 * `conversation-input-sync.ts` reads the same API optionally, so the tolerance
+	 * is the house rule, not an accommodation here: no persistence means no
+	 * restored draft, never a broken page.
+	 */
 	const [hydrated, setHydrated] = useState(
 		(
-			useConversationInputStore.persist as unknown as {
-				hasHydrated: () => boolean;
-			}
-		).hasHydrated?.() ?? false,
+			useConversationInputStore.persist as unknown as
+				| ConversationInputPersistence
+				| undefined
+		)?.hasHydrated?.() ?? false,
 	);
 	const initializedRef = useRef<string | undefined>(undefined);
 	/*
@@ -618,11 +680,9 @@ export const useMessageInput = ({
 	const [inputValue, setInputValue] = useState<string>("");
 
 	useEffect(() => {
-		const persist = useConversationInputStore.persist as unknown as {
-			onHydrate: (fn: () => void) => () => void;
-			onFinishHydration: (fn: () => void) => () => void;
-			hasHydrated: () => boolean;
-		};
+		const persist = useConversationInputStore.persist as unknown as
+			| ConversationInputPersistence
+			| undefined;
 		let unsubHydrate: (() => void) | undefined;
 		let unsubFinish: (() => void) | undefined;
 		if (
@@ -1068,7 +1128,23 @@ export const useMessageInput = ({
 			const pendingTranscript = pendingTranscriptRef.current;
 			if (pendingTranscript) pendingTranscriptRef.current = "";
 			sendClearPendingRef.current = false;
-			if (initializedRef.current !== conversationId) {
+			/*
+			 * A TRANSCRIPTLESS HOST'S BOX IS THE ONLY COPY OF WHAT IT SENT (UX
+			 * exploration, U1 — a BLOCKER, because this page's sends WRITE the agent
+			 * and team registries: a box that keeps its text makes the next Enter a
+			 * second run, and a second run is a second write).
+			 *
+			 * WHY THE EARLY RETURN CANNOT APPLY THERE. It exists because a composer
+			 * that never took charge of the row has nothing to clear — the row is
+			 * another mount's, and the echo it paints is the transcript's. A host
+			 * that paints NO transcript has no echo to clear the box on: the
+			 * post-await clear is its ONLY clear, so returning here leaves the sent
+			 * text in the box and the next Enter re-sends it.
+			 *
+			 * GATED ON `transcriptless`, so chat is byte-identical: every chat
+			 * composer still retires its text on the echo, through this same branch.
+			 */
+			if (!transcriptless && initializedRef.current !== conversationId) {
 				// This composer never took charge of the row, so it has nothing to
 				// clear - but the row is still the transcript's home and the next
 				// mount paints from it.
@@ -1227,6 +1303,12 @@ export const useMessageInput = ({
 		 */
 		appendToDraft,
 		getCurrentInput,
+		/*
+		 * U1: `clearOnce` reads it to decide whether an accepted send retires the
+		 * box itself (a transcriptless host has no echo to do it), so the lint gate
+		 * is right that it belongs here.
+		 */
+		transcriptless,
 	]);
 
 	// Cursor position helpers
@@ -1296,6 +1378,20 @@ export const useMessageInput = ({
 				}, 0);
 			}
 			if (e.key === "ArrowDown" && isCursorAtLastLine()) {
+				/*
+				 * THE CAPTURE IS THE WALK'S, NOT THE CARET'S (issue #764). This arm can
+				 * only WALK a recall the ArrowUp arm already engaged; with none there is
+				 * nothing here for it to do, and yet `preventDefault` ran unconditionally
+				 * inside the last-line guard — which counts LOGICAL lines, so a wrapped
+				 * single-paragraph draft is on its "last line" at every caret position
+				 * and the key was swallowed at all of them. The engagement rule is the
+				 * ArrowUp arm's and lives on the CONTENT (`historyRecallEngages`); this
+				 * arm hands the key back before `preventDefault`, on the walk's own state
+				 * rather than a content test: the walked box HOLDS recalled text
+				 * (non-empty by construction), so reading the content here would block
+				 * the very walk it exists to protect.
+				 */
+				if (historyIndex === null) return;
 				e.preventDefault();
 				if (historyIndex !== null) {
 					if (historyIndex < submittedMessages.length - 1) {
