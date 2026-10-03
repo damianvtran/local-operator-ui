@@ -423,6 +423,54 @@ test("the status-row item's clause reads one state at a time", () => {
 	assert.equal(queue.askChipClause(truncated), "12 outstanding");
 });
 
+test("the item's clause never claims a split the frame cannot know", () => {
+	/*
+	 * A LAGGING TALLY (agent review round 1, F2). `view.open` is the backend's own
+	 * count - the number the sidebar's outstanding chip reads - and a frame may carry
+	 * fewer rows than it says, without the `truncated` flag. Reading only the rows let
+	 * this clause say `All asks settled` beside a sidebar reading `2 outstanding`,
+	 * which is the one thing the module's own header forbids two surfaces doing.
+	 */
+	const lagging = queue.askQueueView({
+		asks: [single({ ask_id: "a-1", status: "answered" })],
+		asks_open: 2,
+	});
+	assert.equal(queue.askChipClause(lagging), "2 outstanding");
+	assert.equal(
+		queue.askChipLabel(lagging, false),
+		"Expand the ask history — 2 outstanding",
+	);
+
+	// The same rule over a MIXED frame: the split is not stated when the tally is
+	// louder, and the announced name carries the tally instead of the split.
+	const mixedLagging = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1" }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
+		asks_open: 5,
+	});
+	assert.equal(queue.askChipClause(mixedLagging), "5 outstanding");
+	assert.equal(
+		queue.askChipLabel(mixedLagging, false),
+		"Expand the ask history — 5 outstanding",
+	);
+
+	// A tally that matches the rows changes nothing: the split is stated as before.
+	const exact = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1" }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
+		tasks_open: 2,
+	});
+	assert.equal(queue.askChipClause(exact), "1 question waiting");
+	assert.equal(
+		queue.askChipLabel(exact, false),
+		"Expand the ask history — 1 question waiting · 1 moved on",
+	);
+});
+
 test("the item's announced name leads with its action and carries the whole clause", () => {
 	const one = queue.askQueueView({ asks: [single({ ask_id: "a-1" })] });
 	assert.equal(
@@ -652,7 +700,7 @@ const targetInside = (selector) => ({
 });
 const targetInsideNothing = { closest: () => null };
 
-test("the Escape claim is ours only over the ask surfaces and the composer box", () => {
+test("the Escape claim is ours over the ask panel, the item that opens it, and the composer box", () => {
 	const base = { key: "Escape", target: null };
 	// A press with no element target is delivered that way when the panel was the
 	// only focus stop.
@@ -663,7 +711,26 @@ test("the Escape claim is ours only over the ask surfaces and the composer box",
 			target: targetInside(queue.ASK_SURFACE_SELECTOR),
 		}),
 		true,
-		"the ask surfaces are ours",
+		"the ask panel is ours",
+	);
+	/*
+	 * AND THE TRIGGER, as its own clause (UX round 1, U3): the item no longer carries
+	 * `data-lo-ask-surfaces` - that marker is the panel's, so a rig can trust it as an
+	 * "is the panel open?" probe - and an Escape with the keyboard on the chip must
+	 * still collapse what the chip opened.
+	 */
+	assert.notEqual(
+		queue.ASK_SURFACE_SELECTOR,
+		queue.ASK_ITEM_SELECTOR,
+		"the panel's marker and the trigger's handle are two handles",
+	);
+	assert.equal(
+		queue.askClaimsEscape({
+			...base,
+			target: targetInside(queue.ASK_ITEM_SELECTOR),
+		}),
+		true,
+		"the row item that expands the panel is ours",
 	);
 	assert.equal(
 		queue.askClaimsEscape({
