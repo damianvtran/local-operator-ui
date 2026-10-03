@@ -813,6 +813,15 @@ export type MessageInputProps = {
 	 */
 	cwdPendingAccepted?: boolean;
 	isSmallView?: boolean;
+	/**
+	 * The ask lane's expanded flag and its door, forwarded to the status row's ask
+	 * item. See `ComposerStatusRowProps.askExpanded` for why they are OPTIONAL and
+	 * controlled when supplied: the page that owns the composer owns the flag, and
+	 * only a story (or a host that has no page) lets the row fall back to its own
+	 * state.
+	 */
+	askExpanded?: boolean;
+	onAskToggle?: (next: boolean) => void;
 
 	/**
 	 * THE HOST PROVIDES ITS OWN HORIZONTAL GUTTER (mini restyle, design D1/D2).
@@ -1578,6 +1587,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			cwdPending,
 			cwdPendingAccepted,
 			isSmallView = false,
+			askExpanded,
+			onAskToggle,
 			ownGutter = false,
 			isHydrating = false,
 			transcriptless = false,
@@ -6939,6 +6950,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						frontend={sessionStatus?.frontend}
 						runDetails={runDetails}
 						isSmallView={isSmallView}
+						askExpanded={askExpanded}
+						onAskToggle={onAskToggle}
 						/*
 						 * The judge stalling is a state the user cannot read off 0px of ink, so the
 						 * row writes one sentence about it to the transcript (design D2) — through

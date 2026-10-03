@@ -37,8 +37,10 @@ wrap fix did not reach them.
 
 `--themes` is the two brand palettes, which is `branding.md` § 9.9's minimum, and
 the light pass is where contrast defects hide. The tree that added this surface
-is what `manifest.json`'s `srcTree`/`scriptsTree` and `partialCapture` carried
-then, as they do for every frame here.
+is what that pass's `partialCapture` record names — the manifest stamped
+`srcTree`/`scriptsTree` beside it at the time, a stored binding this repository
+has since retired, so `partialCapture` is the record to read for the tree a pass
+ran on.
 
 **The `states` pair was re-taken for the settled-plan copy** (`fix(composer):
 state a settled plan instead of a zero count`): the chip's finished case printed
