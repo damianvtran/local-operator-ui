@@ -347,6 +347,67 @@ const wireMonitor = (id, name, dueInMs, extra = {}) => ({
 const monitorsOf = (rows) =>
 	deriveRunDetails({ jobs: [], todos: [], monitors: rows, nowMs: WAKE_NOW_MS });
 
+/**
+ * One wire ask, in the shape the backend publishes on the frontend state.
+ *
+ * `expires_at` is epoch MILLISECONDS like the wakes', and the client NEVER
+ * re-derives `status` from it - the fold owns the state, the clock only formats a
+ * countdown - so the fixture states the status it means.
+ */
+const wireAsk = (id, status = "open", extra = {}) => ({
+	ask_id: id,
+	created_at: WAKE_NOW_MS,
+	expires_at: WAKE_NOW_MS + HOUR_MS,
+	timeout_s: 3600,
+	urgent: false,
+	status,
+	delivered: false,
+	questions: [
+		{
+			id: "target",
+			question: "Which environment?",
+			options: [{ label: "staging" }],
+		},
+	],
+	...extra,
+});
+
+/**
+ * A frontend snapshot carrying the ask queue, at the WIRE's own counts.
+ *
+ * `asks_open` is the backend's OUTSTANDING tally - `open` OR `timed_out`
+ * (`asks/store.py`'s `OUTSTANDING_STATUSES`), because a late answer still reaches
+ * the agent - which is why it is NOT the same number as the waiting count the
+ * chip's clause reads off the rows.
+ */
+const askFrontend = (asks, over = {}) => ({
+	goal: "",
+	session_id: "s-1",
+	asks: asks,
+	asks_open: Array.isArray(asks)
+		? asks.filter((row) => row.status === "open" || row.status === "timed_out")
+				.length
+		: null,
+	asks_truncated: false,
+	...over,
+});
+
+/** The row's nothing state: no goal, no loop, no plan and no schedules. */
+const NO_DETAILS = deriveRunDetails({ jobs: [], todos: [] });
+
+/**
+ * The ask item's own class attribute, as tokens.
+ *
+ * By TOKEN rather than by regex over the whole tag: the row's shared box carries
+ * `hover:text-ink`, which a "does it contain `text-ink`" search matches from every
+ * state - the assertion has to be about the RESTING ink, and a token set is the
+ * only shape that says so.
+ */
+const askButtonClasses = (markup) => {
+	const tag = markup.match(/<button[^>]*data-status-asks[^>]*>/)?.[0] ?? "";
+	return (tag.match(/class="([^"]*)"/)?.[1] ?? "").split(/\s+/).filter(Boolean);
+};
+
 const LONG_GOAL =
 	"Reconcile the March invoices against the payments ledger, group the unpaid rows by customer, confirm what 'pending' means with finance, then write reports/unpaid-march.md and publish the summary";
 
@@ -1082,6 +1143,186 @@ test("the wake chip states the model's clause, off the model's own list", () => 
 	assert.doesNotMatch(one, /lucide-info/, "Info stays the plan chip's mark");
 });
 
+test("the ask item is gated on the WIRE and on a non-empty queue", () => {
+	/*
+	 * ABSENT IS NOT EMPTY (ask-queue.ts rule 1): `asks: null` is a backend that does
+	 * not publish queued asks at all, and an affordance such a backend can never
+	 * satisfy must not be drawn. The row then renders its own nothing state.
+	 */
+	assert.equal(
+		renderRow({ frontend: askFrontend(null), runDetails: NO_DETAILS }),
+		"",
+		"an old backend grows no ask item",
+	);
+	// PUBLISHED BUT EMPTY: the affordance disappears at zero asks.
+	assert.equal(
+		renderRow({ frontend: askFrontend([]), runDetails: NO_DETAILS }),
+		"",
+		"zero asks is absent, never a zero badge",
+	);
+	/*
+	 * SETTLED ASKS DO RENDER. Like `All to-dos resolved`, a finished queue is worth
+	 * keeping on screen - the panel is where its history lives - so the gate is
+	 * "has rows", not "has open rows".
+	 */
+	const settled = renderRow({
+		frontend: askFrontend([wireAsk("a-1", "answered")]),
+		runDetails: NO_DETAILS,
+	});
+	assert.match(settled, /data-status-asks/);
+	assert.match(settled, /All asks settled/);
+});
+
+test("the ask item states the queue's own reading, in two registers", () => {
+	const cases = [
+		[[wireAsk("a-1")], "1 question waiting"],
+		[[wireAsk("a-1"), wireAsk("a-2")], "2 questions waiting"],
+		[[wireAsk("a-1", "timed_out")], "1 question moved on"],
+		[[wireAsk("a-1", "answered")], "All asks settled"],
+	];
+	for (const [asks, clause] of cases) {
+		assert.ok(
+			renderRow({
+				frontend: askFrontend(asks),
+				runDetails: NO_DETAILS,
+			}).includes(clause),
+			`the chip draws the model's own clause: ${clause}`,
+		);
+	}
+	/*
+	 * THE TWO REGISTERS, and the whole difference is colour. QUIET is exactly the
+	 * other settled chips' register: the shared box, in the muted ink.
+	 */
+	const quietMarkup = renderRow({
+		frontend: askFrontend([wireAsk("a-1", "answered")]),
+		runDetails: NO_DETAILS,
+	});
+	assert.ok(askButtonClasses(quietMarkup).includes("text-ink-muted"));
+	assert.doesNotMatch(quietMarkup, /lucide-circle-help[^"]*text-accent/);
+	/*
+	 * ATTENTION is a COLOUR STEP ONLY: the label steps to `ink` and the mark to
+	 * `accent`. `cn`'s tailwind-merge resolves the ink pair, so the attention button
+	 * carries `text-ink` and NOT the muted class - which is what makes this a step
+	 * rather than an addition.
+	 */
+	const attentionMarkup = renderRow({
+		frontend: askFrontend([wireAsk("a-1")]),
+		runDetails: NO_DETAILS,
+	});
+	assert.ok(askButtonClasses(attentionMarkup).includes("text-ink"));
+	assert.ok(!askButtonClasses(attentionMarkup).includes("text-ink-muted"));
+	assert.match(attentionMarkup, /lucide-circle-help[^"]*text-accent/);
+	/*
+	 * NO SIZE, PADDING, BORDER OR FILL DIFFERS BETWEEN THE STATES. The two token
+	 * sets are identical once the ink classes are dropped, so the row's height cannot
+	 * move when the queue's state does - which is the property the set's own geometry
+	 * probe measures in the browser and this pins without one.
+	 */
+	const geometry = (tokens) =>
+		tokens
+			.filter((token) => !token.startsWith("text-"))
+			.sort()
+			.join(" ");
+	assert.equal(
+		geometry(askButtonClasses(attentionMarkup)),
+		geometry(askButtonClasses(quietMarkup)),
+		"the two registers differ by ink alone",
+	);
+	/*
+	 * MOVED ON IS NOT ATTENTION: the agent has walked past the ask, so the row's one
+	 * urgency spend is not spent on it - the same scoping the queue view applies to
+	 * its own `waiting` count.
+	 */
+	const movedOn = renderRow({
+		frontend: askFrontend([wireAsk("a-1", "timed_out")]),
+		runDetails: NO_DETAILS,
+	});
+	assert.ok(askButtonClasses(movedOn).includes("text-ink-muted"));
+	assert.ok(!askButtonClasses(movedOn).includes("text-ink"));
+	assert.doesNotMatch(movedOn, /lucide-circle-help[^"]*text-accent/);
+	/*
+	 * ONE GLYPH, ONE MEANING: `HelpCircle` is the panel's own mark for an open ask.
+	 * The neighbours' marks stay theirs.
+	 */
+	assert.match(attentionMarkup, /lucide-circle-help/);
+	assert.doesNotMatch(attentionMarkup, /lucide-info/);
+	assert.doesNotMatch(attentionMarkup, /lucide-alarm-clock/);
+});
+
+test("the ask item is the row's one toggle, and names itself off the model", () => {
+	const minimized = renderRow({
+		frontend: askFrontend([wireAsk("a-1")]),
+		runDetails: NO_DETAILS,
+	});
+	/*
+	 * It TOGGLES, unlike every neighbour on this row: pressing it opens the ask
+	 * history in place, so `aria-expanded` is truthful here where the wake chip's
+	 * reveal cannot use it.
+	 */
+	assert.match(minimized, /data-lo-ask-item="minimized"/);
+	assert.match(minimized, /aria-expanded="false"/);
+	assert.match(
+		minimized,
+		/aria-label="Expand the ask history — 1 question waiting"/,
+	);
+	/*
+	 * The two handles the interaction needs: `data-lo-ask-item-toggle` is what the
+	 * panel's own focus-return addresses from across the tree, and
+	 * `data-lo-ask-surfaces` is what makes the Escape claim true with focus on this
+	 * item.
+	 */
+	assert.match(minimized, /data-lo-ask-item-toggle=""/);
+	assert.match(minimized, /data-lo-ask-surfaces=""/);
+
+	const expanded = renderRow({
+		frontend: askFrontend([wireAsk("a-1")]),
+		runDetails: NO_DETAILS,
+		askExpanded: true,
+	});
+	assert.match(expanded, /data-lo-ask-item="expanded"/);
+	assert.match(expanded, /aria-expanded="true"/);
+	assert.match(
+		expanded,
+		/aria-label="Collapse the ask history — 1 question waiting"/,
+	);
+	// The visible text is the leading half of the announced name, so the two
+	// readers cannot describe different states.
+	assert.ok(
+		expanded.includes("1 question waiting"),
+		"the clause is drawn as well as announced",
+	);
+});
+
+test("the ask item is a peer of the chips around it: shared box, the model's place in the order", () => {
+	const markup = renderRow({
+		frontend: askFrontend([wireAsk("a-1")], { goal: "Ship it" }),
+		runDetails: detailsWith([], ["pending"]),
+	});
+	/*
+	 * It wears the ROW'S OWN control box - the same class string the wake and monitor
+	 * chips wear - so "peer of the existing chips" is a shared box rather than a
+	 * restated one.
+	 */
+	assert.match(markup, /data-status-asks[^>]*class="[^"]*inline-flex h-6/);
+	assert.match(markup, /data-status-asks[^>]*class="[^"]*gap-1\.5/);
+	// Between the standing facts and the armed schedules: plan, ASK, wakes.
+	const planAt = markup.indexOf("data-status-plan");
+	const askAt = markup.indexOf("data-status-asks");
+	const wakesAt = markup.indexOf("data-status-wakes");
+	assert.ok(planAt >= 0 && askAt > planAt, "the ask comes after the plan");
+	assert.ok(wakesAt === -1 || askAt < wakesAt, "and before the wakes");
+});
+
+test("the ask item leads the row when nothing stands ahead of it", () => {
+	// The first chip cancels its own padding whichever chip is first, so the item has
+	// to carry that too - with no goal and no loop it is the row's first child.
+	const askFirst = renderRow({
+		frontend: askFrontend([wireAsk("a-1")]),
+		runDetails: NO_DETAILS,
+	});
+	assert.ok(askFirst.indexOf("data-status-asks") < askFirst.indexOf("-ml-1.5"));
+});
+
 test("the wake chip names the section its press opens, and never toggles", () => {
 	const markup = renderRow({
 		frontend: frontend(""),
@@ -1569,12 +1810,13 @@ test("the row's own layout: the floor stacks it, and the alignment device is the
 	 * The first-chip chain, which had to grow an item: the loop chip is the second
 	 * ITEM on the row (its own chip plus its dismiss, one wrapper), so the count group
 	 * is first only when neither the goal nor the loop rendered, and the group's own
-	 * leading chip is still decided inside the group — plan, wakes, watches,
-	 * subagents and jobs, in that order.
+	 * leading chip is decided inside the group - plan, ask, wakes, watches, subagents
+	 * and jobs, in that order.
 	 */
 	assert.match(source, /const loopFirst = !showGoal;/);
 	assert.match(source, /const groupIsFirst = !showGoal && !showLoop;/);
-	assert.match(source, /const wakesFirst = groupIsFirst && !showPlan;/);
+	assert.match(source, /const asksFirst = groupIsFirst && !showPlan;/);
+	assert.match(source, /const wakesFirst = asksFirst && !showAsks;/);
 	assert.match(source, /const monitorsFirst = wakesFirst && !showWakes;/);
 	assert.match(
 		source,
