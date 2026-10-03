@@ -178,3 +178,40 @@ export function speechUnavailableReason(
 ): string {
 	return REASONS[control][block];
 }
+
+/**
+ * The SETTINGS group's sentence per block, from the same classification.
+ *
+ * WHY A SECOND TABLE AND NOT THE TOOLTIP'S. The disabled control's sentence is
+ * written for a reader standing on a TRANSCRIPT, so its remedy has to name the
+ * destination ("Sign in to Radient in Settings to enable speaking aloud") — and
+ * that sentence, rendered on the Settings page itself, tells a reader standing
+ * in Settings to go to Settings. The group is also the one place that can afford
+ * to name the exact route, which is what the design note asks of it: `/login
+ * radient` is runnable as printed, whereas "sign in" is a description of a
+ * gesture.
+ *
+ * WHY IT STILL BELONGS IN THIS MODULE: the CLASSIFICATION is the thing that may
+ * not be duplicated — `speechBlock` is derived from one reading of the account
+ * and the capability negotiation (see the ladder above), and the group renders
+ * its arm of that same reading rather than re-deriving "is the reader signed
+ * in" from the account query itself. Two sentences from one classification is a
+ * copy decision; two classifications would be the defect this module exists to
+ * prevent.
+ */
+const SETTINGS_REASONS: Record<RadientSpeechBlock, string> = {
+	checking: "Checking whether this machine can speak aloud…",
+	"sign-in": "Nothing can speak aloud yet: run `/login radient` to sign in",
+	"could-not-check":
+		"Your Radient sign-in could not be checked, so nothing can speak aloud yet",
+	offline: "Local Operator is offline, so nothing can speak aloud right now",
+};
+
+/**
+ * The settings group's sentence for a block, from {@link radientSpeechBlock}.
+ *
+ * @param block - the classification the disabled control already renders from.
+ */
+export function speechSettingsNote(block: RadientSpeechBlock): string {
+	return SETTINGS_REASONS[block];
+}

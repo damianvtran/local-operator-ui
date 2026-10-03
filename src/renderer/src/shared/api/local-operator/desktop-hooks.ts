@@ -657,7 +657,22 @@ export type DesktopFeature =
 	 * forbids her route (`design.md` § 3.4/§ 4), while every other surface serves
 	 * exactly as it did before.
 	 */
-	| "aida";
+	| "aida"
+	/**
+	 * THE VOICING SURFACE (`features.tts`): `GET /v1/tts/paths`, the synthesis
+	 * availability report a speak control asks before it offers itself.
+	 *
+	 * ITS OWN KEY, and a separate one from `stt` on the daemon's own reasoning
+	 * (the two directions ship independently, and a client that can read one
+	 * report is not necessarily the client that can send the other's payload),
+	 * which is the rule this union states for every member: a backend that serves
+	 * the registry and predates voicing must not be asked for a route it does not
+	 * have, because the 404 it answers is indistinguishable from this app making a
+	 * malformed call. Absent ⇒ the Speech settings group renders the honest
+	 * "this backend does not serve the voicing surface" state and fires no read at
+	 * all, which is the pre-voicing behaviour rather than a degraded one.
+	 */
+	| "tts";
 
 /**
  * WHY a negotiated feature surface may not be offered.

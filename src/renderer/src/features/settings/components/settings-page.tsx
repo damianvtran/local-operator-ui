@@ -59,6 +59,7 @@ import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SettingsUsageChart } from "./settings-usage-chart";
+import { SpeechSection } from "./speech-section";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
 import { TranscriptDisplayModeSetting } from "./transcript-display-mode-setting";
@@ -394,6 +395,7 @@ export const SettingsPage: FC = () => {
 		radient: useRef<HTMLDivElement>(null),
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
+		speech: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -1279,6 +1281,17 @@ export const SettingsPage: FC = () => {
 								/>
 							</div>
 						</SettingsSection>
+
+						{/*
+						 * Speech voicing sits beside Appearance and not under Backend settings,
+						 * because it is the same kind of question: a preference about how the app
+						 * behaves for the reader in front of it, not a registry key they had to
+						 * know by name. Its seven rows are the daemon's own (selected by key), and
+						 * the group adds what the registry cannot say — which provider would serve
+						 * this machine, and what to do when none can. See its module docstring for
+						 * why it carries no credential field.
+						 */}
+						<SpeechSection sectionRef={sectionRefs.speech} />
 
 						{/*
 						 * The provider grid is the same component onboarding uses: one
