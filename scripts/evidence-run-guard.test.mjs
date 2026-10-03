@@ -228,6 +228,13 @@ async function realSweep(
 		 */
 		"chrome-keychain.mjs",
 		/*
+		 * The frame-timezone pin, which `capture-evidence.mjs` imports at module
+		 * level (so every capture renders in one zone) - one more edge in the same
+		 * family as `chrome-keychain.mjs` above, and the same failure without it:
+		 * the relocated CLI cannot import at all, loudly, before it reads anything.
+		 */
+		"evidence-tz.mjs",
+		/*
 		 * Both CLIs resolve their own entry point through this module
 		 * (`scripts/entry-point.mjs`), which is how the guarded re-exec works at all:
 		 * without it in the relocated set the copy fails to IMPORT - loudly, and
