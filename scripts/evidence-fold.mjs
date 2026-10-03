@@ -1475,6 +1475,8 @@ const refuseDriver = ({
 	theirsPath,
 	operation = null,
 	oursLabel: oursLabelOverride = null,
+	oursRaw = null,
+	theirsRaw = null,
 }) => {
 	const reason = `REFUSING to resolve ${MANIFEST_PATH} during ${named}: ${why}`;
 	console.error(`evidence-fold: ${reason}`);
@@ -1499,7 +1501,8 @@ const refuseDriver = ({
 	 * UNRESOLVED. Only a working file that cannot be written at all can still
 	 * fail here, and that throw is recorded by the top-level catch.
 	 */
-	const sideBody = (path, name) => {
+	const sideBody = (path, raw, name) => {
+		if (typeof raw === "string") return withNewline(raw);
 		try {
 			return withNewline(readFileSync(path, "utf8"));
 		} catch (error) {
@@ -1525,8 +1528,9 @@ const refuseDriver = ({
 		"git's %B - the commit being replayed, or the stashed change";
 	writeFileSync(
 		oursPath,
-		`<<<<<<< ${oursLabel}\n${sideBody(oursPath, "%A")}=======\n${sideBody(
+		`<<<<<<< ${oursLabel}\n${sideBody(oursPath, oursRaw, "%A")}=======\n${sideBody(
 			theirsPath,
+			theirsRaw,
 			"%B",
 		)}>>>>>>> ${theirsLabel}\n`,
 	);
@@ -1570,6 +1574,25 @@ const driver = (argv) => {
 		return readJson(text, label);
 	};
 	/*
+	 * THE MARKER BODIES ARE CAPTURED HERE, BEFORE THE TRY AND BEFORE ANY WRITE.
+	 * `refuseDriver` writes the markers from what it is handed, and the write to
+	 * `oursPath` below is itself inside the try - so a throw AFTER that write (or a
+	 * partial one) would otherwise leave the refusal marking a partially-resolved
+	 * manifest while its label still claimed "the copy git left in the working
+	 * file". Capturing up front keeps that label true by construction. A read that
+	 * fails here yields null and the refusal falls back to reading the path, which
+	 * is what names an absent side in the marker.
+	 */
+	const captureRaw = (path) => {
+		try {
+			return readFileSync(path, "utf8");
+		} catch {
+			return null;
+		}
+	};
+	const oursRaw = captureRaw(oursPath);
+	const theirsRaw = captureRaw(theirsPath);
+	/*
 	 * EVERY FAILURE IN HERE IS A REFUSAL, NOT A CRASH. `readSide` throws on a side
 	 * git handed the driver that is not JSON (a half-written manifest) or whose
 	 * path is absent, and the resolve/serialize below can throw on a shape they
@@ -1607,6 +1630,8 @@ const driver = (argv) => {
 			why: `${error.message} - so the merged manifest cannot be derived from what git handed the driver`,
 			oursPath,
 			theirsPath,
+			oursRaw,
+			theirsRaw,
 			oursLabel:
 				"git's %A, the copy git left in the working file during this merge",
 		});
