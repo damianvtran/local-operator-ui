@@ -1153,7 +1153,14 @@ test("the wake chip states the model's clause, off the model's own list", () => 
  * directly, and that difference is the F1 gate's whole subject.
  */
 const renderWiredRow = (props) =>
-	renderRow({ ...props, onAskToggle: () => undefined });
+	/*
+	 * A PINNED CLOCK, so the item's countdown is a fact of the fixture rather than of
+	 * the moment the suite ran: the row's own clock is wall time, and every assertion
+	 * about the visible text or the announced name would otherwise drift with it.
+	 * `WAKE_NOW_MS` is the same instant the wire fixtures expire from, which is what
+	 * makes the reading `expires in 1h` for a one-hour ask.
+	 */
+	renderRow({ ...props, onAskToggle: () => undefined, nowMs: WAKE_NOW_MS });
 
 test("the ask item is gated on the WIRE and on a non-empty queue", () => {
 	/*
@@ -1275,7 +1282,7 @@ test("the ask item is the row's one toggle, and names itself off the model", () 
 	assert.match(minimized, /aria-expanded="false"/);
 	assert.match(
 		minimized,
-		/aria-label="Expand the ask history — 1 question waiting"/,
+		/aria-label="Expand the ask history — 1 question waiting · expires in 1h"/,
 	);
 	/*
 	 * The two handles the interaction needs: `data-lo-ask-item-toggle` is what the
@@ -1296,7 +1303,7 @@ test("the ask item is the row's one toggle, and names itself off the model", () 
 	assert.match(expanded, /aria-expanded="true"/);
 	assert.match(
 		expanded,
-		/aria-label="Collapse the ask history — 1 question waiting"/,
+		/aria-label="Collapse the ask history — 1 question waiting · expires in 1h"/,
 	);
 	// The visible text is the leading half of the announced name, so the two
 	// readers cannot describe different states.

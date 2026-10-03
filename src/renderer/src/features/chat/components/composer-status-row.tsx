@@ -134,7 +134,8 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import {
-	askChipClause,
+	askChipCountClause,
+	askChipDeadline,
 	askChipLabel,
 	askQueueView,
 	sessionAsks,
@@ -155,6 +156,7 @@ import {
 	READING_BUTTON as CHIP_CONTROL,
 	READING_LABEL as CHIP_READOUT,
 } from "../session-status/session-status-strip";
+import { useAskClock } from "../use-ask-clock";
 import {
 	type ActivityTally,
 	LABEL_SEAM,
@@ -738,6 +740,19 @@ const DISMISS_WORD = NARROW_HIDDEN;
 const GOAL_TAG_NARROW = "@max-[241px]/chatcol:hidden";
 
 /**
+ * Where the ask item's DEADLINE yields.
+ *
+ * The item grows by the countdown when it prints one, and the row's floor is a real
+ * width (the stories exercise it at 172px of column, and the app's own minimum window
+ * leaves about 220px): at that floor the item is a unit that must still fit, so the
+ * deadline - the one fact it can state somewhere else, since the announced name and
+ * the panel's rows both keep it - is what drops out. 241px is deliberately the row's
+ * OWN narrow band, the one `GOAL_TAG_NARROW` already uses: one width means one thing
+ * in this row, rather than a second threshold a reader would have to learn.
+ */
+const ASK_DEADLINE_NARROW = "@max-[241px]/chatcol:hidden";
+
+/**
  * The row's first-chip rule, owned by the ROW.
  *
  * Whichever chip renders first cancels its own 6px padding, so the thing that
@@ -1136,6 +1151,16 @@ export type ComposerStatusRowProps = {
 	 */
 	isSmallView?: boolean;
 	/**
+	 * A PINNED ask clock, for a story whose frames have to be reproducible.
+	 *
+	 * The same prop `AskSurfaces` takes and for the same reason: the item's collapsed
+	 * face now prints the soonest deadline, and a countdown rendered against a moving
+	 * wall clock cannot be photographed twice into the same image. Absent (the app's
+	 * own path), the item reads `useAskClock` - the SAME hook the panel uses - so the
+	 * chip and the panel cannot tick on different cadences.
+	 */
+	nowMs?: number;
+	/**
 	 * The ask lane's expanded flag and its door, as the row item needs them.
 	 *
 	 * OPTIONAL and CONTROLLED when supplied, exactly as `AskSurfaces` takes the
@@ -1182,6 +1207,7 @@ export const ComposerStatusRow = ({
 	onAskToggle,
 	onFocusComposer,
 	onNote,
+	nowMs,
 }: ComposerStatusRowProps) => {
 	/*
 	 * CONTROLLED WHEN THE CALLER SUPPLIES IT (see `askExpanded` on the props). The
@@ -1384,6 +1410,7 @@ export const ComposerStatusRow = ({
 	 * is where its history lives.
 	 */
 	const askView = askQueueView(frontend);
+	const askNow = useAskClock(askView.waiting > 0, nowMs);
 	const showAsks =
 		onAskToggle !== undefined &&
 		sessionAsks(frontend) !== null &&
@@ -1737,7 +1764,14 @@ export const ComposerStatusRow = ({
 	const planLabel = runDetails ? planChipLabel(runDetails) : "";
 	const wakeLabel = showWakes ? wakeChipLabel(wakes.length) : "";
 	const monitorLabel = showMonitors ? monitorsChipLabel(monitors.length) : "";
-	const askLabel = showAsks ? askChipLabel(askView, askExpanded) : "";
+	const askLabel = showAsks ? askChipLabel(askView, askExpanded, askNow) : "";
+	/*
+	 * The item's countdown, composed by the model so the chip and its announced name
+	 * carry one string rather than two readings of one deadline. Null whenever the
+	 * split cannot be known (a truncated prefix states the tally and no countdown,
+	 * design round 1's D6) or nothing is waiting.
+	 */
+	const askDeadline = showAsks ? askChipDeadline(askView, askNow) : null;
 	const subagentLabel = children ? subagentChipLabel(children) : "";
 	const jobLabel = jobs ? jobChipLabel(jobs) : "";
 	/*
@@ -2630,10 +2664,34 @@ export const ComposerStatusRow = ({
 									aria-hidden={true}
 									className={cn(
 										"size-3.5 shrink-0",
-										askAttention ? "text-accent" : undefined,
+										/*
+										 * THREE INKS, ONE GLYPH, and the shape never moves (the row's own rule:
+										 * the states differ in COLOUR so the row's height cannot move between
+										 * them). `accent` = an ask is waiting; `warning` = an ask that is waiting
+										 * carries the wire's `urgent` flag, i.e. its window is short enough that
+										 * the reader should look now; no class = the quiet register. `urgent`
+										 * outranks `accent` because it is strictly more information about the
+										 * same state, not a different state.
+										 */
+										askView.urgent
+											? "text-warning"
+											: askAttention
+												? "text-accent"
+												: undefined,
 									)}
 								/>
-								{askChipClause(askView)}
+								{askChipCountClause(askView)}
+								{askDeadline === null ? null : (
+									/*
+									 * ITS OWN ELEMENT SO IT CAN YIELD (see `ASK_DEADLINE_NARROW`): the
+									 * visible text is still `askChipClause`'s string, rendered in two
+									 * pieces, and the announced name carries the same countdown at every
+									 * width - a screen reader is not reading a 172px column.
+									 */
+									<span
+										className={ASK_DEADLINE_NARROW}
+									>{` · ${askDeadline}`}</span>
+								)}
 							</button>
 						</Tooltip>
 					)}
