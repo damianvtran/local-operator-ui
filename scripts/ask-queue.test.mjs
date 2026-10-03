@@ -240,7 +240,7 @@ test("the view separates the asks still waiting from the ones the agent moved on
 	assert.equal(view.movedOn, 1);
 	assert.equal(
 		queue.askCountLabel(view.waiting, view.movedOn),
-		"1 waiting · 1 moved on",
+		"1 question waiting · 1 moved on",
 	);
 	/*
 	 * And the HEAD does not claim waiting for a timed-out ask: the moved-on row is
@@ -251,7 +251,7 @@ test("the view separates the asks still waiting from the ones the agent moved on
 	assert.equal(view.head?.ask.ask_id, "a-open");
 	assert.equal(
 		queue.askBarText(view),
-		"1 waiting · 1 moved on — Which environment?",
+		"1 question waiting · 1 moved on — Which environment?",
 	);
 });
 
@@ -328,11 +328,17 @@ test("the wire's `urgent` flag reaches the view, and only while it is outstandin
 		queue.askQueueView({ asks: [ask({ urgent: false })] }).urgent,
 		false,
 	);
+	/*
+	 * WAITING, NOT OUTSTANDING (UX round 1's U1, design round 1's D1). A timed-out
+	 * ask is still answerable and still counted, but its window has closed - amber
+	 * for it spent the bar's one warning ink on the ask the operator can no longer
+	 * catch.
+	 */
 	assert.equal(
 		queue.askQueueView({ asks: [ask({ urgent: true, status: "timed_out" })] })
 			.urgent,
-		true,
-		"a timed-out ask is still answerable, so its urgency is still actionable",
+		false,
+		"a moved-on ask's stale urgency is not the bar's cue",
 	);
 	assert.equal(
 		queue.askQueueView({ asks: [ask({ urgent: true, status: "answered" })] })
@@ -607,21 +613,105 @@ test("the bar's announced name does not double a full stop", () => {
 		],
 	});
 	assert.equal(
-		queue.askBarLabel(questionEndingInStop, false),
-		"1 question waiting — Paste the API key. Expand to answer.",
+		queue.askBarLabel(questionEndingInStop, false, TS),
+		"1 question waiting — Paste the API key. expires in 1h. Expand to answer.",
 	);
 	// A `?` is one too - the case round 1's frame happened to carry, which is why
 	// the doubling reached a release candidate unremarked (QA round 2, Q-3).
 	assert.equal(
-		queue.askBarLabel(questionEndingInStop, true),
-		"1 question waiting — Paste the API key. Collapse.",
+		queue.askBarLabel(questionEndingInStop, true, TS),
+		"1 question waiting — Paste the API key. expires in 1h. Collapse.",
 	);
 	// A head with no question text: `askHeadline` supplies its own fallback, and the
 	// assertion is about the STOP, not about that sentence.
 	const questionless = queue.askQueueView({ asks: [ask({ questions: [] })] });
-	const headless = queue.askBarLabel(questionless, false);
+	const headless = queue.askBarLabel(questionless, false, TS);
 	assert.ok(headless.endsWith(". Expand to answer."), headless);
 	assert.ok(!headless.includes(".."), headless);
+});
+
+test("the announced name carries the two facts the paint carries", () => {
+	/*
+	 * UX round 1's U2 and design round 1's D4, which are one defect: the deadline
+	 * span and the amber were added in the JSX alone, so the button announced a
+	 * state the screen was not in - the same class this component's own note
+	 * records as fixed once already for the count.
+	 */
+	const urgent = queue.askQueueView({
+		asks: [
+			single({
+				ask_id: "a-u",
+				urgent: true,
+				expires_at: TS + 18 * 60_000,
+				questions: [{ id: "k", question: "Rotate the keys?", multi: false }],
+			}),
+		],
+	});
+	assert.equal(
+		queue.askBarLabel(urgent, false, TS),
+		"1 question waiting — Rotate the keys? expires in 18m. Urgent. Expand to answer.",
+	);
+	// The urgency WORD and the amber are one predicate, so a queue that paints no
+	// amber can carry no urgency word either.
+	const calm = queue.askQueueView({
+		asks: [
+			single({ questions: [{ id: "k", question: "Which?", multi: false }] }),
+		],
+	});
+	assert.ok(!queue.askBarLabel(calm, false, TS).includes("Urgent"));
+});
+
+test("the deadline says whose it is, and refuses to when it cannot know", () => {
+	/*
+	 * DESIGN ROUND 1's D2 AND D6, both about the same habit: the bar prints a
+	 * number beside ONE named question, so the number has to belong to it or say
+	 * that it does not - and a queue-scope countdown cannot be read off the wire's
+	 * cap-20 prefix at all.
+	 */
+	const one = queue.askQueueView({
+		asks: [single({ expires_at: TS + 30 * 60_000 })],
+	});
+	// One waiting ask: the deadline IS the named ask's, so it is not qualified.
+	assert.equal(queue.askBarDeadline(one, TS), "expires in 30m");
+
+	const two = queue.askQueueView({
+		asks: [
+			single({
+				ask_id: "a-a",
+				expires_at: TS + 120 * 60_000,
+				questions: [
+					{ id: "d", question: "Deploy the staging release?", multi: false },
+				],
+			}),
+			single({
+				ask_id: "a-b",
+				created_at: TS + 60_000,
+				expires_at: TS + 12 * 60_000,
+				questions: [
+					{ id: "k", question: "Rotate the API keys now?", multi: false },
+				],
+			}),
+		],
+	});
+	// The bar names the OLDER ask and the soonest is the OTHER one's, so the reading
+	// is scoped rather than silently attached to the named question.
+	assert.equal(
+		queue.askBarText(two),
+		"2 questions waiting — Deploy the staging release?",
+	);
+	assert.equal(queue.askBarDeadline(two, TS), "soonest expires in 12m");
+	// A frame that carries a PREFIX prints no queue-scope countdown at all (D6);
+	// the `showing N of M` clause is the disclosure the bar keeps instead.
+	const trunc = queue.askQueueView({
+		asks: [single({ expires_at: TS + 30 * 60_000 })],
+		asks_open: 47,
+		asks_truncated: true,
+	});
+	assert.equal(queue.askBarDeadline(trunc, TS), null);
+	assert.ok(
+		!queue.askBarLabel(trunc, false, TS).includes("expires"),
+		"and says nothing about it",
+	);
 });
 
 /* --------------------------------------------------- the composer's mode ---- */

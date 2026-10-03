@@ -145,10 +145,29 @@ export const effectiveGate = (
  */
 const ENDS_TERMINALLY = /[.!?]$/;
 
-export const askBarLabel = (view: AskQueueView, expanded: boolean): string => {
+export const askBarLabel = (
+	view: AskQueueView,
+	expanded: boolean,
+	nowMs: number,
+): string => {
 	const sentence = askBarText(view);
 	const stop = ENDS_TERMINALLY.test(sentence) ? "" : ".";
-	return `${sentence}${stop} ${expanded ? "Collapse" : "Expand to answer"}.`;
+	/*
+	 * THE TWO NEW FACTS RIDE THE NAME TOO (UX round 1's U2, design round 1's D4).
+	 * The paint carries a deadline span and a warning ink; neither reached the
+	 * announced name, so a screen-reader user got neither of the facts this change
+	 * exists to surface without expanding - the same defect the one-sentence rule
+	 * above records as fixed for the count.
+	 *
+	 * The urgency WORD and the amber are read from ONE predicate (`view.urgent`) so
+	 * the two readers cannot diverge, exactly as the deadline text is one function.
+	 */
+	const facts = [
+		askBarDeadline(view, nowMs),
+		view.urgent ? "Urgent" : null,
+	].filter((fact): fact is string => fact !== null);
+	const clause = facts.length > 0 ? ` ${facts.join(". ")}.` : "";
+	return `${sentence}${stop}${clause} ${expanded ? "Collapse" : "Expand to answer"}.`;
 };
 
 /**
@@ -476,7 +495,24 @@ export type AskQueueView = {
 	waiting: number;
 	/** Asks whose deadline passed with the agent moving on, from the same rows. */
 	movedOn: number;
-	/** Whether any outstanding ask carries the backend's `urgent` flag. */
+	/**
+	 * Whether any ask the bar COUNTS AS WAITING carries the backend's `urgent` flag.
+	 *
+	 * WAITING, NOT OUTSTANDING, and the difference is the whole point of the cue
+	 * (UX round 1's U1, design round 1's D1 - the same defect found twice, from the
+	 * pixels and from the flow). `open` deliberately includes `timed_out`, so
+	 * scoping this to it let a MOVED-ON ask's stale urgency light the bar: in the
+	 * mixed fixture the waiting ask was not urgent and the timed-out one was, so
+	 * the amber was bought entirely by the ask the operator could no longer catch,
+	 * and over a moved-on-only queue the glyph painted amber with no deadline at
+	 * all and nothing on screen to explain it. Amber now means exactly "an ask you
+	 * can still catch is urgent", which is the same set `soonestExpiryMs` reads.
+	 *
+	 * A moved-on-but-answerable ask has no urgency cue of its own on the bar, by
+	 * design: its reading is the panel's (`Timed out - the agent moved on`), and
+	 * the bar's one warning spend should not be spent on a deadline that has
+	 * already passed.
+	 */
 	urgent: boolean;
 	/**
 	 * The soonest deadline among the WAITING asks, or null when none is readable.
@@ -550,7 +586,7 @@ export const askQueueView = (
 		 * to any other waiting row. Scoped to the OUTSTANDING rows - a settled ask's
 		 * stale urgency is not a state anyone can act on.
 		 */
-		urgent: rows.some((row) => row.open && row.ask.urgent === true),
+		urgent: rows.some((row) => row.waiting && row.ask.urgent === true),
 		soonestExpiryMs: deadlines.length > 0 ? Math.min(...deadlines) : null,
 		total: rows.length,
 		truncated: frontend?.asks_truncated === true,
@@ -643,18 +679,52 @@ export const askDeadlineText = (
 	const remainingMs = expiresAt - nowMs;
 	if (remainingMs <= 0) return "expiring now";
 	const minutes = Math.floor(remainingMs / 60_000);
-	/*
-	 * ONE SPELLING OF ONE UNIT, and no space: the TUI this feature deliberately
-	 * rhymes with reads `expires in 42m` (`tui/widgets/ask_queue.py`), and the
-	 * receipt row's own `askWaitedText` already writes it that way. Two renderings of
-	 * "minutes" in the pair of PRs that share a copy contract is the kind of drift
-	 * the shared contract exists to prevent (design round 1, D5).
-	 */
 	if (minutes < 1) return `expires in ${Math.floor(remainingMs / 1000)}s`;
 	if (minutes < 60) return `expires in ${minutes}m`;
 	const hours = Math.floor(minutes / 60);
 	if (hours < 24) return `expires in ${hours}h`;
 	return `expires in ${Math.floor(hours / 24)}d`;
+};
+
+/**
+ * The deadline the COLLAPSED bar prints, or `null` when it must print none.
+ *
+ * THREE RULES, each one a defect the round found:
+ *
+ * 1. **The number belongs to the ask the sentence NAMES, or it says otherwise**
+ *    (design round 1, D2). The bar names one question - the head - and prints a
+ *    queue-scope reading (the soonest deadline across the WAITING asks); with two
+ *    asks of different windows those diverge, and the bar named `Deploy the
+ *    staging release?` beside the OTHER ask's `expires in 12m`. So the reading is
+ *    prefixed with `soonest ` whenever it is not the named ask's own, and left
+ *    bare when it is - which is the single-waiting-ask case by construction, and
+ *    the common one.
+ *
+ * 2. **A TRUNCATED frame prints NO deadline** (design round 1, D6). `rows` is the
+ *    wire's cap-20 prefix, so its soonest is the visible subset's soonest - with
+ *    47 outstanding and an older hidden ask expiring first, the bar would read a
+ *    later number than the queue's. A queue-scope countdown cannot be derived
+ *    from a prefix, so this surface refuses to state one, exactly as the count
+ *    refuses to split a prefix and falls back to the backend's tally. The
+ *    `showing N of M` clause beside it is the disclosure.
+ *
+ * 3. **ONE COMPOSITION, TWO READERS** (agent review F6 / UX U3, then UX round 1's
+ *    U2 and design round 1's D4): the visible span and the button's accessible
+ *    name must carry the same facts. They did not - the deadline was added in the
+ *    JSX alone, so a screen reader was told a state the screen was not in, which
+ *    is the defect this component's own note records as fixed once already. Both
+ *    readers now call THIS function.
+ */
+export const askBarDeadline = (
+	view: AskQueueView,
+	nowMs: number,
+): string | null => {
+	if (view.truncated) return null;
+	if (view.soonestExpiryMs === null) return null;
+	const text = askDeadlineText(view.soonestExpiryMs, nowMs);
+	if (text === null) return null;
+	const named = Number(view.head?.ask.expires_at ?? 0);
+	return named === view.soonestExpiryMs ? text : `soonest ${text}`;
 };
 
 /**
@@ -672,10 +742,17 @@ export const askDeadlineText = (
  * A single question is named, not counted ("1 question waiting" reads as a
  * countdown label; "a question waiting" reads as a sentence a person wrote), and
  * a plural is only ever used above one.
+ *
+ * THE NOUN SURVIVES EVERY FORM (UX round 1's U4): the mixed form used to read
+ * `1 waiting · 1 moved on`, so the one shape a reader meets FIRST on a mixed
+ * queue was the only one without a noun - and the term it dropped is the one the
+ * collapsed bar has no other way to explain (the panel's row says "Timed out -
+ * the agent moved on"; the bar, which must work unexpanded, did not).
  */
 export const askCountLabel = (waiting: number, movedOn: number): string => {
+	const waitingUnit = waiting === 1 ? "question" : "questions";
 	if (waiting > 0 && movedOn > 0)
-		return `${waiting} waiting · ${movedOn} moved on`;
+		return `${waiting} ${waitingUnit} waiting · ${movedOn} moved on`;
 	if (movedOn > 0)
 		return movedOn === 1
 			? "1 question moved on"

@@ -116,11 +116,52 @@ const MOVED_ON: PendingAsk = ask({
 });
 
 /**
+ * THE TWO-WINDOW QUEUE (design round 1, D2). Two asks are WAITING and their
+ * windows differ, which is the one shape that makes the bar's two readings
+ * diverge: `head` is the OLDEST waiting ask (here `Deploy the staging release?`,
+ * 2h out) while the deadline it prints is the SOONEST across the waiting set
+ * (here `Rotate the API keys now?`, 12m out). Before this round's fix the bar
+ * named one ask beside the other's countdown, which is what this frame is for.
+ *
+ * The older ask is listed first because `head` is oldest-first, and the same
+ * fixture is deliberately NOT urgent on either side so the deadline is the only
+ * fact the frame carries. The windows are stated from the story clock (`NOW` is
+ * 12 minutes after `TS`), so the SOONER ask is `NOW + 12m` - not `TS + 12m`,
+ * which is already due and photographs `soonest expiring now`.
+ */
+const TWO_WINDOWS: PendingAsk[] = [
+	ask({
+		ask_id: "a-depl",
+		timeout_s: 7200,
+		expires_at: TS + 120 * MINUTE,
+		questions: [
+			{
+				id: "target",
+				question: "Deploy the staging release?",
+				options: [{ label: "yes" }, { label: "no" }],
+			},
+		],
+	}),
+	ask({
+		ask_id: "a-keys",
+		timeout_s: 720,
+		expires_at: TS + 24 * MINUTE,
+		created_at: TS + MINUTE,
+		questions: [
+			{
+				id: "rotate",
+				question: "Rotate the API keys now?",
+				options: [{ label: "yes" }, { label: "no" }],
+			},
+		],
+	}),
+];
+
+/**
  * THE SHORT-WINDOW ASK. The backend derives `urgent` from the timeout itself
  * (`timeout <= 900`), so the fixture marks it the same way the wire does rather
  * than inventing a second rule a frame could photograph.
- */
-const URGENT: PendingAsk = ask({
+ */ const URGENT: PendingAsk = ask({
 	ask_id: "a-ur01",
 	timeout_s: 600,
 	urgent: true,
@@ -193,8 +234,20 @@ const meta = {
 		layout: "padded",
 	},
 	decorators: [
-		(Story) => (
-			<div className="w-[617px] bg-canvas p-4">
+		/*
+		 * THE PANE MEASURE IS A PARAMETER, not a constant (design round 1's D3).
+		 * The chat column is a fraction of the app's window and the app's own
+		 * minimum (800x600) leaves about 300px for it, so "the bar still reads at
+		 * the pane floor" is a claim this set has to be able to PHOTOGRAPH rather
+		 * than argue from arithmetic. A story states `parameters.paneWidth`; every
+		 * story that does not gets the default 617px the set was built at, so no
+		 * existing frame moves.
+		 */
+		(Story, context) => (
+			<div
+				className="bg-canvas p-4"
+				style={{ width: (context.parameters.paneWidth as number) ?? 617 }}
+			>
 				<Story />
 			</div>
 		),
@@ -432,5 +485,69 @@ export const AnswerReady: Story = {
 		 * for exactly this shape, which is the condition `Send answer` enables on.
 		 */
 		drafts: { "a-7f3c": { target: ["staging"] } },
+	},
+};
+
+/**
+ * TWO WINDOWS, ONE BAR (design round 1, D2). The bar names the oldest waiting ask
+ * and prints the soonest deadline across the waiting set; with two windows those
+ * are different asks, so the deadline carries the `soonest ` scope word and the
+ * sentence keeps the noun its mixed form used to drop (UX round 1, U4).
+ */
+export const MinimizedTwoWindows: Story = {
+	args: {
+		frontend: frontend(TWO_WINDOWS),
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * A MOVED-ON ASK, EXPANDED (design round 1, D5). The urgency arm steps the ink
+ * and KEEPS the status glyph, so a timed-out urgent row still wears its Clock -
+ * the state the first cut turned into a second `?` and which no frame could show,
+ * because the set expanded `URGENT` (status `open`) and never `MOVED_ON`.
+ */
+export const ExpandedMovedOn: Story = {
+	render: () => <Expanded asks={[MOVED_ON]} />,
+	args: {
+		frontend: frontend([MOVED_ON]),
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * THE NARROW PANE (design round 1's D3, UX round 1's U5): 393px, the width the
+ * design round asked for by name. The question keeps its room and the deadline is
+ * still rendered at this width - the pane the app's own 800px minimum window
+ * leaves is the next story.
+ */
+export const MinimizedMixedNarrow: Story = {
+	parameters: { paneWidth: 393 },
+	args: {
+		frontend: frontend([ONE, MOVED_ON]),
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * THE PANE FLOOR (about 300px of chat column, which is what the app's own
+ * 800x600 minimum window leaves for the pane). Here the deadline YIELDS entirely
+ * rather than squeezing the question - the rule `ask-bar.tsx` states and this
+ * frame exists to falsify: below 24rem of BAR width it is not rendered, and the
+ * question is the thing that keeps its room.
+ */
+export const MinimizedPaneFloor: Story = {
+	parameters: { paneWidth: 300 },
+	args: {
+		frontend: frontend([ONE, MOVED_ON]),
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
 	},
 };
