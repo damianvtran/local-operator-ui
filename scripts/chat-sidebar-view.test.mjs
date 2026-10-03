@@ -57,6 +57,58 @@ globalThis.localStorage = {
 const ROOT = process.cwd();
 const SIDEBAR = "src/renderer/src/features/chat/components/chat-sidebar.tsx";
 
+/*
+ * THE WIRING PATTERN the section-press source read below matches: the transition
+ * called, with `Boolean(query)` among its arguments (the forced-open input M1's
+ * fix turns on). A top-level constant rather than an inline literal because
+ * biome's `useTopLevelRegex` asks for it and this file carries no such warning.
+ */
+const SECTION_PRESS_WIRING = /toggleSectionDisclosure\([^)]*Boolean\(query\)/;
+
+/*
+ * ROUND 2'S PATTERNS (UX round 1's U1-U5 and N1; design round 1's D1-D3), top-level
+ * constants for the same reason `SECTION_PRESS_WIRING` is one - biome's
+ * `useTopLevelRegex` - and each named after the claim it carries so a test below
+ * reads as the finding it answers rather than as a pattern.
+ */
+/** The grown heading's two channels and the one sentence behind both (U1/D1). */
+const GROWN_HINT_TITLE = /title=\{grownHint \?\? undefined\}/;
+const GROWN_HINT_DESCRIBED_BY =
+	/aria-describedby=\{grownHint \? sectionGrownHintId\(key\) : undefined\}/;
+const GROWN_HINT_PREDICATE =
+	/const grownHint = sectionIsGrown\(sectionCaps\[key\]\)/;
+const GROWN_HINT_ELEMENT =
+	/<span id=\{sectionGrownHintId\(key\)\} className="sr-only">/;
+/**
+ * The section foot's walk stamp, ANCHORED TO A LINE OF ITS OWN: the comment above
+ * the attribute names `[data-chat-row]` while explaining why the foot joins the
+ * walk, so an unanchored pattern would be satisfied by the prose and would keep
+ * passing after the attribute itself was deleted (measured: dropping the attribute
+ * left this test green until the anchor was added).
+ */
+const FOOT_WALK_STAMP = /^[ \t]*data-chat-row[ \t]*$/m;
+const FOOT_NAME = /aria-label=\{footName\}/;
+const FOOT_FOCUS_RECORD = /sectionFootFocusRef\.current = \{ key, at: cap \}/;
+/** The focus effect: the list it reads, its target, its fallback, its one action (U3/D3). */
+const FOCUS_READS_ROWS = /querySelectorAll<HTMLElement>\("\[data-entity\]"\)/;
+const FOCUS_TARGET_ROW =
+	/revealed\?\.querySelector<HTMLElement>\("\[data-chat-row\]"\)/;
+const FOCUS_HEADING_FALLBACK = /heading \?\?/;
+const FOCUS_APPLIES = /target\?\.focus\(\)/;
+/**
+ * The field's gate is the MODULE's own question, asked once (U2). A WIRING pin only: the
+ * rule's BEHAVIOUR is driven below rather than matched here, because round 3 showed a
+ * source-string pin cannot see a gate that keeps its text but not its meaning - the
+ * round-2 form passed this pattern while being inert in the state U2 measured.
+ */
+const ROSTER_FIELD_WIRED =
+	/const rosterFilterShown = rosterFieldShown\(\s*isOpen\("agents", true\),\s*query,\s*rosterFilter,\s*ownAgents\.length,\s*\)/;
+/** The copy contract on the hint itself (U1/D1). */
+const HINT_NAMES_GESTURE = /collapse/i;
+const HINT_NAMES_COST = /reopen/i;
+const HINT_SENTENCE_CASE = /^[A-Z]/;
+const HINT_ID_KEYED = /agents/;
+
 const bundle = await build({
 	stdin: {
 		contents: [
@@ -116,10 +168,20 @@ const {
 	isActiveRow,
 	entityRows,
 	entityMore,
+	raiseSectionCap,
+	rosterFieldShown,
+	releaseSectionCap,
+	SIDEBAR_SECTION_ROWS,
+	toggleSectionDisclosure,
 	entityQueryAdmits,
 	entitySectionGap,
 	ENTITY_SECTION_GAP,
 	ENTITY_SECTION_GAP_COLLAPSED,
+	SECTION_GROWN_HINT,
+	sectionGrownHintId,
+	sectionIsGrown,
+	sectionMoreLabel,
+	sectionMoreName,
 	CHAT_LIST_SECTIONS,
 	PINNED_AGENTS_MAX,
 	togglePinnedAgent,
@@ -350,6 +412,245 @@ test("the group's foot names the next page AND the position it is drawn from", (
 });
 
 /*
+ * A COLLAPSED SECTION IS COMPACT AGAIN (issue #765). `Show more` raised one
+ * section's cap and nothing brought it back down: collapse, re-expand, and the
+ * grown list was still on screen until a relaunch. The rules now live in the
+ * view module as the two edges of one state machine, and the cycle is asserted
+ * here rather than described, because the failure was a MISSING EDGE in a
+ * transition no test could reach from the JSX.
+ */
+test("closing a section releases its raised cap back to the shipped one", () => {
+	/* The ladder, one rung per press: `agents` goes 8 -> 16 -> 24. */
+	let caps = {};
+	caps = raiseSectionCap(caps, "agents");
+	assert.equal(caps.agents, SIDEBAR_SECTION_ROWS * 2);
+	caps = raiseSectionCap(caps, "agents");
+	assert.equal(caps.agents, SIDEBAR_SECTION_ROWS * 3);
+
+	/* The collapse. */
+	caps = releaseSectionCap(caps, "agents");
+	assert.equal(
+		caps.agents ?? SIDEBAR_SECTION_ROWS,
+		SIDEBAR_SECTION_ROWS,
+		"a re-expand after a collapse must draw the shipped compact form",
+	);
+	/*
+	 * The entry must be GONE, not merely unreachable: a stored `16` is exactly the
+	 * grown list #765 is about, and `cappedRows` would read it on the next expand.
+	 */
+	assert.ok(
+		!("agents" in caps),
+		"the reset stored a number instead of removing the key",
+	);
+});
+
+/*
+ * THE PARTIAL RUNG (issue #765's second half). A press reveals the rows that
+ * EXIST - `hidden` counts them, so a 10-row section under the shipped cap shows
+ * `Show 2 more` and lands on a cap of 16, a number no row count would reach by
+ * subtracting a page. The reset must not care: the invariant is "a collapsed
+ * section is compact", not "a collapsed section is one step shorter".
+ */
+test("a reset lands on the shipped cap after a partial rung", () => {
+	const rows = 10;
+	let caps = raiseSectionCap({}, "teams");
+	assert.equal(caps.teams, SIDEBAR_SECTION_ROWS * 2);
+	assert.equal(
+		rows - SIDEBAR_SECTION_ROWS,
+		2,
+		"the fixture: the press revealed fewer rows than a page",
+	);
+	assert.ok(
+		caps.teams > rows,
+		"the fixture: the raised cap outran the rows it was capping",
+	);
+
+	caps = releaseSectionCap(caps, "teams");
+	assert.equal(caps.teams ?? SIDEBAR_SECTION_ROWS, SIDEBAR_SECTION_ROWS);
+	assert.ok(
+		rows - (caps.teams ?? SIDEBAR_SECTION_ROWS) > 0,
+		"the re-expanded section is cap-bound again, so the foot is drawn again",
+	);
+});
+
+/*
+ * AND THE CLIMB STARTS OVER. A press after a reset is a FRESH rung from the
+ * shipped cap, never a resume of the grown value: a reader who had reached 24,
+ * collapsed, and re-expanded would otherwise be one press from 32 with nothing
+ * on screen explaining the number.
+ */
+test("a press after a reset climbs from the shipped cap, not from the grown one", () => {
+	const rows = 20;
+	let caps = raiseSectionCap(raiseSectionCap({}, "agents"), "agents");
+	caps = releaseSectionCap(caps, "agents");
+
+	const firstDraw = Math.min(rows, caps.agents ?? SIDEBAR_SECTION_ROWS);
+	assert.equal(firstDraw, SIDEBAR_SECTION_ROWS);
+	assert.ok(rows - firstDraw > 0, "the foot is offered again after the reset");
+
+	const again = raiseSectionCap(caps, "agents");
+	assert.equal(again.agents, SIDEBAR_SECTION_ROWS * 2);
+	assert.equal(rows - again.agents, rows - SIDEBAR_SECTION_ROWS * 2);
+	assert.equal(again.agents, firstDraw + SIDEBAR_SECTION_ROWS);
+});
+
+/*
+ * KEYED, LIKE THE MAP ITSELF: closing Teams must not shrink a widened Agents,
+ * which is the reason `sectionCaps` is keyed at all (the operator's note in
+ * `chat-sidebar.tsx`: "a reader who wants the eleventh agent does not also open
+ * the eleventh team").
+ */
+test("releasing one section's cap leaves the other section's alone", () => {
+	const caps = raiseSectionCap(raiseSectionCap({}, "agents"), "teams");
+	assert.deepEqual(caps, {
+		agents: SIDEBAR_SECTION_ROWS * 2,
+		teams: SIDEBAR_SECTION_ROWS * 2,
+	});
+	const after = releaseSectionCap(caps, "agents");
+	assert.deepEqual(after, { teams: SIDEBAR_SECTION_ROWS * 2 });
+	assert.equal(after.agents ?? SIDEBAR_SECTION_ROWS, SIDEBAR_SECTION_ROWS);
+	assert.equal(
+		caps.agents,
+		SIDEBAR_SECTION_ROWS * 2,
+		"the release mutated the map it was handed",
+	);
+});
+
+/*
+ * A CLOSE OF A SECTION NOBODY WIDENED IS NOT A STATE CHANGE. React re-renders on
+ * identity, and a reader collapses sections constantly, so returning a fresh `{}`
+ * here would re-render the whole column for a close that changed nothing.
+ */
+test("closing a section nobody widened returns the same map", () => {
+	const caps = {};
+	assert.equal(releaseSectionCap(caps, "agents"), caps);
+});
+
+/*
+ * THE CAP IS MOMENT STATE, NOT A PREFERENCE. The design note on `sectionCaps`
+ * says why (a cap remembered from June would make the column permanently
+ * longer); this asserts the other half - the persisted view a relaunch reads
+ * carries no cap field for it to come back through.
+ */
+test("the persisted view carries no section cap", () => {
+	const view = parseSidebarView(
+		persistedUiPreferences(useUiPreferencesStore.getState()).chatSidebarView,
+	);
+	assert.ok(!("sectionCaps" in view));
+	assert.ok(!("caps" in view));
+});
+
+/*
+ * AND THE CLOSE EDGE IS DRIVEN, NOT GREPPED (agent review round 1, m1). The
+ * transition now covers BOTH maps, so the case the round-1 substring could not
+ * see - a press on a section a LIST QUERY force-draws (`query || isOpen(...)` in
+ * the component) - is asserted here by driving it, on the slice `cappedRows`
+ * applies (`caps[key] ?? SIDEBAR_SECTION_ROWS`), because "nothing narrows" is a
+ * claim about the drawn count and not about the map.
+ *
+ * THE DEFECT THIS PINS (round 1's M1, QA round 1's QA-F1): the round-1 shape
+ * released the raised cap on that press too, dropping the drawn rows back to
+ * `SIDEBAR_SECTION_ROWS` under a reader whose section never went away.
+ */
+test("a press on a query-forced-open section leaves the drawn rows alone", () => {
+	const rows = 24;
+	const caps = raiseSectionCap(raiseSectionCap({}, "agents"), "agents");
+	assert.equal(caps.agents, SIDEBAR_SECTION_ROWS * 3);
+
+	const pressed = toggleSectionDisclosure({}, caps, "agents", true, true);
+	assert.equal(
+		pressed.caps,
+		caps,
+		"the press released the cap of a section the query keeps drawn",
+	);
+	assert.equal(
+		Math.min(rows, pressed.caps.agents ?? SIDEBAR_SECTION_ROWS),
+		SIDEBAR_SECTION_ROWS * 3,
+		"a section the query force-draws narrowed under the reader",
+	);
+	/*
+	 * The DISCLOSURE is still written under a query, which is pre-existing
+	 * behaviour this fix deliberately leaves alone (round 1 scoped it out): the
+	 * press keeps its own meaning once the query is cleared.
+	 */
+	assert.equal(pressed.expanded.agents, false);
+
+	/* And a forced-open press on a section nobody widened is a true no-op. */
+	const untouched = {};
+	assert.equal(
+		toggleSectionDisclosure({}, untouched, "teams", true, true).caps,
+		untouched,
+		"a forced-open press on an untouched section rebuilt the caps map",
+	);
+});
+
+/*
+ * AND THE GATE IS NOT A BLANKET AMNITY: with no query in force the same press is
+ * #765's own case, and the release must still happen. Without this, the guard
+ * above could be satisfied by deleting the release altogether.
+ */
+test("a press that really closes the section still releases its cap", () => {
+	const caps = raiseSectionCap(raiseSectionCap({}, "teams"), "teams");
+	const pressed = toggleSectionDisclosure(
+		{ teams: true },
+		caps,
+		"teams",
+		true,
+		false,
+	);
+	assert.equal(pressed.expanded.teams, false);
+	assert.ok(
+		!("teams" in pressed.caps),
+		"a real close stopped releasing the raised cap, so #765 is back",
+	);
+	assert.equal(
+		pressed.caps.teams ?? SIDEBAR_SECTION_ROWS,
+		SIDEBAR_SECTION_ROWS,
+	);
+});
+
+/* An OPENING press is not a close either, query or no query. */
+test("a press that opens a section never releases a cap", () => {
+	const caps = raiseSectionCap({}, "agents");
+	const pressed = toggleSectionDisclosure(
+		{ agents: false },
+		caps,
+		"agents",
+		false,
+		false,
+	);
+	assert.equal(pressed.expanded.agents, true);
+	assert.equal(
+		pressed.caps,
+		caps,
+		"an open narrowed the section under the reader",
+	);
+});
+
+/*
+ * AND THE COMPONENT ROUTES BOTH MAPS THROUGH THAT ONE TRANSITION. The rules above
+ * are driven; the WIRING is still read, because the component cannot be rendered
+ * here - and the read now adds what the round-1 substring could not: the press
+ * must hand the transition the forced-open input (`Boolean(query)`, the same
+ * truthiness the row draw uses), and the component must carry no SECOND spelling
+ * of the release edge. A read that only looked for the call would pass while an
+ * inline `releaseSectionCap` sat beside it - the drift the hoist exists to
+ * prevent (agent review round 1, m1).
+ */
+test("the section press routes through the one disclosure transition", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		SECTION_PRESS_WIRING,
+		"the press does not route through the transition with the query's forced-open input, so a query-forced close releases the cap again (M1)",
+	);
+	assert.ok(
+		!source.includes("releaseSectionCap("),
+		"a second, inline spelling of the cap release lives in the component; the rule belongs to the transition",
+	);
+});
+
+/*
  * THE COLLAPSED SECTION'S GAP (operator, 2026-09-27): "shrink the gap between
  * agents and teams headers when agents is collapsed, there's an extra gap wasting
  * space there". Measured on the panel at 360px, the gap between the two headings
@@ -358,6 +659,292 @@ test("the group's foot names the next page AND the position it is drawn from", (
  * the fix is a conditional value; a smaller constant would tighten the expanded
  * case, where the rhythm is doing real work.
  */
+/*
+ * ROUND 2 - THE RESET'S NAME AND THE FOOT'S CONTRACT (UX round 1's U1, U3, U4,
+ * U5 and N1; design round 1's D1, D2 and D3).
+ *
+ * Every one of those findings sits on a surface this suite cannot render (the
+ * file's header says why), so each is pinned in one of the two shapes the rest of
+ * this file uses: the COPY and the STATE QUESTION are pure logic and are driven
+ * directly (`SECTION_GROWN_HINT`, `sectionIsGrown`, `sectionMoreLabel`,
+ * `sectionMoreName`, `sectionGrownHintId`), and the WIRING - which element
+ * carries the sentence, which record the press leaves behind, where the focus
+ * effect sends the reader - is read out of the source, SCOPED to the block that
+ * holds it so a match somewhere else in this file cannot stand in for the claim.
+ */
+test("the grown section's hint names both halves of the reset", () => {
+	assert.match(
+		SECTION_GROWN_HINT,
+		HINT_NAMES_GESTURE,
+		"the hint does not name the gesture that puts the cap back (U1/D1)",
+	);
+	assert.match(
+		SECTION_GROWN_HINT,
+		HINT_NAMES_COST,
+		"the hint does not name the inverse cost, so it promises the raised rows back across a collapse",
+	);
+	assert.match(
+		SECTION_GROWN_HINT,
+		HINT_SENTENCE_CASE,
+		"the hint is not sentence case (D1's least-chrome remedy is copy, so its voice is the remedy)",
+	);
+	assert.ok(
+		!SECTION_GROWN_HINT.includes(". "),
+		"the hint is more than one sentence; a control's description is one",
+	);
+});
+
+test("the grown question is the draw's own question", () => {
+	assert.equal(
+		sectionIsGrown(undefined),
+		false,
+		"a section nobody raised is not grown",
+	);
+	assert.equal(
+		sectionIsGrown(SIDEBAR_SECTION_ROWS),
+		false,
+		"an entry at the shipped count IS the shipped list, not a raise",
+	);
+	assert.equal(
+		sectionIsGrown(SIDEBAR_SECTION_ROWS + 1),
+		true,
+		"one row past the shipped cap is grown",
+	);
+	/*
+	 * And it agrees with the state machine's own edges, which is the claim that
+	 * matters: the heading can only say "grown" in a state `cappedRows` also draws
+	 * past the cap, because one raise makes it grown and the close edge that
+	 * `releaseSectionCap` performs takes it back.
+	 */
+	const raised = raiseSectionCap({}, "agents");
+	assert.equal(sectionIsGrown(raised.agents), true);
+	assert.equal(
+		sectionIsGrown(releaseSectionCap(raised, "agents").agents),
+		false,
+		"a released cap still reads as grown, so the heading would name a raise that is gone",
+	);
+});
+
+test("the section foot's name carries its section, and its label heads that name", () => {
+	assert.equal(sectionMoreLabel(1), "Show 1 more");
+	assert.equal(sectionMoreLabel(4), "Show 4 more");
+	assert.equal(sectionMoreName(1, "agents"), "Show 1 more agents");
+	assert.equal(sectionMoreName(4, "teams"), "Show 4 more teams");
+	/*
+	 * The visible label is the HEAD of the accessible name, so the two cannot
+	 * describe different remainders - the defect N1 measured was not a wrong name
+	 * but NO name, which left two sections' feet announcing the same bare label.
+	 */
+	for (const hidden of [1, 4, 26]) {
+		assert.ok(
+			sectionMoreName(hidden, "agents").startsWith(sectionMoreLabel(hidden)),
+			"the name and the label disagree about the remainder",
+		);
+	}
+});
+
+test("the grown hint's id is keyed, so two sections cannot describe each other", () => {
+	assert.notEqual(sectionGrownHintId("agents"), sectionGrownHintId("teams"));
+	assert.match(sectionGrownHintId("agents"), HINT_ID_KEYED);
+});
+
+test("a grown heading carries the reset on both channels, from one sentence", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		GROWN_HINT_TITLE,
+		"the grown heading has no pointer channel for the reset (U1/D1)",
+	);
+	assert.match(
+		source,
+		GROWN_HINT_DESCRIBED_BY,
+		"the grown heading describes itself to no screen reader (U1/D1)",
+	);
+	assert.match(
+		source,
+		GROWN_HINT_PREDICATE,
+		"the hint is not read from the same map `cappedRows` slices rows with",
+	);
+	assert.match(
+		source,
+		GROWN_HINT_ELEMENT,
+		"no element carries the sentence the heading points at",
+	);
+	assert.ok(
+		!source.includes("Collapse to restore the compact list"),
+		"the sentence is spelled in the component as well as in the view module; one copy is the rule",
+	);
+});
+
+test("the section foot is named, joins the arrow walk, and leaves a focus record", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	const at = source.indexOf("data-sidebar-section-more={key}");
+	assert.ok(at !== -1, "the section foot's stamp is gone");
+	const foot = source.slice(at, source.indexOf("</button>", at));
+	assert.match(
+		foot,
+		FOOT_WALK_STAMP,
+		"the section foot is not a stop of the arrow walk, unlike the group foot below it (U4)",
+	);
+	assert.match(
+		foot,
+		FOOT_NAME,
+		"the foot still announces a bare remainder with no section (N1)",
+	);
+	assert.match(
+		foot,
+		FOOT_FOCUS_RECORD,
+		"the press leaves no record of the rows it just revealed (U3/D3)",
+	);
+});
+
+test("the foot's focus goes to the row the press revealed, never the body", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	const at = source.indexOf("const pending = sectionFootFocusRef.current");
+	assert.ok(at !== -1, "nothing reads the section foot's focus record (U3/D3)");
+	const effect = source.slice(at, source.indexOf("}, [sectionCaps]);", at));
+	assert.match(
+		effect,
+		FOCUS_READS_ROWS,
+		"the effect does not read the list `cappedRows` slices, so an expanded row's sessions would be counted as revealed rows",
+	);
+	assert.match(
+		effect,
+		FOCUS_TARGET_ROW,
+		"the revealed row's own control is not the target",
+	);
+	assert.match(
+		effect,
+		FOCUS_HEADING_FALLBACK,
+		"no fallback to the section's own heading, so a vanished row drops the reader to the body",
+	);
+	assert.match(effect, FOCUS_APPLIES);
+	assert.ok(
+		!source.includes("document.body.focus("),
+		"a press sends focus to the document body",
+	);
+});
+
+/*
+ * U2, DRIVEN RATHER THAN READ (agent review round 3's R3-1, QA round 3's Q3-2). The
+ * round-2 pin was a source-string match on the gate, and it stayed green for a gate
+ * that kept its text while being inert in the state the finding measured. This test
+ * drives the two halves that make the state - the field's own predicate
+ * (`rosterFieldShown`) and the heading press (`toggleSectionDisclosure`) - and asks the
+ * predicate again of the state the press left behind. It is RED on the pre-fix gate and
+ * on the round-2 narrower form, GREEN on the body's own gate (both measured).
+ */
+test("a heading press under a list query keeps the roster's filter field drawn", () => {
+	/*
+	 * THE PRESS, SPELLED AS THE COMPONENT SPELLS IT (chat-sidebar.tsx:1751): the
+	 * disclosure and the cap move together, `forcedOpen` is `Boolean(query)`, and
+	 * `isOpen` is `expanded[key] ?? initial` with the section's own initial (`true`).
+	 */
+	const press = (state) => {
+		const next = toggleSectionDisclosure(
+			{ agents: state.isOpen },
+			{ agents: state.cap ?? SIDEBAR_SECTION_ROWS },
+			"agents",
+			true,
+			Boolean(state.query),
+		);
+		return {
+			isOpen: next.expanded.agents ?? true,
+			query: state.query,
+			rosterFilter: state.rosterFilter,
+			rosterLength: state.rosterLength,
+			caps: next.caps,
+		};
+	};
+	const drawn = (state) =>
+		rosterFieldShown(
+			state.isOpen,
+			state.query,
+			state.rosterFilter,
+			state.rosterLength,
+		);
+
+	/*
+	 * THE REPRO ITSELF: a LIST query in force, NO section filter, the roster
+	 * cap-bound (twelve agents against the eight-row cap). The section body still
+	 * draws under the query, so its own control must survive the press.
+	 */
+	const listQueryOnly = {
+		isOpen: true,
+		query: "b",
+		rosterFilter: "",
+		rosterLength: 12,
+	};
+	assert.equal(
+		drawn(listQueryOnly),
+		true,
+		"the repro's precondition: the field is drawn before the press",
+	);
+	const afterListQueryPress = press(listQueryOnly);
+	assert.equal(
+		afterListQueryPress.isOpen,
+		false,
+		"the press did not write the disclosure close it is documented to write",
+	);
+	assert.equal(
+		drawn(afterListQueryPress),
+		true,
+		"the heading press removed the field under a list query with no section filter (U2)",
+	);
+	/*
+	 * AND THE PRESS IS STILL THE DOCUMENTED NO-OP ON THE RAISE: `forcedOpen` is the
+	 * query, so the release edge does not fire and the drawn rows do not change.
+	 */
+	assert.equal(
+		afterListQueryPress.caps.agents,
+		SIDEBAR_SECTION_ROWS,
+		"a press under a query released the raised cap it must leave alone",
+	);
+
+	/*
+	 * THE SECOND HALF IS UNTOUCHED - a query over a SHORT roster draws nothing, so
+	 * the field is still the reader's and a query alone opens no surface.
+	 */
+	assert.equal(
+		drawn({ isOpen: false, query: "b", rosterFilter: "", rosterLength: 4 }),
+		false,
+		"a query alone now opens a field over a short roster",
+	);
+	/*
+	 * AND THE CASE THE NARROWER FORM ALREADY COVERED still holds: a reader with their
+	 * OWN filter applied keeps the field through the press.
+	 */
+	assert.equal(
+		drawn(
+			press({ isOpen: true, query: "b", rosterFilter: "er", rosterLength: 12 }),
+		),
+		true,
+	);
+
+	/*
+	 * THE CONTROL: with NO list query the press really does close the section (the
+	 * design re-check's third row - 4 rows to 0, `aria-expanded` false), so the field
+	 * leaving with the list it filters is correct. This is the case the gate must NOT
+	 * spare.
+	 */
+	assert.equal(
+		drawn(
+			press({ isOpen: true, query: "", rosterFilter: "er", rosterLength: 12 }),
+		),
+		false,
+		"a press that genuinely closes the section kept a field for a list that is gone",
+	);
+});
+
+test("the field's gate is the module's question, asked once", () => {
+	const source = readFileSync(SIDEBAR, "utf8");
+	assert.match(
+		source,
+		ROSTER_FIELD_WIRED,
+		"the field is no longer drawn by `rosterFieldShown`, so the component's rule can drift from the tested one (U2)",
+	);
+});
+
 test("the gap below a section is conditional on whether that section drew rows", () => {
 	assert.equal(entitySectionGap(true), ENTITY_SECTION_GAP);
 	assert.equal(entitySectionGap(false), ENTITY_SECTION_GAP_COLLAPSED);
@@ -962,9 +1549,16 @@ test("the band's agent jump opens the palette and seeds it to the agent scope", 
  */
 test("the roster filter narrows only while its field is drawn", () => {
 	const source = readFileSync(SIDEBAR, "utf8");
+	/*
+	 * THE CAP TERM NOW LIVES IN THE MODULE (the gate's own file), because the rule was
+	 * hoisted so it could be driven rather than read (U2). Read it where it lives.
+	 */
 	assert.ok(
-		source.includes(
-			'ownAgents.length > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== ""',
+		readFileSync(
+			"src/renderer/src/features/chat/chat-sidebar-view.ts",
+			"utf8",
+		).includes(
+			'(rosterLength > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== "")',
 		),
 		"the field's gate no longer keeps a filter's own field alive",
 	);

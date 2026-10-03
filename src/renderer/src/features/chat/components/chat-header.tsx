@@ -5,7 +5,12 @@ import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubContent,
+	DropdownMenuSubTrigger,
 	DropdownMenuTrigger,
 	Skeleton,
 	Tooltip,
@@ -19,11 +24,13 @@ import { showErrorToast, showWarningToast } from "@shared/utils/toast-manager";
 import {
 	Archive,
 	ArchiveRestore,
+	Check,
 	FileText,
 	Globe,
 	Info,
 	MoreHorizontal,
 	Pencil,
+	Rows3,
 	SquareTerminal,
 	Trash2,
 	X,
@@ -32,6 +39,11 @@ import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
 import { useSessionCommand } from "../pickers/use-picker-backend";
+import {
+	TRANSCRIPT_DISPLAY_MODE_OPTIONS,
+	parseTranscriptDisplayMode,
+	transcriptDisplayModeLabel,
+} from "../transcript-display-mode";
 import {
 	ChatHeaderIdentity,
 	type HeaderIdentityData,
@@ -304,6 +316,27 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const badgeText = countLabel(browserAttentionCount, 9);
 	const setCanvasOpen = useUiPreferencesStore((s) => s.setCanvasOpen);
 	const isCanvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	/*
+	 * The transcript display mode (issue #756), read here for the OVERFLOW MENU so
+	 * the choice is reachable from the conversation the reader is looking at rather
+	 * than only from the Settings page. Read raw and parsed on the way in, the rule
+	 * every reader of a persisted union follows (see `parseTranscriptDisplayMode`).
+	 */
+	const transcriptDisplayMode = useUiPreferencesStore(
+		(s) => s.transcriptDisplayMode,
+	);
+	/*
+	 * The active mode, judged once for every reader in this file (agent review
+	 * round 1, m3): the submenu trigger NAMES it so the control describes its own
+	 * state, and the radio group marks it - one parse, so the two cannot disagree
+	 * about which mode the menu is stating.
+	 */
+	const activeTranscriptDisplayMode = parseTranscriptDisplayMode(
+		transcriptDisplayMode,
+	);
+	const setTranscriptDisplayMode = useUiPreferencesStore(
+		(s) => s.setTranscriptDisplayMode,
+	);
 	/*
 	 * The run panel's setter, read here for the OVERFLOW MENU rather than for the
 	 * cluster's own trigger (`RunDetailsTrigger` owns that button and its
@@ -1246,6 +1279,82 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							</Button>
 						</DropdownMenuTrigger>
 						<DropdownMenuContent align="end" className="min-w-45">
+							{/*
+							 * THE TRANSCRIPT DISPLAY MODE (issue #756). The reader asked for the choice
+							 * to be surfaced where they read the conversation rather than only in
+							 * Settings, and this menu is the session's options surface (see the note
+							 * below) - so the mode lives here, first, because it changes how
+							 * everything under this row is drawn.
+							 *
+							 * A RADIO SUBMENU rather than one toggling item: the trigger is a stable
+							 * name, and the radio dot states the ACTIVE mode, where an item whose label
+							 * flipped with the state would make a screen reader ask what pressing it
+							 * does. It writes the SAME store field the Settings row writes, so the two
+							 * paths cannot disagree about the mode.
+							 */}
+							<DropdownMenuSub>
+								<DropdownMenuSubTrigger>
+									<Rows3 aria-hidden="true" />
+									<span>Transcript display</span>
+									{/*
+									 * THE ACTIVE MODE, named beside the stable name (agent review round 1,
+									 * m3). The trigger's own words stay fixed, so a reader who learned the
+									 * control still knows it; the state rides next to it, muted, rather than
+									 * being folded into the label an item or a screen reader would read as the
+									 * control's name. `transcriptDisplayModeLabel` is the one place a mode's
+									 * words are spelled (`transcript-display-mode.ts`), so this surface and
+									 * the Settings row cannot name the same mode differently.
+									 */}
+									<span className="text-body-sm text-ink-dim">
+										{transcriptDisplayModeLabel(activeTranscriptDisplayMode)}
+									</span>
+								</DropdownMenuSubTrigger>
+								<DropdownMenuSubContent>
+									<DropdownMenuRadioGroup
+										value={activeTranscriptDisplayMode}
+										onValueChange={(next) =>
+											setTranscriptDisplayMode(parseTranscriptDisplayMode(next))
+										}
+									>
+										{TRANSCRIPT_DISPLAY_MODE_OPTIONS.map((option) => (
+											<DropdownMenuRadioItem
+												key={option.value}
+												value={option.value}
+											>
+												<span>{option.label}</span>
+												{/*
+												 * THE CHECK ON THE CHOSEN ROW (design review round 1, D3). The
+												 * primitive's own mark for a checked radio row is the small status
+												 * dot at the leading edge, and the frame measured the trap: on
+												 * open, Radix roving-focuses the FIRST row, so the unchecked row
+												 * wears the accent WASH while the checked one wears a plain ground
+												 * and a dot - read together, "By turn is highlighted, By response
+												 * is dotted", for a stored value of `by-response`.
+												 *
+												 * The wash is FOCUS and cannot be dropped without taking the focus
+												 * affordance away from a keyboard reader, so the checked row gains
+												 * a mark the wash cannot imitate: a check glyph at the TRAILING
+												 * edge, which no focus state draws. The dot stays where the
+												 * primitive puts it, so the chosen row reads as chosen whichever
+												 * row holds focus, and checked / unchecked / focused stay three
+												 * distinguishable states.
+												 *
+												 * `ml-auto` rather than a spacer, because the panel hugs its
+												 * content: the mark sits at the row's end and the panel's own
+												 * `min-w-32` still owns its floor.
+												 */}
+												{activeTranscriptDisplayMode === option.value && (
+													<Check
+														aria-hidden="true"
+														className="ml-auto text-accent"
+													/>
+												)}
+											</DropdownMenuRadioItem>
+										))}
+									</DropdownMenuRadioGroup>
+								</DropdownMenuSubContent>
+							</DropdownMenuSub>
+							<DropdownMenuSeparator />
 							{archiveEnabled && (
 								<DropdownMenuItem
 									/*
