@@ -254,6 +254,36 @@ export const INVISIBLE_GROWTH_FRACTION = 0.35;
 export const MAX_CHAIN_WIDEN = 12;
 
 /**
+ * Painted rows below which a reveal is INVISIBLE to the reader, in ROWS.
+ *
+ * The row-space twin of `INVISIBLE_GROWTH_MIN_PX`, and the currency the reader
+ * actually consumes. The px constants measure anchor DISPLACEMENT, which is only
+ * produced by a row crossing the viewport top — a local WIDEN whose landing
+ * paints nothing displaces nothing, and its settle is `network: false`, so under
+ * the px test it could not be scored invisible at all (see `noteSettled`). The
+ * count this replaces it with is the same one `widenTarget` searches against
+ * (`turn-collapse-model.ts: paintedRows`), sampled through the same accessor, so
+ * there is one measurement rather than two.
+ *
+ * Eight is that function's `minVisibleRows` default: about half a viewport of
+ * ordinary rows, and the smallest reveal a reader can be said to have been shown.
+ */
+export const INVISIBLE_PAINT_MIN_ROWS = 8;
+
+/**
+ * Reveals ONE ACT may chain, summed over BOTH doors.
+ *
+ * The cross-door ceiling neither per-door bound can state on its own: a reveal
+ * the reader cannot see is re-armed through whichever door `growth` names at
+ * that moment, so a condensed transcript alternates widen and page and is bounded
+ * by neither `MAX_CHAIN_WIDEN` nor `MAX_CHAIN_INVISIBLE` alone. It is
+ * `MAX_CHAIN_INVISIBLE` by the same construction argument as `MAX_ACT_ASKS` (one
+ * act's worth of history), and it is counted on the reveal, which both doors
+ * share, so the two cannot drift apart.
+ */
+export const MAX_CHAIN_REVEALS = MAX_CHAIN_INVISIBLE;
+
+/**
  * Anchor drift below which no correction is applied.
  *
  * Sub-pixel drift is measurement noise from `getBoundingClientRect`, and
@@ -315,8 +345,15 @@ export type PagingState = {
 	 */
 	travelledSinceLatch: boolean;
 	/**
-	 * A durable page landed with rows still held back, and owes exactly one
-	 * widen so the reader can see what they just fetched. See rule 6.
+	 * A reveal is OWED to the reader for the reveal that just settled: `decide`
+	 * will spend one without fresh input.
+	 *
+	 * TWO DOORS reach here, and the name is kept from the narrower rule that first
+	 * needed it (rule 6). Either a durable PAGE landed with rows still held back
+	 * and owes the widen that shows what the reader just fetched, or a reveal
+	 * settled with the reader unable to SEE it, whichever door it came through.
+	 * The network door's half of the same fact is `chainInvisible > 0`; `decide`
+	 * reads the two together and never independently.
 	 */
 	pageWidenOwed: boolean;
 	/**
@@ -342,6 +379,12 @@ export type PagingState = {
 	 * opens (`noteInput`), never by a settle.
 	 */
 	actAsks: number;
+	/**
+	 * Reveals this ACT has bought, across BOTH doors — the single ceiling
+	 * `MAX_CHAIN_REVEALS` states. Reset where `actAsks` is (a new act opens), so
+	 * it bounds what happens with no input, exactly like the counters beside it.
+	 */
+	revealsThisAct: number;
 	/**
 	 * Consecutive reveals the reader could not SEE, in the current act.
 	 *
@@ -409,6 +452,7 @@ export const initialPagingState = (): PagingState => ({
 	chainWiden: 0,
 	chainInvisible: 0,
 	actAsks: 0,
+	revealsThisAct: 0,
 });
 
 /** The prefetch zone for a viewport of this height. See `ZONE_FRACTION`. */
@@ -458,6 +502,13 @@ export const noteInput = (
 			// `actFetchSpent` does above.
 			actAsks:
 				input.at - state.lastInputAt >= GESTURE_GAP_MS ? 0 : state.actAsks,
+			// The reveal ceiling refills on the same terms as the ask budget: it
+			// bounds what an act does WITHOUT input, so input that opens an act
+			// starts it over.
+			revealsThisAct:
+				input.at - state.lastInputAt >= GESTURE_GAP_MS
+					? 0
+					: state.revealsThisAct,
 			continuation: false,
 			clampLatched: false,
 			// The travel the release below is earned by belongs to the latch, and
@@ -507,6 +558,9 @@ export const noteInput = (
 		 * is a new question, and `MAX_ACT_ASKS` is a fact about the act.
 		 */
 		actAsks: gestureEnded ? 0 : state.actAsks,
+		// The cross-door reveal ceiling, on the same terms and for the same
+		// reason: a new act is a new question.
+		revealsThisAct: gestureEnded ? 0 : state.revealsThisAct,
 		// The travel record belongs to the latch's own act; a notch that opens a
 		// new act starts a new question, and the release it guards is one per
 		// latch rather than one per reader.
@@ -531,6 +585,7 @@ export const noteInput = (
 			// says nothing about the click the reader just made.
 			actFetchSpent: false,
 			actAsks: 0,
+			revealsThisAct: 0,
 			...(state.busy ? { retained: true } : { armed: true }),
 		};
 	}
@@ -651,6 +706,13 @@ const spend = (
 		 * reader's data allowance). A widen is not a round trip and does not count.
 		 */
 		actAsks: action === "fetch" ? state.actAsks + 1 : state.actAsks,
+		/*
+		 * The reveal ceiling counts the REVEAL, not the round trip: a widen paints
+		 * rows the reader already has, but it is still one of the reveals an act
+		 * may spend without input, and `MAX_CHAIN_REVEALS` is about how many of
+		 * those the reader's one gesture may become.
+		 */
+		revealsThisAct: state.revealsThisAct + 1,
 		// `chainInvisible` is NOT advanced here: it counts what the reader SAW
 		// (a settle), not what was spent. A spend is evidence of nothing.
 		chainInvisible: state.chainInvisible,
@@ -926,6 +988,12 @@ export const decide = (
 		 * than a hole (QA round 1, Q-4: fifteen asks for one notch, measured).
 		 */
 		const asksLeft = state.actAsks < MAX_ACT_ASKS;
+		/*
+		 * The cross-door ceiling, tested here as well as at each door's own bound:
+		 * the doors share the act, and a chain that alternates them would satisfy
+		 * both of their per-door bounds while exceeding the act's.
+		 */
+		const revealsLeft = state.revealsThisAct < MAX_CHAIN_REVEALS;
 		const invisibleOwed =
 			asksLeft &&
 			state.chainInvisible > 0 &&
@@ -941,13 +1009,14 @@ export const decide = (
 			};
 		}
 		const bound =
-			growth === "widen"
+			revealsLeft &&
+			(growth === "widen"
 				? state.chainWiden < MAX_CHAIN_WIDEN
 				: invisibleOwed
 					? state.failures < MAX_AUTO_ATTEMPTS
 					: asksLeft &&
 						state.chainFetch < MAX_CHAIN_FETCH &&
-						state.failures < MAX_AUTO_ATTEMPTS;
+						state.failures < MAX_AUTO_ATTEMPTS);
 		if (bound) {
 			return spend(
 				{ ...state, pageWidenOwed: false, continuation: false },
@@ -991,6 +1060,18 @@ export const noteSettled = (
 		 */
 		hiddenRowsAfter = 0,
 		/**
+		 * Rows the reveal PAINTED, measured by the DOM half between the dispatch
+		 * and the settle, in the same currency `widenTarget` searches with
+		 * (`turn-collapse-model.ts: paintedRows`). `null` means "not measured" — a
+		 * caller that has no painted-row accessor (the child reader's preview, the
+		 * boolean `onLoadOlder` form) — and the px proxy below answers for it then.
+		 *
+		 * This is the ONE currency, and it is sampled through BOTH doors: the whole
+		 * repair is that a WIDEN whose landing paints nothing can be scored
+		 * invisible, which the px proxy could never do (see `invisible` below).
+		 */
+		paintedDelta = null,
+		/**
 		 * How much taller the content got, in px, measured by the DOM half
 		 * between the dispatch and the settle. `null` means "not measured" (a
 		 * local widen, the child reader's own settle) and is treated as VISIBLE:
@@ -1010,25 +1091,43 @@ export const noteSettled = (
 	}: {
 		network?: boolean;
 		hiddenRowsAfter?: number;
+		paintedDelta?: number | null;
 		growthPx?: number | null;
 		clientHeight?: number;
 		newRecords?: number | null;
 	} = {},
 ): PagingState => {
 	/*
-	 * What the reader saw, in their own currency (see the constants): growth
-	 * under the floor OR under the viewport fraction is invisible, and an empty
-	 * page is invisible by definition.
+	 * What the reader saw, in their own currency — and there is now ONE of them.
+	 *
+	 * `paintedDelta` is the rows the reveal painted, read through the same
+	 * accessor `widenTarget` searches against, so "the reader could not see it"
+	 * is one subtraction away whichever door the reveal came through. That is the
+	 * whole repair. The px proxy beside it measures anchor DISPLACEMENT, which a
+	 * WIDEN can never produce a reading from — its settle is `network: false` and
+	 * the px arm was gated on the network door — so a local widen that painted
+	 * nothing scored VISIBLE, reset `chainInvisible`, and had its continuation
+	 * refused by the scrollable guard: the wedge the operator reported. The px
+	 * arm survives only for callers that cannot measure paint (the child
+	 * reader's preview, the boolean `onLoadOlder` form) and answers only when
+	 * `paintedDelta` is absent.
+	 *
+	 * An empty page stays invisible BY DEFINITION: the cursor moved and the
+	 * reader saw the same screen, whatever the extent says.
 	 */
-	const invisible =
+	const paintedInvisible =
+		paintedDelta !== null && paintedDelta < INVISIBLE_PAINT_MIN_ROWS;
+	const pxInvisible =
+		paintedDelta === null &&
 		network &&
-		(newRecords === 0 ||
-			(growthPx !== null &&
-				growthPx <
-					Math.max(
-						INVISIBLE_GROWTH_MIN_PX,
-						INVISIBLE_GROWTH_FRACTION * clientHeight,
-					)));
+		growthPx !== null &&
+		growthPx <
+			Math.max(
+				INVISIBLE_GROWTH_MIN_PX,
+				INVISIBLE_GROWTH_FRACTION * clientHeight,
+			);
+	const invisible =
+		paintedInvisible || (network && newRecords === 0) || pxInvisible;
 	return {
 		...state,
 		busy: false,

@@ -19,7 +19,6 @@ import {
 	anchorDriftForCurrentInput,
 	decide,
 	initialPagingState,
-	isExhausted,
 	noteAborted,
 	noteFailed,
 	noteInput,
@@ -172,6 +171,25 @@ export type ScrollPagingOptions = {
 	 */
 	rowCount: number;
 	/**
+	 * Rows the reader can actually SEE right now — the count `widenTarget`
+	 * searches against (`turn-collapse-model.ts: paintedRows`), sampled through
+	 * the transcript's own collapse inputs rather than re-derived here.
+	 *
+	 * It is the ONE currency a settle is judged in, and it is read through BOTH
+	 * doors: a local widen reveals rows the transcript already had, so the
+	 * anchor-drift proxy can never say whether a widen showed the reader
+	 * anything, while this count can.
+	 *
+	 * OPTIONAL on purpose. A caller with no collapse model to derive it from (a
+	 * surface that reveals rows without collapsing any) simply leaves it out, and
+	 * the settle falls back to the proxy — which is the same "not measured"
+	 * signal `noteSettled`'s `paintedDelta: null` already means, not a second
+	 * mode. The transcript always passes it; omitting it here is how a caller
+	 * says it has nothing better to offer than the proxy, not a silent way to
+	 * opt out of the invariant.
+	 */
+	paintedRows?: () => number;
+	/**
 	 * Changes when the observed content node appears or is replaced, so the
 	 * ResizeObserver re-attaches deterministically rather than incidentally.
 	 */
@@ -256,6 +274,22 @@ export type ScrollPagingHandle = {
 	acknowledgeOwnWrite: (before: number, after: number) => void;
 };
 
+/**
+ * The rows a reveal PAINTED, for the settle — or `null` when the caller has no
+ * painted-row accessor to difference, which is `noteSettled`'s own "not measured"
+ * signal and puts the settle back on the anchor-displacement proxy.
+ *
+ * Both doors call this with the sample they took at dispatch, so the page's and
+ * the widen's settle cannot be judged in different currencies. Clamped at zero
+ * for the same reason `anchorDrift`'s positive part is: a reveal that lost rows
+ * must not read as growth.
+ */
+const paintDelta = (
+	sample: number | null,
+	read: (() => number) | undefined,
+): number | null =>
+	sample === null || !read ? null : Math.max(0, read() - sample);
+
 export function useScrollPaging({
 	containerRef,
 	sessionKey,
@@ -268,6 +302,7 @@ export function useScrollPaging({
 	loadingOlder,
 	contentKey,
 	rowCount,
+	paintedRows,
 }: ScrollPagingOptions): ScrollPagingHandle {
 	const state = useRef<PagingState>(initialPagingState());
 	// Bumped by the session-change reset below; see the guard on the ask's outcome.
@@ -315,6 +350,7 @@ export function useScrollPaging({
 		onWiden,
 		onLoadOlder,
 		onLoadOlderOutcome,
+		paintedRows,
 	});
 	live.current = {
 		hiddenRows,
@@ -322,6 +358,7 @@ export function useScrollPaging({
 		onWiden,
 		onLoadOlder,
 		onLoadOlderOutcome,
+		paintedRows,
 	};
 
 	const anchor = useRef<{
@@ -676,6 +713,12 @@ export function useScrollPaging({
 			holdAnchor();
 			if (action === "widen") {
 				const before = live.current.hiddenRows;
+				/*
+				 * The rows the reader is LOOKING at, before the widen commits — the
+				 * baseline the settle below differences against (see its
+				 * `paintedDelta`).
+				 */
+				const paintedBefore = live.current.paintedRows?.() ?? null;
 				live.current.onWiden();
 				// Settle on the OBSERVED reveal, not on a frame count.
 				//
@@ -709,7 +752,22 @@ export function useScrollPaging({
 						live.current.hiddenRows !== before ||
 						waited >= COMMIT_WAIT_FRAMES
 					) {
-						state.current = noteSettled(state.current, { network: false });
+						/*
+						 * THE WIDEN'S OWN PAINT, in the reader's currency. A local widen
+						 * reveals rows the transcript already had, so this delta is the
+						 * ONLY measure of whether the reader saw anything: the anchor-drift
+						 * proxy cannot see a reveal that painted no row (nothing crossed
+						 * the viewport top), and scoring such a widen VISIBLE is exactly
+						 * what reset `chainInvisible` and refused the continuation — the
+						 * wedge. Clamped at zero for the same reason `anchorDrift`'s
+						 * positive part is: a reveal that lost rows must not read as
+						 * growth.
+						 */
+						state.current = noteSettled(state.current, {
+							network: false,
+							hiddenRowsAfter: live.current.hiddenRows,
+							paintedDelta: paintDelta(paintedBefore, live.current.paintedRows),
+						});
 						schedule();
 						return;
 					}
@@ -747,14 +805,33 @@ export function useScrollPaging({
 			 * an empty transcript) — the policy treats a missing measurement as visible
 			 * rather than inventing an invisible reveal.
 			 */
+			const paintedBefore = live.current.paintedRows?.() ?? null;
 			const anchorBefore = sampleAnchor();
-			const ask: () => Promise<LoadOlderOutcome> = live.current
-				.onLoadOlderOutcome
-				? live.current.onLoadOlderOutcome
-				: async () =>
-						(await live.current.onLoadOlder())
+			const ask: () => Promise<LoadOlderOutcome> = async () => {
+				/*
+				 * A REJECTED LOADER IS A FAILURE, NOT A STRAND.
+				 *
+				 * `busy` is cleared by `noteSettled`/`noteFailed`/`noteAborted` and by
+				 * nothing else, and `decide` returns `none` while it is set — so an
+				 * ask whose promise REJECTS used to leave the policy busy for ever:
+				 * no settle, no failure row, no timer (the `armed || pageWidenOwed`
+				 * branch is what schedules one), and `revealInFlight` frozen at
+				 * `true`, i.e. the slot painting "Loading earlier messages" for the
+				 * rest of the conversation's life with no way back. Today's loaders
+				 * catch internally, so it was latent rather than live; it costs one
+				 * `try` to close, and closing it here covers the boolean
+				 * `onLoadOlder` form as well as the outcome form.
+				 */
+				try {
+					return live.current.onLoadOlderOutcome
+						? await live.current.onLoadOlderOutcome()
+						: (await live.current.onLoadOlder())
 							? { kind: "applied", newRecords: 0, exhausted: false }
 							: { kind: "failed", reason: "request" };
+				} catch {
+					return { kind: "failed", reason: "request" };
+				}
+			};
 			// The conversation this ask was made for. The session-change effect has
 			// already replaced the policy state (and armed a fresh `continuation`), so
 			// an outcome that resolves for the PREVIOUS conversation describes nothing
@@ -814,6 +891,17 @@ export function useScrollPaging({
 							anchorBefore === null ? null : measureHeld(anchorBefore.id);
 						state.current = noteSettled(state.current, {
 							hiddenRowsAfter: after,
+							/*
+							 * The rows the page PAINTED, in the reader's own currency and
+							 * through the same accessor the widen door samples — the page
+							 * door's half of the one measurement the settle is judged in.
+							 * Measured here, at the observed landing, for the reason the
+							 * extent is: a page's rows author their height (and the collapse
+							 * re-partitions) over several layout passes, so a reading taken
+							 * when the promise resolves would call every page invisible.
+							 * Clamped at zero like the widen door's.
+							 */
+							paintedDelta: paintDelta(paintedBefore, live.current.paintedRows),
 							/*
 							 * The drift's positive part: how far the held row was pushed DOWN, which
 							 * is how much content landed above it. A negative drift (the reader's own
@@ -897,8 +985,27 @@ export function useScrollPaging({
 				...travel.current,
 				revision: travel.current.revision + 1,
 			};
-			anchor.current.sample = null;
-			anchor.current.until = 0;
+			if (deliberate) {
+				/*
+				 * Re-armed on the just-bumped revision, so `correctAnchor` can hold the
+				 * retry's landing on the frame it lands rather than a frame late — the
+				 * other half of the deliberate-ask exception above.
+				 */
+				holdAnchor();
+			}
+			if (!deliberate) {
+				/*
+				 * EXCEPT ON A DELIBERATE ASK. The slot's "Try again" and `Home` exist to
+				 * show the reader the rows the failed ask did not, so the retry is the
+				 * one input that keeps their place ACROSS the reveal: the hold is
+				 * re-read below, on the input's own revision, instead of being left null
+				 * until the settle `SETTLE_MS` later — which is the window in which a
+				 * landing paints uncorrected, the measured one-frame lurch on the retry
+				 * path (design §4).
+				 */
+				anchor.current.sample = null;
+				anchor.current.until = 0;
+			}
 			/*
 			 * The reader is moving, so the standing hold drops for the duration of
 			 * the gesture and re-reads their place once the scrolling stops. It is
@@ -910,7 +1017,7 @@ export function useScrollPaging({
 			scrollSettle.current = window.setTimeout(refreshReaderHold, SETTLE_MS);
 			schedule();
 		},
-		[containerRef, measure, refreshReaderHold, schedule],
+		[containerRef, holdAnchor, measure, refreshReaderHold, schedule],
 	);
 
 	const requestOlder = useCallback(() => {
@@ -1172,7 +1279,6 @@ export function useScrollPaging({
 		correctAnchor();
 	});
 
-	const exhaustedRetries = isExhausted(state.current);
 	/*
 	 * One statement per act, and the loading paint outranks the two sentences that
 	 * ask for a gesture. `loadingOlder` is the session hook's own in-flight flag
@@ -1181,11 +1287,18 @@ export function useScrollPaging({
 	 * actually on screen — including the window in which a landed page's rows are
 	 * still held back and the count would otherwise be painted at a reader who
 	 * cannot see it yet. See the note on `revealInFlight`.
+	 *
+	 * A FAILURE OUTRANKS THE TWO SENTENCES THAT ASK FOR A GESTURE (design §1.5
+	 * D4/D9). The row used to paint `failed` only once the automatic retry budget
+	 * was spent AND nothing was held back, so a reader whose asks were all failing
+	 * while rows were still windowed read "Earlier history above — scroll up to
+	 * load": it asked them to do the one thing that could not work. `olderFailed`
+	 * is the session's single owner of that fact and now decides on its own.
 	 */
 	const slotState: OlderHistoryState =
 		loadingOlder || revealInFlight
 			? "loading"
-			: olderFailed && (exhaustedRetries || hiddenRows === 0)
+			: olderFailed
 				? "failed"
 				: hiddenRows > 0
 					? "windowed"
