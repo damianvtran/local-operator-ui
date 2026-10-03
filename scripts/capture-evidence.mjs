@@ -3369,6 +3369,53 @@ export const STORIES = [
 	["settings-model-combobox--unresolved-scope", 560, 300],
 	["settings-model-combobox--disabled", 560, 240],
 	/*
+	 * Settings -> Speech voicing, the group `speech-section.stories.tsx` exists to
+	 * photograph: WHICH rung of the text-to-speech cascade would serve this
+	 * machine, WHY the rungs above it did not, and WHAT to do when none can. Five
+	 * states, because each is a claim a single frame cannot carry - and two of
+	 * them (`stored-provider-key`, `nothing-available`) are the pair a sign-in
+	 * notice gets wrong: a cascade that serves through a STORED provider key with
+	 * no Radient session at all, against one that can speak through nothing.
+	 *
+	 * The five live on ONE story, so each names its own `dir` under the set: the
+	 * state is the label a reader follows, and `--dirs=` can re-shoot one of them
+	 * without re-taking the rest.
+	 *
+	 * THE PAGE THESE STATES SIT ON HAS NO ROW, deliberately, and it is a finding
+	 * rather than an omission. `shell-app-shell--settings` does not render on this
+	 * tree: its story frame draws `SidebarNavigation` outside `ChatLayout`, which
+	 * throws `useSidebarFrame: the sidebar must be rendered inside ChatLayout`.
+	 * Composing the page the way `app.tsx` does instead (a temporary story, never
+	 * committed) gets past that and then holds: `SettingsPage` never passes its
+	 * own early return under the story's fixture, so the rig's shutter times out at
+	 * its 60s bound and the only frame that surface can produce is a skeleton.
+	 * The committed `shell-app-shell/settings/` frame is exactly that - a rail and
+	 * an empty ground, captured before 2026-09-24's `feat(chat): one sidebar` - so
+	 * there is no before/after page pair to be had until the story is repaired.
+	 * `docs/evidence/settings-speech/README.md` carries both measurements.
+	 *
+	 * The section is captured at 1024 wide because it is a `max-w-4xl` (896px)
+	 * settings section in its own ground - the page's own content column - and at
+	 * 640 tall because the rig grows the viewport to the rendered height: 640 is a
+	 * floor, not a crop. (The story mounted at `max-w-3xl` until design review
+	 * round 1, D3, which is a width the settings page never renders.)
+	 */
+	["settings-speech--radient-pass", 1024, 640, { dir: "radient-pass" }],
+	[
+		"settings-speech--stored-provider-key",
+		1024,
+		640,
+		{ dir: "stored-provider-key" },
+	],
+	[
+		"settings-speech--nothing-available",
+		1024,
+		640,
+		{ dir: "nothing-available" },
+	],
+	["settings-speech--backend-older", 1024, 640, { dir: "backend-older" }],
+	["settings-speech--unreadable", 1024, 640, { dir: "unreadable" }],
+	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
 	 * section asked the roster and there is nothing to borrow), so it never clears
