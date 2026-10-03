@@ -907,6 +907,119 @@ const completionsBothVisibleTurn = (): TranscriptState => {
 	});
 };
 
+/**
+ * THE REPORTER'S TURN (issue #756), AND THE ONE SHAPE THE MODE MOVES.
+ *
+ * WHY THIS CELL EXISTS (design review round 1, D1 MAJOR). The two display modes
+ * came out BYTE-IDENTICAL on every settled transcript cell the round could
+ * shoot, and on those fixtures they had to: V1 keeps every RESPONSE close
+ * visible in both modes (`partitionRun`), so a turn whose assistant rows are all
+ * closes is already showing everything `by-response` would add. The widening is
+ * observable on exactly one shape - a settled, text-bearing assistant row that
+ * is neither a close nor `stop`-declared - and no shipped fixture had one. That
+ * shape is the issue's own report (an answer, then a nine-item addendum as the
+ * final message): the substance went out as prose the agent then kept working
+ * past, so nothing in the invariant keeps it and only the second mode shows it.
+ *
+ * THE FIXTURE IS THE REPORTER'S TURN ROW BY ROW, built through the durable door
+ * (`applyHistoryPage`) because seconds and a `message` payload are how a journal
+ * row actually arrives:
+ *
+ * | row  | what it is                                                            |
+ * |------|-----------------------------------------------------------------------|
+ * | `u1` | the question                                                          |
+ * | `c1` | the call that answered it                                             |
+ * | `n1` | THE SUBSTANCE PROSE: settled, text-bearing, carrying NO `stop_reason`, |
+ * |      | and followed by more work - so it is narration, not a close, and the  |
+ * |      | invariant has no clause that keeps it                                 |
+ * | `c2` | the call that produced the addendum                                    |
+ * | `a1` | the addendum as the last message, `stop`-declared: the turn's elected  |
+ * |      | answer, and the row the caption and the foot key on IN BOTH MODES      |
+ *
+ * WHAT THE TWO MODES DO WITH IT, read out of the shipped plan rather than
+ * asserted here: `by-turn` spends ONE bar over `[c1, n1, c2]` reading
+ * `2 actions` (the narration is inside it), while `by-response` keeps `n1` on
+ * screen and spends TWO bars, `[c1]` and `[c2]`, one action each - and the
+ * elected answer is `a1` in both, which is #665's lesson holding under the
+ * widening. That difference is the feature, so this cell is the one whose pair
+ * cannot be identical.
+ *
+ * THE PROSE IS SYNTHETIC, composed from the vocabulary this file already uses
+ * for the same query (`QUESTION`, `ANSWER`); no journal text is quoted.
+ */
+const SUBSTANCE =
+	"Four were late in September: 1042, 1088, 1103 and 1177. The pattern is the card that expired on file.";
+const ADDENDUM =
+	"Addendum: the export holds 214 rows. Invoice 1177 has no card on file at all, which I left for you to decide.";
+
+const substanceThenAddendumTurn = (): TranscriptState => {
+	type Entry = DesktopHistoryPage["entries"][number];
+	const S = TS / 1000;
+	const entry = (
+		id: string,
+		ts: number,
+		payload: Record<string, unknown>,
+	): Entry => ({ id, ts, type: "message", payload });
+	/* A call row, as the durable door carries one: the result text and the
+	 * provider's own duration, which is what the bar's `Took` clause reads. */
+	const call = (
+		id: string,
+		ts: number,
+		toolName: string,
+		text: string,
+		durationS: number,
+	): Entry =>
+		entry(id, ts, {
+			kind: "message",
+			role: "tool",
+			tool_call_id: id,
+			tool_name: toolName,
+			content: [{ type: "text", text }],
+			provider_payload: { duration_s: durationS, details: {} },
+		});
+	return applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: QUESTION }],
+			}),
+			call(
+				"c1",
+				S + 3,
+				"bash",
+				"psql -c 'select late invoices'\n4 rows\n",
+				3.5,
+			),
+			/*
+			 * THE ROW THE MODE MOVES. No `stop_reason` on purpose: a declared finish
+			 * would put it in V4 and both modes would keep it, which is what made every
+			 * earlier cell a pair of identical frames.
+			 */
+			entry("n1", S + 40, {
+				kind: "message",
+				role: "assistant",
+				content: [{ text: SUBSTANCE }],
+			}),
+			call(
+				"c2",
+				S + 60,
+				"bash",
+				"scripts/export_late_invoices.sh\n214 rows\n",
+				6.2,
+			),
+			entry("a1", S + 72, {
+				kind: "message",
+				role: "assistant",
+				content: [{ text: ADDENDUM }],
+				stop_reason: "stop",
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
 /** Which receipt RE-OPENS the settled run: the two the operator's report names. */
 type CycleTrigger = "wake" | "peer";
 
@@ -1349,6 +1462,20 @@ export const CompletionsBothVisible: Story = {
 		<Frame
 			transcript={completionsBothVisibleTurn()}
 			caption="A long run that answered, was woken, and replied again — the first completion, the wake, and the short reply."
+		/>
+	),
+};
+
+/**
+ * THE REPORTER'S TURN IN BOTH MODES (design review round 1, D1): the pair that
+ * is not allowed to match. The caption is fixture-level, so it reads true on the
+ * `by-turn` half too — it names the turn, not what the frame does with it.
+ */
+export const SubstanceThenAddendum: Story = {
+	render: () => (
+		<Frame
+			transcript={substanceThenAddendumTurn()}
+			caption="A turn whose substance went out as prose mid-work — the prose, the two calls around it, and the addendum as the last message."
 		/>
 	),
 };
