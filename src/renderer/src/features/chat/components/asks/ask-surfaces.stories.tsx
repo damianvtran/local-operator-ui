@@ -539,7 +539,7 @@ export const MinimizedMixedNarrow: Story = {
  * THE PANE FLOOR (about 300px of chat column, which is what the app's own
  * 800x600 minimum window leaves for the pane). Here the deadline YIELDS entirely
  * rather than squeezing the question - the rule `ask-bar.tsx` states and this
- * frame exists to falsify: below 24rem of BAR width it is not rendered, and the
+ * frame exists to falsify: below 20rem of BAR width it is not rendered, and the
  * question is the thing that keeps its room.
  */
 export const MinimizedPaneFloor: Story = {

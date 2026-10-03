@@ -29,29 +29,36 @@ signal either round produced.
 
 ## The pair this set is
 
-Eight states, two brand palettes, before and after. `before/` is `origin/main`'s
-components (`e209f1e495` this pass, `56aed8ef8e6` for the first); `after/` is the
-content commit the manifest's stamps name. The four NEW states render fixtures
-that do not exist on `main`, so their `before/` frames are those fixtures over
-`main`'s components — the delta, which is what a pair is for.
+Eight states, two brand palettes, before and after. **`before/` is this PR's own
+ROUND-1 HEAD (`058926cda56`) in all eight states — not `origin/main`** — and that
+is the right baseline for what this pass is. `main` never carried the bar this PR
+changes: `git show origin/main:.../ask-bar.tsx` has no deadline span at all and no
+`warning` arm on the glyph, so a main-based pair would have been two identical
+frames for every state whose defect is this PR's own code (the amber arm, the
+`soonest ` scope word, the pane-floor yield). What round 1 reviewed — and what
+U1/D1/D2/D5/U3 were filed against — is the round-1 head, so the frames show that
+against the fix. `after/` is the content commit the manifest's stamps name.
 
-ONE ROW IS THE EXCEPTION, and it is the reason the pair is worth anything:
-`expanded-moved-on`'s `before/` is the **round-1 head** (`058926cda56`), not
-`main`. The defect design D5 filed — the urgent arm taking the Clock away from a
-timed-out row — is THIS PR's own code, so `main` renders the same Clock the fix
-restores and a `main`-based pair would have been two identical frames. Shot
-against the head that carried it, the pair shows what the round was reviewing.
+The four NEW states render fixtures that do not exist before this pass, so their
+`before/` frames are those fixtures over the round-1 head: the delta a reader
+needs on a state the first pass never photographed.
 
-| state | before | after |
+| state | before (round-1 head, `058926cda56`) | after |
 | --- | --- | --- |
-| `minimized-moved-on-only` | (`main`) `1 question waiting — …`, **warning** glyph | `1 question moved on — …`, accent glyph |
-| `minimized-mixed` | (`main`) `2 questions waiting — …`, **warning** glyph | `1 question waiting · 1 moved on — …` + `expires in 48m`, accent glyph |
-| `minimized-urgent` | (`main`) `1 question waiting — …`, warning glyph, no deadline | same sentence + `expires in 18m`, warning glyph |
-| `expanded-urgent` | (`main`) panel row's mark in warning | unchanged in ink; the row keeps `circle-help` |
-| `minimized-two-windows` | (`main`) `2 questions waiting — Deploy the staging release?`, no deadline | same + **`soonest expires in 12m`** |
-| `expanded-moved-on` | (**round-1 head**) `lucide-circle-help` amber | **`lucide-clock`** with `text-warning` |
-| `minimized-mixed-narrow` (393px) | (`main`) question has the room; no deadline | `expires in 48m` present, question yields |
-| `minimized-pane-floor` (300px) | (`main`) question has the room; no deadline | **deadline absent**, question keeps its room |
+| `minimized-moved-on-only` | `1 question moved on — Which files should the cleanup script touch?`, **warning** glyph, no deadline | same sentence, accent glyph |
+| `minimized-mixed` | `1 waiting · 1 moved on — Which environment should I deploy this…` + `expires in 48m`, **warning** glyph | `1 question waiting · 1 moved on — …` + `expires in 48m`, accent glyph |
+| `minimized-urgent` | `1 question waiting — Should I roll the staging cluster back to the …` + `expires in 18m`, warning glyph | the same sentence and deadline, warning glyph (this waiting ask really is urgent) |
+| `expanded-urgent` | panel row's mark `circle-help`, warning ink | unchanged |
+| `minimized-two-windows` | `2 questions waiting — Deploy the staging release?` + **`expires in 12m`** — the OTHER ask's countdown with no scope word, accent glyph | same sentence + **`soonest expires in 12m`**, accent glyph |
+| `expanded-moved-on` | **`lucide-circle-help`** in warning | **`lucide-clock`** in warning |
+| `minimized-mixed-narrow` (393px) | `1 waiting · 1 moved on — Whic…` + `expires in 48m` shown, warning glyph | `1 question waiting · 1 moved on — …` + `expires in 48m`, accent glyph |
+| `minimized-pane-floor` (300px) | `1 waiting · 1 mo…` + `expires in 48m` shown, warning glyph | the count with its noun, **deadline absent**, accent glyph |
+
+At the two narrow widths the bar names NO question in either half — the count
+prefix fills the label cell (204px of it at 393px, 203px at 300px, against 498px
+of content). That is UX round 2's U6 / design round 2's D8, read there as an
+accepted trade; the yield rule's effect at the floor is that the DEADLINE gives
+the room back to the count rather than taking it from the question.
 
 ## The numbers, measured
 
@@ -166,9 +173,8 @@ story file.
 
 The `before/` run is the same command with the four component modules
 (`ask-queue.ts`, `ask-bar.tsx`, `ask-panel.tsx`, `ask-surfaces.tsx`) checked back
-out at the base commit and the fixtures kept — `e209f1e495` for every state but
-`expanded-moved-on`, whose `before/` is `058926cda56` because the arm D5 filed
-against is this branch's own code (see the pair table).
+out at `058926cda56` — this PR's round-1 head — and the fixtures kept. One SHA,
+the same one in `manifest.json`'s `source` field and in the pair table above.
 
 ## Not covered here
 

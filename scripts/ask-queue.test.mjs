@@ -316,11 +316,11 @@ test("the bar reads the SOONEST waiting deadline, and never a moved-on one", () 
 	);
 });
 
-test("the wire's `urgent` flag reaches the view, and only while it is outstanding", () => {
+test("the wire's `urgent` flag reaches the view, and only for the asks the bar counts as waiting", () => {
 	/*
 	 * Urgency was carried on the wire and kept by the receipt fold, and NO desktop
 	 * component painted it (the audit's second finding). The view now states it for
-	 * the surfaces to spend, scoped to the rows someone can still act on.
+	 * the surfaces to spend, scoped to the rows whose window is still open.
 	 */
 	const urgentOpen = queue.askQueueView({ asks: [ask({ urgent: true })] });
 	assert.equal(urgentOpen.urgent, true);
