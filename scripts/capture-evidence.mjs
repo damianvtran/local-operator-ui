@@ -12685,6 +12685,16 @@ const main = async () => {
 	 * entry both sides have, which is how this branch's `why` clauses on two
 	 * `supplementary` entries vanished on the ninth fold (review round 8, R8-2).
 	 *
+	 * THE RULE BELOW IS IMPLEMENTED, NOT JUST WRITTEN DOWN, since 2026-10-01:
+	 * `scripts/evidence-fold.mjs` (`pnpm evidence:fold`) is the resolver, with a
+	 * merge driver (`pnpm evidence:fold:install`) so a fold does not stop on this
+	 * file at all, and `scripts/evidence-fold.test.mjs` validates it against real
+	 * folds in this repository's history. SO BY HAND ONE SHOULD RUN IT rather than
+	 * follow the paragraphs below - they stay because they are the authority the
+	 * tool implements and the thing to read when its output is being judged, and
+	 * because a resolver that disagrees with them is a bug in the resolver. When
+	 * they change, change `scripts/evidence-fold.mjs` too.
+	 *
 	 *   1. `head`, `headNote` and the `partialCapture` fields that DESCRIBE a pass
 	 *      - `refreshedAt`, `refreshedAtHead`, `refreshedFromHead`, `addedAt`,
 	 *      `addedAtHead`, `addedFrames`, `note`, `passScopeNote` and every
