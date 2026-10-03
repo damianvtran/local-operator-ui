@@ -1,53 +1,62 @@
 /**
- * The approvals tray: the whole pending queue, in one block on the Mesh tab.
+ * The approvals tray: the prompts first, the records behind one disclosure.
  *
- * Modelled on the browser-approval tray (`features/browser/components/browser-approvals-tray.tsx`),
- * with the two differences the host forces rather than choose:
+ * THE SPLIT IS THE OPERATOR'S (round, 2026-10-03), stated as requirements:
+ * "A settled request leaves the live panel and collapses into an approvals
+ * section that opens/closes from a tab or button — a spent approval is a record,
+ * not a prompt. Nothing settled keeps occupying the live panel." So the tray
+ * renders exactly two sets:
  *
- *   - THERE IS NO NATIVE VIEW HERE, so there is no band/dock split. The tray
- *     lives in the page's own flow, above whatever state the canvas is in — a
- *     pending approval is the most important fact on the tab, so it renders
- *     first and in full. The browser pattern's one-card-plus-chips selection
- *     exists because its band has a 1280px row and a dock has 384px; this block
- *     has the tab's whole width, so every waiting record draws as its own card
- *     and nothing needs selecting.
- *   - THE RESOLVED LINES ARE MEMORY, NOT A READ. The list route keeps terminal
- *     records for thirty days (§2.4), and a tray that rendered them would be an
- *     archive dump over a page whose job is "what is happening now". What a
- *     reader needs instead is the answer to "why did the count change", and that
- *     is the browser tray's own solved problem: remember what was live, and when
- *     a record leaves the live set for a terminal state, say so in one quiet
- *     line until the tab is left. A record that was ALREADY terminal when the
- *     tab opened (a denial from three days ago) is not news and draws nothing.
+ *   - WAITING (`isWaitingApproval`): the records still asking the operator for a
+ *     decision. They render first and in full, above every state block on the
+ *     tab — a pending approval is the most important fact here, and a prompt
+ *     hidden behind any control is the failure this surface exists to remove.
+ *   - RECORDS: everything the read carries besides them — decided, running,
+ *     stopped, terminal — behind a `Disclosure` that starts closed. The closure
+ *     is the archive-dump guard the old tray argued for, kept: a record nobody
+ *     opened costs one line of chrome, not a wall. It starts OPEN while a
+ *     `failed` record is inside — the store's own words, "the state a person
+ *     should not miss" — and the reader's toggle owns it from then on.
+ *
+ * WHAT A CARD SAYS, AND IN WHAT ORDER. One line of plain language first
+ * (`approvalSummary`, the record's own scopes in the CLI's order), then the
+ * decision controls, then a "Details" disclosure carrying the per-scope
+ * consequences as a list (not a wall of chips), the provenance lines and the
+ * state's own gloss. The reader used to assemble the ask from six chips and
+ * three definition rows; now the card states it, and the definitions are
+ * reference material one click away.
  *
  * WHO DECIDES WHAT: the card renders what the record carries and offers only the
  * moves the store's own transition matrix allows (`mesh-approvals.ts` owns the
  * predicates — `approve` on `requested` alone, `deny` on every open state, which
- * is the matrix's own shape and not a simplification). The approval's signing
- * gesture is presence-gated on the backend, so the pending state says a prompt
- * is expected rather than pretending the click completed anything.
+ * is the matrix's own shape and not a simplification). On a record whose
+ * decision is already made, the one remaining write (`deny`) wears the label of
+ * its consequence — "Stop" in flight, "Abandon" once stopped — because an
+ * `Approved` chip beside a `Deny` button was the contradiction the operator
+ * reported; the write is the same one, the label says what it does. The
+ * approval's signing gesture is presence-gated on the backend, so the pending
+ * state says a prompt is expected rather than pretending the click completed
+ * anything.
  */
 
 import { Alert, Badge, Button } from "@shared/components/ui";
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { ShieldCheck } from "lucide-react";
 import type { FC } from "react";
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import {
 	type ApprovalDecision,
 	type MeshApprovalRow,
 	approvalHostKeyLabel,
 	approvalRemainingLabel,
 	approvalRequesterLabel,
-	approvalScopeGlosses,
-	approvalScopeLabels,
-	approvalScopeTone,
+	approvalScopeEntries,
 	approvalStateLabel,
-	approvalSubject,
-	approvalTitle,
+	approvalSummary,
 	approvalWhereLabel,
 	canApproveApproval,
 	canDenyApproval,
-	isOpenApproval,
+	isWaitingApproval,
 } from "./mesh-approvals";
 
 /** The chip's semantic register per state; each is the Badge primitive's own triple. */
@@ -61,69 +70,68 @@ function chipVariant(
 }
 
 /**
- * One state's hint line, or `null` where there is nothing to add to the chip.
+ * What a record's one remaining write is called: "Stop" while the run is in
+ * flight (`approved`/`connecting`), "Abandon" once the runner stopped (`failed`).
  *
- * These exist because two of the states are not self-explanatory from a word:
- * `approved` is a record the OPERATOR already answered and is waiting on a
- * runner that lives elsewhere, and a deny while `connecting` is a mid-run stop
- * rather than an ordinary refusal (the write lands, the runner observes it at
- * its next step check). Stating them here is cheaper than a user learning them
- * by pressing.
+ * The store's op is `deny` for all three — the predicate that gates it is
+ * `canDenyApproval`, unchanged. The LABEL is the consequence rather than the op
+ * because "Deny" beside an `Approved` chip was the exact contradiction the
+ * operator reported: the decision is already made, and what remains is stopping
+ * an in-flight run or abandoning a stopped one — which is what the state's own
+ * gloss says the write does.
  */
-function stateHint(state: string): string | null {
-	switch (state) {
-		case "requested":
-			return "Approving signs with this machine's operator key; the system may ask for it.";
-		case "approved":
-			return "An agent runs the install and connect (lop network approvals run).";
-		case "connecting":
-			return "Denying now stops it at its next step.";
-		case "failed":
-			return "The runner stopped. Denying abandons it; an agent can retry it.";
-		default:
-			return null;
-	}
+function recordActionLabel(state: string): string {
+	return state === "failed" ? "Abandon" : "Stop";
 }
 
 /**
- * The `dt` a state's hint hangs from (design round 1, D2).
+ * A state's detail rows — the terms and glosses the Details disclosure renders.
  *
- * WHY THE HINT IS NO LONGER A TRAILING CLAUSE. It used to ride the provenance
- * line - "asked by cli · session 6789ef · Approving signs with this machine's
- * operator key" - one 946px `text-ink-dim` paragraph at one register, so the
- * sentence that says what the decision DOES read as another piece of metadata.
- * The repo's own reference for a consent surface gives each consequential
- * statement its own labelled gloss in a `dl` (`browser-consent-request.tsx`,
- * the allow-scopes block), and this is that shape: the term names the moment the
- * gloss is about, because "what this means" differs per state - approving hands
- * over a signature, denying mid-run stops a runner, a failure leaves an
- * abandoned record.
+ * These used to sit in the card's flow; they are reference material for "what
+ * does this state mean / what does this click do", so they moved behind the
+ * disclosure with the consequences (operator round, 2026-10-03). The terms keep
+ * design round 1 D2's vocabulary ("Signing", "Next", "Stop", "After a stop") —
+ * they name the moment their gloss is about — which is also why `Stop` matches
+ * the button it now explains.
  */
-function stateHintTerm(state: string): string {
+function stateHints(state: string): { term: string; text: string }[] {
 	switch (state) {
 		case "requested":
-			return "Signing";
+			return [
+				{
+					term: "Signing",
+					text: "Approving signs with this machine's operator key; the system may ask for it.",
+				},
+			];
 		case "approved":
-			/** No gloss opening repeats its own term (design round 2, D11). */
-			return "Next";
+			return [
+				{
+					term: "Next",
+					text: "An agent runs the install and connect (lop network approvals run).",
+				},
+				{
+					term: "Stop",
+					text: "Stopping now denies the request; nothing has run yet.",
+				},
+			];
 		case "connecting":
-			return "Stop";
+			return [
+				{
+					term: "Stop",
+					text: "Stopping now denies the request; the runner stops at its next step.",
+				},
+			];
 		case "failed":
-			return "After a stop";
+			return [
+				{
+					term: "After a stop",
+					text: "The runner stopped. Abandoning denies the request; an agent can retry it instead.",
+				},
+			];
 		default:
-			return "What this means";
+			return [];
 	}
 }
-
-/** The one word a resolved line uses for a terminal state. */
-function resolvedWord(state: string): string {
-	if (state === "connected") return "connected";
-	if (state === "denied") return "denied";
-	return "expired";
-}
-
-/** One remembered departure: a record the reader watched leave the live set. */
-type ResolvedEntry = { key: string; text: string };
 
 export interface MeshApprovalsTrayProps {
 	/** Every row the badge read returned — live and terminal alike; the tray splits them. */
@@ -135,10 +143,11 @@ export interface MeshApprovalsTrayProps {
 	/**
 	 * The last decision's refusal, when it had one (agent review round 1,
 	 * finding 1): the code and the authored sentence, attached to the record it
-	 * was about when the request named one. Rendered beside that record's card,
-	 * or under the list when the refusal's own refetch settled the record out of
-	 * the live set - the sentence may not go missing either way, because it is
-	 * the only thing that tells a refusal from a dead click.
+	 * was about WHEN THAT RECORD IS DRAWN — the card while it waits, a records
+	 * row while the section is open — and rendered under the list otherwise. The
+	 * sentence may not go missing either way, because it is the only thing that
+	 * tells a refusal from a dead click, and a refusal about a record inside the
+	 * closed records section is exactly the case a naive attach would swallow.
 	 */
 	refusal: {
 		approvalId: string | null;
@@ -152,8 +161,8 @@ export interface MeshApprovalsTrayProps {
 	/**
 	 * Network id -> the name the page already shows for it (UX round 1, U1). The
 	 * approvals read and the mesh read are independent queries, so this is
-	 * OPTIONAL: a tray that painted before the canvas falls back to the id, and
-	 * the chip never renders a blank.
+	 * OPTIONAL: a summary that painted before the canvas falls back to the id,
+	 * and the join clause never renders a blank.
 	 */
 	networkNames?: ReadonlyMap<string, string>;
 }
@@ -179,53 +188,46 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 	 */
 	const busy = pending !== null;
 	/*
-	 * LIVE IS THE STORE'S NON-TERMINAL SET, in the store's own order (oldest
-	 * first): the oldest record is the first to expire, and a surface that
-	 * re-sorted would disagree with the CLI's listing about which comes first.
+	 * THE TWO SETS, in the store's own order (oldest first) and nothing re-sorted:
+	 * the oldest record is the first to expire, and a surface that re-sorted would
+	 * disagree with the CLI's listing.
 	 */
-	const live = useMemo(
-		() => rows.filter((row) => isOpenApproval(row.state)),
+	const waiting = useMemo(
+		() => rows.filter((row) => isWaitingApproval(row.state)),
+		[rows],
+	);
+	const records = useMemo(
+		() => rows.filter((row) => !isWaitingApproval(row.state)),
 		[rows],
 	);
 
-	const [resolved, setResolved] = useState<ResolvedEntry[]>([]);
-	const previousLive = useRef<Map<string, string>>(new Map());
-	useEffect(() => {
-		const liveNow = new Map<string, string>();
-		for (const row of live) liveNow.set(row.approvalId, approvalSubject(row));
-		const additions: ResolvedEntry[] = [];
-		for (const [id, subject] of previousLive.current) {
-			if (liveNow.has(id)) continue;
-			const row = rows.find((candidate) => candidate.approvalId === id);
-			const state = row?.state ?? "";
-			// Only a TERMINAL reading is a reason: a row that vanished from the
-			// answer without one (pruned mid-view) says nothing, because inventing a
-			// reason would be a claim this read did not make.
-			if (state === "connected" || state === "denied" || state === "expired") {
-				additions.push({
-					key: `${id}:${state}`,
-					text: `${subject} — ${resolvedWord(state)}`,
-				});
-			}
-		}
-		if (additions.length) {
-			setResolved((held) => [...held, ...additions].slice(-3));
-		}
-		previousLive.current = liveNow;
-	}, [live, rows]);
+	/*
+	 * THE RECORDS SECTION'S OPEN STATE, in three parts: the reader's toggle wins;
+	 * absent a choice it follows the data — open while a `failed` record is inside
+	 * (the store's state "a person should not miss"), closed otherwise. The
+	 * override belongs to the visit rather than to a render, so a poll that keeps
+	 * delivering the same failed record cannot re-open a section the reader closed.
+	 */
+	const [recordsChoice, setRecordsChoice] = useState<boolean | null>(null);
+	const recordsOpen =
+		recordsChoice ?? records.some((row) => row.state === "failed");
 
 	/*
-	 * A REFUSAL ATTACHES TO ITS RECORD when the record is still live; otherwise
-	 * it renders under the list, because the refusal's own settle refetch is
-	 * exactly what can carry a record out of the live set (a conflict or an
-	 * expiry), and the sentence is then the only trace of the attempted answer.
+	 * A REFUSAL ATTACHES TO ITS RECORD only while that record is DRAWN — the card
+	 * while it waits, a records row while the section is open. Unattached it
+	 * renders under the list (below), which is also where a conflict or an expiry
+	 * that carried the record out of the read entirely leaves it.
 	 */
 	const refusalAttached =
 		refusal !== null &&
-		live.some((row) => row.approvalId === refusal.approvalId);
+		rows.some(
+			(row) =>
+				row.approvalId === refusal.approvalId &&
+				(isWaitingApproval(row.state) || recordsOpen),
+		);
 
-	// Nothing to say, say nothing: no records, no memory, no failure, no refusal.
-	if (live.length === 0 && resolved.length === 0 && !error && !refusal)
+	// Nothing to say, say nothing: no prompt, no record, no failure, no refusal.
+	if (waiting.length === 0 && records.length === 0 && !error && !refusal)
 		return null;
 
 	return (
@@ -237,9 +239,9 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 			<div className="flex flex-wrap items-center gap-2">
 				<ShieldCheck aria-hidden="true" className="size-4 text-ink-muted" />
 				<h2 className="text-body-sm text-ink">Approvals</h2>
-				{live.length > 0 && (
+				{waiting.length > 0 && (
 					<span className="text-meta text-ink-dim">
-						{live.length === 1 ? "1 waiting" : `${live.length} waiting`}
+						{waiting.length === 1 ? "1 waiting" : `${waiting.length} waiting`}
 					</span>
 				)}
 			</div>
@@ -253,9 +255,9 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 				</div>
 			)}
 
-			{live.length > 0 && (
+			{waiting.length > 0 && (
 				<ul className="flex flex-col divide-y divide-hairline">
-					{live.map((row) => (
+					{waiting.map((row) => (
 						<MeshApprovalCard
 							key={row.approvalId}
 							row={row}
@@ -272,21 +274,49 @@ export const MeshApprovalsTray: FC<MeshApprovalsTrayProps> = ({
 
 			{refusal && !refusalAttached && <MeshDecisionRefusal refusal={refusal} />}
 
-			{resolved.length > 0 && (
-				<ul
-					className="flex flex-col gap-0.5 text-meta text-ink-dim"
-					data-tour-tag="mesh-approvals-resolved"
+			{/*
+			 * THE RECORDS SECTION. `Disclosure` is the app's one disclosure idiom
+			 * (branding § Disclosure), so the toggle, the chevron swap and the
+			 * `aria-expanded` state are the primitive's — and its controlled form is
+			 * what lets the failure default above coexist with the reader's own choice.
+			 */}
+			{records.length > 0 && (
+				<Disclosure
+					open={recordsOpen}
+					onOpenChange={setRecordsChoice}
+					chevronClassName="text-ink-dim"
+					summary={
+						<span className="text-meta">Records ({records.length})</span>
+					}
 				>
-					{resolved.map((entry) => (
-						<li key={entry.key}>{entry.text}</li>
-					))}
-				</ul>
+					<ul
+						className="flex flex-col divide-y divide-hairline"
+						data-tour-tag="mesh-approvals-records"
+					>
+						{records.map((row) => (
+							<MeshApprovalCard
+								key={row.approvalId}
+								row={row}
+								pending={
+									pending?.approvalId === row.approvalId ? pending : null
+								}
+								busy={busy}
+								refusal={
+									refusal?.approvalId === row.approvalId ? refusal : null
+								}
+								onDecide={onDecide}
+								nowSeconds={nowSeconds}
+								networkNames={networkNames}
+							/>
+						))}
+					</ul>
+				</Disclosure>
 			)}
 		</section>
 	);
 };
 
-/** One open record, as the card that asks or reports. */
+/** One record, as the card that asks or reports. */
 const MeshApprovalCard: FC<{
 	row: MeshApprovalRow;
 	/** The in-flight decision when it is THIS record's, for the waiting cue. */
@@ -297,16 +327,17 @@ const MeshApprovalCard: FC<{
 	refusal: { code: string; sentence: string } | null;
 	onDecide: (approvalId: string, decision: ApprovalDecision) => void;
 	nowSeconds: number;
-	/** Id -> name, for the join chip (UX round 1, U1); absent until the mesh read lands. */
+	/** Id -> name, for the summary's join clause (UX round 1, U1); absent until the mesh read lands. */
 	networkNames?: ReadonlyMap<string, string>;
 }> = ({ row, pending, busy, refusal, onDecide, nowSeconds, networkNames }) => {
+	const waiting = isWaitingApproval(row.state);
+	const summary = approvalSummary(row, networkNames);
+	const entries = approvalScopeEntries(row, networkNames);
 	const where = approvalWhereLabel(row);
 	const hostKey = approvalHostKeyLabel(row);
 	const requester = approvalRequesterLabel(row);
-	const scopes = approvalScopeLabels(row, networkNames);
-	const glosses = approvalScopeGlosses(row);
 	const remaining = approvalRemainingLabel(row.expiresAt, nowSeconds);
-	const hint = stateHint(row.state);
+	const hints = stateHints(row.state);
 	const canApprove = canApproveApproval(row.state);
 	const canDeny = canDenyApproval(row.state);
 	return (
@@ -318,68 +349,24 @@ const MeshApprovalCard: FC<{
 				<Badge variant={chipVariant(row.state)}>
 					{approvalStateLabel(row.state)}
 				</Badge>
-				<span className="text-body-sm text-ink">{approvalTitle(row)}</span>
 				<div className="grow" />
 				{remaining && (
 					<span className="text-meta text-ink-dim">{remaining}</span>
 				)}
 			</div>
 
-			{(where || hostKey) && (
-				<p className="text-meta text-ink-muted">
-					{where && <span>{where}</span>}
-					{where && hostKey && <span> · </span>}
-					{hostKey && <span className="font-mono">{hostKey}</span>}
-				</p>
-			)}
-
-			{scopes.length > 0 && (
-				<ul className="flex flex-wrap gap-1">
-					{scopes.map((scope) => (
-						<li key={scope}>
-							{/* The consequence-bearing scopes wear `attention` so they are not
-							    read as ordinary scopes (design round 1, D1). */}
-							<Badge variant={approvalScopeTone(scope)}>{scope}</Badge>
-						</li>
-					))}
-				</ul>
-			)}
-
-			{requester && <p className="text-meta text-ink-dim">{requester}</p>}
-
 			{/*
-			 * WHAT EACH TRUST-BEARING SCOPE MEANS (UX round 1, U2). The card's single
-			 * sentence explains the GESTURE; nothing explained the scopes, and the two
-			 * the design made salient are exactly the two a non-expert cannot read.
+			 * THE ONE LINE OF PLAIN LANGUAGE (operator round, 2026-10-03). Everything
+			 * below it is a control or the Details disclosure; the ask itself is this
+			 * sentence, and it is built from the record's own scopes so the summary
+			 * cannot promise less than the consequences show.
 			 */}
-			{glosses.length > 0 && (
-				<dl
-					className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
-					data-tour-tag="mesh-approval-scope-glosses"
-				>
-					{glosses.map((entry) => (
-						<Fragment key={entry.term}>
-							<dt className="text-ink-muted">{entry.term}</dt>
-							<dd>{entry.gloss}</dd>
-						</Fragment>
-					))}
-				</dl>
-			)}
-
-			{/* Provenance above, consequence here, as its own labelled gloss - the
-			    house shape for a consent surface (design round 1, D2). */}
-			{hint && (
-				<dl
-					className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta"
-					data-tour-tag="mesh-approval-consequence"
-				>
-					<dt className="text-ink-muted">{stateHintTerm(row.state)}</dt>
-					{/* The gloss shares the term's register (design round 2, D13): at
-					    `ink-dim` the row read as one more line of metadata rather than
-					    as the consequence it is. */}
-					<dd className="text-ink-muted">{hint}</dd>
-				</dl>
-			)}
+			<p
+				className="text-body-sm text-ink"
+				data-tour-tag="mesh-approval-summary"
+			>
+				{summary}
+			</p>
 
 			{(canApprove || canDeny) && (
 				<div className="flex flex-wrap items-center gap-2">
@@ -396,13 +383,17 @@ const MeshApprovalCard: FC<{
 					)}
 					{canDeny && (
 						<Button
-							variant={canApprove ? "ghost" : "secondary"}
+							variant="ghost"
 							size="sm"
 							disabled={busy}
 							onClick={() => onDecide(row.approvalId, "deny")}
-							data-tour-tag="mesh-approval-deny"
+							/* The record's one remaining write, named by its consequence (see
+							   `recordActionLabel`): `Deny` only while the record still WAITS. */
+							data-tour-tag={
+								waiting ? "mesh-approval-deny" : "mesh-approval-stop"
+							}
 						>
-							Deny
+							{waiting ? "Deny" : recordActionLabel(row.state)}
 						</Button>
 					)}
 					{pending && (
@@ -414,6 +405,59 @@ const MeshApprovalCard: FC<{
 					)}
 				</div>
 			)}
+
+			{/*
+			 * DETAIL BEHIND A DISCLOSURE (operator round, 2026-10-03). The consequence
+			 * list, the provenance lines and the state glosses used to be the card's
+			 * always-visible body; they are the reference for the sentence above, one
+			 * click away, and their order keeps the CLI's "what / where / who"
+			 * (`network/cli.py::_approval_lines`).
+			 */}
+			<Disclosure
+				chevronClassName="text-ink-dim"
+				summary={<span className="text-meta">Details</span>}
+			>
+				{entries.length > 0 && (
+					<dl
+						className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
+						data-tour-tag="mesh-approval-consequences"
+					>
+						{entries.map((entry) => (
+							<Fragment key={entry.term}>
+								<dt className="text-ink-muted">{entry.term}</dt>
+								<dd>{entry.consequence}</dd>
+							</Fragment>
+						))}
+					</dl>
+				)}
+
+				{(where || hostKey) && (
+					<p className="text-meta text-ink-muted">
+						{where && <span>{where}</span>}
+						{where && hostKey && <span> · </span>}
+						{hostKey && <span className="font-mono">{hostKey}</span>}
+					</p>
+				)}
+
+				{requester && <p className="text-meta text-ink-dim">{requester}</p>}
+
+				{hints.length > 0 && (
+					<dl
+						className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta"
+						data-tour-tag="mesh-approval-consequence"
+					>
+						{hints.map((entry) => (
+							<Fragment key={entry.term}>
+								<dt className="text-ink-muted">{entry.term}</dt>
+								{/* The gloss shares the term's register (design round 2, D13): at
+								    `ink-dim` the row read as one more line of metadata rather than
+								    as the consequence it is. */}
+								<dd className="text-ink-muted">{entry.text}</dd>
+							</Fragment>
+						))}
+					</dl>
+				)}
+			</Disclosure>
 
 			{refusal && <MeshDecisionRefusal refusal={refusal} />}
 		</li>
