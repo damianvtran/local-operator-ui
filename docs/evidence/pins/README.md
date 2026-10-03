@@ -296,7 +296,9 @@ byte-identical to the pre-change panel under `cmp` on this head, as before.
 
 The `3afcc732f` row above is kept as history rather than deleted: it is what the set's older
 frames were shot at, and the statement "the frames in this directory are the shipped tree's"
-is now carried by `manifest.json`'s `srcTree`/`scriptsTree` stamps rather than by naming a fold.
+is carried by `manifest.json`'s own counts and citations rather than by naming a fold —
+the file stamps what it can be checked against (`frames` outside its declared sets, the
+story and theme counts, the pass tallies), not a hash of the trees.
 
 ## The move a pin makes, and what the panel does about it
 
