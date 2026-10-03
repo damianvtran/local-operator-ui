@@ -2357,8 +2357,7 @@ export const SearchIndexSearchingTimeline: Story = {
 			);
 		}
 		await poll(
-			() =>
-				document.querySelector('[data-testid="project-timeline"]') === null,
+			() => document.querySelector('[data-testid="project-timeline"]') === null,
 			"no Timeline panel beside the in-flight line",
 		);
 	}),

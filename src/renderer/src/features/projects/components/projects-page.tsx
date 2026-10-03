@@ -1045,16 +1045,16 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					!noMatch &&
 					!searchPendingEmpty &&
 					view === "timeline" && (
-					<ProjectTimeline
-						items={timelineItems}
-						nowMs={nowMs}
-						onOpen={(item) => void navigate(`/projects/${item.project.id}`)}
-						pendingDetails={pendingDetails}
-						failedDetails={failedDetails}
-						onRetryDetails={retryDetails}
-						teamLabelFor={teamLabelFor}
-					/>
-				)}
+						<ProjectTimeline
+							items={timelineItems}
+							nowMs={nowMs}
+							onOpen={(item) => void navigate(`/projects/${item.project.id}`)}
+							pendingDetails={pendingDetails}
+							failedDetails={failedDetails}
+							onRetryDetails={retryDetails}
+							teamLabelFor={teamLabelFor}
+						/>
+					)}
 			</div>
 
 			<ProjectDeleteDialog
