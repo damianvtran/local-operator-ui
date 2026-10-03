@@ -37,6 +37,22 @@
  * Usage:
  *   node scripts/console-host-proof.mjs [--keep] [--out <dir>]
  *   node scripts/console-host-proof.mjs --packaged "/Applications/Local Operator.app"
+ *   node scripts/console-host-proof.mjs --pair <port>
+ *
+ * `--pair <port>` LETS THIS RIG SUPPLY THE PRECONDITION THE PANE CELLS NEED, by
+ * standing up a daemon it owns and handing the app that daemon's own serve record.
+ * The app discovers it in this run's scratch config root and pairs through the same
+ * claim route it uses for a daemon the operator started (`attach-frame-evidence.mjs`
+ * is the committed proof of that route). The tree must be BUILT for the same
+ * address, because the renderer's copy is inlined at build time:
+ *
+ *     VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:<port> pnpm build
+ *
+ * Without this flag the pane cells block exactly as before (no backend to serve a
+ * conversation) and every other cell still runs; with it, a run from a clean
+ * profile is a full pass. The port is refused at 1111, the operator's own daemon,
+ * and the daemon runs with this run's scratch HOME/config/logs, so nothing it does
+ * can reach the operator's state.
  *
  * The packaged mode is the second half of P13: it asserts the two packing traps in a
  * tree electron-builder produced (`stat -f %Sp` on the unpacked helper, and the
@@ -70,6 +86,9 @@ import { withTelemetryOff } from "./telemetry-off.mjs";
 const argv = process.argv.slice(2);
 const KEEP = argv.includes("--keep");
 const PACKAGED = argValue("--packaged");
+/** The port `--pair` names for this run's own daemon; refused at 1111 (the
+ * operator's own) and validated in `main`. */
+const PAIR_PORT = argValue("--pair");
 const ROOT = process.cwd();
 
 /** The value after a flag, or undefined. Named `argValue` rather than `valueOf`,
@@ -191,8 +210,12 @@ const HISTORY_DIR = join(CONFIG_DIR, "run", "ui-console", "history");
  * readable name, which is why the pane could not be mounted: `--open-session=proof-session`
  * validated to nothing, the window opened on the catalogue, and the run's own diagnostic
  * showed `activeSessionId: null` with no `console-pane` element in the DOM (Q-5).
+ *
+ * A `let`, because `--pair` REPLACES it with the id of the conversation this run seeds
+ * into its own daemon: the app shows the conversation the DAEMON knows, and the console
+ * surfaces this rig creates have to belong to that same id.
  */
-const SESSION = "abcdef012345";
+let SESSION = "abcdef012345";
 
 const transcript = [];
 let failures = 0;
@@ -446,6 +469,115 @@ async function stopApp() {
 	app = null;
 	stopping.flush();
 	await stopping.stop();
+}
+
+/* --------------------------------------------------------- the paired daemon */
+
+/**
+ * This run's own daemon (`--pair <port>`), or null.
+ *
+ * WHY THE RIG STARTS ONE AT ALL, when its docstring used to say pairing was
+ * outside its reach: the pane cells need a conversation the APP can read, and an
+ * app reads conversations from a backend it is paired with. `--pair` makes this
+ * run supply that backend instead of hoping the machine has one: a `lop serve`
+ * child on this run's own scratch HOME/config/logs, whose own serve record the
+ * app discovers in the same scratch config root - the claim route a daemon
+ * started by a TUI uses, and the route `attach-frame-evidence.mjs` already runs
+ * in CI. The operator's daemon (1111) is refused rather than borrowed, so a bad
+ * argument cannot point this rig at the live server.
+ */
+let daemon = null;
+
+/** The conversation this run seeds into its own daemon, so the app has one to
+ * show. Returns its id (12 hex characters, the shape the app's launch intent
+ * validates). */
+function seedPairedConversation() {
+	const seeded = execFileSync(
+		process.execPath,
+		["scripts/seed-paging-session.mjs", CONFIG_DIR, "8", "console close"],
+		{ cwd: ROOT, env: { ...process.env, HOME: HOME_DIR }, encoding: "utf8" },
+	);
+	const { sessionId } = JSON.parse(seeded);
+	return sessionId;
+}
+
+async function startPairedDaemon(port) {
+	/*
+	 * THE VALUES THE FLAGS IMPLY, WRITTEN BEFORE THE DAEMON STARTS: a fresh config
+	 * root gets no hosting from `--hosting`, and the trap `docs/agent-driver.md`
+	 * records - every turn dying in the daemon with HostingNotConfiguredError -
+	 * costs a whole pass when it fires. This flow needs no provider at all; the
+	 * values are what make the daemon's session and desktop routes normal.
+	 */
+	writeFileSync(
+		join(CONFIG_DIR, "config.yml"),
+		"values:\n  hosting: test\n  model_name: mock-model\n",
+	);
+	const env = withNotificationsOff({
+		...process.env,
+		HOME: HOME_DIR,
+		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
+		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
+		VITE_LOCAL_OPERATOR_API_URL: `http://127.0.0.1:${port}`,
+	});
+	withTelemetryOff(env);
+	for (const key of Object.keys(env)) {
+		if (key.startsWith("CMUX_") || key.startsWith("LOP_")) delete env[key];
+	}
+	const child = spawn(
+		"lop",
+		[
+			"serve",
+			"--host",
+			"127.0.0.1",
+			"--port",
+			String(port),
+			"--hosting",
+			"test",
+			"--model",
+			"mock-model",
+		],
+		{ env, cwd: ROOT, stdio: ["ignore", "pipe", "pipe"], detached: true },
+	);
+	const stream = [];
+	child.stdout.on("data", (chunk) => stream.push(chunk.toString()));
+	child.stderr.on("data", (chunk) => stream.push(chunk.toString()));
+	const record = join(CONFIG_DIR, "run", "serve", `${child.pid}.json`);
+	const started = Date.now();
+	while (!existsSync(record) && Date.now() - started < 60_000) {
+		await new Promise((resolve) => setTimeout(resolve, 250));
+	}
+	if (!existsSync(record)) {
+		throw new Error(
+			`the paired daemon wrote no serve record in 60 s; its output follows\n${stream.join("").slice(-2000)}`,
+		);
+	}
+	return { child, record, text: () => stream.join("") };
+}
+
+async function stopDaemon() {
+	if (!daemon) return;
+	const stopping = daemon;
+	daemon = null;
+	await new Promise((resolve) => {
+		const killTree = (signal) => {
+			try {
+				process.kill(-stopping.child.pid, signal);
+			} catch {
+				try {
+					stopping.child.kill(signal);
+				} catch {
+					/* already dead */
+				}
+			}
+		};
+		stopping.child.once("exit", resolve);
+		killTree("SIGTERM");
+		setTimeout(() => {
+			killTree("SIGKILL");
+			resolve();
+		}, 5000);
+	});
 }
 
 function pickDevtoolsPort() {
@@ -940,7 +1072,17 @@ async function mountConversation(timeoutMs) {
 					state: { activeSessionId: SESSION, activeDraftKey: null },
 					version: 0,
 				}),
-			)}); } catch (error) {}`,
+			)});
+			/*
+			 * THE FIRST-RUN WIZARD, MARKED DONE, and it is not this rig's subject: it is a
+			 * MODAL, and a modal swallows every press and sits in front of every frame. A
+			 * paired daemon on a scratch config is a first-run user by construction, so
+			 * without this flag the pane cells photograph the wizard instead of the pane
+			 * (measured 2026-10-02: "Connect a model provider" was the first role=dialog
+			 * element in the DOM, and every dialog read found it). The shape is
+			 * renderer-driver.mjs's seedOnboardingComplete, key and all.
+			 */
+			window.localStorage.setItem("onboarding-storage", JSON.stringify({ state: { isModalComplete: true, isTourComplete: true, currentStep: "create_agent" }, version: 0 })); } catch (error) {}`,
 		});
 		await call("Page.reload", { ignoreCache: false });
 		const started = Date.now();
@@ -963,6 +1105,252 @@ async function mountConversation(timeoutMs) {
 		}
 	});
 }
+
+/**
+ * The element's own `click()`, for the pane's own controls.
+ *
+ * Measured above (the pane cells): a compositor press does not reach a window that is
+ * never shown, and the element's own `click()` is the path that runs; `openedByPress`
+ * records which one did where that matters.
+ */
+const pressDom = (selector) =>
+	rendererEvaluate(
+		`(() => { const el = document.querySelector('${selector}'); if (!el) return false; el.click(); return true; })()`,
+	);
+
+/** Put the keyboard into a control the way a keyboard user arrives at it, so a removal
+ * cell can observe where the pane hands the keyboard afterwards. `focus()` alone does
+ * not arm `:focus-visible`; the `focusVisible` option does, which is the state the
+ * ring frame photographs (Chromium honours it). */
+const focusDom = (selector) =>
+	rendererEvaluate(
+		`(() => { const el = document.querySelector('${selector}'); if (!el) return false; el.focus({ focusVisible: true }); return document.activeElement === el; })()`,
+	);
+
+/** Which row's tab the keyboard is in right now, off the live document. */
+const focusedSurface = () =>
+	rendererEvaluate(`(() => {
+		const active = document.activeElement;
+		if (!active) return null;
+		const row = active.closest ? active.closest('[data-surface]') : null;
+		if (row) return row.getAttribute('data-surface');
+		return active.tagName.toLowerCase();
+	})()`);
+
+/** A real Enter through Chromium's own input pipeline. Unlike a press, a KEY event
+ * reaches the never-shown window (measured, review round 2), and on a focused button
+ * it fires the platform's own activation - which is what lets the close run as a
+ * keyboard user's, so the app's own focus writes carry the keyboard heuristic and
+ * the landing paints its ring with no device of the rig's. */
+const pressEnter = async () => {
+	await withRendererSession((call) =>
+		call("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+			nativeVirtualKeyCode: 13,
+			text: "\r",
+		}),
+	);
+	await sleep(60);
+	await withRendererSession((call) =>
+		call("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+			nativeVirtualKeyCode: 13,
+		}),
+	);
+};
+
+/** The close control's reveal, focus state and RING GEOMETRY against the strip's own
+ * clip (design round 1, D2: a `focus-visible` outline 3px beyond a 28px button that
+ * sits in a `px-2 py-1` scrolling strip is exactly how a ring gets trimmed). */
+const closeFocusReading = (surface) =>
+	rendererEvaluate(`(() => {
+		const row = document.querySelector('[data-surface="${surface.replace(/"/g, '\\"')}"]');
+		const close = row ? row.querySelector('[data-tour-tag="console-surface-close"]') : null;
+		const strip = document.querySelector('[role="tablist"]');
+		if (!close || !strip) return null;
+		const box = close.getBoundingClientRect();
+		const clip = strip.getBoundingClientRect();
+		const style = getComputedStyle(close);
+		const reach = (parseFloat(style.outlineWidth) || 0) + (parseFloat(style.outlineOffset) || 0);
+		return {
+			focused: document.activeElement === close,
+			focusVisible: close.matches(':focus-visible'),
+			opacity: style.opacity,
+			outline: style.outlineStyle + ' ' + style.outlineWidth + ' offset ' + style.outlineOffset,
+			ring: { top: box.top - reach, bottom: box.bottom + reach, left: box.left - reach, right: box.right + reach },
+			clip: { top: clip.top, bottom: clip.bottom, left: clip.left, right: clip.right },
+			fits: box.top - reach >= clip.top && box.bottom + reach <= clip.bottom && box.left - reach >= clip.left && box.right + reach <= clip.right,
+		};
+	})()`);
+
+/** The successor TAB's ring, read the way `closeFocusReading` reads the control's: the
+ * tab carries no outline utility of its own (`console-pane.tsx`), so `index.css`'s
+ * global focus-visible rule applies - 2px at a 2px offset, a 4px reach whose outer box
+ * sits flush against the strip's clip (measured: 72 vs 72, 0px of margin, nothing
+ * trimmed). The landing cell asserts it (design round 2, D6). */
+const tabRingReading = (surface) =>
+	rendererEvaluate(`(() => {
+		const row = document.querySelector('[data-surface="${surface.replace(/"/g, '\\"')}"]');
+		const tab = row ? row.querySelector('[role="tab"]') : null;
+		const strip = document.querySelector('[role="tablist"]');
+		if (!tab || !strip) return null;
+		const box = tab.getBoundingClientRect();
+		const clip = strip.getBoundingClientRect();
+		const style = getComputedStyle(tab);
+		const reach = (parseFloat(style.outlineWidth) || 0) + (parseFloat(style.outlineOffset) || 0);
+		return {
+			isTab: document.activeElement === tab,
+			focusVisible: tab.matches(':focus-visible'),
+			outline: style.outlineStyle + ' ' + style.outlineWidth + ' offset ' + style.outlineOffset,
+			reach,
+			ring: { top: box.top - reach, bottom: box.bottom + reach, left: box.left - reach, right: box.right + reach },
+			clip: { top: clip.top, bottom: clip.bottom, left: clip.left, right: clip.right },
+			fits: box.top - reach >= clip.top && box.bottom + reach <= clip.bottom && box.left - reach >= clip.left && box.right + reach <= clip.right,
+		};
+	})()`);
+
+/** A pointer MOVE at a control's centre through Chromium's own input pipeline - the
+ * same path measured above NOT to reach a never-shown window for presses; whether a
+ * move does is what this returns. */
+const hoverDom = async (selector) => {
+	const point = await rendererEvaluate(
+		`(() => { const el = document.querySelector('${selector}'); if (!el) return null; const box = el.getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + box.height / 2 }; })()`,
+	);
+	if (!point) return null;
+	await withRendererSession((call) =>
+		call("Input.dispatchMouseEvent", {
+			type: "mouseMoved",
+			x: point.x,
+			y: point.y,
+		}),
+	);
+	await sleep(220);
+	return rendererEvaluate(
+		`(() => { const el = document.querySelector('${selector}'); if (!el) return null; return { hovered: el.matches(':hover'), opacity: getComputedStyle(el).opacity }; })()`,
+	);
+};
+
+/** The strip's rows as the live DOM has them: each close control's accessible name,
+ * computed opacity (the reveal) and box. A reader for the #754 cells, both of which
+ * (the close block and the restart block) call it. */
+const rowsReading = () =>
+	rendererEvaluate(`(() => {
+		return [...document.querySelectorAll('[data-surface]')].map((row) => {
+			const close = row.querySelector('[data-tour-tag="console-surface-close"]');
+			const box = close ? close.getBoundingClientRect() : null;
+			return {
+				surface: row.getAttribute('data-surface'),
+				label: close ? close.getAttribute('aria-label') : null,
+				opacity: close ? getComputedStyle(close).opacity : null,
+				width: box ? box.width : null,
+				height: box ? box.height : null,
+				/*
+				 * The keyboard question, read off the element: a real button is in the tab order
+				 * and activates on Enter/Space by the platform's own behaviour, which is what
+				 * "ready for keyboard" means; a div with a click handler would answer neither,
+				 * and the next cell would name it.
+				 */
+				tag: close ? close.tagName.toLowerCase() : null,
+				tabIndex: close ? close.tabIndex : null,
+			};
+		});
+	})()`);
+
+/** Which row the strip says is selected, read from the tab the pane marks
+ * `aria-selected` — the same fact the eye reads, not a store value, so the cells
+ * below assert what a user sees rather than what the pane believes. */
+const selectedSurface = () =>
+	rendererEvaluate(`(() => {
+		const tab = document.querySelector('[data-surface] [role="tab"][aria-selected="true"]');
+		return tab ? tab.closest('[data-surface]').getAttribute('data-surface') : null;
+	})()`);
+
+/** The close question as the DOM has it (Radix's portal included).
+ *
+ * FOUND BY ITS CONFIRM ACTION, not as the first `role="dialog"`: the app can have
+ * other dialogs up (a first-run wizard is one), and a reader that took whichever
+ * dialog was first reported the wrong text and made "the question is gone" fail
+ * on a dialog that was never the close question. */
+const questionReading = () =>
+	rendererEvaluate(`(() => {
+		const dialog = [...document.querySelectorAll('[role="dialog"]')].find(
+			(candidate) => candidate.querySelector('[data-confirm-action]'),
+		);
+		if (!dialog) return null;
+		return {
+			text: (dialog.textContent || '').replace(/\\s+/g, ' ').trim().slice(0, 200),
+			cancel: Boolean(dialog.querySelector('[data-cancel-action]')),
+			confirm: Boolean(dialog.querySelector('[data-confirm-action]')),
+		};
+	})()`);
+
+const waitForQuestion = async (timeoutMs = 10_000) => {
+	const started = Date.now();
+	for (;;) {
+		const found = await questionReading().catch(() => null);
+		if (found) return found;
+		if (Date.now() - started > timeoutMs) return null;
+		await sleep(150);
+	}
+};
+
+const surfacesOf = async (state) =>
+	(await rpcOk(state, "console_list", { session_id: SESSION })).surfaces;
+
+/** A surface the USER asked for, through the pane's own `+` control. */
+const createUserSurface = async (state) => {
+	const before = new Set((await surfacesOf(state)).map((row) => row.surface));
+	await pressDom('[data-tour-tag="console-new-surface"]');
+	const started = Date.now();
+	for (;;) {
+		const fresh = (await surfacesOf(state)).find(
+			(row) => !before.has(row.surface),
+		);
+		if (fresh) return fresh.surface;
+		if (Date.now() - started > 15_000) {
+			throw new Error("the pane's + never produced a user surface");
+		}
+		await sleep(250);
+	}
+};
+
+/** The close control's selector for one surface. */
+const closeSelectorFor = (surface) =>
+	`[data-surface="${surface.replace(/"/g, '\\"')}"] [data-tour-tag="console-surface-close"]`;
+
+/** One close control's accessible name ends with its tablist position (#754, UX
+ * round 1 U4): `Close zsh, tab 2 of 4`. Declared once so the label cell and the
+ * screen reader agree on the form. */
+const CLOSE_LABEL_POSITION = /, tab \d+ of \d+$/;
+
+/** A window-level frame through CDP, for moments the pane's own crop cannot show
+ * (the close question is a modal over the whole window, not an xterm frame). */
+const captureAppFrame = async (name) => {
+	const shot = await withRendererSession((call) =>
+		call("Page.captureScreenshot", { format: "png" }),
+	);
+	const png = Buffer.from(shot.data, "base64");
+	const file = join(OUT_DIR, name);
+	writeFileSync(file, png);
+	record(`frame ${name}`, {
+		file,
+		bytes: png.length,
+		size: pngSize(png),
+		viewport: await rendererEvaluate(
+			"(() => ({ width: innerWidth, height: innerHeight, dpr: devicePixelRatio }))()",
+		),
+		sha256: createHash("sha256").update(png).digest("hex"),
+	});
+};
+
+/** The history file's own name for a surface or session (`history.ts`'s `fileStem`). */
+const fileStemOf = (value) => value.replace(/[^A-Za-z0-9_-]/g, "_");
 
 /**
  * A REAL PRESS at a page coordinate, through Chromium's own input pipeline.
@@ -1139,6 +1527,34 @@ async function main() {
 	);
 	const helperPresent = existsSync(devHelper);
 	if (helperPresent) chmodSync(devHelper, 0o644);
+
+	/*
+	 * THE PANE CELLS' PRECONDITION, supplied when the run was asked for it
+	 * (`--pair <port>`): this rig's own daemon, seeded with one conversation, its
+	 * serve record left in this run's scratch config root so the app pairs through
+	 * the same claim route a TUI-started daemon uses. Started BEFORE the app,
+	 * because discovery happens at boot. 1111 is refused: that is the operator's
+	 * own daemon and borrowing it is the thing the isolation exists for.
+	 */
+	if (PAIR_PORT !== undefined) {
+		const port = Number(PAIR_PORT);
+		if (!Number.isInteger(port) || port <= 0 || port > 65_535) {
+			throw new Error(
+				`--pair must name a port, got ${JSON.stringify(PAIR_PORT)}`,
+			);
+		}
+		if (port === 1111) {
+			throw new Error("--pair refuses 1111: that is the operator's own daemon");
+		}
+		mkdirSync(LOG_DIR, { recursive: true });
+		SESSION = seedPairedConversation();
+		daemon = await startPairedDaemon(port);
+		check(
+			"--pair supplied a daemon and a conversation for the pane cells",
+			existsSync(daemon.record),
+			{ port, session: SESSION, record: daemon.record },
+		);
+	}
 
 	app = await launchApp();
 	const state = await waitForState();
@@ -1474,6 +1890,11 @@ async function main() {
 	 * cells that need the pane are BLOCKED BY NAME, every other cell still runs, the summary
 	 * counts what actually ran, and the run exits non-zero — a partial pass can no longer be
 	 * reported as a pass.
+	 *
+	 * `--pair` SUPPLIES THAT PRECONDITION RATHER THAN FAKING IT (see the header): a real
+	 * `lop serve` on this run's own scratch root, its serve record where the app looks for
+	 * one, and the same claim route a TUI-started daemon pairs through. The blocked path
+	 * above remains for a run without the flag.
 	 */
 	const mounted = await mountConversation(Math.max(30_000, WAIT_MS ?? 0));
 	const paneAvailable = mounted !== null && mounted.failed !== true;
@@ -1623,6 +2044,526 @@ async function main() {
 				bytes: png.length,
 			},
 		);
+	}
+
+	// ---- #754: the per-surface close path -----------------------------------
+	/*
+	 * The strip's own close control, driven the way the pane's other controls are: the
+	 * element's own `click()` (measured above: a compositor press does not reach a
+	 * never-shown window, so the DOM path is the one that runs), and the question's buttons
+	 * pressed the same way.
+	 *
+	 * THE SURFACES ARE THE USER'S OWN, created through the pane's `+`, because the two
+	 * behaviours under test are origin-dependent: a user's surface is retained (design
+	 * 7.2), and that is what lets the restart cells tell a DISMISSAL from a CLOSE — the
+	 * close keeps the record for the next launch, the dismissal removes it. An agent's
+	 * surface (`retain: false`) erases that difference.
+	 */
+	let closeCase = null;
+	if (paneAvailable) {
+		// 1. the affordance: on the row, named for the terminal, revealed by state
+		const runningSurface = await createUserSurface(state);
+		await pressDom(`[data-surface="${runningSurface}"] [role="tab"]`);
+		await sleep(300);
+		check(
+			"pressing a tab selects it (#754 leaves select-on-click alone)",
+			(await selectedSurface()) === runningSurface,
+			{ runningSurface, selected: await selectedSurface() },
+		);
+		/*
+		 * THE PANE'S OWN Close console IS NOT THIS CONTROL, and this cell is here to keep
+		 * the two apart: the header's closes the PANE and the surface keeps running (design
+		 * 6.4) - the sentence #754's row control exists beside. It runs FIRST, on the
+		 * running surface the affordance cell then photographs, and the re-open lands the
+		 * pane back on that surface's row.
+		 */
+		await pressDom(
+			'[data-tour-tag="console-pane"] [data-tour-tag="console-pane-close"]',
+		);
+		const paneGoneDeadline = Date.now() + 10_000;
+		let paneGone = false;
+		while (Date.now() < paneGoneDeadline && !paneGone) {
+			paneGone =
+				(await rendererEvaluate(
+					`Boolean(document.querySelector('[data-tour-tag="console-pane"]'))`,
+				)) === false;
+			if (!paneGone) await sleep(200);
+		}
+		const afterPaneClose = await rpcOk(state, "console_status", {
+			surface: runningSurface,
+		});
+		check(
+			"the pane's own Close console still closes the PANE, not the surface (design 6.4)",
+			paneGone === true && afterPaneClose.running === true,
+			{ paneGone, running: afterPaneClose.running },
+		);
+		await pressDom('[data-tour-tag="console-pane-trigger"]');
+		await waitForConsolePane(bounded(null, 30_000));
+		await sleep(300);
+		const reading = await rowsReading();
+		const runningRow = reading.find((row) => row.surface === runningSurface);
+		check(
+			"the strip's close control is on the row, named for its terminal (#754)",
+			typeof runningRow?.label === "string" &&
+				runningRow.label.startsWith("Close ") &&
+				runningRow.width > 0 &&
+				runningRow.height > 0,
+			{ runningSurface, reading },
+		);
+		check(
+			"the control is a real button, so a keyboard reaches it (tab order; Enter activates)",
+			runningRow?.tag === "button" &&
+				typeof runningRow.tabIndex === "number" &&
+				runningRow.tabIndex >= 0,
+			runningRow,
+		);
+		check(
+			"the active row's control is revealed; an inactive row's waits for hover or focus",
+			runningRow?.opacity === "1" &&
+				reading.some(
+					(row) => row.surface !== runningSurface && row.opacity === "0",
+				),
+			reading,
+		);
+		/*
+		 * THE NAME IS UNIQUE ON THE STRIP THE RUN ACTUALLY HAS (UX round 1, U4): two shells
+		 * made two "Close sh" before the position suffix. Every label is read live and the
+		 * set asserted duplicate-free, each carrying its tab position.
+		 */
+		const labelSet = reading
+			.map((row) => row.label)
+			.filter((label) => typeof label === "string");
+		check(
+			"the close controls' accessible names are unique across the strip, each with its tab position (#754, UX round 1 U4)",
+			labelSet.length === reading.length &&
+				new Set(labelSet).size === labelSet.length &&
+				labelSet.every((label) => CLOSE_LABEL_POSITION.test(label)),
+			{ labels: labelSet },
+		);
+		await captureAppFrame("close-affordance.png");
+		/*
+		 * THE REVEAL'S TWO ARMS (design round 1, D2's unphotographed states), captured
+		 * AFTER the affordance frame so the strip it photographs is the pristine one - a
+		 * pointer parked on a row for these cells would leave its reveal in every frame
+		 * that follows. The hover arm is attempted through Chromium's own input pipeline;
+		 * the focus arm is the keyboard's own arrival: `focus({ focusVisible: true })`
+		 * reveals the control through `focus-within` and draws the ring the design round
+		 * asked to see - whose reach is then MEASURED against the strip's overflow clip,
+		 * because a trimmed ring is exactly how the device chip's own D2 went.
+		 */
+		const inactiveRow = reading.find(
+			(row) => row.surface !== runningSurface && typeof row.label === "string",
+		);
+		if (inactiveRow) {
+			const hover = await hoverDom(closeSelectorFor(inactiveRow.surface));
+			check(
+				"an inactive row's hidden control reveals under the pointer (or the window does not receive pointer moves - the press path's own measured limit)",
+				hover === null || hover.hovered === false || hover.opacity === "1",
+				{ surface: inactiveRow.surface, hover },
+			);
+			if (hover?.hovered === true && hover.opacity === "1") {
+				await captureAppFrame("close-hover-reveal.png");
+			}
+			await focusDom(closeSelectorFor(inactiveRow.surface));
+			await sleep(150);
+			const focusReading = await closeFocusReading(inactiveRow.surface);
+			check(
+				"focus reveals the hidden control with the ring drawn, and the ring fits inside the strip's clip (#754, design round 1 D2's focus state)",
+				focusReading !== null &&
+					focusReading.focused === true &&
+					focusReading.focusVisible === true &&
+					focusReading.opacity === "1" &&
+					focusReading.fits === true,
+				focusReading,
+			);
+			await captureAppFrame("close-focus-ring.png");
+			await rendererEvaluate(
+				"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+			);
+			/*
+			 * AND THE POINTER IS PARKED OFF THE ROWS, with an assertion that the strip has
+			 * gone back to its resting state - EVERY inactive control, not merely one of
+			 * them (review round 2, F4: `.some` passes while the pointer still sits on a
+			 * row, because three other inactive rows read 0 beside it), so every later
+			 * frame in this set photographs a strip nobody is pointing at.
+			 */
+			await withRendererSession((call) =>
+				call("Input.dispatchMouseEvent", {
+					type: "mouseMoved",
+					x: 900,
+					y: 400,
+				}),
+			);
+			await sleep(220);
+			const resting = await rowsReading();
+			const restingInactive = resting.filter(
+				(row) => row.surface !== runningSurface,
+			);
+			check(
+				"the pointer is parked off the strip and EVERY inactive control waits again (#754's frames after this one hold a strip nobody points at)",
+				restingInactive.length > 0 &&
+					restingInactive.every((row) => row.opacity === "0"),
+				resting,
+			);
+		}
+
+		// 2. the question, and nothing dead before it is answered
+		/*
+		 * A DIFFERENT ROW IS SELECTED WHILE THE QUESTION IS ASKED, and it stays selected:
+		 * the close control is a SIBLING of the tab (see the row's own note), and this is
+		 * the cell that would catch it becoming a child - a press on it must not become a
+		 * press on the row it lives beside.
+		 */
+		const otherSurface = reading.find(
+			(row) => row.surface !== runningSurface,
+		)?.surface;
+		await pressDom(`[data-surface="${otherSurface}"] [role="tab"]`);
+		await sleep(200);
+		/*
+		 * THE CLOSE IS DRIVEN AS A KEYBOARD'S OWN (design round 2, D6): the control is
+		 * activated by a real Enter through Chromium's input pipeline - a key event DOES
+		 * reach the never-shown window, unlike a press (measured, this round) - so the
+		 * app's later handoff write carries the keyboard heuristic and the tab it lands on
+		 * paints its ring without any device of the rig's.
+		 */
+		await focusDom(closeSelectorFor(runningSurface));
+		await pressEnter();
+		const question = await waitForQuestion();
+		check(
+			"a running surface's close asks first, in the shared dialog's own copy (#754)",
+			typeof question?.text === "string" &&
+				question.text.includes("Close this terminal?") &&
+				question.text.includes(
+					"This ends the program running here and removes its tab.",
+				) &&
+				/*
+				 * AND THE CONDITIONAL REASSURANCE (UX round 1, U6): this surface is a USER's, its
+				 * `retain` is on (design 7.2), so the question says the output is kept - the
+				 * sentence an agent-owned row must NOT get (the render suite's own cell).
+				 */
+				question.text.includes("Its output is kept.") &&
+				question.cancel === true &&
+				question.confirm === true,
+			question,
+		);
+		const statusWhileAsked = await rpcOk(state, "console_status", {
+			surface: runningSurface,
+		});
+		check(
+			"the question signals nothing: the surface still runs, and the other row stays selected",
+			statusWhileAsked.running === true &&
+				(await selectedSurface()) === otherSurface,
+			{
+				running: statusWhileAsked.running,
+				live: statusWhileAsked.live,
+				selected: await selectedSurface(),
+			},
+		);
+		await captureAppFrame("close-question.png");
+
+		// 3. Cancel changes nothing
+		await pressDom("[data-cancel-action]");
+		await sleep(400);
+		const afterCancel = await questionReading();
+		check(
+			"the question's Cancel changes nothing: no dialog, still running, still listed",
+			afterCancel === null &&
+				(await rpcOk(state, "console_status", { surface: runningSurface }))
+					.running === true &&
+				(await surfacesOf(state)).some((row) => row.surface === runningSurface),
+			{ afterCancel },
+		);
+
+		// 4. confirm kills it, and only then
+		const historyLog = join(
+			HISTORY_DIR,
+			fileStemOf(SESSION),
+			`${fileStemOf(runningSurface)}.log`,
+		);
+		check(
+			"a retained user surface has history on disk before the close (the restart cell's discriminant)",
+			existsSync(historyLog),
+			{ historyLog },
+		);
+		await pressDom(`[data-surface="${runningSurface}"] [role="tab"]`);
+		await sleep(200);
+		await focusDom(closeSelectorFor(runningSurface));
+		await pressEnter();
+		const questionAgain = await waitForQuestion();
+		check(
+			"the question opens again after a cancel (the press is repeatable)",
+			questionAgain !== null,
+			questionAgain,
+		);
+		const confirmAt = Date.now();
+		/* The confirm is activated the same way; this is the Enter the landing's ring hangs
+		 * on - the platform's own activation of a focused button, not a synthetic click. */
+		await focusDom("[data-confirm-action]");
+		await pressEnter();
+		let closedList = await surfacesOf(state);
+		const closeDeadline = Date.now() + 20_000;
+		while (
+			closedList.some((row) => row.surface === runningSurface) &&
+			Date.now() < closeDeadline
+		) {
+			await sleep(250);
+			closedList = await surfacesOf(state);
+		}
+		const closedStatus = await rpc(state, "console_status", {
+			surface: runningSurface,
+		});
+		check(
+			"confirming the question kills the surface: gone from the listing, refused by name",
+			closedList.every((row) => row.surface !== runningSurface) &&
+				closedStatus.json?.error?.code === "surface_unavailable",
+			{
+				gone: closedList.every((row) => row.surface !== runningSurface),
+				status: closedStatus.json,
+				elapsedMs: Date.now() - confirmAt,
+			},
+		);
+		/*
+		 * THE DEAD LENS, #754's own acceptance clause: the surface that was SELECTED was the
+		 * one just closed, so the pane must move to a neighbour - `pickActiveSurface`'s own
+		 * fallback - rather than keep a selection that is no longer in the listing.
+		 */
+		const selectionDeadline = Date.now() + 10_000;
+		let selectedAfterClose = await selectedSurface();
+		while (
+			(selectedAfterClose === null || selectedAfterClose === runningSurface) &&
+			Date.now() < selectionDeadline
+		) {
+			await sleep(200);
+			selectedAfterClose = await selectedSurface();
+		}
+		check(
+			"the closed surface's selection moves to a neighbour, never a dead lens (#754)",
+			selectedAfterClose !== null && selectedAfterClose !== runningSurface,
+			{ closed: runningSurface, selectedAfterClose },
+		);
+		/*
+		 * THE HANDOFF (UX round 1, U1): the dialog closed onto a REMOVED opener - the one
+		 * arm the shared primitive cannot answer - so the pane hands the keyboard to the row
+		 * that inherited the lens. `<body>` is the failure this cell exists for.
+		 */
+		let handedOff = null;
+		const handoffDeadline = Date.now() + 10_000;
+		while (Date.now() < handoffDeadline) {
+			handedOff = await focusedSurface();
+			if (handedOff === selectedAfterClose) break;
+			await sleep(200);
+		}
+		check(
+			"after the close the keyboard is in the lens's row, not on the document body (UX round 1, U1)",
+			handedOff === selectedAfterClose,
+			{ selectedAfterClose, handedOff },
+		);
+		/*
+		 * THE LANDING'S RING, READ AND ASSERTED (design round 2, D6; QA round 2, Q-1). The
+		 * close above was driven from the keyboard, so the app's own handoff write arrived
+		 * under the keyboard heuristic and the successor tab's ring is on - `reach` read the
+		 * way the sibling focus cell reads the control's. The tab carries no outline utility
+		 * of its own, so index.css's global 2px-at-2px rule applies: its outer box sits
+		 * flush at the strip's top (72 vs 72 - 0px of margin, nothing trimmed). A ring drawn
+		 * flush is still drawn, and the frame says so.
+		 */
+		const landingRing = await tabRingReading(selectedAfterClose);
+		check(
+			"the keyboard's landing is armed and visible: the successor tab holds focus, `:focus-visible`, and its ring fits the strip's clip (design round 2, D6)",
+			landingRing !== null &&
+				landingRing.isTab === true &&
+				landingRing.focusVisible === true &&
+				landingRing.fits === true,
+			landingRing,
+		);
+		await captureAppFrame("close-closed.png");
+		await rendererEvaluate(
+			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
+		);
+		check(
+			"a close keeps a retained surface's history (the dismissal below is what removes it)",
+			existsSync(historyLog),
+			{ historyLog },
+		);
+		const afterClose = await questionReading();
+		check(
+			"the question is gone once it has been answered",
+			afterClose === null,
+			afterClose,
+		);
+
+		// 5. an ended surface dismisses outright, and its history goes with it
+		const dismissedSurface = await createUserSurface(state);
+		/*
+		 * `exit 0` rather than a bare `exit`: THIS HOST's interactive zsh exits 1 on a
+		 * typed `exit` with no prior command (measured: `printf 'exit\r' | script -q
+		 * /dev/null /bin/zsh -i` answers 1 while /bin/sh answers 0), and the cell's claim
+		 * is about the DISMISSAL, not about a shell's exit status. The explicit code is
+		 * the one fact the cell needs to be about.
+		 */
+		await rpcOk(state, "console_input", {
+			surface: dismissedSurface,
+			text: "exit 0\r",
+		});
+		const ended = await waitForExit(state, dismissedSurface, 0);
+		const dismissedLog = join(
+			HISTORY_DIR,
+			fileStemOf(SESSION),
+			`${fileStemOf(dismissedSurface)}.log`,
+		);
+		const dismissLabelDeadline = Date.now() + 10_000;
+		let dismissLabel = null;
+		while (Date.now() < dismissLabelDeadline) {
+			dismissLabel =
+				(await rowsReading()).find((row) => row.surface === dismissedSurface)
+					?.label ?? null;
+			if (dismissLabel?.startsWith("Dismiss ")) break;
+			await sleep(250);
+		}
+		check(
+			"an ended row's control names the DISMISSAL, not the kill (#754's two states)",
+			typeof dismissLabel === "string" && dismissLabel.startsWith("Dismiss "),
+			{ dismissLabel, ended },
+		);
+		check(
+			"the ended surface's retained history is on disk before the dismissal",
+			existsSync(dismissedLog),
+			{ dismissedLog },
+		);
+		await pressDom(`[data-surface="${dismissedSurface}"] [role="tab"]`);
+		await sleep(200);
+		/*
+		 * The keyboard goes INTO the control first: a pointer press on macOS never moves it
+		 * there, so a dismissal pressed that way has nothing to lose - and the handoff cell
+		 * below is about the keyboard path, which starts from the control itself.
+		 */
+		/*
+		 * The keyboard goes INTO the control first and ACTIVATES it: the Enter is the
+		 * platform's own activation of a focused button (measured this round), so this
+		 * dismissal walks the keyboard path end to end - which is also the path whose
+		 * handoff cell below is about.
+		 */
+		await focusDom(closeSelectorFor(dismissedSurface));
+		await pressEnter();
+		const dismissQuestion = await questionReading();
+		check(
+			"a dismissal asks nothing (there is no process left to protect)",
+			dismissQuestion === null,
+			{ question: dismissQuestion },
+		);
+		let dismissedList = await surfacesOf(state);
+		const dismissDeadline = Date.now() + 15_000;
+		while (
+			dismissedList.some((row) => row.surface === dismissedSurface) &&
+			Date.now() < dismissDeadline
+		) {
+			await sleep(250);
+			dismissedList = await surfacesOf(state);
+		}
+		check(
+			"the dismissal removed the surface from the registry AND its history from disk",
+			dismissedList.every((row) => row.surface !== dismissedSurface) &&
+				!existsSync(dismissedLog),
+			{
+				gone: dismissedList.every((row) => row.surface !== dismissedSurface),
+				historyRemoved: !existsSync(dismissedLog),
+				dismissedLog,
+			},
+		);
+		/*
+		 * The same dead-lens clause for the OTHER act: a dismissed surface is removed from
+		 * the listing too, so a selection still naming it would be the same defect wearing
+		 * the dismissal's clothes.
+		 */
+		const dismissSelectionDeadline = Date.now() + 10_000;
+		let selectedAfterDismiss = await selectedSurface();
+		while (
+			(selectedAfterDismiss === null ||
+				selectedAfterDismiss === dismissedSurface) &&
+			Date.now() < dismissSelectionDeadline
+		) {
+			await sleep(200);
+			selectedAfterDismiss = await selectedSurface();
+		}
+		check(
+			"the dismissed surface's selection moves to a neighbour too (#754)",
+			selectedAfterDismiss !== null &&
+				selectedAfterDismiss !== dismissedSurface,
+			{ dismissed: dismissedSurface, selectedAfterDismiss },
+		);
+		/*
+		 * The same handoff clause for the dismissal: the acting control is removed while the
+		 * keyboard is in it, so the lens's row must take it (UX round 1, U1).
+		 */
+		let handedOffAfterDismiss = null;
+		const dismissHandoffDeadline = Date.now() + 10_000;
+		while (Date.now() < dismissHandoffDeadline) {
+			handedOffAfterDismiss = await focusedSurface();
+			if (handedOffAfterDismiss === selectedAfterDismiss) break;
+			await sleep(200);
+		}
+		check(
+			"after the dismissal the keyboard is handed on too, not dropped (UX round 1, U1)",
+			handedOffAfterDismiss === selectedAfterDismiss,
+			{ selectedAfterDismiss, handedOffAfterDismiss },
+		);
+		await captureAppFrame("close-dismissed.png");
+
+		/*
+		 * 6. THE QUESTION WITHDRAWS WHEN ITS SUBJECT EXITS UNDER IT (UX round 1, U2): an
+		 * ended row STAYS listed, so the listing-only rule kept a question whose copy
+		 * claimed to end something that had already ended. Nothing is confirmed - the
+		 * surface's own shell ends itself through the bridge while the question stands -
+		 * and the row must remain (withdrawn is not dismissed).
+		 */
+		const exitUnderQuestion = await createUserSurface(state);
+		await pressDom(`[data-surface="${exitUnderQuestion}"] [role="tab"]`);
+		await sleep(200);
+		await focusDom(closeSelectorFor(exitUnderQuestion));
+		await pressEnter();
+		const standingQuestion = await waitForQuestion();
+		await rpcOk(state, "console_input", {
+			surface: exitUnderQuestion,
+			text: "exit 0\r",
+		});
+		await waitForExit(state, exitUnderQuestion, 0);
+		let withdrew = false;
+		const withdrawDeadline = Date.now() + 10_000;
+		while (Date.now() < withdrawDeadline) {
+			withdrew = (await questionReading()) === null;
+			if (withdrew) break;
+			await sleep(200);
+		}
+		const exitRow = (await surfacesOf(state)).find(
+			(row) => row.surface === exitUnderQuestion,
+		);
+		check(
+			"the question withdraws when the surface exits under it - and the row is dismissed by nobody (still listed, ended) (#754, UX round 1 U2)",
+			standingQuestion !== null &&
+				withdrew === true &&
+				exitRow !== undefined &&
+				exitRow.running === false,
+			{ standingQuestion, withdrew, exitRow: exitRow ?? null },
+		);
+		/*
+		 * And the keyboard goes back to the row it came from: the question's opener (that
+		 * row's own control) is still in the DOM, so the shared primitive's own restore is
+		 * the mechanism - this cell is what would catch it regressing silently.
+		 */
+		let focusedAfterWithdraw = null;
+		const withdrawFocusDeadline = Date.now() + 10_000;
+		while (Date.now() < withdrawFocusDeadline) {
+			focusedAfterWithdraw = await focusedSurface();
+			if (focusedAfterWithdraw === exitUnderQuestion) break;
+			await sleep(200);
+		}
+		check(
+			"the withdrawn question returns the keyboard to the row it came from (UX round 1, U1's own restore case)",
+			focusedAfterWithdraw === exitUnderQuestion,
+			{ exitUnderQuestion, focusedAfterWithdraw },
+		);
+
+		closeCase = { running: runningSurface, dismissed: dismissedSurface };
 	}
 
 	/*
@@ -2392,6 +3333,165 @@ async function main() {
 		},
 	);
 
+	// ---- #754: the restart the issue's repro is about ------------------------
+	/*
+	 * THE HALF A UNIT TEST CANNOT ANSWER, run on a real relaunch: a dismissed ended
+	 * surface must NOT come back (#754's own repro - a retained surface is restored at
+	 * launch, which is why dismissal has to remove the record rather than hide it), while
+	 * a surface CLOSED WHILE RUNNING keeps its history and is restored as ended, because
+	 * that is what the close reserved for it (design 7.3). Both assertions read the
+	 * restarted app's own listing, and the app's own log line names the count it restored.
+	 */
+	if (closeCase) {
+		await stopApp();
+		await sleep(500);
+		app = await launchApp();
+		const restarted = await waitForState();
+		const restoredList = await surfacesOf(restarted);
+		const restoredRunning = restoredList.find(
+			(row) => row.surface === closeCase.running,
+		);
+		check(
+			"a surface closed while running is restored as ENDED after a relaunch (design 7.3)",
+			restoredRunning !== undefined &&
+				restoredRunning.running === false &&
+				restoredRunning.live === false,
+			{
+				restored: restoredRunning ?? null,
+				count: restoredList.length,
+				surfaces: restoredList.map((row) => row.surface),
+			},
+		);
+		check(
+			"the dismissed ended surface does NOT come back (#754's restart repro)",
+			restoredList.every((row) => row.surface !== closeCase.dismissed),
+			{
+				dismissed: closeCase.dismissed,
+				present: restoredList.some(
+					(row) => row.surface === closeCase.dismissed,
+				),
+			},
+		);
+		const restoredLog = appLogText();
+		/*
+		 * THE COUNT IS THE RUN'S OWN, not a number this cell predicts: later cells retain
+		 * their own agent surfaces (§19.1's flood surfaces are retained deliberately), so
+		 * "exactly one" was this cell counting its own subject and the app counting
+		 * everything the run kept - measured 4 restored here (con:5 plus the flood and
+		 * secure cells' surfaces). The claim that holds for any run is the log line, the
+		 * listing and the design's "none of them is running" agreeing on the same set.
+		 */
+		const restoredCount = restoredList.length;
+		check(
+			"the relaunch restored every retained surface, in the app's own words, and none is running",
+			restoredCount > 0 &&
+				restoredList.every(
+					(row) => row.running === false && row.live === false,
+				) &&
+				restoredLog.includes(
+					`restored ${restoredCount} retained surface(s) from history`,
+				),
+			{
+				count: restoredCount,
+				lines: restoredLog
+					.split("\n")
+					.filter((line) => line.includes("restored"))
+					.slice(-3),
+			},
+		);
+		// The pane again, on the restarted app, so the restored row is a FRAME rather
+		// than a listing: the mount path is the same one the pane cells use.
+		await mountConversation(bounded(null, 30_000));
+		await pressDom('[data-tour-tag="console-pane-trigger"]');
+		const reopened = await waitForConsolePane(bounded(null, 15_000));
+		const restoredRowDeadline = Date.now() + 15_000;
+		let restoredRow = null;
+		while (Date.now() < restoredRowDeadline) {
+			restoredRow =
+				(await rowsReading()).find(
+					(row) => row.surface === closeCase.running,
+				) ?? null;
+			if (restoredRow) break;
+			await sleep(250);
+		}
+		check(
+			"the restored ended surface is a row in the strip after the relaunch, offering its Dismiss",
+			reopened !== null &&
+				reopened.failed !== true &&
+				restoredRow !== null &&
+				typeof restoredRow.label === "string" &&
+				restoredRow.label.startsWith("Dismiss "),
+			{ reopened, restoredRow },
+		);
+		await captureAppFrame("close-relaunch.png");
+
+		/*
+		 * THE EMPTY STATE AFTER THE LAST DISMISSAL (design round 1, D2's third frame):
+		 * `surfaces.length > 0` gates the whole strip block, so the last dismissal removes
+		 * the strip and the pane falls to ConsoleEmpty - an unphotographed transition into
+		 * a different screen. Every restored row is ENDED, so each dismisses without a
+		 * question; the LAST removal is also the handoff's empty arm (U1), whose target is
+		 * the empty state's own New console.
+		 */
+		let remainingRows = await rowsReading();
+		const dismissAllDeadline = Date.now() + 90_000;
+		while (remainingRows.length > 0 && Date.now() < dismissAllDeadline) {
+			const target = remainingRows[0];
+			const last = remainingRows.length === 1;
+			/*
+			 * PRESS AND RE-PRESS: the press that opens an iteration can race the PREVIOUS
+			 * dismissal's render - the control node is swapped under a focus that was just
+			 * placed, and the Enter goes to a node the app has already replaced (measured in
+			 * the first keyboard-driven re-shoot: every row took its second press, and the
+			 * deadline then expired with the last row untouched). The re-press is the rig's
+			 * settled shape, not a tolerance - the loop's exit condition below is the claim,
+			 * and it is unchanged.
+			 */
+			const rowDeadline = Date.now() + 20_000;
+			let dismissed = false;
+			while (Date.now() < rowDeadline) {
+				await focusDom(closeSelectorFor(target.surface));
+				await pressEnter();
+				await sleep(1_200);
+				remainingRows = await rowsReading();
+				dismissed = !remainingRows.some(
+					(row) => row.surface === target.surface,
+				);
+				if (dismissed) break;
+			}
+			if (last && dismissed) {
+				const empty = await rendererEvaluate(`(() => ({
+					emptyText: (document.body.textContent || '').includes('No console in this session'),
+					strip: Boolean(document.querySelector('[role="tablist"]')),
+					plus: Boolean(document.querySelector('[data-tour-tag="console-new-surface"]')),
+				}))()`);
+				let focusedEmpty = null;
+				const emptyFocusDeadline = Date.now() + 5_000;
+				while (Date.now() < emptyFocusDeadline) {
+					focusedEmpty = await rendererEvaluate(
+						"(() => { const a = document.activeElement; return a ? (a.getAttribute && a.getAttribute('data-tour-tag')) || a.tagName.toLowerCase() : null; })()",
+					);
+					if (focusedEmpty === "console-new-surface") break;
+					await sleep(150);
+				}
+				check(
+					"dismissing the last surface removes the strip, shows the empty state, and the keyboard lands on its own New console (#754, UX round 1 U1's empty arm)",
+					empty.emptyText === true &&
+						empty.strip === false &&
+						empty.plus === true &&
+						focusedEmpty === "console-new-surface",
+					{ empty, focusedEmpty },
+				);
+				await captureAppFrame("close-empty.png");
+			}
+		}
+		check(
+			"every restored surface was dismissible from the strip (the loop's own exit condition)",
+			remainingRows.length === 0,
+			{ remaining: remainingRows.map((row) => row.surface) },
+		);
+	}
+
 	finish();
 }
 
@@ -2462,6 +3562,9 @@ main()
 	.finally(async () => {
 		// A failed run must not leave an app behind holding a state file and a pty.
 		await stopApp();
+		// Nor the daemon `--pair` started: it lives under this run's scratch tree and
+		// is stopped by pid before that tree is removed.
+		await stopDaemon();
 		if (!KEEP && !PACKAGED) {
 			// The scratch tree is this run's own, under the system temp dir: removing it
 			// is the "do not leave a sandbox behind" rule, and nothing outside it is

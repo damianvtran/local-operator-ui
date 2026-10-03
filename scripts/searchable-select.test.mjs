@@ -34,8 +34,11 @@
  * cannot pass while the component disagrees with it.
  */
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { unlink, writeFile } from "node:fs/promises";
+import { after, test } from "node:test";
 import { build } from "esbuild";
+import { JSDOM } from "jsdom";
+import React, { act } from "react";
 
 const bundle = await build({
 	stdin: {
@@ -338,4 +341,299 @@ test("typing a row's exact keyword commits that row, not a copy of the text", ()
 		kind: "custom",
 		text: "release-plz",
 	});
+});
+
+/* --------------------------------------------------------- the forwarded ref --
+ *
+ * WHAT A CONSUMER MUST BE ABLE TO HAND THE INLINE-EDIT MACHINE, and the dead
+ * end that made it a defect rather than a nicety.
+ *
+ * The shared inline-edit machine reaches its editor through ONE `editorRef`: it
+ * focuses that element when the field enters editing, and it scopes Enter by
+ * comparing `event.target` to it (`use-inline-edit.ts`, the focus-on-begin
+ * effect and `handleKeyDown`). Every agents/teams picker field - a team's
+ * manager, a member's role, an agent's effort - is this control, so if the
+ * control forwards no ref the consumer has no element to give the machine: the
+ * focus effect returns early, and pressing the pencil leaves focus on the
+ * pencil with the picker unopened.
+ *
+ * WHY THE CASES MOUNT RATHER THAN READ THE SOURCE. A `forwardRef` assertion made
+ * by reading the file would pass on a ref that flowed to the wrong node. The
+ * `PopoverAnchor` wrapper around the input is a plain `div` with no `tabIndex`:
+ * it takes no focus, and a keydown's `target` is never it, so a ref landing
+ * there fixes nothing while looking exactly like the fix. The cases below
+ * therefore mount the SHIPPED component and name the element the machine would
+ * actually reach. What they cannot claim is layout - jsdom draws nothing - and
+ * none of this is about pixels.
+ *
+ * The chain is pinned in three pieces rather than one live press of the pencil:
+ * the control's ref IS the focusable combobox input (first case), the consumer's
+ * single `editorRef` receives it (second), and the machine focuses whatever
+ * `editorRef` it was handed (third). Composed, those are the claim; keeping them
+ * separate is what makes the popover's open - the one expensive thing here -
+ * reachable only by the case that does not need the machine mounted around it.
+ *
+ * The harness (jsdom bootstrap, an esbuild bundle imported by file URL so its
+ * bare `react` externals resolve, a `createRoot` mount driven under `act`) is
+ * the one `typed-row-call-sites.test.mjs` uses for the same component.
+ */
+const refDOM = new JSDOM("<!doctype html><html><body></body></html>", {
+	// Radix resolves anchors through `new URL(...)`, which needs a document
+	// address rather than jsdom's default `about:blank`.
+	url: "http://localhost/agents",
+});
+/*
+ * The DOM classes jsdom owns are FORCED onto the global, including the ones
+ * Node already defines: Node defines `Event`/`CustomEvent` itself, and Radix
+ * would build its document-level events from NODE's classes, which jsdom then
+ * refuses with `parameter 1 is not of type 'Event'` - thrown from React's
+ * commit phase, where it reads as a component bug rather than a harness one.
+ */
+const FORCE_FROM_JSDOM = [
+	"Event",
+	"CustomEvent",
+	"UIEvent",
+	"MouseEvent",
+	"PointerEvent",
+	"KeyboardEvent",
+	"FocusEvent",
+	"InputEvent",
+	"CompositionEvent",
+	"HTMLElement",
+	"Element",
+	"Node",
+	"DocumentFragment",
+	"Range",
+	"Selection",
+	"DOMRect",
+	"DOMRectReadOnly",
+	"getComputedStyle",
+	"requestAnimationFrame",
+	"cancelAnimationFrame",
+];
+for (const key of Object.getOwnPropertyNames(refDOM.window)) {
+	if (key === "window" || key === "self" || key === "globalThis") continue;
+	if (key in globalThis && !FORCE_FROM_JSDOM.includes(key)) continue;
+	try {
+		globalThis[key] = refDOM.window[key];
+	} catch {
+		// A few of jsdom's own accessors refuse to be read out of scope.
+	}
+}
+globalThis.window = refDOM.window;
+globalThis.document = refDOM.window.document;
+// React refuses `act` outside a declared act environment.
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// jsdom implements no scrolling, and ships no `ResizeObserver` for Radix.
+refDOM.window.Element.prototype.scrollIntoView = () => {};
+globalThis.ResizeObserver = class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
+const { createRoot } = await import("react-dom/client");
+
+const refBundle = await build({
+	stdin: {
+		contents: `
+			export { SearchableSelect } from "./src/renderer/src/shared/components/ui/searchable-select";
+			export { useInlineEdit } from "./src/renderer/src/shared/components/inline-edit/use-inline-edit";
+			export { inlineEditEditorShown } from "./src/renderer/src/shared/components/inline-edit/inline-edit-model";
+		`,
+		loader: "tsx",
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	alias: { "@shared": "./src/renderer/src/shared" },
+	/*
+	 * React stays external so the bundle shares ONE copy with this file's own
+	 * imports: two copies hand the component a different dispatcher than the one
+	 * `act` drives, and that failure reads as a hook called outside a component.
+	 */
+	external: ["react", "react-dom", "react/jsx-runtime"],
+	packages: "external",
+	// Stylesheets carry no assertion here and Node cannot import them.
+	loader: { ".css": "empty" },
+	jsx: "automatic",
+});
+/*
+ * Written beside this file and imported by URL rather than inlined as a `data:`
+ * URL: the bundle's externals are bare specifiers (`react/jsx-runtime` above
+ * all), and only a file URL resolves those against `node_modules`. The name is
+ * process-unique so two runs in one tree cannot clobber each other's module.
+ */
+const refBundlePath = new URL(
+	`./_searchable-select-ref-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(refBundlePath, refBundle.outputFiles[0].text);
+after(() => unlink(refBundlePath).catch(() => {}));
+const { SearchableSelect, useInlineEdit, inlineEditEditorShown } = await import(
+	refBundlePath.href
+);
+
+const h = React.createElement;
+
+/** The picker's options as the agents/teams lane builds them: agents and teams. */
+const PICKER_OPTIONS = [
+	{ id: "aida", name: "aida", group: "Agents" },
+	{ id: "docs-pod", name: "docs-pod", group: "Teams" },
+];
+
+/** A field's own words; the machine names the field in all of them. */
+const AGENT_LABELS = {
+	name: "Manager agent",
+	begin: "Edit manager agent",
+	accept: "Save manager agent",
+	cancel: "Discard the manager agent edit",
+	busy: "Saving the manager agent",
+	saved: "Manager agent saved",
+};
+
+/** The props every agents/teams picker passes, transcribed from `team-detail`. */
+const pickerProps = (ref) => ({
+	ref,
+	ariaLabel: "Manager agent",
+	showLabel: false,
+	placeholder: "Choose a manager",
+	busyLabel: "Loading agents",
+	options: PICKER_OPTIONS,
+	selected: null,
+	onSelect: () => {},
+});
+
+const mountInto = async (element) => {
+	const container = document.createElement("div");
+	document.body.append(container);
+	const root = createRoot(container);
+	await act(async () => {
+		root.render(element);
+	});
+	return {
+		container,
+		async unmount() {
+			await act(async () => root.unmount());
+			container.remove();
+		},
+	};
+};
+
+test("the control forwards its ref to the focusable combobox input, not to a wrapper div", async () => {
+	const ref = React.createRef();
+	const view = await mountInto(h(SearchableSelect, pickerProps(ref)));
+	const input = view.container.querySelector('input[role="combobox"]');
+	assert.ok(input, "the control must render its combobox input");
+	assert.equal(
+		ref.current,
+		input,
+		"the forwarded ref must be the combobox input itself: the PopoverAnchor div around it has no tabIndex, so a ref to it would take no focus and never be a keydown's target",
+	);
+	assert.equal(ref.current.getAttribute("role"), "combobox");
+	// The machine's ONLY use of the element is `.focus()`, so focusability is
+	// the property the contract is really about.
+	//
+	// DELIBERATELY NOT wrapped in `act`: focusing this control OPENS its popover,
+	// and Radix's open machinery under `act` is the one thing in this harness that
+	// is slow (a measured ~10s per case, the same cost `typed-row-call-sites.test.mjs`
+	// pays for its four popover opens) - while in a `act(() => input.focus())`
+	// AFTER the mount it does not settle at all, which is why the shape here is
+	// "mount, then focus outside the act". Nothing asserted below depends on
+	// React having processed the open: `.focus()` is a DOM call and
+	// `document.activeElement` is a DOM reading.
+	ref.current.focus();
+	assert.equal(
+		document.activeElement,
+		ref.current,
+		"the forwarded element must be one the machine can actually focus",
+	);
+	await view.unmount();
+});
+
+test("a consumer's single editorRef reaches the picker's own control", async () => {
+	/*
+	 * The consumer's shape, and the reason the control had to forward anything at
+	 * all: ONE `editorRef` object, handed to the machine through `useInlineEdit`
+	 * and to the control through `ref`. This case proves the control writes into
+	 * that shared object; the case below proves the machine then focuses it.
+	 *
+	 * The machine is mounted here only to hold the ref it would hold in the real
+	 * field - the picker is rendered unconditionally because what is under test is
+	 * the ref's identity, not the machine's phase gate (whose own tests own that).
+	 * Starting the field instead (`beginOnMount`) buys the same assertion for the
+	 * popover-open cost noted above.
+	 */
+	const editorRef = React.createRef();
+	const fieldRef = React.createRef();
+	const Harness = () => {
+		const api = useInlineEdit({
+			value: "aida",
+			commit: async () => {},
+			keyboardCommit: false,
+			editorRef,
+			fieldRef,
+			labels: AGENT_LABELS,
+		});
+		return h(
+			"div",
+			api.fieldProps,
+			h(SearchableSelect, pickerProps(editorRef)),
+		);
+	};
+	const view = await mountInto(h(Harness));
+	const input = view.container.querySelector('input[role="combobox"]');
+	assert.ok(input, "the picker must render its control");
+	assert.notEqual(
+		editorRef.current,
+		null,
+		"the shared editorRef must be filled",
+	);
+	assert.equal(
+		editorRef.current,
+		input,
+		"the machine's editorRef must hold the picker's combobox input",
+	);
+	await view.unmount();
+});
+
+test("the machine focuses its editorRef when a field opens, which is the focus the pencil used to lose", async () => {
+	/*
+	 * The machine's other half, isolated from this control so it runs in
+	 * milliseconds: on begin, the focus-on-begin effect calls
+	 * `editorRef.current.focus()`. With the shared ref above, that call now lands
+	 * on the picker's input instead of returning early - which is exactly the
+	 * dead end (pencil keeps focus, picker never opens) G2 removes.
+	 */
+	const editorRef = React.createRef();
+	const fieldRef = React.createRef();
+	const Harness = () => {
+		const api = useInlineEdit({
+			value: "aida",
+			commit: async () => {},
+			keyboardCommit: false,
+			beginOnMount: true,
+			editorRef,
+			fieldRef,
+			labels: AGENT_LABELS,
+		});
+		return h(
+			"div",
+			api.fieldProps,
+			inlineEditEditorShown(api.phase)
+				? h("input", { ref: editorRef, role: "combobox", readOnly: true })
+				: null,
+		);
+	};
+	const view = await mountInto(h(Harness));
+	assert.notEqual(editorRef.current, null, "the field must render its editor");
+	assert.equal(
+		document.activeElement,
+		editorRef.current,
+		"opening the field must leave focus on the editor the machine was handed",
+	);
+	await view.unmount();
 });
