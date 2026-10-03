@@ -675,6 +675,34 @@ export const STORIES = [
 	 * design round judges that claim from.
 	 */
 	["chat-trace-fold--agent-ops", 1280, 130],
+	/*
+	 * THE OPERATOR'S NINE-TYPE LINE (2026-10-01 report: the fold summary spilled
+	 * past the container). The run whose header read `6 searches · 1 task · 2
+	 * browser actions · 1 ai_search · 1 get_tool_access · 1 query_data_sources ·
+	 * 1 todo update · 1 wait · 1 workspace_get_gmail_thread_content` - nine
+	 * unique action types. The cap (`foldCounts`) keeps the first five segments
+	 * and folds the rest into `and N other actions`; `many-types-narrow` is the
+	 * same header at the 640px window, where the capped line WRAPS rather than
+	 * truncating or overflowing the column. The before half of the pair (the
+	 * uncapped line, ellipsised by the same header) is
+	 * `docs/evidence/chat-trace-fold-before/`, captured from this story on the
+	 * pre-cap tree.
+	 */
+	["chat-trace-fold--many-types", 1280, 130],
+	["chat-trace-fold--many-types", 640, 130, { dir: "many-types-narrow" }],
+	/*
+	 * THE ≤5-TYPE RUN THAT KEEPS THE LONG KIND (design round 1's D1 ask, shot in
+	 * round 2's remediation as D3 - the same gap QA bounded as Q-r2-3).
+	 *
+	 * `many-types` above CAPS `workspace_get_gmail_thread_content` into its tail,
+	 * so before this cell no committed frame painted that 36-character kind as a
+	 * VISIBLE unit at any width - and it is the longest unit the count line can
+	 * compose. This is it at 420, the narrowest cell in the set: five types, so
+	 * the cap keeps every segment, with the long kind as the last of them. The
+	 * units' guarantee - a nowrap unit holds together and the column holds the
+	 * unit - is what the frame, and the geometry readout beside it, are for.
+	 */
+	["chat-trace-fold--many-types-kept", 420, 130],
 	[
 		"chat-trace-fold--expanded",
 		1280,
@@ -4355,6 +4383,31 @@ export const STORIES = [
 	],
 	["chat-ask-options--approval", 1024, 360],
 	["chat-ask-options--approval-answer-in-flight", 1024, 360],
+	/*
+	   THE NINE-OPTION ALL-WRAPPED STATE, captured as issue #762's before/after
+	   pair. Each description runs to a second line at the 1024 column, and the row
+	   box has to grow with it or the next row's ordinal and label overprint it.
+	   The story ships WITH the fix, so both halves of the pair render the same
+	   story state: `before` is the pre-fix component in that story, `after` is the
+	   fixed one, and `scripts/ask-options-geometry.mjs` measures both runs -
+	   exiting non-zero on the pre-fix code, which is the pin's proof. 620 matches
+	   the story's own `Frame height`.
+	*/
+	["chat-ask-options--wrapped-density", 1024, 620],
+
+	/*
+	   THE ASIDE PANEL'S QUESTION SIDE, captured as issue #763's pair: the settled
+	   exchange at both rungs, so the visible role marker (`You:`) can be read
+	   against the answer beside it. The small row is the compact step at a
+	   phone-width viewport - `isSmallView` is the story's own prop, because a
+	   narrow column alone would render the wide panel, which is not a state the
+	   app can be in. 700 tall shows the whole panel and the composer box it sits
+	   above at both rungs.
+	*/
+	["chat-aside-panel--settled", 1024, 700],
+	["chat-aside-panel--settled-small-view", 440, 700],
+	["chat-aside-panel--settled-wrapped-question", 1024, 700],
+	["chat-aside-panel--settled-wrapped-question", 440, 700],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
@@ -5244,7 +5297,7 @@ export const STORIES = [
 	],
 	/*
 	 * THE MARK ITSELF, in every shape its rule has plus the three image states
-	 * (operator ask, 2026-10-01): 20px in a 320px panel is not a frame a reviewer can
+	 * (operator ask, 2026-10-01): 16px in a 320px panel is not a frame a reviewer can
 	 * read letters off, and the image-ready half of the contract - a URL renders, an
 	 * absent URL and a FAILED one both fall back - has no fixture on the row surface
 	 * to show, since no team carries an icon field yet. `team-avatar-bubble.stories.tsx`
@@ -5831,7 +5884,22 @@ export const STORIES = [
 	["projects-tab--detail", 1280, 900],
 	["projects-tab--stale-progress", 1280, 900],
 	["projects-tab--create-dialog", 1280, 900],
-	["projects-tab--edit-dialog", 1280, 900],
+	/*
+	 * The inline editors (the operator's 2026-09-30 change): the modal edit is
+	 * gone, so `edit-dialog`'s row retired with it and the states that replaced
+	 * it are swept instead — the affordance at rest and focused, the editor
+	 * open, a typed draft, the write in flight, the landed acknowledgement, a
+	 * refused key, and a field held against an out-of-band change. Each play
+	 * asserts its state before the shutter, so the frames photograph a state
+	 * the play proved.
+	 */
+	["projects-tab--inline-edit-reveal", 1280, 900],
+	["projects-tab--inline-edit-open", 1280, 900],
+	["projects-tab--inline-edit-typed", 1280, 900],
+	["projects-tab--inline-edit-saving", 1280, 900],
+	["projects-tab--inline-edit-saved", 1280, 900],
+	["projects-tab--inline-edit-refused", 1280, 900],
+	["projects-tab--inline-edit-conflict", 1280, 900],
 	/* The sheet's own interactions (S6d-ii part 2): the description editor's
 	 * preview arm, the clipboard-markdown paste (a `paste` event carrying
 	 * `text/html`), and the two-phase create driven to submit — each asserts
@@ -6143,6 +6211,35 @@ export const STORIES = [
 	 * recovery sentence and the one Clear all before the shutter.
 	 */
 	["projects-tab--no-match-filter", 1280, 900],
+	/*
+	 * THE SEARCH INDEX (the architecture's PR-B2): five frames over two rows, and
+	 * the pair `served` / `pending` is the whole slice in two pictures. `served`
+	 * types `invoice` and the page paints the INDEX's answer — including
+	 * `billing-cutover`, a row the local matcher cannot admit because its match
+	 * lives in update text — in the answer's own rank order (both claims read off
+	 * the rendered rows). `pending` hangs that request and shows the FALLBACK's
+	 * row still drawn, which is the no-blank-list promise; those two stories are
+	 * the two engines this change wires. `searching` is the one state where the
+	 * index is owed an answer AND the fallback found nothing — the quiet in-flight
+	 * line, in place of a "nothing matches" the index may be about to contradict.
+	 * `no-match` is the copy this slice reconciled: the index reads update text,
+	 * so the block carries the index's own sentence and the play FAILS on the
+	 * string this slice replaced. `failed` is the fallback arm: the index is
+	 * broken, the local matcher serves, and the sentence is the client's again.
+	 *
+	 * `search-index-searching-timeline` is D5's frame (design round 2): the same
+	 * in-flight state in the THIRD view, which no frame covered and whose gate
+	 * lacked the term the List's fix added — the Timeline's `shrink-0` strip is the
+	 * List's column header one view over. The story's play fails if the Timeline
+	 * panel is present beside the line, so the frame cannot be a picture of the
+	 * defect it exists to disprove.
+	 */
+	["projects-tab--search-index-served", 1280, 900],
+	["projects-tab--search-index-pending", 1280, 900],
+	["projects-tab--search-index-searching", 1280, 900],
+	["projects-tab--search-index-searching-timeline", 1280, 900],
+	["projects-tab--search-index-no-match", 1280, 900],
+	["projects-tab--search-index-failed", 1280, 900],
 	["projects-tab--board-search-active", 1280, 900],
 	["projects-tab--default-board", 1280, 900],
 	/* The no-dates callout, expanded over a dated chart: the collapsed line the
@@ -8380,13 +8477,23 @@ export const STORIES = [
 	 * nine; the set README says which states ship under which arm, and WHY the older
 	 * generation could not simply be reproduced (its frames predate the reveal
 	 * itself: it landed in `3d03a2f3e63`, after those frames were taken).
+	 *
+	 * AND THE ARM NOW ASSERTS ITSELF, per shot rather than per pass: each of the
+	 * nine carries `expectPresent: '[data-lo-answer-actions]'`, so a shutter that
+	 * finds no row on that line FAILS the run instead of filing a resting frame
+	 * that cannot show what it is for. The transcript-line pass's round-5 re-shoot
+	 * shipped exactly that failure class - seven of the nine still carried frames
+	 * from the generation before the arm was set, which is how a set can pass a
+	 * palette check and a byte-compare while contradicting its own claim (design
+	 * round 5, D5) - so the claim is now mechanical rather than re-read from the
+	 * frames.
 	 */
 	[
 		"chat-canonical-message-actions--rest",
 		1024,
 		560,
 		/* The discoverability claim itself: the row ON SCREEN with no pointer. */
-		{ touch: true },
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
 	],
 	[
 		"chat-canonical-message-actions--rest",
@@ -8437,16 +8544,115 @@ export const STORIES = [
 			dir: "copied",
 		},
 	],
-	["chat-canonical-message-actions--short-answer", 1024, 320, { touch: true }],
-	["chat-canonical-message-actions--refused", 1024, 380, { touch: true }],
-	["chat-canonical-message-actions--truncated", 1024, 400, { touch: true }],
-	["chat-canonical-message-actions--streaming", 1024, 620, { touch: true }],
-	["chat-canonical-message-actions--multi-answer", 1024, 640, { touch: true }],
+	[
+		"chat-canonical-message-actions--short-answer",
+		1024,
+		320,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--refused",
+		1024,
+		380,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--truncated",
+		1024,
+		400,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--streaming",
+		1024,
+		620,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--multi-answer",
+		1024,
+		640,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
 	[
 		"chat-canonical-message-actions--bar-suppressed",
 		1024,
 		640,
-		{ touch: true },
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	/*
+	 * THE OPERATOR'S FOOT-LINE STATE (2026-10-01 report: "now that the action
+	 * buttons only show up on hover, the Worked for and action count looks a bit
+	 * weird - rearrange so those are on the leftmost extent and the action
+	 * buttons are to the right"). A turn that compacted mid-run partitions into
+	 * two segments, keeps its closing line, and paints the caption and the
+	 * action row TOGETHER there - the composition the report is about.
+	 * `compacted-run-hover` parks a real pointer on the answer, which is the
+	 * reveal state the no-shift claim is judged in; the before half (the caption
+	 * reading indented after the at-rest-invisible buttons) is
+	 * `docs/evidence/chat-canonical-message-actions-foot-before/`.
+	 */
+	["chat-canonical-message-actions--compacted-run", 1024, 640],
+	[
+		"chat-canonical-message-actions--compacted-run",
+		1024,
+		640,
+		{
+			hover: '[data-record-id="a1"]',
+			hoverSettleMs: 300,
+			dir: "compacted-run-hover",
+		},
+	],
+	/*
+	 * THE TWO STATES THE ARRANGEMENT COULD REACH THAT NO FRAME SHOWED (design
+	 * round 1, D2).
+	 *
+	 * The USER TURN's own row, because the operator's note asked about it
+	 * explicitly ("same treatment ... if the same pattern exists there") and the
+	 * answer - it is `Copy` alone, with no caption and no stamp to share a line
+	 * with, so no rail moves - is a claim about a rail, which a still settles and
+	 * a comment does not. `user-row` is that row at rest (opacity-only, so the
+	 * frame is the bubble and the row's own empty box) and `user-row-hover` parks
+	 * a real pointer on the Copy button, which is the reveal; `user-row-small`
+	 * and `user-row-small-hover` are the same pair at 420, where the content rail
+	 * is 32 rather than 107.
+	 *
+	 * `compacted-run-small` is the CAPTION's rail at that width, which the set
+	 * could not state before: the only 420 frame (`narrow`) is a caption-less
+	 * turn, so `isSmallView` had no caption edge photographed at all.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560, { dir: "user-row" }],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-lo-user-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 300,
+			dir: "user-row-hover",
+		},
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{ dir: "user-row-small" },
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{
+			hover: '[data-lo-user-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 300,
+			dir: "user-row-small-hover",
+		},
+	],
+	[
+		"chat-canonical-message-actions--compacted-run-small",
+		420,
+		640,
+		{ dir: "compacted-run-small" },
 	],
 	/*
 	 * The minimum-action state (design round 1, D1): one call, so the frame shows
@@ -8454,8 +8660,18 @@ export const STORIES = [
 	 * allowed it - the bar above carries `1 action`, the line under the answer
 	 * carries the actions alone. See the story's own comment for the chain.
 	 */
-	["chat-canonical-message-actions--one-call-turn", 1024, 560, { touch: true }],
-	["chat-canonical-message-actions--narrow", 420, 620, { touch: true }],
+	[
+		"chat-canonical-message-actions--one-call-turn",
+		1024,
+		560,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
 
 	/*
 	 * THE ROW'S CONTEXT MENU (#694), the FINAL set - captured from the shipped

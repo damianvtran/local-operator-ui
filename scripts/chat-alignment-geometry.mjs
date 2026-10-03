@@ -61,6 +61,20 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
  * so a number here and a frame there describe one layout rather than two. The
  * cap only BINDS on a column wider than ~550px, so measuring the defect at a
  * narrow viewport would report it as absent.
+ *
+ * AN ENTRY'S FOURTH ELEMENT IS ITS OPTIONS, and each option exists because a
+ * claim needed it:
+ *
+ *  - `hover` is a selector the run moves a REAL pointer onto between the two
+ *    measurements, so the idle and revealed boxes can be compared per story -
+ *    the operator's 2026-10-01 no-shift claim ("the caption must NOT move
+ *    when the buttons appear, and check the stamp too") is exactly a delta
+ *    between those two states, and a frame cannot settle it.
+ *  - `label` names the state in the printout when the story id alone would be
+ *    ambiguous (a second width, a hover pass).
+ *  - `ready` overrides the element the run waits for: transcript stories
+ *    render `[data-lo-canonical-transcript]`, while the fold stories render
+ *    the fold and no transcript.
  */
 const STORIES = [
 	["chat-tool-rows--prose-tool-alignment", 1024, 620],
@@ -73,13 +87,89 @@ const STORIES = [
 	 * THE ANSWER ACTION ROW'S OWN RAIL (#695), which is the one claim in that
 	 * change a still cannot settle: the row sits at the ANSWER'S left edge, and
 	 * "the same edge" is a number rather than an impression - a 0px and a 4px
-	 * inset look equally plausible in a frame. Both states are measured because
-	 * the line carries different things in each: `rest` has the actions and the
-	 * caption in the same line, and `bar-suppressed` has the actions alone while
-	 * the turn bar owns the numbers and the stamp.
+	 * inset look equally plausible in a frame.
+	 *
+	 * THE FOOT LINE'S REARRANGEMENT (operator direction, 2026-10-01). The
+	 * closing line has three reportable edges per state - the caption's, the
+	 * actions' and the stamp's - and the operator's state is the one that
+	 * paints all three at once: a turn that compacted mid-run keeps its foot
+	 * (`compacted-run`), so the caption and the action row share the line. The
+	 * hover entry moves a real pointer onto the answer (the group-hover
+	 * reveal); the pair shows the caption and the stamp NOT moving while the
+	 * buttons arrive, and `rest`/`bar-suppressed` keep the no-caption shapes
+	 * measured the way they always were.
 	 */
 	["chat-canonical-message-actions--rest", 1024, 560],
 	["chat-canonical-message-actions--bar-suppressed", 1024, 640],
+	[
+		"chat-canonical-message-actions--compacted-run",
+		1024,
+		640,
+		{
+			hover: '[data-record-id="a1"]',
+			label: "chat-canonical-message-actions--compacted-run",
+		},
+	],
+	/*
+	 * THE FOLD SUMMARY LINE, AT BOTH WIDTHS (operator report, 2026-10-01): the
+	 * standard column as one capped line, and the 640px window where that line
+	 * WRAPS - the count line's box, its line count and its height are the
+	 * numbers the frames' claim rides on.
+	 */
+	["chat-trace-fold--many-types", 1280, 130, { ready: "[data-fold-summary]" }],
+	[
+		"chat-trace-fold--many-types",
+		640,
+		130,
+		{
+			ready: "[data-fold-summary]",
+			label: "chat-trace-fold--many-types (640px)",
+		},
+	],
+	/*
+	 * THE LONG KIND AS A KEPT UNIT, AT THE NARROWEST CELL (design round 1's D1
+	 * ask, shot in round 2's remediation as D3 (with QA's Q-r2-3). This is the
+	 * reading that says the units' guarantee holds where it matters: the summary's
+	 * box and the row's last right edge at 420 with
+	 * `1 workspace_get_gmail_thread_content` painted as a unit rather than folded
+	 * into the tail - the only state where that token is visible at all.
+	 */
+	[
+		"chat-trace-fold--many-types-kept",
+		420,
+		130,
+		{
+			ready: "[data-fold-summary]",
+			label: "chat-trace-fold--many-types-kept (420px)",
+		},
+	],
+	/*
+	 * THE SMALL VIEW'S OWN TWO CELLS (design round 1, D2): the caption + controls
+	 * line at `isSmallView`, where the rail is 32 rather than 107 - and the same
+	 * window with the user turn on screen, so the user row's rail there is measured
+	 * rather than inferred from the 1024px reading. Both name a story that PAINTS
+	 * the small view (`isSmallView` is a prop, not a window width: the first cut of
+	 * this entry pointed at the 1024px story at a 420px viewport and measured the
+	 * wide layout clipped, which is the mistake this note exists to prevent).
+	 */
+	[
+		"chat-canonical-message-actions--compacted-run-small",
+		420,
+		640,
+		{
+			label: "chat-canonical-message-actions--compacted-run-small (420px)",
+			ready: "[data-lo-answer-actions]",
+		},
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{
+			label: "chat-canonical-message-actions--narrow (420px)",
+			ready: "[data-lo-user-actions]",
+		},
+	],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -189,8 +279,15 @@ const PROBE = `(() => {
 		const toolRow = box(toolEl);
 		/*
 		 * The answer's action row (#695): the toolbar's own box, its first button,
-		 * and the stamp at the line's far end. railDelta is the claim - the row's
-		 * left edge against the prose's, which must be the SAME edge.
+		 * and the stamp at the line's far end.
+		 *
+		 * 'actionsOffset' IS NOT A RAIL CLAIM, and reading it as one is the mistake
+		 * this field's name now prevents (agent review round 1, R1-2): it is the
+		 * distance from the prose's left edge to where the right cluster begins,
+		 * and the 2026-10-01 rearrangement moves it to the far end by design
+		 * ('726.6' where it used to be '0'). The rail claim is the CAPTION's -
+		 * 'line.caption.left' against 'prose.left', two fields up - because a
+		 * caption is the row's only left-anchored element.
 		 */
 		const actionsEl = scope.querySelector("[data-lo-answer-actions]");
 		const actions = box(actionsEl);
@@ -202,39 +299,94 @@ const PROBE = `(() => {
 					toolbar: actions,
 					firstButton,
 					buttons: actionsEl.querySelectorAll("button").length,
+					/*
+					 * The row's wrapper is the line's first RIGHT-CLUSTER box since the
+					 * 2026-10-01 rearrangement ('ml-auto flex shrink-0', inside
+					 * 'canonical-transcript.tsx'): it is what pushes the buttons (and
+					 * the stamp after them) to the far end, so its left edge is where
+					 * the cluster begins.
+					 */
+					wrapper: box(actionsEl.parentElement ?? null),
 					restInk: (() => {
 						const b = actionsEl.querySelector("button");
 						return b ? getComputedStyle(b).color : null;
 					})(),
-					railDelta: prose ? round(actions.left - prose.left) : null,
+					actionsOffset: prose ? round(actions.left - prose.left) : null,
 				}
 			: null;
+		/*
+		 * THE USER TURN'S OWN ROW (design round 1, D2), which no frame in any set
+		 * showed: 'Copy' alone, mounted from the user turn's column under the bubble
+		 * rather than on a transcript line, so its rail is the BUBBLE's right edge
+		 * and not the content's left. The operator's note asked about this surface
+		 * explicitly, and a comment cannot settle a rail claim - so the bubble, the
+		 * row and the delta between them are numbers here.
+		 */
+		const userActionsEl = scope.querySelector("[data-lo-user-actions]");
+		const userRow = box(userActionsEl);
+		const userBubble = box(
+			userActionsEl ? userActionsEl.previousElementSibling : null,
+		);
+		const userActions =
+			userRow && userActionsEl
+				? {
+						...userRow,
+						firstButton: box(userActionsEl.querySelector("button")),
+						buttons: userActionsEl.querySelectorAll("button").length,
+						/*
+						 * The toolbar's labels are the cheap proof that the USER row is Copy
+						 * alone: a 'Speak aloud' appearing here would be a different row.
+						 */
+						labels: [...userActionsEl.querySelectorAll("button")].map((b) =>
+							(b.getAttribute("aria-label") ?? b.textContent ?? "").trim(),
+						),
+						bubble: userBubble,
+						bubbleDelta: userBubble
+							? round(userBubble.right - userRow.right)
+							: null,
+					}
+				: null;
+
 		out.push({
 			prose,
 			toolRow,
 			glyph: box(glyphEl),
 			content,
 			actions: actionsBox,
+			userActions,
 			line: (() => {
-				/* The foot line the row rides: its box and height are what the
-				   accepted ~+20px per finished turn is a claim about. */
-				const el = actionsEl ? actionsEl.parentElement : null;
+				/*
+				 * The foot line the row rides: its box and height are what the
+				 * accepted ~+20px per finished turn is a claim about. The anchor
+				 * walks through the actions' own wrapper (see above) so the line
+				 * resolves in both arrangements.
+				 */
+				const wrapper = actionsEl ? actionsEl.parentElement : null;
+				const el =
+					wrapper && String(wrapper.className).includes("ml-auto")
+						? wrapper.parentElement
+						: wrapper;
 				const b = box(el);
 				if (!b || !el) return null;
 				/*
-				 * The caption span beside the actions: a text-meta span in a
-				 * flex items-center line. Its own box is the height this line HAD
-				 * before the actions joined it, since the line box is the tallest
-				 * child's box and that child was the caption.
+				 * The caption ('Worked for 1m 12s'): the line's first direct span
+				 * whose text starts with the caption's own word. It is the edge the
+				 * operator's report is about - it must sit on the content's left
+				 * rail whatever the actions do - and it is only present on turns
+				 * that keep their foot (a bar'd turn states the numbers itself).
 				 */
-				const caption = [...el.querySelectorAll("span")].find(
-					(s) => !s.closest("[data-lo-answer-actions]"),
+				const caption = [...el.querySelectorAll(":scope > span")].find(
+					(s) => (s.textContent ?? "").trimStart().startsWith("Worked"),
 				);
 				return {
 					...b,
 					height: round(el.getBoundingClientRect().height),
+					caption: box(caption ?? null),
 					captionHeight: caption
 						? round(caption.getBoundingClientRect().height)
+						: null,
+					captionText: caption
+						? (caption.textContent ?? "").trim().slice(0, 28)
 						: null,
 					stampLeft: (() => {
 						const stamp = el.querySelector("time, [data-lo-turn-stamp]");
@@ -260,7 +412,48 @@ const PROBE = `(() => {
 			proseText: proseEl ? proseEl.innerText.slice(0, 48) : null,
 		});
 	}
-	return out;
+	/*
+	 * The fold header's count line ('data-fold-summary', 'trace-fold.tsx'), for
+	 * the stories that render a fold and no transcript. 'lines' is the height
+	 * read as line boxes: 1 for a line that fits, more once it wraps - the
+	 * number the wrap fix's claim is about.
+	 */
+	const foldEl = document.querySelector("[data-fold-summary]");
+	const fold = (() => {
+		if (!foldEl) return null;
+		const r = foldEl.getBoundingClientRect();
+		const cs = getComputedStyle(foldEl);
+		const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
+		return {
+			left: round(r.left),
+			right: round(r.right),
+			width: round(r.width),
+			height: round(r.height),
+			lineHeight: round(lh),
+			lines: Math.max(1, Math.round(r.height / lh)),
+			text: (foldEl.textContent ?? "").trim(),
+			/*
+			 * THE LINE THAT HOLDS IT, and its last child's right edge: the wrap
+			 * claim is 'the line wraps rather than overflowing the container', and
+			 * these two numbers are what 'overflowing' would look like - a last
+			 * child ending past the line's own right edge.
+			 */
+			line: (() => {
+				const parent = foldEl.parentElement;
+				if (!parent) return null;
+				const pr = parent.getBoundingClientRect();
+				const kids = [...parent.children];
+				const last = kids[kids.length - 1];
+				return {
+					left: round(pr.left),
+					right: round(pr.right),
+					width: round(pr.width),
+					lastRight: last ? round(last.getBoundingClientRect().right) : null,
+				};
+			})(),
+		};
+	})();
+	return { transcripts: out, fold };
 })()`;
 
 const main = async () => {
@@ -311,7 +504,7 @@ const main = async () => {
 	await cdp.send("Page.enable");
 
 	const results = [];
-	for (const [story, width, height] of STORIES) {
+	for (const [story, width, height, options = {}] of STORIES) {
 		await cdp.send("Emulation.setDeviceMetricsOverride", {
 			width,
 			height,
@@ -350,7 +543,7 @@ const main = async () => {
 					)].some((el) => el.getBoundingClientRect().height > 0);
 					if (loading) return false;
 					if (document.fonts.status !== "loaded") return false;
-					return !!document.querySelector("[data-lo-canonical-transcript]");
+					return !!document.querySelector(${JSON.stringify(options.ready ?? "[data-lo-canonical-transcript]")});
 				})()`,
 			});
 			ready = result.value === true;
@@ -367,28 +560,77 @@ const main = async () => {
 			expression:
 				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 		});
-		const { result } = await cdp.send("Runtime.evaluate", {
-			returnByValue: true,
-			expression: PROBE,
-		});
-		if (!Array.isArray(result.value) || result.value.length === 0) {
-			throw new Error(
-				`${story} @ ${width}x${height}: no transcript rendered ${JSON.stringify(result)}`,
-			);
+		/*
+		 * ONE PASS PER STATE. `measure` reads the probe and pushes the reading
+		 * under the state's name; the idle pass always runs, and a story with a
+		 * `hover` option runs a second pass after a REAL pointer move onto the
+		 * selector (the same input path `capture-evidence.mjs`'s hover entries
+		 * use), settled past the reveal's own transition.
+		 */
+		const measure = async (state, label) => {
+			const { result } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: PROBE,
+			});
+			const value = result.value;
+			const hasTranscripts = (value?.transcripts?.length ?? 0) > 0;
+			if (!hasTranscripts && (value?.fold ?? null) === null) {
+				throw new Error(
+					`${story} @ ${width}x${height}: nothing measurable rendered ${JSON.stringify(result)}`,
+				);
+			}
+			results.push({
+				story: label,
+				state,
+				viewport: `${width}x${height}`,
+				frames: value.transcripts ?? [],
+				fold: value.fold ?? null,
+			});
+		};
+		await measure("idle", options.label ?? story);
+		if (options.hover) {
+			const { result } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `(() => {
+					const el = document.querySelector(${JSON.stringify(options.hover)});
+					if (!el) return null;
+					const r = el.getBoundingClientRect();
+					return { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+				})()`,
+			});
+			const point = result.value;
+			if (!point) {
+				throw new Error(
+					`${story} @ ${width}x${height}: hover selector matched nothing: ${options.hover}`,
+				);
+			}
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x: point.x,
+				y: point.y,
+			});
+			/* Past the reveal's 150ms opacity transition, so both states settle. */
+			await sleep(300);
+			await measure("hover", `${options.label ?? story} (hover)`);
 		}
-		results.push({
-			story,
-			viewport: `${width}x${height}`,
-			frames: result.value,
-		});
 	}
 
 	if (AS_JSON) {
 		console.log(JSON.stringify({ origin: ORIGIN, results }, null, 2));
 		return;
 	}
-	for (const { story, viewport, frames } of results) {
-		console.log(`\n${story}  @ ${viewport}  (${ORIGIN})`);
+	for (const { story, state, viewport, frames, fold } of results) {
+		console.log(`\n${story}  [${state}]  @ ${viewport}  (${ORIGIN})`);
+		if (fold) {
+			console.log(
+				`  fold summary  left=${fold.left}  right=${fold.right}  width=${fold.width}  height=${fold.height}  lines=${fold.lines} (lh ${fold.lineHeight})`,
+			);
+			if (fold.line)
+				console.log(
+					`    line        left=${fold.line.left}  right=${fold.line.right}  width=${fold.line.width}  lastRight=${fold.line.lastRight}`,
+				);
+			console.log(`    text        "${fold.text}"`);
+		}
 		frames.forEach((f, i) => {
 			const label = f.proseText
 				? `"${f.proseText.split("\n")[0]}"`
@@ -414,6 +656,25 @@ const main = async () => {
 				console.log(
 					`    DELTA         left=${f.leftDelta}  right=${f.rightDelta}`,
 				);
+			if (f.line) {
+				console.log(
+					`    foot line     left=${f.line.left}  right=${f.line.right}  height=${f.line.height}`,
+				);
+				console.log(
+					`    caption       ${f.line.caption ? `left=${f.line.caption.left}  right=${f.line.caption.right}  "${f.line.captionText}"` : "none on this line"}`,
+				);
+				console.log(`    stamp         left=${f.line.stampLeft}`);
+			}
+			if (f.actions) {
+				console.log(
+					`    actions       wrapper.left=${f.actions.wrapper?.left ?? "?"}  toolbar.left=${f.actions.toolbar.left}  firstButton.left=${f.actions.firstButton?.left ?? "?"}  buttons=${f.actions.buttons}  actionsOffset=${f.actions.actionsOffset}`,
+				);
+			}
+			if (f.userActions) {
+				console.log(
+					`    user row      left=${f.userActions.left}  right=${f.userActions.right}  firstButton.left=${f.userActions.firstButton?.left ?? "?"}  buttons=${f.userActions.buttons} [${f.userActions.labels.join(", ")}]  bubble.right=${f.userActions.bubble?.right ?? "?"}  bubbleDelta=${f.userActions.bubbleDelta ?? "?"}`,
+				);
+			}
 			console.log(
 				`    writingRow=${f.writingRow}  workingLine=${f.workingLine === null ? "none" : `"${f.workingLine}"`}`,
 			);
