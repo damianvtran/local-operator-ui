@@ -104,6 +104,14 @@ ground where it does not.
 - Regenerate theme CSS: `pnpm gen-themes`
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
+- Fold an evidence stamp after a merge: `pnpm evidence:fold` (resolves
+  `docs/evidence/manifest.json` per field, re-derives the stamps and counts from the
+  merged tree, runs the guards and stages the result - one commit per fold).
+  `pnpm evidence:fold:install` wires the clone's merge driver once, so `git merge
+  origin/main` does not stop on a manifest conflict at all; `pnpm evidence:fold:check`
+  is the read-only form (the merge-driver wiring, not the push hook). The driver
+  resolves a MERGE and nothing else - a rebase, cherry-pick or stash-pop still stops
+  on the manifest, by design (see the evidence section below).
 
 `pnpm check-evidence` admits **one sweep per machine**, across worktrees and
 isolated `HOME`/`TMPDIR` runs. It requires Python 3 with POSIX `flock` (macOS/Linux)
@@ -123,14 +131,72 @@ not independent capture scripts importing the single-frame predicate. Run
 lightweight subprocess/CLI contract tests; they use isolated synthetic evidence,
 not the committed image set.
 
-**A commit that moves `src/` or `scripts/` costs every open branch two commits.**
+**A commit that moves `src/` or `scripts/` costs every open branch one command.**
 `docs/evidence/manifest.json` pins `srcTree`/`scriptsTree` to
 `git rev-parse HEAD:src`/`HEAD:scripts`, and the gate fails a mismatch with "re-capture
 and re-stamp" rather than a warning - so `main` moving a rig, or any sibling branch
 landing one, invalidates the stamp for everybody holding a branch, whether or not
-that branch's own frames changed. That is the convergence cost of the file, and the
-reason a sync here ends with a re-stamp-only commit whose message says what moved,
-what did not, and why. `scripts/evidence-manifest.test.mjs` checks the stamp and
+that branch's own frames changed. That is the convergence cost of the file, and it
+used to be paid with two hand commits per fold. It is now `pnpm evidence:fold`:
+
+```
+git merge origin/main        # with `pnpm evidence:fold:install` once per clone,
+                             # this does not stop on the manifest at all
+pnpm evidence:fold           # resolve + re-derive + stage, one commit
+```
+
+`scripts/evidence-fold.mjs` resolves `docs/evidence/manifest.json` a FIELD at a time
+from the three sides git already holds (pass-describing fields are this branch's,
+listings are the union, ANY object both sides hold is merged per key at every
+depth - never taken wholesale from the side that moved it, which is how a nested
+key the other side still carries used to vanish (`main` lost
+`partialCapture.addedSurfacesNote` at PR #748's merge, and the next fold onto this
+branch propagated the loss) - and the derived fields are re-derived from the
+merged tree -
+that includes `partialCapture.refreshedFrames`, re-derived whenever the merged
+file carries a `partialCapture` at all and counted over the frames OUTSIDE every
+declared `supplementary` set, which is the denominator its own guard asks it
+about), runs the guards over the result and refuses to write a manifest that
+fails them: `stampFailures` (the tree half, which already folds the
+`partialCapture` and `countsMean` checks in) and `citationFailures`, plus
+`citationAncestryFailures` wherever the clone is deep enough to answer it - a
+shallow clone cannot, and the run SAYS so rather than reporting a failure it
+cannot know. A refusal leaves nothing half-resolved: the merge's conflict on the
+manifest is restored with `git checkout -m`, so `git status` shows the same
+unmerged path the run started with, and the refusal names the way forward.
+`--install` wires its merge driver into the clone's local config (and `prepare`
+does it on install); `--check` is the read-only form for THAT wiring - the merge
+driver, not the push hook - and exits non-zero with what to run when it is
+missing. The driver resolves a MERGE and nothing else: outside a merge git hands
+a driver the UPSTREAM side as `%A`, so under a rebase, `pull --rebase`,
+cherry-pick, revert, `am` or stash-pop it exits non-zero and git stops on the
+conflict exactly as it did before the driver existed. It can name the operation
+where git leaves a marker it can read - `rebase`/`pull --rebase` and `am` - and
+refuses the rest generically: a single-commit cherry-pick, a revert and a
+stash-pop record no marker until the step they are running finishes, so those
+refusals say that rather than guess. Run the
+tool BEFORE pushing: it amends the merge tip, and it refuses to amend a tip that
+is already reachable from a remote-tracking ref (printing the `git commit`
+command instead, so the values ride a commit on top). It does NOT weaken
+anything: the stamps stay stored in the manifest and are still compared against
+`HEAD` exactly as below.
+
+**MANIFEST-TOUCHING MERGES ARE A SERIALIZED WINDOW.** A manifest-touching merge
+is one that touches `docs/evidence/manifest.json` or moves `src/` or `scripts/`.
+`main` moves every ~32 minutes (median, measured 2026-10-03) and every merge that
+moves `src/` or `scripts/` invalidates every open branch's stamp - so **one
+manifest-touching PR lands at a time**: fold, push and merge before starting the
+next, and do not read a green head as yours to keep. A green head here is
+perishable: a 19-35 minute CI wait against a 32-minute merge cadence means it is
+routinely superseded before it can be used. If you need the window, ask the
+current release-window owner to hold merges for one CI cycle - that role exists
+only while a `chore(release): claim release window` PR is open, so if no window is
+claimed, say so in the fold's own lane and take it: announce the hold where lanes
+read, then fold, push and merge. This is an interim policy - the structural fix,
+deriving the stamps at verification time so no merge moves them, is designed in
+its own PR.
+
+`scripts/evidence-manifest.test.mjs` checks the stamp and
 needs no lease: it runs inside `pnpm test:desktop`, fails in well under a second, and
 it is what caught the stale stamps that reached `main` once - so a stale stamp is
 visible locally without a sweep, contrary to what this paragraph used to say. Only
@@ -144,7 +210,10 @@ diff looks right, just not this one's (fold 11 shipped exactly that to `main`; f
 second parent's trees until a follow-up re-derived them). When the change also
 touches `scripts/`, that stamp cannot include the edit until the edit is committed,
 so the order is commit, derive, write the values in, `--amend` - the amendment moves
-`docs/` only, and the value written stays true.
+`docs/` only, and the value written stays true. **Run it BEFORE pushing**: the amend
+rewrites the tip, and the tool refuses to amend a tip that is already reachable from
+a remote-tracking ref (it prints the `git commit` command instead, so the values
+land on top rather than rewriting published history).
 
 **A note must not quote `srcTree`/`scriptsTree`.** A note that names the pair binds
 itself to a hash that every content commit moves, so every re-stamp has to rewrite
@@ -163,10 +232,17 @@ name, because a new binding is the defect the assertion exists for. The conventi
 it replaces - `STAMP_BINDING_NOTES`, which held its members to the pair the file
 SHIPS - is what kept those notes bound across every fold.
 
-**Fold first, re-stamp second, as two commits.** The fold is where the
-two-commit rule above keeps biting: the re-stamp reads like part of the merge,
-and sweeping it in reads the values against the pre-fold head. Merge
-`origin/main` in one commit; re-stamp in a separate `docs/`-only one.
+**Fold first, re-stamp second - which is now one command, not two commits.** The fold
+is where the two-commit rule above kept biting: the re-stamp reads like part of the
+merge, and sweeping it in reads the values against the pre-fold head. `pnpm
+evidence:fold` is that separation made mechanical: it re-derives from the MERGED tree
+(the index, before the merge commit exists, and `HEAD` after it), stages the values,
+and amends only when the tip IS the merge commit and the only staged change is this
+file - so the value and the tree it names sit inside one commit either way. Merge
+`origin/main` in one commit; run it; commit once.
+
+Manifest-touching merges are a serialized window - the paragraph above states it,
+and the figures there are re-measured rather than copied.
 
 Measured 2026-09-27 - three PRs in one night, twice during a fold. #553
 (`feat/provider-setup`, `a10e43c25f`) carried 28 frames while also moving `src/`
@@ -1825,7 +1901,9 @@ look is a rule that fails on the day someone does not.
 
 **The owner of a PR merges it the moment its review rounds are clean and fresh
 and CI is green** — no release queue, no waiting for a predecessor, no handing
-the "next number" to whoever is behind you.
+the "next number" to whoever is behind you. (Exception: a manifest-touching PR
+lands through the serialized fold window instead — see *A commit that moves
+`src/` or `scripts/` costs every open branch one command*.)
 
 **Green means the jobs that ran passed, so read the classification.** CI runs only
 the jobs a diff can affect (see *Change scope*), which makes the `Change Scope`
