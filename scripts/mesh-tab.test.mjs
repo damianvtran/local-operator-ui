@@ -1482,7 +1482,8 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		},
 		{
 			term: "trust unattended sessions",
-			gloss: "sessions started there run without asking you each time",
+			gloss:
+				"each session started there skips the approval you would otherwise give",
 		},
 		{
 			term: "grant approve",
