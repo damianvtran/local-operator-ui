@@ -727,23 +727,30 @@ function useArgumentRows(
 			 * is honourable (it stages the draft's identity), which is the whole
 			 * point of the route.
 			 *
-			 * U2's rule again for the EMPTY state (design round 1, D2): a loaded
-			 * roster with no rows is a fact about the workspace, and "No teams
-			 * are registered." is the sentence the dialog's own `emptyText`
-			 * uses for it — while the generic "Not reported yet. Enter runs the
-			 * command." claimed the route never answered, the exact sentence the
-			 * `/mcp` slot (U2) and `/logout` query (U4) fixes removed. Loading and
-			 * error states print ahead of this arm and the matcher arm below
-			 * (`argumentEmptyCopy`'s own order), so no guard is needed here — the
-			 * same shape as the `/mcp` return above.
+			 * U2's rule for the EMPTY state (design round 1, D2; review round 3,
+			 * F1): a loaded roster with NO rows is a fact about the workspace, and
+			 * "No teams are registered." is the sentence the dialog's own
+			 * `emptyText` uses for it — while the generic "Not reported yet"
+			 * claimed the route never answered. The copy is GUARDED on the roster
+			 * being empty because `argumentEmptyCopy` reads `emptyCopy` AHEAD of
+			 * its matcher arm: set unconditionally, it would answer a query that
+			 * merely matched nothing (`/team zz` against a workspace that HAS
+			 * teams) with the false "No teams are registered." — the very class
+			 * the U2/U4 copy fixes exist to remove. `rows` is the WHOLE roster
+			 * (`argumentRows` maps `list.data` 1:1 here; the query filter is
+			 * applied later in `argumentMatches`), which is what makes the
+			 * emptiness test the honest one — the `/mcp` arm's own guard.
 			 */
 			const list = draftRosterSource === "team" ? draftTeams : draftProfiles;
+			const rows = argumentRows(draftRosterSource, list.data ?? [], current);
 			return {
-				rows: argumentRows(draftRosterSource, list.data ?? [], current),
+				rows,
 				emptyCopy:
-					draftRosterSource === "team"
-						? "No teams are registered."
-						: "No profiles found.",
+					rows.length === 0
+						? draftRosterSource === "team"
+							? "No teams are registered."
+							: "No profiles found."
+						: undefined,
 				loading: list.isLoading,
 				error: list.isError ? "The list could not be loaded. Try again." : null,
 				needsSession: false,

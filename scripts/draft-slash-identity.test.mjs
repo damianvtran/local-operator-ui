@@ -41,6 +41,12 @@ import { JSDOM } from "jsdom";
  *     arrangement is a YIELD — the splash is not drawn while the argument list
  *     is open. A source fact, pinned here because the frame that shows it needs
  *     a rig.
+ *  5. The GUARD arm (review round 3, F1): the draft roster's `emptyCopy` must
+ *     be gated on the roster being empty, because `argumentEmptyCopy` reads it
+ *     AHEAD of its matcher arm — set unconditionally, it answers a query that
+ *     merely matched nothing with a false claim about the workspace. Pinned as
+ *     resolver behaviour (the real function, both states) plus the arm's own
+ *     guard in the source.
  *
  * These run against the SHIPPED modules (`picker-registry.tsx`,
  * `desktop-contract.ts`) and the shipped SOURCE (message-input.tsx), the same
@@ -51,6 +57,8 @@ import { JSDOM } from "jsdom";
 
 const COMPOSER =
 	"src/renderer/src/shared/components/composer/message-input.tsx";
+const SLASH_COMMANDS =
+	"src/renderer/src/features/chat/components/slash-commands.tsx";
 
 /* Hoisted for the linter (`useTopLevelRegex`), like the assertions they feed. */
 const SLASH_SESSION_STATUS_GATE = /slashSessionId\s*=\s*sessionStatus\s*\?/;
@@ -62,6 +70,7 @@ const SPLASH_YIELDS_TO_PICKER =
 	/showEmptyChatPrompt && !\(slash\.open && slash\.phase === "argument"\)/;
 const SPLASH_CLASS_READS_YIELD =
 	/showSplash\s*\?\s*"flex w-full flex-col items-center gap-6 py-4"/;
+const DRAFT_ROSTER_EMPTY_COPY_GUARD = /emptyCopy:\s*rows\.length === 0/;
 
 /*
  * The minimum the bundle's import chain touches at module scope: the stores
@@ -123,7 +132,7 @@ const bundle = await build({
 		contents: [
 			'export { desktopRequestSchema } from "./src/shared/desktop-contract";',
 			'export { DESTINATIONS, destinationNeedsSession, draftStageForSource } from "./src/renderer/src/features/chat/pickers/picker-registry";',
-			'export { entitySessionId } from "./src/renderer/src/features/chat/components/slash-contract";',
+			'export { argumentEmptyCopy, entitySessionId } from "./src/renderer/src/features/chat/components/slash-contract";',
 			'export { useCanonicalSessionsStore } from "./src/renderer/src/shared/store/canonical-sessions-store";',
 			'export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";',
 		].join("\n"),
@@ -168,6 +177,7 @@ let desktopRequestSchema;
 let DESTINATIONS;
 let destinationNeedsSession;
 let draftStageForSource;
+let argumentEmptyCopy;
 let entitySessionId;
 let useCanonicalSessionsStore;
 let useConversationInputStore;
@@ -177,6 +187,7 @@ try {
 		DESTINATIONS,
 		destinationNeedsSession,
 		draftStageForSource,
+		argumentEmptyCopy,
 		entitySessionId,
 		useCanonicalSessionsStore,
 		useConversationInputStore,
@@ -310,6 +321,57 @@ test("the splash the roster would cover yields while the argument picker is open
 		source,
 		SPLASH_CLASS_READS_YIELD,
 		"the splash group's class must read the yielding flag, not the raw prompt flag",
+	);
+});
+
+test("a no-match draft roster query keeps the matcher sentence (the F1 guard)", () => {
+	/*
+	 * Review round 3, F1: `argumentEmptyCopy` (the REAL resolver) reads
+	 * `emptyCopy` ahead of its matcher arm — asserted first below, because that
+	 * precedence is exactly why the arm must guard the copy. The two states are
+	 * then the arm's two possible outputs: the guarded copy when the WHOLE
+	 * roster has no rows, and `undefined` when a query merely filtered every
+	 * row out (`argumentRows` returns the unfiltered roster; the filter runs
+	 * later in `argumentMatches`) — with the resolver printing the matcher
+	 * sentence for the latter and never claiming the workspace is empty.
+	 */
+	assert.equal(
+		argumentEmptyCopy({
+			needsSession: false,
+			error: null,
+			loading: false,
+			rows: [{ value: "lopdev" }],
+			emptyCopy: "No teams are registered.",
+		}),
+		"No teams are registered.",
+		"`emptyCopy` outranks the matcher arm — which is why the arm must guard it",
+	);
+	assert.equal(
+		argumentEmptyCopy({
+			needsSession: false,
+			error: null,
+			loading: false,
+			rows: [],
+			emptyCopy: "No teams are registered.",
+		}),
+		"No teams are registered.",
+		"an empty roster keeps D2's sentence",
+	);
+	assert.equal(
+		argumentEmptyCopy({
+			needsSession: false,
+			error: null,
+			loading: false,
+			rows: [{ value: "lopdev" }],
+			emptyCopy: undefined,
+		}),
+		"No matches. Enter runs the command.",
+		"a query matching nothing against a non-empty roster keeps the matcher sentence",
+	);
+	assert.match(
+		readFileSync(SLASH_COMMANDS, "utf8"),
+		DRAFT_ROSTER_EMPTY_COPY_GUARD,
+		"the draft arm's emptyCopy must be conditional on the whole roster being empty",
 	);
 });
 
