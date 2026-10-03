@@ -42,7 +42,10 @@ import { AIDA_DISABLED_SENTENCE } from "@features/aida/aida-control";
 import { gateIsSecret } from "@features/chat/ask-answer";
 import { formatContextTokens } from "@features/chat/pickers/panels/formatters";
 import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
-import { unreadableAttachmentRefusal } from "@features/chat/utils/attachment-read";
+import {
+	imageOverflowRefusal,
+	unreadableAttachmentRefusal,
+} from "@features/chat/utils/attachment-read";
 import { canvasDocumentForPath } from "@features/chat/utils/canvas-document";
 import { messageBudgetRefusal } from "@features/chat/utils/message-budget";
 import { createLocalOperatorClient } from "@shared/api/local-operator";
@@ -519,7 +522,7 @@ export function MiniComposer() {
 			beforeAdmission?: (sessionId: string) => Promise<string | undefined>,
 			inputMode?: "typed" | "dictated" | "mixed",
 		) => {
-			const { images, unreadable } = await encodeImageAttachments(
+			const { images, unreadable, overflow } = await encodeImageAttachments(
 				attachments,
 				content,
 			);
@@ -530,6 +533,11 @@ export function MiniComposer() {
 					code: UNREADABLE_ATTACHMENT_CODE,
 					retry: false,
 				});
+				return false;
+			}
+			const overflowRefusal = imageOverflowRefusal(overflow);
+			if (overflowRefusal) {
+				setSendError({ message: overflowRefusal, retry: false });
 				return false;
 			}
 			const budgetRefusal = messageBudgetRefusal(content, images);
