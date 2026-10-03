@@ -293,7 +293,13 @@ const APP_SPAWN_SITES = [
 	guarded(
 		"scripts/console-host-proof.mjs",
 		"spawn",
-		1,
+		/*
+		 * #2, not #1: `--pair` added a `spawn("lop", …)` ahead of the app's own spawn,
+		 * and this index counts spawn calls in the file rather than Electron ones. The
+		 * daemon spawn is not this table's business - the app's spawn below it is, and
+		 * it still carries the switch.
+		 */
+		2,
 		/(?:\{|,)\s*env\s*,/,
 		"boots the built app headless and forks a REAL pty inside it - and with `--packaged` launches an electron-builder bundle the same way, so this rig is two separate runs",
 		/withTelemetryOff\(env\);/,

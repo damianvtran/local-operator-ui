@@ -1662,6 +1662,65 @@ test("closing a running surface without killing it is refused rather than orphan
 	assert.deepEqual(spawned[0].pty.signals, []);
 });
 
+/*
+ * The close/dismiss distinction (#754), pinned where it can be executed: the pane
+ * sends `{ retain: false }` for an ENDED surface and `{ kill: true }` for a running
+ * one, and the two flags are not interchangeable. `retain: false` is what removes a
+ * surface from the retained registry - the thing that makes a dismissed ended tab
+ * stay gone across a relaunch, which is issue #754's own repro - while a close that
+ * says nothing runs the surface's policy (the `close` docstring's "a user may close
+ * a surface and keep its history"), so the retained record survives for the next
+ * launch to replay (design 6.7).
+ */
+test("a dismissed ended surface's history is removed, so a relaunch cannot restore it", async () => {
+	const dir = scratch("console-dismiss-");
+	const history = new ConsoleHistory(historyRoot(dir));
+	const { host, spawned } = hostWithWindow({ history });
+	const created = await createSurface(host, { retain: true, origin: "user" });
+	spawned[0].pty.emit("last words\r\n");
+	await ticks(30);
+	spawned[0].pty.exit(0);
+	await ticks(20);
+	// The state the strip's dismiss control acts on:ended, still listed, history on
+	// disk (retained), so a relaunch WOULD restore it.
+	assert.equal(host.list().length, 1);
+	assert.equal(host.list()[0].running, false);
+	assert.equal(history.list("session-1").length, 1);
+	const closed = await host.close(created.surface, { retain: false });
+	assert.deepEqual(closed, { closed: true, exit_code: 0 });
+	assert.equal(host.list().length, 0);
+	assert.equal(
+		history.list("session-1").length,
+		0,
+		"the dismissal left the history a relaunch would restore",
+	);
+});
+
+test("a running surface's kill keeps the retained history a dismissal would remove", async () => {
+	const dir = scratch("console-close-keep-");
+	const history = new ConsoleHistory(historyRoot(dir));
+	const { host, spawned } = hostWithWindow({ history });
+	const created = await createSurface(host, { retain: true, origin: "user" });
+	spawned[0].pty.emit("kept\r\n");
+	await ticks(30);
+	const closed = host.close(created.surface, { kill: true });
+	await ticks(5);
+	spawned[0].pty.exit(143);
+	assert.deepEqual(await closed, { closed: true, exit_code: 143 });
+	assert.deepEqual(spawned[0].pty.signals, ["SIGTERM"]);
+	assert.equal(host.list().length, 0);
+	assert.equal(
+		history.list("session-1").length,
+		1,
+		"a close that names no retain policy dropped a retained surface's history",
+	);
+	assert.ok(
+		readFileSync(logPath(historyRoot(dir), "session-1", created.surface))
+			.toString("utf8")
+			.includes("kept"),
+	);
+});
+
 test("reveal: open is downgraded when the window is not focused, and never asks to raise it", async () => {
 	const { host } = hostWithWindow({ window: fakeWindow({ focused: false }) });
 	const created = await createSurface(host, { reveal: "open" });
@@ -2160,7 +2219,7 @@ test("every channel in the namespace's list is registered, and the sender is che
 
 test("the pane's reports and the created surface are validated at the boundary", async () => {
 	ipcMain.reset();
-	const { host } = hostWithWindow();
+	const { host, spawned } = hostWithWindow();
 	const window = {
 		isDestroyed: () => false,
 		webContents: {
@@ -2286,6 +2345,41 @@ test("the pane's reports and the created surface are validated at the boundary",
 	// A handle that is not a handle is refused rather than looked up.
 	assert.match(
 		(await refusalOf(() => call("console-open-pane", 7))).message,
+		/string/,
+	);
+
+	/*
+	 * The surface-close path through the channel, end to end inside one process:
+	 * the refusal first (a kill-less close of a RUNNING surface is `busy` - main's
+	 * own answer rather than a rule the renderer remembers), then the kill the
+	 * pane's confirm sends, which removes the surface from the listing and reports
+	 * the exit code it caused.
+	 */
+	const busy = await refusalOf(() =>
+		call("console-close-surface", created.surface, { kill: false }),
+	);
+	assert.equal(busy.code, "busy");
+	assert.match(busy.message, /still running/);
+	assert.match(
+		(
+			await refusalOf(() =>
+				call("console-close-surface", created.surface, { kill: "yes" }),
+			)
+		).message,
+		/boolean/,
+	);
+	assert.equal(host.list().length, 1);
+	const killed = call("console-close-surface", created.surface, {
+		kill: true,
+	});
+	await ticks(5);
+	spawned[0].pty.exit(143);
+	assert.deepEqual(await killed, { closed: true, exit_code: 143 });
+	assert.equal(host.list().length, 0);
+	// A surface that is not a handle is refused by the same validator every other
+	// handle on this namespace goes through.
+	assert.match(
+		(await refusalOf(() => call("console-close-surface", 7))).message,
 		/string/,
 	);
 	unregisterConsoleIpc();
