@@ -217,6 +217,30 @@ export const KEY_TIER: Record<string, SettingTier> = {
 	 * (QA round 1, Q1 asked for the judgement, this is it).
 	 */
 	"desktop.launch_command": "advanced",
+	// speech voicing (7)
+	/*
+	 * All seven are `advanced`, and the rubric above is why rather than the
+	 * section being new: every one of them is a tuning scalar for a delivery the
+	 * reader HEARS (a voice's gender, tone, expressiveness, pace, language,
+	 * accent, and free-text delivery instructions), and none of their labels alone
+	 * states the choice being made - "Tone" and "Pace" name the DIMENSION, and
+	 * what the value does to the spoken voice is in the row's own help, which is
+	 * exactly the test the authoring rule applies. The section they live in is
+	 * `live` scope, so there is no relaunch for a reader to weigh either.
+	 *
+	 * No `SECTION_TIER` entry accompanies them, deliberately: the section fallback
+	 * is the belt for a key this curation MISSED, and naming `speech` there would
+	 * let a future `speech.*` key land `advanced` by section rather than by a
+	 * decision. The drift test is what keeps that safe - a key the registry gains
+	 * fails the fixture comparison until somebody classifies it here.
+	 */
+	"speech.voice.gender": "advanced",
+	"speech.voice.tone": "advanced",
+	"speech.voice.expressiveness": "advanced",
+	"speech.voice.pace": "advanced",
+	"speech.voice.language": "advanced",
+	"speech.voice.accent": "advanced",
+	"speech.voice.instructions": "advanced",
 };
 
 /**
@@ -258,11 +282,12 @@ export function tierFor(
  * A section opens iff at least half its rows are `core` — the spec's "each
  * closed except the core-heavy ones". Derived from the tier map rather than
  * listed a second time, so a re-tiered key moves the arrival layout with it
- * instead of leaving a hand-written list behind. On the shipping 102-key
+ * instead of leaving a hand-written list behind. On the shipping 112-key
  * registry this opens Model (3/3 core), Approvals (1/1), Fork (1/2) and Web tools
- * (2/2) — four sections and seven rows, whose height plus the 19 headers keeps the
- * arrival region inside its 1,600px budget. The other fifteen sections are closed
- * on arrival, including the one-member `desktop` section (0/1 core).
+ * (2/2) — four sections and seven rows, whose height plus the 20 headers keeps the
+ * arrival region inside its 1,600px budget. The other sixteen sections are closed
+ * on arrival, including the one-member `desktop` section (0/1 core) and the
+ * seven-member `speech` section (0/7 core, the voicing dials).
  */
 export function opensOnArrival(
 	rows: readonly Pick<BackendSetting, "key" | "section" | "tier">[],
