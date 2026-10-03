@@ -10,8 +10,11 @@ that can speak through nothing.
 
 ## What produced these frames
 
-Storybook on this branch's own tree (`feat/speech-settings-group`, captured at
-`9aab9d7b265`), driven by `scripts/capture-evidence.mjs`:
+Storybook on this branch's own tree (`feat/speech-settings-group`), driven by
+`scripts/capture-evidence.mjs`, with the rig's own recipe: `reactDocgen: false`
+in this disposable checkout (this set's frames are stories, never docs pages, so
+the prop tables are pure build cost), one Storybook on the set's own port, and
+`--only=settings-speech` so no other surface is swept.
 
 ```
 node node_modules/storybook/bin/index.cjs dev -p 6017 --ci --quiet
@@ -35,46 +38,31 @@ as the third so the check is not two flavours of the same ramp. The set is three
 of the fifty-nine palettes by deliberate narrowing (a full sweep multiplies by
 twelve); the other fifty-six are reachable with `--themes=<a,b>` under `--only`.
 
-## The tree these frames describe, and what moved under them
+## The tree these frames describe
 
-The capture above is a **capture-tree citation, not a head citation**, and the
-difference is stated here rather than left for a reader to discover:
+This set was **re-shot** for design review round 1 and UX review round 1, so the
+citation here is a HEAD-tree citation rather than the capture-tree one the first
+set needed:
 
-- the frames were shot from `9aab9d7b265` - `git rev-parse 9aab9d7b265:src` =
-  `7c0c609a5314b6c4b9241ccf779cc629c39ca082`;
-- `origin/main` moved to `051acc98d50` (#800, the draft slash/composer work) while
-  this set was being captured, and this branch folded it. The code side of the
-  head this set is reviewed on is therefore the merge commit whose `src` tree is
-  `ad1d2304ceaf7b9772fbd34aa41bf4803dd70780`, which is NOT the capture tree.
+- the frames were shot from `c20c74ff011` - `git rev-parse c20c74ff011:src` =
+  `fc6358c87df9844990cd47114896fb3cb4fba3f8`;
+- that commit is the CODE side of the head this set is reviewed on. Everything
+  after it touches `docs/` only, so `git rev-parse HEAD:src` is the same tree -
+  the frames now describe the tree they are reviewed with.
 
-That is a real gap in the discipline, and the two facts that bound it are the
-ones to weigh:
-
-1. what moved between the two trees is 16 files under `src/`, all of them the
-   chat/composer work this fold brought in (`features/chat/**`,
-   `shared/components/composer/message-input.tsx`,
-   `shared/store/canonical-sessions-store.ts`) plus one theme file;
-2. **none of them is a file this surface renders**, and the surface's own files
-   are byte-identical across the two trees. Re-runnable check:
-
-```
-git diff --name-only 9aab9d7b265 <head> -- src | \
-  grep -E 'features/settings|shared/lib/speech-gate|shared/desktop-contract|shared/hooks/use-credentials|shared/components/common/error-boundary'
-# prints nothing
-```
-
-The one file in that list a theme reader would care about,
-`shared/themes/palettes/local-operator.ts`, changed **comments only** (36
-insertions, 0 deletions, measured with `git diff --numstat`), so the three
-palettes photographed here are unchanged in value and no frame's colour moved
-with it. The manifest's `head` field names the same capture tree, for the same
-reason.
-
-What this set therefore claims: the five states render as these pixels show on
-the tree they were captured from, and nothing this surface renders has changed
-since. What it does not claim, and cannot: that a re-capture on the reviewed head
-would be pixel-identical. That re-capture is a rig decision for the design and UX
-rounds, which are dispatched on the reviewed head.
+WHY THEY WERE RE-SHOT, and what the first set had wrong. `unreadable/`
+photographed the panel's PENDING arm - a retrying read - rather than the failed
+read the state is named for: the rig's shutter fires on a rendered-element count,
+this panel's pending arm already carries the seven rows, and the story armed no
+latch, so the frame landed inside the one retry `retryDesktopQuery` allows. The
+story also mounted the section at `max-w-3xl`, a column the settings page never
+renders. Both are fixed in the story - the latch is held until the sentence the
+state settles on is on screen, and the column is the page's own `max-w-4xl` -
+which moves the story file, which is why the WHOLE set was re-taken rather than
+one directory: a set whose states come from two story revisions is worse than
+either. The first set's tree gap (shot at `9aab9d7b265`, then folded onto
+`051acc98d50`) is closed by this re-shoot rather than argued away, and the
+manifest's `head` field names the same tree.
 
 ## What each frame shows
 
@@ -82,32 +70,47 @@ Every frame is `1024x<height>` and carries the section in its own ground: the
 title `Speech voicing`, the one-line description, the `Speaks through` /
 `Availability` pair, the daemon's own reason sentence, the three cascade rungs
 with per-rung availability, and the seven registry rows (`Voice gender`, `Tone`,
-`Expressiveness`, `Pace`, `Language`, `Accent`, `Delivery instructions`).
+`Expressiveness`, `Pace`, `Language`, `Accent`, `Delivery instructions`). In every
+frame the rung that would SERVE takes the stronger ink and the others the muted
+one, so "which one will speak" is a text-weight step rather than only the word
+`not` inside the faintest line.
 
-- **`radient-pass/`** (752 high) - signed in: `Speaks through: Radient Pass`,
-  `Availability: Ready`, reason `Signed in to Radient.`, the Radient rung
-  `(available)`, ElevenLabs and OpenAI `(not available)`. No reminder.
-- **`stored-provider-key/`** (752) - signed OUT and still servable:
-  `Speaks through: ElevenLabs`, `Availability: Ready`, reason `An ElevenLabs API
-  key is stored.`, Radient Pass `(not available)` with `Not signed in to
-  Radient.`, ElevenLabs `(available)`, OpenAI `(not available)`. **No reminder is
-  raised**, which is the claim this state exists for: the reminder follows
-  AVAILABILITY, not the account.
+- **`radient-pass/`** (720 high) - signed in: `Speaks through: Radient Pass`,
+  `Availability: Ready`, the rung line `Radient Pass (available)` carrying
+  `Signed in to Radient.`, then ElevenLabs and OpenAI `(not available)`. The
+  resolution's sentence appears ONCE, on that rung's own line - rendering it above
+  the list as well printed one sentence twice (design review round 1, D2). No
+  reminder.
+- **`stored-provider-key/`** (720) - signed OUT and still servable:
+  `Speaks through: ElevenLabs`, `Availability: Ready`, Radient Pass
+  `(not available)` with `Not signed in to Radient.`, ElevenLabs `(available)`
+  carrying `An ElevenLabs API key is stored.`, OpenAI `(not available)`. **No
+  reminder is raised**, which is the claim this state exists for: the reminder
+  follows AVAILABILITY, not the account.
 - **`nothing-available/`** (821) - `Speaks through: Nothing yet`,
-  `Availability: No provider`, the daemon's full reason sentence, all three rungs
+  `Availability: No provider`, the daemon's full reason sentence (the one line no
+  rung carries, which is why D2's de-duplication keeps it), all three rungs
   `(not available)`, and the warning callout `Nothing can speak aloud yet: run
-  `/login radient` to sign in`. This frame is the inert state AND its route
-  pointer; there is no credential field anywhere in the group.
+  /login radient to sign in, or store a provider key in the Model providers
+  section`. The callout names BOTH remedies and prints the command bare - the
+  backticks rendered as characters around it in the first set, and the key route
+  was named nowhere (design review round 1, D5; UX review round 1, U3). This frame
+  is the inert state AND its route pointer; there is no credential field anywhere
+  in the group.
 - **`backend-older/`** (640) - a daemon that does not advertise
   `features.tts`: title, description, and the version-gap callout `This backend
   does not serve the voicing surface. Update the backend to tune how the
   assistant sounds.` **No rows and no cascade**, because the group does not fire
   a read at a route that is not there. The ground below the callout is empty by
   construction; this is the one state with no rows to show.
-- **`unreadable/`** (640) - the availability read failed: `Checking whether this
-  machine can speak aloud...` beside the seven rows. It claims neither "ready"
-  nor "no provider", which is the arm a spinner-plus-rows has to be distinguished
-  from the two above.
+- **`unreadable/`** (640) - the availability read FAILED, settled: the warning
+  band `Speech availability could not be read. The resolver could not read the
+  credential store.` with the `Retry` button (the same affordance the registry
+  read's failure carries - the first set's frame photographed the pending arm
+  here instead, and the arm had no way out at all: UX review round 1, U2), then
+  the seven rows. It claims neither "ready" nor "no provider", and the retry
+  window is not a state - which is the distinction this frame had to be re-shot
+  to carry.
 
 Each is committed in all three themes; the theme is the file name.
 
@@ -146,8 +149,12 @@ pixels do not carry. That is a finding for the PR, not a gap in this set.
 
 The viewport is grown by the rig to the rendered height (`scrollHeight`), so the
 `640` in the `STORIES` row is a floor rather than a crop, and the frame height is
-the content's: 752 for the two servable states, 821 for the one carrying the
+the content's: 720 for the two servable states, 821 for the one carrying the
 callout, 640 for the two that stop at a height floor. The section column is
-`max-w-3xl` (768px) centred in 1024, which is what holds the row controls at
-x=128..896 in every frame; the empty band below `backend-older`'s callout is
-`min-h-screen` on the story wrapper, not a clipped element.
+`max-w-4xl` (896px) centred in 1024 - the page's own content column, which is what
+puts every row separator and control edge at x=63..960 in these frames; the first
+set mounted `max-w-3xl` and measured x=128..896, a width the product never
+renders. The empty band below `backend-older`'s callout is `min-h-screen` on the
+story wrapper, not a clipped element. The `nothing-available` callout measures
+898x56 at y320..375 and the `unreadable` warning band 904x62 at y88..151 - the
+latter's extra height is the `Retry` button's row.
