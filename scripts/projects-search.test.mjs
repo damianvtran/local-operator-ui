@@ -189,3 +189,115 @@ test("case-insensitive throughout", () => {
 	);
 	assert.equal(searchMatch(project("p", { title: "Billing" }), "billing"), 12);
 });
+
+/*
+ * The JOIN with the backend engine, and the copy that has to be true of
+ * whichever engine served — both pure, both here rather than in a frame,
+ * because a single still cannot show that a sentence is false.
+ */
+
+test("the backend's hits become this listing's rows, in the ANSWER's rank order", () => {
+	const rows = [
+		project("a", { name: "alpha" }),
+		project("b", { name: "beta" }),
+		project("c", { name: "gamma" }),
+	];
+	// The order is the answer's, not the listing's: rank is the backend's
+	// model, and re-deriving one here would be a second, disagreeing one.
+	assert.deepEqual(
+		search
+			.projectsForHits(rows, [{ id: "c" }, { id: "a" }, { id: "b" }])
+			.map((row) => row.id),
+		["c", "a", "b"],
+	);
+	// An id the listing does not hold is DROPPED, not invented: the store moved
+	// under the answer (a project deleted between the two reads).
+	assert.deepEqual(
+		search
+			.projectsForHits(rows, [{ id: "a" }, { id: "gone" }])
+			.map((row) => row.id),
+		["a"],
+	);
+	// No hits is no rows, and it never falls back to the listing.
+	assert.deepEqual(search.projectsForHits(rows, []), []);
+});
+
+/*
+ * The claims the per-engine copy is held to, hoisted to module scope because a
+ * literal re-allocated per assertion is the thing `useTopLevelRegex` refuses —
+ * and these are the sentence's own words, so they read better named.
+ */
+const CLIENT_DISCLAIMER = /Update text is not searched\./;
+const ANY_DISCLAIMER = /is not searched/;
+const NAMES_UPDATES = /update text/;
+const SHARED_RECOVERY = /Clearing the search and filters restores the list\.$/;
+
+test("each engine carries its own no-match subline, and neither lies about update text", () => {
+	const { SEARCH_SUBLINE } = search;
+	/*
+	 * THE CLAIM THIS PINS, mechanically: "Update text is not searched" is a fact
+	 * about the client matcher — `updates[]` is detail-only on the wire, so a
+	 * query ranked here cannot reach it — and the backend index DOES read it,
+	 * which is the whole reason it exists. So the sentence must not be shared,
+	 * and the engine that reads updates must not deny doing so.
+	 */
+	assert.match(SEARCH_SUBLINE.client, CLIENT_DISCLAIMER);
+	assert.doesNotMatch(
+		SEARCH_SUBLINE.backend,
+		ANY_DISCLAIMER,
+		"the index reads update text; a sentence denying it is false the moment it serves",
+	);
+	assert.match(SEARCH_SUBLINE.backend, NAMES_UPDATES);
+	// The one claim BOTH engines make, because both are the same box over the
+	// same listing: an empty result is undone by the same clear.
+	for (const engine of ["client", "backend"]) {
+		assert.match(
+			SEARCH_SUBLINE[engine],
+			SHARED_RECOVERY,
+			`${engine}: the shared half of the sentence`,
+		);
+		assert.notEqual(SEARCH_SUBLINE[engine].trim(), "");
+	}
+	assert.notEqual(SEARCH_SUBLINE.client, SEARCH_SUBLINE.backend);
+});
+
+test("the index gate is version 2 of the projects capability", () => {
+	// Stated here, beside the fallback it gates, rather than only in the
+	// contract suite: the number is what decides which engine serves.
+	assert.equal(search.PROJECTS_SEARCH_MIN_VERSION, 2);
+});
+
+test("the query BOTH engines are asked is trimmed and bounded, once", () => {
+	const { projectsSearchQuery } = search;
+	// Identity for anything a board search is actually typed with: the bound is
+	// the route's, and it must not touch an ordinary box.
+	assert.equal(projectsSearchQuery("  payments  "), "payments");
+	assert.equal(projectsSearchQuery(""), "");
+	assert.equal(projectsSearchQuery("   "), "");
+	// Bounded at the route's own number, and trimmed FIRST so the bound counts
+	// the string that would be sent rather than the box's own whitespace.
+	const long = `${" ".repeat(10)}${"a".repeat(400)}`;
+	assert.equal(projectsSearchQuery(long).length, 256);
+	assert.equal(
+		projectsSearchQuery("a".repeat(256)),
+		"a".repeat(256),
+		"exactly at the bound is not over it",
+	);
+	assert.equal(projectsSearchQuery("a".repeat(257)).length, 256);
+	/*
+	 * THE REASON THIS IS A FUNCTION rather than a slice at each call site: the
+	 * FALLBACK must rank this same string, or a paste over the bound makes the
+	 * two engines answer different questions (review round 1, MINOR-2). The page
+	 * and the hook both call it, and this asserts the one property that makes
+	 * that safe — that the result is a prefix of the trimmed box, so the index
+	 * and the Client matcher cannot disagree about the box itself.
+	 */
+	const box = `${"a".repeat(300)} needletail`;
+	const bounded = projectsSearchQuery(box);
+	assert.equal(box.trim().startsWith(bounded), true);
+	// And the row the two strings disagree about, as the page-level suite builds
+	// it: an exact hit under the bounded string, unreachable under the box.
+	const exact = project("x", { name: bounded });
+	assert.ok(searchMatch(exact, bounded) > 0);
+	assert.equal(searchMatch(exact, box), 0);
+});

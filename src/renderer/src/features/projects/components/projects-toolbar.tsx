@@ -64,7 +64,12 @@ import {
 /* ------------------------------------------------------- search controls -- */
 
 export type ProjectsSearchControlsProps = {
-	/** The whole listing, for the popover's count derivation (open panels only). */
+	/**
+	 * The popover's count population: the rows the current query ADMITS (the
+	 * page hands the search's own row set, not the whole listing), so a count
+	 * always answers "how many would I see if I picked this?" over exactly the
+	 * rows the list beside it draws from. Derived only while the panel is open.
+	 */
 	projects: DesktopProject[];
 	query: string;
 	onQueryChange: (query: string) => void;

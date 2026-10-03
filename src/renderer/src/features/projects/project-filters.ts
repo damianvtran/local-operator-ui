@@ -9,13 +9,19 @@
  * than by a reviewer's eye on a frame.
  *
  * COMBO SEMANTICS, stated once for the whole surface: OR within a facet, AND
- * across facets. The search query is ANDed on top by the caller (the page runs
- * the search join and hands this module the survivors); it deliberately does
- * not live in `FilterState`, because "what the facets select" and "what the
- * query matched" are two derivations the page composes — and the facet
- * POPULATION below still accounts for the query, so a count always answers the
- * question "how many rows would I see if I picked this?" rather than a question
- * about a listing the reader cannot see.
+ * across facets. The search query is ANDed on top by the caller — the caller
+ * runs the search join and hands this module the SURVIVORS as its `rows`. It
+ * deliberately does not live in `FilterState`, because "what the facets select"
+ * and "what the query matched" are two derivations a page composes.
+ *
+ * THE QUERY IS NO LONGER RE-DERIVED HERE, and that is the point of the shape.
+ * The count population below still accounts for the query — a count must answer
+ * "how many rows would I see if I picked this?", not a question about a listing
+ * the reader cannot see — but it takes the query's ADMITTED ROWS as its input
+ * instead of re-running a matcher over them. Two engines can serve that
+ * admission (the backend's index and `project-search.ts`), and a module that
+ * re-derived membership with one of them would let the popover's counts and the
+ * list beside it disagree about which rows exist.
  */
 
 import type { DesktopProject } from "../../../../shared/desktop-control-contract";
@@ -27,7 +33,6 @@ import {
 	projectStatusMeta,
 	projectTeamName,
 } from "./project-model";
-import { searchMatch } from "./project-search";
 
 /**
  * The facet keys, in the order the popover renders them (the design's own
@@ -367,28 +372,28 @@ export type ProjectFacetSection = {
 
 /**
  * The rows a facet option's count is taken over: everything the reader could
- * still see if they picked it — the query and every OTHER facet applied.
+ * still see if they picked it — every OTHER facet applied, over the rows the
+ * search admitted.
  *
  * A facet's own selection is excluded because its options are alternatives and
- * a count that includes them shows 0 on every option not yet picked; the query
- * is included because a count that ignores it overstates what a click yields
- * (the same lie in the other direction).
+ * a count that includes them shows 0 on every option not yet picked. The
+ * QUERY is accounted for by construction rather than by a second matcher here:
+ * `rows` IS the query's admitted set (whichever engine admitted it), so a count
+ * that ignores the query is not expressible — which is the shape that keeps the
+ * popover and the list beside it from disagreeing about which rows exist.
  */
 function facetPopulation(
 	facet: FilterFacetKey,
 	rows: DesktopProject[],
 	state: FilterState,
 	todayMs: number,
-	query: string,
 ): DesktopProject[] {
-	const needle = query.trim();
-	return rows.filter((project) => {
-		if (needle && searchMatch(project, needle) === 0) return false;
-		return FACET_ORDER.every(
+	return rows.filter((project) =>
+		FACET_ORDER.every(
 			(other) =>
 				other === facet || matchesFacet(state, other, project, todayMs),
-		);
-	});
+		),
+	);
 }
 
 /**
@@ -498,9 +503,8 @@ export function facetOptions(
 	rows: DesktopProject[],
 	state: FilterState,
 	todayMs: number,
-	query: string,
 ): ProjectFacetSection {
-	const population = facetPopulation(facet, rows, state, todayMs, query);
+	const population = facetPopulation(facet, rows, state, todayMs);
 	const fixedVocabulary = FIXED_VOCABULARY_FACETS.has(facet);
 	const options: ProjectFacetOption[] = [];
 	for (const value of candidateValues(facet, population, state)) {
@@ -529,9 +533,6 @@ export function facetSections(
 	rows: DesktopProject[],
 	state: FilterState,
 	todayMs: number,
-	query: string,
 ): ProjectFacetSection[] {
-	return FACET_ORDER.map((facet) =>
-		facetOptions(facet, rows, state, todayMs, query),
-	);
+	return FACET_ORDER.map((facet) => facetOptions(facet, rows, state, todayMs));
 }
