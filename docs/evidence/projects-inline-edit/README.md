@@ -35,6 +35,12 @@ refusal, the x/✓ adjacency, and - exercising UX round 1's U1 / QA round 1's
 Q1 on the real path - the `Use theirs` door (focus hand-back, slot to rest,
 record adopted). 54 per palette, from 47.
 
+One correction to the round-1 record, from QA round 2's live reading: the
+description's cap is NOT a `maxlength`. Past 240 the counter turns the danger
+role and the check dims and refuses the send - the disabled-check behaviour
+UX round 1's U3 settled - while the title, key and owner/team caps ARE
+enforced at input (their `maxLength`s, the wire's own bounds).
+
 ## What the frames are evidence for, and what they are not
 
 The change this set evidences retired the modal `Edit project` sheet: every
@@ -88,7 +94,8 @@ node scripts/renderer-driver.mjs --scene project-inline-edit \
   --backend-records "$ROOT/run/serve" \
   --project rig-inline \
   --out "$LOCAL_OPERATOR_SCRATCHPAD/frames" \
-  --seed-onboarding-complete --window-size 1380x900
+  --seed-onboarding-complete --window-size 1380x900 \
+  --theme localOperatorDark
 # ... and the LIGHT pass: RE-RUN THE SEED FIRST - `python3 seed.py` deletes
 # both rows and recreates them - then the same command with
 # `--theme localOperatorLight`. The re-seed is required, not hygiene: the
