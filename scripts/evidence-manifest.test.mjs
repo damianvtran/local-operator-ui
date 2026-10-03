@@ -762,6 +762,94 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
 });
 
 /**
+ * The manifest's parse DISCARDS duplicated keys, and every gate here reads the
+ * file through a parser that does the same. So a SPLICED entry - two entries'
+ * fields merged into one object, the second one's opening brace eaten by a
+ * fold's conflict resolution - ships a false field silently while every
+ * comparison through `JSON.parse` stays green.
+ *
+ * Measured on this branch (review round 2, F3): a fold merged the neighbouring
+ * `chat-aside-panel-before` fields into `console-surface-close`'s object, and
+ * under last-wins the shipped entry inherited the neighbour's `capturedAtHead`
+ * citation - the provenance of a DIFFERENT set's frames - with this whole suite
+ * and `pnpm check-evidence` in front of it all green, because both read the
+ * file the same way. The walker below reads the SAME text the parser does and
+ * exists only because `JSON.parse` has no duplicate-key hook; it is
+ * deliberately small, and the fixture test beside the shipped one keeps it
+ * falsifiable.
+ */
+const duplicateKeys = (text) => {
+	const duplicates = [];
+	const objects = [];
+	let i = 0;
+	while (i < text.length) {
+		const ch = text[i];
+		if (ch === "{") {
+			objects.push(new Set());
+			i += 1;
+			continue;
+		}
+		if (ch === "}") {
+			objects.pop();
+			i += 1;
+			continue;
+		}
+		if (ch === '"') {
+			let j = i + 1;
+			let value = "";
+			while (j < text.length) {
+				if (text[j] === "\\") {
+					value += text[j + 1];
+					j += 2;
+					continue;
+				}
+				if (text[j] === '"') break;
+				value += text[j];
+				j += 1;
+			}
+			let k = j + 1;
+			while (k < text.length && /\s/.test(text[k])) k += 1;
+			if (text[k] === ":") {
+				const keys = objects[objects.length - 1];
+				if (keys) {
+					if (keys.has(value)) duplicates.push(value);
+					keys.add(value);
+				}
+			}
+			i = j + 1;
+			continue;
+		}
+		i += 1;
+	}
+	return duplicates;
+};
+
+test("a spliced entry's duplicated keys are caught by the walker", () => {
+	/* The F3 shape in miniature: two entries merged into one object, no closing
+	 * brace between them - exactly what a fold's union produced. */
+	const spliced =
+		'{\n  "path": "a",\n  "frames": 1,\n  "path": "b",\n  "frames": 2\n}';
+	assert.deepEqual(duplicateKeys(spliced), ["path", "frames"]);
+	/* And the shape each side legitimately produces - two proper siblings - is
+	 * clean, so the guard cannot pass by flagging honest text. */
+	assert.deepEqual(
+		duplicateKeys('{\n  "path": "a"\n},\n{\n  "path": "b"\n}'),
+		[],
+	);
+});
+
+test("the SHIPPED manifest carries no duplicated key in any object", () => {
+	const duplicates = duplicateKeys(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	assert.deepEqual(
+		duplicates,
+		[],
+		"docs/evidence/manifest.json has an object with duplicated keys - a spliced entry (two objects merged without their closing brace) ships a false field under JSON.parse's last-wins, and every comparison reads the file the same way it did before this guard existed. Re-split the element into proper siblings, keep BOTH sides' entries, and re-run this suite.",
+	);
+});
+
+/**
  * The notes that may still quote a `srcTree`/`scriptsTree` token: a FROZEN
  * ledger, and the residue of a convention this file no longer holds.
  *
