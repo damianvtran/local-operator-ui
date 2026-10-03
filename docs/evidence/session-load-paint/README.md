@@ -13,10 +13,11 @@ Two frames and two tables, from the switch harness, measuring the operator's
 the *same fixture* and the *same state*, on two trees:
 
 - **before** — `af6fffa899`, the tree the load-moment pin was written against. It
-  is 485 commits behind the after tree below (13 main commits before #745's merge,
-  then 472 of main — `gh api compare/af6fffa899...9946f84f177`), which is the
-  point: it is the *cut-point* this lane's pin cites, not a one-change neighbour of
-  the head.
+  is 485 commits behind the after tree below (`gh api
+  repos/damianvtran/local-operator-ui/compare/af6fffa899...9946f84f177` →
+  `ahead_by 485`), and the split of that distance is not worth stating: it is
+  almost all of main's history after #745's merge, which is the point — the base
+  is the *cut-point* this lane's pin cites, not a one-change neighbour of the head.
 - **after** — the branch's working tree at the state the harness-flag commit
   `9946f84f177` records (post-#745 plus this lane's harness). It is named as the
   harness content rather than as a commit because that is exactly what was served
