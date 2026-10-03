@@ -49,6 +49,8 @@ const COMPOSER =
 const SLASH_SESSION_STATUS_GATE = /slashSessionId\s*=\s*sessionStatus\s*\?/;
 const SLASH_SESSION_PATTERN_GATE =
 	/const slashSessionId = entitySessionId\(conversationId\)/;
+const DRAFT_STAGE_DISPATCHER_GATE =
+	/row\.kind === "argument" &&\s*!paneHasSession &&\s*Boolean\(onSlashCommand\)/;
 
 /*
  * The minimum the bundle's import chain touches at module scope: the stores
@@ -254,6 +256,25 @@ test("the composer's entity session is gated on the wire's own pattern, not sess
 		source,
 		SLASH_SESSION_PATTERN_GATE,
 		"slashSessionId routes the conversation key through the wire's own session pattern",
+	);
+});
+
+test("the draft-stage pick requires a wired dispatcher, so the config box stays inert", () => {
+	const source = readFileSync(COMPOSER, "utf8");
+	/*
+	 * The config box (`agents/config-run/config-composer.tsx`, which mounts this
+	 * composer with no `onSlashCommand` — its own comment: the command write
+	 * paths stay closed) also has no session, so `!paneHasSession` alone let a
+	 * team-row pick there restage a CHAT draft from a page that writes nothing
+	 * (review round 1, M1). Those rows are `runs: false`, so `shouldRun` can
+	 * never pass for them and this branch — which must sit before it — carries
+	 * the dispatcher term itself; pinned here so a refactor cannot drop it
+	 * silently.
+	 */
+	assert.match(
+		source,
+		DRAFT_STAGE_DISPATCHER_GATE,
+		"the draft-stage pick must require an onSlashCommand-backed host",
 	);
 });
 
