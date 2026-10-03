@@ -177,7 +177,7 @@ import {
 	readFileSync,
 	writeFileSync,
 } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
 
@@ -952,7 +952,14 @@ const stageManifest = () => {
  */
 const writeManifest = (text) => {
 	const target = join(ROOT, MANIFEST_PATH);
-	if (relative(ROOT, target) !== MANIFEST_PATH)
+	/*
+	 * Compared with posix separators: `relative` answers with the platform's, so
+	 * `docs\evidence\manifest.json` on Windows would not equal `MANIFEST_PATH` and
+	 * the guard would refuse every fold there instead of the path it means to
+	 * refuse.
+	 */
+	const relativePosix = relative(ROOT, target).split(sep).join("/");
+	if (relativePosix !== MANIFEST_PATH)
 		throw new Error(
 			`refusing to write ${target}: a fold writes ${MANIFEST_PATH} and nothing else`,
 		);
