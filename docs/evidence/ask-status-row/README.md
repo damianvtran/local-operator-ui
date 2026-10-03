@@ -5,9 +5,13 @@ item in the composer's status row** now — a peer of `All to-dos resolved` and
 `2 wakes armed` — because a queued ask is one more thing a session has
 outstanding, and the register that lists those things is the row, not a banner.
 
-The pair below is the whole change: the same four queue states, photographed on
-the old surface and on the new one, plus the two frames that prove what the item
-opens. Both halves are 8 cases × 2 palettes = 16 frames, 32 in the set.
+The pair below is the whole change: the same queue states, photographed on the
+old surface and on the new one, plus the frames that prove what the item opens.
+Round 1 grew the set to **15 cases in `after/` and 14 in `before/` — 58 frames**
+at the two `localOperator` palettes, because the interaction the change turns on
+needed frames of its own and four states the copy contract distinguishes had
+none (`mixed`, `truncated`, `zero-ask`, `narrow-longest`) plus `driven-open`,
+which presses the chip rather than pinning the flag.
 
 | state | what the queue is | BEFORE (`before/`) | AFTER (`after/`) |
 | --- | --- | --- | --- |
@@ -19,6 +23,13 @@ opens. Both halves are 8 cases × 2 palettes = 16 frames, 32 in the set.
 | `neighbours-narrow` | the same row at the narrow band | the same strip above the wrapped chips | the item wrapping with its neighbours rather than claiming a row |
 | `expanded-settled` | the panel over a settled queue | strip + panel | the item + panel: `Answered — delivering`, the question as asked, the answer as given (`staging`) |
 | `expanded-moved-on` | the panel over a moved-on ask | strip + panel | the item + panel: `Timed out — the agent moved on; you can still answer`, controls LIVE |
+| `mixed` (round 1) | one waiting ask AND one the agent moved on from | the strip: `2 questions waiting — …` (no split: the old reading counts the timed-out ask as one the agent is still waiting on) | the item: `1 question waiting` — the split (`1 question waiting · 1 moved on`) is in the announced name and tooltip |
+| `truncated` (round 1) | a capped list with a published tally | the strip: `12 questions waiting — … showing 1 of 12` | the item: `12 outstanding` — the tally, never a split of a prefix |
+| `zero-ask` (round 1) | a published queue with nothing in it | the strip is absent; the row's chips stand | the ITEM is absent; the row's chips stand (`ask-zero` has no `[data-status-asks]` target at all) |
+| `narrow-longest` (round 1) | the longest clause at the narrow band | the 393px band's strip, clipped mid-question (`Which environment should I…`) | the item at 148.39px, wrapping as a unit rather than truncating |
+| `expanded-waiting` (round 1) | the panel over a WAITING ask | strip + panel | the ATTENTION item with its panel open — the one combination round 0 had no frame for |
+| `expanded-multiple` (round 1) | the panel over two waits | strip + panel | `2 questions waiting` with the queue's two forms behind it |
+| `driven-open` (round 1) | the chip PRESSED, not pinned | **no counterpart**: the old bar opened on a chevron that no longer exists | the band starts collapsed; the chip is pressed after paint and the panel opens from it (`data-capture-pending` holds the shutter until the panel's root is up) |
 
 ## The four states, and the two registers
 
@@ -58,7 +69,26 @@ node scripts/capture-evidence.mjs http://localhost:6017 \
 node scripts/capture-evidence.mjs http://localhost:6017 \
   --only=composer-status-row--ask- --allow-backend \
   --themes=localOperatorDark,localOperatorLight            # AFTER
+
+node scripts/capture-evidence.mjs http://localhost:6017 \
+  --only=chat-composer-status-row--ask --allow-backend \
+  --themes=localOperatorDark,localOperatorLight            # AFTER, round 1 (all fifteen)
 ```
+
+**Round 1's six new BEFORE halves came from a temporary restore, not from a
+committed fixture**: they were shot with the base versions of the eight touched
+source files restored into the worktree (`git checkout 791e8cf92af -- <paths>`)
+plus the extra base-compatible stories appended to the restored
+`ask-surface.stories.tsx`, and the worktree was restored to the branch's own files
+immediately afterwards — so nothing in the tree renders a base strip now, and the
+six frames are single-sided in TIME rather than in space. `791e8cf92af` (round 0's
+temporary-fixture commit) was not modified.
+
+**Round 1 re-shot all fifteen AFTER cases at the committed src head**
+(`54133cdc0a4`) rather than only the new ones, so every after frame in the set
+depicts one tree: the item's markup changed this round (the chip no longer carries
+`data-lo-ask-surfaces`, and the panel root is itself a focus stop), and a mixture
+of two runs' frames would have been a set claiming more than it shows.
 
 `--allow-backend` because a backend was listening on the app's configured port;
 the ask stories render from fixtures and never call out, which is what that flag
@@ -171,6 +201,30 @@ its neighbours, its label/ink pair clears the contrast contract in both palettes
 (`pnpm check-themes`, 30,304 assertions across 59 themes), and nothing overlaps
 or clips.
 
+### Round 1's readings (seven stories, both viewports)
+
+Run at the round-1 head over `ask-neighbours`, `ask-waiting`, `ask-mixed`,
+`ask-truncated`, `ask-narrow-longest`, `ask-zero` and `ask-driven`, the same way
+(`--playwright /Users/damian/node_modules/playwright-core`). Every reading below
+is the tool's own `target-size` finding for the `[data-status-asks]` button:
+
+| story | 1440x900 | 390x844 |
+| --- | --- | --- |
+| `ask-neighbours` | item **133x24** at x=152 (between the plan and the wakes) | same, plus the harness `body` clip |
+| `ask-waiting` | item **133x24** | same, plus the harness `body` clip |
+| `ask-mixed` | item **133x24** (the visible clause stays the waiting one) | same, plus the harness `body` clip |
+| `ask-truncated` | item **115x24** (`12 outstanding`) | same, plus the harness `body` clip |
+| `ask-narrow-longest` | item **148x24** (the longest clause) | same, plus the harness `body` clip (`scroll 441x844`) |
+| `ask-zero` | **no `[data-status-asks]` target** — the item is absent, and only the row's own chips are advisory | same |
+| `ask-driven` | item **133x24**, unchanged by the panel being open | same, plus the harness `body` clip |
+
+No non-advisory finding beyond the `body` clip — which is the story harness's
+fixed band (617/633/441px) in a 390px viewport, listed in every story and in
+round 0's readings above, not a product reading — and no contrast, overlap,
+tiny-text, control-name, input-label or heading-order finding at either viewport.
+The `ask-zero` row is the one worth reading twice: the absence of the item is not
+an impression from a still, it is the audit having no target to report.
+
 ## Geometry: the row does not change height between the states
 
 Measured off the rendered stories with one headless Chrome and the same
@@ -183,15 +237,26 @@ browser for all five cases):
 | `ask-settled` | **32px** | **24px** | 49.39px | 117.50px | `minimized` |
 | `ask-moved-on` | **32px** | **24px** | 49.39px | 148.39px | `minimized` |
 | `ask-multiple` | **32px** | **24px** | 49.39px | 141.44px | `minimized` |
+| `ask-mixed` (round 1) | **32px** | **24px** | 49.39px | 133.47px | `minimized` |
+| `ask-truncated` (round 1) | **32px** | **24px** | 49.39px | 115.38px | `minimized` |
+| `ask-zero` (round 1) | **32px** | — | — | — | no item (absent by design) |
+| `ask-narrow-longest` (round 1) | 80px (two lines, 393px band) | 24px | 92.78px | 148.39px | `minimized` |
 | `ask-neighbours` | 58px (two lines) | 24px | 75.39px | 133.47px | `minimized` |
+| `ask-neighbours-narrow` (round 1) | 80px (two lines) | 24px | 92.78px | 133.47px | `minimized` |
+| `ask-expanded-waiting` (round 1) | **32px** | **24px** | 266.77px | 133.47px | `expanded` |
+| `ask-driven` (round 1) | **32px** | **24px** | 266.77px | 133.47px | `expanded` |
 
 **The row height does not change between states: measured 32px in all four**
-(`waiting`, `settled`, `moved-on`, `multiple`), and the item is 24px with its top
-edge at 49.39px in every one of them. Only the WIDTH moves, and only by the
+(`waiting`, `settled`, `moved-on`, `multiple`) **and in the four states round 1
+added** (`mixed`, `truncated`, `zero` — where the row is 32px with no item in it —
+and both expanded cases), and the item is 24px with its top edge at 49.39px in
+every one of the single-chip states. Only the WIDTH moves, and only by the
 clause's own length. In `neighbours` the item's top edge (75.39px) is exactly the
 row's other count chips' (75.39px) and its height (24px) is exactly theirs (24px),
 which is what "peer of the existing chips" means as a number rather than as an
-impression.
+impression. The expanded cases put the item at 266.77px because the panel is above
+it in the band — the item's own height is the same 24px, which is the claim the
+row is being measured for.
 
 The same identity is pinned without a browser in
 `scripts/composer-tabs.test.mjs`: the attention and quiet buttons' class token
@@ -219,3 +284,39 @@ frame.
   end-to-end wiring (the item's press moving the composer into ask mode, the
   draft swap, the Escape ladder) is covered by `scripts/ask-draft-swap.test.mjs`,
   `scripts/ask-queue.test.mjs` and the chat-page suite rather than here.
+
+## Round 1: what the set gained, and what the frames now carry
+
+Three of round 1's fixes changed what these frames MEAN, so the set was grown as
+well as re-shot. Each claim below is carried by the frame it names, and where a
+frame cannot carry it, by the test that can — saying which is which is the point.
+
+- **The item renders only where the host wires the door** (agent review round 1,
+  F1, major). A host that mounts this row without the ask lane — the mini
+  quick-send window, the agent-config composer — now draws no item at all, because
+  the item is a toggle and the panel it opens exists in exactly one host. NO FRAME
+  can photograph that: the absence is a property of the HOST, and every story here
+  renders a host that wires the lane. It is pinned instead by
+  `scripts/composer-tabs.test.mjs` — *the ask item renders only where the host
+  wires the door* — which renders the row with and without `onAskToggle` and
+  asserts the chips beside it are unaffected. `zero-ask` is the other absence, the
+  wire-side one, and it IS a frame: a published queue with no rows draws no item,
+  and `dom_audit` has no `[data-status-asks]` target to report on it.
+- **A press carries focus into the panel** (UX round 1, U1, major). The panel sits
+  above the row in the DOM, so forward Tab from the chip used to leave the lane.
+  `driven-open` is the frame for the press itself — the band starts collapsed and
+  the chip clicks itself, so the panel in that picture was opened by the item
+  rather than pinned open for the shot — and the full cycle (press → focus lands
+  inside the panel → Escape → focus returns to the item) is driven in
+  `scripts/composer-tabs.test.mjs` against the real `AskSurfaces` with a real chip
+  in the document, because a still cannot show where the keyboard went next.
+- **`data-lo-ask-surfaces` marks the PANEL, and only the panel** (UX round 1, U3;
+  agent review round 1, F5). The chip used to carry it too, so the natural "is the
+  panel open?" probe answered yes over a closed panel. The chip keeps
+  `data-lo-ask-item-toggle`, `pressIsOurs` accepts it as the lane's trigger, and
+  the panel root renders nothing while collapsed — so the marker is trustworthy,
+  which is why `driven-open`'s own shutter could wait on it.
+
+The two registers, the copy contract and the four states' frames are unchanged by
+round 1 beyond the re-shoot: the item's geometry, ink and clauses are the same
+pixels the round-0 pair showed.
