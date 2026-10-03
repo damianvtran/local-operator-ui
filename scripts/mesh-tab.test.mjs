@@ -1487,6 +1487,33 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		},
 		{ term: "grant approve", gloss: "you may approve on that device" },
 	]);
+	/*
+	 * A REPEATED OR REDUNDANT GRANT NEVER DOUBLES A CHIP OR WRITES AN
+	 * UNGRAMMATICAL GLOSS (agent review round 5, R5-1). `--grant` is repeatable
+	 * and unfiltered, and `step_grants` folds `unattended` in from the flag as
+	 * well - so this input is reachable from the CLI, and both lists are keyed by
+	 * the label they render.
+	 */
+	const redundant = {
+		what: {
+			connect: true,
+			unattended: true,
+			grants: ["approve", "approve", "unattended", ""],
+		},
+	};
+	assert.deepEqual(approvalScopeLabels(redundant), [
+		"connect",
+		"trust unattended sessions",
+		"grant approve",
+	]);
+	assert.deepEqual(approvalScopeGlosses(redundant), [
+		{
+			term: "trust unattended sessions",
+			gloss:
+				"sessions you start on that device run without an approval prompt there",
+		},
+		{ term: "grant approve", gloss: "you may approve on that device" },
+	]);
 	assert.equal(approvalTitle(row), "Onboard devon-laptop");
 	assert.equal(approvalSubject(row), "devon-laptop");
 	// A machine row is about the reader's own machine, by the kind's own definition.
