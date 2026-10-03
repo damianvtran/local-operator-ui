@@ -28,7 +28,10 @@
 
 import { interruptTurn } from "@features/chat/interrupt-turn";
 import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
-import { unreadableAttachmentRefusal } from "@features/chat/utils/attachment-read";
+import {
+	imageOverflowRefusal,
+	unreadableAttachmentRefusal,
+} from "@features/chat/utils/attachment-read";
 import type { WireImage } from "@features/chat/utils/bound-image";
 import {
 	DesktopControlError,
@@ -552,7 +555,7 @@ export function useConfigRun(): ConfigRunHandle {
 		 * are sending, and their remedy is to fix the chips — which are still in the
 		 * box, because this path returns `false` below.
 		 */
-		const { images, unreadable } = await encodeImageAttachments(
+		const { images, unreadable, overflow } = await encodeImageAttachments(
 			attachments,
 			body,
 		);
@@ -566,6 +569,15 @@ export function useConfigRun(): ConfigRunHandle {
 			 * remedy lives.
 			 */
 			useConfigRunStore.getState().fail(attachmentRefusal);
+			return false;
+		}
+		const overflowRefusal = imageOverflowRefusal(overflow);
+		if (overflowRefusal) {
+			/*
+			 * The same remit as the unreadable arm above: `fail`, not `failUnsent`,
+			 * because a retry re-sends the same chips and meets the same refusal.
+			 */
+			useConfigRunStore.getState().fail(overflowRefusal);
 			return false;
 		}
 		try {

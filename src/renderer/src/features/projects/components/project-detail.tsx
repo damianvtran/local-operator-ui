@@ -66,7 +66,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { openConversation } from "../../chat/open-conversation";
 import { encodeImageAttachments } from "../../chat/utils/attachment-encode";
-import { unreadableAttachmentRefusal } from "../../chat/utils/attachment-read";
+import {
+	imageOverflowRefusal,
+	unreadableAttachmentRefusal,
+} from "../../chat/utils/attachment-read";
 import { messageBudgetRefusal } from "../../chat/utils/message-budget";
 import {
 	useDeleteProject,
@@ -265,13 +268,18 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 		const key = paneDraftKey(null, sessionId, store.drafts);
 		if (!key) return false;
 		try {
-			const { images, unreadable } = await encodeImageAttachments(
+			const { images, unreadable, overflow } = await encodeImageAttachments(
 				attachments,
 				text,
 			);
 			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
 			if (unreadableRefusal) {
 				showErrorToast(unreadableRefusal);
+				return false;
+			}
+			const overflowRefusal = imageOverflowRefusal(overflow);
+			if (overflowRefusal) {
+				showErrorToast(overflowRefusal);
 				return false;
 			}
 			const budgetRefusal = messageBudgetRefusal(text, images);
