@@ -2151,6 +2151,53 @@ const ASK_SECOND = askOf({
 });
 
 /**
+ * THE SHORT-WINDOW ASK (the audit's second item): the wire's own `urgent`, which
+ * the backend derives from the window itself (a 900-second timeout).
+ *
+ * Stated as the wire states it rather than as a fixture flag a frame could invent:
+ * the row's mark is what the picture is about, and the rule that makes an ask
+ * urgent lives in the backend.
+ */
+const ASK_URGENT = askOf({
+	ask_id: "a-urgent",
+	expires_at: ASK_TS + 30 * ASK_MINUTE,
+	timeout_s: 900,
+	urgent: true,
+	questions: [ASK_QUESTION],
+});
+
+/**
+ * A SECOND WAITING ASK WITH A SOONER WINDOW, for the qualified countdown: two
+ * asks are inside their windows and they do not expire together, which is the case
+ * a bare `expires in 12m` would mis-attribute (design round 1's D2).
+ */
+const ASK_SECOND_WINDOW = askOf({
+	ask_id: "a-keys",
+	created_at: ASK_TS + 2 * ASK_MINUTE,
+	expires_at: ASK_TS + 24 * ASK_MINUTE,
+	timeout_s: 720,
+	questions: [
+		{
+			id: "rotate",
+			question: "Rotate the API keys now?",
+			options: [{ label: "yes" }, { label: "no" }],
+		},
+	],
+});
+
+/**
+ * A MOVED-ON ask that WAS urgent: the case where an urgency arm can steal the
+ * status glyph, which is what design round 1's D5 found in the arm's first cut.
+ */
+const ASK_MOVED_ON_URGENT = askOf({
+	ask_id: "a-moved-urgent",
+	status: "timed_out",
+	urgent: true,
+	expires_at: ASK_TS - ASK_MINUTE,
+	questions: [ASK_QUESTION],
+});
+
+/**
  * The frontend snapshot the item reads, with the wire's own counts.
  *
  * `asks_open` is the backend's OUTSTANDING tally (`open` OR `timed_out`), which
@@ -2235,6 +2282,13 @@ const AskBand = ({
 				isSmallView={width <= SMALL_VIEW_PX}
 				askExpanded={open}
 				onAskToggle={setOpen}
+				/*
+				 * THE SAME PINNED CLOCK THE PANEL GETS. The item prints the soonest waiting
+				 * deadline now, and a countdown rendered against the wall clock cannot be
+				 * photographed twice into the same frame - nor can a frame's reading be
+				 * compared with the panel row's beside it.
+				 */
+				nowMs={ASK_NOW}
 			/>
 		</Composer>
 	);
@@ -2318,7 +2372,7 @@ export const AskWaiting: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="One open ask: `1 question waiting`, mark in the accent, label in `ink`"
+			label="One open ask, an hour left on it"
 			asks={[ASK_OPEN]}
 		/>
 	),
@@ -2351,7 +2405,7 @@ export const AskMultiple: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="Two open asks: `2 questions waiting` — the count form the row's other chips use"
+			label="Two open asks expiring together"
 			asks={[ASK_OPEN, ASK_SECOND]}
 		/>
 	),
@@ -2369,7 +2423,7 @@ export const AskMixed: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="One waiting, one moved on: the chip keeps the short clause, the announced name carries the split"
+			label="One ask waiting, one the agent moved on from"
 			asks={[ASK_OPEN, ASK_MOVED_ON]}
 		/>
 	),
@@ -2386,7 +2440,7 @@ export const AskTruncated: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="A truncated frame: `12 outstanding` rather than a split of the twelve-item prefix"
+			label="A capped list with a published tally: the frame carries one row and the backend counts twelve"
 			asks={[ASK_OPEN]}
 			tally={12}
 		/>
@@ -2560,6 +2614,92 @@ export const AskFocusedPanel: Story = {
 			label="Settled and focused: the panel root carries the keyboard, and the ring shows it"
 			asks={[ASK_ANSWERED]}
 			focusPanel
+		/>
+	),
+};
+
+/**
+ * THE COUNTDOWN ON THE COLLAPSED FACE, and urgency with an ink of its own.
+ *
+ * The audit's two remaining items, in one frame: the item states the soonest
+ * waiting deadline (`expires in 18m` - the fixture's window is the short one the
+ * backend marks urgent), and its mark steps to `warning` for it. Before this pass
+ * the item said `1 question waiting` with an `accent` mark, and neither fact was on
+ * screen anywhere without opening the panel.
+ */
+export const AskUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="One urgent ask: the wire's own short window (a 900-second timeout)"
+			asks={[ASK_URGENT]}
+		/>
+	),
+};
+
+/**
+ * TWO WINDOWS, ONE NUMBER: the item names no ask, so the countdown is qualified.
+ *
+ * `AskOpen` has fifty minutes left and `AskSecondWindow` twelve; the number printed
+ * is the SOONER one's, and the `soonest ` prefix is what keeps it from reading as
+ * whichever ask the reader had in mind (design round 1's D2).
+ */
+export const AskTwoWindows: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Two waiting asks with DIFFERENT windows: fifty minutes left on one, twelve on the other"
+			asks={[ASK_OPEN, ASK_SECOND_WINDOW]}
+		/>
+	),
+};
+
+/**
+ * THE COUNTDOWN YIELDS AT THE ROW'S NARROW BAND.
+ *
+ * The item grows by the countdown when it prints one, and the row has a column
+ * floor it must still fit at (`GOAL_TAG_NARROW`'s 241px is the row's own band, and
+ * this is the same width). The deadline drops out there; the count stays, and the
+ * ANNOUNCED NAME keeps the countdown, so the fact is available at every width to
+ * the reader who is not reading a 241px column.
+ */
+export const AskDeadlineFloor: Story = {
+	render: () => (
+		<AskBand
+			width={220}
+			label="The same queue at the app's own 220px column floor"
+			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/** An urgent ask with its panel open: the row's mark is `warning`, glyph unchanged. */
+export const AskExpandedUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="An urgent ask with the panel open"
+			asks={[ASK_URGENT]}
+			defaultOpen
+		/>
+	),
+};
+
+/**
+ * MOVED ON **AND** URGENT: the case the ink arm must not repaint.
+ *
+ * The urgency arm sets ink, never glyph. A timed-out ask's status glyph is the
+ * Clock, and an early cut of that arm returned `HelpCircle` before the status
+ * switch - so one glyph meant both "open, maybe urgent" and "timed out, urgent"
+ * (design round 1's D5). This frame is the one that would move if it regressed.
+ */
+export const AskExpandedMovedOnUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A MOVED-ON ask that was urgent, with the panel open"
+			asks={[ASK_MOVED_ON_URGENT]}
+			defaultOpen
 		/>
 	),
 };
