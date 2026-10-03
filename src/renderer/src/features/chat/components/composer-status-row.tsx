@@ -767,14 +767,43 @@ const GOAL_TAG_NARROW = "@max-[241px]/chatcol:hidden";
  * the bands are what make it unreachable for the copy that ships, and the sweep
  * asserts the painted string at every column rather than trusting that.
  *
- * THE BANDS, measured on the live stories against the width the chip can actually
- * occupy - the composer's content box, which reads `column - 10px` at every column a
- * band binds at (they are all under the 550px `isSmallView` step, where the row takes
- * `px-2`; see the arithmetic note in `ask-queue.ts`'s `askChipDeadlineShort`) - widest
- * first. Two widths are quoted per tier: the form as the shipped fixtures paint it,
+ * THE BANDS, ITS WIDTHS, AND THE FLOOR THEY CANNOT REACH. Three facts have to be
+ * stated together or the numbers below read as a rule the product applies, which is
+ * what agent review round 2's F1 and the manager's correction pass caught:
+ *
+ * 1. THE WIDTHS IN THIS FILE ARE THE COMPOSER BAND'S CONTENT BOX, not the column.
+ *    The container query is `@container/chatcol` on that box, so a story's `width`
+ *    prop and every threshold here are in that unit; the column is 48px wider (the
+ *    band's own `p-6`). This is also why `docs/composer-status-tabs.md` §2.4's
+ *    "the column measures 172px" is a box labelled as a column: 172 IS the composer
+ *    box inside a 220px column.
+ * 2. THE COLUMN'S APPLIED FLOOR IS 480, NOT 220 AND NOT 172.
+ *    `chat-sidebar-layout.ts`'s `CHAT_PANE_MIN_PX` is applied to the column by §I and
+ *    `scripts/chat-pane-floors.test.mjs` asserts it EXACTLY (its own note: the
+ *    assertion it replaced allowed `(0, 480]` "while the tree was still at 220", and
+ *    220 is a legal value under that allowance - which is the defect §I spent).
+ * 3. SO NO TIER BELOW BINDS AT THE FLOOR. At a 480 column the composer box is 432,
+ *    and the widest tier (`ASK_SUBJECT_NARROW`, 341) needs it below 341 - i.e. the
+ *    column would have to fall to about 389px. The three tiers are therefore a
+ *    CONTAINER-QUERY SAFETY NET against a future narrowing, not a rule the product
+ *    applies today: at the applied floor the chip paints the full form, subject and
+ *    sentence, and the frames in this set that exercise a tier photograph a
+ *    narrowing the app does not currently render.
+ *
+ * WHAT THE GUARANTEE IS THEREFORE WORTH, stated for what ships: the countdown is
+ * never cut mid-number at ANY width the bands can be reached from - each tier is
+ * REPLACED, whole, by the next that fits - and if a future narrowing ever puts the
+ * column near 389px the yield engages rather than clipping a number to `expires in
+ * 4...` (design round 4's MAJOR). The `overflow-hidden text-ellipsis` on the span
+ * stays as the last-resort never-paint-past-the-box guarantee for copy this file has
+ * not seen.
+ *
+ * THE TITRATION, kept because it is what makes the tiers safe if they ever bind:
+ * measured on the live stories against the chip's own box, which reads `content box -
+ * 10px` (the row's `px-2` less the 6px the first chip cancels) at every width a band
+ * binds at. Two widths are quoted per tier: the form as the shipped fixtures paint it,
  * and the form with the WIDEST COUNT the wire can deliver (`20 questions waiting`,
- * because the list is capped at twenty rows). Each threshold's margin is measured
- * against the second, which is the case that has to hold.
+ * the list's 20-row cap) - the second is the case that has to hold.
  *
  * 1. `ASK_SUBJECT_NARROW` (341px) drops the SUBJECT and keeps the sentence. The
  *    subject (`soonest ask `) is the unbounded half - another locale's is another
@@ -789,27 +818,12 @@ const GOAL_TAG_NARROW = "@max-[241px]/chatcol:hidden";
  *    / 187.75px capped, against 203px - 22.80px and 15.25px. Below it the count is
  *    painted alone.
  *
- * THE FLOOR THIS IS DECIDED AGAINST IS THE NARROWEST ONE THE APP'S RECORD CLAIMS, and
- * the two numbers on the record disagree, so this states both and decides against the
- * smaller (agent review round 2's F1). `docs/composer-status-tabs.md` §2.4 says the
- * chat column measures **172px** with the canvas pane open, QA-measured on the built
- * app, and the sibling set's `column-floor/` renders there; `chat-content.tsx`'s own
- * CSS floor is `min-w-[480px]` (`CHAT_COLUMN_MIN_PX`), which cannot render 172. One of
- * those is out of date and QA has been asked to re-measure the composer column on the
- * built app and name the box - until it does, every band here is decided against the
- * NARROWER reading, 172, because a guarantee that holds at 172 holds at any wider
- * column and the reverse is not true.
- *
- * So the honest statement of this band's guarantee is narrow and worth stating
- * exactly: **at 172px the deadline is NOT painted on the chip** - the count is alone
- * there, the same as it is at 180 - and what carries the fact at that width is the
- * tooltip and the item's announced name, both of which compose the whole clause at
- * every width (`askChipLabel` reads `askChipDeadline`, not what these bands happen to
- * paint). 213px is where the capped value form fits with the same order of margin as
- * the tiers above it; the form itself would fit from about 198px, and the 15px of
- * daylight between those numbers is the deliberate part - a locale's digits are not
- * this font's digits, and this PR has twice paid for a threshold tuned to the width it
- * happened to measure.
+ * THE FLOOR-ADJACENT CLAIM THAT WAS WRONG, kept as a record because it is the whole
+ * reason this comment now states its unit: this file used to say 172px was "the
+ * app's real floor" and that "no shipped state loses the deadline". 172 is the
+ * composer box inside a 220px column - a width the app no longer renders - and the
+ * deadline is in fact painted at the applied floor, because no tier binds there. The
+ * floor frame in the evidence set is pinned at the applied floor for the same reason.
  *
  * WHY THRESHOLDS, when round 3 asked for a rule rather than a number: a container
  * query can ask the COLUMN's width and nothing else - the chip's own width is its
