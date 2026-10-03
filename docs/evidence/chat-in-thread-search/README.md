@@ -91,11 +91,10 @@ that re-shoot.
 (#630, the checkpoint-rail merge; the rail's files and its jump are upstream
 rather than sibling), and the reveal rides that lane's `reveal-record.ts` —
 `jumpToEntry` for the reveal/centre/flash leg and `ensureReachable` for the
-transcript's paging — rather than any copy of its own. The manifest is re-derived at the rebased code head (`srcTree`/
-`scriptsTree` from `git rev-parse HEAD:src` / `HEAD:scripts`, `frames` and the
-`countsMean` readings from the walk, every backticked stamp claim in the
-binding notes re-pointed), and this file rides the `docs/`-only commit that
-follows it — a commit that moves neither tree, so the stamps keep describing
+transcript's paging — rather than any copy of its own. The manifest is re-derived
+at the rebased code head (`head`, and `frames`/`surfaces`/`themes` with the
+`countsMean` readings from the walk), and this file rides the `docs/`-only commit
+that follows it — a commit that moves neither tree, so the counts keep describing
 the tree they ship in.
 
 ## The endpoint, measured against the real backend

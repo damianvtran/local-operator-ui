@@ -273,8 +273,9 @@ NOT proven here, and named rather than implied:
 - **the frames were taken on the pass's OWN tree, not on this head, and the rig that
 took them was touched in the same pass** - the four defects below are the record of
 that. The frames are pictures of the pre-fold tree the pass ran on (`src`
-`d19dbadc6ed3`, the tree of `141e5219e`/`51ce4aea1`; the manifest's `srcTree` is the
-tree they SHIP IN, `dcff3db3f591`, and the two are different on purpose), with a real
+`d19dbadc6ed3`, the tree of `141e5219e`/`51ce4aea1`; the tree they SHIP IN is
+`dcff3db3f591`, and the two are different on purpose — `manifest.json` no longer
+stamps that tree, so the statement is this record's to make), with a real
 `pnpm build` on each half, and the same rig took both halves, which is what the pair
 requires. This bullet used to say the frames are pictures of the `src/` they ship with;
 that is the opposite provenance and it was wrong (review 2, F1).

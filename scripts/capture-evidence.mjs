@@ -12910,35 +12910,27 @@ const main = async () => {
 			.toString()
 			.trim().length > 0;
 	/*
-	 * Tree hashes, not just the head.
+	 * THE REBASE TRAP, WHICH OUTLIVES THE RETIRED TREE HASHES.
 	 *
-	 * A head SHA only answers "is this set current?" if the reader also works
-	 * out which commits since then were docs-only - which is judgement, and
-	 * judgement is what the manifest exists to remove. `git rev-parse HEAD:src`
-	 * is the identity of the source that produced these pixels: if it matches
-	 * the head under review, the frames are current no matter how many commits
-	 * separate them.
+	 * A rebase is where a manifest goes wrong: resolving `manifest.json` by keeping
+	 * upstream's top-level block while the branch's own delta rewrites a
+	 * neighbouring key produces a file whose COUNTS describe somebody else's tree -
+	 * and git reports no conflict, so nothing local notices. At the round-3 head
+	 * the then-stored tree hashes and `surfaces` both named `origin/main` while the
+	 * branch's own `STORIES` list had moved nine entries (round 3, M1).
+	 * `scripts/evidence-manifest.test.mjs` binds the shipped manifest's counts
+	 * against the tree it ships in, inside `test:desktop`, so that resolution fails
+	 * CI rather than shipping, and the expected aftermath of any rebase that
+	 * touches this file is a re-derive before the suite is green.
 	 *
-	 * With one precondition, which is the field on the next line. `HEAD:src` is
-	 * the COMMITTED tree, so if the capture ran over dirty or staged source it
-	 * names something these frames did not come from. Read `dirtyWorkingTree`
-	 * first; a tree hash from a dirty run is a hash of the wrong thing.
-	 *
-	 * A REBASE IS WHERE THESE STAMPS GO WRONG, and there is a test for it now.
-	 * Resolving `manifest.json` by keeping upstream's top-level stamp block while
-	 * the branch's own delta rewrites a neighbouring key produces a file that
-	 * certifies the committed frames against somebody else's tree - and git reports
-	 * no conflict, so nothing local notices; at the round-3 head both tree hashes
-	 * and `surfaces` named `origin/main` while the branch's own `STORIES` list had
-	 * moved nine entries (round 3, M1). `scripts/evidence-manifest.test.mjs` binds
-	 * the shipped manifest's stamps against `HEAD`'s trees inside `test:desktop`,
-	 * so that resolution fails CI rather than shipping, and the expected aftermath
-	 * of any rebase that touches this file is a re-stamp before the suite is green.
+	 * THE TREE HASHES THAT USED TO SIT HERE ARE GONE, deliberately: a stored
+	 * `git rev-parse HEAD:src` is false for every open branch the moment any commit
+	 * anywhere moves `src/`, so it forced a re-derive per fold and proved nothing
+	 * about the frames (every recorded re-derive in this file's history is
+	 * "re-stamped, not re-captured"). `head` plus `dirtyWorkingTree`-
+	 * whose own comment is above - carry what a reader can act on: which commit
+	 * the frames were captured from, and whether that tree was clean at the time.
 	 */
-	const treeHash = (path) =>
-		execFileSync("git", ["rev-parse", `HEAD:${path}`], { cwd: ROOT })
-			.toString()
-			.trim();
 	/*
 	 * A narrowed run must not overwrite the record of the set it did not take.
 	 *
@@ -12981,7 +12973,12 @@ const main = async () => {
 	 *      did not run in it.
 	 *   2b. EVERY TOP-LEVEL FIELD THIS BRANCH CARRIES THAT MAIN DOES NOT IS
 	 *      KEPT, and main's own keys this branch lacks are dropped rather than
-	 *      carried (group 5). The union is taken at the TOP level as well as
+	 *      carried (group 5) - with one deliberate exception: the RETIRED
+	 *      `srcTree`/`scriptsTree` pair is dropped from whichever side carries it,
+	 *      including this branch's, so a branch that still holds it hands nothing
+	 *      back to the merged file (see group 4). Unlike a group (5) drop, that
+	 *      one is reported as `dropped srcTree - retired by this change`, and the
+	 *      key gate accepts it. The union is taken at the TOP level as well as
 	 *      inside it: a resolver that starts from main's schema loses this
 	 *      branch's own records without a word, which is what the twelfth fold
 	 *      onto `c69f78b92` did to seven of them
@@ -12996,33 +12993,41 @@ const main = async () => {
 	 *      are KEPT and only the listings are unioned. An entry is a record this
 	 *      branch wrote, not a listing, and taking main's whole entry loses
 	 *      exactly the field a reader follows the rule to find.
-	 *   4. `refreshedFrames` is RE-DERIVED against `HEAD` rather than added up,
-	 *      and `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and
-	 *      `scriptsTree` are re-derived from the merged tree and taken from
+	 *   4. `refreshedFrames` is RE-DERIVED against the merged tree rather than
+	 *      added up, and `frames`, `surfaces`, `themes` and the LEADING paragraph
+	 *      of every `countsMean` cell are re-derived from it and taken from
 	 *      neither side. `countsMean` is in this group because it restates
 	 *      `frames`/`surfaces` - its prose says what each field counts and where
-	 *      to read it, and carries no number of its own for a fold to falsify.
-	 *      The stamps in group (4) - `srcTree` and `scriptsTree` - are derived
-	 *      from the MERGED tree, which means AFTER the merge commit exists.
-	 *      Deriving them while the merge is still uncommitted asks
-	 *      `git rev-parse HEAD:src` and gets the PRE-merge head's trees: real
-	 *      trees, so nothing looks wrong in the diff, just not this one's. Fold 11
+	 *      to read it, and only its lead is derived (the paragraphs under it are
+	 *      history by construction). The RETIRED `srcTree`/`scriptsTree` pair sat
+	 *      in this group and is now DROPPED rather than derived, from whichever
+	 *      side still carries it, because a stored hash of the shipping tree is
+	 *      false for every open branch the moment any sibling commit moves that
+	 *      tree - which is what made every fold rewrite this file. A fold reports
+	 *      the drop rather than performing it silently
+	 *      (`dropped srcTree - retired by this change`), and
+	 *      `scripts/check-fold-keys.mjs` accepts it.
+	 *      The counts are derived from the MERGED tree, which means AFTER the
+	 *      merge commit exists. Deriving them while the merge is still uncommitted
+	 *      reads `git show HEAD:scripts/capture-evidence.mjs` and gets the
+	 *      PRE-merge head's literal: a real file, so nothing looks wrong in the
+	 *      diff, just not this one's. Fold 11
 	 *      shipped exactly that to `main` and the desktop suite's own stamp test
 	 *      caught it. Fold 10 was stale from the OTHER side one commit earlier for
 	 *      the same underlying reason: `a5d81f0af`'s manifest declared
 	 *      `7072b9d21`/`3e32dcbe4`, which are its second parent `013aad424`'s
 	 *      (then-main's) trees, against the merged tree's `aca12e400`/`311c0b6a2`,
 	 *      and the correction came only in the follow-up `3fdee3e53`. The class is
-	 *      therefore "a merge resolution that does not re-derive at the commit it
-	 *      produces", and it reaches a shipping branch when nothing re-derives
-	 *      before that merge lands.
+	 *      therefore "a merge resolution that does not re-derive the counts at the
+	 *      commit it produces", and it reaches a shipping branch when nothing
+	 *      re-derives before that merge lands.
 	 *      Two things follow for a change that also touches `scripts/`, and only
-	 *      one of them is about this file: the `scripts` stamp cannot include the
-	 *      edit until the edit is COMMITTED (`HEAD:scripts` does not see a working
-	 *      -tree change), so a value written before that commit describes a tree
-	 *      that is not the one it rides in; and the `--amend` after writing the
-	 *      values in keeps the value and the tree it names inside ONE commit -
-	 *      the amendment moves `docs/` only, so the value stays true.
+	 *      one of them is about this file: the story/theme counts cannot include
+	 *      the edit until the edit is COMMITTED (`HEAD:scripts` does not see a
+	 *      working-tree change), so a reading written before that commit describes
+	 *      a tree that is not the one it rides in; and the `--amend` after writing
+	 *      the values in keeps the reading and the tree it was read from inside ONE
+	 *      commit - the amendment moves `docs/` only, so the reading stays true.
 	 *   5. And NO FIELD THAT SPELLS OUT WHAT A CITATION NAMES is carried from
 	 *      main's side under any name: main's manifest still has
 	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
@@ -13040,7 +13045,8 @@ const main = async () => {
 	 *      the key vanished without a word while that fold reported a clean union
 	 *      - `pnpm check-themes` stopped resolving until agent review round 8
 	 *      (R11) restored it. A MAIN-side vanish must be either group (5) of
-	 *      `citationConvention` or a stated repair. The check does NOT see form,
+	 *      `citationConvention`, the retired `srcTree`/`scriptsTree` drop, or a
+	 *      stated repair. The check does NOT see form,
 	 *      so a clean run is not the whole rule - re-read the lists too.
 	 *
 	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
@@ -13114,8 +13120,6 @@ const main = async () => {
 				 * same number the full sweep writes below.
 				 */
 				surfaces: STORIES.length,
-				srcTree: treeHash("src"),
-				scriptsTree: treeHash("scripts"),
 				dirtyWorkingTree: dirty,
 				partialCapture: {
 					...(previous.partialCapture ?? {}),
@@ -13134,8 +13138,6 @@ const main = async () => {
 			}
 		: {
 				head,
-				srcTree: treeHash("src"),
-				scriptsTree: treeHash("scripts"),
 				dirtyWorkingTree: dirty,
 				capturedAt: new Date().toISOString(),
 				frames: captured,

@@ -20,7 +20,9 @@ import {
 } from "./check-evidence.mjs";
 import { keyPaths } from "./check-fold-keys.mjs";
 import {
+	RETIRED_TOP_LEVEL_FIELDS,
 	deepEqual,
+	deriveFields,
 	mergedKeys,
 	resolveManifest,
 	runGuards,
@@ -112,8 +114,6 @@ const readerFor = (cwd) => (args) => {
 /** The manifest a fold is about: pass fields, listings, and the derived set. */
 const manifest = (fields) => ({
 	head: fields.head ?? "0".repeat(40),
-	srcTree: fields.srcTree ?? "1".repeat(40),
-	scriptsTree: fields.scriptsTree ?? "2".repeat(40),
 	dirtyWorkingTree: false,
 	frames: fields.frames ?? 2,
 	surfaces: fields.surfaces ?? 2,
@@ -136,6 +136,15 @@ const fixture = ({
 	laneRecord = true,
 	mainRecord = true,
 	attributes = false,
+	/*
+	 * `srcOnly` is the shape the whole change exists for: main moves `src/` and
+	 * NOTHING the manifest reads - no new story, no new frame, no change to
+	 * `capture-evidence.mjs`'s literals - so every count the manifest states is
+	 * unchanged and the fold must write NOTHING. Before the tree stamps were
+	 * retired this fixture could not exist: `srcTree` moved on every `src/`
+	 * commit, so the fold always had a reason to rewrite the file.
+	 */
+	srcOnly = false,
 } = {}) => {
 	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-fold-"));
 	scratch.push(dir);
@@ -212,11 +221,13 @@ const fixture = ({
 
 	git(dir, ["checkout", "-q", "main"]);
 	write("src/app.ts", "export const one = 2;\n");
-	write(
-		"scripts/capture-evidence.mjs",
-		capture(["chat--one", "chat--two", "chat--three"]),
-	);
-	frame("docs/evidence/chat--three/localOperatorDark.webp");
+	if (!srcOnly) {
+		write(
+			"scripts/capture-evidence.mjs",
+			capture(["chat--one", "chat--two", "chat--three"]),
+		);
+		frame("docs/evidence/chat--three/localOperatorDark.webp");
+	}
 	const mainManifest = manifest({
 		head: baseSha,
 		extra: {
@@ -391,12 +402,33 @@ test("a fold resolves both sides' records, unions the listings, and re-derives t
 		"the merged tree's frames outside the declared set",
 	);
 
-	// The stamps name the MERGED tree, which is what `git write-tree` answers
-	// mid-merge - not `HEAD:src`, which is still the lane's pre-merge tree.
+	/*
+	 * THE RETIRED PAIR IS ABSENT, and its absence is the property: a stored hash of
+	 * the shipping tree cannot be kept true (any sibling commit moves it), so no
+	 * fold may put one back - which is exactly what a branch whose own old fold
+	 * tool re-derived it would otherwise do.
+	 */
+	assert.ok(
+		!("srcTree" in m) && !("scriptsTree" in m),
+		"a fold must not carry the retired tree stamps into the merged file",
+	);
+	// The counts name the MERGED tree, which is what `git write-tree` answers
+	// mid-merge - not the lane's pre-merge tree, whose STORIES literal has two
+	// rows rather than the three the merged one has.
 	const staged = git(dir, ["write-tree"]);
-	assert.equal(m.srcTree, git(dir, ["rev-parse", `${staged}:src`]));
-	assert.equal(m.scriptsTree, git(dir, ["rev-parse", `${staged}:scripts`]));
-	assert.notEqual(m.srcTree, git(dir, ["rev-parse", "HEAD:src"]));
+	assert.equal(
+		git(dir, ["show", `${staged}:scripts/capture-evidence.mjs`]).includes(
+			"chat--three",
+		),
+		true,
+	);
+	assert.equal(
+		git(dir, ["show", "HEAD:scripts/capture-evidence.mjs"]).includes(
+			"chat--three",
+		),
+		false,
+		"the pre-merge head's literal is NOT the one the count came from",
+	);
 
 	// ONE commit: the fold is completed by the merge commit itself, not by a
 	// second docs-only commit after it.
@@ -438,7 +470,7 @@ test("with the merge driver installed, git merges without a manifest conflict", 
 	assert.equal(merge.code, 0, `git must not have stopped: ${merge.out}`);
 	assert.match(
 		merge.out,
-		/stamps still name the PRE-merge tree/,
+		/The COUNTS still describe the PRE-merge tree/,
 		"the driver resolved the manifest and said what it left undone",
 	);
 	assert.equal(
@@ -591,37 +623,56 @@ test("a conflict outside the manifest is reported, not resolved over", () => {
 	assert.equal(second.status, 0, second.out);
 });
 
-test("outside a merge, a stale stamp is re-derived without amending anything", () => {
+test("outside a merge, a commit that moves only `src/` leaves the manifest alone", () => {
 	const dir = fixture();
-	// A plain content commit that moved `scripts/` under the stamp.
-	writeFileSync(
-		join(dir, "scripts", "capture-evidence.mjs"),
-		readFileSync(join(dir, "scripts", "capture-evidence.mjs"), "utf8"),
+	/*
+	 * THE SHAPE THE WHOLE CHANGE EXISTS FOR (test T1). A real content commit that
+	 * moves `src/` and nothing the manifest reads: no new story, no new frame, no
+	 * edit to `capture-evidence.mjs`'s literals. Before the tree stamps were
+	 * retired this was impossible - `srcTree` moved on every `src/` commit - so
+	 * every open branch owed a re-derive here. Now the readings are identical and
+	 * the tool must write NOTHING.
+	 *
+	 * The fixture's copy starts with synthetic counts (its `partialCapture` is a
+	 * stand-in, not this tree's walk), so the first run legitimately re-derives
+	 * them; that run is committed as the branch's own fold would be, and the
+	 * `src/`-only commit after it is the case under test.
+	 */
+	const first = run(dir);
+	assert.equal(first.status, 0, first.out);
+	git(dir, ["commit", "-qm", "docs(evidence): re-derive the counts"]);
+
+	const beforeManifest = readFileSync(
+		join(dir, "docs", "evidence", "manifest.json"),
+		"utf8",
 	);
-	git(dir, ["commit", "-q", "--allow-empty", "-m", "chore: a commit"]);
-	const before = git(dir, ["rev-parse", "HEAD"]);
-	// Nothing is stale yet; make it so by moving src and leaving the manifest.
 	writeFileSync(join(dir, "src", "app.ts"), "export const one = 9;\n");
 	git(dir, ["add", "-A"]);
 	git(dir, ["commit", "-qm", "feat: move src"]);
+	const contentHead = git(dir, ["rev-parse", "HEAD"]);
 
 	const result = run(dir);
 	assert.equal(result.status, 0, result.out);
-	assert.match(result.out, /git commit/);
-	assert.doesNotMatch(result.out, /amend/);
-	assert.equal(
-		git(dir, ["rev-parse", "HEAD"]),
-		git(dir, ["rev-parse", "HEAD"]),
-		"nothing was committed for the author",
+	assert.match(
+		result.out,
+		/already describes this tree/,
+		"a run with nothing to re-derive says so rather than writing",
 	);
 	assert.equal(
 		git(dir, ["diff", "--cached", "--name-only"]),
-		"docs/evidence/manifest.json",
-		"the re-derived stamps are staged, and only they",
+		null,
+		"nothing is staged when no reading moved",
 	);
-	const m = readManifest(dir);
-	assert.equal(m.srcTree, git(dir, ["rev-parse", "HEAD:src"]));
-	assert.notEqual(before, null);
+	assert.equal(
+		readFileSync(join(dir, "docs", "evidence", "manifest.json"), "utf8"),
+		beforeManifest,
+		"the manifest's bytes are untouched",
+	);
+	assert.equal(
+		git(dir, ["rev-parse", "HEAD"]),
+		contentHead,
+		"no commit was made for the author",
+	);
 });
 
 test("--dry-run reports and writes nothing", () => {
@@ -655,16 +706,38 @@ test("the guards the tool runs can still fail on the tree the tool produces", ()
 	assert.deepEqual(guardFailures(dir), []);
 
 	const good = readManifest(dir);
-	const mutated = { ...good, srcTree: "0".repeat(40) };
-	writeFileSync(
-		join(dir, "docs", "evidence", "manifest.json"),
-		`${JSON.stringify(mutated, null, 2)}\n`,
-	);
-	assert.equal(
-		stampFailures(mutated, readerFor(dir), join(dir, "docs", "evidence"))
-			.length >= 1,
-		true,
-		"a mutated stamp must fail the guard the tool validates against",
+	/*
+	 * The counts are the guard's teeth now that the pair is retired, so these are
+	 * the mutations that must still bite (test T5): an over-eager deletion of the
+	 * counts half would look green without them.
+	 */
+	for (const [field, value] of [
+		["frames", 999],
+		["surfaces", 999],
+		["themes", 999],
+	]) {
+		const mutated = { ...good, [field]: value };
+		writeFileSync(
+			join(dir, "docs", "evidence", "manifest.json"),
+			`${JSON.stringify(mutated, null, 2)}\n`,
+		);
+		assert.equal(
+			stampFailures(mutated, readerFor(dir), join(dir, "docs", "evidence"))
+				.length >= 1,
+			true,
+			`a mutated \`${field}\` must fail the guard the tool validates against`,
+		);
+	}
+	// And no stored stamp can put the retired pair back in force: a manifest that
+	// carries a WRONG pair passes, because nothing reads it any more.
+	assert.deepEqual(
+		stampFailures(
+			{ ...good, srcTree: "0".repeat(40), scriptsTree: "0".repeat(40) },
+			readerFor(dir),
+			join(dir, "docs", "evidence"),
+		),
+		[],
+		"the retired pair is indifferent to the guard, which is what stops a stray copy gating again",
 	);
 
 	/*
@@ -1345,7 +1418,16 @@ test("refreshedFrames is re-derived whenever the merged file carries a partialCa
  * directories match no story id, which is why `partialCaptureFailures` stood
  * down (its `refreshedAtHead` guard) on every case that existed before this one.
  */
-const storyFixture = ({ mainLostNestedKeys = false } = {}) => {
+const storyFixture = ({
+	mainLostNestedKeys = false,
+	/*
+	 * The shape EVERY open branch has the moment the retirement lands on `main`:
+	 * this branch's copy still carries `srcTree`/`scriptsTree`, because the fold
+	 * tool that wrote it predates the change. It exists so the retired-field rule
+	 * (test T6) is exercised through a real merge rather than a unit call.
+	 */
+	laneCarriesRetiredPair = false,
+} = {}) => {
 	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-fold-story-"));
 	scratch.push(dir);
 	git(dir, ["init", "--initial-branch=main", "-q"]);
@@ -1434,8 +1516,8 @@ const storyFixture = ({ mainLostNestedKeys = false } = {}) => {
 	 * `partialCaptureFailures`, correctly).
 	 */
 	if (!mainLostNestedKeys) frame("chat--three");
-	manifestJson(
-		manifest({
+	manifestJson({
+		...manifest({
 			head: baseSha,
 			supplementary: [
 				{
@@ -1461,7 +1543,10 @@ const storyFixture = ({ mainLostNestedKeys = false } = {}) => {
 					},
 			extra: { baseRecord: "the base pass", laneRecord: "THE LANE'S RECORD" },
 		}),
-	);
+		...(laneCarriesRetiredPair
+			? { srcTree: "1".repeat(40), scriptsTree: "2".repeat(40) }
+			: {}),
+	});
 	git(dir, ["add", "-A"]);
 	git(dir, ["commit", "-qm", "feat: the lane's pass"]);
 
@@ -2119,6 +2204,44 @@ test("both parents' key sets survive the resolution at every depth", () => {
 	);
 });
 
+/**
+ * The key gate's own narrowing, and the shape tonight's drop took. An array
+ * element that carries a `path` is keyed by it, so a loss inside ONE entry is
+ * visible even while every other entry still carries the same key - which is
+ * precisely the case the old union-of-elements form could not see (the #765
+ * lane's fold lost `frames`/`surfaces`/`themes` from `supplementary[158]` while
+ * ~160 other entries still carried all three, so the gate said `clean`).
+ */
+test("keyPaths sees a loss inside one `path`-keyed array element", () => {
+	const before = {
+		supplementary: [
+			{ path: "a", frames: 1, why: "a" },
+			{ path: "b", frames: 2, why: "b" },
+		],
+	};
+	const afterOneEntryLost = {
+		supplementary: [
+			{ path: "a", frames: 1, why: "a" },
+			{ path: "b", why: "b" },
+		],
+	};
+	const beforePaths = keyPaths(JSON.stringify(before));
+	const afterPaths = keyPaths(JSON.stringify(afterOneEntryLost));
+	const lost = [...beforePaths].filter((path) => !afterPaths.has(path));
+	assert.deepEqual(lost, ["supplementary[b].frames"]);
+	// The union form this replaced could not have seen it: `supplementary[a].frames`
+	// and `supplementary[b].frames` were one key, so the surviving entry masked
+	// the lost one. Elements without a `path` keep that union, deliberately.
+	assert.deepEqual(
+		[
+			...keyPaths(
+				JSON.stringify({ items: [{ id: 1, moved: true }, { id: 2 }] }),
+			),
+		].filter((path) => path.startsWith("items")),
+		["items", "items[].id", "items[].moved"],
+	);
+});
+
 /*
  * THE SAME SHAPE ON THE REAL PATH, and the control run on the fixture's OWN three
  * sides: the lane never touched its container, main moved it and lost the note
@@ -2184,4 +2307,221 @@ test("the fold of a main that dropped a nested key keeps it, names it, and passe
 		gate.stdout,
 		/clean - every key of both parents survives the merge/,
 	);
+});
+
+/**
+ * The retired pair, unit level: a fold drops it from whichever side carries it,
+ * and the drop is a printed decision rather than a silence.
+ *
+ * This is the plain-JSON half of `check-fold-keys`' retired-field rule - the
+ * resolver must actually remove the key, or the gate's acceptance would be
+ * covering a file that still carries it.
+ */
+test("a fold drops a retired top-level field this branch still carries", () => {
+	const decisions = [];
+	const base = { head: "a", srcTree: "1", keepMe: "base" };
+	const ours = { head: "a", srcTree: "2", keepMe: "ours", laneOnly: true };
+	const theirs = { head: "b", keepMe: "theirs", mainOnly: true };
+	const expected = {
+		head: "a",
+		keepMe: "ours",
+		laneOnly: true,
+		mainOnly: true,
+	};
+
+	const keys = mergedKeys(base, ours, theirs, "", decisions);
+	assert.equal(keys.includes("srcTree"), false, "the retired key is dropped");
+	assert.equal(RETIRED_TOP_LEVEL_FIELDS.has("srcTree"), true);
+	assert.deepEqual(decisions, [
+		{ path: "srcTree", action: "dropped", why: "retired by this change" },
+	]);
+	// And the dropped key is not silently re-added by the value merger.
+	assert.equal(
+		"srcTree" in resolveManifest({ base, ours, theirs, derived: null }),
+		false,
+	);
+	// The rest of the union is untouched by the rule.
+	assert.deepEqual(
+		Object.keys(resolveManifest({ base, ours, theirs, derived: null })).sort(),
+		Object.keys(expected).sort(),
+	);
+});
+
+/**
+ * THE OTHER DIRECTION (review round 1, MINOR 4). Filtering `Object.keys(ours)`
+ * alone left the state where the BASE lacks the pair and the OTHER side carries
+ * it: `srcTree` was imported from `theirs` with no decision recorded at all. That
+ * is the only realistic resurrection - a lane whose own old fold tool re-added
+ * the pair, merged to `main` - and it is the state this resolver and
+ * `scripts/check-fold-keys.mjs` both promise cannot happen.
+ */
+test("a retired field only the OTHER side carries is dropped, with a decision", () => {
+	const decisions = [];
+	// Base lacks the pair entirely; this branch never had it; main's copy carries
+	// it because an older tree's `evidence-fold.mjs` wrote it back in.
+	const base = { head: "a", keepMe: "base" };
+	const ours = { head: "a", keepMe: "ours" };
+	const theirs = {
+		head: "b",
+		keepMe: "theirs",
+		srcTree: "2".repeat(40),
+		scriptsTree: "3".repeat(40),
+	};
+
+	const keys = mergedKeys(base, ours, theirs, "", decisions);
+	assert.deepEqual(
+		keys,
+		["head", "keepMe"],
+		"neither retired key is imported from the other side",
+	);
+	assert.deepEqual(decisions, [
+		{ path: "srcTree", action: "dropped", why: "retired by this change" },
+		{ path: "scriptsTree", action: "dropped", why: "retired by this change" },
+	]);
+	const merged = resolveManifest({ base, ours, theirs, derived: null });
+	assert.equal("srcTree" in merged && "scriptsTree" in merged, false);
+	// The rest of the union is untouched: main's own records still ride.
+	assert.equal(merged.keepMe, "ours");
+});
+
+/**
+ * AN ENTRY IS RESOLVED ADDITIVELY (2026-10-03, the #765 lane's fold onto
+ * `7cb678f29bf`). That resolution dropped `frames`, `surfaces` and `themes` from
+ * `supplementary[158]` - an entry whose only varying key was `why` - because this
+ * branch's copy of the entry lacked the three counts while base and main carried
+ * them, and the group (5) rule read the absence as a deliberate deletion, with
+ * nothing in the record to explain it. An entry is a record of a capture: nothing
+ * one side carried may vanish because the other side lacked it. The per-field
+ * policy still picks VALUES; it no longer picks the key set.
+ */
+test("a supplementary entry is resolved additively, never from the side that won", () => {
+	const entry = (fields) => ({ path: "chat/declared", ...fields });
+	const base = {
+		supplementary: [
+			entry({ why: "the base's reason", frames: 1, surfaces: 1, themes: 1 }),
+		],
+	};
+
+	// This branch's copy LOST the three counts; main still carries them.
+	const lostOnOurs = resolveManifest({
+		base,
+		ours: { supplementary: [entry({ why: "THE LANE'S reason" })] },
+		theirs: {
+			supplementary: [
+				entry({ why: "MAIN'S reason", frames: 4, surfaces: 5, themes: 6 }),
+			],
+		},
+		derived: null,
+	});
+	assert.deepEqual(lostOnOurs.supplementary, [
+		{
+			path: "chat/declared",
+			why: "THE LANE'S reason",
+			frames: 4,
+			surfaces: 5,
+			themes: 6,
+		},
+	]);
+
+	// And the reverse: keys only THIS branch's entry carries survive too.
+	const lostOnTheirs = resolveManifest({
+		base,
+		ours: {
+			supplementary: [entry({ why: "L", frames: 7, surfaces: 8, themes: 9 })],
+		},
+		theirs: { supplementary: [entry({ why: "M" })] },
+		derived: null,
+	});
+	assert.deepEqual(lostOnTheirs.supplementary, [
+		{ path: "chat/declared", why: "L", frames: 7, surfaces: 8, themes: 9 },
+	]);
+
+	// A one-sided entry rides through whole, whichever side carries it.
+	const oursOnly = resolveManifest({
+		base: {},
+		ours: { supplementary: [entry({ why: "ours", frames: 2 })] },
+		theirs: { supplementary: [] },
+		derived: null,
+	});
+	assert.deepEqual(oursOnly.supplementary, [entry({ why: "ours", frames: 2 })]);
+	const theirsOnly = resolveManifest({
+		base: {},
+		ours: { supplementary: [] },
+		theirs: { supplementary: [entry({ why: "theirs", frames: 2 })] },
+		derived: null,
+	});
+	assert.deepEqual(theirsOnly.supplementary, [
+		entry({ why: "theirs", frames: 2 }),
+	]);
+});
+
+/**
+ * T6 - THE KEY GATE ACCEPTS THE RETIREMENT. After this lands on `main`, every
+ * open branch folds with `srcTree` still in ITS parent; a gate that called that
+ * a `LOST[branch]` fault would exit 1 on the first post-landing fold for doing
+ * the right thing. The branch's own old fold tool re-adding the pair is exactly
+ * the resurrection the design names, so the fixture's lane carries it.
+ */
+test("check-fold-keys reports the retired pair's loss as a decision, not a fault", () => {
+	const { dir } = storyFixture({ laneCarriesRetiredPair: true });
+	// The pair is in the LANE's parent and not in main's, which is the shape the
+	// retirement creates.
+	assert.equal(
+		readManifest(dir).srcTree !== undefined,
+		true,
+		"the lane's copy carries the pair, as an un-migrated branch's would",
+	);
+	git(dir, ["merge", "main"]);
+	const result = run(dir);
+	assert.equal(result.status, 0, result.out);
+	git(dir, ["commit", "-qm", "chore(merge): fold main"]);
+
+	assert.equal(
+		"srcTree" in readManifest(dir),
+		false,
+		"the fold dropped it rather than re-deriving it",
+	);
+
+	const merge = git(dir, ["rev-parse", "HEAD"]);
+	const gate = spawnSync(process.execPath, [KEY_GATE, merge], {
+		cwd: dir,
+		encoding: "utf8",
+	});
+	assert.equal(gate.status, 0, `${gate.stdout}${gate.stderr}`);
+	assert.match(
+		gate.stdout,
+		/dropped\s+docs\/evidence\/manifest\.json :: srcTree/,
+	);
+	assert.doesNotMatch(gate.stdout, /LOST\[branch\]/);
+});
+
+/**
+ * T4 - THE FOLD LABEL CANNOT RE-ENTER A DERIVED FIELD. The `frames` lead used to
+ * open with `(this branch folded onto \`origin/main\` = \`<base>\`)`, which put a
+ * fresh commit name into the manifest on every fold even when the walk found
+ * nothing new - the prose was 11 of the 30 replayed folds' conflict regions. Two
+ * labels over one tree must therefore produce byte-identical readings.
+ */
+test("derived leads are independent of the fold label", async () => {
+	const { dir } = storyFixture();
+	const readerFor = (root) => (args) =>
+		git(root, args) === null
+			? null
+			: execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+	const options = {
+		root: dir,
+		git: readerFor(dir),
+		target: "HEAD",
+		manifest: readManifest(dir),
+	};
+	const first = await deriveFields({ ...options, baseLabel: "0".repeat(9) });
+	const second = await deriveFields({ ...options, baseLabel: "f".repeat(9) });
+
+	assert.deepEqual(first, second);
+	assert.doesNotMatch(first.countsMean.frames, /folded onto/);
+	assert.doesNotMatch(first.countsMean.surfaces, /folded onto/);
+	assert.doesNotMatch(first.countsMean.themes, /folded onto/);
+	// And the retired pair is not part of what a derivation returns any more.
+	assert.equal("srcTree" in first, false);
+	assert.equal("scriptsTree" in first, false);
 });
