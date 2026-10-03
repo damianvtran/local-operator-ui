@@ -60,6 +60,7 @@ export interface RegisterConsoleIpcOptions {
 export const CONSOLE_IPC_CHANNELS = [
 	"console-state",
 	"console-create-surface",
+	"console-close-surface",
 	"console-open-pane",
 	"console-close-pane",
 	"console-select-surface",
@@ -164,6 +165,37 @@ export function registerConsoleIpc(options: RegisterConsoleIpcOptions): void {
 		});
 		return { ...surface };
 	});
+
+	/*
+	 * Ending a surface from the app's own chrome — the sibling of
+	 * `console-create-surface`, and the one op on this namespace that can end a
+	 * process rather than start one.
+	 *
+	 * WHY THE TWO FLAGS COME FROM THE CALLER rather than from a policy here: what a
+	 * close MEANS differs by the surface's state and only the pane knows which state
+	 * it is looking at (issue #754's settled reading of design 6.7). A running
+	 * surface is killed behind the pane's own confirmation, because `close` refuses
+	 * `kill: false` on a running surface rather than orphaning a pty; a surface whose
+	 * process already exited is dismissed with `retain: false`, which is what removes
+	 * it from the retained registry so a relaunch cannot restore it. Main's `close`
+	 * remains the authority on both: an impossible combination (a kill-less close of
+	 * a running surface) is refused with `busy` rather than smoothed over, and the
+	 * renderer has no way to signal a process it did not name.
+	 */
+	ipcMain.handle(
+		"console-close-surface",
+		(event, surface: unknown, options: unknown) => {
+			const host = authorize(event);
+			const input =
+				options && typeof options === "object"
+					? (options as Record<string, unknown>)
+					: {};
+			return host.close(stringOrThrow(surface, "surface"), {
+				kill: optionalBoolean(input.kill, "kill"),
+				retain: optionalBoolean(input.retain, "retain"),
+			});
+		},
+	);
 
 	ipcMain.handle("console-open-pane", (event, surface: unknown) => {
 		const host = authorize(event);
@@ -313,6 +345,20 @@ function stringOrThrow(value: unknown, name: string): string {
 function optionalString(value: unknown, name: string): string | undefined {
 	if (value === undefined || value === null) return undefined;
 	return stringOrThrow(value, name);
+}
+
+/** A tri-state flag: an absent value stays absent rather than becoming `false`.
+ *
+ * `on` for `console-close-surface`'s two options, where "not given" and "false"
+ * are different acts: `kill` absent means "only forget an exited surface",
+ * `kill: false` on a running one is the refusal `busy` exists for. A truthy
+ * coercion would silently pick one of them for a caller who said neither. */
+function optionalBoolean(value: unknown, name: string): boolean | undefined {
+	if (value === undefined || value === null) return undefined;
+	if (typeof value !== "boolean") {
+		throw new Error(`${name} must be a boolean.`);
+	}
+	return value;
 }
 
 /**
