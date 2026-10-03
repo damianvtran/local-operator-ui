@@ -583,8 +583,10 @@ export const askQueueView = (
 		 * URGENT IS THE WIRE'S OWN FLAG, PAINTED NOWHERE BEFORE THIS: an ask the
 		 * backend derived a short window for (`timeout <= 900`) is one the operator
 		 * should triage first, and until this field the desktop drew it identically
-		 * to any other waiting row. Scoped to the OUTSTANDING rows - a settled ask's
-		 * stale urgency is not a state anyone can act on.
+		 * to any other waiting row. Scoped to the WAITING rows, not the outstanding
+		 * ones (the field's own note above is the long form): a moved-on ask is still
+		 * answerable, but its window has closed, so its stale urgency is not a state
+		 * anyone can act on.
 		 */
 		urgent: rows.some((row) => row.waiting && row.ask.urgent === true),
 		soonestExpiryMs: deadlines.length > 0 ? Math.min(...deadlines) : null,

@@ -157,9 +157,11 @@ export const AskBar = ({
 						// Persistent, never animated.
 						// The GLYPH keeps the muted role when nothing is outstanding, and
 						// takes WARNING - not accent - when an ask the bar COUNTS AS WAITING is
-						// urgent (UX round 1's U1, design round 1's D1: scoped to the outstanding
-						// set, a moved-on ask's stale urgency spent the bar's one warning ink
-						// over a queue nothing was waiting on).
+						// urgent, the same set its sibling deadline reads. The FIRST CUT scoped
+						// this to the outstanding set instead (which includes `timed_out`), and a
+						// moved-on ask's stale urgency then spent the bar's one warning ink over
+						// a queue nothing was waiting on - UX round 1's U1 and design round 1's
+						// D1, one defect found twice.
 						// The 7.85:1 / 8.19:1 re-measurement below is the standing one.
 						settledOnly
 							? "text-ink-muted"
