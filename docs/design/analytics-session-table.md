@@ -994,6 +994,9 @@ Evidence, and what it can and cannot carry:
 2. **The evidence stamp.** This change moves `src/` and `scripts/`, so every open
    branch pays the two-commit re-stamp of `docs/evidence/manifest.json`
    (`AGENTS.md:118-129`). Budget for it rather than discovering it at the gate.
+   *(Since 2026-10-01 the re-stamp itself is one command, `pnpm evidence:fold`,
+   which derives the stamps and counts from the tree the commit names and stages
+   them; what remains manual is resolving a conflict OUTSIDE the manifest.)*
 3. **The swallowed memo.** The failure mode is silent: if a memo key is wrong, the
    table is *correct* and just slower, and nothing in CI notices. The guard is the
    one-rank-per-interaction assertion (§9.2.3-4) and the in-app measurement, not a
