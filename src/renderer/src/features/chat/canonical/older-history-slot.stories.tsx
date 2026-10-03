@@ -122,8 +122,8 @@ export const AppMinimumWidth: Story = {
 				<Ruled key={state} state={state} caption={caption} width="252px" />
 			))}
 			<p className="max-w-[46rem] pt-2 text-ink-muted text-meta">
-				And at 220px, the floor this board draws — the column's own floor when it
-				was drawn, 480px since §I.
+				And at 220px, the floor this board draws — the column's own floor when
+				it was drawn, 480px since §I.
 			</p>
 			{STATES.filter(
 				(entry) => entry.state === "failed" || entry.state === "loading",
