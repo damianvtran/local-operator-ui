@@ -99,10 +99,16 @@ type ProjectListProps = {
 	/** The explicit column sort in force, or `null` for the arriving order. */
 	sort: SortSpec | null;
 	onSortChange: (spec: SortSpec | null) => void;
-	/* The column menus' scoped panels derive their counts from the WHOLE
-	 * listing (the same rule the toolbar popover runs), so the unfiltered rows
-	 * and the live filter state are passed alongside the filtered rows above. */
-	allProjects: DesktopProject[];
+	/*
+	 * The column menus' scoped panels derive their counts from the QUERY-ADMITTED
+	 * rows (the same population the toolbar popover counts over), never from the
+	 * whole listing: a count that ignored the query would describe a list nobody
+	 * is looking at. The page hands the search's own row set — the backend
+	 * index's answer when it served, the client matcher's otherwise — so the
+	 * counts and the list cannot disagree about which rows exist; the `query`
+	 * string rides along for the panel's "is a search on" predicate only.
+	 */
+	searchPopulation: DesktopProject[];
 	filters: FilterState;
 	query: string;
 	todayMs: number;
@@ -234,7 +240,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 	onOpen,
 	sort,
 	onSortChange,
-	allProjects,
+	searchPopulation,
 	filters,
 	query,
 	todayMs,
@@ -371,7 +377,7 @@ export const ProjectList: FC<ProjectListProps> = ({
 										>
 											<FilterPopoverScroll>
 												<ProjectFiltersPanel
-													projects={allProjects}
+													projects={searchPopulation}
 													state={filters}
 													query={query}
 													todayMs={todayMs}
