@@ -1,0 +1,283 @@
+{
+  "what": "The mini quick-send view's own readings for the acknowledgment, taken by scripts/renderer-driver.mjs --scene mini-view against the same isolated backend as stt-ack-latency-proof.mjs (scratch config root, its own bearer, a placeholder RADIENT_API_KEY). These are the numbers beside docs/evidence/stt-instant-ack/mini/. The frame files committed here are the scene's mini-view-starting / mini-view-dictating PNGs converted to webp q88 - the rig's own main-window encoding.",
+  "why": "The shipped acknowledgment is a `shrink-0` caption in the composer's control row. The mini view is measure-driven at a 168 px base, so the specific worry is that the caption grows the window (or moves the mic). Reading the window height, the composer box and the mic x at rest and DURING the press answers it as a number rather than as a look.",
+  "runs": {
+    "localOperatorDark": {
+      "theme": "localOperatorDark",
+      "rig": "scripts/renderer-driver.mjs --scene mini-view",
+      "passes": {
+        "the harness is driving the Electron this branch pins": true,
+        "the scratch backend port is dead": true,
+        "the armed launch said so on stdout": true,
+        "the app's logs went to this run's scratch tree, not the operator's": true,
+        "the app holds a connection to this run's backend (http://127.0.0.1:11877)": true,
+        "the app holds NO connection to the operator's own backend (http://localhost:1111)": true,
+        "the app's own mini view exists, hidden and unfocused (the dev-driver exerciser)": true,
+        "the app's own window carries the fixed width inside the height range": true,
+        "every window of this run is off screen, and the mini view is the only extra one": true,
+        "the exerciser announced itself and registration stayed normal-only": true,
+        "the mini document rendered at the fixed viewport width": true,
+        "the mini document mounted the app's palette": true,
+        "the mini document has the preload's bridge": true,
+        "the resting state invites a message and offers nothing to press": true,
+        "the resting frame says the hint rather than a notice": true,
+        "the mini-view-empty frame was captured at the fixed width": true,
+        "the mini-view-empty frame was captured with the window never visible": true,
+        "the draft reached the box": true,
+        "Send became available once there was a draft": true,
+        "the mini-view-typing frame was captured at the fixed width": true,
+        "the mini-view-typing frame was captured with the window never visible": true,
+        "a long draft keeps the fixed width, fits inside the window, and stays in range": true,
+        "the mini-view-long frame was captured at the fixed width": true,
+        "the mini-view-long frame was captured with the window never visible": true,
+        "the frame addresses the seat by its resolved name": true,
+        "the placeholder names the same resolved name": true,
+        "the mini-view-sheet frame was captured at the fixed width": true,
+        "the mini-view-sheet frame was captured with the window never visible": true,
+        "the sheet state fits inside the window": true,
+        "Escape closed the sheet rather than the window": true,
+        "the composer remounted after the reload": true,
+        "the box holds a draft while the recording starts": true,
+        "the mic is enabled before the walk presses it": true,
+        "the press is acknowledged before the recorder exists": true,
+        "the acknowledgment costs the mini window no height": true,
+        "the mini-view-starting frame was captured at the fixed width": true,
+        "the mini-view-starting frame was captured with the window never visible": true,
+        "the mic press put the surface into recording": true,
+        "the mic control now offers to stop": true,
+        "the mini-view-dictating frame was captured at the fixed width": true,
+        "the mini-view-dictating frame was captured with the window never visible": true,
+        "no Send control stands while a recording is live": true,
+        "Enter confirmed the recording instead of sending": true,
+        "the box holds the message being sent": true,
+        "the box still holds the message at the press": true,
+        "the mini-view-sent frame was captured at the fixed width": true,
+        "the mini-view-sent frame was captured with the window never visible": true,
+        "the summon moved focus into the composer": true,
+        "the desktop plane admitted the app's own mini window": true,
+        "a failed-transition toast reached the app's own container (U1)": true,
+        "no window of this run is visible, and the only extra one is the mini view": true,
+        "the scene can make the mini document fail to load": true,
+        "a failed load shows the card rather than a white document": true,
+        "the card is dark, scriptless, and neither blank nor white": true,
+        "the mini-view-error-card frame was captured at the fixed width": true,
+        "the mini-view-error-card frame was captured with the window never visible": true,
+        "no process from this run outlived its boot": true
+      },
+      "fails": [
+        {
+          "check": "the frame renders the name the backend resolves, not a literal",
+          "detail": "frame=\"Aida\" backend=null"
+        },
+        {
+          "check": "the readings strip offers a model chip to press",
+          "detail": "chipClicked=false"
+        },
+        {
+          "check": "the chip opened the frame's own compact sheet",
+          "detail": "false"
+        },
+        {
+          "check": "admission painted the Sent flash",
+          "detail": "null"
+        },
+        {
+          "check": "the daemon reports a chief-of-staff conversation",
+          "detail": "{\"status\":404,\"body\":\"{\\\"detail\\\":\\\"Not Found\\\"}\"}"
+        },
+        {
+          "check": "the daemon's own history carries the message the composer sent",
+          "detail": "{}"
+        }
+      ],
+      "frames": {
+        "ackWhilePending": "1280x336px, 28821 bytes",
+        "recording": "1280x480px, 36505 bytes"
+      },
+      "readings": {
+        "atRest": {
+          "height": 168,
+          "width": 640,
+          "box": {
+            "y": 38,
+            "h": 80
+          },
+          "mic": {
+            "x": 560,
+            "y": 82
+          }
+        },
+        "acknowledgingThePress": {
+          "height": 168,
+          "width": 640,
+          "box": {
+            "y": 38,
+            "h": 80
+          },
+          "mic": {
+            "x": 560,
+            "y": 82
+          }
+        }
+      }
+    },
+    "localOperatorLight": {
+      "theme": "localOperatorLight",
+      "rig": "scripts/renderer-driver.mjs --scene mini-view",
+      "passes": {
+        "the harness is driving the Electron this branch pins": true,
+        "the scratch backend port is dead": true,
+        "the armed launch said so on stdout": true,
+        "the app's logs went to this run's scratch tree, not the operator's": true,
+        "the app holds a connection to this run's backend (http://127.0.0.1:11877)": true,
+        "the app holds NO connection to the operator's own backend (http://localhost:1111)": true,
+        "the app's own mini view exists, hidden and unfocused (the dev-driver exerciser)": true,
+        "the app's own window carries the fixed width inside the height range": true,
+        "every window of this run is off screen, and the mini view is the only extra one": true,
+        "the exerciser announced itself and registration stayed normal-only": true,
+        "the mini document rendered at the fixed viewport width": true,
+        "the mini document mounted the app's palette": true,
+        "the mini document has the preload's bridge": true,
+        "the resting state invites a message and offers nothing to press": true,
+        "the resting frame says the hint rather than a notice": true,
+        "the mini-view-empty frame was captured at the fixed width": true,
+        "the mini-view-empty frame was captured with the window never visible": true,
+        "the draft reached the box": true,
+        "Send became available once there was a draft": true,
+        "the mini-view-typing frame was captured at the fixed width": true,
+        "the mini-view-typing frame was captured with the window never visible": true,
+        "a long draft keeps the fixed width, fits inside the window, and stays in range": true,
+        "the mini-view-long frame was captured at the fixed width": true,
+        "the mini-view-long frame was captured with the window never visible": true,
+        "the frame addresses the seat by its resolved name": true,
+        "the placeholder names the same resolved name": true,
+        "the mini-view-sheet frame was captured at the fixed width": true,
+        "the mini-view-sheet frame was captured with the window never visible": true,
+        "the sheet state fits inside the window": true,
+        "Escape closed the sheet rather than the window": true,
+        "the composer remounted after the reload": true,
+        "the box holds a draft while the recording starts": true,
+        "the mic is enabled before the walk presses it": true,
+        "the press is acknowledged before the recorder exists": true,
+        "the acknowledgment costs the mini window no height": true,
+        "the mini-view-starting frame was captured at the fixed width": true,
+        "the mini-view-starting frame was captured with the window never visible": true,
+        "the mic press put the surface into recording": true,
+        "the mic control now offers to stop": true,
+        "the mini-view-dictating frame was captured at the fixed width": true,
+        "the mini-view-dictating frame was captured with the window never visible": true,
+        "no Send control stands while a recording is live": true,
+        "Enter confirmed the recording instead of sending": true,
+        "the box holds the message being sent": true,
+        "the box still holds the message at the press": true,
+        "the mini-view-sent frame was captured at the fixed width": true,
+        "the mini-view-sent frame was captured with the window never visible": true,
+        "the summon moved focus into the composer": true,
+        "the desktop plane admitted the app's own mini window": true,
+        "a failed-transition toast reached the app's own container (U1)": true,
+        "no window of this run is visible, and the only extra one is the mini view": true,
+        "the scene can make the mini document fail to load": true,
+        "a failed load shows the card rather than a white document": true,
+        "the card is dark, scriptless, and neither blank nor white": true,
+        "the mini-view-error-card frame was captured at the fixed width": true,
+        "the mini-view-error-card frame was captured with the window never visible": true,
+        "no process from this run outlived its boot": true
+      },
+      "fails": [
+        {
+          "check": "the frame renders the name the backend resolves, not a literal",
+          "detail": "frame=\"Aida\" backend=null"
+        },
+        {
+          "check": "the readings strip offers a model chip to press",
+          "detail": "chipClicked=false"
+        },
+        {
+          "check": "the chip opened the frame's own compact sheet",
+          "detail": "false"
+        },
+        {
+          "check": "admission painted the Sent flash",
+          "detail": "null"
+        },
+        {
+          "check": "the daemon reports a chief-of-staff conversation",
+          "detail": "{\"status\":404,\"body\":\"{\\\"detail\\\":\\\"Not Found\\\"}\"}"
+        },
+        {
+          "check": "the daemon's own history carries the message the composer sent",
+          "detail": "{}"
+        }
+      ],
+      "frames": {
+        "ackWhilePending": "1280x336px, 27938 bytes",
+        "recording": "1280x480px, 36936 bytes"
+      },
+      "readings": {
+        "atRest": {
+          "height": 168,
+          "width": 640,
+          "box": {
+            "y": 38,
+            "h": 80
+          },
+          "mic": {
+            "x": 560,
+            "y": 82
+          }
+        },
+        "acknowledgingThePress": {
+          "height": 168,
+          "width": 640,
+          "box": {
+            "y": 38,
+            "h": 80
+          },
+          "mic": {
+            "x": 560,
+            "y": 82
+          }
+        }
+      }
+    }
+  },
+  "reading": {
+    "atRest": {
+      "height": 168,
+      "width": 640,
+      "box": {
+        "y": 38,
+        "h": 80
+      },
+      "mic": {
+        "x": 560,
+        "y": 82
+      }
+    },
+    "acknowledgingThePress": {
+      "height": 168,
+      "width": 640,
+      "box": {
+        "y": 38,
+        "h": 80
+      },
+      "mic": {
+        "x": 560,
+        "y": 82
+      }
+    },
+    "note": "Both palettes read identically (window 640x168, box y 38 h 80, mic x 560): the acknowledgment costs the mini window no height, which is what the scene's own check asserts and both runs PASS."
+  },
+  "failuresDisclosed": {
+    "count": 6,
+    "checks": [
+      "the frame renders the name the backend resolves, not a literal",
+      "the readings strip offers a model chip to press",
+      "the chip opened the frame's own compact sheet",
+      "admission painted the Sent flash",
+      "the daemon reports a chief-of-staff conversation",
+      "the daemon's own history carries the message the composer sent"
+    ],
+    "why": "With --backend pointed at a FRESH isolated daemon the scene's send/model checks find no model catalog and no chief-of-staff conversation: `backend=null` for the resolved model name, no model chip to press, no Sent-flash admission, and /v1/desktop/sessions/<id>/history answering 404. None of them is in the mic walk, whose checks all pass; they are a property of the scratch daemon this rig owns. Stated rather than filtered out. The light run reports the same six."
+  }
+}

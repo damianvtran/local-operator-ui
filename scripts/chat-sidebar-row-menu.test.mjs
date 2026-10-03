@@ -80,6 +80,18 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		pair.includes("{archiveEnabled && ("),
 		"the archive CONTROL's gate is no longer `archiveEnabled`",
 	);
+	/*
+	 * THE THIRD GATE, and it is shared rather than copied: the drag handle and the
+	 * menu's two Move items both read `offersMove`, which is `offersPinnedMove` over
+	 * the row. Two spellings would be two chances for the handle and the menu to
+	 * appear on different rows.
+	 */
+	assert.ok(
+		pair.includes(
+			"const offersMove = offersPinnedMove(row.session_id, nested);",
+		),
+		"the grip's predicate is no longer the one the menu's items read",
+	);
 	const archiveItem = between(
 		MENU,
 		"{archiveEnabled && (",
@@ -99,15 +111,30 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		"the pin ITEM exists outside the pin-state gate the control reads",
 	);
 	/*
-	 * WITHHELD, NEVER DISABLED: an act the row cannot take is an absent row. There
-	 * is no `disabled` prop in the menu's JSX at all, so nobody can half-enable an
-	 * item the pair would have withheld.
+	 * WITHDRAWN, NEVER DISABLED - WITH ONE DELIBERATE EXCEPTION (2026-09-30).
+	 * The rule is about an act the row cannot take AT ALL: that is an absent row, not
+	 * a greyed one. The row menu's two Move items are the exception, and it is WCAG
+	 * 2.5.7's: a move the row cannot make in ONE DIRECTION is a BOUNDARY rather than
+	 * an absent act, and the app's own idiom for a refused target is `aria-disabled`
+	 * (the drafts' discard act, `older-history-slot.tsx`) - a real `disabled` would
+	 * drop the item out of the flow a keyboard reader walks AND stop the activation,
+	 * swallowing the `pinMoveBoundaryNote` sentence that says which boundary it is. So
+	 * the assertion is about the PROP, plus a check that `aria-disabled` appears
+	 * nowhere in this menu but on those two items.
 	 */
 	assert.equal(
-		MENU.includes("disabled"),
+		/[\s"'{]disabled[=>\s]/.test(MENU.replace(/aria-disabled/g, "")),
 		false,
-		"a menu item is disabled rather than withheld - the row's own rule is that an affordance that cannot act on a row is not drawn at all",
+		"a menu item is disabled rather than withheld - the row's own rule is that an affordance that cannot act on a row is not drawn at all, and the two Move items state their boundary with `aria-disabled` instead",
 	);
+	for (const item of MENU.split("<ContextMenuItem").slice(1)) {
+		if (!item.includes("aria-disabled")) continue;
+		assert.match(
+			item,
+			/Move conversation (?:up|down)/,
+			"`aria-disabled` is on something other than the two boundary-bearing Move items",
+		);
+	}
 	/*
 	 * THE COPY AND THE ORDER. Sentence case, verb + object, and the pair's own
 	 * measured order (the archive glyph is `order-first` in the strip): archive
@@ -130,6 +157,27 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 		"the menu no longer reads Archive then Pin",
 	);
 	/*
+	 * AND THE TWO MOVE ITEMS COME AFTER THEM (2026-09-30), in the order the deleted
+	 * arrow pair was drawn: the row's own acts first, then the refinement of the order
+	 * they only apply to. They are gated on `offersMove`, which is the SAME predicate
+	 * the row's drag handle reads - asserted against the grip's own line above, so
+	 * neither surface can be moved to a different set of rows alone.
+	 */
+	assert.ok(
+		MENU.includes("{offersMove && ("),
+		"the menu's Move items exist outside the predicate the row's grip reads",
+	);
+	assert.ok(
+		MENU.indexOf('pressRowAct(row.session_id, "pin")') <
+			MENU.indexOf("Move conversation up"),
+		"the menu no longer reads Archive, Pin, then the moves",
+	);
+	assert.ok(
+		MENU.indexOf("Move conversation up") <
+			MENU.indexOf("Move conversation down"),
+		"the menu no longer reads Move up then Move down",
+	);
+	/*
 	 * AND THE PRESS IS THE CONTROL'S OWN. `.click()` on the row's control takes the
 	 * same path as Enter on it - the guards, the store write and the focus
 	 * correction all arrive unchanged - so the item cannot reimplement a write
@@ -143,6 +191,128 @@ test("the menu's items are drawn from the same predicates the pair reads", () =>
 	assert.ok(
 		press.includes("CHAT_ROW_ACT_ATTR[act]"),
 		"pressRowAct no longer resolves the control through the chord's own attribute table",
+	);
+});
+
+test("Fork is the menu's newest row: its order, copy, withheld condition and wiring (#739)", () => {
+	/*
+	 * THE RESERVED THIRD ROW, SPENT. Fork is not a press on a row control (there
+	 * is none), so the pins below read the three things that make it THIS menu's
+	 * item rather than a second fork implementation: where it sits, what it asks
+	 * for, and the one condition that withholds it.
+	 */
+	const forkItem = between(MENU, "{forkable && (", "</ContextMenuItem>");
+	/*
+	 * ORDER: Archive, Pin, Fork, then the conditional Move pair (round-1 design
+	 * review, D2). The principle, stated so the next act has something to apply:
+	 * rows 1-2 are the mirrored pair in the strip's own order, row 3 is the
+	 * UNCONDITIONAL singleton - so the third slot keeps one identity in every
+	 * state instead of changing between Fork and `Move conversation up` - and the
+	 * conditional block trails it. The two Move items stay adjacent to each other
+	 * under either arrangement.
+	 */
+	const archiveAt = MENU.indexOf('pressRowAct(row.session_id, "archive")');
+	const pinAt = MENU.indexOf('pressRowAct(row.session_id, "pin")');
+	const forkAt = MENU.indexOf('"session.fork"');
+	const moveUpAt = MENU.indexOf("movePinnedRow(row.session_id, -1, true)");
+	const moveDownAt = MENU.indexOf("movePinnedRow(row.session_id, 1, true)");
+	assert.ok(
+		archiveAt !== -1 &&
+			archiveAt < pinAt &&
+			pinAt < forkAt &&
+			forkAt < moveUpAt &&
+			moveUpAt < moveDownAt,
+		"the menu no longer reads Archive, Pin, Fork, Move up, Move down (D2) - the mirrored pair, the unconditional singleton, then the conditional block",
+	);
+	assert.equal(
+		MENU.split("<ContextMenuItem").length - 1,
+		5,
+		"the menu's row count moved without this file: the five-row budget (design \u00a77) is now the arithmetic of #743's four plus #739's Fork, and a sixth act either replaces a row or finds another surface",
+	);
+	/*
+	 * COPY: verb + object, the pair's register, with the icon `aria-hidden` like
+	 * its siblings - and NO chord, because fork has none. A `KeyboardShortcut`
+	 * here would print a hint for a gesture that does nothing.
+	 */
+	assert.ok(
+		forkItem.includes("<span>Fork conversation</span>"),
+		"the fork item no longer reads `Fork conversation`",
+	);
+	assert.ok(
+		forkItem.includes('<GitFork aria-hidden="true" />'),
+		"the fork item lost its aria-hidden glyph",
+	);
+	assert.equal(
+		forkItem.includes("KeyboardShortcut"),
+		false,
+		"the fork item prints a chord, but fork has none",
+	);
+	/*
+	 * THE WITHHELD CONDITION: one named predicate, read once, and it is the
+	 * sidebar's own `unstarted` statement - the draft that holds this row's id and
+	 * never carried a message, i.e. the session the backend refuses ("has no
+	 * transcript to fork"). `row.pending` is deliberately NOT the gate: it names
+	 * a parked approval/ask, which only a session with a transcript can carry.
+	 */
+	assert.ok(
+		SIDEBAR_CODE.includes("const forkable = !unstarted.has(row.session_id);"),
+		"the fork predicate is no longer the row's own `unstarted` statement",
+	);
+	assert.equal(
+		SIDEBAR_CODE.split("forkable").length - 1,
+		2,
+		"`forkable` is spelled more than once at its definition and its one use - two copies are two chances to disagree",
+	);
+	assert.equal(
+		/row\.pending/.test(MENU) || /forkable[^;]*pending/.test(SIDEBAR_CODE),
+		false,
+		"the fork gate reads `row.pending`, which names a parked gate and not a session without a transcript",
+	);
+	assert.equal(
+		[/disabled/, /aria-disabled/].some((pattern) => pattern.test(forkItem)),
+		false,
+		"the fork item is disabled or marked as a boundary rather than withheld - its one condition is an ABSENT row, and `aria-disabled` belongs to the two Move items",
+	);
+	/*
+	 * THE WIRING: the register's own picker, asked for through the
+	 * panel-presentation store (the palette's idiom) with THIS row's id as the
+	 * third argument - the pane's session is generally not the row's - and the
+	 * palette's two navigation lines. The invoker is the row's own button, not
+	 * the item, which unmounts with the menu.
+	 */
+	assert.ok(
+		forkItem.includes("requestPanel("),
+		"the fork item no longer asks the panel-presentation store",
+	);
+	const request = between(forkItem, "requestPanel(", ");");
+	assert.ok(
+		request.includes('"session.fork"') &&
+			request.includes("[data-chat-row]") &&
+			request.includes("row.session_id,"),
+		"the request no longer names the register's fork picker, the row's own button as the invoker, and the row's conversation",
+	);
+	assert.ok(
+		request.trimEnd().endsWith("row.session_id,"),
+		"the row's session id is no longer the request's LAST argument (the addressed conversation)",
+	);
+	assert.ok(
+		forkItem.includes(
+			'if (!location.pathname.startsWith("/chat")) navigate("/chat");',
+		),
+		"the fork item no longer routes to the pane only when none is mounted (the palette's idiom)",
+	);
+	assert.ok(
+		forkItem.indexOf("requestPanel(") < forkItem.indexOf('navigate("/chat")'),
+		"the request must be written BEFORE the navigation, or it races the pane's mount",
+	);
+	/*
+	 * NO SECOND FORK IMPLEMENTATION: the sidebar neither imports the picker nor
+	 * posts the op.
+	 */
+	assert.equal(
+		/ForkPicker|sessions\.fork|desktopResult/.test(SIDEBAR_CODE),
+		false,
+		"the sidebar carries its own fork - the picker is the register's and the pane presents it",
 	);
 });
 
@@ -187,9 +357,11 @@ test("no rule on the row box is authored against `data-state`", () => {
 	/*
 	 * AND THE SANCTIONED SPELLING IS PRESENT, so the guard above cannot pass by
 	 * the hold being deleted: the ground on `!current` rows, and the reveal's
-	 * authoring sites - the pin glyph, the archive glyph, the pair wrapper, and
-	 * (with #697 folded in) the pin strip's own grip and move pair - because a
-	 * hold on the wrapper alone renders a `flex` box with nothing in it.
+	 * authoring sites - the pin glyph, the archive glyph, and (with #697 folded in)
+	 * the pin strip's own grip - because a hold on the wrapper alone renders a
+	 * `flex` box with nothing in it. THE MOVE PAIR'S TWO CLAUSES WENT WITH THE PAIR
+	 * (2026-09-30): its acts are the row menu's Move items now, and a menu row is in
+	 * the menu's portal, where the row's hold does not reach.
 	 */
 	assert.ok(
 		boxClasses.includes('menuOpen && !current && "bg-row-hover"'),
@@ -197,8 +369,8 @@ test("no rule on the row box is authored against `data-state`", () => {
 	);
 	assert.equal(
 		SIDEBAR_CODE.split('menuOpen && "flex text-ink-muted"').length - 1,
-		5,
-		"the held reveal no longer covers every revealing site (both glyphs, and #697's grip and move pair: five clauses; the wrapper holds separately)",
+		3,
+		"the held reveal no longer covers every revealing site (both glyphs and #697's grip: three clauses; the wrapper holds separately)",
 	);
 	assert.ok(
 		SIDEBAR_CODE.includes("pinned || menuOpen"),

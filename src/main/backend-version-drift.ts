@@ -172,6 +172,18 @@ export function serveRecordVersion(
 export type ServingInstallReadings = {
 	/** The build the process loaded: the record's `version`, or null when absent. */
 	bootVersion: string | null;
+	/**
+	 * The process's instance token (`instance_id`), or null when absent.
+	 *
+	 * The RELOAD's own proof of a move: `execve` keeps the pid, the listener and
+	 * the environment, so a version reading alone cannot tell a moved process
+	 * from one that never went anywhere - but the identity is minted per process
+	 * start and republished by the reload (`server/registry.py`), so a changed
+	 * token under the same record is exactly "this process re-exec'd onto the
+	 * new build". Read from the same record and in the same call as
+	 * `bootVersion`, so a consumer proving a move never judges a torn pair.
+	 */
+	instanceId: string | null;
 	/** `sys.prefix` the process runs from - "" when the record does not say. */
 	prefix: string;
 	/** `uv-tool` / `pipx` / `pip` / `editable` / `unknown`. */
@@ -195,8 +207,10 @@ export function servingInstallReadings(
 	record: ServeRecord | null,
 ): ServingInstallReadings {
 	const version = record?.version?.trim() ?? "";
+	const instanceId = record?.instance_id?.trim() ?? "";
 	return {
 		bootVersion: version === "" ? null : version,
+		instanceId: instanceId === "" ? null : instanceId,
 		prefix: record?.prefix?.trim() ?? "",
 		installKind: record?.install_kind?.trim() ?? "",
 		startedByApp: record?.desktop === true && (record.claim_key ?? "") === "",

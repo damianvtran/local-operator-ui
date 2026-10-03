@@ -93,6 +93,13 @@ type Capture = {
 	notice?: string;
 	/** The session is mid-turn: the adopt gate's second term. */
 	sessionStreaming?: boolean;
+	/**
+	 * The panel's own small rung. The app resolves this from the pane's width
+	 * (`chat-content.tsx`), so a story that wants the small form has to say so -
+	 * a narrow viewport alone would render the WIDE panel in a narrow column,
+	 * which is not a state the app can be in.
+	 */
+	isSmallView?: boolean;
 };
 
 /**
@@ -169,7 +176,7 @@ const band = (capture: Capture) => {
 			isLoading={false}
 			messages={EMPTY}
 			conversationId={sessionId}
-			isSmallView={false}
+			isSmallView={capture.isSmallView ?? false}
 			onSendMessage={async () => true}
 			/*
 			 * The two props the app hands the composer from `chat-content.tsx`: the
@@ -228,6 +235,32 @@ export const Streaming: Story = {
 	),
 };
 
+/**
+ * The settled exchange at the SMALL rung (issue #763's second view size).
+ *
+ * The panel's small form is the compact type step and padding above and below
+ * the composer on a narrow pane; the marker and the question-against-answer
+ * register deliberate on it the same way. Captured at a phone-width viewport.
+ */
+export const SettledSmallView: Story = {
+	render: () => (
+		<Column label="settled, small rung: the exchange at the compact step">
+			{band({
+				story: "settled-small-view",
+				isSmallView: true,
+				turns: [
+					{
+						question: "what does the retry budget actually cap?",
+						stream: settled(
+							"Transport failures and owner 5xx responses, per provider, within a moving window. A 4xx never spends it.",
+						),
+					},
+				],
+			})}
+		</Column>
+	),
+};
+
 /** The settled exchange: the adopt control is live and its chord is advertised beside it. */
 export const Settled: Story = {
 	render: () => (
@@ -237,6 +270,33 @@ export const Settled: Story = {
 				turns: [
 					{
 						question: "what does the retry budget actually cap?",
+						stream: settled(
+							"Transport failures and owner 5xx responses, per provider, within a moving window. A 4xx never spends it.",
+						),
+					},
+				],
+			})}
+		</Column>
+	),
+};
+
+/**
+ * The settled exchange with a question long enough to WRAP: the marker indents
+ * the question's first line by its own advance (28px measured), the wrapped
+ * lines return flush to the panel's rail, and the exchange cap absorbs the
+ * extra line through its measured term rather than clipping it. Captured at
+ * both rungs rather than argued, because the first line is where a reader sees
+ * whose half is whose and it is the only line the indent moves.
+ */
+export const SettledWrappedQuestion: Story = {
+	render: () => (
+		<Column label="settled, wrapping question: the marker seats a first line that continues">
+			{band({
+				story: "settled-wrapped-question",
+				turns: [
+					{
+						question:
+							"what does the retry budget actually cap, and which of the owner errors spend it before the window resets after a transport failure happens partway through a long streaming answer nobody is reading?",
 						stream: settled(
 							"Transport failures and owner 5xx responses, per provider, within a moving window. A 4xx never spends it.",
 						),

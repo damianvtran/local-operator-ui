@@ -6,8 +6,10 @@
  * then the DOM is asked what a frame cannot answer:
  *
  *   1. WHICH ROWS HAVE WHICH ROW: the user turn carries exactly one
- *      `data-lo-user-actions` toolbar offering Copy ALONE (no Speak - see
- *      `answerActionsFor`), the answer carries exactly one
+ *      `data-lo-user-actions` toolbar offering Copy first and no Speak (see
+ *      `answerActionsFor`) - and, since #1002, Fork beside it, because this
+ *      mount names both the conversation and the record's own journal id, so
+ *      the row is a cut point - the answer carries exactly one
  *      `data-lo-answer-actions`, and the user row sits UNDER the bubble in the
  *      turn's own column (the mount site, not just its presence).
  *   2. WHAT A PRESS COPIES, which is the visible text: a turn that was itself
@@ -312,8 +314,8 @@ test("the user turn carries the copy row under its bubble, and only the answer s
 	);
 	assert.deepEqual(
 		labels,
-		["Copy"],
-		"Copy alone: no Speak on the reader's own words",
+		["Copy", "Fork from this message"],
+		"Copy first and no Speak on the reader's own words; Fork rides along because this mount names the conversation AND the record's own journal id, which is a cut point (#1002)",
 	);
 	/*
 	 * The reveal, as rendered: the resting fade is on the row, and the group

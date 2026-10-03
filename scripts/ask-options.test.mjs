@@ -69,10 +69,10 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskOptions } from "./src/renderer/src/features/chat/components/trace/ask-options";',
-			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, answerGateSecret, SECRET_ANSWER_DOCKED_MESSAGE, errorCodeOf, ANSWER_UNCONFIRMED_CODE, gateIsSecret } from "./src/renderer/src/features/chat/ask-answer";',
-			'export { DesktopControlError, UserFacingError } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
-			'export { buildSendPayload, sendFailureCopy, ANSWER_NOT_SENT_CODE } from "./src/renderer/src/shared/store/canonical-sessions-store";',
-			'export { DESKTOP_LOST_SIGHT_CODE } from "./src/shared/desktop-contract";',
+			'export { resolveNumericAnswer, answerValue, answerReport, answerRefusedWithoutACode, answerOutcomeIsUnknown, answerOwnerIsBusy, answerSessionUnreachable, answerUnconfirmedMessage, SETTLED_ELSEWHERE_MESSAGE, QUESTION_MOVED_ON_MESSAGE, ANSWER_UNCONFIRMED_LEAD, ANSWER_BUSY_MESSAGE, ANSWER_SESSION_UNREACHABLE_MESSAGE, ANSWER_LOST_TO_RECONNECT_MESSAGE, unsentAnswerMessage, shouldTabIntoAnswerOptions, composerFocusIsOurs, createSendLock, APPROVAL_OPTIONS, approvalVerdict, approvalAnswerValue, answerGateOption, answerGateSecret, SECRET_ANSWER_DOCKED_MESSAGE, errorCodeOf, ANSWER_UNCONFIRMED_CODE, gateIsSecret } from "./src/renderer/src/features/chat/ask-answer";',
+			'export { DesktopControlError, UserFacingError, userFacingMessage } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { buildSendPayload, sendFailureCopy, ANSWER_NOT_SENT_CODE, withBusyResends, withholdsRetryHint } from "./src/renderer/src/shared/store/canonical-sessions-store";',
+			'export { DESKTOP_LOST_SIGHT_CODE, RUNTIME_BUSY_CODE } from "./src/shared/desktop-contract";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { QuestionDock, questionDockHint, questionKeyOf } from "./src/renderer/src/features/chat/components/trace/question-dock";',
@@ -158,6 +158,8 @@ const {
 	answerUnconfirmedMessage,
 	ANSWER_UNCONFIRMED_LEAD,
 	ANSWER_LOST_TO_RECONNECT_MESSAGE,
+	ANSWER_BUSY_MESSAGE,
+	ANSWER_SESSION_UNREACHABLE_MESSAGE,
 	unsentAnswerMessage,
 	shouldTabIntoAnswerOptions,
 	composerFocusIsOurs,
@@ -167,16 +169,22 @@ const {
 	approvalAnswerValue,
 	answerGateOption,
 	answerGateSecret,
+	answerOwnerIsBusy,
+	answerSessionUnreachable,
 	SECRET_ANSWER_DOCKED_MESSAGE,
 	errorCodeOf,
 	DesktopControlError,
 	UserFacingError,
+	userFacingMessage,
 	buildSendPayload,
 	sendFailureCopy,
+	withBusyResends,
+	withholdsRetryHint,
 	ANSWER_NOT_SENT_CODE,
 	ANSWER_UNCONFIRMED_CODE,
 	gateIsSecret,
 	DESKTOP_LOST_SIGHT_CODE,
+	RUNTIME_BUSY_CODE,
 	desktopRequestSchema,
 	desktopEndpoint,
 	CanonicalTranscript,
@@ -976,11 +984,14 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 		/cardOnScreen:\s*\n?\s*document\.querySelector\(\s*\n?\s*'\[aria-label="Answer options"\], \[data-ask-secret\]',\s*\n?\s*\) !== null,/,
 		"the DOM read is the frame's cardOnScreen over BOTH answer surfaces - the options band and the secret field's form - with the identity decided by the keys rather than by the query alone",
 	);
-	// The composer arm: the sentence AND the report's own code, in that arm.
+	// The composer arm: the sentence AND the report's own code, in that arm, plus
+	// the two fields the notice reads beside them. `muted` decides the band's ink
+	// and `retry` whether a control row is laid out, and both may otherwise be
+	// inherited from the draft's last failure (design round 1, D4/D5).
 	assert.match(
 		code,
-		/case "composer":[\s\S]{0,1200}?setSendError\(report\.message\);\s*\n\s*setSendErrorCode\(report\.code\);/,
-		"the composer arm must write the report's message AND its code - the code is what stops the alert inheriting the draft's failure",
+		/case "composer":[\s\S]{0,1600}?setSendError\(report\.message\);\s*\n\s*setSendErrorCode\(report\.code\);[\s\S]{0,400}?setSendErrorMuted\(report\.muted\);\s*\n\s*setSendErrorRetry\(report\.retry\);/,
+		"the composer arm must write the report's message, its code, its register and its retry verdict - the code stops the alert inheriting the draft's failure, and the last two stop it inheriting the draft's ink or a Retry that would send the box",
 	);
 	// The card arm writes to the card's own hold, and only with this press's key.
 	// `report.refused` and not a sentence composed here: the register is the
@@ -988,8 +999,8 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	// 2, U7 / QA Q1).
 	assert.match(
 		code,
-		/case "card":[\s\S]{0,600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: report\.refused,\s*retryable: report\.retryable,\s*\}\);/,
-		"the card arm must write the report's own sentence AND its retryable classification onto the press's card state - the classification is what lets a definite refusal release the secret field while an unknowable one keeps the hold",
+		/case "card":[\s\S]{0,600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: report\.refused,\s*retryable: report\.retryable,\s*muted: report\.muted,\s*\}\);/,
+		"the card arm must write the report's own sentence, its retryable classification and its register onto the press's card state - the classification is what lets a definite refusal release the secret field while an unknowable one keeps the hold, and the register is what keeps an absorbed failure out of the danger band",
 	);
 	assert.doesNotMatch(
 		code,
@@ -1001,8 +1012,8 @@ test("the press's report is routed by the LIVE card's identity, at the call site
 	// register this assertion protects is the ABSENCE of a sentence here.)
 	assert.match(
 		code,
-		/case "sent":[\s\S]{0,1600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: null,\s*retryable: false,\s*\}\);\s*\n?[\s\S]{0,200}?onSent\?\.\(\);\s*\n?[\s\S]{0,200}?return;/,
-		"the sent arm settles the card's hold with nothing to retry, invokes the caller's clause, and returns without a sentence",
+		/case "sent":[\s\S]{0,1600}?setAnswerState\(\{\s*key: pressedKey,\s*sending: false,\s*refused: null,\s*retryable: false,\s*muted: false,\s*\}\);\s*\n?[\s\S]{0,200}?onSent\?\.\(\);\s*\n?[\s\S]{0,200}?return;/,
+		"the sent arm settles the card's hold with nothing to retry and no register of its own, invokes the caller's clause, and returns without a sentence",
 	);
 	assert.doesNotMatch(
 		code,
@@ -1193,6 +1204,14 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			to: "composer",
 			message: SETTLED_ELSEWHERE_MESSAGE,
 			code: ANSWER_NOT_SENT_CODE,
+			/*
+			 * The register and the retry verdict travel WITH the sentence, because the
+			 * notice may otherwise inherit both from the last send: `muted` from a
+			 * send lock, `retry` from a failure the composer could have repeated. See
+			 * the fields' notes on `AnswerReport` (design round 1, D5).
+			 */
+			muted: false,
+			retry: false,
 		},
 	);
 	// B. A gate pending that is a DIFFERENT question: the ask advanced past the
@@ -1206,6 +1225,8 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			to: "composer",
 			message: QUESTION_MOVED_ON_MESSAGE,
 			code: ANSWER_NOT_SENT_CODE,
+			muted: false,
+			retry: false,
 		},
 	);
 	// C. The epoch MOVED: the press was addressed to a runtime instance that is
@@ -1222,6 +1243,8 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			to: "composer",
 			message: ANSWER_LOST_TO_RECONNECT_MESSAGE,
 			code: ANSWER_NOT_SENT_CODE,
+			muted: false,
+			retry: false,
 		},
 	);
 	// D. The epoch moved with a gate still pending under the SAME key: the same
@@ -1240,6 +1263,8 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			to: "composer",
 			message: ANSWER_LOST_TO_RECONNECT_MESSAGE,
 			code: ANSWER_NOT_SENT_CODE,
+			muted: false,
+			retry: false,
 		},
 	);
 
@@ -1287,6 +1312,9 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		// retry could send it twice — the one classification the secret field
 		// reads before it dares reopen (design round 1, D1; UX round 1, U1).
 		retryable: false,
+		// A failure the app cannot claim, which is not the same as one the user
+		// must repair: the register is the ARM's (design round 1, D4).
+		muted: false,
 	});
 	// The card's copy does not assert a loss, which is the whole finding.
 	assert.doesNotMatch(
@@ -1312,6 +1340,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			// A DEFINITE not-sent refusal is retryable: the same question is
 			// still live and a retry carries the live epoch.
 			retryable: true,
+			muted: false,
 		},
 	);
 	assert.equal(
@@ -1343,6 +1372,7 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		// Established not-sent, so the secret card may offer the kept value
 		// again; the options band never reads this.
 		retryable: true,
+		muted: false,
 	});
 
 	// (v) NO HTTP RESPONSE AT ALL: the outcome is unknown, and the sentence says
@@ -1368,23 +1398,23 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			to: "composer",
 			message: answerUnconfirmedMessage(error),
 			code: ANSWER_UNCONFIRMED_CODE,
+			// Unknowable, and yet not the busy arm: `danger`, and no retry the
+			// composer could offer (the notice's Retry sends the BOX).
+			muted: false,
+			retry: false,
 		});
 	}
 	/*
-	 * And the same arm for the failures the MAIN process and the DAEMON author: main's
-	 * deadline (a `504` it synthesises, whose own sentence already says "It may or may
-	 * not have reached the server; check the result before repeating it"), main's
-	 * transport failure, and the daemon's own hop failure. All three are measured —
-	 * `--hold-answers-ms` rendered the first against the committed rig — and all
-	 * three would otherwise land in the definite arm on their status alone, which is
-	 * the false claim this arm exists to stop (UX round 1, U1).
+	 * And the same arm for the two failures MAIN authors: its deadline (a `504` whose
+	 * own sentence already says "It may or may not have reached the server; check the
+	 * result before repeating it") and its transport failure. Both are measured —
+	 * `--hold-answers-ms` rendered the first against the committed rig — and both
+	 * would otherwise land in the definite arm on their status alone, which is the
+	 * false claim this arm exists to stop (UX round 1, U1).
 	 *
-	 * The third is round 2's MAJOR-1: the answer route hands the value to the
-	 * session's owner over a WRITE-THEN-AWAIT-ACK frame, so a lost or slow ack
-	 * answers `503 {"code": "runtime_unreachable"}` — and the write happens before
-	 * the wait, so the request may have arrived and settled with only its ack lost.
-	 * That is the same fact `transport.failed` carries one hop up, and treating the
-	 * two differently produced the definite sentence for an answer the owner kept.
+	 * THE DAEMON'S OWN HOP FAILURE (`runtime_unreachable`) USED TO BE THE THIRD HERE
+	 * and has its own block below: it is the same unknowable class, but it now carries
+	 * a sentence of the APP's rather than the backend's prose (design round 1, D3).
 	 */
 	for (const error of [
 		new DesktopControlError(
@@ -1399,12 +1429,6 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			undefined,
 			"transport.failed",
 		),
-		new DesktopControlError(
-			503,
-			"Session owner is unavailable. Reconnect and reconcile before retrying.",
-			undefined,
-			DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable,
-		),
 	]) {
 		assert.equal(
 			answerOutcomeIsUnknown(error),
@@ -1415,8 +1439,201 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			to: "composer",
 			message: answerUnconfirmedMessage(error),
 			code: ANSWER_UNCONFIRMED_CODE,
+			// Unknowable, and yet not the busy arm: `danger`, and no retry the
+			// composer could offer (the notice's Retry sends the BOX).
+			muted: false,
+			retry: false,
 		});
 	}
+	/*
+	 * THE DAEMON'S HOP FAILURE, ON BOTH SURFACES (design round 1, D3). It is round 2's
+	 * MAJOR-1 — the answers route hands the value to the session's owner over a
+	 * WRITE-THEN-AWAIT-ACK frame, so a lost or slow ack answers `503 {"code":
+	 * "runtime_unreachable"}` and the request may have arrived and settled with only
+	 * its ack lost — and round 1 of the DESIGN review added the second half: the app
+	 * keeps the unknowable lead and drops the backend's reason, because "Session
+	 * owner" is the wire noun and "Reconnect and reconcile before retrying" is a
+	 * remedy this screen cannot carry out. The route's own text is asserted as text
+	 * that must NOT be painted, so a future re-echo of `error.message` fails here.
+	 */
+	const unreachable = new DesktopControlError(
+		503,
+		"Session owner is unavailable. Reconnect and reconcile before retrying.",
+		undefined,
+		DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable,
+	);
+	assert.equal(answerSessionUnreachable(unreachable), true);
+	assert.equal(
+		answerOwnerIsBusy(unreachable),
+		false,
+		"the two codes are separate facts and may not borrow each other's sentence",
+	);
+	assert.equal(
+		answerOutcomeIsUnknown(unreachable),
+		true,
+		"the daemon could not hand the answer over, so nothing is established about it",
+	);
+	assert.equal(
+		ANSWER_SESSION_UNREACHABLE_MESSAGE.startsWith(ANSWER_UNCONFIRMED_LEAD),
+		true,
+		"the dead-owner arm keeps the lead the committed frames photograph",
+	);
+	assert.equal(
+		ANSWER_SESSION_UNREACHABLE_MESSAGE.includes("Session owner"),
+		false,
+		"the app's wire noun must not reach the screen",
+	);
+	assert.deepEqual(
+		answerReport(
+			{ status: "failed", error: unreachable },
+			frame({ cardOnScreen: true, liveGateKey: "req-1:0" }),
+		),
+		{
+			to: "card",
+			refused: ANSWER_SESSION_UNREACHABLE_MESSAGE,
+			// The card keeps its options disabled: nothing about this refusal
+			// establishes that the answer did not land (design round 1, arm 2).
+			retryable: false,
+			// A failure the user reads as one: the danger band.
+			muted: false,
+		},
+	);
+	assert.deepEqual(
+		answerReport({ status: "failed", error: unreachable }, frame()),
+		{
+			to: "composer",
+			message: ANSWER_SESSION_UNREACHABLE_MESSAGE,
+			code: ANSWER_UNCONFIRMED_CODE,
+			muted: false,
+			retry: false,
+		},
+	);
+	/*
+	 * THE RETRYABLE-BUSY ARM, AND THE FALSE CLAIM IT REPLACED (design round 1,
+	 * D1/D2/D4/D5). This is the arm the UI half of the backend change exists for:
+	 * the answers route answers `503 {"code": "runtime_busy", "retryable": true,
+	 * "retry_after_ms": 2000}` for a live owner that is not answering, and the app
+	 * used to paint "Your answer was not sent. Session owner is busy and did not
+	 * confirm this request. Retrying is safe." — a definite claim about a
+	 * write-then-wait request whose ack may simply have been lost, in the backend's
+	 * own vocabulary, followed by an instruction to press what the app has already
+	 * pressed.
+	 *
+	 * One assertion per numbered rule the design round wrote down, because the copy
+	 * gate the round ran on these files is blind to this whole class: it cannot see
+	 * a false claim, a noun the user has never met, or the word "safe".
+	 */
+	const busy = new DesktopControlError(
+		503,
+		"Session owner is busy and did not confirm this request. Retrying is safe.",
+		undefined,
+		RUNTIME_BUSY_CODE,
+	);
+	assert.equal(answerOwnerIsBusy(busy), true);
+	assert.equal(
+		answerOwnerIsBusy(unreachable),
+		false,
+		"the busy verdict may not be read off any other code",
+	);
+	assert.equal(answerSessionUnreachable(busy), false);
+	assert.equal(
+		answerOutcomeIsUnknown(busy),
+		true,
+		"the frame was written and only its ack was lost, so nothing about arrival is established",
+	);
+	/*
+	 * D1/D2/D3, as text: the busiest four claims are each one the arm cannot make.
+	 */
+	for (const forbidden of [
+		"was not sent",
+		"safe",
+		"retrying",
+		"try again",
+		"send it again",
+		"session owner",
+		"the owner",
+		"reconcile",
+		"reconnect",
+		"runtime",
+		"503",
+	]) {
+		assert.equal(
+			ANSWER_BUSY_MESSAGE.toLowerCase().includes(forbidden),
+			false,
+			`the busy arm's copy may not say "${forbidden}"`,
+		);
+	}
+	assert.equal(
+		ANSWER_BUSY_MESSAGE.startsWith("Your answer isn't confirmed yet."),
+		true,
+		"the busy arm leads with what is knowable and claims nothing about arrival",
+	);
+	assert.deepEqual(
+		answerReport(
+			{ status: "failed", error: busy },
+			frame({ cardOnScreen: true, liveGateKey: "req-1:0" }),
+		),
+		{
+			to: "card",
+			refused: ANSWER_BUSY_MESSAGE,
+			// The hold STAYS: the answer may have landed, so the secret field must
+			// not reopen over it (D5's "resolve it in the direction of withholding").
+			retryable: false,
+			// A failure the app is absorbing rather than one the user must repair
+			// (D4): the muted half of the band's register, not the danger half.
+			muted: true,
+		},
+	);
+	assert.deepEqual(answerReport({ status: "failed", error: busy }, frame()), {
+		to: "composer",
+		message: ANSWER_BUSY_MESSAGE,
+		code: ANSWER_UNCONFIRMED_CODE,
+		muted: true,
+		retry: false,
+	});
+	/*
+	 * AND THE COMPOSER MAY NOT OFFER A PRESS FOR IT (D5). The alert's control row
+	 * is laid out from a retry verdict it can inherit from the last send, so the
+	 * report carries one of its own; and the code path that reads the code
+	 * (`withholdsRetryHint`) used to exclude `runtime_busy` on the argument that
+	 * the backend's sentence asked for the press — an argument that removing that
+	 * sentence retires.
+	 */
+	assert.equal(
+		withholdsRetryHint(RUNTIME_BUSY_CODE),
+		true,
+		"the composer's Retry sends the BOX, which is not the question the press was about",
+	);
+	assert.equal(
+		withholdsRetryHint("some_unlisted_code"),
+		false,
+		"the withholding list is a list, not a default",
+	);
+	/*
+	 * AND A REFUSAL WHOSE SENTENCE ARRIVES AS A STRING `detail` IS NOT DROPPED (the
+	 * backend PR's QA Q-4). `desktopResult` puts a body's `detail` where this
+	 * translator can read it whichever shape it arrived in — an object carrying
+	 * `message`, or the bare string the owner wrote — so the press path keeps the
+	 * owner's sentence on the codeless-409 arms rather than replacing it with the
+	 * fallback. The transport half of the same shape is driven against the real
+	 * `desktopResult` in `desktop-renderer-transport.test.mjs`; what is pinned here
+	 * is that the sentence survives all the way to the string a user reads.
+	 */
+	const stringDetail = new DesktopControlError(
+		409,
+		"This answer belongs to an earlier session owner",
+	);
+	assert.equal(
+		errorCodeOf(stringDetail),
+		undefined,
+		"a string detail declares no code, which is what makes the 409 codeless here",
+	);
+	assert.equal(answerRefusedWithoutACode(stringDetail), true);
+	assert.equal(
+		userFacingMessage(stringDetail, "The request could not be completed."),
+		"This answer belongs to an earlier session owner",
+		"an owner's sentence that crossed the wire as a string must not be dropped",
+	);
 	/*
 	 * The two the BACKEND authors are NOT this arm, whatever their status: a `503`
 	 * the daemon sent (`pairing.plane-closed`) was answered and refused, and
@@ -1473,6 +1690,8 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 			// otherwise, because the alert's hint must be a function of THIS
 			// failure rather than of the draft's last one.
 			code: errorCodeOf(error) ?? ANSWER_NOT_SENT_CODE,
+			muted: false,
+			retry: false,
 		});
 	}
 	/*
@@ -1538,6 +1757,112 @@ test("a press is reported from its OWN outcome, never from its card", () => {
 		answerReport({ status: "refused" }, frame({ cardOnScreen: true })),
 		{ to: "refused" },
 	);
+});
+
+/*
+ * THE APP'S OWN REPEAT, WHICH IS WHY ARM 1a CAN BE SILENCE (design round 1, arm
+ * 1 and D2/D5). A busy owner is a moment the app waits out rather than a failure
+ * it hands the user, so a press repeats under the SAME request id until the
+ * daemon takes it or the bounded budget is spent — and only what is left after
+ * that can reach `answerReport`. Both halves are asserted, and the silence is
+ * asserted as the CALLER's view: the first case returns `sent`, so no report
+ * exists for the attempts that were lost, and the second is the one refusal the
+ * busy sentence is written for.
+ *
+ * The waits are real (`withBusyResends` sleeps `retry_after_ms`), so the errors
+ * carry `0`: the pacing itself is the send path's contract, exercised in
+ * `canonical-chat.test.mjs`, and is not what this case is about.
+ */
+test("a busy owner is waited out, and only the refusal that survives is reported", async () => {
+	// The same live facts the report reads: the pressed question is no longer on
+	// screen and no gate is pending, which is the state the composer arm is for.
+	const frame = {
+		liveGateKey: null,
+		pressedGateKey: "req-1:0",
+		sentEpoch: EPOCH,
+		liveEpoch: EPOCH,
+		cardOnScreen: false,
+	};
+	const busy = () =>
+		new DesktopControlError(
+			503,
+			"Session owner is busy and did not confirm this request.",
+			undefined,
+			RUNTIME_BUSY_CODE,
+			0,
+		);
+
+	// (a) The owner takes it on the third attempt. The caller sees a sent answer
+	// and NOTHING about the two refusals, which is arm 1a stated as a behaviour.
+	let attempts = 0;
+	const taken = [];
+	const answered = await press({
+		label: OPTIONS[0].label,
+		send: async (request) => {
+			taken.push(request);
+			attempts += 1;
+			if (attempts <= 2) throw busy();
+			return { detail: "approved" };
+		},
+	});
+	assert.equal(answered.outcome.status, "sent");
+	assert.equal(
+		taken.length,
+		3,
+		"the press must repeat until the owner takes it, not fail on the first busy answer",
+	);
+	for (const request of taken) {
+		// The receipt is keyed on the body, so ANY difference here would make the
+		// repeat a 409 or a duplicate rather than an idempotent re-send.
+		assert.deepEqual(
+			request,
+			taken[0],
+			"every repeat must carry the SAME request, not a rebuilt one",
+		);
+	}
+
+	// (b) The owner never takes it — the one case the busy sentence renders in.
+	const spent = [];
+	const refused = await press({
+		label: OPTIONS[0].label,
+		send: async (request) => {
+			spent.push(request);
+			throw busy();
+		},
+	});
+	assert.equal(refused.outcome.status, "failed");
+	assert.ok(refused.outcome.error instanceof DesktopControlError);
+	assert.equal(refused.outcome.error.code, RUNTIME_BUSY_CODE);
+	assert.equal(
+		spent.length,
+		4,
+		"the budget is a bound, not a retry loop: three repeats then the refusal",
+	);
+	assert.deepEqual(
+		answerReport(refused.outcome, frame),
+		{
+			to: "composer",
+			message: ANSWER_BUSY_MESSAGE,
+			code: ANSWER_UNCONFIRMED_CODE,
+			muted: true,
+			retry: false,
+		},
+		"what survives the budget is the one sentence this arm is entitled to",
+	);
+
+	// (c) And an error that is NOT the busy code is thrown on the first attempt,
+	// so the classification downstream sees exactly what it saw before the repeat.
+	const other = new DesktopControlError(409, "settled elsewhere");
+	let occasions = 0;
+	const untouched = await press({
+		label: OPTIONS[0].label,
+		send: async () => {
+			occasions += 1;
+			throw other;
+		},
+	});
+	assert.equal(untouched.outcome.error, other);
+	assert.equal(occasions, 1, "only a busy owner is repeated for");
 });
 
 test("recommended is optional, and marks only a real index", () => {
@@ -1657,9 +1982,20 @@ test("the transcript no longer draws the question: it is docked (§F1)", () => {
 		"src/renderer/src/features/chat/components/chat-content.tsx",
 		"utf8",
 	).replace(/\/\*[\s\S]*?\*\//g, "");
-	assert.match(
-		pane,
-		/<QuestionDock[\s\S]{0,400}gate=\{canonical\.view\.frontend\.pending_gate\}/,
+	/*
+	 * AND IT IS FED THE ONE DERIVED GATE, not the raw field.
+	 *
+	 * Pinned as a REFUSAL as well as a match (agent review round 1, F3): the mirror
+	 * rule used to be applied at this render and nowhere else, so the dock was
+	 * correct while four other readers kept consuming the mirrored ask. `effectiveGate`
+	 * is now the single place the rule is applied, and a call site that went back to
+	 * reading `pending_gate` directly would reintroduce the divergence - so the
+	 * assertion names the value it must take and forbids the field it must not.
+	 */
+	assert.match(pane, /<QuestionDock[\s\S]{0,400}gate=\{gate\}/);
+	assert.ok(
+		!/<QuestionDock[\s\S]{0,400}gate=\{canonical/.test(pane),
+		"the dock takes the one derived gate, never the raw mirrored field",
 	);
 	assert.ok(
 		pane.indexOf("<QuestionDock") <

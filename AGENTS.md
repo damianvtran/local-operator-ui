@@ -1630,6 +1630,81 @@ tolerates and needs the npm registry, and the pack and launch legs need the four
 `VITE_*` build secrets and a macOS runner. A green `pnpm check-changed` means
 "the gates CI will run on this diff passed", never "everything passed".
 
+## The pre-push gate
+
+`git push` runs `.githooks/pre-push`, a DELTA-SCOPED gate: it costs what the diff
+costs, not what the tree costs. It is wired per clone by
+`scripts/hooks-install.mjs` (run from `prepare`, and by hand as
+`pnpm hooks:install`). `prepare` passes `--tolerate-failure`, because an install
+must never be broken by a hook helper, and it says loudly what is not gated when it
+cannot wire; `hooks:install` and `hooks:check` are the spellings that exit non-zero.
+The config is written to the LOCAL scope explicitly, a `core.hooksPath` configured
+elsewhere is named rather than replaced in silence, and `.git/hooks/` being disowned
+by that setting is said out loud. Full detail and the wiring's failure modes:
+`docs/hooks.md`.
+
+- **Its subject is the ref being pushed, not `HEAD`.** Git writes the refs to the
+  hook's stdin and that is what gets classified. **Anything that would make the legs
+  read bytes other than the pushed ones is refused, loudly — not gated against
+  something else**: a subject other
+  than the checked-out `HEAD` (a foreign branch, a tag, or an ancestor whose files
+  the worktree has since changed — an old violating commit pushed from a fixed
+  worktree once reported a pass), a file a leg would read that has uncommitted
+  edits, and a stdin that exists but cannot be read (no fallback to `HEAD`). The
+  two positional arguments git appends (the remote's name and URL) are accepted,
+  ignored **and named in the report**; a third is refused, and an unknown flag
+  still is.
+- **It runs three legs, and `scripts/ci-scope.mjs` decides whether each applies.**
+  `scripts/` files this change touches go through the `lint:scripts` ratchet;
+  changed `src/`/`bin/` files go through the same `biome` `pnpm lint` names, over
+  those paths; the typecheck runs both projects in the order `pnpm check-types`
+  uses, **serially**, because two concurrent `tsc` processes are what this host's
+  memory budget cannot take. A prose-only diff, a committed-evidence-only diff and
+  a version-only `package.json` bump run nothing at all.
+- **CI remains the authority.** The desktop suite (now 345 files), the build, the
+  pack/launch, the audit and the runtime-dependency allowlist are NOT run here —
+  none is delta-scoped. The gate prints which jobs it is leaving to CI on every
+  push, so a green push is never read as a green PR.
+- **The types leg is the one that costs the tree**, because TypeScript has no
+  per-file mode; it therefore runs only when the diff touches a TypeScript file.
+- **Never `--no-verify`.** If a leg cannot run in your environment, run the
+  equivalent legs BY HAND and record that in the PR. To bypass deliberately, use
+  `PREPUSH_BYPASS="<reason>"`, which prints the reason on the push itself: the
+  four disclosed bypasses this fleet produced in one night were all hooks that
+  could not finish, and a silent skip and a pass are indistinguishable
+  afterwards. It is not a per-leg skip — **it skips EVERY leg at once**, so the
+  push is ungated end to end and the banner names each leg it dropped; record the
+  equivalent runs for all of them beside the reason, not only for the one leg
+  that could not run.
+- **A fresh worktree is gated or refused, never silently ungated.** A worktree
+  whose branch predates `.githooks/` fails the push and names both ways forward —
+  because git skips a missing hook file without a word, which is exactly how a
+  worktree pushed ungated while reporting no problem.
+
+**Measurements: NOT RUN as of 2026-10-01** (the host was below the fleet's floor —
+4.6 GiB free, swap 26.5 of 27.6 GB, load 28-37 — and heavy lanes were stopped). The
+commands are:
+
+```sh
+# wall time and peak RSS for a representative change: one src/ file and one script
+/usr/bin/time -l node scripts/pre-push-gate.mjs --since "$(git merge-base origin/main HEAD)"
+# the whole hook, exactly as a push runs it
+/usr/bin/time -l git push <a scratch remote> <branch>
+```
+
+What HAS been executed: `node --test --test-concurrency=1
+scripts/pre-push-gate.test.mjs` against real scratch clones, the REAL tracked hook,
+the REAL dispatcher and REAL `git push` runs: an inert push SUCCEEDING (the
+regression for the revision whose launcher forwarded git's own arguments and
+therefore refused every push), a violating change FAILING the push, a clean change
+passing, the subject being the pushed ref rather than `HEAD`, a foreign ref and a
+missing hook refused, a deletion carrying nothing to read, the disclosed bypass and
+its empty-reason refusal, idempotent local wiring, a wiring failure not failing an
+install, and the refusals for an unresolvable base and a missing tool. The fixtures
+link this checkout's `node_modules`, so the `scripts/` lint leg runs the
+repository's own biome; the `tsc` leg is out of reach there and rests on the
+classifier's tests and CI.
+
 ## Releasing: one owner per window, and no version bumps inside feature PRs
 
 **Releasing is a decision a person makes, separately from merging.** Merging
@@ -1911,6 +1986,12 @@ MERGE_SHA=$(gh pr view <claim-pr-number> --json mergeCommit --jq .mergeCommit.oi
 #    hand-written from the template. Anything merged since step 1 rides this tag —
 #    the tag names a SHA and everything reachable from it ships — so this is the
 #    moment the notes' PR list is composed, not when the window was claimed.
+#    The range includes the release's own bump PR (it merged after the
+#    predecessor tag) - exclude it by number: `## PRs` lists the window's
+#    content PRs, as every release since v0.31.24 has done.
+#    Scan the notes body for working markers before creating the Release
+#    (`grep -inE '^# *draft|re-verify'`): v0.31.27 shipped a "# DRAFT" heading
+#    and needed a post-publish edit (2026-10-01).
 git log --first-parent --oneline v<PREV>..origin/main
 cp .github/RELEASE_TEMPLATE.md /tmp/vX.Y.Z.md && $EDITOR /tmp/vX.Y.Z.md
 gh release create vX.Y.Z --target "$MERGE_SHA" --prerelease \

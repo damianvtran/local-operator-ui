@@ -377,6 +377,14 @@ test("every designed refusal is kept verbatim (the daemon's set, pinned across r
 	 * reaches users), so the mapper's allowlist and the daemon's sentences
 	 * cannot drift apart silently. A change on either side must move both - that
 	 * is the point of pinning the literals here.
+	 *
+	 * The four BYO vendor refusals are #1922's additions (`_VENDOR_REFUSAL_SENTENCES`
+	 * formatted with `_RUNG_VENDOR_LABELS`, read at that PR's round-2 remediation head
+	 * `e4f8d9e8`) - the 401 the daemon answers when the reader's own vendor key was
+	 * refused, and the 402 it answers when that vendor's balance is empty (classified
+	 * from the vendor's response body, since ElevenLabs calls an exhausted quota 401
+	 * and OpenAI calls it 429). Pinned here on the same contract: a change to the
+	 * vendor list or a vendor's wording must move this array in the same commit.
 	 */
 	const designed = [
 		"Your Radient sign-in has stopped working. Sign in again in Settings.",
@@ -386,6 +394,10 @@ test("every designed refusal is kept verbatim (the daemon's set, pinned across r
 		"Speech is temporarily unavailable.",
 		"Sign in to Radient in Settings to enable speaking aloud.",
 		"This conversation's agent is no longer available.",
+		"ElevenLabs refused your API key. Replace it.",
+		"Your ElevenLabs credit balance is too low for speech. Add credits with ElevenLabs to continue.",
+		"OpenAI refused your API key. Replace it.",
+		"Your OpenAI credit balance is too low for speech. Add credits with OpenAI to continue.",
 		"Your Radient sign-in has stopped working. Sign in again in the settings page.",
 		"Sign in to Radient in the settings page to enable text to speech.",
 	];

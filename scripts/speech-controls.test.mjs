@@ -621,18 +621,25 @@ test("a configured service arms Speak, and the press reaches the relay with the 
 	const speak = button("Speak aloud");
 	assert.equal(speak.disabled, false, "a configured probe enables the press");
 	await press("Speak aloud");
+	/*
+	 * THE AGENT-LESS ROUTE, because this harness mounts the row with a
+	 * conversation and NO catalogue binding - the ordinary shape of a
+	 * conversation the reader opened himself (`@shared/lib/speech-target`). The
+	 * press used to carry the pane identity as an `agentId`, which the daemon's
+	 * registry cannot resolve; the bound-conversation arm, and the same press
+	 * reaching the agent route, is pinned in `scripts/message-actions.test.mjs`.
+	 */
 	assert.deepEqual(
 		requests(),
 		[
 			{
-				op: "speech.agent",
-				agentId: "c1",
+				op: "speech.create",
 				request: {
-					input_text: "Four were late, and the oldest is 41 days behind.",
+					input: "Four were late, and the oldest is 41 days behind.",
 				},
 			},
 		],
-		"one relay call, keyed to this conversation, carrying the text the reader saw",
+		"one relay call, carrying the text the reader saw",
 	);
 	assert.ok(button("Stop"), "and the control is now the Stop control");
 	await unmount();
@@ -649,9 +656,8 @@ test("an over-cap answer is clipped at a sentence end, disclosed, and sent as th
 		requests(),
 		[
 			{
-				op: "speech.agent",
-				agentId: "c1",
-				request: { input_text: expected },
+				op: "speech.create",
+				request: { input: expected },
 			},
 		],
 		"the request carries the clipped text, not the full answer",
@@ -1150,6 +1156,13 @@ test("a user row offers Copy alone, fades like the answer row, and copies the us
 	const labels = [...rowEl.querySelectorAll("button")].map((node) =>
 		node.getAttribute("aria-label"),
 	);
+	/*
+	 * Copy alone HERE because this mount hands the row no cut point (no
+	 * `conversationId`, no `entryId`), which is the no-cut-point arm - the
+	 * property under test is the absent Speak. A mount that DOES name one carries
+	 * Fork too, and `scripts/speech-user-copy.test.mjs` is the case that renders
+	 * the transcript itself, where the row genuinely is a cut point.
+	 */
 	assert.deepEqual(labels, ["Copy"], "Copy alone: a user turn offers no Speak");
 	await press("Copy");
 	assert.deepEqual(written, ["Is the March import finished?"]);

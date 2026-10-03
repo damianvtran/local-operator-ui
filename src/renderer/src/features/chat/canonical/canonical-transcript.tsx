@@ -83,6 +83,7 @@ import type {
 	PendingDesktopGate,
 } from "../../../../../shared/desktop-session-contract";
 import type { SessionFailureNotice } from "../../../../../shared/desktop-stream-notice";
+import { askResponseSummary, askTimeoutSummary } from "../ask-queue";
 import {
 	CHAT_COLUMN_CONTAINER,
 	CHAT_MEASURE,
@@ -139,6 +140,7 @@ import { FoldMedia } from "./fold-media";
 import { type FoldOpenEntry, foldOpenOf, withFoldOpen } from "./fold-open";
 import { LinkToolkit } from "./link-toolkit";
 import type { LoadOlderOutcome } from "./load-older";
+import { forkEntryId } from "./message-actions";
 import { AnswerActionRow } from "./message-actions-row";
 import { OLDER_HISTORY_HINT_ID, OlderHistorySlot } from "./older-history-slot";
 import {
@@ -863,6 +865,21 @@ const UserRow = memo(function UserRow({
 						bodyText={remainingContent}
 						revealId={record.id}
 						revealAt={record.ts}
+						/*
+						 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar row
+						 * (#739): "fork the conversation from this message on". The entry id
+						 * is `forkEntryId`'s answer for THIS record - the journal entry a
+						 * cut can land at, which is what makes the picker a cut rather than
+						 * a whole-conversation copy. `conversationId` is the picker's
+						 * subject and is deliberately explicit: this transcript can be
+						 * rendered for a conversation that is not the pane's own, and a
+						 * request must never be answered with a substituted conversation.
+						 *
+						 * A transcript mounted with no conversation (the run-details child
+						 * reader) passes neither, so the row offers no Fork there.
+						 */
+						conversationId={conversationId}
+						entryId={forkEntryId(record) ?? undefined}
 					/>
 				)}
 				{/*
@@ -1009,6 +1026,15 @@ const AssistantRow = memo(function AssistantRow({
 	// stays as the component's own contract for any other caller.
 	if (!paintsSomething(record)) return null;
 	const refused = record.stopReason === "refusal" || record.error;
+	/*
+	 * Whether this answer has words to offer, asked ONCE for the row: the Quote
+	 * toolkit above the foot and the foot's own action row are the two consumers
+	 * of this derivation, so the same answer cannot be judged quotable in one
+	 * place and not in the other - both read `quotable` (agent review round 1,
+	 * R1-5: the toolkit used to re-ask `isQuotable` itself, which is the same
+	 * call but a second place for the two to drift apart).
+	 */
+	const quotable = isQuotable(record, remainingContent);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			{/*
@@ -1144,11 +1170,9 @@ const AssistantRow = memo(function AssistantRow({
 				 * documents - when a link owns the highlight, the link toolbar carries
 				 * Quote and this control stays off screen.
 				 */}
-				{conversationId &&
-					isQuotable(record, remainingContent) &&
-					!link.quoteAvailable && (
-						<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
-					)}
+				{conversationId && quotable && !link.quoteAvailable && (
+					<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+				)}
 				{conversationId && link.subject && (
 					<LinkToolkit
 						conversationId={conversationId}
@@ -1212,8 +1236,26 @@ const AssistantRow = memo(function AssistantRow({
 				 * THE ANSWER'S ACTION ROW RIDES THIS LINE (issue #695, design memo (c)). It is
 				 * not a second band: a band of its own would cost a whole row per turn and
 				 * would leave the turn's LAST line being controls rather than the turn's own
-				 * fact. The actions take the line's left so the reader's eye returns to one
-				 * rail - the prose's - and the caption follows them on the same line.
+				 * fact.
+				 *
+				 * THE CAPTION KEEPS THE RAIL AND THE ACTIONS TAKE THE FAR END (operator
+				 * direction, 2026-10-01: "now that the action buttons only show up on hover,
+				 * the Worked for and action count looks a bit weird - rearrange so those are
+				 * on the leftmost extent and the action buttons are to the right"). This
+				 * SUPERSEDES the round-1 arrangement, where the actions took the line's left
+				 * edge so the reader's eye returned to one rail: the row's reveal
+				 * (`ACTION_ROW_REVEAL_CLASSES`) is opacity-only, so the buttons hold their
+				 * box at rest but paint nothing - and a caption that FOLLOWED them read as
+				 * indented by ~60px of nothing under the prose it belongs to. Now the
+				 * caption starts at the content's own left edge - the same rail as the prose
+				 * (`scripts/chat-alignment-geometry.mjs` measures it), and the right cluster
+				 * is `[actions][stamp]` with the stamp rightmost, riding the actions'
+				 * `ml-auto` spacer. The reveal stays opacity-only, so nothing moves when
+				 * the buttons appear: the idle and hovered frames of the operator's state,
+				 * and the caption/actions/stamp boxes the geometry script reads per state,
+				 * are under `docs/evidence/chat-canonical-message-actions/` and its
+				 * `-foot-before` sibling. The exact right-cluster composition is the design
+				 * round's to settle; this is the clean default it judges.
 				 *
 				 * THE TWO HALVES OF THIS LINE HAVE DIFFERENT CONDITIONS, which is why the
 				 * gate moved from the line to the pieces. The ACTIONS are a fact about the
@@ -1223,21 +1265,6 @@ const AssistantRow = memo(function AssistantRow({
 				 * The bar keeps its own stamp and never takes the actions.
 				 */
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					{/*
-					 * The gate the Quote control above already uses, for its reason: an answer
-					 * still receiving deltas is a prefix the next token falsifies, so there is
-					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
-					 * send's markup alone) has nothing to offer either.
-					 */}
-					{isQuotable(record, remainingContent) && (
-						<AnswerActionRow
-							bodyText={remainingContent}
-							agentId={conversationId}
-							speechId={record.id}
-							revealId={record.id}
-							revealAt={record.ts}
-						/>
-					)}
 					{!closingLineSuppressed && foot && foot.actions > 0 && (
 						<>
 							<span className={cn("text-ink-dim")}>
@@ -1257,8 +1284,45 @@ const AssistantRow = memo(function AssistantRow({
 							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
+					{/*
+					 * The gate the Quote control above already uses, for its reason: an answer
+					 * still receiving deltas is a prefix the next token falsifies, so there is
+					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
+					 * send's markup alone) has nothing to offer either.
+					 */}
+					{quotable && (
+						/*
+						 * `ml-auto` sits on the WRAPPER rather than the row (the row takes no
+						 * className): it is the first box of the right cluster, so it - and
+						 * the stamp that follows it - ride the line's far end while the
+						 * caption keeps the rail. `shrink-0` because the controls are the
+						 * line's fixed part: the caption is the side with slack (it can
+						 * wrap), and the buttons must never be what a narrow column squeezes.
+						 */
+						<span className={cn("ml-auto flex shrink-0")}>
+							<AnswerActionRow
+								bodyText={remainingContent}
+								agentId={conversationId}
+								speechId={record.id}
+								revealId={record.id}
+								revealAt={record.ts}
+								/*
+								 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar
+								 * row (#739), on the same gate the actions themselves carry:
+								 * `forkEntryId` is the journal entry a cut can land at, and
+								 * `conversationId` is the picker's subject, explicit because
+								 * this transcript can be rendered for a conversation that is
+								 * not the pane's own - a request must never be answered with
+								 * a substituted conversation. A transcript mounted with no
+								 * conversation passes neither, so the row offers no Fork there.
+								 */
+								conversationId={conversationId}
+								entryId={forkEntryId(record) ?? undefined}
+							/>
+						</span>
+					)}
 					{!closingLineSuppressed && (
-						<span className={cn("ml-auto")}>
+						<span className={cn(!quotable && "ml-auto")}>
 							<TurnTimestamp timestamp={record.ts} scope="answer" />
 						</span>
 					)}
@@ -1894,6 +1958,122 @@ const PeerRow = memo(function PeerRow({
 });
 
 /**
+ * A queued ask's receipt: the response that landed, or the notice that the
+ * deadline passed.
+ *
+ * ## Why a receipt and not a card
+ *
+ * Both rows report an EVENT rather than a call, which is the register `peer` and
+ * `wake` already take here and the TUI takes for the same two facts
+ * (`transcript.py`'s response/timeout blocks). The design note calls this "one
+ * transcript receipt block per surface's own idiom": the data is the same
+ * `ask_response`/`ask_timeout` pair the phone fold paints, and what differs per
+ * surface is only how a receipt is drawn.
+ *
+ * ## What the expansion is FOR
+ *
+ * A response row exists so a question and its answer can be found again later —
+ * the ask itself may be long gone from the live queue, which is the durability
+ * the whole feature is built on. So the expansion lists the QUESTIONS and what
+ * was answered for each, in the ask's own order, and a question with no answer
+ * says so rather than leaving a gap (a decline, or a partially-answered ask from
+ * the legacy incremental path). A SECRET answer is `[<key>]` on the wire and is
+ * painted verbatim: the value only ever existed in the session's memory store.
+ *
+ * The timeout row has NO expansion. It states a fact in one sentence and the
+ * expansion would repeat it — the rule `PeerRow` states and `WakeRow` applies
+ * (an expansion that delivers nothing is worse than no expansion), with the
+ * timeout's extra half (the ask is still answerable) already in the words.
+ *
+ * ## INK, and one honest gap
+ *
+ * Both rows take the neutral receipt register, because neither is a call and the
+ * ledger's rule is that a receipt takes the name column's own ink — see
+ * `rowInk`'s `receipt` branch. The BACKEND marks a timeout and a late answer
+ * `warning` (`harness/rows.py`), and matching that here would need a warning arm
+ * on the shared `ToolRowOutcome`, which is a change to the ledger every other
+ * row reads. Until it exists, the warning is carried in WORDS - the timeout's
+ * summary is the backend's own sentence and says the agent moved on - and the
+ * ink parity is a named follow-up rather than a silent difference.
+ */
+const AskReceiptRow = memo(function AskReceiptRow({
+	record,
+	isSmallView,
+}: {
+	record: Extract<TranscriptRecord, { kind: "ask_response" | "ask_timeout" }>;
+	isSmallView: boolean;
+}) {
+	if (record.kind === "ask_timeout")
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ToolLedgerRow
+					toolName="ask"
+					/*
+					 * VERBLESS: the backend's own sentence is the whole label. With the
+					 * verb column this row read "Asked Timed out after 15m - ...", and its
+					 * sibling read "Asked Answered late - ..." (design round 2, D13).
+					 */
+					verbless
+					summary={askTimeoutSummary(record)}
+					outcome="receipt"
+					durationS={null}
+				/>
+			</MessageContainer>
+		);
+	const summary = askResponseSummary(record);
+	if (record.questions.length === 0)
+		return (
+			<MessageContainer isUser={false} isSmallView={isSmallView}>
+				<ToolLedgerRow
+					toolName="ask"
+					verbless
+					summary={summary}
+					outcome="receipt"
+					durationS={null}
+				/>
+			</MessageContainer>
+		);
+	return (
+		<MessageContainer isUser={false} isSmallView={isSmallView}>
+			<ToolLedgerRow
+				toolName="ask"
+				verbless
+				summary={summary}
+				outcome="receipt"
+				durationS={null}
+				details={
+					// `px-3` for the reason `PeerRow` states: an expanded receipt body has
+					// to sit on the same text rail as every other expansion in the ledger.
+					<div className={cn("flex flex-col gap-2 px-3")}>
+						{record.secretLost ? (
+							<p className={cn("text-body-sm text-warning")}>
+								The session no longer holds the credential this answer named.
+							</p>
+						) : null}
+						{record.questions.map((question) => (
+							<div key={question.id} className={cn("flex flex-col gap-0.5")}>
+								<p className={cn("text-body-sm text-ink-muted")}>
+									{question.question}
+								</p>
+								<p
+									className={cn(
+										"whitespace-pre-wrap break-words text-body-sm text-ink",
+									)}
+								>
+									{(record.answers[question.id] ?? []).length > 0
+										? (record.answers[question.id] ?? []).join(", ")
+										: "No answer given"}
+								</p>
+							</div>
+						))}
+					</div>
+				}
+			/>
+		</MessageContainer>
+	);
+});
+
+/**
  * A scheduled-wake delivery receipt.
  *
  * The row exists because a wake fires with no user keystroke: before it, a
@@ -2143,6 +2323,16 @@ const TranscriptRow = memo(function TranscriptRow({
 			break;
 		case "peer":
 			body = <PeerRow record={record} isSmallView={isSmallView} />;
+			break;
+		/*
+		 * The two queued-ask receipts. One arm for both because they are one
+		 * feature's pair and share a row component — the two-row shape the design
+		 * calls for (`ask_timeout-` then `ask-response-` for a late answer), with
+		 * the component deciding which of the two it is holding.
+		 */
+		case "ask_response":
+		case "ask_timeout":
+			body = <AskReceiptRow record={record} isSmallView={isSmallView} />;
 			break;
 		case "wake":
 			body = <WakeRow record={record} isSmallView={isSmallView} />;
@@ -3398,8 +3588,11 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * pure plan (`turn-collapse-model.ts`) over the same `visible` rows the list
 	 * renders, so a bar can only ever summarise rows that are loaded and on
 	 * screen. `live` is the liveness the working line and the folds read; the
-	 * model applies it to the newest run, so a finished turn above the reader's
-	 * place still collapses while a later turn streams.
+	 * model applies it to the newest run's IN-FLIGHT CYCLE only (the rows after its
+	 * last settled close), so a finished turn above the reader's place still
+	 * collapses while a later turn streams, and a sequence the reader already saw
+	 * condense stays condensed when a wake / peer message / job result starts the
+	 * next cycle in the same run (operator report, 2026-10-01).
 	 */
 	const collapse = useMemo(
 		/*

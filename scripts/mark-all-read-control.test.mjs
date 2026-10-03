@@ -250,7 +250,7 @@ const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
  * store's error copy and the failure receipt both read them.
  */
 const STUB_CONTENTS = {
-	"@shared/api/local-operator/desktop-api": `export {DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
 /*
@@ -304,9 +304,11 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 		"export const compatibilityBannerShown = () => false;",
 	// `Link` as well as `useNavigate`: the hub mark draws the sign-in sentence as a
 	// link, and a stub that exports only the hook fails the BUNDLE rather than an
-	// assertion (agent review round 2, R2-1).
+	// assertion (agent review round 2, R2-1). `useLocation` for the same reason:
+	// the row menu's Fork item reads the route to decide whether to navigate to
+	// `/chat` (#739), and a missing export fails the bundle, not an assertion.
 	"react-router-dom":
-		"export const useNavigate = () => () => undefined;\nexport const Link = ({ children }) => children;",
+		'export const useNavigate = () => () => undefined;\nexport const useLocation = () => ({ pathname: "/chat" });\nexport const Link = ({ children }) => children;',
 	"@shared/themes": `export const DEFAULT_THEME = "localOperatorDark";`,
 	"@shared/hooks/use-canonical-session": `export const echoPendingUser = () => undefined;
 export const retractPendingUser = () => undefined;
