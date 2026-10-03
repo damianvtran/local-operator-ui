@@ -22,6 +22,9 @@ This file defines project-specific operating guidelines for AI coding agents wor
 - Before finalizing, run the narrowest relevant checks for touched code.
 - Follow existing code style and project conventions (Biomes/TS settings already configured).
 - No emojis in code, comments, UI copy, or commit messages.
+- Claims must cite values that still hold. When a number moves — the chat column's floor is 172px, not
+  the 220px early docs assumed — comments and guarantees compiled against the old value are false until
+  re-read; re-read them in the same change that moves it. (Siblings: *What a capture may claim*, below.)
 
 ## Design and branding — read before any visual change
 
