@@ -25,6 +25,11 @@ This file defines project-specific operating guidelines for AI coding agents wor
 - Claims must cite values that still hold. When a number moves — the chat column's floor is 172px, not
   the 220px early docs assumed — comments and guarantees compiled against the old value are false until
   re-read; re-read them in the same change that moves it. (Siblings: *What a capture may claim*, below.)
+- The family applies upward, to what an engineer may claim: **a pin carries its why** (a pin without its
+  reason is indistinguishable from a stale value); **a failure must not wear a verdict's clothes** (a refusal is
+  not a frame, an unknown is not a pass); **when a guard and a constant disagree, ask which is right, not who decides**;
+  **an "anywhere"/"all" claim is a claim you must sweep** (a universal is only true if you looked everywhere it claims).
+  Log the expectation before the reading, and let it fail in public. (Siblings: *What a capture may claim*, below.)
 
 ## Design and branding — read before any visual change
 
