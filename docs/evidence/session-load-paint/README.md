@@ -13,9 +13,10 @@ Two frames and two tables, from the switch harness, measuring the operator's
 the *same fixture* and the *same state*, on two trees:
 
 - **before** — `af6fffa899`, the tree the load-moment pin was written against. It
-  is 518 commits behind the head below (13 main commits before #745's merge, then
-  ~505 of main), which is the point: it is the *cut-point* this lane's pin cites,
-  not a one-change neighbour of the head.
+  is 485 commits behind the after tree below (13 main commits before #745's merge,
+  then 472 of main — `gh api compare/af6fffa899...9946f84f177`), which is the
+  point: it is the *cut-point* this lane's pin cites, not a one-change neighbour of
+  the head.
 - **after** — the branch's working tree at the state the harness-flag commit
   `9946f84f177` records (post-#745 plus this lane's harness). It is named as the
   harness content rather than as a commit because that is exactly what was served
@@ -44,9 +45,11 @@ span would add ≳100 px. What the `[data-turn-summary]` count reads (0 bars bef
 
 Same conversation, same moment, different first paint. The frames and the tables
 below are **separate runs of the same harness**: they agree in shape and in the
-ordering of the states, not numerically — the frame's own run shows
-`running bash 6s` / `6.5s` where the table quotes `5s` / `6.4s`, because a live
-clock advances between runs and the two were taken minutes apart.
+ordering of the states, not numerically. Each run's scripted call starts its own
+clock, so the elapsed seconds differ between them — the after frame's working line
+reads `running bash 6s` and its transcript line `6.4s`; the after table's
+`running bash 6s` is another run's; the before table's is `5s`. No figure here is
+quoted from a frame into a table or the reverse.
 
 The dark banner ("The Local Operator server is missing auth, settings, …") is a
 **rig artifact**: the harness scripts a private owner that answers only the ops
@@ -62,9 +65,15 @@ name, recorded 2026-10-03 at load average 4.6–4.9 on 14 cores, with the harnes
 configured owner latencies (`sessions.get` 12 ms, `history` 14 ms, `stream`
 12 ms).
 
+The tables below were produced by the harness version that sampled on
+`lop:transcript:render` **marks**, so one row is one commit; the shipped sampler
+records a row per **change** instead (see "What the series is sampled from"
+below), which is the same states in the same order under the labels `change N`.
+Both versions were run on the head, and the per-change one is the shipped one.
+
 **before (`af6fffa899`), the running conversation (`abcdef000024`):**
 
-| commit | ms | rows | bars | working | placeholder | strip |
+| mark | ms | rows | bars | working | placeholder | strip |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0–5 | +11…+78 | 0 | 0 | – | yes | – |
 | 6 (first contentful) | **+115** | 3 | **0** | `running bash 5s` | no | `0.6%/200k $0.120` |
@@ -73,7 +82,7 @@ configured owner latencies (`sessions.get` 12 ms, `history` 14 ms, `stream`
 
 **after (post-#745 + harness), the same conversation:**
 
-| commit | ms | rows | bars | working | placeholder | strip |
+| mark | ms | rows | bars | working | placeholder | strip |
 | --- | --- | --- | --- | --- | --- | --- |
 | 0–4 | +19…+46 | 0 | 0 | – | yes | – |
 | 5 (first contentful) | **+158** | 3 | **1** (`Took 2s · 6 actions`) | `running bash 6s` | no | `0.6%/200k $0.120` |
