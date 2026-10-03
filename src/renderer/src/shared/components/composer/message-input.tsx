@@ -2958,6 +2958,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		});
 
 		/*
+		 * THE SPLASH YIELDS TO AN OPEN ARGUMENT PICKER (design round 1, D3).
+		 *
+		 * On an empty pane the roster opens above the composer INTO the splash:
+		 * measured at 1280x720 (the design round's own rects), the roster's
+		 * 178.7px box tops out at y357.9 while the greeting's `h2` ends at y367.2
+		 * and the splash band ends at y458.7 — 9.3px of the heading plus the
+		 * whole chips row sit under the list. A height cap that clears the band
+		 * is not available: the popup's bottom edge is fixed at y536.6 by its
+		 * `bottom-full` anchor, so clearing y458.7 would cap the box at 77.9px —
+		 * less than its own label and footer — leaving zero roster rows. The band
+		 * yields instead, the same motion the transcript makes on the first send:
+		 * while the argument list is open nothing is painted under the popup, and
+		 * the mark, greeting and chips return the moment it closes (Esc, a pick,
+		 * or the list going away). Scoped to the ARGUMENT phase: the command
+		 * phase's list is a pre-existing overlay this finding does not touch.
+		 */
+		const showSplash =
+			showEmptyChatPrompt && !(slash.open && slash.phase === "argument");
+
+		/*
 		 * THE `$skill` LIST (issue #664), the third member of the popup family. Its
 		 * vocabulary is the SESSIONLESS catalogue read, so it answers from the
 		 * composer's OWN folder — the staged cwd on a draft, the session's cwd once
@@ -9052,12 +9072,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					<div
 						ref={setSplash}
 						className={cn(
-							showEmptyChatPrompt
+							showSplash
 								? "flex w-full flex-col items-center gap-6 py-4"
 								: "hidden",
 						)}
 					>
-						{showEmptyChatPrompt ? (
+						{showSplash ? (
 							<>
 								{/*
 								 * THE MARK, 32px, at `ink-muted` (§H's composition: "a 32px mark
