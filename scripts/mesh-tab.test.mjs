@@ -1414,6 +1414,7 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		approvalWhereLabel,
 		approvalRequesterLabel,
 		approvalScopeLabels,
+		approvalScopeGlosses,
 		approvalScopeTone,
 		approvalRemainingLabel,
 		approvalTitle,
@@ -1451,6 +1452,43 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		].map(approvalScopeTone),
 		["neutral", "neutral", "attention", "neutral", "attention", "neutral"],
 	);
+	/*
+	 * The join chip names the network the page already shows, and falls back to
+	 * the id only when the mesh read has not landed (UX round 1, U1: the canvas
+	 * said `damian-mesh` while the consent chip said `net_1`, two names for one
+	 * object on one screen).
+	 */
+	assert.deepEqual(
+		approvalScopeLabels(row, new Map([["n_1", "damian-mesh"]])),
+		[
+			"connect",
+			"install",
+			"install operator anchor",
+			"join damian-mesh as drive",
+			"trust unattended sessions",
+			"grant approve",
+		],
+	);
+	/*
+	 * Only the scopes a reader cannot be expected to know are glossed (UX round
+	 * 1, U2): `connect`/`install`/`join` are ordinary words, and glossing them
+	 * would bury the two that are not.
+	 */
+	assert.deepEqual(approvalScopeGlosses(row), [
+		{
+			term: "install operator anchor",
+			gloss:
+				"the remote device is trusted to sign as you while you are not there",
+		},
+		{
+			term: "trust unattended sessions",
+			gloss: "sessions started there run without asking you each time",
+		},
+		{
+			term: "grant approve",
+			gloss: "the remote side may approve on your behalf",
+		},
+	]);
 	assert.equal(approvalTitle(row), "Onboard devon-laptop");
 	assert.equal(approvalSubject(row), "devon-laptop");
 	// A machine row is about the reader's own machine, by the kind's own definition.
@@ -2076,6 +2114,16 @@ test("a refused decision renders its sentence, and the busy gate is the surface'
 		tray,
 		/\{requester && hint && <span> · <\/span>\}/,
 		"provenance and consequence no longer share one line and one register",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approval-scope-glosses"/,
+		"the trust-bearing scopes are glossed on the card (UX round 1, U2)",
+	);
+	assert.match(
+		tray,
+		/approvalScopeLabels\(row, networkNames\)/,
+		"the join chip names the network the page already shows (UX round 1, U1)",
 	);
 });
 

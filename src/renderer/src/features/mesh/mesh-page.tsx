@@ -471,6 +471,20 @@ export const MeshSurface: FC<{
 				onDecide={approvals.onDecide}
 				onRetry={approvals.onRetry}
 				nowSeconds={approvals.nowSeconds}
+				/*
+				 * The name the canvas already shows for a network, so the consent chip
+				 * does not name it twice (UX round 1, U1). `graph` is null until the mesh
+				 * read lands, and the approvals read is independent of it - so this is
+				 * an empty map on the first paint and the chip falls back to the id.
+				 */
+				networkNames={
+					new Map(
+						(graph?.networks ?? []).map((network) => [
+							network.id,
+							network.label,
+						]),
+					)
+				}
 			/>
 
 			{state.kind === "loading" && (

@@ -313,17 +313,70 @@ export function approvalRequesterLabel(row: MeshApprovalRow): string | null {
  * one sentence: connect / install / install operator anchor / join … as … /
  * trust unattended sessions / grant ….
  */
-export function approvalScopeLabels(row: MeshApprovalRow): string[] {
+export function approvalScopeLabels(
+	row: MeshApprovalRow,
+	networkNames?: ReadonlyMap<string, string>,
+): string[] {
 	const { connect, install, anchor, networkId, role, unattended, grants } =
 		row.what;
 	const labels: string[] = [];
 	if (connect) labels.push("connect");
 	if (install) labels.push("install");
 	if (anchor) labels.push("install operator anchor");
-	if (networkId) labels.push(`join ${networkId} as ${role || "?"}`);
+	if (networkId) {
+		/*
+		 * THE NETWORK'S NAME WHEN THE PAGE HAS IT, its id only as the fallback
+		 * (UX round 1, U1). The chip used to say `join net_9f8e7d6c5b4a as drive`
+		 * while the canvas in the same frame labelled that network `damian-mesh`,
+		 * so one screen carried two names for one object and the chip that asks
+		 * for consent used the opaque one - "which network am I joining?" was
+		 * unanswerable at the decision point. The id is still the honest fallback:
+		 * the approvals read and the mesh read are independent queries, so a tray
+		 * that painted before the canvas has nothing else to name it with, and an
+		 * id is better than a blank.
+		 */
+		const named = networkNames?.get(networkId);
+		labels.push(`join ${named || networkId} as ${role || "?"}`);
+	}
 	if (unattended) labels.push("trust unattended sessions");
 	for (const grant of grants) labels.push(`grant ${grant}`);
 	return labels;
+}
+
+/**
+ * One gloss per scope a reader cannot be expected to know (UX round 1, U2).
+ *
+ * The card's single sentence explains the GESTURE ("approving signs with this
+ * machine's operator key"); what it never said was what each authorised SCOPE
+ * means - and the two scopes the design made salient are exactly the two a
+ * non-expert cannot interpret. A glossary that names them is cheaper than a
+ * user learning them by approving once.
+ *
+ * Only the scopes that need it appear: `connect`/`install`/`join` are ordinary
+ * words, so glossing them would bury the two that are not.
+ */
+export function approvalScopeGlosses(
+	row: MeshApprovalRow,
+): { term: string; gloss: string }[] {
+	const { anchor, unattended, grants } = row.what;
+	const glosses: { term: string; gloss: string }[] = [];
+	if (anchor)
+		glosses.push({
+			term: "install operator anchor",
+			gloss:
+				"the remote device is trusted to sign as you while you are not there",
+		});
+	if (unattended)
+		glosses.push({
+			term: "trust unattended sessions",
+			gloss: "sessions started there run without asking you each time",
+		});
+	for (const grant of grants)
+		glosses.push({
+			term: `grant ${grant}`,
+			gloss: `the remote side may ${grant} on your behalf`,
+		});
+	return glosses;
 }
 
 /**
