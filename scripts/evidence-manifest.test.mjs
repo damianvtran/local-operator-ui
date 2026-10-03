@@ -3281,6 +3281,24 @@ const BRANCH_RECORDS = [
 	 * green (agent review round 2, MINOR).
 	 */
 	"paletteKeysUnreadPass",
+	/*
+	 * And by the composer ArrowDown lane (#764, PR #776), this branch's seven
+	 * newest top-level records - the capture pass's fold note and the six fold
+	 * rounds that followed it. They are listed for the reason the list exists:
+	 * six of the seven folds resolved the manifest by taking main's copy as the
+	 * base and re-laying these on top, so a fold that started from main's copy
+	 * would drop them first - and with them the only statements of which windows
+	 * moved against this set's surfaces and which frame bytes did not. They quote
+	 * commit SHAs and never the `srcTree`/`scriptsTree` pair, so they join this
+	 * list and not `STAMP_BINDING_NOTES`.
+	 */
+	"foldOnto9b4822de10Note",
+	"foldOnto9d9cd4be63fNote",
+	"foldOnto237733141d6Note",
+	"foldOntoFef3d5443f1Note",
+	"foldOnto83d7d937953Note",
+	"foldOnto211d84d668aNote",
+	"foldOntoA81de40dd84Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

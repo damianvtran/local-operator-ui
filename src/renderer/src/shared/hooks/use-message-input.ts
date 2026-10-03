@@ -1378,6 +1378,20 @@ export const useMessageInput = ({
 				}, 0);
 			}
 			if (e.key === "ArrowDown" && isCursorAtLastLine()) {
+				/*
+				 * THE CAPTURE IS THE WALK'S, NOT THE CARET'S (issue #764). This arm can
+				 * only WALK a recall the ArrowUp arm already engaged; with none there is
+				 * nothing here for it to do, and yet `preventDefault` ran unconditionally
+				 * inside the last-line guard — which counts LOGICAL lines, so a wrapped
+				 * single-paragraph draft is on its "last line" at every caret position
+				 * and the key was swallowed at all of them. The engagement rule is the
+				 * ArrowUp arm's and lives on the CONTENT (`historyRecallEngages`); this
+				 * arm hands the key back before `preventDefault`, on the walk's own state
+				 * rather than a content test: the walked box HOLDS recalled text
+				 * (non-empty by construction), so reading the content here would block
+				 * the very walk it exists to protect.
+				 */
+				if (historyIndex === null) return;
 				e.preventDefault();
 				if (historyIndex !== null) {
 					if (historyIndex < submittedMessages.length - 1) {
