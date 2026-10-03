@@ -870,11 +870,13 @@ export const SeededNameInstruction: Story = {
  * records that run itself rather than the sentence that used to stand here:
  * `captureOrigin.wireVocabularyReShoot` carries the run's own record — `head` and
  * `capturedAt` for when it ran, and the `srcTree`/`scriptsTree` of the tree the
- * frames came from. The manifest's two TOP-LEVEL stamps are a different pair and
- * mean something else: they are re-derived for the tree that SHIPS, which is why
- * they move at every rebase and the `captureOrigin` entry does not (round 3,
- * R3-2 — this sentence used to call them the capture's, which is the mistake that
- * costs a re-stamp cycle). A
+ * frames came from. (The manifest used to carry the same pair at its TOP level,
+ * re-derived for the tree that SHIPS rather than for the captured one, which is
+ * why the two moved differently and why `captureOrigin` is the record to read
+ * for a capture; round 3's R3-2 is the review that separated them. Those
+ * top-level fields are retired - a stored hash of a shipping tree goes false for
+ * every open branch whenever a sibling moves it - so `captureOrigin` is the only
+ * place either token means anything now.) A
  * still that contradicts the story it sits under is the defect class this
  * paragraph exists to keep visible, so if this rule moves again, the frames move
  * with it.

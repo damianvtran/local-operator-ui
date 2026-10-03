@@ -1,17 +1,28 @@
 /**
- * The ask surfaces as one mount: the minimized bar, and the panel it expands
+ * The ask surfaces as one mount: the PANEL the composer status row's item expands
  * into.
  *
- * ## Why a carrier rather than two mounts in the chat pane
+ * ## Why a carrier rather than a mount in the chat pane
  *
- * The bar and the panel are ONE interaction (design §5.0): the bar's chevron
- * flips the panel, the panel's Esc collapses it, and both have to agree about
- * everything that is not a property of one render - the expanded flag, the
- * refusal record keyed by ask id, and the clock the countdown reads. A mount in
- * the pane could hold the flag but not the clock, and the clock is the half that
- * is easy to get wrong: a countdown that ticks once per render is a countdown
- * that lies whenever the app is idle, which is exactly when the user is looking
- * at it.
+ * The panel and its trigger are ONE interaction (design §5.0): the row item flips
+ * the panel, the panel's Esc collapses it, and both have to agree about everything
+ * that is not a property of one render - the expanded flag, the refusal record
+ * keyed by ask id, and the clock the countdown reads. A mount in the pane could
+ * hold the flag but not the clock, and the clock is the half that is easy to get
+ * wrong: a countdown that ticks once per render is a countdown that lies whenever
+ * the app is idle, which is exactly when the user is looking at it.
+ *
+ * ## The trigger moved, and this file keeps the half that did not
+ *
+ * The minimized bar used to live here, above the composer. It is gone: the ask
+ * affordance is now a row item in the composer's status row
+ * (`composer-status-row.tsx`), a peer of `All to-dos resolved` and `2 wakes armed`,
+ * because a queued ask is one more thing a session has outstanding. That item
+ * toggles the SAME flag this component reads (`expanded`), which chat-page owns, so
+ * the panel is one surface with two halves in two trees - the trigger in the row,
+ * the panel here. What stays here is everything that is a fact about the PANEL:
+ * the clock, the Esc claim, the collapse when the queue empties, and the drafts and
+ * outcomes the composer shares.
  *
  * ## The clock, and why it only runs while something is countable
  *
@@ -29,17 +40,35 @@
  * answering" when the user only meant to get their transcript back.
  */
 
+import { cn } from "@shared/lib/utils";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
 import type { AskDraft } from "../../ask-queue";
 import {
+	ASK_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askQueueView,
 	noopDraftChange,
 	sessionAsks,
 } from "../../ask-queue";
-import { AskBar } from "./ask-bar";
 import { AskPanel } from "./ask-panel";
+
+/**
+ * What "the panel's first control" means when focus enters it (UX round 1, U1).
+ *
+ * The tab-reachable set, in DOM order, and nothing else: `[tabindex]` is included
+ * for controls made reachable deliberately, and the disabled/`aria-disabled`
+ * exclusions are the ones this app actually uses to make a control inert - it puts
+ * `aria-disabled` on controls it keeps mounted and focusable-looking
+ * (`inline-edit-controls.tsx`, `autocomplete-field.tsx`, the credential-ask row in
+ * `message-input.tsx`) rather than removing them, so a walk that honoured only the
+ * native attribute would land on the first inert control the moment one appears in
+ * this panel. No such control is in the panel today; the exclusion is here because
+ * the doc promised it and because the next one will not announce itself (agent
+ * review round 2, F6).
+ */
+const ASK_PANEL_FOCUSABLE =
+	'a[href]:not([aria-disabled="true"]), button:not([disabled]):not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]):not([aria-disabled="true"]), input:not([disabled]):not([aria-disabled="true"]), select:not([disabled]):not([aria-disabled="true"]), textarea:not([disabled]):not([aria-disabled="true"])';
 
 export type AskSurfacesProps = {
 	frontend: Pick<
@@ -155,75 +184,158 @@ export const AskSurfaces = ({
 		setExpanded(false);
 	});
 	/*
-	 * FOCUS COMES BACK TO THE BAR (UX round 2, U6).
+	 * FOCUS ENTERS THE PANEL WHEN THE USER PRESSED THE ITEM (UX round 1, U1).
 	 *
-	 * Escape out of the panel unmounts the option that held focus, so
-	 * `document.activeElement` is the BODY and a keyboard user's next Tab starts at
-	 * the top of the document - on a surface they had just left deliberately.
+	 * WHY THIS EXISTS. The panel sits ABOVE the row in the DOM (it is the composer
+	 * band's first child, the row is inside `MessageInput`), so after a press the
+	 * thing that just opened is behind the reader: forward Tab from the chip walks out
+	 * of the lane entirely, and the panel's own controls are reachable only backwards.
+	 * The base had them in one mount with the trigger first, so this is a regression
+	 * the move introduced rather than a pre-existing quirk.
 	 *
-	 * NARROW ON PURPOSE: it fires only when focus actually fell to the body. A
-	 * collapse from the COMPOSER (the same key, the other focus stop) leaves focus
-	 * in the box where the user is typing, and moving it to the bar there would be
-	 * the focus theft this whole surface is built to avoid.
+	 * THIS IS NOT THE FOCUS-STEAL THE LANE FORBIDS. That rule is about an ask
+	 * ARRIVING: nothing here mounts, opens or moves focus on its own. The guard makes
+	 * that structural rather than promised - the move happens only when the transition
+	 * to expanded found focus ALREADY on the item, which is reachable only by the
+	 * user's own press or Enter (or by a caller that deliberately focuses the chip).
+	 * A programmatic expansion, a story pinning the flag, or a second mount leaves
+	 * focus exactly where it was.
+	 *
+	 * THE FIRST FOCUSABLE CONTROL, else the panel itself (which carries `tabIndex={-1}`
+	 * for exactly this case): a settled queue has no controls to land on, and a panel
+	 * the keyboard cannot enter at all would be the same dead end for a two-key
+	 * queue.
 	 */
-	const rootRef = useRef<HTMLDivElement | null>(null);
-	const wasExpanded = useRef(false);
+	const panelRef = useRef<HTMLDivElement | null>(null);
 	/*
-	 * A LAYOUT effect, matching the sibling focus return the blocking card uses: it
-	 * runs in the commit that removes the panel, before the browser paints, so no
-	 * frame ever shows focus on the body (agent review round 3, NIT-1).
+	 * ONE EFFECT FOR BOTH DIRECTIONS, and the ref is why: two effects sharing a
+	 * `wasExpanded` ref cannot both read the transition, because whichever runs first
+	 * has already written the new value (found by the round-1 driven test - the
+	 * return-to-item half silently stopped firing the moment the enter half landed).
+	 *
+	 * The ref SEEDS with the mount's own value, so a mount is not a transition in
+	 * either direction: a panel that arrives already open (`defaultOpen`, or a host
+	 * that pins the flag) must not run the enter branch, whose guard would be the only
+	 * thing standing between it and a focus move on arrival - the exact focus theft
+	 * the lane forbids. `useRef(false)` looked equivalent and was not (agent review
+	 * round 2, F8).
 	 */
+	const wasExpanded = useRef(expanded);
 	useLayoutEffect(() => {
 		const was = wasExpanded.current;
 		wasExpanded.current = expanded;
-		if (!was || expanded) return;
+		if (was === expanded) return;
+		if (expanded) {
+			/*
+			 * INTO THE PANEL, and only for the user's own press: the transition must find
+			 * focus ALREADY on the item, which is reachable only from a press or Enter on
+			 * the chip (or a caller that deliberately focuses it). A programmatic
+			 * expansion, a story pinning the flag, or a second mount moves nothing - which
+			 * is what keeps this separate from the lane's no-focus-steal promise, whose
+			 * subject is an ask ARRIVING.
+			 */
+			const active = document.activeElement;
+			if (active === null || !active.matches?.(ASK_ITEM_SELECTOR)) return;
+			const panel = panelRef.current;
+			if (panel === null) return;
+			(panel.querySelector<HTMLElement>(ASK_PANEL_FOCUSABLE) ?? panel).focus();
+			return;
+		}
+		/*
+		 * BACK TO THE ITEM, and only when focus actually fell to the body: a collapse
+		 * from the COMPOSER (the same key, the other focus stop) leaves focus in the box
+		 * where the user is typing, and moving it to the item there would be the focus
+		 * theft this whole surface is built to avoid.
+		 */
 		const active = document.activeElement;
 		if (active !== null && active !== document.body) return;
-		rootRef.current
-			?.querySelector<HTMLButtonElement>("[data-lo-ask-bar-toggle]")
-			?.focus();
+		const item = document.querySelector<HTMLButtonElement>(ASK_ITEM_SELECTOR);
+		if (item?.isConnected) item.focus();
 	}, [expanded]);
+	/*
+	 * The U6 note this effect carries, kept beside its own paragraph because the two
+	 * halves of the focus story are one decision:
+	 *
+	 * CROSS-TREE ON PURPOSE: the control this return addresses used to be this
+	 * component's own minimized bar, so a `rootRef.current.querySelector` reached it.
+	 * The trigger is now the ask item in the composer's status row - a DIFFERENT React
+	 * tree, rendered by `message-input.tsx` - so the handle has to be looked up from
+	 * the document. It is still a `data-` handle rather than a ref, so no plumbing
+	 * crosses the two trees, and a story that renders the panel without the row simply
+	 * finds nothing and moves no focus.
+	 *
+	 * ONE COMPOSER PER DOCUMENT is the invariant the document-wide query rests on, and
+	 * it is the app's own: `chat-page.tsx` mounts a single `MessageInput`, and the mini
+	 * quick-send window is a SEPARATE document (`mini.html`). It is written down rather
+	 * than assumed, and `isConnected` is asserted rather than chained: a detached match
+	 * would turn this return into a silent no-op, and a node that is not in the tree
+	 * must not be handed focus (agent review round 1, F4).
+	 */
 	// An absent queue is not an empty one: `sessionAsks` returns null when this
 	// backend does not publish queued asks, and nothing mounts at all.
 	if (sessionAsks(frontend) === null) return null;
+	/*
+	 * COLLAPSED RENDERS NOTHING AT ALL. The panel is the only surface left in this
+	 * component, so a collapsed panel is an empty div above the composer - and an
+	 * empty div that reserved the band's measure and padding would put 8px of blank
+	 * over every session with a settled queue. The trigger's own state is the row
+	 * item's; when it is collapsed there is nothing for this mount to draw.
+	 */
+	if (!expanded) return null;
 
 	return (
 		/*
-		 * `data-lo-ask-surfaces` is the lane's OWN marker, read by `askClaimsEscape`:
-		 * the Escape claim covers these surfaces and the composer box, not the window
-		 * (agent review round 3, F2).
+		 * `data-lo-ask-surfaces` is the PANEL's own marker, read by `askClaimsEscape`:
+		 * the Escape claim covers this panel, the row item that expands it and the
+		 * composer box, not the window (agent review round 3, F2). The trigger is NOT
+		 * inside this root (it lives in the row), which is why `pressIsOurs` accepts the
+		 * item's own handle as a second clause - and why this marker can be trusted as a
+		 * "is the panel open?" probe, since the root renders nothing while collapsed
+		 * (UX round 1, U3). `tabIndex={-1}` makes the panel itself the landing stop when
+		 * it has no controls (a settled queue).
 		 */
-		<div className={className} data-lo-ask-surfaces="" ref={rootRef}>
-			<AskBar
+		<div
+			ref={panelRef}
+			/*
+			 * Focusable by SCRIPT only (`-1`): it is the landing stop when the panel has
+			 * no controls of its own (a settled queue, U1), and it must not become a
+			 * second tab stop in front of the options when it has some.
+			 */
+			tabIndex={-1}
+			/*
+			 * NO `outline-none`, DELIBERATELY (agent review round 2, F9; UX round 2, U4).
+			 * This root is the one scripted landing stop the panel has, so when a settled
+			 * queue is opened by keyboard the focus the reader's own press moved must be
+			 * VISIBLE: the base layer paints the app's `:focus-visible` ring on any focused
+			 * element (`styles/index.css`, `html :focus-visible`), which is exactly what the
+			 * chips beside it rely on, and suppressing it here made this the one landing that
+			 * painted nothing. A container with no controls needs no decoration of its own -
+			 * only an indicator that the keyboard is on it.
+			 */
+			className={cn(className, "flex flex-col")}
+			data-lo-ask-surfaces=""
+			/*
+			 * Esc collapses rather than declines (see the module note). Claimed with
+			 * `preventDefault` so the app-wide interrupt ladder does not also treat it as
+			 * a stop - the same claim the blocking card makes. It sits on the root because
+			 * the root is now itself a focus stop.
+			 */
+			onKeyDown={(event) => {
+				if (event.key !== "Escape") return;
+				event.preventDefault();
+				setExpanded(false);
+			}}
+		>
+			<AskPanel
 				view={view}
-				expanded={expanded}
-				onToggle={() => setExpanded(!expanded)}
+				nowMs={now}
+				answering={answering}
+				outcomes={outcomes}
+				drafts={drafts ?? EMPTY_DRAFTS}
+				onDraftChange={onDraftChange ?? noopDraftChange}
+				onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
+				onDecline={(task) => onDecline?.(task.ask_id)}
 			/>
-			{expanded ? (
-				<div
-					/*
-					 * Esc collapses rather than declines (see the module note). Claimed with
-					 * `preventDefault` so the app-wide interrupt ladder does not also treat
-					 * it as a stop - the same claim the blocking card makes.
-					 */
-					onKeyDown={(event) => {
-						if (event.key !== "Escape") return;
-						event.preventDefault();
-						setExpanded(false);
-					}}
-				>
-					<AskPanel
-						view={view}
-						nowMs={now}
-						answering={answering}
-						outcomes={outcomes}
-						drafts={drafts ?? EMPTY_DRAFTS}
-						onDraftChange={onDraftChange ?? noopDraftChange}
-						onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
-						onDecline={(task) => onDecline?.(task.ask_id)}
-					/>
-				</div>
-			) : null}
 		</div>
 	);
 };

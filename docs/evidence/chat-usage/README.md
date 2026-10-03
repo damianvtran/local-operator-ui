@@ -346,8 +346,8 @@ reached.
 ### Which frames come from which head
 
 - The **26 story frames** (everything except `real-data/`) are from the final
-  rebased head, which is what `manifest.json`'s `head`, `srcTree` and
-  `scriptsTree` name. Their bytes are unchanged from the pre-rebase capture.
+  rebased head, which is what `manifest.json`'s `head` names. Their bytes are
+  unchanged from the pre-rebase capture.
   One honesty note on the label: the capture's `git rev-parse HEAD` returned
   `601a7eece`, the rebase's finish commit, which was then amended — touching
   only the manifest and this README, no `src/` or `scripts/` bytes — into
@@ -361,9 +361,9 @@ reached.
   frames were last captured from — read `partialCapture.refreshedAtHead` and
   `.addedAtHead` for the passes themselves. It had been left on the round-1 head
   while four frames beside it were re-taken at the remediation tip, which is
-  exactly the drift the field exists to prevent; `srcTree`/`scriptsTree` are the
-  half a gate can check, and they are re-derived from the tree this file ships
-  in.
+  exactly the drift the field exists to prevent; the counts beside it (`frames`,
+  `surfaces`, `themes`) are re-derived from the tree this file ships in, and they
+  are the half a gate can check.
 - **`real-data/` was not re-captured** and its two frames are the same bytes as
   before. Its recorded staleness is therefore unchanged and still accurate: it
   remains one commit stale with respect to the round-2 fold treatment, for the

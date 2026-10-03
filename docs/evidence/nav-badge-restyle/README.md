@@ -64,7 +64,7 @@ be mistaken for frames a sweep produced.
 | Directory | Tree | What it is |
 | --- | --- | --- |
 | `before/` | `origin/main` = `ee5611a2e4` (version 0.31.25) | the bordered bubble the operator reported, on the browser row |
-| `after/` | this branch, `src/` at `953cde47b9` (`srcTree` `e3e061539`) | the quiet mark, the same states |
+| `after/` | this branch, `src/` at `953cde47b9` (`src/` tree `e3e061539`) | the quiet mark, the same states |
 | `aida/` | both trees | her row, before and after, one missed-message receipt |
 | `alternatives/` | this branch, `bg-transparent` build | the PLAIN-numeral variant the report asked to weigh |
 
