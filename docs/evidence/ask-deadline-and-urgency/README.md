@@ -32,24 +32,21 @@ because one caption is printed into both halves.
 | `urgent` | `1 question waiting`, **accent** mark | `1 question waiting · expires in 3m`, **`warning`** mark, `· Urgent` in the announced name |
 | `truncated` | `12 outstanding` | `12 outstanding` — and NO countdown, because a prefix cannot state a queue-scope deadline. **A guard frame** (see below) |
 | `narrow-393` | a moved-on ask among its chips, wrapping | unchanged. **A guard frame** |
-| `column-floor-172` | `1 question waiting` at the record's 172px column (the canvas-open measurement `docs/composer-status-tabs.md` §2.4 carries) | identical — at 172 no form of the deadline fits, so the count is alone on both sides of the change. **A guard frame**, and the boundary the guarantee is now stated against |
+| `column-floor-applied` | `1 question waiting`, no countdown | `1 question waiting · expires in 48m` — the deadline IS painted at the applied floor, because no yield tier can bind there. This frame replaced the set's `column-floor-172`/`-220` frames |
 | `multiple-band-260`, `two-windows-band-260`, `multiple-band-241` | a chip overhanging its own column in that band, and a countdown cut to `expires in 4...` on this PR's own round-3 head | the sentence yields WHOLE to the value (`· 48m`), the count is the floor, and no column paints a partial number |
 | `expanded-waiting` | the panel row: HelpCircle, accent, `expires in 48m` | the panel row unchanged; the ITEM below it now states the countdown (the pair differs at y 239-357, which is the item) |
 | `expanded-urgent` | the panel row: HelpCircle, **accent** | HelpCircle kept, ink **`warning`**, `Urgent.` announced |
 | `expanded-moved-on-urgent` | the panel row: **Clock**, warning, no urgency | identical. **A guard frame** |
 
-**Four frames are guards rather than deltas**, and this list is MEASURED (the
+**Three frames are guards rather than deltas**, and this list is MEASURED (the
 count of differing pixels between each pair, both palettes, in the table below)
 rather than asserted:
 
 - `truncated` is a byte-identical pair: a truncated queue states a tally and no
   countdown at any width, so this pass changes nothing in it.
-- `column-floor-172` is byte-identical in both palettes, and that is the point of
-  it rather than a disappointment: at 172px the yield has already given up every
-  form of the deadline, so `main`'s chip and this branch's chip paint the same five
-  words. It is the frame that photographs the BOUNDARY - the row where the deadline
-  is absent - which is where agent review round 2's F1 found this set certifying a
-  retracted floor.
+- `column-floor-applied` is the frame the correction pass added and it is NOT a
+  guard: at the applied floor the two halves differ, because `main` paints no
+  countdown and this branch paints the whole clause.
 - `narrow-393` is identical too: a moved-on queue has no countdown, so the item is
   the same chip #810 shipped.
 - `expanded-moved-on-urgent` is identical in both halves, and the reason is worth
@@ -94,7 +91,8 @@ proved the same way.
 | state | item width |
 | --- | --- |
 | `truncated` (count only) | 115.38px |
-| `column-floor-172` (count only, at the record's 172px column) | 133.47px |
+| `column-floor-applied` (the whole clause, at the applied floor: box 432px) | 229.69px |
+| *(story-only)* the count-only tier at box 172px, the safety-net tier's floor | 133.47px |
 | `urgent` | 221.83px |
 | `waiting` | 229.69px |
 | `multiple` | 308.73px |
@@ -128,24 +126,41 @@ list's own cap) - the second is the case that has to hold, and it is the one bot
 edges are titrated against (deliberately: a locale's digits are not this font's
 digits, and a threshold tuned to fit exactly re-breaks on the next copy change).
 
-**The floor the guarantee is stated against, and a disagreement left on the
-record.** Agent review round 2's F1: this README and the band comment both called
-`column-floor-220` "the narrowest column the app produces", but
-`docs/composer-status-tabs.md` §2.4 had already retracted that - *"The floor is
-172px, not 220px ... 220px was this document's assumption and the app never renders
-it"* - and the sibling set's `column-floor/` renders at 172 for the same reason. So
-the floor frame is now that width and the guarantee is stated narrowly and truly:
-**at 172px the deadline is NOT on the chip**; the count is alone, and the fact is
-carried one layer down by the tooltip and the item's announced name, which compose
-the whole clause at every width. One caveat is left visible rather than smoothed:
-`chat-content.tsx`'s own CSS floor is `min-w-[480px]`, which cannot render 172, so
-the two numbers on the record cannot both be current. Every band here is decided
-against the NARROWER reading - a guarantee that holds at 172 holds at 480 and not
-the reverse - and QA has been asked to re-measure the composer column on the built
-app and name the box. The three comments in `chat-content.tsx` that still cited
-220px as the column's floor were re-read in this change and corrected to 480, which
-is what that file's class and its own constant (`IT WAS 220 UNTIL §I`) carry; the
-220 citations left in `docs/evidence` are records of past states and stay records.
+**The floor, stated in the unit the rules are written in.** The correction pass
+settled what three rounds argued about, and the answer is that the numbers were
+right and the words were wrong:
+
+- **The column's applied floor is 480**, not 220 and not 172. `CHAT_PANE_MIN_PX` is
+  applied by §I, and `scripts/chat-pane-floors.test.mjs` asserts it EXACTLY - its own
+  note records that the assertion it replaced allowed `(0, 480]` *"while the tree was
+  still at 220"*, and that 220 is a legal value under that allowance is the defect §I
+  spent. The three `chat-content.tsx` comments that cited 220 as the column's floor
+  were corrected to 480 in this branch.
+- **172 is the composer BOX inside a 220px column** (172 + 2x24 = 220), which is why
+  `docs/composer-status-tabs.md` §2.4 reading *"the column measures 172px"* is a box
+  labelled as a column. The frames in this set are pinned at BOX widths for the same
+  reason, and that is now said once, here, so no caption implies the column.
+- **No yield tier can bind at the applied floor.** At a 480 column the composer box is
+  **432px** (measured on the live story: `containerWidth: 432`), and the widest tier
+  (341) needs it below 341 - the column would have to fall to about **389px**. So
+  the 341/270/213 tiers are a **container-query safety net against a future
+  narrowing**, not a rule the product applies: at the applied floor the chip paints
+  the full form, and `multiple-band-*`/`two-windows-band-260` photograph a narrowing
+  the app does not currently render. What the guarantee is worth is unchanged and now
+  stated truly: the countdown is never cut mid-number at any width the tiers can be
+  reached from, and if the column ever narrows near 389px the yield engages rather
+  than clipping `expires in 4...` (design round 4's MAJOR).
+- **Q6 is withdrawn, and the measurement settled it.** QA re-measured the chip box at
+  the small-view band and got `column - 10px` with **22.34 / 22.27px** of clearance -
+  the docblock's number and the larger of the two the disagreement quoted. Q6's
+  `column - 26px` came from applying the large-view inset at a small-view column.
+- **A correction to a claim this branch made earlier:** the sweep reported that no
+  `min-w-[220px]` remains anywhere in the tree. That is false - `grep -rn` finds it in
+  three docs files (`docs/evidence/chat-shell/README.md`,
+  `docs/evidence/tui-parity/layout-audit.md`, `docs/run-sidebar.md`), each stating its
+  own historical layout. What is true is that no `min-w-[220px]` remains in `src/`,
+  and that the three `chat-content.tsx` comments the sweep corrected were describing
+  the column's floor.
 
 **The one thing the yield may never produce is a partial TIME value** — `4...` and
 `48...` are the same glyphs to a reader deciding whether to hurry. Swept over
