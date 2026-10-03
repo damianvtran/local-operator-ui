@@ -854,15 +854,28 @@ test("the item states the soonest WAITING deadline, and refuses when the split i
 			}),
 		],
 	});
-	assert.equal(queue.askChipDeadline(two, TS), "soonest expires in 12m");
+	assert.equal(queue.askChipDeadline(two, TS), "soonest ask expires in 12m");
+	/*
+	 * THE TWO PIECES THE ROW RENDERS SEPARATELY, pinned here so the yield order cannot
+	 * drift from the string a DOM-free rig reads: the number is what the surface exists
+	 * to answer and the subject is the unbounded half that drops first at a narrow
+	 * column (design round 3's D2). The subject is a HEAD NOUN - `soonest ask`, not a
+	 * bare `soonest` - which is what design round 3's D4 asked for.
+	 */
+	assert.equal(queue.askChipDeadlineText(two, TS), "expires in 12m");
+	assert.equal(queue.askChipDeadlineSubject(two), "soonest ask");
+	// One waiting ask needs no subject: the number is that ask's own.
+	assert.equal(queue.askChipDeadlineSubject(one), "");
 	assert.equal(
 		queue.askChipClause(two, TS),
-		"2 questions waiting · soonest expires in 12m",
+		"2 questions waiting · soonest ask expires in 12m",
 	);
 
 	// MOVED ON ONLY: nothing is waiting, so nothing is counting down.
 	const moved = queue.askQueueView({ asks: [single({ status: "timed_out" })] });
 	assert.equal(queue.askChipDeadline(moved, TS), null);
+	// A queue with nothing waiting has no subject to state either.
+	assert.equal(queue.askChipDeadlineSubject(moved), "");
 
 	/*
 	 * A PREFIX CANNOT STATE A QUEUE-SCOPE COUNTDOWN (design round 1's D6), and the
@@ -914,5 +927,27 @@ test("the wire's `urgent` flag reaches the view, and only for the asks the item 
 		queue.askQueueView({ asks: [ask({ urgent: true, status: "answered" })] })
 			.urgent,
 		false,
+	);
+	/*
+	 * AND THE CUE IS NOT COLOUR-ONLY: the urgency word is APPENDED to the announced
+	 * name (design round 3's D5), because this control's `aria-label` overrides its
+	 * content, so an `sr-only` span inside it would be announced to nobody. The
+	 * visible clause stays a prefix of the name either way.
+	 */
+	const urgentOne = queue.askQueueView({ asks: [ask({ urgent: true })] });
+	assert.equal(
+		queue.askChipLabel(urgentOne, false, TS),
+		"Expand the ask history — 1 question waiting · expires in 1h · Urgent",
+	);
+	assert.ok(
+		queue
+			.askChipLabel(urgentOne, false, TS)
+			.includes(queue.askChipClause(urgentOne, TS)),
+	);
+	// …and a queue with nothing urgent says nothing about urgency.
+	assert.ok(
+		!queue
+			.askChipLabel(queue.askQueueView({ asks: [ask()] }), false, TS)
+			.includes("Urgent"),
 	);
 });
