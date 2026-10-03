@@ -906,6 +906,32 @@ export const PROJECT_DESCRIPTION_MAX_CHARS = 240;
 /** Longest milestone name the store accepts, in CHARACTERS. */
 export const PROJECT_MILESTONE_NAME_MAX_CHARS = 80;
 
+/**
+ * Longest query the `projects.search` op accepts, in CHARACTERS.
+ *
+ * The route bounds `q` at the same number (core
+ * `local_operator/server/routes/desktop_projects.py`), and it matches
+ * `SESSION_SEARCH_MAX_CHARS` because both are "a sentence a user typed". The
+ * box carries no `maxLength` here on purpose — a pasted query must be searched,
+ * not silently truncated — so this bound is enforced by SLICING the string the
+ * client sends (see `use-projects-search`), which keeps the refusal in the
+ * app's own words instead of the transport's generic 422.
+ */
+export const PROJECTS_SEARCH_MAX_CHARS = 256;
+
+/**
+ * How many ranked rows one `projects.search` query returns unless asked
+ * otherwise, and the ceiling the schema allows.
+ *
+ * A page-sized cap, not the scan's: every row is still ranked and only the
+ * ANSWER is bounded, so a ranked tail no view can draw costs nothing to omit.
+ * Sent explicitly rather than left to the route's own default (50) — the
+ * caller's list, not a second authority the app cannot see, is what decides
+ * how many rows a view asked for.
+ */
+export const PROJECTS_SEARCH_DEFAULT_LIMIT = 100;
+export const PROJECTS_SEARCH_MAX_LIMIT = 200;
+
 /** The store's own tag grammar (`projects.py`'s `_TAG_RE`), hoisted so the rule
  *  below and anything else that has to name it agree on one object. */
 export const PROJECT_TAG_PATTERN = /^[a-z0-9][a-z0-9_-]{0,23}$/;
@@ -2767,6 +2793,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * THE DERIVED SEARCH INDEX (`GET /v1/desktop/projects/search`). APPENDED like
+	 * its siblings, and gated by a `projects` VERSION BUMP (1 -> 2) rather than a
+	 * key of its own: the route ranks over the same store the listing reads and is
+	 * additive by construction — every version-1 call keeps its exact behaviour —
+	 * so the version is what lets a client ask for the new read without a second
+	 * negotiation. The backend's own register states the same split
+	 * (`routes/capabilities.py`: "a client gates ONLY the two new calls on
+	 * ``>= 2``").
+	 *
+	 * `.min(1)`: an EMPTY query is not a search. The route answers one with the
+	 * listing's own order truncated to `limit`, but this surface already holds
+	 * that list — its box is a filter over the catalogue — so an empty `q` would
+	 * ask the server to send back everything the client is holding, which is the
+	 * refusal `sessions.search` above states in the same words.
+	 */
+	z
+		.object({
+			op: z.literal("projects.search"),
+			q: z.string().min(1).max(PROJECTS_SEARCH_MAX_CHARS),
+			limit: z.number().int().min(1).max(PROJECTS_SEARCH_MAX_LIMIT).optional(),
+		})
+		.strict(),
+	/*
 	 * AIDA'S CONTROL PLANE: one read and one control op on the same route
 	 * (`/v1/desktop/aida`), because the rail's row and the composer's `/aida`
 	 * need the SAME state and a second spelling of it would be a second answer
@@ -3958,6 +4007,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"peers.list",
 	"profiles.get",
 	"profiles.list",
+	// A ranked read over the same store the listing reads: it changes nothing, so
+	// a failure is reported with a read's patience rather than a write's caution.
+	"projects.search",
 	"providers.list",
 	// A reader that changes nothing (the route's own docstring): the straggler
 	// census, and the app re-reads it rather than caching a stale count.
@@ -5867,6 +5919,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/request-update`,
 				method: "POST",
 			};
+		case "projects.search": {
+			/*
+			 * `URLSearchParams` rather than interpolation, for the reason
+			 * `sessions.search` states: a query is whatever the user typed, and an
+			 * `&`, `#` or space in it would otherwise change the request's meaning
+			 * (or truncate it) instead of being searched for. The route is a static
+			 * path declared before `/v1/desktop/projects/{key}` on the backend, so
+			 * `search` is never read as a project name.
+			 */
+			const query = new URLSearchParams({
+				q: request.q,
+				limit: String(request.limit ?? PROJECTS_SEARCH_DEFAULT_LIMIT),
+			});
+			return {
+				path: `/v1/desktop/projects/search?${query}`,
+				method: "GET",
+			};
+		}
 		case "aida.status":
 			return { path: "/v1/desktop/aida", method: "GET" };
 		case "aida.control":

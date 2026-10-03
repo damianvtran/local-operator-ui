@@ -1,14 +1,24 @@
 /**
- * The Projects tab's local text search: which rows a query admits, in what
- * order, and why — the v1 "degraded mode".
+ * The Projects tab's LOCAL text search: which rows a query admits, in what
+ * order, and why — the compatibility engine and the in-flight fallback.
  *
- * WHAT v1 SEARCHES, AND WHAT IT HONESTLY CANNOT. The listing carries the
- * project's own fields; `updates[]` (and the progress text) are DETAIL-ONLY on
- * the wire by design, so a query here can never find a project by something
- * said in an update. That limit is stated to the reader in the no-match copy
- * rather than papered over, and the server-side `projects.search` op (the
- * architecture's PR-B2) is the path that will lift it. Matching inside update
- * text is deliberately NOT faked here.
+ * TWO ENGINES, ONE VISIBLE LIST. The primary engine is the backend's derived
+ * index (`GET /v1/desktop/projects/search`, advertised as `projects` version 2;
+ * `use-projects-search.ts` holds the wire half). This module is what the page
+ * paints when that engine cannot serve: a backend older than version 2 has no
+ * route to answer, and a request that is still in flight or that failed leaves
+ * the box needing an answer NOW. It is deliberately kept rather than retired —
+ * the compatibility path is the whole reason the page composes two engines
+ * instead of replacing one.
+ *
+ * WHAT THIS ENGINE SEARCHES, AND WHAT IT HONESTLY CANNOT. The listing carries
+ * the project's own fields; `updates[]` (and the progress text) are DETAIL-ONLY
+ * on the wire by design, so a query here can never find a project by something
+ * said in an update. That limit is stated to the reader in the no-match copy —
+ * but only while THIS engine is the one on screen, because the backend's index
+ * does read update text and a sentence claiming otherwise would be false the
+ * moment it served (`projects-page.tsx` holds the two strings). Matching inside
+ * update text is deliberately NOT faked here.
  *
  * THE RANKING CONTRACT, copied from the app's own hand-rolled matchers rather
  * than a fuzzy-search dependency (there is none anywhere in `package.json`;
@@ -30,10 +40,82 @@
  * what puts a subsequence in the title (3) above nothing in a weaker field
  * only when the bands say so — the tests pin the ordering pairs, not a
  * particular arithmetic.
+ *
+ * THIS ENGINE'S MEMBERSHIP IS NOT THE INDEX'S, in either direction, and the
+ * difference is a fact the surfaces have to live with rather than paper over:
+ * this one admits in-order subsequences and matches on `status`, and the index
+ * admits bounded typos and reads updates and progress. So the two answers to one
+ * box can differ, and whose answer is on screen is a question the page answers
+ * once (`searchEngine`) rather than a distinction a row could draw.
  */
 
-import type { DesktopProject } from "../../../../shared/desktop-control-contract";
+import { PROJECTS_SEARCH_MAX_CHARS } from "../../../../shared/desktop-contract";
+import type {
+	DesktopProject,
+	DesktopProjectSearchHit,
+} from "../../../../shared/desktop-control-contract";
 import { projectDisplayName } from "./project-model";
+
+/**
+ * THE ONE STRING BOTH ENGINES ARE ASKED, and the reason it is a function rather
+ * than a slice at each call site.
+ *
+ * The route bounds `q` at {@link PROJECTS_SEARCH_MAX_CHARS}, and the box carries
+ * no `maxLength` because a paste must be SEARCHED rather than silently dropped.
+ * So the bound is applied by cutting the string here, once — and the SAME string
+ * has to reach the client matcher, or the two engines answer different
+ * questions: a 300-character paste would be searched in full by the fallback and
+ * in its first 256 characters by the index, and the list would change the moment
+ * the index's answer landed, for a reason that has nothing to do with the store.
+ * That was review round 1's MINOR-2, and the fix is this function plus every
+ * caller using it: the hook asks it and the page's fallback ranks it.
+ *
+ * Trimmed as well as cut, because the route's own empty-`q` arm is not a search
+ * and the box's whitespace is not a question. The result is what the echo is
+ * compared against, so the gate, the wire and the fallback cannot disagree.
+ */
+export function projectsSearchQuery(box: string): string {
+	return box.trim().slice(0, PROJECTS_SEARCH_MAX_CHARS);
+}
+
+/**
+ * The NO-MATCH subline, PER ENGINE — because one sentence cannot be true of
+ * both and the shipped one was only ever true of the fallback.
+ *
+ * "Update text is not searched" is a fact about THIS module: `updates[]` and the
+ * progress snippet are detail-only on the wire, so a query ranked here can never
+ * reach them. The backend's index reads both. So the sentence is not a string
+ * used under two engines, it is each engine's own statement about what it
+ * searched, and the block that renders it asks which engine produced the empty
+ * result rather than guessing (`projects-page.tsx`'s `searchEngine`).
+ *
+ * WHAT STAYS SHARED IS THE SECOND CLAIM — "Clearing the search and filters
+ * restores the list" — because both engines are the same box over the same
+ * listing: an empty result under either is undone by the same clear.
+ *
+ * Neither sentence enumerates its engine's fields exhaustively, and neither
+ * claims to: each names the fields a reader would look for, so neither is false
+ * about the fields it does not name (the client engine also matches on `status`,
+ * the index on the project id).
+ */
+export const SEARCH_SUBLINE: Record<"client" | "backend", string> = {
+	client:
+		"Searches names, descriptions, tags, owners and teams. Update text is not searched. Clearing the search and filters restores the list.",
+	backend:
+		"Searches names, descriptions, tags, owners, teams and update text. Clearing the search and filters restores the list.",
+};
+
+/**
+ * The `projects` capability version that advertises the derived search index
+ * and the timeline document (`routes/capabilities.py`: `"projects": 2`).
+ *
+ * ONE number for the two new reads, stated where the client matcher lives so a
+ * reader of either engine sees the gate beside the fallback it gates. Version 1
+ * is every backend that can serve the tab at all; a version-1 client never asks
+ * for either read, which is what makes the bump additive rather than a second
+ * capability key (the backend's own register argues the same split).
+ */
+export const PROJECTS_SEARCH_MIN_VERSION = 2;
 
 /** Band scores, in the ordered set the header states. */
 export const SEARCH_BAND_EXACT = 4;
@@ -173,4 +255,33 @@ export function searchProjects(
 				: 0;
 	});
 	return scored.map((entry) => entry.project);
+}
+
+/**
+ * The rows a backend answer names, in the ANSWER's own rank order.
+ *
+ * The wire carries ids and ranks, not rows: the index ranks over the same store
+ * the listing reads, so the client paints its own `DesktopProject` for each id
+ * and the answer stays small. The order is taken as given and never re-sorted —
+ * a hit's `score` is comparable within one answer only (the weights are
+ * tunable server-side), so the order the backend put the rows in IS the ranking,
+ * and re-deriving one here would be a second, disagreeing model.
+ *
+ * An id the listing does not hold is DROPPED rather than synthesized: this route
+ * ranks over the store the listing just read, so an id with no row means the
+ * store moved under the answer (a project deleted between the two reads), and
+ * the honest rendering of that is one row fewer, not a constructed card.
+ */
+export function projectsForHits(
+	rows: DesktopProject[],
+	hits: Pick<DesktopProjectSearchHit, "id">[],
+): DesktopProject[] {
+	if (hits.length === 0) return [];
+	const byId = new Map(rows.map((row) => [row.id, row]));
+	const out: DesktopProject[] = [];
+	for (const hit of hits) {
+		const row = byId.get(hit.id);
+		if (row !== undefined) out.push(row);
+	}
+	return out;
 }
