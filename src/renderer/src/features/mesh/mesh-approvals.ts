@@ -401,7 +401,17 @@ const GRANT_PHRASES: Record<string, { term: string; gloss: string }> = {
 	 */
 	broker_credential: {
 		term: "borrow logins there",
-		gloss: "your sessions on that device may use the logins stored there",
+		/*
+		 * NO "ON THAT DEVICE" IN THE GLOSS (agent review round 7, R7-1). The
+		 * capability is checked in a PEER frame's chokepoint (`types.OP_CAPABILITY`
+		 * maps `net_broker` -> `broker_credential`; `credentials/client.py` refuses a
+		 * revoked borrower), and the design's own sequence puts the SESSION on the
+		 * borrower's side dialing the owner's relay (`docs/design/mesh-credentials.md`,
+		 * the credential-broker sequence). So the session doing the borrowing is the
+		 * reader's OWN - saying "your sessions on that device" described a local use
+		 * that needs no capability at all.
+		 */
+		gloss: "your sessions may use the logins stored on that device",
 	},
 };
 

@@ -1541,7 +1541,7 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 	assert.deepEqual(approvalScopeGlosses(broker), [
 		{
 			term: "borrow logins there",
-			gloss: "your sessions on that device may use the logins stored there",
+			gloss: "your sessions may use the logins stored on that device",
 		},
 	]);
 	/* A VERB token keeps the template, because it is grammatical for a verb. */
