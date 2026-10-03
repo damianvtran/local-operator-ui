@@ -22,7 +22,17 @@
  * - **QUEUED and TIMED-OUT do not look alike.** The copy contract's sentences
  *   are the difference, and the timeout keeps its answer controls live: a
  *   timed-out ask is still answerable (that is the `late` path), so it must not
- *   be drawn as a closed state.
+ *   be drawn as a closed state. On the BAR the same distinction is the count:
+ *   `MinimizedMixed` and `MinimizedMovedOnOnly` state how many asks are still
+ *   WAITING on the user and how many the agent has moved on from, rather than
+ *   folding the two into one "waiting" number.
+ * - **Urgency is painted.** An ask the backend derived a short window for
+ *   (`timeout <= 900`) takes warning ink on the row's mark and on the bar's
+ *   glyph - `MinimizedUrgent`, `ExpandedUrgent` - where it used to look
+ *   identical to one with an hour left.
+ * - **The deadline is on the COLLAPSED bar.** `expires in 30m` beside the
+ *   sentence, from the soonest deadline across the waiting asks, so the reader
+ *   can triage without expanding anything.
  * - **Disabled changes colour, never opacity.** An incomplete draft's Submit is
  *   a colour step on its own ground, not a wash toward it.
  * - **The secret question is a masked field**, and it is the only place a
@@ -79,27 +89,54 @@ const ONE: PendingAsk = ask({
 	],
 });
 
+/**
+ * THE ASK WHOSE DEADLINE PASSED: the agent moved on, and a late answer still
+ * lands. Named rather than inlined because the split the bar now prints - and
+ * the moved-on-only state below - are both about this one row, and a fixture
+ * copied twice is a state that can drift from the sentence written about it.
+ */
+const MOVED_ON: PendingAsk = ask({
+	ask_id: "a-91be",
+	timeout_s: 900,
+	urgent: true,
+	expires_at: TS - MINUTE,
+	status: "timed_out",
+	questions: [
+		{
+			id: "files",
+			question: "Which files should the cleanup script touch?",
+			options: [
+				{ label: "logs only" },
+				{ label: "logs and caches" },
+				{ label: "everything under tmp" },
+			],
+			multi: true,
+		},
+	],
+});
+
+/**
+ * THE SHORT-WINDOW ASK. The backend derives `urgent` from the timeout itself
+ * (`timeout <= 900`), so the fixture marks it the same way the wire does rather
+ * than inventing a second rule a frame could photograph.
+ */
+const URGENT: PendingAsk = ask({
+	ask_id: "a-ur01",
+	timeout_s: 600,
+	urgent: true,
+	expires_at: TS + 30 * MINUTE,
+	questions: [
+		{
+			id: "rollback",
+			question: "Should I roll the staging cluster back to the previous build?",
+			options: [{ label: "yes" }, { label: "no" }],
+		},
+	],
+});
+
 const THREE: PendingAsk[] = [
 	ONE,
-	ask({
-		ask_id: "a-91be",
-		timeout_s: 900,
-		urgent: true,
-		expires_at: TS - MINUTE,
-		status: "timed_out",
-		questions: [
-			{
-				id: "files",
-				question: "Which files should the cleanup script touch?",
-				options: [
-					{ label: "logs only" },
-					{ label: "logs and caches" },
-					{ label: "everything under tmp" },
-				],
-				multi: true,
-			},
-		],
-	}),
+	MOVED_ON,
 	ask({
 		ask_id: "a-c204",
 		status: "late",
@@ -133,8 +170,20 @@ const SECRET: PendingAsk = ask({
 const frontend = (
 	asks: PendingAsk[] | null,
 ): Pick<CanonicalFrontendState, "asks" | "asks_open" | "asks_truncated"> => ({
-	asks,
-	asks_open: asks ? asks.filter((row) => row.status === "open").length : null,
+	asks: asks,
+	/*
+	 * THE TALLY IS THE BACKEND'S OUTSTANDING SET - `open` OR `timed_out` (a
+	 * timed-out ask is still answerable, so `asks/store.py`'s
+	 * `OUTSTANDING_STATUSES` counts it). This helper used to count `open` alone,
+	 * which made every fixture carrying a timed-out ask disagree with the backend
+	 * it stands in for: `asks_open` is what the bar's settled branch and the
+	 * carrier's clock read, so the miscount photographed a moved-on-only queue as
+	 * "1 settled" - a state that wire cannot produce.
+	 */
+	asks_open: asks
+		? asks.filter((row) => row.status === "open" || row.status === "timed_out")
+				.length
+		: null,
 });
 
 const meta = {
@@ -167,10 +216,56 @@ export const MinimizedOne: Story = {
 	},
 };
 
-/** Three asks, one already timed out: the bar counts only what is still open. */
+/** Three asks, one already timed out: the bar states both halves of the queue. */
 export const MinimizedSeveral: Story = {
 	args: {
 		frontend: frontend(THREE),
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * THE SPLIT (audit). One ask is still inside its window and one has passed its
+ * deadline with the agent walking on, and the bar says BOTH rather than calling
+ * them all "waiting": `1 waiting · 1 moved on`.
+ *
+ * The moved-on row is the same `a-91be` fixture the timeout row uses, so the
+ * bar's sentence and the panel's status line can be read against one ask.
+ */
+export const MinimizedMixed: Story = {
+	args: {
+		frontend: frontend([ONE, MOVED_ON]),
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * NOTHING IS WAITING ON THE USER. Every ask has passed its deadline and the agent
+ * moved on; a late answer still lands. The bar used to read "1 question waiting"
+ * here, which is the one claim this state contradicts.
+ */
+export const MinimizedMovedOnOnly: Story = {
+	args: {
+		frontend: frontend([MOVED_ON]),
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * URGENT, which the wire carried and no desktop surface painted until the bar
+ * took a warning arm for it. The window is short (`timeout <= 900`), so the glyph
+ * takes `warning` instead of the accent - and the deadline beside the sentence is
+ * the reading that says why it matters.
+ */
+export const MinimizedUrgent: Story = {
+	args: {
+		frontend: frontend([URGENT]),
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -230,6 +325,21 @@ export const SecretQuestion: Story = {
 	render: () => <Expanded asks={[SECRET]} />,
 	args: {
 		frontend: frontend([SECRET]),
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * THE URGENT ROW, expanded. The mark beside the status line takes the warning ink
+ * an urgent ask earns, so the row a reader should triage FIRST is the one that
+ * looks different - and the sentence beside it still says when it expires.
+ */
+export const ExpandedUrgent: Story = {
+	render: () => <Expanded asks={[URGENT]} />,
+	args: {
+		frontend: frontend([URGENT]),
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,

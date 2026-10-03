@@ -268,6 +268,21 @@ export type AskPresentation = {
 	status: AskStatus | "unknown";
 	/** The backend's own count of open asks is the badge's source; this is the per-row fact. */
 	open: boolean;
+	/**
+	 * The ask is inside its own window: the agent is STILL WAITING on this one.
+	 *
+	 * The distinction this field exists for is the operator's own question of a
+	 * surface ("does it tell me the agent is waiting versus has moved on"), and it
+	 * is a COPY distinction rather than a liveness one: `open` below stays the
+	 * BACKEND's outstanding set - `open` OR `timed_out` (`asks/store.py`'s
+	 * `OUTSTANDING_STATUSES`), because a late answer still reaches the agent and
+	 * every surface must keep offering the row. But a timed-out ask has had its
+	 * deadline pass and the agent has walked past it, so a surface that called
+	 * both "waiting" would be stating a fact the fold contradicts.
+	 */
+	waiting: boolean;
+	/** The deadline passed and the agent moved on; a LATE answer still reaches it. */
+	movedOn: boolean;
 	canAnswer: boolean;
 	canDecline: boolean;
 	/** True for a row whose answer has been given but not yet delivered to the model. */
@@ -393,8 +408,21 @@ export const askBarText = (view: AskQueueView): string => {
 	// sentence says so rather than claiming a count it does not have.
 	if (view.asks === null || view.rows.length === 0)
 		return "No asks outstanding";
+	const outstanding = view.waiting + view.movedOn;
 	const lead =
-		view.open > 0 ? askCountLabel(view.open) : `${view.total} settled`;
+		outstanding === 0
+			? `${view.total} settled`
+			: /*
+				 * TRUNCATED: the split is knowable only for the rows this frame carries,
+				 * and the wire's cap is what dropped the rest, so the bar states the
+				 * backend's own OUTSTANDING tally instead of splitting a prefix as if it
+				 * were the whole queue. "outstanding" is the app's existing word for the
+				 * set (the panel's empty state, the sidebar's chip) and it claims neither
+				 * half; the "showing N of M" clause beside it says what is on screen.
+				 */
+				view.truncated
+				? `${view.open} outstanding`
+				: askCountLabel(view.waiting, view.movedOn);
 	const named = view.head?.ask ?? view.rows[0]?.ask ?? null;
 	return named === null ? lead : `${lead} — ${askHeadline(named)}`;
 };
@@ -408,6 +436,8 @@ export const presentAsk = (ask: PendingAsk): AskPresentation => {
 		ask,
 		status,
 		open: undecided,
+		waiting: status === "open",
+		movedOn: status === "timed_out",
 		// Answerable while undecided - and that INCLUDES a timed-out ask, whose late
 		// answer reaches the model rather than being refused client-side.
 		canAnswer: undecided,
@@ -434,12 +464,41 @@ export type AskQueueView = {
 	/** `null` when the backend does not publish asks at all. */
 	asks: PendingAsk[] | null;
 	rows: AskPresentation[];
-	/** Open asks, from the backend's own count when it published one. */
+	/**
+	 * OUTSTANDING asks - the backend's own count when it published one.
+	 *
+	 * NOT "waiting": the backend's outstanding set is `open` OR `timed_out`
+	 * (`asks/store.py`'s `OUTSTANDING_STATUSES`), because a late answer still
+	 * reaches the agent. The split the bar prints is `waiting`/`movedOn` below.
+	 */
 	open: number;
+	/** Asks still inside their window, from the rows this frame carries. */
+	waiting: number;
+	/** Asks whose deadline passed with the agent moving on, from the same rows. */
+	movedOn: number;
+	/** Whether any outstanding ask carries the backend's `urgent` flag. */
+	urgent: boolean;
+	/**
+	 * The soonest deadline among the WAITING asks, or null when none is readable.
+	 *
+	 * The collapsed bar's triage reading: the whole point is not to have to expand
+	 * the panel to find out how long the user has, and the soonest deadline is the
+	 * one that decides that. A moved-on ask has no deadline left to surface, which
+	 * is why `waiting` scopes it.
+	 */
+	soonestExpiryMs: number | null;
 	/** Total rows in this frame, which is NOT the queue length when truncated. */
 	total: number;
 	truncated: boolean;
-	/** The oldest open ask, or null when nothing is open. */
+	/**
+	 * The oldest WAITING ask, else the oldest moved-on one, else null.
+	 *
+	 * Waiting first, deliberately. The head is what the bar NAMES, and the bar's
+	 * lead sentence is now the waiting/moved-on split - so a head drawn from the
+	 * moved-on set while a waiting ask existed would name the wrong question. The
+	 * oldest-first rule inside each set is unchanged (see `compareAsks`): a head
+	 * that jumped to each new arrival would move under a user's finger mid-tap.
+	 */
 	head: AskPresentation | null;
 };
 
@@ -455,12 +514,22 @@ export const askQueueView = (
 			asks: null,
 			rows: [],
 			open: 0,
+			waiting: 0,
+			movedOn: 0,
+			urgent: false,
+			soonestExpiryMs: null,
 			total: 0,
 			truncated: false,
 			head: null,
 		};
 	const rows = asks.map(presentAsk).sort(compareAsks);
 	const open = rows.filter((row) => row.open).length;
+	const waiting = rows.filter((row) => row.waiting).length;
+	const movedOn = rows.filter((row) => row.movedOn).length;
+	const deadlines = rows
+		.filter((row) => row.waiting)
+		.map((row) => Number(row.ask.expires_at ?? 0))
+		.filter((value) => Number.isFinite(value) && value > 0);
 	return {
 		asks,
 		rows,
@@ -472,9 +541,23 @@ export const askQueueView = (
 		 * count, which is the older producer's shape.
 		 */
 		open: typeof frontend?.asks_open === "number" ? frontend.asks_open : open,
+		waiting,
+		movedOn,
+		/*
+		 * URGENT IS THE WIRE'S OWN FLAG, PAINTED NOWHERE BEFORE THIS: an ask the
+		 * backend derived a short window for (`timeout <= 900`) is one the operator
+		 * should triage first, and until this field the desktop drew it identically
+		 * to any other waiting row. Scoped to the OUTSTANDING rows - a settled ask's
+		 * stale urgency is not a state anyone can act on.
+		 */
+		urgent: rows.some((row) => row.open && row.ask.urgent === true),
+		soonestExpiryMs: deadlines.length > 0 ? Math.min(...deadlines) : null,
 		total: rows.length,
 		truncated: frontend?.asks_truncated === true,
-		head: rows.find((row) => row.open) ?? null,
+		head:
+			rows.find((row) => row.waiting) ??
+			rows.find((row) => row.movedOn) ??
+			null,
 	};
 };
 
@@ -541,11 +624,21 @@ export const askStatusText = (ask: PendingAsk, nowMs: number): string => {
  * timeout row, and for the same reason - a countdown that guesses is worse than
  * no countdown when the reader is deciding whether to hurry.
  */
-export const askExpiryText = (
-	ask: PendingAsk,
+export const askExpiryText = (ask: PendingAsk, nowMs: number): string | null =>
+	askDeadlineText(Number(ask.expires_at ?? 0), nowMs);
+
+/**
+ * The same reading for a bare deadline, for a surface that holds no ask.
+ *
+ * The minimized bar names the SOONEST deadline across the asks it is counting
+ * rather than one row's (`view.soonestExpiryMs`), so the formatter has to take a
+ * timestamp. Split out rather than duplicated: two renderings of one countdown
+ * is the drift this module's copy contract exists to prevent.
+ */
+export const askDeadlineText = (
+	expiresAt: number,
 	nowMs: number,
 ): string | null => {
-	const expiresAt = Number(ask.expires_at ?? 0);
 	if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
 	const remainingMs = expiresAt - nowMs;
 	if (remainingMs <= 0) return "expiring now";
@@ -567,12 +660,28 @@ export const askExpiryText = (
 /**
  * The one line the minimized bar prints, and the number the badges print.
  *
+ * TWO SETS, NOT ONE (design D16/audit): `open` and `timed_out` are both
+ * outstanding on the wire - a late answer still reaches the agent - but only
+ * `open` is an ask the agent is still inside the window for. An operator reading
+ * "N questions waiting" over a queue whose deadlines had all passed was being
+ * told the agent was waiting when it had moved on, which is one of the five
+ * questions the surface exists to answer. So the waiting count is the one the
+ * bar leads with and the moved-on set is stated beside it, in the app's own
+ * vocabulary (the panel row's copy already reads "the agent moved on").
+ *
  * A single question is named, not counted ("1 question waiting" reads as a
  * countdown label; "a question waiting" reads as a sentence a person wrote), and
  * a plural is only ever used above one.
  */
-export const askCountLabel = (open: number): string =>
-	open === 1 ? "1 question waiting" : `${open} questions waiting`;
+export const askCountLabel = (waiting: number, movedOn: number): string => {
+	if (waiting > 0 && movedOn > 0)
+		return `${waiting} waiting · ${movedOn} moved on`;
+	if (movedOn > 0)
+		return movedOn === 1
+			? "1 question moved on"
+			: `${movedOn} questions moved on`;
+	return waiting === 1 ? "1 question waiting" : `${waiting} questions waiting`;
+};
 
 /** The first question's text, clipped for a single-line bar. */
 export const askHeadline = (ask: PendingAsk, limit = 120): string => {

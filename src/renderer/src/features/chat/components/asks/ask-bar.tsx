@@ -31,7 +31,7 @@
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { AskQueueView } from "../../ask-queue";
-import { askBarLabel, askBarText } from "../../ask-queue";
+import { askBarLabel, askBarText, askDeadlineText } from "../../ask-queue";
 
 export type AskBarProps = {
 	view: AskQueueView;
@@ -39,6 +39,15 @@ export type AskBarProps = {
 	expanded: boolean;
 	/** Flip the panel. Entered ONLY by the user, never on arrival. */
 	onToggle: () => void;
+	/**
+	 * The client clock the deadline reading is rendered against.
+	 *
+	 * REQUIRED, and passed down from the carrier that already owns the ticking
+	 * clock (`AskSurfaces`), rather than defaulted to `Date.now()` here: a bar
+	 * that read the clock itself would tick on every render, which is the
+	 * countdown-that-lies the carrier's own note is about.
+	 */
+	nowMs: number;
 	/** Extra classes on the outer box (the caller owns the measure). */
 	className?: string;
 };
@@ -54,6 +63,7 @@ export const AskBar = ({
 	view,
 	expanded,
 	onToggle,
+	nowMs,
 	className,
 }: AskBarProps) => {
 	// An absent queue draws nothing at all: `asks === null` is "this backend does
@@ -75,6 +85,21 @@ export const AskBar = ({
 	const label = askBarText(view);
 	const settledOnly = view.open === 0;
 	const Chevron = expanded ? ChevronUp : ChevronDown;
+	/*
+	 * THE DEADLINE ON THE COLLAPSED BAR (audit). It used to live only on the panel
+	 * row, so the one number a reader needs to triage - how long is left - was
+	 * behind the very click they were deciding whether to make. The SOONEST
+	 * deadline across the waiting asks is what decides that, and it is rendered
+	 * against the carrier's clock so it ticks with the panel's copy rather than
+	 * beside it.
+	 *
+	 * Null when nothing waiting carries a readable deadline, in which case the
+	 * span is absent rather than an empty slot.
+	 */
+	const deadline =
+		view.soonestExpiryMs === null
+			? null
+			: askDeadlineText(view.soonestExpiryMs, nowMs);
 
 	return (
 		<div
@@ -125,12 +150,17 @@ export const AskBar = ({
 						// The accent's one spend in this row, and the design's own choice of
 						// what it means: this glyph is what says a question is outstanding.
 						// Persistent, never animated.
-						// The GLYPH keeps the muted role: round 1's D3 premise (the muted pair
-						// failing AA here) was refuted by the design round's own re-measurement
-						// (7.85:1 dark / 8.19:1 light, contract-floored at 5.5:1), so the
-						// sentence alone keeps the brighter `ink` it was explicitly allowed to
-						// keep (design round 2, D12).
-						settledOnly ? "text-ink-muted" : "text-accent",
+						// The GLYPH keeps the muted role when nothing is outstanding, and
+						// takes WARNING - not accent - when an outstanding ask is URGENT, which
+						// is the one urgency cue the collapsed bar has room for.
+						// (Round 1's D3 premise - the muted pair failing AA here - was refuted
+						// by the design round's own re-measurement: 7.85:1 dark / 8.19:1
+						// light, contract-floored at 5.5:1; the sentence keeps its `ink`.)
+						settledOnly
+							? "text-ink-muted"
+							: view.urgent
+								? "text-warning"
+								: "text-accent",
 					)}
 				>
 					?
@@ -143,6 +173,15 @@ export const AskBar = ({
 				 * carries the emphasis instead of a second text role.
 				 */}
 				<span className="min-w-0 flex-1 truncate text-ink">{label}</span>
+				{deadline === null ? null : (
+					/*
+					 * The triage reading, beside the sentence and before the truncation
+					 * clause: `shrink-0` so it is never the half that yields, and
+					 * `text-ink-muted` because the countdown is a SECONDARY fact beside the
+					 * question - the accent/glyph already carries "an ask is outstanding".
+					 */
+					<span className="shrink-0 text-ink-muted text-xs">{deadline}</span>
+				)}
 				{view.truncated ? (
 					/*
 					 * The truncation is stated rather than hidden. The wire caps the list

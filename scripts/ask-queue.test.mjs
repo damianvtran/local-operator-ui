@@ -217,6 +217,147 @@ test("the queue view counts OPEN asks and orders open before settled", () => {
 	assert.equal(view.head?.canAnswer, true);
 });
 
+test("the view separates the asks still waiting from the ones the agent moved on from", () => {
+	/*
+	 * THE AUDIT'S FIRST FINDING, pinned. `open` and `timed_out` are both
+	 * outstanding on the wire (a late answer still lands), so the bar used to
+	 * count both as "questions waiting" - telling the operator the agent was
+	 * waiting on an ask whose deadline had passed and which the agent had walked
+	 * past.
+	 */
+	const view = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-open", status: "open", created_at: TS + 10 }),
+			single({ ask_id: "a-late", status: "timed_out", created_at: TS }),
+		],
+	});
+	assert.equal(
+		view.open,
+		2,
+		"both are outstanding, which is the backend's own set",
+	);
+	assert.equal(view.waiting, 1);
+	assert.equal(view.movedOn, 1);
+	assert.equal(
+		queue.askCountLabel(view.waiting, view.movedOn),
+		"1 waiting · 1 moved on",
+	);
+	/*
+	 * And the HEAD does not claim waiting for a timed-out ask: the moved-on row is
+	 * OLDER here, and the head still names the waiting one. The bar's sentence and
+	 * the question it names have to be about the same ask, or the bar answers the
+	 * operator's "is it waiting on me" with one ask's count and another's text.
+	 */
+	assert.equal(view.head?.ask.ask_id, "a-open");
+	assert.equal(
+		queue.askBarText(view),
+		"1 waiting · 1 moved on — Which environment?",
+	);
+});
+
+test("a queue of nothing but timed-out asks says the agent moved on", () => {
+	/*
+	 * The single-set case the split exists for: every ask has passed its deadline,
+	 * the agent is waiting on none of them, and a late answer still reaches it. The
+	 * old copy stated the opposite ("1 question waiting").
+	 */
+	const one = queue.askQueueView({
+		asks: [single({ ask_id: "a-1", status: "timed_out" })],
+	});
+	assert.equal(one.waiting, 0);
+	assert.equal(one.movedOn, 1);
+	assert.equal(
+		queue.askBarText(one),
+		"1 question moved on — Which environment?",
+	);
+
+	const three = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1", status: "timed_out" }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
+	});
+	assert.equal(
+		queue.askBarText(three),
+		"2 questions moved on — Which environment?",
+	);
+});
+
+test("the bar reads the SOONEST waiting deadline, and never a moved-on one", () => {
+	/*
+	 * The collapsed bar's triage number (the audit's third finding). Scoped to the
+	 * waiting asks: a timed-out ask's deadline is in the past, so surfacing it would
+	 * print "expiring now" for the one state where the clock is no longer the
+	 * question.
+	 */
+	const view = queue.askQueueView({
+		asks: [
+			ask({ ask_id: "a-far", status: "open", expires_at: TS + 3_600_000 }),
+			ask({ ask_id: "a-soon", status: "open", expires_at: TS + 600_000 }),
+			ask({ ask_id: "a-gone", status: "timed_out", expires_at: TS - 60_000 }),
+		],
+	});
+	assert.equal(view.soonestExpiryMs, TS + 600_000);
+	assert.equal(
+		queue.askDeadlineText(view.soonestExpiryMs, TS),
+		"expires in 10m",
+	);
+	// Nothing waiting: no reading, rather than a stale one from the moved-on row.
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ status: "timed_out" })] })
+			.soonestExpiryMs,
+		null,
+	);
+	// An unreadable deadline is absent rather than zero.
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ expires_at: undefined })] })
+			.soonestExpiryMs,
+		null,
+	);
+});
+
+test("the wire's `urgent` flag reaches the view, and only while it is outstanding", () => {
+	/*
+	 * Urgency was carried on the wire and kept by the receipt fold, and NO desktop
+	 * component painted it (the audit's second finding). The view now states it for
+	 * the surfaces to spend, scoped to the rows someone can still act on.
+	 */
+	const urgentOpen = queue.askQueueView({ asks: [ask({ urgent: true })] });
+	assert.equal(urgentOpen.urgent, true);
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ urgent: false })] }).urgent,
+		false,
+	);
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ urgent: true, status: "timed_out" })] })
+			.urgent,
+		true,
+		"a timed-out ask is still answerable, so its urgency is still actionable",
+	);
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ urgent: true, status: "answered" })] })
+			.urgent,
+		false,
+		"a settled row's stale urgency is not a state anyone can act on",
+	);
+});
+
+test("a truncated frame states the tally instead of splitting a prefix", () => {
+	/*
+	 * The split is knowable only for the rows a frame carries, and the wire's cap
+	 * dropped the rest, so the bar falls back to the backend's OUTSTANDING tally -
+	 * a word that claims neither half - with the "showing N of M" clause beside it
+	 * saying what is on screen.
+	 */
+	const view = queue.askQueueView({
+		asks: [single({ ask_id: "a-1", status: "open" })],
+		asks_open: 9,
+		asks_truncated: true,
+	});
+	assert.equal(view.truncated, true);
+	assert.equal(queue.askBarText(view), "9 outstanding — Which environment?");
+});
+
 test("a view over an absent field is empty AND unsupported", () => {
 	const view = queue.askQueueView(null);
 	assert.equal(view.asks, null);
