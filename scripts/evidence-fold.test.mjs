@@ -758,9 +758,12 @@ test("a wiring that cannot be verified is loud by hand and tolerated by prepare"
  * `%A` is "this branch" for `git merge` and for nothing else: under a rebase,
  * a cherry-pick, a revert, `am` or a stash-pop git hands the driver the UPSTREAM
  * side as `%A`, and a content driver is given nothing that tells them apart. The
- * driver therefore resolves only when `MERGE_HEAD` exists and otherwise exits
- * non-zero with the operation named, which is what makes git stop on the
- * conflict exactly as it did before this PR added the driver at all.
+ * driver therefore resolves only when it can SEE a real merge - merge.c's
+ * `GITHEAD_<oid>` / `GIT_REFLOG_ACTION`, or `MERGE_HEAD` on a git that writes it
+ * early - and otherwise exits non-zero with the case named, which is what makes
+ * git stop on the conflict exactly as it did before this PR added the driver at
+ * all. Every non-zero exit also appends its reason to
+ * `<git dir>/evidence-fold-driver.log`, because git's own output names no cause.
  */
 test("the merge driver refuses outside a merge, so a rebase stops on the conflict", () => {
 	const dir = fixture({ attributes: true });
@@ -842,6 +845,250 @@ test("a hand run of the tool outside a merge refuses rather than taking HEAD's s
 		/rebase .* is in progress|rebase \(or pull --rebase\) is in progress/,
 	);
 	assert.match(result.out, /MERGE only/);
+});
+
+/* ------------------------------------------------------------------ *
+ * M2b: the driver's non-zero paths - stated, recorded, and never taken
+ *      on a legitimate merge
+ * ------------------------------------------------------------------ */
+
+/**
+ * Install a driver command that hides the merge-only environment from the real
+ * driver, so the case can be exercised at all.
+ *
+ * WHY A WRAPPER, AND WHY NODE. `builtin/merge.c` sets `GITHEAD_<oid>` and
+ * `GIT_REFLOG_ACTION` on the environment git hands its merge down, so a caller
+ * cannot remove them from `git merge` - the only place they can be taken away is
+ * between git and this script, which is where a harness wrapper sits. The
+ * wrapper is Node so the case behaves identically wherever the suite runs, and
+ * it re-execs the real script with the hidden names deleted rather than
+ * reimplementing any of it.
+ */
+const driverHidingMergeSignals = (dir, extraHidden = []) => {
+	const wrapper = join(dir, "driver-hides-signals.mjs");
+	const hidden = [...extraHidden].filter(Boolean);
+	writeFileSync(
+		wrapper,
+		[
+			'import { spawnSync } from "node:child_process";',
+			"const env = { ...process.env };",
+			`for (const name of ${JSON.stringify(hidden)}) delete env[name];`,
+			"for (const name of Object.keys(env))",
+			'\tif (name.startsWith("GITHEAD_")) delete env[name];',
+			"const result = spawnSync(",
+			"\tprocess.execPath,",
+			"\t[process.argv[2], ...process.argv.slice(3)],",
+			'\t{ stdio: "inherit", env },',
+			");",
+			"process.exit(result.status ?? 1);",
+		].join("\n"),
+	);
+	git(dir, [
+		"config",
+		"merge.evidence-fold.driver",
+		`${process.execPath} ${wrapper} ${SCRIPT} --driver %O %A %B`,
+	]);
+	return wrapper;
+};
+
+/** The driver log a refused run leaves in the clone, wherever its git dir is. */
+const driverLog = (dir) => {
+	const gitDir = git(dir, ["rev-parse", "--absolute-git-dir"]);
+	return {
+		path: join(gitDir, "evidence-fold-driver.log"),
+		text: readFileSync(join(gitDir, "evidence-fold-driver.log"), "utf8"),
+	};
+};
+
+test("a refused driver run names the case it could not handle, and records it in the git dir", () => {
+	const dir = fixture({ attributes: true });
+	installDriver(dir);
+
+	const rebase = gitCode(dir, ["rebase", "main"]);
+	assert.notEqual(rebase.code, 0, "the driver must refuse, so git stops");
+	assert.match(
+		rebase.out,
+		/REFUSING to resolve docs\/evidence\/manifest\.json during rebase/,
+		"the message must name the case (a rebase), not just that it failed",
+	);
+	assert.match(
+		rebase.out,
+		/this reason is recorded at .*evidence-fold-driver\.log/,
+		"the message must say where the durable record is",
+	);
+
+	const log = driverLog(dir);
+	assert.match(
+		log.text,
+		/REFUSING to resolve docs\/evidence\/manifest\.json during rebase/,
+		"the log carries the same reason git's output buried",
+	);
+	assert.match(
+		log.text,
+		/merge\.evidence-fold\.driver/,
+		"the log names the driver command that produced it",
+	);
+
+	// A second refusal APPENDS: the log is a record of runs, not a last-write-wins
+	// file, so two failures are two entries the author can tell apart.
+	gitCode(dir, ["rebase", "--abort"]);
+	const again = gitCode(dir, ["cherry-pick", "main"]);
+	assert.notEqual(again.code, 0, "a cherry-pick is refused too");
+	assert.match(
+		again.out,
+		/REFUSING .* during an operation that is not a merge/,
+		"the case git records no marker for must be named as such, not guessed at",
+	);
+	const appended = driverLog(dir).text;
+	assert.match(appended, /cherry-pick|not a merge/);
+	assert.ok(
+		appended.length > log.text.length,
+		"the second refusal must be appended to the first, not replace it",
+	);
+});
+
+test("a legitimate merge is NOT refused when the driver's environment lacks GITHEAD_*", () => {
+	const dir = fixture({ attributes: true });
+	driverHidingMergeSignals(dir);
+
+	const merge = gitCode(dir, [
+		"merge",
+		"main",
+		"-m",
+		"chore(merge): fold main",
+	]);
+	assert.equal(
+		merge.code,
+		0,
+		`a real merge must still be resolved when only GITHEAD_* is missing: ${merge.out}`,
+	);
+	assert.match(
+		merge.out,
+		/resolved docs\/evidence\/manifest\.json mechanically/,
+		"the driver, not git's text merge, must have produced the merge",
+	);
+});
+
+test("with EVERY merge signal hidden the driver refuses rather than guess a side", () => {
+	/*
+	 * The boundary this fix does NOT cross, pinned so it cannot drift into a
+	 * silent wrong-side resolution. `GITHEAD_<oid>` and `GIT_REFLOG_ACTION` are
+	 * set together by `builtin/merge.c` for a real merge and by nothing else, and
+	 * git leaves a single-commit cherry-pick, a revert and a merge identical on
+	 * disk while the driver runs (no marker file, no `MERGE_HEAD`). So when a
+	 * wrapper hides BOTH, the run is genuinely indistinguishable from a replay:
+	 * refusing - with the reason stated and recorded - is the only safe answer,
+	 * and `pnpm evidence:fold` resolves the file afterwards either way.
+	 */
+	const dir = fixture({ attributes: true });
+	driverHidingMergeSignals(dir, ["GIT_REFLOG_ACTION"]);
+
+	const merge = gitCode(dir, ["merge", "main"]);
+	assert.notEqual(merge.code, 0, "it must refuse rather than resolve");
+	assert.match(
+		merge.out,
+		/REFUSING .* during an operation that is not a merge/,
+	);
+	assert.match(
+		merge.out,
+		/this reason is recorded at .*evidence-fold-driver\.log/,
+		"the refusal must point at the durable record",
+	);
+	assert.match(driverLog(dir).text, /REFUSING/, "and it is recorded");
+});
+
+test("a refused driver run never leaves the working file looking like a resolved one", () => {
+	/*
+	 * THE DESTRUCTIVE SHAPE THIS GUARDS AGAINST. When a merge driver exits without
+	 * writing, git keeps the conflict in the index but leaves the WORKING file
+	 * holding `%A` verbatim - one side's copy, with no markers - which reads as a
+	 * resolution to whoever opens it next (measured on git 2.55.0). The refusal
+	 * path therefore writes git's markers back itself.
+	 */
+	const dir = fixture({ attributes: true });
+	installDriver(dir);
+
+	const rejected = gitCode(dir, ["rebase", "main"]);
+	assert.notEqual(rejected.code, 0, rejected.out);
+	const conflicted = readFileSync(
+		join(dir, "docs/evidence/manifest.json"),
+		"utf8",
+	);
+	assert.match(
+		conflicted,
+		/^<<<<<<< /m,
+		"the refusal must leave conflict markers in the working file",
+	);
+	assert.match(conflicted, /^>>>>>>> /m);
+	assert.match(
+		conflicted,
+		/not this branch|upstream side|being replayed/,
+		"the markers must say which side git gave as %A, rather than implying it is this branch",
+	);
+});
+
+/* ------------------------------------------------------------------ *
+ * M2c: the fold path is install-free, and writes one file
+ * ------------------------------------------------------------------ */
+
+test("the fold path cannot reach a package manager: no dependency, no pre-run install", () => {
+	const scripts = dirname(SCRIPT);
+	const repoRoot = resolve(scripts, "..");
+
+	/*
+	 * STATIC, because the property is about what the tool CAN do. A behavioural
+	 * case can only show that one run happened not to install; this pins the two
+	 * mechanisms that would let a future edit reintroduce one.
+	 */
+	const workspace = readFileSync(join(repoRoot, "pnpm-workspace.yaml"), "utf8");
+	assert.match(
+		workspace,
+		/^verifyDepsBeforeRun:\s*false\s*$/m,
+		"pnpm 11+ must not auto-install before a `pnpm run` in this repository: `pnpm evidence:fold` in a lane pruned node_modules and WROTE an allowBuilds block into pnpm-workspace.yaml",
+	);
+
+	for (const file of ["evidence-fold.mjs", "entry-point.mjs"]) {
+		const source = readFileSync(join(scripts, file), "utf8");
+		assert.doesNotMatch(
+			source,
+			/(execFileSync|execSync|spawnSync|spawn|exec)\(\s*["'`](pnpm|npm|yarn|npx)["'`]/,
+			`${file} must never spawn a package manager - the fold is plain Node and git`,
+		);
+		for (const [, specifier] of source.matchAll(
+			/^import[^;]*?from\s+"([^"]+)"/gm,
+		)) {
+			assert.ok(
+				specifier.startsWith("node:") || specifier.startsWith("."),
+				`${file} imports ${specifier}: the fold path may depend only on node built-ins and its siblings, or a lane would need an install to fold`,
+			);
+		}
+	}
+});
+
+test("a fold writes docs/evidence/manifest.json in the work tree and nothing else", () => {
+	const dir = fixture({ attributes: true });
+	installDriver(dir);
+	/*
+	 * `--no-amend` on purpose: it leaves the fold's own footprint visible (a
+	 * staged manifest) instead of folding it into the merge commit, which is what
+	 * makes "and nothing else" answerable.
+	 */
+	gitCode(dir, ["merge", "main", "-m", "chore(merge): fold main"]);
+	const folded = run(dir, ["--no-amend"]);
+	assert.equal(folded.status, 0, folded.out);
+
+	const touched = [
+		...(git(dir, ["diff", "--name-only"]) ?? "").split("\n"),
+		...(git(dir, ["diff", "--cached", "--name-only"]) ?? "").split("\n"),
+		...(git(dir, ["ls-files", "--others", "--exclude-standard"]) ?? "").split(
+			"\n",
+		),
+	].filter(Boolean);
+	assert.deepEqual(
+		[...new Set(touched)],
+		["docs/evidence/manifest.json"],
+		`a fold may touch the manifest and nothing else, but this run touched: ${touched.join(", ")}`,
+	);
 });
 
 /* ------------------------------------------------------------------ *
