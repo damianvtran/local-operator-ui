@@ -2310,15 +2310,56 @@ export const SearchIndexSearching: Story = {
 			);
 		}
 		/*
-		 * AND THE BODY IS THE LINE ALONE (design round 1, D1): the List is held back
-		 * while the fallback is empty, so the frame that proves the geometry also has
-		 * to fail on the frame the defect produced — a column header with no rows
-		 * under it. Zero row keys is that claim in the DOM, and it is what the
-		 * re-shot pair is measured against.
+		 * AND THE BODY IS THE LINE ALONE (design round 1, D1; the assertion corrected
+		 * in round 3's F2). The claim is that the List is not standing beside this
+		 * block, and the first version of this line — "zero row keys" — did NOT test
+		 * it: the defect frame had zero rows too, because the defect was a header over
+		 * an empty body, so the assertion passed on the very frame it was written to
+		 * exclude. What discriminates is the PANEL's absence, which is what the gate's
+		 * term actually removes; the geometry is the designer's row-profile
+		 * measurement (192-200 against 552-562), not this line.
 		 */
 		await poll(
-			() => listRowKeys().length === 0,
-			"an empty body under the line, not a dangling column header",
+			() => document.querySelector('[data-testid="project-list"]') === null,
+			"no List panel beside the in-flight line",
+		);
+	}),
+};
+
+/**
+ * THE SAME STATE IN THE THIRD VIEW (design round 2, D5, and D4's frame): the
+ * in-flight block stands in the Timeline's place too, and the Timeline's panel is
+ * the arrangement D1's diagnosis names one view over. The commit that fixed the
+ * List left this gate without the term, so the state drew that panel beside the
+ * block and its `shrink-0` strip landed where the List's header used to.
+ *
+ * The assertion is the discriminating one — the PANEL's absence rather than an
+ * empty row list, for F2's reason above — so this play fails on the defect the
+ * frame exists to disprove, and it is what makes the pair evidence rather than a
+ * picture of a claim.
+ */
+export const SearchIndexSearchingTimeline: Story = {
+	render: () =>
+		page({
+			view: "timeline",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-searching-timeline", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Searching"),
+			"the in-flight line in the Timeline view",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				'"nothing matches" was claimed before the index answered',
+			);
+		}
+		await poll(
+			() =>
+				document.querySelector('[data-testid="project-timeline"]') === null,
+			"no Timeline panel beside the in-flight line",
 		);
 	}),
 };

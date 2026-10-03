@@ -6226,10 +6226,18 @@ export const STORIES = [
 	 * so the block carries the index's own sentence and the play FAILS on the
 	 * string this slice replaced. `failed` is the fallback arm: the index is
 	 * broken, the local matcher serves, and the sentence is the client's again.
+	 *
+	 * `search-index-searching-timeline` is D5's frame (design round 2): the same
+	 * in-flight state in the THIRD view, which no frame covered and whose gate
+	 * lacked the term the List's fix added — the Timeline's `shrink-0` strip is the
+	 * List's column header one view over. The story's play fails if the Timeline
+	 * panel is present beside the line, so the frame cannot be a picture of the
+	 * defect it exists to disprove.
 	 */
 	["projects-tab--search-index-served", 1280, 900],
 	["projects-tab--search-index-pending", 1280, 900],
 	["projects-tab--search-index-searching", 1280, 900],
+	["projects-tab--search-index-searching-timeline", 1280, 900],
 	["projects-tab--search-index-no-match", 1280, 900],
 	["projects-tab--search-index-failed", 1280, 900],
 	["projects-tab--board-search-active", 1280, 900],

@@ -1028,7 +1028,23 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 						</div>
 					)}
 
-				{listReady && !noMatch && view === "timeline" && (
+				{/*
+				 * THE TIMELINE CARRIES THE SAME TERM AS THE LIST, and it did not until
+				 * design round 2 (D5): this panel's root is the same
+				 * `flex min-h-0 flex-1 flex-col` with a `shrink-0` strip as its first child
+				 * (`project-timeline.tsx`), which is the List's own arrangement — the one
+				 * that put a header at the canvas' midpoint under D1's split. `noMatch`
+				 * cannot stand in for the term: it carries `!searchAwaiting`, so it is
+				 * FALSE for exactly the window in which the in-flight block is up, which
+				 * is how the panel came to render beside it with an empty rail under its
+				 * strip. The Board needs no term of its own (its item guard already
+				 * excludes the state) and its empty-window block states one explicitly, so
+				 * all three views now read one idiom rather than two.
+				 */}
+				{listReady &&
+					!noMatch &&
+					!searchPendingEmpty &&
+					view === "timeline" && (
 					<ProjectTimeline
 						items={timelineItems}
 						nowMs={nowMs}
