@@ -127,6 +127,14 @@ function mountHook(options = {}) {
 	// (rows held back, a landing to drive) without a second harness beside
 	// this one.
 	let hiddenRows = options.hiddenRows ?? 1;
+	/*
+	 * The reader's PAINT COUNT. A case opts in with `measuresPaint: true` and moves
+	 * the value with `setPaintedRows` — the hook takes an accessor, so the harness
+	 * IS that accessor, and a case that does not opt in leaves the option out
+	 * exactly as a caller with no collapse model would.
+	 */
+	let painted = 0;
+	const countedPainted = options.measuresPaint ? () => painted : undefined;
 	const onLoadOlder = options.onLoadOlder ?? (async () => false);
 	/*
 	 * Asks the PUMP dispatched, whichever loader form the case supplied. Counted
@@ -160,6 +168,7 @@ function mountHook(options = {}) {
 			// Only passed when a case supplies it, so the cases written before the
 			// outcome-aware pump exercise the boolean path unchanged.
 			...(countedOutcome ? { onLoadOlderOutcome: countedOutcome } : {}),
+			...(countedPainted ? { paintedRows: countedPainted } : {}),
 			olderFailed,
 			loadingOlder: false,
 			rowCount,
@@ -295,6 +304,14 @@ function mountHook(options = {}) {
 		setHiddenRows: (value) => {
 			hiddenRows = value;
 			render();
+		},
+		/**
+		 * The rows the reader can see, for the condensed cases: held still across a
+		 * reveal whose extent grew, which is what the operator's tape looks like and
+		 * the only shape the pre-fix policy could not score invisible.
+		 */
+		setPaintedRows: (value) => {
+			painted = value;
 		},
 		flushFrames: (count = 1) => {
 			for (let i = 0; i < count; i++) flushFrame();
@@ -970,6 +987,163 @@ test("R3-1: two acknowledged writes coalescing into one frame leave no claim beh
 			hook.scrollTop,
 			-80,
 			"the reader's scroll was attributed to them, so no hold corrected it away",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+/* ------------------------------------------------------------------------ *
+ * THE READER'S PAINT COUNT, AND THE TWO STATES IT CLOSES (design §5)            *
+ *                                                                               *
+ * The operator's report: "the full set of condensed messages don't load and     *
+ * then I have to scroll which loads more but then I can't scroll past that",    *
+ * plus a slot that said "Loading earlier messages" for ever, and a failure row  *
+ * offered only to a reader who had already scrolled past everything. The hook   *
+ * now settles a reveal in the rows it PAINTED — the count `widenTarget`         *
+ * searches with, sampled through both doors — so the condensed tape (rows held  *
+ * back, a widen that mounts sixty, a collapse that paints none of them) is      *
+ * judged by what reached the screen rather than by an extent that grew off it.  *
+ * ------------------------------------------------------------------------ */
+
+test("a condensed widen that paints nothing chains on, with no further input", async () => {
+	const hook = mountHook({
+		hiddenRows: 600,
+		hasMore: true,
+		// The reader's screen, constant across every reveal: what a condensed
+		// transcript looks like from the outside.
+		measuresPaint: true,
+		onLoadOlder: async () => true,
+	});
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		// Forty rows on screen and forty after every reveal: the condensed tape.
+		hook.setPaintedRows(40);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.equal(hook.widenCalls, 1, "the hard-top push buys its widen");
+
+		let last = -1;
+		for (let round = 0; round < 3 && hook.widenCalls !== last; round += 1) {
+			last = hook.widenCalls;
+			hook.flushFrames(12);
+		}
+		assert.ok(
+			hook.widenCalls > 1,
+			`the chain carries on with no gesture (widenCalls ${hook.widenCalls})`,
+		);
+
+		/*
+		 * And when the window has nothing left to hold back, the network is reached
+		 * on the same terms — still with no gesture. The chain is deliberately cut
+		 * short of its own bound here (`MAX_CHAIN_REVEALS`), because an act that has
+		 * spent its whole budget legitimately stops and waits for the reader: the
+		 * point is that the DOOR changes, not that an act is unbounded.
+		 */
+		hook.setHiddenRows(0);
+		let lastAsked = -1;
+		for (let round = 0; round < 24 && hook.asked !== lastAsked; round += 1) {
+			lastAsked = hook.asked;
+			await new Promise((resolve) => setTimeout(resolve, 0));
+			hook.flushFrames(12);
+		}
+		assert.ok(
+			hook.asked >= 1,
+			`the window emptied, so the network is asked with no further gesture (asked ${hook.asked})`,
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test('a REJECTING loader neither strands the slot at "loading" nor kills the pump', async () => {
+	let loads = 0;
+	const hook = mountHook({
+		hiddenRows: 0,
+		hasMore: true,
+		onLoadOlderOutcome: async () => {
+			loads += 1;
+			throw new Error("backend down");
+		},
+	});
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.equal(loads, 1, "the hard-top push buys its round trip");
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		hook.flushFrames(6);
+		assert.notEqual(
+			hook.slotState,
+			"loading",
+			"a rejected loader must not pin the loading paint for ever",
+		);
+		/*
+		 * And the pump is alive: the reader's own retry — the deliberate act the
+		 * slot's failure row offers — still buys its load. The failure is counted,
+		 * not fatal, and `noteFailed` refunds the act's round trip for it.
+		 */
+		hook.requestOlder();
+		hook.flushFrames(6);
+		assert.equal(
+			loads,
+			2,
+			"and the reader's next push still buys a load (the failure is counted, not fatal)",
+		);
+		/*
+		 * Drain the second outcome before the teardown removes the frame globals:
+		 * the rejected ask's own `requestAnimationFrame(schedule)` runs in a
+		 * microtask, and letting it land after `close()` is an unhandled rejection
+		 * from the harness rather than anything the hook got wrong.
+		 */
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		hook.flushFrames(4);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a failed older-history load paints the failure row even while rows are windowed", () => {
+	const hook = mountHook({ hiddenRows: 600, hasMore: true, olderFailed: true });
+	try {
+		assert.equal(
+			hook.slotState,
+			"failed",
+			"a dead backend must not tell the reader to keep scrolling (D4/D9)",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a deliberate retry holds the reader's place on the landing's own frame", async () => {
+	const hook = mountHook({
+		hiddenRows: 0,
+		hasMore: true,
+		onLoadOlder: async () => true,
+	});
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.readerInput();
+		hook.flushFrames(4);
+		await new Promise((resolve) => setTimeout(resolve, SETTLE_MS + 80));
+		hook.flushFrames(2);
+
+		const before = hook.scrollTop;
+		hook.requestOlder();
+		/*
+		 * The retry's page lands on the same frame the ask was dispatched on —
+		 * before the pump's first frame, which is the window a deliberate ask is
+		 * the only input that can be held across.
+		 */
+		hook.growAboveAnchor();
+		assert.equal(
+			hook.scrollTop,
+			before + 24,
+			"the deliberate retry's landing is corrected on the frame it lands",
 		);
 	} finally {
 		hook.close();
