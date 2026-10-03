@@ -1514,6 +1514,22 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		},
 		{ term: "grant approve", gloss: "you may approve on that device" },
 	]);
+	/*
+	 * AND THE OTHER REACHABLE SHAPE: `--grant unattended` with the flag FALSE.
+	 * The flag's own chip is not drawn then, so the grant is the only place the
+	 * capability is stated - and it must not read `you may unattended`.
+	 */
+	const grantOnly = { what: { grants: ["unattended"] } };
+	assert.deepEqual(approvalScopeLabels(grantOnly), [
+		"trust unattended sessions",
+	]);
+	assert.deepEqual(approvalScopeGlosses(grantOnly), [
+		{
+			term: "trust unattended sessions",
+			gloss:
+				"sessions you start on that device run without an approval prompt there",
+		},
+	]);
 	assert.equal(approvalTitle(row), "Onboard devon-laptop");
 	assert.equal(approvalSubject(row), "devon-laptop");
 	// A machine row is about the reader's own machine, by the kind's own definition.
