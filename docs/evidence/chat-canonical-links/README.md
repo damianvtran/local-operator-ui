@@ -193,9 +193,8 @@ between evidence and a picture:
   both `dwebp` and ImageMagick — where the frames they replaced read
   `srgb(30,30,44)`, the pre-re-solve `#1E1F2A`; and no other theme's frame moved,
   because that pass rewrote exactly 27 `.webp` files. The manifest's `head` is
-  `39f12da53` and its `srcTree`/`scriptsTree` are re-derived at the shipped tip —
-  `scriptsTree` because the round-4 pass's own commit moves `scripts/` — the
-  distinction the manifest's `headNote` states, and the 5 `tokyoNight` frames of the
+  `39f12da53`, re-derived at the shipped tip because the round-4 pass's own commit
+  moves `scripts/` — the distinction the manifest's `headNote` states — and the 5 `tokyoNight` frames of the
   `before/` half were re-taken at `3b625b4a2` beside them for the same reason. The
   `before/` half is a DIFFERENT head by construction — it is the tree before the fix —
   and the manifest's `supplementary` entry for it names which. `tokyoNight` at this head reproduces BYTE-FOR-BYTE: two independent re-takes of
