@@ -955,9 +955,15 @@ quotes:
 
 | module | at this head (sha256-16) | at this head (blob id) | at the pre-change tree (`da76ff47`) |
 | --- | --- | --- | --- |
-| `scroll-paging.ts` | `94010f1a6a94844f` | `7dc717bf29c3` | `dca080feddb8ca0d` / `ec5c2b94539e` |
-| `use-scroll-paging.ts` | `dba58781e551ec1d` | `a5de7fbdcf33` | `ec4c136d53052cb1` / `f3cdbc9e66d0` |
+| `scroll-paging.ts` | `9e6a515d444843c6` | `a31cd3943246` | `dca080feddb8ca0d` / `ec5c2b94539e` |
+| `use-scroll-paging.ts` | `cb40b222ecf70ec1` | `4583ce5d5c08` | `ec4c136d53052cb1` / `f3cdbc9e66d0` |
 | `canonical-transcript.tsx` | `3788e4c7d60df141` | `911903c0776c` | `842c3675d1e0d06d` / `e98348d3ed9a` |
+
+The two paging modules were re-stamped a SECOND time by the agent-review
+remediation round (M1 in `scroll-paging.ts`, M3 in `use-scroll-paging.ts`), which
+moved those two files again and left `canonical-transcript.tsx` and every frame
+untouched. The digest is of the bytes, so the columns above name the modules this
+head actually carries.
 
 ```sh
 git show HEAD:<path> | shasum -a 256 | cut -c1-16     # the sha256-16 column

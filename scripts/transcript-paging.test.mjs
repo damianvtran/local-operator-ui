@@ -41,6 +41,7 @@ const {
 	MAX_ACT_ASKS,
 	MAX_CHAIN_INVISIBLE,
 	MAX_CHAIN_REVEALS,
+	MAX_CHAIN_WIDEN,
 	GESTURE_GAP_MS,
 	HARD_TOP_PX,
 	MAX_AUTO_ATTEMPTS,
@@ -1968,6 +1969,45 @@ test("ONE ACT's reveals are bounded across BOTH doors (MAX_CHAIN_REVEALS)", () =
 		reopened.revealsThisAct,
 		0,
 		"input that opens an act starts it over",
+	);
+});
+
+test("the rule-6 debt door reads the act's reveal ceiling, not only its own bound", () => {
+	/*
+	 * M1 (agent review round 1). The debt door — the widen that pays rule 6's
+	 * owed reveal — tested only `chainWiden < MAX_CHAIN_WIDEN`, so the act's
+	 * cross-door ceiling reached it solely because the two constants HAPPEN to be
+	 * equal today. They bound different things (mounting steps vs. an act's
+	 * reveals) and the file states they are independent, so the door now reads
+	 * `revealsThisAct` directly and this case fails if they are ever allowed to
+	 * diverge: a debt the act can no longer afford is refused whatever its own
+	 * door would allow.
+	 */
+	const owed = {
+		...initialPagingState(),
+		pageWidenOwed: true,
+		// This door's own bound is still open...
+		chainWiden: Math.max(0, MAX_CHAIN_WIDEN - 1),
+		// ...while the act's ceiling is reached.
+		revealsThisAct: MAX_CHAIN_REVEALS,
+	};
+	assert.equal(
+		decide(owed, geo({ hiddenRows: 600 }), SETTLE_MS + 1).action,
+		"none",
+		"a debt the act cannot afford is not spent, whatever `chainWiden` says",
+	);
+	// One reveal of headroom and the same debt is paid: the ceiling is what
+	// refuses the frame above, not some other door being shut.
+	const paid = decide(
+		{ ...owed, revealsThisAct: MAX_CHAIN_REVEALS - 1 },
+		geo({ hiddenRows: 600 }),
+		SETTLE_MS + 1,
+	);
+	assert.equal(paid.action, "widen", "with room left the debt is paid");
+	assert.equal(
+		paid.state.pageWidenOwed,
+		false,
+		"and paying it clears the debt, as the spend always did",
 	);
 });
 

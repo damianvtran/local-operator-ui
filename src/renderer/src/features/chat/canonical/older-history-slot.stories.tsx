@@ -287,8 +287,15 @@ export const InTranscriptLoading: Story = {
 
 /**
  * The state this branch's one user-visible change produces, in the real
- * transcript: a failed page ask, with no retry budget left and rows still held
- * back by the render window, painting the recovery row rather than the gesture.
+ * transcript: an `olderFailed` session painting the recovery row rather than the
+ * gesture.
+ *
+ * WHAT THIS STORY CAN AND CANNOT EXPRESS (agent review round 1, N3). It sets
+ * `olderFailed` and nothing else — the policy's `failures` retry budget is not a
+ * prop it can carry, and its three-row fixture holds no rows back — so the frame
+ * shows the `failed` arm exactly as `slotState` decides it, and NOT the
+ * retry-budget-spent or rows-held-back combinations the hook suite drives. The
+ * `windowed` contrast lives in the assertion, not in this board.
  *
  * WHY A CELL OF ITS OWN. `use-scroll-paging.ts`'s `slotState` now lets `failed`
  * outrank `windowed` and `idle`, so a reader whose backend is down reads
@@ -300,6 +307,12 @@ export const InTranscriptLoading: Story = {
  * lives upstream of all five. What this board can do is put the resulting state
  * in the place the claim is made for — above real rows, through the production
  * transcript, so the design round has the frame to capture.
+ *
+ * THE FAILURE IS NOT STICKY FOR THE SESSION (agent review round 1, M3): the
+ * `failed` arm is now taken only while no reveal the reader could SEE has
+ * landed since the failure (`failureSuperseded`), so a later local widen that
+ * reveals already-fetched rows paints `windowed` again rather than leaving a
+ * past blip's row up. That is the state the design round should judge.
  *
  * The precedence itself is asserted where it can be: `use-scroll-paging.ts`'s
  * mounted-hook case "a failed older-history load paints the failure row even

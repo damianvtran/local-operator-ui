@@ -1118,6 +1118,111 @@ test("a failed older-history load paints the failure row even while rows are win
 	}
 });
 
+/*
+ * M3 (agent review round 1): the failure row must not be sticky for the session.
+ *
+ * `olderFailed` is set by any failed ask and cleared only by an applied one, so
+ * the D4/D9 precedence above left "Could not load earlier messages - Try again"
+ * up for the rest of the session after a single blip - even while later LOCAL
+ * widens were revealing rows the reader could already see, where the row stopped
+ * telling them that scrolling still works. A reveal the reader COULD SEE now
+ * supersedes it, and the next failure - from the pump or from any of the
+ * session's other writers - puts it back, so the row states what is true now.
+ */
+test("a reveal the reader could see supersedes a standing failure row", async () => {
+	const hook = mountHook({
+		hiddenRows: 600,
+		hasMore: true,
+		olderFailed: true,
+		// The reader's own paint count, which is how the policy decides the
+		// reveal was visible.
+		measuresPaint: true,
+		onLoadOlderOutcome: async () => ({ kind: "failed", reason: "request" }),
+	});
+	try {
+		assert.equal(
+			hook.slotState,
+			"failed",
+			"the failure row stands while its asks are the whole story",
+		);
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.setPaintedRows(40);
+		hook.readerInput();
+		hook.flushFrames(4);
+		assert.equal(hook.widenCalls, 1, "the hard-top push buys its widen");
+		/*
+		 * The widen lands and PAINTS rows (40 -> 80, above `INVISIBLE_PAINT_MIN_ROWS`)
+		 * while rows are still held back: rows the reader could not see are on screen,
+		 * which is exactly the state the sticky row mis-described.
+		 */
+		hook.setPaintedRows(80);
+		hook.setHiddenRows(540);
+		hook.flushFrames(12);
+		assert.equal(
+			hook.slotState,
+			"windowed",
+			"a visible local reveal supersedes the past blip (M3)",
+		);
+		/*
+		 * The local rows run out, the reader asks again ("Try again" - a deliberate
+		 * act, which is what arms a demand after the swallow a hard-top notch gets),
+		 * and that ask fails: the failure is the present fact again, so the row
+		 * returns rather than being forgiven.
+		 */
+		hook.setHiddenRows(0);
+		hook.flushFrames(2);
+		hook.requestOlder();
+		hook.flushFrames(4);
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		hook.flushFrames(6);
+		assert.ok(hook.asked >= 1, "the emptied window is asked for a page");
+		assert.equal(
+			hook.slotState,
+			"failed",
+			"the failure that is current now is the row again",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
+test("a fresh failure from any writer re-asserts the row after a superseding reveal", async () => {
+	const hook = mountHook({
+		hiddenRows: 600,
+		hasMore: true,
+		olderFailed: true,
+		measuresPaint: true,
+	});
+	try {
+		hook.setScrollHeight(1400);
+		hook.setScrollTop(-600);
+		hook.setPaintedRows(40);
+		hook.readerInput();
+		hook.flushFrames(4);
+		hook.setPaintedRows(80);
+		hook.setHiddenRows(540);
+		hook.flushFrames(12);
+		assert.equal(hook.slotState, "windowed", "the reveal superseded the row");
+		/*
+		 * The align fetch, the jump walk and the mentioned-files scan all write
+		 * `olderFailed` through the session, and this hook never sees those asks: the
+		 * RISING edge is what re-asserts the row for them.
+		 */
+		hook.setOlderFailed(false);
+		hook.flushFrames(2);
+		hook.setOlderFailed(true);
+		hook.flushFrames(2);
+		assert.equal(
+			hook.slotState,
+			"failed",
+			"a new failure is the present fact again, whatever a previous reveal did",
+		);
+	} finally {
+		hook.close();
+	}
+});
+
 test("a deliberate retry holds the reader's place on the landing's own frame", async () => {
 	const hook = mountHook({
 		hiddenRows: 0,

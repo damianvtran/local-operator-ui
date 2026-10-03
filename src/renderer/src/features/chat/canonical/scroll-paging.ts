@@ -842,6 +842,18 @@ export const decide = (
 	const settled =
 		now - state.lastInputAt >= SETTLE_MS ||
 		geo.distanceFromTopPx <= HARD_TOP_PX;
+	/*
+	 * The ACT's cross-door reveal ceiling, computed here because EVERY door that
+	 * can spend without fresh input has to consult it: the rule-6 debt door below
+	 * and the continuation guard further down. The doors share the act, so a chain
+	 * that alternates them would satisfy each door's own bound (MAX_CHAIN_WIDEN,
+	 * MAX_CHAIN_FETCH, MAX_CHAIN_INVISIBLE) while exceeding the act's — those
+	 * per-door bounds are deliberately independent of this one, which is exactly
+	 * why a door that tested only its own bound is not enough. Reading this at
+	 * every such door is what keeps the two from drifting; the equality of the
+	 * constants below is a fact about today's numbers, never a guarantee.
+	 */
+	const revealsLeft = state.revealsThisAct < MAX_CHAIN_REVEALS;
 
 	/*
 	 * Rule 6's debt is paid FIRST, ahead of every prediction about where the
@@ -861,14 +873,21 @@ export const decide = (
 	 * stuck-then-jiggle report in its original form.
 	 *
 	 * The bound is the chain bound rule 5 has always used: one widen, counted
-	 * against `chainWiden`. `armed` and `retained` are cleared with it, because
-	 * this widen IS the answer to whatever the reader asked — rule 2's one reveal
-	 * per act, delivered late rather than never.
+	 * against `chainWiden` — AND the act's own reveal ceiling, read directly
+	 * rather than left to arrive through that per-door bound (agent review round
+	 * 1, M1). The two constants happen to be equal today, but they bound
+	 * different things (mounting steps vs. an act's reveals) and the file states
+	 * they are independent, so a door that consulted only `chainWiden` would
+	 * overshoot the act's ceiling the moment they diverge. `armed` and `retained`
+	 * are cleared with it, because this widen IS the answer to whatever the
+	 * reader asked — rule 2's one reveal per act, delivered late rather than
+	 * never.
 	 */
 	if (
 		state.pageWidenOwed &&
 		growth === "widen" &&
-		state.chainWiden < MAX_CHAIN_WIDEN
+		state.chainWiden < MAX_CHAIN_WIDEN &&
+		revealsLeft
 	) {
 		// The debt waits for the reader to stop, like every other reveal (rule 3):
 		// it is a fact about rows they cannot see yet, not a licence to mount
@@ -988,12 +1007,6 @@ export const decide = (
 		 * than a hole (QA round 1, Q-4: fifteen asks for one notch, measured).
 		 */
 		const asksLeft = state.actAsks < MAX_ACT_ASKS;
-		/*
-		 * The cross-door ceiling, tested here as well as at each door's own bound:
-		 * the doors share the act, and a chain that alternates them would satisfy
-		 * both of their per-door bounds while exceeding the act's.
-		 */
-		const revealsLeft = state.revealsThisAct < MAX_CHAIN_REVEALS;
 		const invisibleOwed =
 			asksLeft &&
 			state.chainInvisible > 0 &&
@@ -1063,8 +1076,8 @@ export const noteSettled = (
 		 * Rows the reveal PAINTED, measured by the DOM half between the dispatch
 		 * and the settle, in the same currency `widenTarget` searches with
 		 * (`turn-collapse-model.ts: paintedRows`). `null` means "not measured" — a
-		 * caller that has no painted-row accessor (the child reader's preview, the
-		 * boolean `onLoadOlder` form) — and the px proxy below answers for it then.
+		 * caller that supplies no painted-row accessor — and the px proxy below
+		 * answers for it then.
 		 *
 		 * This is the ONE currency, and it is sampled through BOTH doors: the whole
 		 * repair is that a WIDEN whose landing paints nothing can be scored
@@ -1074,9 +1087,8 @@ export const noteSettled = (
 		/**
 		 * How much taller the content got, in px, measured by the DOM half
 		 * between the dispatch and the settle. `null` means "not measured" (a
-		 * local widen, the child reader's own settle) and is treated as VISIBLE:
-		 * the policy must not invent an invisible reveal out of a missing
-		 * measurement.
+		 * local widen) and is treated as VISIBLE: the policy must not invent an
+		 * invisible reveal out of a missing measurement.
 		 */
 		growthPx = null,
 		/** The viewport height at the settle, for the fraction in the test. */
@@ -1108,9 +1120,16 @@ export const noteSettled = (
 	 * the px arm was gated on the network door — so a local widen that painted
 	 * nothing scored VISIBLE, reset `chainInvisible`, and had its continuation
 	 * refused by the scrollable guard: the wedge the operator reported. The px
-	 * arm survives only for callers that cannot measure paint (the child
-	 * reader's preview, the boolean `onLoadOlder` form) and answers only when
-	 * `paintedDelta` is absent.
+	 * arm answers only when `paintedDelta` is absent, and THAT PATH HAS NO
+	 * PRODUCTION CALLER TODAY (agent review round 1, M2): `useScrollPaging` has
+	 * exactly one caller, `canonical-transcript.tsx`, which always passes
+	 * `paintedRows`, and the child reader renders that same `CanonicalTranscript`
+	 * — so every production settle arrives with a painted count. It is kept, not
+	 * deleted, as the pure suite's own control arm for the pre-change px-era
+	 * cases (`settled()` in `scripts/transcript-paging.test.mjs` drives exactly
+	 * this branch) and as the deliberate "not measured" fallback the optional
+	 * `paintedRows` option still names: a future surface that reveals rows
+	 * without a collapse model would get this rather than a crash.
 	 *
 	 * An empty page stays invisible BY DEFINITION: the cursor moved and the
 	 * reader saw the same screen, whatever the extent says.
@@ -1233,7 +1252,18 @@ export const noteAborted = (state: PagingState): PagingState => ({
 	pageWidenOwed: false,
 });
 
-/** Whether the automatic path has given up and only an explicit ask remains. */
+/**
+ * Whether the automatic path has given up and only an explicit ask remains.
+ *
+ * NO PRODUCTION CALLER TODAY (agent review round 1, N1). The DOM half stopped
+ * consulting it when the failed row's single owner became the session's
+ * `olderFailed` (see `use-scroll-paging.ts`), a fact about the session rather
+ * than about this policy's retry budget — so the hook no longer imports it. It
+ * is deliberately KEPT rather than deleted: it is the module's own name for the
+ * budget rule (`failures >= MAX_AUTO_ATTEMPTS`), and the pure suite asserts
+ * that rule through it (`scripts/transcript-paging.test.mjs`), so removing it
+ * would leave the rule reachable only by re-deriving it from the constant.
+ */
 export const isExhausted = (state: PagingState): boolean =>
 	state.failures >= MAX_AUTO_ATTEMPTS;
 
