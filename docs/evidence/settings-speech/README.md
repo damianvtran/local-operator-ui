@@ -35,6 +35,47 @@ as the third so the check is not two flavours of the same ramp. The set is three
 of the fifty-nine palettes by deliberate narrowing (a full sweep multiplies by
 twelve); the other fifty-six are reachable with `--themes=<a,b>` under `--only`.
 
+## The tree these frames describe, and what moved under them
+
+The capture above is a **capture-tree citation, not a head citation**, and the
+difference is stated here rather than left for a reader to discover:
+
+- the frames were shot from `9aab9d7b265` - `git rev-parse 9aab9d7b265:src` =
+  `7c0c609a5314b6c4b9241ccf779cc629c39ca082`;
+- `origin/main` moved to `051acc98d50` (#800, the draft slash/composer work) while
+  this set was being captured, and this branch folded it. The code side of the
+  head this set is reviewed on is therefore the merge commit whose `src` tree is
+  `ad1d2304ceaf7b9772fbd34aa41bf4803dd70780`, which is NOT the capture tree.
+
+That is a real gap in the discipline, and the two facts that bound it are the
+ones to weigh:
+
+1. what moved between the two trees is 16 files under `src/`, all of them the
+   chat/composer work this fold brought in (`features/chat/**`,
+   `shared/components/composer/message-input.tsx`,
+   `shared/store/canonical-sessions-store.ts`) plus one theme file;
+2. **none of them is a file this surface renders**, and the surface's own files
+   are byte-identical across the two trees. Re-runnable check:
+
+```
+git diff --name-only 9aab9d7b265 <head> -- src | \
+  grep -E 'features/settings|shared/lib/speech-gate|shared/desktop-contract|shared/hooks/use-credentials|shared/components/common/error-boundary'
+# prints nothing
+```
+
+The one file in that list a theme reader would care about,
+`shared/themes/palettes/local-operator.ts`, changed **comments only** (36
+insertions, 0 deletions, measured with `git diff --numstat`), so the three
+palettes photographed here are unchanged in value and no frame's colour moved
+with it. The manifest's `head` field names the same capture tree, for the same
+reason.
+
+What this set therefore claims: the five states render as these pixels show on
+the tree they were captured from, and nothing this surface renders has changed
+since. What it does not claim, and cannot: that a re-capture on the reviewed head
+would be pixel-identical. That re-capture is a rig decision for the design and UX
+rounds, which are dispatched on the reviewed head.
+
 ## What each frame shows
 
 Every frame is `1024x<height>` and carries the section in its own ground: the
