@@ -4074,6 +4074,12 @@ type CanonicalSessionsState = {
 	openSession: (sessionId: string) => Promise<boolean>;
 	stageDraft: (target?: ChatTarget, fresh?: boolean) => string;
 	/**
+	 * Re-stage the pane's ACTIVE draft under a picked identity, carrying the
+	 * box's text across the key flip. See the action's own comment for why the
+	 * flip is a remount and why the text has to move with it (issue #780).
+	 */
+	restageDraft: (target: ChatTarget, carry?: string) => string;
+	/**
 	 * Switch to a draft this store already holds, by key. See the action's own
 	 * comment for why this is not `stageDraft` (UX round 2, U8).
 	 */
@@ -6358,6 +6364,42 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						},
 					},
 				}));
+				return key;
+			},
+			/*
+			 * RE-STAGE THE PANE'S DRAFT UNDER A PICKED IDENTITY, CARRYING THE BOX'S
+			 * TEXT (issue #780).
+			 *
+			 * The same act the sidebar's "New chat with <team>" performs through
+			 * `stageDraft({kind, name})` — with one addition the picking pane forces:
+			 * the user is standing ON a draft, mid-composition, and the stage flips
+			 * the pane's identity (`draft:<uuid>` -> `draft:<kind>:<name>`), which is
+			 * a REMOUNT. The composer reads its text from `conversation-input-store`
+			 * under the NEW key, so prose left behind under the old one would vanish
+			 * from the box at the exact moment the user picks their team — the text
+			 * is where it was, but the pane is not (`panelIdentityFor`, "THE FLIP IS
+			 * A REMOUNT").
+			 *
+			 * `carry` is the text the CALLER has already decided survives the
+			 * gesture: the composer's pick splices the command token out and passes
+			 * the rest, the dispatcher passes the tail of `/team <name> <tail>`.
+			 * `undefined` (the picker dialog's pick, which never re-parses the
+			 * draft) carries the box as it stands. The store does not parse drafts.
+			 *
+			 * The source row's text is CLEARED — a move, not a copy: leaving the
+			 * old key holding a token whose command has just been consumed would
+			 * resurrect it the next time that key is opened (`openDraft`). A row the
+			 * stage REUSES (`draft:<kind>:<name>` already exists) keeps its own text
+			 * when nothing is carried, and is overwritten only by text the user is
+			 * looking at right now.
+			 */
+			restageDraft: (target, carry) => {
+				const from = get().activeDraftKey;
+				const key = get().stageDraft(target);
+				const input = useConversationInputStore.getState();
+				const text = carry ?? (from ? input.getCurrentInput(from) : "");
+				if (text) input.setComposerText(key, text);
+				if (from && from !== key) input.setComposerText(from, "");
 				return key;
 			},
 			updateDraft: (key, patch) =>
