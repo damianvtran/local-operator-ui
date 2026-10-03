@@ -146,17 +146,31 @@ export const effectiveGate = (
  * urgency emphasis); `movedOn` and settled are the quiet register, told apart in
  * the panel rather than on the chip.
  *
- * The truncated form states the backend's own outstanding tally rather than
- * splitting a prefix: the wire caps the list, so the waiting/moved-on split is
- * knowable only for the rows this frame carries and a prefix must not pass for
- * the whole queue (the rule the removed `askBarText` recorded for the same
- * reason).
+ * The TALLY forms - truncated, or a frame whose own rows do not add up to the
+ * published count - state the backend's outstanding number rather than splitting a
+ * prefix: the wire caps the list, so the waiting/moved-on split is knowable only
+ * for the rows this frame carries, and a prefix must not pass for the whole queue
+ * (the rule the removed `askBarText` recorded for the same reason).
  *
- * `·` is the app's own count seam (`CLAUSE_SEAM`), so a mixed queue reads like
- * every other two-count clause in the row rather than inventing a separator.
+ * THE SECOND TALLY CASE IS THE ONE THAT KEEPS THE SURFACES IN STEP (agent review
+ * round 1, F2). `view.open` is the backend's own count - the number the sidebar's
+ * outstanding chip reads - and it can be larger than the rows this frame carries
+ * even when the frame is NOT marked truncated, because the list can lag the tally.
+ * Reading only the rows would let this chip say `All asks settled` beside a sidebar
+ * that says `2 outstanding`: the module's own header makes two-of-the-three
+ * surfaces agreeing on a count the rule, so the louder number wins here.
+ *
+ * `·` is the model's own counts seam (`SEAM`, which the TUI calls `STATS_SEAM`),
+ * RESTATED as a literal because `run-detail-model.ts` keeps it private and this
+ * module is deliberately DOM-free. It is not `CLAUSE_SEAM`: that one is `", "`,
+ * the comma between two counts in a sentence, and citing it here would point a
+ * reader at the constant that means the opposite of this claim (agent review
+ * round 1, F3).
  */
 export const askChipClause = (view: AskQueueView): string => {
 	if (view.truncated) return `${view.open} outstanding`;
+	if (view.open > view.waiting + view.movedOn)
+		return `${view.open} outstanding`;
 	if (view.waiting > 0)
 		return view.waiting === 1
 			? "1 question waiting"
@@ -169,6 +183,17 @@ export const askChipClause = (view: AskQueueView): string => {
 };
 
 /**
+ * Whether this frame may state the waiting/moved-on SPLIT at all.
+ *
+ * One predicate for the clause and the announced name, so the two readers cannot
+ * disagree about whether the split is knowable: it is knowable only over the ROWS
+ * the frame carries, and only when the frame is neither truncated nor lagging the
+ * backend's own tally (see `askChipClause`).
+ */
+const askSplitIsKnowable = (view: AskQueueView): boolean =>
+	!view.truncated && view.open <= view.waiting + view.movedOn;
+
+/**
  * The tooltip's clause: the visible one, except that a genuinely MIXED queue
  * spells both halves.
  *
@@ -179,7 +204,7 @@ export const askChipClause = (view: AskQueueView): string => {
  * in.
  */
 const askChipFullClause = (view: AskQueueView): string => {
-	if (!view.truncated && view.waiting > 0 && view.movedOn > 0) {
+	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
 		const unit = view.waiting === 1 ? "question" : "questions";
 		return `${view.waiting} ${unit} waiting · ${view.movedOn} moved on`;
 	}
@@ -233,8 +258,28 @@ export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
 	return questions.length > 0 && questions.every((q) => q.secret === true);
 };
 
-/** The ask lane's own surfaces, marked on the root `AskSurfaces` renders. */
+/**
+ * The ask lane's PANEL, marked on the one root `AskSurfaces` renders.
+ *
+ * THE MARKER IS THE PANEL'S, AND ONLY THE PANEL'S (agent review round 1, F5; UX
+ * round 1, U3). It used to be on the row item as well, which broke the only probe a
+ * rig or a test can reach for: `document.querySelector(ASK_SURFACE_SELECTOR)`
+ * answered "yes" over a CLOSED panel (the chip matched it), so an assertion that the
+ * panel is open passed while nothing was. The row item carries
+ * `ASK_ITEM_SELECTOR` instead, and the root renders nothing at all while collapsed
+ * (`ask-surfaces.tsx` returns `null`), so this selector answers exactly the question
+ * it looks like it answers.
+ */
 export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
+
+/**
+ * The row item that EXPANDS the panel - the trigger, never the panel itself.
+ *
+ * One handle for three readers: the panel's own focus-return addresses it across
+ * the two React trees, the item is what a rig presses, and `pressIsOurs` accepts it
+ * so an Escape with focus on the trigger still collapses the lane.
+ */
+export const ASK_ITEM_SELECTOR = "[data-lo-ask-item-toggle]";
 
 /*
  * Re-exported so the claim's own contract is nameable from a rig: the composer box
@@ -246,16 +291,23 @@ export { COMPOSER_TEXTAREA_SELECTOR };
 /**
  * Whether a press landed somewhere the ask lane speaks for.
  *
- * `true` for the ask surfaces themselves, for the composer's own textarea (the box
- * this lane answers from, via `composer-field.ts` - the same module
- * `use-interrupt-on-escape.ts` asks), and for a target with no element (the body, a
- * synthetic event, an already-unmounted source).
+ * `true` for the ask PANEL, for the composer's own textarea (the box this lane
+ * answers from, via `composer-field.ts` - the same module
+ * `use-interrupt-on-escape.ts` asks), for the row item that expands the panel, and
+ * for a target with no element (the body, a synthetic event, an already-unmounted
+ * source).
+ *
+ * THE TRIGGER IS ITS OWN CLAUSE rather than a second mark on the panel: an Escape
+ * with the keyboard on the chip must still collapse what the chip opened, and the
+ * chip is not inside the panel's root (the two live in different React trees), so
+ * the marker cannot cover it (UX round 1, U3).
  */
 const pressIsOurs = (target: EventTarget | null): boolean => {
 	const element = target as { closest?: (selector: string) => unknown } | null;
 	if (typeof element?.closest !== "function") return true;
 	return (
 		element.closest(ASK_SURFACE_SELECTOR) !== null ||
+		element.closest(ASK_ITEM_SELECTOR) !== null ||
 		element.closest(COMPOSER_TEXTAREA_SELECTOR) !== null
 	);
 };
@@ -271,10 +323,10 @@ const pressIsOurs = (target: EventTarget | null): boolean => {
  *  - `pressLandsOnOverlay` - an open dialog/menu/listbox owns its own keys, which is
  *    the measured `Cmd-K then Escape` case where the ask panel collapsed and the
  *    palette stayed open;
- *  - `pressIsOurs` - the claim is for the ask surfaces and the composer box, not the
- *    whole window. Without it, deeper owners that cancel on Escape without calling
- *    `preventDefault` (the directory indicator, the sidebar's search, the dictation
- *    cancel) both acted AND collapsed.
+ *  - `pressIsOurs` - the claim is for the ask panel, the row item that expands it
+ *    and the composer box, not the whole window. Without it, deeper owners that
+ *    cancel on Escape without calling `preventDefault` (the directory indicator,
+ *    the sidebar's search, the dictation cancel) both acted AND collapsed.
  */
 export const askClaimsEscape = (event: {
 	key: string;
