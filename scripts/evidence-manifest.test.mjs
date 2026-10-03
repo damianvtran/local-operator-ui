@@ -3421,6 +3421,34 @@ const BRANCH_RECORDS = [
 	"foldOnto83d7d937953Note",
 	"foldOnto211d84d668aNote",
 	"foldOntoA81de40dd84Note",
+	/*
+	 * And by the transcript display mode's round-1 DESIGN round (PR #775) - the
+	 * record the fold round flagged as unprotected. It is the only statement of
+	 * what that round shot (eighteen frames in the two `localOperator` palettes,
+	 * the header submenu in both modes and the six `chat-turn-collapse` cells),
+	 * of the rig option the mode's pairs need (a per-entry `prefs` seed, because a
+	 * display mode is a preference the rendered frame is a function of rather
+	 * than a story arg), and of the reading that decided the round - the settled
+	 * pairs are byte-identical and only `substance-then-addendum` can differ. It
+	 * quotes commit SHAs and never the `srcTree`/`scriptsTree` pair, so it joins
+	 * this list and not `STAMP_BINDING_NOTES`.
+	 */
+	"transcriptDisplayModesDesignRoundOneNote",
+	/*
+	 * And by this branch's convergence round after the fold onto `7cb678f29bf`:
+	 * the re-shoot of the `chat-turn-collapse` set at the folded tip, which
+	 * replaces six frames - the three cells whose foot caption #770 moved to the
+	 * prose's own rail - and leaves the set's other fifty files at their
+	 * committed bytes with the reason measured rather than assumed. It is listed
+	 * for the reason the list exists: a fold that started from main's manifest
+	 * would drop it, and with it the only statement of which cells the fold's
+	 * arrival actually moved, and of the two facts a re-capturer needs (the bar's
+	 * `Took` clause changed semantics on 2026-09-30 without those frames being
+	 * re-taken, and every stamp prints the capture host's own zone). It quotes
+	 * commit SHAs and never the `srcTree`/`scriptsTree` pair, so it joins this
+	 * list too.
+	 */
+	"transcriptDisplayModesFoldReshootNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
