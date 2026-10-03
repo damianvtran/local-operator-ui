@@ -83,7 +83,10 @@ import type {
 import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
-import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
+import {
+	destinationNeedsSession,
+	draftStageForSource,
+} from "@features/chat/pickers/picker-registry";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
 import {
@@ -354,6 +357,7 @@ import { completionFor } from "@features/chat/components/slash-completion";
  * `scripts/slash-contract.test.mjs` bundle and execute the shipped function.
  */
 import {
+	entitySessionId,
 	extensionFor,
 	lockedCommandNote,
 	lockedRunUndoCap,
@@ -388,7 +392,11 @@ import type {
  * it is what keeps the inline slash gesture and the mention delete from
  * disagreeing about what "remove a token" means.
  */
-import { replaceSpan } from "@features/chat/components/slash-token";
+import {
+	pyTrim,
+	replaceSpan,
+	slashTokenSpan,
+} from "@features/chat/components/slash-token";
 import { WaveformAnimation } from "@features/chat/components/waveform-animation";
 import { useAtResolution } from "@features/chat/hooks/use-at-resolution";
 import {
@@ -813,6 +821,15 @@ export type MessageInputProps = {
 	 */
 	cwdPendingAccepted?: boolean;
 	isSmallView?: boolean;
+	/**
+	 * The ask lane's expanded flag and its door, forwarded to the status row's ask
+	 * item. See `ComposerStatusRowProps.askExpanded` for why they are OPTIONAL and
+	 * controlled when supplied: the page that owns the composer owns the flag, and
+	 * only a story (or a host that has no page) lets the row fall back to its own
+	 * state.
+	 */
+	askExpanded?: boolean;
+	onAskToggle?: (next: boolean) => void;
 
 	/**
 	 * THE HOST PROVIDES ITS OWN HORIZONTAL GUTTER (mini restyle, design D1/D2).
@@ -1578,6 +1595,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			cwdPending,
 			cwdPendingAccepted,
 			isSmallView = false,
+			askExpanded,
+			onAskToggle,
 			ownGutter = false,
 			isHydrating = false,
 			transcriptless = false,
@@ -2878,16 +2897,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [caret, setCaret] = useState(0);
 		const [composing, setComposing] = useState(false);
 		/*
-		 * The live session this composer addresses, or undefined for a draft.
+		 * The live session this composer addresses, or undefined for a draft — the
+		 * key the argument list's ENTITY source may query with.
 		 *
-		 * `sessionStatus` is supplied by the page only when a canonical session
-		 * exists, and in that case `conversationId` IS its id (the page opens the
-		 * stream on the identity it passes down). So this is the one argument the
-		 * argument list's entity source needs, and its ABSENCE is the honest
-		 * "needs an open conversation" state rather than a query against a draft
-		 * key that could only fail.
+		 * `sessionStatus` is the WRONG question, and the report of issue #780 is
+		 * what it cost: a draft pane supplies it too (the page builds it from the
+		 * `sessions.preview` answer), so keying on its presence handed the entity
+		 * lists the pane's synthetic `draft:<uuid>` — a key the `commands.entities`
+		 * op schema refuses before the wire, which the popup renders as "The list
+		 * could not be loaded. Try again." What distinguishes a live pane is that
+		 * its `conversationId` IS the canonical id (the page opens the stream on
+		 * the identity it passes down) and a draft pane's is the pane's own key.
+		 *
+		 * So the gate is the wire's own session-id pattern, applied once in
+		 * `entitySessionId` — the same coercion `mcpTransportSession` gave the
+		 * `/mcp` read for this exact class (PR #726). Anything the pattern refuses
+		 * leaves this undefined, which is the honest "needs an open conversation"
+		 * state rather than a query against a draft key that could only fail.
 		 */
-		const slashSessionId = sessionStatus ? conversationId : undefined;
+		const slashSessionId = entitySessionId(conversationId);
 		/*
 		 * The pane's own answer, and the one the two arming sentences read: a draft
 		 * pane supplies `sessionStatus` (from the preview) and holds a non-empty
@@ -2928,6 +2956,26 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			 */
 			cwd,
 		});
+
+		/*
+		 * THE SPLASH YIELDS TO AN OPEN ARGUMENT PICKER (design round 1, D3).
+		 *
+		 * On an empty pane the roster opens above the composer INTO the splash:
+		 * measured at 1280x720 (the design round's own rects), the roster's
+		 * 178.7px box tops out at y357.9 while the greeting's `h2` ends at y367.2
+		 * and the splash band ends at y458.7 — 9.3px of the heading plus the
+		 * whole chips row sit under the list. A height cap that clears the band
+		 * is not available: the popup's bottom edge is fixed at y536.6 by its
+		 * `bottom-full` anchor, so clearing y458.7 would cap the box at 77.9px —
+		 * less than its own label and footer — leaving zero roster rows. The band
+		 * yields instead, the same motion the transcript makes on the first send:
+		 * while the argument list is open nothing is painted under the popup, and
+		 * the mark, greeting and chips return the moment it closes (Esc, a pick,
+		 * or the list going away). Scoped to the ARGUMENT phase: the command
+		 * phase's list is a pre-existing overlay this finding does not touch.
+		 */
+		const showSplash =
+			showEmptyChatPrompt && !(slash.open && slash.phase === "argument");
 
 		/*
 		 * THE `$skill` LIST (issue #664), the third member of the popup family. Its
@@ -4481,6 +4529,57 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				);
 				if (!completion) return;
 				slash.close();
+				/*
+				 * THE DRAFT IDENTITY PICK (issue #780): on a pane with no session, a
+				 * pick of a team/agent row does not complete the word for a command
+				 * the next Enter would refuse — it STAGES the draft's identity with
+				 * the row's own value, the same act as the sidebar's "New chat with
+				 * <team>".
+				 *
+				 * `disposition.run` is the same gate every other pick's run path
+				 * reads: Tab is the completion key (it "never runs"), so a Tab keeps
+				 * the old meaning — write the word, change nothing else — and only
+				 * the Enter/click gestures stage. The prose that survives the gesture
+				 * is the token spliced out with the SAME tokenizer the planner reads
+				 * (`slashTokenSpan`/`replaceSpan`, on the draft as typed), so a
+				 * sentence the command sat in moves with the user instead of the
+				 * command word becoming their first message.
+				 *
+				 * The route is walked off the INLINE SOURCE's registry row
+				 * (`draftStageForSource`), never a command name written here: a row's
+				 * `draftIdentity` opt-in is the one statement of which lists can be
+				 * answered without a session.
+				 *
+				 * AND A HOST WITH NO DISPATCHER STAYS INERT (review round 1, M1). The
+				 * config box (`agents/config-run/config-composer.tsx`) mounts this
+				 * composer with no `onSlashCommand` — its own comment: the command
+				 * write paths stay closed — and "no session" is also true there, so
+				 * `!paneHasSession` alone let its pick restage a CHAT draft from a
+				 * page that writes nothing. Before this branch existed those picks
+				 * were inert through `shouldRun`'s own dispatcher term; these rows
+				 * are `runs: false`, so `shouldRun` can never pass for them and this
+				 * branch — which must therefore sit BEFORE it — carries the term
+				 * itself. Staging is a dispatch-shaped write: it belongs to hosts
+				 * that can run commands.
+				 */
+				if (
+					disposition.run &&
+					row.kind === "argument" &&
+					!paneHasSession &&
+					Boolean(onSlashCommand)
+				) {
+					const stage = draftStageForSource(slash.inline?.source);
+					if (stage) {
+						const span = slashTokenSpan(newMessage, caret, slash.commandNames);
+						const carry = span
+							? pyTrim(replaceSpan(newMessage, span.start, span.end, "").text)
+							: "";
+						useCanonicalSessionsStore
+							.getState()
+							.restageDraft({ kind: stage, name: row.row.value }, carry);
+						return;
+					}
+				}
 				/*
 				 * The pick's OWN record, taken here rather than beside the run: Tab
 				 * completes the word without running it and Enter/click runs it, and BOTH
@@ -6939,6 +7038,8 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						frontend={sessionStatus?.frontend}
 						runDetails={runDetails}
 						isSmallView={isSmallView}
+						askExpanded={askExpanded}
+						onAskToggle={onAskToggle}
 						/*
 						 * The judge stalling is a state the user cannot read off 0px of ink, so the
 						 * row writes one sentence about it to the transcript (design D2) — through
@@ -8971,12 +9072,12 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					<div
 						ref={setSplash}
 						className={cn(
-							showEmptyChatPrompt
+							showSplash
 								? "flex w-full flex-col items-center gap-6 py-4"
 								: "hidden",
 						)}
 					>
-						{showEmptyChatPrompt ? (
+						{showSplash ? (
 							<>
 								{/*
 								 * THE MARK, 32px, at `ink-muted` (§H's composition: "a 32px mark
