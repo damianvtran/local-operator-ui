@@ -10160,10 +10160,10 @@ const main = async () => {
 	 * is what this process would otherwise have used, and the line below names
 	 * both so the log says what was overridden.
 	 */
-	const hostTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const ambientTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	process.env.TZ = EVIDENCE_TZ;
 	console.log(
-		`capture-evidence: frame timezone pinned to ${EVIDENCE_TZ} (host TZ=${hostTz})`,
+		`capture-evidence: frame timezone pinned to ${EVIDENCE_TZ} (ambient TZ=${ambientTz})`,
 	);
 
 	sweepStaleProfiles();

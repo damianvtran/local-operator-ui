@@ -37672,10 +37672,10 @@ async function main() {
 	 * (`evidence-tz.mjs` holds the receipts and the scope). The reading taken
 	 * first is what this process would otherwise have used.
 	 */
-	const hostTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	const ambientTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
 	process.env.TZ = EVIDENCE_TZ;
 	say(
-		`renderer-driver: frame timezone pinned to ${EVIDENCE_TZ} (host TZ=${hostTz})`,
+		`renderer-driver: frame timezone pinned to ${EVIDENCE_TZ} (ambient TZ=${ambientTz})`,
 	);
 	await assertBuildIsCurrent();
 	/*
