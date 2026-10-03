@@ -296,7 +296,7 @@ const AskRow = ({
 	onAnswer: AskPanelProps["onAnswer"];
 	onDecline: AskPanelProps["onDecline"];
 }) => {
-	const { ask, status, canAnswer, canDecline } = presentation;
+	const { ask, status, waiting, canAnswer, canDecline } = presentation;
 	const setDraft = useMemo(
 		() => (updater: (current: AskDraft) => AskDraft) =>
 			onDraftChange(ask.ask_id, updater(draft)),
@@ -317,6 +317,29 @@ const AskRow = ({
 	);
 	const mark = askStatusMark(status);
 	const StatusIcon = mark.Icon;
+	/*
+	 * URGENT STEPS THE INK AND KEEPS THE SHAPE (the audit's second item; design round
+	 * 1's D5 found the first attempt at it, UX round 2's U7 and round 3's U2 the
+	 * scope). The wire carries `urgent` - the backend derives it from the window
+	 * itself, `timeout <= 900` - and until this arm NO desktop surface painted it: a
+	 * row with ten minutes left looked exactly like one with an hour. The status
+	 * switch above still decides WHICH GLYPH the row wears; only its ink steps, to the
+	 * same `warning` role the timeout arm already spends, so the two "you are out of
+	 * time" readings are one colour rather than two.
+	 *
+	 * WAITING, NOT OPEN, AND THE SAME PREDICATE THE ITEM USES. `open` folds
+	 * `timed_out` in deliberately (a late answer still reaches the agent), which is
+	 * why scoping this to it made the panel ink and announce `Urgent.` for an ask the
+	 * agent had already walked past - directly contradicting the item below it, which
+	 * withholds exactly that (UX round 3's U2; the same defect as round 2's U7). One
+	 * surface stating urgency for a queue the other calls moved-on is worse than
+	 * either choice alone: the reader cannot tell which one is wrong. A timed-out ask
+	 * therefore wears its status arm's own ink and glyph, untouched by this arm.
+	 *
+	 * A settled ask's stale urgency is not a state anyone can act on either, and
+	 * `waiting` excludes those for free.
+	 */
+	const urgent = ask.urgent === true && waiting;
 
 	return (
 		<div
@@ -333,10 +356,11 @@ const AskRow = ({
 			<div className="flex items-center gap-2">
 				<StatusIcon
 					aria-hidden="true"
-					className={cn("shrink-0", mark.className)}
+					className={cn("shrink-0", urgent ? "text-warning" : mark.className)}
 					size={16}
 				/>
 				<span className="min-w-0 flex-1 text-ink text-xs">
+					{urgent ? <span className="sr-only">Urgent. </span> : null}
 					{askStatusText(ask, nowMs)}
 				</span>
 				{/*

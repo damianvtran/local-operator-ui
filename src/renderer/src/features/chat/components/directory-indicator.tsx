@@ -279,7 +279,8 @@ const MOVE_COST_SENTENCE =
  * `shrink` alongside `min-w-0`: a flex item's floor is its CONTENT, not zero,
  * so `min-w-0` alone only permits shrinking below that floor -- it does not
  * make this item yield when the row is over budget. With the canvas panel open
- * the chat column collapses to its 220px floor, and without `shrink` the chip
+ * the chat column falls to its floor - 480px since §I, 220 when the 97px below
+ * was measured - and without `shrink` the chip
  * kept its full width and hung 97px past the column's right edge, clipped
  * mid-path (design round 2, D11).
  */
@@ -291,7 +292,8 @@ const CHIP_WRAPPER =
  *
  * Below `CHAT_CHIP_ICON_ONLY_PX` (240) of column the chip's 96px floor and the
  * session's readings cannot
- * share the row. Measured at the 220px floor (the canvas-open column): the row
+ * share the row. Measured at the floor of that era, 220 with the canvas open
+ * (480 since §I): the row
  * is 202px, the readings take their own line, and the button line then needs
  * 28 + 12 + 96 + 8 + 60 = 204 of it - two pixels over, so the controls broke to
  * a THIRD line and the composer grew from the 143.5px it had before the
