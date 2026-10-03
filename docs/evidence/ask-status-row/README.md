@@ -7,11 +7,13 @@ outstanding, and the register that lists those things is the row, not a banner.
 
 The pair below is the whole change: the same queue states, photographed on the
 old surface and on the new one, plus the frames that prove what the item opens.
-Round 1 grew the set to **15 cases in `after/` and 14 in `before/` — 58 frames**
-at the two `localOperator` palettes, because the interaction the change turns on
-needed frames of its own and four states the copy contract distinguishes had
-none (`mixed`, `truncated`, `zero-ask`, `narrow-longest`) plus `driven-open`,
-which presses the chip rather than pinning the flag.
+Round 1 grew the set to **15 cases in `after/` and 14 in `before/`** at the two
+`localOperator` palettes, because the interaction the change turns on needed
+frames of its own and four states the copy contract distinguishes had none
+(`mixed`, `truncated`, `zero-ask`, `narrow-longest`) plus `driven-open`,
+which presses the chip rather than pinning the flag. Round 2 added one more
+(`focused-panel`, the settled panel's landing stop with the keyboard on it),
+taking the set to **60 frames over 16 after directories and 14 before ones**.
 
 | state | what the queue is | BEFORE (`before/`) | AFTER (`after/`) |
 | --- | --- | --- | --- |
@@ -30,6 +32,7 @@ which presses the chip rather than pinning the flag.
 | `expanded-waiting` (round 1) | the panel over a WAITING ask | strip + panel | the ATTENTION item with its panel open — the one combination round 0 had no frame for |
 | `expanded-multiple` (round 1) | the panel over two waits | strip + panel | `2 questions waiting` with the queue's two forms behind it |
 | `driven-open` (round 1) | the chip PRESSED, not pinned | **no counterpart**: the old bar opened on a chevron that no longer exists | the band starts collapsed; the chip is pressed after paint and the panel opens from it (`data-capture-pending` holds the shutter until the panel's root is up) |
+| `focused-panel` (round 2) | the settled panel's landing stop, FOCUSED | **no counterpart**: the old surface had no scripted landing stop | the panel root carries the keyboard and paints the app's `:focus-visible` ring — measured `outline: solid 2px rgb(56,201,106)`, offset 2px, the same ring the chip and the panel's controls paint |
 
 ## The four states, and the two registers
 
@@ -73,6 +76,10 @@ node scripts/capture-evidence.mjs http://localhost:6017 \
 node scripts/capture-evidence.mjs http://localhost:6017 \
   --only=chat-composer-status-row--ask --allow-backend \
   --themes=localOperatorDark,localOperatorLight            # AFTER, round 1 (all fifteen)
+
+node scripts/capture-evidence.mjs http://localhost:6017 \
+  --only=ask-focused-panel --allow-backend \
+  --themes=localOperatorDark,localOperatorLight            # AFTER, round 2 (the one new case)
 ```
 
 **Round 1's six new BEFORE halves came from a temporary restore, not from a
@@ -320,3 +327,43 @@ frame cannot carry it, by the test that can — saying which is which is the poi
 The two registers, the copy contract and the four states' frames are unchanged by
 round 1 beyond the re-shoot: the item's geometry, ink and clauses are the same
 pixels the round-0 pair showed.
+
+## Round 2: the landing stop's ring, and four findings that render nothing
+
+Round 2 was a micro-remediation: four of its five findings are code or prose that
+changes no pixel, and one added a frame precisely because a still is the only
+instrument that could carry it.
+
+- **The focused landing stop paints the app's ring** (agent review round 2, F9;
+  UX round 2, U4). The panel root is where keyboard focus lands when a SETTLED
+  queue is opened (its panel has no controls to land on), and it carried
+  `outline-none`, so the one scripted focus stop the panel has painted nothing —
+  `:focus-visible` matched but `outline-style: none` (UX round 2's measurement).
+  The root now takes the base layer's ring (`styles/index.css`, `html
+  :focus-visible`) like every chip beside it. **Measured on `focused-panel`, one
+  headless Chrome, computed style of `document.activeElement`:** the element is
+  `DIV[data-lo-ask-surfaces]`, `:focus-visible` **true**, `outline-style: solid`,
+  `outline-width: 2px`, `outline-color: rgb(56, 201, 106)` (the `accent` role),
+  `outline-offset: 2px`, `box-shadow: none` — and the panel it belongs to has
+  **0** focusable controls, which is what makes the root the stop. The frame
+  `after/focused-panel/` is that state, and it is **AFTER-ONLY**: the old surface
+  had no scripted landing stop, so a before half would be a frame of nothing.
+  The probe is `ask-panel-ring.mjs` in the capture session's scratch, not a
+  committed script; the command and its full output are in the round-2
+  remediation comment on the PR.
+- **F6** — `ASK_PANEL_FOCUSABLE` now excludes `[aria-disabled="true"]`, the
+  exclusion its doc already claimed. Nothing in the panel is inert today; the arm
+  is there because this app marks inert controls with `aria-disabled` rather than
+  the native attribute, so the next one would have become the landing stop.
+- **F7** — `askSplitIsKnowable` is one predicate read by both the visible clause
+  and the announced name, hoisted above `askChipClause`, which is now built on its
+  negation instead of restating the pair.
+- **F8** — the merged focus effect seeds its `wasExpanded` ref with the mount's
+  own value (`useRef(expanded)`), so an already-open panel is not a transition and
+  the comment above it is true as written.
+- **D4** — the palette record's sweep sentence now says the median reproduces over
+  the fleet's *other* 57 palettes (the brand file excluded from its own baseline),
+  and names the two figures a reader rebuilding it will get instead (39.89 over
+  58, 39.05 over the 59 registry definitions) plus the three palettes whose
+  `accent` and `success` are the same hex, which put this palette 4th-lowest
+  rather than 2nd. The claim is unchanged and deliberately conservative.
