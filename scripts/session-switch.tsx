@@ -1218,7 +1218,8 @@ const runSequence = (
 			const ready =
 				quiet &&
 				dispatched === clicks.length &&
-				(options.expectTranscript === false || transcriptHasContent()) &&
+				(options.expectTranscript === false ||
+					transcriptHasContent(clicks.at(-1)?.id)) &&
 				nothingInFlight();
 			if (ready || dispatchError !== null || performance.now() > deadline) {
 				sample();
@@ -1265,7 +1266,7 @@ const api: Probe = {
 			const tick = () => {
 				const state = useCanonicalSessionsStore.getState();
 				if (
-					(state.activeSessionId === id && transcriptHasContent()) ||
+					(state.activeSessionId === id && transcriptHasContent(id)) ||
 					performance.now() > deadline
 				) {
 					clearTimeout(timer);
@@ -1523,7 +1524,7 @@ const api: Probe = {
 		 * state, not that the notice reached a frame.
 		 */
 		errorShown: goneShown(),
-		transcriptHasContent: transcriptHasContent(),
+		transcriptHasContent: transcriptHasContent(INCOMING),
 		/** The pre-change state: the outgoing view, held, with its affordance. */
 		outgoing: OUTGOING,
 		pendingIndicator: pendingIndicator(),
@@ -1545,7 +1546,7 @@ const api: Probe = {
 		pendingIndicator: pendingIndicator(),
 		placeholder: placeholderPresent(),
 		placeholderOpacity: placeholderOpacity(),
-		content: transcriptHasContent(),
+		content: transcriptHasContent(INCOMING),
 		rowInView: rowInView(rowFor(INCOMING)),
 		/**
 		 * The composer's row and its box, for the states a PRESS leaves behind.

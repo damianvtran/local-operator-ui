@@ -218,13 +218,18 @@ const PULSE_TROUGH = 0.7;
 const REQUESTED_STATES = (() => {
 	const raw = flag("states", null);
 	if (raw === null) return null;
-	const names = raw
-		.split(",")
-		.map((name) => name.trim())
-		.filter(Boolean);
+	const names = raw.split(",").map((name) => name.trim());
 	const known = FRAME_STATES.join(", ");
-	if (names.length === 0)
-		throw new Error(`--states= needs at least one state name; known: ${known}`);
+	/*
+	 * AN EMPTY SEGMENT IS REFUSED TOO, not dropped: `--states=settled,,hydrating`
+	 * used to trim away the blank and capture two states, which is a run that looks
+	 * like it honoured the list while silently not saying what the caller meant. A
+	 * value with nothing in it is the same mistake one level up (QA round 1, Q4).
+	 */
+	if (names.length === 0 || names.some((name) => name.length === 0))
+		throw new Error(
+			`--states= needs at least one state name, and no empty ones; known: ${known}`,
+		);
 	for (const name of names)
 		if (!FRAME_STATES.includes(name))
 			throw new Error(
