@@ -817,7 +817,7 @@ test("the SHIPPED manifest's countsMean leads carry no fold label", () => {
 		assert.doesNotMatch(
 			lead,
 			/folded onto/i,
-			`countsMean.${field}'s leading paragraph must not name the fold it was derived at: the label is a commit name that changes on every fold, which is half the churn this change removes. Rewrite it with \`node scripts/drop-evidence-stamps.mjs\`.`,
+			`countsMean.${field}'s leading paragraph names the fold it was derived at, and that label is a commit name that changes on every fold - half the churn this change removes. \`node scripts/drop-evidence-stamps.mjs\` clears the writer's exact form, \`(this branch folded onto origin/main = <sha>)\`, and the shipped file carries none; a spelling it does not recognise has to be rewritten in the lead by hand, because mechanically normalising a sentence the tool does not recognise is how a record gets silently reworded.`,
 		);
 	}
 });
