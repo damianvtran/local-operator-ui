@@ -559,6 +559,44 @@ export type DesktopProjectRequestUpdateResult = {
 };
 
 /**
+ * One ranked row of `GET /v1/desktop/projects/search`.
+ *
+ * `score` is the server's ranking number and is comparable WITHIN one answer
+ * only — never across queries or builds, because the weights are tunable (the
+ * backend's own docstring says so) — so this client uses the ORDER the answer
+ * arrives in and never re-sorts by `score`. `name` is the display name (title
+ * when set, else the addressing name), and `fields` names what matched.
+ *
+ * The row itself is NOT carried: a hit is an id and a rank over rows the
+ * listing already holds, so the client paints its own `DesktopProject` for the
+ * id and the answer stays small. An id the listing does not hold is dropped
+ * rather than synthesized — this route ranks over that same store, so an id
+ * with no row is a store that moved under the answer, not a row to invent.
+ */
+export type DesktopProjectSearchHit = {
+	id: string;
+	name: string;
+	score: number;
+	fields: string[];
+};
+
+/**
+ * `GET /v1/desktop/projects/search` — the ranked hits plus the echo.
+ *
+ * `query` echoes what was asked, and it is load-bearing rather than
+ * decorative: the client applies an answer only when the echo equals the box
+ * (the `hitsAnswerQuery` rule the session search settled on), so a slow
+ * answer landing after a fast later one cannot filter the list by the wrong
+ * question. `count` is the number of hits in THIS answer, after `limit` —
+ * never the store size.
+ */
+export type DesktopProjectSearchResults = {
+	projects: DesktopProjectSearchHit[];
+	query: string;
+	count: number;
+};
+
+/**
  * Aida's control state, as `GET /v1/desktop/aida` answers it (`design.md` § 4).
  *
  * WHY `enabled` IS ON THE READ AND IS NOT READ FROM THE POST. `features.aida`

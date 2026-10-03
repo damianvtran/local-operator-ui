@@ -6211,6 +6211,35 @@ export const STORIES = [
 	 * recovery sentence and the one Clear all before the shutter.
 	 */
 	["projects-tab--no-match-filter", 1280, 900],
+	/*
+	 * THE SEARCH INDEX (the architecture's PR-B2): five frames over two rows, and
+	 * the pair `served` / `pending` is the whole slice in two pictures. `served`
+	 * types `invoice` and the page paints the INDEX's answer — including
+	 * `billing-cutover`, a row the local matcher cannot admit because its match
+	 * lives in update text — in the answer's own rank order (both claims read off
+	 * the rendered rows). `pending` hangs that request and shows the FALLBACK's
+	 * row still drawn, which is the no-blank-list promise; those two stories are
+	 * the two engines this change wires. `searching` is the one state where the
+	 * index is owed an answer AND the fallback found nothing — the quiet in-flight
+	 * line, in place of a "nothing matches" the index may be about to contradict.
+	 * `no-match` is the copy this slice reconciled: the index reads update text,
+	 * so the block carries the index's own sentence and the play FAILS on the
+	 * string this slice replaced. `failed` is the fallback arm: the index is
+	 * broken, the local matcher serves, and the sentence is the client's again.
+	 *
+	 * `search-index-searching-timeline` is D5's frame (design round 2): the same
+	 * in-flight state in the THIRD view, which no frame covered and whose gate
+	 * lacked the term the List's fix added — the Timeline's `shrink-0` strip is the
+	 * List's column header one view over. The story's play fails if the Timeline
+	 * panel is present beside the line, so the frame cannot be a picture of the
+	 * defect it exists to disprove.
+	 */
+	["projects-tab--search-index-served", 1280, 900],
+	["projects-tab--search-index-pending", 1280, 900],
+	["projects-tab--search-index-searching", 1280, 900],
+	["projects-tab--search-index-searching-timeline", 1280, 900],
+	["projects-tab--search-index-no-match", 1280, 900],
+	["projects-tab--search-index-failed", 1280, 900],
 	["projects-tab--board-search-active", 1280, 900],
 	["projects-tab--default-board", 1280, 900],
 	/* The no-dates callout, expanded over a dated chart: the collapsed line the
