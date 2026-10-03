@@ -1414,6 +1414,7 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		approvalWhereLabel,
 		approvalRequesterLabel,
 		approvalScopeLabels,
+		approvalScopeTone,
 		approvalRemainingLabel,
 		approvalTitle,
 		approvalSubject,
@@ -1432,6 +1433,24 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		"trust unattended sessions",
 		"grant approve",
 	]);
+	/*
+	 * The two scopes that hand over TRUST wear their own register, and the plain
+	 * ones do not (design round 1, D1: all six chips measured identically, so
+	 * `install operator anchor` was indistinguishable from `connect` on the card
+	 * whose purpose is consent to a key-signing gesture). Pinned as a pair so a
+	 * future scope cannot quietly inherit `attention` - or lose it.
+	 */
+	assert.deepEqual(
+		[
+			"connect",
+			"install",
+			"install operator anchor",
+			"join n_1 as drive",
+			"trust unattended sessions",
+			"grant approve",
+		].map(approvalScopeTone),
+		["neutral", "neutral", "attention", "neutral", "attention", "neutral"],
+	);
 	assert.equal(approvalTitle(row), "Onboard devon-laptop");
 	assert.equal(approvalSubject(row), "devon-laptop");
 	// A machine row is about the reader's own machine, by the kind's own definition.
@@ -2042,6 +2061,21 @@ test("a refused decision renders its sentence, and the busy gate is the surface'
 		 */
 		/refusal && !refusalAttached && <MeshDecisionRefusal/,
 		"a refusal whose record left the live set still renders under the list",
+	);
+	assert.match(
+		tray,
+		/<Badge variant=\{approvalScopeTone\(scope\)\}>/,
+		"the consequence-bearing scopes wear their own register (design round 1, D1)",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approval-consequence"/,
+		"the consequence is its own labelled gloss, not a clause of the provenance line (design round 1, D2)",
+	);
+	assert.doesNotMatch(
+		tray,
+		/\{requester && hint && <span> · <\/span>\}/,
+		"provenance and consequence no longer share one line and one register",
 	);
 });
 

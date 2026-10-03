@@ -39,6 +39,7 @@ import {
 	approvalRemainingLabel,
 	approvalRequesterLabel,
 	approvalScopeLabels,
+	approvalScopeTone,
 	approvalStateLabel,
 	approvalSubject,
 	approvalTitle,
@@ -80,6 +81,35 @@ function stateHint(state: string): string | null {
 			return "The runner stopped. Denying abandons it; an agent can retry it.";
 		default:
 			return null;
+	}
+}
+
+/**
+ * The `dt` a state's hint hangs from (design round 1, D2).
+ *
+ * WHY THE HINT IS NO LONGER A TRAILING CLAUSE. It used to ride the provenance
+ * line - "asked by cli · session 6789ef · Approving signs with this machine's
+ * operator key" - one 946px `text-ink-dim` paragraph at one register, so the
+ * sentence that says what the decision DOES read as another piece of metadata.
+ * The repo's own reference for a consent surface gives each consequential
+ * statement its own labelled gloss in a `dl` (`browser-consent-request.tsx`,
+ * the allow-scopes block), and this is that shape: the term names the moment the
+ * gloss is about, because "what this means" differs per state - approving hands
+ * over a signature, denying mid-run stops a runner, a failure leaves an
+ * abandoned record.
+ */
+function stateHintTerm(state: string): string {
+	switch (state) {
+		case "requested":
+			return "Approving";
+		case "approved":
+			return "Next";
+		case "connecting":
+			return "Denying now";
+		case "failed":
+			return "After a stop";
+		default:
+			return "What this means";
 	}
 }
 
@@ -293,18 +323,26 @@ const MeshApprovalCard: FC<{
 				<ul className="flex flex-wrap gap-1">
 					{scopes.map((scope) => (
 						<li key={scope}>
-							<Badge variant="neutral">{scope}</Badge>
+							{/* The consequence-bearing scopes wear `attention` so they are not
+							    read as ordinary scopes (design round 1, D1). */}
+							<Badge variant={approvalScopeTone(scope)}>{scope}</Badge>
 						</li>
 					))}
 				</ul>
 			)}
 
-			{(requester || hint) && (
-				<p className="text-meta text-ink-dim">
-					{requester}
-					{requester && hint && <span> · </span>}
-					{hint}
-				</p>
+			{requester && <p className="text-meta text-ink-dim">{requester}</p>}
+
+			{/* Provenance above, consequence here, as its own labelled gloss - the
+			    house shape for a consent surface (design round 1, D2). */}
+			{hint && (
+				<dl
+					className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-0.5 text-meta text-ink-dim"
+					data-tour-tag="mesh-approval-consequence"
+				>
+					<dt className="text-ink-muted">{stateHintTerm(row.state)}</dt>
+					<dd>{hint}</dd>
+				</dl>
 			)}
 
 			{(canApprove || canDeny) && (

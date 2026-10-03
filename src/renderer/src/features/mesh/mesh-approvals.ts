@@ -327,6 +327,35 @@ export function approvalScopeLabels(row: MeshApprovalRow): string[] {
 }
 
 /**
+ * The scopes that ask for MORE than a connection, and so wear their own register.
+ *
+ * WHY THIS EXISTS (design round 1, D1). All six chips measured the same
+triple - 12px/500, `sunken` ground, one `hairline` border, 23.4px tall, 9.08:1
+dark / 7.18:1 light - so `install operator anchor` and `trust unattended
+sessions` read exactly like `connect` on the one card whose entire purpose is
+informed consent to an operator-key signing gesture. The card is not a summary
+of a connection; two of its scopes hand over trust, and the reader has to be
+able to see which ones without reading a legend twice.
+ *
+ * `attention` is the house variant for "read this before you answer" (the state
+ * chip on a `requested` record already wears it), so the consequence-bearing
+ * scopes borrow a register the surface has already taught the reader, rather
+ * than a new one invented here.
+ *
+ * Keyed by LABEL because that is what the chip renders and what the test can
+ * read; the labels are built in one place (`approvalScopeLabels`) and pinned
+ * beside this list, so the two cannot drift silently.
+ */
+const CONSEQUENCE_SCOPE_LABELS: ReadonlySet<string> = new Set([
+	"install operator anchor",
+	"trust unattended sessions",
+]);
+
+export function approvalScopeTone(label: string): "attention" | "neutral" {
+	return CONSEQUENCE_SCOPE_LABELS.has(label) ? "attention" : "neutral";
+}
+
+/**
  * "expires in 42 minutes" — the record's ONE window (§2.1: 60 minutes by
  * default), rounded UP to the next unit so the copy never claims less time than
  * is left, which is the browser consent card's own rule for the same reason.
