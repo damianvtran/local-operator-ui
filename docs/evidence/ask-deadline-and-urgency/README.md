@@ -32,18 +32,18 @@ because one caption is printed into both halves.
 | `urgent` | `1 question waiting`, **accent** mark | `1 question waiting · expires in 3m`, **`warning`** mark, `· Urgent` in the announced name |
 | `truncated` | `12 outstanding` | `12 outstanding` — and NO countdown, because a prefix cannot state a queue-scope deadline. **A guard frame** (see below) |
 | `narrow-393` | a moved-on ask among its chips, wrapping | unchanged. **A guard frame** |
-| `column-floor-220` | `1 question waiting` at the app's 220px column | unchanged — the countdown has already yielded. **A guard frame** |
-| `multiple-band-260`, `two-windows-band-260`, `multiple-band-241` | a chip overhanging its own column in that band | the subject yields, the NUMBER stays, and the row does not paint past its column |
+| `column-floor-220` | `1 question waiting` at the app's 220px column | `1 question waiting · 48m` — the VALUE is what the app's own floor carries, so the deadline survives the narrowest column the app produces |
+| `multiple-band-260`, `two-windows-band-260`, `multiple-band-241` | a chip overhanging its own column in that band, and a countdown cut to `expires in 4...` on this PR's own round-3 head | the sentence yields WHOLE to the value (`· 48m`), the count is the floor, and no column paints a partial number |
 | `expanded-waiting` | the panel row: HelpCircle, accent, `expires in 48m` | the panel row unchanged; the ITEM below it now states the countdown (the pair differs at y 239-357, which is the item) |
 | `expanded-urgent` | the panel row: HelpCircle, **accent** | HelpCircle kept, ink **`warning`**, `Urgent.` announced |
 | `expanded-moved-on-urgent` | the panel row: **Clock**, warning, no urgency | identical. **A guard frame** |
 
-**Four frames are guards rather than deltas**, and this list is MEASURED (the
+**Three frames are guards rather than deltas**, and this list is MEASURED (the
 count of differing pixels between each pair, both palettes, in the table below)
 rather than asserted:
 
-- `truncated` and `column-floor-220` are byte-identical pairs: they photograph the
-  yield floors, where this pass changes nothing.
+- `truncated` is a byte-identical pair: a truncated queue states a tally and no
+  countdown at any width, so this pass changes nothing in it.
 - `narrow-393` is identical too: a moved-on queue has no countdown, so the item is
   the same chip #810 shipped.
 - `expanded-moved-on-urgent` is identical in both halves, and the reason is worth
@@ -55,18 +55,31 @@ rather than asserted:
   round 3's U2 filed against this PR's own earlier head — a `main`-based pair
   cannot show that head, so the guard is the honest shape.
 
-The discriminating pairs for the two rehomed items are `waiting`, `multiple`,
-`two-windows`, `urgent`, `expanded-urgent` and the three `*band*` states.
+The discriminating pairs for the rehomed items are `waiting`, `mixed`, `multiple`,
+`two-windows`, `urgent`, `column-floor-220`, `expanded-waiting`, `expanded-urgent`
+and the three `*band*` states.
 
 ## The fixture invariant
 
 A fixture no consumer could produce renders a frame claiming a state the product
 cannot be in — round 3's headline frame paired a 900-second window with
 `expires in 18m`, three minutes longer than the ask's whole life (D1, Q2). The
-stories' factory now **derives** the wire's two invariants instead of restating
-them: `expires_at = created_at + timeout_s * 1000` and `urgent = timeout_s <= 900`,
-with a `throw` if a site passes either explicitly and disagrees. The urgent
-fixture's own window is the wire's short one, so its frame reads `expires in 3m`.
+stories' factory now **derives** the wire's three invariants instead of restating
+them: `expires_at = created_at + timeout_s * 1000`, `urgent = timeout_s <= 900`
+(round 3's D1), and — added in round 4, because the first two constrain the deadline
+and the flag against each other but not against the STATUS derived from them —
+**an `open` ask's deadline is still ahead of the pinned clock and a `timed_out`
+ask's has already passed**, with `answered_at` never in the clock's future. A site
+that disagrees gets a `throw` at the story, where it is visible, rather than in a
+frame nobody can falsify. The urgent fixture's own window is the wire's short one,
+so its frame reads `expires in 3m`.
+
+**The new arm is exercised, not asserted.** As a positive control, `ASK_MOVED_ON`'s
+`created_at` was set to `ASK_TS` — a live window under `status: "timed_out"` — and
+the story then fails to render: Storybook paints its error display and
+`[data-lo-ask-item-toggle]` never appears in the DOM (the probe's reading, before the
+revert). Restoring the fixture restores the frame. The two arms added in round 3 were
+proved the same way.
 
 ## The numbers, measured
 
@@ -75,60 +88,62 @@ fixture's own window is the wire's short one, so its frame reads `expires in 3m`
 | state | item width |
 | --- | --- |
 | `truncated` (count only) | 115.38px |
-| `column-floor-220` (count only, at its 220px column) | 133.47px |
+| `column-floor-220` (count + value, at its 220px column) | 180.20px |
 | `urgent` | 221.83px |
 | `waiting` | 229.69px |
 | `multiple` | 308.73px |
 | `two-windows` | 308.16px |
 
-**The overflow band, and what fixes it.** The first yield rule was titrated on the
-one-ask string: the deadline hid only below 241px while the two-ask forms measure
-283px and 286px, so every column in **[241, 286)** painted a chip wider than
-itself — `row.scrollWidth − clientWidth` of 3px at 300, 33px at 260 and 52px at 241
-on the reviewed head. The countdown now yields in two steps and the chip can
-compress, so **the row's overflow is 0 at every column in the sweep**:
+**The yield, measured against the room the chip actually has.** The chip is painted
+into the composer's content box, which reads **`column − 10px`** at every column this
+was read at (213/241/269/270/341 — the same arithmetic at each); the earlier rules
+measured the COLUMN instead, which is how a countdown got sized against 241px while
+the chip had 231px, and cut to `expires in 4...` — a prefix of both `4m` and `48m`,
+beside an urgency ink claiming fifteen minutes or less. Each form is now replaced
+WHOLE by the next that fits, never cut:
 
-| column | `waiting` | `multiple` | `two-windows` | `truncated` | countdown shown |
-| --- | --- | --- | --- | --- | --- |
-| 220 | 133.47 | 141.44 | 141.44 | 115.38 | yielded (the count only) |
-| 241 | 215.00 | 215.00 | 215.00 | 115.38 | the number, subject yielded |
-| 260 | 229.69 | 234.00 | 234.00 | 115.38 | the number, subject yielded |
-| 300 | 229.69 | 237.66 | 237.08 | 115.38 | the number, subject yielded |
-| 320 | 229.69 | 294.00 | 294.00 | 115.38 | both |
-| 569 | 229.69 | 308.73 | 308.16 | 115.38 | both |
+| column | `waiting` | `multiple` | `two-windows` | `truncated` | countdown shown | slack |
+| --- | --- | --- | --- | --- | --- | --- |
+| 180 | 133.47 | 141.44 | 141.44 | 115.38 | nothing — the count alone | 29 |
+| 213 | 172.23 | 180.20 | 179.63 | 115.38 | the VALUE (` · 48m`) | 23 |
+| 241 | 172.23 | 180.20 | 179.63 | 115.38 | the value (the band this PR was filed against) | 51 |
+| 260 | 172.23 | 180.20 | 179.63 | 115.38 | the value | 70 |
+| 270 | 229.69 | 237.66 | 237.08 | 115.38 | the SENTENCE, subject dropped | 22 |
+| 320 | 229.69 | 237.66 | 237.08 | 115.38 | the sentence, subject dropped | 72 |
+| 341 | 229.69 | 308.73 | 308.16 | 115.38 | the sentence WITH its subject | 22 |
+| 569 | 229.69 | 308.73 | 308.16 | 115.38 | the sentence with its subject | 250 |
 
-(every cell's `rowOverflow` is 0; the item is compressible with the COUNT as its
-floor, so a squeezed `multiple` gives up the subject first, then compresses under
-its own `max-content` - 308.73px at 569, 294.00 at 320 - while its number stays.)
+`slack` is the gap between the chip's right edge and the composer content box's right
+edge, in px — i.e. **the room left over**: it is ≥ 22 at every one of these 32 cells,
+so nothing paints past the column, and each band edge carries ~22px of margin over
+the form it admits (deliberately: a locale's digits are not this font's digits, and a
+threshold tuned to fit exactly re-breaks on the next copy change).
 
-**The guarantee, exercised.** The shipped copy fits every column after those
-yields, so the compress-and-clip path is only reachable by copy that outgrows a
-threshold. That is synthesised in the live DOM — a countdown grown to
-`· soonest ask expires in 128m` — and re-measured:
+**The one thing the yield may never produce is a partial TIME value** — `4...` and
+`48...` are the same glyphs to a reader deciding whether to hurry. Swept over
+[180, 200, 212, 213, 220, 240, 241, 260, 269, 270, 300, 320, 332, 340, 341, 400,
+569] × the five countdown-bearing states, the painted countdown is **always a whole
+form or absent: 0 partial values in 85 readings**, minimum slack 22.84px. The
+`overflow-hidden text-ellipsis` on the spans stays as the never-paint-past-the-column
+guarantee for copy this row has not seen; the bands are what make it unreachable for
+the copy that ships.
 
-| column | row overflow | count width | countdown width | countdown clipped |
-| --- | --- | --- | --- | --- |
-| 241 | **0** | 109.44 | 67.56 | 98 |
-| 260 | **0** | 109.44 | 86.56 | 79 |
-| 300 | **0** | 109.44 | 126.56 | 39 |
+**Two earlier shapes of this yield were caught by frames rather than by reasoning**,
+and both are recorded in the component's own comment because each looked correct
+until it was rendered: a compressible chip beside a *wrappable* countdown collapsed
+to two lines inside the box's fixed `h-6` (the `truncated` frame), and `max-w-full`
+on this box resolved its percentage cap 6px short of the content's own `max-content`
+(the `urgent` frame clipped `expires in 3m` to `expires in …` at a 900px column).
 
-The count keeps its width, the countdown takes the whole squeeze and ellipsises,
-and the row still never paints past its column. **Two earlier shapes of this were
-caught by frames rather than by reasoning** and are recorded in the component's own
-comment: a compressible chip beside a *wrappable* count collapsed to two lines
-inside the box's fixed `h-6` (the truncated frame), and `max-w-full` on this box
-resolved its percentage cap 6px short of the content's own `max-content` (the
-urgent frame clipped `expires in 3m` to `expires in …` at a 900px column).
+**The DOM's own ink readings**, exact token values rather than a frame estimate:
 
-**Ink**, nearest palette token (ΔRGB, decoded with `sharp`):
-
-| state | before (dark / light) | after (dark / light) |
+| state | item mark | panel row: status / glyph / ink / `sr-only` |
 | --- | --- | --- |
-| `waiting`, `mixed`, `truncated` | accent 53.9 / 37.7 | accent (unchanged) |
-| `multiple`, `two-windows` | accent 53.2-53.9 / 37.7 | accent (unchanged) |
-| `urgent` | accent 53.9 / 37.7 | **warning 54.0 / 43.9** |
-| `expanded-urgent` (row mark) | accent 51.0 / 31.8 | **warning 51.6 / 40.7** |
-| `expanded-moved-on-urgent` (row mark) | warning 52.4 / 41.7 | warning (the Clock's own arm) |
+| `urgent` | `rgb(224,176,75)` = warning | — (no panel) |
+| `waiting` | `rgb(56,201,106)` = accent | — |
+| `expanded-urgent` | warning | `open` / `lucide-circle-help` / `rgb(224,176,75)` / `Urgent.` |
+| `expanded-waiting` | accent | `open` / `lucide-circle-help` / `rgb(56,201,106)` / none |
+| `expanded-moved-on-urgent` | `rgb(194,188,175)` = ink-muted | `timed_out` / `lucide-clock` / `rgb(224,176,75)` / **none** |
 
 Tokens: `localOperatorDark` `accent #38c96a` / `warning #e0b04b` on `surface
 #2b2721`; `localOperatorLight` `accent #137742` / `warning #8a5800` on `surface
@@ -184,7 +199,10 @@ frames. The `before/` run is the same command with the four ask-lane modules
 
 ## Not covered
 
-`dom_audit.mjs` (the design-qa skill's overlap/clipping/target-size pass) did not
-run: it needs playwright, which is not installed here and installing a browser
-engine is out of bounds. Frame-level geometry is therefore **not** claimed as
-covered by that tool; the geometry stated above is the CDP probe's measurements.
+`dom_audit.mjs` (the design-qa skill's overlap/clipping/target-size pass) **was run
+in QA round 4 and is clean**, apart from one advisory worth recording: the item's
+target box is 24px tall (`h-6`, the row's shared chip box from `main`) against the
+44px comfort target, so the advisory is the row's own and not this pass's copy — the
+threshold asks for 44px and this row has always been 24px. This set's own frames are
+not its evidence: the numbers above are CDP probe measurements against the same
+rendered stories.
