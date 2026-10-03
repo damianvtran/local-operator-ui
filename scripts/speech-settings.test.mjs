@@ -94,6 +94,7 @@ const bundle = await build({
 			import { createElement } from "react";
 			export { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 			export { SpeechSection } from "./src/renderer/src/features/settings/components/speech-section";
+			export { ErrorBoundary } from "./src/renderer/src/shared/components/common/error-boundary";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -139,8 +140,13 @@ const bundlePath = new URL("./_speech-settings.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
 
-const { QueryClient, QueryClientProvider, createElement, SpeechSection } =
-	await import(bundlePath.href);
+const {
+	QueryClient,
+	QueryClientProvider,
+	createElement,
+	SpeechSection,
+	ErrorBoundary,
+} = await import(bundlePath.href);
 
 /** The committed `/v1/settings` projection: the daemon's own registry rows. */
 const registry = JSON.parse(
@@ -570,3 +576,166 @@ for (const [scenario, why] of [
 		);
 	});
 }
+
+/* ------------------------------------------------------------------ *
+ * The panel's way OUT of a crash — the boundary's reset path
+ * ------------------------------------------------------------------ */
+
+/*
+ * WHY THIS IS TESTED AT THE BOUNDARY RATHER THAN THROUGH THE PANEL (agent review
+ * round 2, follow-up b).
+ *
+ * The panel can no longer be made to throw from data — round 1's Q2 fix validates
+ * the payload before anything maps it — so a crash here now means a defect, and
+ * the finding was that the panel had no way out of one: a boundary latches, and
+ * with a `fallback` NODE there is no button either, because the node form drops
+ * `FallbackProps`. What was missing was therefore in the shared component, and
+ * that is where this drives it: a throwing child, the real `ErrorBoundary`, and
+ * the two halves of the reset — the render fallback's own `resetErrorBoundary`,
+ * and `resetKeys` releasing a latch when the input changes.
+ *
+ * WHAT IS NOT COVERED HERE, stated rather than implied: no throw reaches the
+ * shipped panel through the harness, so the section's WIRING of these props is
+ * asserted in the source check below instead of by rendering it.
+ */
+let panelThrows = true;
+let panelRenders = 0;
+const PanelProbe = ({ shouldThrow = () => panelThrows }) => {
+	panelRenders += 1;
+	if (shouldThrow()) throw new Error("panel defect");
+	return createElement("p", null, "the panel rendered");
+};
+
+const mountBoundary = async (t, props) => {
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	t.after(async () => {
+		await act(async () => {
+			root.unmount();
+		});
+		container.remove();
+	});
+	const render = (element) =>
+		act(async () => {
+			root.render(element);
+		});
+	return { container, render };
+};
+
+test("a new answer releases the panel's crash, and the render fallback gets the reset", async (t) => {
+	panelThrows = true;
+	panelRenders = 0;
+	let handed = null;
+	const probeFallback = (props) => {
+		handed = props;
+		return createElement(
+			"div",
+			null,
+			"could not be read",
+			"the panel rendered",
+		);
+	};
+
+	const { container, render } = await mountBoundary(t);
+	await render(
+		createElement(
+			ErrorBoundary,
+			{ fallbackRender: probeFallback, resetKeys: [1] },
+			createElement(PanelProbe),
+		),
+	);
+	// The latched state, with the panel's own subtree gone.
+	assert.ok(
+		container.textContent.includes("could not be read"),
+		"the fallback rendered for a crashed subtree",
+	);
+	assert.equal(
+		typeof handed?.resetErrorBoundary,
+		"function",
+		"a render fallback is handed the boundary's own reset, which a node fallback never gets",
+	);
+
+	// The fault is gone and a new read has arrived: the reset key moves.
+	panelThrows = false;
+	await render(
+		createElement(
+			ErrorBoundary,
+			{ fallbackRender: probeFallback, resetKeys: [2] },
+			createElement(PanelProbe),
+		),
+	);
+	assert.ok(
+		container.textContent.includes("the panel rendered"),
+		"a changed reset key releases the latch, so the next answer is rendered instead of the sentence",
+	);
+	assert.ok(
+		!container.textContent.includes("could not be read"),
+		"the fallback is gone once the subtree renders again",
+	);
+});
+
+test("the retry button asks the boundary to reset rather than sitting inert", async (t) => {
+	panelThrows = true;
+	panelRenders = 0;
+	const probeFallback = ({ resetErrorBoundary }) =>
+		createElement(
+			"button",
+			{ type: "button", onClick: resetErrorBoundary },
+			"Try again",
+		);
+
+	const { container, render } = await mountBoundary(t);
+	await render(
+		createElement(
+			ErrorBoundary,
+			{ fallbackRender: probeFallback, resetKeys: [1] },
+			createElement(PanelProbe),
+		),
+	);
+	const before = panelRenders;
+	await act(async () => {
+		container.querySelector("button").click();
+	});
+	assert.ok(
+		panelRenders > before,
+		"the press re-rendered the subtree: the button is wired to the reset, not decoration",
+	);
+	assert.ok(
+		container.querySelector("button") !== null,
+		"the fault is still there, so the fallback stands — a reset is not a fix",
+	);
+});
+
+test("a node fallback still renders for the surfaces that only state something", async (t) => {
+	panelThrows = true;
+	const { container, render } = await mountBoundary(t);
+	await render(
+		createElement(
+			ErrorBoundary,
+			{ fallback: createElement("p", null, "something went wrong here") },
+			createElement(PanelProbe),
+		),
+	);
+	assert.ok(
+		container.textContent.includes("something went wrong here"),
+		"the additive props did not change what `fallback` means for the callers that pass a node",
+	);
+});
+
+test("the shipped section wires the panel's reset, which no render can observe", () => {
+	const source = readFileSync(
+		"src/renderer/src/features/settings/components/speech-section.tsx",
+		"utf8",
+	);
+	assert.match(
+		source,
+		/fallbackRender=\{PanelFallback\}/,
+		"the panel takes the render fallback, the only form that is handed `resetErrorBoundary`",
+	);
+	assert.match(
+		source,
+		/resetKeys=\{\[pathsQuery\.dataUpdatedAt\]\}/,
+		"the panel's reset key is the availability read itself: a fresh answer has to clear a crash the previous one caused",
+	);
+});

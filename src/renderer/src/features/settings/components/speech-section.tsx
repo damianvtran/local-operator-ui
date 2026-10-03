@@ -60,9 +60,10 @@ import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useSpeechPaths } from "@shared/hooks/use-speech-paths";
 import { speechSettingsNote } from "@shared/lib/speech-gate";
 import { useQuery } from "@tanstack/react-query";
-import { AudioLines } from "lucide-react";
+import { AudioLines, RotateCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
+import type { FallbackProps } from "react-error-boundary";
 import { tierFor } from "../backend-settings-tiers";
 import {
 	parseVoicePathResolution,
@@ -121,8 +122,26 @@ const UNAVAILABLE_SENTENCE = "Speech availability could not be read.";
  * still use, and those rows are the shared row component the Backend section
  * already renders under the same exposure — so this boundary is exactly as wide
  * as the surface it repairs.
+ *
+ * THE FALLBACK IS RENDERED, NOT MERELY STATED (agent review round 2, follow-up b).
+ * A boundary latches: without a way out, one crash in this subtree left the panel
+ * saying it could not read availability for the rest of the route's life, even
+ * after a good answer had arrived. So it takes `fallbackRender` rather than a
+ * node — the shared boundary only hands `FallbackProps` to the render form — and
+ * gives the reader the button the built-in fallback has, beside the sentence this
+ * surface owns.
  */
-const PanelFallback = <Alert variant="warning">{UNAVAILABLE_SENTENCE}</Alert>;
+const PanelFallback = ({ resetErrorBoundary }: FallbackProps) => (
+	<Alert variant="warning">
+		<div className="flex flex-col items-start gap-3">
+			<span>{UNAVAILABLE_SENTENCE}</span>
+			<Button variant="secondary" onClick={resetErrorBoundary}>
+				<RotateCw aria-hidden="true" />
+				Try again
+			</Button>
+		</div>
+	</Alert>
+);
 
 /** Which of the group's four renderings a feature state admits. */
 function groupState(state: DesktopFeatureState): "ready" | "older" | "pairing" {
@@ -437,7 +456,16 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 							</Alert>
 						)}
 
-					<ErrorBoundary fallback={PanelFallback}>
+					{/*
+					 * `resetKeys` is the half of the reset that works without a press: the
+					 * panel renders from exactly this payload, so a fresh answer has to clear
+					 * a crash the previous one caused. Without it the boundary latches and
+					 * only leaving the route repairs it.
+					 */}
+					<ErrorBoundary
+						fallbackRender={PanelFallback}
+						resetKeys={[pathsQuery.dataUpdatedAt]}
+					>
 						{availability && (
 							<>
 								<InfoGrid>
