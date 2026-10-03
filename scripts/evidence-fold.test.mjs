@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
 	chmodSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -891,6 +892,55 @@ const driverHidingMergeSignals = (dir, extraHidden = []) => {
 	return wrapper;
 };
 
+/**
+ * Install a driver command that forwards to the real driver with `%B` replaced
+ * by a path that does not exist.
+ *
+ * WHY A WRAPPER. git itself always hands a driver three EXISTING temp files, so
+ * a side whose PATH IS ABSENT cannot be produced by a plain `git merge`: it is
+ * the shape a hand-written or older driver command produces, and it is one of
+ * the two ways `readSide` throws. The wrapper forwards with the merge-only
+ * environment intact - so the run is a legitimate merge and reaches `readSide` -
+ * and only the third path is spoofed.
+ */
+const driverWithAnAbsentSide = (dir) => {
+	const wrapper = join(dir, "driver-absent-side.mjs");
+	writeFileSync(
+		wrapper,
+		[
+			'import { spawnSync } from "node:child_process";',
+			"const [, , script, base, ours, theirs] = process.argv;",
+			"const result = spawnSync(",
+			"\tprocess.execPath,",
+			'\t[script, "--driver", base, ours, `${theirs}.absent`],',
+			'\t{ stdio: "inherit", env: process.env },',
+			");",
+			"process.exit(result.status ?? 1);",
+		].join("\n"),
+	);
+	git(dir, [
+		"config",
+		"merge.evidence-fold.driver",
+		`${process.execPath} ${wrapper} ${SCRIPT} %O %A %B`,
+	]);
+	return wrapper;
+};
+
+/**
+ * Rewrite one revision's manifest to something that is NOT JSON - the shape a
+ * half-written file has - and return the fixture to `lane`.
+ */
+const truncateTheManifestOn = (dir, rev) => {
+	git(dir, ["checkout", "-q", rev]);
+	writeFileSync(
+		join(dir, "docs/evidence/manifest.json"),
+		'{\n  "head": "0000000000000000000000000000000000000000",\n  "frames": 2,',
+	);
+	git(dir, ["add", "-A"]);
+	git(dir, ["commit", "-qm", `feat: ${rev} truncates the manifest`]);
+	git(dir, ["checkout", "-q", "lane"]);
+};
+
 /** The driver log a refused run leaves in the clone, wherever its git dir is. */
 const driverLog = (dir) => {
 	const gitDir = git(dir, ["rev-parse", "--absolute-git-dir"]);
@@ -1027,6 +1077,92 @@ test("a refused driver run never leaves the working file looking like a resolved
 	);
 });
 
+test("a driver run whose side is not JSON is refused, and still leaves the working file unresolved", () => {
+	/*
+	 * THE POST-MERGE MAJOR ON #804, PINNED. A refusal that arrives as a THROW -
+	 * here, a side `readSide` cannot parse - used to escape the refusal path
+	 * entirely: the run exited non-zero and git marked the conflict, but the
+	 * WORKING file kept `%A` verbatim with no markers, so `cat` showed one side's
+	 * copy and `git add && git commit` would have staged the wrong side silently.
+	 * The refusal path writes markers; the throw path must too.
+	 */
+	const dir = fixture({ attributes: true });
+	installDriver(dir);
+	truncateTheManifestOn(dir, "main");
+
+	const merge = gitCode(dir, [
+		"merge",
+		"main",
+		"-m",
+		"chore(merge): fold main",
+	]);
+	assert.notEqual(merge.code, 0, merge.out);
+	assert.match(
+		merge.out,
+		/REFUSING to resolve docs\/evidence\/manifest\.json/,
+		"the throw must be routed through the same refusal the refuse paths use",
+	);
+	assert.match(
+		merge.out,
+		/is not JSON/,
+		"and it must name the case it could not handle",
+	);
+
+	const conflicted = readFileSync(
+		join(dir, "docs/evidence/manifest.json"),
+		"utf8",
+	);
+	assert.match(
+		conflicted,
+		/^<<<<<<< /m,
+		"a throw must leave conflict markers, not one side's copy verbatim",
+	);
+	assert.match(conflicted, /^>>>>>>> /m);
+	assert.equal(
+		(git(dir, ["ls-files", "-u"]) ?? "").split("\n").filter(Boolean).length,
+		3,
+		"the index must stay unmerged, so `git commit` refuses",
+	);
+	assert.match(driverLog(dir).text, /REFUSING/);
+	assert.match(driverLog(dir).text, /not JSON/);
+});
+
+test("a driver run handed an absent side path is refused, and the working file still reads unresolved", () => {
+	const dir = fixture({ attributes: true });
+	driverWithAnAbsentSide(dir);
+
+	const merge = gitCode(dir, [
+		"merge",
+		"main",
+		"-m",
+		"chore(merge): fold main",
+	]);
+	assert.notEqual(merge.code, 0, merge.out);
+	assert.match(merge.out, /REFUSING to resolve docs\/evidence\/manifest\.json/);
+	assert.match(merge.out, /does not exist/);
+
+	const conflicted = readFileSync(
+		join(dir, "docs/evidence/manifest.json"),
+		"utf8",
+	);
+	assert.match(
+		conflicted,
+		/^<<<<<<< /m,
+		"an absent side must not leave %A looking resolved either",
+	);
+	assert.match(conflicted, /^>>>>>>> /m);
+	assert.match(
+		conflicted,
+		/could not be read/,
+		"the missing side is named in the file rather than left as a silent gap",
+	);
+	assert.equal(
+		(git(dir, ["ls-files", "-u"]) ?? "").split("\n").filter(Boolean).length,
+		3,
+	);
+	assert.match(driverLog(dir).text, /REFUSING/);
+});
+
 /* ------------------------------------------------------------------ *
  * M2c: the fold path is install-free, and writes one file
  * ------------------------------------------------------------------ */
@@ -1037,8 +1173,8 @@ test("the fold path cannot reach a package manager: no dependency, no pre-run in
 
 	/*
 	 * STATIC, because the property is about what the tool CAN do. A behavioural
-	 * case can only show that one run happened not to install; this pins the two
-	 * mechanisms that would let a future edit reintroduce one.
+	 * case can only show that one run happened not to install; this pins each
+	 * mechanism that would let a future edit reintroduce one.
 	 */
 	const workspace = readFileSync(join(repoRoot, "pnpm-workspace.yaml"), "utf8");
 	assert.match(
@@ -1046,6 +1182,26 @@ test("the fold path cannot reach a package manager: no dependency, no pre-run in
 		/^verifyDepsBeforeRun:\s*false\s*$/m,
 		"pnpm 11+ must not auto-install before a `pnpm run` in this repository: `pnpm evidence:fold` in a lane pruned node_modules and WROTE an allowBuilds block into pnpm-workspace.yaml",
 	);
+
+	/*
+	 * THE COMMAND HALF. `verifyDepsBeforeRun` gates a pre-run install; this pins
+	 * that the entry point it would wrap re-enters no package manager either, so
+	 * `pnpm evidence:fold` IS `node scripts/evidence-fold.mjs` and nothing else.
+	 * The two together are the whole of "the fold never installs" that can be
+	 * pinned WITHOUT a real install - which is why the claim is pinned here rather
+	 * than proved end to end by desyncing a dependency tree (QA round 1, Q3).
+	 */
+	const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+	for (const name of [
+		"evidence:fold",
+		"evidence:fold:install",
+		"evidence:fold:check",
+	])
+		assert.match(
+			pkg.scripts[name] ?? "",
+			/^\s*node\s+\S*scripts\/evidence-fold\.mjs/,
+			`${name} must run the fold as plain Node, so no wrapper can pull a package manager in front of it`,
+		);
 
 	for (const file of ["evidence-fold.mjs", "entry-point.mjs"]) {
 		const source = readFileSync(join(scripts, file), "utf8");
@@ -1088,6 +1244,58 @@ test("a fold writes docs/evidence/manifest.json in the work tree and nothing els
 		[...new Set(touched)],
 		["docs/evidence/manifest.json"],
 		`a fold may touch the manifest and nothing else, but this run touched: ${touched.join(", ")}`,
+	);
+});
+
+test("a preflight refusal writes nothing, and leaves a stopped merge's index untouched", () => {
+	/*
+	 * THE PREFLIGHT'S WRITE-FREE CLAIM, PINNED. It was verified by hand and
+	 * asserted by nothing, yet it is the load-bearing half of "a run that cannot be
+	 * completed is stopped BEFORE the first write": the merge state STAGES the
+	 * manifest as part of naming the merged tree, so a preflight that let a write
+	 * through would leave a half-resolved index behind. The state where that
+	 * matters is a merge already stopped on the conflict, which is what this
+	 * fixture is put in.
+	 */
+	const dir = fixture({ attributes: true });
+	// No driver installed: the merge stops, leaving all three index stages and
+	// MERGE_HEAD - state the preflight must not disturb.
+	assert.notEqual(
+		gitCode(dir, ["merge", "main", "-m", "chore(merge): fold main"]).code,
+		0,
+	);
+	// Remove the manifest the preflight insists on, so its second check fires.
+	rmSync(join(dir, "docs/evidence/manifest.json"));
+	const before = {
+		stages: git(dir, ["ls-files", "-u"]),
+		status: git(dir, ["status", "--short"]),
+	};
+
+	const refused = run(dir);
+	assert.notEqual(refused.status, 0);
+	assert.match(refused.out, /does not exist in this work tree/);
+	assert.match(refused.out, /nothing has been written/);
+	assert.equal(
+		git(dir, ["ls-files", "-u"]),
+		before.stages,
+		"the preflight must not have staged, resolved or otherwise touched the index",
+	);
+	assert.equal(
+		git(dir, ["status", "--short"]),
+		before.status,
+		"the preflight must have written nothing to the work tree either",
+	);
+	assert.ok(
+		existsSync(join(dir, ".git", "MERGE_HEAD")),
+		"the merge must still be in progress",
+	);
+	assert.ok(
+		!existsSync(join(dir, "docs", "evidence", "manifest.json")),
+		"the run must not have recreated the manifest it refused over",
+	);
+	assert.ok(
+		!existsSync(join(dir, ".git", "evidence-fold-driver.log")),
+		"and it must not have recorded a driver failure it never reached",
 	);
 });
 
