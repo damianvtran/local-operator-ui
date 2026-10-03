@@ -905,7 +905,9 @@ from a scratch worktree at the merge base with the same command, attached to the
 PR, and labelled. **Motion**: the band opening (both the actions row and the new
 list) is a reflow the user sees — consecutive frames and a settle time, as §10.2
 requires. `docs/evidence/manifest.json` must be re-stamped in the evidence commit
-(`git rev-parse HEAD:src`, `HEAD:scripts`), per `AGENTS.md`.
+(`git rev-parse HEAD:src`, `HEAD:scripts`), per `AGENTS.md` - by
+`pnpm evidence:fold`, which derives both from the tree the commit names, runs the
+guards and stages the result; the hand derivation is the fallback.
 
 ### 6.4 Live app
 
@@ -977,7 +979,11 @@ Each commit is self-contained and green on its own.
 
 Commits 4–8 each move `src/`, so the evidence stamp is re-derived once, in the
 evidence commit that follows the visual work — not per commit (`AGENTS.md`: a
-commit that moves `src/` costs every open branch two commits).
+commit that moves `src/` costs every open branch two commits). Since 2026-10-01
+that one derivation is `pnpm evidence:fold`, which writes and stages the values
+itself; the cost above is what a FOLD pays when `main` has moved, and with the
+merge driver installed (`pnpm evidence:fold:install`) the fold does not even stop
+on the manifest.
 
 ---
 
