@@ -9,9 +9,11 @@ Provenance: the six freshness frames were captured from a built app on
 `78e46042b` - the commit that gives the note its floor and lets the stamp
 ellipsise - and were added to the branch by `1c5fae31d`. The entry's
 `capturedAtHead` is not that sha: it names the commit the ONE run that produced all
-fifteen frames stood on - `5a34f77d3` on this lineage, the rebased spelling of the
-pre-rebase `ce8bfb5ac` (range-diff pair 7 is `=`) - because that run re-took the
-nine close frames whole and reproduced the six byte for byte. The manifest's
+fifteen frames stood on. For the generation this README first described that was
+`5a34f77d3` on this lineage, the rebased spelling of the pre-rebase `ce8bfb5ac`
+(range-diff pair 7 is `=`) - that run re-took the nine close frames whole and
+reproduced the six byte for byte. After the 2026-10-03 whole-set re-shoot (below)
+the field names `bd4c95f77`, the tree that pass's one run stood on. The manifest's
 `srcTree`/`scriptsTree` are a different pair by design: the manifest test binds them to the trees of the commit the manifest ships in, and the fold that
 followed re-serialised this entry without touching a pixel.
 
@@ -22,8 +24,9 @@ for - `close-kept` (what a close whose write fails now says), `close-neighbour`
 and `close-preceding` (where a close leaves the reader, both arms of the rule),
 and `close-overflow` (the selected tab's ✕ in a strip that scrolls). Every one of
 them came out of ONE run of the scene, which is also the run that produced the six
-frames above; the six are left as they were captured (`1c5fae31d`), and the entry's
-`capturedAtHead` names the commit that one run stood on.
+frames above; the six were left as they were captured (`1c5fae31d`) until the
+2026-10-03 re-shoot below re-took the whole set, and the entry's `capturedAtHead`
+now names that run's tree.
 
 The re-take is not tidiness. Three of this round's changes move pixels the old set
 showed: the tab a close selects (D1) and the focus that moves with it (D3/U2), the
