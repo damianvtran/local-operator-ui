@@ -173,7 +173,9 @@ const installBridge = (state: StoryState) => {
 				if (state === "unreadable") {
 					return {
 						status: 500,
-						body: { detail: "The resolver could not read the credential store." },
+						body: {
+							detail: "The resolver could not read the credential store.",
+						},
 					};
 				}
 				return ok(resolutionFor(state));

@@ -2595,7 +2595,9 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	 * registry and predate voicing), and a surface that fired this read at such a
 	 * backend would render a 404 as a failure of the user's own account.
 	 */
-	z.object({ op: z.literal("tts.paths") }).strict(),
+	z
+		.object({ op: z.literal("tts.paths") })
+		.strict(),
 	z.object({ op: z.literal("config.get") }).strict(),
 	z.object({ op: z.literal("config.update"), value: configUpdate }).strict(),
 	z.object({ op: z.literal("instructions.get") }).strict(),

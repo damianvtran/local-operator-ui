@@ -20,11 +20,11 @@
  * see, wired by its caller), and never on focus or on a timer.
  */
 
-import {
-	desktopResult,
-	type VoicePathResolution,
-} from "@shared/api/local-operator/desktop-api";
 import { retryDesktopQuery } from "@shared/api/local-operator/backend-error";
+import {
+	type VoicePathResolution,
+	desktopResult,
+} from "@shared/api/local-operator/desktop-api";
 import { useQuery } from "@tanstack/react-query";
 
 export const speechPathsKeys = {
