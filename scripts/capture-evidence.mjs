@@ -132,6 +132,15 @@ const KEY_CODES = {
 	 * a selector because a highlight is keyboard STATE, not a clickable target.
 	 */
 	ArrowDown: { code: "ArrowDown", keyCode: 40 },
+	/*
+	 * `ArrowRight` opens a Radix submenu (`DropdownMenuSub`), which is the only
+	 * gesture that does: a SubTrigger opens on pointermove or on this key, and NOT
+	 * on a click, so an entry that needs the submenu's own content on screen has
+	 * to walk the menu the way a keyboard reader does - `ArrowDown` to rove onto
+	 * the trigger, then `ArrowRight` to open it (issue #756's transcript-display
+	 * submenu; see that entry's note).
+	 */
+	ArrowRight: { code: "ArrowRight", keyCode: 39 },
 	Enter: { code: "Enter", keyCode: 13 },
 };
 
@@ -425,6 +434,38 @@ export const SESSION_SECTION =
 export const MODEL_SECTION =
 	"[data-panel-body] section:has(+ section input[aria-label='Search sessions'])";
 
+/**
+ * THE ENTRY SHAPE, spelled once here because the list below is long enough that
+ * a reader meets the options before any one entry explains them.
+ *
+ * A tuple is `[storyId, width, height, options?]`. The options this rig honours,
+ * and what each makes real:
+ *
+ *   - `press`       one selector, or an array of them, pressed in order through
+ *                   Chromium's own input pipeline (a real move/press/release at
+ *                   the element's centre, so React's handlers see a real event).
+ *   - `hover`       a real pointer move onto the selector, asserted against
+ *                   `:hover` before the shutter - a frame filed under a hover is
+ *                   one the element genuinely matched.
+ *   - `tabTo`       real Tab presses until the selector holds focus; a selector
+ *                   that never takes focus FAILS the run.
+ *   - `keys`        named keys (`KEY_CODES`) dispatched to whatever holds focus,
+ *                   with a settle after each.
+ *   - `type`        text inserted through `Input.insertText`.
+ *   - `dir`         the directory the frame is written to, when a story has more
+ *                   than one state.
+ *   - `expectPresent` / `expectGone`  one-shot claims read AT SHUTTER TIME, so a
+ *                   closed menu (or a control that never appeared) fails the run
+ *                   rather than shipping a resting frame under a state's name.
+ *   - `touch`, `reducedMotion`  viewport media state, reset for every frame.
+ *   - `prefs`       extra keys merged into the persisted `useUiPreferencesStore`
+ *                   state this rig seeds before any app script runs (see the
+ *                   seed call in the capture loop). It exists for a preference
+ *                   the rendered frame is a FUNCTION of - issue #756's
+ *                   `transcriptDisplayMode`, whose two values are the two cells
+ *                   of a pair - and it is the seeded store rather than a story
+ *                   arg because the store is what the shipped component reads.
+ */
 export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
@@ -1081,6 +1122,125 @@ export const STORIES = [
 	["chat-turn-collapse--wake-mid-cycle", 1280, 900],
 	["chat-turn-collapse--peer-mid-cycle", 1280, 900],
 
+	/*
+	 * THE SAME CELLS IN `by-response` (issue #756's second display mode), and the
+	 * reason they are ENTRIES rather than new stories.
+	 *
+	 * `chat-turn-collapse.stories.tsx` reads no display-mode preference - its
+	 * `Frame` passes a fixture transcript and nothing else - but `Frame` mounts the
+	 * REAL `CanonicalTranscript`, which reads `useUiPreferencesStore` for the mode
+	 * (`canonical-transcript.tsx`, `parseTranscriptDisplayMode`). The store is
+	 * zustand's `persist` over `localStorage`, and this rig already seeds that key
+	 * before any app script runs (the `themeName` seed above, which exists for the
+	 * same reason). So a cell's mode is an ENTRY OPTION - `prefs` - and the four
+	 * states below are the same fixtures photographed in the other mode, which is
+	 * exactly what makes them a PAIR rather than two pictures: the fixture bytes,
+	 * the viewport and the pane are identical, and the only variable is the one the
+	 * feature adds.
+	 *
+	 * WHAT EACH PAIR IS FOR. `completions-both-visible` is the settled two-answer
+	 * turn (a fulsome close, a wake, a short reply) and it is ALSO the pair that
+	 * taught the mode's evidence what it could not show (design review round 1,
+	 * D1): both of its closes are RESPONSE closes, and V1 keeps every response
+	 * close visible in BOTH modes, so its two frames are byte-identical and must
+	 * be - this cell states that the widening left V1 alone rather than that the
+	 * mode does nothing. `narration` is the narration-only span, which is the case
+	 * the Settings copy makes a claim about ("by turn folds it behind the turn's
+	 * bars, by response keeps it on screen"). The mid-cycle pair is the operator's
+	 * own reported state - a turn that answered, was woken, and is running its next
+	 * cycle - which is where a mode that widened the visible set could plausibly
+	 * disturb the live split the jitter fix protects. The cell whose pair CANNOT
+	 * match is `substance-then-addendum` below, because it is the one fixture whose
+	 * text-bearing row is not a close.
+	 *
+	 * THE `by-turn` HALF IS ALREADY COMMITTED: the entries above, with no `prefs`,
+	 * ARE that half, and `partitionRun`'s by-turn path is pinned byte-for-byte by
+	 * `scripts/turn-segments.test.mjs` ("by-turn is the shipped partition,
+	 * byte-for-byte, whether the field is named or absent"). So the pair is one run,
+	 * not two trees, and nothing here re-takes a committed frame.
+	 */
+	[
+		"chat-turn-collapse--completions-both-visible",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "completions-both-visible-response",
+		},
+	],
+	[
+		"chat-turn-collapse--narration",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "narration-response",
+		},
+	],
+	[
+		"chat-turn-collapse--wake-mid-cycle",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "wake-mid-cycle-response",
+		},
+	],
+	[
+		"chat-turn-collapse--peer-mid-cycle",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "peer-mid-cycle-response",
+		},
+	],
+	/*
+	 * THE REPORTER'S OWN SHAPE, as close as a shipped fixture gets: the fulsome
+	 * answer and the work after it, in BOTH modes, side by side with
+	 * `completions-both-visible` above. `long-run` is the twelve-call turn whose
+	 * answer arrives last - the `by-turn` reading of "a turn whose substance sat in
+	 * a non-final answer presented only the final fragment" - so the pair is what a
+	 * reviewer compares when judging whether the second mode actually answers the
+	 * issue rather than only widening the pane.
+	 */
+	[
+		"chat-turn-collapse--long-run",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "long-run-response",
+		},
+	],
+	/*
+	 * THE ONE PAIR THAT MUST DIFFER, and the answer to design review round 1's D1.
+	 *
+	 * Every pair above is legitimately identical on its settled cells - V1 keeps
+	 * every response close, so widening the visible set adds nothing there - and
+	 * that is what made the design round unable to see the feature work: a reader
+	 * who switches to `By response` and watches nothing move reads the control as
+	 * broken. The mode IS observable, on exactly one shape: a settled,
+	 * text-bearing assistant row that is neither a close nor `stop`-declared.
+	 * `chat-turn-collapse--substance-then-addendum` is that shape built as the
+	 * issue's own report (substance prose mid-work, the addendum as the last
+	 * message), so this pair is the round's evidence that the second mode changes
+	 * the screen rather than only the store.
+	 *
+	 * THE TWO `by-turn` CELLS ABOVE ARE NOT RE-TAKEN BY THIS ENTRY, and the pair's
+	 * halves are still one run: the first entry is the story with no `prefs` - the
+	 * shipped mode - and the second is the same story in the other mode.
+	 */
+	["chat-turn-collapse--substance-then-addendum", 1280, 900],
+	[
+		"chat-turn-collapse--substance-then-addendum",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "substance-then-addendum-response",
+		},
+	],
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
@@ -1873,6 +2033,67 @@ export const STORIES = [
 	 */
 	["chat-header-cluster--console-blip", 560, 84],
 	["chat-header-cluster--console-blip-resting", 560, 84],
+	/*
+	 * THE CONVERSATION-ACTIONS MENU, AND THE TRANSCRIPT-DISPLAY SUBMENU (issue
+	 * #756's surfacing half).
+	 *
+	 * The menu is `chat-header-cluster`'s own surface: that story mounts the REAL
+	 * `ChatHeader` with the props the overflow trigger is gated on (`onOpenOptions`,
+	 * `onToggleBrowser`, `onOpenConsole`, `runDetails`), so `[data-conversation-actions]`
+	 * is the shipped trigger rather than a replica. The viewport is taller than the
+	 * cluster's 84 because the menu and its submenu open BELOW the 84px header and a
+	 * frame the menu overflows is not a frame of the menu.
+	 *
+	 * THE SUBMENU IS OPENED BY KEYBOARD because that is the only gesture that opens
+	 * one: a Radix `DropdownMenuSubTrigger` opens on pointermove or `ArrowRight`, and
+	 * a click does nothing. So the entry presses the trigger (a real pointer press),
+	 * walks the menu with `ArrowDown` (Radix's roving focus onto the submenu trigger)
+	 * and opens it with `ArrowRight` - the path a keyboard reader takes - and the
+	 * `expectPresent` on `[role="menuitemradio"]` is what makes a submenu that never
+	 * opened FAIL the run instead of filing a closed menu under a name that claims
+	 * otherwise. TWO states, because the trigger names the ACTIVE mode beside its
+	 * stable name (agent review round 1, m3) and the radio dot marks it: the pair is
+	 * the control stating its own state in both of the states it can be in.
+	 */
+	[
+		"chat-header-cluster--no-approval",
+		560,
+		420,
+		{
+			press: "[data-conversation-actions]",
+			expectPresent: '[role="menu"]',
+			dir: "conversation-actions-open",
+		},
+	],
+	[
+		"chat-header-cluster--no-approval",
+		560,
+		420,
+		{
+			press: "[data-conversation-actions]",
+			keys: [
+				{ key: "ArrowDown", settleMs: 300 },
+				{ key: "ArrowRight", settleMs: 400 },
+			],
+			expectPresent: '[role="menuitemradio"]',
+			dir: "transcript-display-submenu-turn",
+		},
+	],
+	[
+		"chat-header-cluster--no-approval",
+		560,
+		420,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			press: "[data-conversation-actions]",
+			keys: [
+				{ key: "ArrowDown", settleMs: 300 },
+				{ key: "ArrowRight", settleMs: 400 },
+			],
+			expectPresent: '[role="menuitemradio"]',
+			dir: "transcript-display-submenu-response",
+		},
+	],
 	/*
 	 * THE CHAT HEADER'S IDENTITY CONTROLS (operator, 2026-09-26): the team and
 	 * the agent as two menus you can switch, plus the rename pencil the title
@@ -10000,7 +10221,7 @@ const main = async () => {
 			({ identifier: seedScript } = await cdp.send(
 				"Page.addScriptToEvaluateOnNewDocument",
 				{
-					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)}); } catch {}`,
+					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: ${JSON.stringify({ themeName: theme, ...(options?.prefs ?? {}) })}, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)}); } catch {}`,
 				},
 			));
 

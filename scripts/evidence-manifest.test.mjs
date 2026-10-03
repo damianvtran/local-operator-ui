@@ -3363,6 +3363,40 @@ const BRANCH_RECORDS = [
 	 */
 	"rowForkMenuNote",
 	/*
+	 * And by the transcript display mode's round-1 remediation (PR #775), this
+	 * branch's newest top-level record: the note that answers design round 1's
+	 * D1-D4 - the cell whose pair CANNOT be identical and the pixel reading that
+	 * says so, the live-app set behind the Settings row and the isolation the run
+	 * printed, the checked row's new mark, and the layout reading the round
+	 * recorded without fixing. It is listed for the reason the list exists: a fold
+	 * that started from main's manifest would drop it, and with it the only
+	 * statement of which two trees this round moved and which frames it does NOT
+	 * claim (the stale `chat-header-cluster/no-approval` siblings among them).
+	 */
+	"transcriptDisplayModesRoundOneRemediationNote",
+	/*
+	 * And by this branch's first fold onto a moved `origin/main`, which is the
+	 * case the list exists for and the one that just happened: the fold resolved
+	 * this file by hand (main's copy whole, this branch's deltas re-laid), and
+	 * the record it adds is the only statement of what the fold moved, what it
+	 * deliberately did NOT re-take, and why the two refusals of main's arrival - a
+	 * renderer file and a re-shot frame - both hold. IT WEARS THE BRANCH'S NAME
+	 * BECAUSE THE KEY COLLIDED: the fold onto `7cb678f29bf` arrived with main's
+	 * own `foldOnto9d9cd4be63fNote` - another branch's record of the same fold
+	 * target - so this branch's record yields the plain name and keeps its text,
+	 * which is the rename the list's own doctrine spells out.
+	 */
+	"[redacted]",
+	/*
+	 * And by the fold onto `origin/main` = `7cb678f29bf` (#767's session-load
+	 * paint with the four lanes under it), this branch's newest record: the note
+	 * that states what the arriving diff carried (frames and rigs of its own, and
+	 * `canonical-transcript.tsx`'s turn-foot caption), what the resolution did to
+	 * the three conflicted files, and why the terminal design and UX rounds'
+	 * freshness is a decision rather than a claim.
+	 */
+	"[redacted]",
+	/*
 	 * And by the transcript-line pass (#695 / §E3), this branch's six newest
 	 * top-level records - the original pass note and the five fold rounds that
 	 * followed it. They are listed for the reason the list exists and this branch
@@ -3415,6 +3449,34 @@ const BRANCH_RECORDS = [
 	"foldOnto83d7d937953Note",
 	"foldOnto211d84d668aNote",
 	"foldOntoA81de40dd84Note",
+	/*
+	 * And by the transcript display mode's round-1 DESIGN round (PR #775) - the
+	 * record the fold round flagged as unprotected. It is the only statement of
+	 * what that round shot (eighteen frames in the two `localOperator` palettes,
+	 * the header submenu in both modes and the six `chat-turn-collapse` cells),
+	 * of the rig option the mode's pairs need (a per-entry `prefs` seed, because a
+	 * display mode is a preference the rendered frame is a function of rather
+	 * than a story arg), and of the reading that decided the round - the settled
+	 * pairs are byte-identical and only `substance-then-addendum` can differ. It
+	 * quotes commit SHAs and never the `srcTree`/`scriptsTree` pair, so it joins
+	 * this list and not `STAMP_BINDING_NOTES`.
+	 */
+	"transcriptDisplayModesDesignRoundOneNote",
+	/*
+	 * And by this branch's convergence round after the fold onto `7cb678f29bf`:
+	 * the re-shoot of the `chat-turn-collapse` set at the folded tip, which
+	 * replaces six frames - the three cells whose foot caption #770 moved to the
+	 * prose's own rail - and leaves the set's other fifty files at their
+	 * committed bytes with the reason measured rather than assumed. It is listed
+	 * for the reason the list exists: a fold that started from main's manifest
+	 * would drop it, and with it the only statement of which cells the fold's
+	 * arrival actually moved, and of the two facts a re-capturer needs (the bar's
+	 * `Took` clause changed semantics on 2026-09-30 without those frames being
+	 * re-taken, and every stamp prints the capture host's own zone). It quotes
+	 * commit SHAs and never the `srcTree`/`scriptsTree` pair, so it joins this
+	 * list too.
+	 */
+	"transcriptDisplayModesFoldReshootNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
