@@ -1,17 +1,28 @@
 /**
- * The ask surfaces as one mount: the minimized bar, and the panel it expands
+ * The ask surfaces as one mount: the PANEL the composer status row's item expands
  * into.
  *
- * ## Why a carrier rather than two mounts in the chat pane
+ * ## Why a carrier rather than a mount in the chat pane
  *
- * The bar and the panel are ONE interaction (design §5.0): the bar's chevron
- * flips the panel, the panel's Esc collapses it, and both have to agree about
- * everything that is not a property of one render - the expanded flag, the
- * refusal record keyed by ask id, and the clock the countdown reads. A mount in
- * the pane could hold the flag but not the clock, and the clock is the half that
- * is easy to get wrong: a countdown that ticks once per render is a countdown
- * that lies whenever the app is idle, which is exactly when the user is looking
- * at it.
+ * The panel and its trigger are ONE interaction (design §5.0): the row item flips
+ * the panel, the panel's Esc collapses it, and both have to agree about everything
+ * that is not a property of one render - the expanded flag, the refusal record
+ * keyed by ask id, and the clock the countdown reads. A mount in the pane could
+ * hold the flag but not the clock, and the clock is the half that is easy to get
+ * wrong: a countdown that ticks once per render is a countdown that lies whenever
+ * the app is idle, which is exactly when the user is looking at it.
+ *
+ * ## The trigger moved, and this file keeps the half that did not
+ *
+ * The minimized bar used to live here, above the composer. It is gone: the ask
+ * affordance is now a row item in the composer's status row
+ * (`composer-status-row.tsx`), a peer of `All to-dos resolved` and `2 wakes armed`,
+ * because a queued ask is one more thing a session has outstanding. That item
+ * toggles the SAME flag this component reads (`expanded`), which chat-page owns, so
+ * the panel is one surface with two halves in two trees - the trigger in the row,
+ * the panel here. What stays here is everything that is a fact about the PANEL:
+ * the clock, the Esc claim, the collapse when the queue empties, and the drafts and
+ * outcomes the composer shares.
  *
  * ## The clock, and why it only runs while something is countable
  *
@@ -38,7 +49,6 @@ import {
 	noopDraftChange,
 	sessionAsks,
 } from "../../ask-queue";
-import { AskBar } from "./ask-bar";
 import { AskPanel } from "./ask-panel";
 
 export type AskSurfacesProps = {
@@ -155,18 +165,26 @@ export const AskSurfaces = ({
 		setExpanded(false);
 	});
 	/*
-	 * FOCUS COMES BACK TO THE BAR (UX round 2, U6).
+	 * FOCUS COMES BACK TO THE ITEM THAT OPENED THE PANEL (UX round 2, U6).
 	 *
 	 * Escape out of the panel unmounts the option that held focus, so
 	 * `document.activeElement` is the BODY and a keyboard user's next Tab starts at
 	 * the top of the document - on a surface they had just left deliberately.
 	 *
+	 * CROSS-TREE ON PURPOSE, and the reason changed with the trigger: the control
+	 * this return addresses used to be this component's own minimized bar, so a
+	 * `rootRef.current.querySelector` reached it. The trigger is now the ask item in
+	 * the composer's status row - a DIFFERENT React tree, rendered by
+	 * `message-input.tsx` - so the handle has to be looked up from the document. It
+	 * is still a `data-` handle rather than a ref, so no plumbing crosses the two
+	 * trees and a story that renders the panel without the row simply finds nothing
+	 * and moves no focus.
+	 *
 	 * NARROW ON PURPOSE: it fires only when focus actually fell to the body. A
 	 * collapse from the COMPOSER (the same key, the other focus stop) leaves focus
-	 * in the box where the user is typing, and moving it to the bar there would be
+	 * in the box where the user is typing, and moving it to the item there would be
 	 * the focus theft this whole surface is built to avoid.
 	 */
-	const rootRef = useRef<HTMLDivElement | null>(null);
 	const wasExpanded = useRef(false);
 	/*
 	 * A LAYOUT effect, matching the sibling focus return the blocking card uses: it
@@ -179,51 +197,53 @@ export const AskSurfaces = ({
 		if (!was || expanded) return;
 		const active = document.activeElement;
 		if (active !== null && active !== document.body) return;
-		rootRef.current
-			?.querySelector<HTMLButtonElement>("[data-lo-ask-bar-toggle]")
+		document
+			.querySelector<HTMLButtonElement>("[data-lo-ask-item-toggle]")
 			?.focus();
 	}, [expanded]);
 	// An absent queue is not an empty one: `sessionAsks` returns null when this
 	// backend does not publish queued asks, and nothing mounts at all.
 	if (sessionAsks(frontend) === null) return null;
+	/*
+	 * COLLAPSED RENDERS NOTHING AT ALL. The panel is the only surface left in this
+	 * component, so a collapsed panel is an empty div above the composer - and an
+	 * empty div that reserved the band's measure and padding would put 8px of blank
+	 * over every session with a settled queue. The trigger's own state is the row
+	 * item's; when it is collapsed there is nothing for this mount to draw.
+	 */
+	if (!expanded) return null;
 
 	return (
 		/*
 		 * `data-lo-ask-surfaces` is the lane's OWN marker, read by `askClaimsEscape`:
-		 * the Escape claim covers these surfaces and the composer box, not the window
-		 * (agent review round 3, F2).
+		 * the Escape claim covers this panel and the composer box, not the window
+		 * (agent review round 3, F2). The row item carries the same attribute so the
+		 * key works from either side of the interaction.
 		 */
-		<div className={className} data-lo-ask-surfaces="" ref={rootRef}>
-			<AskBar
-				view={view}
-				expanded={expanded}
-				onToggle={() => setExpanded(!expanded)}
-			/>
-			{expanded ? (
-				<div
-					/*
-					 * Esc collapses rather than declines (see the module note). Claimed with
-					 * `preventDefault` so the app-wide interrupt ladder does not also treat
-					 * it as a stop - the same claim the blocking card makes.
-					 */
-					onKeyDown={(event) => {
-						if (event.key !== "Escape") return;
-						event.preventDefault();
-						setExpanded(false);
-					}}
-				>
-					<AskPanel
-						view={view}
-						nowMs={now}
-						answering={answering}
-						outcomes={outcomes}
-						drafts={drafts ?? EMPTY_DRAFTS}
-						onDraftChange={onDraftChange ?? noopDraftChange}
-						onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
-						onDecline={(task) => onDecline?.(task.ask_id)}
-					/>
-				</div>
-			) : null}
+		<div className={className} data-lo-ask-surfaces="">
+			<div
+				/*
+				 * Esc collapses rather than declines (see the module note). Claimed with
+				 * `preventDefault` so the app-wide interrupt ladder does not also treat
+				 * it as a stop - the same claim the blocking card makes.
+				 */
+				onKeyDown={(event) => {
+					if (event.key !== "Escape") return;
+					event.preventDefault();
+					setExpanded(false);
+				}}
+			>
+				<AskPanel
+					view={view}
+					nowMs={now}
+					answering={answering}
+					outcomes={outcomes}
+					drafts={drafts ?? EMPTY_DRAFTS}
+					onDraftChange={onDraftChange ?? noopDraftChange}
+					onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
+					onDecline={(task) => onDecline?.(task.ask_id)}
+				/>
+			</div>
 		</div>
 	);
 };

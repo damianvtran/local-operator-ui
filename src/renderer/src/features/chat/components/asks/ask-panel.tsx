@@ -3,13 +3,14 @@
  *
  * ## Two states, one component (design §5.0, R7)
  *
- * This is the EXPANDED half of the shared interaction model. The bar
- * (`ask-bar.tsx`) is the minimized one, and the rule that binds them is the
- * composer's routing invariant: while this panel is open the composer answers
- * the ask, and while it is collapsed the composer is an ordinary conversation
- * box. The panel is entered ONLY by the user - a click on the bar, or an explicit
- * action - and never by an ask arriving, which is the no-focus-steal promise the
- * whole redesign is built on.
+ * This is the EXPANDED half of the shared interaction model. The minimized
+ * trigger is now the ask ITEM in the composer's status row
+ * (`composer-status-row.tsx`), which expands into this panel, and the rule that
+ * binds them is the composer's routing invariant: while this panel is open the
+ * composer answers the ask, and while it is collapsed the composer is an ordinary
+ * conversation box. The panel is entered ONLY by the user - a press on that item,
+ * or an explicit action - and never by an ask arriving, which is the
+ * no-focus-steal promise the whole redesign is built on.
  *
  * ## Why the whole ask is one form
  *

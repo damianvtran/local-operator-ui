@@ -40,7 +40,12 @@ import { useEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import { cn } from "@shared/lib/utils";
 import type { DesktopLoopState } from "../../../../../../src/shared/desktop-control-contract";
-import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	PendingAsk,
+} from "../../../../../../src/shared/desktop-session-contract";
+import { EMPTY_DRAFTS } from "../ask-queue";
+import { AskSurfaces } from "./asks/ask-surfaces";
 import { ComposerStatusRow } from "./composer-status-row";
 import { type RunDetails, deriveRunDetails } from "./run-details";
 
@@ -2036,4 +2041,279 @@ export const GoalCapabilityOff: Story = {
 			</div>
 		);
 	},
+};
+
+/* ------------------------------------------------------------------ */
+/* The ask item: the queued-ask lane as one chip in this row           */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The queued-ask affordance used to be its own strip above the composer. It is a
+ * row item now, in this row's register, and these bands are what that means in
+ * each of the four states the copy contract distinguishes:
+ *
+ *   waiting    one open ask            -> `1 question waiting`  (ATTENTION)
+ *   settled    one answered ask        -> `All asks settled`    (quiet)
+ *   moved-on   one timed-out ask       -> `1 question moved on` (quiet)
+ *   multiple   two waiting asks        -> `2 questions waiting` (ATTENTION)
+ *
+ * WHAT TO LOOK FOR, since these frames are the design review:
+ *
+ * - **It reads as a PEER of `All to-dos resolved` and `2 wakes armed`** - same
+ *   control box, same gaps, same type step, left-aligned at the row's content
+ *   edge. No fill, no edge, no banner.
+ * - **Attention is a COLOUR STEP, not a size.** Waiting paints the label `ink`
+ *   and the mark `accent`; settled and moved-on keep the muted rest state. The
+ *   row's height is IDENTICAL in all four bands (measured, in the set's README).
+ * - **One glyph, one meaning.** `HelpCircle` is the panel's own mark for an open
+ *   ask; it never stands for anything else in this row.
+ * - **Expanded, the panel carries the question as asked and the answer as
+ *   given** - the pair that makes `expanded-settled` worth a frame beside
+ *   `expanded-moved-on`, whose row says "Timed out - the agent moved on; you can
+ *   still answer" without pretending nothing happened.
+ */
+
+/** The clock every ask frame is pinned to, so a countdown reads the same twice. */
+const ASK_TS = 1_760_000_000_000;
+const ASK_MINUTE = 60_000;
+const ASK_NOW = ASK_TS + 12 * ASK_MINUTE;
+
+const askOf = (over: Partial<PendingAsk> & { ask_id: string }): PendingAsk => ({
+	created_at: ASK_TS,
+	expires_at: ASK_TS + 60 * ASK_MINUTE,
+	timeout_s: 3600,
+	urgent: false,
+	status: "open",
+	delivered: false,
+	questions: [],
+	...over,
+});
+
+const ASK_QUESTION = {
+	id: "target",
+	question: "Which environment should I deploy this to?",
+	options: [
+		{
+			label: "staging",
+			description: "The shared pre-prod cluster",
+			recommended: true,
+		},
+		{ label: "production", description: "Live traffic" },
+	],
+};
+
+/** One question the agent is still waiting on: the item's attention state. */
+const ASK_OPEN = askOf({ ask_id: "a-7f3c", questions: [ASK_QUESTION] });
+
+/** Answered and delivered: the question as asked and the answer as given. */
+const ASK_ANSWERED = askOf({
+	ask_id: "a-answered",
+	status: "answered",
+	answered_at: ASK_TS + 8 * ASK_MINUTE,
+	delivered: true,
+	answers: { target: ["staging"] },
+	answered_by: { surface: "desktop" },
+	questions: [ASK_QUESTION],
+});
+
+/** The deadline passed and the agent moved on; a late answer still reaches it. */
+const ASK_MOVED_ON = askOf({
+	ask_id: "a-moved-on",
+	status: "timed_out",
+	expires_at: ASK_TS - ASK_MINUTE,
+	questions: [ASK_QUESTION],
+});
+
+/** A second open ask, so the `N` form has something to count. */
+const ASK_SECOND = askOf({
+	ask_id: "a-second",
+	created_at: ASK_TS + 2 * ASK_MINUTE,
+	questions: [
+		{
+			id: "files",
+			question: "Which files should the cleanup script touch?",
+			options: [{ label: "logs only" }, { label: "logs and caches" }],
+		},
+	],
+});
+
+/**
+ * The frontend snapshot the item reads, with the wire's own counts.
+ *
+ * `asks_open` is the backend's OUTSTANDING tally (`open` OR `timed_out`), which
+ * is the one count that is not the split: the split is derived from the rows, and
+ * that is the whole point of `waiting`/`movedOn`.
+ */
+const asksFrontend = (
+	asks: PendingAsk[],
+	over: Partial<CanonicalFrontendState> = {},
+): CanonicalFrontendState =>
+	({
+		goal: "",
+		loop: null,
+		asks,
+		asks_open: asks.filter(
+			(row) => row.status === "open" || row.status === "timed_out",
+		).length,
+		asks_truncated: false,
+		...over,
+	}) as CanonicalFrontendState;
+
+/**
+ * A band whose row carries the ask item, plus - for the expanded states - the
+ * PANEL the item opens.
+ *
+ * The panel is mounted ABOVE the row, which is where `chat-content.tsx` mounts it
+ * in the app (the composer band's first child), so the expanded frames show the
+ * real stacking rather than a story-only arrangement.
+ */
+const AskBand = ({
+	width = 900,
+	label,
+	asks,
+	runDetails = null,
+	goal = "",
+	expanded = false,
+}: {
+	width?: number;
+	label: string;
+	asks: PendingAsk[];
+	runDetails?: RunDetails | null;
+	goal?: string;
+	expanded?: boolean;
+}) => (
+	<Composer width={width} label={label}>
+		{expanded ? (
+			<AskSurfaces
+				frontend={asksFrontend(asks)}
+				nowMs={ASK_NOW}
+				expanded={true}
+				drafts={EMPTY_DRAFTS}
+				onDraftChange={() => undefined}
+				onAnswer={() => undefined}
+				onDecline={() => undefined}
+				className="pb-2"
+			/>
+		) : null}
+		<ComposerStatusRow
+			frontend={asksFrontend(asks, { goal })}
+			runDetails={runDetails}
+			isSmallView={width <= SMALL_VIEW_PX}
+			askExpanded={expanded}
+			onAskToggle={() => undefined}
+		/>
+	</Composer>
+);
+
+/** One ask waiting: the item's ATTENTION state, beside the box it will answer into. */
+export const AskWaiting: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="One open ask: `1 question waiting`, mark in the accent, label in `ink`"
+			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/** Everything answered: the quiet register, kept on screen like a resolved plan. */
+export const AskSettled: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A settled queue: `All asks settled`, in the muted rest state every other settled chip uses"
+			asks={[ASK_ANSWERED]}
+		/>
+	),
+};
+
+/** The deadline passed: quiet, and distinguishable from answered in the panel. */
+export const AskMovedOn: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A moved-on ask: `1 question moved on` — quiet, because the agent is no longer waiting on it"
+			asks={[ASK_MOVED_ON]}
+		/>
+	),
+};
+
+/** Two waits: the `N` form, matching `2 wakes armed` in the chips beside it. */
+export const AskMultiple: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Two open asks: `2 questions waiting` — the count form the row's other chips use"
+			asks={[ASK_OPEN, ASK_SECOND]}
+		/>
+	),
+};
+
+/** The neighbours the item has to sit among, at the row's own order. */
+const ASK_NEIGHBOURS_DETAILS: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: planOf(["pending", "done"]),
+	wakes: [
+		wakeOf("w1", "Stand-up reminder", 12),
+		wakeOf("w2", "Sweep the ingest queue", 90, 90),
+	],
+	monitors: [monitorOf("m1", "loom-pr-1710", 1)],
+	nowMs: WAKE_NOW_MS,
+});
+
+/**
+ * The item between its neighbours: goal, plan, ask, wakes, monitors — the row's
+ * own order, with the ask chip after the plan and before the wakes.
+ *
+ * 585px is the measure the BEFORE half was captured at (the old pane width minus
+ * this harness's own padding), so the pair is a fair comparison of one arrangement
+ * against the other at one width.
+ */
+export const AskNeighbours: Story = {
+	render: () => (
+		<AskBand
+			width={585}
+			label="Goal, plan, ask, wakes, monitors: the ask item in the register it now belongs to"
+			asks={[ASK_OPEN]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/** The same row at the narrow band: the item must not wrap or truncate wrongly. */
+export const AskNeighboursNarrow: Story = {
+	render: () => (
+		<AskBand
+			width={393}
+			label="The same five chips at 393px: the item wraps with its neighbours rather than claiming a row"
+			asks={[ASK_OPEN]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/** Expanded over a settled queue: the question as asked and the answer as given. */
+export const AskExpandedSettled: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Settled and expanded: the item reads `Collapse …` and the panel carries the question and its answer"
+			asks={[ASK_ANSWERED]}
+			expanded={true}
+		/>
+	),
+};
+
+/** Expanded over a moved-on ask: still answerable, and it says so. */
+export const AskExpandedMovedOn: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Moved on and expanded: `Timed out - the agent moved on`, and the answer controls stay live"
+			asks={[ASK_MOVED_ON]}
+			expanded={true}
+		/>
+	),
 };
