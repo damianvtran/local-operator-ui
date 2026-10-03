@@ -32,21 +32,36 @@ The close-pass story from the earlier fold - the write-time materialisation cach
 that made the five byte-different, `shasum -a 256` on the re-run - is kept below in
 the manifest entry, which is where a reader checks provenance.
 
-**Two of the fifteen carry chrome HEAD no longer paints, and it is the pane behind
-them rather than the close.** `close-kept` and `close-held-after` both end on the
-canvas's EMPTY state, which PR #364 rewrote in the merge this branch is folded onto:
-they show the pre-#364 pane - two actions, `New file` and `Open file`, with the
-description breaking into three lines and an orphaned `too.` - where HEAD paints
-three (`Browse files (N)`, `Open file from disk`, `New file`) inside `max-w-80`, on
-two lines. The chrome is not what either frame is a picture OF: one is the sentence
-a refused write raises, the other the strip empty with the store listing no tab, and
-the close handler sits in a region #364 does not touch. They were not re-shot
-because this scene has no phase isolation - one run of `--scene canvas-freshness`
-produces all fifteen frames through its 109 checks - so re-taking those two means
-re-taking the set. The empty state as HEAD paints it is photographed by #364's own
-frames in [`../canvas-workspace/`](../canvas-workspace/): `nothing-open`,
-`nothing-open-empty` and `nothing-open-narrow`. Read the two together: these for
-what the close did, those for what the pane paints.
+**RE-SHOT WHOLE, 2026-10-03, at `bd4c95f7761` (the #775 fold).** The
+fifteen frames this README describes were captured on the July-era shell; the
+app has moved since on facts the frames carry (the sidebar and header chrome,
+and the empty pane the close frames end on — see the next paragraph). One run
+of the scene re-took all fifteen with **ALL CHECKS PASSED**, 109 checks
+including the CSP note the run itself raises (`already widened for
+http://127.0.0.1:8080`) and the probe/write instruments it proves before
+trusting; `TZ=America/New_York` is pinned for the mtime line's rendering (the
+scene fixes the epoch itself regardless). The new generation is lossless WebP
+at the run's default window at DPR 2 (2760x1800), the same
+`<frame>/localOperatorDark.webp` layout as before.
+
+The pass also CLEARS the two sweep paint rejections: `html-before`/`html-after`
+now carry the dark shell's own ground as the frame's mode colour (measured:
+`#22201C` at 34.46% coverage; the previous generation was `#FFFFFF` at
+39.25%), so `assertFramePaints` returns clean on both and the two frames are no
+longer exceptions a sweep has to scope.
+
+**Two of the fifteen USED TO carry chrome HEAD no longer paints — the
+re-shoot above is the repair.** `close-kept` and `close-held-after` ended on
+the canvas's pre-#364 EMPTY state (two actions, `New file` and `Open file`,
+with the description breaking into three lines and an orphaned `too.`) where
+HEAD paints three (`Browse files (N)`, `Open file from disk`, `New file`)
+inside `max-w-80`, on two lines. They could not be re-shot on their own — this
+scene has no phase isolation; one run produces all fifteen through its 109
+checks — so re-taking those two meant re-taking the set, which the 2026-10-03
+pass above did: both frames now paint HEAD's empty state. The historical
+reading stays here because it explains why the debt sat until a whole-set pass.
+#364's own frames remain in [`../canvas-workspace/`](../canvas-workspace/):
+`nothing-open`, `nothing-open-empty` and `nothing-open-narrow`.
 
 They exist because the claims under review are claims about a running
 application, and a unit test with a fake bridge cannot reach any end of them:
@@ -108,28 +123,40 @@ a connection to this run's backend and to nothing else, which is the isolation c
 # 1. build the renderer against the port the scratch backend will listen on
 #    (the four VITE_* client ids the build refuses to start without are stubbed for
 #    this run rather than read out of the operator's own .env - see the
-#    accommodations below)
-env VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:54881 \
+#    accommodations below), then widen the built frame-src for that port
+env VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 \
   VITE_DISABLE_BACKEND_MANAGER=true \
-  VITE_GOOGLE_CLIENT_ID=canvas-close-evidence \
-  VITE_GOOGLE_CLIENT_SECRET=canvas-close-evidence \
-  VITE_MICROSOFT_CLIENT_ID=canvas-close-evidence \
-  VITE_MICROSOFT_TENANT_ID=canvas-close-evidence \
+  VITE_GOOGLE_CLIENT_ID=stub \
+  VITE_GOOGLE_CLIENT_SECRET=stub \
+  VITE_MICROSOFT_CLIENT_ID=stub \
+  VITE_MICROSOFT_TENANT_ID=stub \
   pnpm build
+# add http://127.0.0.1:8080 to frame-src in out/renderer/index.html (src/ stays
+# untouched; out/ is gitignored; the run's first note reports whether it is
+# widened: `already widened for http://127.0.0.1:8080`)
 
 # 2. a scratch backend, with a token only this run holds
 #    (keep it in a 0600 file: the driver requires the SAME token in its own
 #    environment, and it must never be printed)
 export LOCAL_OPERATOR_CONFIG_DIR=$(mktemp -d)/config
 export LOCAL_OPERATOR_DESKTOP_TOKEN=$(openssl rand -hex 32)
-lop serve --port 54881 &            # its record lands in $LOCAL_OPERATOR_CONFIG_DIR/run/serve
+HOME=<scratch>/home LOCAL_OPERATOR_CONFIG_DIR=$LOCAL_OPERATOR_CONFIG_DIR \
+  LOCAL_OPERATOR_DESKTOP_TOKEN=$LOCAL_OPERATOR_DESKTOP_TOKEN \
+  lop serve --port 8080 --hosting test --model mock-model &
+# the app sessions' model comes from the app-level config, which the serve flags
+# do not seed (measured); PATCH is the one spelling that sticks:
+curl -X PATCH http://127.0.0.1:8080/v1/config \
+  -H "Authorization: Bearer $LOCAL_OPERATOR_DESKTOP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"hosting":"test","model_name":"mock-model"}'
 
-# 3. the scene, which writes the subject files itself
-node scripts/renderer-driver.mjs --scene canvas-freshness \
-  --backend http://127.0.0.1:54881 \
+# 3. the scene, which writes the subject files itself. TZ pinned for the mtime
+#    line's rendering (the scene fixes the epoch regardless).
+TZ=America/New_York node scripts/renderer-driver.mjs --scene canvas-freshness \
+  --backend http://127.0.0.1:8080 \
   --backend-records "$LOCAL_OPERATOR_CONFIG_DIR/run/serve" \
   --seed-onboarding-complete \
-  --out /tmp/canvas-freshness-frames --clean
+  --out <scratch>/canvas-freshness-frames --clean
 ```
 
 Four harness accommodations are worth knowing, because none is a property of
@@ -140,6 +167,9 @@ the app and all are visible from outside:
   it, so the HTML viewer's iframe is refused before a request is made (`src/` is
   untouched and `out/` is gitignored; the run says what it widened). The
   `mentioned-files-app` rig records the same accommodation for its media frames.
+  The 2026-10-03 re-shoot widened `frame-src` for `http://127.0.0.1:8080` in the
+  built `out/renderer/index.html`, and the run's own note reports it verbatim
+  (`already widened for http://127.0.0.1:8080`).
 - **The probe counter is installed in MAIN.** The page cannot be counted from
   itself (`window.api` is a `contextBridge` object, so a wrapper assigned over one
   of its properties is silently ignored - measured, and it is why this scene's
