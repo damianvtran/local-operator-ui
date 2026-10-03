@@ -108,6 +108,34 @@ export const localOperatorDark: ThemeDefinition = {
 		hairlineStrong: "#454031",
 		borderControl: "#837c6d",
 
+		/*
+		 * `accent` SITS ΔE00 5.07 FROM `success` HERE, AND 2.22 IN THE LIGHT PALETTE -
+		 * ACCEPTED, RECORDED, AND NOT A LEGIBILITY FAILURE.
+		 *
+		 * The numbers are the same ones the `info` comment below records as the reason
+		 * `info` stopped being the accent's own triple, so the tension is real and this
+		 * note exists so it is a decision rather than a rediscovery (agent review round
+		 * 1, D1, which measured both figures with `scripts/color.mjs` and swept all 58
+		 * palettes: the median `accent`/`success` separation is 40.73, and this brand
+		 * palette is in the fleet's bottom ten). What makes it acceptable here is what
+		 * the two roles are ASKED to do, which is narrower than "a user must tell them
+		 * apart by colour alone":
+		 *
+		 *  - `accent` labels LIVE state (a mark on an open question, a liveness cue) and
+		 *    is never a bare signal: wherever it is spent it is spent beside a word that
+		 *    says the same thing (`1 question waiting`), and the item's real prominence is
+		 *    its LABEL stepping from `inkMuted` to `ink` (14.03:1 against the quiet
+		 *    chips' 8.60:1) rather than the mark's hue.
+		 *  - `success` only ever appears on a row that has already settled, as the
+		 *    panel's check, and no surface draws the two as bare marks in one row.
+		 *
+		 * The alternatives lose on their own merits rather than on taste: `warning` is
+		 * the queued-ask lane's URGENT scope (PR #798's settled round spends amber on a
+		 * short window, and re-using it for "a question is waiting" would make the
+		 * urgent reading unsayable), and any other hue would desync this mark from the
+		 * panel's own glyph for an open ask - a two-surface change with its own pair, not
+		 * a palette tweak.
+		 */
 		accent: "#38c96a",
 		accentHover: "#5ad584",
 		accentActive: "#2bb25c",
