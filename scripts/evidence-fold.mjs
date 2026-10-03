@@ -370,24 +370,28 @@ export const RETIRED_TOP_LEVEL_FIELDS = new Set(["srcTree", "scriptsTree"]);
  */
 export const mergedKeys = (base, ours, theirs, path = "", decisions = null) => {
 	/*
-	 * RETIRED keys are dropped even though THIS branch still carries them - the one
-	 * thing the loop below never otherwise does, and it is deliberate: `srcTree`
-	 * and `scriptsTree` are retired by the change that stopped storing a hash of
-	 * the shipping tree, so a branch whose copy still holds the pair would
-	 * otherwise hand it back to the merged file on its next fold (see
-	 * `RETIRED_TOP_LEVEL_FIELDS`). The drop is a stated decision, not a silence.
+	 * RETIRED keys are dropped from EITHER side, and the drop is a stated decision
+	 * rather than a silence.
+	 *
+	 * `srcTree` and `scriptsTree` are retired by the change that stopped storing a
+	 * hash of the shipping tree (see `RETIRED_TOP_LEVEL_FIELDS`), so neither side's
+	 * copy may hand them back to the merged file. The filter has to cover BOTH
+	 * sides and not just this branch's: filtering `Object.keys(ours)` alone left
+	 * the other direction open - the state where the base LACKS the pair and the
+	 * OTHER side carries it (a lane whose old fold tool re-added it, merged to
+	 * `main`) imported `srcTree` with no decision recorded at all. That is the only
+	 * realistic resurrection, and it is exactly the state this function and
+	 * `scripts/check-fold-keys.mjs` promise cannot happen.
 	 */
-	const keys = Object.keys(ours).filter((key) => {
-		if (path !== "" || !RETIRED_TOP_LEVEL_FIELDS.has(key)) return true;
-		if (decisions)
-			decisions.push({
-				path: key,
-				action: "dropped",
-				why: "retired by this change",
-			});
-		return false;
-	});
-	for (const key of keys) {
+	const retiredKey = (key) => path === "" && RETIRED_TOP_LEVEL_FIELDS.has(key);
+	const dropped = new Set();
+	const keys = [];
+	for (const key of Object.keys(ours)) {
+		if (retiredKey(key)) {
+			dropped.add(key);
+			continue;
+		}
+		keys.push(key);
 		/*
 		 * A key the OTHER side deleted that this branch still carries is KEPT - its
 		 * value goes through the ordinary per-key rules - and the decision is
@@ -405,6 +409,10 @@ export const mergedKeys = (base, ours, theirs, path = "", decisions = null) => {
 	}
 	for (const key of Object.keys(theirs)) {
 		if (key in ours) continue;
+		if (retiredKey(key)) {
+			dropped.add(key);
+			continue;
+		}
 		if (key in base) {
 			// This branch deleted it - group (5), and a stated decision.
 			if (decisions)
@@ -417,6 +425,13 @@ export const mergedKeys = (base, ours, theirs, path = "", decisions = null) => {
 		}
 		keys.push(key);
 	}
+	for (const key of dropped)
+		if (decisions)
+			decisions.push({
+				path: childPath(path, key),
+				action: "dropped",
+				why: "retired by this change",
+			});
 	return keys;
 };
 
