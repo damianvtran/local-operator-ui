@@ -3,13 +3,14 @@
  *
  * ## Two states, one component (design §5.0, R7)
  *
- * This is the EXPANDED half of the shared interaction model. The bar
- * (`ask-bar.tsx`) is the minimized one, and the rule that binds them is the
- * composer's routing invariant: while this panel is open the composer answers
- * the ask, and while it is collapsed the composer is an ordinary conversation
- * box. The panel is entered ONLY by the user - a click on the bar, or an explicit
- * action - and never by an ask arriving, which is the no-focus-steal promise the
- * whole redesign is built on.
+ * This is the EXPANDED half of the shared interaction model. The minimized
+ * trigger is now the ask ITEM in the composer's status row
+ * (`composer-status-row.tsx`), which expands into this panel, and the rule that
+ * binds them is the composer's routing invariant: while this panel is open the
+ * composer answers the ask, and while it is collapsed the composer is an ordinary
+ * conversation box. The panel is entered ONLY by the user - a press on that item,
+ * or an explicit action - and never by an ask arriving, which is the
+ * no-focus-steal promise the whole redesign is built on.
  *
  * ## Why the whole ask is one form
  *
@@ -295,7 +296,7 @@ const AskRow = ({
 	onAnswer: AskPanelProps["onAnswer"];
 	onDecline: AskPanelProps["onDecline"];
 }) => {
-	const { ask, status, open, canAnswer, canDecline } = presentation;
+	const { ask, status, canAnswer, canDecline } = presentation;
 	const setDraft = useMemo(
 		() => (updater: (current: AskDraft) => AskDraft) =>
 			onDraftChange(ask.ask_id, updater(draft)),
@@ -315,23 +316,6 @@ const AskRow = ({
 		[ask, draft, secrets],
 	);
 	const mark = askStatusMark(status);
-	/*
-	 * URGENT STEPS THE INK AND KEEPS THE SHAPE (design round 1's D5). The wire
-	 * carries `urgent` for an ask whose window the backend derived as short
-	 * (`timeout <= 900`), and until this arm no desktop component painted it - an
-	 * urgent row looked identical to one with an hour left. The first cut returned
-	 * an early `HelpCircle`+warning pair, which ALSO took the Clock away from a
-	 * timed-out urgent row (the `MOVED_ON` fixture, and every short-window ask past
-	 * its deadline): "?" then meant both "open, maybe urgent" and "timed out,
-	 * urgent". The status switch still decides which glyph the row wears; only its
-	 * ink steps, to the same `warning` role the timeout arm already spends, so the
-	 * two "you are out of time" readings are one colour rather than two.
-	 *
-	 * Scoped to the still-answerable rows: a settled ask's stale urgency is nothing
-	 * anyone can act on, and re-inking a closed row would make the warning mean
-	 * three things.
-	 */
-	const urgent = ask.urgent === true && open;
 	const StatusIcon = mark.Icon;
 
 	return (
@@ -349,17 +333,10 @@ const AskRow = ({
 			<div className="flex items-center gap-2">
 				<StatusIcon
 					aria-hidden="true"
-					className={cn("shrink-0", urgent ? "text-warning" : mark.className)}
+					className={cn("shrink-0", mark.className)}
 					size={16}
 				/>
 				<span className="min-w-0 flex-1 text-ink text-xs">
-					{/*
-					 * THE URGENCY IS SPOKEN AS WELL AS PAINTED. The mark beside this line is
-					 * `aria-hidden`, so a warning ink alone would carry the one fact this arm
-					 * exists for to sighted readers only - the same reason the ledger's
-					 * pending hold spells its state out beside the glyph.
-					 */}
-					{urgent ? <span className="sr-only">Urgent. </span> : null}
 					{askStatusText(ask, nowMs)}
 				</span>
 				{/*

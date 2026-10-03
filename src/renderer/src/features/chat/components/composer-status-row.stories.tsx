@@ -40,7 +40,12 @@ import { useEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
 import { cn } from "@shared/lib/utils";
 import type { DesktopLoopState } from "../../../../../../src/shared/desktop-control-contract";
-import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	PendingAsk,
+} from "../../../../../../src/shared/desktop-session-contract";
+import { EMPTY_DRAFTS } from "../ask-queue";
+import { AskSurfaces } from "./asks/ask-surfaces";
 import { ComposerStatusRow } from "./composer-status-row";
 import { type RunDetails, deriveRunDetails } from "./run-details";
 
@@ -2036,4 +2041,525 @@ export const GoalCapabilityOff: Story = {
 			</div>
 		);
 	},
+};
+
+/* ------------------------------------------------------------------ */
+/* The ask item: the queued-ask lane as one chip in this row           */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The queued-ask affordance used to be its own strip above the composer. It is a
+ * row item now, in this row's register, and these bands are what that means in
+ * every state the copy contract distinguishes:
+ *
+ *   waiting    one open ask            -> `1 question waiting`  (ATTENTION)
+ *   settled    one answered ask        -> `All asks settled`    (quiet)
+ *   moved-on   one timed-out ask       -> `1 question moved on` (quiet)
+ *   multiple   two waiting asks        -> `2 questions waiting` (ATTENTION)
+ *   mixed      one waiting + one moved -> `1 question waiting` visible, the split
+ *                                         in the announced name alone
+ *   truncated  the wire's cap          -> `N outstanding`
+ *   zero-ask   a published empty queue -> the item is absent
+ *
+ * WHAT TO LOOK FOR, since these frames are the design review:
+ *
+ * - **It reads as a PEER of `All to-dos resolved` and `2 wakes armed`** - same
+ *   control box, same gaps, same type step, left-aligned at the row's content
+ *   edge. No fill, no edge, no banner.
+ * - **Attention is a COLOUR STEP, not a size.** Waiting paints the label `ink`
+ *   and the mark `accent`; settled and moved-on keep the muted rest state. The
+ *   row's height is IDENTICAL in every band (measured, in the set's README).
+ * - **One glyph, one meaning.** `HelpCircle` is the panel's own mark for an open
+ *   ask; it never stands for anything else in this row.
+ * - **Expanded, the panel carries the question as asked and the answer as
+ *   given** - the pair that makes `expanded-settled` worth a frame beside
+ *   `expanded-moved-on`, whose row says "Timed out - the agent moved on; you can
+ *   still answer" without pretending nothing happened.
+ *
+ * THE STORIES DRIVE THE FLAG FOR REAL (UX round 1, U2). Every band owns the ask
+ * lane's ONE flag and hands the same state to both halves - the row item's
+ * `askExpanded`/`onAskToggle` and the panel's `expanded`/`onToggle` - exactly as
+ * `chat-page.tsx` does in the app. So in Storybook a reader can press the chip,
+ * watch the panel appear, press Escape inside it and watch focus come back: the
+ * interaction this change is about is walkable rather than pinned. `ask-driven`
+ * makes that explicit by pressing the chip ITSELF on mount and holding the
+ * shutter until the panel is up.
+ */
+
+/** The clock every ask frame is pinned to, so a countdown reads the same twice. */
+const ASK_TS = 1_760_000_000_000;
+const ASK_MINUTE = 60_000;
+const ASK_NOW = ASK_TS + 12 * ASK_MINUTE;
+
+const askOf = (over: Partial<PendingAsk> & { ask_id: string }): PendingAsk => ({
+	created_at: ASK_TS,
+	expires_at: ASK_TS + 60 * ASK_MINUTE,
+	timeout_s: 3600,
+	urgent: false,
+	status: "open",
+	delivered: false,
+	questions: [],
+	...over,
+});
+
+const ASK_QUESTION = {
+	id: "target",
+	question: "Which environment should I deploy this to?",
+	options: [
+		{
+			label: "staging",
+			description: "The shared pre-prod cluster",
+			recommended: true,
+		},
+		{ label: "production", description: "Live traffic" },
+	],
+};
+
+/** One question the agent is still waiting on: the item's attention state. */
+const ASK_OPEN = askOf({ ask_id: "a-7f3c", questions: [ASK_QUESTION] });
+
+/** Answered and delivered: the question as asked and the answer as given. */
+const ASK_ANSWERED = askOf({
+	ask_id: "a-answered",
+	status: "answered",
+	answered_at: ASK_TS + 8 * ASK_MINUTE,
+	delivered: true,
+	answers: { target: ["staging"] },
+	answered_by: { surface: "desktop" },
+	questions: [ASK_QUESTION],
+});
+
+/** The deadline passed and the agent moved on; a late answer still reaches it. */
+const ASK_MOVED_ON = askOf({
+	ask_id: "a-moved-on",
+	status: "timed_out",
+	expires_at: ASK_TS - ASK_MINUTE,
+	questions: [ASK_QUESTION],
+});
+
+/** A second open ask, so the `N` form has something to count. */
+const ASK_SECOND = askOf({
+	ask_id: "a-second",
+	created_at: ASK_TS + 2 * ASK_MINUTE,
+	questions: [
+		{
+			id: "files",
+			question: "Which files should the cleanup script touch?",
+			options: [{ label: "logs only" }, { label: "logs and caches" }],
+		},
+	],
+});
+
+/**
+ * The frontend snapshot the item reads, with the wire's own counts.
+ *
+ * `asks_open` is the backend's OUTSTANDING tally (`open` OR `timed_out`), which
+ * is the one count that is not the split: the split is derived from the rows, and
+ * that is the whole point of `waiting`/`movedOn`. `over` exists so a band can
+ * publish a tally its rows do not add up to (the `truncated` case).
+ */
+const asksFrontend = (
+	asks: PendingAsk[],
+	over: Partial<CanonicalFrontendState> = {},
+): CanonicalFrontendState =>
+	({
+		goal: "",
+		loop: null,
+		asks,
+		asks_open: asks.filter(
+			(row) => row.status === "open" || row.status === "timed_out",
+		).length,
+		asks_truncated: false,
+		...over,
+	}) as CanonicalFrontendState;
+
+/**
+ * One band: the composer, the panel the item opens, and the row the item is in.
+ *
+ * The floor is the ONE flag, owned here the way `chat-page.tsx` owns it: `open`
+ * feeds the panel's `expanded` AND the item's `askExpanded`, and both doors are
+ * the same setter. A band that pinned either half would photograph a state the
+ * press could not reach (U2).
+ */
+const AskBand = ({
+	width = 900,
+	label,
+	asks,
+	runDetails = null,
+	goal = "",
+	tally,
+	defaultOpen = false,
+	drive = false,
+	focusPanel = false,
+}: {
+	width?: number;
+	label: string;
+	asks: PendingAsk[];
+	runDetails?: RunDetails | null;
+	goal?: string;
+	/** A published count the rows do not add up to; the truncated case. */
+	tally?: number;
+	/** Pinned open for a still: the panel and the item read the same state. */
+	defaultOpen?: boolean;
+	/** Press the chip on mount and hold the shutter until the panel is up. */
+	drive?: boolean;
+	/** Focus the chip, press it, and hold the shutter until focus lands. */
+	focusPanel?: boolean;
+}) => {
+	const [open, setOpen] = useState(defaultOpen);
+	usePressTheChipOnce(drive);
+	useFocusThePanelOnce(focusPanel);
+	/*
+	 * The published override for the truncated case: the WIRE's cap is what makes
+	 * the split unknowable, so the fixture states both halves of that fact - the
+	 * backend's own tally AND the flag that says the list it published is a prefix.
+	 */
+	const published =
+		tally === undefined ? {} : { asks_open: tally, asks_truncated: true };
+	return (
+		<Composer width={width} label={label}>
+			<AskSurfaces
+				frontend={asksFrontend(asks, published)}
+				nowMs={ASK_NOW}
+				expanded={open}
+				onToggle={setOpen}
+				drafts={EMPTY_DRAFTS}
+				onDraftChange={() => undefined}
+				onAnswer={() => undefined}
+				onDecline={() => undefined}
+				className="pb-2"
+			/>
+			<ComposerStatusRow
+				frontend={asksFrontend(asks, { ...published, goal })}
+				runDetails={runDetails}
+				isSmallView={width <= SMALL_VIEW_PX}
+				askExpanded={open}
+				onAskToggle={setOpen}
+			/>
+		</Composer>
+	);
+};
+
+/**
+ * Press the chip itself, once, and hold the shutter until the panel is up.
+ *
+ * The same handshake `useOpenLastGoal` uses, and for the same reason: the state a
+ * press produces arrives a paint later, so the rig polls the DOM (the panel's own
+ * root) instead of sleeping. On exhaustion nothing is released, which makes the
+ * rig THROW on this story rather than photograph the collapsed band under a
+ * driven name.
+ *
+ * The LAST chip in the document is the one pressed, so a story that renders other
+ * bands needs no further addressing.
+ */
+const usePressTheChipOnce = (enabled: boolean) => {
+	useEffect(() => {
+		if (!enabled) return;
+		const chips = document.querySelectorAll<HTMLButtonElement>(
+			"[data-lo-ask-item-toggle]",
+		);
+		const chip = chips[chips.length - 1];
+		if (!chip) return;
+		document.documentElement.dataset.capturePending = "1";
+		chip.click();
+		const poll = window.setInterval(() => {
+			if (!document.querySelector("[data-lo-ask-surfaces]")) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, [enabled]);
+};
+
+/**
+ * Focus the chip, PRESS it, and hold the shutter until focus lands in the panel.
+ *
+ * This is the SETTLED case's keyboard path, and it cannot be a pinned state: the
+ * landing stop is produced by the panel's own focus move, which only fires on a
+ * transition that found focus on the item - so the story has to do what the user
+ * does (`focus()` then `click()`, in that order: a scripted click alone moves no
+ * focus). What the frame is for is the FOCUS RING on that stop (agent review round
+ * 2, F9; UX round 2, U4): a still has no focus, so the one panel visual no other
+ * frame in the set can carry has to be produced by a story that puts focus there.
+ *
+ * The poll waits for the ring's own condition rather than for the panel: the panel
+ * mounts a paint before focus moves into it, and a frame taken in between would
+ * show a panel with the keyboard nowhere.
+ */
+const useFocusThePanelOnce = (enabled: boolean) => {
+	useEffect(() => {
+		if (!enabled) return;
+		const chips = document.querySelectorAll<HTMLButtonElement>(
+			"[data-lo-ask-item-toggle]",
+		);
+		const chip = chips[chips.length - 1];
+		if (!chip) return;
+		document.documentElement.dataset.capturePending = "1";
+		chip.focus();
+		chip.click();
+		const poll = window.setInterval(() => {
+			const panel = document.querySelector("[data-lo-ask-surfaces]");
+			if (!panel || !panel.contains(document.activeElement)) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, [enabled]);
+};
+
+/** One ask waiting: the item's ATTENTION state, beside the box it will answer into. */
+export const AskWaiting: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="One open ask: `1 question waiting`, mark in the accent, label in `ink`"
+			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/** Everything answered: the quiet register, kept on screen like a resolved plan. */
+export const AskSettled: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A settled queue: `All asks settled`, in the muted rest state every other settled chip uses"
+			asks={[ASK_ANSWERED]}
+		/>
+	),
+};
+
+/** The deadline passed: quiet, and distinguishable from answered in the panel. */
+export const AskMovedOn: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A moved-on ask: `1 question moved on` — quiet, because the agent is no longer waiting on it"
+			asks={[ASK_MOVED_ON]}
+		/>
+	),
+};
+
+/** Two waits: the `N` form, matching `2 wakes armed` in the chips beside it. */
+export const AskMultiple: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Two open asks: `2 questions waiting` — the count form the row's other chips use"
+			asks={[ASK_OPEN, ASK_SECOND]}
+		/>
+	),
+};
+
+/**
+ * A MIXED queue: one still waiting, one the agent moved on from.
+ *
+ * The visible clause says only the waiting half (a chip is a register, not a
+ * paragraph) and the announced name carries the split - open the tooltip or read
+ * `aria-label` to see `1 question waiting · 1 moved on`. This is the state where
+ * the old strip could say nothing at all but `2 questions waiting`.
+ */
+export const AskMixed: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="One waiting, one moved on: the chip keeps the short clause, the announced name carries the split"
+			asks={[ASK_OPEN, ASK_MOVED_ON]}
+		/>
+	),
+};
+
+/**
+ * A TRUNCATED frame: the wire caps the list, so the split is unknowable.
+ *
+ * The clause states the backend's own outstanding tally instead of splitting a
+ * prefix as if it were the whole queue - and the same rule covers a frame whose
+ * rows lag the tally without being marked truncated (agent review round 1, F2).
+ */
+export const AskTruncated: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A truncated frame: `12 outstanding` rather than a split of the twelve-item prefix"
+			asks={[ASK_OPEN]}
+			tally={12}
+		/>
+	),
+};
+
+/** Zero asks: the affordance is absent, and the row's other chips are not. */
+export const AskZero: Story = {
+	render: () => (
+		<AskBand
+			width={585}
+			label="Zero asks: no item at all, while the row's own chips stand exactly as they do beside it"
+			asks={[]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/** The neighbours the item has to sit among, at the row's own order. */
+const ASK_NEIGHBOURS_DETAILS: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: planOf(["pending", "done"]),
+	wakes: [
+		wakeOf("w1", "Stand-up reminder", 12),
+		wakeOf("w2", "Sweep the ingest queue", 90, 90),
+	],
+	monitors: [monitorOf("m1", "loom-pr-1710", 1)],
+	nowMs: WAKE_NOW_MS,
+});
+
+/**
+ * The item between its neighbours: goal, plan, ask, wakes, monitors — the row's
+ * own order, with the ask chip after the plan and before the wakes.
+ *
+ * 585px is the measure the BEFORE half was captured at (the old pane width minus
+ * this harness's own padding), so the pair is a fair comparison of one arrangement
+ * against the other at one width.
+ */
+export const AskNeighbours: Story = {
+	render: () => (
+		<AskBand
+			width={585}
+			label="Goal, plan, ask, wakes, monitors: the ask item in the register it now belongs to"
+			asks={[ASK_OPEN]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/** The same row at the narrow band: the item must not wrap or truncate wrongly. */
+export const AskNeighboursNarrow: Story = {
+	render: () => (
+		<AskBand
+			width={393}
+			label="The same five chips at 393px: the item wraps with its neighbours rather than claiming a row"
+			asks={[ASK_OPEN]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/**
+ * The LONGEST clause at the narrow band (`1 question moved on`, 148.39px against
+ * the waiting clause's 133.47px): the one place a width defect could show.
+ */
+export const AskNarrowLongest: Story = {
+	render: () => (
+		<AskBand
+			width={393}
+			label="The longest clause at 393px: `1 question moved on` wraps as a unit rather than truncating"
+			asks={[ASK_MOVED_ON]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/** Expanded over a settled queue: the question as asked and the answer as given. */
+export const AskExpandedSettled: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Settled and expanded: the item reads `Collapse …` and the panel carries the question and its answer"
+			asks={[ASK_ANSWERED]}
+			defaultOpen
+		/>
+	),
+};
+
+/** Expanded over a moved-on ask: still answerable, and it says so. */
+export const AskExpandedMovedOn: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Moved on and expanded: `Timed out - the agent moved on`, and the answer controls stay live"
+			asks={[ASK_MOVED_ON]}
+			defaultOpen
+		/>
+	),
+};
+
+/**
+ * Expanded over a WAITING ask: the one combination the first pair could not show -
+ * the item in its ATTENTION register with its panel open, and the composer in ask
+ * mode (design round 1, D2).
+ */
+export const AskExpandedWaiting: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Waiting and expanded: the attention item open, with the form that answers it"
+			asks={[ASK_OPEN]}
+			defaultOpen
+		/>
+	),
+};
+
+/** Expanded over two waits: the `N` form with its panel. */
+export const AskExpandedMultiple: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Two waits and expanded: `2 questions waiting`, and the queue's two forms behind it"
+			asks={[ASK_OPEN, ASK_SECOND]}
+			defaultOpen
+		/>
+	),
+};
+
+/**
+ * DRIVEN, not pinned: this band starts collapsed and the chip is PRESSED after the
+ * first paint, so the frame is the state a reader's own press produces - the
+ * evidence the first round's stills could not carry (UX round 1, U2; QA Q-1).
+ *
+ * `data-capture-pending` holds the rig's shutter until the panel's own root is up,
+ * so a frame filed under this name cannot be a collapsed band.
+ */
+export const AskDriven: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Pressed, not pinned: the chip clicks itself after paint and the panel opens from it"
+			asks={[ASK_OPEN]}
+			drive
+		/>
+	),
+};
+
+/**
+ * The SETTLED panel's landing stop, FOCUSED: the ring the app's base layer paints.
+ *
+ * The one panel visual a still otherwise cannot carry, so it needs a story that
+ * puts focus there rather than a pinned flag (agent review round 2, F9; UX round 2,
+ * U4). A settled queue has no controls to land on, so the panel ROOT is the stop -
+ * `tabIndex={-1}` plus the app's `html :focus-visible` rule, which is what the root
+ * no longer suppresses with `outline-none`. The chip is focused and then pressed,
+ * exactly as a keyboard user reaches it, because the app's focus move is guarded on
+ * the transition finding focus on the item.
+ *
+ * AFTER-ONLY, like `driven-open`: the old surface's panel had no scripted landing
+ * stop at all, so there is no before half to pair with this (the set's README says
+ * so).
+ */
+export const AskFocusedPanel: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Settled and focused: the panel root carries the keyboard, and the ring shows it"
+			asks={[ASK_ANSWERED]}
+			focusPanel
+		/>
+	),
 };

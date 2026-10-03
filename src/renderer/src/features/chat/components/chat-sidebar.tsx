@@ -178,6 +178,7 @@ import {
 } from "../chat-sidebar-agents";
 import {
 	DEFAULT_SIDEBAR_VIEW,
+	SECTION_GROWN_HINT,
 	SIDEBAR_SECTION_ROWS,
 	type SidebarSectionKey,
 	entityMore,
@@ -192,7 +193,14 @@ import {
 	pageOrder,
 	pageRows,
 	parseSidebarView,
+	raiseSectionCap,
+	rosterFieldShown,
+	sectionGrownHintId,
+	sectionIsGrown,
+	sectionMoreLabel,
+	sectionMoreName,
 	shownSections,
+	toggleSectionDisclosure,
 } from "../chat-sidebar-view";
 import { useStripSpeaksConnection } from "../chat-status-presence";
 import { clearSearch } from "../clear-search";
@@ -1723,11 +1731,33 @@ export function ChatSidebar({
 		},
 		[catalogueScopes],
 	);
-	const toggle = (key: string, initial = false) =>
-		setExpanded((current) => ({
-			...current,
-			[key]: !(current[key] ?? initial),
-		}));
+	const toggle = (key: string, initial = false) => {
+		/*
+		 * BOTH MAPS MOVE THROUGH ONE TRANSITION (issue #765; agent review round 1's
+		 * M1 and m1). `toggleSectionDisclosure` owns the rule and its reasons -
+		 * including why a press on a section a LIST QUERY force-draws is NOT a
+		 * release - so the transition is executable from
+		 * `scripts/chat-sidebar-view.test.mjs` instead of being a condition this
+		 * JSX states and no test can reach.
+		 *
+		 * THE READS ARE HOISTED TO RENDER SCOPE (round 1, n2), where the close edge
+		 * used to read the latest disclosure inside a functional update: one pure
+		 * call takes both maps, so the disclosure read shares this snapshot. Nothing
+		 * calls `toggle` twice in a tick today, so the hoist is inert; the
+		 * alternative - a functional update per map - would read the OTHER map at
+		 * render scope anyway, which is the same freshness question left accidental
+		 * rather than stated.
+		 */
+		const next = toggleSectionDisclosure(
+			expanded,
+			sectionCaps,
+			key,
+			initial,
+			Boolean(query),
+		);
+		setExpanded(next.expanded);
+		setSectionCaps(next.caps);
+	};
 	/*
 	 * The bulk read receipt: one control, one gesture, no shortcut.
 	 *
@@ -3513,13 +3543,33 @@ export function ChatSidebar({
 	 * reader keeps the control that clears it - rather than the filter being
 	 * silently dropped, which would be a second surprise. And the rows branch
 	 * below reads THIS value rather than re-testing `rosterFilter`, so there is
-	 * exactly one spelling of "the filter applies": whenever it is false (the
-	 * section collapsed, the section hidden, the field not drawn) the section
-	 * draws its cap path and no stored filter can narrow anything invisibly.
+	 * exactly one spelling of "the filter applies": whenever it is false the
+	 * section draws its cap path and no stored filter can narrow anything
+	 * invisibly.
+	 *
+	 * AND A LIST QUERY THAT KEEPS THE SECTION DRAWN KEEPS ITS FIELD (UX round 1's
+	 * U2, design re-check round 3). The section BODY draws while
+	 * `query || isOpen("agents", true)`; this gate read the disclosure alone, so the
+	 * heading press that the panel documents as a deliberate no-op under a query - it
+	 * must not release the raised cap - still REMOVED the field under the reader
+	 * (measured: `Filter agents` present -> absent, section box 413px -> 369px, rows
+	 * unchanged). A control that vanishes under a press that promises to change
+	 * nothing on screen is the defect, and the body's own gate is what fixes it.
+	 *
+	 * THE RULE ITSELF LIVES IN `rosterFieldShown` (chat-sidebar-view), hoisted so the
+	 * press can be MODELLED by `scripts/chat-sidebar-view.test.mjs` instead of matched
+	 * as source text: the round-2 pin here was a source-string assertion and could not
+	 * see that a narrower clause - one that ALSO required `rosterFilter` - was inert in
+	 * U2's own state (a list query with no section filter). The first clause is the
+	 * body's gate; the second is untouched, so a query alone still opens nothing over a
+	 * short roster. This call site is the ONE place the component asks the question.
 	 */
-	const rosterFilterShown =
-		isOpen("agents", true) &&
-		(ownAgents.length > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== "");
+	const rosterFilterShown = rosterFieldShown(
+		isOpen("agents", true),
+		query,
+		rosterFilter,
+		ownAgents.length,
+	);
 	const filteredAgents = useMemo(
 		() => filterAgentRows(agentRows, rosterFilter),
 		[agentRows, rosterFilter],
@@ -6550,64 +6600,107 @@ export function ChatSidebar({
 		// Ordinary (non-sticky) controls after the toggle: unlike `action`, which
 		// pins the whole row, these cost no height and no pinned chrome.
 		trailing?: ReactNode,
-	) => (
-		<div
-			className={cn(
-				"@container/chatheading flex h-7 items-center gap-1",
-				/*
-				 * `-top-2` because the scroll box carries `pt-2`: pinning at `top: 0` pins to
-				 * the CONTENT edge, 9px below the box's own edge (8px of padding plus the
-				 * 1px `border-t`), and padding is not a clip — the row sliding up keeps its
-				 * tail visible in that band, cut mid-glyph at the hairline. The negative
-				 * offset starts the pinned row's own box at the box's edge, so rows go UNDER
-				 * it rather than past it (design D2-2), and the resting layout is unchanged.
-				 */
-				action && "sticky -top-2 z-10 bg-surface",
-			)}
-		>
-			<button
-				ref={toggleRef}
-				type="button"
-				data-chat-row
-				/*
-				 * The section a driver scene expands (`data-chat-section={key}`): a collapsed
-				 * section draws no rows, and its own label is a copy string, so a scene that
-				 * reached it by text would be asserting a copy edit - the convention
-				 * `data-chat-row` and `data-session-delete` already follow.
-				 */
-				data-chat-section={key}
-				className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-row-hover"
-				aria-expanded={query ? true : isOpen(key, initial)}
-				onClick={() => toggle(key, initial)}
-			>
-				{query || isOpen(key, initial) ? (
-					<ChevronDown className="size-3.5" />
-				) : (
-					<ChevronRight className="size-3.5" />
+	) => {
+		/*
+		 * A GROWN SECTION SAYS SO, AND NAMES THE WAY BACK (UX round 1's U1 and U5,
+		 * design round 1's D1 and D2). Both streams MEASURED this heading as silent:
+		 * the band is `AE` 0 between the resting and grown states (eight rows and
+		 * twelve draw the same heading), `title: null` and `aria-describedby: null` on
+		 * the toggle, and in the grown state the foot is GONE (`foot: null`) - so the
+		 * reader who raised a cap can neither tell this section from a shipped one nor
+		 * find the press that puts it back.
+		 *
+		 * THE HINT IS ON THE TOGGLE, not on a second control: the press that already
+		 * exists IS the reset (collapse, then reopen, returns the shipped list), and
+		 * the operator's decided shape is copy on an existing affordance. It is read
+		 * from the same map `cappedRows` slices rows with, so the heading cannot claim
+		 * a raise the draw does not show.
+		 *
+		 * TWO CHANNELS, ONE SENTENCE: `title` is the pointer's channel (the heading is
+		 * the only thing on screen in the grown state, so the hover is where a reader
+		 * who is looking will find it), and the `sr-only` element the toggle points its
+		 * `aria-describedby` at is the channel for every other reader - `title` alone
+		 * reaches no keyboard reader, and engines are least reliable about it. The
+		 * element is rendered only while the hint applies, so the id is never dangling.
+		 *
+		 * NO VISUAL MARK, DELIBERATELY: a badge or tint on this band is a pixel change on
+		 * a surface whose frames this round cannot re-shoot, and it is the design
+		 * re-check's call rather than this pass's - what must not be missing is a state
+		 * a screen reader can already hear and a pointer can already read.
+		 */
+		const grownHint = sectionIsGrown(sectionCaps[key])
+			? SECTION_GROWN_HINT
+			: null;
+		return (
+			<div
+				className={cn(
+					"@container/chatheading flex h-7 items-center gap-1",
+					/*
+					 * `-top-2` because the scroll box carries `pt-2`: pinning at `top: 0` pins to
+					 * the CONTENT edge, 9px below the box's own edge (8px of padding plus the
+					 * 1px `border-t`), and padding is not a clip — the row sliding up keeps its
+					 * tail visible in that band, cut mid-glyph at the hairline. The negative
+					 * offset starts the pinned row's own box at the box's edge, so rows go UNDER
+					 * it rather than past it (design D2-2), and the resting layout is unchanged.
+					 */
+					action && "sticky -top-2 z-10 bg-surface",
 				)}
-				{/*
-				 * THE SECTION'S OWN GLYPH (operator, 2026-09-25: "improve the design of
-				 * the team/agent collapsibles to be more modern"). A muted leading mark
-				 * is how the reference's group headers read - `BOT Agents` rather than a
-				 * bare word - and it earns its pixel by being the only thing that
-				 * distinguishes two sections whose labels are otherwise the same shape.
-				 * `aria-hidden`, because the label beside it already names the section.
-				 */}
-				{glyph
-					? createElement(glyph, {
-							"aria-hidden": true,
-							className: "size-3.5 shrink-0 text-ink-dim",
-						})
-					: null}
-				<span className="min-w-0 flex-1 truncate text-left">{label}</span>
-				{/* A zero badge next to a group that already says it is empty is the
+			>
+				<button
+					ref={toggleRef}
+					type="button"
+					data-chat-row
+					/*
+					 * The section a driver scene expands (`data-chat-section={key}`): a collapsed
+					 * section draws no rows, and its own label is a copy string, so a scene that
+					 * reached it by text would be asserting a copy edit - the convention
+					 * `data-chat-row` and `data-session-delete` already follow.
+					 */
+					data-chat-section={key}
+					className="flex h-7 min-w-0 flex-1 items-center gap-1 rounded-md px-1 text-body-sm font-medium text-ink-muted hover:bg-row-hover"
+					aria-expanded={query ? true : isOpen(key, initial)}
+					/* `title` is the pointer's copy; both it and the description below come
+					 * from ONE sentence (`SECTION_GROWN_HINT`), so they cannot drift. */
+					title={grownHint ?? undefined}
+					aria-describedby={grownHint ? sectionGrownHintId(key) : undefined}
+					onClick={() => toggle(key, initial)}
+				>
+					{query || isOpen(key, initial) ? (
+						<ChevronDown className="size-3.5" />
+					) : (
+						<ChevronRight className="size-3.5" />
+					)}
+					{/*
+					 * THE SECTION'S OWN GLYPH (operator, 2026-09-25: "improve the design of
+					 * the team/agent collapsibles to be more modern"). A muted leading mark
+					 * is how the reference's group headers read - `BOT Agents` rather than a
+					 * bare word - and it earns its pixel by being the only thing that
+					 * distinguishes two sections whose labels are otherwise the same shape.
+					 * `aria-hidden`, because the label beside it already names the section.
+					 */}
+					{glyph
+						? createElement(glyph, {
+								"aria-hidden": true,
+								className: "size-3.5 shrink-0 text-ink-dim",
+							})
+						: null}
+					<span className="min-w-0 flex-1 truncate text-left">{label}</span>
+					{/* A zero badge next to a group that already says it is empty is the
 			    same fact twice; only a non-zero count carries information. */}
-				{count !== undefined && count !== 0 && countBadge(count)}
-			</button>
-			{action}
-			{trailing}
-		</div>
-	);
+					{count !== undefined && count !== 0 && countBadge(count)}
+				</button>
+				{/* The hint the toggle points at, and ONLY while it applies: a rendered
+			    but unreferenced element is a reading cost with no reader. */}
+				{grownHint && (
+					<span id={sectionGrownHintId(key)} className="sr-only">
+						{grownHint}
+					</span>
+				)}
+				{action}
+				{trailing}
+			</div>
+		);
+	};
 	/*
 	 * A SECTION LABEL of the one list (§C1): `RUNNING`, `TODAY`, `THIS WEEK`,
 	 * `OLDER`, and `PINNED` when the capability is on.
@@ -6661,9 +6754,50 @@ export function ChatSidebar({
 	 * for `sectionCaps`' reason: the question is about the moment.
 	 */
 	const [entityLoads, setEntityLoads] = useState<Record<string, number>>({});
+	/*
+	 * THE SECTION FOOT'S FOCUS CONTRACT (UX round 1's U3, design round 1's D3),
+	 * mirroring `tailFocusRef` two levels of list up.
+	 *
+	 * THE DEFECT, MEASURED BY BOTH STREAMS: after a focused activation of
+	 * `Show 4 more` the foot UNMOUNTS (the raised cap stops bounding the rows) and
+	 * nothing claims the focus, so `document.activeElement` is `BODY` - a keyboard
+	 * reader is returned to the top of the document by the press that was supposed to
+	 * bring them more rows. The panel already owns this contract: `pressShowMore` and
+	 * its tail-focus effect send focus to the first row the press added, with the
+	 * group's own disclosure as the fallback and `<body>` never reachable.
+	 *
+	 * WHAT THIS RECORD CARRIES: the section's key and the count of rows DRAWN before
+	 * the press (`at`), which is exactly the index of the first row the press adds -
+	 * `cappedRows` slices `rows.slice(0, cap)`, so the raise draws `rows[at]`
+	 * onwards. The effect below reads it after the commit, the same shape the tail
+	 * press uses (a ref rather than state, because it must not re-render the section
+	 * it describes).
+	 */
+	const sectionFootFocusRef = useRef<{
+		key: string;
+		at: number;
+	} | null>(null);
 	const cappedRows = (key: string, rows: ReactNode[]) => {
 		const cap = sectionCaps[key] ?? SIDEBAR_SECTION_ROWS;
 		const hidden = rows.length - cap;
+		/*
+		 * THE FOOT'S OWN TWO FACTS (UX round 1's U1 and N1, design round 1's D1):
+		 *
+		 * A NAME THAT CARRIES ITS SECTION. The visible label names the remainder and
+		 * not the section, and two sections can each carry a foot, so a screen reader
+		 * heard a bare `Show 4 more` twice over (both streams measured `aria-label:
+		 * null`). The unit is the section's own key - the string
+		 * `data-sidebar-section-more` already carries.
+		 *
+		 * AND THE RESET'S SENTENCE WHILE THE CAP IS RAISED. In the grown state the foot
+		 * is usually GONE (which is why the heading carries the same sentence too); when
+		 * a raise did not cover the rows the foot is still here, and this is the one
+		 * place a pointer hovering the remainder can learn that a collapse is the way
+		 * back. `title` carries BOTH facts because the name is a tooltip's ordinary job
+		 * and the reset sentence is this control's news; the accessible name stays the
+		 * name alone (a description is not a name).
+		 */
+		const footName = sectionMoreName(hidden, key);
 		return (
 			<>
 				{rows.slice(0, cap)}
@@ -6671,17 +6805,43 @@ export function ChatSidebar({
 					<button
 						type="button"
 						data-sidebar-section-more={key}
-						onClick={() =>
-							setSectionCaps((previous) => ({
-								...previous,
-								[key]:
-									(previous[key] ?? SIDEBAR_SECTION_ROWS) +
-									SIDEBAR_SECTION_ROWS,
-							}))
+						/*
+						 * THE SECTION FOOT JOINS THE ARROW WALK (UX round 1's U4). The walk's
+						 * stop list is `navRef`'s `[data-chat-row]` elements and the GROUP foot
+						 * one level down has carried this stamp precisely so it sits one
+						 * ArrowDown from the group's last row; the section's own foot was the
+						 * one control in the entity region a keyboard reader could reach only by
+						 * Tab-walking every row's controls (measured: 26 presses). The stamp
+						 * puts it in the same roving ring `applyRowStop` maintains, so it is
+						 * reachable by the arrow walk and keeps the ring's tabIndex contract.
+						 *
+						 * IT TRADES Tab FOR THE ARROW WALK, which is the trade the group foot one
+						 * level down already made. `applyRowStop` keeps the ring ROVING: a
+						 * `[data-chat-row]` control is `tabIndex` -1 unless it is the stop, so the
+						 * measured 26-press Tab walk stops short of this foot from here on - those
+						 * presses counted the filter field and the rows' own Expand/Pin/Manage
+						 * controls, none of which carry the stamp, and the foot was the 26th
+						 * precisely BECAUSE it was outside the ring. The arrow walk (and `F6` into
+						 * the region) is now the path to it, exactly as it is to a row's own name
+						 * button. Parity rather than a new loss: the entity region's contract is
+						 * that `[data-chat-row]` IS the walk's stop list, and this was the one
+						 * control in the region standing outside it.
+						 */
+						data-chat-row
+						aria-label={footName}
+						title={
+							sectionIsGrown(cap)
+								? `${footName} - ${SECTION_GROWN_HINT}`
+								: footName
 						}
+						onClick={() => {
+							/* Recorded BEFORE the raise, so `at` is the pre-press draw count. */
+							sectionFootFocusRef.current = { key, at: cap };
+							setSectionCaps((previous) => raiseSectionCap(previous, key));
+						}}
 						className="flex h-7 w-full items-center rounded-md px-2 text-left text-body-sm text-ink-muted transition-colors duration-fast ease-out-quart hover:bg-row-hover hover:text-ink"
 					>
-						{hidden === 1 ? "Show 1 more" : `Show ${hidden} more`}
+						{sectionMoreLabel(hidden)}
 					</button>
 				)}
 			</>
@@ -7223,6 +7383,60 @@ export function ChatSidebar({
 	});
 
 	/*
+	 * THE SECTION FOOT'S FOCUS, DELIVERED AFTER THE PRESS'S COMMIT (UX round 1's
+	 * U3, design round 1's D3). The record `cappedRows` writes names the section and
+	 * the pre-press draw count; this reads the FIRST ROW THE RAISE ADDED and focuses
+	 * its own control, with the section's heading as the fallback. `<body>` is never
+	 * a target: when neither can be found the focus is left where it was, which is
+	 * the rule the group's own tail press states one level up.
+	 *
+	 * WHY `[data-entity]` AND NOT THE DRAW INDEX INTO `[data-chat-row]`: an expanded
+	 * entity DRAWS ITS OWN SESSION ROWS between the agent rows, and those controls
+	 * carry `data-chat-row` too - so a stop-index into that list would count them and
+	 * land on a session inside the agent above rather than on the first agent the
+	 * press added. `[data-entity]` is exactly the list `cappedRows` slices (each
+	 * entity row is the wrapper `entity(...)` renders), so `drawn[at]` is that row by
+	 * construction, and `closest("section")` is the walk the roster's own keyboard
+	 * code already uses to find the section a row belongs to.
+	 *
+	 * A PLAIN `useEffect`, matching the group's tail press rather than the layout
+	 * effects above: the rows are already in the DOM by then, and the press's own
+	 * `setSectionCaps` is what schedules this, so there is no frame in which the
+	 * reader could act on a stale focus.
+	 */
+	useEffect(() => {
+		const pending = sectionFootFocusRef.current;
+		if (pending === null) return;
+		sectionFootFocusRef.current = null;
+		const panel = entityPanelRef.current;
+		if (panel === null) return;
+		const heading = panel.querySelector<HTMLElement>(
+			`[data-chat-section="${CSS.escape(pending.key)}"]`,
+		);
+		const section = heading?.closest("section") ?? null;
+		const drawn =
+			section === null
+				? []
+				: [...section.querySelectorAll<HTMLElement>("[data-entity]")];
+		/*
+		 * THE RAISE MUST HAVE MOVED THE DRAW for a row to be "newly revealed": the foot
+		 * only exists while the cap bounds the rows, so a press always adds one - but a
+		 * cap that did not move (a reset racing this press) would make `drawn[at]` a row
+		 * the press did not reveal, which is a wrong target rather than a missing one.
+		 * Reading the live cap here is also what makes this effect's dependency real
+		 * rather than a timer.
+		 */
+		const raised = sectionCaps[pending.key] ?? SIDEBAR_SECTION_ROWS;
+		const revealed = raised > pending.at ? (drawn[pending.at] ?? null) : null;
+		const target =
+			revealed?.querySelector<HTMLElement>("[data-chat-row]") ??
+			revealed ??
+			heading ??
+			null;
+		target?.focus();
+	}, [sectionCaps]);
+
+	/*
 	 * ONE SCROLLER (operator report, 2026-09-26): the two-region split - its
 	 * persisted height, the drag, the collapse and the region swap - is removed.
 	 * This component no longer resolves or measures a split; the assembly below
@@ -7431,11 +7645,19 @@ export function ChatSidebar({
 										 * closes): a filter always keeps its field, so the pair cannot
 										 * come apart.
 										 *
-										 * IT READS THE DISCLOSURE, NOT A QUERY. A list query force-opens
-										 * the rows (`query || isOpen`) but is not the reader expanding
-										 * the roster - and the query already narrows agents by name
-										 * through the backend search, so a second field under it would
-										 * be two filters arguing about one list.
+										 * AND THE FIELD ALSO RIDES A LIST QUERY (UX round 1's U2,
+										 * design re-check round 3). A list query force-opens the rows
+										 * (`query || isOpen`) and this field is that body's own control,
+										 * so it draws while the body does - reading the disclosure ALONE
+										 * was U2: the heading press under a query is the panel's
+										 * documented no-op on the rows and the chevron, yet it took
+										 * `Filter agents` off the screen and stepped everything below it
+										 * up by the field's own height. The query still narrows agents by
+										 * name through the backend search; this field narrows the ROSTER
+										 * in place on top of it, so the reader keeps the control that
+										 * clears their own filter. THE SECOND CLAUSE IS UNTOUCHED: the
+										 * field still needs a cap-bound roster or an applied filter, so a
+										 * query alone draws nothing over a short roster.
 										 *
 										 * IT IS NOT THE LIST'S FIELD one level up, and that separation
 										 * is the point: the list's query goes through the backend and

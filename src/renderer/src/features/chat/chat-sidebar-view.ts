@@ -142,6 +142,245 @@ export function isEntitySection(key: SidebarSectionKey): boolean {
  */
 export const SIDEBAR_SECTION_ROWS = 8;
 
+/**
+ * The two transitions of a section's raised cap (issue #765).
+ *
+ * WHY THEY ARE HERE AND NOT INLINE IN THE COMPONENT. The cap is a state machine
+ * with two edges, and the sidebar cannot be rendered by this repository's
+ * `node:test` suite (see this file's header), so an edge written inline in JSX
+ * is an edge no test can reach. `scripts/chat-sidebar-view.test.mjs` drives the
+ * cycle below.
+ *
+ * WHY `releaseSectionCap` DELETES THE ENTRY. The cap map stores only what the
+ * reader RAISED; the shipped `SIDEBAR_SECTION_ROWS` is what an absent key means
+ * (`cappedRows` reads `caps[key] ?? SIDEBAR_SECTION_ROWS`). Collapsing a section
+ * is the reader asking for the compact form back, so the entry goes rather than
+ * coming down by a step: a reader who climbed three rungs (8 to 32) and a reader
+ * whose last press revealed fewer rows than a page (the ladder's top rung, where
+ * the control drew only the rows that existed) both land exactly on the shipped
+ * cap, which a subtract-a-page would leave short of or short by - the invariant
+ * is "a collapsed section is compact", not "a collapsed section is one page
+ * shorter". Removing the key also re-derives the cap for free on the next expand
+ * through the same `??`, so there is one spelling of "the shipped cap".
+ *
+ * WHY IT RETURNS THE SAME MAP WHEN NOTHING IS RAISED. React re-renders on an
+ * identity change, and a close of a section nobody widened is not a state
+ * change. The disclosure map CANNOT be given the same property (agent review
+ * round 1, n1): a toggle always flips its key's value, so every press of that map
+ * is a real change, while the cap map has a press - the close of a section nobody
+ * widened - that leaves the state alone.
+ *
+ * THE RAISED ROWS ARE NOT DISCARDED, only the cap that drew them: the sections'
+ * rows come from the catalogue the reader already loaded, so a re-expand after a
+ * reset costs no fetch (`entityLoads`, the per-group paging ladder, is a
+ * different map and is deliberately untouched here).
+ */
+export function releaseSectionCap(
+	caps: Record<string, number>,
+	key: string,
+): Record<string, number> {
+	if (!(key in caps)) return caps;
+	const next = { ...caps };
+	delete next[key];
+	return next;
+}
+
+/**
+ * The `Show N more` press: raise ONE section's cap by one rung.
+ *
+ * Keyed, never global - the operator's own note on `sectionCaps` states the
+ * reason: a reader who wants the eleventh agent must not also open the eleventh
+ * team. The step is `SIDEBAR_SECTION_ROWS` from whatever the section is at, so a
+ * section still on the shipped cap (no entry) steps from that cap rather than
+ * from zero.
+ */
+export function raiseSectionCap(
+	caps: Record<string, number>,
+	key: string,
+): Record<string, number> {
+	return {
+		...caps,
+		[key]: (caps[key] ?? SIDEBAR_SECTION_ROWS) + SIDEBAR_SECTION_ROWS,
+	};
+}
+
+/**
+ * A PRESS ON A SECTION HEADING: the disclosure and the raised cap move TOGETHER.
+ *
+ * WHY THE TWO MAPS ARE ONE TRANSITION. The cap's release edge belongs to the
+ * disclosure's close (issue #765), so a press that wrote the disclosure alone -
+ * or released the cap alone - would be half of one state change. Written inline
+ * in the component, the two halves are reachable by neither test nor reader
+ * (this file's header says why), which is how the missing edge shipped; the
+ * round-1 review (m1) asked for the transition itself to be executable, and
+ * `scripts/chat-sidebar-view.test.mjs` drives both edges through this function.
+ *
+ * WHY THE RELEASE IS ALSO GATED ON `forcedOpen` (agent review round 1, M1; QA
+ * round 1, QA-F1). The sections are force-DRAWN while a LIST QUERY is in force
+ * (`query || isOpen(...)` in the component), so a heading press under a query
+ * records a close while the section stays on screen. The round-1 shape released
+ * the raised cap on that press, dropping the drawn rows back to
+ * `SIDEBAR_SECTION_ROWS` - narrowing a section under a reader who never saw it
+ * go away, on the one edge the release exists to make safe. The release is
+ * therefore tied to the section ACTUALLY closing: the disclosure records a close
+ * AND nothing else keeps the section drawn.
+ *
+ * THE DISCLOSURE IS STILL WRITTEN under a query, which keeps the press's own
+ * meaning once the query is cleared - that write is pre-existing behaviour and
+ * deliberately out of this fix's scope (round 1 scoped it so).
+ */
+export function toggleSectionDisclosure(
+	expanded: Record<string, boolean>,
+	caps: Record<string, number>,
+	key: string,
+	initial: boolean,
+	forcedOpen: boolean,
+): { expanded: Record<string, boolean>; caps: Record<string, number> } {
+	const next = !(expanded[key] ?? initial);
+	return {
+		expanded: { ...expanded, [key]: next },
+		/* `!next` is the close edge; `!forcedOpen` is the section still being on
+		 * screen for a reason the press did not ask about. */
+		caps: !next && !forcedOpen ? releaseSectionCap(caps, key) : caps,
+	};
+}
+
+/**
+ * WHETHER THE ROSTER'S FIELD IS DRAWN - and with it whether the filter it carries may
+ * NARROW anything, because the two move together (design round 1's D2, agent review's
+ * B3, UX round 1's U2 and U3 are one defect seen four ways).
+ *
+ * WHY IT LIVES HERE, NOT INLINE IN THE COMPONENT. The question is asked by the field's
+ * render gate AND by the rows branch below it, and a rule written in JSX is a rule no
+ * test reaches (this file's header says why) - which is how U2 survived a pin that only
+ * matched the gate's SOURCE TEXT: a source-string assertion proves the line changed, not
+ * that the reader keeps their control. Hoisted for the same reason `entityQueryAdmits`
+ * and `toggleSectionDisclosure` were, so the press can be MODELLED by
+ * `scripts/chat-sidebar-view.test.mjs` - state in, answer out - rather than read.
+ *
+ * THE FIRST CLAUSE IS THE SECTION BODY'S OWN GATE. The body draws while
+ * `query || isOpen(...)`, and the field is that body's control, so the field draws while
+ * the body does. Reading the disclosure ALONE was U2: the heading press under a LIST
+ * QUERY is a documented no-op on the rows and the chevron - it must not release the
+ * raised cap - yet it still took `Filter agents` off the screen and stepped everything
+ * below up by the field's own height (measured: present -> absent, section box 413px ->
+ * 369px, rows unchanged). A control that vanishes under a press promising to change
+ * nothing on screen is the defect; this clause is the remedy.
+ *
+ * A NARROWER FORM THAT ALSO REQUIRED `rosterFilter` WAS SHIPPED AND REFUSED (round 3). It
+ * held the field only when the reader had typed their OWN filter, but U2's repro is a
+ * list query with NO section filter - the ordinary "search the sidebar, then press the
+ * section" - so the very state the finding measured still lost the control. The state
+ * that form added (query + filter + collapsed) is one where the reader's own filter
+ * should stay visible beside the query's matches, not a surface nobody owns.
+ *
+ * THE SECOND CLAUSE IS WHY A QUERY ALONE OPENS NOTHING: the field still needs a
+ * cap-bound roster or an applied filter, so a query over a SHORT roster draws no field at
+ * all. The rows branch reads THIS value rather than re-testing `rosterFilter`, so there
+ * is exactly one spelling of "the filter applies".
+ */
+export function rosterFieldShown(
+	isOpen: boolean,
+	query: string,
+	rosterFilter: string,
+	rosterLength: number,
+): boolean {
+	return (
+		(isOpen || query !== "") &&
+		(rosterLength > SIDEBAR_SECTION_ROWS || rosterFilter.trim() !== "")
+	);
+}
+
+/**
+ * A GROWN SECTION'S OWN NAME FOR ITS RESET (issue #765; UX round 1's U1, design
+ * round 1's D1).
+ *
+ * WHY THE RESET NEEDS NAMING AT ALL. Growing a section is one press of
+ * `Show N more`; the way back is the section heading pressed TWICE - the first
+ * press closes the section (twelve rows to none, 488px to 28px) and the second
+ * reopens it on the shipped cap. Both review streams measured that nothing on the
+ * surface connects the two: in the grown state the foot is GONE (`foot: null`) and
+ * the heading carried `title: null` and `aria-describedby: null`. So the reader
+ * who never read the diff cannot find the shrink path, and the press they would
+ * find by accident reads as "you closed it" rather than "you are shrinking it".
+ *
+ * IT NAMES THE TWO-GESTURE SEQUENCE, because the reset IS two presses and each
+ * alone surprises with no notice: the collapse alone draws ZERO rows (measured 12
+ * -> 0, 488px -> 28px), and it is the REOPEN that draws the compact eight - the
+ * raised rows are not kept across the collapse (the invariant
+ * `releaseSectionCap` implements: "a collapsed section is compact"). The first
+ * wording named collapse and reopen as separate clauses ("Collapse to restore the
+ * compact list; reopening draws the compact list again"), which agent review round
+ * 3 (R3-3) read as if the first clause alone got the list back, sending a reader
+ * who followed it into an empty section. Spelling the ORDER is what makes the copy
+ * match the measured journey. Sentence case and no imperative beyond the gestures
+ * that exist, so it reads as a description of the control rather than as a second
+ * control's label.
+ *
+ * ONE COPY, TWO CHANNELS: this string is the heading's `title` (the pointer's
+ * channel) AND the `sr-only` element the heading points its `aria-describedby` at
+ * (every other reader) - the two-channel rule `SENDING_DISCARD_WHY` states in the
+ * component, because `title` alone reaches no keyboard reader and is the channel
+ * engines are least reliable about.
+ */
+export const SECTION_GROWN_HINT =
+	"Collapse, then reopen, to restore the compact list";
+
+/**
+ * IS THIS SECTION DRAWN PAST THE SHIPPED CAP? The one spelling of the question,
+ * read by the heading's hint and by `scripts/chat-sidebar-view.test.mjs`;
+ * `cappedRows` asks the same thing of the same map (`caps[key] ??
+ * SIDEBAR_SECTION_ROWS`) when it slices the rows, so the hint cannot claim a
+ * section is grown while the draw says it is not.
+ *
+ * THE ABSENT KEY IS THE SHIPPED CAP, exactly as in `cappedRows`: a section nobody
+ * raised is not grown, and neither is one whose entry sits at the shipped count (a
+ * raise always steps FROM the shipped cap by a whole page, so an entry at or below
+ * it is the shipped list).
+ */
+export function sectionIsGrown(cap: number | undefined): boolean {
+	return (cap ?? SIDEBAR_SECTION_ROWS) > SIDEBAR_SECTION_ROWS;
+}
+
+/**
+ * The heading's description element id, KEYED like the panel's other
+ * `aria-describedby` targets (`draftWhyId`, `rowMenuClauseId`), so two sections
+ * cannot describe themselves with each other's sentence.
+ *
+ * IT IS RENDERED ONLY WHILE THE HINT APPLIES and the attribute points at it only
+ * while it is: a dangling id resolves to no description at all, which is the rule
+ * the attribute's own comment in the component states.
+ */
+export const sectionGrownHintId = (key: string) => `section-grown-hint-${key}`;
+
+/**
+ * THE SECTION FOOT'S VISIBLE LABEL, in one spelling (the singular was inline in
+ * the component and the plural was its template). `Show 1 more` is its own
+ * sentence rather than a pluralised one because that is what the panel's other
+ * remainders say.
+ */
+export const sectionMoreLabel = (hidden: number) =>
+	hidden === 1 ? "Show 1 more" : `Show ${hidden} more`;
+
+/**
+ * THE SECTION FOOT'S ACCESSIBLE NAME (UX round 1's N1): the visible label names
+ * the REMAINDER but not the section, and two sections can each carry a foot, so a
+ * screen reader heard a bare `Show 4 more` twice over on one panel (both streams
+ * measured `aria-label: null` and `title: null` on it).
+ *
+ * THE GROUP FOOT ONE LEVEL DOWN ALREADY FIXED THIS, in its own words
+ * (`"<foot.aria> in <name>"`); this control's shape is not that one because a
+ * section is not a container the reader owns - it IS the list - so the name reads
+ * as the remainder plus what the remainder is made of.
+ *
+ * `unit` comes from the section's own key at the call site (`agents`, `teams`),
+ * which is the string `data-sidebar-section-more` already carries: one word for the
+ * section, not a second vocabulary beside it.
+ */
+export function sectionMoreName(hidden: number, unit: string): string {
+	return `${sectionMoreLabel(hidden)} ${unit}`;
+}
+
 export type SidebarGroupBy = "section" | "agent" | "flat";
 
 /**
