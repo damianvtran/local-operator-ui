@@ -1,0 +1,52 @@
+[build] current: assets 2026-10-02T16:25:13.503Z >= sources 2026-10-02T16:03:34.948Z
+[note] abandoned scratch trees
+        2 seen, 0 owned by a live pid (kept), 2 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        out/renderer/index.html: http://127.0.0.1:16543 added to frame-src and media-src (build output only; src/ untouched)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/composer-arrowdown-1002-84e8
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92096
+  frames        /Users/damian/.local-operator/sessions/447b01dada03/scratchpad/764-shoot/frames
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92096/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:16543   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/composer-arrowdown-1002-84e8/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:16543","backend":"http://127.0.0.1:16543"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:16543)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[PASS] the seeded draft is the pane's active conversation
+[PASS] the composer mounts on the seeded draft
+[PASS] the recall history is in the composer's own store
+[note] pane diagnostic
+        {"text":"Local Operator New chat ⌘ N Search ⌘ K Aida Agents Projects Schedules Browser Agent hub Agents No agents yet 10 built-in agents are ready to install — aida, architect, coder, copy-reviewer, designer, manager, reviewer, scout, tui-designer and ux-reviewer. You can edit them once installed. Install all built-in agents Create agent Teams Create team PINNED Scheduled (1 wake) Aida · aida now , las","textareas":1,"tourTags":16,"composer":true,"dialogs":0}
+[PASS] the draft reaches the composer's box
+[PASS] the composer's own store carries the draft
+[note] the draft's own geometry
+        {"scrollHeight":99,"clientHeight":99,"lineHeight":21.7,"paddingY":12,"rows":4,"boxHeight":99}
+[PASS] the draft wraps over several visual rows
+[PASS] draft-wrapped-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 38.2 vs 32.1 own / 237.3 other
+[PASS] the box is empty before the arrow press
+[PASS] ArrowUp engages the recall: the newest submitted message stands in the box
+[PASS] the store records the recall as engaged
+[PASS] recall-engaged-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 36.8 vs 32.1 own / 237.3 other
+[PASS] no process from this run outlived its boot
+
+frames: diagnostic-offline-pane.png, draft-wrapped-dark.png, recall-engaged-dark.png
+frames directory: /Users/damian/.local-operator/sessions/447b01dada03/scratchpad/764-shoot/frames
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92096/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-92096 (the frames are also in --out)
+
+ALL CHECKS PASSED

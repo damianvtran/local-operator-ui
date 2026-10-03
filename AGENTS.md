@@ -1704,7 +1704,10 @@ by that setting is said out loud. Full detail and the wiring's failure modes:
   `PREPUSH_BYPASS="<reason>"`, which prints the reason on the push itself: the
   four disclosed bypasses this fleet produced in one night were all hooks that
   could not finish, and a silent skip and a pass are indistinguishable
-  afterwards.
+  afterwards. It is not a per-leg skip — **it skips EVERY leg at once**, so the
+  push is ungated end to end and the banner names each leg it dropped; record the
+  equivalent runs for all of them beside the reason, not only for the one leg
+  that could not run.
 - **A fresh worktree is gated or refused, never silently ungated.** A worktree
   whose branch predates `.githooks/` fails the push and names both ways forward —
   because git skips a missing hook file without a word, which is exactly how a
