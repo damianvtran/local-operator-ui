@@ -2747,7 +2747,7 @@ export const AskColumnFloorApplied: Story = {
 	render: () => (
 		<AskBand
 			width={432}
-			label="The applied floor: a 480px column, composer box 432px - the countdown is painted in full, because no yield tier can bind here"
+			label="The applied floor: a 480px column, whose composer box is 432px - the window the app's own floor produces"
 			asks={[ASK_OPEN]}
 		/>
 	),
