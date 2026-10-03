@@ -1967,7 +1967,10 @@ test("the Mesh rail badge rides an approvals read that dials nothing, and only w
 	);
 	assert.match(nav, /attention: meshWaiting,/);
 	assert.match(nav, /attentionTag: "nav-mesh-badge",/);
-	assert.match(nav, /attentionName: \(count\) => `Mesh, \$\{count\} waiting`,/);
+	assert.match(
+		nav,
+		/attentionName: \(count: number\) => `Mesh, \$\{count\} waiting`,/,
+	);
 });
 
 test("the Mesh page renders the tray above every state block, off its own read", () => {
@@ -2030,7 +2033,14 @@ test("a refused decision renders its sentence, and the busy gate is the surface'
 	);
 	assert.match(
 		tray,
-		/refusal && !refusalAttached && \(/,
+		/*
+		 * The pattern stops at the element, not at a parenthesised group: the
+		 * formatter (biome) rewrites `cond && (\n <X />\n)` to `cond && <X />`,
+		 * so pinning the parens asserted a shape the codebase never ships and
+		 * left Desktop Tests red on the head the round-1 fix produced. The
+		 * INTENT is unchanged - the refusal renders while unattached.
+		 */
+		/refusal && !refusalAttached && <MeshDecisionRefusal/,
 		"a refusal whose record left the live set still renders under the list",
 	);
 });
