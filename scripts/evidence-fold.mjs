@@ -1565,6 +1565,9 @@ const refuseDriver = ({
 	oursPath,
 	theirsPath,
 	operation = null,
+	oursLabel: oursLabelOverride = null,
+	oursRaw = null,
+	theirsRaw = null,
 }) => {
 	const reason = `REFUSING to resolve ${MANIFEST_PATH} during ${named}: ${why}`;
 	console.error(`evidence-fold: ${reason}`);
@@ -1575,32 +1578,51 @@ const refuseDriver = ({
 		`evidence-fold: this reason is recorded at ${recordDriverFailure(reason)}`,
 	);
 	if (typeof oursPath !== "string" || typeof theirsPath !== "string") return 1;
-	for (const path of [oursPath, theirsPath]) {
-		if (!existsSync(path))
-			throw new Error(
-				`git handed the driver a path that does not exist (${path}), so the conflict could not be marked`,
-			);
-	}
 	const withNewline = (text) => (text.endsWith("\n") ? text : `${text}\n`);
+	/*
+	 * A SIDE THAT CANNOT BE READ IS MARKED, NOT SKIPPED, AND NEVER A THROW.
+	 * `readSide` refuses a side that is not JSON or whose path is absent, so this
+	 * function is now reached holding exactly those paths - and the earlier
+	 * version threw here for a missing one ("so the conflict could not be
+	 * marked"), which is the same destructive shape one level down: the throw
+	 * escaped, and the working file kept `%A` with no markers - the
+	 * resolved-looking file this whole path exists to prevent, reached from the
+	 * refusal that was supposed to prevent it. Whichever side cannot be read is
+	 * written as a stand-in line naming it, so the file always reads as
+	 * UNRESOLVED. Only a working file that cannot be written at all can still
+	 * fail here, and that throw is recorded by the top-level catch.
+	 */
+	const sideBody = (path, raw, name) => {
+		if (typeof raw === "string") return withNewline(raw);
+		try {
+			return withNewline(readFileSync(path, "utf8"));
+		} catch (error) {
+			return `<<< the ${name} side could not be read at ${path}: ${error.message} >>>\n`;
+		}
+	};
 	/*
 	 * The labels name the sides git actually handed us. `%A` is NOT this branch
 	 * outside a merge - that is the whole reason this path refuses - and
 	 * `operation` is null for the operations git records no marker for, so it
 	 * must not be interpolated as if it were a name (that printed "the null
-	 * upstream side").
+	 * upstream side"). A caller that DOES know what `%A` is - the read-failure
+	 * refusal, which runs inside a real merge - passes its own label through
+	 * `oursLabelOverride`, so the markers do not claim "no merge in progress"
+	 * during one.
 	 */
 	const oursLabel =
-		operation === null
+		oursLabelOverride ??
+		(operation === null
 			? "git's %A - not this branch (no merge in progress)"
-			: `git's %A, the upstream side during ${operation}`;
+			: `git's %A, the upstream side during ${operation}`);
 	const theirsLabel =
 		"git's %B - the commit being replayed, or the stashed change";
 	writeFileSync(
 		oursPath,
-		`<<<<<<< ${oursLabel}\n${withNewline(
-			readFileSync(oursPath, "utf8"),
-		)}=======\n${withNewline(
-			readFileSync(theirsPath, "utf8"),
+		`<<<<<<< ${oursLabel}\n${sideBody(oursPath, oursRaw, "%A")}=======\n${sideBody(
+			theirsPath,
+			theirsRaw,
+			"%B",
 		)}>>>>>>> ${theirsLabel}\n`,
 	);
 	return 1;
@@ -1642,19 +1664,69 @@ const driver = (argv) => {
 		if (text.length === 0) return {};
 		return readJson(text, label);
 	};
-	const base = readSide(basePath, "the merge base");
-	const ours = readSide(oursPath, "this branch's copy");
-	const theirs = readSide(theirsPath, "the incoming copy");
-	const decisions = [];
-	const resolved = resolveManifest({ base, ours, theirs, decisions });
-	writeFileSync(oursPath, serialize(resolved));
-	// The driver reports the same one-sided key decisions the fold does: git shows
-	// this text beside the merge, which is where the author reads the fold.
-	reportKeyDecisions(decisions, (line) => console.error(line));
-	console.error(
-		"evidence-fold: resolved docs/evidence/manifest.json mechanically (groups 1, 2, 3, 5; a retired tree stamp is dropped from whichever side still carries it). The COUNTS still describe the PRE-merge tree on purpose - run `pnpm evidence:fold` after the merge commits to re-derive them against the commit this fold produces.",
-	);
-	return 0;
+	/*
+	 * THE MARKER BODIES ARE CAPTURED HERE, BEFORE THE TRY AND BEFORE ANY WRITE.
+	 * `refuseDriver` writes the markers from what it is handed, and the write to
+	 * `oursPath` below is itself inside the try - so a throw AFTER that write (or a
+	 * partial one) would otherwise leave the refusal marking a partially-resolved
+	 * manifest while its label still claimed "the copy git left in the working
+	 * file". Capturing up front keeps that label true by construction. A read that
+	 * fails here yields null and the refusal falls back to reading the path, which
+	 * is what names an absent side in the marker.
+	 */
+	const captureRaw = (path) => {
+		try {
+			return readFileSync(path, "utf8");
+		} catch {
+			return null;
+		}
+	};
+	const oursRaw = captureRaw(oursPath);
+	const theirsRaw = captureRaw(theirsPath);
+	/*
+	 * EVERY FAILURE IN HERE IS A REFUSAL, NOT A CRASH. `readSide` throws on a side
+	 * git handed the driver that is not JSON (a half-written manifest) or whose
+	 * path is absent, and the resolve/serialize below can throw on a shape they
+	 * cannot derive from. A throw left to escape exits non-zero with the reason
+	 * recorded - git still marks the conflict - but the WORKING FILE keeps `%A`
+	 * verbatim with no markers, which reads as a resolution to whoever opens it
+	 * next: the exact failure `refuseDriver` exists to prevent, reached by the one
+	 * path its test did not cover (the post-merge MAJOR on #804). So the whole
+	 * read-derive-write is caught and routed through the same refusal, which names
+	 * the case, records it in the driver log, and writes the markers the throw
+	 * would have skipped.
+	 */
+	try {
+		const base = readSide(basePath, "the merge base");
+		const ours = readSide(oursPath, "this branch's copy");
+		const theirs = readSide(theirsPath, "the incoming copy");
+		const decisions = [];
+		const resolved = resolveManifest({ base, ours, theirs, decisions });
+		writeFileSync(oursPath, serialize(resolved));
+		// The driver reports the same one-sided key decisions the fold does: git shows
+		// this text beside the merge, which is where the author reads the fold.
+		reportKeyDecisions(decisions, (line) => console.error(line));
+		console.error(
+			"evidence-fold: resolved docs/evidence/manifest.json mechanically (groups 1, 2, 3, 5; a retired tree stamp is dropped from whichever side still carries it). The COUNTS still describe the PRE-merge tree on purpose - run `pnpm evidence:fold` after the merge commits to re-derive them against the commit this fold produces.",
+		);
+		return 0;
+	} catch (error) {
+		/*
+		 * `mergingForTheDriver()` was true to get here, so `%A` IS the copy git left
+		 * in the working file during a real merge - not the "no merge in progress"
+		 * case the default label describes - and the label says so.
+		 */
+		return refuseDriver({
+			named: "a merge whose sides could not be read",
+			why: `${error.message} - so the merged manifest cannot be derived from what git handed the driver`,
+			oursPath,
+			theirsPath,
+			oursRaw,
+			theirsRaw,
+			oursLabel:
+				"git's %A, the copy git left in the working file during this merge",
+		});
+	}
 };
 
 /* ------------------------------------------------------------------ *
