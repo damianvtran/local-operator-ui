@@ -768,24 +768,48 @@ const GOAL_TAG_NARROW = "@max-[241px]/chatcol:hidden";
  * asserts the painted string at every column rather than trusting that.
  *
  * THE BANDS, measured on the live stories against the width the chip can actually
- * occupy - the composer's content box, which reads `column - 10px` at each of the
- * five columns this was read at (213/241/269/270/341) - widest first. Each threshold
- * carries ~22px of margin over the form it admits, deliberately: a locale's digits
- * are not this font's digits, and a threshold tuned to fit exactly re-breaks on the
- * next copy or number change.
+ * occupy - the composer's content box, which reads `column - 10px` at every column a
+ * band binds at (they are all under the 550px `isSmallView` step, where the row takes
+ * `px-2`; see the arithmetic note in `ask-queue.ts`'s `askChipDeadlineShort`) - widest
+ * first. Two widths are quoted per tier: the form as the shipped fixtures paint it,
+ * and the form with the WIDEST COUNT the wire can deliver (`20 questions waiting`,
+ * because the list is capped at twenty rows). Each threshold's margin is measured
+ * against the second, which is the case that has to hold.
  *
  * 1. `ASK_SUBJECT_NARROW` (341px) drops the SUBJECT and keeps the sentence. The
  *    subject (`soonest ask `) is the unbounded half - another locale's is another
  *    length - and the number is the answer the surface exists to give, so the word
- *    goes first. The full form measures 308.73px against 331px available.
- * 2. `ASK_SENTENCE_NARROW` (270px) swaps the sentence for the VALUE alone: the
- *    no-subject sentence measures 237.66px against 260px available. This is also the
- *    tier that fixes round 4's [320, ~335] band - the sentence yields to the value
+ *    goes first. The full form measures 308.73px shipped / 316.28px at the count cap,
+ *    against 331px of box: 22.27px and 14.72px of margin.
+ * 2. `ASK_SENTENCE_NARROW` (270px) swaps the sentence for the VALUE alone: 237.66px
+ *    shipped / 245.20px capped, against 260px - 22.34px and 14.80px. This is also the
+ *    tier that fixes round 4's [320, ~335] band: the sentence yields to the value
  *    there instead of the value being cut.
- * 3. `ASK_VALUE_NARROW` (213px) drops the value and keeps the count. The value form
- *    measures 180.2px against 203px available, and below this column the count is
- *    painted alone - the count is the floor - and the app's own 220px column floor
- *    sits above this band, so no shipped state loses the deadline for want of room.
+ * 3. `ASK_VALUE_NARROW` (213px) drops the value and keeps the count: 180.20px shipped
+ *    / 187.75px capped, against 203px - 22.80px and 15.25px. Below it the count is
+ *    painted alone.
+ *
+ * THE FLOOR THIS IS DECIDED AGAINST IS THE NARROWEST ONE THE APP'S RECORD CLAIMS, and
+ * the two numbers on the record disagree, so this states both and decides against the
+ * smaller (agent review round 2's F1). `docs/composer-status-tabs.md` §2.4 says the
+ * chat column measures **172px** with the canvas pane open, QA-measured on the built
+ * app, and the sibling set's `column-floor/` renders there; `chat-content.tsx`'s own
+ * CSS floor is `min-w-[480px]` (`CHAT_COLUMN_MIN_PX`), which cannot render 172. One of
+ * those is out of date and QA has been asked to re-measure the composer column on the
+ * built app and name the box - until it does, every band here is decided against the
+ * NARROWER reading, 172, because a guarantee that holds at 172 holds at any wider
+ * column and the reverse is not true.
+ *
+ * So the honest statement of this band's guarantee is narrow and worth stating
+ * exactly: **at 172px the deadline is NOT painted on the chip** - the count is alone
+ * there, the same as it is at 180 - and what carries the fact at that width is the
+ * tooltip and the item's announced name, both of which compose the whole clause at
+ * every width (`askChipLabel` reads `askChipDeadline`, not what these bands happen to
+ * paint). 213px is where the capped value form fits with the same order of margin as
+ * the tiers above it; the form itself would fit from about 198px, and the 15px of
+ * daylight between those numbers is the deliberate part - a locale's digits are not
+ * this font's digits, and this PR has twice paid for a threshold tuned to the width it
+ * happened to measure.
  *
  * WHY THRESHOLDS, when round 3 asked for a rule rather than a number: a container
  * query can ask the COLUMN's width and nothing else - the chip's own width is its

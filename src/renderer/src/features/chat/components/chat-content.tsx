@@ -1164,7 +1164,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 *
 		 * Measured rather than derived: the pane's available width is what the ROW
 		 * leaves it, and that depends on the rail, the chat list and the column's own
-		 * 220px floor — three inputs this component does not compute. A `ResizeObserver`
+		 * 480px floor — three inputs this component does not compute. A `ResizeObserver`
 		 * on the wrapper reports the box as it really is, including a drag of the
 		 * divider, and a sub-pixel change is ignored so the pane cannot re-render in a
 		 * loop against its own measurement.
@@ -1278,9 +1278,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 *
 		 * `runPanelResizable` is false when the row cannot host even the pane's own
 		 * 320px contract floor — at 1024x673 with the rail expanded the row is 524px
-		 * and the column's floor is 220 of them, so no preference the control is
-		 * allowed to store (320..640) could render as itself: every one of them draws
-		 * 304px. Resizing is then not a no-op that lies, it is not offered: the value
+		 * and the column's 480px floor leaves the pane 44px, so no preference the
+		 * control is allowed to store (320..640) could render as itself. Resizing is
+		 * then not a no-op that lies, it is not offered: the value
 		 * below is the drawn width, the range collapses onto it, and a write is
 		 * refused so the user's stored preference survives intact for a window that
 		 * can honour it. Otherwise the range ends at the capacity, which is what makes
@@ -1399,7 +1399,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			 * `w-0` on the column rather than `min-w-0`: the column must not be
 			 * sized by its content (that is what lets a pinned-width canvas panel or
 			 * a long unbroken token push it wider than its track), but it also keeps
-			 * a deliberate 220px floor. `min-w-0` would fight `min-w-[220px]` for the
+			 * a deliberate 480px floor. `min-w-0` would fight `min-w-[480px]` for the
 			 * same property and `cn` drops one of them silently, so the base size is
 			 * zeroed instead and `flex-1` grows it back from there - the floor
 			 * survives and the content no longer votes on the width.
