@@ -89,11 +89,12 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|none>
  *                          which built-in scene to run (default: states)
- *   --project <key>        (with --scene project-detail) the seeded project the
- *                          detail scene drives; the seed decides the name and a
- *                          default would photograph whatever it happened to use
+ *   --project <key>        (with --scene project-detail or project-inline-edit)
+ *                          the seeded project the scene drives; the seed decides
+ *                          the name and a default would photograph whatever it
+ *                          happened to use
  *   --gate-state <label>   (with --scene settings-gate) what this run's backend
  *                          state is called in the frames and the log, so two
  *                          runs against two backends can be told apart
@@ -19350,6 +19351,37 @@ async function daemonGet(path) {
 }
 
 /**
+ * The pids of the daemon `--backend` names, read from the serve records the run
+ * linked — the same read `--scene connection-drop` does, with the same three
+ * guards (the run's port, a loopback host, and never 1111), because this scene
+ * HOLDS that process for one frame (SIGSTOP/SIGCONT) where connection-drop
+ * kills it. Signalling the operator's own daemon is the thing both guards
+ * exist to make impossible.
+ */
+function runDaemonPids() {
+	if (BACKEND === null) return [];
+	const backendPort = Number(new URL(BACKEND).port);
+	if (backendPort === 1111) {
+		throw new Error(
+			"--backend points at the operator's own daemon on 1111: that daemon is never this run's to signal, and every scene here that pauses or kills one is reaping its OWN - point --backend at a run-owned daemon",
+		);
+	}
+	const pids = [];
+	for (const { record } of sceneConnectionDropRecords()) {
+		const pid = record?.pid;
+		if (typeof pid !== "number" || pid <= 0) continue;
+		if (Number(record.port) !== backendPort) continue;
+		if (
+			typeof record.host === "string" &&
+			!["127.0.0.1", "localhost", "::1"].includes(record.host)
+		)
+			continue;
+		pids.push(pid);
+	}
+	return pids;
+}
+
+/**
  * The bin promptness, measured live - the operator's report, on the wire and on
  * screen.
  *
@@ -25048,6 +25080,209 @@ async function sceneSettingsFields(cdp) {
 }
 
 /**
+ * Settings > Appearance: the transcript display mode's row, in both of the states
+ * it can be in (issue #756; design review round 1, D2 MAJOR).
+ *
+ * WHY THIS EXISTS AT ALL, AND WHY IT IS A LIVE-APP SCENE. The row's only
+ * Storybook cell is `shell-app-shell--settings-appearance`, and that story can
+ * never be photographed: it holds `documentElement.dataset.capturePending` until
+ * the Appearance section's switch paints, which happens only when the settings
+ * page's config query RESOLVES - so the offline capturer waits out its bound and
+ * fails the run at that row. The alternative (`--allow-backend` against the
+ * daemon answering on 1111) would photograph whatever the operator's own
+ * installation happens to hold, which is the one thing a committed frame must
+ * never be. So the row's evidence comes from the instrument built for exactly
+ * this: the BUILT app, headless, against an ISOLATED synthetic daemon this lane
+ * starts on its own scratch port, photographed by the app itself with
+ * `webContents.capturePage()`.
+ *
+ * WHAT THE PAIR IS. The two states the control has, not two trees: the row at
+ * rest (the shipped `by turn`) and the same row after a press on its own
+ * `By response` trigger - the gesture a reader makes - in BOTH palettes, because
+ * the contrast this row's control has against its neighbours is a per-palette
+ * reading and the design round asked for it.
+ *
+ * WHAT IT ASSERTS, each one read out of the page rather than assumed: the row
+ * exists and names its own label (`aria-labelledby` -> "Transcript display");
+ * the resting state is the shipped `by turn`; the press clears the 10s wait AND
+ * lands in the PERSISTED store (`localStorage`, the blob a relaunch reads),
+ * which is the claim the pair is about; and the row plus the neighbouring
+ * `Show agent reasoning` switch are both inside the viewport at shutter time, so
+ * a frame that had scrolled past its own subject fails the run instead of being
+ * filed under the row's name.
+ *
+ * NOT A `settings-fields` RE-RUN. That scene's subject is the backend registry's
+ * deep-linked row; this one is a preference row with no `data-setting-key`, and
+ * folding it in would have made one scene assert two unrelated surfaces.
+ */
+const TRANSCRIPT_DISPLAY_ROW = `(() => {
+	const list = [...document.querySelectorAll('[role="tablist"]')].find((node) => {
+		const id = node.getAttribute('aria-labelledby');
+		const label = id ? document.getElementById(id) : null;
+		return (label?.textContent ?? '').trim() === 'Transcript display';
+	});
+	if (!list) return null;
+	return {
+		labelId: list.getAttribute('aria-labelledby'),
+		tabs: [...list.querySelectorAll('[role="tab"]')].map((tab) => ({
+			text: (tab.textContent ?? '').trim(),
+			state: tab.getAttribute('data-state'),
+		})),
+	};
+})()`;
+
+/** What the persisted store holds, read the way the next launch reads it. */
+const persistedDisplayMode = `(() => {
+	for (const key of Object.keys(localStorage)) {
+		try {
+			const mode = JSON.parse(localStorage.getItem(key))?.state?.transcriptDisplayMode;
+			if (mode !== undefined) return { key, mode };
+		} catch {}
+	}
+	return null;
+})()`;
+
+async function sceneSettingsTranscriptDisplay(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the Appearance section renders behind the settings page's config query, so the pair needs --backend",
+	);
+	if (!BACKEND) return [];
+
+	await verb(cdp, "navigate", "/settings");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const ready = await waitForScene(cdp, `Boolean(${TRANSCRIPT_DISPLAY_ROW})`);
+	check(
+		"the Appearance section rendered, with the transcript-display row's own control",
+		ready === true,
+		"no [role=tablist] whose label reads `Transcript display` appeared",
+	);
+	if (ready !== true) return [];
+
+	const initial = await cdp.evaluate(TRANSCRIPT_DISPLAY_ROW);
+	check(
+		"the row's control is the app's own segmented pair, in the order the module declares",
+		JSON.stringify(initial.tabs) ===
+			JSON.stringify([
+				{ text: "By turn", state: "active" },
+				{ text: "By response", state: "inactive" },
+			]),
+		JSON.stringify(initial.tabs),
+	);
+	const listSelector = `[role="tablist"][aria-labelledby="${initial.labelId}"]`;
+	const tabSelector = (index) =>
+		`${listSelector} > button:nth-of-type(${index})`;
+	const switchSelector =
+		'[data-tour-tag="settings-appearance-section"] button[role="switch"]';
+
+	/*
+	 * The row is scrolled to the MIDDLE of the frame rather than to the top: the
+	 * design round's question about this control is its PLACEMENT, and placement is
+	 * a sentence about the neighbours - so the `Show agent reasoning` switch directly
+	 * above it has to be in the same frame, and the assertions below require it.
+	 */
+	await cdp.evaluate(`(() => {
+		const list = document.querySelector(${JSON.stringify(listSelector)});
+		if (!list) return false;
+		list.scrollIntoView({ block: 'center' });
+		return true;
+	})()`);
+	await wait(700);
+
+	const geometry = {
+		row: await verb(cdp, "measure", { selector: listSelector }),
+		reasoningSwitch: await verb(cdp, "measure", { selector: switchSelector }),
+	};
+	note("the row and its neighbour, in CSS pixels", JSON.stringify(geometry));
+	check(
+		"the row and the reasoning switch above it are both inside the frame",
+		geometry.row?.inViewport === true &&
+			geometry.reasoningSwitch?.inViewport === true,
+		`row inViewport=${geometry.row?.inViewport} switch inViewport=${geometry.reasoningSwitch?.inViewport}`,
+	);
+
+	const frames = [];
+	const MODE_LABEL = { "by-turn": "By turn", "by-response": "By response" };
+	/*
+	 * BOTH MODES IN BOTH PALETTES, and every state reached by a PRESS on the row's
+	 * own trigger rather than by writing the store - what the pair records is the
+	 * control working, not a store that could be right while the control is dead.
+	 * The mode is re-set at the top of each palette's pass on purpose: a pass that
+	 * inherited the previous one's state would file a `turn` frame of the
+	 * `by-response` row, and the two assertions below are what make that fail
+	 * loudly instead.
+	 */
+	for (const theme of ["localOperatorDark", "localOperatorLight"]) {
+		await verb(cdp, "setTheme", theme);
+		await wait(500);
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		for (const state of ["turn", "response"]) {
+			const mode = state === "turn" ? "by-turn" : "by-response";
+			await verb(cdp, "press", {
+				selector: tabSelector(mode === "by-turn" ? 1 : 2),
+			});
+			await wait(400);
+			/*
+			 * TWO readings of the same press, because they are two different claims:
+			 * the PERSISTED store is what survives a relaunch (the blob this feature's
+			 * whole test story is about), and the tab's own `data-state` is what the
+			 * frame shows. A control wired to the wrong setter, or a store written
+			 * while the control stays put, fails one of them by name.
+			 */
+			const persisted = await cdp.evaluate(persistedDisplayMode);
+			check(
+				`the row's own control put \`${mode}\` in the persisted store (${theme})`,
+				persisted?.mode === mode,
+				JSON.stringify(persisted),
+			);
+			const shown = await cdp.evaluate(TRANSCRIPT_DISPLAY_ROW);
+			check(
+				`the row marks \`${MODE_LABEL[mode]}\` as the selected tab (${theme})`,
+				shown.tabs?.find((tab) => tab.text === MODE_LABEL[mode])?.state ===
+					"active",
+				JSON.stringify(shown.tabs),
+			);
+			frames.push(
+				await captureSettled(
+					cdp,
+					`settings-transcript-display-${state}-${suffix}`,
+				),
+			);
+		}
+	}
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
  * Both registry fields as a reader sees them, without assuming which control
  * they are.
  *
@@ -25582,6 +25817,353 @@ async function scenePalette(cdp) {
 		"the rail frame and the palette frame are different renders",
 		!readFileSync(before.path).equals(readFileSync(browse.path)),
 		`${before.bytes}B vs ${browse.bytes}B`,
+	);
+	return frames;
+}
+
+/*
+ * ---- the palette's Ctrl+N / Ctrl+P walk and its Unread pin (issues #761, #760) ----
+ *
+ * WHY A SISTER SCENE RATHER THAN AN EXTENSION OF `palette`. `--scene palette`
+ * photographs the door, the open, one typed query and the Escape; its frames are
+ * the record of the surface's existence. Two claims this change ships are
+ * different in kind. The Ctrl+N / Ctrl+P pair moves the SELECTION, and a still
+ * carries that only as a before/after PAIR around a real chord; the switcher's
+ * empty state pins an Unread section over the catalogue's own unread fact, which
+ * needs a backend that carries one (this set's frames run against the row-space
+ * set's stand-in daemon, whose fixture carries exactly one unseen completion).
+ * Extending the existing scene would move its frames' meaning; this scene keeps
+ * both records honest.
+ *
+ * WHAT A STILL HERE CANNOT CARRY, stated beside the frames rather than implied:
+ * the chord is DISCRIMINATED by the two frames' `aria-activedescendant` readings
+ * in this run's log (the selection moves between them), not by the pixels alone;
+ * the walk's arithmetic (wrap at both ends, the shift/alt refusals, the refused
+ * modified arrows) is pinned in `scripts/palette-shortcut.test.mjs`, and the
+ * Ctrl+P half of the pair is deliberately NOT pressed here - with a window that
+ * is focused and visible, main's `before-input-event` owns that chord, and this
+ * rig's headless window is neither focused nor visible, so a press here would
+ * photograph a path the operator's app never takes. The footer advertises only
+ * the reachable half (`Ctrl+N`) since design round 1's D1, and the legend check
+ * reads exactly that - a P cap back in the copy would fail it. The set's README
+ * says so where the frames are read.
+ *
+ * THE FIXTURE'S UNREAD FACT IS READ ON THE SIDEBAR FIRST: this scene asserts the
+ * mark is DRAWN there (the same `unreadMarkKind` verdict the palette consumes)
+ * before it opens the palette, so the pin's frames are a second reading of one
+ * fact rather than a palette drawn over a fact nothing else in the room can see.
+ */
+async function scenePaletteUnread(cdp) {
+	const frames = [];
+	/* The fixture's unseen conversation (`docs/evidence/sidebar-row-space/harness/stub-daemon.mjs`). */
+	const UNREAD_ID = "b3f1a09c7d52";
+
+	const hello = await verb(cdp, "hello");
+	note("hello", JSON.stringify(hello, null, 2));
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+
+	await verb(cdp, "navigate", "/chat");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const state = await verb(cdp, "state");
+	check(
+		"the catalogue answered with this set's fixture",
+		state.sessionCount >= 5,
+		`sessionCount is ${state.sessionCount}`,
+	);
+	const rowsDrawn = await drawAtLeast(cdp, 5);
+	note("rows drawn before anything is photographed", String(rowsDrawn));
+
+	/*
+	 * THE FACT THE PIN CONSUMES, ON THE SURFACE THAT ALREADY DRAWS IT. "Drawn"
+	 * means painted - the three clauses the archive scene spells for the same
+	 * glyph (a box, and none of display:none / visibility:hidden / opacity 0) -
+	 * and "and nowhere else" is the half that makes the read discriminating
+	 * rather than a tautology about a class name that is in the file.
+	 */
+	const mark = await cdp.evaluate(`(() => {
+		const marked = document.querySelector('[data-session-row="${UNREAD_ID}"]');
+		if (!marked) return { present: false };
+		const glyph = marked.querySelector(".text-success");
+		const r = glyph?.getBoundingClientRect() ?? null;
+		const style = glyph ? getComputedStyle(glyph) : null;
+		const elsewhere = [...document.querySelectorAll("[data-session-row] .text-success")].filter(
+			(el) => !marked.contains(el),
+		).length;
+		return {
+			present: true,
+			drawn:
+				!!r &&
+				r.width > 0 &&
+				r.height > 0 &&
+				style !== null &&
+				style.display !== "none" &&
+				style.visibility !== "hidden" &&
+				Number(style.opacity) > 0,
+			width: r?.width ?? 0,
+			height: r?.height ?? 0,
+			elsewhere,
+		};
+	})()`);
+	note(
+		"the sidebar's unread mark on the fixture's unseen row",
+		JSON.stringify(mark),
+	);
+	check(
+		"the fixture's unread fact is DRAWN where the palette reads it: the sidebar's mark on that row, and nowhere else in the list",
+		mark.present === true && mark.drawn === true && mark.elsewhere === 0,
+		JSON.stringify(mark),
+	);
+
+	/*
+	 * The open, the way `--scene palette` opens it: a real pointer sequence at
+	 * the rail row's painted centre. The press cannot move focus
+	 * (`dispatchEvent` does not activate the way a real click does), which is
+	 * why the field's own focus is asserted next - the palette seats it itself.
+	 */
+	const opened = await verb(cdp, "press", "[data-command-palette-trigger]");
+	check(
+		"the rail's Search row is what received the press",
+		opened.hitTest === true,
+		JSON.stringify(opened),
+	);
+	const openedState = await cdp.evaluate(
+		`({ active: document.activeElement?.id ?? null, dialog: Boolean(document.querySelector('[data-tour-tag="command-palette-dialog"]')) })`,
+	);
+	check(
+		"pressing it opened the palette, with focus in the query field",
+		openedState.dialog === true &&
+			openedState.active === "command-palette-input",
+		JSON.stringify(openedState),
+	);
+
+	/*
+	 * THE SWITCHER'S OWN SEED, TYPED. `Cmd/Ctrl+P` is main's hook
+	 * (`src/main/index.ts`), and a headless window - never shown, never focused -
+	 * cannot reach it (the driver's own documentation records this limit,
+	 * measured while pinning the palette's second chord). Typing `#` produces
+	 * the same state the hook produces: the seed IS `#`.
+	 */
+	await cdp.send("Input.insertText", { text: "#" });
+
+	const readList = async () =>
+		cdp.evaluate(`(() => {
+			const list = document.querySelector("#command-palette-results");
+			if (!list) return null;
+			return {
+				headings: [...list.querySelectorAll('[role="presentation"]')].map((node) =>
+					(node.textContent || "").trim(),
+				),
+				options: [...list.querySelectorAll('[role="option"]')].map((row) => ({
+					id: row.id,
+					selected: row.getAttribute("aria-selected") === "true",
+					text: (row.textContent || "").replace(/\\s+/g, " ").trim().slice(0, 64),
+				})),
+				/*
+				 * The active row lives on the FIELD, not on the list: the input carries
+				 * \`role="combobox"\` and \`aria-activedescendant\` because focus never
+				 * leaves it (the one-element walk this surface exists for), and the
+				 * listbox is only \`aria-controls\`'d. Reading the attribute off the list
+				 * answered null on the first run of this scene - measured, and the fix
+				 * is here.
+				 */
+				active:
+					document
+						.getElementById("command-palette-input")
+						?.getAttribute("aria-activedescendant") ?? null,
+			};
+		})()`);
+
+	const switcher = await readList();
+	note("the switcher's empty (#) state", JSON.stringify(switcher));
+	if (switcher === null)
+		throw new Error(
+			"the switcher's list was not in the DOM after typing the seed",
+		);
+	check(
+		"the switcher's empty state pins an Unread section ABOVE the chats",
+		switcher.headings[0] === "Unread" && switcher.headings.includes("Chats"),
+		JSON.stringify(switcher.headings),
+	);
+	check(
+		"the unread conversation is the list's first row, and the tier below does not repeat it",
+		switcher.options[0]?.id === `chat-${UNREAD_ID}` &&
+			switcher.options.filter((row) => row.id === `chat-${UNREAD_ID}`)
+				.length === 1,
+		JSON.stringify(switcher.options.map((row) => row.id)),
+	);
+	check(
+		"the selection starts on the unread row",
+		switcher.options[0]?.selected === true &&
+			switcher.active === switcher.options[0]?.id,
+		`active is ${switcher.active}, first row ${JSON.stringify(switcher.options[0])}`,
+	);
+	/*
+	 * THE PAIR'S FIRST FRAME: the switcher's empty state exactly as the checks
+	 * above read it.
+	 */
+	frames.push(await captureSettled(cdp, "palette-switcher-unread-dark"));
+
+	/*
+	 * THE CHORD, THROUGH CHROMIUM'S OWN INPUT PIPELINE (`Input.dispatchKeyEvent`,
+	 * never a KeyboardEvent built inside the page): the whole claim is that the
+	 * press reaches the app's listener, so a synthetic event from inside would
+	 * skip everything between the key and the handler. Ctrl+N - CDP's Control
+	 * bit, no text on the event, the way a command chord travels.
+	 */
+	const draftBefore = await stagedDraft(cdp);
+	await pressChord(cdp, {
+		key: "n",
+		code: "KeyN",
+		virtualKeyCode: 78,
+		modifiers: MODIFIER.ctrl,
+	});
+	await wait(150);
+	const stepped = await readList();
+	note("after a real Ctrl+N", JSON.stringify(stepped));
+	if (stepped === null)
+		throw new Error("the switcher's list vanished around the chord");
+	check(
+		"Ctrl+N walked the selection one row down, into the chats tier below the pin",
+		stepped.active !== switcher.active &&
+			stepped.active === stepped.options[1]?.id &&
+			stepped.options[1]?.selected === true,
+		`active ${switcher.active} -> ${stepped.active}; second row ${stepped.options[1]?.id}`,
+	);
+	/*
+	 * AND THE OTHER BINDING ON THIS CHORD STOOD DOWN. `new-chat-shortcut.ts`
+	 * accepts meta|ctrl + n app-wide and yields on `event.defaultPrevented` and
+	 * on a press inside a modal surface; with the palette open the field is the
+	 * target, so BOTH guards apply and the app must not have started a chat -
+	 * no staged draft. This is the coherence half of #761 on the real app,
+	 * beside the pure-function pins.
+	 */
+	const draftAfter = await stagedDraft(cdp);
+	check(
+		"the press did NOT start a new chat - the app-level chord yields to the open palette",
+		draftAfter === draftBefore,
+		`activeDraftKey ${JSON.stringify(draftAfter)} (was ${JSON.stringify(draftBefore)})`,
+	);
+	frames.push(await captureSettled(cdp, "palette-switcher-ctrl-n-dark"));
+
+	/*
+	 * ESCAPE, THEN THE TYPED SEARCH - the legend's own state. The store clears
+	 * the query on close (`closeCommandPalette`), so the reopen types into an
+	 * empty field, and a typed query with results is where the caps legend (the
+	 * footer whose copy this PR touches) is drawn rather than the prefixes.
+	 */
+	for (const type of ["keyDown", "keyUp"]) {
+		await cdp.send("Input.dispatchKeyEvent", {
+			type,
+			key: "Escape",
+			code: "Escape",
+			windowsVirtualKeyCode: 27,
+			nativeVirtualKeyCode: 27,
+		});
+	}
+	const closed = await waitForScene(
+		cdp,
+		`!document.querySelector('[data-tour-tag="command-palette-dialog"]')`,
+	);
+	check("Escape closed the palette before the typed pass", closed === true);
+	await verb(cdp, "press", "[data-command-palette-trigger]");
+	await waitForScene(
+		cdp,
+		`document.activeElement?.id === "command-palette-input"`,
+	);
+	await cdp.send("Input.insertText", { text: "release" });
+	const rowsArrived = await waitForScene(
+		cdp,
+		`document.querySelectorAll('#command-palette-results [role="option"]').length > 0`,
+	);
+	check("the typed query found the fixture's row", rowsArrived === true);
+	const typed = await readList();
+	note("a typed search", JSON.stringify(typed));
+	check(
+		"a typed query drops the pin - it applies to the empty state only",
+		typed !== null && !typed.headings.includes("Unread"),
+		JSON.stringify(typed?.headings),
+	);
+	const legend = await cdp.evaluate(`(() => {
+		const dialog = document.querySelector('[data-tour-tag="command-palette-dialog"]');
+		if (!dialog) return null;
+		const bar = [...dialog.querySelectorAll("div")].find(
+			(node) =>
+				(node.textContent || "").includes("to close") &&
+				[...node.querySelectorAll("kbd")].some(
+					(cap) => cap.textContent.trim() === "esc",
+				),
+		);
+		if (!bar) return null;
+		return {
+			caps: [...bar.querySelectorAll("kbd")].map((cap) => cap.textContent.trim()),
+			text: (bar.textContent || "").replace(/\\s+/g, " ").trim(),
+		};
+	})()`);
+	note("the typed-search legend", JSON.stringify(legend));
+	check(
+		"the legend teaches the reachable walk cap beside the arrows (Ctrl+N; Ctrl+P stays bound but unreached here)",
+		legend !== null &&
+			["↑", "↓", "Ctrl", "N"].every(
+				(cap, index) => legend.caps[index] === cap,
+			) &&
+			!legend.caps.includes("P") &&
+			legend.text.includes("to move"),
+		JSON.stringify(legend),
+	);
+	frames.push(await captureSettled(cdp, "palette-legend-typed-dark"));
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}, waited ${frame.toastWaitMs}ms for toasts`,
+			)
+			.join(" | "),
+	);
+	check(
+		"every capture wrote a PNG of the requested size",
+		frames.every(
+			(frame) =>
+				frame.bytes > 1000 &&
+				frame.pixels.width ===
+					frame.viewport.width * frame.viewport.devicePixelRatio &&
+				frame.pixels.height ===
+					frame.viewport.height * frame.viewport.devicePixelRatio,
+		),
+		frames
+			.map(
+				(f) => `${f.label}: ${f.pixels.width}x${f.pixels.height}, ${f.bytes}B`,
+			)
+			.join(" | "),
+	);
+	/*
+	 * The switcher pair has to be TWO RENDERS, the check `--scene states` and
+	 * `--scene palette` both make: a before/after that is one frame written twice
+	 * once shipped in this repository, and a selection that moved without moving
+	 * a pixel would be the same defect mirrored.
+	 */
+	check(
+		"the switcher pair is two renders, not one frame written twice",
+		!readFileSync(frames[0].path).equals(readFileSync(frames[1].path)),
+		`${frames[0].bytes}B vs ${frames[1].bytes}B`,
 	);
 	return frames;
 }
@@ -34185,7 +34767,11 @@ async function sceneProjectDetail(cdp) {
 	/*
 	 * 1. THE SHEET. The heading is the DISPLAY name (`title`), and the key rides
 	 * under it in the machine voice; the checks name the facts a reader would
-	 * hunt for: the attribution line, the milestone and the seeded history entry.
+	 * hunt for: the owner's and team's property rows, the milestone and the
+	 * seeded history entry. The header's `Managed by` line these rows moved
+	 * from retired with the inline-edit slice - the rows ARE the attribution
+	 * now, so the check reads them by their field markers rather than a line
+	 * of prose that no longer exists.
 	 */
 	await verb(cdp, "navigate", `/projects/${PROJECT}`);
 	const sheet = await waitForCondition(
@@ -34198,14 +34784,23 @@ async function sceneProjectDetail(cdp) {
 		30_000,
 	);
 	const sheetText = String(sheet.last ?? "");
+	const ownerRow = await cdp.evaluate(
+		`document.querySelector('[data-project-field="owner"]')?.textContent ?? null`,
+	);
+	const teamRow = await cdp.evaluate(
+		`document.querySelector('[data-project-field="team"]')?.textContent ?? null`,
+	);
 	check(
-		"the sheet draws the seeded project: title, key, managed-by, milestone and feed",
+		"the sheet draws the seeded project: title, key, owner/team rows, milestone and feed",
 		sheet.ok &&
 			sheetText.includes(PROJECT) &&
-			sheetText.includes("Managed by atlas · platform") &&
+			typeof ownerRow === "string" &&
+			ownerRow.includes("atlas") &&
+			typeof teamRow === "string" &&
+			teamRow.includes("platform") &&
 			sheetText.includes("rig milestone") &&
 			sheetText.includes("Seeded by the evidence rig"),
-		`after ${sheet.waitedMs}ms`,
+		`after ${sheet.waitedMs}ms owner=${JSON.stringify(ownerRow)} team=${JSON.stringify(teamRow)}`,
 	);
 	note("detail route", `${await verb(cdp, "state")}`);
 	await captureSettled(cdp, `project-detail-${size}-${theme}-sheet`);
@@ -34512,6 +35107,1221 @@ async function sceneProjectDetail(cdp) {
 		`after ${rows.waitedMs}ms: ${rows.last} (linksBefore=${linksBefore})`,
 	);
 	await captureSettled(cdp, `project-detail-${size}-${theme}-linked`);
+}
+
+/* ------------------------------------------------------------------------ *
+ * The inline editors on a project (the inline-edit slice, 2026-09-30).
+ * ------------------------------------------------------------------------ */
+
+/**
+ * One PATCH to the daemon's project route, from THIS script's Node process.
+ *
+ * The out-of-band writer the conflict case needs: the note's § 2.4 rule is
+ * about a field a SECOND writer moved while the window's draft is dirty, and
+ * the only honest way to be that writer is the daemon's own route rather than
+ * the window — a change driven through the window's own bridge would be the
+ * same author the rule is about holding. `ProjectPatch`'s `model_fields_set`
+ * semantics are the wire's: only the keys present move.
+ */
+async function projectPatch(key, fields) {
+	const response = await fetch(
+		`${BACKEND}/v1/desktop/projects/${encodeURIComponent(key)}`,
+		{
+			method: "PATCH",
+			headers: {
+				"content-type": "application/json",
+				authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+			},
+			body: JSON.stringify(fields),
+		},
+	);
+	const body = await response.json().catch(() => null);
+	return { status: response.status, body };
+}
+
+/** A pointer MOVE only — the hover a click helper never performs by itself. */
+async function hoverAt(cdp, selector) {
+	const box = await verb(cdp, "measure", selector);
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x: box.centre.x,
+		y: box.centre.y,
+		button: "none",
+		buttons: 0,
+	});
+	return box;
+}
+
+/**
+ * A real double-click: a count-1 pair, then the count-2 pair the DOM reads as
+ * `dblclick`. Chromium only fires it on the second release when the two pairs
+ * land within the platform's multi-click window, which two back-to-back CDP
+ * dispatches do.
+ */
+async function doubleClickAt(cdp, selector) {
+	const box = await verb(cdp, "measure", selector);
+	const { x, y } = box.centre;
+	await cdp.send("Input.dispatchMouseEvent", {
+		type: "mouseMoved",
+		x,
+		y,
+		button: "none",
+		buttons: 0,
+	});
+	for (const clickCount of [1, 2]) {
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mousePressed",
+			x,
+			y,
+			button: "left",
+			buttons: 1,
+			clickCount,
+		});
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseReleased",
+			x,
+			y,
+			button: "left",
+			buttons: 0,
+			clickCount,
+		});
+	}
+	return box;
+}
+
+/**
+ * Focus an editing control, select all of its text, and let the input
+ * pipeline's own insert replace it.
+ *
+ * WHY NOT `clickAt` ALONE: the click places the caret, and a click that lands
+ * mid-text then types in the middle of the value — the QA-round-2 lesson the
+ * `commands: ["selectAll"]` chord exists for (a bare modifier+key pair performs
+ * no edit, so the next insert appended at the caret instead of replacing).
+ */
+async function replaceAllText(cdp, selector, text) {
+	await clickAt(cdp, selector);
+	await pressChord(cdp, {
+		key: "a",
+		code: "KeyA",
+		virtualKeyCode: 65,
+		modifiers: 4,
+		commands: ["selectAll"],
+	});
+	await cdp.send("Input.insertText", { text });
+}
+
+/**
+ * `project-inline-edit`: the per-field editors on a project's own page, driven
+ * and photographed against an isolated daemon.
+ *
+ * WHAT THIS SCENE IS FOR. The change it evidences replaced one modal with an
+ * editing language (the note's § 2 contract, `docs/design/
+ * agents-inplace-shared-composer.md`): every field on the detail is edited in
+ * place, a field's write is a PARTIAL patch of only the changed keys, and the
+ * four rules that make that safe — blur accepts iff changed+valid, Esc reverts
+ * the field, a refusal stays beside the field, and a field that moved
+ * out-of-band holds its commit — are claims about behaviour across daemon,
+ * window and keyboard. A unit test can falsify the pure halves (and does:
+ * `scripts/projects-inline-edit.test.mjs`); what only this scene can show is
+ * that the SHIPPED surface runs those halves against the real daemon — the
+ * reads below are the daemon's own answers, not the window's echo — and what
+ * the states look like, in both palettes, for the design round that adjudicates
+ * the layout (§ B of the slice).
+ *
+ * WHAT IT DRIVES, in order: the hover reveal and the focus-within reveal (two
+ * honest doors); entering by affordance-click AND by double-click; a dirty
+ * draft reverted by Esc; a single-line Enter accept; the check-accept and the
+ * x-cancel; a blur accept; the description's Enter-is-a-newline /
+ * ⌘-Enter-accepts pair with its Write/Preview toggle; a status move to `qa`
+ * and the done-gate REFUSAL (the seeded milestone is incomplete, so the
+ * daemon's own sentence comes back and the field re-speaks it); a duplicate
+ * key refused with the wire's 409; a local validation refusal that never
+ * reaches the daemon; the conflict hold with a real out-of-band PATCH from
+ * this process; the saving state held by pausing the run's own daemon (the
+ * SIGSTOP device `mini-view` uses); and a field BORN inline through the
+ * properties block's `+ Add` menu.
+ *
+ * WHAT IT CANNOT PROVE, said here so no report implies otherwise: nothing
+ * about a second window (the conflict is one writer against one window; two
+ * live windows are a manual QA item), and nothing about the pointer's hover on
+ * a touchpad — the hover frames are CDP pointer moves, which is the same input
+ * pipeline a mouse feeds but still synthetic.
+ */
+async function sceneProjectInlineEdit(cdp) {
+	const FIELD = (name) => `[data-project-field="${name}"]`;
+	const CONTROL = (name, which) =>
+		`${FIELD(name)} [data-inline-edit-control="${which}"]`;
+	const SLOT = (name) => `${FIELD(name)} [data-inline-edit-slot]`;
+	const ENTRY = (name) => `${FIELD(name)} input, ${FIELD(name)} textarea`;
+	const EXISTS = (selector) =>
+		`document.querySelector(${JSON.stringify(selector)}) !== null`;
+	const need = async (selector, label, timeoutMs = 8_000) => {
+		const waited = await waitForCondition(cdp, EXISTS(selector), timeoutMs);
+		if (!waited.ok)
+			throw new Error(
+				`the scene expected ${label}: ${selector} never appeared`,
+			);
+		return waited;
+	};
+	const clickControl = async (name, which) => {
+		const selector = CONTROL(name, which);
+		await need(selector, `${name}'s ${which} control`);
+		await cdp.evaluate(
+			`document.querySelector(${JSON.stringify(selector)}).scrollIntoView({block: 'center'}); true`,
+		);
+		await wait(200);
+		await clickAt(cdp, selector);
+	};
+	const slotPhase = async (name) =>
+		cdp.evaluate(
+			`document.querySelector(${JSON.stringify(SLOT(name))})?.getAttribute('data-inline-edit-slot') ?? null`,
+		);
+	const paneText = async () => cdp.evaluate(`document.body.textContent ?? ""`);
+	const stored = async () => {
+		const view = await fetchProjectView(PROJECT);
+		return view?.body?.result?.project ?? null;
+	};
+	/*
+	 * THE DAEMON'S OWN RECORD, WAITED ON. Every write check asserts the wire
+	 * landed, and the window shows the change optimistically first, so a single
+	 * read can catch the PATCH in flight (measured on this scene's capture
+	 * pass: `status="active" badge="QA"` while the write was still landing).
+	 * The wait is bounded, and a write that never lands still fails its check.
+	 */
+	const waitForStored = async (predicate, timeoutMs = 8_000) => {
+		const deadline = Date.now() + timeoutMs;
+		let view = await stored();
+		while (view !== null && !predicate(view) && Date.now() < deadline) {
+			await wait(150);
+			view = await stored();
+		}
+		return view;
+	};
+	/*
+	 * THE + ADD DOOR, WITH A SETTLED RECT. The menu animates in and its items
+	 * move while it opens; a click measured mid-animation lands where the item
+	 * WAS and selects nothing - measured on this scene's capture pass, where
+	 * the target and estimate births missed and the team birth happened to
+	 * land. Two identical rects mean the item has stopped moving, and only
+	 * then does the click go out.
+	 */
+	const birthFromAddMenu = async (field) => {
+		await cdp.evaluate(
+			`document.querySelector("[data-project-add-field]").scrollIntoView({block: 'center'}); true`,
+		);
+		await wait(200);
+		await clickAt(cdp, "[data-project-add-field]");
+		const option = `[data-project-add-option="${field}"]`;
+		await need(option, `the add-field menu (${field})`);
+		let previous = null;
+		for (let attempt = 0; attempt < 20; attempt += 1) {
+			const rect = await cdp.evaluate(
+				`JSON.stringify((() => { const el = document.querySelector(${JSON.stringify(option)}); if (el === null) return null; const r = el.getBoundingClientRect(); return { x: Math.round(r.x), y: Math.round(r.y), w: Math.round(r.width), h: Math.round(r.height) }; })())`,
+			);
+			if (rect === previous && rect !== null) break;
+			previous = rect;
+			await wait(120);
+		}
+		await clickAt(cdp, option);
+	};
+
+	const facts = await factsOf(cdp);
+	check(
+		"the window is the headless launch, not a raised one",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME);
+	/*
+	 * The app's OWN theme, read back rather than assumed. `state` answers the
+	 * whole object (it takes no key), so the name comes off `.theme`; and
+	 * frame labels are lowercase-only - the capture verb refuses anything
+	 * else - so the name is slugged the way the question-dock scene slugs it.
+	 */
+	const appState = await verb(cdp, "state");
+	const theme = String(appState?.theme ?? "unknown")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	note(
+		"the page's own reads",
+		`theme=${theme} size=${size} project=${PROJECT}`,
+	);
+
+	/*
+	 * PRECONDITIONS, read from the daemon before a single click: the seed's
+	 * shape is what half the checks below are ABOUT (a title that exists, a
+	 * second row to collide with, an incomplete milestone for the done-gate),
+	 * and a seed that changed under this scene must fail loudly here rather
+	 * than photograph a state the README no longer describes.
+	 */
+	const before = await fetchProjectView(PROJECT);
+	const seeded = before?.body?.result?.project ?? null;
+	check(
+		"the daemon holds the seeded project",
+		before.status === 200 && seeded !== null,
+		`status=${before.status} project=${JSON.stringify(seeded?.name ?? null)}`,
+	);
+	check(
+		"the seed has a title and a start date (the conflict case needs both)",
+		Boolean(seeded?.title) && Boolean(seeded?.start_date),
+		`title=${JSON.stringify(seeded?.title ?? null)} start_date=${JSON.stringify(seeded?.start_date ?? null)}`,
+	);
+	const listResponse = await fetch(`${BACKEND}/v1/desktop/projects`, {
+		headers: {
+			authorization: `Bearer ${process.env.LOCAL_OPERATOR_DESKTOP_TOKEN}`,
+		},
+	});
+	const listBody = await listResponse.json().catch(() => null);
+	const rows = listBody?.result?.projects ?? [];
+	const other = rows.find((row) => row?.name && row.name !== PROJECT) ?? null;
+	check(
+		"the seed holds a second project, for the duplicate-key refusal",
+		other !== null,
+		`rows=${JSON.stringify(rows.map((row) => row?.name))}`,
+	);
+	const milestones = seeded?.milestones ?? [];
+	check(
+		"the seed holds an incomplete milestone (the done-gate arm)",
+		milestones.some((milestone) => !milestone?.completed_at),
+		`milestones=${JSON.stringify(milestones.map((m) => [m?.name, m?.completed_at ?? null]))}`,
+	);
+
+	await verb(cdp, "navigate", `/projects/${PROJECT}`);
+	await need("[data-project-title]", "the detail's heading");
+
+	const titleBase = seeded.title;
+	const stamp = String(Date.now()).slice(-6);
+	const nextTitle = `${titleBase} ${stamp}`.slice(0, 80);
+
+	/*
+	 * 1. THE HOVER REVEAL, at the pointer. The pencil starts at `opacity-0`
+	 * (measured below, before the move) and a CDP pointer move over the field
+	 * must take it to `1` — the operator's "edit indicator on each field on
+	 * hover". The keyboard half of the same gate is asserted after, because
+	 * `focus-within` is a different branch of the same CSS and one frame
+	 * cannot prove both.
+	 */
+	const pencil = CONTROL("title", "begin");
+	await need(pencil, "the title pencil");
+	const restOpacity = await cdp.evaluate(
+		`getComputedStyle(document.querySelector(${JSON.stringify(pencil)})).opacity`,
+	);
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(FIELD("title"))}).scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	await hoverAt(cdp, FIELD("title"));
+	/*
+	 * The wait IS the threshold, not any nonzero reading: the reveal is a
+	 * transition, and polling for "truthy then check >= 0.99" fails on its own
+	 * mid-transition sample (this scene's first capture pass read 0.894).
+	 */
+	const hovered = await waitForCondition(
+		cdp,
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(pencil)})).opacity) >= 0.99`,
+		4_000,
+	);
+	const hoveredOpacity = await cdp.evaluate(
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(pencil)})).opacity)`,
+	);
+	check(
+		"the title's pencil is hidden at rest and the pointer's hover reveals it",
+		restOpacity === "0" && hovered.ok,
+		`rest=${restOpacity} hovered=${hoveredOpacity}`,
+		`rest=${restOpacity} hovered=${hoveredOpacity}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-hover`);
+
+	/*
+	 * 2. THE KEYBOARD REVEAL: focus alone (no pointer) must reveal the pencil
+	 * on another field — the `focus-within` gate a keyboard walk depends on.
+	 */
+	const keyPencil = CONTROL("key", "begin");
+	await need(keyPencil, "the key pencil");
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(keyPencil)}).focus(); true`,
+	);
+	const focusedReveal = await waitForCondition(
+		cdp,
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(keyPencil)})).opacity) >= 0.99`,
+		4_000,
+	);
+	const focusedOpacity = await cdp.evaluate(
+		`parseFloat(getComputedStyle(document.querySelector(${JSON.stringify(keyPencil)})).opacity)`,
+	);
+	check(
+		"focus alone reveals the key row's pencil (the keyboard door)",
+		focusedReveal.ok,
+		`opacity=${focusedOpacity}`,
+		`opacity=${focusedOpacity}`,
+	);
+
+	/*
+	 * 3. ENTERING BY AFFORDANCE-CLICK: the pencil opens the editor, focus
+	 * lands IN it (not on body — the commit below returns it to the slot, and
+	 * a walk that lost focus between the two would be the defect).
+	 */
+	await clickControl("title", "begin");
+	await need(ENTRY("title"), "the title editor");
+	const editorFocused = await waitForCondition(
+		cdp,
+		`document.activeElement === document.querySelector(${JSON.stringify(ENTRY("title"))})`,
+		4_000,
+	);
+	check(
+		"the title editor opens focused",
+		editorFocused.ok && editorFocused.last === true,
+		`activeElement matched: ${editorFocused.last}`,
+		`activeElement matched: ${editorFocused.last}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-editing`);
+
+	/*
+	 * 4. THE DIRTY DRAFT, REVERTED BY ESC. The draft text is IN the input; Esc
+	 * must close the editor, restore the stored title, and leave the daemon
+	 * untouched (read back, not inferred).
+	 */
+	await replaceAllText(cdp, ENTRY("title"), "a draft nobody kept");
+	const dirtyValue = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(ENTRY("title"))}).value`,
+	);
+	check(
+		"the editor holds the draft",
+		dirtyValue === "a draft nobody kept",
+		`value=${JSON.stringify(dirtyValue)}`,
+		`value=${JSON.stringify(dirtyValue)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-dirty`);
+	await pressChord(cdp, {
+		key: "Escape",
+		code: "Escape",
+		virtualKeyCode: 27,
+	});
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("title"))}) === null`,
+		4_000,
+	);
+	const afterEsc = await stored();
+	const escHeading = await cdp.evaluate(
+		`document.querySelector("[data-project-title]").textContent`,
+	);
+	check(
+		"Esc reverts the field: stored title restored, no write sent",
+		afterEsc?.title === titleBase && escHeading === titleBase,
+		`title=${JSON.stringify(afterEsc?.title ?? null)} heading=${JSON.stringify(escHeading)}`,
+		`title=${JSON.stringify(afterEsc?.title ?? null)} heading=${JSON.stringify(escHeading)}`,
+	);
+
+	/*
+	 * 5. ENTERING BY DOUBLE-CLICK on the VALUE (the operator's second door),
+	 * then a single-line ENTER accept. The daemon read is the check: the
+	 * heading changing is the window's claim, the stored title is the record's.
+	 */
+	await doubleClickAt(cdp, FIELD("title"));
+	await need(ENTRY("title"), "the title editor (double-click)");
+	check(
+		"double-clicking the title value opens its editor",
+		true,
+		undefined,
+		"the editor appeared",
+	);
+	await replaceAllText(cdp, ENTRY("title"), nextTitle);
+	await pressChord(cdp, {
+		key: "Enter",
+		code: "Enter",
+		virtualKeyCode: 13,
+	});
+	const savedCaption = await waitForCondition(
+		cdp,
+		`document.querySelector('[data-inline-edit-feedback="saved"]') !== null`,
+		8_000,
+	);
+	check(
+		"Enter accepts a single-line field, and the transient saved caption shows",
+		savedCaption.ok,
+		`the caption never appeared (waited ${savedCaption.waitedMs}ms)`,
+		`the caption appeared after ${savedCaption.waitedMs}ms`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-saved`);
+	const afterEnter = await waitForStored((p) => p?.title === nextTitle);
+	check(
+		"the daemon holds the accepted title",
+		afterEnter?.title === nextTitle,
+		`title=${JSON.stringify(afterEnter?.title ?? null)}`,
+		`title=${JSON.stringify(afterEnter?.title ?? null)}`,
+	);
+	const announcement = await cdp.evaluate(
+		`document.querySelector("[data-inline-edit-announcement]")?.textContent ?? ""`,
+	);
+	check(
+		"the pane's one live region carries the acknowledgement",
+		theme && typeof announcement === "string" && announcement.length > 0,
+		`announcement=${JSON.stringify(announcement)}`,
+		`announcement=${JSON.stringify(announcement)}`,
+	);
+
+	/*
+	 * 6. CHECK-ACCEPT AND X-CANCEL, on the Start date row: x leaves the stored
+	 * value and sends nothing; the check then commits the same edit.
+	 */
+	await clickControl("start-date", "begin");
+	await need(ENTRY("start-date"), "the start-date editor");
+	await replaceAllText(cdp, ENTRY("start-date"), "2026-09-05");
+	await clickControl("start-date", "cancel");
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null`,
+		4_000,
+	);
+	const afterCancel = await stored();
+	check(
+		"the x cancels: the stored start date stands, nothing was written",
+		afterCancel?.start_date === seeded.start_date,
+		`start_date=${JSON.stringify(afterCancel?.start_date ?? null)}`,
+		`start_date=${JSON.stringify(afterCancel?.start_date ?? null)}`,
+	);
+	/*
+	 * D3's stability sample (design round 1): the row's height AT REST (the
+	 * x-cancel above left it at rest) against the same row once the caption
+	 * shows. The feedback line is a fixed-height slot present whether or not
+	 * something is showing, so a save acknowledges IN PLACE and the rows
+	 * below never move.
+	 */
+	const startRowHeight = async () =>
+		cdp.evaluate(
+			`document.querySelector(${JSON.stringify(FIELD("start-date"))})?.getBoundingClientRect().height ?? null`,
+		);
+	const startHeightRest = await startRowHeight();
+	await clickControl("start-date", "begin");
+	await need(ENTRY("start-date"), "the start-date editor again");
+	await replaceAllText(cdp, ENTRY("start-date"), "2026-09-05");
+	await clickControl("start-date", "accept");
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null`,
+		8_000,
+	);
+	const startHeightSaved = await startRowHeight();
+	check(
+		"the saved caption lands inside the fixed-height slot: the row does not move",
+		startHeightRest !== null &&
+			startHeightSaved !== null &&
+			Math.abs(startHeightSaved - startHeightRest) <= 1,
+		`rest=${JSON.stringify(startHeightRest)} saved=${JSON.stringify(startHeightSaved)}`,
+		`rest=${JSON.stringify(startHeightRest)} saved=${JSON.stringify(startHeightSaved)}`,
+	);
+	const afterCheck = await waitForStored((p) => p?.start_date === "2026-09-05");
+	check(
+		"the check accepts: the daemon holds the new start date",
+		afterCheck?.start_date === "2026-09-05",
+		`start_date=${JSON.stringify(afterCheck?.start_date ?? null)}`,
+		`start_date=${JSON.stringify(afterCheck?.start_date ?? null)}`,
+	);
+
+	/*
+	 * 7. BLUR ACCEPTS, on Owner: a plain click somewhere else while dirty and
+	 * valid must commit the field (§ 2.2's blur rule; no request when
+	 * unchanged — the next step's cancel already proved the unchanged arm).
+	 */
+	await clickControl("owner", "begin");
+	await need(ENTRY("owner"), "the owner editor");
+	await replaceAllText(cdp, ENTRY("owner"), `rig-owner-${stamp}`);
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(FIELD("description"))}).scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	await clickAt(cdp, FIELD("description"));
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("owner"))}) === null`,
+		8_000,
+	);
+	const afterBlur = await waitForStored(
+		(p) => p?.owner === `rig-owner-${stamp}`,
+	);
+	check(
+		"blur on a dirty, valid field commits it",
+		afterBlur?.owner === `rig-owner-${stamp}`,
+		`owner=${JSON.stringify(afterBlur?.owner ?? null)}`,
+		`owner=${JSON.stringify(afterBlur?.owner ?? null)}`,
+	);
+
+	/*
+	 * 8. THE DESCRIPTION: Enter is a NEWLINE (the field does not accept on it),
+	 * ⌘-Enter accepts, and the Write/Preview toggle renders the markdown. The
+	 * daemon read waits for the newline count to grow — the same check the
+	 * contract's § 2.2 states as "multiline = Enter is a newline".
+	 */
+	await clickControl("description", "begin");
+	await need(ENTRY("description"), "the description editor");
+	await replaceAllText(
+		cdp,
+		ENTRY("description"),
+		`rig note line one\nsecond line ${stamp}`,
+	);
+	const beforeEnterCount = await cdp.evaluate(
+		`(document.querySelector(${JSON.stringify(ENTRY("description"))}).value.match(/\\n/g) ?? []).length`,
+	);
+	await pressChord(cdp, {
+		key: "Enter",
+		code: "Enter",
+		virtualKeyCode: 13,
+	});
+	await wait(150);
+	const afterEnterCount = await cdp.evaluate(
+		`(document.querySelector(${JSON.stringify(ENTRY("description"))}).value.match(/\\n/g) ?? []).length`,
+	);
+	const stillEditing =
+		(await slotPhase("description")) === "editing" ||
+		(await slotPhase("description")) === "dirty";
+	check(
+		"Enter in the description is a newline: still editing, the text grew a line",
+		afterEnterCount === beforeEnterCount + 1 && stillEditing,
+		`newlines ${beforeEnterCount} -> ${afterEnterCount}, slot=${await slotPhase("description")}`,
+		`newlines ${beforeEnterCount} -> ${afterEnterCount}, slot=${await slotPhase("description")}`,
+	);
+	const midDraft = await stored();
+	check(
+		"no write was sent for the still-open draft",
+		midDraft?.description === seeded.description,
+		`description=${JSON.stringify(midDraft?.description ?? null).slice(0, 80)}`,
+		`description=${JSON.stringify(midDraft?.description ?? null).slice(0, 80)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-description`);
+	await cdp.evaluate(
+		`document.querySelector('[data-project-description-mode="preview"]').click(); true`,
+	);
+	const previewed = await waitForCondition(
+		cdp,
+		`document.querySelector("[data-project-description-preview]") !== null`,
+		4_000,
+	);
+	check(
+		"the Write/Preview toggle renders the draft as markdown",
+		previewed.ok,
+		"the preview never appeared",
+		"the preview appeared",
+	);
+	await cdp.evaluate(
+		`document.querySelector('[data-project-description-mode="write"]').click(); true`,
+	);
+	await wait(150);
+	await pressChord(cdp, {
+		key: "Enter",
+		code: "Enter",
+		virtualKeyCode: 13,
+		modifiers: 4,
+	});
+	const descriptionSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("description"))}) === null`,
+		8_000,
+	);
+	const afterDescription = await waitForStored(
+		(p) =>
+			typeof p?.description === "string" &&
+			p.description.includes(`second line ${stamp}`),
+	);
+	check(
+		"Cmd+Enter accepts the description",
+		descriptionSaved.ok &&
+			afterDescription?.description?.includes(`second line ${stamp}`),
+		`description=${JSON.stringify(afterDescription?.description ?? null).slice(0, 120)}`,
+		`description=${JSON.stringify(afterDescription?.description ?? null).slice(0, 120)}`,
+	);
+
+	/*
+	 * 9. THE STATUS: the pencil opens the select (the badge's own gesture is a
+	 * DOUBLE click - the value gesture everywhere in this file; a single
+	 * click on the badge deliberately begins nothing, round 1), `qa` commits
+	 * from the menu, and picking `done` with an incomplete milestone gets the
+	 * done gate's refusal back - re-spoken in the app's own sentence (design
+	 * round 1, D4: the daemon's log register is gone, the count and the
+	 * milestone names are kept). The geometry samples pin D1 (the editor
+	 * occupies the chip's own slot; beginning an edit reflows nothing) and
+	 * paragraph 2.2's dirty-gate (D2: a clean edit draws no chrome at all).
+	 */
+	await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(FIELD("status"))}).scrollIntoView({block: 'center'}); true`,
+	);
+	await wait(200);
+	const statusRestGeometry = await cdp.evaluate(
+		`(() => {
+			const status = document.querySelector(${JSON.stringify(FIELD("status"))});
+			const owner = document.querySelector(${JSON.stringify(FIELD("owner"))});
+			return {
+				statusTop: status?.getBoundingClientRect().top ?? null,
+				ownerTop: owner?.getBoundingClientRect().top ?? null,
+			};
+		})()`,
+	);
+	await clickControl("status", "begin");
+	await need(`[data-project-status-option="qa"]`, "the status menu");
+	const statusEditGeometry = await cdp.evaluate(
+		`(() => {
+			const status = document.querySelector(${JSON.stringify(FIELD("status"))});
+			const owner = document.querySelector(${JSON.stringify(FIELD("owner"))});
+			return {
+				statusTop: status?.getBoundingClientRect().top ?? null,
+				ownerTop: owner?.getBoundingClientRect().top ?? null,
+				select: Boolean(document.querySelector("[data-project-status]")),
+				chrome: Boolean(document.querySelector(${JSON.stringify(`${FIELD("status")} [data-inline-edit-control="accept"]`)})),
+			};
+		})()`,
+	);
+	check(
+		"the status editor opens in the chip's own slot: no header reflow",
+		statusRestGeometry.statusTop !== null &&
+			statusEditGeometry.statusTop !== null &&
+			Math.abs(statusEditGeometry.statusTop - statusRestGeometry.statusTop) <=
+				2 &&
+			Math.abs(statusEditGeometry.ownerTop - statusRestGeometry.ownerTop) <=
+				2 &&
+			statusEditGeometry.select === true,
+		`statusTop ${JSON.stringify(statusRestGeometry.statusTop)} -> ${JSON.stringify(statusEditGeometry.statusTop)}; ownerTop ${JSON.stringify(statusRestGeometry.ownerTop)} -> ${JSON.stringify(statusEditGeometry.ownerTop)}`,
+		`statusTop ${JSON.stringify(statusRestGeometry.statusTop)} -> ${JSON.stringify(statusEditGeometry.statusTop)}; ownerTop ${JSON.stringify(statusRestGeometry.ownerTop)} -> ${JSON.stringify(statusEditGeometry.ownerTop)}`,
+	);
+	check(
+		"a clean status edit draws no accept/cancel chrome (the 2.2 dirty-gate)",
+		statusEditGeometry.chrome === false,
+		"accept drawn on an unchanged draft",
+		"no chrome while clean",
+	);
+	await clickAt(cdp, `[data-project-status-option="qa"]`);
+	const statusCommitted = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(FIELD("status"))}).textContent`,
+		8_000,
+	);
+	const afterStatus = await waitForStored((p) => p?.status === "qa");
+	check(
+		"the status select commits from the menu",
+		afterStatus?.status === "qa" && String(statusCommitted.last).includes("QA"),
+		`status=${JSON.stringify(afterStatus?.status ?? null)} badge=${JSON.stringify(statusCommitted.last)}`,
+		`status=${JSON.stringify(afterStatus?.status ?? null)} badge=${JSON.stringify(statusCommitted.last)}`,
+	);
+	await clickControl("status", "begin");
+	await need(`[data-project-status-option="done"]`, "the done option");
+	await clickAt(cdp, `[data-project-status-option="done"]`);
+	const doneRefusal = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("This can't be marked done yet:")`,
+		8_000,
+	);
+	const refusalText = await cdp.evaluate(`document.body.textContent ?? ""`);
+	check(
+		"the done gate's refusal speaks the app's sentence, not the daemon's register",
+		doneRefusal.ok &&
+			refusalText.includes(
+				"This can't be marked done yet: 1 milestone is still incomplete (",
+			) &&
+			refusalText.includes(
+				"Complete or remove the incomplete milestones, then mark it done.",
+			) &&
+			!refusalText.includes("cannot set status 'done'"),
+		`present=${doneRefusal.ok}`,
+		`present=${doneRefusal.ok}`,
+	);
+	/*
+	 * D1's adjacency claim, measured at its worst moment (the refusal): the x
+	 * hugs the select in the chip's slot instead of sitting at the pane's far
+	 * edge - the measured 621.5px escape this round exists to close.
+	 */
+	const statusChrome = await cdp.evaluate(
+		`(() => {
+			const select = document.querySelector("[data-project-status]");
+			const x = document.querySelector(${JSON.stringify(`${FIELD("status")} [data-inline-edit-control="cancel"]`)});
+			const accept = document.querySelector(${JSON.stringify(`${FIELD("status")} [data-inline-edit-control="accept"]`)});
+			if (!select) return { gap: null, x: Boolean(x), accept: Boolean(accept) };
+			const s = select.getBoundingClientRect();
+			const xr = x?.getBoundingClientRect() ?? null;
+			return { gap: xr ? xr.left - s.right : null, x: Boolean(x), accept: Boolean(accept) };
+		})()`,
+	);
+	check(
+		"the status check/x hug the control in the chip's own slot",
+		statusChrome.gap !== null &&
+			statusChrome.gap <= 10 &&
+			statusChrome.x &&
+			statusChrome.accept,
+		`gap=${JSON.stringify(statusChrome.gap)} x=${JSON.stringify(statusChrome.x)} accept=${JSON.stringify(statusChrome.accept)}`,
+		`gap=${JSON.stringify(statusChrome.gap)} x=${JSON.stringify(statusChrome.x)} accept=${JSON.stringify(statusChrome.accept)}`,
+	);
+	const stillQa = await stored();
+	check(
+		"the refused status move wrote nothing",
+		stillQa?.status === "qa",
+		`status=${JSON.stringify(stillQa?.status ?? null)}`,
+		`status=${JSON.stringify(stillQa?.status ?? null)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-refused-status`);
+	await clickControl("status", "cancel");
+	const statusReverted = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(FIELD("status"))})?.textContent?.trim()`,
+		5_000,
+	);
+	check(
+		"x reverts the refused status to the stored value",
+		String(statusReverted.last).includes("QA"),
+		`field text=${JSON.stringify(statusReverted.last)}`,
+		`field text=${JSON.stringify(statusReverted.last)}`,
+	);
+
+	/*
+	 * 10. THE DUPLICATE KEY, refused with the wire's own 409. The target name
+	 * is the OTHER seeded row's — a name this daemon already holds — so the
+	 * refusal is the store's, not an invented client-side one.
+	 */
+	await clickControl("key", "begin");
+	await need(ENTRY("key"), "the key editor");
+	await replaceAllText(cdp, ENTRY("key"), other.name);
+	await clickControl("key", "accept");
+	const keyRefusal = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("A project with this key already exists.")`,
+		8_000,
+	);
+	check(
+		"a duplicate key is refused in-field with the app's crafted sentence",
+		keyRefusal.ok,
+		"the in-field sentence never appeared",
+		"the in-field sentence appeared",
+	);
+	const keyHeld = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(ENTRY("key"))}).value`,
+	);
+	check(
+		"the refused key keeps the attempted value in the editor (§ 2.3)",
+		keyHeld === other.name,
+		`value=${JSON.stringify(keyHeld)}`,
+		`value=${JSON.stringify(keyHeld)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-refused-key`);
+	await clickControl("key", "cancel");
+	const afterKeyRevert = await stored();
+	check(
+		"x on the refused key restores the record's name",
+		afterKeyRevert?.name === PROJECT,
+		`name=${JSON.stringify(afterKeyRevert?.name ?? null)}`,
+		`name=${JSON.stringify(afterKeyRevert?.name ?? null)}`,
+	);
+
+	/*
+	 * 11. LIMITS AT INPUT, which never reach the daemon. The TITLE is capped
+	 * by maxLength as it is typed (design round 1 / UX round 1, U3: it used to take 100 characters and only
+	 * fail at submit), and the KEY's grammar gets a LOCAL refusal before a
+	 * request - the daemon's stored title and name are the proof nothing
+	 * was sent.
+	 */
+	await clickControl("title", "begin");
+	await need(ENTRY("title"), "the title editor (limits)");
+	await replaceAllText(cdp, ENTRY("title"), "x".repeat(100));
+	const titleHeld = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(ENTRY("title"))})?.value ?? null`,
+	);
+	check(
+		"the over-long title is stopped at input: the field holds at most 80 characters",
+		typeof titleHeld === "string" && titleHeld.length === 80,
+		`length=${typeof titleHeld === "string" ? titleHeld.length : JSON.stringify(titleHeld)}`,
+		`length=${typeof titleHeld === "string" ? titleHeld.length : JSON.stringify(titleHeld)}`,
+	);
+	await clickControl("title", "cancel");
+	await clickControl("key", "begin");
+	await need(ENTRY("key"), "the key editor (local refusal)");
+	await replaceAllText(cdp, ENTRY("key"), "bad key!");
+	await clickControl("key", "accept");
+	const validationSentence = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("Names start with a letter or digit")`,
+		4_000,
+	);
+	const afterValidation = await stored();
+	check(
+		"a grammar-invalid key is refused locally, with the daemon untouched",
+		validationSentence.ok && afterValidation?.name === PROJECT,
+		`name=${JSON.stringify(afterValidation?.name ?? null)}`,
+		`name=${JSON.stringify(afterValidation?.name ?? null)}`,
+	);
+	await clickControl("key", "cancel");
+
+	/*
+	 * 12. THE CONFLICT HOLD, with the out-of-band writer being THIS process
+	 * (§ 2.4 case 3): a dirty draft on the start date, the record moved behind
+	 * it by a real PATCH, and the app's own focus path delivering the moved
+	 * record. The commit must be HELD, not forced and not silently
+	 * overwritten, until "Keep mine" answers it.
+	 */
+	const conflictStart = "2026-10-01";
+	const outOfBandStart = "2026-09-30";
+	await clickControl("start-date", "begin");
+	await need(ENTRY("start-date"), "the start-date editor (conflict)");
+	await replaceAllText(cdp, ENTRY("start-date"), conflictStart);
+	const patched = await projectPatch(PROJECT, { start_date: outOfBandStart });
+	check(
+		"the out-of-band write landed (this process, the daemon's own route)",
+		patched.status === 200,
+		`status=${patched.status} body=${JSON.stringify(patched.body).slice(0, 200)}`,
+		`status=${patched.status}`,
+	);
+	/*
+	 * THE DELIVERY IS A FOCUS TRANSITION, not a focus event (review round 1,
+	 * M6): React Query 5.73.3's focusManager subscribes to a BUBBLING
+	 * `visibilitychange` on `window` and tracks one boolean, so the bare
+	 * window `focus` this scene used to dispatch was heard by nobody - the
+	 * conflict could never appear. The nudge goes hidden -> visible (with
+	 * `visibilityState` made readable so the pair is visible to the manager),
+	 * which is exactly what a real window switch delivers; the wait before it
+	 * is the detail query's own `staleTime` (10s) - a focused query that is
+	 * not stale is not refetched. The recipe is `scripts/hub-round-trips.mjs`'s,
+	 * kept identical so the two rigs cannot drift.
+	 *
+	 * WHY NOT "commit another field and let its invalidation deliver it": the
+	 * blur rule fires first (clicking any other control blurs this dirty,
+	 * valid field, and blur ACCEPTS - § 2.2), so the draft would be committed
+	 * by the gesture before the refetch could ever hold it. The visibility
+	 * pair is the one delivery path that does not move focus.
+	 */
+	await wait(10_500);
+	await cdp.evaluate(`(() => {
+		if (!window.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => window.__inlineEditVisibility ?? "visible",
+			});
+			window.__inlineEditVisibilityPatched = true;
+		}
+		window.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.dispatchEvent(new Event("focus"));
+		return true;
+	})()`);
+	const conflictShown = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("This changed while you were editing")`,
+		8_000,
+	);
+	const draftHeld = await cdp.evaluate(
+		`document.querySelector(${JSON.stringify(ENTRY("start-date"))})?.value ?? null`,
+	);
+	check(
+		"a field that moved out-of-band holds the commit, draft intact",
+		conflictShown.ok && draftHeld === conflictStart,
+		`conflict=${conflictShown.ok} draft=${JSON.stringify(draftHeld)}`,
+		`conflict=${conflictShown.ok} draft=${JSON.stringify(draftHeld)}`,
+	);
+	await captureSettled(cdp, `project-inline-${size}-${theme}-conflict`);
+	await clickAt(
+		cdp,
+		`${FIELD("start-date")} [data-inline-edit-control="keep-mine"]`,
+	);
+	const keptMine = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null`,
+		8_000,
+	);
+	const afterKeepMine = await waitForStored(
+		(p) => p?.start_date === conflictStart,
+	);
+	check(
+		"Keep mine commits the draft over the out-of-band value",
+		keptMine.ok && afterKeepMine?.start_date === conflictStart,
+		`start_date=${JSON.stringify(afterKeepMine?.start_date ?? null)}`,
+		`start_date=${JSON.stringify(afterKeepMine?.start_date ?? null)}`,
+	);
+
+	/*
+	 * 12b. USE THEIRS, the sibling door (UX round 1, U1 / QA round 1, Q1):
+	 * the conflict is re-armed on the same field and the record's value is
+	 * adopted this time. The DATA outcome was always right; the state left
+	 * behind was not - the button that had focus unmounted under the
+	 * pointer, the slot stayed `editing` with focus on <body>, and no
+	 * keyboard exit brought the field back until a route round trip. The
+	 * fix closes the field with the focus handed back to its own slot
+	 * control, exactly like `Keep mine`, so this check reads focus, the
+	 * slot's phase and the daemon's row in one pass.
+	 */
+	const useTheirsStart = "2026-10-02";
+	const useTheirsOutOfBand = "2026-10-03";
+	await clickControl("start-date", "begin");
+	await need(ENTRY("start-date"), "the start-date editor (use theirs)");
+	await replaceAllText(cdp, ENTRY("start-date"), useTheirsStart);
+	const patchedForUseTheirs = await projectPatch(PROJECT, {
+		start_date: useTheirsOutOfBand,
+	});
+	await wait(10_500);
+	await cdp.evaluate(`(() => {
+		if (!window.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => window.__inlineEditVisibility ?? "visible",
+			});
+			window.__inlineEditVisibilityPatched = true;
+		}
+		window.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.dispatchEvent(new Event("focus"));
+		return true;
+	})()`);
+	const conflictAgain = await waitForCondition(
+		cdp,
+		`(document.body.textContent ?? "").includes("This changed while you were editing")`,
+		8_000,
+	);
+	await clickAt(
+		cdp,
+		`${FIELD("start-date")} [data-inline-edit-control="use-theirs"]`,
+	);
+	const useTheirsSettled = await waitForCondition(
+		cdp,
+		`(() => {
+			const field = document.querySelector(${JSON.stringify(FIELD("start-date"))});
+			const active = document.activeElement;
+			const control = active?.getAttribute?.("data-inline-edit-control") ?? null;
+			return (
+				Boolean(field) &&
+				document.querySelector(${JSON.stringify(ENTRY("start-date"))}) === null &&
+				field.contains(active) &&
+				control === "begin"
+			);
+		})()`,
+		8_000,
+	);
+	const afterUseTheirs = await waitForStored(
+		(p) => p?.start_date === useTheirsOutOfBand,
+	);
+	check(
+		"Use theirs closes the field, hands focus back and adopts the record",
+		conflictAgain.ok &&
+			useTheirsSettled.ok &&
+			afterUseTheirs?.start_date === useTheirsOutOfBand,
+		`conflict=${conflictAgain.ok} settled=${useTheirsSettled.ok} patch=${patchedForUseTheirs.status} start_date=${JSON.stringify(afterUseTheirs?.start_date ?? null)}`,
+		`conflict=${conflictAgain.ok} settled=${useTheirsSettled.ok} patch=${patchedForUseTheirs.status} start_date=${JSON.stringify(afterUseTheirs?.start_date ?? null)}`,
+	);
+
+	/*
+	 * 13. THE SAVING STATE, HELD: the run's own daemon is paused by exact pid
+	 * (SIGSTOP, the `mini-view` device) so the in-flight write spans the frame,
+	 * and resumed in a `finally` so the same request then completes.
+	 */
+	const daemonPids = runDaemonPids();
+	check(
+		"the run's own daemon is identifiable by pid (never 1111)",
+		daemonPids.length > 0,
+		`pids=${JSON.stringify(daemonPids)}`,
+		`pids=${JSON.stringify(daemonPids)}`,
+	);
+	/*
+	 * Target is ABSENT in the seed, so the row is BORN through the `+ Add`
+	 * menu and its editor opens directly (`autoBegin`) - the same door step
+	 * 14 uses for Team. Expecting a `begin` control here was this scene's
+	 * first-capture-pass rig bug: an absent row renders no affordance at all.
+	 */
+	await birthFromAddMenu("target");
+	await need(
+		ENTRY("target-date"),
+		"the target-date editor born from the menu",
+		10_000,
+	);
+	await replaceAllText(cdp, ENTRY("target-date"), "2026-11-15");
+	let paused = 0;
+	try {
+		for (const pid of daemonPids) {
+			try {
+				process.kill(pid, "SIGSTOP");
+				paused += 1;
+			} catch {
+				/* Already gone: nothing to hold, and the save will show it. */
+			}
+		}
+		await clickControl("target-date", "accept");
+		const inFlight = await waitForCondition(
+			cdp,
+			`document.querySelector(${JSON.stringify(SLOT("target-date"))})?.getAttribute('data-inline-edit-slot')`,
+			6_000,
+		);
+		check(
+			"the saving state holds while the daemon answers nothing",
+			paused > 0 && inFlight.ok && inFlight.last === "saving",
+			`paused=${paused} slot=${inFlight.last}`,
+			`paused=${paused} slot=${inFlight.last}`,
+		);
+		await captureSettled(cdp, `project-inline-${size}-${theme}-saving`);
+	} finally {
+		for (const pid of daemonPids) {
+			try {
+				process.kill(pid, "SIGCONT");
+			} catch {
+				/* A pid that died while paused has nothing to resume. */
+			}
+		}
+	}
+	const targetSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("target-date"))}) === null`,
+		10_000,
+	);
+	const afterTarget = await waitForStored(
+		(p) => p?.target_date === "2026-11-15",
+	);
+	check(
+		"the same write completes once the daemon resumes",
+		targetSaved.ok && afterTarget?.target_date === "2026-11-15",
+		`target_date=${JSON.stringify(afterTarget?.target_date ?? null)}`,
+		`target_date=${JSON.stringify(afterTarget?.target_date ?? null)}`,
+	);
+
+	/*
+	 * 14. A FIELD BORN INLINE, through the properties block's `+ Add` menu: the
+	 * seed leaves Team absent, and the menu's Team row must open its editor so
+	 * a fact with no value yet can be written without a dialog.
+	 */
+	await birthFromAddMenu("team");
+	await need(ENTRY("team"), "the team editor born from the menu");
+	await replaceAllText(cdp, ENTRY("team"), `rig-team-${stamp}`);
+	await clickControl("team", "accept");
+	const teamSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("team"))}) === null`,
+		8_000,
+	);
+	const afterTeam = await waitForStored((p) => p?.team === `rig-team-${stamp}`);
+	check(
+		"a missing field is born inline from the + Add menu",
+		teamSaved.ok && afterTeam?.team === `rig-team-${stamp}`,
+		`team=${JSON.stringify(afterTeam?.team ?? null)}`,
+		`team=${JSON.stringify(afterTeam?.team ?? null)}`,
+	);
+
+	/*
+	 * 15. THE ESTIMATE BORN FROM NONE (round 1, M1's exact repro): the seed
+	 * has no estimate, the row is born from `+ Add`, and typing a number and
+	 * accepting must WRITE - a directional identity is what makes the born
+	 * draft dirty against its empty base, and the old symmetric one compared
+	 * it equal and retired the row without a request.
+	 */
+	await birthFromAddMenu("estimate");
+	await need(ENTRY("estimate"), "the estimate editor born from the menu");
+	await replaceAllText(cdp, ENTRY("estimate"), "5");
+	await clickControl("estimate", "accept");
+	const estimateSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("estimate"))}) === null`,
+		8_000,
+	);
+	const afterEstimate = await waitForStored((p) => p?.estimate === 5);
+	check(
+		"an estimate can be born from none (round 1, M1)",
+		estimateSaved.ok && afterEstimate?.estimate === 5,
+		`estimate=${JSON.stringify(afterEstimate?.estimate ?? null)}`,
+		`estimate=${JSON.stringify(afterEstimate?.estimate ?? null)}`,
+	);
+
+	/*
+	 * 16. TAGS BORN FROM NONE, on the comparator the born draft now makes
+	 * dirty: same `+ Add` birth, the comma text committed, the daemon read
+	 * back as the list.
+	 */
+	await birthFromAddMenu("tags");
+	await need(ENTRY("tags"), "the tags editor born from the menu");
+	await replaceAllText(cdp, ENTRY("tags"), "q4, payments");
+	await clickControl("tags", "accept");
+	const tagsSaved = await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("tags"))}) === null`,
+		8_000,
+	);
+	const afterTags = await waitForStored(
+		(p) => Array.isArray(p?.tags) && p.tags.join(",") === "q4,payments",
+	);
+	check(
+		"tags can be born from none",
+		tagsSaved.ok &&
+			Array.isArray(afterTags?.tags) &&
+			afterTags.tags.join(",") === "q4,payments",
+		`tags=${JSON.stringify(afterTags?.tags ?? null)}`,
+		`tags=${JSON.stringify(afterTags?.tags ?? null)}`,
+	);
+
+	/*
+	 * 17. TAGS NEVER CLOBBER (round 1, M2's exact repro): a CLEAN draft (the
+	 * record's own text, untouched), an out-of-band move behind it, delivered
+	 * by the same visibility pair as step 12. The clean draft ADOPTS the moved
+	 * record - visible right in the open editor - and a blur after the
+	 * adoption writes nothing; the old comparator closed over the live record
+	 * and turned this into a dirty draft that reverted the write on the first
+	 * blur.
+	 */
+	await clickControl("tags", "begin");
+	await need(ENTRY("tags"), "the tags editor (never-clobber)");
+	const patchedTags = await projectPatch(PROJECT, { tags: ["a", "z"] });
+	check(
+		"the out-of-band tags write landed",
+		patchedTags.status === 200,
+		`status=${patchedTags.status}`,
+		`status=${patchedTags.status}`,
+	);
+	await wait(10_500);
+	await cdp.evaluate(`(() => {
+		if (!window.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => window.__inlineEditVisibility ?? "visible",
+			});
+			window.__inlineEditVisibilityPatched = true;
+		}
+		window.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.dispatchEvent(new Event("focus"));
+		return true;
+	})()`);
+	const tagsAdopted = await waitForCondition(
+		cdp,
+		`(document.querySelector(${JSON.stringify(ENTRY("tags"))})?.value ?? "") === "a, z"`,
+		8_000,
+	);
+	const tagsAfterAdopt = await waitForStored(
+		(p) => Array.isArray(p?.tags) && p.tags.join(",") === "a,z",
+	);
+	check(
+		"a clean tags draft adopts the moved record and cannot revert it",
+		tagsAdopted.ok &&
+			Array.isArray(tagsAfterAdopt?.tags) &&
+			tagsAfterAdopt.tags.join(",") === "a,z",
+		`value=${JSON.stringify(tagsAdopted.last)} tags=${JSON.stringify(tagsAfterAdopt?.tags ?? null)}`,
+		`value=${JSON.stringify(tagsAdopted.last)} tags=${JSON.stringify(tagsAfterAdopt?.tags ?? null)}`,
+	);
+	/*
+	 * The adopted draft is CLEAN, and 2.2's dirty-gate means a clean field
+	 * draws no chrome to close it with - the way out is the BLUR the rule
+	 * describes (an unchanged blur leaves edit state with no request), so the
+	 * scene closes it the way a reader would: a click on the title's own
+	 * value, a gesture that does nothing else.
+	 */
+	await clickAt(cdp, FIELD("title"));
+	await waitForCondition(
+		cdp,
+		`document.querySelector(${JSON.stringify(ENTRY("tags"))}) === null`,
+		4_000,
+	);
+	const tagsAfterClose = await stored();
+	check(
+		"a blur on the adopted (clean) tags draft writes nothing",
+		Array.isArray(tagsAfterClose?.tags) &&
+			tagsAfterClose.tags.join(",") === "a,z",
+		`tags=${JSON.stringify(tagsAfterClose?.tags ?? null)}`,
+		`tags=${JSON.stringify(tagsAfterClose?.tags ?? null)}`,
+	);
 }
 
 /**
@@ -36000,6 +37810,11 @@ async function main() {
 			"--scene pins-scroll needs --backend: a panel with no catalogue has no row to pin",
 		);
 	}
+	if (SCENE === "palette-unread" && BACKEND === null) {
+		throw new Error(
+			"--scene palette-unread needs --backend: the Unread pin is composed from the catalogue's own rows, so a run with no backend has no conversation the fixture could carry an unread fact on",
+		);
+	}
 	if (SCENE === "question-dock" && BACKEND === null) {
 		throw new Error(
 			"--scene question-dock needs --backend: the card docks on a gate a live owner parks, and a run with none has no turn to pause",
@@ -36083,6 +37898,18 @@ async function main() {
 		throw new Error(
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
+	}
+	if (SCENE === "project-inline-edit") {
+		if (BACKEND === null || BACKEND_RECORDS === null) {
+			throw new Error(
+				"--scene project-inline-edit needs --backend and --backend-records: every save it makes is asserted against the daemon this run owns (a read the window's echo cannot fake), and the saving frame is held by pausing that daemon's own process - SIGSTOP by exact pid - whose pid only the serve record carries",
+			);
+		}
+		if (PROJECT === null) {
+			throw new Error(
+				"--scene project-inline-edit needs --project: the seeded row's key is what every daemon read addresses, and a default would assert against whichever row the seed happened to create",
+			);
+		}
 	}
 	if (SCENE === "mini-view" && BACKEND !== null && BACKEND_RECORDS === null) {
 		throw new Error(
@@ -36258,12 +38085,22 @@ async function main() {
 				await sceneUndoToastsStacked(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
+			/*
+			 * The Appearance section's transcript-display row (issue #756): the one
+			 * surface this change adds that no Storybook cell can photograph, because
+			 * its only story waits on a config query that never resolves offline.
+			 * Needs `--backend`: an isolated daemon this run owns.
+			 */ else if (SCENE === "settings-transcript-display")
+				await sceneSettingsTranscriptDisplay(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "project-inline-edit")
+				await sceneProjectInlineEdit(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);
+			else if (SCENE === "palette-unread") await scenePaletteUnread(cdp);
 			else if (SCENE === "scrollbar-fade") await sceneScrollbarFade(cdp);
 			else if (SCENE === "hit-zones") await sceneHitZones(cdp);
 			else if (SCENE === "browser-pane") await sceneBrowserPane(cdp);

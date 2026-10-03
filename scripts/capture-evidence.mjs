@@ -132,6 +132,15 @@ const KEY_CODES = {
 	 * a selector because a highlight is keyboard STATE, not a clickable target.
 	 */
 	ArrowDown: { code: "ArrowDown", keyCode: 40 },
+	/*
+	 * `ArrowRight` opens a Radix submenu (`DropdownMenuSub`), which is the only
+	 * gesture that does: a SubTrigger opens on pointermove or on this key, and NOT
+	 * on a click, so an entry that needs the submenu's own content on screen has
+	 * to walk the menu the way a keyboard reader does - `ArrowDown` to rove onto
+	 * the trigger, then `ArrowRight` to open it (issue #756's transcript-display
+	 * submenu; see that entry's note).
+	 */
+	ArrowRight: { code: "ArrowRight", keyCode: 39 },
 	Enter: { code: "Enter", keyCode: 13 },
 };
 
@@ -425,6 +434,38 @@ export const SESSION_SECTION =
 export const MODEL_SECTION =
 	"[data-panel-body] section:has(+ section input[aria-label='Search sessions'])";
 
+/**
+ * THE ENTRY SHAPE, spelled once here because the list below is long enough that
+ * a reader meets the options before any one entry explains them.
+ *
+ * A tuple is `[storyId, width, height, options?]`. The options this rig honours,
+ * and what each makes real:
+ *
+ *   - `press`       one selector, or an array of them, pressed in order through
+ *                   Chromium's own input pipeline (a real move/press/release at
+ *                   the element's centre, so React's handlers see a real event).
+ *   - `hover`       a real pointer move onto the selector, asserted against
+ *                   `:hover` before the shutter - a frame filed under a hover is
+ *                   one the element genuinely matched.
+ *   - `tabTo`       real Tab presses until the selector holds focus; a selector
+ *                   that never takes focus FAILS the run.
+ *   - `keys`        named keys (`KEY_CODES`) dispatched to whatever holds focus,
+ *                   with a settle after each.
+ *   - `type`        text inserted through `Input.insertText`.
+ *   - `dir`         the directory the frame is written to, when a story has more
+ *                   than one state.
+ *   - `expectPresent` / `expectGone`  one-shot claims read AT SHUTTER TIME, so a
+ *                   closed menu (or a control that never appeared) fails the run
+ *                   rather than shipping a resting frame under a state's name.
+ *   - `touch`, `reducedMotion`  viewport media state, reset for every frame.
+ *   - `prefs`       extra keys merged into the persisted `useUiPreferencesStore`
+ *                   state this rig seeds before any app script runs (see the
+ *                   seed call in the capture loop). It exists for a preference
+ *                   the rendered frame is a FUNCTION of - issue #756's
+ *                   `transcriptDisplayMode`, whose two values are the two cells
+ *                   of a pair - and it is the seeded store rather than a story
+ *                   arg because the store is what the shipped component reads.
+ */
 export const STORIES = [
 	/*
 	 * These three DECLARE their content height rather than the 900 the harness
@@ -675,6 +716,34 @@ export const STORIES = [
 	 * design round judges that claim from.
 	 */
 	["chat-trace-fold--agent-ops", 1280, 130],
+	/*
+	 * THE OPERATOR'S NINE-TYPE LINE (2026-10-01 report: the fold summary spilled
+	 * past the container). The run whose header read `6 searches · 1 task · 2
+	 * browser actions · 1 ai_search · 1 get_tool_access · 1 query_data_sources ·
+	 * 1 todo update · 1 wait · 1 workspace_get_gmail_thread_content` - nine
+	 * unique action types. The cap (`foldCounts`) keeps the first five segments
+	 * and folds the rest into `and N other actions`; `many-types-narrow` is the
+	 * same header at the 640px window, where the capped line WRAPS rather than
+	 * truncating or overflowing the column. The before half of the pair (the
+	 * uncapped line, ellipsised by the same header) is
+	 * `docs/evidence/chat-trace-fold-before/`, captured from this story on the
+	 * pre-cap tree.
+	 */
+	["chat-trace-fold--many-types", 1280, 130],
+	["chat-trace-fold--many-types", 640, 130, { dir: "many-types-narrow" }],
+	/*
+	 * THE ≤5-TYPE RUN THAT KEEPS THE LONG KIND (design round 1's D1 ask, shot in
+	 * round 2's remediation as D3 - the same gap QA bounded as Q-r2-3).
+	 *
+	 * `many-types` above CAPS `workspace_get_gmail_thread_content` into its tail,
+	 * so before this cell no committed frame painted that 36-character kind as a
+	 * VISIBLE unit at any width - and it is the longest unit the count line can
+	 * compose. This is it at 420, the narrowest cell in the set: five types, so
+	 * the cap keeps every segment, with the long kind as the last of them. The
+	 * units' guarantee - a nowrap unit holds together and the column holds the
+	 * unit - is what the frame, and the geometry readout beside it, are for.
+	 */
+	["chat-trace-fold--many-types-kept", 420, 130],
 	[
 		"chat-trace-fold--expanded",
 		1280,
@@ -1053,6 +1122,125 @@ export const STORIES = [
 	["chat-turn-collapse--wake-mid-cycle", 1280, 900],
 	["chat-turn-collapse--peer-mid-cycle", 1280, 900],
 
+	/*
+	 * THE SAME CELLS IN `by-response` (issue #756's second display mode), and the
+	 * reason they are ENTRIES rather than new stories.
+	 *
+	 * `chat-turn-collapse.stories.tsx` reads no display-mode preference - its
+	 * `Frame` passes a fixture transcript and nothing else - but `Frame` mounts the
+	 * REAL `CanonicalTranscript`, which reads `useUiPreferencesStore` for the mode
+	 * (`canonical-transcript.tsx`, `parseTranscriptDisplayMode`). The store is
+	 * zustand's `persist` over `localStorage`, and this rig already seeds that key
+	 * before any app script runs (the `themeName` seed above, which exists for the
+	 * same reason). So a cell's mode is an ENTRY OPTION - `prefs` - and the four
+	 * states below are the same fixtures photographed in the other mode, which is
+	 * exactly what makes them a PAIR rather than two pictures: the fixture bytes,
+	 * the viewport and the pane are identical, and the only variable is the one the
+	 * feature adds.
+	 *
+	 * WHAT EACH PAIR IS FOR. `completions-both-visible` is the settled two-answer
+	 * turn (a fulsome close, a wake, a short reply) and it is ALSO the pair that
+	 * taught the mode's evidence what it could not show (design review round 1,
+	 * D1): both of its closes are RESPONSE closes, and V1 keeps every response
+	 * close visible in BOTH modes, so its two frames are byte-identical and must
+	 * be - this cell states that the widening left V1 alone rather than that the
+	 * mode does nothing. `narration` is the narration-only span, which is the case
+	 * the Settings copy makes a claim about ("by turn folds it behind the turn's
+	 * bars, by response keeps it on screen"). The mid-cycle pair is the operator's
+	 * own reported state - a turn that answered, was woken, and is running its next
+	 * cycle - which is where a mode that widened the visible set could plausibly
+	 * disturb the live split the jitter fix protects. The cell whose pair CANNOT
+	 * match is `substance-then-addendum` below, because it is the one fixture whose
+	 * text-bearing row is not a close.
+	 *
+	 * THE `by-turn` HALF IS ALREADY COMMITTED: the entries above, with no `prefs`,
+	 * ARE that half, and `partitionRun`'s by-turn path is pinned byte-for-byte by
+	 * `scripts/turn-segments.test.mjs` ("by-turn is the shipped partition,
+	 * byte-for-byte, whether the field is named or absent"). So the pair is one run,
+	 * not two trees, and nothing here re-takes a committed frame.
+	 */
+	[
+		"chat-turn-collapse--completions-both-visible",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "completions-both-visible-response",
+		},
+	],
+	[
+		"chat-turn-collapse--narration",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "narration-response",
+		},
+	],
+	[
+		"chat-turn-collapse--wake-mid-cycle",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "wake-mid-cycle-response",
+		},
+	],
+	[
+		"chat-turn-collapse--peer-mid-cycle",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "peer-mid-cycle-response",
+		},
+	],
+	/*
+	 * THE REPORTER'S OWN SHAPE, as close as a shipped fixture gets: the fulsome
+	 * answer and the work after it, in BOTH modes, side by side with
+	 * `completions-both-visible` above. `long-run` is the twelve-call turn whose
+	 * answer arrives last - the `by-turn` reading of "a turn whose substance sat in
+	 * a non-final answer presented only the final fragment" - so the pair is what a
+	 * reviewer compares when judging whether the second mode actually answers the
+	 * issue rather than only widening the pane.
+	 */
+	[
+		"chat-turn-collapse--long-run",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "long-run-response",
+		},
+	],
+	/*
+	 * THE ONE PAIR THAT MUST DIFFER, and the answer to design review round 1's D1.
+	 *
+	 * Every pair above is legitimately identical on its settled cells - V1 keeps
+	 * every response close, so widening the visible set adds nothing there - and
+	 * that is what made the design round unable to see the feature work: a reader
+	 * who switches to `By response` and watches nothing move reads the control as
+	 * broken. The mode IS observable, on exactly one shape: a settled,
+	 * text-bearing assistant row that is neither a close nor `stop`-declared.
+	 * `chat-turn-collapse--substance-then-addendum` is that shape built as the
+	 * issue's own report (substance prose mid-work, the addendum as the last
+	 * message), so this pair is the round's evidence that the second mode changes
+	 * the screen rather than only the store.
+	 *
+	 * THE TWO `by-turn` CELLS ABOVE ARE NOT RE-TAKEN BY THIS ENTRY, and the pair's
+	 * halves are still one run: the first entry is the story with no `prefs` - the
+	 * shipped mode - and the second is the same story in the other mode.
+	 */
+	["chat-turn-collapse--substance-then-addendum", 1280, 900],
+	[
+		"chat-turn-collapse--substance-then-addendum",
+		1280,
+		900,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			dir: "substance-then-addendum-response",
+		},
+	],
 	/*
 	 * A turn joined MID-STREAM, which is the one transcript surface whose evidence
 	 * is a SENTENCE rather than a row: the reducer marks a row whose text is real
@@ -1845,6 +2033,67 @@ export const STORIES = [
 	 */
 	["chat-header-cluster--console-blip", 560, 84],
 	["chat-header-cluster--console-blip-resting", 560, 84],
+	/*
+	 * THE CONVERSATION-ACTIONS MENU, AND THE TRANSCRIPT-DISPLAY SUBMENU (issue
+	 * #756's surfacing half).
+	 *
+	 * The menu is `chat-header-cluster`'s own surface: that story mounts the REAL
+	 * `ChatHeader` with the props the overflow trigger is gated on (`onOpenOptions`,
+	 * `onToggleBrowser`, `onOpenConsole`, `runDetails`), so `[data-conversation-actions]`
+	 * is the shipped trigger rather than a replica. The viewport is taller than the
+	 * cluster's 84 because the menu and its submenu open BELOW the 84px header and a
+	 * frame the menu overflows is not a frame of the menu.
+	 *
+	 * THE SUBMENU IS OPENED BY KEYBOARD because that is the only gesture that opens
+	 * one: a Radix `DropdownMenuSubTrigger` opens on pointermove or `ArrowRight`, and
+	 * a click does nothing. So the entry presses the trigger (a real pointer press),
+	 * walks the menu with `ArrowDown` (Radix's roving focus onto the submenu trigger)
+	 * and opens it with `ArrowRight` - the path a keyboard reader takes - and the
+	 * `expectPresent` on `[role="menuitemradio"]` is what makes a submenu that never
+	 * opened FAIL the run instead of filing a closed menu under a name that claims
+	 * otherwise. TWO states, because the trigger names the ACTIVE mode beside its
+	 * stable name (agent review round 1, m3) and the radio dot marks it: the pair is
+	 * the control stating its own state in both of the states it can be in.
+	 */
+	[
+		"chat-header-cluster--no-approval",
+		560,
+		420,
+		{
+			press: "[data-conversation-actions]",
+			expectPresent: '[role="menu"]',
+			dir: "conversation-actions-open",
+		},
+	],
+	[
+		"chat-header-cluster--no-approval",
+		560,
+		420,
+		{
+			press: "[data-conversation-actions]",
+			keys: [
+				{ key: "ArrowDown", settleMs: 300 },
+				{ key: "ArrowRight", settleMs: 400 },
+			],
+			expectPresent: '[role="menuitemradio"]',
+			dir: "transcript-display-submenu-turn",
+		},
+	],
+	[
+		"chat-header-cluster--no-approval",
+		560,
+		420,
+		{
+			prefs: { transcriptDisplayMode: "by-response" },
+			press: "[data-conversation-actions]",
+			keys: [
+				{ key: "ArrowDown", settleMs: 300 },
+				{ key: "ArrowRight", settleMs: 400 },
+			],
+			expectPresent: '[role="menuitemradio"]',
+			dir: "transcript-display-submenu-response",
+		},
+	],
 	/*
 	 * THE CHAT HEADER'S IDENTITY CONTROLS (operator, 2026-09-26): the team and
 	 * the agent as two menus you can switch, plus the rename pencil the title
@@ -4355,6 +4604,31 @@ export const STORIES = [
 	],
 	["chat-ask-options--approval", 1024, 360],
 	["chat-ask-options--approval-answer-in-flight", 1024, 360],
+	/*
+	   THE NINE-OPTION ALL-WRAPPED STATE, captured as issue #762's before/after
+	   pair. Each description runs to a second line at the 1024 column, and the row
+	   box has to grow with it or the next row's ordinal and label overprint it.
+	   The story ships WITH the fix, so both halves of the pair render the same
+	   story state: `before` is the pre-fix component in that story, `after` is the
+	   fixed one, and `scripts/ask-options-geometry.mjs` measures both runs -
+	   exiting non-zero on the pre-fix code, which is the pin's proof. 620 matches
+	   the story's own `Frame height`.
+	*/
+	["chat-ask-options--wrapped-density", 1024, 620],
+
+	/*
+	   THE ASIDE PANEL'S QUESTION SIDE, captured as issue #763's pair: the settled
+	   exchange at both rungs, so the visible role marker (`You:`) can be read
+	   against the answer beside it. The small row is the compact step at a
+	   phone-width viewport - `isSmallView` is the story's own prop, because a
+	   narrow column alone would render the wide panel, which is not a state the
+	   app can be in. 700 tall shows the whole panel and the composer box it sits
+	   above at both rungs.
+	*/
+	["chat-aside-panel--settled", 1024, 700],
+	["chat-aside-panel--settled-small-view", 440, 700],
+	["chat-aside-panel--settled-wrapped-question", 1024, 700],
+	["chat-aside-panel--settled-wrapped-question", 440, 700],
 	["design-system-primitives--all-primitives", 1280, 1600],
 
 	/* `/model`: the desktop model picker's FEEDBACK states, which is the
@@ -6079,7 +6353,22 @@ export const STORIES = [
 	["projects-tab--detail", 1280, 900],
 	["projects-tab--stale-progress", 1280, 900],
 	["projects-tab--create-dialog", 1280, 900],
-	["projects-tab--edit-dialog", 1280, 900],
+	/*
+	 * The inline editors (the operator's 2026-09-30 change): the modal edit is
+	 * gone, so `edit-dialog`'s row retired with it and the states that replaced
+	 * it are swept instead — the affordance at rest and focused, the editor
+	 * open, a typed draft, the write in flight, the landed acknowledgement, a
+	 * refused key, and a field held against an out-of-band change. Each play
+	 * asserts its state before the shutter, so the frames photograph a state
+	 * the play proved.
+	 */
+	["projects-tab--inline-edit-reveal", 1280, 900],
+	["projects-tab--inline-edit-open", 1280, 900],
+	["projects-tab--inline-edit-typed", 1280, 900],
+	["projects-tab--inline-edit-saving", 1280, 900],
+	["projects-tab--inline-edit-saved", 1280, 900],
+	["projects-tab--inline-edit-refused", 1280, 900],
+	["projects-tab--inline-edit-conflict", 1280, 900],
 	/* The sheet's own interactions (S6d-ii part 2): the description editor's
 	 * preview arm, the clipboard-markdown paste (a `paste` event carrying
 	 * `text/html`), and the two-phase create driven to submit — each asserts
@@ -6391,6 +6680,35 @@ export const STORIES = [
 	 * recovery sentence and the one Clear all before the shutter.
 	 */
 	["projects-tab--no-match-filter", 1280, 900],
+	/*
+	 * THE SEARCH INDEX (the architecture's PR-B2): five frames over two rows, and
+	 * the pair `served` / `pending` is the whole slice in two pictures. `served`
+	 * types `invoice` and the page paints the INDEX's answer — including
+	 * `billing-cutover`, a row the local matcher cannot admit because its match
+	 * lives in update text — in the answer's own rank order (both claims read off
+	 * the rendered rows). `pending` hangs that request and shows the FALLBACK's
+	 * row still drawn, which is the no-blank-list promise; those two stories are
+	 * the two engines this change wires. `searching` is the one state where the
+	 * index is owed an answer AND the fallback found nothing — the quiet in-flight
+	 * line, in place of a "nothing matches" the index may be about to contradict.
+	 * `no-match` is the copy this slice reconciled: the index reads update text,
+	 * so the block carries the index's own sentence and the play FAILS on the
+	 * string this slice replaced. `failed` is the fallback arm: the index is
+	 * broken, the local matcher serves, and the sentence is the client's again.
+	 *
+	 * `search-index-searching-timeline` is D5's frame (design round 2): the same
+	 * in-flight state in the THIRD view, which no frame covered and whose gate
+	 * lacked the term the List's fix added — the Timeline's `shrink-0` strip is the
+	 * List's column header one view over. The story's play fails if the Timeline
+	 * panel is present beside the line, so the frame cannot be a picture of the
+	 * defect it exists to disprove.
+	 */
+	["projects-tab--search-index-served", 1280, 900],
+	["projects-tab--search-index-pending", 1280, 900],
+	["projects-tab--search-index-searching", 1280, 900],
+	["projects-tab--search-index-searching-timeline", 1280, 900],
+	["projects-tab--search-index-no-match", 1280, 900],
+	["projects-tab--search-index-failed", 1280, 900],
 	["projects-tab--board-search-active", 1280, 900],
 	["projects-tab--default-board", 1280, 900],
 	/* The no-dates callout, expanded over a dated chart: the collapsed line the
@@ -8628,13 +8946,23 @@ export const STORIES = [
 	 * nine; the set README says which states ship under which arm, and WHY the older
 	 * generation could not simply be reproduced (its frames predate the reveal
 	 * itself: it landed in `3d03a2f3e63`, after those frames were taken).
+	 *
+	 * AND THE ARM NOW ASSERTS ITSELF, per shot rather than per pass: each of the
+	 * nine carries `expectPresent: '[data-lo-answer-actions]'`, so a shutter that
+	 * finds no row on that line FAILS the run instead of filing a resting frame
+	 * that cannot show what it is for. The transcript-line pass's round-5 re-shoot
+	 * shipped exactly that failure class - seven of the nine still carried frames
+	 * from the generation before the arm was set, which is how a set can pass a
+	 * palette check and a byte-compare while contradicting its own claim (design
+	 * round 5, D5) - so the claim is now mechanical rather than re-read from the
+	 * frames.
 	 */
 	[
 		"chat-canonical-message-actions--rest",
 		1024,
 		560,
 		/* The discoverability claim itself: the row ON SCREEN with no pointer. */
-		{ touch: true },
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
 	],
 	[
 		"chat-canonical-message-actions--rest",
@@ -8685,16 +9013,115 @@ export const STORIES = [
 			dir: "copied",
 		},
 	],
-	["chat-canonical-message-actions--short-answer", 1024, 320, { touch: true }],
-	["chat-canonical-message-actions--refused", 1024, 380, { touch: true }],
-	["chat-canonical-message-actions--truncated", 1024, 400, { touch: true }],
-	["chat-canonical-message-actions--streaming", 1024, 620, { touch: true }],
-	["chat-canonical-message-actions--multi-answer", 1024, 640, { touch: true }],
+	[
+		"chat-canonical-message-actions--short-answer",
+		1024,
+		320,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--refused",
+		1024,
+		380,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--truncated",
+		1024,
+		400,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--streaming",
+		1024,
+		620,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--multi-answer",
+		1024,
+		640,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
 	[
 		"chat-canonical-message-actions--bar-suppressed",
 		1024,
 		640,
-		{ touch: true },
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	/*
+	 * THE OPERATOR'S FOOT-LINE STATE (2026-10-01 report: "now that the action
+	 * buttons only show up on hover, the Worked for and action count looks a bit
+	 * weird - rearrange so those are on the leftmost extent and the action
+	 * buttons are to the right"). A turn that compacted mid-run partitions into
+	 * two segments, keeps its closing line, and paints the caption and the
+	 * action row TOGETHER there - the composition the report is about.
+	 * `compacted-run-hover` parks a real pointer on the answer, which is the
+	 * reveal state the no-shift claim is judged in; the before half (the caption
+	 * reading indented after the at-rest-invisible buttons) is
+	 * `docs/evidence/chat-canonical-message-actions-foot-before/`.
+	 */
+	["chat-canonical-message-actions--compacted-run", 1024, 640],
+	[
+		"chat-canonical-message-actions--compacted-run",
+		1024,
+		640,
+		{
+			hover: '[data-record-id="a1"]',
+			hoverSettleMs: 300,
+			dir: "compacted-run-hover",
+		},
+	],
+	/*
+	 * THE TWO STATES THE ARRANGEMENT COULD REACH THAT NO FRAME SHOWED (design
+	 * round 1, D2).
+	 *
+	 * The USER TURN's own row, because the operator's note asked about it
+	 * explicitly ("same treatment ... if the same pattern exists there") and the
+	 * answer - it is `Copy` alone, with no caption and no stamp to share a line
+	 * with, so no rail moves - is a claim about a rail, which a still settles and
+	 * a comment does not. `user-row` is that row at rest (opacity-only, so the
+	 * frame is the bubble and the row's own empty box) and `user-row-hover` parks
+	 * a real pointer on the Copy button, which is the reveal; `user-row-small`
+	 * and `user-row-small-hover` are the same pair at 420, where the content rail
+	 * is 32 rather than 107.
+	 *
+	 * `compacted-run-small` is the CAPTION's rail at that width, which the set
+	 * could not state before: the only 420 frame (`narrow`) is a caption-less
+	 * turn, so `isSmallView` had no caption edge photographed at all.
+	 */
+	["chat-canonical-message-actions--rest", 1024, 560, { dir: "user-row" }],
+	[
+		"chat-canonical-message-actions--rest",
+		1024,
+		560,
+		{
+			hover: '[data-lo-user-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 300,
+			dir: "user-row-hover",
+		},
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{ dir: "user-row-small" },
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{
+			hover: '[data-lo-user-actions] button[aria-label="Copy"]',
+			hoverSettleMs: 300,
+			dir: "user-row-small-hover",
+		},
+	],
+	[
+		"chat-canonical-message-actions--compacted-run-small",
+		420,
+		640,
+		{ dir: "compacted-run-small" },
 	],
 	/*
 	 * The minimum-action state (design round 1, D1): one call, so the frame shows
@@ -8702,8 +9129,18 @@ export const STORIES = [
 	 * allowed it - the bar above carries `1 action`, the line under the answer
 	 * carries the actions alone. See the story's own comment for the chain.
 	 */
-	["chat-canonical-message-actions--one-call-turn", 1024, 560, { touch: true }],
-	["chat-canonical-message-actions--narrow", 420, 620, { touch: true }],
+	[
+		"chat-canonical-message-actions--one-call-turn",
+		1024,
+		560,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
+	[
+		"chat-canonical-message-actions--narrow",
+		420,
+		620,
+		{ touch: true, expectPresent: "[data-lo-answer-actions]" },
+	],
 
 	/*
 	 * THE ROW'S CONTEXT MENU (#694), the FINAL set - captured from the shipped
@@ -10054,7 +10491,9 @@ const main = async () => {
 			({ identifier: seedScript } = await cdp.send(
 				"Page.addScriptToEvaluateOnNewDocument",
 				{
-					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: { themeName: ${JSON.stringify(theme)} }, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)});${options?.resetDisclosures ? ` localStorage.removeItem(${JSON.stringify(DISCLOSURES_KEY)});` : ""} } catch {}`,
+					// Folded: main's `prefs` spread (its own run needs it) with this
+					// branch's `resetDisclosures` tail, so neither side's seed is dropped.
+					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: ${JSON.stringify({ themeName: theme, ...(options?.prefs ?? {}) })}, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)});${options?.resetDisclosures ? ` localStorage.removeItem(${JSON.stringify(DISCLOSURES_KEY)});` : ""} } catch {}`,
 				},
 			));
 
@@ -12517,6 +12956,16 @@ const main = async () => {
 	 * taken at entry granularity silently replaces an authored field inside an
 	 * entry both sides have, which is how this branch's `why` clauses on two
 	 * `supplementary` entries vanished on the ninth fold (review round 8, R8-2).
+	 *
+	 * THE RULE BELOW IS IMPLEMENTED, NOT JUST WRITTEN DOWN, since 2026-10-01:
+	 * `scripts/evidence-fold.mjs` (`pnpm evidence:fold`) is the resolver, with a
+	 * merge driver (`pnpm evidence:fold:install`) so a fold does not stop on this
+	 * file at all, and `scripts/evidence-fold.test.mjs` validates it against real
+	 * folds in this repository's history. SO BY HAND ONE SHOULD RUN IT rather than
+	 * follow the paragraphs below - they stay because they are the authority the
+	 * tool implements and the thing to read when its output is being judged, and
+	 * because a resolver that disagrees with them is a bug in the resolver. When
+	 * they change, change `scripts/evidence-fold.mjs` too.
 	 *
 	 *   1. `head`, `headNote` and the `partialCapture` fields that DESCRIBE a pass
 	 *      - `refreshedAt`, `refreshedAtHead`, `refreshedFromHead`, `addedAt`,

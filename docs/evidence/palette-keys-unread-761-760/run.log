@@ -1,0 +1,111 @@
+[build] current: assets 2026-10-02T20:53:15.961Z >= sources 2026-10-02T20:44:35.315Z
+[note] abandoned scratch trees
+        3 seen, 0 owned by a live pid (kept), 3 younger than 30m (kept), 0 removed
+[note] csp for this run's backend
+        already widened for http://127.0.0.1:8080
+  serve records 1 linked from /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/stub-records-rem3   (the app admits a daemon only while a record describes one, and a record is a heartbeat)
+local-operator-ui renderer driver
+  repo          /Users/damian/local-operator-ui-worktrees/palette-keys-unread-1002-84e8
+  scratch       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-15127
+  frames        /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-rem3
+  app cwd       /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-15127/cwd   (scratch: the repo's .env is not read)
+  backend url   http://127.0.0.1:8080   (--backend: a live isolated backend this run owns)
+  electron      44.3.0   (/Users/damian/local-operator-ui-worktrees/palette-keys-unread-1002-84e8/node_modules/.pnpm/electron@44.3.0/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron)
+  electron pin  44.3.0   (package.json optionalDependencies)
+[PASS] the harness is driving the Electron this branch pins
+[PASS] the scratch backend port is dead
+[note] the app's default backend port (127.0.0.1:1111)
+        a listener is up: this run's main process points elsewhere, and the check below proves the app holds no connection to the URL the RENDERER was built with
+[note] verbs registered by the renderer
+        ["hello","measure","navigate","openCanvasDocument","press","queries","queryFetches","setSidebarWidth","setTheme","stageLiveConsents","state"]
+[PASS] the armed launch said so on stdout
+[PASS] the app's logs went to this run's scratch tree, not the operator's
+[note] renderer's api base URL at hello, against --backend
+        {"apiBaseUrl":"http://127.0.0.1:8080","backend":"http://127.0.0.1:8080"}
+[PASS] the app holds a connection to this run's backend (http://127.0.0.1:8080)
+[PASS] the app holds NO connection to the operator's own backend (http://localhost:1111)
+[note] profile seeded
+        onboarding-storage marks the modal complete, so the app is an existing user rather than a first-run one
+[note] hello
+        {
+  "armed": true,
+  "outDir": "/Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-rem3",
+  "title": "Local Operator",
+  "route": "/chat",
+  "href": "file:///Users/damian/local-operator-ui-worktrees/palette-keys-unread-1002-84e8/out/renderer/index.html#/chat",
+  "theme": "localOperatorDark",
+  "viewport": {
+    "width": 1380,
+    "height": 900,
+    "devicePixelRatio": 2
+  },
+  "visibilityState": "visible",
+  "hasFocus": false,
+  "apiBaseUrl": "http://127.0.0.1:8080",
+  "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) LocalOperator/0.31.29 Chrome/152.0.7977.78 Electron/44.3.0 Safari/537.36"
+}
+[PASS] the renderer reports this run's frames directory
+[PASS] the renderer sees the built app, not a bare Vite page
+[note] facts (from main)
+        {
+  "windowMode": "headless",
+  "appVersion": "0.31.29",
+  "platform": "darwin",
+  "title": "Local Operator",
+  "windowSize": {
+    "width": 1380,
+    "height": 900
+  },
+  "contentBounds": {
+    "width": 1380,
+    "height": 900
+  },
+  "visible": false,
+  "focused": false,
+  "minimized": false,
+  "frames": [],
+  "outDir": "/Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-rem3"
+}
+[PASS] window mode is headless and the window is never shown
+[PASS] the catalogue answered with this set's fixture
+[note] rows drawn before anything is photographed
+        5
+[note] the sidebar's unread mark on the fixture's unseen row
+        {"present":true,"drawn":true,"width":16,"height":16,"elsewhere":0}
+[PASS] the fixture's unread fact is DRAWN where the palette reads it: the sidebar's mark on that row, and nowhere else in the list
+[PASS] the rail's Search row is what received the press
+[PASS] pressing it opened the palette, with focus in the query field
+[note] the switcher's empty (#) state
+        {"headings":["Unread","Chats"],"options":[{"id":"chat-b3f1a09c7d52","selected":true,"text":"Quarterly retention sweep and the transcripts it droppedOpen↵"},{"id":"chat-2d5ad5da0025","selected":false,"text":"Invoice reconciliation"},{"id":"chat-c4e17b90a2f6","selected":false,"text":"AWS cost increase review with Grafana dashboards"},{"id":"chat-e059761608ae","selected":false,"text":"Release notes for 0.29"},{"id":"chat-7c1b0f2a4d31","selected":false,"text":"Migration checklist"},{"id":"chat-a91f4c7e2b60","selected":false,"text":"Old onboarding notes"}],"active":"chat-b3f1a09c7d52"}
+[PASS] the switcher's empty state pins an Unread section ABOVE the chats
+[PASS] the unread conversation is the list's first row, and the tier below does not repeat it
+[PASS] the selection starts on the unread row
+[PASS] palette-switcher-unread-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 21.3 vs 32.1 own / 237.3 other
+[note] after a real Ctrl+N
+        {"headings":["Unread","Chats"],"options":[{"id":"chat-b3f1a09c7d52","selected":false,"text":"Quarterly retention sweep and the transcripts it dropped"},{"id":"chat-2d5ad5da0025","selected":true,"text":"Invoice reconciliationOpen↵"},{"id":"chat-c4e17b90a2f6","selected":false,"text":"AWS cost increase review with Grafana dashboards"},{"id":"chat-e059761608ae","selected":false,"text":"Release notes for 0.29"},{"id":"chat-7c1b0f2a4d31","selected":false,"text":"Migration checklist"},{"id":"chat-a91f4c7e2b60","selected":false,"text":"Old onboarding notes"}],"active":"chat-2d5ad5da0025"}
+[PASS] Ctrl+N walked the selection one row down, into the chats tier below the pin
+[PASS] the press did NOT start a new chat - the app-level chord yields to the open palette
+[PASS] palette-switcher-ctrl-n-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 21.3 vs 32.1 own / 237.3 other
+[PASS] Escape closed the palette before the typed pass
+[PASS] the typed query found the fixture's row
+[note] a typed search
+        {"headings":["Chats","Settings","Go to"],"options":[{"id":"chat-e059761608ae","selected":true,"text":"Release notes for 0.29Open↵"},{"id":"settings-section-updates","selected":false,"text":"Application updates"},{"id":"settings-section-providers","selected":false,"text":"Model providers"},{"id":"page-agent-hub","selected":false,"text":"Agent hub"}],"active":"chat-e059761608ae"}
+[PASS] a typed query drops the pin - it applies to the empty state only
+[note] the typed-search legend
+        {"caps":["↑","↓","Ctrl","N","↵","esc"],"text":"↑↓CtrlNto move↵to runescto close"}
+[PASS] the legend teaches the reachable walk cap beside the arrows (Ctrl+N; Ctrl+P stays bound but unreached here)
+[PASS] palette-legend-typed-dark draws the dark palette its name claims
+        DOM localOperatorDark #22201c; mean luma 20.3 vs 32.1 own / 237.3 other
+[PASS] every capture is a frame the app held still for, with no toast on it
+[PASS] every capture wrote a PNG of the requested size
+[PASS] the switcher pair is two renders, not one frame written twice
+[PASS] no process from this run outlived its boot
+
+frames: palette-legend-typed-dark.png, palette-switcher-ctrl-n-dark.png, palette-switcher-unread-dark.png
+frames directory: /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/out-rem3
+app log: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-15127/app-scene.log
+scratch kept: /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-renderer-driver-15127 (the frames are also in --out)
+
+ALL CHECKS PASSED

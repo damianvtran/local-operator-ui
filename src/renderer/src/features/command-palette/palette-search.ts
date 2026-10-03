@@ -176,6 +176,14 @@ export type PaletteItem = {
 	order?: number;
 	/** Offered in the browse layout (no query), as opposed to only on a search. */
 	featured?: boolean;
+	/**
+	 * The row's read state — the fact the sidebar draws as its unread mark.
+	 * Decided at the source by the store's own predicate (`unreadMarkKind`,
+	 * `use-palette-sources.ts`) and carried as data because this module is
+	 * deliberately import-free; the browse layout's Unread pin is its only
+	 * reader (issue #760).
+	 */
+	unread?: boolean;
 	/** Rendered in the danger role; the one row that destroys something. */
 	destructive?: boolean;
 };
@@ -192,7 +200,17 @@ export type PaletteMatch = {
 	soft: boolean;
 };
 
-export type PaletteSection = { group: PaletteGroup; items: PaletteMatch[] };
+/**
+ * A section's key: one of the source groups, or the pinned `unread` section
+ * (issue #760) — a section about one fact rather than a source of its own, so
+ * it is a SECTION key and deliberately not a member of `PaletteGroup`.
+ */
+export type PaletteSectionKey = PaletteGroup | "unread";
+
+export type PaletteSection = {
+	group: PaletteSectionKey;
+	items: PaletteMatch[];
+};
 
 export type PaletteSearchOutcome = {
 	sections: PaletteSection[];
@@ -704,6 +722,16 @@ export const PALETTE_GROUP_TITLES: Record<PaletteGroup, string> = {
 };
 
 /**
+ * The section headings, keyed as sections are: the groups' own table above,
+ * plus the pinned section's. Composed rather than re-spelled, so a group's
+ * rename moves one table and the view cannot drift from it.
+ */
+export const PALETTE_SECTION_TITLES: Record<PaletteSectionKey, string> = {
+	...PALETTE_GROUP_TITLES,
+	unread: "Unread",
+};
+
+/**
  * The alias spellings each group answers to, which is also how a scope word
  * like "pages" or "commands" is resolved to the group a query wants.
  */
@@ -762,9 +790,11 @@ export type PaletteSearchInput = {
  * Two layouts, decided by whether the query carries terms:
  *
  * - **Browse** (no terms): each group's featured rows, in `PALETTE_GROUP_ORDER`,
- *   capped per group. This is the list that answers "what is in here", so the
- *   registry's seventy settings keys are deliberately not in it — a browse list
- *   of everything is a browse list of nothing.
+ *   capped per group — and, under the switcher's chats scope, the unread
+ *   conversations pinned above them as their own section (issue #760). This is
+ *   the list that answers "what is in here", so the registry's seventy settings
+ *   keys are deliberately not in it — a browse list of everything is a browse
+ *   list of nothing.
  * - **Search**: per-row scores, groups ordered by their best row, each group
  *   capped. A scope narrows the groups allowed to answer at all.
  */
@@ -783,26 +813,93 @@ export function searchPalette({
 	if (tokens.length === 0) {
 		const sections: PaletteSection[] = [];
 		let total = 0;
-		let clipped = false;
+		let rendered = 0;
+		/*
+		 * THE UNREAD PIN (issue #760): the conversations waiting on a read, first,
+		 * because the browse list's own promise is "the rows the sidebar would"
+		 * and the sidebar draws a mark on exactly these. `unread` is decided at
+		 * the source by the store's own predicate (`unreadMarkKind`,
+		 * `use-palette-sources.ts`) — this module only reads the flag, because it
+		 * stays import-free.
+		 *
+		 * SWITCHER-ONLY, deliberately: the gate is the `#` seed's scope, the door
+		 * that exists for finding a conversation. Widening the pin to the
+		 * un-scoped Cmd/Ctrl+K browse is loosening this condition and leaving the
+		 * accounting below untouched — the open design question #760 records.
+		 *
+		 * The pin draws from the SAME `rendered` budget as every section below it
+		 * rather than sitting outside `TOTAL_CAP`: the rows it takes are rows the
+		 * tiers no longer offer, and `clipped` still answers "did the list drop
+		 * rows" — the property the footer's "showing N of M" is built on.
+		 */
+		const pinnedIds = new Set<string>();
+		if (scope === "chat") {
+			const unread = pool
+				.filter(
+					(item) =>
+						item.group === "chats" && item.unread === true && item.featured,
+				)
+				/*
+				 * The same order the Chats tier below draws in — the catalogue's
+				 * newest-first, which the items already carry as `order` — so the pin
+				 * and the tier cannot disagree about recency (issue #760).
+				 */
+				.sort(byOrder);
+			if (unread.length > 0) {
+				total += unread.length;
+				const room = Math.max(0, Math.min(unread.length, TOTAL_CAP - rendered));
+				if (room > 0) {
+					const shown = unread.slice(0, room);
+					sections.push({
+						group: "unread",
+						items: shown.map((item) => ({
+							item,
+							score: 0,
+							soft: item.tier === SOFT_TIER,
+						})),
+					});
+					rendered += shown.length;
+				}
+				/*
+				 * Every unread row belongs to the pin, drawn or not: a row the budget
+				 * could not show must not reappear below under the chats tier as a
+				 * second copy of itself, and the rows that did not fit are exactly
+				 * what the false side of `clipped` must not hide.
+				 */
+				for (const item of unread) pinnedIds.add(item.id);
+			}
+		}
 		for (const group of PALETTE_GROUP_ORDER) {
 			if (allowed && !allowed.includes(group)) continue;
 			const featured = pool
-				.filter((item) => item.group === group && item.featured)
+				.filter(
+					(item) =>
+						item.group === group && item.featured && !pinnedIds.has(item.id),
+				)
 				.sort(byOrder);
 			if (featured.length === 0) continue;
-			const cap = BROWSE_CAP[group];
 			total += featured.length;
-			if (featured.length > cap) clipped = true;
-			sections.push({
-				group,
-				items: featured.slice(0, cap).map((item) => ({
-					item,
-					score: 0,
-					soft: item.tier === SOFT_TIER,
-				})),
-			});
+			const cap = BROWSE_CAP[group];
+			const room = Math.max(0, Math.min(cap, TOTAL_CAP - rendered));
+			if (room === 0) continue;
+			const items = featured.slice(0, room).map((item) => ({
+				item,
+				score: 0,
+				soft: item.tier === SOFT_TIER,
+			}));
+			sections.push({ group, items });
+			rendered += items.length;
 		}
-		return { sections, scope, terms: "", total, clipped };
+		/*
+		 * `clipped` is a statement about the LIST, so it is read off the list
+		 * rather than set by any branch that happened to touch a cap: with an
+		 * exact fit every cap test passes, and the footer printed "showing the
+		 * best 48 of 48" — a sentence that contradicts itself, produced by a flag
+		 * that meant "a cap was consulted" (round 1, R-3). Same rule as the
+		 * search branch below, now over the one running budget both layouts draw
+		 * from.
+		 */
+		return { sections, scope, terms: "", total, clipped: rendered < total };
 	}
 
 	const byGroup = new Map<PaletteGroup, PaletteMatch[]>();

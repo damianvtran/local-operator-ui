@@ -116,6 +116,14 @@ async function freeDevtoolsPort(timeoutMs = 10_000) {
 
 const transcript = [];
 let failures = 0;
+/** Checks this host could not make at all — the frontmost sampler is the one that
+ * skips on a loaded machine. Declared here rather than at its first use because the
+ * reference at that site had no declaration: the branch that increments it threw
+ * `ReferenceError: skips is not defined`, which killed the run while it wrote its
+ * summary and took every reading the run had already made with it (measured on this
+ * host, 2026-10-02 — the `osascript` sampler never answered a sample, the skip
+ * branch fired, and the run died after its last check had passed). */
+let skips = 0;
 
 function record(label, body) {
 	transcript.push(`### ${label}\n\n\`\`\`\n${body}\n\`\`\`\n`);
@@ -401,6 +409,149 @@ const GEOMETRY_PAGE = `<!doctype html>
 </script>
 </body></html>`;
 
+/**
+ * The hidden-view fixture: the two properties a DRIVEN (never-presented) tab's page
+ * must keep, both reported by the page itself.
+ *
+ * WHY this exists beside the geometry page: the geometry fixture proves what a read
+ * can SEE, and says nothing about the two failures an agent cannot see without
+ * geometry reads — a renderer viewport of 0x0, and a capture that moves the page.
+ * Measured 2026-10-01 against a real site (the alert-suppression page's Radix
+ * selects): an unpresented view reported `innerWidth === 0`, which collapses any
+ * popper that measures itself against the viewport (Radix's select content is
+ * clamped by `--radix-select-content-available-height`, so it reached
+ * `max-height: 0`), and every capture of that view RESIZED the renderer to the
+ * clip box and fired a page `resize` — which closes `radix-ui/react-select`
+ * popups outright, so an agent's own screenshot dismissed the popup it was about
+ * to read.
+ *
+ * The three shapes here are therefore load-bearing rather than decoration:
+ *  - `#metrics` prints the live viewport, so 0x0 is READABLE;
+ *  - `#open` inserts the Radix-popper shape (fixed + translate3d +
+ *    min-width:max-content) with its content clamped the way Radix clamps it, so
+ *    a 0x0 viewport collapses it exactly as the real select collapses;
+ *  - a `resize` listener closes that popup, mirroring SelectContentImpl, so "the
+ *    capture resized the renderer" is observable as a CLOSED popup rather than as
+ *    a metric nobody reads;
+ *  - `#sentinel` is a 120x40 magenta block inside the popup, so the frame's pixels
+ *    can be asserted rather than described.
+ *
+ * No backticks in this comment or its markup: it lives inside a template literal.
+ */
+const HIDDEN_VIEWPORT_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Hidden viewport proof page</title>
+<style>
+  body { font: 14px system-ui; margin: 0; padding: 20px; background: #14171c; color: #e6e8eb; }
+  button { font: inherit; padding: 8px 12px; border-radius: 8px; border: 1px solid #3a3f47;
+    background: #23272e; color: #e6e8eb; cursor: pointer; }
+  .row { display: flex; gap: 12px; }
+  #popper { position: fixed; left: 0; top: 0; transform: translate3d(120px, 160px, 0);
+    min-width: max-content; will-change: transform; z-index: 1300; }
+  /* Radix's available-height binding. The 0 default is the failure shape: on a 0x0
+     viewport the content collapses to nothing and the sentinel never paints. */
+  #popper-content { min-width: 240px; max-height: var(--viewport-available-height, 0px);
+    /* The border is the popup's only boundary against the page, and the design round
+       measured the first value at 2.21:1 on this page - below the 3:1 non-text floor,
+       which makes an agent- and human-facing frame harder to read than it needs to be.
+       This one measures 3.72:1 on the page and 3.38:1 on the panel fill. */
+    overflow: hidden; border-radius: 8px; border: 1px solid #6b7280; background: #1c2027; }
+  [role="option"] { padding: 10px 12px; }
+  [role="option"] + [role="option"] { border-top: 1px solid #2a2f37; }
+  #sentinel { width: 120px; height: 40px; background: rgb(255, 0, 255); }
+  #metrics { margin-top: 16px; color: #9aa1ab; font-family: ui-monospace, monospace; }
+</style>
+</head><body>
+<div class="row">
+  <button id="open">open popup</button>
+  <button id="close">close popup</button>
+  <button id="reset">reset counters</button>
+</div>
+<p id="metrics">metrics: initializing</p>
+<div id="popper-slot"></div>
+<script>
+  var counters = { resize: 0, blur: 0, focus: 0, vischange: 0, sizes: [] };
+  var isOpen = false;
+
+  function metrics() {
+    var vv = window.visualViewport;
+    return [
+      "innerWidth=" + window.innerWidth,
+      "innerHeight=" + window.innerHeight,
+      "docEl=" + document.documentElement.clientWidth + "x" + document.documentElement.clientHeight,
+      "vv=" + (vv ? vv.width + "x" + vv.height : "n/a"),
+      "dpr=" + window.devicePixelRatio,
+      "resize=" + counters.resize,
+      "lastResizeSize=" + (counters.sizes.length ? counters.sizes[counters.sizes.length - 1] : "none"),
+      "open=" + isOpen
+    ].join(" ");
+  }
+
+  function render() {
+    document.getElementById("metrics").textContent = "metrics: " + metrics();
+  }
+
+  // Mirrors Radix SelectContentImpl: any resize closes the popup. This is what turns
+  // "the capture resized the renderer" into an observable closed popup.
+  function close() {
+    isOpen = false;
+    document.getElementById("popper-slot").textContent = "";
+    render();
+  }
+
+  window.addEventListener("resize", function () {
+    counters.resize += 1;
+    counters.sizes.push(window.innerWidth + "x" + window.innerHeight);
+    close();
+  });
+  window.addEventListener("blur", function () { counters.blur += 1; render(); });
+  window.addEventListener("focus", function () { counters.focus += 1; render(); });
+  document.addEventListener("visibilitychange", function () { counters.vischange += 1; render(); });
+
+  document.getElementById("open").addEventListener("click", function () {
+    // The available height a popper measures before placing itself.
+    var available = Math.max(0, document.documentElement.clientHeight - 200);
+    var popper = document.createElement("div");
+    popper.id = "popper";
+    popper.setAttribute("data-state", "open");
+    var content = document.createElement("div");
+    content.id = "popper-content";
+    content.style.setProperty("--viewport-available-height", available + "px");
+    content.setAttribute("role", "listbox");
+    content.setAttribute("aria-label", "hidden viewport options");
+    ["Alpha", "Beta", "Gamma"].forEach(function (label) {
+      var option = document.createElement("div");
+      option.setAttribute("role", "option");
+      option.textContent = label;
+      content.appendChild(option);
+    });
+    var sentinel = document.createElement("div");
+    sentinel.id = "sentinel";
+    content.appendChild(sentinel);
+    popper.appendChild(content);
+    var slot = document.getElementById("popper-slot");
+    slot.textContent = "";
+    slot.appendChild(popper);
+    isOpen = true;
+    render();
+  });
+
+  document.getElementById("close").addEventListener("click", close);
+  document.getElementById("reset").addEventListener("click", function () {
+    counters.resize = 0;
+    counters.blur = 0;
+    counters.focus = 0;
+    counters.vischange = 0;
+    counters.sizes = [];
+    render();
+  });
+
+  // Polled so the readout is LIVE rather than only as fresh as the last event: a
+  // read must not race the counter it is asserting on.
+  setInterval(render, 250);
+  render();
+</script>
+</body></html>`;
+
 /** Responses still held open by the `/slow` route, destroyed at the end of the
  * run so a deliberately hung request cannot keep this process alive. */
 const held = [];
@@ -447,6 +598,11 @@ function startSite() {
 		if (url.pathname === "/geometry") {
 			res.writeHead(200, { "Content-Type": "text/html" });
 			res.end(GEOMETRY_PAGE);
+			return;
+		}
+		if (url.pathname === "/hidden-viewport") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(HIDDEN_VIEWPORT_PAGE);
 			return;
 		}
 		if (url.pathname === "/popup-target") {
@@ -864,6 +1020,180 @@ async function clickControl(state, tab, label) {
 async function readSelector(state, tab, selector) {
 	const read = await rpcOk(state, "read", { tab, selector });
 	return read.text;
+}
+
+/** A persistent CDP session on one target, for a sequence of commands against the
+ * same view (the ladder below). One socket, ids resolved per request: a one-shot
+ * helper cannot measure a sequence.
+ *
+ * The caveat is the driver's own documented one (`src/main/browser/cdp.ts`): a
+ * foreign CDP attachment DETACHES the app's debugger attachment, and the app
+ * re-attaches on its next action. That is tolerable for a measurement leg run at
+ * the END of a section, and it is why the ladder is opt-in rather than part of the
+ * always-on checks. */
+async function openTargetSession(target) {
+	const socket = new WebSocket(target.webSocketDebuggerUrl);
+	await new Promise((resolve, reject) => {
+		socket.addEventListener("open", resolve, { once: true });
+		socket.addEventListener("error", reject, { once: true });
+	});
+	let nextId = 0;
+	const pending = new Map();
+	socket.addEventListener("message", (event) => {
+		const incoming = JSON.parse(event.data);
+		const settle = pending.get(incoming.id);
+		if (settle) {
+			pending.delete(incoming.id);
+			settle(incoming);
+		}
+	});
+	return {
+		send: (method, params = {}, timeoutMs = 20_000) =>
+			new Promise((resolve, reject) => {
+				const id = ++nextId;
+				const timer = setTimeout(() => {
+					pending.delete(id);
+					reject(new Error(`${method}: no reply inside ${timeoutMs} ms`));
+				}, timeoutMs);
+				pending.set(id, (message) => {
+					clearTimeout(timer);
+					if (message.error)
+						reject(new Error(`${method}: ${message.error.message}`));
+					else resolve(message.result);
+				});
+				socket.send(JSON.stringify({ id, method, params }));
+			}),
+		close: () => socket.close(),
+	};
+}
+
+/**
+ * How many pixels of a capture are the fixture's magenta sentinel, counted by the
+ * app's OWN Chromium.
+ *
+ * WHY THE FRAME GOES BACK INTO THE RENDERER rather than through a decoder in this
+ * file: the claim is about pixels, and the repository already has one PNG decoder
+ * (`scripts/band-occlusion-evidence.mjs`) written for a different question (row
+ * comparisons from a file). Handing the bytes to Chromium as a bitmap answers the
+ * same question with the engine that produced them, and keeps this rig runnable on
+ * its own - the property the rig's header asks for. The bitmap arrives as a Blob
+ * rather than a `data:` URL so no CSP `img-src` applies.
+ *
+ * TOLERANCE, NOT EQUALITY, and the reason is not slackness: the captures carry an
+ * embedded Display-P3 ICC profile (the design round measured it: `mntr`, RGB/XYZ,
+ * red primary 0.5151/0.2412), so the fixture's `rgb(255, 0, 255)` is STORED as
+ * `#EA33F7` and a strict `=== #ff00ff` check would fail on this host. The tagging is
+ * identical before and after the fix, so it says nothing about the change; the range
+ * below is what keeps this check about the sentinel rather than about the profile.
+ */
+async function magentaPixels(base64) {
+	const result = await rendererEvaluate(`(async () => {
+		const binary = atob("${base64}");
+		const bytes = new Uint8Array(binary.length);
+		for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+		const bitmap = await createImageBitmap(new Blob([bytes], { type: "image/png" }));
+		const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+		const context = canvas.getContext("2d");
+		context.drawImage(bitmap, 0, 0);
+		const data = context.getImageData(0, 0, bitmap.width, bitmap.height).data;
+		let magenta = 0;
+		for (let index = 0; index < data.length; index += 4) {
+			if (data[index] > 200 && data[index + 1] < 60 && data[index + 2] > 200) magenta += 1;
+		}
+		return JSON.stringify({ width: bitmap.width, height: bitmap.height, magenta });
+	})()`);
+	if (result.error) throw new Error(`could not count pixels: ${result.error}`);
+	return JSON.parse(String(result.value ?? "{}"));
+}
+
+/**
+ * The capture ladder: which capture shapes a HIDDEN view answers, and whether they
+ * move the page.
+ *
+ * WHY IT IS OPT-IN AND RAW CDP: the property under test is "which capture perturbs
+ * the page", and the shipped binary only ever issues the one shape it ships, so a
+ * rig that can only ask for that shape cannot falsify the choice. This leg asks for
+ * every candidate side by side, on the driven view's own target, and prints the page's
+ * own counter around each one. It runs last because attaching a foreign CDP session
+ * detaches the app's own attachment (see `openTargetSession`).
+ *
+ * The candidates exist because of a measured history rather than curiosity:
+ * `captureBeyondViewport: false` copies the COMPOSITED surface, which a hidden view
+ * was measured to lack before the view was sized before its first hide, and
+ * `fromSurface: false` is the historical renderer-side capture.
+ *
+ * EVERY ROW HERE IS A COMPARISON, NOT A CHECK: this leg asserts nothing and its rows
+ * pass or fail no part of the run. The shipped shape's own pass/fail reading lives in
+ * §5d (`a capture does not resize the page`), which is where the `resize 0 -> 2`
+ * number comes from — the clipped row below is the same shape ANSWERING NOTHING inside
+ * 20 s in that run, so a reader looking for the resize count here will not find it.
+ */
+async function measureCaptureLadder(state, tab, fixtureUrl) {
+	const target = await waitForTarget(
+		(candidate) => candidate.url.startsWith(fixtureUrl),
+		"the hidden-viewport tab's own CDP target",
+	);
+	const session = await openTargetSession(target);
+	const evaluate = async (expression) => {
+		const result = await session.send("Runtime.evaluate", {
+			expression,
+			returnByValue: true,
+		});
+		return result?.result?.value;
+	};
+	const reset = () => evaluate("document.getElementById('reset').click()");
+	const metrics = () =>
+		evaluate("document.getElementById('metrics').textContent");
+	const candidates = [
+		[
+			"the shape this PR removed: captureBeyondViewport + clip to the view bounds",
+			{
+				format: "png",
+				captureBeyondViewport: true,
+				clip: { x: 0, y: 0, width: 1280, height: 720, scale: 1 },
+			},
+		],
+		[
+			"captureBeyondViewport: false (composited surface)",
+			{ format: "png", captureBeyondViewport: false },
+		],
+		["fromSurface: false (renderer)", { format: "png", fromSurface: false }],
+		[
+			"captureBeyondViewport: true, no clip",
+			{ format: "png", captureBeyondViewport: true },
+		],
+	];
+	for (const [label, params] of candidates) {
+		await reset();
+		const before = await metrics();
+		const started = Date.now();
+		let outcome = "";
+		let bytes = 0;
+		try {
+			const shot = await session.send("Page.captureScreenshot", params, 20_000);
+			bytes = Buffer.from(shot?.data ?? "", "base64").length;
+			outcome = "answered";
+		} catch (error) {
+			outcome = `FAILED: ${error.message}`;
+		}
+		const elapsed = Date.now() - started;
+		const after = await metrics();
+		const line = `[LADDER] ${label}: ${outcome} in ${elapsed} ms, ${bytes} bytes\n        before: ${before}\n        after:  ${after}`;
+		// Said as well as recorded: a measurement leg that only reaches the final
+		// transcript is lost the moment anything kills the run, and this one is the
+		// evidence the capture path is chosen from.
+		say(line);
+		record(`capture ladder: ${label}`, line);
+	}
+	// The shipped path LAST, so the leg ends on what actually ships.
+	await reset();
+	const before = await metrics();
+	const shot = await rpcOk(state, "screenshot", { tab });
+	const after = await metrics();
+	const shipped = `[LADDER] the shipped screenshot action: ${Buffer.from(shot.data, "base64").length} bytes\n        before: ${before}\n        after:  ${after}`;
+	say(shipped);
+	record("capture ladder: the shipped screenshot action", shipped);
+	session.close();
 }
 
 /** A popup's own status line, once its document has run — polled, because the
@@ -1662,6 +1992,140 @@ async function main() {
 		offViewport.text,
 	);
 	await rpcOk(state, "close", { tab: geometryTab.tab });
+
+	// --- 5d. the hidden view's page viewport, and what a capture does to it ----
+	/*
+	 * A tab an agent OPENED is never presented (design 11.4: an agent's `open`
+	 * must not switch the tab the user is looking at), so every agent tab is a
+	 * `setVisible(false)` WebContentsView laid out at BACKGROUND_VIEWPORT — and a
+	 * hidden view's renderer used to report a 0x0 viewport for it, which collapses
+	 * every popper that measures itself against the viewport, and every capture used
+	 * to resize the renderer to the clip box and fire a page `resize`, which closes
+	 * `radix-ui/react-select` popups outright. Both are invisible to a text read:
+	 * the page looked normal while its popups could not paint and an agent's own
+	 * screenshot dismissed the popup it was about to read. Measured 2026-10-01 on
+	 * the live alert-suppression page (`ui:43`/`ui:45`).
+	 *
+	 * The fixture reports both properties itself; see `HIDDEN_VIEWPORT_PAGE`.
+	 */
+	const hiddenTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/hidden-viewport`,
+		requester: "session:proof",
+	});
+	const hiddenMetrics = async () => {
+		const text = String(await readSelector(state, hiddenTab.tab, "#metrics"));
+		const number = (pattern) => Number(pattern.exec(text)?.[1] ?? -1);
+		return {
+			text,
+			width: number(/innerWidth=(-?\d+)/),
+			height: number(/innerHeight=(-?\d+)/),
+			docElWidth: number(/docEl=(-?\d+)x/),
+			viewportWidth: number(/vv=(-?\d+)x/),
+			resize: number(/resize=(-?\d+)/),
+			dpr: number(/dpr=(-?\d+)/),
+			lastResizeSize: /lastResizeSize=(\S+)/.exec(text)?.[1] ?? "",
+			open: /open=(true|false)/.exec(text)?.[1] === "true",
+		};
+	};
+	const freshMetrics = await hiddenMetrics();
+	check(
+		"an unpresented tab reports a non-zero page viewport",
+		freshMetrics.width > 0 &&
+			freshMetrics.height > 0 &&
+			freshMetrics.docElWidth > 0 &&
+			freshMetrics.viewportWidth > 0,
+		`${freshMetrics.text}`,
+	);
+	// The half that motivated re-measuring on the merged base: the original finding
+	// was that the metrics reset to 0x0 after EVERY navigation while hidden, so the
+	// property has to hold after one rather than only on a fresh tab.
+	await rpcOk(state, "goto", {
+		tab: hiddenTab.tab,
+		url: `${siteOrigin}/hidden-viewport`,
+		requester: "session:proof",
+	});
+	const navigatedMetrics = await hiddenMetrics();
+	check(
+		"the viewport survives a navigation while the tab stays hidden",
+		navigatedMetrics.width > 0 && navigatedMetrics.docElWidth > 0,
+		`${navigatedMetrics.text}`,
+	);
+	// The target list is recorded because the ladder below needs a CDP session on the
+	// driven view's OWN target, and whether a `WebContentsView` appears on the app's
+	// debugging port is a fact rather than an assumption.
+	record(
+		"page targets on the app's debugging port (raw)",
+		pageTargetUrls(await targets()).join("\n"),
+	);
+
+	// A capture must not move a page-visible counter. The counter is the fixture's own
+	// `resize` listener, which is what closes a Radix popup.
+	await clickControl(state, hiddenTab.tab, "reset counters");
+	const beforeCapture = await hiddenMetrics();
+	const captureShot = await rpcOk(state, "screenshot", { tab: hiddenTab.tab });
+	const afterCapture = await hiddenMetrics();
+	const captureFrame = join(OUT_DIR, "hidden-view-capture.png");
+	writeFileSync(captureFrame, Buffer.from(captureShot.data, "base64"));
+	check(
+		"a capture does not resize the page",
+		afterCapture.resize === beforeCapture.resize &&
+			afterCapture.width === beforeCapture.width &&
+			afterCapture.lastResizeSize === "none",
+		`resize ${beforeCapture.resize} -> ${afterCapture.resize}, size ${beforeCapture.width}x${beforeCapture.height}, lastResizeSize=${afterCapture.lastResizeSize}\nbefore: ${beforeCapture.text}\nafter:  ${afterCapture.text}\nframe: ${captureFrame}`,
+	);
+
+	// An open popup survives a capture, and its pixels are in the frame. Both halves
+	// matter: the popup's own listeners prove the page was not moved, and the pixels
+	// prove the frame holds what the popup painted.
+	await clickControl(state, hiddenTab.tab, "open popup");
+	const openedMetrics = await hiddenMetrics();
+	// On a 0x0 viewport the popper's content collapses through the fixture's
+	// `--viewport-available-height` binding, which is the shape the live page showed.
+	const content = await rpcOk(state, "styles", {
+		tab: hiddenTab.tab,
+		selector: "#popper-content",
+	});
+	const contentRect = content.matches?.[0]?.rect;
+	check(
+		"the popper's content has height on a driven tab",
+		openedMetrics.open && (contentRect?.height ?? 0) > 40,
+		`open=${openedMetrics.open} content rect=${JSON.stringify(contentRect)}\n${openedMetrics.text}`,
+	);
+	const popupShot = await rpcOk(state, "screenshot", { tab: hiddenTab.tab });
+	const afterPopupShot = await hiddenMetrics();
+	const popupFrame = join(OUT_DIR, "hidden-view-popup.png");
+	writeFileSync(popupFrame, Buffer.from(popupShot.data, "base64"));
+	check(
+		"an open popup is still open after a capture",
+		afterPopupShot.open,
+		`open before=${openedMetrics.open} after=${afterPopupShot.open}\nbefore: ${openedMetrics.text}\nafter:  ${afterPopupShot.text}\nframe: ${popupFrame}`,
+	);
+	const magenta = await magentaPixels(popupShot.data);
+	// The GEOMETRY is gated with the pixels, and the two claims need each other: the
+	// capture no longer carries a clip, so "a viewport-sized PNG" is the property that
+	// says the composited surface was the view's own box rather than the whole
+	// document — and a capture that silently returned 1280x720 css at the WRONG ratio,
+	// or 1280x3778, would pass on the pixel count alone. 1280x720 is
+	// `BACKGROUND_VIEWPORT`; the ratio is read from the page rather than assumed from
+	// this host.
+	const expectedWidth = 1280 * navigatedMetrics.dpr;
+	const expectedHeight = 720 * navigatedMetrics.dpr;
+	check(
+		"the popup's own pixels are in the capture",
+		(magenta.magenta ?? 0) > 1_000 &&
+			magenta.width === expectedWidth &&
+			magenta.height === expectedHeight,
+		`frame ${popupFrame}: ${JSON.stringify(magenta)} — expected the 1280x720 view at dpr ${navigatedMetrics.dpr} = ${expectedWidth}x${expectedHeight} (the fixture's #sentinel is 120x40 css)`,
+	);
+
+	if (process.argv.includes("--capture-ladder")) {
+		await measureCaptureLadder(
+			state,
+			hiddenTab.tab,
+			`${siteOrigin}/hidden-viewport`,
+		);
+	}
+	await rpcOk(state, "close", { tab: hiddenTab.tab });
 	// --- 6. a navigation, and the epoch it invalidates ----------------------
 	const staleClick = await rpc(state, "click", { tab: handle, ref: goRef });
 	const navigated = await rpcOk(state, "goto", {
@@ -1990,7 +2454,7 @@ async function main() {
 		"",
 		`Scratch: \`${SCRATCH}\``,
 		"Runs: two (a clean quit, then a restart against the same profile)",
-		`Result: ${failures === 0 ? "every check passed" : `${failures} check(s) FAILED`}`,
+		`Result: ${failures === 0 ? "every check passed" : `${failures} check(s) FAILED`}${skips ? ` (${skips} skipped)` : ""}`,
 		"",
 		transcript.join("\n"),
 	].join("\n");

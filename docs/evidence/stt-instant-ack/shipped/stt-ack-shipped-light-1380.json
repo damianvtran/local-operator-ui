@@ -1,0 +1,347 @@
+{
+  "theme": "localOperatorLight",
+  "holdMs": 2500,
+  "windowSize": "1380x900",
+  "rig": {
+    "label": "shipped-light-1380",
+    "cdpPort": 9586
+  },
+  "cycles": [
+    {
+      "i": 1,
+      "cold": true,
+      "flipped": true,
+      "t0": 8802.6,
+      "clickToGumCalledMs": 0.1,
+      "gumResolveMs": 2540.4,
+      "gumRejected": [],
+      "resolvedToRecorderStartMs": 0.1,
+      "recorderStartToFlipMs": 5.9,
+      "clickToAckMs": 33.4,
+      "ackCommitMs": 1.3,
+      "flipCommitMs": 2545.4,
+      "ackKind": "preparing",
+      "clickToAckPaintMs": 41.9,
+      "clickToFlipMs": 2546.5,
+      "clickToFlipPaintMs": 2561.9,
+      "bridgeCallsBeforeGum": [],
+      "fetchBeforeGum": [],
+      "holdMs": 2500
+    }
+  ],
+  "capabilities.desktop_available": true,
+  "palette": {
+    "asked": "localOperatorLight",
+    "applied": "localOperatorLight",
+    "composerGround": "rgb(254, 253, 250)",
+    "documentGround": "rgb(242, 237, 227)"
+  },
+  "instrument": {
+    "gum": true,
+    "mr": true,
+    "bridge": true,
+    "fetch": true
+  },
+  "warmup.ms": 3362,
+  "mic.enabled": true,
+  "micDisabledSample": false,
+  "geom.rest": {
+    "box": {
+      "x": 415,
+      "y": 774,
+      "w": 810,
+      "h": 110,
+      "bottom": 884
+    },
+    "mic": {
+      "x": 1141,
+      "y": 836,
+      "w": 32,
+      "h": 32,
+      "bottom": 868
+    },
+    "indicator": null,
+    "lane": null,
+    "ring": null
+  },
+  "shot.c1-just-after-click": {
+    "atMs": 8843.099999964237,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "geomBefore": {
+      "box": {
+        "x": 415,
+        "y": 774,
+        "w": 810,
+        "h": 110,
+        "bottom": 884
+      },
+      "mic": {
+        "x": 1141,
+        "y": 836,
+        "w": 32,
+        "h": 32,
+        "bottom": 868
+      },
+      "indicator": {
+        "x": 1024.4,
+        "y": 842.3,
+        "w": 112.6,
+        "h": 19.5,
+        "bottom": 861.8
+      },
+      "lane": null,
+      "ring": {
+        "w": 16,
+        "h": 16,
+        "track": "rgb(133, 127, 112)",
+        "quadrant": "rgb(19, 119, 66)",
+        "ground": "rgba(0, 0, 0, 0)"
+      }
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "shot.c1-post-click-150ms": {
+    "atMs": 9043,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "geomBefore": {
+      "box": {
+        "x": 415,
+        "y": 774,
+        "w": 810,
+        "h": 110,
+        "bottom": 884
+      },
+      "mic": {
+        "x": 1141,
+        "y": 836,
+        "w": 32,
+        "h": 32,
+        "bottom": 868
+      },
+      "indicator": {
+        "x": 1024.4,
+        "y": 842.3,
+        "w": 112.6,
+        "h": 19.5,
+        "bottom": 861.8
+      },
+      "lane": null,
+      "ring": {
+        "w": 19.9,
+        "h": 19.9,
+        "track": "rgb(133, 127, 112)",
+        "quadrant": "rgb(19, 119, 66)",
+        "ground": "rgb(254, 253, 250)"
+      }
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "shot.c1-post-click-300ms": {
+    "atMs": 9225.399999976158,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "geomBefore": {
+      "box": {
+        "x": 415,
+        "y": 774,
+        "w": 810,
+        "h": 110,
+        "bottom": 884
+      },
+      "mic": {
+        "x": 1141,
+        "y": 836,
+        "w": 32,
+        "h": 32,
+        "bottom": 868
+      },
+      "indicator": {
+        "x": 1024.4,
+        "y": 842.3,
+        "w": 112.6,
+        "h": 19.5,
+        "bottom": 861.8
+      },
+      "lane": null,
+      "ring": {
+        "w": 22.6,
+        "h": 22.6,
+        "track": "rgb(133, 127, 112)",
+        "quadrant": "rgb(19, 119, 66)",
+        "ground": "rgb(254, 253, 250)"
+      }
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "shot.c1-post-click-600ms": {
+    "atMs": 9413,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "geomBefore": {
+      "box": {
+        "x": 415,
+        "y": 774,
+        "w": 810,
+        "h": 110,
+        "bottom": 884
+      },
+      "mic": {
+        "x": 1141,
+        "y": 836,
+        "w": 32,
+        "h": 32,
+        "bottom": 868
+      },
+      "indicator": {
+        "x": 1024.4,
+        "y": 842.3,
+        "w": 112.6,
+        "h": 19.5,
+        "bottom": 861.8
+      },
+      "lane": null,
+      "ring": {
+        "w": 21.3,
+        "h": 21.3,
+        "track": "rgb(133, 127, 112)",
+        "quadrant": "rgb(19, 119, 66)",
+        "ground": "rgb(254, 253, 250)"
+      }
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "shot.c1-post-click-1200ms": {
+    "atMs": 10004.800000011921,
+    "stateBefore": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    },
+    "geomBefore": {
+      "box": {
+        "x": 415,
+        "y": 774,
+        "w": 810,
+        "h": 110,
+        "bottom": 884
+      },
+      "mic": {
+        "x": 1141,
+        "y": 836,
+        "w": 32,
+        "h": 32,
+        "bottom": 868
+      },
+      "indicator": {
+        "x": 1024.4,
+        "y": 842.3,
+        "w": 112.6,
+        "h": 19.5,
+        "bottom": 861.8
+      },
+      "lane": null,
+      "ring": {
+        "w": 22,
+        "h": 22,
+        "track": "rgb(133, 127, 112)",
+        "quadrant": "rgb(19, 119, 66)",
+        "ground": "rgb(254, 253, 250)"
+      }
+    },
+    "stateAfter": {
+      "mic": true,
+      "confirm": false,
+      "cancel": false,
+      "indicator": false,
+      "preparing": true,
+      "micBusy": true,
+      "transcribing": false
+    }
+  },
+  "cycle1.geomRecording": {
+    "box": {
+      "x": 415,
+      "y": 690,
+      "w": 810,
+      "h": 194,
+      "bottom": 884
+    },
+    "mic": null,
+    "indicator": null,
+    "lane": {
+      "x": 431,
+      "y": 760,
+      "w": 778,
+      "h": 64,
+      "bottom": 824
+    },
+    "ring": null
+  },
+  "viewport": "{\"w\":1380,\"h\":900,\"dpr\":2}"
+}

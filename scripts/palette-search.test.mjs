@@ -37,6 +37,7 @@ const {
 	normalizeText,
 	paletteEmptyStateCopy,
 	PALETTE_GROUP_ORDER,
+	PALETTE_SECTION_TITLES,
 	parsePaletteQuery,
 	SCOPE_LEGEND,
 	searchPalette,
@@ -333,6 +334,191 @@ test("clipped means the list dropped rows, not that a cap was consulted", () => 
 	});
 	assert.equal(names(many).length, 6);
 	assert.equal(many.clipped, true);
+});
+
+/* ------------------------------------------------------------------ *
+ * The Unread pin (issue #760)
+ * ------------------------------------------------------------------ */
+
+/*
+ * The pin's rows carry the two facts the app's source sets and the composition
+ * reads: `featured` (what the browse layout draws — the app marks every chat
+ * row so on an empty query) and `unread` (the store's `unreadMarkKind` answer,
+ * decided at the source), with `order` as the catalogue's newest-first rank.
+ */
+const unreadChat = (id, title, order) => ({
+	...chat(id, title),
+	featured: true,
+	unread: true,
+	order,
+});
+const listedChat = (id, title, order) => ({
+	...chat(id, title),
+	featured: true,
+	order,
+});
+
+test("the switcher pins an Unread section at the top, and its rows do not repeat below (issue #760)", () => {
+	const outcome = searchPalette({
+		items: [
+			unreadChat("u1", "Retention follow-up", 0),
+			listedChat("c1", "Architect review", 1),
+			unreadChat("u2", "Weekly sync", 2),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.equal(PALETTE_SECTION_TITLES.unread, "Unread");
+	assert.deepEqual(groups(outcome), ["unread", "chats"]);
+	/*
+	 * The unread rows lead, in catalogue order; the chats tier keeps the rows
+	 * the pin did not take. A row drawn twice — once pinned, once ranked —
+	 * would be a duplicate id in the list and a second stop for one
+	 * conversation, which is the failure this shape rules out.
+	 */
+	assert.deepEqual(names(outcome), [
+		"Retention follow-up",
+		"Weekly sync",
+		"Architect review",
+	]);
+	assert.equal(outcome.clipped, false);
+});
+
+test("the pin orders unseen rows the way the chats tier does: catalogue order, newest first", () => {
+	const outcome = searchPalette({
+		items: [
+			unreadChat("u-old", "Oldest", 2),
+			unreadChat("u-new", "Newest", 0),
+			unreadChat("u-mid", "Newer", 1),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(
+		outcome.sections[0].items.map((match) => match.item.name),
+		["Newest", "Newer", "Oldest"],
+	);
+});
+
+test("no unread rows means the switcher's browse list is the one it always was", () => {
+	const outcome = searchPalette({
+		items: [listedChat("c1", "Alpha", 0), listedChat("c2", "Beta", 1)],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["chats"]);
+	assert.deepEqual(names(outcome), ["Alpha", "Beta"]);
+});
+
+test("a typed query drops the pin; the row is found by search as always", () => {
+	const outcome = searchPalette({
+		items: [
+			unreadChat("u1", "Retention follow-up", 0),
+			listedChat("c1", "Architect review", 1),
+		],
+		raw: "#retention",
+	});
+	assert.ok(!groups(outcome).includes("unread"));
+	assert.deepEqual(names(outcome), ["Retention follow-up"]);
+});
+
+test("the pin is the switcher's alone; the un-scoped browse is untouched", () => {
+	/*
+	 * Issue #760 leaves "switcher only, or both gestures" to design, and this
+	 * pins the state the PR ships so the widening is a decision rather than a
+	 * silent drift: an unread row still browses under Cmd/Ctrl+K, in its chats
+	 * tier, with no Unread section above it.
+	 */
+	const outcome = searchPalette({
+		items: [
+			unreadChat("u1", "Retention follow-up", 0),
+			listedChat("c1", "Alpha", 1),
+		],
+		raw: "",
+	});
+	assert.deepEqual(groups(outcome), ["chats"]);
+	assert.deepEqual(names(outcome), ["Retention follow-up", "Alpha"]);
+});
+
+test("the pin draws from the same budget as the tiers, so rendered never passes TOTAL_CAP", () => {
+	const items = [
+		...Array.from({ length: 60 }, (_, index) =>
+			unreadChat(
+				`u${index}`,
+				`Unread ${String(index).padStart(2, "0")}`,
+				index,
+			),
+		),
+		...Array.from({ length: 10 }, (_, index) =>
+			listedChat(`c${index}`, `Listed ${index}`, 60 + index),
+		),
+	];
+	const outcome = searchPalette({ items, raw: CONVERSATION_SWITCHER_SEED });
+	const rendered = outcome.sections.reduce(
+		(count, section) => count + section.items.length,
+		0,
+	);
+	assert.equal(rendered, TOTAL_CAP);
+	assert.ok(rendered <= TOTAL_CAP);
+	/*
+	 * `total` still counts every row the composition considered — the 60 unread
+	 * and the 10 listed — so `clipped` ("the list dropped rows") is a true
+	 * statement over the whole list, not just the tiers' share of it.
+	 */
+	assert.equal(outcome.total, 70);
+	assert.equal(outcome.clipped, true);
+	// The pin takes the whole budget here, so no tier can render.
+	assert.deepEqual(groups(outcome), ["unread"]);
+});
+
+test("the tiers subtract what the pin drew instead of bypassing the cap", () => {
+	const items = [
+		...Array.from({ length: 46 }, (_, index) =>
+			unreadChat(
+				`u${index}`,
+				`Unread ${String(index).padStart(2, "0")}`,
+				index,
+			),
+		),
+		...Array.from({ length: 10 }, (_, index) =>
+			listedChat(`c${index}`, `Listed ${index}`, 46 + index),
+		),
+	];
+	const outcome = searchPalette({ items, raw: CONVERSATION_SWITCHER_SEED });
+	assert.deepEqual(groups(outcome), ["unread", "chats"]);
+	assert.equal(outcome.sections[0].items.length, 46);
+	// The chats tier's cap is five, but the running budget has two rows left.
+	assert.equal(outcome.sections[1].items.length, 2);
+	assert.deepEqual(
+		outcome.sections[1].items.map((match) => match.item.name),
+		["Listed 0", "Listed 1"],
+	);
+	assert.equal(
+		outcome.sections.reduce(
+			(count, section) => count + section.items.length,
+			0,
+		),
+		TOTAL_CAP,
+	);
+	assert.equal(outcome.total, 56);
+	assert.equal(outcome.clipped, true);
+});
+
+test("with everything shown, clipped stays false — it is not 'a cap was consulted'", () => {
+	const outcome = searchPalette({
+		items: [
+			unreadChat("u1", "Alpha", 0),
+			unreadChat("u2", "Beta", 1),
+			listedChat("c1", "Gamma", 2),
+		],
+		raw: CONVERSATION_SWITCHER_SEED,
+	});
+	assert.equal(
+		outcome.sections.reduce(
+			(count, section) => count + section.items.length,
+			0,
+		),
+		3,
+	);
+	assert.equal(outcome.total, 3);
+	assert.equal(outcome.clipped, false);
 });
 
 /* ------------------------------------------------------------------ *

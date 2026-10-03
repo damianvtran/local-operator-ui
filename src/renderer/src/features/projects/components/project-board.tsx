@@ -1112,6 +1112,14 @@ const BoardCard: FC<BoardCardProps> = ({
 							</DropdownMenuItem>
 						)}
 						<DropdownMenuSeparator />
+						{/*
+						 * Edit NO LONGER OPENS A DIALOG (the inline-edit slice, operator
+						 * 2026-09-30): the page routes it to the project's detail, where
+						 * every field edits in place — the same destination Open uses,
+						 * kept as its own item because the two intents are still separate
+						 * to a reader (design may drop it). The prop stays `onEdit`, so
+						 * what the item MEANS is the page's to change.
+						 */}
 						<DropdownMenuItem onSelect={onEdit}>Edit</DropdownMenuItem>
 						<DropdownMenuItem onSelect={onDelete}>Delete</DropdownMenuItem>
 					</DropdownMenuContent>

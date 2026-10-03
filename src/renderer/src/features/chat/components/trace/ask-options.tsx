@@ -238,9 +238,22 @@ export const AskOptions = ({
 					disabled={busy}
 					onClick={() => onAnswer(option.label)}
 					className={cn(
-						// A full-width 34px row at radius 6 (§F1). `items-baseline` keeps
-						// the keycap on the label's first line when the label wraps.
-						"flex min-h-[34px] w-full items-baseline gap-3 rounded-sm px-2 py-2 text-left",
+						// A full-width 34px row at radius 6 (§F1). TWO couplings keep its box
+						// around a wrapped description (issue #762), and the first is the
+						// defect the reporter's screenshot shows:
+						//
+						// 1. `shrink-0`: the band is a capped flex column (`max-h-[380px]`),
+						//    so without this a tall list is COMPRESSED to fit the cap
+						//    instead of scrolling — nine wrapped rows measure 372px of
+						//    content and each row's box ends ~37px short of its own column,
+						//    which is what puts the next row's ordinal and label on top of
+						//    the description above it. The band's `overflow-y-auto` is the
+						//    intended behaviour; the shrink was starving it.
+						// 2. `items-start`, NOT `items-baseline`: the keycap is aligned to
+						//    the column's first line by the ordinal's own line box (its
+						//    `leading` below), not by a baseline coupling across a column
+						//    that can be multi-line.
+						"flex min-h-[34px] w-full shrink-0 items-start gap-3 rounded-sm px-2 py-2 text-left",
 						// Colour-only transition: hover is a colour step, and nothing on
 						// this card lifts, scales or translates.
 						"transition-colors duration-fast ease-out-quart",
@@ -281,6 +294,13 @@ export const AskOptions = ({
 								// The keycap column: a fixed width so every label starts on one
 								// edge, `ink-dim` because it is a hint rather than content.
 								"w-4 shrink-0 text-center font-mono text-mono-sm",
+								// The numeral rides the label column's FIRST line through its
+								// line box, now that the row no longer baseline-aligns it
+								// (issue #762): `text-body-sm` at its own leading is that first
+								// line box, and `leading` utilities are em-relative, so the
+								// label's own tokens are what has to be named. A later change
+								// to the label step carries the keycap with it.
+								"leading-[calc(var(--text-body-sm)*var(--text-body-sm--line-height))]",
 								busy ? "text-ink-disabled" : "text-ink-dim",
 							)}
 						>

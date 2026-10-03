@@ -39,10 +39,12 @@ const bundle = await build({
 
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`;
 const {
+	FOLD_COUNT_LIMIT,
 	FOLD_MEDIA_LIMIT,
 	FOLD_MIN_ACTIONS,
 	actionClass,
 	foldCounts,
+	foldCountUnits,
 	foldImages,
 	foldLive,
 	foldMediaClause,
@@ -51,6 +53,8 @@ const {
 	foldRuns,
 	foldSpan,
 	foldSummary,
+	foldSummarySpec,
+	foldSummaryUnits,
 	turnFeet,
 } = await import(moduleUrl);
 
@@ -362,6 +366,189 @@ test("the count line names the kinds in the app's own vocabulary", () => {
 		"the class nouns are untouched",
 	);
 	assert.equal(foldCounts([]), "0 actions", "only reachable for an empty run");
+});
+
+test("the count line caps its segments and folds the tail into `and N other actions`", () => {
+	/*
+	 * THE OPERATOR'S OWN LINE (2026-10-01, relayed by Aida), as the FIRST case:
+	 * the run whose header read `6 searches · 1 task · 2 browser actions · 1
+	 * ai_search · 1 get_tool_access · 1 query_data_sources · 1 todo update · 1
+	 * wait · 1 workspace_get_gmail_thread_content` - nine unique action types,
+	 * wider than the column at every realistic window. Six fetches carry the
+	 * `searches` class; the rest are one task, two browser calls and the four
+	 * singletons the operator named.
+	 */
+	const many = [
+		...Array.from({ length: 6 }, () => ({ name: "web_fetch", failed: false })),
+		{ name: "task", failed: false },
+		...Array.from({ length: 2 }, () => ({
+			name: "browser",
+			failed: false,
+		})),
+		{ name: "ai_search", failed: false },
+		{ name: "get_tool_access", failed: false },
+		{ name: "query_data_sources", failed: false },
+		{ name: "todo", op: "add", failed: false },
+		{ name: "wait", failed: false },
+		{ name: "workspace_get_gmail_thread_content", failed: false },
+	];
+	assert.equal(
+		foldSummary(many),
+		"6 searches · 1 task · 2 browser actions · 1 ai_search · 1 get_tool_access · and 4 other actions",
+		"five segments are kept in the line's own order; the four hidden CALLS make the tail",
+	);
+	/*
+	 * THE CAP IS `FOLD_COUNT_LIMIT` SEGMENTS SHOWN, and every shorter shape is
+	 * byte-identical to what it was before the cap - which is what the rest of
+	 * this file's expectations already witness (none of them exceeds five
+	 * segments, and all of them still pass unedited).
+	 */
+	assert.equal(FOLD_COUNT_LIMIT, 5, "the cap is pinned as a number");
+
+	const files = (n) =>
+		Array.from({ length: n }, () => ({ name: "read", failed: false }));
+	const searches = (n) =>
+		Array.from({ length: n }, () => ({ name: "web_fetch", failed: false }));
+	const web = (n) =>
+		Array.from({ length: n }, () => ({
+			name: "search_the_web",
+			failed: false,
+		}));
+	const commands = (n) =>
+		Array.from({ length: n }, () => ({ name: "bash", failed: false }));
+	const evals = (n) =>
+		Array.from({ length: n }, () => ({ name: "eval", failed: false }));
+	const edits = (n) =>
+		Array.from({ length: n }, () => ({ name: "write", failed: false }));
+
+	// AT the cap: five segments is still every segment, no tail.
+	assert.equal(
+		foldCounts([
+			...files(1),
+			...searches(1),
+			...web(1),
+			...commands(1),
+			...evals(1),
+		]),
+		"1 file · 1 search · 1 web search · 1 shell · 1 python",
+	);
+	// ONE past the cap: the sixth segment folds, and the tail singularises.
+	assert.equal(
+		foldCounts([
+			...files(1),
+			...searches(1),
+			...web(1),
+			...commands(1),
+			...evals(1),
+			...edits(1),
+		]),
+		"1 file · 1 search · 1 web search · 1 shell · 1 python · and 1 other action",
+	);
+	/*
+	 * THE TAIL COUNTS CALLS, NOT TYPES: three edits hide behind one segment, and
+	 * the tail states three - the same unit the bar's `N actions` and the foot's
+	 * `N actions` count, so a reader who sums the kept segments and the tail
+	 * still reaches the turn's action count.
+	 */
+	assert.equal(
+		foldCounts([
+			...files(1),
+			...searches(1),
+			...web(1),
+			...commands(1),
+			...evals(1),
+			...edits(3),
+		]),
+		"1 file · 1 search · 1 web search · 1 shell · 1 python · and 3 other actions",
+	);
+	/*
+	 * THE UNITS ARE THE MODEL'S, NOT THE RENDERER'S (design round 1, D1). The
+	 * header paints one unbreakable span per unit so a wrap can only fall at a
+	 * ` · ` - which means the line's composition has to be stated here, where the
+	 * cap is applied, rather than recovered by splitting a display string. The
+	 * tail is ONE unit: `and 4 other actions` is a single fact and the frame that
+	 * broke it between the numeral and its noun is the defect these assert against.
+	 */
+	const capped = [
+		...files(1),
+		...searches(1),
+		...web(1),
+		...commands(1),
+		...evals(1),
+		...edits(3),
+	];
+	assert.deepEqual(
+		foldCountUnits([
+			{ label: "1 file", count: 1 },
+			{ label: "1 search", count: 1 },
+			{ label: "1 web search", count: 1 },
+			{ label: "1 shell", count: 1 },
+			{ label: "1 python", count: 1 },
+		]),
+		["1 file", "1 search", "1 web search", "1 shell", "1 python"],
+		"at the cap the units ARE the segments' labels",
+	);
+	assert.deepEqual(
+		foldCountUnits([
+			{ label: "1 file", count: 1 },
+			{ label: "1 search", count: 1 },
+			{ label: "1 web search", count: 1 },
+			{ label: "1 shell", count: 1 },
+			{ label: "1 python", count: 1 },
+			{ label: "3 edits", count: 3 },
+		]),
+		[
+			"1 file",
+			"1 search",
+			"1 web search",
+			"1 shell",
+			"1 python",
+			"and 3 other actions",
+		],
+		"past the cap the tail is ONE unit, and it counts CALLS",
+	);
+	assert.equal(
+		foldSummaryUnits(capped).at(-1),
+		"and 3 other actions",
+		"the tail is ONE unit, so it cannot break inside itself",
+	);
+	assert.equal(
+		foldSummaryUnits(capped).join(" · "),
+		foldCounts(capped),
+		"the string consumers read is the units joined, so the two cannot drift",
+	);
+	assert.deepEqual(
+		foldSummaryUnits(files(4)),
+		["Explored 4 files"],
+		"and a SENTENCE is one unit",
+	);
+	/*
+	 * THE SHAPE IS PART OF THE CONTRACT (agent review round 2, R2-1): the header
+	 * cannot infer it from the unit count, because a one-segment count line
+	 * (`6 searches`) is ALSO one unit and MUST stay whole, while the sentence's
+	 * clause must break at its own spaces. So the model states which it is, and
+	 * these assertions are what keep the renderer honest about it.
+	 */
+	assert.equal(
+		foldSummarySpec(files(4)).prose,
+		true,
+		"a class sentence is prose: its own spaces are the right breaks",
+	);
+	assert.equal(
+		foldSummarySpec([...commands(3), ...evals(1)]).prose,
+		false,
+		"a one-class-of-kind count line is NOT prose: it must hold together",
+	);
+	assert.equal(
+		foldSummarySpec(capped).prose,
+		false,
+		"nor is the capped line, whose tail phrase may never split",
+	);
+	assert.equal(
+		foldSummarySpec(capped).units.join(" · "),
+		foldSummary(capped),
+		"and the joined string consumers read is still these units",
+	);
 });
 
 test("the action classes are the ledgers' own names, case-folded", () => {

@@ -33,13 +33,40 @@ import {
 
 const ROOT = process.cwd();
 
+/*
+ * The storage shim the store needs to load in node at all: zustand's `persist`
+ * writes through `localStorage` on every `setState`, which node lacks (the same
+ * shim `chat-sidebar-view.test.mjs` carries). It is also the instrument for the
+ * display-mode persistence case below - the store writes into it, and a fresh
+ * parse reads it the way a launch does.
+ */
+const memory = new Map();
+globalThis.localStorage = {
+	getItem: (key) => (memory.has(key) ? memory.get(key) : null),
+	setItem: (key, value) => void memory.set(key, String(value)),
+	removeItem: (key) => void memory.delete(key),
+	clear: () => memory.clear(),
+	key: (index) => [...memory.keys()][index] ?? null,
+	get length() {
+		return memory.size;
+	},
+};
+
 const bundle = await build({
 	stdin: {
 		contents: [
 			'export * from "./src/renderer/src/features/chat/canonical/turn-segments";',
+			'export * from "./src/renderer/src/features/chat/transcript-display-mode";',
 			'export { paintsSomething, isStatementRow, runsOf, closingAnswerIds, buildRows } from "./src/renderer/src/features/chat/canonical/transcript-rows";',
 			'export { collapsePlan, staysVisibleWhileCollapsed } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 			'export { applyHistoryPage, EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+			/*
+			 * The store joins the bundle for the DISPLAY-MODE PERSISTENCE case, for the
+			 * reason `chat-sidebar-view.test.mjs` gives: "this setting survives a
+			 * relaunch" is a claim about the store's own round trip, not about the
+			 * transcript's markup.
+			 */
+			'export { useUiPreferencesStore, persistedUiPreferences } from "./src/renderer/src/shared/store/ui-preferences-store";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -64,13 +91,16 @@ const {
 	isCompletionMarker,
 	isStatementRow,
 	labelOfSegment,
+	parseTranscriptDisplayMode,
 	partitionRun,
 	paintsSomething,
+	persistedUiPreferences,
 	reportsCompletedThought,
 	runsOf,
 	segmentIsCompleted,
 	staysVisibleWhileCollapsed,
 	triggerOf,
+	useUiPreferencesStore,
 	violationsOf,
 } = await import(moduleUrl);
 
@@ -1825,5 +1855,235 @@ test("case 2: two peer receipts between two stop answers bar on their own, and t
 		hidden.has("A4"),
 		false,
 		"the second answer anchors its own span",
+	);
+});
+
+/* ---------------- the display modes (#756): by-turn / by-response --------- */
+
+/*
+ * ISSUE #756. The transcript had exactly one mode: a settled turn collapses to
+ * the rows its visibility invariant requires, so a turn that answered, was
+ * continued past and answered again showed only the elected answer (the
+ * reporter's case: an answer, then a nine-item addendum as the final message,
+ * with only the addendum visible). `by-response` widens the visible set to every
+ * settled text-bearing row. These cases pin the three claims the widening must
+ * honour: it only ever ADDS, the elected answer does not move (#665's lesson),
+ * and `by-turn` is untouched.
+ */
+
+/** Partition a run in a named display mode, otherwise exactly `partition`. */
+const partitionIn = (spec, mode, from = 1) => {
+	const records = seq(spec);
+	const result = partitionRun(records, { ...OPTS, from, pinned: PINNED, mode });
+	return { records, result };
+};
+
+test("the display-mode parser answers the shipped default for every unknown token", () => {
+	assert.equal(parseTranscriptDisplayMode("by-response"), "by-response");
+	assert.equal(parseTranscriptDisplayMode("by-turn"), "by-turn");
+	/*
+	 * A token from a build that renamed one, a tampered blob, a missing key, a
+	 * number, an array: all the default. `unknown is absent` is the same rule the
+	 * completion marker follows for a missing `stopReason`.
+	 */
+	for (const unknown of [
+		"by-minute",
+		"",
+		null,
+		undefined,
+		3,
+		{},
+		["by-turn"],
+	]) {
+		assert.equal(parseTranscriptDisplayMode(unknown), "by-turn");
+	}
+});
+
+test("by-response shows every settled text-bearing row; by-turn hides the narration", () => {
+	const turn = "U N T N T A";
+	const condensed = partition(turn);
+	assert.deepEqual(visibleIds(condensed), ["A5"], "by-turn: the answer alone");
+	assert.deepEqual(hiddenIds(condensed), [["N1", "T2", "N3", "T4"]]);
+
+	const widened = partitionIn(turn, "by-response");
+	assert.deepEqual(
+		visibleIds(widened),
+		["N1", "N3", "A5"],
+		"by-response: both settled responses, in place",
+	);
+	assert.deepEqual(
+		hiddenIds(widened),
+		[["T2"], ["T4"]],
+		"the work between responses still condenses",
+	);
+	assert.equal(
+		answerId(widened),
+		answerId(condensed),
+		"the elected answer does not move when the set widens",
+	);
+	sound(widened);
+});
+
+test("by-response widens a commentary close the invariant need not keep, and elects no second answer", () => {
+	/*
+	 * `U T A M W N W T N`: A2 is the elected answer; the terminal marker M3 makes
+	 * every later cycle commentary, so N5 - neither the run's last close nor
+	 * `stop`-declared - is hidden in by-turn (the rare but real shape the module's
+	 * own doc names; `N` carries no `stopReason`, which is what keeps V4 from
+	 * rescuing it). Widening shows it in place without promoting it.
+	 */
+	const turn = "U T A M W N W T N";
+	const condensed = partition(turn);
+	assert.equal(
+		answerId(condensed),
+		"A2",
+		"the answer is the one before the marker",
+	);
+	assert.deepEqual(visibleIds(condensed), ["A2", "M3", "N8"]);
+	assert.deepEqual(hiddenIds(condensed), [["T1"], ["W4", "N5", "W6", "T7"]]);
+
+	const widened = partitionIn(turn, "by-response");
+	assert.equal(answerId(widened), "A2", "still exactly one elected answer");
+	assert.deepEqual(
+		visibleIds(widened),
+		["A2", "M3", "N5", "N8"],
+		"the hidden commentary close joins the visible set, in place",
+	);
+	assert.deepEqual(hiddenIds(widened), [["T1"], ["W4"], ["W6", "T7"]]);
+	sound(widened);
+});
+
+test("by-turn is the shipped partition, byte-for-byte, whether the field is named or absent", () => {
+	/*
+	 * THE LOAD-BEARING CLAIM OF THE CHANGE: the default mode is not "the same
+	 * behaviour, roughly", it is the same partition. Every shape the decision table
+	 * above pins is compared whole - cycles, answer, visible set, segments and their
+	 * keys - between a call that names `by-turn` and one that omits the field.
+	 */
+	const shapes = [
+		"U A",
+		"U T A",
+		"U N T N T A",
+		"U T A U T A",
+		"U T A T A T A",
+		"U T A M W T A",
+		"U T A M W N W T N",
+		"U A P P A",
+		`U ${repeat("T", 8)} A W T A K`,
+	];
+	for (const shape of shapes) {
+		assert.deepEqual(
+			partitionIn(shape, "by-turn").result,
+			partition(shape).result,
+			`${shape} must partition identically in the default mode`,
+		);
+	}
+});
+
+test("the bars state honest counts in both modes: every hidden call is inside exactly one bar", () => {
+	for (const turn of [
+		"U N T N T A",
+		"U T A M W N W T N",
+		`U ${repeat("T", 8)} A W T A`,
+	]) {
+		for (const mode of ["by-turn", "by-response"]) {
+			const [run] = planFor(turn, false, { mode });
+			let counted = 0;
+			for (const segment of run.segments) {
+				counted += segment.facts.actions;
+				const tools = segment.rows.filter(
+					(row) => row.record.kind === "tool",
+				).length;
+				assert.equal(
+					segment.facts.actions,
+					tools,
+					`${turn} (${mode}): a bar's count is the calls it hides`,
+				);
+			}
+			const hiddenTools = run.hidden.filter(
+				(row) => row.record.kind === "tool",
+			).length;
+			assert.equal(
+				counted,
+				hiddenTools,
+				`${turn} (${mode}): every hidden call is counted exactly once`,
+			);
+		}
+	}
+});
+
+test("by-response keeps the reporter's two-answer turn on screen, with the final answer elected", () => {
+	/*
+	 * THE REPORTER'S SHAPE at the plan level (the QA lane's own case): a substance
+	 * response, the run continued through more work, then a final response. Both
+	 * closes stay on screen in both modes (V1 keeps a response close); by-response
+	 * is what additionally keeps the NARRATION the turn wrote along the way, and the
+	 * run still elects ONE answer - the final response - which is what the caption
+	 * and the foot key on.
+	 */
+	const turn = "U N T A N T A";
+	const condensed = planFor(turn, false)[0];
+	assert.deepEqual(
+		condensed.hidden.map((row) => row.record.id),
+		["N1", "T2", "N4", "T5"],
+		"by-turn: the narration is inside the bars",
+	);
+	assert.equal(
+		condensed.answerId,
+		"A6",
+		"the final response is the elected answer",
+	);
+
+	const widened = planFor(turn, false, { mode: "by-response" })[0];
+	assert.deepEqual(
+		widened.hidden.map((row) => row.record.id),
+		["T2", "T5"],
+		"by-response: only the work is hidden",
+	);
+	assert.equal(widened.answerId, "A6", "the elected answer does not move");
+	const hidden = new Set(widened.hidden.map((row) => row.record.id));
+	for (const id of ["N1", "A3", "N4", "A6"]) {
+		assert.ok(widened.recordIds.includes(id), `${id} belongs to the run`);
+		assert.equal(hidden.has(id), false, `${id} stays on screen`);
+	}
+});
+
+test("the display mode survives a relaunch, and an unknown stored token comes back as the default", () => {
+	memory.clear();
+	const store = useUiPreferencesStore;
+	store.getState().setTranscriptDisplayMode("by-response");
+	/*
+	 * The store is the writer and the filter the middleware keeps is the one it
+	 * ships: assert the field is IN the persisted blob rather than assuming it.
+	 */
+	assert.equal(
+		persistedUiPreferences(store.getState()).transcriptDisplayMode,
+		"by-response",
+	);
+	const key = [...memory.keys()].find((entry) => {
+		try {
+			return (
+				JSON.parse(memory.get(entry)).state?.transcriptDisplayMode !== undefined
+			);
+		} catch {
+			return false;
+		}
+	});
+	assert.ok(key, "the store wrote a key carrying the display mode");
+	// The bytes on disk, read the way the next launch reads them.
+	assert.equal(
+		parseTranscriptDisplayMode(
+			JSON.parse(memory.get(key)).state.transcriptDisplayMode,
+		),
+		"by-response",
+		"the chosen mode came back",
+	);
+	store.getState().setTranscriptDisplayMode("by-turn");
+	assert.equal(
+		parseTranscriptDisplayMode(
+			JSON.parse(memory.get(key)).state.transcriptDisplayMode,
+		),
+		"by-turn",
+		"and the other mode came back",
 	);
 });

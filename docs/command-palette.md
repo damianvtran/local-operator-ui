@@ -30,6 +30,15 @@ is open the scope names itself beside the field — a `# Chats` chip built from 
 same legend table the footer draws, shown whenever a scope is applied — because
 a bare glyph stops explaining itself once the reader is inside a scope.
 
+**On an empty query the switcher pins what needs reading** (issue #760): an
+**Unread** section above the browse list, sourced from the same predicate behind
+the sidebar's own mark (`unreadMarkKind`, decided at the source in
+`use-palette-sources.ts` — one fact, one derivation). It draws before the tiers
+and they subtract what it took, from the same 48-row budget, so `clipped` stays
+a statement about the list rather than a section sitting outside the caps. A
+typed query drops the pin; it is the switcher's alone, and widening it to the
+un-scoped `Cmd/Ctrl+K` browse is the open design question on the issue.
+
 The **rail row** is the third door, and it exists because the chord is invisible:
 a user who never learns `Cmd+K` would use the palette once, if at all. The row is
 the only control the rail carries besides the account row, it is on screen on
@@ -117,6 +126,20 @@ prefix, which is the convention most users have met.
 The scope legend is rendered in the palette's footer for a browse — a query that
 names no terms, its list empty or full — and for a typed search that found
 nothing: the states where a hint is worth its pixels.
+
+The footer draws ONE legend at a time, and the split is deliberate (design round
+1, D2, with its widths re-derived over this copy in design round 2's D7):
+measured from the committed frames (grayscale ink runs at luma >= 110, css =
+device px / 2, inclusive runs), the scope legend inks 365.5px and leaves
+158.5px free before `esc to close` in a footer with ~585px of usable width,
+while the movement legend's ink — `↑ ↓ Ctrl N to move` — measures 152.5px (it
+was 215px while the dead `Ctrl P` half was still drawn). Both do not fit: the
+152.5px of ink against the 158.5px of free space is a single-digit margin
+before any separation gap, and the legend's own interior spacing (14px measured
+between `Ctrl N` and `to move`, 22.5px between `to move` and `↵`) pushes it
+over — so a scope entry would have to go. The empty state therefore omits the
+walk and the typed state omits the scope prefixes; re-arranging that budget is
+a footer-layout decision, not a copy edit.
 
 ## What it searches
 
@@ -216,6 +239,23 @@ a network round trip:
 - `Up`/`Down` walk the list; `Enter` runs the active row; `Esc` closes.
   `Home`/`End` are **not** intercepted — they move the caret, because a user who
   cannot fix a typo without leaving the list has lost the surface's whole premise.
+- Since issue #761 `Ctrl+N` / `Ctrl+P` walk the list too — the Emacs pair the
+  arrows' guard leaves free. Of the pair, only `Ctrl+N` is REACHED in the
+  packaged app, and only `Ctrl+N` is advertised: `paletteReachableStepCaps` is
+  what the footer draws, while `paletteStepCaps` stays the bound set. `Ctrl+P`
+  is bound here too and steps wherever it arrives, but while the window is
+  focused and visible the press never arrives — main's `before-input-event`
+  owns `Cmd/Ctrl+P` outright (the table above, row `Cmd/Ctrl+P`) and answers it
+  with the switcher seed, so from a typed search it would drop the query rather
+  than move the selection. The asymmetry is pinned in
+  `scripts/palette-shortcut.test.mjs` and `scripts/palette-contract.test.mjs`;
+  design round 1's D1 is exactly the dead half being un-taught.
+  `Shift`/`Alt` are refused as they are for the
+  arrows, and `Cmd` is refused deliberately: `Cmd+N` is the app's New chat chord
+  and `Cmd+P` the switcher's, so accepting either here would silently re-bind a
+  press the app already means something by. The app's own New chat press already
+  stands down for a press inside the open dialog (`pressLandsOnOverlay` in
+  `new-chat-shortcut.ts`), so the two bindings cannot both answer one press.
 - Closing restores focus to whatever had it before the palette opened, falling
   back to the rail's Search row. This is explicit rather than inherited: a Radix
   modal ends by focusing its trigger, this surface has none, and before this the

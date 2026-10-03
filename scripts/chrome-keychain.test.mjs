@@ -284,6 +284,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the composer's credential chip against the marker run it covers - the run box, the chip box and the four deltas, at both rungs and scrolled - from the live DOM",
 	),
 	guarded(
+		"scripts/ask-options-geometry.mjs",
+		"spawn",
+		1,
+		"measures the ask dock's option rows against their wrapped descriptions - each row's box against its label column, the ordinal's line box, and row-to-row overprint - from the live DOM (the #762 pin)",
+	),
+	guarded(
 		"scripts/backend-settings-geometry.mjs",
 		"spawn",
 		2,

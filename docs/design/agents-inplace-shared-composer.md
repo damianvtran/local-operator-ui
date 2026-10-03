@@ -523,8 +523,15 @@ it would not, and § 3.3 settles both.
 
    **The box's text — the fourth write, and M5's decision: (a), keep
    `conversationId`.** The composer owns the box's text, so the run's text and its
-   attachments live in `useConversationInputStore` **keyed by the run id**, and that
-   is deliberate rather than an oversight. What this bends is named: the second of
+   attachments live in `useConversationInputStore` **keyed by the box's own
+   constant** — a client-minted `agents-config`, ONE CONSTANT for the app's whole
+   life rather than a uuid per launch (UX exploration, U2 and its review: the draft
+   lives under this key in the composer's persisted store, so a key that died with
+   the mount took the draft with it; and `useConversationInputStore` sweeps no
+   rows, so a uuid per launch would orphan a row per launch and still lose an
+   unsent draft at relaunch, while chat's drafts survived — a constant makes
+   relaunch behave like leaving and returning, and it cannot collide with a
+   conversation id) — and that is deliberate rather than an oversight. What this bends is named: the second of
    the three mechanisms in `use-config-run.ts:12-16` reads "nothing about it reaches
    the canonical session store, **the draft store** or the chat route" — mechanism 2
    is amended to **"the canonical session store or the chat route"**, because the
@@ -688,7 +695,7 @@ also keeps the chat unaffected if step 3 slips.
   `admitChatDraft`). Watch, after a send from the new box: the run id is absent from
   `lop sessions`, from the sidebar, from search and from the chat route, and no
   canonical session row exists for it. **One row the test must EXPECT rather than
-  forbid:** `inputByConversation[<run id>]` in the persisted
+  forbid:** `inputByConversation[agents-config]` in the persisted
   `conversation-input-store` (the box's text, § 3.3.1's (a)) — its presence is the
   designed bend, its *visibility anywhere* is not.
 - **The strip's reads returning nothing** for a no-draft session, leaving a strip

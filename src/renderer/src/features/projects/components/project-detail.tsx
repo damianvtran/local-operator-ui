@@ -2,13 +2,17 @@
  * One project's detail screen (`/projects/:projectId`).
  *
  * WHAT IT OWNS: the reads/writes for one project (via the hooks module), the
- * edit / delete / start-session dialogs, and the wiring of every block to its
- * ops. What it deliberately does NOT own: any label or derivation — those live
- * in `project-model.ts` — and any of the confirmation copy, which lives in the
- * dialog that owns the destructive act.
+ * delete / start-session dialogs, and the wiring of every block to its ops.
+ * Since the inline-edit slice (operator, 2026-09-30) the RECORD'S FIELDS are
+ * edited in place by `project-editors.tsx` — the edit dialog and its Edit
+ * button retired — and this file's remaining job is the one write door they
+ * share (`commitFields`), the pane wrapper that carries the shared save
+ * announcement, and the section composition.
  *
  * THE REFUSALS ARE TOASTS for the row-level acts (milestone toggle, link,
- * unlink, quick-send) and IN-DIALOG for edit/delete/start — the distinction
+ * unlink, quick-send) and IN-FIELD for a refused field save (the inline
+ * editor holds the attempted value and this screen's editors show the
+ * backend's sentence beside it) — the distinction
  * `delete-conversation-dialog.tsx` states: a refusal that arrives while a
  * dialog is up belongs to that dialog, and one that arrives from a row control
  * has no dialog to inhabit, so the toast is the honest surface.
@@ -47,6 +51,7 @@ import {
 } from "@shared/api/local-operator/desktop-hooks";
 import { useTeamLabelFor } from "@shared/api/local-operator/profile-hooks";
 import { Spinner } from "@shared/components/common/spinner";
+import { InlineEditPane } from "@shared/components/inline-edit";
 import { Alert, Badge, Button } from "@shared/components/ui";
 import {
 	admitChatDraft,
@@ -55,7 +60,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { showErrorToast, showSuccessToast } from "@shared/utils/toast-manager";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -72,7 +77,6 @@ import {
 import { ProjectMarkdown } from "../project-markdown";
 import {
 	PROGRESS_STALE_LABEL,
-	managedByLine,
 	milestoneSummaryLabel,
 	progressLine,
 	projectDisplayName,
@@ -81,7 +85,12 @@ import {
 	startSessionPrompt,
 } from "../project-model";
 import { ProjectDeleteDialog } from "./project-delete-dialog";
-import { ProjectFormDialog } from "./project-form-dialog";
+import {
+	type CommitProjectFields,
+	ProjectDescriptionBlock,
+	ProjectHeaderIdentity,
+	ProjectStatusField,
+} from "./project-editors";
 import { ProjectLinks } from "./project-links";
 import { ProjectMilestones } from "./project-milestones";
 import { ProjectProperties } from "./project-properties";
@@ -90,7 +99,6 @@ import {
 	ProjectStartSessionDialog,
 	type StartSessionSelection,
 } from "./project-start-session";
-import { ProjectStatusBadge } from "./project-status-badge";
 import { ProjectTodos } from "./project-todos";
 import { ProjectUpdates } from "./project-updates";
 
@@ -130,7 +138,6 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	const removeMilestone = useRemoveProjectMilestone();
 	const link = useLinkProjectSession();
 	const unlink = useUnlinkProjectSession();
-	const [editing, setEditing] = useState(false);
 	const [deleting, setDeleting] = useState(false);
 	const [starting, setStarting] = useState(false);
 
@@ -200,10 +207,27 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 
 	const { project, links } = detail.data;
 	const displayName = projectDisplayName(project);
-	const managedBy = managedByLine(
-		project.owner,
-		project.team ? teamLabelFor(project.team) : project.team,
-	);
+	/*
+	 * THE ONE WRITE DOOR for every field editor on this screen: the record's
+	 * own key and the caller's fields object, straight into
+	 * `useUpdateProject` - which is what makes a field's save a partial PATCH
+	 * by construction rather than by discipline. A plain function, not a
+	 * `useCallback`: it is created after the early returns, and a hook cannot
+	 * live there; nothing downstream memoises on its identity.
+	 */
+	const commitFields: CommitProjectFields = (fields) =>
+		update.mutateAsync({ key: project.id, fields }).then(() => undefined);
+	/*
+	 * THE TEAM'S HUMAN NAME (the team-labels lane, `69d088ec52`, carried through
+	 * this slice's restructure): the Properties Team row DISPLAYS the
+	 * catalogue's label - resolved through the same `useTeamLabelFor` hook and
+	 * feature gate every other human-read surface uses, so this page cannot
+	 * name a team differently from the start-session picker on top of it - while
+	 * the field still EDITS the raw slug the wire stores. The header's
+	 * `Managed by` line, this resolution's original site, retired with the
+	 * inline-edit slice; the row below is where it moved.
+	 */
+	const teamLabel = project.team ? teamLabelFor(project.team) : null;
 	const milestoneSummary = milestoneSummaryLabel(
 		project.milestones.filter((item) => item.completed_at !== null).length,
 		project.milestones.length,
@@ -298,239 +322,195 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 		 * screen), so the column here is only a centred measurement - and it is
 		 * the page that reserves the gutter, which is why nothing in this file
 		 * names the scrollbar.
+		 *
+		 * THE PANE WRAPPER IS THE ARIA BOUNDARY of the inline editing on this
+		 * screen: one live region for its transient save acknowledgements, no
+		 * matter how many fields save while a reader works (note § 2.6; see
+		 * `@shared/components/inline-edit`).
 		 */
-		<div className="mx-auto flex w-full max-w-200 flex-col gap-8">
-			<header className="flex flex-col gap-4">
-				<button
-					type="button"
-					onClick={() => void navigate("/projects")}
-					className="flex w-fit items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink"
-				>
-					<ArrowLeft className="size-4" />
-					All projects
-				</button>
+		<InlineEditPane>
+			<div className="mx-auto flex w-full max-w-200 flex-col gap-8">
+				<header className="flex flex-col gap-4">
+					<button
+						type="button"
+						onClick={() => void navigate("/projects")}
+						className="flex w-fit items-center gap-1.5 text-body-sm text-ink-muted hover:text-ink"
+					>
+						<ArrowLeft className="size-4" />
+						All projects
+					</button>
 
-				<div className="flex flex-wrap items-start justify-between gap-4">
-					<div className="flex min-w-0 flex-col gap-1.5">
-						<div className="flex flex-wrap items-center gap-2">
+					<div className="flex flex-wrap items-start justify-between gap-4">
+						<div className="flex min-w-0 flex-1 flex-wrap items-start gap-x-3 gap-y-2">
 							{/*
-							 * THE TITLE WRAPS; IT IS NEVER CLIPPED (operator, 2026-09-30 - a long
-							 * title arrived ellipsised). It used to be `truncate`, a
-							 * single-line `text-overflow: ellipsis` clip; the header's job is
-							 * to show the whole title the user gave the project, so it wraps
-							 * at word boundaries (`break-words` keeps an unbroken run from
-							 * overflowing) and the badges beside it flow as the row wraps.
+							 * THE IDENTITY BLOCK: the h1 and, under it, whichever of the
+							 * title/key pair is not the heading (`project-editors.tsx` owns
+							 * the full rule). It wraps and never clips, the operator's own
+							 * 2026-09-30 requirement for a long title; the chips beside it
+							 * flow as the row wraps.
 							 */}
-							<h1
-								/* The rig's handle on the header, in the same family as the board
-								   card's title line: `data-project-title` keyed by the project's key,
-								   so a capture claim can name THIS heading rather than the first
-								   `h1` in a document that has several (sheet, shell and the
-								   storybook placeholder). */
-								data-project-title={project.name}
-								className="min-w-0 break-words text-display text-ink"
-							>
-								{displayName}
-							</h1>
-							<ProjectStatusBadge status={project.status} />
-							{project.progress_stale && (
-								<Badge variant="warning">{PROGRESS_STALE_LABEL}</Badge>
-							)}
+							<ProjectHeaderIdentity project={project} commit={commitFields} />
+							<div className="flex flex-wrap items-center gap-2 pt-1.5">
+								<ProjectStatusField project={project} commit={commitFields} />
+								{project.progress_stale && (
+									<Badge variant="warning">{PROGRESS_STALE_LABEL}</Badge>
+								)}
+							</div>
 						</div>
-						{project.title && (
-							<p className="font-mono text-mono-sm text-ink-muted">
-								{project.name}
-							</p>
-						)}
-						{managedBy && (
-							<p className="text-body-sm text-ink-muted">
-								Managed by {managedBy}
-							</p>
-						)}
+						<div className="flex shrink-0 items-center gap-2">
+							{/*
+							 * THE ACTIONS CLUSTER, left to right: the sibling lane's
+							 * "Request update" secondary button (landed; its component owns
+							 * the capability gate and the request states), then Delete.
+							 * Edit retired with the inline edits - every field edits in
+							 * place now. The column is NON-WRAPPING and shrink-0 (design
+							 * round 1, D1's own words): the status cluster beside the title
+							 * can widen while it edits or while a refusal shows, and the
+							 * LEFT column (flex-1) absorbs that instead of these two
+							 * buttons wrapping to a second line and dragging the header's
+							 * whole geometry with them.
+							 */}
+							<ProjectRequestUpdateButton project={project} />
+							<Button
+								variant="secondary"
+								onClick={() => setDeleting(true)}
+								data-tour-tag="project-delete"
+							>
+								<Trash2 />
+								Delete
+							</Button>
+						</div>
 					</div>
-					<div className="flex items-center gap-2">
-						{/*
-						 * LEADS the cluster: the action is outward-facing and
-						 * non-destructive, so Delete stays rightmost and Edit/Delete keep
-						 * their own tags and positions (design note §2). Absent capability
-						 * means this renders nothing at all - the component owns that
-						 * gate.
-						 */}
-						<ProjectRequestUpdateButton project={project} />
-						<Button
-							variant="secondary"
-							onClick={() => setEditing(true)}
-							data-tour-tag="project-edit"
-						>
-							<Pencil />
-							Edit
-						</Button>
-						<Button
-							variant="secondary"
-							onClick={() => setDeleting(true)}
-							data-tour-tag="project-delete"
-						>
-							<Trash2 />
-							Delete
-						</Button>
-					</div>
-				</div>
-			</header>
+				</header>
 
-			{project.description.trim() && (
-				<ProjectMarkdown className="text-body">
-					{project.description}
-				</ProjectMarkdown>
-			)}
+				<ProjectDescriptionBlock project={project} commit={commitFields} />
 
-			<ProjectProperties project={project} nowMs={nowMs} />
+				<ProjectProperties
+					project={project}
+					nowMs={nowMs}
+					commit={commitFields}
+					teamLabel={teamLabel}
+				/>
 
-			{/*
-			 * THE PRE-LOG PROGRESS, and only when there is a reading to show: an
-			 * empty one would land beside the feed's own empty state and say
-			 * "nothing yet" twice (design round 1, D3) - the feed's line is the more
-			 * informative of the two, so it is the one that stays.
-			 */}
-			{project.updates.length === 0 && project.progress && (
-				<section className="flex flex-col gap-2">
-					<h2 className="text-title text-ink">Progress</h2>
-					<ProjectMarkdown className="text-body">
-						{project.progress}
-					</ProjectMarkdown>
-					<p className="text-meta text-ink-muted">
-						{progressLine(project, nowMs)}
-					</p>
-				</section>
-			)}
-
-			<ProjectMilestones
-				milestones={project.milestones}
-				summary={milestoneSummary}
-				busy={busy}
-				onToggle={(name, completedFlag) => {
-					void setMilestone
-						.mutateAsync({ key: project.id, name, completed: completedFlag })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The milestone was not updated.",
-							);
-						});
-				}}
-				onRemove={(name) => {
-					void removeMilestone
-						.mutateAsync({ key: project.id, name })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The milestone was not removed.",
-							);
-						});
-				}}
-				onAdd={(name, targetDate) => {
-					void setMilestone
-						.mutateAsync({ key: project.id, name, targetDate })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The milestone was not added.",
-							);
-						});
-				}}
-			/>
-
-			<ProjectLinks
-				projectKey={project.id}
-				links={links}
-				busy={busy}
-				onStartSession={() => setStarting(true)}
-				onQuickSend={quickSend}
-				onLink={(sessionId) => {
-					void link
-						.mutateAsync({ key: project.id, sessionId })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The session was not linked.",
-							);
-						});
-				}}
-				onUnlink={(sessionId) => {
-					void unlink
-						.mutateAsync({ key: project.id, sessionId })
-						.catch((error: unknown) => {
-							showErrorToast(
-								error instanceof Error && error.message
-									? error.message
-									: "The session was not unlinked.",
-							);
-						});
-				}}
-			/>
-
-			<ProjectTodos links={links} />
-
-			<ProjectUpdates updates={project.updates} nowMs={nowMs} />
-
-			<ProjectFormDialog
-				open={editing}
-				mode="edit"
-				initial={{
-					key: project.id,
-					name: project.name,
-					title: project.title,
-					owner: project.owner,
-					team: project.team,
-					description: project.description,
-					status: project.status,
-					tags: project.tags,
-					start_date: project.start_date,
-					target_date: project.target_date,
-					estimate: project.estimate,
-					estimate_unit: project.estimate_unit,
-				}}
-				onClose={() => setEditing(false)}
-				onSubmit={async (payload) => {
-					if (payload.mode !== "edit") return;
-					await update.mutateAsync({
-						key: payload.key,
-						fields: payload.fields,
-					});
-					showSuccessToast("Project saved");
-				}}
-			/>
-
-			<ProjectDeleteDialog
-				open={deleting}
-				projectName={project.name}
-				onClose={() => setDeleting(false)}
-				onConfirm={async (typedName) => {
-					await remove.mutateAsync({
-						key: project.id,
-						confirmedName: typedName,
-					});
-					showSuccessToast("Project deleted");
-					void navigate("/projects");
-				}}
-			/>
-
-			<ProjectStartSessionDialog
-				open={starting}
-				onClose={() => setStarting(false)}
-				onStart={startSession}
-				teamsEnabled={desktopFeatureEnabled(
-					capabilities.data,
-					"team_catalogue",
+				{/*
+				 * THE PRE-LOG PROGRESS, and only when there is a reading to show: an
+				 * empty one would land beside the feed's own empty state and say
+				 * "nothing yet" twice (design round 1, D3) - the feed's line is the more
+				 * informative of the two, so it is the one that stays.
+				 */}
+				{project.updates.length === 0 && project.progress && (
+					<section className="flex flex-col gap-2">
+						<h2 className="text-title text-ink">Progress</h2>
+						<ProjectMarkdown className="text-body">
+							{project.progress}
+						</ProjectMarkdown>
+						<p className="text-meta text-ink-muted">
+							{progressLine(project, nowMs)}
+						</p>
+					</section>
 				)}
-				profilesEnabled={desktopFeatureEnabled(
-					capabilities.data,
-					"profile_catalogue",
-				)}
-			/>
-		</div>
+
+				<ProjectMilestones
+					milestones={project.milestones}
+					summary={milestoneSummary}
+					busy={busy}
+					onToggle={(name, completedFlag) => {
+						void setMilestone
+							.mutateAsync({ key: project.id, name, completed: completedFlag })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The milestone was not updated.",
+								);
+							});
+					}}
+					onRemove={(name) => {
+						void removeMilestone
+							.mutateAsync({ key: project.id, name })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The milestone was not removed.",
+								);
+							});
+					}}
+					onAdd={(name, targetDate) => {
+						void setMilestone
+							.mutateAsync({ key: project.id, name, targetDate })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The milestone was not added.",
+								);
+							});
+					}}
+				/>
+
+				<ProjectLinks
+					projectKey={project.id}
+					links={links}
+					busy={busy}
+					onStartSession={() => setStarting(true)}
+					onQuickSend={quickSend}
+					onLink={(sessionId) => {
+						void link
+							.mutateAsync({ key: project.id, sessionId })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The session was not linked.",
+								);
+							});
+					}}
+					onUnlink={(sessionId) => {
+						void unlink
+							.mutateAsync({ key: project.id, sessionId })
+							.catch((error: unknown) => {
+								showErrorToast(
+									error instanceof Error && error.message
+										? error.message
+										: "The session was not unlinked.",
+								);
+							});
+					}}
+				/>
+
+				<ProjectTodos links={links} />
+
+				<ProjectUpdates updates={project.updates} nowMs={nowMs} />
+
+				<ProjectDeleteDialog
+					open={deleting}
+					projectName={project.name}
+					onClose={() => setDeleting(false)}
+					onConfirm={async (typedName) => {
+						await remove.mutateAsync({
+							key: project.id,
+							confirmedName: typedName,
+						});
+						showSuccessToast("Project deleted");
+						void navigate("/projects");
+					}}
+				/>
+
+				<ProjectStartSessionDialog
+					open={starting}
+					onClose={() => setStarting(false)}
+					onStart={startSession}
+					teamsEnabled={desktopFeatureEnabled(
+						capabilities.data,
+						"team_catalogue",
+					)}
+					profilesEnabled={desktopFeatureEnabled(
+						capabilities.data,
+						"profile_catalogue",
+					)}
+				/>
+			</div>
+		</InlineEditPane>
 	);
 };

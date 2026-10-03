@@ -917,6 +917,19 @@ const api = {
 			rows?: number;
 		}): Promise<unknown> =>
 			ipcRenderer.invoke("console-create-surface", request),
+		/** Close or dismiss one surface (design 6.7, 7.3): `kill: true` signals a
+		 * running surface's process — the pane asks first — and `retain: false`
+		 * removes its history so a relaunch cannot restore it. An ended surface is
+		 * closed with `retain: false` only: there is no process left to signal, and
+		 * "dismissed" means gone from the retained registry rather than hidden.
+		 *
+		 * Both flags are the CALLER's, because the meaning depends on the state the
+		 * pane is looking at (see the handler in `src/main/console/ipc.ts`). */
+		closeSurface: (
+			surface: string,
+			options?: { kill?: boolean; retain?: boolean },
+		): Promise<unknown> =>
+			ipcRenderer.invoke("console-close-surface", surface, options ?? {}),
 		/** A pane is now showing this surface. Never resizes it. */
 		openPane: (surface: string): Promise<unknown> =>
 			ipcRenderer.invoke("console-open-pane", surface),

@@ -27,6 +27,9 @@
  */
 
 import { interruptTurn } from "@features/chat/interrupt-turn";
+import { encodeImageAttachments } from "@features/chat/utils/attachment-encode";
+import { unreadableAttachmentRefusal } from "@features/chat/utils/attachment-read";
+import type { WireImage } from "@features/chat/utils/bound-image";
 import {
 	DesktopControlError,
 	desktopResult,
@@ -42,7 +45,10 @@ import {
 	type ReusableTeam,
 	invalidateAuthoring,
 } from "@shared/api/local-operator/profile-hooks";
-import { useCanonicalSessionStream } from "@shared/hooks/use-canonical-session";
+import {
+	type CanonicalSessionHandle,
+	useCanonicalSessionStream,
+} from "@shared/hooks/use-canonical-session";
 import { useDesktopWatchLease } from "@shared/hooks/use-desktop-watch-lease";
 import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQueryClient } from "@tanstack/react-query";
@@ -186,8 +192,6 @@ export type ConfigRunHandle = {
 	sessionId: string | null;
 	topic: string;
 	error: string | null;
-	draft: string;
-	setDraft: (draft: string) => void;
 	about: RunTarget | null;
 	setAbout: (about: RunTarget | null) => void;
 	touched: RunTarget[];
@@ -213,7 +217,21 @@ export type ConfigRunHandle = {
 	 * evidence is the reason the interrupt call gave.
 	 */
 	stopError: string | null;
-	start: (text: string, about: RunTarget | null) => Promise<void>;
+	/**
+	 * The run's own canonical snapshot, for the composer's readings (§3.3.3(b)).
+	 *
+	 * THE PICKERS STAY OFF because no `onCommand` is passed with it: each reading
+	 * renders as a label carrying the shipped `COMMANDS_OFF` sentence, which is the
+	 * honest state for a run whose model and effort the backend resolves. This is a
+	 * new USE of an existing strip mode, not a new prop (Q6b).
+	 */
+	frontend: CanonicalSessionHandle["frontend"];
+	start: (
+		text: string,
+		about: RunTarget | null,
+		/** The composer's attachment paths, carried to the wire (§3.3.4). */
+		attachments?: string[],
+	) => Promise<boolean>;
 	stop: () => Promise<void>;
 	/** Re-send a request whose message call failed, on the run it already made. */
 	retry: () => Promise<void>;
@@ -488,8 +506,31 @@ export function useConfigRun(): ConfigRunHandle {
 		};
 	}, [live, store.sessionId, settleRun]);
 
-	const start = async (text: string, about: RunTarget | null) => {
-		if (starting || !text.trim()) return;
+	/**
+	 * Send one request into the run's own session.
+	 *
+	 * RETURNS WHAT THE COMPOSER NEEDS TO KNOW (`SendOutcome`): `false` means the
+	 * request did not reach the run and the BOX MUST KEEP IT — the attacker's text
+	 * and its attachment chips are the operator's until a send the backend took
+	 * returns `true` (design note §3.3.1, the seam `use-message-input.ts:182-196`
+	 * already answers; M2's "the draft is spent only by an accepted send" survives
+	 * here rather than in a run-store call of its own: the text is the composer's,
+	 * in `useConversationInputStore`, and this hook only reports whether the send
+	 * landed).
+	 *
+	 * `attachments` ARE CARRIED END-TO-END (M2, §3.3.4): the composer hands over the
+	 * same path/data-URL list the chat's send receives, they are encoded by the
+	 * chat's own encoder, and the encoded images ride `sessions.message`. The one
+	 * state the note forbids is the middle one — a control that collects a payload
+	 * the send then drops — so a send whose images cannot be read is REFUSED before
+	 * the session is created rather than sent without them.
+	 */
+	const start = async (
+		text: string,
+		about: RunTarget | null,
+		attachments: string[] = [],
+	): Promise<boolean> => {
+		if (starting || !text.trim()) return false;
 		setStarting(true);
 		setAttached(false);
 		settleLatch.current = false;
@@ -505,6 +546,28 @@ export function useConfigRun(): ConfigRunHandle {
 		const body = about
 			? `About the ${about.kind} “${about.name}”: ${text.trim()}`
 			: text.trim();
+		/*
+		 * THE ENCODE COMES FIRST, BEFORE ANY SESSION EXISTS. A refusal here must not
+		 * leave a run behind: the file is not in the message the operator thinks they
+		 * are sending, and their remedy is to fix the chips — which are still in the
+		 * box, because this path returns `false` below.
+		 */
+		const { images, unreadable } = await encodeImageAttachments(
+			attachments,
+			body,
+		);
+		const attachmentRefusal = unreadableAttachmentRefusal(unreadable);
+		if (attachmentRefusal) {
+			/*
+			 * `fail`, NOT `failUnsent`, and the difference is the remit: `failUnsent`
+			 * renders a Retry, and a retry re-sends the SAME bytes — the one answer
+			 * this refusal's sentence ("replace or remove it") rules out. The strip
+			 * states the refusal; the box still holds the chips, which is where the
+			 * remedy lives.
+			 */
+			useConfigRunStore.getState().fail(attachmentRefusal);
+			return false;
+		}
 		try {
 			let sessionId: string;
 			try {
@@ -536,26 +599,26 @@ export function useConfigRun(): ConfigRunHandle {
 					 * text has to still be there (review round 1, M2 / QA Q5 — the code even
 					 * said "KEEP the text" while clearing it).
 					 */
-					store.adopt(active, text.trim(), before);
-					return;
+					store.adopt(active, text.trim(), before, images);
+					return false;
 				}
 				throw caught;
 			}
-			store.adopt(sessionId, body, before);
+			store.adopt(sessionId, body, before, images);
 			/*
 			 * The prompt is a SECOND call on the same session, exactly as the design's
 			 * mechanism table states: create, then message. `startedAt` is the accepted
 			 * create, so the elapsed clock starts where the work does.
 			 */
-			await sendMessage(sessionId, body);
+			await sendMessage(sessionId, body, images);
 			/*
-			 * THE DRAFT IS SPENT ONLY NOW — by a send the backend actually took. It
-			 * used to be cleared by `adopt`, before the message call, so every
-			 * failure below it left a sentence promising text that was gone, and the
-			 * single-flight attach path emptied the very box it said still held the
-			 * request (review round 1, M2).
+			 * NOTHING IS CLEARED HERE, and that is the M2 rule rather than an
+			 * omission: the box's text is spent by the composer's own store when the
+			 * send it made is accepted (review round 1, M2). The run store's `draft`
+			 * copy this used to empty was rendered by nothing, so it was removed in QA
+			 * round 2 (Q1).
 			 */
-			store.acceptDraft();
+			return true;
 		} catch (caught) {
 			const sessionId = useConfigRunStore.getState().sessionId;
 			/*
@@ -574,6 +637,12 @@ export function useConfigRun(): ConfigRunHandle {
 							: "The configuration run could not be started. Your request is still here.",
 					),
 				);
+			/*
+			 * STILL THE OPERATOR'S TEXT. The create may have landed and the prompt may
+			 * not, so the box keeps everything it sent — the composer restores a box it
+			 * has not emptied (the seam's own "put the text back" answer).
+			 */
+			return false;
 		} finally {
 			setStarting(false);
 		}
@@ -587,12 +656,24 @@ export function useConfigRun(): ConfigRunHandle {
 	 * the body byte-for-byte or answers 409 (`Prompt`, `desktop_sessions.py`), and
 	 * a copy of the call that drifted by a character would be a different request.
 	 */
-	const sendMessage = async (sessionId: string, text: string) => {
+	const sendMessage = async (
+		sessionId: string,
+		text: string,
+		images: WireImage[] = [],
+	) => {
 		await desktopResult<{ ok?: boolean }>({
 			op: "sessions.message",
 			sessionId,
 			requestId: crypto.randomUUID(),
 			text,
+			/*
+			 * `images` ONLY WHEN THERE ARE ANY. The wire's `Prompt` bounds it at eight
+			 * and the encoder has already applied that bound; an empty list is left off
+			 * rather than sent, so a text-only request is byte-identical to the request
+			 * this page made before attachments existed (the retry rule: the same body,
+			 * or a 409).
+			 */
+			...(images.length > 0 ? { images } : {}),
 		});
 	};
 
@@ -615,8 +696,7 @@ export function useConfigRun(): ConfigRunHandle {
 		if (starting || !state.unsent || !state.sessionId || !state.topic) return;
 		setStarting(true);
 		try {
-			await sendMessage(state.sessionId, state.topic);
-			store.acceptDraft();
+			await sendMessage(state.sessionId, state.topic, state.images);
 			/*
 			 * Back to live. `adopt` is the one door that sets `running`, and the run id
 			 * and topic it needs are the ones already in hand — so the retry re-arms
@@ -677,11 +757,10 @@ export function useConfigRun(): ConfigRunHandle {
 		disabledReason,
 		status: store.status,
 		sessionId: store.sessionId,
+		frontend: stream.frontend,
 		topic: store.topic,
 		error: store.error,
 		stopError: store.stopError,
-		draft: store.draft,
-		setDraft: store.setDraft,
 		about: store.about,
 		setAbout: store.setAbout,
 		touched: store.touched,

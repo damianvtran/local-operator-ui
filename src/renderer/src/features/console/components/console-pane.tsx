@@ -4,16 +4,18 @@ import {
 	isConsoleUnseen,
 	useUiPreferencesStore,
 } from "@shared/store/ui-preferences-store";
-import { Bot, Lock, LockOpen, PanelRightClose, Plus } from "lucide-react";
-import { type FC, useEffect, useMemo, useState } from "react";
+import { Bot, Lock, LockOpen, PanelRightClose, Plus, X } from "lucide-react";
+import { type FC, useEffect, useMemo, useRef, useState } from "react";
 import { useConsoleBlipPulse } from "../hooks/use-console-attention";
 import { useConsoleSession } from "../hooks/use-console-session";
 import {
+	type ConsoleSurface,
 	consoleOpenAction,
 	pickActiveSurface,
 	surfaceTitle,
 	surfacesForSession,
 } from "../model/console-surfaces";
+import { ConsoleCloseDialog } from "./console-close-dialog";
 import { ConsoleMirror } from "./console-mirror";
 import {
 	ConsoleCreateFailed,
@@ -24,6 +26,21 @@ import {
 	ConsoleSecureBar,
 	ConsoleUnavailable,
 } from "./console-states";
+
+/**
+ * The row's close control, revealed while its row is INACTIVE.
+ *
+ * THE BROWSER STRIP'S OWN RULE, taken verbatim (`browser-tab-strip.tsx`'s
+ * `REVEAL_ON_HOVER_OR_FOCUS`): the active row's control is always visible, and an
+ * inactive row's is revealed by hover OR by focus-within - never by `display`, so
+ * the reveal cannot move the layout, and never by opacity alone, because a
+ * focusable-but-clickable control under the pointer is how a press meant for the
+ * row lands on the close. `pointer-events-none` while hidden is the second half
+ * of that: the row's own hover is what reveals the control, so the control does
+ * not have to be hoverable to be found.
+ */
+const REVEAL_ON_HOVER_OR_FOCUS =
+	"pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100";
 
 /**
  * The console: the FOURTH occupant of the conversation's right slot.
@@ -131,6 +148,205 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 	   offered where none can be created is the pane's own "a control with nothing to
 	   act on lies". */
 	const available = session.snapshot.available;
+	/**
+	 * The surface whose Close question is open, and whether the close it confirmed is
+	 * still in flight (issue #754).
+	 *
+	 * THE QUESTION IS STORED AS THE ID, not as the row object: a listing refresh while
+	 * the dialog stands replaces every row, and a stored object would ask about a
+	 * terminal described by bytes nobody will call `close` about.
+	 */
+	const [pendingClose, setPendingClose] = useState<string | null>(null);
+	const [closing, setClosing] = useState(false);
+	/**
+	 * The refusal of the last confirmed press, in main's own words, and the counter
+	 * that moves the keyboard back to the safe answer (UX round 1, U3): a refused
+	 * close must not read as a press that did nothing. A COUNTER rather than a
+	 * boolean because `ConfirmationModal` takes its `focusCancelSignal` as a change —
+	 * a second refusal must move the keyboard again. Cleared when a question opens
+	 * afresh and on cancel.
+	 */
+	const [closeRefusal, setCloseRefusal] = useState<string | null>(null);
+	const [closeRefusalSeq, setCloseRefusalSeq] = useState(0);
+	/**
+	 * The row the question is about, read fresh from the listing: `retain` is
+	 * published per row (§7.2) and the copy says the output is kept ONLY where that
+	 * flag says the history persists (UX round 1, U6) — a sentence the agent-owned
+	 * case would falsify.
+	 */
+	const pendingRow =
+		pendingClose === null
+			? null
+			: (surfaces.find((row) => row.surface === pendingClose) ?? null);
+	/**
+	 * WHERE THE KEYBOARD GOES WHEN THE ROW IT WAS IN LEAVES (UX round 1, U1).
+	 *
+	 * A close or a dismissal removes the control the keyboard was in — the row's X,
+	 * or the row a question came from — and the browser drops the focus it cannot
+	 * keep to `<body>`, so the reader's next Tab restarts at the top of the
+	 * document. This is the class the repo fixed for the delete dialog (`base-dialog`
+	 * restores an opener that still CONTAINS itself; a removed one is exactly the
+	 * arm it cannot answer), so the pane hands the keyboard over itself. It holds a
+	 * SURFACE ID rather than a boolean because it must survive until the listing
+	 * says the row is gone — the removal is asynchronous with the press.
+	 */
+	const focusAfterRemoval = useRef<string | null>(null);
+	/**
+	 * The refusal as a sentence for a person.
+	 *
+	 * THE IPC REJECTION WRAPS THE HANDLER'S ERROR in the channel's own prefix
+	 * (`Error invoking remote method 'console-close-surface': Error: …`), which is
+	 * not something to show anybody; the last `Error: ` clause is the handler's own
+	 * sentence and the one worth rendering — the monitor cancel's "the backend's own
+	 * sentence" rule, applied to a bridge that prefixes its own.
+	 */
+	const refusalCopy = (failure: unknown) => {
+		const raw =
+			failure instanceof Error ? failure.message : String(failure ?? "");
+		const at = raw.lastIndexOf("Error: ");
+		const detail = (at === -1 ? raw : raw.slice(at + "Error: ".length)).trim();
+		return detail === "" ? "The terminal could not be closed." : detail;
+	};
+
+	/**
+	 * The row's own close: a RUNNING surface asks first, an ENDED one is dismissed
+	 * outright, and the two flags that difference produces are what main's `close`
+	 * takes (design 6.7, 7.3; the reading issue #754 settled).
+	 *
+	 * WHY A RUNNING CLOSE ASKS AND AN ENDED ONE DOES NOT. A running surface has a
+	 * live process behind it, and `host.close` refuses a kill-less close of one
+	 * rather than orphaning a pty — so the honest control is "end it, behind a
+	 * question", and the question defaults to the safe answer (Cancel holds the
+	 * keyboard; `ConsoleCloseDialog` carries the rest). An ended surface has nothing
+	 * left to end: the press dismisses it with `retain: false`, which is the flag
+	 * that removes it from the retained registry. That flag is not decoration — the
+	 * `retain` default for a user's surface is ON, so a dismissal that did not say
+	 * this would be restored at the next launch, which is exactly the friction
+	 * #754's repro reports ("restart the app: the ended tab is still in the strip").
+	 */
+	const requestSurfaceClose = (row: ConsoleSurface) => {
+		setCloseRefusal(null);
+		focusAfterRemoval.current = row.surface;
+		if (row.running) {
+			setPendingClose(row.surface);
+			return;
+		}
+		void session.closeSurface(row.surface, { retain: false }).catch(() => {
+			/*
+			 * A dismissal that did NOT leave is a row that is still where it was: nothing
+			 * was removed, so nothing is owed a handoff — the reader's keyboard never left
+			 * the control they pressed. The one refusal this path can really produce, a
+			 * racer that removed the surface first, leaves through the branch above: the
+			 * row IS gone and the handoff stands.
+			 */
+			focusAfterRemoval.current = null;
+		});
+	};
+
+	/**
+	 * The dialog's confirm, and the ONE place a running surface is killed.
+	 *
+	 * `kill: true` rather than nothing, deliberately: the flag says what the user
+	 * confirmed — end the process — and a close that left it implicit would become a
+	 * silent detach the day main's own default changed, which is a promise this
+	 * button cannot keep.
+	 */
+	const confirmSurfaceClose = () => {
+		if (pendingClose === null) return;
+		setClosing(true);
+		setCloseRefusal(null);
+		void session
+			.closeSurface(pendingClose, { kill: true })
+			.then(() => setPendingClose(null))
+			.catch((failure: unknown) => {
+				/*
+				 * KEPT OPEN AND SAID OUT LOUD (UX round 1, U3): a refused confirm used to
+				 * clear the dialog as if it had succeeded, which reads as "I pressed Close
+				 * and nothing happened". The dialog stays, states the refusal in the danger
+				 * ink, and hands the keyboard back to Cancel (`closeRefusalSeq` is the
+				 * modal's `focusCancelSignal`). A refusal whose surface DID leave — the
+				 * racing case — needs none of this: the withdraw effect below closes the
+				 * question on the listing it just re-read.
+				 */
+				setCloseRefusal(refusalCopy(failure));
+				setCloseRefusalSeq((seq) => seq + 1);
+			})
+			.finally(() => setClosing(false));
+	};
+
+	/*
+	 * THE QUESTION WITHDRAWS WHEN ITS SUBJECT STOPS BEING CLOSEABLE: the row left the
+	 * listing (an agent's `console_close`, or a racer between the press and the
+	 * confirm) OR its process exited while the question stood (UX round 1, U2 — an
+	 * ended row STAYS listed, so the old listing-only test never fired for it and
+	 * the question would sit there claiming to end something that had already
+	 * ended).
+	 */
+	useEffect(() => {
+		if (pendingClose === null) return;
+		const entry = surfaces.find((row) => row.surface === pendingClose);
+		if (entry?.running) return;
+		setPendingClose(null);
+		/*
+		 * The keyboard is owed a handoff only when the ROW is gone; a row that stayed
+		 * (it exited) keeps its own control, and the dialog's own restore lands on it.
+		 */
+		if (entry) focusAfterRemoval.current = null;
+	}, [pendingClose, surfaces]);
+
+	/*
+	 * THE HANDOFF (UX round 1, U1). The target is the row that now holds the lens —
+	 * `pickActiveSurface`'s fallback, so the closed surface's neighbour — or the
+	 * empty state's own New console when the strip has nothing left.
+	 *
+	 * WHY A BOUNDED RE-CHECK rather than a single pass, measured while writing its
+	 * test: the commit that removes the row can still carry the DIALOG on screen
+	 * with the keyboard inside it, and the dialog's own exit releases it a beat
+	 * later (Radix's presence unmounts on a later commit than the state change that
+	 * closed it; a detached opener is exactly the arm the primitive cannot restore).
+	 * The platform emits no event for "the focused element went away", so the retry
+	 * waits on the CONDITION — focus stranded on `<body>`, `null`, or a disconnected
+	 * node — and the bound only stops it when the keyboard has a real home elsewhere
+	 * (a pointer press on macOS never moved it into the control at all).
+	 */
+	useEffect(() => {
+		const removed = focusAfterRemoval.current;
+		if (removed === null) return;
+		/*
+		 * While a question stands the dialog holds the keyboard, so its own exit is
+		 * the moment this effect is waiting for — and the write must not happen
+		 * under an open modal.
+		 */
+		if (pendingClose !== null) return;
+		if (surfaces.some((row) => row.surface === removed)) return;
+		let timer: ReturnType<typeof setTimeout> | null = null;
+		let attempts = 0;
+		const handoff = () => {
+			timer = null;
+			const active = document.activeElement;
+			const stranded =
+				active === null || active === document.body || !active.isConnected;
+			if (!stranded) {
+				attempts += 1;
+				if (attempts <= 20) timer = setTimeout(handoff, 25);
+				return;
+			}
+			focusAfterRemoval.current = null;
+			const target =
+				surface === null
+					? document.querySelector<HTMLElement>(
+							'[data-tour-tag="console-new-surface"]',
+						)
+					: document.querySelector<HTMLElement>(
+							`[data-surface="${surface.surface}"] [role="tab"]`,
+						);
+			target?.focus();
+		};
+		handoff();
+		return () => {
+			if (timer !== null) clearTimeout(timer);
+		};
+	}, [surfaces, surface, pendingClose]);
 
 	/*
 	 * The lens follows what is actually shown, and that write is what makes the
@@ -653,7 +869,14 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 				   `elevated` pane — a row-hover step authored against `surface` rides off
 				   that plane, and an `elevated` fill on an `elevated` ground measures ΔE00
 				   0. So the scroller is `surface` and every mark inside it is unchanged;
-				   the rows are the reason, and the plane is theirs. */
+				   the rows are the reason, and the plane is theirs.
+
+				   EVERY ROW NOW CARRIES ITS OWN CLOSE CONTROL (#754), because the strip used
+				   to only grow: a tab was select-only and the pane's single "Close console"
+				   closes the PANE rather than a surface, so an ended surface had no way out
+				   and a running one had no way to be ended from here. The control is a
+				   sibling of the tab button (a button inside a button is not HTML), and the
+				   two states it serves are named on the row itself. */
 				<div
 					className={cn(
 						"flex shrink-0 items-center gap-1 overflow-x-auto border-hairline border-b bg-surface px-2 py-1",
@@ -662,24 +885,41 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 					aria-label="Console surfaces"
 					data-tour-tag="console-surface-list"
 				>
-					{surfaces.map((row) => {
+					{surfaces.map((row, index) => {
 						const isActive = row.surface === surface?.surface;
 						return (
-							<button
+							/*
+							 * THE ROW IS A WRAPPER AROUND THE TAB, not the tab button itself, and the
+							 * reason is the close control: its X has to be a SIBLING of the tab
+							 * button — a `<button>` inside a `<button>` is not HTML — which is the
+							 * shape the browser strip's own tabs already use for the same act
+							 * (`browser-tab-strip.tsx`), taken rather than invented. The pill's FILL
+							 * moves to the wrapper with it: the row is what a pointer hovers, and the
+							 * tab button stays transparent inside it so select-on-click is exactly
+							 * what it was. `data-surface` names the row for the rigs, the convention
+							 * the browser strip's `data-tab-id` set.
+							 */
+							<div
 								key={row.surface}
-								type="button"
-								role="tab"
-								aria-selected={isActive}
-								onClick={() => setStored(row.surface)}
 								className={cn(
-									"flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2 text-meta",
+									"group flex h-7 shrink-0 items-center rounded-md",
 									isActive
 										? "bg-elevated text-ink"
 										: "text-ink-muted hover:bg-row-hover",
 								)}
-								data-tour-tag="console-surface-row"
+								data-surface={row.surface}
 							>
-								{/* The agent marker says who ELSE is using this surface, exactly
+								<button
+									type="button"
+									role="tab"
+									aria-selected={isActive}
+									onClick={() => setStored(row.surface)}
+									className={cn(
+										"flex h-full min-w-0 items-center gap-1.5 pl-2 pr-1 text-meta",
+									)}
+									data-tour-tag="console-surface-row"
+								>
+									{/* The agent marker says who ELSE is using this surface, exactly
 								    as the browser strip's does (§6.5's "the pane's visible marker"
 								    is the human half of the provenance the listing carries) — and
 								    §13.4's co-pilot cell is the second reason it can appear: an
@@ -689,63 +929,120 @@ export const ConsolePane: FC<ConsolePaneProps> = ({ sessionId, onClose }) => {
 								    and the title says which of the two happened. `size-4` is the
 								    browser strip's own size, taken so the same glyph in two panes
 								    of one slot is one size. */}
-								{row.agentOwned || row.lastActor === "agent" ? (
-									/* The `title` rides a wrapper: a lucide icon is a `<svg>`, and
+									{row.agentOwned || row.lastActor === "agent" ? (
+										/* The `title` rides a wrapper: a lucide icon is a `<svg>`, and
 									   the attribute is a tooltip for a reader who wants to know
 									   WHICH of the two facts this mark is reporting. */
-									<span
-										className={cn("flex shrink-0 items-center")}
-										title={
-											row.agentOwned
-												? "An agent opened this console"
-												: "An agent has typed into this console"
-										}
-									>
-										<Bot
+										<span
+											className={cn("flex shrink-0 items-center")}
+											title={
+												row.agentOwned
+													? "An agent opened this console"
+													: "An agent has typed into this console"
+											}
+										>
+											<Bot
+												aria-hidden="true"
+												className={cn("size-4 shrink-0 text-accent")}
+											/>
+										</span>
+									) : null}
+									<span className={cn("max-w-[12rem] truncate")}>
+										{surfaceTitle(row)}
+									</span>
+									{row.secure ? (
+										<Lock
 											aria-hidden="true"
-											className={cn("size-4 shrink-0 text-accent")}
+											className={cn("size-3 shrink-0 text-ink-dim")}
 										/>
-									</span>
-								) : null}
-								<span className={cn("max-w-[12rem] truncate")}>
-									{surfaceTitle(row)}
-								</span>
-								{row.secure ? (
-									<Lock
-										aria-hidden="true"
-										className={cn("size-3 shrink-0 text-ink-dim")}
-									/>
-								) : null}
-								{!row.running ? (
-									<span className={cn("text-ink-dim text-mono-sm")}>
-										{row.exitCode === null ? "ended" : row.exitCode}
-									</span>
-								) : null}
-								{isConsoleUnseen(unseen, row.surface) ? (
-									/* The blip, on the surface's own row. TWO STATES, and the difference is
+									) : null}
+									{!row.running ? (
+										<span className={cn("text-ink-dim text-mono-sm")}>
+											{row.exitCode === null ? "ended" : row.exitCode}
+										</span>
+									) : null}
+									{isConsoleUnseen(unseen, row.surface) ? (
+										/* The blip, on the surface's own row. TWO STATES, and the difference is
 									   what the mark means: `accent` and a pulse while the completion is
 									   fresh, then the resting `ink-muted` dot — the canvas button's own dot
 									   colour — because an unread mark must not animate for ever (§12.2).
 									   The pulse is the same 2 s opacity step the skeleton uses, and the
 									   app's stylesheet caps it under `prefers-reduced-motion`, so a frozen
 									   dot is the reduced-motion state rather than a missing one. */
-									<span
-										aria-label="Finished since you last looked"
+										<span
+											aria-label="Finished since you last looked"
+											className={cn(
+												"size-2 shrink-0 rounded-full",
+												blipPulsing
+													? "bg-accent animate-pulse-visible"
+													: "bg-ink-muted",
+											)}
+											data-tour-tag="console-surface-blip"
+										/>
+									) : null}
+								</button>
+								{/*
+								 * THE CLOSE CONTROL, a SIBLING of the tab (see the row's own note), whose
+								 * LABEL FOLLOWS THE STATE because the acts differ: a running surface is
+								 * closed (behind the question `ConsoleCloseDialog` asks), an ended one is
+								 * dismissed. `aria-label` names the terminal (`Close zsh`) — the browser
+								 * strip's own convention — so a reader with two rows open can tell which
+								 * one this control acts on; the tooltip keeps the shorter sentence.
+								 *
+								 * REACHABLE BY MOUSE AND KEYBOARD: a pointer reaches it through the
+								 * row's hover (or `focus-within`), and a keyboard reaches it by
+								 * tabbing — the reveal never gates reachability, only sight.
+								 */}
+								<Tooltip
+									content={row.running ? "Close terminal" : "Dismiss terminal"}
+								>
+									<Button
+										variant="ghost"
+										size="icon-sm"
+										/*
+										 * LABEL NAMES THE STATE, THE TERMINAL, AND THE POSITION (UX round 1, U4):
+										 * `Close ${title}` alone collided on the ordinary strip — two shells made
+										 * two "Close sh" — so the tablist's own position ("tab 2 of 4") is the
+										 * disambiguator, always present so the name is a property of the row
+										 * rather than of a collision. The tooltip keeps the shorter sentence:
+										 * a pointer is already on the row it would act on.
+										 */
+										aria-label={`${row.running ? "Close" : "Dismiss"} ${surfaceTitle(row)}, tab ${index + 1} of ${surfaces.length}`}
+										onClick={() => requestSurfaceClose(row)}
 										className={cn(
-											"size-2 shrink-0 rounded-full",
-											blipPulsing
-												? "bg-accent animate-pulse-visible"
-												: "bg-ink-muted",
+											"me-0.5 transition-opacity",
+											isActive ? "opacity-100" : REVEAL_ON_HOVER_OR_FOCUS,
 										)}
-										data-tour-tag="console-surface-blip"
-									/>
-								) : null}
-							</button>
+										data-tour-tag="console-surface-close"
+									>
+										<X aria-hidden="true" />
+									</Button>
+								</Tooltip>
+							</div>
 						);
 					})}
 				</div>
 			) : null}
 			<div className={cn("flex min-h-0 grow flex-col")}>{body()}</div>
+			{/*
+			 * THE QUESTION, when one is owed (a running surface's close). Outside the
+			 * body on purpose: it is not a state of the pane, it is a modal over it,
+			 * and its `open` is the pending id rather than a boolean so the row it was
+			 * asked about is itself the record of what the answer would close.
+			 */}
+			<ConsoleCloseDialog
+				open={pendingClose !== null}
+				busy={closing}
+				keepsOutput={pendingRow?.retain ?? false}
+				refusal={closeRefusal}
+				refusalSeq={closeRefusalSeq}
+				onConfirm={confirmSurfaceClose}
+				onCancel={() => {
+					focusAfterRemoval.current = null;
+					setCloseRefusal(null);
+					setPendingClose(null);
+				}}
+			/>
 		</div>
 	);
 };

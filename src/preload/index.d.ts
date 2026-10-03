@@ -237,6 +237,10 @@ declare global {
 					cols?: number;
 					rows?: number;
 				}) => Promise<unknown>;
+				closeSurface: (
+					surface: string,
+					options?: { kill?: boolean; retain?: boolean },
+				) => Promise<unknown>;
 				openPane: (surface: string) => Promise<unknown>;
 				closePane: () => Promise<unknown>;
 				selectSurface: (surface: string) => Promise<unknown>;

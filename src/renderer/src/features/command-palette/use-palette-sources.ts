@@ -53,6 +53,7 @@ import { useServerHealth } from "@shared/hooks/use-connectivity-status";
 import { useDebouncedValue } from "@shared/hooks/use-debounced-value";
 import {
 	LEGACY_CATALOGUE_PAGE,
+	unreadMarkKind,
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useQuery } from "@tanstack/react-query";
@@ -483,6 +484,16 @@ export function usePaletteItems({
 				soft: row.preview ?? undefined,
 				order: index,
 				featured: terms.length === 0,
+				/*
+				 * The row's read state, from the store's single predicate — the same
+				 * `unreadMarkKind` behind the sidebar's per-row mark — so the palette's
+				 * Unread pin (issue #760) cannot become a second derivation of a fact
+				 * the store already owns. A synthesized row (a hit this client does not
+				 * list) carries no attention and answers false here, which is correct:
+				 * nothing has been read or unread about a conversation this window
+				 * cannot draw.
+				 */
+				unread: unreadMarkKind(row) !== null,
 			} satisfies PaletteItem;
 		});
 	}, [sessions, terms, hits, wantsChats, archiveView, teamLabels]);

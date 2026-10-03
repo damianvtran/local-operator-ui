@@ -1296,9 +1296,18 @@ test("the done-gate refusal is re-spoken as something this dialog can do", () =>
 		!copy.includes("force_done"),
 		"the field this dialog cannot send is gone",
 	);
-	assert.ok(
-		copy.includes("complete or remove the incomplete milestones"),
-		"the tail is the actions the dialog can do",
+	/*
+	 * ROUND 1, D4 CHANGED THIS COPY: the old contract kept the daemon's head
+	 * verbatim and only swapped the tail, and this assertion compared the
+	 * lowercase tail. The sentence now speaks the app's register throughout -
+	 * "This can't be marked done yet: … " - with the count and the names kept
+	 * (asserted above) and the tail sentence-cased. Pin the exact product
+	 * rather than a substring, so the next copy edit has to come here and say
+	 * so.
+	 */
+	assert.equal(
+		copy,
+		"This can't be marked done yet: 2 milestones are still incomplete ('alpha', 'beta'). Complete or remove the incomplete milestones, then mark it done.",
 	);
 	/* Every other refusal is shown as written, never silently reworded. */
 	assert.equal(

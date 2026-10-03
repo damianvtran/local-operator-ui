@@ -83,6 +83,7 @@ const bundle = await build({
 		contents: `
 			import { createElement } from "react";
 			export { TraceFold } from "./src/renderer/src/features/chat/components/trace/trace-fold";
+			export { foldSummary, foldSummarySpec } from "./src/renderer/src/features/chat/canonical/trace-fold-model";
 			export { createElement };
 		`,
 		resolveDir: process.cwd(),
@@ -118,7 +119,9 @@ const bundlePath = new URL(
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
 
-const { TraceFold, createElement } = await import(bundlePath.href);
+const { TraceFold, createElement, foldSummary, foldSummarySpec } = await import(
+	bundlePath.href
+);
 
 /**
  * Controlled the way the transcript drives it, so the mount exercises the
@@ -147,7 +150,7 @@ const LIVE_SPAN_SECONDS = /^4[45]s$/;
 
 const element = (props) =>
 	createElement(ControlledFold, {
-		summary: "3 shell · 1 python",
+		summary: { units: ["3 shell", "1 python"], prose: false },
 		actionCount: 4,
 		recordIds: ["t0"],
 		...props,
@@ -313,6 +316,22 @@ test("a group arrives condensed and names the running call", async (t) => {
 	assert.equal(liveClause(mounted), "Running pnpm vitest run");
 	assert.equal(spanText(mounted), "22s", "first start to last completion");
 	assert.match(mounted.container.textContent, SUMMARY_MIXED);
+	/*
+	 * The yield factor (see the summary's `data-fold-summary` pin): the live
+	 * clause pays the row's deficit, so the counts keep their one-line width
+	 * while the name truncates - D1's priority - and the summary's own wrap is
+	 * the backstop under it, taken only once this clause has no width left to
+	 * give. `chat-alignment-geometry.mjs` is where the pair's numbers are
+	 * measured on the rendered DOM; the factor is an order of magnitude above
+	 * the summary's default because 999 still left the counts 0.05px short and
+	 * wrapped them (measured, Chrome, 1280px).
+	 */
+	const clause = mounted.container.querySelector("[data-fold-live]");
+	assert.ok(clause, "the live clause is on screen");
+	assert.ok(
+		String(clause.className).includes("shrink-[100000]"),
+		"the name is the element that yields",
+	);
 });
 
 test("the reader's press opens it, and conversation updates leave it open", async (t) => {
@@ -329,7 +348,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	);
 	// The section keeps running and the counts update: nothing may close it.
 	await mounted.render({
-		summary: "4 shell · 1 python",
+		summary: { units: ["4 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: true },
 		live: LIVE,
 	});
@@ -345,7 +364,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	 * report - and the fold is the reader's throughout.
 	 */
 	await mounted.render({
-		summary: "4 shell · 1 python",
+		summary: { units: ["4 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: 23_000, running: false },
 		live: null,
 	});
@@ -362,7 +381,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	 * went `expanded true -> false` on this exact transition, at every turn end.
 	 */
 	await mounted.render({
-		summary: "4 shell · 1 python",
+		summary: { units: ["4 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: 45_000, running: false },
 		live: null,
 	});
@@ -373,7 +392,7 @@ test("the reader's press opens it, and conversation updates leave it open", asyn
 	);
 	// And the next turn's updates find it exactly as the reader left it.
 	await mounted.render({
-		summary: "4 shell · 1 python",
+		summary: { units: ["4 shell", "1 python"], prose: false },
 		span: { startedAtMs: 46_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -399,7 +418,7 @@ test("the reader's own press is the only close, in both directions", async (t) =
 	 * decision, not a default.
 	 */
 	await mounted.render({
-		summary: "5 shell · 1 python",
+		summary: { units: ["5 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -412,7 +431,7 @@ test("the reader's own press is the only close, in both directions", async (t) =
 	// And their next press opens it again, for good.
 	await click(mounted);
 	await mounted.render({
-		summary: "6 shell · 1 python",
+		summary: { units: ["6 shell", "1 python"], prose: false },
 		span: { startedAtMs: 1_000, endedAtMs: null, running: true },
 		live: LIVE,
 	});
@@ -492,4 +511,185 @@ test("a live span computes against now and keeps ticking", async (t) => {
 		live: LIVE,
 	});
 	assert.match(spanText(mounted) ?? "", LIVE_SPAN_SECONDS);
+});
+
+/*
+ * The operator's nine-type run (2026-10-01 report), as the header's own
+ * composition reads it: six fetches for the `searches` class, one task, two
+ * browser calls, and the six singleton kinds the report names.
+ */
+const MANY_TYPES_ACTIONS = [
+	...Array.from({ length: 6 }, () => ({ name: "web_fetch", failed: false })),
+	{ name: "task", failed: false },
+	...Array.from({ length: 2 }, () => ({ name: "browser", failed: false })),
+	{ name: "ai_search", failed: false },
+	{ name: "get_tool_access", failed: false },
+	{ name: "query_data_sources", failed: false },
+	{ name: "todo", op: "add", failed: false },
+	{ name: "wait", failed: false },
+	{ name: "workspace_get_gmail_thread_content", failed: false },
+];
+
+test("the painted count line is the capped one, and it may wrap", async (t) => {
+	/*
+	 * `trace-fold-model.test.mjs` pins the cap's ARITHMETIC; this pins the
+	 * PAINTED line. The header must render exactly the string the shipped
+	 * composition produces for the operator's run - five segments and the
+	 * `and N other actions` tail - and the summary span must keep the classes
+	 * the WRAP rides on: `min-w-0` so it can shrink below its content, no
+	 * `truncate` (the ellipsis the report replaced: a cut count line cannot
+	 * say which actions the run hid) and no `shrink-0` (the refusal that made
+	 * a long line overflow a narrow row). jsdom has no layout engine, so the
+	 * wrap itself is the rig's to photograph - the `many-types` and
+	 * `many-types-narrow` frames under `docs/evidence/chat-trace-fold/` - and
+	 * the class set is what this can and does assert mechanically.
+	 */
+	/* The tail is four CALLS (the four hidden singletons), not four types: one
+	 * number either way here, and the instance-counting rule is the model test's. */
+	const capped =
+		"6 searches · 1 task · 2 browser actions · 1 ai_search · 1 get_tool_access · and 4 other actions";
+	assert.equal(
+		foldSummary(MANY_TYPES_ACTIONS),
+		capped,
+		"the model composes the capped line for the operator's run",
+	);
+	const mounted = await mount(t, {
+		summary: foldSummarySpec(MANY_TYPES_ACTIONS),
+		actionCount: MANY_TYPES_ACTIONS.length,
+		span: null,
+		live: null,
+		sectionLive: false,
+	});
+	const summary = mounted.container.querySelector("[data-fold-summary]");
+	assert.ok(summary, "the header's summary span is on screen");
+	assert.equal(
+		summary.textContent,
+		capped,
+		"and the header paints exactly that string",
+	);
+	const classes = String(summary.className);
+	assert.ok(
+		!classes.includes("truncate"),
+		"no ellipsis: the counts are never silently cut",
+	);
+	assert.ok(
+		!classes.includes("shrink-0"),
+		"nothing refuses the squeeze the wrap needs",
+	);
+	assert.ok(
+		classes.includes("min-w-0"),
+		"it shrinks below its content, so it wraps instead of overflowing",
+	);
+	/*
+	 * THE UNITS, AS PAINTED (design round 1, D1; the code half is agent review
+	 * R1-4): one `whitespace-nowrap` span per unit, with the ` · ` between them as
+	 * its own node - so the only break opportunity the browser is given is a
+	 * separator. The 640px frame broke `and 4 other actions` between the numeral
+	 * and its noun before this, which is what these assertions pin mechanically
+	 * (jsdom has no layout engine; the frames are the rig's half).
+	 */
+	const painted = [...summary.querySelectorAll("span:not([aria-hidden])")];
+	assert.deepEqual(
+		painted.map((unit) => unit.textContent),
+		[
+			"6 searches",
+			"1 task",
+			"2 browser actions",
+			"1 ai_search",
+			"1 get_tool_access",
+			"and 4 other actions",
+		],
+		"one span per unit, in the line's own order",
+	);
+	assert.ok(
+		painted.every((unit) =>
+			String(unit.className).includes("whitespace-nowrap"),
+		),
+		"and every unit holds together, the tail phrase included",
+	);
+	assert.deepEqual(
+		[...summary.querySelectorAll("span[aria-hidden]")].map(
+			(node) => node.textContent,
+		),
+		Array.from({ length: 5 }, () => " · "),
+		"the separators are the line's only break opportunities",
+	);
+	/*
+	 * AND THE SHAPE DECIDES THE BREAKING (agent review round 2, R2-1; QA bounded
+	 * the same defect as Q-r2-3). `break-words` cannot act inside a nowrap box, so
+	 * these two assertions together state what actually holds: the count line's
+	 * units ARE unbreakable (the wrap may only fall at a separator, which is D1's
+	 * guarantee) and the property is present for the PROSE form, where a
+	 * single over-long word inside the clause breaks instead of painting past the
+	 * box. The next test pins the prose half on the rendered DOM, because a class
+	 * string alone is exactly what round 1 got wrong here.
+	 */
+	assert.ok(
+		classes.includes("break-words"),
+		"the summary carries `break-words` for the prose form's own breaks",
+	);
+	assert.ok(
+		painted.every((unit) =>
+			String(unit.className).includes("whitespace-nowrap"),
+		),
+		"and the count line's units are unbreakable, which is what keeps a wrap at a ` · `",
+	);
+	/*
+	 * THE ORDERING, pinned as the two factors it is: the live clause pays
+	 * (`shrink-[100000]`, asserted where the clause mounts) and the summary
+	 * carries NO factor - the default 1 takes the whole deficit once the clause
+	 * is out of the way, which is the wrap. A tuned factor here would be a
+	 * re-derivation of the frames under `docs/evidence/chat-trace-fold/`, which
+	 * is why the numbers are asserted rather than left to a comment: a low factor
+	 * (0.01) left the capped line 52.7px wider than its row at 640px and pushed
+	 * the stamp and the time off it (measured, Chrome).
+	 */
+	assert.ok(
+		!classes.includes("shrink-"),
+		"the summary carries no factor of its own, so it takes the whole deficit",
+	);
+	assert.ok(
+		!classes.includes("grow"),
+		"and it does not stretch either: it holds its content width while the clause has room",
+	);
+});
+
+/**
+ * THE PROSE FORM WRAPS AS PROSE (agent review round 2, R2-1).
+ *
+ * Round 1 painted every unit `whitespace-nowrap`, which made the sentence form's
+ * clause unbreakable - a behaviour change that diff did not intend: the same
+ * string was plain, wrappable text before it. The header is now told the shape,
+ * and this is the rendered half of that contract: the sentence's one unit
+ * carries `whitespace-normal`, so the browser's own line breaking applies (jsdom
+ * has no layout engine, so the break itself is the rig's; what is asserted here
+ * is the CSS the break rides on).
+ */
+test("a sentence summary is painted to wrap, not held whole", async (t) => {
+	const sentence = "Explored 4 files, delegated 3 tasks";
+	const mounted = await mount(t, {
+		summary: { units: [sentence], prose: true },
+		actionCount: 7,
+		span: null,
+		live: null,
+		sectionLive: false,
+	});
+	const summary = mounted.container.querySelector("[data-fold-summary]");
+	assert.ok(summary, "the header's summary span is on screen");
+	assert.equal(summary.textContent, sentence, "it paints the clause verbatim");
+	const painted = [...summary.querySelectorAll("span:not([aria-hidden])")];
+	assert.equal(painted.length, 1, "a sentence is ONE unit");
+	assert.ok(
+		String(painted[0].className).includes("whitespace-normal"),
+		"and it is NOT held whole: the browser breaks it at its own spaces",
+	);
+	assert.ok(
+		!String(painted[0].className).includes("whitespace-nowrap"),
+		"the nowrap the count line needs must not reach the prose",
+	);
+	assert.equal(
+		summary.querySelectorAll("span[aria-hidden]").length,
+		0,
+		"and a sentence carries no ` · ` separators to break at",
+	);
 });

@@ -78,9 +78,13 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { foldMediaClause } from "../../canonical/trace-fold-model";
-import type { FoldLive, FoldSpan } from "../../canonical/trace-fold-model";
+import type {
+	FoldLive,
+	FoldSpan,
+	FoldSummarySpec,
+} from "../../canonical/trace-fold-model";
 import { formatSettledDuration } from "./tool-row-model";
 
 /**
@@ -95,8 +99,16 @@ const ROW_HEIGHT = "min-h-5 py-0";
 const FOLD_CLOCK_MS = 1000;
 
 export type TraceFoldProps = {
-	/** §E2's generated copy: `Explored 4 files, 1 search`, `3 shell · 1 python`. */
-	summary: string;
+	/**
+	 * §E2's generated copy AS THE HEADER MUST PAINT IT: the units, and which shape
+	 * they are (`FoldSummarySpec`). A COUNT LINE's units are painted unbreakable,
+	 * so its wraps fall at a ` · ` and never inside a phrase (design round 1, D1);
+	 * a SENTENCE is painted to wrap at its own spaces, exactly as it did before
+	 * this branch (round 2, R2-1: painting it nowrap made prose unbreakable and
+	 * left the summary's `break-words` inert). The collapsed bar's `title`, which
+	 * has no DOM to paint, reads `foldSummary` - the units joined.
+	 */
+	summary: FoldSummarySpec;
 	actionCount: number;
 	/**
 	 * The run's wall-clock span (`foldSpan`), or null when it cannot date itself -
@@ -292,10 +304,13 @@ export const TraceFold = ({
 						 * `1 python` lost) while the failure chip and clock survived on
 						 * `shrink-0` (design round 1, D1, measured on a long-name probe). The
 						 * counts and the clock are the facts a condensed group exists to carry,
-						 * so the summary takes `shrink-0` while the clause is present: the clause
-						 * is the one element with slack (`min-w-0 truncate`, and it can shrink to
-						 * nothing), so every overflow goes to the name first. With no clause -
-						 * a settled header - the summary truncates as it always has.
+						 * and they still are: the clause keeps `min-w-0 truncate` (it can shrink
+						 * to nothing) and the summary never truncates at all - it WRAPS (see
+						 * its own comment below), so the counts survive in full even where the
+						 * name has been paid away. `shrink-0` kept the summary on one line by
+						 * refusing every squeeze, and that is also what made a long summary
+						 * unable to stay inside a narrow row; with the counts wrapping there is
+						 * nothing left for it to protect (operator report, 2026-10-01).
 						 */}
 						{live !== null && !open && (
 							<>
@@ -310,7 +325,19 @@ export const TraceFold = ({
 								 */}
 								<span
 									data-fold-live=""
-									className={cn("min-w-0 truncate")}
+									/*
+									 * `shrink-[100000]`: THE NAME IS THE ELEMENT THAT YIELDS, and it yields to
+									 * its own zero (`min-w-0`) before the counts lose a pixel. Flex hands each
+									 * item a share of the deficit proportional to `factor x basis`, so this
+									 * weight against the summary's DEFAULT 1 leaves the counts a share that
+									 * rounds to zero layout units for as long as the clause has any width left
+									 * - D1's ruling, and the reason the `long-name` and `image-live` frames come
+									 * back byte-identical under the summary's own rule below. The ordering is
+									 * measured, not assumed: at 999 the summary still lost 0.05px and wrapped
+									 * (Chrome, 1280px, this story), so the weight is an order of magnitude
+									 * higher rather than one step.
+									 */
+									className={cn("min-w-0 shrink-[100000] truncate")}
 									/*
 									 * The name is the only element here that truncates, so the full text
 									 * would otherwise be reachable only by expanding the fold; the tooltip
@@ -340,16 +367,75 @@ export const TraceFold = ({
 							</>
 						)}
 						<span
-							className={cn(
-								"min-w-0 truncate text-body-sm text-ink-muted",
-								live !== null && !open && "shrink-0",
-							)}
+							/*
+							 * WRAPS, NEVER TRUNCATES, AND NEVER OVERFLOWS (operator report,
+							 * 2026-10-01): the summary is the run's counts - the facts a condensed
+							 * group exists to carry - so nothing about it may be silently cut, and a
+							 * settled header used to ellipsise it (`6 searches · 1 task · 2 browser
+							 * actions · 1 ai_search · 1 get_tool_access · 1 query_…` at the 640px
+							 * window). At a minimum-width column, or beside a long live clause, it
+							 * now wraps onto the next line and the row grows; the ROW keeps
+							 * `min-h-5`, so the ledger pitch only opens where a line genuinely
+							 * needs it. The cap in `foldCounts` is the first line of defence - the
+							 * report's nine-type run composes to five segments and a tail - and
+							 * this wrap is the backstop underneath it. The span carries
+							 * `data-fold-summary` for the tests and the rig (a text node inside the
+							 * button is otherwise unaddressable), and
+							 * `scripts/chat-alignment-geometry.mjs` reads its box per width.
+							 *
+							 * NO FACTOR OF ITS OWN, WHICH IS THE OTHER HALF OF THE ORDERING: the
+							 * clause above pays while it has width (its `shrink-[100000]`), and the
+							 * moment it has none - or never mounted, which is a settled header at a
+							 * narrow column - the deficit is this span's alone at the default 1, and
+							 * it takes ALL of it and wraps. Measured in the Chrome this ships on:
+							 * at the 640px window the capped line is 52.7px too wide and the row
+							 * ends exactly on its own right edge (`lastRight` == the line's right),
+							 * where a tuned low factor left the stamp and the time 52px past it.
+							 * `truncate` was the older rule and cut the counts; `shrink-0` could say
+							 * the first half of this rule and not the second.
+							 */
+							/*
+							 * WHAT `break-words` DOES AND DOES NOT DO HERE (agent review round 2,
+							 * R2-1, and QA's Q-r2-3, which measured it served): `overflow-wrap`
+							 * cannot act inside a `white-space: nowrap` box, so on the COUNT
+							 * LINE's units it is deliberately inert - those hold together, and the
+							 * bound that keeps them inside the box is the column floor rather than
+							 * a break: the narrowest column the app can give this header is ~350px
+							 * (`WINDOW_MIN_WIDTH` 800 and `CHAT_PANE_MIN_PX` 480), and the longest
+							 * unit a run can compose is the **241.4px**
+							 * `1 workspace_get_gmail_thread_content` - its own box, its text range and a
+							 * canvas measure of the same string all read 241.4 on the live
+							 * component - and the `many-types-kept` cell photographs it at 420.
+							 * On the PROSE form it is the property that does the work: a single
+							 * over-long word inside the clause breaks rather than painting past
+							 * the box. Round 1's comment claimed the property was protecting the
+							 * units, which is exactly the claim this round had to correct.
+							 */
+							className={cn("min-w-0 break-words text-body-sm text-ink-muted")}
 							title={`${actionCount} actions`}
+							data-fold-summary=""
 						>
 							{/*
-							 * What the run has done, by class or by kind (`foldSummary`).
+							 * What the run has done, by class or by kind (`foldSummary`), ONE UNIT PER
+							 * SPAN - and the SHAPE decides whether a span may break (R2-1). A count
+							 * line's units are unbreakable so its wraps fall at the ` · ` separators
+							 * and never inside a phrase (design round 1, D1, where `and 4 other
+							 * actions` broke between the numeral and its noun); a SENTENCE is one
+							 * unit painted to wrap at its own spaces, which is how prose painted
+							 * before this branch and has to keep painting.
 							 */}
-							<span>{summary}</span>
+							{summary.units.map((unit, index) => (
+								<Fragment key={unit}>
+									{index > 0 && <span aria-hidden="true"> · </span>}
+									<span
+										className={cn(
+											summary.prose ? "whitespace-normal" : "whitespace-nowrap",
+										)}
+									>
+										{unit}
+									</span>
+								</Fragment>
+							))}
 						</span>
 						{/* NO FAILURE TALLY (operator, 2026-09-29, issue #6): the
 						 * fold's `· N failed` chip is retired — a completed run's

@@ -80,6 +80,25 @@ export interface ConsoleSessionApi {
 	 * rather than thrown: a failed create is what `createError` is for, and the pane's own
 	 * create-failed state is what carries it. */
 	createSurface: () => Promise<boolean>;
+	/** Close or dismiss one surface (design 6.7, 7.3).
+	 *
+	 * `kill: true` ends a running surface's process, which the pane asks about
+	 * first; `retain: false` drops the surface's history, which is what makes a
+	 * dismissed ended surface stay gone across a relaunch.
+	 *
+	 * Resolves when the host has ANSWERED AND THE LISTING IS IN HAND, the same rule
+	 * `createSurface`'s promise observes and for the same reason: the pane holds its
+	 * dialog's busy state until the panel can show the result, and releasing on the
+	 * call alone would paint a listing that still contains the closed surface.
+	 *
+	 * A REFUSAL REJECTS, AFTER that same re-read (UX round 1, U3): the listing is the
+	 * fact either way, and the sentence the host said is handed to the caller rather
+	 * than swallowed — the dialog path shows it, and the dismissal path drops it
+	 * because "a surface something else already closed" is what its re-read says. */
+	closeSurface: (
+		surface: string,
+		options: { kill?: boolean; retain?: boolean },
+	) => Promise<void>;
 	/** Turn secure input on or off for one surface (§11.4). */
 	setSecure: (surface: string, on: boolean) => void;
 }
@@ -240,6 +259,28 @@ export const useConsoleSession = (
 			});
 	}, [sessionId, read]);
 
+	const closeSurface = useCallback(
+		(surface: string, options: { kill?: boolean; retain?: boolean } = {}) => {
+			const api = window.api?.console;
+			if (!api) return Promise.resolve();
+			return api.closeSurface(surface, options).then(
+				() => read().then(() => undefined),
+				/*
+				 * THE RE-READ HAPPENS EITHER WAY, THEN THE REFUSAL IS RE-THROWN (UX round 1,
+				 * U3): every refusal this call can produce is a fact the listing already
+				 * carries — a raced close of a surface that is already gone — so the caller
+				 * is told only AFTER the listing it would consult has settled. What each
+				 * caller does with it is the caller's to decide: the dialog keeps its
+				 * question up and states the sentence; the dismissal path has no sentence to
+				 * show and swallows it, because "already gone" is exactly what the listing
+				 * it just re-read says (the interface's note, now narrowed to that path).
+				 */
+				(failure: unknown) => read().then(() => Promise.reject(failure)),
+			);
+		},
+		[read],
+	);
+
 	const setSecure = useCallback(
 		(surface: string, on: boolean) => {
 			const api = window.api?.console;
@@ -263,6 +304,7 @@ export const useConsoleSession = (
 		showSurface,
 		reportContent,
 		createSurface,
+		closeSurface,
 		setSecure,
 	};
 };

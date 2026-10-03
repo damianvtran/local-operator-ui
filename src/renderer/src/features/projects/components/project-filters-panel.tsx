@@ -10,12 +10,20 @@
  * many rows it would admit.
  *
  * THE OPTIONS AND THEIR COUNTS ARE DERIVED, NOT STORED: `facetOptions` runs
- * against the live listing filtered by every OTHER facet (and the query), so a
- * count always answers "how many rows would I see if I picked this?" —
- * including the count on the option the reader is about to pick. The
- * derivation happens only while the panel is OPEN (Radix mounts the content
- * lazily), which is what keeps typing in the search field from paying for
- * nine facets on every keystroke.
+ * against the QUERY-ADMITTED rows, filtered by every OTHER facet, so a count
+ * always answers "how many rows would I see if I picked this?" — including the
+ * count on the option the reader is about to pick. The derivation happens only
+ * while the panel is OPEN (Radix mounts the content lazily), which is what keeps
+ * typing in the search field from paying for nine facets on every keystroke.
+ *
+ * THE POPULATION ARRIVES ALREADY NARROWED BY THE QUERY. `projects` is the row
+ * set the search admitted — the backend index's answer when it served, the
+ * client matcher's otherwise — and this panel never re-derives that membership,
+ * so a count cannot be computed over one engine's rows while the list beside it
+ * draws another's. `query` is still passed, and is used for exactly one thing:
+ * the header's "is a search on" predicate. It is deliberately not fed back into
+ * the counts (it would run a second, disagreeing matcher over rows the engine
+ * already admitted).
  */
 
 import { Button, Checkbox, Label } from "@shared/components/ui";
@@ -42,9 +50,14 @@ import {
 } from "../project-sort";
 
 export type ProjectFiltersPanelProps = {
-	/** The whole listing: the population every count is derived from. */
+	/**
+	 * The population every count is derived from: the rows the CURRENT query
+	 * admits (the page hands the search's own row set), never the whole listing
+	 * when a query is on. See the header for why the query is not re-applied.
+	 */
 	projects: DesktopProject[];
 	state: FilterState;
+	/** The box's value. Drives the header's "is a search on" predicate only. */
 	query: string;
 	todayMs: number;
 	/** One option toggled; the caller owns the state so both entry points share it. */
@@ -279,11 +292,11 @@ export const ProjectFiltersPanel: FC<ProjectFiltersPanelProps> = ({
 	const sections = useMemo(
 		() =>
 			scope === undefined
-				? facetSections(projects, state, todayMs, query)
+				? facetSections(projects, state, todayMs)
 				: scope === null
 					? []
-					: [facetOptions(scope, projects, state, todayMs, query)],
-		[scope, projects, state, todayMs, query],
+					: [facetOptions(scope, projects, state, todayMs)],
+		[scope, projects, state, todayMs],
 	);
 	const anythingActive = !isFilterEmpty(state) || query.trim() !== "";
 	return (

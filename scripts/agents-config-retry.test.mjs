@@ -79,6 +79,50 @@ for (const key of Object.getOwnPropertyNames(DOM.window)) {
 globalThis.window = DOM.window;
 globalThis.document = DOM.window.document;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+/*
+ * THE ENVIRONMENT THE COMPOSER'S GRAPH NEEDS, now that this test mounts it: a
+ * bridge that answers instead of throwing, storage for the two persisted stores,
+ * a frame scheduler jsdom omits without `pretendToBeVisual`, and resize
+ * observation for the docked strip's measurement. Each is a shim, not a
+ * behaviour — the recipe is `agents-composer-mount.test.mjs`'s.
+ */
+DOM.window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener: () => {},
+		send: () => {},
+		invoke: async (channel) =>
+			channel === "get-platform-info"
+				? { platform: "darwin" }
+				: { canceled: true, filePaths: [] },
+	},
+};
+const storage = new Map();
+Object.defineProperty(DOM.window, "localStorage", {
+	configurable: true,
+	value: {
+		getItem: (key) => storage.get(key) ?? null,
+		setItem: (key, value) => storage.set(key, String(value)),
+		removeItem: (key) => storage.delete(key),
+		clear: () => storage.clear(),
+		key: (index) => [...storage.keys()][index] ?? null,
+		get length() {
+			return storage.size;
+		},
+	},
+});
+globalThis.localStorage = DOM.window.localStorage;
+globalThis.requestAnimationFrame = (callback) =>
+	setTimeout(() => callback(Date.now()), 0);
+globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
+DOM.window.HTMLCanvasElement.prototype.getContext = () => ({
+	measureText: (text) => ({ width: String(text).length * 8 }),
+	font: "",
+	fillText: () => {},
+	clearRect: () => {},
+	save: () => {},
+	restore: () => {},
+});
 DOM.window.matchMedia = (query) => ({
 	media: query,
 	matches: false,
@@ -93,6 +137,7 @@ const bundle = await build({
 			'export { ConfigComposer } from "./src/renderer/src/features/agents/config-run/config-composer";',
 			'export { useConfigRunStore } from "./src/renderer/src/features/agents/config-run/config-run-store";',
 			'export { createRoot } from "react-dom/client";',
+			'export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 	},
@@ -104,9 +149,39 @@ const bundle = await build({
 	conditions: ["import"],
 	alias: {
 		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		/*
+		 * `@features` IS RESOLVED NOW, and the reason is the mount: `ConfigComposer`
+		 * renders `MessageInput`, which reaches `@features/chat/*` (the pickers, the
+		 * aside, the status strip). Without this alias the specifier fell through to
+		 * `packages: "external"` and the bundle died at import with
+		 * ERR_MODULE_NOT_FOUND — the desktop suite's one failure on #740. The mount
+		 * test (`agents-composer-mount.test.mjs`) resolves the same way.
+		 */
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+		"@assets": `${process.cwd()}/src/renderer/src/assets`,
 	},
-	external: ["react", "react-dom", "react/jsx-runtime"],
-	packages: "external",
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
+	define: { "import.meta.env": "{}" },
+	banner: {
+		js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
+	},
+	/*
+	 * EVERYTHING ELSE IS BUNDLED, which is the mount test's configuration and the
+	 * only one that works once the composer's chat-side graph is in play: with
+	 * `packages: "external"` those specifiers stay external and Node then refuses
+	 * their CJS directory imports (`@mui/material/styles`) with
+	 * ERR_UNSUPPORTED_DIR_IMPORT — a bundler-policy failure, not a product one.
+	 */
+	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
 	jsx: "automatic",
 });
 
@@ -122,9 +197,13 @@ const bundle = await build({
 const bundlePath = new URL("._agents-config-retry.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
 after(() => unlink(bundlePath).catch(() => {}));
-const { ConfigComposer, useConfigRunStore, createRoot } = await import(
-	bundlePath.href
-);
+const {
+	ConfigComposer,
+	useConfigRunStore,
+	QueryClient,
+	QueryClientProvider,
+	createRoot,
+} = await import(bundlePath.href);
 
 /**
  * One run handle, in a named state.
@@ -161,19 +240,45 @@ const handle = (overrides = {}) => ({
 	...overrides,
 });
 
+/*
+ * EVERY MOUNT IS TRACKED SO IT CAN BE TORN DOWN (see the `after` hook below).
+ * WHY THAT MATTERS ENOUGH TO KEEP A LIST: this file used to end in a module-scope
+ * `process.exit(0)`, which under `node --test` runs BEFORE any registered case —
+ * the file reported green without executing a single one (code review round 1,
+ * B1). Removing it exposed the real problem it was hiding: the mounted composer
+ * leaves handles (the transcription manager's registration, and a react-query
+ * client whose garbage-collection timers outlive the test) that keep the process
+ * alive after the last case, which the runner reports as a file-level timeout.
+ * The cure is to close what the file opened, not to exit.
+ */
+const mounts = [];
+
 const mount = async (run) => {
 	const host = document.createElement("div");
 	document.body.append(host);
 	const root = createRoot(host);
+	/*
+	 * A PROVIDER, because the mounted box reads query state (the credential probe
+	 * behind the recording indicator, the composer's own error boundary). One
+	 * client per mount, retries off: nothing here presses a query's control.
+	 */
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
 	await act(async () => {
 		root.render(
-			React.createElement(ConfigComposer, {
-				run,
-				about: null,
-				onClearAbout: () => undefined,
-			}),
+			React.createElement(
+				QueryClientProvider,
+				{ client: queryClient },
+				React.createElement(ConfigComposer, {
+					run,
+					about: null,
+					onClearAbout: () => undefined,
+				}),
+			),
 		);
 	});
+	mounts.push({ root, queryClient });
 	return { host, root };
 };
 
@@ -317,4 +422,17 @@ test("the store keeps a refused stop's run reachable until it settles", () => {
 	assert.equal(useConfigRunStore.getState().stopError, null);
 	useConfigRunStore.getState().dismiss();
 	assert.equal(useConfigRunStore.getState().stopError, null);
+});
+
+/*
+ * THE TEARDOWN THE FILE OWES. Unmounting every root and unmounting the query
+ * client (v5's own stop for its timers) is what lets the runner exit on its own
+ * — no `process.exit`, which is the defect this hook exists to replace.
+ */
+after(async () => {
+	for (const { root, queryClient } of mounts) {
+		await act(async () => root.unmount());
+		queryClient.clear();
+		queryClient.unmount();
+	}
 });

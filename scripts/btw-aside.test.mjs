@@ -3115,3 +3115,53 @@ test("the panel renders a staged quote instead of the payload's markup", () => {
 	// The question reaches the renderer through the reader, not as a string.
 	assert.match(panel, /<AsideQuestion question=\{turn\.question\} \/>/);
 });
+
+/*
+ * THE QUESTION SIDE NAMES ITS SPEAKER (issue #763).
+ *
+ * The aside painted both halves of the exchange in one prose register: the
+ * question was quieter (13px muted against the answer's 14px ink), but
+ * "quieter" is a step, not an identity, and a sighted reader had nothing that
+ * said whose words were whose. The question now carries a visible `You:` marker
+ * beside the sr-only `Question: ` prefix, which stays for assistive tech.
+ *
+ * The marker is INLINE AND BOX-NEUTRAL on purpose, and the classes are pinned
+ * for that reason rather than for taste: the exchange cap MEASURES the question
+ * paragraph's own box (`asideExchangeCap` takes the block as measured) with
+ * `ASIDE_QUESTION_MIN_BOX` as the pre-measurement floor, so a marker that added
+ * padding, a ground or a line box of its own would move the cap's terms with
+ * it. `text-meta`'s 17.4px leaded box is shorter than the question's own 19.5px
+ * line, so a line the two share cannot grow.
+ */
+test("the question side names its speaker, visibly and for assistive tech", () => {
+	const panel = read(
+		"src/renderer/src/features/chat/components/aside-panel.tsx",
+	);
+	// The assistive half stays: `Question: ` is the label a reader hears.
+	assert.match(panel, /<span className="sr-only">Question: <\/span>/);
+	// The sighted half: a visible speaker marker, `aria-hidden` so the two
+	// labels do not both reach a screen reader.
+	assert.match(
+		panel,
+		/aria-hidden=\{true\} className="mr-1 text-meta text-ink-dim">\s*You:\s*<\/span>/,
+	);
+	/*
+	 * And it stays box-neutral: no block, no ground, no padding, no vertical
+	 * margin, no `leading-*`, and no type step other than the two the marker
+	 * uses (`text-meta`, the shared line box, and an `ink-*` colour) - every
+	 * one of those moves the measured box the cap is built on. `mr-1` is
+	 * horizontal-only, which is why a margin is allowed here where the
+	 * vertical ones are not. An unrecognised `text-*` token fails too: the two
+	 * spellings proved safe on this line box are the only ones admitted.
+	 */
+	const marker = panel.match(
+		/<span aria-hidden=\{true\} className="([^"]*)">\s*You:/,
+	);
+	assert.ok(marker, "the visible marker is one span with its own classes");
+	for (const token of marker[1].split(/\s+/)) {
+		assert.ok(
+			!/^(block|bg-|p[xy]?-|m[tyb]-|leading-|text-(?!meta$|ink-))/.test(token),
+			`the marker must not carry ${token}: it would move the measured box the exchange cap reads`,
+		);
+	}
+});
