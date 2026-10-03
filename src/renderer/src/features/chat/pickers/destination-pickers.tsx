@@ -1771,9 +1771,20 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 			})),
 		[listRows, active],
 	);
-	const selectedRow = (detail.data?.entities ?? []).find(
-		(row) => row.value === selected,
-	);
+	/*
+	 * THE CARD'S ROW, from the read its mode actually makes (design round 1,
+	 * D1). A draft disables the detail read (its `enabled` is
+	 * `!draftMode && !!selected`), so the entities below are empty there and
+	 * the card fell back to the raw slug — `lopdev` under a row the user had
+	 * just clicked reading "Local Operator Dev". The draft arm resolves from
+	 * `listRows` (the same switch `activeRow` takes below), the only read a
+	 * draft makes and the one carrying the label and the description; the
+	 * session arm keeps the detail read, whose entity also carries
+	 * `instructions`.
+	 */
+	const selectedRow = (
+		draftMode ? listRows : (detail.data?.entities ?? [])
+	).find((row) => row.value === selected);
 	const chart = detail.data?.current as
 		| Record<string, unknown>
 		| null
@@ -1877,8 +1888,20 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 								</pre>
 							)}
 						</div>
-						{/* The request is a SESSION's first turn; a draft's first message is typed in the composer once the identity is set (design may weigh a carried request later — issue #780). */}
-						{!chartMode && !draftMode && (
+						{/*
+						 * The request is a SESSION's first turn; a draft's first message is
+						 * typed in the composer once the identity is set (design may weigh a
+						 * carried request later — issue #780) — and hiding the field must not
+						 * take its "what happens next" cue with it, so the draft arm states
+						 * the beat the field's hint carried (design round 1, D5).
+						 */}
+						{chartMode ? null : draftMode ? (
+							<p className="text-ink-muted text-meta">
+								{which === "team"
+									? "Your first message starts the chat with this team."
+									: "Your first message starts the chat with this profile."}
+							</p>
+						) : (
 							<PickerField
 								label="Request (optional)"
 								hint="Sent once with the attachment; it becomes the first turn."

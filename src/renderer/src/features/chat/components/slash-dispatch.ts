@@ -1184,13 +1184,42 @@ export function useSlashDispatch({
 				 * `/team chart` is the team destination's RESERVED first argument (the
 				 * backend's own test — `local_operator/server/utils/desktop_commands.py:186`:
 				 * `args == "chart" or args.startswith("chart ")`): it opens the org-chart
-				 * read, which resolves against a live session. A draft falls through to
-				 * the standard refusal below rather than staging a team by that name —
-				 * "chart" is a legal slug, so the wrong reading would be silent.
+				 * read, which resolves against a live session, so the draft exemption
+				 * (below) deliberately does not cover it and the standard refusal answers
+				 * in its place — "chart" is a legal slug, so staging it as a team by that
+				 * name would be silent.
 				 */
 				const chartForm =
 					draftKind === "team" &&
 					(args === "chart" || args.startsWith("chart "));
+				if (destinationNeedsSession(spec.destination)) {
+					/*
+					 * THE REFUSAL SITS FIRST, AND THE DRAFT EXEMPTION NESTS INSIDE IT
+					 * (the CI-red this round repairs). `panel-presentation.test.mjs`
+					 * pins the order POSITIONALLY: the refusal sentence must precede
+					 * the gate's presenter call in this source. The draft route's
+					 * presenter is the shared picker branch BELOW (its call is that
+					 * pin's subject), and before this repair the stage branch called a
+					 * presenter above this sentence, tripping the pin. A draft-eligible
+					 * row is therefore exempted HERE, where the refusal is — `/team
+					 * chart` (the one form the draft route must not read as a name)
+					 * stays unexempted and refuses like any other ineligible row.
+					 */
+					if (!(draftKind && !chartForm)) {
+						note(
+							`/${spec.name} needs an open conversation. Start one first.`,
+							true,
+						);
+						return "consumed";
+					}
+				}
+				/*
+				 * THE DRAFT IDENTITY ROUTE's stage half (issue #780; the route's
+				 * rationale is the comment above `draftKind`). Sits AFTER the refusal
+				 * block and calls no presenter of its own — a bare row falls through to
+				 * the picker branch below, so the gate keeps ONE presenter call site,
+				 * positioned after the refusal sentence.
+				 */
 				if (draftKind && !chartForm) {
 					const argument = args.trim();
 					const name = argument.split(SEPARATOR_RUN)[0] ?? "";
@@ -1201,26 +1230,21 @@ export function useSlashDispatch({
 								{ kind: draftKind, name },
 								argument.slice(name.length).trim(),
 							);
-					} else {
-						presentSessionlessPicker(spec, args);
+						return "consumed";
 					}
-					return "consumed";
-				}
-				if (destinationNeedsSession(spec.destination)) {
-					note(
-						`/${spec.name} needs an open conversation. Start one first.`,
-						true,
-					);
-					return "consumed";
 				}
 				/*
-				 * Two kinds reach here, and each presents by its own agreement rather
+				 * Three kinds reach here, and each presents by its own agreement rather
 				 * than through the owner round trip below: the machine panels
-				 * (`/info`, `/usage`, `/analytics`) and the `sessionless` picker rows
-				 * (issue #625; `/help`, `/theme`, `/login`, `/logout`, `/resume`).
-				 * The kinds are read here because the predicate's answer above is the
-				 * whole of the test — everything it exempts is presentable on a pane
-				 * with none, and nothing else passes the refusal.
+				 * (`/info`, `/usage`, `/analytics`), the `sessionless` picker rows
+				 * (issue #625; `/help`, `/theme`, `/login`, `/logout`, `/resume`), and
+				 * a BARE draft-eligible row (issue #780's `/team` with no name), whose
+				 * stage half above staged nothing and whose presenter is this branch's
+				 * own — the one call site the positional pin in
+				 * `panel-presentation.test.mjs` protects. The kinds are read here
+				 * because the predicate's answer above is the whole of the test —
+				 * everything it exempts is presentable on a pane with none, and
+				 * nothing else passes the refusal.
 				 */
 				if (entry?.kind === "picker") {
 					presentSessionlessPicker(spec, args);

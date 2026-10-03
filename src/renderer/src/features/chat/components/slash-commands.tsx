@@ -726,10 +726,24 @@ function useArgumentRows(
 			 * list, and it is explicitly NOT a needs-session state — a pick here
 			 * is honourable (it stages the draft's identity), which is the whole
 			 * point of the route.
+			 *
+			 * U2's rule again for the EMPTY state (design round 1, D2): a loaded
+			 * roster with no rows is a fact about the workspace, and "No teams
+			 * are registered." is the sentence the dialog's own `emptyText`
+			 * uses for it — while the generic "Not reported yet. Enter runs the
+			 * command." claimed the route never answered, the exact sentence the
+			 * `/mcp` slot (U2) and `/logout` query (U4) fixes removed. Loading and
+			 * error states print ahead of this arm and the matcher arm below
+			 * (`argumentEmptyCopy`'s own order), so no guard is needed here — the
+			 * same shape as the `/mcp` return above.
 			 */
 			const list = draftRosterSource === "team" ? draftTeams : draftProfiles;
 			return {
 				rows: argumentRows(draftRosterSource, list.data ?? [], current),
+				emptyCopy:
+					draftRosterSource === "team"
+						? "No teams are registered."
+						: "No profiles found.",
 				loading: list.isLoading,
 				error: list.isError ? "The list could not be loaded. Try again." : null,
 				needsSession: false,

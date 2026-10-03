@@ -34,6 +34,13 @@ import { JSDOM } from "jsdom";
  *     `sessionStatus` (which a DRAFT pane supplies from the preview) but routes
  *     the conversation key through the wire's own pattern. On the broken tree
  *     this fails, naming the exact line the report cites.
+ *  4. The YIELD arm (design round 1, D3): below the roster the empty-state
+ *     splash is a surface this branch's popup would newly cover, and clearing
+ *     it by a height cap is arithmetically impossible (the popup's fixed bottom
+ *     leaves 77.9px, less than its label and footer), so the shipped
+ *     arrangement is a YIELD — the splash is not drawn while the argument list
+ *     is open. A source fact, pinned here because the frame that shows it needs
+ *     a rig.
  *
  * These run against the SHIPPED modules (`picker-registry.tsx`,
  * `desktop-contract.ts`) and the shipped SOURCE (message-input.tsx), the same
@@ -51,6 +58,10 @@ const SLASH_SESSION_PATTERN_GATE =
 	/const slashSessionId = entitySessionId\(conversationId\)/;
 const DRAFT_STAGE_DISPATCHER_GATE =
 	/row\.kind === "argument" &&\s*!paneHasSession &&\s*Boolean\(onSlashCommand\)/;
+const SPLASH_YIELDS_TO_PICKER =
+	/showEmptyChatPrompt && !\(slash\.open && slash\.phase === "argument"\)/;
+const SPLASH_CLASS_READS_YIELD =
+	/showSplash\s*\?\s*"flex w-full flex-col items-center gap-6 py-4"/;
 
 /*
  * The minimum the bundle's import chain touches at module scope: the stores
@@ -275,6 +286,30 @@ test("the draft-stage pick requires a wired dispatcher, so the config box stays 
 		source,
 		DRAFT_STAGE_DISPATCHER_GATE,
 		"the draft-stage pick must require an onSlashCommand-backed host",
+	);
+});
+
+test("the splash the roster would cover yields while the argument picker is open", () => {
+	const source = readFileSync(COMPOSER, "utf8");
+	/*
+	 * Design round 1, D3: the roster reaches up into the empty-state splash, and
+	 * clearing the band by a height cap is arithmetically impossible (the popup's
+	 * fixed bottom leaves 77.9px there — less than its label and footer), so the
+	 * shipped arrangement is a YIELD: the splash's drawn-state reads the slash
+	 * state's ARGUMENT phase. Pinned as a source fact like the arm above,
+	 * because the frame that shows it needs a rig; the conditional's two terms
+	 * are the whole arrangement, and the command phase is deliberately not in
+	 * them (a pre-existing overlay this fix does not touch).
+	 */
+	assert.match(
+		source,
+		SPLASH_YIELDS_TO_PICKER,
+		"the splash's drawn-state must yield while the slash argument list is open",
+	);
+	assert.match(
+		source,
+		SPLASH_CLASS_READS_YIELD,
+		"the splash group's class must read the yielding flag, not the raw prompt flag",
 	);
 });
 
