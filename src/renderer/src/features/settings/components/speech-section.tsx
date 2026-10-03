@@ -550,11 +550,25 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 								 */}
 								<ul className="flex flex-col gap-1">
 									{/*
-									 * The rung that would SERVE takes the stronger ink and the others the muted
-									 * one (design review round 1, D4). The answer to "which one will speak" was
-									 * carried only by the word `not` inside the faintest ink in the list, so a
-									 * scanning reader had three negations to parse; the step is text weight, not
-									 * colour alone, and both inks clear their own contrast floor.
+									 * The rung that would SERVE takes the stronger ink (`text-ink`) and the
+									 * others the muted one (`text-ink-muted`) (design review round 1, D4). The
+									 * answer to "which one will speak" was carried only by the word `not` inside
+									 * the faintest ink in the list, so a scanning reader had three negations to
+									 * parse.
+									 *
+									 * IT IS A COLOUR STEP, NOT A WEIGHT ONE, AND IT IS NOT GUARANTEED ACROSS ALL
+									 * 59 PALETTES (design review round 2, D6, measured). `--color-ink` is a colour
+									 * variable and no `font-*` utility is applied to these lines, so the glyph
+									 * coverage is identical between them: alpha-normalised ink mass for the same
+									 * name is 219.1 serving against 219.1 non-serving in dark, i.e. the weight did
+									 * not change. The step size is palette-dependent - dE00(ink, ink-muted) falls
+									 * to 2.01 in `catppuccinFrappe`, with 8 palettes at or under 2.3 and 17 under
+									 * 5 - and in those the serving rung's name is NOT distinguishable by
+									 * brightness. What carries the state in every palette is the text itself
+									 * (`(available)` / `(not available)`), and every ink clears its own contrast
+									 * floor everywhere, so this is an enhancement with a stated limit rather than
+									 * a legibility fix. A weight or a mark on the serving rung is recorded, not
+									 * taken here, because it moves the pixels of the two servable states.
 									 */}
 									{availability.rungs.map((rung) => (
 										<li

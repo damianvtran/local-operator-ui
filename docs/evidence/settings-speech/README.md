@@ -72,8 +72,14 @@ title `Speech voicing`, the one-line description, the `Speaks through` /
 with per-rung availability, and the seven registry rows (`Voice gender`, `Tone`,
 `Expressiveness`, `Pace`, `Language`, `Accent`, `Delivery instructions`). In every
 frame the rung that would SERVE takes the stronger ink and the others the muted
-one, so "which one will speak" is a text-weight step rather than only the word
-`not` inside the faintest line.
+one - a **colour** step, not a weight one, and one with a stated limit: it is
+visible in all three photographed palettes, but dE00(`ink`, `ink-muted`) falls to
+2.01 in `catppuccinFrappe` and 8 of the 59 palettes sit at or under 2.3, where the
+serving rung's name is not distinguishable by brightness (design review round 2,
+D6). What carries the state in every palette is the text - `(available)` /
+`(not available)` - and every ink clears its own floor everywhere; a weight or a
+mark on the serving name is recorded as an enhancement rather than taken here,
+because it would move the pixels of the two servable states and cost a re-shoot.
 
 - **`radient-pass/`** (720 high) - signed in: `Speaks through: Radient Pass`,
   `Availability: Ready`, the rung line `Radient Pass (available)` carrying
@@ -156,5 +162,6 @@ puts every row separator and control edge at x=63..960 in these frames; the firs
 set mounted `max-w-3xl` and measured x=128..896, a width the product never
 renders. The empty band below `backend-older`'s callout is `min-h-screen` on the
 story wrapper, not a clipped element. The `nothing-available` callout measures
-898x56 at y320..375 and the `unreadable` warning band 904x62 at y88..151 - the
-latter's extra height is the `Retry` button's row.
+898x56 at y320..375 (56 of it the wash fill) and the `unreadable` warning band
+measures 898/899 wide and 64 tall at y88..151 (56 of that the wash fill, y93..148)
+- the 8px its outer envelope gains over the callout's is the `Retry` row.
