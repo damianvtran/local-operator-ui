@@ -5364,6 +5364,254 @@ export const STORIES = [
 	 * never-used agent above the most recently used one.
 	 */
 	["chat-sidebar-agents--long-roster", 420, 760],
+	/*
+	 * THE SECTION'S RAISED CAP, AND ITS RELEASE (issue #765) - the two states the
+	 * shrink affordance is judged on, taken on the ONE shipped story that carries
+	 * a cap-bound, collapsible section: `chat-sidebar-agents--long-roster` draws
+	 * twelve agents against the shipped eight-row cap, so it is the only scene in
+	 * the sweep with both a `Show N more` foot to press and a
+	 * `data-chat-section="agents"` disclosure to close. No new story was authored
+	 * for this pair: the state under test is a PRESS SEQUENCE on an existing scene
+	 * (what an entry's `press` array is for), and a fixture with rungs past
+	 * twelve would have been a source change this lane does not own - so the
+	 * ladder's deepest reachable rung is the one rung the fixture holds.
+	 *
+	 * `cap/grown` is that raised state: one press of the section's own foot, which
+	 * takes the cap from 8 to 16, draws all twelve rows and REMOVES the foot
+	 * (`expectGone` asserts it at the shutter, so a frame that still shows the
+	 * foot fails rather than being filed as the grown state). The raise itself is
+	 * untouched by this change, which is why the same frame is ALSO taken on the
+	 * base tree (`cap-baseline/grown`) as the pair's control: a difference between
+	 * those two halves would be a regression this fix owes an answer for.
+	 *
+	 * `cap/reopened` is the fix's own claim. The foot is pressed first (the cap is
+	 * now raised), then the section's heading is pressed TWICE - the first press
+	 * collapses the section, which is the edge the fix hangs the release on, the
+	 * second re-expands it. The shipped shape must come BACK: eight rows and the
+	 * `Show 4 more` foot again, which is what `expectPresent` demands at the
+	 * shutter. On the base tree the same presses leave the raised cap in place -
+	 * the defect issue #765 reports - and that half (`cap-baseline/reopened`)
+	 * carries the same entries with the foot's assertion inverted, spelling the
+	 * defect as the frame's own claim rather than as an absence a reader has to
+	 * notice.
+	 */
+	/*
+	 * `cap/resting` is the same story with NO press: the shipped compact form, in
+	 * THIS pass's own generation. It exists so the fix's claim is a comparison
+	 * rather than an impression - `cap/reopened` must equal this frame, because a
+	 * released cap means the section re-derives the shipped cap through the same
+	 * `??` the resting render uses, so the two renders are the same render. The
+	 * committed `long-roster/` frame is the same state from an older generation
+	 * (head `9216759e7d`), and a cross-generation diff would report that set's own
+	 * rasterization drift as this change, which is the trap
+	 * `docs/evidence/chat-sidebar-sections-baseline/README.md` records.
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/resting",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+		},
+	],
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/grown",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: '[data-sidebar-section-more="agents"]',
+			pressSettleMs: 400,
+			expectGone: '[data-sidebar-section-more="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/reopened",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: [
+				'[data-sidebar-section-more="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			],
+			pressSettleMs: 400,
+			expectPresent: '[data-sidebar-section-more="agents"]',
+		},
+	],
+	/*
+	 * THE JOURNEY'S MIDDLE RUNG (design re-check, D1/U1) - the state U1 warns
+	 * destroys the view the reader was reading: the foot's press, then ONE press of
+	 * the heading on the raised section, which takes twelve rows to none. Its claim
+	 * is the CLOSED edge, asserted as an attribute rather than by a missing foot
+	 * (the foot is already gone from the raise, so a foot selector would not
+	 * discriminate this state from `grown/`).
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/collapsed",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: [
+				'[data-sidebar-section-more="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			],
+			pressSettleMs: 400,
+			expectAttribute: {
+				selector: '[data-chat-section="agents"]',
+				name: "aria-expanded",
+				equals: "false",
+			},
+		},
+	],
+	/*
+	 * THE JOURNEY'S LAST RUNG (design re-check): the foot pressed a SECOND time on
+	 * the reopened section. The release must not have disarmed the raise - a reader
+	 * who collapses, reopens and then asks for the long list again must get it, and
+	 * the grown name must come back with it.
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/grown-again",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: [
+				'[data-sidebar-section-more="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+				'[data-sidebar-section-more="agents"]',
+			],
+			pressSettleMs: 400,
+			expectGone: '[data-sidebar-section-more="agents"]',
+			expectAttribute: {
+				selector: '[data-chat-section="agents"]',
+				name: "aria-expanded",
+				equals: "true",
+			},
+		},
+	],
+	/*
+	 * THE LIST QUERY'S OWN PRESS (UX round 1's U2, in the shape the finding
+	 * measured: a LIST query in force, not the section's own filter). The query is
+	 * driven from here through the real input pipeline - `[data-sidebar-search]`
+	 * opens the list's field and focuses it, then `insertText` types into the caret,
+	 * which is the path the query-while-collapsed entry documents. The press after
+	 * it is the ONE gesture that has to happen in that order, so it is driven as a
+	 * keyboard activation: `tabTo` lands the focus on the section toggle and
+	 * `pressKey` activates it, which is the reader's own Enter on the heading.
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/list-query-resting",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: "[data-sidebar-search]",
+			pressSettleMs: 400,
+			insertText: "b",
+			insertTextSettleMs: 900,
+			expectPresent: 'input[aria-label="Filter agents"]',
+		},
+	],
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/list-query-pressed",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: "[data-sidebar-search]",
+			pressSettleMs: 400,
+			insertText: "b",
+			insertTextSettleMs: 900,
+			tabTo: '[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			/*
+			 * THE PRESS HAS TO COME AFTER THE TYPE, and `pressKey` cannot spell it:
+			 * its rawKeyDown+keyUp pair carries no keypress, so a NATIVE button's
+			 * default action never runs - measured, the first attempt landed with the
+			 * field still drawn and the run refused the frame rather than filing the
+			 * resting state under a name that claims a press. `keys` with `text` is
+			 * the spelling that produces the keypress Blink hangs the activation on,
+			 * and it runs after `insertText`.
+			 */
+			keys: [{ key: "Enter", text: "\r", settleMs: 600 }],
+			/*
+			 * THE FIELD THAT SURVIVES THE PRESS (design re-check's prescription, round 3).
+			 * Measured on the pre-fix head: with a LIST query in force and NO section filter,
+			 * the press still took `Filter agents` off the screen and dropped the section box
+			 * by 44px - the field's own height - because the gate read the disclosure alone.
+			 * The gate now carries the section BODY's own term (`isOpen("agents", true) ||
+			 * query !== ""`), so a query that keeps the body drawn keeps its control; this
+			 * entry asserts that, so the frame cannot silently regress into the defect's
+			 * picture a second time.
+			 */
+			expectPresent: 'input[aria-label="Filter agents"]',
+		},
+	],
+	/*
+	 * THE STATE THE FIX'S CLAUSE ACTUALLY NAMES - a LIST query AND the section's own
+	 * filter together. `roster-filtered` already types `er` into the section field
+	 * from its play, so the list query typed here is the second half. The pressed
+	 * frame is the one the fix claims: the field an already-filtering reader had on
+	 * screen survives the no-op press.
+	 */
+	[
+		"chat-sidebar-agents--roster-filtered",
+		420,
+		760,
+		{
+			dir: "cap/filter-query-resting",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: "[data-sidebar-search]",
+			pressSettleMs: 400,
+			insertText: "b",
+			insertTextSettleMs: 900,
+			expectPresent: 'input[aria-label="Filter agents"]',
+		},
+	],
+	[
+		"chat-sidebar-agents--roster-filtered",
+		420,
+		760,
+		{
+			dir: "cap/filter-query-pressed",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: "[data-sidebar-search]",
+			pressSettleMs: 400,
+			insertText: "b",
+			insertTextSettleMs: 900,
+			tabTo: '[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			/*
+			 * THE PRESS HAS TO COME AFTER THE TYPE, and `pressKey` cannot spell it:
+			 * its rawKeyDown+keyUp pair carries no keypress, so a NATIVE button's
+			 * default action never runs - measured, the first attempt landed with the
+			 * field still drawn and the run refused the frame rather than filing the
+			 * resting state under a name that claims a press. `keys` with `text` is
+			 * the spelling that produces the keypress Blink hangs the activation on,
+			 * and it runs after `insertText`.
+			 */
+			keys: [{ key: "Enter", text: "\r", settleMs: 600 }],
+			expectPresent: 'input[aria-label="Filter agents"]',
+		},
+	],
 	["chat-sidebar-agents--roster-filtered", 420, 760],
 	["chat-sidebar-agents--roster-no-match", 420, 760],
 	["chat-sidebar-agents--pinned-first", 420, 760],
@@ -10102,6 +10350,28 @@ const main = async () => {
 	 * restored draft anyway.
 	 */
 	const DRAFT_KEY = "conversation-input-store";
+	/*
+	 * THE SECTION DISCLOSURES, WHEN AN ENTRY ASKS FOR THEM TO BE CLEARED
+	 * (design re-check, issue #765).
+	 *
+	 * WHY AN OPT-IN RATHER THAN ALWAYS. `chat-sidebar-disclosures` is written by
+	 * every chevron press and survives the navigation to the next frame, so a
+	 * sequence that ENDS on the close edge (the section collapsed) leaves the NEXT
+	 * frame - and the NEXT THEME of the same entry, because an entry is re-run per
+	 * palette - loading into a section that is already shut. The capture then
+	 * photographs a state the entry did not ask for, and the run either refuses the
+	 * frame or, worse, files one (measured on this lane: `cap/collapsed` and the two
+	 * query-press frames could not be taken in both palettes at all, and round 1
+	 * dropped the collapsed still for exactly this reason). The stories that mount
+	 * this sidebar and need it open reset the key themselves for the same reason.
+	 *
+	 * IT IS NOT GLOBAL because a frame whose CLAIM IS the persisted disclosure
+	 * (the sidebar view-menu states) must keep inheriting it; only the entries that
+	 * declare `resetDisclosures` get the clear, and they get it on every document,
+	 * before app code, so the entry's frame is a function of the story rather than
+	 * of whichever entry ran before it.
+	 */
+	const DISCLOSURES_KEY = "chat-sidebar-disclosures";
 	let seedScript = null;
 	let captured = 0;
 	for (const [story, width, height, options = {}] of stories) {
@@ -10221,7 +10491,9 @@ const main = async () => {
 			({ identifier: seedScript } = await cdp.send(
 				"Page.addScriptToEvaluateOnNewDocument",
 				{
-					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: ${JSON.stringify({ themeName: theme, ...(options?.prefs ?? {}) })}, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)}); } catch {}`,
+					// Folded: main's `prefs` spread (its own run needs it) with this
+					// branch's `resetDisclosures` tail, so neither side's seed is dropped.
+					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: ${JSON.stringify({ themeName: theme, ...(options?.prefs ?? {}) })}, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)});${options?.resetDisclosures ? ` localStorage.removeItem(${JSON.stringify(DISCLOSURES_KEY)});` : ""} } catch {}`,
 				},
 			));
 
