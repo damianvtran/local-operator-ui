@@ -3393,9 +3393,11 @@ export const STORIES = [
 	 * there is no before/after page pair to be had until the story is repaired.
 	 * `docs/evidence/settings-speech/README.md` carries both measurements.
 	 *
-	 * The section is captured at 1024 wide because it is a `max-w-3xl` (768px)
-	 * settings section in its own ground, and at 640 tall because the rig grows
-	 * the viewport to the rendered height: 640 is a floor, not a crop.
+	 * The section is captured at 1024 wide because it is a `max-w-4xl` (896px)
+	 * settings section in its own ground - the page's own content column - and at
+	 * 640 tall because the rig grows the viewport to the rendered height: 640 is a
+	 * floor, not a crop. (The story mounted at `max-w-3xl` until design review
+	 * round 1, D3, which is a width the settings page never renders.)
 	 */
 	["settings-speech--radient-pass", 1024, 640, { dir: "radient-pass" }],
 	[

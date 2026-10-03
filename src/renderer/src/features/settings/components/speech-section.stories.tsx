@@ -30,12 +30,21 @@
  * The desktop transport is stubbed the way `backend-settings.stories.tsx` stubs
  * it (`window.api.desktop.request`, the bridge `desktop-api.desktopRequest`
  * prefers): without it every frame would photograph a transport error.
+ *
+ * THE SHUTTER WAITS FOR THE AVAILABILITY READ TO SETTLE. The rig's readiness
+ * probe fires on a rendered-element count, and this panel's pending arm already
+ * carries the seven rows, so a frame taken on that probe photographs a retrying
+ * query rather than a state (design review round 1, D1; UX review round 1, U1:
+ * the `unreadable` frame showed the spinner, not the failed read it is named
+ * for). The story therefore holds `documentElement.dataset.capturePending`, as
+ * `backend-settings.stories.tsx` does for its driven states.
  */
 
 import type { BackendSettings } from "@shared/api/local-operator/desktop-api";
 import type { Meta, StoryObj } from "@storybook/react";
-import type { FC } from "react";
+import { type FC, useLayoutEffect } from "react";
 import fixtureJson from "../../../../../../scripts/fixtures/backend-settings-registry.json";
+import { UNAVAILABLE_SENTENCE } from "./speech-section";
 import { SpeechSection } from "./speech-section";
 
 type BridgeRequest = {
@@ -256,6 +265,27 @@ if (typeof window !== "undefined") {
 	};
 }
 
+/* ------------------------------------------------------------- the shutter */
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const nextFrame = () =>
+	new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+
+/**
+ * The sentence this state's SETTLED arm renders, or `null` where the section
+ * issues no read and so has nothing to settle.
+ *
+ * Derived from the fixture this story stubs rather than from a copy of the app's
+ * wording: the two servable states settle on the serving rung's own line (its
+ * reason), `nothing-available` on the resolution's sentence, and `unreadable` on
+ * the failed read's - which is the one string the story has to be told, because
+ * nothing in its own payload produces it.
+ */
+const settleTargetFor = (state: StoryState): string | null => {
+	if (state === "unreadable") return UNAVAILABLE_SENTENCE;
+	return resolutionFor(state)?.reason ?? null;
+};
+
 /**
  * The section, installed against one cascade state.
  *
@@ -263,12 +293,52 @@ if (typeof window !== "undefined") {
  * which is `backend-settings.stories.tsx`'s pattern: the group's queries can fire
  * before a parent layout effect runs, and a delegate that throws "no bridge
  * installed" would turn that race into a transport error in the frame.
+ *
+ * The latch is armed in a LAYOUT effect, so it is on the document before the
+ * rig's readiness probe can see the rendered rows - the same ordering argument
+ * `backend-settings.stories.tsx` states for its driven states - and it waits for
+ * the sentence this state SETTLES on. It waits for the sentence rather than for
+ * the pending one to go away, which is a distinction that cost a round (design
+ * review round 1, D1; UX round 1, U1): this section's FIRST arm is its registry
+ * read's early return, so "the checking sentence is gone" is satisfied before the
+ * availability read has even started, and the shutter opened inside the one retry
+ * `retryDesktopQuery` allows. `app-updates-section.stories.tsx` waits on its own
+ * `expect` text for the same reason.
+ *
+ * A reworded sentence does not silently ship a wrong frame: it never matches, the
+ * shutter holds to the rig's own bound, and the capture fails loudly.
  */
 const Section: FC<{ state: StoryState }> = ({ state }) => {
 	installBridge(state);
+	const settled = settleTargetFor(state);
+	useLayoutEffect(() => {
+		if (!settled) return;
+		document.documentElement.dataset.capturePending = "1";
+		let cancelled = false;
+		const run = async () => {
+			for (let attempt = 0; attempt < 300; attempt += 1) {
+				if (document.body.textContent?.includes(settled)) break;
+				await sleep(20);
+			}
+			await nextFrame();
+			if (!cancelled) delete document.documentElement.dataset.capturePending;
+		};
+		void run();
+		return () => {
+			cancelled = true;
+			delete document.documentElement.dataset.capturePending;
+		};
+	}, [settled]);
 	return (
 		<div className="min-h-screen bg-canvas p-8">
-			<div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+			{/*
+			 * `max-w-4xl`, which is the page's own content column
+			 * (`settings-page.tsx`), not the `max-w-3xl` this story mounted at until
+			 * design review round 1 (D3). The sibling story states the rule: mounting a
+			 * settings section at another width would photograph a layout the product
+			 * never renders.
+			 */}
+			<div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
 				<SpeechSection />
 			</div>
 		</div>

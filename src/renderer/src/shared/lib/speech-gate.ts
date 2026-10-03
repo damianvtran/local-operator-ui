@@ -201,7 +201,22 @@ export function speechUnavailableReason(
  */
 const SETTINGS_REASONS: Record<RadientSpeechBlock, string> = {
 	checking: "Checking whether this machine can speak aloud…",
-	"sign-in": "Nothing can speak aloud yet: run `/login radient` to sign in",
+	/*
+	 * BOTH REMEDIES, and the command printed BARE (design review round 1, D5;
+	 * UX review round 1, U3). The daemon's own sentence for this arm - rendered
+	 * in the same panel - names two routes ("sign in to Radient, or store an
+	 * ElevenLabs or OpenAI API key"), and this note narrowed to one, so a reader
+	 * who does not want a Radient account was told the key route nowhere. The
+	 * backticks were rendered as characters in every `nothing-available` frame;
+	 * the sibling sentence for this command class prints it bare
+	 * (`usage-view-model.ts`, "Sign-in expired - run /login xai").
+	 *
+	 * What the note still tracks is AVAILABILITY, not the account: it renders
+	 * only where nothing can serve, which is the claim this state exists to keep
+	 * true (see the `inert` computation in `speech-section.tsx`).
+	 */
+	"sign-in":
+		"Nothing can speak aloud yet: run /login radient to sign in, or store a provider key in the Model providers section",
 	/*
 	 * PROVIDER-ORIENTED, not account-oriented, and that is the fix for a sentence
 	 * that could be false. Every other arm here renders only beside a daemon report
