@@ -17,7 +17,6 @@ import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
 import { apiConfig } from "@shared/config/api-config";
-import { cn } from "@shared/lib/utils";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import {
@@ -354,12 +353,26 @@ const useFixtureFetch = () => {
 const ShellFrame: FC<{ children: ReactNode }> = ({ children }) => {
 	useFixtureFetch();
 
+	/*
+	 * The rail is drawn in the composition `app.tsx` draws it in, because the
+	 * rail reads its own frame from `ChatLayout` and THROWS outside it
+	 * (`useSidebarFrame`: a silent fallback "would draw a docked column inside
+	 * whatever else mounted it"). A frame that mounts the rail bare is a harness
+	 * the product cannot produce - and it killed all five of this file's shell
+	 * stories, which hand-rolled the row and kept doing so after the rail gained
+	 * the requirement. Wrapper and pair are the app's own shell root and the
+	 * same composition the dock stories below draw.
+	 */
 	return (
-		<div className={cn("flex h-screen overflow-hidden bg-canvas")}>
-			<SidebarNavigation />
-			<main className="flex min-w-0 grow flex-col overflow-hidden">
-				{children}
-			</main>
+		<div className="relative flex h-screen flex-col overflow-hidden">
+			<ChatLayout
+				sidebar={<SidebarNavigation />}
+				content={
+					<main className="flex min-w-0 grow flex-col overflow-hidden">
+						{children}
+					</main>
+				}
+			/>
 		</div>
 	);
 };
