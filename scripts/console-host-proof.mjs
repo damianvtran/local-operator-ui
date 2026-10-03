@@ -1137,6 +1137,34 @@ const focusedSurface = () =>
 		return active.tagName.toLowerCase();
 	})()`);
 
+/** A real Enter through Chromium's own input pipeline. Unlike a press, a KEY event
+ * reaches the never-shown window (measured, review round 2), and on a focused button
+ * it fires the platform's own activation - which is what lets the close run as a
+ * keyboard user's, so the app's own focus writes carry the keyboard heuristic and
+ * the landing paints its ring with no device of the rig's. */
+const pressEnter = async () => {
+	await withRendererSession((call) =>
+		call("Input.dispatchKeyEvent", {
+			type: "keyDown",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+			nativeVirtualKeyCode: 13,
+			text: "\r",
+		}),
+	);
+	await sleep(60);
+	await withRendererSession((call) =>
+		call("Input.dispatchKeyEvent", {
+			type: "keyUp",
+			key: "Enter",
+			code: "Enter",
+			windowsVirtualKeyCode: 13,
+			nativeVirtualKeyCode: 13,
+		}),
+	);
+};
+
 /** The close control's reveal, focus state and RING GEOMETRY against the strip's own
  * clip (design round 1, D2: a `focus-visible` outline 3px beyond a 28px button that
  * sits in a `px-2 py-1` scrolling strip is exactly how a ring gets trimmed). */
@@ -1155,6 +1183,32 @@ const closeFocusReading = (surface) =>
 			focusVisible: close.matches(':focus-visible'),
 			opacity: style.opacity,
 			outline: style.outlineStyle + ' ' + style.outlineWidth + ' offset ' + style.outlineOffset,
+			ring: { top: box.top - reach, bottom: box.bottom + reach, left: box.left - reach, right: box.right + reach },
+			clip: { top: clip.top, bottom: clip.bottom, left: clip.left, right: clip.right },
+			fits: box.top - reach >= clip.top && box.bottom + reach <= clip.bottom && box.left - reach >= clip.left && box.right + reach <= clip.right,
+		};
+	})()`);
+
+/** The successor TAB's ring, read the way `closeFocusReading` reads the control's: the
+ * tab carries no outline utility of its own (`console-pane.tsx`), so `index.css`'s
+ * global focus-visible rule applies - 2px at a 2px offset, a 4px reach whose outer box
+ * sits flush against the strip's clip (measured: 72 vs 72, 0px of margin, nothing
+ * trimmed). The landing cell asserts it (design round 2, D6). */
+const tabRingReading = (surface) =>
+	rendererEvaluate(`(() => {
+		const row = document.querySelector('[data-surface="${surface.replace(/"/g, '\\"')}"]');
+		const tab = row ? row.querySelector('[role="tab"]') : null;
+		const strip = document.querySelector('[role="tablist"]');
+		if (!tab || !strip) return null;
+		const box = tab.getBoundingClientRect();
+		const clip = strip.getBoundingClientRect();
+		const style = getComputedStyle(tab);
+		const reach = (parseFloat(style.outlineWidth) || 0) + (parseFloat(style.outlineOffset) || 0);
+		return {
+			isTab: document.activeElement === tab,
+			focusVisible: tab.matches(':focus-visible'),
+			outline: style.outlineStyle + ' ' + style.outlineWidth + ' offset ' + style.outlineOffset,
+			reach,
 			ring: { top: box.top - reach, bottom: box.bottom + reach, left: box.left - reach, right: box.right + reach },
 			clip: { top: clip.top, bottom: clip.bottom, left: clip.left, right: clip.right },
 			fits: box.top - reach >= clip.top && box.bottom + reach <= clip.bottom && box.left - reach >= clip.left && box.right + reach <= clip.right,
@@ -2128,8 +2182,10 @@ async function main() {
 			);
 			/*
 			 * AND THE POINTER IS PARKED OFF THE ROWS, with an assertion that the strip has
-			 * gone back to its resting state - every later frame in this set photographs a
-			 * strip nobody is pointing at.
+			 * gone back to its resting state - EVERY inactive control, not merely one of
+			 * them (review round 2, F4: `.some` passes while the pointer still sits on a
+			 * row, because three other inactive rows read 0 beside it), so every later
+			 * frame in this set photographs a strip nobody is pointing at.
 			 */
 			await withRendererSession((call) =>
 				call("Input.dispatchMouseEvent", {
@@ -2140,11 +2196,13 @@ async function main() {
 			);
 			await sleep(220);
 			const resting = await rowsReading();
+			const restingInactive = resting.filter(
+				(row) => row.surface !== runningSurface,
+			);
 			check(
-				"the pointer is parked off the strip and the inactive controls wait again (#754's frames after this one hold a strip nobody points at)",
-				resting.some(
-					(row) => row.surface !== runningSurface && row.opacity === "0",
-				),
+				"the pointer is parked off the strip and EVERY inactive control waits again (#754's frames after this one hold a strip nobody points at)",
+				restingInactive.length > 0 &&
+					restingInactive.every((row) => row.opacity === "0"),
 				resting,
 			);
 		}
@@ -2161,7 +2219,15 @@ async function main() {
 		)?.surface;
 		await pressDom(`[data-surface="${otherSurface}"] [role="tab"]`);
 		await sleep(200);
-		await pressDom(closeSelectorFor(runningSurface));
+		/*
+		 * THE CLOSE IS DRIVEN AS A KEYBOARD'S OWN (design round 2, D6): the control is
+		 * activated by a real Enter through Chromium's input pipeline - a key event DOES
+		 * reach the never-shown window, unlike a press (measured, this round) - so the
+		 * app's later handoff write carries the keyboard heuristic and the tab it lands on
+		 * paints its ring without any device of the rig's.
+		 */
+		await focusDom(closeSelectorFor(runningSurface));
+		await pressEnter();
 		const question = await waitForQuestion();
 		check(
 			"a running surface's close asks first, in the shared dialog's own copy (#754)",
@@ -2221,7 +2287,8 @@ async function main() {
 		);
 		await pressDom(`[data-surface="${runningSurface}"] [role="tab"]`);
 		await sleep(200);
-		await pressDom(closeSelectorFor(runningSurface));
+		await focusDom(closeSelectorFor(runningSurface));
+		await pressEnter();
 		const questionAgain = await waitForQuestion();
 		check(
 			"the question opens again after a cancel (the press is repeatable)",
@@ -2229,7 +2296,10 @@ async function main() {
 			questionAgain,
 		);
 		const confirmAt = Date.now();
-		await pressDom("[data-confirm-action]");
+		/* The confirm is activated the same way; this is the Enter the landing's ring hangs
+		 * on - the platform's own activation of a focused button, not a synthetic click. */
+		await focusDom("[data-confirm-action]");
+		await pressEnter();
 		let closedList = await surfacesOf(state);
 		const closeDeadline = Date.now() + 20_000;
 		while (
@@ -2288,18 +2358,25 @@ async function main() {
 			handedOff === selectedAfterClose,
 			{ selectedAfterClose, handedOff },
 		);
-		await captureAppFrame("close-closed.png");
 		/*
-		 * THE HANDOFF'S OWN FRAME, drawn as the keyboard draws it: the app's capture of the
-		 * handoff is a DOM write no synthetic press can make paint (the click's heuristic
-		 * says pointer, so no `:focus-visible` ring), so the frame re-focuses THE SAME TAB
-		 * the handoff chose with `focus({ focusVisible: true })` - the state a keyboard user
-		 * lands in, on the row the next Tab would reach. The check above is the claim; this
-		 * is what the claim looks like.
+		 * THE LANDING'S RING, READ AND ASSERTED (design round 2, D6; QA round 2, Q-1). The
+		 * close above was driven from the keyboard, so the app's own handoff write arrived
+		 * under the keyboard heuristic and the successor tab's ring is on - `reach` read the
+		 * way the sibling focus cell reads the control's. The tab carries no outline utility
+		 * of its own, so index.css's global 2px-at-2px rule applies: its outer box sits
+		 * flush at the strip's top (72 vs 72 - 0px of margin, nothing trimmed). A ring drawn
+		 * flush is still drawn, and the frame says so.
 		 */
-		await focusDom(`[data-surface="${selectedAfterClose}"] [role="tab"]`);
-		await sleep(150);
-		await captureAppFrame("close-focus-handoff.png");
+		const landingRing = await tabRingReading(selectedAfterClose);
+		check(
+			"the keyboard's landing is armed and visible: the successor tab holds focus, `:focus-visible`, and its ring fits the strip's clip (design round 2, D6)",
+			landingRing !== null &&
+				landingRing.isTab === true &&
+				landingRing.focusVisible === true &&
+				landingRing.fits === true,
+			landingRing,
+		);
+		await captureAppFrame("close-closed.png");
 		await rendererEvaluate(
 			"(() => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); return true; })()",
 		);
@@ -2360,8 +2437,14 @@ async function main() {
 		 * there, so a dismissal pressed that way has nothing to lose - and the handoff cell
 		 * below is about the keyboard path, which starts from the control itself.
 		 */
+		/*
+		 * The keyboard goes INTO the control first and ACTIVATES it: the Enter is the
+		 * platform's own activation of a focused button (measured this round), so this
+		 * dismissal walks the keyboard path end to end - which is also the path whose
+		 * handoff cell below is about.
+		 */
 		await focusDom(closeSelectorFor(dismissedSurface));
-		await pressDom(closeSelectorFor(dismissedSurface));
+		await pressEnter();
 		const dismissQuestion = await questionReading();
 		check(
 			"a dismissal asks nothing (there is no process left to protect)",
@@ -2437,7 +2520,7 @@ async function main() {
 		await pressDom(`[data-surface="${exitUnderQuestion}"] [role="tab"]`);
 		await sleep(200);
 		await focusDom(closeSelectorFor(exitUnderQuestion));
-		await pressDom(closeSelectorFor(exitUnderQuestion));
+		await pressEnter();
 		const standingQuestion = await waitForQuestion();
 		await rpcOk(state, "console_input", {
 			surface: exitUnderQuestion,
@@ -3351,20 +3434,32 @@ async function main() {
 		 * the empty state's own New console.
 		 */
 		let remainingRows = await rowsReading();
-		const dismissAllDeadline = Date.now() + 60_000;
+		const dismissAllDeadline = Date.now() + 90_000;
 		while (remainingRows.length > 0 && Date.now() < dismissAllDeadline) {
 			const target = remainingRows[0];
 			const last = remainingRows.length === 1;
-			await focusDom(closeSelectorFor(target.surface));
-			await pressDom(closeSelectorFor(target.surface));
-			const goneDeadline = Date.now() + 10_000;
-			for (;;) {
+			/*
+			 * PRESS AND RE-PRESS: the press that opens an iteration can race the PREVIOUS
+			 * dismissal's render - the control node is swapped under a focus that was just
+			 * placed, and the Enter goes to a node the app has already replaced (measured in
+			 * the first keyboard-driven re-shoot: every row took its second press, and the
+			 * deadline then expired with the last row untouched). The re-press is the rig's
+			 * settled shape, not a tolerance - the loop's exit condition below is the claim,
+			 * and it is unchanged.
+			 */
+			const rowDeadline = Date.now() + 20_000;
+			let dismissed = false;
+			while (Date.now() < rowDeadline) {
+				await focusDom(closeSelectorFor(target.surface));
+				await pressEnter();
+				await sleep(1_200);
 				remainingRows = await rowsReading();
-				if (!remainingRows.some((row) => row.surface === target.surface)) break;
-				if (Date.now() > goneDeadline) break;
-				await sleep(200);
+				dismissed = !remainingRows.some(
+					(row) => row.surface === target.surface,
+				);
+				if (dismissed) break;
 			}
-			if (last) {
+			if (last && dismissed) {
 				const empty = await rendererEvaluate(`(() => ({
 					emptyText: (document.body.textContent || '').includes('No console in this session'),
 					strip: Boolean(document.querySelector('[role="tablist"]')),
