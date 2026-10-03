@@ -533,7 +533,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						tourTag: "nav-item-mesh",
 						attention: meshWaiting,
 						attentionTag: "nav-mesh-badge",
-						attentionName: (count) => `Mesh, ${count} waiting`,
+						attentionName: (count: number) => `Mesh, ${count} waiting`,
 					},
 				]
 			: []),
