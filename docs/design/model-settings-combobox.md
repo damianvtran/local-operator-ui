@@ -972,6 +972,16 @@ re-stamp, in the same PR — and note that a *re-stamp alone* is legitimate only
 where nothing under `src/` moved in the same commit (the manifest's own
 `collapseGuardRestampNote` is the worked example).
 
+**SUPERSEDED IN PART (2026-10-01): the re-stamp is one command now.**
+`node scripts/evidence-fold.mjs` (`pnpm evidence:fold`) re-derives both trees and
+the counts from the tree the commit names, writes them into the manifest, runs
+the same guards this section names, and stages the result - so the hand
+"derive → write the values in → `--amend`" sequence above is the fallback, not
+the procedure. A FOLD (a merge of `origin/main`) needs no hand work at all:
+`pnpm evidence:fold` resolves the manifest per field, and with
+`pnpm evidence:fold:install` once per clone, `git merge` does not even stop on
+the conflict. See the UI `AGENTS.md`'s evidence section.
+
 **This design commit is `docs/`-only, so it costs no re-stamp** — `docs/` is
 outside both stamps. That is deliberate: the design lands before the code so the
 coder's commit is the only one that has to move the manifest.

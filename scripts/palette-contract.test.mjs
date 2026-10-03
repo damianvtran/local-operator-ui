@@ -372,6 +372,49 @@ test("the key listener owns the field's keys, not the dialog's", () => {
 	);
 });
 
+test("the selection walk is the shared decision, not a second copy in the component", () => {
+	/*
+	 * Issue #761: the arrows and the Ctrl+N/Ctrl+P pair are decided once — the
+	 * decision (`paletteStepIntent`) and its arithmetic (`paletteStepIndex`) are
+	 * the pure functions `scripts/palette-shortcut.test.mjs` exercises. This is
+	 * the wiring half, in the same shape as the close-time-restore pins below:
+	 * the component must consult that decision rather than grow branches of its
+	 * own, because a second copy here would leave the tests pinning a rule the
+	 * app no longer runs. And the footer must draw the ADVERTISED caps (the
+	 * reachable subset), never the bound pair: Ctrl+P is bound but unreachable
+	 * in the packaged app, so drawing it is the dead-cap regression design
+	 * round 1's D1 removed.
+	 */
+	const palette = code(
+		"src/renderer/src/features/command-palette/components/command-palette.tsx",
+	);
+	assert.match(
+		palette,
+		/paletteStepIntent\(event\)/,
+		"the selection handler must ask the shared walk decision",
+	);
+	assert.match(
+		palette,
+		/paletteStepIndex\(/,
+		"the step's arithmetic must be the shared one, or wrap and count=0 stop being pinned",
+	);
+	assert.match(
+		palette,
+		/paletteReachableStepCaps\(/,
+		"the footer must draw the reachable caps (Ctrl+N only) - Ctrl+P is bound but unreachable in the packaged app (design round 1, D1)",
+	);
+	assert.doesNotMatch(
+		palette,
+		/\bpaletteStepCaps\(/,
+		"the bound set includes Ctrl+P; drawing it in this legend is exactly the dead-cap regression D1 removed",
+	);
+	assert.doesNotMatch(
+		palette,
+		/event\.key === "Arrow/,
+		"the arrow branches belong to the decision now; a second copy is the drift this pins",
+	);
+});
+
 /* ---------------------------------------------------------------- */
 /* The close-time restore, and the one close it could not cover      */
 /* ---------------------------------------------------------------- */

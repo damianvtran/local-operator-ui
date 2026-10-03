@@ -130,6 +130,11 @@ import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import {
+	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+	type TranscriptDisplayMode,
+	parseTranscriptDisplayMode,
+} from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
@@ -1026,6 +1031,15 @@ const AssistantRow = memo(function AssistantRow({
 	// stays as the component's own contract for any other caller.
 	if (!paintsSomething(record)) return null;
 	const refused = record.stopReason === "refusal" || record.error;
+	/*
+	 * Whether this answer has words to offer, asked ONCE for the row: the Quote
+	 * toolkit above the foot and the foot's own action row are the two consumers
+	 * of this derivation, so the same answer cannot be judged quotable in one
+	 * place and not in the other - both read `quotable` (agent review round 1,
+	 * R1-5: the toolkit used to re-ask `isQuotable` itself, which is the same
+	 * call but a second place for the two to drift apart).
+	 */
+	const quotable = isQuotable(record, remainingContent);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			{/*
@@ -1161,11 +1175,9 @@ const AssistantRow = memo(function AssistantRow({
 				 * documents - when a link owns the highlight, the link toolbar carries
 				 * Quote and this control stays off screen.
 				 */}
-				{conversationId &&
-					isQuotable(record, remainingContent) &&
-					!link.quoteAvailable && (
-						<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
-					)}
+				{conversationId && quotable && !link.quoteAvailable && (
+					<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+				)}
 				{conversationId && link.subject && (
 					<LinkToolkit
 						conversationId={conversationId}
@@ -1229,8 +1241,26 @@ const AssistantRow = memo(function AssistantRow({
 				 * THE ANSWER'S ACTION ROW RIDES THIS LINE (issue #695, design memo (c)). It is
 				 * not a second band: a band of its own would cost a whole row per turn and
 				 * would leave the turn's LAST line being controls rather than the turn's own
-				 * fact. The actions take the line's left so the reader's eye returns to one
-				 * rail - the prose's - and the caption follows them on the same line.
+				 * fact.
+				 *
+				 * THE CAPTION KEEPS THE RAIL AND THE ACTIONS TAKE THE FAR END (operator
+				 * direction, 2026-10-01: "now that the action buttons only show up on hover,
+				 * the Worked for and action count looks a bit weird - rearrange so those are
+				 * on the leftmost extent and the action buttons are to the right"). This
+				 * SUPERSEDES the round-1 arrangement, where the actions took the line's left
+				 * edge so the reader's eye returned to one rail: the row's reveal
+				 * (`ACTION_ROW_REVEAL_CLASSES`) is opacity-only, so the buttons hold their
+				 * box at rest but paint nothing - and a caption that FOLLOWED them read as
+				 * indented by ~60px of nothing under the prose it belongs to. Now the
+				 * caption starts at the content's own left edge - the same rail as the prose
+				 * (`scripts/chat-alignment-geometry.mjs` measures it), and the right cluster
+				 * is `[actions][stamp]` with the stamp rightmost, riding the actions'
+				 * `ml-auto` spacer. The reveal stays opacity-only, so nothing moves when
+				 * the buttons appear: the idle and hovered frames of the operator's state,
+				 * and the caption/actions/stamp boxes the geometry script reads per state,
+				 * are under `docs/evidence/chat-canonical-message-actions/` and its
+				 * `-foot-before` sibling. The exact right-cluster composition is the design
+				 * round's to settle; this is the clean default it judges.
 				 *
 				 * THE TWO HALVES OF THIS LINE HAVE DIFFERENT CONDITIONS, which is why the
 				 * gate moved from the line to the pieces. The ACTIONS are a fact about the
@@ -1240,25 +1270,6 @@ const AssistantRow = memo(function AssistantRow({
 				 * The bar keeps its own stamp and never takes the actions.
 				 */
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					{/*
-					 * The gate the Quote control above already uses, for its reason: an answer
-					 * still receiving deltas is a prefix the next token falsifies, so there is
-					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
-					 * send's markup alone) has nothing to offer either.
-					 */}
-					{isQuotable(record, remainingContent) && (
-						<AnswerActionRow
-							bodyText={remainingContent}
-							agentId={conversationId}
-							speechId={record.id}
-							revealId={record.id}
-							revealAt={record.ts}
-							/* The user row's note above states the rule; the answer row is the
-							 * same fork point, on the message the turn ended at. */
-							conversationId={conversationId}
-							entryId={forkEntryId(record) ?? undefined}
-						/>
-					)}
 					{!closingLineSuppressed && foot && foot.actions > 0 && (
 						<>
 							<span className={cn("text-ink-dim")}>
@@ -1278,8 +1289,45 @@ const AssistantRow = memo(function AssistantRow({
 							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
+					{/*
+					 * The gate the Quote control above already uses, for its reason: an answer
+					 * still receiving deltas is a prefix the next token falsifies, so there is
+					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
+					 * send's markup alone) has nothing to offer either.
+					 */}
+					{quotable && (
+						/*
+						 * `ml-auto` sits on the WRAPPER rather than the row (the row takes no
+						 * className): it is the first box of the right cluster, so it - and
+						 * the stamp that follows it - ride the line's far end while the
+						 * caption keeps the rail. `shrink-0` because the controls are the
+						 * line's fixed part: the caption is the side with slack (it can
+						 * wrap), and the buttons must never be what a narrow column squeezes.
+						 */
+						<span className={cn("ml-auto flex shrink-0")}>
+							<AnswerActionRow
+								bodyText={remainingContent}
+								agentId={conversationId}
+								speechId={record.id}
+								revealId={record.id}
+								revealAt={record.ts}
+								/*
+								 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar
+								 * row (#739), on the same gate the actions themselves carry:
+								 * `forkEntryId` is the journal entry a cut can land at, and
+								 * `conversationId` is the picker's subject, explicit because
+								 * this transcript can be rendered for a conversation that is
+								 * not the pane's own - a request must never be answered with
+								 * a substituted conversation. A transcript mounted with no
+								 * conversation passes neither, so the row offers no Fork there.
+								 */
+								conversationId={conversationId}
+								entryId={forkEntryId(record) ?? undefined}
+							/>
+						</span>
+					)}
 					{!closingLineSuppressed && (
-						<span className={cn("ml-auto")}>
+						<span className={cn(!quotable && "ml-auto")}>
 							<TurnTimestamp timestamp={record.ts} scope="answer" />
 						</span>
 					)}
@@ -2614,10 +2662,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * the paging hook and a new identity per render would re-create it (and the
 	 * hook's refs) for a value that only an event reads - the same reason
 	 * `rowsRef` exists.
+	 *
+	 * `mode` rides in the SAME ref for the same reason, and it is the reader's
+	 * display mode (M1/Q1): the count below and the plan the list paints from must
+	 * read ONE mode, or the step measures a paint the reader is not looking at.
+	 * The value is the PARSED one (`parseTranscriptDisplayMode`, the read-side
+	 * judge this component already uses at the plan below) rather than the raw
+	 * store value, and it is kept out of `widen`'s dependency list for the reason
+	 * above: a mode change is a re-render, not a new callback identity.
 	 */
 	const widenInputs = useRef<{
 		live: boolean;
 		openRuns: ReadonlySet<string> | undefined;
+		/** The reader's mode, for the widen's paint count (see this ref's note). */
+		mode: TranscriptDisplayMode;
 		/**
 		 * The size the reader is LOOKING at (`alignSize`, the snap's output), which is
 		 * the widen's measuring baseline (agent review round 1, R1-1): the raw
@@ -2628,7 +2686,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * would re-create the hook's refs on every mount change.
 		 */
 		mounted: number;
-	}>({ live: false, openRuns: undefined, mounted: 0 });
+	}>({
+		live: false,
+		openRuns: undefined,
+		mode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+		mounted: 0,
+	});
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
 		expandedRunsOf(sessionId),
 	);
@@ -3148,6 +3211,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					step: WINDOW_STEP,
 					live: widenInputs.current.live,
 					openRuns: widenInputs.current.openRuns,
+					/*
+					 * The reader's OWN mode (M1/Q1): a `by-response` transcript keeps rows the
+					 * `by-turn` plan calls hidden, so a step measured without it stops late and
+					 * commits a larger window than one gesture promises. See `widenInputs`.
+					 */
+					mode: widenInputs.current.mode,
 					snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 					// The render's OWN second bound (the completed-run allowance), so the
 					// step's painted delta is measured against the window the component
@@ -3339,6 +3408,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
 		(state) => state.restoreDefaultChatMeasureWidth,
 	);
+	/*
+	 * The reader's transcript display mode (issue #756): read as the RAW stored
+	 * value and parsed at the one call site that consumes it (`collapsePlan`
+	 * below), so a tampered or future token is judged where it is used rather
+	 * than trusted on the way in.
+	 */
+	const transcriptDisplayMode = useUiPreferencesStore(
+		(state) => state.transcriptDisplayMode,
+	);
 	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
 	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
@@ -3377,11 +3455,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const working = workingLine === undefined ? paneWorking : workingLine;
 	/* The widen's paint count reads these (see `widenInputs`): the collapse's own
-	 * liveness rule, stated once here and reused by the plan below, and the mounted
-	 * size the widen measures from. */
+	 * liveness rule, stated once here and reused by the plan below, the mounted
+	 * size the widen measures from, and the reader's display mode — the same value
+	 * the plan below is handed, so the step cannot measure a paint the reader is not
+	 * looking at (M1/Q1). */
 	widenInputs.current = {
 		live: paneIsLive,
 		openRuns,
+		mode: parseTranscriptDisplayMode(transcriptDisplayMode),
 		mounted: alignSize,
 	};
 
@@ -3569,8 +3650,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				live: working !== null || gate !== null,
 				focusHold: focusedRecordId,
 				openRuns,
+				/*
+				 * THE READER'S DISPLAY MODE (issue #756), read HERE and parsed on the way
+				 * in: the store rehydrates past its setters, so a token this build does
+				 * not know must land on the default rather than reach the partition.
+				 * `parseTranscriptDisplayMode` is the one judge of that (the read-side
+				 * pattern `parseSidebarView` sets one surface over).
+				 */
+				mode: parseTranscriptDisplayMode(transcriptDisplayMode),
 			}),
-		[visible, working, gate, focusedRecordId, openRuns],
+		[visible, working, gate, focusedRecordId, openRuns, transcriptDisplayMode],
 	);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).

@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, test } from "node:test";
 import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
+import { checkPaletteBudgets } from "./check-evidence-palettes.mjs";
 import {
 	citationAncestryFailures,
 	countsMeanFailures,
@@ -305,16 +306,16 @@ test("a head that is merely RESOLVABLE is not good enough", () => {
 	};
 	const out = provenanceFailures(dangling, git);
 	assert.equal(out.length, 1);
-	assert.match(out[0], /reachable from no ref/);
-	assert.match(out[0], /dies at the next gc/);
+	assert.match(out[0], RE_EVIDENCE_1);
+	assert.match(out[0], RE_EVIDENCE_2);
 	// It must name the commit, so the reader knows WHICH stamp is wrong.
-	assert.match(out[0], /wip: a commit that was amended away/);
+	assert.match(out[0], RE_EVIDENCE_3);
 });
 
 test("a head that resolves to nothing at all fails", () => {
 	const out = provenanceFailures({ ...GOOD, head: "d".repeat(40) }, git);
 	assert.equal(out.length, 1);
-	assert.match(out[0], /resolves to no commit/);
+	assert.match(out[0], RE_EVIDENCE_4);
 });
 
 test("a stale tree hash fails, per tree, naming both sides", () => {
@@ -325,16 +326,13 @@ test("a stale tree hash fails, per tree, naming both sides", () => {
 	 */
 	const src = provenanceFailures({ ...GOOD, srcTree: "e".repeat(40) }, git);
 	assert.equal(src.length, 1);
-	assert.match(src[0], /`srcTree` is eeeeeeeee but HEAD:src is bbbbbbbbb/);
+	assert.match(src[0], RE_EVIDENCE_5);
 	const scripts = provenanceFailures(
 		{ ...GOOD, scriptsTree: "f".repeat(40) },
 		git,
 	);
 	assert.equal(scripts.length, 1);
-	assert.match(
-		scripts[0],
-		/`scriptsTree` is fffffffff but HEAD:scripts is ccccccccc/,
-	);
+	assert.match(scripts[0], RE_EVIDENCE_6);
 });
 
 test("a supplementary set's capturedAtHead is held to the same bar", () => {
@@ -351,19 +349,19 @@ test("a supplementary set's capturedAtHead is held to the same bar", () => {
 		git,
 	);
 	assert.equal(out.length, 1);
-	assert.match(out[0], /supplementary\[live\]/);
-	assert.match(out[0], /reachable from no ref/);
+	assert.match(out[0], RE_EVIDENCE_7);
+	assert.match(out[0], RE_EVIDENCE_1);
 });
 
 test("a missing head is a failure, not a pass by omission", () => {
 	// The absence of a claim must not be quieter than a wrong one.
 	assert.match(
 		provenanceFailures({ ...GOOD, head: undefined }, git)[0],
-		/missing or not a sha/,
+		RE_EVIDENCE_8,
 	);
 	assert.match(
 		provenanceFailures({ ...GOOD, head: "abc" }, git)[0],
-		/missing or not a sha/,
+		RE_EVIDENCE_8,
 	);
 });
 
@@ -384,8 +382,8 @@ test("partialCapture's own head citations are checked too", () => {
 	};
 	const out = provenanceFailures(partial, git);
 	assert.equal(out.length, 1);
-	assert.match(out[0], /partialCapture\.addedAtHead/);
-	assert.match(out[0], /reachable from no ref/);
+	assert.match(out[0], RE_EVIDENCE_9);
+	assert.match(out[0], RE_EVIDENCE_1);
 	// The other one, the same way: this is the class, not the instance.
 	const refreshed = provenanceFailures(
 		{
@@ -397,7 +395,7 @@ test("partialCapture's own head citations are checked too", () => {
 		git,
 	);
 	assert.equal(refreshed.length, 1);
-	assert.match(refreshed[0], /partialCapture\.refreshedAtHead/);
+	assert.match(refreshed[0], RE_EVIDENCE_10);
 	// A reachable one passes, and an absent one is not a failure to report.
 	assert.deepEqual(
 		provenanceFailures(
@@ -517,10 +515,7 @@ test("a tally below the pass's own diff fails, and says by how much", () => {
 		fakeDiff(MOVED_FRAMES),
 	);
 	assert.equal(out.length, 1);
-	assert.match(
-		out[0],
-		/claims 2 refreshed frames, but 3 committed frames differ/,
-	);
+	assert.match(out[0], RE_EVIDENCE_11);
 });
 
 test("a story list that lost a directory the pass rewrote fails", () => {
@@ -541,8 +536,8 @@ test("a story list that lost a directory the pass rewrote fails", () => {
 		fakeDiff(MOVED_FRAMES),
 	);
 	assert.equal(out.length, 1);
-	assert.match(out[0], /refreshedStories misses 1 story directory/);
-	assert.match(out[0], /chat-run-panel--mcp-key-error/);
+	assert.match(out[0], RE_EVIDENCE_12);
+	assert.match(out[0], RE_EVIDENCE_13);
 });
 
 test("a width-suffixed directory is the story it belongs to", () => {
@@ -609,10 +604,7 @@ test("a tally below the frames HEAD holds in the directories it names fails", ()
 		fakeGitFor({ lsTree: COMMITTED_FRAMES }),
 	);
 	assert.equal(out.length, 1);
-	assert.match(
-		out[0],
-		/claims 3 refreshed frames, but 4 committed frames stand in the directories refreshedStories names at HEAD/,
-	);
+	assert.match(out[0], RE_EVIDENCE_14);
 });
 
 test("an honest tally passes on HEAD's tree alone", () => {
@@ -691,9 +683,9 @@ test("an entry that only prefixes a directory does not name it", () => {
 		fakeDiff(MOVED_FRAMES),
 	);
 	assert.equal(out.length, 1);
-	assert.match(out[0], /refreshedStories misses 2 story directories/);
-	assert.match(out[0], /chat-run-panel--mcp-key-saving/);
-	assert.match(out[0], /chat-run-panel--mcp-key-error/);
+	assert.match(out[0], RE_EVIDENCE_15);
+	assert.match(out[0], RE_EVIDENCE_16);
+	assert.match(out[0], RE_EVIDENCE_13);
 });
 
 test("the capturer's own dir override still names the directory it writes", () => {
@@ -732,8 +724,8 @@ test("a clone with history asks both questions, and a mutated tally answers both
 		fakeGitFor({ lsTree: COMMITTED_FRAMES, diff: MOVED_FRAMES }),
 	);
 	assert.equal(out.length, 2);
-	assert.match(out[0], /committed frames stand in the directories/);
-	assert.match(out[1], /committed frames differ at/);
+	assert.match(out[0], RE_EVIDENCE_17);
+	assert.match(out[1], RE_EVIDENCE_18);
 });
 
 /* ---- the shipped manifest, against the tree it ships in ------------------ */
@@ -766,6 +758,94 @@ test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
 		stampFailures(manifest),
 		[],
 		"docs/evidence/manifest.json must describe HEAD's trees: re-derive srcTree/scriptsTree from `git rev-parse HEAD:src` / `HEAD:scripts`, and frames/surfaces from the tree, the way capture-evidence.mjs writes them",
+	);
+});
+
+/**
+ * The manifest's parse DISCARDS duplicated keys, and every gate here reads the
+ * file through a parser that does the same. So a SPLICED entry - two entries'
+ * fields merged into one object, the second one's opening brace eaten by a
+ * fold's conflict resolution - ships a false field silently while every
+ * comparison through `JSON.parse` stays green.
+ *
+ * Measured on this branch (review round 2, F3): a fold merged the neighbouring
+ * `chat-aside-panel-before` fields into `console-surface-close`'s object, and
+ * under last-wins the shipped entry inherited the neighbour's `capturedAtHead`
+ * citation - the provenance of a DIFFERENT set's frames - with this whole suite
+ * and `pnpm check-evidence` in front of it all green, because both read the
+ * file the same way. The walker below reads the SAME text the parser does and
+ * exists only because `JSON.parse` has no duplicate-key hook; it is
+ * deliberately small, and the fixture test beside the shipped one keeps it
+ * falsifiable.
+ */
+const duplicateKeys = (text) => {
+	const duplicates = [];
+	const objects = [];
+	let i = 0;
+	while (i < text.length) {
+		const ch = text[i];
+		if (ch === "{") {
+			objects.push(new Set());
+			i += 1;
+			continue;
+		}
+		if (ch === "}") {
+			objects.pop();
+			i += 1;
+			continue;
+		}
+		if (ch === '"') {
+			let j = i + 1;
+			let value = "";
+			while (j < text.length) {
+				if (text[j] === "\\") {
+					value += text[j + 1];
+					j += 2;
+					continue;
+				}
+				if (text[j] === '"') break;
+				value += text[j];
+				j += 1;
+			}
+			let k = j + 1;
+			while (k < text.length && /\s/.test(text[k])) k += 1;
+			if (text[k] === ":") {
+				const keys = objects[objects.length - 1];
+				if (keys) {
+					if (keys.has(value)) duplicates.push(value);
+					keys.add(value);
+				}
+			}
+			i = j + 1;
+			continue;
+		}
+		i += 1;
+	}
+	return duplicates;
+};
+
+test("a spliced entry's duplicated keys are caught by the walker", () => {
+	/* The F3 shape in miniature: two entries merged into one object, no closing
+	 * brace between them - exactly what a fold's union produced. */
+	const spliced =
+		'{\n  "path": "a",\n  "frames": 1,\n  "path": "b",\n  "frames": 2\n}';
+	assert.deepEqual(duplicateKeys(spliced), ["path", "frames"]);
+	/* And the shape each side legitimately produces - two proper siblings - is
+	 * clean, so the guard cannot pass by flagging honest text. */
+	assert.deepEqual(
+		duplicateKeys('{\n  "path": "a"\n},\n{\n  "path": "b"\n}'),
+		[],
+	);
+});
+
+test("the SHIPPED manifest carries no duplicated key in any object", () => {
+	const duplicates = duplicateKeys(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	assert.deepEqual(
+		duplicates,
+		[],
+		"docs/evidence/manifest.json has an object with duplicated keys - a spliced entry (two objects merged without their closing brace) ships a false field under JSON.parse's last-wins, and every comparison reads the file the same way it did before this guard existed. Re-split the element into proper siblings, keep BOTH sides' entries, and re-run this suite.",
 	);
 });
 
@@ -968,8 +1048,7 @@ const STAMP_QUOTE = /`(srcTree|scriptsTree)`\s*`[0-9a-f]{7,40}`/;
  * written; a top-level note's key is its name, so only a TOP-LEVEL `headNote`
  * matches it and the two `previousTopLevel` copies do not.
  */
-const ledgerKey = (path) =>
-	path.replace(/^supplementary\/\d+\//, "supplementary/");
+const ledgerKey = (path) => path.replace(RE_EVIDENCE_19, "supplementary/");
 
 test("a note must not bind itself to a tree stamp", () => {
 	const manifest = JSON.parse(
@@ -1151,11 +1230,11 @@ test("a paragraph left behind by a fold fails, and carries the sentence to paste
 		),
 	});
 	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
-	assert.match(failure, /countsMean\.frames/);
-	assert.match(failure, /the walk finds 3/);
+	assert.match(failure, RE_EVIDENCE_20);
+	assert.match(failure, RE_EVIDENCE_21);
 	assert.match(
 		failure,
-		/Lead the field with: "RE-DERIVED FOR THIS FOLD \(this branch folded onto `origin\/main` = `<base>`\): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/,
+		RE_EVIDENCE_22,
 		"the message has to carry the reading the fold author pastes, or the next fold solves it by hand again",
 	);
 });
@@ -1169,8 +1248,8 @@ test("a paragraph with no reading in it fails rather than passing by omission", 
 			"RE-DERIVED FOR THIS FOLD: the counts beside this note describe the tree that ships.",
 	});
 	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
-	assert.match(failure, /countsMean\.frames/);
-	assert.match(failure, /nothing this check can read/);
+	assert.match(failure, RE_EVIDENCE_20);
+	assert.match(failure, RE_EVIDENCE_23);
 });
 
 test("the older paragraphs under the leading one are not this tree's to answer for", (t) => {
@@ -1197,8 +1276,8 @@ test("a stale surfaces paragraph fails on the literal the field names", (t) => {
 			"RE-DERIVED FOR THE FIFTH FOLD: 1 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
 	});
 	const [failure] = countsMeanFailures(manifest, countsGit, countsTree);
-	assert.match(failure, /countsMean\.surfaces/);
-	assert.match(failure, /the walk finds 2/);
+	assert.match(failure, RE_EVIDENCE_24);
+	assert.match(failure, RE_EVIDENCE_25);
 });
 
 test("a manifest with no countsMean is not this guard's failure", (t) => {
@@ -1314,7 +1393,7 @@ test("a countsMean cell that repeats a paragraph verbatim fails", () => {
 		1,
 		"a repeat with a different paragraph between its copies is still a repeat",
 	);
-	assert.match(spaced[0], /first seen at 0/);
+	assert.match(spaced[0], RE_EVIDENCE_26);
 });
 
 test("the SHIPPED manifest repeats no paragraph in any countsMean cell", () => {
@@ -3255,6 +3334,121 @@ const BRANCH_RECORDS = [
 	 * `STAMP_BINDING_NOTES`.
 	 */
 	"rowForkMenuNote",
+	/*
+	 * And by the transcript display mode's round-1 remediation (PR #775), this
+	 * branch's newest top-level record: the note that answers design round 1's
+	 * D1-D4 - the cell whose pair CANNOT be identical and the pixel reading that
+	 * says so, the live-app set behind the Settings row and the isolation the run
+	 * printed, the checked row's new mark, and the layout reading the round
+	 * recorded without fixing. It is listed for the reason the list exists: a fold
+	 * that started from main's manifest would drop it, and with it the only
+	 * statement of which two trees this round moved and which frames it does NOT
+	 * claim (the stale `chat-header-cluster/no-approval` siblings among them).
+	 */
+	"transcriptDisplayModesRoundOneRemediationNote",
+	/*
+	 * And by this branch's first fold onto a moved `origin/main`, which is the
+	 * case the list exists for and the one that just happened: the fold resolved
+	 * this file by hand (main's copy whole, this branch's deltas re-laid), and
+	 * the record it adds is the only statement of what the fold moved, what it
+	 * deliberately did NOT re-take, and why the two refusals of main's arrival - a
+	 * renderer file and a re-shot frame - both hold. IT WEARS THE BRANCH'S NAME
+	 * BECAUSE THE KEY COLLIDED: the fold onto `7cb678f29bf` arrived with main's
+	 * own `foldOnto9d9cd4be63fNote` - another branch's record of the same fold
+	 * target - so this branch's record yields the plain name and keeps its text,
+	 * which is the rename the list's own doctrine spells out.
+	 */
+	"[redacted]",
+	/*
+	 * And by the fold onto `origin/main` = `7cb678f29bf` (#767's session-load
+	 * paint with the four lanes under it), this branch's newest record: the note
+	 * that states what the arriving diff carried (frames and rigs of its own, and
+	 * `canonical-transcript.tsx`'s turn-foot caption), what the resolution did to
+	 * the three conflicted files, and why the terminal design and UX rounds'
+	 * freshness is a decision rather than a claim.
+	 */
+	"[redacted]",
+	/*
+	 * And by the transcript-line pass (#695 / §E3), this branch's six newest
+	 * top-level records - the original pass note and the five fold rounds that
+	 * followed it. They are listed for the reason the list exists and this branch
+	 * is the case that proves it twice over: the fold onto `origin/main` =
+	 * `9d9cd4be63` resolved the manifest by taking main's copy as the base and
+	 * re-laying these on top, and the NEXT fold onto `237733141d6` then lost
+	 * `partialCapture.addedSurfacesNote` from this branch's side - `pnpm
+	 * check-fold-keys` named it (agent review round 5, R5-1), which is the same
+	 * class these six entries are listed to keep visible. Each rounds note also
+	 * states what its own round moved and what it did not re-shoot, which is the
+	 * fact a fold that started from main's manifest would take with it. They quote
+	 * commit SHAs and never the `srcTree`/`scriptsTree` pair, so they join this
+	 * list and not `STAMP_BINDING_NOTES`.
+	 */
+	"footArrangementAndFoldCapPass",
+	"turnFootCaptionFoldRoundOnePass",
+	"turnFootCaptionFoldRoundTwoPass",
+	"turnFootCaptionFoldRoundThreePass",
+	"turnFootCaptionFoldRoundFourPass",
+	"turnFootCaptionFoldRoundFiveFoldPass",
+	/*
+	 * And by the palette's Ctrl+N/P walk and its Unread pin (issues #761/#760,
+	 * PR #778), this branch's newest top-level record: the note that states which
+	 * two trees the pass moved, the set it added (`palette-keys-unread-761-760`),
+	 * and the D1 remediation that re-took one frame of it. It is listed for the
+	 * reason the list exists, and this branch supplies a live instance of the
+	 * failure: the fold onto `origin/main` = `237733141d6` resolved the manifest
+	 * house-way and kept this record by hand ("the supplementary entry, the pass
+	 * note and the countsMean paragraph stay this branch's") - a resolver who
+	 * took main's copy would have dropped it, and with it the only statement of
+	 * the set's existence and the re-taken frame, with this very test staying
+	 * green (agent review round 2, MINOR).
+	 */
+	"paletteKeysUnreadPass",
+	/*
+	 * And by the composer ArrowDown lane (#764, PR #776), this branch's seven
+	 * newest top-level records - the capture pass's fold note and the six fold
+	 * rounds that followed it. They are listed for the reason the list exists:
+	 * six of the seven folds resolved the manifest by taking main's copy as the
+	 * base and re-laying these on top, so a fold that started from main's copy
+	 * would drop them first - and with them the only statements of which windows
+	 * moved against this set's surfaces and which frame bytes did not. They quote
+	 * commit SHAs and never the `srcTree`/`scriptsTree` pair, so they join this
+	 * list and not `STAMP_BINDING_NOTES`.
+	 */
+	"foldOnto9b4822de10Note",
+	"foldOnto9d9cd4be63fNote",
+	"foldOnto237733141d6Note",
+	"foldOntoFef3d5443f1Note",
+	"foldOnto83d7d937953Note",
+	"foldOnto211d84d668aNote",
+	"foldOntoA81de40dd84Note",
+	/*
+	 * And by the transcript display mode's round-1 DESIGN round (PR #775) - the
+	 * record the fold round flagged as unprotected. It is the only statement of
+	 * what that round shot (eighteen frames in the two `localOperator` palettes,
+	 * the header submenu in both modes and the six `chat-turn-collapse` cells),
+	 * of the rig option the mode's pairs need (a per-entry `prefs` seed, because a
+	 * display mode is a preference the rendered frame is a function of rather
+	 * than a story arg), and of the reading that decided the round - the settled
+	 * pairs are byte-identical and only `substance-then-addendum` can differ. It
+	 * quotes commit SHAs and never the `srcTree`/`scriptsTree` pair, so it joins
+	 * this list and not `STAMP_BINDING_NOTES`.
+	 */
+	"transcriptDisplayModesDesignRoundOneNote",
+	/*
+	 * And by this branch's convergence round after the fold onto `7cb678f29bf`:
+	 * the re-shoot of the `chat-turn-collapse` set at the folded tip, which
+	 * replaces six frames - the three cells whose foot caption #770 moved to the
+	 * prose's own rail - and leaves the set's other fifty files at their
+	 * committed bytes with the reason measured rather than assumed. It is listed
+	 * for the reason the list exists: a fold that started from main's manifest
+	 * would drop it, and with it the only statement of which cells the fold's
+	 * arrival actually moved, and of the two facts a re-capturer needs (the bar's
+	 * `Took` clause changed semantics on 2026-09-30 without those frames being
+	 * re-taken, and every stamp prints the capture host's own zone). It quotes
+	 * commit SHAs and never the `srcTree`/`scriptsTree` pair, so it joins this
+	 * list too.
+	 */
+	"transcriptDisplayModesFoldReshootNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
@@ -3267,3 +3461,68 @@ test("the manifest carries every top-level record this branch wrote", () => {
 		"a fold dropped this branch's own top-level records - union the manifest at the TOP level as well as inside it (the rig's fold block, group 2b, and the manifest's `citationConvention`)",
 	);
 });
+
+/*
+ * The palette budgets, per DIRECTORY rather than per set.
+ *
+ * `set` count is not the property a reader needs: the transcript-line pass's
+ * round-5 re-capture ran `--only=` without `--themes=`, which left the rig's
+ * default twelve palettes inside four touched states of a six-palette set while
+ * the set's other sixteen stayed at six, and re-took a forty-six-frame set as two
+ * hundred and seventy-six. The manifest's counts were re-derived from the tree
+ * and stayed green throughout, and both sets' READMEs kept documenting commands
+ * that no longer reproduced what was committed - design round 5 (D7) and QA round
+ * 5 (Q-r5-1) found it by counting files by hand. This test is that count, taken
+ * from `SET_BUDGETS` in `scripts/check-evidence-palettes.mjs` - which is also
+ * runnable on its own (`node scripts/check-evidence-palettes.mjs`) before a
+ * commit, because a failure here is five minutes into a `test:desktop` run
+ * otherwise. Adding a set to that table is what opts it in; the table is a
+ * transcription of each set README's own `--themes=` command.
+ */
+test("every declared evidence set holds exactly the palettes its record documents", () => {
+	const { sets, frames, problems } = checkPaletteBudgets();
+	assert.deepEqual(
+		problems,
+		[],
+		`${sets.length} declared set(s) at ${frames} frames: a state whose palettes are not its set's documented list is either a \`--only=\` run that left the rig's default palettes in place (extra) or a run that died mid-set (missing); re-shoot with the \`--themes=\` list the set's README documents, or update \`SET_BUDGETS\` and that README together`,
+	);
+});
+
+/*
+ * Hoisted out of the test bodies above for `lint/performance/useTopLevelRegex` - the only
+ * warnings this file carries, and the reason a change that touches it owes the whole-file
+ * cleanup `scripts/check-scripts-lint.mjs` charges (`scripts/` sits outside `pnpm lint`'s
+ * path list, so nothing else would say so). None of these literals is global or sticky and
+ * `assert.match` does not mutate a pattern's state, so one shared constant is the same
+ * expression evaluated once per run rather than once per assertion.
+ */
+const RE_EVIDENCE_1 = /reachable from no ref/;
+const RE_EVIDENCE_2 = /dies at the next gc/;
+const RE_EVIDENCE_3 = /wip: a commit that was amended away/;
+const RE_EVIDENCE_4 = /resolves to no commit/;
+const RE_EVIDENCE_5 = /`srcTree` is eeeeeeeee but HEAD:src is bbbbbbbbb/;
+const RE_EVIDENCE_6 =
+	/`scriptsTree` is fffffffff but HEAD:scripts is ccccccccc/;
+const RE_EVIDENCE_7 = /supplementary\[live\]/;
+const RE_EVIDENCE_8 = /missing or not a sha/;
+const RE_EVIDENCE_9 = /partialCapture\.addedAtHead/;
+const RE_EVIDENCE_10 = /partialCapture\.refreshedAtHead/;
+const RE_EVIDENCE_11 =
+	/claims 2 refreshed frames, but 3 committed frames differ/;
+const RE_EVIDENCE_12 = /refreshedStories misses 1 story directory/;
+const RE_EVIDENCE_13 = /chat-run-panel--mcp-key-error/;
+const RE_EVIDENCE_14 =
+	/claims 3 refreshed frames, but 4 committed frames stand in the directories refreshedStories names at HEAD/;
+const RE_EVIDENCE_15 = /refreshedStories misses 2 story directories/;
+const RE_EVIDENCE_16 = /chat-run-panel--mcp-key-saving/;
+const RE_EVIDENCE_17 = /committed frames stand in the directories/;
+const RE_EVIDENCE_18 = /committed frames differ at/;
+const RE_EVIDENCE_19 = /^supplementary\/\d+\//;
+const RE_EVIDENCE_20 = /countsMean\.frames/;
+const RE_EVIDENCE_21 = /the walk finds 3/;
+const RE_EVIDENCE_22 =
+	/Lead the field with: "RE-DERIVED FOR THIS FOLD \(this branch folded onto `origin\/main` = `<base>`\): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
+const RE_EVIDENCE_23 = /nothing this check can read/;
+const RE_EVIDENCE_24 = /countsMean\.surfaces/;
+const RE_EVIDENCE_25 = /the walk finds 2/;
+const RE_EVIDENCE_26 = /first seen at 0/;

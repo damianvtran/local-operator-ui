@@ -92,6 +92,19 @@ const requestId = z
  * the daemon's generic 422.
  */
 const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
+/**
+ * An onboarding approval's id (`ap_` + Crockford base32), on its way into a URL path.
+ *
+ * MIRRORS the mint in `local_operator/network/approvals.py` (`new_approval_id`:
+ * `ap_` + `crockford(8 bytes)`, thirteen characters today) and follows `meshId`'s
+ * discipline for the same reason: the id reaches a ROUTE PATH (and the store's own
+ * record filename), so what must be impossible is `/`, `.` and `%` — which is why
+ * the endpoint builder still `encodeURIComponent`s it. The pattern is deliberately
+ * wider than today's mint (length, not alphabet) so the store may mint longer ids
+ * without a renderer release, while an empty string, a sentence or a path fragment
+ * is refused HERE, by name, rather than by the daemon's generic 422.
+ */
+const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
 const sessionImage = z
 	.object({
 		data_b64: z.string().min(1).max(1_000_000),
@@ -905,6 +918,32 @@ export const PROJECT_DESCRIPTION_MAX_CHARS = 240;
 
 /** Longest milestone name the store accepts, in CHARACTERS. */
 export const PROJECT_MILESTONE_NAME_MAX_CHARS = 80;
+
+/**
+ * Longest query the `projects.search` op accepts, in CHARACTERS.
+ *
+ * The route bounds `q` at the same number (core
+ * `local_operator/server/routes/desktop_projects.py`), and it matches
+ * `SESSION_SEARCH_MAX_CHARS` because both are "a sentence a user typed". The
+ * box carries no `maxLength` here on purpose — a pasted query must be searched,
+ * not silently truncated — so this bound is enforced by SLICING the string the
+ * client sends (see `use-projects-search`), which keeps the refusal in the
+ * app's own words instead of the transport's generic 422.
+ */
+export const PROJECTS_SEARCH_MAX_CHARS = 256;
+
+/**
+ * How many ranked rows one `projects.search` query returns unless asked
+ * otherwise, and the ceiling the schema allows.
+ *
+ * A page-sized cap, not the scan's: every row is still ranked and only the
+ * ANSWER is bounded, so a ranked tail no view can draw costs nothing to omit.
+ * Sent explicitly rather than left to the route's own default (50) — the
+ * caller's list, not a second authority the app cannot see, is what decides
+ * how many rows a view asked for.
+ */
+export const PROJECTS_SEARCH_DEFAULT_LIMIT = 100;
+export const PROJECTS_SEARCH_MAX_LIMIT = 200;
 
 /** The store's own tag grammar (`projects.py`'s `_TAG_RE`), hoisted so the rule
  *  below and anything else that has to name it agree on one object. */
@@ -2652,6 +2691,36 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	/*
+	 * THE ONBOARDING APPROVALS (`features.approvals`), the third mesh-adjacent
+	 * family: one durable, signed record per remote-onboarding request, kept
+	 * DEVICE-LOCALLY under `<config>/network/approvals/` (remote-onboarding
+	 * design §2.3 — the badge must answer on a machine whose relay is down, which
+	 * is why the record is a flat file rather than something behind the relay).
+	 *
+	 * THE LIST IS THE BADGE READ and it dials nothing: every row comes off this
+	 * machine's own directory, so a rail-mounted interval costs one local scan
+	 * rather than a peer fan-out — the reason it is the ONE mesh-family read a
+	 * sidebar badge may poll (see `mesh-approvals.ts` for the cadence argument).
+	 * Each row is the frozen §3.5 shape — `what` (the scope block), the
+	 * where-block (`device` for `device_onboard`, `machine` for `local_authority`;
+	 * the KIND is which key is present), `requested_by` and the expiry — and the
+	 * surfaces do their own wording, so the wire stays the record's own
+	 * vocabulary and a new scope does not need a wire change.
+	 *
+	 * THE DECISIONS TAKE NO BODY, deliberately (`routes/desktop_approvals.py`:
+	 * "the two decision routes take NO body at all — approving is the gesture").
+	 * `approve` runs the SAME presence-gated signing call the CLI's `approve`
+	 * verb runs, so its latency includes a human's — see
+	 * `APPROVAL_APPROVE_DEADLINE_MS` for why this op alone carries its own
+	 * budget. `deny` never signs: it is write-once and settles in the safe
+	 * direction.
+	 */
+	z
+		.object({ op: z.literal("approvals.list") })
+		.strict(),
+	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
+	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
+	/*
 	 * The Projects surface (`/v1/desktop/projects*`), APPENDED to the union
 	 * rather than inserted beside the other catalogue ops: the backend serves
 	 * these routes from its own release, and an older daemon that has never
@@ -2764,6 +2833,29 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		.object({
 			op: z.literal("projects.request_update"),
 			key: projectKey,
+		})
+		.strict(),
+	/*
+	 * THE DERIVED SEARCH INDEX (`GET /v1/desktop/projects/search`). APPENDED like
+	 * its siblings, and gated by a `projects` VERSION BUMP (1 -> 2) rather than a
+	 * key of its own: the route ranks over the same store the listing reads and is
+	 * additive by construction — every version-1 call keeps its exact behaviour —
+	 * so the version is what lets a client ask for the new read without a second
+	 * negotiation. The backend's own register states the same split
+	 * (`routes/capabilities.py`: "a client gates ONLY the two new calls on
+	 * ``>= 2``").
+	 *
+	 * `.min(1)`: an EMPTY query is not a search. The route answers one with the
+	 * listing's own order truncated to `limit`, but this surface already holds
+	 * that list — its box is a filter over the catalogue — so an empty `q` would
+	 * ask the server to send back everything the client is holding, which is the
+	 * refusal `sessions.search` above states in the same words.
+	 */
+	z
+		.object({
+			op: z.literal("projects.search"),
+			q: z.string().min(1).max(PROJECTS_SEARCH_MAX_CHARS),
+			limit: z.number().int().min(1).max(PROJECTS_SEARCH_MAX_LIMIT).optional(),
 		})
 		.strict(),
 	/*
@@ -3763,6 +3855,28 @@ export function moveClientBoundMs(shape: MoveShape): number {
 }
 
 /*
+ * THE APPROVAL'S BOUND IS THE ONE OP THAT WAITS ON A HUMAN GESTURE.
+ *
+ * MIRRORED FROM THE BACKEND, NEVER CHOSEN HERE. `approvals.approve` signs through
+ * `network/approvals.py::sign_decision`, which signs with `timeout=None` and so
+ * takes the signer's own default: `keyagent.SIGN_TIMEOUT_SECONDS = 180.0` — past
+ * it the key agent is killed and NOTHING is signed, so the backend's own answer
+ * always arrives before 180 s plus a store round trip. A control-budget deadline
+ * would abandon a prompt the operator was still reading more than two minutes
+ * before the backend itself stops waiting, and would report this app's own
+ * timeout for a decision the backend was still holding — the exact defect
+ * `sessions.transfer`'s envelope fixed on the move side.
+ *
+ * The margin over the backend's number covers the store's file lock, the response,
+ * and the signer's own teardown (`keyagent` gives a terminated helper 2 s to
+ * exit). `approvals.deny` and `approvals.list` are deliberately NOT here: a deny
+ * never signs ("ordinary, write-once, safe direction") and a list is a cold scan
+ * of the device-local directory, so both keep the control budget.
+ */
+const PRESENCE_GESTURE_DEADLINE_MS = 180_000;
+const APPROVAL_APPROVE_DEADLINE_MS = PRESENCE_GESTURE_DEADLINE_MS + 15_000;
+
+/*
  * THE HUB'S WRITES ARE MODEL MERGES, so they sit on their own budgets, ABOVE the
  * backend's (agent review round 1, R2; UX U9).
  *
@@ -3827,6 +3941,10 @@ export function desktopRequestDeadlineMs(
 		return moveClientBoundMs(request) + MOVE_APP_MARGIN_MS;
 	}
 	const op = typeof request === "string" ? request : request.op;
+	// Op-keyed rather than request-keyed, because the gesture's bound is a property
+	// of the op alone: a caller holding only the op string (a story, a test) gets
+	// the same number the transport uses.
+	if (op === "approvals.approve") return APPROVAL_APPROVE_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
 	if (hub !== null) return hub;
 	return LONG_READ_OPS.has(op)
@@ -3934,6 +4052,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
+	"approvals.list",
 	"commands.entities",
 	"commands.list",
 	"config.get",
@@ -3958,6 +4077,9 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"peers.list",
 	"profiles.get",
 	"profiles.list",
+	// A ranked read over the same store the listing reads: it changes nothing, so
+	// a failure is reported with a read's patience rather than a write's caution.
+	"projects.search",
 	"providers.list",
 	// A reader that changes nothing (the route's own docstring): the straggler
 	// census, and the app re-reads it rather than caching a stale count.
@@ -4054,6 +4176,20 @@ export function desktopRequestDeadlineDetail(
 		return {
 			code,
 			message: `The app waits up to ${seconds} seconds for a move, and it was still running when the app stopped waiting. The move was asked for, so its outcome is unknown from here: read the session again before moving it anywhere else.`,
+		};
+	}
+	/*
+	 * AN APPROVAL THAT RAN OUT OF TIME WAS STILL WAITING ON A HUMAN, and unlike a
+	 * read there is no "nothing happened" to promise: the OS prompt is what decides,
+	 * so a decision the app stopped waiting for may still land. The instruction is
+	 * therefore the move's shape — read the record again — with its own second
+	 * half: answering again is SAFE, because the store keeps the first decision and
+	 * refuses a second rather than repeating one (write-once, F3).
+	 */
+	if (op === "approvals.approve") {
+		return {
+			code,
+			message: `The app waits up to ${seconds} seconds for an approval, and the signing prompt was still open when it stopped waiting. The request was sent, so the decision may or may not have landed: read the approvals again — if the record still waits, answering it again is safe, because the store keeps the first decision and refuses a second.`,
 		};
 	}
 	/*
@@ -4771,6 +4907,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// is a different (unjournalled) request on purpose.
 					...(request.requestId ? { request_id: request.requestId } : {}),
 				},
+			};
+		case "approvals.list":
+			return { path: "/v1/desktop/approvals", method: "GET" };
+		/*
+		 * The decision paths carry the record's OWN id, `encodeURIComponent`ed even
+		 * though the schema already refuses `/`, `.` and `%`: the pattern is this
+		 * client's check, and a hand-built request must not be able to turn an id
+		 * into a path fragment (the same rule the mesh writes state).
+		 */
+		case "approvals.approve":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/approve`,
+				method: "POST",
+			};
+		case "approvals.deny":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/deny`,
+				method: "POST",
 			};
 		case "profiles.list":
 			return { path: "/v1/desktop/profiles", method: "GET" };
@@ -5867,6 +6021,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 				path: `/v1/desktop/projects/${encodeURIComponent(request.key)}/request-update`,
 				method: "POST",
 			};
+		case "projects.search": {
+			/*
+			 * `URLSearchParams` rather than interpolation, for the reason
+			 * `sessions.search` states: a query is whatever the user typed, and an
+			 * `&`, `#` or space in it would otherwise change the request's meaning
+			 * (or truncate it) instead of being searched for. The route is a static
+			 * path declared before `/v1/desktop/projects/{key}` on the backend, so
+			 * `search` is never read as a project name.
+			 */
+			const query = new URLSearchParams({
+				q: request.q,
+				limit: String(request.limit ?? PROJECTS_SEARCH_DEFAULT_LIMIT),
+			});
+			return {
+				path: `/v1/desktop/projects/search?${query}`,
+				method: "GET",
+			};
+		}
 		case "aida.status":
 			return { path: "/v1/desktop/aida", method: "GET" };
 		case "aida.control":

@@ -29,6 +29,27 @@ const { filters } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
 
+/*
+ * The search joins this file's contract at exactly one seam now: the count
+ * population IS the query's admitted rows, so the tests below build that set
+ * with the real matcher rather than asserting a second one exists inside the
+ * filter module.
+ */
+const searchBundle = await build({
+	stdin: {
+		contents:
+			'export * as search from "./src/renderer/src/features/projects/project-search";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+});
+const { search } = await import(
+	`data:text/javascript;base64,${Buffer.from(searchBundle.outputFiles[0].text).toString("base64")}`
+);
+
 const {
 	FACET_ORDER,
 	FACET_LABELS,
@@ -354,7 +375,7 @@ test("option counts answer over every OTHER facet, so a click means what it says
 		project("d", { status: "done", team: null }),
 	];
 	/* Nothing selected: plain totals. */
-	const plain = facetOptions("team", rows, NO_FILTERS, TODAY, "");
+	const plain = facetOptions("team", rows, NO_FILTERS, TODAY);
 	assert.deepEqual(
 		plain.options.map((o) => [o.label, o.count]),
 		[
@@ -369,7 +390,6 @@ test("option counts answer over every OTHER facet, so a click means what it says
 		rows,
 		{ ...NO_FILTERS, status: ["active"] },
 		TODAY,
-		"",
 	);
 	assert.deepEqual(
 		withStatus.options.map((o) => [o.label, o.count]),
@@ -386,7 +406,6 @@ test("option counts answer over every OTHER facet, so a click means what it says
 		rows,
 		{ ...NO_FILTERS, status: ["active"] },
 		TODAY,
-		"",
 	);
 	assert.deepEqual(
 		status.options.map((o) => [o.label, o.count, o.selected]),
@@ -402,13 +421,24 @@ test("option counts answer over every OTHER facet, so a click means what it says
 	);
 });
 
-test("the search query narrows the count population too", () => {
+test("the search's admitted rows ARE the count population", () => {
+	/*
+	 * The module does not re-derive the query's membership any more, and this is
+	 * the test that held the old behaviour: the caller hands it the rows the
+	 * search admitted, whichever engine admitted them. Here the caller is the
+	 * local matcher, so the assertion is unchanged in shape - `docs-pass` is
+	 * still excluded and `platform` still counts one - but it now pins the
+	 * CONTRACT (the population is the caller's row set) rather than a second
+	 * matcher inside the filter module. A backend-admitted set would behave
+	 * identically, which is the point.
+	 */
 	const rows = [
 		project("migration-a", { name: "migration-a", team: "platform" }),
 		project("migration-b", { name: "migration-b", team: "atlas" }),
 		project("docs", { name: "docs-pass", team: "platform" }),
 	];
-	const scoped = facetOptions("team", rows, NO_FILTERS, TODAY, "migration");
+	const admitted = search.searchProjects(rows, "migration");
+	const scoped = facetOptions("team", admitted, NO_FILTERS, TODAY);
 	assert.deepEqual(
 		scoped.options.map((o) => [o.label, o.count]),
 		[
@@ -431,7 +461,7 @@ test("options are what is present, in canonical order, and a selected value surv
 	 * discoverable, and an unknown status a newer backend wrote sorts after
 	 * the seven known ones.
 	 */
-	const status = facetOptions("status", rows, NO_FILTERS, TODAY, "");
+	const status = facetOptions("status", rows, NO_FILTERS, TODAY);
 	assert.deepEqual(
 		status.options.map((o) => [o.label, o.count]),
 		[
@@ -446,7 +476,7 @@ test("options are what is present, in canonical order, and a selected value surv
 		],
 	);
 	/* Tags: alphabetical. */
-	const tags = facetOptions("tags", rows, NO_FILTERS, TODAY, "");
+	const tags = facetOptions("tags", rows, NO_FILTERS, TODAY);
 	assert.deepEqual(
 		tags.options.map((o) => o.label),
 		["alpha", "zeta"],
@@ -460,7 +490,6 @@ test("options are what is present, in canonical order, and a selected value surv
 		rows,
 		{ ...NO_FILTERS, team: ["ghost"] },
 		TODAY,
-		"",
 	);
 	assert.deepEqual(
 		vanished.options.map((o) => [o.label, o.count, o.selected]),
@@ -475,7 +504,6 @@ test("options are what is present, in canonical order, and a selected value surv
 		[project("x"), project("y", { team: "platform" })],
 		NO_FILTERS,
 		TODAY,
-		"",
 	);
 	assert.deepEqual(
 		bucket.options.map((o) => o.label),
@@ -485,7 +513,7 @@ test("options are what is present, in canonical order, and a selected value surv
 
 test("facet sections are every facet in order, each with its own options", () => {
 	const rows = [project("a", { status: "active", team: "platform" })];
-	const sections = facetSections(rows, NO_FILTERS, TODAY, "");
+	const sections = facetSections(rows, NO_FILTERS, TODAY);
 	assert.deepEqual(
 		sections.map((section) => section.facet),
 		[...FACET_ORDER],
@@ -502,7 +530,6 @@ test("facet sections are every facet in order, each with its own options", () =>
 		[project("a")],
 		{ ...NO_FILTERS, status: ["archived"] },
 		TODAY,
-		"",
 	);
 	const status = empty[0];
 	assert.deepEqual(
@@ -541,7 +568,7 @@ test("the zero-count rule splits fixed vocabularies from present-derived facets 
 		project("a", { status: "active", team: "platform" }),
 		project("b", { status: "done", team: "atlas" }),
 	];
-	const target = facetOptions("target", rows, NO_FILTERS, TODAY, "");
+	const target = facetOptions("target", rows, NO_FILTERS, TODAY);
 	assert.deepEqual(
 		target.options.map((o) => [o.label, o.count]),
 		[
@@ -551,14 +578,19 @@ test("the zero-count rule splits fixed vocabularies from present-derived facets 
 			["Due within 30 days", 0],
 		],
 	);
-	const estimate = facetOptions("estimate", rows, NO_FILTERS, TODAY, "");
+	const estimate = facetOptions("estimate", rows, NO_FILTERS, TODAY);
 	assert.deepEqual(
 		estimate.options.map((o) => o.label),
 		["No estimate", "Points", "Days"],
 	);
-	/* Present-derived: the query scopes the population to one row, and the
+	/* Present-derived: the search scopes the population to one row, and the
 	 * team the other row carries disappears instead of showing a 0. */
-	const scoped = facetOptions("team", rows, NO_FILTERS, TODAY, "platform");
+	const scoped = facetOptions(
+		"team",
+		search.searchProjects(rows, "platform"),
+		NO_FILTERS,
+		TODAY,
+	);
 	assert.deepEqual(
 		scoped.options.map((o) => [o.label, o.count]),
 		[["platform", 1]],
