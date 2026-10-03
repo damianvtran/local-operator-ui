@@ -179,6 +179,7 @@ import { tmpdir } from "node:os";
 import { join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
+import { EVIDENCE_TZ } from "./evidence-tz.mjs";
 import { withNotificationsOff } from "./notifications-off.mjs";
 /*
  * Every python this harness starts is handed an environment it has decided about,
@@ -1013,6 +1014,13 @@ async function launchApp({
 		HOME: HOME_DIR,
 		LOCAL_OPERATOR_CONFIG_DIR: CONFIG_DIR,
 		LOCAL_OPERATOR_LOG_DIR: LOG_DIR,
+		/*
+		 * The frame timezone, named at the launch site as well as pinned on this
+		 * script's own process: THIS object is the environment the built app is
+		 * handed, and `evidence-tz.mjs` is why it is a pin that beats an ambient
+		 * `TZ=` rather than a default that defers to one.
+		 */
+		TZ: EVIDENCE_TZ,
 		// No backend manager: this run must not install or start a Local Operator
 		// backend in the scratch HOME.
 		VITE_DISABLE_BACKEND_MANAGER: "true",
@@ -37657,6 +37665,18 @@ async function sceneMiniView(app, cdp) {
 }
 
 async function main() {
+	/*
+	 * The frame timezone, pinned before the first boot: the committed frames
+	 * bake one zone, so a re-shoot in another reads as a fake rendering
+	 * regression and the pin must beat an ambient `TZ=` rather than defer to it
+	 * (`evidence-tz.mjs` holds the receipts and the scope). The reading taken
+	 * first is what this process would otherwise have used.
+	 */
+	const hostTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	process.env.TZ = EVIDENCE_TZ;
+	say(
+		`renderer-driver: frame timezone pinned to ${EVIDENCE_TZ} (host TZ=${hostTz})`,
+	);
 	await assertBuildIsCurrent();
 	/*
 	 * Hygiene first, before this run adds a tree of its own. See
