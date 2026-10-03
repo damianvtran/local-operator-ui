@@ -41,21 +41,21 @@
  * would only stop a reader preparing for a sign-in they are about to make.
  */
 
-import {
-	desktopFeatureState,
-	type DesktopFeatureState,
-	useDesktopCapabilities,
-} from "@shared/api/local-operator/desktop-hooks";
+import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
 import type {
 	BackendSetting,
 	BackendSettings,
 } from "@shared/api/local-operator/desktop-api";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
+import {
+	type DesktopFeatureState,
+	desktopFeatureState,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
-import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { usePairingCause } from "@shared/hooks/use-pairing-cause";
 import { useSpeechPaths } from "@shared/hooks/use-speech-paths";
 import { speechSettingsNote } from "@shared/lib/speech-gate";
 import { useQuery } from "@tanstack/react-query";
@@ -68,13 +68,13 @@ import {
 	speechPathName,
 	speechVoiceRows,
 } from "../speech-settings-model";
-import { backendSettingsKeys } from "./backend-settings-section";
 import { BackendSettingRow } from "./backend-setting-row";
 import {
 	type SettingDraft,
 	draftFromSetting,
 	editOutcome,
 } from "./backend-settings-drafts";
+import { backendSettingsKeys } from "./backend-settings-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 
 type SpeechSectionProps = {
@@ -356,9 +356,9 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 	const inert = availability
 		? !availability.servable
 		: /* No answer yet: the one reading that is already a definite statement without
-		   * one is the local server being down, which the connectivity gate owns. Any
-		   * other silence is the check's, and is rendered as such above rather than as a
-		   * claim about speech. */
+			 * one is the local server being down, which the connectivity gate owns. Any
+			 * other silence is the check's, and is rendered as such above rather than as a
+			 * claim about speech. */
 			speechBlock === "offline";
 
 	return (
@@ -384,13 +384,13 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 						 * surface that reported it as one would name the wrong cause and offer a
 						 * Retry that cannot work. */
 						speechBlock !== "offline" && (
-						<Alert variant="warning">
-							Speech availability could not be read.{" "}
-							{pathsQuery.error instanceof Error
-								? pathsQuery.error.message
-								: ""}
-						</Alert>
-					)}
+							<Alert variant="warning">
+								Speech availability could not be read.{" "}
+								{pathsQuery.error instanceof Error
+									? pathsQuery.error.message
+									: ""}
+							</Alert>
+						)}
 
 					{availability && (
 						<>
@@ -435,7 +435,9 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 												{rung.available ? "(available)" : "(not available)"}
 											</span>
 										</span>
-										<span className="text-meta text-ink-dim">{rung.reason}</span>
+										<span className="text-meta text-ink-dim">
+											{rung.reason}
+										</span>
 									</li>
 								))}
 							</ul>
@@ -478,8 +480,8 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 				 */}
 				{voiceRows.missing.length > 0 && (
 					<p className="text-meta text-ink-dim">
-						This backend does not register{" "}
-						{voiceRows.missing.join(", ")} yet, so those rows are not shown.
+						This backend does not register {voiceRows.missing.join(", ")} yet,
+						so those rows are not shown.
 					</p>
 				)}
 			</div>
