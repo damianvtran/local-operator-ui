@@ -184,9 +184,14 @@ export type ScrollPagingOptions = {
 	 * surface that reveals rows without collapsing any) simply leaves it out, and
 	 * the settle falls back to the proxy — which is the same "not measured"
 	 * signal `noteSettled`'s `paintedDelta: null` already means, not a second
-	 * mode. The transcript always passes it; omitting it here is how a caller
-	 * says it has nothing better to offer than the proxy, not a silent way to
-	 * opt out of the invariant.
+	 * mode. Omitting it is how such a caller says it has nothing better to offer
+	 * than the proxy, not a silent way to opt out of the invariant.
+	 *
+	 * NO CALLER OMITS IT TODAY (agent review round 1, M2): this hook's only
+	 * caller is `canonical-transcript.tsx`, and the child reader renders that same
+	 * `CanonicalTranscript`, so every production settle arrives with a painted
+	 * count and the proxy is a fallback with no production path. It stays optional
+	 * for the surface described above, not because one exists.
 	 */
 	paintedRows?: () => number;
 	/**
@@ -342,6 +347,39 @@ export function useScrollPaging({
 	 * value it takes is derived from `busy`/`pageWidenOwed`.
 	 */
 	const [revealInFlight, setRevealInFlight] = useState(false);
+	/*
+	 * Whether a reveal the reader COULD SEE has landed SINCE the last failure,
+	 * which supersedes a standing `olderFailed` row (agent review round 1, M3).
+	 *
+	 * THE PROBLEM IT CLOSES. `olderFailed` is set by any failed ask and cleared
+	 * only by an applied one (`use-canonical-session.ts`), and `slotState` lets it
+	 * outrank `windowed`/`idle` unconditionally (design §1.5 D4/D9). So one
+	 * transient blip left "Could not load earlier messages - Try again" painted
+	 * for the rest of the session, even while later LOCAL widens were revealing
+	 * rows the reader could already see: the row described a past blip rather
+	 * than the present, and stopped telling the reader that scrolling still works.
+	 *
+	 * WHY IT LIVES HERE AND NOT UPSTREAM. A local widen never reaches the
+	 * session's loader, so the session cannot know one succeeded; this hook is the
+	 * only place that observes the settle. It does not re-derive "the reader saw
+	 * it": it reads the policy's own verdict off the settled state
+	 * (`chainInvisible === 0`), so there is still ONE counting path. The row's
+	 * state is the slot's to compose, and this is one more input to that
+	 * composition - `olderFailed` keeps its single writer upstream.
+	 *
+	 * IT IS NOT A FORGIVENESS. The backend may still be down: this only stops the
+	 * row from over-claiming while rows are on screen. When the local window runs
+	 * out the pump asks again, that ask fails, `noteFailed` fires and the flag is
+	 * cleared - so the failed row returns with the failure that is actually
+	 * current.
+	 *
+	 * THE DESIGN ROUND SHOULD JUDGE whether a visible local reveal ought to clear
+	 * the failed row at all, or whether the row should instead keep a softer form
+	 * of the failure while local rows are still available; the behaviour is
+	 * defensible (the row states what is true now) but it is a UX call, not a
+	 * mechanical one.
+	 */
+	const [failureSuperseded, setFailureSuperseded] = useState(false);
 
 	// Latest values for the rAF pump, which must not be re-created per render.
 	const live = useRef({
@@ -641,6 +679,22 @@ export function useScrollPaging({
 	}, [sampleAnchor]);
 
 	/**
+	 * Fold a settle into the policy, and let a reveal the reader COULD SEE
+	 * supersede a standing failure row (agent review round 1, M3).
+	 *
+	 * `chainInvisible === 0` after a settle is the POLICY's own reading that the
+	 * reveal was visible (`noteSettled` resets the counter only for a visible
+	 * reveal, and a settle that increments it can never land on 0). Reading that
+	 * rather than re-testing the paint here is what keeps a single counting path:
+	 * this file never decides "did the reader see it", it only reads the answer
+	 * `scroll-paging.ts` already gave. See `failureSuperseded`.
+	 */
+	const settle = useCallback((settled: PagingState): PagingState => {
+		if (settled.chainInvisible === 0) setFailureSuperseded(true);
+		return settled;
+	}, []);
+
+	/**
 	 * One decision, coalesced to an animation frame.
 	 *
 	 * Every path that can change the answer calls this; the rAF is what turns a
@@ -763,11 +817,16 @@ export function useScrollPaging({
 						 * positive part is: a reveal that lost rows must not read as
 						 * growth.
 						 */
-						state.current = noteSettled(state.current, {
-							network: false,
-							hiddenRowsAfter: live.current.hiddenRows,
-							paintedDelta: paintDelta(paintedBefore, live.current.paintedRows),
-						});
+						state.current = settle(
+							noteSettled(state.current, {
+								network: false,
+								hiddenRowsAfter: live.current.hiddenRows,
+								paintedDelta: paintDelta(
+									paintedBefore,
+									live.current.paintedRows,
+								),
+							}),
+						);
 						schedule();
 						return;
 					}
@@ -828,7 +887,17 @@ export function useScrollPaging({
 						: (await live.current.onLoadOlder())
 							? { kind: "applied", newRecords: 0, exhausted: false }
 							: { kind: "failed", reason: "request" };
-				} catch {
+				} catch (error) {
+					/*
+					 * A rejected loader is classified exactly like a `false` — the pump must
+					 * not be stranded — but not SILENTLY (agent review round 1, N2): without
+					 * this line a genuine backend fault is indistinguishable from a benign
+					 * decline. `console.warn` carrying the rejection is the channel this
+					 * module's neighbours use (`use-thread-search.ts`, `use-checkpoints.ts`);
+					 * it is a developer-facing breadcrumb, because the reader is already told
+					 * what happened by the failure row.
+					 */
+					console.warn("older history load was rejected:", error);
 					return { kind: "failed", reason: "request" };
 				}
 			};
@@ -846,6 +915,14 @@ export function useScrollPaging({
 				if (sessionEpoch.current !== askedFor) return;
 				if (outcome.kind === "failed") {
 					state.current = noteFailed(state.current);
+					/*
+					 * A failure is the present fact again, so a reveal that had
+					 * superseded an earlier one no longer speaks for this state: the
+					 * failed row must be able to return when the local rows run out
+					 * and the ask that replaces them fails (agent review round 1,
+					 * M3).
+					 */
+					setFailureSuperseded(false);
 					requestAnimationFrame(schedule);
 					return;
 				}
@@ -889,33 +966,38 @@ export function useScrollPaging({
 						const el = containerRef.current;
 						const anchorAfter =
 							anchorBefore === null ? null : measureHeld(anchorBefore.id);
-						state.current = noteSettled(state.current, {
-							hiddenRowsAfter: after,
-							/*
-							 * The rows the page PAINTED, in the reader's own currency and
-							 * through the same accessor the widen door samples — the page
-							 * door's half of the one measurement the settle is judged in.
-							 * Measured here, at the observed landing, for the reason the
-							 * extent is: a page's rows author their height (and the collapse
-							 * re-partitions) over several layout passes, so a reading taken
-							 * when the promise resolves would call every page invisible.
-							 * Clamped at zero like the widen door's.
-							 */
-							paintedDelta: paintDelta(paintedBefore, live.current.paintedRows),
-							/*
-							 * The drift's positive part: how far the held row was pushed DOWN, which
-							 * is how much content landed above it. A negative drift (the reader's own
-							 * motion, or a browser re-clamp) reads as no growth rather than as
-							 * negative growth — the invisible test is `growthPx < floor`, and a
-							 * negative number must not buy a chain.
-							 */
-							growthPx:
-								anchorBefore === null
-									? null
-									: Math.max(0, anchorDrift(anchorBefore, anchorAfter)),
-							clientHeight: el?.clientHeight ?? 0,
-							newRecords: outcome.newRecords,
-						});
+						state.current = settle(
+							noteSettled(state.current, {
+								hiddenRowsAfter: after,
+								/*
+								 * The rows the page PAINTED, in the reader's own currency and
+								 * through the same accessor the widen door samples — the page
+								 * door's half of the one measurement the settle is judged in.
+								 * Measured here, at the observed landing, for the reason the
+								 * extent is: a page's rows author their height (and the collapse
+								 * re-partitions) over several layout passes, so a reading taken
+								 * when the promise resolves would call every page invisible.
+								 * Clamped at zero like the widen door's.
+								 */
+								paintedDelta: paintDelta(
+									paintedBefore,
+									live.current.paintedRows,
+								),
+								/*
+								 * The drift's positive part: how far the held row was pushed DOWN, which
+								 * is how much content landed above it. A negative drift (the reader's own
+								 * motion, or a browser re-clamp) reads as no growth rather than as
+								 * negative growth — the invisible test is `growthPx < floor`, and a
+								 * negative number must not buy a chain.
+								 */
+								growthPx:
+									anchorBefore === null
+										? null
+										: Math.max(0, anchorDrift(anchorBefore, anchorAfter)),
+								clientHeight: el?.clientHeight ?? 0,
+								newRecords: outcome.newRecords,
+							}),
+						);
 						schedule();
 						return;
 					}
@@ -925,7 +1007,7 @@ export function useScrollPaging({
 				requestAnimationFrame(awaitLanding);
 			});
 		});
-	}, [holdAnchor, measure, sampleAnchor, measureHeld]);
+	}, [holdAnchor, measure, sampleAnchor, measureHeld, settle]);
 
 	/** Fold one real gesture in, then re-decide. */
 	const input = useCallback(
@@ -1053,6 +1135,10 @@ export function useScrollPaging({
 			revision: travel.current.revision + 1,
 		};
 		setRevealInFlight(false);
+		// A failure from the previous conversation says nothing about this one, and
+		// neither does a reveal that superseded it: this is the same reset the
+		// session's own `olderFailed` gets. See `failureSuperseded`.
+		setFailureSuperseded(false);
 		// A fresh conversation may already be shorter than its viewport with more
 		// history behind it, which is clause L's case and has no gesture to start
 		// it. `continuation` is the only demand kind `decide` will honour without
@@ -1060,6 +1146,25 @@ export function useScrollPaging({
 		state.current = { ...state.current, continuation: true };
 		schedule();
 	}, [sessionKey]);
+
+	/*
+	 * A failure is the present fact again, so a reveal that superseded an earlier
+	 * one stops speaking for it (agent review round 1, M3). The pump's own ask has
+	 * its own reset at the failure it observes; this covers the writers the hook
+	 * never sees — `olderFailed`'s single writer is the session hook, and the align
+	 * fetch, the jump walk and the mentioned-files scan all land there too.
+	 *
+	 * The RISING edge is what matters, and it is not the whole story: a repeat
+	 * failure from one of those other writers while `olderFailed` is already true
+	 * carries no edge, so a widen that intervened keeps the row on `windowed`
+	 * until the pump's own next ask fails. That is the state the reader is
+	 * actually in — rows ARE being revealed — and the row returns to `failed` the
+	 * moment the local rows run out and the ask behind them fails, which is the
+	 * honest statement of the backend being down.
+	 */
+	useEffect(() => {
+		if (olderFailed) setFailureSuperseded(false);
+	}, [olderFailed]);
 
 	useEffect(() => {
 		const el = containerRef.current;
@@ -1293,12 +1398,16 @@ export function useScrollPaging({
 	 * was spent AND nothing was held back, so a reader whose asks were all failing
 	 * while rows were still windowed read "Earlier history above — scroll up to
 	 * load": it asked them to do the one thing that could not work. `olderFailed`
-	 * is the session's single owner of that fact and now decides on its own.
+	 * is the session's single owner of that fact and now decides on its own —
+	 * UNLESS a reveal the reader could see has landed since the failure
+	 * (`failureSuperseded`, agent review round 1, M3), because then the row's
+	 * advice is true again and a past blip must not keep claiming the reader has
+	 * no way forward.
 	 */
 	const slotState: OlderHistoryState =
 		loadingOlder || revealInFlight
 			? "loading"
-			: olderFailed
+			: olderFailed && !failureSuperseded
 				? "failed"
 				: hiddenRows > 0
 					? "windowed"
