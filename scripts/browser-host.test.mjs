@@ -3892,16 +3892,18 @@ test("a background tab captures without a route, without activation, through the
 		"r3",
 	);
 	assert.equal(shot.data, "iVBORw0KGgo=");
-	// The flag IS the contract: `captureBeyondViewport: false` needs a composited
-	// surface a hidden view does not have, and then never answers (measured).
+	// ONE SHAPE, and `false` is the whole contract: `true` makes Chromium produce the
+	// capture beyond the viewport, which with a clip means EMULATING the clip box as
+	// the viewport — measured through the proof rig (its §5d capture check,
+	// Electron 44: `resize 0 -> 2`, `lastResizeSize=1280x720`), and it resized a hidden
+	// 1280x720 view's renderer and fired page `resize` events, which closes an open
+	// Radix select popup. `false` copies the composited surface and fires none. There
+	// is no clip either: the composited surface IS the viewport, so a clip could only
+	// reshape it.
 	assert.deepEqual(
 		cdp.calls.filter((call) => call.method === "Page.captureScreenshot").at(-1)
 			?.params,
-		{
-			format: "png",
-			captureBeyondViewport: true,
-			clip: { x: 0, y: 0, width: 1280, height: 720, scale: 1 },
-		},
+		{ format: "png", captureBeyondViewport: false },
 	);
 	assert.equal(
 		record.view.visibility.at(-1),
@@ -3939,8 +3941,50 @@ test("a background tab captures without a route, without activation, through the
 		cdp.calls.filter((call) => call.method === "Page.captureScreenshot").at(-1)
 			?.params,
 		{ format: "png", captureBeyondViewport: false },
-		"a presented capture keeps the narrower composited-surface capture, with no clip",
+		"a presented capture asks for the same shape as a background one",
 	);
+});
+
+/** The sizing rule as a function, so the bite case below can run it against a
+ * swapped snippet rather than against the tree it just read. */
+function assertSizedBeforeHidden(source) {
+	const sized = source.indexOf("view.setBounds(BACKGROUND_VIEWPORT)");
+	const hidden = source.indexOf("view.setVisible(false)");
+	assert.notEqual(
+		sized,
+		-1,
+		"no `view.setBounds(BACKGROUND_VIEWPORT)` at creation",
+	);
+	assert.notEqual(hidden, -1, "no `view.setVisible(false)` at creation");
+	assert.ok(
+		sized < hidden,
+		`a driven view must be SIZED BEFORE it is hidden: setBounds at ${sized} is not before setVisible(false) at ${hidden}`,
+	);
+}
+
+test("a driven view is sized before it is ever hidden", () => {
+	// WHY A SOURCE SCAN rather than a behaviour test: the mechanism is the ORDER of
+	// two statements inside `startBrowserHost`'s `buildView` closure, and no harness in
+	// this file can boot Electron to observe it. Measured on Electron 44 (the scratch
+	// probe behind this PR, and why the fix exists at all): a `WebContentsView` hidden
+	// before it is ever sized keeps a 0x0 layout viewport — `innerWidth === 0`,
+	// `document.elementsFromPoint` answering an empty stack — while the same view sized
+	// first reports 1280x720. `scripts/check-geometry-sources.test.mjs` is the precedent
+	// for gating source text.
+	const source = readFileSync(
+		new URL("../src/main/browser/index.ts", import.meta.url),
+		"utf8",
+	);
+	assertSizedBeforeHidden(source);
+	// The check has bite: the swapped order IS the measured regression.
+	const swapped = source
+		.replace("view.setBounds(BACKGROUND_VIEWPORT);", "")
+		.replace(
+			"view.setVisible(false);",
+			"view.setVisible(false);\n\t\tview.setBounds(BACKGROUND_VIEWPORT);",
+		);
+	assert.notEqual(swapped, source, "the swap must have changed the source");
+	assert.throws(() => assertSizedBeforeHidden(swapped));
 });
 
 test("a background capture retries a stalled attempt, and does not retry a real failure", async () => {
@@ -3952,8 +3996,15 @@ test("a background capture retries a stalled attempt, and does not retry a real 
 	const record = registry.requireSurface(opened.tab);
 	assert.equal(record.presented, false);
 
-	// The measured shape: a hidden view's capture has no frame for THIS call and
-	// never answers, and the next call answers. Assert both halves of the contract.
+	// The measured shape: a hidden view produces a frame lazily, so one call has none
+	// to produce and never answers, and the next call has one. Both halves.
+	//
+	// WHY IT IS STILL HERE AFTER THE FLAG CHANGE (this PR): removing it was the
+	// tempting simplification — a composited-surface copy "cannot stall" — and the
+	// proof rig refuted that on the first AFTER run, where the first capture of a
+	// freshly created hidden view stalled at its 15 s ceiling WITH
+	// `captureBeyondViewport: false`. The laziness belongs to the hidden view rather
+	// than to the clipped shape, so the retry keeps its original bound.
 	const realSend = cdp.send;
 	let captures = 0;
 	let seenDeadline;
