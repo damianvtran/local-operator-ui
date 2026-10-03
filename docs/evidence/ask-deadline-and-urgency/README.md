@@ -32,18 +32,24 @@ because one caption is printed into both halves.
 | `urgent` | `1 question waiting`, **accent** mark | `1 question waiting · expires in 3m`, **`warning`** mark, `· Urgent` in the announced name |
 | `truncated` | `12 outstanding` | `12 outstanding` — and NO countdown, because a prefix cannot state a queue-scope deadline. **A guard frame** (see below) |
 | `narrow-393` | a moved-on ask among its chips, wrapping | unchanged. **A guard frame** |
-| `column-floor-220` | `1 question waiting` at the app's 220px column | `1 question waiting · 48m` — the VALUE is what the app's own floor carries, so the deadline survives the narrowest column the app produces |
+| `column-floor-172` | `1 question waiting` at the record's 172px column (the canvas-open measurement `docs/composer-status-tabs.md` §2.4 carries) | identical — at 172 no form of the deadline fits, so the count is alone on both sides of the change. **A guard frame**, and the boundary the guarantee is now stated against |
 | `multiple-band-260`, `two-windows-band-260`, `multiple-band-241` | a chip overhanging its own column in that band, and a countdown cut to `expires in 4...` on this PR's own round-3 head | the sentence yields WHOLE to the value (`· 48m`), the count is the floor, and no column paints a partial number |
 | `expanded-waiting` | the panel row: HelpCircle, accent, `expires in 48m` | the panel row unchanged; the ITEM below it now states the countdown (the pair differs at y 239-357, which is the item) |
 | `expanded-urgent` | the panel row: HelpCircle, **accent** | HelpCircle kept, ink **`warning`**, `Urgent.` announced |
 | `expanded-moved-on-urgent` | the panel row: **Clock**, warning, no urgency | identical. **A guard frame** |
 
-**Three frames are guards rather than deltas**, and this list is MEASURED (the
+**Four frames are guards rather than deltas**, and this list is MEASURED (the
 count of differing pixels between each pair, both palettes, in the table below)
 rather than asserted:
 
 - `truncated` is a byte-identical pair: a truncated queue states a tally and no
   countdown at any width, so this pass changes nothing in it.
+- `column-floor-172` is byte-identical in both palettes, and that is the point of
+  it rather than a disappointment: at 172px the yield has already given up every
+  form of the deadline, so `main`'s chip and this branch's chip paint the same five
+  words. It is the frame that photographs the BOUNDARY - the row where the deadline
+  is absent - which is where agent review round 2's F1 found this set certifying a
+  retracted floor.
 - `narrow-393` is identical too: a moved-on queue has no countdown, so the item is
   the same chip #810 shipped.
 - `expanded-moved-on-urgent` is identical in both halves, and the reason is worth
@@ -56,8 +62,8 @@ rather than asserted:
   cannot show that head, so the guard is the honest shape.
 
 The discriminating pairs for the rehomed items are `waiting`, `mixed`, `multiple`,
-`two-windows`, `urgent`, `column-floor-220`, `expanded-waiting`, `expanded-urgent`
-and the three `*band*` states.
+`two-windows`, `urgent`, `expanded-waiting`, `expanded-urgent` and the three
+`*band*` states.
 
 ## The fixture invariant
 
@@ -88,7 +94,7 @@ proved the same way.
 | state | item width |
 | --- | --- |
 | `truncated` (count only) | 115.38px |
-| `column-floor-220` (count + value, at its 220px column) | 180.20px |
+| `column-floor-172` (count only, at the record's 172px column) | 133.47px |
 | `urgent` | 221.83px |
 | `waiting` | 229.69px |
 | `multiple` | 308.73px |
@@ -115,9 +121,31 @@ WHOLE by the next that fits, never cut:
 
 `slack` is the gap between the chip's right edge and the composer content box's right
 edge, in px — i.e. **the room left over**: it is ≥ 22 at every one of these 32 cells,
-so nothing paints past the column, and each band edge carries ~22px of margin over
-the form it admits (deliberately: a locale's digits are not this font's digits, and a
-threshold tuned to fit exactly re-breaks on the next copy change).
+so nothing paints past the column. Each band edge also carries margin over the form
+it admits: **~22px** on the shipped fixtures' count (`2 questions waiting`) and
+**~15px** on the widest count the wire can deliver (`20 questions waiting`, the
+list's own cap) - the second is the case that has to hold, and it is the one both
+edges are titrated against (deliberately: a locale's digits are not this font's
+digits, and a threshold tuned to fit exactly re-breaks on the next copy change).
+
+**The floor the guarantee is stated against, and a disagreement left on the
+record.** Agent review round 2's F1: this README and the band comment both called
+`column-floor-220` "the narrowest column the app produces", but
+`docs/composer-status-tabs.md` §2.4 had already retracted that - *"The floor is
+172px, not 220px ... 220px was this document's assumption and the app never renders
+it"* - and the sibling set's `column-floor/` renders at 172 for the same reason. So
+the floor frame is now that width and the guarantee is stated narrowly and truly:
+**at 172px the deadline is NOT on the chip**; the count is alone, and the fact is
+carried one layer down by the tooltip and the item's announced name, which compose
+the whole clause at every width. One caveat is left visible rather than smoothed:
+`chat-content.tsx`'s own CSS floor is `min-w-[480px]`, which cannot render 172, so
+the two numbers on the record cannot both be current. Every band here is decided
+against the NARROWER reading - a guarantee that holds at 172 holds at 480 and not
+the reverse - and QA has been asked to re-measure the composer column on the built
+app and name the box. The three comments in `chat-content.tsx` that still cited
+220px as the column's floor were re-read in this change and corrected to 480, which
+is what that file's class and its own constant (`IT WAS 220 UNTIL §I`) carry; the
+220 citations left in `docs/evidence` are records of past states and stay records.
 
 **The one thing the yield may never produce is a partial TIME value** — `4...` and
 `48...` are the same glyphs to a reader deciding whether to hurry. Swept over
