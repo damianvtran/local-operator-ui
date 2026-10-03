@@ -21,6 +21,10 @@ import {
 	paletteShortcutLabel,
 	switcherShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
+import {
+	pendingApprovalCount,
+	useMeshApprovals,
+} from "@features/mesh/mesh-approvals";
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import {
 	desktopFeatureEnabled,
@@ -312,6 +316,31 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		desktopFeatureState(capabilities.data, "peers") === "enabled";
 	const meshMembership = useMeshMembership(meshPaired);
 	/*
+	 * THE MESH ROW'S BADGE NUMBER — the mesh's counterpart of the Browser row's
+	 * approvals count, and the ONE mesh-family read this column POLLS.
+	 *
+	 * The interval is deliberate here where `networks.list` is forbidden one
+	 * (mesh-store.ts, review round 2 R2-1): that read dials every peer, this one
+	 * dials NOTHING — the approval records are device-local files, so a tick is
+	 * one cold scan of a small directory and no socket at all. And it is the ONE
+	 * fact of the family whose whole point is to reach the user while they are
+	 * somewhere else: a badge that only moved when the tab was open would not be
+	 * a notification. `mesh-approvals.ts` owns the cadence and the argument.
+	 *
+	 * Gated on membership as well as the key, and that is the row's own gate
+	 * rather than the read's: a device in no network renders no Mesh row, so a
+	 * badge on it would be a count nothing could show. (The `/mesh` route still
+	 * reads once on mount for a non-member, which is what lets a
+	 * `local_authority` record be answered there.)
+	 */
+	const meshApprovalsEnabled =
+		desktopFeatureState(capabilities.data, "approvals") === "enabled";
+	const meshApprovals = useMeshApprovals(
+		meshMembership === "member" && meshApprovalsEnabled,
+		{ poll: true },
+	);
+	const meshWaiting = pendingApprovalCount(meshApprovals.data ?? []);
+	/*
 	 * Whether this backend serves the Projects surface at all.
 	 *
 	 * FAIL-CLOSED MEANS NO ROW, the pins gate's rule: below the `projects`
@@ -488,6 +517,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * everywhere (R1-1). Placed after Agent hub and before the Settings row - it is a
 		 * view of THIS machine's infrastructure, which is nearer to Settings than to any
 		 * chat surface.
+		 *
+		 * ITS BADGE IS THE ONBOARDING COUNT (`features.approvals`), the same
+		 * shape the Browser row uses for its own approvals: one number, only while
+		 * something waits, and a name that states it in both widths. Zero draws
+		 * nothing, so a mesh at rest renders the row exactly as it shipped.
 		 */
 		...(meshMembership === "member"
 			? [
@@ -497,6 +531,9 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						path: "/mesh",
 						isActive: currentView === "mesh",
 						tourTag: "nav-item-mesh",
+						attention: meshWaiting,
+						attentionTag: "nav-mesh-badge",
+						attentionName: (count: number) => `Mesh, ${count} waiting`,
 					},
 				]
 			: []),
