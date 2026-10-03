@@ -109,6 +109,12 @@
 			"description": "Where a notification click sends you when the desktop app is not running."
 		},
 		{
+			"name": "speech",
+			"title": "Speech voicing",
+			"scope": "live",
+			"description": "How the assistant sounds when it speaks aloud. The descriptor is sent to the hub, which maps it onto whichever voice provider serves; fields a provider cannot express degrade with a note rather than failing. Read on the next spoken message."
+		},
+		{
 			"name": "retired",
 			"title": "Retired",
 			"scope": "new launch",
@@ -2670,6 +2676,176 @@
 			"empty_unsets": true,
 			"redacted": false,
 			"placeholder": "local-operator-ui --open-session {session}"
+		},
+		{
+			"key": "speech.voice.gender",
+			"section": "speech",
+			"label": "Voice gender",
+			"kind": "enum",
+			"help": "auto picks per agent; a fixed value overrides the classifier.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "auto",
+					"label": "auto",
+					"description": "Classify per agent (recommended)."
+				},
+				{
+					"value": "female",
+					"label": "female",
+					"description": "Always use a female voice."
+				},
+				{
+					"value": "male",
+					"label": "male",
+					"description": "Always use a male voice."
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "speech.voice.tone",
+			"section": "speech",
+			"label": "Tone",
+			"kind": "enum",
+			"help": "Warmth of delivery. Honoured as a voice row or emulated in instructions.",
+			"value": "warm",
+			"default": "warm",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "warm",
+					"label": "warm",
+					"description": "Friendly and approachable."
+				},
+				{
+					"value": "neutral",
+					"label": "neutral",
+					"description": "Even and unmarked."
+				},
+				{
+					"value": "bright",
+					"label": "bright",
+					"description": "Upbeat and energetic."
+				},
+				{
+					"value": "calm",
+					"label": "calm",
+					"description": "Unhurried and steady."
+				},
+				{
+					"value": "authoritative",
+					"label": "authoritative",
+					"description": "Confident and assured."
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "speech.voice.expressiveness",
+			"section": "speech",
+			"label": "Expressiveness",
+			"kind": "enum",
+			"help": "How animated the delivery is. Sets ElevenLabs stability; a phrase on OpenAI.",
+			"value": "medium",
+			"default": "medium",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [
+				{
+					"value": "low",
+					"label": "low",
+					"description": "Restrained and plain."
+				},
+				{
+					"value": "medium",
+					"label": "medium",
+					"description": "Today's constant."
+				},
+				{
+					"value": "high",
+					"label": "high",
+					"description": "Lively and expressive."
+				}
+			],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "speech.voice.pace",
+			"section": "speech",
+			"label": "Pace",
+			"kind": "float",
+			"help": "Speaking rate, 1.0 being normal. A provider whose own range is narrower clamps.",
+			"value": 1,
+			"default": 1,
+			"is_default": true,
+			"minimum": 0.5,
+			"maximum": 2,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
+		},
+		{
+			"key": "speech.voice.language",
+			"section": "speech",
+			"label": "Language",
+			"kind": "text",
+			"help": "auto lets the provider detect; a two-letter code (e.g. es) pins it.",
+			"value": "auto",
+			"default": "auto",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false
+		},
+		{
+			"key": "speech.voice.accent",
+			"section": "speech",
+			"label": "Accent",
+			"kind": "text",
+			"help": "A region tag such as en-GB, or empty. Reaches the provider as instructions text.",
+			"value": "",
+			"default": "",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": true,
+			"redacted": false
+		},
+		{
+			"key": "speech.voice.instructions",
+			"section": "speech",
+			"label": "Delivery instructions",
+			"kind": "text",
+			"help": "Free text for how speech should sound (OpenAI only). Empty sends none of our own.",
+			"value": "Speak aloud and pay attention to potentially multilingual inputs and make sure to use native accents for all different parts of the text, especially those that are not english. Strive for a casual and native-sounding conversational tone. Don't over-enunciate, consider word combinations that should have silent and natural transitions, like \"raha hoon\" -> \"rahoon\" or \"je m'appelle\" -> \"jm'appelle\".",
+			"default": "Speak aloud and pay attention to potentially multilingual inputs and make sure to use native accents for all different parts of the text, especially those that are not english. Strive for a casual and native-sounding conversational tone. Don't over-enunciate, consider word combinations that should have silent and natural transitions, like \"raha hoon\" -> \"rahoon\" or \"je m'appelle\" -> \"jm'appelle\".",
+			"is_default": true,
+			"minimum": null,
+			"maximum": null,
+			"members": [],
+			"choices": [],
+			"empty_unsets": false,
+			"redacted": false
 		}
 	]
 }
