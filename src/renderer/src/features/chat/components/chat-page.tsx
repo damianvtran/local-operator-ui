@@ -142,7 +142,10 @@ import { PickerOutlet } from "../pickers/picker-registry";
 import { effortQueryModel } from "../session-status/session-model";
 import type { Message } from "../types/message";
 import { encodeImageAttachments } from "../utils/attachment-encode";
-import { unreadableAttachmentRefusal } from "../utils/attachment-read";
+import {
+	imageOverflowRefusal,
+	unreadableAttachmentRefusal,
+} from "../utils/attachment-read";
 import { canvasDocumentForPath } from "../utils/canvas-document";
 import { messageBudgetRefusal } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
@@ -1750,7 +1753,7 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const { images, unreadable } = await encodeImageAttachments(
+			const { images, unreadable, overflow } = await encodeImageAttachments(
 				attachments,
 				content,
 			);
@@ -1772,6 +1775,21 @@ function SessionPanel({
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
 				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
+			const overflowRefusal = imageOverflowRefusal(overflow);
+			if (overflowRefusal) {
+				/*
+				 * The BUDGET arm's shape rather than the unreadable arm's: both are
+				 * payload-shape refusals whose remedy is to change the draft, and
+				 * neither is a store-raised failure for `withholdsRetryHint` to
+				 * classify - a press just re-refuses the same chips, which is why the
+				 * register is set here rather than told to a code.
+				 */
+				setSendError(overflowRefusal);
+				setSendErrorCode(undefined);
 				setSendErrorRetry(false);
 				setSendErrorMuted(false);
 				return false;

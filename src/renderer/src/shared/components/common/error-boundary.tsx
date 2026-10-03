@@ -21,6 +21,30 @@ type ErrorBoundaryProps = {
 	 * Optional fallback component to render when an error occurs
 	 */
 	fallback?: ReactNode;
+
+	/**
+	 * A fallback that needs the boundary's own controls, for a surface that has
+	 * to offer a way OUT rather than only say what happened.
+	 *
+	 * `fallback` cannot do that: it is a node, so it is rendered through a wrapper
+	 * that drops `FallbackProps`, which is why a caller reaching for a retry
+	 * button had to either re-implement this component or render a dead sentence.
+	 * This prop hands the caller the same props the built-in fallback gets
+	 * (`error`, `resetErrorBoundary`) without changing what `fallback` means: the
+	 * node form stays for the surfaces that only need to say something.
+	 */
+	fallbackRender?: (props: FallbackProps) => ReactNode;
+
+	/**
+	 * Values that RELEASE a caught error when they change, compared shallowly.
+	 *
+	 * A boundary latches: once it has caught, that subtree stays replaced until
+	 * the boundary remounts or is reset, even after the data that caused the
+	 * crash has been replaced by a good answer. Passing the inputs the subtree
+	 * renders from is the difference between "one malformed payload costs the
+	 * panel until the route is left" and "the next answer is rendered normally".
+	 */
+	resetKeys?: readonly unknown[];
 };
 
 /**
@@ -78,6 +102,8 @@ const ErrorFallback = ({ error, resetErrorBoundary }: FallbackProps) => (
 export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({
 	children,
 	fallback,
+	fallbackRender,
+	resetKeys,
 }) => {
 	const onError = (error: Error, info: ErrorInfo) => {
 		console.error("Error caught by ErrorBoundary:", error, info);
@@ -85,7 +111,14 @@ export const ErrorBoundary: React.FC<ErrorBoundaryProps> = ({
 
 	return (
 		<ReactErrorBoundary
-			FallbackComponent={fallback ? () => <>{fallback}</> : ErrorFallback}
+			FallbackComponent={
+				fallbackRender
+					? (props: FallbackProps) => <>{fallbackRender(props)}</>
+					: fallback
+						? () => <>{fallback}</>
+						: ErrorFallback
+			}
+			resetKeys={resetKeys ? [...resetKeys] : undefined}
 			onError={onError}
 		>
 			{children}

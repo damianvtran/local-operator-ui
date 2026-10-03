@@ -178,3 +178,69 @@ export function speechUnavailableReason(
 ): string {
 	return REASONS[control][block];
 }
+
+/**
+ * The SETTINGS group's sentence per block, from the same classification.
+ *
+ * WHY A SECOND TABLE AND NOT THE TOOLTIP'S. The disabled control's sentence is
+ * written for a reader standing on a TRANSCRIPT, so its remedy has to name the
+ * destination ("Sign in to Radient in Settings to enable speaking aloud") — and
+ * that sentence, rendered on the Settings page itself, tells a reader standing
+ * in Settings to go to Settings. The group is also the one place that can afford
+ * to name the exact route, which is what the design note asks of it: `/login
+ * radient` is runnable as printed, whereas "sign in" is a description of a
+ * gesture.
+ *
+ * WHY IT STILL BELONGS IN THIS MODULE: the CLASSIFICATION is the thing that may
+ * not be duplicated — `speechBlock` is derived from one reading of the account
+ * and the capability negotiation (see the ladder above), and the group renders
+ * its arm of that same reading rather than re-deriving "is the reader signed
+ * in" from the account query itself. Two sentences from one classification is a
+ * copy decision; two classifications would be the defect this module exists to
+ * prevent.
+ */
+const SETTINGS_REASONS: Record<RadientSpeechBlock, string> = {
+	checking: "Checking whether this machine can speak aloud…",
+	/*
+	 * BOTH REMEDIES, and the command printed BARE (design review round 1, D5;
+	 * UX review round 1, U3). The daemon's own sentence for this arm - rendered
+	 * in the same panel - names two routes ("sign in to Radient, or store an
+	 * ElevenLabs or OpenAI API key"), and this note narrowed to one, so a reader
+	 * who does not want a Radient account was told the key route nowhere. The
+	 * backticks were rendered as characters in every `nothing-available` frame;
+	 * the sibling sentence for this command class prints it bare
+	 * (`usage-view-model.ts`, "Sign-in expired - run /login xai").
+	 *
+	 * What the note still tracks is AVAILABILITY, not the account: it renders
+	 * only where nothing can serve, which is the claim this state exists to keep
+	 * true (see the `inert` computation in `speech-section.tsx`).
+	 */
+	"sign-in":
+		"Nothing can speak aloud yet: run /login radient to sign in, or store a provider key in the Model providers section",
+	/*
+	 * PROVIDER-ORIENTED, not account-oriented, and that is the fix for a sentence
+	 * that could be false. Every other arm here renders only beside a daemon report
+	 * saying nothing can serve, so "nothing can speak aloud yet" is backed by the
+	 * report itself; the earlier wording then added "your Radient sign-in could not
+	 * be checked" — a claim about the ACCOUNT at an arm the account may have
+	 * answered. It is reachable that way: `use-credentials.ts` documents the
+	 * non-canonical `RADIENT_API_BASE_URL` skew, where this renderer's session tier
+	 * can hold while the daemon's own probe (which reads the destination it was
+	 * built for) finds no credential, so the account read answers `ready` and the
+	 * block still lands here. What the reader can act on in every one of those
+	 * states is the credential the daemon actually reads (agent review round 1,
+	 * M2).
+	 */
+	"could-not-check":
+		"Nothing can speak aloud yet. A Radient sign-in or a stored provider key is what changes that",
+	offline: "Local Operator is offline, so nothing can speak aloud right now",
+};
+
+/**
+ * The settings group's sentence for a block, from {@link radientSpeechBlock}.
+ *
+ * @param block - the classification the disabled control already renders from.
+ */
+export function speechSettingsNote(block: RadientSpeechBlock): string {
+	return SETTINGS_REASONS[block];
+}
