@@ -66,6 +66,56 @@ const param = (name: string, fallback: number) => {
 	return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+/**
+ * The durable page a MID-RUN owner has written so far.
+ *
+ * Shaped `U R A W R` - a user row, the long settled run that answered it, the
+ * assistant row that CLOSED that round, the wake receipt that re-entered the
+ * run, and the calls settled since - and deliberately with NO closing assistant
+ * row: the turn has not ended, so the page stops where the owner last flushed.
+ *
+ * The call still out at the snapshot exists only in the live seed
+ * (`liveOwnerEvents` in the bridge), which is what makes this a join mid-run
+ * rather than a settled conversation: the pane paints this page first, and the
+ * seed's running call, the working line and the settled-run fold arrive with the
+ * snapshot behind it.
+ *
+ * Reached with `?live=1`; the settled fixtures are untouched.
+ */
+function inFlightSteps(): TranscriptStep[] {
+	return [
+		{
+			kind: "user",
+			text: "Invoice reconciliation: chase the four oldest late invoices and report back.",
+		},
+		{
+			kind: "toolRun",
+			calls: Array.from({ length: 6 }, (_, index) => ({
+				name: index % 2 === 0 ? "bash" : "read_file",
+				output: `step ${index + 1}: read 214 lines from the reconciliation ledger.`,
+			})),
+		},
+		{
+			kind: "assistant",
+			text: "I found four late invoices and have started on the oldest; the remaining three are queued behind it.",
+		},
+		{
+			kind: "wake",
+			text: "(alarm) Scheduled wake w-9 (1, every 6h)\n\nCollect the staged reconciliation records.",
+		},
+		{
+			kind: "toolRun",
+			calls: [
+				{ name: "bash", output: "records: 12 staged, 0 rejected." },
+				{
+					name: "read_file",
+					output: "ledger.json: 318 lines, last modified just now.",
+				},
+			],
+		},
+	];
+}
+
 const SESSION_COUNT = param("sessions", 24);
 /** Steps in the INCOMING session's transcript: the one whose paint we time. */
 const INCOMING_STEPS = param("steps", 200);
@@ -82,6 +132,18 @@ const OUTGOING_STEPS = param("outgoingSteps", 80);
  * PASS it did not earn).
  */
 const QUIET_MS = param("raceQuiet", 600);
+
+/**
+ * Whether this run times a switch into a conversation whose turn is STILL IN
+ * FLIGHT (`?live=1`), which is the state the operator's 2026-10-01 report is
+ * about.
+ *
+ * A query flag rather than a new arm in the driver's table, because the switch
+ * being measured is the same switch: what changes is only what the owner at the
+ * far end is doing while the subscription lands. Absent, every fixture keeps the
+ * cold shape every earlier measurement was taken on.
+ */
+const LIVE = new URLSearchParams(window.location.search).get("live") !== null;
 
 /**
  * A transcript of `count` steps, alternating turns with a tool call every third
@@ -139,14 +201,101 @@ const sessions: SessionFixture[] = SESSION_IDS.map((id, index) => ({
 			? "Invoice reconciliation"
 			: `Workspace session ${index + 1}`,
 	mtime: Date.now() / 1000 - index * 3600,
+	/*
+	 * The timed target is the live fixture under `?live=1`: the arm's question is
+	 * what a switch into a RUNNING conversation shows, and the row that carries
+	 * the answer is the one every even-numbered click lands on.
+	 */
+	...(LIVE && id === INCOMING ? { live: true } : {}),
 }));
 
 const stepsBySession: Record<string, TranscriptStep[]> = {};
 for (const id of SESSION_IDS) stepsBySession[id] = steps(6);
 stepsBySession[OUTGOING] = steps(OUTGOING_STEPS);
-stepsBySession[INCOMING] = steps(INCOMING_STEPS);
+/*
+ * The incoming page is the mid-run one under `?live=1`, and the settled page it
+ * was measured with otherwise. The OUTGOING session keeps its settled page in
+ * both arms, so the view being left is the same work in each run.
+ */
+stepsBySession[INCOMING] = LIVE ? inFlightSteps() : steps(INCOMING_STEPS);
 
 // ------------------------------------------------------------------ probe
+
+/**
+ * The session status strip's own reading, at one instant.
+ *
+ * Read through the strip's SHIPPED hook (`data-lo-session-strip`, which its
+ * component documents as the QA/E2E attribute precisely so a probe does not have
+ * to grep copy): the visible `innerText` is what the operator's report calls the
+ * readings text, and the group's `aria-label` is the same statement for a screen
+ * reader, present only while the strip is HELD over a snapshot it can no longer
+ * trust. `held`/`draft` are the strip's own attributes rather than a reading of
+ * its words.
+ */
+type StripCue = {
+	text: string;
+	label: string | null;
+	held: boolean;
+	draft: boolean;
+};
+
+/**
+ * The sidebar's state for the target conversation.
+ *
+ * `current` is the row's `aria-current`, the mark the design says acknowledges
+ * the switch. The two subagent markers and the archived flag are the row's other
+ * attributes; `status` is the row's status word, which the shipped markup carries
+ * ONLY in its `sr-only` name (there is no data attribute for the code), so it is
+ * read from the first `sr-only` span - which is the status slot's, since
+ * `ChatSessionStatus` is the row button's first child.
+ */
+type SidebarCue = {
+	current: string | null;
+	archived: boolean;
+	running: number;
+	queued: number;
+	status: string | null;
+};
+
+/**
+ * Everything a pane shows at one moment of a switch.
+ *
+ * `bars` are the folded-run summaries (`[data-turn-summary]`) - the condensation
+ * the operator's report is about - and `workingLine` is the live turn's activity
+ * line; both are read scoped to the transcript content, so a second mounted pane
+ * cannot be counted here.
+ */
+type PaneCues = {
+	/** Painted transcript rows (bars excluded: a bar has an id but no kind). */
+	rows: number;
+	bars: string[];
+	workingLine: string | null;
+	placeholder: boolean;
+	strip: StripCue | null;
+	sidebar: SidebarCue | null;
+};
+
+/**
+ * One CHANGE in what the pane showed, plus the settled end.
+ *
+ * Sampled per change rather than per `lop:transcript:render` mark, and the
+ * difference is the gap QA round 1 (Q3) found: a mark-driven series can miss the
+ * very commit it exists to characterise, because the mark for the contentful
+ * render can be delivered - and its `startTime` can fall - before the commit the
+ * store subscription records. Measured on the 45-row arm, whose series jumped
+ * `rows 0` straight to `settled rows 45` with no sample between them. The frame
+ * loop below samples whenever the cues change, so any state that lasts a frame is
+ * recorded whatever produced it; the mark is still observed, but it decides
+ * `firstRowAt` and the phase table's timing rather than what the series contains.
+ */
+type CommitSample = PaneCues & {
+	/** `performance.now()` on the page's clock, when the change was observed. */
+	at: number;
+	/** True for the single sample taken when the run settled. */
+	settled: boolean;
+	/** How it was observed: the frame loop, or the run's end. */
+	source: "frame" | "settled";
+};
 
 type Run = {
 	label: string;
@@ -181,6 +330,18 @@ type Run = {
 	/** Every request the switch issued, in order. */
 	requests: string[];
 	targetRequests: number;
+	/**
+	 * Every CHANGE in what the pane showed after the click, in order, each with
+	 * the cues at that moment (`paneCues`), and a final `settled: true` sample.
+	 *
+	 * The phase table says WHEN the switch settled; this series says WHAT it
+	 * painted on the way, which is the half the operator's report is about
+	 * (a preliminary state, then the in-flight one). Its claim is deliberately
+	 * "every state that lasted a frame", not "every commit": the frame loop
+	 * observes the DOM, so a transient shorter than one frame is not in here - the
+	 * narrower claim is the one the mechanism can keep.
+	 */
+	commits: CommitSample[];
 	/** True when the run hit its deadline instead of settling. */
 	timedOut: boolean;
 };
@@ -423,8 +584,27 @@ const pendingIndicator = () =>
  * harness exists to tell apart. The placeholder's own subtree is removed from
  * the copy first, so this answers the question it is asked.
  */
-const transcriptHasContent = () => {
-	const content = document.querySelector("[data-lo-transcript-content]");
+/*
+ * THE PANE THE SWITCH LANDED ON, chosen by its ROWS rather than by the
+ * transcript attribute.
+ *
+ * `document.querySelector("[data-lo-transcript-content]")` answers "the first
+ * transcript in document order", not "this conversation's pane", and a second
+ * transcript CAN be mounted beside the first (`run-child-reader.tsx` opens the
+ * child reader; this file's own `paintedOwners` exists because two
+ * conversations' rows can be on screen at once, and says so). Record ids are
+ * prefixed by their session's id, so the pane holding THIS conversation's rows is
+ * the one this read is about; `document` remains the fallback for the load
+ * window, before any row exists - and the placeholder and the strip are
+ * page-level facts that were never pane-scoped anyway.
+ */
+const paneFor = (id: string): ParentNode => {
+	for (const pane of document.querySelectorAll("[data-lo-transcript-content]"))
+		if (pane.querySelector(`[data-record-id^="${id}-"]`)) return pane;
+	return document.querySelector("[data-lo-transcript-content]") ?? document;
+};
+const transcriptHasContent = (id?: string) => {
+	const content = paneFor(id ?? "");
 	if (!(content instanceof HTMLElement)) return false;
 	const copy = content.cloneNode(true) as HTMLElement;
 	copy.querySelector('[aria-label="Loading conversation"]')?.remove();
@@ -518,6 +698,69 @@ const rowFor = (id: string) => {
 				title,
 		) ?? null
 	);
+};
+
+/*
+ * Run-and-fold whitespace, declared at module scope rather than built per read:
+ * `useTopLevelRegex` treats a regex literal inside a call as a per-call cost, and
+ * these are read once per transcript commit.
+ */
+const WHITESPACE_RUN = /\s+/g;
+
+/** One line from rendered text, so a reading is stable across wrapping. */
+const oneLine = (value: string | null | undefined) =>
+	(value ?? "").replace(WHITESPACE_RUN, " ").trim();
+
+/**
+ * The status strip's reading right now, or `null` when the pane has no strip
+ * (a draft pane, a conversation with no snapshot yet).
+ */
+const stripCue = (): StripCue | null => {
+	const strip = document.querySelector("[data-lo-session-strip]");
+	if (!(strip instanceof HTMLElement)) return null;
+	return {
+		text: oneLine(strip.innerText),
+		label: strip.getAttribute("aria-label"),
+		held: strip.hasAttribute("data-lo-session-strip-held"),
+		draft: strip.hasAttribute("data-lo-session-strip-draft"),
+	};
+};
+
+/** The sidebar's state for `id`, or `null` when its row is not on screen. */
+const sidebarCue = (id: string): SidebarCue | null => {
+	const row = rowFor(id);
+	if (!row) return null;
+	return {
+		current: row.getAttribute("aria-current"),
+		archived: row.hasAttribute("data-session-archived"),
+		running: row.querySelectorAll('[data-subagent-mark="running"]').length,
+		queued: row.querySelectorAll('[data-subagent-mark="queued"]').length,
+		status: oneLine(row.querySelector("span.sr-only")?.textContent) || null,
+	};
+};
+
+/**
+ * What the pane shows right now, for one commit of a switch.
+ *
+ * Scoped to `[data-lo-transcript-content]` where the transcript is what is being
+ * read: with two panes mounted for a race the unscoped query would count the
+ * other one's rows, and the report is about the pane the switch landed on.
+ * The placeholder and the sidebar are page-level facts and are read as such.
+ */
+const paneCues = (id: string): PaneCues => {
+	const root = paneFor(id);
+	return {
+		rows: root.querySelectorAll("[data-record-id][data-record-kind]").length,
+		bars: [...root.querySelectorAll("[data-turn-summary]")].map((bar) =>
+			oneLine(bar.textContent),
+		),
+		workingLine:
+			oneLine(root.querySelector("[data-lo-working-line]")?.textContent) ||
+			null,
+		placeholder: placeholderPresent(),
+		strip: stripCue(),
+		sidebar: sidebarCue(id),
+	};
 };
 
 const probe = window as unknown as { __lopSwitch?: Probe };
@@ -975,7 +1218,8 @@ const runSequence = (
 			const ready =
 				quiet &&
 				dispatched === clicks.length &&
-				(options.expectTranscript === false || transcriptHasContent()) &&
+				(options.expectTranscript === false ||
+					transcriptHasContent(clicks.at(-1)?.id)) &&
 				nothingInFlight();
 			if (ready || dispatchError !== null || performance.now() > deadline) {
 				sample();
@@ -1022,7 +1266,7 @@ const api: Probe = {
 			const tick = () => {
 				const state = useCanonicalSessionsStore.getState();
 				if (
-					(state.activeSessionId === id && transcriptHasContent()) ||
+					(state.activeSessionId === id && transcriptHasContent(id)) ||
 					performance.now() > deadline
 				) {
 					clearTimeout(timer);
@@ -1050,6 +1294,7 @@ const api: Probe = {
 				transcriptPaintedAt: null,
 				requests: [],
 				targetRequests: 0,
+				commits: [],
 				timedOut: false,
 			};
 			let settled = false;
@@ -1080,12 +1325,20 @@ const api: Probe = {
 					const rows = (
 						entry as PerformanceEntry & { detail?: { rows?: number } }
 					).detail?.rows;
-					if (!rows) continue;
 					/* `startTime >= run.committedAt` matters: the observer is created
 					 * before the click and `buffered: true` replays marks from earlier in
 					 * the page's life, so without the guard the settled view's own render
 					 * reads as this switch's first row (measured: a negative
 					 * `committed → rows` phase). */
+					if (run.committedAt !== null && entry.startTime >= run.committedAt) {
+						/*
+						 * THE MARK DECIDES THE TIMING, NOT WHAT THE SERIES CONTAINS (see
+						 * `CommitSample`): the DOM is sampled by the frame loop below, which cannot
+						 * miss a state that outlives a frame, while a mark delivered in a batch can
+						 * arrive without its own reading.
+						 */
+					}
+					if (!rows) continue;
 					if (
 						run.committedAt !== null &&
 						entry.startTime >= run.committedAt &&
@@ -1103,10 +1356,47 @@ const api: Probe = {
 			 */
 			const deadlineTimer = setTimeout(() => finish(true), 20_000);
 			const deadline = performance.now() + 20_000;
+			/*
+			 * The series' signature: the cues as one comparable string, so the frame loop
+			 * records a sample on every CHANGE and nothing else. `sidebar` is in it
+			 * because the row the switch landed on is part of what the user sees change.
+			 *
+			 * THE WORKING LINE'S SPINNER IS NORMALISED OUT of the signature (the cue
+			 * itself is recorded verbatim): its glyph advances on its own timer, so
+			 * leaving it in would fill a series with spinner ticks and bury the rows and
+			 * bars the series exists to compare - the first version of this loop did
+			 * exactly that, measured as `change 1` and `change 2` identical but for
+			 * `⣾` -> `⣽`. A change in what the line SAYS still gets a sample.
+			 */
+			const spinnerless = (text: string | null) =>
+				text === null ? null : text.replace(/^[^\p{L}\p{N}]+/u, "");
+			const cueSignature = (cues: PaneCues) =>
+				JSON.stringify([
+					cues.rows,
+					cues.bars,
+					spinnerless(cues.workingLine),
+					cues.placeholder,
+					cues.strip,
+					cues.sidebar,
+				]);
+			let lastSignature: string | null = null;
 			const tick = () => {
 				const time = performance.now();
 				if (run.firstRowAt !== null && run.transcriptPaintedAt === null) {
-					if (transcriptHasContent()) run.transcriptPaintedAt = time;
+					if (transcriptHasContent(id)) run.transcriptPaintedAt = time;
+				}
+				if (run.committedAt !== null) {
+					const cues = paneCues(id);
+					const signature = cueSignature(cues);
+					if (signature !== lastSignature) {
+						lastSignature = signature;
+						run.commits.push({
+							at: time,
+							settled: false,
+							source: "frame",
+							...cues,
+						});
+					}
 				}
 				const done =
 					run.committedAt !== null &&
@@ -1153,6 +1443,16 @@ const api: Probe = {
 				}
 				unsubscribe();
 				observer.disconnect();
+				/*
+				 * The settled end of the run, sampled the same way as each commit so the
+				 * series has a terminal reading to compare the intermediate ones against.
+				 */
+				run.commits.push({
+					at: performance.now(),
+					settled: true,
+					source: "settled",
+					...paneCues(id),
+				});
 				resolve(run);
 			};
 			const row = rowFor(id);
@@ -1224,7 +1524,7 @@ const api: Probe = {
 		 * state, not that the notice reached a frame.
 		 */
 		errorShown: goneShown(),
-		transcriptHasContent: transcriptHasContent(),
+		transcriptHasContent: transcriptHasContent(INCOMING),
 		/** The pre-change state: the outgoing view, held, with its affordance. */
 		outgoing: OUTGOING,
 		pendingIndicator: pendingIndicator(),
@@ -1246,7 +1546,7 @@ const api: Probe = {
 		pendingIndicator: pendingIndicator(),
 		placeholder: placeholderPresent(),
 		placeholderOpacity: placeholderOpacity(),
-		content: transcriptHasContent(),
+		content: transcriptHasContent(INCOMING),
 		rowInView: rowInView(rowFor(INCOMING)),
 		/**
 		 * The composer's row and its box, for the states a PRESS leaves behind.

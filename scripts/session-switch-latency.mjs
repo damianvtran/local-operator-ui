@@ -50,6 +50,12 @@ const flag = (name, fallback) => {
 };
 const ORIGIN = ARGS.find((a) => !a.startsWith("--")) ?? "http://localhost:5211";
 const PAGE = `${ORIGIN}/session-switch.html`;
+/*
+ * At module scope rather than built inside the stdout reader below:
+ * `useTopLevelRegex` charges a literal built in a callback, and Chrome's debug
+ * URL line is read once per launch from a stream handler that runs per chunk.
+ */
+const DEVTOOLS_URL = /DevTools listening on (ws:\/\/[^\s]+)/;
 
 /** How many switches to time per run, alternating between two sessions. */
 const SWITCHES = Number(flag("switches", "9"));
@@ -112,6 +118,17 @@ const RACE_WRITE = ARGS.includes("--race-write");
  * scale no screenshot round trip could land inside it.
  */
 const FRAMES = flag("frames", null);
+/**
+ * The IN-FLIGHT arm: a switch into a conversation whose turn is STILL RUNNING
+ * (`?live=1`), with the page's own commit series printed under the table.
+ *
+ * The phase table already says when such a switch settles. What it cannot say is
+ * the thing the operator's 2026-10-01 report is about - a preliminary state
+ * painted first and the in-flight one a beat later - because that is a SEQUENCE
+ * rather than a duration. The page records the series (`Run.commits`), and this
+ * arm prints one line per commit instead of a median.
+ */
+const LIVE = ARGS.includes("--live");
 /**
  * The states a capture writes, and the page each one is driven on.
  *
@@ -179,6 +196,47 @@ const FRAME_STATES = [
  * frames the same measurement is 2.81 light and 4.26 dark).
  */
 const PULSE_TROUGH = 0.7;
+/**
+ * WHICH states a `--frames` capture writes: `--states=hydrating,settled`.
+ *
+ * Default is all of `FRAME_STATES`. Added 2026-10-03 because a lane that needs
+ * two of the six could not photograph them at all: one arm's own self-check
+ * (`held-press` refuses a composer that states the send-early sentence, rightly
+ * - that state exists to show the press is held in silence) fails on a tree where
+ * another lane has reused the sentence, and the whole capture aborts. Narrowing
+ * is per-state and not per-arm, so a lane never has to disable a check to get its
+ * frames.
+ *
+ * PARSED AND VALIDATED HERE, at module scope, which is to say before anything is
+ * launched (QA round 1, Q5): the refusal used to live inside the capture, so a
+ * mistyped run cost a browser launch and a page load to learn nothing. An empty
+ * value is refused as well (Q4) - `--states=` has no meaning distinct from
+ * omitting the flag, and capturing all six under it is the one reading a reader
+ * would not guess - and an unknown name is refused rather than skipped, because a
+ * typo that silently captures nothing is worse than a failed run.
+ */
+const REQUESTED_STATES = (() => {
+	const raw = flag("states", null);
+	if (raw === null) return null;
+	const names = raw.split(",").map((name) => name.trim());
+	const known = FRAME_STATES.join(", ");
+	/*
+	 * AN EMPTY SEGMENT IS REFUSED TOO, not dropped: `--states=settled,,hydrating`
+	 * used to trim away the blank and capture two states, which is a run that looks
+	 * like it honoured the list while silently not saying what the caller meant. A
+	 * value with nothing in it is the same mistake one level up (QA round 1, Q4).
+	 */
+	if (names.length === 0 || names.some((name) => name.length === 0))
+		throw new Error(
+			`--states= needs at least one state name, and no empty ones; known: ${known}`,
+		);
+	for (const name of names)
+		if (!FRAME_STATES.includes(name))
+			throw new Error(
+				`--states=${name} is not a state this capture writes; known: ${known}`,
+			);
+	return names;
+})();
 const FRAME_THEMES = (
 	flag("themes", "localOperatorDark,localOperatorLight") ?? ""
 )
@@ -192,6 +250,16 @@ const FRAME_THEMES = (
 const FRAMES_URL = `${PAGE}?${new URLSearchParams({
 	stream: SCENARIO.stream ?? "4000",
 	get: SCENARIO.get ?? "12",
+	/*
+	 * `--live` photographs the IN-FLIGHT page: the state a reader lands on when
+	 * the conversation they open still has a turn running. Without it the capture
+	 * only knows cold-owner states, and the loaded view of a RUNNING conversation
+	 * - the one the 2026-10-01 report is about - has no frame to compare. The
+	 * `settled` arm's own check (`the transcript is still empty`) is satisfied by
+	 * content from either owner, so the state name stays honest: it is the
+	 * switch's settled state, on a page whose owner is mid-run.
+	 */
+	...(LIVE ? { live: "1" } : {}),
 })}`;
 /**
  * The same page with the target's guard read scripted to 404, for the `error`
@@ -737,7 +805,9 @@ const captureFrames = async (cdp) => {
 	const written = [];
 	// Under `--expect-outgoing` the same script photographs the PRE-change state
 	// on the pre-change tree, and only that state exists there.
-	const states = EXPECT_OUTGOING ? ["hydrating"] : FRAME_STATES;
+	const states = EXPECT_OUTGOING
+		? ["hydrating"]
+		: (REQUESTED_STATES ?? FRAME_STATES);
 	for (const theme of FRAME_THEMES) {
 		for (const state of states) {
 			const url =
@@ -1196,6 +1266,7 @@ const main = async () => {
 	for (const [key, value] of Object.entries(SCENARIO))
 		if (value !== null && value !== undefined) query.set(key, value);
 	if (FAIL_GET) query.set("fail", "incoming");
+	if (LIVE) query.set("live", "1");
 	if (RACE || RACE_FUZZ || RACE_PALETTE || RACE_STAGE) {
 		query.set("race", "1");
 		query.set("raceGap", String(RACE_GAP));
@@ -1241,7 +1312,7 @@ const main = async () => {
 		);
 		chrome.stderr.on("data", (data) => {
 			buf += data.toString();
-			const match = buf.match(/DevTools listening on (ws:\/\/[^\s]+)/);
+			const match = buf.match(DEVTOOLS_URL);
 			if (match) {
 				clearTimeout(timer);
 				resolve(match[1]);
@@ -1412,7 +1483,7 @@ const main = async () => {
 		return;
 	}
 	if (RACE_STAGE) {
-		const { meta, cases, latency, getRequests, openCalls } = result.value;
+		const { meta, cases, getRequests, openCalls } = result.value;
 		const loads = loadavg().map((value) => Math.round(value * 100) / 100);
 		console.log(
 			"new-chat arm - a draft staged inside a switch's guard read must survive it",
@@ -1787,12 +1858,43 @@ const main = async () => {
 		console.log(
 			`requests issued by the last switch: ${summary.requestSequence.join(", ")}`,
 		);
+		if (LIVE) {
+			console.log("");
+			console.log("in-flight switch - what the pane showed at each change");
+			for (const [index, run] of runs.entries()) printCommits(run, index);
+		}
 		if (summary.timedOut)
 			console.log("NOTE: at least one switch hit the 20s deadline");
 	}
 };
 
 const fmt = (n) => (n === null || n === undefined ? "-" : String(n));
+
+/**
+ * One run's commit series, one line per recorded commit plus the settled line.
+ *
+ * Printed only under `--live`: the readback is a reading of the IN-FLIGHT shape,
+ * and every other arm's output is what it was measured on before this flag
+ * existed. `at` is milliseconds from the run's OWN click, so two runs with
+ * different hops are comparable line for line.
+ */
+const printCommits = (run, index) => {
+	const fromClick = (sample) =>
+		run.clickAt === null ? "-" : `+${Math.round(sample.at - run.clickAt)} ms`;
+	console.log("");
+	console.log(
+		`run ${index}: ${run.label} -> ${run.target}` +
+			`${run.timedOut ? "  (TIMED OUT)" : ""}  ${run.commits.length} sample(s)`,
+	);
+	for (const [commit, sample] of run.commits.entries()) {
+		const bars = sample.bars.length
+			? `${sample.bars.length} (${sample.bars.join(" | ")})`
+			: "0";
+		console.log(
+			`  ${(sample.settled ? "settled" : `change ${commit}`).padEnd(9)}${fromClick(sample).padStart(10)}  rows ${String(sample.rows).padStart(3)}  bars ${bars}  working ${sample.workingLine === null ? "-" : JSON.stringify(sample.workingLine)}  placeholder ${sample.placeholder ? "yes" : "no"}  strip ${sample.strip === null ? "-" : JSON.stringify(sample.strip.text)}${sample.strip?.held ? " [held]" : ""}  row ${sample.sidebar === null ? "-" : (sample.sidebar.current ?? "none")}`,
+		);
+	}
+};
 
 main().then(
 	() => {
