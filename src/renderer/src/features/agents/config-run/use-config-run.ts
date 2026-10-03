@@ -533,7 +533,16 @@ export function useConfigRun(): ConfigRunHandle {
 		about: RunTarget | null,
 		attachments: string[] = [],
 	): Promise<boolean> => {
-		if (starting || !text.trim()) return false;
+		/*
+		 * `text OR attachments`, the composer's own rule (QA round 1, Q1's class,
+		 * one surface over): the shared composer arms Send on an attachment alone,
+		 * and this guard was the text's alone - an image-only press was armed and
+		 * then silently refused here (no run, no sentence, `false` back into a
+		 * composer that has nothing to say about it). The body below composes
+		 * whatever text there is and the images ride the message exactly as they do
+		 * in chat.
+		 */
+		if (starting || (!text.trim() && attachments.length === 0)) return false;
 		setStarting(true);
 		setAttached(false);
 		settleLatch.current = false;
@@ -705,7 +714,19 @@ export function useConfigRun(): ConfigRunHandle {
 		 * "there is a session" is not the same question as "the request still needs
 		 * sending" — and answering the second with the first re-ran finished work.
 		 */
-		if (starting || !state.unsent || !state.sessionId || !state.topic) return;
+		/*
+		 * The same widening as `start`'s guard: an image-only run that failed
+		 * unsent is still retryable and carries no topic text (its images are the
+		 * instruction), and refusing here left the visible Retry control with
+		 * nothing to do - silently, the same shape as the press it re-sends.
+		 */
+		if (
+			starting ||
+			!state.unsent ||
+			!state.sessionId ||
+			(!state.topic && state.images.length === 0)
+		)
+			return;
 		setStarting(true);
 		try {
 			await sendMessage(state.sessionId, state.topic, state.images);
