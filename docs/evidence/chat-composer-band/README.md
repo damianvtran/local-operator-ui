@@ -33,8 +33,8 @@ moves between the two runs, and the frames are re-derivable from either.
 
 `--themes` is the two brand palettes, which is `branding.md` § 9.9's minimum, and
 the light pass is where contrast defects hide. The tree is the remediation head;
-`manifest.json`'s `srcTree`/`scriptsTree` and `partialCapture` carry it, as they do
-for every frame here.
+`manifest.json`'s `head` and `partialCapture` carry it, as they do for every frame
+here.
 
 ## Which tip the frames show
 

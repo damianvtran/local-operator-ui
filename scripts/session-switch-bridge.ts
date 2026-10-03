@@ -37,11 +37,21 @@ import type {
 } from "../../src/shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../src/shared/desktop-stream-notice";
 
-/** One row of `sessions.list`, in the backend's `BackendSessionRow` shape. */
+/**
+ * One row of `sessions.list`, in the backend's `BackendSessionRow` shape.
+ *
+ * `live` marks a conversation whose OWNER IS MID-RUN: its subscription snapshot
+ * is a live owner's rather than a cold facade's (`streaming: true`, a non-empty
+ * `live_events` seed, and `cold: false` with the `cold_reason` key present but
+ * null), and the page the fixture carries for it stops before the turn's closing
+ * assistant row. Absent on every settled fixture: the other arms were measured
+ * on cold owners and their snapshots must not change.
+ */
 export type SessionFixture = {
 	id: string;
 	name: string;
 	mtime: number;
+	live?: boolean;
 };
 
 export type DurableEntry = DesktopHistoryPage["entries"][number];
@@ -72,6 +82,22 @@ export type TranscriptStep =
 			 */
 			kind: "toolRun";
 			calls: Array<{ name: string; output: string }>;
+	  }
+	| {
+			/**
+			 * A scheduled-wake DELIVERY RECEIPT: the row a wake's re-entry paints
+			 * between the work that closed the previous round and whatever follows it.
+			 *
+			 * Added with the in-flight fixture (2026-10-02). A mid-run page is
+			 * `... A W T T` - the assistant row that closed the last round, the wake
+			 * that re-entered the run, then the calls settled since - and a page without
+			 * the receipt is a shorter conversation rather than the shape the operator's
+			 * report is about. Emitted as the durable `wake_prompt` custom (`kind:
+			 * "custom"`, and no `wake_catchup`), which is what the transcript reducer
+			 * projects to its own `wake` kind rather than to a generic notice.
+			 */
+			kind: "wake";
+			text: string;
 	  };
 
 /**
@@ -176,16 +202,64 @@ export type BridgeHandle = {
 const now = () => performance.now();
 
 /**
- * The frontend state a cold subscription snapshots.
+ * The live event seed a snapshot from a MID-RUN owner carries.
+ *
+ * `agent_start` opens the round, and its `generation` is the one the session's
+ * own frontend state reports beside it. The `tool_execution_start` is the call
+ * that is OUT at the snapshot, and it exists ONLY here and never in the durable
+ * page: the page was written before the call was announced, which is exactly why
+ * a viewer joining mid-run paints the call from the seed rather than from
+ * history.
+ *
+ * `started_at_epoch` is epoch SECONDS - the unit durable `ts` and the other
+ * `*_epoch` fields use on this wire - set a few seconds in the past so the row's
+ * clock is a real elapsed time rather than a `0s` that would read as a call that
+ * has just begun.
+ *
+ * `args` IS CARRIED, because a real one carries it: `tool_execution_start` is
+ * "the only LIVE frame that carries `args`" (`transcript-reducer.ts`'s
+ * `knownArgs`), and the reducer reads exactly this field. A seed without it falls
+ * through to the argument-less branch - the shape the durable ends have, and the
+ * branch this fixture exists NOT to take, since the point of the seed is to model
+ * the call a viewer joining mid-run is handed while it is still out.
+ */
+function liveOwnerEvents(sessionId: string): Array<Record<string, unknown>> {
+	return [
+		{ type: "agent_start", generation: 2 },
+		{
+			type: "tool_execution_start",
+			/*
+			 * Never an id the durable page holds: `historyPage` names its calls
+			 * `call-<sessionId>-<n>`, so this one is the seed's own and cannot be
+			 * mistaken for a row history already carries.
+			 */
+			tool_call_id: `call-${sessionId}-inflight`,
+			tool_name: "bash",
+			/* The command the row shows, in the same voice as the page's own calls. */
+			args: { command: "rg -c overdue reconciliation/*.csv" },
+			started_at_epoch: Math.round(Date.now() / 1000) - 6,
+		},
+	];
+}
+
+/**
+ * The frontend state a subscription's snapshot carries.
  *
  * Every field the canonical surface reads is present with a settled value:
  * this harness measures the switch, and a missing field would make a component
  * take a branch the app never takes for a real session, which is how a
  * measurement turns into a fiction.
+ *
+ * `live` swaps that settled projection for a LIVE OWNER's: `streaming: true`, a
+ * round already under way (`generation` 2, matching the seed's `agent_start`),
+ * and the in-flight call in `live_events`. It is the one parameter, so a
+ * settled fixture's snapshot stays byte-for-byte what every earlier arm was
+ * measured on.
  */
 function frontendState(
 	sessionId: string,
 	title: string,
+	live = false,
 ): CanonicalFrontendState {
 	return {
 		state_version: 1,
@@ -209,11 +283,11 @@ function frontendState(
 		active_team: "",
 		selected_model: { provider: "anthropic", name: "claude-sonnet-4" },
 		effective_model: { provider: "anthropic", name: "claude-sonnet-4" },
-		streaming: false,
-		generation: 1,
+		streaming: live,
+		generation: live ? 2 : 1,
 		pending_gate: null,
 		history_cursor: "cursor-1",
-		live_events: [],
+		live_events: live ? liveOwnerEvents(sessionId) : [],
 		queued_steering: [],
 		jobs: [],
 		todos: [],
@@ -318,6 +392,25 @@ export function historyPage(
 					role: "assistant",
 					content: [{ type: "text", text: step.text }],
 					stop_reason: "endTurn",
+				},
+			});
+			continue;
+		}
+		if (step.kind === "wake") {
+			/*
+			 * The `custom`/`wake_prompt` shape the reducer's receipts branch reads
+			 * (`durableRecord` -> `wakeIsCatchup` -> the `wake` kind). No
+			 * `wake_catchup` flag, so this is a punctual delivery and paints a row
+			 * rather than being dropped as the resume catch-up.
+			 */
+			entries.push({
+				id,
+				ts,
+				type: "message",
+				payload: {
+					kind: "custom",
+					custom_type: "wake_prompt",
+					details: { text: step.text },
 				},
 			});
 			continue;
@@ -590,6 +683,14 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 				};
 				log.streams.push(entry);
 				const epoch = `epoch-${args.sessionId}`;
+				/*
+				 * Whether this conversation's owner is MID-RUN, read from the fixture row
+				 * rather than passed in: the stream is opened by the pane's own hook,
+				 * which knows the id and nothing else about the owner's state.
+				 */
+				const live =
+					config.sessions.find((row) => row.id === args.sessionId)?.live ===
+					true;
 				let seq = 0;
 				let cancelled = false;
 				const send = (frame: DesktopSessionFrame) => {
@@ -638,11 +739,21 @@ export function installSwitchBridge(config: BridgeConfig): BridgeHandle {
 								snapshot: frontendState(
 									args.sessionId,
 									titles.get(args.sessionId) ?? args.sessionId,
+									live,
 								),
 								live_cursor: null,
 							},
 							history: historyFor(args.sessionId),
-							cold: true,
+							/*
+							 * `cold: false` plus the `cold_reason` key PRESENT-but-null is a
+							 * modern live owner's snapshot. Both halves are load-bearing: the
+							 * key's presence is the only thing that tells the hook its page is
+							 * the journal's tail (`pageIsJournalTail`), where a page from an
+							 * older owner would send no key at all and pay a duplicate read.
+							 * A settled fixture keeps the cold shape it was measured with.
+							 */
+							cold: !live,
+							...(live ? { cold_reason: null } : {}),
 						},
 					});
 					entry.snapshotAt = now();

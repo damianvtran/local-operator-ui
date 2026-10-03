@@ -5364,6 +5364,254 @@ export const STORIES = [
 	 * never-used agent above the most recently used one.
 	 */
 	["chat-sidebar-agents--long-roster", 420, 760],
+	/*
+	 * THE SECTION'S RAISED CAP, AND ITS RELEASE (issue #765) - the two states the
+	 * shrink affordance is judged on, taken on the ONE shipped story that carries
+	 * a cap-bound, collapsible section: `chat-sidebar-agents--long-roster` draws
+	 * twelve agents against the shipped eight-row cap, so it is the only scene in
+	 * the sweep with both a `Show N more` foot to press and a
+	 * `data-chat-section="agents"` disclosure to close. No new story was authored
+	 * for this pair: the state under test is a PRESS SEQUENCE on an existing scene
+	 * (what an entry's `press` array is for), and a fixture with rungs past
+	 * twelve would have been a source change this lane does not own - so the
+	 * ladder's deepest reachable rung is the one rung the fixture holds.
+	 *
+	 * `cap/grown` is that raised state: one press of the section's own foot, which
+	 * takes the cap from 8 to 16, draws all twelve rows and REMOVES the foot
+	 * (`expectGone` asserts it at the shutter, so a frame that still shows the
+	 * foot fails rather than being filed as the grown state). The raise itself is
+	 * untouched by this change, which is why the same frame is ALSO taken on the
+	 * base tree (`cap-baseline/grown`) as the pair's control: a difference between
+	 * those two halves would be a regression this fix owes an answer for.
+	 *
+	 * `cap/reopened` is the fix's own claim. The foot is pressed first (the cap is
+	 * now raised), then the section's heading is pressed TWICE - the first press
+	 * collapses the section, which is the edge the fix hangs the release on, the
+	 * second re-expands it. The shipped shape must come BACK: eight rows and the
+	 * `Show 4 more` foot again, which is what `expectPresent` demands at the
+	 * shutter. On the base tree the same presses leave the raised cap in place -
+	 * the defect issue #765 reports - and that half (`cap-baseline/reopened`)
+	 * carries the same entries with the foot's assertion inverted, spelling the
+	 * defect as the frame's own claim rather than as an absence a reader has to
+	 * notice.
+	 */
+	/*
+	 * `cap/resting` is the same story with NO press: the shipped compact form, in
+	 * THIS pass's own generation. It exists so the fix's claim is a comparison
+	 * rather than an impression - `cap/reopened` must equal this frame, because a
+	 * released cap means the section re-derives the shipped cap through the same
+	 * `??` the resting render uses, so the two renders are the same render. The
+	 * committed `long-roster/` frame is the same state from an older generation
+	 * (head `9216759e7d`), and a cross-generation diff would report that set's own
+	 * rasterization drift as this change, which is the trap
+	 * `docs/evidence/chat-sidebar-sections-baseline/README.md` records.
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/resting",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+		},
+	],
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/grown",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: '[data-sidebar-section-more="agents"]',
+			pressSettleMs: 400,
+			expectGone: '[data-sidebar-section-more="agents"]',
+		},
+	],
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/reopened",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: [
+				'[data-sidebar-section-more="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			],
+			pressSettleMs: 400,
+			expectPresent: '[data-sidebar-section-more="agents"]',
+		},
+	],
+	/*
+	 * THE JOURNEY'S MIDDLE RUNG (design re-check, D1/U1) - the state U1 warns
+	 * destroys the view the reader was reading: the foot's press, then ONE press of
+	 * the heading on the raised section, which takes twelve rows to none. Its claim
+	 * is the CLOSED edge, asserted as an attribute rather than by a missing foot
+	 * (the foot is already gone from the raise, so a foot selector would not
+	 * discriminate this state from `grown/`).
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/collapsed",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: [
+				'[data-sidebar-section-more="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			],
+			pressSettleMs: 400,
+			expectAttribute: {
+				selector: '[data-chat-section="agents"]',
+				name: "aria-expanded",
+				equals: "false",
+			},
+		},
+	],
+	/*
+	 * THE JOURNEY'S LAST RUNG (design re-check): the foot pressed a SECOND time on
+	 * the reopened section. The release must not have disarmed the raise - a reader
+	 * who collapses, reopens and then asks for the long list again must get it, and
+	 * the grown name must come back with it.
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/grown-again",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: [
+				'[data-sidebar-section-more="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+				'[data-sidebar-region="entities"] [data-chat-section="agents"]',
+				'[data-sidebar-section-more="agents"]',
+			],
+			pressSettleMs: 400,
+			expectGone: '[data-sidebar-section-more="agents"]',
+			expectAttribute: {
+				selector: '[data-chat-section="agents"]',
+				name: "aria-expanded",
+				equals: "true",
+			},
+		},
+	],
+	/*
+	 * THE LIST QUERY'S OWN PRESS (UX round 1's U2, in the shape the finding
+	 * measured: a LIST query in force, not the section's own filter). The query is
+	 * driven from here through the real input pipeline - `[data-sidebar-search]`
+	 * opens the list's field and focuses it, then `insertText` types into the caret,
+	 * which is the path the query-while-collapsed entry documents. The press after
+	 * it is the ONE gesture that has to happen in that order, so it is driven as a
+	 * keyboard activation: `tabTo` lands the focus on the section toggle and
+	 * `pressKey` activates it, which is the reader's own Enter on the heading.
+	 */
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/list-query-resting",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: "[data-sidebar-search]",
+			pressSettleMs: 400,
+			insertText: "b",
+			insertTextSettleMs: 900,
+			expectPresent: 'input[aria-label="Filter agents"]',
+		},
+	],
+	[
+		"chat-sidebar-agents--long-roster",
+		420,
+		760,
+		{
+			dir: "cap/list-query-pressed",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: "[data-sidebar-search]",
+			pressSettleMs: 400,
+			insertText: "b",
+			insertTextSettleMs: 900,
+			tabTo: '[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			/*
+			 * THE PRESS HAS TO COME AFTER THE TYPE, and `pressKey` cannot spell it:
+			 * its rawKeyDown+keyUp pair carries no keypress, so a NATIVE button's
+			 * default action never runs - measured, the first attempt landed with the
+			 * field still drawn and the run refused the frame rather than filing the
+			 * resting state under a name that claims a press. `keys` with `text` is
+			 * the spelling that produces the keypress Blink hangs the activation on,
+			 * and it runs after `insertText`.
+			 */
+			keys: [{ key: "Enter", text: "\r", settleMs: 600 }],
+			/*
+			 * THE FIELD THAT SURVIVES THE PRESS (design re-check's prescription, round 3).
+			 * Measured on the pre-fix head: with a LIST query in force and NO section filter,
+			 * the press still took `Filter agents` off the screen and dropped the section box
+			 * by 44px - the field's own height - because the gate read the disclosure alone.
+			 * The gate now carries the section BODY's own term (`isOpen("agents", true) ||
+			 * query !== ""`), so a query that keeps the body drawn keeps its control; this
+			 * entry asserts that, so the frame cannot silently regress into the defect's
+			 * picture a second time.
+			 */
+			expectPresent: 'input[aria-label="Filter agents"]',
+		},
+	],
+	/*
+	 * THE STATE THE FIX'S CLAUSE ACTUALLY NAMES - a LIST query AND the section's own
+	 * filter together. `roster-filtered` already types `er` into the section field
+	 * from its play, so the list query typed here is the second half. The pressed
+	 * frame is the one the fix claims: the field an already-filtering reader had on
+	 * screen survives the no-op press.
+	 */
+	[
+		"chat-sidebar-agents--roster-filtered",
+		420,
+		760,
+		{
+			dir: "cap/filter-query-resting",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: "[data-sidebar-search]",
+			pressSettleMs: 400,
+			insertText: "b",
+			insertTextSettleMs: 900,
+			expectPresent: 'input[aria-label="Filter agents"]',
+		},
+	],
+	[
+		"chat-sidebar-agents--roster-filtered",
+		420,
+		760,
+		{
+			dir: "cap/filter-query-pressed",
+			/* The frame must not inherit a previous entry's chevron press. */
+			resetDisclosures: true,
+			press: "[data-sidebar-search]",
+			pressSettleMs: 400,
+			insertText: "b",
+			insertTextSettleMs: 900,
+			tabTo: '[data-sidebar-region="entities"] [data-chat-section="agents"]',
+			/*
+			 * THE PRESS HAS TO COME AFTER THE TYPE, and `pressKey` cannot spell it:
+			 * its rawKeyDown+keyUp pair carries no keypress, so a NATIVE button's
+			 * default action never runs - measured, the first attempt landed with the
+			 * field still drawn and the run refused the frame rather than filing the
+			 * resting state under a name that claims a press. `keys` with `text` is
+			 * the spelling that produces the keypress Blink hangs the activation on,
+			 * and it runs after `insertText`.
+			 */
+			keys: [{ key: "Enter", text: "\r", settleMs: 600 }],
+			expectPresent: 'input[aria-label="Filter agents"]',
+		},
+	],
 	["chat-sidebar-agents--roster-filtered", 420, 760],
 	["chat-sidebar-agents--roster-no-match", 420, 760],
 	["chat-sidebar-agents--pinned-first", 420, 760],
@@ -10102,6 +10350,28 @@ const main = async () => {
 	 * restored draft anyway.
 	 */
 	const DRAFT_KEY = "conversation-input-store";
+	/*
+	 * THE SECTION DISCLOSURES, WHEN AN ENTRY ASKS FOR THEM TO BE CLEARED
+	 * (design re-check, issue #765).
+	 *
+	 * WHY AN OPT-IN RATHER THAN ALWAYS. `chat-sidebar-disclosures` is written by
+	 * every chevron press and survives the navigation to the next frame, so a
+	 * sequence that ENDS on the close edge (the section collapsed) leaves the NEXT
+	 * frame - and the NEXT THEME of the same entry, because an entry is re-run per
+	 * palette - loading into a section that is already shut. The capture then
+	 * photographs a state the entry did not ask for, and the run either refuses the
+	 * frame or, worse, files one (measured on this lane: `cap/collapsed` and the two
+	 * query-press frames could not be taken in both palettes at all, and round 1
+	 * dropped the collapsed still for exactly this reason). The stories that mount
+	 * this sidebar and need it open reset the key themselves for the same reason.
+	 *
+	 * IT IS NOT GLOBAL because a frame whose CLAIM IS the persisted disclosure
+	 * (the sidebar view-menu states) must keep inheriting it; only the entries that
+	 * declare `resetDisclosures` get the clear, and they get it on every document,
+	 * before app code, so the entry's frame is a function of the story rather than
+	 * of whichever entry ran before it.
+	 */
+	const DISCLOSURES_KEY = "chat-sidebar-disclosures";
 	let seedScript = null;
 	let captured = 0;
 	for (const [story, width, height, options = {}] of stories) {
@@ -10221,7 +10491,9 @@ const main = async () => {
 			({ identifier: seedScript } = await cdp.send(
 				"Page.addScriptToEvaluateOnNewDocument",
 				{
-					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: ${JSON.stringify({ themeName: theme, ...(options?.prefs ?? {}) })}, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)}); } catch {}`,
+					// Folded: main's `prefs` spread (its own run needs it) with this
+					// branch's `resetDisclosures` tail, so neither side's seed is dropped.
+					source: `try { localStorage.setItem(${JSON.stringify(PREFS_KEY)}, JSON.stringify({ state: ${JSON.stringify({ themeName: theme, ...(options?.prefs ?? {}) })}, version: 0 })); localStorage.removeItem(${JSON.stringify(DRAFT_KEY)});${options?.resetDisclosures ? ` localStorage.removeItem(${JSON.stringify(DISCLOSURES_KEY)});` : ""} } catch {}`,
 				},
 			));
 
@@ -12638,35 +12910,27 @@ const main = async () => {
 			.toString()
 			.trim().length > 0;
 	/*
-	 * Tree hashes, not just the head.
+	 * THE REBASE TRAP, WHICH OUTLIVES THE RETIRED TREE HASHES.
 	 *
-	 * A head SHA only answers "is this set current?" if the reader also works
-	 * out which commits since then were docs-only - which is judgement, and
-	 * judgement is what the manifest exists to remove. `git rev-parse HEAD:src`
-	 * is the identity of the source that produced these pixels: if it matches
-	 * the head under review, the frames are current no matter how many commits
-	 * separate them.
+	 * A rebase is where a manifest goes wrong: resolving `manifest.json` by keeping
+	 * upstream's top-level block while the branch's own delta rewrites a
+	 * neighbouring key produces a file whose COUNTS describe somebody else's tree -
+	 * and git reports no conflict, so nothing local notices. At the round-3 head
+	 * the then-stored tree hashes and `surfaces` both named `origin/main` while the
+	 * branch's own `STORIES` list had moved nine entries (round 3, M1).
+	 * `scripts/evidence-manifest.test.mjs` binds the shipped manifest's counts
+	 * against the tree it ships in, inside `test:desktop`, so that resolution fails
+	 * CI rather than shipping, and the expected aftermath of any rebase that
+	 * touches this file is a re-derive before the suite is green.
 	 *
-	 * With one precondition, which is the field on the next line. `HEAD:src` is
-	 * the COMMITTED tree, so if the capture ran over dirty or staged source it
-	 * names something these frames did not come from. Read `dirtyWorkingTree`
-	 * first; a tree hash from a dirty run is a hash of the wrong thing.
-	 *
-	 * A REBASE IS WHERE THESE STAMPS GO WRONG, and there is a test for it now.
-	 * Resolving `manifest.json` by keeping upstream's top-level stamp block while
-	 * the branch's own delta rewrites a neighbouring key produces a file that
-	 * certifies the committed frames against somebody else's tree - and git reports
-	 * no conflict, so nothing local notices; at the round-3 head both tree hashes
-	 * and `surfaces` named `origin/main` while the branch's own `STORIES` list had
-	 * moved nine entries (round 3, M1). `scripts/evidence-manifest.test.mjs` binds
-	 * the shipped manifest's stamps against `HEAD`'s trees inside `test:desktop`,
-	 * so that resolution fails CI rather than shipping, and the expected aftermath
-	 * of any rebase that touches this file is a re-stamp before the suite is green.
+	 * THE TREE HASHES THAT USED TO SIT HERE ARE GONE, deliberately: a stored
+	 * `git rev-parse HEAD:src` is false for every open branch the moment any commit
+	 * anywhere moves `src/`, so it forced a re-derive per fold and proved nothing
+	 * about the frames (every recorded re-derive in this file's history is
+	 * "re-stamped, not re-captured"). `head` plus `dirtyWorkingTree`-
+	 * whose own comment is above - carry what a reader can act on: which commit
+	 * the frames were captured from, and whether that tree was clean at the time.
 	 */
-	const treeHash = (path) =>
-		execFileSync("git", ["rev-parse", `HEAD:${path}`], { cwd: ROOT })
-			.toString()
-			.trim();
 	/*
 	 * A narrowed run must not overwrite the record of the set it did not take.
 	 *
@@ -12709,7 +12973,12 @@ const main = async () => {
 	 *      did not run in it.
 	 *   2b. EVERY TOP-LEVEL FIELD THIS BRANCH CARRIES THAT MAIN DOES NOT IS
 	 *      KEPT, and main's own keys this branch lacks are dropped rather than
-	 *      carried (group 5). The union is taken at the TOP level as well as
+	 *      carried (group 5) - with one deliberate exception: the RETIRED
+	 *      `srcTree`/`scriptsTree` pair is dropped from whichever side carries it,
+	 *      including this branch's, so a branch that still holds it hands nothing
+	 *      back to the merged file (see group 4). Unlike a group (5) drop, that
+	 *      one is reported as `dropped srcTree - retired by this change`, and the
+	 *      key gate accepts it. The union is taken at the TOP level as well as
 	 *      inside it: a resolver that starts from main's schema loses this
 	 *      branch's own records without a word, which is what the twelfth fold
 	 *      onto `c69f78b92` did to seven of them
@@ -12724,33 +12993,41 @@ const main = async () => {
 	 *      are KEPT and only the listings are unioned. An entry is a record this
 	 *      branch wrote, not a listing, and taking main's whole entry loses
 	 *      exactly the field a reader follows the rule to find.
-	 *   4. `refreshedFrames` is RE-DERIVED against `HEAD` rather than added up,
-	 *      and `frames`, `surfaces`, `themes`, `countsMean`, `srcTree` and
-	 *      `scriptsTree` are re-derived from the merged tree and taken from
+	 *   4. `refreshedFrames` is RE-DERIVED against the merged tree rather than
+	 *      added up, and `frames`, `surfaces`, `themes` and the LEADING paragraph
+	 *      of every `countsMean` cell are re-derived from it and taken from
 	 *      neither side. `countsMean` is in this group because it restates
 	 *      `frames`/`surfaces` - its prose says what each field counts and where
-	 *      to read it, and carries no number of its own for a fold to falsify.
-	 *      The stamps in group (4) - `srcTree` and `scriptsTree` - are derived
-	 *      from the MERGED tree, which means AFTER the merge commit exists.
-	 *      Deriving them while the merge is still uncommitted asks
-	 *      `git rev-parse HEAD:src` and gets the PRE-merge head's trees: real
-	 *      trees, so nothing looks wrong in the diff, just not this one's. Fold 11
+	 *      to read it, and only its lead is derived (the paragraphs under it are
+	 *      history by construction). The RETIRED `srcTree`/`scriptsTree` pair sat
+	 *      in this group and is now DROPPED rather than derived, from whichever
+	 *      side still carries it, because a stored hash of the shipping tree is
+	 *      false for every open branch the moment any sibling commit moves that
+	 *      tree - which is what made every fold rewrite this file. A fold reports
+	 *      the drop rather than performing it silently
+	 *      (`dropped srcTree - retired by this change`), and
+	 *      `scripts/check-fold-keys.mjs` accepts it.
+	 *      The counts are derived from the MERGED tree, which means AFTER the
+	 *      merge commit exists. Deriving them while the merge is still uncommitted
+	 *      reads `git show HEAD:scripts/capture-evidence.mjs` and gets the
+	 *      PRE-merge head's literal: a real file, so nothing looks wrong in the
+	 *      diff, just not this one's. Fold 11
 	 *      shipped exactly that to `main` and the desktop suite's own stamp test
 	 *      caught it. Fold 10 was stale from the OTHER side one commit earlier for
 	 *      the same underlying reason: `a5d81f0af`'s manifest declared
 	 *      `7072b9d21`/`3e32dcbe4`, which are its second parent `013aad424`'s
 	 *      (then-main's) trees, against the merged tree's `aca12e400`/`311c0b6a2`,
 	 *      and the correction came only in the follow-up `3fdee3e53`. The class is
-	 *      therefore "a merge resolution that does not re-derive at the commit it
-	 *      produces", and it reaches a shipping branch when nothing re-derives
-	 *      before that merge lands.
+	 *      therefore "a merge resolution that does not re-derive the counts at the
+	 *      commit it produces", and it reaches a shipping branch when nothing
+	 *      re-derives before that merge lands.
 	 *      Two things follow for a change that also touches `scripts/`, and only
-	 *      one of them is about this file: the `scripts` stamp cannot include the
-	 *      edit until the edit is COMMITTED (`HEAD:scripts` does not see a working
-	 *      -tree change), so a value written before that commit describes a tree
-	 *      that is not the one it rides in; and the `--amend` after writing the
-	 *      values in keeps the value and the tree it names inside ONE commit -
-	 *      the amendment moves `docs/` only, so the value stays true.
+	 *      one of them is about this file: the story/theme counts cannot include
+	 *      the edit until the edit is COMMITTED (`HEAD:scripts` does not see a
+	 *      working-tree change), so a reading written before that commit describes
+	 *      a tree that is not the one it rides in; and the `--amend` after writing
+	 *      the values in keeps the reading and the tree it was read from inside ONE
+	 *      commit - the amendment moves `docs/` only, so the reading stays true.
 	 *   5. And NO FIELD THAT SPELLS OUT WHAT A CITATION NAMES is carried from
 	 *      main's side under any name: main's manifest still has
 	 *      `refreshedAtHeadNote`, the spelling this branch deleted, and carrying
@@ -12768,7 +13045,8 @@ const main = async () => {
 	 *      the key vanished without a word while that fold reported a clean union
 	 *      - `pnpm check-themes` stopped resolving until agent review round 8
 	 *      (R11) restored it. A MAIN-side vanish must be either group (5) of
-	 *      `citationConvention` or a stated repair. The check does NOT see form,
+	 *      `citationConvention`, the retired `srcTree`/`scriptsTree` drop, or a
+	 *      stated repair. The check does NOT see form,
 	 *      so a clean run is not the whole rule - re-read the lists too.
 	 *
 	 * The gate cannot catch a `head` that names the wrong tree, and BOTH halves of
@@ -12842,8 +13120,6 @@ const main = async () => {
 				 * same number the full sweep writes below.
 				 */
 				surfaces: STORIES.length,
-				srcTree: treeHash("src"),
-				scriptsTree: treeHash("scripts"),
 				dirtyWorkingTree: dirty,
 				partialCapture: {
 					...(previous.partialCapture ?? {}),
@@ -12862,8 +13138,6 @@ const main = async () => {
 			}
 		: {
 				head,
-				srcTree: treeHash("src"),
-				scriptsTree: treeHash("scripts"),
 				dirtyWorkingTree: dirty,
 				capturedAt: new Date().toISOString(),
 				frames: captured,

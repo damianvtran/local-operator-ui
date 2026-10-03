@@ -399,7 +399,7 @@ light palette was not re-run for this fold.
 
 **THE FOLD LEDGER, in one count (design round 3, D15).** The branch has six fold commits on its
 first-parent chain: `5bea768188` onto `8e73cb8721`, `a191f2e928` onto `e1eb22cd58`, `9d1f54a9ae` onto `81a621f8af`, `d08936c26e` onto `44e4812b31`, `034a7277a8` onto `53c5cfec6b`, and `637fb83d81` onto `44249a6796`. The first four each hand-resolved exactly
-`docs/evidence/manifest.json`; folds five and six did the same (the pair is re-derived at each tip).
+`docs/evidence/manifest.json`; folds five and six did the same, re-deriving the tree-stamp pair those folds carried at each tip (that pair is retired now — the file stamps its counts and its citations instead).
 **Folds five and six brought in no change to any surface these sets photograph**: neither
 `44e4812b31..53c5cfec6b` nor `53c5cfec6b..44249a6796` touches `chat-sidebar.tsx`,
 `archive-confirm.ts`, `chat-pin-order.ts`, `chat-header.tsx` or the canonical sessions store (main's
