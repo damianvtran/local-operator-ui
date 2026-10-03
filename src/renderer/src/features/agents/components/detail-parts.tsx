@@ -265,8 +265,29 @@ export function EditFooter({
 }) {
 	const [uncontrolledConfirming, setUncontrolledConfirming] = useState(false);
 	const primaryRef = useRef<HTMLButtonElement>(null);
+	const keepEditingRef = useRef<HTMLButtonElement>(null);
 	const isControlled = confirming !== undefined;
 	const isConfirming = isControlled ? confirming : uncontrolledConfirming;
+
+	/*
+	 * THE QUESTION TAKES THE FOCUS THE BUTTON THAT ASKED IT GAVE UP (UX review
+	 * round 2, U1).
+	 *
+	 * `Cancel` is what opens the confirmation, and the confirmation REPLACES that
+	 * button — so the focused node unmounted with its row and `document.activeElement`
+	 * fell to `BODY`. The very next `Tab` then landed on the first control in the new
+	 * row, which is the DESTRUCTIVE `Discard changes`, leaving a keyboard user one
+	 * press from losing the draft they had just asked to keep. Focus is therefore
+	 * moved into the question deterministically — onto the SAFE arm, "Keep editing" —
+	 * rather than depending on whichever node happened to be focused when the row
+	 * swapped. The Escape path into the same state (`requestCancel` in the panes)
+	 * lands here too, which is what makes "Escape asks, Enter keeps" true for both
+	 * entries.
+	 */
+	useEffect(() => {
+		if (!isConfirming) return;
+		keepEditingRef.current?.focus();
+	}, [isConfirming]);
 	const requestConfirming = (next: boolean) => {
 		if (!isControlled) setUncontrolledConfirming(next);
 		onConfirmingChange?.(next);
@@ -314,6 +335,7 @@ export function EditFooter({
 						Discard changes
 					</Button>
 					<Button
+						ref={keepEditingRef}
 						variant="ghost"
 						onClick={() => {
 							requestConfirming(false);
