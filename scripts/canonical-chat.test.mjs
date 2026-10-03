@@ -3623,7 +3623,18 @@ test("the owner's own refusals latch nothing, and their payload still replays un
 			retryAfterMs: 1,
 			message:
 				"This session's owner is busy with another request. Retry in a moment.",
+			/*
+			 * THE SEND KEEPS ITS RETRY AND THE PRESS LOSES ITS, which is not a
+			 * contradiction but the whole of design round 1's D5: the two paths want
+			 * opposite answers about the same code, because a SEND's retry control
+			 * acts on the message still in the box while the composer's control under
+			 * an OPTION PRESS would send the box's bytes instead of the option that
+			 * failed. `sendFailureCopy`'s busy branch answers `retry: true` as a
+			 * literal; `withholdsRetryHint` now answers for the press, and the two are
+			 * asserted side by side below so neither can be "fixed" into the other.
+			 */
 			withholdsHint: false,
+			pressWithholdsHint: true,
 		},
 	];
 
@@ -3673,8 +3684,21 @@ test("the owner's own refusals latch nothing, and their payload still replays un
 			"refused before admission, kept after the paint: the row states the refusal",
 		);
 		assert.equal(
+			sendFailureCopy(
+				new DesktopControlError(
+					arm.status,
+					arm.message,
+					undefined,
+					arm.code,
+					arm.retryAfterMs,
+				),
+			).retry,
+			arm.withholdsHint !== true,
+			`${arm.code}: the composer's Retry is the remedy for a SEND refused before admission`,
+		);
+		assert.equal(
 			withholdsRetryHint(arm.code),
-			arm.withholdsHint,
+			arm.pressWithholdsHint ?? arm.withholdsHint,
 			`${arm.code}: the hint is offered only where a press is the remedy`,
 		);
 

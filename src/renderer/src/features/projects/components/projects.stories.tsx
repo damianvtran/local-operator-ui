@@ -30,9 +30,12 @@ import type {
 	DesktopProject,
 	DesktopProjectDetail,
 	DesktopProjectMilestone,
+	DesktopProjectRequestUpdateResult,
 	DesktopProjectUpdate,
+	DesktopProjectView,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
+import { INLINE_EDIT_CONFLICT_SENTENCE } from "@shared/components/inline-edit";
 import {
 	type BoardWindow,
 	PROJECTS_BOARD_ORDER_STORAGE_KEY,
@@ -40,6 +43,8 @@ import {
 	writeBoardColumnOrder,
 	writeBoardWindow,
 } from "../project-model";
+import { type SortSpec, writeProjectsSort } from "../project-sort";
+import { REQUEST_UPDATE_NEVER_STARTED_DETAIL } from "../request-update";
 import { BOARD_WINDOW_HINT } from "./board-window-select";
 import { ProjectsPage } from "./projects-page";
 
@@ -540,6 +545,31 @@ const detailsFor = (projects: DesktopProject[]) =>
 		]),
 	);
 
+/**
+ * How the bridge answers `projects.request_update` in one story: the route's
+ * own vocabulary, scripted. `hang` holds the promise open forever - the
+ * sending/loading state's only honest shape, because a pending mutation cannot
+ * be faked into existence from outside.
+ */
+type RequestUpdateFixture = {
+	state: DesktopProjectRequestUpdateResult["state"];
+	/** One row per linked session the batch dialled; counts derive from these. */
+	sessions?: DesktopProjectRequestUpdateResult["sessions"];
+	cooldown_remaining_s?: number;
+	requested_at?: string | null;
+	hang?: boolean;
+};
+
+type SearchIndexFixture = {
+	/** The ids the ranked answer names, in RANK ORDER (the answer's order is the
+	 * ranking; the page never re-sorts). */
+	ids: string[];
+	/** Hold the request open for ever: the in-flight state. */
+	hang?: boolean;
+	/** Fail the request with this sentence (the fallback's arm). */
+	fail?: string;
+};
+
 type StubState = {
 	projects: DesktopProject[];
 	detail: DesktopProjectDetail | null;
@@ -550,21 +580,44 @@ type StubState = {
 	 * stories use.
 	 */
 	details: Record<string, DesktopProjectDetail> | null;
+	/**
+	 * The `projects.search` script. `null` is the state every story above is in:
+	 * the capability advertises `projects: 1`, no index route exists, and the
+	 * client matcher serves — which is exactly what a backend older than the
+	 * core slice looks like. An object advertises `projects: 2` and answers the
+	 * route from its own ids, so a story can prove the page paints the INDEX's
+	 * membership and rank rather than the local matcher's.
+	 */
+	searchIndex: SearchIndexFixture | null;
 	/** The listing read fails with this sentence. */
 	failList: string | null;
 	/** The listing read never settles: the loading frame's only honest shape. */
 	hang: boolean;
 	/** `projects.update` fails with this sentence (the follow-up-refusal arm). */
 	failPatch: string | null;
+	/** The refused patch's status, when the story is about a coded refusal. */
+	failPatchStatus?: number;
+	/** The refused patch's machine code (`project_name_exists`, say). */
+	failPatchCode?: string;
+	/** `projects.update` never settles: the inline editor's saving state. */
+	hangPatch?: boolean;
+	/**
+	 * `projects.request_update`'s scripted answer (the check-in states). `null`
+	 * means no story configured it: a press without a fixture says so loudly
+	 * rather than faking a result.
+	 */
+	requestUpdate: RequestUpdateFixture | null;
 };
 
 let stub: StubState = {
 	projects: [],
 	detail: null,
 	details: null,
+	searchIndex: null,
 	failList: null,
 	hang: false,
 	failPatch: null,
+	requestUpdate: null,
 };
 
 /**
@@ -574,6 +627,47 @@ let stub: StubState = {
  * neither op ran, and a toast is not in the tree.
  */
 let bridgeOps: { op: string; request: Record<string, unknown> }[] = [];
+
+/** A plain-object test for the stub's field application (no zod in stories). */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null;
+
+/**
+ * Apply one `projects.update` fields object to the fixture row, the way the
+ * daemon's partial patch would: only the keys present move, and `""` clears
+ * the nullable ones. It exists so a story's re-read after a save shows the
+ * record the save produced — without it the re-read returns the old fixture
+ * and the saved frame would show the value snapping back under its own
+ * acknowledgement, an artefact a design round would read as a defect.
+ */
+const applyFields = (
+	project: DesktopProjectView,
+	fields: Record<string, unknown>,
+): void => {
+	const text = (key: string): string | undefined =>
+		typeof fields[key] === "string" ? (fields[key] as string) : undefined;
+	if (text("name") !== undefined) project.name = text("name") as string;
+	if (text("description") !== undefined)
+		project.description = text("description") as string;
+	// `""` is the wire's clear for owner/team/title/dates (`_edit_date`, and
+	// `_short_text_or_none` reading an emptied label as unset).
+	const owner = text("owner");
+	if (owner !== undefined) project.owner = owner.trim() ? owner : null;
+	const team = text("team");
+	if (team !== undefined) project.team = team.trim() ? team : null;
+	const title = text("title");
+	if (title !== undefined) project.title = title.trim() ? title : null;
+	if (text("status") !== undefined) project.status = text("status") as string;
+	if (Array.isArray(fields.tags))
+		project.tags = (fields.tags as unknown[]).map((tag) => String(tag));
+	const start = text("start_date");
+	if (start !== undefined) project.start_date = start || null;
+	const target = text("target_date");
+	if (target !== undefined) project.target_date = target || null;
+	if (typeof fields.estimate === "number") project.estimate = fields.estimate;
+	const unit = text("estimate_unit");
+	if (unit !== undefined) project.estimate_unit = unit;
+};
 
 const answer = (request: {
 	op: string;
@@ -592,8 +686,15 @@ const answer = (request: {
 					//
 					// The two registries are ADVERTISED here so the start-session picker
 					// draws its real options; the plain-only degradation is a different
-					// state and has its own story.
-					features: { projects: 1, team_catalogue: 1, profile_catalogue: 1 },
+					// state and has its own story. `projects_request_update` is what
+					// MOUNTS the check-in item and button (PR-B) - a backend without it
+					// draws neither, which is the fail-closed state tests pin.
+					features: {
+						projects: stub.searchIndex ? 2 : 1,
+						projects_request_update: 1,
+						team_catalogue: 1,
+						profile_catalogue: 1,
+					},
 				},
 			},
 		};
@@ -608,6 +709,37 @@ const answer = (request: {
 			const found = stub.details?.[String(request.key ?? "")] ?? stub.detail;
 			if (!found) return { status: 404, body: { detail: "no such project" } };
 			return { status: 200, body: { result: found } };
+		}
+		case "projects.search": {
+			/*
+			 * The index's answer, scripted rather than computed: this fixture's job is
+			 * to be the BACKEND's opinion — an id list in the backend's own rank order —
+			 * so a story can name a row the local matcher would never admit (its match
+			 * lives in update text) and assert that the page painted the answer rather
+			 * than re-deriving one. The echo is the request's own `q`, which is the
+			 * contract the hook checks before it applies an answer.
+			 */
+			const index = stub.searchIndex;
+			if (!index) return { status: 404, body: { detail: "no such route" } };
+			if (index.hang) return new Promise(() => {});
+			if (index.fail) return { status: 500, body: { detail: index.fail } };
+			const byId = new Map(stub.projects.map((row) => [row.id, row]));
+			const hits = index.ids.flatMap((id) => {
+				const row = byId.get(id);
+				return row
+					? [{ id: row.id, name: row.name, score: 1, fields: ["updates"] }]
+					: [];
+			});
+			return {
+				status: 200,
+				body: {
+					result: {
+						projects: hits,
+						query: String(request.q ?? ""),
+						count: hits.length,
+					},
+				},
+			};
 		}
 		case "projects.milestone": {
 			/*
@@ -643,9 +775,34 @@ const answer = (request: {
 			return { status: 200, body: { result: created } };
 		}
 		case "projects.update":
+			/*
+			 * `hangPatch` is the SAVING state's fixture: a write that never
+			 * settles is the only honest way a story can hold the spinner, and
+			 * it mirrors the real reason that state exists (a daemon under
+			 * load). `failPatchStatus`/`failPatchCode` let a refusal carry the
+			 * wire's own envelope — a 409 `project_name_exists` is the coded
+			 * refusal the key editor maps to its crafted sentence.
+			 */
+			if (stub.hangPatch) return new Promise(() => {});
 			bridgeOps.push({ op: request.op, request });
 			if (stub.failPatch)
-				return { status: 422, body: { detail: stub.failPatch } };
+				return {
+					status: stub.failPatchStatus ?? 422,
+					body: {
+						detail: stub.failPatchCode
+							? { code: stub.failPatchCode, message: stub.failPatch }
+							: stub.failPatch,
+					},
+				};
+			/*
+			 * A LANDED PATCH CHANGES THE RECORD, as the daemon's would: without
+			 * this the re-read after a save returns the old fixture and the
+			 * saved frame would show the record snapping back while its
+			 * acknowledgement says otherwise — an artefact of the stub that a
+			 * design round would read as a defect of the editor.
+			 */
+			if (stub.detail && isRecord(request.fields))
+				applyFields(stub.detail.project, request.fields);
 			return { status: 200, body: { result: stub.projects[0] ?? null } };
 		case "projects.delete":
 			return { status: 200, body: { result: { deleted: true } } };
@@ -682,6 +839,43 @@ const answer = (request: {
 				return { status: 200, body: { result: projectView } };
 			}
 			return { status: 404, body: { detail: "no such project" } };
+		/*
+		 * The check-in batch (PR-B), answered in the route's own vocabulary. The
+		 * counts are derived from the scripted session rows here rather than
+		 * written twice, so a fixture cannot contradict itself; `hang` is a
+		 * promise that never settles - the only way the sending state exists for
+		 * a frame.
+		 */
+		case "projects.request_update": {
+			const fixture = stub.requestUpdate;
+			if (!fixture) {
+				throw new Error(
+					"projects.request_update was pressed without a story fixture",
+				);
+			}
+			bridgeOps.push({ op: request.op, request });
+			if (fixture.hang) return new Promise(() => {});
+			const sessions = fixture.sessions ?? [];
+			const result: DesktopProjectRequestUpdateResult = {
+				project: {
+					id: String(request.key ?? "p1"),
+					key: "payments-migration",
+					title: "Payments migration",
+				},
+				state: fixture.state,
+				requested_at: fixture.requested_at ?? null,
+				cooldown_remaining_s: fixture.cooldown_remaining_s ?? null,
+				counts: {
+					total: sessions.length,
+					delivered: sessions.filter((s) => s.outcome === "delivered").length,
+					unconfirmed: sessions.filter((s) => s.outcome === "unconfirmed")
+						.length,
+					failed: sessions.filter((s) => s.outcome === "failed").length,
+				},
+				sessions,
+			};
+			return { status: 200, body: { result } };
+		}
 		default:
 			throw new Error(`unexpected desktop op in this story: ${request.op}`);
 	}
@@ -826,6 +1020,175 @@ const poll = async (predicate: () => boolean, what: string) => {
 	throw new Error(`the story's state never arrived: ${what}`);
 };
 
+/**
+ * The live colour a role class resolves to, read from a probe in this document.
+ *
+ * The stories run under every palette, so a band's ground has to be compared
+ * against the TOKEN rather than a hex: the probe carries the same class the band
+ * carries, in the same document and theme, so the assertion cannot drift from
+ * the role it names.
+ */
+const roleGround = (role: string): string => {
+	const probe = document.createElement("div");
+	probe.className = role;
+	probe.style.cssText = "position:absolute;left:-9999px;width:1px;height:1px";
+	document.body.appendChild(probe);
+	const ground = getComputedStyle(probe).backgroundColor;
+	probe.remove();
+	return ground;
+};
+
+/**
+ * The team band's register, read off the live band (issue #703, RESHAPED on
+ * operator direction): the team's OWN name in an `<h3>`, 32px tall, BORDERLESS,
+ * on the `surface` rung one lightness step above the rows' `canvas` - and not
+ * operable, because a band is a label and the row-style hover it once resembled
+ * is what the reporter read as broken.
+ *
+ * The last clause is the fold's own (#716's team labels, folded in): the band
+ * prints the RESOLVED name - `teamLabelFor` wired from the page - and never the
+ * raw binding, so a fixture whose label differs from its slug is what makes the
+ * integration falsifiable at all. The fixture is main's own catalogue entry
+ * (`platform` -> `Platform Delivery`), which is the smallest thing that can
+ * exercise it: the same stories, the same lanes, one resolved name.
+ *
+ * Each clause can fail on its own, and each is the shape the change made:
+ * `main` draws a `canvas` span with a `py-1.5` box and no heading, so the height
+ * clause and the heading clause fail there; the register the first pass shipped
+ * was small caps, which the `text-transform` clause fails; and the ground clause
+ * is the change itself. The last two clauses are review round 1's U1/U2: the
+ * count's accessible name, and the association between the section's heading and
+ * the list it labels - the two places the visual grouping does not reach.
+ */
+const assertTeamBand = (
+	selector: string,
+	expectedLabel: string,
+	slug: string,
+) => {
+	const bands = [...document.querySelectorAll<HTMLElement>(selector)];
+	if (bands.length === 0) throw new Error(`no team band matches ${selector}`);
+	const surface = roleGround("bg-surface");
+	const canvas = roleGround("bg-canvas");
+	if (surface === canvas) {
+		throw new Error(
+			"bg-surface and bg-canvas resolve to the same colour in this theme - the band's step is unmeasurable here",
+		);
+	}
+	for (const band of bands) {
+		const label = band.querySelector("h3");
+		if (!label || (label.textContent ?? "").trim() === "") {
+			throw new Error(`${selector}: a team band carries no <h3> label`);
+		}
+		if (getComputedStyle(label).textTransform !== "none") {
+			throw new Error(
+				`${selector}: the team label is transformed, so user data is being re-cased`,
+			);
+		}
+		const height = band.getBoundingClientRect().height;
+		if (Math.abs(height - 32) > 0.6) {
+			throw new Error(`${selector}: a team band is ${height}px tall, not 32`);
+		}
+		if (Number.parseFloat(getComputedStyle(band).borderBottomWidth) > 0) {
+			throw new Error(
+				`${selector}: a team band carries a bottom rule; the step is the division`,
+			);
+		}
+		const ground = getComputedStyle(band).backgroundColor;
+		if (ground !== surface) {
+			throw new Error(
+				`${selector}: a team band's ground is ${ground}, not the surface rung (${surface})`,
+			);
+		}
+		if (ground === canvas) {
+			throw new Error(
+				`${selector}: a team band is still on the rows' canvas ground - no division`,
+			);
+		}
+		if (band.querySelector("button, a, [tabindex]") || band.tabIndex >= 0) {
+			throw new Error(`${selector}: a team band became operable`);
+		}
+		/*
+		 * The count is NAMED (UX review round 1, U1). The span sits outside the
+		 * `<h3>`, so without an accessible name the reading order says "platform,
+		 * 8" and the digit carries no noun; the visible text stays the terse number.
+		 */
+		const countEl = band.querySelector<HTMLElement>("span[aria-label]");
+		if (!countEl) {
+			throw new Error(`${selector}: the count carries no accessible name`);
+		}
+		const said = countEl.getAttribute("aria-label") ?? "";
+		const visible = (countEl.textContent ?? "").trim();
+		const noun = visible === "1" ? "project" : "projects";
+		if (said !== `${visible} ${noun}`) {
+			throw new Error(
+				`${selector}: the count's accessible name is "${said}" where "${visible} ${noun}" is what it counts`,
+			);
+		}
+		/*
+		 * And the section's own list names itself with the heading it belongs to
+		 * (UX review round 1, U2) - the association the visual grouping only implied.
+		 */
+		const headingId = label.id;
+		if (!headingId) {
+			throw new Error(
+				`${selector}: the section heading carries no id for its list to name`,
+			);
+		}
+		if (document.querySelectorAll(`#${CSS.escape(headingId)}`).length !== 1) {
+			throw new Error(
+				`${selector}: the heading's id "${headingId}" is not unique in the document`,
+			);
+		}
+		const rows = band.parentElement?.querySelector("ul");
+		if (!rows) {
+			throw new Error(`${selector}: the section draws no list under its band`);
+		}
+		if (rows.getAttribute("aria-labelledby") !== headingId) {
+			throw new Error(
+				`${selector}: the section's list names "${rows.getAttribute("aria-labelledby")}" rather than its heading "${headingId}"`,
+			);
+		}
+	}
+	const exact = bands.some(
+		(band) => (band.querySelector("h3")?.textContent ?? "") === expectedLabel,
+	);
+	if (!exact) {
+		throw new Error(
+			`${selector}: no band prints the resolved name "${expectedLabel}" exactly - a register that re-cases user data fails here`,
+		);
+	}
+	/*
+	 * AND THE SLUG MUST NOT BE WHAT IS PRINTED (the fold onto main's team labels,
+	 * #716). The catalogue in this file resolves `platform` to `Platform
+	 * Delivery`, so a band that prints the BINDING rather than the resolved name
+	 * is a silent regression to the pre-label behaviour - the failure mode the
+	 * integration exists to prevent, and one no colour or geometry clause can see.
+	 */
+	if (
+		bands.some((band) => (band.querySelector("h3")?.textContent ?? "") === slug)
+	) {
+		throw new Error(
+			`${selector}: a band prints the raw slug "${slug}" where the catalogue has a label`,
+		);
+	}
+};
+
+/**
+ * The bands, once the story's own boot has drawn them.
+ *
+ * The plays race the story's boot - the route swap and the stubbed query - so an
+ * assertion taken on the first tick reads a List that has not rendered yet and
+ * reports it as a missing band (measured: the first version of these plays threw
+ * `no team band matches [data-project-team]` at `populated @ localOperatorDark`,
+ * and the rig correctly refused the frame). `poll`'s own 60 s ceiling is what
+ * makes waiting the cheap option.
+ */
+const bandsReady = () =>
+	poll(
+		() => document.querySelectorAll("[data-project-team]").length > 0,
+		"the List's team bands",
+	);
+
 /** A story's play: hold the shutter, run the gesture, wait, release. */
 const playOnce = (key: string, gesture: () => Promise<void>) => async () => {
 	if (played.has(key)) return;
@@ -881,11 +1244,13 @@ const expectBoardKeys = (expected: string[], what: string) => {
  * The plays race `RouteTo`'s navigation: the story's first render is the
  * unmatched route (nothing mounted), the swap happens in an effect, and the
  * detail's own query settles after that. Every play on a detail screen waits
- * here first, so its first click targets a control that exists.
+ * here first, so its first click targets a control that exists. The heading's
+ * `data-project-title` is the marker because it only exists on the detail
+ * (the header is `project-editors.tsx`'s), unlike text the list also paints.
  */
 const waitForDetail = () =>
 	poll(
-		() => document.querySelector('[data-tour-tag="project-edit"]') !== null,
+		() => document.querySelector("[data-project-title]") !== null,
 		"the detail screen",
 	);
 
@@ -897,10 +1262,11 @@ const waitForDetail = () =>
  * WHY THE ROUTES AND NOT JUST THE NAVIGATION: the global `MemoryRouter` the
  * preview provides has no route table of its own, and `useParams` yields
  * nothing unless some `<Route>` matched — so a story that only navigated kept
- * rendering the list under the detail's URL (measured: `project-edit` never
- * appeared while the frame showed the list's own header). Both routes are
- * declared here, matching `app.tsx`'s pair, and the navigation replaces the
- * entry so the history holds one location, as the app's own entry would.
+ * rendering the list under the detail's URL (measured: the detail's own
+ * heading never appeared while the frame showed the list's own header). Both
+ * routes are declared here, matching `app.tsx`'s pair, and the navigation
+ * replaces the entry so the history holds one location, as the app's own
+ * entry would.
  */
 const RouteTo = ({
 	path,
@@ -937,6 +1303,7 @@ const page = (
 		view?: "list" | "board" | "timeline";
 		columnOrder?: string[];
 		window?: BoardWindow;
+		sort?: SortSpec | null;
 	},
 ) => {
 	stub = {
@@ -946,6 +1313,12 @@ const page = (
 		failList: null,
 		hang: false,
 		failPatch: null,
+		/* The search index: absent means `projects: 1`, the client matcher's
+		 * backend, which is every story that does not say otherwise. */
+		searchIndex: null,
+		/* Pinned like the defaults above: without it the spread's Optional half
+		 * keeps `undefined` in the inferred type, which a required field refuses. */
+		requestUpdate: null,
 		...state,
 	};
 	bridgeOps = [];
@@ -985,6 +1358,14 @@ const page = (
 		}
 	}
 	/*
+	 * The sort is persisted the same way (U2: an explicit column sort persists
+	 * across a view switch), so every story states one or clears it: a stored
+	 * sort leaking into the next story would order its rows by the previous
+	 * story's column — the same defect the view, the order and the window
+	 * guard against.
+	 */
+	writeProjectsSort(state.sort ?? null);
+	/*
 	 * `h-screen`, the schedules page's rule: in the app this page is a full-height
 	 * column, and a story without the height photographs a panel hugging its own
 	 * content instead of the panel the app draws.
@@ -997,14 +1378,14 @@ const page = (
 };
 
 /** Empty: no project anywhere on this machine. */
-export const Empty: Story = { render: () => page({}) };
+export const Empty: Story = { render: () => page({ view: "list" }) };
 
 /** Loading: the header stays, so nothing jumps when the rows arrive. */
 export const Loading: Story = {
 	render: () => (
 		<>
 			<HoldUntilPresent text="Loading projects" />
-			{page({ hang: true })}
+			{page({ view: "list", hang: true })}
 		</>
 	),
 };
@@ -1014,13 +1395,29 @@ export const LoadError: Story = {
 	render: () => (
 		<>
 			<HoldUntilPresent text="The backend did not answer." />
-			{page({ failList: "The backend did not answer." })}
+			{page({ view: "list", failList: "The backend did not answer." })}
 		</>
 	),
 };
 
 /** Three projects: the list's ordinary shape. */
-export const Populated: Story = { render: () => page({ projects: THREE }) };
+export const Populated: Story = {
+	render: () => page({ view: "list", projects: THREE }),
+	play: playOnce("populated-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
+	}),
+};
+
+/**
+ * THE DEFAULT VIEW'S FRAME (design item 3, as amended): nothing stored, so the
+ * page derives its default — the Board — and this is the only story that
+ * states NO view on purpose, which is what makes the derivation visible here
+ * and nowhere else. The flip is scoped to a NEVER-CHOSEN value: a reader who
+ * picked List or Timeline keeps it, and the stored key's format is unchanged,
+ * so no migration runs.
+ */
+export const DefaultBoard: Story = { render: () => page({ projects: THREE }) };
 
 /**
  * The same listing at the width the 800x600 window floor leaves the list once
@@ -1032,10 +1429,994 @@ export const Populated: Story = { render: () => page({ projects: THREE }) };
  * and the header run the same COLUMNS plan, so this frame is the alignment
  * proof as well as the width proof.
  */
-export const NarrowColumns: Story = { render: () => page({ projects: THREE }) };
+export const NarrowColumns: Story = {
+	render: () => page({ view: "list", projects: THREE }),
+	play: playOnce("narrow-columns-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
+	}),
+};
+
+/**
+ * U7's fix, measured rather than described: at this width the count is SHED
+ * (it is the one item that appears on the first keystroke), so typing cannot
+ * wrap the switcher row or move the list — the same invariance U1 holds at
+ * wide widths, held at the narrow end where `flex-wrap` used to break it. The
+ * play takes both readings around the keystroke — the switcher row's height
+ * and the list's top — and fails on any move; it also asserts the shed itself,
+ * because a count that stayed visible here is the shape the bug returns in.
+ */
+export const NarrowSearchActive: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("narrow-search-active", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		const row = () => document.querySelector("[data-project-search-row]");
+		const list = () => document.querySelector('[data-testid="project-list"]');
+		const before = {
+			row: row()?.getBoundingClientRect().height ?? 0,
+			top: list()?.getBoundingClientRect().top ?? 0,
+		};
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelectorAll("[data-project-name]").length < 12,
+			"the rows to narrow to the matches",
+		);
+		const count = document.querySelector<HTMLElement>("[data-project-count]");
+		if (count !== null && getComputedStyle(count).display !== "none") {
+			throw new Error("the count did not shed at this width");
+		}
+		const after = {
+			row: row()?.getBoundingClientRect().height ?? 0,
+			top: list()?.getBoundingClientRect().top ?? 0,
+		};
+		if (Math.abs(before.row - after.row) > 0.5) {
+			throw new Error(
+				`the switcher row moved on the first keystroke: ${before.row}px -> ${after.row}px`,
+			);
+		}
+		if (Math.abs(before.top - after.top) > 0.5) {
+			throw new Error(
+				`the list top moved on the first keystroke: ${before.top}px -> ${after.top}px`,
+			);
+		}
+	}),
+};
 
 /** Twelve projects: the list under a scrollbar. */
-export const Many: Story = { render: () => page({ projects: MANY }) };
+export const Many: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("many-band", async () => {
+		await bandsReady();
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
+	}),
+};
+
+/**
+ * The search row at rest (U1's state 0): field, Filters with no count, no
+ * chips row, no result line — the before half of the no-new-row claim. The
+ * pair with `SearchActive` is the frame evidence that the first keystroke
+ * changes nothing about the row's height.
+ */
+export const SearchIdle: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+};
+
+/**
+ * The same row with a query in it (state 1): the result line appears in the
+ * switcher row's right cluster (`10 of 12 projects`), the rows narrow to the
+ * matches in relevance order, and still no chips row — nothing facet-shaped
+ * is set. Compare with `SearchIdle` for the no-new-row claim.
+ */
+export const SearchActive: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("search-active", async () => {
+		/* The field mounts with the page; a play that types into a missing
+		 * node reads as a broken story rather than a slow boot. */
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelector("[data-project-count]") !== null,
+			"the result count to appear",
+		);
+	}),
+};
+
+/**
+ * The Filters popover complete (the toolbar entry point): all nine facets.
+ *
+ * The play then pins U12's focus handoff, the fact a still cannot show: it
+ * sets a facet so the header's Clear all exists, presses it, and fails unless
+ * the popover CLOSES with focus landed on the search field (the pre-fix code
+ * left the popover open with focus on `<body>`). It re-opens the popover so
+ * the frame is still the open panel.
+ */
+export const FiltersOpen: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("filters-open", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the Filters popover to open",
+		);
+		/* U12's pin, first half: give the popover header something to clear. */
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		if (!option) throw new Error("the Active option is absent");
+		option.click();
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the chip for the Active facet",
+		);
+		const headerClear = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] button'),
+		].find((node) => node.textContent?.trim() === "Clear all");
+		if (!headerClear) {
+			throw new Error("the popover header's Clear all is absent");
+		}
+		headerClear.click();
+		/* U12's pin, second half: the popover closes, the facet clears, and the
+		 * handoff lands focus on the search field - each of the three fails on
+		 * the code this pin was born against. */
+		await poll(
+			() => document.querySelector('[role="dialog"]') === null,
+			"the popover to close on the header Clear all",
+		);
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 0,
+			"the facet to clear",
+		);
+		await poll(
+			() =>
+				document.activeElement?.getAttribute("aria-label") ===
+				"Search projects",
+			"focus to land on the search field",
+		);
+		/* Re-open for the frame: the panel with its nine facets, none selected. */
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the Filters popover to re-open",
+		);
+	}),
+};
+
+/**
+ * The chips row (state 2): a facet is on, so one chip per facet plus Clear all
+ * appears BELOW the switcher row while the result line lives in the row above
+ * — the U1 split, photographed in its on state.
+ */
+export const FilterChips: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("filter-chips", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the chip row to appear",
+		);
+	}),
+};
+
+/**
+ * D2a's composition, pinned in pixels and in order: a FACET chip and the SORT
+ * chip TOGETHER — the chips row's documented shape (`FACET_ORDER`'s chips
+ * first, the sort pushed last, one `flex flex-wrap` container). The play reads
+ * the rendered order rather than the source's: `Status · Active` first,
+ * `Sort: Status` after it.
+ */
+export const FilterAndSortChips: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+	play: playOnce("filter-and-sort-chips", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 2,
+			"the facet chip and the sort chip",
+		);
+		const chips = [...document.querySelectorAll("[data-project-chip]")].map(
+			(node) => node.textContent ?? "",
+		);
+		if (!chips[0]?.startsWith("Status · Active")) {
+			throw new Error(`the facet chip is not first: ${chips[0]}`);
+		}
+		if (!chips[1]?.startsWith("Sort: Status")) {
+			throw new Error(`the sort chip is not last: ${chips[1]}`);
+		}
+	}),
+};
+
+/**
+ * D7's pin: `Clear all` clears the query, the facets AND the sort. The
+ * play sets a facet through the popover (the story's sort is seeded by
+ * its own props), presses the chips row's Clear all, and fails unless
+ * every chip is gone and the Status header's `aria-sort` is back to
+ * `none` — the same end state the sort chip's own removal path reaches
+ * (U6), asserted here rather than argued.
+ *
+ * The play then pins U16 (and R10's composed sentence): a MutationObserver
+ * on the page's live region records every sentence it holds, the composed
+ * clear is read off that log, and the facet-only clear is made TWICE — a
+ * repeat of the SAME sentence, which a region read from its mutations only
+ * speaks again if the re-set before it emptied the region instead of
+ * leaving the string standing. The end state is the `no chips, the strip at
+ * rest` this frame exists to show.
+ */
+export const ClearAllClearsSort: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+	play: playOnce("clear-all-clears-sort", async () => {
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Active"),
+				),
+			"the Active option",
+		);
+		const option = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) => node.textContent?.trim().startsWith("Active"));
+		option?.click();
+		await userEvent.keyboard("{Escape}");
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 2,
+			"the facet chip and the sort chip",
+		);
+		/*
+		 * THE ANNOUNCEMENT LOG (U16's pin, and R10's composed sentence): a
+		 * MutationObserver records every non-empty sentence the page's live
+		 * region holds from here on — assertions about what was SPOKEN are read
+		 * off the log rather than off the region "now", because the region is
+		 * emptied by design (a dwell) and a play reading it late would race its
+		 * own clock.
+		 */
+		const region = document.querySelector("[data-project-announcement]");
+		if (!region) throw new Error("the announcement region is absent");
+		const spoken: string[] = [];
+		const observer = new MutationObserver(() => {
+			const text = (region.textContent ?? "").trim();
+			if (text !== "") spoken.push(text);
+		});
+		observer.observe(region, {
+			childList: true,
+			characterData: true,
+			subtree: true,
+		});
+		const clearAllButton = () =>
+			[...document.querySelectorAll<HTMLElement>("button")].find(
+				(node) => node.textContent?.trim() === "Clear all",
+			);
+		const clear = clearAllButton();
+		if (!clear) throw new Error("the chips row's Clear all is absent");
+		clear.click();
+		await poll(
+			() => document.querySelectorAll("[data-project-chip]").length === 0,
+			"every chip to clear",
+		);
+		const header = document.querySelector('[data-project-column="status"]');
+		if (header?.closest("th")?.getAttribute("aria-sort") !== "none") {
+			throw new Error(
+				`Clear all left the sort standing: aria-sort=${header?.closest("th")?.getAttribute("aria-sort")}`,
+			);
+		}
+		/* R10's composed sentence, capitalised (U17): the first clear named the
+		 * facet AND the sort, in the doors' own order. */
+		await poll(
+			() => spoken.includes("Filters and sort cleared."),
+			"the composed clear sentence",
+		);
+		/* U16's pin: the same clear, twice. Each round re-sets the facet - an
+		 * action that is not itself announced, so it supersedes the standing
+		 * sentence (polled empty below) - and then clears again. The second
+		 * `Filters cleared.` only reaches the log if the repeat SPEAKS: the
+		 * string it would otherwise re-set is the one already standing, and a
+		 * region read from its mutations has nothing to read. */
+		for (let round = 0; round < 2; round++) {
+			await clickWhen("[data-project-filters-button]");
+			await poll(
+				() =>
+					[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+						node.textContent?.trim().startsWith("Active"),
+					),
+				"the Active option",
+			);
+			const setActive = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith("Active"));
+			if (!setActive) throw new Error("the Active option is absent");
+			setActive.click();
+			await userEvent.keyboard("{Escape}");
+			await poll(
+				() => document.querySelectorAll("[data-project-chip]").length === 1,
+				"the facet chip",
+			);
+			await poll(
+				() => (region.textContent ?? "").trim() === "",
+				"the standing sentence to empty as the re-set supersedes it",
+			);
+			const again = clearAllButton();
+			if (!again) throw new Error("the chips row's Clear all is absent");
+			again.click();
+			await poll(
+				() => document.querySelectorAll("[data-project-chip]").length === 0,
+				"every chip to clear",
+			);
+			await poll(
+				() =>
+					spoken.filter((line) => line === "Filters cleared.").length >=
+					round + 1,
+				round === 0
+					? "the first facet-only clear"
+					: "the REPEAT to speak again",
+			);
+		}
+	}),
+};
+
+/**
+ * A stored column sort, at rest: the strip's Status header carries the
+ * direction glyph and `aria-sort`, and the sort chip names it — the U6 door
+ * that stays reachable when the column itself has been shed.
+ */
+export const SortedStatus: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "status", direction: "asc" },
+		}),
+};
+
+/**
+ * Nulls last, asserted as the rendered order rather than argued: one team's
+ * section with the Estimate sort DESCENDING, so the whole list is a single
+ * sequence — the three rows that carry an estimate lead, in the descending
+ * (unit, value) order, and the two that do not sit after them. The play reads
+ * the DOM's own row order and fails the story on any other sequence; the
+ * ascending half of the same rule is pinned by `scripts/projects-sort.test.mjs`
+ * where it costs nothing to run both directions.
+ */
+export const SortedNullsLast: Story = {
+	render: () => {
+		const team = "platform";
+		const rows = [
+			project("e1", "estimate-three", { team, estimate: 3 }),
+			project("e2", "estimate-eight", { team, estimate: 8 }),
+			project("e3", "estimate-five-days", {
+				team,
+				estimate: 5,
+				estimate_unit: "days",
+			}),
+			project("n1", "no-estimate-one", { team, estimate: null }),
+			project("n2", "no-estimate-two", { team, estimate: null }),
+		];
+		return page({
+			view: "list",
+			projects: rows,
+			sort: { key: "estimate", direction: "desc" },
+		});
+	},
+	play: playOnce("sorted-nulls-last", async () => {
+		const rows = () =>
+			[...document.querySelectorAll("[data-project-name]")].map((node) =>
+				node.getAttribute("data-project-name"),
+			);
+		await poll(() => rows().length === 5, "the five rows");
+		const expected = [
+			"estimate-five-days",
+			"estimate-eight",
+			"estimate-three",
+			"no-estimate-one",
+			"no-estimate-two",
+		];
+		await poll(
+			() => rows().join(",") === expected.join(","),
+			"the descending (unit, value) order with the nulls last",
+		);
+		if (rows().join(",") !== expected.join(",")) {
+			throw new Error(`the sort landed as: ${rows().join(",")}`);
+		}
+	}),
+};
+
+/**
+ * D2b's composition: a sort whose column has been SHED by the narrow width —
+ * U6's whole reason for existing. At this width the strip hides Target and
+ * Estimate (the container's own shed), so the header itself is unreachable;
+ * the sort chip is the only door, and the play asserts both halves: the shed
+ * column's button has no layout box, and the chip names the sort it cannot
+ * otherwise show.
+ */
+export const SortedShedColumn: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: MANY,
+			sort: { key: "estimate", direction: "desc" },
+		}),
+	play: playOnce("sorted-shed-column", async () => {
+		await poll(
+			() => document.querySelector("[data-project-chip]") !== null,
+			"the sort chip",
+		);
+		const header = document.querySelector<HTMLElement>(
+			'[data-project-column="estimate"]',
+		);
+		if (header === null) {
+			throw new Error("the estimate header did not render");
+		}
+		if (header.offsetParent !== null) {
+			throw new Error("the estimate column did not shed at this width");
+		}
+		const chip = document.querySelector("[data-project-chip]");
+		if (!chip?.textContent?.startsWith("Sort: Estimate")) {
+			throw new Error(
+				`the shed column's chip does not name it: ${chip?.textContent}`,
+			);
+		}
+	}),
+};
+
+/**
+ * A column's scoped menu, open (the second entry point of the one panel):
+ * `Target`'s sort actions above Target's facet options, with the counts the
+ * panel derives and the `Default (as listed)` way back to the store's order.
+ * The play then takes the sort radio and asserts the LANDING rather than
+ * describing it: a date column's first direction is descending (the ux round's
+ * folded NIT), so `aria-sort` must read `descending` on the Target header and
+ * the sort chip must be present — with the menu still open, which is the
+ * frame.
+ */
+export const ColumnMenuOpen: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("column-menu-open", async () => {
+		await clickWhen('[data-project-column="target"]');
+		await poll(
+			() => document.querySelector('[role="dialog"]') !== null,
+			"the column menu to open",
+		);
+		/* The sort item's own label TH states the direction a press applies. */
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.includes("Sort by Target, latest first"),
+				),
+			"the Target sort radio",
+		);
+		const sortItem = [
+			...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+		].find((node) =>
+			node.textContent?.includes("Sort by Target, latest first"),
+		);
+		sortItem?.click();
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "descending",
+			"the Target header to report descending",
+		);
+		await poll(
+			() =>
+				[...document.querySelectorAll("[data-project-chip]")].some((node) =>
+					node.textContent?.startsWith("Sort: Target"),
+				),
+			"the sort chip",
+		);
+		/* U11's pin: the flip must be reachable from the KEYS. The checked
+		 * radio's own press is the flip, and Space/Enter on a checked radio
+		 * fire no click - the fix states the key path on the input. The play
+		 * flips twice so the frame's end state (Target, descending, menu
+		 * open) is unchanged, and both intermediate polls fail on the code
+		 * this pin was born against. */
+		const checked = [
+			...document.querySelectorAll<HTMLInputElement>(
+				'[role="dialog"] input[type="radio"]',
+			),
+		].find(
+			(node) =>
+				node.checked &&
+				node.closest("label")?.textContent?.includes("Sort by Target"),
+		);
+		if (!checked) throw new Error("the checked Target sort radio is absent");
+		checked.focus();
+		await userEvent.keyboard(" ");
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "ascending",
+			"the keyboard flip to ascending",
+		);
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document
+					.querySelector('[data-project-column="target"]')
+					?.closest("th")
+					?.getAttribute("aria-sort") === "descending",
+			"the keyboard flip back to descending",
+		);
+	}),
+};
+
+/**
+ * The no-match block: with a search on and zero matches it REPLACES the view
+ * (here the List), the field stays above it, and the subline names what a v1
+ * query does and does not read — so a word that lives in an update is not
+ * mistaken for a project that does not exist.
+ *
+ * The play walks the block's OTHER door and back (agent review round 7, R10;
+ * design round 4, D10): it clears the query, sets the pair of facets whose
+ * intersection is empty, and checks the FILTER-only variant — its own heading
+ * and recovery sentence, and exactly ONE Clear all on screen. U14's count is
+ * the one the chips row cannot pass: with the block up the row keeps its
+ * chips and hides its copy, where the screen this pin was born against held
+ * two identically labelled buttons. The walk restores the query state so the
+ * frame is the variant the directory has always shown.
+ */
+export const NoMatch: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("no-match", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"zzznothing",
+		);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+		/* U13's pin: the query case keeps the search facts without the
+		 * roadmap word, and the recovery sentence stays (fails on the copy
+		 * this pin was born against, which said \"is not searched yet\"). */
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("Update text is not searched.") &&
+				text.includes("Clearing the search and filters restores the list.")
+			);
+		}, "the search disclaimer and the recovery sentence");
+		/* R10/U14's count, query side: the field's own clear is the exit, so
+		 * the block carries the only Clear all. */
+		const clearAlls = () =>
+			[...document.querySelectorAll<HTMLElement>("button")].filter(
+				(node) => node.textContent?.trim() === "Clear all",
+			);
+		await poll(
+			() => clearAlls().length === 1,
+			"exactly one Clear all in the query no-match state",
+		);
+		/* D10's walk, door one: clear the query, leaving the list in charge. */
+		const bodyClear = clearAlls()[0];
+		if (!bodyClear) throw new Error("the block's Clear all is absent");
+		bodyClear.click();
+		await poll(
+			() => !(document.body.textContent ?? "").includes("No projects match"),
+			"the block to retire on its own Clear all",
+		);
+		/* Door two: the facet pair whose intersection is empty (Done rows have no
+		 * live sessions), with no query typed — the variant nothing showed. */
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Done"),
+				),
+			"the Done option",
+		);
+		for (const [index, label] of ["Done", "Has live sessions"].entries()) {
+			const option = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith(label));
+			if (!option) throw new Error(`the ${label} option is absent`);
+			option.click();
+			/* ONE faceted click per commit: the panel's `onToggle` closes over
+			 * the filters of ITS render, so two clicks in one tick write the
+			 * second state from the first's absence (this walk measured exactly
+			 * that - the pair collapsed to the live facet alone). Waiting for
+			 * the chip commits the first press before the second, which is the
+			 * pace a reader's own hands give for free. */
+			await poll(
+				() =>
+					document.querySelectorAll("[data-project-chip]").length === index + 1,
+				`the ${label} chip`,
+			);
+		}
+		await userEvent.keyboard("{Escape}");
+		/* The filter-only heading names no query, and U14's count is what
+		 * discriminates — two buttons stood here before the fix. */
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("No projects match.") &&
+				text.includes("Try removing a filter.") &&
+				text.includes("Clearing the filters restores the list.")
+			);
+		}, "the filter-only heading and recovery sentence");
+		await poll(
+			() => clearAlls().length === 1,
+			"exactly one Clear all in the filter-only no-match state",
+		);
+		/* Restore the query variant the frame exists for. */
+		const restoreClear = clearAlls()[0];
+		if (!restoreClear) throw new Error("the block's Clear all is absent");
+		restoreClear.click();
+		await poll(
+			() => !(document.body.textContent ?? "").includes("No projects match"),
+			"the block to retire",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"zzznothing",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					'No projects match "zzznothing".',
+				),
+			"the query no-match state to return",
+		);
+	}),
+};
+
+/**
+ * D10's frame: the FILTER-only no-match state, held for the shutter (design
+ * round 4; agent review round 7's R10 added the pin this state lacked).
+ *
+ * `NoMatch`'s walk passes through this state and deliberately restores the
+ * query variant before returning - that directory has always shown the query
+ * case - so the state the filter door produces had no frame of its own. This
+ * story is the same walk with the restoration dropped: the pair whose
+ * intersection is empty, no query typed, the block's filter-only heading and
+ * recovery sentence on screen. The assertions are the ones that discriminate
+ * the variant (the heading names no query; the sentence names filters; exactly
+ * one Clear all, U14's count, which the chip row cannot pass).
+ */
+export const NoMatchFilter: Story = {
+	render: () => page({ view: "list", projects: MANY }),
+	play: playOnce("no-match-filter", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await clickWhen("[data-project-filters-button]");
+		await poll(
+			() =>
+				[...document.querySelectorAll('[role="dialog"] label')].some((node) =>
+					node.textContent?.trim().startsWith("Done"),
+				),
+			"the Done option",
+		);
+		for (const [index, label] of ["Done", "Has live sessions"].entries()) {
+			const option = [
+				...document.querySelectorAll<HTMLElement>('[role="dialog"] label'),
+			].find((node) => node.textContent?.trim().startsWith(label));
+			if (!option) throw new Error(`the ${label} option is absent`);
+			option.click();
+			/* ONE faceted click per commit, the pace `NoMatch`'s walk measured:
+			 * the panel's `onToggle` closes over the filters of ITS render. */
+			await poll(
+				() =>
+					document.querySelectorAll("[data-project-chip]").length === index + 1,
+				`the ${label} chip`,
+			);
+		}
+		await userEvent.keyboard("{Escape}");
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes("No projects match.") &&
+				text.includes("Try removing a filter.") &&
+				text.includes("Clearing the filters restores the list.")
+			);
+		}, "the filter-only heading and recovery sentence");
+		await poll(
+			() =>
+				[...document.querySelectorAll<HTMLElement>("button")].filter(
+					(node) => node.textContent?.trim() === "Clear all",
+				).length === 1,
+			"exactly one Clear all in the filter-only no-match state",
+		);
+	}),
+};
+
+/**
+ * The two rows the search-index stories are photographed on — and the PAIR is
+ * the point of the whole slice.
+ *
+ * `invoice-run` carries the query word in its own fields, so the CLIENT matcher
+ * finds it. `billing-cutover` says nothing about an invoice anywhere the listing
+ * carries, and the index finds it because its UPDATE text does — the field that
+ * is detail-only on the wire and the largest slice of the store, which is the
+ * reason a renderer-side matcher could never find it. One query, two engines,
+ * two answers: the index's answer names both, in the index's order.
+ */
+const SEARCH_ROWS: DesktopProject[] = [
+	project("s1", "invoice-run", {
+		description: "Nightly invoice run",
+		team: "platform",
+		status: "active",
+		updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
+	}),
+	project("s2", "billing-cutover", {
+		description: "Move the billing cutover to the new gate",
+		team: "atlas",
+		status: "planning",
+		updated_at: FIXTURE_NOW_MS / 1000 - 5 * DAY_S,
+	}),
+];
+
+/** The query ONE engine can answer: only the index knows the cutover's updates
+ * say "invoice". */
+const SEARCH_QUERY = "invoice";
+/** A query NEITHER engine can answer. */
+const SEARCH_NOTHING = "zzznothing";
+
+/** The List's rows in RENDERED order, by key — the page's own `data-project-name`
+ * hook, read rather than re-derived: an assertion about rank order has to read
+ * the order the reader sees. */
+const listRowKeys = () =>
+	[...document.querySelectorAll<HTMLElement>("[data-project-name]")].map(
+		(node) => node.getAttribute("data-project-name") ?? "",
+	);
+
+/** Type a query into the page's own field, once it exists. */
+const typeSearch = async (text: string) => {
+	await poll(
+		() =>
+			document.querySelector('input[aria-label="Search projects"]') !== null,
+		"the search field",
+	);
+	await userEvent.type(
+		need<HTMLInputElement>('input[aria-label="Search projects"]'),
+		text,
+	);
+};
+
+/**
+ * The index SERVES: the page paints the backend's own answer — its membership
+ * and its rank order, neither of which the local matcher could produce. The row
+ * that discriminates is `billing-cutover`, whose match lives in update text; the
+ * poll for it IS the poll for the index having served. The order claim is read
+ * off the rendered rows rather than asserted against the fixture, because an
+ * answer that arrived and was re-sorted locally would pass a membership check.
+ */
+export const SearchIndexServed: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: ["s2", "s1"] },
+		}),
+	play: playOnce("search-index-served", async () => {
+		await typeSearch(SEARCH_QUERY);
+		await poll(
+			() => listRowKeys().includes("billing-cutover"),
+			"the index's own hit (a row the local matcher cannot admit)",
+		);
+		const keys = listRowKeys();
+		if (keys.join(",") !== "billing-cutover,invoice-run") {
+			throw new Error(
+				`the answer's rank order was not painted: ${keys.join(",")}`,
+			);
+		}
+	}),
+};
+
+/**
+ * The index is OWED an answer, and the fallback engine's row is still drawn:
+ * the no-blank-list claim, photographed mid-flight. A page that showed nothing
+ * until the index answered would fail the row poll; a page that painted "nothing
+ * matches" would fail the second check.
+ */
+export const SearchIndexPending: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-pending", async () => {
+		await typeSearch(SEARCH_QUERY);
+		await poll(
+			() => listRowKeys().includes("invoice-run"),
+			"the fallback engine's row while the index is owed an answer",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				"the no-match block claimed a result the index has not answered for",
+			);
+		}
+	}),
+};
+
+/**
+ * The one state where the index is owed an answer AND the fallback found
+ * nothing: the quiet in-flight line, in place of a "nothing matches" the index
+ * may be about to contradict. Both polls discriminate — the first fails on a
+ * page that shows the no-match block here, the second on one that shows nothing
+ * at all.
+ */
+export const SearchIndexSearching: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-searching", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Searching"),
+			"the in-flight line",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				'"nothing matches" was claimed before the index answered',
+			);
+		}
+		/*
+		 * AND THE BODY IS THE LINE ALONE (design round 1, D1; the assertion corrected
+		 * in round 3's F2). The claim is that the List is not standing beside this
+		 * block, and the first version of this line — "zero row keys" — did NOT test
+		 * it: the defect frame had zero rows too, because the defect was a header over
+		 * an empty body, so the assertion passed on the very frame it was written to
+		 * exclude. What discriminates is the PANEL's absence, which is what the gate's
+		 * term actually removes; the geometry is the designer's row-profile
+		 * measurement (192-200 against 552-562), not this line.
+		 */
+		await poll(
+			() => document.querySelector('[data-testid="project-list"]') === null,
+			"no List panel beside the in-flight line",
+		);
+	}),
+};
+
+/**
+ * THE SAME STATE IN THE THIRD VIEW (design round 2, D5, and D4's frame): the
+ * in-flight block stands in the Timeline's place too, and the Timeline's panel is
+ * the arrangement D1's diagnosis names one view over. The commit that fixed the
+ * List left this gate without the term, so the state drew that panel beside the
+ * block and its `shrink-0` strip landed where the List's header used to.
+ *
+ * The assertion is the discriminating one — the PANEL's absence rather than an
+ * empty row list, for F2's reason above — so this play fails on the defect the
+ * frame exists to disprove, and it is what makes the pair evidence rather than a
+ * picture of a claim.
+ */
+export const SearchIndexSearchingTimeline: Story = {
+	render: () =>
+		page({
+			view: "timeline",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-searching-timeline", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Searching"),
+			"the in-flight line in the Timeline view",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				'"nothing matches" was claimed before the index answered',
+			);
+		}
+		await poll(
+			() => document.querySelector('[data-testid="project-timeline"]') === null,
+			"no Timeline panel beside the in-flight line",
+		);
+	}),
+};
+
+/**
+ * The copy this slice reconciled, on the engine that made it false: the index
+ * answered zero, and the block carries the INDEX's sentence. The second poll
+ * fails on the string this slice replaced ("Update text is not searched"), which
+ * is exactly the frame the designer round has to look at.
+ */
+export const SearchIndexNoMatch: Story = {
+	render: () =>
+		page({ view: "list", projects: SEARCH_ROWS, searchIndex: { ids: [] } }),
+	play: playOnce("search-index-no-match", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes(
+					"Searches names, descriptions, tags, owners, teams and update text.",
+				) && !text.includes("Update text is not searched.")
+			);
+		}, "the index's subline, and no claim the index cannot make");
+	}),
+};
+
+/**
+ * The FAILURE arm: the index is broken, the fallback serves, and the sentence is
+ * the client matcher's again — which is the whole reason the copy is per engine
+ * rather than one string chosen at build time. A page that kept the index's
+ * sentence here would be claiming a search it did not get.
+ */
+export const SearchIndexFailed: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], fail: "The index is unavailable." },
+		}),
+	play: playOnce("search-index-failed", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence on the fallback",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Update text is not searched.",
+				),
+			"the client matcher's own subline after the index failed",
+		);
+	}),
+};
 
 /**
  * The sticky team headers, mid-scroll: the second section's header pinned at
@@ -1049,7 +2430,7 @@ export const Many: Story = { render: () => page({ projects: MANY }) };
  * drift or a theme's metrics differ.
  */
 export const ListTeamsSticky: Story = {
-	render: () => page({ projects: MANY_LONG }),
+	render: () => page({ view: "list", projects: MANY_LONG }),
 	play: playOnce("list-teams-sticky", async () => {
 		const scroller = () =>
 			document.querySelector<HTMLElement>('[data-testid="project-list"] ul');
@@ -1069,6 +2450,7 @@ export const ListTeamsSticky: Story = {
 				`fewer than two team headers rendered (${headers.length})`,
 			);
 		}
+		assertTeamBand("[data-project-team]", "Platform Delivery", "platform");
 		const second = headers[1];
 		element.scrollTop +=
 			second.getBoundingClientRect().top - element.getBoundingClientRect().top;
@@ -1101,10 +2483,7 @@ export const Detail: Story = {
 		// The DETAIL screen's own control, not the row name: the list also paints
 		// `payments-migration`, so a text predicate would pass before the route
 		// swap and photograph the list wearing the detail's name.
-		await poll(
-			() => document.querySelector('[data-tour-tag="project-edit"]') !== null,
-			"the detail to render",
-		);
+		await waitForDetail();
 	}),
 };
 
@@ -1151,7 +2530,7 @@ export const DetailLoadError: Story = {
 			() =>
 				(document.body.textContent ?? "").includes(
 					"This project could not be found.",
-				) && document.querySelector('[data-tour-tag="project-edit"]') === null,
+				) && document.querySelector("[data-project-title]") === null,
 			"the detail refusal",
 		);
 	}),
@@ -1394,7 +2773,7 @@ export const StartSessionDialog: Story = {
 
 /** The create dialog, opened from the page's own button. */
 export const CreateDialog: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-dialog", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1407,20 +2786,252 @@ export const CreateDialog: Story = {
 };
 
 /** The edit dialog, opened from the detail's own button. */
-export const EditDialog: Story = {
+/* ------------------------------------------------------- inline field editing */
+
+/**
+ * The title field's affordance REVEALED — the keyboard half of it.
+ *
+ * A Storybook play cannot paint `:hover` (a synthetic pointer event does not
+ * set the browser's own hover state, which is what `group-hover` resolves
+ * against), so the reveal this story photographs is `focus-within`'s: the
+ * pencil is focused and the frame shows what a keyboard reader sees. The
+ * POINTER half is captured in the live driver scene
+ * (`--scene project-inline-edit`), where CDP's input pipeline really hovers.
+ */
+export const InlineEditReveal: Story = {
 	render: () => (
 		<RouteTo path="/projects/p1">
 			{page({ projects: THREE, detail: DETAIL })}
 		</RouteTo>
 	),
-	play: playOnce("edit-dialog", async () => {
+	play: playOnce("inline-edit-reveal", async () => {
 		await waitForDetail();
-		await clickWhen('[data-tour-tag="project-edit"]');
+		const pencil = need<HTMLElement>(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		pencil.focus();
 		await poll(
 			() =>
-				document.querySelector('[data-tour-tag="project-edit-dialog"]') !==
-				null,
-			"the edit dialog",
+				getComputedStyle(
+					need(
+						'[data-project-field="title"] [data-inline-edit-control="begin"]',
+					),
+				).opacity === "1",
+			"the revealed pencil",
+		);
+	}),
+};
+
+/**
+ * The title field OPEN: the h1 has become its own input, the x and the check
+ * sit beside it, and the resting text is gone — the frame the operator's
+ * "edit is inline" is about.
+ */
+export const InlineEditOpen: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-open", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		await poll(
+			() =>
+				document.querySelector('[data-project-field="title"] input') !== null,
+			"the title editor",
+		);
+	}),
+};
+
+/**
+ * The title field TYPED over: the draft is visible in the input and the value
+ * on screen is the user's, not the record's — the state a save or a revert is
+ * answered from.
+ */
+export const InlineEditTyped: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-typed", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+	}),
+};
+
+/**
+ * The SAVING state, held: `hangPatch` makes `projects.update` a promise that
+ * never settles, so the spinner in the check's slot is a real in-flight write
+ * rather than a photographed fabrication — the same device the refusal story
+ * uses for its `Saving…` arm.
+ */
+export const InlineEditSaving: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL, hangPatch: true })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-saving", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="accept"]',
+		);
+		await poll(
+			() =>
+				document.querySelector(
+					'[data-project-field="title"] [data-inline-edit-slot="saving"]',
+				) !== null,
+			"the saving slot",
+		);
+	}),
+};
+
+/**
+ * A save that LANDED, inside its transient window: the record value is back in
+ * the read view, the acknowledgement sits beside it, and the panel's one live
+ * region carries the same words (note § 2.6). The play races the 1.2s dwell on
+ * purpose — a story that missed it would show the resting state and say
+ * nothing about the acknowledgement existing.
+ */
+export const InlineEditSaved: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-saved", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+		input.focus();
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document.querySelector('[data-inline-edit-feedback="saved"]') !== null,
+			"the saved acknowledgement",
+		);
+	}),
+};
+
+/**
+ * A refused save HELD beside the field: the Key row renames to a name the
+ * daemon already holds, the stub answers the wire's own 409 envelope
+ * (`project_name_exists`), and the field keeps the attempted value with the
+ * app's crafted sentence under it and the check re-attempting / x reverting
+ * in the slot. The frame is the refusal being IN the field rather than a
+ * banner somewhere else — the #704 rule this editor was built to.
+ */
+export const InlineEditRefused: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({
+				projects: THREE,
+				detail: DETAIL,
+				failPatch: "project 'invoices-rework' already exists",
+				failPatchStatus: 409,
+				failPatchCode: "project_name_exists",
+			})}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-refused", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="key"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="key"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "invoices-rework");
+		await clickWhen(
+			'[data-project-field="key"] [data-inline-edit-control="accept"]',
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"A project with this key already exists.",
+				),
+			"the in-field refusal",
+		);
+	}),
+};
+
+/**
+ * THE ONE THAT MUST NEVER CLOBBER: a Start date is half-typed, the record
+ * moves out-of-band (the play mutates the fixture exactly as another window
+ * would have written it), and the app's own focus-refetch path delivers the
+ * new record while the draft is dirty. The commit is HELD and the choice row
+ * is on screen. The wait is the query's own `staleTime` (10s) — a focus
+ * refetch only notices a STALE query, and the play waits it out rather than
+ * faking the delivery.
+ */
+export const InlineEditConflict: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-conflict", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="start"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="start"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "2026-09-05");
+		/* The out-of-band write, from the play's own hands. */
+		if (stub.detail) stub.detail.project.start_date = "2026-09-03";
+		/*
+		 * THE DELIVERY IS A FOCUS TRANSITION, not a focus event (review round
+		 * 1, M6): React Query 5.73.3's focusManager subscribes to a BUBBLING
+		 * `visibilitychange` on `window` and tracks one boolean, so the bare
+		 * `focus` dispatch this play used to send was heard by nobody and the
+		 * conflict could never appear. Hidden -> visible is the pair a real
+		 * window switch delivers; the wait before it is the detail query's own
+		 * 10s `staleTime` - a focused query that is not stale is not refetched.
+		 * The recipe is `scripts/hub-round-trips.mjs`'s, kept identical so the
+		 * two rigs cannot drift.
+		 */
+		await new Promise((resolve) => setTimeout(resolve, 10_500));
+		const vis = window as unknown as {
+			__inlineEditVisibility?: string;
+			__inlineEditVisibilityPatched?: boolean;
+		};
+		if (!vis.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => vis.__inlineEditVisibility ?? "visible",
+			});
+			vis.__inlineEditVisibilityPatched = true;
+		}
+		vis.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		vis.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.dispatchEvent(new Event("focus"));
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					INLINE_EDIT_CONFLICT_SENTENCE,
+				),
+			"the conflict hold",
 		);
 	}),
 };
@@ -1433,7 +3044,7 @@ export const EditDialog: Story = {
  * failure this story exists to catch.
  */
 export const CreateSheetPreview: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-preview", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1476,7 +3087,7 @@ export const CreateSheetPreview: Story = {
  * markdown — the one thing a plain paste could not produce.
  */
 export const CreateSheetPaste: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-paste", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1518,7 +3129,7 @@ export const CreateSheetPaste: Story = {
  * stayed muted until the submit bounced.
  */
 export const CreateSheetOverLimit: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-over-limit", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1567,7 +3178,11 @@ export const CreateSheetOverLimit: Story = {
  */
 export const CreateSheetFollowUpRefusal: Story = {
 	render: () =>
-		page({ projects: THREE, failPatch: "The target date must be a real day." }),
+		page({
+			view: "list",
+			projects: THREE,
+			failPatch: "The target date must be a real day.",
+		}),
 	play: playOnce("create-sheet-follow-up-refusal", async () => {
 		await clickWhen('[data-tour-tag="create-project-button"]');
 		await poll(
@@ -1611,7 +3226,7 @@ export const CreateSheetFollowUpRefusal: Story = {
  * dialog. A frame alone cannot prove any of that.
  */
 export const CreateSheetSubmit: Story = {
-	render: () => page({ projects: THREE }),
+	render: () => page({ view: "list", projects: THREE }),
 	play: playOnce("create-sheet-submit", async () => {
 		/*
 		 * Poll for the button before pressing it (the delete confirm's
@@ -1812,6 +3427,7 @@ export const MilestoneToggle: Story = {
 export const StaleProgress: Story = {
 	render: () =>
 		page({
+			view: "list",
 			projects: [
 				project("s1", "stale-rollout", {
 					description: "One weekly line owed",
@@ -1856,6 +3472,89 @@ function HoldUntilPresent({
 }
 
 /* ---------------------------------------------------------- board + timeline */
+
+/**
+ * The board under a search (U5): the result line reports matches WITHIN the
+ * window (`10 of 12 projects` here, at the default week), and the cards that
+ * do not match are gone — the board cannot show a row the search excluded.
+ */
+export const BoardSearchActive: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [
+				...MANY,
+				project("old1", "migration-batch-old", {
+					updated_at: FIXTURE_NOW_MS / 1000 - 30 * DAY_S,
+				}),
+			],
+		}),
+	play: playOnce("board-search-active", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"migration",
+		);
+		await poll(
+			() => document.querySelector("[data-project-count]") !== null,
+			"the board's count line",
+		);
+	}),
+};
+
+/**
+ * R1's state, pinned rather than argued: on the Board, a search whose matches
+ * ALL fall outside the window. The no-match block still wins (U5) — the search
+ * DID match — and the window is what hid the matches, so the block carries the
+ * window's own recovery, `Show all time`, beneath Clear all. The play asserts
+ * the block, both actions, and the count's own words (`0 of 12 in window`,
+ * U10): the denominator is the window's population and the sentence says so.
+ */
+export const BoardSearchOffWindow: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: [
+				...MANY,
+				project("old1", "migration-batch-old", {
+					updated_at: FIXTURE_NOW_MS / 1000 - 30 * DAY_S,
+				}),
+			],
+		}),
+	play: playOnce("board-search-off-window", async () => {
+		await poll(
+			() =>
+				document.querySelector('input[aria-label="Search projects"]') !== null,
+			"the search field",
+		);
+		await userEvent.type(
+			need<HTMLInputElement>('input[aria-label="Search projects"]'),
+			"batch-old",
+		);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+		const count = document.querySelector<HTMLElement>("[data-project-count]");
+		if (count?.textContent?.trim() !== "0 of 12 in window") {
+			throw new Error(
+				`the within-window count reads: ${count?.textContent?.trim() ?? "absent"}`,
+			);
+		}
+		const labels = [...document.querySelectorAll("button")].map((node) =>
+			node.textContent?.trim(),
+		);
+		if (!labels.includes("Show all time")) {
+			throw new Error(
+				"the within-window no-match block does not offer Show all time",
+			);
+		}
+	}),
+};
 
 /** The board with all three columns populated — the ordinary shape. */
 export const Board: Story = {
@@ -3002,9 +4701,14 @@ export const BoardTitleTooltip: Story = {
 				"the short title is clipped - the fixture no longer discriminates",
 			);
 		}
-		if (long.tabIndex !== 0) {
-			throw new Error("the clipped title has no tab stop");
-		}
+		/* The tab stop is REACT state behind the measurement effect, so it can
+		 * trail the DOM truth by a frame or two under capture load - measured
+		 * 2026-10-01: two sweeps of this family died here, one at `dune` and
+		 * one at `localOperatorDark`, while the DOM itself reported the title
+		 * clipped both times. Wait for the state instead of failing the story:
+		 * the assertion stands (a title that never becomes focusable still
+		 * fails), only the race goes. */
+		await poll(() => long.tabIndex === 0, "the clipped title's tab stop");
 		if (short.hasAttribute("tabindex")) {
 			throw new Error("the unclipped title grew a tab stop");
 		}
@@ -3170,4 +4874,432 @@ export const TimelineOverdue: Story = {
 			</>
 		);
 	},
+};
+
+/* ------------------------------------------------- request update (PR-B) */
+
+/*
+ * The check-in states: the board card's new menu item and the detail header's
+ * button run ONE flow (one window, one set of sentences), so these frames are
+ * raised from the same `projects.request_update` fixture answered in the
+ * route's own vocabulary. `hang` is the sending state's honest shape (the
+ * promise is held open, exactly as a slow route holds it); every other state
+ * resolves with its per-session rows and lets the REAL flow compose the card.
+ */
+
+const REQUEST_SESSION = (
+	session_id: string,
+	title: string | null,
+	outcome: DesktopProjectRequestUpdateResult["sessions"][number]["outcome"],
+	detail = "",
+): DesktopProjectRequestUpdateResult["sessions"][number] => ({
+	session_id,
+	title,
+	outcome,
+	detail,
+});
+
+/** The three engaged links of `DETAIL`'s fixture, all delivered. */
+const REQUEST_DELIVERED: DesktopProjectRequestUpdateResult["sessions"] = [
+	REQUEST_SESSION("4e92693767fa", "Payments cutover", "delivered"),
+	REQUEST_SESSION("a1a1a1a1a1a1", "API parity checks", "delivered"),
+	REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "delivered"),
+];
+
+/** The detail screen at `/projects/p1` with one scripted check-in answer. */
+const detailWithRequestUpdate = (
+	requestUpdate: RequestUpdateFixture,
+	detail: DesktopProjectDetail = DETAIL,
+) => (
+	<RouteTo path="/projects/p1">
+		{page({ projects: THREE, detail, requestUpdate })}
+	</RouteTo>
+);
+
+const requestUpdateButton = () =>
+	document.querySelector<HTMLElement>(
+		'[data-tour-tag="project-request-update"]',
+	);
+
+/**
+ * The press that never answers: the button holds `Requesting…` and the
+ * >400 ms loading card appears (and stays, because nothing supersedes it).
+ */
+export const DetailRequestUpdateSending: Story = {
+	render: () => detailWithRequestUpdate({ state: "sent", hang: true }),
+	play: playOnce("detail-request-update-sending", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() => (document.body.textContent ?? "").includes("Requesting updates…"),
+			"the loading card",
+		);
+		await poll(
+			() => requestUpdateButton()?.getAttribute("aria-busy") === "true",
+			"the button to report busy",
+		);
+	}),
+};
+
+/**
+ * The window after a delivered batch, the success card already retired: the
+ * DURABLE half of the state - the label says the request went out.
+ */
+export const DetailRequestUpdateCooldown: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "sent", sessions: REQUEST_DELIVERED }),
+	play: playOnce("detail-request-update-cooldown", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() => (requestUpdateButton()?.textContent ?? "").trim() === "Requested",
+			"the button to hold its Requested label",
+		);
+		await poll(
+			() => document.querySelector("[data-sonner-toast]") === null,
+			"the success card to auto-close",
+		);
+	}),
+};
+
+/** The success card, while the batch's window is armed. */
+export const RequestUpdateSuccess: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "sent", sessions: REQUEST_DELIVERED }),
+	play: playOnce("request-update-success", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Requested updates from 3 sessions on Payments migration.",
+				),
+			"the success card",
+		);
+	}),
+};
+
+/**
+ * A partial batch, both clauses in one card: one refusal ("could not be
+ * reached") and one unconfirmed delivery ("could not be confirmed") - the
+ * uncertainty the peer layer's own warning keeps, never collapsed into the
+ * failure wording (UX freeze condition U1).
+ */
+export const RequestUpdatePartial: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("4e92693767fa", "Payments cutover", "delivered"),
+				REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-partial", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Old cutover notes could not be reached.",
+				) &&
+				(document.body.textContent ?? "").includes(
+					"Delivery to API parity checks could not be confirmed.",
+				),
+			"the partial card's failure and uncertainty clauses",
+		);
+	}),
+};
+
+/** Every dial refused: the generic sentence, and no window is armed. */
+export const RequestUpdateAllFailed: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("4e92693767fa", "Payments cutover", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"failed",
+					"no longer exists",
+				),
+				REQUEST_SESSION(
+					"c3c3c3c3c3c3",
+					"Old cutover notes",
+					"failed",
+					"not started yet",
+				),
+			],
+		}),
+	play: playOnce("request-update-all-failed", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not reach any of the 3 linked sessions on Payments migration.",
+				),
+			"the all-failed card",
+		);
+	}),
+};
+
+/**
+ * Zero-delivery uncertainty (design round 2, D1): nobody refused and nobody
+ * confirmed, so the card asserts nothing about arrival - the longest pure
+ * sentence the vocabulary can produce, and one a string assertion cannot
+ * settle the wrap of.
+ */
+export const RequestUpdateAllUnconfirmed: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+				REQUEST_SESSION(
+					"b2b2b2b2b2b2",
+					"Cutover notes",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-all-unconfirmed", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not confirm delivery on Payments migration — the requests may still reach its sessions.",
+				),
+			"the all-unconfirmed card",
+		);
+	}),
+};
+
+/**
+ * The mixed zero-delivery end (design round 2, D1): one refusal and one
+ * uncertainty, nothing delivered - the other longest title, whose wrap the
+ * design asked to settle with a still.
+ */
+export const RequestUpdateMixedZeroDelivery: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION("c3c3c3c3c3c3", "Old cutover notes", "failed", "stale"),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"unconfirmed",
+					"delivery could not be confirmed",
+				),
+			],
+		}),
+	play: playOnce("request-update-mixed-zero-delivery", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Could not reach 1 of the 2 linked sessions on Payments migration.",
+				) &&
+				(document.body.textContent ?? "").includes(
+					"Delivery to API parity checks could not be confirmed.",
+				),
+			"the mixed zero-delivery card",
+		);
+	}),
+};
+
+/**
+ * A project whose links were never engaged: the batch cannot be delivered to
+ * any of them, and the copy names the fix instead of sending the user to a
+ * control they already used (UX freeze condition U2).
+ */
+export const RequestUpdateNeverStarted: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "sent",
+			sessions: [
+				REQUEST_SESSION(
+					"4e92693767fa",
+					"Payments cutover",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+				REQUEST_SESSION(
+					"a1a1a1a1a1a1",
+					"API parity checks",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+				REQUEST_SESSION(
+					"c3c3c3c3c3c3",
+					"Old cutover notes",
+					"failed",
+					REQUEST_UPDATE_NEVER_STARTED_DETAIL,
+				),
+			],
+		}),
+	play: playOnce("request-update-never-started", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"The 3 linked sessions have not started yet",
+				),
+			"the never-started card",
+		);
+	}),
+};
+
+/** No links at all: the card names the next action, and nothing is dialled. */
+export const RequestUpdateEmpty: Story = {
+	render: () =>
+		detailWithRequestUpdate({ state: "empty" }, { ...DETAIL, links: [] }),
+	play: playOnce("request-update-empty", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"No linked sessions to ask. Link a session to Payments migration first.",
+				),
+			"the empty card",
+		);
+	}),
+};
+
+/**
+ * The route's own window: this press dialled nothing (another client asked
+ * first), the card says how long is left, and the button arms from the
+ * server's numbers so the two doors still agree.
+ */
+export const RequestUpdateCooldown: Story = {
+	render: () =>
+		detailWithRequestUpdate({
+			state: "cooldown",
+			cooldown_remaining_s: 40,
+			requested_at: new Date(FIXTURE_NOW_MS - 20_000).toISOString(),
+		}),
+	play: playOnce("request-update-cooldown", async () => {
+		await waitForDetail();
+		await clickWhen('[data-tour-tag="project-request-update"]');
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Update already requested 20 s ago on Payments migration. Try again in 40 s.",
+				),
+			"the cooldown card",
+		);
+	}),
+};
+
+/**
+ * The card menu's KEYBOARD path, end to end: open with Enter, walk to the item
+ * by its own highlight, commit it - and assert the focus RETURN while the
+ * request is still in flight (U5): the caret must land back on the trigger the
+ * moment the menu closes, because a caret on `body` restarts the next Tab at
+ * the top of the page. The frame is the select's settled state (menu closed,
+ * card focused, the batch's card up).
+ */
+export const BoardRequestUpdateKeyboard: Story = {
+	render: () =>
+		page({
+			view: "board",
+			projects: THREE,
+			details: detailsFor(THREE),
+			requestUpdate: { state: "sent", sessions: REQUEST_DELIVERED },
+		}),
+	play: playOnce("board-request-update-keyboard", async () => {
+		const selector = '[data-project-menu="p1"]';
+		await poll(() => document.querySelector(selector) !== null, selector);
+		const trigger = need<HTMLElement>(selector);
+		trigger.focus();
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() => document.querySelectorAll('[role="menuitem"]').length >= 4,
+			"the card menu",
+		);
+		/* Walk to the item by its own highlight rather than by a press count,
+		 * so a reordered menu cannot silently retarget the gesture. */
+		for (let attempt = 0; attempt < 6; attempt += 1) {
+			const highlighted = document.querySelector(
+				'[role="menuitem"][data-highlighted]',
+			);
+			if (highlighted?.textContent?.includes("Request update")) break;
+			await userEvent.keyboard("{ArrowDown}");
+		}
+		await poll(
+			() =>
+				document
+					.querySelector('[role="menuitem"][data-highlighted]')
+					?.textContent?.includes("Request update") === true,
+			"the Request update item to highlight",
+		);
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document.activeElement === trigger &&
+				document.querySelectorAll('[role="menuitem"]').length === 0,
+			"focus back on the trigger after the select",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Requested updates from 3 sessions on Payments migration.",
+				),
+			"the batch to land",
+		);
+	}),
+};
+/**
+ * The no-dates callout, expanded over a dated chart: the collapsed line
+ * (`2 projects without dates`) opens to the two names as buttons that still
+ * open their project. The panel is bounded (`max-h-24`, scrolling) because the
+ * list it replaces was the unbounded one the design retired.
+ */
+export const TimelineCalloutExpanded: Story = {
+	render: () => {
+		const dated = project("d1", "release-prep", {
+			start_date: "2026-08-20",
+			target_date: "2026-09-15",
+		});
+		const undated = project("u1", "papercuts", { description: "Small fixes" });
+		const other = project("u2", "onboarding-notes", { status: "paused" });
+		return (
+			<>
+				<HoldUntilPresent text="without dates" />
+				{page({
+					view: "timeline",
+					projects: [dated, undated, other],
+					details: {
+						d1: detailFor(dated),
+						u1: detailFor(undated),
+						u2: detailFor(other),
+					},
+				})}
+			</>
+		);
+	},
+	play: playOnce("timeline-callout-expanded", async () => {
+		await clickWhen("[data-project-undated-callout] button");
+		await poll(
+			() => (document.body.textContent ?? "").includes("papercuts"),
+			"the undated names to appear",
+		);
+	}),
 };

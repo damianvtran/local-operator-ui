@@ -46,13 +46,17 @@
  */
 
 import {
+	DESKTOP_LOST_SIGHT_CODE,
 	DESKTOP_MESSAGE_MAX_CHARS,
 	DESKTOP_REQUEST_TOO_LARGE_DETAIL,
+	RUNTIME_BUSY_CODE,
 } from "@contract/desktop-contract";
 import { CssBaseline } from "@mui/material";
 import { ThemeProvider as MuiThemeProvider } from "@mui/material/styles";
+import { answerReport } from "@renderer/features/chat/ask-answer";
 import type { Message } from "@renderer/features/chat/types/message";
 import { messageBudgetRefusal } from "@renderer/features/chat/utils/message-budget";
+import { DesktopControlError } from "@renderer/shared/api/local-operator/desktop-api";
 import {
 	type ComposerSendError,
 	MessageInput,
@@ -166,6 +170,64 @@ const TOO_LONG = messageBudgetRefusal(
 	[],
 ) as string;
 
+/**
+ * The answer press's notice, from the SHIPPED `answerReport`.
+ *
+ * WHY THE PRESS'S OWN ARMS ARE HERE (design round 1 on the answers route,
+ * D1/D3/D4/D5). An option press that fails with the card already gone is reported
+ * in this band, and two of its arms are the answers route's own refusals - the
+ * retryable `runtime_busy` (the owner is alive and did not confirm) and the daemon's
+ * `runtime_unreachable` (it could not reach the owner at all). Neither had a frame
+ * anywhere in the repository, and the first is the arm whose copy was false: the
+ * band printed "Your answer was not sent" over a write-then-wait request whose ack
+ * may simply have been lost, in the backend's own vocabulary, beside an instruction
+ * to retry what the app had already retried.
+ *
+ * THE SENTENCES ARE NOT WRITTEN HERE, the same rule this page follows for the
+ * budget refusals: the failure goes through `answerReport` - the function the pane
+ * itself calls - so the frame shows the app's decision, register included, and a
+ * change to either arm moves the frame with it. The backend bodies are the merged
+ * route's own (`_runtime_busy_refusal()` on the answers route, and the ladder's
+ * unreachable arm), which is why both carry the same sentence and differ only by
+ * their code - the app is what tells them apart.
+ */
+const answerNotice = (error: unknown): ComposerSendError => {
+	const report = answerReport(
+		{
+			status: "failed",
+			request: {
+				op: "sessions.answer",
+				sessionId: "a1b2c3d4e5f6",
+				epoch: "epoch-7",
+				requestId: "req-1",
+				value: "Popup is not open",
+				questionIndex: 0,
+			},
+			error,
+		},
+		{
+			// The card is gone and no gate is pending - the state the composer arm
+			// exists for - so the press is reported in this band.
+			liveGateKey: null,
+			pressedGateKey: "req-1:0",
+			sentEpoch: "epoch-7",
+			liveEpoch: "epoch-7",
+			cardOnScreen: false,
+		},
+	);
+	if (report.to !== "composer")
+		throw new Error("this state needs a failure the composer carries");
+	return {
+		message: report.message,
+		code: report.code,
+		muted: report.muted,
+		retry: report.retry,
+	};
+};
+
+const ANSWER_UNREACHABLE_BODY =
+	"Session owner is unavailable. Reconnect and reconcile before retrying.";
+
 const STATES: Record<
 	string,
 	{
@@ -213,6 +275,45 @@ const STATES: Record<
 			retry: false,
 			onClear: () => {},
 		},
+	},
+	/*
+	 * THE ANSWER PRESS'S TWO CODED REFUSALS, in the band that carries a press whose
+	 * card is gone. `busy` is the RETRYABLE one: the owner is alive and did not
+	 * confirm inside the route's own budget, which the merged route answers `503`
+	 * with `code: runtime_busy`, `retryable: true` and `retry_after_ms: 2000`. The
+	 * app has already repeated the request under that budget, so the sentence says
+	 * what is knowable and names the app's own noun for this owner - and it paints
+	 * MUTED, because this is a failure the app is absorbing rather than one the user
+	 * must repair.
+	 */
+	"answer-busy": {
+		sendError: answerNotice(
+			new DesktopControlError(
+				503,
+				ANSWER_UNREACHABLE_BODY,
+				undefined,
+				RUNTIME_BUSY_CODE,
+				2000,
+			),
+		),
+	},
+	/*
+	 * AND THE DEAD OWNER, which is the same write-then-wait fact one hop down: the
+	 * daemon could not hand the answer to the session's owner at all. The unknowable
+	 * lead is kept and the route's "Reconnect and reconcile before retrying" is
+	 * replaced by a fact, because that instruction names a control this screen does
+	 * not have - and the ink stays `danger` here, since this one really may be a lost
+	 * answer.
+	 */
+	"answer-unreachable": {
+		sendError: answerNotice(
+			new DesktopControlError(
+				503,
+				ANSWER_UNREACHABLE_BODY,
+				undefined,
+				DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable,
+			),
+		),
 	},
 	/*
 	 * THE LATE CONFIRMATION over the draft the user edited while it was in flight:

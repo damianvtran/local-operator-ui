@@ -463,6 +463,90 @@ test("the pane claims the presentation slot it owns", () => {
 	);
 });
 
+test("the pane presents the conversation a request names, before its own (#739)", () => {
+	/*
+	 * The consume effect's ONE new decision: `request.sessionId ?? pane's ?? ""`.
+	 * Read off the source because the effect is React; what is asserted is the
+	 * precedence and that it feeds BOTH places the pickers read the conversation
+	 * from - the action and the context - so the two cannot name different
+	 * conversations. Everything else the effect hands over stays the pane's, and
+	 * `rebind` in particular is still the pane's `openConversation`, which is what
+	 * makes completing a fork from a row's menu land on the new fork.
+	 */
+	const dispatch = code(DISPATCH);
+	const start = dispatch.indexOf("const addressed = ");
+	assert.ok(
+		start >= 0,
+		"the consume effect no longer resolves an addressed id",
+	);
+	const effect = dispatch.slice(start, dispatch.indexOf("}, [", start));
+	assert.match(
+		effect,
+		/const addressed = panelRequest\.sessionId \?\? sessionId \?\? "";/,
+		"the precedence is no longer the request's conversation, then the pane's, then none",
+	);
+	assert.match(
+		effect,
+		/session_id: addressed,/,
+		"the ACTION no longer carries the addressed conversation",
+	);
+	assert.match(
+		effect,
+		/\n\s*sessionId: addressed,/,
+		"the CONTEXT no longer carries the addressed conversation",
+	);
+	assert.ok(
+		!/session_id: sessionId|\n\s*sessionId: sessionId/.test(effect),
+		"a field still substitutes the pane's own session for the request's",
+	);
+	assert.match(
+		effect,
+		/\n\s*rebind,/,
+		"the pane's rebind is no longer handed over - a fork would complete without opening the child",
+	);
+	assert.match(
+		dispatch,
+		/invoker\.current = panelRequest\.sessionId \? panelRequest\.invoker : null;/,
+		"a request from outside the pane no longer returns focus to its door (and the palette's must still return none)",
+	);
+	/*
+	 * The store carries the field and the parameters, and only a non-empty id
+	 * becomes a key. The cut point rides along by the same rule (#1002):
+	 * `entryId` names the transcript entry a destination acts on, and the same
+	 * `«spread only when set»` treatment is what keeps a request that names none
+	 * byte-identical to the one the palette has always sent.
+	 */
+	const store = code(STORE);
+	assert.match(
+		store,
+		/sessionId\?: string;/,
+		"PanelRequest lost its optional addressed conversation",
+	);
+	assert.match(
+		store,
+		/requestPanel: \(\s*destination: string,\s*invoker\?: HTMLElement \| null,\s*sessionId\?: string,\s*entry\?: \{ id: string; excerpt\?: string \},?\s*\) => void;/,
+		"requestPanel lost a parameter - the cut point travels as the fourth, as one object",
+	);
+	/*
+	 * THIS IS A SIGNATURE PIN, and deliberately no more (agent review round 1,
+	 * N3): a source regex cannot fail for a store that keeps the field and drops
+	 * the value, so the BEHAVIOUR - the key present when named, absent when not,
+	 * and the label following its target - is asserted against the real store in
+	 * `scripts/palette-panel-request.test.mjs`. What this guard adds is the one
+	 * thing that file cannot see: that the widening sits in the parameter list a
+	 * caller writes against.
+	 */
+	/*
+	 * And the palette is untouched: it never names a conversation, so its request
+	 * resolves to the pane's own exactly as before.
+	 */
+	assert.match(
+		code(PALETTE),
+		/requestPanel\(destination, returnFocusTo\.current\);/,
+		"the palette's request changed shape - it must keep naming no conversation",
+	);
+});
+
 test("the picker host hides the native browser view while it is open", () => {
 	/*
 	 * A `WebContentsView` paints above all DOM, so a panel opened over `/browser`

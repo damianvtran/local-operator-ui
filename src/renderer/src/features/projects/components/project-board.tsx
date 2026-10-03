@@ -44,6 +44,10 @@
  * (`openConversation`, the chat feature's one owner of that URL write).
  */
 
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import { Badge, Button } from "@shared/components/ui";
 import {
 	DropdownMenu,
@@ -88,6 +92,7 @@ import { useNavigate } from "react-router-dom";
 import type { DesktopProject } from "../../../../../shared/desktop-control-contract";
 import { openConversation } from "../../chat/open-conversation";
 import { useProjectDetail } from "../hooks/use-projects-queries";
+import { useRequestProjectUpdate } from "../hooks/use-request-update";
 import {
 	BOARD_COLUMNS,
 	BOARD_SIDE_COLUMNS,
@@ -606,15 +611,21 @@ export const ProjectBoard: FC<ProjectBoardProps> = ({
 					 * was live at rel 2.7). The strip's padding now starts at its sides
 					 * and bottom, and the header pins flush to the edge it pins to.
 					 *
-					 * AND THE SIDES AND BOTTOM ARE THE SUM, NOT NEW SPACING (operator,
-					 * 2026-09-30): the page no longer insets this region, so `px-9 pb-9`
-					 * carries what the strip used to sit inside - the 24px page gutter
-					 * plus its own 12 - and the strip's scrollbars now ride the VIEW's
-					 * own edges the way chat's transcript does. The pinned offsets
-					 * above are written against the strip itself, so none of them
-					 * moves.
+					 * AND THE SIDES ARE THE PAGE GUTTER, FLUSH WITH THE TITLE (operator,
+					 * 2026-09-30, board-first feedback): the board's left edge lines up with
+					 * the line the title block and the tab row begin on - and with the
+					 * app's other pages' boxes, measured at x=24 like the schedules page's
+					 * own rows - so the strip carries `px-6`: the 24px gutter exactly,
+					 * NOT the 24+12 the strips carried while the page still inset this
+					 * region. (The strip's scrollbars ride the VIEW's own edges the way
+					 * chat's transcript does; the padding moves content, not the bar.)
+					 * The right gutter is the same 24 once the board is scrolled
+					 * to its end, and the bottom keeps `pb-9` (24 + 12): nothing aligns
+					 * below the last row, and the extra step is the tail the grid had
+					 * before the full-bleed change. The pinned offsets above are written
+					 * against the strip itself, so none of them moves.
 					 */
-					"relative flex min-h-0 flex-1 items-start overflow-auto px-9 pb-9",
+					"relative flex min-h-0 flex-1 items-start overflow-auto px-6 pb-9",
 					drag && "cursor-grabbing select-none",
 				)}
 			>
@@ -819,6 +830,18 @@ const BoardCard: FC<BoardCardProps> = ({
 	const meta = listRowMeta(
 		project,
 		typeof navigator === "undefined" ? undefined : navigator.language,
+	);
+	/*
+	 * THE CARD'S CHECK-IN DOOR (design note §1). The capability is read per card
+	 * through the shared react-query cache (one answer for every card), and the
+	 * item is MOUNTED or NOTHING - never mounted-and-disabled, the same
+	 * fail-closed rule the page's own gate follows.
+	 */
+	const capabilities = useDesktopCapabilities();
+	const requestUpdate = useRequestProjectUpdate();
+	const requestUpdateEnabled = desktopFeatureEnabled(
+		capabilities.data,
+		"projects_request_update",
 	);
 	/*
 	 * THE TITLE IS THE IDENTITY (grounded finding, this slice): the board, the
@@ -1073,7 +1096,30 @@ const BoardCard: FC<BoardCardProps> = ({
 								</DropdownMenuRadioGroup>
 							</DropdownMenuSubContent>
 						</DropdownMenuSub>
+						{/*
+						 * THE CHECK-IN ITEM, directly after `Set status` and above the
+						 * separator: both first-group actions keep the project's state
+						 * current, one done by you and one delegated outward to the
+						 * sessions; the record-editing pair stays after the rule. No icon -
+						 * no sibling carries one, and a lone icon would misalign the text
+						 * column (design note §1). ALWAYS ENABLED: a greyed item with no
+						 * reason is a defect, and both the empty answer and "already
+						 * requested" come back as the result toast.
+						 */}
+						{requestUpdateEnabled && (
+							<DropdownMenuItem onSelect={() => requestUpdate(project)}>
+								Request update
+							</DropdownMenuItem>
+						)}
 						<DropdownMenuSeparator />
+						{/*
+						 * Edit NO LONGER OPENS A DIALOG (the inline-edit slice, operator
+						 * 2026-09-30): the page routes it to the project's detail, where
+						 * every field edits in place — the same destination Open uses,
+						 * kept as its own item because the two intents are still separate
+						 * to a reader (design may drop it). The prop stays `onEdit`, so
+						 * what the item MEANS is the page's to change.
+						 */}
 						<DropdownMenuItem onSelect={onEdit}>Edit</DropdownMenuItem>
 						<DropdownMenuItem onSelect={onDelete}>Delete</DropdownMenuItem>
 					</DropdownMenuContent>

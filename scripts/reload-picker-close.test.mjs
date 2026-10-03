@@ -20,10 +20,17 @@
  *
  * What this is NOT: evidence about pixels. jsdom has no layout engine; the frame
  * for this state is `docs/evidence/update-reload-ux/`.
+ *
+ * AND ONE CASE THAT IS NOT RELOAD'S, kept here rather than paying for a second
+ * bundle of the same module: the FORK picker's refusal contract (agent review
+ * round 2, MAJOR-1) is the same subject one panel over - what a picker tells the
+ * reader when the backend says no - and it is asserted on the same exported
+ * functions this file already imports from `destination-pickers`. Said here so a
+ * reader does not have to wonder why a fork case sits in the reload file.
  */
 
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { after, test } from "node:test";
 import { build } from "esbuild";
@@ -137,6 +144,27 @@ after(() => {
 
 const ROOT = process.cwd();
 const CACHE = join(ROOT, "node_modules/.cache/reload-picker-close");
+/** The shipped picker module, for the call-site facts this file pins as source. */
+const PICKERS =
+	"src/renderer/src/features/chat/pickers/destination-pickers.tsx";
+/*
+ * The fork refusal's three string facts, hoisted because the lint contract for
+ * this tree wants a regex compiled once rather than per call (`useTopLevelRegex`)
+ * - the same reason `draft-selection.test.mjs` keeps its source pins up here.
+ */
+const FORK_WHOLE_CONVERSATION_ADVICE = /fork the whole conversation/i;
+const FORK_CUT_VERB = /(cannot be )?cut\b/i;
+const FORK_CUT_NOTE_CALL_SITE = /cutEntryId \? FORK_CUT_NOTE : undefined/;
+/*
+ * Two more this file already used inside callbacks, hoisted for the same rule
+ * now that a change touches this file: every path in this tree is burnt down as
+ * it is touched (`scripts/check-scripts-lint.mjs`), so the `useTopLevelRegex`
+ * findings that were already here had to go with the edit rather than ride
+ * along beside it.
+ */
+const ANY_MODULE = /.*/;
+const RELOAD_FAILURE_LINE =
+	/The conversation could not be reopened: the owner is not running/;
 
 /** The answer the faked transport gives for the NEXT `sessions.get`. */
 let nextAnswer = () => Promise.reject(new Error("no answer installed"));
@@ -181,6 +209,8 @@ const bundle = await build({
 	stdin: {
 		contents: `
 			export { ReloadPicker, reloadReceipt } from "./src/renderer/src/features/chat/pickers/destination-pickers";
+			export { FORK_CUT_NOTE } from "./src/renderer/src/features/chat/pickers/destination-pickers";
+			export { operationFailureText } from "./src/renderer/src/features/chat/pickers/use-picker-backend";
 		`,
 		resolveDir: ROOT,
 	},
@@ -211,11 +241,14 @@ const bundle = await build({
 						namespace: "picker-seam",
 					}),
 				);
-				builder.onLoad({ filter: /.*/, namespace: "picker-seam" }, (args) => ({
-					contents: stubs[args.path],
-					loader: "js",
-					resolveDir: ROOT,
-				}));
+				builder.onLoad(
+					{ filter: ANY_MODULE, namespace: "picker-seam" },
+					(args) => ({
+						contents: stubs[args.path],
+						loader: "js",
+						resolveDir: ROOT,
+					}),
+				);
 			},
 		},
 	],
@@ -235,7 +268,8 @@ globalThis.__errorToast = (message) => {
 	return "toast-id";
 };
 
-const { ReloadPicker, reloadReceipt } = await import(`file://${bundlePath}`);
+const { ReloadPicker, reloadReceipt, FORK_CUT_NOTE, operationFailureText } =
+	await import(`file://${bundlePath}`);
 const React = await import("react");
 const { act } = await import("react");
 const { createRoot } = await import("react-dom/client");
@@ -362,6 +396,75 @@ test("the receipt sentence is one spelling, exported for both readers", () => {
 	);
 });
 
+test("a refused cut keeps the owner's reason and adds only the note this side can know", () => {
+	/*
+	 * THE FOUR SENTENCES THE ROUTE ACTUALLY ANSWERS WITH, quoted from
+	 * `local_operator/session/transcript.py` - compaction in flight, an unknown or
+	 * foreign id, a point before the newest summary's anchor, and a boundary
+	 * inside an unfinished tool batch. Three of them name the reader's own fix, so
+	 * the defect this case pins was the earlier shape that REPLACED all four with
+	 * one sentence of the UI's own composing.
+	 */
+	const ownersSentences = [
+		"history is being rewritten; retry /fork when compaction finishes",
+		"that message is not part of this conversation; pick a message from this session to fork from",
+		"that message sits before the conversation's last summary; fork from a message after the summary instead",
+		"compaction boundary is in an unfinished tool batch; retry /fork after the original finishes that batch",
+	];
+	for (const sentence of ownersSentences) {
+		const text = operationFailureText(
+			"The fork was not created",
+			sentence,
+			FORK_CUT_NOTE,
+		);
+		assert.ok(
+			text.startsWith(`The fork was not created: ${sentence}`),
+			"the owner's own sentence survives whole, whatever cause it names",
+		);
+		assert.ok(
+			text.endsWith(FORK_CUT_NOTE),
+			"and the note is added, not substituted",
+		);
+		/*
+		 * THE CLAUSE BOUNDARY (design round 3, D1). The route's lines carry no
+		 * terminal period - the four above are quoted verbatim - so a bare-space
+		 * join ran two clauses together mid-word ("...compaction finishes If that
+		 * message..."). `startsWith`/`endsWith` both passed that, so the separator
+		 * is asserted itself rather than left implied by the note's presence.
+		 */
+		assert.ok(
+			text.includes(`\n${FORK_CUT_NOTE}`),
+			"the note starts on its own line rather than running into the owner's [redacted]",
+		);
+	}
+	/*
+	 * The two things the failing shape did, each asserted so neither can come back
+	 * quietly: it advised an action the same check refuses (while a compaction pass
+	 * is in flight every cut is refused, the whole-conversation fork included), and
+	 * it taught a verb the dialog never used (the flow says "copies up to and
+	 * including this message"; "cut" enters only on failure).
+	 */
+	assert.ok(
+		!FORK_WHOLE_CONVERSATION_ADVICE.test(FORK_CUT_NOTE),
+		"no advice that the route can itself refuse",
+	);
+	assert.ok(
+		!FORK_CUT_VERB.test(FORK_CUT_NOTE),
+		"the note does not introduce a third verb for the act",
+	);
+	/*
+	 * AND ONLY THE CUT ARM GETS IT. `next_safe` needs no hedge about a message -
+	 * the whole-conversation fork names none - so the call site passes the note
+	 * conditionally rather than always; pinned as source, the way this file pins
+	 * the wiring a bundle cannot reach.
+	 */
+	assert.match(
+		readFileSync(join(ROOT, PICKERS), "utf8"),
+		FORK_CUT_NOTE_CALL_SITE,
+		"the note rides the cut arm only",
+	);
+});
+
 test("a successful reload closes the picker, rebinds once, and keeps the receipt", async () => {
 	const run = await pressReload({ cold: false, rows: 3 });
 
@@ -409,7 +512,7 @@ test("a failed reload keeps the dialog and its own reason, and rebinds nothing",
 	assert.equal(toasts.length, 0, "and it does not claim success");
 	assert.match(
 		document.body.textContent ?? "",
-		/The conversation could not be reopened: the owner is not running/,
+		RELOAD_FAILURE_LINE,
 		"the reason is still readable in the dialog",
 	);
 	assert.ok(buttonByText("Reload"), "and the action is still offered");

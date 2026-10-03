@@ -172,6 +172,92 @@ test("a request carries the control to return focus to", () => {
 });
 
 /*
+ * A requester OUTSIDE the pane names the conversation it addresses (#739): the
+ * sidebar's row menu forks a row the user never opened, so the pane's own
+ * session is the wrong subject. The palette names none, and its request keeps
+ * the exact shape it has always had.
+ */
+
+test("a request can name the conversation it addresses, and the palette's names none", () => {
+	const row = { focus() {} };
+	store().requestPanel("session.fork", row, "0a1b2c3d4e5f");
+	assert.equal(store().request.sessionId, "0a1b2c3d4e5f");
+	assert.equal(
+		store().request.invoker,
+		row,
+		"the addressed request still carries its invoker",
+	);
+	// The palette's call: no third argument, and no key at all - not an
+	// `undefined` the consumer would have to tell apart from "absent".
+	store().requestPanel("session.fork", row);
+	assert.equal("sessionId" in store().request, false);
+	store().requestPanel("info");
+	assert.equal("sessionId" in store().request, false);
+	// An empty id is not a conversation: it must not shadow the pane's own.
+	store().requestPanel("session.fork", row, "");
+	assert.equal("sessionId" in store().request, false);
+});
+
+test("a request can name the transcript entry it acts on, and how to label it", () => {
+	const row = { focus() {} };
+	store().requestPanel("session.fork", row, "0a1b2c3d4e5f", {
+		id: "4f2c1a",
+		excerpt: "Morning - here is where the import stands.",
+	});
+	assert.equal(store().request.entryId, "4f2c1a");
+	assert.equal(
+		store().request.entryExcerpt,
+		"Morning - here is where the import stands.",
+	);
+	assert.equal(store().request.sessionId, "0a1b2c3d4e5f");
+	assert.equal(store().request.invoker, row);
+	/*
+	 * ABSENT IS THE OLD SHAPE, key for key. A request that names no entry has no
+	 * `entryId` KEY at all rather than an `undefined` the presenter would have to
+	 * tell apart from absent - which is the exact rule `sessionId` already
+	 * follows, and the reason it is asserted here rather than assumed. The label
+	 * follows its target: a label for an entry that is not there names nothing.
+	 */
+	store().requestPanel("session.fork", row, "0a1b2c3d4e5f", {
+		id: "4f2c1a",
+	});
+	assert.equal("entryExcerpt" in store().request, false);
+	store().requestPanel("session.fork", row, "0a1b2c3d4e5f");
+	assert.equal("entryId" in store().request, false);
+	store().requestPanel("info");
+	assert.equal("entryId" in store().request, false);
+	// An empty id names no entry, exactly as an empty conversation id names none.
+	store().requestPanel("session.fork", row, "0a1b2c3d4e5f", { id: "" });
+	assert.equal("entryId" in store().request, false);
+});
+
+test("naming a conversation does not change the one-shot semantics", () => {
+	store().requestPanel("session.fork", null, "0a1b2c3d4e5f");
+	const named = store().request;
+	store().consumePanel(named.nonce + 1);
+	assert.equal(
+		store().request,
+		named,
+		"a stale consumer cleared a named request",
+	);
+	store().consumePanel(named.nonce);
+	assert.equal(store().request, null);
+	// And the TTL applies to a named request exactly as to any other.
+	store().requestPanel("session.fork", null, "0a1b2c3d4e5f");
+	const request = store().request;
+	assert.equal(
+		shellHostAction({
+			request,
+			presentable: false,
+			claimed: true,
+			now: request.requestedAt + PANEL_REQUEST_TTL_MS + 1,
+		}),
+		"retire",
+	);
+	store().consumePanel(request.nonce);
+});
+
+/*
  * What the SHELL host does with a request, which is the arbitration the second
  * presenter adds — and the one state a render cannot be driven into from a test
  * (code review round 1, M1).

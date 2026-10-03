@@ -32,6 +32,10 @@
  * chooses the configured default, and the strip names it.
  */
 
+import {
+	displayNameFor,
+	useAidaDisplayName,
+} from "@features/aida/use-aida-target";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
@@ -71,9 +75,14 @@ import {
 	useState,
 } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { ConfigComposer } from "../config-run/config-composer";
+import {
+	ConfigComposer,
+	askForChange,
+	discardSeededConfigBox,
+} from "../config-run/config-composer";
 import { targetKey, useConfigRunStore } from "../config-run/config-run-store";
 import { useConfigRun } from "../config-run/use-config-run";
+import { CLASS_LABEL, classOf } from "../utils/agent-class";
 import { AgentCreate, AgentDetail } from "./agent-detail";
 import {
 	DetailSkeleton,
@@ -259,9 +268,24 @@ export function AgentsPage() {
 		[settings.data],
 	);
 
+	/*
+	 * HER NAME IS A READ, NOT A STRING (UX round 2, U3). The roster lists the
+	 * seat like any other role, under the registry name it is addressed by - and
+	 * the seat's row in the rail, the pane's heading and the receipt a switch
+	 * shows must print the name the operator gave her, or the same agent wears
+	 * two names in one window. `useAidaDisplayName` is the one reader of that
+	 * field (`aida.status` -> `DesktopAidaState.name`), and it answers the
+	 * shipped default when the backend is older or the read is in flight.
+	 */
+	const aidaName = useAidaDisplayName();
+	const printName = useCallback(
+		(name: string) => displayNameFor(name, aidaName),
+		[aidaName],
+	);
+
 	const agentRows = useMemo(
-		() => propsFilter(profiles.data, search, scope),
-		[profiles.data, search, scope],
+		() => propsFilter(profiles.data, search, scope, printName),
+		[profiles.data, search, scope, printName],
 	);
 	const teamRows = useMemo(
 		() => teamsFilter(teams.data, search),
@@ -269,6 +293,28 @@ export function AgentsPage() {
 	);
 	const rows = teamMode ? teamRows : agentRows;
 	const selected = name ?? null;
+	/*
+	 * THE CLASS SWITCH'S FAILURE SENTENCE LIVES HERE, at the level that survives
+	 * its own refresh (UX round 2, U1). The control re-reads on every failure and
+	 * the record change remounts `AgentDetail` - so a sentence held inside the
+	 * control would be erased by the re-read that corrects the switch, and the
+	 * ambiguous case it exists for would flash and vanish. It is dropped when the
+	 * reader moves to another definition, and it is keyed by name so a late
+	 * arrival for the previous one cannot land on the next.
+	 */
+	const [classNotice, setClassNotice] = useState<{
+		name: string;
+		copy: string;
+	} | null>(null);
+	/*
+	 * CLEARED DURING RENDER, not in an effect, and React's own answer to "state
+	 * that must not follow a changed selection": the setter is stable, so an
+	 * effect whose only dependency is `selected` is a dependency list Biome
+	 * rejects, and the reset is one comparison here anyway. A sentence from the
+	 * previous definition must not greet the next one.
+	 */
+	if (classNotice !== null && classNotice.name !== selected)
+		setClassNotice(null);
 	const go = useCallback(
 		(next: NavIntent) => {
 			const search = new URLSearchParams();
@@ -426,16 +472,18 @@ export function AgentsPage() {
 	/*
 	 * THE TARGET FOLLOWS THE SELECTION (review round 1, U6 / D2).
 	 *
-	 * `about` and the seeded draft live in a module-scope store, so they outlived
-	 * the row they named: open `reviewer`, press "Ask for a change", click `scout`
-	 * (or switch to Teams) and the composer still said "About agent reviewer" with
-	 * the placeholder `Change reviewer…` — a run pointed at an agent that is not on
-	 * screen, which is the same wrong-record failure as the carried draft, one
-	 * layer down.
+	 * `about` lives in a module-scope store, so it outlived the row it named: open
+	 * `reviewer`, press "Ask for a change", click `scout` (or switch to Teams) and
+	 * the composer still said "About agent reviewer" with the placeholder
+	 * `Change reviewer…` — a run pointed at an agent that is not on screen, which is
+	 * the same wrong-record failure as the carried draft, one layer down.
 	 *
 	 * The SEEDED draft goes with the target, and only the seeded one: text the
-	 * operator typed is theirs, and deleting it because they clicked a row would
-	 * be a worse bug than the stale chip.
+	 * operator typed is theirs, and deleting it because they clicked a row would be
+	 * a worse bug than the stale chip. That sentence is now the box's text in the
+	 * conversation-input store (`discardSeededConfigBox`), which is the store the box
+	 * renders — the run store's own `draft` copy this used to clear was rendered by
+	 * nothing and was removed in QA round 2 (Q1).
 	 */
 	useEffect(() => {
 		const state = useConfigRunStore.getState();
@@ -444,11 +492,7 @@ export function AgentsPage() {
 		const kind = teamMode ? "team" : "agent";
 		if (selected && about.kind === kind && about.name === selected) return;
 		run.setAbout(null);
-		if (
-			state.draft.trim() === `Change the ${about.kind} ${about.name}:`.trim()
-		) {
-			run.setDraft("");
-		}
+		discardSeededConfigBox(about);
 	}, [selected, teamMode, run]);
 
 	/*
@@ -618,6 +662,7 @@ export function AgentsPage() {
 							rows={rows}
 							name={creating ? null : selected}
 							teamMode={teamMode}
+							printName={printName}
 							marked={
 								new Map(marks.map((mark) => [targetKey(mark), mark.created]))
 							}
@@ -675,6 +720,16 @@ export function AgentsPage() {
 					</div>
 				) : null}
 				<div
+					/*
+					 * THE PANE'S SCROLLER, NAMED FOR THE EVIDENCE RIG. The class control
+					 * sits below the fold at the narrow widths the design round asked for, and
+					 * a frame has to park this element at its end to contain the section it is
+					 * captioned with - a `scrollTo` cannot reach it, because the pane is too
+					 * short to bring the section to the top. A class selector would have been
+					 * a second way to name the region the rig reads, which is what the other
+					 * `data-*` hooks exist to avoid.
+					 */
+					data-agents-pane
 					className="min-h-0 flex-1 overflow-auto p-6 pb-0"
 					style={
 						stripHeight > 0 ? { paddingBottom: stripHeight + 16 } : undefined
@@ -770,8 +825,7 @@ export function AgentsPage() {
 								requestGo({ kind: "agent", name: agentName })
 							}
 							onAskAgent={(prompt) => {
-								run.setAbout({ kind: "team", name: name ?? "" });
-								run.setDraft(prompt);
+								askForChange(run, { kind: "team", name: name ?? "" }, prompt);
 							}}
 						/>
 					) : creating && duplicateOf && duplicateDetail.isLoading ? (
@@ -812,11 +866,11 @@ export function AgentsPage() {
 									requestGo({ kind: "agent", name: agentName })
 								}
 								onAskAgent={(prompt) => {
-									run.setAbout({
-										kind: "team",
-										name: teamDetail.data?.name ?? "",
-									});
-									run.setDraft(prompt);
+									askForChange(
+										run,
+										{ kind: "team", name: teamDetail.data?.name ?? "" },
+										prompt,
+									);
 								}}
 							/>
 						</>
@@ -826,6 +880,17 @@ export function AgentsPage() {
 							<AgentDetail
 								key={`agent:${profileDetail.data.name}:${profileDetail.data.source}:${contentKey(profileDetail.data)}`}
 								profile={profileDetail.data}
+								displayedName={printName(profileDetail.data.name)}
+								classNotice={
+									classNotice?.name === profileDetail.data.name
+										? classNotice.copy
+										: null
+								}
+								onClassNotice={(copy) =>
+									setClassNotice(
+										copy ? { name: profileDetail.data.name, copy } : null,
+									)
+								}
 								teams={teams.data}
 								effortTiers={effortTiers}
 								askEnabled={run.enabled}
@@ -841,11 +906,11 @@ export function AgentsPage() {
 									requestGo({ kind: "team", name: teamName })
 								}
 								onAskAgent={(prompt) => {
-									run.setAbout({
-										kind: "agent",
-										name: profileDetail.data?.name ?? "",
-									});
-									run.setDraft(prompt);
+									askForChange(
+										run,
+										{ kind: "agent", name: profileDetail.data?.name ?? "" },
+										prompt,
+									);
 								}}
 							/>
 						</>
@@ -987,6 +1052,7 @@ function Roster({
 	name,
 	teamMode,
 	marked,
+	printName,
 	onOpen,
 }: {
 	rows: readonly (ReusableProfile | ReusableTeam)[];
@@ -994,6 +1060,8 @@ function Roster({
 	name: string | null;
 	teamMode: boolean;
 	marked: Map<string, boolean>;
+	/** The name a row PRINTS; every id, route and mark still keys on `row.name`. */
+	printName: (name: string) => string;
 	onOpen: (name: string) => void;
 }) {
 	const refs = useRef(new Map<string, HTMLButtonElement>());
@@ -1066,11 +1134,13 @@ function Roster({
 						>
 							<span className="flex w-full items-center gap-2">
 								<span className="truncate text-body-sm text-ink">
-									{/* The READABLE name for a team row; an agent row renders its
-									    own name unchanged (labels are a team field). Identity
-									    stays `row.name` - the testid, the selection and the URL
-									    all read it. */}
-									{"members" in row ? teamDisplayName(row) : row.name}
+									{/* The READABLE name for a row: a team's label, or her configured
+									    name for the seat; every other agent row renders its own name
+									    unchanged. Identity stays `row.name` - the testid, the
+									    selection and the URL all read it. */}
+									{"members" in row
+										? teamDisplayName(row)
+										: printName(row.name)}
 								</span>
 								{/*
 								 * THE SOURCE CHIP SITS WITH THE NAME and reads as a statement, not a
@@ -1101,6 +1171,24 @@ function Roster({
 											: `${row.members.length} members`}
 									</Badge>
 								) : null}
+								{/*
+								 * THE CLASS, IN THE LIST, as a statement rather than a control.
+								 *
+								 * Only a PROACTIVE row says anything: reactive is the absent value
+								 * on the wire and the state an agent is in unless somebody chose
+								 * otherwise, so a "Reactive" badge on thirty rows would be thirty
+								 * repetitions of the default and would bury the one badge that is
+								 * worth noticing. The word is the backend's own and matches the
+								 * detail pane's control, so the list and the pane cannot drift into
+								 * two names for one fact.
+								 */}
+								{isProfile && classOf(row) === "proactive" ? (
+									<Badge variant="neutral" data-testid="roster-row-proactive">
+										{/* The word comes from the class module, not from this row: one
+										    spelling, so the badge and the control cannot drift. */}
+										{CLASS_LABEL.proactive}
+									</Badge>
+								) : null}
 								{row.description ? (
 									<span className="min-w-0 flex-1 truncate text-meta text-ink-muted">
 										{row.description}
@@ -1120,6 +1208,7 @@ function propsFilter(
 	rows: readonly ReusableProfile[] | undefined,
 	search: string,
 	scope: Scope,
+	printName: (name: string) => string,
 ): ReusableProfile[] {
 	const needle = search.trim().toLowerCase();
 	return (rows ?? []).filter((row) => {
@@ -1127,7 +1216,15 @@ function propsFilter(
 		if (scope === "installed" && row.source !== "installed") return false;
 		if (scope === "custom" && row.source !== "custom") return false;
 		if (!needle) return true;
+		/*
+		 * BOTH NAMES MATCH, and that is not belt-and-braces: a reader who renamed
+		 * her searches for the name they see, while a reader who knows the registry
+		 * key (it is what the receipts and the terminal address her by) searches
+		 * for that. Either way the row they mean is the row that survives the
+		 * filter.
+		 */
 		return (
+			printName(row.name).toLowerCase().includes(needle) ||
 			row.name.toLowerCase().includes(needle) ||
 			(row.description ?? "").toLowerCase().includes(needle)
 		);

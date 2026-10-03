@@ -387,6 +387,52 @@ const CONTROLS = [
 		ink: "ink",
 	},
 	{
+		/*
+		 * THE TEAM AVATAR BUBBLE (operator ask, 2026-10-01), RE-ROLED INTO THE BADGE
+		 * FAMILY (operator round, 2026-10-02): the compact initials mark the chat
+		 * sidebar's session rows and the chat header's team chip draw, the replacement
+		 * for a drawn team name that was costing the row's title whatever the name was
+		 * long.
+		 *
+		 * ITS FACE IS THE RAIL'S QUIET COUNT, so this row is deliberately the twin of
+		 * "rail approval badge (quiet)" further down - same `elevated` fill, same
+		 * `inkDim` ink, same missing edge, same four grounds. The mark composes the
+		 * same `badgeVariants({ variant: "attentionQuiet", shape: "pill", size:
+		 * "count" })` call the rail makes rather than copying its class string, so a
+		 * change to one that is not made to the other fails here instead of in a
+		 * reader's eyes. The old row attested `sunken` + `borderControl` + `ink`, which
+		 * is the pair the operator's 2026-10-02 report called ugly ("borderless bubble
+		 * of the sidebar notification counts ... slight contrast vs backdrop, smaller
+		 * more subtle text").
+		 *
+		 * WHAT IT ASSERTS NOW. The initials' `inkDim` on the mark's own `elevated` -
+		 * 5.01:1 at worst over the fifty-nine palettes, the same figure the rail row
+		 * quotes - which is the floor that matters because the letters are READ. The
+		 * edge is declared away with `edge: false`, for the reason that row states:
+		 * the fill provably cannot carry a boundary across every palette: it merges
+		 * with a row's own ground at 0.00-0.47 ΔE00 on the row-state grounds at worst
+		 * (`arcade` byte-identical on `rowHover`, `duskfox` 0.47 on `rowSelected`; four
+		 * of the fifty-nine sit inside ΔE00 2.0 there and sixteen on the selection), so
+		 * what keeps the mark legible is the letters' own floor, and what
+		 * keeps it a MARK rather than plain label text is that a quiet row draws
+		 * nothing at all. The class half - that the mark still wears this composition,
+		 * through the component boundary the discovery scan cannot see - is in
+		 * `scripts/chat-sidebar-selection.test.mjs`.
+		 *
+		 * THE FOUR GROUNDS ARE THE HOSTS the mark can be painted on: the chat panel's
+		 * `surface` (the session list), the header chip's `canvas`, and the two STATES
+		 * the list's rows paint under the pointer and under a selection. They are named
+		 * rather than left to `GROUNDS` because the state grounds are not rungs of that
+		 * ladder - the same reason the rail's row names them.
+		 */
+		name: "team avatar bubble",
+		on: ["canvas", "surface", "rowSelected", "rowHover"],
+		fill: "elevated",
+		border: null,
+		ink: "inkDim",
+		edge: false,
+	},
+	{
 		name: "input field",
 		on: GROUNDS,
 		fill: "surface",
@@ -1582,6 +1628,22 @@ const GRAPHICS = [
 		name: "turn bar complete mark",
 		on: ["canvas"],
 		fg: "success",
+	},
+	{
+		/*
+		 * THE SHARED SPINNER'S TRACK (`spinner.tsx`'s ring - the app's one
+		 * indeterminate-progress affordance, dropped onto every ground). Design round 1 on
+		 * the composer's acknowledgment measured this pair while the track was the
+		 * decorative `hairline`: 1.23:1 dark and 1.44:1 light, i.e. the whole visible
+		 * shape of a progress indicator below the floor. The track is `borderControl`
+		 * now, and this row is what holds it there. It is HERE rather than in
+		 * `CONTROLS` because that table's outline-control row states the same VALUE as a
+		 * CONTROL's boundary - a different claim about it - and this file's own note on
+		 * the context wheel says what a green gate about an unlisted pairing is worth.
+		 */
+		name: "spinner track against its ground",
+		on: GROUNDS,
+		fg: "borderControl",
 	},
 	...["success", "warning", "danger"].map((role) => ({
 		name: `usage bar fill (${role})`,
@@ -4763,6 +4825,13 @@ for (const { id, palette: p } of palettes) {
 	 * The class half — that the plate still wears the edge, and that the class of
 	 * "an object inside a row state with a ground of its own" is enumerated rather
 	 * than assumed — is in `scripts/chat-sidebar-selection.test.mjs`.
+	 *
+	 * THE TEAM AVATAR BUBBLE LEFT THIS PAIR on 2026-10-02: it wore the same
+	 * `sunken` plate and `borderControl` edge, and the operator's report replaced
+	 * both with the rail's quiet-count register (`elevated` + `inkDim`, no edge),
+	 * which moved its row up in `CONTROLS` and took it out from under this block's
+	 * arithmetic. Named here so a reader who remembers it resting here finds where
+	 * it went rather than nothing.
 	 */
 	if (
 		isHex(p.sunken) &&

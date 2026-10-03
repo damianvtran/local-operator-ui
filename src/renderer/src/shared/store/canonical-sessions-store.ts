@@ -73,6 +73,23 @@ export type CanonicalSessionRow = {
 	attention?: CompletionAttention;
 	live_state?: string;
 	pending?: string | null;
+	/**
+	 * How many QUEUED asks this conversation has open, as the catalogue row
+	 * carried it (`SessionCatalogueRow.asks_open`).
+	 *
+	 * Declared explicitly beside `pending` for the reason that comment gives about
+	 * `pinned`: this row type has an index signature, so without a declaration
+	 * every read of it is `unknown` at the one place that draws the chip. It is a
+	 * SECOND state rather than a widening of `pending`, which stays the approval
+	 * queue: a session with asks outstanding may be working perfectly well, and
+	 * folding the two would make the rail call a working session "waiting for
+	 * you" - the mislabel the design's §5 header forbids.
+	 *
+	 * OPTIONAL AND ABSENT TOGETHER with the wire field, for the same skew reason as
+	 * the rest of the queued-ask contract: a backend without the feature never
+	 * sends it, and absent and `0` are the same answer (no chip).
+	 */
+	asks_open?: number | null;
 	active?: boolean;
 	/**
 	 * The backend's pin state for this conversation, as the catalogue row carried
@@ -282,6 +299,53 @@ export type ArchiveUndoOffer = {
 	 * was never drawn.
 	 */
 	at: number;
+};
+
+/**
+ * The conversation an archive confirmation is asking about, and the KIND of
+ * surface that asked.
+ *
+ * IN THE STORE for the delete candidate's own reason (see `deleteCandidate`
+ * below): five surfaces ask this one question - the row's hover control, the row's
+ * context menu, the `⌘⇧A` chord (which presses that control), a typed `/archive`
+ * and the pane header's menu item - and they reach the store from three different
+ * subtrees. One candidate and one dialog is what keeps "one act, one register"
+ * true after the act gained a question.
+ *
+ * `fromRow` IS THE SURFACE, and it is carried rather than inferred because the two
+ * kinds of door want different things afterwards. A row's own press acts on a row
+ * that is ABOUT to leave the list the reader is standing in, so the caret has to
+ * follow it to the row that takes its place (`focusRowAfterRemoval`). The typed
+ * and header doors are answered where the reader already is - the composer, or the
+ * menu that shut - so the dialog's own opener restoration is the whole rule.
+ */
+export type ArchiveConfirmCandidate = {
+	sessionId: string;
+	/** True when a ROW's own control (or its menu item, or the chord) asked. */
+	fromRow: boolean;
+	/**
+	 * True when the pane HEADER's menu item asked, so the caret goes back to that menu's
+	 * trigger and nowhere else (UX round 1, U4).
+	 *
+	 * A SEPARATE FLAG rather than an inference from `fromRow: false`, because the typed door
+	 * is also `fromRow: false` and goes back to the composer. And rather than trusting the
+	 * element that held focus when the dialog opened: the header's menu item is unmounted as
+	 * the menu shuts, so what `document.activeElement` was at that instant depends on the
+	 * order Radix closes the menu and mounts the dialog - measured, the same press returned
+	 * to the trigger in one palette's run and to a sidebar row in the other's.
+	 */
+	fromHeader?: boolean;
+	/**
+	 * The name to ask about when the store holds no row for `sessionId`.
+	 *
+	 * CARRIED BY THE CANDIDATE since the dialog moved to the app shell (UX round 1, U1):
+	 * it used to be a prop from `ChatContent`, which owns the open conversation's
+	 * title - and a dialog that has to work on EVERY route has no such parent. The two
+	 * doors that can name a conversation the list is not drawing (a typed `/archive`
+	 * and the header's item) know the pane's title and pass it; a row door always has
+	 * a row, so it leaves this out.
+	 */
+	title?: string;
 };
 
 /**
@@ -968,9 +1032,17 @@ export const ASIDE_STILL_ANSWERING_CODE = "aside_still_answering";
  * resend fixes LATER, and both are cases where "Send it again" is not what to do
  * now. Its own statement is on the constant.
  *
- * `runtime_busy` was never on this list and still is not: the app has spent its
- * internal repeats by the time the composer sees it, and the owner's own
- * sentence asks for the press.
+ * `runtime_busy` IS THE EIGHTH TERM (design round 1 on the answers route, D5), and
+ * it arrives here for the press rather than for the send. On the SEND path the
+ * refusal's own arm keeps its press - `sendFailureCopy`'s busy branch answers
+ * `retry: true` literally, because there the control is the message in the box -
+ * and this predicate is not consulted. On the ANSWER path the composer's only
+ * retry control is Send over whatever the box holds, which is not the question
+ * the press was about: the retry an option press may have is the option itself,
+ * or the app's own bounded repeat `withBusyResends` has already spent. The old
+ * note here argued the opposite ("the owner's own sentence asks for the press"),
+ * and that argument was a reading of the backend sentence this change removes -
+ * "Retrying is safe" is gone from the wire.
  *
  * One function rather than call-site comparisons, so the composer reads the rule
  * instead of listing the codes, and so `scripts/canonical-chat.test.mjs` can
@@ -989,7 +1061,12 @@ export function withholdsRetryHint(code: string | undefined): boolean {
 		 * Appended rather than slotted in, so the two ordinals the aside constants state
 		 * about themselves ("the sixth term", "the seventh") stay true.
 		 */
-		code === SESSION_UNVALIDATED_CODE
+		code === SESSION_UNVALIDATED_CODE ||
+		/*
+		 * Appended for the same reason: the eighth, and the one this predicate is
+		 * consulted for only when the failure is a press (see the note above).
+		 */
+		code === RUNTIME_BUSY_CODE
 	);
 }
 
@@ -2059,8 +2136,14 @@ export function isSessionUnvalidated(
 }
 
 /**
- * How many times a send that met a BUSY owner is repeated before the refusal is
- * handed to the composer, and the longest single wait between two attempts.
+ * How many times a request that met a BUSY owner is repeated before the refusal
+ * reaches its caller, and the longest single wait between two attempts.
+ *
+ * ONE POLICY FOR BOTH REQUESTS THAT CAN MEET IT. The send (`messageWithBusyResend`
+ * below) and an answer press (`answerGateOption`/`answerGateSecret` in
+ * `ask-answer.ts`) are the two control calls whose retry the daemon's own body
+ * invites - `retryable: true` with `retry_after_ms` - and answering it two ways
+ * would give one refusal two patience policies.
  *
  * `runtime_busy` (see `RUNTIME_BUSY_CODE`) is the daemon refusing a control call
  * in ~3 s because the session's owner is alive and not answering - mid-turn in a
@@ -2078,31 +2161,61 @@ export function isSessionUnvalidated(
  * describe the operator's own message as one whose fate cannot be known, which is
  * the one thing this owner has just said it is not.
  *
+ * THE TWO CALLERS DO NOT COST THE SAME TIME, and an earlier draft of this note
+ * undercounted the press's bound (QA round 1's watch item, 2026-10-01). A send's
+ * attempt answers in ~3 s (the fast verdict above), so its loop is ~15 s end to
+ * end. An answer press's attempts end when the answers route spends its own
+ * bounded ack budget - 16.5 s measured on the backend change for the
+ * all-acks-lost arm - so the press's bound is 4 attempts x ~17.5 s + 3 waits x
+ * min(retry_after_ms, 5 s) = **~76 s of silence with today's 2 s hint, ~85 s if a
+ * backend asked for the cap**, held on a card whose options are disabled. The
+ * waits are the loop's own real 2 s timers (`setTimeout`), not a fixture's zero:
+ * the suite's fast cases zero `retry_after_ms` deliberately, and the wire value
+ * is what production waits on.
+ *
+ * IT CANNOT COMPOUND THE RENDERER'S OWN DEADLINE, which is the one reading that
+ * would make it worse. `withDeadline` (`desktop-api.ts`) races every
+ * `desktopRequest` against a fresh `desktopRequestTimeoutMs` - 25 s for
+ * `sessions.answer` (`DESKTOP_CONTROL_DEADLINE_MS` 20 s + margin 5 s) - so
+ * "4 x 25 s + 6 s = 106 s" looks like the cap. It is not one: an attempt that
+ * reaches that timeout raises `deadline_exceeded`, which this loop does not
+ * catch, so it is thrown on the FIRST attempt and only refusals the ROUTE
+ * authored are ever repeated. The deadline is a ceiling on a single attempt, not
+ * a term in the sum.
+ *
+ * That is the disclosed cost of doing the repeat for the user rather than handing
+ * them an instruction the app has already carried out (design round 1 on the
+ * answers route, D2/D5). The copy and the registers do not change with the bound;
+ * if design wants the press's patience shortened, the parameter to move is
+ * `BUSY_RESENDS`, and the bound moves with it.
+ *
  * The cap on one wait is there because the hint comes off the wire: a backend
- * that asked for a minute must not park a send that long with nothing on screen
- * but the pending echo.
+ * that asked for a minute must not park a request that long with nothing on
+ * screen but the pending echo.
  */
 const BUSY_RESENDS = 3;
 const BUSY_RESEND_MAX_WAIT_MS = 5_000;
 const BUSY_RESEND_DEFAULT_WAIT_MS = 2_000;
 
 /**
- * `sessions.message`, repeated on `runtime_busy` with the SAME request.
+ * `run`, repeated on a `runtime_busy` refusal with the SAME request.
  *
- * The request object is reused whole - same `requestId`, same text, images and
- * `mode` - because the backend's receipt is keyed on a hash of the whole body
- * (`desktop_receipts.py`): a resend that differed in any field would be a 409,
- * and one with a fresh id could deliver twice. Every other failure is thrown on
- * the first attempt, untouched, so the classification in `admitChatDraft`'s
- * catch sees exactly what it saw before this existed.
+ * The caller's request object is reused whole - same `requestId`, same text,
+ * images and `mode` - because the backend's receipt is keyed on a hash of the
+ * whole body (`desktop_receipts.py`): a resend that differed in any field would
+ * be a 409, and one with a fresh id could deliver twice. Every other failure is
+ * thrown on the first attempt, untouched, so the classification at each call
+ * site sees exactly what it saw before this existed.
+ *
+ * AND NOTHING IS PRODUCED WHILE IT REPEATS. The caller sees either the final
+ * refusal or a success, which is what makes the design round's "say nothing
+ * while the app's own retry still has a chance" (arm 1a) a property of this
+ * loop rather than a rule each surface has to remember.
  */
-async function messageWithBusyResend(
-	request: Extract<DesktopRequest, { op: "sessions.message" }>,
-): Promise<void> {
+export async function withBusyResends<T>(run: () => Promise<T>): Promise<T> {
 	for (let attempt = 0; ; attempt++) {
 		try {
-			await desktopResult(request);
-			return;
+			return await run();
 		} catch (error) {
 			if (
 				attempt >= BUSY_RESENDS ||
@@ -2117,6 +2230,17 @@ async function messageWithBusyResend(
 			await new Promise((resolve) => setTimeout(resolve, wait));
 		}
 	}
+}
+
+/**
+ * `sessions.message`, under that policy.
+ */
+async function messageWithBusyResend(
+	request: Extract<DesktopRequest, { op: "sessions.message" }>,
+): Promise<void> {
+	await withBusyResends(async () => {
+		await desktopResult(request);
+	});
 }
 
 /** Create and admission are intentionally separate receipts. A response lost
@@ -3609,6 +3733,20 @@ type CanonicalSessionsState = {
 	 */
 	deleteCandidate: string | null;
 	/**
+	 * The conversation an ARCHIVE confirmation is asking about, or null.
+	 *
+	 * A second candidate rather than a shared one with a `kind`: the two dialogs ask
+	 * different questions with different copy and different buttons (`Archive` is not
+	 * dangerous and `Delete` is), and a shared slot would let one act's confirmation
+	 * be replaced by the other's while it is open.
+	 */
+	archiveCandidate: ArchiveConfirmCandidate | null;
+	/**
+	 * Stage or clear the archive confirmation. `null` closes it without asking
+	 * anything, which is what every cancel path does.
+	 */
+	requestArchiveConfirm: (candidate: ArchiveConfirmCandidate | null) => void;
+	/**
 	 * Archive or unarchive one conversation: the optimistic write, its currency
 	 * stamp, and the revert-and-report path when the backend refuses.
 	 *
@@ -4748,6 +4886,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			draftsUndo: null,
 			stagedByDiscard: null,
 			deleteCandidate: null,
+			archiveCandidate: null,
 			error: null,
 			cwd: "~",
 			/*
@@ -5786,6 +5925,8 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				}
 			},
 			requestSessionDelete: (sessionId) => set({ deleteCandidate: sessionId }),
+			requestArchiveConfirm: (candidate) =>
+				set({ archiveCandidate: candidate }),
 			createSession: async (
 				cwd,
 				target,

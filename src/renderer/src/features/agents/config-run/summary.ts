@@ -25,6 +25,7 @@ import type {
 	ReusableProfile,
 	ReusableTeam,
 } from "@shared/api/local-operator/profile-hooks";
+import { classOf } from "../utils/agent-class";
 import type { RunChange, RunResult, RunTarget } from "./config-run-store";
 
 /**
@@ -179,6 +180,17 @@ function agentSignature(profile: ReusableProfile): Signature {
 				: "*",
 		effort: profile.effort ?? "inherit",
 		delegate: String(Boolean(profile.delegate)),
+		/*
+		 * THE CLASS IS DIFFABLE like every other definition field, and it has to
+		 * be: a configuration run can set it (`agent_tool`'s `action_class`), so a
+		 * signature that left it out would report a run that flipped an agent to
+		 * proactive as one that "changed no listed field" — the run summary
+		 * silently endorsing an agent that has just started messaging the operator.
+		 * Read through `classOf` rather than off the payload so the absent spelling
+		 * and `reactive` collapse to the same value, which is how the wire treats
+		 * them.
+		 */
+		action_class: classOf(profile),
 	};
 }
 
@@ -233,6 +245,16 @@ function describeField(field: string, before: string, after: string): string {
 	if (field === "tools") return describeTools(before, after);
 	if (field === "delegate")
 		return after === "true" ? "delegation turned on" : "delegation turned off";
+	/*
+	 * The class page follows `delegate`'s shape on purpose: the two are the
+	 * definition's BEHAVIOUR switches, and "class changed" would leave the reader
+	 * to work out which way — which is the one fact this sentence exists for when
+	 * the new value means the agent may message them unprompted.
+	 */
+	if (field === "action_class")
+		return after === "proactive"
+			? "class changed to proactive"
+			: "class changed to reactive — proactive messaging stopped";
 	if (field === "members") {
 		const count = (value: string) => (value ? value.split(",").length : 0);
 		return `members changed (${count(before)} to ${count(after)})`;

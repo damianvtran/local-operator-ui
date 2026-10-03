@@ -57,6 +57,7 @@ import {
 	useCanonicalSessionsStore,
 } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
@@ -74,6 +75,7 @@ import {
 	ChevronUp,
 	FileText,
 	FolderPlus,
+	GitFork,
 	GripVertical,
 	Hourglass,
 	LoaderCircle,
@@ -109,9 +111,10 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SESSION_SEARCH_MAX_CHARS } from "../../../../../shared/desktop-contract";
 import { AGENT_ROSTER_SEED } from "../../command-palette/palette-search";
+import { focusRowAfterRemoval } from "../archive-confirm";
 import { ARCHIVE_FAILURE_TOAST_MS } from "../archive-undo";
 import {
 	type ArchivePressRecord,
@@ -135,8 +138,9 @@ import {
 import {
 	type PinMoveStep,
 	canMovePinnedRow,
+	chatPinMoveCapJoined,
 	chatPinMoveChord,
-	chatPinMoveControl,
+	chatPinMoveRowId,
 	forgetPinnedOrder,
 	movePinnedOrder,
 	movePinnedOrderTo,
@@ -222,6 +226,7 @@ import {
 	HubSectionLines,
 	HubUpdateMark,
 } from "./hub-update-mark";
+import { TeamAvatarBubble } from "./team-avatar-bubble";
 
 /*
  * The ids the boundary's controls point at with `aria-controls`.
@@ -372,6 +377,18 @@ const CLEAR_ALL_WHY_ID = "drafts-clear-all-why";
  * stand in for - and the frames of that behaviour are already committed
  * (`docs/evidence/session-archive/row-controls-shared*`). It is a change to make on
  * evidence that the 240 hover is too busy, not in advance.
+ *
+ * ONE WIDTH QUERY DID COME BACK FOR A WHILE, and it is gone again: round 1 shed the
+ * GRIP alone below a 279px panel (`@max-[263px]/chatsidebar:hidden!`, with the
+ * `@container/chatsidebar` declaration back on the panel root for it), on the
+ * reading that the grip is the one member of the cluster that is an ACCELERATOR
+ * rather than a path - the pair being WCAG 2.5.7's single-pointer alternative to the
+ * gesture. This change deletes the arrow pair for the same reason one step further
+ * on: with five controls revealed the clamp's title had 40px of the row's 208, and
+ * with the pair gone the same width has 124px, so the grip is drawn at every width
+ * and the declaration went with the query that read it. The reasoning above still
+ * decides the question: a shed is a change to make on evidence that a width is too
+ * busy, and the width is not.
  */
 
 /**
@@ -635,7 +652,7 @@ import {
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
-import { ChatSessionStatus } from "./chat-session-status";
+import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -888,96 +905,6 @@ const builtinOfferSentence = (
 };
 
 /**
- * Focus the row that takes the place of a row that is about to leave the list.
- *
- * WHY THIS EXISTS: activating a row's archive control unmounts the control AND its
- * row, so the browser's own focus handling drops the reader on `<body>` - the next
- * Tab restarts at the top of the document, twelve stops from where they were (UX
- * round 1, U5, and the same class of defect as U9 in the dialog). The app's
- * discipline elsewhere is to hand focus to whatever took the place of the focused
- * control; in a list, that is the row that slides up into the gap.
- *
- * Read from the DOM rather than from the list model on purpose: a row's position
- * in the model is a section, a search result set or a group, which this handler
- * cannot index, while the document order of `[data-chat-row]` IS the order the
- * reader sees. The snapshot is taken at the press and filtered to what is still
- * connected when the callback runs, so it is correct whether or not React has
- * committed the removal yet: before the commit the pressed row is still connected
- * and the successor is the element after it; after it the pressed row is gone and
- * the first survivor past its index is that same element.
- *
- * Returns a callback rather than moving focus itself, because the caller only
- * wants it moved when the write was ACCEPTED - a refused press leaves the row (and
- * the reader) exactly where they were.
- */
-function focusRowAfterRemoval(pressed: HTMLElement): () => void {
-	const listRows = Array.from(
-		document.querySelectorAll<HTMLElement>(
-			'[data-sidebar-region="chats"] [data-chat-row]',
-		),
-	);
-	/*
-	 * WHICH ROW WAS PRESSED, read from the row the control sits in rather than from the control's own
-	 * parent: the archive control and the row's button are SIBLINGS inside a pair wrapper, so
-	 * `pressed.parentElement?.querySelector("[data-chat-row]")` answered nothing and the successor
-	 * rule below fell through to `live[0]` - the LIST'S FIRST conversation, on every route, where the
-	 * row that took the pressed row's place was a different element (MEASURED by UX round 2:
-	 * `indexTheHandOffComputes: -1` against `trueIndexFromClosest: 1`, across four routes - mouse and
-	 * `⌘⇧A`, at the list's head and from a scrolled position - every one landing on the first row).
-	 * The scope below was already right; without this line the rule it feeds never ran.
-	 */
-	const rowButton =
-		pressed
-			.closest<HTMLElement>("[data-session-row]")
-			?.querySelector<HTMLElement>("[data-chat-row]") ?? null;
-	/*
-	 * WHICH ORDER THE SUCCESSOR IS READ FROM, because the region alone is not enough: inside the list
-	 * it is the list's own region - that is the order the reader sees, and the region the caret
-	 * belongs in (UX round 2, U1). A press whose row is NOT one of the list's rows keeps the PANEL's
-	 * order, so that press still hands the caret to its neighbour instead of sending it down to the
-	 * list's first row, which is what a region-only query with an unresolved index does. The entity
-	 * region's nested rows carry the same archive control, which is why this case is written rather
-	 * than assumed away.
-	 */
-	const rows =
-		rowButton !== null && listRows.includes(rowButton)
-			? listRows
-			: Array.from(document.querySelectorAll<HTMLElement>("[data-chat-row]"));
-	const index = rowButton === null ? -1 : rows.indexOf(rowButton);
-	return () => {
-		const live = rows
-			.map((element, position) => ({ element, position }))
-			.filter(({ element }) => element.isConnected);
-		const successor =
-			live.find(({ position }) => position > index)?.element ??
-			live.filter(({ position }) => position < index).at(-1)?.element;
-		/*
-		 * `preventScroll`, because the hold above is the only thing that may move the reader and this
-		 * callback is not the hold: a plain `focus()` scrolls its element into view itself, and the
-		 * successor is chosen from DOCUMENT order - so it can be a node of the ENTITY region, which in
-		 * the one-scroll panel shares the reader's own scroller. MEASURED on the merged panel (QA
-		 * round 2, Q2's clauses): an ACCEPTED archive moved the reader's `scrollTop` `20 -> 4`, took a
-		 * surviving row's top with it by 16px, and left the arrival's own yield clause red for a
-		 * scroll the app had no business writing. `focus()` says where the caret is; where the reader
-		 * is standing is the reader's - the division `holdFocusedRow` states for its own correction.
-		 *
-		 * WHICH node takes the caret is SCOPED TO THE CHATS REGION AND RESOLVED FROM THE PRESSED ROW
-		 * (UX round 2, U1 and U2). The scope is load-bearing for the same reason it is at the
-		 * pile-clearing hand-off below: the one-scroll change put both regions in ONE document order, so
-		 * the document's first `[data-chat-row]` is the ENTITY region's `Agents` disclosure - and that is
-		 * where the caret landed, MEASURED (`region=entities`, `aria-expanded=true`, roughly 500px above
-		 * the row that was pressed), identically from the first row and through the `⌘⇧A` chord; the next
-		 * `↓` then walked the panel from its top instead of the list from where the reader was. The index
-		 * is what makes the successor RULE run: with it resolved, the caret goes to the row that took the
-		 * pressed row's place (the next live row, or the last one before it when the pressed row was the
-		 * list's last), and the clause that records this leg's closure asserts that row by id - so the
-		 * claim and the reading are the same statement rather than a region that both satisfy.
-		 */
-		successor?.focus({ preventScroll: true });
-	};
-}
-
-/**
  * How far the row's flyout is kept from the window's edges, in px.
  *
  * Named rather than inlined because the number is a measured one: at the list's last
@@ -994,6 +921,8 @@ export function ChatSidebar({
 	onStageDraft,
 }: Props) {
 	const navigate = useNavigate();
+	const location = useLocation();
+	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
 	/*
@@ -2199,6 +2128,16 @@ export function ChatSidebar({
 		(s) => s.setSessionArchived,
 	);
 	/*
+	 * THE ARCHIVE'S OWN CANDIDATE (2026-09-30), and the reason the row control can ask
+	 * instead of write: this panel stages the conversation and the pane's one
+	 * `ArchiveConversationDialog` does the asking, so the ROW's door and the header's,
+	 * the typed `/archive`'s and the `⌘⇧A` chord's all end in the same question. The
+	 * unarchive half never reaches it - the restore is one press.
+	 */
+	const requestArchiveConfirm = useCanonicalSessionsStore(
+		(s) => s.requestArchiveConfirm,
+	);
+	/*
 	 * The pure search module takes plain booleans: the stamp that orders a fact
 	 * against an answer is the store's business (`applySearchAnswer`), and a row
 	 * only needs what to draw.
@@ -2890,9 +2829,9 @@ export function ChatSidebar({
 	 *     lazily inside the move below rather than here, because it is a full pass over
 	 *     the loaded page and only a move needs it.
 	 *
-	 * `pinnedIndex` is the drawn position of each row, which is where the two controls'
-	 * offered/inapplicable state and the announcement's "position N of M" come from -
-	 * one map rather than an `indexOf` per row per render.
+	 * `pinnedIndex` is the drawn position of each row, which is where the row menu's
+	 * two Move items' offered/inapplicable state and the announcement's "position N of
+	 * M" come from - one map rather than an `indexOf` per row per render.
 	 */
 	const pinnedCatalogueIds = pinned.map((row) => row.session_id);
 	/**
@@ -2914,23 +2853,35 @@ export function ChatSidebar({
 		pinnedDrawnIds.map((id, index) => [id, index] as const),
 	);
 	/**
-	 * The move a control or the chord performs (issue #693).
+	 * The move a menu item or the chord performs (issue #693).
 	 *
-	 * ONE FUNCTION FOR BOTH PRESSES, and the chord reaches it the way `chatRowAct`
-	 * reaches the row's acts: it `.click()`s the control, so the keyboard takes the
-	 * control's own path - the repeat-press guard, the boundary answer, the store write
-	 * and the caret correction, none of them restated. `follow` is what tells the two
-	 * presses apart (`event.detail === 0` is a click synthesised from the keyboard): a
-	 * keyboard press takes the caret back to the row, a pointer press must not, because
-	 * the reader's pointer is already where they are looking.
+	 * ONE FUNCTION FOR EVERY PATH, and that is now also the only path: the two arrow
+	 * controls this used to be reached through are deleted, so the chord calls this
+	 * directly instead of `.click()`ing a control, and the row menu's two Move items
+	 * call it beside the chord - one write, with the store, the boundary answer and
+	 * the caret correction spelled once rather than at a second call site.
 	 *
-	 * A BOUNDARY IS AN ANSWER, NOT A SILENCE. The control at either end is drawn
-	 * inapplicable (`aria-disabled`, the app's own idiom - a real `disabled` drops the
-	 * control out of the flow a keyboard reader can reach and leaves its why
-	 * unannounceable), and `aria-disabled` does not stop the click, so this handler is
-	 * what makes the press inert. Silence there would read as a broken key, which is
-	 * the failure `project-board.tsx` names for its own grip.
+	 * `follow` IS `true` AT BOTH CALL SITES, and the reason is the same for both: every
+	 * press that reaches this is an activation the caret already belongs to - a chord,
+	 * or an item the reader picked out of a menu - rather than a pointer press on a
+	 * control that stays under the pointer with the caret somewhere else. So the caret
+	 * follows the row that moved. The parameter stays because it is the statement of
+	 * that, at the call sites.
+	 *
+	 * A BOUNDARY IS AN ANSWER, NOT A SILENCE. The item at either end is drawn
+	 * inapplicable (`aria-disabled`, the app's own idiom - a real `disabled` drops an
+	 * item out of the flow a keyboard reader can reach and leaves its why
+	 * unannounceable), and `aria-disabled` does not stop the activation, so this
+	 * handler is what makes the press inert: it answers with `pinMoveBoundaryNote`.
+	 * Silence there would read as a broken key, which is the failure
+	 * `project-board.tsx` names for its own grip.
 	 */
+	const moveBoundarySentence = (sessionId: string) =>
+		pinMoveBoundaryNote(
+			rowLabel(sessionId),
+			pinnedIndex.get(sessionId) ?? 0,
+			pinnedDrawnIds.length,
+		);
 	const movePinnedRow = (
 		sessionId: string,
 		direction: PinMoveStep,
@@ -2940,7 +2891,7 @@ export function ChatSidebar({
 		if (at === undefined) return;
 		const label = rowLabel(sessionId);
 		if (!canMovePinnedRow(pinnedDrawnIds, sessionId, direction)) {
-			announcePinMove(pinMoveBoundaryNote(label, at, pinnedDrawnIds.length));
+			announcePinMove(moveBoundarySentence(sessionId));
 			return;
 		}
 		const next = movePinnedOrder(
@@ -2971,7 +2922,7 @@ export function ChatSidebar({
 		 * `unpin`'s mechanism and not a new one: the rows reorder in place, so the element
 		 * this handler holds is still mounted but no longer where it was - the correction
 		 * finds the row BY ID after the commit and puts the caret back inside it, so
-		 * `group-focus-within` stays true and the pair stays revealed for the next press.
+		 * `group-focus-within` stays true and the row's reveal stays up for the next press.
 		 *
 		 * THE CARET GOES TO THE ROW'S OWN BUTTON here rather than to the mark, and the scroll
 		 * correction is asked to stand down - a move is not a section change (Q1, R3).
@@ -2980,11 +2931,32 @@ export function ChatSidebar({
 		const drawn = pinnedOrder(pinnedCatalogueIds, next);
 		announcePinMove(pinMoveNote(label, drawn.indexOf(sessionId), drawn.length));
 	};
+	/**
+	 * Whether the move is offered for a row at all, as one predicate with two call
+	 * sites: the row menu's two Move items (through the row's own `offersMove`) and
+	 * the chord, which has no row closure to read and answers with an id.
+	 *
+	 * `nested` is the row's own term, passed by the one caller that knows it: a pinned
+	 * row drawn inside an agent group is in `matching` but not the section, so it has no
+	 * drawn position to move within. The chord never passes it, because the
+	 * `view.groupBy === "section"` term is exactly the arrangement in which no row is
+	 * nested - the grouped rendering is the only caller that draws one.
+	 *
+	 * THE OPENNESS OR CLOSEDNESS OF THE PIN STORE IS PART OF THE PREDICATE
+	 * (`pinsEnabled`), because the section does not exist without it and a move would
+	 * rearrange a list nobody is drawing.
+	 */
+	const offersPinnedMove = (sessionId: string, nested = false) =>
+		pinsEnabled &&
+		view.groupBy === "section" &&
+		!nested &&
+		pinnedIndex.has(sessionId);
 	/*
-	 * DRAG TO REORDER (issue #697, item 1), and it writes the SAME model the pair and
-	 * the chords write: a drop resolves to one array through `movePinnedOrderTo` and
-	 * lands through `setChatSidebarView` once, so the three routes cannot disagree
-	 * about what the order is or about what a drop costs the store.
+	 * DRAG TO REORDER (issue #697, item 1), and it writes the SAME model the menu's
+	 * two Move items and the chords write: a drop resolves to one array through
+	 * `movePinnedOrderTo` and lands through `setChatSidebarView` once, so the three
+	 * routes cannot disagree about what the order is or about what a drop costs the
+	 * store.
 	 *
 	 * WHY POINTER EVENTS AND NOT HTML5 DRAG-AND-DROP, which is the whole of the
 	 * mechanism below: `draggable` puts the gesture in the OS drag loop, where the
@@ -3010,6 +2982,40 @@ export function ChatSidebar({
 	const pinIndicatorRef = useRef<HTMLDivElement | null>(null);
 	const pinDragRef = useRef<PinDragGesture | null>(null);
 	const [pinDrag, setPinDrag] = useState<{ id: string; slot: number } | null>(
+		null,
+	);
+	/*
+	 * THE ROW WHOSE TEAM BUBBLE HOLDS THE POINTER, AND THE ROW WHOSE TEAM BUBBLE HOLDS
+	 * THE KEYBOARD'S FOCUS - two states rather than one, held by the sidebar rather
+	 * than by the row for the same reason `pinDrag` is: the surface they have to
+	 * displace is outside the row's own tree.
+	 *
+	 * WHY THEY EXIST. The row's flyout and the bubble's own tooltip are two pointer
+	 * surfaces opened by ONE hover - the flyout's trigger is the row's box and the
+	 * bubble sits inside it, so a pointer moving over the mark opens the card as
+	 * well as the mark's tooltip (measured on the `sidebar-team-bubble-hover` frame:
+	 * both panels stand). That is the same defect the row's native `title` was
+	 * deleted for (D7, "One pointer surface, not two"), and the resolution is the
+	 * flyout's own `suppressed`, which keeps the trigger mounted and closes only the
+	 * panel - NOT its `disabled`, which renders the box unwrapped and takes the mark
+	 * (and the mark's tooltip) down with it (measured; see the call site).
+	 *
+	 * THEY ARE SEPARATE because the two channels do not end together. With one flag
+	 * cleared by either channel's exit, the sequence "focus the mark, then move the
+	 * pointer onto the row and off the mark" cleared it while the mark was still
+	 * focused and its own tooltip still drawn, so the flyout un-suppressed and the
+	 * next hover on the row re-created the two-panels state this exists to remove
+	 * (agent review round 1, R1-M5). Two channels, each cleared by its own exit, and
+	 * the flyout stands down while EITHER is on the row.
+	 *
+	 * KEYED BY SESSION ID rather than a boolean: only the row under the pointer
+	 * loses its card, and a state that outlives its row (a list that re-renders
+	 * under the pointer) can only ever leave a row that is not there suppressed.
+	 */
+	const [teamBubbleHovered, setTeamBubbleHovered] = useState<string | null>(
+		null,
+	);
+	const [teamBubbleFocused, setTeamBubbleFocused] = useState<string | null>(
 		null,
 	);
 	const pinDragAutoScrollRef = useRef<number | null>(null);
@@ -3757,9 +3763,12 @@ export function ChatSidebar({
 	 */
 	// A first send that failed after allocation but before admission leaves a real
 	// but empty session. It is NOT hidden — it exists on the backend and hiding it
-	// would make the list lie — but an unfinished draft still holding its id is
-	// proof it never carried a message, so say so instead of showing it as an
-	// ordinary untitled chat.
+	// would make the list lie — but a draft still holding its id means no send has
+	// completed for it, so say so instead of showing it as an ordinary untitled
+	// chat. ("No send has completed" rather than the stronger "it never carried a
+	// message": `finishDraft` clears the draft on send COMPLETION, so a session
+	// whose first send is still in flight is drawn as unstarted for that window —
+	// the same caveat `forkable`'s own comment states.)
 	const unstarted = useMemo(
 		() =>
 			new Set(
@@ -3844,6 +3853,60 @@ export function ChatSidebar({
 		 * keeps the pointer and screen-reader channels no narrower than the pixels.
 		 */
 		const marks = subagentMarks(row);
+		/**
+		 * THE ROW'S OWN PRESS, shared by the row's button and by the team mark inside it.
+		 *
+		 * Extracted for the mark's sake: the mark is a focus stop (below), and a stop
+		 * that does nothing when pressed is a dead one (UX round 1, U1 measured Enter on
+		 * it leaving the row's click listener unrun). Sharing the row's own handler -
+		 * rather than calling `onSelectConversation` from the mark - is what keeps the
+		 * drop-repeat guard and any later term in this press applying to both routes.
+		 *
+		 * `point` is the press's screen position, or `null` when there is none: the
+		 * row's button passes its event's coordinates, the keyboard passes `null`, which
+		 * is the same value the button's own Enter/Space press hands the guard.
+		 */
+		const pressRow = (point: { x: number; y: number } | null) => {
+			if (dropRepeatPress(point, row.session_id)) {
+				return;
+			}
+			onSelectConversation(row.session_id);
+		};
+		/*
+		 * THE TEAM MARK, AND THE ONE THING THE ROW HAS TO TELL THE SIDEBAR ABOUT IT.
+		 *
+		 * The bubble owns its own tooltip (the full team name on hover and on focus),
+		 * and the row's box owns the flyout - so this wrapper is what reports which of
+		 * the two surfaces the pointer or the keyboard is on (`teamBubbleHovered` /
+		 * `teamBubbleFocused`), which is what lets the flyout stand down while the mark
+		 * is speaking.
+		 *
+		 * `ml-1` sits on the wrapper rather than on the bubble so the gap is the same
+		 * 4px step the trailing slots before it used, and `inline-flex` keeps the row's
+		 * own flex line untouched. The four handlers are `onPointerEnter`/`Leave` and
+		 * `onFocus`/`onBlur` (the latter two bubble from the mark inside, which is the
+		 * element that takes focus), and they are deliberately not one pair: a pointer
+		 * that leaves the mark while the keyboard still holds it must not re-arm the
+		 * flyout (R1-M5).
+		 *
+		 * `onActivate` is the row's own press, so Enter or Space on the mark is the row's
+		 * act rather than a dead stop (UX round 1, U1).
+		 */
+		const teamMark = (name: string, slug: string) => (
+			<span
+				className="ml-1 inline-flex shrink-0"
+				onPointerEnter={() => setTeamBubbleHovered(row.session_id)}
+				onPointerLeave={() => setTeamBubbleHovered(null)}
+				onFocus={() => setTeamBubbleFocused(row.session_id)}
+				onBlur={() => setTeamBubbleFocused(null)}
+			>
+				<TeamAvatarBubble
+					name={name}
+					slug={slug}
+					onActivate={() => pressRow(null)}
+				/>
+			</span>
+		);
 		/*
 		 * THE SENTENCE, computed once beside the marks because THREE call sites read
 		 * it - the row's `sr-only` name, the question of whether that name needs a
@@ -3880,6 +3943,51 @@ export function ChatSidebar({
 		 * returns before it), and this is what keeps its clause off that row.
 		 */
 		const menuEnabled = pinsEnabled || archiveEnabled;
+		/*
+		 * WHETHER THE MENU OFFERS FORK ON THIS ROW - the one named predicate, read
+		 * once, for the item below. A fork copies a conversation's TRANSCRIPT, and the
+		 * backend refuses a session that has none ("has no transcript to fork",
+		 * `fork.py::fork_session`). `unstarted` is this sidebar's own, existing
+		 * statement of that state: a draft that holds this conversation's id (the row
+		 * reads `, not sent yet`) - the real-but-empty session a first send that failed
+		 * after allocation leaves behind. Offering Fork there would open a picker whose
+		 * only possible answer is that refusal, so the item is WITHHELD (never
+		 * disabled), by a statement the row already makes rather than a condition
+		 * invented for the menu.
+		 *
+		 * WHAT THE PREDICATE ACTUALLY READS, stated exactly (round-1 agent review, NIT
+		 * 6; QA round 1, Q1): a session with NO DRAFT ROW STILL HOLDING THIS ID. That
+		 * is not the same sentence as "it never carried a message". `finishDraft`
+		 * deletes the draft on SEND COMPLETION (`canonical-sessions-store.ts`), not
+		 * when the transcript appears, so during an in-flight first send - and until a
+		 * late delivery reconciles the draft - a session whose transcript already
+		 * exists is still withheld from Fork. The window is narrow and self-healing,
+		 * and the row says `, not sent yet` throughout it, so the trade is deliberate:
+		 * the refusal it avoids is the picker's dead end, and the alternative is an
+		 * item that opens onto an error.
+		 *
+		 * AND THE BOUNDARY, named rather than implied (QA round 1, Q1): a session with
+		 * no transcript and NO draft row at all - one another client created, or one
+		 * left after the drafts' own discard act, which deletes the draft and never
+		 * touches the session - is NOT distinguishable renderer-side, because the draft
+		 * store is the only local evidence of it. Fork is offered there and the
+		 * picker's answer is the backend's refusal sentence, which is the same refusal
+		 * any un-forkable session gets from `/fork` and the palette. A cheap true
+		 * signal would be a transcript-presence field on the catalogue row; there is
+		 * none today, and inventing a second local condition here would be a guess
+		 * where the route already answers.
+		 *
+		 * What is NOT a gate, checked rather than assumed: `row.pending`. It is the
+		 * live record's "waiting for a person" word (`approval`/`ask`, a parked gate:
+		 * `session/runtime/types.py`, written by the runtime and surfaced by
+		 * `sessions.list`'s row builder in `session/catalog.py`), which only a session
+		 * that has already run a turn can carry - one with a transcript - and the
+		 * route does not refuse it: a session that is mid-turn takes the fork at its
+		 * next safe boundary (the picker's own copy says so), an idle or cold one is
+		 * cloned at once, read-only against the parent. No other state of a catalogue
+		 * row makes the route refuse, so this is the menu's only withheld condition.
+		 */
+		const forkable = !unstarted.has(row.session_id);
 		/**
 		 * WHICH CHORD SPELLING THIS PLATFORM PRINTS, read once for the row's two
 		 * items. `chatRowActCapJoined` takes `isMac` rather than reading the
@@ -4128,21 +4236,25 @@ export function ChatSidebar({
 					 * reader pressed, and this row may simply have slid into its place. Opening a
 					 * conversation the reader never pointed at is the same hazard as pinning one,
 					 * and it is worse to undo.
+					 *
+					 * The press itself is `pressRow`, because the team mark inside this button
+					 * activates the row through the same handler.
 					 */
-					if (
-						dropRepeatPress(
-							event.detail === 0
-								? null
-								: { x: event.clientX, y: event.clientY },
-							row.session_id,
-						)
-					) {
-						return;
-					}
-					onSelectConversation(row.session_id);
+					pressRow(
+						event.detail === 0 ? null : { x: event.clientX, y: event.clientY },
+					);
 				}}
 			>
 				<ChatSessionStatus row={row} />
+				{/*
+				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
+				 * A leading fact rather than a trailing one, for the reason the archived
+				 * marker below states: the trailing slot admits exactly one statement, and
+				 * this is not competing for it. It draws nothing at zero (see
+				 * `ChatAsksOutstanding`), which is what keeps a backend that does not
+				 * publish queued asks on exactly today's row.
+				 */}
+				<ChatAsksOutstanding row={row} />
 				{/*
 				 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
 				 * answer for: IN FRONT of the title rather than in the trailing slot.
@@ -4249,44 +4361,54 @@ export function ChatSidebar({
 			    has something more important to say (the paragraph above) says that
 			    instead. The row's flyout carries the binding in every case, so the
 			    accessible description is never narrower than the pixels. */}
-				{trailing === "team" && (
-					/* THE TEAM THE WORKSTREAM SERVES — what replaced the constant
-					   `· agent-opened` (operator ask, 2026-09-25; `rowTrailingStatement`
-					   records the policy and its why). Drawn with the SAME bounded,
-					   truncating treatment as the binding slot below: the team is
-					   user-authored text whose field accepts 64 characters, so it needs
-					   the cap and the clip that slot measured (review round 4, R21), not
-					   the fixed-literal treatment the marker had.
+				{trailing === "team" &&
+					/* THE TEAM THE WORKSTREAM SERVES, AS A BUBBLE (operator ask,
+					   2026-10-01; `rowTrailingStatement` still records the policy behind
+					   the slot itself). The drawn name it used to be cost the title
+					   whatever the team's own name was long — a share of the row, up to
+					   its 45% cap — so a reader on `Local Operator Development` had one
+					   fewer word of their own title than a reader on `docs-pod` did. The
+					   bubble's cost is the mark plus the row's 4px gap, and the NAME no
+					   longer enters it: the mark's width follows its two initials (measured
+					   at head: 22px for `LD`, 24-25px for `DQ`, against the 20px circle the
+					   badge-family round replaced - a ~3px swing by initials, not by name),
+					   and the name is not lost: it is the bubble's tooltip, its
+					   `aria-label`, and still the flyout's binding clause.
 
-					   NOT `aria-hidden`, deliberately: the marker could hide its constant
-					   words behind the `sr-only` sentence, but the team is a drawn name and
-					   the accessible name must never be narrower than the pixels — a reader
-					   who cannot see the row hears the team with the rest of the row's
-					   sentence. The attribution sentence still renders where the marker's
-					   did (the `sr-only` block at the end of this group), so a row the
-					   marker used to speak for still says ", opened by coder" — and a
-					   marked or unstarted one reads exactly as before. */
-					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {teamLabelFor(teamName(row))}
-					</span>
-				)}
-				{trailing === "binding" && (
-					/* Bounded, like the team slot above and unlike the two literals
-					   below. `bindingName` is a user-authored agent or team name and the
-					   agent-name field
-					   accepts 64 characters, so `shrink-0` with no `truncate` left an
-					   UNBOUNDED slot: the title (floor of zero) absorbed all of it,
-					   which restored round 4's D18 at roughly 35 characters and
-					   overflowed the row at roughly 45 — reachable from the product's
-					   own input limit, with no dragging involved (review round 4,
-					   R21). The cap is a share of the row rather than a fixed width so
-					   it scales with the panel, and `truncate` clips inside it. The
-					   two literals are `shrink-0`: they cannot grow, so they cannot
-					   starve anything. */
-					<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
-						· {bindingDisplayName(row)}
-					</span>
-				)}
+					   NAMING THE TEAM IS STILL NOT `aria-hidden`, deliberately, and the
+					   bubble is what keeps that true: the mark's `aria-label` is the
+					   full display name, so it contributes the same words to the row's
+					   accessible name the drawn label did — a reader who cannot see the
+					   row hears the team with the rest of the row's sentence. The
+					   attribution sentence still renders where it did (the `sr-only`
+					   block at the end of this group), so a row it speaks for still
+					   says ", opened by coder". */
+					teamMark(teamLabelFor(teamName(row)), teamName(row))}
+				{trailing === "binding" &&
+					/* THE BINDING SLOT, SPLIT BY WHAT IT NAMES (operator ask, 2026-10-01).
+					   A TEAM binding is the same fact the team slot above draws - a team
+					   this row serves - so it takes the same bubble, and a reader gets
+					   one treatment for "the team" wherever the row says it. An AGENT
+					   binding keeps its drawn name: no bubble is defined for an agent,
+					   the agent-name field accepts 64 characters, and the bounded,
+					   truncating slot below is the treatment that measured right for it.
+
+					   WHY THE AGENT SLOT STAYS BOUNDED and how it got that way (review
+					   round 4, R21): `shrink-0` with no `truncate` left an UNBOUNDED
+					   slot, so the title (floor of zero) absorbed all of it, which
+					   restored round 4's D18 at roughly 35 characters and overflowed
+					   the row at roughly 45 — reachable from the product's own input
+					   limit, with no dragging involved. The cap is a share of the row
+					   rather than a fixed width so it scales with the panel, and
+					   `truncate` clips inside it. The two literals below are
+					   `shrink-0`: they cannot grow, so they cannot starve anything. */
+					(row.binding?.team ? (
+						teamMark(teamLabelFor(row.binding.team), row.binding.team)
+					) : (
+						<span className="ml-1 max-w-[45%] shrink-0 truncate text-meta text-ink-muted">
+							· {bindingDisplayName(row)}
+						</span>
+					))}
 				{trailing === "not_sent" && (
 					<span className="ml-1 shrink-0 text-meta text-ink-muted">
 						· Not sent yet
@@ -4548,8 +4670,33 @@ export function ChatSidebar({
 				 * unwrapped), which is what the pointer needs: Radix keeps a tooltip open while the
 				 * pointer stays inside its trigger, and the grip's pointer never leaves the row for
 				 * the whole gesture. It comes back by itself when the gesture settles.
+				 *
+				 * AND NO FLYOUT WHILE THE TEAM MARK OWNS THE POINTER (operator ask,
+				 * 2026-10-01): the mark is inside this trigger and carries a tooltip of its own,
+				 * so without this term one hover opens two panels — the row's card and the mark's
+				 * name — which is the doubling D7 deleted the native `title` for. Measured
+				 * before the term existed: hovering the mark left both `[role="tooltip"]` panels
+				 * standing, the card (`data-side="right"`) beside the name (`data-side="top"`).
+				 *
+				 * IT IS `suppressed`, NOT `disabled`, and the difference was measured rather
+				 * than reasoned about. `disabled` renders this subtree BARE, so the mark - which
+				 * lives INSIDE the box - is remounted along with everything else, and its own
+				 * tooltip dies on the very hover that opened it: the run reported the card gone
+				 * (the suppression working) and `[role="tooltip"][data-side="top"]` missing (the
+				 * mark's name lost), which is worse than the doubling it fixed. `suppressed`
+				 * keeps the trigger mounted and closes only the panel.
+				 *
+				 * The row that stands down is the one under the reader (`teamBubbleHovered` or
+				 * `teamBubbleFocused` - two channels, because a pointer leaving the mark while
+				 * the keyboard still holds it must not re-arm this card, R1-M5); every other row
+				 * keeps its card, and the card returns the moment the pointer AND the focus
+				 * have both left the mark.
 				 */
 				disabled={pinDrag !== null}
+				suppressed={
+					teamBubbleHovered === row.session_id ||
+					teamBubbleFocused === row.session_id
+				}
 			>
 				{box}
 			</Tooltip>
@@ -4575,306 +4722,175 @@ export function ChatSidebar({
 		 */
 		const bothControls = pinsEnabled && archiveEnabled;
 		/*
-		 * THE MOVE PAIR'S OWN FACTS, read once so the two controls and the press they
-		 * make all read the same ones (issue #693).
+		 * THE MOVE'S OWN FACTS, read once so the grip's condition and the menu's two
+		 * items all read the same ones (issue #693).
 		 *
-		 * `pinnedAt` is the row's drawn position in the section, and it is the term that
-		 * decides whether this row is OFFERED the pair at all: a pinned row drawn inside
-		 * an agent group (`nested`) or by a grouped arrangement is in `matching` but not
-		 * the section, so it has no position and no pair - the section's own order is the
-		 * only order a move can be about.
+		 * WHETHER THIS ROW IS OFFERED A MOVE AT ALL is `offersMove`, and its terms are
+		 * the panel's: the row has to be in the section the order belongs to (a pinned
+		 * row drawn inside an agent group, or one a grouped arrangement drew, is in
+		 * `matching` but not the section - it has no drawn position and so no move), and
+		 * that section has to be the arrangement on screen.
 		 *
 		 * `up` / `down` are `canMovePinnedRow` over the DRAWN order, which is the same
-		 * predicate `movePinnedRow` takes the move under: a control drawn inapplicable
-		 * and a press that does nothing are one fact, not two that have to agree.
+		 * predicate `movePinnedRow` takes the move under: an item drawn inapplicable and
+		 * a press that answers with the boundary sentence are one fact, not two that have
+		 * to agree.
 		 */
-		const pinnedAt = pinnedIndex.get(row.session_id);
 		const up = canMovePinnedRow(pinnedDrawnIds, row.session_id, -1);
 		const down = canMovePinnedRow(pinnedDrawnIds, row.session_id, 1);
-		/**
-		 * The pair's press, and the two guards it shares with the row's other acts.
-		 *
-		 * THE REPEAT-PRESS GUARD RUNS FIRST, and it is not a copy for its own sake: a move
-		 * SWAPS this row with its neighbour, so a repeat press at the same spot lands on
-		 * the row that slid into place - moving a conversation the reader never pointed at,
-		 * and undoing the move they did make. `dropRepeatPress` is the panel's own record
-		 * of the last pointer press and answers the same way it does for the pin and the
-		 * row button. It also runs before the boundary branch, for the pin's own reason: a
-		 * dropped press must change nothing at all, and the boundary sentence is a change.
-		 *
-		 * `event.detail === 0` is the keyboard (a click synthesised from Enter, Space or
-		 * the chord carries no click count), and it is what tells a caret-correcting press
-		 * from a pointer press in `movePinnedRow`.
-		 */
-		const pressPinMove = (
-			event: { detail: number; clientX: number; clientY: number },
-			step: PinMoveStep,
-		) => {
-			if (
-				dropRepeatPress(
-					event.detail === 0 ? null : { x: event.clientX, y: event.clientY },
-					row.session_id,
-				)
-			) {
-				return;
-			}
-			movePinnedRow(row.session_id, step, event.detail === 0);
-		};
+		const offersMove = offersPinnedMove(row.session_id, nested);
 		const controls = (
 			<>
 				{/*
-				 * THE MOVE PAIR: the pinned row's own arrangement control (issue #693).
+				 * THE ROW'S OWN ACTS AND ITS OWN ARRANGEMENT, and every one of them is offered
+				 * only where the order it speaks about is on screen: the archive behind its
+				 * capability gate, the pin behind the row's own pin state, and the DRAG HANDLE
+				 * behind `offersMove`.
 				 *
-				 * WHO OFFERS IT, and every term is a decision. `pinsEnabled` because the
-				 * section does not exist without the pin store; `row.pinned === true` because
-				 * "move this row up" means nothing about a row that is not in the section;
-				 * `!nested` and `view.groupBy === "section"` because the pinned rows are ALSO
-				 * drawn inside agent groups and inside the grouped arrangements, where the drawn
-				 * neighbours are some other axis's - a pair there would rearrange the Pinned
-				 * section from a row the reader found in a group. The order this section draws
-				 * is the only order the pair can be about, so it is drawn only where that order
-				 * is on screen.
+				 * WHO OFFERS A MOVE, and every term is a decision - it is `offersMove` above
+				 * rather than a second spelling here, and the menu's two Move items read the
+				 * same boolean. `pinsEnabled` because the section does not exist without the
+				 * pin store; `row.pinned === true` because "move this row up" means nothing
+				 * about a row that is not in the section; `!nested` and `view.groupBy ===
+				 * "section"` because the pinned rows are ALSO drawn inside agent groups and
+				 * inside the grouped arrangements, where the drawn neighbours are some other
+				 * axis's - a move there would rearrange the Pinned section from a row the
+				 * reader found in a group.
 				 *
-				 * WHERE IT SITS, AND WHY IT CARRIES NO `order`. The pair is drawn FIRST in
-				 * `controls`, and the flow does the rest: the archive beside it is `order-first`
+				 * WHERE THE DRAG HANDLE SITS, AND WHY IT CARRIES NO `order`. It is drawn FIRST
+				 * in `controls`, and the flow does the rest: the archive beside it is `order-first`
 				 * (design round 2, D12 - the revealed act takes the inner position, the mark
 				 * keeps the row's right edge), so the revealed cluster reads
-				 * [archive][move up][move down][mark] from the title outwards, with the mark
-				 * still last and the title paying for all three. THE PAIR TAKES NO ORDER CLASS,
-				 * and that is a constraint rather than an omission: `bothControls` is
-				 * `pinsEnabled && archiveEnabled`, so a backend advertising pins WITHOUT the
-				 * archive renders `controls` as direct children of the row's own box - where an
-				 * `order` would sort the pair against the row's button and put the arrows to the
-				 * LEFT of the title. Flow order is the only spelling correct in both shapes.
+				 * [archive][grip][mark] from the title outwards, with the mark still last and the
+				 * title paying for both. IT TAKES NO ORDER CLASS, and that is a constraint rather
+				 * than an omission: `bothControls` is `pinsEnabled && archiveEnabled`, so a
+				 * backend advertising pins WITHOUT the archive renders `controls` as direct
+				 * children of the row's own box - where an `order` would sort the grip against
+				 * the row's button and put it to the LEFT of the title. Flow order is the only
+				 * spelling correct in both shapes.
 				 *
-				 * They are reveal-only - a move is not a state - so they follow the archive's
-				 * rule rather than the mark's: `hidden` at rest, `flex` under the pointer or
-				 * under focus.
+				 * It is reveal-only - a drag is not a state - so it follows the archive's rule
+				 * rather than the mark's: `hidden` at rest, `flex` under the pointer.
 				 *
-				 * INAPPLICABLE AT THE ENDS, AND `aria-disabled` RATHER THAN `disabled` (2026-09-30,
-				 * the manager's brief): a real `disabled` attribute drops a control out of the
-				 * flow a keyboard reader can reach and leaves its why unannounceable - the exact
-				 * trade the drafts' discard act and `older-history-slot.tsx` already refuse - and
-				 * it would also stop the CHORD, which presses this control (`chatPinMoveControl`).
-				 * So the press is refused in the handler instead, which is what makes the boundary
-				 * a sentence rather than a dead key.
-				 *
-				 * NO `data-chat-row` AND `tabIndex={-1}`, on the rule the mark and the archive are
-				 * written under: the arrow ring collects that attribute and focuses what it finds,
-				 * so wearing it would put two more stops in the ring on every pinned row - the
-				 * regression §C4's chord exists to avoid - and the row keeps its
+				 * NO `data-chat-row` AND `tabIndex={-1}`, on the rule the mark and the archive
+				 * are written under: the arrow ring collects that attribute and focuses what it
+				 * finds, so wearing it would put another stop in the ring on every pinned row -
+				 * the regression §C4's chord exists to avoid - and the row keeps its
 				 * one-stop-plus-chords model.
 				 */}
-				{row.pinned === true &&
-					!nested &&
-					pinsEnabled &&
-					view.groupBy === "section" &&
-					pinnedAt !== undefined && (
-						<>
-							{/*
-							 * THE GRIP: the pinned row's DRAG handle (issue #697, items 1 and 4).
-							 *
-							 * IT RIDES THE PAIR'S CONDITION rather than restating it, because the two
-							 * controls rearrange the same order from the same rows: `view.groupBy ===
-							 * "section"`, `!nested` and `pinnedAt !== undefined` are the statements
-							 * that the SECTION's order is on screen, which is the only order a grab,
-							 * like an arrow, can be about. Two copies of those five terms would be two
-							 * chances for the pair and the handle to appear on different rows.
-							 *
-							 * WHY A HANDLE AT ALL, when the arrows already move the row: a drag is how
-							 * a reader reorders a list in every other app on this machine, and the
-							 * pointer path to a four-place move must not be four presses of a 24px
-							 * target. The arrows stay (item 3): they are the keyboard path's own
-							 * affordance, they say which way a move goes, and the chords press THEM.
-							 *
-							 * `tabIndex={-1}` and no `data-chat-row`, on the pair's own rule: the arrow
-							 * ring collects that attribute and focuses what it finds, and the row keeps
-							 * its one-stop-plus-chords model. There is no chord for the grip because
-							 * the chords ARE the keyboard's way to reorder - a chord that started a
-							 * pointer drag would be a gesture no keyboard reader can finish.
-							 *
-							 * `cursor-grab` is the only pointer-shaped affordance in the cluster and it
-							 * is a CURSOR, not a transform: nothing lifts, scales or translates on
-							 * hover (`docs/branding.md`), and the dragged row's own state is the
-							 * `data-dragging` colour step below rather than an opacity change.
-							 *
-							 * `aria-hidden` AND NO `aria-label` (agent review round 1, R5, measured): the
-							 * grip has no click handler and no key path, so a screen reader walking the
-							 * row found a NAMED BUTTON whose activation did nothing - while the row's own
-							 * copy says the chords are the keyboard path. It is a pointer-only affordance,
-							 * so it is hidden from the accessibility tree and its `title` serves the
-							 * sighted pointer alone.
-							 *
-							 * WHICH IS WHY IT REVEALS ON HOVER ONLY (agent review round 2, N1). The grip used to
-							 * come out under `group-focus-within` too, so a sighted keyboard reader walking the
-							 * row watched a handle appear that they can neither focus nor operate - the two
-							 * decisions pointed opposite ways, and the reveal yields rather than the AT-hiding,
-							 * because the alternative is putting a control back into a row whose whole model is
-							 * one stop plus chords. The PAIR keeps its own `group-focus-within` term: it is
-							 * operable from the keyboard (the chords press it) and it is the single-pointer path
-							 * WCAG 2.5.7 asks for.
-							 *
-							 * TWO TERMS THE PAIR DOES NOT CARRY, both from round 1 (design D2 and D3).
-							 * (a) THE SHED: the grip is DRAWN at 279px of panel and above, and SHED at 278 and
-							 * below - the numbers QA measured on a 277/278/279/280/281 sweep. The class that
-							 * decides it is `@max-[263px]/chatsidebar:hidden!`, not a 279px query: the container
-							 * is the panel root, `p-2` sits INSIDE the width the panel setting names, and a
-							 * container query reads the container's content box, so the query's number is the
-							 * panel minus 16 (see the class's own note below). Measured
-							 * at the 240 clamp with all five controls revealed, the title had 40px of the
-							 * row's 208; the pair's own 56px is the part WCAG 2.5.7 asks for - a
-							 * single-pointer path to the reorder - and the grip's 28px is an accelerator
-							 * for a gesture the arrows already perform. At 240 the arrows reorder and the
-							 * reader can widen the panel to drag. (b) THE COUNT: the grip is drawn only
-							 * when at least two pinned rows are SHOWN, because with one there is no second
-							 * slot for a drop to land on - measured, a one-row drag can be started and
-							 * always lands on slot 0, writing nothing - while the pair still reports the
-							 * boundary, which is a sentence the reader wants. A search filter that leaves
-							 * one pinned row takes the same rule.
-							 */}
-							{/*
-							 * THE GRIP'S OWN TERM (design D3), and it is the GRIP's alone: with one pinned
-							 * row shown there is no second slot for a drop to land on, so the handle would
-							 * offer a gesture that can only write nothing - measured, a one-row drag always
-							 * lands on slot 0 and writes nothing. The PAIR is not gated with it: it still
-							 * reports the boundary, which is a sentence a reader wants, and it is WCAG
-							 * 2.5.7's single-pointer path. (Gating the shared fragment was the first spelling
-							 * of this, and the single-pin FIXTURE caught it: the pair vanished with the grip.)
-							 */}
-							{pinnedDrawnIds.length >= 2 && (
-								<button
-									type="button"
-									data-session-pin-grip
-									tabIndex={-1}
-									aria-hidden="true"
-									title="Drag to reorder · Esc cancels"
-									onPointerDown={(event) =>
-										startPinDrag(row.session_id, label, event)
-									}
-									onPointerMove={movePinDrag}
-									onPointerUp={() => settlePinDrag(true)}
-									onPointerCancel={() => settlePinDrag(false)}
-									className={cn(
-										"hidden size-6 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing",
-										"text-ink-dim",
-										"group-hover:flex group-hover:text-ink-muted",
-										/*
-										 * The hold (see the pin's note): while this row is the one
-										 * whose menu is open the reveal is state - the fold added
-										 * #697's strip controls to the clause's sites. The narrow
-										 * shed stays stronger (`!`), so the grip remains shed below
-										 * the break.
-										 */
-										menuOpen && "flex text-ink-muted",
-										/*
-										 * NO `group-focus-within` TERM ON THIS CONTROL (agent review round 2, N1): the
-										 * grip is `aria-hidden` and unfocusable, so revealing it for the keyboard would
-										 * offer a sighted keyboard reader a handle they cannot operate. The pair below
-										 * keeps its own term, because the chords press it.
-										 *
-										 * The shed, one class, at the one break design round 1 measured (D2): the
-										 * grip is drawn at 279px of panel and above and shed at 278 and below, and the
-										 * pair is the member that stays.
-										 *
-										 * 263 AND NOT 279, and the 16px is the panel's own padding: the container
-										 * is the panel root, whose `p-2` sits INSIDE the width the panel setting
-										 * names, and a container query measures the container's content box -
-										 * measured, a 280px panel reports a 264px container, so a `279` in the
-										 * query shed the grip at 280 as well. The deleted shed's `263` was this
-										 * same arithmetic, which is the other reason to keep the number.
-										 *
-										 * THE `!` IS LOAD-BEARING, and it is the one thing the deleted shed did
-										 * differently: that query hid a WRAPPER, whose own display nothing else
-										 * claimed, while this one hides the control itself - whose reveal the
-										 * `group-hover:flex` above already sets.
-										 * Those compile to TWO-class selectors (`.group:hover .x`) and a
-										 * container query's rule is one class, so the hover rule won the
-										 * cascade and the grip stayed drawn at 240 with the pointer in the row -
-										 * measured on the first re-shoot of these frames, not reasoned about.
-										 */
-										"@max-[263px]/chatsidebar:hidden!",
-										"hover:text-ink!",
-										!current && "hover:bg-row-hover",
-									)}
-								>
-									<GripVertical aria-hidden="true" className="size-4" />
-								</button>
-							)}
+				{offersMove && (
+					<>
+						{/*
+						 * THE GRIP: the pinned row's DRAG handle (issue #697, items 1 and 4), and the last
+						 * control the MOVE keeps on the row: the arrow pair that used to sit beside it is
+						 * deleted, and its two acts are the `Move conversation` items in the row's menu now
+						 * (WCAG 2.5.7's single-pointer path moved there with them).
+						 *
+						 * IT RIDES THE MOVE'S OWN PREDICATE (`offersMove`) rather than restating it, because
+						 * the handle and the menu's two items rearrange the same order from the same rows:
+						 * one predicate is what keeps them from appearing on different rows.
+						 *
+						 * WHY A HANDLE AT ALL, when the menu already moves the row: a drag is how a reader
+						 * reorders a list in every other app on this machine, and the pointer path to a
+						 * four-place move must not be four trips through a menu. The menu items stay: they
+						 * are the keyboard path's own affordance, they say which way a move goes, and the
+						 * chords reach the same write.
+						 *
+						 * `tabIndex={-1}` and no `data-chat-row`, on the pair's own rule: the arrow
+						 * ring collects that attribute and focuses what it finds, and the row keeps
+						 * its one-stop-plus-chords model. There is no chord for the grip because
+						 * the chords ARE the keyboard's way to reorder - a chord that started a
+						 * pointer drag would be a gesture no keyboard reader can finish.
+						 *
+						 * `cursor-grab` is the only pointer-shaped affordance in the cluster and it
+						 * is a CURSOR, not a transform: nothing lifts, scales or translates on
+						 * hover (`docs/branding.md`), and the dragged row's own state is the
+						 * `data-dragging` colour step below rather than an opacity change.
+						 *
+						 * `aria-hidden` AND NO `aria-label` (agent review round 1, R5, measured): the
+						 * grip has no click handler and no key path, so a screen reader walking the
+						 * row found a NAMED BUTTON whose activation did nothing - while the row's own
+						 * copy says the chords are the keyboard path. It is a pointer-only affordance,
+						 * so it is hidden from the accessibility tree and its `title` serves the
+						 * sighted pointer alone.
+						 *
+						 * WHICH IS WHY IT REVEALS ON HOVER ONLY (agent review round 2, N1). The grip used to
+						 * come out under `group-focus-within` too, so a sighted keyboard reader walking the
+						 * row watched a handle appear that they can neither focus nor operate - the two
+						 * decisions pointed opposite ways, and the reveal yields rather than the AT-hiding,
+						 * because the alternative is putting a control back into a row whose whole
+						 * model is one stop plus chords. The menu's two Move items are that keyboard
+						 * path now, and the chord reaches the same write they do.
+						 *
+						 * TWO TERMS IT DOES NOT CARRY, both from round 1 (design D2 and D3), and the
+						 * first of them is gone with this change.
+						 * (a) THE SHED WAS DELETED (this change, D5): the grip is drawn at EVERY panel
+						 * width now. Round 1 shed it at or below a 278px panel because the
+						 * FIVE-control cluster left the title 40px of the row's 208 at the 240 clamp;
+						 * with the arrow pair deleted the same width leaves 124px, and the 263 break -
+						 * with the `@container/chatsidebar` declaration whose only reader it was -
+						 * went with the crowding it existed to answer. Making a reader widen the
+						 * panel to reach a drag is the very crowding this change removes.
+						 * (b) THE COUNT: the grip is drawn only when at least two pinned rows are
+						 * SHOWN, because with one there is no second slot for a drop to land on -
+						 * measured, a one-row drag can be started and always lands on slot 0,
+						 * writing nothing - while the menu's two items are NOT gated with it: they
+						 * still report the boundary, which is a sentence the reader wants. A search
+						 * filter that leaves one pinned row takes the same rule.
+						 */}
+						{/*
+						 * THE GRIP'S OWN TERM (design D3), and it is the GRIP's alone: with one pinned
+						 * row shown there is no second slot for a drop to land on, so the handle would
+						 * offer a gesture that can only write nothing - measured, a one-row drag always
+						 * lands on slot 0 and writes nothing. The menu's two items are not gated with
+						 * it: they still report the boundary, which is a sentence a reader wants, and
+						 * they are WCAG 2.5.7's single-pointer path.
+						 */}
+						{pinnedDrawnIds.length >= 2 && (
 							<button
 								type="button"
-								data-session-move-up
-								data-session-pin-move="up"
+								data-session-pin-grip
 								tabIndex={-1}
-								aria-disabled={!up}
-								/*
-								 * The action, and the boundary instead of it when the move cannot land - the same
-								 * two strings the press and the live region use, so the pointer's channel cannot
-								 * say something the keyboard's contradicts. A `title` is the whole of the pointer's
-								 * channel here because the control is `tabIndex={-1}` and never focused: there is
-								 * no moment at which a screen reader would read an `aria-describedby` on it, which
-								 * is why this pair carries no `sr-only` why beside it the way the drafts' discard
-								 * act does. The keyboard's channel is the chord's own announcement.
-								 */
-								aria-label={`Move “${label}” up`}
-								title={
-									up
-										? `Move “${label}” up`
-										: pinMoveBoundaryNote(
-												label,
-												pinnedAt,
-												pinnedDrawnIds.length,
-											)
+								aria-hidden="true"
+								title="Drag to reorder · Esc cancels"
+								onPointerDown={(event) =>
+									startPinDrag(row.session_id, label, event)
 								}
-								onClick={(event) => pressPinMove(event, -1)}
+								onPointerMove={movePinDrag}
+								onPointerUp={() => settlePinDrag(true)}
+								onPointerCancel={() => settlePinDrag(false)}
 								className={cn(
-									"hidden size-6 shrink-0 items-center justify-center rounded-md",
+									"hidden size-6 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing",
 									"text-ink-dim",
 									"group-hover:flex group-hover:text-ink-muted",
-									"group-focus-within:flex group-focus-within:text-ink-muted",
-									/* The hold (see the pin's note): the strip's reveal is state while this row's menu is open. */
+									/*
+									 * The hold (see the pin's note): while this row is the one
+									 * whose menu is open the reveal is state rather than
+									 * pointer state.
+									 */
 									menuOpen && "flex text-ink-muted",
+									/*
+									 * NO `group-focus-within` TERM ON THIS CONTROL (agent review round 2, N1): the
+									 * grip is `aria-hidden` and unfocusable, so revealing it for the keyboard would
+									 * offer a sighted keyboard reader a handle they cannot operate. The menu's two
+									 * Move items are that keyboard reach now, and the chord presses the same write.
+									 *
+									 * AND NO WIDTH BREAK EITHER, which is this change's other half (D5): the grip was
+									 * shed at or below a 278px panel by `@max-[263px]/chatsidebar:hidden!`, whose
+									 * `@container/chatsidebar` declaration existed only to be that query's reader.
+									 * The break was measured when the FIVE-control cluster took the title to 40px at
+									 * the 240 clamp; with the arrow pair gone the same width leaves 124px, and making
+									 * the reader widen the panel to reach a drag is the crowding this change removes.
+									 */
 									"hover:text-ink!",
-									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
-									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
 									!current && "hover:bg-row-hover",
 								)}
 							>
-								<ChevronUp aria-hidden="true" className="size-4" />
+								<GripVertical aria-hidden="true" className="size-4" />
 							</button>
-							<button
-								type="button"
-								data-session-move-down
-								data-session-pin-move="down"
-								tabIndex={-1}
-								aria-disabled={!down}
-								aria-label={`Move “${label}” down`}
-								title={
-									down
-										? `Move “${label}” down`
-										: pinMoveBoundaryNote(
-												label,
-												pinnedAt,
-												pinnedDrawnIds.length,
-											)
-								}
-								onClick={(event) => pressPinMove(event, 1)}
-								className={cn(
-									"hidden size-6 shrink-0 items-center justify-center rounded-md",
-									"text-ink-dim",
-									"group-hover:flex group-hover:text-ink-muted",
-									"group-focus-within:flex group-focus-within:text-ink-muted",
-									/* The hold (see the pin's note): the strip's reveal is state while this row's menu is open. */
-									menuOpen && "flex text-ink-muted",
-									"hover:text-ink!",
-									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
-									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
-									!current && "hover:bg-row-hover",
-								)}
-							>
-								<ChevronDown aria-hidden="true" className="size-4" />
-							</button>
-						</>
-					)}
+						)}
+					</>
+				)}
 				{/*
 				 * The pin, drawn at rest ONLY on a pinned row and revealed on any other row by
 				 * the pointer or by focus inside it. Its box is `size-6` and it takes no space
@@ -5042,8 +5058,9 @@ export function ChatSidebar({
 										 * parked. `flex` and the revealed ink come from `openMenuRowId`
 										 * and stay until the menu closes. EVERY site that authors the
 										 * reveal carries the clause - this glyph, the archive's own,
-										 * the pair wrapper, and the move pair and grip #697 adds to
-										 * the pinned strip (folded in together) - because a hold on
+										 * the pair wrapper, and #697's grip on the pinned strip (the
+										 * move pair that once sat beside it is deleted; its acts are
+										 * the row menu's items) - because a hold on
 										 * the wrapper alone renders a `flex` box with nothing in it,
 										 * and one on a glyph alone is a revealed control inside a
 										 * `hidden` parent.
@@ -5127,7 +5144,9 @@ export function ChatSidebar({
 							 * gesture it protects): archiving removes this row from the list, so
 							 * the second click of a double-click lands on whatever row slid up
 							 * into the gap - with the pointer already inside that row's reveal.
-							 * A dropped press changes nothing at all.
+							 * A dropped press changes nothing at all, which now includes not
+							 * OPENING A DIALOG: a dropped press must not leave a question on
+							 * screen that the reader's own hand did not ask.
 							 *
 							 * `event.detail === 0` is the keyboard (a click synthesised from
 							 * Enter or Space carries no click count), which always acts on the
@@ -5143,6 +5162,29 @@ export function ChatSidebar({
 							lastArchivePress.current = press.record;
 							if (press.drop) return;
 							/*
+							 * ARCHIVE ASKS FIRST; UNARCHIVE NEVER DOES (2026-09-30). The two
+							 * halves of this control have different rules now, which is why the
+							 * branch is here rather than inside the write:
+							 *
+							 *  - the ARCHIVE stages a candidate in the store and returns. Nothing
+							 *    is written, nothing is remembered, and the row stays where it is
+							 *    until the dialog is answered - so the successor-focus snapshot
+							 *    cannot be taken here either (there is no removal yet): it moves to
+							 *    the confirmation, where the row really does leave
+							 *    (`archive-confirm.ts`).
+							 *  - the RESTORE is the reversible half and it stays ONE PRESS on every
+							 *    surface that offers it - this control, the header's pill and
+							 *    `/unarchive` - because asking before a restore would put a question
+							 *    in front of the act that puts a conversation BACK.
+							 */
+							if (!archived) {
+								requestArchiveConfirm({
+									sessionId: row.session_id,
+									fromRow: true,
+								});
+								return;
+							}
+							/*
 							 * Snapshot the successor BEFORE the press, because the press removes the
 							 * row: `event.currentTarget` is not readable after an await, and the
 							 * document order at press time is the order the user sees.
@@ -5150,7 +5192,7 @@ export function ChatSidebar({
 							const restoreFocus = focusRowAfterRemoval(event.currentTarget);
 							void setSessionArchived(
 								row.session_id,
-								!archived,
+								false,
 								row.title ?? undefined,
 							).then((accepted) => {
 								/*
@@ -5454,20 +5496,59 @@ export function ChatSidebar({
 					row.session_id,
 				)}
 				{/*
-				 * THE ITEMS: the row's own acts in the pair's measured order - the archive
-				 * glyph is `order-first` in the strip, so the menu reads Archive then Pin
-				 * and the two surfaces cannot present the same pair backwards - drawn from
-				 * THE SAME PREDICATES the pair reads (`archiveEnabled`,
-				 * `row.pinned !== undefined`), so the two cannot disagree about what a row
-				 * offers. WITHDRAWN, NEVER DISABLED: an act the row cannot take is an
-				 * absent row, not a greyed one, the rule the row's controls already
-				 * follow.
+				 * THE ITEMS, and the ORDER rule that places them: the mirrored pair first, in the
+				 * strip's own measured order (the archive glyph is `order-first`, so the menu reads
+				 * Archive then Pin and the two surfaces cannot present the same acts backwards);
+				 * then Fork, the UNCONDITIONAL singleton; then the CONDITIONAL block, which is the
+				 * Move pair. Rows 1-2 are the pair, and the third slot therefore keeps one identity
+				 * in every state - Fork on an ordinary row and Fork on a pinned one - instead of
+				 * changing which act a reader finds there (round-1 design review, D2; this replaces
+				 * the fold's append, under which the third slot was Fork only where no Move was
+				 * offered). Everything the two Move items need to stay adjacent to each other is
+				 * unaffected: the block trails as a unit.
 				 *
-				 * Each item presses the row's own control through `pressRowAct`, so the
-				 * write, its guards and its focus correction arrive unchanged; the chord
-				 * cap is the `+`-joined spelling `KeyboardShortcut` splits (`joined`
-				 * suppresses the printed `+`), and it stays in the item's accessible name
-				 * - the discovery this menu exists to spend.
+				 * Drawn from THE SAME PREDICATES the row's own controls read (`archiveEnabled`,
+				 * `row.pinned !== undefined`, `offersMove`), so the two cannot disagree about
+				 * what a row offers. WITHDRAWN, NEVER DISABLED: an act the row cannot take is an
+				 * absent row, not a greyed one, the rule the row's controls already follow - and
+				 * the two Move items are the one deliberate exception (WCAG 2.5.7's replacement
+				 * for the deleted arrow pair, below): a move the row cannot make in ONE DIRECTION
+				 * is a boundary, and a boundary is a sentence rather than a silence.
+				 *
+				 * Each item presses the row's own control through `pressRowAct`, so the write,
+				 * its guards and its focus correction arrive unchanged; the two Move items reach
+				 * the SAME write by calling `movePinnedRow` directly, because there is no control
+				 * on the row left to press - and each prints its chord through the `+`-joined
+				 * sibling of its handler's spelling (`chatPinMoveCapJoined`, the shape
+				 * `chatRowActCapJoined` already gives the pair above): `KeyboardShortcut` splits
+				 * its prop on `+`, so the handler's `⌘⇧↑` fed straight to it renders as ONE cap
+				 * three glyphs wide instead of three caps (round-1 design review, D1). The cap
+				 * stays in the item's accessible name either way - the discovery this menu exists
+				 * to spend.
+				 *
+				 * FORK IS THE THIRD ROW (#739, re-ordered by the round-1 design review, D2), and
+				 * it differs from the four around it in mechanism: there is no row control to
+				 * press, so it opens the register's own `session.fork` picker for THIS row's
+				 * conversation through the panel-presentation store (see its `onSelect`). It
+				 * carries NO chord, because fork has none - `/fork` and the palette are its other
+				 * doors - so it has no `KeyboardShortcut` and no accessible-name suffix; a printed
+				 * chord would be a hint for a gesture that does nothing. It is drawn from the
+				 * sidebar's own `unstarted` statement (`forkable`, above).
+				 *
+				 * THE MENU'S CAP IS FIVE ROWS, and the rule - not a number - is what the design
+				 * record now concludes with: a row earns its place by being an act on THIS row
+				 * that has NO OTHER DOOR THE USER CAN FIND. Archive and Pin qualify (the strip's
+				 * pair is `tabIndex={-1}` and reachable only through chords the row prints
+				 * nowhere); the Move pair qualifies as WCAG 2.5.7's single-pointer path, which the
+				 * deleted arrow buttons used to carry; Fork qualifies because it is the only door
+				 * that names the ROW's conversation - neither `/fork` nor the palette can, as both
+				 * act on the pane's. A sixth act is admitted only by passing that test; otherwise
+				 * it replaces a row or finds another surface. The cap costs **296 × 184** in its
+				 * widest state (a pinned row, where the Move rows draw their full chords) at a
+				 * 280px sidebar, and around eight rows or ~280px tall is where the answer changes
+				 * from "grow" to "submenu or another surface". `scripts/chat-sidebar-row-menu.test.mjs`
+				 * counts the items and pins their order, so a sixth is a failing assertion rather
+				 * than a quiet addition.
 				 */}
 				<ContextMenuContent
 					onFocus={(event) => {
@@ -5568,6 +5649,131 @@ export function ChatSidebar({
 								/>
 							</span>
 						</ContextMenuItem>
+					)}
+					{forkable && (
+						/*
+						 * HOW IT OPENS: the picker is mounted by the chat PANE (`PickerOutlet`,
+						 * fed by `useSlashDispatch`), and the sidebar owns no presenter - so the
+						 * item ASKS, the way the command palette does (`command-palette.tsx`'s
+						 * `panel` case): it writes a request that NAMES THIS ROW's conversation,
+						 * because the pane's own session is generally not the row's and the
+						 * presenter must not substitute it, then routes to `/chat` only when no
+						 * pane is mounted to consume it. Completing the fork NAVIGATES to the
+						 * new fork (the pane's `rebind` is `openConversation` - the shipped
+						 * `/fork` semantics, reused deliberately; see `slash-dispatch.ts`).
+						 *
+						 * THE INVOKER IS THE ROW'S OWN BUTTON, not the item: the item unmounts
+						 * with the menu, and the row's button is the node the menu's own close
+						 * returns to, so Escape from the picker lands where Escape from the menu
+						 * would have.
+						 */
+						<ContextMenuItem
+							onSelect={() => {
+								requestPanel(
+									"session.fork",
+									document.querySelector<HTMLElement>(
+										`[data-session-row="${CSS.escape(row.session_id)}"] [data-chat-row]`,
+									),
+									row.session_id,
+								);
+								// The palette's own guard, minus its first clause: it asks
+								// `destinationNeedsSession(destination) &&
+								// !location.pathname.startsWith("/chat")`, and `session.fork`
+								// is a pane-only destination, so the first clause is already
+								// true here. The other two parts are as load-bearing as they
+								// are there: the request is written FIRST (one written after the
+								// navigation would race the pane's mount), and the route moves
+								// only when no pane is there to present it.
+								if (!location.pathname.startsWith("/chat")) navigate("/chat");
+							}}
+						>
+							<GitFork aria-hidden="true" />
+							<span>Fork conversation</span>
+						</ContextMenuItem>
+					)}
+					{offersMove && (
+						<>
+							{/*
+							 * WCAG 2.5.7's SINGLE-POINTER PATH, and the reason it is HERE rather than
+							 * on the row: the pair of arrow buttons that used to carry it was the
+							 * crowded part of the strip, and the row menu is the surface the other two
+							 * acts already live on - one door, three acts, and no resting cost on the
+							 * row.
+							 *
+							 * A BOUNDARY IS A SENTENCE, NOT A DEAD ITEM. `aria-disabled` rather than
+							 * `disabled`: a real `disabled` drops the item out of the flow a keyboard
+							 * reader walks AND stops the activation, so the why would be unannounceable
+							 * - the trade the drafts' discard act refuses. `aria-disabled` leaves the
+							 * activation intact, so `movePinnedRow` still runs and answers with
+							 * `pinMoveBoundaryNote` through the live region. The class list is what
+							 * makes the two states LOOK different, since Radix only paints
+							 * `data-[disabled]` for the prop this does not pass.
+							 *
+							 * THE SENTENCE IS ALSO VISIBLE (UX round 1, U6): the live region is the
+							 * ONLY other channel, and it is `sr-only`, so a sighted reader who pressed
+							 * a greyed item watched the menu close with nothing said. The deleted pair
+							 * carried this same sentence as its `title`, so the item takes it the same
+							 * way - a pointer reader gets the tooltip BEFORE pressing, which is the
+							 * better half of the answer. It is set only at a boundary: an applicable
+							 * item has nothing to explain and the app's idiom is no tooltip on a menu
+							 * item that does what it says.
+							 */}
+							<ContextMenuItem
+								aria-disabled={!up}
+								title={!up ? moveBoundarySentence(row.session_id) : undefined}
+								onSelect={() => movePinnedRow(row.session_id, -1, true)}
+								className={cn(
+									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
+									/*
+									 * THE CHORD FOLLOWS ITS ITEM (round-1 design review, D3). A cap
+									 * carries its own ink role (`KeyboardShortcut`'s `ink-dim`, the
+									 * one role legal on all four of its grounds), so `text-ink-disabled`
+									 * on the item recoloured the WORD and left the ACCESSORY at full
+									 * strength - measured as a 2.07x (light) / 2.64x (dark) inversion on
+									 * a boundary row, where the annotation outranked the label it
+									 * annotates and the item still read as live at a glance.
+									 *
+									 * HERE rather than in the shared component: `KeyboardShortcut`
+									 * deliberately takes no appearance prop (its own docstring retires
+									 * `className` for that reason), and this is not a re-skin - it is
+									 * the ITEM's state reaching its own descendants, which is the same
+									 * thing the two `aria-disabled:` rules above do. The `!` is required
+									 * because the cap's utility is on the `<kbd>` itself.
+									 */
+									"aria-disabled:[&_kbd]:text-ink-disabled!",
+								)}
+							>
+								<ChevronUp aria-hidden="true" />
+								<span>Move conversation up</span>
+								<span className="ml-auto pl-6">
+									<KeyboardShortcut
+										shortcut={chatPinMoveCapJoined(-1, isMac)}
+										joined
+									/>
+								</span>
+							</ContextMenuItem>
+							<ContextMenuItem
+								aria-disabled={!down}
+								title={!down ? moveBoundarySentence(row.session_id) : undefined}
+								onSelect={() => movePinnedRow(row.session_id, 1, true)}
+								className={cn(
+									"aria-disabled:cursor-default aria-disabled:text-ink-disabled!",
+									"aria-disabled:hover:bg-transparent! aria-disabled:hover:text-ink-disabled!",
+									// The chord follows its item's disabled step - see the note on the row above.
+									"aria-disabled:[&_kbd]:text-ink-disabled!",
+								)}
+							>
+								<ChevronDown aria-hidden="true" />
+								<span>Move conversation down</span>
+								<span className="ml-auto pl-6">
+									<KeyboardShortcut
+										shortcut={chatPinMoveCapJoined(1, isMac)}
+										joined
+									/>
+								</span>
+							</ContextMenuItem>
+						</>
 					)}
 				</ContextMenuContent>
 			</ContextMenu>
@@ -6737,50 +6943,43 @@ export function ChatSidebar({
 			return;
 		}
 		/*
-		 * THE MOVE PAIR'S CHORD (issue #693), the block above's shape exactly: find the
-		 * control on this row's box and PRESS it, rather than reimplementing the move
-		 * here - so the keyboard takes the control's own path, the repeat-press guard and
-		 * the boundary sentence included, and the two presses cannot drift. `⌘⇧↑` /
-		 * `⌘⇧↓` (`Ctrl+Shift+↑` / `Ctrl+Shift+↓`) are free across the app and are refused
-		 * by nothing else here: the walk below reads a BARE arrow, and the region walk's
-		 * arrows carry `alt` (`chat-pin-order.ts` names the chords it checked).
+		 * THE MOVE'S CHORD (issue #693), the block above's shape exactly: the same
+		 * `movePinnedRow` the row menu's two Move items call, rather than a second spelling
+		 * of the move here - so the keyboard takes one write path, with the store, the
+		 * boundary answer and the caret correction on it, and the two surfaces cannot
+		 * drift. `⌘⇧↑` / `⌘⇧↓` (`Ctrl+Shift+↑` / `Ctrl+Shift+↓`) are free across the app
+		 * and are refused by nothing else here: the walk below reads a BARE arrow, and the
+		 * region walk's arrows carry `alt` (`chat-pin-order.ts` names the chords it
+		 * checked).
 		 *
-		 * A row that offers no pair answers with no control - an unpinned row, or a pinned
-		 * one the grouped arrangement drew. THE PRESS IS CONSUMED ON EVERY ROW, and the
-		 * comment here used to claim the opposite ("the press is then left alone rather than
-		 * swallowed") while the `return` below skipped the bare-arrow walk and the search
-		 * field's own branch: agent review round 1 (R4) measured the mismatch, and the
-		 * consumption is the intended half - a modified arrow is this panel's chord
-		 * namespace, and letting `⌘⇧↑` fall through to the walk would move the caret for a
-		 * press the reader addressed to the pinned order.
+		 * A row that offers no move answers so, by the menu items' own predicate
+		 * (`offersPinnedMove`) rather than by a search for a control - there is no control
+		 * left on the row to find, because the two arrow buttons are deleted and this calls
+		 * the write itself. THE PRESS IS CONSUMED ON EVERY ROW, and the comment here used to
+		 * claim the opposite ("the press is then left alone rather than swallowed") while the
+		 * `return` below skipped the bare-arrow walk and the search field's own branch:
+		 * agent review round 1 (R4) measured the mismatch, and the consumption is the
+		 * intended half - a modified arrow is this panel's chord namespace, and letting
+		 * `⌘⇧↑` fall through to the walk would move the caret for a press the reader
+		 * addressed to the pinned order.
 		 *
 		 * WHAT WAS WRONG WAS THE SILENCE, NOT THE CONSUMPTION (UX round 1, U4, measured): the
 		 * region kept whatever it held, so a chord on an unpinned row read out a sentence
 		 * about a DIFFERENT row from an earlier press - stale and untrue of the row under the
-		 * caret. A row that is not pinned is now ANSWERED in the pair's own voice, with the
+		 * caret. A row that is not pinned is now ANSWERED in the move's own voice, with the
 		 * row's name (`pinMoveUntargetedNote`). A row that IS pinned and simply drawn without
-		 * a pair - the grouped arrangement - stays silent, which is the state QA round 1
+		 * a move - the grouped arrangement - stays silent, which is the state QA round 1
 		 * recorded for that arrangement and did not file.
 		 */
 		const move = chatPinMoveChord(event);
 		if (move !== null) {
-			const control = chatPinMoveControl(target, move);
-			if (control !== null) {
+			const rowId = chatPinMoveRowId(target);
+			if (rowId === null) return;
+			if (offersPinnedMove(rowId)) {
 				event.preventDefault();
-				control.click();
-			} else {
-				const element = target as {
-					closest?: (selector: string) => Element | null;
-				} | null;
-				const rowId =
-					typeof element?.closest === "function"
-						? (element
-								.closest("[data-session-row]")
-								?.getAttribute("data-session-row") ?? null)
-						: null;
-				if (rowId !== null && !pinnedCatalogueIds.includes(rowId)) {
-					announcePinMove(pinMoveUntargetedNote(rowLabel(rowId)));
-				}
+				movePinnedRow(rowId, move, true);
+			} else if (!pinnedCatalogueIds.includes(rowId)) {
+				announcePinMove(pinMoveUntargetedNote(rowLabel(rowId)));
 			}
 			return;
 		}
@@ -8459,16 +8658,15 @@ export function ChatSidebar({
 			 * measured against is gone with the shed: this panel no longer changes what it draws by
 			 * width.
 			 *
-			 * THE CONTAINER COMES BACK FOR ONE MEMBER (design round 1, D2, measured at the 240 clamp;
-			 * issue #697). "One rule at every width" is still the rule for the ACTS - the pin, the
-			 * archive and the move pair are drawn at every width - but the GRIP sheds at or below 278px
-			 * of panel, because at the clamp the revealed cluster left the title 40px of the row's 208
-			 * with the grip in it, and the pair's own 56px is the part WCAG 2.5.7 asks for while the
-			 * grip's 28px is an accelerator for a gesture the arrows already perform. The name is the
-			 * one the deleted shed used, so the class on the grip reads the same way it always did and
-			 * the frame that shows the shed absent is committed with this change.
+			 * ONE WIDTH QUERY DID COME BACK FOR A WHILE, AND IT IS GONE AGAIN (issue #697, then the
+			 * 2026-09-30 archive-confirm lane). The grip was shed at or below 278px of panel because,
+			 * with the move pair beside it, the revealed cluster left the title 40px of the row's 208
+			 * at the clamp. The pair is deleted - its two acts are the `Move conversation` items in
+			 * the row's menu - so the cluster is `[archive][grip][pin]` (80px) and the grip is drawn
+			 * at EVERY width: the shed, and the container declaration it measured against, went
+			 * with it. This panel does not change what it draws by width.
 			 */
-			className="@container/chatsidebar relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
+			className="relative flex h-full min-h-0 flex-col bg-surface p-2 text-ink"
 			onKeyDown={keyDown}
 		>
 			{/*

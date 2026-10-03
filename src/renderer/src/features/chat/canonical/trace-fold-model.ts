@@ -129,7 +129,13 @@ export type FoldGroup =
 			gap: Row["gap"];
 			rows: Row[];
 			actions: FoldableAction[];
-			summary: string;
+			/**
+			 * The header's summary as its units AND its shape: the count line's segments
+			 * and its `and N other actions` tail, or the one flowing clause of the sentence
+			 * form (see `foldSummarySpec` for why the shape has to be stated rather than
+			 * inferred).
+			 */
+			summary: FoldSummarySpec;
 			failedCount: number;
 			/** The wall-clock span, when the run can date itself (see `foldSpan`). */
 			span: FoldSpan | null;
@@ -225,7 +231,30 @@ export const actionClass = (
  * on and the operator asked for the shape of the work instead ("3 shell · 1
  * python").
  */
-export function foldSummary(actions: FoldableAction[]): string {
+/**
+ * The summary AS THE HEADER MUST PAINT IT: its units, and which SHAPE it is.
+ *
+ * WHY THE SHAPE IS PART OF THE CONTRACT (agent review round 2, R2-1, and the same
+ * defect QA bounded as Q-r2-3): the count line's units have to hold together - a
+ * wrap there may only fall at a `·` - so the header paints each one unbreakable.
+ * The SENTENCE is the opposite case: `Explored 4 files, delegated 3 tasks` is
+ * prose, its own word spaces are the right places to break, and that is how it
+ * painted before this branch. Round 1's first cut painted every unit nowrap,
+ * which silently made the sentence unbreakable and left the `break-words` on the
+ * span inert (it cannot act inside `white-space: nowrap`). The header is told
+ * which shape it has rather than inferring it from the unit count: `6 searches`
+ * is one unit too, and it must stay whole.
+ */
+export type FoldSummarySpec = {
+	units: string[];
+	/**
+	 * True for the SENTENCE form (a single flowing clause): the browser's own
+	 * line breaking is correct for it, so the header does NOT hold it whole.
+	 */
+	prose: boolean;
+};
+
+export const foldSummarySpec = (actions: FoldableAction[]): FoldSummarySpec => {
 	const counts = new Map<string, number>();
 	let unknown = 0;
 	for (const action of actions) {
@@ -233,7 +262,14 @@ export function foldSummary(actions: FoldableAction[]): string {
 		if (cls === null) unknown += 1;
 		else counts.set(cls, (counts.get(cls) ?? 0) + 1);
 	}
-	if (unknown > 0 || counts.size > 2) return foldCounts(actions);
+	if (unknown > 0 || counts.size > 2) {
+		const units = foldCountUnits(foldCountSegments(actions));
+		// Only reachable for an empty run, which `foldRuns` never emits a summary for.
+		return {
+			units: units.length === 0 ? [`${actions.length} actions`] : units,
+			prose: false,
+		};
+	}
 
 	/*
 	 * Ordered by §E2's own sentence order, not by the order the calls happened to
@@ -259,13 +295,28 @@ export function foldSummary(actions: FoldableAction[]): string {
 		if (cls === "delegated")
 			parts.push(`Delegated ${count} task${count === 1 ? "" : "s"}`);
 	}
-	if (parts.length === 0) return `${actions.length} actions`;
+	if (parts.length === 0)
+		return { units: [`${actions.length} actions`], prose: true };
 	// A two-class sentence reads as "Explored 4 files, 1 search"; the second part
 	// keeps the join's own lowercase, which is why the first part is the only one
 	// that capitalises.
-	return parts.length === 1
-		? parts[0]
-		: `${parts[0]}, ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}`;
+	return {
+		units: [
+			parts.length === 1
+				? parts[0]
+				: `${parts[0]}, ${parts[1].charAt(0).toLowerCase()}${parts[1].slice(1)}`,
+		],
+		prose: true,
+	};
+};
+
+/** The units the header paints, in order. */
+export const foldSummaryUnits = (actions: FoldableAction[]): string[] =>
+	foldSummarySpec(actions).units;
+
+/** The units joined with the ` · ` the renderer draws between them. */
+export function foldSummary(actions: FoldableAction[]): string {
+	return foldSummaryUnits(actions).join(" · ");
 }
 
 /**
@@ -333,7 +384,82 @@ const KIND_NOUNS: Record<string, { noun: string; plural: string }> = {
 	sessions: { noun: "session", plural: "sessions" },
 };
 
-export function foldCounts(actions: FoldableAction[]): string {
+/**
+ * The cap on the unique action-type segments ONE count line shows, and the
+ * tail token that stands in for everything past it.
+ *
+ * WHY IT EXISTS (operator report, 2026-10-01, relayed by Aida): a long run's
+ * header read `6 searches · 1 task · 2 browser actions · 1 ai_search · 1
+ * get_tool_access · 1 query_data_sources · 1 todo update · 1 wait · 1
+ * workspace_get_gmail_thread_content` - nine unique action types, wider than
+ * the column at every realistic window. The operator's ask was a cap: "how
+ * many unique action types will show up per line", with everything past the
+ * majority classes summarised as `and N other actions`.
+ *
+ * THE TAIL COUNTS CALLS, NOT TYPES, and the same unit every other number on
+ * the line counts (the bar's `N actions`, the foot's `N actions`), so a reader
+ * who sums the segments still reaches the turn's action count; the number of
+ * hidden TYPES is deliberately not stated, because `and N other actions` is a
+ * measure of work and the expanded rows are the lossless record. `1`
+ * singularises, like every `fact` on the line.
+ *
+ * WHAT IS KEPT IS THE FIRST `FOLD_COUNT_LIMIT` UNITS OF THE LINE'S OWN ORDER, and
+ * that order is the `order` array below and nothing else: the sentence's class
+ * slots (files, searches, web, the command kinds `shell`/`python` in the
+ * `commands` slot, edits, delegated), then the three named meta kinds the
+ * operator's report used (`agent`, `team`, `hub`); every other kind follows
+ * those, sorted by count and then by its noun. So the tail is always what the
+ * line's own order already ranked least-major - which is also why a run with
+ * many `agent` calls can push a rarer named kind into the tail - and at N or
+ * fewer units the line is byte-identical to what it has always been. Five is
+ * chosen against the report's own run: it keeps the three classes the run was
+ * mostly made of plus two named singles, and the capped line fits the standard
+ * column one line while still wrapping at the 640px window (the frames under
+ * `docs/evidence/chat-trace-fold/` and its `-before` sibling).
+ */
+export const FOLD_COUNT_LIMIT = 5;
+
+/**
+ * The count line's UNITS, capped at `FOLD_COUNT_LIMIT` with the rest folded into
+ * `and N other actions` (see the constant above).
+ *
+ * WHY UNITS RATHER THAN ONE STRING (design round 1, D1; agent review R1-4, the
+ * same defect's code site): a joined sentence gives the browser the spaces around
+ * every `·` AND the spaces inside every phrase, so at a narrow column it breaks
+ * wherever it likes - the 640px frame broke `and 4 other actions` between the
+ * numeral and its noun and left `other actions` alone on line 2. The units are
+ * what the line is COMPOSED of, so the renderer can paint each one unbreakable
+ * and let the breaks fall at the separators, which is the only boundary a reader
+ * recognises here. The joined string is still `join(" · ")` of these units, which
+ * is what the bar's `title` and every non-DOM consumer read.
+ */
+export const foldCountUnits = (
+	segments: { label: string; count: number }[],
+): string[] => {
+	if (segments.length <= FOLD_COUNT_LIMIT)
+		return segments.map((segment) => segment.label);
+	const kept = segments.slice(0, FOLD_COUNT_LIMIT);
+	const other = segments
+		.slice(FOLD_COUNT_LIMIT)
+		.reduce((total, segment) => total + segment.count, 0);
+	return [
+		...kept.map((segment) => segment.label),
+		/*
+		 * ONE unit, and it must stay one: the phrase is a single fact about the
+		 * work the cap hid, so it is never broken between `and 4` and `other
+		 * actions` - that break is the reader-visible defect D1 measured.
+		 */
+		`and ${other} other action${other === 1 ? "" : "s"}`,
+	];
+};
+
+/**
+ * The per-kind segments of a run's count line, in the line's own order and NOT
+ * yet capped - `foldCountUnits` applies the cap.
+ */
+const foldCountSegments = (
+	actions: FoldableAction[],
+): { label: string; count: number }[] => {
 	type Kind = { noun: string; plural: string | null };
 	const counts = new Map<string, { kind: Kind; count: number }>();
 	const bump = (key: string, kind: Kind) => {
@@ -401,12 +527,13 @@ export function foldCounts(actions: FoldableAction[]): string {
 		"kind:team",
 		"kind:hub",
 	];
-	const parts: string[] = [];
+	const segments: { label: string; count: number }[] = [];
 	const fact = (count: number, kind: Kind) =>
 		`${count} ${count === 1 || kind.plural === null ? kind.noun : kind.plural}`;
 	for (const key of order) {
 		const seen = counts.get(key);
-		if (seen) parts.push(fact(seen.count, seen.kind));
+		if (seen)
+			segments.push({ label: fact(seen.count, seen.kind), count: seen.count });
 	}
 	const rest = [...counts.entries()]
 		.filter(([key]) => !order.includes(key))
@@ -414,9 +541,22 @@ export function foldCounts(actions: FoldableAction[]): string {
 			([, a], [, b]) =>
 				b.count - a.count || a.kind.noun.localeCompare(b.kind.noun),
 		);
-	for (const [, seen] of rest) parts.push(fact(seen.count, seen.kind));
+	for (const [, seen] of rest)
+		segments.push({ label: fact(seen.count, seen.kind), count: seen.count });
+	return segments;
+};
+
+/**
+ * The count line as the ONE string its non-DOM consumers read (the collapsed
+ * bar's `title`): the units joined by the same ` · ` the renderer draws between
+ * them, so the words a reader sees and the words a tooltip carries cannot say
+ * different things.
+ */
+export function foldCounts(actions: FoldableAction[]): string {
+	const segments = foldCountSegments(actions);
 	// Only reachable for an empty run, which `foldRuns` never emits a summary for.
-	return parts.length > 0 ? parts.join(" · ") : `${actions.length} actions`;
+	if (segments.length === 0) return `${actions.length} actions`;
+	return foldCountUnits(segments).join(" · ");
 }
 
 /**
@@ -602,7 +742,7 @@ export function foldRuns(
 				gap: run[0].gap,
 				rows: run,
 				actions,
-				summary: foldSummary(actions),
+				summary: foldSummarySpec(actions),
 				failedCount: actions.filter((action) => action.failed).length,
 				span: foldSpan(actions),
 				live: foldLive(actions),

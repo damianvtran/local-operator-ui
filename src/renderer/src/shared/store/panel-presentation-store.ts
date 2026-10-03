@@ -71,11 +71,64 @@ export type PanelRequest = {
 	 * (`command-palette.tsx`), and that is exactly the node both gestures should
 	 * return to, so it is passed rather than rediscovered.
 	 *
-	 * Read by the SHELL host. The pane's own close path keeps its rule (null here,
-	 * composer on close, `slash-dispatch.ts`) because the pane has a composer to
-	 * fall back to and is where the user's hand already is.
+	 * Read by the SHELL host. The pane's own close path keeps its rule for the
+	 * palette (null here, composer on close, `slash-dispatch.ts`) because the pane
+	 * has a composer to fall back to and is where the user's hand already is. A
+	 * request that names a `sessionId` comes from a door outside the pane, and the
+	 * pane returns focus to THAT door (the composer remains the fallback when the
+	 * node is gone).
 	 */
 	invoker: HTMLElement | null;
+	/**
+	 * The conversation this request ADDRESSES, when its requester is not the pane.
+	 *
+	 * ABSENT FOR THE PALETTE, and that is the rule, not a gap: the palette acts on
+	 * "the conversation in front of the user", which is the pane's own `sessionId`,
+	 * so it has nothing to name. A requester OUTSIDE the pane — the sidebar's row
+	 * menu (#739) — acts on a row that is generally NOT the pane's conversation
+	 * (right-click -> Fork works without opening the row first), so the request has
+	 * to carry which conversation it means.
+	 *
+	 * THE PRESENTER MUST NOT SUBSTITUTE ITS OWN when this is set: a fork of the
+	 * wrong conversation is a silent success — a new, plausible conversation that
+	 * is a copy of something the user did not point at. `slash-dispatch.ts`'s
+	 * consume effect reads `request.sessionId ?? paneSessionId`, in that order.
+	 *
+	 * Everything else about presenting stays the pane's (canonical handle, command
+	 * catalogue, note line, dispatch, rebind): the request names a SUBJECT, not a
+	 * second way to present one.
+	 */
+	sessionId?: string;
+	/**
+	 * The transcript entry this request addresses, when its requester acts on one.
+	 *
+	 * THE SAME RULE AS `sessionId` ONE LEVEL DOWN: `sessionId` names WHICH
+	 * conversation the request is about (a requester outside the pane cannot let
+	 * the pane guess), and this names WHY, for the destinations whose act is
+	 * about a row inside it. Today there is exactly one - `session.fork` cuts
+	 * through a named entry instead of at the next safe boundary - and the
+	 * presenter hands it to the adapter rather than the adapter re-deriving it:
+	 * the row that raised the request is the only layer that knows which message
+	 * it belongs to, and re-deriving it from the pane's own view would fork the
+	 * wrong message whenever the two disagree.
+	 *
+	 * Absent is the whole of the existing behaviour: a typed `/fork`, the
+	 * palette and the sidebar row menu name no entry and the copy is the
+	 * whole-conversation fork they have always had.
+	 */
+	entryId?: string;
+	/**
+	 * How to name that entry BACK TO THE READER, as the requester would name it.
+	 *
+	 * A REQUESTER'S COPY OF THE FACT, not something the presenter can derive:
+	 * the presenter holds a pane, not the row that was pointed at, and the whole
+	 * reason `entryId` travels is that the row is the only party that knows which
+	 * message it is. Today it is an excerpt of the row's own words, so a
+	 * destination can say which message it is about to act on - the row is
+	 * hover-revealed and the panel covers it, so nothing else in the flow can
+	 * answer that question.
+	 */
+	entryExcerpt?: string;
 };
 
 /**
@@ -94,8 +147,21 @@ type PanelPresentationState = {
 	 *
 	 * `invoker` is the control to hand focus back to when the panel closes
 	 * (see `PanelRequest.invoker`); omitted only where the caller has none to name.
+	 * `sessionId` names the conversation the request addresses when the requester
+	 * is outside the pane (see `PanelRequest.sessionId`); the palette never passes it.
+	 * `entryId` names the transcript entry the destination acts on, when it acts
+	 * on one, and `entry.excerpt` is how to name it back to the reader (see
+	 * `PanelRequest.entryExcerpt`). The object rather than two positional strings
+	 * because they are two halves of one fact: a cut point is useless to a
+	 * destination that cannot say WHICH message it is, and a position whose only
+	 * caller passes both by construction is the shape that cannot drift apart.
 	 */
-	requestPanel: (destination: string, invoker?: HTMLElement | null) => void;
+	requestPanel: (
+		destination: string,
+		invoker?: HTMLElement | null,
+		sessionId?: string,
+		entry?: { id: string; excerpt?: string },
+	) => void;
 	/** Retire a request, by nonce. */
 	consumePanel: (nonce: number) => void;
 	/**
@@ -180,7 +246,7 @@ let claims = 0;
 export const usePanelPresentationStore = create<PanelPresentationState>(
 	(set) => ({
 		request: null,
-		requestPanel: (destination, invoker) => {
+		requestPanel: (destination, invoker, sessionId, entry) => {
 			nextNonce += 1;
 			set({
 				request: {
@@ -188,6 +254,19 @@ export const usePanelPresentationStore = create<PanelPresentationState>(
 					nonce: nextNonce,
 					requestedAt: Date.now(),
 					invoker: invoker ?? null,
+					// Spread, not `sessionId: undefined`: the palette's request keeps the
+					// exact shape it has always had, key for key.
+					...(sessionId ? { sessionId } : {}),
+					/*
+					 * The same rule one level down, and the same reason it is a spread: an
+					 * empty id names no entry, so it is ABSENT rather than a blank the
+					 * presenter has to tell apart from "no cut point". The excerpt follows
+					 * the id - a label for a target that is not there names nothing.
+					 */
+					...(entry?.id ? { entryId: entry.id } : {}),
+					...(entry?.id && entry.excerpt
+						? { entryExcerpt: entry.excerpt }
+						: {}),
 				},
 			});
 		},

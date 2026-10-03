@@ -569,43 +569,6 @@ const CURRENT = [
 	},
 	{
 		/*
-		 * The pinned row's MOVE PAIR (issue #693): the row's third and fourth sibling
-		 * controls, and the first that exist only in one of the row's two states. They
-		 * are row surfaces for the same reason the pin and the archive are - they sit
-		 * INSIDE a row's box and answer the pointer - so `hover:bg-row-hover` is their
-		 * sanctioned ground and the `!current` guard is what keeps the pointer from
-		 * replacing the mark that says where the reader is.
-		 *
-		 * BOTH ARE LISTED, each resolved through its own `cn(...)`, and they are the
-		 * reason the two class lists are spelled out per control rather than shared
-		 * through one constant: this file resolves an ELEMENT's own class expression,
-		 * so a constant would be one list no entry here could measure - exactly the
-		 * blindness this table exists to remove. The pair's own two lists are kept
-		 * identical by the two entries below, each of which fails on its own if the
-		 * list it reads stops being a row surface.
-		 *
-		 * Resolved FORWARD from each control's own attribute, the archive entry's own
-		 * shape: the attribute precedes the `className` in the source, so a forward
-		 * search lands on this control's expression and not on the one above it.
-		 */
-		what: "the pinned row's move-up control",
-		file: SIDEBAR,
-		expression: () => expressionAfter(SIDEBAR, "data-session-move-up\n"),
-		stubs: { current: true },
-		ground: false,
-		notCurrent: { current: false },
-	},
-	{
-		/* The pair's other half: the same list, the same two guards, one glyph down. */
-		what: "the pinned row's move-down control",
-		file: SIDEBAR,
-		expression: () => expressionAfter(SIDEBAR, "data-session-move-down\n"),
-		stubs: { current: true },
-		ground: false,
-		notCurrent: { current: false },
-	},
-	{
-		/*
 		 * The draft row's BOX, added with the sidebar's own discard act (operator,
 		 * 2026-09-26: "Each one should have a deletion on hover"). Same shape and
 		 * same reason as the conversation row's box above: `rowStyle`'s own `hover:`
@@ -1005,6 +968,13 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// pointer, and both are resolved by their own `CURRENT` entries above -
 				// the count is what forced those entries to exist rather than a promise
 				// that somebody wrote them.
+				// FIFTEEN (2026-09-30). The arrow pair is DELETED - its acts are the
+				// two Move items in the row's menu now, and those are MENU rows: they
+				// render in the menu's portal, take the menu's own highlight ground, and
+				// can never sit inside the row that opened them. So the count comes back
+				// DOWN by two, and the two `CURRENT` entries that resolved them went with
+				// them: an entry is for a row SURFACE, which is the thing this table is a
+				// list of.
 				// SEVENTEEN (issue #697, 2026-09-30). The pin DRAG HANDLE adds one: it is the
 				// pair's own shape one control over (revealed by the pointer, guarded
 				// `!current`, resolved by its own `CURRENT` entry above), and it sits inside
@@ -1025,8 +995,10 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// popover's surface into the list. Its own `CURRENT` entry above is what
 				// keeps it from being resolved by nobody. The two narratives' numbers
 				// MEET here rather than either replacing the other: #693/#697's
-				// seventeen and this feature's one literal are additive.
-				"hover:bg-row-hover": 18,
+				// seventeen and this feature's one literal are additive, and the arrow
+				// pair's deletion (FIFTEEN above) takes two of them away again -
+				// 17 - 2 + 1 = SIXTEEN.
+				"hover:bg-row-hover": 16,
 				// `rowCurrent` (1), the ground that beats the step above by merge order.
 				// PLUS ONE: the band's view-options button paints `row-selected` while the
 				// view differs from the default (`viewIsCustom`) - the mode's own
@@ -1051,11 +1023,12 @@ test("the file accounts for every hover ground the two panels declare", () => {
 				// foot for the drafts group and can never sit inside a current row; it
 				// paints NOTHING here rather than taking a row state, which is why no
 				// expression has to resolve it.
-				// PLUS TWO (issue #693): the move pair's controls still the same step while
-				// they are inapplicable - the first and last pinned rows - and they are the
-				// one case in this panel where a ROW control can be inapplicable, so the
-				// reset lives with the control rather than in the pair's own `hidden`
-				// reveal. Resolved by their `CURRENT` entries above.
+				// PLUS TWO (issue #693, re-pointed 2026-09-30): the two inapplicable-row
+				// resets are the row MENU's Move items now - the arrow controls that used to
+				// carry them are deleted. Same two literals, a different surface: a menu row
+				// renders in the menu's portal, so it can never sit inside the current row
+				// and no `CURRENT` entry can or should resolve it. The refusal still has to
+				// LOOK like a refusal, which is why the pair is kept.
 				"hover:bg-transparent": 3,
 				// The New chat row's disabled reset: it paints NOTHING, which is why no
 				// expression has to resolve it. The bulk read receipt carries no reset of
@@ -1719,6 +1692,17 @@ test("the settings rail's group lists carry no ground of their own", () => {
  */
 const ACCOUNT_ROW =
 	"src/renderer/src/shared/components/navigation/user-profile-sidebar.tsx";
+const TEAM_BUBBLE =
+	"src/renderer/src/features/chat/components/team-avatar-bubble.tsx";
+
+/**
+ * The mark's face, as the module writes it: the badge's own exported call with
+ * the quiet-count triple. A PATTERN rather than a byte string so the formatter
+ * may break the arguments across lines without failing this assertion - the
+ * property is "composes the shared register", not "spells it on one line".
+ */
+const TEAM_BUBBLE_COMPOSITION =
+	/badgeVariants\(\{[\s\S]*?variant:\s*"attentionQuiet"[\s\S]*?shape:\s*"pill"[\s\S]*?size:\s*"count"/;
 
 test("the account row's plate carries an edge a row state cannot overrun", () => {
 	const row = sourceOf(ACCOUNT_ROW);
@@ -1740,6 +1724,75 @@ test("the account row's plate carries an edge a row state cannot overrun", () =>
 	assert.ok(
 		plate.includes("border-control"),
 		`the account row's plate is back on a FILL ALONE — it reads ${JSON.stringify(plate)} and carries no \`border-control\`, which is the one property a row's fill cannot overrun. \`elevated\` against \`rowHover\` is ΔE00 0.00 on \`arcade\` (byte-identical), 1.14 \`gruvbox\`, 1.21 \`obsidian\` and 1.90 \`everforest\`: hovering the row turns the plate into a disc of the row's own hover colour. The edge is the carrier, and the palette half of the pair is in \`scripts/contrast-contract.mjs\``,
+	);
+});
+
+/*
+ * THE TEAM MARK, AND WHY IT IS ASSERTED HERE INSTEAD OF DISCOVERED.
+ *
+ * The team avatar bubble (the compact initials mark the chat sidebar's session
+ * rows draw, operator ask 2026-10-01) is a site the scan above cannot see, and
+ * that is a BOUNDARY rather than an oversight: the bubble is written in its own
+ * module, so `carriersInsideRowStates` reads an element with no `className` of
+ * its own where the bubble is USED and never enters the subtree that carries the
+ * ground. It is the same shape as `CARRIED_GROUNDS` (a ground that lives in
+ * another file) and it takes the same remedy: name the carrier, read its class
+ * text from the file it is written in, and assert the fact here.
+ *
+ * IT LEFT THE CLASS ABOVE ON 2026-10-02. It used to be a `sunken` plate with its
+ * own `borderControl` edge, resting on the agents sidebar's pair; the operator's
+ * report replaced that face with the rail's quiet-count register (verbatim:
+ * "should probably be more similar to the borderless bubble of the sidebar
+ * notification counts — slight contrast vs backdrop, smaller more subtle text,
+ * in the case there's no picture. Currently it looks kind of ugly"). The mark is
+ * no longer an object whose boundary has to survive a row state's fill, so the
+ * rule that block states does not apply to it: its legibility is the INITIALS'
+ * own floor (`inkDim` on `elevated`, asserted per palette in
+ * `scripts/contrast-contract.mjs`) and its identity is the SHARED call it
+ * composes - `badgeVariants({ variant: "attentionQuiet", shape: "pill", size:
+ * "count" })`, the same composition the sidebar rail's notification count makes.
+ *
+ * WHAT THIS TEST ADDS is the half a colour gate cannot see: that the shipped
+ * class text is still that composition, and that the image path still renders
+ * through the same mark. A palette assertion cannot read a `className`, and a
+ * copied class string is exactly what the composition exists to prevent, so the
+ * two halves are separate and neither file can make the other's assertion.
+ */
+test("the team avatar bubble wears the shared badge's composition", () => {
+	const source = sourceOf(TEAM_BUBBLE);
+	/*
+	 * The face is the badge's own exported call, read as a pattern rather than a
+	 * byte string so the formatter may break the arguments across lines.
+	 */
+	assert.ok(
+		TEAM_BUBBLE_COMPOSITION.test(source),
+		`${TEAM_BUBBLE} no longer composes the badge's quiet-count register - the call that turns the mark into the same face as the sidebar rail's notification count is gone. The mark must be \`badgeVariants({ variant: "attentionQuiet", shape: "pill", size: "count" })\` (operator report, 2026-10-02), which is why the pair it wears is asserted in \`scripts/contrast-contract.mjs\` under \`team avatar bubble\``,
+	);
+	const avatar = literalClassAt(TEAM_BUBBLE, "<Avatar ", "after")
+		.split(/\s+/)
+		.filter((token) => token.length > 0);
+	assert.ok(
+		avatar.includes("h-4"),
+		`the team avatar bubble's avatar is no longer the badge's height - <Avatar> in ${TEAM_BUBBLE} reads ${JSON.stringify(avatar)}. The mark's geometry IS the badge's (16px), and the picture is meant to render inside it; the old \`size-5\` circle is what the operator's 2026-10-02 report asked to be brought into the badge family`,
+	);
+	assert.ok(
+		!avatar.some((token) => token === "border" || token === "border-control"),
+		`the team avatar bubble is back on an edge - <Avatar> in ${TEAM_BUBBLE} reads ${JSON.stringify(avatar)}. The mark is borderless now: its boundary is the initials' own ink floor, per the rail badge's register and its row in \`scripts/contrast-contract.mjs\` (\`edge: false\`)`,
+	);
+	const fallback = literalClassAt(TEAM_BUBBLE, "<AvatarFallback ", "after")
+		.split(/\s+/)
+		.filter((token) => token.length > 0);
+	assert.ok(
+		fallback.includes("bg-transparent"),
+		`the team avatar bubble's fallback no longer defers to the mark's own ground - <AvatarFallback> in ${TEAM_BUBBLE} reads ${JSON.stringify(fallback)}. It has to override the primitive's \`bg-sunken\` with \`bg-transparent\`, so the initials sit on the root's \`elevated\`: an absent URL, a 404, a blocked request and a decoding failure all land on ONE face, which is what \`scripts/contrast-contract.mjs\` measures`,
+	);
+	assert.ok(
+		!fallback.includes("bg-sunken"),
+		`the team avatar bubble's fallback is back on the \`sunken\` plate - <AvatarFallback> in ${TEAM_BUBBLE} reads ${JSON.stringify(fallback)}. That plate (with its edge) is the pair the 2026-10-02 operator report called ugly and the row in \`scripts/contrast-contract.mjs\` was moved off`,
+	);
+	assert.ok(
+		fallback.includes("text-inherit"),
+		`the team avatar bubble's fallback pins its own ink instead of inheriting the mark's - <AvatarFallback> in ${TEAM_BUBBLE} reads ${JSON.stringify(fallback)}. \`text-inherit\` is what keeps the letters on the composition's \`ink-dim\` and stops the primitive's \`text-ink-muted\` from taking over`,
 	);
 });
 

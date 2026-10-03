@@ -92,3 +92,156 @@ test("the header states the .env fold the working directory defends against", ()
 		"and cites the round that found it, so the contract is traceable",
 	);
 });
+
+test("the rig arms B's replayed inspect port and reads the successor there (#755)", () => {
+	/*
+	 * The completion rides on the REPLAY contract: B's argv carries
+	 * `--inspect=<inspectS>` (given to B at launch), the refused reopen records
+	 * that same command line, and the successor becomes observable on the same
+	 * port — the replay contract is proven by S answering there at all. The
+	 * port is also the negative's probe: while A still tears down and B is gone,
+	 * nothing may listen on it, and only A may be on the scratch profile.
+	 */
+	assert.match(
+		rig,
+		/const inspectS = await freePort\(\);/,
+		"the replay port is chosen once, before the arm branch",
+	);
+	const bLaunchAt = rig.indexOf("const b2 = launchApp");
+	assert.ok(bLaunchAt > 0, "B's launch is still there");
+	const bLaunch = rig.slice(bLaunchAt, rig.indexOf("});", bLaunchAt));
+	assert.ok(
+		bLaunch.includes("inspectPort: inspectS") && bLaunch.includes('label: "b"'),
+		"B carries it in its argv",
+	);
+	assert.match(
+		rig,
+		/const successorPort = ACTIVATE \? inspectA : inspectS;/,
+		"the successor is read on the arm's own port after A exits",
+	);
+	assert.match(
+		rig,
+		/CdpClient\.attach\(successorPort, 30_000\)/,
+		"the attach goes through that resolution rather than a hard-coded port",
+	);
+	assert.match(
+		rig,
+		/portListening: await listeningOn\(inspectS\),/,
+		"and the negative samples it while A still tears down",
+	);
+	assert.ok(
+		rig.includes("no successor exists before A exits"),
+		"the before-A-exits negative is asserted by name",
+	);
+	assert.ok(
+		rig.includes("nothing is scheduled at refusal time"),
+		"and so is the stale-spawn negative",
+	);
+});
+
+test("the rig completes the hand-off end to end and reaps the successor by exact pid (#755)", () => {
+	assert.match(
+		rig,
+		/REOPEN_DEFERRED\.test\(raiseLine\)/,
+		"the refusal's completion token is asserted on A's line",
+	);
+	assert.match(
+		rig,
+		/hasSingleInstanceLock\(\)/,
+		"the successor's lock is read back",
+	);
+	assert.ok(
+		rig.includes("window list stays length 1"),
+		"exactly-one-successor is asserted via lock + single window",
+	);
+	assert.match(
+		rig,
+		/process\.kill\(sPid, "SIGKILL"\)/,
+		"the successor is reaped by the exact pid it proved it owns",
+	);
+	assert.match(
+		rig,
+		/await runNextLaunchControl\(windowWaitMs\);/,
+		"and the next-launch control still runs after the whole hand-off",
+	);
+});
+
+test("the control arm runs with nothing refused and pins the absence (#755)", () => {
+	/*
+	 * `--no-reopen`: the same quit with no relaunch during it. Nothing may be
+	 * spawned — the negative that gives the main arm's successor its meaning.
+	 * The designated port is the SECOND use of `inspectS`, the very port the
+	 * main arm's successor would answer on, so the two arms read the same wire
+	 * from opposite directions.
+	 */
+	assert.match(
+		rig,
+		/const NO_REOPEN = process\.argv\.includes\("--no-reopen"\);/,
+		"the arm is a flag",
+	);
+	assert.ok(
+		rig.includes("no successor appears when no reopen was refused"),
+		"and its assertion is by name",
+	);
+	assert.match(
+		rig,
+		/const designatedPort = inspectS;/,
+		"the designated port is the same replay port, untouched by this arm",
+	);
+	assert.match(
+		rig,
+		/quietViolation === null/,
+		"the grace window is sampled, not glanced at",
+	);
+	assert.ok(
+		rig.includes("nothing was even scheduled"),
+		"and the token/schedule absence is pinned too",
+	);
+});
+
+test("the activate arm exercises a refused Dock click in a dev-shaped run (#755 review F1)", () => {
+	/*
+	 * The second-launch arm's replay rides on B; a refused Dock click names no
+	 * loser, so its successor is composed from the DYING process's own command
+	 * line (a dev-shaped plain reopen) and read on A's OWN port — the carriage
+	 * that keeps the app path and the scratch enclosure in the successor's argv
+	 * (`args: []` would be bare Electron, i.e. the default-app window on the
+	 * machine-default profile, which is the defect this arm exists to falsify).
+	 */
+	assert.match(
+		rig,
+		/const ACTIVATE = process\.argv\.includes\("--activate"\);/,
+		"the arm is a flag",
+	);
+	assert.ok(
+		rig.includes("--no-reopen and --activate select different arms"),
+		"and the two arms cannot be selected together",
+	);
+	assert.ok(
+		rig.includes("app.emit('activate')"),
+		"the arm delivers the click the OS would emit",
+	);
+	assert.ok(
+		rig.includes(
+			"A answered the Dock click without creating or raising a window",
+		),
+		"the refusal is asserted by name",
+	);
+	assert.ok(
+		rig.includes("the successor replays the dying process's own command line"),
+		"and so is the F1 carriage",
+	);
+	assert.ok(
+		rig.includes("sArgv.includes(APP_ROOT)"),
+		"with the app path at the centre of the argv assertion",
+	);
+	assert.ok(
+		rig.includes("the successor boots under the replayed plan (headless"),
+		"and the presentation it booted under asserted rather than assumed",
+	);
+	assert.match(
+		rig,
+		/LAUNCHER_HEADLESS_LINE/,
+		"the headless launcher-policy line is the arm's own reading",
+	);
+});
