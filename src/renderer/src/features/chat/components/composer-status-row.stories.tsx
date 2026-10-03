@@ -2353,15 +2353,15 @@ export const AskTruncated: Story = {
 /** Zero asks: the affordance is absent, and the row's other chips are not. */
 export const AskZero: Story = {
 	render: () => (
- <AskBand
+		<AskBand
 			width={585}
 			label="Zero asks: no item at all, while the row's own chips stand exactly as they do beside it"
 			asks={[]}
 			goal="Reconcile the March invoices"
 			runDetails={ASK_NEIGHBOURS_DETAILS}
-			/>
-			),
-		};
+		/>
+	),
+};
 
 /** The neighbours the item has to sit among, at the row's own order. */
 const ASK_NEIGHBOURS_DETAILS: RunDetails = deriveRunDetails({
