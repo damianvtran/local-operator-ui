@@ -14,10 +14,11 @@
  *
  * The breakpoints these replaced keyed off the VIEWPORT, and the thing that
  * gets narrow here is the COLUMN. With the canvas panel open at a 1380px
- * window the chat column collapses to its 220px floor while `md:` is still
- * comfortably active - so `md:max-w-[900px]` was being applied to a 220px
- * column, which is a cap that can never bind and a rule that describes a
- * layout the user is not looking at. `@container` asks the question that
+ * window the chat column falls to its FLOOR - 480px since §I applied it
+ * (`CHAT_PANE_MIN_PX`; it was 220 before, which is the width these breakpoints
+ * were originally caught at) - while `md:` is still comfortably active, so
+ * `md:max-w-[900px]` was being applied to a narrow column: a cap that can never
+ * bind, and a rule that describes a layout the user is not looking at. `@container` asks the question that
  * actually determines the answer: how wide is the column this content is in.
  *
  * `@container` is already in the tree (`page-header.tsx`,
