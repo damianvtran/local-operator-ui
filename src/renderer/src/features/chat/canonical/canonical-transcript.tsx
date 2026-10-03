@@ -130,6 +130,11 @@ import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import {
+	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+	type TranscriptDisplayMode,
+	parseTranscriptDisplayMode,
+} from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
@@ -2657,10 +2662,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * the paging hook and a new identity per render would re-create it (and the
 	 * hook's refs) for a value that only an event reads - the same reason
 	 * `rowsRef` exists.
+	 *
+	 * `mode` rides in the SAME ref for the same reason, and it is the reader's
+	 * display mode (M1/Q1): the count below and the plan the list paints from must
+	 * read ONE mode, or the step measures a paint the reader is not looking at.
+	 * The value is the PARSED one (`parseTranscriptDisplayMode`, the read-side
+	 * judge this component already uses at the plan below) rather than the raw
+	 * store value, and it is kept out of `widen`'s dependency list for the reason
+	 * above: a mode change is a re-render, not a new callback identity.
 	 */
 	const widenInputs = useRef<{
 		live: boolean;
 		openRuns: ReadonlySet<string> | undefined;
+		/** The reader's mode, for the widen's paint count (see this ref's note). */
+		mode: TranscriptDisplayMode;
 		/**
 		 * The size the reader is LOOKING at (`alignSize`, the snap's output), which is
 		 * the widen's measuring baseline (agent review round 1, R1-1): the raw
@@ -2671,7 +2686,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * would re-create the hook's refs on every mount change.
 		 */
 		mounted: number;
-	}>({ live: false, openRuns: undefined, mounted: 0 });
+	}>({
+		live: false,
+		openRuns: undefined,
+		mode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+		mounted: 0,
+	});
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
 		expandedRunsOf(sessionId),
 	);
@@ -3191,6 +3211,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					step: WINDOW_STEP,
 					live: widenInputs.current.live,
 					openRuns: widenInputs.current.openRuns,
+					/*
+					 * The reader's OWN mode (M1/Q1): a `by-response` transcript keeps rows the
+					 * `by-turn` plan calls hidden, so a step measured without it stops late and
+					 * commits a larger window than one gesture promises. See `widenInputs`.
+					 */
+					mode: widenInputs.current.mode,
 					snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 					// The render's OWN second bound (the completed-run allowance), so the
 					// step's painted delta is measured against the window the component
@@ -3382,6 +3408,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
 		(state) => state.restoreDefaultChatMeasureWidth,
 	);
+	/*
+	 * The reader's transcript display mode (issue #756): read as the RAW stored
+	 * value and parsed at the one call site that consumes it (`collapsePlan`
+	 * below), so a tampered or future token is judged where it is used rather
+	 * than trusted on the way in.
+	 */
+	const transcriptDisplayMode = useUiPreferencesStore(
+		(state) => state.transcriptDisplayMode,
+	);
 	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
 	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
@@ -3420,11 +3455,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const working = workingLine === undefined ? paneWorking : workingLine;
 	/* The widen's paint count reads these (see `widenInputs`): the collapse's own
-	 * liveness rule, stated once here and reused by the plan below, and the mounted
-	 * size the widen measures from. */
+	 * liveness rule, stated once here and reused by the plan below, the mounted
+	 * size the widen measures from, and the reader's display mode — the same value
+	 * the plan below is handed, so the step cannot measure a paint the reader is not
+	 * looking at (M1/Q1). */
 	widenInputs.current = {
 		live: paneIsLive,
 		openRuns,
+		mode: parseTranscriptDisplayMode(transcriptDisplayMode),
 		mounted: alignSize,
 	};
 
@@ -3612,8 +3650,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				live: working !== null || gate !== null,
 				focusHold: focusedRecordId,
 				openRuns,
+				/*
+				 * THE READER'S DISPLAY MODE (issue #756), read HERE and parsed on the way
+				 * in: the store rehydrates past its setters, so a token this build does
+				 * not know must land on the default rather than reach the partition.
+				 * `parseTranscriptDisplayMode` is the one judge of that (the read-side
+				 * pattern `parseSidebarView` sets one surface over).
+				 */
+				mode: parseTranscriptDisplayMode(transcriptDisplayMode),
 			}),
-		[visible, working, gate, focusedRecordId, openRuns],
+		[visible, working, gate, focusedRecordId, openRuns, transcriptDisplayMode],
 	);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
