@@ -118,6 +118,7 @@ import {
 import { flagTokenSelects } from "./slash-argument-rows";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashCommandInvocation } from "./slash-submit";
+import { SEPARATOR_RUN } from "./slash-token";
 
 type SlashDispatchOptions = {
 	/** Canonical session the commands address. */
@@ -1151,21 +1152,99 @@ export function useSlashDispatch({
 			 * silently widens the type instead of leaving that invariant in place.
 			 */
 			if (!sessionId) {
+				/*
+				 * THE DRAFT IDENTITY ROUTE (issue #780) — `/team` and `/agent` on a
+				 * pane with no conversation.
+				 *
+				 * These two destinations address a session in the ordinary sense,
+				 * but a New-chat pane can already carry the identity the create will
+				 * adopt (`stageDraft`'s `target`, the sidebar's "New chat with
+				 * <team>"), so the honest route here is to STAGE it rather than
+				 * refuse: `/team engineering` sets the chat's team, `/team` alone
+				 * opens the same picker a session pane gets — whose draft branch
+				 * reads the sessionless roster and stages on its pick.
+				 *
+				 * The remaining text is a MESSAGE for the team, exactly as it is on
+				 * a session (`/team engineering write the docs` — the tail becomes
+				 * the first message's draft); the name is the first token, the same
+				 * split `name_argument` publishes. The composer clears the line on
+				 * `consumed`, so the tail is WRITTEN to the re-staged draft here,
+				 * or it would be lost in that clear.
+				 *
+				 * Keyed on the ROW's `draftIdentity` opt-in, not on the
+				 * destination string and not on `destinationNeedsSession` below:
+				 * that predicate answers "does this address a conversation", which
+				 * stays true (the palette's route question and the two copy sites
+				 * depend on it), while this branch answers the pane-specific "can
+				 * the draft carry it" that the registry row now records.
+				 */
+				const draftKind =
+					entry?.kind === "picker" ? entry.draftIdentity : undefined;
+				/*
+				 * `/team chart` is the team destination's RESERVED first argument (the
+				 * backend's own test — `local_operator/server/utils/desktop_commands.py:186`:
+				 * `args == "chart" or args.startswith("chart ")`): it opens the org-chart
+				 * read, which resolves against a live session, so the draft exemption
+				 * (below) deliberately does not cover it and the standard refusal answers
+				 * in its place — "chart" is a legal slug, so staging it as a team by that
+				 * name would be silent.
+				 */
+				const chartForm =
+					draftKind === "team" &&
+					(args === "chart" || args.startsWith("chart "));
 				if (destinationNeedsSession(spec.destination)) {
-					note(
-						`/${spec.name} needs an open conversation. Start one first.`,
-						true,
-					);
-					return "consumed";
+					/*
+					 * THE REFUSAL SITS FIRST, AND THE DRAFT EXEMPTION NESTS INSIDE IT
+					 * (the CI-red this round repairs). `panel-presentation.test.mjs`
+					 * pins the order POSITIONALLY: the refusal sentence must precede
+					 * the gate's presenter call in this source. The draft route's
+					 * presenter is the shared picker branch BELOW (its call is that
+					 * pin's subject), and before this repair the stage branch called a
+					 * presenter above this sentence, tripping the pin. A draft-eligible
+					 * row is therefore exempted HERE, where the refusal is — `/team
+					 * chart` (the one form the draft route must not read as a name)
+					 * stays unexempted and refuses like any other ineligible row.
+					 */
+					if (!(draftKind && !chartForm)) {
+						note(
+							`/${spec.name} needs an open conversation. Start one first.`,
+							true,
+						);
+						return "consumed";
+					}
 				}
 				/*
-				 * Two kinds reach here, and each presents by its own agreement rather
+				 * THE DRAFT IDENTITY ROUTE's stage half (issue #780; the route's
+				 * rationale is the comment above `draftKind`). Sits AFTER the refusal
+				 * block and calls no presenter of its own — a bare row falls through to
+				 * the picker branch below, so the gate keeps ONE presenter call site,
+				 * positioned after the refusal sentence.
+				 */
+				if (draftKind && !chartForm) {
+					const argument = args.trim();
+					const name = argument.split(SEPARATOR_RUN)[0] ?? "";
+					if (name) {
+						useCanonicalSessionsStore
+							.getState()
+							.restageDraft(
+								{ kind: draftKind, name },
+								argument.slice(name.length).trim(),
+							);
+						return "consumed";
+					}
+				}
+				/*
+				 * Three kinds reach here, and each presents by its own agreement rather
 				 * than through the owner round trip below: the machine panels
-				 * (`/info`, `/usage`, `/analytics`) and the `sessionless` picker rows
-				 * (issue #625; `/help`, `/theme`, `/login`, `/logout`, `/resume`).
-				 * The kinds are read here because the predicate's answer above is the
-				 * whole of the test — everything it exempts is presentable on a pane
-				 * with none, and nothing else passes the refusal.
+				 * (`/info`, `/usage`, `/analytics`), the `sessionless` picker rows
+				 * (issue #625; `/help`, `/theme`, `/login`, `/logout`, `/resume`), and
+				 * a BARE draft-eligible row (issue #780's `/team` with no name), whose
+				 * stage half above staged nothing and whose presenter is this branch's
+				 * own — the one call site the positional pin in
+				 * `panel-presentation.test.mjs` protects. The kinds are read here
+				 * because the predicate's answer above is the whole of the test —
+				 * everything it exempts is presentable on a pane with none, and
+				 * nothing else passes the refusal.
 				 */
 				if (entry?.kind === "picker") {
 					presentSessionlessPicker(spec, args);
