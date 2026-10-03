@@ -58,11 +58,17 @@ import { AskPanel } from "./ask-panel";
  *
  * The tab-reachable set, in DOM order, and nothing else: `[tabindex]` is included
  * for controls made reachable deliberately, and the disabled/`aria-disabled`
- * exclusions are the same ones the app's other focus walks use - a disabled
- * `Send answer` must not become the landing stop.
+ * exclusions are the ones this app actually uses to make a control inert - it puts
+ * `aria-disabled` on controls it keeps mounted and focusable-looking
+ * (`inline-edit-controls.tsx`, `autocomplete-field.tsx`, the credential-ask row in
+ * `message-input.tsx`) rather than removing them, so a walk that honoured only the
+ * native attribute would land on the first inert control the moment one appears in
+ * this panel. No such control is in the panel today; the exclusion is here because
+ * the doc promised it and because the next one will not announce itself (agent
+ * review round 2, F6).
  */
 const ASK_PANEL_FOCUSABLE =
-	'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), input:not([disabled]), select:not([disabled]), textarea:not([disabled])';
+	'a[href]:not([aria-disabled="true"]), button:not([disabled]):not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]):not([aria-disabled="true"]), input:not([disabled]):not([aria-disabled="true"]), select:not([disabled]):not([aria-disabled="true"]), textarea:not([disabled]):not([aria-disabled="true"])';
 
 export type AskSurfacesProps = {
 	frontend: Pick<
@@ -207,10 +213,14 @@ export const AskSurfaces = ({
 	 * has already written the new value (found by the round-1 driven test - the
 	 * return-to-item half silently stopped firing the moment the enter half landed).
 	 *
-	 * The ref is written BEFORE either branch returns, so a mount (`was === expanded`)
-	 * is not a transition in either direction.
+	 * The ref SEEDS with the mount's own value, so a mount is not a transition in
+	 * either direction: a panel that arrives already open (`defaultOpen`, or a host
+	 * that pins the flag) must not run the enter branch, whose guard would be the only
+	 * thing standing between it and a focus move on arrival - the exact focus theft
+	 * the lane forbids. `useRef(false)` looked equivalent and was not (agent review
+	 * round 2, F8).
 	 */
-	const wasExpanded = useRef(false);
+	const wasExpanded = useRef(expanded);
 	useLayoutEffect(() => {
 		const was = wasExpanded.current;
 		wasExpanded.current = expanded;
@@ -292,7 +302,17 @@ export const AskSurfaces = ({
 			 * second tab stop in front of the options when it has some.
 			 */
 			tabIndex={-1}
-			className={cn(className, "flex flex-col outline-none")}
+			/*
+			 * NO `outline-none`, DELIBERATELY (agent review round 2, F9; UX round 2, U4).
+			 * This root is the one scripted landing stop the panel has, so when a settled
+			 * queue is opened by keyboard the focus the reader's own press moved must be
+			 * VISIBLE: the base layer paints the app's `:focus-visible` ring on any focused
+			 * element (`styles/index.css`, `html :focus-visible`), which is exactly what the
+			 * chips beside it rely on, and suppressing it here made this the one landing that
+			 * painted nothing. A container with no controls needs no decoration of its own -
+			 * only an indicator that the keyboard is on it.
+			 */
+			className={cn(className, "flex flex-col")}
 			data-lo-ask-surfaces=""
 			/*
 			 * Esc collapses rather than declines (see the module note). Claimed with

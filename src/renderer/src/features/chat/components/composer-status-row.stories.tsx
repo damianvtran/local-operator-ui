@@ -2190,6 +2190,7 @@ const AskBand = ({
 	tally,
 	defaultOpen = false,
 	drive = false,
+	focusPanel = false,
 }: {
 	width?: number;
 	label: string;
@@ -2202,9 +2203,12 @@ const AskBand = ({
 	defaultOpen?: boolean;
 	/** Press the chip on mount and hold the shutter until the panel is up. */
 	drive?: boolean;
+	/** Focus the chip, press it, and hold the shutter until focus lands. */
+	focusPanel?: boolean;
 }) => {
 	const [open, setOpen] = useState(defaultOpen);
 	usePressTheChipOnce(drive);
+	useFocusThePanelOnce(focusPanel);
 	/*
 	 * The published override for the truncated case: the WIRE's cap is what makes
 	 * the split unknowable, so the fixture states both halves of that fact - the
@@ -2260,6 +2264,45 @@ const usePressTheChipOnce = (enabled: boolean) => {
 		chip.click();
 		const poll = window.setInterval(() => {
 			if (!document.querySelector("[data-lo-ask-surfaces]")) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, [enabled]);
+};
+
+/**
+ * Focus the chip, PRESS it, and hold the shutter until focus lands in the panel.
+ *
+ * This is the SETTLED case's keyboard path, and it cannot be a pinned state: the
+ * landing stop is produced by the panel's own focus move, which only fires on a
+ * transition that found focus on the item - so the story has to do what the user
+ * does (`focus()` then `click()`, in that order: a scripted click alone moves no
+ * focus). What the frame is for is the FOCUS RING on that stop (agent review round
+ * 2, F9; UX round 2, U4): a still has no focus, so the one panel visual no other
+ * frame in the set can carry has to be produced by a story that puts focus there.
+ *
+ * The poll waits for the ring's own condition rather than for the panel: the panel
+ * mounts a paint before focus moves into it, and a frame taken in between would
+ * show a panel with the keyboard nowhere.
+ */
+const useFocusThePanelOnce = (enabled: boolean) => {
+	useEffect(() => {
+		if (!enabled) return;
+		const chips = document.querySelectorAll<HTMLButtonElement>(
+			"[data-lo-ask-item-toggle]",
+		);
+		const chip = chips[chips.length - 1];
+		if (!chip) return;
+		document.documentElement.dataset.capturePending = "1";
+		chip.focus();
+		chip.click();
+		const poll = window.setInterval(() => {
+			const panel = document.querySelector("[data-lo-ask-surfaces]");
+			if (!panel || !panel.contains(document.activeElement)) return;
 			window.clearInterval(poll);
 			document.documentElement.removeAttribute("data-capture-pending");
 		}, 40);
@@ -2491,6 +2534,32 @@ export const AskDriven: Story = {
 			label="Pressed, not pinned: the chip clicks itself after paint and the panel opens from it"
 			asks={[ASK_OPEN]}
 			drive
+		/>
+	),
+};
+
+/**
+ * The SETTLED panel's landing stop, FOCUSED: the ring the app's base layer paints.
+ *
+ * The one panel visual a still otherwise cannot carry, so it needs a story that
+ * puts focus there rather than a pinned flag (agent review round 2, F9; UX round 2,
+ * U4). A settled queue has no controls to land on, so the panel ROOT is the stop -
+ * `tabIndex={-1}` plus the app's `html :focus-visible` rule, which is what the root
+ * no longer suppresses with `outline-none`. The chip is focused and then pressed,
+ * exactly as a keyboard user reaches it, because the app's focus move is guarded on
+ * the transition finding focus on the item.
+ *
+ * AFTER-ONLY, like `driven-open`: the old surface's panel had no scripted landing
+ * stop at all, so there is no before half to pair with this (the set's README says
+ * so).
+ */
+export const AskFocusedPanel: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Settled and focused: the panel root carries the keyboard, and the ring shows it"
+			asks={[ASK_ANSWERED]}
+			focusPanel
 		/>
 	),
 };
