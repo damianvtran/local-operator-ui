@@ -31,7 +31,7 @@
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import type { AskQueueView } from "../../ask-queue";
-import { askBarLabel, askBarText, askDeadlineText } from "../../ask-queue";
+import { askBarDeadline, askBarLabel, askBarText } from "../../ask-queue";
 
 export type AskBarProps = {
 	view: AskQueueView;
@@ -88,23 +88,28 @@ export const AskBar = ({
 	/*
 	 * THE DEADLINE ON THE COLLAPSED BAR (audit). It used to live only on the panel
 	 * row, so the one number a reader needs to triage - how long is left - was
-	 * behind the very click they were deciding whether to make. The SOONEST
-	 * deadline across the waiting asks is what decides that, and it is rendered
-	 * against the carrier's clock so it ticks with the panel's copy rather than
-	 * beside it.
+	 * behind the very click they were deciding whether to make. It is composed by
+	 * `askBarDeadline` rather than here, because the SPAN and the BUTTON'S NAME
+	 * both carry it and two compositions of one reading is the drift this file has
+	 * already been bitten by twice (UX round 1's U2, design round 1's D4).
 	 *
-	 * Null when nothing waiting carries a readable deadline, in which case the
-	 * span is absent rather than an empty slot.
+	 * Null when nothing waiting carries a readable deadline, or when the frame is
+	 * truncated and a queue-scope countdown cannot be derived from a prefix (design
+	 * round 1, D6) - in which case the span is absent rather than an empty slot.
 	 */
-	const deadline =
-		view.soonestExpiryMs === null
-			? null
-			: askDeadlineText(view.soonestExpiryMs, nowMs);
+	const deadline = askBarDeadline(view, nowMs);
 
 	return (
 		<div
 			data-lo-ask-bar={expanded ? "expanded" : "minimized"}
-			className={cn("flex w-full shrink-0", className)}
+			/*
+			 * `@container` (container-type: inline-size) so the deadline can YIELD to
+			 * the question at narrow widths without a media query guessing the app's
+			 * window size: the bar measures ITSELF, and the chat column is a fraction
+			 * of the window (about 300px at the app's own 800px minimum). See the
+			 * deadline span's own variant for the rule and its floor.
+			 */
+			className={cn("@container flex w-full shrink-0", className)}
 		>
 			<button
 				type="button"
@@ -131,7 +136,7 @@ export const AskBar = ({
 				 * full-stop rule (a question already ends in one - QA round 2, Q-3) is
 				 * assertable without opening a story.
 				 */
-				aria-label={askBarLabel(view, expanded)}
+				aria-label={askBarLabel(view, expanded, nowMs)}
 				className={cn(
 					"flex w-full min-w-0 items-center gap-2 rounded-md px-3 py-1.5 text-left",
 					// The composer status chip's own triple: a `surface` fill with a
@@ -151,11 +156,11 @@ export const AskBar = ({
 						// what it means: this glyph is what says a question is outstanding.
 						// Persistent, never animated.
 						// The GLYPH keeps the muted role when nothing is outstanding, and
-						// takes WARNING - not accent - when an outstanding ask is URGENT, which
-						// is the one urgency cue the collapsed bar has room for.
-						// (Round 1's D3 premise - the muted pair failing AA here - was refuted
-						// by the design round's own re-measurement: 7.85:1 dark / 8.19:1
-						// light, contract-floored at 5.5:1; the sentence keeps its `ink`.)
+						// takes WARNING - not accent - when an ask the bar COUNTS AS WAITING is
+						// urgent (UX round 1's U1, design round 1's D1: scoped to the outstanding
+						// set, a moved-on ask's stale urgency spent the bar's one warning ink
+						// over a queue nothing was waiting on).
+						// The 7.85:1 / 8.19:1 re-measurement below is the standing one.
 						settledOnly
 							? "text-ink-muted"
 							: view.urgent
@@ -166,21 +171,39 @@ export const AskBar = ({
 					?
 				</span>
 				{/*
-				 * `text-ink`, not `text-ink-muted`: measured on the bar's own
-				 * `surface`, the muted role is 3.59:1 dark / 3.66:1 light, under AA for
-				 * the 14px sentence that carries the whole point of the chip (design
-				 * round 1, D3). `ink` clears it in both palettes, and the accent glyph
-				 * carries the emphasis instead of a second text role.
+				 * `text-ink`, not `text-ink-muted`: the muted pair was ONCE measured at
+				 * 3.59:1 here and that measurement was REFUTED by the design round's own
+				 * re-read of the tokens - `ink-muted` on the bar's `surface` is 7.85:1
+				 * dark / 8.19:1 light, contract-floored at 5.5:1 (the earlier round's D3
+				 * premise; the refutation is recorded in the glyph comment above, and the
+				 * 3.59 belongs in the removed-premise pile rather than beside this line -
+				 * design round 1 of THIS change, D7). `ink` still carries the sentence,
+				 * and the glyph carries the emphasis instead of a second text role.
 				 */}
 				<span className="min-w-0 flex-1 truncate text-ink">{label}</span>
 				{deadline === null ? null : (
 					/*
 					 * The triage reading, beside the sentence and before the truncation
-					 * clause: `shrink-0` so it is never the half that yields, and
-					 * `text-ink-muted` because the countdown is a SECONDARY fact beside the
-					 * question - the accent/glyph already carries "an ask is outstanding".
+					 * clause: `shrink-0` so it is never the half that ellipsises into a
+					 * number nobody can read, and `text-ink-muted` because the countdown is a
+					 * SECONDARY fact beside the question.
+					 *
+					 * IT YIELDS ENTIRELY AT THE NARROWEST COLUMNS, rather than being
+					 * protected at the question's expense (UX round 1's U3). Measured at the
+					 * story's 617px pane: the deadline block is 83px `shrink-0` plus its gap,
+					 * and every other sibling is fixed too, so the question - the one thing
+					 * the bar exists to name - is the half that gets squeezed. Below 20rem
+					 * (320px) of BAR width it is not rendered at all, which is the width the
+					 * app's OWN minimum window (800x600) leaves for the pane - about 268px of
+					 * bar, measured on the `pane-floor` frame - so the question keeps its
+					 * room exactly where the room runs out, and the panel row still prints
+					 * the same countdown for the same ask. Above it both fit; at 617px the
+					 * question ellipsises to make the deadline's 83px, which is the trade the
+					 * design round's own D2/D3 asked to see photographed.
 					 */
-					<span className="shrink-0 text-ink-muted text-xs">{deadline}</span>
+					<span className="hidden shrink-0 text-ink-muted text-xs @[20rem]:inline">
+						{deadline}
+					</span>
 				)}
 				{view.truncated ? (
 					/*
