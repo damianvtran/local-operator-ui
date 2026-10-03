@@ -1296,12 +1296,18 @@ const storyFileFor = (name, setPath, index, root) => {
  * `common-connectivity-banner-baseline`, is exactly a set with no
  * `capturedAtHead`), while the COMPARISON is skipped for sets whose
  * `capturedAtHead` is missing or shorter than a sha, since there is no stamp
- * to compare against. For a resolved name and a stamp, `git log -1
- * --format=%H -- <file>` names the last commit to touch the file, and the
- * advisory fires when that commit is not an ancestor of `capturedAtHead` -
- * i.e. the file moved on a lineage the capture does not include. A path git
- * answers nothing for (untracked, or outside this history) is left alone: the
- * advisory speaks only when it can.
+ * to compare against. For a resolved name and a stamp, the stamp must first be
+ * ANSWERABLE - `rev-parse --quiet --verify <sha>^{commit}`, the same
+ * resolvability question `citationFailures` asks - because `merge-base
+ * --is-ancestor` exits 1 for "not an ancestor" and 128 for "cannot answer"
+ * (a missing object, e.g. a branch commit kept alive only by a local ref) and
+ * the reader folds both to null: without the gate, a stamp this history has
+ * never heard of fires as drift while the citation gate - the one that should
+ * report it - is the loud half. Then `git log -1 --format=%H -- <file>` names
+ * the last commit to touch the file, and the advisory fires when that commit
+ * is not an ancestor of `capturedAtHead` - i.e. the file moved on a lineage
+ * the capture does not include. A path git answers nothing for (untracked, or
+ * outside this history) is left alone: the advisory speaks only when it can.
  *
  * THE RESOLUTION RULE, which is the part to hold against §4.2's intent ("the
  * story file the set names"): exact repository-relative path, else a basename
@@ -1333,6 +1339,20 @@ export const storyDriftReadings = (manifest, git = gitOut, root = ROOT) => {
 				continue;
 			}
 			if (typeof sha !== "string" || sha.length < 7) continue;
+			/*
+			 * The stamp must be ANSWERABLE before its ancestry is asked about.
+			 * `merge-base --is-ancestor` exits 1 for "not an ancestor" and 128
+			 * for "cannot answer" (a missing object - e.g. a branch commit kept
+			 * alive only by a local ref, which is `provider-setup-ux-before` in a
+			 * clone that fetched only origin), and the reader folds both to null;
+			 * without this gate the second reads as the first and manufactures a
+			 * drift line. `rev-parse --quiet --verify` asks the resolvability
+			 * question `citationFailures` asks (`shaReaders`), so a stamp this
+			 * history cannot answer for stays silent here - the citation gate is
+			 * what reports it, and this advisory must not guess.
+			 */
+			if (!git(["rev-parse", "--quiet", "--verify", `${sha}^{commit}`]))
+				continue;
 			const last = git(["log", "-1", "--format=%H", "--", file]);
 			if (!last) continue;
 			if (git(["merge-base", "--is-ancestor", last, sha]) !== null) continue;
