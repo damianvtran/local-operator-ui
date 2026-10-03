@@ -1,7 +1,7 @@
 # Console host end-to-end proof
 
-Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622`
-Result: 2 of 81 check(s) FAILED
+Scratch: `/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975`
+Result: 2 of 82 check(s) FAILED
 Reaped stray spawn-helper processes: 0
 
 
@@ -10,8 +10,8 @@ Reaped stray spawn-helper processes: 0
 ```
 {
   "port": 47391,
-  "session": "88e2b4a2093b",
-  "record": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/serve/90799.json"
+  "session": "4023d218fcdc",
+  "record": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/config/run/serve/96063.json"
 }
 ```
 
@@ -22,7 +22,7 @@ Reaped stray spawn-helper processes: 0
   "console": true,
   "console_surfaces": 0,
   "console_agent_surfaces": 0,
-  "pid": 91216,
+  "pid": 96129,
   "proto": 1
 }
 ```
@@ -33,7 +33,7 @@ Reaped stray spawn-helper processes: 0
 {
   "host": "ui",
   "proto": 1,
-  "pid": 91216,
+  "pid": 96129,
   "console": true,
   "capabilities": [
     "styles",
@@ -86,10 +86,10 @@ Reaped stray spawn-helper processes: 0
 
 ```
 {
-  "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+  "surface": "con:1:xAsGtK_bUgtU5QV3grWr_g",
   "cols": 120,
   "rows": 40,
-  "pid": 92396,
+  "pid": 96707,
   "live": true,
   "reveal": "none",
   "revealed": false
@@ -100,10 +100,10 @@ Reaped stray spawn-helper processes: 0
 
 ```
 {
-  "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+  "surface": "con:1:xAsGtK_bUgtU5QV3grWr_g",
   "cols": 120,
   "rows": 40,
-  "pid": 92396,
+  "pid": 96707,
   "live": true,
   "reveal": "none",
   "revealed": false
@@ -113,7 +113,7 @@ Reaped stray spawn-helper processes: 0
 ## PASS — the handle names its host
 
 ```
-con:1:R7IUkqIw3c2y_Mg4QqFn7w
+con:1:xAsGtK_bUgtU5QV3grWr_g
 ```
 
 ## PASS — the runtime restored the helper's exec bit (trap 1)
@@ -321,7 +321,7 @@ localOperatorDark
   },
   "dpr": 2,
   "sha256": "69e0e4ac07083927d384da872510f7029acdef1d1a4851f30788962f8083abc8",
-  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/console-con_1_R7IUkqIw3c2y_Mg4QqFn7w.png"
+  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/console-con_1_xAsGtK_bUgtU5QV3grWr_g.png"
 }
 ```
 
@@ -351,8 +351,8 @@ localOperatorDark
 
 ```
 {
-  "runningSurface": "con:5:twBhVs8fBecW_xEVUdthrw",
-  "selected": "con:5:twBhVs8fBecW_xEVUdthrw"
+  "runningSurface": "con:5:73aBC75jvsKCm5cg6A7hPQ",
+  "selected": "con:5:73aBC75jvsKCm5cg6A7hPQ"
 }
 ```
 
@@ -369,10 +369,10 @@ localOperatorDark
 
 ```
 {
-  "runningSurface": "con:5:twBhVs8fBecW_xEVUdthrw",
+  "runningSurface": "con:5:73aBC75jvsKCm5cg6A7hPQ",
   "reading": [
     {
-      "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+      "surface": "con:5:73aBC75jvsKCm5cg6A7hPQ",
       "label": "Close zsh, tab 1 of 4",
       "opacity": "1",
       "width": 28,
@@ -381,7 +381,7 @@ localOperatorDark
       "tabIndex": 0
     },
     {
-      "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+      "surface": "con:1:xAsGtK_bUgtU5QV3grWr_g",
       "label": "Close sh, tab 2 of 4",
       "opacity": "0",
       "width": 28,
@@ -390,7 +390,7 @@ localOperatorDark
       "tabIndex": 0
     },
     {
-      "surface": "con:3:s575rhFDQR_H0y49HXTOAw",
+      "surface": "con:3:W9Lig1pa77Obl7edpCy2xg",
       "label": "Dismiss sh, tab 3 of 4",
       "opacity": "0",
       "width": 28,
@@ -399,7 +399,7 @@ localOperatorDark
       "tabIndex": 0
     },
     {
-      "surface": "con:2:AYwgbmdx9PZI8E26T5NFzA",
+      "surface": "con:2:FaWGvRYlur06d1vMjwQD3w",
       "label": "Dismiss sh, tab 4 of 4",
       "opacity": "0",
       "width": 28,
@@ -415,7 +415,7 @@ localOperatorDark
 
 ```
 {
-  "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+  "surface": "con:5:73aBC75jvsKCm5cg6A7hPQ",
   "label": "Close zsh, tab 1 of 4",
   "opacity": "1",
   "width": 28,
@@ -430,7 +430,7 @@ localOperatorDark
 ```
 [
   {
-    "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+    "surface": "con:5:73aBC75jvsKCm5cg6A7hPQ",
     "label": "Close zsh, tab 1 of 4",
     "opacity": "1",
     "width": 28,
@@ -439,7 +439,7 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+    "surface": "con:1:xAsGtK_bUgtU5QV3grWr_g",
     "label": "Close sh, tab 2 of 4",
     "opacity": "0",
     "width": 28,
@@ -448,7 +448,7 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:3:s575rhFDQR_H0y49HXTOAw",
+    "surface": "con:3:W9Lig1pa77Obl7edpCy2xg",
     "label": "Dismiss sh, tab 3 of 4",
     "opacity": "0",
     "width": 28,
@@ -457,7 +457,7 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:2:AYwgbmdx9PZI8E26T5NFzA",
+    "surface": "con:2:FaWGvRYlur06d1vMjwQD3w",
     "label": "Dismiss sh, tab 4 of 4",
     "opacity": "0",
     "width": 28,
@@ -486,7 +486,7 @@ localOperatorDark
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-affordance.png",
-  "bytes": 368435,
+  "bytes": 367603,
   "size": {
     "width": 2760,
     "height": 1800
@@ -496,7 +496,7 @@ localOperatorDark
     "height": 900,
     "dpr": 2
   },
-  "sha256": "7fb447e3146a1dfe0d0cc953a09ad69fa401ae7520446acb9e578f4049566196"
+  "sha256": "43a1d9d45f83592416f1bb8b70026e881c6ba3e8682c75346120505261ee5d73"
 }
 ```
 
@@ -504,7 +504,7 @@ localOperatorDark
 
 ```
 {
-  "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+  "surface": "con:1:xAsGtK_bUgtU5QV3grWr_g",
   "hover": {
     "hovered": true,
     "opacity": "1"
@@ -517,7 +517,7 @@ localOperatorDark
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-hover-reveal.png",
-  "bytes": 369962,
+  "bytes": 369099,
   "size": {
     "width": 2760,
     "height": 1800
@@ -527,7 +527,7 @@ localOperatorDark
     "height": 900,
     "dpr": 2
   },
-  "sha256": "091b79b4931a6ad62d3d994c55ed5f98da55d081d64071953ab0cde849fa4883"
+  "sha256": "00cdce058a1bc53f0eee7a97278f8a01374d0ac4cb5f1b4c6787186f9600cf6a"
 }
 ```
 
@@ -560,7 +560,7 @@ localOperatorDark
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-focus-ring.png",
-  "bytes": 376545,
+  "bytes": 375563,
   "size": {
     "width": 2760,
     "height": 1800
@@ -570,16 +570,16 @@ localOperatorDark
     "height": 900,
     "dpr": 2
   },
-  "sha256": "d624e436ad61ca1b08709a6e51ce842f013d27672c5a4867b4628ca022aed82d"
+  "sha256": "1c97117c98d2da8eb78555d991f2eca8b3ac07b3af3fcba8cabc5e68e897bfd7"
 }
 ```
 
-## PASS — the pointer is parked off the strip and the inactive controls wait again (#754's frames after this one hold a strip nobody points at)
+## PASS — the pointer is parked off the strip and EVERY inactive control waits again (#754's frames after this one hold a strip nobody points at)
 
 ```
 [
   {
-    "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+    "surface": "con:5:73aBC75jvsKCm5cg6A7hPQ",
     "label": "Close zsh, tab 1 of 4",
     "opacity": "1",
     "width": 28,
@@ -588,7 +588,7 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
+    "surface": "con:1:xAsGtK_bUgtU5QV3grWr_g",
     "label": "Close sh, tab 2 of 4",
     "opacity": "0",
     "width": 28,
@@ -597,7 +597,7 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:3:s575rhFDQR_H0y49HXTOAw",
+    "surface": "con:3:W9Lig1pa77Obl7edpCy2xg",
     "label": "Dismiss sh, tab 3 of 4",
     "opacity": "0",
     "width": 28,
@@ -606,7 +606,7 @@ localOperatorDark
     "tabIndex": 0
   },
   {
-    "surface": "con:2:AYwgbmdx9PZI8E26T5NFzA",
+    "surface": "con:2:FaWGvRYlur06d1vMjwQD3w",
     "label": "Dismiss sh, tab 4 of 4",
     "opacity": "0",
     "width": 28,
@@ -633,7 +633,7 @@ localOperatorDark
 {
   "running": true,
   "live": true,
-  "selected": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
+  "selected": "con:1:xAsGtK_bUgtU5QV3grWr_g"
 }
 ```
 
@@ -642,7 +642,7 @@ localOperatorDark
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-question.png",
-  "bytes": 372674,
+  "bytes": 372493,
   "size": {
     "width": 2760,
     "height": 1800
@@ -652,7 +652,7 @@ localOperatorDark
     "height": 900,
     "dpr": 2
   },
-  "sha256": "fdce208d002471271494f5d1fd693329e41985fd2fcd830a543f9431524556b8"
+  "sha256": "96146c18652921dfdea834d3a381b7a25fe7515cf81381261e3d04d0e4f513cd"
 }
 ```
 
@@ -668,7 +668,7 @@ localOperatorDark
 
 ```
 {
-  "historyLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_5_twBhVs8fBecW_xEVUdthrw.log"
+  "historyLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/config/run/ui-console/history/4023d218fcdc/con_5_73aBC75jvsKCm5cg6A7hPQ.log"
 }
 ```
 
@@ -692,14 +692,14 @@ localOperatorDark
     "ok": false,
     "error": {
       "code": "surface_unavailable",
-      "message": "no console surface named con:5:twBhVs…; 3 exist",
+      "message": "no console surface named con:5:73aBC7…; 3 exist",
       "data": {
-        "surface": "con:5:twBhVs…",
+        "surface": "con:5:73aBC7…",
         "count": 3
       }
     }
   },
-  "elapsedMs": 8407
+  "elapsedMs": 14318
 }
 ```
 
@@ -707,8 +707,8 @@ localOperatorDark
 
 ```
 {
-  "closed": "con:5:twBhVs8fBecW_xEVUdthrw",
-  "selectedAfterClose": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
+  "closed": "con:5:73aBC75jvsKCm5cg6A7hPQ",
+  "selectedAfterClose": "con:1:xAsGtK_bUgtU5QV3grWr_g"
 }
 ```
 
@@ -716,8 +716,32 @@ localOperatorDark
 
 ```
 {
-  "selectedAfterClose": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
-  "handedOff": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
+  "selectedAfterClose": "con:1:xAsGtK_bUgtU5QV3grWr_g",
+  "handedOff": "con:1:xAsGtK_bUgtU5QV3grWr_g"
+}
+```
+
+## PASS — the keyboard's landing is armed and visible: the successor tab holds focus, `:focus-visible`, and its ring fits the strip's clip (design round 2, D6)
+
+```
+{
+  "isTab": true,
+  "focusVisible": true,
+  "outline": "solid 2px offset 2px",
+  "reach": 4,
+  "ring": {
+    "top": 72,
+    "bottom": 108,
+    "left": 744,
+    "right": 799.34375
+  },
+  "clip": {
+    "top": 72,
+    "bottom": 109,
+    "left": 740,
+    "right": 1380
+  },
+  "fits": true
 }
 ```
 
@@ -726,7 +750,7 @@ localOperatorDark
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-closed.png",
-  "bytes": 398714,
+  "bytes": 398042,
   "size": {
     "width": 2760,
     "height": 1800
@@ -736,26 +760,7 @@ localOperatorDark
     "height": 900,
     "dpr": 2
   },
-  "sha256": "dbdd3ced3cbaff8de1bb36bf4ab019ae8348d8b34c4a3050812a65b0b4929cb6"
-}
-```
-
-## frame close-focus-handoff.png
-
-```
-{
-  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-focus-handoff.png",
-  "bytes": 398829,
-  "size": {
-    "width": 2760,
-    "height": 1800
-  },
-  "viewport": {
-    "width": 1380,
-    "height": 900,
-    "dpr": 2
-  },
-  "sha256": "bb969f6133479fe57e3aea474c94c3c1a9538063dbc49b02344cf154dcb14943"
+  "sha256": "1ce0f0c9b0b9c5dd506b40cd093a3a1865734c4512fec6254e7208e28cea9cda"
 }
 ```
 
@@ -763,7 +768,7 @@ localOperatorDark
 
 ```
 {
-  "historyLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_5_twBhVs8fBecW_xEVUdthrw.log"
+  "historyLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/config/run/ui-console/history/4023d218fcdc/con_5_73aBC75jvsKCm5cg6A7hPQ.log"
 }
 ```
 
@@ -796,12 +801,12 @@ null
       "x": 0,
       "y": 1
     },
-    "last_activity": 1790975206.62,
+    "last_activity": 1790987465.846,
     "retain": true,
     "secure": false,
     "env_marker": {
       "name": "LOCAL_OPERATOR_CONSOLE_SURFACE",
-      "value": "con:6:eYOAXVSd6iRcAYLLPCskUw"
+      "value": "con:6:7BKn3Ona6_ON0CGExZ3LqA"
     }
   }
 }
@@ -811,7 +816,7 @@ null
 
 ```
 {
-  "dismissedLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_6_eYOAXVSd6iRcAYLLPCskUw.log"
+  "dismissedLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/config/run/ui-console/history/4023d218fcdc/con_6_7BKn3Ona6_ON0CGExZ3LqA.log"
 }
 ```
 
@@ -829,7 +834,7 @@ null
 {
   "gone": true,
   "historyRemoved": true,
-  "dismissedLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_6_eYOAXVSd6iRcAYLLPCskUw.log"
+  "dismissedLog": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/config/run/ui-console/history/4023d218fcdc/con_6_7BKn3Ona6_ON0CGExZ3LqA.log"
 }
 ```
 
@@ -837,8 +842,8 @@ null
 
 ```
 {
-  "dismissed": "con:6:eYOAXVSd6iRcAYLLPCskUw",
-  "selectedAfterDismiss": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
+  "dismissed": "con:6:7BKn3Ona6_ON0CGExZ3LqA",
+  "selectedAfterDismiss": "con:1:xAsGtK_bUgtU5QV3grWr_g"
 }
 ```
 
@@ -846,8 +851,8 @@ null
 
 ```
 {
-  "selectedAfterDismiss": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
-  "handedOffAfterDismiss": "con:1:R7IUkqIw3c2y_Mg4QqFn7w"
+  "selectedAfterDismiss": "con:1:xAsGtK_bUgtU5QV3grWr_g",
+  "handedOffAfterDismiss": "con:1:xAsGtK_bUgtU5QV3grWr_g"
 }
 ```
 
@@ -856,7 +861,7 @@ null
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-dismissed.png",
-  "bytes": 398406,
+  "bytes": 398165,
   "size": {
     "width": 2760,
     "height": 1800
@@ -866,7 +871,7 @@ null
     "height": 900,
     "dpr": 2
   },
-  "sha256": "bebd98ffa58a7e2bd80e189d756897a7f54a23864c8c1d0be71ea78684acd752"
+  "sha256": "1d0bb4dcb6a55b9d5093814a144a3e274bc9a98be9311848190879c6c30994a4"
 }
 ```
 
@@ -881,17 +886,17 @@ null
   },
   "withdrew": true,
   "exitRow": {
-    "surface": "con:7:zGX0-TEVT0xF1neNZCcbXw",
-    "session_id": "88e2b4a2093b",
+    "surface": "con:7:0Ra4i_iaCCtUkxkK_LQaMA",
+    "session_id": "4023d218fcdc",
     "origin": "user",
     "command": "zsh",
     "argv_tail": "",
-    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
     "cols": 80,
     "rows": 44,
     "running": false,
     "exit_code": 0,
-    "last_activity": 1790975297.728,
+    "last_activity": 1790987558.363,
     "live": true,
     "agent_owned": false,
     "last_actor": "agent"
@@ -903,8 +908,8 @@ null
 
 ```
 {
-  "exitUnderQuestion": "con:7:zGX0-TEVT0xF1neNZCcbXw",
-  "focusedAfterWithdraw": "con:7:zGX0-TEVT0xF1neNZCcbXw"
+  "exitUnderQuestion": "con:7:0Ra4i_iaCCtUkxkK_LQaMA",
+  "focusedAfterWithdraw": "con:7:0Ra4i_iaCCtUkxkK_LQaMA"
 }
 ```
 
@@ -919,7 +924,7 @@ null
   "rows": 46,
   "bytes": 47039,
   "sha256": "50365f2d44072772781fea53b26d17251957a3786ef58579745fd624925770bd",
-  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/console-con_1_R7IUkqIw3c2y_Mg4QqFn7w-offscreen.png"
+  "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/console-con_1_xAsGtK_bUgtU5QV3grWr_g-offscreen.png"
 }
 ```
 
@@ -945,20 +950,20 @@ null
 ```
 {
   "alpha1": {
-    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
-    "bytes": 13090,
+    "sha": "80f49d6ac1f79f636d7b8a268c93e027c7e6b4149a30453aa1f0f14b6e5679f3",
+    "bytes": 12738,
     "rendered": "offscreen",
     "attempts": 1
   },
   "beta": {
-    "sha": "0f2c0ff933df3ad29f198ecdb54aef55b706216f1225baabe1dadbb7d2bdbebb",
-    "bytes": 12765,
+    "sha": "c023765882fec1c69783451eb79ce0524ae9b899463aa58903044ff370cd1249",
+    "bytes": 11889,
     "rendered": "offscreen",
     "attempts": 1
   },
   "alpha2": {
-    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
-    "bytes": 13090,
+    "sha": "80f49d6ac1f79f636d7b8a268c93e027c7e6b4149a30453aa1f0f14b6e5679f3",
+    "bytes": 12738,
     "rendered": "offscreen",
     "attempts": 1
   },
@@ -976,14 +981,14 @@ null
 ```
 {
   "alpha1": {
-    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
-    "bytes": 13090,
+    "sha": "80f49d6ac1f79f636d7b8a268c93e027c7e6b4149a30453aa1f0f14b6e5679f3",
+    "bytes": 12738,
     "rendered": "offscreen",
     "attempts": 1
   },
   "beta": {
-    "sha": "0f2c0ff933df3ad29f198ecdb54aef55b706216f1225baabe1dadbb7d2bdbebb",
-    "bytes": 12765,
+    "sha": "c023765882fec1c69783451eb79ce0524ae9b899463aa58903044ff370cd1249",
+    "bytes": 11889,
     "rendered": "offscreen",
     "attempts": 1
   }
@@ -995,14 +1000,14 @@ null
 ```
 {
   "alpha1": {
-    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
-    "bytes": 13090,
+    "sha": "80f49d6ac1f79f636d7b8a268c93e027c7e6b4149a30453aa1f0f14b6e5679f3",
+    "bytes": 12738,
     "rendered": "offscreen",
     "attempts": 1
   },
   "alpha2": {
-    "sha": "c80253c4a5c37fd4d53e34c41696442190abd77f505507959f76efa420429407",
-    "bytes": 13090,
+    "sha": "80f49d6ac1f79f636d7b8a268c93e027c7e6b4149a30453aa1f0f14b6e5679f3",
+    "bytes": 12738,
     "rendered": "offscreen",
     "attempts": 1
   }
@@ -1019,8 +1024,8 @@ null
     "rendered": "offscreen",
     "attempts": 1
   },
-  "alphaBytes": 13090,
-  "betaBytes": 12765
+  "alphaBytes": 12738,
+  "betaBytes": 11889
 }
 ```
 
@@ -1029,14 +1034,14 @@ null
 ```
 [
   {
-    "sha": "b03cf1a2a788a64f5ee32f8df6ff803f0f1810c1f95ef0810292d48e08806e02",
-    "bytes": 81631,
+    "sha": "adb8f88cb4859e9a39699884afa4648977a9360508fb83b035dd446864010119",
+    "bytes": 81760,
     "rendered": "offscreen",
     "attempts": 1
   },
   {
-    "sha": "2318dab95bd2b976a9cca847f942d8f34030c895d251e2eb8d54d9522bd5f0b1",
-    "bytes": 81780,
+    "sha": "f310a86906d1a19810b9906fff3284da63d0e60366cfae4c1829e7f0a35f8988",
+    "bytes": 81751,
     "rendered": "offscreen",
     "attempts": 1
   },
@@ -1047,14 +1052,14 @@ null
     "attempts": 1
   },
   {
-    "sha": "fbfd72336edb6f59743d4408e8c00bcebbc40e1a2ee9e22722a51fbf5c978668",
-    "bytes": 81555,
+    "sha": "9145348b0922bb0ce80a6d02a4b846dabbe5bc848acc3bae7c9a672045153d3d",
+    "bytes": 81574,
     "rendered": "offscreen",
     "attempts": 1
   },
   {
-    "sha": "0041d6089569cf901424f24a8384eff5795ccd9c315865e79962f7ef674cb553",
-    "bytes": 81570,
+    "sha": "be29ffc36f8e211d71ae087bb4f9b92de7c1c0fbf5dcb912699ea22f584d64d7",
+    "bytes": 81563,
     "rendered": "offscreen",
     "attempts": 1
   }
@@ -1066,14 +1071,14 @@ null
 ```
 [
   {
-    "sha": "b03cf1a2a788a64f5ee32f8df6ff803f0f1810c1f95ef0810292d48e08806e02",
-    "bytes": 81631,
+    "sha": "adb8f88cb4859e9a39699884afa4648977a9360508fb83b035dd446864010119",
+    "bytes": 81760,
     "rendered": "offscreen",
     "attempts": 1
   },
   {
-    "sha": "2318dab95bd2b976a9cca847f942d8f34030c895d251e2eb8d54d9522bd5f0b1",
-    "bytes": 81780,
+    "sha": "f310a86906d1a19810b9906fff3284da63d0e60366cfae4c1829e7f0a35f8988",
+    "bytes": 81751,
     "rendered": "offscreen",
     "attempts": 1
   },
@@ -1084,14 +1089,14 @@ null
     "attempts": 1
   },
   {
-    "sha": "fbfd72336edb6f59743d4408e8c00bcebbc40e1a2ee9e22722a51fbf5c978668",
-    "bytes": 81555,
+    "sha": "9145348b0922bb0ce80a6d02a4b846dabbe5bc848acc3bae7c9a672045153d3d",
+    "bytes": 81574,
     "rendered": "offscreen",
     "attempts": 1
   },
   {
-    "sha": "0041d6089569cf901424f24a8384eff5795ccd9c315865e79962f7ef674cb553",
-    "bytes": 81570,
+    "sha": "be29ffc36f8e211d71ae087bb4f9b92de7c1c0fbf5dcb912699ea22f584d64d7",
+    "bytes": 81563,
     "rendered": "offscreen",
     "attempts": 1
   }
@@ -1114,17 +1119,17 @@ armed
     "rows": 33
   },
   "paneGrid": {
-    "surface": "con:1:R7IUkqIw3c2y_Mg4QqFn7w",
-    "session_id": "88e2b4a2093b",
+    "surface": "con:1:xAsGtK_bUgtU5QV3grWr_g",
+    "session_id": "4023d218fcdc",
     "origin": "agent",
     "command": "sh",
     "argv_tail": "-f -i",
-    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
     "cols": 110,
     "rows": 33,
     "running": true,
     "exit_code": null,
-    "last_activity": 1790975478.86,
+    "last_activity": 1790987741.005,
     "live": true,
     "agent_owned": true,
     "last_actor": "agent",
@@ -1143,14 +1148,14 @@ armed
 {
   "read": {
     "code": "secure_input_active",
-    "message": "con:1:R7IUkq… is in secure input; reads and captures are refused until it is turned off",
+    "message": "con:1:xAsGtK… is in secure input; reads and captures are refused until it is turned off",
     "data": {
       "secure": true
     }
   },
   "screenshot": {
     "code": "secure_input_active",
-    "message": "con:1:R7IUkq… is in secure input; reads and captures are refused until it is turned off",
+    "message": "con:1:xAsGtK… is in secure input; reads and captures are refused until it is turned off",
     "data": {
       "secure": true
     }
@@ -1166,7 +1171,7 @@ armed
   "bytesAfter": 13,
   "truncatedWhileSecure": false,
   "reopenedHoldsMarker": true,
-  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_12__IiN5OFEsB3x5e9YO9miXg.log"
+  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/config/run/ui-console/history/4023d218fcdc/con_12_e2MdXzzBZ_a0UxOGratLkg.log"
 }
 ```
 
@@ -1294,12 +1299,12 @@ armed
     "x": 0,
     "y": 1
   },
-  "last_activity": 1790975503.765,
+  "last_activity": 1790987766.536,
   "retain": false,
   "secure": false,
   "env_marker": {
     "name": "LOCAL_OPERATOR_CONSOLE_SURFACE",
-    "value": "con:13:0v_wNdgr_n9uJO_kcNPP6w"
+    "value": "con:13:FCKH8XSc-YpdmKtrl_P4eA"
   }
 }
 ```
@@ -1335,7 +1340,7 @@ armed
 ```
 {
   "code": "process_exited",
-  "message": "con:13:0v_wNd… has exited with code 5; its output is still readable",
+  "message": "con:13:FCKH8X… has exited with code 5; its output is still readable",
   "data": {
     "exit_code": 5,
     "retain": false
@@ -1356,7 +1361,7 @@ armed
 
 ```
 {
-  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/config/run/ui-console/history/88e2b4a2093b/con_14_-sDh8Ed0TdA1_GqTYG4Uhw.log",
+  "file": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/config/run/ui-console/history/4023d218fcdc/con_14_kikqztqsZO7bLgR_vaR8IQ.log",
   "mode": 384
 }
 ```
@@ -1374,14 +1379,14 @@ armed
 ```
 {
   "baselineMs": {
-    "max": 1208,
-    "median": 1060
+    "max": 1070,
+    "median": 1052
   },
   "floodMs": {
     "answered": 1,
-    "median": 1048,
-    "p95": 1048,
-    "max": 1048
+    "median": 1035,
+    "p95": 1035,
+    "max": 1035
   },
   "ceilings": {
     "median": 100,
@@ -1391,9 +1396,9 @@ armed
   "exit_epoch": 1,
   "bytes": 8388608,
   "producerExitCode": 0,
-  "subscriberAttached": "con:15:-GPjYTyvAd99W9e8A21RxQ",
-  "replayBytesAtSubscribe": 3138396,
-  "surface": "con:15:-GPjYTyvAd99W9e8A21RxQ"
+  "subscriberAttached": "con:15:C73hH5LfyQvVpcSPuy2Xrw",
+  "replayBytesAtSubscribe": 2651800,
+  "surface": "con:15:C73hH5LfyQvVpcSPuy2Xrw"
 }
 ```
 
@@ -1401,8 +1406,8 @@ armed
 
 ```
 {
-  "rssBeforeBytes": 773570560,
-  "rssPeakBytes": 773570560,
+  "rssBeforeBytes": 899121152,
+  "rssPeakBytes": 899121152,
   "ceilingBytes": 268435456,
   "growthBytes": 0
 }
@@ -1440,129 +1445,129 @@ armed
 {
   "surfaces": [
     {
-      "surface": "con:2:AYwgbmdx9PZI8E26T5NFzA",
-      "session_id": "88e2b4a2093b",
+      "surface": "con:2:FaWGvRYlur06d1vMjwQD3w",
+      "session_id": "4023d218fcdc",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf '日本\\n'",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790974754.447,
+      "last_activity": 1790987081.247,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:3:s575rhFDQR_H0y49HXTOAw",
-      "session_id": "88e2b4a2093b",
+      "surface": "con:3:W9Lig1pa77Obl7edpCy2xg",
+      "session_id": "4023d218fcdc",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf '\\346\\227'; sleep 0.3; printf '\\245\\n'",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790974757.505,
+      "last_activity": 1790987083.947,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:7:zGX0-TEVT0xF1neNZCcbXw",
-      "session_id": "88e2b4a2093b",
+      "surface": "con:7:0Ra4i_iaCCtUkxkK_LQaMA",
+      "session_id": "4023d218fcdc",
       "origin": "user",
       "command": "zsh",
       "argv_tail": "",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
       "cols": 80,
       "rows": 44,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790975297.728,
+      "last_activity": 1790987558.363,
       "live": true,
       "agent_owned": false,
       "last_actor": "agent"
     },
     {
-      "surface": "con:13:0v_wNdgr_n9uJO_kcNPP6w",
-      "session_id": "88e2b4a2093b",
+      "surface": "con:13:FCKH8XSc-YpdmKtrl_P4eA",
+      "session_id": "4023d218fcdc",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c printf 'exited-marker\\n'; exit 5",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
       "cols": 80,
       "rows": 24,
       "running": false,
       "exit_code": 5,
-      "last_activity": 1790975503.765,
+      "last_activity": 1790987766.536,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:16:ZCpmSpJtc8_ZlJJ6T2TsLQ",
-      "session_id": "88e2b4a2093b",
+      "surface": "con:16:BuXK1x4oFllUj-1h_C0DLQ",
+      "session_id": "4023d218fcdc",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
       "cols": 100,
       "rows": 30,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790975644.416,
+      "last_activity": 1790987889.318,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:17:Fmojb15cd_Ji_AqgEG9TKw",
-      "session_id": "88e2b4a2093b",
+      "surface": "con:17:wy_8su--OtMegMrcelje1Q",
+      "session_id": "4023d218fcdc",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
       "cols": 100,
       "rows": 30,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790975645.486,
+      "last_activity": 1790987890.357,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:18:nQtyr2McQ3pdzKvrfMe_Hw",
-      "session_id": "88e2b4a2093b",
+      "surface": "con:18:xhpO6qjDHPIJTglr0qSEfg",
+      "session_id": "4023d218fcdc",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
       "cols": 100,
       "rows": 30,
       "running": false,
       "exit_code": 0,
-      "last_activity": 1790975646.666,
+      "last_activity": 1790987891.393,
       "live": true,
       "agent_owned": true,
       "last_actor": null
     },
     {
-      "surface": "con:19:CxJR5NqIwSSYROQWvqZw1w",
-      "session_id": "88e2b4a2093b",
+      "surface": "con:19:YFxFRw0B8-JaBCMrbWAD8Q",
+      "session_id": "4023d218fcdc",
       "origin": "agent",
       "command": "sh",
       "argv_tail": "-c sleep 3",
-      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+      "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
       "cols": 100,
       "rows": 30,
       "running": true,
       "exit_code": null,
-      "last_activity": 1790975643.71,
+      "last_activity": 1790987888.394,
       "live": true,
       "agent_owned": true,
       "last_actor": null
@@ -1584,7 +1589,7 @@ armed
 
 ```
 {
-  "samples": 1566,
+  "samples": 1542,
   "frontmostOurs": 0,
   "distinct": [
     null
@@ -1597,18 +1602,18 @@ armed
 ```
 {
   "lines": [
-    "21:58:59.324 › [console] restored the exec bit on /Users/damian/local-operator-ui/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
-    "21:58:59.325 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
-    "21:59:04.914 › [console] surface con:1:R7IUkq… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home at 120x40 (agent)",
-    "21:59:10.130 › [console] surface con:1:R7IUkq… resized 100x30",
-    "21:59:13.677 › [console] surface con:2:AYwgbm… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home at 80x24 (agent)",
-    "21:59:14.447 › [console] surface con:2:AYwgbm… exited 0",
-    "21:59:15.880 › [console] surface con:3:s575rh… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home at 80x24 (agent)",
-    "21:59:17.505 › [console] surface con:3:s575rh… exited 0",
-    "21:59:19.984 › [console] surface con:4:O62Fez… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home at 80x24 (agent)",
-    "21:59:25.751 › [console] surface con:4:O62Fez… exited 0",
-    "21:59:25.753 › [console] surface con:4:O62Fez… closed with exit 0",
-    "22:00:23.365 › [console] surface con:1:R7IUkq… resized 80x46"
+    "01:24:27.194 › [console] restored the exec bit on /Users/damian/local-operator-ui/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
+    "01:24:27.195 › [console] host ready on the existing endpoint: 0 surface(s) (node-pty ready)",
+    "01:24:32.425 › [console] surface con:1:xAsGtK… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home at 120x40 (agent)",
+    "01:24:37.211 › [console] surface con:1:xAsGtK… resized 100x30",
+    "01:24:40.458 › [console] surface con:2:FaWGvR… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home at 80x24 (agent)",
+    "01:24:41.248 › [console] surface con:2:FaWGvR… exited 0",
+    "01:24:42.600 › [console] surface con:3:W9Lig1… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home at 80x24 (agent)",
+    "01:24:43.947 › [console] surface con:3:W9Lig1… exited 0",
+    "01:24:46.315 › [console] surface con:4:zIGocd… started: sh in /var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home at 80x24 (agent)",
+    "01:24:51.628 › [console] surface con:4:zIGocd… exited 0",
+    "01:24:51.629 › [console] surface con:4:zIGocd… closed with exit 0",
+    "01:25:45.604 › [console] surface con:1:xAsGtK… resized 80x46"
   ]
 }
 ```
@@ -1618,28 +1623,28 @@ armed
 ```
 {
   "restored": {
-    "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
-    "session_id": "88e2b4a2093b",
+    "surface": "con:5:73aBC75jvsKCm5cg6A7hPQ",
+    "session_id": "4023d218fcdc",
     "origin": "user",
     "command": "zsh",
     "argv_tail": "",
-    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-90622/home",
+    "cwd": "/var/folders/qd/1q2xkcls0tg60vh97jjngxc40000gn/T/lo-console-proof-95975/home",
     "cols": 80,
     "rows": 46,
     "running": false,
     "exit_code": 1,
-    "last_activity": 1790975112.16,
+    "last_activity": 1790987404.561,
     "live": false,
     "agent_owned": false,
     "last_actor": null
   },
   "count": 5,
   "surfaces": [
-    "con:15:-GPjYTyvAd99W9e8A21RxQ",
-    "con:14:-sDh8Ed0TdA1_GqTYG4Uhw",
-    "con:12:_IiN5OFEsB3x5e9YO9miXg",
-    "con:7:zGX0-TEVT0xF1neNZCcbXw",
-    "con:5:twBhVs8fBecW_xEVUdthrw"
+    "con:15:C73hH5LfyQvVpcSPuy2Xrw",
+    "con:14:kikqztqsZO7bLgR_vaR8IQ",
+    "con:12:e2MdXzzBZ_a0UxOGratLkg",
+    "con:7:0Ra4i_iaCCtUkxkK_LQaMA",
+    "con:5:73aBC75jvsKCm5cg6A7hPQ"
   ]
 }
 ```
@@ -1648,7 +1653,7 @@ armed
 
 ```
 {
-  "dismissed": "con:6:eYOAXVSd6iRcAYLLPCskUw",
+  "dismissed": "con:6:7BKn3Ona6_ON0CGExZ3LqA",
   "present": false
 }
 ```
@@ -1659,9 +1664,9 @@ armed
 {
   "count": 5,
   "lines": [
-    "22:14:10.747 › [console] restored 5 retained surface(s) from history; none of them is running",
-    "[2026-10-02 21:58:59.324] [info]  [console] restored the exec bit on /Users/damian/local-operator-ui/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
-    "[2026-10-02 22:14:10.747] [info]  [console] restored 5 retained surface(s) from history; none of them is running"
+    "01:38:14.595 › [console] restored 5 retained surface(s) from history; none of them is running",
+    "[2026-10-03 01:24:27.194] [info]  [console] restored the exec bit on /Users/damian/local-operator-ui/node_modules/.pnpm/node-pty@1.1.0/node_modules/node-pty/prebuilds/darwin-arm64/spawn-helper",
+    "[2026-10-03 01:38:14.595] [info]  [console] restored 5 retained surface(s) from history; none of them is running"
   ]
 }
 ```
@@ -1685,7 +1690,7 @@ armed
     }
   },
   "restoredRow": {
-    "surface": "con:5:twBhVs8fBecW_xEVUdthrw",
+    "surface": "con:5:73aBC75jvsKCm5cg6A7hPQ",
     "label": "Dismiss zsh, tab 5 of 5",
     "opacity": "0",
     "width": 28,
@@ -1701,7 +1706,7 @@ armed
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-relaunch.png",
-  "bytes": 383234,
+  "bytes": 382389,
   "size": {
     "width": 2760,
     "height": 1800
@@ -1711,7 +1716,7 @@ armed
     "height": 900,
     "dpr": 2
   },
-  "sha256": "24c67b6bf19d22d6e0d281e8df587ecc025effbcd8659e2cece17301429de15b"
+  "sha256": "8964ccd025c8bd8826cf09d934af2d1484b295c9bca232366c196b5f11b65f8d"
 }
 ```
 
@@ -1733,7 +1738,7 @@ armed
 ```
 {
   "file": "/Users/damian/local-operator-ui/.worktrees/console-close-754/docs/evidence/console-surface-close/close-empty.png",
-  "bytes": 378544,
+  "bytes": 384859,
   "size": {
     "width": 2760,
     "height": 1800
@@ -1743,7 +1748,7 @@ armed
     "height": 900,
     "dpr": 2
   },
-  "sha256": "cf4350550eb822f6971746ae8fe24ec3c00c90454263c7fc8a20b2cacf8e0450"
+  "sha256": "b2a051c9f2cf5a8fd44e039c65db14f035d297e7924d6214e680cd0024a964ff"
 }
 ```
 
