@@ -219,38 +219,71 @@ export const askChipCountClause = (view: AskQueueView): string => {
 };
 
 /**
- * The chip's DEADLINE reading, or `null` when this surface must state none.
+ * The chip's COUNTDOWN, with no subject: `expires in 12m`, or `null` when this
+ * surface must state none.
  *
- * WHY THE CHIP CARRIES A COUNTDOWN AT ALL: it is the operator's own question of the
- * surface ("when will it time out?"), and the strip this item replaced answered it
- * on its collapsed face. Moving into the status row lost the answer - `1 question
+ * WHAT THE COUNTDOWN IS FOR: it is the operator's own question of the surface
+ * ("when will it time out?"), and the strip this item replaced answered it on its
+ * collapsed face. Moving into the status row lost the answer - `1 question
  * waiting` cannot tell a queue with fifty minutes left from one that lapses while
  * the reader looks at it - so the fact is rehomed onto the surface that replaced
  * the strip rather than dropped with it.
  *
- * TWO RULES, each one a defect an earlier round already named:
+ * IT IS SEPARATED FROM ITS SUBJECT (`askChipDeadlineSubject` below) because the two
+ * have different yield orders at a narrow column: the subject is the unbounded part
+ * and the number is what the reader came for, so a squeezed chip drops the subject
+ * first. One string could not be yielded in halves.
  *
- * 1. THE READING IS QUALIFIED WHEN IT IS NOT THE OBVIOUS ONE (design round 1's D2,
- *    re-expressed for a chip that names no ask). The number is the SOONEST deadline
- *    across the asks this chip counts as waiting, so with more than one of them a
- *    bare `expires in 12m` names no subject and reads as whichever ask the reader
- *    had in mind; the `soonest ` prefix says the number is the queue's. With exactly
- *    one waiting ask the number IS that ask's, and a qualifier there would be noise.
- * 2. A PREFIX CANNOT STATE A QUEUE-SCOPE COUNTDOWN (design round 1's D6). The wire
- *    caps the list, and `askSplitIsKnowable` is the gate the count's own tally form
- *    reads; while the split is unknown the count says `N outstanding` and this says
- *    nothing at all, rather than passing the visible subset's soonest off as the
- *    queue's.
+ * STATED NOT AT ALL WHILE THE SPLIT IS UNKNOWABLE (design round 1's D6): the wire
+ * caps the list, and `askSplitIsKnowable` is the gate the count's own tally form
+ * reads. While the split is unknown the count says `N outstanding` and this says
+ * nothing, rather than passing the visible subset's soonest off as the queue's.
  */
-export const askChipDeadline = (
+export const askChipDeadlineText = (
 	view: AskQueueView,
 	nowMs: number,
 ): string | null => {
 	if (!askSplitIsKnowable(view) || view.waiting === 0) return null;
 	if (view.soonestExpiryMs === null) return null;
-	const text = askDeadlineText(view.soonestExpiryMs, nowMs);
+	return askDeadlineText(view.soonestExpiryMs, nowMs);
+};
+
+/**
+ * The subject the countdown needs when the number is not the only waiting ask's, or
+ * the empty string when it is.
+ *
+ * `soonest ask` is a HEAD NOUN and not a bare qualifier. `soonest expires in 12m`
+ * was the first cut, and it reads as a fragment: the adverb presupposes the
+ * comparison set without naming it, so the reader has to supply "deadline" or "ask"
+ * to get a clause (design round 3's D4). The count beside it names the set, but a
+ * chip is read left to right and the number should stand on its own.
+ *
+ * The comparison itself exists because this chip NAMES NO ASK: with more than one
+ * waiting ask a bare `expires in 12m` attaches to whichever ask the reader had in
+ * mind (design round 1's D2, re-expressed for this host). With exactly one waiting
+ * ask the number IS that ask's and any subject would be noise.
+ */
+export const askChipDeadlineSubject = (view: AskQueueView): string =>
+	view.waiting > 1 ? "soonest ask" : "";
+
+/**
+ * The whole countdown as one string: the subject and its number, or null.
+ *
+ * The composed form is what the announced name carries and what a DOM-free rig
+ * asserts - the two readers of one fact (`askChipLabel` and the visible item) both
+ * start here, which is why this is a function rather than a join at each site. The
+ * row renders the same two pieces in two elements so the subject can yield at a
+ * narrow column; the string this returns is what the VISIBLE text reads when the
+ * column is wide enough for both.
+ */
+export const askChipDeadline = (
+	view: AskQueueView,
+	nowMs: number,
+): string | null => {
+	const text = askChipDeadlineText(view, nowMs);
 	if (text === null) return null;
-	return view.waiting === 1 ? text : `soonest ${text}`;
+	const subject = askChipDeadlineSubject(view);
+	return subject === "" ? text : `${subject} ${text}`;
 };
 
 /**
@@ -283,8 +316,20 @@ export const askChipLabel = (
 	view: AskQueueView,
 	expanded: boolean,
 	nowMs: number,
-): string =>
-	`${expanded ? "Collapse" : "Expand"} the ask history${LABEL_SEAM}${askChipFullClause(view, nowMs)}`;
+): string => {
+	/*
+	 * THE URGENCY WORD IS IN THE NAME, NOT ONLY IN THE INK (design round 3's D5 asked
+	 * whether the ink step was enough; this is the half of the answer that is not a
+	 * number). The item's mark steps to `warning` for an urgent waiting ask, and a
+	 * COLOUR-ONLY cue is invisible to a reader who cannot tell this palette's accent
+	 * from its warning - the two are DeltaE00 2.22 apart in the light theme by the
+	 * palette file's own record. The panel row states the word in an `sr-only` span;
+	 * this control cannot, because its `aria-label` OVERRIDES its content, so the word
+	 * goes in the label. APPENDED, so the visible clause stays a prefix of the name.
+	 */
+	const urgency = view.urgent ? " · Urgent" : "";
+	return `${expanded ? "Collapse" : "Expand"} the ask history${LABEL_SEAM}${askChipFullClause(view, nowMs)}${urgency}`;
+};
 
 /**
  * Whether the composer may ANSWER from this view at all.
