@@ -3268,15 +3268,29 @@ const BRANCH_RECORDS = [
 	"turnFootCaptionFoldRoundFourPass",
 	"turnFootCaptionFoldRoundFiveFoldPass",
 	/*
-	 * And by the composer ArrowDown lane (#764, PR #776), this branch's six newest
-	 * top-level records - the capture pass's fold note and the five fold rounds
-	 * that followed it. They are listed for the reason the list exists: five of
-	 * the six folds resolved the manifest by taking main's copy as the base and
-	 * re-laying these on top, so a fold that started from main's copy would drop
-	 * them first - and with them the only statements of which windows moved
-	 * against this set's surfaces and which frame bytes did not. They quote commit
-	 * SHAs and never the `srcTree`/`scriptsTree` pair, so they join this list and
-	 * not `STAMP_BINDING_NOTES`.
+	 * And by the palette's Ctrl+N/P walk and its Unread pin (issues #761/#760,
+	 * PR #778), this branch's newest top-level record: the note that states which
+	 * two trees the pass moved, the set it added (`palette-keys-unread-761-760`),
+	 * and the D1 remediation that re-took one frame of it. It is listed for the
+	 * reason the list exists, and this branch supplies a live instance of the
+	 * failure: the fold onto `origin/main` = `237733141d6` resolved the manifest
+	 * house-way and kept this record by hand ("the supplementary entry, the pass
+	 * note and the countsMean paragraph stay this branch's") - a resolver who
+	 * took main's copy would have dropped it, and with it the only statement of
+	 * the set's existence and the re-taken frame, with this very test staying
+	 * green (agent review round 2, MINOR).
+	 */
+	"paletteKeysUnreadPass",
+	/*
+	 * And by the composer ArrowDown lane (#764, PR #776), this branch's seven
+	 * newest top-level records - the capture pass's fold note and the six fold
+	 * rounds that followed it. They are listed for the reason the list exists:
+	 * six of the seven folds resolved the manifest by taking main's copy as the
+	 * base and re-laying these on top, so a fold that started from main's copy
+	 * would drop them first - and with them the only statements of which windows
+	 * moved against this set's surfaces and which frame bytes did not. They quote
+	 * commit SHAs and never the `srcTree`/`scriptsTree` pair, so they join this
+	 * list and not `STAMP_BINDING_NOTES`.
 	 */
 	"foldOnto9b4822de10Note",
 	"foldOnto9d9cd4be63fNote",
@@ -3284,6 +3298,7 @@ const BRANCH_RECORDS = [
 	"foldOntoFef3d5443f1Note",
 	"foldOnto83d7d937953Note",
 	"foldOnto211d84d668aNote",
+	"foldOntoA81de40dd84Note",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
