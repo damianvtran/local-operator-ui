@@ -40,15 +40,32 @@ twelve); the other fifty-six are reachable with `--themes=<a,b>` under `--only`.
 
 ## The tree these frames describe
 
-This set was **re-shot** for design review round 1 and UX review round 1, so the
-citation here is a HEAD-tree citation rather than the capture-tree one the first
-set needed:
+The frames were shot from `c20c74ff011` - `git rev-parse c20c74ff011:src` =
+`fc6358c87df9844990cd47114896fb3cb4fba3f8` - and that is a **capture-tree**
+citation rather than a head-tree one: two commits after it move `src/`, so
+`git rev-parse HEAD:src` = `c2e8081d40433f1447f32d45f11620a2fdb13939` is a
+different tree. `git diff --name-only c20c74ff011 <head> -- src` names the
+**12** files, and the two facts that bound the gap are measured rather than
+asserted:
 
-- the frames were shot from `c20c74ff011` - `git rev-parse c20c74ff011:src` =
-  `fc6358c87df9844990cd47114896fb3cb4fba3f8`;
-- that commit is the CODE side of the head this set is reviewed on. Everything
-  after it touches `docs/` only, so `git rev-parse HEAD:src` is the same tree -
-  the frames now describe the tree they are reviewed with.
+1. **Two of them are this branch's own, and neither changes what these five
+   states render.** `speech-section.tsx` carries a comment correction (its diff
+   filtered to non-comment lines is empty) and `speech-section.stories.tsx`
+   carries the shutter tooling - the settle sentences the story waits on are
+   unchanged, which is why no frame moved: the fifteen WebP blobs are
+   byte-identical across both commits (the sorted `git ls-tree -r <sha>
+   docs/evidence/settings-speech | grep webp` hash set, at `8e36bad39a3` and at
+   the head this set ships in).
+2. **The other ten are `origin/main`'s 0.31.34 release**, folded in after the
+   capture - the chat, projects and mini-view work plus
+   `shared/desktop-contract.ts`. Re-runnable check that nothing else in this
+   surface's graph moved:
+
+```
+git diff --name-only c20c74ff011 <head> -- src | \
+  grep -E 'features/settings|shared/lib/speech-gate|shared/hooks/use-credentials|shared/components/common/error-boundary'
+# the branch's own two files above, and nothing else
+```
 
 WHY THEY WERE RE-SHOT, and what the first set had wrong. `unreadable/`
 photographed the panel's PENDING arm - a retrying read - rather than the failed
@@ -61,8 +78,9 @@ state settles on is on screen, and the column is the page's own `max-w-4xl` -
 which moves the story file, which is why the WHOLE set was re-taken rather than
 one directory: a set whose states come from two story revisions is worse than
 either. The first set's tree gap (shot at `9aab9d7b265`, then folded onto
-`051acc98d50`) is closed by this re-shoot rather than argued away, and the
-manifest's `head` field names the same tree.
+`051acc98d50`) is closed for the tree this set was captured at - the manifest's
+`head` field names `c20c74ff011` - and the later gap each fold opens is bounded
+above rather than argued away.
 
 ## What each frame shows
 
