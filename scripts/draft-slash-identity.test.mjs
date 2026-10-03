@@ -70,7 +70,8 @@ const SPLASH_YIELDS_TO_PICKER =
 	/showEmptyChatPrompt && !\(slash\.open && slash\.phase === "argument"\)/;
 const SPLASH_CLASS_READS_YIELD =
 	/showSplash\s*\?\s*"flex w-full flex-col items-center gap-6 py-4"/;
-const DRAFT_ROSTER_EMPTY_COPY_GUARD = /emptyCopy:\s*rows\.length === 0/;
+const DRAFT_ROSTER_EMPTY_COPY_GUARD =
+	/emptyCopy:\s*rows\.length === 0\s*\?\s*draftRosterSource/;
 
 /*
  * The minimum the bundle's import chain touches at module scope: the stores
@@ -334,6 +335,12 @@ test("a no-match draft roster query keeps the matcher sentence (the F1 guard)", 
 	 * row out (`argumentRows` returns the unfiltered roster; the filter runs
 	 * later in `argumentMatches`) — with the resolver printing the matcher
 	 * sentence for the latter and never claiming the workspace is empty.
+	 *
+	 * THE SOURCE PIN IS ANCHORED to the draft arm (`? draftRosterSource`)
+	 * because the `/mcp` arm carries the identical `emptyCopy: rows.length === 0`
+	 * prefix — an unanchored regex stayed green on the very regression it names
+	 * (review round 4, R4-1: the guard was proven able to fail by textually
+	 * reverting the arm, see the round's remediation note).
 	 */
 	assert.equal(
 		argumentEmptyCopy({
