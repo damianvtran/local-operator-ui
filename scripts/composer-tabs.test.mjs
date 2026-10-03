@@ -5499,43 +5499,53 @@ test("nothing about the monitors ticks: no clock and no relative time", () => {
 	assert.match(code(SECTION_LIST), /<RunDetailMonitors/);
 });
 
-test("the chip paints the MODEL's clause, so the JSX cannot compose a second one", () => {
+test("the chip PAINTS the model's clause, so the JSX cannot compose a second one", async () => {
 	/*
-	 * F3 of agent review round 2: the item's visible clause was composed in the JSX
-	 * while the suites pinned the model (`askChipClause`) and the count half
-	 * separately, so a seam drift left both green and only the CDP sweep caught it.
-	 * One assertion against the RENDERED markup closes the seam: the painted string
-	 * must contain the model's own clause for the same fixtures and the same pinned
-	 * clock, and the narrow band's short form from the same deadline.
+	 * F3 of agent review round 2, and F3-a of the manager's correction pass: the
+	 * assertion is on the PAINTED SPANS - not on the item's `aria-label`, and not on
+	 * the markup as a whole. The label carries the same clause by design
+	 * (`askChipLabel` composes from the model), so a whole-markup or attribute
+	 * assertion would pass even if the paint regressed to a second composition, which
+	 * is exactly the seam this test exists to close. Reading the spans excludes the
+	 * attribute and any portalled tooltip text.
 	 */
-	const soon = wireAsk("a-soon", "open", {
-		expires_at: WAKE_NOW_MS + 20 * 60_000,
-		timeout_s: 1200,
-	});
-	const later = wireAsk("a-later", "open", {
-		expires_at: WAKE_NOW_MS + 48 * 60_000,
-		timeout_s: 2880,
-	});
-	const view = askQueueView({ asks: [soon, later] });
-	const clause = askChipClause(view, WAKE_NOW_MS);
-	assert.equal(clause, "2 questions waiting · soonest ask expires in 20m");
-	const markup = renderRow({
-		frontend: askFrontend([soon, later]),
-		runDetails: NO_DETAILS,
-		nowMs: WAKE_NOW_MS,
-		/*
-		 * `onAskToggle` supplied is what says the panel exists in this document - the
-		 * row's own gate (see "no door, no item" above), so the item is only rendered
-		 * when a host wired it, which this assertion needs.
-		 */
-		onAskToggle: () => undefined,
-	});
-	assert.ok(
-		markup.includes(clause),
-		`the chip does not paint the model's clause: ${clause}`,
-	);
-	assert.ok(
-		markup.includes(askDeadlineShortText(view.soonestExpiryMs, WAKE_NOW_MS)),
-		"the chip does not paint the narrow band's form of the same deadline",
-	);
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		const soon = wireAsk("a-soon", "open", {
+			expires_at: WAKE_NOW_MS + 20 * 60_000,
+			timeout_s: 1200,
+		});
+		const later = wireAsk("a-later", "open", {
+			expires_at: WAKE_NOW_MS + 48 * 60_000,
+			timeout_s: 2880,
+		});
+		const view = askQueueView({ asks: [soon, later] });
+		const clause = askChipClause(view, WAKE_NOW_MS);
+		assert.equal(clause, "2 questions waiting · soonest ask expires in 20m");
+		await act(async () => {
+			root.render(
+				createElement(ComposerStatusRow, {
+					frontend: askFrontend([soon, later]),
+					runDetails: NO_DETAILS,
+					nowMs: WAKE_NOW_MS,
+					onAskToggle: () => undefined,
+				}),
+			);
+		});
+		const item = dom.document.querySelector("[data-lo-ask-item-toggle]");
+		assert.ok(item, "the item is not rendered");
+		const painted = [...item.querySelectorAll("span")]
+			.map((span) => span.textContent)
+			.join("");
+		assert.ok(
+			painted.includes(clause),
+			`the chip does not PAINT the model's clause: ${clause}`,
+		);
+		assert.ok(
+			painted.includes(askDeadlineShortText(view.soonestExpiryMs, WAKE_NOW_MS)),
+			"the chip does not paint the narrow band's form of the same deadline",
+		);
+	} finally {
+		cleanup();
+	}
 });

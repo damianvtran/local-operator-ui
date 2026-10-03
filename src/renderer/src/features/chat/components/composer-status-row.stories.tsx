@@ -2721,30 +2721,33 @@ export const AskTwoWindows: Story = {
 };
 
 /**
- * THE APP'S REAL FLOOR, 172px - not the 220px this set first pinned.
+ * THE APP'S APPLIED FLOOR, in this set's own unit: a 480px column, whose composer box
+ * is 432px.
  *
- * `docs/composer-status-tabs.md` §2.4 states 172: the chat column measures that with
- * the canvas pane open, QA-measured on the built app, and 220 was that document's own
- * assumption which the app never renders (agent review round 2's F1 caught this frame
- * certifying the retracted number). The sibling set's `column-floor/` renders at 172 for
- * the same reason. ONE CAVEAT, since it is a disagreement on the record rather than a
- * settled number: `chat-content.tsx`'s CSS floor is `min-w-[480px]`, which cannot
- * render 172, so QA has been asked to re-measure the composer column on the built app
- * and name the box. The band is pinned at the NARROWER reading deliberately - a
- * guarantee that holds at 172 holds at 480 too, and not the reverse.
+ * THE COLUMN'S FLOOR IS 480, NOT 220 AND NOT 172 (`chat-sidebar-layout.ts`'s
+ * `CHAT_PANE_MIN_PX`, applied by §I and asserted EXACTLY by
+ * `scripts/chat-pane-floors.test.mjs`; that test's own note records that the
+ * assertion it replaced allowed `(0, 480]` "while the tree was still at 220"). The
+ * composer band insets the box 24px each side, so the widest tier this row has
+ * (341px, the subject's yield) cannot bind until the column falls to about 389px -
+ * which is why this frame is the honest floor and the earlier one was not: it pins
+ * the box at 432, and the countdown IS painted here, in full, subject and sentence.
  *
- * WHAT THIS FRAME IS FOR: it is the state where the yield has given up everything it
- * can - the count is painted alone and the deadline is NOT on the chip. That is not a
- * defect to hide; it is the boundary the guarantee is now stated against, and the
- * frame is the only one in the set that photographs the deadline's absence. The fact
- * survives one layer down: the item's announced name composes the whole clause at
- * every width, and its tooltip carries it too.
+ * WHAT THIS FRAME IS FOR, therefore: it is the frame that says the yield is a
+ * container-query SAFETY NET rather than a rule the product applies - at every width
+ * the app can currently produce, the item paints the whole clause, and the tier
+ * frames below (`241`, `260`) photograph a narrowing it does not reach.
+ *
+ * Agent review round 2's F1 is why this exists at all: the set used to pin 220 (a
+ * retracted floor) and then 172 (the composer box inside that 220 column, i.e. a
+ * layout the app no longer renders), both of which claimed more about the product than
+ * the numbers support.
  */
-export const AskColumnFloor172: Story = {
+export const AskColumnFloorApplied: Story = {
 	render: () => (
 		<AskBand
-			width={172}
-			label="The 172px the record measures for the column with the canvas open: the count is alone, because no form of the deadline fits here"
+			width={432}
+			label="The applied floor: a 480px column, composer box 432px - the countdown is painted in full, because no yield tier can bind here"
 			asks={[ASK_OPEN]}
 		/>
 	),
