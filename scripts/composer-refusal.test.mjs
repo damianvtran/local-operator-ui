@@ -385,13 +385,17 @@ test("the refused box says WHY, by pointing at the pane's own sentence", () => {
 		"joined with the credential notice rather than replacing it: the two states can coincide",
 	);
 
-	const notice = read(MISSING_NOTICE);
+	/*
+	 * NIT-2: these three read SOURCE, so they go through `code()` like the pins
+	 * above — a commented copy of any of these tokens used to satisfy them.
+	 */
+	const notice = code(MISSING_NOTICE);
 	const named = notice.match(
 		/export const MISSING_SESSION_NOTICE_ID = "([^"]+)"/,
 	);
 	assert.ok(named, "the id has to be named once, in a leaf, for both ends");
 	assert.match(
-		read(TRANSCRIPT),
+		code(TRANSCRIPT),
 		/id=\{MISSING_SESSION_NOTICE_ID\}/,
 		"and the transcript has to actually paint it on the sentence, or the reference resolves to nothing",
 	);
@@ -418,7 +422,7 @@ test("a refused box takes the caret from a gesture and not from an unprompted fo
 		"the mount self-focus keeps its refusal gate: pulling the caret into a box the app has just declared inert is the silent steal, and it is what would take the caret out of the transcript when a refusal lands mid-read",
 	);
 	assert.match(
-		read(CARET),
+		code(CARET),
 		/if \(!field \|\| field\.disabled\) return false;/,
 		"and the gesture's hand-off still refuses only a DISABLED field - `readOnly` is not a bail, or the destination composer of every pick onto a missing conversation would be skipped in favour of the rail",
 	);
@@ -470,8 +474,17 @@ test("the refusal predicate is declared before the handler whose deps name it", 
 	 * must not take the credential at all).
 	 */
 	const source = code(COMPOSER);
-	const declared = source.indexOf(
-		"const isInputDisabled = unavailable || isBusy || secretAnswerPending;",
+	/*
+	 * ALL FOUR TERMS BY NAME. The fourth is the HOST's — the page's own blocked
+	 * state arriving through the one prop-gated seam (`hostNotice.blocksInput`) —
+	 * and it is a term of this predicate rather than a guard beside it for the
+	 * same reason `secretAnswerPending` is: the box, the popups and the form's
+	 * submit refuse together. Whitespace is tolerated because the declaration
+	 * wraps; a MISSING term is not, and a regex that matched any expression
+	 * would stop pinning the thing this case exists for.
+	 */
+	const declared = source.search(
+		/const isInputDisabled =\s*unavailable\s*\|\|\s*isBusy\s*\|\|\s*secretAnswerPending\s*\|\|\s*Boolean\(hostNotice\?\.blocksInput\);/,
 	);
 	const handler = source.indexOf("const handleComposerKeyDown = useCallback(");
 	assert.ok(declared > -1 && handler > -1);
@@ -516,8 +529,8 @@ test("the secret gate's term refuses the box, and the box points at the dock's f
 	);
 	assert.match(
 		source,
-		/const isInputDisabled = unavailable \|\| isBusy \|\| secretAnswerPending;/,
-		"and it joins the one predicate every writer and submitter answers to",
+		/const isInputDisabled =\s*unavailable\s*\|\|\s*isBusy\s*\|\|\s*secretAnswerPending\s*\|\|\s*Boolean\(hostNotice\?\.blocksInput\);/,
+		"and it joins the one predicate every writer and submitter answers to — with the host's own term beside it",
 	);
 	assert.match(
 		source,
