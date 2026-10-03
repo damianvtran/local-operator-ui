@@ -453,8 +453,10 @@ test("a pass that added no frames does not claim to have added them", () => {
  */
 
 /**
- * A fake `git` for the advisory, answering the two questions it asks and
- * recording each ask so a test can pin WHICH file was resolved to.
+ * A fake `git` for the advisory, answering the three questions it asks - is a
+ * stamp resolvable, what last touched a path, is one commit an ancestor of
+ * another - and recording each ask so a test can pin WHICH file was resolved to
+ * and how far a comparison got.
  *
  * Same reason as `fakeGit` above: the property under test is what the function
  * CONCLUDES from git's answers, and pinning that against real history would
@@ -464,9 +466,18 @@ test("a pass that added no frames does not claim to have added them", () => {
  * answer - the advisory is silent for both, and the case that matters is the
  * one where an ancestor question comes back REFUSED.
  */
-const fakeDriftGit = ({ lastTouch = {}, ancestors = [], calls = [] } = {}) => {
+const fakeDriftGit = ({
+	lastTouch = {},
+	resolvable = [],
+	ancestors = [],
+	calls = [],
+} = {}) => {
 	return (args) => {
 		calls.push(args);
+		if (args[0] === "rev-parse" && args[1] === "--quiet") {
+			const sha = args[3].replace("^{commit}", "");
+			return resolvable.includes(sha) ? sha : null;
+		}
 		if (args[0] === "log" && args[1] === "-1")
 			return lastTouch[args.at(-1)] ?? null;
 		if (args[0] === "merge-base" && args[1] === "--is-ancestor")
@@ -521,14 +532,16 @@ test("a set whose story file moved outside its capturedAtHead reads as an adviso
 				},
 			],
 		},
-		fakeDriftGit({ lastTouch: { [file]: moved }, calls }),
+		fakeDriftGit({ lastTouch: { [file]: moved }, resolvable: [head], calls }),
 		root,
 	);
 	assert.equal(out.length, 1);
 	assert.match(out[0], /chat-trace-before/);
 	assert.match(out[0], /may not picture the story's current cut/);
-	// It compared the file the mention resolves to, against the set's own stamp.
+	// It checked the stamp is answerable, compared the file the mention resolves
+	// to, and compared it against the set's own stamp.
 	assert.deepEqual(calls, [
+		["rev-parse", "--quiet", "--verify", `${head}^{commit}`],
 		["log", "-1", "--format=%H", "--", file],
 		["merge-base", "--is-ancestor", moved, head],
 	]);
@@ -561,6 +574,7 @@ test("an agreeing stamp is silent, and a harness name resolves beside its frames
 		},
 		fakeDriftGit({
 			lastTouch: { [harness]: touch },
+			resolvable: [head],
 			ancestors: [[touch, head]],
 			calls,
 		}),
@@ -568,6 +582,7 @@ test("an agreeing stamp is silent, and a harness name resolves beside its frames
 	);
 	assert.deepEqual(out, []);
 	assert.deepEqual(calls, [
+		["rev-parse", "--quiet", "--verify", `${head}^{commit}`],
 		["log", "-1", "--format=%H", "--", harness],
 		["merge-base", "--is-ancestor", touch, head],
 	]);
@@ -658,6 +673,89 @@ test("a set naming a story file this tree cannot resolve reads as an advisory", 
 	);
 	assert.equal(stamped.length, 1);
 	assert.match(stamped[0], /does not resolve to one file in this tree/);
+});
+
+test("a stamp this history cannot answer does not read as drift", () => {
+	/*
+	 * The distinction the git reader folds together: `merge-base --is-ancestor`
+	 * exits 1 for "not an ancestor" and 128 for "cannot answer", and BOTH
+	 * arrive as null. A stamp the history has never heard of must stay silent -
+	 * the shipped instance a reviewer meets is `provider-setup-ux-before`, whose
+	 * stamp is contained by no remote ref or tag (a fetch-only clone answers 128
+	 * for it), while `citationFailures` is the half that reports the citation
+	 * itself; the advisory must not manufacture drift out of a question this
+	 * history cannot answer. The stop is pinned at the resolvability question:
+	 * the ancestry ask never happens, and the file's own last touch (which DOES
+	 * exist here) is never turned into a verdict.
+	 */
+	const file =
+		"src/renderer/src/features/onboarding/components/provider-setup.stories.tsx";
+	const stamp = "f".repeat(40);
+	const root = storyTree([file]);
+	const calls = [];
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "provider-setup-ux-before",
+					source: `the story \`${file}\``,
+					capturedAtHead: stamp,
+				},
+			],
+		},
+		fakeDriftGit({
+			lastTouch: { [file]: "3".repeat(40) },
+			resolvable: [],
+			calls,
+		}),
+		root,
+	);
+	assert.deepEqual(out, []);
+	assert.deepEqual(calls, [
+		["rev-parse", "--quiet", "--verify", `${stamp}^{commit}`],
+	]);
+});
+
+test("an exact repository-relative mention resolves as written", () => {
+	/*
+	 * The first resolution step, pinned: a mention that spells its whole path
+	 * (how the settings and onboarding sets write it) resolves to THAT file. The
+	 * fixture also carries a same-basename story elsewhere, so a resolver that
+	 * lost the exact step would fall through to the basename net, find two
+	 * candidates, miss under the set's own directory, and report the name
+	 * unresolved - which is what makes this case fail if the step is gutted or
+	 * reordered.
+	 */
+	const head = "1".repeat(40);
+	const touch = "3".repeat(40);
+	const file =
+		"src/renderer/src/features/onboarding/components/provider-setup.stories.tsx";
+	const root = storyTree([file, "src/other/provider-setup.stories.tsx"]);
+	const calls = [];
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "provider-setup-ux-before",
+					source: `the story \`${file}\`, same fixtures`,
+					capturedAtHead: head,
+				},
+			],
+		},
+		fakeDriftGit({
+			lastTouch: { [file]: touch },
+			resolvable: [head],
+			ancestors: [[touch, head]],
+			calls,
+		}),
+		root,
+	);
+	assert.deepEqual(out, []);
+	assert.deepEqual(calls, [
+		["rev-parse", "--quiet", "--verify", `${head}^{commit}`],
+		["log", "-1", "--format=%H", "--", file],
+		["merge-base", "--is-ancestor", touch, head],
+	]);
 });
 
 /*
