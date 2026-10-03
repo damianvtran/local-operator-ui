@@ -3,12 +3,16 @@ import { test } from "node:test";
 import { build } from "esbuild";
 
 /*
- * The create/edit sheet's pure model, executed in Node.
+ * The CREATE sheet's pure model, executed in Node.
  *
  * `project-sheet-model.ts` is what the sheet derives rather than invents: the
- * key from a title, the description template, and the clipboard-markdown
- * conversion. This file pins each of them, so the dialog, the stories and the
- * frames all read one definition — the `projects-tab.test.mjs` pattern.
+ * key from a title, the description template, the clipboard-markdown
+ * conversion, and the paste splice the sheet and the detail's inline editor
+ * both mount. This file pins each of them, so the dialog, the stories and the
+ * frames all read one definition — the `projects-tab.test.mjs` pattern. (The
+ * sheet is create-only since the inline-edit slice: this model never had an
+ * edit mode, and the fields it fed now live in `project-edit-model.ts`, pinned
+ * by `projects-inline-edit.test.mjs`.)
  *
  * BUNDLED RATHER THAN IMPORTED: these are TypeScript modules in the renderer
  * tree, and the app's tsconfig does not run here. The module imports nothing

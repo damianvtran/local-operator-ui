@@ -2624,6 +2624,95 @@ test("the catalogue's paging parameters are optional, typed, and inert when unse
 });
 
 /**
+ * The projects search op, the ranked read it builds, and the version that gates it.
+ *
+ * WHY THE WIRE IS THE PLACE FOR THIS: the route is a STATIC path declared before
+ * `/v1/desktop/projects/{key}` on the backend, so the only thing keeping a query
+ * from being answered as a project literally named `search` is this client
+ * building the path it intends - and a query is user text, so a bare `&` or `#`
+ * in it would otherwise end the parameter or truncate the request instead of
+ * being searched for. The gate matters for the same reason: a version-1 backend
+ * has no index route, so a client that asked anyway would paint a 404 it caused
+ * itself, which is the fail-closed rule the whole desktop plane follows.
+ */
+test("the projects search op builds the ranked read, bounds q by name, and is gated on projects 2", () => {
+	const parsed = desktopRequestSchema.safeParse({
+		op: "projects.search",
+		q: "migration & notes",
+		limit: 25,
+	});
+	assert.equal(parsed.success, true);
+	assert.equal(
+		rendererDesktopEndpoint(parsed.data).path,
+		"/v1/desktop/projects/search?q=migration+%26+notes&limit=25",
+		"a query is encoded, not interpolated: an `&` must not end the parameter",
+	);
+	/* The limit travels explicitly rather than being left to the route's own
+	 * default: the caller's list, not a second authority the app cannot see, is
+	 * what decides how many rows a view asked for. */
+	const plain = desktopRequestSchema.safeParse({
+		op: "projects.search",
+		q: "abc",
+	});
+	assert.equal(plain.success, true);
+	assert.match(rendererDesktopEndpoint(plain.data).path, /limit=100$/);
+	/* The closed vocabulary and both bounds, refused HERE by name rather than by
+	 * the transport's generic 422: an empty query is refused because this surface
+	 * already holds the listing an empty one would send back, and 256/200 are the
+	 * route's own numbers. */
+	assert.equal(
+		desktopRequestSchema.safeParse({ op: "projects.search", q: "" }).success,
+		false,
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "projects.search",
+			q: "x".repeat(257),
+		}).success,
+		false,
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({
+			op: "projects.search",
+			q: "ok",
+			limit: 201,
+		}).success,
+		false,
+	);
+	assert.equal(
+		desktopRequestSchema.safeParse({ op: "projects.search", q: "ok", extra: 1 })
+			.success,
+		false,
+	);
+	/*
+	 * THE GATE. Version 1 of `projects` is every backend that can serve the tab
+	 * and has no index route; version 2 is the additive bump the core slice
+	 * shipped. So the tab itself still opens at 1, and ONLY the search read is
+	 * held back - which is what makes the bump a version rather than a lock.
+	 */
+	const caps = (version) => ({
+		desktop_available: true,
+		features: { projects: version },
+	});
+	assert.equal(
+		desktopFeatureEnabled(caps(1), "projects", 2),
+		false,
+		"a version-1 backend has no index route to answer",
+	);
+	assert.equal(desktopFeatureEnabled(caps(2), "projects", 2), true);
+	assert.equal(
+		desktopFeatureEnabled(caps(1), "projects"),
+		true,
+		"the tab itself needs only version 1",
+	);
+	assert.equal(
+		desktopFeatureEnabled(undefined, "projects", 2),
+		false,
+		"no capability answer is not a licence to ask",
+	);
+});
+
+/**
  * The pairing question, asked of one answer.
  *
  * WHY this is its own guard: `desktopAnswerProvesPairing` is the call site's

@@ -288,6 +288,84 @@ export const ManyOptions: Story = {
 };
 
 /**
+ * Nine options, EVERY description wrapping — the state issue #762 is about.
+ *
+ * Nine because that is where the ordinals stop (`ask-options.tsx`: digits 1-9
+ * are the shortcut), so it is the densest list the card can actually present,
+ * and every description here is long enough to take a second line at the 1024
+ * column. Before the fix the row's box did not include the wrapped
+ * description, so each row's ordinal and label landed on the description above
+ * it and the collisions cascaded down the list — with few or short options the
+ * panel renders correctly, which is why no existing story caught it.
+ *
+ * This story is the REGRESSION PIN: `scripts/ask-options-geometry.mjs`
+ * measures the rendered rows from this state and exits non-zero when any two
+ * row boxes intersect or a row does not contain its own label column. It fails
+ * on the pre-fix component (the failing run rides with the PR) and passes
+ * after, and its capture entry in `scripts/capture-evidence.mjs` pairs the
+ * before/after frames.
+ */
+export const WrappedDensity: Story = {
+	render: () => (
+		<Frame
+			asked="The March statement drop arrived from the bank an hour ago."
+			height={620}
+			pending={gate({
+				title: "Which import path should I take for the March statement drop?",
+				options: [
+					{
+						label: "Run the finance-import playbook end to end",
+						description:
+							"Starts from the nightly import skill, waits for its reconciliation report before anything is posted, and files a summary row instead of paging anyone while a soft failure is still being retried.",
+					},
+					{
+						label: "Replay only the rows that failed validation",
+						description:
+							"Picks up from the rejection file and re-runs those rows through the normalizer, which is usually faster than the full import but leaves the row counts in the summary slightly stale until the next sweep.",
+					},
+					{
+						label: "Reconcile the delta against the ledger first",
+						description:
+							"Reads both sides before writing anything at all, so the import can be cancelled with no cleanup if the counts disagree by more than the tolerance the treasury team set for this account.",
+					},
+					{
+						label: "Load it into the staging tables for review",
+						description:
+							"Writes the whole drop into the review schema and stops there, which means nothing touches production until someone promotes it by hand the following morning.",
+					},
+					{
+						label: "Ask the vendor for a corrected export",
+						description:
+							"Rejects this drop entirely and asks the counterparty to regenerate it from their side, which preserves the audit trail but adds at least a working day before anything lands.",
+					},
+					{
+						label: "Split the drop by account and load in batches",
+						description:
+							"Runs the normalizer once per account cluster, which isolates a bad slice to its own batch but multiplies the summary rows and the notifications the finance channel receives.",
+					},
+					{
+						label: "Dry-run the import and print the plan",
+						description:
+							"Shows every row the load would touch and the journal entries it would create without writing anything, which is the safest way to check the mapping changes from last week.",
+					},
+					{
+						label: "Hold it until the FX rates are re-published",
+						description:
+							"Skips this run because the rate table predates the fixing window; the drop stays queued and the scheduler picks the same path up as soon as the new rates are live.",
+					},
+					{
+						label: "None of these — walk me through the options",
+						description:
+							"Answers nothing and asks for a walkthrough instead, so the conversation continues with the relevant playbook and the tool contracts quoted in the order I would run them.",
+					},
+				],
+				recommended: 0,
+			})}
+		/>
+	),
+};
+
+/**
  * Long labels and long consequence lines, both wrapping.
  *
  * The label and its description must stay distinguishable after they wrap, and

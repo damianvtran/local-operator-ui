@@ -240,7 +240,7 @@ export const AppUpdatesSection: FC = () => {
 		<InfoItem
 			label={
 				<Tooltip content={tooltipText}>
-					<span className="inline-flex cursor-help items-center gap-1.5">
+					<span className="inline-flex items-center gap-1.5">
 						<Info size={12} className="shrink-0" />
 						{label}
 					</span>
@@ -253,7 +253,6 @@ export const AppUpdatesSection: FC = () => {
 						<Tooltip content={options.valueTooltip}>
 							<span
 								data-backend-version={options.valueHoverTarget ? "" : undefined}
-								className="cursor-help"
 							>
 								{value}
 							</span>
