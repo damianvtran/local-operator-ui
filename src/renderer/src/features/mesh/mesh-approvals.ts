@@ -369,7 +369,14 @@ export function approvalScopeGlosses(
 	if (unattended)
 		glosses.push({
 			term: "trust unattended sessions",
-			gloss: "sessions started there run without asking you each time",
+			/*
+			 * THE CONSEQUENCE, NOT A RESTATEMENT (UX round 2, U8): "sessions started
+			 * there run without asking you each time" mostly repeated the chip it
+			 * hangs from. What a reader cannot infer from the chip is what they STOP
+			 * being asked, so the gloss names that instead.
+			 */
+			gloss:
+				"each session started there skips the approval you would otherwise give",
 		});
 	for (const grant of grants)
 		glosses.push({

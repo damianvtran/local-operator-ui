@@ -382,7 +382,18 @@ export const MeshSurface: FC<{
 		 * longer ships its own outer margin (branding § 5's "the container owns the
 		 * gap").
 		 */
-		<div className="flex h-full min-h-0 flex-col gap-6 p-6">
+		/*
+		 * `overflow-y-auto` IS LOAD-BEARING (UX round 2, U7). The approvals tray sits
+		 * above these blocks and grows with its content - a gloss list and a
+		 * consequence line per waiting record. The parent slot is `overflow: hidden`,
+		 * so an unbounded page did not push the canvas down, it CLIPPED it: measured
+		 * with two waiting records, the canvas region went from 534x33 to 0 height at
+		 * a 700px-tall window and nothing scrolled (every ancestor up is hidden).
+		 * The tab now degrades by scrolling - the graph the whole journey ends on
+		 * stays reachable - and `min-h` on the canvas block below keeps it from
+		 * collapsing instead of merely being reachable.
+		 */
+		<div className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto p-6">
 			<PageHeader
 				title="Mesh"
 				icon={Network}
@@ -543,136 +554,145 @@ export const MeshSurface: FC<{
 			)}
 
 			{state.kind === "ready" && graph && (
-				<div className="flex min-h-0 flex-1 gap-4">
-					<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-						<p
-							id={summaryId}
-							className="text-meta text-ink-muted"
-							data-mesh-summary=""
-						>
-							{summary}
-						</p>
-						{staleError && (
-							<Alert variant="warning">
-								<p>{staleError}</p>
-							</Alert>
-						)}
-						{sessionError && (
-							/*
-							 * A FAILED SESSIONS READ DOES NOT TAKE THE GRAPH DOWN. The topology and
-							 * the conversations are two reads with two failure modes, and a tab that
-							 * blanked its canvas because the catalogue timed out would be asserting
-							 * that there is no mesh - a claim this device never made. The sentence
-							 * is the backend's own, and the chips are simply absent.
-							 */
-							<Alert variant="warning">
-								<p>{sessionError}</p>
-							</Alert>
-						)}
-						{moveReport && (
-							<MoveNotice
-								receipt={
-									moveReport.kind === "moved"
-										? {
-												verb: moveReport.verb,
-												detail: moveReport.detail,
-												undo: moveReport.undo,
-											}
-										: null
-								}
-								refusal={
-									moveReport.kind === "refused" ? moveReport.refusal : null
-								}
+				<>
+					{/*
+					 * THE CANVAS KEEPS A FLOOR (UX round 2, U7): the tray above grows with
+					 * its own content, and `min-h-0` let this block be squeezed to nothing -
+					 * at a 700px window the graph the operator's journey ends on measured
+					 * 0px tall. A floor plus the page's own scroll means the canvas degrades
+					 * by scrolling, never by disappearing.
+					 */}
+					<div className="flex min-h-[22rem] flex-1 gap-4">
+						<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+							<p
+								id={summaryId}
+								className="text-meta text-ink-muted"
+								data-mesh-summary=""
+							>
+								{summary}
+							</p>
+							{staleError && (
+								<Alert variant="warning">
+									<p>{staleError}</p>
+								</Alert>
+							)}
+							{sessionError && (
 								/*
-								 * THE REFUSAL'S OWN MOVE, read once and handed to the notice: the wait button is
-								 * drawn from this and the handler below re-issues it, so the two cannot disagree
-								 * about whether pressing it does anything (agent review round 2, MINOR).
+								 * A FAILED SESSIONS READ DOES NOT TAKE THE GRAPH DOWN. The topology and
+								 * the conversations are two reads with two failure modes, and a tab that
+								 * blanked its canvas because the catalogue timed out would be asserting
+								 * that there is no mesh - a claim this device never made. The sentence
+								 * is the backend's own, and the chips are simply absent.
 								 */
-								canWait={
-									moveReport.kind === "refused" && moveReport.plan !== null
+								<Alert variant="warning">
+									<p>{sessionError}</p>
+								</Alert>
+							)}
+							{moveReport && (
+								<MoveNotice
+									receipt={
+										moveReport.kind === "moved"
+											? {
+													verb: moveReport.verb,
+													detail: moveReport.detail,
+													undo: moveReport.undo,
+												}
+											: null
+									}
+									refusal={
+										moveReport.kind === "refused" ? moveReport.refusal : null
+									}
+									/*
+									 * THE REFUSAL'S OWN MOVE, read once and handed to the notice: the wait button is
+									 * drawn from this and the handler below re-issues it, so the two cannot disagree
+									 * about whether pressing it does anything (agent review round 2, MINOR).
+									 */
+									canWait={
+										moveReport.kind === "refused" && moveReport.plan !== null
+									}
+									onWait={onWaitForIdle}
+									onRecheck={onRetry}
+									onUndo={onUndoCopy}
+									onDismiss={onDismissReport}
+									pending={moveBusy}
+								/>
+							)}
+							{presentation === "canvas" ? (
+								<MeshCanvas
+									graph={graph}
+									slots={slots}
+									nowSeconds={nowSeconds}
+									selectedDeviceId={selectedDeviceId}
+									sessions={held.byDevice}
+									sessionTotals={totals}
+									movingSessionId={movingSessionId}
+									canMove={canMove}
+									onOpenDevice={openDevice}
+									onAskMove={onAskMove}
+									onDropRefused={onDropRefused}
+									onShowAllSessions={openDevice}
+									summaryId={summaryId}
+								/>
+							) : (
+								<MeshList
+									graph={graph}
+									nowSeconds={nowSeconds}
+									selectedDeviceId={selectedDeviceId}
+									sessions={held.byDevice}
+									selfLabel={selfLabel}
+									canMove={canMove}
+									onSelect={openDevice}
+									onMove={moveFor}
+									onInvite={onOpenInvite}
+									onRemove={onOpenRemove}
+								/>
+							)}
+						</div>
+						{selectedDevice && (
+							<DevicePanel
+								device={selectedDevice}
+								sessions={
+									held.byDevice.get(selectedDevice.id) ?? {
+										rows: [],
+										shown: [],
+										hidden: 0,
+									}
 								}
-								onWait={onWaitForIdle}
-								onRecheck={onRetry}
-								onUndo={onUndoCopy}
-								onDismiss={onDismissReport}
-								pending={moveBusy}
-							/>
-						)}
-						{presentation === "canvas" ? (
-							<MeshCanvas
-								graph={graph}
-								slots={slots}
+								sessionTotal={totals.get(selectedDevice.id) ?? 0}
 								nowSeconds={nowSeconds}
-								selectedDeviceId={selectedDeviceId}
-								sessions={held.byDevice}
-								sessionTotals={totals}
+								canMove={canMove}
+								canInvite={state.kind === "ready"}
 								movingSessionId={movingSessionId}
-								canMove={canMove}
-								onOpenDevice={openDevice}
-								onAskMove={onAskMove}
-								onDropRefused={onDropRefused}
-								onShowAllSessions={openDevice}
-								summaryId={summaryId}
-							/>
-						) : (
-							<MeshList
-								graph={graph}
-								nowSeconds={nowSeconds}
-								selectedDeviceId={selectedDeviceId}
-								sessions={held.byDevice}
-								selfLabel={selfLabel}
-								canMove={canMove}
-								onSelect={openDevice}
+								destinationsFor={(session) =>
+									destinationsWithVerdicts(graph, session, selfLabel)
+								}
+								onClose={() => setSelectedDeviceId(null)}
 								onMove={moveFor}
-								onInvite={onOpenInvite}
-								onRemove={onOpenRemove}
+								onInvite={(device) =>
+									onOpenInvite({
+										deviceId: device.id,
+										deviceLabel: device.label,
+									})
+								}
+								onRemoveMember={(device, networkId) => {
+									const network = graph.networks.find(
+										(network) => network.id === networkId,
+									);
+									onOpenRemove({
+										networkId,
+										networkLabel: network?.label ?? networkId,
+										deviceId: device.id,
+										deviceLabel: device.label,
+									});
+								}}
+								onShowInList={(deviceId) => {
+									openDevice(deviceId);
+									setPresentation("list");
+								}}
 							/>
 						)}
 					</div>
-					{selectedDevice && (
-						<DevicePanel
-							device={selectedDevice}
-							sessions={
-								held.byDevice.get(selectedDevice.id) ?? {
-									rows: [],
-									shown: [],
-									hidden: 0,
-								}
-							}
-							sessionTotal={totals.get(selectedDevice.id) ?? 0}
-							nowSeconds={nowSeconds}
-							canMove={canMove}
-							canInvite={state.kind === "ready"}
-							movingSessionId={movingSessionId}
-							destinationsFor={(session) =>
-								destinationsWithVerdicts(graph, session, selfLabel)
-							}
-							onClose={() => setSelectedDeviceId(null)}
-							onMove={moveFor}
-							onInvite={(device) =>
-								onOpenInvite({
-									deviceId: device.id,
-									deviceLabel: device.label,
-								})
-							}
-							onRemoveMember={(device, networkId) => {
-								const network = graph.networks.find(
-									(network) => network.id === networkId,
-								);
-								onOpenRemove({
-									networkId,
-									networkLabel: network?.label ?? networkId,
-									deviceId: device.id,
-									deviceLabel: device.label,
-								});
-							}}
-							onShowInList={(deviceId) => {
-								openDevice(deviceId);
-								setPresentation("list");
-							}}
-						/>
-					)}
-				</div>
+				</>
 			)}
 
 			<MoveConfirmDialog
