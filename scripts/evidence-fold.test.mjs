@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { execFileSync, spawnSync } from "node:child_process";
 import {
 	chmodSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -19,7 +20,9 @@ import {
 } from "./check-evidence.mjs";
 import { keyPaths } from "./check-fold-keys.mjs";
 import {
+	RETIRED_TOP_LEVEL_FIELDS,
 	deepEqual,
+	deriveFields,
 	mergedKeys,
 	resolveManifest,
 	runGuards,
@@ -111,8 +114,6 @@ const readerFor = (cwd) => (args) => {
 /** The manifest a fold is about: pass fields, listings, and the derived set. */
 const manifest = (fields) => ({
 	head: fields.head ?? "0".repeat(40),
-	srcTree: fields.srcTree ?? "1".repeat(40),
-	scriptsTree: fields.scriptsTree ?? "2".repeat(40),
 	dirtyWorkingTree: false,
 	frames: fields.frames ?? 2,
 	surfaces: fields.surfaces ?? 2,
@@ -135,6 +136,15 @@ const fixture = ({
 	laneRecord = true,
 	mainRecord = true,
 	attributes = false,
+	/*
+	 * `srcOnly` is the shape the whole change exists for: main moves `src/` and
+	 * NOTHING the manifest reads - no new story, no new frame, no change to
+	 * `capture-evidence.mjs`'s literals - so every count the manifest states is
+	 * unchanged and the fold must write NOTHING. Before the tree stamps were
+	 * retired this fixture could not exist: `srcTree` moved on every `src/`
+	 * commit, so the fold always had a reason to rewrite the file.
+	 */
+	srcOnly = false,
 } = {}) => {
 	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-fold-"));
 	scratch.push(dir);
@@ -211,11 +221,13 @@ const fixture = ({
 
 	git(dir, ["checkout", "-q", "main"]);
 	write("src/app.ts", "export const one = 2;\n");
-	write(
-		"scripts/capture-evidence.mjs",
-		capture(["chat--one", "chat--two", "chat--three"]),
-	);
-	frame("docs/evidence/chat--three/localOperatorDark.webp");
+	if (!srcOnly) {
+		write(
+			"scripts/capture-evidence.mjs",
+			capture(["chat--one", "chat--two", "chat--three"]),
+		);
+		frame("docs/evidence/chat--three/localOperatorDark.webp");
+	}
 	const mainManifest = manifest({
 		head: baseSha,
 		extra: {
@@ -390,12 +402,33 @@ test("a fold resolves both sides' records, unions the listings, and re-derives t
 		"the merged tree's frames outside the declared set",
 	);
 
-	// The stamps name the MERGED tree, which is what `git write-tree` answers
-	// mid-merge - not `HEAD:src`, which is still the lane's pre-merge tree.
+	/*
+	 * THE RETIRED PAIR IS ABSENT, and its absence is the property: a stored hash of
+	 * the shipping tree cannot be kept true (any sibling commit moves it), so no
+	 * fold may put one back - which is exactly what a branch whose own old fold
+	 * tool re-derived it would otherwise do.
+	 */
+	assert.ok(
+		!("srcTree" in m) && !("scriptsTree" in m),
+		"a fold must not carry the retired tree stamps into the merged file",
+	);
+	// The counts name the MERGED tree, which is what `git write-tree` answers
+	// mid-merge - not the lane's pre-merge tree, whose STORIES literal has two
+	// rows rather than the three the merged one has.
 	const staged = git(dir, ["write-tree"]);
-	assert.equal(m.srcTree, git(dir, ["rev-parse", `${staged}:src`]));
-	assert.equal(m.scriptsTree, git(dir, ["rev-parse", `${staged}:scripts`]));
-	assert.notEqual(m.srcTree, git(dir, ["rev-parse", "HEAD:src"]));
+	assert.equal(
+		git(dir, ["show", `${staged}:scripts/capture-evidence.mjs`]).includes(
+			"chat--three",
+		),
+		true,
+	);
+	assert.equal(
+		git(dir, ["show", "HEAD:scripts/capture-evidence.mjs"]).includes(
+			"chat--three",
+		),
+		false,
+		"the pre-merge head's literal is NOT the one the count came from",
+	);
 
 	// ONE commit: the fold is completed by the merge commit itself, not by a
 	// second docs-only commit after it.
@@ -437,7 +470,7 @@ test("with the merge driver installed, git merges without a manifest conflict", 
 	assert.equal(merge.code, 0, `git must not have stopped: ${merge.out}`);
 	assert.match(
 		merge.out,
-		/stamps still name the PRE-merge tree/,
+		/The COUNTS still describe the PRE-merge tree/,
 		"the driver resolved the manifest and said what it left undone",
 	);
 	assert.equal(
@@ -590,37 +623,56 @@ test("a conflict outside the manifest is reported, not resolved over", () => {
 	assert.equal(second.status, 0, second.out);
 });
 
-test("outside a merge, a stale stamp is re-derived without amending anything", () => {
+test("outside a merge, a commit that moves only `src/` leaves the manifest alone", () => {
 	const dir = fixture();
-	// A plain content commit that moved `scripts/` under the stamp.
-	writeFileSync(
-		join(dir, "scripts", "capture-evidence.mjs"),
-		readFileSync(join(dir, "scripts", "capture-evidence.mjs"), "utf8"),
+	/*
+	 * THE SHAPE THE WHOLE CHANGE EXISTS FOR (test T1). A real content commit that
+	 * moves `src/` and nothing the manifest reads: no new story, no new frame, no
+	 * edit to `capture-evidence.mjs`'s literals. Before the tree stamps were
+	 * retired this was impossible - `srcTree` moved on every `src/` commit - so
+	 * every open branch owed a re-derive here. Now the readings are identical and
+	 * the tool must write NOTHING.
+	 *
+	 * The fixture's copy starts with synthetic counts (its `partialCapture` is a
+	 * stand-in, not this tree's walk), so the first run legitimately re-derives
+	 * them; that run is committed as the branch's own fold would be, and the
+	 * `src/`-only commit after it is the case under test.
+	 */
+	const first = run(dir);
+	assert.equal(first.status, 0, first.out);
+	git(dir, ["commit", "-qm", "docs(evidence): re-derive the counts"]);
+
+	const beforeManifest = readFileSync(
+		join(dir, "docs", "evidence", "manifest.json"),
+		"utf8",
 	);
-	git(dir, ["commit", "-q", "--allow-empty", "-m", "chore: a commit"]);
-	const before = git(dir, ["rev-parse", "HEAD"]);
-	// Nothing is stale yet; make it so by moving src and leaving the manifest.
 	writeFileSync(join(dir, "src", "app.ts"), "export const one = 9;\n");
 	git(dir, ["add", "-A"]);
 	git(dir, ["commit", "-qm", "feat: move src"]);
+	const contentHead = git(dir, ["rev-parse", "HEAD"]);
 
 	const result = run(dir);
 	assert.equal(result.status, 0, result.out);
-	assert.match(result.out, /git commit/);
-	assert.doesNotMatch(result.out, /amend/);
-	assert.equal(
-		git(dir, ["rev-parse", "HEAD"]),
-		git(dir, ["rev-parse", "HEAD"]),
-		"nothing was committed for the author",
+	assert.match(
+		result.out,
+		/already describes this tree/,
+		"a run with nothing to re-derive says so rather than writing",
 	);
 	assert.equal(
 		git(dir, ["diff", "--cached", "--name-only"]),
-		"docs/evidence/manifest.json",
-		"the re-derived stamps are staged, and only they",
+		null,
+		"nothing is staged when no reading moved",
 	);
-	const m = readManifest(dir);
-	assert.equal(m.srcTree, git(dir, ["rev-parse", "HEAD:src"]));
-	assert.notEqual(before, null);
+	assert.equal(
+		readFileSync(join(dir, "docs", "evidence", "manifest.json"), "utf8"),
+		beforeManifest,
+		"the manifest's bytes are untouched",
+	);
+	assert.equal(
+		git(dir, ["rev-parse", "HEAD"]),
+		contentHead,
+		"no commit was made for the author",
+	);
 });
 
 test("--dry-run reports and writes nothing", () => {
@@ -654,16 +706,38 @@ test("the guards the tool runs can still fail on the tree the tool produces", ()
 	assert.deepEqual(guardFailures(dir), []);
 
 	const good = readManifest(dir);
-	const mutated = { ...good, srcTree: "0".repeat(40) };
-	writeFileSync(
-		join(dir, "docs", "evidence", "manifest.json"),
-		`${JSON.stringify(mutated, null, 2)}\n`,
-	);
-	assert.equal(
-		stampFailures(mutated, readerFor(dir), join(dir, "docs", "evidence"))
-			.length >= 1,
-		true,
-		"a mutated stamp must fail the guard the tool validates against",
+	/*
+	 * The counts are the guard's teeth now that the pair is retired, so these are
+	 * the mutations that must still bite (test T5): an over-eager deletion of the
+	 * counts half would look green without them.
+	 */
+	for (const [field, value] of [
+		["frames", 999],
+		["surfaces", 999],
+		["themes", 999],
+	]) {
+		const mutated = { ...good, [field]: value };
+		writeFileSync(
+			join(dir, "docs", "evidence", "manifest.json"),
+			`${JSON.stringify(mutated, null, 2)}\n`,
+		);
+		assert.equal(
+			stampFailures(mutated, readerFor(dir), join(dir, "docs", "evidence"))
+				.length >= 1,
+			true,
+			`a mutated \`${field}\` must fail the guard the tool validates against`,
+		);
+	}
+	// And no stored stamp can put the retired pair back in force: a manifest that
+	// carries a WRONG pair passes, because nothing reads it any more.
+	assert.deepEqual(
+		stampFailures(
+			{ ...good, srcTree: "0".repeat(40), scriptsTree: "0".repeat(40) },
+			readerFor(dir),
+			join(dir, "docs", "evidence"),
+		),
+		[],
+		"the retired pair is indifferent to the guard, which is what stops a stray copy gating again",
 	);
 
 	/*
@@ -758,9 +832,12 @@ test("a wiring that cannot be verified is loud by hand and tolerated by prepare"
  * `%A` is "this branch" for `git merge` and for nothing else: under a rebase,
  * a cherry-pick, a revert, `am` or a stash-pop git hands the driver the UPSTREAM
  * side as `%A`, and a content driver is given nothing that tells them apart. The
- * driver therefore resolves only when `MERGE_HEAD` exists and otherwise exits
- * non-zero with the operation named, which is what makes git stop on the
- * conflict exactly as it did before this PR added the driver at all.
+ * driver therefore resolves only when it can SEE a real merge - merge.c's
+ * `GITHEAD_<oid>` / `GIT_REFLOG_ACTION`, or `MERGE_HEAD` on a git that writes it
+ * early - and otherwise exits non-zero with the case named, which is what makes
+ * git stop on the conflict exactly as it did before this PR added the driver at
+ * all. Every non-zero exit also appends its reason to
+ * `<git dir>/evidence-fold-driver.log`, because git's own output names no cause.
  */
 test("the merge driver refuses outside a merge, so a rebase stops on the conflict", () => {
 	const dir = fixture({ attributes: true });
@@ -845,6 +922,457 @@ test("a hand run of the tool outside a merge refuses rather than taking HEAD's s
 });
 
 /* ------------------------------------------------------------------ *
+ * M2b: the driver's non-zero paths - stated, recorded, and never taken
+ *      on a legitimate merge
+ * ------------------------------------------------------------------ */
+
+/**
+ * Install a driver command that hides the merge-only environment from the real
+ * driver, so the case can be exercised at all.
+ *
+ * WHY A WRAPPER, AND WHY NODE. `builtin/merge.c` sets `GITHEAD_<oid>` and
+ * `GIT_REFLOG_ACTION` on the environment git hands its merge down, so a caller
+ * cannot remove them from `git merge` - the only place they can be taken away is
+ * between git and this script, which is where a harness wrapper sits. The
+ * wrapper is Node so the case behaves identically wherever the suite runs, and
+ * it re-execs the real script with the hidden names deleted rather than
+ * reimplementing any of it.
+ */
+const driverHidingMergeSignals = (dir, extraHidden = []) => {
+	const wrapper = join(dir, "driver-hides-signals.mjs");
+	const hidden = [...extraHidden].filter(Boolean);
+	writeFileSync(
+		wrapper,
+		[
+			'import { spawnSync } from "node:child_process";',
+			"const env = { ...process.env };",
+			`for (const name of ${JSON.stringify(hidden)}) delete env[name];`,
+			"for (const name of Object.keys(env))",
+			'\tif (name.startsWith("GITHEAD_")) delete env[name];',
+			"const result = spawnSync(",
+			"\tprocess.execPath,",
+			"\t[process.argv[2], ...process.argv.slice(3)],",
+			'\t{ stdio: "inherit", env },',
+			");",
+			"process.exit(result.status ?? 1);",
+		].join("\n"),
+	);
+	git(dir, [
+		"config",
+		"merge.evidence-fold.driver",
+		`${process.execPath} ${wrapper} ${SCRIPT} --driver %O %A %B`,
+	]);
+	return wrapper;
+};
+
+/**
+ * Install a driver command that forwards to the real driver with `%B` replaced
+ * by a path that does not exist.
+ *
+ * WHY A WRAPPER. git itself always hands a driver three EXISTING temp files, so
+ * a side whose PATH IS ABSENT cannot be produced by a plain `git merge`: it is
+ * the shape a hand-written or older driver command produces, and it is one of
+ * the two ways `readSide` throws. The wrapper forwards with the merge-only
+ * environment intact - so the run is a legitimate merge and reaches `readSide` -
+ * and only the third path is spoofed.
+ */
+const driverWithAnAbsentSide = (dir) => {
+	const wrapper = join(dir, "driver-absent-side.mjs");
+	writeFileSync(
+		wrapper,
+		[
+			'import { spawnSync } from "node:child_process";',
+			"const [, , script, base, ours, theirs] = process.argv;",
+			"const result = spawnSync(",
+			"\tprocess.execPath,",
+			'\t[script, "--driver", base, ours, `${theirs}.absent`],',
+			'\t{ stdio: "inherit", env: process.env },',
+			");",
+			"process.exit(result.status ?? 1);",
+		].join("\n"),
+	);
+	git(dir, [
+		"config",
+		"merge.evidence-fold.driver",
+		`${process.execPath} ${wrapper} ${SCRIPT} %O %A %B`,
+	]);
+	return wrapper;
+};
+
+/**
+ * Rewrite one revision's manifest to something that is NOT JSON - the shape a
+ * half-written file has - and return the fixture to `lane`.
+ */
+const truncateTheManifestOn = (dir, rev) => {
+	git(dir, ["checkout", "-q", rev]);
+	writeFileSync(
+		join(dir, "docs/evidence/manifest.json"),
+		'{\n  "head": "0000000000000000000000000000000000000000",\n  "frames": 2,',
+	);
+	git(dir, ["add", "-A"]);
+	git(dir, ["commit", "-qm", `feat: ${rev} truncates the manifest`]);
+	git(dir, ["checkout", "-q", "lane"]);
+};
+
+/** The driver log a refused run leaves in the clone, wherever its git dir is. */
+const driverLog = (dir) => {
+	const gitDir = git(dir, ["rev-parse", "--absolute-git-dir"]);
+	return {
+		path: join(gitDir, "evidence-fold-driver.log"),
+		text: readFileSync(join(gitDir, "evidence-fold-driver.log"), "utf8"),
+	};
+};
+
+test("a refused driver run names the case it could not handle, and records it in the git dir", () => {
+	const dir = fixture({ attributes: true });
+	installDriver(dir);
+
+	const rebase = gitCode(dir, ["rebase", "main"]);
+	assert.notEqual(rebase.code, 0, "the driver must refuse, so git stops");
+	assert.match(
+		rebase.out,
+		/REFUSING to resolve docs\/evidence\/manifest\.json during rebase/,
+		"the message must name the case (a rebase), not just that it failed",
+	);
+	assert.match(
+		rebase.out,
+		/this reason is recorded at .*evidence-fold-driver\.log/,
+		"the message must say where the durable record is",
+	);
+
+	const log = driverLog(dir);
+	assert.match(
+		log.text,
+		/REFUSING to resolve docs\/evidence\/manifest\.json during rebase/,
+		"the log carries the same reason git's output buried",
+	);
+	assert.match(
+		log.text,
+		/merge\.evidence-fold\.driver/,
+		"the log names the driver command that produced it",
+	);
+
+	// A second refusal APPENDS: the log is a record of runs, not a last-write-wins
+	// file, so two failures are two entries the author can tell apart.
+	gitCode(dir, ["rebase", "--abort"]);
+	const again = gitCode(dir, ["cherry-pick", "main"]);
+	assert.notEqual(again.code, 0, "a cherry-pick is refused too");
+	assert.match(
+		again.out,
+		/REFUSING .* during an operation that is not a merge/,
+		"the case git records no marker for must be named as such, not guessed at",
+	);
+	const appended = driverLog(dir).text;
+	assert.match(appended, /cherry-pick|not a merge/);
+	assert.ok(
+		appended.length > log.text.length,
+		"the second refusal must be appended to the first, not replace it",
+	);
+});
+
+test("a legitimate merge is NOT refused when the driver's environment lacks GITHEAD_*", () => {
+	const dir = fixture({ attributes: true });
+	driverHidingMergeSignals(dir);
+
+	const merge = gitCode(dir, [
+		"merge",
+		"main",
+		"-m",
+		"chore(merge): fold main",
+	]);
+	assert.equal(
+		merge.code,
+		0,
+		`a real merge must still be resolved when only GITHEAD_* is missing: ${merge.out}`,
+	);
+	assert.match(
+		merge.out,
+		/resolved docs\/evidence\/manifest\.json mechanically/,
+		"the driver, not git's text merge, must have produced the merge",
+	);
+});
+
+test("with EVERY merge signal hidden the driver refuses rather than guess a side", () => {
+	/*
+	 * The boundary this fix does NOT cross, pinned so it cannot drift into a
+	 * silent wrong-side resolution. `GITHEAD_<oid>` and `GIT_REFLOG_ACTION` are
+	 * set together by `builtin/merge.c` for a real merge and by nothing else, and
+	 * git leaves a single-commit cherry-pick, a revert and a merge identical on
+	 * disk while the driver runs (no marker file, no `MERGE_HEAD`). So when a
+	 * wrapper hides BOTH, the run is genuinely indistinguishable from a replay:
+	 * refusing - with the reason stated and recorded - is the only safe answer,
+	 * and `pnpm evidence:fold` resolves the file afterwards either way.
+	 */
+	const dir = fixture({ attributes: true });
+	driverHidingMergeSignals(dir, ["GIT_REFLOG_ACTION"]);
+
+	const merge = gitCode(dir, ["merge", "main"]);
+	assert.notEqual(merge.code, 0, "it must refuse rather than resolve");
+	assert.match(
+		merge.out,
+		/REFUSING .* during an operation that is not a merge/,
+	);
+	assert.match(
+		merge.out,
+		/this reason is recorded at .*evidence-fold-driver\.log/,
+		"the refusal must point at the durable record",
+	);
+	assert.match(driverLog(dir).text, /REFUSING/, "and it is recorded");
+});
+
+test("a refused driver run never leaves the working file looking like a resolved one", () => {
+	/*
+	 * THE DESTRUCTIVE SHAPE THIS GUARDS AGAINST. When a merge driver exits without
+	 * writing, git keeps the conflict in the index but leaves the WORKING file
+	 * holding `%A` verbatim - one side's copy, with no markers - which reads as a
+	 * resolution to whoever opens it next (measured on git 2.55.0). The refusal
+	 * path therefore writes git's markers back itself.
+	 */
+	const dir = fixture({ attributes: true });
+	installDriver(dir);
+
+	const rejected = gitCode(dir, ["rebase", "main"]);
+	assert.notEqual(rejected.code, 0, rejected.out);
+	const conflicted = readFileSync(
+		join(dir, "docs/evidence/manifest.json"),
+		"utf8",
+	);
+	assert.match(
+		conflicted,
+		/^<<<<<<< /m,
+		"the refusal must leave conflict markers in the working file",
+	);
+	assert.match(conflicted, /^>>>>>>> /m);
+	assert.match(
+		conflicted,
+		/not this branch|upstream side|being replayed/,
+		"the markers must say which side git gave as %A, rather than implying it is this branch",
+	);
+});
+
+test("a driver run whose side is not JSON is refused, and still leaves the working file unresolved", () => {
+	/*
+	 * THE POST-MERGE MAJOR ON #804, PINNED. A refusal that arrives as a THROW -
+	 * here, a side `readSide` cannot parse - used to escape the refusal path
+	 * entirely: the run exited non-zero and git marked the conflict, but the
+	 * WORKING file kept `%A` verbatim with no markers, so `cat` showed one side's
+	 * copy and `git add && git commit` would have staged the wrong side silently.
+	 * The refusal path writes markers; the throw path must too.
+	 */
+	const dir = fixture({ attributes: true });
+	installDriver(dir);
+	truncateTheManifestOn(dir, "main");
+
+	const merge = gitCode(dir, [
+		"merge",
+		"main",
+		"-m",
+		"chore(merge): fold main",
+	]);
+	assert.notEqual(merge.code, 0, merge.out);
+	assert.match(
+		merge.out,
+		/REFUSING to resolve docs\/evidence\/manifest\.json/,
+		"the throw must be routed through the same refusal the refuse paths use",
+	);
+	assert.match(
+		merge.out,
+		/is not JSON/,
+		"and it must name the case it could not handle",
+	);
+
+	const conflicted = readFileSync(
+		join(dir, "docs/evidence/manifest.json"),
+		"utf8",
+	);
+	assert.match(
+		conflicted,
+		/^<<<<<<< /m,
+		"a throw must leave conflict markers, not one side's copy verbatim",
+	);
+	assert.match(conflicted, /^>>>>>>> /m);
+	assert.equal(
+		(git(dir, ["ls-files", "-u"]) ?? "").split("\n").filter(Boolean).length,
+		3,
+		"the index must stay unmerged, so `git commit` refuses",
+	);
+	assert.match(driverLog(dir).text, /REFUSING/);
+	assert.match(driverLog(dir).text, /not JSON/);
+});
+
+test("a driver run handed an absent side path is refused, and the working file still reads unresolved", () => {
+	const dir = fixture({ attributes: true });
+	driverWithAnAbsentSide(dir);
+
+	const merge = gitCode(dir, [
+		"merge",
+		"main",
+		"-m",
+		"chore(merge): fold main",
+	]);
+	assert.notEqual(merge.code, 0, merge.out);
+	assert.match(merge.out, /REFUSING to resolve docs\/evidence\/manifest\.json/);
+	assert.match(merge.out, /does not exist/);
+
+	const conflicted = readFileSync(
+		join(dir, "docs/evidence/manifest.json"),
+		"utf8",
+	);
+	assert.match(
+		conflicted,
+		/^<<<<<<< /m,
+		"an absent side must not leave %A looking resolved either",
+	);
+	assert.match(conflicted, /^>>>>>>> /m);
+	assert.match(
+		conflicted,
+		/could not be read/,
+		"the missing side is named in the file rather than left as a silent gap",
+	);
+	assert.equal(
+		(git(dir, ["ls-files", "-u"]) ?? "").split("\n").filter(Boolean).length,
+		3,
+	);
+	assert.match(driverLog(dir).text, /REFUSING/);
+});
+
+/* ------------------------------------------------------------------ *
+ * M2c: the fold path is install-free, and writes one file
+ * ------------------------------------------------------------------ */
+
+test("the fold path cannot reach a package manager: no dependency, no pre-run install", () => {
+	const scripts = dirname(SCRIPT);
+	const repoRoot = resolve(scripts, "..");
+
+	/*
+	 * STATIC, because the property is about what the tool CAN do. A behavioural
+	 * case can only show that one run happened not to install; this pins each
+	 * mechanism that would let a future edit reintroduce one.
+	 */
+	const workspace = readFileSync(join(repoRoot, "pnpm-workspace.yaml"), "utf8");
+	assert.match(
+		workspace,
+		/^verifyDepsBeforeRun:\s*false\s*$/m,
+		"pnpm 11+ must not auto-install before a `pnpm run` in this repository: `pnpm evidence:fold` in a lane pruned node_modules and WROTE an allowBuilds block into pnpm-workspace.yaml",
+	);
+
+	/*
+	 * THE COMMAND HALF. `verifyDepsBeforeRun` gates a pre-run install; this pins
+	 * that the entry point it would wrap re-enters no package manager either, so
+	 * `pnpm evidence:fold` IS `node scripts/evidence-fold.mjs` and nothing else.
+	 * The two together are the whole of "the fold never installs" that can be
+	 * pinned WITHOUT a real install - which is why the claim is pinned here rather
+	 * than proved end to end by desyncing a dependency tree (QA round 1, Q3).
+	 */
+	const pkg = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8"));
+	for (const name of [
+		"evidence:fold",
+		"evidence:fold:install",
+		"evidence:fold:check",
+	])
+		assert.match(
+			pkg.scripts[name] ?? "",
+			/^\s*node\s+\S*scripts\/evidence-fold\.mjs/,
+			`${name} must run the fold as plain Node, so no wrapper can pull a package manager in front of it`,
+		);
+
+	for (const file of ["evidence-fold.mjs", "entry-point.mjs"]) {
+		const source = readFileSync(join(scripts, file), "utf8");
+		assert.doesNotMatch(
+			source,
+			/(execFileSync|execSync|spawnSync|spawn|exec)\(\s*["'`](pnpm|npm|yarn|npx)["'`]/,
+			`${file} must never spawn a package manager - the fold is plain Node and git`,
+		);
+		for (const [, specifier] of source.matchAll(
+			/^import[^;]*?from\s+"([^"]+)"/gm,
+		)) {
+			assert.ok(
+				specifier.startsWith("node:") || specifier.startsWith("."),
+				`${file} imports ${specifier}: the fold path may depend only on node built-ins and its siblings, or a lane would need an install to fold`,
+			);
+		}
+	}
+});
+
+test("a fold writes docs/evidence/manifest.json in the work tree and nothing else", () => {
+	const dir = fixture({ attributes: true });
+	installDriver(dir);
+	/*
+	 * `--no-amend` on purpose: it leaves the fold's own footprint visible (a
+	 * staged manifest) instead of folding it into the merge commit, which is what
+	 * makes "and nothing else" answerable.
+	 */
+	gitCode(dir, ["merge", "main", "-m", "chore(merge): fold main"]);
+	const folded = run(dir, ["--no-amend"]);
+	assert.equal(folded.status, 0, folded.out);
+
+	const touched = [
+		...(git(dir, ["diff", "--name-only"]) ?? "").split("\n"),
+		...(git(dir, ["diff", "--cached", "--name-only"]) ?? "").split("\n"),
+		...(git(dir, ["ls-files", "--others", "--exclude-standard"]) ?? "").split(
+			"\n",
+		),
+	].filter(Boolean);
+	assert.deepEqual(
+		[...new Set(touched)],
+		["docs/evidence/manifest.json"],
+		`a fold may touch the manifest and nothing else, but this run touched: ${touched.join(", ")}`,
+	);
+});
+
+test("a preflight refusal writes nothing, and leaves a stopped merge's index untouched", () => {
+	/*
+	 * THE PREFLIGHT'S WRITE-FREE CLAIM, PINNED. It was verified by hand and
+	 * asserted by nothing, yet it is the load-bearing half of "a run that cannot be
+	 * completed is stopped BEFORE the first write": the merge state STAGES the
+	 * manifest as part of naming the merged tree, so a preflight that let a write
+	 * through would leave a half-resolved index behind. The state where that
+	 * matters is a merge already stopped on the conflict, which is what this
+	 * fixture is put in.
+	 */
+	const dir = fixture({ attributes: true });
+	// No driver installed: the merge stops, leaving all three index stages and
+	// MERGE_HEAD - state the preflight must not disturb.
+	assert.notEqual(
+		gitCode(dir, ["merge", "main", "-m", "chore(merge): fold main"]).code,
+		0,
+	);
+	// Remove the manifest the preflight insists on, so its second check fires.
+	rmSync(join(dir, "docs/evidence/manifest.json"));
+	const before = {
+		stages: git(dir, ["ls-files", "-u"]),
+		status: git(dir, ["status", "--short"]),
+	};
+
+	const refused = run(dir);
+	assert.notEqual(refused.status, 0);
+	assert.match(refused.out, /does not exist in this work tree/);
+	assert.match(refused.out, /nothing has been written/);
+	assert.equal(
+		git(dir, ["ls-files", "-u"]),
+		before.stages,
+		"the preflight must not have staged, resolved or otherwise touched the index",
+	);
+	assert.equal(
+		git(dir, ["status", "--short"]),
+		before.status,
+		"the preflight must have written nothing to the work tree either",
+	);
+	assert.ok(
+		existsSync(join(dir, ".git", "MERGE_HEAD")),
+		"the merge must still be in progress",
+	);
+	assert.ok(
+		!existsSync(join(dir, "docs", "evidence", "manifest.json")),
+		"the run must not have recreated the manifest it refused over",
+	);
+	assert.ok(
+		!existsSync(join(dir, ".git", "evidence-fold-driver.log")),
+		"and it must not have recorded a driver failure it never reached",
+	);
+});
+
+/* ------------------------------------------------------------------ *
  * M2: refreshedFrames - when it is re-derived, and over what denominator
  * ------------------------------------------------------------------ */
 
@@ -890,7 +1418,16 @@ test("refreshedFrames is re-derived whenever the merged file carries a partialCa
  * directories match no story id, which is why `partialCaptureFailures` stood
  * down (its `refreshedAtHead` guard) on every case that existed before this one.
  */
-const storyFixture = ({ mainLostNestedKeys = false } = {}) => {
+const storyFixture = ({
+	mainLostNestedKeys = false,
+	/*
+	 * The shape EVERY open branch has the moment the retirement lands on `main`:
+	 * this branch's copy still carries `srcTree`/`scriptsTree`, because the fold
+	 * tool that wrote it predates the change. It exists so the retired-field rule
+	 * (test T6) is exercised through a real merge rather than a unit call.
+	 */
+	laneCarriesRetiredPair = false,
+} = {}) => {
 	const dir = mkdtempSync(join(tmpdir(), "lop-evidence-fold-story-"));
 	scratch.push(dir);
 	git(dir, ["init", "--initial-branch=main", "-q"]);
@@ -979,8 +1516,8 @@ const storyFixture = ({ mainLostNestedKeys = false } = {}) => {
 	 * `partialCaptureFailures`, correctly).
 	 */
 	if (!mainLostNestedKeys) frame("chat--three");
-	manifestJson(
-		manifest({
+	manifestJson({
+		...manifest({
 			head: baseSha,
 			supplementary: [
 				{
@@ -1006,7 +1543,10 @@ const storyFixture = ({ mainLostNestedKeys = false } = {}) => {
 					},
 			extra: { baseRecord: "the base pass", laneRecord: "THE LANE'S RECORD" },
 		}),
-	);
+		...(laneCarriesRetiredPair
+			? { srcTree: "1".repeat(40), scriptsTree: "2".repeat(40) }
+			: {}),
+	});
 	git(dir, ["add", "-A"]);
 	git(dir, ["commit", "-qm", "feat: the lane's pass"]);
 
@@ -1664,6 +2204,44 @@ test("both parents' key sets survive the resolution at every depth", () => {
 	);
 });
 
+/**
+ * The key gate's own narrowing, and the shape tonight's drop took. An array
+ * element that carries a `path` is keyed by it, so a loss inside ONE entry is
+ * visible even while every other entry still carries the same key - which is
+ * precisely the case the old union-of-elements form could not see (the #765
+ * lane's fold lost `frames`/`surfaces`/`themes` from `supplementary[158]` while
+ * ~160 other entries still carried all three, so the gate said `clean`).
+ */
+test("keyPaths sees a loss inside one `path`-keyed array element", () => {
+	const before = {
+		supplementary: [
+			{ path: "a", frames: 1, why: "a" },
+			{ path: "b", frames: 2, why: "b" },
+		],
+	};
+	const afterOneEntryLost = {
+		supplementary: [
+			{ path: "a", frames: 1, why: "a" },
+			{ path: "b", why: "b" },
+		],
+	};
+	const beforePaths = keyPaths(JSON.stringify(before));
+	const afterPaths = keyPaths(JSON.stringify(afterOneEntryLost));
+	const lost = [...beforePaths].filter((path) => !afterPaths.has(path));
+	assert.deepEqual(lost, ["supplementary[b].frames"]);
+	// The union form this replaced could not have seen it: `supplementary[a].frames`
+	// and `supplementary[b].frames` were one key, so the surviving entry masked
+	// the lost one. Elements without a `path` keep that union, deliberately.
+	assert.deepEqual(
+		[
+			...keyPaths(
+				JSON.stringify({ items: [{ id: 1, moved: true }, { id: 2 }] }),
+			),
+		].filter((path) => path.startsWith("items")),
+		["items", "items[].id", "items[].moved"],
+	);
+});
+
 /*
  * THE SAME SHAPE ON THE REAL PATH, and the control run on the fixture's OWN three
  * sides: the lane never touched its container, main moved it and lost the note
@@ -1729,4 +2307,221 @@ test("the fold of a main that dropped a nested key keeps it, names it, and passe
 		gate.stdout,
 		/clean - every key of both parents survives the merge/,
 	);
+});
+
+/**
+ * The retired pair, unit level: a fold drops it from whichever side carries it,
+ * and the drop is a printed decision rather than a silence.
+ *
+ * This is the plain-JSON half of `check-fold-keys`' retired-field rule - the
+ * resolver must actually remove the key, or the gate's acceptance would be
+ * covering a file that still carries it.
+ */
+test("a fold drops a retired top-level field this branch still carries", () => {
+	const decisions = [];
+	const base = { head: "a", srcTree: "1", keepMe: "base" };
+	const ours = { head: "a", srcTree: "2", keepMe: "ours", laneOnly: true };
+	const theirs = { head: "b", keepMe: "theirs", mainOnly: true };
+	const expected = {
+		head: "a",
+		keepMe: "ours",
+		laneOnly: true,
+		mainOnly: true,
+	};
+
+	const keys = mergedKeys(base, ours, theirs, "", decisions);
+	assert.equal(keys.includes("srcTree"), false, "the retired key is dropped");
+	assert.equal(RETIRED_TOP_LEVEL_FIELDS.has("srcTree"), true);
+	assert.deepEqual(decisions, [
+		{ path: "srcTree", action: "dropped", why: "retired by this change" },
+	]);
+	// And the dropped key is not silently re-added by the value merger.
+	assert.equal(
+		"srcTree" in resolveManifest({ base, ours, theirs, derived: null }),
+		false,
+	);
+	// The rest of the union is untouched by the rule.
+	assert.deepEqual(
+		Object.keys(resolveManifest({ base, ours, theirs, derived: null })).sort(),
+		Object.keys(expected).sort(),
+	);
+});
+
+/**
+ * THE OTHER DIRECTION (review round 1, MINOR 4). Filtering `Object.keys(ours)`
+ * alone left the state where the BASE lacks the pair and the OTHER side carries
+ * it: `srcTree` was imported from `theirs` with no decision recorded at all. That
+ * is the only realistic resurrection - a lane whose own old fold tool re-added
+ * the pair, merged to `main` - and it is the state this resolver and
+ * `scripts/check-fold-keys.mjs` both promise cannot happen.
+ */
+test("a retired field only the OTHER side carries is dropped, with a decision", () => {
+	const decisions = [];
+	// Base lacks the pair entirely; this branch never had it; main's copy carries
+	// it because an older tree's `evidence-fold.mjs` wrote it back in.
+	const base = { head: "a", keepMe: "base" };
+	const ours = { head: "a", keepMe: "ours" };
+	const theirs = {
+		head: "b",
+		keepMe: "theirs",
+		srcTree: "2".repeat(40),
+		scriptsTree: "3".repeat(40),
+	};
+
+	const keys = mergedKeys(base, ours, theirs, "", decisions);
+	assert.deepEqual(
+		keys,
+		["head", "keepMe"],
+		"neither retired key is imported from the other side",
+	);
+	assert.deepEqual(decisions, [
+		{ path: "srcTree", action: "dropped", why: "retired by this change" },
+		{ path: "scriptsTree", action: "dropped", why: "retired by this change" },
+	]);
+	const merged = resolveManifest({ base, ours, theirs, derived: null });
+	assert.equal("srcTree" in merged && "scriptsTree" in merged, false);
+	// The rest of the union is untouched: main's own records still ride.
+	assert.equal(merged.keepMe, "ours");
+});
+
+/**
+ * AN ENTRY IS RESOLVED ADDITIVELY (2026-10-03, the #765 lane's fold onto
+ * `7cb678f29bf`). That resolution dropped `frames`, `surfaces` and `themes` from
+ * `supplementary[158]` - an entry whose only varying key was `why` - because this
+ * branch's copy of the entry lacked the three counts while base and main carried
+ * them, and the group (5) rule read the absence as a deliberate deletion, with
+ * nothing in the record to explain it. An entry is a record of a capture: nothing
+ * one side carried may vanish because the other side lacked it. The per-field
+ * policy still picks VALUES; it no longer picks the key set.
+ */
+test("a supplementary entry is resolved additively, never from the side that won", () => {
+	const entry = (fields) => ({ path: "chat/declared", ...fields });
+	const base = {
+		supplementary: [
+			entry({ why: "the base's reason", frames: 1, surfaces: 1, themes: 1 }),
+		],
+	};
+
+	// This branch's copy LOST the three counts; main still carries them.
+	const lostOnOurs = resolveManifest({
+		base,
+		ours: { supplementary: [entry({ why: "THE LANE'S reason" })] },
+		theirs: {
+			supplementary: [
+				entry({ why: "MAIN'S reason", frames: 4, surfaces: 5, themes: 6 }),
+			],
+		},
+		derived: null,
+	});
+	assert.deepEqual(lostOnOurs.supplementary, [
+		{
+			path: "chat/declared",
+			why: "THE LANE'S reason",
+			frames: 4,
+			surfaces: 5,
+			themes: 6,
+		},
+	]);
+
+	// And the reverse: keys only THIS branch's entry carries survive too.
+	const lostOnTheirs = resolveManifest({
+		base,
+		ours: {
+			supplementary: [entry({ why: "L", frames: 7, surfaces: 8, themes: 9 })],
+		},
+		theirs: { supplementary: [entry({ why: "M" })] },
+		derived: null,
+	});
+	assert.deepEqual(lostOnTheirs.supplementary, [
+		{ path: "chat/declared", why: "L", frames: 7, surfaces: 8, themes: 9 },
+	]);
+
+	// A one-sided entry rides through whole, whichever side carries it.
+	const oursOnly = resolveManifest({
+		base: {},
+		ours: { supplementary: [entry({ why: "ours", frames: 2 })] },
+		theirs: { supplementary: [] },
+		derived: null,
+	});
+	assert.deepEqual(oursOnly.supplementary, [entry({ why: "ours", frames: 2 })]);
+	const theirsOnly = resolveManifest({
+		base: {},
+		ours: { supplementary: [] },
+		theirs: { supplementary: [entry({ why: "theirs", frames: 2 })] },
+		derived: null,
+	});
+	assert.deepEqual(theirsOnly.supplementary, [
+		entry({ why: "theirs", frames: 2 }),
+	]);
+});
+
+/**
+ * T6 - THE KEY GATE ACCEPTS THE RETIREMENT. After this lands on `main`, every
+ * open branch folds with `srcTree` still in ITS parent; a gate that called that
+ * a `LOST[branch]` fault would exit 1 on the first post-landing fold for doing
+ * the right thing. The branch's own old fold tool re-adding the pair is exactly
+ * the resurrection the design names, so the fixture's lane carries it.
+ */
+test("check-fold-keys reports the retired pair's loss as a decision, not a fault", () => {
+	const { dir } = storyFixture({ laneCarriesRetiredPair: true });
+	// The pair is in the LANE's parent and not in main's, which is the shape the
+	// retirement creates.
+	assert.equal(
+		readManifest(dir).srcTree !== undefined,
+		true,
+		"the lane's copy carries the pair, as an un-migrated branch's would",
+	);
+	git(dir, ["merge", "main"]);
+	const result = run(dir);
+	assert.equal(result.status, 0, result.out);
+	git(dir, ["commit", "-qm", "chore(merge): fold main"]);
+
+	assert.equal(
+		"srcTree" in readManifest(dir),
+		false,
+		"the fold dropped it rather than re-deriving it",
+	);
+
+	const merge = git(dir, ["rev-parse", "HEAD"]);
+	const gate = spawnSync(process.execPath, [KEY_GATE, merge], {
+		cwd: dir,
+		encoding: "utf8",
+	});
+	assert.equal(gate.status, 0, `${gate.stdout}${gate.stderr}`);
+	assert.match(
+		gate.stdout,
+		/dropped\s+docs\/evidence\/manifest\.json :: srcTree/,
+	);
+	assert.doesNotMatch(gate.stdout, /LOST\[branch\]/);
+});
+
+/**
+ * T4 - THE FOLD LABEL CANNOT RE-ENTER A DERIVED FIELD. The `frames` lead used to
+ * open with `(this branch folded onto \`origin/main\` = \`<base>\`)`, which put a
+ * fresh commit name into the manifest on every fold even when the walk found
+ * nothing new - the prose was 11 of the 30 replayed folds' conflict regions. Two
+ * labels over one tree must therefore produce byte-identical readings.
+ */
+test("derived leads are independent of the fold label", async () => {
+	const { dir } = storyFixture();
+	const readerFor = (root) => (args) =>
+		git(root, args) === null
+			? null
+			: execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+	const options = {
+		root: dir,
+		git: readerFor(dir),
+		target: "HEAD",
+		manifest: readManifest(dir),
+	};
+	const first = await deriveFields({ ...options, baseLabel: "0".repeat(9) });
+	const second = await deriveFields({ ...options, baseLabel: "f".repeat(9) });
+
+	assert.deepEqual(first, second);
+	assert.doesNotMatch(first.countsMean.frames, /folded onto/);
+	assert.doesNotMatch(first.countsMean.surfaces, /folded onto/);
+	assert.doesNotMatch(first.countsMean.themes, /folded onto/);
+	// And the retired pair is not part of what a derivation returns any more.
+	assert.equal("srcTree" in first, false);
+	assert.equal("scriptsTree" in first, false);
 });

@@ -4,9 +4,10 @@
  *
  * ## Why this is a module and not a few expressions in a component
  *
- * Three surfaces read the same queue - the bar above the composer, the panel it
- * expands into, and the outstanding-asks chip on the sidebar row - and two of
- * them have to agree on a count while the third draws the individual rows. The
+ * Three surfaces read the same queue - the item in the composer's status row, the
+ * panel it expands into, and the outstanding-asks chip on the sidebar row - and
+ * two of them have to agree on a count while the third draws the individual rows.
+ * The
  * backend's own design note (`docs/design/ask-nonblocking.md` §5) puts one
  * binding constraint on all of them: **no surface may say "notified" that it
  * cannot substantiate, and agent-is-working is never "waiting for you"**. A
@@ -51,6 +52,14 @@ import type {
 	PendingAsk,
 	PendingDesktopGate,
 } from "../../../../shared/desktop-session-contract";
+/*
+ * The row's own label seam. Imported from the run-details model rather than
+ * restated, so the ask item's announced name joins its action to its clause the
+ * same way every other chip on that row does - the model exports it and the
+ * module's only imports are types, so this adds no runtime weight to a bundle
+ * that exists precisely to be DOM-free (see `scripts/ask-queue.test.mjs`).
+ */
+import { LABEL_SEAM } from "./components/run-details/run-detail-model";
 import { COMPOSER_TEXTAREA_SELECTOR } from "./composer-field";
 import { pressLandsOnOverlay } from "./keyboard-scopes";
 
@@ -128,28 +137,94 @@ export const effectiveGate = (
 	legacyAskMirrorSuppressed(frontend) ? null : (frontend?.pending_gate ?? null);
 
 /**
- * The bar's announced name: the drawn sentence plus the control it offers.
+ * Whether this frame may state the waiting/moved-on SPLIT at all.
  *
- * A PURE FUNCTION for the same reason `askBarText` is one (QA round 2, Q-3): the
- * full stop was being appended unconditionally, so a question that already ended
- * in one produced `...staging cluster.. Collapse.` - a stutter only visible on a
- * sentence the round-1 frame did not carry (it was a `?`-terminated question).
- * Keeping the composition here means a rig can assert it instead of a reviewer
- * having to open a specific story.
- */
-/**
- * A sentence that already ends in terminal punctuation needs no second mark.
+ * ONE predicate, read by BOTH readers, so the clause the chip shows and the clause
+ * the tooltip and announced name carry cannot drift: it is knowable only over the
+ * ROWS the frame carries, and only when the frame is neither truncated nor lagging
+ * the backend's own tally.
  *
- * Hoisted rather than inline: the lint rule is right that a regex literal inside a
- * function is rebuilt per call, and this one runs on every bar render.
+ * IT SITS ABOVE THE CLAUSE BECAUSE THE CLAUSE IS BUILT ON IT. The first pass at
+ * F2 inlined the pair here and used the predicate only in `askChipFullClause`, so
+ * one rule had two expressions that agreed by hand rather than by construction
+ * (agent review round 2, F7).
  */
-const ENDS_TERMINALLY = /[.!?]$/;
+const askSplitIsKnowable = (view: AskQueueView): boolean =>
+	/**
+	 * The status-row item's VISIBLE text, and the leading half of its announced name.
+	 *
+	 * PURE, and a pure function for the reason the row's other clauses are: the
+	 * visible chip text and the announced name have to agree, and the string lives
+	 * here so a DOM-free rig asserts it rather than a reviewer opening a story. The
+	 * waiting clause is the row's ATTENTION register (the only state that carries
+	 * urgency emphasis); `movedOn` and settled are the quiet register, told apart in
+	 * the panel rather than on the chip.
+	 *
+	 * The TALLY forms - truncated, or a frame whose own rows do not add up to the
+	 * published count - state the backend's outstanding number rather than splitting a
+	 * prefix: the wire caps the list, so the waiting/moved-on split is knowable only
+	 * for the rows this frame carries, and a prefix must not pass for the whole queue
+	 * (the rule the removed `askBarText` recorded for the same reason).
+	 *
+	 * THE SECOND TALLY CASE IS THE ONE THAT KEEPS THE SURFACES IN STEP (agent review
+	 * round 1, F2). `view.open` is the backend's own count - the number the sidebar's
+	 * outstanding chip reads - and it can be larger than the rows this frame carries
+	 * even when the frame is NOT marked truncated, because the list can lag the tally.
+	 * Reading only the rows would let this chip say `All asks settled` beside a sidebar
+	 * that says `2 outstanding`: the module's own header makes two-of-the-three
+	 * surfaces agreeing on a count the rule, so the louder number wins here.
+	 *
+	 * `·` is the model's own counts seam (`SEAM`, which the TUI calls `STATS_SEAM`),
+	 * RESTATED as a literal because `run-detail-model.ts` keeps it private and this
+	 * module is deliberately DOM-free. It is not `CLAUSE_SEAM`: that one is `", "`,
+	 * the comma between two counts in a sentence, and citing it here would point a
+	 * reader at the constant that means the opposite of this claim (agent review
+	 * round 1, F3).
+	 */
+	!view.truncated && view.open <= view.waiting + view.movedOn;
 
-export const askBarLabel = (view: AskQueueView, expanded: boolean): string => {
-	const sentence = askBarText(view);
-	const stop = ENDS_TERMINALLY.test(sentence) ? "" : ".";
-	return `${sentence}${stop} ${expanded ? "Collapse" : "Expand to answer"}.`;
+export const askChipClause = (view: AskQueueView): string => {
+	if (!askSplitIsKnowable(view)) return `${view.open} outstanding`;
+	if (view.waiting > 0)
+		return view.waiting === 1
+			? "1 question waiting"
+			: `${view.waiting} questions waiting`;
+	if (view.movedOn > 0)
+		return view.movedOn === 1
+			? "1 question moved on"
+			: `${view.movedOn} questions moved on`;
+	return "All asks settled";
 };
+
+/**
+ * The tooltip's clause: the visible one, except that a genuinely MIXED queue
+ * spells both halves.
+ *
+ * The visible chip carries the short waiting clause (a chip is a register, not a
+ * paragraph), but the announced name is the one place with room for the split a
+ * mixed queue needs - and a screen-reader user is told about the moved-on rows
+ * that the chip's short form elides, rather than about a state the screen is not
+ * in.
+ */
+const askChipFullClause = (view: AskQueueView): string => {
+	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
+		const unit = view.waiting === 1 ? "question" : "questions";
+		return `${view.waiting} ${unit} waiting · ${view.movedOn} moved on`;
+	}
+	return askChipClause(view);
+};
+
+/**
+ * The status-row item's announced name: ONE derived string, for `wakeChipLabel`'s
+ * reason.
+ *
+ * The action leads and the clause follows, joined by the model's own
+ * `LABEL_SEAM` - `wakeChipLabel`'s one-derived-string rule, one control over. The
+ * visible text is always the leading half of this name (the mixed case appends
+ * only), so the two readers cannot describe different states.
+ */
+export const askChipLabel = (view: AskQueueView, expanded: boolean): string =>
+	`${expanded ? "Collapse" : "Expand"} the ask history${LABEL_SEAM}${askChipFullClause(view)}`;
 
 /**
  * Whether the composer may ANSWER from this view at all.
@@ -186,8 +261,28 @@ export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
 	return questions.length > 0 && questions.every((q) => q.secret === true);
 };
 
-/** The ask lane's own surfaces, marked on the root `AskSurfaces` renders. */
+/**
+ * The ask lane's PANEL, marked on the one root `AskSurfaces` renders.
+ *
+ * THE MARKER IS THE PANEL'S, AND ONLY THE PANEL'S (agent review round 1, F5; UX
+ * round 1, U3). It used to be on the row item as well, which broke the only probe a
+ * rig or a test can reach for: `document.querySelector(ASK_SURFACE_SELECTOR)`
+ * answered "yes" over a CLOSED panel (the chip matched it), so an assertion that the
+ * panel is open passed while nothing was. The row item carries
+ * `ASK_ITEM_SELECTOR` instead, and the root renders nothing at all while collapsed
+ * (`ask-surfaces.tsx` returns `null`), so this selector answers exactly the question
+ * it looks like it answers.
+ */
 export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
+
+/**
+ * The row item that EXPANDS the panel - the trigger, never the panel itself.
+ *
+ * One handle for three readers: the panel's own focus-return addresses it across
+ * the two React trees, the item is what a rig presses, and `pressIsOurs` accepts it
+ * so an Escape with focus on the trigger still collapses the lane.
+ */
+export const ASK_ITEM_SELECTOR = "[data-lo-ask-item-toggle]";
 
 /*
  * Re-exported so the claim's own contract is nameable from a rig: the composer box
@@ -199,16 +294,23 @@ export { COMPOSER_TEXTAREA_SELECTOR };
 /**
  * Whether a press landed somewhere the ask lane speaks for.
  *
- * `true` for the ask surfaces themselves, for the composer's own textarea (the box
- * this lane answers from, via `composer-field.ts` - the same module
- * `use-interrupt-on-escape.ts` asks), and for a target with no element (the body, a
- * synthetic event, an already-unmounted source).
+ * `true` for the ask PANEL, for the composer's own textarea (the box this lane
+ * answers from, via `composer-field.ts` - the same module
+ * `use-interrupt-on-escape.ts` asks), for the row item that expands the panel, and
+ * for a target with no element (the body, a synthetic event, an already-unmounted
+ * source).
+ *
+ * THE TRIGGER IS ITS OWN CLAUSE rather than a second mark on the panel: an Escape
+ * with the keyboard on the chip must still collapse what the chip opened, and the
+ * chip is not inside the panel's root (the two live in different React trees), so
+ * the marker cannot cover it (UX round 1, U3).
  */
 const pressIsOurs = (target: EventTarget | null): boolean => {
 	const element = target as { closest?: (selector: string) => unknown } | null;
 	if (typeof element?.closest !== "function") return true;
 	return (
 		element.closest(ASK_SURFACE_SELECTOR) !== null ||
+		element.closest(ASK_ITEM_SELECTOR) !== null ||
 		element.closest(COMPOSER_TEXTAREA_SELECTOR) !== null
 	);
 };
@@ -224,10 +326,10 @@ const pressIsOurs = (target: EventTarget | null): boolean => {
  *  - `pressLandsOnOverlay` - an open dialog/menu/listbox owns its own keys, which is
  *    the measured `Cmd-K then Escape` case where the ask panel collapsed and the
  *    palette stayed open;
- *  - `pressIsOurs` - the claim is for the ask surfaces and the composer box, not the
- *    whole window. Without it, deeper owners that cancel on Escape without calling
- *    `preventDefault` (the directory indicator, the sidebar's search, the dictation
- *    cancel) both acted AND collapsed.
+ *  - `pressIsOurs` - the claim is for the ask panel, the row item that expands it
+ *    and the composer box, not the whole window. Without it, deeper owners that
+ *    cancel on Escape without calling `preventDefault` (the directory indicator,
+ *    the sidebar's search, the dictation cancel) both acted AND collapsed.
  */
 export const askClaimsEscape = (event: {
 	key: string;
@@ -268,6 +370,21 @@ export type AskPresentation = {
 	status: AskStatus | "unknown";
 	/** The backend's own count of open asks is the badge's source; this is the per-row fact. */
 	open: boolean;
+	/**
+	 * The ask is inside its own window: the agent is STILL WAITING on this one.
+	 *
+	 * The distinction this field exists for is the operator's own question of a
+	 * surface ("does it tell me the agent is waiting versus has moved on"), and it
+	 * is a COPY distinction rather than a liveness one: `open` above stays the
+	 * BACKEND's outstanding set - `open` OR `timed_out` (`asks/store.py`'s
+	 * `OUTSTANDING_STATUSES`), because a late answer still reaches the agent and
+	 * every surface must keep offering the row. But a timed-out ask has had its
+	 * deadline pass and the agent has walked past it, so a surface that called
+	 * both "waiting" would be stating a fact the fold contradicts.
+	 */
+	waiting: boolean;
+	/** The deadline passed and the agent moved on; a LATE answer still reaches it. */
+	movedOn: boolean;
 	canAnswer: boolean;
 	canDecline: boolean;
 	/** True for a row whose answer has been given but not yet delivered to the model. */
@@ -364,40 +481,16 @@ export const askTimeoutSummary = (receipt: {
  *
  * It names the two facts the reader needs at that moment and neither alone: that
  * what they type is an ANSWER (not a message), and the one key that leaves the
- * mode. `Esc` is the right key to name because it is the collapse the bar
- * already offers, so the sentence describes a control that exists rather than
- * one this feature would have to add.
+ * mode. `Esc` is the right key to name because it is the collapse the status-row
+ * item already offers (the panel's own `Esc`, the same key the window ladder
+ * would otherwise spend on a stop), so the sentence describes a control that
+ * exists rather than one this feature would have to add.
  *
  * The minimized and normal states keep each app's existing placeholder
  * unchanged, which is why this string is only ever supplied while expanded.
  */
 export const ASK_COMPOSER_PLACEHOLDER =
 	"Answering the agent's question — Esc to collapse";
-
-/**
- * The bar's ONE sentence, drawn and announced (design §5.0).
- *
- * It lives in the copy contract rather than in the component for two reasons that
- * both bit this PR: the sentence and the accessible name diverged when they were
- * assembled separately (the bar painted "1 settled" beside a name that said "No
- * asks outstanding" - agent review F6, UX U3), and a string inside a component
- * that imports `@shared` cannot be asserted by a DOM-free rig.
- *
- * The question NAMED is the open head when there is one and the first settled row
- * otherwise. `view.head` stays "the head OPEN ask", because the composer's routing
- * reads it for `canAnswer`; the settled fallback lives here rather than moving that
- * field, which would put a settled ask under a branch that submits answers.
- */
-export const askBarText = (view: AskQueueView): string => {
-	// An absent queue and a published-but-empty one both draw nothing, and the
-	// sentence says so rather than claiming a count it does not have.
-	if (view.asks === null || view.rows.length === 0)
-		return "No asks outstanding";
-	const lead =
-		view.open > 0 ? askCountLabel(view.open) : `${view.total} settled`;
-	const named = view.head?.ask ?? view.rows[0]?.ask ?? null;
-	return named === null ? lead : `${lead} — ${askHeadline(named)}`;
-};
 
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
 
@@ -408,6 +501,8 @@ export const presentAsk = (ask: PendingAsk): AskPresentation => {
 		ask,
 		status,
 		open: undecided,
+		waiting: status === "open",
+		movedOn: status === "timed_out",
 		// Answerable while undecided - and that INCLUDES a timed-out ask, whose late
 		// answer reaches the model rather than being refused client-side.
 		canAnswer: undecided,
@@ -424,10 +519,10 @@ export const presentAsk = (ask: PendingAsk): AskPresentation => {
  *
  * The order is the wire's own (open first, then newest) re-asserted rather than
  * trusted, because two frames from different publishers - the frontend state and
- * the aggregate route - are not required to agree on a list order, and a bar
+ * the aggregate route - are not required to agree on a list order, and a surface
  * whose head row moved under a finger is the one interaction the design note
  * names as unacceptable. `head` is therefore always the OLDEST open ask, matching
- * the legacy mirror's own choice, so the bar and the mirror name the same
+ * the legacy mirror's own choice, so the panel and the mirror name the same
  * question during the skew window.
  */
 export type AskQueueView = {
@@ -436,6 +531,10 @@ export type AskQueueView = {
 	rows: AskPresentation[];
 	/** Open asks, from the backend's own count when it published one. */
 	open: number;
+	/** Asks still inside their window, from the rows this frame carries. */
+	waiting: number;
+	/** Asks whose deadline passed with the agent moving on, from the same rows. */
+	movedOn: number;
 	/** Total rows in this frame, which is NOT the queue length when truncated. */
 	total: number;
 	truncated: boolean;
@@ -455,12 +554,24 @@ export const askQueueView = (
 			asks: null,
 			rows: [],
 			open: 0,
+			waiting: 0,
+			movedOn: 0,
 			total: 0,
 			truncated: false,
 			head: null,
 		};
 	const rows = asks.map(presentAsk).sort(compareAsks);
 	const open = rows.filter((row) => row.open).length;
+	/*
+	 * The two halves are derived from the ROWS rather than the backend's tally,
+	 * which is the point of them: the wire's `asks_open` folds `timed_out` into the
+	 * outstanding set, so only the rows can say which of the outstanding asks the
+	 * agent is still waiting on. A truncated frame's split is therefore a split of
+	 * the visible prefix, which is exactly why `askChipClause` states the backend's
+	 * own tally instead of the split when `truncated` is set.
+	 */
+	const waiting = rows.filter((row) => row.waiting).length;
+	const movedOn = rows.filter((row) => row.movedOn).length;
 	return {
 		asks,
 		rows,
@@ -472,6 +583,8 @@ export const askQueueView = (
 		 * count, which is the older producer's shape.
 		 */
 		open: typeof frontend?.asks_open === "number" ? frontend.asks_open : open,
+		waiting,
+		movedOn,
 		total: rows.length,
 		truncated: frontend?.asks_truncated === true,
 		head: rows.find((row) => row.open) ?? null,
@@ -484,8 +597,8 @@ export const askQueueView = (
  * Oldest-first is the design note's own rule for the mirrored card
  * (`_sync_pending` names the OLDEST open ask, and its reasoning is that a card
  * that jumped to each new arrival would move under a user's finger mid-tap). The
- * list inherits it so the bar and the list cannot disagree about what "the head"
- * is.
+ * list inherits it so the panel and the list cannot disagree about what "the
+ * head" is.
  */
 const compareAsks = (a: AskPresentation, b: AskPresentation): number => {
 	if (a.open !== b.open) return a.open ? -1 : 1;
@@ -562,25 +675,6 @@ export const askExpiryText = (
 	const hours = Math.floor(minutes / 60);
 	if (hours < 24) return `expires in ${hours}h`;
 	return `expires in ${Math.floor(hours / 24)}d`;
-};
-
-/**
- * The one line the minimized bar prints, and the number the badges print.
- *
- * A single question is named, not counted ("1 question waiting" reads as a
- * countdown label; "a question waiting" reads as a sentence a person wrote), and
- * a plural is only ever used above one.
- */
-export const askCountLabel = (open: number): string =>
-	open === 1 ? "1 question waiting" : `${open} questions waiting`;
-
-/** The first question's text, clipped for a single-line bar. */
-export const askHeadline = (ask: PendingAsk, limit = 120): string => {
-	const first = ask.questions[0]?.question ?? "";
-	const collapsed = first.replace(/\s+/g, " ").trim();
-	if (!collapsed) return "The agent asked a question";
-	if (collapsed.length <= limit) return collapsed;
-	return `${collapsed.slice(0, Math.max(0, limit - 1)).trimEnd()}…`;
 };
 
 /**

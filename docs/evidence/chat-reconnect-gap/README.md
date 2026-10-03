@@ -89,8 +89,9 @@ outside this change:
   "Configuration validation failed".
 
 Because the docgen patch touches a file outside `src/` and `scripts/`, the
-manifest's `dirtyWorkingTree` records a dirty tree; the stamped `srcTree` and
-`scriptsTree` are the committed ones and are unaffected by it.
+manifest's `dirtyWorkingTree` records a dirty tree. (The `srcTree`/`scriptsTree`
+stamps this pass wrote are retired; `dirtyWorkingTree` is the field a reader still
+has, and it is unaffected by the committed-tree question the pair answered.)
 
 ## Known limits
 
