@@ -40,6 +40,7 @@ import {
 	resolveThemeSettleMs,
 	storyDrew,
 } from "./capture-evidence.mjs";
+import { EVIDENCE_TZ, pinnedEvidenceEnv } from "./evidence-tz.mjs";
 
 /*
  * The two patterns the theme-settle tests assert against, at the top level
@@ -758,5 +759,88 @@ test("the pass record is spent on narrowed runs, and the sweep still writes its 
 	assert.ok(
 		sweepArm.includes("frames: captured"),
 		"the sweep's own arm still writes this run's frames, which is what makes a repeat sweep idempotent",
+	);
+});
+
+/* ---- the frame-timezone pin, proved against a live child ------------------ */
+
+/*
+ * The pin BEATS an ambient zone - the property the acceptance rests on ("the
+ * same story captured under two host zones produces IDENTICAL frames"), and
+ * one no reading of a constant can show.
+ *
+ * The reading is a live child handed the exact env the Chrome spawn passes
+ * (`pinnedEvidenceEnv(process.env)`) while the launching environment says
+ * another zone; the control is the same child with that ambient env untouched.
+ * Without the control the assertion could be about a child that ignores `TZ`
+ * entirely, and without the pin the ambient zone is exactly what the frames
+ * would bake.
+ */
+const ZONE_PROBE =
+	"console.log(Intl.DateTimeFormat().resolvedOptions().timeZone)";
+
+test("the capture pin beats an ambient zone in the env Chrome is spawned with", () => {
+	const ambient = { PATH: process.env.PATH, TZ: "Asia/Tokyo" };
+	const control = spawnSync(process.execPath, ["-e", ZONE_PROBE], {
+		env: ambient,
+		encoding: "utf8",
+	});
+	assert.equal(
+		control.stdout.trim(),
+		"Asia/Tokyo",
+		`the zone probe reads no TZ at all: ${control.stderr}`,
+	);
+	const run = spawnSync(process.execPath, ["-e", ZONE_PROBE], {
+		env: pinnedEvidenceEnv(ambient),
+		encoding: "utf8",
+	});
+	assert.equal(
+		run.stdout.trim(),
+		EVIDENCE_TZ,
+		`the ambient zone survived the pin: ${run.stderr}`,
+	);
+});
+
+/*
+ * Importing the rig must not re-zone the importer.
+ *
+ * WHY: sibling test files import this module (`this file`, and
+ * `evidence-manifest.test.mjs`), so the pin lives inside `main()` - which an
+ * import never calls - rather than at module scope, where it would silently
+ * re-zone every test process that reaches for `clearSweptFrames` or
+ * `partialCaptureRecord`. A child under an ambient zone imports the rig and
+ * must still report that ambient zone.
+ */
+test("importing the capture rig does not re-zone its importer", () => {
+	const home = mkdtempSync(join(tmpdir(), "lop-evidence-tz-"));
+	cleaned.push(home);
+	const script = `await import(${JSON.stringify(
+		new URL("./capture-evidence.mjs", import.meta.url).href,
+	)});
+console.log("loaded");
+console.log(Intl.DateTimeFormat().resolvedOptions().timeZone);`;
+	const run = spawnSync(
+		process.execPath,
+		["--input-type=module", "-e", script, "probe"],
+		{
+			env: {
+				PATH: process.env.PATH,
+				HOME: home,
+				TMPDIR: home,
+				TZ: "Asia/Tokyo",
+			},
+			encoding: "utf8",
+		},
+	);
+	assert.equal(
+		run.status,
+		0,
+		`the importer child exited ${run.status}: ${run.stderr}`,
+	);
+	assert.match(run.stdout, MODULE_LOADED);
+	assert.equal(
+		run.stdout.trim().split("\n").at(-1).trim(),
+		"Asia/Tokyo",
+		"importing the rig re-zoned its importer",
 	);
 });
