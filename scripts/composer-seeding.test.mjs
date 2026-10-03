@@ -260,7 +260,7 @@ test("the seeding effect is GATED on the rule, not merely accompanied by it", ()
 });
 
 /* ------------------------------------------------------------------ */
-/* The history walk's engagement rule (issue #673)                     */
+/* The history walk's engagement rule (issues #673 and #764)           */
 /* ------------------------------------------------------------------ */
 
 /*
@@ -314,5 +314,48 @@ test("the ArrowUp arm consults the rule before it captures the key", () => {
 		hook,
 		/historyRecallEngages\(inputValue\)/,
 		"the exported rule is what the arm consults to initiate",
+	);
+});
+
+/*
+ * THE OTHER ARROW'S ARM (issue #764). `isCursorAtLastLine()` counts LOGICAL
+ * lines (`line === totalLines` over `\n` counts), so a wrapped single-paragraph
+ * draft reports its "last line" at EVERY caret position — and the ArrowDown arm
+ * ran `preventDefault` unconditionally inside that guard while its recall walk
+ * only runs once a recall is engaged (`historyIndex !== null`). With none
+ * engaged the key died doing nothing: ArrowDown could not traverse a wrapped
+ * draft's visual rows. The fix mirrors #673's — the arm captures only the WALK
+ * it can serve and hands the key back first. jsdom has no layout engine, so the
+ * WRAP is out of reach here and the BEHAVIOUR is driven in
+ * `scripts/credential-composer.test.mjs`; what this scan pins is the byte shape
+ * of the defect — the branch opening straight onto `preventDefault` — which no
+ * runtime case on this host can produce.
+ */
+test("the ArrowDown arm hands the key back when no recall is engaged", () => {
+	const hook = code(HOOK);
+	assert.match(
+		hook,
+		/e\.key === "ArrowDown" && isCursorAtLastLine\(\)/,
+		"the walk's own gate (the last line) stays on the arm",
+	);
+	const branchFrom = hook.indexOf('e.key === "ArrowDown"');
+	assert.ok(branchFrom > -1, "the ArrowDown arm is gone");
+	const branch = hook.slice(
+		branchFrom,
+		hook.indexOf("handleSubmit,", branchFrom),
+	);
+	const handBack = branch.indexOf("if (historyIndex === null) return;");
+	assert.ok(
+		handBack > -1,
+		"with no recall engaged the arm hands the key back to the textarea",
+	);
+	assert.ok(
+		handBack < branch.indexOf("e.preventDefault()"),
+		"the hand-back has to precede preventDefault, or the key dies anyway",
+	);
+	assert.doesNotMatch(
+		branch,
+		/\{\s*e\.preventDefault\(\);/,
+		"the old shape — the branch opening straight onto preventDefault — is gone",
 	);
 });
