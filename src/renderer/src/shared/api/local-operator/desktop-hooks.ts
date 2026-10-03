@@ -633,6 +633,22 @@ export type DesktopFeature =
 	 * the BACKEND's age, not about the mesh's existence.
 	 */
 	| "session_transfer"
+	/**
+	 * The onboarding approval surface (`features.approvals`): the badge read
+	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
+	 *
+	 * WHY A KEY AT ALL, given the routes are additive and an old renderer never
+	 * calls one (the backend's own comment): it is how THIS renderer learns the
+	 * surface EXISTS before it builds a Mesh-tab affordance whose POST would 404
+	 * on a backend without it. Absent ⇒ the tab mounts no approval tray and the
+	 * rail no badge — not a disabled one — and every other mesh surface serves
+	 * exactly as it did before, which is the pre-onboarding state.
+	 *
+	 * ONE KEY FOR THE FAMILY, because it is one contract revision and one flow: a
+	 * renderer that can draw the record can answer it (the decision posts take no
+	 * body, so there is nothing else to negotiate).
+	 */
+	| "approvals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a

@@ -36,7 +36,7 @@ import { screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import { MeshPage } from "./mesh-page";
 
-type BridgeRequest = { op: string };
+type BridgeRequest = { op: string; approvalId?: string };
 
 /** The desktop plane's answer envelope, as the preload bridge hands it to the API. */
 const ok = <T,>(result: T): DesktopResponse => ({
@@ -110,6 +110,53 @@ const peer = (
 });
 
 /**
+ * One onboarding approval record, in the frozen §3.5 read shape (`badge_row`).
+ *
+ * The window is RELATIVE to the run, the same reason the peer stamps below are:
+ * a literal epoch written when this fixture was authored would make a live
+ * request read "expired" months later and photograph the wrong state.
+ */
+const approvalRecord = (
+	fields: Partial<{
+		approval_id: string;
+		state: string;
+		name: string;
+		host: string;
+		user: string;
+	}> = {},
+) => ({
+	approval_id: fields.approval_id ?? "ap_2v9k4m0q7r1s",
+	state: fields.state ?? "requested",
+	what: {
+		connect: true,
+		install: true,
+		anchor: {
+			key_id: "op_3f8a",
+			spki_fp: "SHA256:q1…",
+			statement_digest: "sha256:7c…",
+		},
+		unattended: true,
+		grant: ["approve"],
+		network_id: NET_HOME,
+		role: "drive",
+	},
+	requested_by: {
+		surface: "cli",
+		session_id: "0123456789ef",
+		device_id: DEVICE_PEER,
+	},
+	expires_at: Math.floor(Date.now() / 1000) + 42 * 60,
+	device: {
+		device_id: DEVICE_PEER,
+		name: fields.name ?? "devon-laptop",
+		host: fields.host ?? "devon-laptop.local",
+		user: fields.user ?? "damian",
+		transport: "ssh",
+		host_key_fp: "SHA256:9f3cQm2p…",
+	},
+});
+
+/**
  * A "last seen" stamp RELATIVE to the run, so the frame says what the shape means.
  *
  * A literal epoch is a trap the first capture of this set fell into: the healthy
@@ -143,6 +190,17 @@ type Fixture = {
 	afterTransfer?: (fixture: Fixture) => void;
 	/** Whether the sessions read refuses too. */
 	failSessions?: boolean;
+	/** The approval records the badge read answers (`approvals.list`). */
+	approvals?: unknown[];
+	/** The approvals read refuses, with the transport's own sentence. */
+	failApprovals?: boolean;
+	/**
+	 * What a DECISION answers instead of deciding (agent review round 1, finding
+	 * 1): a refusal body (`{code, message}`), the store's own shape. The world is
+	 * left exactly as it was - a refused decision changes nothing - so the
+	 * sentence is the whole answer, which is the state the card must carry.
+	 */
+	decisionRefusal?: { code: string; message: string } | null;
 };
 
 /**
@@ -161,10 +219,56 @@ function installBridge(fixture: Fixture) {
 				desktop_contract: 1,
 				desktop_available: true,
 				desktop_auth: "bearer",
-				// Both keys are advertised UNCONDITIONALLY by the backend, including on a
-				// machine in no network (`routes/capabilities.py`), so a story that withheld
-				// `session_transfer` would be photographing a backend nobody ships.
-				features: { peers: 1, session_transfer: 1 },
+				// All three keys are advertised UNCONDITIONALLY by the backend, including
+				// on a machine in no network (`routes/capabilities.py`), so a story that
+				// withheld one would be photographing a backend nobody ships.
+				features: { peers: 1, session_transfer: 1, approvals: 1 },
+			});
+		}
+		if (request.op === "approvals.list") {
+			if (fixture.holdReads) return await new Promise(() => {});
+			if (fixture.failApprovals) {
+				return {
+					status: 503,
+					body: {
+						detail: {
+							code: "relay_unavailable",
+							message:
+								"The approvals could not be read, so the badge may be out of date.",
+						},
+					},
+				};
+			}
+			return answer({ approvals: fixture.approvals ?? [] });
+		}
+		if (request.op === "approvals.approve" || request.op === "approvals.deny") {
+			if (fixture.decisionRefusal) {
+				return {
+					status: 409,
+					body: { detail: fixture.decisionRefusal },
+				};
+			}
+			/*
+			 * A DECISION CHANGES THE WORLD, and the fixture has to say so before it answers
+			 * (the transfer handler's own rule): the settle invalidates the approvals read, so
+			 * a static fixture would re-answer the record the decision just contradicted and
+			 * the chip would snap back to `requested`.
+			 */
+			const nextState =
+				request.op === "approvals.approve" ? "approved" : "denied";
+			fixture.approvals = (fixture.approvals ?? []).map((row) =>
+				typeof row === "object" &&
+				row !== null &&
+				(row as { approval_id?: unknown }).approval_id === request.approvalId
+					? { ...(row as Record<string, unknown>), state: nextState }
+					: row,
+			);
+			return answer({
+				approval_id: request.approvalId ?? "",
+				state: nextState,
+				signature: {
+					key_id: request.op === "approvals.approve" ? "op_synthetic" : "",
+				},
 			});
 		}
 		if (request.op === "sessions.list") {
@@ -1501,5 +1605,98 @@ export const InviteReceipt: Story = {
 			await screen.findByRole("button", { name: "Mint the token" }),
 		);
 		await screen.findByText(/the device appears once it redeems this/);
+	},
+};
+
+/**
+ * The approvals tray: one record WAITING on the operator and one already running.
+ *
+ * The two registers the tray has to tell apart in one frame: the card that asks
+ * (scopes, requester, window, Approve/Deny) and the card that reports (a
+ * `connecting` record, where the store's own matrix offers only the mid-run
+ * deny).
+ *
+ * NO `play`, ON PURPOSE (design round 1). It used to press Approve on render, so
+ * the frame this story is named for - the ASKING card - was never the one it
+ * photographed: a reader comparing `approvals-waiting` against the surface
+ * saw the post-decision registers and had no still of the state the whole
+ * surface exists for. The write path is proven by `ApprovalsDecisionWrites`
+ * beside this one, where the story's own name says that is what it drives.
+ */
+export const ApprovalsWaiting: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({}),
+				approvalRecord({
+					approval_id: "ap_7q0w5n2x9k4m",
+					state: "connecting",
+					name: "studio-mini",
+					host: "studio-mini.local",
+					user: "builder",
+				}),
+			],
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * The decision path the badge exists for, driven: approve, then watch the record
+ * settle to `approved` through the invalidation refetch - because a still
+ * cannot show that the button writes and the read moves.
+ *
+ * Split out of `ApprovalsWaiting` (design round 1): a story whose `play` runs on
+ * every view is a story whose still is not the state it is named for.
+ */
+export const ApprovalsDecisionWrites: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({}),
+				approvalRecord({
+					approval_id: "ap_7q0w5n2x9k4m",
+					state: "connecting",
+					name: "studio-mini",
+					host: "studio-mini.local",
+					user: "builder",
+				}),
+			],
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await screen.findByRole("button", { name: "Approve" }));
+		await screen.findByText("Approved");
+	},
+};
+
+/**
+ * A decision the store REFUSED, and the sentence it answered with (agent review
+ * round 1, finding 1): without this render path the operator sees the button
+ * re-enable and cannot tell a refusal from a dead click. The sentence here is
+ * the shape core answers a host with no signing surface with; the code rides
+ * beside it, the way the move refusals carry theirs.
+ */
+export const ApprovalRefused: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [approvalRecord({})],
+			decisionRefusal: {
+				code: "approval_signing_unavailable",
+				message:
+					"This machine has no operator key to sign with; ask Local Operator to set up operator authority here first.",
+			},
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await screen.findByRole("button", { name: "Approve" }));
+		await screen.findByText(/no operator key to sign with/);
 	},
 };

@@ -24,7 +24,10 @@
  *
  *   - the pure modules are BUNDLED and CALLED (`esbuild` in memory, the shipped TS
  *     paths, no second build) - the same shape `scripts/analytics-rate-format.test.mjs`
- *     uses. They import nothing but each other, so there is no fixture dialect here;
+ *     uses. They import nothing but each other, so there is no fixture dialect here —
+ *     `mesh-approvals` joins them and reaches the renderer's `@shared` seam (the
+ *     query client and the desktop API), so the one bundle carries the sibling
+ *     harnesses' alias, esbuild being unable to read tsconfig paths;
  *   - the structural-sharing claim uses the REAL `replaceEqualDeep` that React Query
  *     itself applies to a refetch result, rather than a re-implementation of it, so
  *     the invariant is asserted against the mechanism that actually holds it;
@@ -53,6 +56,7 @@ const bundle = await build({
 			export * from "./src/renderer/src/features/mesh/mesh-sessions";
 			export * from "./src/renderer/src/features/mesh/mesh-drop";
 			export * from "./src/renderer/src/features/mesh/mesh-drag";
+			export * from "./src/renderer/src/features/mesh/mesh-approvals";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -61,6 +65,16 @@ const bundle = await build({
 	platform: "node",
 	mainFields: ["module", "main"],
 	conditions: ["import"],
+	/*
+	 * THE ONE ALIAS, and it exists because `mesh-approvals` joins this bundle: it (and
+	 * the mesh store it reads its key from) import the desktop API and the query client
+	 * through the renderer's `@shared` alias, and esbuild cannot read tsconfig paths —
+	 * the same note `scripts/aida-rail-marks.test.mjs` carries. Scoped to `@shared` so
+	 * every relative specifier in this bundle keeps resolving exactly as it did.
+	 */
+	alias: {
+		"@shared": "./src/renderer/src/shared",
+	},
 	write: false,
 });
 
@@ -1241,6 +1255,373 @@ test("a deep-equal poll hands back the same payload, so a poll re-solves nothing
 	assert.notEqual(replaceEqualDeep(first, changed), first);
 });
 
+/* -------------------------------------------------------------- approvals */
+
+/** One wire-shaped approval record, in the frozen §3.5 read shape (`badge_row`). */
+const approvalCapture = (fields = {}) => ({
+	approval_id: "ap_2v9k4m0q7r1s",
+	state: "requested",
+	what: {
+		connect: true,
+		install: true,
+		anchor: { key_id: "op_3f8a" },
+		unattended: true,
+		grant: ["approve"],
+		network_id: "n_1",
+		role: "drive",
+	},
+	requested_by: {
+		surface: "cli",
+		session_id: "0123456789ef",
+		device_id: "d_b",
+	},
+	expires_at: 1_800_000_000,
+	device: {
+		device_id: "d_b",
+		name: "devon-laptop",
+		host: "devon-laptop.local",
+		user: "damian",
+		transport: "ssh",
+		host_key_fp: "SHA256:abc",
+	},
+	...fields,
+});
+
+test("an approval read is normalised, never cast: unusable rows drop, every field degrades", () => {
+	const { approvalRows } = mesh;
+	const rows = approvalRows({
+		approvals: [
+			approvalCapture(),
+			approvalCapture({ approval_id: "" }),
+			approvalCapture({ approval_id: "ap_drop", state: "" }),
+			"not a record",
+		],
+	});
+	assert.equal(
+		rows.length,
+		1,
+		"a row that cannot be keyed or described is dropped, never drawn as a placeholder",
+	);
+	const [row] = rows;
+	assert.equal(row.approvalId, "ap_2v9k4m0q7r1s");
+	assert.equal(
+		row.kind,
+		"device",
+		"the `device` block is what makes a device_onboard row",
+	);
+	assert.equal(row.where.host, "devon-laptop.local");
+	assert.equal(row.what.connect, true);
+	assert.deepEqual(row.what.grants, ["approve"]);
+	assert.equal(row.requestedBy.surface, "cli");
+	assert.equal(row.expiresAt, 1_800_000_000);
+
+	const [machine] = approvalRows({
+		approvals: [
+			{
+				approval_id: "ap_machine1",
+				state: "requested",
+				machine: { name: "this Mac" },
+			},
+		],
+	});
+	assert.equal(
+		machine.kind,
+		"machine",
+		"the `machine` block is what makes a local_authority row",
+	);
+	assert.equal(machine.where.name, "this Mac");
+	assert.equal(
+		machine.what.connect,
+		false,
+		"a missing scope degrades to false, never undefined",
+	);
+	assert.deepEqual(machine.what.grants, []);
+	assert.equal(machine.expiresAt, null);
+	assert.equal(machine.requestedBy.sessionId, "");
+
+	assert.equal(
+		approvalRows([approvalCapture()]).length,
+		1,
+		"a bare array is accepted too (a stored or stubbed answer)",
+	);
+	assert.deepEqual(approvalRows(null), []);
+});
+
+test("the badge counts the flight and stops at the store's terminals; unknown states render verbatim", () => {
+	const {
+		approvalRows,
+		isOpenApproval,
+		pendingApprovalCount,
+		approvalStateLabel,
+	} = mesh;
+	const rows = approvalRows({
+		approvals: [
+			approvalCapture(),
+			approvalCapture({ approval_id: "ap_1", state: "approved" }),
+			approvalCapture({ approval_id: "ap_2", state: "connecting" }),
+			approvalCapture({ approval_id: "ap_3", state: "failed" }),
+			approvalCapture({ approval_id: "ap_4", state: "connected" }),
+			approvalCapture({ approval_id: "ap_5", state: "denied" }),
+			approvalCapture({ approval_id: "ap_6", state: "expired" }),
+		],
+	});
+	assert.equal(
+		pendingApprovalCount(rows),
+		4,
+		"requested + approved + connecting + failed; the terminals stop the badge",
+	);
+	assert.equal(
+		isOpenApproval("migrating"),
+		false,
+		"a state this build has not heard of counts as nothing",
+	);
+	assert.equal(
+		approvalStateLabel("migrating"),
+		"migrating",
+		"and renders verbatim rather than blank",
+	);
+	assert.equal(approvalStateLabel("requested"), "Waiting for you");
+});
+
+test("the decision buttons follow the store's own transition matrix", () => {
+	const { canApproveApproval, canDenyApproval } = mesh;
+	assert.equal(
+		canApproveApproval("requested"),
+		true,
+		"approve is the answer to `requested` alone",
+	);
+	for (const state of [
+		"approved",
+		"connecting",
+		"failed",
+		"connected",
+		"denied",
+		"expired",
+	]) {
+		assert.equal(canApproveApproval(state), false, state);
+	}
+	for (const state of ["requested", "approved", "connecting", "failed"]) {
+		assert.equal(canDenyApproval(state), true, state);
+	}
+	for (const state of ["connected", "denied", "expired"]) {
+		assert.equal(canDenyApproval(state), false, state);
+	}
+});
+
+test("the card reads what/where/who in the CLI's order, and its window rounds up", () => {
+	const {
+		approvalRows,
+		approvalWhereLabel,
+		approvalRequesterLabel,
+		approvalScopeLabels,
+		approvalScopeGlosses,
+		approvalScopeTone,
+		approvalRemainingLabel,
+		approvalTitle,
+		approvalSubject,
+	} = mesh;
+	const [row] = approvalRows({ approvals: [approvalCapture()] });
+	assert.equal(
+		approvalWhereLabel(row),
+		"damian@devon-laptop.local via ssh (devon-laptop)",
+	);
+	assert.equal(approvalRequesterLabel(row), "asked by cli · session 6789ef");
+	assert.deepEqual(approvalScopeLabels(row), [
+		"connect",
+		"install",
+		"install operator anchor",
+		"join n_1 as drive",
+		"trust unattended sessions",
+		"grant approve",
+	]);
+	/*
+	 * The two scopes that hand over TRUST wear their own register, and the plain
+	 * ones do not (design round 1, D1: all six chips measured identically, so
+	 * `install operator anchor` was indistinguishable from `connect` on the card
+	 * whose purpose is consent to a key-signing gesture). Pinned as a pair so a
+	 * future scope cannot quietly inherit `attention` - or lose it.
+	 */
+	assert.deepEqual(
+		[
+			"connect",
+			"install",
+			"install operator anchor",
+			"join n_1 as drive",
+			"trust unattended sessions",
+			"grant approve",
+		].map(approvalScopeTone),
+		["neutral", "neutral", "attention", "neutral", "attention", "neutral"],
+	);
+	/*
+	 * The join chip names the network the page already shows, and falls back to
+	 * the id only when the mesh read has not landed (UX round 1, U1: the canvas
+	 * said `damian-mesh` while the consent chip said `net_1`, two names for one
+	 * object on one screen).
+	 */
+	assert.deepEqual(
+		approvalScopeLabels(row, new Map([["n_1", "damian-mesh"]])),
+		[
+			"connect",
+			"install",
+			"install operator anchor",
+			"join damian-mesh as drive",
+			"trust unattended sessions",
+			"grant approve",
+		],
+	);
+	/*
+	 * Only the scopes a reader cannot be expected to know are glossed (UX round
+	 * 1, U2): `connect`/`install`/`join` are ordinary words, and glossing them
+	 * would bury the two that are not.
+	 */
+	assert.deepEqual(approvalScopeGlosses(row), [
+		{
+			term: "install operator anchor",
+			gloss:
+				"that device can check approvals signed on your machines; nothing there can sign",
+		},
+		{
+			term: "trust unattended sessions",
+			gloss:
+				"sessions you start on that device run without an approval prompt there",
+		},
+		{ term: "grant approve", gloss: "you may approve on that device" },
+	]);
+	/*
+	 * A REPEATED OR REDUNDANT GRANT NEVER DOUBLES A CHIP OR WRITES AN
+	 * UNGRAMMATICAL GLOSS (agent review round 5, R5-1). `--grant` is repeatable
+	 * and unfiltered, and `step_grants` folds `unattended` in from the flag as
+	 * well - so this input is reachable from the CLI, and both lists are keyed by
+	 * the label they render.
+	 */
+	const redundant = {
+		what: {
+			connect: true,
+			unattended: true,
+			grants: ["approve", "approve", "unattended", ""],
+		},
+	};
+	assert.deepEqual(approvalScopeLabels(redundant), [
+		"connect",
+		"trust unattended sessions",
+		"grant approve",
+	]);
+	assert.deepEqual(approvalScopeGlosses(redundant), [
+		{
+			term: "trust unattended sessions",
+			gloss:
+				"sessions you start on that device run without an approval prompt there",
+		},
+		{ term: "grant approve", gloss: "you may approve on that device" },
+	]);
+	/*
+	 * AND THE OTHER REACHABLE SHAPE: `--grant unattended` with the flag FALSE.
+	 * The flag's own chip is not drawn then, so the grant is the only place the
+	 * capability is stated - and it must not read `you may unattended`.
+	 */
+	const grantOnly = { what: { grants: ["unattended"] } };
+	assert.deepEqual(approvalScopeLabels(grantOnly), [
+		"trust unattended sessions",
+	]);
+	assert.deepEqual(approvalScopeGlosses(grantOnly), [
+		{
+			term: "trust unattended sessions",
+			gloss:
+				"sessions you start on that device run without an approval prompt there",
+		},
+	]);
+	/*
+	 * THE OTHER NON-VERB IN THE CORE'S GRANTABLE SET (agent review round 6, R6-1):
+	 * `CAPABILITY_WORDS["broker_credential"]` is "borrow this device's logins", so
+	 * the generic template would have written "you may broker_credential on that
+	 * device" - a raw token inside a sentence, on the card that authorises it.
+	 */
+	const broker = { what: { grants: ["broker_credential"] } };
+	assert.deepEqual(approvalScopeLabels(broker), ["borrow logins there"]);
+	assert.deepEqual(approvalScopeGlosses(broker), [
+		{
+			term: "borrow logins there",
+			gloss: "your sessions may use the logins stored on that device",
+		},
+	]);
+	/* A VERB token keeps the template, because it is grammatical for a verb. */
+	const verb = { what: { grants: ["steer"] } };
+	assert.deepEqual(approvalScopeLabels(verb), ["grant steer"]);
+	assert.deepEqual(approvalScopeGlosses(verb), [
+		{ term: "grant steer", gloss: "you may steer on that device" },
+	]);
+	assert.equal(approvalTitle(row), "Onboard devon-laptop");
+	assert.equal(approvalSubject(row), "devon-laptop");
+	// A machine row is about the reader's own machine, by the kind's own definition.
+	const [machine] = approvalRows({
+		approvals: [{ approval_id: "ap_m", state: "requested", machine: {} }],
+	});
+	assert.equal(
+		approvalTitle(machine),
+		"Set up operator authority on this machine",
+	);
+	assert.equal(
+		approvalWhereLabel(machine),
+		null,
+		"a block that names nothing renders no line",
+	);
+	// The window rounds UP to the next minute and unit, so the copy never claims less
+	// time than is left (the browser consent card's own rule, for the same reason).
+	assert.equal(
+		approvalRemainingLabel(1_000 + 42 * 60, 1_000),
+		"expires in 42 minutes",
+	);
+	assert.equal(
+		approvalRemainingLabel(1_000 + 30, 1_000),
+		"expires in under a minute",
+	);
+	assert.equal(
+		approvalRemainingLabel(1_000 + 60, 1_000),
+		"expires in 1 minute",
+	);
+	assert.equal(
+		approvalRemainingLabel(1_000 + 3 * 3_600, 1_000),
+		"expires in 3 hours",
+	);
+	assert.equal(
+		approvalRemainingLabel(999, 1_000),
+		null,
+		"a passed window says nothing",
+	);
+	assert.equal(
+		approvalRemainingLabel(null, 1_000),
+		null,
+		"no window says nothing",
+	);
+});
+
+test("a refused decision carries the authored sentence and its machine code, or says so plainly", () => {
+	const { approvalRefusal } = mesh;
+	// The desktop plane's refusal (`{code, message}`): both facts travel, the
+	// sentence trimmed, so the card can render exactly what the store said.
+	assert.deepEqual(
+		approvalRefusal({
+			code: "approval_signing_unavailable",
+			message: " no operator key here ",
+		}),
+		{
+			code: "approval_signing_unavailable",
+			sentence: "no operator key here",
+		},
+	);
+	// The transport's own synthesised deadline sentence is a message without a code.
+	assert.deepEqual(approvalRefusal({ message: "may or may not have landed" }), {
+		code: "approval_refused",
+		sentence: "may or may not have landed",
+	});
+	// A failure that carried neither states what the surface knows rather than
+	// inventing a cause (the `approvalErrorMessage` fallback's own rule).
+	assert.deepEqual(approvalRefusal(null), {
+		code: "approval_refused",
+		sentence: "The decision could not be answered.",
+	});
+});
+
 /* ------------------------------------------------------------------ wiring */
 
 const source = (path) => readFileSync(path, "utf8");
@@ -1592,6 +1973,229 @@ test("the reads poll at the catalogue's cadence and stop when the tab is not mou
 		"the slot memo is keyed on the identity, not the graph",
 	);
 	assert.match(store, /pinned\.current = next;/);
+});
+
+test("the approvals surface: its own key, one badge read, two no-body decisions, one long budget", () => {
+	const contract = source("src/shared/desktop-contract.ts");
+	assert.match(contract, /z\.literal\("approvals\.list"\)/);
+	assert.match(contract, /z\.literal\("approvals\.approve"\)/);
+	assert.match(contract, /z\.literal\("approvals\.deny"\)/);
+	assert.match(
+		contract,
+		/case "approvals\.list":\s*return \{ path: "\/v1\/desktop\/approvals", method: "GET" \};/,
+	);
+	assert.equal(
+		contractRuntime.desktopEndpoint({
+			op: "approvals.approve",
+			approvalId: "ap_2v9k4m0q7r1s",
+		}).path,
+		"/v1/desktop/approvals/ap_2v9k4m0q7r1s/approve",
+	);
+	assert.equal(
+		contractRuntime.desktopEndpoint({
+			op: "approvals.deny",
+			approvalId: "ap_2v9k4m0q7r1s",
+		}).path,
+		"/v1/desktop/approvals/ap_2v9k4m0q7r1s/deny",
+	);
+	/*
+	 * THE ID IS CHECKED HERE, by name: it reaches a route path, so a path fragment or
+	 * an empty string must be refused by the schema rather than by the daemon's
+	 * generic 422 — and the decision routes take NO body (approving is the gesture).
+	 */
+	assert.equal(
+		contractRuntime.desktopRequestSchema.safeParse({
+			op: "approvals.approve",
+			approvalId: "../config",
+		}).success,
+		false,
+	);
+	assert.equal(
+		contractRuntime.desktopRequestSchema.safeParse({ op: "approvals.deny" })
+			.success,
+		false,
+	);
+	assert.equal(
+		contractRuntime.desktopRequestSchema.safeParse({
+			op: "approvals.list",
+			approvalId: "ap_x",
+		}).success,
+		false,
+		"the list is a bare read; a field it cannot mean is refused here",
+	);
+	assert.equal(
+		contractRuntime.desktopRequestSchema.safeParse({
+			op: "approvals.approve",
+			approvalId: "ap_2v9k4m0q7r1s",
+		}).success,
+		true,
+	);
+	/*
+	 * THE GESTURE'S BUDGET IS THE POINT: approve runs the presence-gated signing
+	 * call, whose own bound is 180 s (`keyagent.SIGN_TIMEOUT_SECONDS`, mirrored in
+	 * the contract), so the control budget would abandon a prompt the operator was
+	 * still reading two minutes before the backend itself stops waiting.
+	 */
+	assert.equal(
+		contractRuntime.desktopRequestDeadlineMs("approvals.approve"),
+		195_000,
+	);
+	assert.equal(
+		contractRuntime.desktopRequestDeadlineMs("approvals.deny"),
+		20_000,
+		"a deny never signs — it keeps the control budget",
+	);
+	assert.equal(
+		contractRuntime.desktopRequestDeadlineMs("approvals.list"),
+		20_000,
+		"the badge read is a cold local scan",
+	);
+	const detail = contractRuntime.desktopRequestDeadlineDetail(
+		"approvals.approve",
+		195_000,
+	);
+	assert.match(
+		detail.message,
+		/may or may not have landed/,
+		"the outcome is unknown, never 'nothing happened'",
+	);
+	assert.match(detail.message, /refuses a second/);
+	assert.doesNotMatch(detail.message, /Nothing was read/);
+	assert.match(
+		contractRuntime.desktopRequestDeadlineDetail("approvals.list", 20_000)
+			.message,
+		/Nothing was read/,
+		"a read that timed out promises what a read can: nothing was read",
+	);
+});
+
+test("the Mesh rail badge rides an approvals read that dials nothing, and only where the row can show it", () => {
+	const nav = source(
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+	);
+	assert.match(
+		nav,
+		/const meshApprovalsEnabled =\s*desktopFeatureState\(capabilities\.data, "approvals"\) === "enabled";/,
+		"the tri-state gate, at the site that decides",
+	);
+	assert.match(
+		nav,
+		/useMeshApprovals\(\s*meshMembership === "member" && meshApprovalsEnabled,\s*\{ poll: true \},?\s*\)/,
+		"the rail POLLS this one read (it dials no peer) and only when a Mesh row exists to carry the badge",
+	);
+	assert.match(nav, /attention: meshWaiting,/);
+	assert.match(nav, /attentionTag: "nav-mesh-badge",/);
+	assert.match(
+		nav,
+		/attentionName: \(count: number\) => `Mesh, \$\{count\} waiting`,/,
+	);
+});
+
+test("the Mesh page renders the tray above every state block, off its own read", () => {
+	const page = source("src/renderer/src/features/mesh/mesh-page.tsx");
+	assert.match(
+		page,
+		/desktopFeatureState\(capabilities\.data, "approvals"\) === "enabled"/,
+	);
+	assert.match(
+		page,
+		/useMeshApprovals\(enabled && approvalsEnabled, \{\s*poll: false,?\s*\}\)/,
+		"the page rides the rail's poller through the shared cache entry",
+	);
+	assert.match(page, /<MeshApprovalsTray/);
+	const trayAt = page.indexOf("<MeshApprovalsTray");
+	assert.ok(trayAt > 0);
+	for (const arm of [
+		'{state.kind === "loading" && (',
+		'{state.kind === "error" && (',
+		'{state.kind === "empty" && (',
+		'{state.kind === "ready" && graph && (',
+	]) {
+		const at = page.indexOf(arm);
+		assert.ok(
+			at > trayAt,
+			`the tray renders above ${arm} - an approval stays visible in every state`,
+		);
+	}
+});
+
+test("a refused decision renders its sentence, and the busy gate is the surface's", () => {
+	/*
+	 * Agent review round 1, findings 1 and 3. The page must read the mutation's
+	 * own error (a refusal rendered nowhere is a dead click), and the tray must
+	 * gate every card while one decision is in flight, as the browser tray it
+	 * models does - a per-row gate lets a second decision race the cue.
+	 */
+	const page = source("src/renderer/src/features/mesh/mesh-page.tsx");
+	assert.match(
+		page,
+		/const decisionRefusal = decideApproval\.isError/,
+		"the decision's own error is read - the refusal must have a render path",
+	);
+	assert.match(page, /approvalRefusal\(decideApproval\.error\)/);
+	assert.match(
+		page,
+		/refusal=\{approvals\.decisionRefusal\}/,
+		"and the tray receives it through the approvals bundle",
+	);
+	const tray = source("src/renderer/src/features/mesh/mesh-approvals-tray.tsx");
+	assert.match(
+		tray,
+		/const busy = pending !== null;/,
+		"the gate is computed once, for the whole tray",
+	);
+	assert.match(
+		tray,
+		/disabled=\{busy\}/,
+		"every decision control rides the surface-wide gate",
+	);
+	assert.match(
+		tray,
+		/*
+		 * The pattern stops at the element, not at a parenthesised group: the
+		 * formatter (biome) rewrites `cond && (\n <X />\n)` to `cond && <X />`,
+		 * so pinning the parens asserted a shape the codebase never ships and
+		 * left Desktop Tests red on the head the round-1 fix produced. The
+		 * INTENT is unchanged - the refusal renders while unattached.
+		 */
+		/refusal && !refusalAttached && <MeshDecisionRefusal/,
+		"a refusal whose record left the live set still renders under the list",
+	);
+	assert.match(
+		tray,
+		/<Badge variant=\{approvalScopeTone\(scope\)\}>/,
+		"the consequence-bearing scopes wear their own register (design round 1, D1)",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approval-consequence"/,
+		"the consequence is its own labelled gloss, not a clause of the provenance line (design round 1, D2)",
+	);
+	assert.doesNotMatch(
+		tray,
+		/\{requester && hint && <span> · <\/span>\}/,
+		"provenance and consequence no longer share one line and one register",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approval-scope-glosses"/,
+		"the trust-bearing scopes are glossed on the card (UX round 1, U2)",
+	);
+	assert.match(
+		tray,
+		/approvalScopeLabels\(row, networkNames\)/,
+		"the join chip names the network the page already shows (UX round 1, U1)",
+	);
+	/*
+	 * AND THE PAGE ACTUALLY PASSES IT (agent review round 4, R4-4): the tray pin
+	 * above proves the chip CAN name the network, while dropping the prop at the
+	 * call site silently reverted it to the id with every test still green.
+	 */
+	assert.match(
+		page,
+		/networkNames=\{/,
+		"the page hands the tray the names it already holds, or the chip silently falls back to the id",
+	);
 });
 
 test("the page keeps the last good read painted and never zeroes a fact", () => {
@@ -2122,6 +2726,35 @@ test("the busy remedy is EXECUTED, not merely drawn (agent review round 2, F2)",
 		rig,
 		/\{ expectSentence: "holds it now" \}/,
 		"and that row carries a claim, so it cannot silently photograph the refusal again",
+	);
+});
+
+test("the asking story photographs the asking state", () => {
+	/*
+	 * THE SPLIT IS THE FIX, SO THE SPLIT IS PINNED (agent review round 4, R4-3). A
+	 * story whose `play` runs on every view is a story whose still is not the state
+	 * it is named for - the design round found `approvals-waiting` photographing the
+	 * POST-decision registers for exactly that reason. Nothing pinned the split, so
+	 * a later edit could move the `play` back and no test would say a word.
+	 */
+	const stories = source(
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx",
+	);
+	const story = (name) => {
+		const at = stories.indexOf(`export const ${name}: Story = {`);
+		assert.notEqual(at, -1, `${name} must exist`);
+		const next = stories.indexOf("export const ", at + 10);
+		return next === -1 ? stories.slice(at) : stories.slice(at, next);
+	};
+	assert.doesNotMatch(
+		story("ApprovalsWaiting"),
+		/play: async/,
+		"the asking story must render the ask, not press the button on the way to photographing it",
+	);
+	assert.match(
+		story("ApprovalsDecisionWrites"),
+		/play: async/,
+		"and the write path keeps its own story, where the play is what it is named for",
 	);
 });
 
