@@ -2,13 +2,14 @@
  * The timezone the evidence capture path pins every frame to, in one place.
  *
  * WHY A PIN AT ALL. A frame that prints a time is a function of the zone it
- * was captured in, so a re-shoot on another host - or this host after a move -
- * diffs as a FAKE RENDERING REGRESSION rather than as a re-shoot. Measured,
- * not hypothetical: the committed `chat-turn-collapse` fifty print `Oct 9,
- * 2025, 4:54 AM` where this host (Europe/London) prints `9:54 AM` for the
- * same fixture, and re-shooting `collapsed` alone under a pinned
- * America/New_York reproduced the committed reading exactly - so those bytes
- * are not re-derivable on this host in its own zone (docs/evidence/
+ * was captured in, so a re-shoot on another host - or the same host after a
+ * move - diffs as a FAKE RENDERING REGRESSION rather than as a re-shoot.
+ * Measured, not hypothetical: the committed `chat-turn-collapse` fifty print
+ * `Oct 9, 2025, 4:54 AM` (a generation captured under America/New_York), while
+ * a capture in the host's own zone (Europe/London, where the fleet sat at the
+ * time) reads `9:54 AM` for the same fixture - and re-shooting `collapsed`
+ * alone under `TZ=America/New_York` reproduced the committed reading exactly,
+ * so those bytes are not re-derivable in the host's own zone (docs/evidence/
  * manifest.json, the 2026-10-03 fold note). PR #805's review named the same
  * class: "another zone would read as a rendering regression rather than a
  * re-shoot", which is why the pin is a property of the capture path rather
