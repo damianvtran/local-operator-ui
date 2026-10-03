@@ -8887,6 +8887,28 @@ export const STORIES = [
 	 */
 	["mesh-tab--single-device-panel", 1380, 900],
 	/*
+	 * THE APPROVALS PANEL'S OWN STATES (operator round, 2026-10-03). One row per
+	 * state the round photographs: one waiting prompt; none waiting (the
+	 * records toggle alone, collapsed); the section expanded; a stopped runner,
+	 * whose section opens itself; the decision write, whose `play` approves and
+	 * opens the section the record landed in; and the refusal. The `play`
+	 * stories end on the state their name claims rather than one frame short of
+	 * it - the approve leaves the live panel and the record opens in Records -
+	 * which is what keeps a still honest about the split.
+	 *
+	 * NO LOCAL FRAMES YET: the host was at ~97% swap when this landed, so the
+	 * capture is deferred to the design round (see the PR). These rows are the
+	 * half that had to exist first: `--only` filters this literal, so a story
+	 * not declared here is invisible to every pass, however it looks in the
+	 * index (the same note `shell-app-shell--chat-dock-files` carries).
+	 */
+	["mesh-tab--approvals-waiting", 1380, 900],
+	["mesh-tab--approvals-records", 1380, 900],
+	["mesh-tab--approvals-records-open", 1380, 900],
+	["mesh-tab--approvals-stopped", 1380, 900],
+	["mesh-tab--approvals-decision-writes", 1380, 900],
+	["mesh-tab--approval-refused", 1380, 900],
+	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped
 	 * width, so 900x560 holds every state without a crop: the rank list is
