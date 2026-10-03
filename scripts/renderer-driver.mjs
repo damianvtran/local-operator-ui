@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-gate|palette|hit-zones|route-tops|project-detail|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|none>
  *                          which built-in scene to run (default: states)
  *   --project <key>        (with --scene project-detail or project-inline-edit)
  *                          the seeded project the scene drives; the seed decides
@@ -25080,6 +25080,209 @@ async function sceneSettingsFields(cdp) {
 }
 
 /**
+ * Settings > Appearance: the transcript display mode's row, in both of the states
+ * it can be in (issue #756; design review round 1, D2 MAJOR).
+ *
+ * WHY THIS EXISTS AT ALL, AND WHY IT IS A LIVE-APP SCENE. The row's only
+ * Storybook cell is `shell-app-shell--settings-appearance`, and that story can
+ * never be photographed: it holds `documentElement.dataset.capturePending` until
+ * the Appearance section's switch paints, which happens only when the settings
+ * page's config query RESOLVES - so the offline capturer waits out its bound and
+ * fails the run at that row. The alternative (`--allow-backend` against the
+ * daemon answering on 1111) would photograph whatever the operator's own
+ * installation happens to hold, which is the one thing a committed frame must
+ * never be. So the row's evidence comes from the instrument built for exactly
+ * this: the BUILT app, headless, against an ISOLATED synthetic daemon this lane
+ * starts on its own scratch port, photographed by the app itself with
+ * `webContents.capturePage()`.
+ *
+ * WHAT THE PAIR IS. The two states the control has, not two trees: the row at
+ * rest (the shipped `by turn`) and the same row after a press on its own
+ * `By response` trigger - the gesture a reader makes - in BOTH palettes, because
+ * the contrast this row's control has against its neighbours is a per-palette
+ * reading and the design round asked for it.
+ *
+ * WHAT IT ASSERTS, each one read out of the page rather than assumed: the row
+ * exists and names its own label (`aria-labelledby` -> "Transcript display");
+ * the resting state is the shipped `by turn`; the press clears the 10s wait AND
+ * lands in the PERSISTED store (`localStorage`, the blob a relaunch reads),
+ * which is the claim the pair is about; and the row plus the neighbouring
+ * `Show agent reasoning` switch are both inside the viewport at shutter time, so
+ * a frame that had scrolled past its own subject fails the run instead of being
+ * filed under the row's name.
+ *
+ * NOT A `settings-fields` RE-RUN. That scene's subject is the backend registry's
+ * deep-linked row; this one is a preference row with no `data-setting-key`, and
+ * folding it in would have made one scene assert two unrelated surfaces.
+ */
+const TRANSCRIPT_DISPLAY_ROW = `(() => {
+	const list = [...document.querySelectorAll('[role="tablist"]')].find((node) => {
+		const id = node.getAttribute('aria-labelledby');
+		const label = id ? document.getElementById(id) : null;
+		return (label?.textContent ?? '').trim() === 'Transcript display';
+	});
+	if (!list) return null;
+	return {
+		labelId: list.getAttribute('aria-labelledby'),
+		tabs: [...list.querySelectorAll('[role="tab"]')].map((tab) => ({
+			text: (tab.textContent ?? '').trim(),
+			state: tab.getAttribute('data-state'),
+		})),
+	};
+})()`;
+
+/** What the persisted store holds, read the way the next launch reads it. */
+const persistedDisplayMode = `(() => {
+	for (const key of Object.keys(localStorage)) {
+		try {
+			const mode = JSON.parse(localStorage.getItem(key))?.state?.transcriptDisplayMode;
+			if (mode !== undefined) return { key, mode };
+		} catch {}
+	}
+	return null;
+})()`;
+
+async function sceneSettingsTranscriptDisplay(cdp) {
+	const hello = await verb(cdp, "hello");
+	const facts = await factsOf(cdp);
+	check(
+		"the renderer reports this run's frames directory",
+		hello.outDir === FRAMES,
+		`${hello.outDir} (expected ${FRAMES})`,
+	);
+	check(
+		"the renderer sees the built app, not a bare Vite page",
+		ELECTRON_USER_AGENT.test(hello.userAgent),
+		hello.userAgent,
+	);
+	check(
+		"window mode is headless and the window is never shown",
+		facts.windowMode === "headless" && facts.visible === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	check(
+		"this scene is running against a live, isolated backend",
+		Boolean(BACKEND),
+		"the Appearance section renders behind the settings page's config query, so the pair needs --backend",
+	);
+	if (!BACKEND) return [];
+
+	await verb(cdp, "navigate", "/settings");
+	await verb(cdp, "setTheme", "localOperatorDark");
+	const ready = await waitForScene(cdp, `Boolean(${TRANSCRIPT_DISPLAY_ROW})`);
+	check(
+		"the Appearance section rendered, with the transcript-display row's own control",
+		ready === true,
+		"no [role=tablist] whose label reads `Transcript display` appeared",
+	);
+	if (ready !== true) return [];
+
+	const initial = await cdp.evaluate(TRANSCRIPT_DISPLAY_ROW);
+	check(
+		"the row's control is the app's own segmented pair, in the order the module declares",
+		JSON.stringify(initial.tabs) ===
+			JSON.stringify([
+				{ text: "By turn", state: "active" },
+				{ text: "By response", state: "inactive" },
+			]),
+		JSON.stringify(initial.tabs),
+	);
+	const listSelector = `[role="tablist"][aria-labelledby="${initial.labelId}"]`;
+	const tabSelector = (index) =>
+		`${listSelector} > button:nth-of-type(${index})`;
+	const switchSelector =
+		'[data-tour-tag="settings-appearance-section"] button[role="switch"]';
+
+	/*
+	 * The row is scrolled to the MIDDLE of the frame rather than to the top: the
+	 * design round's question about this control is its PLACEMENT, and placement is
+	 * a sentence about the neighbours - so the `Show agent reasoning` switch directly
+	 * above it has to be in the same frame, and the assertions below require it.
+	 */
+	await cdp.evaluate(`(() => {
+		const list = document.querySelector(${JSON.stringify(listSelector)});
+		if (!list) return false;
+		list.scrollIntoView({ block: 'center' });
+		return true;
+	})()`);
+	await wait(700);
+
+	const geometry = {
+		row: await verb(cdp, "measure", { selector: listSelector }),
+		reasoningSwitch: await verb(cdp, "measure", { selector: switchSelector }),
+	};
+	note("the row and its neighbour, in CSS pixels", JSON.stringify(geometry));
+	check(
+		"the row and the reasoning switch above it are both inside the frame",
+		geometry.row?.inViewport === true &&
+			geometry.reasoningSwitch?.inViewport === true,
+		`row inViewport=${geometry.row?.inViewport} switch inViewport=${geometry.reasoningSwitch?.inViewport}`,
+	);
+
+	const frames = [];
+	const MODE_LABEL = { "by-turn": "By turn", "by-response": "By response" };
+	/*
+	 * BOTH MODES IN BOTH PALETTES, and every state reached by a PRESS on the row's
+	 * own trigger rather than by writing the store - what the pair records is the
+	 * control working, not a store that could be right while the control is dead.
+	 * The mode is re-set at the top of each palette's pass on purpose: a pass that
+	 * inherited the previous one's state would file a `turn` frame of the
+	 * `by-response` row, and the two assertions below are what make that fail
+	 * loudly instead.
+	 */
+	for (const theme of ["localOperatorDark", "localOperatorLight"]) {
+		await verb(cdp, "setTheme", theme);
+		await wait(500);
+		const suffix = theme === "localOperatorDark" ? "dark" : "light";
+		for (const state of ["turn", "response"]) {
+			const mode = state === "turn" ? "by-turn" : "by-response";
+			await verb(cdp, "press", {
+				selector: tabSelector(mode === "by-turn" ? 1 : 2),
+			});
+			await wait(400);
+			/*
+			 * TWO readings of the same press, because they are two different claims:
+			 * the PERSISTED store is what survives a relaunch (the blob this feature's
+			 * whole test story is about), and the tab's own `data-state` is what the
+			 * frame shows. A control wired to the wrong setter, or a store written
+			 * while the control stays put, fails one of them by name.
+			 */
+			const persisted = await cdp.evaluate(persistedDisplayMode);
+			check(
+				`the row's own control put \`${mode}\` in the persisted store (${theme})`,
+				persisted?.mode === mode,
+				JSON.stringify(persisted),
+			);
+			const shown = await cdp.evaluate(TRANSCRIPT_DISPLAY_ROW);
+			check(
+				`the row marks \`${MODE_LABEL[mode]}\` as the selected tab (${theme})`,
+				shown.tabs?.find((tab) => tab.text === MODE_LABEL[mode])?.state ===
+					"active",
+				JSON.stringify(shown.tabs),
+			);
+			frames.push(
+				await captureSettled(
+					cdp,
+					`settings-transcript-display-${state}-${suffix}`,
+				),
+			);
+		}
+	}
+
+	check(
+		"every capture is a frame the app held still for, with no toast on it",
+		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames
+			.map(
+				(frame) =>
+					`${frame.label}: ${frame.stable === true ? `held still after ${frame.attempts} capture(s)` : `never held still in ${frame.attempts} capture(s)`}, toast-free ${frame.toastFree === true}`,
+			)
+			.join(" | "),
+	);
+	return frames;
+}
+
+/**
  * Both registry fields as a reader sees them, without assuming which control
  * they are.
  *
@@ -37882,6 +38085,13 @@ async function main() {
 				await sceneUndoToastsStacked(cdp);
 			else if (SCENE === "settings-model") await sceneSettingsModel(cdp);
 			else if (SCENE === "settings-fields") await sceneSettingsFields(cdp);
+			/*
+			 * The Appearance section's transcript-display row (issue #756): the one
+			 * surface this change adds that no Storybook cell can photograph, because
+			 * its only story waits on a config query that never resolves offline.
+			 * Needs `--backend`: an isolated daemon this run owns.
+			 */ else if (SCENE === "settings-transcript-display")
+				await sceneSettingsTranscriptDisplay(cdp);
 			else if (SCENE === "settings-gate") await sceneSettingsGate(cdp);
 			else if (SCENE === "settings-integrations")
 				await sceneSettingsIntegrations(cdp);
