@@ -14,7 +14,7 @@ measurement rather than by omission.
 | --- | --- | --- |
 | `turn-collapse-parked/localOperatorDark.webp` | parked on the approval | the question card docked above the composer, the held call's row ticking — and NO bar: a turn waiting on the gate is unsettled (the scene asserts `bars: 0` here) |
 | `turn-collapse-live-no-bar/localOperatorDark.webp` | mid-run, after the approval | the user row, `Running sleep 12` ticking, the working line — and NO bar: nothing condenses while the turn is live |
-| `turn-collapse-completed/localOperatorDark.webp` | completed | the same turn as one quiet line — `Took 13s · 1 action` with the turn's stamp (`6:19 PM`) and the chevron — over the answer |
+| `turn-collapse-completed/localOperatorDark.webp` | completed | the same turn as one quiet line — `Took 13s · 1 action` with the turn's stamp (`4:30 AM`) and the chevron — over the answer |
 | `turn-collapse-expanded/localOperatorDark.webp` | the reader's press | the bar is the toggle: the press reveals `>_ Ran sleep 12 … 13s` in place; the bar keeps its stamp and chevron. The scene measures the expansion's own step here: bar→row1 centre Δ26.8px, the ledger's rhythm (the round-1 review measured Δ57px before the fix) |
 | `turn-collapse-reloaded/localOperatorDark.webp` | reload | the durable re-read arrives collapsed with the SAME run ids and the SAME `Took 13s · 1 action` — the live span (`settledAt`) and the durable span (the row's commit `ts`) agree on this run |
 | `turn-collapse-narrow-completed/localOperatorDark.webp` | completed at `800x600` | the same scene at the narrow window the review asked for: the bar's clauses fit (no truncation, no stamp/chevron collision) — `Took 13s · 1 action` and the stamp on one line |
@@ -22,20 +22,51 @@ measurement rather than by omission.
 ## What produced them
 
 ```sh
-# an isolated daemon this run owns, scratch HOME and config root, a bearer of
-# this run's own choosing (values: {hosting: test, model_name: mock-model})
+# an isolated daemon this run owns: scratch HOME and config root, a bearer of
+# the run's own choosing kept in a 0600 file
 RIG=<scratch>/rig-live
+printf '%s' "$(openssl rand -hex 32)" > "$RIG/token" && chmod 600 "$RIG/token"
 HOME="$RIG/home" LOCAL_OPERATOR_CONFIG_DIR="$RIG/root" \
-  lop serve --host 127.0.0.1 --port 18937 &
-# the worktree rebuilt against it
-VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:18937 pnpm build
+  LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+  lop serve --host 127.0.0.1 --port 8080 &
+# the config values the app sessions read. The serve flags alone do NOT seed
+# them (measured: hosting/model arrive empty and the composer resolves nothing);
+# PATCH /v1/config is the one spelling that sticks.
+curl -X PATCH http://127.0.0.1:8080/v1/config \
+  -H "Authorization: Bearer $(cat "$RIG/token")" -H "Content-Type: application/json" \
+  -d '{"hosting":"test","model_name":"mock-model"}'
+# the worktree rebuilt against it. PORT 8080, NOT 18937: the renderer's CSP
+# admits 1111/8080 only, so the 18937 recipe this README first recorded cannot
+# reach the daemon from the page on this tree.
+env VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 VITE_DISABLE_BACKEND_MANAGER=true \
+  VITE_GOOGLE_CLIENT_ID=stub VITE_GOOGLE_CLIENT_SECRET=stub \
+  VITE_MICROSOFT_CLIENT_ID=stub VITE_MICROSOFT_TENANT_ID=stub \
+  pnpm build
 # the scene (the wide run; the narrow frame is the same command at
-# --window-size 800x600 with its own --out)
-LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
+# --window-size 800x600 with its own --out). TZ pinned: the stamps are the
+# run's own clock, and the committed generation carries America/New_York.
+TZ=America/New_York LOCAL_OPERATOR_DESKTOP_TOKEN="$(cat "$RIG/token")" \
   node scripts/renderer-driver.mjs --scene turn-collapse \
-  --backend http://127.0.0.1:18937 --backend-records "$RIG/root/run/serve" \
+  --backend http://127.0.0.1:8080 --backend-records "$RIG/root/run/serve" \
   --seed-onboarding-complete --out "$RIG/frames" --clean
 ```
+
+**RE-SHOT WHOLE, 2026-10-03, at `bd4c95f7761` (the #775 fold).** The frames
+this set shipped were the 2026-09-28 generation; the app has moved since on
+facts the frames show (the header now carries the `On this device` control, and
+the pinned recency text is the reader's clock), and the recorded recipe itself
+had gone stale: it named port 18937, which the renderer's CSP refuses, and the
+serve flags it leaned on do not reach the app-level config. One run per window
+(wide `1380x900`, narrow `800x600`) re-took all six frames with **ALL CHECKS
+PASSED** (22 checks, both windows), `TZ=America/New_York` pinned for the
+stamps; the frames are lossless WebP at the same
+`turn-collapse-<state>/localOperatorDark.webp` layout and the same dims
+(2760x1800 wide, 1600x1200 narrow). What the frames CLAIM is unchanged, and
+the run re-asserts it: the parked turn states `bars: 0`, the expansion keeps
+its `barToRow1: 26.8`, and the reload read-back agrees with the live reading
+(`Took 13s · 1 action` on both sides). What moved visibly is the surround: the
+header control above, the recency line, and the stamp (the run's own clock -
+now `4:30 AM`, still the New York zone).
 
 `run.log` (kept with this set's working notes rather than in git — `*.log` is
 ignored) is that run's full record: **ALL CHECKS PASSED**, 22 checks — the
