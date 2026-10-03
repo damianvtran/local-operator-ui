@@ -1,3 +1,4 @@
+import { sessionIdPattern } from "../../../../../shared/desktop-contract";
 /**
  * The popup's own contract, pure and I/O-free: what a key means, when an
  * explicit arrow choice survives, and the copy that tells the user which list is
@@ -22,6 +23,32 @@ import type { FastModeState } from "../session-status/session-model";
 import { ARGUMENT_SOURCE_LABEL, mcpInServerSlot } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";
 import { slashContext } from "./slash-token";
+
+/**
+ * The session an ENTITY query may address, from a pane's conversation key — the
+ * wire's own test, applied at the composer's gate (issue #780).
+ *
+ * A composer holds its pane's key either way: on a live pane that key IS the
+ * canonical session id, on a DRAFT pane it is the synthetic `draft:<uuid>` and
+ * the pane's `sessionStatus` is built from the preview rather than withheld, so
+ * "is there a sessionStatus" is not the question the entity lists may be keyed
+ * on. The pattern is — it is the same regex `commands.entities`' schema applies
+ * (`desktop-contract.ts` exports it "so a client that holds a session KEY rather
+ * than a session id … can tell the two apart before composing a request"), and
+ * it is the precedence `mcpTransportSession` set for the same draft-key class
+ * (PR #726, whose comment records the live 422 the fixtures could not see).
+ *
+ * `undefined` is the honest answer for anything that is not a canonical id: the
+ * entity sources then report their needs-session state instead of firing a
+ * query the op schema refuses before the wire.
+ */
+export function entitySessionId(
+	conversationId: string | undefined,
+): string | undefined {
+	return conversationId && sessionIdPattern.test(conversationId)
+		? conversationId
+		: undefined;
+}
 
 /**
  * The minimum a row must say for routing, copy and list identity to be decided.

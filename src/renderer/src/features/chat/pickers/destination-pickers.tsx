@@ -19,6 +19,10 @@ import {
 	desktopKeys,
 	useDesktopProviders,
 } from "@shared/api/local-operator/desktop-hooks";
+import {
+	useProfiles,
+	useTeams,
+} from "@shared/api/local-operator/profile-hooks";
 import { teamDisplayName } from "@shared/api/local-operator/team-display";
 import { SNAPSHOT_READ_OPTIONS } from "@shared/api/query-client";
 import { Spinner } from "@shared/components/common/spinner";
@@ -1695,12 +1699,26 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	action,
 }) => {
 	const [selected, setSelected] = useState<string | null>(null);
-	const list = useEntities<ProfileRow>(sessionId, which);
+	/*
+	 * THE DRAFT BRANCH (issue #780): mounted with no session — the dispatcher's
+	 * draft route for `/team` / `/agent` on a New-chat pane — the picker reads
+	 * the SESSIONLESS roster (the same `teams.list` / `profiles.list` documents
+	 * the sidebar shows) rather than the session-bound entity route, and its
+	 * pick STAGES the draft's identity instead of running the attach command:
+	 * there is no session to address, and the create the first send performs
+	 * carries the target (`stageDraft`), which is the sidebar's "New chat with
+	 * <team>" path. The entities route keeps its session gate so a sessionless
+	 * mount cannot ask it with `""`.
+	 */
+	const draftMode = !sessionId;
+	const draftTeams = useTeams(draftMode && which === "team");
+	const draftProfiles = useProfiles(draftMode && which === "agent");
+	const list = useEntities<ProfileRow>(sessionId, which, undefined, !draftMode);
 	const detail = useEntities<ProfileRow>(
 		sessionId,
 		which,
 		selected ?? undefined,
-		!!selected,
+		!draftMode && !!selected,
 	);
 	const command = useSessionCommand(sessionId);
 	const [request, setRequest] = useState("");
@@ -1710,16 +1728,48 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 			: canonical.frontend?.active_agent;
 	const chartMode = (action.data as { mode?: string }).mode === "chart";
 
+	const listRows = useMemo<ProfileRow[]>(() => {
+		if (!draftMode) return list.data?.entities ?? [];
+		return which === "team"
+			? (draftTeams.data ?? []).map((team) => ({
+					value: team.name,
+					name: team.name,
+					label: team.label,
+					description: team.description,
+				}))
+			: (draftProfiles.data ?? []).map((profile) => ({
+					value: profile.name,
+					name: profile.name,
+					description: profile.description,
+					kind: profile.kind,
+				}));
+	}, [draftMode, which, list.data, draftTeams.data, draftProfiles.data]);
+	const listLoading = draftMode
+		? which === "team"
+			? draftTeams.isLoading
+			: draftProfiles.isLoading
+		: list.isLoading;
+	const listError = draftMode
+		? which === "team"
+			? draftTeams.isError
+			: draftProfiles.isError
+		: list.isError;
+	const listErrorDetail = draftMode
+		? which === "team"
+			? draftTeams.error
+			: draftProfiles.error
+		: list.error;
+
 	const options = useMemo<PickerOption[]>(
 		() =>
-			(list.data?.entities ?? []).map((row) => ({
+			listRows.map((row) => ({
 				value: row.value,
 				label: readableProfileName(row, row.value),
 				description: row.description,
 				meta: row.kind,
 				current: active === row.value,
 			})),
-		[list.data, active],
+		[listRows, active],
 	);
 	const selectedRow = (detail.data?.entities ?? []).find(
 		(row) => row.value === selected,
@@ -1731,6 +1781,20 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 
 	const submit = useCallback(async () => {
 		if (!selected) return;
+		if (draftMode) {
+			/*
+			 * The pick stages the identity on the pane's own draft — the same act
+			 * as the sidebar's "New chat with <team>", with the box's text
+			 * carried across the key flip by `restageDraft` (issue #780) — and
+			 * closes. Nothing is posted: there is no session to address, and the
+			 * create the first send performs carries the target.
+			 */
+			useCanonicalSessionsStore
+				.getState()
+				.restageDraft({ kind: which, name: selected });
+			onClose();
+			return;
+		}
 		// The owner admits `data.request` ONCE on attachment; the renderer must
 		// not re-send it. The receipt's admission field records that fact.
 		const { outcome } = await command.run(
@@ -1738,7 +1802,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 			request ? `${selected} ${request}` : selected,
 		);
 		if (!outcome || isNativeAction(outcome)) return;
-	}, [command, which, selected, request]);
+	}, [command, which, selected, request, draftMode, onClose]);
 
 	const admission =
 		command.outcome && !isNativeAction(command.outcome)
@@ -1762,7 +1826,7 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 	 * not hold - the read still landing - keeps the slug.
 	 */
 	const activeRow = active
-		? (list.data?.entities ?? []).find((row) => row.value === active)
+		? listRows.find((row) => row.value === active)
 		: undefined;
 	const activeLabel = active ? readableProfileName(activeRow, active) : "";
 
@@ -1779,8 +1843,8 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 					: `${spec.description}. ${activeLabel ? `Active: ${activeLabel}.` : ""}`
 			}
 			options={options}
-			loading={list.isLoading}
-			loadError={list.isError ? errorText(list.error) : null}
+			loading={listLoading}
+			loadError={listError ? errorText(listErrorDetail) : null}
 			emptyText={
 				which === "team" ? "No teams are registered." : "No profiles found."
 			}
@@ -1813,7 +1877,8 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 								</pre>
 							)}
 						</div>
-						{!chartMode && (
+						{/* The request is a SESSION's first turn; a draft's first message is typed in the composer once the identity is set (design may weigh a carried request later — issue #780). */}
+						{!chartMode && !draftMode && (
 							<PickerField
 								label="Request (optional)"
 								hint="Sent once with the attachment; it becomes the first turn."
@@ -1830,7 +1895,15 @@ export const ProfilePicker: FC<PickerContext & { which: "team" | "agent" }> = ({
 				) : undefined
 			}
 			onSubmit={!chartMode && selected ? submit : undefined}
-			submitLabel={which === "team" ? "Attach team" : "Use profile"}
+			submitLabel={
+				draftMode
+					? which === "team"
+						? "Use team"
+						: "Use profile"
+					: which === "team"
+						? "Attach team"
+						: "Use profile"
+			}
 			submitDisabled={!selected}
 		/>
 	);

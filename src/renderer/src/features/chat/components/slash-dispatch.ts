@@ -118,6 +118,7 @@ import {
 import { flagTokenSelects } from "./slash-argument-rows";
 import type { SlashCommandMeta } from "./slash-commands";
 import type { SlashCommandInvocation } from "./slash-submit";
+import { SEPARATOR_RUN } from "./slash-token";
 
 type SlashDispatchOptions = {
 	/** Canonical session the commands address. */
@@ -1151,6 +1152,60 @@ export function useSlashDispatch({
 			 * silently widens the type instead of leaving that invariant in place.
 			 */
 			if (!sessionId) {
+				/*
+				 * THE DRAFT IDENTITY ROUTE (issue #780) — `/team` and `/agent` on a
+				 * pane with no conversation.
+				 *
+				 * These two destinations address a session in the ordinary sense,
+				 * but a New-chat pane can already carry the identity the create will
+				 * adopt (`stageDraft`'s `target`, the sidebar's "New chat with
+				 * <team>"), so the honest route here is to STAGE it rather than
+				 * refuse: `/team engineering` sets the chat's team, `/team` alone
+				 * opens the same picker a session pane gets — whose draft branch
+				 * reads the sessionless roster and stages on its pick.
+				 *
+				 * The remaining text is a MESSAGE for the team, exactly as it is on
+				 * a session (`/team engineering write the docs` — the tail becomes
+				 * the first message's draft); the name is the first token, the same
+				 * split `name_argument` publishes. The composer clears the line on
+				 * `consumed`, so the tail is WRITTEN to the re-staged draft here,
+				 * or it would be lost in that clear.
+				 *
+				 * Keyed on the ROW's `draftIdentity` opt-in, not on the
+				 * destination string and not on `destinationNeedsSession` below:
+				 * that predicate answers "does this address a conversation", which
+				 * stays true (the palette's route question and the two copy sites
+				 * depend on it), while this branch answers the pane-specific "can
+				 * the draft carry it" that the registry row now records.
+				 */
+				const draftKind =
+					entry?.kind === "picker" ? entry.draftIdentity : undefined;
+				/*
+				 * `/team chart` is the team destination's RESERVED first argument (the
+				 * backend's own test — `desktop_sessions.py`: `args == "chart" or
+				 * args.startswith("chart ")`): it opens the org-chart read, which
+				 * resolves against a live session. A draft falls through to the
+				 * standard refusal below rather than staging a team by that name —
+				 * "chart" is a legal slug, so the wrong reading would be silent.
+				 */
+				const chartForm =
+					draftKind === "team" &&
+					(args === "chart" || args.startsWith("chart "));
+				if (draftKind && !chartForm) {
+					const argument = args.trim();
+					const name = argument.split(SEPARATOR_RUN)[0] ?? "";
+					if (name) {
+						useCanonicalSessionsStore
+							.getState()
+							.restageDraft(
+								{ kind: draftKind, name },
+								argument.slice(name.length).trim(),
+							);
+					} else {
+						presentSessionlessPicker(spec, args);
+					}
+					return "consumed";
+				}
 				if (destinationNeedsSession(spec.destination)) {
 					note(
 						`/${spec.name} needs an open conversation. Start one first.`,
