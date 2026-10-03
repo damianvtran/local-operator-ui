@@ -1031,6 +1031,15 @@ const AssistantRow = memo(function AssistantRow({
 	// stays as the component's own contract for any other caller.
 	if (!paintsSomething(record)) return null;
 	const refused = record.stopReason === "refusal" || record.error;
+	/*
+	 * Whether this answer has words to offer, asked ONCE for the row: the Quote
+	 * toolkit above the foot and the foot's own action row are the two consumers
+	 * of this derivation, so the same answer cannot be judged quotable in one
+	 * place and not in the other - both read `quotable` (agent review round 1,
+	 * R1-5: the toolkit used to re-ask `isQuotable` itself, which is the same
+	 * call but a second place for the two to drift apart).
+	 */
+	const quotable = isQuotable(record, remainingContent);
 	return (
 		<MessageContainer isUser={false} isSmallView={isSmallView}>
 			{/*
@@ -1166,11 +1175,9 @@ const AssistantRow = memo(function AssistantRow({
 				 * documents - when a link owns the highlight, the link toolbar carries
 				 * Quote and this control stays off screen.
 				 */}
-				{conversationId &&
-					isQuotable(record, remainingContent) &&
-					!link.quoteAvailable && (
-						<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
-					)}
+				{conversationId && quotable && !link.quoteAvailable && (
+					<QuoteToolkit conversationId={conversationId} turnRef={turnRef} />
+				)}
 				{conversationId && link.subject && (
 					<LinkToolkit
 						conversationId={conversationId}
@@ -1234,8 +1241,26 @@ const AssistantRow = memo(function AssistantRow({
 				 * THE ANSWER'S ACTION ROW RIDES THIS LINE (issue #695, design memo (c)). It is
 				 * not a second band: a band of its own would cost a whole row per turn and
 				 * would leave the turn's LAST line being controls rather than the turn's own
-				 * fact. The actions take the line's left so the reader's eye returns to one
-				 * rail - the prose's - and the caption follows them on the same line.
+				 * fact.
+				 *
+				 * THE CAPTION KEEPS THE RAIL AND THE ACTIONS TAKE THE FAR END (operator
+				 * direction, 2026-10-01: "now that the action buttons only show up on hover,
+				 * the Worked for and action count looks a bit weird - rearrange so those are
+				 * on the leftmost extent and the action buttons are to the right"). This
+				 * SUPERSEDES the round-1 arrangement, where the actions took the line's left
+				 * edge so the reader's eye returned to one rail: the row's reveal
+				 * (`ACTION_ROW_REVEAL_CLASSES`) is opacity-only, so the buttons hold their
+				 * box at rest but paint nothing - and a caption that FOLLOWED them read as
+				 * indented by ~60px of nothing under the prose it belongs to. Now the
+				 * caption starts at the content's own left edge - the same rail as the prose
+				 * (`scripts/chat-alignment-geometry.mjs` measures it), and the right cluster
+				 * is `[actions][stamp]` with the stamp rightmost, riding the actions'
+				 * `ml-auto` spacer. The reveal stays opacity-only, so nothing moves when
+				 * the buttons appear: the idle and hovered frames of the operator's state,
+				 * and the caption/actions/stamp boxes the geometry script reads per state,
+				 * are under `docs/evidence/chat-canonical-message-actions/` and its
+				 * `-foot-before` sibling. The exact right-cluster composition is the design
+				 * round's to settle; this is the clean default it judges.
 				 *
 				 * THE TWO HALVES OF THIS LINE HAVE DIFFERENT CONDITIONS, which is why the
 				 * gate moved from the line to the pieces. The ACTIONS are a fact about the
@@ -1245,25 +1270,6 @@ const AssistantRow = memo(function AssistantRow({
 				 * The bar keeps its own stamp and never takes the actions.
 				 */
 				<div className={cn("mt-1 flex items-center gap-2 text-meta")}>
-					{/*
-					 * The gate the Quote control above already uses, for its reason: an answer
-					 * still receiving deltas is a prefix the next token falsifies, so there is
-					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
-					 * send's markup alone) has nothing to offer either.
-					 */}
-					{isQuotable(record, remainingContent) && (
-						<AnswerActionRow
-							bodyText={remainingContent}
-							agentId={conversationId}
-							speechId={record.id}
-							revealId={record.id}
-							revealAt={record.ts}
-							/* The user row's note above states the rule; the answer row is the
-							 * same fork point, on the message the turn ended at. */
-							conversationId={conversationId}
-							entryId={forkEntryId(record) ?? undefined}
-						/>
-					)}
 					{!closingLineSuppressed && foot && foot.actions > 0 && (
 						<>
 							<span className={cn("text-ink-dim")}>
@@ -1283,8 +1289,45 @@ const AssistantRow = memo(function AssistantRow({
 							 * keep their red markers; no surface tallies them. */}
 						</>
 					)}
+					{/*
+					 * The gate the Quote control above already uses, for its reason: an answer
+					 * still receiving deltas is a prefix the next token falsifies, so there is
+					 * nothing settled to copy, and a body with no words in it (a `<reply-to>`
+					 * send's markup alone) has nothing to offer either.
+					 */}
+					{quotable && (
+						/*
+						 * `ml-auto` sits on the WRAPPER rather than the row (the row takes no
+						 * className): it is the first box of the right cluster, so it - and
+						 * the stamp that follows it - ride the line's far end while the
+						 * caption keeps the rail. `shrink-0` because the controls are the
+						 * line's fixed part: the caption is the side with slack (it can
+						 * wrap), and the buttons must never be what a narrow column squeezes.
+						 */
+						<span className={cn("ml-auto flex shrink-0")}>
+							<AnswerActionRow
+								bodyText={remainingContent}
+								agentId={conversationId}
+								speechId={record.id}
+								revealId={record.id}
+								revealAt={record.ts}
+								/*
+								 * FORK IS OFFERED FROM THE MESSAGE, not only from the sidebar
+								 * row (#739), on the same gate the actions themselves carry:
+								 * `forkEntryId` is the journal entry a cut can land at, and
+								 * `conversationId` is the picker's subject, explicit because
+								 * this transcript can be rendered for a conversation that is
+								 * not the pane's own - a request must never be answered with
+								 * a substituted conversation. A transcript mounted with no
+								 * conversation passes neither, so the row offers no Fork there.
+								 */
+								conversationId={conversationId}
+								entryId={forkEntryId(record) ?? undefined}
+							/>
+						</span>
+					)}
 					{!closingLineSuppressed && (
-						<span className={cn("ml-auto")}>
+						<span className={cn(!quotable && "ml-auto")}>
 							<TurnTimestamp timestamp={record.ts} scope="answer" />
 						</span>
 					)}
