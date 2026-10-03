@@ -22,6 +22,9 @@ This file defines project-specific operating guidelines for AI coding agents wor
 - Before finalizing, run the narrowest relevant checks for touched code.
 - Follow existing code style and project conventions (Biomes/TS settings already configured).
 - No emojis in code, comments, UI copy, or commit messages.
+- Claims must cite values that still hold. When a number moves — the chat column's floor is 172px, not
+  the 220px early docs assumed — comments and guarantees compiled against the old value are false until
+  re-read; re-read them in the same change that moves it. (Siblings: *What a capture may claim*, below.)
 
 ## Design and branding — read before any visual change
 
@@ -1316,6 +1319,55 @@ pid before it returns. A visible window held across the steps of a run is
 indistinguishable, to the person whose screen it is on, from the leak this section
 exists to prevent — and the run's own `[window-mode]` line, which names the mode
 it resolved (`window mode inactive`), is not what they see.
+
+### What a capture may claim
+
+**A capture may claim only the state it captured — refuse, don't fake.** A
+frame, its folder name and the README all assert "this is the state"; the
+capture path cannot verify that, and where the claim cannot be kept the record
+states the gap: a stated "cannot be captured" is evidence, while a placeholder
+presenting under a real frame's name is worse than no frame. Three measured
+instances of the class:
+
+- `shell-app-shell--settings` throws `useSidebarFrame` under its story frame — a
+  bare `SidebarNavigation` outside `ChatLayout` — so no honest before-frame can
+  be taken; the lane declined to file the rail-and-empty-ground skeleton,
+  stating: "any frame filed today as `main`'s settings page would be a caption
+  the pixels do not carry" (#807's README).
+- Frames that print a time bake the host's zone: the committed
+  `chat-turn-collapse` fifty read `Oct 9, 2025, 4:54 AM` (a generation captured
+  under `America/New_York`), while a re-shoot in the host's own zone
+  (`Europe/London`) read `9:54 AM` — a fake rendering regression, not a re-shoot
+  (`transcriptDisplayModesFoldReshootNote`; PR #805's review named the class).
+- #807's three `unreadable/` frames photographed `Checking whether this machine
+  can speak aloud…` while the story, folder and README claimed the failed read —
+  no latch armed, so the rig's element-count gate fired inside the retry window;
+  fixed with the story's latch plus a re-capture.
+
+**The shutter latch is how a story holds the rig to its claim.** A story whose
+claimed state arrives after paint — an async result, a press whose outcome
+settles, a provider-availability check — holds
+`document.documentElement.dataset.capturePending` while the claim settles and
+clears it once on screen; the rigs' readiness probes (`capture-evidence.mjs`,
+`capture-docs-library.mjs`) wait for the clear, because a loader-and-count gate
+is only a proxy for settledness and only the surface knows. An expired hold is a
+refusal, not a frame — the story sets `data-capture-failed` and both rigs refuse
+a frame carrying it rather than hand the shutter back mid-play. Opt in with
+`holdShutter(until, text?)` (`agent-hub.stories.tsx`) or `HubHold`
+(`docs-library.stories.tsx`).
+
+**Beside the latch: the zone pin.** Frames that print a time are captured under
+the pinned zone (`scripts/evidence-tz.mjs` — `America/New_York`, the zone the
+committed generations carry), and each run prints the ambient zone it overrode,
+keeping a re-shoot on another host byte-comparable with the set.
+
+**A bare sweep clears before it captures — scope re-shoots with `--only`.**
+A tool hazard, not a claim defect: with no narrowing flag (`--only`, `--themes`,
+`--dirs`), `capture-evidence.mjs` calls `clearSweptFrames` first, deleting every
+swept frame (declared supplementary sets, `manifest.json` and non-frame files
+survive) before a single new one is written — a mid-flight death takes
+everything not yet re-taken with it and writes no manifest. `--only` is append
+mode: nothing is deleted.
 
 ### Probes and carrier scripts are not the app
 

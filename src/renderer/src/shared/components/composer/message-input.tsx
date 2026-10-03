@@ -8309,9 +8309,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * automatic minimum size is its CONTENT, so an intermediate
 								 * wrapper that does not opt out of it refuses to shrink and the
 								 * `min-w-0` further down never gets the chance to apply. With the
-								 * canvas panel open the chat column collapses to its 220px floor
-								 * and the chip's 260px cap alone drove the row 97px past the
-								 * column's right edge (design round 2, D11); the chip carries the
+								 * canvas panel open the chat column falls to its floor - 480px since
+								 * §I, 220 when the 97px below was measured - and the chip's 260px
+								 * cap alone drove the row 97px past the column's right edge
+								 * (design round 2, D11); the chip carries the
 								 * shrink, but only these two ancestors can let it happen.
 								 *
 								 * ABOVE the threshold this group does not shrink at all, and that is

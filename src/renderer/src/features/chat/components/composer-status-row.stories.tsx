@@ -2091,16 +2091,68 @@ const ASK_TS = 1_760_000_000_000;
 const ASK_MINUTE = 60_000;
 const ASK_NOW = ASK_TS + 12 * ASK_MINUTE;
 
-const askOf = (over: Partial<PendingAsk> & { ask_id: string }): PendingAsk => ({
-	created_at: ASK_TS,
-	expires_at: ASK_TS + 60 * ASK_MINUTE,
-	timeout_s: 3600,
-	urgent: false,
-	status: "open",
-	delivered: false,
-	questions: [],
-	...over,
-});
+const askOf = (over: Partial<PendingAsk> & { ask_id: string }): PendingAsk => {
+	/*
+	 * THE WIRE'S OWN WINDOW ARITHMETIC, DERIVED RATHER THAN RESTATED (design round 3's
+	 * D1, QA round 3's Q2). A fixture no consumer could produce renders a frame that
+	 * claims a state the product cannot be in - the round-3 headline frame paired a
+	 * 900-second window with `expires in 18m`, three minutes longer than the ask's
+	 * whole life - and the class is worth closing at the factory rather than at the
+	 * one site that was caught. The backend keeps two invariants: the deadline IS the
+	 * window (`expires_at = created_at + timeout_s * 1000`), and `urgent` is DERIVED
+	 * from it (`timeout_s <= 900`), which is why no fixture may set the flag by taste.
+	 * A site that passes either one explicitly and disagrees gets a throw - at the
+	 * story, where it is visible, rather than in a frame nobody can falsify.
+	 *
+	 * The pinned clock is `ASK_NOW` (twelve minutes after `ASK_TS`), so a fixture's
+	 * window is also what the countdown in its frame reads: `ASK_OPEN`'s hour reads
+	 * `expires in 48m`.
+	 */
+	const created_at = over.created_at ?? ASK_TS;
+	const timeout_s = over.timeout_s ?? 3600;
+	const expires_at = created_at + timeout_s * 1000;
+	const urgent = timeout_s <= 900;
+	if (over.expires_at !== undefined && over.expires_at !== expires_at)
+		throw new Error(
+			`askOf(${over.ask_id}): expires_at contradicts created_at + timeout_s`,
+		);
+	if (over.urgent !== undefined && over.urgent !== urgent)
+		throw new Error(
+			`askOf(${over.ask_id}): urgent contradicts the wire's timeout_s <= 900`,
+		);
+	/*
+	 * THE THIRD INVARIANT, STATUS AGAINST WINDOW (design round 4's nit): the two above
+	 * constrain the deadline and the flag against each other but not against the STATUS
+	 * the fold derives from them, so a `timed_out` ask carrying a deadline in the future
+	 * - the agent having moved on from an ask that still has time to run - passed the
+	 * guard while being a state no consumer can produce. The fold is explicit that it
+	 * never re-derives `status` from `expires_at` (ask-queue.ts:38), so the pair is the
+	 * caller's to keep consistent and this factory is where the caller is checked.
+	 */
+	const status = over.status ?? "open";
+	if (status === "open" && expires_at <= ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): an open ask's window has already closed`,
+		);
+	if (status === "timed_out" && expires_at > ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): a timed-out ask carries a live deadline - the agent cannot have moved on from an ask with time left`,
+		);
+	if (over.answered_at != null && over.answered_at > ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): answered_at is in the future of the pinned clock`,
+		);
+	return {
+		created_at,
+		expires_at,
+		timeout_s,
+		urgent,
+		status: "open",
+		delivered: false,
+		questions: [],
+		...over,
+	};
+};
 
 const ASK_QUESTION = {
 	id: "target",
@@ -2129,11 +2181,18 @@ const ASK_ANSWERED = askOf({
 	questions: [ASK_QUESTION],
 });
 
-/** The deadline passed and the agent moved on; a late answer still reaches it. */
+/**
+ * The deadline passed and the agent moved on; a late answer still reaches it.
+ *
+ * Its window is the factory's hour measured from an hour BEFORE the pinned clock, so
+ * the ask is twelve minutes past its deadline and internally consistent (see
+ * `askOf`); the first cut created it AT the pinned clock and expired it a minute
+ * earlier, which is a life that ends before it starts.
+ */
 const ASK_MOVED_ON = askOf({
 	ask_id: "a-moved-on",
 	status: "timed_out",
-	expires_at: ASK_TS - ASK_MINUTE,
+	created_at: ASK_TS - 60 * ASK_MINUTE,
 	questions: [ASK_QUESTION],
 });
 
@@ -2148,6 +2207,57 @@ const ASK_SECOND = askOf({
 			options: [{ label: "logs only" }, { label: "logs and caches" }],
 		},
 	],
+});
+
+/**
+ * THE SHORT-WINDOW ASK (the audit's second item): the wire's own `urgent`, which
+ * the backend derives from the window itself (`timeout_s <= 900`).
+ *
+ * Stated as the wire states it rather than as a fixture flag a frame could invent:
+ * the row's mark is what the picture is about, and the rule that makes an ask urgent
+ * lives in the backend. Its quarter-hour window leaves three minutes at the pinned
+ * clock, which is what an urgent ask's countdown reads - the state the round-3 frame
+ * got wrong by pairing the same flag with eighteen minutes.
+ */
+const ASK_URGENT = askOf({
+	ask_id: "a-urgent",
+	timeout_s: 900,
+	questions: [ASK_QUESTION],
+});
+
+/**
+ * A SECOND WAITING ASK WITH A SOONER WINDOW, for the subject form: two asks are
+ * inside their windows and they do not expire together, which is the case a bare
+ * `expires in 12m` would mis-attribute (design round 1's D2).
+ *
+ * Half an hour is above the 900-second threshold, so it is NOT urgent - a fixture
+ * with a short window and `urgent: false` would be the same impossible-state class
+ * the factory above now refuses.
+ */
+const ASK_SECOND_WINDOW = askOf({
+	ask_id: "a-keys",
+	created_at: ASK_TS + 2 * ASK_MINUTE,
+	timeout_s: 1800,
+	questions: [
+		{
+			id: "rotate",
+			question: "Rotate the API keys now?",
+			options: [{ label: "yes" }, { label: "no" }],
+		},
+	],
+});
+
+/**
+ * A MOVED-ON ask that WAS urgent: the case both urgency arms must leave alone, since
+ * the agent has walked past it and its window is closed. Its short window is why the
+ * wire's flag is true, and it expired fifteen minutes before the pinned clock.
+ */
+const ASK_MOVED_ON_URGENT = askOf({
+	ask_id: "a-moved-urgent",
+	status: "timed_out",
+	created_at: ASK_TS - 30 * ASK_MINUTE,
+	timeout_s: 900,
+	questions: [ASK_QUESTION],
 });
 
 /**
@@ -2235,6 +2345,13 @@ const AskBand = ({
 				isSmallView={width <= SMALL_VIEW_PX}
 				askExpanded={open}
 				onAskToggle={setOpen}
+				/*
+				 * THE SAME PINNED CLOCK THE PANEL GETS. The item prints the soonest waiting
+				 * deadline now, and a countdown rendered against the wall clock cannot be
+				 * photographed twice into the same frame - nor can a frame's reading be
+				 * compared with the panel row's beside it.
+				 */
+				nowMs={ASK_NOW}
 			/>
 		</Composer>
 	);
@@ -2318,7 +2435,7 @@ export const AskWaiting: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="One open ask: `1 question waiting`, mark in the accent, label in `ink`"
+			label="One open ask, forty-eight minutes left on it"
 			asks={[ASK_OPEN]}
 		/>
 	),
@@ -2351,7 +2468,7 @@ export const AskMultiple: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="Two open asks: `2 questions waiting` — the count form the row's other chips use"
+			label="Two open asks: forty-eight minutes left on one, fifty on the other"
 			asks={[ASK_OPEN, ASK_SECOND]}
 		/>
 	),
@@ -2369,7 +2486,7 @@ export const AskMixed: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="One waiting, one moved on: the chip keeps the short clause, the announced name carries the split"
+			label="One ask waiting, one the agent moved on from"
 			asks={[ASK_OPEN, ASK_MOVED_ON]}
 		/>
 	),
@@ -2386,7 +2503,7 @@ export const AskTruncated: Story = {
 	render: () => (
 		<AskBand
 			width={569}
-			label="A truncated frame: `12 outstanding` rather than a split of the twelve-item prefix"
+			label="A capped list with a published tally: the frame carries one row and the backend counts twelve"
 			asks={[ASK_OPEN]}
 			tally={12}
 		/>
@@ -2560,6 +2677,149 @@ export const AskFocusedPanel: Story = {
 			label="Settled and focused: the panel root carries the keyboard, and the ring shows it"
 			asks={[ASK_ANSWERED]}
 			focusPanel
+		/>
+	),
+};
+
+/**
+ * THE COUNTDOWN ON THE COLLAPSED FACE, and urgency with an ink of its own.
+ *
+ * The audit's two remaining items, in one frame: the item states the soonest
+ * waiting deadline, and its mark steps to `warning` for it. The fixture's window is
+ * the wire's own short one (900 seconds, three minutes left at the pinned clock),
+ * which is also what makes the ink truthful - before this pass the item said
+ * `1 question waiting` with an `accent` mark and neither fact was on screen anywhere
+ * without opening the panel.
+ */
+export const AskUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="One urgent ask: the wire's own 900-second window, three minutes left on it"
+			asks={[ASK_URGENT]}
+		/>
+	),
+};
+
+/**
+ * TWO WINDOWS, ONE NUMBER: the item names no ask, so the countdown carries a subject.
+ *
+ * `AskOpen` has forty-eight minutes left and `AskSecondWindow` twenty; the number
+ * printed is the SOONER one's, and the `soonest ask` subject is what keeps it from
+ * reading as whichever ask the reader had in mind (design round 1's D2, with the head
+ * noun design round 3's D4 asked for).
+ * whichever ask the reader had in mind (design round 1's D2).
+ */
+export const AskTwoWindows: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Two waiting asks with DIFFERENT windows: forty-eight minutes left on one, twenty on the other"
+			asks={[ASK_OPEN, ASK_SECOND_WINDOW]}
+		/>
+	),
+};
+
+/**
+ * THE APP'S APPLIED FLOOR, in this set's own unit: a 480px column, whose composer box
+ * is 432px.
+ *
+ * THE COLUMN'S FLOOR IS 480, NOT 220 AND NOT 172 (`chat-sidebar-layout.ts`'s
+ * `CHAT_PANE_MIN_PX`, applied by §I and asserted EXACTLY by
+ * `scripts/chat-pane-floors.test.mjs`; that test's own note records that the
+ * assertion it replaced allowed `(0, 480]` "while the tree was still at 220"). The
+ * composer band insets the box 24px each side, so the widest tier this row has
+ * (341px, the subject's yield) cannot bind until the column falls to about 389px -
+ * which is why this frame is the honest floor and the earlier one was not: it pins
+ * the box at 432, and the countdown IS painted here, in full, subject and sentence.
+ *
+ * WHAT THIS FRAME IS FOR, therefore: it is the frame that says the yield is a
+ * container-query SAFETY NET rather than a rule the product applies - at every width
+ * the app can currently produce, the item paints the whole clause, and the tier
+ * frames below (`241`, `260`) photograph a narrowing it does not reach.
+ *
+ * Agent review round 2's F1 is why this exists at all: the set used to pin 220 (a
+ * retracted floor) and then 172 (the composer box inside that 220 column, i.e. a
+ * layout the app no longer renders), both of which claimed more about the product than
+ * the numbers support.
+ */
+export const AskColumnFloorApplied: Story = {
+	render: () => (
+		<AskBand
+			width={432}
+			label="The applied floor: a 480px column, whose composer box is 432px - the window the app's own floor produces"
+			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/**
+ * THE BAND WHERE THE COUNTDOWN USED TO BE CUT (design round 4's MAJOR).
+ *
+ * The sentence does not fit a 241px column, and an earlier cut let it ellipsise
+ * there - painting `expires in 4...`, a prefix of BOTH `4m` and `48m`, beside an
+ * urgency ink claiming fifteen minutes or less. These three states exist to
+ * photograph the band and to assert the countdown is never partial in it: the
+ * subject yields first, the sentence gives way to the VALUE whole, and the row keeps
+ * its column.
+ */
+export const AskMultipleBand260: Story = {
+	render: () => (
+		<AskBand
+			width={260}
+			label="Two open asks at 260px: the sentence yields WHOLE to the value - the countdown is never cut mid-number"
+			asks={[ASK_OPEN, ASK_SECOND]}
+		/>
+	),
+};
+
+export const AskTwoWindowsBand260: Story = {
+	render: () => (
+		<AskBand
+			width={260}
+			label="Two windows at 260px: the same yield, on the state whose number belongs to the sooner ask"
+			asks={[ASK_OPEN, ASK_SECOND_WINDOW]}
+		/>
+	),
+};
+
+export const AskMultipleBand241: Story = {
+	render: () => (
+		<AskBand
+			width={241}
+			label="Two open asks at the 241px band edge: the value is whole here, which is what this state exists to show"
+			asks={[ASK_OPEN, ASK_SECOND]}
+		/>
+	),
+};
+
+/** An urgent ask with its panel open: the row's mark is `warning`, glyph unchanged. */
+export const AskExpandedUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="An urgent ask with the panel open"
+			asks={[ASK_URGENT]}
+			defaultOpen
+		/>
+	),
+};
+
+/**
+ * MOVED ON **AND** URGENT: the case the ink arm must not repaint.
+ *
+ * The urgency arm sets ink, never glyph. A timed-out ask's status glyph is the
+ * Clock, and an early cut of that arm returned `HelpCircle` before the status
+ * switch - so one glyph meant both "open, maybe urgent" and "timed out, urgent"
+ * (design round 1's D5). This frame is the one that would move if it regressed.
+ */
+export const AskExpandedMovedOnUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A MOVED-ON ask that was urgent, with the panel open"
+			asks={[ASK_MOVED_ON_URGENT]}
+			defaultOpen
 		/>
 	),
 };

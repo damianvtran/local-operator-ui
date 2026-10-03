@@ -51,6 +51,7 @@ import {
 	noopDraftChange,
 	sessionAsks,
 } from "../../ask-queue";
+import { useAskClock } from "../../use-ask-clock";
 import { AskPanel } from "./ask-panel";
 
 /**
@@ -110,21 +111,12 @@ export type AskSurfacesProps = {
 	className?: string;
 };
 
-/** How often the countdown is re-read while an open ask is on screen. */
-const ASK_CLOCK_MS = 30_000;
-
-const useAskClock = (active: boolean, pinned?: number): number => {
-	const [now, setNow] = useState(() => pinned ?? Date.now());
-	useEffect(() => {
-		if (pinned !== undefined || !active) return;
-		setNow(Date.now());
-		const timer = window.setInterval(() => setNow(Date.now()), ASK_CLOCK_MS);
-		return () => window.clearInterval(timer);
-	}, [active, pinned]);
-	// A pinned clock wins over every tick, so a story's frames are stable.
-	return pinned ?? now;
-};
-
+/**
+ * The countdown is re-read on the lane's own clock, which lives in
+ * `features/chat/use-ask-clock` so the status row's ask item (which prints the same
+ * countdown on its collapsed face) reads the SAME one: two intervals would let the
+ * chip and the row it opens disagree about one deadline for up to a tick.
+ */
 export const AskSurfaces = ({
 	frontend,
 	onAnswer,

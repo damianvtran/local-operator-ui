@@ -92,6 +92,7 @@ const bundle = await build({
 			import { GoalPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
 			import { AskSurfaces } from "./src/renderer/src/features/chat/components/asks/ask-surfaces";
+			import { askChipClause, askDeadlineShortText, askQueueView } from "./src/renderer/src/features/chat/ask-queue";
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -116,7 +117,7 @@ const bundle = await build({
 				);
 			export { GoalPicker };
 			export { toasts };
-			export { AskSurfaces, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
+			export { askChipClause, askDeadlineShortText, askQueueView, AskSurfaces, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -184,6 +185,9 @@ const {
 	renderRow,
 	AskSurfaces,
 	ComposerStatusRow,
+	askChipClause,
+	askDeadlineShortText,
+	askQueueView,
 	shouldRestoreComposerFocus,
 	renderWakes,
 	renderMonitors,
@@ -1153,7 +1157,14 @@ test("the wake chip states the model's clause, off the model's own list", () => 
  * directly, and that difference is the F1 gate's whole subject.
  */
 const renderWiredRow = (props) =>
-	renderRow({ ...props, onAskToggle: () => undefined });
+	/*
+	 * A PINNED CLOCK, so the item's countdown is a fact of the fixture rather than of
+	 * the moment the suite ran: the row's own clock is wall time, and every assertion
+	 * about the visible text or the announced name would otherwise drift with it.
+	 * `WAKE_NOW_MS` is the same instant the wire fixtures expire from, which is what
+	 * makes the reading `expires in 1h` for a one-hour ask.
+	 */
+	renderRow({ ...props, onAskToggle: () => undefined, nowMs: WAKE_NOW_MS });
 
 test("the ask item is gated on the WIRE and on a non-empty queue", () => {
 	/*
@@ -1275,7 +1286,7 @@ test("the ask item is the row's one toggle, and names itself off the model", () 
 	assert.match(minimized, /aria-expanded="false"/);
 	assert.match(
 		minimized,
-		/aria-label="Expand the ask history — 1 question waiting"/,
+		/aria-label="Expand the ask history — 1 question waiting · expires in 1h"/,
 	);
 	/*
 	 * The two handles the interaction needs: `data-lo-ask-item-toggle` is what the
@@ -1296,7 +1307,7 @@ test("the ask item is the row's one toggle, and names itself off the model", () 
 	assert.match(expanded, /aria-expanded="true"/);
 	assert.match(
 		expanded,
-		/aria-label="Collapse the ask history — 1 question waiting"/,
+		/aria-label="Collapse the ask history — 1 question waiting · expires in 1h"/,
 	);
 	// The visible text is the leading half of the announced name, so the two
 	// readers cannot describe different states.
@@ -5486,4 +5497,55 @@ test("nothing about the monitors ticks: no clock and no relative time", () => {
 	assert.doesNotMatch(source, /\bminutes? ago\b|in \d+m\b/);
 	/* ...and the panel hands it the untimed model, beside the wakes. */
 	assert.match(code(SECTION_LIST), /<RunDetailMonitors/);
+});
+
+test("the chip PAINTS the model's clause, so the JSX cannot compose a second one", async () => {
+	/*
+	 * F3 of agent review round 2, and F3-a of the manager's correction pass: the
+	 * assertion is on the PAINTED SPANS - not on the item's `aria-label`, and not on
+	 * the markup as a whole. The label carries the same clause by design
+	 * (`askChipLabel` composes from the model), so a whole-markup or attribute
+	 * assertion would pass even if the paint regressed to a second composition, which
+	 * is exactly the seam this test exists to close. Reading the spans excludes the
+	 * attribute and any portalled tooltip text.
+	 */
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		const soon = wireAsk("a-soon", "open", {
+			expires_at: WAKE_NOW_MS + 20 * 60_000,
+			timeout_s: 1200,
+		});
+		const later = wireAsk("a-later", "open", {
+			expires_at: WAKE_NOW_MS + 48 * 60_000,
+			timeout_s: 2880,
+		});
+		const view = askQueueView({ asks: [soon, later] });
+		const clause = askChipClause(view, WAKE_NOW_MS);
+		assert.equal(clause, "2 questions waiting · soonest ask expires in 20m");
+		await act(async () => {
+			root.render(
+				createElement(ComposerStatusRow, {
+					frontend: askFrontend([soon, later]),
+					runDetails: NO_DETAILS,
+					nowMs: WAKE_NOW_MS,
+					onAskToggle: () => undefined,
+				}),
+			);
+		});
+		const item = dom.document.querySelector("[data-lo-ask-item-toggle]");
+		assert.ok(item, "the item is not rendered");
+		const painted = [...item.querySelectorAll("span")]
+			.map((span) => span.textContent)
+			.join("");
+		assert.ok(
+			painted.includes(clause),
+			`the chip does not PAINT the model's clause: ${clause}`,
+		);
+		assert.ok(
+			painted.includes(askDeadlineShortText(view.soonestExpiryMs, WAKE_NOW_MS)),
+			"the chip does not paint the narrow band's form of the same deadline",
+		);
+	} finally {
+		cleanup();
+	}
 });

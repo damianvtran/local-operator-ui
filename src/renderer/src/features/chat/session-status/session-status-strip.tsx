@@ -96,8 +96,9 @@ import {
  * case continues rather than being replaced, and no reading needs a compact
  * spelling to survive it.
  *
- * The cluster wraps internally as well as the row: at the 220px column floor it
- * folds onto two lines of its own while the button line stays intact and no
+ * The cluster wraps internally as well as the row: at a column at its floor
+ * (measured at 220, the floor of that era) it folds onto two lines while the
+ * button line stays intact and no
  * reading leaves the composer box. Only the model name truncates, because it is
  * the one item with unbounded length and the one whose full value the tooltip
  * already carries — and it is floored, so a truncated name still names
@@ -935,8 +936,8 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 				 * threshold for the composer band rather than two that agree by accident,
 				 * and it is keyed on
 				 * `@container/chatcol` rather than the viewport: with the canvas open at
-				 * a 1380px window the column is at its 220px floor while `md:` is still
-				 * comfortably active (see `chat-measure.ts`).
+				 * a 1380px window the column is at its FLOOR - 480px since §I, 220 before it -
+				 * while `md:` is still comfortably active (see `chat-measure.ts`).
 				 *
 				 * `ml-auto` is NOT here, and that is the round-1 blocker fixed by construction.
 				 * It used to be the row's ONE live auto margin at this width; but this
