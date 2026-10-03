@@ -1,0 +1,89 @@
+{
+	"provenance": {
+		"artifact": "~/.local/share/lop/generations/20261003T074919Z-0.66.2/tools/local-operator/",
+		"version": "0.66.2",
+		"settingsModule": "lib/python3.14/site-packages/local_operator/settings_io.py",
+		"settingsModuleSha256": "df0361c412f81a71de90bec12851b208edf0936ee7ddf303a7f052e63939a95a",
+		"derivation": "<artifact>/bin/python -c \"import json; from local_operator import settings_io; print(json.dumps([{k: getattr(s, k) for k in ('key','label','section','kind','default','empty_unsets','minimum','maximum')} for s in settings_io.SETTINGS if s.key.startswith('speech.voice.')]))\"",
+		"readAt": "2026-10-03"
+	},
+	"rows": [
+		{
+			"key": "speech.voice.gender",
+			"label": "Voice gender",
+			"section": "speech",
+			"kind": "enum",
+			"default": "auto",
+			"empty_unsets": false,
+			"minimum": null,
+			"maximum": null,
+			"choices": ["auto", "female", "male"]
+		},
+		{
+			"key": "speech.voice.tone",
+			"label": "Tone",
+			"section": "speech",
+			"kind": "enum",
+			"default": "warm",
+			"empty_unsets": false,
+			"minimum": null,
+			"maximum": null,
+			"choices": ["warm", "neutral", "bright", "calm", "authoritative"]
+		},
+		{
+			"key": "speech.voice.expressiveness",
+			"label": "Expressiveness",
+			"section": "speech",
+			"kind": "enum",
+			"default": "medium",
+			"empty_unsets": false,
+			"minimum": null,
+			"maximum": null,
+			"choices": ["low", "medium", "high"]
+		},
+		{
+			"key": "speech.voice.pace",
+			"label": "Pace",
+			"section": "speech",
+			"kind": "float",
+			"default": 1.0,
+			"empty_unsets": false,
+			"minimum": 0.5,
+			"maximum": 2.0,
+			"choices": []
+		},
+		{
+			"key": "speech.voice.language",
+			"label": "Language",
+			"section": "speech",
+			"kind": "text",
+			"default": "auto",
+			"empty_unsets": true,
+			"minimum": null,
+			"maximum": null,
+			"choices": []
+		},
+		{
+			"key": "speech.voice.accent",
+			"label": "Accent",
+			"section": "speech",
+			"kind": "text",
+			"default": "",
+			"empty_unsets": true,
+			"minimum": null,
+			"maximum": null,
+			"choices": []
+		},
+		{
+			"key": "speech.voice.instructions",
+			"label": "Delivery instructions",
+			"section": "speech",
+			"kind": "text",
+			"default": "Speak aloud and pay attention to potentially multilingual inputs and make sure to use native accents for all different parts of the text, especially those that are not english. Strive for a casual and native-sounding conversational tone. Don't over-enunciate, consider word combinations that should have silent and natural transitions, like \"raha hoon\" -> \"rahoon\" or \"je m'appelle\" -> \"jm'appelle\".",
+			"empty_unsets": false,
+			"minimum": null,
+			"maximum": null,
+			"choices": []
+		}
+	]
+}

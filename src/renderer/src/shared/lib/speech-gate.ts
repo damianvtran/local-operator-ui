@@ -202,8 +202,22 @@ export function speechUnavailableReason(
 const SETTINGS_REASONS: Record<RadientSpeechBlock, string> = {
 	checking: "Checking whether this machine can speak aloud…",
 	"sign-in": "Nothing can speak aloud yet: run `/login radient` to sign in",
+	/*
+	 * PROVIDER-ORIENTED, not account-oriented, and that is the fix for a sentence
+	 * that could be false. Every other arm here renders only beside a daemon report
+	 * saying nothing can serve, so "nothing can speak aloud yet" is backed by the
+	 * report itself; the earlier wording then added "your Radient sign-in could not
+	 * be checked" — a claim about the ACCOUNT at an arm the account may have
+	 * answered. It is reachable that way: `use-credentials.ts` documents the
+	 * non-canonical `RADIENT_API_BASE_URL` skew, where this renderer's session tier
+	 * can hold while the daemon's own probe (which reads the destination it was
+	 * built for) finds no credential, so the account read answers `ready` and the
+	 * block still lands here. What the reader can act on in every one of those
+	 * states is the credential the daemon actually reads (agent review round 1,
+	 * M2).
+	 */
 	"could-not-check":
-		"Your Radient sign-in could not be checked, so nothing can speak aloud yet",
+		"Nothing can speak aloud yet. A Radient sign-in or a stored provider key is what changes that",
 	offline: "Local Operator is offline, so nothing can speak aloud right now",
 };
 

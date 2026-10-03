@@ -5,7 +5,7 @@
  * reply (`speech.voice.*`: gender, tone, expressiveness, pace, language, accent
  * and free-text delivery instructions), and until now the only way a reader met
  * them was inside the whole 112-row Backend registry, where they are seven
- * `[redacted]` rows among thirty sections — a reader tuning how the assistant
+ * `[redacted]` rows among twenty sections — a reader tuning how the assistant
  * SOUNDS had to know the keys' names to find them. The daemon's own registry
  * makes the case for a section rather than scattered keys ("they are one object
  * — the descriptor — and a user tuning how the assistant sounds is doing one
@@ -52,6 +52,7 @@ import {
 	desktopFeatureState,
 	useDesktopCapabilities,
 } from "@shared/api/local-operator/desktop-hooks";
+import { ErrorBoundary } from "@shared/components/common/error-boundary";
 import { Spinner } from "@shared/components/common/spinner";
 import { Alert, Button } from "@shared/components/ui";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
@@ -64,6 +65,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { FC, RefObject } from "react";
 import { tierFor } from "../backend-settings-tiers";
 import {
+	parseVoicePathResolution,
 	speechAvailability,
 	speechPathName,
 	speechVoiceRows,
@@ -95,6 +97,32 @@ type SpeechSectionProps = {
  */
 const BACKEND_OLDER_SENTENCE =
 	"This backend does not serve the voicing surface. Update the backend to tune how the assistant sounds.";
+
+/**
+ * What the group says when the report is missing, whether the request failed or
+ * answered with another shape.
+ *
+ * ONE string for the arms that render it — the failed request, the unparseable
+ * 200, and the panel's own error boundary — because from the reader's side they
+ * are one fact: the availability could not be read. A second wording for the
+ * middle arm would be a distinction only this file can see.
+ */
+const UNAVAILABLE_SENTENCE = "Speech availability could not be read.";
+
+/**
+ * The panel's local boundary: a subtree that crashes becomes one honest
+ * sentence rather than a dead route.
+ *
+ * WHY IT SITS AROUND THE PANEL AND NOT AROUND THE GROUP. The identified throw
+ * was in this subtree's own mapping (QA round 1, Q2) and there is no boundary
+ * nearer than the app root, so a render error here took the whole Settings page
+ * with it. Wrapping the ROWS as well would be worse rather than safer: an
+ * unrelated row defect would then hide seven editable settings the reader can
+ * still use, and those rows are the shared row component the Backend section
+ * already renders under the same exposure — so this boundary is exactly as wide
+ * as the surface it repairs.
+ */
+const PanelFallback = <Alert variant="warning">{UNAVAILABLE_SENTENCE}</Alert>;
 
 /** Which of the group's four renderings a feature state admits. */
 function groupState(state: DesktopFeatureState): "ready" | "older" | "pairing" {
@@ -264,9 +292,20 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 
 	/* ------------------------------------------------- the availability read */
 
-	const availability = pathsQuery.data
-		? speechAvailability(pathsQuery.data)
-		: null;
+	/*
+	 * THE PAYLOAD IS VALIDATED BEFORE IT IS BELIEVED. `desktopResult` casts, so a
+	 * 200 that is not a `VoicePathResolution` arrives here as one — and this is the
+	 * seam that decides the reader sees "could not be read" rather than a
+	 * `TypeError` inside render (QA round 1, Q2). A validated-`null` is treated
+	 * exactly like a failed read below, and never as "nothing is available".
+	 */
+	const resolution = useMemo(
+		() => parseVoicePathResolution(pathsQuery.data),
+		[pathsQuery.data],
+	);
+	const availability = resolution ? speechAvailability(resolution) : null;
+	/** The read ANSWERED, and what it answered was not this route's shape. */
+	const payloadUnreadable = pathsQuery.isSuccess && resolution === null;
 
 	/*
 	 * The load failure both the registry and the capabilities read can produce,
@@ -377,7 +416,13 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 						</p>
 					)}
 
-					{pathsQuery.isError &&
+					{/*
+					 * Two ways the report can be missing, and the reader is owed the same
+					 * sentence for both: the request failed, or it answered with something that
+					 * is not this route's shape. `!availability` keeps the arm off when a
+					 * refetch has already succeeded beside a stale failure.
+					 */}
+					{(pathsQuery.isError || payloadUnreadable) &&
 						!availability &&
 						/* The offline arm is stated by the note below, from the connectivity
 						 * gate's own reading: an outage is not a failure of this read, and a
@@ -385,64 +430,66 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 						 * Retry that cannot work. */
 						speechBlock !== "offline" && (
 							<Alert variant="warning">
-								Speech availability could not be read.{" "}
+								{UNAVAILABLE_SENTENCE}{" "}
 								{pathsQuery.error instanceof Error
 									? pathsQuery.error.message
 									: ""}
 							</Alert>
 						)}
 
-					{availability && (
-						<>
-							<InfoGrid>
-								<InfoItem
-									label="Speaks through"
-									value={
-										availability.serving
-											? speechPathName(availability.serving)
-											: "Nothing yet"
-									}
-								/>
-								<InfoItem
-									label="Availability"
-									value={availability.servable ? "Ready" : "No provider"}
-								/>
-							</InfoGrid>
-							{/*
-							 * The daemon's own sentence, verbatim. It names what is missing
-							 * (or what was found) in the register its resolver wrote it in, and
-							 * restating it here in this file's words would be the second opinion
-							 * about one cascade that the whole voicing family avoids.
-							 */}
-							<p className="text-body-sm text-ink-muted">
-								{availability.reason}
-							</p>
-							{/*
-							 * Every rung, in cascade order, because that order IS the answer to
-							 * "which provider will this use, and why not the one above it" — the
-							 * question a reader with one provider configured asks first.
-							 */}
-							<ul className="flex flex-col gap-1">
-								{availability.rungs.map((rung) => (
-									<li
-										key={rung.path}
-										className="flex flex-col gap-0.5 text-body-sm"
-									>
-										<span className="text-ink">
-											{rung.name}
-											<span className="text-ink-dim">
-												{" "}
-												{rung.available ? "(available)" : "(not available)"}
+					<ErrorBoundary fallback={PanelFallback}>
+						{availability && (
+							<>
+								<InfoGrid>
+									<InfoItem
+										label="Speaks through"
+										value={
+											availability.serving
+												? speechPathName(availability.serving)
+												: "Nothing yet"
+										}
+									/>
+									<InfoItem
+										label="Availability"
+										value={availability.servable ? "Ready" : "No provider"}
+									/>
+								</InfoGrid>
+								{/*
+								 * The daemon's own sentence, verbatim. It names what is missing
+								 * (or what was found) in the register its resolver wrote it in, and
+								 * restating it here in this file's words would be the second opinion
+								 * about one cascade that the whole voicing family avoids.
+								 */}
+								<p className="text-body-sm text-ink-muted">
+									{availability.reason}
+								</p>
+								{/*
+								 * Every rung, in cascade order, because that order IS the answer to
+								 * "which provider will this use, and why not the one above it" — the
+								 * question a reader with one provider configured asks first.
+								 */}
+								<ul className="flex flex-col gap-1">
+									{availability.rungs.map((rung) => (
+										<li
+											key={rung.path}
+											className="flex flex-col gap-0.5 text-body-sm"
+										>
+											<span className="text-ink">
+												{rung.name}
+												<span className="text-ink-dim">
+													{" "}
+													{rung.available ? "(available)" : "(not available)"}
+												</span>
 											</span>
-										</span>
-										<span className="text-meta text-ink-dim">
-											{rung.reason}
-										</span>
-									</li>
-								))}
-							</ul>
-						</>
-					)}
+											<span className="text-meta text-ink-dim">
+												{rung.reason}
+											</span>
+										</li>
+									))}
+								</ul>
+							</>
+						)}
+					</ErrorBoundary>
 				</section>
 
 				{inert && (
