@@ -1,0 +1,65 @@
+stub daemon listening on 127.0.0.1:8080
+serve record written to /Users/damian/.local-operator/sessions/bbf77dcd3398/scratchpad/palette-ev/stub-records-rem3
+stub GET /health -> 200
+stub POST /v1/desktop/claim -> 200
+stub GET /v1/desktop/sessions?limit=1 -> 200 rows=1 next=-
+stub GET /v1/capabilities -> 200
+stub GET /v1/capabilities -> 200
+stub GET /v1/capabilities -> 200
+stub GET /v1/settings -> 503
+stub GET /v1/capabilities -> 200
+stub GET /v1/capabilities -> 200
+stub POST /v1/desktop/radient -> 503
+stub GET /v1/credentials -> 503
+stub GET /v1/config -> 503
+stub POST /v1/desktop/radient -> 503
+stub GET /v1/capabilities -> 200
+stub GET /v1/desktop/profiles -> 200
+stub GET /v1/desktop/teams -> 200
+stub GET /v1/desktop/sessions?limit=500&include_archived=true -> 200 rows=6 next=-
+stub POST /v1/desktop/radient -> 503
+stub GET /v1/desktop/peers -> 503
+stub GET /v1/desktop/networks -> 503
+stub GET /v1/settings -> 503
+stub GET /v1/desktop/commands -> 200
+stub GET /v1/settings -> 503
+stub GET /v1/auth/providers -> 503
+stub GET /v1/config -> 503
+stub POST /v1/desktop/radient -> 503
+stub GET /v1/capabilities -> 200
+stub GET /v1/desktop/profiles -> 200
+stub GET /v1/desktop/teams -> 200
+stub GET /v1/desktop/sessions?limit=500&include_archived=true -> 200 rows=6 next=-
+stub POST /v1/desktop/radient -> 503
+stub GET /v1/desktop/peers -> 503
+stub GET /v1/desktop/networks -> 503
+stub GET /v1/settings -> 503
+stub GET /v1/desktop/commands -> 200
+stub GET /v1/settings -> 503
+stub GET /v1/auth/providers -> 503
+stub GET /v1/config -> 503
+stub POST /v1/desktop/radient -> 503
+stub GET /v1/credentials -> 503
+stub GET /v1/agents?page=1&per_page=1 -> 503
+stub POST /v1/desktop/radient -> 503
+stub GET /v1/settings -> 503
+stub GET /v1/auth/providers -> 503
+stub GET /v1/config -> 503
+stub GET /v1/settings -> 503
+stub GET /v1/credentials -> 503
+stub GET /v1/agents?page=1&per_page=1 -> 503
+stub GET /v1/config -> 503
+stub GET /v1/settings -> 503
+stub GET /v1/agents?page=1&per_page=100 -> 503
+stub GET /v1/credentials -> 503
+stub GET /v1/agents?page=1&per_page=1 -> 503
+stub POST /v1/desktop/radient -> 503
+stub POST /v1/desktop/radient -> 503
+stub GET /v1/agents?page=1&per_page=100 -> 503
+stub GET /v1/credentials -> 503
+stub GET /v1/agents?page=1&per_page=1 -> 503
+stub GET /v1/desktop/sessions?limit=500&include_archived=true -> 200 rows=6 next=-
+stub GET /v1/config -> 503
+stub GET /v1/settings -> 503
+stub GET /v1/desktop/sessions/search?q=release&limit=100 -> 200 rows=1 next=-
+stub POST /v1/desktop/radient -> 503
