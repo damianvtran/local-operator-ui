@@ -287,6 +287,18 @@ const settleTargetFor = (state: StoryState): string | null => {
 };
 
 /**
+ * How long the latch holds before it gives up, in ms.
+ *
+ * The rig gives the shutter 60s before it refuses a story (its readiness probe is
+ * 300 polls at 200ms, `capture-evidence.mjs`), so this holds just inside that
+ * bound: the state gets the whole window the rig will wait for, and the marker
+ * below is written while the rig is still reading it. Releasing earlier - as this
+ * latch did at 6s on the first pass - hands the shutter back mid-flight for any
+ * state slower than the bound, which is the defect design review round 1's D1 was.
+ */
+const SHUTTER_HOLD_MS = 55_000;
+
+/**
  * The section, installed against one cascade state.
  *
  * The bridge is installed as the story RENDERS rather than from an effect,
@@ -305,8 +317,13 @@ const settleTargetFor = (state: StoryState): string | null => {
  * `retryDesktopQuery` allows. `app-updates-section.stories.tsx` waits on its own
  * `expect` text for the same reason.
  *
- * A reworded sentence does not silently ship a wrong frame: it never matches, the
- * shutter holds to the rig's own bound, and the capture fails loudly.
+ * THE EXPIRY IS A FAILURE, NOT A SILENT RELEASE (the evidence lane's review of
+ * #815, routed here). A reworded sentence must not release the shutter quietly:
+ * the marker written below is `data-capture-failed`, which the rig REFUSES a
+ * frame for, in the same seat and shape `agent-hub.stories.tsx`'s `holdShutter`
+ * and `docs-library.stories.tsx`'s `HubHold` set it. Without it this latch would
+ * have expired at 6s, written nothing, and filed whatever the retrying query was
+ * showing under the state's name - the class D1 closed.
  */
 const Section: FC<{ state: StoryState }> = ({ state }) => {
 	installBridge(state);
@@ -316,12 +333,21 @@ const Section: FC<{ state: StoryState }> = ({ state }) => {
 		document.documentElement.dataset.capturePending = "1";
 		let cancelled = false;
 		const run = async () => {
-			for (let attempt = 0; attempt < 300; attempt += 1) {
-				if (document.body.textContent?.includes(settled)) break;
+			const started = Date.now();
+			let reached = false;
+			while (Date.now() - started < SHUTTER_HOLD_MS) {
+				if (document.body.textContent?.includes(settled)) {
+					reached = true;
+					break;
+				}
 				await sleep(20);
 			}
 			await nextFrame();
-			if (!cancelled) delete document.documentElement.dataset.capturePending;
+			if (cancelled) return;
+			delete document.documentElement.dataset.capturePending;
+			if (!reached) {
+				document.documentElement.dataset.captureFailed = `speech-shutter-not-reached: ${settled}`;
+			}
 		};
 		void run();
 		return () => {
