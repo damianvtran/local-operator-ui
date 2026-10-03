@@ -105,8 +105,8 @@ ground where it does not.
 - Bundle size: `pnpm bundle-size`, `pnpm startup-closure`
 - Component gallery: `pnpm storybook`
 - Fold an evidence stamp after a merge: `pnpm evidence:fold` (resolves
-  `docs/evidence/manifest.json` per field, re-derives the stamps and counts from the
-  merged tree, runs the guards and stages the result - one commit per fold).
+  `docs/evidence/manifest.json` per field, re-derives the counts from the merged
+  tree, runs the guards and stages the result - one commit per fold).
   `pnpm evidence:fold:install` wires the clone's merge driver once, so `git merge
   origin/main` does not stop on a manifest conflict at all; `pnpm evidence:fold:check`
   is the read-only form (the merge-driver wiring, not the push hook). The driver
@@ -131,19 +131,34 @@ not independent capture scripts importing the single-frame predicate. Run
 lightweight subprocess/CLI contract tests; they use isolated synthetic evidence,
 not the committed image set.
 
-**A commit that moves `src/` or `scripts/` costs every open branch one command.**
-`docs/evidence/manifest.json` pins `srcTree`/`scriptsTree` to
-`git rev-parse HEAD:src`/`HEAD:scripts`, and the gate fails a mismatch with "re-capture
-and re-stamp" rather than a warning - so `main` moving a rig, or any sibling branch
-landing one, invalidates the stamp for everybody holding a branch, whether or not
-that branch's own frames changed. That is the convergence cost of the file, and it
-used to be paid with two hand commits per fold. It is now `pnpm evidence:fold`:
+**A manifest-touching merge is still a fold, but no longer a chore.**
+`docs/evidence/manifest.json` used to pin `srcTree`/`scriptsTree` to
+`git rev-parse HEAD:src`/`HEAD:scripts`, and the gate failed a mismatch with
+"re-capture and re-stamp" rather than a warning - so `main` moving a rig, or any
+sibling branch landing one, invalidated the stamp for everybody holding a branch,
+whether or not that branch's own frames changed. Measured 2026-10-03: 32
+first-parent merges onto `origin/main` in 24 hours, 29 of them moving `src/` or
+`scripts/`, with a median gap of ~30 minutes - and 51 of the last 120
+manifest-touching commits were re-derives, 33 of which moved ONLY the pair. That
+pair is now RETIRED (`scripts/drop-evidence-stamps.mjs` is the one-shot that
+removed it): the manifest declares its counts and its citations, and the tree it
+describes is no longer asserted. See "What this file certifies" below for what
+that gives up.
+
+What is left of the fold is real but small: `pnpm evidence:fold` resolves the
+manifest a field at a time when two lanes genuinely both edited it, re-derives
+the counts when a merge moved the story list, the theme list or the frames, and
+stages the result:
 
 ```
 git merge origin/main        # with `pnpm evidence:fold:install` once per clone,
                              # this does not stop on the manifest at all
 pnpm evidence:fold           # resolve + re-derive + stage, one commit
 ```
+
+A fold whose upstream moved only `src/` or `scripts/` now prints *"the manifest
+already describes this tree - nothing to do"* and writes nothing - that is the
+normal case, not a rare one, and it is the invariant the change was made for.
 
 `scripts/evidence-fold.mjs` resolves `docs/evidence/manifest.json` a FIELD at a time
 from the three sides git already holds (pass-describing fields are this branch's,
@@ -177,63 +192,92 @@ stash-pop record no marker until the step they are running finishes, so those
 refusals say that rather than guess. Run the
 tool BEFORE pushing: it amends the merge tip, and it refuses to amend a tip that
 is already reachable from a remote-tracking ref (printing the `git commit`
-command instead, so the values ride a commit on top). It does NOT weaken
-anything: the stamps stay stored in the manifest and are still compared against
-`HEAD` exactly as below.
+command instead, so the values ride a commit on top). It does NOT weaken any
+guard that is left: every field the manifest still claims about its tree is
+written by the tool and checked by the real guards before anything is staged.
+What it no longer does is store or re-derive a hash of `src/` or `scripts/` -
+see "What this file certifies" below for what that retires and what it gives up.
 
-**MANIFEST-TOUCHING MERGES ARE A SERIALIZED WINDOW.** A manifest-touching merge
-is one that touches `docs/evidence/manifest.json` or moves `src/` or `scripts/`.
-`main` moves every ~32 minutes (median, measured 2026-10-03) and every merge that
-moves `src/` or `scripts/` invalidates every open branch's stamp - so **one
-manifest-touching PR lands at a time**: fold, push and merge before starting the
-next, and do not read a green head as yours to keep. A green head here is
-perishable: a 19-35 minute CI wait against a 32-minute merge cadence means it is
-routinely superseded before it can be used. If you need the window, ask the
+**MANIFEST-TOUCHING MERGES ARE STILL SERIALIZED, BUT THE BAR IS LOWER.** A
+manifest-touching merge is one that touches `docs/evidence/manifest.json` or
+moves `src/` or `scripts/`. `main` moves every ~32 minutes (median, measured
+2026-10-03), and while the tree stamps existed every one of those merges
+invalidated every open branch's stamp, which is why the file had to be a
+one-at-a-time window. The stamps are retired now, so a merge that only moves
+`src/` no longer changes the file at all - but a merge that moves the evidence
+set, the story list or the theme list still does, and two lanes editing the
+manifest at once still meet in it. **Keep one manifest-touching fold in flight**
+as the house rule; `scripts/check-fold-keys.mjs` still polices what a fold
+resolution may not do, and a green head here is still perishable: a 19-35 minute
+CI wait against a 32-minute merge cadence means it is routinely superseded
+before it can be used. If you need the window, ask the
 current release-window owner to hold merges for one CI cycle - that role exists
 only while a `chore(release): claim release window` PR is open, so if no window is
 claimed, say so in the fold's own lane and take it: announce the hold where lanes
-read, then fold, push and merge. This is an interim policy - the structural fix,
-deriving the stamps at verification time so no merge moves them, is designed in
-its own PR.
+read, then fold, push and merge. What the one-at-a-time window was buying is now
+bought by the retirement itself: the churn that made a green head expire was a
+stored hash of a tree the file does not own, and it is gone.
 
-`scripts/evidence-manifest.test.mjs` checks the stamp and
+`scripts/evidence-manifest.test.mjs` checks the counts and
 needs no lease: it runs inside `pnpm test:desktop`, fails in well under a second, and
-it is what caught the stale stamps that reached `main` once - so a stale stamp is
+it is what caught the stale values that reached `main` once - so a stale value is
 visible locally without a sweep, contrary to what this paragraph used to say. Only
 the sweep half, `pnpm check-evidence`, takes the machine-wide lease and defers (exit
-75) while another sweep holds it. Re-derive both from the tree the commit names -
+75) while another sweep holds it. Re-derive them from the tree the commit names -
 which is the MERGED tree, so the derivation happens after the merge or sync commit
-exists. Deriving them while the change is still in the working tree asks `git
-rev-parse HEAD:src` about the PRE-merge head and gets its trees: real trees, so the
-diff looks right, just not this one's (fold 11 shipped exactly that to `main`; fold
-10 was stale from the other side one commit earlier, its merge commit declaring its
-second parent's trees until a follow-up re-derived them). When the change also
-touches `scripts/`, that stamp cannot include the edit until the edit is committed,
-so the order is commit, derive, write the values in, `--amend` - the amendment moves
-`docs/` only, and the value written stays true. **Run it BEFORE pushing**: the amend
-rewrites the tip, and the tool refuses to amend a tip that is already reachable from
-a remote-tracking ref (it prints the `git commit` command instead, so the values
-land on top rather than rewriting published history).
+exists. Deriving them while the change is still in the working tree reads
+`git show HEAD:scripts/capture-evidence.mjs` and gets the PRE-merge head's literal:
+a real file, so the diff looks right, just not this one's (fold 11 shipped exactly
+that to `main`; fold 10 was stale from the other side one commit earlier, its merge
+commit declaring its second parent's trees until a follow-up re-derived them). When
+the change also touches `scripts/`, that count cannot include the edit until the
+edit is committed, so the order is commit, derive, write the values in, `--amend` -
+the amendment moves `docs/` only, and the value written stays true. **Run it BEFORE
+pushing**: the amend rewrites the tip, and the tool refuses to amend a tip that is
+already reachable from a remote-tracking ref (it prints the `git commit` command
+instead, so the values land on top rather than rewriting published history).
 
-**A note must not quote `srcTree`/`scriptsTree`.** A note that names the pair binds
-itself to a hash that every content commit moves, so every re-stamp has to rewrite
-each note that names it: 128 values in `docs/evidence/manifest.json` quote a token
-(measured 2026-09-27), and that is what spreads a two-line re-stamp across nineteen
-merge regions of a 2.5 MB file. Write a pass's identity as the bare SHAs the pass
-itself read (`git rev-parse HEAD:src` at that commit), which is what the sentence
-needs and does not move when a sibling branch lands; the file's own
-`srcTree`/`scriptsTree` pair stays the file's only statement of the binding.
+**A note must not quote a stamp that moves.** A note that names a tree hash binds
+itself to a value every content commit moves, so every re-derive has to rewrite
+each note that names it: 128 values in `docs/evidence/manifest.json` quote such a
+token (measured 2026-09-27), and that is what spread a two-line re-derive across
+nineteen merge regions of a 2.5 MB file. Write a pass's identity as the bare SHAs
+the pass itself read (`git rev-parse HEAD:src` at that commit), which is what the
+sentence needs and does not move when a sibling branch lands. The pair itself is
+retired - the file makes no such binding any more (`srcTree`/`scriptsTree` are in
+`RETIRED_TOP_LEVEL_FIELDS`, and `scripts/evidence-manifest.test.mjs` fails if the
+shipped file carries them) - but the ledger below still has work to do, because
+the NOTES still quote historical values.
 `scripts/evidence-manifest.test.mjs` fails a note that quotes a token and names the
 key - mechanically, with no lease, inside `pnpm test:desktop`. The notes that
 already do are carried in that file's frozen `LEGACY_STAMP_QUOTING_NOTES` ledger:
-it may shrink as each is repaired in a `docs/`-only re-stamp, a fold that RENAMES
+it may shrink as each is repaired in a `docs/`-only re-derive, a fold that RENAMES
 a note carries the new name into it in the same commit, and it may never gain a
 name, because a new binding is the defect the assertion exists for. The convention
 it replaces - `STAMP_BINDING_NOTES`, which held its members to the pair the file
-SHIPS - is what kept those notes bound across every fold.
+SHIPS - kept those notes bound across every fold; both that convention and the
+binding it served are gone, and the ledger is a historical record now.
 
-**Fold first, re-stamp second - which is now one command, not two commits.** The fold
-is where the two-commit rule above kept biting: the re-stamp reads like part of the
+**What this file certifies, after the tree stamps were retired.**
+`docs/evidence/manifest.json` no longer stores a hash of `src/` or `scripts/`. It declares what it can
+be checked against: the frame count on disk outside its declared sets, the story
+and theme counts parsed from `scripts/capture-evidence.mjs`, the pass tallies, and
+the commit its frames were captured at - which must still resolve and still be an
+ancestor of `HEAD`. The single thing the repo can **no longer** catch for you is
+the one the stored pair used to: a `src/` change landing after a capture that
+alters a surface the committed frames render, with no re-capture. That class is
+now a review question - look at the frames and the diff, and say so - not a gate.
+Everything else the pair was credited with catching it in fact never caught: every
+recorded re-derive in this repository's history is explicitly *"re-stamped, not
+re-captured"*, so a stored pair never proved any frame was freshly shot. Its
+load-bearing effect was to force a mechanical re-derive on every fold, and that is
+exactly the cost this change removes. `pnpm check-evidence` still PRINTS the tree
+under review (`tree under review: src=… scripts=…`) as a reading, so a reviewer
+still sees which source the frames sit on without the file making a claim a
+sibling's commit can falsify.
+
+**Fold first, re-derive second - which is now one command, not two commits.** The fold
+is where the two-commit rule above kept biting: the re-derive reads like part of the
 merge, and sweeping it in reads the values against the pre-fold head. `pnpm
 evidence:fold` is that separation made mechanical: it re-derives from the MERGED tree
 (the index, before the merge commit exists, and `HEAD` after it), stages the values,
@@ -241,21 +285,26 @@ and amends only when the tip IS the merge commit and the only staged change is t
 file - so the value and the tree it names sit inside one commit either way. Merge
 `origin/main` in one commit; run it; commit once.
 
-Manifest-touching merges are a serialized window - the paragraph above states it,
-and the figures there are re-measured rather than copied.
+Manifest-touching merges are still serialized - the paragraph above states it, and
+the figures there are re-measured rather than copied.
 
-Measured 2026-09-27 - three PRs in one night, twice during a fold. #553
-(`feat/provider-setup`, `a10e43c25f`) carried 28 frames while also moving `src/`
-and `scripts/`, and `pnpm test:desktop` named both: `srcTree` is `8e4e9a963` but
-`HEAD:src` is `bcb460a19`, `scriptsTree` is `5cb6ff58d` but `HEAD:scripts` is
-`093faaf43`. #555 (`feat/installer-panel-refresh`) named `scriptsTree` is
-`3fea1efbc` but `HEAD:scripts` is `63d3b1d90`. #554 (`feat/condensed-group-images`)
-swept a `trace-fold.stories.tsx` comment into the fold's re-stamp, so the
-`srcTree` it shipped described the tree before itself, and `fabea58083` had to
-re-derive it: `srcTree is 05b975ca5 but HEAD:src is e5e46f9c6`.
+Measured 2026-09-27, WHEN THE STAMPS STILL EXISTED - three PRs in one night, twice
+during a fold. #553 (`feat/provider-setup`, `a10e43c25f`) carried 28 frames while
+also moving `src/` and `scripts/`, and `pnpm test:desktop` named both: `srcTree` is
+`8e4e9a963` but `HEAD:src` is `bcb460a19`, `scriptsTree` is `5cb6ff58d` but
+`HEAD:scripts` is `093faaf43`. #555 (`feat/installer-panel-refresh`) named
+`scriptsTree` is `3fea1efbc` but `HEAD:scripts` is `63d3b1d90`. #554
+(`feat/condensed-group-images`) swept a `trace-fold.stories.tsx` comment into the
+fold's re-stamp, so the `srcTree` it shipped described the tree before itself, and
+`fabea58083` had to re-derive it: `srcTree is 05b975ca5 but HEAD:src is e5e46f9c6`.
+That failure message is gone with the pair; what those three cases are kept here
+for is the shape - values that looked right and described another tree - and the
+counts are what catch it now.
 
-The failing test is `not ok - the SHIPPED manifest's stamps describe the tree it
-ships in` (`scripts/evidence-manifest.test.mjs`), inside `pnpm test:desktop`. A
+The failure those three produced was in
+`the SHIPPED manifest's stamps describe the tree it ships in`, which is now
+`the SHIPPED manifest's counts describe the tree it ships in`
+(`scripts/evidence-manifest.test.mjs`), inside `pnpm test:desktop`. A
 `DIRTY` head keeps the older green run and acquires no new one, so the first
 symptom is often a PR with no checks reported at all: fold first, do not wait.
 
@@ -271,7 +320,7 @@ Pass `--allow-escape-sequences`, or `gh` refuses the body outright ("the respons
 contains terminal escape sequences") and prints nothing.
 
 **A green `evidence-manifest.test.mjs` is not evidence about the CITATIONS.** The
-stamp half above is sound. The citation half is not, in two ways that both live on a
+counts half above is sound. The citation half is not, in two ways that both live on a
 shallow clone. (1) The ancestry test (`the SHIPPED manifest's head citations lie in
 the history it ships in`) STANDS DOWN when the checkout is shallow - and every
 checkout on this machine is (`git rev-parse --is-shallow-repository` -> `true`), as

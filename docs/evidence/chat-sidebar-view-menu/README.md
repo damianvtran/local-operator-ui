@@ -65,8 +65,8 @@ talks to it either: `window.api.desktop.request` is stubbed by the story
 and anything else is refused by name. **Twenty-six frames** — thirteen states in both
 palettes: seven in `group-bound/`, three in `section-gap/` and the same three in
 `section-gap-before/`. The manifest keeps the capture's own readings in
-`captureOrigin`; the `srcTree`/`scriptsTree` stamps beside it are re-derived at
-each folded tip rather than frozen at the capture.
+`captureOrigin`; its counts are re-derived at each folded tip rather than frozen at
+the capture.
 
 ## What each frame is
 

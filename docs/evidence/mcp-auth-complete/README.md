@@ -159,8 +159,8 @@ right and bottom edges) in every state.
 - **Not the swept evidence set.** These are a bespoke rig's PNG frames, so
   `pnpm check-evidence`'s sweep does not re-read them (the sweep walks `.webp`
   under `docs/evidence`): `assertFramePaints` is called by each capture run
-  instead. What is checked after the fact is the manifest's `srcTree`/`scriptsTree`
-  stamp, which this change re-derives.
+  instead. What is checked after the fact is the manifest's counts (`frames`,
+  `surfaces`, `themes`), which this change re-derives.
 - **Not the second half of the claim.** The DOM assertion — one action in the
   footer at a completed grant and both at a `failed`/`cancelled`/unreadable-status
   one — is re-run by `scripts/mcp-auth-complete-no-retry.test.mjs` on every

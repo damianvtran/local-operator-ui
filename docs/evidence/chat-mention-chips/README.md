@@ -27,10 +27,11 @@ only be stamped from a tree that is already committed, so a set always lands in 
 commit after the tree it photographed.
 
 **And this set was folded onto a moved `main` after that pass — five times — so
-read the head above as the spelling the folds gave it.** The manifest's
-`srcTree`/`scriptsTree` describe the tree the frames SHIP in, so a fold invalidates
-them whatever the branch's own delta is, and both are re-derived on the merged tree
-each time. The eighth fold (`main` at `318cbb75e`) moved 35 commits and 738 files —
+read the head above as the spelling the folds gave it.** The manifest's counts and
+its citations describe the tree the frames SHIP in — the tree hashes that used to
+sit beside them are retired — so a fold that moves the story list or the frames
+invalidates them whatever the branch's own delta is, and they are re-derived on the
+merged tree each time. The eighth fold (`main` at `318cbb75e`) moved 35 commits and 738 files —
 40 under `src/`, 19 under `scripts/` — and left the pictures alone, and that was
 measured rather than argued: this set's own narrowed run re-took all **288 frames on
 the merged tree** and 19 came back with different bytes — **0 pixels differing above
@@ -132,7 +133,7 @@ the tree the way `check-evidence.mjs` derives it — every `.webp` under
 `docs/evidence` outside a declared supplementary set — so the number is the sweep
 count with this set's 288 added, and `surfaces` is the capturer's own story list
 count. Both are written by the rig, and the commit that carries these frames is the
-one `srcTree`/`scriptsTree` name: re-deriving them while the change is still in the
+one the manifest's `head` names: deriving them while the change is still in the
 working tree is how a set comes to describe a tree it does not sit on, which is
 what review round 1's M3 found here — this README described a head and a count that
 the manifest next to it did not have. The same paragraph now names the head the
