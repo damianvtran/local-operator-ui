@@ -296,7 +296,7 @@ const AskRow = ({
 	onAnswer: AskPanelProps["onAnswer"];
 	onDecline: AskPanelProps["onDecline"];
 }) => {
-	const { ask, status, canAnswer, canDecline } = presentation;
+	const { ask, status, open, canAnswer, canDecline } = presentation;
 	const setDraft = useMemo(
 		() => (updater: (current: AskDraft) => AskDraft) =>
 			onDraftChange(ask.ask_id, updater(draft)),
@@ -317,6 +317,23 @@ const AskRow = ({
 	);
 	const mark = askStatusMark(status);
 	const StatusIcon = mark.Icon;
+	/*
+	 * URGENT STEPS THE INK AND KEEPS THE SHAPE (the audit's second item; design round
+	 * 1's D5 found the first attempt at it). The wire carries `urgent` - the backend
+	 * derives it from the window itself, `timeout <= 900` - and until this arm NO
+	 * desktop surface painted it: a row with ten minutes left looked exactly like one
+	 * with an hour. The status switch above still decides WHICH GLYPH the row wears;
+	 * only its ink steps, to the same `warning` role the timeout arm already spends,
+	 * so the two "you are out of time" readings are one colour rather than two. An
+	 * early arm that returned `HelpCircle` before the switch took the Clock away from
+	 * a timed-out urgent row, which made one glyph mean both "open, maybe urgent" and
+	 * "timed out, urgent".
+	 *
+	 * Scoped to the still-answerable rows: a settled ask's stale urgency is nothing
+	 * anyone can act on, and re-inking a closed row would make the warning mean three
+	 * things.
+	 */
+	const urgent = ask.urgent === true && open;
 
 	return (
 		<div
@@ -333,10 +350,11 @@ const AskRow = ({
 			<div className="flex items-center gap-2">
 				<StatusIcon
 					aria-hidden="true"
-					className={cn("shrink-0", mark.className)}
+					className={cn("shrink-0", urgent ? "text-warning" : mark.className)}
 					size={16}
 				/>
 				<span className="min-w-0 flex-1 text-ink text-xs">
+					{urgent ? <span className="sr-only">Urgent. </span> : null}
 					{askStatusText(ask, nowMs)}
 				</span>
 				{/*

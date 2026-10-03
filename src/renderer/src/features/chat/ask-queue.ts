@@ -183,7 +183,29 @@ const askSplitIsKnowable = (view: AskQueueView): boolean =>
 	 */
 	!view.truncated && view.open <= view.waiting + view.movedOn;
 
-export const askChipClause = (view: AskQueueView): string => {
+export const askChipClause = (view: AskQueueView, nowMs: number): string => {
+	const count = askChipCountClause(view);
+	const deadline = askChipDeadline(view, nowMs);
+	/*
+	 * THE DEADLINE IS APPENDED, not interleaved (design round 1's D2 and D6, and the
+	 * audit's third item): the chip's counts seam stays intact and the countdown
+	 * rides after it, so the visible text is a PREFIX of the announced name's clause
+	 * in every case - including a mixed queue, where the name appends the moved-on
+	 * half after this string rather than inserting it between the counts.
+	 */
+	return deadline === null ? count : `${count} · ${deadline}`;
+};
+
+/**
+ * The COUNT half of the visible clause: what the chip says about the queue before
+ * any deadline is appended.
+ *
+ * Exported because the row renders the deadline as its OWN element - it has to be
+ * able to yield at the narrow band, which a single text node cannot do - so the row
+ * composes these two pieces and `askChipClause` composes the same two into the
+ * string a DOM-free rig asserts. One source, two renderers.
+ */
+export const askChipCountClause = (view: AskQueueView): string => {
 	if (!askSplitIsKnowable(view)) return `${view.open} outstanding`;
 	if (view.waiting > 0)
 		return view.waiting === 1
@@ -197,6 +219,41 @@ export const askChipClause = (view: AskQueueView): string => {
 };
 
 /**
+ * The chip's DEADLINE reading, or `null` when this surface must state none.
+ *
+ * WHY THE CHIP CARRIES A COUNTDOWN AT ALL: it is the operator's own question of the
+ * surface ("when will it time out?"), and the strip this item replaced answered it
+ * on its collapsed face. Moving into the status row lost the answer - `1 question
+ * waiting` cannot tell a queue with fifty minutes left from one that lapses while
+ * the reader looks at it - so the fact is rehomed onto the surface that replaced
+ * the strip rather than dropped with it.
+ *
+ * TWO RULES, each one a defect an earlier round already named:
+ *
+ * 1. THE READING IS QUALIFIED WHEN IT IS NOT THE OBVIOUS ONE (design round 1's D2,
+ *    re-expressed for a chip that names no ask). The number is the SOONEST deadline
+ *    across the asks this chip counts as waiting, so with more than one of them a
+ *    bare `expires in 12m` names no subject and reads as whichever ask the reader
+ *    had in mind; the `soonest ` prefix says the number is the queue's. With exactly
+ *    one waiting ask the number IS that ask's, and a qualifier there would be noise.
+ * 2. A PREFIX CANNOT STATE A QUEUE-SCOPE COUNTDOWN (design round 1's D6). The wire
+ *    caps the list, and `askSplitIsKnowable` is the gate the count's own tally form
+ *    reads; while the split is unknown the count says `N outstanding` and this says
+ *    nothing at all, rather than passing the visible subset's soonest off as the
+ *    queue's.
+ */
+export const askChipDeadline = (
+	view: AskQueueView,
+	nowMs: number,
+): string | null => {
+	if (!askSplitIsKnowable(view) || view.waiting === 0) return null;
+	if (view.soonestExpiryMs === null) return null;
+	const text = askDeadlineText(view.soonestExpiryMs, nowMs);
+	if (text === null) return null;
+	return view.waiting === 1 ? text : `soonest ${text}`;
+};
+
+/**
  * The tooltip's clause: the visible one, except that a genuinely MIXED queue
  * spells both halves.
  *
@@ -206,12 +263,11 @@ export const askChipClause = (view: AskQueueView): string => {
  * that the chip's short form elides, rather than about a state the screen is not
  * in.
  */
-const askChipFullClause = (view: AskQueueView): string => {
+const askChipFullClause = (view: AskQueueView, nowMs: number): string => {
 	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
-		const unit = view.waiting === 1 ? "question" : "questions";
-		return `${view.waiting} ${unit} waiting · ${view.movedOn} moved on`;
+		return `${askChipClause(view, nowMs)} · ${view.movedOn} moved on`;
 	}
-	return askChipClause(view);
+	return askChipClause(view, nowMs);
 };
 
 /**
@@ -223,8 +279,12 @@ const askChipFullClause = (view: AskQueueView): string => {
  * visible text is always the leading half of this name (the mixed case appends
  * only), so the two readers cannot describe different states.
  */
-export const askChipLabel = (view: AskQueueView, expanded: boolean): string =>
-	`${expanded ? "Collapse" : "Expand"} the ask history${LABEL_SEAM}${askChipFullClause(view)}`;
+export const askChipLabel = (
+	view: AskQueueView,
+	expanded: boolean,
+	nowMs: number,
+): string =>
+	`${expanded ? "Collapse" : "Expand"} the ask history${LABEL_SEAM}${askChipFullClause(view, nowMs)}`;
 
 /**
  * Whether the composer may ANSWER from this view at all.
@@ -538,6 +598,29 @@ export type AskQueueView = {
 	/** Total rows in this frame, which is NOT the queue length when truncated. */
 	total: number;
 	truncated: boolean;
+	/**
+	 * Whether any ask this chip COUNTS AS WAITING carries the wire's `urgent` flag.
+	 *
+	 * The wire has carried `urgent` since the ask lane existed (the backend derives it
+	 * from the window itself, `timeout <= 900`) and no desktop surface ever painted
+	 * it: an ask with ten minutes left looked exactly like one with an hour. It is
+	 * scoped to the WAITING rows on purpose - the same set `soonestExpiryMs` reads -
+	 * because the OUTSTANDING set deliberately folds `timed_out` in, and a moved-on
+	 * ask's stale urgency would then spend this row's one warning ink on a question
+	 * nobody is waiting on (the audit's second item; UX round 1's U1 and design round
+	 * 1's D1 found the same defect twice, from pixels and from the flow).
+	 */
+	urgent: boolean;
+	/**
+	 * The soonest deadline across the WAITING rows, in epoch ms, or `null`.
+	 *
+	 * Per the ROWS and not the head: with two waiting asks of different windows the
+	 * soonest is what decides whether the reader has to look now, and the chip names
+	 * no ask for a head-based reading to attach to (the panel's rows carry each ask's
+	 * own countdown). Read through `askChipDeadline`, which gates it on the split
+	 * being knowable at all.
+	 */
+	soonestExpiryMs: number | null;
 	/** The oldest open ask, or null when nothing is open. */
 	head: AskPresentation | null;
 };
@@ -558,6 +641,8 @@ export const askQueueView = (
 			movedOn: 0,
 			total: 0,
 			truncated: false,
+			urgent: false,
+			soonestExpiryMs: null,
 			head: null,
 		};
 	const rows = asks.map(presentAsk).sort(compareAsks);
@@ -572,6 +657,15 @@ export const askQueueView = (
 	 */
 	const waiting = rows.filter((row) => row.waiting).length;
 	const movedOn = rows.filter((row) => row.movedOn).length;
+	/*
+	 * The waiting rows' own deadlines, for the chip's countdown. Rendered from
+	 * `expires_at` on the CLIENT clock, exactly as a panel row's is (see
+	 * `askDeadlineText`), so the two surfaces cannot disagree about one ask.
+	 */
+	const deadlines = rows
+		.filter((row) => row.waiting)
+		.map((row) => Number(row.ask.expires_at ?? 0))
+		.filter((at) => Number.isFinite(at) && at > 0);
 	return {
 		asks,
 		rows,
@@ -587,6 +681,8 @@ export const askQueueView = (
 		movedOn,
 		total: rows.length,
 		truncated: frontend?.asks_truncated === true,
+		urgent: rows.some((row) => row.waiting && row.ask.urgent === true),
+		soonestExpiryMs: deadlines.length > 0 ? Math.min(...deadlines) : null,
 		head: rows.find((row) => row.open) ?? null,
 	};
 };
@@ -654,12 +750,26 @@ export const askStatusText = (ask: PendingAsk, nowMs: number): string => {
  * timeout row, and for the same reason - a countdown that guesses is worse than
  * no countdown when the reader is deciding whether to hurry.
  */
-export const askExpiryText = (
-	ask: PendingAsk,
+export const askExpiryText = (ask: PendingAsk, nowMs: number): string | null =>
+	askDeadlineText(Number(ask.expires_at ?? 0), nowMs);
+
+/**
+ * "expires in 42m" for an epoch-ms deadline, or `null` when there is none to read.
+ *
+ * The chip's countdown and a row's countdown are ONE spelling, which is why this
+ * formatter is shared rather than restated: the strip's collapsed face and the
+ * panel's row print the same number for the same ask, and two implementations of
+ * "how long is left" is exactly the drift the copy contract exists to prevent.
+ *
+ * A deadline that cannot be read says NOTHING rather than rounding to "expires
+ * now": the backend's own `gate_waited_text` sets the same precedent for the
+ * timeout row, and for the same reason - a countdown that guesses is worse than no
+ * countdown when the reader is deciding whether to hurry.
+ */
+export const askDeadlineText = (
+	expiresAt: number,
 	nowMs: number,
 ): string | null => {
-	const expiresAt = Number(ask.expires_at ?? 0);
-	if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
 	const remainingMs = expiresAt - nowMs;
 	if (remainingMs <= 0) return "expiring now";
 	const minutes = Math.floor(remainingMs / 60_000);
