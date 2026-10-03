@@ -76,6 +76,27 @@ prompt. Its six frames per palette are committed under
 `docs/evidence/project-detail-live/`, whose README carries the seed script and
 the full command.
 
+**`--scene project-inline-edit` (`--project <key>` names the row) is the live
+half of the Projects detail page's INLINE EDITING.** It needs `--backend` and
+`--backend-records`: every save it makes is asserted against the daemon this
+run owns (the frame is the UI half, the daemon read is the claim), and its
+saving frame is held by pausing that daemon's own process — SIGSTOP/SIGCONT by
+exact pid from the serve record, the `mini-view` device, which is why the
+operator's own 1111 is refused rather than paused. It drives and photographs
+the per-field contract (`docs/design/agents-inplace-shared-composer.md` § 2):
+hover and focus reveals, open via the affordance and via double-click, Escape
+reverts, Enter accepts a single-line field, the check and the x commit and
+cancel, blur accepts iff changed, Enter in the description is a newline while
+Cmd+Enter accepts, a refused write holds its sentence beside the field (a real
+409 `project_name_exists` and the done-gate 422), a field that moved
+out-of-band holds its commit with `Keep mine` / `Use theirs`, and a missing
+field is born inline from the properties block's `+ Add` menu (an estimate
+and tags born from none included, and a clean tags draft adopting an
+out-of-band move without reverting it — the two data-integrity cases review
+round 1 reproduced). Its nine frames per palette are committed under
+`docs/evidence/projects-inline-edit/`, whose README carries the seed script,
+the exact command and the check list.
+
 **`--scene sessionless-slash` (issue #625) types five commands — `/help`,
 `/theme`, `/login`, `/logout`, `/resume` — into a NEW chat (`⌘N`, the press
 `--scene new-chat` proves), one theme per launch like every stateful scene.
@@ -613,3 +634,5 @@ the Storybook sweep (`pnpm check-evidence`, which walks `.webp`) does not cover
 them — the same position as the other committed live-app PNG sets, and the reason
 `docs/evidence/project-detail-live/` (the `project-detail` scene's frames, six per
 palette) is declared in the manifest's `supplementary` list with `frames: 0`.
+The same position holds for `docs/evidence/projects-inline-edit/` (the
+`project-inline-edit` scene's frames, nine per palette).

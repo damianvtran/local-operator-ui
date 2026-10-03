@@ -5884,7 +5884,22 @@ export const STORIES = [
 	["projects-tab--detail", 1280, 900],
 	["projects-tab--stale-progress", 1280, 900],
 	["projects-tab--create-dialog", 1280, 900],
-	["projects-tab--edit-dialog", 1280, 900],
+	/*
+	 * The inline editors (the operator's 2026-09-30 change): the modal edit is
+	 * gone, so `edit-dialog`'s row retired with it and the states that replaced
+	 * it are swept instead — the affordance at rest and focused, the editor
+	 * open, a typed draft, the write in flight, the landed acknowledgement, a
+	 * refused key, and a field held against an out-of-band change. Each play
+	 * asserts its state before the shutter, so the frames photograph a state
+	 * the play proved.
+	 */
+	["projects-tab--inline-edit-reveal", 1280, 900],
+	["projects-tab--inline-edit-open", 1280, 900],
+	["projects-tab--inline-edit-typed", 1280, 900],
+	["projects-tab--inline-edit-saving", 1280, 900],
+	["projects-tab--inline-edit-saved", 1280, 900],
+	["projects-tab--inline-edit-refused", 1280, 900],
+	["projects-tab--inline-edit-conflict", 1280, 900],
 	/* The sheet's own interactions (S6d-ii part 2): the description editor's
 	 * preview arm, the clipboard-markdown paste (a `paste` event carrying
 	 * `text/html`), and the two-phase create driven to submit — each asserts
