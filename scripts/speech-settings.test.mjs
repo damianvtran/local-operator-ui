@@ -739,3 +739,112 @@ test("the shipped section wires the panel's reset, which no render can observe",
 		"the panel's reset key is the availability read itself: a fresh answer has to clear a crash the previous one caused",
 	);
 });
+
+/* ------------------------------------------------------------------ *
+ * What the failed read offers, and what the copy carries
+ * ------------------------------------------------------------------ */
+
+/**
+ * The sentence a rung's own line carries, read from the rendered list rather
+ * than restated here: the assertions below compare what the panel prints above
+ * the list with what the list itself says.
+ */
+const rungReason = (container, name) => {
+	const item = [...container.querySelectorAll("li")].find((node) =>
+		(node.textContent ?? "").startsWith(name),
+	);
+	if (!item) return null;
+	const spans = [...item.querySelectorAll("span")];
+	return (spans[spans.length - 1].textContent ?? "").trim();
+};
+
+test("the failed read offers the registry read's own Retry, and the press re-issues the read", async (t) => {
+	const { container, asked } = await mount(t, "unreadable");
+	const text = await settleAvailability(container);
+	assert.ok(
+		text.includes("Speech availability could not be read."),
+		`the settled arm is a failed read; rendered: ${text.slice(0, 160)}`,
+	);
+
+	const before = asked.filter((op) => op === "tts.paths").length;
+	const retry = [...container.querySelectorAll("button")].find(
+		(node) => node.textContent.trim() === "Retry",
+	);
+	assert.ok(
+		retry,
+		"a transient failure must offer a way back: this read is staleTime: Infinity with no focus or reconnect refetch (UX review round 1, U2)",
+	);
+	await act(async () => {
+		retry.click();
+	});
+	await settleAvailability(container);
+	assert.ok(
+		asked.filter((op) => op === "tts.paths").length > before,
+		"the press re-issued the read rather than only re-rendering the arm",
+	);
+});
+
+test("the serving rung's sentence is printed once, not also above it", async (t) => {
+	for (const [scenario, name] of [
+		["radient-pass", "Radient Pass"],
+		["stored-provider-key", "ElevenLabs"],
+	]) {
+		const { container } = await mount(t, scenario);
+		const text = await settleAvailability(container);
+		const sentence = rungReason(container, name);
+		assert.ok(
+			sentence,
+			`the serving rung's own line rendered (${scenario}); rendered: ${text.slice(0, 200)}`,
+		);
+		assert.equal(
+			text.split(sentence).length - 1,
+			1,
+			`${scenario}: the resolution's reason IS the serving rung's reason, so rendering both is one sentence twice (design review round 1, D2)`,
+		);
+	}
+});
+
+test("the arm whose resolution sentence is unique still prints it", async (t) => {
+	const { container } = await mount(t, "nothing");
+	const text = await settleAvailability(container);
+	assert.ok(
+		text.includes(NOTHING_AVAILABLE_REASON),
+		"the de-duplication must not swallow the sentence no rung carries: on this arm it is the daemon's own statement of both remedies",
+	);
+});
+
+test("the inert note names both remedies, and prints the command bare", async (t) => {
+	const { container } = await mount(t, "nothing");
+	const text = await settleAvailability(container);
+	assert.ok(
+		!text.includes("`"),
+		"backticks rendered as characters around the route in every frame (design review round 1, D5)",
+	);
+	assert.ok(
+		text.includes("/login radient"),
+		"the route stays runnable, in the form the app's other surfaces print it",
+	);
+	assert.match(
+		text,
+		/provider key/i,
+		"the key route is named too, so a reader who wants no Radient account is not sent only to sign-in (UX review round 1, U3)",
+	);
+});
+
+test("the serving rung's name carries the stronger ink, and the others the muted one", async (t) => {
+	const { container } = await mount(t, "radient-pass");
+	await settleAvailability(container);
+	const nameOf = (name) =>
+		[...container.querySelectorAll("li > span:first-child")].find((node) =>
+			(node.textContent ?? "").startsWith(name),
+		);
+	const serving = nameOf("Radient Pass");
+	const other = nameOf("ElevenLabs");
+	assert.ok(serving && other, "both rungs rendered their name line");
+	assert.ok(
+		serving.classList.contains("text-ink") &&
+			!serving.classList.contains("text-ink-muted") &&
+			other.classList.contains("text-ink-muted"),
+		"which rung would serve is a text-weight step, not only the word `not` in the faintest ink (design review round 1, D4)",
+	);
+});

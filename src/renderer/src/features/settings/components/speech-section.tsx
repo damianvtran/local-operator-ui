@@ -108,7 +108,14 @@ const BACKEND_OLDER_SENTENCE =
  * are one fact: the availability could not be read. A second wording for the
  * middle arm would be a distinction only this file can see.
  */
-const UNAVAILABLE_SENTENCE = "Speech availability could not be read.";
+/**
+ * The failed read's sentence, EXPORTED because two consumers outside this file
+ * must not carry their own copy of it: the story's shutter latch waits for it
+ * before the frame is taken (design review round 1, D1), and the rendered lane
+ * asserts it. A reworded sentence that was duplicated in either place would
+ * either photograph the wrong arm or assert a string nothing renders.
+ */
+export const UNAVAILABLE_SENTENCE = "Speech availability could not be read.";
 
 /**
  * The panel's local boundary: a subtree that crashes becomes one honest
@@ -419,6 +426,23 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 			 * claim about speech. */
 			speechBlock === "offline";
 
+	/*
+	 * The serving rung, and whether the resolution's own sentence would REPEAT it
+	 * (design review round 1, D2).
+	 *
+	 * For a servable resolution the daemon's `reason` IS the serving rung's reason —
+	 * the story models that, and it is what the resolver does — so rendering both
+	 * printed one sentence twice within about fifty pixels, with only the rung's name
+	 * line between them. The panel's line is the one that goes: it is always the
+	 * sentence immediately below it in the list, while the reverse is not true (on
+	 * `nothing-available` the resolution's sentence is the one that names both
+	 * remedies, and no rung carries it).
+	 */
+	const servingRung = availability
+		? (availability.rungs.find((rung) => rung.path === availability.serving) ??
+			null)
+		: null;
+
 	return (
 		<SettingsSection
 			title={title}
@@ -449,10 +473,33 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 						 * Retry that cannot work. */
 						speechBlock !== "offline" && (
 							<Alert variant="warning">
-								{UNAVAILABLE_SENTENCE}{" "}
-								{pathsQuery.error instanceof Error
-									? pathsQuery.error.message
-									: ""}
+								<div className="flex items-center justify-between gap-3">
+									<span>
+										{UNAVAILABLE_SENTENCE}{" "}
+										{pathsQuery.error instanceof Error
+											? pathsQuery.error.message
+											: ""}
+									</span>
+									{/*
+									 * The affordance the registry read's failure already carries, and for
+									 * the same reason (UX review round 1, U2): a transient failure - a
+									 * timeout, the story's own 500, a daemon restarted mid-read - had no
+									 * way out of it. This read is `staleTime: Infinity` with no
+									 * focus/reconnect refetch, so without this the reader was dead-ended
+									 * until they left Settings, while the read that failed beside it (the
+									 * registry, in this same component) offers `Retry`.
+									 */}
+									<Button
+										variant="secondary"
+										size="sm"
+										className="shrink-0"
+										onClick={() => {
+											void pathsQuery.refetch();
+										}}
+									>
+										Retry
+									</Button>
+								</div>
 							</Alert>
 						)}
 
@@ -487,24 +534,48 @@ export const SpeechSection: FC<SpeechSectionProps> = ({ sectionRef }) => {
 								 * (or what was found) in the register its resolver wrote it in, and
 								 * restating it here in this file's words would be the second opinion
 								 * about one cascade that the whole voicing family avoids.
+								 * Skipped when the serving rung's line already says it (design review
+								 * round 1, D2): the repeat was one sentence twice, not emphasis.
 								 */}
-								<p className="text-body-sm text-ink-muted">
-									{availability.reason}
-								</p>
+								{availability.reason &&
+									availability.reason !== servingRung?.reason && (
+										<p className="text-body-sm text-ink-muted">
+											{availability.reason}
+										</p>
+									)}
 								{/*
 								 * Every rung, in cascade order, because that order IS the answer to
 								 * "which provider will this use, and why not the one above it" — the
 								 * question a reader with one provider configured asks first.
 								 */}
 								<ul className="flex flex-col gap-1">
+									{/*
+									 * The rung that would SERVE takes the stronger ink and the others the muted
+									 * one (design review round 1, D4). The answer to "which one will speak" was
+									 * carried only by the word `not` inside the faintest ink in the list, so a
+									 * scanning reader had three negations to parse; the step is text weight, not
+									 * colour alone, and both inks clear their own contrast floor.
+									 */}
 									{availability.rungs.map((rung) => (
 										<li
 											key={rung.path}
 											className="flex flex-col gap-0.5 text-body-sm"
 										>
-											<span className="text-ink">
+											<span
+												className={
+													rung.path === availability.serving
+														? "text-ink"
+														: "text-ink-muted"
+												}
+											>
 												{rung.name}
-												<span className="text-ink-dim">
+												<span
+													className={
+														rung.path === availability.serving
+															? "text-ink-muted"
+															: "text-ink-dim"
+													}
+												>
 													{" "}
 													{rung.available ? "(available)" : "(not available)"}
 												</span>
