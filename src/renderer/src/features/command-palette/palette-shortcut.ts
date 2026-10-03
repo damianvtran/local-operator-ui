@@ -1,10 +1,16 @@
 /**
- * The command palette's keyboard gesture, as a decision rather than a listener.
+ * The command palette's keyboard gestures, as decisions rather than listeners.
  *
- * Split out because the two halves fail differently. The decision — which
- * keystrokes toggle the palette, and which ones belong to a surface that got
- * there first — is pure, and `scripts/palette-search.test.mjs` pins it. The
- * listener is a `useEffect` in `use-command-palette-shortcut.ts`.
+ * Two of them, and they are different layers. THE DOOR — which keystrokes
+ * toggle the palette, and which ones belong to a surface that got there first
+ * (`paletteShortcutIntent`). THE WALK — the presses that move the selection
+ * while the palette is open: the arrows, and since issue #761 the Ctrl+N /
+ * Ctrl+P pair (`paletteStepIntent`, with its arithmetic in
+ * `paletteStepIndex`). The pair is BOUND in full and ADVERTISED where it
+ * reaches (`paletteStepCaps` vs `paletteReachableStepCaps`, below); both
+ * decisions are pure and pinned in `scripts/palette-shortcut.test.mjs`, and
+ * the listeners live in `use-command-palette-shortcut.ts` (the door) and
+ * `command-palette.tsx` (the walk).
  *
  * ## Why the renderer owns this, and not the main process
  *
@@ -96,4 +102,120 @@ export function paletteShortcutCaps(isMac: boolean): string {
  */
 export function switcherShortcutLabel(isMac: boolean): string {
 	return isMac ? "⌘P" : "Ctrl+P";
+}
+
+/* ------------------------------------------------------------------ *
+ * The walk (issue #761)
+ * ------------------------------------------------------------------ */
+
+/** One step of the walk: forward, or back. */
+export type PaletteStep = "next" | "previous";
+
+/** What a key pressed in the palette's field asks the selection to do. */
+export type PaletteStepIntent = PaletteStep | null;
+
+/** The subset of `KeyboardEvent` the walk's decision reads. */
+export type PaletteStepEvent = {
+	key: string;
+	metaKey: boolean;
+	ctrlKey: boolean;
+	shiftKey: boolean;
+	altKey: boolean;
+};
+
+/**
+ * Whether this press walks the list, and which way.
+ *
+ * THE ARROWS' OWN GUARD, kept where the branches used to carry it: a MODIFIED
+ * arrow is not the list's. Shift+Arrow is the caret extending a selection,
+ * Alt+Arrow is the OS's, and on Windows and Linux Ctrl+Arrow is the caret's
+ * word-jump — all three reached the list once and none of them belongs to it
+ * (UX round 2, U3; round 3's review caught that the first guard was
+ * macOS-only). `meta+Arrow` is left to the list, because Cmd+Arrow has no
+ * caret meaning here.
+ *
+ * THE PAIR, added beside them: `ctrl+n` / `ctrl+p` step next / previous — the
+ * Emacs-style pair launchers and completion lists commonly honour, and
+ * exactly what the arrows' guard above leaves free. `ctrl` is required and
+ * `meta` refused, rather than the both-modifiers rule the door's chord uses:
+ * the pair is Control's on every platform, and on macOS `Cmd+N` / `Cmd+P` are
+ * this app's own chords (new chat, the switcher), each with a job that is not
+ * this one. Shift and Alt are refused for the pair the way the arrows refuse
+ * them: a chord this app does not implement stays available rather than
+ * firing the neighbouring one.
+ */
+export function paletteStepIntent(event: PaletteStepEvent): PaletteStepIntent {
+	if (event.key === "ArrowDown")
+		return event.shiftKey || event.altKey || event.ctrlKey ? null : "next";
+	if (event.key === "ArrowUp")
+		return event.shiftKey || event.altKey || event.ctrlKey ? null : "previous";
+	const key = event.key.toLowerCase();
+	if (key !== "n" && key !== "p") return null;
+	if (!event.ctrlKey || event.metaKey || event.shiftKey || event.altKey)
+		return null;
+	return key === "n" ? "next" : "previous";
+}
+
+/**
+ * Where a step lands, in a list of `count` rows — or nowhere, when there are
+ * none.
+ *
+ * The arithmetic the arrows have always used, written once so the pair cannot
+ * drift from them: both wrap at both ends. `count = 0` answers null rather
+ * than the NaN `% 0` produced — a NaN index left every row unselected with no
+ * way back, reachable by typing a query that matched nothing and pressing
+ * Down. `current` is kept inside the list by the component's own clamp effect;
+ * this only ever wraps.
+ */
+export function paletteStepIndex(
+	current: number,
+	count: number,
+	step: PaletteStep,
+): number | null {
+	if (count <= 0) return null;
+	return step === "next"
+		? (current + 1) % count
+		: (current - 1 + count) % count;
+}
+
+/**
+ * The walk's pair, as `KeyboardShortcut` prop text, next then previous — the
+ * BOUND set: every spelling `paletteStepIntent` accepts.
+ *
+ * One spelling for the same reason the door's caps share one — and unlike
+ * them, NO `isMac` split: the pair is Control's on every platform (see
+ * `paletteStepIntent`), so the spelling that is true everywhere is the only
+ * one. `scripts/palette-shortcut.test.mjs` pins each spelling by feeding it
+ * back through the decision, so the copy cannot drift from the binding.
+ *
+ * The footer does NOT draw this set directly — see
+ * `paletteReachableStepCaps` below for why half of it must not be taught.
+ */
+export function paletteStepCaps(): [string, string] {
+	return ["Ctrl+N", "Ctrl+P"];
+}
+
+/**
+ * The walk's caps as the footer ADVERTISES them: the halves that REACH the
+ * renderer in the packaged app.
+ *
+ * `Ctrl+N` is here alone. `Ctrl+P` is bound (`paletteStepCaps`) and steps
+ * wherever it arrives — the UX and QA rigs measured it stepping previous —
+ * but in the packaged app it never arrives while the window is focused and
+ * visible: main's `before-input-event` hook (`src/main/index.ts:3492-3500`)
+ * preventDefaults the press and answers it with `toggle-command-palette`,
+ * which the renderer turns into the `#` switcher seed
+ * (`use-command-palette-shortcut.ts`). So from the typed state this legend is
+ * drawn in, the press would discard the query rather than move the selection
+ * (design round 1, D1): teaching it as a movement key would promise something
+ * the app does not do.
+ *
+ * The asymmetry is deliberate and pinned in `scripts/palette-shortcut.test.mjs`
+ * (advertised ⊆ bound, `Ctrl+P` bound but not advertised) plus a wiring pin in
+ * `scripts/palette-contract.test.mjs`. If a main-process pass-through ever
+ * makes P reachable, this function is the single place the advertised set
+ * lives — that change is the operator's call, not a copy edit.
+ */
+export function paletteReachableStepCaps(): [string] {
+	return ["Ctrl+N"];
 }
