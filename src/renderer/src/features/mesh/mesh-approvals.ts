@@ -339,8 +339,10 @@ export function approvalScopeLabels(
 		labels.push(`join ${named || networkId} as ${role || "?"}`);
 	}
 	if (unattended) labels.push("trust unattended sessions");
+	/* The chip and its gloss must name the capability the same way, or one card
+		   states one capability twice under two names (R5-1's `grant unattended`). */
 	for (const grant of distinctGrants(grants, unattended))
-		labels.push(`grant ${grant}`);
+		labels.push(GRANT_PHRASES[grant]?.term ?? `grant ${grant}`);
 	return labels;
 }
 
@@ -369,6 +371,26 @@ function distinctGrants(
 	}
 	return [...seen];
 }
+
+/**
+ * The capability tokens that need their own sentence, not the generic template.
+ *
+ * WHY `unattended` IS SPECIAL. Every other capability is a verb the template can
+ * carry ("you may approve on that device"), but `unattended` is not one: the
+ * generic form produced "you may unattended on that device". It is reachable in
+ * BOTH shapes - the `unattended` flag, and `--grant unattended` with the flag
+ * false (the CLI does not filter the list) - and in the second the flag's own
+ * chip is not drawn, so the grant is the only place the capability is stated.
+ * Mapping the token keeps one correct sentence for one capability instead of
+ * dropping it or mis-writing it.
+ */
+const GRANT_PHRASES: Record<string, { term: string; gloss: string }> = {
+	unattended: {
+		term: "trust unattended sessions",
+		gloss:
+			"sessions you start on that device run without an approval prompt there",
+	},
+};
 
 /**
  * One gloss per scope a reader cannot be expected to know (UX round 1, U2).
@@ -418,11 +440,13 @@ export function approvalScopeGlosses(
 				"sessions you start on that device run without an approval prompt there",
 		});
 	for (const grant of distinctGrants(grants, unattended))
-		glosses.push({
-			term: `grant ${grant}`,
-			/* The capability is held by YOUR device, about the node (R4-2). */
-			gloss: `you may ${grant} on that device`,
-		});
+		glosses.push(
+			GRANT_PHRASES[grant] ?? {
+				term: `grant ${grant}`,
+				/* The capability is held by YOUR device, about the node (R4-2). */
+				gloss: `you may ${grant} on that device`,
+			},
+		);
 	return glosses;
 }
 
