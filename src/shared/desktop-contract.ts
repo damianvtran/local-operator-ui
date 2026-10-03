@@ -127,6 +127,20 @@ const sessionImage = z
 export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
 
 /**
+ * Most images one message-carrying op carries, in IMAGES.
+ *
+ * Named and exported rather than repeated as a literal because the renderer
+ * has to agree with it: `encodeImageAttachments` applies the cap to every
+ * send it encodes, and a draft that staged more images than this used to be
+ * sliced to the ceiling SILENTLY - a send left with fewer images than the
+ * composer showed and nothing named the difference (design round 1 on issue
+ * #790, D1). The encoder now reports the excess (`overflow`) and the sends
+ * refuse before admission with `imageOverflowRefusal`'s sentence; both
+ * schemas below are the wire end of the same number.
+ */
+export const DESKTOP_MESSAGE_MAX_IMAGES = 8;
+
+/**
  * Longest chat-search query the desktop search op accepts, in CHARACTERS.
  *
  * The backend bounds `q` at the same number (`routes/desktop_sessions.py`),
@@ -1481,7 +1495,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			requestId,
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
-			images: z.array(sessionImage).max(8).optional(),
+			images: z.array(sessionImage).max(DESKTOP_MESSAGE_MAX_IMAGES).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
 			/*
 			 * HOW THE MESSAGE WAS PRODUCED (arch §4.2), and the harness gate is what
@@ -1507,7 +1521,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.regex(/^\/?[A-Za-z]+$/)
 				.max(64),
 			args: z.string().max(DESKTOP_MESSAGE_MAX_CHARS).optional(),
-			images: z.array(sessionImage).max(8).optional(),
+			images: z.array(sessionImage).max(DESKTOP_MESSAGE_MAX_IMAGES).optional(),
 		})
 		.strict(),
 	/*
