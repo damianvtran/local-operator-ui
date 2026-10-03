@@ -238,14 +238,24 @@ export const askChipCountClause = (view: AskQueueView): string => {
  * caps the list, and `askSplitIsKnowable` is the gate the count's own tally form
  * reads. While the split is unknown the count says `N outstanding` and this says
  * nothing, rather than passing the visible subset's soonest off as the queue's.
+ *
+ * AND THE GATE ITSELF IS ONE FUNCTION, read by everything below it: both countdown
+ * spellings ask this for the deadline they may print. F5 of agent review round 2 asked
+ * for it - two copies of a three-clause condition is two places for the two spellings
+ * to start answering from different rows, and this lane has already paid for one drift
+ * between two readers of one deadline.
  */
+const askChipSoonestExpiry = (view: AskQueueView): number | null => {
+	if (!askSplitIsKnowable(view) || view.waiting === 0) return null;
+	return view.soonestExpiryMs;
+};
+
 export const askChipDeadlineText = (
 	view: AskQueueView,
 	nowMs: number,
 ): string | null => {
-	if (!askSplitIsKnowable(view) || view.waiting === 0) return null;
-	if (view.soonestExpiryMs === null) return null;
-	return askDeadlineText(view.soonestExpiryMs, nowMs);
+	const soonest = askChipSoonestExpiry(view);
+	return soonest === null ? null : askDeadlineText(soonest, nowMs);
 };
 
 /**
@@ -290,14 +300,22 @@ export const askChipDeadline = (
  * The same countdown where the sentence will not fit: `48m`, subject and all.
  *
  * THE BAND THIS EXISTS FOR is the chip's third tier. Titrating the yield on the
- * COLUMN rather than the slot the chip is painted into (the row insets 32px of it)
- * left a band where the sentence could not fit whole and got ellipsised to `expires
- * in 4...` - a prefix of both `4m` and `48m`, painted beside an urgency ink that
- * claims fifteen minutes or less (design round 4's MAJOR; QA round 4's Q4 reported
- * the same mis-titration from the other end). A value with its unit is short enough
- * to fit where the sentence is not, so the narrow band keeps the ANSWER rather than
+ * COLUMN while the chip is painted inside the composer's content box left a band
+ * where the sentence could not fit whole and got ellipsised to `expires in 4...` - a
+ * prefix of both `4m` and `48m`, painted beside an urgency ink that claims fifteen
+ * minutes or less (design round 4's MAJOR; QA round 4's Q4 reported the same
+ * mis-titration from the other end). A value with its unit is short enough to fit
+ * where the sentence is not, so the narrow band keeps the ANSWER rather than
  * dropping it: the operator's question is when the ask lapses, and the subject is
  * the part that can wait for room.
+ *
+ * WHAT THE CHIP'S BOX ACTUALLY IS, since two reviewers disagreed here and the
+ * arithmetic settles it (agent review round 2, F2): the row takes `px-2` below the
+ * `isSmallView` step (550px, `SMALL_VIEW_PX`) and `px-4` above it, and the first chip
+ * cancels 6px of the leading inset - so at every column a band binds (all of them
+ * are under 550), the chip's box runs to `column - 10px`. The `column - 26px` figure
+ * read on the thread came from the LARGE-view inset applied at a narrow column, which
+ * is the same class of error the sibling set corrected for its floor frames.
  *
  * It carries no subject, deliberately: the subject exists to disambiguate WHICH ask
  * the number belongs to, and at this width the chip has room for the number or the
@@ -309,9 +327,8 @@ export const askChipDeadlineShort = (
 	view: AskQueueView,
 	nowMs: number,
 ): string | null => {
-	if (!askSplitIsKnowable(view) || view.waiting === 0) return null;
-	if (view.soonestExpiryMs === null) return null;
-	return askDeadlineShortText(view.soonestExpiryMs, nowMs);
+	const soonest = askChipSoonestExpiry(view);
+	return soonest === null ? null : askDeadlineShortText(soonest, nowMs);
 };
 
 /**

@@ -92,6 +92,7 @@ const bundle = await build({
 			import { GoalPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
 			import { AskSurfaces } from "./src/renderer/src/features/chat/components/asks/ask-surfaces";
+			import { askChipClause, askDeadlineShortText, askQueueView } from "./src/renderer/src/features/chat/ask-queue";
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -116,7 +117,7 @@ const bundle = await build({
 				);
 			export { GoalPicker };
 			export { toasts };
-			export { AskSurfaces, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
+			export { askChipClause, askDeadlineShortText, askQueueView, AskSurfaces, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -184,6 +185,9 @@ const {
 	renderRow,
 	AskSurfaces,
 	ComposerStatusRow,
+	askChipClause,
+	askDeadlineShortText,
+	askQueueView,
 	shouldRestoreComposerFocus,
 	renderWakes,
 	renderMonitors,
@@ -5493,4 +5497,45 @@ test("nothing about the monitors ticks: no clock and no relative time", () => {
 	assert.doesNotMatch(source, /\bminutes? ago\b|in \d+m\b/);
 	/* ...and the panel hands it the untimed model, beside the wakes. */
 	assert.match(code(SECTION_LIST), /<RunDetailMonitors/);
+});
+
+test("the chip paints the MODEL's clause, so the JSX cannot compose a second one", () => {
+	/*
+	 * F3 of agent review round 2: the item's visible clause was composed in the JSX
+	 * while the suites pinned the model (`askChipClause`) and the count half
+	 * separately, so a seam drift left both green and only the CDP sweep caught it.
+	 * One assertion against the RENDERED markup closes the seam: the painted string
+	 * must contain the model's own clause for the same fixtures and the same pinned
+	 * clock, and the narrow band's short form from the same deadline.
+	 */
+	const soon = wireAsk("a-soon", "open", {
+		expires_at: WAKE_NOW_MS + 20 * 60_000,
+		timeout_s: 1200,
+	});
+	const later = wireAsk("a-later", "open", {
+		expires_at: WAKE_NOW_MS + 48 * 60_000,
+		timeout_s: 2880,
+	});
+	const view = askQueueView({ asks: [soon, later] });
+	const clause = askChipClause(view, WAKE_NOW_MS);
+	assert.equal(clause, "2 questions waiting · soonest ask expires in 20m");
+	const markup = renderRow({
+		frontend: askFrontend([soon, later]),
+		runDetails: NO_DETAILS,
+		nowMs: WAKE_NOW_MS,
+		/*
+		 * `onAskToggle` supplied is what says the panel exists in this document - the
+		 * row's own gate (see "no door, no item" above), so the item is only rendered
+		 * when a host wired it, which this assertion needs.
+		 */
+		onAskToggle: () => undefined,
+	});
+	assert.ok(
+		markup.includes(clause),
+		`the chip does not paint the model's clause: ${clause}`,
+	);
+	assert.ok(
+		markup.includes(askDeadlineShortText(view.soonestExpiryMs, WAKE_NOW_MS)),
+		"the chip does not paint the narrow band's form of the same deadline",
+	);
 });

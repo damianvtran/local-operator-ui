@@ -2721,25 +2721,30 @@ export const AskTwoWindows: Story = {
 };
 
 /**
- * THE NARROWEST COLUMN THE APP PRODUCES, and the value form is what it carries.
+ * THE APP'S REAL FLOOR, 172px - not the 220px this set first pinned.
  *
- * Three yield steps sit above this one and all three are in the model: the subject
- * drops first, then the sentence gives way to the VALUE alone (`· 48m`), and only
- * under 213px - below the app's own floor - does the countdown go entirely. What is
- * left here is the count plus the value: the count is the floor (the widest count
- * form measures 141.44px against a 220px column), and the ANNOUNCED NAME keeps the
- * whole sentence at every width, so the fact is never lost to a reader who is not
- * looking at a 220px column.
+ * `docs/composer-status-tabs.md` §2.4 states 172: the chat column measures that with
+ * the canvas pane open, QA-measured on the built app, and 220 was that document's own
+ * assumption which the app never renders (agent review round 2's F1 caught this frame
+ * certifying the retracted number). The sibling set's `column-floor/` renders at 172 for
+ * the same reason. ONE CAVEAT, since it is a disagreement on the record rather than a
+ * settled number: `chat-content.tsx`'s CSS floor is `min-w-[480px]`, which cannot
+ * render 172, so QA has been asked to re-measure the composer column on the built app
+ * and name the box. The band is pinned at the NARROWER reading deliberately - a
+ * guarantee that holds at 172 holds at 480 too, and not the reverse.
  *
- * 220 IS THE APP'S OWN FLOOR (`chat-measure.ts`'s column collapses to it with the
- * canvas open at a 1380px window) and the number this state renders; the story
- * library's own narrowest band is 172px, which nothing here claims.
+ * WHAT THIS FRAME IS FOR: it is the state where the yield has given up everything it
+ * can - the count is painted alone and the deadline is NOT on the chip. That is not a
+ * defect to hide; it is the boundary the guarantee is now stated against, and the
+ * frame is the only one in the set that photographs the deadline's absence. The fact
+ * survives one layer down: the item's announced name composes the whole clause at
+ * every width, and its tooltip carries it too.
  */
-export const AskColumnFloor220: Story = {
+export const AskColumnFloor172: Story = {
 	render: () => (
 		<AskBand
-			width={220}
-			label="The app's own 220px column floor: the VALUE carries the deadline and the count is the floor"
+			width={172}
+			label="The 172px the record measures for the column with the canvas open: the count is alone, because no form of the deadline fits here"
 			asks={[ASK_OPEN]}
 		/>
 	),
