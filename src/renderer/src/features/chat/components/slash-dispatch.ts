@@ -1182,10 +1182,10 @@ export function useSlashDispatch({
 					entry?.kind === "picker" ? entry.draftIdentity : undefined;
 				/*
 				 * `/team chart` is the team destination's RESERVED first argument (the
-				 * backend's own test — `desktop_sessions.py`: `args == "chart" or
-				 * args.startswith("chart ")`): it opens the org-chart read, which
-				 * resolves against a live session. A draft falls through to the
-				 * standard refusal below rather than staging a team by that name —
+				 * backend's own test — `local_operator/server/utils/desktop_commands.py:186`:
+				 * `args == "chart" or args.startswith("chart ")`): it opens the org-chart
+				 * read, which resolves against a live session. A draft falls through to
+				 * the standard refusal below rather than staging a team by that name —
 				 * "chart" is a legal slug, so the wrong reading would be silent.
 				 */
 				const chartForm =

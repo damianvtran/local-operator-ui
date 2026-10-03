@@ -4518,8 +4518,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				 * (`draftStageForSource`), never a command name written here: a row's
 				 * `draftIdentity` opt-in is the one statement of which lists can be
 				 * answered without a session.
+				 *
+				 * AND A HOST WITH NO DISPATCHER STAYS INERT (review round 1, M1). The
+				 * config box (`agents/config-run/config-composer.tsx`) mounts this
+				 * composer with no `onSlashCommand` — its own comment: the command
+				 * write paths stay closed — and "no session" is also true there, so
+				 * `!paneHasSession` alone let its pick restage a CHAT draft from a
+				 * page that writes nothing. Before this branch existed those picks
+				 * were inert through `shouldRun`'s own dispatcher term; these rows
+				 * are `runs: false`, so `shouldRun` can never pass for them and this
+				 * branch — which must therefore sit BEFORE it — carries the term
+				 * itself. Staging is a dispatch-shaped write: it belongs to hosts
+				 * that can run commands.
 				 */
-				if (disposition.run && row.kind === "argument" && !paneHasSession) {
+				if (
+					disposition.run &&
+					row.kind === "argument" &&
+					!paneHasSession &&
+					Boolean(onSlashCommand)
+				) {
 					const stage = draftStageForSource(slash.inline?.source);
 					if (stage) {
 						const span = slashTokenSpan(newMessage, caret, slash.commandNames);

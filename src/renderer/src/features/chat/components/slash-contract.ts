@@ -1,4 +1,3 @@
-import { sessionIdPattern } from "../../../../../shared/desktop-contract";
 /**
  * The popup's own contract, pure and I/O-free: what a key means, when an
  * explicit arrow choice survives, and the copy that tells the user which list is
@@ -19,6 +18,7 @@ import { sessionIdPattern } from "../../../../../shared/desktop-contract";
  * a value-level cycle out of a type-only dependency. Anything with the same
  * shape satisfies it, and the component's own rows are assignable to it.
  */
+import { sessionIdPattern } from "../../../../../shared/desktop-contract";
 import type { FastModeState } from "../session-status/session-model";
 import { ARGUMENT_SOURCE_LABEL, mcpInServerSlot } from "./slash-argument-rows";
 import { isUnambiguous } from "./slash-rank";

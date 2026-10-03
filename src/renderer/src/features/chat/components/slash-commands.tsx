@@ -469,9 +469,14 @@ function useArgumentRows(
 	 * path; `slash-dispatch.ts`'s `!sessionId` branch). Keyed to the two sources
 	 * rather than to a second list of command names: the source IS the list.
 	 *
-	 * `provided`-gated like the two provider lists below: this composer mounts
-	 * without a `QueryClientProvider` in the mini view, where the fallback client
-	 * must not fetch.
+	 * RESTATED, rather than reached through `useTeams`/`useProfiles`, because the
+	 * hooks mount a plain `useQuery` and take no client — this composer is
+	 * reachable in documents without a `QueryClientProvider` (the mini view),
+	 * where the fallback client must not fetch and the call has to pass the one
+	 * from `useOptionalQueryClient` instead. Their key, queryFn, `staleTime` and
+	 * `retry` are copied in the hooks' own spelling so the two share one cache
+	 * entry and cannot drift apart (review round 1, n3); the authoring-revision
+	 * refresh rides the sidebar's mounts of the hooks on every chat page.
 	 */
 	const draftRosterSource =
 		!sessionId && (source === "team" || source === "agent")
@@ -482,7 +487,7 @@ function useArgumentRows(
 			queryKey: ["desktop", "teams"],
 			queryFn: () =>
 				desktopResult<{ teams: ReusableTeam[] }>({ op: "teams.list" }).then(
-					(result) => result.teams ?? [],
+					(result) => result.teams,
 				),
 			enabled: enabled && provided && draftRosterSource === "team",
 			staleTime: 10_000,
@@ -496,7 +501,7 @@ function useArgumentRows(
 			queryFn: () =>
 				desktopResult<{ profiles: ReusableProfile[] }>({
 					op: "profiles.list",
-				}).then((result) => result.profiles ?? []),
+				}).then((result) => result.profiles),
 			enabled: enabled && provided && draftRosterSource === "agent",
 			staleTime: 10_000,
 			retry: retryDesktopQuery,
