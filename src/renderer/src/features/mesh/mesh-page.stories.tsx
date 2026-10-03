@@ -1614,11 +1614,43 @@ export const InviteReceipt: Story = {
  * The two registers the tray has to tell apart in one frame: the card that asks
  * (scopes, requester, window, Approve/Deny) and the card that reports (a
  * `connecting` record, where the store's own matrix offers only the mid-run
- * deny). The play drives the decision path the badge exists for — approve, then
- * watch the record settle to `approved` through the invalidation refetch —
- * because a still cannot show that the button writes and the read moves.
+ * deny).
+ *
+ * NO `play`, ON PURPOSE (design round 1). It used to press Approve on render, so
+ * the frame this story is named for - the ASKING card - was never the one it
+ * photographed: a reader comparing `approvals-waiting` against the surface
+ * saw the post-decision registers and had no still of the state the whole
+ * surface exists for. The write path is proven by `ApprovalsDecisionWrites`
+ * beside this one, where the story's own name says that is what it drives.
  */
 export const ApprovalsWaiting: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({}),
+				approvalRecord({
+					approval_id: "ap_7q0w5n2x9k4m",
+					state: "connecting",
+					name: "studio-mini",
+					host: "studio-mini.local",
+					user: "builder",
+				}),
+			],
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * The decision path the badge exists for, driven: approve, then watch the record
+ * settle to `approved` through the invalidation refetch - because a still
+ * cannot show that the button writes and the read moves.
+ *
+ * Split out of `ApprovalsWaiting` (design round 1): a story whose `play` runs on
+ * every view is a story whose still is not the state it is named for.
+ */
+export const ApprovalsDecisionWrites: Story = {
 	render: () => {
 		installBridge({
 			...singleDeviceFixture(),
