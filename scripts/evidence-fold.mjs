@@ -135,11 +135,21 @@
  * stopped on the conflict. So the driver resolves ONLY when git is running a real
  * merge, refuses otherwise (naming the operation wherever git records one),
  * writes git's own conflict markers and exits non-zero - see
- * `mergingForTheDriver`, which also records what a merge actually exports:
+ * `mergingForTheDriver`, which records what a merge actually exports:
  * `MERGE_HEAD` is written only AFTER the strategy finishes on git 2.55.0, so a
- * driver testing for it alone would refuse every merge. A refused rebase is a
- * stop the author resolves by hand or by re-merging - never a mechanically
- * resolved manifest describing another side's tree.
+ * driver testing for it alone would refuse every merge, and the signals left are
+ * the two `builtin/merge.c` sets for a real merge - `GITHEAD_<oid>` per merged
+ * head and a `GIT_REFLOG_ACTION` beginning `merge` - neither of which a rebase,
+ * `--rebase-merges`, cherry-pick or revert exports. A refused rebase is a stop
+ * the author resolves by hand or by re-merging - never a mechanically resolved
+ * manifest describing another side's tree.
+ *
+ * AND A REFUSAL SAYS WHY TWICE. Every non-zero driver exit prints the case it
+ * could not handle - git relays a failed driver's stderr but says nothing itself
+ * about the cause, and for a driver it cannot start the only line is the shell's
+ * - and appends the same reason to `<git dir>/evidence-fold-driver.log`, because
+ * once the terminal scrolls there is otherwise no record that a fold tool was
+ * involved. See `refuseDriver` and `recordDriverFailure`.
  *
  * WHEN IT REFUSES. (a) A side that is not JSON - the sides are read with `git
  * show`, so a file that does not parse is a state this script cannot reason
@@ -161,8 +171,13 @@
  * through a DYNAMIC import, taken only on the path that re-derives.
  */
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import {
+	appendFileSync,
+	existsSync,
+	readFileSync,
+	writeFileSync,
+} from "node:fs";
+import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isEntryPoint } from "./entry-point.mjs";
 
@@ -239,6 +254,62 @@ const gitStatus = (args, cwd = ROOT) => {
 	} catch {
 		return false;
 	}
+};
+
+/**
+ * The clone's own git directory, ASKED OF GIT rather than spelled `${ROOT}/.git`.
+ *
+ * The difference is not cosmetic and it is not an edge case here: in a LINKED
+ * WORKTREE `.git` is a FILE holding a `gitdir:` path, so `${ROOT}/.git/MERGE_HEAD`
+ * never exists and `${ROOT}/.git/evidence-fold-driver.log` never lands in the
+ * git directory at all. This repository is worked in linked worktrees and in
+ * sibling checkouts, so a marker or a log written to a path derived from `ROOT`
+ * would be written to the wrong place - or to nowhere - exactly where a fold
+ * happens.
+ */
+const gitDirPath = () =>
+	git(["rev-parse", "--absolute-git-dir"]) ?? join(ROOT, ".git");
+
+/** Where a refused or failed driver run leaves its reason, inside the git dir. */
+const DRIVER_LOG = "evidence-fold-driver.log";
+
+/**
+ * Record a driver failure where a person can still find it afterwards.
+ *
+ * WHY A FILE AND NOT ONLY STDERR. git DOES relay a failed merge driver's stderr
+ * (measured on 2.55.0), but it relays it above its own `Auto-merging ...` /
+ * `CONFLICT (content)` lines, and what git itself says about the failure names
+ * no cause - for a driver it could not even start, the only line is the shell's
+ * "command not found". Once the terminal scrolls, nothing records that a fold
+ * tool was involved at all. The log is the durable half of the same message.
+ *
+ * A read-only or missing git directory must NOT turn a refusal into a crash -
+ * refusing is the safe outcome and this is best-effort evidence - so the append
+ * is guarded and the path is returned either way.
+ */
+const recordDriverFailure = (reason) => {
+	const path = join(gitDirPath(), DRIVER_LOG);
+	/*
+	 * WHAT GIT ACTUALLY RAN, not the constant this file would install. A refusal
+	 * is investigated in a clone whose `merge.evidence-fold.driver` may be a
+	 * hand-written command, an older version's, or a wrapper - and "the driver
+	 * said no" is only actionable next to the command that was configured to be
+	 * the driver. `--local` is the scope `--install` writes; the constant is the
+	 * fallback for a driver wired globally or from an environment that blocks the
+	 * query.
+	 */
+	const configured =
+		git(["config", "--local", "--get", DRIVER_KEY]) ?? DRIVER_COMMAND;
+	try {
+		appendFileSync(
+			path,
+			`[${new Date().toISOString()}] ${reason}\n  driver: ${DRIVER_KEY} = ${configured}\n  cwd: ${process.cwd()}\n`,
+			"utf8",
+		);
+	} catch {
+		// Best effort: the stderr line above is still the primary report.
+	}
+	return path;
 };
 
 /* ------------------------------------------------------------------ *
@@ -869,6 +940,34 @@ const stageManifest = () => {
 };
 
 /**
+ * THE ONE PATH A FOLD CHOOSES TO WRITE, spelled once.
+ *
+ * Every fold state writes exactly this file and nothing else: the group-1/2/3/5
+ * resolution, the re-derived stamps and the restamp all land here, and the only
+ * other path this tool ever writes is the `%A` file git itself hands the driver
+ * (which is git's, not ours, and exists only during a merge). Funnelling the
+ * writes makes that invariant checkable in one place instead of argued from four
+ * call sites - and the guard in the suite asserts it from the outside, over a
+ * real fold run, rather than trusting this comment.
+ */
+const writeManifest = (text) => {
+	const target = join(ROOT, MANIFEST_PATH);
+	/*
+	 * Compared with posix separators: `relative` answers with the platform's, so
+	 * `docs\evidence\manifest.json` on Windows would not equal `MANIFEST_PATH` and
+	 * the guard would refuse every fold there instead of the path it means to
+	 * refuse.
+	 */
+	const relativePosix = relative(ROOT, target).split(sep).join("/");
+	if (relativePosix !== MANIFEST_PATH)
+		throw new Error(
+			`refusing to write ${target}: a fold writes ${MANIFEST_PATH} and nothing else`,
+		);
+	writeFileSync(target, text);
+	return target;
+};
+
+/**
  * The paths git has left unmerged, from BOTH places it answers.
  *
  * `ls-files -u --name-only` is the direct question and it is not always
@@ -991,7 +1090,7 @@ const completeMerge = async ({ dryRun }) => {
 	 * and staged before the merged tree can be named at all - and the list is
 	 * re-read after the staging, because staging this file is what removes IT.
 	 */
-	writeFileSync(join(ROOT, MANIFEST_PATH), serialize(resolved));
+	writeManifest(serialize(resolved));
 	stageManifest();
 	const stillUnmerged = unmergedPaths();
 	if (stillUnmerged.length > 0) {
@@ -1089,7 +1188,7 @@ const completeMerge = async ({ dryRun }) => {
 	 * run REPORTS.
 	 */
 	const alreadyResolved = entryContent === text;
-	writeFileSync(join(ROOT, MANIFEST_PATH), text);
+	writeManifest(text);
 	stageManifest();
 	reportKeyDecisions(decisions);
 	reportDiff(ours, resolved, {
@@ -1157,7 +1256,7 @@ const restampAtHead = async ({ dryRun, amend }) => {
 		});
 		return 0;
 	}
-	writeFileSync(join(ROOT, MANIFEST_PATH), serialize(resolved));
+	writeManifest(serialize(resolved));
 	stageManifest();
 	reportDiff(ours, resolved, { baseLabel: mergeBaseLabel(), derived: true });
 
@@ -1272,7 +1371,7 @@ const reportDiff = (before, after, { baseLabel, derived, note }) => {
  * test below instead.
  */
 const operationInProgress = () => {
-	const dir = git(["rev-parse", "--absolute-git-dir"]) ?? join(ROOT, ".git");
+	const dir = gitDirPath();
 	if (existsSync(join(dir, "rebase-merge"))) return "rebase (or pull --rebase)";
 	if (existsSync(join(dir, "rebase-apply", "applying"))) return "git am";
 	if (existsSync(join(dir, "rebase-apply"))) return "rebase";
@@ -1296,65 +1395,155 @@ const operationInProgress = () => {
  * measured across all six operations; `git merge --squash` sets it too.
  *
  * So the test is POSITIVE, and its failure mode is a STOP: a clone whose git
- * exports neither `MERGE_HEAD` early nor `GITHEAD_*` gets the driver refusing,
- * git reports the conflict it would have reported without this driver, and
- * `pnpm evidence:fold` still resolves the file correctly afterwards. The
- * alternative - resolving on a signal we cannot verify - is the silent
- * wrong-side resolution this whole check exists to prevent.
+ * exports neither `MERGE_HEAD` early nor either of merge.c's two variables gets
+ * the driver refusing, git reports the conflict it would have reported without
+ * this driver, and `pnpm evidence:fold` still resolves the file correctly
+ * afterwards (the merge state exists by then). The alternative - resolving on a
+ * signal we cannot verify - is the silent wrong-side resolution this whole check
+ * exists to prevent.
  */
 const mergingForTheDriver = () =>
-	existsSync(join(ROOT, ".git", "MERGE_HEAD")) ||
+	existsSync(join(gitDirPath(), "MERGE_HEAD")) ||
 	git(["rev-parse", "-q", "--verify", "MERGE_HEAD"]) !== null ||
+	/*
+	 * THE TWO THINGS `builtin/merge.c` SETS FOR A REAL MERGE, AND NOTHING ELSE
+	 * DOES. Measured on git 2.55.0: right before the strategies run, merge.c does
+	 * `setenv("GIT_REFLOG_ACTION", "merge <names>", 0)` and, per merged head,
+	 * `setenv("GITHEAD_<oid>", "<name>", 1)` (builtin/merge.c, the block above the
+	 * `use_strategies` loop). A rebase, a `rebase --rebase-merges`, a cherry-pick
+	 * and a revert export NEITHER - checked by dumping the driver's own
+	 * environment for all four - and git flags those separately through the
+	 * marker files `operationInProgress` reads.
+	 *
+	 * WHY BOTH AND NOT JUST GITHEAD_. `GITHEAD_<oid>` is the load-bearing signal
+	 * and it is why the driver can tell a merge from a cherry-pick at all: git
+	 * writes NO marker file for a merge or for a single-commit cherry-pick, and
+	 * `MERGE_HEAD` does not exist while a driver runs (merge.c writes it after the
+	 * strategy returns). Relying on the pair means a merge is still recognised
+	 * when something in the surrounding harness - a wrapper that scrubs the
+	 * environment, a caller that never exported the per-head variables - has
+	 * dropped one of them, which is the difference between resolving a legitimate
+	 * merge and refusing it. `GIT_REFLOG_ACTION` is compared with its documented
+	 * shape ("merge <names>"), so `git merge` from `git pull` still matches.
+	 */
+	/^merge(\s|$)/.test(process.env.GIT_REFLOG_ACTION ?? "") ||
 	Object.keys(process.env).some((name) => name.startsWith("GITHEAD_"));
 
-const driver = ([basePath, oursPath, theirsPath]) => {
+/**
+ * Name the case a driver run cannot resolve, for the refusal message.
+ *
+ * The case has to be NAMED, not gestured at: `null` is the shape git gives a
+ * single-commit cherry-pick, a revert and a stash-pop (it writes their marker
+ * file only after the merge step the driver is running inside), and it is ALSO
+ * the shape a real merge has when the surrounding harness scrubbed merge.c's
+ * two variables - so the message says both readings rather than pretending to
+ * know which one it is.
+ */
+const refusalCase = (operation) =>
+	operation ??
+	"an operation that is not a merge (a cherry-pick, revert or stash-pop, which git records no marker for until this step finishes - or a merge whose environment exported neither GITHEAD_* nor a merge GIT_REFLOG_ACTION)";
+
+/**
+ * Refuse a merge-driver run: say why, record why, and leave a conflict behind.
+ *
+ * WHY THE MESSAGE MUST NAME THE CASE. git relays a failed driver's stderr, but
+ * its own output around it is only `Auto-merging ...` / `CONFLICT (content)` /
+ * `Automatic merge failed`, none of which names a cause - and when the installed
+ * driver command cannot even start, the one line is the shell's "command not
+ * found". A refusal that says WHICH case it could not handle is the difference
+ * between an author completing the merge and an author abandoning the tool for
+ * the manual fold.
+ *
+ * WHY IT IS ALSO WRITTEN TO `<git dir>/evidence-fold-driver.log`. Stderr
+ * scrolls: a lane that hits this mid-session, or a reviewer reading the
+ * transcript afterwards, has nothing left to read. The log is the durable copy,
+ * and the message names its path so a reader knows where to look.
+ *
+ * WHY THE MARKERS ARE WRITTEN EVEN THOUGH THIS REFUSED. Exiting non-zero is what
+ * makes git record the conflict (all three index stages, so both `git commit`
+ * and `rebase --continue` refuse), but a driver that exits WITHOUT writing
+ * leaves the working file holding %A - one side's copy - which reads as a
+ * resolution to the next person. Measured on git 2.55.0. Git's own text merge
+ * writes markers there, so this writes them too: installed or not, the author
+ * opens the same conflicted file. Writing to %A before a non-zero exit is
+ * supported; git keeps the unmerged index either way.
+ */
+const refuseDriver = ({
+	named,
+	why,
+	oursPath,
+	theirsPath,
+	operation = null,
+}) => {
+	const reason = `REFUSING to resolve ${MANIFEST_PATH} during ${named}: ${why}`;
+	console.error(`evidence-fold: ${reason}`);
+	console.error(
+		`evidence-fold: the conflict is left exactly as it was before this driver existed - finish the operation, resolve ${MANIFEST_PATH} by hand if git stops on it, then re-derive with \`pnpm evidence:fold\`.`,
+	);
+	console.error(
+		`evidence-fold: this reason is recorded at ${recordDriverFailure(reason)}`,
+	);
+	if (typeof oursPath !== "string" || typeof theirsPath !== "string") return 1;
+	for (const path of [oursPath, theirsPath]) {
+		if (!existsSync(path))
+			throw new Error(
+				`git handed the driver a path that does not exist (${path}), so the conflict could not be marked`,
+			);
+	}
+	const withNewline = (text) => (text.endsWith("\n") ? text : `${text}\n`);
+	/*
+	 * The labels name the sides git actually handed us. `%A` is NOT this branch
+	 * outside a merge - that is the whole reason this path refuses - and
+	 * `operation` is null for the operations git records no marker for, so it
+	 * must not be interpolated as if it were a name (that printed "the null
+	 * upstream side").
+	 */
+	const oursLabel =
+		operation === null
+			? "git's %A - not this branch (no merge in progress)"
+			: `git's %A, the upstream side during ${operation}`;
+	const theirsLabel =
+		"git's %B - the commit being replayed, or the stashed change";
+	writeFileSync(
+		oursPath,
+		`<<<<<<< ${oursLabel}\n${withNewline(
+			readFileSync(oursPath, "utf8"),
+		)}=======\n${withNewline(
+			readFileSync(theirsPath, "utf8"),
+		)}>>>>>>> ${theirsLabel}\n`,
+	);
+	return 1;
+};
+
+const driver = (argv) => {
+	const [basePath, oursPath, theirsPath] = argv;
+	/*
+	 * A CALL WHOSE PATHS ARE MISSING. `%O %A %B` are substituted by git, so fewer
+	 * than three paths means `merge.evidence-fold.driver` is not the command
+	 * `--install` writes - a hand-written driver, or one left by an older
+	 * version. There is no working file to mark (the paths are what is missing),
+	 * but refusing is still the whole answer: resolving from an invocation shape
+	 * we do not understand is how a wrong-side stamp ships.
+	 */
+	if (
+		typeof basePath !== "string" ||
+		typeof oursPath !== "string" ||
+		typeof theirsPath !== "string"
+	) {
+		return refuseDriver({
+			named: `a driver invocation with ${argv.length} path argument(s) instead of three (%O %A %B)`,
+			why: "the installed merge.evidence-fold.driver command is not the one this script installs, so there is no merge for it to resolve",
+		});
+	}
 	const operation = operationInProgress();
 	if (operation !== null || !mergingForTheDriver()) {
-		const named =
-			operation ??
-			"an operation that is not a merge (a cherry-pick, revert or stash-pop - git does not record which until this step finishes)";
-		console.error(
-			`evidence-fold: REFUSING to resolve docs/evidence/manifest.json during ${named}: outside a merge git hands a merge driver the UPSTREAM side as %A, so resolving here would take the wrong side without a word. Leaving the conflict, with git's own markers, exactly as it would have before this driver was installed. Finish it (resolving this file by hand if git stops), then re-derive with \`pnpm evidence:fold\`.`,
-		);
-		/*
-		 * AND LEAVE THE MARKERS GIT WOULD HAVE LEFT. Exiting non-zero is what makes
-		 * git record the conflict (all three index stages, and both `git commit`
-		 * and `rebase --continue` refuse), but git leaves the WORKING FILE holding
-		 * %A - one side's copy, which looks like a resolution to the next reader.
-		 * Git's own text merge would have written markers there, so this writes
-		 * them too; with the driver installed or not, the author opens the same
-		 * conflicted file. Writing to %A before a non-zero exit is supported: git
-		 * keeps the unmerged index either way.
-		 */
-		for (const path of [oursPath, theirsPath]) {
-			if (!existsSync(path))
-				throw new Error(
-					`git handed the driver a path that does not exist (${path}), so the conflict could not be marked`,
-				);
-		}
-		const withNewline = (text) => (text.endsWith("\n") ? text : `${text}\n`);
-		/*
-		 * The labels name the sides git actually handed us. `%A` is NOT this branch
-		 * outside a merge - that is the whole reason this path refuses - and
-		 * `operation` is null for the operations git records no marker for, so it
-		 * must not be interpolated as if it were a name (that printed "the null
-		 * upstream side").
-		 */
-		const oursLabel =
-			operation === null
-				? "git's %A - not this branch (no merge in progress)"
-				: `git's %A, the upstream side during ${operation}`;
-		const theirsLabel =
-			"git's %B - the commit being replayed, or the stashed change";
-		writeFileSync(
+		return refuseDriver({
+			named: refusalCase(operation),
+			why: "outside a merge git hands a merge driver the UPSTREAM side as %A, so resolving here would take the wrong side without a word",
 			oursPath,
-			`<<<<<<< ${oursLabel}\n${withNewline(
-				readFileSync(oursPath, "utf8"),
-			)}=======\n${withNewline(
-				readFileSync(theirsPath, "utf8"),
-			)}>>>>>>> ${theirsLabel}\n`,
-		);
-		return 1;
+			theirsPath,
+			operation,
+		});
 	}
 	const readSide = (path, label) => {
 		if (!existsSync(path)) throw new Error(`${label} (${path}) does not exist`);
@@ -1408,6 +1597,18 @@ const USAGE = [
 	"",
 	"After a fold the file is staged and the stamps describe the MERGED tree; the",
 	"next step this script prints is the single commit that carries them.",
+	"",
+	"WHY THE SPELLING ABOVE IS `node` AND NOT `pnpm`. This script is plain Node",
+	"with no dependencies - it reads git objects and writes one file - so a fold",
+	"must never need an install. pnpm 11+ does not agree: `verifyDepsBeforeRun`",
+	"defaults to `install`, so ANY `pnpm run` (including `pnpm evidence:fold`)",
+	"installs first when node_modules looks stale, which in a lane's worktree means",
+	"pruning node_modules, failing on unreviewed build scripts, and WRITING an",
+	"`allowBuilds:` block into the tracked pnpm-workspace.yaml. `pnpm-workspace.yaml`",
+	"turns that check off for this repository (it is read from there, not from",
+	".npmrc, in pnpm 12), and `node scripts/evidence-fold.mjs` is the form that",
+	"cannot reach a package manager in the first place. The `pnpm evidence:fold`",
+	"and `pnpm evidence:fold:install` aliases still work.",
 ].join("\n");
 
 /**
@@ -1471,6 +1672,38 @@ const installDriver = ({ check }) => {
  * Entry
  * ------------------------------------------------------------------ */
 
+/**
+ * The preflight both FOLD states run before they write anything.
+ *
+ * WHY IT IS SEPARATE FROM THE RESOLUTION. A run that cannot be completed has to
+ * be stopped before the first write rather than discovered half-way through it,
+ * because the merge state stages the manifest as part of naming the merged tree.
+ * These are the conditions that make a run unsafe rather than merely unready -
+ * no work tree to fold in, no manifest to fold, and an index git cannot read -
+ * each of which would otherwise surface later as a confusing git failure with a
+ * half-written file on disk.
+ *
+ * It is deliberately NOT a check on `node_modules`, a package manager or the
+ * lockfile: this tool resolves a file with plain Node and git and must never
+ * require - or trigger - an install to do it. That half of the guarantee lives
+ * in `pnpm-workspace.yaml`'s `verifyDepsBeforeRun`, which is why the tool's
+ * documented entry point is `node scripts/evidence-fold.mjs`.
+ */
+const preflightFold = () => {
+	if (git(["rev-parse", "--is-inside-work-tree"]) !== "true")
+		throw new Error(
+			`this is not inside a git work tree, so there is no merged tree for ${MANIFEST_PATH} to describe. Run the fold from the checkout it belongs to.`,
+		);
+	if (!existsSync(join(ROOT, MANIFEST_PATH)))
+		throw new Error(
+			`${MANIFEST_PATH} does not exist in this work tree, so there is nothing to resolve. A fold RESOLVES AN EXISTING manifest across a merge - check the path and the branch before re-running; nothing has been written.`,
+		);
+	if (git(["diff", "--cached", "--name-only"]) === null)
+		throw new Error(
+			`git could not read this repository's index, and the merged tree the stamps describe is named from it, so a fold cannot run safely. Nothing has been written - fix the index (for example remove a stale index.lock) and re-run.`,
+		);
+};
+
 export const main = async (argv) => {
 	if (argv.includes("--help") || argv.includes("-h")) {
 		console.log(USAGE);
@@ -1480,6 +1713,15 @@ export const main = async (argv) => {
 		return installOrTolerate(argv);
 	const driverIndex = argv.indexOf("--driver");
 	if (driverIndex !== -1) return driver(argv.slice(driverIndex + 1));
+	/*
+	 * THE PREFLIGHT, BEFORE ANY STATE IS CHOSEN AND BEFORE ANY WRITE. Both fold
+	 * states write as soon as they have an answer (the merge state stages the
+	 * manifest so `git write-tree` can name the merged tree), so a run that cannot
+	 * be completed has to be stopped HERE rather than discovered half-way through.
+	 * The driver path is deliberately past this point: it runs inside a merge git
+	 * is still performing, where these questions are git's to answer.
+	 */
+	preflightFold();
 	const dryRun = argv.includes("--dry-run");
 	const unknown = argv.filter(
 		(argument) => argument !== "--dry-run" && argument !== "--no-amend",
@@ -1501,7 +1743,7 @@ export const main = async (argv) => {
 			`${operation} is in progress, and this tool resolves a MERGE only: while git is replaying a commit the sides it hands out are not "this branch" and "main" the way a merge's are, so a resolution now would take the wrong side without a word. Finish the ${operation} (resolving docs/evidence/manifest.json by hand if git stops on it), then run \`pnpm evidence:fold\` once it is done to re-derive the stamps over the result.`,
 		);
 	if (
-		existsSync(join(ROOT, ".git", "MERGE_HEAD")) ||
+		existsSync(join(gitDirPath(), "MERGE_HEAD")) ||
 		git(["rev-parse", "-q", "--verify", "MERGE_HEAD"]) !== null
 	)
 		return completeMerge({ dryRun });
@@ -1509,10 +1751,21 @@ export const main = async (argv) => {
 };
 
 if (isEntryPoint(import.meta.url)) {
+	const argv = process.argv.slice(2);
 	try {
-		process.exitCode = await main(process.argv.slice(2));
+		process.exitCode = await main(argv);
 	} catch (error) {
 		console.error(`evidence-fold: ${error.message}`);
+		/*
+		 * A THROW INSIDE THE DRIVER IS STILL A NON-ZERO DRIVER EXIT, and git's
+		 * output for it is the same four lines it prints for a refusal. Without this
+		 * the fold's hardest failure - a crash while resolving under `git merge` -
+		 * would be the one with no durable record at all.
+		 */
+		if (argv.includes("--driver"))
+			console.error(
+				`evidence-fold: this reason is recorded at ${recordDriverFailure(`FAILED during a driver run: ${error.message}`)}`,
+			);
 		process.exitCode = 1;
 	}
 }
