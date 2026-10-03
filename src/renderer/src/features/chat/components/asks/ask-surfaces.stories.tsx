@@ -38,8 +38,11 @@ import type {
 	CanonicalFrontendState,
 	PendingAsk,
 } from "../../../../../../shared/desktop-session-contract";
+import { cn } from "@shared/lib/utils";
 import "../../../../styles/index.css";
 import { EMPTY_DRAFTS, askQueueView } from "../../ask-queue";
+import { ComposerStatusRow } from "../composer-status-row";
+import { deriveRunDetails } from "../run-details";
 import { AskPanel } from "./ask-panel";
 import { AskSurfaces } from "./ask-surfaces";
 
@@ -323,4 +326,212 @@ export const AnswerReady: Story = {
 		 */
 		drafts: { "a-7f3c": { target: ["staging"] } },
 	},
+};
+
+/* ------------------------------------------------------------------ */
+/* TEMPORARY base fixtures, for the ask-status-row BEFORE capture       */
+/* ------------------------------------------------------------------ */
+
+/*
+ * These stories exist for ONE purpose and are superseded by the change they
+ * document: the queued-ask affordance moved out of this file's surface (the bar
+ * above the composer) into the composer status row, so the BEFORE half of
+ * `docs/evidence/ask-status-row/` has to photograph the OLD surface in all four
+ * of its states. Two of those states had no story on `main` - a settled-only
+ * queue and a moved-on-only one - so they are written here against the shipped
+ * components, as close to the after set's fixtures as the old surface allows.
+ *
+ * They are deleted by the commit that moves the affordance. The set's README
+ * records exactly which of them was added and which already existed.
+ */
+
+/** A settled ask: answered and delivered, with the answer the panel must show. */
+const ANSWERED: PendingAsk = ask({
+	ask_id: "a-answered",
+	status: "answered",
+	answered_at: TS + 8 * MINUTE,
+	delivered: true,
+	answers: { target: ["staging"] },
+	answered_by: { surface: "desktop" },
+	questions: [
+		{
+			id: "target",
+			question: "Which environment should I deploy this to?",
+			options: [{ label: "staging" }, { label: "production" }],
+		},
+	],
+});
+
+/** A moved-on ask: the deadline passed, the agent walked past it, still answerable. */
+const MOVED_ON: PendingAsk = ask({
+	ask_id: "a-moved-on",
+	expires_at: TS - MINUTE,
+	status: "timed_out",
+	questions: [
+		{
+			id: "target",
+			question: "Which environment should I deploy this to?",
+			options: [{ label: "staging" }, { label: "production" }],
+		},
+	],
+});
+
+/** Two asks the agent is still waiting on: the `N` form. */
+const TWO_WAITING: PendingAsk[] = [
+	ONE,
+	ask({
+		ask_id: "a-second",
+		created_at: TS + 2 * MINUTE,
+		questions: [
+			{
+				id: "files",
+				question: "Which files should the cleanup script touch?",
+				options: [{ label: "logs only" }, { label: "logs and caches" }],
+			},
+		],
+	}),
+];
+
+/**
+ * The published counts, as the WIRE defines them.
+ *
+ * The file's own `frontend()` helper above counts `status === "open"` only, which
+ * is right for the bar stories that predate the fold and WRONG for these: the
+ * backend's `asks_open` is its OUTSTANDING set - `open` OR `timed_out`
+ * (`asks/store.py`'s `OUTSTANDING_STATUSES`), because a late answer still reaches
+ * the agent. The difference is the whole of the moved-on state: with the helper's
+ * count a timed-out ask publishes zero outstanding and the base bar reads "1
+ * settled", which is a fixture artifact rather than the product. These fixtures
+ * therefore publish the count the product's own wire carries, so the before frames
+ * show what the shipped bar actually renders for these queues.
+ */
+const wireFrontend = (asks: PendingAsk[]) => ({
+	asks,
+	asks_open: asks.filter(
+		(row) => row.status === "open" || row.status === "timed_out",
+	).length,
+});
+
+const argsOf = (asks: PendingAsk[]) => ({
+	frontend: wireFrontend(asks),
+	nowMs: NOW,
+	onAnswer: noop,
+	onDecline: noop,
+});
+
+/** A settled-only queue: the bar reads the settled count. */
+export const MinimizedSettledOnly: Story = { args: argsOf([ANSWERED]) };
+
+/** A moved-on-only queue: the base bar has no moved-on reading of its own. */
+export const MinimizedMovedOnOnly: Story = { args: argsOf([MOVED_ON]) };
+
+/** Two waits: the `N` form the status-row item also renders. */
+export const MinimizedTwoWaiting: Story = { args: argsOf(TWO_WAITING) };
+
+/** The expanded settle: the question as asked and the answer as given. */
+export const ExpandedSettled: Story = {
+	args: { ...argsOf([ANSWERED]), expanded: true },
+};
+
+/** The expanded moved-on queue: row still answerable, reading distinct from settled. */
+export const ExpandedMovedOn: Story = {
+	args: { ...argsOf([MOVED_ON]), expanded: true },
+};
+
+/**
+ * The ask element beside its neighbours, BEFORE the move: the bar sits in its own
+ * strip above the composer status row, whose chips are the register it is about to
+ * join. The pane's own width (617px minus the decorator's 16px of padding) is the
+ * measure both halves are captured at.
+ */
+const NEIGHBOUR_DETAILS = deriveRunDetails({
+	jobs: [],
+	todos: [
+		{
+			name: "Plan",
+			items: [
+				{ text: "Reconcile the March invoices", status: "pending" },
+				{ text: "Draft the unpaid summary", status: "done" },
+			],
+		},
+	],
+	wakes: [
+		{
+			id: "w1",
+			message: "Stand-up reminder",
+			next_due_at: NOW + 12 * MINUTE,
+			created_at: NOW - MINUTE,
+			every_ms: null,
+			remaining: null,
+			limit: null,
+			fired_count: 0,
+		},
+		{
+			id: "w2",
+			message: "Sweep the ingest queue",
+			next_due_at: NOW + 90 * MINUTE,
+			created_at: NOW - MINUTE,
+			every_ms: 90 * MINUTE,
+			remaining: null,
+			limit: null,
+			fired_count: 0,
+		},
+	],
+	monitors: [
+		{
+			id: "m1",
+			name: "loom-pr-1710",
+			tool: "bash",
+			arguments: {},
+			every_ms: 60_000,
+			until_at: null,
+			description: "",
+			created_at: NOW - MINUTE,
+			next_due_at: NOW + MINUTE,
+			last_check_at: NOW - MINUTE,
+			checks: 3,
+			deliveries: 0,
+			consecutive_failures: 0,
+			disabled: false,
+			disabled_reason: "",
+		},
+	],
+	nowMs: NOW,
+});
+
+const NEIGHBOUR_FRONTEND = {
+	goal: "Reconcile the March invoices",
+	loop: null,
+	asks: [ONE],
+	asks_open: 1,
+	asks_truncated: false,
+} as unknown as CanonicalFrontendState;
+
+const NeighbourBand = ({ width }: { width: number }) => (
+	<div className={cn("@container/chatcol flex flex-col")} style={{ width }}>
+		<AskSurfaces
+			frontend={wireFrontend([ONE])}
+			nowMs={NOW}
+			onAnswer={noop}
+			onDecline={noop}
+			className="pt-2"
+		/>
+		<ComposerStatusRow
+			frontend={NEIGHBOUR_FRONTEND}
+			runDetails={NEIGHBOUR_DETAILS}
+			isSmallView={width <= 550}
+		/>
+	</div>
+);
+
+/** The ask element in its old strip, beside the status row it is about to join. */
+export const Neighbours: Story = {
+	render: () => <NeighbourBand width={585} />,
+	args: argsOf([ONE]),
+};
+
+/** The same pair at the narrow band the after set also carries. */
+export const NeighboursNarrow: Story = {
+	render: () => <NeighbourBand width={393} />,
+	args: argsOf([ONE]),
 };
