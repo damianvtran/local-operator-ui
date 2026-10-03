@@ -4,10 +4,13 @@
  * merge, re-derive the fields that describe the merged tree, and stage the
  * result - so a fold is ONE commit that carries correct values.
  *
- * WHY THIS EXISTS. `docs/evidence/manifest.json` pins `srcTree`/`scriptsTree` to
- * `git rev-parse HEAD:src`/`HEAD:scripts` plus the counts derived from them, so
- * ANY commit anywhere that moves `src/` or `scripts/` invalidates the stamp for
- * every open branch. The old flow therefore cost two commits per fold (a
+ * WHY THIS EXISTS. `docs/evidence/manifest.json` states counts about the tree it
+ * ships in (`frames`, `surfaces`, `themes`, the pass tallies) and, until this
+ * change, pinned `srcTree`/`scriptsTree` to `git rev-parse HEAD:src`/
+ * `HEAD:scripts` as well - so ANY commit anywhere that moved `src/` or
+ * `scripts/` invalidated the stored pair for every open branch. That pair is now
+ * retired (see "WHAT IT NO LONGER DOES" below): the counts remain, and they are
+ * what a fold re-derives. The old flow therefore cost two commits per fold (a
  * `chore(merge)` that took main's manifest whole, then a `docs(evidence)`
  * re-lay/re-derive) and the re-lay was a per-FIELD exercise done by hand, in a
  * file of ~500 keys, at the one moment nobody has time to read the rule - and
@@ -16,17 +19,32 @@
  * dropped seven of a branch's own top-level records). This script is that
  * hand exercise, written down once and run.
  *
- * WHAT IT IS NOT. It does not weaken a guard. The stamps stay stored in the
- * manifest and are still compared against `HEAD` exactly as before
- * (`check-evidence.mjs` `stampFailures`, bound to the shipped file by
- * `scripts/evidence-manifest.test.mjs` inside `pnpm test:desktop`); the tool
- * WRITES what the guard demands and then RUNS the real guards over the result
- * before it stages anything, so a fold that cannot be resolved correctly fails
- * here rather than shipping a stale stamp. The alternative - stop storing the
- * stamps and derive them at read time - was rejected because it makes the check
- * vacuous: a stamp derived from the tree under review can never disagree with
- * it, and it could no longer catch the fold-10/11 class (values that look right
- * and describe another tree). The stored-versus-HEAD comparison IS the guarantee.
+ * WHAT IT IS NOT. It does not weaken a guard. Every field the manifest still
+ * claims about its tree is WRITTEN by this tool and then checked by the real
+ * guards before anything is staged (`check-evidence.mjs` `stampFailures` - the
+ * counts and the pass tallies - bound to the shipped file by
+ * `scripts/evidence-manifest.test.mjs` inside `pnpm test:desktop`), so a fold
+ * that cannot be resolved correctly fails here rather than shipping wrong
+ * counts.
+ *
+ * WHAT IT NO LONGER DOES, AND WHY THAT IS NOT A WEAKENING. It does not store - or
+ * re-derive - a hash of `src/` or `scripts/`. The `srcTree`/`scriptsTree` pair
+ * was compared against `HEAD:src`/`HEAD:scripts`, and ANY commit anywhere that
+ * moved either tree made the stored value false for every open branch, so the
+ * pair forced a mechanical re-derive on every fold while proving nothing about
+ * the frames: every recorded re-derive in this repository's history says
+ * "re-stamped, not re-captured". The alternative this file used to reject -
+ * derive such a hash at read time - is still wrong for the same reason it gives
+ * below, so the claim is RETIRED instead of moved (`RETIRED_TOP_LEVEL_FIELDS`
+ * drops it from both sides of every fold and the run prints the drop). What
+ * catches the class the pair was built for - fold 10 and fold 11 shipped values
+ * that looked right and described a neighbour's tree - is the counts, which are
+ * re-derived from the merged tree and compared against it by the same guard, and
+ * which is precisely what those two folds got wrong; `scripts/check-fold-keys.mjs`
+ * still refuses a fold that loses a key either parent carried. What is given up
+ * is stated in plain words in `check-evidence.mjs`'s header: a `src/` change that
+ * alters a surface the committed frames render, with no re-capture, is now a
+ * review question rather than a gate.
  *
  * THE FIVE GROUPS, implemented below as `mergeValue` and numbered as the two
  * other homes number them (the "A FOLD'S RESOLVER READS THIS BLOCK" comment in
@@ -50,7 +68,7 @@
  *      is merged per key like every other object (round 3): the entry rule says
  *      which keys win, not how deep the merge stops.
  *   4. Derived fields are RE-DERIVED from the merged tree and taken from neither
- *      side: `srcTree`, `scriptsTree`, `frames`, `surfaces`, `themes`,
+ *      side: `frames`, `surfaces`, `themes`,
  *      `partialCapture.refreshedFrames` and the LEADING paragraph of every
  *      `countsMean` cell. `refreshedFrames` is re-derived whenever the merged
  *      file carries a `partialCapture` at all, not only when both sides moved
@@ -98,17 +116,21 @@
  * records around it, which is the same one-time diff paid against a different
  * side every fold.
  *
- * THE WRITE-TREE TECHNIQUE, AND WHY MID-MERGE `HEAD:` IS THE TRAP. `srcTree` and
- * `scriptsTree` must name the MERGED tree - the tree of the commit the manifest
- * will ride in - and mid-merge `git rev-parse HEAD:src` answers about the
- * PRE-merge head: real trees, so nothing looks wrong in the diff, just not this
- * one's. Fold 11 shipped exactly that. So while a merge is in progress the tree
- * is resolved from the INDEX instead: `git write-tree` hashes the staged tree
- * the merge commit is about to get, and `git rev-parse <that>:src` names it. The
- * manifest lives outside `src/` and `scripts/`, so staging it does not move
- * either hash, which is what makes "write the values, stage, commit" correct
- * without an amend. When the merge has already committed (the driver path
- * below), the technique is simply `HEAD`.
+ * THE WRITE-TREE TECHNIQUE, AND WHY MID-MERGE `HEAD:` IS THE TRAP. The counts
+ * are read from the MERGED tree - the tree of the commit the manifest will ride
+ * in - and mid-merge `git show HEAD:scripts/capture-evidence.mjs` answers about
+ * the PRE-merge head: a real file, so nothing looks wrong in the diff, just not
+ * this one's. Fold 11 shipped a manifest whose readings came from exactly that
+ * mistake. So while a merge is in progress the tree is resolved from the INDEX
+ * instead: `git write-tree` hashes the staged tree the merge commit is about to
+ * get, and `capture-evidence.mjs`'s literals are read out of that tree. The
+ * manifest lives outside `src/` and `scripts/`, so staging it does not move the
+ * tree, which is what makes "write the values, stage, commit" correct without an
+ * amend. When the merge has already committed (the driver path below), the
+ * technique is simply `HEAD`. The tree-ish is still needed for that reason even
+ * though group 4 no longer names a tree hash (`git show <tree>:<path>` needs
+ * one); the retired pair was the reason its two hashes were read, not the reason
+ * the tree is named at all.
  *
  * THE DRIVER. `.gitattributes` marks this file `merge=evidence-fold`, and
  * `--install` points `merge.evidence-fold.driver` at `--driver %O %A %B` in the
@@ -117,8 +139,8 @@
  * not stop on a manifest conflict at all. The driver deliberately does NOT
  * re-derive group 4: at that moment the merge commit does not exist, and deriving
  * "the merged tree" from a working tree that is still being written is the
- * fold-10/11 defect with extra steps. It carries ours' stamp values and says so
- * on stderr; the merge commit's own re-derivation is the next step
+ * fold-10/11 defect with extra steps. It carries ours' group-4 values and says
+ * so on stderr; the merge commit's own re-derivation is the next step
  * (`pnpm evidence:fold`, state 2), which re-derives against the commit that now
  * exists and amends it - the amendment moves `docs/` only, so the value stays
  * true. Without the driver installed, `git merge` leaves the usual conflict and
@@ -292,13 +314,25 @@ const LISTING_KEYS = new Set([
  */
 
 /** Group (4): re-derived from the merged tree, never carried from a side. */
-const DERIVED_TOP = new Set([
-	"srcTree",
-	"scriptsTree",
-	"frames",
-	"surfaces",
-	"themes",
-]);
+const DERIVED_TOP = new Set(["frames", "surfaces", "themes"]);
+
+/**
+ * Group (4), the RETIRED half: fields this change stopped storing, and which no
+ * fold may carry back into the file.
+ *
+ * They are NOT derived and NOT compared - a stored hash of the shipping tree is
+ * false for every open branch the moment a sibling commit moves that tree, which
+ * is the churn this change removes (see the header). They are listed here so a
+ * fold DROPS them from whichever side still carries them: after this lands on
+ * `main`, every open branch holds the pair in ITS parent, and a resolver that
+ * simply kept every key this branch carries would hand the field back to the
+ * merged file and restore the old regime with every gate green.
+ *
+ * `scripts/check-fold-keys.mjs` imports this set rather than restating it, so the
+ * loss the drop makes is a PRINTED decision there instead of a `LOST[branch]`
+ * fault on the first post-landing fold.
+ */
+export const RETIRED_TOP_LEVEL_FIELDS = new Set(["srcTree", "scriptsTree"]);
 
 /*
  * NO CONTAINER LIST, deliberately, because the list was the defect.
@@ -335,7 +369,24 @@ const DERIVED_TOP = new Set([
  * than splicing into main's position.
  */
 export const mergedKeys = (base, ours, theirs, path = "", decisions = null) => {
-	const keys = Object.keys(ours);
+	/*
+	 * RETIRED keys are dropped even though THIS branch still carries them - the one
+	 * thing the loop below never otherwise does, and it is deliberate: `srcTree`
+	 * and `scriptsTree` are retired by the change that stopped storing a hash of
+	 * the shipping tree, so a branch whose copy still holds the pair would
+	 * otherwise hand it back to the merged file on its next fold (see
+	 * `RETIRED_TOP_LEVEL_FIELDS`). The drop is a stated decision, not a silence.
+	 */
+	const keys = Object.keys(ours).filter((key) => {
+		if (path !== "" || !RETIRED_TOP_LEVEL_FIELDS.has(key)) return true;
+		if (decisions)
+			decisions.push({
+				path: key,
+				action: "dropped",
+				why: "retired by this change",
+			});
+		return false;
+	});
 	for (const key of keys) {
 		/*
 		 * A key the OTHER side deleted that this branch still carries is KEPT - its
@@ -514,7 +565,25 @@ const mergeObject = (base, ours, theirs, path, decisions) => {
  */
 const mergeEntry = (base, ours, theirs, path, decisions) => {
 	const out = {};
-	for (const key of mergedKeys(base ?? {}, ours, theirs, path, decisions)) {
+	/*
+	 * ADDITIVE OVER THE TWO OBJECTS: the key set is the UNION of what ours and
+	 * theirs carry, and `base` is deliberately NOT consulted for it.
+	 *
+	 * WHY. An entry is a record of a capture, so a resolver that derives an
+	 * entry's key set from a three-way comparison of the SIDES can drop a key the
+	 * other side still holds - a real loss, not a retirement. Measured on the #765
+	 * lane's fold (2026-10-03): the resolution dropped `frames`, `surfaces` and
+	 * `themes` from `supplementary[158]`, because this branch's copy of that entry
+	 * lacked them while base and main carried them, and the top-level group (5)
+	 * rule (`a key this branch retired stays dropped`) read the absence as a
+	 * deliberate deletion. Nothing an entry carried may vanish that way. The
+	 * per-field policy still chooses VALUES - ours for an authored key, the union
+	 * for a listing, the ordinary three-way rule elsewhere - but the key set is
+	 * additive, which is `mergedKeys` with no base to make a deletion look
+	 * deliberate. `base` is still passed down for the VALUES, where a three-way
+	 * comparison is exactly right.
+	 */
+	for (const key of mergedKeys({}, ours, theirs, path, decisions)) {
 		const value = mergeValue(
 			key,
 			base?.[key],
@@ -609,8 +678,10 @@ export const leadParagraph = (text, lead) => {
  *
  * `derived` is optional and its absence is a DISCLOSED state rather than a
  * silent one: the merge driver cannot know the merged tree (its commit does not
- * exist yet), so it leaves group 4 on our side and says so. Every other caller
- * passes it.
+ * exist yet), so it leaves group 4's COUNTS on our side and says so. Every other
+ * caller passes it. The retired pair is a separate matter: it is dropped from
+ * whichever side carries it whether or not `derived` is passed, because it is no
+ * longer derived from anything.
  *
  * `decisions` is an optional array the caller supplies to COLLECT the one-sided
  * key decisions the merge made - `kept` (the other side deleted a key this
@@ -707,6 +778,15 @@ export const resolveManifest = ({
  * `target` is a commit-ish or a tree-ish: `HEAD` after the merge has committed,
  * or the index's own tree (`git write-tree`) while it has not. `root` is
  * injectable so this can be exercised against a tree other than the live one.
+ *
+ * `baseLabel` is the fold's own name (the commit it folded onto) and is
+ * DELIBERATELY not used by anything returned here. It used to lead the `frames`
+ * paragraph, which put a fresh commit name into the manifest on every fold even
+ * when the walk found nothing new - and that, not the numbers, is what kept
+ * every fold's manifest in conflict with its sibling's. The label's disclosure
+ * work belongs to the branch-authored `foldOnto*Note` records, which main never
+ * touches; the parameter is kept and pinned by a test so that re-introducing it
+ * here is a red test rather than a slow drift back.
  */
 export const deriveFields = async ({
 	root = ROOT,
@@ -724,12 +804,10 @@ export const deriveFields = async ({
 	} = await import("./check-evidence.mjs");
 
 	const evidenceDir = join(root, "docs", "evidence");
-	const srcTree = read(["rev-parse", `${target}:src`]);
-	const scriptsTree = read(["rev-parse", `${target}:scripts`]);
 	const capture = read(["show", `${target}:scripts/capture-evidence.mjs`]);
-	if (srcTree === null || scriptsTree === null || capture === null)
+	if (capture === null)
 		throw new Error(
-			`git could not read ${target}'s trees or capture-evidence.mjs, so the derived fields cannot be re-derived - refusing rather than writing a stamp from a partial read`,
+			`git could not read ${target}:scripts/capture-evidence.mjs, so the story and theme counts cannot be re-derived - refusing rather than writing a reading from a partial one`,
 		);
 
 	const sets = (manifest.supplementary ?? []).filter(
@@ -765,14 +843,12 @@ export const deriveFields = async ({
 	).length;
 
 	return {
-		srcTree,
-		scriptsTree,
 		frames: outside.length,
 		surfaces: stories,
 		themes,
 		refreshedFrames,
 		countsMean: {
-			frames: `RE-DERIVED FOR THIS FOLD (this branch folded onto \`origin/main\` = \`${baseLabel}\`): ${outside.length} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside.length} of them inside the sets). Whether this fold moved any frame a story renders is the AUTHOR's statement to make, not this tool's - the numbers above are what the walk found.`,
+			frames: `RE-DERIVED FOR THIS FOLD: ${outside.length} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside.length} of them inside the sets). Whether this fold moved any frame a story renders is the AUTHOR's statement to make, not this tool's - the numbers above are what the walk found.`,
 			surfaces: `RE-DERIVED FOR THIS FOLD: ${stories} rows in \`HEAD:scripts/capture-evidence.mjs\`'s STORIES literal, counted the way \`check-evidence.mjs\` counts them (\`^\t\[\` rows inside the block, parsed from the tree rather than taken from the writer).`,
 			themes: `RE-DERIVED FOR THIS FOLD: ${themes} theme names in the \`THEMES\` literal, counted the same way.`,
 		},
@@ -833,7 +909,7 @@ export const runGuards = async ({
 	const notes = [];
 	if (read(["rev-parse", "--is-shallow-repository"]) === "true") {
 		notes.push(
-			"the citation-ancestry guard stood down: this is a shallow clone, so no ancestor of HEAD is present to ask about. That is NOT a failure - the stamps are still guarded here and on every clone - and CI's full clone asks it.",
+			"the citation-ancestry guard stood down: this is a shallow clone, so no ancestor of HEAD is present to ask about. That is NOT a failure - the counts are still guarded here and on every clone - and CI's full clone asks it.",
 		);
 	} else {
 		failures.push(...citationAncestryFailures(manifest, read));
@@ -1003,15 +1079,15 @@ const completeMerge = async ({ dryRun }) => {
 				.slice(0, 8)
 				.join(
 					", ",
-				)}${stillUnmerged.length > 8 ? ", ..." : ""}) - resolve them, then re-run \`pnpm evidence:fold\` to re-derive the stamps over the merged tree.`,
+				)}${stillUnmerged.length > 8 ? ", ..." : ""}) - resolve them, then re-run \`pnpm evidence:fold\` to re-derive the counts over the merged tree.`,
 		);
 		return 1;
 	}
 
 	/*
-	 * Every side is in. The stamps come from the INDEX, which is about to become
-	 * the merge commit: `HEAD:src` here is the pre-merge head and would be the
-	 * fold-11 defect.
+	 * Every side is in. The counts come from the INDEX, which is about to become
+	 * the merge commit: reading `HEAD:scripts/capture-evidence.mjs` here would
+	 * answer about the pre-merge head and would be the fold-11 defect.
 	 */
 	const tree = git(["write-tree"]);
 	if (tree === null)
@@ -1372,7 +1448,7 @@ const driver = ([basePath, oursPath, theirsPath]) => {
 	// this text beside the merge, which is where the author reads the fold.
 	reportKeyDecisions(decisions, (line) => console.error(line));
 	console.error(
-		"evidence-fold: resolved docs/evidence/manifest.json mechanically (groups 1, 2, 3, 5). The stamps still name the PRE-merge tree on purpose - run `pnpm evidence:fold` after the merge commits to re-derive them against the commit this fold produces.",
+		"evidence-fold: resolved docs/evidence/manifest.json mechanically (groups 1, 2, 3, 5; a retired tree stamp is dropped from whichever side still carries it). The COUNTS still describe the PRE-merge tree on purpose - run `pnpm evidence:fold` after the merge commits to re-derive them against the commit this fold produces.",
 	);
 	return 0;
 };

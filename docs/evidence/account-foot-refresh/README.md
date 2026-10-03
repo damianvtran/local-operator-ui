@@ -126,8 +126,9 @@ f6f53e197218806c062b47ea3bcb04462a2e28b7426fa0eaff082825c6c143b4  before/still-u
   this set waits the window out before pressing -- the operator's own timeline
   (minutes between prompt and completion) is past it.
 - **No Storybook sweep ran for this branch.** No committed swept frame renders
-  the foot's account states; `manifest.json`'s `srcTree`/`scriptsTree` are
-  re-derived for the tree these walks ship in, and the note beside them says so.
+  the foot's account states; `manifest.json`'s counts (`frames`, `surfaces`,
+  `themes`) are re-derived for the tree these walks ship in, and the note beside
+  them says so.
 
 ## Design round 1 re-renders (the D1 fix, photographed)
 

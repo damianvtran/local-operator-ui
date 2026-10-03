@@ -272,8 +272,6 @@ const fakeGit =
 
 const GOOD = {
 	head: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-	srcTree: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-	scriptsTree: "cccccccccccccccccccccccccccccccccccccccc",
 	supplementary: [
 		{
 			path: "live",
@@ -284,11 +282,17 @@ const GOOD = {
 const git = fakeGit({
 	resolvable: [GOOD.head, "6e0d41580e24cacc3de08d659b8f6058d78ead53"],
 	reachable: [GOOD.head],
-	src: GOOD.srcTree,
-	scripts: GOOD.scriptsTree,
+	/*
+	 * `HEAD:src`/`HEAD:scripts` still answer - the fake models git, not this
+	 * module's reader - but nothing in the manifest reads them any more: the
+	 * retired `srcTree`/`scriptsTree` pair is gone, and the test below is the one
+	 * that pins the indifference.
+	 */
+	src: "b".repeat(40),
+	scripts: "c".repeat(40),
 });
 
-test("a manifest stamped at the tree under review passes", () => {
+test("a manifest whose counts describe the tree under review passes", () => {
 	assert.deepEqual(provenanceFailures(GOOD, git), []);
 });
 
@@ -318,21 +322,24 @@ test("a head that resolves to nothing at all fails", () => {
 	assert.match(out[0], RE_EVIDENCE_4);
 });
 
-test("a stale tree hash fails, per tree, naming both sides", () => {
+test("a tree-stamp pair is IGNORED, stored in the file or absent (T2)", () => {
 	/*
-	 * Trees rather than commits are the real staleness question: a docs-only
-	 * commit moves `head` and leaves the frames valid, which is why `head` is
-	 * only required to be reachable while the TREES must match exactly.
+	 * The retired `srcTree`/`scriptsTree` pair used to be compared against
+	 * `HEAD:src`/`HEAD:scripts` here, and a wrong value was a failure. That is the
+	 * storage this change removed: a hash of a tree the file does not own goes
+	 * false for every open branch the moment a sibling lands, so it forced a
+	 * re-derive per fold and proved nothing about the frames. The guard must now
+	 * be INDIFFERENT to the pair - a stray copy may not start gating again by
+	 * accident - and the shipped file must not carry it at all (asserted next to
+	 * the shipped-manifest test below).
 	 */
-	const src = provenanceFailures({ ...GOOD, srcTree: "e".repeat(40) }, git);
-	assert.equal(src.length, 1);
-	assert.match(src[0], RE_EVIDENCE_5);
-	const scripts = provenanceFailures(
-		{ ...GOOD, scriptsTree: "f".repeat(40) },
-		git,
-	);
-	assert.equal(scripts.length, 1);
-	assert.match(scripts[0], RE_EVIDENCE_6);
+	const withPair = {
+		...GOOD,
+		srcTree: "e".repeat(40),
+		scriptsTree: "f".repeat(40),
+	};
+	assert.deepEqual(provenanceFailures(withPair, git), []);
+	assert.deepEqual(provenanceFailures({ ...GOOD }, git), []);
 });
 
 test("a supplementary set's capturedAtHead is held to the same bar", () => {
@@ -736,28 +743,49 @@ test("a clone with history asks both questions, and a mutated tally answers both
  * Every other test in this file pins what `check-evidence.mjs` CONCLUDES, on a
  * fixture built for the purpose. This one exists because of what none of them
  * could see: at the round-3 head `docs/evidence/manifest.json` carried
- * `origin/main`'s `srcTree`, `scriptsTree` and `surfaces`, because a rebase kept
- * upstream's top-level stamp block while the branch's delta rewrote the
- * neighbouring `partialCapture`. The file therefore certified the committed
- * frames against a tree they were not taken from, git reported no conflict, and
- * only `pnpm check-evidence` could see it - a gate whose image loop runs over
- * every committed frame and outran that round's whole review budget, so the
- * defect survived a full review round (round 3, M1).
+ * `origin/main`'s tree hashes and `surfaces`, because a rebase kept upstream's
+ * top-level stamp block while the branch's delta rewrote the neighbouring
+ * `partialCapture`. The file therefore certified the committed frames against a
+ * tree they were not taken from, git reported no conflict, and only
+ * `pnpm check-evidence` could see it - a gate whose image loop runs over every
+ * committed frame and outran that round's whole review budget, so the defect
+ * survived a full review round (round 3, M1).
  *
- * `stampFailures` is the half of that verdict which needs nothing but `HEAD`'s
- * trees and the capturer's own lists, so binding it here costs about a second
- * and fails the moment a rebase re-stamps the file against somebody else's tree.
- * Citation reachability is deliberately NOT asserted here: it needs the cited
- * commits to be present, and a shallow CI checkout has no such guarantee.
+ * The tree hashes are gone now (a stored hash of a tree the file does not own
+ * cannot stay true, which is what made every fold rewrite this file); what
+ * remains bound here is the COUNTS half of that verdict - the frame count on
+ * disk outside the declared sets, the story and theme counts parsed out of
+ * `HEAD:scripts/capture-evidence.mjs`, and the pass tallies - which still fails
+ * the moment a rebase leaves those describing somebody else's tree. Citation
+ * reachability is deliberately NOT asserted here: it needs the cited commits to
+ * be present, and a shallow CI checkout has no such guarantee.
  */
-test("the SHIPPED manifest's stamps describe the tree it ships in", () => {
+test("the SHIPPED manifest's counts describe the tree it ships in", () => {
 	const manifest = JSON.parse(
 		readFileSync("docs/evidence/manifest.json", "utf8"),
 	);
 	assert.deepEqual(
 		stampFailures(manifest),
 		[],
-		"docs/evidence/manifest.json must describe HEAD's trees: re-derive srcTree/scriptsTree from `git rev-parse HEAD:src` / `HEAD:scripts`, and frames/surfaces from the tree, the way capture-evidence.mjs writes them",
+		"docs/evidence/manifest.json must describe the tree it ships in: re-derive frames/surfaces/themes from the tree, the way capture-evidence.mjs writes them",
+	);
+});
+
+/**
+ * T3 - THE FILE CARRIES NO TREE STAMP, and this is what makes a resurrection
+ * loud rather than silent. After the retirement lands, a branch whose own old
+ * fold tool runs re-derives `srcTree`/`scriptsTree` back into its copy; without
+ * this assertion the file would drift back to the old regime with every gate
+ * green. The remedy is one `pnpm evidence:fold` with the new tool, which drops
+ * it (`dropped srcTree - retired by this change`).
+ */
+test("the SHIPPED manifest carries no tree stamp", () => {
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	assert.ok(
+		!("srcTree" in manifest) && !("scriptsTree" in manifest),
+		'docs/evidence/manifest.json must not store a hash of `src/` or `scripts/`. Those two fields were retired because a stored tree hash goes false for every open branch the moment any sibling commit moves that tree - which is what forced a re-derive on every fold. What the file certifies instead is stated in `check-evidence.mjs`\'s header under "What this file certifies": the counts and the citations, with the frames-vs-src staleness class left as a review question. A copy that carries the pair again is one `pnpm evidence:fold` (or `node scripts/drop-evidence-stamps.mjs`) away from clean.',
 	);
 });
 
@@ -1209,7 +1237,7 @@ const countsManifest = ({ framesProse = "", surfacesProse = "" } = {}) => ({
 });
 
 const FRAMES_LEADING =
-	"RE-DERIVED FOR THIS FOLD (this branch folded onto `origin/main` = `<base>`): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
+	"RE-DERIVED FOR THIS FOLD: 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
 
 test("a countsMean paragraph leading with the walk's numbers passes", (t) => {
 	const countsTree = caseTree(t, COUNTS_LAYOUT);
@@ -3438,9 +3466,6 @@ const RE_EVIDENCE_1 = /reachable from no ref/;
 const RE_EVIDENCE_2 = /dies at the next gc/;
 const RE_EVIDENCE_3 = /wip: a commit that was amended away/;
 const RE_EVIDENCE_4 = /resolves to no commit/;
-const RE_EVIDENCE_5 = /`srcTree` is eeeeeeeee but HEAD:src is bbbbbbbbb/;
-const RE_EVIDENCE_6 =
-	/`scriptsTree` is fffffffff but HEAD:scripts is ccccccccc/;
 const RE_EVIDENCE_7 = /supplementary\[live\]/;
 const RE_EVIDENCE_8 = /missing or not a sha/;
 const RE_EVIDENCE_9 = /partialCapture\.addedAtHead/;
@@ -3459,7 +3484,7 @@ const RE_EVIDENCE_19 = /^supplementary\/\d+\//;
 const RE_EVIDENCE_20 = /countsMean\.frames/;
 const RE_EVIDENCE_21 = /the walk finds 3/;
 const RE_EVIDENCE_22 =
-	/Lead the field with: "RE-DERIVED FOR THIS FOLD \(this branch folded onto `origin\/main` = `<base>`\): 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
+	/Lead the field with: "RE-DERIVED FOR THIS FOLD: 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
 const RE_EVIDENCE_23 = /nothing this check can read/;
 const RE_EVIDENCE_24 = /countsMean\.surfaces/;
 const RE_EVIDENCE_25 = /the walk finds 2/;

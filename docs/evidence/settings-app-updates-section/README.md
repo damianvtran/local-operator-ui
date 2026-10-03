@@ -133,12 +133,13 @@ One narrowed run takes both states: `--only` matches the story id prefix, so the
 `server-update-offered` frames are refreshed and the `all-current` pair is
 written in the same pass — four frames across two themes at `48d9803cf`.
 
-**A narrowed run does NOT re-stamp `srcTree`/`scriptsTree`.** It re-stamps
-`head`, `frames` and the `partialCapture` record, and it deliberately leaves the
-two tree stamps alone (they describe the tree a FULL sweep came from). So a round
-that moves `src/` or `scripts/` — this one does both — has to re-derive them by
-hand in the commit that carries the frames, from the tree it ships:
-`git rev-parse $(git write-tree):src` and `:scripts` after staging, with
+**A narrowed run re-derives `head`, `frames` and the `partialCapture` record,
+and nothing else.** It used to leave the pair of tree stamps alone as well, on the
+reading that they described the tree a FULL sweep came from; that pair is retired
+(a stored hash of the shipping tree went false for every open branch whenever a
+sibling moved it), so what a narrowed run owes the file is its own counts. A round
+that moves `src/` or `scripts/` — this one does both — still re-derives the counts
+in the commit that carries the frames, from the tree it ships, with
 `frames` re-walked from `docs/evidence` and the `countsMean` paragraphs rewritten
 from the same walk. The earlier version of this paragraph claimed the run
 does that itself, which is true of a full sweep and false of every command in
