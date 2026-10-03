@@ -223,8 +223,17 @@ export const Truncated: Story = {
 };
 
 /**
- * A published queue with nothing in it. The panel is not even mounted: the
- * affordance is absent at zero, and the status-row item is absent with it.
+ * A published queue with nothing in it, EXPANDED: the panel mounts and states the
+ * empty reading (`No asks outstanding. The agent is not waiting on anything.`).
+ *
+ * WHAT THIS FRAME IS AND IS NOT (QA round 1, Q-2: the note here used to say the
+ * panel "is not even mounted", which its own `expanded: true` contradicts). This
+ * story is the PANEL's mount, so the zero-queue fact it carries is the empty
+ * sentence the panel draws when a caller pins it open. It is NOT the evidence that
+ * the affordance is absent at zero: that is the status-row ITEM's own gate
+ * (`sessionAsks !== null && rows.length > 0`), which this file does not render and
+ * `scripts/composer-tabs.test.mjs` pins on the row. `CollapsedDrawsNothing` beside
+ * it is the third state - a collapsed mount draws nothing at all.
  */
 export const Empty: Story = {
 	args: {
