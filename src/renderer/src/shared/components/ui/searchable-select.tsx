@@ -41,8 +41,9 @@
 import { Spinner } from "@shared/components/common/spinner";
 import { cn } from "@shared/lib/utils";
 import { ChevronDown, X } from "lucide-react";
-import type { FC, KeyboardEvent, ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import {
+	forwardRef,
 	useCallback,
 	useEffect,
 	useId,
@@ -368,28 +369,52 @@ export function resolveEnter(
 	return { kind: "option", option: row.option };
 }
 
-export const SearchableSelect: FC<SearchableSelectProps> = ({
-	label,
-	icon,
-	labelTooltip,
-	placeholder,
-	options,
-	selected,
-	onSelect,
-	onCustomSubmit,
-	helperText,
-	busy = false,
-	busyLabel,
-	disabled = false,
-	onOpenChange,
-	onClear,
-	ariaLabel,
-	ariaDescribedBy,
-	showLabel = true,
-	emptyText = "No matches",
-	listNotice,
-	customRowLabel,
-}) => {
+/*
+ * The forwarded ref is the field's own CONTROL - the combobox `input` below,
+ * not the `PopoverAnchor` wrapper around it.
+ *
+ * WHY THAT ELEMENT, and not the anchor. The shared inline-edit machine hands a
+ * consumer one `editorRef` and uses its `current` for two things
+ * (`use-inline-edit.ts`): it focuses the element when the field ENTERS editing
+ * (the focus-on-begin effect), and it scopes Enter by comparing
+ * `event.target === editorRef.current` in `handleKeyDown`. A keydown on this
+ * control bubbles to the field wrapper that carries the machine's `onKeyDown`,
+ * so its `target` is this input; the anchor `div` is the popover's positioning
+ * node, carries no `tabIndex`, and is never a keydown's target - a ref to it
+ * would neither take focus nor match. Forwarding here is what gives the
+ * agents/teams pickers (every one of them this control) an element to hand the
+ * machine at all; without it the ref stayed empty, the focus effect returned
+ * early, and pressing the pencil left focus on the pencil with the picker
+ * unopened.
+ */
+export const SearchableSelect = forwardRef<
+	HTMLInputElement,
+	SearchableSelectProps
+>(function SearchableSelect(
+	{
+		label,
+		icon,
+		labelTooltip,
+		placeholder,
+		options,
+		selected,
+		onSelect,
+		onCustomSubmit,
+		helperText,
+		busy = false,
+		busyLabel,
+		disabled = false,
+		onOpenChange,
+		onClear,
+		ariaLabel,
+		ariaDescribedBy,
+		showLabel = true,
+		emptyText = "No matches",
+		listNotice,
+		customRowLabel,
+	},
+	ref,
+) {
 	const baseId = useId();
 	const inputId = `${baseId}-input`;
 	const listId = `${baseId}-listbox`;
@@ -641,6 +666,7 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 				<PopoverAnchor asChild>
 					<div ref={anchorRef} className="relative">
 						<Input
+							ref={ref}
 							id={inputId}
 							role="combobox"
 							aria-expanded={open}
@@ -926,6 +952,6 @@ export const SearchableSelect: FC<SearchableSelectProps> = ({
 			) : null}
 		</div>
 	);
-};
+});
 
 SearchableSelect.displayName = "SearchableSelect";
