@@ -114,7 +114,7 @@ const bundle = await build({
 			export { AnswerActionRow } from "./src/renderer/src/features/chat/canonical/message-actions-row";
 			export { answerActionsFor, forkEntryId, forkExcerpt, FORK_EXCERPT_MAX_CHARS, ANSWER_ACTIONS_LABEL, COPY_FEEDBACK_MS } from "./src/renderer/src/features/chat/canonical/message-actions";
 			export { parseReplies } from "./src/renderer/src/features/chat/utils/reply-utils";
-			export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
+			export { EMPTY_TRANSCRIPT, applyHistoryPage } from "./src/renderer/src/features/chat/canonical/transcript-reducer";
 			export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";
 			export { useSpeechStore } from "@shared/store/speech-store";
 			export { usePanelPresentationStore } from "@shared/store/panel-presentation-store";
@@ -773,6 +773,90 @@ test("a settled answer carries the row, and the row is the transcript's own", ()
 		gateAnswer("a1", "It finished with the same four invoices outstanding."),
 	]);
 	assert.equal(actionRowsIn(html), 1, "the settled answer carries one row");
+});
+
+/**
+ * The operator's foot-line state, through the durable path: a turn that
+ * COMPACTED mid-run. The memory statement is pinned, the hidden span
+ * partitions into two segments around it, and no pre-answer segment carries
+ * the turn's stamp - so the closing line keeps its foot, and the caption and
+ * the action row paint TOGETHER. That is the composition the 2026-10-01
+ * report is about, and the shape none of the other fixtures here paints.
+ */
+const compactedTurn = () => {
+	const S = GATE_TS / 1000;
+	const entry = (id, ts, payload) => ({ id, ts, type: "message", payload });
+	return mod.applyHistoryPage(mod.EMPTY_TRANSCRIPT, {
+		entries: [
+			entry("u1", S, {
+				kind: "message",
+				role: "user",
+				content: [{ text: "Is the March import finished?" }],
+			}),
+			entry("t1", S + 2, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c1",
+				tool_name: "bash",
+				content: [{ type: "text", text: "tests 40\npass 40\n" }],
+				provider_payload: { duration_s: 12.5, details: {} },
+			}),
+			{
+				id: "n1",
+				ts: S + 5,
+				type: "compaction",
+				payload: { tokens_before: 41_000 },
+			},
+			entry("t2", S + 8, {
+				kind: "message",
+				role: "tool",
+				tool_call_id: "c2",
+				tool_name: "read",
+				content: [{ type: "text", text: "src/invoices/query.ts\n" }],
+				provider_payload: { duration_s: 0.4, details: {} },
+			}),
+			entry("a1", S + 70, {
+				kind: "message",
+				role: "assistant",
+				content: [
+					{ text: "It finished with the same four invoices outstanding." },
+				],
+				stop_reason: "stop",
+			}),
+		],
+		has_more: false,
+		cursor_missing: false,
+	});
+};
+
+test("the closing line keeps the caption at its left and the actions at its right, stamp last", () => {
+	/*
+	 * THE OPERATOR'S ASK, as a document-order claim (2026-10-01): "rearrange so
+	 * those are on the leftmost extent and the action buttons are to the
+	 * right". The caption used to follow the buttons, so at rest - the buttons
+	 * are opacity-only-hidden but hold their box - it read indented by the
+	 * buttons' own width. The line must now paint caption first, the actions'
+	 * `ml-auto` wrapper after it, and the stamp last; only a markup assertion
+	 * can pin the ORDER, which is what the report was about (the geometry
+	 * script reads the boxes; the frames show them).
+	 */
+	const html = transcriptMarkup(compactedTurn().records);
+	const captionAt = html.indexOf("Worked for");
+	const spacerAt = html.indexOf('class="ml-auto flex shrink-0"');
+	const actionsAt = html.indexOf("data-lo-answer-actions");
+	const stampAt = html.lastIndexOf("<time");
+	assert.ok(
+		captionAt >= 0,
+		"this turn keeps its foot - the caption is on the closing line at all",
+	);
+	assert.ok(
+		captionAt < spacerAt && spacerAt < actionsAt,
+		"the caption leads the line and the actions' wrapper is the right cluster's first box (its ml-auto is what pushes the cluster)",
+	);
+	assert.ok(
+		stampAt > actionsAt,
+		"and the stamp closes the line, rightmost, exactly as it did before the rearrangement",
+	);
 });
 
 /*
