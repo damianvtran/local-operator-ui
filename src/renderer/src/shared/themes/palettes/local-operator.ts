@@ -115,9 +115,17 @@ export const localOperatorDark: ThemeDefinition = {
 		 * The numbers are the same ones the `info` comment below records as the reason
 		 * `info` stopped being the accent's own triple, so the tension is real and this
 		 * note exists so it is a decision rather than a rediscovery (agent review round
-		 * 1, D1, which measured both figures with `scripts/color.mjs` and swept all 58
-		 * palettes: the median `accent`/`success` separation is 40.73, and this brand
-		 * palette is in the fleet's bottom ten). What makes it acceptable here is what
+		 * 1, D1, which measured both figures with `scripts/color.mjs` and swept the
+		 * fleet's OTHER 57 palettes - the file itself excluded from its own baseline,
+		 * which is what makes the figure comparable - giving a median `accent`/`success`
+		 * separation of 40.73 and putting this brand palette in the fleet's bottom ten.
+		 * Two caveats a reader rebuilding the number needs, because the record is
+		 * deliberately CONSERVATIVE (design round 2, D4): counting this file too gives
+		 * 39.89 over 58 (39.05 over the 59 registry definitions), and three palettes -
+		 * `everforest`, `everforest-light` and `monokai` - carry the SAME hex for both
+		 * roles (ΔE00 0.00), so the light entry here is 4th-lowest rather than 2nd.
+		 * Neither correction changes the conclusion: the bottom-ten list holds either
+		 * way). What makes it acceptable here is what
 		 * the two roles are ASKED to do, which is narrower than "a user must tell them
 		 * apart by colour alone":
 		 *

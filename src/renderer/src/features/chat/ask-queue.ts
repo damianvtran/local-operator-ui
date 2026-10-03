@@ -137,40 +137,54 @@ export const effectiveGate = (
 	legacyAskMirrorSuppressed(frontend) ? null : (frontend?.pending_gate ?? null);
 
 /**
- * The status-row item's VISIBLE text, and the leading half of its announced name.
+ * Whether this frame may state the waiting/moved-on SPLIT at all.
  *
- * PURE, and a pure function for the reason the row's other clauses are: the
- * visible chip text and the announced name have to agree, and the string lives
- * here so a DOM-free rig asserts it rather than a reviewer opening a story. The
- * waiting clause is the row's ATTENTION register (the only state that carries
- * urgency emphasis); `movedOn` and settled are the quiet register, told apart in
- * the panel rather than on the chip.
+ * ONE predicate, read by BOTH readers, so the clause the chip shows and the clause
+ * the tooltip and announced name carry cannot drift: it is knowable only over the
+ * ROWS the frame carries, and only when the frame is neither truncated nor lagging
+ * the backend's own tally.
  *
- * The TALLY forms - truncated, or a frame whose own rows do not add up to the
- * published count - state the backend's outstanding number rather than splitting a
- * prefix: the wire caps the list, so the waiting/moved-on split is knowable only
- * for the rows this frame carries, and a prefix must not pass for the whole queue
- * (the rule the removed `askBarText` recorded for the same reason).
- *
- * THE SECOND TALLY CASE IS THE ONE THAT KEEPS THE SURFACES IN STEP (agent review
- * round 1, F2). `view.open` is the backend's own count - the number the sidebar's
- * outstanding chip reads - and it can be larger than the rows this frame carries
- * even when the frame is NOT marked truncated, because the list can lag the tally.
- * Reading only the rows would let this chip say `All asks settled` beside a sidebar
- * that says `2 outstanding`: the module's own header makes two-of-the-three
- * surfaces agreeing on a count the rule, so the louder number wins here.
- *
- * `·` is the model's own counts seam (`SEAM`, which the TUI calls `STATS_SEAM`),
- * RESTATED as a literal because `run-detail-model.ts` keeps it private and this
- * module is deliberately DOM-free. It is not `CLAUSE_SEAM`: that one is `", "`,
- * the comma between two counts in a sentence, and citing it here would point a
- * reader at the constant that means the opposite of this claim (agent review
- * round 1, F3).
+ * IT SITS ABOVE THE CLAUSE BECAUSE THE CLAUSE IS BUILT ON IT. The first pass at
+ * F2 inlined the pair here and used the predicate only in `askChipFullClause`, so
+ * one rule had two expressions that agreed by hand rather than by construction
+ * (agent review round 2, F7).
  */
+const askSplitIsKnowable = (view: AskQueueView): boolean =>
+	/**
+	 * The status-row item's VISIBLE text, and the leading half of its announced name.
+	 *
+	 * PURE, and a pure function for the reason the row's other clauses are: the
+	 * visible chip text and the announced name have to agree, and the string lives
+	 * here so a DOM-free rig asserts it rather than a reviewer opening a story. The
+	 * waiting clause is the row's ATTENTION register (the only state that carries
+	 * urgency emphasis); `movedOn` and settled are the quiet register, told apart in
+	 * the panel rather than on the chip.
+	 *
+	 * The TALLY forms - truncated, or a frame whose own rows do not add up to the
+	 * published count - state the backend's outstanding number rather than splitting a
+	 * prefix: the wire caps the list, so the waiting/moved-on split is knowable only
+	 * for the rows this frame carries, and a prefix must not pass for the whole queue
+	 * (the rule the removed `askBarText` recorded for the same reason).
+	 *
+	 * THE SECOND TALLY CASE IS THE ONE THAT KEEPS THE SURFACES IN STEP (agent review
+	 * round 1, F2). `view.open` is the backend's own count - the number the sidebar's
+	 * outstanding chip reads - and it can be larger than the rows this frame carries
+	 * even when the frame is NOT marked truncated, because the list can lag the tally.
+	 * Reading only the rows would let this chip say `All asks settled` beside a sidebar
+	 * that says `2 outstanding`: the module's own header makes two-of-the-three
+	 * surfaces agreeing on a count the rule, so the louder number wins here.
+	 *
+	 * `·` is the model's own counts seam (`SEAM`, which the TUI calls `STATS_SEAM`),
+	 * RESTATED as a literal because `run-detail-model.ts` keeps it private and this
+	 * module is deliberately DOM-free. It is not `CLAUSE_SEAM`: that one is `", "`,
+	 * the comma between two counts in a sentence, and citing it here would point a
+	 * reader at the constant that means the opposite of this claim (agent review
+	 * round 1, F3).
+	 */
+	!view.truncated && view.open <= view.waiting + view.movedOn;
+
 export const askChipClause = (view: AskQueueView): string => {
-	if (view.truncated) return `${view.open} outstanding`;
-	if (view.open > view.waiting + view.movedOn)
-		return `${view.open} outstanding`;
+	if (!askSplitIsKnowable(view)) return `${view.open} outstanding`;
 	if (view.waiting > 0)
 		return view.waiting === 1
 			? "1 question waiting"
@@ -181,17 +195,6 @@ export const askChipClause = (view: AskQueueView): string => {
 			: `${view.movedOn} questions moved on`;
 	return "All asks settled";
 };
-
-/**
- * Whether this frame may state the waiting/moved-on SPLIT at all.
- *
- * One predicate for the clause and the announced name, so the two readers cannot
- * disagree about whether the split is knowable: it is knowable only over the ROWS
- * the frame carries, and only when the frame is neither truncated nor lagging the
- * backend's own tally (see `askChipClause`).
- */
-const askSplitIsKnowable = (view: AskQueueView): boolean =>
-	!view.truncated && view.open <= view.waiting + view.movedOn;
 
 /**
  * The tooltip's clause: the visible one, except that a genuinely MIXED queue
