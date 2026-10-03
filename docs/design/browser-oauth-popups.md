@@ -488,6 +488,10 @@ that is its own small design (see §1.2).
   everyone; the order is **commit → derive `git rev-parse HEAD:src` / `HEAD:scripts` →
   write the values into the manifest → `--amend`** (UI `AGENTS.md:126-147`). A local
   green is not a pass; the citation half stands down on shallow clones (`:149-172`).
+  *(2026-10-01: `pnpm evidence:fold` performs that whole sequence - derive, write,
+  run the guards, and `--amend` where the tip is the merge commit and only `docs/`
+  moved - so the order above is what the command does, not a list of steps to
+  follow by hand.)*
 - Gates for the coder, all of them: `pnpm lint`, `pnpm lint:scripts`,
   `pnpm check-types`, `pnpm build`, `pnpm test:desktop`, `pnpm check-changed` (the local
   equivalent of the CI job set; a skipped job is a claim, not a pass — `AGENTS.md:1470-1507`).
@@ -582,7 +586,8 @@ that is its own small design (see §1.2).
 7. **`scripts/browser-host-proof.mjs`** — popup section rewrite + assertions + capture
    (§5.1.3); update `:892-903` and `:1138-1143`.
 8. **Renderer/preload deletions** — §1.2's list.
-9. **Evidence** — frames per §5.3; manifest re-stamp in the commit → derive → amend order.
+9. **Evidence** — frames per §5.3; manifest re-stamp in the commit → derive → amend order
+   (one command since 2026-10-01: `pnpm evidence:fold`).
 10. **Gates** — §5.3's list; the QA/design/review rounds per the repo's standing rules.
 
 Nothing in this list is optional; anything the implementer finds impossible is a finding
