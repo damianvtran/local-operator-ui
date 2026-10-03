@@ -105,9 +105,9 @@ origin had been approved.
 `--label=before` is a worktree at `ef40c81e2` with the same harness files copied
 in. The backend is **restarted with a fresh config dir before each run**, and
 each `readback-*.json` records the commit its run was a picture of
-(`capturedAtHead`, and `capturedAtSrcTree` for the source tree the manifest's own
-`srcTree` is held to) — the tie that makes the pair mean anything is a stamp
-rather than a paragraph.
+(`capturedAtHead`, and `capturedAtSrcTree` for the source tree the run's frames
+render — the manifest no longer stamps `src/` or `scripts/` itself) — the tie that
+makes the pair mean anything is a stamp rather than a paragraph.
 
 **The two halves are of different generations, and that is stated rather than
 implied.** `before` is `ef40c81e2`, which was `origin/main` when round 1 captured

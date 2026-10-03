@@ -126,10 +126,10 @@ this entry's `frames` to `7` in the same commit. Two things it does not buy,
 stated so nobody reads the green
 as more than it is: a passing run still says nothing about whether these frames
 are good, only that there are none; and the manifest's own
-`head`/`srcTree`/`scriptsTree` stamp is deliberately left where it was. A stamp
-records a capture, and there has not been one - so the two structural tree-hash
-failures already reported on this branch stay visible rather than being
-re-stamped over a capture that never happened.
+`head` is deliberately left where it was. Every field in this file records a
+capture, and there has not been one - so the structural failures already reported
+on this branch stay visible rather than being re-stamped over a capture that never
+happened.
 
 ## Capturing the frames by hand
 

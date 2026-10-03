@@ -621,9 +621,11 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  *
  * ## Why this exists
  *
- * `head`, `srcTree` and `scriptsTree` exist for exactly one purpose: letting a
- * reader decide whether committed frames are pictures of the CURRENT source.
- * Nothing read them. So the manifest could name a commit that was never pushed,
+ * `head` is the field this half still asks about provenance: a capture has to
+ * name a commit that resolves and is an ancestor of the tip (the citation half's
+ * question, below). The TREES the frames were shot from are no longer stored in
+ * this file at all - see "The stamp half, in its own words" for what replaced
+ * the retired `srcTree`/`scriptsTree` pair.
  * or lag a round behind, and every gate stayed green - which is how a stamp
  * pointing at a pre-amend `wip:` commit shipped through three rounds of review
  * (round 4, R1/D13). That commit was reachable from no ref and would have died
@@ -643,11 +645,12 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  * ## The two halves, and why the split is where it is
  *
  * `stampFailures` answers "does this file describe the tree under review":
- * `srcTree`/`scriptsTree` against the CURRENT `HEAD:src`/`HEAD:scripts`, and
- * `surfaces`/`themes` against the capturer's own lists. That is the staleness
- * question, and comparing TREES rather than commits is what the capture script's
- * own comment argues for - a docs-only commit moves `head` but not the trees,
- * and frames stay valid across it.
+ * `surfaces`/`themes` against the capturer's own lists, `frames` against the
+ * frames committed on disk outside every declared set, and the pass tallies
+ * against the pass's own commits. Those counts are the staleness question a
+ * stored tree hash used to be asked, and they are still compared against the
+ * TREE rather than against a commit - a docs-only commit moves `head` and leaves
+ * every count untouched, and frames stay valid across it.
  *
  * `citationFailures` answers "does every commit this file cites still exist, and
  * is it still reachable": `head`, `supplementary[].capturedAtHead`, and
@@ -660,14 +663,13 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  * keeps upstream's top-level block while the branch's delta rewrites the
  * neighbouring `partialCapture` leaves a file certifying frames against a tree
  * they did not come from - and git reports NO conflict, so nothing local notices
- * (round 3, M1: both tree hashes and `surfaces` named `origin/main`, and only
- * the full `pnpm check-evidence` sweep could see it, because that gate's image
- * loop runs over every committed frame and outran the reviewer's whole budget).
- * The stamp half needs nothing but `HEAD`'s trees, so `test:desktop` binds it
- * against the SHIPPED manifest in under a second, and that class is now caught
- * on every pull request. The citation half needs the cited commits to be present
- * in the clone, which a shallow CI checkout does not guarantee, so it keeps its
- * own tests on synthetic manifests.
+ * (round 3, M1: `surfaces` and the then-stored tree hashes all named
+ * `origin/main` while the branch's own `STORIES` list had moved nine entries).
+ * The counts half needs nothing but `HEAD`'s trees and the committed frames, so
+ * `test:desktop` binds it against the SHIPPED manifest in under a second, and
+ * that class is now caught on every pull request. The citation half needs the
+ * cited commits to be present in the clone, which a shallow CI checkout does not
+ * guarantee, so it keeps its own tests on synthetic manifests.
  *
  * `provenanceFailures` is both halves in the order a reader reads them, and is
  * what the gate reports. Exported so `evidence-manifest.test.mjs` binds the
@@ -675,19 +677,50 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  *
  * ## The stamp half, in its own words
  *
- * It answers "do these stamps describe the tree the frames ship in": two tree
- * hashes and the three counts the manifest states about itself, read from
- * `HEAD`'s trees, the capturer's own lists and the committed frames themselves,
- * with no history needed.
+ * It answers "do these counts describe the tree the frames ship in": the three
+ * counts the manifest states about itself, read from `HEAD`'s trees, the
+ * capturer's own lists and the committed frames themselves, with no history
+ * needed.
+ *
+ * **What this file certifies, after the tree stamps were retired.**
+ * `docs/evidence/manifest.json` no longer stores a hash of `src/` or `scripts/`.
+ * It declares what it can be checked against: the frame count on disk outside
+ * its declared sets, the story and theme counts parsed from
+ * `scripts/capture-evidence.mjs`, the pass tallies, and the commit its frames
+ * were captured at - which must still resolve and still be an ancestor of
+ * `HEAD`. The single thing the repo can **no longer** catch for you is the one
+ * the stored pair used to: a `src/` change landing after a capture that alters a
+ * surface the committed frames render, with no re-capture. That class is now a
+ * review question - look at the frames and the diff, and say so - not a gate.
+ * Everything else the pair was credited with catching it in fact never caught:
+ * every recorded re-derive in this repository is explicitly *"re-stamped, not
+ * re-captured"*, so a stored pair never proved any frame was freshly shot. Its
+ * load-bearing effect was to force a mechanical re-derive - any commit anywhere
+ * that moved `src/` or `scripts/` made the stored value false for every open
+ * branch - and that is exactly the cost this change removes. A stored hash of a
+ * tree the file does not own cannot be kept true; the counts and the citations
+ * can, so those are what is left.
+ *
+ * The pair was retired rather than fixed because the failure is the STORAGE, not
+ * the comparison: `stampFailures` compared a stored hash to `HEAD:src`, and
+ * *any* sibling landing a `src/` change made that false. Deriving it at read
+ * time instead would make the check vacuous (a hash derived from the tree under
+ * review cannot disagree with it), so the claim goes. The class the pair was
+ * built to catch - fold 10 and fold 11 shipping values that named a neighbour's
+ * trees - is caught by the counts now: `surfaces`/`themes`/`frames` name the
+ * tree under review exactly as those folds got wrong, and
+ * `check-fold-keys.mjs` still refuses a fold that drops a key either parent
+ * carried.
  *
  * ## What the aggregate fields mean, and where a capture's own origin lives
  *
- * `head`, `capturedAt`, `srcTree` and `scriptsTree` describe the tree the frames
- * SHIP IN, not the pass that took them. `srcTree`/`scriptsTree` are read against
- * the current `HEAD`, so a value naming an earlier commit is exactly the
- * staleness this half reports, and history cannot live in them; `head` is a
- * commit of the branch under review, which the citation half already requires to
- * be an ancestor of the tip.
+ * `head` and `capturedAt` describe the tree the frames SHIP IN, not the pass
+ * that took them: `head` is a commit of the branch under review, which the
+ * citation half already requires to be an ancestor of the tip. The retired
+ * `srcTree`/`scriptsTree` pair was the other half of that claim and is not
+ * stored any more; `check-evidence.mjs` PRINTS the tree under review as a
+ * reading (`tree under review: src=… scripts=…`) so a reviewer still sees which
+ * source the frames sit on without the file making a claim it cannot keep.
  *
  * The capture itself is recorded in `captureOrigin`, which no gate reads: the
  * commit and time the frames came from (`head`/`capturedAt`), the tree hashes the
@@ -700,8 +733,8 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  * reporting one would be the misrepresentation this field exists to prevent.
  *
  * TWO passes contribute to that block, which is why it is described here rather
- * than read as one record (round 7's R35): `head`/`capturedAt` and
- * `srcTree`/`scriptsTree` are the inherited stamp block, preserved verbatim and
+ * than read as one record (round 7's R35): `head`/`capturedAt` and the tree
+ * hashes the inherited stamp block carried are preserved verbatim and
  * self-consistent only at the upstream commit that wrote it - its tree hashes are
  * that commit's own trees and never the capture head's (`0f19ae5e2:src` is a
  * different tree) - while `dirtyWorkingTree` is this branch's own `8e8660808`-era
@@ -717,18 +750,17 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
 export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	const out = [];
 
-	for (const [field, path] of [
-		["srcTree", "src"],
-		["scriptsTree", "scripts"],
-	]) {
-		const actual = git(["rev-parse", `HEAD:${path}`]);
-		if (actual === null) continue;
-		if (manifest[field] !== actual) {
-			out.push(
-				`manifest.json: \`${field}\` is ${String(manifest[field]).slice(0, 9)} but HEAD:${path} is ${actual.slice(0, 9)} - the frames were captured from different ${path} than the tree under review, so re-capture and re-stamp`,
-			);
-		}
-	}
+	/*
+	 * The `srcTree`/`scriptsTree` loop stood here and is RETIRED, not moved: a
+	 * stored hash of the shipping tree is false for every open branch the moment
+	 * any commit anywhere moves that tree (measured 2026-10-03: 29 of the 32
+	 * first-parent merges onto `origin/main` in 24 hours moved `src/` or
+	 * `scripts/`), so keeping the comparison would keep forcing a re-derive per
+	 * fold. The counts below are the half that can stay true, so they are what
+	 * this function asserts; the tree under review is still PRINTED for a reader
+	 * (see `main`), and the claim the pair used to make is stated in this file's
+	 * header as a review question rather than as a gate.
+	 */
 
 	/*
 	 * `surfaces` must equal the story list it names.
@@ -949,7 +981,7 @@ export const countsMeanFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 			"/committed WebP files/": onDisk.length,
 			"/inside the declared sets/": onDisk.length - outside,
 		},
-		`RE-DERIVED FOR THIS FOLD (this branch folded onto \`origin/main\` = \`<base>\`): ${outside} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside} of them inside the sets).`,
+		`RE-DERIVED FOR THIS FOLD: ${outside} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside} of them inside the sets).`,
 	);
 
 	const surfacesProse = leading("surfaces");
@@ -1177,8 +1209,8 @@ export const main = async () => {
 		 * surface whose claim is a pointer hover or a click that changes state
 		 * cannot be photographed from Storybook, so those sets are captured
 		 * from the running app and committed alongside the sweep. Folding them
-		 * into `frames` would make the sweep's count - and with it its `head`,
-		 * `srcTree` and `capturedAt`, which a reader uses to decide whether the
+		 * into `frames` would make the sweep's count - and with it its `head` and
+		 * `capturedAt`, which a reader uses to decide whether the
 		 * set is current - describe frames it never took.
 		 *
 		 * So each such set declares itself in `supplementary` with its own
@@ -1281,6 +1313,22 @@ export const main = async () => {
 		 * cannot drift between the halves.
 		 */
 		failures.push(...partialCaptureFailures(manifest));
+
+		/*
+		 * THE TREE UNDER REVIEW, PRINTED AND NOT ASSERTED. The manifest declares
+		 * its counts and its citations; it deliberately no longer stores a hash of
+		 * `src/` or `scripts/` (see the header's "What this file certifies"), so a
+		 * reviewer looking at committed frames still needs to know which source
+		 * they sit on. Printing it costs two `rev-parse`s and keeps that answer
+		 * available without making the file claim it - a claim a sibling's commit
+		 * can falsify at any moment.
+		 */
+		const reviewed = ["src", "scripts"].map(
+			(path) => gitOut(["rev-parse", `HEAD:${path}`]) ?? "unknown",
+		);
+		console.log(
+			`tree under review: src=${reviewed[0].slice(0, 9)} scripts=${reviewed[1].slice(0, 9)}`,
+		);
 	}
 
 	for (const line of failures) console.log(`FAIL  ${line}`);

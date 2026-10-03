@@ -11,9 +11,10 @@ ellipsise - and were added to the branch by `1c5fae31d`. The entry's
 `capturedAtHead` is not that sha: it names the commit the ONE run that produced all
 fifteen frames stood on - `5a34f77d3` on this lineage, the rebased spelling of the
 pre-rebase `ce8bfb5ac` (range-diff pair 7 is `=`) - because that run re-took the
-nine close frames whole and reproduced the six byte for byte. The manifest's
-`srcTree`/`scriptsTree` are a different pair by design: the manifest test binds them to the trees of the commit the manifest ships in, and the fold that
-followed re-serialised this entry without touching a pixel.
+nine close frames whole and reproduced the six byte for byte. (The manifest used
+to bind a pair of tree stamps beside that citation; those are retired — the file
+stamps its counts and its citations, not the trees — and the fold that followed
+re-serialised this entry without touching a pixel.)
 
 The nine **close** frames were re-taken, whole set, on the head this branch then
 stood on: the five that were already here (`close-clean`, `close-settled`, `close-held`,
