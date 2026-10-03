@@ -135,6 +135,7 @@ import {
 } from "../../../../../shared/desktop-session-contract";
 import {
 	askChipCountClause,
+	askChipDeadlineShort,
 	askChipDeadlineSubject,
 	askChipDeadlineText,
 	askChipLabel,
@@ -741,41 +742,68 @@ const DISMISS_WORD = NARROW_HIDDEN;
 const GOAL_TAG_NARROW = "@max-[241px]/chatcol:hidden";
 
 /**
- * WHERE THE ASK ITEM'S COUNTDOWN YIELDS, in two steps, widest first.
+ * WHERE THE ASK ITEM'S COUNTDOWN YIELDS, in THREE steps, widest first - and why the
+ * bands are computed from the SLOT the chip is painted into, not from the column.
  *
  * The item is a chip on a `flex-wrap` row that paints each chip on one line, so a
- * chip wider than the column paints past it: that is the condition the row's own
- * `NARROW_HIDDEN` docblock turned into a rule (its full clause measured `overflowX
- * 44px` at the 172px floor), and the countdown's first yield broke it a different way
- * by titrating on the ONE-ASK string - `waiting` measures 229.69px, but the two-ask
- * forms measure 283.34px (`two-windows`) and 285.92px (`multiple`), so every column
- * in [241, 286) painted a chip wider than itself (design round 3's D2, QA round 3's
- * Q1, both measured on the live stories).
+ * chip wider than the slot it is painted into paints past it: that is the condition
+ * the row's own `NARROW_HIDDEN` docblock turned into a rule (its full clause
+ * measured `overflowX 44px` at the 172px floor), and both earlier titrations of the
+ * countdown broke it the same way - each measured the COLUMN and not the room the
+ * chip actually has. Round 3 sized the yield on `waiting` alone (229.69px) and the
+ * two-ask forms measured 283.34px (`two-windows`) / 285.92px (`multiple`); round 4
+ * sized it on the widest form but still against the column, while the chip is
+ * painted inside the composer's content box - so at 241px the countdown was sized
+ * against 241 while the chip had 231px to live in and painted `expires in 4...`, a
+ * prefix of BOTH `4m` and `48m`, beside an urgency ink that claims fifteen minutes
+ * or less (design round 4's MAJOR; QA round 4's Q4 reported the same mis-titration
+ * at [320, ~335], where the subject survived and the number did not).
  *
- * THE TWO HALVES ARE WORTH DIFFERENT THINGS, so they yield in that order:
+ * A PARTIAL TIME VALUE IS THE ONE THING THIS YIELD MAY NEVER PRODUCE. `4...` and
+ * `48...` are the same glyphs to a reader deciding whether to hurry, so the countdown
+ * is never clipped here: it is REPLACED, whole, by the next form that fits, and
+ * dropped whole when none does. The `overflow-hidden text-ellipsis` on the span stays
+ * only as the never-paint-past-the-column guarantee for copy this file has not seen;
+ * the bands are what make it unreachable for the copy that ships, and the sweep
+ * asserts the painted string at every column rather than trusting that.
  *
- * 1. `ASK_SUBJECT_NARROW` drops the SUBJECT and keeps the NUMBER. The subject
- *    (`soonest ask `) is the unbounded half - another locale's is another length -
- *    and the number is the answer the surface exists to give, so the word goes
- *    first. Measured on this head: `multiple` reads 313.4px with its subject and
- *    235px without, so 320 clears the widest full form and 241 clears the widest
- *    count-only form, each with a margin.
- * 2. `ASK_DEADLINE_NARROW` drops the countdown whole and keeps the count. 241px is
- *    deliberately the row's OWN band (`GOAL_TAG_NARROW`/`NARROW_HIDDEN`'s step), so
- *    one width means one thing in this row; every count-only form fits it, the widest
- *    being `2 questions waiting` at 149.5px against the app's 220px column floor.
+ * THE BANDS, measured on the live stories against the width the chip can actually
+ * occupy - the composer's content box, which reads `column - 10px` at each of the
+ * five columns this was read at (213/241/269/270/341) - widest first. Each threshold
+ * carries ~22px of margin over the form it admits, deliberately: a locale's digits
+ * are not this font's digits, and a threshold tuned to fit exactly re-breaks on the
+ * next copy or number change.
+ *
+ * 1. `ASK_SUBJECT_NARROW` (341px) drops the SUBJECT and keeps the sentence. The
+ *    subject (`soonest ask `) is the unbounded half - another locale's is another
+ *    length - and the number is the answer the surface exists to give, so the word
+ *    goes first. The full form measures 308.73px against 331px available.
+ * 2. `ASK_SENTENCE_NARROW` (270px) swaps the sentence for the VALUE alone: the
+ *    no-subject sentence measures 237.66px against 260px available. This is also the
+ *    tier that fixes round 4's [320, ~335] band - the sentence yields to the value
+ *    there instead of the value being cut.
+ * 3. `ASK_VALUE_NARROW` (213px) drops the value and keeps the count. The value form
+ *    measures 180.2px against 203px available, and below this column the count is
+ *    painted alone - the count is the floor - and the app's own 220px column floor
+ *    sits above this band, so no shipped state loses the deadline for want of room.
  *
  * WHY THRESHOLDS, when round 3 asked for a rule rather than a number: a container
  * query can ask the COLUMN's width and nothing else - the chip's own width is its
  * content's - so no CSS rule here can ask "would this item fit?". What makes these
- * rules rather than titrations is the GUARANTEE under them: this item is the one chip
- * that may shrink (`[flex-shrink:1]` below, overriding the box's `shrink-0`) and its
- * countdown is `overflow-hidden text-ellipsis`, so copy that outgrows a threshold
- * degrades to a clipped countdown - with the tooltip and the announced name still
- * carrying the whole fact - and never to a row that paints past its column.
+ * rules rather than titrations is (a) that they are derived from the measured width
+ * of each form against the SLOT the chip is painted into, and (b) the GUARANTEE under
+ * them: this item is the one chip that may shrink (`[flex-shrink:1]` below,
+ * overriding the box's `shrink-0`) and its countdown carries a clip, so copy that
+ * outgrows a band degrades to a clipped countdown - with the tooltip and the
+ * announced name still carrying the whole fact - and never to a row that paints past
+ * its column.
  */
-const ASK_SUBJECT_NARROW = "@max-[320px]/chatcol:hidden";
-const ASK_DEADLINE_NARROW = "@max-[241px]/chatcol:hidden";
+const ASK_SUBJECT_NARROW = "@max-[341px]/chatcol:hidden";
+const ASK_SENTENCE_NARROW = "@max-[270px]/chatcol:hidden";
+const ASK_VALUE_NARROW = "@max-[213px]/chatcol:hidden";
+/** The value form's own upper bound: hidden once the sentence fits, so the two never
+ * paint together. `@min-*` is the inverse of the exclusive `@max-*` above. */
+const ASK_VALUE_WIDE = "@min-[270px]/chatcol:hidden";
 
 /**
  * The row's first-chip rule, owned by the ROW.
@@ -1791,15 +1819,19 @@ export const ComposerStatusRow = ({
 	const monitorLabel = showMonitors ? monitorsChipLabel(monitors.length) : "";
 	const askLabel = showAsks ? askChipLabel(askView, askExpanded, askNow) : "";
 	/*
-	 * The item's countdown, in the two pieces its yield order needs: the NUMBER is what
-	 * the surface exists to answer, and the SUBJECT (`soonest ask `) is the unbounded
-	 * half that drops first at a narrow column. Both come from the model, so the chip,
-	 * its tooltip and its announced name carry one string each rather than three
-	 * readings of one deadline; null whenever the split cannot be known (a truncated
-	 * prefix states the tally and no countdown, design round 1's D6) or nothing waits.
+	 * The item's countdown, in the three pieces its yield order needs: the NUMBER is
+	 * what the surface exists to answer, the SUBJECT (`soonest ask `) is the unbounded
+	 * half that drops first at a narrow column, and the VALUE alone is the form that
+	 * fits where the sentence does not. All three come from the model, so the chip,
+	 * its tooltip and its announced name carry one string rather than three readings
+	 * of one deadline; null whenever the split cannot be known (a truncated prefix
+	 * states the tally and no countdown, design round 1's D6) or nothing waits.
 	 */
 	const askDeadlineText = showAsks
 		? askChipDeadlineText(askView, askNow)
+		: null;
+	const askDeadlineValue = showAsks
+		? askChipDeadlineShort(askView, askNow)
 		: null;
 	const askDeadlineSubject = showAsks ? askChipDeadlineSubject(askView) : "";
 	const subagentLabel = children ? subagentChipLabel(children) : "";
@@ -2741,16 +2773,18 @@ export const ComposerStatusRow = ({
 								</span>
 								{askDeadlineText === null ? null : (
 									/*
-									 * TWO ELEMENTS, ONE FACT, TWO YIELD ORDERS (see the constants
-									 * above): the subject yields first, the number last, and if a copy
-									 * ever outgrows both the countdown clips rather than the chip
-									 * painting past its column. The announced name and the tooltip
-									 * carry the whole fact at every width.
+									 * THREE ELEMENTS, ONE DEADLINE, THREE YIELD ORDERS (see the constants
+									 * above). The sentence is the widest form and the subject is the half that
+									 * goes first; the value alone is the form that fits where the sentence does
+									 * not. Nothing here is ever cut mid-value - each tier is REPLACED whole by
+									 * the next, and dropped whole when none fits. The clip stays as the
+									 * never-paint-past-the-column guarantee for copy this row has not seen.
+									 * The announced name and the tooltip carry the whole fact at every width.
 									 */
 									<span
 										className={cn(
 											"min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap",
-											ASK_DEADLINE_NARROW,
+											ASK_SENTENCE_NARROW,
 										)}
 									>
 										{" · "}
@@ -2760,6 +2794,26 @@ export const ComposerStatusRow = ({
 											</span>
 										)}
 										{askDeadlineText}
+									</span>
+								)}
+								{askDeadlineValue === null ? null : (
+									/*
+									 * THE VALUE, NOT THE SENTENCE: the tier that keeps the operator's answer
+									 * (`when will it time out`) readable where the sentence cannot fit - the
+									 * band that used to paint `expires in 4...`, a prefix of both `4m` and
+									 * `48m` (design round 4). No subject here: at this width the chip has
+									 * room for the number or the word, never both, and which ask the number
+									 * belongs to is the announced name's job.
+									 */
+									<span
+										className={cn(
+											"min-w-0 shrink overflow-hidden text-ellipsis whitespace-nowrap",
+											ASK_VALUE_WIDE,
+											ASK_VALUE_NARROW,
+										)}
+									>
+										{" · "}
+										{askDeadlineValue}
 									</span>
 								)}
 							</button>

@@ -2120,6 +2120,28 @@ const askOf = (over: Partial<PendingAsk> & { ask_id: string }): PendingAsk => {
 		throw new Error(
 			`askOf(${over.ask_id}): urgent contradicts the wire's timeout_s <= 900`,
 		);
+	/*
+	 * THE THIRD INVARIANT, STATUS AGAINST WINDOW (design round 4's nit): the two above
+	 * constrain the deadline and the flag against each other but not against the STATUS
+	 * the fold derives from them, so a `timed_out` ask carrying a deadline in the future
+	 * - the agent having moved on from an ask that still has time to run - passed the
+	 * guard while being a state no consumer can produce. The fold is explicit that it
+	 * never re-derives `status` from `expires_at` (ask-queue.ts:38), so the pair is the
+	 * caller's to keep consistent and this factory is where the caller is checked.
+	 */
+	const status = over.status ?? "open";
+	if (status === "open" && expires_at <= ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): an open ask's window has already closed`,
+		);
+	if (status === "timed_out" && expires_at > ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): a timed-out ask carries a live deadline - the agent cannot have moved on from an ask with time left`,
+		);
+	if (over.answered_at != null && over.answered_at > ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): answered_at is in the future of the pinned clock`,
+		);
 	return {
 		created_at,
 		expires_at,
@@ -2699,13 +2721,15 @@ export const AskTwoWindows: Story = {
 };
 
 /**
- * THE COUNTDOWN YIELDS WHOLE AT THE ROW'S OWN BAND, and this frame is the app's floor.
+ * THE NARROWEST COLUMN THE APP PRODUCES, and the value form is what it carries.
  *
- * Two yield steps sit above this one and both are in the model: the subject drops
- * first, then the countdown. What is left here is the count, which fits every column
- * this app can produce - the widest count form measures 149.5px against a 220px
- * column floor - and the ANNOUNCED NAME keeps the whole countdown at every width, so
- * the fact is never lost to the reader who is not looking at a 220px column.
+ * Three yield steps sit above this one and all three are in the model: the subject
+ * drops first, then the sentence gives way to the VALUE alone (`· 48m`), and only
+ * under 213px - below the app's own floor - does the countdown go entirely. What is
+ * left here is the count plus the value: the count is the floor (the widest count
+ * form measures 141.44px against a 220px column), and the ANNOUNCED NAME keeps the
+ * whole sentence at every width, so the fact is never lost to a reader who is not
+ * looking at a 220px column.
  *
  * 220 IS THE APP'S OWN FLOOR (`chat-measure.ts`'s column collapses to it with the
  * canvas open at a 1380px window) and the number this state renders; the story
@@ -2715,26 +2739,27 @@ export const AskColumnFloor220: Story = {
 	render: () => (
 		<AskBand
 			width={220}
-			label="The app's own 220px column floor: the whole countdown yields and the count stays"
+			label="The app's own 220px column floor: the VALUE carries the deadline and the count is the floor"
 			asks={[ASK_OPEN]}
 		/>
 	),
 };
 
 /**
- * THE BAND THE FIRST YIELD RULE MISSED (design round 3's D2, QA round 3's Q1).
+ * THE BAND WHERE THE COUNTDOWN USED TO BE CUT (design round 4's MAJOR).
  *
- * The countdown's yield was titrated on the ONE-ASK string (229.69px), while the
- * two-ask forms are 283px and 286px - so a chat column anywhere in [241, 286) painted
- * a chip wider than itself. These three states exist to photograph that band and to
- * assert `row.scrollWidth - row.clientWidth` is 0 in it: the subject yields here, the
- * number stays, and the row never paints past its column.
+ * The sentence does not fit a 241px column, and an earlier cut let it ellipsise
+ * there - painting `expires in 4...`, a prefix of BOTH `4m` and `48m`, beside an
+ * urgency ink claiming fifteen minutes or less. These three states exist to
+ * photograph the band and to assert the countdown is never partial in it: the
+ * subject yields first, the sentence gives way to the VALUE whole, and the row keeps
+ * its column.
  */
 export const AskMultipleBand260: Story = {
 	render: () => (
 		<AskBand
 			width={260}
-			label="Two open asks at 260px: the subject yields and the NUMBER stays, so the row does not paint past its column"
+			label="Two open asks at 260px: the sentence yields WHOLE to the value - the countdown is never cut mid-number"
 			asks={[ASK_OPEN, ASK_SECOND]}
 		/>
 	),
@@ -2744,7 +2769,7 @@ export const AskTwoWindowsBand260: Story = {
 	render: () => (
 		<AskBand
 			width={260}
-			label="Two windows at 260px: the same yield, on the state whose countdown belongs to the sooner ask"
+			label="Two windows at 260px: the same yield, on the state whose number belongs to the sooner ask"
 			asks={[ASK_OPEN, ASK_SECOND_WINDOW]}
 		/>
 	),
@@ -2754,7 +2779,7 @@ export const AskMultipleBand241: Story = {
 	render: () => (
 		<AskBand
 			width={241}
-			label="Two open asks at the 241px band edge: the subject has yielded and the number is one pixel from the row's own step"
+			label="Two open asks at the 241px band edge: the value is whole here, which is what this state exists to show"
 			asks={[ASK_OPEN, ASK_SECOND]}
 		/>
 	),

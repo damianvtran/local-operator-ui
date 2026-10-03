@@ -287,6 +287,34 @@ export const askChipDeadline = (
 };
 
 /**
+ * The same countdown where the sentence will not fit: `48m`, subject and all.
+ *
+ * THE BAND THIS EXISTS FOR is the chip's third tier. Titrating the yield on the
+ * COLUMN rather than the slot the chip is painted into (the row insets 32px of it)
+ * left a band where the sentence could not fit whole and got ellipsised to `expires
+ * in 4...` - a prefix of both `4m` and `48m`, painted beside an urgency ink that
+ * claims fifteen minutes or less (design round 4's MAJOR; QA round 4's Q4 reported
+ * the same mis-titration from the other end). A value with its unit is short enough
+ * to fit where the sentence is not, so the narrow band keeps the ANSWER rather than
+ * dropping it: the operator's question is when the ask lapses, and the subject is
+ * the part that can wait for room.
+ *
+ * It carries no subject, deliberately: the subject exists to disambiguate WHICH ask
+ * the number belongs to, and at this width the chip has room for the number or the
+ * subject, never both. The announced name keeps the subject at every width
+ * (`askChipLabel` composes from `askChipDeadline`), which is where the
+ * disambiguation can actually be read.
+ */
+export const askChipDeadlineShort = (
+	view: AskQueueView,
+	nowMs: number,
+): string | null => {
+	if (!askSplitIsKnowable(view) || view.waiting === 0) return null;
+	if (view.soonestExpiryMs === null) return null;
+	return askDeadlineShortText(view.soonestExpiryMs, nowMs);
+};
+
+/**
  * The tooltip's clause: the visible one, except that a genuinely MIXED queue
  * spells both halves.
  *
@@ -810,13 +838,20 @@ export const askExpiryText = (ask: PendingAsk, nowMs: number): string | null =>
  * now": the backend's own `gate_waited_text` sets the same precedent for the
  * timeout row, and for the same reason - a countdown that guesses is worse than no
  * countdown when the reader is deciding whether to hurry.
+ *
+ * RETURNS THE TWO SPELLINGS THE SURFACE NOW NEEDS, from ONE reading of the clock:
+ * `long` is the sentence a row prints (`expires in 42m`); `short` is the chip's
+ * narrow-band form (`42m`). Computing them together is the point - two functions
+ * would be free to round differently or derive a different unit from the same
+ * deadline, and the chip's band is exactly where a reader is triaging.
  */
-export const askDeadlineText = (
+const expiryParts = (
 	expiresAt: number,
 	nowMs: number,
-): string | null => {
+): { long: string; short: string } | null => {
+	if (!Number.isFinite(expiresAt) || expiresAt <= 0) return null;
 	const remainingMs = expiresAt - nowMs;
-	if (remainingMs <= 0) return "expiring now";
+	if (remainingMs <= 0) return { long: "expiring now", short: "now" };
 	const minutes = Math.floor(remainingMs / 60_000);
 	/*
 	 * ONE SPELLING OF ONE UNIT, and no space: the TUI this feature deliberately
@@ -825,12 +860,35 @@ export const askDeadlineText = (
 	 * "minutes" in the pair of PRs that share a copy contract is the kind of drift
 	 * the shared contract exists to prevent (design round 1, D5).
 	 */
-	if (minutes < 1) return `expires in ${Math.floor(remainingMs / 1000)}s`;
-	if (minutes < 60) return `expires in ${minutes}m`;
+	if (minutes < 1) {
+		const seconds = `${Math.floor(remainingMs / 1000)}s`;
+		return { long: `expires in ${seconds}`, short: seconds };
+	}
+	if (minutes < 60)
+		return { long: `expires in ${minutes}m`, short: `${minutes}m` };
 	const hours = Math.floor(minutes / 60);
-	if (hours < 24) return `expires in ${hours}h`;
-	return `expires in ${Math.floor(hours / 24)}d`;
+	if (hours < 24) return { long: `expires in ${hours}h`, short: `${hours}h` };
+	const days = Math.floor(hours / 24);
+	return { long: `expires in ${days}d`, short: `${days}d` };
 };
+
+export const askDeadlineText = (
+	expiresAt: number,
+	nowMs: number,
+): string | null => expiryParts(expiresAt, nowMs)?.long ?? null;
+
+/**
+ * The same countdown in the chip's narrow-band form: `42m`, `3d`, or `now`.
+ *
+ * Exists because the chip runs out of room before the sentence does. A partial
+ * `4...` is a prefix of both `4m` and `48m` (design round 4's MAJOR, QA round 4's
+ * Q4), so the narrow band gets a value that always fits whole rather than a
+ * sentence that gets cut.
+ */
+export const askDeadlineShortText = (
+	expiresAt: number,
+	nowMs: number,
+): string | null => expiryParts(expiresAt, nowMs)?.short ?? null;
 
 /**
  * The draft a whole-ask answer is built from: question id -> chosen labels.
