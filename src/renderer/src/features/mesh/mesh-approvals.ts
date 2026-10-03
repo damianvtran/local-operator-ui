@@ -339,8 +339,35 @@ export function approvalScopeLabels(
 		labels.push(`join ${named || networkId} as ${role || "?"}`);
 	}
 	if (unattended) labels.push("trust unattended sessions");
-	for (const grant of grants) labels.push(`grant ${grant}`);
+	for (const grant of distinctGrants(grants, unattended))
+		labels.push(`grant ${grant}`);
 	return labels;
+}
+
+/**
+ * The grants that earn their own chip and gloss (agent review round 5, R5-1).
+ *
+ * WHY DEDUPE, AND WHY DROP `unattended`. The CLI's `--grant` is repeatable and
+ * unfiltered, and `onboard.py::step_grants` folds `unattended` in from the flag
+ * as well, so a request can arrive carrying the same capability twice or with
+ * `unattended` as a grant beside the flag that already means it. Both lists here
+ * are keyed by the label they render, so a duplicate is a duplicate React key -
+ * and `grant unattended` would gloss as "you may unattended on that device":
+ * ungrammatical, and a second, worse copy of the sentence the `trust unattended
+ * sessions` scope already writes correctly.
+ */
+function distinctGrants(
+	grants: readonly string[],
+	unattended: boolean,
+): string[] {
+	const seen = new Set<string>();
+	for (const grant of grants) {
+		const token = String(grant ?? "").trim();
+		if (!token) continue;
+		if (unattended && token === "unattended") continue;
+		seen.add(token);
+	}
+	return [...seen];
 }
 
 /**
@@ -390,7 +417,7 @@ export function approvalScopeGlosses(
 			gloss:
 				"sessions you start on that device run without an approval prompt there",
 		});
-	for (const grant of grants)
+	for (const grant of distinctGrants(grants, unattended))
 		glosses.push({
 			term: `grant ${grant}`,
 			/* The capability is held by YOUR device, about the node (R4-2). */
