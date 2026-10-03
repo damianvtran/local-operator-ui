@@ -290,8 +290,9 @@ export async function logs(
  * 15 s stall with no explanation is the worst version of that, so it is refused up
  * front and the refusal names the cause.
  *
- * The capture itself branches on `presented` — see the flag's own note at the call
- * site for the measurement that makes a background tab need it. */
+ * The capture is ONE shape for every view — the note at the call site carries the
+ * measurement — and the retry's ceiling is unchanged: `BACKGROUND_CAPTURE_ATTEMPT_MS`
+ * records the runs that kept it after the flag changed. */
 export async function screenshot(
 	ctx: BrowserActionContext,
 	params: Record<string, unknown>,
@@ -307,58 +308,48 @@ export async function screenshot(
 		);
 	}
 	await ctx.cdp.attach(contents);
-	// TWO FLAGS, ONE COMMAND, and the flag is what makes a background capture
-	// possible at all. `captureBeyondViewport: false` — the historical value — asks
-	// Chromium to copy the COMPOSITED surface, which a hidden view does not have, so
-	// on a background tab the command never replied (measured: 6 s, 8 s and 15 s
-	// ceilings all expired, while `read`, `snapshot` and `type` on the same tab
-	// answered in tens of milliseconds). `true` asks for the capture to be produced
-	// from the view's own rendering and answers on a hidden view with a real
-	// viewport-sized PNG (measured: 18,672 bytes, 2560x1440 — the view's 1280x720 at
-	// 2x, NOT the taller document).
+	// ONE SHAPE FOR EVERY VIEW, and `captureBeyondViewport: false` on a BACKGROUND
+	// tab is the reversal of what this file argued before. `true` asks Chromium to
+	// produce the capture beyond the viewport; combined with a `clip` that means
+	// emulating the clip box AS the viewport. Measured through the proof rig
+	// (Electron 44, 2026-10-02): that call RESIZED the renderer of a hidden 1280x720
+	// view and fired TWO page `resize` events, and the reading is §5d's own capture
+	// check (`a capture does not resize the page`, `resize 0 -> 2`,
+	// `lastResizeSize=1280x720`) — NOT the ladder, whose row for the same shapes is
+	// the opposite reading and no less informative: the clipped call answered
+	// NOTHING inside 20 s in both runs. The resize landed on a page whose viewport
+	// already read 1280x720, so the capture was not even buying the shape it claimed.
+	// `false` copies the COMPOSITED surface: on the same hidden view it answered in
+	// 1.2 s with a viewport-sized PNG and fired NO `resize` at all. That difference is
+	// a correctness bug rather than a nicety, because a page
+	// `resize` closes an open `radix-ui/react-select` popup (`SelectContentImpl`
+	// listens for it), so an agent's own screenshot dismissed the popup it was about
+	// to read — the same class of blindness as the popup that never painted, whose
+	// content Radix clamps through `--radix-select-content-available-height`.
 	//
-	// The presented case keeps `false` deliberately: it is the narrower operation,
-	// it is what the foreground path has always used, and changing a path that works
-	// is not part of this fix.
+	// WHY THE OLD MEASUREMENT STILL LOOKS RIGHT: "`false` never replied on a hidden
+	// view" (6 s, 8 s and 15 s ceilings) was real, and it predates sizing a view
+	// BEFORE its first hide (`index.ts`'s `setBounds(BACKGROUND_VIEWPORT)`). A view
+	// that was hidden before it was ever sized has no surface to composite; one that
+	// was sized first does. The ladder's COMPOSITED row is the re-measurement that
+	// settles it — it answered with no resize at all on both runs (1205 ms, then
+	// 100 ms) — and its CLIPPED row, which answered NOTHING inside 20 s, is the other
+	// half of why the reverse argument is not kept as a fallback.
 	//
-	// WHY A RETRY, and why only here: a HIDDEN view produces a frame lazily, so
-	// consecutive background captures alternate between answering and never
-	// answering — measured on one hidden view, six calls in a row: OK, stall, OK,
-	// stall, OK, stall. The stall is not slowness, it is "this call had no frame to
-	// produce", and the very next call has one, so a second attempt is a
-	// deterministic recovery rather than a hopeful wait. The attempts are bounded so
-	// the whole action still fits the 20 s screenshot budget with room for the
-	// handler to answer: 3 x 5 s = 15 s, which is exactly the innermost ceiling the
-	// deadline table allows (`CDP_DEADLINE_MS`). A presented view needs none of this
-	// — it has a composited surface — so it keeps a single attempt at the full
-	// ceiling and its behaviour is unchanged.
-	const beyondViewport = !record.presented;
-	// The clip is what makes a background capture the tab's VIEWPORT rather than the
-	// whole document: without it, the same call returned 2560x3778 for a 1280x720
-	// view (measured), while with a clip to the view's own bounds it returned
-	// 2560x1440 — the dimension the PRESENTED path returns, so one tool still
-	// produces one shape. `scale: 1` is deliberate: scale 2 doubled it to 5120x2880.
-	const viewportBounds = record.view.getBounds?.();
-	const clip =
-		beyondViewport && viewportBounds
-			? { ...viewportBounds, scale: 1 }
-			: undefined;
-	const attempts = beyondViewport ? 3 : 1;
+	// The per-attempt ceiling and the retry are NOT what this fix removes — see the
+	// retry's own note below — only the flag and the clip are.
+	const attempts = record.presented ? 1 : 3;
 	let lastError: unknown;
 	for (let attempt = 0; attempt < attempts; attempt += 1) {
 		try {
 			const attemptShot = await ctx.cdp.send<{ data?: string }>(
 				contents,
 				"Page.captureScreenshot",
+				{ format: "png", captureBeyondViewport: false },
 				{
-					format: "png",
-					captureBeyondViewport: beyondViewport,
-					...(clip ? { clip } : {}),
-				},
-				{
-					deadlineMs: beyondViewport
-						? BACKGROUND_CAPTURE_ATTEMPT_MS
-						: undefined,
+					deadlineMs: record.presented
+						? undefined
+						: BACKGROUND_CAPTURE_ATTEMPT_MS,
 				},
 			);
 			return finishCapture(ctx, record, attemptShot);
@@ -377,7 +368,24 @@ export async function screenshot(
  * rather than a work limit: the stall it bounds is the typed "this call had no
  * frame to produce" answer, which the next attempt resolves. Three of these fit
  * inside the 20 s screenshot budget while still leaving the handler its 5 s to
- * build an answer — the nesting rule the deadline table documents. */
+ * build an answer — the nesting rule the deadline table documents.
+ *
+ * WHY IT SURVIVES THE FLAG CHANGE, measured rather than assumed: the refusal to
+ * retry would have been the tempting simplification ("copying a composited frame
+ * cannot stall"), and the proof rig refuted it on the first AFTER run — the very
+ * first capture of a freshly-created hidden view stalled at its 15 s ceiling with
+ * `captureBeyondViewport: false`, and the next attempt answered. Lazy frame
+ * production belongs to a hidden view rather than to the clipped shape, so the
+ * retry stays exactly as it was.
+ *
+ * DEFENCE IN DEPTH, and QA measured the arm this covers on the long run: the chosen
+ * shape can stall inside its own 20 s ceiling when it runs FIRST on a view left
+ * mutated by earlier beyond-viewport captures (the ladder's clipped and contrast legs
+ * leave such a view at the full content height), while the same shape answers
+ * immediately on a fresh view and on every shipped-path capture. The 3 x 5 s retry is
+ * what turns that arm into a recovered call instead of a failed action — reported as
+ * defence in depth rather than as an exercised path, because the stall did not
+ * reproduce on a fresh view. */
 const BACKGROUND_CAPTURE_ATTEMPT_MS = 5_000;
 
 /** Whether an error is the deadline helper's typed "no reply" arm.
