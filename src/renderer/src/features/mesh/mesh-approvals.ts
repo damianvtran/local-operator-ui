@@ -363,25 +363,38 @@ export function approvalScopeGlosses(
 	if (anchor)
 		glosses.push({
 			term: "install operator anchor",
+			/*
+			 * THE DIRECTION MATTERS, AND THIS SAID IT BACKWARDS (agent review round 4,
+			 * R4-1). A remote anchor is PUBLIC data - the core's own copy for a
+			 * verify-only host is "an anchor is installed ... but the private half is
+			 * not on this host, so nothing can be SIGNED there" (`network/readiness.py`),
+			 * and its shipped sentence is "approvals for offloaded work can be signed
+			 * from your devices". The node VERIFIES; it never signs. A gloss saying the
+			 * remote is "trusted to sign as you" states the inverse of the authority at
+			 * the exact moment the reader consents to it.
+			 */
 			gloss:
-				"the remote device is trusted to sign as you while you are not there",
+				"that device can check approvals signed on your machines; nothing there can sign",
 		});
 	if (unattended)
 		glosses.push({
 			term: "trust unattended sessions",
 			/*
-			 * THE CONSEQUENCE, NOT A RESTATEMENT (UX round 2, U8): "sessions started
-			 * there run without asking you each time" mostly repeated the chip it
-			 * hangs from. What a reader cannot infer from the chip is what they STOP
-			 * being asked, so the gloss names that instead.
+			 * THE CONSEQUENCE AND THE RIGHT PARTY (UX round 2, U8; agent review round 4,
+			 * R4-2). `onboard.py::step_grants` is explicit - "what the node lets THIS
+			 * device do ... both the `approve` scope and the `unattended` scope are
+			 * grants the NODE holds about the operator's device id" - and
+			 * `CAPABILITY_WORDS["unattended"]` reads "start sessions here without
+			 * approval prompts". The prompt that stops being asked is the node's own.
 			 */
 			gloss:
-				"each session started there skips the approval you would otherwise give",
+				"sessions you start on that device run without an approval prompt there",
 		});
 	for (const grant of grants)
 		glosses.push({
 			term: `grant ${grant}`,
-			gloss: `the remote side may ${grant} on your behalf`,
+			/* The capability is held by YOUR device, about the node (R4-2). */
+			gloss: `you may ${grant} on that device`,
 		});
 	return glosses;
 }

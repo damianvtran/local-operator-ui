@@ -1478,17 +1478,14 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		{
 			term: "install operator anchor",
 			gloss:
-				"the remote device is trusted to sign as you while you are not there",
+				"that device can check approvals signed on your machines; nothing there can sign",
 		},
 		{
 			term: "trust unattended sessions",
 			gloss:
-				"each session started there skips the approval you would otherwise give",
+				"sessions you start on that device run without an approval prompt there",
 		},
-		{
-			term: "grant approve",
-			gloss: "the remote side may approve on your behalf",
-		},
+		{ term: "grant approve", gloss: "you may approve on that device" },
 	]);
 	assert.equal(approvalTitle(row), "Onboard devon-laptop");
 	assert.equal(approvalSubject(row), "devon-laptop");
@@ -2126,6 +2123,16 @@ test("a refused decision renders its sentence, and the busy gate is the surface'
 		/approvalScopeLabels\(row, networkNames\)/,
 		"the join chip names the network the page already shows (UX round 1, U1)",
 	);
+	/*
+	 * AND THE PAGE ACTUALLY PASSES IT (agent review round 4, R4-4): the tray pin
+	 * above proves the chip CAN name the network, while dropping the prop at the
+	 * call site silently reverted it to the id with every test still green.
+	 */
+	assert.match(
+		page,
+		/networkNames=\{/,
+		"the page hands the tray the names it already holds, or the chip silently falls back to the id",
+	);
 });
 
 test("the page keeps the last good read painted and never zeroes a fact", () => {
@@ -2656,6 +2663,35 @@ test("the busy remedy is EXECUTED, not merely drawn (agent review round 2, F2)",
 		rig,
 		/\{ expectSentence: "holds it now" \}/,
 		"and that row carries a claim, so it cannot silently photograph the refusal again",
+	);
+});
+
+test("the asking story photographs the asking state", () => {
+	/*
+	 * THE SPLIT IS THE FIX, SO THE SPLIT IS PINNED (agent review round 4, R4-3). A
+	 * story whose `play` runs on every view is a story whose still is not the state
+	 * it is named for - the design round found `approvals-waiting` photographing the
+	 * POST-decision registers for exactly that reason. Nothing pinned the split, so
+	 * a later edit could move the `play` back and no test would say a word.
+	 */
+	const stories = source(
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx",
+	);
+	const story = (name) => {
+		const at = stories.indexOf(`export const ${name}: Story = {`);
+		assert.notEqual(at, -1, `${name} must exist`);
+		const next = stories.indexOf("export const ", at + 10);
+		return next === -1 ? stories.slice(at) : stories.slice(at, next);
+	};
+	assert.doesNotMatch(
+		story("ApprovalsWaiting"),
+		/play: async/,
+		"the asking story must render the ask, not press the button on the way to photographing it",
+	);
+	assert.match(
+		story("ApprovalsDecisionWrites"),
+		/play: async/,
+		"and the write path keeps its own story, where the play is what it is named for",
 	);
 });
 
