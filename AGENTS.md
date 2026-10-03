@@ -1364,6 +1364,38 @@ What follows for a run:
   used** — close the tab, or stop the server feeding it. A loop does not end by
   itself, and their UI stays unusable until somebody acts on it.
 
+## The browser host's hidden views
+
+A tab an agent opens is never the presented one (design 11.4: an agent's `open`
+must not switch the tab the user is looking at), so an agent drives a
+`setVisible(false)` `WebContentsView` sized to `BACKGROUND_VIEWPORT` 1280x720. Two
+properties of that state are invariants, and both were broken by the same class of
+bug — a driven page's geometry, which no text read reports:
+
+- **A driven page always reports a real viewport** — `innerWidth`/`innerHeight`,
+  `document.documentElement.clientWidth`, `visualViewport`. A hidden view whose
+  renderer reports 0x0 collapses every popper that measures itself against the
+  viewport (Radix's select content reaches `max-height: 0` through
+  `--radix-select-content-available-height`) and makes `document.elementsFromPoint`
+  — the primitive behind `hit_test` — answer an empty stack. It holds because the
+  view is SIZED BEFORE IT IS FIRST HIDDEN (`src/main/browser/index.ts`), not because
+  anything re-measures at call time; the order is the mechanism, and reversing the
+  two lines is the measured regression.
+- **A capture never moves the page.** `Page.captureScreenshot` is issued with
+  `captureBeyondViewport: false` on every view, which copies the composited surface.
+  The `true` + `clip` form emulates the clip box AS the viewport: it resizes the
+  renderer and fires a page `resize`, and `resize` closes an open
+  `radix-ui/react-select` popup — so an agent's own screenshot dismissed the popup it
+  was about to read, and an agent that captured and then read the DOM was reading a
+  different page from the one it captured.
+
+Enforced by `scripts/browser-host.test.mjs` — "a driven view is sized before it is
+ever hidden", and the capture contract inside "a background tab captures without a
+route, without activation, through the product's own path" — and measured
+end-to-end by `scripts/browser-host-proof.mjs` §5d against its `/hidden-viewport`
+fixture, whose `--capture-ladder` leg is the re-runnable comparison of capture
+shapes on one view.
+
 ## The code-sealed bundle, and what may write in it
 
 Four mechanisms keep CPython's bytecode cache out of an installed app, and they
