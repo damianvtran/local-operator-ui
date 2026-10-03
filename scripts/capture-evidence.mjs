@@ -47,6 +47,7 @@ import { fileURLToPath } from "node:url";
 import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import { EVIDENCE_TZ, pinnedEvidenceEnv } from "./evidence-tz.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -10208,6 +10209,21 @@ export function partialCaptureRecord({
 }
 
 const main = async () => {
+	/*
+	 * The frame timezone, pinned before this run spawns anything and never at
+	 * module scope: `evidence-tz.mjs` carries why a pin rather than a default,
+	 * and why it must beat an ambient `TZ=` instead of deferring to it. Tests
+	 * import this file, so the pin lives here - an import that re-zoned its
+	 * importer would be a side effect nobody asked for. The reading taken first
+	 * is what this process would otherwise have used, and the line below names
+	 * both so the log says what was overridden.
+	 */
+	const ambientTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	process.env.TZ = EVIDENCE_TZ;
+	console.log(
+		`capture-evidence: frame timezone pinned to ${EVIDENCE_TZ} (ambient TZ=${ambientTz})`,
+	);
+
 	sweepStaleProfiles();
 	if (!ALLOW_BACKEND) await assertBackendDown();
 
@@ -10225,6 +10241,14 @@ const main = async () => {
 			"--remote-debugging-port=0",
 			"about:blank",
 		]),
+		/*
+		 * The pinned env passed EXPLICITLY rather than left to inheritance. Same
+		 * result either way (the pin at the head of main() re-zoned this process
+		 * first), but the env Chrome gets is decided where a reader is looking,
+		 * and `pinnedEvidenceEnv` is what makes it beat an ambient `TZ=` (see
+		 * `evidence-tz.mjs`).
+		 */
+		{ env: pinnedEvidenceEnv(process.env) },
 	);
 
 	// Chrome prints the DevTools websocket on stderr.
