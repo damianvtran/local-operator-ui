@@ -390,6 +390,19 @@ const GRANT_PHRASES: Record<string, { term: string; gloss: string }> = {
 		gloss:
 			"sessions you start on that device run without an approval prompt there",
 	},
+	/*
+	 * THE OTHER NON-VERB IN THE CORE'S GRANTABLE SET (agent review round 6,
+	 * R6-1). `CAPABILITY_WORDS["broker_credential"]` reads "borrow this device's
+	 * logins", and the direction here is the same as every other grant: the NODE
+	 * granted THIS device the capability, so the reader may borrow the logins
+	 * stored THERE. Everything else in the set is a verb the template already
+	 * carries ("you may approve on that device"); these two are not, and a raw
+	 * token inside a sentence is how a consent card stops being readable.
+	 */
+	broker_credential: {
+		term: "borrow logins there",
+		gloss: "your sessions on that device may use the logins stored there",
+	},
 };
 
 /**
