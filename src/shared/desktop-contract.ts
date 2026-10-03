@@ -2582,6 +2582,20 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("settings.reset"), key: settingKey }).strict(),
+	/*
+	 * THE VOICING SURFACE's read (`features.tts`), and the twin of the STT
+	 * cascade report: every rung in order with its availability and the reason a
+	 * reader would be shown, plus the surface's own `servable` bit. It is a GET
+	 * with no parameters - the daemon resolves the cascade against THIS
+	 * machine's stored credentials - so a client cannot scope it to anything and
+	 * has nothing to send.
+	 *
+	 * Gated on its own capability key rather than on `settings`: the two are
+	 * different contracts on different release trains (a backend can serve the
+	 * registry and predate voicing), and a surface that fired this read at such a
+	 * backend would render a 404 as a failure of the user's own account.
+	 */
+	z.object({ op: z.literal("tts.paths") }).strict(),
 	z.object({ op: z.literal("config.get") }).strict(),
 	z.object({ op: z.literal("config.update"), value: configUpdate }).strict(),
 	z.object({ op: z.literal("instructions.get") }).strict(),
@@ -4763,6 +4777,50 @@ export type BackendSettings = {
 };
 
 /**
+ * The text-to-speech paths the daemon would take, as `GET /v1/tts/paths` reports
+ * them (`local_operator/tts/cascade.py::resolve_voice_path`).
+ *
+ * The wire spellings are the daemon's own `VoicePath` values, so they are
+ * compared as strings rather than mapped to app names: the same value travels in
+ * the `X-Radient-Speech-Path` header of a served call, and a second spelling
+ * here would be a second vocabulary for one fact.
+ */
+export type VoicePath =
+	| "provider_tts_radient"
+	| "provider_tts_elevenlabs"
+	| "provider_tts_openai"
+	// No usable path. Appears in availability and refusal payloads only.
+	| "none";
+
+/**
+ * One rung's availability, with the sentence the daemon wrote for it.
+ *
+ * `available` answers "a PERSISTED credential exists for this rung", not "the
+ * call will succeed" - a refused key or an empty balance surfaces at synthesis
+ * time. The surface must not upgrade it into a promise; that caveat is the
+ * daemon's, stated in its own module docstring.
+ */
+export type VoicePathRung = {
+	path: VoicePath;
+	available: boolean;
+	reason: string;
+};
+
+/** The resolver's report: the chosen path, why, and every rung's state. */
+export type VoicePathResolution = {
+	path: VoicePath;
+	reason: string;
+	/** Fixed cascade order, `none` excluded. */
+	rungs: VoicePathRung[];
+	/**
+	 * Whether this surface can synthesize AT ALL - true when any rung is
+	 * available. Derived by the daemon, never stored, so it cannot disagree with
+	 * `rungs`; a reader that walked the rungs itself would be re-deriving it.
+	 */
+	servable: boolean;
+};
+
+/**
  * The session half of a `wakes.create` body.
  *
  * Two mutually exclusive shapes on the wire, decided by which one the caller
@@ -5922,6 +5980,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "settings.reset":
 			return { path: `/v1/settings/${request.key}/reset`, method: "POST" };
+		/*
+		 * The synthesis availability report. A plain GET with no query at all: the
+		 * resolver reads this machine's credential store, so there is no parameter a
+		 * caller could scope it by - and it is deliberately NOT cached by this
+		 * layer (the daemon withdrew the TTL: availability is a statement about a
+		 * credential the user may have just removed).
+		 */
+		case "tts.paths":
+			return { path: "/v1/tts/paths", method: "GET" };
 		case "config.get":
 			return { path: "/v1/config", method: "GET" };
 		case "config.update":
