@@ -83,6 +83,11 @@ writeFileSync(
 );
 process.on("exit", () => rmSync(scratch, { recursive: true, force: true }));
 
+/** The neighbour's own line, in either reporter's spelling. */
+const NEIGHBOUR_REPORTED = /^(?:✔|ok \d+ -) passes/m;
+/** The verdict's failure count, in either reporter's spelling. */
+const ONE_FAILURE = /^(?:ℹ fail|# fail) 1\b/m;
+
 /**
  * Run the runner and return its status, stdout and stderr.
  *
@@ -266,5 +271,66 @@ test("a notification setting someone made deliberately survives the runner", () 
 		empty.stdout.match(REPORTS_ENV_PATTERN)?.[0],
 		"NOTIFICATIONS_ENV=1",
 		empty.stdout,
+	);
+});
+
+/*
+ * The per-lane bound, END TO END through the real runner - the proof the module's own
+ * unit tests cannot give, because they inject the sampler, the clock and the kill, and
+ * therefore never exercise "a real child of a real suite, found in a real process
+ * table, then signalled".
+ *
+ * WHY THE BOUND IS 1 ms. The watchdog samples every 5 s and trips on the SECOND sample
+ * that sees a lane (the first sighting starts its clock), so a tiny bound puts the trip
+ * on the sampler's own schedule instead of adding a wait of its own.
+ *
+ * WHY THE FIXTURE SELF-LIMITS. This test asserts that a never-settling lane is killed,
+ * so if the bound regressed, the fixture WOULD hang - two guards keep a failing case
+ * from leaving a process behind: `spawnSync`'s own 60 s timeout inside `runRunner`, and
+ * the fixture's refed 120 s timer, which ends it even if nothing kills it.
+ */
+const HANG_LANE = join(scratch, "lane-bound-hang.test.mjs");
+writeFileSync(
+	HANG_LANE,
+	[
+		'import { test } from "node:test";',
+		'test("the hanging lane\'s own first test", () => {});',
+		"// A live interval keeps this file from ever settling; the refed timer is its",
+		"// self-limit, so even an unkilled fixture ends on its own.",
+		"setTimeout(() => process.exit(0), 120000);",
+		"setInterval(() => {}, 1000);",
+		"await new Promise(() => {});",
+		"",
+	].join("\n"),
+);
+
+test("the per-lane bound names the lane it kills, and the rest of the suite still reports", () => {
+	const result = runRunner([HANG_LANE, PASSES], {
+		LOCAL_OPERATOR_UI_LANE_BOUND_MS: "1",
+	});
+	assert.equal(result.status, 1, result.stdout);
+	assert.match(
+		result.stdout,
+		/per-lane bound [^;]*explicit LOCAL_OPERATOR_UI_LANE_BOUND_MS/,
+		"the run must say which bound it used, not just which one shipped",
+	);
+	assert.ok(
+		result.stderr.includes("LANE BOUND EXCEEDED"),
+		"the bound must say what it did, or a reader is back to a truncated log",
+	);
+	assert.ok(
+		result.stderr.includes(HANG_LANE),
+		"and it must name the lane it killed",
+	);
+	assert.match(result.stderr, /killed pid \d+/);
+	assert.match(
+		result.stdout,
+		NEIGHBOUR_REPORTED,
+		"the neighbouring lane must still report its verdict",
+	);
+	assert.match(
+		result.stdout,
+		ONE_FAILURE,
+		"and the killed lane is the one that fails",
 	);
 });

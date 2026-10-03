@@ -37,8 +37,10 @@
  * own, rc=1 - a red run that says which file -, not a killed run.
  *
  * WHAT THIS IS NOT: a performance gate. The bound is deliberately far above measured
- * lanes (see `_DEFAULT_BOUND_MS`: ~2.7x the slowest one seen), because its job is to
- * catch a file that will never return, not to police duration. A lane that
+ * lanes (see `_DEFAULT_BOUND_MS`: ~2.7x the slowest lane measured ON THIS HOST, which
+ * is the honest form of that claim - the CI figure beside it is a whole-suite
+ * aggregate over 361 lanes and does not bound any individual lane), because its job
+ * is to catch a file that will never return, not to police duration. A lane that
  * legitimately runs longer than the bound is killed and named like any other; that is
  * a false trip by this module's own definition, and the answer is a larger bound or
  * `off` - both named in the line this prints at startup, so the reader is never left
@@ -68,17 +70,17 @@ export const LANE_BOUND_OVERRIDE_ENV = "LOCAL_OPERATOR_UI_LANE_BOUND_MS";
  * The bound a lane may run before it is killed and named.
  *
  * MEASURED, 2026-10-03, and set as a STALL DETECTOR rather than a ceiling on slow
- * work: the whole 361-lane suite completes in ~16 minutes on CI (`Desktop Tests`
- * 16m36s at concurrency 8-12, run 37094834731), and timing the heaviest lanes
- * directly on this host - the largest files in the suite and every process-booting
- * lane - put `update-robustness.test.mjs` at 225.7 s (a lane that also fails here
- * on environment grounds), `credential-composer.test.mjs` at 69.7 s,
- * `daemon-observation.test.mjs` at 27.1 s, and the rest in single-digit seconds.
- * Ten minutes is therefore ~2.7x the slowest lane measured, not an order of
- * magnitude above it, and that is the honest margin: comfortably clear of a loaded
- * machine finishing an honest lane, and still far inside a 35-minute job. The lane
- * that held four heads' CI (see the file's header) never finished at all, so any
- * bound in this range separates it from every lane that does.
+ * work. Two readings, and they answer different questions: the whole 361-lane suite
+ * completes in ~16 minutes on CI (`Desktop Tests` 16m36s at concurrency 8-12, run
+ * 37094834731) - an AGGREGATE, so it does not bound any single lane - while timing
+ * individual heavy lanes on this host put `update-robustness.test.mjs` at 225.7 s
+ * (a lane that also fails here on environment grounds), `credential-composer.test.mjs`
+ * at 69.7 s, `daemon-observation.test.mjs` at 27.1 s, and the rest in single-digit
+ * seconds. Ten minutes is therefore ~2.7x the slowest lane measured ON THIS HOST; no
+ * CI-side per-lane reading exists yet, so that margin is the standing claim and this
+ * note is where a future measurement should replace it. It is enough for the purpose:
+ * the lane that held four heads' CI (see the header) never finished at all, so a
+ * bound anywhere in this range separates it from every lane that does.
  */
 export const _DEFAULT_BOUND_MS = 600_000;
 
@@ -149,13 +151,20 @@ export function formatLaneBoundLine(decision) {
 	const why =
 		decision.arm === "override"
 			? `explicit ${LANE_BOUND_OVERRIDE_ENV}`
-			: "default, 2.7x the slowest lane measured here";
+			: "default, 2.7x the slowest lane measured on this host";
 	return `desktop tests: per-lane bound ${human(decision.boundMs)} (${why}); sampled every ${_TICK_INTERVAL_MS / 1000}s over the suite's process group`;
 }
 
-/** The one loud line a reader needs: which lane, how long, against what bound. */
-export function formatLaneTripLine({ lane, pid, elapsedMs, boundMs }) {
-	return `desktop tests: LANE BOUND EXCEEDED — ${lane} ran ${human(elapsedMs)} without finishing (bound ${human(boundMs)}); killed pid ${pid} and left the rest of the suite running, so its verdict still lands (raise or disable with ${LANE_BOUND_OVERRIDE_ENV})`;
+/**
+ * The one loud line a reader needs: which lane, how long, against what bound - and
+ * what actually happened to the pid, because a line that claims a kill it did not
+ * make is evidence of the wrong thing.
+ */
+export function formatLaneTripLine({ lane, pid, elapsedMs, boundMs, killed }) {
+	const outcome = killed
+		? `killed pid ${pid} and left the rest of the suite running, so its verdict still lands`
+		: `pid ${pid} was already gone when the bound fired, so nothing was signalled and the suite's own verdict stands`;
+	return `desktop tests: LANE BOUND EXCEEDED — ${lane} ran ${human(elapsedMs)} without finishing (bound ${human(boundMs)}); ${outcome} (raise or disable with ${LANE_BOUND_OVERRIDE_ENV})`;
 }
 
 /**
@@ -189,6 +198,14 @@ export function parseGroupTable(text) {
  * against a hypothetical `...-click-more.test.mjs`) cannot be confused for it - and a
  * test file that merely mentions another lane's path in a string argument is not a
  * match at all.
+ *
+ * THE TWO GUARDS BELOW ARE THE SAFETY PROPERTY - a kill must never reach a process
+ * this runner did not start - so each is asserted by a case where its row is the ONLY
+ * carrier of the token: the group test by an out-of-group row alone, the suite-child
+ * exclusion by the leader's own row alone. Both return an empty match, which is what
+ * stops the bound from signalling a process outside the suite; a fixture that carried
+ * those rows alongside a valid one would let either guard be deleted silently, because
+ * the valid row would answer for the token anyway.
  */
 export function laneProcesses(rows, { leaderPid, lanes }) {
 	const wanted = new Set(lanes);
@@ -235,9 +252,13 @@ export function createLaneBoundWatchdog({
 	kill = (pid) => {
 		try {
 			process.kill(pid, "SIGKILL");
+			return true;
 		} catch {
-			// Already gone: the lane's death was observed, which is the outcome
-			// the kill was for.
+			// The lane may have exited between the sample and the signal. The outcome is
+			// REPORTED rather than swallowed - the trip line says what happened, and a
+			// line that claimed a kill it did not make would be evidence of the wrong
+			// thing.
+			return false;
 		}
 	},
 	now = () => Date.now(),
@@ -264,12 +285,16 @@ export function createLaneBoundWatchdog({
 			blindTicks = 0;
 		} catch {
 			blindTicks += 1;
-			if (blindTicks === _BLIND_TICKS_WARN) onBlind(blindTicks);
+			if (!stopped && blindTicks === _BLIND_TICKS_WARN) onBlind(blindTicks);
 			sampling = false;
 			rearm();
 			return;
 		}
 		sampling = false;
+		// `stop()` is AUTHORITATIVE, including for a sample already in flight: the suite
+		// has finished, so nothing may be signalled on its behalf by a tick that was
+		// mid-`ps` when the child exited.
+		if (stopped) return;
 
 		for (const lane of [...running.keys()]) {
 			if (!seen.has(lane)) running.delete(lane);
@@ -288,11 +313,12 @@ export function createLaneBoundWatchdog({
 			}
 			const elapsedMs = now() - entry.firstSeenAt;
 			if (elapsedMs < boundMs) continue;
-			// Report BEFORE the kill, so the line cannot be lost behind a process
-			// death, and forget the lane so one stall is named once.
+			// Forget the lane so one stall is named once, then kill and report: the line
+			// carries the OUTCOME, and it is this process's own stderr, so the child's
+			// death cannot swallow it.
 			running.delete(lane);
-			onTrip({ lane, pid, elapsedMs });
-			kill(pid);
+			const killed = kill(pid) === true;
+			onTrip({ lane, pid, elapsedMs, killed });
 		}
 		rearm();
 	}

@@ -133,16 +133,23 @@ const explicitFlag = args.find(
 );
 
 // The evidence line reports how many test files the run covers, so it must not
-// count flags or the value slot of a bare `--test-concurrency 12` as a file. The
-// list itself is kept because the per-lane bound matches a running lane by its
-// OWN PATH ARGUMENT - the exact strings node is handed here, not a normalised
-// form - so the two must come from one filter rather than two that can drift.
-const laneArgs = args.filter((arg, index) => {
+// count flags or the value slot of a bare `--test-concurrency 12` as a file.
+const fileArgs = args.filter((arg, index) => {
 	if (arg.startsWith("--test-concurrency")) return false;
 	if (index > 0 && args[index - 1] === "--test-concurrency") return false;
 	return !arg.startsWith("-");
 });
-const fileCount = laneArgs.length;
+const fileCount = fileArgs.length;
+
+/*
+ * The lane FILES the per-lane bound may match, which is a NARROWER set than the
+ * arguments above: only a `*.test.mjs` argument can name a lane's own process. The
+ * bound's kill is scoped to these exact strings, so anything else a caller passes (a
+ * fixture, a helper, a data file) must never become a signal target just by being
+ * mentioned in somebody's argv - `node --test` may run it, but it is not a lane and
+ * nothing here will kill it.
+ */
+const laneArgs = fileArgs.filter((arg) => arg.endsWith(".test.mjs"));
 
 const nodeArgs = ["--test"];
 if (explicitFlag === undefined) {
@@ -354,13 +361,14 @@ const laneWatchdog =
 				leaderPid: child.pid,
 				lanes: laneArgs,
 				boundMs: laneBound.boundMs,
-				onTrip: ({ lane, pid, elapsedMs }) =>
+				onTrip: ({ lane, pid, elapsedMs, killed }) =>
 					console.error(
 						formatLaneTripLine({
 							lane,
 							pid,
 							elapsedMs,
 							boundMs: laneBound.boundMs,
+							killed,
 						}),
 					),
 				onBlind: (ticks) =>

@@ -53,6 +53,9 @@ const BOUND_EXCEEDED = /LANE BOUND EXCEEDED/;
 const BOARD_FOCUS_LANE = /scripts\/projects-board-focus\.test\.mjs/;
 const TRIPPED_PID = /4242/;
 const STILL_LANDS = /still lands/;
+const ALREADY_GONE = /already gone/;
+const NOTHING_SIGNALLED = /nothing was signalled/;
+const CLAIMED_A_KILL = /killed pid/;
 
 test("the default bound is a stall detector, not a ceiling on slow work", () => {
 	const { boundMs, arm } = computeLaneBound({ override: null });
@@ -110,18 +113,29 @@ test("the startup line names the bound, where it came from, and how to change it
 	assert.match(off, BOUND_OFF);
 });
 
-test("the trip line names the lane, the bound, and that the rest still lands", () => {
-	const line = formatLaneTripLine({
+test("the trip line names the lane, the bound, and what happened to the pid", () => {
+	const base = {
 		lane: "scripts/projects-board-focus.test.mjs",
 		pid: 4242,
 		elapsedMs: 601_000,
 		boundMs: _DEFAULT_BOUND_MS,
-	});
+	};
+	const line = formatLaneTripLine({ ...base, killed: true });
 	assert.match(line, BOUND_EXCEEDED);
 	assert.match(line, BOARD_FOCUS_LANE);
 	assert.match(line, TEN_MINUTES);
 	assert.match(line, TRIPPED_PID);
 	assert.match(line, STILL_LANDS);
+	// The outcome is part of the claim: a pid that was already gone is reported as
+	// such, so the line never says it killed something it did not.
+	const missed = formatLaneTripLine({ ...base, killed: false });
+	assert.match(missed, ALREADY_GONE);
+	assert.match(missed, NOTHING_SIGNALLED);
+	assert.doesNotMatch(
+		missed,
+		CLAIMED_A_KILL,
+		"a line that claims a kill it did not make is evidence of the wrong thing",
+	);
 });
 
 test("the process table parser reads ps rows and ignores anything else", () => {
@@ -182,6 +196,49 @@ test("a lane whose path is a prefix of another lane's is not that lane", () => {
 	assert.equal(seen.size, 0, "substring matching would have matched here");
 });
 
+/*
+ * THE TWO SAFETY GUARDS, EACH DISCRIMINATED BY A ROW THAT IS ITS ONLY CARRIER.
+ *
+ * WHY THESE CASES EXIST RATHER THAN A LINE ADDED TO THE FIXTURE ABOVE: there, a VALID
+ * row answers for the same token, so deleting the group test or the suite-child
+ * exclusion changes nothing and every test still passes - measured by mutation, both
+ * guards could be removed with the file green. Each guard is what stops a kill
+ * reaching a process this runner did not start, so each gets a case where its row
+ * alone decides the answer.
+ */
+test("an out-of-group process carrying a lane's path is not that lane", () => {
+	const table = parseGroupTable(
+		// Right path, WRONG GROUP: a neighbouring suite, or anything else on the box.
+		row(200, 1, 999, "node --test-concurrency=0 scripts/a.test.mjs"),
+	);
+	const seen = laneProcesses(table, {
+		leaderPid: 100,
+		lanes: ["scripts/a.test.mjs"],
+	});
+	assert.equal(
+		seen.size,
+		0,
+		"only the suite's own process group may ever be signalled",
+	);
+});
+
+test("the suite child itself is never a lane, however many paths its argv carries", () => {
+	const table = parseGroupTable(
+		// The leader, in its own group, carrying the lane path - the shape that would
+		// otherwise ALWAYS match, because the runner hands it every lane argument.
+		row(100, 1, 100, "node --test scripts/a.test.mjs"),
+	);
+	const seen = laneProcesses(table, {
+		leaderPid: 100,
+		lanes: ["scripts/a.test.mjs"],
+	});
+	assert.equal(
+		seen.size,
+		0,
+		"the runner's own child must never be the kill target",
+	);
+});
+
 /** A deterministic driver: no real timers, no real clock, no real kills. */
 function driver({ tables, boundMs = 1_000, tickMs = 0 }) {
 	/** The lanes this driver's suite covers, shared by the watchdog and its sampler. */
@@ -209,7 +266,10 @@ function driver({ tables, boundMs = 1_000, tickMs = 0 }) {
 			// one thing an injected sample must not do.
 			return laneProcesses(parseGroupTable(table), { leaderPid: 100, lanes });
 		},
-		kill: (pid) => state.killed.push(pid),
+		kill: (pid) => {
+			state.killed.push(pid);
+			return true;
+		},
 		now: () => state.clock,
 		onTrip: (trip) => state.trips.push(trip),
 		onBlind: (ticks) => state.blinds.push(ticks),
@@ -263,6 +323,11 @@ test("a lane past the bound is named once, and only that pid is killed", async (
 		state.killed,
 		[101],
 		"the sibling lane's process must not be killed with it",
+	);
+	assert.equal(
+		state.trips[0].killed,
+		true,
+		"the trip carries the outcome, because the line reports it",
 	);
 });
 
@@ -345,4 +410,41 @@ test("stop() ends the sampling, so a finished suite is no longer watched", async
 		before,
 		"a stopped watchdog takes no further sample",
 	);
+});
+
+test("stop() is authoritative even for a sample already in flight", async () => {
+	const list = ["scripts/a.test.mjs"];
+	let calls = 0;
+	let release;
+	const gate = new Promise((resolve) => {
+		release = resolve;
+	});
+	const killed = [];
+	const trips = [];
+	const watchdog = createLaneBoundWatchdog({
+		leaderPid: 100,
+		lanes: list,
+		// Any elapsed time would trip, so only `stop()` can spare this lane.
+		boundMs: 0,
+		sample: async () => {
+			calls += 1;
+			if (calls === 2) await gate;
+			return laneProcesses(parseGroupTable(laneA), {
+				leaderPid: 100,
+				lanes: list,
+			});
+		},
+		kill: (pid) => {
+			killed.push(pid);
+			return true;
+		},
+		onTrip: (trip) => trips.push(trip),
+	});
+	await watchdog._tick(); // the lane's first sighting
+	const inFlight = watchdog._tick(); // parked inside its sample...
+	watchdog.stop(); // ...while the suite finishes
+	release();
+	await inFlight;
+	assert.deepEqual(killed, [], "a stopped watchdog may not signal anything");
+	assert.deepEqual(trips, [], "and may not name a lane it no longer watches");
 });
