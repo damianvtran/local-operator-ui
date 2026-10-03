@@ -119,6 +119,19 @@ const RACE_WRITE = ARGS.includes("--race-write");
  */
 const FRAMES = flag("frames", null);
 /**
+ * WHICH states a `--frames` capture writes: `--states=hydrating,settled`.
+ *
+ * Default is all of `FRAME_STATES`. Added 2026-10-03 because a lane that needs
+ * two of the six could not photograph them at all: one arm's own self-check
+ * (`held-press` refuses a composer that states the send-early sentence, rightly
+ * - that state exists to show the press is held in silence) fails on a tree
+ * where another lane has reused the sentence, and the whole capture aborts.
+ * Narrowing is per-state and not per-arm, so a lane never has to disable a
+ * check to get its frames; an unknown name is refused rather than skipped,
+ * because a typo that silently captures nothing is worse than a failed run.
+ */
+const REQUESTED_STATES = flag("states", null);
+/**
  * The IN-FLIGHT arm: a switch into a conversation whose turn is STILL RUNNING
  * (`?live=1`), with the page's own commit series printed under the table.
  *
@@ -209,6 +222,16 @@ const FRAME_THEMES = (
 const FRAMES_URL = `${PAGE}?${new URLSearchParams({
 	stream: SCENARIO.stream ?? "4000",
 	get: SCENARIO.get ?? "12",
+	/*
+	 * `--live` photographs the IN-FLIGHT page: the state a reader lands on when
+	 * the conversation they open still has a turn running. Without it the capture
+	 * only knows cold-owner states, and the loaded view of a RUNNING conversation
+	 * - the one the 2026-10-01 report is about - has no frame to compare. The
+	 * `settled` arm's own check (`the transcript is still empty`) is satisfied by
+	 * content from either owner, so the state name stays honest: it is the
+	 * switch's settled state, on a page whose owner is mid-run.
+	 */
+	...(LIVE ? { live: "1" } : {}),
 })}`;
 /**
  * The same page with the target's guard read scripted to 404, for the `error`
@@ -754,7 +777,20 @@ const captureFrames = async (cdp) => {
 	const written = [];
 	// Under `--expect-outgoing` the same script photographs the PRE-change state
 	// on the pre-change tree, and only that state exists there.
-	const states = EXPECT_OUTGOING ? ["hydrating"] : FRAME_STATES;
+	const states = EXPECT_OUTGOING
+		? ["hydrating"]
+		: REQUESTED_STATES
+			? REQUESTED_STATES.split(",")
+					.map((name) => name.trim())
+					.filter(Boolean)
+			: FRAME_STATES;
+	for (const state of states) {
+		if (!FRAME_STATES.includes(state)) {
+			throw new Error(
+				`--states=${state} is not a state this capture writes; known: ${FRAME_STATES.join(", ")}`,
+			);
+		}
+	}
 	for (const theme of FRAME_THEMES) {
 		for (const state of states) {
 			const url =
