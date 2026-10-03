@@ -2232,6 +2232,17 @@ export const SearchIndexSearching: Story = {
 				'"nothing matches" was claimed before the index answered',
 			);
 		}
+		/*
+		 * AND THE BODY IS THE LINE ALONE (design round 1, D1): the List is held back
+		 * while the fallback is empty, so the frame that proves the geometry also has
+		 * to fail on the frame the defect produced — a column header with no rows
+		 * under it. Zero row keys is that claim in the DOM, and it is what the
+		 * re-shot pair is measured against.
+		 */
+		await poll(
+			() => listRowKeys().length === 0,
+			"an empty body under the line, not a dangling column header",
+		);
 	}),
 };
 

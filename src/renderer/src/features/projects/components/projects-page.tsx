@@ -857,14 +857,27 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					/*
 					 * THE INDEX HAS NOT ANSWERED YET, AND THE FALLBACK FOUND NOTHING.
 					 * Every other zero-result state is held back while `searchAwaiting` is
-					 * true, so this stands in their place: the row region keeps the loading
-					 * state's own geometry and says the only thing that is true yet — the
-					 * search is still running — rather than "nothing matches", which the
-					 * index may be about to contradict.
+					 * true, so this stands in their place: it says the only thing that is true
+					 * yet — the search is still running — rather than "nothing matches", which
+					 * the index may be about to contradict.
 					 *
-					 * IT IS NOT A SPINNER OVER THE LIST. Whenever the fallback engine has
-					 * rows they are drawn normally (the views below are not gated on this),
-					 * and this block is unreachable — which is why it costs nothing at the
+					 * IT TAKES THE LOADING STATE'S OWN PLACE IN THE BODY, which is a
+					 * correction (design round 1, D1) rather than the flourish the first
+					 * version described. `flex-1` here means "the page's one body", the way it
+					 * does for `Loading projects…` and for the other row-less states — and the
+					 * first version rendered ALONGSIDE the List, which is also `flex-1`, so the
+					 * two split the body between them and the List's `shrink-0` column header
+					 * landed mid-canvas (measured: y 552-562 here against 191-201 in `served`
+					 * and `pending`, identical in both palettes — a 361 px jump on the way to
+					 * an answer, and this is the headline path: a word that lives only in
+					 * update text is exactly when the fallback is empty). The List is therefore
+					 * held back while this block stands, the way the Board's empty-window block
+					 * is held back below: there is nothing to list, and a header promising rows
+					 * that are not coming is the dangling frame, not the container's height.
+					 *
+					 * IT IS NOT A SPINNER OVER THE LIST. Whenever the fallback engine has rows
+					 * they are drawn normally (nothing here is gated on the rows' absence), and
+					 * this block is then unreachable — which is why it costs nothing at the
 					 * board's ordinary scale, where the client matcher almost always has
 					 * something to show within the debounce window.
 					 */
@@ -934,7 +947,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					</div>
 				)}
 
-				{listReady && !noMatch && view === "list" && (
+				{listReady && !noMatch && !searchPendingEmpty && view === "list" && (
 					<ProjectList
 						projects={visibleProjects}
 						nowMs={nowMs}
