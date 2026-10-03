@@ -1530,6 +1530,26 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 				"sessions you start on that device run without an approval prompt there",
 		},
 	]);
+	/*
+	 * THE OTHER NON-VERB IN THE CORE'S GRANTABLE SET (agent review round 6, R6-1):
+	 * `CAPABILITY_WORDS["broker_credential"]` is "borrow this device's logins", so
+	 * the generic template would have written "you may broker_credential on that
+	 * device" - a raw token inside a sentence, on the card that authorises it.
+	 */
+	const broker = { what: { grants: ["broker_credential"] } };
+	assert.deepEqual(approvalScopeLabels(broker), ["borrow logins there"]);
+	assert.deepEqual(approvalScopeGlosses(broker), [
+		{
+			term: "borrow logins there",
+			gloss: "your sessions on that device may use the logins stored there",
+		},
+	]);
+	/* A VERB token keeps the template, because it is grammatical for a verb. */
+	const verb = { what: { grants: ["steer"] } };
+	assert.deepEqual(approvalScopeLabels(verb), ["grant steer"]);
+	assert.deepEqual(approvalScopeGlosses(verb), [
+		{ term: "grant steer", gloss: "you may steer on that device" },
+	]);
 	assert.equal(approvalTitle(row), "Onboard devon-laptop");
 	assert.equal(approvalSubject(row), "devon-laptop");
 	// A machine row is about the reader's own machine, by the kind's own definition.
