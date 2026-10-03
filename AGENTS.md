@@ -181,6 +181,21 @@ command instead, so the values ride a commit on top). It does NOT weaken
 anything: the stamps stay stored in the manifest and are still compared against
 `HEAD` exactly as below.
 
+**MANIFEST-TOUCHING MERGES ARE A SERIALIZED WINDOW.** A manifest-touching merge
+is one that touches `docs/evidence/manifest.json` or moves `src/` or `scripts/`.
+`main` moves every ~32 minutes (median, measured 2026-10-03) and every merge that
+moves `src/` or `scripts/` invalidates every open branch's stamp - so **one
+manifest-touching PR lands at a time**: fold, push and merge before starting the
+next, and do not read a green head as yours to keep. A green head here is
+perishable: a 19-35 minute CI wait against a 32-minute merge cadence means it is
+routinely superseded before it can be used. If you need the window, ask the
+current release-window owner to hold merges for one CI cycle - that role exists
+only while a `chore(release): claim release window` PR is open, so if no window is
+claimed, say so in the fold's own lane and take it: announce the hold where lanes
+read, then fold, push and merge. This is an interim policy - the structural fix,
+deriving the stamps at verification time so no merge moves them, is designed in
+its own PR.
+
 `scripts/evidence-manifest.test.mjs` checks the stamp and
 needs no lease: it runs inside `pnpm test:desktop`, fails in well under a second, and
 it is what caught the stale stamps that reached `main` once - so a stale stamp is
@@ -225,6 +240,9 @@ evidence:fold` is that separation made mechanical: it re-derives from the MERGED
 and amends only when the tip IS the merge commit and the only staged change is this
 file - so the value and the tree it names sit inside one commit either way. Merge
 `origin/main` in one commit; run it; commit once.
+
+Manifest-touching merges are a serialized window - the paragraph above states it,
+and the figures there are re-measured rather than copied.
 
 Measured 2026-09-27 - three PRs in one night, twice during a fold. #553
 (`feat/provider-setup`, `a10e43c25f`) carried 28 frames while also moving `src/`
@@ -1883,7 +1901,9 @@ look is a rule that fails on the day someone does not.
 
 **The owner of a PR merges it the moment its review rounds are clean and fresh
 and CI is green** — no release queue, no waiting for a predecessor, no handing
-the "next number" to whoever is behind you.
+the "next number" to whoever is behind you. (Exception: a manifest-touching PR
+lands through the serialized fold window instead — see *A commit that moves
+`src/` or `scripts/` costs every open branch one command*.)
 
 **Green means the jobs that ran passed, so read the classification.** CI runs only
 the jobs a diff can affect (see *Change scope*), which makes the `Change Scope`

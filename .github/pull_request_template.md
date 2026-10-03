@@ -44,6 +44,7 @@ Describe the impact of these changes on the codebase:
 - [ ] I have added tests that prove my changes work as intended.
 - [ ] The gates pass: `pnpm lint`, `pnpm check-types`, `pnpm check-themes`, `pnpm test:desktop`.
 - [ ] This PR does not change the `version` line in `package.json` — only a `chore(release):` PR may, and the release owner cuts that one.
+- [ ] If this PR touches `docs/evidence/manifest.json` or changes files under `src/` or `scripts/`, it joins the serialized fold window (see AGENTS.md).
 - [ ] I have updated the documentation when required.
 - [ ] Security considerations are addressed (especially for code execution features).
 - [ ] I have linked all related issues.
