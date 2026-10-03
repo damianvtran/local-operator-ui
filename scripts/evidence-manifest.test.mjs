@@ -8,7 +8,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { after, test } from "node:test";
 import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
 import { checkPaletteBudgets } from "./check-evidence-palettes.mjs";
@@ -19,6 +19,7 @@ import {
 	partialCaptureFailures,
 	provenanceFailures,
 	stampFailures,
+	storyDriftReadings,
 } from "./check-evidence.mjs";
 
 /*
@@ -445,6 +446,218 @@ test("a pass that added no frames does not claim to have added them", () => {
 		addedAt: "2026-09-13T00:00:00.000Z",
 		addedAtHead: GOOD.head,
 	});
+});
+
+/*
+ * ---- the F3 advisory: capturedAtHead against the named story --------------
+ */
+
+/**
+ * A fake `git` for the advisory, answering the two questions it asks and
+ * recording each ask so a test can pin WHICH file was resolved to.
+ *
+ * Same reason as `fakeGit` above: the property under test is what the function
+ * CONCLUDES from git's answers, and pinning that against real history would
+ * make these pass or fail on which commits happen to exist in the clone. The
+ * `""`/`null` distinction (`evidence-fold.test.mjs` documents it) is kept: `""`
+ * is a command that succeeded with nothing to say, `null` one that could not
+ * answer - the advisory is silent for both, and the case that matters is the
+ * one where an ancestor question comes back REFUSED.
+ */
+const fakeDriftGit = ({ lastTouch = {}, ancestors = [], calls = [] } = {}) => {
+	return (args) => {
+		calls.push(args);
+		if (args[0] === "log" && args[1] === "-1")
+			return lastTouch[args.at(-1)] ?? null;
+		if (args[0] === "merge-base" && args[1] === "--is-ancestor")
+			return ancestors.some(([a, b]) => a === args[2] && b === args[3])
+				? ""
+				: null;
+		return null;
+	};
+};
+
+/**
+ * A throwaway tree carrying `*.stories.tsx` files at real paths, so the walk
+ * and the resolution steps have a tree to answer against.
+ *
+ * Only the paths matter - the bytes are never read - and the name is
+ * `lop-`-prefixed for the reason `tree()` above is: `lo-evidence-` is
+ * `capture-evidence.mjs`'s Chrome-profile reap-by-name namespace, so a fixture
+ * under it is a deletion target for every capture on the box.
+ */
+function storyTree(files) {
+	const root = mkdtempSync(join(tmpdir(), "lop-evidence-stories-"));
+	scratch.push(root);
+	for (const file of files) {
+		const full = join(root, file);
+		mkdirSync(dirname(full), { recursive: true });
+		writeFileSync(full, "// the bytes never matter, only the path\n");
+	}
+	return root;
+}
+
+test("a set whose story file moved outside its capturedAtHead reads as an advisory", () => {
+	/*
+	 * The class §4.2 records, in its cheap form: the frames were captured at
+	 * `head`, and the story file the set names was touched by a commit that is
+	 * not an ancestor of it - the pixels may picture an older cut than the story
+	 * draws today. What comes back is a READING: the line never enters
+	 * `failures`, so `main()` prints it and the exit code never sees it
+	 * (`evidence-run-guard.test.mjs` pins that end to end).
+	 */
+	const head = "1".repeat(40);
+	const moved = "2".repeat(40);
+	const file = "src/renderer/src/features/chat/trace-row.stories.tsx";
+	const root = storyTree([file]);
+	const calls = [];
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "chat-trace-before",
+					source: "the sweep against `trace-row.stories.tsx`",
+					capturedAtHead: head,
+				},
+			],
+		},
+		fakeDriftGit({ lastTouch: { [file]: moved }, calls }),
+		root,
+	);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /chat-trace-before/);
+	assert.match(out[0], /may not picture the story's current cut/);
+	// It compared the file the mention resolves to, against the set's own stamp.
+	assert.deepEqual(calls, [
+		["log", "-1", "--format=%H", "--", file],
+		["merge-base", "--is-ancestor", moved, head],
+	]);
+});
+
+test("an agreeing stamp is silent, and a harness name resolves beside its frames", () => {
+	/*
+	 * Agreement: the last commit to touch the file IS an ancestor of the stamp,
+	 * so the pixels postdate the file's last move and there is nothing to read.
+	 * The mention is the `harness/...` shape, and its basename exists elsewhere
+	 * in the tree as well - an ambiguous basename must not pin the comparison to
+	 * a neighbour's file, so the set's own directory gets it.
+	 */
+	const head = "1".repeat(40);
+	const touch = "3".repeat(40);
+	const harness =
+		"docs/evidence/goal-arming-pick/harness/ev209-goal-arming.stories.tsx";
+	const root = storyTree([harness, "src/other/ev209-goal-arming.stories.tsx"]);
+	const calls = [];
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "goal-arming-pick",
+					source:
+						"the rig beside these frames: `harness/ev209-goal-arming.stories.tsx`",
+					capturedAtHead: head,
+				},
+			],
+		},
+		fakeDriftGit({
+			lastTouch: { [harness]: touch },
+			ancestors: [[touch, head]],
+			calls,
+		}),
+		root,
+	);
+	assert.deepEqual(out, []);
+	assert.deepEqual(calls, [
+		["log", "-1", "--format=%H", "--", harness],
+		["merge-base", "--is-ancestor", touch, head],
+	]);
+});
+
+test("a set that names no story file stays silent, and a glob is not a name", () => {
+	/*
+	 * Best-effort by design: 148 of the shipped 169 sets name no story file, and
+	 * inventing a resolution for them would be the advisory guessing. A bare
+	 * `*.stories.tsx` inside a note is a CLASS ("two `*.stories.tsx` files were
+	 * edited after that capture" - `update-report-accuracy`), not a name this
+	 * can walk, so a set whose only mention is the glob stays silent. The third
+	 * set names a real file and last-touched it, but carries no stamp - there is
+	 * no `capturedAtHead` to compare, so the comparison is skipped.
+	 */
+	const file =
+		"src/renderer/src/features/chat/canonical/turn-collapse.stories.tsx";
+	const root = storyTree([file]);
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "chat-trace",
+					source: "captured by the sweep",
+					capturedAtHead: "1".repeat(40),
+				},
+				{
+					path: "update-report-accuracy",
+					capturedAtHead: "9".repeat(40),
+					capturedAtNote:
+						"two `*.stories.tsx` files were edited after that capture",
+				},
+				{
+					path: "chat-turn-collapse-before",
+					source: "the story `turn-collapse.stories.tsx`, same fixtures",
+				},
+			],
+		},
+		fakeDriftGit({ lastTouch: { [file]: "3".repeat(40) } }),
+		root,
+	);
+	assert.deepEqual(out, []);
+});
+
+test("a set naming a story file this tree cannot resolve reads as an advisory", () => {
+	/*
+	 * The shipped manifest's one unresolvable name: `common-connectivity-banner-baseline`
+	 * names a connectivity-banner story that is not in this tree, and the set has
+	 * NO `capturedAtHead`. The comparison is skipped - but the name reading is
+	 * not, because "the record names a story this tree does not carry" is a
+	 * disagreement with the tree that needs no stamp, and this is the only miss
+	 * the shipped manifest has. If review prefers skipping stamp-less sets
+	 * outright, this case and the doc block are where that decision lives.
+	 */
+	const root = storyTree([
+		"src/renderer/src/features/chat/canonical/reconnect-gap.stories.tsx",
+	]);
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "common-connectivity-banner-baseline",
+					source:
+						"the story `src/renderer/src/shared/components/common/connectivity-banner-baseline.stories.tsx`",
+				},
+			],
+		},
+		fakeDriftGit({}),
+		root,
+	);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /common-connectivity-banner-baseline/);
+	assert.match(out[0], /does not resolve to one file in this tree/);
+	// The same reading, on a set that DOES carry a stamp: the miss is about the
+	// name, not about the comparison that could not run.
+	const stamped = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "stamped-miss",
+					source: "the story `missing-from-tree.stories.tsx`",
+					capturedAtHead: "1".repeat(40),
+				},
+			],
+		},
+		fakeDriftGit({}),
+		root,
+	);
+	assert.equal(stamped.length, 1);
+	assert.match(stamped[0], /does not resolve to one file in this tree/);
 });
 
 /*

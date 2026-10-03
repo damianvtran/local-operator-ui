@@ -24,7 +24,7 @@
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
-import { dirname, join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 /*
  * The frame decoder, at module scope on purpose.
@@ -1155,6 +1155,195 @@ export const provenanceFailures = (manifest, git = gitOut) => [
 	...citationFailures(manifest, git),
 ];
 
+/*
+ * The F3 advisory: the story file a set names against the stamp it was taken
+ * at. See `storyDriftReadings` below for what it is and why it never gates.
+ */
+
+/**
+ * The `*.stories.tsx` mention a set's own fields make, as a pattern that finds
+ * a NAME and never a glob.
+ *
+ * The leading `[A-Za-z0-9_@]` is load-bearing: `update-report-accuracy`'s note
+ * says "two `*.stories.tsx` files were edited after that capture", which names
+ * the CLASS of story a running-app rig cannot photograph - not a file this
+ * advisory could compare a commit against - and requiring at least one
+ * filename character before `.stories.tsx` keeps that sentence out of the walk
+ * while the shipped manifest's 21 real mentions stay in (22 sets contain the
+ * string; 21 name a file).
+ */
+const STORY_MENTION = /[A-Za-z0-9_@][A-Za-z0-9_@./-]*\.stories\.tsx/g;
+
+/**
+ * Every name the set's own fields carry, deduplicated.
+ *
+ * All string fields are scanned, not just `source`: `ask-options-baseline`
+ * names its story inside `why` (an array, so lists are walked element-wise),
+ * and `model-picker-human-name-search` names the same file in `source` and in
+ * a note - a name seen twice is one comparison.
+ */
+const storyNamesIn = (set) => {
+	const names = new Set();
+	for (const value of Object.values(set)) {
+		for (const text of Array.isArray(value) ? value : [value]) {
+			if (typeof text !== "string") continue;
+			for (const match of text.matchAll(STORY_MENTION)) names.add(match[0]);
+		}
+	}
+	return [...names];
+};
+
+/**
+ * Where the story-file walk never descends, and why each is not the tree.
+ *
+ * `node_modules` is the shared dependency store - a worktree links it in as a
+ * symlink and the walk only descends real directories, so the link is never
+ * followed, while the name is skipped so the root checkout's store is not
+ * walked either; `.git` stores no stories; `.worktrees` holds OTHER checkouts
+ * of this repository, whose copies would double every basename the checkout
+ * under review also carries; `out` and `dist` are build output, compiled
+ * rather than authored.
+ */
+const STORY_WALK_SKIP = new Set([
+	"node_modules",
+	".git",
+	".worktrees",
+	"dist",
+	"out",
+]);
+
+/**
+ * Every `*.stories.tsx` in the tree, keyed by basename, in one walk.
+ *
+ * The basename is the key because most mentions ARE basenames
+ * (`turn-collapse.stories.tsx`): the mention says which story the frames
+ * picture and the tree says where that story lives. One walk serves every set -
+ * a walk per set would pay for the index 169 times, which the design note's
+ * "one `git log` per set" does not include - and the paths come back
+ * root-relative, the form `git log` takes them in.
+ */
+const storyIndex = (root) => {
+	const byBasename = new Map();
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true })) {
+			if (entry.isDirectory()) {
+				if (!STORY_WALK_SKIP.has(entry.name)) walk(join(dir, entry.name));
+				continue;
+			}
+			if (!entry.isFile() || !entry.name.endsWith(".stories.tsx")) continue;
+			const file = relative(root, join(dir, entry.name));
+			byBasename.set(entry.name, [...(byBasename.get(entry.name) ?? []), file]);
+		}
+	};
+	if (existsSync(root)) walk(root);
+	return byBasename;
+};
+
+/** Whether a path is a file - a directory is not a story a log can be asked of. */
+const isFile = (path) => existsSync(path) && statSync(path).isFile();
+
+/**
+ * The one file in the tree a set's mention resolves to, or null.
+ *
+ * Three steps, because the mentions arrive in three shapes. A repository
+ * relative path (`src/renderer/...`, how the settings sets spell it) resolves
+ * as written. A bare basename (`turn-collapse.stories.tsx`) resolves when
+ * exactly ONE file in the tree carries it; when several do, the set's own
+ * directory gets its say before the advisory gives up, so an ambiguous name is
+ * never silently pinned to a neighbour's file. And `harness/<name>` mentions -
+ * the story a running-app rig was built from, committed beside its frames -
+ * resolve under `docs/evidence/<set>/`. A name left unresolved is reported by
+ * the caller as a record that does not agree with the tree.
+ */
+const storyFileFor = (name, setPath, index, root) => {
+	const exact = join(root, name);
+	if (isFile(exact)) return name;
+	const candidates = index.get(basename(name)) ?? [];
+	if (candidates.length === 1) return candidates[0];
+	const beside = join("docs", "evidence", setPath, name);
+	return isFile(join(root, beside)) ? beside : null;
+};
+
+/**
+ * The F3 advisory: each set's `capturedAtHead` against the story file it names.
+ *
+ * WHAT IT IS. The stamp-removal design records, in its §4.2, the class a
+ * reviewer has to catch by eye today: "a `src/` change that alters a rendered
+ * surface without a re-capture (the `9a26e2d6f` page-ground lift is the
+ * recorded case)". The cheap half of that guarantee is this comparison - the
+ * last commit to touch the story file a set names should be an ANCESTOR of
+ * the set's `capturedAtHead`, and when it is not, the frames may not picture
+ * the story's current cut. It is a READING and not a verdict on purpose: a set
+ * captured from the running app can legitimately name a story that moved
+ * afterwards (a `-before` set's whole point is a state the current story no
+ * longer draws), so a check that reddened those is one everyone learns to
+ * skip. A gating version is deliberately out of scope.
+ *
+ * WHY IT CANNOT TURN A RUN RED, said where the decision can be checked: it
+ * returns strings and nothing else. It is never composed into
+ * `provenanceFailures`, its return is never pushed into `failures`, and
+ * `main()` prints it as `NOTE` lines beside the tree under review - and the
+ * exit paths there read `failures` alone, so nothing returned here has a path
+ * into `process.exit(1)`. That independence IS the feature; do not compose
+ * this into the gates "while we are here", and the case in
+ * `scripts/evidence-run-guard.test.mjs` is what pins it end to end.
+ *
+ * WHAT IT ANSWERS, EXACTLY. For each supplementary set whose own string fields
+ * name a `*.stories.tsx` file (`storyNamesIn`), the file is resolved against
+ * the tree (`storyFileFor`). A name that resolves to nothing is reported on
+ * its own - the record points at a story this tree does not carry, a
+ * disagreement computable without a stamp (the shipped manifest's one miss,
+ * `common-connectivity-banner-baseline`, is exactly a set with no
+ * `capturedAtHead`), while the COMPARISON is skipped for sets whose
+ * `capturedAtHead` is missing or shorter than a sha, since there is no stamp
+ * to compare against. For a resolved name and a stamp, `git log -1
+ * --format=%H -- <file>` names the last commit to touch the file, and the
+ * advisory fires when that commit is not an ancestor of `capturedAtHead` -
+ * i.e. the file moved on a lineage the capture does not include. A path git
+ * answers nothing for (untracked, or outside this history) is left alone: the
+ * advisory speaks only when it can.
+ *
+ * THE RESOLUTION RULE, which is the part to hold against §4.2's intent ("the
+ * story file the set names"): exact repository-relative path, else a basename
+ * exactly one file in the tree carries, else the set's own directory
+ * (`docs/evidence/<set>/`, how `harness/...` mentions are committed beside
+ * their frames). 20 of the shipped manifest's 21 named files resolve that way;
+ * the miss is the connectivity-banner set's own story, which is not in this
+ * tree.
+ *
+ * THE INJECTION. `git` and `root` are parameters for the reason the other
+ * exported checks take theirs: `scripts/evidence-manifest.test.mjs` drives
+ * this against a synthetic tree and a fake git, and the relocated CLI in
+ * `scripts/evidence-run-guard.test.mjs` drives the real one against an
+ * isolated fixture - neither should have to stand up this repository's history
+ * to ask what the function CONCLUDES.
+ */
+export const storyDriftReadings = (manifest, git = gitOut, root = ROOT) => {
+	const out = [];
+	const index = storyIndex(root);
+	for (const set of manifest.supplementary ?? []) {
+		if (typeof set.path !== "string") continue;
+		const sha = set.capturedAtHead;
+		for (const name of storyNamesIn(set)) {
+			const file = storyFileFor(name, set.path, index, root);
+			if (file === null) {
+				out.push(
+					`supplementary[${set.path}]: names ${name}, which does not resolve to one file in this tree`,
+				);
+				continue;
+			}
+			if (typeof sha !== "string" || sha.length < 7) continue;
+			const last = git(["log", "-1", "--format=%H", "--", file]);
+			if (!last) continue;
+			if (git(["merge-base", "--is-ancestor", last, sha]) !== null) continue;
+			out.push(
+				`supplementary[${set.path}]: capturedAtHead ${sha.slice(0, 9)} does not include ${last.slice(0, 9)}, the last commit to touch ${file} - the frames may not picture the story's current cut`,
+			);
+		}
+	}
+	return out;
+};
+
 // Exported only for the admitted worker's import; ordinary imports still never
 // sweep frames (capture-evidence imports the single-frame predicates).
 export const main = async () => {
@@ -1329,6 +1518,18 @@ export const main = async () => {
 		console.log(
 			`tree under review: src=${reviewed[0].slice(0, 9)} scripts=${reviewed[1].slice(0, 9)}`,
 		);
+
+		/*
+		 * THE F3 ADVISORY, PRINTED AS A READING AND NEVER ASSERTED. What it can
+		 * see, and why that can never turn a run red, is `storyDriftReadings`'
+		 * doc block; what this spot adds is the proof: the exit paths at the end
+		 * of this function read `failures` and nothing else, so these lines print
+		 * beside the tree under review and have no path into the exit code. That
+		 * independence is the feature - do not later compose them into `failures`
+		 * "while we are here".
+		 */
+		for (const note of storyDriftReadings(manifest))
+			console.log(`NOTE  ${note}`);
 	}
 
 	for (const line of failures) console.log(`FAIL  ${line}`);
