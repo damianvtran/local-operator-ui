@@ -198,6 +198,12 @@ export const AskSurfaces = ({
 				view={view}
 				expanded={expanded}
 				onToggle={() => setExpanded(!expanded)}
+				/*
+				 * The carrier's own clock, not the bar's: the deadline on the collapsed
+				 * bar and the countdown on a panel row must be readings of ONE clock, or
+				 * the two surfaces can disagree about the same ask by a tick.
+				 */
+				nowMs={now}
 			/>
 			{expanded ? (
 				<div

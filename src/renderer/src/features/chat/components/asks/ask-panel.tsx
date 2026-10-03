@@ -116,7 +116,23 @@ export type AskPanelProps = {
 /** Status glyph and ink, in one place so every row reads the same way. */
 const askStatusMark = (
 	status: AskPresentation["status"],
+	/** Whether this row is still answerable AND the backend marked it urgent. */
+	urgent: boolean,
 ): { Icon: LucideIcon; className: string } => {
+	/*
+	 * URGENT WINS THE INK (audit). The wire carries `urgent` for an ask whose
+	 * window the backend derived as short (`timeout <= 900`), and until this arm
+	 * NO desktop component painted it - an urgent row looked identical to one with
+	 * an hour left. The glyph keeps its own SHAPE, so the status is still
+	 * readable; only the ink steps, and it steps to the same `warning` role the
+	 * timeout arm already spends, so the two "you are out of time" readings are
+	 * one colour rather than two.
+	 *
+	 * Scoped by `urgent`'s caller to the still-answerable rows: a settled ask's
+	 * stale urgency is nothing anyone can act on, and re-inking a closed row would
+	 * make the warning mean two things.
+	 */
+	if (urgent) return { Icon: HelpCircle, className: "text-warning" };
 	switch (status) {
 		case "answered":
 		case "late":
@@ -295,7 +311,7 @@ const AskRow = ({
 	onAnswer: AskPanelProps["onAnswer"];
 	onDecline: AskPanelProps["onDecline"];
 }) => {
-	const { ask, status, canAnswer, canDecline } = presentation;
+	const { ask, status, open, canAnswer, canDecline } = presentation;
 	const setDraft = useMemo(
 		() => (updater: (current: AskDraft) => AskDraft) =>
 			onDraftChange(ask.ask_id, updater(draft)),
@@ -314,7 +330,7 @@ const AskRow = ({
 		() => askAnswerMap(ask, draft, secrets) !== null,
 		[ask, draft, secrets],
 	);
-	const mark = askStatusMark(status);
+	const mark = askStatusMark(status, ask.urgent === true && open);
 	const StatusIcon = mark.Icon;
 
 	return (
@@ -336,6 +352,15 @@ const AskRow = ({
 					size={16}
 				/>
 				<span className="min-w-0 flex-1 text-ink text-xs">
+					{/*
+					 * THE URGENCY IS SPOKEN AS WELL AS PAINTED. The mark beside this line is
+					 * `aria-hidden`, so a warning ink alone would carry the one fact this arm
+					 * exists for to sighted readers only - the same reason the ledger's
+					 * pending hold spells its state out beside the glyph.
+					 */}
+					{ask.urgent === true && open ? (
+						<span className="sr-only">Urgent. </span>
+					) : null}
 					{askStatusText(ask, nowMs)}
 				</span>
 				{/*
