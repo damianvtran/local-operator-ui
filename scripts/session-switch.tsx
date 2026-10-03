@@ -275,12 +275,26 @@ type PaneCues = {
 	sidebar: SidebarCue | null;
 };
 
-/** One `lop:transcript:render` commit after the switch, plus the settled end. */
+/**
+ * One CHANGE in what the pane showed, plus the settled end.
+ *
+ * Sampled per change rather than per `lop:transcript:render` mark, and the
+ * difference is the gap QA round 1 (Q3) found: a mark-driven series can miss the
+ * very commit it exists to characterise, because the mark for the contentful
+ * render can be delivered - and its `startTime` can fall - before the commit the
+ * store subscription records. Measured on the 45-row arm, whose series jumped
+ * `rows 0` straight to `settled rows 45` with no sample between them. The frame
+ * loop below samples whenever the cues change, so any state that lasts a frame is
+ * recorded whatever produced it; the mark is still observed, but it decides
+ * `firstRowAt` and the phase table's timing rather than what the series contains.
+ */
 type CommitSample = PaneCues & {
-	/** `performance.now()` when the commit's mark fired, on the page's clock. */
+	/** `performance.now()` on the page's clock, when the change was observed. */
 	at: number;
 	/** True for the single sample taken when the run settled. */
 	settled: boolean;
+	/** How it was observed: the frame loop, or the run's end. */
+	source: "frame" | "settled";
 };
 
 type Run = {
@@ -317,12 +331,15 @@ type Run = {
 	requests: string[];
 	targetRequests: number;
 	/**
-	 * Every transcript commit after the click, in order, each with what the pane
-	 * showed at that moment (`paneCues`), and a final `settled: true` sample.
+	 * Every CHANGE in what the pane showed after the click, in order, each with
+	 * the cues at that moment (`paneCues`), and a final `settled: true` sample.
 	 *
 	 * The phase table says WHEN the switch settled; this series says WHAT it
 	 * painted on the way, which is the half the operator's report is about
-	 * (a preliminary state, then the in-flight one).
+	 * (a preliminary state, then the in-flight one). Its claim is deliberately
+	 * "every state that lasted a frame", not "every commit": the frame loop
+	 * observes the DOM, so a transient shorter than one frame is not in here - the
+	 * narrower claim is the one the mechanism can keep.
 	 */
 	commits: CommitSample[];
 	/** True when the run hit its deadline instead of settling. */
@@ -567,8 +584,27 @@ const pendingIndicator = () =>
  * harness exists to tell apart. The placeholder's own subtree is removed from
  * the copy first, so this answers the question it is asked.
  */
-const transcriptHasContent = () => {
-	const content = document.querySelector("[data-lo-transcript-content]");
+/*
+ * THE PANE THE SWITCH LANDED ON, chosen by its ROWS rather than by the
+ * transcript attribute.
+ *
+ * `document.querySelector("[data-lo-transcript-content]")` answers "the first
+ * transcript in document order", not "this conversation's pane", and a second
+ * transcript CAN be mounted beside the first (`run-child-reader.tsx` opens the
+ * child reader; this file's own `paintedOwners` exists because two
+ * conversations' rows can be on screen at once, and says so). Record ids are
+ * prefixed by their session's id, so the pane holding THIS conversation's rows is
+ * the one this read is about; `document` remains the fallback for the load
+ * window, before any row exists - and the placeholder and the strip are
+ * page-level facts that were never pane-scoped anyway.
+ */
+const paneFor = (id: string): ParentNode => {
+	for (const pane of document.querySelectorAll("[data-lo-transcript-content]"))
+		if (pane.querySelector(`[data-record-id^="${id}-"]`)) return pane;
+	return document.querySelector("[data-lo-transcript-content]") ?? document;
+};
+const transcriptHasContent = (id?: string) => {
+	const content = paneFor(id ?? "");
 	if (!(content instanceof HTMLElement)) return false;
 	const copy = content.cloneNode(true) as HTMLElement;
 	copy.querySelector('[aria-label="Loading conversation"]')?.remove();
@@ -712,8 +748,7 @@ const sidebarCue = (id: string): SidebarCue | null => {
  * The placeholder and the sidebar are page-level facts and are read as such.
  */
 const paneCues = (id: string): PaneCues => {
-	const root =
-		document.querySelector("[data-lo-transcript-content]") ?? document;
+	const root = paneFor(id);
 	return {
 		rows: root.querySelectorAll("[data-record-id][data-record-kind]").length,
 		bars: [...root.querySelectorAll("[data-turn-summary]")].map((bar) =>
@@ -1296,23 +1331,11 @@ const api: Probe = {
 					 * `committed → rows` phase). */
 					if (run.committedAt !== null && entry.startTime >= run.committedAt) {
 						/*
-						 * EVERY commit after the switch, not only the first one. The operator's
-						 * report is about a switch that paints a preliminary state and then
-						 * re-renders (`commits` on the Run; `paneCues` says what each painted),
-						 * and a harness that kept only `firstRowAt` could not tell one commit
-						 * from two.
-						 *
-						 * The cues are read from the DOM when the entry is DELIVERED, while
-						 * `at` is the mark's own timestamp: the two can differ by a batch, so a
-						 * commit whose successor is delivered in the same batch reports the
-						 * later DOM. That is honest for a series that exists to say WHAT the
-						 * pane showed, and the ordered marks still bound WHEN.
+						 * THE MARK DECIDES THE TIMING, NOT WHAT THE SERIES CONTAINS (see
+						 * `CommitSample`): the DOM is sampled by the frame loop below, which cannot
+						 * miss a state that outlives a frame, while a mark delivered in a batch can
+						 * arrive without its own reading.
 						 */
-						run.commits.push({
-							at: entry.startTime,
-							settled: false,
-							...paneCues(id),
-						});
 					}
 					if (!rows) continue;
 					if (
@@ -1332,10 +1355,47 @@ const api: Probe = {
 			 */
 			const deadlineTimer = setTimeout(() => finish(true), 20_000);
 			const deadline = performance.now() + 20_000;
+			/*
+			 * The series' signature: the cues as one comparable string, so the frame loop
+			 * records a sample on every CHANGE and nothing else. `sidebar` is in it
+			 * because the row the switch landed on is part of what the user sees change.
+			 *
+			 * THE WORKING LINE'S SPINNER IS NORMALISED OUT of the signature (the cue
+			 * itself is recorded verbatim): its glyph advances on its own timer, so
+			 * leaving it in would fill a series with spinner ticks and bury the rows and
+			 * bars the series exists to compare - the first version of this loop did
+			 * exactly that, measured as `change 1` and `change 2` identical but for
+			 * `⣾` -> `⣽`. A change in what the line SAYS still gets a sample.
+			 */
+			const spinnerless = (text: string | null) =>
+				text === null ? null : text.replace(/^[^\p{L}\p{N}]+/u, "");
+			const cueSignature = (cues: PaneCues) =>
+				JSON.stringify([
+					cues.rows,
+					cues.bars,
+					spinnerless(cues.workingLine),
+					cues.placeholder,
+					cues.strip,
+					cues.sidebar,
+				]);
+			let lastSignature: string | null = null;
 			const tick = () => {
 				const time = performance.now();
 				if (run.firstRowAt !== null && run.transcriptPaintedAt === null) {
-					if (transcriptHasContent()) run.transcriptPaintedAt = time;
+					if (transcriptHasContent(id)) run.transcriptPaintedAt = time;
+				}
+				if (run.committedAt !== null) {
+					const cues = paneCues(id);
+					const signature = cueSignature(cues);
+					if (signature !== lastSignature) {
+						lastSignature = signature;
+						run.commits.push({
+							at: time,
+							settled: false,
+							source: "frame",
+							...cues,
+						});
+					}
 				}
 				const done =
 					run.committedAt !== null &&
@@ -1389,6 +1449,7 @@ const api: Probe = {
 				run.commits.push({
 					at: performance.now(),
 					settled: true,
+					source: "settled",
 					...paneCues(id),
 				});
 				resolve(run);

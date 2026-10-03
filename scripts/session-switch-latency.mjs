@@ -119,19 +119,6 @@ const RACE_WRITE = ARGS.includes("--race-write");
  */
 const FRAMES = flag("frames", null);
 /**
- * WHICH states a `--frames` capture writes: `--states=hydrating,settled`.
- *
- * Default is all of `FRAME_STATES`. Added 2026-10-03 because a lane that needs
- * two of the six could not photograph them at all: one arm's own self-check
- * (`held-press` refuses a composer that states the send-early sentence, rightly
- * - that state exists to show the press is held in silence) fails on a tree
- * where another lane has reused the sentence, and the whole capture aborts.
- * Narrowing is per-state and not per-arm, so a lane never has to disable a
- * check to get its frames; an unknown name is refused rather than skipped,
- * because a typo that silently captures nothing is worse than a failed run.
- */
-const REQUESTED_STATES = flag("states", null);
-/**
  * The IN-FLIGHT arm: a switch into a conversation whose turn is STILL RUNNING
  * (`?live=1`), with the page's own commit series printed under the table.
  *
@@ -209,6 +196,42 @@ const FRAME_STATES = [
  * frames the same measurement is 2.81 light and 4.26 dark).
  */
 const PULSE_TROUGH = 0.7;
+/**
+ * WHICH states a `--frames` capture writes: `--states=hydrating,settled`.
+ *
+ * Default is all of `FRAME_STATES`. Added 2026-10-03 because a lane that needs
+ * two of the six could not photograph them at all: one arm's own self-check
+ * (`held-press` refuses a composer that states the send-early sentence, rightly
+ * - that state exists to show the press is held in silence) fails on a tree where
+ * another lane has reused the sentence, and the whole capture aborts. Narrowing
+ * is per-state and not per-arm, so a lane never has to disable a check to get its
+ * frames.
+ *
+ * PARSED AND VALIDATED HERE, at module scope, which is to say before anything is
+ * launched (QA round 1, Q5): the refusal used to live inside the capture, so a
+ * mistyped run cost a browser launch and a page load to learn nothing. An empty
+ * value is refused as well (Q4) - `--states=` has no meaning distinct from
+ * omitting the flag, and capturing all six under it is the one reading a reader
+ * would not guess - and an unknown name is refused rather than skipped, because a
+ * typo that silently captures nothing is worse than a failed run.
+ */
+const REQUESTED_STATES = (() => {
+	const raw = flag("states", null);
+	if (raw === null) return null;
+	const names = raw
+		.split(",")
+		.map((name) => name.trim())
+		.filter(Boolean);
+	const known = FRAME_STATES.join(", ");
+	if (names.length === 0)
+		throw new Error(`--states= needs at least one state name; known: ${known}`);
+	for (const name of names)
+		if (!FRAME_STATES.includes(name))
+			throw new Error(
+				`--states=${name} is not a state this capture writes; known: ${known}`,
+			);
+	return names;
+})();
 const FRAME_THEMES = (
 	flag("themes", "localOperatorDark,localOperatorLight") ?? ""
 )
@@ -779,18 +802,7 @@ const captureFrames = async (cdp) => {
 	// on the pre-change tree, and only that state exists there.
 	const states = EXPECT_OUTGOING
 		? ["hydrating"]
-		: REQUESTED_STATES
-			? REQUESTED_STATES.split(",")
-					.map((name) => name.trim())
-					.filter(Boolean)
-			: FRAME_STATES;
-	for (const state of states) {
-		if (!FRAME_STATES.includes(state)) {
-			throw new Error(
-				`--states=${state} is not a state this capture writes; known: ${FRAME_STATES.join(", ")}`,
-			);
-		}
-	}
+		: (REQUESTED_STATES ?? FRAME_STATES);
 	for (const theme of FRAME_THEMES) {
 		for (const state of states) {
 			const url =
@@ -1843,7 +1855,7 @@ const main = async () => {
 		);
 		if (LIVE) {
 			console.log("");
-			console.log("in-flight switch - what the pane showed at each commit");
+			console.log("in-flight switch - what the pane showed at each change");
 			for (const [index, run] of runs.entries()) printCommits(run, index);
 		}
 		if (summary.timedOut)
@@ -1874,7 +1886,7 @@ const printCommits = (run, index) => {
 			? `${sample.bars.length} (${sample.bars.join(" | ")})`
 			: "0";
 		console.log(
-			`  ${(sample.settled ? "settled" : `commit ${commit}`).padEnd(9)}${fromClick(sample).padStart(10)}  rows ${String(sample.rows).padStart(3)}  bars ${bars}  working ${sample.workingLine === null ? "-" : JSON.stringify(sample.workingLine)}  placeholder ${sample.placeholder ? "yes" : "no"}  strip ${sample.strip === null ? "-" : JSON.stringify(sample.strip.text)}${sample.strip?.held ? " [held]" : ""}  row ${sample.sidebar === null ? "-" : (sample.sidebar.current ?? "none")}`,
+			`  ${(sample.settled ? "settled" : `change ${commit}`).padEnd(9)}${fromClick(sample).padStart(10)}  rows ${String(sample.rows).padStart(3)}  bars ${bars}  working ${sample.workingLine === null ? "-" : JSON.stringify(sample.workingLine)}  placeholder ${sample.placeholder ? "yes" : "no"}  strip ${sample.strip === null ? "-" : JSON.stringify(sample.strip.text)}${sample.strip?.held ? " [held]" : ""}  row ${sample.sidebar === null ? "-" : (sample.sidebar.current ?? "none")}`,
 		);
 	}
 };

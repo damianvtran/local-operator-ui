@@ -215,6 +215,13 @@ const now = () => performance.now();
  * `*_epoch` fields use on this wire - set a few seconds in the past so the row's
  * clock is a real elapsed time rather than a `0s` that would read as a call that
  * has just begun.
+ *
+ * `args` IS CARRIED, because a real one carries it: `tool_execution_start` is
+ * "the only LIVE frame that carries `args`" (`transcript-reducer.ts`'s
+ * `knownArgs`), and the reducer reads exactly this field. A seed without it falls
+ * through to the argument-less branch - the shape the durable ends have, and the
+ * branch this fixture exists NOT to take, since the point of the seed is to model
+ * the call a viewer joining mid-run is handed while it is still out.
  */
 function liveOwnerEvents(sessionId: string): Array<Record<string, unknown>> {
 	return [
@@ -228,6 +235,8 @@ function liveOwnerEvents(sessionId: string): Array<Record<string, unknown>> {
 			 */
 			tool_call_id: `call-${sessionId}-inflight`,
 			tool_name: "bash",
+			/* The command the row shows, in the same voice as the page's own calls. */
+			args: { command: "rg -c overdue reconciliation/*.csv" },
 			started_at_epoch: Math.round(Date.now() / 1000) - 6,
 		},
 	];
