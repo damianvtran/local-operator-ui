@@ -70,7 +70,10 @@ The tables below were produced by the harness version that sampled on
 `lop:transcript:render` **marks**, so one row is one commit; the shipped sampler
 records a row per **change** instead (see "What the series is sampled from"
 below), which is the same states in the same order under the labels `change N`.
-Both versions were run on the head, and the per-change one is the shipped one.
+Both versions were run on the head, and the per-change one is the shipped one —
+so the two cannot be diffed literally against each other (the shipped printer also
+emits the working line's spinner glyph verbatim, which the change signature
+normalises away; QA round 2, Q8).
 
 **before (`af6fffa899`), the running conversation (`abcdef000024`):**
 
@@ -97,7 +100,12 @@ Two things to read from that:
    the strip are all present in the sample that first shows content, on both
    trees. There is no uncondensed→condensed step and no inactive→active cue step
    on either; the *content* of that one paint is what the fix moved (0 bars →
-   1 bar). The claim is scoped to what the mechanism keeps: the series samples the
+   1 bar). **The window this covers is short and worth naming** (QA round 2, Q7):
+   the run ends when the composer becomes sendable, which the after runs measure
+   0–1 ms after the contentful sample — so the claim is "nothing changed between
+   the contentful paint and the run's own end", not "nothing changed for a
+   second". Under the change-sampler the settled sample is byte-identical to the
+   contentful one in all six cue fields, with only the timestamp moving. The claim is scoped to what the mechanism keeps: the series samples the
    DOM once per frame and records a sample on every **change**, so a state that
    lasts a frame is in here and a transient shorter than one is not.
 2. **The cost.** The first contentful sample lands at **50 / 158 / 187 ms** after
