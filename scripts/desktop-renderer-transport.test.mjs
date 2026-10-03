@@ -1117,6 +1117,34 @@ test("the image ceiling is reported by the encoder and refused, not trimmed, on 
 	}
 });
 
+/*
+ * The submit doors' own rule, on the surface whose guard was the text's alone
+ * (QA round 1, Q1's class): the shared composer arms Send on an attachment
+ * alone, and the configuration run's seam refused it — silently, after the
+ * press (no run, no sentence). Both guards now read `text OR attachments`,
+ * like the composer's two visible gates; the main composer's half is EXECUTED
+ * in `scripts/credential-composer.test.mjs` (`an image-only draft fires ...`),
+ * and this pins the config run's two guards, whose hook the config suites fake
+ * rather than drive.
+ */
+test("the config run's submit and retry guards read attachments, not text alone (QA round 1, Q1)", () => {
+	const stripComments = (file) =>
+		readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+	const config = stripComments(
+		"src/renderer/src/features/agents/config-run/use-config-run.ts",
+	);
+	assert.match(
+		config,
+		/\(!text\.trim\(\) && attachments\.length === 0\)/,
+		"start's guard is text-only again, so an image-only press is silently refused after the composer armed it",
+	);
+	assert.match(
+		config,
+		/\(!state\.topic && state\.images\.length === 0\)/,
+		"retry's guard is text-only again, so the visible Retry control does nothing for an image-only run",
+	);
+});
+
 // Round 8's MINOR-1: `encodeImageAttachments` skipped an attachment whose file
 // it could not read - silently, so the message went out a file short of what the
 // composer showed while the previous round's record claimed it "will fail at send
