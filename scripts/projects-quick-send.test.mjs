@@ -369,3 +369,23 @@ test("a non-image paste stages nothing — the strip's route carries images only
 		await unmount(root);
 	}
 });
+
+/*
+ * D3 of design round 1 on issue #790: the clipboard is the strip's only image
+ * route, so the placeholder is the surface's one affordance for it - without
+ * it the capability is discoverable only by someone who happens to try
+ * pasting, which is the silence the strip was fixed for. Pinned as copy:
+ * the line is the contract.
+ */
+test("the strip's empty box names its clipboard route", async () => {
+	const { host, root } = await mountStrip();
+	try {
+		assert.match(
+			input(host).getAttribute("placeholder") ?? "",
+			/paste an image/,
+			"the placeholder must name pasting an image (design round 1, D3)",
+		);
+	} finally {
+		await unmount(root);
+	}
+});

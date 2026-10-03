@@ -257,7 +257,7 @@ const sharp = (await import("sharp")).default;
 const imageBundle = await build({
 	stdin: {
 		contents:
-			'export * from "./src/renderer/src/features/chat/utils/bound-image"; export * from "./src/renderer/src/features/chat/utils/message-budget"; export * from "./src/renderer/src/features/chat/utils/attachment-read"; export * from "./src/renderer/src/shared/lib/format-bytes";',
+			'export * from "./src/renderer/src/features/chat/utils/bound-image"; export * from "./src/renderer/src/features/chat/utils/message-budget"; export * from "./src/renderer/src/features/chat/utils/attachment-read"; export * from "./src/renderer/src/features/chat/utils/attachment-encode"; export * from "./src/renderer/src/shared/lib/format-bytes";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -974,7 +974,7 @@ test("the send path refuses on an unreadable attachment, before admission", () =
 	// editable. A refusal after `admitChatDraft` latched the draft would be answered
 	// by the unchanged-payload guard, so the user could not remove the chip and send.
 	const send = page.slice(
-		page.indexOf("const { images, unreadable }"),
+		page.indexOf("const { images, unreadable, overflow }"),
 		page.indexOf("messageBudgetRefusal(content, images)"),
 	);
 	assert.match(
@@ -1026,6 +1026,97 @@ test("the send path refuses on an unreadable attachment, before admission", () =
 	);
 });
 
+/*
+ * D1 of design round 1 on issue #790: the strip's new clipboard route made a
+ * pre-existing shape visible - `encodeImageAttachments` sliced a draft to the
+ * wire's eight-image ceiling SILENTLY, so a send left with fewer images than
+ * the composer showed and nothing named the difference. The cap now travels
+ * out as `overflow`, and every send refuses before admission on it. Pinned
+ * wiring rather than sentences, for the same reason as the unreadable refusal
+ * above: the arms live on mounted pages, and the failure they prevent (a
+ * silent trim) is exactly what a green suite must not be able to ship.
+ */
+test("the image ceiling is reported by the encoder and refused, not trimmed, on every send path", () => {
+	const stripComments = (file) =>
+		readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, "");
+
+	const encoder = stripComments(
+		"src/renderer/src/features/chat/utils/attachment-encode.ts",
+	);
+	assert.match(
+		encoder,
+		/images\.length - DESKTOP_MESSAGE_MAX_IMAGES/,
+		"the encoder no longer counts what the ceiling leaves behind, so a draft over it is trimmed silently again",
+	);
+	assert.match(
+		encoder,
+		/images\.slice\(0, DESKTOP_MESSAGE_MAX_IMAGES\)/,
+		"the wire-side slice no longer names the shared ceiling",
+	);
+	assert.match(
+		encoder,
+		/unreadable,\s*overflow,/,
+		"the count is computed and never travels out of the encoder",
+	);
+
+	const page = stripComments(
+		"src/renderer/src/features/chat/components/chat-page.tsx",
+	);
+	const send = page.slice(
+		page.indexOf("const { images, unreadable, overflow }"),
+		page.indexOf("messageBudgetRefusal(content, images)"),
+	);
+	assert.match(
+		send,
+		/imageOverflowRefusal\(overflow\)/,
+		"the send no longer turns the encoder's overflow report into a refusal, so the message goes out a picture short",
+	);
+	assert.match(
+		send,
+		/setSendError\(overflowRefusal\);/,
+		"the overflow refusal is computed and never reaches the composer",
+	);
+	const overflowBranch = send.slice(
+		send.indexOf("if (overflowRefusal) {"),
+		send.indexOf("}", send.indexOf("if (overflowRefusal) {")) + 1,
+	);
+	assert.match(
+		overflowBranch,
+		/return false;/,
+		"the overflow refusal is computed and the send proceeds anyway, so the excess is still dropped",
+	);
+
+	// The three sibling sends raise the same refusal through their own
+	// surfaces - the mini's composer, the Agents config box, and the project
+	// strip's own seam - each where the chips are still held.
+	for (const [file, raised] of [
+		[
+			"src/renderer/src/mini-view/mini-composer.tsx",
+			/setSendError\(\{ message: overflowRefusal, retry: false \}\);/,
+		],
+		[
+			"src/renderer/src/features/agents/config-run/use-config-run.ts",
+			/useConfigRunStore\.getState\(\)\.fail\(overflowRefusal\);/,
+		],
+		[
+			"src/renderer/src/features/projects/components/project-detail.tsx",
+			/showErrorToast\(overflowRefusal\);/,
+		],
+	]) {
+		const source = stripComments(file);
+		assert.match(
+			source,
+			/imageOverflowRefusal\(overflow\)/,
+			`${file} does not turn the encoder's overflow report into a refusal`,
+		);
+		assert.match(
+			source,
+			raised,
+			`${file} computes the overflow refusal and never raises it`,
+		);
+	}
+});
+
 // Round 8's MINOR-1: `encodeImageAttachments` skipped an attachment whose file
 // it could not read - silently, so the message went out a file short of what the
 // composer showed while the previous round's record claimed it "will fail at send
@@ -1066,6 +1157,56 @@ test("an unreadable attachment is named rather than dropped, and a clean send is
 	assert.match(many, /^notes\.png, shot\.jpeg could not be read/);
 	assert.match(many, /so this message was not sent\./);
 	assert.match(many, /Attach them again, or remove them from the draft\.$/);
+});
+
+// The other half of the same fix: the sentence the refusal raises, and the
+// behaviour it turns on - the encoder reports the excess instead of hiding it.
+test("a draft over the image ceiling is refused by count, and the encoder reports the excess", async () => {
+	const { encodeImageAttachments, imageOverflowRefusal } =
+		await loadImageBounding();
+
+	// The no-op arm: a draft inside the ceiling raises nothing.
+	assert.equal(imageOverflowRefusal(0), null);
+
+	// Both numbers, because the remedy ("remove N") is only checkable against
+	// the screen: the draft's own count and the ceiling.
+	assert.equal(
+		imageOverflowRefusal(1),
+		"This draft carries 9 images and one message carries up to 8, so this message was not sent. Remove the extra image, or send it in a second message.",
+	);
+	assert.equal(
+		imageOverflowRefusal(4),
+		"This draft carries 12 images and one message carries up to 8, so this message was not sent. Remove 4 of them, or send them in a second message.",
+	);
+
+	/*
+	 * And the behaviour the sentence is about, EXECUTED: nine encodable images
+	 * come back as eight carried and one REPORTED. The pre-fix shape was eight
+	 * and silence, which is what the design round measured as "9 pasted, 8
+	 * admitted, no message" (issue #790, design round 1, D1). The data URLs are
+	 * not real PNGs, so the decoder ladder yields the originals unchanged - the
+	 * count is the claim, not the bytes.
+	 */
+	const nine = await encodeImageAttachments(
+		Array.from(
+			{ length: 9 },
+			(_, index) => `data:image/png;base64,QUJD${index}`,
+		),
+		"",
+	);
+	assert.equal(nine.images.length, 8, "the wire gets the ceiling, not nine");
+	assert.equal(nine.overflow, 1, "and the ninth is reported, not silent");
+	assert.deepEqual(nine.unreadable, []);
+
+	const eight = await encodeImageAttachments(
+		Array.from(
+			{ length: 8 },
+			(_, index) => `data:image/png;base64,QUJD${index}`,
+		),
+		"",
+	);
+	assert.equal(eight.images.length, 8);
+	assert.equal(eight.overflow, 0, "inside the ceiling nothing is refused");
 });
 
 test("a text-dominant overflow says to split the text even when an image is attached", async () => {

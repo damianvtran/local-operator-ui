@@ -221,10 +221,18 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 				</div>
 			)}
 			<div className="flex items-center gap-2">
+				{/*
+				 * THE PLACEHOLDER IS THE STRIP'S ONLY AFFORDANCE FOR ITS IMAGE ROUTE.
+				 * The route is the clipboard (see `handlePaste` below): there is no
+				 * attach control and no drop target to teach, so the capability has to
+				 * be named where an empty box is looking at it - discoverable only by
+				 * someone who happens to try pasting is exactly the silence the surface
+				 * was fixed for (design round 1 on issue #790, D3).
+				 */}
 				<Input
 					ref={inputRef}
 					aria-label="Message the selected session"
-					placeholder="Message the session"
+					placeholder="Message the session — paste an image to attach it"
 					value={text}
 					onChange={(event) => setText(event.target.value)}
 					onPaste={handlePaste}
