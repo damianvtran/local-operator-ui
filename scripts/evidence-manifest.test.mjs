@@ -3510,6 +3510,18 @@ const BRANCH_RECORDS = [
 	 * list too.
 	 */
 	"transcriptDisplayModesFoldReshootNote",
+	/*
+	 * And by the scroll-paging machine's remediation pass (PR #811,
+	 * `fix/scroll-paging-machine`), this branch's newest top-level record: the
+	 * note that states the ONE thing the pass moved (a STORIES row and the
+	 * `surfaces` count that follows it, and no frame at all), the lane whose
+	 * module digests it re-stamped rather than re-shot, and why the retired
+	 * `src`/`scripts` tree pair is correctly ABSENT here. It is listed for the
+	 * reason the list exists: a fold that started from main's manifest would take
+	 * the `surfaces` field back to 1443 and drop the only statement of why it
+	 * moved, with this very test staying green.
+	 */
+	"scrollPagingMachineRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

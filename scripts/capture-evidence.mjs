@@ -7394,6 +7394,17 @@ export const STORIES = [
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
 	["chat-older-history-slot--transport-down", 900, 800],
+	/* The state this branch's ONE user-visible change produces, rendered in the
+	   real transcript: `failed` outranking `windowed`/`idle` (use-scroll-paging's
+	   `slotState`), so a reader whose asks are all failing reads "Could not load
+	   earlier messages - Try again" instead of a gesture that cannot work. The
+	   precedence lives in the HOOK, so no board built from `OlderHistorySlot`
+	   alone can show it; this row is the capture target the design round asked
+	   for, registered with the story (`older-history-slot.stories.tsx`,
+	   `InTranscriptFailed`) and deliberately NOT shot in this pass - the capture
+	   window is contended by four other lanes. Sized to the story's own
+	   `h-[520px]` frame, whose content it fills. */
+	["chat-older-history-slot--in-transcript-failed", 900, 520],
 
 	/* The other half of the transcript's completeness: a reader who returns from
 	   another conversation, in the two states the fix is about. The claim is a

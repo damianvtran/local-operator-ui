@@ -939,6 +939,49 @@ is the geometry behind them (every frame's `offset`, `scrollTop`, `extent` and
   `scripts/transcript-paging-hook.test.mjs`, which mounts the production hook and
   drives the real listener and layout effect with controlled geometry.
 
+## Re-stamp — the three changed modules, at this head
+
+**RE-STAMPED, NOT RE-CAPTURED.** The frames in this directory were shot against
+an earlier tree; the modules under test have moved since, and this pass did not
+re-render them - no frame in `docs/evidence/` was taken, added or deleted (see
+`partialCapture.scrollPagingMachineRestampNote`). What it does record is the
+bytes, so a reader can tell WHICH modules a frame is a picture of.
+
+Three modules changed on this branch. Two readings of each, both one line to
+re-derive - this lane's own convention is SHA-256 truncated to 16 hex (the form
+`scripts/paging-evidence-arms.mjs` prints and `transcript-reveal-at-rest/`'s arm
+records use), and the git blob id (12 hex) the round-1 review note on this branch
+quotes:
+
+| module | at this head (sha256-16) | at this head (blob id) | at the pre-change tree (`da76ff47`) |
+| --- | --- | --- | --- |
+| `scroll-paging.ts` | `94010f1a6a94844f` | `7dc717bf29c3` | `dca080feddb8ca0d` / `ec5c2b94539e` |
+| `use-scroll-paging.ts` | `dba58781e551ec1d` | `a5de7fbdcf33` | `ec4c136d53052cb1` / `f3cdbc9e66d0` |
+| `canonical-transcript.tsx` | `3788e4c7d60df141` | `911903c0776c` | `842c3675d1e0d06d` / `e98348d3ed9a` |
+
+```sh
+git show HEAD:<path> | shasum -a 256 | cut -c1-16     # the sha256-16 column
+git rev-parse HEAD:<path> | cut -c1-12               # the blob-id column
+```
+
+`da76ff47` is the merge base this branch was cut from, and the two paging
+modules are byte-identical there and on `origin/main`. The `restored=identical
+{...}` line under "The two arms" above is the capture run's own print against the
+tree it ran on, and is left standing: it is an artefact of that run, not a claim
+about this head.
+
+**A CORRECTION TO WHERE THE PRE-CHANGE DIGESTS LIVE.** The review note names the
+pre-change values as `scroll-paging.ts` `4e32a82e085c`, `use-scroll-paging.ts`
+`042ae70a3c22` and `canonical-transcript.tsx` `8a590b414a9c`. Those are the SIBLING
+lane's records - `docs/evidence/child-reader-tail-follow/`, whose `*-readings.json`
+files label them `md5`, repeated in the manifest at
+`supplementary[child-reader-tail-follow/before].capturedAtHeadNote`. They are
+digests of THAT lane's capture tree, not this one's; they are left where they are,
+because they describe a capture that did run and re-stamping them would move a
+true record onto a tree it never described. No digests of the three modules appear
+under `docs/evidence/transcript-scroll-paging/` today: the pre-change column above
+is this lane's own, derived here for the first time.
+
 ## Still open
 
 - **`GESTURE_GAP_MS = 400` is unmeasured against real hardware.** It is reasoned
