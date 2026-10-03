@@ -24,6 +24,10 @@ import {
 	type SidebarOrder,
 	type SidebarRegions,
 } from "@features/chat/sidebar-split";
+import {
+	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+	type TranscriptDisplayMode,
+} from "@features/chat/transcript-display-mode";
 import { DEFAULT_THEME } from "@shared/themes";
 import type { ThemeName } from "@shared/themes";
 import { measureCell } from "@shared/themes/terminal-theme";
@@ -401,6 +405,32 @@ type UiPreferencesState = {
 	 * @param show - Whether reasoning turns should be visible
 	 */
 	setShowAgentReasoning: (show: boolean) => void;
+
+	/**
+	 * How the transcript draws a settled turn: `by-turn` (the shipped
+	 * condensation, where a turn keeps the rows its visibility invariant
+	 * requires) or `by-response` (every settled text-bearing row stays on
+	 * screen, with the turn's elected answer still carrying the caption).
+	 *
+	 * Default `by-turn` per `transcript-display-mode.ts`, which owns the tokens
+	 * and the judgement: this store keeps the value, and every reader parses it
+	 * through `parseTranscriptDisplayMode` because `localStorage` is not the
+	 * setter's path out — zustand rehydrates PAST the setters, so a token written
+	 * by an older build arrives here unvalidated (the same read-side rule
+	 * `chatSidebarView` follows with `parseSidebarView`).
+	 */
+	transcriptDisplayMode: TranscriptDisplayMode;
+
+	/**
+	 * Set how the transcript draws a settled turn.
+	 *
+	 * Takes the resolved union rather than a token, so an unknown mode cannot be
+	 * written at all; the stored value is judged again on every read for the
+	 * rehydration path above.
+	 *
+	 * @param mode - How settled turns should be drawn
+	 */
+	setTranscriptDisplayMode: (mode: TranscriptDisplayMode) => void;
 
 	/**
 	 * The currently selected theme
@@ -1085,6 +1115,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			commandPaletteQuery: "",
 			isSidebarCollapsed: false,
 			showAgentReasoning: false,
+			transcriptDisplayMode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
 			themeName: DEFAULT_THEME,
 			rightSlotWidth: 0,
 			chatSidebarWidth: DEFAULT_CHAT_SIDEBAR_WIDTH,
@@ -1162,6 +1193,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			setShowAgentReasoning: (show: boolean) => {
 				set({
 					showAgentReasoning: show,
+				});
+			},
+
+			setTranscriptDisplayMode: (mode: TranscriptDisplayMode) => {
+				set({
+					transcriptDisplayMode: mode,
 				});
 			},
 

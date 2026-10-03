@@ -19,10 +19,13 @@ after this branch was rebased onto `142e86904` (#171 / v0.22.3, which brought in
 during recovery. The rebase onto browser-host #160 (`915928a18`) retained these
 frames byte-for-byte from `619f90bc9`; it did not run a browser or take new frames.
 The entire `src/renderer` tree and the capture script are byte-identical to the
-original capture commit. `manifest.json` now separates current source-verification
-stamps (`head`, `srcTree`, `scriptsTree`) from the historical capture provenance
+original capture commit. `manifest.json` separates the current source record
+(`head`) from the historical capture provenance
 (`rebaseVerification.originalCapture`); timestamps and refresh totals remain
-historical. Its `partialCapture.refreshedAtHead` is the capture commit's replay,
+historical. (The `srcTree`/`scriptsTree` stamps this pass also wrote are retired: a
+stored hash of the shipping tree went false for every open branch whenever a sibling
+moved that tree, so the file no longer carries one.) Its
+`partialCapture.refreshedAtHead` is the capture commit's replay,
 not a claim of a new capture. Main/preload browser-host wiring changed underneath
 the unchanged renderer, so independent live click-flow QA/UX remains required.
 

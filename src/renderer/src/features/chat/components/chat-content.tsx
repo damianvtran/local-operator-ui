@@ -1872,6 +1872,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * `composerPlaceholder`'s `askMode` rung.
 								 */
 								askMode={Boolean(canonical?.askComposerPlaceholder)}
+								/*
+								 * THE ASK LANE'S DOOR, forwarded to the STATUS ROW rather than to
+								 * `AskSurfaces`: the trigger is a row item now, and the page owns the ONE
+								 * flag both halves read (see `AskSurfacesProps.expanded`). Handing the same
+								 * `canonical` pair to both keeps the row item's state and the panel's state
+								 * the same state - a second copy is the one thing that rule forbids.
+								 */
+								askExpanded={canonical?.askExpanded}
+								onAskToggle={canonical?.onAskToggle}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)

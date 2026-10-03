@@ -1,3 +1,26 @@
+# WHY verifyDepsBeforeRun IS OFF. pnpm 11+ defaults this to `install`, which means
+# ANY `pnpm run <script>` in this repository installs first whenever node_modules
+# looks stale relative to the lockfile - and this repository is routinely worked in
+# sibling worktrees whose node_modules are clones of a primary checkout's, so that
+# install rewrites (and prunes) a tree it does not own. Measured on pnpm 12.6.0: a
+# fold invoked as `pnpm evidence:fold` in a worktree whose node_modules is out of
+# sync ran an install that pruned the tree, stopped on unreviewed build scripts
+# (`ERR_PNPM_IGNORED_BUILDS`, because pnpm 11 moved build approval from
+# `onlyBuiltDependencies` to `allowBuilds`), and WROTE an `allowBuilds:` block into
+# THIS tracked file - so a fold could fail and dirty the repository without ever
+# reaching the manifest. CI's pinned pnpm 10.29.2 already defaults to `false`, so
+# this line changes nothing there; it states the contract and holds when the pin
+# moves.
+#
+# `scripts/evidence-fold.mjs` is plain Node with no dependencies and resolves the
+# manifest from git objects; it never needs an install, so `install` is the wrong
+# answer for every script in this repository and `false` is the honest one. An
+# explicit `pnpm install` is still the way to refresh a tree. The settings that
+# only affect install structure are read from this file, not from .npmrc, since
+# pnpm 12 (pnpm.io/settings: "Only auth and registry settings are read from
+# .npmrc files"), which is why the opt-out lives here and not in an .npmrc.
+verifyDepsBeforeRun: false
+
 onlyBuiltDependencies:
   - '@biomejs/biome'
   - core-js

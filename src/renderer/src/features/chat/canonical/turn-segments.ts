@@ -53,6 +53,10 @@
  * the foot, the stamp and the caption key on, and nothing here changes that.
  */
 
+import {
+	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+	type TranscriptDisplayMode,
+} from "../transcript-display-mode";
 import type { TranscriptRecord } from "./transcript-reducer";
 
 export type TriggerKind =
@@ -458,6 +462,20 @@ export type RunPartition = {
  * first hidden row was, and jumped when the bar opened. Each span is its own bar
  * in its own slot, so a pinned row can never be reordered by expanding anything.
  *
+ * THE DISPLAY MODE WIDENS, AND ONLY WIDENS (issue #756). `mode` is the reader's
+ * `by-turn` / `by-response` choice (`transcript-display-mode.ts`), and it is an
+ * OPTIONAL FIELD whose absence means the shipped default: `from` and the four
+ * clauses above are computed identically in both modes, so V1-V4 keep their
+ * meaning and `answer` is elected once, before the mode is consulted. `by-turn`
+ * is therefore byte-for-byte the partition this function always produced; in
+ * `by-response` EVERY settled text-bearing row joins the visible set on top of
+ * the clauses, so a turn that answered, was continued past and answered again
+ * shows both answers in place while its tool work still condenses. The widening
+ * is one-directional by construction: nothing is ever REMOVED from `visible` for
+ * a mode, so a row the invariant keeps stays kept, and the elected answer keeps
+ * carrying the caption and the foot (`closesTurn`) rather than becoming one of
+ * several undifferentiated rows.
+ *
  * `from` is the first index the span may start at: just after the opening user
  * row, or 0 for a run whose head is cut off.
  */
@@ -466,6 +484,12 @@ export function partitionRun(
 	options: RowPredicates & {
 		from: number;
 		pinned: (record: TranscriptRecord) => boolean;
+		/**
+		 * How the transcript draws this run. Omitted (or `by-turn`) is the shipped
+		 * condensation; `by-response` adds every settled text-bearing row to the
+		 * visible set. See this function's doc.
+		 */
+		mode?: TranscriptDisplayMode;
 	},
 ): RunPartition {
 	const cycles = cyclesOf(records, options.paints);
@@ -507,6 +531,24 @@ export function partitionRun(
 			visible.add(index);
 		}
 	});
+
+	/*
+	 * BY-RESPONSE WIDENING (issue #756). The reader asked to see every settled
+	 * response rather than only the rows the invariant is forced to keep, so every
+	 * settled text-bearing row joins the visible set - `streaming` rows are
+	 * excluded because the in-flight cycle is drawn in place by the liveness rule
+	 * anyway, and `paints` excludes an assistant row that carries no text. This
+	 * runs AFTER the clauses above and only ever ADDS, which is what keeps
+	 * `by-turn` untouched and keeps the elected answer's marking intact: the
+	 * answer is still `electAnswer`'s, and no clause is recomputed.
+	 */
+	if ((options.mode ?? DEFAULT_TRANSCRIPT_DISPLAY_MODE) === "by-response") {
+		records.forEach((record, index) => {
+			if (index < options.from) return;
+			if (record.kind !== "assistant" || record.streaming) return;
+			if (options.paints(record)) visible.add(index);
+		});
+	}
 
 	const segments: SegmentSpan[] = [];
 	let open: number | null = null;
