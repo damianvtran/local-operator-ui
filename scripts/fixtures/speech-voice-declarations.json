@@ -1,0 +1,90 @@
+{
+	"provenance": {
+		"artifact": "~/.local/share/lop/generations/20261003T074919Z-0.66.2/tools/local-operator/",
+		"version": "0.66.2",
+		"settingsModule": "lib/python3.14/site-packages/local_operator/settings_io.py",
+		"settingsModuleSha256": "df0361c412f81a71de90bec12851b208edf0936ee7ddf303a7f052e63939a95a",
+		"derivation": "<artifact>/bin/python -c \"import json;from local_operator import settings_io as S;V=lambda v: v.value if hasattr(v,'value') else ([V(x) for x in v] if isinstance(v,(list,tuple)) else v);print(json.dumps([{k:V(getattr(s,k,None)) for k in 'key label section kind default empty_unsets minimum maximum choices'.split()} for s in S.SETTINGS if s.key.startswith('speech.voice.')],indent=2))\"",
+		"derivationNote": "Run from the artifact's own `bin/python` (the package under <artifact>/lib must be the one imported, not a site-packages copy). `V` unwraps the two enum-bearing fields to the values this file stores: `kind`, which is a `Kind` member and otherwise is not JSON-serialisable at all, and `choices`, a tuple of `Choice` objects rather than of strings. The output pastes as this file's `rows` verbatim. Verified 2026-10-03 against the artifact above: exit 0, 7 rows, byte-identical to `rows` — the earlier record omitted `choices` and recorded a command that raised `TypeError: Object of type Kind is not JSON serializable` (agent review round 2, follow-up a).",
+		"readAt": "2026-10-03"
+	},
+	"rows": [
+		{
+			"key": "speech.voice.gender",
+			"label": "Voice gender",
+			"section": "speech",
+			"kind": "enum",
+			"default": "auto",
+			"empty_unsets": false,
+			"minimum": null,
+			"maximum": null,
+			"choices": ["auto", "female", "male"]
+		},
+		{
+			"key": "speech.voice.tone",
+			"label": "Tone",
+			"section": "speech",
+			"kind": "enum",
+			"default": "warm",
+			"empty_unsets": false,
+			"minimum": null,
+			"maximum": null,
+			"choices": ["warm", "neutral", "bright", "calm", "authoritative"]
+		},
+		{
+			"key": "speech.voice.expressiveness",
+			"label": "Expressiveness",
+			"section": "speech",
+			"kind": "enum",
+			"default": "medium",
+			"empty_unsets": false,
+			"minimum": null,
+			"maximum": null,
+			"choices": ["low", "medium", "high"]
+		},
+		{
+			"key": "speech.voice.pace",
+			"label": "Pace",
+			"section": "speech",
+			"kind": "float",
+			"default": 1.0,
+			"empty_unsets": false,
+			"minimum": 0.5,
+			"maximum": 2.0,
+			"choices": []
+		},
+		{
+			"key": "speech.voice.language",
+			"label": "Language",
+			"section": "speech",
+			"kind": "text",
+			"default": "auto",
+			"empty_unsets": true,
+			"minimum": null,
+			"maximum": null,
+			"choices": []
+		},
+		{
+			"key": "speech.voice.accent",
+			"label": "Accent",
+			"section": "speech",
+			"kind": "text",
+			"default": "",
+			"empty_unsets": true,
+			"minimum": null,
+			"maximum": null,
+			"choices": []
+		},
+		{
+			"key": "speech.voice.instructions",
+			"label": "Delivery instructions",
+			"section": "speech",
+			"kind": "text",
+			"default": "Speak aloud and pay attention to potentially multilingual inputs and make sure to use native accents for all different parts of the text, especially those that are not english. Strive for a casual and native-sounding conversational tone. Don't over-enunciate, consider word combinations that should have silent and natural transitions, like \"raha hoon\" -> \"rahoon\" or \"je m'appelle\" -> \"jm'appelle\".",
+			"empty_unsets": false,
+			"minimum": null,
+			"maximum": null,
+			"choices": []
+		}
+	]
+}

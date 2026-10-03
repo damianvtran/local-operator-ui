@@ -35,6 +35,7 @@
  * sentence could be claimed to cover more than it does.
  */
 
+import { DESKTOP_MESSAGE_MAX_IMAGES } from "../../../../../shared/desktop-contract";
 import { getFileName } from "./get-file-name";
 
 /**
@@ -72,4 +73,30 @@ export function unreadableAttachmentRefusal(
 	if (names.length === 1)
 		return `${names[0]} could not be read (it may have been moved or deleted), so this message was not sent. Attach it again, or remove it from the draft.`;
 	return `${names.join(", ")} could not be read (they may have been moved or deleted), so this message was not sent. Attach them again, or remove them from the draft.`;
+}
+
+/**
+ * The refusal sentence for the images a draft stages beyond what one message
+ * carries, or null when it stages none.
+ *
+ * The COUNT sibling of `unreadableAttachmentRefusal`, and it exists for the
+ * same shape of failure one rung up: `encodeImageAttachments` sliced a draft
+ * to the wire's ceiling silently, so a send went out with fewer images than
+ * the composer showed and nothing named the difference - "silent and partial
+ * is the worst shape a failure can take" (design round 1 on issue #790, D1).
+ * The refusal is raised before admission for the same reason as the others
+ * here: the composer still holds the chips, so "remove N" is an action the
+ * user can take, and the send is refused rather than trimmed.
+ *
+ * Both numbers are stated - the draft's own count and the ceiling - because
+ * the remedy ("remove N") is only checkable against the screen; a count that
+ * appears nowhere is how "it dropped some" reads as a rumour.
+ */
+export function imageOverflowRefusal(dropped: number): string | null {
+	if (dropped <= 0) return null;
+	const cap = DESKTOP_MESSAGE_MAX_IMAGES;
+	const total = cap + dropped;
+	if (dropped === 1)
+		return `This draft carries ${total} images and one message carries up to ${cap}, so this message was not sent. Remove the extra image, or send it in a second message.`;
+	return `This draft carries ${total} images and one message carries up to ${cap}, so this message was not sent. Remove ${dropped} of them, or send them in a second message.`;
 }

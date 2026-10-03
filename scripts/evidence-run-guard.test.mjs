@@ -381,6 +381,87 @@ test(
 );
 
 test(
+	"the real CLI reads capturedAtHead-vs-story drift as a NOTE and still exits 0",
+	{ timeout: 20000 },
+	async (t) => {
+		/*
+		 * The acceptance for the F3 advisory, end to end: a case that warns
+		 * WITHOUT blocking. The real CLI runs over the isolated synthetic evidence
+		 * (one frame, honest arithmetic), inside a real repository whose history is
+		 * two commits - the story file, then its second cut - so the advisory's
+		 * `git log` and `merge-base` have real answers to read.
+		 *
+		 * Arm one: the set's `capturedAtHead` is the FIRST commit while the file's
+		 * last touch is the second, so the reading fires; the run must still exit 0
+		 * with its verdict, because a NOTE is a report and has no path into the
+		 * exit code. Arm two: the stamp is flipped to the second commit - the file
+		 * no longer moved outside the capture - and the reading goes quiet. Only
+		 * `capturedAtHead` differs between the arms, so what the assertions pin is
+		 * the comparison, not the fixture.
+		 */
+		const lock = fixture(t);
+		const { cli, root, evidence } = await realSweep(t, lock);
+		const story = "src/stories/advisory.stories.tsx";
+		mkdirSync(join(root, "src", "stories"), { recursive: true });
+		writeFileSync(join(root, story), "export const cut = 1;\n");
+		const git = (...args) =>
+			execFileSync("git", ["-C", root, ...args], { encoding: "utf8" });
+		git("init", "--initial-branch=main", "-q");
+		git("config", "user.email", "fixture@example.invalid");
+		git("config", "user.name", "Fixture");
+		git("config", "commit.gpgsign", "false");
+		git("add", "--", story);
+		git("commit", "-qm", "feat: the story, first cut");
+		const first = git("rev-parse", "HEAD").trim();
+		writeFileSync(join(root, story), "export const cut = 2;\n");
+		git("add", "--", story);
+		git("commit", "-qm", "feat: the story, second cut");
+		const second = git("rev-parse", "HEAD").trim();
+		/*
+		 * One declared set so the sweep's arithmetic is honest (`frames: 0`
+		 * outside it), naming the story by its bare basename - the resolution the
+		 * advisory walks for most of the shipped manifest's mentions.
+		 */
+		const stamp = (capturedAtHead) =>
+			JSON.stringify(
+				{
+					head: first,
+					frames: 0,
+					supplementary: [
+						{
+							path: "frame-0",
+							frames: 1,
+							source: "the rig beside these frames: `advisory.stories.tsx`",
+							why: "a synthetic set this case needs to declare its frame",
+							capturedAt: "2026-01-01T00:00:00.000Z",
+							capturedAtHead,
+						},
+					],
+				},
+				null,
+				2,
+			);
+		writeFileSync(join(evidence, "manifest.json"), stamp(first));
+		const drifted = cli();
+		assert.equal(drifted.status, 0, drifted.stdout + drifted.stderr);
+		assert.match(
+			drifted.stdout,
+			/NOTE\s+supplementary\[frame-0\].*advisory\.stories\.tsx/,
+		);
+		assert.match(drifted.stdout, /may not picture the story's current cut/);
+		// Nothing turned red beside it: no FAIL line, and the verdict a clean
+		// fixture prints is still the sweep's own.
+		assert.doesNotMatch(drifted.stdout, /FAIL/);
+		assert.match(drifted.stdout, /Evidence holds: 1 frames/);
+		writeFileSync(join(evidence, "manifest.json"), stamp(second));
+		const agreed = cli();
+		assert.equal(agreed.status, 0, agreed.stdout + agreed.stderr);
+		assert.doesNotMatch(agreed.stdout, /NOTE/);
+		assert.match(agreed.stdout, /Evidence holds: 1 frames/);
+	},
+);
+
+test(
 	"the real sweep holds admission while it checks frames, and releases it at exit",
 	{ timeout: 120000 },
 	async (t) => {

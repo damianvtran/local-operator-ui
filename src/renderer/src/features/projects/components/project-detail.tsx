@@ -65,6 +65,12 @@ import type { FC } from "react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { openConversation } from "../../chat/open-conversation";
+import { encodeImageAttachments } from "../../chat/utils/attachment-encode";
+import {
+	imageOverflowRefusal,
+	unreadableAttachmentRefusal,
+} from "../../chat/utils/attachment-read";
+import { messageBudgetRefusal } from "../../chat/utils/message-budget";
 import {
 	useDeleteProject,
 	useLinkProjectSession,
@@ -242,19 +248,48 @@ export const ProjectDetailScreen: FC<ProjectDetailScreenProps> = ({
 	 * one-row-per-conversation rule every send obeys. `null` back from the
 	 * admission means nothing was sent (a send is already in flight for that
 	 * row); that is said rather than silently swallowed.
+	 *
+	 * THE IMAGE HALF RUNS HERE, the way it runs in the chat's send and the
+	 * mini's (both encode the attachments before they admit): the strip hands
+	 * over the pasted attachments, and this screen — which owns the words —
+	 * refuses an unreadable file or an over-budget payload before admission,
+	 * while the strip still holds the draft (issue #790), then admits the
+	 * images beside the text. The attachment list travels into the admission
+	 * too: it is the payload identity `payloadMatchesClaim` compares, and two
+	 * image-only sends with an empty list would read as one message replayed.
 	 */
 	const quickSend = async (
 		sessionId: string,
 		text: string,
 		mode: "prompt" | "steer",
+		attachments: string[],
 	): Promise<boolean> => {
 		const store = useCanonicalSessionsStore.getState();
 		const key = paneDraftKey(null, sessionId, store.drafts);
 		if (!key) return false;
 		try {
+			const { images, unreadable, overflow } = await encodeImageAttachments(
+				attachments,
+				text,
+			);
+			const unreadableRefusal = unreadableAttachmentRefusal(unreadable);
+			if (unreadableRefusal) {
+				showErrorToast(unreadableRefusal);
+				return false;
+			}
+			const overflowRefusal = imageOverflowRefusal(overflow);
+			if (overflowRefusal) {
+				showErrorToast(overflowRefusal);
+				return false;
+			}
+			const budgetRefusal = messageBudgetRefusal(text, images);
+			if (budgetRefusal) {
+				showErrorToast(budgetRefusal);
+				return false;
+			}
 			const admitted = await admitChatDraft(
 				key,
-				{ text, attachments: [], images: [], mode, cwd: store.cwd },
+				{ text, attachments, images, mode, cwd: store.cwd },
 				sessionId,
 			);
 			if (admitted === null) {
