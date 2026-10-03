@@ -776,8 +776,11 @@ test("the SHIPPED manifest's counts describe the tree it ships in", () => {
  * loud rather than silent. After the retirement lands, a branch whose own old
  * fold tool runs re-derives `srcTree`/`scriptsTree` back into its copy; without
  * this assertion the file would drift back to the old regime with every gate
- * green. The remedy is one `pnpm evidence:fold` with the new tool, which drops
- * it (`dropped srcTree - retired by this change`).
+ * green. The remedy is a run of `node scripts/evidence-fold.mjs`, which drops the
+ * pair from whichever side carries it (`dropped srcTree - retired by this
+ * change`) - and which must be the TREE'S OWN tool (fold the branch onto `main`
+ * first: an older tree's `evidence-fold.mjs` is what re-adds the pair), with
+ * `node scripts/drop-evidence-stamps.mjs` as the file-only form.
  */
 test("the SHIPPED manifest carries no tree stamp", () => {
 	const manifest = JSON.parse(
@@ -785,8 +788,38 @@ test("the SHIPPED manifest carries no tree stamp", () => {
 	);
 	assert.ok(
 		!("srcTree" in manifest) && !("scriptsTree" in manifest),
-		'docs/evidence/manifest.json must not store a hash of `src/` or `scripts/`. Those two fields were retired because a stored tree hash goes false for every open branch the moment any sibling commit moves that tree - which is what forced a re-derive on every fold. What the file certifies instead is stated in `check-evidence.mjs`\'s header under "What this file certifies": the counts and the citations, with the frames-vs-src staleness class left as a review question. A copy that carries the pair again is one `pnpm evidence:fold` (or `node scripts/drop-evidence-stamps.mjs`) away from clean.',
+		"docs/evidence/manifest.json must not store a hash of `src/` or `scripts/`. Those two fields were retired because a stored tree hash goes false for every open branch the moment any sibling commit moves that tree - which is what forced a re-derive on every fold. What the file certifies instead is stated in `check-evidence.mjs`'s header under \"What this file certifies\": the counts and the citations, with the frames-vs-src staleness class left as a review question. The remedy is a run of `node scripts/evidence-fold.mjs` (fold the branch onto `main` first, so the tree's own tool is the one that runs - an older tree's `evidence-fold.mjs` is what re-adds the pair), which drops the pair from whichever side carries it and prints `dropped srcTree - retired by this change`; `node scripts/drop-evidence-stamps.mjs` clears the file alone.",
 	);
+});
+
+/**
+ * The fold LABEL must not survive in a lead either, and this is the assertion
+ * that makes a re-introduction red rather than silent (review round 1, MINOR 3).
+ *
+ * The writer stopped emitting `(this branch folded onto `origin/main` = `sha`)`,
+ * but a lead ALREADY in the file is never rewritten by itself: `leadParagraph`
+ * returns a lead whose READINGS match unchanged (`statesSameReadings` compares
+ * numbers), so the residue is inert and permanent. The shipped file was rewritten
+ * once by `scripts/drop-evidence-stamps.mjs`; this pins it, so a fold tool that
+ * starts writing the label again - or a merge that takes an older copy's lead -
+ * fails here instead of quietly restoring a second churn source.
+ *
+ * Only the LEADING paragraph is checked. The paragraphs under it are history by
+ * construction (each is a former lead, and each says in its own words which tree
+ * it described), so a label inside one of them is a record, not a residue.
+ */
+test("the SHIPPED manifest's countsMean leads carry no fold label", () => {
+	const manifest = JSON.parse(
+		readFileSync("docs/evidence/manifest.json", "utf8"),
+	);
+	for (const [field, text] of Object.entries(manifest.countsMean)) {
+		const lead = String(text).split("\n\n")[0];
+		assert.doesNotMatch(
+			lead,
+			/folded onto/i,
+			`countsMean.${field}'s leading paragraph must not name the fold it was derived at: the label is a commit name that changes on every fold, which is half the churn this change removes. Rewrite it with \`node scripts/drop-evidence-stamps.mjs\`.`,
+		);
+	}
 });
 
 /**

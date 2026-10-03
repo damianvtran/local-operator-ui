@@ -1893,6 +1893,43 @@ test("a fold drops a retired top-level field this branch still carries", () => {
 });
 
 /**
+ * THE OTHER DIRECTION (review round 1, MINOR 4). Filtering `Object.keys(ours)`
+ * alone left the state where the BASE lacks the pair and the OTHER side carries
+ * it: `srcTree` was imported from `theirs` with no decision recorded at all. That
+ * is the only realistic resurrection - a lane whose own old fold tool re-added
+ * the pair, merged to `main` - and it is the state this resolver and
+ * `scripts/check-fold-keys.mjs` both promise cannot happen.
+ */
+test("a retired field only the OTHER side carries is dropped, with a decision", () => {
+	const decisions = [];
+	// Base lacks the pair entirely; this branch never had it; main's copy carries
+	// it because an older tree's `evidence-fold.mjs` wrote it back in.
+	const base = { head: "a", keepMe: "base" };
+	const ours = { head: "a", keepMe: "ours" };
+	const theirs = {
+		head: "b",
+		keepMe: "theirs",
+		srcTree: "2".repeat(40),
+		scriptsTree: "3".repeat(40),
+	};
+
+	const keys = mergedKeys(base, ours, theirs, "", decisions);
+	assert.deepEqual(
+		keys,
+		["head", "keepMe"],
+		"neither retired key is imported from the other side",
+	);
+	assert.deepEqual(decisions, [
+		{ path: "srcTree", action: "dropped", why: "retired by this change" },
+		{ path: "scriptsTree", action: "dropped", why: "retired by this change" },
+	]);
+	const merged = resolveManifest({ base, ours, theirs, derived: null });
+	assert.equal("srcTree" in merged && "scriptsTree" in merged, false);
+	// The rest of the union is untouched: main's own records still ride.
+	assert.equal(merged.keepMe, "ours");
+});
+
+/**
  * AN ENTRY IS RESOLVED ADDITIVELY (2026-10-03, the #765 lane's fold onto
  * `7cb678f29bf`). That resolution dropped `frames`, `surfaces` and `themes` from
  * `supplementary[158]` - an entry whose only varying key was `why` - because this
