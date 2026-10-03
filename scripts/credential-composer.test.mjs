@@ -5502,6 +5502,72 @@ test("the closed box with a draft carries a visible reason (UX round 1, U2)", as
 });
 
 /* ------------------------------------------------------------------ */
+/* QA round 1, Q1 — an image-only draft is a message                    */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE THIRD DOOR, DRIVEN THROUGH THE SHIPPED COMPOSER.
+ *
+ * `use-message-input.ts`'s own submit guard required TEXT while the two visible
+ * gates — the Send predicate and the form's guard — arm and admit on `text OR
+ * attachments`. QA round 1 (Q1) measured the consequence: an image-only press
+ * was armed, passed both visible gates, and was then swallowed there with no
+ * request, no copy and no toast; the zero-width-space discriminator (a
+ * `"\u200B"` box passes `.trim()`) proved the swallow sat in that guard. These
+ * two cases pin the fix the way the finding read them: an empty-text draft with
+ * an attachment now REACHES `onSendMessage`, and nine images with no text reach
+ * it whole — which is what makes the ceiling refusal past it reachable again
+ * (its own arm is pinned in `desktop-renderer-transport.test.mjs`).
+ */
+test("an image-only draft fires the send both visible gates armed (QA round 1, Q1)", async () => {
+	const frame = await mount();
+	useConversationInputStore
+		.getState()
+		.addAttachment(frame.conversationId, { id: "q1-a", path: "/tmp/shot.png" });
+	await settle();
+	await clickSend(frame);
+	assert.equal(
+		frame.sent.length,
+		1,
+		"the empty-text press must fire - pre-fix the hook swallowed it in silence",
+	);
+	const [content, attachments] = frame.sent[0];
+	assert.equal(content, "", "the payload carries no text");
+	assert.deepEqual(
+		attachments,
+		["/tmp/shot.png"],
+		"and carries the staged image",
+	);
+});
+
+test("nine images with no text reach the send whole (QA round 1, Q1's blast radius)", async () => {
+	const frame = await mount();
+	const paths = Array.from(
+		{ length: 9 },
+		(_, index) => `/tmp/shot-${index}.png`,
+	);
+	for (const [index, path] of paths.entries()) {
+		useConversationInputStore
+			.getState()
+			.addAttachment(frame.conversationId, { id: `q1-${index}`, path });
+	}
+	await settle();
+	await clickSend(frame);
+	assert.equal(
+		frame.sent.length,
+		1,
+		"pre-fix the hook swallowed this press before any payload was built",
+	);
+	const [content, attachments] = frame.sent[0];
+	assert.equal(content, "");
+	assert.deepEqual(
+		attachments,
+		paths,
+		"all nine reach the page; the host's imageOverflowRefusal is what refuses them now",
+	);
+});
+
+/* ------------------------------------------------------------------ */
 /* The mic gate reads the Radient session, not only the file (#674)     */
 /* ------------------------------------------------------------------ */
 
