@@ -83,7 +83,10 @@ import type {
 import { useInterruptSlotHold } from "@features/chat/hooks/use-interrupt-slot-hold";
 import { MISSING_SESSION_NOTICE_ID } from "@features/chat/missing-session-notice";
 import { MOVE_UNAVAILABLE_REASON } from "@features/chat/move-session";
-import { destinationNeedsSession } from "@features/chat/pickers/picker-registry";
+import {
+	destinationNeedsSession,
+	draftStageForSource,
+} from "@features/chat/pickers/picker-registry";
 import { SessionStatusStrip } from "@features/chat/session-status/session-status-strip";
 import type { Message } from "@features/chat/types/message";
 import {
@@ -354,6 +357,7 @@ import { completionFor } from "@features/chat/components/slash-completion";
  * `scripts/slash-contract.test.mjs` bundle and execute the shipped function.
  */
 import {
+	entitySessionId,
 	extensionFor,
 	lockedCommandNote,
 	lockedRunUndoCap,
@@ -388,7 +392,11 @@ import type {
  * it is what keeps the inline slash gesture and the mention delete from
  * disagreeing about what "remove a token" means.
  */
-import { replaceSpan } from "@features/chat/components/slash-token";
+import {
+	pyTrim,
+	replaceSpan,
+	slashTokenSpan,
+} from "@features/chat/components/slash-token";
 import { WaveformAnimation } from "@features/chat/components/waveform-animation";
 import { useAtResolution } from "@features/chat/hooks/use-at-resolution";
 import {
@@ -2878,16 +2886,25 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const [caret, setCaret] = useState(0);
 		const [composing, setComposing] = useState(false);
 		/*
-		 * The live session this composer addresses, or undefined for a draft.
+		 * The live session this composer addresses, or undefined for a draft — the
+		 * key the argument list's ENTITY source may query with.
 		 *
-		 * `sessionStatus` is supplied by the page only when a canonical session
-		 * exists, and in that case `conversationId` IS its id (the page opens the
-		 * stream on the identity it passes down). So this is the one argument the
-		 * argument list's entity source needs, and its ABSENCE is the honest
-		 * "needs an open conversation" state rather than a query against a draft
-		 * key that could only fail.
+		 * `sessionStatus` is the WRONG question, and the report of issue #780 is
+		 * what it cost: a draft pane supplies it too (the page builds it from the
+		 * `sessions.preview` answer), so keying on its presence handed the entity
+		 * lists the pane's synthetic `draft:<uuid>` — a key the `commands.entities`
+		 * op schema refuses before the wire, which the popup renders as "The list
+		 * could not be loaded. Try again." What distinguishes a live pane is that
+		 * its `conversationId` IS the canonical id (the page opens the stream on
+		 * the identity it passes down) and a draft pane's is the pane's own key.
+		 *
+		 * So the gate is the wire's own session-id pattern, applied once in
+		 * `entitySessionId` — the same coercion `mcpTransportSession` gave the
+		 * `/mcp` read for this exact class (PR #726). Anything the pattern refuses
+		 * leaves this undefined, which is the honest "needs an open conversation"
+		 * state rather than a query against a draft key that could only fail.
 		 */
-		const slashSessionId = sessionStatus ? conversationId : undefined;
+		const slashSessionId = entitySessionId(conversationId);
 		/*
 		 * The pane's own answer, and the one the two arming sentences read: a draft
 		 * pane supplies `sessionStatus` (from the preview) and holds a non-empty
@@ -4481,6 +4498,40 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				);
 				if (!completion) return;
 				slash.close();
+				/*
+				 * THE DRAFT IDENTITY PICK (issue #780): on a pane with no session, a
+				 * pick of a team/agent row does not complete the word for a command
+				 * the next Enter would refuse — it STAGES the draft's identity with
+				 * the row's own value, the same act as the sidebar's "New chat with
+				 * <team>".
+				 *
+				 * `disposition.run` is the same gate every other pick's run path
+				 * reads: Tab is the completion key (it "never runs"), so a Tab keeps
+				 * the old meaning — write the word, change nothing else — and only
+				 * the Enter/click gestures stage. The prose that survives the gesture
+				 * is the token spliced out with the SAME tokenizer the planner reads
+				 * (`slashTokenSpan`/`replaceSpan`, on the draft as typed), so a
+				 * sentence the command sat in moves with the user instead of the
+				 * command word becoming their first message.
+				 *
+				 * The route is walked off the INLINE SOURCE's registry row
+				 * (`draftStageForSource`), never a command name written here: a row's
+				 * `draftIdentity` opt-in is the one statement of which lists can be
+				 * answered without a session.
+				 */
+				if (disposition.run && row.kind === "argument" && !paneHasSession) {
+					const stage = draftStageForSource(slash.inline?.source);
+					if (stage) {
+						const span = slashTokenSpan(newMessage, caret, slash.commandNames);
+						const carry = span
+							? pyTrim(replaceSpan(newMessage, span.start, span.end, "").text)
+							: "";
+						useCanonicalSessionsStore
+							.getState()
+							.restageDraft({ kind: stage, name: row.row.value }, carry);
+						return;
+					}
+				}
 				/*
 				 * The pick's OWN record, taken here rather than beside the run: Tab
 				 * completes the word without running it and Enter/click runs it, and BOTH

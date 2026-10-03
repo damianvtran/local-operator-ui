@@ -47,6 +47,10 @@ import {
 	mcpTransportCwd,
 	mcpTransportSession,
 } from "@shared/api/local-operator/mcp-catalog";
+import type {
+	ReusableProfile,
+	ReusableTeam,
+} from "@shared/api/local-operator/profile-hooks";
 import { useOptionalQueryClient } from "@shared/hooks/use-optional-query-client";
 import { cn } from "@shared/lib/utils";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
@@ -456,6 +460,50 @@ function useArgumentRows(
 		enabled && Boolean(source) && !local && !sessionless && Boolean(sessionId),
 	);
 	/*
+	 * THE DRAFT PANE'S ROSTER READS (issue #780). On a pane with no session the
+	 * team/agent sources answer from the sessionless roster routes — the same
+	 * reads the sidebar and the Agents page make, under the SAME keys, so one
+	 * cache entry serves every surface and an authoring revision invalidates
+	 * them together — and a pick STAGES the draft's identity instead of
+	 * addressing a session the pane does not have (`message-input.tsx`'s pick
+	 * path; `slash-dispatch.ts`'s `!sessionId` branch). Keyed to the two sources
+	 * rather than to a second list of command names: the source IS the list.
+	 *
+	 * `provided`-gated like the two provider lists below: this composer mounts
+	 * without a `QueryClientProvider` in the mini view, where the fallback client
+	 * must not fetch.
+	 */
+	const draftRosterSource =
+		!sessionId && (source === "team" || source === "agent")
+			? source
+			: undefined;
+	const draftTeams = useQuery(
+		{
+			queryKey: ["desktop", "teams"],
+			queryFn: () =>
+				desktopResult<{ teams: ReusableTeam[] }>({ op: "teams.list" }).then(
+					(result) => result.teams ?? [],
+				),
+			enabled: enabled && provided && draftRosterSource === "team",
+			staleTime: 10_000,
+			retry: retryDesktopQuery,
+		},
+		client,
+	);
+	const draftProfiles = useQuery(
+		{
+			queryKey: ["desktop", "profiles"],
+			queryFn: () =>
+				desktopResult<{ profiles: ReusableProfile[] }>({
+					op: "profiles.list",
+				}).then((result) => result.profiles ?? []),
+			enabled: enabled && provided && draftRosterSource === "agent",
+			staleTime: 10_000,
+			retry: retryDesktopQuery,
+		},
+		client,
+	);
+	/*
 	 * The LoginPicker's own read, restated rather than reached through
 	 * `useDesktopProviders` because that hook mounts a plain `useQuery`: this
 	 * composer is reachable in documents without a `QueryClientProvider` (the
@@ -667,6 +715,21 @@ function useArgumentRows(
 				needsSession: false,
 			};
 		}
+		if (draftRosterSource) {
+			/*
+			 * THE DRAFT ROSTER (issue #780): the sessionless read answers this
+			 * list, and it is explicitly NOT a needs-session state — a pick here
+			 * is honourable (it stages the draft's identity), which is the whole
+			 * point of the route.
+			 */
+			const list = draftRosterSource === "team" ? draftTeams : draftProfiles;
+			return {
+				rows: argumentRows(draftRosterSource, list.data ?? [], current),
+				loading: list.isLoading,
+				error: list.isError ? "The list could not be loaded. Try again." : null,
+				needsSession: false,
+			};
+		}
 		if (!sessionId) {
 			// No session, no entity source. Called out rather than rendered as an
 			// empty list, because "not reported yet" would be a lie about a
@@ -699,6 +762,9 @@ function useArgumentRows(
 		argument,
 		current,
 		sessionId,
+		draftRosterSource,
+		draftTeams,
+		draftProfiles,
 	]);
 }
 
