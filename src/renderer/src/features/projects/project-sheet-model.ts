@@ -34,13 +34,19 @@
 /** The create sheet's description seed: light sections the author edits away. */
 export const PROJECT_DESCRIPTION_TEMPLATE =
 	"## Summary\n\n## Goals\n\n## Notes";
-
 /*
  * The derivation's regexes live at module scope: they are literals of this
  * file's single purpose, hoisted so a keystroke in the title never rebuilds
  * them, and so the lint rule that refuses in-scope literals has one place to
  * read them (`biome.json`'s `useTopLevelRegex`).
  */
+/*
+ * Type-only, so the Node lane's bundle stays a pure function library: these
+ * erase at build time. `pasteMarkdownIntoDescription`, at the foot of this
+ * file, is the sheet's and the detail editor's shared DOM adapter.
+ */
+import type { ClipboardEvent, RefObject } from "react";
+
 /*
  * `\p{Mn}` (non-spacing marks) rather than a literal `\u0300-\u036f` range:
  * the property escape names what is stripped (the marks `NFKD` splits off an
@@ -361,4 +367,41 @@ export function markdownFromClipboardHtml(html: string): string {
 		.replace(LINE_TRAILING_SPACE, "\n")
 		.replace(BLANK_RUN, "\n\n")
 		.trim();
+}
+
+/**
+ * The description editors' one paste door: rich clipboard HTML becomes
+ * markdown (`markdownFromClipboardHtml`), is spliced at the selection, and the
+ * caret lands after the pasted run.
+ *
+ * WHY IT IS HERE RATHER THAN IN EITHER EDITOR: the create sheet's description
+ * field and the detail's inline description editor are two mounts of the same
+ * behaviour, and the second copy would be the drift this lane forbids. A
+ * plain-text paste is deliberately NOT intercepted - markdown pasted as text
+ * is already markdown, and eating it to round-trip would only risk changing
+ * it. The `requestAnimationFrame` is what makes the caret land at all: React
+ * applies the controlled value AFTER this handler returns, and a selection set
+ * before that would be clamped against the OLD value (a measured defect in the
+ * sheet's first cut).
+ */
+export function pasteMarkdownIntoDescription(
+	event: ClipboardEvent<HTMLTextAreaElement>,
+	fieldRef: RefObject<HTMLTextAreaElement | null>,
+	apply: (next: string) => void,
+): void {
+	const html = event.clipboardData?.getData("text/html");
+	if (!html) return;
+	const markdown = markdownFromClipboardHtml(html);
+	if (!markdown) return;
+	event.preventDefault();
+	const element = event.currentTarget;
+	const start = element.selectionStart ?? element.value.length;
+	const end = element.selectionEnd ?? start;
+	apply(element.value.slice(0, start) + markdown + element.value.slice(end));
+	requestAnimationFrame(() => {
+		const field = fieldRef.current;
+		if (!field) return;
+		const caret = start + markdown.length;
+		field.setSelectionRange(caret, caret);
+	});
 }

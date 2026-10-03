@@ -46,7 +46,7 @@ import {
 import "../../../../styles/index.css";
 import { CanonicalImage } from "../../canonical/canonical-image";
 import { FoldMedia } from "../../canonical/fold-media";
-import { foldSummary } from "../../canonical/trace-fold-model";
+import { foldSummarySpec } from "../../canonical/trace-fold-model";
 import type { TranscriptImage } from "../../canonical/transcript-reducer";
 import { ToolRow } from "./tool-row";
 import { toolRowLabel } from "./tool-row-model";
@@ -99,7 +99,7 @@ type RowSpec = {
 
 /**
  * The fold's props, derived exactly as `canonical-transcript.tsx` derives them:
- * the summary from the actions' own names (`foldSummary`), the counts from the
+ * the summary from the actions' own names (`foldSummarySpec`), the counts from the
  * rows, and the live clause from the executing row's own label composition
  * (`toolRowLabel`). Nothing here is typed twice.
  */
@@ -113,7 +113,7 @@ const foldProps = (specs: RowSpec[]) => {
 		? toolRowLabel(executing.name, executing.object, null, true, executing.op)
 		: null;
 	return {
-		summary: foldSummary(actions),
+		summary: foldSummarySpec(actions),
 		actionCount: specs.length,
 		live: label ? { verb: label.verb, object: label.object } : null,
 	};
@@ -960,5 +960,101 @@ export const AgentOps: Story = {
 		live: null,
 		recordIds: ["s1", "s2", "s3", "s4", "s5", "s6", "s7"],
 		children: <FoldRows specs={AGENT_OPS_ROWS} />,
+	},
+};
+
+/**
+ * THE OPERATOR'S OWN LINE (2026-10-01, relayed by Aida), pinned as a state.
+ *
+ * A long run's header read `6 searches · 1 task · 2 browser actions · 1
+ * ai_search · 1 get_tool_access · 1 query_data_sources · 1 todo update · 1
+ * wait · 1 workspace_get_gmail_thread_content` - nine unique action types,
+ * wider than the column at any realistic window - and the operator's ask was a
+ * cap: keep the majority classes and summarise the tail as `and N other
+ * actions`. This fixture IS that run (six fetches for the `searches` class,
+ * one task, two browser calls, then the six singleton kinds), derived through
+ * `foldProps` so the header states exactly what the shipped composition
+ * produces - the cap's frames cannot photograph a string the app would not
+ * paint, and the pre-cap tree renders this same fixture as the overflowing
+ * line the report quotes (the `chat-trace-fold-before/` half).
+ */
+const MANY_TYPES_ROWS: RowSpec[] = [
+	...Array.from(
+		{ length: 6 },
+		(_, index): RowSpec => ({
+			name: "web_fetch",
+			object: `https://docs.example.com/page-${index + 1}`,
+			durationS: 1.2 + index * 0.4,
+		}),
+	),
+	{
+		name: "task",
+		object: "audit the invoice journal",
+		op: "list",
+		durationS: 22.4,
+	},
+	{ name: "browser", object: "invoice tracker", op: "click", durationS: 3.1 },
+	{
+		name: "browser",
+		object: "invoice tracker",
+		op: "screenshot",
+		durationS: 2.2,
+	},
+	{ name: "ai_search", object: "late invoices pattern", durationS: 8.7 },
+	{ name: "get_tool_access", object: "linear", durationS: 0.3 },
+	{ name: "query_data_sources", object: "warehouse.invoices", durationS: 6.9 },
+	{ name: "todo", object: "add follow-up", op: "add", durationS: 0.2 },
+	{ name: "wait", object: "3600", durationS: 3_600 },
+	{
+		name: "workspace_get_gmail_thread_content",
+		object: "thread 18c2",
+		durationS: 1.8,
+	},
+];
+
+/** The nine-type run, capped by `foldCounts` to five segments and a tail. */
+export const ManyTypes: Story = {
+	args: {
+		...foldProps(MANY_TYPES_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 3_659_000, running: false },
+		live: null,
+		recordIds: MANY_TYPES_ROWS.map((_, index) => `s${index + 1}`),
+		children: <FoldRows specs={MANY_TYPES_ROWS} />,
+	},
+};
+
+/**
+ * THE RUN THAT KEEPS THE LONG KIND (design round 1's D1 ask, shot in round 2's
+ * D3, with the same gap QA bounded as Q-r2-3): FIVE types, so the cap keeps every
+ * segment, and the last of them is `workspace_get_gmail_thread_content` - the
+ * 36-character snake_case kind that is the longest unit this header can compose.
+ *
+ * WHY THIS STATE NEEDED ITS OWN FIXTURE. `ManyTypes` above is the operator's nine
+ * kinds, and the cap pushes this very kind into `and 4 other actions`; no other
+ * fold story has it at all. So every committed frame until this one capped the
+ * token into the tail, and the units' "never wraps, never overflows" guarantee - a
+ * nowrap unit that stays inside the column because the column is wider than the
+ * longest unit - rested on a class assertion rather than a picture.
+ */
+const MANY_TYPES_KEPT_ROWS: RowSpec[] = [
+	{ name: "read", object: "src/invoices/query.ts", durationS: 0.4 },
+	{ name: "web_fetch", object: "stripe.com/docs/invoices", durationS: 1.2 },
+	{ name: "search_the_web", object: "late invoice rules", durationS: 3.4 },
+	{ name: "bash", object: "pnpm vitest run", durationS: 12.5 },
+	{
+		name: "workspace_get_gmail_thread_content",
+		object: "thread 18c2",
+		durationS: 1.8,
+	},
+];
+
+/** Five kinds, the long one KEPT: the widest unit the count line can paint. */
+export const ManyTypesKept: Story = {
+	args: {
+		...foldProps(MANY_TYPES_KEPT_ROWS),
+		span: { startedAtMs: 1_000, endedAtMs: 19_300, running: false },
+		live: null,
+		recordIds: MANY_TYPES_KEPT_ROWS.map((_, index) => `k${index + 1}`),
+		children: <FoldRows specs={MANY_TYPES_KEPT_ROWS} />,
 	},
 };

@@ -1,41 +1,30 @@
 /**
- * The one create/edit SHEET for a project, used by the tab's `New project`,
- * every row's `Edit` and the detail's `Edit` — the Linear-style replacement for
- * the small two-column dialog.
+ * The CREATE sheet for a project, used by the tab's `New project` — the
+ * Linear-style replacement for the small two-column dialog.
  *
- * WHY ONE SHEET FOR BOTH MODES, and why the field sets differ inside it: the
- * create route's body is the backend's frozen contract (`name`, `description`,
- * `status`, `tags`) — the display title, the owner/team attributions, the
- * dates and the estimate are set afterwards via PATCH. The sheet renders the
- * FULL set in both modes (the operator's brief: one properties strip, one
- * editor), and the page performs create-then-patch for the fields the create
- * route cannot carry: `followUp` on the payload below is that patch, applied
- * only after the create landed, so a create refusal is still the dialog's own
- * sentence and a follow-up refusal — the project EXISTS at that point — is the
- * page's error toast rather than an in-place sentence that would read as "the
- * create failed".
+ * CREATE-ONLY SINCE THE INLINE-EDIT SLICE (operator, 2026-09-30): the sheet
+ * used to carry an edit mode, and every field it edited is now edited in place
+ * on the project's own page (`project-editors.tsx`), so the mode was retired
+ * rather than kept as a second way to edit the same record — the “one writer”
+ * rule this tab states elsewhere. What survives is the create path and its own
+ * asymmetry: the create route's body is the backend's frozen contract
+ * (`name`, `description`, `status`, `tags`), so the display title, the
+ * owner/team attributions, the dates and the estimate ride a follow-up PATCH
+ * (`followUp` below) applied by the page only after the create landed. A
+ * create refusal is still the dialog's own sentence; a follow-up refusal — the
+ * project EXISTS at that point — is the page's error toast rather than an
+ * in-place sentence that would read as “the create failed”.
  *
  * A REFUSAL STAYS IN THE DIALOG. The backend's own 409/422 sentence renders
  * under the fields (the `delete-conversation-dialog.tsx` rule) instead of a
- * toast over a closed dialog, which would read as "it saved and something else
- * went wrong". The one exception is the follow-up patch above, and it is
- * named where it is implemented (`projects-page.tsx`).
+ * toast over a closed dialog, which would read as “it saved and something else
+ * went wrong”.
  *
  * TITLE-FIRST, KEY SECONDARY. The author writes a title; the project's KEY —
  * the `name` every route addresses the project by — is derived from the title
  * by `projectKeyFromTitle` until the author touches the key field, after which
  * it is theirs (the classic slug rule: editing the title must never overwrite
- * a key someone chose). Edit mode never derives: the key is a field, prefilled.
- *
- * WHAT EDIT MODE SENDS, precisely: every field the form shows, including the
- * unchanged ones. That is safe because the store's update is per-field
- * last-writer-wins and PROVES a no-op by equality (`candidate == current`
- * returns without a write), so an unchanged field neither bumps `updated_at`
- * nor races a concurrent editor of another field. The one asymmetry named
- * here rather than hidden: an EMPTIED estimate is not sent, because the
- * backend's edit model cannot clear one (`estimate` merging is
- * `if fields.estimate is not None`), and inventing a client-side clearing path
- * the route would ignore is worse than the field keeping its old value.
+ * a key someone chose).
  */
 
 import {
@@ -60,72 +49,44 @@ import { useEffect, useId, useRef, useState } from "react";
 import {
 	PROJECT_DESCRIPTION_MAX_CHARS,
 	projectNameRule,
-	projectTagRule,
 } from "../../../../../shared/desktop-contract";
 import type { DesktopProjectStatus } from "../../../../../shared/desktop-control-contract";
 import type {
 	ProjectCreateFields,
 	ProjectEditFields,
 } from "../hooks/use-projects-queries";
+import {
+	parseProjectTags,
+	projectAttributionRule,
+	projectDateFieldRule,
+	projectDateOrderRule,
+	projectDescriptionRule,
+	projectEstimateNumberRule,
+	projectTagsFieldRule,
+	projectTitleRule,
+} from "../project-edit-model";
 import { ProjectMarkdown } from "../project-markdown";
-import { PROJECT_DAY_FIELD_PATTERN, refusalCopy } from "../project-model";
+import { PROJECT_STATUS_OPTIONS, refusalCopy } from "../project-model";
 import {
 	PROJECT_DESCRIPTION_TEMPLATE,
-	markdownFromClipboardHtml,
+	pasteMarkdownIntoDescription,
 	projectKeyFromTitle,
 } from "../project-sheet-model";
 
 /**
- * The status words, in the lifecycle's own order (the wire enum's order, which
- * `PROJECT_STATUSES` writes once): planning -> active -> qa -> validation ->
- * done, then the two side states. The menu reads in that order because the
- * phases are a sequence — a menu that shuffled them would make the pipeline
- * unreadable at the one place a user moves a project along it.
+ * What the page hands back when the create sheet is submitted.
+ *
+ * The fields the CREATE route carries, plus the PATCH it cannot (title,
+ * owner, team, dates, estimate) — applied by the page after the create lands.
+ * Absent when the author filled none of them.
  */
-const STATUS_OPTIONS: { value: DesktopProjectStatus; label: string }[] = [
-	{ value: "planning", label: "Planning" },
-	{ value: "active", label: "Active" },
-	{ value: "qa", label: "QA" },
-	{ value: "validation", label: "Validation" },
-	{ value: "done", label: "Done" },
-	{ value: "paused", label: "Paused" },
-	{ value: "archived", label: "Archived" },
-];
-
-/** What the page hands back when the form is submitted. */
-export type ProjectFormSubmit =
-	| {
-			mode: "create";
-			fields: ProjectCreateFields;
-			/*
-			 * The PATCH the create route cannot carry (title, owner, team, dates,
-			 * estimate), applied by the page after the create lands. Absent when
-			 * the author filled none of them.
-			 */
-			followUp?: ProjectEditFields;
-	  }
-	| { mode: "edit"; key: string; fields: ProjectEditFields };
-
-export type ProjectFormInitial = {
-	key: string;
-	name: string;
-	title: string | null;
-	owner: string | null;
-	team: string | null;
-	description: string;
-	status: string;
-	tags: string[];
-	start_date: string | null;
-	target_date: string | null;
-	estimate: number | null;
-	estimate_unit: string;
+export type ProjectFormSubmit = {
+	fields: ProjectCreateFields;
+	followUp?: ProjectEditFields;
 };
 
 export type ProjectFormDialogProps = {
 	open: boolean;
-	mode: "create" | "edit";
-	/** The row being edited; null/undefined in create mode. */
-	initial?: ProjectFormInitial | null;
 	onClose: () => void;
 	onSubmit: (payload: ProjectFormSubmit) => Promise<void>;
 };
@@ -159,42 +120,9 @@ const EMPTY_FORM: FormState = {
 };
 
 /** `2026-09-20`, or `""` — the one day shape every date field accepts. */
-const ISO_DAY = PROJECT_DAY_FIELD_PATTERN;
-
-/** The comma text a tags field holds, as the wire's list. */
-export function parseProjectTags(raw: string): string[] {
-	return raw
-		.split(",")
-		.map((tag) => tag.trim())
-		.filter((tag) => tag.length > 0);
-}
-
-function formFromInitial(
-	initial: ProjectFormInitial | null | undefined,
-): FormState {
-	if (!initial) return EMPTY_FORM;
-	return {
-		name: initial.name,
-		title: initial.title ?? "",
-		owner: initial.owner ?? "",
-		team: initial.team ?? "",
-		description: initial.description,
-		status: initial.status,
-		tags: initial.tags.join(", "),
-		startDate: initial.start_date ?? "",
-		targetDate: initial.target_date ?? "",
-		estimate:
-			initial.estimate === null || initial.estimate === undefined
-				? ""
-				: String(initial.estimate),
-		estimateUnit: initial.estimate_unit || "points",
-	};
-}
 
 export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	open,
-	mode,
-	initial,
 	onClose,
 	onSubmit,
 }) => {
@@ -207,34 +135,29 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	const refusalRef = useRef<HTMLParagraphElement | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 	/**
-	 * Whether the key field is the author's. False in create until they type in
-	 * it (so the derivation may fill it), true from the first render in edit
-	 * (the key exists; nothing derives).
+	 * Whether the key field is the author's. False until they type in it (so
+	 * the derivation may fill it) — the key is never pre-filled now that the
+	 * sheet is create-only.
 	 */
-	const [keyTouched, setKeyTouched] = useState(mode === "edit");
+	const [keyTouched, setKeyTouched] = useState(false);
 	const [preview, setPreview] = useState(false);
 	const fieldId = useId();
 	const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
 
 	/*
-	 * The form is rebuilt whenever the dialog OPENS, not on every render of
-	 * `initial`: a background refetch (the listing invalidates after a write
-	 * elsewhere) hands a new object identity for the same project, and a form
-	 * that reset under the user's fingers would drop every keystroke they had
-	 * typed. `open` is the trigger that means "the user asked for this form".
+	 * The form is rebuilt whenever the dialog OPENS: a create sheet is only
+	 * ever opened deliberately, and a form that kept yesterday's half-typed
+	 * fields on the next open would drop the user into a draft they did not
+	 * ask to resume. `open` is the trigger that means "the user asked for this
+	 * form".
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: reset is keyed on the open transition, see above.
 	useEffect(() => {
 		if (!open) return;
-		setForm(
-			mode === "create"
-				? { ...EMPTY_FORM, description: PROJECT_DESCRIPTION_TEMPLATE }
-				: formFromInitial(initial),
-		);
+		setForm({ ...EMPTY_FORM, description: PROJECT_DESCRIPTION_TEMPLATE });
 		setErrors({});
 		setRefusal(null);
 		setSubmitting(false);
-		setKeyTouched(mode === "edit");
+		setKeyTouched(false);
 		setPreview(false);
 	}, [open]);
 
@@ -255,47 +178,22 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 	};
 
 	/**
-	 * The key the submit will carry: the derivation while untouched in create,
-	 * the field itself otherwise (edit, or after a keystroke).
+	 * The key the submit will carry: the derivation while untouched, the field
+	 * itself once the author types in it.
 	 */
-	const resolvedKey =
-		mode === "create" && !keyTouched
-			? projectKeyFromTitle(form.title)
-			: form.name;
+	const resolvedKey = keyTouched ? form.name : projectKeyFromTitle(form.title);
 
 	/**
-	 * The description's paste path: rich clipboard HTML becomes markdown
-	 * (`markdownFromClipboardHtml`). A plain-text paste is deliberately NOT
-	 * intercepted — markdown pasted as text is already markdown, and eating it
-	 * to round-trip would only risk changing it.
+	 * The description's paste path, shared with the detail's inline editor
+	 * (`pasteMarkdownIntoDescription`): rich clipboard HTML becomes markdown. A
+	 * plain-text paste is deliberately NOT intercepted — markdown pasted as
+	 * text is already markdown, and eating it to round-trip would only risk
+	 * changing it.
 	 */
-	const handleDescriptionPaste = (
-		event: ClipboardEvent<HTMLTextAreaElement>,
-	) => {
-		const html = event.clipboardData?.getData("text/html");
-		if (!html) return;
-		const markdown = markdownFromClipboardHtml(html);
-		if (!markdown) return;
-		event.preventDefault();
-		const element = event.currentTarget;
-		const start = element.selectionStart ?? element.value.length;
-		const end = element.selectionEnd ?? start;
-		const next =
-			element.value.slice(0, start) + markdown + element.value.slice(end);
-		set("description", next);
-		/*
-		 * The caret lands after the pasted run, as a paste's caret does. The
-		 * frame is what makes it land at all: React applies the controlled
-		 * value after this handler returns, and a selection set before that
-		 * would be clamped against the OLD value.
-		 */
-		requestAnimationFrame(() => {
-			const field = descriptionRef.current;
-			if (!field) return;
-			const caret = start + markdown.length;
-			field.setSelectionRange(caret, caret);
-		});
-	};
+	const handleDescriptionPaste = (event: ClipboardEvent<HTMLTextAreaElement>) =>
+		pasteMarkdownIntoDescription(event, descriptionRef, (next) =>
+			set("description", next),
+		);
 
 	/** Local validation, the same rules the wire will enforce. */
 	const validate = (
@@ -305,41 +203,30 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 		const next: Partial<Record<keyof FormState, string>> = {};
 		const nameError = projectNameRule(keyValue);
 		if (nameError) next.name = nameError;
-		if (values.description.length > PROJECT_DESCRIPTION_MAX_CHARS)
-			next.description = `Keep the description within ${PROJECT_DESCRIPTION_MAX_CHARS} characters.`;
-		const tags = parseProjectTags(values.tags);
-		if (tags.length > 8) next.tags = "At most 8 tags.";
-		else {
-			for (const tag of tags) {
-				const tagError = projectTagRule(tag);
-				if (tagError) {
-					next.tags = tagError;
-					break;
-				}
-			}
+		const descriptionError = projectDescriptionRule(values.description);
+		if (descriptionError) next.description = descriptionError;
+		const tagsError = projectTagsFieldRule(values.tags).error;
+		if (tagsError) next.tags = tagsError;
+		const startError = projectDateFieldRule(values.startDate);
+		if (startError) next.startDate = startError;
+		const targetError = projectDateFieldRule(values.targetDate);
+		if (targetError) next.targetDate = targetError;
+		else if (!startError) {
+			const orderError = projectDateOrderRule(
+				values.startDate,
+				values.targetDate,
+			);
+			if (orderError) next.targetDate = orderError;
 		}
 		/*
-		 * The remaining rules run in BOTH modes: the sheet renders the dates,
-		 * the estimate and the attributions in create mode too (they ride the
-		 * follow-up patch), so validating them only in edit would let the
-		 * create sheet hand the page values the page's patch would refuse.
+		 * The estimate rides the follow-up patch when present. An EMPTIED field is
+		 * not an error: there is nothing to send, and the patch simply omits the
+		 * key (the backend's edit model cannot clear one — the same honesty
+		 * `project-editors.tsx` states for the detail's row).
 		 */
-		if (!ISO_DAY.test(values.startDate))
-			next.startDate = "Dates are YYYY-MM-DD, or empty.";
-		if (!ISO_DAY.test(values.targetDate))
-			next.targetDate = "Dates are YYYY-MM-DD, or empty.";
-		if (
-			!next.startDate &&
-			!next.targetDate &&
-			values.startDate &&
-			values.targetDate &&
-			values.targetDate < values.startDate
-		)
-			next.targetDate = "The target date is before the start date.";
-		if (values.estimate) {
-			const estimate = Number(values.estimate);
-			if (!Number.isFinite(estimate) || !(estimate > 0) || estimate > 1000)
-				next.estimate = "Estimates are greater than 0 and at most 1000.";
+		if (values.estimate.trim()) {
+			const estimateError = projectEstimateNumberRule(values.estimate);
+			if (estimateError) next.estimate = estimateError;
 		}
 		/*
 		 * The attributions' one local rule: the same 80-character ceiling the
@@ -348,11 +235,12 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 		 * single-line labels, and a stray newline in a label is a refusal the
 		 * backend's own sentence explains better than one invented here.
 		 */
-		for (const key of ["title", "owner", "team"] as const) {
-			if (values[key].trim().length > 80)
-				next[key] =
-					`${key === "title" ? "Titles" : key === "owner" ? "Owners" : "Teams"} are at most 80 characters.`;
-		}
+		const titleError = projectTitleRule(values.title);
+		if (titleError) next.title = titleError;
+		const ownerError = projectAttributionRule(values.owner, "owner");
+		if (ownerError) next.owner = ownerError;
+		const teamError = projectAttributionRule(values.team, "team");
+		if (teamError) next.team = teamError;
 		return next;
 	};
 
@@ -365,72 +253,41 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 		setRefusal(null);
 		const tags = parseProjectTags(form.tags);
 		try {
-			if (mode === "create") {
-				/*
-				 * The follow-up carries only what the author actually filled:
-				 * the store's update is per-field last-writer-wins, and sending
-				 * a field the author left alone would be a write nobody asked
-				 * for (worst of all an emptied attribution, which the wire reads
-				 * as "clear").
-				 */
-				const followUp: ProjectEditFields = {};
-				if (form.title.trim()) followUp.title = form.title.trim();
-				if (form.owner.trim()) followUp.owner = form.owner.trim();
-				if (form.team.trim()) followUp.team = form.team.trim();
-				if (form.startDate) followUp.start_date = form.startDate;
-				if (form.targetDate) followUp.target_date = form.targetDate;
-				if (form.estimate) {
-					followUp.estimate = Number(form.estimate);
-					followUp.estimate_unit = form.estimateUnit as "points" | "days";
-				}
-				await onSubmit({
-					mode: "create",
-					fields: {
-						name: keyValue,
-						/*
-						 * THE UNTOUCHED TEMPLATE IS NOT AUTHORED TEXT (UX round 1, U3):
-						 * the sheet seeds the section skeleton, and a submit that never
-						 * wrote a word must not file the seed as the project's own
-						 * description. Equality with the constant is the test — any edit,
-						 * however small, ships as authored.
-						 */
-						...(form.description.trim() &&
-						form.description.trim() !== PROJECT_DESCRIPTION_TEMPLATE
-							? { description: form.description.trim() }
-							: {}),
-						status: form.status as DesktopProjectStatus,
-						...(tags.length > 0 ? { tags } : {}),
-					},
-					...(Object.keys(followUp).length > 0 ? { followUp } : {}),
-				});
-			} else {
-				await onSubmit({
-					mode: "edit",
-					key: initial?.key ?? "",
-					fields: {
-						name: keyValue,
-						description: form.description.trim(),
-						/*
-						 * The attributions travel as typed, EMPTY INCLUDED: `""` is the
-						 * wire's own spelling for "cleared" (`_short_text_or_none` reads it
-						 * as unset), which is the one way this dialog can return a field to
-						 * its unknown state.
-						 */
-						title: form.title.trim(),
-						owner: form.owner.trim(),
-						team: form.team.trim(),
-						status: form.status as DesktopProjectStatus,
-						tags,
-						start_date: form.startDate,
-						target_date: form.targetDate,
-						// An emptied estimate is NOT sent: the backend's edit model
-						// cannot clear one (see this file's docstring), so the field
-						// simply keeps its old value.
-						...(form.estimate ? { estimate: Number(form.estimate) } : {}),
-						estimate_unit: form.estimateUnit as "points" | "days",
-					},
-				});
+			/*
+			 * The follow-up carries only what the author actually filled: the
+			 * store's update is per-field last-writer-wins, and sending a field
+			 * the author left alone would be a write nobody asked for (worst of
+			 * all an emptied attribution, which the wire reads as "clear").
+			 */
+			const followUp: ProjectEditFields = {};
+			if (form.title.trim()) followUp.title = form.title.trim();
+			if (form.owner.trim()) followUp.owner = form.owner.trim();
+			if (form.team.trim()) followUp.team = form.team.trim();
+			if (form.startDate) followUp.start_date = form.startDate;
+			if (form.targetDate) followUp.target_date = form.targetDate;
+			if (form.estimate) {
+				followUp.estimate = Number(form.estimate);
+				followUp.estimate_unit = form.estimateUnit as "points" | "days";
 			}
+			await onSubmit({
+				fields: {
+					name: keyValue,
+					/*
+					 * THE UNTOUCHED TEMPLATE IS NOT AUTHORED TEXT (UX round 1, U3):
+					 * the sheet seeds the section skeleton, and a submit that never
+					 * wrote a word must not file the seed as the project's own
+					 * description. Equality with the constant is the test — any edit,
+					 * however small, ships as authored.
+					 */
+					...(form.description.trim() &&
+					form.description.trim() !== PROJECT_DESCRIPTION_TEMPLATE
+						? { description: form.description.trim() }
+						: {}),
+					status: form.status as DesktopProjectStatus,
+					...(tags.length > 0 ? { tags } : {}),
+				},
+				...(Object.keys(followUp).length > 0 ? { followUp } : {}),
+			});
 			onClose();
 		} catch (error) {
 			const message =
@@ -441,7 +298,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 		}
 	};
 
-	const title = mode === "create" ? "New project" : "Edit project";
+	const title = "New project";
 
 	/**
 	 * The live over-limit read the counter's tone and the textarea's
@@ -483,9 +340,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 					if (submitting) event.preventDefault();
 				},
 			}}
-			dataTourTag={
-				mode === "create" ? "project-create-dialog" : "project-edit-dialog"
-			}
+			dataTourTag="project-create-dialog"
 			actions={
 				<>
 					<SecondaryButton onClick={onClose} disabled={submitting}>
@@ -497,7 +352,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 						disabled={submitting}
 					>
 						{submitting && <Spinner size="xs" />}
-						{mode === "create" ? "Create project" : "Save changes"}
+						Create project
 					</PrimaryButton>
 				</>
 			}
@@ -549,9 +404,9 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 							className="h-7 max-w-56 font-mono text-mono-sm"
 						/>
 						<span className="text-meta text-ink-muted">
-							{mode === "create" && !keyTouched
-								? "Derived from the title until you edit it."
-								: "Letters, digits, dot, underscore or dash; no spaces."}
+							{keyTouched
+								? "Letters, digits, dot, underscore or dash; no spaces."
+								: "Derived from the title until you edit it."}
 						</span>
 					</div>
 					{errors.name && (
@@ -668,7 +523,7 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 								<SelectValue />
 							</SelectTrigger>
 							<SelectContent>
-								{STATUS_OPTIONS.map((option) => (
+								{PROJECT_STATUS_OPTIONS.map((option) => (
 									<SelectItem key={option.value} value={option.value}>
 										{option.label}
 									</SelectItem>
@@ -768,25 +623,6 @@ export const ProjectFormDialog: FC<ProjectFormDialogProps> = ({
 						{errors.estimate && (
 							<p className="text-meta text-danger">{errors.estimate}</p>
 						)}
-						{/*
-						 * THE CLEARED-ESTIMATE HINT (review round 1, the emptied-Estimate
-						 * finding): the backend's edit model cannot clear one
-						 * (`projects.py` merges only when `fields.estimate is not
-						 * None`), so an emptied field saved "Project saved" and kept the
-						 * old value with no hint at all. Until the wire can clear one,
-						 * the hint says what the save will do — shown only when there IS
-						 * a value the save would keep, so a create form and an edit of a
-						 * project with no estimate stay quiet.
-						 */}
-						{mode === "edit" &&
-							form.estimate.trim() === "" &&
-							initial?.estimate !== null &&
-							initial?.estimate !== undefined && (
-								<p className="text-meta text-ink-muted">
-									Clearing an estimate is not supported yet — saving keeps its
-									current value.
-								</p>
-							)}
 					</div>
 
 					<div className="col-span-2 flex flex-col gap-1.5">

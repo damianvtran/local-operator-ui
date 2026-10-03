@@ -32,8 +32,10 @@ import type {
 	DesktopProjectMilestone,
 	DesktopProjectRequestUpdateResult,
 	DesktopProjectUpdate,
+	DesktopProjectView,
 } from "../../../../../shared/desktop-control-contract";
 import "../../../styles/index.css";
+import { INLINE_EDIT_CONFLICT_SENTENCE } from "@shared/components/inline-edit";
 import {
 	type BoardWindow,
 	PROJECTS_BOARD_ORDER_STORAGE_KEY,
@@ -558,6 +560,16 @@ type RequestUpdateFixture = {
 	hang?: boolean;
 };
 
+type SearchIndexFixture = {
+	/** The ids the ranked answer names, in RANK ORDER (the answer's order is the
+	 * ranking; the page never re-sorts). */
+	ids: string[];
+	/** Hold the request open for ever: the in-flight state. */
+	hang?: boolean;
+	/** Fail the request with this sentence (the fallback's arm). */
+	fail?: string;
+};
+
 type StubState = {
 	projects: DesktopProject[];
 	detail: DesktopProjectDetail | null;
@@ -568,12 +580,27 @@ type StubState = {
 	 * stories use.
 	 */
 	details: Record<string, DesktopProjectDetail> | null;
+	/**
+	 * The `projects.search` script. `null` is the state every story above is in:
+	 * the capability advertises `projects: 1`, no index route exists, and the
+	 * client matcher serves — which is exactly what a backend older than the
+	 * core slice looks like. An object advertises `projects: 2` and answers the
+	 * route from its own ids, so a story can prove the page paints the INDEX's
+	 * membership and rank rather than the local matcher's.
+	 */
+	searchIndex: SearchIndexFixture | null;
 	/** The listing read fails with this sentence. */
 	failList: string | null;
 	/** The listing read never settles: the loading frame's only honest shape. */
 	hang: boolean;
 	/** `projects.update` fails with this sentence (the follow-up-refusal arm). */
 	failPatch: string | null;
+	/** The refused patch's status, when the story is about a coded refusal. */
+	failPatchStatus?: number;
+	/** The refused patch's machine code (`project_name_exists`, say). */
+	failPatchCode?: string;
+	/** `projects.update` never settles: the inline editor's saving state. */
+	hangPatch?: boolean;
 	/**
 	 * `projects.request_update`'s scripted answer (the check-in states). `null`
 	 * means no story configured it: a press without a fixture says so loudly
@@ -586,6 +613,7 @@ let stub: StubState = {
 	projects: [],
 	detail: null,
 	details: null,
+	searchIndex: null,
 	failList: null,
 	hang: false,
 	failPatch: null,
@@ -599,6 +627,47 @@ let stub: StubState = {
  * neither op ran, and a toast is not in the tree.
  */
 let bridgeOps: { op: string; request: Record<string, unknown> }[] = [];
+
+/** A plain-object test for the stub's field application (no zod in stories). */
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+	typeof value === "object" && value !== null;
+
+/**
+ * Apply one `projects.update` fields object to the fixture row, the way the
+ * daemon's partial patch would: only the keys present move, and `""` clears
+ * the nullable ones. It exists so a story's re-read after a save shows the
+ * record the save produced — without it the re-read returns the old fixture
+ * and the saved frame would show the value snapping back under its own
+ * acknowledgement, an artefact a design round would read as a defect.
+ */
+const applyFields = (
+	project: DesktopProjectView,
+	fields: Record<string, unknown>,
+): void => {
+	const text = (key: string): string | undefined =>
+		typeof fields[key] === "string" ? (fields[key] as string) : undefined;
+	if (text("name") !== undefined) project.name = text("name") as string;
+	if (text("description") !== undefined)
+		project.description = text("description") as string;
+	// `""` is the wire's clear for owner/team/title/dates (`_edit_date`, and
+	// `_short_text_or_none` reading an emptied label as unset).
+	const owner = text("owner");
+	if (owner !== undefined) project.owner = owner.trim() ? owner : null;
+	const team = text("team");
+	if (team !== undefined) project.team = team.trim() ? team : null;
+	const title = text("title");
+	if (title !== undefined) project.title = title.trim() ? title : null;
+	if (text("status") !== undefined) project.status = text("status") as string;
+	if (Array.isArray(fields.tags))
+		project.tags = (fields.tags as unknown[]).map((tag) => String(tag));
+	const start = text("start_date");
+	if (start !== undefined) project.start_date = start || null;
+	const target = text("target_date");
+	if (target !== undefined) project.target_date = target || null;
+	if (typeof fields.estimate === "number") project.estimate = fields.estimate;
+	const unit = text("estimate_unit");
+	if (unit !== undefined) project.estimate_unit = unit;
+};
 
 const answer = (request: {
 	op: string;
@@ -621,7 +690,7 @@ const answer = (request: {
 					// MOUNTS the check-in item and button (PR-B) - a backend without it
 					// draws neither, which is the fail-closed state tests pin.
 					features: {
-						projects: 1,
+						projects: stub.searchIndex ? 2 : 1,
 						projects_request_update: 1,
 						team_catalogue: 1,
 						profile_catalogue: 1,
@@ -640,6 +709,37 @@ const answer = (request: {
 			const found = stub.details?.[String(request.key ?? "")] ?? stub.detail;
 			if (!found) return { status: 404, body: { detail: "no such project" } };
 			return { status: 200, body: { result: found } };
+		}
+		case "projects.search": {
+			/*
+			 * The index's answer, scripted rather than computed: this fixture's job is
+			 * to be the BACKEND's opinion — an id list in the backend's own rank order —
+			 * so a story can name a row the local matcher would never admit (its match
+			 * lives in update text) and assert that the page painted the answer rather
+			 * than re-deriving one. The echo is the request's own `q`, which is the
+			 * contract the hook checks before it applies an answer.
+			 */
+			const index = stub.searchIndex;
+			if (!index) return { status: 404, body: { detail: "no such route" } };
+			if (index.hang) return new Promise(() => {});
+			if (index.fail) return { status: 500, body: { detail: index.fail } };
+			const byId = new Map(stub.projects.map((row) => [row.id, row]));
+			const hits = index.ids.flatMap((id) => {
+				const row = byId.get(id);
+				return row
+					? [{ id: row.id, name: row.name, score: 1, fields: ["updates"] }]
+					: [];
+			});
+			return {
+				status: 200,
+				body: {
+					result: {
+						projects: hits,
+						query: String(request.q ?? ""),
+						count: hits.length,
+					},
+				},
+			};
 		}
 		case "projects.milestone": {
 			/*
@@ -675,9 +775,34 @@ const answer = (request: {
 			return { status: 200, body: { result: created } };
 		}
 		case "projects.update":
+			/*
+			 * `hangPatch` is the SAVING state's fixture: a write that never
+			 * settles is the only honest way a story can hold the spinner, and
+			 * it mirrors the real reason that state exists (a daemon under
+			 * load). `failPatchStatus`/`failPatchCode` let a refusal carry the
+			 * wire's own envelope — a 409 `project_name_exists` is the coded
+			 * refusal the key editor maps to its crafted sentence.
+			 */
+			if (stub.hangPatch) return new Promise(() => {});
 			bridgeOps.push({ op: request.op, request });
 			if (stub.failPatch)
-				return { status: 422, body: { detail: stub.failPatch } };
+				return {
+					status: stub.failPatchStatus ?? 422,
+					body: {
+						detail: stub.failPatchCode
+							? { code: stub.failPatchCode, message: stub.failPatch }
+							: stub.failPatch,
+					},
+				};
+			/*
+			 * A LANDED PATCH CHANGES THE RECORD, as the daemon's would: without
+			 * this the re-read after a save returns the old fixture and the
+			 * saved frame would show the record snapping back while its
+			 * acknowledgement says otherwise — an artefact of the stub that a
+			 * design round would read as a defect of the editor.
+			 */
+			if (stub.detail && isRecord(request.fields))
+				applyFields(stub.detail.project, request.fields);
 			return { status: 200, body: { result: stub.projects[0] ?? null } };
 		case "projects.delete":
 			return { status: 200, body: { result: { deleted: true } } };
@@ -1119,11 +1244,13 @@ const expectBoardKeys = (expected: string[], what: string) => {
  * The plays race `RouteTo`'s navigation: the story's first render is the
  * unmatched route (nothing mounted), the swap happens in an effect, and the
  * detail's own query settles after that. Every play on a detail screen waits
- * here first, so its first click targets a control that exists.
+ * here first, so its first click targets a control that exists. The heading's
+ * `data-project-title` is the marker because it only exists on the detail
+ * (the header is `project-editors.tsx`'s), unlike text the list also paints.
  */
 const waitForDetail = () =>
 	poll(
-		() => document.querySelector('[data-tour-tag="project-edit"]') !== null,
+		() => document.querySelector("[data-project-title]") !== null,
 		"the detail screen",
 	);
 
@@ -1135,10 +1262,11 @@ const waitForDetail = () =>
  * WHY THE ROUTES AND NOT JUST THE NAVIGATION: the global `MemoryRouter` the
  * preview provides has no route table of its own, and `useParams` yields
  * nothing unless some `<Route>` matched — so a story that only navigated kept
- * rendering the list under the detail's URL (measured: `project-edit` never
- * appeared while the frame showed the list's own header). Both routes are
- * declared here, matching `app.tsx`'s pair, and the navigation replaces the
- * entry so the history holds one location, as the app's own entry would.
+ * rendering the list under the detail's URL (measured: the detail's own
+ * heading never appeared while the frame showed the list's own header). Both
+ * routes are declared here, matching `app.tsx`'s pair, and the navigation
+ * replaces the entry so the history holds one location, as the app's own
+ * entry would.
  */
 const RouteTo = ({
 	path,
@@ -1185,6 +1313,9 @@ const page = (
 		failList: null,
 		hang: false,
 		failPatch: null,
+		/* The search index: absent means `projects: 1`, the client matcher's
+		 * backend, which is every story that does not say otherwise. */
+		searchIndex: null,
 		/* Pinned like the defaults above: without it the spread's Optional half
 		 * keeps `undefined` in the inferred type, which a required field refuses. */
 		requestUpdate: null,
@@ -2044,6 +2175,250 @@ export const NoMatchFilter: Story = {
 };
 
 /**
+ * The two rows the search-index stories are photographed on — and the PAIR is
+ * the point of the whole slice.
+ *
+ * `invoice-run` carries the query word in its own fields, so the CLIENT matcher
+ * finds it. `billing-cutover` says nothing about an invoice anywhere the listing
+ * carries, and the index finds it because its UPDATE text does — the field that
+ * is detail-only on the wire and the largest slice of the store, which is the
+ * reason a renderer-side matcher could never find it. One query, two engines,
+ * two answers: the index's answer names both, in the index's order.
+ */
+const SEARCH_ROWS: DesktopProject[] = [
+	project("s1", "invoice-run", {
+		description: "Nightly invoice run",
+		team: "platform",
+		status: "active",
+		updated_at: FIXTURE_NOW_MS / 1000 - 2 * HOUR_S,
+	}),
+	project("s2", "billing-cutover", {
+		description: "Move the billing cutover to the new gate",
+		team: "atlas",
+		status: "planning",
+		updated_at: FIXTURE_NOW_MS / 1000 - 5 * DAY_S,
+	}),
+];
+
+/** The query ONE engine can answer: only the index knows the cutover's updates
+ * say "invoice". */
+const SEARCH_QUERY = "invoice";
+/** A query NEITHER engine can answer. */
+const SEARCH_NOTHING = "zzznothing";
+
+/** The List's rows in RENDERED order, by key — the page's own `data-project-name`
+ * hook, read rather than re-derived: an assertion about rank order has to read
+ * the order the reader sees. */
+const listRowKeys = () =>
+	[...document.querySelectorAll<HTMLElement>("[data-project-name]")].map(
+		(node) => node.getAttribute("data-project-name") ?? "",
+	);
+
+/** Type a query into the page's own field, once it exists. */
+const typeSearch = async (text: string) => {
+	await poll(
+		() =>
+			document.querySelector('input[aria-label="Search projects"]') !== null,
+		"the search field",
+	);
+	await userEvent.type(
+		need<HTMLInputElement>('input[aria-label="Search projects"]'),
+		text,
+	);
+};
+
+/**
+ * The index SERVES: the page paints the backend's own answer — its membership
+ * and its rank order, neither of which the local matcher could produce. The row
+ * that discriminates is `billing-cutover`, whose match lives in update text; the
+ * poll for it IS the poll for the index having served. The order claim is read
+ * off the rendered rows rather than asserted against the fixture, because an
+ * answer that arrived and was re-sorted locally would pass a membership check.
+ */
+export const SearchIndexServed: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: ["s2", "s1"] },
+		}),
+	play: playOnce("search-index-served", async () => {
+		await typeSearch(SEARCH_QUERY);
+		await poll(
+			() => listRowKeys().includes("billing-cutover"),
+			"the index's own hit (a row the local matcher cannot admit)",
+		);
+		const keys = listRowKeys();
+		if (keys.join(",") !== "billing-cutover,invoice-run") {
+			throw new Error(
+				`the answer's rank order was not painted: ${keys.join(",")}`,
+			);
+		}
+	}),
+};
+
+/**
+ * The index is OWED an answer, and the fallback engine's row is still drawn:
+ * the no-blank-list claim, photographed mid-flight. A page that showed nothing
+ * until the index answered would fail the row poll; a page that painted "nothing
+ * matches" would fail the second check.
+ */
+export const SearchIndexPending: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-pending", async () => {
+		await typeSearch(SEARCH_QUERY);
+		await poll(
+			() => listRowKeys().includes("invoice-run"),
+			"the fallback engine's row while the index is owed an answer",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				"the no-match block claimed a result the index has not answered for",
+			);
+		}
+	}),
+};
+
+/**
+ * The one state where the index is owed an answer AND the fallback found
+ * nothing: the quiet in-flight line, in place of a "nothing matches" the index
+ * may be about to contradict. Both polls discriminate — the first fails on a
+ * page that shows the no-match block here, the second on one that shows nothing
+ * at all.
+ */
+export const SearchIndexSearching: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-searching", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Searching"),
+			"the in-flight line",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				'"nothing matches" was claimed before the index answered',
+			);
+		}
+		/*
+		 * AND THE BODY IS THE LINE ALONE (design round 1, D1; the assertion corrected
+		 * in round 3's F2). The claim is that the List is not standing beside this
+		 * block, and the first version of this line — "zero row keys" — did NOT test
+		 * it: the defect frame had zero rows too, because the defect was a header over
+		 * an empty body, so the assertion passed on the very frame it was written to
+		 * exclude. What discriminates is the PANEL's absence, which is what the gate's
+		 * term actually removes; the geometry is the designer's row-profile
+		 * measurement (192-200 against 552-562), not this line.
+		 */
+		await poll(
+			() => document.querySelector('[data-testid="project-list"]') === null,
+			"no List panel beside the in-flight line",
+		);
+	}),
+};
+
+/**
+ * THE SAME STATE IN THE THIRD VIEW (design round 2, D5, and D4's frame): the
+ * in-flight block stands in the Timeline's place too, and the Timeline's panel is
+ * the arrangement D1's diagnosis names one view over. The commit that fixed the
+ * List left this gate without the term, so the state drew that panel beside the
+ * block and its `shrink-0` strip landed where the List's header used to.
+ *
+ * The assertion is the discriminating one — the PANEL's absence rather than an
+ * empty row list, for F2's reason above — so this play fails on the defect the
+ * frame exists to disprove, and it is what makes the pair evidence rather than a
+ * picture of a claim.
+ */
+export const SearchIndexSearchingTimeline: Story = {
+	render: () =>
+		page({
+			view: "timeline",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], hang: true },
+		}),
+	play: playOnce("search-index-searching-timeline", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("Searching"),
+			"the in-flight line in the Timeline view",
+		);
+		if ((document.body.textContent ?? "").includes("No projects match")) {
+			throw new Error(
+				'"nothing matches" was claimed before the index answered',
+			);
+		}
+		await poll(
+			() => document.querySelector('[data-testid="project-timeline"]') === null,
+			"no Timeline panel beside the in-flight line",
+		);
+	}),
+};
+
+/**
+ * The copy this slice reconciled, on the engine that made it false: the index
+ * answered zero, and the block carries the INDEX's sentence. The second poll
+ * fails on the string this slice replaced ("Update text is not searched"), which
+ * is exactly the frame the designer round has to look at.
+ */
+export const SearchIndexNoMatch: Story = {
+	render: () =>
+		page({ view: "list", projects: SEARCH_ROWS, searchIndex: { ids: [] } }),
+	play: playOnce("search-index-no-match", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence",
+		);
+		await poll(() => {
+			const text = document.body.textContent ?? "";
+			return (
+				text.includes(
+					"Searches names, descriptions, tags, owners, teams and update text.",
+				) && !text.includes("Update text is not searched.")
+			);
+		}, "the index's subline, and no claim the index cannot make");
+	}),
+};
+
+/**
+ * The FAILURE arm: the index is broken, the fallback serves, and the sentence is
+ * the client matcher's again — which is the whole reason the copy is per engine
+ * rather than one string chosen at build time. A page that kept the index's
+ * sentence here would be claiming a search it did not get.
+ */
+export const SearchIndexFailed: Story = {
+	render: () =>
+		page({
+			view: "list",
+			projects: SEARCH_ROWS,
+			searchIndex: { ids: [], fail: "The index is unavailable." },
+		}),
+	play: playOnce("search-index-failed", async () => {
+		await typeSearch(SEARCH_NOTHING);
+		await poll(
+			() => (document.body.textContent ?? "").includes("No projects match"),
+			"the no-match sentence on the fallback",
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"Update text is not searched.",
+				),
+			"the client matcher's own subline after the index failed",
+		);
+	}),
+};
+
+/**
  * The sticky team headers, mid-scroll: the second section's header pinned at
  * the scroller's top with its rows passing under it and the first section's
  * header pushed out behind it — a state the resting list can never show,
@@ -2108,10 +2483,7 @@ export const Detail: Story = {
 		// The DETAIL screen's own control, not the row name: the list also paints
 		// `payments-migration`, so a text predicate would pass before the route
 		// swap and photograph the list wearing the detail's name.
-		await poll(
-			() => document.querySelector('[data-tour-tag="project-edit"]') !== null,
-			"the detail to render",
-		);
+		await waitForDetail();
 	}),
 };
 
@@ -2158,7 +2530,7 @@ export const DetailLoadError: Story = {
 			() =>
 				(document.body.textContent ?? "").includes(
 					"This project could not be found.",
-				) && document.querySelector('[data-tour-tag="project-edit"]') === null,
+				) && document.querySelector("[data-project-title]") === null,
 			"the detail refusal",
 		);
 	}),
@@ -2414,20 +2786,252 @@ export const CreateDialog: Story = {
 };
 
 /** The edit dialog, opened from the detail's own button. */
-export const EditDialog: Story = {
+/* ------------------------------------------------------- inline field editing */
+
+/**
+ * The title field's affordance REVEALED — the keyboard half of it.
+ *
+ * A Storybook play cannot paint `:hover` (a synthetic pointer event does not
+ * set the browser's own hover state, which is what `group-hover` resolves
+ * against), so the reveal this story photographs is `focus-within`'s: the
+ * pencil is focused and the frame shows what a keyboard reader sees. The
+ * POINTER half is captured in the live driver scene
+ * (`--scene project-inline-edit`), where CDP's input pipeline really hovers.
+ */
+export const InlineEditReveal: Story = {
 	render: () => (
 		<RouteTo path="/projects/p1">
 			{page({ projects: THREE, detail: DETAIL })}
 		</RouteTo>
 	),
-	play: playOnce("edit-dialog", async () => {
+	play: playOnce("inline-edit-reveal", async () => {
 		await waitForDetail();
-		await clickWhen('[data-tour-tag="project-edit"]');
+		const pencil = need<HTMLElement>(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		pencil.focus();
 		await poll(
 			() =>
-				document.querySelector('[data-tour-tag="project-edit-dialog"]') !==
-				null,
-			"the edit dialog",
+				getComputedStyle(
+					need(
+						'[data-project-field="title"] [data-inline-edit-control="begin"]',
+					),
+				).opacity === "1",
+			"the revealed pencil",
+		);
+	}),
+};
+
+/**
+ * The title field OPEN: the h1 has become its own input, the x and the check
+ * sit beside it, and the resting text is gone — the frame the operator's
+ * "edit is inline" is about.
+ */
+export const InlineEditOpen: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-open", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		await poll(
+			() =>
+				document.querySelector('[data-project-field="title"] input') !== null,
+			"the title editor",
+		);
+	}),
+};
+
+/**
+ * The title field TYPED over: the draft is visible in the input and the value
+ * on screen is the user's, not the record's — the state a save or a revert is
+ * answered from.
+ */
+export const InlineEditTyped: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-typed", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+	}),
+};
+
+/**
+ * The SAVING state, held: `hangPatch` makes `projects.update` a promise that
+ * never settles, so the spinner in the check's slot is a real in-flight write
+ * rather than a photographed fabrication — the same device the refusal story
+ * uses for its `Saving…` arm.
+ */
+export const InlineEditSaving: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL, hangPatch: true })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-saving", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="accept"]',
+		);
+		await poll(
+			() =>
+				document.querySelector(
+					'[data-project-field="title"] [data-inline-edit-slot="saving"]',
+				) !== null,
+			"the saving slot",
+		);
+	}),
+};
+
+/**
+ * A save that LANDED, inside its transient window: the record value is back in
+ * the read view, the acknowledgement sits beside it, and the panel's one live
+ * region carries the same words (note § 2.6). The play races the 1.2s dwell on
+ * purpose — a story that missed it would show the resting state and say
+ * nothing about the acknowledgement existing.
+ */
+export const InlineEditSaved: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-saved", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="title"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="title"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "Payments migration II");
+		input.focus();
+		await userEvent.keyboard("{Enter}");
+		await poll(
+			() =>
+				document.querySelector('[data-inline-edit-feedback="saved"]') !== null,
+			"the saved acknowledgement",
+		);
+	}),
+};
+
+/**
+ * A refused save HELD beside the field: the Key row renames to a name the
+ * daemon already holds, the stub answers the wire's own 409 envelope
+ * (`project_name_exists`), and the field keeps the attempted value with the
+ * app's crafted sentence under it and the check re-attempting / x reverting
+ * in the slot. The frame is the refusal being IN the field rather than a
+ * banner somewhere else — the #704 rule this editor was built to.
+ */
+export const InlineEditRefused: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({
+				projects: THREE,
+				detail: DETAIL,
+				failPatch: "project 'invoices-rework' already exists",
+				failPatchStatus: 409,
+				failPatchCode: "project_name_exists",
+			})}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-refused", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="key"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="key"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "invoices-rework");
+		await clickWhen(
+			'[data-project-field="key"] [data-inline-edit-control="accept"]',
+		);
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					"A project with this key already exists.",
+				),
+			"the in-field refusal",
+		);
+	}),
+};
+
+/**
+ * THE ONE THAT MUST NEVER CLOBBER: a Start date is half-typed, the record
+ * moves out-of-band (the play mutates the fixture exactly as another window
+ * would have written it), and the app's own focus-refetch path delivers the
+ * new record while the draft is dirty. The commit is HELD and the choice row
+ * is on screen. The wait is the query's own `staleTime` (10s) — a focus
+ * refetch only notices a STALE query, and the play waits it out rather than
+ * faking the delivery.
+ */
+export const InlineEditConflict: Story = {
+	render: () => (
+		<RouteTo path="/projects/p1">
+			{page({ projects: THREE, detail: DETAIL })}
+		</RouteTo>
+	),
+	play: playOnce("inline-edit-conflict", async () => {
+		await waitForDetail();
+		await clickWhen(
+			'[data-project-field="start"] [data-inline-edit-control="begin"]',
+		);
+		const input = need<HTMLInputElement>('[data-project-field="start"] input');
+		await userEvent.clear(input);
+		await userEvent.type(input, "2026-09-05");
+		/* The out-of-band write, from the play's own hands. */
+		if (stub.detail) stub.detail.project.start_date = "2026-09-03";
+		/*
+		 * THE DELIVERY IS A FOCUS TRANSITION, not a focus event (review round
+		 * 1, M6): React Query 5.73.3's focusManager subscribes to a BUBBLING
+		 * `visibilitychange` on `window` and tracks one boolean, so the bare
+		 * `focus` dispatch this play used to send was heard by nobody and the
+		 * conflict could never appear. Hidden -> visible is the pair a real
+		 * window switch delivers; the wait before it is the detail query's own
+		 * 10s `staleTime` - a focused query that is not stale is not refetched.
+		 * The recipe is `scripts/hub-round-trips.mjs`'s, kept identical so the
+		 * two rigs cannot drift.
+		 */
+		await new Promise((resolve) => setTimeout(resolve, 10_500));
+		const vis = window as unknown as {
+			__inlineEditVisibility?: string;
+			__inlineEditVisibilityPatched?: boolean;
+		};
+		if (!vis.__inlineEditVisibilityPatched) {
+			Object.defineProperty(document, "visibilityState", {
+				configurable: true,
+				get: () => vis.__inlineEditVisibility ?? "visible",
+			});
+			vis.__inlineEditVisibilityPatched = true;
+		}
+		vis.__inlineEditVisibility = "hidden";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		vis.__inlineEditVisibility = "visible";
+		document.dispatchEvent(new Event("visibilitychange", { bubbles: true }));
+		window.dispatchEvent(new Event("focus"));
+		await poll(
+			() =>
+				(document.body.textContent ?? "").includes(
+					INLINE_EDIT_CONFLICT_SENTENCE,
+				),
+			"the conflict hold",
 		);
 	}),
 };
