@@ -15,11 +15,11 @@
  *
  * WHAT IT DOES. For a merge commit it reads every `.json` path the merge
  * touched (against BOTH parents - a path either parent changed) and compares
- * the object KEY SETS: nested objects at every depth, keys under arrays
- * included through the element union (`supplementary[].why` - the union of the
- * key sets of all elements, because entry identity inside an array is not
- * keyed, so removing an entry is not a key loss; string/number arrays are
- * values). A key present in a parent and absent from the merge is reported:
+ * the object KEY SETS: nested objects at every depth, and arrays by the KEY SET
+ * OF EACH ELEMENT - elements that carry a `path` are keyed by it (the identity
+ * the resolver pairs entries by), the rest by the union of their elements' keys.
+ * String/number arrays are values, not keys. A key present in a parent and
+ * absent from the merge is reported:
  *
  *   LOST[branch]  a key of THIS branch's parent vanished - a fault, exit 1.
  *   LOST[main]    a key of the main-side parent vanished - printed for the
@@ -27,6 +27,18 @@
  *                 deliberate drops and main's own accidents both look like
  *                 this, and each must be a stated decision (a repair commit,
  *                 or the group (5) reading), not a silence.
+ *   dropped       a key of EITHER parent vanished because it is a RETIRED
+ *                 field - one this change stopped storing (see
+ *                 `RETIRED_TOP_LEVEL_FIELDS` in `scripts/evidence-fold.mjs`,
+ *                 imported below so the two homes cannot drift). Printed, exit
+ *                 0. Without this clause the first fold after the retirement
+ *                 lands would exit 1 on `LOST[branch] srcTree` for doing the
+ *                 right thing.
+ *
+ * WHERE THE RETIRED RULE APPLIES: the manifest only. A rig's own per-run record
+ * (an evidence set's `click-result.json`) legitimately carries a key of the same
+ * name, and a merge that lost one of THOSE would be a real loss - so the
+ * decision is scoped to the one path the field was retired in.
  *
  * WHAT IT CANNOT CATCH: form. A list whose harness prefix or order was
  * re-imposed (`test:desktop` is the live example) is not a key-set change, so
@@ -44,6 +56,17 @@
 
 import { execFileSync, spawnSync } from "node:child_process";
 import { isEntryPoint } from "./entry-point.mjs";
+import { RETIRED_TOP_LEVEL_FIELDS } from "./evidence-fold.mjs";
+
+/**
+ * The one file whose retired top-level fields are an accepted, printed loss.
+ *
+ * Scoped by PATH rather than by key name on purpose: `srcTree`/`scriptsTree` are
+ * live keys in the rig's own per-run records (`click-result.json`,
+ * `band-occlusion`'s `*-geometry.json`), where losing one WOULD be a real loss, and this gate
+ * reads every `.json` a merge touched.
+ */
+const RETIRED_FIELD_HOME = "docs/evidence/manifest.json";
 
 /*
  * Same ceiling the whole-tree readers carry: `git show` of the manifest crossed
@@ -65,6 +88,20 @@ const isAncestor = (ancestor, of) =>
  * Arrays recurse through a `[]` segment so a key ANY element carries is found;
  * primitives contribute nothing (an array of strings is a value, not keys).
  * Returns null when the text does not parse - reported, never guessed about.
+ *
+ * AN ARRAY ELEMENT THAT CARRIES A `path` IS KEYED BY IT instead of by `[]`. The
+ * union form cannot see a loss inside ONE element while another element still
+ * carries the same key, which is the shape the resolver keys its own entries by
+ * (`supplementary[].path`) and the shape tonight's real drop took: the #765
+ * lane's fold (2026-10-03) lost `frames`, `surfaces` and `themes` from
+ * `supplementary[158]` while the manifest's ~160 other entries still carried all
+ * three, so a union-of-elements comparison said `clean`. Elements without a
+ * `path` keep the old union, so this narrowing cannot invent a loss for an array
+ * that has no identity of its own.
+ *
+ * A RENAMED element (`path` changed on one side) reads as a loss of the old path.
+ * That is deliberate: it is reported for a human to classify, and a renamed
+ * capture set is exactly the kind of thing this gate exists to make visible.
  */
 export function keyPaths(text) {
 	let data;
@@ -76,7 +113,13 @@ export function keyPaths(text) {
 	const out = new Set();
 	const walk = (node, prefix) => {
 		if (Array.isArray(node)) {
-			for (const element of node) walk(element, `${prefix}[]`);
+			for (const element of node) {
+				const identity =
+					typeof element?.path === "string" && element.path.length > 0
+						? `[${element.path}]`
+						: "[]";
+				walk(element, `${prefix}${identity}`);
+			}
 			return;
 		}
 		if (node === null || typeof node !== "object") return;
@@ -120,13 +163,14 @@ function jsonPathsTouched(merge, parents) {
 	return [...paths].sort();
 }
 
-/** Check one merge; returns { branchLosses: [...], mainLosses: [...], unparsed: [...] }. */
+/** Check one merge; returns { branchLosses: [...], mainLosses: [...], retired: [...], unparsed: [...] }. */
 export function checkMerge(merge) {
 	const [first, second] = git("rev-parse", `${merge}^1`, `${merge}^2`)
 		.trim()
 		.split("\n");
 	const branchLosses = [];
 	const mainLosses = [];
+	const retired = [];
 	const unparsed = [];
 	for (const path of jsonPathsTouched(merge, [first, second])) {
 		const merged = keyPaths(blob(merge, path) ?? "");
@@ -146,11 +190,16 @@ export function checkMerge(merge) {
 				continue;
 			}
 			for (const key of parentKeys) {
-				if (!merged.has(key)) losses.push(`${path} :: ${key}`);
+				if (merged.has(key)) continue;
+				if (path === RETIRED_FIELD_HOME && RETIRED_TOP_LEVEL_FIELDS.has(key)) {
+					retired.push(`${path} :: ${key}`);
+					continue;
+				}
+				losses.push(`${path} :: ${key}`);
 			}
 		}
 	}
-	return { merge, first, second, branchLosses, mainLosses, unparsed };
+	return { merge, first, second, branchLosses, mainLosses, retired, unparsed };
 }
 
 /** The branch's own folds: first-parent merges of HEAD not on `origin/main`. */
@@ -199,8 +248,13 @@ function main(argv) {
 			result.unparsed.length === 0
 		) {
 			process.stdout.write(
-				"  clean - every key of both parents survives the merge\n",
+				result.retired.length === 0
+					? "  clean - every key of both parents survives the merge\n"
+					: "  clean - every key of both parents survives, apart from the retired field(s) below\n",
 			);
+		}
+		for (const drop of result.retired) {
+			process.stdout.write(`  dropped     ${drop} - retired by this change\n`);
 		}
 		for (const loss of result.branchLosses) {
 			process.stdout.write(`  LOST[branch] ${loss}\n`);

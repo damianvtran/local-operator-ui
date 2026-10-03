@@ -126,11 +126,11 @@ the sweep.
 out, which is what that flag asserts. A backend on the configured port otherwise
 fails the run because a captured frame must be a function of the tree.
 
-**The #112 merge re-stamped and did NOT re-capture, and that is a measurement
+**The #112 merge re-derived and did NOT re-capture, and that is a measurement
 rather than a shortcut.** The merge brings main's `src/` and `scripts/` forward,
-so the manifest's `srcTree`/`scriptsTree` have to move with them (the gate
-compares them against `HEAD:src`/`HEAD:scripts`), and `frames`/`surfaces` had to
-be reconciled with the two sides' entries. Nothing moved under the frames' own
+which moved the tree stamps the file carried at the time (they are retired now —
+a stored tree hash went false for every open branch whenever a sibling moved it),
+and `frames`/`surfaces` had to be reconciled with the two sides' entries. Nothing moved under the frames' own
 source, and it was checked rather than asserted: the ten stories' import graph
 was walked at the merged head — 136 modules, from `run-details.stories.tsx`
 through `ChatHeader`, `MessageItem` and `TraceGroup` — and reaches none of

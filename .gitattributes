@@ -1,14 +1,32 @@
-# A fold must not stop on docs/evidence/manifest.json.
+# A fold must not land a hand-merged docs/evidence/manifest.json.
 #
 # WHY AN ATTRIBUTE AND NOT A CONVENTION. When `main` and a branch have both
 # rewritten the manifest, git sees two sides of one JSON file and stops - and
 # the resolution it stops for is the one nobody should do by hand: the manifest
 # is a record of WHICH TREE produced WHICH pixels, so "take ours" or "take
 # theirs" silently certifies frames against a tree they did not come from (fold
-# 10 and fold 11 each shipped that to main, and it took the desktop suite's
-# stamp test to catch it). The rule for resolving it is written down in two
-# places (`scripts/capture-evidence.mjs`'s fold block and the manifest's own
-# `citationConvention`) and implemented in `scripts/evidence-fold.mjs`.
+# 10 and fold 11 each shipped that to main; the counts the manifest states about
+# its own tree are what catch it now, in `pnpm test:desktop`). The rule for
+# resolving it is written down in two places (`scripts/capture-evidence.mjs`'s
+# fold block and the manifest's own `citationConvention`) and implemented in
+# `scripts/evidence-fold.mjs`.
+#
+# WHEN TWO LANES GENUINELY BOTH EDITED THE FILE, AND NOT ON EVERY FOLD. This
+# attribute used to be justified by `srcTree`/`scriptsTree`: `main` moved one of
+# those trees on 29 of its last 32 first-parent merges (2026-10-03), so every
+# fold conflicted and the driver was unavoidable. Those fields are retired -
+# a stored hash of a tree the file does not own goes false for every open branch
+# the moment a sibling lands - and with them gone the ordinary fold does not
+# touch the file at all (`the manifest already describes this tree`). What is
+# left is the case the driver was really for: replaying 30 real folds through
+# `git merge-file` still conflicts 18 times once the pair is gone, and those
+# residual hunks are exactly the class a PER-FIELD resolver gets right and a
+# hand merge gets wrong - two sides' notes, two sides' `supplementary` entries,
+# the counts block when a sibling's pass landed. The driver's job is now stated
+# by what is left of it: when two lanes genuinely both edited this file, resolve
+# it per field instead of by hand - and `scripts/check-fold-keys.mjs` polices
+# that no key either parent carried is lost in the process (a retired field's
+# disappearance is a reported decision, not a loss).
 #
 # THE DRIVER IS NOT INSTALLED BY THIS FILE. The attribute only NAMES a driver;
 # the command is `merge.evidence-fold.driver` in the clone's local config,
@@ -42,6 +60,7 @@
 #
 # WHY NOT `merge=ours` / `merge=binary`: both exist to avoid thinking about the
 # file, which is the defect. The merged manifest carries BOTH sides' records
-# and is re-derived against the merged tree; neither side's copy is the answer.
+# and its counts are re-derived against the merged tree; neither side's copy is
+# the answer.
 
 docs/evidence/manifest.json merge=evidence-fold
