@@ -239,9 +239,16 @@ test("arrival opens the core-heavy sections and nothing else", () => {
  * SUM it always was and asserted against the fixture, so a registry that grows
  * another section fails here rather than quietly raising the tab order, and the
  * code is not left claiming a target it does not meet.
+ *
+ * The sum moved once more with the voicing wave, and deliberately: the registry
+ * gained the `speech` section (seven rows, all `[redacted]`, so it is closed on
+ * arrival and contributes a header and no row), so the same arithmetic reads 20
+ * headers + the same 5 controls + the same 7 arrival rows. The arrival region's
+ * own height claim is the settings page's to re-measure when the voicing wave's
+ * design round runs against the live surface; this constant is the tab order.
  */
 const FILTER_BAR_CONTROLS = 5;
-const ARRIVAL_FOCUSABLE_BUDGET = 31;
+const ARRIVAL_FOCUSABLE_BUDGET = 32;
 
 /*
  * The reader's own sequence: collapse the index, then search it.
