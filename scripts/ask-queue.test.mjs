@@ -864,6 +864,26 @@ test("the item states the soonest WAITING deadline, and refuses when the split i
 	 */
 	assert.equal(queue.askChipDeadlineText(two, TS), "expires in 12m");
 	assert.equal(queue.askChipDeadlineSubject(two), "soonest ask");
+	/*
+	 * AND THE SAME DEADLINE IN THE NARROW BAND'S FORM (design round 4's MAJOR): the
+	 * chip's third tier keeps the VALUE where the sentence cannot fit whole, so the
+	 * number a reader triages on is never a `4...` that could be four minutes or
+	 * forty-eight. One reading of the clock feeds both spellings - the assertion that
+	 * pins that is that they agree on the same instant, in the same unit.
+	 */
+	assert.equal(queue.askChipDeadlineShort(two, TS), "12m");
+	assert.equal(queue.askDeadlineShortText(TS + 30 * 60_000, TS), "30m");
+	assert.equal(queue.askDeadlineShortText(TS + 45_000, TS), "45s");
+	assert.equal(queue.askDeadlineShortText(TS + 3 * 3_600_000, TS), "3h");
+	assert.equal(queue.askDeadlineShortText(TS + 2 * 86_400_000, TS), "2d");
+	assert.equal(queue.askDeadlineShortText(TS, TS), "now");
+	// The long form and the short form come out of ONE reading: no unit can disagree.
+	for (const at of [TS + 45_000, TS + 30 * 60_000, TS + 3 * 3_600_000]) {
+		const long = queue.askDeadlineText(at, TS);
+		const short = queue.askDeadlineShortText(at, TS);
+		assert.equal(long, `expires in ${short}`, "the two spellings disagree");
+	}
+	// Gated exactly as the sentence is: no value while the split is unknowable.
 	// One waiting ask needs no subject: the number is that ask's own.
 	assert.equal(queue.askChipDeadlineSubject(one), "");
 	assert.equal(
@@ -874,6 +894,8 @@ test("the item states the soonest WAITING deadline, and refuses when the split i
 	// MOVED ON ONLY: nothing is waiting, so nothing is counting down.
 	const moved = queue.askQueueView({ asks: [single({ status: "timed_out" })] });
 	assert.equal(queue.askChipDeadline(moved, TS), null);
+	// The value form is gated by the same rule, and says nothing with it.
+	assert.equal(queue.askChipDeadlineShort(moved, TS), null);
 	// A queue with nothing waiting has no subject to state either.
 	assert.equal(queue.askChipDeadlineSubject(moved), "");
 
