@@ -877,7 +877,7 @@ const FIRST_CHIP = "-ml-1.5";
  *
  * The switch is for the EXPANDED body, not the collapsed row. Stacked, the goal
  * item takes the row's own width, so the body measures the row less its 20px
- * indent (~184px at the 220px column floor) instead of the row less a ~134px
+ * indent (~184px at the floor of that era, 220) instead of the row less a ~134px
  * count chip — which is below the 160px floor the design sets. It costs 26px of
  * collapsed height, paid only in the width band where the readings cluster
  * already folds onto two lines of its own.

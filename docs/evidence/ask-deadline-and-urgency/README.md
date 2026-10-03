@@ -92,7 +92,6 @@ proved the same way.
 | --- | --- |
 | `truncated` (count only) | 115.38px |
 | `column-floor-applied` (the whole clause, at the applied floor: box 432px) | 229.69px |
-| *(story-only)* the count-only tier at box 172px, the safety-net tier's floor | 133.47px |
 | `urgent` | 221.83px |
 | `waiting` | 229.69px |
 | `multiple` | 308.73px |
@@ -154,13 +153,25 @@ right and the words were wrong:
   the small-view band and got `column - 10px` with **22.34 / 22.27px** of clearance -
   the docblock's number and the larger of the two the disagreement quoted. Q6's
   `column - 26px` came from applying the large-view inset at a small-view column.
-- **A correction to a claim this branch made earlier:** the sweep reported that no
-  `min-w-[220px]` remains anywhere in the tree. That is false - `grep -rn` finds it in
-  three docs files (`docs/evidence/chat-shell/README.md`,
-  `docs/evidence/tui-parity/layout-audit.md`, `docs/run-sidebar.md`), each stating its
-  own historical layout. What is true is that no `min-w-[220px]` remains in `src/`,
-  and that the three `chat-content.tsx` comments the sweep corrected were describing
-  the column's floor.
+- **A correction to a claim this branch made earlier, and the sweep's real extent.**
+  The sweep reported that no `min-w-[220px]` remains anywhere in the tree. That is
+  false - `grep -rn` finds it in three docs files plus a fourth spot outside
+  `docs/evidence`: `docs/evidence/chat-shell/README.md:800`,
+  `docs/evidence/tui-parity/layout-audit.md:30` and `:121`, and
+  `docs/run-sidebar.md:205` (which states the layout in the present tense). Those are
+  each file's own record of the layout it was written against and stay as records.
+  What is true is that **no `min-w-[220px]` remains in `src/`**, and that the three
+  `chat-content.tsx` comments the sweep corrected were describing the column's floor.
+- **Design round 6's D2, answered by sweeping rather than by explaining.** The same
+  stale present-tense claim stood in five further source comments - `chat-measure.ts`,
+  `session-status-strip.tsx` (two), `older-history-slot.tsx`,
+  `directory-indicator.tsx` and `message-input.tsx` - and all five now state the
+  column's floor as 480 (or drop the number where the argument does not need one),
+  keeping the 220 only where a measurement was genuinely taken at 220, labelled as
+  that era's. What still says 220 is the set of things whose subject IS 220: the story
+  boards pinned at that width (`session-status-strip.stories.tsx`), this set's own
+  history, and the deliberate `IT WAS 220 UNTIL §I` notes in `chat-content.tsx` and
+  this component.
 
 **The one thing the yield may never produce is a partial TIME value** — `4...` and
 `48...` are the same glyphs to a reader deciding whether to hurry. Swept over
