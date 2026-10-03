@@ -335,3 +335,99 @@ test("the core tier is small enough to be an everyday list", () => {
 		`the core tier is ${core.length} keys; the arrival layout is budgeted for 8-20`,
 	);
 });
+
+/* ------------------------------------------------------------------ *
+ * The voicing rows, anchored to the daemon's own declarations
+ * ------------------------------------------------------------------ */
+
+/*
+ * WHY THIS ARM EXISTS, and what it does NOT prove (agent review round 1, M1).
+ *
+ * The `speech` rows in the committed fixtures were projected from the daemon's
+ * own `/v1/settings` view, and the arm above is the one that would prove that on
+ * a machine whose backend carries the voicing surface. This repository's CI has
+ * no backend at all (the arm above skips loudly there), and the host this slice
+ * was written on reaches an interpreter whose checkout predates voicing — so
+ * "the projection is right" would otherwise rest on the reader trusting the
+ * author. `scripts/fixtures/speech-voice-declarations.json` is the daemon's
+ * DECLARATIONS for the seven keys, read from one named released artifact (its
+ * `provenance` block names the artifact, the version and the SHA-256 of the
+ * `settings_io.py` it read, plus the command that re-derives the file), and this
+ * arm asserts the committed rows AGREE with it field by field.
+ *
+ * THE LIMIT IS THE POINT OF THE PROVENANCE, stated plainly: this file is a
+ * copy. It cannot detect that the daemon changed its mind about a default on a
+ * newer release — only the live arm above can, on a machine with such a backend
+ * — and what it does detect is the failure this slice could actually ship: a
+ * fixture row that disagrees with the declarations it claims to project, or a
+ * key that drifted out of the set.
+ */
+const DECLARATIONS = JSON.parse(
+	readFileSync("scripts/fixtures/speech-voice-declarations.json", "utf8"),
+);
+
+/** The fixture row a declared key must correspond to. */
+const declaredFields = (row) => ({
+	key: row.key,
+	label: row.label,
+	section: row.section,
+	kind: row.kind,
+	default: row.default,
+	empty_unsets: row.empty_unsets,
+	minimum: row.minimum,
+	maximum: row.maximum,
+	choices: row.choices.map((choice) => choice.value),
+});
+
+const declaredView = (declaration) => ({
+	key: declaration.key,
+	label: declaration.label,
+	section: declaration.section,
+	kind: declaration.kind,
+	default: declaration.default,
+	empty_unsets: declaration.empty_unsets,
+	minimum: declaration.minimum,
+	maximum: declaration.maximum,
+	choices: declaration.choices,
+});
+
+test("the fixture's voicing rows are the daemon's own declarations", () => {
+	assert.ok(
+		DECLARATIONS.rows.length > 0,
+		"the declarations file is empty, so this arm would pass over nothing",
+	);
+	for (const { name, payload } of fixtures) {
+		const rows = payload.settings.filter(
+			(setting) => setting.section === "speech",
+		);
+		assert.deepEqual(
+			rows.map((row) => row.key),
+			DECLARATIONS.rows.map((declaration) => declaration.key),
+			`${name}: the fixture's \`speech\` section is not the set of keys the daemon declares`,
+		);
+		for (const row of rows) {
+			const declaration = DECLARATIONS.rows.find(
+				(candidate) => candidate.key === row.key,
+			);
+			assert.deepEqual(
+				declaredFields(row),
+				declaredView(declaration),
+				`${name}: ${row.key} disagrees with the daemon's declaration for it`,
+			);
+		}
+	}
+});
+
+test("every declared voicing key is classified, and the section is not a fallback", () => {
+	for (const declaration of DECLARATIONS.rows) {
+		assert.ok(
+			Object.hasOwn(KEY_TIER, declaration.key),
+			`${declaration.key} is not in KEY_TIER`,
+		);
+		assert.equal(
+			Object.hasOwn(SECTION_TIER, "speech"),
+			false,
+			"`speech` must not be a SECTION_TIER fallback: a key the registry gains has to reach a decision, not the section it happens to sit in",
+		);
+	}
+});

@@ -1,9 +1,10 @@
 /**
  * Which registry keys belong to the everyday list, and which sit one click away.
  *
- * Why this exists. The Backend settings section ships 102 rows in 19 sections
+ * Why this exists. The Backend settings section ships 112 rows in 20 sections
  * (the audit that motivated this work measured the then-shipping 99 in 18, and
- * the counts moved with the backend rather than with this map), every section
+ * the counts moved with the backend rather than with this map — the voicing
+ * wave's `speech` section is the most recent of those moves), every section
  * open, which measured 10,896.5px of region on a 1380x900 window (12.1 screens)
  * and put 127 focusables into the tab order before a user had done anything. The
  * fix is a two-tier list, and a tier cannot be INFERRED:

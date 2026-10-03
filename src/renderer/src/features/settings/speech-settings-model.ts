@@ -78,8 +78,78 @@ export function speechVoiceRows(
 }
 
 /**
- * The reader-facing name of a cascade rung.
+ * The wire's own vocabulary for a rung, as `local_operator/tts/VoicePath`
+ * serializes it.
  *
+ * Spelled here as a runtime list rather than only as a type, because the group
+ * VALIDATES the report before rendering it (see
+ * {@link parseVoicePathResolution}): a `type` is erased at runtime and cannot
+ * narrow a payload that arrived from an unchecked cast.
+ */
+const VOICE_PATHS = [
+	"provider_tts_radient",
+	"provider_tts_elevenlabs",
+	"provider_tts_openai",
+	"none",
+] as const;
+
+function isVoicePath(value: unknown): value is VoicePath {
+	return (
+		typeof value === "string" &&
+		(VOICE_PATHS as readonly string[]).includes(value)
+	);
+}
+
+/**
+ * The resolver's report, or `null` when the payload is not one.
+ *
+ * WHY THIS EXISTS, and why it is here rather than a `?.` at the call site.
+ * `desktopResult<T>` is an unchecked cast (`return envelope?.result as T`), so a
+ * 200 whose body is not a `VoicePathResolution` — a contract skew, an older or
+ * newer daemon, a proxy that answered for the route — used to reach
+ * `speechAvailability`, whose `rungs.map` threw inside render. There is no error
+ * boundary between this group and the route: the throw took down the whole
+ * Settings page, which is a far larger failure than the one fact it was asked
+ * about (QA round 1, Q2).
+ *
+ * `null` is the honest answer rather than a default: the group then says the
+ * availability could not be read, exactly as it does for a failed request. It
+ * must NEVER be turned into "nothing is available" or, worse, into a rendered
+ * `servable` claim — a surface that invents an availability answer is the defect
+ * the daemon's whole report exists to prevent.
+ */
+export function parseVoicePathResolution(
+	value: unknown,
+): VoicePathResolution | null {
+	if (value === null || typeof value !== "object") return null;
+	const candidate = value as Partial<VoicePathResolution>;
+	if (!isVoicePath(candidate.path)) return null;
+	if (typeof candidate.reason !== "string") return null;
+	if (typeof candidate.servable !== "boolean") return null;
+	if (!Array.isArray(candidate.rungs)) return null;
+	const rungs: VoicePathResolution["rungs"] = [];
+	for (const rung of candidate.rungs) {
+		if (rung === null || typeof rung !== "object") return null;
+		const entry = rung as Partial<VoicePathResolution["rungs"][number]>;
+		if (!isVoicePath(entry.path)) return null;
+		if (typeof entry.available !== "boolean") return null;
+		if (typeof entry.reason !== "string") return null;
+		rungs.push({
+			path: entry.path,
+			available: entry.available,
+			reason: entry.reason,
+		});
+	}
+	return {
+		path: candidate.path,
+		reason: candidate.reason,
+		servable: candidate.servable,
+		rungs,
+	};
+}
+
+/**
+ * The reader-facing name of a cascade rung.
  * These are the only three strings the group invents about the cascade, and they
  * are PRODUCT names rather than wire values: `provider_tts_radient` is a rung,
  * "Radient Pass" is what a reader signed up for. Every other sentence about

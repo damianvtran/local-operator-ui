@@ -248,6 +248,25 @@ const installBridge = (scenario, asked) => {
 			case "credentials.list":
 				return ok({ keys: [] });
 			case "tts.paths":
+				/*
+				 * Two non-success shapes, and they reach the group by different routes: a
+				 * 500 is a refusal `desktopResult` throws for, while `malformed` is the one
+				 * an unchecked cast lets through — a 200 whose body is not a
+				 * `VoicePathResolution` (QA round 1, Q2). The group must say the same
+				 * sentence for both and must not render a single availability fact from
+				 * either.
+				 */
+				if (scenario === "unreadable") {
+					return {
+						status: 500,
+						body: {
+							detail: "The resolver could not read the credential store.",
+						},
+					};
+				}
+				if (scenario === "malformed") {
+					return ok({ rungs_typo: [], servable_typo: true });
+				}
 				return ok(resolutionFor(scenario));
 			case "radient.request":
 				/*
@@ -381,6 +400,34 @@ const rowKeys = (container) =>
 		node.getAttribute("data-setting-key"),
 	);
 
+/**
+ * Wait until the availability area has SETTLED, then return the rendered text.
+ *
+ * Waiting on the RENDERED state rather than on the clock, because the arms that
+ * fail this way are retried once (`retryDesktopQuery` keeps one retry for a
+ * failure that carries a status, which is what a 500 is) and a fixed sleep would
+ * be either flaky or slower than the event it waits for. `Speaks through` and
+ * the honest sentence are the two settled shapes; anything else is still the
+ * in-flight note.
+ */
+const settleAvailability = async (container) => {
+	const deadline = Date.now() + 5000;
+	while (Date.now() < deadline) {
+		const text = container.textContent ?? "";
+		if (
+			text.includes("Speech availability could not be read.") ||
+			text.includes("Speaks through")
+		) {
+			return text;
+		}
+		// eslint-disable-next-line no-await-in-loop
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 25));
+		});
+	}
+	return container.textContent ?? "";
+};
+
 test("the group renders the daemon's seven voicing rows and nothing else", async (t) => {
 	const { container } = await mount(t, "radient-pass");
 	assert.deepEqual(
@@ -398,21 +445,36 @@ test("the group renders the daemon's seven voicing rows and nothing else", async
 	);
 });
 
-test("the group offers no field that could hold a credential", async (t) => {
-	const { container } = await mount(t, "nothing");
-	assert.equal(
-		container.querySelectorAll('input[type="password"]').length,
-		0,
-		"a password field would be a second home for a provider key",
-	);
-	const suspicious = [...container.querySelectorAll("input, textarea")].filter(
-		(node) => CREDENTIAL_FIELD.test(fieldIdentity(node)),
-	);
-	assert.deepEqual(
-		suspicious.map((node) => node.outerHTML.slice(0, 80)),
-		[],
-		"providers are signed into through /login <provider>, never through a field here",
-	);
+test("the group offers no field that could hold a credential, in any state", async (t) => {
+	/*
+	 * EVERY SCENARIO, not just the arm the rows render on (agent review round 1,
+	 * N1). The rows come from one path, so the gap was theoretical — but a
+	 * credential field is the one thing this surface must never grow, and the
+	 * assertion costs one mount per state.
+	 */
+	for (const scenario of [
+		"radient-pass",
+		"stored-provider-key",
+		"nothing",
+		"older",
+		"unreadable",
+		"malformed",
+	]) {
+		const { container } = await mount(t, scenario);
+		assert.equal(
+			container.querySelectorAll('input[type="password"]').length,
+			0,
+			`${scenario}: a password field would be a second home for a provider key`,
+		);
+		const suspicious = [
+			...container.querySelectorAll("input, textarea"),
+		].filter((node) => CREDENTIAL_FIELD.test(fieldIdentity(node)));
+		assert.deepEqual(
+			suspicious.map((node) => node.outerHTML.slice(0, 80)),
+			[],
+			`${scenario}: providers are signed into through /login <provider>, never through a field here`,
+		);
+	}
 });
 
 test("the availability panel names the serving rung and every rung's reason", async (t) => {
@@ -475,3 +537,36 @@ test("a backend that does not serve voicing is never asked for the report", asyn
 		"the version gap is stated, with its remedy",
 	);
 });
+
+/*
+ * THE TWO WAYS THE REPORT CAN BE MISSING, and the one thing the group owes a
+ * reader for both: the honest sentence, and no availability fact invented in its
+ * place. A failed request was always handled; the malformed 200 was not —
+ * `desktopResult` casts, so `speechAvailability` mapped `undefined` and the
+ * throw took the route with it (QA round 1, Q2).
+ */
+for (const [scenario, why] of [
+	["unreadable", "the request failed"],
+	["malformed", "the reply was not this route's shape"],
+]) {
+	test(`${scenario}: the group says it could not read availability, and claims nothing`, async (t) => {
+		const { container, asked } = await mount(t, scenario);
+		const text = await settleAvailability(container);
+		assert.ok(asked.includes("tts.paths"), `the read was taken (${why})`);
+		assert.ok(
+			text.includes("Speech availability could not be read."),
+			`the reader is told the report is missing rather than shown a guess; rendered: ${text.slice(0, 240)}`,
+		);
+		for (const claim of ["Speaks through", "Ready", "No provider"]) {
+			assert.ok(
+				!text.includes(claim),
+				`no availability fact is rendered from a payload that was not one: ${claim}`,
+			);
+		}
+		assert.equal(
+			container.querySelectorAll("[data-setting-key]").length,
+			7,
+			"the failure stays local: the seven rows the reader can still edit are rendered",
+		);
+	});
+}
