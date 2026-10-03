@@ -989,7 +989,29 @@ export const useMessageInput = ({
 	// back to the box; an UNCONFIRMED one leaves its text with the claim that
 	// carries the retry, so nothing the user typed is lost either way.
 	const handleSubmit = useCallback(async () => {
-		if (!inputValue.trim() || !conversationId) return;
+		/*
+		 * ATTACHMENTS ALONE ARE A MESSAGE, so this guard cannot be the text's alone
+		 * (QA round 1, Q1). The composer's two VISIBLE gates - the Send predicate and
+		 * the form's own guard - already arm and admit on `text OR attachments`
+		 * (`message-input.tsx`); this third door, the submit every acceptance path
+		 * passes, required text and returned SILENTLY. An image-only press was
+		 * therefore armed by both visible gates and swallowed here: no request, no
+		 * copy, no toast - the same disagreement #790 filed, one door over, and it
+		 * is what made the >8-image refusal unreachable for image-only drafts.
+		 *
+		 * THE STAGED SNAPSHOT IS TAKEN FIRST so the guard and the payload read ONE
+		 * answer. Frozen at the press, like the text: a chip the user attaches while
+		 * the request is in flight belongs to their NEXT message, and a refusal must
+		 * not hand it back as though it had been sent (see `stagedPayloadOf`); both
+		 * reads live in the same synchronous tick, so hoisting the read changes
+		 * nothing it did not already decide.
+		 */
+		const staged = conversationId ? stagedPayloadOf(conversationId) : undefined;
+		if (
+			!conversationId ||
+			(!inputValue.trim() && (staged?.attachments.length ?? 0) === 0)
+		)
+			return;
 		/*
 		 * A SECOND PRESS IS REPORTED, NOT SWALLOWED.
 		 *
@@ -1069,12 +1091,6 @@ export const useMessageInput = ({
 		 * `clearStagedPayload`).
 		 */
 		const submitted = inputValue;
-		/*
-		 * Frozen at the press, like the text: a chip the user attaches while the
-		 * request is in flight belongs to their NEXT message, and a refusal must not
-		 * hand it back as though it had been sent.
-		 */
-		const staged = conversationId ? stagedPayloadOf(conversationId) : undefined;
 		/*
 		 * One clear per submit, whichever of its two triggers gets there first,
 		 * and only over the payload this submit is actually carrying: an echo that
