@@ -61,7 +61,7 @@ node scripts/renderer-driver.mjs --scene project-detail \
 
 | Frame | State |
 | --- | --- |
-| `sheet-*` | the page at rest: display title with the key secondary, the status chip, `Managed by atlas · platform`, the rendered markdown description, properties, the milestone with its derived state, and the linked-sessions list with the quick-send strip under it |
+| `sheet-*` | the page at rest: display title with the key secondary, the status chip, `Owner`/`Team` as Properties rows, the rendered markdown description, the milestone with its derived state, and the linked-sessions list with the quick-send strip under it |
 | `quick-send-*` | the strip with the message typed, the target select on the linked session |
 | `delivered-*` | the same message rendering in that session's conversation, after the daemon's `history` answered with it |
 | `start-session-*` | the picker open on the sheet (team / agent / plain) |
@@ -81,7 +81,7 @@ the app holds a connection to this run's backend (http://127.0.0.1:8080)
 the app holds NO connection to the operator's own backend (http://localhost:1111)
 window mode is headless and the window is never shown or focused
 the seeded project exists on this run's daemon, with one linked session
-the sheet draws the seeded project: title, key, managed-by, milestone and feed
+the sheet draws the seeded project: title, key, owner/team rows, milestone and feed
 the strip holds the typed message
 pressing Enter admits the message (a pre-admission refusal is waited out and re-pressed)
 the message is admitted into the linked session's transcript (daemon read)

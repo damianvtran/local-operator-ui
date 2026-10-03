@@ -185,10 +185,12 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const remove = useDeleteProject();
 	const [createOpen, setCreateOpen] = useState(false);
 	/*
-	 * The view, the board's edit/delete targets, and the timeline's fan-out are
+	 * The view, the board's delete target, and the timeline's fan-out are
 	 * declared BEFORE the gate's early returns: a hook cannot sit behind a
 	 * branch, and the timeline's reads are gated by their own `enabled` flag
-	 * (the same fail-closed rule the list states).
+	 * (the same fail-closed rule the list states). The board's Edit item
+	 * navigates (see the board's own props below) — the edit dialog retired
+	 * with the inline-edit slice, so there is no edit target to hold here.
 	 */
 	const [view, setView] = useState<ProjectsView>(() => readProjectsView());
 	/*
@@ -200,7 +202,6 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 	const [boardWindow, setBoardWindow] = useState<BoardWindow>(() =>
 		readBoardWindow(),
 	);
-	const [editing, setEditing] = useState<DesktopProject | null>(null);
 	const [deleting, setDeleting] = useState<DesktopProject | null>(null);
 	/*
 	 * THE SEARCH CONTROLS ARE THE PAGE'S OWN STATE — the query joins the
@@ -964,6 +965,15 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 					/>
 				)}
 
+				{/*
+				 * EDIT NAVIGATES NOW (the inline-edit slice, operator 2026-09-30):
+				 * the card menu's item used to open the edit dialog, and every
+				 * field is edited in place on the detail page since. It keeps
+				 * `onEdit` rather than folding into `onOpen` so the two are still
+				 * separate intents here — design may drop the item, and a board
+				 * card menu that lands on the record it edits is the honest
+				 * behaviour meanwhile.
+				 */}
 				{listReady &&
 					!noMatch &&
 					view === "board" &&
@@ -972,7 +982,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							projects={boardVisible}
 							nowMs={nowMs}
 							onOpen={(project) => void navigate(`/projects/${project.id}`)}
-							onEdit={setEditing}
+							onEdit={(project) => void navigate(`/projects/${project.id}`)}
 							onDelete={setDeleting}
 							onMove={moveTo}
 							teamLabelFor={teamLabelFor}
@@ -1031,39 +1041,6 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 				)}
 			</div>
 
-			<ProjectFormDialog
-				open={editing !== null}
-				mode="edit"
-				initial={
-					editing
-						? {
-								key: editing.id,
-								name: editing.name,
-								title: editing.title,
-								owner: editing.owner,
-								team: editing.team,
-								description: editing.description,
-								status: editing.status,
-								tags: editing.tags,
-								start_date: editing.start_date,
-								target_date: editing.target_date,
-								estimate: editing.estimate,
-								estimate_unit: editing.estimate_unit,
-							}
-						: null
-				}
-				onClose={() => setEditing(null)}
-				onSubmit={async (payload) => {
-					if (payload.mode !== "edit") return;
-					await update.mutateAsync({
-						key: payload.key,
-						fields: payload.fields,
-					});
-					showSuccessToast("Project saved");
-					setEditing(null);
-				}}
-			/>
-
 			<ProjectDeleteDialog
 				open={deleting !== null}
 				projectName={deleting?.name ?? ""}
@@ -1081,10 +1058,8 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 
 			<ProjectFormDialog
 				open={createOpen}
-				mode="create"
 				onClose={() => setCreateOpen(false)}
 				onSubmit={async (payload) => {
-					if (payload.mode !== "create") return;
 					const created = await create.mutateAsync(payload.fields);
 					/*
 					 * The toasts name the TITLE when the author gave one (UX round 1,
@@ -1111,7 +1086,7 @@ export const ProjectsPage: FC<{ nowMs?: number }> = ({
 							const message =
 								error instanceof Error && error.message ? error.message : "";
 							showErrorToast(
-								`Project ${label} was created, but the extra fields were not saved: ${refusalCopy(message) || "the server refused them."} Open the project and use Edit to set them.`,
+								`Project ${label} was created, but the extra fields were not saved: ${refusalCopy(message) || "the server refused them."} Open the project to set them in place.`,
 							);
 							return;
 						}
