@@ -83,7 +83,9 @@ const bundle = await build({
 		contents: [
 			'export { AskPanel } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
 			'export { askQueueView, askChipCountClause, askRevisionDraft, askAnswerMap, presentAsk, askStatusText, askStatusWord } from "./src/renderer/src/features/chat/ask-queue";',
-			'export { ASK_LATE_UNDELIVERED_TEXT, askRefusalIsOwner, askScopeLine } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { ASK_LATE_UNDELIVERED_TEXT, askRefusalIsOwner, askRefusalSentence, askScopeLine } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { DesktopControlError, desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { DESKTOP_LOST_SIGHT_CODE, DESKTOP_MACHINE_DETAIL, DESKTOP_REFUSAL_CODE, DESKTOP_REFUSAL_SENTENCE, RUNTIME_BUSY_CODE, desktopRequestDeadlineDetail } from "./src/shared/desktop-contract";',
 			'export { reviseQueuedAsk, answerQueuedAsk, createSendLock } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 		].join("\n"),
@@ -142,7 +144,16 @@ const {
 	askStatusWord,
 	ASK_LATE_UNDELIVERED_TEXT,
 	askRefusalIsOwner,
+	askRefusalSentence,
 	askScopeLine,
+	DesktopControlError,
+	desktopResult,
+	DESKTOP_LOST_SIGHT_CODE,
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+	DESKTOP_REFUSAL_SENTENCE,
+	RUNTIME_BUSY_CODE,
+	desktopRequestDeadlineDetail,
 	reviseQueuedAsk,
 	answerQueuedAsk,
 	createSendLock,
@@ -236,6 +247,59 @@ const panelMarkup = (ask, extra = {}) =>
 			...extra,
 		}),
 	);
+
+/*
+ * The revise press's own body, so the transport under test sees the request the
+ * product sends (the `sessions.answer` op with the whole map and the intent flag).
+ */
+const REVISE_REQUEST = {
+	op: "sessions.answer",
+	sessionId: SESSION,
+	askId: "a-revise",
+	answers: { q1: ["staging"] },
+	revise: true,
+};
+
+/**
+ * Drive the SHIPPED transport over one stubbed reply from main, and hand back the
+ * error it threw.
+ *
+ * `desktopRequest` reads the real IPC channel off `window.api.desktop.request`, so
+ * stubbing exactly that is the whole seam: `desktopResult` parses the envelope
+ * below and throws the SHIPPED `DesktopControlError` — no error shape is written by
+ * this test. That is the point of the round-3 finding: the first cut built its
+ * transport case as `new Error("socket closed")`, a shape this product never
+ * throws, so the assertion passed while the door it was meant to guard was shut on
+ * every real failure.
+ */
+async function refusalFromTheWire(reply) {
+	const hadWindow = "window" in globalThis;
+	const previous = globalThis.window;
+	globalThis.window = {
+		api: {
+			desktop: {
+				request: async () => {
+					if (reply instanceof Error) throw reply;
+					return reply;
+				},
+			},
+		},
+	};
+	let error;
+	try {
+		await desktopResult(REVISE_REQUEST);
+	} catch (caught) {
+		error = caught;
+	} finally {
+		if (hadWindow) globalThis.window = previous;
+		// `Reflect` rather than the `delete` operator: this puts the global back the
+		// way it was found (node has no `window`), which `biome`'s `noDelete` rule
+		// refuses the operator for.
+		else Reflect.deleteProperty(globalThis, "window");
+	}
+	if (error === undefined) throw new Error("the transport did not refuse");
+	return error;
+}
 
 test("a revision posts the WHOLE ask map on the queued-ask body, with the intent stated", async () => {
 	const answers = { q1: ["staging"], q2: ["yes"] };
@@ -534,28 +598,111 @@ test("a transport failure leaves the door open; only the owner's verdict shuts i
 	assert.equal(owned.includes("Change answer"), false);
 });
 
-test("the refusal verdict is the classification, not the sentence's spelling", () => {
-	// A plain Error is a transport failure: nothing crossed the wire.
-	assert.equal(askRefusalIsOwner(new Error("socket closed")), false);
-	// A 404 is "no ask with that id" - not a statement about delivery.
+test("the refusal verdict is the classification, not the sentence's spelling", async () => {
+	/*
+	 * EVERY CASE IS THE SHIPPED TRANSPORT'S OWN ERROR over the envelope the named
+	 * layer really produces (agent review round 3, BLOCKER). The first cut asserted
+	 * `new Error("socket closed")` here - a shape the transport never throws - so it
+	 * passed while `refusedByOwner` was `true` for every one of these, and the door
+	 * shut for the life of the mount.
+	 */
+
+	// A. the renderer's own catch: the IPC call rejected, so no status exists. The
+	// error is the SHIPPED class with a `null` status, not a hand-built `Error`.
+	const ipcRejected = await refusalFromTheWire(new Error("invoke rejected"));
+	assert.ok(ipcRejected instanceof DesktopControlError);
+	assert.equal(ipcRejected.status, null);
+	assert.equal(askRefusalIsOwner(ipcRejected), false);
+	// B. main could not complete the request (a 503 envelope carrying an AUTHORED
+	// detail sentence AND a status). The status is non-null, which is why the verdict
+	// cannot be a status check alone - and why the sentence must stay main's own.
+	const transportFailed = await refusalFromTheWire({
+		status: 503,
+		body: {
+			detail: {
+				code: DESKTOP_REFUSAL_CODE.transportFailed,
+				message: DESKTOP_MACHINE_DETAIL.transportFailed,
+			},
+		},
+	});
+	assert.equal(askRefusalIsOwner(transportFailed), false);
 	assert.equal(
-		askRefusalIsOwner(Object.assign(new Error("missing"), { status: 404 })),
-		false,
+		askRefusalSentence(transportFailed),
+		DESKTOP_REFUSAL_SENTENCE[DESKTOP_REFUSAL_CODE.transportFailed],
 	);
-	// A status the app classifies (409/410) IS the ask's own state, stated by the owner.
-	assert.equal(
-		askRefusalIsOwner(Object.assign(new Error("settled"), { status: 409 })),
-		true,
-	);
-	// An authored sentence (the body's own detail) is the owner's words.
+	// C. main's own deadline fired: a 504 `deadline_exceeded`, which is nobody's
+	// verdict on this ask - the request may still be running.
 	assert.equal(
 		askRefusalIsOwner(
-			Object.assign(new Error("That ask was already delivered."), {
-				detail: { reason: "delivered" },
+			await refusalFromTheWire({
+				status: 504,
+				body: {
+					detail: desktopRequestDeadlineDetail("sessions.answer", 165_000),
+				},
 			}),
+		),
+		false,
+	);
+	// D. the daemon could not reach the owner, and E. the owner is busy: both are the
+	// transport's own register and both may be repeated.
+	assert.equal(
+		askRefusalIsOwner(
+			await refusalFromTheWire({
+				status: 503,
+				body: { detail: { code: DESKTOP_LOST_SIGHT_CODE.runtimeUnreachable } },
+			}),
+		),
+		false,
+	);
+	assert.equal(
+		askRefusalIsOwner(
+			await refusalFromTheWire({
+				status: 503,
+				body: { detail: { code: RUNTIME_BUSY_CODE } },
+			}),
+		),
+		false,
+	);
+	// F. a 404 answers about a different subject, so it is not a statement about this
+	// ask's window however its body is worded.
+	assert.equal(
+		askRefusalIsOwner(
+			await refusalFromTheWire({
+				status: 404,
+				body: { detail: "No session with that id." },
+			}),
+		),
+		false,
+	);
+	// G. THE OWNER'S REFUSAL, in the shape the backend sends it: a 409 whose body is
+	// its own sentence (the route's `HTTPException(409, "This question or approval is
+	// no longer pending")`).
+	const ownerRefusal = await refusalFromTheWire({
+		status: 409,
+		body: { detail: "This question or approval is no longer pending" },
+	});
+	assert.equal(askRefusalIsOwner(ownerRefusal), true);
+	assert.equal(
+		askRefusalSentence(ownerRefusal),
+		"This question or approval is no longer pending",
+	);
+	// H. the same refusal with no sentence of its own: the status IS the verdict, and
+	// the app says the state it can substantiate.
+	const settledWithoutWords = await refusalFromTheWire({
+		status: 409,
+		body: { detail: { code: "already_answered" } },
+	});
+	assert.equal(askRefusalIsOwner(settledWithoutWords), true);
+	// I. expiry, the other state the app substantiates.
+	assert.equal(
+		askRefusalIsOwner(
+			await refusalFromTheWire({ status: 410, body: { detail: "Too old." } }),
 		),
 		true,
 	);
+	// J. a thrown value that is not a DesktopControlError at all - a runtime
+	// exception, or the app's own diagnosis - is never the owner's sentence.
+	assert.equal(askRefusalIsOwner(new Error("TypeError: fetch failed")), false);
 });
 
 test("the view's delivering count drops a row the owner refused, and the chip stops advertising it", () => {
