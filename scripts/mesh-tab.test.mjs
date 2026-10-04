@@ -1442,6 +1442,7 @@ test("the summary states the ask, and the consequences stay in the CLI's order",
 		approvalWhereLabel,
 		approvalRequesterLabel,
 		approvalScopeEntries,
+		approvalHead,
 		approvalRemainingLabel,
 		approvalSummary,
 		approvalSubject,
@@ -1483,14 +1484,24 @@ test("the summary states the ask, and the consequences stay in the CLI's order",
 		],
 	);
 	/*
-	 * THE ONE-LINE SUMMARY (operator round, 2026-10-03): every scope the record
+	 * THE ONE-SENTENCE SUMMARY (operator round, 2026-10-03): every scope the record
 	 * carries, as plain clauses, in the same order - trust-bearing scopes
-	 * included, the half the chips used to leave to a legend.
+	 * included, the half the chips used to leave to a legend. One sentence, not
+	 * always one rendered line: the longest shape wraps at app width (design
+	 * round 1, D6), and the last clause follows a SEMICOLON so no clause's verb
+	 * can be read as shared with its neighbour ("without an approval prompt and
+	 * answer ..." was the garden path D6 measured).
 	 */
 	assert.equal(
 		approvalSummary(row),
-		"Onboard devon-laptop: connect over ssh, install Local Operator there, check approvals signed on your machines, join n_1 as drive, run sessions there without an approval prompt and answer approval prompts there.",
+		"Onboard devon-laptop: connect over ssh, install Local Operator there, check approvals signed on your machines, join n_1 as drive, run sessions there without an approval prompt; answer approval prompts there.",
 	);
+	/*
+	 * AND THE RECORD ROWS LEAD WITH THE TITLE ALONE (UX round 1, U2): the same
+	 * head `approvalSummary` opens with, so a settled row cannot drift from the
+	 * sentence that introduced its ask.
+	 */
+	assert.equal(approvalHead(row), "Onboard devon-laptop");
 	/*
 	 * The join clause names the network the page already shows, and falls back to
 	 * the id only when the mesh read has not landed (UX round 1, U1: the canvas
@@ -2266,8 +2277,28 @@ test("a refused decision renders its sentence, and the tray splits waiting from 
 	);
 	assert.match(
 		tray,
-		/approvalSummary\(row, networkNames\)/,
-		"the card's first line is the summary sentence",
+		/const head = approvalHead\(row\);/,
+		"the record's own title comes from the one builder approvalSummary heads with",
+	);
+	assert.match(
+		tray,
+		/\{waiting \? summary : head\}/,
+		"the card's first line: the full sentence while it waits, the title alone once settled (UX round 1, U2)",
+	);
+	assert.match(
+		tray,
+		/\{waiting && remaining && \(/,
+		"the countdown prints only while the decision is still the reader's (design round 1, D3 / UX round 1, U3)",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approval-stopped-note"/,
+		"a stopped runner states on the card what happened and what can be done (UX round 1, U1)",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approval-refusal"/,
+		"the refusal carries its own tag, which is what the StoppedRefused story's latch and the refused frame's claims key on",
 	);
 	assert.match(
 		tray,
@@ -2862,6 +2893,56 @@ test("the asking story photographs the asking state", () => {
 		/play: async/,
 		"and the write path keeps its own story, where the play is what it is named for",
 	);
+});
+
+test("every approvals frame that follows an interaction carries the shutter latch (design round 1, D9)", () => {
+	/*
+	 * A PLAY'S OWN `await` PROVES THE STATE IN THE BROWSER, BUT NOT TO THE RIG: without
+	 * the latch, the generic settle terms can pass mid-play and the shutter opens on a
+	 * half-played screen. The repo's documented latch is
+	 * `documentElement.dataset.capturePending` (`agent-hub.stories.tsx::holdShutter`),
+	 * and the rig holds the shutter while it is set and refuses `data-capture-failed`.
+	 * This pins the latch onto every approvals story whose frame follows an interaction,
+	 * so the next state of this class cannot silently lose it.
+	 */
+	const stories = source(
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx",
+	);
+	const story = (name) => {
+		const at = stories.indexOf(`export const ${name}: Story = {`);
+		assert.notEqual(at, -1, `${name} must exist`);
+		const next = stories.indexOf("export const ", at + 10);
+		return next === -1 ? stories.slice(at) : stories.slice(at, next);
+	};
+	for (const name of [
+		"ApprovalsRecordsOpen",
+		"ApprovalsDecisionWrites",
+		"ApprovalRefused",
+		"ApprovalsDetailsOpen",
+		"ApprovalsStoppedRefused",
+	]) {
+		assert.match(
+			story(name),
+			/holdShutter\(/,
+			`${name} drives an interaction, so its frame waits on the latch`,
+		);
+	}
+	assert.match(
+		stories,
+		/const holdShutter = \(until: string, text\?: string\) => \{/,
+		"and the helper itself is present, not just its call sites",
+	);
+	for (const name of [
+		"ApprovalsMixed",
+		"ApprovalsReadFailure",
+		"ApprovalsMachineAuthority",
+	]) {
+		assert.notEqual(
+			stories.indexOf(`export const ${name}: Story = {`),
+			-1,
+			`${name} must exist - it is the state UX round 1 (U4) found unframed`,
+		);
+	}
 });
 
 test("the wait ceiling is carried from the click to the wire, and the pin fails where it matters (round 3)", () => {

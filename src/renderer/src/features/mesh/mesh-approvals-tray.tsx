@@ -14,9 +14,12 @@
  *   - RECORDS: everything the read carries besides them — decided, running,
  *     stopped, terminal — behind a `Disclosure` that starts closed. The closure
  *     is the archive-dump guard the old tray argued for, kept: a record nobody
- *     opened costs one line of chrome, not a wall. It starts OPEN while a
+ *     opened costs one line of chrome, not a wall. It opens ITSELF while a
  *     `failed` record is inside — the store's own words, "the state a person
- *     should not miss" — and the reader's toggle owns it from then on.
+ *     should not miss"; the FIRST press of its toggle takes ownership from
+ *     then on, and until that press the default keeps following the data, so
+ *     the section folds away again once the last `failed` resolves (QA round
+ *     1, O2 — stated rather than special-cased).
  *     HOW FAR BACK IT DRAWS IS THE STORE'S BOUND, NOT THIS FILE'S (agent review
  *     round 1, R1-2): the section is the read's own fold — everything besides
  *     the waiting set, oldest first — and the read's retention is the store's
@@ -31,7 +34,13 @@
  * consequences as a list (not a wall of chips), the provenance lines and the
  * state's own gloss. The reader used to assemble the ask from six chips and
  * three definition rows; now the card states it, and the definitions are
- * reference material one click away.
+ * reference material one click away. The waiting card's line is the full
+ * sentence; a record's is the ask's TITLE alone (`approvalHead` — UX round 1,
+ * U2: the archive read as a stack of repeated six-clause asks), and the
+ * countdown prints only while the record still waits for the operator (design
+ * round 1, D3 / UX round 1, U3). A `failed` record additionally states on the
+ * card what happened and what can be done (UX round 1, U1 — see the card's own
+ * note).
  *
  * WHO DECIDES WHAT: the card renders what the record carries and offers only the
  * moves the store's own transition matrix allows (`mesh-approvals.ts` owns the
@@ -54,6 +63,7 @@ import { Fragment, useMemo, useState } from "react";
 import {
 	type ApprovalDecision,
 	type MeshApprovalRow,
+	approvalHead,
 	approvalHostKeyLabel,
 	approvalRemainingLabel,
 	approvalRequesterLabel,
@@ -132,7 +142,7 @@ function stateHints(state: string): { term: string; text: string }[] {
 			return [
 				{
 					term: "After a stop",
-					text: "The runner stopped. Abandoning denies the request; an agent can retry it instead.",
+					text: "The runner stopped before it finished. Abandoning denies the request; a retry re-enters the same record instead.",
 				},
 			];
 		default:
@@ -338,6 +348,7 @@ const MeshApprovalCard: FC<{
 	networkNames?: ReadonlyMap<string, string>;
 }> = ({ row, pending, busy, refusal, onDecide, nowSeconds, networkNames }) => {
 	const waiting = isWaitingApproval(row.state);
+	const head = approvalHead(row);
 	const summary = approvalSummary(row, networkNames);
 	const entries = approvalScopeEntries(row, networkNames);
 	const where = approvalWhereLabel(row);
@@ -357,7 +368,15 @@ const MeshApprovalCard: FC<{
 					{approvalStateLabel(row.state)}
 				</Badge>
 				<div className="grow" />
-				{remaining && (
+				{/*
+				 * THE WINDOW PRINTS ONLY WHILE IT IS THE READER'S TO ACT ON (design
+				 * round 1, D3; UX round 1, U3): a countdown is a prompt, and a settled
+				 * record wears none — on `approved`/`connecting` the decision is made,
+				 * and on `failed` the runner has stopped. The store keeps `expires_at`
+				 * on the record whatever its state (`badge_row` passes it raw; only
+				 * `presented()` reads it), so the gate is the SURFACE's, by state.
+				 */}
+				{waiting && remaining && (
 					<span className="text-meta text-ink-dim">{remaining}</span>
 				)}
 			</div>
@@ -366,14 +385,38 @@ const MeshApprovalCard: FC<{
 			 * THE ONE LINE OF PLAIN LANGUAGE (operator round, 2026-10-03). Everything
 			 * below it is a control or the Details disclosure; the ask itself is this
 			 * sentence, and it is built from the record's own scopes so the summary
-			 * cannot promise less than the consequences show.
+			 * cannot promise less than the consequences show. It is ONE SENTENCE,
+			 * which the longest shape wraps to two rendered lines (design round 1,
+			 * D6). A RECORD row leads with the ask's title alone instead (UX round 1,
+			 * U2): the decision-time sentence belongs to the moment of decision, and
+			 * repeating it per settled row is the wall the operator reported.
 			 */}
 			<p
 				className="text-body-sm text-ink"
 				data-tour-tag="mesh-approval-summary"
 			>
-				{summary}
+				{waiting ? summary : head}
 			</p>
+
+			{/*
+			 * A STOPPED RUNNER SAYS WHAT HAPPENED AND WHAT CAN BE DONE (UX round 1,
+			 * U1). The wire's frozen list shape carries no failure detail (§3.5 —
+			 * `badge_row` has no step or receipt), so the CAUSE the card can state is
+			 * that the runner stopped before finishing; what it must not leave
+			 * unsaid is that nothing needs to be destroyed — the record stays
+			 * retryable until its window closes, and `Abandon` is the one write that
+			 * forecloses that. The retry verb is the same one `stateHints("approved")`
+			 * already names.
+			 */}
+			{row.state === "failed" && (
+				<p
+					className="text-meta text-ink-muted"
+					data-tour-tag="mesh-approval-stopped-note"
+				>
+					The runner stopped before it finished. It stays retryable until its
+					window closes (lop network approvals run); Abandon denies the request.
+				</p>
+			)}
 
 			{(canApprove || canDeny) && (
 				<div className="flex flex-wrap items-center gap-2">
@@ -473,19 +516,29 @@ const MeshApprovalCard: FC<{
 
 /**
  * One refused decision, rendered where the record it was about stands (or, for a
- * refusal whose record left the live set, under the list).
+ * refusal whose record sits inside the CLOSED records section, under the list —
+ * the case a naive attach would swallow; `refusalAttached` above decides which).
  *
  * The warning register is the house's for a write refusal (`RemoveMemberDialog`'s
- * own), and the code is carried the way the move refusals carry theirs: the
- * sentence is for the reader, the code for the support conversation. No
- * `role="alert"` - the tray is already in the reader's flow; this is a state,
- * not an interruption.
+ * own), and the code travels BESIDE the sentence, the way the move refusals
+ * carry theirs (`MoveNotice`): one wrapped row, the sentence first, the code
+ * trailing on the same line where it fits. The Alert's body is a flex COLUMN,
+ * so the two spans stack unless they arrive as one row — design round 1 (D7)
+ * measured that the old markup did not carry the parity its comment claimed.
+ * No `role="alert"` - the tray is already in the reader's flow; this is a
+ * state, not an interruption.
  */
 const MeshDecisionRefusal: FC<{
 	refusal: { code: string; sentence: string };
 }> = ({ refusal }) => (
-	<Alert variant="warning" className="text-meta">
-		<span className="min-w-0 flex-1">{refusal.sentence}</span>
-		<span className="shrink-0 font-mono text-ink-dim">{refusal.code}</span>
+	<Alert
+		variant="warning"
+		className="text-meta"
+		data-tour-tag="mesh-approval-refusal"
+	>
+		<span className="flex min-w-0 flex-wrap items-center gap-2">
+			<span className="min-w-0 flex-1">{refusal.sentence}</span>
+			<span className="shrink-0 font-mono text-ink-dim">{refusal.code}</span>
+		</span>
 	</Alert>
 );

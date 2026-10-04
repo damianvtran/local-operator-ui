@@ -302,15 +302,19 @@ export function approvalSubject(row: MeshApprovalRow): string {
  *
  * The join clause names the network the page already shows when it has it (the
  * same `networkNames` fallback `approvalScopeEntries` uses, UX round 1 U1).
+ *
+ * IT IS ONE SENTENCE, NOT ALWAYS ONE RENDERED LINE (design round 1, D6): at
+ * the app's own width the longest shape — a device onboarding carrying every
+ * clause — wraps to a second line, which is the sentence's own length and not
+ * a layout defect; the narrow pass photographs the same wrap at 1024x768. It
+ * leads the WAITING card; a record row leads with `approvalHead` alone, because
+ * a spent record is not asking anything any more (UX round 1, U2).
  */
 export function approvalSummary(
 	row: MeshApprovalRow,
 	networkNames?: ReadonlyMap<string, string>,
 ): string {
-	const head =
-		row.kind === "machine"
-			? "Set up operator authority on this machine"
-			: `Onboard ${approvalSubject(row)}`;
+	const head = approvalHead(row);
 	const clauses = approvalScopeEntries(row, networkNames).map(
 		(entry) => entry.clause,
 	);
@@ -319,13 +323,35 @@ export function approvalSummary(
 }
 
 /**
- * The clauses joined the way a sentence lists them: commas, one `and` before the
- * last — "a, b and c". One clause renders bare; the head's colon already
- * introduced the list.
+ * The ask's own title — "Onboard studio-mini" / "Set up operator authority on
+ * this machine" — which is both the summary sentence's head and the line a
+ * RECORD row leads with (UX round 1, U2). A spent record answers "what was this
+ * about" in one look; the six-clause decision-time sentence is not repeated per
+ * row, because the decision is already made and the archive is a list, not a
+ * stack of asks (the reader who wants the scope-by-scope detail has the
+ * Details disclosure on every row).
+ */
+export function approvalHead(row: MeshApprovalRow): string {
+	return row.kind === "machine"
+		? "Set up operator authority on this machine"
+		: `Onboard ${approvalSubject(row)}`;
+}
+
+/**
+ * The clauses joined the way a sentence lists them: commas within the list, a
+ * semicolon before the last — "a, b; c". One clause renders bare; the head's
+ * colon already introduced the list.
+ *
+ * WHY A SEMICOLON AND NOT `and` (design round 1, D6): the last two onboarding
+ * clauses are "run sessions there without an approval prompt" and "answer
+ * approval prompts there", and an `and` between them parses first as *without*
+ * both things — a garden path on the one sentence that carries the ask. The
+ * semicolon splits the tail so no clause's verb can be read as shared with its
+ * neighbour, whatever clauses a later scope table puts last.
  */
 function joinClauses(clauses: readonly string[]): string {
 	if (clauses.length === 1) return clauses[0];
-	return `${clauses.slice(0, -1).join(", ")} and ${clauses[clauses.length - 1]}`;
+	return `${clauses.slice(0, -1).join(", ")}; ${clauses[clauses.length - 1]}`;
 }
 
 /**
