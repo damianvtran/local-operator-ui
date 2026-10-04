@@ -134,6 +134,7 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import {
+	type AskOutcome,
 	askChipCountClause,
 	askChipDeadlineShort,
 	askChipDeadlineSubject,
@@ -1263,6 +1264,23 @@ export type ComposerStatusRowProps = {
 	askExpanded?: boolean;
 	onAskToggle?: (next: boolean) => void;
 	/**
+	 * The page's own record of the asks IT posted for, when this row is on a route that
+	 * has one.
+	 *
+	 * READ BY THE COUNT CLAUSE AND NOTHING ELSE, and only for the term that can be
+	 * wrong: `askQueueView`'s `delivering` drops a row whose change door the owner has
+	 * already refused, so the chip stops advertising a door the card below it shuts
+	 * (design round 2, D7 = UX round 2, U6). The chip and the drawer open by the SAME
+	 * flag are two doors onto one queue, and the count that names the session's unfinished
+	 * answers has to be the same reading on both - the second copy is what the row item's
+	 * own note forbids for the flag, and the same rule applies to this term.
+	 *
+	 * Absent on the hosts with no ask lane (the mini quick-send window, the agent-config
+	 * composer) and in a story, where there is no refusal to know about - and the clause
+	 * falls back to the wire's own reading there, which is all it ever had.
+	 */
+	askOutcomes?: Readonly<Record<string, AskOutcome | undefined>>;
+	/**
 	 * Puts focus back in the composer when a control of this row unmounts under it.
 	 *
 	 * A PROPERTY of the parent rather than a query from here, because the composer's
@@ -1296,6 +1314,7 @@ export const ComposerStatusRow = ({
 	isSmallView = false,
 	askExpanded: askExpandedProp,
 	onAskToggle,
+	askOutcomes,
 	onFocusComposer,
 	onNote,
 	nowMs,
@@ -1500,7 +1519,7 @@ export const ComposerStatusRow = ({
 	 * like a resolved plan, a finished queue is worth keeping on screen, and the panel
 	 * is where its history lives.
 	 */
-	const askView = askQueueView(frontend);
+	const askView = askQueueView(frontend, askOutcomes);
 	const askNow = useAskClock(askView.waiting > 0, nowMs);
 	const showAsks =
 		onAskToggle !== undefined &&

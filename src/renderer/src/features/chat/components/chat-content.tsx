@@ -425,10 +425,12 @@ type ChatContentProps = {
 		onReviseAsk?: (askId: string, answers: Record<string, string[]>) => void;
 		/**
 		 * What `SessionPanel` knows about each queued ask it just answered, keyed by
-		/*
 		 * ask id: the sentence the owner refused with, or `null` while it is live - and,
 		 * on a revision, whether one LANDED (`AskOutcome`'s own note: the wire cannot
-		 * mark an accepted change, so the receipt is this surface's own record).
+		 * mark an accepted change, so the receipt is this surface's own record). The
+		 * record also carries whether a refusal is the OWNER's verdict, which is what may
+		 * shut §10's change door; a transport failure leaves that false and the door open
+		 * (`AskOutcome.refusedByOwner`).
 		 *
 		 * Keyed rather than a single slot because a refusal belongs to ONE ask - a
 		 * single slot would put the previous ask's sentence on the next one, which is
@@ -1913,6 +1915,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 */
 								askExpanded={canonical?.askExpanded}
 								onAskToggle={canonical?.onAskToggle}
+								askOutcomes={canonical?.askOutcomes}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)

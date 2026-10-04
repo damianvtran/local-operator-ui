@@ -12,6 +12,7 @@ import {
 	composerFocusIsOurs,
 	shouldTabIntoAnswerOptions,
 } from "@features/chat/ask-answer";
+import type { AskOutcome } from "@features/chat/ask-queue";
 import { sendUnsettledForSession } from "@features/chat/canonical/working-line-model";
 import {
 	CHAT_COLUMN_CONTAINER,
@@ -836,6 +837,13 @@ export type MessageInputProps = {
 	 */
 	askExpanded?: boolean;
 	onAskToggle?: (next: boolean) => void;
+	/**
+	 * The page's record of the asks it posted for, forwarded to the status row's ask
+	 * item beside the flag above and for the same reason: the count clause reads it so
+	 * the chip cannot advertise a change door the owner has already refused. See
+	 * `ComposerStatusRowProps.askOutcomes`; absent on every host with no ask lane.
+	 */
+	askOutcomes?: Readonly<Record<string, AskOutcome | undefined>>;
 
 	/**
 	 * THE HOST PROVIDES ITS OWN HORIZONTAL GUTTER (mini restyle, design D1/D2).
@@ -1637,6 +1645,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			isSmallView = false,
 			askExpanded,
 			onAskToggle,
+			askOutcomes,
 			ownGutter = false,
 			isHydrating = false,
 			transcriptless = false,
@@ -7227,6 +7236,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						isSmallView={isSmallView}
 						askExpanded={askExpanded}
 						onAskToggle={onAskToggle}
+						askOutcomes={askOutcomes}
 						/*
 						 * The judge stalling is a state the user cannot read off 0px of ink, so the
 						 * row writes one sentence about it to the transcript (design D2) — through

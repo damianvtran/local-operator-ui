@@ -79,7 +79,7 @@ import {
 	reviseQueuedAsk,
 } from "../../ask-answer";
 import type { AskDraft, AskOutcome, AskPresentation } from "../../ask-queue";
-import { askRefusalSentence } from "../../ask-queue";
+import { askRefusalIsOwner, askRefusalSentence } from "../../ask-queue";
 import {
 	FLEET_ASKS_QUERY_KEY,
 	fleetAskConversationLabels,
@@ -197,14 +197,26 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 
 	const settle = useCallback(
 		(askId: string, outcome: AnswerOutcome, verb: string, changed = false) => {
+			/*
+			 * ONLY THE OWNER'S OWN REFUSAL CLOSES §10's CHANGE DOOR (agent review round 2,
+			 * minor). A transport failure's sentence still lands in the row (the reader is
+			 * told what happened to the press), but `refusedByOwner` stays false so the
+			 * card keeps its door and a second press is possible once the wire answers -
+			 * the outcome record is never cleared, so latching the door shut on a failure
+			 * would withdraw the affordance for the life of the pane.
+			 */
+			const refusal =
+				outcome.status === "failed"
+					? {
+							refused: askRefusalSentence(outcome.error),
+							refusedByOwner: askRefusalIsOwner(outcome.error),
+						}
+					: { refused: null };
 			setOutcomes((current) => ({
 				...current,
 				[askId]: {
 					sending: false,
-					refused:
-						outcome.status === "failed"
-							? askRefusalSentence(outcome.error)
-							: null,
+					...refusal,
 					/*
 					 * The revision's own receipt (`AskOutcome`'s note): the wire cannot mark an
 					 * accepted change, so this surface records it — and the row leaves this pane

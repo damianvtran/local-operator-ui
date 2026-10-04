@@ -21,6 +21,10 @@
  *      proof requires opening it and then reading the row's own summary.
  *   4. Design round 1, D2 = agent review round 1's MAJOR — §10's window is `answered`
  *      OR `late`; the `late` half draws the same door in the same DOM.
+ *   5. Agent review round 2's minor — a refusal that NEVER REACHED the backend must not
+ *      withdraw the door. Only the owner's own verdict shuts it (`refusedByOwner`),
+ *      because the outcome record is never cleared and a failed press would otherwise
+ *      leave the ask with no affordance until the mount changed.
  *
  * WHAT IS REAL: the shipped `AskPanel` → `AskRow` → `Disclosure` subtree, the
  * shipped fixtures' shapes, and real DOM events. What is faked: the outcome record
@@ -357,7 +361,13 @@ const buttons = (container, label) =>
 	 */
 	const { container } = await mount({
 		rows: [answeredNotDelivered()],
-		outcomes: { "a-change": { sending: false, refused: REFUSAL } },
+		/*
+		 * `refusedByOwner` is the classification that shuts the door (agent review round 2,
+		 * minor): the sentence alone is a fact about the press, not a verdict on the window.
+		 */
+		outcomes: {
+			"a-change": { sending: false, refused: REFUSAL, refusedByOwner: true },
+		},
 	});
 	check(
 		"3. a refused change leaves NO `Change answer` to press again",
@@ -379,7 +389,9 @@ const buttons = (container, label) =>
 	 */
 	const { container } = await mount({
 		rows: [answeredDelivered()],
-		outcomes: { "a-change": { sending: false, refused: REFUSAL } },
+		outcomes: {
+			"a-change": { sending: false, refused: REFUSAL, refusedByOwner: true },
+		},
 	});
 	const section = container.querySelector("[data-lo-ask-settled]");
 	check("4. the ask left the pending list for `Settled`", Boolean(section));
@@ -416,6 +428,42 @@ const buttons = (container, label) =>
 	check(
 		"5. a delivered one offers nothing (history)",
 		buttons(delivered.container, "Change answer").length === 0,
+	);
+}
+
+/* ---------------------------------------------------------------- case 6 ---- */
+
+{
+	/*
+	 * AGENT REVIEW ROUND 2'S MINOR, in the DOM: a refusal that never reached the backend
+	 * must NOT withdraw the door. The outcome record is never cleared, so closing on any
+	 * refusal left the ask with no affordance for the life of the mount; only the owner's
+	 * own verdict may, and the caller records that as `refusedByOwner`. The sentence is
+	 * painted either way - it is a fact about the press.
+	 */
+	const transport =
+		"This server did not answer the request for its desktop controls.";
+	const failed = await mount({
+		rows: [answeredNotDelivered()],
+		outcomes: { "a-change": { sending: false, refused: transport } },
+	});
+	check(
+		"6. a refusal that reached nothing keeps `Change answer`",
+		buttons(failed.container, "Change answer").length === 1,
+	);
+	check(
+		"6. and its sentence is still painted",
+		text(failed.container).includes(transport),
+	);
+	const owned = await mount({
+		rows: [answeredNotDelivered()],
+		outcomes: {
+			"a-change": { sending: false, refused: REFUSAL, refusedByOwner: true },
+		},
+	});
+	check(
+		"6. the owner's verdict still shuts it",
+		buttons(owned.container, "Change answer").length === 0,
 	);
 }
 
