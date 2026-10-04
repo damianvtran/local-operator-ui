@@ -114,6 +114,20 @@ export type AskPanelProps = {
 	 */
 	drafts: Record<string, AskDraft>;
 	onDraftChange: (askId: string, next: AskDraft) => void;
+	/**
+	 * WHICH CONVERSATION THIS ROW BELONGS TO, when the surface is showing more than
+	 * one (the fleet scope).
+	 *
+	 * A row from the aggregate route names its own session (`session_id`) and where
+	 * it ran (`cwd`), so a drawer showing several conversations must SAY which one
+	 * each card is about or the reader cannot tell a question meant for the
+	 * conversation in front of them from one meant for another. The mapping lives in
+	 * the model (`fleet-asks.ts`) and is passed in rather than read here, so this
+	 * panel stays scope-agnostic and a session-scoped drawer (whose rows carry no
+	 * session) simply omits it - see `AskDrawer`, which owns the scope and so owns
+	 * this prop's presence.
+	 */
+	conversationOf?: (row: AskPresentation) => string | null;
 	className?: string;
 };
 
@@ -349,6 +363,7 @@ const AskRow = ({
 	onDraftChange,
 	onAnswer,
 	onDecline,
+	conversationOf,
 }: {
 	presentation: AskPresentation;
 	nowMs: number;
@@ -358,8 +373,11 @@ const AskRow = ({
 	onDraftChange: AskPanelProps["onDraftChange"];
 	onAnswer: AskPanelProps["onAnswer"];
 	onDecline: AskPanelProps["onDecline"];
+	conversationOf?: AskPanelProps["conversationOf"];
 }) => {
 	const { ask, status, waiting, canAnswer, canDecline } = presentation;
+	const conversation =
+		conversationOf === undefined ? null : conversationOf(presentation);
 	const setDraft = useMemo(
 		() => (updater: (current: AskDraft) => AskDraft) =>
 			onDraftChange(ask.ask_id, updater(draft)),
@@ -416,6 +434,22 @@ const AskRow = ({
 			 */
 			className="flex flex-col gap-2 rounded-md border border-hairline bg-surface p-3"
 		>
+			{conversation === null ? null : (
+				/*
+				 * THE CONVERSATION LINE (fleet scope only). `ink-dim` and the meta step:
+				 * it is provenance rather than the question, so it must not compete with
+				 * the question below it - the same register the settled section's own
+				 * descriptor takes. One line, truncated, because a `cwd` is a path and a
+				 * wrapped path would push the question down the card for a fact the
+				 * reader wants at a glance.
+				 */
+				<span
+					data-lo-ask-conversation=""
+					className="truncate text-ink-dim text-meta"
+				>
+					{conversation}
+				</span>
+			)}
 			<div className="flex items-center gap-2">
 				<StatusIcon
 					aria-hidden="true"
@@ -550,6 +584,7 @@ export const AskPanel = ({
 	nowMs,
 	drafts,
 	onDraftChange,
+	conversationOf,
 	className,
 }: AskPanelProps) => {
 	if (view.asks === null) return null;
@@ -593,6 +628,7 @@ export const AskPanel = ({
 			onDraftChange={onDraftChange}
 			onAnswer={onAnswer}
 			onDecline={onDecline}
+			conversationOf={conversationOf}
 		/>
 	);
 
