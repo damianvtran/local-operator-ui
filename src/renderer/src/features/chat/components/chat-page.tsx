@@ -61,6 +61,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	useCallback,
@@ -439,11 +440,15 @@ function SessionPanel({
 	 *
 	 * `askExpanded` is the ONE flag the routing rule reads. While it is true the
 	 * composer answers the ask; while it is false the composer is an ordinary
-	 * conversation box. It is owned here, rather than inside `AskSurfaces`, for
-	 * the reason the design gives: the bar and the composer must not be able to
-	 * disagree about which mode the user is in.
+	 * conversation box. It is owned by the STORE (as `isAskDrawerOpen`, the right
+	 * slot's fifth pane), rather than inside the drawer or here, for two reasons
+	 * the design gives: the chip and the composer must not be able to disagree about
+	 * which mode the user is in, and the drawer has to close the canvas when it opens
+	 * (one right pane at a time, `claimRightSlot`) - a rule that cannot be kept by a
+	 * `useState` in this component.
 	 */
-	const [askExpanded, setAskExpanded] = useState(false);
+	const askExpanded = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+	const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
 	/*
 	 * ANSWERING IS NOT THE SAME AS EXPANDED (UX round 2, U7).
 	 *
@@ -2641,9 +2646,9 @@ function SessionPanel({
 	const toggleAskExpanded = useCallback(
 		(next: boolean) => {
 			if (next === askExpanded) return;
-			setAskExpanded(next);
+			setAskDrawerOpen(next);
 		},
-		[askExpanded],
+		[askExpanded, setAskDrawerOpen],
 	);
 	/*
 	 * THE COMPOSER'S ASK ROUTING (design §5.0).
