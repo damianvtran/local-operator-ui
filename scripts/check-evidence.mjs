@@ -684,9 +684,12 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  * `test:desktop` binds it against the SHIPPED manifest in under a second, and
  * that class is now caught on every pull request. The citation half needs the
  * cited commits to be present in the clone, which a shallow CI checkout does not
- * guarantee, so it stands those citations down with a printed count rather than
- * failing them (see `citationWalk`) and keeps its own tests on synthetic
- * manifests for the code path itself.
+ * guarantee - so it is LOCAL-ONLY and the wired job does not claim it: where the
+ * history is present the walk fails closed and reds the run, and where it is not
+ * the half is left unjudged rather than printed as a stand-down on every run
+ * (see `citationWalk` for that rule, and for why the printing was the wrong
+ * shape). Its code path is covered by synthetic manifests in
+ * `evidence-manifest.test.mjs`.
  *
  * `provenanceFailures` is both halves in the order a reader reads them, and is
  * what the gate reports. Exported so `evidence-manifest.test.mjs` binds the
@@ -1044,49 +1047,51 @@ export const countsMeanFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
  * contain - a shallow CI checkout has every stamp and not necessarily every
  * cited branch commit.
  *
- * THAT DEPENDENCY DECIDES HOW IT FAILS, and the split below is the whole of it.
- * `actions/checkout`'s default is ONE COMMIT DEEP, so a missing object there is
- * not evidence that the commit is gone - it is evidence that the clone is
- * truncated. Judging it as a failure reds the gate on a manifest that is fine,
- * for a reason a reader cannot act on, which is how a gate gets routed around;
- * and never asking at all is the green-by-absence the sweep's own wiring was
- * added to remove. So every citation is sorted into one of two piles:
+ * THAT DEPENDENCY DECIDES HOW IT FAILS, and the answer is that this half is
+ * LOCAL-ONLY. `actions/checkout`'s default is ONE COMMIT DEEP, so a truncated
+ * clone cannot answer the question at all: every citation in the file reads as
+ * missing at once, which is evidence that the CLONE is truncated rather than
+ * that the commits are gone. Judging that as a failure reds the gate on a
+ * manifest that is fine, for a reason a reader cannot act on, which is how a
+ * gate gets routed around.
  *
- *   - `failures`: the clone CAN judge it and it fails - the object is gone from
- *     a clone that is not truncated, or it resolves and no ref reaches it (the
- *     dangling case that dies at the next `gc`).
- *   - `unanswered`: a TRUNCATED clone cannot judge it at all. `main()` prints
- *     these with their count, so a run states what it did NOT check instead of
- *     implying it checked everything - a skipped check is a claim, not a pass.
+ * SO THE WIRED JOB DOES NOT CLAIM THIS HALF, and the walk does not judge it in a
+ * truncated clone: the citations are LEFT ALONE rather than failed, and nothing
+ * is printed for them. That second half of the rule is the load-bearing one - a
+ * stand-down that appears on 100% of runs is a standing excuse that reads as a
+ * covered check, which is the "green by absence" the sweep's own wiring was
+ * added to remove, one level up. The scope is declared where a reader meets the
+ * gate instead of restated per run: the `evidence` job's step name and comment
+ * in `ci.yml`, and this paragraph.
+ *
+ * WHERE IT IS JUDGED INSTEAD: on a clone that HAS the history - a developer's,
+ * or `git fetch --unshallow` - where this walk fails closed and reds the run;
+ * and on synthetic manifests in `evidence-manifest.test.mjs`, which cover the
+ * code path itself wherever the objects exist.
  */
 const citationWalk = (manifest, git = gitOut) => {
 	const { resolves, reachable } = shaReaders(git);
 	/*
-	 * Fail CLOSED on the truncation question: only an explicit `true` stands a
+	 * The truncation question. Fail CLOSED: only an explicit `true` stands a
 	 * citation down, so a repository this cannot read is judged rather than
 	 * excused.
 	 */
 	const truncated = git(["rev-parse", "--is-shallow-repository"]) === "true";
 	const failures = [];
-	const unanswered = [];
 	/*
-	 * The ONE place the two piles are chosen between, so a citation cannot be
-	 * excused by one branch of the walk and failed by another.
+	 * The ONE spelling of "this clone cannot answer for that object" - which in a
+	 * truncated clone is NOT a finding and is NOT collected either, because the
+	 * scope is declared in the paragraph above rather than re-stated per run.
 	 *
-	 * `kind` is the FIELD the citation belongs to (`supplementary[].capturedAtHead`,
-	 * not `supplementary[<path>].capturedAtHead`) and `citation` is the entry a
-	 * reader looks the value up in. The split exists because `main()` COUNTS the
-	 * unchecked pile by `kind`: a depth-1 checkout strands every citation in the
-	 * file at once, and eleven lines naming one field each is what that report is
-	 * for - 111 path-qualified lines is a wall nobody reads, which is the state a
-	 * scope limit must not be reported in.
+	 * The reachability arms below are deliberately untouched by it: an object that
+	 * IS present and that no ref contains is the dangling case, and a depth-1
+	 * clone can judge it, because the object being there IS the clone answering.
 	 */
-	const gone = (kind, citation, sha) => {
-		if (truncated) unanswered.push({ kind, citation, sha });
-		else
-			failures.push(
-				`manifest.json: ${citation} ${sha.slice(0, 9)} resolves to no commit in this repository`,
-			);
+	const missing = (citation, sha) => {
+		if (truncated) return;
+		failures.push(
+			`manifest.json: ${citation} ${sha.slice(0, 9)} resolves to no commit in this repository`,
+		);
 	};
 
 	/*
@@ -1097,7 +1102,7 @@ const citationWalk = (manifest, git = gitOut) => {
 	if (typeof manifest.head !== "string" || manifest.head.length < 7) {
 		failures.push("manifest.json: `head` is missing or not a sha");
 	} else if (!resolves(manifest.head)) {
-		gone("`head`", "`head`", manifest.head);
+		missing("`head`", manifest.head);
 	} else if (!reachable(manifest.head)) {
 		failures.push(
 			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} (${git(["log", "-1", "--format=%s", manifest.head]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
@@ -1108,11 +1113,7 @@ const citationWalk = (manifest, git = gitOut) => {
 		const sha = set.capturedAtHead;
 		if (typeof sha !== "string" || sha.length < 7) continue;
 		if (!resolves(sha)) {
-			gone(
-				"supplementary[].capturedAtHead",
-				`supplementary[${set.path}].capturedAtHead`,
-				sha,
-			);
+			missing(`supplementary[${set.path}].capturedAtHead`, sha);
 		} else if (!reachable(sha)) {
 			failures.push(
 				`manifest.json: supplementary[${set.path}].capturedAtHead ${sha.slice(0, 9)} is reachable from no ref - it dies at the next gc`,
@@ -1137,34 +1138,25 @@ const citationWalk = (manifest, git = gitOut) => {
 		const sha = manifest.partialCapture?.[field];
 		if (typeof sha !== "string" || sha.length < 7) continue;
 		if (!resolves(sha)) {
-			gone(`partialCapture.${field}`, `partialCapture.${field}`, sha);
+			missing(`partialCapture.${field}`, sha);
 		} else if (!reachable(sha)) {
 			failures.push(
 				`manifest.json: partialCapture.${field} ${sha.slice(0, 9)} (${git(["log", "-1", "--format=%s", sha]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
 			);
 		}
 	}
-	return { failures, unanswered };
+	return failures;
 };
 
 /**
- * The citations the clone CAN judge and that fail. `provenanceFailures` reads this.
+ * The citations this CLONE can judge and that fail. `provenanceFailures` reads this.
  *
- * The verdict on the MANIFEST, and the only pile that can turn a run red.
+ * Empty on a truncated clone, where the half is not part of the run at all (see
+ * `citationWalk`). Everywhere the history is present it is the verdict on the
+ * MANIFEST, and the only thing here that can turn a run red.
  */
 export const citationFailures = (manifest, git = gitOut) =>
-	citationWalk(manifest, git).failures;
-
-/**
- * The citations a TRUNCATED clone cannot judge at all, so `main()` can print them.
- *
- * A statement about the CLONE rather than about the manifest, which is why it is
- * its own view rather than `citationFailures` behind a flag: `provenanceFailures`
- * wants one pile and the workflow's log the other, and neither should have to
- * filter a mixed list to find it.
- */
-export const citationUnanswered = (manifest, git = gitOut) =>
-	citationWalk(manifest, git).unanswered;
+	citationWalk(manifest, git);
 
 /**
  * Whether the citations a REBASE moves still name commits in this history.
@@ -1630,32 +1622,13 @@ export const main = async () => {
 			console.log(`NOTE  ${note}`);
 
 		/*
-		 * WHAT THIS RUN DID NOT CHECK, said out loud.
-		 *
-		 * A truncated clone cannot answer the citation half at all, and a gate that
-		 * prints only its findings implies it checked everything it states. The
-		 * count, the fields and the reason are here for the same purpose
-		 * `--summary` serves in `ci-scope.mjs`: a reader of a green run has to be
-		 * able to read what that green means. Grouped by field rather than listed
-		 * per citation because a depth-1 checkout is the common case and it names
-		 * every one of them - 111 lines of `NOT CHECKED` on every CI run would bury
-		 * the lines that matter.
+		 * THE CITATION HALF IS NOT PRINTED HERE, and that is deliberate rather than an
+		 * omission: it is local-only (see `citationWalk`), so on the wired job's
+		 * depth-1 checkout it is not part of the run at all - and a stand-down notice
+		 * that appeared on 100% of runs would read as a covered check, which is the
+		 * green-by-absence this sweep was wired to remove. The scope is declared once,
+		 * in the job's step name and comment, not re-stated per run.
 		 */
-		const unchecked = citationUnanswered(manifest);
-		if (unchecked.length > 0) {
-			const byKind = new Map();
-			for (const { kind } of unchecked)
-				byKind.set(kind, (byKind.get(kind) ?? 0) + 1);
-			console.log(
-				`NOTE  the citation half was NOT checked: this clone is TRUNCATED (git rev-parse --is-shallow-repository = true), so a missing object is not evidence that a commit is gone. ${unchecked.length} citation(s) unchecked: ${[
-					...byKind,
-				]
-					.map(([kind, count]) => `${kind} (${count})`)
-					.join(
-						", ",
-					)}. The half is checked where the branches exist; run the sweep from a clone that has them.`,
-			);
-		}
 	}
 
 	for (const line of failures) console.log(`FAIL  ${line}`);

@@ -177,9 +177,12 @@ deletes a frame or alters a pixel:
   keeping its bytes, exactly as `manifest.paletteStemRenameNote` records for the
   same failure class — `localOperatorDark` is the palette every cell was shot on
   (`readings.json`'s `domTheme`, and the rig's `theme:` iframe arg). Fourteen
-  frames: the `idle`, `loading` and `failed` states of all five cells and the
-  three `retry-states` stills, all within ΔE00 0.78 of the `localOperatorDark`
-  ground and none more uniform than 96.13%.
+  frames: the eleven state frames the five cell directories hold — three each in
+  `base/in-transcript-idle`, `head/in-transcript-idle` and
+  `head/in-transcript-failed`, one each in `base/in-transcript-loading` and
+  `head/in-transcript-loading`, which is the states that EXIST rather than a full
+  5×3 grid — plus the three `retry-states` stills, all within ΔE00 0.78 of the
+  `localOperatorDark` ground and none more uniform than 96.13%.
 - **A frame that is not** is the five `--00-…-blank` frames: the compositor's
   pre-paint buffer, measured at **100.00% a single colour** (`#211F1B`, the
   `localOperatorDark` canvas). That is the one thing the uniformity ceiling

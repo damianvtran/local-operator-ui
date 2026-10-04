@@ -341,6 +341,23 @@ answered against EVERY local ref, of which this machine carries around a thousan
 branch passes locally and dies in a fresh clone. Five citation failures shipped
 behind a local green for exactly that reason (design review round 2, D2b).
 
+**The sweep's citation half is LOCAL-ONLY, and the wired job says so.** `ci.yml`'s
+`evidence` job runs on `actions/checkout`'s depth-1 clone, where every citation in
+the manifest reads as missing at once - which says the CLONE is truncated, not that
+the commits are gone. `pnpm check-evidence` therefore judges only the citations
+that clone can answer and prints NOTHING about the rest: a stand-down notice on
+100% of runs is a standing excuse that reads as a covered check, the same
+green-by-absence the job's wiring was added to remove, one level up. The scope is
+declared where a reader meets the gate - the step's own name (`Sweep the committed
+frames (the citation half is local-only)`) and `citationWalk`'s paragraph - and the
+half is judged where the history EXISTS: a developer's clone, or `git fetch
+--unshallow`, plus the synthetic manifests in `evidence-manifest.test.mjs`.
+
+Do not put the whole-tree sweep on the local `check-changed` path either: it is a
+whole-tree decode of every committed frame behind a machine-wide lease, so it is in
+`LOCAL_EXCLUSIONS` with the fast half of the same gate still running under `test`,
+and its lease's exit 75 is a DEFERRAL the runner names rather than a failure.
+
 Before quoting a local manifest pass, ask the citations directly against a
 REMOTE-BACKED ref: `git fetch origin <branch>`, then call `citationFailures` and
 `citationAncestryFailures` from `scripts/check-evidence.mjs` with a `git` reader

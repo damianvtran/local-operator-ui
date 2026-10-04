@@ -15,7 +15,6 @@ import { checkPaletteBudgets } from "./check-evidence-palettes.mjs";
 import {
 	citationAncestryFailures,
 	citationFailures,
-	citationUnanswered,
 	countsMeanFailures,
 	frames as frameFiles,
 	partialCaptureFailures,
@@ -1518,8 +1517,8 @@ test(
 );
 
 /*
- * The citation half's TWO PILES, and why which pile a citation lands in is a
- * question about the CLONE rather than about the manifest.
+ * The citation half, and why a missing object is a question about the CLONE
+ * rather than about the manifest.
  *
  * This is the defect the wiring found. `pnpm check-evidence` was added to CI as
  * `ci.yml`'s `evidence` job and came back with 111 findings on a tree that is
@@ -1530,20 +1529,30 @@ test(
  * is fine, for a reason no reader can act on: a repository that cannot answer
  * has not found a defect, the same sentence the `SHALLOW` guard above is built
  * on, and the same stand-down `evidence-fold.mjs`'s `runGuards` already makes for
- * the ancestry half. So the citations this clone CAN judge stay failures and the
- * ones it cannot are printed with their count, so a green run states its scope
- * instead of implying it checked everything.
+ * the ancestry half.
+ *
+ * SO THE HALF IS LOCAL-ONLY, and this test pins what that means in code: a
+ * truncated clone has NO verdict on a citation it cannot resolve - those are not
+ * failures, and there is nothing to print for them either, because a stand-down
+ * notice appearing on 100% of runs is a standing excuse that reads as a covered
+ * check (the same green-by-absence the sweep's wiring was added to remove, one
+ * level up), and the scope is declared once in `ci.yml`'s own step name and
+ * comment instead. Everything the clone CAN judge it still judges and fails
+ * closed on - including in a truncated clone, where an object that is present
+ * but reached by no ref is the dangling case and the presence IS the clone
+ * answering.
  *
  * Bound here rather than by a sweep test, because a test of the sweep cannot see
  * it: reproducing the shipped behaviour needs a real truncated clone, and a fake
  * reader is what the other synthetic-manifest cases use for exactly that reason.
  *
  * Mutations: put the truncation branch back on the failure pile (the shipped
- * defect - 111 findings on every CI run); or read "is this clone truncated" as
+ * defect - 111 findings on every CI run); read "is this clone truncated" as
  * FALSE when git cannot answer, which excuses a repository that cannot be read
- * rather than failing closed on it.
+ * rather than failing closed on it; or stand the REACHABILITY arms down with the
+ * truncation, which would make a dangling citation invisible in every clone.
  */
-test("a truncated clone stands the citations it cannot judge down, and names them", () => {
+test("a truncated clone has no verdict on the citations it cannot resolve", () => {
 	const manifest = {
 		head: "c70e8b36dc2ad86bfff81f85f05d08b248f82ccc",
 		supplementary: [
@@ -1583,24 +1592,12 @@ test("a truncated clone stands the citations it cannot judge down, and names the
 		[],
 		"a truncated clone resolved nothing, so it has found nothing: judging these as failures is how 111 findings appeared on a clean tree in CI",
 	);
-	assert.deepEqual(
-		// The KINDS, which is what `main()` counts: a depth-1 checkout strands every
-		// citation at once, and the report has to name the eleven fields rather than
-		// the 111 entries.
-		citationUnanswered(manifest, truncated).map((entry) => entry.kind),
-		[
-			"`head`",
-			"supplementary[].capturedAtHead",
-			"partialCapture.addedAtHead",
-			"partialCapture.refreshedAtHead",
-		],
-		"every citation the truncated clone could not judge has to be NAMED, because `main()` prints this pile as what the run did not check",
-	);
-	assert.equal(
-		citationUnanswered(manifest, truncated)[1].citation,
-		"supplementary[a-set].capturedAtHead",
-		"and the entry itself is kept, so a reader can look the value up rather than only count it",
-	);
+	/*
+	 * AND THERE IS NOTHING TO PRINT FOR THEM. There is deliberately no
+	 * "unanswered" view to assert any more: the stand-down is scope, declared in
+	 * `ci.yml`'s step name and in `citationWalk`'s paragraph, and a per-run notice
+	 * on 100% of runs was the shape the wiring's own round rejected.
+	 */
 
 	const full = answers({ shallow: "false", resolve: false, reach: false });
 	assert.equal(
@@ -1608,7 +1605,6 @@ test("a truncated clone stands the citations it cannot judge down, and names the
 		4,
 		"a clone that is NOT truncated has found a defect when the object is gone - gone is gone, and it must not be excused",
 	);
-	assert.deepEqual(citationUnanswered(manifest, full), []);
 
 	/*
 	 * A citation that RESOLVES is judged by reachability even in a truncated
