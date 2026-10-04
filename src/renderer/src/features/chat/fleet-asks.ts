@@ -130,6 +130,47 @@ export const fleetAsksOutstanding = (rows: readonly PendingAsk[]): number =>
 	askQueueView({ asks: [...rows] }).rows.filter((row) => row.open).length;
 
 /**
+ * The same outstanding set, COUNTED PER CONVERSATION - what the sidebar's own row
+ * marks read.
+ *
+ * ## Why the rows come from here rather than from the row's own field
+ *
+ * `SessionCatalogueRow.asks_open` is declared in the shared contract and read by
+ * `chat-session-status.tsx`'s mark, but the desktop catalogue route never fills
+ * it (the backend's row model carries no such field), so a mark sourced from the
+ * row itself draws nothing on every desktop install - the operator's report,
+ * verbatim: the session's sidebar row showed nothing while the composer chip
+ * beside it read "1 question waiting". The aggregate route is the only read that
+ * answers for conversations the user is not looking at, and it is uncapped, so
+ * the per-row count and the top-level badge are two lenses on ONE population
+ * (design `ask-nonblocking.md` §5.0: "the row marks the session, the top-level
+ * count sums them") rather than two derivations that can disagree.
+ *
+ * The predicate is `fleetAsksOutstanding`'s, deliberately: `askQueueView`'s
+ * `open` folds `timed_out` in, because a late answer still reaches the agent -
+ * so a row keeps its mark while its question is still answerable and loses it
+ * when the last one is answered or passes out of the answerable set. A second
+ * predicate here is how the row and the badge would start disagreeing, which is
+ * the defect class this module exists to prevent.
+ *
+ * Sessions with nothing outstanding are ABSENT from the map, not present with
+ * `0`: every reader asks `get` and treats a miss as "draw nothing", so a zero
+ * entry would be a claim no caller ever wants and one more shape to keep true.
+ */
+export function fleetAsksBySession(
+	rows: readonly PendingAsk[],
+): Map<string, number> {
+	const counts = new Map<string, number>();
+	for (const row of askQueueView({ asks: [...rows] }).rows) {
+		if (!row.open) continue;
+		const sessionId = row.ask.session_id;
+		if (typeof sessionId !== "string" || sessionId.length === 0) continue;
+		counts.set(sessionId, (counts.get(sessionId) ?? 0) + 1);
+	}
+	return counts;
+}
+
+/**
  * The view the drawer and the badge both read, or `null` when the route answered
  * something that is not a row list.
  *
