@@ -1072,12 +1072,20 @@ const citationWalk = (manifest, git = gitOut) => {
 	/*
 	 * The ONE place the two piles are chosen between, so a citation cannot be
 	 * excused by one branch of the walk and failed by another.
+	 *
+	 * `kind` is the FIELD the citation belongs to (`supplementary[].capturedAtHead`,
+	 * not `supplementary[<path>].capturedAtHead`) and `citation` is the entry a
+	 * reader looks the value up in. The split exists because `main()` COUNTS the
+	 * unchecked pile by `kind`: a depth-1 checkout strands every citation in the
+	 * file at once, and eleven lines naming one field each is what that report is
+	 * for - 111 path-qualified lines is a wall nobody reads, which is the state a
+	 * scope limit must not be reported in.
 	 */
-	const gone = (field, sha) => {
-		if (truncated) unanswered.push({ field, sha });
+	const gone = (kind, citation, sha) => {
+		if (truncated) unanswered.push({ kind, citation, sha });
 		else
 			failures.push(
-				`manifest.json: ${field} ${sha.slice(0, 9)} resolves to no commit in this repository`,
+				`manifest.json: ${citation} ${sha.slice(0, 9)} resolves to no commit in this repository`,
 			);
 	};
 
@@ -1089,7 +1097,7 @@ const citationWalk = (manifest, git = gitOut) => {
 	if (typeof manifest.head !== "string" || manifest.head.length < 7) {
 		failures.push("manifest.json: `head` is missing or not a sha");
 	} else if (!resolves(manifest.head)) {
-		gone("`head`", manifest.head);
+		gone("`head`", "`head`", manifest.head);
 	} else if (!reachable(manifest.head)) {
 		failures.push(
 			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} (${git(["log", "-1", "--format=%s", manifest.head]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
@@ -1100,7 +1108,11 @@ const citationWalk = (manifest, git = gitOut) => {
 		const sha = set.capturedAtHead;
 		if (typeof sha !== "string" || sha.length < 7) continue;
 		if (!resolves(sha)) {
-			gone(`supplementary[${set.path}].capturedAtHead`, sha);
+			gone(
+				"supplementary[].capturedAtHead",
+				`supplementary[${set.path}].capturedAtHead`,
+				sha,
+			);
 		} else if (!reachable(sha)) {
 			failures.push(
 				`manifest.json: supplementary[${set.path}].capturedAtHead ${sha.slice(0, 9)} is reachable from no ref - it dies at the next gc`,
@@ -1125,7 +1137,7 @@ const citationWalk = (manifest, git = gitOut) => {
 		const sha = manifest.partialCapture?.[field];
 		if (typeof sha !== "string" || sha.length < 7) continue;
 		if (!resolves(sha)) {
-			gone(`partialCapture.${field}`, sha);
+			gone(`partialCapture.${field}`, `partialCapture.${field}`, sha);
 		} else if (!reachable(sha)) {
 			failures.push(
 				`manifest.json: partialCapture.${field} ${sha.slice(0, 9)} (${git(["log", "-1", "--format=%s", sha]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
@@ -1631,14 +1643,14 @@ export const main = async () => {
 		 */
 		const unchecked = citationUnanswered(manifest);
 		if (unchecked.length > 0) {
-			const byField = new Map();
-			for (const { field } of unchecked)
-				byField.set(field, (byField.get(field) ?? 0) + 1);
+			const byKind = new Map();
+			for (const { kind } of unchecked)
+				byKind.set(kind, (byKind.get(kind) ?? 0) + 1);
 			console.log(
 				`NOTE  the citation half was NOT checked: this clone is TRUNCATED (git rev-parse --is-shallow-repository = true), so a missing object is not evidence that a commit is gone. ${unchecked.length} citation(s) unchecked: ${[
-					...byField,
+					...byKind,
 				]
-					.map(([field, count]) => `${field} (${count})`)
+					.map(([kind, count]) => `${kind} (${count})`)
 					.join(
 						", ",
 					)}. The half is checked where the branches exist; run the sweep from a clone that has them.`,
