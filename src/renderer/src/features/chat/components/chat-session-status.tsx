@@ -49,10 +49,48 @@ const KNOWN_RESTING = new Set(["idle", "recent"]);
  * `tabular-nums` beside it, and the accessible name is the sentence rather than
  * the digits, so a screen reader hears "2 asks, the agent is not waiting on
  * you" instead of "two".
+ *
+ * ## The ink, and why it is the accent
+ *
+ * It was `ink-muted`, which is the role for a hint, and it read as one: a
+ * queued question is the one thing on the row that is ACTIONABLE by the reader,
+ * and in the quiet ink it stated nothing he could act on at a glance. `accent`
+ * is the ink this app already spends on the same fact everywhere else - the
+ * composer's ask item (`composer-status-row.tsx`: "`1 question waiting` with an
+ * accent mark") and the phone's ask chip - so the row, the chip and the phone
+ * now name one state with one colour, and the mark stays DISTINCT from the
+ * approval arm beside it (`warning`), which is the distinction §5.0's header
+ * rule exists for: an approval is blocking, a queued ask is not.
+ *
+ * WHAT THIS COSTS, since the accent is a budget rather than a free role: a row
+ * can now draw two accent spends at once - the busy spinner and this mark - on
+ * a session that is working with questions outstanding. That is the state the
+ * mark exists for (the two facts are separate, §5.0), the two are different
+ * glyphs, and § 2's budget is about spends PER SCREEN rather than per row, so
+ * this is accepted rather than overlooked.
+ *
+ * ## Where the count comes from
+ *
+ * `open` when the caller resolved it, else the row's own `asks_open`. The
+ * caller must resolve it on this app: the desktop catalogue route never fills
+ * `asks_open` (see `fleet-asks.ts`'s `fleetAsksBySession`), so a mark reading
+ * the row alone draws nothing - which is why the sidebar passes the aggregate's
+ * per-conversation count. The row's own field stays as the fallback for a
+ * caller that holds a canonical row rather than the aggregate, and for a
+ * backend that starts publishing it.
  */
-export function ChatAsksOutstanding({ row }: { row: CanonicalSessionRow }) {
-	const open = row.asks_open;
-	if (typeof open !== "number" || !Number.isFinite(open) || open <= 0)
+export function ChatAsksOutstanding({
+	row,
+	open,
+}: {
+	row: CanonicalSessionRow;
+	/** The conversation's OUTSTANDING ask count, when the caller read it from a
+	 * source the row does not carry. `undefined` falls back to `row.asks_open`,
+	 * and `null` is the same absence - neither is a claim of zero. */
+	open?: number | null;
+}) {
+	const count = typeof open === "number" ? open : row.asks_open;
+	if (typeof count !== "number" || !Number.isFinite(count) || count <= 0)
 		return null;
 	return (
 		/*
@@ -66,11 +104,11 @@ export function ChatAsksOutstanding({ row }: { row: CanonicalSessionRow }) {
 		 */
 		<span
 			role="img"
-			aria-label={`${asksOutstandingLabel(open)} outstanding. The agent is not blocked on you.`}
-			className={cn("inline-flex shrink-0 items-center gap-0.5 text-ink-muted")}
+			aria-label={`${asksOutstandingLabel(count)} outstanding. The agent is not blocked on you.`}
+			className={cn("inline-flex shrink-0 items-center gap-0.5 text-accent")}
 		>
 			<MessageCircleQuestion aria-hidden="true" size={14} />
-			<span className={cn("tabular-nums text-xs")}>{open}</span>
+			<span className={cn("tabular-nums text-xs")}>{count}</span>
 		</span>
 	);
 }

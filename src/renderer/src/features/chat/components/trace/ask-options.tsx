@@ -79,6 +79,7 @@
 import { cn } from "@shared/lib/utils";
 import type { KeyboardEvent } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
+import { AskRecommendedBadge } from "../ask-recommended";
 
 export type AskOptionsProps = {
 	/** The gate's options, in the order the wire carried them. */
@@ -90,6 +91,12 @@ export type AskOptionsProps = {
 	 * with a default, and a pre-selected control implies an Enter that submits
 	 * something the user never chose. The harness has already rotated the
 	 * recommended option to index 0, so this is normally 0 when present.
+	 *
+	 * THE ADVICE AND THE ROVING SELECTION ARE TWO STATES, and the split is the
+	 * point of the mark: the cursor (focus, which is this card's selection - see
+	 * the keys note above) moves with the arrow keys while this stays where it
+	 * is. A mark that were only "this row is selected" would be ERASED the moment
+	 * the user pressed Down to weigh the alternative he is choosing against.
 	 */
 	recommended?: number | null;
 	/**
@@ -313,41 +320,44 @@ export const AskOptions = ({
 								className={cn(
 									"min-w-0 text-body-sm",
 									busy ? "text-ink-disabled" : "text-ink",
+									/*
+									 * THE LABEL IS BOLDED WHERE IT IS RECOMMENDED (operator ask,
+									 * 2026-10-04). It was reported in the same size, weight and ink
+									 * as every other label, so the only signal was the word beside
+									 * it - and the word read as part of the description. The weight
+									 * step is the half that survives when the badge is skimmed past,
+									 * and `semibold` rather than a colour: a hue here would fail AA
+									 * on the light theme (see `ask-recommended.tsx`), and the accent
+									 * is already spent on the callout above.
+									 */
+									marked === index && "font-semibold",
 								)}
 							>
 								{option.label}
 							</span>
 							{marked === index && (
 								/*
-								 * Words, not a bare glyph or a colour difference. The TUI
-								 * learned this one in a design round (D4): the marker was a
-								 * muted style identical to the prose around it, and the
-								 * designer could not find it in the rendered frame without
-								 * searching.
+								 * The glyph + word mark, and the reason it is a shared module
+								 * rather than a span here: the drawer card carries the same fact
+								 * through a different wire shape, and the two must not be able to
+								 * drift into two treatments (see `ask-recommended.tsx`).
 								 *
-								 * `ink` at `font-medium`, NOT the accent and NOT uppercase. The
-								 * caps were borrowed from a surface that has no hue to work with
-								 * (`ask_picker.py` draws its badge at `fg` + bold because hue is
-								 * not available there); on this side the accent is already spent
-								 * on the callout above, so a second accent spend here makes the
-								 * accent say two things on one frame and takes the screen's
-								 * budget past § 2's three (design round 1, D2, measured: the
-								 * badge and the callout border were the same `rgb` in every
-								 * palette). Dropping the caps also drops the renderer's only
-								 * uppercase utility, which § 8 reserves for no register this
-								 * app has.
+								 * NOT the accent and NOT uppercase. The caps were borrowed from
+								 * a surface that has no hue to work with (`ask_picker.py` draws
+								 * its badge at `fg` + bold); here the accent is already spent on
+								 * the callout above, so a second accent spend makes it say two
+								 * things on one frame and takes the screen past § 2's budget of
+								 * three (design round 1, D2, measured: the badge and the callout
+								 * border were the same `rgb` in every palette).
+								 *
+								 * Two elements, not one, and that is what keeps it visible while
+								 * the roving selection moves: this is keyed on `marked`, the
+								 * cursor rides `focus-visible:bg-sunken` on whichever row the
+								 * user arrows onto, and neither reads the other.
 								 */
-								<span
-									className={cn(
-										// §F1: the word only, in `ink-dim`, no colour and no weight
-										// - the accent is spent on the dock's border and nowhere
-										// else on the card.
-										"shrink-0 text-meta",
-										busy ? "text-ink-disabled" : "text-ink-dim",
-									)}
-								>
-									Recommended
-								</span>
+								<AskRecommendedBadge
+									className={busy ? "text-ink-disabled" : undefined}
+								/>
 							)}
 						</span>
 						{/*
