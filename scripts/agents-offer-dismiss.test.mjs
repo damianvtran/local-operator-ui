@@ -251,7 +251,7 @@ export const useTeams = () => ({ data: [], error: null, isLoading: false, refetc
 	"@shared/hooks/use-connectivity-status":
 		"export const useServerHealth = () => ({ data: { online: true, snapshot: null } });",
 	"@shared/api/local-operator/backend-error":
-		"export const compatibilityBannerShown = () => false;",
+		"export const compatibilityBannerShown = () => false;\nexport const retryDesktopQuery = () => false;",
 	// `Link` as well as `useNavigate`: the hub mark draws the sign-in sentence as a
 	// link, and a stub that exports only the hook fails the BUNDLE rather than an
 	// assertion (agent review round 2, R2-1). `useLocation` for the same reason:

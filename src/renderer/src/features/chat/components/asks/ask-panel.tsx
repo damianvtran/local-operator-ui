@@ -71,7 +71,7 @@ import {
 	askStatusWords,
 	draftFor,
 } from "../../ask-queue";
-import { AskRecommendedBadge } from "../ask-recommended";
+import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
 
 export type AskPanelProps = {
 	view: AskQueueView;
@@ -181,6 +181,23 @@ const AskQuestionField = ({
 	const options = question.options ?? [];
 	const multi = question.multi === true;
 	/*
+	 * THE RECOMMENDATION IS THE WIRE'S INDEX, read exactly as the dock reads it.
+	 *
+	 * It travels on the QUESTION (`PendingAskQuestion.recommended`), not on the
+	 * option. The queued ask's option objects are the core's own `AskOption`
+	 * (`label`/`description` with `extra="forbid"`), and `asks/queue.py`'s
+	 * `_question_shape` writes the index BESIDE `options` while copying each
+	 * option verbatim - so the per-option flag this row used to read
+	 * (`option.recommended === true`) was a field no producer sends, and the
+	 * drawer drew no badge and no bold on any real install (agent review round 1,
+	 * R1-1).
+	 *
+	 * `recommendedIndex` is the dock's own validation, SHARED rather than copied:
+	 * an index that is absent, null, out of range or not an integer badges
+	 * NOTHING, and only a real index marks its row (`ask-recommended.tsx`).
+	 */
+	const marked = recommendedIndex(question.recommended, options.length);
+	/*
 	 * A SOURCE OF THE DRAFT THAT IS NOT IN THE LIST IS DRAWN, AND DRAWN AS WHAT IT IS
 	 * (design round 1, D2's addendum incident). Two doors write this one draft: the
 	 * option rows below (always a label) and the COMPOSER, whose Enter is routed to the
@@ -233,25 +250,19 @@ const AskQuestionField = ({
 				/>
 			) : options.length > 0 ? (
 				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
-					{options.map((option) => {
+					{options.map((option, index) => {
 						const chosen = selected.includes(option.label);
 						/*
 						 * THE RECOMMENDATION AND THE SELECTION ARE TWO STATES, and this row
 						 * is where that has to be visible rather than merely true: the row's
 						 * selection is the DRAFT (a ground step plus the drawn radio/checkbox
 						 * mark), while the recommendation is a mark of its own keyed on the
-						 * wire's `option.recommended` flag. Ticking a different option moves
-						 * the former and leaves the latter exactly where it was - which is the
-						 * whole requirement: the advice the user is choosing AGAINST must not
-						 * be erased by the act of weighing it.
-						 *
-						 * THE FLAG IS THE QUEUED-ASK SHAPE (a boolean on the option, not the
-						 * blocking gate's index - see `PendingAskOption`), and absent is the
-						 * ordinary answer on a backend that never set it: `=== true` rather
-						 * than a truthiness read, so a malformed `1`/`"yes"` cannot invent a
-						 * recommendation the model never made.
+						 * QUESTION's index (`marked`, computed above). Ticking a different
+						 * option moves the former and leaves the latter exactly where it was -
+						 * which is the whole requirement: the advice the user is choosing
+						 * AGAINST must not be erased by the act of weighing it.
 						 */
-						const recommended = option.recommended === true;
+						const recommended = marked === index;
 						return (
 							<button
 								key={option.label}
@@ -305,14 +316,36 @@ const AskQuestionField = ({
 								/>
 								<span className="min-w-0 flex-1">
 									{/*
-									 * The label and its recommendation mark share a line and wrap
-									 * together, so a long label never pushes the badge out of the row
-									 * and the badge never squeezes the label (`ask-recommended.tsx`).
-									 * The label is BOLDED where it is recommended - the half of the
-									 * signal that survives a reader who skims past the badge.
+									 * THE MARK STAYS ON THE LABEL'S OWN FIRST LINE, which is the fix
+									 * for design round 1's U1 rather than a style preference.
+									 *
+									 * THE FAILURE, measured on the 65-character label this PR
+									 * fixtures: with `flex-wrap`, the badge is a flex ITEM, so the
+									 * moment the label fills its first line the badge wraps to a flex
+									 * line of its own - 17px directly above the description, in a
+									 * dimmer ink at the description's own 12px - and it reads as a
+									 * LEAD-IN LINE of the description rather than as a mark on the
+									 * label. That is the operator's original "reads as prose" symptom
+									 * surviving in the long-label state, and it is exactly the state
+									 * the fixture exists for.
+									 *
+									 * Nowrap plus a shrinkable label fixes it at every width: the
+									 * label is a flex item with `min-w-0`, so it shrinks to the space
+									 * the badge leaves and wraps INSIDE its own box, while the badge
+									 * (a `shrink-0` item) keeps its place on the row's first line. A
+									 * short label is not stretched (`flex: 0 1 auto` sizes it to its
+									 * content), so the badge still sits immediately beside it; a long
+									 * one wraps under it rather than pushing the badge away. A badge
+									 * can therefore never become a line of its own above the
+									 * description.
+									 *
+									 * The label is BOLDED where it is recommended - the half of
+									 * the signal that survives a reader who skims past the badge.
 									 */}
-									<span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-										<span className={cn(recommended && "font-semibold")}>
+									<span className="flex items-baseline gap-x-2">
+										<span
+											className={cn("min-w-0", recommended && "font-semibold")}
+										>
 											{option.label}
 										</span>
 										{recommended ? <AskRecommendedBadge /> : null}

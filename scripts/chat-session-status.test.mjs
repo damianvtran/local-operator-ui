@@ -443,20 +443,29 @@ const asksRow = (asks_open) => ({
 	asks_open,
 });
 
-test("the asks mark draws the caller's count, in the accent, beside the dock's glyph", () => {
+test("the asks mark draws the caller's count, in the accent glyph and the count ink", () => {
 	const markup = asksMark({ row: asksRow(undefined), open: 2 });
 	// One fact, one glyph: the same mark the question dock spends on "the agent
 	// is asking".
 	assert.match(markup, /lucide-message-circle-question/);
-	// The accent is the ink the composer's ask item and the phone's ask chip
-	// spend on the same fact. The row was `ink-muted`, which reads as a hint -
-	// one of the two reasons the operator could not see it.
+	// THE ACCENT CARRIES THE GLYPH AND ONLY THE GLYPH (design round 1, D1). The row
+	// can be `row-selected`/`row-hover`, where `accent` measures 4.24:1 at worst
+	// over the fifty-nine palettes - under SC 1.4.3's 4.5:1 for the 12px count
+	// digits. A 14px glyph is a GRAPHIC and clears its 3:1 floor there, so the
+	// accent stays on the icon and the numeral takes `ink-muted` (5.53:1 worst on
+	// every ground this row can sit on). `scripts/contrast-contract.mjs`'s
+	// "session row ask mark" row asserts the numeral's half.
 	assert.match(markup, /text-accent/);
+	// The numeral's own span, caught as a unit: it must carry the count ink and
+	// NOT the accent, which is the whole finding.
+	const numeral = markup.match(/<span class="([^"]*)">2<\/span>/);
+	assert.ok(numeral, "the count digits render in their own span");
+	assert.match(numeral[1], /text-ink-muted/);
+	assert.doesNotMatch(numeral[1], /text-accent/);
 	assert.match(
 		markup,
 		/aria-label="2 asks outstanding\. The agent is not blocked on you\."/,
 	);
-	assert.match(markup, />2</);
 });
 
 test("zero, absent and unreadable counts draw nothing at all", () => {

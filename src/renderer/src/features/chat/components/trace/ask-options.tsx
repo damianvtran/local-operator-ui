@@ -79,7 +79,7 @@
 import { cn } from "@shared/lib/utils";
 import type { KeyboardEvent } from "react";
 import type { PendingDesktopGate } from "../../../../../../shared/desktop-session-contract";
-import { AskRecommendedBadge } from "../ask-recommended";
+import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
 
 export type AskOptionsProps = {
 	/** The gate's options, in the order the wire carried them. */
@@ -169,13 +169,11 @@ export const AskOptions = ({
 	// above is also what keeps this component out of the credential path
 	// entirely — there is no option list to render and nothing here reads the
 	// typed value.
-	const marked =
-		typeof recommended === "number" &&
-		Number.isInteger(recommended) &&
-		recommended >= 0 &&
-		recommended < options.length
-			? recommended
-			: null;
+	// THE ONE VALIDATED READ of the recommendation, shared with the drawer card
+	// (`ask-recommended.tsx`'s `recommendedIndex`) so the two cannot disagree about
+	// which row is marked: an index that is absent, null, out of range or not an
+	// integer badges NOTHING rather than the wrong row.
+	const marked = recommendedIndex(recommended, options.length);
 
 	return (
 		/*
