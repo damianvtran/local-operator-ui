@@ -50,6 +50,8 @@ const TEN_MINUTES = /10 min/;
 const TWENTY_FIVE_MINUTES = /25 min/;
 const OFF_WARNING = /WARNING/;
 const BOUND_OFF = /OFF/;
+/** A claim the line must NOT make: the bound does not keep the job inside its cap. */
+const CAP_CLAIM = /inside the .*job cap/;
 const BOUND_EXCEEDED = /LANE BOUND EXCEEDED/;
 const BOARD_FOCUS_LANE = /scripts\/projects-board-focus\.test\.mjs/;
 const TRIPPED_PID = /4242/;
@@ -75,7 +77,7 @@ test("the default bound is a stall detector, not a ceiling on slow work", () => 
 	);
 	assert.ok(
 		boundMs < 35 * 60_000,
-		"must fire inside the job cap, or the naming it exists for never lands",
+		"at or above the cap a lane could not be named before the job is cancelled",
 	);
 });
 
@@ -121,10 +123,15 @@ test("the startup line names the bound, where it came from, and how to change it
 	assert.match(line, TEN_MINUTES);
 	assert.match(line, new RegExp(LANE_BOUND_OVERRIDE_ENV));
 	// And the DEFAULT's own words, because that is the number a reader sees when no
-	// override is in play - the case the 10-minute default got wrong on CI.
-	assert.match(
-		formatLaneBoundLine(computeLaneBound({ override: null })),
-		TWENTY_FIVE_MINUTES,
+	// override is in play - the case the 10-minute default got wrong on CI. It must NOT
+	// carry the cap claim round 4 caught: a lane first sighted late is named after the
+	// job has already been cancelled, so the line would be promising something false.
+	const defaultLine = formatLaneBoundLine(computeLaneBound({ override: null }));
+	assert.match(defaultLine, TWENTY_FIVE_MINUTES);
+	assert.doesNotMatch(
+		defaultLine,
+		CAP_CLAIM,
+		"a late stall is named after the cap, so the line may not claim otherwise",
 	);
 	const off = formatLaneBoundLine(computeLaneBound({ override: "off" }));
 	assert.match(off, OFF_WARNING);
