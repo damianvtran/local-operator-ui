@@ -168,6 +168,7 @@ import {
 } from "react";
 import type {
 	ClipboardEvent,
+	DragEvent,
 	FormEvent,
 	KeyboardEvent,
 	PointerEvent,
@@ -1387,6 +1388,25 @@ async function resolveCredentialStore(
 
 const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
+
+/**
+ * A `File`'s bytes as a data URL, or `null` when the read cannot produce one.
+ *
+ * The paste path spells this read out on `FileReader` inline because it fires and
+ * forgets. A drop needs to know when the bytes are ready - several files land in
+ * one gesture and the attachments are added in the drag's own order - so this is
+ * the same read with a promise around it, in one place rather than twice.
+ */
+const readFileAsDataUrl = (file: File): Promise<string | null> =>
+	new Promise((resolve) => {
+		const reader = new FileReader();
+		reader.onload = (event) =>
+			resolve(
+				typeof event.target?.result === "string" ? event.target.result : null,
+			);
+		reader.onerror = () => resolve(null);
+		reader.readAsDataURL(file);
+	});
 
 /**
  * The pending gate's first option that a user could actually reach, or null.
@@ -6559,6 +6579,116 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		};
 
 		/*
+		 * A DROPPED FILE IS AN ATTACHMENT (issue #789).
+		 *
+		 * WHAT WAS WRONG. The composer presented a drop affordance and implemented
+		 * none of it: nothing in the band cancelled `dragover`, so - measured on the
+		 * built app - macOS painted its copy badge over the window and the file fell
+		 * through to the page, where it was silently discarded. `drop` does not even
+		 * fire without that cancel, so this was not a handler missing its body; it was a
+		 * target that had never been declared.
+		 *
+		 * THE GATE IS `handlePaste`'s, deliberately, and not the attach BUTTON's. The
+		 * button also refuses while dictation runs (`isRecording || isTranscribing`),
+		 * which is about the button's own job; a drop is direct manipulation like paste
+		 * - the files are already in the user's hand - so it reads the one term every
+		 * writer on this composer reads (`isInputDisabled`), and the send path's own
+		 * gates still apply afterwards. When the box refuses, NEITHER `dragover` nor
+		 * `drop` is cancelled, so the OS shows its own "no drop" cursor and nothing
+		 * happens: the same silence a refused paste gives, said in the pointer's own
+		 * language.
+		 */
+		const handleComposerDragOver = (event: DragEvent<HTMLDivElement>) => {
+			/*
+			 * WITHOUT THIS `preventDefault` THE `drop` EVENT NEVER FIRES - it is the whole
+			 * of the reported defect rather than a detail of it.
+			 *
+			 * AND IT IS LIMITED TO FILE DRAGS, which is not tidiness: cancelling every
+			 * `dragover` would also cancel the browser's own "drag selected text into a
+			 * textarea and it inserts" path, so dropping prose on the composer would
+			 * attach nothing AND insert nothing.
+			 */
+			if (isInputDisabled) return;
+			if (!event.dataTransfer?.types.includes("Files")) return;
+			event.preventDefault();
+			event.stopPropagation();
+			event.dataTransfer.dropEffect = "copy";
+			setFileDragActive(true);
+		};
+
+		/*
+		 * `relatedTarget` is what makes the leave honest: `dragleave` also fires while
+		 * the pointer crosses between the band's own children (the box, the previews,
+		 * the toolbar), so clearing unconditionally would make the affordance flicker
+		 * at every internal boundary.
+		 */
+		const handleComposerDragLeave = (event: DragEvent<HTMLDivElement>) => {
+			if (event.currentTarget.contains(event.relatedTarget as Node | null))
+				return;
+			setFileDragActive(false);
+		};
+
+		const handleComposerDrop = (event: DragEvent<HTMLDivElement>) => {
+			setFileDragActive(false);
+			if (isInputDisabled) return;
+			const files = event.dataTransfer?.files;
+			if (!files || files.length === 0) return;
+			/*
+			 * Cancelled whatever else happens below: the page's own answer to a dropped
+			 * file is to navigate to it, and a drop this composer has decided not to take
+			 * must not be answered by the window leaving.
+			 */
+			event.preventDefault();
+			event.stopPropagation();
+			if (!conversationId) return;
+			void addDroppedFiles(conversationId, Array.from(files));
+		};
+
+		/*
+		 * EVERY FILE IN THE GESTURE ATTACHES, in the drag's own order - `dataTransfer
+		 * .files` is a list and a drag can carry several, so the rule is "all of them,
+		 * in the order the OS listed them" rather than a first-file-only shortcut that
+		 * would drop the rest in silence. Each one goes through the SAME store call the
+		 * attach button and the paste path use (`addAttachment`), and they are awaited
+		 * one at a time so the order the user sees is the order they dragged.
+		 *
+		 * THE REPRESENTATION IS THE PATH WHEN THERE IS ONE, and that choice comes from
+		 * what the consumer requires rather than from what is easiest:
+		 * `encodeImageAttachments` (features/chat/utils/attachment-encode.ts) takes both
+		 * forms - a data URL is used as the base64 directly, a filesystem path has its
+		 * bytes read in main over `api.readFile` - and both are then bounded by the same
+		 * `boundImagesForBudget` before the send. What decides between them is the
+		 * DRAFT: `conversation-input-store` is `persist`ed to localStorage, so a file
+		 * stored as `data:` puts a base64 copy of itself on disk the moment it is
+		 * dropped (a 5 MB image is about 6.7 MB of a budget that is usually 5-10 MB),
+		 * while a path is a short string whose bytes are read only if the message is
+		 * sent. The path form is also what the attach button already stores, real
+		 * filename included - which is the name the chip prints.
+		 *
+		 * A FILE WITH NO PATH STILL LANDS, by the paste route: a `File` constructed in
+		 * JS rather than backed by a file on disk (dragged out of another page) answers
+		 * `""` from the preload call, and there the bytes are all the renderer will ever
+		 * have.
+		 */
+		const addDroppedFiles = async (
+			target: string,
+			files: readonly File[],
+		): Promise<void> => {
+			for (const file of files) {
+				const path = window.api?.getPathForFile
+					? window.api.getPathForFile(file)
+					: "";
+				if (path) {
+					addAttachment(target, { id: uuidv4(), path: normalizePath(path) });
+					continue;
+				}
+				const dataUrl = await readFileAsDataUrl(file);
+				if (dataUrl) addAttachment(target, { id: uuidv4(), path: dataUrl });
+			}
+		};
+		const [fileDragActive, setFileDragActive] = useState(false);
+
+		/*
 		 * A suggestion FILLS the composer; it does not send.
 		 *
 		 * WHAT CHANGED UNDER THIS HANDLER. It is byte-identical on `main`, where the
@@ -7570,6 +7700,16 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 							COMPOSER_BOX,
 							isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
 							CHAT_MEASURE,
+							/*
+							 * THE DROP AFFORDANCE REUSES THE FOCUS VOCABULARY, deliberately: the app
+							 * spends `accent` on READY and on FOCUS (§G1, quoted on `COMPOSER_BOX`
+							 * above), and "this control will take what you are holding" is that same
+							 * statement. The wash beside it is what tells the two apart, and it is the
+							 * token the attachment tiles already use for their own ground. No shadow,
+							 * no lift, no scale - the band must not move under a drag.
+							 */
+							fileDragActive &&
+								"bg-accent-wash outline-solid outline-2 outline-accent outline-offset-2",
 						)}
 						/*
 						 * The geometry rigs' handle on the composer's own MEASURE, on the
@@ -9029,6 +9169,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				)}
 				data-lo-composer-band={true}
 				ref={setBand}
+				/*
+				 * THE DROP TARGET, on the band rather than on the box (issue #789).
+				 *
+				 * The band is the region a person aims at - the box, its previews, its
+				 * toolbar, the tip - so a drop anywhere over the composer is taken, and a
+				 * drop that lands on the box's own border or padding is not the one
+				 * placement that works. The handlers are declared beside each other in
+				 * the component body; `handleComposerDragOver`'s comment carries why the
+				 * `preventDefault` there is the core of the fix.
+				 */
+				onDragOver={handleComposerDragOver}
+				onDragLeave={handleComposerDragLeave}
+				onDrop={handleComposerDrop}
 			>
 				{/*
 				 * THE SPLASH: the greeting, the chips and the tip, centred in the height
