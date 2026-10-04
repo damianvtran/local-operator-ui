@@ -455,7 +455,26 @@ export const DevicePanel: FC<{
 
 			<Separator />
 
-			<section className="flex min-h-0 flex-col gap-2">
+			{/*
+			 * `shrink-0` IS THE CONTAINMENT FIX (operator report, 2026-10-04).
+			 *
+			 * The panel is a flex COLUMN whose parent (`aside`) scrolls; this section
+			 * used to carry `min-h-0`, which let the COLUMN shrink it to whatever
+			 * room was left while its `<ul>` - 201 rows, a page of the catalogue -
+			 * kept its natural height. A shrunk section does not clip its content,
+			 * so the list PAINTED OVER every sibling below it: measured on the
+			 * operator's state (this device, 201 conversations, 1380x900) the
+			 * section shrank from 6755 px of content to 166 px and the rows drew
+			 * straight through the Network addresses, Status and Show-in-list
+			 * sections - "the two texts interleave line for line" (24 overlapping
+			 * text pairs at this state, 18 on the peer's eleven-row one). Refusing
+			 * to shrink is what makes the aside's own `overflow-y-auto` the scroll:
+			 * the column's height becomes its content's, and the panel scrolls as
+			 * one surface instead of overlapping itself. (Clipping this section
+			 * was the other candidate and is wrong: it would hide rows the panel
+			 * exists to reach.)
+			 */}
+			<section className="flex shrink-0 flex-col gap-2">
 				<h3 className="text-meta text-ink-dim">
 					Conversations <span className="text-ink-disabled">({shownOf})</span>
 				</h3>

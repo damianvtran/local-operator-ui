@@ -3255,7 +3255,7 @@ test("the chip row fits by construction, so both chips and the control are hitta
 	);
 	assert.match(
 		node,
-		/min-w-0 flex-1 truncate \[direction:rtl\]/,
+		/min-w-0 flex-1 truncate/,
 		"with the truncation on the one span that can still ellipsise, because the button had to become a flex row to reach 24 px (U7)",
 	);
 	assert.match(
@@ -3275,7 +3275,7 @@ test("the chip row fits by construction, so both chips and the control are hitta
 	);
 });
 
-test("the cap's two chips stay legible, and two long titles still differ (D8/U10)", () => {
+test("the cap's two chips stay legible, and the title's head survives the truncation (D8/U10; operator report 2026-10-04)", () => {
 	/*
 	 * THE CONTROL PAYS FOR THE CHIPS (design review round 2, D8). At the cap the row holds two
 	 * chips and the overflow control; the control's full `+4 more` label measured 59.4 px of the
@@ -3302,25 +3302,24 @@ test("the cap's two chips stay legible, and two long titles still differ (D8/U10
 		"the affordance moves to the accessible name, which costs no width",
 	);
 	/*
-	 * AND THE CHIPS KEEP THE PART THAT DISTINGUISHES THEM (design review round 2, U10): the titles
-	 * this app holds are named in series, so the readable end is the END - and the browser is the
-	 * only thing that can measure how much of it fits. `direction: rtl` with `text-align: left` is
-	 * what asks it for left-truncation (NOT `unicode-bidi: plaintext`, which hands the paragraph
-	 * direction to the text and sends the ellipsis back to the end - this comment claimed
-	 * `plaintext` for a round after the class was removed; design review round 3, D15). A character
-	 * budget was tried first and removed: eight characters measured between 49 px and 62 px over
-	 * the titles these stories use, against a 53 px text area, so any count clips the tail on
-	 * exactly the widest titles.
+	 * AND THE CHIPS KEEP THE HEAD (operator report, 2026-10-04 - superseding the
+	 * left-truncation round 2 chose for series names, D8/U10). The report's chips read
+	 * `…BE-OK` and `…2E pull`, the tails of its own titles, and the finding is that they
+	 * "identify nothing": a conversation's name is a human title whose identity is
+	 * front-loaded, and every other surface that truncates one in this app shows the head.
+	 * What that trades away is stated at the span: a series differing only past the visible
+	 * head (`Sweep 011` / `Sweep 012` at the cap) shares a prefix on the chip, and the
+	 * full name stays one hover (title) and one press (the panel) away.
 	 */
-	assert.match(
-		node,
-		/\[direction:rtl\]/,
-		"the chip truncates from the left, where the distinguishing part is not",
-	);
 	assert.doesNotMatch(
 		node,
-		/unicode-bidi:plaintext/,
-		"and NOT `plaintext`, which makes the paragraph direction follow the text and sends the ellipsis back to the end - photographed on this branch's own cap frame before the fix",
+		/\[direction:rtl\]/,
+		"the chip truncates at the END, where the title's identity is not - the left-truncation spelling is gone",
+	);
+	assert.match(
+		node,
+		/min-w-0 flex-1 truncate/,
+		"and the one span that can still ellipsise carries the head",
 	);
 	assert.doesNotMatch(
 		node,
