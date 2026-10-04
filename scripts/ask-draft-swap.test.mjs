@@ -326,3 +326,64 @@ test("an answer that is not one of the labels is DRAWN as Other (design D2)", as
 	assert.equal(production?.getAttribute("aria-checked"), "false");
 	await view.unmount();
 });
+
+test("the recommendation survives the selection moving (operator ask, 2026-10-04)", async () => {
+	// The recommendation is a mark of its OWN (`option.recommended`), and the
+	// selection is the draft's ground plus its drawn radio. The two must be
+	// readable at once, and the reason is the wire's own shape: the harness hoists
+	// the recommended option to index 0, so the two coincide until the user clicks
+	// something else - and a mark that were the selection's twin would be ERASED
+	// by the first click on the alternative the user is choosing against.
+	const recommended = {
+		...radioAsk,
+		questions: [
+			{
+				id: "target",
+				question: "Which environment?",
+				options: [
+					{ label: "staging", recommended: true },
+					{ label: "production" },
+				],
+			},
+		],
+	};
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([recommended]),
+			scope: "session",
+			// The draft sits on the option the model did NOT recommend.
+			drafts: { "a-7f3c": { target: ["production"] } },
+			onDraftChange: () => undefined,
+		}),
+	);
+	const staging = view.container.querySelector('[data-ask-option="staging"]');
+	const production = view.container.querySelector(
+		'[data-ask-option="production"]',
+	);
+	assert.equal(staging?.getAttribute("aria-checked"), "false");
+	assert.equal(production?.getAttribute("aria-checked"), "true");
+	const stagingText = staging?.textContent ?? "";
+	assert.ok(
+		stagingText.includes("Recommended"),
+		"the advice is still on the row after the selection moved",
+	);
+	// Not colour alone: the glyph is what survives a colour-blind reader, a
+	// greyscale screenshot and the terminal's own badge.
+	assert.ok(stagingText.includes("▸"), "the mark carries its glyph");
+	// The label is bolded where it is recommended - the half of the signal that
+	// survives a reader who skims past the badge.
+	assert.ok(
+		(staging?.querySelector(".font-semibold")?.textContent ?? "").includes(
+			"staging",
+		),
+		"the recommended option's label is emphasised",
+	);
+	assert.equal(
+		production?.querySelector(".font-semibold"),
+		null,
+		"the selected row is not the recommended one, and must not borrow its weight",
+	);
+	// And the flag is read as a flag: `false`/absent on the other row draws no mark.
+	assert.ok(!(production?.textContent ?? "").includes("Recommended"));
+	await view.unmount();
+});

@@ -71,6 +71,7 @@ import {
 	askStatusWords,
 	draftFor,
 } from "../../ask-queue";
+import { AskRecommendedBadge } from "../ask-recommended";
 
 export type AskPanelProps = {
 	view: AskQueueView;
@@ -234,6 +235,23 @@ const AskQuestionField = ({
 				<div className="flex flex-col" role={multi ? "group" : "radiogroup"}>
 					{options.map((option) => {
 						const chosen = selected.includes(option.label);
+						/*
+						 * THE RECOMMENDATION AND THE SELECTION ARE TWO STATES, and this row
+						 * is where that has to be visible rather than merely true: the row's
+						 * selection is the DRAFT (a ground step plus the drawn radio/checkbox
+						 * mark), while the recommendation is a mark of its own keyed on the
+						 * wire's `option.recommended` flag. Ticking a different option moves
+						 * the former and leaves the latter exactly where it was - which is the
+						 * whole requirement: the advice the user is choosing AGAINST must not
+						 * be erased by the act of weighing it.
+						 *
+						 * THE FLAG IS THE QUEUED-ASK SHAPE (a boolean on the option, not the
+						 * blocking gate's index - see `PendingAskOption`), and absent is the
+						 * ordinary answer on a backend that never set it: `=== true` rather
+						 * than a truthiness read, so a malformed `1`/`"yes"` cannot invent a
+						 * recommendation the model never made.
+						 */
+						const recommended = option.recommended === true;
 						return (
 							<button
 								key={option.label}
@@ -286,7 +304,19 @@ const AskQuestionField = ({
 									)}
 								/>
 								<span className="min-w-0 flex-1">
-									{option.label}
+									{/*
+									 * The label and its recommendation mark share a line and wrap
+									 * together, so a long label never pushes the badge out of the row
+									 * and the badge never squeezes the label (`ask-recommended.tsx`).
+									 * The label is BOLDED where it is recommended - the half of the
+									 * signal that survives a reader who skims past the badge.
+									 */}
+									<span className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+										<span className={cn(recommended && "font-semibold")}>
+											{option.label}
+										</span>
+										{recommended ? <AskRecommendedBadge /> : null}
+									</span>
 									{/*
 									 * `ink-muted` RESTORED (design round 2, D12). Round 1's
 									 * D3 premise was a MISMEASUREMENT - the colours it sampled

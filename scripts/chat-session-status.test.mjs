@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 const result = await build({
 	stdin: {
 		contents:
-			'export { ChatSessionStatus } from "./src/renderer/src/features/chat/components/chat-session-status"; export { renderToStaticMarkup } from "react-dom/server"; export { createElement } from "react";',
+			'export { ChatSessionStatus, ChatAsksOutstanding } from "./src/renderer/src/features/chat/components/chat-session-status"; export { renderToStaticMarkup } from "react-dom/server"; export { createElement } from "react";',
 		resolveDir: process.cwd(),
 	},
 	bundle: true,
@@ -22,8 +22,12 @@ new Function("module", "exports", "require", result.outputFiles[0].text)(
 	output.exports,
 	require,
 );
-const { ChatSessionStatus, renderToStaticMarkup, createElement } =
-	output.exports;
+const {
+	ChatSessionStatus,
+	ChatAsksOutstanding,
+	renderToStaticMarkup,
+	createElement,
+} = output.exports;
 const render = (code, unseen, label = code) =>
 	renderToStaticMarkup(
 		createElement(ChatSessionStatus, {
@@ -412,4 +416,65 @@ test("a completion delivered by frames renders as an unread complete row", () =>
 	);
 	assert.match(acknowledged, /lucide-circle /);
 	assert.doesNotMatch(acknowledged, /lucide-check|text-success|unread/);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE OUTSTANDING-ASKS MARK (operator ask, 2026-10-04)
+ * ---------------------------------------------------------------------------
+ *
+ * The operator's report: he queued a question, the composer chip beside it read
+ * "1 question waiting", and the session's sidebar row showed nothing - he only
+ * knew because a notification fired. The mark itself was right; the READ behind
+ * it was not. `ChatAsksOutstanding` read `row.asks_open`, and the desktop
+ * catalogue route never fills that field, so the mark drew nothing on every
+ * desktop install.
+ *
+ * These cases pin the two halves: the count may come from the caller (the
+ * sidebar passes the fleet aggregate's per-conversation count, the read that
+ * actually answers), and the row's own field is still honoured when that is all
+ * a caller has.
+ */
+const asksMark = (props) =>
+	renderToStaticMarkup(createElement(ChatAsksOutstanding, props));
+const asksRow = (asks_open) => ({
+	session_id: "fixture",
+	status: { code: "idle", label: "idle" },
+	asks_open,
+});
+
+test("the asks mark draws the caller's count, in the accent, beside the dock's glyph", () => {
+	const markup = asksMark({ row: asksRow(undefined), open: 2 });
+	// One fact, one glyph: the same mark the question dock spends on "the agent
+	// is asking".
+	assert.match(markup, /lucide-message-circle-question/);
+	// The accent is the ink the composer's ask item and the phone's ask chip
+	// spend on the same fact. The row was `ink-muted`, which reads as a hint -
+	// one of the two reasons the operator could not see it.
+	assert.match(markup, /text-accent/);
+	assert.match(
+		markup,
+		/aria-label="2 asks outstanding\. The agent is not blocked on you\."/,
+	);
+	assert.match(markup, />2</);
+});
+
+test("zero, absent and unreadable counts draw nothing at all", () => {
+	// A zero badge is a claim that something is happening; the honest state of
+	// "nothing outstanding" is no mark. `null` and `NaN` are the wire failing to
+	// say a number, not a count of zero.
+	assert.equal(asksMark({ row: asksRow(undefined), open: 0 }), "");
+	assert.equal(asksMark({ row: asksRow(undefined) }), "");
+	assert.equal(asksMark({ row: asksRow(0) }), "");
+	assert.equal(asksMark({ row: asksRow(null) }), "");
+	assert.equal(asksMark({ row: asksRow(Number.NaN) }), "");
+});
+
+test("the row's own field answers when the caller has no read, and the caller wins when it has one", () => {
+	// A caller holding a canonical row and no aggregate (a story, a second
+	// surface) keeps working; a caller with a read states the number, so the two
+	// sources can never both draw a count.
+	assert.match(asksMark({ row: asksRow(1) }), />1</);
+	assert.match(asksMark({ row: asksRow(5), open: 2 }), />2</);
+	assert.doesNotMatch(asksMark({ row: asksRow(5), open: 2 }), />5</);
 });
