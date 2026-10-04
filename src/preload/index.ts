@@ -1,5 +1,10 @@
 import { electronAPI } from "@electron-toolkit/preload";
-import { type IpcRendererEvent, contextBridge, ipcRenderer } from "electron";
+import {
+	type IpcRendererEvent,
+	contextBridge,
+	ipcRenderer,
+	webUtils,
+} from "electron";
 import type { ProgressInfo, UpdateInfo } from "electron-updater";
 import { readTelemetryArgument } from "../main/telemetry-launch";
 import type {
@@ -284,6 +289,40 @@ const api = {
 		ipcRenderer.invoke("open-file", filePath),
 	readFile: (filePath: string, encoding?: BufferEncoding) =>
 		ipcRenderer.invoke("read-file", filePath, encoding),
+	/**
+	 * The filesystem path behind a `File` the OS handed the renderer.
+	 *
+	 * WHY THIS LIVES IN THE PRELOAD. Electron 44 removed the `File.path`
+	 * augmentation that used to carry it, and its replacement,
+	 * `webUtils.getPathForFile`, has to be called from a context that can import
+	 * `electron` - which context isolation deliberately keeps out of the renderer.
+	 * The `File` travels across the bridge as an argument, which is the shape
+	 * Electron's own documentation for this API shows (`webUtils` -> "If you want
+	 * to call this API from a renderer process with context isolation enabled,
+	 * place the API call in your preload script and expose it using the
+	 * contextBridge API").
+	 *
+	 * WHY THE RENDERER ASKS AT ALL: the composer's attach button already stores a
+	 * real path for everything it adds, and the send reads that path's bytes in main
+	 * (`encodeImageAttachments` -> `api.readFile`). A dropped file expressed as a
+	 * data URL instead would be a second kind of attachment - one whose base64 copy
+	 * is written into the persisted draft store, which is where a large image turns
+	 * into a localStorage quota problem the path form simply does not have.
+	 *
+	 * NEVER THROWS, and that is the interface rather than defensiveness: the
+	 * underlying call throws for an argument that is not a `File` and answers `""`
+	 * for one that was constructed in JS rather than backed by a file on disk (a
+	 * file dragged out of another page). Both are "this file has no path" for a
+	 * caller, so both come back as an empty string and the drop handler falls back
+	 * to reading the bytes.
+	 */
+	getPathForFile: (file: File): string => {
+		try {
+			return webUtils.getPathForFile(file);
+		} catch {
+			return "";
+		}
+	},
 	/**
 	 * Bytes for the in-app viewers. No encoding: a PDF is not text, and base64
 	 * would inflate it by a third on both sides of the boundary.
