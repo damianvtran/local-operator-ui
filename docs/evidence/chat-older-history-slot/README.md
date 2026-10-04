@@ -188,10 +188,15 @@ deletes a frame or alters a pixel:
   `localOperatorDark` canvas). That is the one thing the uniformity ceiling
   exists to refuse, so renaming cannot make them app pictures. They are
   re-containered to PNG **in place**, pixels asserted identical on decode — the
-  format this repository uses for rig frames the sweep does not read
-  (`chat-slash-enter-gestures`, `mcp-auth-complete`), because a `Page.screencast`
-  frame is not a Storybook still. They are kept rather than dropped: each marks
-  the pre-paint moment its cell's interval is measured from.
+  container this repository commits a rig frame the sweep cannot judge as a
+  picture in (`chat-slash-enter-gestures`, `mcp-auth-complete`), because a
+  `Page.screencast` frame is not a Storybook still. Being PNG is not what makes
+  them invisible: the sweep JUDGES BY NAME (a theme-named frame is judged in any
+  container), so what puts them outside the judgement is that they name no theme -
+  and the manifest's `unjudgedFrames` counts them instead (five of them inside
+  this set), so one cannot be added, moved or re-containered without a count the
+  gate reads going stale. They are kept rather than dropped: each marks the
+  pre-paint moment its cell's interval is measured from.
 
 ## Not captured, and why
 

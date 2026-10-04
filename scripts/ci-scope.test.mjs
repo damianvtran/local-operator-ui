@@ -1610,8 +1610,13 @@ test("A21: the frame sweep runs on a frame change and on the inputs it judges", 
 test("A22: the sweep's selected sources ARE its derived load path", () => {
 	assert.deepEqual(
 		[...EVIDENCE_SOURCES].sort(),
-		[...relativeImportClosure("scripts/check-evidence.mjs")].sort(),
-		"EVIDENCE_SOURCES has to be the closure of what `scripts/check-evidence.mjs` loads: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and a module the sweep loads can change its verdict without anyone touching the file the list was written for",
+		[
+			...new Set([
+				...relativeImportClosure("scripts/check-evidence.mjs"),
+				...spawnedClosure("scripts/check-evidence.mjs"),
+			]),
+		].sort(),
+		"EVIDENCE_SOURCES has to be the closure of what `scripts/check-evidence.mjs` LOADS and SPAWNS: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and an import walk alone cannot see the Python admission guard the sweep forks before it reads a frame",
 	);
 });
 
@@ -1914,6 +1919,25 @@ function relativeImportClosure(entry) {
 		}
 	}
 	return seen;
+}
+
+/**
+ * The files a script EXECUTES, derived from the one spelling this tree uses to
+ * name them (`join(ROOT, "scripts", "...")`).
+ *
+ * Bound beside `relativeImportClosure` because the two are the same question - "what
+ * does this entry point actually run" - and a guard that answered only the import
+ * half would keep passing while a spawned file changed underneath it. QA's second
+ * round found exactly that: `evidence-run-guard.py` is forked before the sweep
+ * reads a frame, and no import walk can see it.
+ */
+function spawnedClosure(entry) {
+	const source = readFileSync(join(repoRoot, entry), "utf8");
+	return new Set(
+		[...source.matchAll(/join\(ROOT,\s*"scripts",\s*"([^"]+)"\)/g)].map(
+			([, name]) => `scripts/${name}`,
+		),
+	);
 }
 
 /** The module plus its closure, copied to a directory OUTSIDE the checkout. */

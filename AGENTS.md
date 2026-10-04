@@ -358,6 +358,21 @@ whole-tree decode of every committed frame behind a machine-wide lease, so it is
 `LOCAL_EXCLUSIONS` with the fast half of the same gate still running under `test`,
 and its lease's exit 75 is a DEFERRAL the runner names rather than a failure.
 
+**A frame is judged by its NAME, not by its container - and the rest are COUNTED.**
+`check-evidence.mjs`'s `frames()` judges any frame whose filename names a theme
+(`<theme>.webp` anywhere, and any other committed container whose stem IS a palette
+id), plus every `.webp`, which must name one. It used to be `.webp` and nothing
+else, and that made the container a hiding place: QA's round on the wiring found
+174 theme-named `.png` app pictures across six surfaces that the walk stepped over
+for no reason but their extension. The frames that name NO theme (the compositor's
+pre-paint buffers - one flat colour, which is exactly what the uniformity ceiling
+refuses - screenshots and props) are not judged in any container, so they are
+recorded instead: `manifest.json`'s `unjudgedFrames` carries both counts
+(inside/outside the declared sets) and a `why`, and `unjudgedFrameFailures` fails
+when the tree disagrees - which is what makes a non-theme frame added or moved
+anywhere a number a reviewer sees rather than a silence. `FRAME_CONTAINERS` is the
+list of containers; adding a third one there is what keeps the accounting honest.
+
 Before quoting a local manifest pass, ask the citations directly against a
 REMOTE-BACKED ref: `git fetch origin <branch>`, then call `citationFailures` and
 `citationAncestryFailures` from `scripts/check-evidence.mjs` with a `git` reader

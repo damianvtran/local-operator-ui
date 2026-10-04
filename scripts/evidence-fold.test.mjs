@@ -119,7 +119,7 @@ const manifest = (fields) => ({
 	surfaces: fields.surfaces ?? 2,
 	themes: fields.themes ?? 1,
 	countsMean: fields.countsMean ?? {
-		frames: `${fields.frames ?? 2} committed WebP files outside the 0 declared supplementary sets below, of 2 on disk (0 of them inside the sets).`,
+		frames: `${fields.frames ?? 2} committed frames outside the 0 declared supplementary sets below, of 2 on disk (0 of them inside the sets).`,
 		surfaces: `${fields.surfaces ?? 2} rows in \`HEAD:scripts/capture-evidence.mjs\`'s STORIES literal.`,
 		themes: `${fields.themes ?? 1} theme names in the \`THEMES\` literal.`,
 	},
@@ -774,7 +774,7 @@ test("the guards the tool runs can still fail on the tree the tool produces", ()
 		countsMean: {
 			...good.countsMean,
 			frames:
-				"0 committed WebP files outside the 999 declared supplementary sets below, of 0 on disk (0 of them inside the sets).",
+				"0 committed frames outside the 999 declared supplementary sets below, of 0 on disk (0 of them inside the sets).",
 		},
 	};
 	assert.equal(
@@ -1485,7 +1485,7 @@ const storyFixture = ({
 			themes: 1,
 			countsMean: {
 				frames:
-					"2 committed WebP files outside the 1 declared supplementary sets below, of 3 on disk (1 of them inside the sets).",
+					"2 committed frames outside the 1 declared supplementary sets below, of 3 on disk (1 of them inside the sets).",
 				surfaces:
 					"3 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal.",
 				themes: "1 theme names in the `THEMES` literal.",

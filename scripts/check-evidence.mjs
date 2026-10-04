@@ -154,21 +154,110 @@ const overCeiling = (fraction) => {
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
 
 /**
- * Every `.webp` under the evidence root, with the theme its filename names.
+ * The containers this repository commits frames in. `.webp` is the canonical
+ * one; `.png` is what a rig frame the sweep does not read is committed as, and
+ * what some older surfaces committed their app pictures as.
+ */
+export const FRAME_CONTAINERS = [".webp", ".png"];
+
+const isFrameContainer = (name) =>
+	FRAME_CONTAINERS.some((container) => name.endsWith(container));
+
+/** The frame's name without its container - what a palette id is matched against. */
+export const frameStem = (file) =>
+	file
+		.split("/")
+		.pop()
+		.replace(/\.(webp|png)$/i, "");
+
+/**
+ * Every frame this guard JUDGES: the ones whose filename NAMES A THEME, in any
+ * container, plus every `.webp` (which has to name one - `main()` refuses a
+ * `.webp` whose stem resolves to no palette, and that refusal is the reason this
+ * file exists).
+ *
+ * WHY THE RULE IS ABOUT THE NAME AND NOT THE CONTAINER. It used to be `.webp`
+ * and nothing else, and that made the container a hiding place: what a frame IS
+ * is decided by its name, so re-containering one changes nothing about it - yet
+ * the walk stepped over it. Measured when this changed (2026-10-04): 174
+ * committed frames were theme-named `.png` app pictures across six surfaces,
+ * never judged, in a repository whose evidence doctrine is that a frame is a
+ * picture of its theme. The name is the claim; the container is only how the
+ * pixels are packed (all 174 pass the same check, worst DELTA-E00 17.89).
+ *
+ * WHAT IT STILL DOES NOT JUDGE, and why that is a DECLARED scope rather than a
+ * hole: a frame whose stem names no theme is not a picture of a theme and cannot
+ * be judged as one - the compositor's PRE-PAINT buffers (`.png`, one flat
+ * ground, which is what the uniformity ceiling exists to refuse), screenshots and
+ * props. They are ACCOUNTED FOR by `unjudgedFrames` below instead, so one cannot
+ * be added or moved without the manifest's numbers going stale.
  *
  * Exported because `capture-evidence.mjs` has to count frames the SAME way
  * this guard counts them when a narrowed run adds a surface: two walkers that
  * disagreed about what a frame is would produce a manifest that fails the
  * gate it was written to satisfy.
  */
-export const frames = (dir) => {
+/**
+ * Is this path a frame this guard JUDGES? The ONE spelling of the rule, so the
+ * walk, the accounting and the pass-claims below cannot disagree about what a
+ * frame is.
+ */
+export const isJudgedFrame = (name, palettes = PALETTES) =>
+	name.endsWith(".webp") || palettes.has(frameStem(name));
+
+export const frames = (dir, palettes = PALETTES) => {
 	const out = [];
 	for (const entry of readdirSync(dir)) {
 		const path = join(dir, entry);
-		if (statSync(path).isDirectory()) out.push(...frames(path));
-		else if (entry.endsWith(".webp")) out.push(path);
+		if (statSync(path).isDirectory()) out.push(...frames(path, palettes));
+		else if (isJudgedFrame(entry, palettes)) out.push(path);
 	}
 	return out;
+};
+
+/**
+ * The sentence a manifest that carries no `unjudgedFrames.why` is written with,
+ * so a fold onto an older `main` still produces a field a reader can read. The
+ * shipped file carries its own, longer statement.
+ */
+export const UNJUDGED_FRAMES_WHY =
+	"Frames in a container this repository commits whose filename names no theme, so they are not pictures of a theme and the ground check cannot judge them: the compositor's PRE-PAINT buffers (one flat colour covering 100.00% of the frame, which is exactly what the uniformity ceiling refuses), screenshots and props. They are ACCOUNTED rather than invisible - `unjudgedFrameFailures` fails when the tree disagrees with these counts.";
+
+/**
+ * The committed frames this guard does NOT judge: a frame file, in one of
+ * `FRAME_CONTAINERS`, whose stem names no theme.
+ *
+ * `declared` is the same list of set DIRECTORIES the counts guards beside it
+ * pass to `inDeclaredSet` (absolute, as `countsMeanFailures` builds it), so the
+ * two cannot disagree about which frames sit inside a declared set. The returned
+ * paths are repository-relative, because they are read in failure messages.
+ *
+ * WHY THIS EXISTS. Reading every container closed the escape for a frame that
+ * CLAIMS a theme. The other half is the frame that claims nothing: it is not
+ * judged in ANY container, so its container cannot hide a judgement it would
+ * fail - what it can still be is INVISIBLE, which is why the manifest records
+ * these counts and the walk fails when the tree disagrees with them. A frame
+ * added here moves a number a reviewer reads.
+ */
+export const unjudgedFrames = (dir, declared = [], palettes = PALETTES) => {
+	const inside = [];
+	const outside = [];
+	const walk = (current) => {
+		for (const entry of readdirSync(current)) {
+			const path = join(current, entry);
+			if (statSync(path).isDirectory()) {
+				walk(path);
+				continue;
+			}
+			if (!isFrameContainer(entry)) continue;
+			if (isJudgedFrame(entry, palettes)) continue;
+			(inDeclaredSet(path, declared) ? inside : outside).push(
+				relative(ROOT, path),
+			);
+		}
+	};
+	walk(dir);
+	return { inside, outside };
 };
 
 /**
@@ -607,9 +696,7 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
 	if (changed !== null) {
 		const moved = changed
 			.split("\n")
-			.filter(
-				(line) => line.endsWith(".webp") && !inDeclaredSet(line, declared),
-			);
+			.filter((line) => isJudgedFrame(line) && !inDeclaredSet(line, declared));
 		if (moved.length > claimed) {
 			out.push(
 				`manifest.json: partialCapture claims ${claimed} refreshed frames, but ${moved.length} committed frames differ at ${pc.refreshedAtHead.slice(0, 9)} - a narrowed run overwrote the pass's total instead of accumulating it`,
@@ -868,6 +955,67 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	 */
 	out.push(...countsMeanFailures(manifest, git, dir));
 
+	/*
+	 * And the frames the gate ACCOUNTS FOR but does not judge. Asked here, in the
+	 * half `test:desktop` runs, because the whole point of the count is that no
+	 * committed frame is invisible: a walk that reads no image is enough to notice
+	 * one appearing.
+	 */
+	out.push(...unjudgedFrameFailures(manifest, dir));
+
+	return out;
+};
+
+/**
+ * The frames in a committed container whose name claims no theme: declared, not
+ * discovered.
+ *
+ * WHY IT IS A FIELD AND NOT A SILENCE. `frames()` judges by NAME, so a frame
+ * that claims a theme is judged whatever its container - but a frame that claims
+ * nothing is judged in no container, and before this field existed it was also
+ * counted by nothing: 869 such frames are committed today (341 inside declared
+ * sets, 528 outside), and a `.png` added to that pile was invisible to the walk,
+ * the count and the manifest at once. The three of them see it now: the field
+ * states both counts, this guard fails when the tree disagrees, and `why` has to
+ * say what the class IS - the compositor's pre-paint buffers (one flat ground,
+ * which is exactly what the uniformity ceiling exists to refuse), screenshots
+ * and props - so a reader of a green run knows what was not judged and why.
+ *
+ * The counts are DERIVED (`unjudgedFrames`) and the failure names both the walk's
+ * numbers and the field to lead with, so the fix is a paste.
+ */
+export const unjudgedFrameFailures = (manifest, dir = EVIDENCE) => {
+	const out = [];
+	/*
+	 * Gated the way `countsMeanFailures` is, and for the same reason: a manifest
+	 * that declares no counts is a fixture about one narrow question (a head
+	 * citation, a stamp pair), not a description of a tree - and the tree this
+	 * guard would walk is this repository's own, not the fixture's.
+	 */
+	if (!manifest.countsMean || typeof manifest.countsMean !== "object")
+		return out;
+	const declared = (manifest.supplementary ?? [])
+		.filter((set) => typeof set.path === "string" && set.path.length > 0)
+		.map((set) => join(dir, set.path));
+	const counted = unjudgedFrames(dir, declared);
+	const field = manifest.unjudgedFrames;
+	if (!field || typeof field !== "object") {
+		out.push(
+			`manifest.json: \`unjudgedFrames\` is missing, so the frames this gate accounts for WITHOUT judging are counted nowhere - lead it with { "insideDeclaredSets": ${counted.inside.length}, "outsideDeclaredSets": ${counted.outside.length}, "why": "..." } and say what the class is`,
+		);
+		return out;
+	}
+	if (
+		field.insideDeclaredSets !== counted.inside.length ||
+		field.outsideDeclaredSets !== counted.outside.length
+	)
+		out.push(
+			`manifest.json: \`unjudgedFrames\` says ${field.insideDeclaredSets} inside the declared sets and ${field.outsideDeclaredSets} outside, but the walk finds ${counted.inside.length} and ${counted.outside.length} - a frame was added, moved or re-containered, so re-derive both counts and say what moved`,
+		);
+	if (typeof field.why !== "string" || field.why.trim().length < 40)
+		out.push(
+			"manifest.json: `unjudgedFrames.why` does not say what the unjudged class is - a count a reader cannot read the MEANING of is the skip this field exists to prevent",
+		);
 	return out;
 };
 
@@ -894,7 +1042,7 @@ export const declaredThemeNames = (capture) => {
  * the order the paragraph writes them.
  */
 const FRAMES_READING =
-	/([\d,]+)\s+committed WebP files outside the ([\d,]+)\s+declared supplementary sets[\s\S]*?\bof\s+([\d,]+)\s+on disk\s*\(([\d,]+)\s+of them inside the sets\)/;
+	/([\d,]+)\s+committed frames outside the ([\d,]+)\s+declared supplementary sets[\s\S]*?\bof\s+([\d,]+)\s+on disk\s*\(([\d,]+)\s+of them inside the sets\)/;
 const SURFACES_READING =
 	/([\d,]+)\s+rows in `HEAD:scripts\/capture-evidence\.mjs`'s STORIES literal/;
 const THEMES_READING = /([\d,]+)\s+theme names in the `THEMES` literal/;
@@ -989,21 +1137,21 @@ export const countsMeanFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 		framesProse,
 		framesMatch
 			? {
-					"/committed WebP files outside the declared sets/": proseCount(
+					"/committed frames outside the declared sets/": proseCount(
 						framesMatch[1],
 					),
 					"/declared supplementary sets/": proseCount(framesMatch[2]),
-					"/committed WebP files/": proseCount(framesMatch[3]),
+					"/committed frames/": proseCount(framesMatch[3]),
 					"/inside the declared sets/": proseCount(framesMatch[4]),
 				}
 			: {},
 		{
-			"/committed WebP files outside the declared sets/": outside,
+			"/committed frames outside the declared sets/": outside,
 			"/declared supplementary sets/": sets.length,
-			"/committed WebP files/": onDisk.length,
+			"/committed frames/": onDisk.length,
 			"/inside the declared sets/": onDisk.length - outside,
 		},
-		`RE-DERIVED FOR THIS FOLD: ${outside} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside} of them inside the sets).`,
+		`RE-DERIVED FOR THIS FOLD: ${outside} committed frames outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside} of them inside the sets).`,
 	);
 
 	const surfacesProse = leading("surfaces");
@@ -1447,7 +1595,7 @@ export const main = async () => {
 	let worst = { got: -1, file: "" };
 
 	for (const file of files) {
-		const theme = file.split("/").pop().replace(".webp", "");
+		const theme = frameStem(file);
 		const palette = PALETTES.get(theme);
 		if (!palette) {
 			failures.push(`${relative(ROOT, file)}: no palette named \`${theme}\``);

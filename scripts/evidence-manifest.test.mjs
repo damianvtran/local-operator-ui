@@ -21,6 +21,7 @@ import {
 	provenanceFailures,
 	stampFailures,
 	storyDriftReadings,
+	unjudgedFrameFailures,
 } from "./check-evidence.mjs";
 
 /*
@@ -1697,7 +1698,7 @@ const countsManifest = ({ framesProse = "", surfacesProse = "" } = {}) => ({
 });
 
 const FRAMES_LEADING =
-	"RE-DERIVED FOR THIS FOLD: 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
+	"RE-DERIVED FOR THIS FOLD: 3 committed frames outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
 
 test("a countsMean paragraph leading with the walk's numbers passes", (t) => {
 	const countsTree = caseTree(t, COUNTS_LAYOUT);
@@ -1749,7 +1750,7 @@ test("the older paragraphs under the leading one are not this tree's to answer f
 	 * (4) protects - so only the leading paragraph is checked.
 	 */
 	const manifest = countsManifest({
-		framesProse: `${FRAMES_LEADING}\n\nRE-DERIVED FOR THE SECOND FOLD: 2 committed WebP files outside the 1 declared supplementary sets below, of 4 on disk (2 of them inside the sets).`,
+		framesProse: `${FRAMES_LEADING}\n\nRE-DERIVED FOR THE SECOND FOLD: 2 committed frames outside the 1 declared supplementary sets below, of 4 on disk (2 of them inside the sets).`,
 		surfacesProse:
 			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
 	});
@@ -3989,6 +3990,97 @@ test("every declared evidence set holds exactly the palettes its record document
 });
 
 /*
+ * Q1 (round 1 of the wiring's review, found by QA): a frame the walk does not
+ * judge has to be COUNTED, and a container must not be a hiding place.
+ *
+ * The defect: the walk was `.webp`-only, so a frame whose pixels would fail the
+ * gate escaped it by being committed as a PNG - and this change created five of
+ * them. Two halves close it, and this test pins both: `frames()` judges by NAME
+ * (a theme-named `.png` is judged - 174 such frames sat unjudged across six
+ * surfaces before this), and a frame the walk does not judge at all (no theme in
+ * its name, whatever container it is packed in) is recorded by `unjudgedFrames`,
+ * whose guard fails when the tree disagrees with the file.
+ *
+ * Mutations: judge by container again (`frames()` back to `.webp`), which is how
+ * those 174 PNGs stayed invisible; or drop the counts guard, so a non-theme
+ * frame can be added anywhere without the manifest noticing.
+ */
+test("a frame the walk does not judge is accounted for, and moving one fails", (t) => {
+	const dir = mkdtempSync(join(tmpdir(), "evidence-unjudged-"));
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
+	mkdirSync(join(dir, "a-set", "row"), { recursive: true });
+	/*
+	 * Four frames, one per case: judged in the canonical container, judged
+	 * BECAUSE ITS NAME CLAIMS A THEME in the other one, and one naming no theme
+	 * inside the declared set, one outside it.
+	 */
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.webp"), "");
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.png"), "");
+	writeFileSync(join(dir, "a-set", "row-00-t96ms-blank.png"), "");
+	writeFileSync(join(dir, "outside-00-t00ms-blank.png"), "");
+	const manifest = { countsMean: {}, supplementary: [{ path: "a-set" }] };
+	const why = "x".repeat(60);
+
+	assert.deepEqual(
+		frameFiles(dir)
+			.map((file) => file.split("/").pop())
+			.sort(),
+		["localOperatorDark.png", "localOperatorDark.webp"],
+		"a theme-named frame is JUDGED in whatever container it is packed: the name is the claim, and the container is only how the pixels are packed",
+	);
+	assert.match(
+		unjudgedFrameFailures(manifest, dir).join("\n"),
+		RE_EVIDENCE_27,
+		"the field is REQUIRED: a manifest that carries counts and no accounting for the unjudged class is exactly the silence this guard closes",
+	);
+	assert.deepEqual(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 1,
+					outsideDeclaredSets: 1,
+					why,
+				},
+			},
+			dir,
+		),
+		[],
+		"and with the walk's own counts and a stated reason it passes, so the guard is a scope statement rather than a wall",
+	);
+	assert.match(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 2,
+					outsideDeclaredSets: 0,
+					why,
+				},
+			},
+			dir,
+		).join("\n"),
+		RE_EVIDENCE_28,
+		"a frame that moved between the set and the pool - or was re-containered - has to fail: that is the move this accounting exists to make visible",
+	);
+	assert.match(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 1,
+					outsideDeclaredSets: 1,
+					why: "too short",
+				},
+			},
+			dir,
+		).join("\n"),
+		RE_EVIDENCE_29,
+		"a count a reader cannot read the MEANING of is the skip the field replaces",
+	);
+});
+
+/*
  * Hoisted out of the test bodies above for `lint/performance/useTopLevelRegex` - the only
  * warnings this file carries, and the reason a change that touches it owes the whole-file
  * cleanup `scripts/check-scripts-lint.mjs` charges (`scripts/` sits outside `pnpm lint`'s
@@ -4018,8 +4110,11 @@ const RE_EVIDENCE_19 = /^supplementary\/\d+\//;
 const RE_EVIDENCE_20 = /countsMean\.frames/;
 const RE_EVIDENCE_21 = /the walk finds 3/;
 const RE_EVIDENCE_22 =
-	/Lead the field with: "RE-DERIVED FOR THIS FOLD: 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
+	/Lead the field with: "RE-DERIVED FOR THIS FOLD: 3 committed frames outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
 const RE_EVIDENCE_23 = /nothing this check can read/;
 const RE_EVIDENCE_24 = /countsMean\.surfaces/;
 const RE_EVIDENCE_25 = /the walk finds 2/;
 const RE_EVIDENCE_26 = /first seen at 0/;
+const RE_EVIDENCE_27 = /`unjudgedFrames` is missing/;
+const RE_EVIDENCE_28 = /a frame was added, moved or re-containered/;
+const RE_EVIDENCE_29 = /does not say what the unjudged class is/;
