@@ -1,0 +1,160 @@
+{
+ "head": {
+  "sha": "7c03e48911e5ad9ee89daee6f66adb76cb2d1d20",
+  "readings": {
+   "in-transcript-failed": {
+    "settledState": "failed",
+    "timeline": [
+     [
+      64,
+      "blank"
+     ],
+     [
+      220,
+      "failed"
+     ],
+     [
+      235,
+      "loading"
+     ],
+     [
+      2216,
+      "failed"
+     ]
+    ],
+    "loadingHold": {
+     "fromMs": 235,
+     "toMs": 2216,
+     "holdMs": 1981,
+     "closedBy": "failed"
+    },
+    "referenceWaitMs": null
+   },
+   "in-transcript-idle": {
+    "settledState": "idle",
+    "timeline": [
+     [
+      87,
+      "blank"
+     ],
+     [
+      364,
+      "idle"
+     ],
+     [
+      382,
+      "loading"
+     ],
+     [
+      2381,
+      "idle"
+     ]
+    ],
+    "loadingHold": {
+     "fromMs": 382,
+     "toMs": 2381,
+     "holdMs": 1999,
+     "closedBy": "idle"
+    },
+    "referenceWaitMs": null
+   },
+   "in-transcript-loading": {
+    "settledState": "loading",
+    "timeline": [
+     [
+      68,
+      "blank"
+     ],
+     [
+      207,
+      "loading"
+     ]
+    ],
+    "loadingHold": {
+     "fromMs": 207,
+     "toMs": null,
+     "holdMs": null,
+     "closedBy": "end-of-run"
+    },
+    "referenceWaitMs": null
+   }
+  },
+  "refs": {
+   "idle": {
+    "mean": 35,
+    "std": 10
+   },
+   "loading": {
+    "mean": 35,
+    "std": 10
+   },
+   "failed": {
+    "mean": 35,
+    "std": 10
+   }
+  }
+ },
+ "base": {
+  "sha": "2de4e2e9de7de3db044f0163de768fa3059a6f2a",
+  "readings": {
+   "in-transcript-idle": {
+    "settledState": "idle",
+    "timeline": [
+     [
+      96,
+      "blank"
+     ],
+     [
+      247,
+      "idle"
+     ],
+     [
+      263,
+      "loading"
+     ],
+     [
+      2258,
+      "idle"
+     ]
+    ],
+    "loadingHold": {
+     "fromMs": 263,
+     "toMs": 2258,
+     "holdMs": 1995,
+     "closedBy": "idle"
+    },
+    "referenceWaitMs": null
+   },
+   "in-transcript-loading": {
+    "settledState": "loading",
+    "timeline": [
+     [
+      80,
+      "blank"
+     ],
+     [
+      399,
+      "loading"
+     ]
+    ],
+    "loadingHold": {
+     "fromMs": 399,
+     "toMs": null,
+     "holdMs": null,
+     "closedBy": "end-of-run"
+    },
+    "referenceWaitMs": null
+   }
+  },
+  "refs": {
+   "idle": {
+    "mean": 35,
+    "std": 10
+   },
+   "loading": {
+    "mean": 35,
+    "std": 10
+   }
+  }
+ }
+}
