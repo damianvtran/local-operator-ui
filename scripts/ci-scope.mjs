@@ -198,21 +198,26 @@ const RUNTIME_DEP_SCRIPTS = new Set([
  * diff" - the same green-by-absence this job was added to remove.
  */
 /**
- * The sweep's own code: `check-evidence.mjs` and every module it LOADS.
+ * The sweep's own code: `check-evidence.mjs`, every module it LOADS, and every
+ * file it SPAWNS.
  *
  * Why the whole load path rather than only the modules that compute a verdict: a
  * module on it changes what the sweep does without anyone touching
  * `check-evidence.mjs` - it is imported, so its body runs, and `STORIES` is read
  * straight out of `capture-evidence.mjs` to derive the `surfaces` count. A rig's
- * behaviour is as much an input to the verdict as the verdict's own arithmetic.
+ * behaviour is as much an input to the verdict as the verdict's own arithmetic,
+ * and a file the sweep EXECUTES is more input still: `evidence-run-guard.py` is
+ * the admission control the sweep forks before it checks anything.
  *
  * DERIVED, NOT HAND-WRITTEN: `ci-scope.test.mjs` walks
- * `relativeImportClosure("scripts/check-evidence.mjs")` and asserts this set
- * equals it, so an import added to any of these files cannot be forgotten here -
- * the same shape as the base-copy closure `ci.yml`'s classifier step is pinned
- * to, and the reason `capture-evidence.mjs` (missing until the wiring's first
- * review) can no longer fall out. Exported for that test, like
- * `KNOWN_LIVE_PREFIXES` below.
+ * `relativeImportClosure("scripts/check-evidence.mjs")` AND every
+ * `join(ROOT, "scripts", "...")` the entry point names, and asserts this set
+ * equals the union - so neither an import nor a spawn can be forgotten here. That
+ * is the same shape as the base-copy closure `ci.yml`'s classifier step is pinned
+ * to, and it is the reason `capture-evidence.mjs` (missing until the wiring's
+ * first review) and `evidence-run-guard.py` (missing until QA's container round)
+ * can no longer fall out. Exported for that test, like `KNOWN_LIVE_PREFIXES`
+ * below.
  */
 export const EVIDENCE_SOURCES = new Set([
 	"scripts/capture-evidence.mjs",
@@ -220,6 +225,7 @@ export const EVIDENCE_SOURCES = new Set([
 	"scripts/chrome-keychain.mjs",
 	"scripts/color.mjs",
 	"scripts/entry-point.mjs",
+	"scripts/evidence-run-guard.py",
 	"scripts/evidence-tz.mjs",
 	"scripts/palette-source.mjs",
 	"scripts/python-child-env.mjs",

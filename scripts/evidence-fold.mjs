@@ -385,7 +385,7 @@ const LISTING_KEYS = new Set([
  */
 
 /** Group (4): re-derived from the merged tree, never carried from a side. */
-const DERIVED_TOP = new Set(["frames", "surfaces", "themes"]);
+const DERIVED_TOP = new Set(["frames", "surfaces", "themes", "unjudgedFrames"]);
 
 /**
  * Group (4), the RETIRED half: fields this change stopped storing, and which no
@@ -850,6 +850,19 @@ export const resolveManifest = ({
 			);
 		});
 	}
+	/*
+	 * A DERIVED top-level key that NO side carries yet has to be CREATED rather
+	 * than resolved: `mergedKeys` is the union of what the three sides hold, so a
+	 * field this change introduces is never asked for and the re-derived value is
+	 * silently dropped - which is how `unjudgedFrames` arrived at the guard as
+	 * "missing" on a fold whose own re-derivation had computed it. Only under
+	 * `derived`, so the mid-merge driver path (which passes none, and cannot walk
+	 * the tree) is untouched.
+	 */
+	if (derived)
+		for (const key of DERIVED_TOP)
+			if (out[key] === undefined && derived[key] !== undefined)
+				out[key] = derived[key];
 	return out;
 };
 
@@ -887,6 +900,8 @@ export const deriveFields = async ({
 		frames: frameFiles,
 		inDeclaredSet,
 		namedByPass,
+		unjudgedFrames,
+		UNJUDGED_FRAMES_WHY,
 	} = await import("./check-evidence.mjs");
 
 	const evidenceDir = join(root, "docs", "evidence");
@@ -906,6 +921,16 @@ export const deriveFields = async ({
 	const outside = onDisk.filter((file) => !inDeclaredSet(file, declaredDirs));
 	const stories = declaredStoryRows(capture);
 	const themes = declaredThemeNames(capture);
+	/*
+	 * The frames the gate ACCOUNTS FOR but does not judge, re-derived here for the
+	 * same reason `frames` is: the fold is the one place a merge of two sides'
+	 * frames is resolved, so a count carried from either side would describe a tree
+	 * that no longer exists. Only the COUNTS are derived - the `why` is the file's
+	 * own statement of what the class is, so it is carried when a side has it and
+	 * the guard's default sentence is used when the fold lands on a `main` that
+	 * predates the field.
+	 */
+	const unjudged = unjudgedFrames(evidenceDir, declaredDirs);
 
 	/*
 	 * `refreshedFrames`, re-derived rather than carried: the frames standing in
@@ -933,8 +958,13 @@ export const deriveFields = async ({
 		surfaces: stories,
 		themes,
 		refreshedFrames,
+		unjudgedFrames: {
+			insideDeclaredSets: unjudged.inside.length,
+			outsideDeclaredSets: unjudged.outside.length,
+			why: manifest.unjudgedFrames?.why ?? UNJUDGED_FRAMES_WHY,
+		},
 		countsMean: {
-			frames: `RE-DERIVED FOR THIS FOLD: ${outside.length} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside.length} of them inside the sets). Whether this fold moved any frame a story renders is the AUTHOR's statement to make, not this tool's - the numbers above are what the walk found.`,
+			frames: `RE-DERIVED FOR THIS FOLD: ${outside.length} committed frames outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside.length} of them inside the sets). Whether this fold moved any frame a story renders is the AUTHOR's statement to make, not this tool's - the numbers above are what the walk found.`,
 			surfaces: `RE-DERIVED FOR THIS FOLD: ${stories} rows in \`HEAD:scripts/capture-evidence.mjs\`'s STORIES literal, counted the way \`check-evidence.mjs\` counts them (\`^\t\[\` rows inside the block, parsed from the tree rather than taken from the writer).`,
 			themes: `RE-DERIVED FOR THIS FOLD: ${themes} theme names in the \`THEMES\` literal, counted the same way.`,
 		},
