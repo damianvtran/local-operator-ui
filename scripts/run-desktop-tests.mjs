@@ -30,6 +30,26 @@
  * overrides the budget (a number of MB, or `off`, which is announced). Unlike
  * the concurrency governor this stays ACTIVE on CI.
  *
+ * Each LANE is bounded too, and that is a separate guarantee: a test file that
+ * never settles gets its OWN process killed and is named on stderr, while the
+ * rest of the suite finishes and its verdict still lands. The bound is a stall
+ * detector rather than a performance gate (`desktop-test-lane-bound.mjs` carries
+ * the worked example: one such lane held this job from 14m24s green to cancelled
+ * at two different caps, on four consecutive heads), and
+ * `LOCAL_OPERATOR_UI_LANE_BOUND_MS` overrides it (a number of ms, or `off`, which
+ * is announced). It is ACTIVE by default, for the same reason the memory guard is
+ * on CI: a bound nobody enables stops nothing.
+ *
+ * Its DEFAULT is calibrated from CI rather than from this host, which is a lesson
+ * this branch paid for: the first default killed
+ * `scripts/mark-all-read-control.test.mjs` at the bound on two consecutive heads -
+ * a lane whose bytes are identical on `main` (`0271b70f45db`) and which passes in
+ * 447 s when run alone - so the ceiling now sits above the 18.7-minute healthy CI
+ * suite, which bounds every lane that runs inside it. That REDUCES unreadable
+ * cancellations rather than removing them: first sightings are spread across the
+ * suite, so a stall in a lane first sighted late is named only after the job's own
+ * 35-minute cap has cancelled the run. See `_DEFAULT_BOUND_MS` for the readings.
+ *
  * The child's exit code is forwarded unchanged and its death by signal is
  * re-raised on this process, because a wrapper that reports success for a suite
  * that was killed is worse than no wrapper. For the same reason the child does
@@ -46,6 +66,12 @@ import {
 	formatDesktopTestConcurrencyLine,
 	resolveDesktopTestConcurrency,
 } from "./desktop-test-concurrency.mjs";
+import {
+	createLaneBoundWatchdog,
+	formatLaneBoundLine,
+	formatLaneTripLine,
+	resolveLaneBound,
+} from "./desktop-test-lane-bound.mjs";
 import {
 	BREACH_EXIT_CODE,
 	createMemoryWatchdog,
@@ -118,11 +144,22 @@ const explicitFlag = args.find(
 
 // The evidence line reports how many test files the run covers, so it must not
 // count flags or the value slot of a bare `--test-concurrency 12` as a file.
-const fileCount = args.filter((arg, index) => {
+const fileArgs = args.filter((arg, index) => {
 	if (arg.startsWith("--test-concurrency")) return false;
 	if (index > 0 && args[index - 1] === "--test-concurrency") return false;
 	return !arg.startsWith("-");
-}).length;
+});
+const fileCount = fileArgs.length;
+
+/*
+ * The lane FILES the per-lane bound may match, which is a NARROWER set than the
+ * arguments above: only a `*.test.mjs` argument can name a lane's own process. The
+ * bound's kill is scoped to these exact strings, so anything else a caller passes (a
+ * fixture, a helper, a data file) must never become a signal target just by being
+ * mentioned in somebody's argv - `node --test` may run it, but it is not a lane and
+ * nothing here will kill it.
+ */
+const laneArgs = fileArgs.filter((arg) => arg.endsWith(".test.mjs"));
 
 const nodeArgs = ["--test"];
 if (explicitFlag === undefined) {
@@ -287,6 +324,8 @@ function releaseKeeper() {
 
 const memoryBudget = resolveMemoryBudget();
 console.log(formatMemoryBudgetLine(memoryBudget));
+const laneBound = resolveLaneBound();
+console.log(formatLaneBoundLine(laneBound));
 let breached = false;
 const watchdog =
 	memoryBudget.budgetMb === null || child.pid === undefined
@@ -317,6 +356,38 @@ const watchdog =
 			});
 watchdog?.start();
 
+/**
+ * The per-lane bound, armed beside the memory watchdog and independent of it: the
+ * memory guard answers "is this group too big", this answers "which lane stopped
+ * making progress" - and only the second can end a run that never finishes while
+ * holding almost no memory at all, which is the shape that cost four heads their
+ * CI verdict. A lane that trips it is named on stderr and its OWN process is
+ * killed; node records that file as failed and the rest of the suite still lands.
+ */
+const laneWatchdog =
+	laneBound.boundMs === null || child.pid === undefined
+		? null
+		: createLaneBoundWatchdog({
+				leaderPid: child.pid,
+				lanes: laneArgs,
+				boundMs: laneBound.boundMs,
+				onTrip: ({ lane, pid, elapsedMs, killed }) =>
+					console.error(
+						formatLaneTripLine({
+							lane,
+							pid,
+							elapsedMs,
+							boundMs: laneBound.boundMs,
+							killed,
+						}),
+					),
+				onBlind: (ticks) =>
+					console.error(
+						`desktop tests: WARNING - the per-lane bound could not read the suite's process group for ${ticks} consecutive samples; a lane that never settles is NOT bounded while that lasts`,
+					),
+			});
+laneWatchdog?.start();
+
 // Forward the signals a user or CI actually sends, so Ctrl-C interrupts the
 // suite rather than leaving it orphaned behind a killed wrapper. To the GROUP:
 // the child no longer shares ours, and its own children are what hold memory.
@@ -338,6 +409,7 @@ for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
 
 child.on("exit", (code, signal) => {
 	watchdog?.stop();
+	laneWatchdog?.stop();
 	releaseKeeper();
 	if (breached) {
 		// The watchdog's SIGKILL is a deliberate, already-announced verdict: report
