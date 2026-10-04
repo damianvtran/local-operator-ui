@@ -17,6 +17,13 @@
  *     opened costs one line of chrome, not a wall. It starts OPEN while a
  *     `failed` record is inside — the store's own words, "the state a person
  *     should not miss" — and the reader's toggle owns it from then on.
+ *     HOW FAR BACK IT DRAWS IS THE STORE'S BOUND, NOT THIS FILE'S (agent review
+ *     round 1, R1-2): the section is the read's own fold — everything besides
+ *     the waiting set, oldest first — and the read's retention is the store's
+ *     (`local_operator/network/approvals.py`): terminals pruned after 30 days,
+ *     open records until they settle. That is deliberate: a spent approval is a
+ *     record the operator asked to keep, so no record is hidden for being old —
+ *     and the count beside the toggle is exactly this section's size.
  *
  * WHAT A CARD SAYS, AND IN WHAT ORDER. One line of plain language first
  * (`approvalSummary`, the record's own scopes in the CLI's order), then the

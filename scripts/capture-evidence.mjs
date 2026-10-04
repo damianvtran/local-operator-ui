@@ -8964,18 +8964,38 @@ export const STORIES = [
 	 * it - the approve leaves the live panel and the record opens in Records -
 	 * which is what keeps a still honest about the split.
 	 *
-	 * NO LOCAL FRAMES YET: the host was at ~97% swap when this landed, so the
-	 * capture is deferred to the design round (see the PR). These rows are the
-	 * half that had to exist first: `--only` filters this literal, so a story
-	 * not declared here is invisible to every pass, however it looks in the
-	 * index (the same note `shell-app-shell--chat-dock-files` carries).
+	 * THE PLAYED ROWS HOLD THE SHUTTER ON A CLAIM, and this set's own first
+	 * capture is the measurement that says why (agent review round 1's
+	 * remediation): with the rows plain, the run filed `approval-refused`
+	 * mid-flight - controls disabled, "Waiting for the signing prompt…" on the
+	 * screen, the refusal sentence absent - the one-click-short class the dialog
+	 * rows above already carry claims for. Each claim below is the sentence the
+	 * story's own `play` waits for, so a frame the shutter accepts is one the
+	 * story's assertions accepted; `approvals-waiting`/`approvals-records`/
+	 * `approvals-stopped` stay claim-less because no play stands between them
+	 * and what they photograph.
 	 */
 	["mesh-tab--approvals-waiting", 1380, 900],
 	["mesh-tab--approvals-records", 1380, 900],
-	["mesh-tab--approvals-records-open", 1380, 900],
+	[
+		"mesh-tab--approvals-records-open",
+		1380,
+		900,
+		{ expectSentence: "Onboard studio-mini" },
+	],
 	["mesh-tab--approvals-stopped", 1380, 900],
-	["mesh-tab--approvals-decision-writes", 1380, 900],
-	["mesh-tab--approval-refused", 1380, 900],
+	[
+		"mesh-tab--approvals-decision-writes",
+		1380,
+		900,
+		{ expectSentence: "Approved" },
+	],
+	[
+		"mesh-tab--approval-refused",
+		1380,
+		900,
+		{ expectSentence: "no operator key to sign with" },
+	],
 	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped
