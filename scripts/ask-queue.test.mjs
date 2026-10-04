@@ -443,7 +443,7 @@ test("the item's clause never claims a split the frame cannot know", () => {
 	assert.equal(queue.askChipCountClause(lagging), "2 outstanding");
 	assert.equal(
 		queue.askChipLabel(lagging, false, TS),
-		"Expand the ask history — 2 outstanding",
+		"Expand this conversation's asks — 2 outstanding",
 	);
 
 	// The same rule over a MIXED frame: the split is not stated when the tally is
@@ -458,7 +458,7 @@ test("the item's clause never claims a split the frame cannot know", () => {
 	assert.equal(queue.askChipCountClause(mixedLagging), "5 outstanding");
 	assert.equal(
 		queue.askChipLabel(mixedLagging, false, TS),
-		"Expand the ask history — 5 outstanding",
+		"Expand this conversation's asks — 5 outstanding",
 	);
 
 	// A tally that matches the rows changes nothing: the split is stated as before.
@@ -472,7 +472,7 @@ test("the item's clause never claims a split the frame cannot know", () => {
 	assert.equal(queue.askChipCountClause(exact), "1 question waiting");
 	assert.equal(
 		queue.askChipLabel(exact, false, TS),
-		"Expand the ask history — 1 question waiting · expires in 1h · 1 moved on",
+		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 moved on",
 	);
 });
 
@@ -480,11 +480,11 @@ test("the item's announced name leads with its action and carries the whole clau
 	const one = queue.askQueueView({ asks: [single({ ask_id: "a-1" })] });
 	assert.equal(
 		queue.askChipLabel(one, false, TS),
-		"Expand the ask history — 1 question waiting · expires in 1h",
+		"Expand this conversation's asks — 1 question waiting · expires in 1h",
 	);
 	assert.equal(
 		queue.askChipLabel(one, true, TS),
-		"Collapse the ask history — 1 question waiting · expires in 1h",
+		"Collapse this conversation's asks — 1 question waiting · expires in 1h",
 	);
 
 	/*
@@ -506,7 +506,7 @@ test("the item's announced name leads with its action and carries the whole clau
 	);
 	assert.equal(
 		queue.askChipLabel(mixed, false, TS),
-		"Expand the ask history — 1 question waiting · expires in 1h · 1 moved on",
+		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 moved on",
 	);
 	/*
 	 * THE COUNTDOWNS DO NOT BREAK THE ONE-SENTENCE RULE: the name appends the
@@ -531,7 +531,7 @@ test("the item's announced name leads with its action and carries the whole clau
 	});
 	assert.equal(
 		queue.askChipLabel(mixedTruncated, false, TS),
-		"Expand the ask history — 7 outstanding",
+		"Expand this conversation's asks — 7 outstanding",
 	);
 });
 
@@ -630,7 +630,7 @@ test("the item's name never doubles a mark, and its clause is the model's one sp
 	const name = queue.askChipLabel(questionless, false, TS);
 	assert.equal(
 		name,
-		"Expand the ask history — 1 question waiting · expires in 1h",
+		"Expand this conversation's asks — 1 question waiting · expires in 1h",
 	);
 	assert.ok(!name.includes(".."), name);
 	// And the visible text is always inside the announced one.
@@ -959,7 +959,7 @@ test("the wire's `urgent` flag reaches the view, and only for the asks the item 
 	const urgentOne = queue.askQueueView({ asks: [ask({ urgent: true })] });
 	assert.equal(
 		queue.askChipLabel(urgentOne, false, TS),
-		"Expand the ask history — 1 question waiting · expires in 1h · Urgent",
+		"Expand this conversation's asks — 1 question waiting · expires in 1h · Urgent",
 	);
 	assert.ok(
 		queue
@@ -971,5 +971,91 @@ test("the wire's `urgent` flag reaches the view, and only for the asks the item 
 		!queue
 			.askChipLabel(queue.askQueueView({ asks: [ask()] }), false, TS)
 			.includes("Urgent"),
+	);
+});
+
+/* ------------------------------------------------- the settled descriptor ---- */
+
+test("the settled descriptor is derived from the rows, never a fixed legend", () => {
+	const view = (asks) => queue.askQueueView({ asks });
+	/** The section's own predicate, spelled once here: the rows the panel collapses. */
+	const settledRows = (v) => v.rows.filter((row) => !row.open);
+	// One declined ask: the header used to print all four words over it.
+	assert.equal(
+		queue.askStatusWords(settledRows(view([single({ status: "declined" })]))),
+		"Declined",
+	);
+	// The shipped look-alike pair, in the copy contract's own order rather than the
+	// rows': `Answered` and `Answered late` are the two a one-line row must tell
+	// apart, and both are named.
+	assert.equal(
+		queue.askStatusWords(
+			settledRows(
+				view([
+					single({ ask_id: "a-late", status: "late" }),
+					single({ ask_id: "a-answered", status: "answered" }),
+				]),
+			),
+		),
+		"Answered, Answered late",
+	);
+	// A `timed_out` row can never reach the section - it is in the outstanding set -
+	// so its word must never appear in a descriptor built from settled rows, however
+	// many of them there are.
+	const settledOnly = settledRows(
+		view([
+			single({ status: "declined" }),
+			single({ ask_id: "a-moved", status: "timed_out" }),
+			single({ ask_id: "a-answered", status: "answered" }),
+		]),
+	);
+	assert.equal(queue.askStatusWords(settledOnly), "Answered, Declined");
+});
+
+/* ------------------------------------------------------- the drawer's bar ---- */
+
+test("the drawer's scope line counts every answerable card, and still falls through", () => {
+	const view = (asks, over = {}) => queue.askQueueView({ asks, ...over });
+	// A mixed queue: one the agent waits on, one that timed out and is STILL
+	// answerable. The chip's clause names only the first; the drawer draws a card
+	// for each, so its own line names both halves.
+	const mixed = view([
+		single({ status: "open" }),
+		single({ ask_id: "a-moved", status: "timed_out" }),
+	]);
+	assert.equal(queue.askDrawerCountClause(mixed), "1 waiting, 1 moved on");
+	assert.equal(
+		queue.askScopeLine("session", mixed),
+		"This conversation · 1 waiting, 1 moved on",
+	);
+	// Every single-state queue keeps the chip's own clause, so the two surfaces
+	// cannot describe one queue differently when there is nothing to split.
+	assert.equal(
+		queue.askDrawerCountClause(view([single()])),
+		"1 question waiting",
+	);
+	assert.equal(
+		queue.askDrawerCountClause(view([single({ status: "answered" })])),
+		"All asks settled",
+	);
+	assert.equal(
+		queue.askDrawerCountClause(view([single({ status: "timed_out" })])),
+		"1 question moved on",
+	);
+	// A truncated frame's split is a split of the visible prefix, so the drawer states
+	// the backend's own tally exactly as the chip does.
+	assert.equal(
+		queue.askDrawerCountClause(
+			view([single(), single({ ask_id: "a-2" })], {
+				asks_open: 12,
+				asks_truncated: true,
+			}),
+		),
+		"12 outstanding",
+	);
+	// And the fleet scope is the same clause behind the other subject.
+	assert.equal(
+		queue.askScopeLine("fleet", view([single()])),
+		"All conversations · 1 question waiting",
 	);
 });

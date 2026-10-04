@@ -219,6 +219,64 @@ export const askChipCountClause = (view: AskQueueView): string => {
 };
 
 /**
+ * WHICH QUEUE a surface is showing.
+ *
+ * The two contexts the design note's §4.4 names, and they are a property of the
+ * ENTRY POINT rather than a setting: the composer's status-row item opens the
+ * conversation's own queue, a top-level affordance would open the fleet's. The
+ * scope is carried by the drawer's chrome bar so a reader can always say which one
+ * is on screen ("a count of 3 inside a session and 11 at the top level are both
+ * correct and say different things").
+ *
+ * IT IS A PROP OF THE SURFACE, not a second component: one drawer renders both, so
+ * the fleet view is a data seam rather than a second idiom. Nothing on the desktop
+ * opens `fleet` today - the aggregate route exists but has no entry point - and
+ * the type is the seam that keeps the next one from inventing a second container.
+ */
+export type AskScope = "session" | "fleet";
+
+/** The scope line's subject noun: what set the count beside it counts. */
+export const askScopeSubject = (scope: AskScope): string =>
+	scope === "fleet" ? "All conversations" : "This conversation";
+
+/**
+ * The DRAWER's count clause: what the surface shows, not only what the agent waits on.
+ *
+ * WHY THE DRAWER DIFFERS FROM THE CHIP (UX round 1, U5). `askChipCountClause`
+ * counts the WAITING rows, which is the right register for a chip: it is a
+ * standing tally in a row of tallies, and a moved-on row is not something the chip
+ * asks you to look at. As the DRAWER's own title it under-described its own
+ * contents - the drawer draws a card for EVERY outstanding ask, including a
+ * moved-on one that is still answerable, so `1 question waiting` sat over two
+ * answerable cards, and the row under it read `Timed out - the agent moved on; you
+ * can still answer`.
+ *
+ * So a mixed queue spells BOTH halves here, with the drawer's own words, and every
+ * other state falls through to the chip's clause unchanged (`All asks settled`, the
+ * outstanding tally on a truncated frame, `N questions moved on`). The two surfaces
+ * cannot disagree about a single-state queue, which is the shared-clause rule the
+ * functions below still keep.
+ */
+export const askDrawerCountClause = (view: AskQueueView): string => {
+	if (askSplitIsKnowable(view) && view.waiting > 0 && view.movedOn > 0) {
+		return `${view.waiting} waiting, ${view.movedOn} moved on`;
+	}
+	return askChipCountClause(view);
+};
+
+/**
+ * The drawer chrome bar's scope line: which queue, and how much of it.
+ *
+ * The subject is the scope and the count is `askDrawerCountClause` (the DRAWER's
+ * own reading, above), joined by the model's counts seam (`·`) exactly as the
+ * chip's counts are. It is no longer the chip's clause verbatim: the two surfaces
+ * count different things on purpose, and U5 is that difference stated rather than
+ * hidden.
+ */
+export const askScopeLine = (scope: AskScope, view: AskQueueView): string =>
+	`${askScopeSubject(scope)} · ${askDrawerCountClause(view)}`;
+
+/**
  * The chip's COUNTDOWN, with no subject: `expires in 12m`, or `null` when this
  * surface must state none.
  *
@@ -373,7 +431,16 @@ export const askChipLabel = (
 	 * goes in the label. APPENDED, so the visible clause stays a prefix of the name.
 	 */
 	const urgency = view.urgent ? " · Urgent" : "";
-	return `${expanded ? "Collapse" : "Expand"} the ask history${LABEL_SEAM}${askChipFullClause(view, nowMs)}${urgency}`;
+	/*
+	 * THE SURFACE'S OWN NOUN, NOT "the ask history" (UX round 1, U3). The chip's
+	 * label is the only sentence that names what the press opens, and "history" was
+	 * wrong about the state it is printed in most often: a queue with a LIVE question
+	 * in it is not history, and the drawer the chip opens titles itself
+	 * "this conversation's asks". So the label uses that noun (and says whose asks,
+	 * because the chip sits in one conversation's row while the drawer's other scope
+	 * - `fleet` - has no chip here).
+	 */
+	return `${expanded ? "Collapse" : "Expand"} this conversation's asks${LABEL_SEAM}${askChipFullClause(view, nowMs)}${urgency}`;
 };
 
 /**
@@ -412,15 +479,16 @@ export const askComposerHoldsSecret = (view: AskQueueView): boolean => {
 };
 
 /**
- * The ask lane's PANEL, marked on the one root `AskSurfaces` renders.
+ * The ask lane's PANEL, marked on the one root the ask drawer renders.
  *
  * THE MARKER IS THE PANEL'S, AND ONLY THE PANEL'S (agent review round 1, F5; UX
  * round 1, U3). It used to be on the row item as well, which broke the only probe a
  * rig or a test can reach for: `document.querySelector(ASK_SURFACE_SELECTOR)`
  * answered "yes" over a CLOSED panel (the chip matched it), so an assertion that the
  * panel is open passed while nothing was. The row item carries
- * `ASK_ITEM_SELECTOR` instead, and the root renders nothing at all while collapsed
- * (`ask-surfaces.tsx` returns `null`), so this selector answers exactly the question
+ * `ASK_ITEM_SELECTOR` instead, and there is no surface at all while the flag is
+ * false (`chat-content` mounts no drawer; `AskDrawer` also returns `null` for a
+ * backend that publishes no `asks`), so this selector answers exactly the question
  * it looks like it answers.
  */
 export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
@@ -812,6 +880,59 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
 	dismissed: "Dismissed — no reply was sent",
 	expired: "Expired — this ask is too old to answer; ask the agent again",
 	unknown: "Waiting on an answer",
+};
+
+/**
+ * The status WORD for a settled row's one line, DERIVED from the sentence above.
+ *
+ * A settled ask is one line in its section (design note §4.5), and one line cannot
+ * hold `Answered late — the agent was told`. The word is the sentence's own leading
+ * clause up to its first em dash, so the two cannot drift: a copy change to the
+ * sentence moves the word with it, and a status whose sentence carries no clause
+ * (`unknown`) answers with the whole sentence rather than a guess.
+ *
+ * WHAT THE SECTION ACTUALLY HOLDS, WHICH IS NOT WHAT D9 ASSUMED (agent review
+ * round 1, M1 = UX U1 = design D1). The words that must stay apart IN THE SECTION
+ * are the ones the section can hold, and it cannot hold `Timed out`: the backend's
+ * outstanding set folds `timed_out` in, so `presentAsk` marks such a row `open` and
+ * it is drawn as a pending CARD with live controls - the distinction D9 wanted is
+ * kept by the ROW SHAPE there (a card, not a one-line history row) rather than by
+ * this word. The pair that has to be told apart by word is the shipped pair: a
+ * delivered `Answered` and an `Answered late`, which look identical in a one-line
+ * row and are different facts about the agent's day.
+ */
+export const askStatusWord = (status: AskStatus | "unknown"): string => {
+	const copy = ASK_STATUS_COPY[status];
+	const cut = copy.indexOf(" — ");
+	return cut === -1 ? copy : copy.slice(0, cut);
+};
+
+/**
+ * The settled section's descriptor: WHICH WORDS the rows under it actually carry.
+ *
+ * DERIVED FROM THE ROWS, never a fixed legend. The header used to print one sentence
+ * ("answered, timed out, declined, dismissed") for every state the section could
+ * hold, and it was false in both directions: `timed out` can never be in the section
+ * (see `askStatusWord`), while `Answered late` and `Expired`, which can, were never
+ * named - so the legend described a set of states no section can hold and omitted
+ * states every section can.
+ *
+ * The order is the COPY CONTRACT's own, read from `ASK_STATUS_COPY`'s declaration
+ * order, so the list is stable across frames and moves with the sentences rather than
+ * beside them. Deduped, because two `answered` rows are still one word.
+ */
+export const askStatusWords = (rows: readonly AskPresentation[]): string => {
+	const present = new Set(rows.map((row) => row.status));
+	const words: string[] = [];
+	for (const status of Object.keys(ASK_STATUS_COPY) as (
+		| AskStatus
+		| "unknown"
+	)[]) {
+		if (!present.has(status)) continue;
+		const word = askStatusWord(status);
+		if (!words.includes(word)) words.push(word);
+	}
+	return words.join(", ");
 };
 
 /**
