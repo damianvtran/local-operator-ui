@@ -5,6 +5,7 @@
  * theme selection, and provides methods to update these preferences.
  */
 
+import type { AskScope } from "@features/chat/ask-queue";
 import { CHAT_MEASURE_OVERRIDE_VAR } from "@features/chat/chat-measure";
 import { clampChatMeasureWidth } from "@features/chat/chat-measure-drag";
 import {
@@ -266,6 +267,27 @@ type UiPreferencesState = {
 	isAskDrawerOpen: boolean;
 
 	/**
+	 * WHICH QUEUE THE OPEN DRAWER IS SHOWING — `session` or `fleet`.
+	 *
+	 * THE SCOPE IS CARRIED BY THE ENTRY POINT AND NOT CHOSEN BY THE SURFACE (design
+	 * note §4.4): the composer's status-row item opens `session` and a top-level
+	 * affordance opens `fleet`, and the drawer never picks for itself. It lives here,
+	 * beside the flag it qualifies, for the same reason that flag does — the two are
+	 * ONE fact ("the drawer is open, on this queue") and a second copy would let the
+	 * entry point and the surface it opened disagree about which queue is on screen.
+	 *
+	 * IT IS NOT A SETTING, deliberately. A switcher inside the drawer would make the
+	 * scope a mode the user can be in without having asked for it, which is exactly
+	 * the "a global badge above a session-scoped view" confusion this feature exists
+	 * to remove: from inside a conversation the surface can only be that
+	 * conversation's queue.
+	 *
+	 * IT IS EXCLUDED FROM PERSISTENCE with `isAskDrawerOpen`, for the same reason:
+	 * the scope means nothing while no drawer is open.
+	 */
+	askDrawerScope: AskScope;
+
+	/**
 	 * The DURABLE pane whose slot the asks drawer is currently borrowing, or `null`.
 	 *
 	 * A RECORD OF A BORROW, NOT A PREFERENCE, and it exists because the exclusivity
@@ -281,7 +303,7 @@ type UiPreferencesState = {
 	askDrawerEvictedPane: DurableRightSlotPane | null;
 
 	/**
-	 * Set the asks drawer open state.
+	 * Set the asks drawer open state, and WHICH QUEUE it is showing.
 	 *
 	 * Opening it closes the other four occupants, by the same construction as
 	 * theirs: one slot, one pane, and the exclusion lives in `claimRightSlot` so no
@@ -289,9 +311,15 @@ type UiPreferencesState = {
 	 * than merely cleared, so closing the drawer puts it back (see
 	 * `askDrawerEvictedPane`).
 	 *
+	 * THE SCOPE IS A REQUIRED ARGUMENT, not defaulted, because it is the entry
+	 * point's whole contribution: a caller that does not know which queue it is
+	 * opening has no business opening this surface, and a default would silently
+	 * pick the wrong queue for one of the two doors.
+	 *
 	 * @param open - Whether the asks drawer should be open
+	 * @param scope - Which queue the drawer shows
 	 */
-	setAskDrawerOpen: (open: boolean) => void;
+	setAskDrawerOpen: (open: boolean, scope: AskScope) => void;
 
 	/**
 	 * The conversation whose console the user has just asked to open, and which the
@@ -1315,6 +1343,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isBrowserPaneOpen: false,
 			isConsolePaneOpen: false,
 			isAskDrawerOpen: false,
+			askDrawerScope: "session",
 			askDrawerEvictedPane: null,
 			consoleOpenIntent: null,
 			runPanelReveal: null,
@@ -1412,11 +1441,17 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 				);
 			},
 
-			setAskDrawerOpen: (open: boolean) => {
+			setAskDrawerOpen: (open: boolean, scope: AskScope) => {
 				set((state) =>
 					open
 						? {
 								...claimRightSlot("isAskDrawerOpen"),
+								/*
+								 * WHICH QUEUE, written with the flag so the two are one update: a
+								 * surface reading `isAskDrawerOpen` between the two writes would
+								 * paint the previous scope's rows for a frame.
+								 */
+								askDrawerScope: scope,
 								/*
 								 * WHAT IT DISPLACED, not just that it won: the pane that held the slot a
 								 * moment ago is the one a close owes back, and only this call site knows it
@@ -1701,6 +1736,7 @@ export function persistedUiPreferences<
 		runPanelReveal: unknown;
 		consoleOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
+		askDrawerScope: unknown;
 		askDrawerEvictedPane: unknown;
 	},
 >(
@@ -1710,6 +1746,7 @@ export function persistedUiPreferences<
 	| "runPanelReveal"
 	| "consoleOpenIntent"
 	| "isAskDrawerOpen"
+	| "askDrawerScope"
 	| "askDrawerEvictedPane"
 > {
 	const {
@@ -1724,6 +1761,7 @@ export function persistedUiPreferences<
 		 * queue, which the session republishes on its own.
 		 */
 		isAskDrawerOpen: drawerOpen,
+		askDrawerScope: _scope,
 		askDrawerEvictedPane: evicted,
 		...persisted
 	} = state;

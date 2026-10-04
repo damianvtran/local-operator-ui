@@ -894,6 +894,15 @@ export const STORIES = [
 	 * hover ground painting above an unaltered hairline — the D4 state a still of
 	 * the resting bar cannot show.
 	 */
+	/*
+	 * THE FLEET ASK SCOPE (the ask drawer's second context, design §4.4). Note
+	 * what is NOT here: the story that draws both drawers at once is a FIGURE, not
+	 * a screen - one slot holds one pane (`claimRightSlot`) - so no frame is taken
+	 * from it. A frame of a state the product cannot reach is what agent review
+	 * round 1's F3 objected to, and the set refuses it rather than captioning it.
+	 */
+	["chat-asks-fleet-scope--fleet-scope-open", 1280, 720],
+	["chat-asks-fleet-scope--untitled-pair-in-one-repo", 1280, 720],
 	[
 		"chat-turn-collapse--collapsed",
 		1280,
