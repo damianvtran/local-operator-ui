@@ -10,8 +10,8 @@ being the widest thing on the screen (D5).
 ## The frames
 
 `after/` renders the shipped components from `PendingAsk` fixtures, in the two brand
-palettes, at `1280x800` — except the two `band-askmode-*` states, which are the
-design round's own frames at `1280x720` and dpr2 (see their rows):
+palettes, at `1280x800` — every frame, including the `band-askmode-*` pair, which was
+re-shot from its own committed story after design round 2's D6 (see that row):
 
 | directory | state |
 | --- | --- |
@@ -26,8 +26,8 @@ design round's own frames at `1280x720` and dpr2 (see their rows):
 | `dock-asks/` | the drawer in the REAL shell (`shell-app-shell--chat-dock-asks`), docked beside the conversation it is answering for, its bar reaching the window's top-right (D4) |
 | `band-drawer-open/` | the composer's status-row chip pressed, with the drawer open beside it |
 | `band-closed-by-x/` | **the same band after a press on the drawer's own dismiss** — the drawer is gone and the chip stands |
-| `band-askmode-open/` | the composed §5.0 state the design round asked for: the drawer open AND the composer still in its ask mode, both live doors to one question (design round 1, D2 — the round's own frames) |
-| `band-askmode-closed/` | the control for that pair: no drawer, the composer's ordinary invitation (design round's own frame, dark only) |
+| `band-askmode-open/` | the composed §5.0 state the design round asked for: the drawer open AND the composer still in its ask mode, both live doors to one question (design round 1, D2) — re-shot at this pass from `chat-composer-status-row--ask-driven-drawer-open` |
+| `band-askmode-closed/` | the control for that pair: no drawer, the composer's ordinary invitation — re-shot from `chat-composer-status-row--ask-driven-drawer-closed` |
 
 ## Measured, off the rendered frames
 
@@ -53,6 +53,10 @@ processes reaped by exact pid. Geometry is read in the page (`getBoundingClientR
   560px drawer (24px of `px-3` inset) and 376px inside the 400px band drawer. The
   card's width is therefore a consequence of the container, not a rule of its own —
   which is what the note asks for when it refuses to patch the width separately.
+- **The chip's duration is rendered ONCE**: the overflow frame's chip reads
+  `1 question waiting · expires in 48m`, not the doubled form round 1's rig produced
+  (see the two-launch note below) — the yield spans are a container query, and a
+  frame taken outside the container shows both.
 - **The scope line is the DRAWER's own count, not the chip's clause** (UX round 1, U5): `This conversation · 12 waiting, 2 moved on` on the overflow
   frame — every card the surface draws is counted, because `askDrawerCountClause`
   states both halves of a mixed queue — and `This conversation · All asks settled`
@@ -66,20 +70,26 @@ processes reaped by exact pid. Geometry is read in the page (`getBoundingClientR
   the section can never hold (`timed out` is in the backend's outstanding set, so it
   is a pending CARD with live controls) and omitting two it routinely holds.
 
-## Two states a rig must launch differently for
+## Two notes a reader needs: one launch difference, one re-shoot
 
-- **`drawer-many-overflow-scrolled/` is the one pair shot WITHOUT `--hide-scrollbars`.**
+### The scrolled pair is the one pair shot WITHOUT `--hide-scrollbars`
   The set's standing discipline is to hide the platform scrollbar (a classic one
   would move the card's content box the frames measure), and that is exactly why the
   D5 frame asks for the other launch: the app's scrollbars are overlay thumbs that
   appear on scroll, so "the overflow is the list's" is a pixel only while the thumb
   is in the picture. Every other frame keeps the flag.
-- **`band-askmode-*/` are the design round's own frames**, converted from the design
-  round's rig (`review-ask-mode-composition--drawer-open-composer-ask-mode`), at
-  `1280x720` dpr2 — a different size and a different rig from the rest of the set,
-  which is why they are named as such here. The state they show is now reachable in
-  the committed tree at `chat-composer-status-row--ask-driven-drawer-open`, so the
-  round can re-shoot it through the shipped components.
+### The §5.0 pair is re-shot rather than inherited, and the history is the point
+
+Design round 2's D6. Round 1's pair came from the design round's own rig
+(`review-ask-mode-composition--drawer-open-composer-ask-mode`), whose host lacked the
+`@container/chatcol` ancestor the chip's two yield spans resolve against — so both
+spans painted and both frames showed `1 question waiting · expires in 48m · 48m`, a
+string the product does not render. The designer voided the claim as a rig artifact,
+and the frames were re-taken from the committed stories
+(`chat-composer-status-row--ask-driven-drawer-open` / `--ask-driven-drawer-closed`) at
+the set's own `1280x800`, where the chip reads the duration once. A frame that shows
+something the product does not render is the defect class this set exists to refuse,
+so the frames were replaced rather than annotated.
 
 ## The absent-backend state has no frame here, deliberately
 
