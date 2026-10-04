@@ -14,6 +14,8 @@ import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
 import { checkPaletteBudgets } from "./check-evidence-palettes.mjs";
 import {
 	citationAncestryFailures,
+	citationFailures,
+	citationUnanswered,
 	countsMeanFailures,
 	frames as frameFiles,
 	partialCaptureFailures,
@@ -1514,6 +1516,116 @@ test(
 		);
 	},
 );
+
+/*
+ * The citation half's TWO PILES, and why which pile a citation lands in is a
+ * question about the CLONE rather than about the manifest.
+ *
+ * This is the defect the wiring found. `pnpm check-evidence` was added to CI as
+ * `ci.yml`'s `evidence` job and came back with 111 findings on a tree that is
+ * clean locally - every citation the manifest makes, reported as "resolves to no
+ * commit in this repository" - because `actions/checkout`'s default clone is ONE
+ * COMMIT DEEP. A missing object in a TRUNCATED clone is not evidence that the
+ * commit is gone, and judging it as a failure reds the gate on a manifest that
+ * is fine, for a reason no reader can act on: a repository that cannot answer
+ * has not found a defect, the same sentence the `SHALLOW` guard above is built
+ * on, and the same stand-down `evidence-fold.mjs`'s `runGuards` already makes for
+ * the ancestry half. So the citations this clone CAN judge stay failures and the
+ * ones it cannot are printed with their count, so a green run states its scope
+ * instead of implying it checked everything.
+ *
+ * Bound here rather than by a sweep test, because a test of the sweep cannot see
+ * it: reproducing the shipped behaviour needs a real truncated clone, and a fake
+ * reader is what the other synthetic-manifest cases use for exactly that reason.
+ *
+ * Mutations: put the truncation branch back on the failure pile (the shipped
+ * defect - 111 findings on every CI run); or read "is this clone truncated" as
+ * FALSE when git cannot answer, which excuses a repository that cannot be read
+ * rather than failing closed on it.
+ */
+test("a truncated clone stands the citations it cannot judge down, and names them", () => {
+	const manifest = {
+		head: "c70e8b36dc2ad86bfff81f85f05d08b248f82ccc",
+		supplementary: [
+			{
+				path: "a-set",
+				capturedAtHead: "e3ac03549d9bcb43f1abd2fff1f1ca803e83fbc9",
+			},
+		],
+		partialCapture: {
+			addedAtHead: "779b3f4341f",
+			refreshedAtHead: "b19c8fded4b",
+		},
+	};
+	/*
+	 * A reader that answers only the four questions `shaReaders` asks, from three
+	 * switches: is the clone truncated, do the cited objects RESOLVE, and does
+	 * some ref REACH them. An unreadable repository is the fourth case below, and
+	 * it is the one that has to fail closed.
+	 */
+	const answers =
+		({ shallow, resolve, reach }) =>
+		(args) => {
+			if (args.includes("--is-shallow-repository")) return shallow;
+			// `rev-parse --quiet --verify <sha>^{commit}`, the shape `shaReaders` uses.
+			if (args.some((argument) => String(argument).endsWith("^{commit}")))
+				return resolve ? "a commit" : null;
+			if (args[0] === "merge-base") return reach ? "" : null;
+			if (args[0] === "for-each-ref")
+				return reach ? "refs/remotes/origin/main" : "";
+			if (args[0] === "log") return "a subject";
+			return null;
+		};
+
+	const truncated = answers({ shallow: "true", resolve: false, reach: false });
+	assert.deepEqual(
+		citationFailures(manifest, truncated),
+		[],
+		"a truncated clone resolved nothing, so it has found nothing: judging these as failures is how 111 findings appeared on a clean tree in CI",
+	);
+	assert.deepEqual(
+		citationUnanswered(manifest, truncated).map((entry) => entry.field),
+		[
+			"`head`",
+			"supplementary[a-set].capturedAtHead",
+			"partialCapture.addedAtHead",
+			"partialCapture.refreshedAtHead",
+		],
+		"every citation the truncated clone could not judge has to be NAMED, because `main()` prints this pile as what the run did not check",
+	);
+
+	const full = answers({ shallow: "false", resolve: false, reach: false });
+	assert.equal(
+		citationFailures(manifest, full).length,
+		4,
+		"a clone that is NOT truncated has found a defect when the object is gone - gone is gone, and it must not be excused",
+	);
+	assert.deepEqual(citationUnanswered(manifest, full), []);
+
+	/*
+	 * A citation that RESOLVES is judged by reachability even in a truncated
+	 * clone: the object being present is the clone answering after all, so the
+	 * dangling case (`resolves` but no ref contains it) still fails there.
+	 */
+	assert.equal(
+		citationFailures(
+			manifest,
+			answers({ shallow: "true", resolve: true, reach: false }),
+		).length,
+		4,
+		"a citation whose object IS present and which no ref reaches is the dangling case that dies at the next gc, in any clone",
+	);
+
+	/*
+	 * Fail closed on the truncation question itself: an unreadable repository
+	 * answers `null`, and only the explicit `true` may stand a citation down.
+	 */
+	assert.equal(
+		citationFailures(manifest, () => null).length,
+		4,
+		"a repository git cannot answer for must be judged, not excused",
+	);
+});
 
 /* ---- the prose beside the counts ---------------------------------------- */
 
