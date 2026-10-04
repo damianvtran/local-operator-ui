@@ -455,7 +455,42 @@ export const DevicePanel: FC<{
 
 			<Separator />
 
-			<section className="flex min-h-0 flex-col gap-2">
+			{/*
+			 * `shrink-0` IS THE CONTAINMENT FIX (operator report, 2026-10-04).
+			 *
+			 * The panel is a flex COLUMN whose parent (`aside`) scrolls; this section
+			 * used to carry `min-h-0`, which let the COLUMN shrink it to whatever
+			 * room was left while its `<ul>` - 201 rows, a page of the catalogue -
+			 * kept its natural height. A shrunk section does not clip its content,
+			 * so the list PAINTED OVER every sibling below it: measured on the
+			 * operator's state (this device, 201 conversations, 1380x900) the
+			 * section shrank from 6755 px of content to 166 px and the rows drew
+			 * straight through the Network addresses, Status and Show-in-list
+			 * sections - "the two texts interleave line for line" (24 overlapping
+			 * text pairs at this state, 18 on the peer's eleven-row one). Refusing
+			 * to shrink is what makes the aside's own `overflow-y-auto` the scroll:
+			 * the column's height becomes its content's, and the panel scrolls as
+			 * one surface instead of overlapping itself. (Clipping this section
+			 * was the other candidate and is wrong: it would hide rows the panel
+			 * exists to reach.)
+			 *
+			 * THE SHAPE DECISION, stated because design round 1 (D3) asked for it
+			 * explicitly: the panel is ONE SCROLLING DOCUMENT, not a bounded list.
+			 * The alternative - a `max-h` on this section with its own
+			 * `overflow-y-auto`, which keeps the device facts in view - is not a
+			 * clip and was considered; it is refused because it re-creates the
+			 * property the review's numbers counted as the defect's own: TWO
+			 * vertical scrollers inside one 320 px column (before: section
+			 * 166/6755 AND aside 7,028/719; after: aside alone, 7,307/719). A
+			 * nested scroller is a scroll trap - the wheel stops at its end before
+			 * the panel can move - and the sections here read in one order
+			 * (identity, memberships, conversations, addresses, status) whose
+			 * member list is the long one; pinning the facts while the list scrolls
+			 * its own remainder leaves the list's middle exactly as hidden, one
+			 * scrollbar deeper. The page of rows this section holds is already a
+			 * bounded read (`MESH_SESSION_PAGE`), and the `+N` cap control says so.
+			 */}
+			<section className="flex shrink-0 flex-col gap-2">
 				<h3 className="text-meta text-ink-dim">
 					Conversations <span className="text-ink-disabled">({shownOf})</span>
 				</h3>
@@ -477,7 +512,19 @@ export const DevicePanel: FC<{
 									movingSessionId === session.id && "border-control",
 								)}
 							>
-								<span className="min-w-0 flex-1 truncate text-body-sm text-ink">
+								{/*
+								 * The row's own `title` (design round 1, D2): this span truncates
+								 * too (`Release notes: assembling the 0…`), so the panel's "the
+								 * full name is one hover away" recourse has to hold HERE, not only
+								 * on the chip - a second member of a series otherwise reads
+								 * identically on both surfaces. A `title` and not middle
+								 * truncation: the head is what identifies these titles, and the
+								 * hover matches the chip's own contract.
+								 */}
+								<span
+									className="min-w-0 flex-1 truncate text-body-sm text-ink"
+									title={chipLabel(session)}
+								>
 									{chipLabel(session)}
 								</span>
 								<span className="shrink-0 text-meta text-ink-dim">
