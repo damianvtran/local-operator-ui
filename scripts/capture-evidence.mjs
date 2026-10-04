@@ -8814,6 +8814,40 @@ export const STORIES = [
 	["mesh-tab--list-view", 1380, 900],
 	["mesh-tab--two-devices", 1024, 768, { dir: "two-devices-narrow" }],
 	/*
+	 * THE LONG LIST, AT THE OPERATOR'S SCALE (operator report, 2026-10-04).
+	 *
+	 * The report's state: the device panel open on a device holding a catalogue
+	 * page of conversations, the rows painting through the panel's own Network
+	 * addresses and Status sections, the node chips reading as tail fragments
+	 * (`…BE-OK`, `…2E pull`), and one row's `⋯` menu open over the list. The three
+	 * states below are the fix's AFTER half - the same states on `origin/main`'s
+	 * two component files are the declared supplementary set `mesh-tab-before/`,
+	 * so a reviewer holds the pair, not a single still. `many-conversations-menu`
+	 * is the composition the report was read from; the overlap it shows is the
+	 * same with the menu closed, which is why the menu is not the layer at fault.
+	 */
+	["mesh-tab--many-conversations", 1380, 900],
+	["mesh-tab--many-conversations-menu", 1380, 900],
+	["mesh-tab--many-conversations-peer", 1380, 900],
+	/*
+	 * THE STATE THE STACKING CLAIM LIVES IN (design round 1, D3). At the operator's
+	 * scale the device-level sections sit ~6,755 px down the panel, so every
+	 * top-of-list frame shows rows and nothing else - "Network addresses, Status and
+	 * Show in list stack below the catalogue" was the one claim in this pass that
+	 * rested on prose. `scrollToEnd` parks the aside at its maximum scroll, where
+	 * those sections ARE the viewport; same story and fixtures as
+	 * `many-conversations`, the difference being a scroll position, which is browser
+	 * state a story cannot set - the reason the option exists. The rig fails the
+	 * capture when the selector matches nothing or nothing scrolls, so this row
+	 * cannot silently photograph the top twice.
+	 */
+	[
+		"mesh-tab--many-conversations",
+		1380,
+		900,
+		{ dir: "many-conversations-bottom", scrollToEnd: "[data-mesh-panel]" },
+	],
+	/*
 	 * THE NOTICE-BAND FAMILY'S OWN SURFACES (fix/banner-warn-error-consistency-7e4c).
 	 *
 	 * The twelve-theme sweep is what makes a frame comparable with the rest of the

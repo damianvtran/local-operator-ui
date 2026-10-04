@@ -1238,9 +1238,11 @@ export const MoveConfirm: Story = {
  * case - which is how round 1 shipped with two chips reading `Swe…` and `Res…`.
  *
  * THE TITLES ARE DELIBERATE: four conversations named in series, differing only in their
- * last characters, which is the shape this app's own fixtures use and the shape an
- * end-truncation renders as four identical chips. The chip truncates from the LEFT
- * (`mesh-node.tsx`), so what survives is the part that tells them apart.
+ * last characters. Since the operator report (2026-10-04) the chip keeps the HEAD -
+ * the report's own chips read `…BE-OK` and `…2E pull` and identified nothing - so this
+ * series lands on a shared prefix here, and the panel and the tooltip are where its
+ * members are told apart. The cap itself - the two chips and the `+2` control - is what
+ * this story is for.
  */
 export const CapAtFour: Story = {
 	render: () => {
@@ -1272,6 +1274,144 @@ export const CapAtFour: Story = {
 			],
 		});
 		return <MeshPage />;
+	},
+};
+
+/**
+ * THE LONG LIST, AT THE SCALE THE OPERATOR REPORTED (operator report, 2026-10-04).
+ *
+ * The report: the device panel open on a device holding a catalogue page of
+ * conversations - the tab asks for `MESH_SESSION_PAGE` (200) and the panel counted
+ * 201 - with the rows painting through the panel's own Network addresses and
+ * Status sections, and one row's `⋯` menu open over the list. The defect is about
+ * CONTAINMENT rather than about the names (`mesh-card.tsx` carries the measured
+ * numbers and the fix).
+ *
+ * THE NAMES ARE INVENTED; THE SHAPES ARE THE REPORT'S. Its two chip examples were
+ * `ONBOARD-PROBE-OK` and `Hub E2E pull`, truncated to `…BE-OK` and `…2E pull` - long
+ * human titles that identify at the head - and its overflow control read `+199`. The
+ * generated tail is deliberately long so the list really is a page.
+ */
+function crowdedFixture() {
+	const selfRows = [
+		sessionRow("01234567890a", "Onboarding: connect a second machine"),
+		sessionRow("01234567890b", "Release notes: assembling the 0.33 line", {
+			live_state: "busy",
+		}),
+		sessionRow("01234567890c", "Tunnel addresses: verifier sweep"),
+		sessionRow("01234567890d", "cursor affordance audit", {
+			live_state: "busy",
+		}),
+		sessionRow("01234567890e", "Deploy pipeline: staging cutover"),
+		sessionRow("01234567890f", "Deploy pipeline: canary backout"),
+		...Array.from({ length: 195 }, (_, i) =>
+			sessionRow(
+				`f0${i.toString(16).padStart(6, "0")}00ac`,
+				`Scratch session ${String(i + 1).padStart(3, "0")}: long-running exploration of the redesign notes`,
+			),
+		),
+	];
+	const peerRows = [
+		"Provision probe OK",
+		"Release E2E pull",
+		"carry-test-42",
+		"offload audit 1",
+		"pilot wire 375be",
+		"remote broker test",
+		"host inventory: OS and toolchain",
+		"pilot goal 375be",
+		"remote smoke test",
+		"E2E prerequisite check",
+		"Atlas",
+	].map((name, i) =>
+		sessionRow(`ab${i.toString(16).padStart(6, "0")}cd`, name, {
+			locality: "remote",
+			owner_device: DEVICE_PEER,
+			owner_device_name: "cloud-node-1",
+			...(i % 4 === 2 ? { live_state: "busy" } : {}),
+		}),
+	);
+	return {
+		networks: {
+			self_device_id: DEVICE_SELF,
+			networks: [
+				network(NET_HOME, "damian-mesh", [
+					member(DEVICE_SELF, {
+						name: "damians-MacBook-Pro",
+						role: "admin",
+						last_seen_at: seenMinutesAgo(1),
+						endpoints: ["10.0.0.4:4097", "127.0.0.1:4098", "192.168.1.20:4098"],
+					}),
+					member(DEVICE_PEER, {
+						name: "cloud-node-1",
+						role: "drive",
+						last_seen_at: seenMinutesAgo(9),
+						endpoints: ["203.0.113.10:4097", "10.10.4.7:4097"],
+					}),
+				]),
+			],
+		},
+		peers: {
+			self_device_id: DEVICE_SELF,
+			peers: [
+				peer(DEVICE_PEER, {
+					name: "cloud-node-1",
+					last_seen_at: seenMinutesAgo(9),
+					session_count: 11,
+				}),
+			],
+			degraded: [],
+		},
+		sessions: [...selfRows, ...peerRows],
+	};
+}
+
+/** The panel open on THIS device, a catalogue page of conversations behind it. */
+export const ManyConversations: Story = {
+	render: () => {
+		installBridge(crowdedFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SELF);
+		await screen.findByText(/Conversations/);
+	},
+};
+
+/**
+ * The same state with one row's `⋯` menu OPEN over the list - the report's
+ * "the rows read through it" composition, so the pair proves the menu was never
+ * the layer at fault (the overlap is the same with it closed).
+ */
+export const ManyConversationsMenu: Story = {
+	render: () => {
+		installBridge(crowdedFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SELF);
+		const user = userEvent.setup();
+		const trigger = await waitFor(() => {
+			const found = document.querySelector(
+				`[data-mesh-session-menu="01234567890a"]`,
+			);
+			if (!found) throw new Error("the row's menu is not mounted yet");
+			return found;
+		});
+		await user.click(trigger as Element);
+		await screen.findByRole("menu");
+	},
+};
+
+/** The panel on the peer: eleven conversations, the report's first screenshot. */
+export const ManyConversationsPeer: Story = {
+	render: () => {
+		installBridge(crowdedFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+		await screen.findByText(/Conversations/);
 	},
 };
 
