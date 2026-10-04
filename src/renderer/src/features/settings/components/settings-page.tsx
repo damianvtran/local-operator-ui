@@ -1,4 +1,5 @@
 import { formatDayBucket } from "@features/chat/pickers/panels/formatters";
+import { parseTranscriptDisplayMode } from "@features/chat/transcript-display-mode";
 import { useOnboardingTour } from "@features/onboarding/hooks/use-onboarding-tour";
 import { ProviderGrid } from "@features/providers/provider-grid";
 import { pairingCardCopy } from "@shared/api/local-operator/backend-error";
@@ -58,8 +59,10 @@ import { RadientAccountSection } from "./radient-account-section";
 import { InfoGrid, InfoItem, SettingsSection } from "./settings-section";
 import { DEFAULT_SETTINGS_SECTIONS, SettingsSidebar } from "./settings-sidebar";
 import { SettingsUsageChart } from "./settings-usage-chart";
+import { SpeechSection } from "./speech-section";
 import { SystemPrompt } from "./system-prompt";
 import { ThemeSelector } from "./theme-selector";
+import { TranscriptDisplayModeSetting } from "./transcript-display-mode-setting";
 
 const BillingInfo: FC = () => {
 	const {
@@ -278,6 +281,17 @@ export const SettingsPage: FC = () => {
 	const setShowAgentReasoning = useUiPreferencesStore(
 		(state) => state.setShowAgentReasoning,
 	);
+	/*
+	 * The transcript display mode (issue #756): read raw and parsed on the way to
+	 * the control, so a token this build does not know renders as the default mode
+	 * rather than as no selection (the read-side rule `parseSidebarView` sets).
+	 */
+	const transcriptDisplayMode = useUiPreferencesStore(
+		(state) => state.transcriptDisplayMode,
+	);
+	const setTranscriptDisplayMode = useUiPreferencesStore(
+		(state) => state.setTranscriptDisplayMode,
+	);
 	const {
 		data: config,
 		isLoading: isConfigLoading,
@@ -381,6 +395,7 @@ export const SettingsPage: FC = () => {
 		radient: useRef<HTMLDivElement>(null),
 		integrations: useRef<HTMLDivElement>(null),
 		appearance: useRef<HTMLDivElement>(null),
+		speech: useRef<HTMLDivElement>(null),
 		providers: useRef<HTMLDivElement>(null),
 		backend: useRef<HTMLDivElement>(null),
 		updates: useRef<HTMLDivElement>(null),
@@ -1248,11 +1263,35 @@ export const SettingsPage: FC = () => {
 								<ToggleSetting
 									value={showAgentReasoning}
 									label="Show agent reasoning"
-									description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one."
+									description="Adds the agent's Reasoning and Thinking rows to conversations. They stay closed until you open one. Reasoning only: narration the agent writes as prose mid-turn is transcript content, not reasoning — never removed by either display mode (by turn folds it behind the turn's bars, by response keeps it on screen)."
 									onChange={async (next) => setShowAgentReasoning(next)}
+								/>
+								{/*
+								 * The transcript display mode, the second control of a pair: this row
+								 * changes how RESPONSES are drawn, the switch above changes whether
+								 * REASONING is drawn at all. They compose — neither rewrites the other's
+								 * rows — which is what the issue's "compose instead of competing" asks
+								 * for. The mode is ALSO reachable from the conversation itself (see the
+								 * header's `Transcript display` submenu), because a reader looking for
+								 * it is looking at the transcript rather than at this page.
+								 */}
+								<TranscriptDisplayModeSetting
+									value={parseTranscriptDisplayMode(transcriptDisplayMode)}
+									onChange={(next) => setTranscriptDisplayMode(next)}
 								/>
 							</div>
 						</SettingsSection>
+
+						{/*
+						 * Speech voicing sits beside Appearance and not under Backend settings,
+						 * because it is the same kind of question: a preference about how the app
+						 * behaves for the reader in front of it, not a registry key they had to
+						 * know by name. Its seven rows are the daemon's own (selected by key), and
+						 * the group adds what the registry cannot say — which provider would serve
+						 * this machine, and what to do when none can. See its module docstring for
+						 * why it carries no credential field.
+						 */}
+						<SpeechSection sectionRef={sectionRefs.speech} />
 
 						{/*
 						 * The provider grid is the same component onboarding uses: one

@@ -10,7 +10,10 @@
  * directly.
  */
 
-import { DESKTOP_MESSAGE_BUDGET_BYTES } from "../../../../../shared/desktop-contract";
+import {
+	DESKTOP_MESSAGE_BUDGET_BYTES,
+	DESKTOP_MESSAGE_MAX_IMAGES,
+} from "../../../../../shared/desktop-contract";
 import { boundImagesForBudget } from "./bound-image";
 import type { WireImage } from "./bound-image";
 import { messageBodyBytes } from "./message-budget";
@@ -93,16 +96,27 @@ export async function encodeImageAttachments(
 		if (read.success) images.push({ data_b64: read.data, mime_type: mime });
 		else unreadable.push(attachment);
 	}
+	/*
+	 * More images than the wire carries are REPORTED, not silently dropped: the
+	 * count the slice below leaves behind travels out as `overflow` so every
+	 * send can refuse before admission with a sentence that names it
+	 * (`imageOverflowRefusal`) - the same reason `unreadable` is a list rather
+	 * than a silent skip one arm up (design round 1 on issue #790, D1). The
+	 * slice still bounds the body to the schema for a caller that forgets to
+	 * read the report.
+	 */
+	const overflow = Math.max(0, images.length - DESKTOP_MESSAGE_MAX_IMAGES);
 	// Bound per image first, then check the TOTAL and step the whole set down
 	// until the message fits. Several individually legal screenshots that do not
 	// collectively fit is the common case, and it is not visible to a per-image
 	// rule.
 	return {
 		images: await boundImagesForBudget(
-			images.slice(0, 8),
+			images.slice(0, DESKTOP_MESSAGE_MAX_IMAGES),
 			DESKTOP_MESSAGE_BUDGET_BYTES,
 			(candidate) => messageBodyBytes(text, candidate),
 		),
 		unreadable,
+		overflow,
 	};
 }

@@ -6673,3 +6673,80 @@ test("a send's delivery state rides the row, from both the durable and the live 
 		"a seed end whose details were stripped keeps the state the row already had",
 	);
 });
+
+/* ---------- the dev-only immutability guard, through the emit path --------- */
+
+/*
+ * `record-immutability.ts` freezes a record where the reducer EMITS it - `upsert`
+ * (which every live caller, `markLiveRecordsTruncated` and `appendPendingUser`
+ * funnel through) and the page/merge paths - in a DEVELOPMENT build only, so an
+ * in-place write throws at the write instead of leaving `collapseRowsKey`'s
+ * cached per-record signature stale (agent review round 2, M1r2).
+ *
+ * The bundle above carries no `import.meta.env`, so it takes the
+ * production-shaped branch (`DEV` read as false, no freeze) - which is why no
+ * existing assertion in this file changes. This second bundle is the same module
+ * with `DEV: true`: the branch a Vite dev build takes.
+ */
+const devBundle = await build({
+	stdin: {
+		contents:
+			'export * from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
+		resolveDir: process.cwd(),
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	define: { "import.meta.env": '{"DEV":true}' },
+});
+const devReducer = await import(
+	`data:text/javascript;base64,${Buffer.from(devBundle.outputFiles[0].text).toString("base64")}`
+);
+
+test("a development build freezes an emitted record, so an in-place write throws", () => {
+	const emitted = devReducer.appendPendingUser(
+		devReducer.EMPTY_TRANSCRIPT,
+		"u1",
+		"hi",
+		[],
+		1,
+	).records[0];
+	assert.ok(
+		Object.isFrozen(emitted),
+		"a record the reducer emits is frozen in a development build",
+	);
+	assert.throws(
+		() => {
+			emitted.text = "changed";
+		},
+		TypeError,
+		"a field write throws instead of leaving the plan's cached signature stale",
+	);
+	assert.throws(
+		() => {
+			emitted.brandNew = 1;
+		},
+		TypeError,
+		"a new own field throws",
+	);
+	assert.throws(
+		() => {
+			emitted.images.push({ id: "i1", mimeType: "image/png", data: "" });
+		},
+		TypeError,
+		"an images.push throws - the record's array is frozen too",
+	);
+
+	/*
+	 * The production-shaped arm, so the file states the production behaviour out
+	 * loud rather than leaving it to the reader: outside a development build the
+	 * record is NOT frozen, and the guard costs nothing.
+	 */
+	const loose = appendPendingUser(EMPTY_TRANSCRIPT, "u2", "hi", [], 1)
+		.records[0];
+	assert.ok(
+		!Object.isFrozen(loose),
+		"no freeze outside a development build - the guard is development-only",
+	);
+});

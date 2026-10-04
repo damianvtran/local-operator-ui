@@ -101,9 +101,10 @@ export const EveryState: Story = {
  * 252px is not a hypothetical. It is what the transcript's content box measures
  * at the window's 800px minimum: 800 minus the 220px app rail, minus the chat
  * list pane's 280px default, minus the transcript's `p-4` (32px) and the 16px
- * its `scrollbar-gutter: stable both-edges` reserves. The chat column itself
- * floors lower still (220px), and opening the canvas panel reaches these widths
- * at any window size — so this is a width the app routinely has, not an edge.
+ * its `scrollbar-gutter: stable both-edges` reserves. The chat column floors
+ * still (480px today; 220px when these boards were drawn), and opening the
+ * canvas panel reaches these widths at any window size — so this is a width the
+ * app routinely has, not an edge.
  *
  * A reviewer should be able to SEE the invariant hold at the narrow measure
  * rather than derive it from three constants, which is the difference between
@@ -121,7 +122,8 @@ export const AppMinimumWidth: Story = {
 				<Ruled key={state} state={state} caption={caption} width="252px" />
 			))}
 			<p className="max-w-[46rem] pt-2 text-ink-muted text-meta">
-				And at 220px, the chat column's own floor.
+				And at 220px, the floor this board draws — the column's own floor when
+				it was drawn, 480px since §I.
 			</p>
 			{STATES.filter(
 				(entry) => entry.state === "failed" || entry.state === "loading",
@@ -233,7 +235,8 @@ const transcriptOf = (
 const InTranscript = ({
 	hasMore,
 	loadingOlder,
-}: { hasMore: boolean; loadingOlder: boolean }) => {
+	olderFailed = false,
+}: { hasMore: boolean; loadingOlder: boolean; olderFailed?: boolean }) => {
 	const containerRef = useRef<HTMLDivElement>(null);
 	return (
 		<div className="flex h-[520px] flex-col bg-canvas" ref={containerRef}>
@@ -253,6 +256,7 @@ const InTranscript = ({
 				waiting={false}
 				starting={false}
 				loadingOlder={loadingOlder}
+				olderFailed={olderFailed}
 				onLoadOlder={async () => true}
 				containerRef={containerRef}
 				isSmallView={false}
@@ -281,4 +285,48 @@ export const InTranscriptIdle: Story = {
  */
 export const InTranscriptLoading: Story = {
 	render: () => <InTranscript hasMore loadingOlder />,
+};
+
+/**
+ * The state this branch's one user-visible change produces, in the real
+ * transcript: an `olderFailed` session painting the recovery row rather than the
+ * gesture.
+ *
+ * WHAT THIS STORY CAN AND CANNOT EXPRESS (agent review round 1, N3). It sets
+ * `olderFailed` and nothing else — the policy's `failures` retry budget is not a
+ * prop it can carry, and its three-row fixture holds no rows back — so the frame
+ * shows the `failed` arm exactly as `slotState` decides it, and NOT the
+ * retry-budget-spent or rows-held-back combinations the hook suite drives. The
+ * `windowed` contrast lives in the assertion, not in this board.
+ *
+ * WHY A CELL OF ITS OWN. `use-scroll-paging.ts`'s `slotState` now lets `failed`
+ * outrank `windowed` and `idle`, so a reader whose backend is down reads
+ * *"Could not load earlier messages — Try again"* where they used to read
+ * *"Earlier history above — scroll up to load"* — a sentence that asked them for
+ * the one gesture that could not work. That precedence is a fact about the
+ * HOOK, not about the slot, so no board built from `OlderHistorySlot` alone can
+ * show it: `EveryState` renders the five arms side by side and the precedence
+ * lives upstream of all five. What this board can do is put the resulting state
+ * in the place the claim is made for — above real rows, through the production
+ * transcript, so the design round has the frame to capture.
+ *
+ * THE FAILURE IS NOT STICKY FOR THE SESSION (agent review round 1, M3): the
+ * `failed` arm is now taken only while no reveal the reader could SEE has
+ * landed since the failure (`failureSuperseded`), so a later local widen that
+ * reveals already-fetched rows paints `windowed` again rather than leaving a
+ * past blip's row up. That is the state the design round should judge.
+ *
+ * The precedence itself is asserted where it can be: `use-scroll-paging.ts`'s
+ * mounted-hook case "a failed older-history load paints the failure row even
+ * while rows are windowed" (`scripts/transcript-paging-hook.test.mjs`) drives
+ * the real hook with rows held back and `olderFailed` set, and reads
+ * `slotState` as `"failed"`. This story is the rendered companion to that
+ * assertion, not a substitute for it.
+ *
+ * NO FRAME IS SHOT in this pass: the capture window is contended by four other
+ * lanes. The story and its `STORIES` row are registered together, so a later
+ * design round captures the state without re-deriving which board it belongs to.
+ */
+export const InTranscriptFailed: Story = {
+	render: () => <InTranscript hasMore loadingOlder={false} olderFailed />,
 };

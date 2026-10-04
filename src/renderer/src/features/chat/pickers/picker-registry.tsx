@@ -25,6 +25,7 @@ import type { FC } from "react";
 import type { NativeDesktopAction } from "../../../../../shared/desktop-control-contract";
 import type { CanonicalFrontendState } from "../../../../../shared/desktop-session-contract";
 import type { DesktopFeature } from "../../../shared/api/local-operator/desktop-hooks";
+import type { ChatTarget } from "../../../shared/api/local-operator/profile-hooks";
 import type { ArgumentSource } from "../components/slash-argument-rows";
 import { runMoveSessionFromDispatch } from "../move-session";
 import type { MoveRunContext } from "../move-session";
@@ -147,6 +148,28 @@ export type DestinationEntry =
 			 * agreement.
 			 */
 			sessionless?: true;
+			/**
+			 * This picker is answerable on a DRAFT pane, by STAGING the draft's
+			 * identity (`/team`, `/agent` — issue #780).
+			 *
+			 * Unlike `sessionless` (which claims the row "reads no session"), this
+			 * claims the row knows what to DO without one: on a pane with no
+			 * conversation its list is read from the sessionless roster routes
+			 * (`teams.list` / `profiles.list` — the reads the sidebar and the
+			 * Agents page already make), and a pick routes to
+			 * `stageDraft({kind, name})`, the same act as the sidebar's "New chat
+			 * with <team>", instead of addressing a session that does not exist.
+			 * The kind is the `ChatTarget` the stage writes, carried explicitly
+			 * rather than derived from the destination string.
+			 *
+			 * READ BY the dispatcher's `!sessionId` branch (which presents the
+			 * draft route before `destinationNeedsSession` can refuse it) and by
+			 * the composer's pick path (`draftStageForSource` below). The
+			 * predicate itself does NOT change: these destinations still address
+			 * a conversation in the ordinary sense, which is what keeps the
+			 * palette's route-does-this-need-a-chat question answered the same.
+			 */
+			draftIdentity?: ChatTarget["kind"];
 	  } & ArgsBehavior)
 	| ({
 			kind: "machine-panel";
@@ -397,11 +420,13 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 	"session.team": {
 		kind: "picker",
 		component: TeamPicker,
+		draftIdentity: "team",
 		inline: { source: "team", nameThenMessage: true, runs: false },
 	},
 	"session.agent": {
 		kind: "picker",
 		component: AgentPicker,
+		draftIdentity: "agent",
 		inline: { source: "agent", nameThenMessage: true, runs: false },
 	},
 	appearance: {
@@ -540,6 +565,36 @@ export const DESTINATIONS: Record<string, DestinationEntry> = {
 		},
 	},
 };
+
+/**
+ * The stage a DRAFT PANE's pick of this inline list performs, if any.
+ *
+ * The composer's argument-list pick and the dispatcher's `!sessionId` branch
+ * both mean the same act when they fire (issue #780): on a pane with no
+ * conversation, choosing a team/agent row STAGES the draft's identity with
+ * `stageDraft({kind, name})` — the sidebar's "New chat with <team>" path —
+ * rather than completing a word for a command the pane then cannot run. What
+ * makes a list eligible is the ROW's own `draftIdentity` opt-in; deriving the
+ * map from the table (rather than switching on source names here) is what keeps
+ * a second draft-capable row from needing a second edit beside this one.
+ *
+ * The composer keys its path on the INLINE SOURCE (that is the only handle its
+ * pick carries — the popup's row names a value, not a destination), and an
+ * inline list belongs to exactly one destination, so the two spellings cannot
+ * drift while the table keeps one row per source.
+ */
+const DRAFT_STAGE_SOURCES = new Map<ArgumentSource, ChatTarget["kind"]>();
+for (const entry of Object.values(DESTINATIONS)) {
+	if (entry.kind !== "picker" || !entry.draftIdentity || !entry.inline)
+		continue;
+	DRAFT_STAGE_SOURCES.set(entry.inline.source, entry.draftIdentity);
+}
+
+export function draftStageForSource(
+	source: ArgumentSource | undefined,
+): ChatTarget["kind"] | undefined {
+	return source ? DRAFT_STAGE_SOURCES.get(source) : undefined;
+}
 
 /**
  * Whether this destination addresses a conversation at all.

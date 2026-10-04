@@ -26,6 +26,9 @@ export type {
 	DesktopCapabilities,
 	DesktopProvider,
 	ProviderMethod,
+	VoicePath,
+	VoicePathResolution,
+	VoicePathRung,
 } from "../../../../../shared/desktop-contract";
 
 /*

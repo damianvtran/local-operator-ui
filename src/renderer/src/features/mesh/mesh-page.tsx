@@ -54,6 +54,15 @@ import {
 	MoveNotice,
 	RemoveMemberDialog,
 } from "./mesh-actions";
+import {
+	type ApprovalDecision,
+	type MeshApprovalRow,
+	approvalErrorMessage,
+	approvalRefusal,
+	useMeshApprovalDecision,
+	useMeshApprovals,
+} from "./mesh-approvals";
+import { MeshApprovalsTray } from "./mesh-approvals-tray";
 import { MeshCanvas } from "./mesh-canvas";
 import {
 	DevicePanel,
@@ -142,6 +151,32 @@ export const MeshSurface: FC<{
 	/** A poll failed over drawn data: a sentence, never a change to the nodes. */
 	staleError: string | null;
 	onRetry: () => void;
+	/**
+	 * The onboarding approvals: the badge read's rows, its own failure and its two
+	 * writes. A READ OF ITS OWN, separate from the mesh's — it dials nothing and
+	 * answers on a machine whose relay is down (`mesh-approvals.ts`) — so it
+	 * renders above every state block below and a mesh failure never blanks it.
+	 */
+	approvals: {
+		rows: readonly MeshApprovalRow[];
+		error: string | null;
+		pending: { approvalId: string; decision: ApprovalDecision } | null;
+		onDecide: (approvalId: string, decision: ApprovalDecision) => void;
+		onRetry: () => void;
+		/** The approvals read's own stamp, so the expiry lines share one clock. */
+		nowSeconds: number;
+		/**
+		 * The last decision's refusal, when it had one (agent review round 1,
+		 * finding 1): the code and the authored sentence, attached to the record
+		 * it was about. The tray renders it beside that record's card; this
+		 * bundle is the only path a refused decision has to the screen.
+		 */
+		decisionRefusal: {
+			approvalId: string | null;
+			code: string;
+			sentence: string;
+		} | null;
+	};
 	/** The conversations the reads returned, and what each device holds. */
 	sessions: readonly MeshSessionRow[];
 	/** A failure of the sessions read alone: the graph still draws without chips. */
@@ -213,6 +248,7 @@ export const MeshSurface: FC<{
 	checking,
 	staleError,
 	onRetry,
+	approvals,
 	sessions,
 	sessionError,
 	selfLabel,
@@ -346,7 +382,18 @@ export const MeshSurface: FC<{
 		 * longer ships its own outer margin (branding § 5's "the container owns the
 		 * gap").
 		 */
-		<div className="flex h-full min-h-0 flex-col gap-6 p-6">
+		/*
+		 * `overflow-y-auto` IS LOAD-BEARING (UX round 2, U7). The approvals tray sits
+		 * above these blocks and grows with its content - a gloss list and a
+		 * consequence line per waiting record. The parent slot is `overflow: hidden`,
+		 * so an unbounded page did not push the canvas down, it CLIPPED it: measured
+		 * with two waiting records, the canvas region went from 534x33 to 0 height at
+		 * a 700px-tall window and nothing scrolled (every ancestor up is hidden).
+		 * The tab now degrades by scrolling - the graph the whole journey ends on
+		 * stays reachable - and `min-h` on the canvas block below keeps it from
+		 * collapsing instead of merely being reachable.
+		 */
+		<div className="flex h-full min-h-0 flex-col gap-6 overflow-y-auto p-6">
 			<PageHeader
 				title="Mesh"
 				icon={Network}
@@ -420,6 +467,37 @@ export const MeshSurface: FC<{
 				</div>
 			</PageHeader>
 
+			{/*
+			 * THE APPROVALS RENDER FIRST, above every state block below, because a
+			 * pending record is the most important fact on this tab and it is
+			 * independent of the mesh read: the tray is its own query, so a loading
+			 * canvas or an empty network does not hide a request that is waiting on
+			 * the operator.
+			 */}
+			<MeshApprovalsTray
+				rows={approvals.rows}
+				error={approvals.error}
+				pending={approvals.pending}
+				refusal={approvals.decisionRefusal}
+				onDecide={approvals.onDecide}
+				onRetry={approvals.onRetry}
+				nowSeconds={approvals.nowSeconds}
+				/*
+				 * The name the canvas already shows for a network, so the consent chip
+				 * does not name it twice (UX round 1, U1). `graph` is null until the mesh
+				 * read lands, and the approvals read is independent of it - so this is
+				 * an empty map on the first paint and the chip falls back to the id.
+				 */
+				networkNames={
+					new Map(
+						(graph?.networks ?? []).map((network) => [
+							network.id,
+							network.label,
+						]),
+					)
+				}
+			/>
+
 			{state.kind === "loading" && (
 				<div className="flex min-h-0 flex-1 flex-col gap-3">
 					<Skeleton className="h-4 w-64" />
@@ -476,136 +554,145 @@ export const MeshSurface: FC<{
 			)}
 
 			{state.kind === "ready" && graph && (
-				<div className="flex min-h-0 flex-1 gap-4">
-					<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-						<p
-							id={summaryId}
-							className="text-meta text-ink-muted"
-							data-mesh-summary=""
-						>
-							{summary}
-						</p>
-						{staleError && (
-							<Alert variant="warning">
-								<p>{staleError}</p>
-							</Alert>
-						)}
-						{sessionError && (
-							/*
-							 * A FAILED SESSIONS READ DOES NOT TAKE THE GRAPH DOWN. The topology and
-							 * the conversations are two reads with two failure modes, and a tab that
-							 * blanked its canvas because the catalogue timed out would be asserting
-							 * that there is no mesh - a claim this device never made. The sentence
-							 * is the backend's own, and the chips are simply absent.
-							 */
-							<Alert variant="warning">
-								<p>{sessionError}</p>
-							</Alert>
-						)}
-						{moveReport && (
-							<MoveNotice
-								receipt={
-									moveReport.kind === "moved"
-										? {
-												verb: moveReport.verb,
-												detail: moveReport.detail,
-												undo: moveReport.undo,
-											}
-										: null
-								}
-								refusal={
-									moveReport.kind === "refused" ? moveReport.refusal : null
-								}
+				<>
+					{/*
+					 * THE CANVAS KEEPS A FLOOR (UX round 2, U7): the tray above grows with
+					 * its own content, and `min-h-0` let this block be squeezed to nothing -
+					 * at a 700px window the graph the operator's journey ends on measured
+					 * 0px tall. A floor plus the page's own scroll means the canvas degrades
+					 * by scrolling, never by disappearing.
+					 */}
+					<div className="flex min-h-[22rem] flex-1 gap-4">
+						<div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+							<p
+								id={summaryId}
+								className="text-meta text-ink-muted"
+								data-mesh-summary=""
+							>
+								{summary}
+							</p>
+							{staleError && (
+								<Alert variant="warning">
+									<p>{staleError}</p>
+								</Alert>
+							)}
+							{sessionError && (
 								/*
-								 * THE REFUSAL'S OWN MOVE, read once and handed to the notice: the wait button is
-								 * drawn from this and the handler below re-issues it, so the two cannot disagree
-								 * about whether pressing it does anything (agent review round 2, MINOR).
+								 * A FAILED SESSIONS READ DOES NOT TAKE THE GRAPH DOWN. The topology and
+								 * the conversations are two reads with two failure modes, and a tab that
+								 * blanked its canvas because the catalogue timed out would be asserting
+								 * that there is no mesh - a claim this device never made. The sentence
+								 * is the backend's own, and the chips are simply absent.
 								 */
-								canWait={
-									moveReport.kind === "refused" && moveReport.plan !== null
+								<Alert variant="warning">
+									<p>{sessionError}</p>
+								</Alert>
+							)}
+							{moveReport && (
+								<MoveNotice
+									receipt={
+										moveReport.kind === "moved"
+											? {
+													verb: moveReport.verb,
+													detail: moveReport.detail,
+													undo: moveReport.undo,
+												}
+											: null
+									}
+									refusal={
+										moveReport.kind === "refused" ? moveReport.refusal : null
+									}
+									/*
+									 * THE REFUSAL'S OWN MOVE, read once and handed to the notice: the wait button is
+									 * drawn from this and the handler below re-issues it, so the two cannot disagree
+									 * about whether pressing it does anything (agent review round 2, MINOR).
+									 */
+									canWait={
+										moveReport.kind === "refused" && moveReport.plan !== null
+									}
+									onWait={onWaitForIdle}
+									onRecheck={onRetry}
+									onUndo={onUndoCopy}
+									onDismiss={onDismissReport}
+									pending={moveBusy}
+								/>
+							)}
+							{presentation === "canvas" ? (
+								<MeshCanvas
+									graph={graph}
+									slots={slots}
+									nowSeconds={nowSeconds}
+									selectedDeviceId={selectedDeviceId}
+									sessions={held.byDevice}
+									sessionTotals={totals}
+									movingSessionId={movingSessionId}
+									canMove={canMove}
+									onOpenDevice={openDevice}
+									onAskMove={onAskMove}
+									onDropRefused={onDropRefused}
+									onShowAllSessions={openDevice}
+									summaryId={summaryId}
+								/>
+							) : (
+								<MeshList
+									graph={graph}
+									nowSeconds={nowSeconds}
+									selectedDeviceId={selectedDeviceId}
+									sessions={held.byDevice}
+									selfLabel={selfLabel}
+									canMove={canMove}
+									onSelect={openDevice}
+									onMove={moveFor}
+									onInvite={onOpenInvite}
+									onRemove={onOpenRemove}
+								/>
+							)}
+						</div>
+						{selectedDevice && (
+							<DevicePanel
+								device={selectedDevice}
+								sessions={
+									held.byDevice.get(selectedDevice.id) ?? {
+										rows: [],
+										shown: [],
+										hidden: 0,
+									}
 								}
-								onWait={onWaitForIdle}
-								onRecheck={onRetry}
-								onUndo={onUndoCopy}
-								onDismiss={onDismissReport}
-								pending={moveBusy}
-							/>
-						)}
-						{presentation === "canvas" ? (
-							<MeshCanvas
-								graph={graph}
-								slots={slots}
+								sessionTotal={totals.get(selectedDevice.id) ?? 0}
 								nowSeconds={nowSeconds}
-								selectedDeviceId={selectedDeviceId}
-								sessions={held.byDevice}
-								sessionTotals={totals}
+								canMove={canMove}
+								canInvite={state.kind === "ready"}
 								movingSessionId={movingSessionId}
-								canMove={canMove}
-								onOpenDevice={openDevice}
-								onAskMove={onAskMove}
-								onDropRefused={onDropRefused}
-								onShowAllSessions={openDevice}
-								summaryId={summaryId}
-							/>
-						) : (
-							<MeshList
-								graph={graph}
-								nowSeconds={nowSeconds}
-								selectedDeviceId={selectedDeviceId}
-								sessions={held.byDevice}
-								selfLabel={selfLabel}
-								canMove={canMove}
-								onSelect={openDevice}
+								destinationsFor={(session) =>
+									destinationsWithVerdicts(graph, session, selfLabel)
+								}
+								onClose={() => setSelectedDeviceId(null)}
 								onMove={moveFor}
-								onInvite={onOpenInvite}
-								onRemove={onOpenRemove}
+								onInvite={(device) =>
+									onOpenInvite({
+										deviceId: device.id,
+										deviceLabel: device.label,
+									})
+								}
+								onRemoveMember={(device, networkId) => {
+									const network = graph.networks.find(
+										(network) => network.id === networkId,
+									);
+									onOpenRemove({
+										networkId,
+										networkLabel: network?.label ?? networkId,
+										deviceId: device.id,
+										deviceLabel: device.label,
+									});
+								}}
+								onShowInList={(deviceId) => {
+									openDevice(deviceId);
+									setPresentation("list");
+								}}
 							/>
 						)}
 					</div>
-					{selectedDevice && (
-						<DevicePanel
-							device={selectedDevice}
-							sessions={
-								held.byDevice.get(selectedDevice.id) ?? {
-									rows: [],
-									shown: [],
-									hidden: 0,
-								}
-							}
-							sessionTotal={totals.get(selectedDevice.id) ?? 0}
-							nowSeconds={nowSeconds}
-							canMove={canMove}
-							canInvite={state.kind === "ready"}
-							movingSessionId={movingSessionId}
-							destinationsFor={(session) =>
-								destinationsWithVerdicts(graph, session, selfLabel)
-							}
-							onClose={() => setSelectedDeviceId(null)}
-							onMove={moveFor}
-							onInvite={(device) =>
-								onOpenInvite({
-									deviceId: device.id,
-									deviceLabel: device.label,
-								})
-							}
-							onRemoveMember={(device, networkId) => {
-								const network = graph.networks.find(
-									(network) => network.id === networkId,
-								);
-								onOpenRemove({
-									networkId,
-									networkLabel: network?.label ?? networkId,
-									deviceId: device.id,
-									deviceLabel: device.label,
-								});
-							}}
-							onShowInList={(deviceId) => {
-								openDevice(deviceId);
-								setPresentation("list");
-							}}
-						/>
-					)}
-				</div>
+				</>
 			)}
 
 			<MoveConfirmDialog
@@ -689,6 +776,46 @@ export const MeshPage: FC = () => {
 	const state = meshReadState(reads);
 	const graph = useMeshGraph(reads);
 	const transfer = useMeshTransfer();
+	/*
+	 * THE APPROVALS READ, gated on its OWN key (`features.approvals`) rather than
+	 * on `peers`: the routes are additive, and the key is how this renderer learns
+	 * the surface exists before building an affordance whose POST would 404 on a
+	 * backend without it. Absent ⇒ no tray, no rail badge, nothing to click into a
+	 * 404 — the pre-onboarding state.
+	 *
+	 * THE PAGE RIDES THE RAIL'S POLLER (`poll: false`): the rail is mounted on
+	 * every route and is where the badge must move, so the interval lives there and
+	 * this observer shares the cache entry (the inverse of the networks split, for
+	 * the reason `mesh-approvals.ts` states — this read dials no peer). The
+	 * decisions' invalidation is what refreshes it after a write.
+	 */
+	const approvalsEnabled =
+		desktopFeatureState(capabilities.data, "approvals") === "enabled";
+	const approvals = useMeshApprovals(enabled && approvalsEnabled, {
+		poll: false,
+	});
+	const decideApproval = useMeshApprovalDecision();
+	/*
+	 * A REFUSED DECISION RENDERS ITS AUTHORED SENTENCE (agent review round 1,
+	 * finding 1): the store's refusals are the ones a waiting surface MUST carry
+	 * - a host with no signing surface ("ask Local Operator to set up operator
+	 * authority here first"), a declined prompt, the transport's deadline
+	 * sentence ("may or may not have landed … read the approvals again"), and
+	 * the conflict/expired refusals. Read from the mutation's own error, the
+	 * same shape as `removeRefusal` below and the same rule
+	 * (`approvalRefusal` prefers the authored sentence); the next `mutate` call
+	 * clears the error, so the sentence lives exactly as long as it is current.
+	 */
+	const decisionRefusal = decideApproval.isError
+		? {
+				approvalId: decideApproval.variables?.approvalId ?? null,
+				...approvalRefusal(decideApproval.error),
+			}
+		: null;
+	const approvalsNowSeconds = useMemo(
+		() => Math.floor((approvals.dataUpdatedAt || Date.now()) / 1000),
+		[approvals.dataUpdatedAt],
+	);
 	/*
 	 * THE MESH TAB IS A THIRD MOVE SITE, and it settles the row for the same
 	 * reason the chat's two sites do (agent review round 2, R2-1). A move issued
@@ -869,6 +996,18 @@ export const MeshPage: FC = () => {
 			checking={peers.isFetching || networks.isFetching}
 			staleError={staleError}
 			onRetry={retry}
+			approvals={{
+				rows: approvals.data ?? [],
+				error: approvals.isError ? approvalErrorMessage(approvals.error) : null,
+				pending: decideApproval.isPending
+					? (decideApproval.variables ?? null)
+					: null,
+				decisionRefusal,
+				onDecide: (approvalId, decision) =>
+					decideApproval.mutate({ approvalId, decision }),
+				onRetry: () => void approvals.refetch(),
+				nowSeconds: approvalsNowSeconds,
+			}}
 			sessions={sessionRead.data ?? []}
 			movingSessionId={
 				transfer.isPending ? (transfer.variables?.sessionId ?? null) : null

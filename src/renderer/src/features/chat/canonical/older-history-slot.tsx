@@ -125,7 +125,7 @@ const BOX = "@container/olderhistory mb-4 flex h-7 min-w-0 items-center gap-2";
  *
  * A shorter sentence at a narrower column is the fix that keeps F. The
  * container is this row rather than the chat column because the row is what
- * has to fit: the same 220px column yields a different budget here depending on
+ * has to fit: the same narrow column yields a different budget here depending on
  * whether an action sits beside the text, and `@container` asks the question
  * that determines the answer.
  *

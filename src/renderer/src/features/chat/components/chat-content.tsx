@@ -89,7 +89,7 @@ import type {
 	DraftResolution,
 } from "../draft-selection";
 import type { Message } from "../types/message";
-import { AskSurfaces } from "./asks/ask-surfaces";
+import { AskDrawer } from "./asks/ask-drawer";
 import { Canvas } from "./canvas";
 import { documentsForCanvas } from "./canvas/document-buffers";
 import { tabFollowingClose } from "./canvas/tab-selection";
@@ -1089,6 +1089,26 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 */
 		const isConsolePaneOpen = useUiPreferencesStore((s) => s.isConsolePaneOpen);
 		/*
+		 * THE ASKS DRAWER, the right slot's FIFTH occupant, read here for the reason the
+		 * browser pane's block above states: the store owns the flag (the composer chip
+		 * opens it, the composer's own routing reads it - see `chat-page.tsx`), and this
+		 * component is what renders the slot it opens into. Reading it from the store
+		 * rather than from the page's props is also what makes the slot's exclusion a
+		 * construction: `setAskDrawerOpen` closes the canvas, this term closes the
+		 * drawer when the canvas opens.
+		 */
+		const isAskDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+		/*
+		 * WHICH QUEUE THIS ROUTE'S DRAWER SHOWS. The route renders the SESSION scope
+		 * only: the fleet scope is the SHELL's (see `chat-layout.tsx`), because it spans
+		 * conversations and its entry point is drawn on every route. One flag, two
+		 * homes, and the scope is what decides which home paints — so exactly one
+		 * drawer can ever be on screen, by construction rather than by a guard.
+		 */
+		const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
+		const sessionAsksOpen = isAskDrawerOpen && askDrawerScope === "session";
+		const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
+		/*
 		 * Whether a right-slot pane occupies the window's right edge, which is what
 		 * decides whether the CHAT HEADER has to reserve the OS controls' corner (chat
 		 * redesign §J4). The four panes are exclusive through `claimRightSlot`, so this is
@@ -1102,7 +1122,11 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * expression is passed as the NEGATION above.
 		 */
 		const rightSlotOccupied =
-			isCanvasOpen || isRunPanelOpen || isBrowserPaneOpen || isConsolePaneOpen;
+			isCanvasOpen ||
+			isRunPanelOpen ||
+			isBrowserPaneOpen ||
+			isConsolePaneOpen ||
+			isAskDrawerOpen;
 		const setConsolePaneOpen = useUiPreferencesStore(
 			(s) => s.setConsolePaneOpen,
 		);
@@ -1164,7 +1188,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 *
 		 * Measured rather than derived: the pane's available width is what the ROW
 		 * leaves it, and that depends on the rail, the chat list and the column's own
-		 * 220px floor — three inputs this component does not compute. A `ResizeObserver`
+		 * 480px floor — three inputs this component does not compute. A `ResizeObserver`
 		 * on the wrapper reports the box as it really is, including a drag of the
 		 * divider, and a sub-pixel change is ignored so the pane cannot re-render in a
 		 * loop against its own measurement.
@@ -1278,9 +1302,9 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 *
 		 * `runPanelResizable` is false when the row cannot host even the pane's own
 		 * 320px contract floor — at 1024x673 with the rail expanded the row is 524px
-		 * and the column's floor is 220 of them, so no preference the control is
-		 * allowed to store (320..640) could render as itself: every one of them draws
-		 * 304px. Resizing is then not a no-op that lies, it is not offered: the value
+		 * and the column's 480px floor leaves the pane 44px, so no preference the
+		 * control is allowed to store (320..640) could render as itself. Resizing is
+		 * then not a no-op that lies, it is not offered: the value
 		 * below is the drawn width, the range collapses onto it, and a write is
 		 * refused so the user's stored preference survives intact for a window that
 		 * can honour it. Otherwise the range ends at the capacity, which is what makes
@@ -1327,6 +1351,16 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		const handleCloseCanvas = useCallback(() => {
 			useUiPreferencesStore.getState().setCanvasOpen(false);
 		}, []);
+
+		/*
+		 * The drawer's own dismiss door. It reports to the store rather than to local
+		 * state because the flag it clears is the ask lane's one flag (the chip reads it,
+		 * the composer's routing reads it), and closing by the X must be the same act as
+		 * closing by Escape - `chat-page.tsx`'s window listener runs the same write.
+		 */
+		const handleCloseAskDrawer = useCallback(() => {
+			setAskDrawerOpen(false, "session");
+		}, [setAskDrawerOpen]);
 
 		const handleCloseDocument = useCallback(
 			(docId: string) => {
@@ -1399,7 +1433,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			 * `w-0` on the column rather than `min-w-0`: the column must not be
 			 * sized by its content (that is what lets a pinned-width canvas panel or
 			 * a long unbroken token push it wider than its track), but it also keeps
-			 * a deliberate 220px floor. `min-w-0` would fight `min-w-[220px]` for the
+			 * a deliberate 480px floor. `min-w-0` would fight `min-w-[480px]` for the
 			 * same property and `cn` drops one of them silently, so the base size is
 			 * zeroed instead and `flex-1` grows it back from there - the floor
 			 * survives and the content no longer votes on the width.
@@ -1718,29 +1752,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						 * measure, so its edges are the composer's edges.
 						 */}
 						{/*
-						 * THE QUEUED ASKS (design §5.0/§5.2). Mounted on the same band as the
-						 * blocking dock and gated on the WIRE rather than on a local flag: the
-						 * backend publishes `asks` only while its non-blocking feature is on, so
-						 * "the field is present" IS the capability, and `AskSurfaces` draws
-						 * nothing at all when it is absent. That is what keeps an old backend on
-						 * exactly today's path.
+						 * THE QUEUED ASKS ARE NO LONGER MOUNTED HERE (design note §2: the side
+						 * canvas). They used to be a column on this band, above the composer, with
+						 * no chrome, no dismiss and no scroller of its own (D1/D2) - the panel is
+						 * now the right slot's fifth occupant, below, where it shares the canvas
+						 * family's chrome bar, scroller and width arithmetic. The BLOCKING dock
+						 * stays on the band: it is a gate, not a queue, and §F1's argument for
+						 * docking it at the composer's top edge still holds for it alone.
 						 */}
-						<AskSurfaces
-							className={cn(
-								CHAT_COLUMN_CONTAINER,
-								CHAT_COLUMN_INSET,
-								"w-full shrink-0 pt-2",
-							)}
-							frontend={canonical?.view.frontend ?? null}
-							onAnswer={canonical?.onAnswerAsk}
-							onDecline={canonical?.onDeclineAsk}
-							answering={Boolean(canonical?.admitting)}
-							outcomes={canonical?.askOutcomes}
-							expanded={canonical?.askExpanded}
-							onToggle={canonical?.onAskToggle}
-							drafts={canonical?.askDrafts}
-							onDraftChange={canonical?.onAskDraftChange}
-						/>
 						{/*
 						 * THE BLOCKING DOCK, and the one rule a reader of both must know: once the
 						 * queue is on the wire, an ask-shaped `pending_gate` is the backend's
@@ -1872,6 +1891,17 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * `composerPlaceholder`'s `askMode` rung.
 								 */
 								askMode={Boolean(canonical?.askComposerPlaceholder)}
+								/*
+								 * THE ASK LANE'S DOOR, forwarded to the STATUS ROW rather than to the
+								 * drawer: the trigger is a row item now, and the page owns the ONE flag that
+								 * row, the composer's routing rule and the drawer all read
+								 * (`chat-page.tsx`'s `askExpanded`, the store's `isAskDrawerOpen`). Handing
+								 * the same `canonical` pair to both keeps the row item's state and the
+								 * drawer's state the same state - a second copy is the one thing that rule
+								 * forbids.
+								 */
+								askExpanded={canonical?.askExpanded}
+								onAskToggle={canonical?.onAskToggle}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)
@@ -2175,6 +2205,88 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onChangeActiveDocument={handleChangeActiveDocument}
 								onClose={handleCloseCanvas}
 								onCloseDocument={handleCloseDocument}
+							/>
+						</PaneSlot>
+					</>
+				)}
+
+				{/*
+				 * THE ASKS DRAWER (design note §2): the SAME slot as the canvas, and the same
+				 * three pieces, because the container decision is that the ask queue must be a
+				 * member of the canvas family rather than a second drawer idiom. What it fixes
+				 * is structural rather than cosmetic: a 40px chrome bar with its own dismiss, a
+				 * scroller of its own (D1 - the panel had none, so a long queue's last card was
+				 * unreachable), and a width that is the family's arithmetic, so the card can no
+				 * longer be the widest thing on the screen (D5) without a width rule of its own.
+				 *
+				 * ONE RIGHT PANE AT A TIME: `setAskDrawerOpen` closes the canvas and
+				 * `setCanvasOpen` closes this, through the store's `claimRightSlot`, so only one
+				 * of these blocks can ever be mounted and neither needs a guard against the
+				 * other.
+				 */}
+				{sessionAsksOpen && (
+					<>
+						{/*
+						 * The divider exists only while the drawer DOCKS, for the reason the canvas's
+						 * own divider states: in the overlay mode there is no flow boundary to drag.
+						 * Its range is the same `canvasDockWidth` the resolver caps the width at, so
+						 * a drag cannot store a number the pane does not render.
+						 */}
+						{canvasDocked && (
+							<ResizableDivider
+								sidebarWidth={canvasWidth}
+								onSidebarWidthChange={setRightSlotWidth}
+								minWidth={CANVAS_PANE_MIN_PX}
+								maxWidth={Math.max(
+									CANVAS_PANE_MIN_PX,
+									canvasDockWidth(paneRowWidth),
+								)}
+								side="left"
+								onDoubleClick={restoreDefaultRightSlotWidth}
+								label="Resize asks. Double-click resets the shared pane width."
+							/>
+						)}
+						{/*
+						 * `canvasWidth` here is the SLOT's width, not the canvas's: it is
+						 * `resolveRightSlotWidth`, which answers for whichever pane the store has
+						 * open - and the canvas and this drawer are exclusive, so one call serves
+						 * both. A second derivation would be the two-answers-to-one-number defect
+						 * the store's resolver exists to prevent.
+						 */}
+						<PaneSlot
+							width={canvasWidth}
+							tourTag="ask-drawer-slot"
+							/*
+							 * THE MODE THE SLOT RESOLVED FOR THIS DRAWER - `docked` beside the
+							 * conversation, `overlay` when the row cannot host it - written for a rig to
+							 * read, mirroring the canvas dock's own `data-canvas-mode` (read by
+							 * `scripts/renderer-driver.mjs`'s canvas-dock probe). Its reader is
+							 * `scripts/pane-slot-ground.test.mjs`, which pins both values on this call
+							 * site (agent review round 1, N3); the frames under
+							 * `docs/evidence/ask-drawer/after/dock-asks/` are the visual half.
+							 */
+							data-ask-mode={canvasDocked ? "docked" : "overlay"}
+						>
+							<AskDrawer
+								frontend={canonical?.view.frontend ?? null}
+								/*
+								 * SESSION-SCOPED, because this mount is the conversation's own: its rows
+								 * arrive on this session's frame and its answers go to this session.
+								 * The fleet scope is the other half and lives in the SHELL
+								 * (`chat-layout.tsx`) - it spans conversations, and its entry point
+								 * (the sidebar's `Asks` row) is drawn on every route, so a mount here
+								 * would leave that door opening nothing wherever the user happened to
+								 * be. One container, two homes, one flag: the scope is what picks,
+								 * which is why this block is gated on it above.
+								 */
+								scope="session"
+								onClose={handleCloseAskDrawer}
+								onAnswer={canonical?.onAnswerAsk}
+								onDecline={canonical?.onDeclineAsk}
+								answering={Boolean(canonical?.admitting)}
+								outcomes={canonical?.askOutcomes}
+								drafts={canonical?.askDrafts}
+								onDraftChange={canonical?.onAskDraftChange}
 							/>
 						</PaneSlot>
 					</>

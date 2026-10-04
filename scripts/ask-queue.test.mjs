@@ -30,7 +30,7 @@ const bundle = await build({
 			 * ask-queue ALONE. The component modules import the @shared aliases and
 			 * lucide-react, which a node-side bundle would carry as externals - and the
 			 * copy this file asserts lives in the contract module precisely so it can be
-			 * read without a DOM (see askBarText's own note).
+			 * read without a DOM (see the chip clause's own note).
 			 */
 			export * from "./src/renderer/src/features/chat/ask-queue";
 			export { DesktopControlError } from "./src/renderer/src/shared/api/local-operator/desktop-api";
@@ -143,28 +143,76 @@ test("the legacy mirror is suppressed only when it actually is one", () => {
 
 /* ------------------------------------------------------- classification ---- */
 
-test("`late` is terminal and `timed_out` is still answerable", () => {
-	// This is the pair the design warns about and the one a reader is most likely
-	// to get wrong, because both are about a deadline. `late` means the answer
-	// LANDED (after the deadline) and the model was told, so its card must offer
-	// nothing; `timed_out` means nobody answered, and a late answer still reaches
-	// the model - which is the whole point of the late path.
+test("a timed-out ask is still answerable, and its own state is `movedOn`, not `waiting`", () => {
+	// The pair the surfaces have to keep apart: the BACKEND's outstanding set folds
+	// `timed_out` in (a late answer still reaches the agent, so every surface keeps
+	// offering the row), but the agent is no longer WAITING on it - so the copy is
+	// a different sentence over the same controls.
+	const open = queue.presentAsk(ask({ status: "open" }));
+	assert.equal(open.waiting, true);
+	assert.equal(open.movedOn, false);
+
+	const timedOut = queue.presentAsk(ask({ status: "timed_out" }));
+	assert.equal(
+		timedOut.waiting,
+		false,
+		"the deadline passed; the agent moved on",
+	);
+	assert.equal(timedOut.movedOn, true);
+	assert.equal(
+		timedOut.open,
+		true,
+		"still outstanding: a late answer reaches the model",
+	);
+	assert.equal(timedOut.canAnswer, true);
+
+	// Every terminal state is neither waiting nor moved on.
+	for (const status of [
+		"answered",
+		"declined",
+		"late",
+		"dismissed",
+		"expired",
+	]) {
+		const settled = queue.presentAsk(ask({ status }));
+		assert.equal(settled.waiting, false, `${status} is settled`);
+		assert.equal(settled.movedOn, false, `${status} is settled`);
+	}
+
+	// `late` means the answer LANDED after the deadline and the model was told, so
+	// its row must offer nothing - the reading this pair is most often confused with.
 	const late = queue.presentAsk(
 		ask({ status: "late", answers: { target: ["staging"] } }),
 	);
 	assert.equal(late.canAnswer, false);
 	assert.equal(late.canDecline, false);
 	assert.equal(late.open, false);
+});
 
-	const timedOut = queue.presentAsk(ask({ status: "timed_out" }));
-	assert.equal(timedOut.canAnswer, true, "a timed-out ask is answerable");
-	assert.equal(timedOut.canDecline, true);
+test("the queue view counts waiting and moved-on apart from the outstanding tally", () => {
+	const view = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-open" }),
+			single({ ask_id: "a-moved", status: "timed_out" }),
+			single({ ask_id: "a-done", status: "answered" }),
+		],
+	});
+	assert.equal(view.rows.length, 3);
+	assert.equal(view.waiting, 1);
+	assert.equal(view.movedOn, 1);
+	// `open` stays the backend's OUTSTANDING set, which folds the moved-on half in -
+	// the reason the split exists as its own pair of counts.
+	assert.equal(view.open, 2);
 
-	for (const status of ["answered", "declined", "dismissed", "expired"]) {
-		const settled = queue.presentAsk(ask({ status }));
-		assert.equal(settled.canAnswer, false, `${status} is terminal`);
-		assert.equal(settled.canDecline, false, `${status} is terminal`);
-	}
+	// A published tally wins over the derived count; the SPLIT is still the rows'.
+	const truncated = queue.askQueueView({
+		asks: [single({ ask_id: "a-open" })],
+		asks_open: 5,
+		asks_truncated: true,
+	});
+	assert.equal(truncated.open, 5);
+	assert.equal(truncated.waiting, 1);
+	assert.equal(truncated.movedOn, 0);
 });
 
 test("an unknown status is its own case, never coerced into `open`", () => {
@@ -343,30 +391,147 @@ test("the wait is reported as the wait that happened", () => {
 	assert.equal(queue.askWaitedText(60), "1m");
 });
 
-test("the bar's sentence and its accessible name agree at every count", () => {
+test("the status-row item's clause reads one state at a time", () => {
+	/*
+	 * THE COUNT HALF, asserted alone. What the chip PAINTS is this half plus the
+	 * countdown (`askChipClause`), which is the next test's subject and the reason
+	 * these assertions moved to `askChipCountClause`: one test, one fact.
+	 */
+	// ONE WAITING: the attention register - the only state that steps the ink.
+	const one = queue.askQueueView({ asks: [single({ ask_id: "a-1" })] });
+	assert.equal(queue.askChipCountClause(one), "1 question waiting");
+
+	// The `N` form, which has to sit beside `2 wakes armed` without shouting.
 	const two = queue.askQueueView({
 		asks: [single({ ask_id: "a-1" }), single({ ask_id: "a-2" })],
 	});
+	assert.equal(queue.askChipCountClause(two), "2 questions waiting");
+
+	// MOVED ON: quiet, and its own word - the agent is not waiting on it.
+	const moved = queue.askQueueView({
+		asks: [single({ ask_id: "a-1", status: "timed_out" })],
+	});
+	assert.equal(queue.askChipCountClause(moved), "1 question moved on");
+
+	// SETTLED: the queue is finished, and it stays on screen like a resolved plan.
+	const settled = queue.askQueueView({
+		asks: [single({ ask_id: "a-1", status: "answered" })],
+	});
+	assert.equal(queue.askChipCountClause(settled), "All asks settled");
+
+	// TRUNCATED: the backend's own outstanding tally, never a prefix's split.
+	const truncated = queue.askQueueView({
+		asks: [single({ ask_id: "a-1" })],
+		asks_open: 12,
+		asks_truncated: true,
+	});
+	assert.equal(queue.askChipCountClause(truncated), "12 outstanding");
+});
+
+test("the item's clause never claims a split the frame cannot know", () => {
+	/*
+	 * A LAGGING TALLY (agent review round 1, F2). `view.open` is the backend's own
+	 * count - the number the sidebar's outstanding chip reads - and a frame may carry
+	 * fewer rows than it says, without the `truncated` flag. Reading only the rows let
+	 * this clause say `All asks settled` beside a sidebar reading `2 outstanding`,
+	 * which is the one thing the module's own header forbids two surfaces doing.
+	 */
+	const lagging = queue.askQueueView({
+		asks: [single({ ask_id: "a-1", status: "answered" })],
+		asks_open: 2,
+	});
+	assert.equal(queue.askChipCountClause(lagging), "2 outstanding");
 	assert.equal(
-		queue.askBarText(two),
-		"2 questions waiting — Which environment?",
+		queue.askChipLabel(lagging, false, TS),
+		"Expand this conversation's asks — 2 outstanding",
 	);
 
-	// ONLY SETTLED: the visible line switches to the settled count, so the spoken
-	// one must too. They used to disagree - the bar drew "1 settled" beside a name
-	// that announced "No asks outstanding" (agent review F6, UX U3).
-	const settled = queue.askQueueView({
-		asks: [single({ ask_id: "a-1", status: "late" })],
+	// The same rule over a MIXED frame: the split is not stated when the tally is
+	// louder, and the announced name carries the tally instead of the split.
+	const mixedLagging = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1" }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
+		asks_open: 5,
+	});
+	assert.equal(queue.askChipCountClause(mixedLagging), "5 outstanding");
+	assert.equal(
+		queue.askChipLabel(mixedLagging, false, TS),
+		"Expand this conversation's asks — 5 outstanding",
+	);
+
+	// A tally that matches the rows changes nothing: the split is stated as before.
+	const exact = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1" }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
+		tasks_open: 2,
+	});
+	assert.equal(queue.askChipCountClause(exact), "1 question waiting");
+	assert.equal(
+		queue.askChipLabel(exact, false, TS),
+		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 moved on",
+	);
+});
+
+test("the item's announced name leads with its action and carries the whole clause", () => {
+	const one = queue.askQueueView({ asks: [single({ ask_id: "a-1" })] });
+	assert.equal(
+		queue.askChipLabel(one, false, TS),
+		"Expand this conversation's asks — 1 question waiting · expires in 1h",
+	);
+	assert.equal(
+		queue.askChipLabel(one, true, TS),
+		"Collapse this conversation's asks — 1 question waiting · expires in 1h",
+	);
+
+	/*
+	 * A MIXED queue is the one case where the announced name says MORE than the
+	 * chip: the visible text stays the short waiting clause (a chip is a register),
+	 * and the split a mixed queue needs is spelled in the name alone. The visible
+	 * text must remain a substring of the name, which is what keeps the two readers
+	 * describing one state.
+	 */
+	const mixed = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1" }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
 	});
 	assert.equal(
-		queue.askBarText(settled),
-		"1 settled — Which environment?",
-		"the accessible name must describe what is drawn",
+		queue.askChipClause(mixed, TS),
+		"1 question waiting · expires in 1h",
 	);
-	// And at genuinely zero open there IS no settled line to describe.
 	assert.equal(
-		queue.askBarText(queue.askQueueView(null)),
-		"No asks outstanding",
+		queue.askChipLabel(mixed, false, TS),
+		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 moved on",
+	);
+	/*
+	 * THE COUNTDOWNS DO NOT BREAK THE ONE-SENTENCE RULE: the name appends the
+	 * moved-on half AFTER the visible clause rather than inserting it between the
+	 * counts, so the visible text is still a prefix of the announced one - with the
+	 * deadline in it - in the case where the two readers differ most.
+	 */
+	assert.ok(
+		queue
+			.askChipLabel(mixed, false, TS)
+			.includes(queue.askChipClause(mixed, TS)),
+	);
+
+	// The split is NOT stated over a truncated frame, where it is a prefix's.
+	const mixedTruncated = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-1" }),
+			single({ ask_id: "a-2", status: "timed_out" }),
+		],
+		asks_open: 7,
+		asks_truncated: true,
+	});
+	assert.equal(
+		queue.askChipLabel(mixedTruncated, false, TS),
+		"Expand this conversation's asks — 7 outstanding",
 	);
 });
 
@@ -457,30 +622,19 @@ test("a refusal WITH the owner's sentence keeps it; without one, the app says th
 	);
 });
 
-test("the bar's announced name does not double a full stop", () => {
-	const questionEndingInStop = queue.askQueueView({
-		asks: [
-			single({
-				questions: [{ id: "k", question: "Paste the API key.", multi: false }],
-			}),
-		],
-	});
-	assert.equal(
-		queue.askBarLabel(questionEndingInStop, false),
-		"1 question waiting — Paste the API key. Expand to answer.",
-	);
-	// A `?` is one too - the case round 1's frame happened to carry, which is why
-	// the doubling reached a release candidate unremarked (QA round 2, Q-3).
-	assert.equal(
-		queue.askBarLabel(questionEndingInStop, true),
-		"1 question waiting — Paste the API key. Collapse.",
-	);
-	// A head with no question text: `askHeadline` supplies its own fallback, and the
-	// assertion is about the STOP, not about that sentence.
+test("the item's name never doubles a mark, and its clause is the model's one spelling", () => {
+	// The name is composed from the model's own clause, so what the chip PAINTS and
+	// what a screen reader is told cannot be two different sentences - the defect the
+	// bar's version of this test was written for.
 	const questionless = queue.askQueueView({ asks: [ask({ questions: [] })] });
-	const headless = queue.askBarLabel(questionless, false);
-	assert.ok(headless.endsWith(". Expand to answer."), headless);
-	assert.ok(!headless.includes(".."), headless);
+	const name = queue.askChipLabel(questionless, false, TS);
+	assert.equal(
+		name,
+		"Expand this conversation's asks — 1 question waiting · expires in 1h",
+	);
+	assert.ok(!name.includes(".."), name);
+	// And the visible text is always inside the announced one.
+	assert.ok(name.includes(queue.askChipClause(questionless, TS)));
 });
 
 /* --------------------------------------------------- the composer's mode ---- */
@@ -565,7 +719,7 @@ const targetInside = (selector) => ({
 });
 const targetInsideNothing = { closest: () => null };
 
-test("the Escape claim is ours only over the ask surfaces and the composer box", () => {
+test("the Escape claim is ours over the ask panel, the item that opens it, and the composer box", () => {
 	const base = { key: "Escape", target: null };
 	// A press with no element target is delivered that way when the panel was the
 	// only focus stop.
@@ -576,7 +730,26 @@ test("the Escape claim is ours only over the ask surfaces and the composer box",
 			target: targetInside(queue.ASK_SURFACE_SELECTOR),
 		}),
 		true,
-		"the ask surfaces are ours",
+		"the ask panel is ours",
+	);
+	/*
+	 * AND THE TRIGGER, as its own clause (UX round 1, U3): the item no longer carries
+	 * `data-lo-ask-surfaces` - that marker is the panel's, so a rig can trust it as an
+	 * "is the panel open?" probe - and an Escape with the keyboard on the chip must
+	 * still collapse what the chip opened.
+	 */
+	assert.notEqual(
+		queue.ASK_SURFACE_SELECTOR,
+		queue.ASK_ITEM_SELECTOR,
+		"the panel's marker and the trigger's handle are two handles",
+	);
+	assert.equal(
+		queue.askClaimsEscape({
+			...base,
+			target: targetInside(queue.ASK_ITEM_SELECTOR),
+		}),
+		true,
+		"the row item that expands the panel is ours",
 	);
 	assert.equal(
 		queue.askClaimsEscape({
@@ -647,5 +820,242 @@ test("an owner's sentence survives when the wire sends it as a STRING detail", (
 	assert.equal(
 		queue.askRefusalSentence(new Error("socket closed")),
 		"socket closed",
+	);
+});
+
+test("the item states the soonest WAITING deadline, and refuses when the split is not knowable", () => {
+	/*
+	 * THE OPERATOR'S OWN QUESTION OF THE SURFACE - "when will it time out?" - and the
+	 * audit's third item. The strip this item replaced answered it on its collapsed
+	 * face; the move into the status row lost the answer, and this is the rehome.
+	 */
+	const one = queue.askQueueView({
+		asks: [single({ expires_at: TS + 30 * 60_000 })],
+	});
+	assert.equal(queue.askChipDeadline(one, TS), "expires in 30m");
+	assert.equal(
+		queue.askChipClause(one, TS),
+		"1 question waiting · expires in 30m",
+	);
+
+	/*
+	 * TWO WINDOWS, ONE NUMBER: with more than one waiting ask the bare reading names
+	 * no subject and would be read as whichever ask the reader had in mind, so it is
+	 * qualified (design round 1's D2, re-expressed for a chip that names no ask). The
+	 * number is the soonest one's, not the older one's the panel lists first.
+	 */
+	const two = queue.askQueueView({
+		asks: [
+			single({ ask_id: "a-a", expires_at: TS + 120 * 60_000 }),
+			single({
+				ask_id: "a-b",
+				created_at: TS + 60_000,
+				expires_at: TS + 12 * 60_000,
+			}),
+		],
+	});
+	assert.equal(queue.askChipDeadline(two, TS), "soonest ask expires in 12m");
+	/*
+	 * THE TWO PIECES THE ROW RENDERS SEPARATELY, pinned here so the yield order cannot
+	 * drift from the string a DOM-free rig reads: the number is what the surface exists
+	 * to answer and the subject is the unbounded half that drops first at a narrow
+	 * column (design round 3's D2). The subject is a HEAD NOUN - `soonest ask`, not a
+	 * bare `soonest` - which is what design round 3's D4 asked for.
+	 */
+	assert.equal(queue.askChipDeadlineText(two, TS), "expires in 12m");
+	assert.equal(queue.askChipDeadlineSubject(two), "soonest ask");
+	/*
+	 * AND THE SAME DEADLINE IN THE NARROW BAND'S FORM (design round 4's MAJOR): the
+	 * chip's third tier keeps the VALUE where the sentence cannot fit whole, so the
+	 * number a reader triages on is never a `4...` that could be four minutes or
+	 * forty-eight. One reading of the clock feeds both spellings - the assertion that
+	 * pins that is that they agree on the same instant, in the same unit.
+	 */
+	assert.equal(queue.askChipDeadlineShort(two, TS), "12m");
+	assert.equal(queue.askDeadlineShortText(TS + 30 * 60_000, TS), "30m");
+	assert.equal(queue.askDeadlineShortText(TS + 45_000, TS), "45s");
+	assert.equal(queue.askDeadlineShortText(TS + 3 * 3_600_000, TS), "3h");
+	assert.equal(queue.askDeadlineShortText(TS + 2 * 86_400_000, TS), "2d");
+	assert.equal(queue.askDeadlineShortText(TS, TS), "now");
+	// The long form and the short form come out of ONE reading: no unit can disagree.
+	for (const at of [TS + 45_000, TS + 30 * 60_000, TS + 3 * 3_600_000]) {
+		const long = queue.askDeadlineText(at, TS);
+		const short = queue.askDeadlineShortText(at, TS);
+		assert.equal(long, `expires in ${short}`, "the two spellings disagree");
+	}
+	// Gated exactly as the sentence is: no value while the split is unknowable.
+	// One waiting ask needs no subject: the number is that ask's own.
+	assert.equal(queue.askChipDeadlineSubject(one), "");
+	assert.equal(
+		queue.askChipClause(two, TS),
+		"2 questions waiting · soonest ask expires in 12m",
+	);
+
+	// MOVED ON ONLY: nothing is waiting, so nothing is counting down.
+	const moved = queue.askQueueView({ asks: [single({ status: "timed_out" })] });
+	assert.equal(queue.askChipDeadline(moved, TS), null);
+	// The value form is gated by the same rule, and says nothing with it.
+	assert.equal(queue.askChipDeadlineShort(moved, TS), null);
+	// A queue with nothing waiting has no subject to state either.
+	assert.equal(queue.askChipDeadlineSubject(moved), "");
+
+	/*
+	 * A PREFIX CANNOT STATE A QUEUE-SCOPE COUNTDOWN (design round 1's D6), and the
+	 * gate is the count's own: the wire caps the list, so a truncated frame states
+	 * the backend's tally and no deadline, and a frame whose rows do not add up to
+	 * the published count takes the same gate because its rows are missing rows too.
+	 */
+	const truncated = queue.askQueueView({
+		asks: [single({ expires_at: TS + 30 * 60_000 })],
+		asks_open: 12,
+		asks_truncated: true,
+	});
+	assert.equal(queue.askChipDeadline(truncated, TS), null);
+	assert.equal(queue.askChipClause(truncated, TS), "12 outstanding");
+	const lagging = queue.askQueueView({
+		asks: [single({ expires_at: TS + 30 * 60_000 })],
+		asks_open: 4,
+	});
+	assert.equal(queue.askChipDeadline(lagging, TS), null);
+});
+
+test("the wire's `urgent` flag reaches the view, and only for the asks the item counts as waiting", () => {
+	/*
+	 * Urgency has been on the wire since the lane existed - the backend derives it
+	 * from the window itself, `timeout <= 900` - and NO desktop surface ever painted
+	 * it: a row with ten minutes left looked exactly like one with an hour (the
+	 * audit's second item).
+	 *
+	 * WAITING, NOT OUTSTANDING. `open` deliberately includes `timed_out` (a late
+	 * answer still reaches the agent), so scoping the cue to it would let a moved-on
+	 * ask's stale urgency spend the row's one warning ink on a question nobody is
+	 * waiting on. The predicate is the same set the countdown reads.
+	 */
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ urgent: true })] }).urgent,
+		true,
+	);
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ urgent: false })] }).urgent,
+		false,
+	);
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ urgent: true, status: "timed_out" })] })
+			.urgent,
+		false,
+		"a moved-on ask's stale urgency is not the item's cue",
+	);
+	assert.equal(
+		queue.askQueueView({ asks: [ask({ urgent: true, status: "answered" })] })
+			.urgent,
+		false,
+	);
+	/*
+	 * AND THE CUE IS NOT COLOUR-ONLY: the urgency word is APPENDED to the announced
+	 * name (design round 3's D5), because this control's `aria-label` overrides its
+	 * content, so an `sr-only` span inside it would be announced to nobody. The
+	 * visible clause stays a prefix of the name either way.
+	 */
+	const urgentOne = queue.askQueueView({ asks: [ask({ urgent: true })] });
+	assert.equal(
+		queue.askChipLabel(urgentOne, false, TS),
+		"Expand this conversation's asks — 1 question waiting · expires in 1h · Urgent",
+	);
+	assert.ok(
+		queue
+			.askChipLabel(urgentOne, false, TS)
+			.includes(queue.askChipClause(urgentOne, TS)),
+	);
+	// …and a queue with nothing urgent says nothing about urgency.
+	assert.ok(
+		!queue
+			.askChipLabel(queue.askQueueView({ asks: [ask()] }), false, TS)
+			.includes("Urgent"),
+	);
+});
+
+/* ------------------------------------------------- the settled descriptor ---- */
+
+test("the settled descriptor is derived from the rows, never a fixed legend", () => {
+	const view = (asks) => queue.askQueueView({ asks });
+	/** The section's own predicate, spelled once here: the rows the panel collapses. */
+	const settledRows = (v) => v.rows.filter((row) => !row.open);
+	// One declined ask: the header used to print all four words over it.
+	assert.equal(
+		queue.askStatusWords(settledRows(view([single({ status: "declined" })]))),
+		"Declined",
+	);
+	// The shipped look-alike pair, in the copy contract's own order rather than the
+	// rows': `Answered` and `Answered late` are the two a one-line row must tell
+	// apart, and both are named.
+	assert.equal(
+		queue.askStatusWords(
+			settledRows(
+				view([
+					single({ ask_id: "a-late", status: "late" }),
+					single({ ask_id: "a-answered", status: "answered" }),
+				]),
+			),
+		),
+		"Answered, Answered late",
+	);
+	// A `timed_out` row can never reach the section - it is in the outstanding set -
+	// so its word must never appear in a descriptor built from settled rows, however
+	// many of them there are.
+	const settledOnly = settledRows(
+		view([
+			single({ status: "declined" }),
+			single({ ask_id: "a-moved", status: "timed_out" }),
+			single({ ask_id: "a-answered", status: "answered" }),
+		]),
+	);
+	assert.equal(queue.askStatusWords(settledOnly), "Answered, Declined");
+});
+
+/* ------------------------------------------------------- the drawer's bar ---- */
+
+test("the drawer's scope line counts every answerable card, and still falls through", () => {
+	const view = (asks, over = {}) => queue.askQueueView({ asks, ...over });
+	// A mixed queue: one the agent waits on, one that timed out and is STILL
+	// answerable. The chip's clause names only the first; the drawer draws a card
+	// for each, so its own line names both halves.
+	const mixed = view([
+		single({ status: "open" }),
+		single({ ask_id: "a-moved", status: "timed_out" }),
+	]);
+	assert.equal(queue.askDrawerCountClause(mixed), "1 waiting, 1 moved on");
+	assert.equal(
+		queue.askScopeLine("session", mixed),
+		"This conversation · 1 waiting, 1 moved on",
+	);
+	// Every single-state queue keeps the chip's own clause, so the two surfaces
+	// cannot describe one queue differently when there is nothing to split.
+	assert.equal(
+		queue.askDrawerCountClause(view([single()])),
+		"1 question waiting",
+	);
+	assert.equal(
+		queue.askDrawerCountClause(view([single({ status: "answered" })])),
+		"All asks settled",
+	);
+	assert.equal(
+		queue.askDrawerCountClause(view([single({ status: "timed_out" })])),
+		"1 question moved on",
+	);
+	// A truncated frame's split is a split of the visible prefix, so the drawer states
+	// the backend's own tally exactly as the chip does.
+	assert.equal(
+		queue.askDrawerCountClause(
+			view([single(), single({ ask_id: "a-2" })], {
+				asks_open: 12,
+				asks_truncated: true,
+			}),
+		),
+		"12 outstanding",
+	);
+	// And the fleet scope is the same clause behind the other subject.
+	assert.equal(
+		queue.askScopeLine("fleet", view([single()])),
+		"All conversations · 1 question waiting",
 	);
 });

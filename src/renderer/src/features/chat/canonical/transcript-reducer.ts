@@ -46,6 +46,7 @@ import {
 	preferDiffCounts,
 } from "../components/trace/tool-row-model";
 import { isHarnessChromeText } from "./harness-chrome";
+import { freezeRecordDeep } from "./record-immutability";
 
 /**
  * One image on a transcript row.
@@ -1184,6 +1185,13 @@ function shallowEqual(a: TranscriptRecord, b: TranscriptRecord) {
  * (by shallow field equality), so the caller's identity gate holds.
  */
 function upsert(state: TranscriptState, record: TranscriptRecord) {
+	// Freeze at emit, in development only: this is the reducer's one choke point
+	// for live records (every `upsert` caller, `markLiveRecordsTruncated` and
+	// `appendPendingUser` included), and the frozen record is what makes a later
+	// in-place write throw instead of leaving `collapseRowsKey`'s cached signature
+	// stale (see `record-immutability.ts`, agent review round 2, M1r2). A no-op in
+	// production and in the Node suites, whose bundles read `DEV` as false.
+	freezeRecordDeep(record);
 	const position = state.index.get(record.id);
 	if (position !== undefined) {
 		const current = state.records[position];
@@ -1271,7 +1279,7 @@ function supersedesRekey(
 	)
 		return state;
 	const records = state.records.slice();
-	records[at] = record;
+	records[at] = freezeRecordDeep(record);
 	return { ...state, records, index: withIndex(records) };
 }
 
@@ -1483,7 +1491,9 @@ export function collapseSettledCompactions(
 			if (text === undefined) return record;
 			if (record.kind !== "compaction" && record.kind !== "notice")
 				return record;
-			return text === record.text ? record : { ...record, text };
+			return text === record.text
+				? record
+				: freezeRecordDeep({ ...record, text });
 		});
 }
 
@@ -2694,7 +2704,7 @@ export function applyHistoryPage(
 					-1
 			];
 		const record = durableRecord(entry, previous);
-		if (record) incoming.push(record);
+		if (record) incoming.push(freezeRecordDeep(record));
 	}
 	// Tool call args live on the assistant row's `tool_calls`; carry the intent
 	// and args onto the tool record. The map spans the SESSION, not this page —
@@ -2729,11 +2739,11 @@ export function applyHistoryPage(
 		const call = argsByCall.get(record.toolCallId);
 		if (!call) continue;
 		const args = (call.arguments ?? null) as Record<string, unknown> | null;
-		incoming[i] = {
+		incoming[i] = freezeRecordDeep({
 			...record,
 			args,
 			intent: typeof args?.i === "string" ? args.i : null,
-		};
+		});
 	}
 	// A page that taught us new arguments can complete rows painted EARLIER —
 	// the reconnect case, where the row settled before its arguments arrived.
@@ -2748,11 +2758,11 @@ export function applyHistoryPage(
 					unknown
 				> | null;
 				if (!args) return record;
-				return {
+				return freezeRecordDeep({
 					...record,
 					args,
 					intent: record.intent ?? (typeof args.i === "string" ? args.i : null),
-				};
+				});
 			})
 		: state.records;
 
@@ -2773,7 +2783,7 @@ export function applyHistoryPage(
 		// message, but a durable tool row lacks the args the live start
 		// carried, so keep those.
 		if (current.kind === "tool" && record.kind === "tool") {
-			const merged: TranscriptRecord = {
+			const merged: TranscriptRecord = freezeRecordDeep({
 				...record,
 				args: record.args ?? current.args,
 				intent: record.intent ?? current.intent,
@@ -2782,7 +2792,7 @@ export function applyHistoryPage(
 				// the row the user is looking at a needless round trip to the
 				// attachment endpoint at the exact moment the turn settles.
 				images: current.images.length ? current.images : record.images,
-			};
+			});
 			if (!shallowEqual(current, merged)) {
 				changed = true;
 				byId.set(record.id, merged);
