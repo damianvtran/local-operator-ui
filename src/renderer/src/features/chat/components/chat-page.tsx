@@ -62,6 +62,7 @@ import {
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	useCallback,
@@ -97,6 +98,7 @@ import {
 import {
 	ASK_COMPOSER_PLACEHOLDER,
 	type AskDraft,
+	type AskOutcome,
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askClaimsEscape,
@@ -427,9 +429,9 @@ function SessionPanel({
 	 * Folding them would leave a gate's stale key able to match an ask id and
 	 * vice versa.
 	 */
-	const [askOutcomes, setAskOutcomes] = useState<
-		Record<string, { sending: boolean; refused: string | null }>
-	>({});
+	const [askOutcomes, setAskOutcomes] = useState<Record<string, AskOutcome>>(
+		{},
+	);
 	/*
 	 * THE ASK COMPOSER'S OWN STATE (design §5.0, the operator's R7 amendment).
 	 *
@@ -2555,7 +2557,21 @@ function SessionPanel({
 	 * its words and falls back to the app's own sentence for the case where a
 	 * refusal crossed the wire without one.
 	 */
-	const settleAskOutcome = (taskId: string, outcome: AnswerOutcome) => {
+	/**
+	 * Record what the owner said about an ask this panel just posted for.
+	 *
+	 * `changed` is the REVISION's own receipt (design round 1, D3; UX round 1, U3),
+	 * and it is passed in rather than inferred here because only the caller knows
+	 * which door the outcome came back through: a first answer, a decline and a
+	 * revision share this function, the record and the refusal sentence, and the
+	 * receipt is the one fact that belongs to the revision alone (a landed change
+	 * leaves the row drawn from a frame the wire cannot mark — see `AskOutcome`).
+	 */
+	const settleAskOutcome = (
+		taskId: string,
+		outcome: AnswerOutcome,
+		changed = false,
+	) => {
 		if (outcome.status === "failed") {
 			setAskOutcomes((current) => ({
 				...current,
@@ -2575,7 +2591,11 @@ function SessionPanel({
 		}
 		setAskOutcomes((current) => ({
 			...current,
-			[taskId]: { sending: false, refused: null },
+			[taskId]: {
+				sending: false,
+				refused: null,
+				...(changed ? { changed: true } : {}),
+			},
 		}));
 	};
 	const answerAsk = async (
@@ -2632,7 +2652,17 @@ function SessionPanel({
 		} finally {
 			setAdmitting(false);
 		}
-		settleAskOutcome(taskId, outcome);
+		settleAskOutcome(taskId, outcome, outcome.status === "sent");
+		/*
+		 * THE RECEIPT (UX round 1, U3). The fleet pane already toasts this act
+		 * (`Answer changed for <conversation>` — the conversation is the fact that
+		 * surface alone knows); here the conversation is the one on screen, so the
+		 * toast names the act and nothing else. Without it the two surfaces disagreed
+		 * about confirming the SAME submit: the pane said so and the drawer said
+		 * nothing, leaving the card's own receipt (below, in `AskPanel`) as the only
+		 * trace on one side and a stale frame on the other.
+		 */
+		if (outcome.status === "sent") showSuccessToast("Answer changed");
 	};
 	const declineAsk = async (taskId: string) => {
 		if (!sessionId || sendLock.held) return;

@@ -43,26 +43,21 @@
 
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
-import {
-	AlertTriangle,
-	Check,
-	Clock,
-	HelpCircle,
-	type LucideIcon,
-	X,
-} from "lucide-react";
-import { useMemo, useState } from "react";
+import { Check, Clock, HelpCircle, type LucideIcon, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type {
 	PendingAsk,
 	PendingAskQuestion,
 } from "../../../../../../shared/desktop-session-contract";
 import type {
 	AskDraft,
+	AskOutcome,
 	AskPresentation,
 	AskQueueView,
 	AskSecrets,
 } from "../../ask-queue";
 import {
+	ASK_CHANGE_WINDOW_HINT,
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askRevisionDraft,
@@ -107,12 +102,10 @@ export type AskPanelProps = {
 	 * This panel's own record of the ask it settled, keyed by id: the sentence the
 	 * owner refused with, or `null` while it is still live. Keyed because a
 	 * refusal belongs to ONE ask, and a single slot would put the previous ask's
-	 * sentence on the next one.
+	 * sentence on the next one. `AskOutcome` is the record's own shape — the
+	 * revision's receipt travels in it too (design round 1, D3; UX round 1, U3).
 	 */
-	outcomes?: Record<
-		string,
-		{ sending: boolean; refused: string | null } | undefined
-	>;
+	outcomes?: Record<string, AskOutcome | undefined>;
 	/** The client clock the countdown reading is rendered against. */
 	nowMs: number;
 	/**
@@ -444,7 +437,7 @@ const AskRow = ({
 	presentation: AskPresentation;
 	nowMs: number;
 	answering: boolean;
-	outcome: { sending: boolean; refused: string | null } | undefined;
+	outcome: AskOutcome | undefined;
 	draft: AskDraft;
 	onDraftChange: AskPanelProps["onDraftChange"];
 	onAnswer: AskPanelProps["onAnswer"];
@@ -515,6 +508,39 @@ const AskRow = ({
 	const [changing, setChanging] = useState(false);
 	const [changeDraft, setChangeDraft] = useState<AskDraft>(EMPTY_DRAFT);
 	/*
+	 * THE OWNER'S OWN REFUSAL CLOSES THE DOOR (design round 1, D1 = UX round 1, U1).
+	 *
+	 * A frame can predate the response row that shut the window, so a card can be drawn
+	 * from a wire that still says "undelivered" while the OWNER has already refused a
+	 * change in the words `already delivered — send a new message`. The refusal is the
+	 * newer fact, and the old frame will not catch up on this render — so a card that
+	 * kept the affordance offered a control whose only possible outcome is the sentence
+	 * directly above it, which is the second press the finding measured.
+	 *
+	 * THIS IS NOT A SURFACE GATE, and the distinction is the whole reason it is spelled
+	 * out. §10 forbids a surface re-deriving the window from status or from a value
+	 * comparison ("a revision is not a race; the winner rule governs races"); this
+	 * derives nothing and predicts nothing — it accepts a fact the OWNER has already
+	 * stated about THIS ask, and it is scoped to the surface that holds the sentence.
+	 * A transport failure refused the same way closes the door for the frame too; the
+	 * refusal line says why, and the next wire read (or the ask settling) is the way
+	 * back, which is cheaper than a door whose every press re-refuses.
+	 */
+	const refused = Boolean(outcome?.refused);
+	const changeOpen = delivering && !refused;
+	/*
+	 * A CHANGE THAT LANDED CLOSES THE FORM (UX round 1, U3; design round 1, D3). The
+	 * owner accepted the map, so the editable copy of the answers on screen is stale
+	 * the moment that acceptance lands — and leaving it open made a change that landed
+	 * look exactly like one that never left, with the same seeded value and a re-armed
+	 * submit. The card falls back to its answer frame (whose map moves to the new values
+	 * on the next wire read) with a receipt where the form was; re-opening is one press,
+	 * which is the door's own promise — a revision is free while the answer is undelivered.
+	 */
+	useEffect(() => {
+		if (outcome?.changed === true) setChanging(false);
+	}, [outcome?.changed]);
+	/*
 	 * The FORM'S OWN completeness, read through the SAME `askAnswerMap` the first-answer
 	 * door uses — no revision-specific rule exists, because the wire's body is the same
 	 * body. A secret question therefore needs a retyped value here too (see
@@ -525,6 +551,44 @@ const AskRow = ({
 		() => askAnswerMap(ask, changeDraft, secrets) !== null,
 		[ask, changeDraft, secrets],
 	);
+	/*
+	 * FOCUS FOLLOWS THE PRESS INTO THE FORM (UX round 1, U2).
+	 *
+	 * The pressed `Change answer` is unmounted and replaced by different elements, so
+	 * without this the browser drops focus to the BODY and the next Tab restarts at the
+	 * top of the page (`Close asks` → the first question → …), which is the same defect
+	 * the dock's own press and `chat-page.tsx`'s `restoreFocus` were each fixed for. THIS
+	 * IS THAT MECHANISM, not a second policy: the flag is ARMED at the press and spent in
+	 * a LAYOUT effect on the commit that mounts the form — so no painted frame shows the
+	 * body holding focus — and it lands on the first live control the form offers, the
+	 * same hand-off `question-dock.tsx` performs for its own press (`button[data-ask-option]`,
+	 * else the masked field, because a secret-only ask has no option to take it).
+	 *
+	 * It lives here rather than in the drawer because the form is this card's own state:
+	 * the panel is mounted by two containers (the session drawer and the fleet pane), so a
+	 * host-side restore would be two copies of one rule.
+	 */
+	const rowRef = useRef<HTMLDivElement>(null);
+	const armChangeFocus = useRef(false);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the form's open flag is the trigger, not a value read in the body
+	useLayoutEffect(() => {
+		if (!armChangeFocus.current) return;
+		armChangeFocus.current = false;
+		rowRef.current
+			?.querySelector<HTMLElement>(
+				/*
+				 * THE DRAWER'S OWN TWO SHAPES, and they are not the dock's: an option is a
+				 * button carrying `data-ask-option`, and the masked field wears
+				 * `data-ask-secret` ON THE `<input>` ITSELF (`ask-panel.tsx`'s
+				 * `AskQuestionField`). `question-dock.tsx` queries the same pair but its
+				 * secret attribute sits on a wrapping div, so its selector cannot be copied
+				 * verbatim — a `[data-ask-secret] input` here matches nothing, and the
+				 * hand-off would silently fall through to the body for a secret-only ask.
+				 */
+				"button[data-ask-option]:not([disabled]), input[data-ask-secret]:not([disabled])",
+			)
+			?.focus();
+	}, [changing]);
 	/*
 	 * ONE EDIT PATH, TWO BUFFERS: the change form and the first-answer form render the
 	 * same question fields, so only the buffer and the disabled term differ. A second
@@ -537,7 +601,7 @@ const AskRow = ({
 	 * an editable card with no submit is a worse failure than the button disappearing.
 	 * The card falls back to the answer frame it already knows how to draw.
 	 */
-	const changingNow = changing && delivering;
+	const changingNow = changing && changeOpen;
 	const editDraft = changingNow ? changeDraft : draft;
 	const writeDraft = changingNow
 		? (updater: (current: AskDraft) => AskDraft) => setChangeDraft(updater)
@@ -546,6 +610,7 @@ const AskRow = ({
 
 	return (
 		<div
+			ref={rowRef}
 			data-lo-ask-row={ask.ask_id}
 			data-lo-ask-status={status}
 			/*
@@ -649,20 +714,50 @@ const AskRow = ({
 						/>
 					))
 				: null}
+			{/*
+			 * The refusal is the panel's own line rather than a toast: it belongs to the
+			 * ask on screen, and every refusal in this feature's copy contract is a
+			 * sentence about what did NOT happen, which is a state a toast loses the
+			 * moment it fades.
+			 *
+			 * THE INK IS THE ARM'S, and the lane's other refusal already settled it:
+			 * `question-dock.tsx` draws a refused gate answer as a bare sentence in the
+			 * danger band, and the designer's finding on the first cut of this line was
+			 * that the amber mark + triangle gave a REFUSAL the treatment reserved for a
+			 * limit (design round 1, D1's aside). A refusal is what the owner said about
+			 * the act, so it wears the danger band here too - and no mark, because the
+			 * same refusal must not read differently on the two surfaces.
+			 */}
 			{outcome?.refused ? (
+				<output className="block text-body-sm text-danger">
+					{outcome.refused}
+				</output>
+			) : null}
+			{outcome?.changed === true ? (
 				/*
-				 * The refusal is the panel's own line rather than a toast: it belongs to
-				 * the ask on screen, and every refusal in this feature's copy contract is
-				 * a sentence about what did NOT happen, which is a state a toast loses the
-				 * moment it fades.
+				 * THE RECEIPT FOR A CHANGE THAT LANDED (design round 1, D3; UX round 1,
+				 * U3). The wire cannot carry one: the fold keeps the FIRST `answered`'s
+				 * status, stamp and attribution and requires no marker, so an accepted
+				 * revision renders as a first-answer frame with a different map —
+				 * indistinguishable from the answer it replaced. Without this line the only
+				 * evidence a deliberate change happened is the value the reader has to
+				 * remember putting there. It is the same fact the fleet pane already toasts
+				 * (`Answer changed for …`), kept in the card because this surface does not
+				 * lose the row when the change lands.
+				 *
+				 * The ICON carries the ink and the sentence stays `text-ink`, which is the
+				 * status row's own pairing: a success role on body copy is a contrast claim
+				 * this table has not made for this size.
 				 */
-				<p className="flex items-start gap-1.5 text-warning text-xs">
-					<AlertTriangle
+				<p className="flex items-start gap-1.5 text-xs">
+					<Check
 						aria-hidden="true"
 						size={14}
-						className="mt-0.5 shrink-0"
+						className="mt-0.5 shrink-0 text-success"
 					/>
-					<span>{outcome.refused}</span>
+					<span className="text-ink">
+						Changed — the agent has not been handed it yet.
+					</span>
 				</p>
 			) : null}
 			{canAnswer || canDecline ? (
@@ -691,11 +786,20 @@ const AskRow = ({
 						Send answer
 					</button>
 					{canDecline ? (
+						/*
+						 * `border-transparent` so the ROW BASELINES (design round 1, D4). The
+						 * accent sibling wears a 1px border in both of its states, so without one
+						 * here the two controls in one `items-center` row measured 34px and 32px
+						 * and the pair sat 1px apart. Fixed here AND on the change row's own
+						 * `Cancel`, which inherited the same pair - the finding's own condition is
+						 * fix both or neither, because one row alone would leave the drawer drawing
+						 * two differently-aligned action rows.
+						 */
 						<button
 							type="button"
 							disabled={busy}
 							onClick={() => onDecline(ask)}
-							className="rounded-md px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
+							className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
 						>
 							Decline
 						</button>
@@ -705,10 +809,13 @@ const AskRow = ({
 			{/*
 			 * THE CHANGE AFFORDANCE (design §10, #1936).
 			 *
-			 * IT IS GATED ON THE WIRE'S `delivered` FLAG AND NOTHING ELSE. `delivering`
-			 * is `status === "answered" && ask.delivered !== true`, so the control exists
-			 * exactly while the agent has not been handed the answer — the window the
-			 * amendment admits. It is deliberately NOT inferred from the status alone
+			 * IT IS GATED ON THE WIRE'S WINDOW AND ON THE OWNER'S OWN REFUSAL, and nothing
+			 * else. `changeOpen` is `delivering` — the wire's RECORDED-and-undelivered
+			 * reading, `answered` OR `late` (see `AskPresentation.delivering`) — less a
+			 * refusal this card already holds: the refusal is the owner's own sentence about
+			 * this ask's window, so a control whose only possible outcome is the sentence
+			 * directly above it is withdrawn while the sentence stands (design round 1,
+			 * D1 = UX round 1, U1). It is deliberately NOT inferred from the status alone
 			 * (an ANSWERED ask that has been delivered is finished history and must offer
 			 * nothing), and NOT from any comparison between the draft and the recorded
 			 * values: §10 forbids that in as many words, because equal values are not a
@@ -720,34 +827,55 @@ const AskRow = ({
 			 * session while the ask is undelivered. The backend decides, and its refusal
 			 * (the delivered sentence) is rendered in place by the outcome line above.
 			 */}
-			{delivering && onRevise !== undefined ? (
-				<div className="flex items-center gap-2">
-					{changing ? (
+			{changeOpen && onRevise !== undefined ? (
+				<div className="flex flex-col gap-1.5">
+					{changingNow ? (
 						<>
-							<button
-								type="button"
-								disabled={busy || !changeReady}
-								onClick={() => {
-									const answers = askAnswerMap(ask, changeDraft, secrets);
-									if (answers !== null) onRevise(ask, answers);
-								}}
-								className={cn(
-									"rounded-md px-3 py-1.5 text-sm",
-									busy || !changeReady
-										? "border border-hairline bg-surface text-ink-dim"
-										: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
-								)}
-							>
-								Send change
-							</button>
-							<button
-								type="button"
-								disabled={busy}
-								onClick={() => setChanging(false)}
-								className="rounded-md px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
-							>
-								Cancel
-							</button>
+							{/*
+							 * WHAT CLOSES IT, NAMED WHERE THE CONTROL IS (UX round 1, U4; design
+							 * round 1, D6). The card's status line states the condition and the
+							 * chip states the count, and neither says what the reader is deciding
+							 * AGAINST: the answer is still theirs only until the agent is handed
+							 * it.
+							 */}
+							<p className="text-ink-dim text-meta">{ASK_CHANGE_WINDOW_HINT}</p>
+							<div className="flex items-center gap-2">
+								<button
+									type="button"
+									disabled={busy || !changeReady}
+									onClick={() => {
+										const answers = askAnswerMap(ask, changeDraft, secrets);
+										if (answers !== null) onRevise(ask, answers);
+									}}
+									className={cn(
+										"rounded-md px-3 py-1.5 text-sm",
+										busy || !changeReady
+											? "border border-hairline bg-surface text-ink-dim"
+											: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
+									)}
+								>
+									{/*
+									 * `Update answer`, not `Send change` (design round 1, D5): the verb
+									 * belongs to the ANSWER this control replaces, so it reads beside
+									 * `Send answer` as the same act done twice rather than as a second
+									 * mechanic with its own vocabulary.
+									 */}
+									Update answer
+								</button>
+								<button
+									type="button"
+									disabled={busy}
+									onClick={() => setChanging(false)}
+									/*
+									 * `border-transparent` so this row baselines exactly as the
+									 * first-answer row does — see the `Decline`'s own note (design
+									 * round 1, D4: both rows or neither).
+									 */
+									className="rounded-md border border-transparent px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
+								>
+									Cancel
+								</button>
+							</div>
 						</>
 					) : (
 						<button
@@ -758,11 +886,17 @@ const AskRow = ({
 								 * Seeded from the LOG's own answers, so changing one question is an
 								 * edit rather than a re-entry of the whole ask (see `askRevisionDraft`
 								 * for what a secret question does here and why).
+								 *
+								 * THE FOCUS FLAG IS ARMED HERE, at the press, and spent by the layout
+								 * effect above on the commit that mounts the form — the same shape
+								 * `chat-page.tsx`'s `restoreFocus` uses for the dock's answer press,
+								 * because both presses swap the control under the pointer.
 								 */
 								setChangeDraft(askRevisionDraft(ask));
+								armChangeFocus.current = true;
 								setChanging(true);
 							}}
-							className="rounded-md border border-control px-3 py-1.5 text-ink text-sm hover:bg-sunken"
+							className="self-start rounded-md border border-control px-3 py-1.5 text-ink text-sm hover:bg-sunken"
 						>
 							Change answer
 						</button>
@@ -900,6 +1034,26 @@ export const AskPanel = ({
 								const word = askStatusWord(presentation.status);
 								const question =
 									presentation.ask.questions[0]?.question ?? "No question text";
+								/*
+								 * THE REFUSAL TRAVELS WITH THE ROW (UX round 1, U1 = design round 1, D1).
+								 *
+								 * The reachable path this exists for: the user presses `Change answer`
+								 * while the wire still says undelivered, and by the time the press lands
+								 * the response row exists — the row is what refuses it — so the ask has
+								 * already left `pending` for this section, whose COLLAPSED line painted
+								 * nothing but the word and the question. The owner's sentence was then
+								 * measured on screen and gone, which §10 calls the worse failure than the
+								 * refusal itself ("a silent no-op would be the worse failure").
+								 *
+								 * Drawn INSIDE the disclosure's own summary rather than in the body: the
+								 * body is what the reader has to ask for, and a refusal nobody opens for
+								 * is the silence this finding is about. It WRAPS rather than truncating
+								 * for the same reason — a half-sentence is not an answer — and the row
+								 * grows the one line it needs only while a refusal stands, which is the
+								 * exception state rather than the normal one.
+								 */
+								const refusal =
+									outcomes?.[presentation.ask.ask_id]?.refused ?? null;
 								return (
 									<Disclosure
 										key={presentation.ask.ask_id}
@@ -916,13 +1070,24 @@ export const AskPanel = ({
 										triggerTooltip={question}
 										tooltipClassName="max-w-96"
 										summary={
-											<span className="flex min-w-0 items-baseline gap-1.5">
-												<span className="shrink-0 text-ink-dim text-meta">
-													{word}
+											<span className="flex min-w-0 flex-col gap-0.5">
+												<span className="flex min-w-0 items-baseline gap-1.5">
+													<span className="shrink-0 text-ink-dim text-meta">
+														{word}
+													</span>
+													<span className="truncate text-ink text-meta">
+														{question}
+													</span>
 												</span>
-												<span className="truncate text-ink text-meta">
-													{question}
-												</span>
+												{refusal === null ? null : (
+													/*
+													 * The danger band and no mark, for the reason the card's own line
+													 * gives above: one refusal, one treatment, on both surfaces.
+													 */
+													<span className="min-w-0 text-danger text-meta">
+														{refusal}
+													</span>
+												)}
 											</span>
 										}
 									>

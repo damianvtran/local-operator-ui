@@ -224,11 +224,22 @@ export const askChipCountClause = (view: AskQueueView): string => {
 	 * branches above already follow: a state the user can still act on outranks
 	 * one they cannot. A DELIVERED `answered` ask is excluded by the row's own
 	 * wire-derived flag, so the ordinary finished queue keeps today's sentence.
+	 *
+	 * AND THE CLAUSE NAMES THE DOOR (UX round 1, U4; design round 1, D6). `not yet
+	 * delivered` on its own is a statement of the wire's condition in
+	 * implementation words: it does not say that the answer is still the user's,
+	 * which is the WHOLE point of the state, and a reader who learns the window
+	 * existed only by having a change refused has been told too late (U1's silent
+	 * no-op, one state over). So the count carries the affordance it belongs to.
+	 * WHAT CLOSES IT travels with the affordance itself
+	 * (`ask-queue.ts`'s `ASK_CHANGE_WINDOW_HINT`), because that is where a reader
+	 * who is about to use it is looking, and a chip is not the place to explain
+	 * delivery.
 	 */
 	if (view.delivering > 0)
 		return view.delivering === 1
-			? "1 answer not yet delivered"
-			: `${view.delivering} answers not yet delivered`;
+			? "1 answer not yet delivered — you can still change it"
+			: `${view.delivering} answers not yet delivered — you can still change them`;
 	return "All asks settled";
 };
 
@@ -644,7 +655,40 @@ export type AskPresentation = {
 	movedOn: boolean;
 	canAnswer: boolean;
 	canDecline: boolean;
-	/** True for a row whose answer has been given but not yet delivered to the model. */
+	/**
+	 * True for a row whose answer has been RECORDED but not yet delivered to the model.
+	 *
+	 * §10's window, carried as a presentation fact rather than re-derived by every
+	 * control that needs it: while it is true the answer is still the user's to change
+	 * (`AskPanel`'s change affordance), the row belongs with the pending cards rather
+	 * than in the settled history, and the chip must not call the queue settled.
+	 *
+	 * THE RECORDED HALF IS `answered` **OR** `late`, and getting that wrong is how a
+	 * whole half of §10's window went missing: a revision is admitted for both
+	 * (`asks/queue.py::_revision_decision` - "an ask that already carries an answer
+	 * (`answered`/`late`) with no `ask-response-<ask_id>` row yet"), and the first cut
+	 * of this flag read `answered` alone, so a `late`-and-undelivered answer was filed
+	 * as settled history with no door to a revision §10 accepts (agent review round 1
+	 * MAJOR = design round 1 D2).
+	 *
+	 * THE DELIVERY HALF IS THE WIRE'S `delivered` HINT, and that half is a WIRE LIMIT
+	 * rather than a design one. The hint is the fold's STICKY reading
+	 * (`asks/store.py::delivered_hint`): it counts the `ask-timeout-` row as a delivery
+	 * because a deadline notice reaches the model exactly as an answer does. The window
+	 * the owner actually keys on is the `ask-response-<ask_id>` row, and for `late` the
+	 * two disagree - the timeout notice has gone out, the answer has not. A `late` ask
+	 * in that state reads `delivered: true` here and therefore takes no door, even
+	 * though the engine would accept the revision.
+	 *
+	 * That residual gap is NOT fixable on this side, and is not papered over with a
+	 * second opinion: the wire publishes no row-presence field (`asks/store.py`'s
+	 * `pending_row`, the only shape that reaches a client), so a client that wanted the
+	 * row bound would have to guess it from transcript rows or from a value comparison,
+	 * and §10 forbids exactly that class of inference. It is recorded on the PR as an
+	 * engine/wire deferral (the row bound needs its own field); what is implemented here
+	 * is §10's own text, which states the window as "`answered` or `late` with
+	 * `delivered: false`".
+	 */
 	delivering: boolean;
 };
 
@@ -749,6 +793,45 @@ export const askTimeoutSummary = (receipt: {
 export const ASK_COMPOSER_PLACEHOLDER =
 	"Answering the agent's question — Esc to collapse";
 
+/**
+ * WHAT CLOSES THE CHANGE WINDOW, said where the control that uses it is (design §10,
+ * #1936; UX round 1, U4; design round 1, D6).
+ *
+ * The card's status line and the chip both state the CONDITION (`Answered —
+ * delivering`, `not yet delivered`) and neither states the BOUND: the whole state
+ * exists because the answer is still the user's, and the fact that decides when it
+ * stops being theirs is DELIVERY — the moment the agent is handed the answer. A
+ * reader who learns that only by having a change refused has been told too late
+ * (U1's silent no-op, one state over), so the sentence sits with the affordance
+ * rather than in the mirrored copy contract: these are this surface's words about
+ * this surface's control, not a backend notice restated.
+ */
+export const ASK_CHANGE_WINDOW_HINT =
+	"You can change this until the agent is handed your answer.";
+
+/**
+ * This surface's record of the ask it last acted on (design §10, #1936).
+ *
+ * The two facts a card needs about its own last POST, and nothing else: whether one
+ * is in flight, the owner's sentence if it was refused, and - for a revision -
+ * whether it LANDED. Keyed by ask id at the call site because a refusal belongs to
+ * ONE ask; a single slot would put the previous ask's sentence on the next one.
+ *
+ * `changed` is the receipt, and it exists because the wire cannot carry one: the
+ * fold keeps the status, stamp and attribution of the FIRST `answered` and requires
+ * no marker (`asks/store.py::fold`), so after an accepted revision the frame is a
+ * first-answer frame with a different map in it. Without a client-side record the
+ * artefact of a deliberate change is identical to the artefact of the answer it
+ * replaced (design round 1, D3), and a drawer that stayed on its seeded form after a
+ * successful submit looks exactly like one whose submit never left (UX round 1, U3).
+ */
+export type AskOutcome = {
+	sending: boolean;
+	refused: string | null;
+	/** A CHANGE that landed, per the owner's own acceptance (design §10, #1936). */
+	changed?: boolean;
+};
+
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
 
 export const presentAsk = (ask: PendingAsk): AskPresentation => {
@@ -767,7 +850,13 @@ export const presentAsk = (ask: PendingAsk): AskPresentation => {
 		// the ask is unsettled, and it is offered on a timed-out ask too: the
 		// alternative to answering late is telling the agent to decide.
 		canDecline: undecided,
-		delivering: status === "answered" && ask.delivered !== true,
+		/*
+		 * §10's WINDOW, as the wire states it: a recorded answer (`answered` or `late`)
+		 * the fold has not yet called delivered. See `AskPresentation.delivering` for the
+		 * `late` half of this term and the wire limit it carries.
+		 */
+		delivering:
+			(status === "answered" || status === "late") && ask.delivered !== true,
 	};
 };
 
@@ -793,15 +882,17 @@ export type AskQueueView = {
 	/** Asks whose deadline passed with the agent moving on, from the same rows. */
 	movedOn: number;
 	/**
-	 * Asks that are ANSWERED but not yet DELIVERED, from the same rows (design
-	 * §10, #1936).
+	 * Asks whose answer is RECORDED (`answered` or `late`) and not yet DELIVERED,
+	 * from the same rows (design §10, #1936).
 	 *
 	 * Its own count rather than a fold into `waiting`/`movedOn`, because it is a
 	 * state of its own: the user has answered and the agent has NOT been handed the
 	 * answer, so the row is still the user's to CHANGE — and the chip must not say
 	 * `All asks settled` about it (see `askChipCountClause`). It is read from the
 	 * WIRE's `delivered` hint via `presentAsk`, never from a status alone: a
-	 * delivered `answered` ask is history and takes no control.
+	 * delivered `answered` ask is history and takes no control. The `late` half and
+	 * the wire limit that half carries are `AskPresentation.delivering`'s own note;
+	 * the caveat is stated once there rather than twice here.
 	 *
 	 * A truncated frame's count is a count of the visible prefix, exactly as
 	 * `waiting`/`movedOn` are — the same caveat, stated once here rather than three

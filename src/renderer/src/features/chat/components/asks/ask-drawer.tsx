@@ -66,7 +66,12 @@ import { cn } from "@shared/lib/utils";
 import { PanelRightClose } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
-import type { AskDraft, AskPresentation, AskScope } from "../../ask-queue";
+import type {
+	AskDraft,
+	AskOutcome,
+	AskPresentation,
+	AskScope,
+} from "../../ask-queue";
 import {
 	ASK_FLEET_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
@@ -139,10 +144,8 @@ export type AskDrawerProps = {
 	 */
 	onRevise?: (askId: string, answers: Record<string, string[]>) => void;
 	answering?: boolean;
-	outcomes?: Record<
-		string,
-		{ sending: boolean; refused: string | null } | undefined
-	>;
+	/** This surface's own record of the asks it posted for: `AskOutcome`, passed through untouched. */
+	outcomes?: Record<string, AskOutcome | undefined>;
 	/** The in-flight answers, keyed by ask id then question id. Caller-owned: the composer and this drawer are one draft. */
 	drafts?: Record<string, AskDraft>;
 	onDraftChange?: (askId: string, next: AskDraft) => void;

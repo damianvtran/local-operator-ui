@@ -78,7 +78,7 @@ import {
 	declineQueuedAsk,
 	reviseQueuedAsk,
 } from "../../ask-answer";
-import type { AskDraft, AskPresentation } from "../../ask-queue";
+import type { AskDraft, AskOutcome, AskPresentation } from "../../ask-queue";
 import { askRefusalSentence } from "../../ask-queue";
 import {
 	FLEET_ASKS_QUERY_KEY,
@@ -92,11 +92,8 @@ import { AskDrawer } from "./ask-drawer";
 /** No drafts, as one stable object: a fresh `{}` per render would re-key every card. */
 const EMPTY_ASK_DRAFTS: Record<string, AskDraft> = {};
 
-/** One ask's in-flight/refused record, as the drawer and the panel read it. */
-type AskOutcomes = Record<
-	string,
-	{ sending: boolean; refused: string | null } | undefined
->;
+/** One ask's in-flight/refused/last-change record, as the drawer and the panel read it. */
+type AskOutcomes = Record<string, AskOutcome | undefined>;
 
 export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 	const { rows, frontend } = useFleetAsks();
@@ -199,7 +196,7 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 	);
 
 	const settle = useCallback(
-		(askId: string, outcome: AnswerOutcome, verb: string) => {
+		(askId: string, outcome: AnswerOutcome, verb: string, changed = false) => {
 			setOutcomes((current) => ({
 				...current,
 				[askId]: {
@@ -208,6 +205,13 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 						outcome.status === "failed"
 							? askRefusalSentence(outcome.error)
 							: null,
+					/*
+					 * The revision's own receipt (`AskOutcome`'s note): the wire cannot mark an
+					 * accepted change, so this surface records it — and the row leaves this pane
+					 * on the `refresh()` below, which is why the receipt has to exist before the
+					 * card it belonged to is gone.
+					 */
+					...(changed ? { changed: true } : {}),
 				},
 			}));
 			if (outcome.status !== "sent") return;
@@ -272,7 +276,7 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 				} finally {
 					setAnswering(false);
 				}
-				settle(askId, outcome, "Answer changed for");
+				settle(askId, outcome, "Answer changed for", true);
 			})();
 		},
 		[lock, rows, settle],
