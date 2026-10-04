@@ -45,18 +45,20 @@
  *
  * ## Focus
  *
- * Entering is the user's own press and nothing else: the mount finds focus on the
- * status-row item (`ASK_ITEM_SELECTOR`) or it moves nothing, which is what keeps the
- * lane's no-focus-steal promise (whose subject is an ask ARRIVING) intact. WHERE it
- * lands is the CARD's first control and not the bar's (UX round 1, U4): the bar's
- * leading control in DOM order is the dismiss, so the old "first focusable in the
- * drawer" put the surface's exit under the first Enter - a second press closed the
- * thing the user had just opened. The bar is still reachable, one Shift+Tab up.
- * Leaving returns focus to that item, but only when focus was actually stranded - a
- * close from the composer leaves the caret in the box where the user is typing, and
- * moving it there would be the same theft. The return is deferred one frame because
- * React runs an unmounting component's cleanup BEFORE it detaches the nodes, so a
- * synchronous read would still see the drawer's own focused child.
+ * Entering is the user's own press and nothing else: the mount finds focus on one of
+ * the lane's two DOORS - the status-row item (`ASK_ITEM_SELECTOR`, the session scope)
+ * or the sidebar's `Asks` row (`ASK_FLEET_ITEM_SELECTOR`, the fleet scope) - or it
+ * moves nothing, which is what keeps the lane's no-focus-steal promise (whose subject
+ * is an ask ARRIVING) intact. WHERE it lands is the CARD's first control and not the
+ * bar's (UX round 1, U4): the bar's leading control in DOM order is the dismiss, so
+ * the old "first focusable in the drawer" put the surface's exit under the first
+ * Enter - a second press closed the thing the user had just opened. The bar is still
+ * reachable, one Shift+Tab up. Leaving returns focus to the door it was opened by,
+ * but only when focus was actually stranded - a close from the composer leaves the
+ * caret in the box where the user is typing, and moving it there would be the same
+ * theft. The return is deferred one microtask because React runs an unmounting
+ * component's cleanup BEFORE it detaches the nodes, so a synchronous read would still
+ * see the drawer's own focused child.
  */
 
 import { Button, Tooltip } from "@shared/components/ui";
@@ -64,8 +66,9 @@ import { cn } from "@shared/lib/utils";
 import { PanelRightClose } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
-import type { AskDraft, AskScope } from "../../ask-queue";
+import type { AskDraft, AskPresentation, AskScope } from "../../ask-queue";
 import {
+	ASK_FLEET_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askQueueView,
@@ -73,7 +76,6 @@ import {
 	noopDraftChange,
 	sessionAsks,
 } from "../../ask-queue";
-import { fleetAskRowConversation } from "../../fleet-asks";
 import { useAskClock } from "../../use-ask-clock";
 import { AskPanel } from "./ask-panel";
 
@@ -138,6 +140,21 @@ export type AskDrawerProps = {
 	/** The in-flight answers, keyed by ask id then question id. Caller-owned: the composer and this drawer are one draft. */
 	drafts?: Record<string, AskDraft>;
 	onDraftChange?: (askId: string, next: AskDraft) => void;
+	/**
+	 * WHICH CONVERSATION A ROW BELONGS TO, when the surface is showing more than
+	 * one - the per-card conversation line the fleet scope draws (see
+	 * `AskPanelProps.conversationOf`).
+	 *
+	 * THE CALLER SUPPLIES IT rather than this container deciding from `scope`.
+	 * Naming a conversation is a property of the READ, not of the container: the
+	 * fleet model resolves it from the aggregate row plus the sessions catalogue
+	 * (the same catalogue the list names rows by), and the session scope has
+	 * nothing to pass because its rows are all about the conversation the user is
+	 * already in. Reading the fleet model from here would be the container reaching
+	 * into one of its two callers, which is the coupling the two-homes split
+	 * exists to avoid.
+	 */
+	conversationOf?: (row: AskPresentation) => string | null;
 	/** A story pins the clock so its frames are reproducible. */
 	nowMs?: number;
 };
@@ -158,6 +175,7 @@ export const AskDrawer = ({
 	outcomes,
 	drafts,
 	onDraftChange,
+	conversationOf,
 	nowMs,
 }: AskDrawerProps) => {
 	const view = askQueueView(frontend);
@@ -190,18 +208,46 @@ export const AskDrawer = ({
 
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
-	 * ALREADY on the status-row item, which is reachable only from a press or Enter on
-	 * the chip (or a caller that deliberately focuses it). A programmatic open, a
-	 * story pinning the flag, or a second mount moves nothing.
+	 * ALREADY on one of the lane's two doors - the composer chip (the session
+	 * scope) or the sidebar's `Asks` row (the fleet scope) - so a programmatic open,
+	 * a story pinning the flag, or a second mount moves nothing.
+	 *
+	 * BOTH DOORS, because the fleet door is a rail row: with only the chip accepted,
+	 * an open from the rail left the keyboard on the row, nothing inside the pane
+	 * could consume Escape, and the press reached the app's interrupt rung and
+	 * stopped the agent's turn (UX round 1, U1 / agent review round 1, F1). The
+	 * returned `Element` is remembered so the door that was pressed is the one focus
+	 * goes back to - two doors, one of which is on the rail and one in a composer
+	 * that may not even be mounted on the route under the fleet pane.
 	 */
 	const wasBootstrapped = useRef(false);
+	const doorRef = useRef<Element | null>(null);
 	useLayoutEffect(() => {
 		if (wasBootstrapped.current) return;
-		wasBootstrapped.current = true;
 		const active = document.activeElement;
-		if (active === null || !active.matches?.(ASK_ITEM_SELECTOR)) return;
+		if (active === null || typeof active.matches !== "function") return;
+		/*
+		 * EITHER DOOR: the composer chip (session) or the sidebar's `Asks` row
+		 * (fleet). Both are the user's own press; nothing else moves focus.
+		 */
+		const door =
+			active.matches(ASK_ITEM_SELECTOR) ||
+			active.matches(ASK_FLEET_ITEM_SELECTOR)
+				? active
+				: null;
+		if (door === null) return;
+		/*
+		 * THE FLAG IS SET ONLY ONCE THE SURFACE IS ACTUALLY THERE, and that is not a
+		 * tidy-up: the fleet pane mounts before its read answers, so the container's
+		 * FIRST render has `frontend === null` and draws nothing (`rootRef.current` is
+		 * null). Consuming the one-shot there left the keyboard on the rail row for
+		 * good - the exact state UX round 1, U1 recorded - because the re-render that
+		 * carries the rows arrives after the flag is already spent.
+		 */
 		const root = rootRef.current;
 		if (root === null) return;
+		wasBootstrapped.current = true;
+		doorRef.current = door;
 		/*
 		 * THE CARD'S FIRST CONTROL, not the bar's (UX round 1, U4). The bar leads the
 		 * DOM, and its first focusable is the DISMISS - so the surface used to open with
@@ -215,12 +261,29 @@ export const AskDrawer = ({
 		const landing =
 			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ?? panel ?? root;
 		landing.focus();
-	}, []);
+		/*
+		 * NO DEPENDENCY ARRAY, and that is the whole point rather than an oversight.
+		 * The one-shot is spent only by a commit that BOTH found a door and found the
+		 * surface (`wasBootstrapped`), so the effect has to be offered every commit
+		 * until then: the fleet pane's first renders carry no rows (the read has not
+		 * answered), which is why the container's mount commit draws nothing at all and
+		 * `rootRef.current` is null on it. A `[]` here ran exactly once, on that empty
+		 * commit, and the re-render carrying the rows never got a second chance — the
+		 * key stayed on the rail row, which is the state UX round 1, U1 recorded. The
+		 * work per commit until the flag is set is two `matches` calls, and after it is
+		 * set the first line returns.
+		 */
+	});
 
 	/*
-	 * BACK TO THE ITEM, and only when focus actually fell to the body: a close from
-	 * the composer (Escape while typing) leaves focus in the box, and moving it to the
-	 * item there would be the theft this whole lane avoids.
+	 * BACK TO THE DOOR, and only when focus actually fell to the body: a close from
+	 * the composer (Escape while typing) leaves focus in the box where the user is
+	 * typing, and moving it to a row there would be the theft this whole lane avoids.
+	 *
+	 * The remembered door, not a fresh `querySelector(ASK_ITEM_SELECTOR)`: the fleet
+	 * pane is opened from the rail and the session chip may not even be mounted on the
+	 * route beneath it, so looking the chip up would either find nothing or focus the
+	 * wrong control - the same defect UX round 1, U1 recorded from the other end.
 	 *
 	 * A MICROTASK, not a read at cleanup time: React runs an unmounting component's
 	 * cleanup as part of the commit that deletes it, and at that instant the node
@@ -235,9 +298,8 @@ export const AskDrawer = ({
 			queueMicrotask(() => {
 				const active = document.activeElement;
 				if (active !== null && active !== document.body) return;
-				const item =
-					document.querySelector<HTMLButtonElement>(ASK_ITEM_SELECTOR);
-				if (item?.isConnected) item.focus();
+				const door = doorRef.current as HTMLButtonElement | null;
+				if (door?.isConnected) door.focus();
 			});
 		};
 	}, []);
@@ -337,15 +399,13 @@ export const AskDrawer = ({
 					onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
 					onDecline={(task) => onDecline?.(task.ask_id)}
 					/*
-					 * THE CONVERSATION LINE IS THE FLEET'S OWN (see `AskPanelProps`): a
-					 * session drawer's rows are all about the conversation the user is in, so
-					 * naming it on every card would be the same word N times. The scope is
-					 * read here because this component owns it - the panel stays
-					 * scope-agnostic, which is what lets one list serve both contexts.
+					 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
+					 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the
+					 * conversation the user is in, so naming it on every card would be the same word
+					 * N times. The panel stays scope-agnostic, which is what lets one list serve
+					 * both contexts.
 					 */
-					conversationOf={
-						scope === "fleet" ? fleetAskRowConversation : undefined
-					}
+					conversationOf={conversationOf}
 				/>
 			</div>
 		</section>

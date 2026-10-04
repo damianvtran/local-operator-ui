@@ -457,6 +457,15 @@ function SessionPanel({
 	 * Reading the scope here is what makes that a construction rather than a promise:
 	 * a fleet ask can never be answered by typing into an unrelated conversation's
 	 * box, which is the misroute this split exists to prevent.
+	 *
+	 * THAT THE BOX STAYS ORDINARY UNDER THE FLEET PANE IS THE DECISION, NOT AN
+	 * OVERSIGHT (UX round 1, U4). The alternative - flipping it into answer mode - is
+	 * the misroute above; the legible half is that the two scopes never look alike:
+	 * the rail says `All asks`, the panel's bar says `All conversations · N`, and this
+	 * chip keeps saying `this conversation's asks` (`askChipLabel`) and opens this
+	 * conversation's own queue. A reader who types here is in the conversation they
+	 * can see, not in the pane; the pane answers through its own cards' `Send
+	 * answer`.
 	 */
 	const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
 	const askExpanded = askDrawerOpen && askDrawerScope === "session";

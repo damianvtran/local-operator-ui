@@ -34,10 +34,10 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { fleetAskRows, fleetAskFrontend, fleetAsksOutstanding, fleetAskSessionFor, fleetAskConversationLabel, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
+			'export { fleetAskRows, fleetAskFrontend, fleetAsksOutstanding, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
 			'export { useUiPreferencesStore, persistedUiPreferences, resolveRightSlotWidth } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
-			'export { askScopeLine } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { askScopeLine, ASK_ITEM_SELECTOR, ASK_FLEET_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
 		].join("\n"),
 		resolveDir: process.cwd(),
 		loader: "ts",
@@ -61,6 +61,7 @@ const {
 	fleetAsksOutstanding,
 	fleetAskSessionFor,
 	fleetAskConversationLabel,
+	fleetAskConversationLabels,
 	FLEET_ASKS_QUERY_KEY,
 	useUiPreferencesStore,
 	persistedUiPreferences,
@@ -68,6 +69,8 @@ const {
 	desktopEndpoint,
 	desktopRequestSchema,
 	askScopeLine,
+	ASK_ITEM_SELECTOR,
+	ASK_FLEET_ITEM_SELECTOR,
 } = mod;
 
 /** One aggregate row, in the route's own shape: frozen `PendingAsk` + identity. */
@@ -198,18 +201,50 @@ test("an answer is addressed at the ROW's own conversation", () => {
 	assert.equal(fleetAskSessionFor([], "a-1"), null);
 });
 
-test("a row's conversation is named from the wire, never from display text", () => {
+test("a row's conversation is named the way the sessions list names it", () => {
+	/*
+	 * THE TITLE FIRST, which is the name `chat-sidebar.tsx` gives the same
+	 * conversation: one conversation must not have two names, and two conversations
+	 * in one repository must not print one (design review round 1, D1; UX round 1,
+	 * U2). `titleOf` is the catalogue's answer for the row's `session_id`.
+	 */
+	const titles = new Map([
+		["abcdef123456", "Ship the ask remediation"],
+		["feedfacecafe", "Pergamon enrichment"],
+	]);
+	const titleOf = (id) => titles.get(id);
 	assert.equal(
 		fleetAskConversationLabel(
-			row({ cwd: "/Users/someone/projects/pergamon-labs/" }),
+			row({ cwd: "/Users/someone/projects/pergamon-labs" }),
+			titleOf,
+		),
+		"Ship the ask remediation",
+	);
+	/* No catalogue entry (an archived or un-paged conversation): the directory. */
+	assert.equal(
+		fleetAskConversationLabel(
+			row({
+				cwd: "/Users/someone/projects/pergamon-labs/",
+				session_id: "999999999",
+			}),
+			titleOf,
 		),
 		"pergamon-labs",
 	);
+	/* An empty/absent title is a place-holder, not a name: the directory is better. */
+	assert.equal(
+		fleetAskConversationLabel(
+			row({ cwd: "/Users/someone/projects/pergamon-labs" }),
+			() => "   ",
+		),
+		"pergamon-labs",
+	);
+	/* The basename rules are unchanged when no catalogue is consulted. */
 	assert.equal(
 		fleetAskConversationLabel(row({ cwd: "C:\\work\\minervaai" })),
 		"minervaai",
 	);
-	/* No `cwd`: the id's tail is the honest name rather than nothing at all. */
+	/* No `cwd` and no title: the id's tail is the honest name rather than nothing. */
 	assert.equal(
 		fleetAskConversationLabel(row({ cwd: "", session_id: "abcdef123456" })),
 		"conversation 3456",
@@ -217,6 +252,103 @@ test("a row's conversation is named from the wire, never from display text", () 
 	assert.equal(
 		fleetAskConversationLabel(row({ cwd: "", session_id: null })),
 		null,
+	);
+});
+
+test("two rows that would print one name are disambiguated", () => {
+	/*
+	 * The case the fixture could not show and the operator's own install does: two
+	 * conversations open in one repository, neither with a title to separate them.
+	 * Resolving the names over the WHOLE visible set is what makes the tail
+	 * available to append (design review round 1, D1).
+	 */
+	const labels = fleetAskConversationLabels([
+		row({
+			ask_id: "a-1",
+			cwd: "/Users/someone/pergamon-labs",
+			session_id: "aaaa11112222",
+		}),
+		row({
+			ask_id: "a-2",
+			cwd: "/Users/someone/pergamon-labs",
+			session_id: "bbbb33334444",
+		}),
+		row({
+			ask_id: "a-3",
+			cwd: "/Users/someone/minervaai",
+			session_id: "cccc55556666",
+		}),
+	]);
+	assert.equal(labels.get("a-1"), "pergamon-labs · 2222");
+	assert.equal(labels.get("a-2"), "pergamon-labs · 4444");
+	/* A unique name is left alone: the tail is a disambiguator, not a suffix. */
+	assert.equal(labels.get("a-3"), "minervaai");
+	/*
+	 * SEVERAL ASKS FROM ONE CONVERSATION ARE NOT A COLLISION - the ordinary case,
+	 * and the one the first capture of this set got wrong (three cards of one
+	 * conversation came out `Migrate the billing schema · cdef`).
+	 */
+	const oneConversation = fleetAskConversationLabels(
+		[
+			row({ ask_id: "a-1", cwd: "/p", session_id: "aaaa11112222" }),
+			row({ ask_id: "a-2", cwd: "/p", session_id: "aaaa11112222" }),
+			row({ ask_id: "a-3", cwd: "/p", session_id: "aaaa11112222" }),
+		],
+		() => "Migrate the billing schema",
+	);
+	assert.equal(oneConversation.get("a-1"), "Migrate the billing schema");
+	assert.equal(oneConversation.get("a-3"), "Migrate the billing schema");
+	/* Titles separate two conversations in one directory without a tail. */
+	const titled = fleetAskConversationLabels(
+		[
+			row({ ask_id: "a-1", cwd: "/p", session_id: "aaaa11112222" }),
+			row({ ask_id: "a-2", cwd: "/p", session_id: "bbbb33334444" }),
+		],
+		(id) => (id === "aaaa11112222" ? "first" : "second"),
+	);
+	assert.equal(titled.get("a-1"), "first");
+	assert.equal(titled.get("a-2"), "second");
+	/* A row that names nothing is not in the map at all, so the panel draws no line. */
+	assert.equal(
+		fleetAskConversationLabels([
+			row({ ask_id: "a-9", cwd: "", session_id: null }),
+		]).has("a-9"),
+		false,
+	);
+});
+
+test("every press is addressed at the pressed row's OWN conversation", () => {
+	/*
+	 * THE CHECK THE OLD PROOF'S AGGREGATE SENTENCE DID NOT ACTUALLY MAKE (agent
+	 * review round 1, F4). `prove-answer-addressing.mjs` printed `requests
+	 * addressing a session that is not the row's own: 0` while filtering on
+	 * `!rows.some(r => r.session_id === request.sessionId)` - satisfied by ANY row's
+	 * session, so a press addressed to the wrong ROW's conversation passed it. The
+	 * durable form is per PRESS: the target must equal the `session_id` of the very
+	 * row the press carries, and the open conversation's id must never appear.
+	 */
+	const rows = [
+		row({ ask_id: "a-1", session_id: "111111111111" }),
+		row({ ask_id: "a-2", session_id: "222222222222" }),
+		row({ ask_id: "a-3", session_id: "333333333333" }),
+	];
+	const openConversation = "999999999999";
+	const mismatches = rows.filter(
+		(pressed) =>
+			fleetAskSessionFor(rows, pressed.ask_id) !== pressed.session_id,
+	);
+	assert.deepEqual(mismatches, [], "a press must target the row's own session");
+	/*
+	 * And the mis-address is not merely absent by luck: nothing in this path can
+	 * produce the open conversation's id, because the only input is the pressed
+	 * row. An id the panel is not painting refuses rather than falling back.
+	 */
+	assert.equal(fleetAskSessionFor(rows, "a-not-painted"), null);
+	assert.ok(
+		rows.every(
+			(pressed) =>
+				fleetAskSessionFor(rows, pressed.ask_id) !== openConversation,
+		),
 	);
 });
 
@@ -312,5 +444,80 @@ test("the fleet drawer answers by looking the row's session up", () => {
 	assert.ok(
 		!/sessionId\s*:\s*["']/.test(drawer),
 		"the fleet drawer appears to hard-code a session id.",
+	);
+});
+
+/*
+ * THE DOOR, THE KEY AND THE NAME, pinned at the source. All three are the class
+ * of fact a refactor loses silently: the pane's Escape claim, the selector the
+ * drawer's entry move accepts, and the key that keeps two `/chat` rows apart.
+ */
+test("the fleet pane claims Escape at the window, and the drawer accepts the rail door", () => {
+	const drawer = read(
+		"src/renderer/src/features/chat/components/asks/fleet-ask-drawer.tsx",
+	);
+	assert.match(
+		drawer,
+		/window\.addEventListener\("keydown"/,
+		"the fleet pane no longer claims Escape at the window. Its own section handler cannot see a press made on the rail row that opened it, and the press then falls to the interrupt rung and stops the running turn (UX round 1, U1 / agent review round 1, F1).",
+	);
+	assert.match(
+		drawer,
+		/pressLandsOnOverlay\(event\.target\)/,
+		"the claim must defer to an open dialog/menu/listbox, the same guard the canvas uses.",
+	);
+	assert.match(
+		drawer,
+		/event\.preventDefault\(\)/,
+		"the claim must preventDefault: the interrupt ladder stands down on that flag, and on nothing else.",
+	);
+	const container = read(
+		"src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
+	);
+	assert.ok(
+		container.includes("ASK_FLEET_ITEM_SELECTOR"),
+		"the drawer's entry move no longer accepts the rail door, so focus never enters the pane when it is opened from the sidebar.",
+	);
+	assert.equal(ASK_FLEET_ITEM_SELECTOR, '[data-tour-tag="nav-item-asks"]');
+});
+
+test("the nav list is keyed by the row's own tag, not the shared route", () => {
+	const nav = read(
+		"src/renderer/src/shared/components/navigation/sidebar-navigation.tsx",
+	);
+	assert.match(
+		nav,
+		/key=\{item\.tourTag\}/,
+		"the rows must be keyed by something unique per row.",
+	);
+	assert.ok(
+		!/key=\{item\.path\}/.test(nav),
+		'Aida\'s row and the Asks row both carry `path: "/chat"`, and both resolve asynchronously - keying by path is the duplicate-key warning and ambiguous reconciliation design review round 1, F2 recorded.',
+	);
+	assert.match(
+		nav,
+		/tourTag: "nav-item-asks"/,
+		"and the Asks row's own tag is the key the selector above names.",
+	);
+});
+
+test("the fleet drawer names its cards from the sessions catalogue", () => {
+	const drawer = read(
+		"src/renderer/src/features/chat/components/asks/fleet-ask-drawer.tsx",
+	);
+	assert.ok(
+		drawer.includes("fleetAskConversationLabels("),
+		"the labels must be resolved over the whole visible set so a collision can be disambiguated (design review round 1, D1).",
+	);
+	assert.ok(
+		drawer.includes("useCanonicalSessionsStore"),
+		"and the names must come from the same catalogue the sessions list reads.",
+	);
+	const container = read(
+		"src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
+	);
+	assert.ok(
+		container.includes("conversationOf={conversationOf}"),
+		"the container must take the conversation line from its caller rather than reading the fleet model itself.",
 	);
 });

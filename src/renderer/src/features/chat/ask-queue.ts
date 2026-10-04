@@ -505,6 +505,28 @@ export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
  */
 export const ASK_ITEM_SELECTOR = "[data-lo-ask-item-toggle]";
 
+/**
+ * The FLEET door: the sidebar's top-level `Asks` row.
+ *
+ * The second thing that OPENS an ask surface, and the reason it needs its own
+ * selector rather than a second clause on `ASK_ITEM_SELECTOR`. The drawer's
+ * entry move runs only when the mount finds focus ALREADY on the control the
+ * user pressed, which is what keeps the lane's no-focus-steal promise (an ask
+ * ARRIVING moves nothing). The session door is the composer chip, which carries
+ * `ASK_ITEM_SELECTOR`; the fleet door is a sidebar row, which does not - so
+ * before this existed a fleet open left focus on the rail row, Escape had no
+ * listener inside the pane to bubble to, and the press fell through to the
+ * interrupt ladder and stopped the running turn (UX round 1, U1 / agent review
+ * round 1, F1). The drawer accepts either door at entry and returns focus to
+ * the one it was opened by.
+ *
+ * The anchor is the row's stable `data-tour-tag`, the same handle the product
+ * tour and the driver rigs address it by; the row carries no ask-lane marker of
+ * its own, and minting one would be a second name for a row that already has
+ * one.
+ */
+export const ASK_FLEET_ITEM_SELECTOR = '[data-tour-tag="nav-item-asks"]';
+
 /*
  * Re-exported so the claim's own contract is nameable from a rig: the composer box
  * is half of what this claim covers, and a test that had to guess its selector would

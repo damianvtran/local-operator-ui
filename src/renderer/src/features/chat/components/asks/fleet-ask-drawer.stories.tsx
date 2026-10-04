@@ -32,6 +32,16 @@
  * things and both are right. Two frames taken minutes apart do not show that -
  * the pair does - so `ScopeComparison` draws the two real drawers beside the real
  * sidebar that carries the top-level badge, at the same instant, on one payload.
+ * It is a FIGURE: one slot holds one pane in the product, so the story's name says
+ * so and no evidence frame is taken from it (agent review round 1, F3).
+ *
+ * ## Naming, which is what the frames here are for
+ *
+ * `AppFrame` seeds the sessions catalogue, because a fleet card is named the way
+ * the sessions list names the conversation (design review round 1, D1).
+ * `FleetScopeOpen` is the ordinary state - every conversation titled;
+ * `UntitledPairInOneRepo` is the collision: two untitled conversations in one
+ * repository, told apart by the id's tail rather than printing one name twice.
  */
 
 import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
@@ -39,9 +49,10 @@ import { FleetAskDrawer } from "@features/chat/components/asks/fleet-ask-drawer"
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
-import { useEffect, useLayoutEffect } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import type { DesktopResponse } from "../../../../../../shared/desktop-contract";
 
@@ -97,6 +108,57 @@ const fleetRow = (over: {
 const PERGAMON = "abcdef123456";
 const MINERVA = "123456abcdef";
 const TOOLS = "feedfacecafe";
+
+/**
+ * THE CATALOGUE, as the sessions list holds it: the same rows `chat-sidebar.tsx`
+ * names by `title`. Seeded so the frames prove the RULE the naming now follows -
+ * a fleet card carries the name the list gives the conversation (design review
+ * round 1, D1) - rather than the directory basename the first cut printed. One
+ * conversation is deliberately left untitled, so the frame shows the fallback as
+ * well as the title.
+ */
+const CATALOGUE = [
+	{
+		session_id: MINERVA,
+		title: "Migrate the billing schema",
+		cwd: "/Users/someone/minervaai",
+	},
+	{
+		session_id: PERGAMON,
+		title: "Enrichment backfill",
+		cwd: "/Users/someone/pergamon-labs",
+	},
+	{
+		session_id: TOOLS,
+		title: "Phone portal deploy",
+		cwd: "/Users/someone/tools/omp-mobile",
+	},
+];
+
+/**
+ * TWO CONVERSATIONS IN ONE REPOSITORY, NEITHER WITH A TITLE - the state the first
+ * fixture could not show (`source-only`, design review round 1, D1) and the state
+ * the operator's own install is in. Resolved together, the two cards are told
+ * apart by the session id's tail; resolved one at a time they would print one
+ * name twice.
+ */
+const PERGAMON_SECOND = "c0ffee5a5a5a";
+const UNTITLED_PAIR = [
+	fleetRow({
+		ask_id: "a-u1",
+		session_id: PERGAMON,
+		cwd: "/Users/someone/pergamon-labs",
+		question: "Should the enrichment backfill skip rows with no domain?",
+		options: ["skip them", "hold them for review"],
+	}),
+	fleetRow({
+		ask_id: "a-u2",
+		session_id: PERGAMON_SECOND,
+		cwd: "/Users/someone/pergamon-labs",
+		question: "Re-run the failed shard on its own, or the whole suite?",
+		options: ["its own", "whole suite"],
+	}),
+];
 
 /**
  * ELEVEN outstanding asks across THREE conversations - the top-level count the
@@ -184,25 +246,63 @@ const FLEET_ROWS = [
 /** The conversation on screen: THREE of the fleet's eleven, all its own. */
 const SESSION_ROWS = FLEET_ROWS.filter((row) => row.session_id === MINERVA);
 
-/** What `/v1/desktop/asks` answers, installed on the bridge the app itself uses. */
-const useAsksBridge = () => {
-	useEffect(() => {
+/**
+ * What `/v1/desktop/asks` answers, installed on the bridge the app itself uses.
+ *
+ * INSTALLED DURING THE FIRST RENDER, NOT IN AN EFFECT, and that is the difference
+ * between a frame that shows the surface and one that shows an empty sidebar:
+ * React runs a CHILD's effects before its parent's, so the query this bridge
+ * serves (`SidebarNavigation`, a child) subscribes and issues its first request
+ * before a parent effect could install anything - the read fails, and the frame
+ * taken in that window carries no `Asks` row at all. The effect-shaped version
+ * was a race that the first capture of this set actually lost. The cleanup still
+ * runs as an effect, because unmount is a commit-shaped event.
+ */
+const useAsksBridge = (rows: readonly unknown[] = FLEET_ROWS) => {
+	const previous = useRef<unknown>(undefined);
+	if (previous.current === undefined) {
+		previous.current = window.api?.desktop ?? null;
 		const bridge = window as unknown as {
 			api?: { desktop?: { request?: (request: BridgeRequest) => unknown } };
 		};
 		if (!bridge.api) bridge.api = {};
-		const api = bridge.api;
-		const original = api.desktop;
-		api.desktop = {
+		bridge.api.desktop = {
 			request: async (request: BridgeRequest) =>
 				request.op === "asks.list"
-					? ok({ asks: FLEET_ROWS })
+					? ok({ asks: rows })
 					: ({ status: 404, body: { detail: "not found" } } as DesktopResponse),
 		};
+	}
+	useEffect(() => {
 		return () => {
-			api.desktop = original;
+			const bridge = window as unknown as {
+				api?: { desktop?: unknown };
+			};
+			if (!bridge.api) return;
+			bridge.api.desktop = previous.current ?? undefined;
 		};
 	}, []);
+};
+
+/**
+ * THE CATALOGUE ON DISK. The fleet drawer names a card from the same store the
+ * sessions list reads, so a story that did not seed it would photograph the
+ * fallback for every row and prove nothing about the title rule.
+ */
+const useCatalogue = (
+	rows: readonly {
+		session_id: string;
+		title?: string | null;
+		cwd?: string | null;
+	}[] = CATALOGUE,
+) => {
+	useEffect(() => {
+		const before = useCanonicalSessionsStore.getState().sessions;
+		useCanonicalSessionsStore.setState({ sessions: [...rows] });
+		return () => {
+			useCanonicalSessionsStore.setState({ sessions: before });
+		};
+	}, [rows]);
 };
 
 /**
@@ -221,8 +321,21 @@ const ConversationStandIn = () => (
 );
 
 /** The same frame the app draws: the shell, with the column and the chat page's slot. */
-const AppFrame = ({ content }: { content?: ReactNode }) => {
-	useAsksBridge();
+const AppFrame = ({
+	content,
+	rows,
+	catalogue,
+}: {
+	content?: ReactNode;
+	rows?: readonly unknown[];
+	catalogue?: readonly {
+		session_id: string;
+		title?: string | null;
+		cwd?: string | null;
+	}[];
+}) => {
+	useAsksBridge(rows);
+	useCatalogue(catalogue);
 	useLayoutEffect(() => {
 		document.documentElement.dataset.chromePlatform = "darwin";
 	}, []);
@@ -263,7 +376,9 @@ type Story = StoryObj;
 /**
  * THE TOP-LEVEL CONTEXT: the sidebar's `Asks` row carries the FLEET total (11)
  * and the pane it opens is docked in the shell's own right slot, so the press
- * works on every route. Every card names the conversation it came from.
+ * works on every route. Every card carries the name the sessions list gives its
+ * conversation - the title from the catalogue, not the directory basename
+ * (design review round 1, D1).
  */
 export const FleetScopeOpen: Story = {
 	render: () => {
@@ -281,17 +396,58 @@ export const FleetScopeOpen: Story = {
 };
 
 /**
+ * TWO CONVERSATIONS IN ONE REPOSITORY, NEITHER OF THEM TITLED - the collision
+ * `fleetAskConversationLabels` exists for. The two cards are told apart by the
+ * session id's tail rather than printing `pergamon-labs` twice, which is the
+ * state in which a reader picks the wrong card (design review round 1, D1).
+ */
+export const UntitledPairInOneRepo: Story = {
+	render: () => {
+		useEffect(() => {
+			useUiPreferencesStore.setState({
+				isAskDrawerOpen: true,
+				askDrawerScope: "fleet",
+			});
+			return () => {
+				useUiPreferencesStore.setState({ isAskDrawerOpen: false });
+			};
+		}, []);
+		return (
+			<AppFrame
+				rows={UNTITLED_PAIR}
+				catalogue={[
+					{
+						session_id: PERGAMON,
+						cwd: "/Users/someone/pergamon-labs",
+					},
+					{
+						session_id: PERGAMON_SECOND,
+						cwd: "/Users/someone/pergamon-labs",
+					},
+				]}
+			/>
+		);
+	},
+};
+
+/**
  * THE TWO SCOPES AT ONE INSTANT, which is the operator's actual requirement: the
  * same sidebar badge (11, the fleet) beside the two real drawers - the
  * conversation's own (`This conversation · 3`) and the fleet's
  * (`All conversations · 11`). The counts differ because they describe different
  * sets, and the chrome bar is what says so.
  *
- * This is a COMPARISON FIGURE rather than a screen the app draws (one slot holds
- * one pane, `claimRightSlot`): both drawers, and the sidebar beside them, are the
- * real components at the app's own resolved width.
+ * THIS IS A FIGURE, NOT A SCREEN, AND IT SAYS SO IN ITS OWN NAME (agent review
+ * round 1, F3; the operator's ask). One slot holds one pane (`claimRightSlot`), so
+ * the product can never draw both drawers at once; the first cut of this story
+ * shipped a frame of it under a caption that read like an app state, which is the
+ * class of impossibility this workstream exists to remove. Both drawers and the
+ * sidebar are the real components at the app's own resolved width - but a reader
+ * must not have to discover the composition from a docblock, so the story's name
+ * carries it and the evidence set does not include a frame of it.
  */
 export const ScopeComparison: Story = {
+	name: "Scope comparison (a figure - one slot, two panes is not a product state)",
 	render: () => (
 		<AppFrame
 			content={

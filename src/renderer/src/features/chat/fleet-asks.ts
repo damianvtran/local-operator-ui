@@ -65,8 +65,22 @@ export const FLEET_ASKS_QUERY_KEY = ["desktop", "asks"] as const;
  * WHY THIS CADENCE. Ten seconds is the order of the lane's own clock (the
  * countdown ticks at a second, a deadline's warning window is minutes) and it is
  * a bounded cost: one index scan per interval, off the event loop on the
- * backend's side, with no session opened and no runtime dialled. It deliberately
- * does NOT run in the background (`refetchIntervalInBackground` is left off,
+ * backend's side, with no session opened and no runtime dialled.
+ *
+ * THE POPULATION THE SCAN COVERS IS UNCAPPED, AND THE POLL IS NOT, which is the
+ * one asymmetry worth stating rather than discovering later. The route is
+ * deliberately unfiltered and un-truncated (`asks/store.py`'s `index_asks` reads
+ * every session's index under the config dir and caps nothing, because a frame
+ * may not silently drop a session's question), and the backend's own note says it
+ * "WOULD need one before it ever feeds a frame" - this read is not a frame, so
+ * that requirement does not bind it. The cost is therefore O(sessions) every ten
+ * seconds on a host that runs many; it is still the cheaper half of the two, since
+ * the alternative (a per-session subscription) is O(sessions) frames, and the
+ * count is a fact about conversations the user is NOT looking at, which nothing
+ * else in the renderer announces. A cap belongs on the route, not on this poll,
+ * and lands with the first caller that needs to bound a frame.
+ *
+ * It deliberately does NOT run in the background (`refetchIntervalInBackground` is left off,
  * unlike the capabilities watch): React Query's default focus refetch already
  * re-asks the moment the user comes back to the window, which is the only moment
  * a stale badge could mislead anyone, and an ask is answered by a person at the
@@ -143,20 +157,38 @@ export function fleetAskFrontend(
 }
 
 /**
- * The conversation an ask belongs to, in the reader's words - or `null` for a row
- * that names none, which is what keeps a session-scoped row from growing a label
- * it has no value for.
+ * The conversation a row belongs to, in the reader's words - the SAME name the
+ * sessions list gives it, with the directory as the stated fallback.
  *
- * `cwd` is the aggregate's own naming field (the directory the conversation runs
- * in), and its basename is the honest short name: it is the thing the user
- * recognises a conversation by, and it is already what the app prints for a
- * session's working directory elsewhere. The id is the FALLBACK rather than the
- * first choice - a raw 12-hex id is an identity, not a name, and printing only
- * that would leave the reader unable to tell two conversations apart. Its tail is
- * used because the tail is what every other surface's disambiguator spends
- * (`deviceLabel`'s rule) and because a truncated head is the half ids vary in.
+ * WHY THE TITLE FIRST. `chat-sidebar.tsx` names every conversation by
+ * `row.title`, so a fleet card that named the same conversation by its `cwd`
+ * basename gave ONE conversation TWO names - and, worse, printed the identical
+ * label for two conversations opened in one repository, where the reader's next
+ * act is to answer one of them. The title is the name the product already uses,
+ * and the catalogue that holds it (`CanonicalSessionRow.title`) is the same one
+ * the list reads; `titleOf` is that catalogue's answer for this row's
+ * `session_id`, passed in so this module stays a pure function of its arguments
+ * and a test needs no store.
+ *
+ * WHY THE DIRECTORY IS THE FALLBACK RATHER THAN THE LIST'S PLACEHOLDER. The list
+ * prints `Untitled chat` for an empty title, which is a place-holder that names
+ * nothing - a second `Untitled chat` card is no more distinguishable than the
+ * first, so the directory (the one thing a row always carries) is the better
+ * second choice. The row's conversation may also not be in the loaded catalogue
+ * at all (an archived or un-paged conversation), and the aggregate route is the
+ * only source guaranteed to have it.
+ *
+ * `null` for a row that names nothing at all - no title, no directory, no
+ * session id - which is what keeps a session-scoped row from growing a label it
+ * has no value for.
  */
-export function fleetAskConversationLabel(ask: PendingAsk): string | null {
+export function fleetAskConversationLabel(
+	ask: PendingAsk,
+	titleOf?: FleetAskTitleLookup,
+): string | null {
+	const sessionId = typeof ask.session_id === "string" ? ask.session_id : "";
+	const title = titleOf === undefined ? null : titleOf(sessionId);
+	if (typeof title === "string" && title.trim().length > 0) return title.trim();
 	const cwd = typeof ask.cwd === "string" ? ask.cwd : "";
 	const trimmed = cwd.replace(/[/\\]+$/, "");
 	if (trimmed.length > 0) {
@@ -164,10 +196,85 @@ export function fleetAskConversationLabel(ask: PendingAsk): string | null {
 		const last = parts[parts.length - 1];
 		if (last && last.length > 0) return last;
 	}
-	const sessionId = ask.session_id;
-	if (typeof sessionId !== "string" || sessionId.length === 0) return null;
+	if (sessionId.length === 0) return null;
 	return `conversation ${sessionId.slice(-4)}`;
 }
+
+/**
+ * EVERY VISIBLE ROW'S NAME, resolved together so the collision can be handled
+ * rather than hidden.
+ *
+ * A per-row function cannot know that another row resolved to the same string,
+ * and that is exactly the state that misleads: two speakers named `minervaai` (a
+ * title that was never auto-generated, or two conversations in one repository)
+ * leave the reader picking between identical cards. So the naming is a function
+ * of the LIST: a name shared by more than one CONVERSATION gains the session id's
+ * tail - the same disambiguator every other surface spends (`deviceLabel`'s rule,
+ * and `fleetAskConversationLabel`'s own last resort) - and the tail is appended
+ * rather than substituted so the name the list uses is still what the card
+ * leads with. The count is per `session_id` rather than per row, because several
+ * asks from ONE conversation are the ordinary case and are not a collision.
+ *
+ * THE COMPARISON IS CASE-INSENSITIVE but the printed name is not normalised: two
+ * spellings of one directory are still one ambiguous label to a reader, while
+ * rewriting the author's capitalisation would be this module editing a name it
+ * only meant to distinguish.
+ */
+export function fleetAskConversationLabels(
+	asks: readonly PendingAsk[],
+	titleOf?: FleetAskTitleLookup,
+): Map<string, string> {
+	const named = asks.map((ask) => ({
+		ask,
+		label: fleetAskConversationLabel(ask, titleOf),
+	}));
+	/*
+	 * COUNTED PER CONVERSATION, NOT PER ROW. A conversation's queue can hold many
+	 * asks - the ordinary case is several from one - and a per-row tally read those
+	 * as a collision and appended a tail to a name nothing else shared (the first
+	 * capture of this set shipped exactly that: three cards of one conversation
+	 * came out `Migrate the billing schema · cdef`). What has to be unique is the
+	 * name a reader sees for each CONVERSATION on screen, so the tally is over
+	 * `session_id`s.
+	 */
+	const sessions = new Map<string, Set<string>>();
+	for (const entry of named) {
+		if (entry.label === null) continue;
+		const sessionId = entry.ask.session_id;
+		const key = entry.label.toLocaleLowerCase();
+		const seen = sessions.get(key) ?? new Set<string>();
+		if (typeof sessionId === "string" && sessionId.length > 0) {
+			seen.add(sessionId);
+		}
+		sessions.set(key, seen);
+	}
+	const labels = new Map<string, string>();
+	for (const entry of named) {
+		if (entry.label === null) continue;
+		const sessionId = entry.ask.session_id;
+		/*
+		 * A name is ambiguous only when TWO CONVERSATIONS share it. A row with no
+		 * session id has no disambiguator to spend, so it keeps its name.
+		 */
+		const shared =
+			(sessions.get(entry.label.toLocaleLowerCase())?.size ?? 0) > 1 &&
+			typeof sessionId === "string" &&
+			sessionId.length > 0;
+		labels.set(
+			entry.ask.ask_id,
+			shared ? `${entry.label} · ${sessionId.slice(-4)}` : entry.label,
+		);
+	}
+	return labels;
+}
+
+/**
+ * The catalogue lookup the drawer hands in: one conversation's title by session
+ * id, or `null`/`undefined` when the catalogue does not hold it.
+ */
+export type FleetAskTitleLookup = (
+	sessionId: string,
+) => string | null | undefined;
 
 /**
  * The session an answer to `askId` must be posted to - the CORRECTNESS HEART of
@@ -251,11 +358,8 @@ export function useFleetAsks(): FleetAsks {
 }
 
 /**
- * The panel's per-row conversation label, as a function the drawer can hand down.
- *
- * Exported from the model rather than spelled in the component so the fleet's
- * "which conversation is this?" rule has ONE expression, and typed against
- * `AskPresentation` because that is what a row arrives as.
+ * The panel's per-row conversation label, for a caller that has a single row and
+ * no catalogue to consult.
  */
 export const fleetAskRowConversation = (row: AskPresentation): string | null =>
 	fleetAskConversationLabel(row.ask);
