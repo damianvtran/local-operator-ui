@@ -218,6 +218,28 @@ export type SessionStatusStripProps = {
 	 * strip was - `READINGS_DROPPED_NOTE` - instead of rendering nothing.
 	 */
 	readingsDropped?: boolean;
+	/**
+	 * Whether the composer's controls group is drawing a THIRD box beside the
+	 * microphone and Send while this strip renders.
+	 *
+	 * TOLD, never inferred, for the reason `held` and `readingsDropped` are told
+	 * rather than derived here: the group's composition is the row's fact, and a
+	 * strip that guessed it from its own props would be a second authority for
+	 * when a Stop is on screen.
+	 *
+	 * WHY IT EXISTS (issue #788). The active-time reading's shed rule is a
+	 * container query, and a container query can see the column narrow but not a
+	 * SIBLING appear. The group is 68px idle (mic + Send) and 104px whenever a
+	 * third box is drawn - the Stop square while a turn runs, the invisible
+	 * `data-interrupt-slot` through the post-stop grace window, and the recording
+	 * pair, which reserves the same slot. The threshold below was derived against
+	 * the 68px pair, so above its band the reading came back into a row whose
+	 * controls had grown by 36px and overran them; and because the composer box is
+	 * capped at `--lo-chat-measure` the row does not grow with the column, so no
+	 * wider band exists that would fit. The reading therefore sheds on the STATE as
+	 * well as the width. See the reading's own comment for the measurements.
+	 */
+	controlsThirdBox?: boolean;
 	className?: string;
 };
 
@@ -747,6 +769,7 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 	onOpenDraftPicker,
 	draftResolution,
 	readingsDropped = false,
+	controlsThirdBox = false,
 	className,
 }) => {
 	/*
@@ -1370,18 +1393,69 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * hears (the chip's icon-only form is the opposite case, and uses
 			 * `sr-only` for that reason).
 			 *
-			 * MEASURED, not guessed: at a 750px box the row is 716 and the
-			 * cluster's budget is 328 after the chip group (304), the controls
-			 * (68) and the gaps (16). The five-reading cluster at the name's floor
-			 * measures 320 in its plain state but 372 once the context reading
-			 * carries the word `estimate` — 44px over, with the name already at
-			 * its floor and nothing left to yield. The threshold is therefore the
-			 * width at which the FULLEST state still fits, not the plainest:
-			 * measured at 900 in both themes the five readings need 424px of the
-			 * 494px available, and the state that sets it is `estimate` plus a
-			 * four-digit cost. 860px of column is the first width where that state
-			 * fits with the chip at its cap, so the reading is hidden between the
-			 * 750px wrap threshold and there.
+			 * TWO WAYS TO BE SHED, and the second one is issue #788. The band below
+			 * answers "is the COLUMN narrow"; `controlsThirdBox` answers "is the row's
+			 * controls group wider than the pair this band was derived against" — a
+			 * question no container query can ask, because what changed is a SIBLING
+			 * appearing rather than the container shrinking.
+			 *
+			 * MEASURED, not guessed, and re-derived for #788: every number below is read
+			 * off `getBoundingClientRect` by `scripts/composer-readings-geometry.mjs`,
+			 * the same rig in both themes on both trees, at the fixtures that file names.
+			 * THREE CORRECTIONS to the arithmetic this comment used to carry, which was
+			 * not wrong about the cluster but was wrong about the row it sits in:
+			 *
+			 *  1. THE CONTROLS ARE 68px IDLE AND 104px WHENEVER A THIRD BOX IS DRAWN.
+			 *     68 is mic + Send (32 + 4 + 32). The third box is the Stop square (the
+			 *     row draws it while `canonicalStop.active`), or the invisible
+			 *     `data-interrupt-slot` through the post-stop grace window, or the slot a
+			 *     live recording reserves — 32·3 + 4·2 = 104.
+			 *
+			 *  2. THE QUERY RESOLVES AGAINST THE COMPOSER BAND'S CONTENT BOX, NOT THE
+			 *     COLUMN. `CHAT_COLUMN_CONTAINER` is applied on the band as well as on
+			 *     the chat column, and the NEAREST ancestor of that name wins, so
+			 *     `@max-[860px]/chatcol` sees the band's *content* box — the column
+			 *     minus its `px-6` inset (48) — and this band's upper edge lands at a
+			 *     908px COLUMN. Measured: the reading returns at column 908 (container
+			 *     860) and not at 900 (container 852). The lower edge is therefore a
+			 *     798px column.
+			 *
+			 *  3. THE ROW DOES NOT GROW WITH THE COLUMN. The composer box is
+			 *     `@min-[750px]/chatcol:max-w-[var(--lo-chat-measure)]` — 810px shipped
+			 *     (`styles/index.css`) — with `p-4`, so from an 858px column up the row
+			 *     is 778px at EVERY width: measured 778 at columns 908, 1024, 1200 and
+			 *     1600 alike. Past that cap the cluster gains nothing from a wider
+			 *     window, which is why this shed has to be a state and not a wider band.
+			 *
+			 * AGAINST THOSE NUMBERS. Idle, at the band's own upper edge (container 860,
+			 * column 908), the fullest four-reading cluster plus this reading comes to
+			 * rest 2px clear of the controls' left edge — the model name down to its
+			 * floor, the chip at its 261px cap — so 860 is still the right upper edge
+			 * for the two-box row and the band itself is unchanged. Running, at the same
+			 * width, this reading's own box lands 7.2-8.2px PAST the controls' left edge
+			 * with the model name already AT its 56px floor: the 36px the third box
+			 * costs is 36px the row does not have, and at column 1200 the overrun is
+			 * still 8.2px because the row is still 778. So the reading sheds whenever
+			 * the third box is drawn, at EVERY width — including below the band's lower
+			 * edge, where the two-box row draws it today.
+			 *
+			 * WHAT THAT COSTS, stated rather than hidden: a long turn loses the live
+			 * active-time reading. The alternative is the reading overrunning a control,
+			 * which is the defect; the value is still one press away, the transcript
+			 * carries its own status line, and the reading returns the moment the turn
+			 * ends and the third box goes with it. A reader who raises
+			 * `--lo-chat-measure` far enough would have room for it, and this does not
+			 * consult that: the shed is on the STATE, which is what issue #788's own
+			 * second option asks for and the only one a container query cannot do.
+			 *
+			 * THE NARROW ROW IS STILL NOT FIXED, and deliberately not here: below the
+			 * band's lower edge the cluster overflows its own line in BOTH states
+			 * (measured: +49px of reading-over-control at a 620px column in the IDLE
+			 * state, with this reading drawn), because the chip group plus three
+			 * `shrink-0` readings exceed the width and the yield order has run out. That
+			 * is a defect of this row in its idle state as much as its running one, it
+			 * is not #788's subject, and shedding this reading takes roughly 35px off it
+			 * without being its cause. Recorded rather than fixed.
 			 */}
 			{duration && (
 				<Reading
@@ -1397,7 +1471,19 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 					// cost is one — there is no picker for it to be unavailable FOR.
 					readout
 					held={held}
-					className="@min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
+					/*
+					 * THE STATE'S SHED IS UNCONDITIONAL; the width's is the band. `hidden`
+					 * with no range query is deliberate and is the whole of the #788 fix: a
+					 * container query can only ask how wide the COLUMN is, and the fact that
+					 * shrank this row's budget is that the controls group grew a third box,
+					 * which is a fact about state rather than about width. No `cn` merging is
+					 * needed — the two are mutually exclusive strings.
+					 */
+					className={
+						controlsThirdBox
+							? "hidden"
+							: "@min-[750px]/chatcol:@max-[860px]/chatcol:hidden"
+					}
 				>
 					{/*
 					 * `tabular-nums`: the digits change once a second, and a
