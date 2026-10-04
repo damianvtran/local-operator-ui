@@ -10,27 +10,37 @@ being the widest thing on the screen (D5).
 ## The frames
 
 `after/` renders the shipped components from `PendingAsk` fixtures, in the two brand
-palettes, at `1280x800`:
+palettes, at `1280x800` — except the two `band-askmode-*` states, which are the
+design round's own frames at `1280x720` and dpr2 (see their rows):
 
 | directory | state |
 | --- | --- |
 | `drawer-empty/` | a published queue with nothing in it: the empty sentence, and chrome no further than the scope line and the dismiss |
 | `drawer-few/` | one open ask: the card body, its options, `Send answer` / `Decline` |
-| `drawer-many-overflow/` | twelve pending asks and two settled ones — the state the D1 defect could not survive |
-| `drawer-mixed/` | one open, one timed out (still answerable), one declined |
-| `drawer-settled-collapsed/` | the settled section on its own terms: one line, closed |
-| `drawer-settled-open/` | the same section opened: one line per settled ask, each bearing the copy contract's own status WORD (`Answered`, `Declined`) |
+| `drawer-mixed/` | the queue at its honest worst: one open, one that TIMED OUT and is still answerable, and one `Answered late` |
+| `drawer-many-overflow/` | twelve queued asks and two that timed out and are still answerable — **fourteen pending cards, and no settled section at all** — the state the D1 defect could not survive |
+| `drawer-many-overflow-scrolled/` | the same list after a REAL wheel: the thumb on the drawer's own scroller, the chrome bar pinned, the page still not scrollable (D5) |
+| `drawer-settled-collapsed/` | the settled section on its own terms: one line per ask, closed, with the words its rows actually carry |
+| `drawer-settled-open/` | the same section opened: one line per settled ask, each bearing the copy contract's own status WORD — `Answered`, `Answered late`, `Declined` — the look-alike pair the section exists to tell apart |
+| `drawer-other/` | an answer the option LIST never offered — what the composer's own door produces — drawn on the card as an explicit `Other` row rather than as an empty group beside an answered question |
+| `dock-asks/` | the drawer in the REAL shell (`shell-app-shell--chat-dock-asks`), docked beside the conversation it is answering for, its bar reaching the window's top-right (D4) |
 | `band-drawer-open/` | the composer's status-row chip pressed, with the drawer open beside it |
 | `band-closed-by-x/` | **the same band after a press on the drawer's own dismiss** — the drawer is gone and the chip stands |
+| `band-askmode-open/` | the composed §5.0 state the design round asked for: the drawer open AND the composer still in its ask mode, both live doors to one question (design round 1, D2 — the round's own frames) |
+| `band-askmode-closed/` | the control for that pair: no drawer, the composer's ordinary invitation (design round's own frame, dark only) |
 
 ## Measured, off the rendered frames
 
-One Storybook (`storybook dev -p 6035 --no-open --ci`), one private headless Chrome
-launched through the repo's own `scripts/chrome-keychain.mjs`, both reaped by exact
-pid. Geometry is read in the page (`getBoundingClientRect` + `scrollHeight`):
+This pass's frames come from a scratch rig in the session that made the change, not
+from `scripts/capture-evidence.mjs`: one Storybook (`storybook dev -p 6131 --no-open
+--ci`) and ONE private headless Chrome launched through the repo's own
+`scripts/chrome-keychain.mjs` (so it never reaches Keychain Services under a scratch
+profile), driven over raw CDP at `1280x800`, one frame per state per palette, both
+processes reaped by exact pid. Geometry is read in the page (`getBoundingClientRect`
++ `scrollHeight`):
 
 - **The page never scrolls, in any state.** `document.scrollingElement` reads
-  `scroll == client` (800/800) in all sixteen frames — **including
+  `scroll == client` (800/800) in every frame — **including
   `drawer-many-overflow`, whose list scrolls 2987px inside a 600px box**. That is
   the D1 defect fixed as a number, not an impression: the overflow belongs to the
   drawer's own scroller (`overflow-y: auto`, `min-h-0 flex-1`), and the transcript
@@ -43,10 +53,33 @@ pid. Geometry is read in the page (`getBoundingClientRect` + `scrollHeight`):
   560px drawer (24px of `px-3` inset) and 376px inside the 400px band drawer. The
   card's width is therefore a consequence of the container, not a rule of its own —
   which is what the note asks for when it refuses to patch the width separately.
-- **The scope line is the chip's own clause**: `This conversation · 12 questions
-  waiting` on the overflow frame, `This conversation · All asks settled` on the
-  empty one — `askScopeLine` reuses `askChipCountClause`, so a drawer and the chip
-  that opened it cannot describe one queue differently.
+- **The scope line is the DRAWER's own count, not the chip's clause** (UX round 1, U5): `This conversation · 12 waiting, 2 moved on` on the overflow
+  frame — every card the surface draws is counted, because `askDrawerCountClause`
+  states both halves of a mixed queue — and `This conversation · All asks settled`
+  on the empty one. On a single-state queue it falls through to
+  `askChipCountClause`, so the drawer and the chip that opened it still cannot
+  describe one queue differently.
+- **The settled header's descriptor is read FROM the section** (M1 = UX U1 = design
+  D1): `drawer-settled-open` reads `Settled · 3  Answered, Answered late, Declined`,
+  `drawer-mixed` reads `Settled · 1  Answered late`. The fixed legend this replaced
+  printed `answered, timed out, declined, dismissed` over every state — naming a word
+  the section can never hold (`timed out` is in the backend's outstanding set, so it
+  is a pending CARD with live controls) and omitting two it routinely holds.
+
+## Two states a rig must launch differently for
+
+- **`drawer-many-overflow-scrolled/` is the one pair shot WITHOUT `--hide-scrollbars`.**
+  The set's standing discipline is to hide the platform scrollbar (a classic one
+  would move the card's content box the frames measure), and that is exactly why the
+  D5 frame asks for the other launch: the app's scrollbars are overlay thumbs that
+  appear on scroll, so "the overflow is the list's" is a pixel only while the thumb
+  is in the picture. Every other frame keeps the flag.
+- **`band-askmode-*/` are the design round's own frames**, converted from the design
+  round's rig (`review-ask-mode-composition--drawer-open-composer-ask-mode`), at
+  `1280x720` dpr2 — a different size and a different rig from the rest of the set,
+  which is why they are named as such here. The state they show is now reachable in
+  the committed tree at `chat-composer-status-row--ask-driven-drawer-open`, so the
+  round can re-shoot it through the shipped components.
 
 ## The absent-backend state has no frame here, deliberately
 
@@ -79,6 +112,13 @@ provenance would be a frame whose stated source the pixels do not carry.
 - **No narrow-window frame.** The dock/overlay arithmetic is the canvas family's
   own (`resolveRightSlotWidth` + `canvasPaneMode`) and is asserted in
   `scripts/right-slot-width.test.mjs`; the frames here are one window size.
+- **No OS-caption-corner frame.** The chrome bar's trailing inset
+  (`[padding-inline-end:max(0.5rem,var(--chrome-inset-end))]`) is a SHELL value — the
+  main process sets `--chrome-inset-end` from the platform's caption buttons — and a
+  browser rig has no such value, so the frames carry the 8px floor rather than a Mac's
+  traffic-light inset. The value is asserted where it is read
+  (`scripts/pane-slot-ground.test.mjs`), and the reservation is the same one the
+  canvas's bar makes.
 - **The card's own items are not this change**: truncation hierarchy,
   recommendation-vs-selection and the pending-session row indicator are separate
   follow-up changes and have no frame here.
