@@ -578,9 +578,32 @@ test("the drawer's entry move is a bounded one-shot", () => {
 		-1,
 		"the entry move no longer focuses the landed control",
 	);
-	const close = src.indexOf("\n\t});", focused);
-	assert.notEqual(close, -1, "the entry move's effect has no closing line");
-	const block = src.slice(start, close);
+	/*
+	 * THE EFFECT'S OWN CLOSE, whichever shape it has, so assertion 1 below reds on
+	 * the dependency array rather than on a slice that ran away. A real `}, []);`
+	 * removes the `\n\t});` this used to search for, and with one `\n\t});` behind
+	 * `landing.focus()` in the whole file the old slice then failed its own "no
+	 * closing line" guard - a red for the mutation, but reported as a broken
+	 * extraction instead of as the dependency array it is (QA round 1's note). The
+	 * bare close and the deps close are both accepted here; taking whichever comes
+	 * FIRST, and running the block THROUGH the end of that line rather than up to its
+	 * start, leaves the closing line itself inside the slice - which is where the
+	 * dependency array would live. Slicing up to the terminator's own start would
+	 * exclude it and assertion 1 would pass on the very mutation it exists for.
+	 */
+	const bareClose = src.indexOf("\n\t});", focused);
+	const depsClose = src.indexOf("\n\t}, [", focused);
+	const closeStart =
+		depsClose !== -1 && (bareClose === -1 || depsClose < bareClose)
+			? depsClose
+			: bareClose;
+	assert.notEqual(
+		closeStart,
+		-1,
+		"the entry move's effect has no closing line",
+	);
+	const afterClose = src.indexOf("\n", closeStart + 1);
+	const block = src.slice(start, afterClose === -1 ? undefined : afterClose);
 
 	/* 1. No dependency array: the effect must be offered every commit until the
 	 * surface it may focus has been drawn, or it runs once on the empty mount commit

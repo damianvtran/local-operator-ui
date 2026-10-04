@@ -367,3 +367,53 @@ instrument that could carry it.
   58, 39.05 over the 59 registry definitions) plus the three palettes whose
   `accent` and `success` are the same hex, which put this palette 4th-lowest
   rather than 2nd. The claim is unchanged and deliberately conservative.
+
+## The after half is a snapshot, and three passes have moved under it (2026-10-04)
+
+**What to know before reading an `after/` frame here as the product.** This half is a
+snapshot at the head the pass that shot it named (the manifest's `capturedAtHead` for
+`ask-status-row`), and three later passes changed the same
+`composer-status-row.stories.tsx` under it. None of them re-shot this half — so a
+frame here is the surface as the row-item move shipped it, not as the tree renders it
+now:
+
+1. **The fixture fix in `59ead694c6d` is the third (agent review round 1, F1).**
+   `ASK_QUESTION` now carries the wire's real key set — a QUESTION-level
+   `recommended` index — where it carried a per-option `recommended: true`, a key no
+   producer writes. The panel marks the recommended row off `question.recommended`
+   (`ask-panel.tsx`'s `marked` → `font-semibold` + badge), so every story that opens
+   the panel with that fixture now draws that mark, and the six panel-bearing frames
+   here — `after/expanded-settled`, `after/expanded-moved-on`, `after/expanded-waiting`,
+   `after/expanded-multiple`, `after/driven-open`, `after/focused-panel`, both palettes
+   — show it with no mark.
+2. **The deadline/urgency lane** (`5ecccd36626`, `3ddda944ba6`) rewrote this story
+   file's captions and put the soonest-deadline countdown on the item — exactly what
+   the "What this pair does NOT claim" section above said the fold would land. It did:
+   the chip frames here still read `1 question waiting` with no `· expires in 48m`, and
+   every caption is the pre-fold one. That lane's own frames are
+   `docs/evidence/ask-deadline-and-urgency/`.
+3. **The side-drawer lane** (`b25aa31e1a2`) moved the panel out of the composer band
+   into the right slot's own column: `AskBand`'s drawer is now a `w-[400px] shrink-0`
+   SIBLING of the band, not a child of it. Measured 2026-10-04 with the repository's own
+   capturer: `chat-composer-status-row--ask-expanded-waiting` at this set's `617x660`
+   paints the band and the composer box with the drawer column **off-frame**, so the
+   `expanded-*`, `driven-open` and `focused-panel` frames here show a layout (drawer
+   inside the frame, beside the composer) the product no longer produces. The band +
+   drawer pair's current frames are `docs/evidence/ask-drawer/` (`band-drawer-open`,
+   `band-askmode-open`, shot at `1280x800`).
+
+**Why that half was not re-shot in the pass that fixed the fixture.** A re-capture at
+this set's own geometry cannot show the state these stories produce any more (the drawer
+is off-frame, above): the panel frames would have to be shot at a wider viewport, which
+photographs a layout this set's band-width reasoning (`569`/`585`/`393` bands in
+`617`/`633`/`441` frames) does not describe and duplicates `docs/evidence/ask-drawer/`.
+Re-shooting only the panel frames while the chip frames stay at the older head would mix
+two trees in one set — the one thing "Round 1 re-shot all fifteen AFTER cases … so every
+after frame in the set depicts one tree" exists to prevent. So the half stands as the
+record of the row-item move at its own head, and this section is the record that it is
+one.
+
+**If a later pass does re-shoot it:** the rig rows are the `AFTER` ones in "What
+produced these frames" with the round-1/round-2 states, and the
+`expanded-*`/`driven-open`/`focused-panel` viewports have to be widened by the drawer
+column (`+400px` and the gap) before the panel is in frame at all.
