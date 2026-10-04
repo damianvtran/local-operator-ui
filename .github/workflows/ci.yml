@@ -615,7 +615,20 @@ jobs:
       # `tee` is deliberately absent - the sweep's output IS the evidence, and
       # piping it through a filter would put a process between the reader and the
       # lines the gate prints.
-      - name: Sweep the committed frames
+      #
+      # WHAT THIS JOB DOES NOT CHECK, named here because a skipped check is a
+      # claim and this file is where the scope is declared rather than restated
+      # per run: the CITATION half - whether every commit the manifest cites still
+      # exists and is reachable from a ref - is LOCAL-ONLY. `actions/checkout`
+      # here is ONE COMMIT DEEP, so every citation in the file reads as missing at
+      # once and this clone cannot answer the question at all. Judging it made the
+      # first run of this job 111 findings on a tree that is clean locally, and
+      # printing a stand-down notice on 100% of runs would be a standing excuse
+      # that reads as a covered check. It is judged where the history is present
+      # (a developer's clone, or `git fetch --unshallow`) and on synthetic
+      # manifests in `evidence-manifest.test.mjs`. The step name carries the same
+      # scope, so it travels with the job's own report.
+      - name: Sweep the committed frames (the citation half is local-only)
         run: pnpm check-evidence
 
   audit:

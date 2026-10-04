@@ -197,10 +197,32 @@ const RUNTIME_DEP_SCRIPTS = new Set([
  * comparison itself, and the sweep would be skipped as "no evidence in the
  * diff" - the same green-by-absence this job was added to remove.
  */
-const EVIDENCE_SOURCES = new Set([
+/**
+ * The sweep's own code: `check-evidence.mjs` and every module it LOADS.
+ *
+ * Why the whole load path rather than only the modules that compute a verdict: a
+ * module on it changes what the sweep does without anyone touching
+ * `check-evidence.mjs` - it is imported, so its body runs, and `STORIES` is read
+ * straight out of `capture-evidence.mjs` to derive the `surfaces` count. A rig's
+ * behaviour is as much an input to the verdict as the verdict's own arithmetic.
+ *
+ * DERIVED, NOT HAND-WRITTEN: `ci-scope.test.mjs` walks
+ * `relativeImportClosure("scripts/check-evidence.mjs")` and asserts this set
+ * equals it, so an import added to any of these files cannot be forgotten here -
+ * the same shape as the base-copy closure `ci.yml`'s classifier step is pinned
+ * to, and the reason `capture-evidence.mjs` (missing until the wiring's first
+ * review) can no longer fall out. Exported for that test, like
+ * `KNOWN_LIVE_PREFIXES` below.
+ */
+export const EVIDENCE_SOURCES = new Set([
+	"scripts/capture-evidence.mjs",
 	"scripts/check-evidence.mjs",
-	"scripts/palette-source.mjs",
+	"scripts/chrome-keychain.mjs",
 	"scripts/color.mjs",
+	"scripts/entry-point.mjs",
+	"scripts/evidence-tz.mjs",
+	"scripts/palette-source.mjs",
+	"scripts/python-child-env.mjs",
 ]);
 
 /** Every palette file, because the palettes ARE the grounds a frame is judged
@@ -410,7 +432,6 @@ export const JOB_COMMANDS = {
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
 	],
 	test: ["pnpm test:desktop"],
-	evidence: ["pnpm check-evidence"],
 };
 
 /**
@@ -433,6 +454,20 @@ export const LOCAL_EXCLUSIONS = {
 		"launch leg installs the tarball through `npx` on a macOS runner. Neither " +
 		"belongs in a default local pass; `pnpm pack` and `node " +
 		"scripts/npx-smoke-test.mjs <tarball>` remain the manual spellings.",
+	evidence:
+		"the sweep pays a WHOLE-TREE DECODE of the committed frames - 15,553 of " +
+		"them, ~5 minutes locally and 11m27s on the runner - and admits ONE run " +
+		"per MACHINE through a permanent lease, exiting 75 DEFERRED (not failing) " +
+		"when another check holds it. On a fleet of concurrent sessions a local " +
+		"`check-changed` would therefore either spend five minutes on every " +
+		"evidence-touching diff or be locked out of its own gate. Excluded rather " +
+		"than kept as a gate that cries wolf, and the fast half of the SAME gate " +
+		"still runs locally and in CI: `scripts/evidence-manifest.test.mjs` binds " +
+		"the counts, the stamps and the declarations against the shipped manifest " +
+		"in under a second, under the `test` job. `pnpm check-evidence` remains the " +
+		"manual spelling - its 75 is the DEFERRED code `runJobs` reports as a " +
+		"deferral rather than a failure - and `ci.yml`'s `evidence` job is the " +
+		"whole-tree gate.",
 };
 
 /**
@@ -808,11 +843,32 @@ export function summaryLines({ event, base, baseLabel, paths, flags, note }) {
 // Local execution
 // ---------------------------------------------------------------------------
 
-/** Run each selected job's local commands in order; return a shell status. */
-export function runJobs(jobs, root) {
+/**
+ * The documented DEFERRED code: a command that could NOT RUN because the machine
+ * was busy, as opposed to one that ran and failed - the frame sweep's lease
+ * exits 75 when another check holds it (AGENTS.md, the sweep's admission
+ * control). Reported as `!!! failed` it is the wolf-cry this file's
+ * `LOCAL_EXCLUSIONS` rationale exists to avoid, so it is classified as a
+ * DEFERRAL: named in the summary, never counted as a failure. It is not a pass
+ * either - a gate that did not run is not cover - which is why the summary says
+ * so and the run does not claim `all selected gates passed`.
+ */
+const DEFERRED = 75;
+
+/**
+ * Run each selected job's local commands in order; return a shell status.
+ *
+ * `commands` is the job table, defaulted rather than closed over so a test can
+ * drive a probe job without mutating the shared one: `delete` is refused by this
+ * tree's own lint, and a probe key left behind would be read by every later
+ * assertion that iterates `JOB_COMMANDS` (A11 checks each of those against the
+ * workflow's own steps).
+ */
+export function runJobs(jobs, root, commands = JOB_COMMANDS) {
 	const failures = [];
+	const deferred = [];
 	for (const job of jobs) {
-		for (const command of JOB_COMMANDS[job]) {
+		for (const command of commands[job]) {
 			process.stdout.write(`\n=== ${job}: ${command}\n`);
 			const result = spawnSync(command, {
 				shell: true,
@@ -820,6 +876,13 @@ export function runJobs(jobs, root) {
 				encoding: "utf8",
 				stdio: "inherit",
 			});
+			if (result.status === DEFERRED) {
+				process.stdout.write(
+					`~~~ ${job} deferred (rc=${DEFERRED}): ${command}\n`,
+				);
+				deferred.push(`${job}: ${command}`);
+				continue;
+			}
 			if (result.status !== 0) {
 				process.stdout.write(
 					`!!! ${job} failed (rc=${result.status}): ${command}\n`,
@@ -835,6 +898,19 @@ export function runJobs(jobs, root) {
 			process.stdout.write(`  - ${failure}\n`);
 		}
 		return 1;
+	}
+	if (deferred.length) {
+		/*
+		 * Said out loud for the same reason `LOCAL_EXCLUSIONS` is printed: a deferral
+		 * a reader cannot see is a check they will believe ran. The run stays green,
+		 * because a busy machine is not a defect in the diff - but the wording does
+		 * not claim the deferred gate passed, and the retry is named.
+		 */
+		process.stdout.write(
+			`${deferred.length} command(s) DEFERRED (rc=${DEFERRED}, the machine was busy) - they did NOT run, so retry them before treating this green as cover for what they check:\n`,
+		);
+		for (const entry of deferred) process.stdout.write(`  - ${entry}\n`);
+		return 0;
 	}
 	process.stdout.write("all selected gates passed\n");
 	return 0;

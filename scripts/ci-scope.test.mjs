@@ -17,6 +17,7 @@ import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import {
 	CATEGORIES,
+	EVIDENCE_SOURCES,
 	FLAGS,
 	JOB_COMMANDS,
 	JOB_FLAGS,
@@ -31,6 +32,7 @@ import {
 	flagsFor,
 	isNamedLivePath,
 	isPermissiveDependency,
+	runJobs,
 } from "./ci-scope.mjs";
 
 /*
@@ -1583,6 +1585,103 @@ test("A21: the frame sweep runs on a frame change and on the inputs it judges", 
 		"prose must not pay for a whole-tree decode",
 	);
 	assert.equal(classify(["src/main/app.ts"]).evidence, false);
+});
+
+// ---------------------------------------------------------------------------
+// A22-A24 (UI) - what the frame sweep costs the LOCAL path
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: the sweep's own load path drifting from what SELECTS the job. Round 1
+ * of the wiring's review found `capture-evidence.mjs` missing from
+ * `EVIDENCE_SOURCES` - the file whose `STORIES` literal `countsMeanFailures`
+ * reads to derive `surfaces` - which is exactly the class a HAND-KEPT list of
+ * "the modules that produce the verdict" loses: the modules that produce it are
+ * whatever the entry point loads, and that is a fact about the code, not about
+ * someone's memory of it.
+ *
+ * The expectation is DERIVED with the same walk the base-copy guard uses
+ * (`relativeImportClosure`), so the assertion cannot drift from the tree it is
+ * asserting about.
+ *
+ * Mutation: add an import to `check-evidence.mjs` - or to anything it loads -
+ * and leave the set alone; or drop an entry from the set.
+ */
+test("A22: the sweep's selected sources ARE its derived load path", () => {
+	assert.deepEqual(
+		[...EVIDENCE_SOURCES].sort(),
+		[...relativeImportClosure("scripts/check-evidence.mjs")].sort(),
+		"EVIDENCE_SOURCES has to be the closure of what `scripts/check-evidence.mjs` loads: a hand-kept list of the modules that produce the verdict lost `capture-evidence.mjs` once already, and a module the sweep loads can change its verdict without anyone touching the file the list was written for",
+	);
+});
+
+/*
+ * Defect: the whole-tree decode on the LOCAL path. `JOB_COMMANDS.evidence` made
+ * `pnpm check-changed` pay it - 15,553 frames, about five minutes - and report
+ * the sweep's lease's rc 75 DEFERRED as `!!! evidence failed`. A gate that
+ * either costs five minutes or cries wolf is the thing `LOCAL_EXCLUSIONS`
+ * exists to keep off that path, and the sweep stays the CI gate for the same
+ * whole-tree verdict.
+ *
+ * Mutation: put `pnpm check-evidence` back in `JOB_COMMANDS` (the decode returns
+ * to every evidence-touching local run); or delete the exclusion outright (A11
+ * refuses that - a gated job needs a local command OR a recorded reason).
+ */
+test("A23: the whole-tree sweep is off the local path, with its reason recorded", () => {
+	assert.ok(
+		!Object.hasOwn(JOB_COMMANDS, "evidence"),
+		"`evidence` must not be on the local path: `pnpm check-evidence` is a whole-tree decode (~5 minutes) guarded by a machine-wide lease, so a local `check-changed` would pay it on every evidence-touching diff or be locked out",
+	);
+	assert.ok(
+		Object.hasOwn(LOCAL_EXCLUSIONS, "evidence"),
+		"and it is excluded WITH a reason rather than silently dropped",
+	);
+	assert.match(
+		LOCAL_EXCLUSIONS.evidence,
+		/75/,
+		"the reason names the DEFERRED code, because that is the outcome a reader of a local evidence diff will otherwise read as a failure",
+	);
+});
+
+/*
+ * Defect: a DEFERRED command reported as a failure - the wolf-cry, one level
+ * down. The frame sweep's machine-wide lease exits 75 when another check holds
+ * it, and `runJobs` reported every non-zero status as `!!! <job> failed`.
+ *
+ * The arm is driven with a SYNTHETIC job rather than the sweep, because the
+ * real one is excluded locally and a test of the sweep would either pay five
+ * minutes or need the machine-wide lease. Both arms are asserted, so this cannot
+ * pass on a runner that never fails anything.
+ *
+ * Mutation: treat every non-zero status as a failure; or return non-zero on a
+ * deferral, which blocks a push over a condition the pusher cannot fix.
+ */
+test("A24: a command that DEFERS (rc 75) is named, and is not a failure", (t) => {
+	const dir = mkdtempSync(join(tmpdir(), "ci-scope-deferral-"));
+	writeFileSync(join(dir, "defer.mjs"), "process.exit(75);\n");
+	writeFileSync(join(dir, "fail.mjs"), "process.exit(1);\n");
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
+	/*
+	 * A table of this test's own rather than keys spliced into `JOB_COMMANDS`:
+	 * `delete` is refused by this tree's own lint, and a probe key left in the
+	 * shared table would be read by every later assertion over it (A11 checks each
+	 * entry against the workflow's own steps, so a probe would fail the suite from
+	 * a distance).
+	 */
+	const probes = {
+		deferredProbe: ["node defer.mjs"],
+		failingProbe: ["node fail.mjs"],
+	};
+	assert.equal(
+		runJobs(["deferredProbe"], dir, probes),
+		0,
+		"rc 75 is the documented DEFERRED code - a busy machine is not a defect in the diff, and failing the run over it is how a gate gets routed around",
+	);
+	assert.equal(
+		runJobs(["failingProbe"], dir, probes),
+		1,
+		"and a REAL failure still fails the run, or this test would pass on a runner that reports nothing at all",
+	);
 });
 
 // ---------------------------------------------------------------------------
