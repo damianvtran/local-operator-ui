@@ -219,6 +219,39 @@ export const askChipCountClause = (view: AskQueueView): string => {
 };
 
 /**
+ * WHICH QUEUE a surface is showing.
+ *
+ * The two contexts the design note's §4.4 names, and they are a property of the
+ * ENTRY POINT rather than a setting: the composer's status-row item opens the
+ * conversation's own queue, a top-level affordance would open the fleet's. The
+ * scope is carried by the drawer's chrome bar so a reader can always say which one
+ * is on screen ("a count of 3 inside a session and 11 at the top level are both
+ * correct and say different things").
+ *
+ * IT IS A PROP OF THE SURFACE, not a second component: one drawer renders both, so
+ * the fleet view is a data seam rather than a second idiom. Nothing on the desktop
+ * opens `fleet` today - the aggregate route exists but has no entry point - and
+ * the type is the seam that keeps the next one from inventing a second container.
+ */
+export type AskScope = "session" | "fleet";
+
+/** The scope line's subject noun: what set the count beside it counts. */
+export const askScopeSubject = (scope: AskScope): string =>
+	scope === "fleet" ? "All conversations" : "This conversation";
+
+/**
+ * The drawer chrome bar's scope line: which queue, and how much of it.
+ *
+ * It reuses `askChipCountClause` rather than counting again, so the drawer's title
+ * and the chip that opened it cannot describe one queue differently - the same rule
+ * the chip's own clauses follow. The subject is the scope, the count is the shared
+ * clause, and the model's counts seam (`·`) joins them exactly as it joins the
+ * chip's counts.
+ */
+export const askScopeLine = (scope: AskScope, view: AskQueueView): string =>
+	`${askScopeSubject(scope)} · ${askChipCountClause(view)}`;
+
+/**
  * The chip's COUNTDOWN, with no subject: `expires in 12m`, or `null` when this
  * surface must state none.
  *
@@ -812,6 +845,27 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
 	dismissed: "Dismissed — no reply was sent",
 	expired: "Expired — this ask is too old to answer; ask the agent again",
 	unknown: "Waiting on an answer",
+};
+
+/**
+ * The status WORD for a settled row's one line, DERIVED from the sentence above.
+ *
+ * A settled ask is one line in its section (design note §4.5), and one line cannot
+ * hold `Timed out — the agent moved on; you can still answer`. The word is the
+ * sentence's own leading clause up to its first em dash, so the two cannot drift: a
+ * copy change to the sentence moves the word with it, and a status whose sentence
+ * carries no clause (`unknown`) answers with the whole sentence rather than a
+ * guess.
+ *
+ * THE TWO WORDS THAT HAD TO STAY APART ARE WHY THIS IS TESTED (design note D9):
+ * `Timed out` and `Answered` are what tells a reader, in a collapsed section, which
+ * of two look-alike rows is still answerable - the very distinction the full
+ * sentences exist for.
+ */
+export const askStatusWord = (status: AskStatus | "unknown"): string => {
+	const copy = ASK_STATUS_COPY[status];
+	const cut = copy.indexOf(" — ");
+	return cut === -1 ? copy : copy.slice(0, cut);
 };
 
 /**
