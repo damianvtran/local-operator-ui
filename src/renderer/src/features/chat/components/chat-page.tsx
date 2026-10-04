@@ -441,7 +441,7 @@ function SessionPanel({
 	 * `askExpanded` is the ONE flag the routing rule reads. While it is true the
 	 * composer answers the ask; while it is false the composer is an ordinary
 	 * conversation box. It is owned by the STORE (as `isAskDrawerOpen`, the right
-	 * slot's fifth pane), rather than inside `AskSurfaces` or here, for two reasons
+	 * slot's fifth pane), rather than inside the drawer or here, for two reasons
 	 * the design gives: the chip and the composer must not be able to disagree about
 	 * which mode the user is in, and the drawer has to close the canvas when it opens
 	 * (one right pane at a time, `claimRightSlot`) - a rule that cannot be kept by a
