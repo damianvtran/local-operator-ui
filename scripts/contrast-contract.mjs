@@ -969,6 +969,31 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE CHANGE-BACK CONTROL (design §10, #1936, `asks/ask-panel.tsx`).
+		 *
+		 * Listed by this table's own first rule: green output about a component
+		 * nobody named is not evidence about that component, and the drawer card's
+		 * action row is a surface this file had not asserted. The pairing is
+		 * deliberate — `Change answer` is the RESTING control, and `Send change` is
+		 * the same accent triple `Send answer` already wears one button over, so the
+		 * resting one is the shape this table has not covered.
+		 *
+		 * Its edge is a real `border-control`, and the gate is what settled that: the
+		 * first version wore the card's own `hairline` and `check-themes` reported 59
+		 * violations — "no perceivable edge", fill 1:1 and border ~1.3:1 — in every
+		 * theme. That is the contract saying the honest thing rather than splitting a
+		 * hair, and it is right about the surface: a button whose only edge is a
+		 * decorative rule does not read as pressable, which is the one thing this
+		 * control has to be.
+		 */
+		name: "ask change answer button",
+		on: ["surface"],
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The mini composer's field (quick-send design §D; design round 1, D5):
 		 * an `elevated` box with a 1px `border-control` edge on the summoned
 		 * window's `canvas`, whose ink is the base role. A new component with its

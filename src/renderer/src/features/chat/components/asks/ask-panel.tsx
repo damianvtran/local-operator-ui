@@ -599,8 +599,14 @@ const AskRow = ({
 			 * reader needs from a closed question is what was answered, and a form
 			 * with every control greyed out answers that with silence. `late` lands
 			 * here too - it is settled, and the copy says so.
+			 *
+			 * THE CHANGE FORM REPLACES IT RATHER THAN STACKING UNDER IT (design §10,
+			 * #1936): the form opens with every recorded answer already selected, so
+			 * drawing both would print one answer twice on one card - once as prose
+			 * and once as a ticked row. The measured frame is what settled that; the
+			 * rule is about this pair rather than a preference.
 			 */}
-			{!canAnswer ? (
+			{!canAnswer && !changingNow ? (
 				<div className="flex flex-col gap-1.5">
 					{askSettledAnswers(ask).map((entry) => (
 						<div key={entry.id} className="flex flex-col gap-0.5">
@@ -756,7 +762,7 @@ const AskRow = ({
 								setChangeDraft(askRevisionDraft(ask));
 								setChanging(true);
 							}}
-							className="rounded-md border border-hairline px-3 py-1.5 text-ink text-sm hover:bg-sunken"
+							className="rounded-md border border-control px-3 py-1.5 text-ink text-sm hover:bg-sunken"
 						>
 							Change answer
 						</button>
