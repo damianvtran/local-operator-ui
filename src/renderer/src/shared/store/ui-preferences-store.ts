@@ -215,6 +215,42 @@ type UiPreferencesState = {
 	isConsolePaneOpen: boolean;
 
 	/**
+	 * Whether the ASKS drawer is open (the FIFTH occupant of the right slot).
+	 *
+	 * IT IS THE ASK LANE'S ONE FLAG, and that is why it lives here rather than in
+	 * `chat-page`: three readers have to agree about it or the surface contradicts
+	 * itself - the composer chip that opens it (`composer-status-row.tsx`), the
+	 * composer's routing rule ("while the answer surface is expanded the box
+	 * answers the ask", `ask-nonblocking.md` §5.0), and the drawer itself. A second
+	 * copy is exactly how the chip and the surface it opens end up disagreeing.
+	 *
+	 * ONE AT A TIME WITH ITS FOUR SIBLINGS, through `claimRightSlot`: opening the
+	 * asks drawer closes the canvas, the run panel, the browser and the console, and
+	 * opening any of them closes the drawer. That rule is the design note's own
+	 * (`~/workspace/ask-panel-design-1004/ask-panel-design-note.md` §2C: "two right
+	 * panes cannot both dock"), and the store's exclusion is what makes it a
+	 * construction rather than a promise each call site has to keep.
+	 *
+	 * IT IS THE ONE SLOT FLAG DELIBERATELY NOT PERSISTED (see
+	 * `persistedUiPreferences`). A drawer is a reading of the queue you have right
+	 * now; the canvas is a document you keep open across launches, and this is not
+	 * one - relaunching into a drawer nobody opened, over the asks of a session that
+	 * has not loaded yet, is a surface the user has to dismiss.
+	 */
+	isAskDrawerOpen: boolean;
+
+	/**
+	 * Set the asks drawer open state.
+	 *
+	 * Opening it closes the other four occupants, by the same construction as
+	 * theirs: one slot, one pane, and the exclusion lives in `claimRightSlot` so no
+	 * call site has to remember it.
+	 *
+	 * @param open - Whether the asks drawer should be open
+	 */
+	setAskDrawerOpen: (open: boolean) => void;
+
+	/**
 	 * The conversation whose console the user has just asked to open, and which the
 	 * pane has not answered yet. `null` when there is no request.
 	 *
@@ -735,18 +771,24 @@ const claimRightSlot = (
 		| "isRunPanelOpen"
 		| "isCanvasOpen"
 		| "isBrowserPaneOpen"
-		| "isConsolePaneOpen",
+		| "isConsolePaneOpen"
+		| "isAskDrawerOpen",
 ): Pick<
 	UiPreferencesState,
-	"isRunPanelOpen" | "isCanvasOpen" | "isBrowserPaneOpen" | "isConsolePaneOpen"
+	| "isRunPanelOpen"
+	| "isCanvasOpen"
+	| "isBrowserPaneOpen"
+	| "isConsolePaneOpen"
+	| "isAskDrawerOpen"
 > => ({
 	isRunPanelOpen: pane === "isRunPanelOpen",
 	isCanvasOpen: pane === "isCanvasOpen",
 	isBrowserPaneOpen: pane === "isBrowserPaneOpen",
 	isConsolePaneOpen: pane === "isConsolePaneOpen",
+	isAskDrawerOpen: pane === "isAskDrawerOpen",
 });
 
-export type RightSlotPane = "canvas" | "run" | "browser" | "console";
+export type RightSlotPane = "canvas" | "run" | "browser" | "console" | "ask";
 
 /**
  * The width the right slot gives the open pane, for the row it shares with the
@@ -820,7 +862,9 @@ export function resolveRightSlotWidth(
 				? "browser"
 				: state.isConsolePaneOpen
 					? "console"
-					: null;
+					: state.isAskDrawerOpen
+						? "ask"
+						: null;
 	if (pane === null) return 0;
 
 	// THE SHARED WIDTH OR THIS PANE'S SEED, HELD UP TO THIS PANE'S FLOOR: one
@@ -828,7 +872,16 @@ export function resolveRightSlotWidth(
 	// resolving end (see `rightSlotWidth` and the floor constants).
 	let preferred: number;
 	switch (pane) {
+		/*
+		 * THE ASKS DRAWER WEARS THE CANVAS'S GEOMETRY, deliberately and not by
+		 * oversight (design note §2: the drawer "must be a member of the existing canvas
+		 * family", 400-560px by the family's arithmetic). Reusing the seed, the floor and
+		 * the dock cap is what makes the card "never again the widest thing on the
+		 * screen": its width is the family's, so it needs no rule of its own - which is
+		 * the mistake the note names ("do not patch the width separately").
+		 */
 		case "canvas":
+		case "ask":
 			preferred = Math.max(
 				CANVAS_PANE_MIN_PX,
 				state.rightSlotWidth || DEFAULT_CANVAS_WIDTH,
@@ -855,7 +908,7 @@ export function resolveRightSlotWidth(
 	}
 	if (rowWidth <= 0) return preferred;
 
-	if (pane === "canvas") {
+	if (pane === "canvas" || pane === "ask") {
 		return Math.min(preferred, canvasDockWidth(rowWidth));
 	}
 	return Math.min(preferred, Math.max(0, rowWidth - CHAT_PANE_MIN_PX));
@@ -1138,6 +1191,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isRunPanelOpen: false,
 			isBrowserPaneOpen: false,
 			isConsolePaneOpen: false,
+			isAskDrawerOpen: false,
 			consoleOpenIntent: null,
 			runPanelReveal: null,
 			browserPaneScope: "conversation",
@@ -1231,6 +1285,12 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 					open
 						? claimRightSlot("isConsolePaneOpen")
 						: { isConsolePaneOpen: false },
+				);
+			},
+
+			setAskDrawerOpen: (open: boolean) => {
+				set(
+					open ? claimRightSlot("isAskDrawerOpen") : { isAskDrawerOpen: false },
 				);
 			},
 
@@ -1497,11 +1557,26 @@ export function pushProfileRecent(
  * means running a shell in a conversation every time the app started.
  */
 export function persistedUiPreferences<
-	T extends { runPanelReveal: unknown; consoleOpenIntent: unknown },
->(state: T): Omit<T, "runPanelReveal" | "consoleOpenIntent"> {
+	T extends {
+		runPanelReveal: unknown;
+		consoleOpenIntent: unknown;
+		isAskDrawerOpen: unknown;
+	},
+>(
+	state: T,
+): Omit<T, "runPanelReveal" | "consoleOpenIntent" | "isAskDrawerOpen"> {
 	const {
 		runPanelReveal: _pending,
 		consoleOpenIntent: _intent,
+		/*
+		 * THE ASKS DRAWER IS THE ONE SLOT FLAG NOT PERSISTED, and it is excluded here
+		 * rather than in the flag's own note because this is where the decision is
+		 * executed (see `isAskDrawerOpen` for the argument): a relaunch must not reopen
+		 * a surface nobody opened this launch. The other four stay persisted because
+		 * they hold documents and viewers the user was reading; the drawer holds a
+		 * queue, which the session republishes on its own.
+		 */
+		isAskDrawerOpen: _drawer,
 		...persisted
 	} = state;
 	return persisted;

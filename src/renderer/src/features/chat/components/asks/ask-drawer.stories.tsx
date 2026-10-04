@@ -1,5 +1,5 @@
 /**
- * The queued-ask PANEL, which is now the whole of this mount.
+ * The asks DRAWER: the queue, its chrome bar, its scroller and its card bodies.
  *
  * These render the PRODUCTION component from real `PendingAsk` fixtures — the
  * shape the backend publishes on the frontend state — so what is judged is what
@@ -9,37 +9,38 @@
  * and an answered-late row are all ordinary in the backend's fold and rare on
  * anyone's screen at the moment a camera is pointed at it.
  *
- * ## What left this file, and where it went
+ * ## What this file is now, and what it was
  *
- * The minimized bar used to live here, and its stories with it. The affordance is
- * now an ITEM in the composer's status row — a peer of `All to-dos resolved` and
- * `2 wakes armed` — so the trigger's four states (waiting, settled, moved-on,
- * multiple) are photographed from
- * `composer-status-row.stories.tsx`, next to the chips they have to look right
- * beside. What stays here is everything that is a fact about the PANEL: the
- * question as asked and the answer as given, the countdown, the secret field, the
- * refusal and the enabled primary action. The panel is only ever mounted while
- * the item is expanded (`ask-surfaces.tsx` returns nothing when it is collapsed),
- * so every story below pins `expanded`.
+ * The component was a column mounted on the composer's band, and the stories were
+ * accordingly a bare panel at 617px with no chrome around it. It is now a SIDE
+ * CANVAS (the design note's §2 decision), so the frames carry what that decision
+ * bought: a 40px chrome bar with a scope line and a dismiss, a scroller the queue
+ * can actually overflow into, and the family's own width (560px is the dock cap the
+ * decorator pins). The minimized bar's stories left this file long ago — the
+ * affordance is an ITEM in the composer's status row, photographed beside the other
+ * chips in `composer-status-row.stories.tsx`.
  *
  * What to look for, since these frames are the design review (design
- * `docs/design/ask-nonblocking.md` §5.0, §5.2):
+ * `docs/design/ask-nonblocking.md` §5.0, §5.2; `~/workspace/ask-panel-design-1004/ask-panel-design-note.md`):
  *
- * - **The accent is spent exactly once per surface.** Inside the panel it is the
+ * - **The accent is spent exactly once per surface.** Inside the drawer it is the
  *   status glyph and the primary control, and nowhere else — § 2's budget is
  *   about three accent spends a screen.
  * - **QUEUED and TIMED-OUT do not look alike.** The copy contract's sentences
  *   are the difference, and the timeout keeps its answer controls live: a
  *   timed-out ask is still answerable (that is the `late` path), so it must not
- *   be drawn as a closed state.
+ *   be drawn as a closed state. In the settled section the same distinction rides
+ *   on the status WORD, which is the only half of the sentence a one-line row can
+ *   hold.
+ * - **Pending first, always complete; settled collapsed** (the note's §4.5/D3):
+ *   history must not drive the drawer's length.
  * - **Disabled changes colour, never opacity.** An incomplete draft's Submit is
  *   a colour step on its own ground, not a wash toward it.
  * - **The secret question is a masked field**, and it is the only place a
  *   credential is ever typed. Its value never reaches a draft that drives a
  *   render.
- * - **Zero asks draws nothing at all**, and a backend that does not publish
- *   `asks` draws nothing either — those are different states with the same
- *   frame, which is why both are stories.
+ * - **Many overflows the LIST, never the page** (the note's D1): with twelve open
+ *   asks the chrome bar holds its place and the transcript beside it does not move.
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
@@ -48,7 +49,7 @@ import type {
 	PendingAsk,
 } from "../../../../../../shared/desktop-session-contract";
 import "../../../../styles/index.css";
-import { AskSurfaces } from "./ask-surfaces";
+import { AskDrawer } from "./ask-drawer";
 
 const TS = 1_760_000_000_000;
 const MINUTE = 60_000;
@@ -153,18 +154,31 @@ const frontend = (
 
 const meta = {
 	title: "Chat/Asks/Queued asks",
-	component: AskSurfaces,
+	component: AskDrawer,
 	parameters: {
 		layout: "padded",
 	},
+	/*
+	 * THE DRAWER'S OWN BOX, and the sizes are the family's rather than decorative: a
+	 * 560px column with a fixed height is what the pane docks at when the row can
+	 * afford it (`CANVAS_PANE_MAX_PX`), and the height is what makes the middle
+	 * region's scroller a fact a frame can show - the D1 defect was a panel with no
+	 * scroll owner, so a frame that gave it unlimited height could not show the fix.
+	 */
 	decorators: [
 		(Story) => (
-			<div className="w-[617px] bg-canvas p-4">
+			/*
+			 * A COLUMN, so the drawer stretches to the box's width: the app mounts it in
+			 * `PaneSlot`, which sets the width inline, and a row-flex decorator left it at
+			 * its content width (measured 390px of a 560px box) - a frame that would have
+			 * shown a narrower drawer than the family ever draws.
+			 */
+			<div className="flex h-[640px] w-[560px] flex-col bg-canvas">
 				<Story />
 			</div>
 		),
 	],
-} satisfies Meta<typeof AskSurfaces>;
+} satisfies Meta<typeof AskDrawer>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -175,7 +189,8 @@ const noop = () => undefined;
 export const ExpandedSingle: Story = {
 	args: {
 		frontend: frontend([ONE]),
-		expanded: true,
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -189,7 +204,8 @@ export const ExpandedSingle: Story = {
 export const ExpandedSeveral: Story = {
 	args: {
 		frontend: frontend(THREE),
-		expanded: true,
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -200,7 +216,8 @@ export const ExpandedSeveral: Story = {
 export const SecretQuestion: Story = {
 	args: {
 		frontend: frontend([SECRET]),
-		expanded: true,
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -215,7 +232,8 @@ export const SecretQuestion: Story = {
 export const Truncated: Story = {
 	args: {
 		frontend: { asks: [ONE], asks_open: 12, asks_truncated: true },
-		expanded: true,
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -238,7 +256,8 @@ export const Truncated: Story = {
 export const Empty: Story = {
 	args: {
 		frontend: { asks: [], asks_open: 0, asks_truncated: false },
-		expanded: true,
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -255,7 +274,8 @@ export const Empty: Story = {
 export const UnsupportedBackend: Story = {
 	args: {
 		frontend: { asks: null, asks_open: null, asks_truncated: null },
-		expanded: true,
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -271,7 +291,8 @@ export const Refused: Story = {
 		 * the row is in the panel — which is why the design round could not review
 		 * it from any frame that did not open one (design round 2, D15).
 		 */
-		expanded: true,
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -297,7 +318,8 @@ export const Refused: Story = {
 export const AnswerReady: Story = {
 	args: {
 		frontend: frontend([ONE]),
-		expanded: true,
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
@@ -310,21 +332,118 @@ export const AnswerReady: Story = {
 };
 
 /**
- * A COLLAPSED mount draws nothing at all.
+ * MANY: the queue long enough that the drawer's own scroller is the thing on
+ * trial (the design note's D1).
  *
- * Worth its own story because the whole point of the move is that nothing about an
- * ask occupies the transcript's flow or the band above the box any more: the
- * trigger is a row item in the composer's status row, and this mount has no
- * collapsed surface left to paint. The pair with `Empty` is the difference between
- * "collapsed" and "nothing to show" — both render an empty frame, and only one of
- * them is a state a user is in.
+ * Twelve open asks in a 640px-tall drawer cannot all fit, so this frame is the
+ * evidence that the overflow is the LIST's (`min-h-0 flex-1 overflow-y-auto`) and
+ * not the page's: the chrome bar stays pinned at the top, the drawer does not
+ * grow, and no page-level scroller appears. The settled pair at the end also shows
+ * the one-line collapsed section sitting under the pending cards rather than
+ * holding a card's height (D3).
  */
-export const CollapsedDrawsNothing: Story = {
+export const ManyOverflow: Story = {
 	args: {
-		frontend: frontend([ONE]),
-		expanded: false,
+		frontend: frontend([
+			...Array.from({ length: 12 }, (_, index) =>
+				ask({
+					ask_id: `a-many-${index}`,
+					questions: [
+						{
+							id: "target",
+							question: `Which environment should I deploy change ${index + 1} to?`,
+							options: [
+								{
+									label: "staging",
+									description: "The shared pre-prod cluster",
+								},
+								{ label: "production", description: "Live traffic" },
+							],
+						},
+					],
+				}),
+			),
+			optionallySettled("a-settled-1"),
+			optionallySettled("a-settled-2"),
+		]),
+		scope: "session",
+		onClose: noop,
 		nowMs: NOW,
 		onAnswer: noop,
 		onDecline: noop,
 	},
 };
+
+/**
+ * THE SETTLED SECTION, OPENED: the pending cards first and complete, then one
+ * section header ("Settled · 2") whose body is one line per settled ask.
+ *
+ * The two settled rows are the pair the note's D9 is about: `Timed out` is still
+ * answerable and `Answered` is not, so the collapsed line has to tell them apart
+ * by WORD rather than by the full sentence it cannot hold.
+ */
+export const SettledSection: Story = {
+	args: {
+		frontend: frontend([
+			ONE,
+			optionallySettled("a-settled-1"),
+			answeredAsk(),
+			declinedAsk(),
+		]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/** A `timed_out` ask: settled, but still answerable through the `late` path. */
+function optionallySettled(id: string): PendingAsk {
+	return ask({
+		ask_id: id,
+		expires_at: TS - MINUTE,
+		status: "timed_out",
+		questions: [
+			{
+				id: "files",
+				question: "Which files should the cleanup script touch?",
+				options: [{ label: "logs only" }, { label: "logs and caches" }],
+			},
+		],
+	});
+}
+
+/** An answer that reached the model before the deadline: SETTLED, and quiet. */
+function answeredAsk(): PendingAsk {
+	return ask({
+		ask_id: "a-answered",
+		status: "answered",
+		answered_at: TS + 4 * MINUTE,
+		delivered: true,
+		answers: { target: ["staging"] },
+		answered_by: { surface: "desktop" },
+		questions: [
+			{
+				id: "target",
+				question: "Which environment should I deploy this to?",
+				options: [{ label: "staging" }, { label: "production" }],
+			},
+		],
+	});
+}
+
+/** Refused, and the agent was told: settled, and the one-liner says which word. */
+function declinedAsk(): PendingAsk {
+	return ask({
+		ask_id: "a-declined",
+		status: "declined",
+		questions: [
+			{
+				id: "target",
+				question: "Should I also rotate the deploy token while I am here?",
+				options: [{ label: "yes" }, { label: "no" }],
+			},
+		],
+	});
+}

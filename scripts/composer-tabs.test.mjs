@@ -91,7 +91,7 @@ const bundle = await build({
 			import { RunDetailMonitors } from "./src/renderer/src/features/chat/components/run-details/run-detail-monitors";
 			import { GoalPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
-			import { AskSurfaces } from "./src/renderer/src/features/chat/components/asks/ask-surfaces";
+			import { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			import { askChipClause, askDeadlineShortText, askQueueView } from "./src/renderer/src/features/chat/ask-queue";
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
@@ -117,7 +117,7 @@ const bundle = await build({
 				);
 			export { GoalPicker };
 			export { toasts };
-			export { askChipClause, askDeadlineShortText, askQueueView, AskSurfaces, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
+			export { askChipClause, askDeadlineShortText, askQueueView, AskDrawer, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -183,7 +183,7 @@ globalThis.localStorage = {
 };
 const {
 	renderRow,
-	AskSurfaces,
+	AskDrawer,
 	ComposerStatusRow,
 	askChipClause,
 	askDeadlineShortText,
@@ -1423,17 +1423,21 @@ test("the item's press drives the door the host supplied, driven", async () => {
 	}
 });
 
-test("a press on the item puts focus IN the panel, and Escape hands it back, driven", async () => {
+test("a press on the item puts focus IN the drawer, and closing hands it back, driven", async () => {
 	/*
-	 * UX ROUND 1, U1. The panel sits ABOVE the row in the DOM, so a press used to
-	 * leave the reader behind the thing their press opened: forward Tab walked out of
-	 * the lane and the options were reachable only backwards. Focus now enters the
-	 * panel when - and only when - the transition found focus on the item, which is
-	 * only reachable by the user's own press.
+	 * UX ROUND 1, U1, re-expressed for the container (design note §2). The drawer now
+	 * lives in the right slot rather than on the composer's band, but the contract is
+	 * unchanged: a press on the item moves focus INTO the surface it opened, so
+	 * forward Tab reaches what the press opened rather than walking out of the lane;
+	 * closing returns it to the item, and only when focus was actually stranded.
 	 *
 	 * THE TRIGGER IS A REAL CHIP IN THE SAME DOCUMENT, not a prop: the two halves live
 	 * in different React trees and the handle between them is the contract this test
-	 * is about.
+	 * is about. The mount is conditional here exactly as `chat-content.tsx` mounts it
+	 * (`isAskDrawerOpen && ...`), which is what replaces the old `expanded: false`
+	 * render whose assertion was "a collapsed mount draws nothing": there is no
+	 * collapsed mount any more, and the marker's remaining meaning - that a closed
+	 * surface cannot answer a probe for an open one - is asserted on the ROW above.
 	 */
 	const { window: dom, root, cleanup } = await domHarness();
 	try {
@@ -1442,22 +1446,25 @@ test("a press on the item puts focus IN the panel, and Escape hands it back, dri
 		dom.document.body.appendChild(chip);
 
 		let open = false;
-		const toggles = [];
+		const closes = [];
 		const lane = () => ({
 			frontend: askFrontend([wireAsk("a-1")]),
 			nowMs: WAKE_NOW_MS,
-			expanded: open,
-			onToggle: (next) => toggles.push(next),
+			scope: "session",
+			onClose: () => closes.push(true),
 			onAnswer: () => undefined,
 			onDecline: () => undefined,
 			drafts: {},
 			onDraftChange: () => undefined,
 		});
-		await act(async () => void root.render(createElement(AskSurfaces, lane())));
+		const renderSurface = () =>
+			root.render(open ? createElement(AskDrawer, lane()) : null);
+
+		await act(async () => void renderSurface());
 		assert.equal(
 			dom.document.querySelector("[data-lo-ask-surfaces]"),
 			null,
-			"collapsed draws no panel at all, so the marker answers for the panel",
+			"a closed drawer is not mounted, so the marker answers for it",
 		);
 
 		await act(async () => chip.focus());
@@ -1468,13 +1475,18 @@ test("a press on the item puts focus IN the panel, and Escape hands it back, dri
 		);
 
 		open = true;
-		await act(async () => void root.render(createElement(AskSurfaces, lane())));
+		await act(async () => void renderSurface());
 		const panel = dom.document.querySelector("[data-lo-ask-surfaces]");
-		assert.ok(panel, "the panel is mounted");
+		assert.ok(panel, "the drawer is mounted");
 		assert.equal(panel.getAttribute("tabindex"), "-1");
+		assert.equal(
+			panel.getAttribute("data-ask-drawer"),
+			"session",
+			"the scope is a fact on the root, not only a line in the bar",
+		);
 		assert.ok(
 			panel.contains(dom.document.activeElement),
-			"focus entered the panel, so forward Tab reaches what the press opened",
+			"focus entered the drawer, so forward Tab reaches what the press opened",
 		);
 
 		await act(async () => {
@@ -1485,14 +1497,18 @@ test("a press on the item puts focus IN the panel, and Escape hands it back, dri
 				}),
 			);
 		});
-		assert.deepEqual(toggles, [false], "Escape in the panel collapses it");
+		assert.deepEqual(closes, [true], "Escape in the drawer closes it");
+
 		open = false;
-		await act(async () => void root.render(createElement(AskSurfaces, lane())));
+		await act(async () => void renderSurface());
+		/* The focus return is a microtask (see the component's note), so the flush is
+		   part of the assertion rather than a sleep. */
+		await act(async () => void (await Promise.resolve()));
 		assert.equal(dom.document.querySelector("[data-lo-ask-surfaces]"), null);
 		assert.equal(
 			dom.document.activeElement,
 			chip,
-			"and the collapse hands focus back to the item",
+			"and closing hands focus back to the item",
 		);
 	} finally {
 		await cleanup();

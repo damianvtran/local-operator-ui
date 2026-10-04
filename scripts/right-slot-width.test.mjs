@@ -74,6 +74,7 @@ const withPane = (pane, width) => ({
 	isRunPanelOpen: pane === "run",
 	isBrowserPaneOpen: pane === "browser",
 	isConsolePaneOpen: pane === "console",
+	isAskDrawerOpen: pane === "ask",
 });
 
 const ROW = 1400;
@@ -237,4 +238,71 @@ test("a blob with nothing dragged seeds unset, not some default", () => {
 test("a v1 blob is passed through untouched", () => {
 	const blob = { rightSlotWidth: 712, themeName: "dracula" };
 	assert.deepEqual(migrateUiPreferences(blob, 1), blob);
+});
+
+/**
+ * THE FIFTH OCCUPANT (design note §2). The asks drawer joined the right slot in
+ * the side-canvas change, and both halves of the slot's contract have to cover it
+ * or it would be the one pane that escapes the invariant the other four share:
+ * one width for the slot, and one pane in it at a time.
+ */
+test("the asks drawer wears the canvas family's width, and takes the slot alone", () => {
+	// GEOMETRY: the drawer's width is the family's arithmetic - the shared value
+	// (or the canvas's seed), held to the 400 floor and capped by the dock - which
+	// is what the design note means by the width being the CONTAINER's consequence
+	// rather than a rule of its own.
+	assert.equal(
+		resolveRightSlotWidth(ROW, withPane("ask", 700)),
+		Math.min(700, canvasDockWidth(ROW)),
+	);
+	assert.equal(
+		resolveRightSlotWidth(ROW, withPane("ask", 0)),
+		Math.min(DEFAULT_CANVAS_WIDTH, canvasDockWidth(ROW)),
+	);
+	// Below the dock's own floor the answer is zero and the MODE overlays the
+	// conversation instead (`canvasPaneMode`) - never a negative box with a divider
+	// still drawn.
+	assert.equal(resolveRightSlotWidth(CHAT_PANE_MIN_PX, withPane("ask", 0)), 0);
+
+	// EXCLUSION, through the store's own actions rather than restated here: opening
+	// the drawer closes all four siblings, and each of them closes the drawer.
+	const slotState = () => ({
+		ask: useUiPreferencesStore.getState().isAskDrawerOpen,
+		canvas: useUiPreferencesStore.getState().isCanvasOpen,
+		run: useUiPreferencesStore.getState().isRunPanelOpen,
+		browser: useUiPreferencesStore.getState().isBrowserPaneOpen,
+		console: useUiPreferencesStore.getState().isConsolePaneOpen,
+	});
+	useUiPreferencesStore.getState().setAskDrawerOpen(true);
+	assert.deepEqual(
+		slotState(),
+		{ ask: true, canvas: false, run: false, browser: false, console: false },
+		"opening the drawer takes the slot",
+	);
+	for (const open of [
+		"setCanvasOpen",
+		"setRunPanelOpen",
+		"setBrowserPaneOpen",
+		"setConsolePaneOpen",
+	]) {
+		useUiPreferencesStore.getState().setAskDrawerOpen(true);
+		useUiPreferencesStore.getState()[open](true);
+		assert.equal(
+			useUiPreferencesStore.getState().isAskDrawerOpen,
+			false,
+			`${open} closes the drawer`,
+		);
+	}
+	useUiPreferencesStore.getState().setAskDrawerOpen(false);
+
+	// AND IT IS THE ONE SLOT FLAG NOT PERSISTED: the canvas is a document a user
+	// keeps open across launches; the drawer is a reading of the queue that is
+	// there now, and a relaunch must not open a surface nobody opened.
+	const persisted = persistedUiPreferences(useUiPreferencesStore.getState());
+	assert.equal(
+		"isAskDrawerOpen" in persisted,
+		false,
+		"the drawer must not be persisted",
+	);
+	assert.equal(typeof persisted.isCanvasOpen, "boolean");
 });

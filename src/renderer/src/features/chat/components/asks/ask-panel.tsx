@@ -41,6 +41,7 @@
  * answer the model never received.
  */
 
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import {
 	AlertTriangle,
@@ -66,6 +67,7 @@ import {
 	askAnswerMap,
 	askSettledAnswers,
 	askStatusText,
+	askStatusWord,
 	draftFor,
 } from "../../ask-queue";
 
@@ -490,30 +492,130 @@ export const AskPanel = ({
 	className,
 }: AskPanelProps) => {
 	if (view.asks === null) return null;
+	/*
+	 * PENDING FIRST, ALWAYS COMPLETE; SETTLED IN ONE SECTION THAT OPENS IN PLACE
+	 * (design note §4.5, item 5 / D3).
+	 *
+	 * The predicate is `open`, the backend's outstanding set - which deliberately
+	 * folds `timed_out` in, because a late answer still reaches the agent - so
+	 * "pending" here means "a control on this row can still do something", which is
+	 * the same fact the chip's counts state at the other end of the lane.
+	 *
+	 * WHAT THE SPLIT IS FOR. The frame the note measured had `Answered late` holding
+	 * ~150px of a ~700px column at the same weight as the open question above it
+	 * (D3): the panel's length was driven by history rather than by work. Here the
+	 * pending cards keep today's body and one settled ask is a single line until the
+	 * reader asks for more.
+	 */
+	const pending = view.rows.filter((row) => row.open);
+	/*
+	 * NEWEST FIRST inside the section, which is the note's own order and the reverse
+	 * of `view.rows`: the queue sorts oldest-first so its head is stable, and a
+	 * HISTORY is read the other way round.
+	 */
+	const settled = view.rows.filter((row) => !row.open).reverse();
+
+	/*
+	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the split: a settled ask's
+	 * expanded body is THE SAME CARD a pending ask wears, so the two cannot drift
+	 * into two ways of showing one ask. The key rides on the row because every caller
+	 * is a list.
+	 */
+	const askRow = (presentation: (typeof view.rows)[number]) => (
+		<AskRow
+			key={presentation.ask.ask_id}
+			presentation={presentation}
+			nowMs={nowMs}
+			answering={answering}
+			outcome={outcomes?.[presentation.ask.ask_id]}
+			draft={drafts[presentation.ask.ask_id] ?? EMPTY_DRAFT}
+			onDraftChange={onDraftChange}
+			onAnswer={onAnswer}
+			onDecline={onDecline}
+		/>
+	);
+
 	return (
 		<div
 			data-lo-ask-panel="open"
 			className={cn("flex w-full flex-col gap-2", className)}
 		>
 			{view.rows.length === 0 ? (
-				<p className="px-3 py-2 text-ink text-sm">
+				<p className="px-3 py-2 text-ink text-body">
 					No asks outstanding. The agent is not waiting on anything.
 				</p>
-			) : (
-				view.rows.map((presentation) => (
-					<AskRow
-						key={presentation.ask.ask_id}
-						presentation={presentation}
-						nowMs={nowMs}
-						answering={answering}
-						outcome={outcomes?.[presentation.ask.ask_id]}
-						draft={drafts[presentation.ask.ask_id] ?? EMPTY_DRAFT}
-						onDraftChange={onDraftChange}
-						onAnswer={onAnswer}
-						onDecline={onDecline}
-					/>
-				))
-			)}
+			) : null}
+			{pending.map(askRow)}
+			{settled.length > 0 ? (
+				/*
+				 * THE SECTION HEADER IS THE APP'S ONE DISCLOSURE (`docs/branding.md` § 7:
+				 * two competing expand/collapse patterns is a bug, not a style choice), which
+				 * is also what the note asks for when it says to reuse rather than reinvent.
+				 * `chevronClassName` steps the chevron off the primitive's `ink-disabled` for
+				 * the measured reason `settings-group-header.tsx` records: a section header's
+				 * chevron is the surface's only affordance and `ink-disabled` is the one role
+				 * exempt from the 3:1 non-text floor (2.70:1 dark measured).
+				 */
+				<div data-lo-ask-settled="">
+					<Disclosure
+						triggerClassName="text-ink-muted hover:bg-row-hover hover:text-ink"
+						chevronClassName="text-ink-dim"
+						rowClassName="min-h-8 py-0"
+						summary={
+							<span className="flex min-w-0 items-center gap-1.5">
+								<span className="shrink-0 text-ink-dim text-meta">{`Settled · ${settled.length}`}</span>
+								<span className="truncate text-ink-dim text-meta">
+									answered, timed out, declined, dismissed
+								</span>
+							</span>
+						}
+					>
+						<div className="flex flex-col gap-1 pb-1">
+							{settled.map((presentation) => {
+								/*
+								 * The one line, and the two things it has to keep apart (D9): the
+								 * status WORD (`askStatusWord`, the copy contract's own leading clause)
+								 * and the question. `Timed out` and `Answered` are what tells the reader
+								 * which of two look-alike rows is still answerable, so the word travels
+								 * in the visible text as well as in the accessible name.
+								 */
+								const word = askStatusWord(presentation.status);
+								const question =
+									presentation.ask.questions[0]?.question ?? "No question text";
+								return (
+									<Disclosure
+										key={presentation.ask.ask_id}
+										triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
+										chevronClassName="text-ink-dim"
+										rowClassName="min-h-7 py-0"
+										triggerLabel={`${word} — ${question}`}
+										/*
+										 * The summary clamps to one line, so the value behind the cut is
+										 * reachable without operating the control: the app's own tooltip
+										 * idiom for a truncated disclosure summary, with the caller's
+										 * measure because the question is unbounded.
+										 */
+										triggerTooltip={question}
+										tooltipClassName="max-w-96"
+										summary={
+											<span className="flex min-w-0 items-baseline gap-1.5">
+												<span className="shrink-0 text-ink-dim text-meta">
+													{word}
+												</span>
+												<span className="truncate text-ink text-meta">
+													{question}
+												</span>
+											</span>
+										}
+									>
+										<div className="pt-1.5">{askRow(presentation)}</div>
+									</Disclosure>
+								);
+							})}
+						</div>
+					</Disclosure>
+				</div>
+			) : null}
 		</div>
 	);
 };

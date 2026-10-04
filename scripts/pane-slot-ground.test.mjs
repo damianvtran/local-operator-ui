@@ -89,6 +89,18 @@ const PANES = [
 		name: "console pane",
 		file: "src/renderer/src/features/console/components/console-pane.tsx",
 	},
+	/*
+	 * The asks drawer joined the family in the side-canvas change (design note §2):
+	 * it is the slot's FIFTH occupant, so it is held to the same two facts as the
+	 * other four - its root at the lane's last stop, and a 40px chrome bar with no
+	 * ground of its own. A pane that were given a chrome bar of a different height
+	 * would break the "the icons stay on the app's top line" invariant for every pane
+	 * that opens beside it.
+	 */
+	{
+		name: "asks drawer",
+		file: "src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
+	},
 ];
 
 /** The source with its comments removed.
@@ -265,8 +277,8 @@ test("the slot's box is spelled once, and every mount site uses that one", () =>
 	const app = withoutComments(read(CHAT_CONTENT));
 	assert.equal(
 		[...app.matchAll(/<PaneSlot\b/g)].length,
-		4,
-		`expected the app's four mount sites in ${CHAT_CONTENT} to use \`<PaneSlot>\`. A fifth pane, or one that went back to a bare div, changes where the slot's ground and seam are decided.`,
+		5,
+		`expected the app's five mount sites in ${CHAT_CONTENT} to use \`<PaneSlot>\` (canvas, run panel, browser, console, asks drawer). A sixth pane, or one that went back to a bare div, changes where the slot's ground and seam are decided.`,
 	);
 });
 

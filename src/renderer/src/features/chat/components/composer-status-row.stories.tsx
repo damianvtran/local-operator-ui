@@ -45,7 +45,7 @@ import type {
 	PendingAsk,
 } from "../../../../../../src/shared/desktop-session-contract";
 import { EMPTY_DRAFTS } from "../ask-queue";
-import { AskSurfaces } from "./asks/ask-surfaces";
+import { AskDrawer } from "./asks/ask-drawer";
 import { ComposerStatusRow } from "./composer-status-row";
 import { type RunDetails, deriveRunDetails } from "./run-details";
 
@@ -2327,33 +2327,44 @@ const AskBand = ({
 	const published =
 		tally === undefined ? {} : { asks_open: tally, asks_truncated: true };
 	return (
-		<Composer width={width} label={label}>
-			<AskSurfaces
-				frontend={asksFrontend(asks, published)}
-				nowMs={ASK_NOW}
-				expanded={open}
-				onToggle={setOpen}
-				drafts={EMPTY_DRAFTS}
-				onDraftChange={() => undefined}
-				onAnswer={() => undefined}
-				onDecline={() => undefined}
-				className="pb-2"
-			/>
-			<ComposerStatusRow
-				frontend={asksFrontend(asks, { ...published, goal })}
-				runDetails={runDetails}
-				isSmallView={width <= SMALL_VIEW_PX}
-				askExpanded={open}
-				onAskToggle={setOpen}
-				/*
-				 * THE SAME PINNED CLOCK THE PANEL GETS. The item prints the soonest waiting
-				 * deadline now, and a countdown rendered against the wall clock cannot be
-				 * photographed twice into the same frame - nor can a frame's reading be
-				 * compared with the panel row's beside it.
-				 */
-				nowMs={ASK_NOW}
-			/>
-		</Composer>
+		/*
+		 * THE BAND AND THE DRAWER SIDE BY SIDE, because the drawer is now the right
+		 * slot's fifth occupant rather than a column on this band (design note §2): the
+		 * panel the chip opens is NOT a child of the composer any more, and a story that
+		 * kept rendering it there would photograph a layout the app cannot produce.
+		 */
+		<div className="flex items-stretch gap-0 bg-canvas">
+			<Composer width={width} label={label}>
+				<ComposerStatusRow
+					frontend={asksFrontend(asks, { ...published, goal })}
+					runDetails={runDetails}
+					isSmallView={width <= SMALL_VIEW_PX}
+					askExpanded={open}
+					onAskToggle={setOpen}
+					/*
+					 * THE SAME PINNED CLOCK THE DRAWER GETS. The item prints the soonest waiting
+					 * deadline now, and a countdown rendered against the wall clock cannot be
+					 * photographed twice into the same frame - nor can a frame's reading be
+					 * compared with the drawer row's beside it.
+					 */
+					nowMs={ASK_NOW}
+				/>
+			</Composer>
+			{open && (
+				<div className="flex h-[600px] w-[400px] shrink-0 flex-col">
+					<AskDrawer
+						frontend={asksFrontend(asks, published)}
+						scope="session"
+						onClose={() => setOpen(false)}
+						nowMs={ASK_NOW}
+						drafts={EMPTY_DRAFTS}
+						onDraftChange={() => undefined}
+						onAnswer={() => undefined}
+						onDecline={() => undefined}
+					/>
+				</div>
+			)}
+		</div>
 	);
 };
 
