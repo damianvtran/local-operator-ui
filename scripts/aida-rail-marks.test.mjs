@@ -752,10 +752,18 @@ test("the primitive takes the ROW's tag, and the name reads the ROW's words", ()
 		/data-tour-tag=\{item\.attentionTag\}/,
 		"one badge primitive, addressed per row",
 	);
+	/*
+	 * THE SUBJECT MOVED, SO THE MATCHER MOVED WITH IT (PR #825, review round 2 F1).
+	 * The row's sentence is now derived in `rowName(item)` - ONE derivation serving
+	 * both the expanded name and the collapsed tooltip, which is what UX round 1's
+	 * U3 asked for - so the guard's local reads `count`, not `attention`. Rather than
+	 * pin the local's spelling again, the assertion anchors on the row's own callback
+	 * being BOTH the guard and the source, which is what it was always testing.
+	 */
 	assert.match(
 		nav,
-		/attention > 0 && item\.attentionName/,
-		"the name's sentence comes from the row, never a hardcoded noun",
+		/> 0 && item\.attentionName\s*\? item\.attentionName\(/,
+		"the name's sentence comes from the row's own callback, never a hardcoded noun",
 	);
 });
 
