@@ -14,12 +14,14 @@ import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
 import { checkPaletteBudgets } from "./check-evidence-palettes.mjs";
 import {
 	citationAncestryFailures,
+	citationFailures,
 	countsMeanFailures,
 	frames as frameFiles,
 	partialCaptureFailures,
 	provenanceFailures,
 	stampFailures,
 	storyDriftReadings,
+	unjudgedFrameFailures,
 } from "./check-evidence.mjs";
 
 /*
@@ -1515,6 +1517,121 @@ test(
 	},
 );
 
+/*
+ * The citation half, and why a missing object is a question about the CLONE
+ * rather than about the manifest.
+ *
+ * This is the defect the wiring found. `pnpm check-evidence` was added to CI as
+ * `ci.yml`'s `evidence` job and came back with 111 findings on a tree that is
+ * clean locally - every citation the manifest makes, reported as "resolves to no
+ * commit in this repository" - because `actions/checkout`'s default clone is ONE
+ * COMMIT DEEP. A missing object in a TRUNCATED clone is not evidence that the
+ * commit is gone, and judging it as a failure reds the gate on a manifest that
+ * is fine, for a reason no reader can act on: a repository that cannot answer
+ * has not found a defect, the same sentence the `SHALLOW` guard above is built
+ * on, and the same stand-down `evidence-fold.mjs`'s `runGuards` already makes for
+ * the ancestry half.
+ *
+ * SO THE HALF IS LOCAL-ONLY, and this test pins what that means in code: a
+ * truncated clone has NO verdict on a citation it cannot resolve - those are not
+ * failures, and there is nothing to print for them either, because a stand-down
+ * notice appearing on 100% of runs is a standing excuse that reads as a covered
+ * check (the same green-by-absence the sweep's wiring was added to remove, one
+ * level up), and the scope is declared once in `ci.yml`'s own step name and
+ * comment instead. Everything the clone CAN judge it still judges and fails
+ * closed on - including in a truncated clone, where an object that is present
+ * but reached by no ref is the dangling case and the presence IS the clone
+ * answering.
+ *
+ * Bound here rather than by a sweep test, because a test of the sweep cannot see
+ * it: reproducing the shipped behaviour needs a real truncated clone, and a fake
+ * reader is what the other synthetic-manifest cases use for exactly that reason.
+ *
+ * Mutations: put the truncation branch back on the failure pile (the shipped
+ * defect - 111 findings on every CI run); read "is this clone truncated" as
+ * FALSE when git cannot answer, which excuses a repository that cannot be read
+ * rather than failing closed on it; or stand the REACHABILITY arms down with the
+ * truncation, which would make a dangling citation invisible in every clone.
+ */
+test("a truncated clone has no verdict on the citations it cannot resolve", () => {
+	const manifest = {
+		head: "c70e8b36dc2ad86bfff81f85f05d08b248f82ccc",
+		supplementary: [
+			{
+				path: "a-set",
+				capturedAtHead: "e3ac03549d9bcb43f1abd2fff1f1ca803e83fbc9",
+			},
+		],
+		partialCapture: {
+			addedAtHead: "779b3f4341f",
+			refreshedAtHead: "b19c8fded4b",
+		},
+	};
+	/*
+	 * A reader that answers only the four questions `shaReaders` asks, from three
+	 * switches: is the clone truncated, do the cited objects RESOLVE, and does
+	 * some ref REACH them. An unreadable repository is the fourth case below, and
+	 * it is the one that has to fail closed.
+	 */
+	const answers =
+		({ shallow, resolve, reach }) =>
+		(args) => {
+			if (args.includes("--is-shallow-repository")) return shallow;
+			// `rev-parse --quiet --verify <sha>^{commit}`, the shape `shaReaders` uses.
+			if (args.some((argument) => String(argument).endsWith("^{commit}")))
+				return resolve ? "a commit" : null;
+			if (args[0] === "merge-base") return reach ? "" : null;
+			if (args[0] === "for-each-ref")
+				return reach ? "refs/remotes/origin/main" : "";
+			if (args[0] === "log") return "a subject";
+			return null;
+		};
+
+	const truncated = answers({ shallow: "true", resolve: false, reach: false });
+	assert.deepEqual(
+		citationFailures(manifest, truncated),
+		[],
+		"a truncated clone resolved nothing, so it has found nothing: judging these as failures is how 111 findings appeared on a clean tree in CI",
+	);
+	/*
+	 * AND THERE IS NOTHING TO PRINT FOR THEM. There is deliberately no
+	 * "unanswered" view to assert any more: the stand-down is scope, declared in
+	 * `ci.yml`'s step name and in `citationWalk`'s paragraph, and a per-run notice
+	 * on 100% of runs was the shape the wiring's own round rejected.
+	 */
+
+	const full = answers({ shallow: "false", resolve: false, reach: false });
+	assert.equal(
+		citationFailures(manifest, full).length,
+		4,
+		"a clone that is NOT truncated has found a defect when the object is gone - gone is gone, and it must not be excused",
+	);
+
+	/*
+	 * A citation that RESOLVES is judged by reachability even in a truncated
+	 * clone: the object being present is the clone answering after all, so the
+	 * dangling case (`resolves` but no ref contains it) still fails there.
+	 */
+	assert.equal(
+		citationFailures(
+			manifest,
+			answers({ shallow: "true", resolve: true, reach: false }),
+		).length,
+		4,
+		"a citation whose object IS present and which no ref reaches is the dangling case that dies at the next gc, in any clone",
+	);
+
+	/*
+	 * Fail closed on the truncation question itself: an unreadable repository
+	 * answers `null`, and only the explicit `true` may stand a citation down.
+	 */
+	assert.equal(
+		citationFailures(manifest, () => null).length,
+		4,
+		"a repository git cannot answer for must be judged, not excused",
+	);
+});
+
 /* ---- the prose beside the counts ---------------------------------------- */
 
 /*
@@ -1581,7 +1698,7 @@ const countsManifest = ({ framesProse = "", surfacesProse = "" } = {}) => ({
 });
 
 const FRAMES_LEADING =
-	"RE-DERIVED FOR THIS FOLD: 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
+	"RE-DERIVED FOR THIS FOLD: 3 committed frames outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
 
 test("a countsMean paragraph leading with the walk's numbers passes", (t) => {
 	const countsTree = caseTree(t, COUNTS_LAYOUT);
@@ -1633,7 +1750,7 @@ test("the older paragraphs under the leading one are not this tree's to answer f
 	 * (4) protects - so only the leading paragraph is checked.
 	 */
 	const manifest = countsManifest({
-		framesProse: `${FRAMES_LEADING}\n\nRE-DERIVED FOR THE SECOND FOLD: 2 committed WebP files outside the 1 declared supplementary sets below, of 4 on disk (2 of them inside the sets).`,
+		framesProse: `${FRAMES_LEADING}\n\nRE-DERIVED FOR THE SECOND FOLD: 2 committed frames outside the 1 declared supplementary sets below, of 4 on disk (2 of them inside the sets).`,
 		surfacesProse:
 			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
 	});
@@ -3873,6 +3990,105 @@ test("every declared evidence set holds exactly the palettes its record document
 });
 
 /*
+ * Q1 (round 1 of the wiring's review, found by QA): a frame the walk does not
+ * judge has to be COUNTED, and a container must not be a hiding place.
+ *
+ * The defect: the walk was `.webp`-only, so a frame whose pixels would fail the
+ * gate escaped it by being committed as a PNG - and this change created five of
+ * them. Two halves close it, and this test pins both: `frames()` judges by NAME
+ * (a theme-named `.png` is judged - 174 such frames sat unjudged across six
+ * surfaces before this), and a frame the walk does not judge at all (no theme in
+ * its name, whatever container it is packed in) is recorded by `unjudgedFrames`,
+ * whose guard fails when the tree disagrees with the file.
+ *
+ * Mutations: judge by container again (`frames()` back to `.webp`), which is how
+ * those 174 PNGs stayed invisible; or drop the counts guard, so a non-theme
+ * frame can be added anywhere without the manifest noticing.
+ */
+test("a frame the walk does not judge is accounted for, and moving one fails", (t) => {
+	const dir = mkdtempSync(join(tmpdir(), "evidence-unjudged-"));
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
+	mkdirSync(join(dir, "a-set", "row"), { recursive: true });
+	/*
+	 * Six frames, covering both halves of the rule for a THIRD container: judged in
+	 * the canonical container, judged BECAUSE ITS NAME CLAIMS A THEME in the two
+	 * others (a container outside `FRAME_CONTAINERS` would be invisible to the walk
+	 * AND the accounting at once - the hole QA found for `.png`, one extension
+	 * over), and one naming no theme inside the declared set, plus two outside it.
+	 */
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.webp"), "");
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.png"), "");
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.jpg"), "");
+	writeFileSync(join(dir, "a-set", "row-00-t96ms-blank.png"), "");
+	writeFileSync(join(dir, "outside-00-t00ms-blank.png"), "");
+	writeFileSync(join(dir, "outside-00-t00ms-blank.jpg"), "");
+	const manifest = { countsMean: {}, supplementary: [{ path: "a-set" }] };
+	const why = "x".repeat(60);
+
+	assert.deepEqual(
+		frameFiles(dir)
+			.map((file) => file.split("/").pop())
+			.sort(),
+		[
+			"localOperatorDark.jpg",
+			"localOperatorDark.png",
+			"localOperatorDark.webp",
+		],
+		"a theme-named frame is JUDGED in whatever container it is packed: the name is the claim, and the container is only how the pixels are packed",
+	);
+	assert.match(
+		unjudgedFrameFailures(manifest, dir).join("\n"),
+		RE_EVIDENCE_27,
+		"the field is REQUIRED: a manifest that carries counts and no accounting for the unjudged class is exactly the silence this guard closes",
+	);
+	assert.deepEqual(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 1,
+					outsideDeclaredSets: 2,
+					why,
+				},
+			},
+			dir,
+		),
+		[],
+		"and with the walk's own counts and a stated reason it passes, so the guard is a scope statement rather than a wall",
+	);
+	assert.match(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 2,
+					outsideDeclaredSets: 0,
+					why,
+				},
+			},
+			dir,
+		).join("\n"),
+		RE_EVIDENCE_28,
+		"a frame that moved between the set and the pool - or was re-containered - has to fail: that is the move this accounting exists to make visible",
+	);
+	assert.match(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 1,
+					outsideDeclaredSets: 1,
+					why: "too short",
+				},
+			},
+			dir,
+		).join("\n"),
+		RE_EVIDENCE_29,
+		"a count a reader cannot read the MEANING of is the skip the field replaces",
+	);
+});
+
+/*
  * Hoisted out of the test bodies above for `lint/performance/useTopLevelRegex` - the only
  * warnings this file carries, and the reason a change that touches it owes the whole-file
  * cleanup `scripts/check-scripts-lint.mjs` charges (`scripts/` sits outside `pnpm lint`'s
@@ -3902,8 +4118,11 @@ const RE_EVIDENCE_19 = /^supplementary\/\d+\//;
 const RE_EVIDENCE_20 = /countsMean\.frames/;
 const RE_EVIDENCE_21 = /the walk finds 3/;
 const RE_EVIDENCE_22 =
-	/Lead the field with: "RE-DERIVED FOR THIS FOLD: 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
+	/Lead the field with: "RE-DERIVED FOR THIS FOLD: 3 committed frames outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
 const RE_EVIDENCE_23 = /nothing this check can read/;
 const RE_EVIDENCE_24 = /countsMean\.surfaces/;
 const RE_EVIDENCE_25 = /the walk finds 2/;
 const RE_EVIDENCE_26 = /first seen at 0/;
+const RE_EVIDENCE_27 = /`unjudgedFrames` is missing/;
+const RE_EVIDENCE_28 = /a frame was added, moved or re-containered/;
+const RE_EVIDENCE_29 = /does not say what the unjudged class is/;

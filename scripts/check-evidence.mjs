@@ -20,6 +20,24 @@
  * It runs over the COMMITTED set rather than only during capture, which is
  * the difference between a set that was checked once and a set that can be
  * falsified now. `pnpm check-evidence`.
+ *
+ * WHAT A COMMITTED FRAME MUST BE CALLED, and why this is the place that says it.
+ * A frame's expected ground is derived FROM ITS FILENAME - the stem of
+ * `<set>/<stem>.<container>` is looked up in `PALETTES` - so a frame whose stem
+ * is not a palette id fails `no palette named <stem>` however its set is
+ * declared, and a set of driven frames named after their own states and
+ * timestamps can therefore never be swept. Two dispositions are honest, and a
+ * frame's pixels pick between them: MOVE the frame to `<set>/<stem>/<theme>.webp`
+ * keeping its bytes (how the 60 frames of `manifest.paletteStemRenameNote` were
+ * settled), or - for a frame the judgement above refuses outright, a bare ground
+ * that is the whole image - commit it in a container whose INFERENCE names it:
+ * this walk judges by NAME, not by container, so a bare ground is not judged
+ * whatever it is packed in, and the frames that name no theme are counted by
+ * `unjudgedFrames` (which is also why re-containering a failing frame no longer
+ * hides it - judged frames are judged under their names). What is NOT honest is a
+ * set landing as `.webp` under a stem this cannot resolve: it fails at the next
+ * sweep, and until this check was wired into a workflow the next sweep never
+ * came, so 20 such findings sat on `main` under a green CI.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -35,6 +53,25 @@ import { fileURLToPath } from "node:url";
  * not pay a module load per image, and the loader is synchronous anyway.
  */
 import sharp from "sharp";
+
+/*
+ * The decoder's memory, BOUNDED ON PURPOSE.
+ *
+ * A whole-tree sweep decodes every frame in one process. Measured 2026-10-04 at
+ * 200 / 800 / 1600 frames: resident set 500 / 586 / 735 MB with libvips' operation
+ * cache on, and 424 / 431 / 599 MB with it off - so the cache is most of what
+ * holds across a run, and turning it off is the bound that costs no throughput.
+ * (The day's harness memory-guard figure of 177.3 GB for one such sweep is TOTAL
+ * allocation, ~11 MB per decoded frame, not residency: it cannot be resident on a
+ * 36 GB host, and the numbers above are the high-water marks that can.)
+ * `sharp.concurrency(1)` was measured too and is deliberately NOT set: it flattens
+ * the curve a little further and trades throughput the CI job needs (7 GB runner,
+ * 11m27s measured) for memory it does not.
+ *
+ * The local path does not pay this at all - `evidence` is in `LOCAL_EXCLUSIONS`
+ * (`ci-scope.mjs`), so `pnpm check-changed` never starts a whole-tree decode.
+ */
+sharp.cache(false);
 /*
  * The capturer's own `dir` table, for `claimedStory` below - not to run it.
  *
@@ -139,21 +176,130 @@ const overCeiling = (fraction) => {
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
 
 /**
- * Every `.webp` under the evidence root, with the theme its filename names.
+ * The containers this repository commits frames in.
+ *
+ * `.webp` is the canonical one, `.png` what a rig frame the sweep cannot judge as
+ * a picture is committed as, and the rest are named because a container this list
+ * does NOT name is invisible to both the walk and the accounting at once - which
+ * is the hole QA found for `.png`, one extension over. Measured 2026-10-04: the
+ * tree commits none of these four today (`git ls-tree docs/evidence` is `.webp`
+ * and `.png` only), so this costs nothing now and a format the repo starts
+ * committing is counted the moment it lands - the numbers in `unjudgedFrames`
+ * move, and the guard fails until they are re-derived.
+ */
+export const FRAME_CONTAINERS = [
+	".webp",
+	".png",
+	".jpg",
+	".jpeg",
+	".avif",
+	".gif",
+];
+
+const isFrameContainer = (name) =>
+	FRAME_CONTAINERS.some((container) => name.endsWith(container));
+
+/**
+ * The strip regex DERIVED from the container list, so a format added above is
+ * recognized here in the same commit rather than silently failing to match.
+ */
+const FRAME_CONTAINER_RE = new RegExp(
+	`(${FRAME_CONTAINERS.map((c) => c.replace(".", "\\.")).join("|")})$`,
+	"i",
+);
+
+/** The frame's name without its container - what a palette id is matched against. */
+export const frameStem = (file) =>
+	file.split("/").pop().replace(FRAME_CONTAINER_RE, "");
+
+/**
+ * Every frame this guard JUDGES: the ones whose filename NAMES A THEME, in any
+ * container, plus every `.webp` (which has to name one - `main()` refuses a
+ * `.webp` whose stem resolves to no palette, and that refusal is the reason this
+ * file exists).
+ *
+ * WHY THE RULE IS ABOUT THE NAME AND NOT THE CONTAINER. It used to be `.webp`
+ * and nothing else, and that made the container a hiding place: what a frame IS
+ * is decided by its name, so re-containering one changes nothing about it - yet
+ * the walk stepped over it. Measured when this changed (2026-10-04): 174
+ * committed frames were theme-named `.png` app pictures across six surfaces,
+ * never judged, in a repository whose evidence doctrine is that a frame is a
+ * picture of its theme. The name is the claim; the container is only how the
+ * pixels are packed (all 174 pass the same check, worst DELTA-E00 17.89).
+ *
+ * WHAT IT STILL DOES NOT JUDGE, and why that is a DECLARED scope rather than a
+ * hole: a frame whose stem names no theme is not a picture of a theme and cannot
+ * be judged as one - the compositor's PRE-PAINT buffers (`.png`, one flat
+ * ground, which is what the uniformity ceiling exists to refuse), screenshots and
+ * props. They are ACCOUNTED FOR by `unjudgedFrames` below instead, so one cannot
+ * be added or moved without the manifest's numbers going stale.
  *
  * Exported because `capture-evidence.mjs` has to count frames the SAME way
  * this guard counts them when a narrowed run adds a surface: two walkers that
  * disagreed about what a frame is would produce a manifest that fails the
  * gate it was written to satisfy.
  */
-export const frames = (dir) => {
+/**
+ * Is this path a frame this guard JUDGES? The ONE spelling of the rule, so the
+ * walk, the accounting and the pass-claims below cannot disagree about what a
+ * frame is.
+ */
+export const isJudgedFrame = (name, palettes = PALETTES) =>
+	name.endsWith(".webp") || palettes.has(frameStem(name));
+
+export const frames = (dir, palettes = PALETTES) => {
 	const out = [];
 	for (const entry of readdirSync(dir)) {
 		const path = join(dir, entry);
-		if (statSync(path).isDirectory()) out.push(...frames(path));
-		else if (entry.endsWith(".webp")) out.push(path);
+		if (statSync(path).isDirectory()) out.push(...frames(path, palettes));
+		else if (isJudgedFrame(entry, palettes)) out.push(path);
 	}
 	return out;
+};
+
+/**
+ * The sentence a manifest that carries no `unjudgedFrames.why` is written with,
+ * so a fold onto an older `main` still produces a field a reader can read. The
+ * shipped file carries its own, longer statement.
+ */
+export const UNJUDGED_FRAMES_WHY =
+	"Frames in a container this repository commits whose filename names no theme, so they are not pictures of a theme and the ground check cannot judge them: the compositor's PRE-PAINT buffers (one flat colour covering 100.00% of the frame, which is exactly what the uniformity ceiling refuses), screenshots and props. They are ACCOUNTED rather than invisible - `unjudgedFrameFailures` fails when the tree disagrees with these counts.";
+
+/**
+ * The committed frames this guard does NOT judge: a frame file, in one of
+ * `FRAME_CONTAINERS`, whose stem names no theme.
+ *
+ * `declared` is the same list of set DIRECTORIES the counts guards beside it
+ * pass to `inDeclaredSet` (absolute, as `countsMeanFailures` builds it), so the
+ * two cannot disagree about which frames sit inside a declared set. The returned
+ * paths are repository-relative, because they are read in failure messages.
+ *
+ * WHY THIS EXISTS. Reading every container closed the escape for a frame that
+ * CLAIMS a theme. The other half is the frame that claims nothing: it is not
+ * judged in ANY container, so its container cannot hide a judgement it would
+ * fail - what it can still be is INVISIBLE, which is why the manifest records
+ * these counts and the walk fails when the tree disagrees with them. A frame
+ * added here moves a number a reviewer reads.
+ */
+export const unjudgedFrames = (dir, declared = [], palettes = PALETTES) => {
+	const inside = [];
+	const outside = [];
+	const walk = (current) => {
+		for (const entry of readdirSync(current)) {
+			const path = join(current, entry);
+			if (statSync(path).isDirectory()) {
+				walk(path);
+				continue;
+			}
+			if (!isFrameContainer(entry)) continue;
+			if (isJudgedFrame(entry, palettes)) continue;
+			(inDeclaredSet(path, declared) ? inside : outside).push(
+				relative(ROOT, path),
+			);
+		}
+	};
+	walk(dir);
+	return { inside, outside };
 };
 
 /**
@@ -592,9 +738,7 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
 	if (changed !== null) {
 		const moved = changed
 			.split("\n")
-			.filter(
-				(line) => line.endsWith(".webp") && !inDeclaredSet(line, declared),
-			);
+			.filter((line) => isJudgedFrame(line) && !inDeclaredSet(line, declared));
 		if (moved.length > claimed) {
 			out.push(
 				`manifest.json: partialCapture claims ${claimed} refreshed frames, but ${moved.length} committed frames differ at ${pc.refreshedAtHead.slice(0, 9)} - a narrowed run overwrote the pass's total instead of accumulating it`,
@@ -669,7 +813,12 @@ export const partialCaptureFailures = (manifest, git = gitOut) => {
  * `test:desktop` binds it against the SHIPPED manifest in under a second, and
  * that class is now caught on every pull request. The citation half needs the
  * cited commits to be present in the clone, which a shallow CI checkout does not
- * guarantee, so it keeps its own tests on synthetic manifests.
+ * guarantee - so it is LOCAL-ONLY and the wired job does not claim it: where the
+ * history is present the walk fails closed and reds the run, and where it is not
+ * the half is left unjudged rather than printed as a stand-down on every run
+ * (see `citationWalk` for that rule, and for why the printing was the wrong
+ * shape). Its code path is covered by synthetic manifests in
+ * `evidence-manifest.test.mjs`.
  *
  * `provenanceFailures` is both halves in the order a reader reads them, and is
  * what the gate reports. Exported so `evidence-manifest.test.mjs` binds the
@@ -800,11 +949,13 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	/*
 	 * `frames` must equal the frames on disk OUTSIDE every declared set.
 	 *
-	 * The fourth stamp question, and until now the one only `main()` asked - a
-	 * job no CI workflow runs, so a manifest could carry a stale swept count past
-	 * a full green `test:desktop`. Reproduced: with the trees AND `surfaces`
-	 * correct and `frames` set back to the previous sweep's `824`, the bound case
-	 * stayed 14/14 green (code review round 4, m4).
+	 * The fourth stamp question, and the one `main()` used to be alone in asking
+	 * (`pnpm check-evidence` is now a job in `ci.yml`, which is why the sweep is
+	 * no longer the only reader of this number): a manifest carrying a stale swept
+	 * count can no longer reach a green run, because the same question is asked
+	 * HERE, in the fast half, by a walk that reads no image. Reproduced: with the
+	 * trees AND `surfaces` correct and `frames` set back to the previous sweep's
+	 * `824`, the bound case stayed 14/14 green (code review round 4, m4).
 	 *
 	 * It is the same check `main()` makes, asked here with the same exclusion, so
 	 * the two cannot drift: a supplementary set is exactly the reason a frame is
@@ -846,6 +997,67 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	 */
 	out.push(...countsMeanFailures(manifest, git, dir));
 
+	/*
+	 * And the frames the gate ACCOUNTS FOR but does not judge. Asked here, in the
+	 * half `test:desktop` runs, because the whole point of the count is that no
+	 * committed frame is invisible: a walk that reads no image is enough to notice
+	 * one appearing.
+	 */
+	out.push(...unjudgedFrameFailures(manifest, dir));
+
+	return out;
+};
+
+/**
+ * The frames in a committed container whose name claims no theme: declared, not
+ * discovered.
+ *
+ * WHY IT IS A FIELD AND NOT A SILENCE. `frames()` judges by NAME, so a frame
+ * that claims a theme is judged whatever its container - but a frame that claims
+ * nothing is judged in no container, and before this field existed it was also
+ * counted by nothing: 869 such frames are committed today (341 inside declared
+ * sets, 528 outside), and a `.png` added to that pile was invisible to the walk,
+ * the count and the manifest at once. The three of them see it now: the field
+ * states both counts, this guard fails when the tree disagrees, and `why` has to
+ * say what the class IS - the compositor's pre-paint buffers (one flat ground,
+ * which is exactly what the uniformity ceiling exists to refuse), screenshots
+ * and props - so a reader of a green run knows what was not judged and why.
+ *
+ * The counts are DERIVED (`unjudgedFrames`) and the failure names both the walk's
+ * numbers and the field to lead with, so the fix is a paste.
+ */
+export const unjudgedFrameFailures = (manifest, dir = EVIDENCE) => {
+	const out = [];
+	/*
+	 * Gated the way `countsMeanFailures` is, and for the same reason: a manifest
+	 * that declares no counts is a fixture about one narrow question (a head
+	 * citation, a stamp pair), not a description of a tree - and the tree this
+	 * guard would walk is this repository's own, not the fixture's.
+	 */
+	if (!manifest.countsMean || typeof manifest.countsMean !== "object")
+		return out;
+	const declared = (manifest.supplementary ?? [])
+		.filter((set) => typeof set.path === "string" && set.path.length > 0)
+		.map((set) => join(dir, set.path));
+	const counted = unjudgedFrames(dir, declared);
+	const field = manifest.unjudgedFrames;
+	if (!field || typeof field !== "object") {
+		out.push(
+			`manifest.json: \`unjudgedFrames\` is missing, so the frames this gate accounts for WITHOUT judging are counted nowhere - lead it with { "insideDeclaredSets": ${counted.inside.length}, "outsideDeclaredSets": ${counted.outside.length}, "why": "..." } and say what the class is`,
+		);
+		return out;
+	}
+	if (
+		field.insideDeclaredSets !== counted.inside.length ||
+		field.outsideDeclaredSets !== counted.outside.length
+	)
+		out.push(
+			`manifest.json: \`unjudgedFrames\` says ${field.insideDeclaredSets} inside the declared sets and ${field.outsideDeclaredSets} outside, but the walk finds ${counted.inside.length} and ${counted.outside.length} - a frame was added, moved or re-containered, so re-derive both counts and say what moved`,
+		);
+	if (typeof field.why !== "string" || field.why.trim().length < 40)
+		out.push(
+			"manifest.json: `unjudgedFrames.why` does not say what the unjudged class is - a count a reader cannot read the MEANING of is the skip this field exists to prevent",
+		);
 	return out;
 };
 
@@ -872,7 +1084,7 @@ export const declaredThemeNames = (capture) => {
  * the order the paragraph writes them.
  */
 const FRAMES_READING =
-	/([\d,]+)\s+committed WebP files outside the ([\d,]+)\s+declared supplementary sets[\s\S]*?\bof\s+([\d,]+)\s+on disk\s*\(([\d,]+)\s+of them inside the sets\)/;
+	/([\d,]+)\s+committed frames outside the ([\d,]+)\s+declared supplementary sets[\s\S]*?\bof\s+([\d,]+)\s+on disk\s*\(([\d,]+)\s+of them inside the sets\)/;
 const SURFACES_READING =
 	/([\d,]+)\s+rows in `HEAD:scripts\/capture-evidence\.mjs`'s STORIES literal/;
 const THEMES_READING = /([\d,]+)\s+theme names in the `THEMES` literal/;
@@ -967,21 +1179,21 @@ export const countsMeanFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 		framesProse,
 		framesMatch
 			? {
-					"/committed WebP files outside the declared sets/": proseCount(
+					"/committed frames outside the declared sets/": proseCount(
 						framesMatch[1],
 					),
 					"/declared supplementary sets/": proseCount(framesMatch[2]),
-					"/committed WebP files/": proseCount(framesMatch[3]),
+					"/committed frames/": proseCount(framesMatch[3]),
 					"/inside the declared sets/": proseCount(framesMatch[4]),
 				}
 			: {},
 		{
-			"/committed WebP files outside the declared sets/": outside,
+			"/committed frames outside the declared sets/": outside,
 			"/declared supplementary sets/": sets.length,
-			"/committed WebP files/": onDisk.length,
+			"/committed frames/": onDisk.length,
 			"/inside the declared sets/": onDisk.length - outside,
 		},
-		`RE-DERIVED FOR THIS FOLD: ${outside} committed WebP files outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside} of them inside the sets).`,
+		`RE-DERIVED FOR THIS FOLD: ${outside} committed frames outside the ${sets.length} declared supplementary sets below, of ${onDisk.length} on disk (${onDisk.length - outside} of them inside the sets).`,
 	);
 
 	const surfacesProse = leading("surfaces");
@@ -1024,10 +1236,62 @@ export const countsMeanFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
  * `test:desktop` without this half's dependency on what a clone happens to
  * contain - a shallow CI checkout has every stamp and not necessarily every
  * cited branch commit.
+ *
+ * THAT DEPENDENCY DECIDES HOW IT FAILS, and the answer is that this half is
+ * LOCAL-ONLY. `actions/checkout`'s default is ONE COMMIT DEEP, so a truncated
+ * clone cannot answer the question at all: every citation in the file reads as
+ * missing at once, which is evidence that the CLONE is truncated rather than
+ * that the commits are gone. Judging that as a failure reds the gate on a
+ * manifest that is fine, for a reason a reader cannot act on, which is how a
+ * gate gets routed around.
+ *
+ * SO THE WIRED JOB DOES NOT CLAIM THIS HALF, and the walk does not judge it in a
+ * truncated clone: the citations are LEFT ALONE rather than failed, and nothing
+ * is printed for them. That second half of the rule is the load-bearing one - a
+ * stand-down that appears on 100% of runs is a standing excuse that reads as a
+ * covered check, which is the "green by absence" the sweep's own wiring was
+ * added to remove, one level up. The scope is declared where a reader meets the
+ * gate instead of restated per run: the `evidence` job's step name and comment
+ * in `ci.yml`, and this paragraph.
+ *
+ * WHERE IT IS JUDGED INSTEAD - AND, ON THIS FLEET, WHERE IT IS NOT: the honest
+ * statement is stronger and less comforting than "local-only" sounds, because
+ * `actions/checkout` is one commit deep AND every checkout here is shallow too.
+ * Measured 2026-10-04: `git rev-parse --is-shallow-repository` is `true` in this
+ * repository's own checkout, so a developer's `pnpm check-evidence` stands this
+ * half down exactly as CI does, and `evidence-manifest.test.mjs`'s ancestry test
+ * SKIPS here for the same reason. So on this fleet the citation half is checked
+ * NOWHERE today - not in CI and not locally - and the four citations known to be
+ * reachable from no remote ref (recorded on the wiring's PR) are the consequence.
+ * What does answer it: a clone that HAS the history (`git fetch --unshallow`),
+ * where this walk fails closed and reds the run, and the synthetic manifests in
+ * `evidence-manifest.test.mjs`, which cover the code path itself wherever the
+ * objects exist. A green run - local or in CI - is not evidence about citations.
  */
-export const citationFailures = (manifest, git = gitOut) => {
-	const out = [];
+const citationWalk = (manifest, git = gitOut) => {
 	const { resolves, reachable } = shaReaders(git);
+	/*
+	 * The truncation question. Fail CLOSED: only an explicit `true` stands a
+	 * citation down, so a repository this cannot read is judged rather than
+	 * excused.
+	 */
+	const truncated = git(["rev-parse", "--is-shallow-repository"]) === "true";
+	const failures = [];
+	/*
+	 * The ONE spelling of "this clone cannot answer for that object" - which in a
+	 * truncated clone is NOT a finding and is NOT collected either, because the
+	 * scope is declared in the paragraph above rather than re-stated per run.
+	 *
+	 * The reachability arms below are deliberately untouched by it: an object that
+	 * IS present and that no ref contains is the dangling case, and a depth-1
+	 * clone can judge it, because the object being there IS the clone answering.
+	 */
+	const missing = (citation, sha) => {
+		if (truncated) return;
+		failures.push(
+			`manifest.json: ${citation} ${sha.slice(0, 9)} resolves to no commit in this repository`,
+		);
+	};
 
 	/*
 	 * `head` first: it is the citation every other one is read beside, and the
@@ -1035,13 +1299,11 @@ export const citationFailures = (manifest, git = gitOut) => {
 	 * that carried the frames.
 	 */
 	if (typeof manifest.head !== "string" || manifest.head.length < 7) {
-		out.push("manifest.json: `head` is missing or not a sha");
+		failures.push("manifest.json: `head` is missing or not a sha");
 	} else if (!resolves(manifest.head)) {
-		out.push(
-			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} resolves to no commit in this repository`,
-		);
+		missing("`head`", manifest.head);
 	} else if (!reachable(manifest.head)) {
-		out.push(
+		failures.push(
 			`manifest.json: \`head\` ${manifest.head.slice(0, 9)} (${git(["log", "-1", "--format=%s", manifest.head]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
 		);
 	}
@@ -1050,11 +1312,9 @@ export const citationFailures = (manifest, git = gitOut) => {
 		const sha = set.capturedAtHead;
 		if (typeof sha !== "string" || sha.length < 7) continue;
 		if (!resolves(sha)) {
-			out.push(
-				`manifest.json: supplementary[${set.path}].capturedAtHead ${sha.slice(0, 9)} resolves to no commit in this repository`,
-			);
+			missing(`supplementary[${set.path}].capturedAtHead`, sha);
 		} else if (!reachable(sha)) {
-			out.push(
+			failures.push(
 				`manifest.json: supplementary[${set.path}].capturedAtHead ${sha.slice(0, 9)} is reachable from no ref - it dies at the next gc`,
 			);
 		}
@@ -1077,17 +1337,25 @@ export const citationFailures = (manifest, git = gitOut) => {
 		const sha = manifest.partialCapture?.[field];
 		if (typeof sha !== "string" || sha.length < 7) continue;
 		if (!resolves(sha)) {
-			out.push(
-				`manifest.json: partialCapture.${field} ${sha.slice(0, 9)} resolves to no commit in this repository`,
-			);
+			missing(`partialCapture.${field}`, sha);
 		} else if (!reachable(sha)) {
-			out.push(
+			failures.push(
 				`manifest.json: partialCapture.${field} ${sha.slice(0, 9)} (${git(["log", "-1", "--format=%s", sha]) ?? "?"}) is reachable from no ref - it is a dangling commit that resolves only in this clone and dies at the next gc, so a reader cannot check these frames against it`,
 			);
 		}
 	}
-	return out;
+	return failures;
 };
+
+/**
+ * The citations this CLONE can judge and that fail. `provenanceFailures` reads this.
+ *
+ * Empty on a truncated clone, where the half is not part of the run at all (see
+ * `citationWalk`). Everywhere the history is present it is the verdict on the
+ * MANIFEST, and the only thing here that can turn a run red.
+ */
+export const citationFailures = (manifest, git = gitOut) =>
+	citationWalk(manifest, git);
 
 /**
  * Whether the citations a REBASE moves still name commits in this history.
@@ -1378,7 +1646,7 @@ export const main = async () => {
 	let worst = { got: -1, file: "" };
 
 	for (const file of files) {
-		const theme = file.split("/").pop().replace(".webp", "");
+		const theme = frameStem(file);
 		const palette = PALETTES.get(theme);
 		if (!palette) {
 			failures.push(`${relative(ROOT, file)}: no palette named \`${theme}\``);
@@ -1513,13 +1781,14 @@ export const main = async () => {
 		/*
 		 * `partialCapture` must not UNDERSTATE the pass it describes.
 		 *
-		 * The arithmetic lives in `partialCaptureFailures` because this half of
-		 * the gate runs behind the ImageMagick loop below and no CI workflow runs
-		 * it, so a field guarded only here is a field with no guard (round 5,
-		 * R5-2; round 4 said the same of the number itself). `stampFailures` -
-		 * and through it `scripts/evidence-manifest.test.mjs` - calls the same
-		 * function, so the denominator, the set exclusion and the two messages
-		 * cannot drift between the halves.
+		 * The arithmetic lives in `partialCaptureFailures` because the half of the
+		 * gate that reads it is the SWEEP - a whole-tree decode, minutes long - and
+		 * the fast suite has to be able to answer the same question without one. A
+		 * field guarded only there is a field a green `test:desktop` cannot see
+		 * (round 5, R5-2; round 4 said the same of the number itself).
+		 * `stampFailures` - and through it `scripts/evidence-manifest.test.mjs` -
+		 * calls the same function, so the denominator, the set exclusion and the two
+		 * messages cannot drift between the halves.
 		 */
 		failures.push(...partialCaptureFailures(manifest));
 
@@ -1550,6 +1819,15 @@ export const main = async () => {
 		 */
 		for (const note of storyDriftReadings(manifest))
 			console.log(`NOTE  ${note}`);
+
+		/*
+		 * THE CITATION HALF IS NOT PRINTED HERE, and that is deliberate rather than an
+		 * omission: it is local-only (see `citationWalk`), so on the wired job's
+		 * depth-1 checkout it is not part of the run at all - and a stand-down notice
+		 * that appeared on 100% of runs would read as a covered check, which is the
+		 * green-by-absence this sweep was wired to remove. The scope is declared once,
+		 * in the job's step name and comment, not re-stated per run.
+		 */
 	}
 
 	for (const line of failures) console.log(`FAIL  ${line}`);
