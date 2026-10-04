@@ -215,6 +215,20 @@ export const askChipCountClause = (view: AskQueueView): string => {
 		return view.movedOn === 1
 			? "1 question moved on"
 			: `${view.movedOn} questions moved on`;
+	/*
+	 * ANSWERS STILL TO DELIVER COME BEFORE `All asks settled` (design §10, #1936).
+	 *
+	 * The user answered, the agent has not been handed it, and the change
+	 * affordance is live on that row — so `All asks settled` would be the chip
+	 * contradicting the panel it opens. The order is the same principle the two
+	 * branches above already follow: a state the user can still act on outranks
+	 * one they cannot. A DELIVERED `answered` ask is excluded by the row's own
+	 * wire-derived flag, so the ordinary finished queue keeps today's sentence.
+	 */
+	if (view.delivering > 0)
+		return view.delivering === 1
+			? "1 answer not yet delivered"
+			: `${view.delivering} answers not yet delivered`;
 	return "All asks settled";
 };
 
@@ -778,6 +792,22 @@ export type AskQueueView = {
 	waiting: number;
 	/** Asks whose deadline passed with the agent moving on, from the same rows. */
 	movedOn: number;
+	/**
+	 * Asks that are ANSWERED but not yet DELIVERED, from the same rows (design
+	 * §10, #1936).
+	 *
+	 * Its own count rather than a fold into `waiting`/`movedOn`, because it is a
+	 * state of its own: the user has answered and the agent has NOT been handed the
+	 * answer, so the row is still the user's to CHANGE — and the chip must not say
+	 * `All asks settled` about it (see `askChipCountClause`). It is read from the
+	 * WIRE's `delivered` hint via `presentAsk`, never from a status alone: a
+	 * delivered `answered` ask is history and takes no control.
+	 *
+	 * A truncated frame's count is a count of the visible prefix, exactly as
+	 * `waiting`/`movedOn` are — the same caveat, stated once here rather than three
+	 * times above.
+	 */
+	delivering: number;
 	/** Total rows in this frame, which is NOT the queue length when truncated. */
 	total: number;
 	truncated: boolean;
@@ -825,6 +855,7 @@ export const askQueueView = (
 			total: 0,
 			truncated: false,
 			urgent: false,
+			delivering: 0,
 			soonestExpiryMs: null,
 			head: null,
 		};
@@ -840,6 +871,7 @@ export const askQueueView = (
 	 */
 	const waiting = rows.filter((row) => row.waiting).length;
 	const movedOn = rows.filter((row) => row.movedOn).length;
+	const delivering = rows.filter((row) => row.delivering).length;
 	/*
 	 * The waiting rows' own deadlines, for the chip's countdown. Rendered from
 	 * `expires_at` on the CLIENT clock, exactly as a panel row's is (see
@@ -862,6 +894,7 @@ export const askQueueView = (
 		open: typeof frontend?.asks_open === "number" ? frontend.asks_open : open,
 		waiting,
 		movedOn,
+		delivering,
 		total: rows.length,
 		truncated: frontend?.asks_truncated === true,
 		urgent: rows.some((row) => row.waiting && row.ask.urgent === true),
@@ -1147,6 +1180,34 @@ export const askAnswerMap = (
 		if (values.length > 0) answers[question.id] = values;
 	}
 	return Object.keys(answers).length > 0 ? answers : null;
+};
+
+/**
+ * The EDIT BUFFER for a recorded-but-undelivered answer (design §10, #1936).
+ *
+ * Seeds the card's change form with what the log already holds, so changing one
+ * answer is an edit rather than a re-entry of the whole ask: the revision still
+ * travels as the complete map (§10's whole-ask rule), and a form that started
+ * empty would force the user to retype every question to change one — and would
+ * make an accidental omission a question the ask loses for good.
+ *
+ * A SECRET QUESTION IS DELIBERATELY LEFT EMPTY, and not as an oversight. Its
+ * recorded cell is the KEY NAME (`[<key>]`) by construction — the value never
+ * leaves the session's memory store, so there is nothing to seed a masked field
+ * WITH, and seeding the key name would post the literal `[<key>]` as the new
+ * secret. The field is therefore empty and the submit is gated on a retyped value
+ * by the SAME `askDraftIsComplete` rule the first answer uses (which is why no
+ * revision-specific completeness rule exists here).
+ */
+export const askRevisionDraft = (ask: PendingAsk): AskDraft => {
+	const draft: AskDraft = {};
+	for (const question of ask.questions) {
+		if (question.secret) continue;
+		const recorded = ask.answers?.[question.id];
+		if (Array.isArray(recorded) && recorded.length > 0)
+			draft[question.id] = [...recorded];
+	}
+	return draft;
 };
 
 /**
