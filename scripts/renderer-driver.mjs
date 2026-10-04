@@ -314,7 +314,9 @@ const BACKEND = argValue("--backend", null);
  * is the app rather than the rig. `accepted` asserts the gesture lands — a chip
  * appears, the store holds the file's path, the send reaches the daemon — and
  * `discarded` asserts the defect the base tree has: the same gesture leaves
- * nothing behind and the OS's copy badge is a promise the composer does not keep.
+ * nothing behind while a paste in the same pane still attaches a file, so the
+ * promise the OS's copy badge makes (the issue's own report - a dispatched drag
+ * cannot see what macOS paints) is one the composer does not keep.
  * A value the scene does not know is refused rather than defaulted, because a
  * typo would silently answer the other half's question.
  */
@@ -1200,31 +1202,49 @@ function widenCspForBackend(backendUrl) {
 	const origin = backendUrl.replace(/\/$/, "");
 	const before = readFileSync(file, "utf8");
 	/*
-	 * ALREADY-WIDENED IS ASKED OF THE DIRECTIVES, not of the file. It used to be
-	 * `before.includes(origin)`, which is true for a backend on any port the page's
-	 * `connect-src` already names - `8080` among them - so the widening silently did
-	 * nothing for exactly those ports and the note still said "already widened".
-	 * Measured 2026-10-04 on `--scene composer-drop`'s first run: `img-src` was
-	 * never widened for a backend on 8080 and the frames photographed a broken chip
-	 * where the real app paints the attachment's thumbnail.
+	 * ONE DIRECTIVE AT A TIME, AND EACH LIST BOUNDED AT ITS OWN END (review round 1,
+	 * CR1-1 = QA Q-1). The policy is ONE line inside `content="…"` with no inner
+	 * quote, so a lazy `([^"]*?)"` runs past every `;` to the attribute's closing
+	 * quote - all three appends landed at the POLICY TAIL, inside `frame-src`'s list,
+	 * and `img-src` was never widened at all. The note said it had been, and fourteen
+	 * CSP violations in the run's own app log said it had not; every populated cell
+	 * photographed an empty tile because of it.
+	 *
+	 * THE LIST ENDS AT `;` FOR EVERY DIRECTIVE BUT THE LAST, which ends at the
+	 * attribute's quote - so the bound is `[^;"]` and NOT `[^"]`, and it is NOT
+	 * anchored on the quote either. Bounded on the quote alone, `img-src` and
+	 * `media-src` match nothing at all (their lists end at `;`) and the widening
+	 * silently does no work for exactly the two directives this scene needs - which
+	 * is what a first cut of this fix did, caught by running the pattern over the
+	 * built file rather than by reading it (2026-10-04: `img-src absent`).
+	 *
+	 * An origin already in a directive's list is left alone rather than appended
+	 * again - the appends used to be unconditional, so each run grew the policy (three
+	 * fresh 8080s in one lane's run and a pile of 8181s from a parallel one).
 	 */
-	const widened = before
-		.replace(
-			/frame-src ([^"]*?)"/,
-			(_m, list) => `frame-src ${list.trim()} ${origin}"`,
-		)
-		.replace(
-			/media-src ([^"]*?)"/,
-			(_m, list) => `media-src ${list.trim()} ${origin}"`,
-		)
-		.replace(
-			/img-src ([^"]*?)"/,
-			(_m, list) => `img-src ${list.trim()} ${origin}"`,
-		);
-	if (widened === before)
-		return `already widened for ${origin} (no frame-src/media-src/img-src list left to add it to)`;
+	const directives = ["frame-src", "media-src", "img-src"];
+	const changed = [];
+	const left = [];
+	let widened = before;
+	for (const directive of directives) {
+		const pattern = new RegExp(`(${directive} )([^;"]*)`);
+		const match = pattern.exec(widened);
+		if (match === null) {
+			left.push(`${directive} absent`);
+			continue;
+		}
+		if (match[2].split(/\s+/).includes(origin)) {
+			left.push(`${directive} already lists it`);
+			continue;
+		}
+		const list = match[2].trim();
+		widened = widened.replace(pattern, () => `${directive} ${list} ${origin}`);
+		changed.push(directive);
+	}
+	if (changed.length === 0)
+		return `already widened for ${origin} (${left.join(", ")})`;
 	writeFileSync(file, widened);
-	return `out/renderer/index.html: ${origin} added to frame-src, media-src and img-src (build output only; src/ untouched)`;
+	return `out/renderer/index.html: ${origin} added to ${changed.join(", ")}${left.length > 0 ? `; left alone: ${left.join(", ")}` : ""} (build output only; src/ untouched)`;
 }
 
 async function readAppLog(handle) {
@@ -33214,6 +33234,14 @@ function translateYOf(transform) {
  *    `DataTransfer`, which is the interface that handler reads), both sends are
  *    admitted, and the two images are compared off the DAEMON's transcript - the
  *    bytes on the wire, not the pixels in two chips.
+ * 7. armed while the composer is FOCUSED (design round 1, D1; UX round 1, U3): the
+ *    drop state and the focus state are the same accent ring on the same element,
+ *    so they are separated BY SHAPE - solid while focused, dashed while a file is
+ *    over it - and this case reads both off the box in one run.
+ * 8. armed with a NON-MEDIA tile on the band (design round 1, D2): the tile's fill
+ *    and its box and the band's fill are read before and during the drag, because
+ *    a band painted with the tile's own token is a tile that has lost its
+ *    boundary.
  *
  * NOT PROVABLE HERE, said so that no report implies otherwise: this is a
  * DISPATCHED drag through Chromium's input pipeline, not a human's mouse
@@ -33451,6 +33479,54 @@ async function sceneComposerDrop(cdp) {
 	};
 
 	/**
+	 * The composer box's own outline, which is where the drop state is drawn.
+	 *
+	 * Read from the element the frames photograph, so a reading and its frame cannot
+	 * describe two different states (design round 1, D1; UX round 1, U3).
+	 */
+	const composerOutline = async () =>
+		cdp.evaluate(`(() => {
+			const el = document.querySelector(${JSON.stringify(composerBox)});
+			if (el === null) return null;
+			const s = getComputedStyle(el);
+			return { style: s.outlineStyle, width: s.outlineWidth, offset: s.outlineOffset, color: s.outlineColor, background: s.backgroundColor };
+		})()`);
+
+	/**
+	 * The composer box's own ground and the attachment tile's, as the frames paint
+	 * them (design round 1, D2).
+	 *
+	 * The tile is found from its Remove control and walked UP to the first ancestor
+	 * that paints a background, which is the tile's own ground - found by structure
+	 * rather than by scanning for a utility name, because a class attribute that
+	 * merely CONTAINS `bg-accent-wash` (a variant, say) is not a ground that
+	 * paints. The box's fill is the other half: the collision D2 reports is between
+	 * the tile's ground and the BOX's, since the tile sits inside the box.
+	 */
+	const tileAndBoxGround = async () =>
+		cdp.evaluate(`(() => {
+			const rectOf = (el) => {
+				if (el === null) return null;
+				const r = el.getBoundingClientRect();
+				return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) };
+			};
+			const box = document.querySelector(${JSON.stringify(composerBox)});
+			const button = document.querySelector('[aria-label="Remove attachment"]');
+			let tile = button === null ? null : button.parentElement;
+			while (tile !== null && tile !== document.body) {
+				const bg = getComputedStyle(tile).backgroundColor;
+				if (bg !== "" && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") break;
+				tile = tile.parentElement;
+			}
+			return {
+				tile: tile === null ? null : getComputedStyle(tile).backgroundColor,
+				tileRect: rectOf(tile),
+				box: box === null ? null : getComputedStyle(box).backgroundColor,
+				boxRect: rectOf(box),
+			};
+		})()`);
+
+	/**
 	 * The attachment delta a gesture produced, checked against which half of the
 	 * pair this run is. `expected` is the head's claim; the base's claim is always
 	 * "nothing", which is the defect the pair exists to record.
@@ -33511,6 +33587,48 @@ async function sceneComposerDrop(cdp) {
 		);
 	await clearAttachments();
 
+	// ---- case 7: armed while the composer is FOCUSED ---------------------
+	/*
+	 * Design round 1's D1 and UX round 1's U3 as a STATE rather than a sentence.
+	 *
+	 * `armed` and `focused` are the same accent ring on the same element, and the
+	 * first cut separated them with a ground wash that measures 1.01-1.17:1 against
+	 * the band in every palette - it carried nothing. The fix separates them BY
+	 * SHAPE: the box's focus ring is solid, the drop state is dashed. This case is
+	 * the reading that says so - focus the field, read the box, put a file over it,
+	 * read the box again - and both readings come off the same element in one run, so
+	 * the pair cannot drift apart.
+	 */
+	{
+		await clickAt(cdp, composerField);
+		const focused = await cdp.evaluate(
+			`document.activeElement === document.querySelector(${JSON.stringify(composerField)})`,
+		);
+		const resting = await composerOutline();
+		const focusedPoint = await dropFiles([fixtureImagePath]);
+		const armed = await composerOutline();
+		const focusedFrame = await captureSettled(
+			cdp,
+			`composer-drop-7-armed-focused-${size}`,
+		);
+		note("frame", JSON.stringify(focusedFrame));
+		check(
+			accepted
+				? "case 7: armed and focused are two shapes - the box is solid while focused and dashed while a file is over it"
+				: "BASE TREE: case 7 is a focused composer under a drag; this tree paints no drop state",
+			accepted
+				? Boolean(focused) &&
+						resting?.style === "solid" &&
+						armed?.style === "dashed"
+				: Boolean(focused) && armed?.style === "solid",
+			`focused=${focused} resting=${JSON.stringify(resting)} armed=${JSON.stringify(armed)}`,
+			`focused=${focused} resting.outlineStyle=${resting?.style} armed.outlineStyle=${armed?.style}`,
+		);
+		await dragTo([fixtureImagePath], "drop", focusedPoint);
+		await wait(600);
+		await clearAttachments();
+	}
+
 	// ---- case 2: several files -------------------------------------------
 	const before2 = await readAttachments();
 	const multiPoint = await dropFiles([fixtures.image, fixtures.second]);
@@ -33557,7 +33675,48 @@ async function sceneComposerDrop(cdp) {
 		1,
 		"the chip is carried; the encoder admits only image mimes for every route, so what reaches the model is unchanged by this slice",
 	);
-	await clearAttachments();
+
+	// ---- case 8: armed with a NON-MEDIA tile on the band ------------------
+	/*
+	 * Design round 1's D2 as a STATE. `AttachmentsPreview` fills a non-media tile
+	 * with `accent-wash`, and the first cut painted the BAND with the same token -
+	 * measured as the identical rendered value `#1b281f` - so while a drag was over
+	 * the composer an attached `.txt`'s tile sat on a ground of exactly its own
+	 * colour and the tile's ground step, which IS its boundary, disappeared. The fix
+	 * leaves the band alone; this case reads the tile's own fill and its BOX, plus
+	 * the band's fill, before and during the drag. The box is read as well as the
+	 * colour because a repaint that kept the token but moved the tile would be the
+	 * same defect wearing a different coat.
+	 */
+	{
+		const tileBefore = await tileAndBoxGround();
+		const tilePoint = await dropFiles([fixtures.text]);
+		const tileArmed = await tileAndBoxGround();
+		const tileFrame = await captureSettled(
+			cdp,
+			`composer-drop-8-armed-non-image-${size}`,
+		);
+		note("frame", JSON.stringify(tileFrame));
+		check(
+			accepted
+				? "case 8: a non-media tile keeps its own ground, its own box and the box's ground while a file is over the composer"
+				: "BASE TREE: case 8 has no non-media tile to read (nothing attaches on this tree) - recorded for the pair's shape",
+			accepted
+				? tileBefore.tile !== null &&
+						tileBefore.tile === tileArmed.tile &&
+						JSON.stringify(tileBefore.tileRect) ===
+							JSON.stringify(tileArmed.tileRect) &&
+						tileBefore.box === tileArmed.box &&
+						JSON.stringify(tileBefore.boxRect) ===
+							JSON.stringify(tileArmed.boxRect)
+				: tileBefore.tile === null && tileArmed.tile === null,
+			`tile ${tileBefore.tile} -> ${tileArmed.tile}; tileRect ${JSON.stringify(tileBefore.tileRect)} -> ${JSON.stringify(tileArmed.tileRect)}; box ${tileBefore.box} -> ${tileArmed.box}`,
+			`tileGround=${tileBefore.tile ?? "(no tile)"} boxGround=${tileBefore.box} - tile unchanged=${tileBefore.tile === tileArmed.tile} box unchanged=${tileBefore.box === tileArmed.box} box height=${tileBefore.boxRect?.height}px in both`,
+		);
+		await dragTo([fixtures.text], "drop", tilePoint);
+		await wait(600);
+		await clearAttachments();
+	}
 
 	/*
 	 * The conversation the composer is ACTUALLY on, read from the route.
@@ -33759,6 +33918,13 @@ async function sceneComposerDrop(cdp) {
 				mutateBImages.length === 1 &&
 				mutateAImages[0].digest !== mutateBImages[0].digest,
 			`storedA=${JSON.stringify(mutateStateA.stored)} storedB=${JSON.stringify(mutateStateB.stored)} digests ${mutateAImages[0]?.digest} vs ${mutateBImages[0]?.digest}`,
+			/*
+			 * The PASS line carries the two digests (agent review round 1, CR1-3). Without
+			 * this argument the sentence "the run reports the two digests" in the set's
+			 * README was true of the CHECK and not of the LOG: `detail` is printed only on
+			 * a failure, so the committed log proved the inequality only by not failing.
+			 */
+			`digestA=${mutateAImages[0]?.digest} digestB=${mutateBImages[0]?.digest} (different bytes behind the same path) storedA=${JSON.stringify(mutateStateA.stored)}`,
 		);
 	}
 
@@ -33833,6 +33999,13 @@ async function sceneComposerDrop(cdp) {
 		accepted
 			? runningAfterDrop !== null &&
 					runningAfterPaste !== null &&
+					/*
+					 * `> runningBefore.chips` is not decoration: without it the equality below
+					 * also holds when NEITHER gesture attached anything, so "a drop during a turn
+					 * attaches exactly what a paste does" would pass on a pane where both routes
+					 * were dead (agent review round 1, CR1-8).
+					 */
+					runningAfterDrop.chips > runningBefore.chips &&
 					runningAfterDrop.chips - runningBefore.chips ===
 						runningAfterPaste.chips - runningAfterDrop.chips
 			: runningAfterDrop !== null &&
@@ -33863,7 +34036,7 @@ async function sceneComposerDrop(cdp) {
 	 * and the daemon exposes no session-delete route for a rig to make one; a chat
 	 * route for an id the daemon never had mounts a composer that is NOT refusing,
 	 * measured here. So the refusing arm is covered by the composer's own JSDOM
-	 * harness instead (`message-input-attachments.test.mjs`, which mounts the real
+	 * harness instead (`scripts/composer-file-drop.test.mjs`, which mounts the real
 	 * component with `unavailable` set and drops on it), and this case says so in
 	 * the run's own output.
 	 */
@@ -38935,7 +39108,7 @@ async function main() {
 	if (SCENE === "composer-drop") {
 		if (BACKEND === null || BACKEND_RECORDS === null) {
 			throw new Error(
-				"--scene composer-drop needs --backend and --backend-records: the composer mounts only against a conversation on the daemon this run owns, and case 5's busy state is that daemon held with SIGSTOP by the pid its serve record carries",
+				"--scene composer-drop needs --backend and --backend-records: the composer mounts only against a conversation on the daemon this run owns, and the app admits a daemon only while a serve record describes one - which is also how case 5's running turn is made (the mock provider's own `[bash:N]` marker, not a signalled process)",
 			);
 		}
 		if (DROP_EXPECT !== "accepted" && DROP_EXPECT !== "discarded") {
