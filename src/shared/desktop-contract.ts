@@ -2751,6 +2751,27 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
 	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
 	/*
+	 * THE FLEET ASKS READ (`GET /v1/desktop/asks`), the cross-session companion of
+	 * the per-session queue the canonical frame carries. A GET with no parameters
+	 * at all: the route answers from the DERIVED ask index under the config dir,
+	 * so it needs no session id and no `cwd` — the rows name their own conversation
+	 * (`session_id`, `cwd` are the frozen `PendingAsk` shape plus those two keys).
+	 *
+	 * IT IS A SEPARATE OP FROM THE SESSION QUEUE, deliberately. The session's asks
+	 * arrive on its own canonical stream (the frontend state's `asks`), which is
+	 * scoped to the conversation being watched and is therefore silent about every
+	 * other conversation by construction; "what is waiting across the whole app" is
+	 * a question no per-session frame can answer, which is why the drawer's other
+	 * scope needs its own read rather than a widened filter on that one.
+	 *
+	 * THE ANSWER IS A LIST OF RAW ROWS rather than a modelled shape, matching the
+	 * route's own reasoning: the rows ARE the frozen `PendingAsk` wire shape, and
+	 * re-declaring their fields here would be a third copy of §4 to keep in step.
+	 */
+	z
+		.object({ op: z.literal("asks.list") })
+		.strict(),
+	/*
 	 * The Projects surface (`/v1/desktop/projects*`), APPENDED to the union
 	 * rather than inserted beside the other catalogue ops: the backend serves
 	 * these routes from its own release, and an older daemon that has never
@@ -4942,6 +4963,14 @@ export function desktopEndpoint(request: DesktopRequest): {
 			return { path: "/v1/desktop/peers", method: "GET" };
 		case "networks.list":
 			return { path: "/v1/desktop/networks", method: "GET" };
+		/*
+		 * The fleet read, and the path is the DESKTOP plane's rather than the relay's
+		 * (`/api/asks`): the two answer the same rows today, but this client reaches
+		 * the daemon it is paired with, not the phone relay, and the desktop route is
+		 * the one behind this app's own bearer.
+		 */
+		case "asks.list":
+			return { path: "/v1/desktop/asks", method: "GET" };
 		/*
 		 * THE THREE MESH WRITES. Each path segment is `encodeURIComponent`ed even
 		 * though `meshId` already refuses `/`, `.` and `%`: the schema is this
