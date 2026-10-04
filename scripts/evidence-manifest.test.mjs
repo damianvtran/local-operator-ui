@@ -1584,14 +1584,22 @@ test("a truncated clone stands the citations it cannot judge down, and names the
 		"a truncated clone resolved nothing, so it has found nothing: judging these as failures is how 111 findings appeared on a clean tree in CI",
 	);
 	assert.deepEqual(
-		citationUnanswered(manifest, truncated).map((entry) => entry.field),
+		// The KINDS, which is what `main()` counts: a depth-1 checkout strands every
+		// citation at once, and the report has to name the eleven fields rather than
+		// the 111 entries.
+		citationUnanswered(manifest, truncated).map((entry) => entry.kind),
 		[
 			"`head`",
-			"supplementary[a-set].capturedAtHead",
+			"supplementary[].capturedAtHead",
 			"partialCapture.addedAtHead",
 			"partialCapture.refreshedAtHead",
 		],
 		"every citation the truncated clone could not judge has to be NAMED, because `main()` prints this pile as what the run did not check",
+	);
+	assert.equal(
+		citationUnanswered(manifest, truncated)[1].citation,
+		"supplementary[a-set].capturedAtHead",
+		"and the entry itself is kept, so a reader can look the value up rather than only count it",
 	);
 
 	const full = answers({ shallow: "false", resolve: false, reach: false });
