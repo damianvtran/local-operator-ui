@@ -77,6 +77,7 @@ const bundle = await build({
 			'export { CanonicalTranscript } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { QuestionDock, questionDockHint, questionKeyOf } from "./src/renderer/src/features/chat/components/trace/question-dock";',
 			'export { askOptionKeyIntent } from "./src/renderer/src/features/chat/components/trace/ask-options";',
+			'export { AskRecommendedBadge } from "./src/renderer/src/features/chat/components/ask-recommended";',
 			'export { EMPTY_TRANSCRIPT } from "./src/renderer/src/features/chat/canonical/transcript-reducer";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -148,6 +149,7 @@ const {
 	questionKeyOf,
 	askOptionKeyIntent,
 	AskOptions,
+	AskRecommendedBadge,
 	resolveNumericAnswer,
 	answerValue,
 	answerReport,
@@ -194,6 +196,26 @@ const {
 // crash mid-run and none can be committed by accident.
 await unlink(bundlePath);
 
+/**
+ * A child element that is ITS OWN COMPONENT, resolved the way React would.
+ *
+ * These rigs call a card as a plain function, so a mark that lives in its own
+ * component (`ask-recommended.tsx`'s badge) arrives as an ELEMENT - `props` are
+ * its inputs, not its output - and a walk that follows only `props.children`
+ * cannot see it at all. That is not hypothetical: the recommendation mark moved
+ * into its own module on 2026-10-04 and the assertion that reads the word
+ * `Recommended` on a row went silently blind (it read `false` for every option)
+ * until this was added.
+ *
+ * FUNCTION components only: a lucide icon is a `forwardRef` OBJECT, so it is
+ * left as it was and the walks below see exactly the host elements they saw
+ * before.
+ */
+function resolvedChildren(node) {
+	if (typeof node.type === "function") return node.type(node.props);
+	return node.props?.children;
+}
+
 /** Every `<button>` in a rendered element tree, in document order. */
 function buttonsOf(node, found = []) {
 	if (node === null || node === undefined || typeof node !== "object") {
@@ -204,7 +226,8 @@ function buttonsOf(node, found = []) {
 		return found;
 	}
 	if (node.type === "button") found.push(node);
-	if (node.props?.children !== undefined) buttonsOf(node.props.children, found);
+	const children = resolvedChildren(node);
+	if (children !== undefined) buttonsOf(children, found);
 	return found;
 }
 
@@ -223,8 +246,8 @@ function accessibleText(node, out = []) {
 	// Decoration is excluded exactly as a screen reader excludes it, which is
 	// what makes the ordinal assertion below meaningful.
 	if (node.props?.["aria-hidden"] === true) return out;
-	if (node.props?.children !== undefined)
-		accessibleText(node.props.children, out);
+	const children = resolvedChildren(node);
+	if (children !== undefined) accessibleText(children, out);
 	return out;
 }
 
@@ -240,7 +263,8 @@ function visibleText(node, out = []) {
 		for (const child of node) visibleText(child, out);
 		return out;
 	}
-	if (node.props?.children !== undefined) visibleText(node.props.children, out);
+	const children = resolvedChildren(node);
+	if (children !== undefined) visibleText(children, out);
 	return out;
 }
 
@@ -1880,6 +1904,73 @@ test("recommended is optional, and marks only a real index", () => {
 	assert.deepEqual(marked({ recommended: 9 }), [false, false, false]);
 	assert.deepEqual(marked({ recommended: -1 }), [false, false, false]);
 	assert.deepEqual(marked({ recommended: 1.5 }), [false, false, false]);
+});
+
+test("the recommended option's label is bolded, and the mark is a glyph beside it", () => {
+	// The operator's report: the recommendation was the word `Recommended` in the
+	// same weight as everything around it, so it read as part of the description.
+	// Two things now carry it - the label's own weight step, which survives a
+	// reader who skims past the badge, and the badge itself, which is a glyph plus
+	// the word rather than the word alone.
+	const collect = (node, predicate, out = []) => {
+		if (node === null || node === undefined || typeof node !== "object")
+			return out;
+		if (Array.isArray(node)) {
+			for (const child of node) collect(child, predicate, out);
+			return out;
+		}
+		if (predicate(node)) out.push(node);
+		if (node.props?.children !== undefined)
+			collect(node.props.children, predicate, out);
+		return out;
+	};
+	const hasClass = (node, token) =>
+		typeof node.props?.className === "string" &&
+		node.props.className.split(" ").includes(token);
+
+	const buttons = buttonsOf(render({ recommended: 0 }));
+	const bold = collect(buttons[0], (node) => hasClass(node, "font-semibold"));
+	assert.equal(bold.length, 1, "exactly the label carries the weight step");
+	assert.equal(accessibleText(bold[0]).join(" "), OPTIONS[0].label);
+	assert.deepEqual(
+		collect(buttons[1], (node) => hasClass(node, "font-semibold")),
+		[],
+		"an unmarked option's label keeps its normal weight",
+	);
+
+	/*
+	 * THE BADGE IS ITS OWN ELEMENT, which is the half that makes
+	 * `recommended != selected` possible: it is keyed on `marked`, while the
+	 * roving selection is the row's focus ground - so arrowing onto another
+	 * option moves the cursor and leaves this exactly where it is. A mark that
+	 * were the selection's twin would be erased by that keypress, and the user
+	 * would be choosing against advice he could no longer see.
+	 */
+	const badges = collect(
+		buttons[0],
+		(node) => node.type === AskRecommendedBadge,
+	);
+	assert.equal(
+		badges.length,
+		1,
+		"the mark is its own element, keyed on the recommendation",
+	);
+	assert.equal(
+		collect(buttons[1], (node) => node.type === AskRecommendedBadge).length,
+		0,
+		"and an unmarked row carries none",
+	);
+	// Rendered on its own - the child element is opaque to the tree walk above -
+	// the mark is the glyph plus the word, and the glyph is decoration: a screen
+	// reader hears "Recommended" once, which is why it is `aria-hidden`.
+	const badgeMarkup = renderToStaticMarkup(
+		createElement(AskRecommendedBadge, {}),
+	);
+	assert.match(badgeMarkup, />Recommended</);
+	assert.match(badgeMarkup, /aria-hidden="true">▸</);
+	// Not a hue: the measured decision is that every chromatic candidate for this
+	// mark failed WCAG AA on the light theme, so the accent is not spent here.
+	assert.ok(!badgeMarkup.includes("accent"));
 });
 
 test("one answer at a time: every option is disabled while one is in flight", () => {

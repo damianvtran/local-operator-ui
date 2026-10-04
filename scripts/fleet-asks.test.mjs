@@ -34,7 +34,7 @@ globalThis.localStorage = {
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { fleetAskRows, fleetAskFrontend, fleetAsksOutstanding, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
+			'export { fleetAskRows, fleetAskFrontend, fleetAsksOutstanding, fleetAsksBySession, fleetAskSessionFor, fleetAskConversationLabel, fleetAskConversationLabels, FLEET_ASKS_QUERY_KEY, FLEET_ASKS_POLL_MS } from "./src/renderer/src/features/chat/fleet-asks";',
 			'export { useUiPreferencesStore, persistedUiPreferences, resolveRightSlotWidth } from "./src/renderer/src/shared/store/ui-preferences-store";',
 			'export { desktopEndpoint, desktopRequestSchema } from "./src/shared/desktop-contract";',
 			'export { askScopeLine, ASK_ITEM_SELECTOR, ASK_FLEET_ITEM_SELECTOR } from "./src/renderer/src/features/chat/ask-queue";',
@@ -59,6 +59,7 @@ const {
 	fleetAskRows,
 	fleetAskFrontend,
 	fleetAsksOutstanding,
+	fleetAsksBySession,
 	fleetAskSessionFor,
 	fleetAskConversationLabel,
 	fleetAskConversationLabels,
@@ -138,6 +139,35 @@ test("the outstanding count is the backend's own set: open and timed-out, not se
 	];
 	assert.equal(fleetAsksOutstanding(rows), 2);
 	assert.equal(fleetAsksOutstanding([]), 0);
+});
+
+/*
+ * THE PER-CONVERSATION COUNTS the sidebar's own row marks read, and the reason
+ * they come from here rather than from `SessionCatalogueRow.asks_open`: the
+ * desktop catalogue route never fills that field, so a mark sourced from the row
+ * alone draws NOTHING - which was the operator's report, verbatim ("the session's
+ * sidebar row showed nothing" while the composer chip read "1 question
+ * waiting"). The count is the same predicate and the same population as the
+ * badge above, which is what keeps the row and the top-level total one claim.
+ */
+test("the outstanding set is counted per conversation, and a quiet row is absent", () => {
+	const rows = [
+		row({ ask_id: "a-1", session_id: "s-one" }),
+		row({ ask_id: "a-2", session_id: "s-one", status: "timed_out" }),
+		row({ ask_id: "a-3", session_id: "s-two" }),
+		row({ ask_id: "a-4", session_id: "s-one", status: "answered" }),
+		row({ ask_id: "a-5", session_id: "s-three", status: "declined" }),
+	];
+	const bySession = fleetAsksBySession(rows);
+	// Timed-out is still outstanding (a late answer reaches the agent), settled is
+	// not - so `s-one` is 2 and not 3, and not 1 either.
+	assert.equal(bySession.get("s-one"), 2);
+	assert.equal(bySession.get("s-two"), 1);
+	/* Absent, not `0`: every reader treats a miss as "draw nothing", and a zero
+	 * entry would be a claim no caller wants and one more shape to keep true. */
+	assert.equal(bySession.has("s-three"), false);
+	assert.equal(bySession.size, 2);
+	assert.equal(fleetAsksBySession([]).size, 0);
 });
 
 test("the drawer's frontend states the same count the badge does", () => {
