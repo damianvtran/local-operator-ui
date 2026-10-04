@@ -33,14 +33,19 @@ same fixtures and the same viewport, with the two component files checked out to
 `origin/main`'s bytes for the run (restored afterwards):
 
 ```sh
-# Storybook up at the fix commit; the two component files at origin/main's bytes:
+# Storybook up at the fix commit (this README's runs used :6052); the two
+# component files at origin/main's bytes. The origin is named rather than
+# defaulted, and `--require` - not `--wait-for` - is the settle gate: it fails
+# the run when the panel never appears, where a bare wait would audit a page
+# that did not load as `0 overlaps` and exit 0 (QA round 1, Q-2).
 git checkout origin/main -- src/renderer/src/features/mesh/mesh-card.tsx src/renderer/src/features/mesh/mesh-node.tsx
 for theme in localOperatorDark localOperatorLight; do
   node docs/evidence/mesh-tab-before/harness/rendered-dom-audit.mjs \
     --story mesh-tab--many-conversations --story mesh-tab--many-conversations-menu \
     --story mesh-tab--many-conversations-peer \
+    --origin http://localhost:6052 \
     --label before-$theme --theme $theme --dpr 1 --quality 88 --format webp \
-    --wait-for '[data-mesh-panel]' --shot
+    --require '[data-mesh-panel]' --shot
 done
 git checkout HEAD -- src/renderer/src/features/mesh/mesh-card.tsx src/renderer/src/features/mesh/mesh-node.tsx
 ```

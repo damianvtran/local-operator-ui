@@ -35,20 +35,26 @@
  *     [--require <selector>] (the state must carry this element after settle,
  *       or the run FAILS - a story that never rendered audits as zero overlaps,
  *       which reads as success; the settle also waits for a non-empty
- *       `#storybook-root`, so a spinner page cannot be photographed as a state)
+ *       `#storybook-root`, so a spinner page cannot be photographed as a state,
+ *       and a page that never loads or never renders fails the run outright -
+ *       QA round 1, Q-2)
  * Everything lands under --out/<label>/ as audit.json + optional frames.
  */
-
 
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-
-const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO = "/Users/damian/.local-operator/sessions/b9ae7bc2e5e2/scratchpad/loui-mesh";
-const { withMockKeychain } = await import(`${REPO}/scripts/chrome-keychain.mjs`);
+import { join } from "node:path";
+/*
+ * The helper is a STATIC relative import on purpose (QA round 1, Q-3): the
+ * repo's own `scripts/chrome-keychain.test.mjs` resolves this specifier
+ * against THIS file's directory and requires it to land on
+ * `scripts/chrome-keychain.mjs`. A dynamic import of a computed path is
+ * invisible to that guard, and the first committed spelling resolved a
+ * session-scratchpad absolute path - unreadable to the gate and unrunnable
+ * on any other clone.
+ */
+import { withMockKeychain } from "../../../../scripts/chrome-keychain.mjs";
 
 const ARGS = process.argv.slice(2);
 /* Values may be spelled `--name=value` or `--name value`; both are read. */
@@ -61,7 +67,8 @@ const flag = (name, fallback = null) => {
 const flags = (name) => {
 	const out = [];
 	for (let i = 0; i < ARGS.length; i++) {
-		if (ARGS[i].startsWith(`--${name}=`)) out.push(ARGS[i].slice(name.length + 3));
+		if (ARGS[i].startsWith(`--${name}=`))
+			out.push(ARGS[i].slice(name.length + 3));
 		else if (ARGS[i] === `--${name}` && ARGS[i + 1]) out.push(ARGS[i + 1]);
 	}
 	return out;
@@ -100,8 +107,12 @@ class Cdp {
 				msg.error ? reject(new Error(msg.error.message)) : resolve(msg.result);
 			}
 		});
-		ws.addEventListener("close", () => this.#failAll(new Error("socket closed")));
-		ws.addEventListener("error", () => this.#failAll(new Error("socket errored")));
+		ws.addEventListener("close", () =>
+			this.#failAll(new Error("socket closed")),
+		);
+		ws.addEventListener("error", () =>
+			this.#failAll(new Error("socket errored")),
+		);
 	}
 	#failAll(err) {
 		for (const { reject } of this.pending.values()) reject(err);
@@ -115,8 +126,14 @@ class Cdp {
 				reject(new Error(`CDP ${method} did not answer within 30s`));
 			}, 30000);
 			this.pending.set(id, {
-				resolve: (value) => { clearTimeout(timer); resolve(value); },
-				reject: (err) => { clearTimeout(timer); reject(err); },
+				resolve: (value) => {
+					clearTimeout(timer);
+					resolve(value);
+				},
+				reject: (err) => {
+					clearTimeout(timer);
+					reject(err);
+				},
 			});
 			try {
 				this.ws.send(JSON.stringify({ id, method, params }));
@@ -371,9 +388,16 @@ const AUDIT = String.raw`(() => {
 let chrome = null;
 let dataDir = null;
 const teardown = () => {
-	if (chrome) { try { chrome.kill("SIGKILL"); } catch (e) {} chrome = null; }
+	if (chrome) {
+		try {
+			chrome.kill("SIGKILL");
+		} catch (e) {}
+		chrome = null;
+	}
 	if (dataDir) {
-		try { rmSync(dataDir, { recursive: true, force: true, maxRetries: 5 }); } catch (e) {}
+		try {
+			rmSync(dataDir, { recursive: true, force: true, maxRetries: 5 });
+		} catch (e) {}
 		dataDir = null;
 	}
 };
@@ -397,13 +421,21 @@ const main = async () => {
 	);
 	const wsUrl = await new Promise((resolve, reject) => {
 		let buf = "";
-		const t = setTimeout(() => reject(new Error("Chrome did not report a debug port")), 30000);
+		const t = setTimeout(
+			() => reject(new Error("Chrome did not report a debug port")),
+			30000,
+		);
 		chrome.stderr.on("data", (d) => {
 			buf += d.toString();
 			const m = buf.match(DEVTOOLS_LISTENING);
-			if (m) { clearTimeout(t); resolve(m[1]); }
+			if (m) {
+				clearTimeout(t);
+				resolve(m[1]);
+			}
 		});
-		chrome.on("exit", (code) => reject(new Error(`Chrome exited early (${code})`)));
+		chrome.on("exit", (code) =>
+			reject(new Error(`Chrome exited early (${code})`)),
+		);
 	});
 	const { host } = new URL(wsUrl);
 	const list = await fetch(`http://${host}/json`).then((r) => r.json());
@@ -417,7 +449,10 @@ const main = async () => {
 	await cdp.send("Page.enable");
 	await cdp.send("Runtime.enable");
 	await cdp.send("Emulation.setDeviceMetricsOverride", {
-		width: WIDTH, height: HEIGHT, deviceScaleFactor: DPR, mobile: false,
+		width: WIDTH,
+		height: HEIGHT,
+		deviceScaleFactor: DPR,
+		mobile: false,
 	});
 	/*
 	 * Seed the persisted preferences store before any app script runs; the
@@ -436,9 +471,10 @@ const main = async () => {
 		mkdirSync(dir, { recursive: true });
 		const url = `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${THEME}`;
 		await cdp.send("Page.navigate", { url });
-		/* settle: stable element count + optional wait-for selectors */
+		/* settle: a stable element count over a RENDERED story (non-empty #storybook-root), with --wait-for/--require as gates */
 		let last = -1;
 		let stable = 0;
+		let settled = false;
 		for (let i = 0; i < 240; i++) {
 			await sleep(150);
 			const { result } = await cdp.send("Runtime.evaluate", {
@@ -454,22 +490,48 @@ const main = async () => {
 					const root = document.querySelector('#storybook-root');
 					const rendered = !!root && root.children.length > 0;
 					const req = ${REQUIRE ? `!!document.querySelector(${JSON.stringify(REQUIRE)})` : "true"};
-					return { loading, n, err, rendered, req };
+					const failed = document.location.protocol === "chrome-error:";
+					return { loading, n, err, rendered, req, failed };
 				})()`,
 			});
 			const v = result.value;
 			if (v.err) throw new Error(`story errored: ${story}`);
-			if (!v.loading && v.rendered && v.req && v.n === last) { stable += 1; } else { stable = 0; }
+			if (v.failed)
+				throw new Error(
+					`${story} @ ${THEME}: the navigation landed on a browser error page (chrome-error) - check that --origin (${ORIGIN}) points at a live Storybook`,
+				);
+			if (!v.loading && v.rendered && v.req && v.n === last) {
+				stable += 1;
+			} else {
+				stable = 0;
+			}
 			last = v.n;
 			if (stable >= 4) {
-				if (WAIT_FOR.length === 0) break;
+				if (WAIT_FOR.length === 0) {
+					settled = true;
+					break;
+				}
 				const { result: found } = await cdp.send("Runtime.evaluate", {
 					returnByValue: true,
 					expression: `(() => ${JSON.stringify(WAIT_FOR)}.every((s) => document.querySelector(s) !== null))()`,
 				});
-				if (found.value) break;
+				if (found.value) {
+					settled = true;
+					break;
+				}
 			}
 		}
+
+		/* THE PAGE MUST LOAD AND RENDER, OR THE RUN FAILS (QA round 1, Q-2).
+		   Measured on this harness before the fix: a wrong `--origin` landed on
+		   `chrome-error://`, audited as 0 overlaps, wrote a frame and exited 0 -
+		   the dead instrument returning a pass. The loop above also requires a
+		   rendered story now, and a settle that never happened is a failure
+		   here rather than a clean-looking audit. */
+		if (!settled)
+			throw new Error(
+				`${story} @ ${THEME}: the story never rendered (no settle after 36s) - check that --origin (${ORIGIN}) points at a live Storybook and the story id exists`,
+			);
 
 		/* A PAGE THAT DID NOT RENDER IS NOT A PASS (the dead-instrument rule):
 		   a story that fails to render audits as zero overlaps, which reads as
@@ -481,13 +543,18 @@ const main = async () => {
 				expression: `!!document.querySelector(${JSON.stringify(REQUIRE)})`,
 			});
 			if (req.value !== true)
-				throw new Error(`${story} @ ${THEME}: --require selector \`${REQUIRE}\` matched nothing after settle`);
+				throw new Error(
+					`${story} @ ${THEME}: --require selector \`${REQUIRE}\` matched nothing after settle`,
+				);
 		}
 		/* screenshots + audits: one before clicks, one after each click */
 		const shots = [];
 		const shortStory = story.replace(/[^\w-]/g, "_");
 		const auditRun = async (name) => {
-			const { result } = await cdp.send("Runtime.evaluate", { returnByValue: true, expression: AUDIT });
+			const { result } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: AUDIT,
+			});
 			const shotPath = join(dir, `${shortStory}--${name}.${FORMAT}`);
 			if (SHOT) {
 				const { data } = await cdp.send("Page.captureScreenshot", {
@@ -497,9 +564,16 @@ const main = async () => {
 				writeFileSync(shotPath, Buffer.from(data, "base64"));
 				shots.push(shotPath);
 			}
-			results.push({ story, step: name, ...result.value, shot: SHOT ? shotPath : null });
+			results.push({
+				story,
+				step: name,
+				...result.value,
+				shot: SHOT ? shotPath : null,
+			});
 			const t = result.value.totals;
-			console.log(`[${story}] ${name}: inFlow=${t.inFlow} overlay=${t.overlay} clipped=${t.clipped} blockPairs=${t.blockPairs}; menu=${result.value.menu ? result.value.menu.bg : "none"}`);
+			console.log(
+				`[${story}] ${name}: inFlow=${t.inFlow} overlay=${t.overlay} clipped=${t.clipped} blockPairs=${t.blockPairs}; menu=${result.value.menu ? result.value.menu.bg : "none"}`,
+			);
 		};
 		await auditRun("closed");
 		if (SCROLL) {
@@ -527,18 +601,45 @@ const main = async () => {
 			});
 			if (!pos.value) throw new Error(`--click target not found: ${sel}`);
 			const { x, y } = pos.value;
-			await cdp.send("Input.dispatchMouseEvent", { type: "mouseMoved", x, y, button: "none", buttons: 0 });
-			await cdp.send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button: "left", buttons: 1, clickCount: 1 });
-			await cdp.send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseMoved",
+				x,
+				y,
+				button: "none",
+				buttons: 0,
+			});
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mousePressed",
+				x,
+				y,
+				button: "left",
+				buttons: 1,
+				clickCount: 1,
+			});
+			await cdp.send("Input.dispatchMouseEvent", {
+				type: "mouseReleased",
+				x,
+				y,
+				button: "left",
+				buttons: 0,
+				clickCount: 1,
+			});
 			await sleep(500);
 			await auditRun(`click${idx}`);
 		}
 	}
-	writeFileSync(join(OUT, LABEL, "audit.json"), JSON.stringify(results, null, 2));
+	writeFileSync(
+		join(OUT, LABEL, "audit.json"),
+		JSON.stringify(results, null, 2),
+	);
 	console.log(`audit written: ${join(OUT, LABEL, "audit.json")}`);
 };
 
-let keepAlive = null;
 main()
-	.catch((err) => { console.error(err); process.exitCode = 1; })
-	.finally(() => { if (keepAlive) clearInterval(keepAlive); teardown(); });
+	.catch((err) => {
+		console.error(err);
+		process.exitCode = 1;
+	})
+	.finally(() => {
+		teardown();
+	});
