@@ -46,10 +46,24 @@ git checkout HEAD -- src/renderer/src/features/mesh/mesh-card.tsx src/renderer/s
 ```
 
 The same rig wrote the AFTER audit runs; `readings.json` beside this file is
-its output for all four runs (totals, the conversations section's own box
-against its content, and the chip spans' visible px against the full string's
-width). The full per-run JSON — every overlapping pair, rect and clipped string
-— lives in the lane's session scratchpad; the command above regenerates it.
+its output (totals, the conversations section's own box against its content, and
+the chip spans' visible px against the full string's width). The full per-run
+JSON - every overlapping pair, rect and clipped string - lives in the lane's
+session scratchpad; the command above regenerates it.
+
+**Re-derived for design round 1 (2026-10-04), and the earlier readings
+reproduced.** The round's D4 found the chip block blind: box width and full
+text width are identical whichever end is kept, so the metric could not see the
+change it was added to measure. The harness now records `side` (the end the
+ellipsis leaves visible) and `kept` (the longest head/tail substring fitting
+the box, canvas-measured) beside those two numbers, and `readings.json` was
+regenerated from six fresh runs - before and after, both palettes, plus two
+BOTTOM runs (`scrollTop = scrollHeight`; design round 1, D3(a)) - with the
+earlier runs' totals reproduced exactly (24 / 24 / 18 in-flow, 3 / 3 / 3
+container, section 166/6755 before, 6755/6755 after). The bottom state has no
+BEFORE twin on purpose: at `origin/main`'s bytes the sections painted through
+the list rather than sitting below it, and the three states above already
+photograph that defect from the top.
 
 ## The numbers
 
@@ -68,7 +82,11 @@ below — container-region intersections 26,281 px² and 19,560 px² against the
 Network addresses and Status sections), and **6,755 px in 6,755 px** after, with
 the aside's `scrollH` 7,028 → 7,307 — i.e. the panel scrolls its own column now:
 scrolled to the bottom, the addresses, Status and Show in list sections stack
-below the list with 0 overlaps.
+below the list with 0 overlaps (the state `../mesh-tab/many-conversations-bottom/`
+photographs - design round 1, D3), and `readings.json`'s two bottom runs are the
+numbers behind that frame. `side`/`kept` in the same file's chip block is where
+the truncation flip reads as a measurement rather than an image: `tail` /
+`obe OK` before, `head` / `Provisi` after.
 
 **These frames therefore do NOT prove** that a live relay answers these
 payloads or that a real mesh looks like this (the fixtures are invented; the

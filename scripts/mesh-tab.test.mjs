@@ -3331,6 +3331,35 @@ test("the cap's two chips stay legible, and the title's head survives the trunca
 		/title=\{`\$\{chipLabel\(session\)\} · \$\{fact\}`\}/,
 		"the full title is still the tooltip, and the accessible name below it",
 	);
+	/*
+	 * AND THE PANEL'S ROW CARRIES THE SAME RECOURSE (design round 1, D2). The row span
+	 * truncates too - `Release notes: assembling the 0…` in the round's own fixture - so
+	 * "the panel is where its members are told apart" would have failed inside the panel:
+	 * a second member of a series reads identically there. The span carries the row's own
+	 * `title`, the same contract as the chip's.
+	 */
+	const card = source("src/renderer/src/features/mesh/mesh-card.tsx");
+	assert.match(
+		card,
+		/<span\s+className="min-w-0 flex-1 truncate text-body-sm text-ink"\s+title=\{chipLabel\(session\)\}/,
+		"the panel row's truncating span carries the full name as its title",
+	);
+});
+
+test("the bottom-scrolled state has its own frame, so the stacking claim is photographed (design round 1, D3)", () => {
+	/*
+	 * D3'S FIRST ASK: at the operator's scale the device-level sections sit ~6,755 px down
+	 * the panel, and every committed frame was top-of-list - the claim that the sections
+	 * stack below the catalogue rested on prose. The capture row parks the aside at its
+	 * maximum scroll (`scrollToEnd`, which FAILS the capture if nothing scrolls), so the
+	 * frame shows the sections themselves.
+	 */
+	const rig = source("scripts/capture-evidence.mjs");
+	assert.match(
+		rig,
+		/dir: "many-conversations-bottom", scrollToEnd: "\[data-mesh-panel\]"/,
+		"the bottom state is captured by parking the panel, and cannot be a second top frame",
+	);
 });
 
 test("the menu refuses a destination the drag would, before the choice (U3)", () => {

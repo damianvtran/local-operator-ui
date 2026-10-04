@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * The rendered-DOM audit: overlapping boxes and clipped text as NUMBERS.
+ * The rendered-DOM audit: overlapping boxes, clipped text and chips as NUMBERS.
  *
  * THIS IS THE INSTRUMENT THE OPERATOR-REPORT PAIR (2026-10-04) WAS MEASURED
  * WITH, committed so a reviewer can re-run the readings rather than trust them.
@@ -13,12 +13,16 @@
  *
  * It reports, as NUMBERS: visible text-bearing elements whose boxes intersect
  * while neither contains the other (in-flow); the same for floaters (overlay,
- * informational); clipped text with the px of loss and the visible string; and
+ * informational); clipped text with the px of loss and the visible string;
  * large container boxes (aside/section/header/ul/nav/main/footer) whose rects
- * intersect while neither contains the other. What it cannot do is decide
- * whether an overlap is a defect - a popped-up menu over rows is 12 overlay
- * pairs in a correct frame - so the reading is the number, and the judgment is
- * the reader's.
+ * intersect while neither contains the other; and, per session chip, the
+ * visible text box, the full string's width, `side` (the end the ellipsis
+ * leaves visible) and `kept` (the longest head/tail substring that still fits
+ * beside the ellipsis, canvas-measured, +-1 char - design round 1, D4: box and
+ * full width alone are identical whichever end is kept, so the flip was
+ * invisible to the metric). What it cannot do is decide whether an overlap is
+ * a defect - a popped-up menu over rows is 12 overlay pairs in a correct frame
+ * - so the reading is the number, and the judgment is the reader's.
  *
  * Usage:
  *   node rendered-dom-audit.mjs --story <id> [--story <id>...] [--label <name>]
@@ -26,8 +30,15 @@
  *     [--width 1380] [--height 900] [--out <dir>]
  *     [--click <selector>]... (clicked in order, after settle)
  *     [--wait-for <selector>] (settle gate) [--shot]
+ *     [--scroll panel-top|panel-bottom] (park the mesh panel's scroll, then
+ *       audit again under the `scrolled-panel-bottom` step)
+ *     [--require <selector>] (the state must carry this element after settle,
+ *       or the run FAILS - a story that never rendered audits as zero overlaps,
+ *       which reads as success; the settle also waits for a non-empty
+ *       `#storybook-root`, so a spinner page cannot be photographed as a state)
  * Everything lands under --out/<label>/ as audit.json + optional frames.
  */
+
 
 import { spawn } from "node:child_process";
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
@@ -36,7 +47,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const REPO = join(HERE, "..", "..", "..", "..");
+const REPO = "/Users/damian/.local-operator/sessions/b9ae7bc2e5e2/scratchpad/loui-mesh";
 const { withMockKeychain } = await import(`${REPO}/scripts/chrome-keychain.mjs`);
 
 const ARGS = process.argv.slice(2);
@@ -56,7 +67,7 @@ const flags = (name) => {
 	return out;
 };
 
-const ORIGIN = flag("origin", "http://localhost:6017");
+const ORIGIN = flag("origin", "http://localhost:6052");
 const THEME = flag("theme", "localOperatorDark");
 const DPR = Number(flag("dpr", "1"));
 const FORMAT = flag("format", "png");
@@ -69,6 +80,7 @@ const ONLY = flags("story");
 const CLICKS = flags("click");
 const WAIT_FOR = flags("wait-for");
 const SCROLL = flag("scroll"); // "panel-top" | "panel-bottom"
+const REQUIRE = flag("require"); // selector that must exist after settle, or the run fails
 const SHOT = ARGS.includes("--shot");
 
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -267,11 +279,35 @@ const AUDIT = String.raw`(() => {
 		const span = btn.querySelector('span');
 		const cs = span ? getComputedStyle(span) : null;
 		let fullW = null;
+		let kept = null, side = null;
 		if (span && cs) {
 			try {
 				const c = document.createElement('canvas').getContext('2d');
 				c.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-				fullW = Math.round(c.measureText(span.textContent || '').width * 10) / 10;
+				const text = span.textContent || '';
+				fullW = Math.round(c.measureText(text).width * 10) / 10;
+				/*
+				 * WHICH END THE ELLIPSIS LEAVES VISIBLE (design round 1, D4): the box
+				 * and the full-string width are identical whichever end is kept, so a
+				 * reading built from those two numbers cannot see the change it was
+				 * added to measure. 'side' names the end the CSS keeps; 'kept' is the
+				 * longest head/tail substring that still fits beside the ellipsis,
+				 * canvas-measured (+-1 char - the frame is the pixel evidence, this is
+				 * the instrumentation).
+				 */
+				side = cs.direction === 'rtl' ? 'tail' : 'head';
+				const ell = c.measureText('\u2026').width;
+				const max = span.clientWidth;
+				const measure = (n) => side === 'head'
+					? c.measureText(text.slice(0, n)).width
+					: c.measureText(text.slice(text.length - n)).width;
+				if (measure(text.length) <= max) {
+					kept = text;
+				} else {
+					let k = text.length;
+					while (k > 0 && measure(k) + ell > max) k--;
+					kept = side === 'head' ? text.slice(0, k) : text.slice(text.length - k);
+				}
 			} catch (e) {}
 		}
 		chips.push({
@@ -279,6 +315,8 @@ const AUDIT = String.raw`(() => {
 			text: (span && span.textContent) || '',
 			visible: span ? span.clientWidth : null,
 			fullTextWidth: fullW,
+			side: side,
+			kept: kept,
 			chipW: Math.round(btn.getBoundingClientRect().width * 10) / 10,
 		});
 	}
@@ -409,12 +447,19 @@ const main = async () => {
 					const loading = [...document.querySelectorAll('.sb-preparing-story,.sb-preparing-docs,.sb-nopreview,.sb-loader')].some((el) => el.getBoundingClientRect().height > 0);
 					const n = document.body.querySelectorAll('*').length;
 					const err = document.body.classList.contains('sb-show-errordisplay');
-					return { loading, n, err };
+					/* A spinner page is count-stable, so a bare count settle can
+					   photograph the PREPARING screen as if it were the state. Require
+					   the rendered story (a non-empty #storybook-root) and, when given,
+					   the --require element, as part of the settle. */
+					const root = document.querySelector('#storybook-root');
+					const rendered = !!root && root.children.length > 0;
+					const req = ${REQUIRE ? `!!document.querySelector(${JSON.stringify(REQUIRE)})` : "true"};
+					return { loading, n, err, rendered, req };
 				})()`,
 			});
 			const v = result.value;
 			if (v.err) throw new Error(`story errored: ${story}`);
-			if (!v.loading && v.n === last) { stable += 1; } else { stable = 0; }
+			if (!v.loading && v.rendered && v.req && v.n === last) { stable += 1; } else { stable = 0; }
 			last = v.n;
 			if (stable >= 4) {
 				if (WAIT_FOR.length === 0) break;
@@ -424,6 +469,19 @@ const main = async () => {
 				});
 				if (found.value) break;
 			}
+		}
+
+		/* A PAGE THAT DID NOT RENDER IS NOT A PASS (the dead-instrument rule):
+		   a story that fails to render audits as zero overlaps, which reads as
+		   success. --require names an element the state must carry; its absence
+		   fails the run rather than writing a clean-looking frame. */
+		if (REQUIRE) {
+			const { result: req } = await cdp.send("Runtime.evaluate", {
+				returnByValue: true,
+				expression: `!!document.querySelector(${JSON.stringify(REQUIRE)})`,
+			});
+			if (req.value !== true)
+				throw new Error(`${story} @ ${THEME}: --require selector \`${REQUIRE}\` matched nothing after settle`);
 		}
 		/* screenshots + audits: one before clicks, one after each click */
 		const shots = [];
