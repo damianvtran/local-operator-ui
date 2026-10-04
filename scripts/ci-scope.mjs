@@ -114,6 +114,14 @@ const CAT_CI = "ci";
  * own captured frames, and `chrome-keychain.test.mjs` walks the tree. Treating
  * `docs/**` as a whole as inert would stop running the desktop suite on a
  * change to that suite's own INPUT, which is a green PR that tested nothing.
+ *
+ * It ALSO gates the `evidence` job, and that is the half this repository spent a
+ * long time missing. `evidence-manifest.test.mjs` checks the manifest's stamps
+ * and counts, but the FRAME SWEEP - `pnpm check-evidence`, the gate that asserts
+ * every committed `.webp` is a picture of the app - ran in NO workflow, so 20
+ * findings sat on `main` (19 frames whose filename named no palette, and one
+ * `supplementary` entry with no `why`) with CI green above them. Green by
+ * absence reads as a pass, which is why the absence was the fault.
  */
 const CAT_EVIDENCE = "evidence";
 
@@ -157,8 +165,9 @@ const INERT_CATEGORIES = new Set([CAT_DOCS]);
 
 /**
  * Not inert, but not a source change either: a *test input*. These set `unit`
- * (the desktop suite reads them) and nothing else - they are not compiled, not
- * linted by `pnpm lint`'s path list, and not packed into the tarball.
+ * (the desktop suite reads them) and the `evidence` sweep (the frames and the
+ * manifest ARE what that job asserts over) - they are not compiled, not linted
+ * by `pnpm lint`'s path list, and not packed into the tarball.
  */
 const TEST_INPUT_CATEGORIES = new Set([CAT_EVIDENCE]);
 
@@ -179,6 +188,24 @@ const RUNTIME_DEP_SCRIPTS = new Set([
 	"scripts/check-runtime-deps.mjs",
 	"scripts/require-report.sh",
 ]);
+
+/**
+ * The modules that PRODUCE the sweep's verdict, and the palette source it reads
+ * the four grounds out of. Named for the reason `RUNTIME_DEP_SCRIPTS` above is
+ * named: a change to the thing a job verifies has to keep that job selected.
+ * Without these a PR could move the ground a frame is judged against, or the
+ * comparison itself, and the sweep would be skipped as "no evidence in the
+ * diff" - the same green-by-absence this job was added to remove.
+ */
+const EVIDENCE_SOURCES = new Set([
+	"scripts/check-evidence.mjs",
+	"scripts/palette-source.mjs",
+	"scripts/color.mjs",
+]);
+
+/** Every palette file, because the palettes ARE the grounds a frame is judged
+ * against - `palette-source.mjs` parses them at runtime. */
+const PALETTE_PREFIX = "src/renderer/src/shared/themes/palettes/";
 
 /**
  * A markdown file at the REPOSITORY ROOT only. `^[^/]+\.md$` - a markdown file
@@ -279,7 +306,15 @@ export function categoryOf(path) {
  * asserts this set equals the `changes` job's `outputs:` keys, so a flag added
  * here and nowhere else fails rather than silently never gating anything.
  */
-export const FLAGS = ["lint", "types", "unit", "runtime_deps", "audit", "pack"];
+export const FLAGS = [
+	"lint",
+	"types",
+	"unit",
+	"evidence",
+	"runtime_deps",
+	"audit",
+	"pack",
+];
 
 /**
  * job id in `ci.yml` -> the flags that gate it, in `ci.yml` job order (which is
@@ -296,6 +331,7 @@ export const JOB_FLAGS = {
 	"runtime-deps": ["runtime_deps"],
 	"check-types": ["types"],
 	test: ["unit"],
+	evidence: ["evidence"],
 	audit: ["audit"],
 	"npx-sanity-check": ["pack"],
 };
@@ -374,6 +410,7 @@ export const JOB_COMMANDS = {
 		'bash scripts/require-report.sh "Build environment contracts" node scripts/check-build-env.mjs',
 	],
 	test: ["pnpm test:desktop"],
+	evidence: ["pnpm check-evidence"],
 };
 
 /**
@@ -406,6 +443,8 @@ export const FLAG_REASONS = {
 	lint: "a changed path that is neither prose nor committed evidence",
 	types: "a changed path that is neither prose nor committed evidence",
 	unit: "a changed path that is neither prose nor committed evidence, or a `docs/evidence/**` change (the desktop suite reads committed evidence at runtime)",
+	evidence:
+		"a `docs/evidence/**` change, one of the modules that produce the sweep's verdict (`scripts/check-evidence.mjs`, `scripts/palette-source.mjs`, `scripts/color.mjs`), a palette change (the palettes ARE the grounds a frame is judged against), or a change to the install (`package.json` or a lockfile): `sharp`, the decoder the verdict is produced with, is a devDependency",
 	runtime_deps:
 		"`package.json` or one of the scripts the runtime-dependency step executes (`scripts/check-runtime-deps.mjs`, `scripts/require-report.sh`)",
 	audit: "`package.json` or a lockfile change",
@@ -526,11 +565,25 @@ export function flagsFor(categories, paths, releaseBump) {
 	);
 	const unit = [...cats].some((cat) => !INERT_CATEGORIES.has(cat));
 	const manifest = cats.has(CAT_MANIFEST);
+	/*
+	 * The frame sweep's selection, and why each term is there. The frames and the
+	 * manifest are what it asserts over; the sweep's own modules are the
+	 * comparison; the palettes are the grounds it compares against; and
+	 * `package.json` plus the lock are the INSTALL the decoder resolves out of
+	 * (`sharp`, a devDependency). Fails closed on every one of them: a missing term
+	 * would make the sweep skip exactly when its verdict could have changed, which
+	 * is the absence this job exists to remove.
+	 */
+	const evidence = [...pathSet].some(
+		(path) => EVIDENCE_SOURCES.has(path) || path.startsWith(PALETTE_PREFIX),
+	);
 
 	return {
 		lint: live,
 		types: live,
 		unit,
+		evidence:
+			cats.has(CAT_EVIDENCE) || evidence || manifest || cats.has(CAT_LOCK),
 		runtime_deps:
 			manifest || [...pathSet].some((path) => RUNTIME_DEP_SCRIPTS.has(path)),
 		audit: manifest || cats.has(CAT_LOCK),

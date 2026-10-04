@@ -946,14 +946,25 @@ test("A13: the copied module classifies from the invocation directory, not its o
  * `new-chat-row-evidence.test.mjs` and `evidence-run-guard.test.mjs` read their
  * captured frames, and `chrome-keychain.test.mjs` walks the tree. A green PR
  * that tested nothing.
+ *
+ * It keeps TWO jobs now, and `evidence` was added with the frame sweep for the
+ * same reason: `docs/evidence/**` is exactly what `pnpm check-evidence` asserts
+ * over, and the flags that stay false are the ones that would compile, build or
+ * pack a frame. A21 pins what selects that second job.
+ *
  * Mutation: return `docs` for `docs/evidence/**`.
  */
-test("A16: docs/evidence/** keeps the suite and nothing else", () => {
+test("A16: docs/evidence/** keeps the suite and the frame sweep, and nothing else", () => {
 	const flags = classify(["docs/evidence/manifest.json"]);
 	assert.equal(
 		flags.unit,
 		true,
 		"a change to committed evidence must run the suite that reads it",
+	);
+	assert.equal(
+		flags.evidence,
+		true,
+		"a change to committed evidence must run the sweep that asserts over it",
 	);
 	assert.equal(flags.pack, false, "committed evidence is not built or packed");
 	assert.equal(flags.lint, false);
@@ -1525,6 +1536,56 @@ test("A20: --all writes every flag true", () => {
 });
 
 // ---------------------------------------------------------------------------
+// A21 (UI) - the frame sweep is selected by what can move its verdict
+// ---------------------------------------------------------------------------
+
+/*
+ * Defect: `pnpm check-evidence` ran in NO workflow, so 20 findings sat on `main`
+ * - 19 frames whose filename named no palette, and one `supplementary` entry
+ * with no `why` - under a green CI. The job exists now; this pins what SELECTS
+ * it, because a gate nothing sets is the same absence one level up, and a gate
+ * set too widely is a whole-tree decode paid on every unrelated diff.
+ *
+ * Mutation: gate the job on `unit` (the sweep then pays its decode on every
+ * `src/**` change); or drop `CAT_EVIDENCE` from the predicate (the sweep then
+ * never runs on the diff that moves frames, which is the shipped defect); or
+ * drop the palette prefix (`palette-source.mjs` reads the grounds out of those
+ * files, so moving a ground must re-judge every frame).
+ */
+test("A21: the frame sweep runs on a frame change and on the inputs it judges", () => {
+	assert.equal(
+		classify([
+			"docs/evidence/chat-older-history-slot/retry-recovery/head/in-transcript-idle/in-transcript-idle--03-t2381ms-idle/localOperatorDark.webp",
+		]).evidence,
+		true,
+		"a committed frame change must run the sweep - that is the shipped defect",
+	);
+	assert.equal(classify(["docs/evidence/manifest.json"]).evidence, true);
+	// The sweep's own modules, its palette source, and its decoder.
+	for (const path of [
+		"scripts/check-evidence.mjs",
+		"scripts/palette-source.mjs",
+		"scripts/color.mjs",
+		"src/renderer/src/shared/themes/palettes/obsidian.ts",
+		"pnpm-lock.yaml",
+		"package.json",
+	]) {
+		assert.equal(
+			classify([path]).evidence,
+			true,
+			`${path} can move the verdict`,
+		);
+	}
+	// Prose is inert, and a source change the sweep cannot judge keeps it off.
+	assert.equal(
+		classify(["docs/BUILD.md"]).evidence,
+		false,
+		"prose must not pay for a whole-tree decode",
+	);
+	assert.equal(classify(["src/main/app.ts"]).evidence, false);
+});
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -1634,7 +1695,14 @@ const continuationJoined = (run) =>
 const BASE_COPY_STUB = [
 	'import { appendFileSync } from "node:fs";',
 	'process.stdout.write("BASE-REVISION-COPY\\n");',
-	'const flags = ["lint", "types", "unit", "runtime_deps", "audit", "pack"];',
+	// Derived from FLAGS rather than spelled out, because this stub stands in for
+	// "a base revision of this module" and the assertions below compare whatever it
+	// wrote against the CURRENT module's flag list. A literal list here would red
+	// this test on every future flag - a corpus assertion failing for a reason that
+	// has nothing to do with the property under test - and the property it does
+	// assert, that the step passes the base copy's output through untouched, is
+	// unaffected by which names the copy writes.
+	`const flags = ${JSON.stringify(FLAGS)};`,
 	"appendFileSync(",
 	"\tprocess.env.GITHUB_OUTPUT,",
 	'\t`${flags.map((flag) => `${flag}=false`).join("\\n")}\\n`,',
