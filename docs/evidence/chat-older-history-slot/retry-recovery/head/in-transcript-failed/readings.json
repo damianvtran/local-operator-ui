@@ -42,7 +42,7 @@
  ],
  "committed": [
   {
-   "name": "in-transcript-failed--00-t64ms-blank.webp",
+   "name": "in-transcript-failed--00-t64ms-blank.png",
    "t": 64,
    "label": "blank",
    "why": "dom-only(failed:318 loading:331 idle:332)",
@@ -53,7 +53,7 @@
    "pixelAgrees": null
   },
   {
-   "name": "in-transcript-failed--01-t220ms-failed.webp",
+   "name": "in-transcript-failed--01-t220ms-failed/localOperatorDark.webp",
    "t": 220,
    "label": "failed",
    "why": "pixels(failed:0 vs loading:11)",
@@ -64,7 +64,7 @@
    "pixelAgrees": false
   },
   {
-   "name": "in-transcript-failed--02-t235ms-loading.webp",
+   "name": "in-transcript-failed--02-t235ms-loading/localOperatorDark.webp",
    "t": 235,
    "label": "loading",
    "why": "pixels(loading:0 vs failed:7)",
@@ -75,7 +75,7 @@
    "pixelAgrees": true
   },
   {
-   "name": "in-transcript-failed--03-t2216ms-failed.webp",
+   "name": "in-transcript-failed--03-t2216ms-failed/localOperatorDark.webp",
    "t": 2216,
    "label": "failed",
    "why": "pixels(failed:0 vs loading:11)",

@@ -61,7 +61,7 @@
  ],
  "committed": [
   {
-   "name": "in-transcript-idle--00-t96ms-blank.webp",
+   "name": "in-transcript-idle--00-t96ms-blank.png",
    "t": 96,
    "label": "blank",
    "why": "dom-only(loading:331 idle:332)",
@@ -72,7 +72,7 @@
    "pixelAgrees": null
   },
   {
-   "name": "in-transcript-idle--01-t247ms-idle.webp",
+   "name": "in-transcript-idle--01-t247ms-idle/localOperatorDark.webp",
    "t": 247,
    "label": "idle",
    "why": "pixels(idle:0 vs loading:9)",
@@ -83,7 +83,7 @@
    "pixelAgrees": false
   },
   {
-   "name": "in-transcript-idle--02-t263ms-loading.webp",
+   "name": "in-transcript-idle--02-t263ms-loading/localOperatorDark.webp",
    "t": 263,
    "label": "loading",
    "why": "pixels(loading:0 vs idle:10)",
@@ -94,7 +94,7 @@
    "pixelAgrees": true
   },
   {
-   "name": "in-transcript-idle--03-t2258ms-idle.webp",
+   "name": "in-transcript-idle--03-t2258ms-idle/localOperatorDark.webp",
    "t": 2258,
    "label": "idle",
    "why": "pixels(idle:0 vs loading:9)",
