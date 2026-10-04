@@ -557,12 +557,15 @@ jobs:
   # The frame sweep - `pnpm check-evidence` - which NO workflow ran until this
   # job existed.
   #
-  # What it asserts: every committed `.webp` under `docs/evidence/` is a picture
-  # of the app. The colour covering the most pixels must sit within DELTA-E00 25
-  # of one of its theme's four grounds, no single colour may cover more than
-  # 98.5% of the frame, the manifest's counts must agree with the tree, and every
-  # `supplementary` entry must say where it came from. It is the only check in
-  # this repository that can see a frame that is of NOTHING.
+  # What it asserts: every committed FRAME under `docs/evidence/` whose NAME
+  # names a theme is a picture of that theme, whatever container it is packed in
+  # (the walk judges by name, not by extension), and the frames that name no
+  # theme are counted by `manifest.json`'s `unjudgedFrames` rather than skipped.
+  # The colour covering the most pixels must sit within DELTA-E00 25 of one of its
+  # theme's four grounds, no single colour may cover more than 98.5% of the frame,
+  # the manifest's counts must agree with the tree, and every `supplementary`
+  # entry must say where it came from. It is the only check in this repository
+  # that can see a frame that is of NOTHING.
   #
   # WHY IT IS HERE RATHER THAN IN THE DESKTOP SUITE. That suite already holds the
   # manifest's OTHER half - `scripts/evidence-manifest.test.mjs` checks the stamps
@@ -619,16 +622,24 @@ jobs:
       # WHAT THIS JOB DOES NOT CHECK, named here because a skipped check is a
       # claim and this file is where the scope is declared rather than restated
       # per run: the CITATION half - whether every commit the manifest cites still
-      # exists and is reachable from a ref - is LOCAL-ONLY. `actions/checkout`
-      # here is ONE COMMIT DEEP, so every citation in the file reads as missing at
-      # once and this clone cannot answer the question at all. Judging it made the
-      # first run of this job 111 findings on a tree that is clean locally, and
-      # printing a stand-down notice on 100% of runs would be a standing excuse
-      # that reads as a covered check. It is judged where the history is present
-      # (a developer's clone, or `git fetch --unshallow`) and on synthetic
-      # manifests in `evidence-manifest.test.mjs`. The step name carries the same
-      # scope, so it travels with the job's own report.
-      - name: Sweep the committed frames (the citation half is local-only)
+      # exists and is reachable from a ref. `actions/checkout` here is ONE COMMIT
+      # DEEP, so every citation in the file reads as missing at once and this clone
+      # cannot answer the question at all; judging it made the first run of this
+      # job 111 findings on a tree that is clean locally, and printing a stand-down
+      # on 100% of runs would be a standing excuse that reads as a covered check.
+      #
+      # AND ON THIS FLEET IT IS CHECKED NOWHERE TODAY - not in CI and NOT LOCALLY
+      # either, which is the part "local-only" was understating: every checkout
+      # here is shallow too (`git rev-parse --is-shallow-repository` is `true` in
+      # this repository's own), so a developer's `pnpm check-evidence` stands the
+      # half down exactly as this job does, and `evidence-manifest.test.mjs`'s
+      # ancestry test SKIPS here for the same reason. Four citations are known to
+      # be reachable from no remote ref today, and that is the consequence. What
+      # does answer it: `git fetch --unshallow` before the run, and the synthetic
+      # manifests in `evidence-manifest.test.mjs`. A green run, local or here, is
+      # not evidence about the citations. The step name carries the same scope, so
+      # it travels with the job's own report.
+      - name: Sweep the committed frames (citations unchecked on shallow clones)
         run: pnpm check-evidence
 
   audit:

@@ -22,17 +22,20 @@
  * falsified now. `pnpm check-evidence`.
  *
  * WHAT A COMMITTED FRAME MUST BE CALLED, and why this is the place that says it.
- * A frame's expected ground is derived FROM ITS FILENAME - `<set>/<stem>.webp`
- * looks up `PALETTES.get(stem)` - so a `.webp` whose stem is not a palette id
- * fails `no palette named <stem>` however its set is declared, and a set of
- * driven frames named after their own states and timestamps can therefore never
- * be swept. Two dispositions are honest, and a frame's pixels pick between them:
- * MOVE the frame to `<set>/<stem>/<theme>.webp` keeping its bytes (how the 60
- * frames of `manifest.paletteStemRenameNote` were settled), or - for a frame the
- * judgement above refuses outright, a bare ground that is the whole image -
- * commit it as PNG, which this walk does not read and which is what every
- * CDP-driven rig set in this tree already does. What is NOT honest is a set
- * landing as `.webp` under a stem this cannot resolve: it fails at the next
+ * A frame's expected ground is derived FROM ITS FILENAME - the stem of
+ * `<set>/<stem>.<container>` is looked up in `PALETTES` - so a frame whose stem
+ * is not a palette id fails `no palette named <stem>` however its set is
+ * declared, and a set of driven frames named after their own states and
+ * timestamps can therefore never be swept. Two dispositions are honest, and a
+ * frame's pixels pick between them: MOVE the frame to `<set>/<stem>/<theme>.webp`
+ * keeping its bytes (how the 60 frames of `manifest.paletteStemRenameNote` were
+ * settled), or - for a frame the judgement above refuses outright, a bare ground
+ * that is the whole image - commit it in a container whose INFERENCE names it:
+ * this walk judges by NAME, not by container, so a bare ground is not judged
+ * whatever it is packed in, and the frames that name no theme are counted by
+ * `unjudgedFrames` (which is also why re-containering a failing frame no longer
+ * hides it - judged frames are judged under their names). What is NOT honest is a
+ * set landing as `.webp` under a stem this cannot resolve: it fails at the next
  * sweep, and until this check was wired into a workflow the next sweep never
  * came, so 20 such findings sat on `main` under a green CI.
  */
@@ -173,21 +176,41 @@ const overCeiling = (fraction) => {
 const GROUNDS = ["canvas", "surface", "elevated", "sunken"];
 
 /**
- * The containers this repository commits frames in. `.webp` is the canonical
- * one; `.png` is what a rig frame the sweep does not read is committed as, and
- * what some older surfaces committed their app pictures as.
+ * The containers this repository commits frames in.
+ *
+ * `.webp` is the canonical one, `.png` what a rig frame the sweep cannot judge as
+ * a picture is committed as, and the rest are named because a container this list
+ * does NOT name is invisible to both the walk and the accounting at once - which
+ * is the hole QA found for `.png`, one extension over. Measured 2026-10-04: the
+ * tree commits none of these four today (`git ls-tree docs/evidence` is `.webp`
+ * and `.png` only), so this costs nothing now and a format the repo starts
+ * committing is counted the moment it lands - the numbers in `unjudgedFrames`
+ * move, and the guard fails until they are re-derived.
  */
-export const FRAME_CONTAINERS = [".webp", ".png"];
+export const FRAME_CONTAINERS = [
+	".webp",
+	".png",
+	".jpg",
+	".jpeg",
+	".avif",
+	".gif",
+];
 
 const isFrameContainer = (name) =>
 	FRAME_CONTAINERS.some((container) => name.endsWith(container));
 
+/**
+ * The strip regex DERIVED from the container list, so a format added above is
+ * recognized here in the same commit rather than silently failing to match.
+ */
+const FRAME_CONTAINER_RE = new RegExp(
+	`(${FRAME_CONTAINERS.map((c) => c.replace(".", "\\.")).join("|")})$`,
+	"i",
+);
+
 /** The frame's name without its container - what a palette id is matched against. */
 export const frameStem = (file) =>
-	file
-		.split("/")
-		.pop()
-		.replace(/\.(webp|png)$/i, "");
+	file.split("/").pop().replace(FRAME_CONTAINER_RE, "");
 
 /**
  * Every frame this guard JUDGES: the ones whose filename NAMES A THEME, in any
@@ -1231,10 +1254,19 @@ export const countsMeanFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
  * gate instead of restated per run: the `evidence` job's step name and comment
  * in `ci.yml`, and this paragraph.
  *
- * WHERE IT IS JUDGED INSTEAD: on a clone that HAS the history - a developer's,
- * or `git fetch --unshallow` - where this walk fails closed and reds the run;
- * and on synthetic manifests in `evidence-manifest.test.mjs`, which cover the
- * code path itself wherever the objects exist.
+ * WHERE IT IS JUDGED INSTEAD - AND, ON THIS FLEET, WHERE IT IS NOT: the honest
+ * statement is stronger and less comforting than "local-only" sounds, because
+ * `actions/checkout` is one commit deep AND every checkout here is shallow too.
+ * Measured 2026-10-04: `git rev-parse --is-shallow-repository` is `true` in this
+ * repository's own checkout, so a developer's `pnpm check-evidence` stands this
+ * half down exactly as CI does, and `evidence-manifest.test.mjs`'s ancestry test
+ * SKIPS here for the same reason. So on this fleet the citation half is checked
+ * NOWHERE today - not in CI and not locally - and the four citations known to be
+ * reachable from no remote ref (recorded on the wiring's PR) are the consequence.
+ * What does answer it: a clone that HAS the history (`git fetch --unshallow`),
+ * where this walk fails closed and reds the run, and the synthetic manifests in
+ * `evidence-manifest.test.mjs`, which cover the code path itself wherever the
+ * objects exist. A green run - local or in CI - is not evidence about citations.
  */
 const citationWalk = (manifest, git = gitOut) => {
 	const { resolves, reachable } = shaReaders(git);
