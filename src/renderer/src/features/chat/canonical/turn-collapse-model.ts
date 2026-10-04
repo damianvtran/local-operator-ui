@@ -445,6 +445,112 @@ export function collapsePlan(
 /** The empty set `collapsePlan` reads when the caller hands it no `openRuns`. */
 const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
 
+/**
+ * The record fields whose CONTENT a plan can never read: payload a row paints.
+ *
+ * `text` is deliberately not here - it changes per streamed token, so it is
+ * reduced rather than dropped (see the replacer below).
+ */
+const PLAN_INPUT_PAYLOAD_FIELDS: ReadonlySet<string> = new Set([
+	"output",
+	"args",
+	"intent",
+	"diff",
+	"frame",
+	"truncated",
+]);
+
+/**
+ * `JSON.stringify`'s replacer for one record: blank the payload, reduce `text`
+ * to its emptiness (the ONLY thing the plan asks of it - `paintsSomething`).
+ */
+const planInputReplacer = (key: string, value: unknown): unknown => {
+	if (PLAN_INPUT_PAYLOAD_FIELDS.has(key)) return undefined;
+	return key === "text" ? (value ? 1 : 0) : value;
+};
+
+/**
+ * THE ROWS HALF OF A PLAN'S INPUT SIGNATURE (UI perf audit P1; PR-6).
+ *
+ * WHY A SIGNATURE AND NOT THE ROW ARRAY. `collapsePlan` is pure over `rows`,
+ * but `rows` is rebuilt on every streaming flush and the caller's `visible` is
+ * a fresh slice of it, so a memo keyed on the array re-runs the whole plan per
+ * streamed token - including the tokens that only append to an answer's text,
+ * which cannot move a single plan decision. Measured before this: one full plan
+ * per token (`scripts/collapse-plan-per-pass.test.mjs`,
+ * `scripts/transcript-perflush-perf.test.mjs` A7).
+ *
+ * WHAT IT CARRIES. Every record field (minus the payload above) plus the two
+ * layout facts `buildRows` derives (`gap`, `closesTurn`). A field is therefore
+ * covered BY DEFAULT: a new record field joins the signature the moment it
+ * exists, and the only way to omit one is to name it in
+ * `PLAN_INPUT_PAYLOAD_FIELDS`, which is where a reviewer looks.
+ *
+ * FALSE CHANGES ARE SAFE, FALSE MATCHES ARE NOT. Two records that differ only
+ * in key order produce different signatures and buy a redundant plan - the
+ * direction a mistake should fall. The other direction is pinned by
+ * `scripts/collapse-plan-per-pass.test.mjs`: for every own field of every
+ * fixture record, either the signature moves or the plan's own projection does
+ * not.
+ *
+ * THE ROWS IT IS HANDED MUST BE THE ROWS THE PLAN IS OVER - the window's
+ * `visible` slice, not the whole store.
+ */
+export function collapseRowsKey(rows: readonly Row[]): string {
+	const parts: string[] = [];
+	for (const row of rows) {
+		parts.push(`${row.gap}${row.closesTurn ? "+" : "-"}`);
+		parts.push(JSON.stringify(row.record, planInputReplacer) ?? "null");
+	}
+	return parts.join("\u0000");
+}
+
+/**
+ * THE OPTIONS HALF of the same signature: the liveness the newest run reads,
+ * the reader's display mode, the focus hold's row id, and the reader's OPEN
+ * bars.
+ *
+ * The open set is SORTED: a `Set`'s iteration order is its insertion history,
+ * and two readers who opened the same bars in a different order must produce
+ * one key.
+ */
+export function collapsePlanOptionsKey(options: {
+	live: boolean;
+	focusHold?: string | null;
+	openRuns?: ReadonlySet<string>;
+	mode?: TranscriptDisplayMode;
+}): string {
+	const parts: string[] = [
+		options.live ? "live" : "settled",
+		options.mode ?? "",
+		options.focusHold ?? "",
+	];
+	if (options.openRuns) {
+		for (const key of [...options.openRuns].sort()) parts.push(`open:${key}`);
+	}
+	return parts.join("\u0000");
+}
+
+/**
+ * The two halves, joined: the whole input signature of a plan over `rows`.
+ *
+ * The halves are exported separately because the transcript keys a SECOND
+ * memo on the rows alone (the foot map, `dbgFeetRebuilds`): the feet are
+ * arithmetic over the same partition and read no option at all, so they must
+ * not be disturbed by a reader opening an unrelated bar.
+ */
+export function collapsePlanInputKey(
+	rows: readonly Row[],
+	options: {
+		live: boolean;
+		focusHold?: string | null;
+		openRuns?: ReadonlySet<string>;
+		mode?: TranscriptDisplayMode;
+	},
+): string {
+	return `${collapseRowsKey(rows)}\u0001${collapsePlanOptionsKey(options)}`;
+}
+
 /*
  * THE ON-LOAD ALIGNMENT (operator report, 2026-09-28: "the messages don't seem
  * to be collapsed on previous collapsible segments immediately on load ...").
@@ -871,10 +977,43 @@ export function widenTarget(
 	const maxRows = Math.min(total, options.maxRows ?? total);
 	const { step } = options;
 	/*
+	 * ONE PLAN PER SNAPPED SIZE, NOT PER CANDIDATE STEP (UI perf audit P3; PR-6).
+	 *
+	 * The snap can mount MORE than the raw size it is asked for - a completed run
+	 * brings its whole allowance with it - so several candidates of one search,
+	 * and the mounted baseline itself, routinely snap to the SAME window. Each
+	 * `paintedRows` call builds a fresh plan over its own slice, so without this
+	 * a gesture that never leaves one window still paid a plan per step;
+	 * `scripts/collapse-plan-per-pass.test.mjs` counts both arms (measured on a
+	 * 602-row condensed turn: 10 plans before, 1 after).
+	 *
+	 * The snap is a pure function of the raw size, so its result answers for the
+	 * whole of a `paintedRows` call: same snapped size, same slice, same count.
+	 * The search's own bound is unchanged (`WIDEN_MAX_STEPS` candidates), and it
+	 * still sees one painted count per DISTINCT window it considers.
+	 */
+	const paintedAt = (() => {
+		const counts = new Map<number, number>();
+		return (windowSize: number): number => {
+			const alignSize = snapWindowToRunBoundary(
+				rows,
+				windowSize,
+				options.snapMaxExtra,
+				options.completedRunMaxExtra,
+				options.live ?? false,
+			);
+			const hit = counts.get(alignSize);
+			if (hit !== undefined) return hit;
+			const count = paintedRows(rows, windowSize, options);
+			counts.set(alignSize, count);
+			return count;
+		};
+	})();
+	/*
 	 * The snap is idempotent on an already-snapped size, so this is the mounted
 	 * count in the same currency the candidates below are measured in.
 	 */
-	const before = paintedRows(rows, mountedSize, options);
+	const before = paintedAt(mountedSize);
 	/*
 	 * `live` and `openRuns` are passed straight through to `paintedRows`: a run
 	 * the reader has OPEN paints its rows, and a run still being written is never
@@ -889,10 +1028,7 @@ export function widenTarget(
 	 * nothing. Each iteration is bounded by `WIDEN_MAX_STEPS` steps from the
 	 * caller's `maxRows`.
 	 */
-	while (
-		size < maxRows &&
-		paintedRows(rows, size, options) - before < minVisibleRows
-	) {
+	while (size < maxRows && paintedAt(size) - before < minVisibleRows) {
 		size = Math.min(maxRows, size + step);
 	}
 	return size;
