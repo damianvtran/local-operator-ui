@@ -20,6 +20,21 @@
  * It runs over the COMMITTED set rather than only during capture, which is
  * the difference between a set that was checked once and a set that can be
  * falsified now. `pnpm check-evidence`.
+ *
+ * WHAT A COMMITTED FRAME MUST BE CALLED, and why this is the place that says it.
+ * A frame's expected ground is derived FROM ITS FILENAME - `<set>/<stem>.webp`
+ * looks up `PALETTES.get(stem)` - so a `.webp` whose stem is not a palette id
+ * fails `no palette named <stem>` however its set is declared, and a set of
+ * driven frames named after their own states and timestamps can therefore never
+ * be swept. Two dispositions are honest, and a frame's pixels pick between them:
+ * MOVE the frame to `<set>/<stem>/<theme>.webp` keeping its bytes (how the 60
+ * frames of `manifest.paletteStemRenameNote` were settled), or - for a frame the
+ * judgement above refuses outright, a bare ground that is the whole image -
+ * commit it as PNG, which this walk does not read and which is what every
+ * CDP-driven rig set in this tree already does. What is NOT honest is a set
+ * landing as `.webp` under a stem this cannot resolve: it fails at the next
+ * sweep, and until this check was wired into a workflow the next sweep never
+ * came, so 20 such findings sat on `main` under a green CI.
  */
 
 import { execFileSync, spawnSync } from "node:child_process";
@@ -800,11 +815,13 @@ export const stampFailures = (manifest, git = gitOut, dir = EVIDENCE) => {
 	/*
 	 * `frames` must equal the frames on disk OUTSIDE every declared set.
 	 *
-	 * The fourth stamp question, and until now the one only `main()` asked - a
-	 * job no CI workflow runs, so a manifest could carry a stale swept count past
-	 * a full green `test:desktop`. Reproduced: with the trees AND `surfaces`
-	 * correct and `frames` set back to the previous sweep's `824`, the bound case
-	 * stayed 14/14 green (code review round 4, m4).
+	 * The fourth stamp question, and the one `main()` used to be alone in asking
+	 * (`pnpm check-evidence` is now a job in `ci.yml`, which is why the sweep is
+	 * no longer the only reader of this number): a manifest carrying a stale swept
+	 * count can no longer reach a green run, because the same question is asked
+	 * HERE, in the fast half, by a walk that reads no image. Reproduced: with the
+	 * trees AND `surfaces` correct and `frames` set back to the previous sweep's
+	 * `824`, the bound case stayed 14/14 green (code review round 4, m4).
 	 *
 	 * It is the same check `main()` makes, asked here with the same exclusion, so
 	 * the two cannot drift: a supplementary set is exactly the reason a frame is
@@ -1513,13 +1530,14 @@ export const main = async () => {
 		/*
 		 * `partialCapture` must not UNDERSTATE the pass it describes.
 		 *
-		 * The arithmetic lives in `partialCaptureFailures` because this half of
-		 * the gate runs behind the ImageMagick loop below and no CI workflow runs
-		 * it, so a field guarded only here is a field with no guard (round 5,
-		 * R5-2; round 4 said the same of the number itself). `stampFailures` -
-		 * and through it `scripts/evidence-manifest.test.mjs` - calls the same
-		 * function, so the denominator, the set exclusion and the two messages
-		 * cannot drift between the halves.
+		 * The arithmetic lives in `partialCaptureFailures` because the half of the
+		 * gate that reads it is the SWEEP - a whole-tree decode, minutes long - and
+		 * the fast suite has to be able to answer the same question without one. A
+		 * field guarded only there is a field a green `test:desktop` cannot see
+		 * (round 5, R5-2; round 4 said the same of the number itself).
+		 * `stampFailures` - and through it `scripts/evidence-manifest.test.mjs` -
+		 * calls the same function, so the denominator, the set exclusion and the two
+		 * messages cannot drift between the halves.
 		 */
 		failures.push(...partialCaptureFailures(manifest));
 

@@ -257,9 +257,11 @@ whatever this process advertises rather than a fixed shape.
   attempt-ref contract (review round 1, M1) and its release/abort settles are
   covered by reading, not by a live take - the rig does not open a canvas
   document. Its composer-side arm is what session D drives.
-- **`pnpm check-evidence`** (the frame sweep) is NOT run by any CI workflow;
-  what CI runs is the desktop suite, including
-  `scripts/evidence-manifest.test.mjs` (the manifest/stamp half). The frames
+- **`pnpm check-evidence`** (the frame sweep) is a job in `ci.yml` now (`evidence`,
+  gated on any diff that can move a frame, the manifest, a palette or the
+  decoder) - wiring it in is what made the 20 findings already sitting on `main`
+  visible at all. What runs on EVERY pull request is the other half, the desktop
+  suite's `scripts/evidence-manifest.test.mjs` (the manifest/stamp half). The frames
   ship as WebP on the sweep's canonical `<stem>/<theme>.webp` layout (theme
   `localOperatorDark`, measured - worst `\u0394E00 0.00` across all 22), re-encoded
   losslessly from this rig's PNG captures (pixel-identical to the originals, ICC

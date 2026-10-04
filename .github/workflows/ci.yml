@@ -74,6 +74,7 @@ jobs:
       lint: ${{ steps.classify.outputs.lint }}
       types: ${{ steps.classify.outputs.types }}
       unit: ${{ steps.classify.outputs.unit }}
+      evidence: ${{ steps.classify.outputs.evidence }}
       runtime_deps: ${{ steps.classify.outputs.runtime_deps }}
       audit: ${{ steps.classify.outputs.audit }}
       pack: ${{ steps.classify.outputs.pack }}
@@ -552,6 +553,70 @@ jobs:
             exit 1
           fi
           echo "Working tree clean after the desktop suite."
+
+  # The frame sweep - `pnpm check-evidence` - which NO workflow ran until this
+  # job existed.
+  #
+  # What it asserts: every committed `.webp` under `docs/evidence/` is a picture
+  # of the app. The colour covering the most pixels must sit within DELTA-E00 25
+  # of one of its theme's four grounds, no single colour may cover more than
+  # 98.5% of the frame, the manifest's counts must agree with the tree, and every
+  # `supplementary` entry must say where it came from. It is the only check in
+  # this repository that can see a frame that is of NOTHING.
+  #
+  # WHY IT IS HERE RATHER THAN IN THE DESKTOP SUITE. That suite already holds the
+  # manifest's OTHER half - `scripts/evidence-manifest.test.mjs` checks the stamps
+  # and the counts that need no image, runs inside `pnpm test:desktop`, and is
+  # what caught a stale stamp that once reached `main`. The sweep is the half that
+  # decodes every frame, so it is its own job gated on its own flag and the
+  # classifier keeps it off every diff that cannot move a verdict. It ran in
+  # neither place, and that absence was not a quiet gap: 20 findings sat on `main`
+  # - 19 frames whose filename named no palette, and one `supplementary` entry
+  # with no `why` - under a green CI. A gate that is green by absence is worse
+  # than no gate, because the absence reads as a pass.
+  #
+  # MEASURED COST, so nobody discovers it from a timeout: 15,532 frames in 4m53s
+  # on an M-series laptop at load 20 (one process; the decode is in-process and
+  # sequential, ~19ms a frame). A hosted runner is slower per core, so the ceiling
+  # is 60 minutes - a bound, not an expectation. Needs python3 (the sweep admits
+  # one run per machine through `scripts/evidence-run-guard.py`, which uses POSIX
+  # `flock`) and `sharp` (how the frames are decoded; a devDependency, hence the
+  # install below). On a fresh runner the lease is uncontended.
+  evidence:
+    name: Evidence Frames
+    needs: [changes]
+    if: >-
+      !cancelled() &&
+      needs.changes.outputs.evidence != 'false'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: '10.29.2'
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The gate's own exit status is the verdict: a frame that is not a picture
+      # of its theme, an unaccounted frame count, or a declaration that does not
+      # say where it came from each exits 1 with a `FAIL` line naming the file.
+      # `tee` is deliberately absent - the sweep's output IS the evidence, and
+      # piping it through a filter would put a process between the reader and the
+      # lines the gate prints.
+      - name: Sweep the committed frames
+        run: pnpm check-evidence
 
   audit:
     name: Security Audit
