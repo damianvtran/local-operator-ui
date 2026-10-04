@@ -19,6 +19,9 @@
  *       `use-scroll-paging.ts`'s `schedule`; the policy is the shipped one).
  *   A6  the real `CheckpointRail`: body renders across F flushes, with the
  *       pre-fix call site (a fresh `onJump` per flush) as its falsifier arm.
+ *   A7  the real `CanonicalTranscript` again, over a scripted TOKEN STREAM
+ *       (PR-6): `collapsePlan` calls, foot-map rebuilds and chat-entry
+ *       rebuilds on the tokens that only lengthen an answer's text.
  *
  * BEFORE/AFTER: the counters live in the modules, so the same file runs against
  * two trees — this branch (after) and a counter-patched copy of the parent
@@ -132,6 +135,7 @@ const bundle = await build({
 			'export { useActiveCheckpoint } from "./src/renderer/src/features/chat/canonical/use-active-checkpoint";',
 			'export { dbgActiveCueScans } from "./src/renderer/src/features/chat/canonical/use-active-checkpoint";',
 			'export { dbgCollapsePlanCalls } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			'export { dbgChatEntriesRebuilds, dbgFeetRebuilds } from "./src/renderer/src/features/chat/canonical/canonical-transcript";',
 			'export { dbgRailRenders } from "./src/renderer/src/features/chat/canonical/checkpoint-rail";',
 			'export { decide, initialPagingState, noteInput, SETTLE_MS } from "./src/renderer/src/features/chat/canonical/scroll-paging";',
 			/*
@@ -182,7 +186,9 @@ const {
 	CheckpointRail,
 	CueHarness,
 	dbgActiveCueScans,
+	dbgChatEntriesRebuilds,
 	dbgCollapsePlanCalls,
+	dbgFeetRebuilds,
 	dbgRailRenders,
 	decide,
 	initialPagingState,
@@ -373,9 +379,109 @@ test(`${ARM} A3: collapsePlan calls across transcript flushes`, async () => {
 	});
 	container.remove();
 	if (ARM === "after") {
+		/*
+		 * 0, not 1.05 (PR-6): a flush whose CONTENT is unchanged now moves no
+		 * plan input at all, because the memo keys on the input signature rather
+		 * than on the row array. The bound moved with the fix - see A7 for the
+		 * streaming case (a text delta, which is the same shape).
+		 */
 		assert.ok(
-			report.A3.perFlush <= 1.05,
-			`the walk adds no second plan per update (got ${report.A3.perFlush})`,
+			report.A3.perFlush <= 0.05,
+			`a content-identical update buys no plan (got ${report.A3.perFlush})`,
+		);
+	}
+});
+
+/* --------------------------------- A7 ----------------------------------- */
+
+test(`${ARM} A7: plans, feet and entries across a token stream`, async () => {
+	/*
+	 * THE TOKEN THE PERF PASS IS FOR (UI perf audit P1/P4; PR-6). Streaming
+	 * hands back the same conversation with one more character in the answer -
+	 * and, on a socket flush, fresh copies of everything. Nothing about the
+	 * PARTITION moves, so neither the plan nor the foot map may be rebuilt; the
+	 * chat-entry list MUST still rebuild, because it carries the rows the text
+	 * has to travel through to reach the DOM (its lower bound is asserted too,
+	 * so a future change that "optimises" the entries by freezing them fails
+	 * here instead of shipping a transcript that stops writing).
+	 */
+	const records = [
+		userRecord("user:1"),
+		...Array.from({ length: 60 }, (_, i) => toolRecord(`tool:${i + 1}`)),
+		{ ...answerRecord("answer:1"), text: "Four", streaming: true },
+	];
+	const client = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const container = document.createElement("div");
+	document.body.appendChild(container);
+	const root = createRoot(container);
+	const render = (next) =>
+		act(async () => {
+			root.render(
+				h(
+					QueryClientProvider,
+					{ client },
+					h(CanonicalTranscript, {
+						frontend: null,
+						transcript: transcriptOf(next),
+						gate: null,
+						waiting: false,
+						loadingOlder: false,
+						onLoadOlder: async () => true,
+						containerRef: { current: container },
+						isSmallView: false,
+						status: "live",
+						failure: null,
+						awaitingHydration: false,
+						onReconnect: () => {},
+					}),
+				),
+			);
+		});
+	let current = records;
+	dbgCollapsePlanCalls.count = 0;
+	dbgFeetRebuilds.count = 0;
+	dbgChatEntriesRebuilds.count = 0;
+	await render(current);
+	const mounted = {
+		plans: dbgCollapsePlanCalls.count,
+		feet: dbgFeetRebuilds.count,
+		entries: dbgChatEntriesRebuilds.count,
+	};
+	for (let i = 0; i < FLUSHES; i += 1) {
+		current = current.map((record) =>
+			record.id === "answer:1"
+				? { ...record, text: `${record.text} x` }
+				: { ...record },
+		);
+		await render(current);
+	}
+	report.A7 = {
+		mounted,
+		plans: dbgCollapsePlanCalls.count - mounted.plans,
+		feet: dbgFeetRebuilds.count - mounted.feet,
+		entries: dbgChatEntriesRebuilds.count - mounted.entries,
+		plansPerToken: (dbgCollapsePlanCalls.count - mounted.plans) / FLUSHES,
+		feetPerToken: (dbgFeetRebuilds.count - mounted.feet) / FLUSHES,
+		entriesPerToken: (dbgChatEntriesRebuilds.count - mounted.entries) / FLUSHES,
+	};
+	await act(async () => {
+		root.unmount();
+	});
+	container.remove();
+	if (ARM === "after") {
+		assert.ok(
+			report.A7.plansPerToken <= 0.05,
+			`a text-only token buys no plan (got ${report.A7.plansPerToken})`,
+		);
+		assert.ok(
+			report.A7.feetPerToken <= 0.05,
+			`a text-only token rebuilds no foot (got ${report.A7.feetPerToken})`,
+		);
+		assert.ok(
+			report.A7.entriesPerToken >= 0.95,
+			`the text still travels through the entries (got ${report.A7.entriesPerToken})`,
 		);
 	}
 });

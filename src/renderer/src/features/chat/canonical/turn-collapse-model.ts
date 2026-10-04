@@ -49,12 +49,14 @@
 
 import { isPartialDelivery } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
+import { freezeRecordDeep } from "./record-immutability";
 import {
 	type FoldableAction,
 	foldSummary,
 	workedSeconds,
 } from "./trace-fold-model";
 import {
+	type TranscriptImage,
 	type TranscriptRecord,
 	isInterruptedFault,
 } from "./transcript-reducer";
@@ -400,6 +402,25 @@ export type CollapsePlan = {
  */
 export const dbgCollapsePlanCalls = { count: 0 };
 
+/**
+ * SIGNATURES COMPUTED - a memo MISS, the instrument that pins the per-record
+ * memo (agent review round 2, m1r2). Exported beside `dbgCollapsePlanCalls` in
+ * the same shape: a module-level counter a test reads and nothing else touches
+ * at runtime.
+ *
+ * WHY IT HAS TO EXIST. Removing the `WeakMap` in `recordSignature` left this
+ * suite **7/7 green**, because every shape the bench drives
+ * (`transcript-perflush-perf.test.mjs` A3 and A7) hands back a FRESH object for
+ * every row every flush - the one shape the memo cannot help - so the
+ * optimisation could rot back to a window-per-flush signature with every test
+ * passing. The assertion that reads this counter
+ * (`scripts/collapse-plan-per-pass.test.mjs`, "the signature is computed once per
+ * record object") fails the moment the memo is gone: a one-record flush over an
+ * otherwise identity-preserving window misses exactly once with it, and once per
+ * row without it.
+ */
+export const dbgRecordSignatureCalls = { count: 0 };
+
 export function collapsePlan(
 	rows: Row[],
 	options: {
@@ -444,6 +465,262 @@ export function collapsePlan(
 
 /** The empty set `collapsePlan` reads when the caller hands it no `openRuns`. */
 const NO_OPEN_RUNS: ReadonlySet<string> = new Set();
+
+/**
+ * THE PAYLOAD PATHS the plan's signature does not carry.
+ *
+ * Each is content a row PAINTS rather than a fact a plan DECIDES on: nothing in
+ * the plan's closure reads one, and
+ * `scripts/collapse-plan-per-pass.test.mjs` asserts that direction by mutating
+ * each in turn and requiring the plan's own projection NOT to move.
+ *
+ * PATHS, NOT NAMES (agent review round 1, M4). The `JSON.stringify` replacer
+ * this replaces matched a key by NAME at ANY depth, so these drops - and the
+ * `text` reduction beside them - reached nested payloads too: the next field a
+ * `custom`/`peer` record gains would have been blanked, or reduced, SILENTLY,
+ * and the failure mode of a wrong drop is a stale plan rather than an error.
+ * Matching the record's OWN keys makes the drop list what it says it is; an
+ * unlisted nested value is carried (hashed) instead, which is the direction a
+ * mistake must fall - a false change buys a redundant plan, a false match reuses
+ * a stale one.
+ *
+ * THE SEVENTH PAYLOAD PATH is `images[].data`, and it is NOT dropped by name
+ * here: it is bounded by identity in `imageStamp` instead, because the cost of
+ * hashing it is what M1b is about.
+ */
+const PLAN_INPUT_PAYLOAD_PATHS: ReadonlySet<string> = new Set([
+	"output",
+	"args",
+	"intent",
+	"diff",
+	"frame",
+	"truncated",
+]);
+
+/**
+ * The IDENTITY of one record's images array, as a compact token.
+ *
+ * WHY IDENTITY RATHER THAN CONTENT, when every other field is content. `data`
+ * is INLINE BASE64 on the live path (`TranscriptImage`: "Base64 payload when the
+ * event carried it inline. Live path.") and a browser capture is a first-class
+ * row here, so hashing it made the key's cost scale with the picture - measured
+ * at 60 rows + one 512 KB inline screenshot, 453 us per call against the plan's
+ * 11 us (40x), and at 602 rows + 2 MB, 2199 us against 141 us (agent review
+ * round 1, M1b).
+ *
+ * IDENTITY IS EXACT HERE, not a heuristic, because records are immutable values:
+ * a delta that changes nothing returns the SAME record object and a changed one
+ * is REPLACED (`upsert`'s `shallowEqual` gate; `applyEvent` returns the same
+ * state object when nothing changed - the contract `transcript-reducer.ts`
+ * states at its top). So an images array that keeps its reference cannot have
+ * different content, and one whose content changed was replaced. `extractImages`
+ * leans on the same fact from the other side: it hands back the PREVIOUS array
+ * when `sameImages` holds, precisely so a re-read does not re-render every
+ * image.
+ *
+ * The stamp is per ARRAY, so an array shared between records keeps one token
+ * (the shared `EMPTY_IMAGES` is one token forever). The WeakMap holds no array
+ * alive, so this needs no eviction and cannot grow without bound.
+ */
+const IMAGE_STAMPS = new WeakMap<readonly TranscriptImage[], number>();
+let imageStampCounter = 0;
+
+const imageStamp = (images: readonly TranscriptImage[]): string => {
+	const cached = IMAGE_STAMPS.get(images);
+	if (cached !== undefined) return `@${cached}`;
+	imageStampCounter += 1;
+	IMAGE_STAMPS.set(images, imageStampCounter);
+	return `@${imageStampCounter}`;
+};
+
+/**
+ * ONE RECORD'S SIGNATURE, MEMOISED ON THE RECORD'S IDENTITY (agent review round
+ * 1, M1: the signature used to cost more than the work it removes).
+ *
+ * The reducer hands back the same record object for every row a flush did not
+ * change, so a STREAMED TOKEN REPLACES EXACTLY ONE RECORD. Computing a
+ * signature once per record OBJECT therefore costs one record per changed row
+ * instead of one window per token. Measured on the 62-row A7 shape
+ * (`process.cpuUsage`, min of 7x300), a token now pays **4.75 us** of key against
+ * the **12.77 us** of `collapsePlan` + `runsOf` + `turnFeet` it removes, and on a
+ * window already in hand the key alone is **2.66 us** where the unmemoised one
+ * measured **80.75 us** (the reviewer's 80.37 us) - the shape whose figure made
+ * this a MAJOR finding.
+ *
+ * WHAT A SIGNATURE CARRIES is every own field of the record minus the named
+ * payload paths, with `text` reduced to its emptiness and `images` carried by
+ * identity. A field is covered BY DEFAULT: a new record field joins the
+ * signature the moment it exists, and the only way to omit one is to name it in
+ * `PLAN_INPUT_PAYLOAD_PATHS`, which is where a reviewer looks.
+ *
+ * WHAT IT DOES NOT CARRY, and why that is safe: the payload paths above, whose
+ * bytes no plan decision reads, and `images[].data`, whose bytes are covered by
+ * the array's identity instead (see `imageStamp`). Nothing else is dropped. The
+ * other direction is pinned by `scripts/collapse-plan-per-pass.test.mjs`: for
+ * every own field of every fixture record, either the signature moves or the
+ * plan's own projection does not.
+ *
+ * THE IMMUTABILITY THIS RESTS ON IS THE REDUCER'S, NOT A NEW ONE: a record
+ * object is replaced, never mutated, so a cached signature cannot go stale while
+ * its record is alive - and in development the reducer ENFORCES it at emit and
+ * this function freezes the record as it signs it (`record-immutability.ts`), so
+ * an in-place write throws instead of going stale. A caller that mutated a record
+ * in place anyway would leave this memo returning the signature taken from the
+ * OLD contents while `chatEntries` - keyed on `visible`, not on a signature -
+ * painted the new ones: the bar and the foot would DIVERGE from the row beside
+ * them rather than all going stale together, which is the harder failure to
+ * notice, not the easier one (agent review round 2, n1r2).
+ */
+const RECORD_SIGNATURES = new WeakMap<TranscriptRecord, string>();
+
+function recordSignature(record: TranscriptRecord): string {
+	const cached = RECORD_SIGNATURES.get(record);
+	if (cached !== undefined) return cached;
+	dbgRecordSignatureCalls.count += 1;
+	/*
+	 * FREEZE BEFORE SIGNING (agent review round 2, M1r2). The signature just
+	 * taken is cached against the record's IDENTITY, so it goes stale the moment
+	 * anything writes to the record in place. Freezing here - the memo's own
+	 * boundary - makes that write throw in development instead, and it covers a
+	 * record from ANY producer, including the two writers outside the reducer
+	 * (`replaceLocalRecordText` in `use-canonical-session.ts`,
+	 * `reconcileLaunchTurns` in `run-detail-model.ts`). In production the guard is
+	 * a no-op (see `record-immutability.ts`).
+	 */
+	freezeRecordDeep(record);
+	// `Record<string, unknown>` rather than the union's own key type: the union
+	// narrows `keyof` to the fields COMMON to every variant, and the point here is
+	// to walk whatever the record actually carries.
+	const source = record as unknown as Record<string, unknown>;
+	const projected: Record<string, unknown> = {};
+	for (const key of Object.keys(source)) {
+		if (PLAN_INPUT_PAYLOAD_PATHS.has(key)) continue;
+		const value = source[key];
+		/*
+		 * `text` is REDUCED, never dropped: it grows on every streamed token, and the
+		 * only thing the plan asks of it is its emptiness (`paintsSomething`). The one
+		 * text token that can move a decision is `'' -> 'x'`, and it buys a plan.
+		 */
+		if (key === "text") {
+			projected[key] = value ? 1 : 0;
+			continue;
+		}
+		if (key === "images") {
+			/*
+			 * A `WeakMap` key must be an object, so a non-array `images` (a string, a
+			 * number, `null`) must not reach `imageStamp`: it would throw `Invalid
+			 * value used as weak map key` MID-RENDER. Unreachable from shipped
+			 * producers - the type is `TranscriptImage[]` and every producer returns
+			 * an array - so this is a guard, not a fix (QA round 2, Q1): carry the
+			 * value verbatim, the same direction as every other unlisted field, so a
+			 * malformed value moves the key instead of taking the row down.
+			 */
+			projected[key] = Array.isArray(value)
+				? imageStamp(value)
+				: (value ?? null);
+			continue;
+		}
+		projected[key] = value;
+	}
+	const signature = JSON.stringify(projected) ?? "null";
+	RECORD_SIGNATURES.set(record, signature);
+	return signature;
+}
+
+/**
+ * THE ROWS HALF OF A PLAN'S INPUT SIGNATURE (UI perf audit P1; PR-6).
+ *
+ * WHY A SIGNATURE AND NOT THE ROW ARRAY. `collapsePlan` is pure over `rows`,
+ * but `rows` is rebuilt on every streaming flush and the caller's `visible` is
+ * a fresh slice of it, so a memo keyed on the array re-runs the whole plan per
+ * streamed token - including the tokens that only append to an answer's text,
+ * which cannot move a single plan decision. Measured before this: one full plan
+ * per token (`scripts/collapse-plan-per-pass.test.mjs`,
+ * `scripts/transcript-perflush-perf.test.mjs` A7).
+ *
+ * WHAT IT CARRIES. Every own field of every record (minus the payload paths
+ * above, with `text` reduced and `images` carried by identity) plus the two
+ * layout facts `buildRows` derives (`gap`, `closesTurn`). A field is therefore
+ * covered BY DEFAULT: a new record field joins the signature the moment it
+ * exists, and the only way to omit one is to name it in
+ * `PLAN_INPUT_PAYLOAD_PATHS`, which is where a reviewer looks.
+ *
+ * WHAT IT COSTS. One signature per record OBJECT, memoised in
+ * `recordSignature`, so a streamed token - which replaces exactly one record -
+ * pays for that one record rather than for the window. The rows themselves are
+ * still walked (`Row` identity is not the model's to promise), but that walk is
+ * a WeakMap lookup per row.
+ *
+ * FALSE CHANGES ARE SAFE, FALSE MATCHES ARE NOT. Two records that differ only
+ * in key order produce different signatures and buy a redundant plan - the
+ * direction a mistake should fall. The other direction is pinned by
+ * `scripts/collapse-plan-per-pass.test.mjs`: for every own field of every
+ * fixture record, either the signature moves or the plan's own projection does
+ * not.
+ *
+ * THE ROWS IT IS HANDED MUST BE THE ROWS THE PLAN IS OVER - the window's
+ * `visible` slice, not the whole store.
+ */
+export function collapseRowsKey(rows: readonly Row[]): string {
+	const parts: string[] = [];
+	for (const row of rows) {
+		parts.push(`${row.gap}${row.closesTurn ? "+" : "-"}`);
+		parts.push(recordSignature(row.record));
+	}
+	return parts.join("\u0000");
+}
+
+/**
+ * THE OPTIONS HALF of the same signature: the liveness the newest run reads,
+ * the reader's display mode, the focus hold's row id, and the reader's OPEN
+ * bars.
+ *
+ * The open set is SORTED: a `Set`'s iteration order is its insertion history,
+ * and two readers who opened the same bars in a different order must produce
+ * one key.
+ */
+export function collapsePlanOptionsKey(options: {
+	live: boolean;
+	focusHold?: string | null;
+	openRuns?: ReadonlySet<string>;
+	mode?: TranscriptDisplayMode;
+}): string {
+	const parts: string[] = [
+		options.live ? "live" : "settled",
+		options.mode ?? "",
+		options.focusHold ?? "",
+	];
+	if (options.openRuns) {
+		for (const key of [...options.openRuns].sort()) parts.push(`open:${key}`);
+	}
+	return parts.join("\u0000");
+}
+
+/**
+ * The two halves, joined: the whole input signature of a plan over a window.
+ *
+ * IT TAKES THE ROWS HALF, NOT THE ROWS (agent review round 1, M3). The
+ * transcript already computes `collapseRowsKey(visible)` for the foot map, and a
+ * caller that re-spelled the join beside the helper would drift from it the day
+ * the separator or the half-order changed. One spelling, used by the component
+ * and pinned by `scripts/collapse-plan-per-pass.test.mjs`.
+ *
+ * The halves are exported separately because the transcript keys a SECOND
+ * memo on the rows alone (the foot map, `dbgFeetRebuilds`): the feet are
+ * arithmetic over the same partition and read no option at all, so they must
+ * not be disturbed by a reader opening an unrelated bar.
+ */
+export function collapsePlanInputKey(
+	rowsKey: string,
+	options: {
+		live: boolean;
+		focusHold?: string | null;
+		openRuns?: ReadonlySet<string>;
+		mode?: TranscriptDisplayMode;
+	},
+): string {
+	return `${rowsKey}\u0001${collapsePlanOptionsKey(options)}`;
+}
 
 /*
  * THE ON-LOAD ALIGNMENT (operator report, 2026-09-28: "the messages don't seem
@@ -871,10 +1148,43 @@ export function widenTarget(
 	const maxRows = Math.min(total, options.maxRows ?? total);
 	const { step } = options;
 	/*
+	 * ONE PLAN PER SNAPPED SIZE, NOT PER CANDIDATE STEP (UI perf audit P3; PR-6).
+	 *
+	 * The snap can mount MORE than the raw size it is asked for - a completed run
+	 * brings its whole allowance with it - so several candidates of one search,
+	 * and the mounted baseline itself, routinely snap to the SAME window. Each
+	 * `paintedRows` call builds a fresh plan over its own slice, so without this
+	 * a gesture that never leaves one window still paid a plan per step;
+	 * `scripts/collapse-plan-per-pass.test.mjs` counts both arms (measured on a
+	 * 602-row condensed turn: 10 plans before, 1 after).
+	 *
+	 * The snap is a pure function of the raw size, so its result answers for the
+	 * whole of a `paintedRows` call: same snapped size, same slice, same count.
+	 * The search's own bound is unchanged (`WIDEN_MAX_STEPS` candidates), and it
+	 * still sees one painted count per DISTINCT window it considers.
+	 */
+	const paintedAt = (() => {
+		const counts = new Map<number, number>();
+		return (windowSize: number): number => {
+			const alignSize = snapWindowToRunBoundary(
+				rows,
+				windowSize,
+				options.snapMaxExtra,
+				options.completedRunMaxExtra,
+				options.live ?? false,
+			);
+			const hit = counts.get(alignSize);
+			if (hit !== undefined) return hit;
+			const count = paintedRows(rows, windowSize, options);
+			counts.set(alignSize, count);
+			return count;
+		};
+	})();
+	/*
 	 * The snap is idempotent on an already-snapped size, so this is the mounted
 	 * count in the same currency the candidates below are measured in.
 	 */
-	const before = paintedRows(rows, mountedSize, options);
+	const before = paintedAt(mountedSize);
 	/*
 	 * `live` and `openRuns` are passed straight through to `paintedRows`: a run
 	 * the reader has OPEN paints its rows, and a run still being written is never
@@ -889,10 +1199,7 @@ export function widenTarget(
 	 * nothing. Each iteration is bounded by `WIDEN_MAX_STEPS` steps from the
 	 * caller's `maxRows`.
 	 */
-	while (
-		size < maxRows &&
-		paintedRows(rows, size, options) - before < minVisibleRows
-	) {
+	while (size < maxRows && paintedAt(size) - before < minVisibleRows) {
 		size = Math.min(maxRows, size + step);
 	}
 	return size;
