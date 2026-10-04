@@ -47,6 +47,7 @@ const row = (pid, ppid, pgid, command) =>
  */
 const PER_LANE_BOUND = /per-lane bound/;
 const TEN_MINUTES = /10 min/;
+const TWENTY_FIVE_MINUTES = /25 min/;
 const OFF_WARNING = /WARNING/;
 const BOUND_OFF = /OFF/;
 const BOUND_EXCEEDED = /LANE BOUND EXCEEDED/;
@@ -61,9 +62,20 @@ test("the default bound is a stall detector, not a ceiling on slow work", () => 
 	const { boundMs, arm } = computeLaneBound({ override: null });
 	assert.equal(arm, "default");
 	assert.equal(boundMs, _DEFAULT_BOUND_MS);
+	/*
+	 * The calibration's two claims, pinned as claims rather than restated in prose, so a
+	 * future edit that moves the number without the evidence fails here first. They come
+	 * from CI, not from this host: no lane can outlive the suite that runs it, so the
+	 * healthy CI run's 18.7 minutes is an upper bound on every lane it ran (job
+	 * 111386486657, 369 files, `rc=0 pass=6627`), and the job's own cap is 35 minutes.
+	 */
 	assert.ok(
-		boundMs >= 60_000,
-		"a bound under a minute would fire on honest lanes on a loaded machine",
+		boundMs > 18.7 * 60_000,
+		"must clear the longest healthy CI suite, which bounds every lane it runs",
+	);
+	assert.ok(
+		boundMs < 35 * 60_000,
+		"must fire inside the job cap, or the naming it exists for never lands",
 	);
 });
 
@@ -108,6 +120,12 @@ test("the startup line names the bound, where it came from, and how to change it
 	assert.match(line, PER_LANE_BOUND);
 	assert.match(line, TEN_MINUTES);
 	assert.match(line, new RegExp(LANE_BOUND_OVERRIDE_ENV));
+	// And the DEFAULT's own words, because that is the number a reader sees when no
+	// override is in play - the case the 10-minute default got wrong on CI.
+	assert.match(
+		formatLaneBoundLine(computeLaneBound({ override: null })),
+		TWENTY_FIVE_MINUTES,
+	);
 	const off = formatLaneBoundLine(computeLaneBound({ override: "off" }));
 	assert.match(off, OFF_WARNING);
 	assert.match(off, BOUND_OFF);
@@ -123,7 +141,7 @@ test("the trip line names the lane, the bound, and what happened to the pid", ()
 	const line = formatLaneTripLine({ ...base, killed: true });
 	assert.match(line, BOUND_EXCEEDED);
 	assert.match(line, BOARD_FOCUS_LANE);
-	assert.match(line, TEN_MINUTES);
+	assert.match(line, TWENTY_FIVE_MINUTES);
 	assert.match(line, TRIPPED_PID);
 	assert.match(line, STILL_LANDS);
 	// The outcome is part of the claim: a pid that was already gone is reported as
