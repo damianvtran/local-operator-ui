@@ -5790,6 +5790,40 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
 
 		/*
+		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because two surfaces ask
+		 * about it and a second copy of the condition is how they drift.
+		 *
+		 * The row's right group is `[mic][send]` in the ordinary state and gains a
+		 * THIRD 32px box in two: while a turn runs (`canonicalStop.active` draws the
+		 * danger Square), and for the grace window after it ends, where the invisible
+		 * `data-interrupt-slot` below holds the same box open - `slotHold.held` for
+		 * the 500ms window, `isRecording` for as long as a live recording needs a press
+		 * in the box the Stop just left kept off the dictation control.
+		 *
+		 * WHY THE STRIP IS TOLD ABOUT IT (issue #788). The readings cluster's shed
+		 * rule is a container query, and a container query can see a width but not a
+		 * SIBLING: the active-time reading returned at the band's upper edge into a row
+		 * that by then carried 36px more controls, and overran them by ~8px with the
+		 * model name already at its `min-w-14` floor. It did that at EVERY column above
+		 * the band, not just at its edge, because the composer box is capped at
+		 * `--lo-chat-measure` (810 shipped, `styles/index.css`), so the row is 778px at
+		 * every column from 858 up - no width exists at which the running row fits the
+		 * fullest cluster, which is why the fix is the state and not a wider band.
+		 * Measured on both trees by `scripts/composer-readings-geometry.mjs`.
+		 *
+		 * AND THE SLOT'S OWN JSX READS `interruptSlotDrawn` rather than repeating the
+		 * condition, so a change to when the box is drawn cannot leave the shed
+		 * behind - the two questions have one answer by construction.
+		 */
+		const interruptSlotDrawn =
+			canonicalStopAvailable &&
+			!canonicalStop?.active &&
+			(slotHold.held || isRecording) &&
+			!(isLoading && currentJobId);
+		const controlsThirdBox =
+			Boolean(canonicalStop?.active) || interruptSlotDrawn;
+
+		/*
 		 * Whether the suggestion chips are inert.
 		 *
 		 * The draft case is not the composer being disabled - the box is very much
@@ -8422,6 +8456,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										held={sessionStatus.held}
 										readingsDropped={sessionStatus.readingsDropped}
 										pendingModel={sessionStatus.pendingModel}
+										/*
+										 * The row's own third-box predicate, handed down rather than
+										 * re-derived: the strip's shed is the one thing on this row that a
+										 * container query cannot decide, because the box it has to clear
+										 * is a SIBLING appearing rather than the column narrowing
+										 * (issue #788). See the constant's own comment for the
+										 * measurement behind it.
+										 */
+										controlsThirdBox={controlsThirdBox}
 									/>
 								</ErrorBoundary>
 							)}
@@ -8872,41 +8915,38 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * its own `Stop agent` in this cluster; reserving a slot nothing
 									 * will fill would move a control for no reason.
 									 */}
-									{canonicalStopAvailable &&
-										!canonicalStop?.active &&
-										(slotHold.held || isRecording) &&
-										!(isLoading && currentJobId) && (
-											<span
-												aria-hidden="true"
-												data-interrupt-slot=""
-												className={cn(
-													"pointer-events-none invisible flex items-center",
-												)}
+									{interruptSlotDrawn && (
+										<span
+											aria-hidden="true"
+											data-interrupt-slot=""
+											className={cn(
+												"pointer-events-none invisible flex items-center",
+											)}
+										>
+											{/*
+											 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
+											 * what makes "holding the place moves nothing" true rather than
+											 * nearly true (chat redesign §G3, U3).
+											 *
+											 * The control is the icon-only red square again (operator report,
+											 * 2026-09-26 - see the live branch below), so this renders that
+											 * SAME markup invisible: `visibility: hidden` keeps layout,
+											 * unlike `display: none`, so the two boxes agree by construction
+											 * rather than by a measured width that could drift. It carries
+											 * NO accessible name and no labelling attribute, because it must
+											 * stay out of the live probes that select the control by its own
+											 * name and must not be announced.
+											 */}
+											<Button
+												variant="danger"
+												size={isSmallView ? "icon-sm" : "icon"}
+												type="button"
+												tabIndex={-1}
 											>
-												{/*
-												 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
-												 * what makes "holding the place moves nothing" true rather than
-												 * nearly true (chat redesign §G3, U3).
-												 *
-												 * The control is the icon-only red square again (operator report,
-												 * 2026-09-26 - see the live branch below), so this renders that
-												 * SAME markup invisible: `visibility: hidden` keeps layout,
-												 * unlike `display: none`, so the two boxes agree by construction
-												 * rather than by a measured width that could drift. It carries
-												 * NO accessible name and no labelling attribute, because it must
-												 * stay out of the live probes that select the control by its own
-												 * name and must not be announced.
-												 */}
-												<Button
-													variant="danger"
-													size={isSmallView ? "icon-sm" : "icon"}
-													type="button"
-													tabIndex={-1}
-												>
-													<Square aria-hidden="true" />
-												</Button>
-											</span>
-										)}
+												<Square aria-hidden="true" />
+											</Button>
+										</span>
+									)}
 									{canonicalStop?.active && (
 										/*
 										 * THE STOP IS THE ICON-ONLY RED SQUARE IT WAS BEFORE THE
