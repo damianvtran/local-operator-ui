@@ -236,15 +236,58 @@ type UiPreferencesState = {
 	 * now; the canvas is a document you keep open across launches, and this is not
 	 * one - relaunching into a drawer nobody opened, over the asks of a session that
 	 * has not loaded yet, is a surface the user has to dismiss.
+	 *
+	 * AND IT SURVIVES A CONVERSATION SWITCH, WITH THE COMPOSER'S ANSWER MODE RIDING IT
+	 * (agent review round 1, M2). `SessionPanel` is keyed by the conversation, so the
+	 * old in-component `useState` reset to closed on every switch; a store flag does
+	 * not, and neither do the four siblings. So switching A -> B with the drawer open
+	 * shows B's queue in a surface that was opened for A, and if B's head ask is
+	 * answerable the composer comes up in answer mode for a question nobody opened.
+	 *
+	 * IT IS KEPT, deliberately, because the four siblings behave the same way (a
+	 * canvas opened for one conversation stays open over the next) and a second rule
+	 * for one pane is how the five drift apart. The mount-time swap stashes rather
+	 * than loses B's chat draft, the chip and the drawer both show the mode on screen,
+	 * and the ask buffer is per conversation - so the hazard is visible rather than
+	 * silent. The design note's §4.4 sentence ("opening from inside a session can never
+	 * present another session's questions") is about the ENTRY POINT rather than the
+	 * flag: what the chip opens is always this conversation's queue.
+	 *
+	 * AND IT BORROWS THE SLOT RATHER THAN TAKING IT (UX round 1, U6). The exclusivity
+	 * above means opening the drawer writes `isCanvasOpen: false` - and that flag IS
+	 * persisted, so a peek at a queue used to survive as a preference the user never
+	 * expressed: a relaunch restored a window with the canvas gone. The pane the
+	 * drawer displaced is recorded in `askDrawerEvictedPane` and written back when the
+	 * drawer closes, so the durable pane is never actually lost to a transient
+	 * surface. An explicit choice made while the drawer is up (any of the four
+	 * claiming the slot) forfeits the record: the user replaced the pane on purpose,
+	 * and returning it later would be the surface resurrecting itself.
 	 */
 	isAskDrawerOpen: boolean;
+
+	/**
+	 * The DURABLE pane whose slot the asks drawer is currently borrowing, or `null`.
+	 *
+	 * A RECORD OF A BORROW, NOT A PREFERENCE, and it exists because the exclusivity
+	 * rule and the persistence rule pull in opposite directions: the drawer must clear
+	 * the other four flags to hold the slot (`claimRightSlot`), while those flags are
+	 * exactly what a relaunch restores - so without this the drawer's clearance would
+	 * be written to disk as the user's own choice to close the canvas.
+	 *
+	 * It is excluded from persistence itself (it only means something within the run
+	 * that recorded it, like `runPanelReveal`), and `claimRightSlot` clears it whenever
+	 * a durable pane claims the slot, so a deliberate choice always outranks a return.
+	 */
+	askDrawerEvictedPane: DurableRightSlotPane | null;
 
 	/**
 	 * Set the asks drawer open state.
 	 *
 	 * Opening it closes the other four occupants, by the same construction as
 	 * theirs: one slot, one pane, and the exclusion lives in `claimRightSlot` so no
-	 * call site has to remember it.
+	 * call site has to remember it. Whatever pane it displaced is REMEMBERED rather
+	 * than merely cleared, so closing the drawer puts it back (see
+	 * `askDrawerEvictedPane`).
 	 *
 	 * @param open - Whether the asks drawer should be open
 	 */
@@ -741,6 +784,88 @@ export type RunPanelSection =
 export type BrowserPaneScope = "conversation" | "all";
 
 /**
+ * The four DURABLE occupants of the right slot, named by the FLAG that owns each.
+ *
+ * The asks drawer is the slot's fifth pane and the only TRANSIENT one (see
+ * `isAskDrawerOpen`): opening it takes the slot from one of these, and this union is
+ * what lets that borrow be RECORDED and given back (UX round 1, U6). Naming the flag
+ * rather than the pane (`RightSlotPane`'s names are the short ones) is deliberate:
+ * giving the slot back is one write to one field, so the record and the write have to
+ * agree on the field's own name.
+ */
+export type DurableRightSlotPane =
+	| "isCanvasOpen"
+	| "isRunPanelOpen"
+	| "isBrowserPaneOpen"
+	| "isConsolePaneOpen";
+
+/**
+ * The flag that owns each durable pane, keyed by the SHORT name the slot's own
+ * resolver uses (`RightSlotPane`'s spelling, minus the transient `ask`).
+ *
+ * Two spellings of one pane exist because they answer two questions - "which pane is
+ * up?" (the resolver) and "which field do I write?" (a claim or a restore) - and this
+ * map is the single place they are held against each other. A restore that wrote the
+ * short name would set a field nothing reads, which is how a borrowed slot would
+ * come back as an empty one.
+ */
+const DURABLE_PANE_FLAG: Record<
+	Exclude<RightSlotPane, "ask">,
+	DurableRightSlotPane
+> = {
+	canvas: "isCanvasOpen",
+	run: "isRunPanelOpen",
+	browser: "isBrowserPaneOpen",
+	console: "isConsolePaneOpen",
+};
+
+/**
+ * Which pane holds the window's right slot, or null when the slot is empty.
+ *
+ * THE ONE DERIVATION, read by `resolveRightSlotWidth` and by the drawer's borrow
+ * below from the same flags in the same order: `claimRightSlot` keeps at most one of
+ * them true, and this is the reading that says which. A second copy of the order
+ * would be a second answer to "which pane is up?", which is exactly what a reader
+ * of the width and a reader of the borrow must not have.
+ */
+const activeRightSlotPane = (state: {
+	isCanvasOpen: boolean;
+	isRunPanelOpen: boolean;
+	isBrowserPaneOpen: boolean;
+	isConsolePaneOpen: boolean;
+	isAskDrawerOpen: boolean;
+}): RightSlotPane | null =>
+	state.isCanvasOpen
+		? "canvas"
+		: state.isRunPanelOpen
+			? "run"
+			: state.isBrowserPaneOpen
+				? "browser"
+				: state.isConsolePaneOpen
+					? "console"
+					: state.isAskDrawerOpen
+						? "ask"
+						: null;
+
+/**
+ * The DURABLE flag the drawer is about to borrow the slot from, or null.
+ *
+ * `ask` is excluded: a second open of the drawer is not a borrow from itself, and
+ * recording it would be a restore that no-ops. The null is the honest answer for an
+ * empty slot - there is nothing to give back.
+ */
+const evictedFlag = (state: {
+	isCanvasOpen: boolean;
+	isRunPanelOpen: boolean;
+	isBrowserPaneOpen: boolean;
+	isConsolePaneOpen: boolean;
+	isAskDrawerOpen: boolean;
+}): DurableRightSlotPane | null => {
+	const pane = activeRightSlotPane(state);
+	return pane === null || pane === "ask" ? null : DURABLE_PANE_FLAG[pane];
+};
+
+/**
  * Claiming the right slot for one of the FOUR panes that can live in it.
  *
  * The rule, stated once because three of the four panes' docs point at it: the
@@ -780,12 +905,20 @@ const claimRightSlot = (
 	| "isBrowserPaneOpen"
 	| "isConsolePaneOpen"
 	| "isAskDrawerOpen"
+	/*
+	 * AND ANY RECORDED BORROW IS FORFEIT. A durable pane claiming the slot is the user
+	 * choosing what they want there, so the pane the drawer had been covering is not
+	 * owed back any more - restoring it later would reopen a surface the user replaced
+	 * on purpose (UX round 1, U6).
+	 */
+	| "askDrawerEvictedPane"
 > => ({
 	isRunPanelOpen: pane === "isRunPanelOpen",
 	isCanvasOpen: pane === "isCanvasOpen",
 	isBrowserPaneOpen: pane === "isBrowserPaneOpen",
 	isConsolePaneOpen: pane === "isConsolePaneOpen",
 	isAskDrawerOpen: pane === "isAskDrawerOpen",
+	askDrawerEvictedPane: null,
 });
 
 export type RightSlotPane = "canvas" | "run" | "browser" | "console" | "ask";
@@ -854,17 +987,7 @@ export function resolveRightSlotWidth(
 	rowWidth: number,
 	state: UiPreferencesState,
 ): number {
-	const pane: RightSlotPane | null = state.isCanvasOpen
-		? "canvas"
-		: state.isRunPanelOpen
-			? "run"
-			: state.isBrowserPaneOpen
-				? "browser"
-				: state.isConsolePaneOpen
-					? "console"
-					: state.isAskDrawerOpen
-						? "ask"
-						: null;
+	const pane: RightSlotPane | null = activeRightSlotPane(state);
 	if (pane === null) return 0;
 
 	// THE SHARED WIDTH OR THIS PANE'S SEED, HELD UP TO THIS PANE'S FLOOR: one
@@ -1192,6 +1315,7 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			isBrowserPaneOpen: false,
 			isConsolePaneOpen: false,
 			isAskDrawerOpen: false,
+			askDrawerEvictedPane: null,
 			consoleOpenIntent: null,
 			runPanelReveal: null,
 			browserPaneScope: "conversation",
@@ -1289,8 +1413,24 @@ export const useUiPreferencesStore = create<UiPreferencesState>()(
 			},
 
 			setAskDrawerOpen: (open: boolean) => {
-				set(
-					open ? claimRightSlot("isAskDrawerOpen") : { isAskDrawerOpen: false },
+				set((state) =>
+					open
+						? {
+								...claimRightSlot("isAskDrawerOpen"),
+								/*
+								 * WHAT IT DISPLACED, not just that it won: the pane that held the slot a
+								 * moment ago is the one a close owes back, and only this call site knows it
+								 * (the claim itself sees only its own name).
+								 */
+								askDrawerEvictedPane: evictedFlag(state),
+							}
+						: {
+								isAskDrawerOpen: false,
+								...(state.askDrawerEvictedPane === null
+									? null
+									: { [state.askDrawerEvictedPane]: true }),
+								askDrawerEvictedPane: null,
+							},
 				);
 			},
 
@@ -1561,10 +1701,17 @@ export function persistedUiPreferences<
 		runPanelReveal: unknown;
 		consoleOpenIntent: unknown;
 		isAskDrawerOpen: unknown;
+		askDrawerEvictedPane: unknown;
 	},
 >(
 	state: T,
-): Omit<T, "runPanelReveal" | "consoleOpenIntent" | "isAskDrawerOpen"> {
+): Omit<
+	T,
+	| "runPanelReveal"
+	| "consoleOpenIntent"
+	| "isAskDrawerOpen"
+	| "askDrawerEvictedPane"
+> {
 	const {
 		runPanelReveal: _pending,
 		consoleOpenIntent: _intent,
@@ -1576,10 +1723,24 @@ export function persistedUiPreferences<
 		 * they hold documents and viewers the user was reading; the drawer holds a
 		 * queue, which the session republishes on its own.
 		 */
-		isAskDrawerOpen: _drawer,
+		isAskDrawerOpen: drawerOpen,
+		askDrawerEvictedPane: evicted,
 		...persisted
 	} = state;
-	return persisted;
+	/*
+	 * AND THE PANE IT WAS BORROWING FROM COMES BACK (UX round 1, U6). The drawer's
+	 * claim wrote `isCanvasOpen: false` (or the run/browser/console equivalent) to hold
+	 * the slot, and that flag is persisted - so quitting while the drawer happened to
+	 * be open would restore a window missing a document the user had open. The live
+	 * flags are the truth when the drawer is closed; while it is open, the record says
+	 * what the flags were before the borrow, and that is what goes to disk.
+	 *
+	 * The record itself is dropped (`askDrawerEvictedPane` is not persisted): it means
+	 * something only within the run that made it, exactly as `runPanelReveal`'s
+	 * request does.
+	 */
+	if (drawerOpen !== true || typeof evicted !== "string") return persisted;
+	return { ...persisted, [evicted]: true } as typeof persisted;
 }
 
 /**

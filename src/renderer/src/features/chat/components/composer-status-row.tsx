@@ -1244,21 +1244,21 @@ export type ComposerStatusRowProps = {
 	/**
 	 * A PINNED ask clock, for a story whose frames have to be reproducible.
 	 *
-	 * The same prop `AskSurfaces` takes and for the same reason: the item's collapsed
-	 * face now prints the soonest deadline, and a countdown rendered against a moving
-	 * wall clock cannot be photographed twice into the same image. Absent (the app's
-	 * own path), the item reads `useAskClock` - the SAME hook the panel uses - so the
-	 * chip and the panel cannot tick on different cadences.
+	 * Needed for the same reason the drawer's own `nowMs` is: the chip's collapsed face
+	 * prints the soonest deadline, and a countdown rendered against a moving wall clock
+	 * cannot be photographed twice into the same image. Absent (the app's own path),
+	 * the chip reads `useAskClock` - the SAME hook the drawer uses - so the chip and the
+	 * surface it opens cannot tick on different cadences.
 	 */
 	nowMs?: number;
 	/**
 	 * The ask lane's expanded flag and its door, as the row item needs them.
 	 *
-	 * OPTIONAL and CONTROLLED when supplied, exactly as `AskSurfaces` takes the
-	 * same pair: the page that owns the composer owns the flag (the composer's
-	 * routing rule is what it means), so the app path always passes chat-page's
-	 * single `askExpanded`. A story that renders the row on its own lets this
-	 * component own it, so the item's own press still opens the panel there.
+	 * OPTIONAL and CONTROLLED when supplied, exactly as the page supplies the pair it
+	 * owns: `chat-page.tsx`'s `askExpanded` is the store's `isAskDrawerOpen`, and the
+	 * composer's routing rule is what it means, so the flag cannot be re-derived here. A
+	 * story that renders the row on its own lets this component own it, so the item's
+	 * own press still opens the drawer there.
 	 */
 	askExpanded?: boolean;
 	onAskToggle?: (next: boolean) => void;
@@ -1481,16 +1481,16 @@ export const ComposerStatusRow = ({
 	 *
 	 * THE DOOR IS THE FIRST CLAUSE AND THE LOAD-BEARING ONE (agent review round 1,
 	 * F1). The item is a TOGGLE: it reports `aria-expanded`, renames itself on press
-	 * and claims to open the ask history - and the panel it opens is mounted by
+	 * and opens this conversation's asks - and the drawer it opens is mounted by
 	 * exactly one host (chat-content, fed by chat-page's flag). Two other hosts mount
 	 * this same row through `MessageInput` with a canonical frontend that can carry
 	 * `asks` and no lane at all - the mini quick-send window and the agent-config
 	 * composer - and there the item used to render as a focusable, labelled control
-	 * whose only effect was local: it flipped its own state, announced "Collapse the
-	 * ask history", opened nothing, and left the composer in chat mode. A dead
+	 * whose only effect was local: it flipped its own state, announced "Collapse
+	 * this conversation's asks", opened nothing, and left the composer in chat mode. A dead
 	 * affordance is what this codebase refuses elsewhere (the panel's own note on the
 	 * missing dismiss door), so the item renders only where `onAskToggle` is supplied:
-	 * that prop is what says the panel exists in this document.
+	 * that prop is what says the drawer exists in this document.
 	 *
 	 * The remaining two clauses are this row's own rules: `sessionAsks(frontend) !==
 	 * null` is presence-vs-emptiness (`asks` is absent on a backend that does not do
@@ -2720,14 +2720,15 @@ export const ComposerStatusRow = ({
 					 * waiting - so the row's height cannot move between them.
 					 *
 					 * IT IS A TOGGLE, unlike its neighbours, and that is the one structural
-					 * difference the row carries: pressing it opens the ask history IN PLACE
-					 * (the panel), so `aria-expanded` is truthful here where a reveal navigation
-					 * could not use it. `data-lo-ask-item` mirrors that state for the rigs, and
-					 * `data-lo-ask-item-toggle` is the handle the panel's own focus-return and its
-					 * focus-INTO-the-panel move both address, from across the two React trees, and
-					 * `askClaimsEscape` accepts it as the lane's trigger - which is why the item
-					 * carries no `data-lo-ask-surfaces`: that marker is the PANEL's, and a probe
-					 * for "is the panel open?" must not match a closed chip (UX round 1, U3).
+					 * difference the row carries: pressing it opens this conversation's asks IN
+					 * PLACE (the right slot's drawer), so `aria-expanded` is truthful here where a
+					 * reveal navigation could not use it. `data-lo-ask-item` mirrors that state
+					 * for the rigs, and `data-lo-ask-item-toggle` is the handle the drawer's own
+					 * focus-return and its focus-INTO-the-drawer move both address, from across
+					 * the two React trees, and `askClaimsEscape` accepts it as the lane's trigger
+					 * - which is why the item carries no `data-lo-ask-surfaces`: that marker is
+					 * the DRAWER's, and a probe for "is the drawer open?" must not match a closed
+					 * chip (UX round 1, U3).
 					 *
 					 * `HelpCircle` is the panel's own glyph for an open ask, so one glyph in this
 					 * row means one thing; the alternatives the plan and wake chips rejected

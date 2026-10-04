@@ -187,3 +187,142 @@ test("only the app's writer bumps the revision the composer mirrors on", () => {
 	assert.equal(store().inputByConversation[id].currentInput, "");
 	assert.equal(store().inputByConversation[id].unredactedChars, 0);
 });
+
+/*
+ * ---------------------------------------------------------------------------
+ * The drawer's own affordances, on the same mount.
+ *
+ * WHY HERE. This file is the drawer's jsdom mount rig - the one place the shipped
+ * `AskDrawer` renders against the shipped stores - so the four claims the round-1
+ * reviews made about the SURFACE rather than about the swap are pinned on the same
+ * instrument: where the keyboard lands (UX U4), what the settled header says (agent
+ * review M1 = UX U1 = design D1), what the bar counts (UX U5), and what the card
+ * draws for an answer the option list never offered (design D2's addendum). Each of
+ * those was found by looking at a frame or driving the app; none of them had a
+ * signal in CI, which is the defect this section closes.
+ * ---------------------------------------------------------------------------
+ */
+
+/** An ask whose first question carries a radio pair, plus the settled fixtures. */
+const radioAsk = {
+	...openAsk,
+	questions: [
+		{
+			id: "target",
+			question: "Which environment?",
+			options: [{ label: "staging" }, { label: "production" }],
+		},
+	],
+};
+
+const settled = (status, id) => ({
+	...openAsk,
+	ask_id: id,
+	status,
+	questions: [
+		{
+			id: "target",
+			question: "Which environment?",
+			options: [{ label: "staging" }, { label: "production" }],
+		},
+	],
+});
+
+test("the keyboard lands on the card's first option, not on the dismiss (UX U4)", async () => {
+	// The trigger the app's own press leaves focus on: the chip is the only state
+	// the mount's focus move accepts, which is what keeps it the user's gesture.
+	const chip = document.createElement("button");
+	chip.setAttribute("data-lo-ask-item-toggle", "");
+	document.body.appendChild(chip);
+	chip.focus();
+	assert.equal(document.activeElement, chip);
+	const view = await mount(
+		h(AskDrawer, { frontend: frontend([radioAsk]), scope: "session" }),
+	);
+	const active = document.activeElement;
+	assert.equal(
+		active?.getAttribute("data-ask-option"),
+		"staging",
+		"the surface must not open with its own exit under the keyboard",
+	);
+	assert.notEqual(active?.getAttribute("aria-label"), "Close asks");
+	// And the bar is still reachable: one Shift+Tab up, which jsdom cannot walk -
+	// the assertion that it is focusable at all is the point here.
+	const dismiss = view.container.querySelector('[aria-label="Close asks"]');
+	assert.ok(dismiss, "the dismiss is still the bar's trailing control");
+	await view.unmount();
+	chip.remove();
+});
+
+test("the settled header names the words the section actually holds (M1 = U1 = D1)", async () => {
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk, settled("declined", "a-declined")]),
+			scope: "session",
+		}),
+	);
+	const header = view.container.querySelector("[data-lo-ask-settled]");
+	assert.ok(header, "the section renders for one settled ask");
+	const text = header.textContent ?? "";
+	assert.ok(text.includes("Settled · 1"), "the count is the section's own");
+	assert.ok(
+		text.includes("Declined"),
+		"the one word the section holds is named",
+	);
+	// The two claims the fixed legend made and could not keep: `timed out` can never
+	// be in the section (the outstanding set folds it in), and a word the section
+	// does not hold must not be printed.
+	assert.ok(!text.includes("timed out"), "a word the section cannot hold");
+	assert.ok(
+		!text.toLowerCase().includes("answered"),
+		"a word not in this section",
+	);
+	assert.ok(!text.includes("dismissed"), "a word not in this section");
+	await view.unmount();
+});
+
+test("the bar counts what the surface shows, not only what the agent waits on (UX U5)", async () => {
+	const movedOn = { ...radioAsk, ask_id: "a-moved", status: "timed_out" };
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk, movedOn]),
+			scope: "session",
+		}),
+	);
+	const scope = view.container.querySelector("[data-ask-scope]");
+	assert.equal(
+		scope?.textContent,
+		"This conversation · 1 waiting, 1 moved on",
+		"both answerable cards the drawer draws are counted",
+	);
+	await view.unmount();
+});
+
+test("an answer that is not one of the labels is DRAWN as Other (design D2)", async () => {
+	// What the composer's door produces: `sendToAsk` writes the raw typed text into
+	// the first unanswered question's draft, so the value is a string no option row
+	// could have written.
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			drafts: { "a-7f3c": { target: ["prod"] } },
+			onDraftChange: () => undefined,
+		}),
+	);
+	const row = view.container.querySelector('[data-ask-option-other="prod"]');
+	assert.ok(row, "the free-form answer is on the card");
+	assert.equal(row.getAttribute("role"), "radio");
+	assert.equal(row.getAttribute("aria-checked"), "true");
+	assert.ok(
+		(row.textContent ?? "").includes("Other"),
+		"and it is marked as the other kind",
+	);
+	// The option rows are NOT selected: the value came from elsewhere, and the card
+	// says so rather than showing an empty group beside a question already answered.
+	const production = view.container.querySelector(
+		'[data-ask-option="production"]',
+	);
+	assert.equal(production?.getAttribute("aria-checked"), "false");
+	await view.unmount();
+});

@@ -1883,11 +1883,13 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 */
 								askMode={Boolean(canonical?.askComposerPlaceholder)}
 								/*
-								 * THE ASK LANE'S DOOR, forwarded to the STATUS ROW rather than to
-								 * `AskSurfaces`: the trigger is a row item now, and the page owns the ONE
-								 * flag both halves read (see `AskSurfacesProps.expanded`). Handing the same
-								 * `canonical` pair to both keeps the row item's state and the panel's state
-								 * the same state - a second copy is the one thing that rule forbids.
+								 * THE ASK LANE'S DOOR, forwarded to the STATUS ROW rather than to the
+								 * drawer: the trigger is a row item now, and the page owns the ONE flag that
+								 * row, the composer's routing rule and the drawer all read
+								 * (`chat-page.tsx`'s `askExpanded`, the store's `isAskDrawerOpen`). Handing
+								 * the same `canonical` pair to both keeps the row item's state and the
+								 * drawer's state the same state - a second copy is the one thing that rule
+								 * forbids.
 								 */
 								askExpanded={canonical?.askExpanded}
 								onAskToggle={canonical?.onAskToggle}
@@ -2245,6 +2247,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 						<PaneSlot
 							width={canvasWidth}
 							tourTag="ask-drawer-slot"
+							/*
+							 * THE MODE THE SLOT RESOLVED FOR THIS DRAWER - `docked` beside the
+							 * conversation, `overlay` when the row cannot host it - written for a rig to
+							 * read, mirroring the canvas dock's own `data-canvas-mode` (read by
+							 * `scripts/renderer-driver.mjs`'s canvas-dock probe). Its reader is
+							 * `scripts/pane-slot-ground.test.mjs`, which pins both values on this call
+							 * site (agent review round 1, N3); the frames under
+							 * `docs/evidence/ask-drawer/after/dock-asks/` are the visual half.
+							 */
 							data-ask-mode={canvasDocked ? "docked" : "overlay"}
 						>
 							<AskDrawer

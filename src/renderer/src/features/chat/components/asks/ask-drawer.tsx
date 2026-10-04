@@ -35,8 +35,9 @@
  * ## Dismiss
  *
  * The trailing control of the chrome bar closes the drawer WITHOUT answering, and
- * Escape does the same; neither declines. That is `ask-surfaces.tsx`'s
- * Esc-collapses-without-declining rule (design §5.1's D5) unchanged, and the
+ * Escape does the same; neither declines. That is the ask lane's
+ * Esc-collapses-without-declining rule (design §5.1's D5, carried over from the
+ * in-band panel this container replaced) unchanged, and the
  * per-ask "no dismiss door" note in `ask-panel.tsx` is about DISMISSING ONE ASK (no
  * backend route) - a different act from closing the surface, which is why the two
  * are not in tension. The drawer also closes itself when the queue empties, so the
@@ -46,9 +47,13 @@
  *
  * Entering is the user's own press and nothing else: the mount finds focus on the
  * status-row item (`ASK_ITEM_SELECTOR`) or it moves nothing, which is what keeps the
- * lane's no-focus-steal promise (whose subject is an ask ARRIVING) intact. Leaving
- * returns focus to that item, but only when focus was actually stranded - a close
- * from the composer leaves the caret in the box where the user is typing, and
+ * lane's no-focus-steal promise (whose subject is an ask ARRIVING) intact. WHERE it
+ * lands is the CARD's first control and not the bar's (UX round 1, U4): the bar's
+ * leading control in DOM order is the dismiss, so the old "first focusable in the
+ * drawer" put the surface's exit under the first Enter - a second press closed the
+ * thing the user had just opened. The bar is still reachable, one Shift+Tab up.
+ * Leaving returns focus to that item, but only when focus was actually stranded - a
+ * close from the composer leaves the caret in the box where the user is typing, and
  * moving it there would be the same theft. The return is deferred one frame because
  * React runs an unmounting component's cleanup BEFORE it detaches the nodes, so a
  * synchronous read would still see the drawer's own focused child.
@@ -85,6 +90,17 @@ import { AskPanel } from "./ask-panel";
  */
 const ASK_DRAWER_FOCUSABLE =
 	'a[href]:not([aria-disabled="true"]), button:not([disabled]):not([aria-disabled="true"]), [tabindex]:not([tabindex="-1"]):not([aria-disabled="true"]), input:not([disabled]):not([aria-disabled="true"]), select:not([disabled]):not([aria-disabled="true"]), textarea:not([disabled]):not([aria-disabled="true"])';
+
+/**
+ * The panel whose first control the keyboard lands on, and its own marker.
+ *
+ * The drawer is a bar plus a list, and the LIST is what the user opened the surface
+ * for. `ASK_PANEL_SELECTOR` is the panel's existing root marker (`ask-panel.tsx`),
+ * so this is a read of a contract that already exists rather than a second one: a
+ * settled-only queue has no live control, and the fallbacks below then take the
+ * root instead.
+ */
+const ASK_PANEL_SELECTOR = "[data-lo-ask-panel]";
 
 export type AskDrawerProps = {
 	frontend: Pick<
@@ -183,7 +199,19 @@ export const AskDrawer = ({
 		if (active === null || !active.matches?.(ASK_ITEM_SELECTOR)) return;
 		const root = rootRef.current;
 		if (root === null) return;
-		(root.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ?? root).focus();
+		/*
+		 * THE CARD'S FIRST CONTROL, not the bar's (UX round 1, U4). The bar leads the
+		 * DOM, and its first focusable is the DISMISS - so the surface used to open with
+		 * its exit under the keyboard: press the chip, press Enter again, and the drawer
+		 * you just opened closes. The focused node is the head card's first live option
+		 * (`input`, an option row, or the free-text field), falling back to the panel
+		 * root (a settled-only queue has no control, and `tabIndex={-1}` there is the
+		 * deliberate landing) and then to the drawer itself.
+		 */
+		const panel = root.querySelector<HTMLElement>(ASK_PANEL_SELECTOR);
+		const landing =
+			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ?? panel ?? root;
+		landing.focus();
 	}, []);
 
 	/*
