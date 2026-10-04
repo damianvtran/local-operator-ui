@@ -681,3 +681,116 @@ export const FullTextAtFloor: Story = {
 		onDecline: noop,
 	},
 };
+
+/**
+ * THE CHANGE-BACK WINDOW (design §10, #1936)
+ * ------------------------------------------
+ *
+ * Between the answer landing in the log and the response row existing, the agent
+ * has been told NOTHING — so the answer is still the user's to change, and the
+ * card says so with a control of its own. The window closes on delivery, which is
+ * why the control is gated on the WIRE's `delivered` flag and on nothing else:
+ * §10 forbids inferring a revision from the values (equal values are not a retry
+ * marker, different values are not a revision), so the client states the intent by
+ * sending the op and this surface never guesses it.
+ *
+ * `Changeable` and `ChangeRefused` are the two states §10's evidence asks for: the
+ * affordance while the window is open, and the owner's own refusal
+ * (`already delivered — send a new message`) rendered IN PLACE on the same row,
+ * because a silent no-op would be the worse failure. `RevisedAfterChange` is what
+ * the wire publishes once a revision is accepted: the same answer frame, carrying
+ * the LATEST `revised` event's map (the fold reads the effective answers from it,
+ * and the status, stamp and attribution stay the FIRST answer's).
+ *
+ * The form itself is not a story: it is one press away (`Change answer`), and the
+ * PR's frames show it clicked rather than a fixture that skips the press.
+ */
+function changeableAsk(): PendingAsk {
+	return ask({
+		ask_id: "a-change",
+		status: "answered",
+		/*
+		 * THE FLAG THE CONTROL READS, and the whole reason this fixture is not
+		 * `answeredAsk()`: delivered `true` is history and offers nothing, which is
+		 * asserted as its own negative in `scripts/ask-revise.test.mjs`.
+		 */
+		delivered: false,
+		answered_at: TS + 4 * MINUTE,
+		answered_by: { surface: "desktop" },
+		answers: { target: ["staging"], confirm: ["yes"] },
+		questions: [
+			{
+				id: "target",
+				question: "Which environment should I deploy this to?",
+				recommended: 0,
+				options: [
+					{ label: "staging", description: "The shared pre-prod cluster" },
+					{ label: "production", description: "Live traffic" },
+				],
+				multi: false,
+			},
+			{
+				id: "confirm",
+				question: "Should I run the migration first?",
+				options: [{ label: "yes" }, { label: "no" }],
+				multi: false,
+			},
+		],
+	});
+}
+
+/** The same ask after an accepted revision: the latest map, still undelivered. */
+function revisedAsk(): PendingAsk {
+	return ask({
+		...changeableAsk(),
+		answers: { target: ["production"], confirm: ["yes"] },
+	});
+}
+
+export const Changeable: Story = {
+	args: {
+		frontend: frontend([changeableAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+	},
+};
+
+export const ChangeRefused: Story = {
+	args: {
+		frontend: frontend([changeableAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+		/*
+		 * THE OWNER'S OWN SENTENCE, byte for byte what the runtime emits once the
+		 * response row exists (`asks/render.REVISED_ALREADY_DELIVERED`). The row is
+		 * still drawn from a frame that predates the delivery, which is exactly the
+		 * reachable path §10 says must be rendered rather than swallowed.
+		 */
+		outcomes: {
+			"a-change": {
+				sending: false,
+				refused: "already delivered — send a new message",
+			},
+		},
+	},
+};
+
+export const RevisedAfterChange: Story = {
+	args: {
+		frontend: frontend([revisedAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+	},
+};
