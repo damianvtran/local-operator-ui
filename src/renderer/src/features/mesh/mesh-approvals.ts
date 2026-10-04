@@ -114,11 +114,8 @@ export type MeshApprovalRow = {
 /**
  * The NON-TERMINAL states: an onboarding that is waiting, approved, running or
  * stopped-but-retryable. `connected`/`denied`/`expired` are terminal
- * (`network/approvals.py::TERMINAL_STATES`), and the badge counts everything
- * here — "pending connection/install approvals" in the operator's words covers
- * the whole flight, so the badge stays up through `approved` and `connecting`
- * and drops when the record settles (including a `failed` runner, which is the
- * state a person should not miss).
+ * (`network/approvals.py::TERMINAL_STATES`), so this is the set a record can
+ * still move out of — the store's own line between a live record and history.
  */
 const OPEN_STATES: ReadonlySet<string> = new Set([
 	"requested",
@@ -131,9 +128,34 @@ export function isOpenApproval(state: string): boolean {
 	return OPEN_STATES.has(state);
 }
 
-/** The number the rail badge and the tray heading count. */
-export function pendingApprovalCount(rows: readonly MeshApprovalRow[]): number {
-	return rows.filter((row) => isOpenApproval(row.state)).length;
+/**
+ * THE WAITING SET: `requested` is the ONE state that asks the OPERATOR for
+ * something.
+ *
+ * WHY THIS SPLIT EXISTS (operator round, 2026-10-03). The badge and the tray
+ * heading used to count the whole non-terminal flight, so a record the operator
+ * had already approved still sat under "1 waiting" beside an `Approved` chip
+ * with `Deny` still offered — a screenshot the operator read as one
+ * contradictory state. "A spent approval is a record, not a prompt": every
+ * other state is a fact the surface reports, only `requested` is a decision it
+ * waits on. So the count says waiting, the live panel draws waiting, and the
+ * settled states are records (`mesh-approvals-tray.tsx` renders that split).
+ */
+export function isWaitingApproval(state: string): boolean {
+	return state === "requested";
+}
+
+/**
+ * The number the rail badge and the tray heading count: records WAITING ON THE
+ * OPERATOR, and nothing else — one number with one meaning on both surfaces,
+ * because a badge that counted more would disagree with the panel it opens.
+ *
+ * (It counted the whole flight before the 2026-10-03 split; the store's own
+ * "failed is the state a person should not miss" concern now rides the tray's
+ * records section, which opens by default while a failed record is in it.)
+ */
+export function waitingApprovalCount(rows: readonly MeshApprovalRow[]): number {
+	return rows.filter((row) => isWaitingApproval(row.state)).length;
 }
 
 /** `approve` is offered on `requested` alone: every other open state is past the decision. */
@@ -254,21 +276,56 @@ export function approvalRows(value: unknown): MeshApprovalRow[] {
 /* --------------------------------------------------------------- labels */
 
 /**
- * What the row is about, for the card's title and the resolved lines: the device
- * for a `device_onboard` (name, else its id's tail — `deviceLabel`'s one rule),
- * "this machine" for a `local_authority` bootstrap, which is about the reader's
- * own machine by definition.
+ * What the row is about, for the summary sentence and the record rows: the
+ * device for a `device_onboard` (name, else its id's tail — `deviceLabel`'s one
+ * rule), "this machine" for a `local_authority` bootstrap, which is about the
+ * reader's own machine by definition.
  */
 export function approvalSubject(row: MeshApprovalRow): string {
 	if (row.kind === "machine") return "this machine";
 	return deviceLabel({ device_id: row.where.deviceId, name: row.where.name });
 }
 
-/** The card's title: the record's own verb, sentence case. */
-export function approvalTitle(row: MeshApprovalRow): string {
-	return row.kind === "machine"
-		? "Set up operator authority on this machine"
-		: `Onboard ${approvalSubject(row)}`;
+/**
+ * The summary sentence: what this record is actually asking, in one line of
+ * plain language, BEFORE any detail (operator round, 2026-10-03 — the
+ * complaint, verbatim: "six capability chips + three definition lines must be
+ * assembled by the reader").
+ *
+ * WHY IT IS THE CARD'S ONLY ALWAYS-VISIBLE COPY, AND WHY IT IS COMPLETE. The
+ * old card led with a title, a where line, a chip per scope and up to three
+ * definition rows, and the reader had to assemble the ask from all of it. This
+ * sentence is built from the record's own scopes in the CLI's order, so it
+ * states what the decision covers — trust-bearing scopes included, which the
+ * chips used to leave to a legend — while the precise per-scope consequences
+ * stay one disclosure away (`approvalScopeEntries`).
+ *
+ * The join clause names the network the page already shows when it has it (the
+ * same `networkNames` fallback `approvalScopeEntries` uses, UX round 1 U1).
+ */
+export function approvalSummary(
+	row: MeshApprovalRow,
+	networkNames?: ReadonlyMap<string, string>,
+): string {
+	const head =
+		row.kind === "machine"
+			? "Set up operator authority on this machine"
+			: `Onboard ${approvalSubject(row)}`;
+	const clauses = approvalScopeEntries(row, networkNames).map(
+		(entry) => entry.clause,
+	);
+	if (!clauses.length) return `${head}.`;
+	return `${head}: ${joinClauses(clauses)}.`;
+}
+
+/**
+ * The clauses joined the way a sentence lists them: commas, one `and` before the
+ * last — "a, b and c". One clause renders bare; the head's colon already
+ * introduced the list.
+ */
+function joinClauses(clauses: readonly string[]): string {
+	if (clauses.length === 1) return clauses[0];
+	return `${clauses.slice(0, -1).join(", ")} and ${clauses[clauses.length - 1]}`;
 }
 
 /**
@@ -309,20 +366,76 @@ export function approvalRequesterLabel(row: MeshApprovalRow): string | null {
 }
 
 /**
- * The scope chips, in the CLI's own order and wording, so the two surfaces read
- * one sentence: connect / install / install operator anchor / join … as … /
- * trust unattended sessions / grant ….
+ * The record's scopes, each with the three strings a surface needs: the CLI's
+ * label (`term`), the short clause `approvalSummary` joins into its sentence
+ * (`clause`), and the full consequence the details disclosure shows
+ * (`consequence`).
+ *
+ * ONE LIST, THREE READERS, ONE ORDER — the CLI's own (`connect` / `install` /
+ * `install operator anchor` / `join … as …` / `trust unattended sessions` /
+ * `grant …`, `network/cli.py::_approval_lines`), so the summary, the details
+ * and the CLI's listing cannot disagree about what a record carries.
+ *
+ * WHY CONSEQUENCES AND NOT CHIPS (operator round, 2026-10-03): "the capability
+ * list reads as a list of consequences, not a wall of chips". `connect` and
+ * `install` are ordinary words, but they are still consequences of approving,
+ * so they get sentences of their own beside the scopes that always had glosses
+ * (anchor / unattended / grants — U2's frozen wording, reused verbatim, so
+ * seven review rounds of direction fixes are not re-litigated here).
  */
-export function approvalScopeLabels(
+export type MeshApprovalScopeEntry = {
+	/** The CLI's own label for the scope. */
+	term: string;
+	/** The short clause `approvalSummary` joins into its sentence. */
+	clause: string;
+	/** The full consequence sentence for the details disclosure. */
+	consequence: string;
+};
+
+export function approvalScopeEntries(
 	row: MeshApprovalRow,
 	networkNames?: ReadonlyMap<string, string>,
-): string[] {
+): MeshApprovalScopeEntry[] {
 	const { connect, install, anchor, networkId, role, unattended, grants } =
 		row.what;
-	const labels: string[] = [];
-	if (connect) labels.push("connect");
-	if (install) labels.push("install");
-	if (anchor) labels.push("install operator anchor");
+	const entries: MeshApprovalScopeEntry[] = [];
+	if (connect)
+		entries.push({
+			term: "connect",
+			clause: row.where.transport
+				? `connect over ${row.where.transport}`
+				: "connect to it",
+			consequence: row.where.transport
+				? `this machine may connect to it over ${row.where.transport}`
+				: "this machine may connect to it",
+		});
+	if (install)
+		entries.push({
+			term: "install",
+			clause:
+				row.kind === "machine"
+					? "install Local Operator"
+					: "install Local Operator there",
+			consequence:
+				row.kind === "machine"
+					? "Local Operator is installed on this machine"
+					: "Local Operator is installed on it",
+		});
+	if (anchor)
+		entries.push({
+			term: "install operator anchor",
+			/*
+			 * THE DIRECTION MATTERS, AND THIS SAID IT BACKWARDS ONCE (agent review round 4,
+			 * R4-1). A remote anchor is PUBLIC data — the core's own copy for a verify-only
+			 * host is "an anchor is installed … but the private half is not on this host,
+			 * so nothing can be SIGNED there" (`network/readiness.py`). The node VERIFIES;
+			 * it never signs. A gloss saying the remote is "trusted to sign as you" states
+			 * the inverse of the authority at the exact moment the reader consents to it.
+			 */
+			clause: "check approvals signed on your machines",
+			consequence:
+				"that device can check approvals signed on your machines; nothing there can sign",
+		});
 	if (networkId) {
 		/*
 		 * THE NETWORK'S NAME WHEN THE PAGE HAS IT, its id only as the fallback
@@ -336,14 +449,41 @@ export function approvalScopeLabels(
 		 * id is better than a blank.
 		 */
 		const named = networkNames?.get(networkId);
-		labels.push(`join ${named || networkId} as ${role || "?"}`);
+		const label = `join ${named || networkId} as ${role || "?"}`;
+		entries.push({
+			term: label,
+			clause: label,
+			consequence: `it joins ${named || networkId} as ${role || "?"}`,
+		});
 	}
-	if (unattended) labels.push("trust unattended sessions");
-	/* The chip and its gloss must name the capability the same way, or one card
-		   states one capability twice under two names (R5-1's `grant unattended`). */
-	for (const grant of distinctGrants(grants, unattended))
-		labels.push(GRANT_PHRASES[grant]?.term ?? `grant ${grant}`);
-	return labels;
+	if (unattended)
+		entries.push({
+			term: "trust unattended sessions",
+			/*
+			 * THE CONSEQUENCE AND THE RIGHT PARTY (UX round 2, U8; agent review round 4,
+			 * R4-2). `onboard.py::step_grants` is explicit - "what the node lets THIS
+			 * device do ... both the `approve` scope and the `unattended` scope are
+			 * grants the NODE holds about the operator's device id" - and
+			 * `CAPABILITY_WORDS["unattended"]` reads "start sessions here without
+			 * approval prompts". The prompt that stops being asked is the node's own.
+			 */
+			clause: "run sessions there without an approval prompt",
+			consequence:
+				"sessions you start on that device run without an approval prompt there",
+		});
+	/* The clause and the consequence must name the capability the same way as
+		   the term, or one card states one capability under two names (R5-1's
+		   `grant unattended`). */
+	for (const grant of distinctGrants(grants, unattended)) {
+		const phrase = GRANT_PHRASES[grant];
+		entries.push({
+			term: phrase?.term ?? `grant ${grant}`,
+			clause: GRANT_CLAUSES[grant] ?? `use the ${grant} capability`,
+			/* The capability is held by YOUR device, about the node (R4-2). */
+			consequence: phrase?.gloss ?? `you may ${grant} on that device`,
+		});
+	}
+	return entries;
 }
 
 /**
@@ -416,91 +556,29 @@ const GRANT_PHRASES: Record<string, { term: string; gloss: string }> = {
 };
 
 /**
- * One gloss per scope a reader cannot be expected to know (UX round 1, U2).
+ * The summary clause for a capability token, so the sentence stays a sentence.
  *
- * The card's single sentence explains the GESTURE ("approving signs with this
- * machine's operator key"); what it never said was what each authorised SCOPE
- * means - and the two scopes the design made salient are exactly the two a
- * non-expert cannot interpret. A glossary that names them is cheaper than a
- * user learning them by approving once.
- *
- * Only the scopes that need it appear: `connect`/`install`/`join` are ordinary
- * words, so glossing them would bury the two that are not.
+ * MIRRORS THE CORE'S OWN TABLE: `types.CAPABILITY_WORDS` already maps every
+ * grantable token to words ("steer a running turn here"), and this is that table
+ * with the direction rule every gloss on this card follows (R4-2): the node
+ * granted THIS device the capability, so the clause reads from the reader's
+ * side - the same `here` to `there` flip `GRANT_PHRASES`' glosses already carry.
+ * A token the core grows later falls back to the honest generic rather than
+ * rendering a raw identifier inside a sentence.
  */
-export function approvalScopeGlosses(
-	row: MeshApprovalRow,
-): { term: string; gloss: string }[] {
-	const { anchor, unattended, grants } = row.what;
-	const glosses: { term: string; gloss: string }[] = [];
-	if (anchor)
-		glosses.push({
-			term: "install operator anchor",
-			/*
-			 * THE DIRECTION MATTERS, AND THIS SAID IT BACKWARDS (agent review round 4,
-			 * R4-1). A remote anchor is PUBLIC data - the core's own copy for a
-			 * verify-only host is "an anchor is installed ... but the private half is
-			 * not on this host, so nothing can be SIGNED there" (`network/readiness.py`),
-			 * and its shipped sentence is "approvals for offloaded work can be signed
-			 * from your devices". The node VERIFIES; it never signs. A gloss saying the
-			 * remote is "trusted to sign as you" states the inverse of the authority at
-			 * the exact moment the reader consents to it.
-			 */
-			gloss:
-				"that device can check approvals signed on your machines; nothing there can sign",
-		});
-	if (unattended)
-		glosses.push({
-			term: "trust unattended sessions",
-			/*
-			 * THE CONSEQUENCE AND THE RIGHT PARTY (UX round 2, U8; agent review round 4,
-			 * R4-2). `onboard.py::step_grants` is explicit - "what the node lets THIS
-			 * device do ... both the `approve` scope and the `unattended` scope are
-			 * grants the NODE holds about the operator's device id" - and
-			 * `CAPABILITY_WORDS["unattended"]` reads "start sessions here without
-			 * approval prompts". The prompt that stops being asked is the node's own.
-			 */
-			gloss:
-				"sessions you start on that device run without an approval prompt there",
-		});
-	for (const grant of distinctGrants(grants, unattended))
-		glosses.push(
-			GRANT_PHRASES[grant] ?? {
-				term: `grant ${grant}`,
-				/* The capability is held by YOUR device, about the node (R4-2). */
-				gloss: `you may ${grant} on that device`,
-			},
-		);
-	return glosses;
-}
-
-/**
- * The scopes that ask for MORE than a connection, and so wear their own register.
- *
- * WHY THIS EXISTS (design round 1, D1). All six chips measured the same
-triple - 12px/500, `sunken` ground, one `hairline` border, 23.4px tall, 9.08:1
-dark / 7.18:1 light - so `install operator anchor` and `trust unattended
-sessions` read exactly like `connect` on the one card whose entire purpose is
-informed consent to an operator-key signing gesture. The card is not a summary
-of a connection; two of its scopes hand over trust, and the reader has to be
-able to see which ones without reading a legend twice.
- *
- * `attention` is the house variant for "read this before you answer" (the state
- * chip on a `requested` record already wears it), so the consequence-bearing
- * scopes borrow a register the surface has already taught the reader, rather
- * than a new one invented here.
- *
- * Keyed by LABEL because that is what the chip renders and what the test can
- * read; the labels are built in one place (`approvalScopeLabels`) and pinned
- * beside this list, so the two cannot drift silently.
- */
-const CONSEQUENCE_SCOPE_LABELS: ReadonlySet<string> = new Set([
-	"install operator anchor",
-	"trust unattended sessions",
-]);
-
-export function approvalScopeTone(label: string): "attention" | "neutral" {
-	return CONSEQUENCE_SCOPE_LABELS.has(label) ? "attention" : "neutral";
-}
+const GRANT_CLAUSES: Record<string, string> = {
+	list: "see its sessions",
+	view: "watch a session there",
+	prompt: "send prompts to a session there",
+	steer: "steer a running turn there",
+	stop: "stop a session there",
+	slash: "run slash commands there",
+	delete: "archive or delete a session there",
+	move: "move sessions to or from there",
+	broker_credential: "borrow the logins stored there",
+	approve: "answer approval prompts there",
+	unattended: "run sessions there without an approval prompt",
+};
 
 /**
  * "expires in 42 minutes" — the record's ONE window (§2.1: 60 minutes by

@@ -1609,32 +1609,123 @@ export const InviteReceipt: Story = {
 };
 
 /**
- * The approvals tray: one record WAITING on the operator and one already running.
- *
- * The two registers the tray has to tell apart in one frame: the card that asks
- * (scopes, requester, window, Approve/Deny) and the card that reports (a
- * `connecting` record, where the store's own matrix offers only the mid-run
- * deny).
+ * The approvals tray with one record WAITING on the operator: the prompt the
+ * live panel exists for, and nothing else on it. The settled registers live in
+ * `ApprovalsRecords`/`ApprovalsRecordsOpen` below, because a spent approval is
+ * a record, not a prompt (operator round, 2026-10-03).
  *
  * NO `play`, ON PURPOSE (design round 1). It used to press Approve on render, so
  * the frame this story is named for - the ASKING card - was never the one it
- * photographed: a reader comparing `approvals-waiting` against the surface
- * saw the post-decision registers and had no still of the state the whole
- * surface exists for. The write path is proven by `ApprovalsDecisionWrites`
- * beside this one, where the story's own name says that is what it drives.
+ * photographed: a reader comparing `approvals-waiting` against the surface saw
+ * the post-decision registers and had no still of the state the whole surface
+ * exists for. The write path is proven by `ApprovalsDecisionWrites` beside this
+ * one, where the story's own name says that is what it drives.
  */
 export const ApprovalsWaiting: Story = {
 	render: () => {
 		installBridge({
 			...singleDeviceFixture(),
+			approvals: [approvalRecord({})],
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * None waiting, several decided: the records section at rest - the header with
+ * no count, and the one-line toggle holding everything the read still carries
+ * (a decision made, a run in flight, a completed connect).
+ */
+export const ApprovalsRecords: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
 			approvals: [
-				approvalRecord({}),
 				approvalRecord({
 					approval_id: "ap_7q0w5n2x9k4m",
-					state: "connecting",
+					state: "approved",
 					name: "studio-mini",
 					host: "studio-mini.local",
 					user: "builder",
+				}),
+				approvalRecord({
+					approval_id: "ap_3m8c1v6b0n2x",
+					state: "connecting",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
+				}),
+				approvalRecord({
+					approval_id: "ap_9z5t4r7k1m3w",
+					state: "connected",
+					name: "field-kit",
+					host: "field-kit.local",
+					user: "damian",
+				}),
+			],
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * The same several records with the section OPEN - the expanded state, driven by
+ * a real press on the toggle so the frame and the control's own state agree.
+ */
+export const ApprovalsRecordsOpen: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({
+					approval_id: "ap_7q0w5n2x9k4m",
+					state: "approved",
+					name: "studio-mini",
+					host: "studio-mini.local",
+					user: "builder",
+				}),
+				approvalRecord({
+					approval_id: "ap_3m8c1v6b0n2x",
+					state: "connecting",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
+				}),
+				approvalRecord({
+					approval_id: "ap_9z5t4r7k1m3w",
+					state: "connected",
+					name: "field-kit",
+					host: "field-kit.local",
+					user: "damian",
+				}),
+			],
+		});
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(
+			await screen.findByRole("button", { name: /^Records \(/ }),
+		);
+	},
+};
+
+/**
+ * A stopped runner: `failed` is the one record state the store says "a person
+ * should not miss", so the section opens itself while one is inside, and the
+ * record's remaining write wears its consequence - "Abandon", never "Deny".
+ */
+export const ApprovalsStopped: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({
+					approval_id: "ap_f4i1l2e3d4x",
+					state: "failed",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
 				}),
 			],
 		});
@@ -1644,32 +1735,26 @@ export const ApprovalsWaiting: Story = {
 
 /**
  * The decision path the badge exists for, driven: approve, then watch the record
- * settle to `approved` through the invalidation refetch - because a still
- * cannot show that the button writes and the read moves.
- *
- * Split out of `ApprovalsWaiting` (design round 1): a story whose `play` runs on
- * every view is a story whose still is not the state it is named for.
+ * settle to `approved` through the invalidation refetch - and open the records
+ * section it collapsed into. A still cannot show that the button writes, the
+ * read moves, and the settled state leaves the live panel; this story's `play`
+ * walks all three.
  */
 export const ApprovalsDecisionWrites: Story = {
 	render: () => {
 		installBridge({
 			...singleDeviceFixture(),
-			approvals: [
-				approvalRecord({}),
-				approvalRecord({
-					approval_id: "ap_7q0w5n2x9k4m",
-					state: "connecting",
-					name: "studio-mini",
-					host: "studio-mini.local",
-					user: "builder",
-				}),
-			],
+			approvals: [approvalRecord({})],
 		});
 		return <MeshPage />;
 	},
 	play: async () => {
 		const user = userEvent.setup();
 		await user.click(await screen.findByRole("button", { name: "Approve" }));
+		/* The record LEFT the panel: no waiting count, one record in the section. */
+		await user.click(
+			await screen.findByRole("button", { name: /^Records \(/ }),
+		);
 		await screen.findByText("Approved");
 	},
 };
