@@ -1,0 +1,461 @@
+{
+  "what": "The rendered-DOM audit's readings for the operator-report pair, captured 2026-10-04 at head 57db05b8deb (the fix's own commit). BEFORE = the same stories rendered by `origin/main`'s `mesh-card.tsx`/`mesh-node.tsx`; AFTER = this tree. One headless Chrome per run through the harness beside this file; full per-run JSON (every pair, rect and clipped string) is in the lane's session scratchpad and can be regenerated with `harness/rendered-dom-audit.mjs` (the command is in README.md).",
+  "readings": {
+    "before": {
+      "localOperatorDark": {
+        "mesh-tab--many-conversations": {
+          "totals": {
+            "inFlow": 24,
+            "overlay": 0,
+            "clipped": 203,
+            "blockPairs": 3,
+            "elements": 93
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 7028,
+            "conversationsSectionClientH": 166,
+            "conversationsSectionScrollH": 6755
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        },
+        "mesh-tab--many-conversations-menu": {
+          "totals": {
+            "inFlow": 24,
+            "overlay": 12,
+            "clipped": 203,
+            "blockPairs": 3,
+            "elements": 96
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 7028,
+            "conversationsSectionClientH": 166,
+            "conversationsSectionScrollH": 6755
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        },
+        "mesh-tab--many-conversations-peer": {
+          "totals": {
+            "inFlow": 18,
+            "overlay": 0,
+            "clipped": 6,
+            "blockPairs": 3,
+            "elements": 85
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 719,
+            "conversationsSectionClientH": 190,
+            "conversationsSectionScrollH": 390
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        }
+      },
+      "localOperatorLight": {
+        "mesh-tab--many-conversations": {
+          "totals": {
+            "inFlow": 24,
+            "overlay": 0,
+            "clipped": 203,
+            "blockPairs": 3,
+            "elements": 93
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 7028,
+            "conversationsSectionClientH": 166,
+            "conversationsSectionScrollH": 6755
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        },
+        "mesh-tab--many-conversations-menu": {
+          "totals": {
+            "inFlow": 24,
+            "overlay": 12,
+            "clipped": 203,
+            "blockPairs": 3,
+            "elements": 96
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 7028,
+            "conversationsSectionClientH": 166,
+            "conversationsSectionScrollH": 6755
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        },
+        "mesh-tab--many-conversations-peer": {
+          "totals": {
+            "inFlow": 18,
+            "overlay": 0,
+            "clipped": 6,
+            "blockPairs": 3,
+            "elements": 85
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 719,
+            "conversationsSectionClientH": 190,
+            "conversationsSectionScrollH": 390
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        }
+      }
+    },
+    "after": {
+      "localOperatorDark": {
+        "mesh-tab--many-conversations": {
+          "totals": {
+            "inFlow": 0,
+            "overlay": 0,
+            "clipped": 203,
+            "blockPairs": 0,
+            "elements": 80
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 7307,
+            "conversationsSectionClientH": 6755,
+            "conversationsSectionScrollH": 6755
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        },
+        "mesh-tab--many-conversations-menu": {
+          "totals": {
+            "inFlow": 0,
+            "overlay": 12,
+            "clipped": 203,
+            "blockPairs": 0,
+            "elements": 83
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 7307,
+            "conversationsSectionClientH": 6755,
+            "conversationsSectionScrollH": 6755
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        },
+        "mesh-tab--many-conversations-peer": {
+          "totals": {
+            "inFlow": 0,
+            "overlay": 0,
+            "clipped": 6,
+            "blockPairs": 0,
+            "elements": 77
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 919,
+            "conversationsSectionClientH": 390,
+            "conversationsSectionScrollH": 390
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        }
+      },
+      "localOperatorLight": {
+        "mesh-tab--many-conversations": {
+          "totals": {
+            "inFlow": 0,
+            "overlay": 0,
+            "clipped": 203,
+            "blockPairs": 0,
+            "elements": 80
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 7307,
+            "conversationsSectionClientH": 6755,
+            "conversationsSectionScrollH": 6755
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        },
+        "mesh-tab--many-conversations-menu": {
+          "totals": {
+            "inFlow": 0,
+            "overlay": 12,
+            "clipped": 203,
+            "blockPairs": 0,
+            "elements": 83
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 7307,
+            "conversationsSectionClientH": 6755,
+            "conversationsSectionScrollH": 6755
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        },
+        "mesh-tab--many-conversations-peer": {
+          "totals": {
+            "inFlow": 0,
+            "overlay": 0,
+            "clipped": 6,
+            "blockPairs": 0,
+            "elements": 77
+          },
+          "panel": {
+            "asideClientH": 719,
+            "asideScrollH": 919,
+            "conversationsSectionClientH": 390,
+            "conversationsSectionScrollH": 390
+          },
+          "chips": [
+            {
+              "text": "Provision probe OK",
+              "visiblePx": 53,
+              "fullTextPx": 108.6
+            },
+            {
+              "text": "Release E2E pull",
+              "visiblePx": 53,
+              "fullTextPx": 92.9
+            },
+            {
+              "text": "Onboarding: connect a second machine",
+              "visiblePx": 46,
+              "fullTextPx": 224.9
+            },
+            {
+              "text": "Release notes: assembling the 0.33 line",
+              "visiblePx": 46,
+              "fullTextPx": 223.6
+            }
+          ]
+        }
+      }
+    }
+  }
+}
