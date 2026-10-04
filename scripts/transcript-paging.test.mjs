@@ -37,8 +37,11 @@ const {
 	ANCHOR_EPSILON_PX,
 	INVISIBLE_GROWTH_MIN_PX,
 	INVISIBLE_GROWTH_FRACTION,
+	INVISIBLE_PAINT_MIN_ROWS,
 	MAX_ACT_ASKS,
 	MAX_CHAIN_INVISIBLE,
+	MAX_CHAIN_REVEALS,
+	MAX_CHAIN_WIDEN,
 	GESTURE_GAP_MS,
 	HARD_TOP_PX,
 	MAX_AUTO_ATTEMPTS,
@@ -1811,4 +1814,252 @@ test("an exhausted backend ends the invisible chain: there is nowhere left to go
 		false,
 		"and the demand is dropped rather than held for a later page",
 	);
+});
+
+/* ------------------------------------------------------------------------ *
+ * THE WEDGE, AND THE ONE CURRENCY THAT CLOSES IT                                *
+ *                                                                               *
+ * The operator's report: "Loading earlier messages also doesn't reliably work   *
+ * on scrolling up, the view often gets stuck and requires manually clicking to  *
+ * load more." The cases below are that report, in the policy.                   *
+ *                                                                               *
+ * WHY IT WEDGED. The reveal that older history needs in a CONDENSED transcript  *
+ * is a local WIDEN — rows are already in the window, they are inside collapsed  *
+ * bars, and the widen is what mounts more. Fifty-eight of the sixty rows a      *
+ * widen mounts can paint nothing, and the policy scored the settle in ANCHOR    *
+ * DISPLACEMENT, which a widen that paints nothing cannot produce: its settle is *
+ * `network: false`, and the px arm was gated on the network door. So the widen  *
+ * read VISIBLE, `chainInvisible` reset to zero, and the scrollable guard at the *
+ * continuations refused the next reveal outright. The reader's only way on was a *
+ * click, because `requestOlder` is deliberate and a deliberate act clears every *
+ * latch in one line — which is exactly why the operator found that clicking     *
+ * worked and scrolling did not.                                                 *
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Settle a reveal the way the HOOK now does: with the rows it PAINTED.
+ *
+ * `paintedDelta` is the new door, and `settled()` above is its control arm — it
+ * passes only `growthPx`, the anchor-displacement proxy that the child reader
+ * and the boolean `onLoadOlder` form still measure in.
+ */
+const painted = (state, paintedDelta, over = {}) =>
+	noteSettled(state, { paintedDelta, hiddenRowsAfter: 0, ...over });
+
+/**
+ * Whether the policy may still spend a reveal for this act WITHOUT fresh input.
+ *
+ * `false` is the legitimate stop — the bound a click would also meet — and it is
+ * the only state in which a frame is allowed to refuse an in-zone reader. The
+ * terms are the counters that already bound each door; spelling them once here
+ * keeps the invariant below from having a second opinion about them.
+ */
+const revealBudgetLeft = (state) =>
+	state.failures < MAX_AUTO_ATTEMPTS &&
+	state.actAsks < MAX_ACT_ASKS &&
+	state.chainWiden < 12 &&
+	state.chainInvisible < MAX_CHAIN_INVISIBLE;
+
+test("a WIDEN that paints nothing is refunded and chains, with no further input", () => {
+	/*
+	 * THE OPERATOR'S WEDGE, as a policy transition. Rows are held back, so the
+	 * reveal is a widen; the widen mounts sixty more and the collapse hides all
+	 * sixty, so the reader looks at exactly the same screen.
+	 */
+	const spent = decide(
+		wheelUp(initialPagingState(), 0),
+		geo({ hiddenRows: 600 }),
+		SETTLE_MS + 1,
+	);
+	assert.equal(spent.action, "widen", "rows are held back, so the widen leads");
+
+	const landed = painted(spent.state, 0, {
+		network: false,
+		hiddenRowsAfter: 600,
+	});
+	assert.equal(
+		landed.chainInvisible,
+		1,
+		"a widen that painted nothing is INVISIBLE to the reader",
+	);
+	assert.equal(landed.continuation, true, "and so it keeps the door open");
+
+	/*
+	 * THE ASSERTION THE WEDGE FAILS ON. The next reveal is spent with no input
+	 * whatsoever — no wheel, no key, no click. On the pre-fix policy this frame
+	 * returns "none" (the settle scored visible, `chainInvisible` reset, and the
+	 * scrollable guard refused), which is the state the operator cleared by hand.
+	 */
+	assert.equal(
+		decide(landed, geo({ hiddenRows: 540 }), SETTLE_MS * 2 + 1).action,
+		"widen",
+		"the next widen needs no gesture — this is the whole repair",
+	);
+});
+
+test("a page that paints nothing keeps the chain (the condensed page door)", () => {
+	// The same fact through the OTHER door: sixty records arrive, every one of
+	// them inside a collapsed bar. The extent grew; the reader's screen did not.
+	const spent = decide(wheelUp(initialPagingState(), 0), geo(), SETTLE_MS + 1);
+	const landed = painted(spent.state, 0, {
+		network: true,
+		newRecords: 60,
+		hiddenRowsAfter: 0,
+	});
+	assert.equal(landed.chainInvisible, 1);
+	assert.equal(
+		decide(landed, geo(), SETTLE_MS * 2 + 1).action,
+		"fetch",
+		"a page the reader could not see does not end the act either",
+	);
+});
+
+test("the row floor is the reader's currency, and it is `widenTarget`'s own", () => {
+	assert.equal(INVISIBLE_PAINT_MIN_ROWS, 8);
+	const spent = decide(
+		wheelUp(initialPagingState(), 0),
+		geo({ hiddenRows: 600 }),
+		SETTLE_MS + 1,
+	);
+	assert.equal(
+		painted(spent.state, INVISIBLE_PAINT_MIN_ROWS - 1, {
+			network: false,
+			hiddenRowsAfter: 600,
+		}).chainInvisible,
+		1,
+		"one row short of the floor is still not a reveal",
+	);
+	assert.equal(
+		painted(spent.state, INVISIBLE_PAINT_MIN_ROWS, {
+			network: false,
+			hiddenRowsAfter: 600,
+		}).chainInvisible,
+		0,
+		"the floor itself is a reveal, and it ends the chain",
+	);
+});
+
+test("ONE ACT's reveals are bounded across BOTH doors (MAX_CHAIN_REVEALS)", () => {
+	/*
+	 * Each door has its own counter and each stays inside its own bound; a chain
+	 * that alternates them satisfies both while exceeding the act's. This is the
+	 * reveal-space twin of the QA round-1 Q-4 bound on round trips.
+	 */
+	assert.equal(MAX_CHAIN_REVEALS, 12);
+	let state = wheelUp(initialPagingState(), 0);
+	let reveals = 0;
+	for (let i = 0; i < 60; i++) {
+		const decision = decide(state, geo({ hiddenRows: 600 }), SETTLE_MS + 1 + i);
+		if (decision.action === "none") break;
+		reveals += 1;
+		state = painted(decision.state, 0, {
+			network: false,
+			hiddenRowsAfter: 600,
+		});
+	}
+	assert.equal(
+		reveals,
+		MAX_CHAIN_REVEALS,
+		`the act chains its whole bound and not one reveal more (${reveals})`,
+	);
+	assert.equal(state.revealsThisAct, MAX_CHAIN_REVEALS);
+	// And a fresh act refills it, like the counters beside it.
+	const reopened = wheelUp(state, 100_000);
+	assert.equal(
+		reopened.revealsThisAct,
+		0,
+		"input that opens an act starts it over",
+	);
+});
+
+test("the rule-6 debt door reads the act's reveal ceiling, not only its own bound", () => {
+	/*
+	 * M1 (agent review round 1). The debt door — the widen that pays rule 6's
+	 * owed reveal — tested only `chainWiden < MAX_CHAIN_WIDEN`, so the act's
+	 * cross-door ceiling reached it solely because the two constants HAPPEN to be
+	 * equal today. They bound different things (mounting steps vs. an act's
+	 * reveals) and the file states they are independent, so the door now reads
+	 * `revealsThisAct` directly and this case fails if they are ever allowed to
+	 * diverge: a debt the act can no longer afford is refused whatever its own
+	 * door would allow.
+	 */
+	const owed = {
+		...initialPagingState(),
+		pageWidenOwed: true,
+		// This door's own bound is still open...
+		chainWiden: Math.max(0, MAX_CHAIN_WIDEN - 1),
+		// ...while the act's ceiling is reached.
+		revealsThisAct: MAX_CHAIN_REVEALS,
+	};
+	assert.equal(
+		decide(owed, geo({ hiddenRows: 600 }), SETTLE_MS + 1).action,
+		"none",
+		"a debt the act cannot afford is not spent, whatever `chainWiden` says",
+	);
+	// One reveal of headroom and the same debt is paid: the ceiling is what
+	// refuses the frame above, not some other door being shut.
+	const paid = decide(
+		{ ...owed, revealsThisAct: MAX_CHAIN_REVEALS - 1 },
+		geo({ hiddenRows: 600 }),
+		SETTLE_MS + 1,
+	);
+	assert.equal(paid.action, "widen", "with room left the debt is paid");
+	assert.equal(
+		paid.state.pageWidenOwed,
+		false,
+		"and paying it clears the debt, as the spend always did",
+	);
+});
+
+test("NO-CLICK INVARIANT: an in-zone reader at a condensed top is never left with every door shut", () => {
+	/*
+	 * THE INVARIANT (design §5.1), in the policy's own terms:
+	 *
+	 *   while the reader is inside the prefetch zone and an older row exists
+	 *   (`hiddenRows > 0` or `hasMore`), and the act still has reveal budget,
+	 *   the state is never one in which the next frame refuses EVERY reveal —
+	 *   i.e. no reveal in flight, no demand armed, no continuation, and budget
+	 *   left. That state is the operator's "stuck", and the click that clears it
+	 *   is the deliberate `requestOlder` act.
+	 *
+	 * The tape is the condensed one: six hundred rows held back, sixty mounted
+	 * per widen, and NONE of them painted either (each widen's landing is settled
+	 * with `paintedDelta: 0`). It is driven frame by frame, with no input after
+	 * the first gesture, because that is precisely the reading under test.
+	 */
+	let hidden = 600;
+	let state = wheelUp(initialPagingState(), 0);
+	let t = SETTLE_MS + 1;
+	const offences = [];
+	for (let frame = 0; frame < 40 && hidden > 0; frame++) {
+		const geometry = geo({ hiddenRows: hidden, hasMore: true });
+		const result = decide(state, geometry, t);
+		state = result.state;
+		if (result.action === "widen") {
+			hidden = Math.max(0, hidden - 60);
+			state = painted(state, 0, { network: false, hiddenRowsAfter: hidden });
+		} else if (result.action === "fetch") {
+			state = painted(state, 0, {
+				network: true,
+				newRecords: 0,
+				hiddenRowsAfter: 0,
+			});
+			hidden = 0;
+		} else if (!state.busy && revealBudgetLeft(state)) {
+			/*
+			 * The frame every reader reports: nothing in flight, nothing armed,
+			 * budget unspent, and an older row they cannot see.
+			 */
+			offences.push(
+				`frame ${frame}: none at hiddenRows=${hidden}, in flight/armed/continuation = ${state.busy}/${state.armed}/${state.continuation}`,
+			);
+		}
+		t += SETTLE_MS + 1;
+	}
+	assert.deepEqual(
+		offences,
+		[],
+		`frames that refuse every reveal they could still afford: ${offences.join("; ")}`,
+	);
+	assert.equal(hidden, 0, "the tape ends with the whole window mounted");
 });

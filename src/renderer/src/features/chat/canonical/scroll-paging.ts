@@ -254,6 +254,36 @@ export const INVISIBLE_GROWTH_FRACTION = 0.35;
 export const MAX_CHAIN_WIDEN = 12;
 
 /**
+ * Painted rows below which a reveal is INVISIBLE to the reader, in ROWS.
+ *
+ * The row-space twin of `INVISIBLE_GROWTH_MIN_PX`, and the currency the reader
+ * actually consumes. The px constants measure anchor DISPLACEMENT, which is only
+ * produced by a row crossing the viewport top — a local WIDEN whose landing
+ * paints nothing displaces nothing, and its settle is `network: false`, so under
+ * the px test it could not be scored invisible at all (see `noteSettled`). The
+ * count this replaces it with is the same one `widenTarget` searches against
+ * (`turn-collapse-model.ts: paintedRows`), sampled through the same accessor, so
+ * there is one measurement rather than two.
+ *
+ * Eight is that function's `minVisibleRows` default: about half a viewport of
+ * ordinary rows, and the smallest reveal a reader can be said to have been shown.
+ */
+export const INVISIBLE_PAINT_MIN_ROWS = 8;
+
+/**
+ * Reveals ONE ACT may chain, summed over BOTH doors.
+ *
+ * The cross-door ceiling neither per-door bound can state on its own: a reveal
+ * the reader cannot see is re-armed through whichever door `growth` names at
+ * that moment, so a condensed transcript alternates widen and page and is bounded
+ * by neither `MAX_CHAIN_WIDEN` nor `MAX_CHAIN_INVISIBLE` alone. It is
+ * `MAX_CHAIN_INVISIBLE` by the same construction argument as `MAX_ACT_ASKS` (one
+ * act's worth of history), and it is counted on the reveal, which both doors
+ * share, so the two cannot drift apart.
+ */
+export const MAX_CHAIN_REVEALS = MAX_CHAIN_INVISIBLE;
+
+/**
  * Anchor drift below which no correction is applied.
  *
  * Sub-pixel drift is measurement noise from `getBoundingClientRect`, and
@@ -315,8 +345,15 @@ export type PagingState = {
 	 */
 	travelledSinceLatch: boolean;
 	/**
-	 * A durable page landed with rows still held back, and owes exactly one
-	 * widen so the reader can see what they just fetched. See rule 6.
+	 * A reveal is OWED to the reader for the reveal that just settled: `decide`
+	 * will spend one without fresh input.
+	 *
+	 * TWO DOORS reach here, and the name is kept from the narrower rule that first
+	 * needed it (rule 6). Either a durable PAGE landed with rows still held back
+	 * and owes the widen that shows what the reader just fetched, or a reveal
+	 * settled with the reader unable to SEE it, whichever door it came through.
+	 * The network door's half of the same fact is `chainInvisible > 0`; `decide`
+	 * reads the two together and never independently.
 	 */
 	pageWidenOwed: boolean;
 	/**
@@ -342,6 +379,12 @@ export type PagingState = {
 	 * opens (`noteInput`), never by a settle.
 	 */
 	actAsks: number;
+	/**
+	 * Reveals this ACT has bought, across BOTH doors — the single ceiling
+	 * `MAX_CHAIN_REVEALS` states. Reset where `actAsks` is (a new act opens), so
+	 * it bounds what happens with no input, exactly like the counters beside it.
+	 */
+	revealsThisAct: number;
 	/**
 	 * Consecutive reveals the reader could not SEE, in the current act.
 	 *
@@ -409,6 +452,7 @@ export const initialPagingState = (): PagingState => ({
 	chainWiden: 0,
 	chainInvisible: 0,
 	actAsks: 0,
+	revealsThisAct: 0,
 });
 
 /** The prefetch zone for a viewport of this height. See `ZONE_FRACTION`. */
@@ -458,6 +502,13 @@ export const noteInput = (
 			// `actFetchSpent` does above.
 			actAsks:
 				input.at - state.lastInputAt >= GESTURE_GAP_MS ? 0 : state.actAsks,
+			// The reveal ceiling refills on the same terms as the ask budget: it
+			// bounds what an act does WITHOUT input, so input that opens an act
+			// starts it over.
+			revealsThisAct:
+				input.at - state.lastInputAt >= GESTURE_GAP_MS
+					? 0
+					: state.revealsThisAct,
 			continuation: false,
 			clampLatched: false,
 			// The travel the release below is earned by belongs to the latch, and
@@ -507,6 +558,9 @@ export const noteInput = (
 		 * is a new question, and `MAX_ACT_ASKS` is a fact about the act.
 		 */
 		actAsks: gestureEnded ? 0 : state.actAsks,
+		// The cross-door reveal ceiling, on the same terms and for the same
+		// reason: a new act is a new question.
+		revealsThisAct: gestureEnded ? 0 : state.revealsThisAct,
 		// The travel record belongs to the latch's own act; a notch that opens a
 		// new act starts a new question, and the release it guards is one per
 		// latch rather than one per reader.
@@ -531,6 +585,7 @@ export const noteInput = (
 			// says nothing about the click the reader just made.
 			actFetchSpent: false,
 			actAsks: 0,
+			revealsThisAct: 0,
 			...(state.busy ? { retained: true } : { armed: true }),
 		};
 	}
@@ -651,6 +706,13 @@ const spend = (
 		 * reader's data allowance). A widen is not a round trip and does not count.
 		 */
 		actAsks: action === "fetch" ? state.actAsks + 1 : state.actAsks,
+		/*
+		 * The reveal ceiling counts the REVEAL, not the round trip: a widen paints
+		 * rows the reader already has, but it is still one of the reveals an act
+		 * may spend without input, and `MAX_CHAIN_REVEALS` is about how many of
+		 * those the reader's one gesture may become.
+		 */
+		revealsThisAct: state.revealsThisAct + 1,
 		// `chainInvisible` is NOT advanced here: it counts what the reader SAW
 		// (a settle), not what was spent. A spend is evidence of nothing.
 		chainInvisible: state.chainInvisible,
@@ -780,6 +842,18 @@ export const decide = (
 	const settled =
 		now - state.lastInputAt >= SETTLE_MS ||
 		geo.distanceFromTopPx <= HARD_TOP_PX;
+	/*
+	 * The ACT's cross-door reveal ceiling, computed here because EVERY door that
+	 * can spend without fresh input has to consult it: the rule-6 debt door below
+	 * and the continuation guard further down. The doors share the act, so a chain
+	 * that alternates them would satisfy each door's own bound (MAX_CHAIN_WIDEN,
+	 * MAX_CHAIN_FETCH, MAX_CHAIN_INVISIBLE) while exceeding the act's — those
+	 * per-door bounds are deliberately independent of this one, which is exactly
+	 * why a door that tested only its own bound is not enough. Reading this at
+	 * every such door is what keeps the two from drifting; the equality of the
+	 * constants below is a fact about today's numbers, never a guarantee.
+	 */
+	const revealsLeft = state.revealsThisAct < MAX_CHAIN_REVEALS;
 
 	/*
 	 * Rule 6's debt is paid FIRST, ahead of every prediction about where the
@@ -799,14 +873,21 @@ export const decide = (
 	 * stuck-then-jiggle report in its original form.
 	 *
 	 * The bound is the chain bound rule 5 has always used: one widen, counted
-	 * against `chainWiden`. `armed` and `retained` are cleared with it, because
-	 * this widen IS the answer to whatever the reader asked — rule 2's one reveal
-	 * per act, delivered late rather than never.
+	 * against `chainWiden` — AND the act's own reveal ceiling, read directly
+	 * rather than left to arrive through that per-door bound (agent review round
+	 * 1, M1). The two constants happen to be equal today, but they bound
+	 * different things (mounting steps vs. an act's reveals) and the file states
+	 * they are independent, so a door that consulted only `chainWiden` would
+	 * overshoot the act's ceiling the moment they diverge. `armed` and `retained`
+	 * are cleared with it, because this widen IS the answer to whatever the
+	 * reader asked — rule 2's one reveal per act, delivered late rather than
+	 * never.
 	 */
 	if (
 		state.pageWidenOwed &&
 		growth === "widen" &&
-		state.chainWiden < MAX_CHAIN_WIDEN
+		state.chainWiden < MAX_CHAIN_WIDEN &&
+		revealsLeft
 	) {
 		// The debt waits for the reader to stop, like every other reveal (rule 3):
 		// it is a fact about rows they cannot see yet, not a licence to mount
@@ -941,13 +1022,14 @@ export const decide = (
 			};
 		}
 		const bound =
-			growth === "widen"
+			revealsLeft &&
+			(growth === "widen"
 				? state.chainWiden < MAX_CHAIN_WIDEN
 				: invisibleOwed
 					? state.failures < MAX_AUTO_ATTEMPTS
 					: asksLeft &&
 						state.chainFetch < MAX_CHAIN_FETCH &&
-						state.failures < MAX_AUTO_ATTEMPTS;
+						state.failures < MAX_AUTO_ATTEMPTS);
 		if (bound) {
 			return spend(
 				{ ...state, pageWidenOwed: false, continuation: false },
@@ -991,11 +1073,22 @@ export const noteSettled = (
 		 */
 		hiddenRowsAfter = 0,
 		/**
+		 * Rows the reveal PAINTED, measured by the DOM half between the dispatch
+		 * and the settle, in the same currency `widenTarget` searches with
+		 * (`turn-collapse-model.ts: paintedRows`). `null` means "not measured" — a
+		 * caller that supplies no painted-row accessor — and the px proxy below
+		 * answers for it then.
+		 *
+		 * This is the ONE currency, and it is sampled through BOTH doors: the whole
+		 * repair is that a WIDEN whose landing paints nothing can be scored
+		 * invisible, which the px proxy could never do (see `invisible` below).
+		 */
+		paintedDelta = null,
+		/**
 		 * How much taller the content got, in px, measured by the DOM half
 		 * between the dispatch and the settle. `null` means "not measured" (a
-		 * local widen, the child reader's own settle) and is treated as VISIBLE:
-		 * the policy must not invent an invisible reveal out of a missing
-		 * measurement.
+		 * local widen) and is treated as VISIBLE: the policy must not invent an
+		 * invisible reveal out of a missing measurement.
 		 */
 		growthPx = null,
 		/** The viewport height at the settle, for the fraction in the test. */
@@ -1010,25 +1103,50 @@ export const noteSettled = (
 	}: {
 		network?: boolean;
 		hiddenRowsAfter?: number;
+		paintedDelta?: number | null;
 		growthPx?: number | null;
 		clientHeight?: number;
 		newRecords?: number | null;
 	} = {},
 ): PagingState => {
 	/*
-	 * What the reader saw, in their own currency (see the constants): growth
-	 * under the floor OR under the viewport fraction is invisible, and an empty
-	 * page is invisible by definition.
+	 * What the reader saw, in their own currency — and there is now ONE of them.
+	 *
+	 * `paintedDelta` is the rows the reveal painted, read through the same
+	 * accessor `widenTarget` searches against, so "the reader could not see it"
+	 * is one subtraction away whichever door the reveal came through. That is the
+	 * whole repair. The px proxy beside it measures anchor DISPLACEMENT, which a
+	 * WIDEN can never produce a reading from — its settle is `network: false` and
+	 * the px arm was gated on the network door — so a local widen that painted
+	 * nothing scored VISIBLE, reset `chainInvisible`, and had its continuation
+	 * refused by the scrollable guard: the wedge the operator reported. The px
+	 * arm answers only when `paintedDelta` is absent, and THAT PATH HAS NO
+	 * PRODUCTION CALLER TODAY (agent review round 1, M2): `useScrollPaging` has
+	 * exactly one caller, `canonical-transcript.tsx`, which always passes
+	 * `paintedRows`, and the child reader renders that same `CanonicalTranscript`
+	 * — so every production settle arrives with a painted count. It is kept, not
+	 * deleted, as the pure suite's own control arm for the pre-change px-era
+	 * cases (`settled()` in `scripts/transcript-paging.test.mjs` drives exactly
+	 * this branch) and as the deliberate "not measured" fallback the optional
+	 * `paintedRows` option still names: a future surface that reveals rows
+	 * without a collapse model would get this rather than a crash.
+	 *
+	 * An empty page stays invisible BY DEFINITION: the cursor moved and the
+	 * reader saw the same screen, whatever the extent says.
 	 */
-	const invisible =
+	const paintedInvisible =
+		paintedDelta !== null && paintedDelta < INVISIBLE_PAINT_MIN_ROWS;
+	const pxInvisible =
+		paintedDelta === null &&
 		network &&
-		(newRecords === 0 ||
-			(growthPx !== null &&
-				growthPx <
-					Math.max(
-						INVISIBLE_GROWTH_MIN_PX,
-						INVISIBLE_GROWTH_FRACTION * clientHeight,
-					)));
+		growthPx !== null &&
+		growthPx <
+			Math.max(
+				INVISIBLE_GROWTH_MIN_PX,
+				INVISIBLE_GROWTH_FRACTION * clientHeight,
+			);
+	const invisible =
+		paintedInvisible || (network && newRecords === 0) || pxInvisible;
 	return {
 		...state,
 		busy: false,
@@ -1134,7 +1252,18 @@ export const noteAborted = (state: PagingState): PagingState => ({
 	pageWidenOwed: false,
 });
 
-/** Whether the automatic path has given up and only an explicit ask remains. */
+/**
+ * Whether the automatic path has given up and only an explicit ask remains.
+ *
+ * NO PRODUCTION CALLER TODAY (agent review round 1, N1). The DOM half stopped
+ * consulting it when the failed row's single owner became the session's
+ * `olderFailed` (see `use-scroll-paging.ts`), a fact about the session rather
+ * than about this policy's retry budget — so the hook no longer imports it. It
+ * is deliberately KEPT rather than deleted: it is the module's own name for the
+ * budget rule (`failures >= MAX_AUTO_ATTEMPTS`), and the pure suite asserts
+ * that rule through it (`scripts/transcript-paging.test.mjs`), so removing it
+ * would leave the rule reachable only by re-deriving it from the constant.
+ */
 export const isExhausted = (state: PagingState): boolean =>
 	state.failures >= MAX_AUTO_ATTEMPTS;
 

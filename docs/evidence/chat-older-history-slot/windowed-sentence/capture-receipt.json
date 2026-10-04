@@ -1,0 +1,130 @@
+{
+  "cell": "windowed-sentence",
+  "story": "chat-older-history-slot--windowed-sentence",
+  "viewport": [
+    900,
+    260
+  ],
+  "frames": [
+    {
+      "theme": "localOperatorDark",
+      "settled": true,
+      "waitedMs": 1227,
+      "bytes": 7988,
+      "dataTheme": "localOperatorDark",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "localOperatorLight",
+      "settled": true,
+      "waitedMs": 1220,
+      "bytes": 7310,
+      "dataTheme": "localOperatorLight",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "dracula",
+      "settled": true,
+      "waitedMs": 1227,
+      "bytes": 7978,
+      "dataTheme": "dracula",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "dune",
+      "settled": true,
+      "waitedMs": 1222,
+      "bytes": 8134,
+      "dataTheme": "dune",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "sage",
+      "settled": true,
+      "waitedMs": 1222,
+      "bytes": 7934,
+      "dataTheme": "sage",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "monokai",
+      "settled": true,
+      "waitedMs": 1223,
+      "bytes": 7482,
+      "dataTheme": "monokai",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "tokyoNight",
+      "settled": true,
+      "waitedMs": 1217,
+      "bytes": 8566,
+      "dataTheme": "tokyoNight",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "iceberg",
+      "settled": true,
+      "waitedMs": 1220,
+      "bytes": 8234,
+      "dataTheme": "iceberg",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "radient",
+      "settled": true,
+      "waitedMs": 1222,
+      "bytes": 8374,
+      "dataTheme": "radient",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "neon",
+      "settled": true,
+      "waitedMs": 1219,
+      "bytes": 7386,
+      "dataTheme": "neon",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "obsidian",
+      "settled": true,
+      "waitedMs": 1221,
+      "bytes": 7342,
+      "dataTheme": "obsidian",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    },
+    {
+      "theme": "synth",
+      "settled": true,
+      "waitedMs": 1224,
+      "bytes": 7586,
+      "dataTheme": "synth",
+      "rowCount": 2,
+      "slotH": 17,
+      "copy": "Earlier history above — scroll up to load | Earlier history above — scroll up to load"
+    }
+  ]
+}

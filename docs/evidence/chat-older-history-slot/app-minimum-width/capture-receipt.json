@@ -1,0 +1,130 @@
+{
+  "cell": "app-minimum-width",
+  "story": "chat-older-history-slot--app-minimum-width",
+  "viewport": [
+    900,
+    720
+  ],
+  "frames": [
+    {
+      "theme": "localOperatorDark",
+      "settled": true,
+      "waitedMs": 1219,
+      "bytes": 60404,
+      "dataTheme": "localOperatorDark",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "localOperatorLight",
+      "settled": true,
+      "waitedMs": 1221,
+      "bytes": 57844,
+      "dataTheme": "localOperatorLight",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "dracula",
+      "settled": true,
+      "waitedMs": 1218,
+      "bytes": 60234,
+      "dataTheme": "dracula",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "dune",
+      "settled": true,
+      "waitedMs": 1219,
+      "bytes": 63666,
+      "dataTheme": "dune",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "sage",
+      "settled": true,
+      "waitedMs": 1218,
+      "bytes": 62506,
+      "dataTheme": "sage",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "monokai",
+      "settled": true,
+      "waitedMs": 1221,
+      "bytes": 57270,
+      "dataTheme": "monokai",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "tokyoNight",
+      "settled": true,
+      "waitedMs": 1218,
+      "bytes": 68690,
+      "dataTheme": "tokyoNight",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "iceberg",
+      "settled": true,
+      "waitedMs": 1222,
+      "bytes": 64408,
+      "dataTheme": "iceberg",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "radient",
+      "settled": true,
+      "waitedMs": 1227,
+      "bytes": 63548,
+      "dataTheme": "radient",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "neon",
+      "settled": true,
+      "waitedMs": 1236,
+      "bytes": 58390,
+      "dataTheme": "neon",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "obsidian",
+      "settled": true,
+      "waitedMs": 1216,
+      "bytes": 58606,
+      "dataTheme": "obsidian",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    },
+    {
+      "theme": "synth",
+      "settled": true,
+      "waitedMs": 1228,
+      "bytes": 59276,
+      "dataTheme": "synth",
+      "rowCount": 16,
+      "slotH": 28,
+      "copy": "Load earlier messages | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages | Scroll up for earlier | Scroll up for earlier | Start of conversation | Loading earlier messages | Loading earlier messages | Try again | Did not load | Did not load | Could not load earlier messages"
+    }
+  ]
+}
