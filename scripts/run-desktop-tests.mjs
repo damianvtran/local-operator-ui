@@ -40,6 +40,14 @@
  * is announced). It is ACTIVE by default, for the same reason the memory guard is
  * on CI: a bound nobody enables stops nothing.
  *
+ * Its DEFAULT is calibrated from CI rather than from this host, which is a lesson
+ * this branch paid for: the first default killed
+ * `scripts/mark-all-read-control.test.mjs` at the bound on two consecutive heads -
+ * a lane whose bytes are identical on `main` (`0271b70f45db`) and which passes in
+ * 447 s when run alone - so the ceiling now sits above the 18.7-minute healthy CI
+ * suite, which bounds every lane that runs inside it, and inside the job's own
+ * 35-minute cap. See `_DEFAULT_BOUND_MS` for the readings.
+ *
  * The child's exit code is forwarded unchanged and its death by signal is
  * re-raised on this process, because a wrapper that reports success for a suite
  * that was killed is worse than no wrapper. For the same reason the child does

@@ -36,15 +36,17 @@
  * `# tests 3 / # pass 2 / # fail 1 / # cancelled 0`, with the parent exiting on its
  * own, rc=1 - a red run that says which file -, not a killed run.
  *
- * WHAT THIS IS NOT: a performance gate. The bound is deliberately far above measured
- * lanes (see `_DEFAULT_BOUND_MS`: ~2.7x the slowest lane measured ON THIS HOST, which
- * is the honest form of that claim - the CI figure beside it is a whole-suite
- * aggregate over 361 lanes and does not bound any individual lane), because its job
- * is to catch a file that will never return, not to police duration. A lane that
- * legitimately runs longer than the bound is killed and named like any other; that is
- * a false trip by this module's own definition, and the answer is a larger bound or
- * `off` - both named in the line this prints at startup, so the reader is never left
- * guessing which bound ran.
+ * WHAT THIS IS NOT: a performance gate, and the first default proved that the hard way.
+ * The bound is deliberately far above measured lanes, because its job is to catch a file
+ * that will never return, not to police duration - and its number is calibrated from CI
+ * (see `_DEFAULT_BOUND_MS`), never from this host. SHIPPED AND WRONG: the 10-minute
+ * default killed a legitimately long lane AT the bound on two consecutive heads, and a
+ * bound that turns a green run red is worse than no bound at all; the ceiling now clears
+ * the longest healthy CI suite, which bounds every lane that ran inside it. A lane that
+ * legitimately runs longer than the ceiling is still killed and named; that is a false
+ * trip by this module's own definition, and the answer is a larger bound or `off` - both
+ * named in the line this prints at startup, so the reader is never left guessing which
+ * bound ran.
  *
  * LIMITS, stated because a bound that overclaims is worse than none:
  *
@@ -69,20 +71,48 @@ export const LANE_BOUND_OVERRIDE_ENV = "LOCAL_OPERATOR_UI_LANE_BOUND_MS";
 /**
  * The bound a lane may run before it is killed and named.
  *
- * MEASURED, 2026-10-03, and set as a STALL DETECTOR rather than a ceiling on slow
- * work. Two readings, and they answer different questions: the whole 361-lane suite
- * completes in ~16 minutes on CI (`Desktop Tests` 16m36s at concurrency 8-12, run
- * 37094834731) - an AGGREGATE, so it does not bound any single lane - while timing
- * individual heavy lanes on this host put `update-robustness.test.mjs` at 225.7 s
- * (a lane that also fails here on environment grounds), `credential-composer.test.mjs`
- * at 69.7 s, `daemon-observation.test.mjs` at 27.1 s, and the rest in single-digit
- * seconds. Ten minutes is therefore ~2.7x the slowest lane measured ON THIS HOST; no
- * CI-side per-lane reading exists yet, so that margin is the standing claim and this
- * note is where a future measurement should replace it. It is enough for the purpose:
- * the lane that held four heads' CI (see the header) never finished at all, so a
- * bound anywhere in this range separates it from every lane that does.
+ * MEASURED, 2026-10-04, and RECALIBRATED from CI evidence after the 10-minute default it
+ * shipped with was proved wrong by CI itself: on two consecutive heads that default killed
+ * `scripts/mark-all-read-control.test.mjs` AT the bound (jobs 111407535072 and
+ * 111133163670), and that lane is not a stall - its bytes are identical on `main` and here
+ * (`0271b70f45db`), it passes in 447 s when run alone on this host, and on `main` - which
+ * has no bound at all - the same suite ends `rc=0 pass=6627 fail=0` in 18.7 minutes with
+ * that lane's own output inside it. A bound that turns a green run red is worse than no
+ * bound, so the number is chosen from CI now, not from this laptop.
+ *
+ * WHY 25 MINUTES, from CI's own two numbers. No lane can outlive the suite that runs it,
+ * so the healthy CI run's 18.7 minutes (369 files at concurrency 3, 07:21:44 -> 07:40:24,
+ * job 111386486657) is an UPPER BOUND on every lane that ran in it: 25 minutes clears that
+ * by six minutes, and it is the CI measurement doing the clearing rather than a host-local
+ * ratio. The other number is the job's own 35-minute cap: a lane's clock starts at its
+ * FIRST SIGHTING, so a stall is named at most 25 minutes into that lane's life, the rest
+ * of the suite still lands (observed: the run completed as soon as the bound fired), and
+ * the whole job stays inside the cap. Both properties are what the bound exists for - name
+ * the lane, keep everyone else's verdict - and neither needs the ceiling to be tight.
+ *
+ * WHAT THIS REPLACED, so the next recalibration does not repeat it: the 10-minute figure
+ * was justified as "~2.7x the slowest lane measured ON THIS HOST" (225.7 s). That is a
+ * host-local reading, and this repository's rules say plainly that a ceiling is calibrated
+ * from CI, never from a laptop - which review round 1 flagged and this change settles with
+ * the measurement rather than with wording.
+ *
+ * THE ALTERNATIVE CONSIDERED AND NOT SHIPPED: trip a lane that has stopped making PROGRESS
+ * (no CPU time advanced) rather than one that is merely long, which would name a real stall
+ * in minutes instead of at the ceiling. Rejected on evidence: 18 of this suite's lanes
+ * spawn a child and wait on it (measured over `scripts/*.test.mjs`), and a lane blocked on
+ * an Electron or daemon child spends its own CPU at nearly zero while it is doing exactly
+ * what it should - so a per-lane CPU rule trades this false-positive class for another one,
+ * on a suite with a lot of blocking lanes, and it would arrive as a new subsystem rather
+ * than a recalibration. If a future CI run shows a lane that is busy and never finishes,
+ * that is the reading that should bring the rule back.
+ *
+ * THE LIMIT, stated rather than hidden: a lane that legitimately needs more than 25 minutes
+ * is still killed and named. No ceiling can avoid that - the job cap is 35 minutes, so a
+ * lane longer than that cannot be accommodated by any bound this runner could pick - and
+ * the suite's own concurrency governor, not this constant, is what keeps a lane that slow
+ * from existing in the first place.
  */
-export const _DEFAULT_BOUND_MS = 600_000;
+export const _DEFAULT_BOUND_MS = 1_500_000;
 
 /**
  * Milliseconds between the end of one sample and the start of the next, so a starved
@@ -151,7 +181,7 @@ export function formatLaneBoundLine(decision) {
 	const why =
 		decision.arm === "override"
 			? `explicit ${LANE_BOUND_OVERRIDE_ENV}`
-			: "default, 2.7x the slowest lane measured on this host";
+			: "default, above the 18.7-minute healthy CI suite that bounds every lane it runs, and inside the 35-minute job cap";
 	return `desktop tests: per-lane bound ${human(decision.boundMs)} (${why}); sampled every ${_TICK_INTERVAL_MS / 1000}s over the suite's process group`;
 }
 
