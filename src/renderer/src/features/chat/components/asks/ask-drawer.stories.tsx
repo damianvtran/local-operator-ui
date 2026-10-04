@@ -694,13 +694,16 @@ export const FullTextAtFloor: Story = {
  * marker, different values are not a revision), so the client states the intent by
  * sending the op and this surface never guesses it.
  *
- * `Changeable` and `ChangeRefused` are the two states §10's evidence asks for: the
- * affordance while the window is open, and the owner's own refusal
+ * `Changeable`, `ChangeableLate` and `ChangeRefused` are the three states §10's
+ * evidence asks for: the affordance while the window is open for an `answered`
+ * answer, the same affordance for a `late` one (the half the first fixture set
+ * missed — see `lateUndeliveredAsk`), and the owner's own refusal
  * (`already delivered — send a new message`) rendered IN PLACE on the same row,
  * because a silent no-op would be the worse failure. `RevisedAfterChange` is what
  * the wire publishes once a revision is accepted: the same answer frame, carrying
  * the LATEST `revised` event's map (the fold reads the effective answers from it,
- * and the status, stamp and attribution stay the FIRST answer's).
+ * and the status, stamp and attribution stay the FIRST answer's) — plus this
+ * surface's own receipt, because the wire has no marker for an accepted change.
  *
  * The form itself is not a story: it is one press away (`Change answer`), and the
  * PR's frames show it clicked rather than a fixture that skips the press.
@@ -747,6 +750,41 @@ function revisedAsk(): PendingAsk {
 	});
 }
 
+/**
+ * §10's LATE half, which the first cut of this pair did not cover (design round 1,
+ * D2 = agent review round 1's MAJOR).
+ *
+ * A `late` answer IS a recorded answer: the deadline went by, the answer arrived
+ * afterwards, and the engine admits a revision for it exactly as it does for
+ * `answered` — `asks/queue.py`'s `_revision_decision` reads "an ask that already
+ * carries an answer (`answered`/`late`) with no `ask-response-<ask_id>` row yet",
+ * and its `revise` docstring calls the late case "the one revision that is still
+ * free to make". The fixture matters because the two `late` states are
+ * indistinguishable without it: `late` + `delivered: false` is inside the window,
+ * `late` + `delivered: true` is behind it, and only a rendered card shows which one
+ * draws a door.
+ *
+ * The residual the wire cannot express — a `late` ask whose TIMEOUT notice has
+ * already gone out reads `delivered: true` while the response row is still absent —
+ * is `AskPresentation.delivering`'s own note and is recorded on the PR as a wire
+ * deferral rather than faked here.
+ */
+function lateUndeliveredAsk(): PendingAsk {
+	return ask({
+		...changeableAsk(),
+		ask_id: "a-late-undelivered",
+		status: "late",
+		/*
+		 * The two halves of the state, made explicit because they are what the card
+		 * reads: the deadline is behind us (`answered_at` after `expires_at`), and the
+		 * wire says nothing has been delivered yet.
+		 */
+		expires_at: TS + 2 * MINUTE,
+		answered_at: TS + 6 * MINUTE,
+		delivered: false,
+	});
+}
+
 export const Changeable: Story = {
 	args: {
 		frontend: frontend([changeableAsk()]),
@@ -783,6 +821,18 @@ export const ChangeRefused: Story = {
 	},
 };
 
+export const ChangeableLate: Story = {
+	args: {
+		frontend: frontend([lateUndeliveredAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+	},
+};
+
 export const RevisedAfterChange: Story = {
 	args: {
 		frontend: frontend([revisedAsk()]),
@@ -792,5 +842,16 @@ export const RevisedAfterChange: Story = {
 		onAnswer: noop,
 		onDecline: noop,
 		onRevise: noop,
+		/*
+		 * THE RECEIPT (design round 1, D3; UX round 1, U3). The wire cannot mark an
+		 * accepted change — the fold keeps the FIRST `answered`'s status, stamp and
+		 * attribution and requires no marker — so the frame that carries a changed map
+		 * is a first-answer frame, indistinguishable from the answer it replaced. The
+		 * accepted revision is this surface's own record, and it is what the card's
+		 * receipt line draws from.
+		 */
+		outcomes: {
+			"a-change": { sending: false, refused: null, changed: true },
+		},
 	},
 };

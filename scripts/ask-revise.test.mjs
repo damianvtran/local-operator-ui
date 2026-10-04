@@ -36,16 +36,35 @@ import { build } from "esbuild";
  *    refuses a partial map and a surface that forgot a key would lose that question
  *    for good.
  *
- * 5. **The control exists exactly while the window is open.** Rendered from the
- *    PRODUCTION `AskPanel`, three states are told apart: answered-and-undelivered
- *    offers `Change answer`, a DELIVERED `answered` ask offers nothing (the model
- *    has been told; the row pins what it was told), and an open ask offers its own
- *    first-answer controls and no change control. The gate is the wire's `delivered`
- *    flag, never the status alone and never a value comparison.
+ * 5. **The control exists exactly while §10's window is open.** Rendered from the
+ *    PRODUCTION `AskPanel`, the states are told apart: answered-and-undelivered and
+ *    LATE-and-undelivered each offer `Change answer` (the engine admits a revision
+ *    for both — `asks/queue.py::_revision_decision`), a DELIVERED ask of either
+ *    status offers nothing (the model has been told; the row pins what it was told),
+ *    and an open ask offers its own first-answer controls and no change control. The
+ *    gate is the wire's own recorded-and-undelivered reading, never the status alone
+ *    and never a value comparison.
  *
- * 6. **The chip cannot call a changeable queue settled.** A queue whose only row is
- *    answered-but-undelivered used to take `All asks settled`, which contradicts the
- *    panel the chip opens; the count clause is asserted in all three of its states.
+ * 6. **An owner refusal closes the door and travels with the row.** The reference
+ *    sequence is: press `Change answer` while the wire still says undelivered, and
+ *    have the response row exist by the time the press lands — the row is what
+ *    refuses it, so the ask has already left `pending` for the settled section. The
+ *    sentence must therefore be painted on the dropped-to-one-line row rather than
+ *    measured once and lost (UX round 1, U1 = design round 1, D1), and the card must
+ *    not keep re-offering the door the sentence just refused. The settled-row half is
+ *    drawn inside the section's own disclosure — which paints no children while it is
+ *    collapsed — so it is proven in the DOM by `scripts/ask-change-window-evidence.mjs`
+ *    (case 4) and only the state split is asserted here.
+ *
+ * 7. **A change that LANDED leaves a receipt.** The wire cannot mark an accepted
+ *    revision (the fold keeps the first `answered`'s status, stamp and attribution),
+ *    so the record of it is this surface's own — without it a deliberate change and
+ *    the answer it replaced render identically (design round 1, D3; UX round 1, U3).
+ *
+ * 8. **The chip cannot call a changeable queue settled, and it names the door.** A
+ *    queue whose only row is answered-but-undelivered used to take `All asks
+ *    settled`, which contradicts the panel the chip opens; the count clause is
+ *    asserted in all three of its states.
  *
  * ## Why the markup is rendered rather than the element tree walked
  *
@@ -175,6 +194,25 @@ const answeredDelivered = () =>
 	});
 
 const openAsk = () => twoQuestionAsk();
+
+/**
+ * §10's LATE half: an answer recorded AFTER the deadline, still undelivered.
+ *
+ * `answered_at` after `expires_at` is what makes the status `late`, and
+ * `delivered: false` is what keeps it inside the window. Both halves matter: the
+ * engine's rule is `answered`/`late` with no `ask-response-<ask_id>` row, and the
+ * first cut of the panel's flag read `answered` alone (agent review round 1 MAJOR).
+ */
+const lateNotDelivered = (overrides = {}) =>
+	twoQuestionAsk({
+		ask_id: "a-late-window",
+		expires_at: NOW - 120_000,
+		status: "late",
+		answered_at: NOW - 60_000,
+		answered_by: { surface: "desktop" },
+		answers: { q1: ["staging"], q2: ["yes"] },
+		...overrides,
+	});
 
 const panelMarkup = (ask, extra = {}) =>
 	renderToStaticMarkup(
@@ -386,6 +424,95 @@ test("the card offers Change answer exactly while the wire says undelivered", ()
 	);
 });
 
+test("§10's LATE half draws the same door, and a delivered one draws nothing", () => {
+	const late = lateNotDelivered();
+	// The engine admits a revision for BOTH recorded statuses — "an ask that already
+	// carries an answer (`answered`/`late`) with no `ask-response-<ask_id>` row yet" —
+	// so a door that only ever opened for `answered` left this half of §10's window
+	// unreachable from this surface (agent review round 1 MAJOR = design round 1 D2),
+	// which no fixture covered.
+	assert.equal(presentAsk(late).delivering, true);
+	const markup = panelMarkup(late);
+	assert.ok(
+		markup.includes("Change answer"),
+		"a late-but-undelivered answer is still the user's to change",
+	);
+	// It is a RECORDED answer, so it carries none of the first-answer controls.
+	assert.equal(markup.includes("Send answer"), false);
+
+	// DELIVERED, either status: history, and no control.
+	const deliveredLate = lateNotDelivered({ delivered: true });
+	assert.equal(presentAsk(deliveredLate).delivering, false);
+	assert.equal(panelMarkup(deliveredLate).includes("Change answer"), false);
+});
+
+test("an owner refusal closes the door and travels with the row", () => {
+	const refused = {
+		sending: false,
+		refused: "already delivered — send a new message",
+	};
+	/*
+	 * PENDING (the wire has not caught up): the card is still drawn from a frame that
+	 * says undelivered, and the door whose only possible outcome is the sentence above
+	 * it is WITHDRAWN rather than re-offered. This is the finding's first half — a
+	 * second press could only reproduce the refusal.
+	 */
+	const pending = panelMarkup(answeredNotDelivered(), {
+		outcomes: { "a-revise": refused },
+	});
+	assert.equal(pending.includes("Change answer"), false);
+	assert.ok(
+		pending.includes("already delivered — send a new message"),
+		"the refusal is rendered in place",
+	);
+	/*
+	 * SETTLED (the frame caught up — the reachable path the finding measured): the ask
+	 * has dropped to its one-line history row, and the owner's sentence has to travel
+	 * WITH it. A collapsed row that painted nothing left the refusal on screen for one
+	 * frame and then gone, which §10 calls the worse failure than the refusal itself
+	 * ("a silent no-op would be the worse failure").
+	 */
+	const settled = panelMarkup(answeredDelivered(), {
+		outcomes: { "a-revise": refused },
+	});
+	assert.ok(settled.includes("Settled"), "the ask is drawn as settled history");
+	assert.equal(settled.includes("Change answer"), false);
+	/*
+	 * THE ROW-SUMMARY HALF IS NOT ASSERTABLE FROM HERE, and saying so is better than a
+	 * passing assertion that proves nothing: a `Disclosure` paints no children while it
+	 * is collapsed, and the settled ROWS live inside the section's own disclosure — so
+	 * static markup of the section shows its header and none of its rows. That claim is
+	 * proven in the DOM instead, by `scripts/ask-change-window-evidence.mjs` (case 4),
+	 * which mounts the shipped panel, opens `[data-lo-ask-settled]` with a real click and
+	 * reads the row's own summary. What this file can assert is the split: the ask is no
+	 * longer a pending card and offers no door.
+	 */
+});
+
+test("a change that landed leaves a receipt the first-answer frame does not", () => {
+	const markup = panelMarkup(answeredNotDelivered(), {
+		outcomes: {
+			"a-revise": { sending: false, refused: null, changed: true },
+		},
+	});
+	// The wire cannot mark an accepted revision (the fold keeps the FIRST `answered`'s
+	// status, stamp and attribution), so this line is the only evidence on the artefact
+	// that a deliberate change happened rather than that an answer was given
+	// (design round 1, D3; UX round 1, U3).
+	assert.ok(
+		markup.includes("Changed — the agent has not been handed it yet."),
+		"the receipt for a landed change",
+	);
+	// The door stays open: a revision is free while the answer is undelivered, so a
+	// second change is still one press away.
+	assert.ok(markup.includes("Change answer"));
+	// An untouched card carries no such line.
+	assert.equal(
+		panelMarkup(answeredNotDelivered()).includes("Changed —"),
+		false,
+	);
+});
+
 test("the card offers no change control where no surface can revise", () => {
 	// A read-only mount (a story, a surface with no revise door) must not draw a
 	// control nothing can act on — the same rule `onAnswer`'s absence already has.
@@ -413,8 +540,23 @@ test("an undelivered answer is a PENDING card, and the chip says so", () => {
 	// waiting. `delivering` is the wire's own flag and is what the card reads.
 	assert.equal(presentation.open, false);
 	assert.equal(presentation.delivering, true);
-	// `All asks settled` here would be the chip contradicting the panel it opens.
-	assert.equal(askChipCountClause(view), "1 answer not yet delivered");
+	// `All asks settled` here would be the chip contradicting the panel it opens, and
+	// the clause names the door rather than only the wire's condition (UX round 1, U4).
+	assert.equal(
+		askChipCountClause(view),
+		"1 answer not yet delivered — you can still change it",
+	);
+
+	// The plural is a clause of its own: one count, two recorded answers.
+	assert.equal(
+		askChipCountClause(
+			askQueueView({
+				asks: [answeredNotDelivered(), lateNotDelivered()],
+				asks_open: 0,
+			}),
+		),
+		"2 answers not yet delivered — you can still change them",
+	);
 
 	// A DELIVERED answered ask keeps today's sentence.
 	assert.equal(

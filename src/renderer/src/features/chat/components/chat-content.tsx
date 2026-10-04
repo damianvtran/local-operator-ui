@@ -59,7 +59,7 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { gateIsSecret } from "../ask-answer";
-import type { AskDraft } from "../ask-queue";
+import type { AskDraft, AskOutcome } from "../ask-queue";
 import {
 	askComposerHoldsSecret,
 	askQueueView,
@@ -425,16 +425,16 @@ type ChatContentProps = {
 		onReviseAsk?: (askId: string, answers: Record<string, string[]>) => void;
 		/**
 		 * What `SessionPanel` knows about each queued ask it just answered, keyed by
-		 * ask id: the sentence the owner refused with, or `null` while it is live.
+		/*
+		 * ask id: the sentence the owner refused with, or `null` while it is live - and,
+		 * on a revision, whether one LANDED (`AskOutcome`'s own note: the wire cannot
+		 * mark an accepted change, so the receipt is this surface's own record).
 		 *
 		 * Keyed rather than a single slot because a refusal belongs to ONE ask - a
 		 * single slot would put the previous ask's sentence on the next one, which is
 		 * the same defect the gate's per-question hold exists to avoid.
 		 */
-		askOutcomes?: Record<
-			string,
-			{ sending: boolean; refused: string | null } | undefined
-		>;
+		askOutcomes?: Record<string, AskOutcome | undefined>;
 		/*
 		 * THE ASK-MODE LANE (design §5.0). `askExpanded` is the one flag the
 		 * composer's routing rule reads, and the page owns it rather than the ask

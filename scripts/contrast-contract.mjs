@@ -974,7 +974,7 @@ const CONTROLS = [
 		 * Listed by this table's own first rule: green output about a component
 		 * nobody named is not evidence about that component, and the drawer card's
 		 * action row is a surface this file had not asserted. The pairing is
-		 * deliberate — `Change answer` is the RESTING control, and `Send change` is
+		 * deliberate — `Change answer` is the RESTING control, and `Update answer` is
 		 * the same accent triple `Send answer` already wears one button over, so the
 		 * resting one is the shape this table has not covered.
 		 *
