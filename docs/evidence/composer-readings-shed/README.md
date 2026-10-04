@@ -16,9 +16,15 @@ fix is a state rather than a wider band.
 ## How to re-run it
 
 One rig, both trees — the pair is only a controlled comparison if both halves come
-from the same script, the same fixtures and the same widths. The five harness
-files are copied verbatim into the base worktree, so nothing about the rig differs
-between the halves.
+from the same script, the same fixtures and the same widths. The five harness files
+are copied into the base worktree and nothing else there is touched. Four of the
+five are byte-identical to the committed files; the fifth,
+`scripts/composer-readings-geometry.tsx`, differs in that copy by **formatter-only**
+changes (two import moves and one JSX wrap, 3 hunks, no expression altered), so the
+halves' semantics are identical and the measured rows are reproduced exactly — `QA
+report — round 1` re-ran the rig in both trees and got the committed base rows
+cell-for-cell. The base worktree's copy has since been refreshed to the committed
+file, so a re-run from here gets five byte-identical files.
 
 ```sh
 # in the base worktree (77444ffb36f) and in the branch's worktree
@@ -130,3 +136,32 @@ the light theme's are identical in every column.
   the app shell and the real desktop bridge are absent, so nothing here is evidence
   about them (see `docs/evidence/composer-readings/` for the live-app counterpart
   of this same row).
+- **The shed's cost is not overstated anywhere, and this set is where that was
+  corrected (design round 1, D1).** The desktop renderer has exactly ONE active-time
+  renderer and it is the strip this change sheds: no other module reads
+  `active_duration_s`, `useActiveSeconds` or `session-duration` (the transcript's
+  own clocks measure the turn or the phase, a different number). So while a turn
+  runs the session's active time is shown nowhere in this app, and it returns by
+  itself at turn end. There is no press that brings it back.
+- **The drop is coarser than the defect needs, and that is measured rather than
+  claimed (design round 1, D2).** `controlsThirdBox` is unconditional on the
+  cluster's own width, so running rows that had room lose the reading: after the
+  change the rightmost reading ends **68.2px** clear of the controls on
+  `running-plain-908` and **28.2px** clear on `running-issue-908` (against 16.0 and
+  2.0 before). The band's own shed has the same shape — `idle-fullest-860` drops the
+  reading with 2.4px to spare — so the state rule follows this row's existing
+  precedent; a width-aware version would have to measure the cluster, which CSS
+  cannot do here.
+- **The turn boundary reflows the cluster, and no frame can show it (design round 1,
+  D3).** The shed frees ~36px at the very instant the third box appears, so the
+  model chip expands with it — 56px → 84.5px at a 908px column — and the readings
+  downstream shift ~28px; both move back at turn end and again when the 500ms grace
+  releases the reserved box. Derived from `numbers.json`, not observed: this rig
+  mounts one state and cannot hold a transition.
+- **A fourth row-budget state is not covered by this shed (agent review round 1,
+  R1-2).** While the composer is acquiring the recorder (`isPreparing`) the controls
+  group grows a caption — `Starting recording`, `shrink-0`, measured 112.6x19.5px in
+  `docs/evidence/stt-instant-ack`. The group's growth there is TEXT, not a box, so no
+  third 32px box is drawn and `controlsThirdBox` is false. It is pre-existing: the
+  caption is on the base tree, the base carries the same overlap, and the caption's
+  own evidence set photographed a composer with no readings cluster at all.
