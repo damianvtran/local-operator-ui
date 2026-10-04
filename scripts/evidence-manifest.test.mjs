@@ -4010,14 +4010,18 @@ test("a frame the walk does not judge is accounted for, and moving one fails", (
 	t.after(() => rmSync(dir, { recursive: true, force: true }));
 	mkdirSync(join(dir, "a-set", "row"), { recursive: true });
 	/*
-	 * Four frames, one per case: judged in the canonical container, judged
-	 * BECAUSE ITS NAME CLAIMS A THEME in the other one, and one naming no theme
-	 * inside the declared set, one outside it.
+	 * Six frames, covering both halves of the rule for a THIRD container: judged in
+	 * the canonical container, judged BECAUSE ITS NAME CLAIMS A THEME in the two
+	 * others (a container outside `FRAME_CONTAINERS` would be invisible to the walk
+	 * AND the accounting at once - the hole QA found for `.png`, one extension
+	 * over), and one naming no theme inside the declared set, plus two outside it.
 	 */
 	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.webp"), "");
 	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.png"), "");
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.jpg"), "");
 	writeFileSync(join(dir, "a-set", "row-00-t96ms-blank.png"), "");
 	writeFileSync(join(dir, "outside-00-t00ms-blank.png"), "");
+	writeFileSync(join(dir, "outside-00-t00ms-blank.jpg"), "");
 	const manifest = { countsMean: {}, supplementary: [{ path: "a-set" }] };
 	const why = "x".repeat(60);
 
@@ -4025,7 +4029,11 @@ test("a frame the walk does not judge is accounted for, and moving one fails", (
 		frameFiles(dir)
 			.map((file) => file.split("/").pop())
 			.sort(),
-		["localOperatorDark.png", "localOperatorDark.webp"],
+		[
+			"localOperatorDark.jpg",
+			"localOperatorDark.png",
+			"localOperatorDark.webp",
+		],
 		"a theme-named frame is JUDGED in whatever container it is packed: the name is the claim, and the container is only how the pixels are packed",
 	);
 	assert.match(
@@ -4039,7 +4047,7 @@ test("a frame the walk does not judge is accounted for, and moving one fails", (
 				...manifest,
 				unjudgedFrames: {
 					insideDeclaredSets: 1,
-					outsideDeclaredSets: 1,
+					outsideDeclaredSets: 2,
 					why,
 				},
 			},
