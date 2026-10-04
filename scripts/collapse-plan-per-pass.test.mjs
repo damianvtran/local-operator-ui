@@ -26,6 +26,14 @@
  *    inline screenshot is base64 on the live path, and hashing it made the key
  *    scale with the picture).
  *
+ *    The "once per record object" half is pinned as a COUNT OF MISSES
+ *    (`dbgRecordSignatureCalls`, agent review round 2, m1r2): deleting the memo
+ *    left this file green, because every shape the bench drives hands back a
+ *    fresh object for every row, so the assertions below are the only thing that
+ *    fails when the memo goes. The signature is signed-once also because a signed
+ *    record is FROZEN in a development build (agent review round 2, M1r2), and
+ *    the last test here drives that guard through its own `DEV: true` bundle.
+ *
  * 2. THE WIDEN SEARCH (`widenTarget`). The snap can mount far more than the raw
  *    size it is asked for, so several candidates of one gesture - and the
  *    mounted baseline itself - resolve to the SAME window. Before the fix each
@@ -46,7 +54,7 @@ const ROOT = process.cwd();
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { collapsePlan, collapsePlanInputKey, collapsePlanOptionsKey, collapseRowsKey, dbgCollapsePlanCalls, widenTarget, paintedRows, WIDEN_MAX_STEPS, WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			'export { collapsePlan, collapsePlanInputKey, collapsePlanOptionsKey, collapseRowsKey, dbgCollapsePlanCalls, dbgRecordSignatureCalls, widenTarget, paintedRows, WIDEN_MAX_STEPS, WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -71,6 +79,7 @@ const {
 	collapsePlanOptionsKey,
 	collapseRowsKey,
 	dbgCollapsePlanCalls,
+	dbgRecordSignatureCalls,
 	paintedRows,
 	widenTarget,
 } = await import(moduleUrl);
@@ -633,5 +642,168 @@ test("a changed payload still moves the key, and an unchanged one does not", () 
 		collapseRowsKey(rebuilt),
 		before,
 		"a rebuilt array is a rebuilt window",
+	);
+});
+
+/* ------------------------- the per-record memo pin ------------------------ */
+
+/**
+ * THE PIN (agent review round 2, m1r2). The file's header claims the signature
+ * "is computed ONCE PER RECORD OBJECT" - and until this test, deleting the memo
+ * left the whole file green. Every shape the bench drives
+ * (`transcript-perflush-perf.test.mjs` A3/A7) hands back a FRESH object for
+ * every row every flush, which is the one shape the memo cannot help, so the
+ * optimisation could be removed and restored to the per-token cost M1 was
+ * raised for without a single failing assertion.
+ *
+ * `dbgRecordSignatureCalls` counts MISSES (a computed signature, not a cached
+ * one), so the live shape - one record replaced, the rest identity-preserved -
+ * must cost exactly one. The third arm proves the counter measures misses: a
+ * flush of fresh identities pays for every row, which is what the assertion
+ * above would read if the memo were gone.
+ */
+test("the signature is computed once per record object, not once per row per flush", () => {
+	const window = [user("u1"), tool("t1"), answer("a1")];
+
+	dbgRecordSignatureCalls.count = 0;
+	collapseRowsKey(window);
+	assert.equal(
+		dbgRecordSignatureCalls.count,
+		window.length,
+		`a cold window signs each record once (got ${dbgRecordSignatureCalls.count} for ${window.length} rows)`,
+	);
+
+	/* A streamed token replaces EXACTLY ONE record; the others keep their object. */
+	const token = window.map((entry, index) =>
+		index === 1
+			? { ...entry, record: { ...entry.record, durationS: 0.9 } }
+			: entry,
+	);
+	dbgRecordSignatureCalls.count = 0;
+	collapseRowsKey(token);
+	assert.equal(
+		dbgRecordSignatureCalls.count,
+		1,
+		`a one-record flush signs one record, not the window (got ${dbgRecordSignatureCalls.count})`,
+	);
+
+	/* The counter discriminates: fresh identities are fresh misses. */
+	const fresh = window.map((entry) => ({
+		...entry,
+		record: { ...entry.record },
+	}));
+	dbgRecordSignatureCalls.count = 0;
+	collapseRowsKey(fresh);
+	assert.equal(
+		dbgRecordSignatureCalls.count,
+		window.length,
+		`fresh identities sign every row (got ${dbgRecordSignatureCalls.count})`,
+	);
+});
+
+/* ------------------- a malformed images value is a guard ------------------ */
+
+/**
+ * QA round 2, Q1. `imageStamp` keys a `WeakMap` on the record's own `images`
+ * value, and a `WeakMap` key must be an object: `images: null` (or a string)
+ * used to throw `Invalid value used as weak map key` MID-RENDER, where the
+ * `JSON.stringify`-with-replacer path this replaced tolerated any value. No
+ * shipped producer returns a non-array, so this pins the GUARD rather than a
+ * bug: the malformed value is carried verbatim - it moves the key when it
+ * changes, the same safe direction as every other unlisted field - instead of
+ * taking the row down.
+ */
+test("a malformed images value moves the key instead of throwing", () => {
+	const withNull = collapseRowsKey([
+		user("u1"),
+		tool("n1", { images: null }),
+		answer("a1"),
+	]);
+	assert.equal(
+		typeof withNull,
+		"string",
+		"a non-array images is a key, not a crash",
+	);
+	assert.notEqual(
+		collapseRowsKey([
+			user("u1"),
+			tool("n1", { images: "not an array" }),
+			answer("a1"),
+		]),
+		withNull,
+		"a malformed value still moves the key when it changes",
+	);
+});
+
+/* ------------- the dev-only immutability guard, through its bundle -------- */
+
+/*
+ * THE GUARD IS DEVELOPMENT-ONLY, SO ITS TEST NEEDS A DEV BUILD. The bundle above
+ * carries no `import.meta.env`, so `record-immutability.ts` reads `DEV` as
+ * false there - the production-shaped branch, and the reason no existing suite
+ * changes behaviour. This second bundle is the same module with `DEV: true`,
+ * which is the branch a Vite dev build takes; in it, a record is frozen as the
+ * plan signs it, and an in-place write throws at the write instead of leaving
+ * `collapseRowsKey`'s cached signature stale (agent review round 2, M1r2).
+ */
+const devBundle = await build({
+	stdin: {
+		contents: [
+			'export { collapseRowsKey, dbgRecordSignatureCalls } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+		].join("\n"),
+		resolveDir: ROOT,
+	},
+	alias: {
+		"@features": `${ROOT}/src/renderer/src/features`,
+		"@shared": `${ROOT}/src/renderer/src/shared`,
+	},
+	bundle: true,
+	format: "esm",
+	platform: "node",
+	write: false,
+	define: { "import.meta.env": '{"DEV":true}' },
+});
+const devModelUrl = `data:text/javascript;base64,${Buffer.from(
+	devBundle.outputFiles[0].text,
+).toString("base64")}`;
+const { collapseRowsKey: devCollapseRowsKey } = await import(devModelUrl);
+
+test("a dev build freezes a signed record, so an in-place write throws", () => {
+	const rows = [user("u1"), tool("t1"), answer("a1")];
+	devCollapseRowsKey(rows);
+	const record = rows[1].record;
+
+	assert.ok(
+		Object.isFrozen(record),
+		"a record the plan has signed is frozen in a development build",
+	);
+	assert.throws(
+		() => {
+			record.durationS = 0.9;
+		},
+		TypeError,
+		"a field write throws instead of leaving the cached signature stale",
+	);
+	assert.throws(
+		() => {
+			record.brandNew = 1;
+		},
+		TypeError,
+		"a new own field throws",
+	);
+	assert.throws(
+		() => {
+			record.images.push({ id: "n1", mimeType: "image/png", data: "" });
+		},
+		TypeError,
+		"an images.push throws - the array is frozen too, and the key reads it by identity",
+	);
+
+	/* The production-shaped arm: the guard costs nothing outside a dev build. */
+	const productionRows = [user("u1"), tool("t1"), answer("a1")];
+	collapseRowsKey(productionRows);
+	assert.ok(
+		!Object.isFrozen(productionRows[1].record),
+		"no freeze outside a development build",
 	);
 });

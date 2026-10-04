@@ -49,6 +49,7 @@
 
 import { isPartialDelivery } from "../components/trace/tool-row-model";
 import type { TranscriptDisplayMode } from "../transcript-display-mode";
+import { freezeRecordDeep } from "./record-immutability";
 import {
 	type FoldableAction,
 	foldSummary,
@@ -401,6 +402,25 @@ export type CollapsePlan = {
  */
 export const dbgCollapsePlanCalls = { count: 0 };
 
+/**
+ * SIGNATURES COMPUTED - a memo MISS, the instrument that pins the per-record
+ * memo (agent review round 2, m1r2). Exported beside `dbgCollapsePlanCalls` in
+ * the same shape: a module-level counter a test reads and nothing else touches
+ * at runtime.
+ *
+ * WHY IT HAS TO EXIST. Removing the `WeakMap` in `recordSignature` left this
+ * suite **7/7 green**, because every shape the bench drives
+ * (`transcript-perflush-perf.test.mjs` A3 and A7) hands back a FRESH object for
+ * every row every flush - the one shape the memo cannot help - so the
+ * optimisation could rot back to a window-per-flush signature with every test
+ * passing. The assertion that reads this counter
+ * (`scripts/collapse-plan-per-pass.test.mjs`, "the signature is computed once per
+ * record object") fails the moment the memo is gone: a one-record flush over an
+ * otherwise identity-preserving window misses exactly once with it, and once per
+ * row without it.
+ */
+export const dbgRecordSignatureCalls = { count: 0 };
+
 export function collapsePlan(
 	rows: Row[],
 	options: {
@@ -542,14 +562,32 @@ const imageStamp = (images: readonly TranscriptImage[]): string => {
  *
  * THE IMMUTABILITY THIS RESTS ON IS THE REDUCER'S, NOT A NEW ONE: a record
  * object is replaced, never mutated, so a cached signature cannot go stale while
- * its record is alive. A caller that mutated a record in place would defeat this
- * memo, `shallowEqual` and every row memo in the transcript together.
+ * its record is alive - and in development the reducer ENFORCES it at emit and
+ * this function freezes the record as it signs it (`record-immutability.ts`), so
+ * an in-place write throws instead of going stale. A caller that mutated a record
+ * in place anyway would leave this memo returning the signature taken from the
+ * OLD contents while `chatEntries` - keyed on `visible`, not on a signature -
+ * painted the new ones: the bar and the foot would DIVERGE from the row beside
+ * them rather than all going stale together, which is the harder failure to
+ * notice, not the easier one (agent review round 2, n1r2).
  */
 const RECORD_SIGNATURES = new WeakMap<TranscriptRecord, string>();
 
 function recordSignature(record: TranscriptRecord): string {
 	const cached = RECORD_SIGNATURES.get(record);
 	if (cached !== undefined) return cached;
+	dbgRecordSignatureCalls.count += 1;
+	/*
+	 * FREEZE BEFORE SIGNING (agent review round 2, M1r2). The signature just
+	 * taken is cached against the record's IDENTITY, so it goes stale the moment
+	 * anything writes to the record in place. Freezing here - the memo's own
+	 * boundary - makes that write throw in development instead, and it covers a
+	 * record from ANY producer, including the two writers outside the reducer
+	 * (`replaceLocalRecordText` in `use-canonical-session.ts`,
+	 * `reconcileLaunchTurns` in `run-detail-model.ts`). In production the guard is
+	 * a no-op (see `record-immutability.ts`).
+	 */
+	freezeRecordDeep(record);
 	// `Record<string, unknown>` rather than the union's own key type: the union
 	// narrows `keyof` to the fields COMMON to every variant, and the point here is
 	// to walk whatever the record actually carries.
@@ -568,7 +606,18 @@ function recordSignature(record: TranscriptRecord): string {
 			continue;
 		}
 		if (key === "images") {
-			projected[key] = imageStamp(value as readonly TranscriptImage[]);
+			/*
+			 * A `WeakMap` key must be an object, so a non-array `images` (a string, a
+			 * number, `null`) must not reach `imageStamp`: it would throw `Invalid
+			 * value used as weak map key` MID-RENDER. Unreachable from shipped
+			 * producers - the type is `TranscriptImage[]` and every producer returns
+			 * an array - so this is a guard, not a fix (QA round 2, Q1): carry the
+			 * value verbatim, the same direction as every other unlisted field, so a
+			 * malformed value moves the key instead of taking the row down.
+			 */
+			projected[key] = Array.isArray(value)
+				? imageStamp(value)
+				: (value ?? null);
 			continue;
 		}
 		projected[key] = value;
