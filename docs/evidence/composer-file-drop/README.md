@@ -69,16 +69,25 @@ refusing arm of the same gate by `scripts/composer-file-drop.test.mjs` (see
 
 ## The frames
 
-| Frame | What it shows |
+| Committed frame | What it shows |
 | --- | --- |
-| `composer-drop-1-dragover` | the band mid-drag, before the drop: the composer box carries the accent ring and wash the drop-target state paints |
-| `composer-drop-1-single` | one image dropped: one tile, named `rig-drop-large.png` |
-| `composer-drop-2-multiple` | two files in one `dataTransfer.files`: both tiles, in the drag's own order (`rig-drop-large.png`, then `rig-drop-second.png`) |
-| `composer-drop-3-non-image` | a `.txt` dropped: a tile like any other path-backed attachment |
-| `composer-drop-5-running` | a drop and a paste while a turn is genuinely running (the mock provider's own `[bash:15]` marker → `sleep 15`) |
-| `composer-drop-6-parity` | the wire half: the dropped image and the pasted one, both sent |
-| `composer-drop-6c-read-at-send` | the same path dropped twice with different bytes written behind it between the sends |
-| `composer-drop-4-non-target` | a file dropped over the transcript, where nothing accepts it |
+| `dragover/localOperatorDark.webp` | the band mid-drag, before the drop: the composer box carries the accent ring and wash the drop-target state paints |
+| `single-image/localOperatorDark.webp` | one image dropped: one tile, named `rig-drop-large.png` |
+| `multiple-files/localOperatorDark.webp` | two files in one `dataTransfer.files`: both tiles, in the drag's own order (`rig-drop-large.png`, then `rig-drop-second.png`) |
+| `non-image/localOperatorDark.webp` | a `.txt` dropped: a tile like any other path-backed attachment |
+| `running-turn/localOperatorDark.webp` | a drop and a paste while a turn is genuinely running (the mock provider's own `[bash:15]` marker → `sleep 15`) |
+| `wire-parity/localOperatorDark.webp` | the wire half: the dropped image and the pasted one, both sent |
+| `read-at-send/localOperatorDark.webp` | the same path dropped twice with different bytes written behind it between the sends |
+| `off-composer/localOperatorDark.webp` | a file dropped over the transcript, where nothing accepts it |
+
+WHY THE FILES ARE NAMED `localOperatorDark.webp` AND NOT BY THEIR CASE: the
+frames gate derives a frame's expected ground FROM ITS FILENAME
+(`check-evidence.mjs`: `<set>/<cell>/<theme>.webp`, looked up in `PALETTES`), so
+a frame called `composer-drop-1-single-1380x900.webp` is a frame no palette
+names and the sweep refuses it. The cell directory carries the case instead; the
+run's own labels (`composer-drop-1-single-1380x900.png`, listed in
+`head-run.log`) map one-to-one onto the cells above, in the order the scene runs
+them.
 
 The base tree's six frames are the same first five gestures (minus the two wire
 cases, which only the head half asserts) plus its own `composer-drop-4-non-target`.
