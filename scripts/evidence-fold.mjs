@@ -1025,7 +1025,7 @@ export const runGuards = async ({
 	const notes = [];
 	if (read(["rev-parse", "--is-shallow-repository"]) === "true") {
 		notes.push(
-			"the citation-ancestry guard stood down: this is a shallow clone, so no ancestor of HEAD is present to ask about. That is NOT a failure - the counts are still guarded here and on every clone - and CI's full clone asks it.",
+			"the citation-ancestry guard stood down: this is a shallow clone, so no ancestor of HEAD is present to ask about. That is NOT a failure - the counts are still guarded here and on every clone - but nothing else asks it either: `actions/checkout` is one commit deep too, so the CITATION half is checked NOWHERE on this fleet today, and `git fetch --unshallow` is what answers it on a clone that has the history.",
 		);
 	} else {
 		failures.push(...citationAncestryFailures(manifest, read));
