@@ -3,8 +3,8 @@
  *
  * ## Why the container moved, and why it is the canvas family's
  *
- * The panel used to be a column mounted ABOVE the composer (`chat-content.tsx`
- * `<AskSurfaces>`): no chrome, no dismiss, and no scroll owner of its own, so a
+ * The panel used to be a column mounted ABOVE the composer (the in-band panel
+ * `chat-content.tsx` drew, since replaced by this drawer): no chrome, no dismiss, and no scroll owner of its own, so a
  * queue taller than the window pushed its own content past the page's scroller and
  * the last card was unreachable (the design note's D1, and the `dom_audit`
  * `text-clipped` FAIL it was measured by: `scroll 1280x832 vs client 1280x800`).

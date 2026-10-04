@@ -2885,11 +2885,14 @@ const AskModeBand = ({
 	label,
 	asks,
 	askMode = true,
+	drawerOpen = true,
 }: {
 	label: string;
 	asks: PendingAsk[];
 	/** The control half: the same box with the app's own invitation. */
 	askMode?: boolean;
+	/** The control half's other half: the pair's frame has the drawer up. */
+	drawerOpen?: boolean;
 }) => (
 	<div className="flex items-stretch gap-0 bg-canvas">
 		<div className="flex flex-col bg-canvas p-6" style={{ width: 569 + 48 }}>
@@ -2917,18 +2920,20 @@ const AskModeBand = ({
 				/>
 			</div>
 		</div>
-		<div className="flex h-[600px] w-[400px] shrink-0 flex-col">
-			<AskDrawer
-				frontend={asksFrontend(asks)}
-				scope="session"
-				onClose={() => undefined}
-				nowMs={ASK_NOW}
-				drafts={EMPTY_DRAFTS}
-				onDraftChange={() => undefined}
-				onAnswer={() => undefined}
-				onDecline={() => undefined}
-			/>
-		</div>
+		{drawerOpen ? (
+			<div className="flex h-[600px] w-[400px] shrink-0 flex-col">
+				<AskDrawer
+					frontend={asksFrontend(asks)}
+					scope="session"
+					onClose={() => undefined}
+					nowMs={ASK_NOW}
+					drafts={EMPTY_DRAFTS}
+					onDraftChange={() => undefined}
+					onAnswer={() => undefined}
+					onDecline={() => undefined}
+				/>
+			</div>
+		) : null}
 	</div>
 );
 
@@ -2944,6 +2949,31 @@ export const AskDrivenDrawerOpen: Story = {
 		<AskModeBand
 			label="drawer open: the composer still answers the same ask (the §5.0 invariant)"
 			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/**
+ * THE D2 PAIR'S CONTROL: the same band with the drawer SHUT and the composer back
+ * on its ordinary invitation.
+ *
+ * The open frame above is the state the ruling is about - two live doors to one
+ * question. This is the other half of the pair, and it is what makes the open frame
+ * readable as a change rather than as the only state there is: same band, same
+ * queue, same composer box, one mode up. It exists as a committed story rather than
+ * only as a design-round PNG because the evidence set's frames are supposed to come
+ * from the tree (design round 2, D6): the round-1 pair came from a rig whose host
+ * lacked the `@container/chatcol` ancestor, so the chip's two yield spans both
+ * painted and both committed frames showed a duration string the product does not
+ * render.
+ */
+export const AskDrivenDrawerClosed: Story = {
+	render: () => (
+		<AskModeBand
+			label="drawer shut: the same box on its ordinary invitation"
+			asks={[ASK_OPEN]}
+			askMode={false}
+			drawerOpen={false}
 		/>
 	),
 };
