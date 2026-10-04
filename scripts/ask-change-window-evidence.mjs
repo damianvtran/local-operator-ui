@@ -21,15 +21,20 @@
  *      proof requires opening it and then reading the row's own summary.
  *   4. Design round 1, D2 = agent review round 1's MAJOR — §10's window is `answered`
  *      OR `late`; the `late` half draws the same door in the same DOM.
- *   5. Agent review round 2's minor — a refusal that NEVER REACHED the backend must not
- *      withdraw the door. Only the owner's own verdict shuts it (`refusedByOwner`),
- *      because the outcome record is never cleared and a failed press would otherwise
- *      leave the ask with no affordance until the mount changed.
+ *   5. Agent review round 2's minor, and round 3's BLOCKER — a refusal that NEVER
+ *      REACHED the backend must not withdraw the door. Only the owner's own verdict
+ *      shuts it (`refusedByOwner`), because the outcome record is never cleared and a
+ *      failed press would otherwise leave the ask with no affordance until the mount
+ *      changed. Case 6 builds that record the way the CALLER does — the shipped
+ *      classifier over a `DesktopControlError` the shipped transport really threw —
+ *      because the first cut hand-wrote `{ sending: false, refused }` with no flag at
+ *      all, so it passed while every real failure classified as the owner's.
  *
  * WHAT IS REAL: the shipped `AskPanel` → `AskRow` → `Disclosure` subtree, the
- * shipped fixtures' shapes, and real DOM events. What is faked: the outcome record
- * the caller owns (a `refused` sentence, a `changed` receipt) — it is a prop here,
- * because it is the caller's state and this rig has no caller.
+ * shipped fixtures' shapes, the shipped transport and the shipped refusal classifier
+ * (case 6), and real DOM events. What is faked: the `changed` receipt and the
+ * `refused` sentence of the cases that only test the RENDER of a record — the record
+ * is a prop here, because it is the caller's state and this rig has no caller.
  *
  * The repo keeps jsdom mounts of this graph in bounded one-shot rigs rather than in
  * `node --test` for a measured reason (`scripts/fleet-ask-escape-evidence.mjs`: a
@@ -195,7 +200,9 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskPanel } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
-			'export { askQueueView } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { askQueueView, askRefusalIsOwner, askRefusalSentence } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { desktopResult } from "./src/renderer/src/shared/api/local-operator/desktop-api";',
+			'export { DESKTOP_MACHINE_DETAIL, DESKTOP_REFUSAL_CODE } from "./src/shared/desktop-contract";',
 			'export { createRoot } from "react-dom/client";',
 		].join("\n"),
 		resolveDir: process.cwd(),
@@ -218,7 +225,16 @@ const bundle = await build({
 });
 const bundlePath = `${process.cwd()}/.ask-change-window-evidence.bundle.mjs`;
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { AskPanel, askQueueView, createRoot } = await import(bundlePath);
+const {
+	AskPanel,
+	askQueueView,
+	askRefusalIsOwner,
+	askRefusalSentence,
+	desktopResult,
+	DESKTOP_MACHINE_DETAIL,
+	DESKTOP_REFUSAL_CODE,
+	createRoot,
+} = await import(bundlePath);
 await unlink(bundlePath);
 
 const flush = async (times = 6) => {
@@ -236,6 +252,61 @@ const click = async (target) => {
 		);
 	});
 	await flush();
+};
+
+/*
+ * The revise press's own body, so the transport under test sees the request the
+ * product sends.
+ */
+const REVISE_REQUEST = {
+	op: "sessions.answer",
+	sessionId: "0f9c1e2d3a4b",
+	askId: "a-change",
+	answers: { q1: ["staging"] },
+	revise: true,
+};
+
+/**
+ * Drive the SHIPPED transport over one stubbed reply from main, and hand back the
+ * error it threw.
+ *
+ * `desktopRequest` reads the real IPC channel off `window.api.desktop.request`, so
+ * stubbing exactly that is the whole seam: `desktopResult` parses the envelope and
+ * throws the SHIPPED `DesktopControlError`. Nothing below hand-builds an error — that
+ * is what round 3's finding was about, and the rig's own record has to come from the
+ * same code the app runs or it proves nothing about the classification.
+ */
+const transportRefusal = async (reply) => {
+	DOM.window.api = {
+		desktop: {
+			request: async () => {
+				if (reply instanceof Error) throw reply;
+				return reply;
+			},
+		},
+	};
+	let error;
+	try {
+		await desktopResult(REVISE_REQUEST);
+	} catch (caught) {
+		error = caught;
+	} finally {
+		// `Reflect` rather than the `delete` operator (`biome`'s `noDelete` rule): the
+		// jsdom window keeps its own identity, only the stub comes off it.
+		Reflect.deleteProperty(DOM.window, "api");
+	}
+	if (error === undefined) throw new Error("the transport did not refuse");
+	return error;
+};
+
+/** The caller's own record, built exactly the way `chat-page.tsx` builds it. */
+const refusalRecord = async (reply) => {
+	const error = await transportRefusal(reply);
+	return {
+		sending: false,
+		refused: askRefusalSentence(error),
+		refusedByOwner: askRefusalIsOwner(error),
+	};
 };
 
 /**
@@ -435,35 +506,54 @@ const buttons = (container, label) =>
 
 {
 	/*
-	 * AGENT REVIEW ROUND 2'S MINOR, in the DOM: a refusal that never reached the backend
-	 * must NOT withdraw the door. The outcome record is never cleared, so closing on any
-	 * refusal left the ask with no affordance for the life of the mount; only the owner's
-	 * own verdict may, and the caller records that as `refusedByOwner`. The sentence is
-	 * painted either way - it is a fact about the press.
+	 * AGENT REVIEW ROUND 2'S MINOR AND ROUND 3'S BLOCKER, in the DOM and THROUGH THE REAL
+	 * PATH. A refusal that never reached the backend must NOT withdraw the door: the
+	 * outcome record is never cleared, so closing on one left the ask with no affordance
+	 * for the life of the mount. Only the owner's own verdict may, and the record is built
+	 * by the CALLER'S OWN CODE (`askRefusalSentence` + `askRefusalIsOwner`, as
+	 * `chat-page.tsx` and `fleet-ask-drawer.tsx` build it) over an error the shipped
+	 * transport threw from main's 503 `transport.failed` envelope. The sentence is painted
+	 * either way — it is a fact about the press.
 	 */
-	const transport =
-		"This server did not answer the request for its desktop controls.";
+	const failedRecord = await refusalRecord({
+		status: 503,
+		body: {
+			detail: {
+				code: DESKTOP_REFUSAL_CODE.transportFailed,
+				message: DESKTOP_MACHINE_DETAIL.transportFailed,
+			},
+		},
+	});
 	const failed = await mount({
 		rows: [answeredNotDelivered()],
-		outcomes: { "a-change": { sending: false, refused: transport } },
+		outcomes: { "a-change": failedRecord },
 	});
 	check(
 		"6. a refusal that reached nothing keeps `Change answer`",
 		buttons(failed.container, "Change answer").length === 1,
+		`refusedByOwner=${failedRecord.refusedByOwner}`,
 	);
 	check(
 		"6. and its sentence is still painted",
-		text(failed.container).includes(transport),
+		text(failed.container).includes(failedRecord.refused),
+		`sentence=${failedRecord.refused}`,
 	);
+	/*
+	 * And the other half: the OWNER's refusal — a 409 carrying its own sentence — really
+	 * does shut it, so the fix narrows the verdict rather than disabling it.
+	 */
+	const ownedRecord = await refusalRecord({
+		status: 409,
+		body: { detail: REFUSAL },
+	});
 	const owned = await mount({
 		rows: [answeredNotDelivered()],
-		outcomes: {
-			"a-change": { sending: false, refused: REFUSAL, refusedByOwner: true },
-		},
+		outcomes: { "a-change": ownedRecord },
 	});
 	check(
 		"6. the owner's verdict still shuts it",
 		buttons(owned.container, "Change answer").length === 0,
+		`refusedByOwner=${ownedRecord.refusedByOwner}`,
 	);
 }
 

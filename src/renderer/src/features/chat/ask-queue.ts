@@ -1433,8 +1433,13 @@ export const askRefusalFallback = (error: unknown): string | null => {
 };
 
 /**
- * "DID A SENTENCE CROSS THE WIRE?", in the two shapes it has, extracted so the
- * sentence and the verdict (`askRefusalIsOwner`) read the SAME answer.
+ * "DID A SENTENCE THE BACKEND WROTE CROSS THE WIRE?", in the two shapes it has,
+ * extracted so `askRefusalSentence` reads that one answer rather than deciding it twice. *
+ * IT ANSWERS THE SENTENCE AND NOT THE VERDICT, and that limit is measured (agent
+ * review round 3, BLOCKER): the transport writes sentences too - main's 503
+ * `transport.failed` and 504 `deadline_exceeded` envelopes carry an authored
+ * `detail.message` ALONGSIDE a status - so "prose crossed the wire" cannot tell the
+ * owner's words from the transport's own, which is what `askRefusalIsOwner` needs.
  *
  * `desktopResult` stores `detail` only when the body's detail is an OBJECT; a
  * `{detail: "..."}` payload puts that same sentence in `message` and leaves the field
@@ -1502,8 +1507,8 @@ export const askRefusalSentence = (error: unknown): string => {
 };
 
 /**
- * Whether a refusal is the OWNER's own verdict on this ask, rather than a transport
- * failure that reached nothing.
+ * Whether a refusal is the OWNER's own verdict on this ask, rather than the transport
+ * losing sight of the request.
  *
  * IT DECIDES WHETHER §10's CHANGE DOOR MAY SHUT (agent review round 2, minor). The card
  * withdraws the door while a refusal stands, because a control whose only possible
@@ -1513,16 +1518,31 @@ export const askRefusalSentence = (error: unknown): string => {
  * the door shut on one left an answered-undelivered ask with no affordance at all until
  * a remount.
  *
- * A VERDICT IS EITHER SHAPE THE APP CAN SUBSTANTIATE: the owner's own sentence crossed
- * the wire (`askRefusalAuthored`), or a status/code the app classifies as one of the
- * ask's own states (`askRefusalFallback` - 409/410). A transport failure carries no
- * status, and a 404 is "no ask with that id"; neither is a statement about delivery, so
- * both leave the door open and the reader free to press again once the wire can answer.
- * The returned refusal stays on screen either way - it is a fact about the press, not a
- * gate on the control.
+ * THE VERDICT IS THE ASK'S OWN STATE, AND DELIBERATELY NOT THE PROSE (agent review round
+ * 3, BLOCKER). The first cut read an authored sentence as the verdict too - any
+ * `DesktopControlError` whose `message` was not the placeholder - and the transport's own
+ * failures are that shape, so the door shut on every failure the app can hit. Measured by
+ * driving the SHIPPED transport over the envelopes each layer really produces: the
+ * renderer's own catch (`null` status, "Desktop controls could not reach the backend
+ * process."), main's 503 `transport.failed` envelope, main's 504 `deadline_exceeded`
+ * envelope, the daemon's `runtime_unreachable` and `runtime_busy` refusals, and a plain
+ * 404 with a prose detail ALL classified as the owner's.
+ *
+ * `status !== null` ALONE IS NOT ENOUGH, and this is why the check is the vocabulary
+ * rather than the status: main SYNTHESISES its two transport failures as 503 and 504
+ * envelopes carrying an authored `detail.message` (`src/main/desktop-transport.ts`), so
+ * the app's most common "the backend is not answering" press still carried a non-null
+ * status, an authored sentence and a detail object. What a verdict needs is a statement
+ * about THIS ask's own state - the backend's 409/410 refusal, or the expired code
+ * (`askRefusalFallback`) - because a status that names none of them is an answer about
+ * something else (a 404, a 401/403, a 503/504) and leaves the door open, with the reader
+ * free to press again once the wire can answer.
+ *
+ * THE RETURNED REFUSAL STAYS ON SCREEN EITHER WAY: what the wire said is a fact about the
+ * press, reported by `askRefusalSentence` whatever it was. Only the DOOR reads this.
  */
 export const askRefusalIsOwner = (error: unknown): boolean =>
-	askRefusalAuthored(error) || askRefusalFallback(error) !== null;
+	askRefusalFallback(error) !== null;
 
 /**
  * The `sessions.answer` body for a whole-ask answer, or `null` when the draft is
