@@ -320,6 +320,12 @@ const CHROME_LAUNCH_SITES = [
 		"photographs the chat column's shared measure at the shipped value and at the value it carried before, and reads the line length back from the rendered DOM - the frame pair a sweep cannot take, because the previous value is not in the tree at any later head",
 	),
 	guarded(
+		"scripts/composer-readings-geometry.mjs",
+		"spawn",
+		2,
+		"photographs and measures the composer row's readings strip against its controls, idle and while a turn runs, across the widths the active-time shed band spans - the before/after pair for issue #788, which a sweep cannot take because the BASE tree is the other half of it",
+	),
+	guarded(
 		"scripts/cursor-audit.mjs",
 		"spawn",
 		1,

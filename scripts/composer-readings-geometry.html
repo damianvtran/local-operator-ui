@@ -1,0 +1,39 @@
+<!doctype html>
+<!--
+  Rendered-geometry harness for the composer row's readings strip against its
+  controls (a measurement surface, not part of the app and not part of the test
+  suite).
+
+  Why a rig rather than a story or the live app. The claim issue #788 makes is a
+  GEOMETRY claim at a chosen chat-column width, and its two halves are states a
+  story cannot hold and a live app cannot be put into on demand:
+
+    - the RUNNING row, where the Stop control is drawn and the readings cluster
+      shares the line with three 32px controls rather than two (the live app
+      needs a real backend streaming a real turn: `scripts/interrupt-esc-proof.mjs`
+      does drive that, and it is the confirmation, not the measurement);
+    - the FULLEST readings state (`estimate` beside the context reading plus a
+      four-digit spend), which is the state the shed threshold is derived from
+      rather than the plainest one (the strip's own comment says so).
+
+  A story mounts one state; this page mounts the shipped `MessageInput` in either
+  state at the column width the driver names, and `scripts/composer-readings-geometry.mjs`
+  measures and photographs both trees so the before/after pair is one comparison
+  rather than two.
+
+  It is deliberately NOT a Storybook story: the measurement has to run against
+  the BASE commit as well as the change (`~/local-operator-ui-worktrees/strip-shed-before`),
+  and a story is a source edit on each tree, which makes the two halves of the
+  pair two different artefacts. This page plus its rig are copied verbatim
+  between the trees instead.
+-->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Composer readings geometry — the readings strip against the controls</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<script type="module" src="./composer-readings-geometry.tsx"></script>
+	</body>
+</html>
