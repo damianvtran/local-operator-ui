@@ -51,7 +51,7 @@
  ],
  "committed": [
   {
-   "name": "in-transcript-loading--00-t68ms-blank.webp",
+   "name": "in-transcript-loading--00-t68ms-blank.png",
    "t": 68,
    "label": "blank",
    "why": "dom-only(failed:318 loading:331 idle:332)",
@@ -62,7 +62,7 @@
    "pixelAgrees": null
   },
   {
-   "name": "in-transcript-loading--01-t207ms-loading.webp",
+   "name": "in-transcript-loading--01-t207ms-loading/localOperatorDark.webp",
    "t": 207,
    "label": "loading",
    "why": "pixels(loading:0 vs failed:7)",

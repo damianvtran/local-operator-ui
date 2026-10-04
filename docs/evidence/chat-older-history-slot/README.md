@@ -145,19 +145,58 @@ clears it.
 ## 3. The retry control's states
 
 `retry-recovery/retry-states/` is the settled failure row in `localOperatorDark`,
-the theme the rest of this set uses:
+the theme the rest of this set uses. Each state sits in a directory named after
+the frame's own stem, with the palette as the filename — the shape
+`pnpm check-evidence` can read a ground out of (see §4):
 
-- `retry-rest-localOperatorDark.webp`;
-- `retry-hover-localOperatorDark.webp` — hover driven by a real
+- `retry-rest-localOperatorDark/localOperatorDark.webp`;
+- `retry-hover-localOperatorDark/localOperatorDark.webp` — hover driven by a real
   `Input.dispatchMouseEvent`, and read back: `matches(':hover')` is `true` and the
   control takes a colour step (`background-color: rgb(22, 40, 29)`). It does not
   lift, scale or translate, which is the branding contract's rule;
-- `retry-focus-visible-localOperatorDark.webp` — focus reached by **pressing
+- `retry-focus-visible-localOperatorDark/localOperatorDark.webp` — focus reached by **pressing
   Tab** (2 steps), not by calling `.focus()` and not by setting a class, so the
   browser's own `:focus-visible` heuristic applies. Read back: `focusVisible:
   true`, `outline: 2px solid rgb(56, 201, 106)` — an **outline**, not a
   box-shadow, which matters because this app is mostly scroll containers and
   box-shadow rings are clipped by `overflow: hidden`.
+
+## 4. Where the frames live, and why `pnpm check-evidence` decides it
+
+`pnpm check-evidence` derives a frame's expected ground **from its filename**: a
+frame committed as `<dir>/<stem>.webp` fails `no palette named <stem>` however
+the set is declared. The set as first committed named every frame after its own
+state and timestamp, so the whole of `retry-recovery/` was outside the gate's
+reach — 19 of the 20 findings the sweep reported on `main`, with the set's own
+`supplementary` entry missing its `why` as the twentieth.
+
+A frame's own pixels chose its disposition here, and neither disposition
+deletes a frame or alters a pixel:
+
+- **A frame that is a picture of the app** moved to `<cell>/<stem>/<theme>.webp`
+  keeping its bytes, exactly as `manifest.paletteStemRenameNote` records for the
+  same failure class — `localOperatorDark` is the palette every cell was shot on
+  (`readings.json`'s `domTheme`, and the rig's `theme:` iframe arg). Fourteen
+  frames: the eleven state frames the five cell directories hold — three each in
+  `base/in-transcript-idle`, `head/in-transcript-idle` and
+  `head/in-transcript-failed`, one each in `base/in-transcript-loading` and
+  `head/in-transcript-loading`, which is the states that EXIST rather than a full
+  5×3 grid — plus the three `retry-states` stills, all within ΔE00 0.78 of the
+  `localOperatorDark` ground and none more uniform than 96.13%.
+- **A frame that is not** is the five `--00-…-blank` frames: the compositor's
+  pre-paint buffer, measured at **100.00% a single colour** (`#211F1B`, the
+  `localOperatorDark` canvas). That is the one thing the uniformity ceiling
+  exists to refuse, so renaming cannot make them app pictures. They are
+  re-containered to PNG **in place**, pixels asserted identical on decode — the
+  container this repository commits a rig frame the sweep cannot judge as a
+  picture in (`chat-slash-enter-gestures`, `mcp-auth-complete`), because a
+  `Page.screencast` frame is not a Storybook still. Being PNG is not what makes
+  them invisible: the sweep JUDGES BY NAME (a theme-named frame is judged in any
+  container), so what puts them outside the judgement is that they name no theme -
+  and the manifest's `unjudgedFrames` counts them instead (five of them inside
+  this set), so one cannot be added, moved or re-containered without a count the
+  gate reads going stale. They are kept rather than dropped: each marks the
+  pre-paint moment its cell's interval is measured from.
 
 ## Not captured, and why
 

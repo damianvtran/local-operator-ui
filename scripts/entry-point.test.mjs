@@ -155,6 +155,15 @@ function cases(root) {
 	// it rather than report success over an artifact set that is not there.
 	const emptyDist = join(root, "empty-dist");
 	mkdirSync(emptyDist, { recursive: true });
+	/*
+	 * A directory with no `python3` in it, for the one case that drives the frame
+	 * sweep's CLI: the sweep's own answer is a whole-tree decode of every committed
+	 * frame (minutes long, so `evidence-run-guard.test.mjs` drives THAT with
+	 * synthetic evidence), while what this table can pin is the refusal path - and
+	 * the refusal is the property the whole file exists for.
+	 */
+	const noPython = join(root, "no-python");
+	mkdirSync(noPython, { recursive: true });
 	const scriptsScope = scriptsScopeRepo(root);
 	const classifier = classifierRepo(root);
 	return [
@@ -433,6 +442,32 @@ function cases(root) {
 				`- diff base: \`HEAD\\^1\` \\(\`${classifier.base}\`\\)[\\s\\S]*\`docs/BUILD\\.md\` -> \`docs\`[\\s\\S]*\`lint\` = \\*\\*false\\*\\*[\\s\\S]*\`pack\` = \\*\\*false\\*\\*`,
 			),
 			stderr: /^$/,
+		},
+		{
+			/*
+			 * The frame sweep's CLI, and the half of it a table like this CAN drive.
+			 *
+			 * `check-evidence.mjs`'s answer is a decode of every committed frame - an
+			 * eleven-minute sweep on CI - so it is not a case this table can run to
+			 * completion, and its success path is driven where synthetic evidence is
+			 * cheap (`scripts/evidence-run-guard.test.mjs`). What IS pinned here is the
+			 * property this whole file exists for: reached with no `python3` on `PATH`,
+			 * the guard that owns the machine-wide lease cannot start, and the script has
+			 * to say so and exit non-zero rather than exit 0 having checked nothing.
+			 *
+			 * It is a real test of the entry-point comparison rather than a formality:
+			 * this message is printed from INSIDE the `isEntryPoint(import.meta.url)`
+			 * branch, so a broken comparison - or a symlinked spelling that defeats it -
+			 * leaves both invocations exiting 0 with no output, which is the silent-zero
+			 * shape, and this case fails on the status.
+			 */
+			script: "check-evidence.mjs",
+			args: [],
+			cwd: plain,
+			env: { PATH: noPython },
+			status: 1,
+			stdout: /^$/,
+			stderr: /^Evidence check BLOCKED: guarded worker failed/,
 		},
 	];
 }
