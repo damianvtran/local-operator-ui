@@ -66,7 +66,12 @@ import { cn } from "@shared/lib/utils";
 import { PanelRightClose } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef } from "react";
 import type { CanonicalFrontendState } from "../../../../../../shared/desktop-session-contract";
-import type { AskDraft, AskPresentation, AskScope } from "../../ask-queue";
+import type {
+	AskDraft,
+	AskOutcome,
+	AskPresentation,
+	AskScope,
+} from "../../ask-queue";
 import {
 	ASK_FLEET_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
@@ -132,11 +137,15 @@ export type AskDrawerProps = {
 	 */
 	onAnswer?: (askId: string, answers: Record<string, string[]>) => void;
 	onDecline?: (askId: string) => void;
+	/**
+	 * CHANGE a recorded-but-undelivered answer (design §10, #1936). Addressed by ASK
+	 * ID for the same reason the two doors above are: the caller posts by id, and
+	 * the whole-map body is built inside the card where the edit buffer lives.
+	 */
+	onRevise?: (askId: string, answers: Record<string, string[]>) => void;
 	answering?: boolean;
-	outcomes?: Record<
-		string,
-		{ sending: boolean; refused: string | null } | undefined
-	>;
+	/** This surface's own record of the asks it posted for: `AskOutcome`, passed through untouched. */
+	outcomes?: Record<string, AskOutcome | undefined>;
 	/** The in-flight answers, keyed by ask id then question id. Caller-owned: the composer and this drawer are one draft. */
 	drafts?: Record<string, AskDraft>;
 	onDraftChange?: (askId: string, next: AskDraft) => void;
@@ -171,6 +180,7 @@ export const AskDrawer = ({
 	onClose,
 	onAnswer,
 	onDecline,
+	onRevise,
 	answering = false,
 	outcomes,
 	drafts,
@@ -178,7 +188,16 @@ export const AskDrawer = ({
 	conversationOf,
 	nowMs,
 }: AskDrawerProps) => {
-	const view = askQueueView(frontend);
+	/*
+	 * THE VIEW IS READ THROUGH THIS DRAWER'S OWN OUTCOMES, so its `delivering` count
+	 * excludes a row the owner has already refused to change (design round 2, D7 =
+	 * UX round 2, U6). The chrome line is drawn directly above the cards, so counting
+	 * a refused ask as still changeable put `you can still change it` on the same
+	 * screen as that card's own `already delivered — send a new message`. A refusal
+	 * that never reached the owner leaves the row counted - the door is still open
+	 * (`AskOutcome.refusedByOwner`).
+	 */
+	const view = askQueueView(frontend, outcomes);
 	const now = useAskClock(view.open > 0, nowMs);
 	const rootRef = useRef<HTMLElement | null>(null);
 
@@ -408,6 +427,11 @@ export const AskDrawer = ({
 					onDraftChange={onDraftChange ?? noopDraftChange}
 					onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
 					onDecline={(task) => onDecline?.(task.ask_id)}
+					onRevise={
+						onRevise === undefined
+							? undefined
+							: (task, answers) => onRevise(task.ask_id, answers)
+					}
 					/*
 					 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
 					 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the

@@ -1187,9 +1187,14 @@ test("the ask item is gated on the WIRE and on a non-empty queue", () => {
 	 * SETTLED ASKS DO RENDER. Like `All to-dos resolved`, a finished queue is worth
 	 * keeping on screen - the panel is where its history lives - so the gate is
 	 * "has rows", not "has open rows".
+	 *
+	 * AND SETTLED IS `delivered`, stated rather than left to `wireAsk`'s default
+	 * (false): since §10 a RECORDED answer the agent has not been handed is still the
+	 * user's to change, and it is drawn as a live item with its own clause (asserted
+	 * below) rather than as finished history.
 	 */
 	const settled = renderWiredRow({
-		frontend: askFrontend([wireAsk("a-1", "answered")]),
+		frontend: askFrontend([wireAsk("a-1", "answered", { delivered: true })]),
 		runDetails: NO_DETAILS,
 	});
 	assert.match(settled, /data-status-asks/);
@@ -1201,7 +1206,17 @@ test("the ask item states the queue's own reading, in two registers", () => {
 		[[wireAsk("a-1")], "1 question waiting"],
 		[[wireAsk("a-1"), wireAsk("a-2")], "2 questions waiting"],
 		[[wireAsk("a-1", "timed_out")], "1 question moved on"],
-		[[wireAsk("a-1", "answered")], "All asks settled"],
+		/*
+		 * A DELIVERED answered ask is the finished queue; an UNDELIVERED one is §10's
+		 * window - the answer is still the user's to change - so it takes the clause that
+		 * names the door instead of `All asks settled` (design #1936; the sibling clause
+		 * and its own count are pinned in `scripts/ask-queue.test.mjs`).
+		 */
+		[[wireAsk("a-1", "answered", { delivered: true })], "All asks settled"],
+		[
+			[wireAsk("a-1", "answered")],
+			"1 answer not yet delivered — you can still change it",
+		],
 	];
 	for (const [asks, clause] of cases) {
 		assert.ok(
@@ -1217,7 +1232,7 @@ test("the ask item states the queue's own reading, in two registers", () => {
 	 * other settled chips' register: the shared box, in the muted ink.
 	 */
 	const quietMarkup = renderWiredRow({
-		frontend: askFrontend([wireAsk("a-1", "answered")]),
+		frontend: askFrontend([wireAsk("a-1", "answered", { delivered: true })]),
 		runDetails: NO_DETAILS,
 	});
 	assert.ok(askButtonClasses(quietMarkup).includes("text-ink-muted"));

@@ -1589,6 +1589,19 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			answers: z.record(z.string(), z.array(z.string().max(32768))).optional(),
 			/** "No answer — decide yourself", the explicit form of today's Esc. */
 			decline: z.boolean().optional(),
+			/**
+			 * CHANGE a recorded answer instead of submitting a first one (design §10,
+			 * #1936).
+			 *
+			 * A modifier on the SAME `{ask_id, answers}` body, and it has to be sent
+			 * explicitly because the intent is not recoverable from the values: equal
+			 * values are not a retry marker and different values are not a revision
+			 * (§10 — "no layer may infer a revision by comparing values"). The backend
+			 * accepts it only while the answer is still UNDELIVERED and refuses it with
+			 * its own sentence once the response row exists; this client does not
+			 * pre-judge that, it renders the owner's refusal.
+			 */
+			revise: z.boolean().optional(),
 		})
 		/*
 		 * A PLAIN `ZodObject`, with the mutual-exclusion rules on the UNION below.
@@ -2994,6 +3007,18 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 						message: "Supply either answers or decline",
 						path: ["decline"],
 					});
+				else if (request.revise === true && request.decline === true)
+					/*
+					 * The same class of contradiction as the row above: a revision is how an
+					 * answer is CHANGED and a decline is the refusal to give one, so no single
+					 * intent sends both. The backend restates this (`Answer.one_answer`); this
+					 * copy exists so the user is told here rather than by a 422.
+					 */
+					ctx.addIssue({
+						code: z.ZodIssueCode.custom,
+						message: "Supply either decline or revise",
+						path: ["revise"],
+					});
 				else if (
 					request.answers !== undefined &&
 					Object.keys(request.answers).length === 0
@@ -3018,6 +3043,17 @@ export const desktopRequestSchema = desktopRequestUnion.superRefine(
 					code: z.ZodIssueCode.custom,
 					message: "A request id is required to answer a gate",
 					path: ["requestId"],
+				});
+			if (request.revise === true)
+				/*
+				 * A gate has no recorded answer to revise, so the field would be silently
+				 * ignored — the class of no-op §10 rules out; refused in words at the
+				 * boundary rather than dropped on the floor (the backend refuses it too).
+				 */
+				ctx.addIssue({
+					code: z.ZodIssueCode.custom,
+					message: "revise applies to a queued ask",
+					path: ["revise"],
 				});
 			return;
 		}
@@ -5375,6 +5411,13 @@ export function desktopEndpoint(request: DesktopRequest): {
 						ask_id: request.askId,
 						answers: request.answers,
 						decline: request.decline,
+						/*
+						 * Sent only when asked for, so the first-answer body keeps its exact
+						 * previous bytes: `revise` is a modifier the client has to state, and a
+						 * body that carried `revise: false` on every ordinary submit would be
+						 * asserting an intent it does not have.
+						 */
+						...(request.revise === true ? { revise: true } : {}),
 					},
 				};
 			return {

@@ -1342,6 +1342,65 @@ export const answerQueuedAsk = async (
 };
 
 /**
+ * CHANGE a queued ask's recorded answer while the agent has not been handed it
+ * (design §10, #1936).
+ *
+ * The sanctioned exception to the one-way rule, and the reason the user has a
+ * door at all on a question they already answered: between the answer landing in
+ * the log and the response row existing, the model has been told NOTHING, so the
+ * answer is still the user's to change.
+ *
+ * THE PAYLOAD IS THE FIRST ANSWER'S, BYTE FOR BYTE, plus `revise: true` — the
+ * WHOLE ask map keyed by question id, never a per-question amend. The design
+ * names the value-equality trap this rules out: the intent cannot be read off the
+ * values (equal is not a retry, different is not a revision), so the client states
+ * it in a field, and an old registrant that never sees the op simply never
+ * receives it.
+ *
+ * THE WINDOW IS THE BACKEND'S, NOT THIS CLIENT'S. This path does not test
+ * `delivered` and does not compare the new map to the recorded one: `delivered`
+ * is a deliberately sticky hint and the row is the real bound, so a client-side
+ * pre-check would be a second opinion about a race it cannot see. The owner either
+ * takes the revision or refuses it in its own sentence (the delivered refusal is
+ * `already delivered — send a new message`), and that sentence is what the card
+ * renders in place.
+ */
+export const reviseQueuedAsk = async (
+	deps: {
+		taskId: string;
+		answers: Record<string, string[]>;
+		sessionId?: string | null;
+		lock: SendLock;
+	},
+	send: (request: GateAnswerRequest) => Promise<unknown>,
+): Promise<AnswerOutcome> => {
+	const { taskId, answers, sessionId, lock } = deps;
+	// The same preconditions as the first-answer door, for the reason it gives:
+	// taking the lock for a request that was never sent leaves the submit refused
+	// until a reload. The empty-map term is here for the same reason it is there —
+	// the queue refuses a partial or empty map, so a submit that could only ever be
+	// refused is refused before the lock is claimed.
+	if (!sessionId || !taskId) return { status: "refused" };
+	if (Object.keys(answers).length === 0) return { status: "refused" };
+	if (!lock.tryAcquire()) return { status: "refused" };
+	const request: GateAnswerRequest = {
+		op: "sessions.answer",
+		sessionId,
+		askId: taskId,
+		answers,
+		revise: true,
+	};
+	try {
+		await send(request);
+		return { status: "sent" };
+	} catch (error) {
+		return { status: "failed", request, error };
+	} finally {
+		lock.release();
+	}
+};
+
+/**
  * Decline a QUEUED ask: the explicit "no answer — decide yourself".
  *
  * The same act as the blocking card's Esc, promoted to a control of its own
