@@ -290,11 +290,19 @@ export const COMPOSER_PLACEHOLDER = {
 	 * A SECRET ASK'S OWN SENTENCE, and it is not `answer`'s: the ordinary
 	 * answer arm invites typing into this box, which is exactly what a secret
 	 * question refuses (`message-input.tsx`'s `secretAnswer` term). So this one
-	 * points at the dock's masked field instead — the only surface the value
-	 * may pass through — and it is read BEFORE `inputDisabled`'s, because "Agent
-	 * is busy" would be false about the state: the agent is waiting, not busy.
+	 * points at the ask's own masked field instead - the only surface the value may
+	 * pass through - and it is read BEFORE `inputDisabled`'s, because "Agent is
+	 * busy" would be false about the state: the agent is waiting, not busy.
+	 *
+	 * IT SAYS WHERE THE FIELD IS, AND `above` WAS NO LONGER TRUE (UX round 1, U2).
+	 * The masked field lives on the ask SURFACE, and with the queued-ask lane that
+	 * surface is the right slot's drawer - beside this box, not above it. The sentence
+	 * is the only guidance in a state where typing is refused, so it has to name the
+	 * surface the reader will find: the blocking `ask` gate keeps its field in the
+	 * question dock, and both are the ask's own panel, which is why the copy names the
+	 * panel rather than this box's neighbourhood.
 	 */
-	secretAnswer: "Answer the secret request above",
+	secretAnswer: "Answer the secret request in the asks panel",
 	/*
 	 * The exit is named beside the verb for the reason the `@` list's own line
 	 * names its ("Nothing to insert · Esc closes").
