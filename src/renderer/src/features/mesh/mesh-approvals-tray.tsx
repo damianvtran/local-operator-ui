@@ -124,7 +124,7 @@ function stateHints(state: string): { term: string; text: string }[] {
 			return [
 				{
 					term: "Next",
-					text: "An agent runs the install and connect (lop network approvals run).",
+					text: "An agent runs the install and connect.",
 				},
 				{
 					term: "Stop",
@@ -405,8 +405,15 @@ const MeshApprovalCard: FC<{
 			 * that the runner stopped before finishing; what it must not leave
 			 * unsaid is that nothing needs to be destroyed — the record stays
 			 * retryable until its window closes, and `Abandon` is the one write that
-			 * forecloses that. The retry verb is the same one `stateHints("approved")`
-			 * already names.
+			 * forecloses that.
+			 *
+			 * THE COPY NAMES NO TERMINAL ROUTE (UX round 2, U9, and the house rule that
+			 * a command never rides in record copy). A command printed to a reader has
+			 * to run as shown - the runner's own spelling carries a required argument
+			 * (`lop network approvals run` exits 2 without it) - and the fact a reader
+			 * needs is the record's hold, not the runner's invocation. The retry
+			 * belongs to the runner side; this surface states the state and the one
+			 * write it owns.
 			 */}
 			{row.state === "failed" && (
 				<p
@@ -414,7 +421,7 @@ const MeshApprovalCard: FC<{
 					data-tour-tag="mesh-approval-stopped-note"
 				>
 					The runner stopped before it finished. It stays retryable until its
-					window closes (lop network approvals run); Abandon denies the request.
+					window closes; Abandon denies the request.
 				</p>
 			)}
 

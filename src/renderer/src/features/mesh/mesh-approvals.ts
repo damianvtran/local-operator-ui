@@ -665,8 +665,8 @@ export function useMeshApprovals(
  * record's own state) and the mesh reads (a `connected` record is a device that
  * now exists in the topology — `networks`/`peers` are how "the device appears on
  * the network" reaches the canvas). The runner itself is agent-driven
- * (`lop network approvals run`), so for the states the UI cannot cause, the
- * 30 s mesh cadence is what picks the arrival up; this invalidation is what
+ * (`lop network approvals run <approval>`), so for the states the UI cannot cause,
+ * the 30 s mesh cadence is what picks the arrival up; this invalidation is what
  * makes the DECIDED cases immediate.
  */
 export function useMeshApprovalDecision() {
