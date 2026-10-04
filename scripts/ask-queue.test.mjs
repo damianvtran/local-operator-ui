@@ -83,10 +83,12 @@ const single = (over = {}) =>
 			{
 				id: "target",
 				question: "Which environment?",
-				options: [
-					{ label: "staging", recommended: true },
-					{ label: "production" },
-				],
+				/* THE WIRE'S REAL KEY SET: an option is exactly `{label, description}` and
+				 * the recommendation is a QUESTION-level index into `options` as carried.
+				 * The per-option `recommended: true` this fixture used to carry is residue
+				 * of the defect `ask-recommended.tsx` records - a key no producer writes. */
+				options: [{ label: "staging" }, { label: "production" }],
+				recommended: 0,
 				multi: false,
 			},
 		],

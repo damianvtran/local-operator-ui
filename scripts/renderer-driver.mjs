@@ -89,8 +89,12 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
  *                          which built-in scene to run (default: states)
+ *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
+ *                          the issue #789 pair this run records: the head tree,
+ *                          where a dropped file attaches, or the base tree, where
+ *                          the same gesture leaves nothing behind
  *   --project <key>        (with --scene project-detail or project-inline-edit)
  *                          the seeded project the scene drives; the seed decides
  *                          the name and a default would photograph whatever it
@@ -176,7 +180,7 @@ import { get as httpGet } from "node:http";
 import { createRequire } from "node:module";
 import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve, sep } from "node:path";
+import { basename, join, resolve, sep } from "node:path";
 import sharp from "sharp";
 import { MOCK_KEYCHAIN_SWITCH } from "./chrome-keychain.mjs";
 import { EVIDENCE_TZ } from "./evidence-tz.mjs";
@@ -302,6 +306,21 @@ const STUB_LOG = argValue("--stub-log", null);
  * from argv (a token in a command line lands in the shell's history).
  */
 const BACKEND = argValue("--backend", null);
+/**
+ * Which half of the `composer-drop` pair this run records (issue #789).
+ *
+ * A FLAG AND NOT TWO SCENES, for the reason `--slash-expect` is one: the base
+ * tree and the head tree are driven by the SAME bytes, so the pair's difference
+ * is the app rather than the rig. `accepted` asserts the gesture lands — a chip
+ * appears, the store holds the file's path, the send reaches the daemon — and
+ * `discarded` asserts the defect the base tree has: the same gesture leaves
+ * nothing behind while a paste in the same pane still attaches a file, so the
+ * promise the OS's copy badge makes (the issue's own report - a dispatched drag
+ * cannot see what macOS paints) is one the composer does not keep.
+ * A value the scene does not know is refused rather than defaulted, because a
+ * typo would silently answer the other half's question.
+ */
+const DROP_EXPECT = argValue("--drop-expect", null);
 /**
  * The serve records the `--backend` daemon wrote for itself.
  *
@@ -1165,25 +1184,67 @@ async function launchApp({
  * exists. It is applied only when `--backend` was given, it says what it did in
  * the run's own output, and the run asserts the app is talking to that backend
  * and no other.
+ *
+ * `img-src` JOINED THE LIST for issue #789's composer-drop scene, and it is the
+ * same accommodation for the same reason. A dropped file is held as a PATH, and
+ * an attachment tile for a path-backed file fetches its thumbnail from the
+ * backend's `/v1/static/images` - so under a rig backend the tile is refused by
+ * `img-src` (which names only the operator's 1111) and the frame photographs a
+ * broken chip where the real app paints the image. Measured 2026-10-04 on the
+ * first run of that scene: the tile's request rejected with "violates the
+ * following Content Security Policy directive: img-src ...". A paste-backed
+ * attachment is a `data:` URL and was never affected, which is why no scene had
+ * needed this before.
  */
 function widenCspForBackend(backendUrl) {
 	const file = join(ROOT, "out/renderer/index.html");
 	if (!existsSync(file)) return "no built renderer to widen";
 	const origin = backendUrl.replace(/\/$/, "");
 	const before = readFileSync(file, "utf8");
-	if (before.includes(origin)) return `already widened for ${origin}`;
-	const widened = before
-		.replace(
-			/frame-src ([^"]*?)"/,
-			(_m, list) => `frame-src ${list.trim()} ${origin}"`,
-		)
-		.replace(
-			/media-src ([^"]*?)"/,
-			(_m, list) => `media-src ${list.trim()} ${origin}"`,
-		);
-	if (widened === before) return "no frame-src/media-src directive to widen";
+	/*
+	 * ONE DIRECTIVE AT A TIME, AND EACH LIST BOUNDED AT ITS OWN END (review round 1,
+	 * CR1-1 = QA Q-1). The policy is ONE line inside `content="…"` with no inner
+	 * quote, so a lazy `([^"]*?)"` runs past every `;` to the attribute's closing
+	 * quote - all three appends landed at the POLICY TAIL, inside `frame-src`'s list,
+	 * and `img-src` was never widened at all. The note said it had been, and fourteen
+	 * CSP violations in the run's own app log said it had not; every populated cell
+	 * photographed an empty tile because of it.
+	 *
+	 * THE LIST ENDS AT `;` FOR EVERY DIRECTIVE BUT THE LAST, which ends at the
+	 * attribute's quote - so the bound is `[^;"]` and NOT `[^"]`, and it is NOT
+	 * anchored on the quote either. Bounded on the quote alone, `img-src` and
+	 * `media-src` match nothing at all (their lists end at `;`) and the widening
+	 * silently does no work for exactly the two directives this scene needs - which
+	 * is what a first cut of this fix did, caught by running the pattern over the
+	 * built file rather than by reading it (2026-10-04: `img-src absent`).
+	 *
+	 * An origin already in a directive's list is left alone rather than appended
+	 * again - the appends used to be unconditional, so each run grew the policy (three
+	 * fresh 8080s in one lane's run and a pile of 8181s from a parallel one).
+	 */
+	const directives = ["frame-src", "media-src", "img-src"];
+	const changed = [];
+	const left = [];
+	let widened = before;
+	for (const directive of directives) {
+		const pattern = new RegExp(`(${directive} )([^;"]*)`);
+		const match = pattern.exec(widened);
+		if (match === null) {
+			left.push(`${directive} absent`);
+			continue;
+		}
+		if (match[2].split(/\s+/).includes(origin)) {
+			left.push(`${directive} already lists it`);
+			continue;
+		}
+		const list = match[2].trim();
+		widened = widened.replace(pattern, () => `${directive} ${list} ${origin}`);
+		changed.push(directive);
+	}
+	if (changed.length === 0)
+		return `already widened for ${origin} (${left.join(", ")})`;
 	writeFileSync(file, widened);
-	return `out/renderer/index.html: ${origin} added to frame-src and media-src (build output only; src/ untouched)`;
+	return `out/renderer/index.html: ${origin} added to ${changed.join(", ")}${left.length > 0 ? `; left alone: ${left.join(", ")}` : ""} (build output only; src/ untouched)`;
 }
 
 async function readAppLog(handle) {
@@ -33122,6 +33183,1131 @@ function translateYOf(transform) {
 	return Number.parseFloat(parts.length >= 6 ? parts[5] : parts[0]) || 0;
 }
 
+/**
+ * A real OS-style file drag onto the composer band (issue #789).
+ *
+ * WHY THE DRAG IS DISPATCHED OVER CDP AND NOT BUILT IN THE PAGE. The claim is
+ * that a DROPPED file lands where an ATTACHED one does, and the drop path has to
+ * name the file on disk: Electron 44 removed the `File.path` augmentation, so the
+ * renderer asks `webUtils.getPathForFile(file)` through the preload. A `File`
+ * constructed in the page - which is what a synthetic `DragEvent` carrying a
+ * hand-made `DataTransfer` holds, and what `wysiwyg/insert-image-dialog.tsx` uses
+ * because it only ever wants bytes - is not backed by a file on disk and answers
+ * `""` from that call. A page-built drop would therefore exercise the FALLBACK
+ * arm and never the path the real gesture takes, which is the arm the whole
+ * design decision rests on. `Input.dispatchDragEvent` with `files` goes through
+ * Chromium's own drag pipeline, so `dataTransfer.files` holds real Files backed
+ * by those paths - the same objects a Finder drag produces.
+ *
+ * WHAT EACH CASE IS FOR, and what it cannot show:
+ *
+ * 1. one image - the core claim, read back twice: the chip on screen and the
+ *    `path` the store persisted (a path, not a data URL - the representation
+ *    the reader can tell apart, `docs/evidence/composer-file-drop/README.md`);
+ * 2. two files - `dataTransfer.files` is a list, and the defect's shape
+ *    (the OS promises a copy) is about a real drag, which can carry several;
+ * 3. a non-image file - it must attach exactly as any other path does. What
+ *    reaches the MODEL is a different question: `encodeImageAttachments` admits
+ *    only the four image mimes by extension, for every route, so a `.txt` chip
+ *    is carried by the composer and skipped by the encoder on the attach
+ *    button's route too. That is pre-existing behaviour of the send, not of the
+ *    drop, and the scene records the chip rather than claiming the file lands;
+ * 4. a drop over a NON-target part of the window, which runs LAST because the
+ *    delivery's premise was that the window would leave: this app has no
+ *    `will-navigate` handler (`link-actions.ts` says so where it explains why
+ *    every file anchor is cancelled by hand), so a dropped file's default action
+ *    WOULD replace the page. Measured on Electron 44.3.0 (2026-10-04), with the
+ *    rig's drag interception both armed and disarmed, it does not: the window
+ *    stays where it was. The case keeps that reading, controlled against the
+ *    router's own settling, because it is the fact the delivery asked for.
+ * 5. a drop while a turn is running: the claim is that the drop and the paste
+ *    behave ALIKE in the state, because a gate that disagrees with the paste
+ *    route is the drift this case exists to catch. The turn is made genuine by
+ *    the provider itself - the mock reads `[bash:N]` off the newest user message
+ *    and calls the real `bash` tool with `sleep N` (`MockClient`,
+ *    `local_operator/providers/clients.py`) - and the reading on `main` is that
+ *    the canonical composer does NOT refuse input during a turn, so both gestures
+ *    attach. The refusing arm of that gate is not photographable from a rig here
+ *    (see the case's own note) and is covered by the composer's JSDOM harness.
+ * 6. paste as the behavioural reference: the SAME bytes go in through
+ *    `handlePaste`'s own path (a real `ClipboardEvent` with a real
+ *    `DataTransfer`, which is the interface that handler reads), both sends are
+ *    admitted, and the two images are compared off the DAEMON's transcript - the
+ *    bytes on the wire, not the pixels in two chips.
+ * 7. armed while the composer is FOCUSED (design round 1, D1; UX round 1, U3): the
+ *    drop state and the focus state are the same accent ring on the same element,
+ *    so they are separated BY SHAPE - solid while focused, dashed while a file is
+ *    over it - and this case reads both off the box in one run.
+ * 8. armed with a NON-MEDIA tile on the band (design round 1, D2): the tile's fill
+ *    and its box and the band's fill are read before and during the drag, because
+ *    a band painted with the tile's own token is a tile that has lost its
+ *    boundary.
+ *
+ * NOT PROVABLE HERE, said so that no report implies otherwise: this is a
+ * DISPATCHED drag through Chromium's input pipeline, not a human's mouse
+ * gesture, so it cannot prove what a real Finder drag paints (the green badge
+ * the issue reports); and the drag interception flag is a rig device whose
+ * refusal the run reports rather than assumes.
+ */
+async function sceneComposerDrop(cdp) {
+	if (DROP_EXPECT !== "accepted" && DROP_EXPECT !== "discarded") {
+		throw new Error(
+			`--scene composer-drop needs --drop-expect accepted|discarded (got ${JSON.stringify(DROP_EXPECT)}): the base tree and the head tree are the same scene's two claims, and a default would answer one of them silently`,
+		);
+	}
+	if (BACKEND === null) {
+		throw new Error(
+			"--scene composer-drop needs --backend: the chat pane mounts no composer until a conversation is open, and every case here is read back from the store and from the daemon this run owns",
+		);
+	}
+	const accepted = DROP_EXPECT === "accepted";
+	const facts = await factsOf(cdp);
+	note("facts (from main)", JSON.stringify(facts, null, 2));
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+
+	/*
+	 * THE DRAG INTERCEPTION FLAG, asked for before anything else and REPORTED rather
+	 * than assumed. Chromium's drag interception is what a rig normally arms when it
+	 * emulates a drag from outside the page, and a protocol that refuses the command
+	 * is a fact about the rig: a case built on it would be a silent no-op. Measured
+	 * on Electron 44.3.0 (2026-10-04): armed, every dispatched drag below reaches
+	 * the page's own handlers. What the flag ALSO does is suppress the browser's
+	 * default action for a drag, which is why case 4 runs its reading TWICE - once
+	 * armed and once disarmed - instead of crediting the app with the rig's own
+	 * suppression.
+	 */
+	let intercepted = "not asked";
+	const armDragInterception = async (enabled) => {
+		try {
+			await cdp.send("Input.setInterceptDrags", { enabled });
+			return enabled ? "armed" : "disarmed";
+		} catch (error) {
+			return `refused: ${error?.message ?? error}`;
+		}
+	};
+	intercepted = await armDragInterception(true);
+	note("drag interception", intercepted);
+
+	// ---- the conversation, and the composer it mounts -----------------------
+	const created = await createBackendSession();
+	check(
+		"a conversation exists on this run's own backend",
+		Boolean(created.id),
+		JSON.stringify(created).slice(0, 400),
+	);
+	await verb(cdp, "navigate", "/chat");
+	const row = '[data-tour-tag="chat-session-row"]';
+	const composerBox = '[data-tour-tag="chat-input-textarea"]';
+	const composerField = 'textarea[aria-label="Message"]';
+	const clearAttachments = async () => {
+		const removed = await cdp.evaluate(`(() => {
+			const buttons = Array.from(document.querySelectorAll('[aria-label="Remove attachment"]'));
+			for (const button of buttons) button.click();
+			return buttons.length;
+		})()`);
+		if (removed > 0) await wait(250);
+		return removed;
+	};
+	const composerMounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(composerField)}))`,
+		20_000,
+	);
+	if (!composerMounted.ok) {
+		/*
+		 * The row has to be pressed for this pane to have a conversation at all:
+		 * a fresh daemon's `/chat` opens on the list, and a scene that gave up here
+		 * would photograph a composer-shaped nothing.
+		 */
+		await verb(cdp, "press", {
+			selector: '[data-tour-tag="chat-all-chats"]',
+		}).catch(() => null);
+		const rowShown = await waitForCondition(
+			cdp,
+			`Boolean(document.querySelector(${JSON.stringify(row)}))`,
+			10_000,
+		);
+		if (rowShown.ok) await verb(cdp, "press", { selector: row });
+	}
+	const mounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector(${JSON.stringify(composerField)}))`,
+		20_000,
+	);
+	check(
+		"the composer is on screen for the conversation this scene created",
+		mounted.ok,
+		`textarea[aria-label="Message"] present=${mounted.ok} after ${mounted.waitedMs}ms`,
+	);
+	await clearAttachments();
+
+	/*
+	 * THE READBACK. Two registers, because they answer different questions: the
+	 * tiles and their `alt`/`src` are what the USER sees (a dropped file shows its
+	 * own name, a pasted one has none - `getFileName`'s two branches), and the
+	 * persisted store row is what the app will READ later (a path or a data URL -
+	 * the representation the design decision turns on). The store is `persist`ed
+	 * to localStorage under its own name, so this reads exactly what a restart
+	 * would find.
+	 */
+	const readAttachments = () =>
+		cdp.evaluate(`(() => {
+			const tiles = Array.from(document.querySelectorAll('[aria-label="Remove attachment"]'));
+			const images = Array.from(document.querySelectorAll('[data-lo-composer-measure] img')).map((img) => ({
+				alt: img.getAttribute("alt"),
+				src: img.getAttribute("src") || "",
+			}));
+			let stored = null;
+			try {
+				const raw = window.localStorage.getItem("conversation-input-store");
+				const parsed = raw === null ? null : JSON.parse(raw);
+				stored = Object.values(parsed?.state?.inputByConversation ?? {}).flatMap((entry) =>
+					(entry?.attachments ?? []).map((attachment) => attachment.path),
+				);
+			} catch (error) {
+				stored = ["<store unreadable: " + String(error) + ">"];
+			}
+			return {
+				chips: tiles.length,
+				images,
+				stored: stored.map((path) =>
+					path.startsWith("data:") ? "data-url:" + path.slice(0, 24) + " (" + path.length + "B)" : path,
+				),
+			};
+		})()`);
+
+	/**
+	 * One file drag, in the order Chromium delivers it.
+	 *
+	 * `files` are absolute paths on THIS machine: that is what makes the renderer's
+	 * `dataTransfer.files` real Files and not page-constructed ones, which is the
+	 * whole reason the path route (and `webUtils.getPathForFile`) is exercised.
+	 */
+	const dragData = (files) => ({
+		items: [],
+		files,
+		dragOperationsMask: 1,
+	});
+	const dragTo = async (files, type, point) => {
+		const rect = (await verb(cdp, "measure", { selector: composerBox })).rect;
+		const x = point?.x ?? Math.round(rect.x + rect.width / 2);
+		const y = point?.y ?? Math.round(rect.y + rect.height / 2);
+		await cdp.send("Input.dispatchDragEvent", {
+			type,
+			x,
+			y,
+			data: dragData(files),
+			modifiers: 0,
+		});
+		/*
+		 * A DRAG ENDS HERE, and the interception flag is turned back off with it.
+		 *
+		 * Measured 2026-10-04, and it cost this scene two runs: with interception
+		 * armed past the end of a gesture, the NEXT interaction on the page is the one
+		 * that hangs - a `sendText` after a drop either never reached the transcript
+		 * (the send refused, `sent=false`) or took `Runtime.evaluate` down with it,
+		 * timing the driver out after ten minutes with nothing on the wire. The page
+		 * kept painting throughout, which is what a drag the browser believes is still
+		 * in progress looks like from outside: the input pipeline is held, not the
+		 * renderer. Disarming at the end of the drop is what releases it, and every
+		 * gesture below therefore starts armed and ends disarmed.
+		 */
+		if (type === "drop") await armDragInterception(false);
+		return { x, y };
+	};
+	const dropFiles = async (files, point) => {
+		/* Armed per gesture: the drop above disarmed the flag on its way out. */
+		await armDragInterception(true);
+		const at = await dragTo(files, "dragEnter", point);
+		await dragTo(files, "dragOver", point);
+		return at;
+	};
+
+	const fixtures = await ensureComposerDropFixtures();
+	const fixtureImagePath = fixtures.image;
+	const fixtureImageBytes = readFileSync(fixtureImagePath).toString("base64");
+	/*
+	 * `/`-normalised for the store comparison, because that is what the app's own
+	 * `normalizePath` does to every path it stores (`handleAttachFile` calls it on
+	 * the dialog's answer, and the drop handler on the preload's). On this host the
+	 * two spellings coincide; the comparison is written against the app's rule so a
+	 * Windows run would not read as a mismatch.
+	 */
+	const fixtureImageStored = fixtureImagePath.replace(/\\/g, "/");
+
+	/**
+	 * A paste of the SAME bytes, through the handler the app already has.
+	 *
+	 * A real `ClipboardEvent` carrying a real `DataTransfer` is the interface
+	 * `handlePaste` reads (`event.clipboardData.items`); the `File` it holds is
+	 * page-constructed on purpose, because that is exactly what a clipboard paste
+	 * IS - and it is the other half of the representation question, since the paste
+	 * route stores a data URL and the drop route stores a path.
+	 */
+	const pasteBytes = (bytesB64, name, mime) =>
+		cdp.evaluate(`(() => {
+			const binary = atob(${JSON.stringify(bytesB64)});
+			const bytes = new Uint8Array(binary.length);
+			for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+			const file = new File([bytes], ${JSON.stringify(name)}, { type: ${JSON.stringify(mime)} });
+			const transfer = new DataTransfer();
+			transfer.items.add(file);
+			const field = document.querySelector(${JSON.stringify(composerField)});
+			if (field === null) return { dispatched: false, items: transfer.items.length };
+			field.dispatchEvent(new ClipboardEvent("paste", { clipboardData: transfer, bubbles: true, cancelable: true }));
+			return { dispatched: true, items: transfer.items.length };
+		})()`);
+
+	const sendText = async (text) => {
+		await clickAt(cdp, `${composerBox} textarea`);
+		await cdp.send("Input.insertText", { text });
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const landed = await waitForCondition(
+			cdp,
+			`(() => { const log = document.querySelector('[role="log"]'); return Boolean(log && log.textContent.includes(${JSON.stringify(text)})); })()`,
+			30_000,
+		);
+		return landed;
+	};
+
+	/**
+	 * The composer box's own outline, which is where the drop state is drawn.
+	 *
+	 * Read from the element the frames photograph, so a reading and its frame cannot
+	 * describe two different states (design round 1, D1; UX round 1, U3).
+	 */
+	const composerOutline = async () =>
+		cdp.evaluate(`(() => {
+			const el = document.querySelector(${JSON.stringify(composerBox)});
+			if (el === null) return null;
+			const s = getComputedStyle(el);
+			return { style: s.outlineStyle, width: s.outlineWidth, offset: s.outlineOffset, color: s.outlineColor, background: s.backgroundColor };
+		})()`);
+
+	/**
+	 * The composer box's own ground and the attachment tile's, as the frames paint
+	 * them (design round 1, D2).
+	 *
+	 * The tile is found from its Remove control and walked UP to the first ancestor
+	 * that paints a background, which is the tile's own ground - found by structure
+	 * rather than by scanning for a utility name, because a class attribute that
+	 * merely CONTAINS `bg-accent-wash` (a variant, say) is not a ground that
+	 * paints. The box's fill is the other half: the collision D2 reports is between
+	 * the tile's ground and the BOX's, since the tile sits inside the box.
+	 */
+	const tileAndBoxGround = async () =>
+		cdp.evaluate(`(() => {
+			const rectOf = (el) => {
+				if (el === null) return null;
+				const r = el.getBoundingClientRect();
+				return { x: Math.round(r.x), y: Math.round(r.y), width: Math.round(r.width), height: Math.round(r.height) };
+			};
+			const box = document.querySelector(${JSON.stringify(composerBox)});
+			const button = document.querySelector('[aria-label="Remove attachment"]');
+			let tile = button === null ? null : button.parentElement;
+			while (tile !== null && tile !== document.body) {
+				const bg = getComputedStyle(tile).backgroundColor;
+				if (bg !== "" && bg !== "rgba(0, 0, 0, 0)" && bg !== "transparent") break;
+				tile = tile.parentElement;
+			}
+			return {
+				tile: tile === null ? null : getComputedStyle(tile).backgroundColor,
+				tileRect: rectOf(tile),
+				box: box === null ? null : getComputedStyle(box).backgroundColor,
+				boxRect: rectOf(box),
+			};
+		})()`);
+
+	/**
+	 * The attachment delta a gesture produced, checked against which half of the
+	 * pair this run is. `expected` is the head's claim; the base's claim is always
+	 * "nothing", which is the defect the pair exists to record.
+	 */
+	const checkDelta = async (label, before, result, expected, detail) => {
+		const delta = result.chips - before.chips;
+		check(
+			accepted
+				? `${label}: the drop attaches, the way an attached file does`
+				: `${label}: the drop attaches NOTHING on this tree (the defect this pair records)`,
+			accepted ? delta === expected : delta === 0,
+			`chips ${before.chips} -> ${result.chips} (Δ${delta}, expected ${accepted ? expected : 0}); stored=${JSON.stringify(result.stored)}; ${detail}`,
+		);
+	};
+
+	// ---- case 1: one image ------------------------------------------------
+	const before1 = await readAttachments();
+	const dragOverPoint = await dropFiles([fixtureImagePath]);
+	const dragOverFrame = await captureSettled(
+		cdp,
+		`composer-drop-1-dragover-${size}`,
+	);
+	note("frame", JSON.stringify(dragOverFrame));
+	await dragTo([fixtureImagePath], "drop", dragOverPoint);
+	await wait(900);
+	const after1 = await readAttachments();
+	const singleFrame = await captureSettled(
+		cdp,
+		`composer-drop-1-single-${size}`,
+	);
+	note("frame", JSON.stringify(singleFrame));
+	await checkDelta(
+		"case 1 (one image)",
+		before1,
+		after1,
+		1,
+		"one PNG dropped on the band",
+	);
+	check(
+		accepted
+			? "the dropped file is held as a PATH on disk, the representation the attach button uses"
+			: "the dropped file left no entry behind, so there is no representation to read",
+		accepted
+			? after1.stored.length === 1 &&
+					!after1.stored[0].startsWith("data-url:") &&
+					after1.stored[0] === fixtureImageStored
+			: after1.stored.length === 0,
+		`stored=${JSON.stringify(after1.stored)} expected=${fixtureImageStored}`,
+	);
+	if (accepted)
+		check(
+			"the chip names the file, which is what a drag - unlike a paste - can do",
+			after1.images.length > 0 &&
+				after1.images.every(
+					(image) => image.alt === basename(fixtureImagePath),
+				),
+			`tiles=${JSON.stringify(after1.images)}`,
+		);
+	await clearAttachments();
+
+	// ---- case 7: armed while the composer is FOCUSED ---------------------
+	/*
+	 * Design round 1's D1 and UX round 1's U3 as a STATE rather than a sentence.
+	 *
+	 * `armed` and `focused` are the same accent ring on the same element, and the
+	 * first cut separated them with a ground wash that measures 1.01-1.17:1 against
+	 * the band in every palette - it carried nothing. The fix separates them BY
+	 * SHAPE: the box's focus ring is solid, the drop state is dashed. This case is
+	 * the reading that says so - focus the field, read the box, put a file over it,
+	 * read the box again - and both readings come off the same element in one run, so
+	 * the pair cannot drift apart.
+	 */
+	{
+		await clickAt(cdp, composerField);
+		const focused = await cdp.evaluate(
+			`document.activeElement === document.querySelector(${JSON.stringify(composerField)})`,
+		);
+		const resting = await composerOutline();
+		const focusedPoint = await dropFiles([fixtureImagePath]);
+		const armed = await composerOutline();
+		const focusedFrame = await captureSettled(
+			cdp,
+			`composer-drop-7-armed-focused-${size}`,
+		);
+		note("frame", JSON.stringify(focusedFrame));
+		check(
+			accepted
+				? "case 7: armed and focused are two shapes - the box is solid while focused and dashed while a file is over it"
+				: "BASE TREE: case 7 is a focused composer under a drag; this tree paints no drop state",
+			accepted
+				? Boolean(focused) &&
+						resting?.style === "solid" &&
+						armed?.style === "dashed"
+				: Boolean(focused) && armed?.style === "solid",
+			`focused=${focused} resting=${JSON.stringify(resting)} armed=${JSON.stringify(armed)}`,
+			`focused=${focused} resting.outlineStyle=${resting?.style} armed.outlineStyle=${armed?.style}`,
+		);
+		await dragTo([fixtureImagePath], "drop", focusedPoint);
+		await wait(600);
+		await clearAttachments();
+	}
+
+	// ---- case 2: several files -------------------------------------------
+	const before2 = await readAttachments();
+	const multiPoint = await dropFiles([fixtures.image, fixtures.second]);
+	await dragTo([fixtures.image, fixtures.second], "drop", multiPoint);
+	await wait(900);
+	const after2 = await readAttachments();
+	const multiFrame = await captureSettled(
+		cdp,
+		`composer-drop-2-multiple-${size}`,
+	);
+	note("frame", JSON.stringify(multiFrame));
+	await checkDelta(
+		"case 2 (two files)",
+		before2,
+		after2,
+		2,
+		"two PNGs in one dataTransfer.files",
+	);
+	if (accepted)
+		check(
+			"a multi-file drop attaches ALL of them, in the order the drag listed them",
+			after2.stored.length === 2 &&
+				after2.stored[0] === fixtures.image.replace(/\\/g, "/") &&
+				after2.stored[1] === fixtures.second.replace(/\\/g, "/"),
+			`stored=${JSON.stringify(after2.stored)}`,
+		);
+	await clearAttachments();
+
+	// ---- case 3: a non-image file ----------------------------------------
+	const before3 = await readAttachments();
+	const textPoint = await dropFiles([fixtures.text]);
+	await dragTo([fixtures.text], "drop", textPoint);
+	await wait(900);
+	const after3 = await readAttachments();
+	const textFrame = await captureSettled(
+		cdp,
+		`composer-drop-3-non-image-${size}`,
+	);
+	note("frame", JSON.stringify(textFrame));
+	await checkDelta(
+		"case 3 (a .txt)",
+		before3,
+		after3,
+		1,
+		"the chip is carried; the encoder admits only image mimes for every route, so what reaches the model is unchanged by this slice",
+	);
+
+	// ---- case 8: armed with a NON-MEDIA tile on the band ------------------
+	/*
+	 * Design round 1's D2 as a STATE. `AttachmentsPreview` fills a non-media tile
+	 * with `accent-wash`, and the first cut painted the BAND with the same token -
+	 * measured as the identical rendered value `#1b281f` - so while a drag was over
+	 * the composer an attached `.txt`'s tile sat on a ground of exactly its own
+	 * colour and the tile's ground step, which IS its boundary, disappeared. The fix
+	 * leaves the band alone; this case reads the tile's own fill and its BOX, plus
+	 * the band's fill, before and during the drag. The box is read as well as the
+	 * colour because a repaint that kept the token but moved the tile would be the
+	 * same defect wearing a different coat.
+	 */
+	{
+		const tileBefore = await tileAndBoxGround();
+		const tilePoint = await dropFiles([fixtures.text]);
+		const tileArmed = await tileAndBoxGround();
+		const tileFrame = await captureSettled(
+			cdp,
+			`composer-drop-8-armed-non-image-${size}`,
+		);
+		note("frame", JSON.stringify(tileFrame));
+		check(
+			accepted
+				? "case 8: a non-media tile keeps its own ground, its own box and the box's ground while a file is over the composer"
+				: "BASE TREE: case 8 has no non-media tile to read (nothing attaches on this tree) - recorded for the pair's shape",
+			accepted
+				? tileBefore.tile !== null &&
+						tileBefore.tile === tileArmed.tile &&
+						JSON.stringify(tileBefore.tileRect) ===
+							JSON.stringify(tileArmed.tileRect) &&
+						tileBefore.box === tileArmed.box &&
+						JSON.stringify(tileBefore.boxRect) ===
+							JSON.stringify(tileArmed.boxRect)
+				: tileBefore.tile === null && tileArmed.tile === null,
+			`tile ${tileBefore.tile} -> ${tileArmed.tile}; tileRect ${JSON.stringify(tileBefore.tileRect)} -> ${JSON.stringify(tileArmed.tileRect)}; box ${tileBefore.box} -> ${tileArmed.box}`,
+			`tileGround=${tileBefore.tile ?? "(no tile)"} boxGround=${tileBefore.box} - tile unchanged=${tileBefore.tile === tileArmed.tile} box unchanged=${tileBefore.box === tileArmed.box} box height=${tileBefore.boxRect?.height}px in both`,
+		);
+		await dragTo([fixtures.text], "drop", tilePoint);
+		await wait(600);
+		await clearAttachments();
+	}
+
+	/*
+	 * The conversation the composer is ACTUALLY on, read from the route.
+	 *
+	 * NOT the id `createBackendSession` returned, and that is a measured correction:
+	 * on this pane the app opens its own conversation for the first send (the route
+	 * moves to `#/chat/<id>` and the session it names is one the daemon created from
+	 * that message), so a history read against the id this run created comes back
+	 * with none of the sends in it - which is exactly what the first run of this
+	 * scene measured (2026-10-04: `total: 0` against a transcript that had them). The
+	 * route is the app's own answer to "which conversation is this", and the sends
+	 * are checked against it.
+	 */
+	const currentSessionId = async () => {
+		const href = await cdp.evaluate("window.location.href");
+		const match = /#\/chat\/([^/?#]+)$/.exec(
+			typeof href === "string" ? href : "",
+		);
+		return match ? match[1] : null;
+	};
+	let sessionId = null;
+	/**
+	 * The conversation the sends went into, LATEST answer wins.
+	 *
+	 * Asked once per history read rather than captured once at the top: the route is
+	 * the app's own answer, and the app settles it on the first ADMITTED send - so a
+	 * value read before that send is the pre-send pane (`/chat`), not the
+	 * conversation the message landed in. Case 5 captures it too, for the check that
+	 * follows its own turn.
+	 */
+	const resolvedSessionId = async () => {
+		sessionId = (await currentSessionId()) ?? sessionId;
+		return sessionId;
+	};
+
+	// ---- case 6: paste as the reference, compared on the wire -------------
+	const droppedSend = "composer-drop rig: dropped image";
+	const pastedSend = "composer-drop rig: pasted image";
+	let droppedResult = null;
+	let pastedResult = null;
+	if (accepted) {
+		/*
+		 * THE WIRE HALF RUNS FIRST, on the conversation the scene already opened and
+		 * BEFORE case 5's turn, and the order is a measured correction rather than a
+		 * preference. Case 5's `[bash:N]` turn is left in the pane's transcript as
+		 * RUNNING - the daemon's own `sleep 15` had finished (no such process on the
+		 * machine) while the pane's stream never published the end - and a send into a
+		 * pane with a turn in flight is QUEUED rather than admitted, so the box keeps
+		 * the text. Measured 2026-10-04 across two runs: `sent=false` with the typed
+		 * text still in the field and `Running sleep 15 1m4s` in the transcript. A
+		 * conversation with nothing in flight is what these sends need, and the
+		 * scene's own conversation is in that state until case 5 runs.
+		 */
+		const dropPoint = await dropFiles([fixtureImagePath]);
+		await dragTo([fixtureImagePath], "drop", dropPoint);
+		await wait(900);
+		const droppedState = await readAttachments();
+		const sentDropped = await sendText(droppedSend);
+		note(
+			"after the dropped send",
+			JSON.stringify(
+				await cdp.evaluate(`(() => {
+					const field = document.querySelector('textarea[aria-label="Message"]');
+					const log = document.querySelector('[role="log"]');
+					const active = document.activeElement;
+					return {
+						value: field ? field.value.slice(0, 80) : null,
+						readOnly: field ? Boolean(field.readOnly) : null,
+						active: active ? active.tagName + ":" + (active.getAttribute("aria-label") ?? "") : null,
+						logTail: log ? log.textContent.replace(/\\s+/g, " ").slice(-220) : null,
+					};
+				})()`),
+			),
+		);
+		droppedResult = { state: droppedState, sent: sentDropped.ok };
+		await wait(1500);
+		await clearAttachments();
+
+		await pasteBytes(
+			fixtureImageBytes,
+			basename(fixtureImagePath),
+			"image/png",
+		);
+		await wait(900);
+		const pastedState = await readAttachments();
+		const sentPasted = await sendText(pastedSend);
+		pastedResult = { state: pastedState, sent: sentPasted.ok };
+		await wait(1500);
+		const parityFrame = await captureSettled(
+			cdp,
+			`composer-drop-6-parity-${size}`,
+		);
+		note("frame", JSON.stringify(parityFrame));
+		await clearAttachments();
+
+		const history = await fetchSessionHistory(await resolvedSessionId());
+		const images = collectWireImages(history.body);
+		const byText = (text) =>
+			images.filter((image) => (image.text ?? "").includes(text));
+		const droppedImages = byText(droppedSend);
+		const pastedImages = byText(pastedSend);
+		note(
+			"wire images",
+			JSON.stringify({
+				historyStatus: history.status,
+				total: images.length,
+				dropped: droppedImages.map(
+					(image) => `${image.via} ${image.mime}:${image.digest}`,
+				),
+				pasted: pastedImages.map(
+					(image) => `${image.via} ${image.mime}:${image.digest}`,
+				),
+			}),
+		);
+		check(
+			"the dropped image is admitted to the daemon's transcript",
+			droppedResult.sent && droppedImages.length === 1,
+			`sent=${droppedResult.sent} images=${droppedImages.length} store=${JSON.stringify(droppedResult.state.stored)}`,
+		);
+		check(
+			"the pasted image is admitted too, so the comparison has two sides",
+			pastedResult.sent && pastedImages.length === 1,
+			`sent=${pastedResult.sent} images=${pastedImages.length} store=${JSON.stringify(pastedResult.state.stored)}`,
+		);
+		check(
+			"the dropped image reaches the wire BYTE-IDENTICAL to the pasted one",
+			droppedImages.length === 1 &&
+				pastedImages.length === 1 &&
+				droppedImages[0].digest === pastedImages[0].digest &&
+				droppedImages[0].mime === pastedImages[0].mime,
+			`dropped=${droppedImages[0]?.digest} (${droppedImages[0]?.bytes}B) pasted=${pastedImages[0]?.digest} (${pastedImages[0]?.bytes}B)`,
+		);
+		check(
+			"and the two routes did hold DIFFERENT representations, which is why the wire comparison is the one that matters",
+			droppedResult.state.stored.length === 1 &&
+				!droppedResult.state.stored[0].startsWith("data-url:") &&
+				pastedResult.state.stored.length === 1 &&
+				pastedResult.state.stored[0].startsWith("data-url:"),
+			`dropped=${JSON.stringify(droppedResult.state.stored)} pasted=${JSON.stringify(pastedResult.state.stored)}`,
+		);
+
+		/*
+		 * 6c. THE PATH IS READ AT SEND TIME, which is the one property only the path
+		 * route has and half the reason it was chosen. The SAME path is dropped twice
+		 * with different bytes written behind it between the two sends, so the two
+		 * messages must carry different images: a route that read the file when it was
+		 * dropped - or that held a copy in the persisted draft - would send the first
+		 * file's bytes both times, and the store would look identical either way.
+		 */
+		const mutateA = "composer-drop rig: mutate a";
+		const mutateB = "composer-drop rig: mutate b";
+		await writeMutatingFixture(fixtures.mutate, {
+			r: 46,
+			g: 176,
+			b: 92,
+			alpha: 1,
+		});
+		const mutatePointA = await dropFiles([fixtures.mutate]);
+		await dragTo([fixtures.mutate], "drop", mutatePointA);
+		await wait(900);
+		const mutateStateA = await readAttachments();
+		const sentA = await sendText(mutateA);
+		await wait(1500);
+		await clearAttachments();
+		await writeMutatingFixture(fixtures.mutate, {
+			r: 176,
+			g: 46,
+			b: 92,
+			alpha: 1,
+		});
+		const mutatePointB = await dropFiles([fixtures.mutate]);
+		await dragTo([fixtures.mutate], "drop", mutatePointB);
+		await wait(900);
+		const mutateStateB = await readAttachments();
+		const sentB = await sendText(mutateB);
+		await wait(1500);
+		const readAtSendFrame = await captureSettled(
+			cdp,
+			`composer-drop-6c-read-at-send-${size}`,
+		);
+		note("frame", JSON.stringify(readAtSendFrame));
+		await clearAttachments();
+		const mutateHistory = await fetchSessionHistory(await resolvedSessionId());
+		const mutateImages = collectWireImages(mutateHistory.body);
+		const mutateAImages = mutateImages.filter((image) =>
+			(image.text ?? "").includes(mutateA),
+		);
+		const mutateBImages = mutateImages.filter((image) =>
+			(image.text ?? "").includes(mutateB),
+		);
+		check(
+			"the same path dropped twice, with different bytes behind it, sends two different images (the file is read at send time, not at drop time)",
+			sentA.ok &&
+				sentB.ok &&
+				mutateStateA.stored.length === 1 &&
+				mutateStateB.stored.length === 1 &&
+				mutateStateA.stored[0] === mutateStateB.stored[0] &&
+				mutateAImages.length === 1 &&
+				mutateBImages.length === 1 &&
+				mutateAImages[0].digest !== mutateBImages[0].digest,
+			`storedA=${JSON.stringify(mutateStateA.stored)} storedB=${JSON.stringify(mutateStateB.stored)} digests ${mutateAImages[0]?.digest} vs ${mutateBImages[0]?.digest}`,
+			/*
+			 * The PASS line carries the two digests (agent review round 1, CR1-3). Without
+			 * this argument the sentence "the run reports the two digests" in the set's
+			 * README was true of the CHECK and not of the LOG: `detail` is printed only on
+			 * a failure, so the committed log proved the inequality only by not failing.
+			 */
+			`digestA=${mutateAImages[0]?.digest} digestB=${mutateBImages[0]?.digest} (different bytes behind the same path) storedA=${JSON.stringify(mutateStateA.stored)}`,
+		);
+	}
+
+	// ---- case 5: a drop while a turn is running ---------------------------
+	/*
+	 * WHAT THIS CASE IS ACTUALLY ABOUT, since the first shape of it was wrong and the
+	 * measurement is the reason. The delivery asks for "a drop while a turn runs,
+	 * consistent with paste's gate". Measured on `main` (2026-10-04): the CANONICAL
+	 * chat composer does NOT take the busy gate during a turn - `chat-content.tsx`
+	 * passes `currentJobId={canonical ? null : currentJobId}`, and `isBusy` is
+	 * `Boolean(isLoading && currentJobId)`, so the term is false on the path this rig
+	 * drives. A turn therefore leaves the box ACCEPTING, and the consistency the
+	 * requirement is really about is that the drop and the paste agree there too.
+	 *
+	 * So the case reads BOTH states and asserts the SAME invariant in each - the two
+	 * gestures behave alike:
+	 *   (a) a turn genuinely running: the mock's own `[bash:N]` marker makes the
+	 *       test-hosting provider call the real `bash` tool with `sleep N`
+	 *       (`MockClient`, `local_operator/providers/clients.py`), which is the one
+	 *       way to make an assembled runtime busy for a known duration; both
+	 *       gestures are expected to ATTACH, and the drifting failure this catches is
+	 *       a drop gate tightened past the paste's;
+	 *   (b) the box REFUSING input: a conversation the backend says is gone
+	 *       (`conversationUnavailable` -> the composer's own `unavailable` term,
+	 *       the arm `handlePaste`'s gate was written for). Both gestures must attach
+	 *       NOTHING.
+	 */
+	const attachDisabledNow = () =>
+		cdp.evaluate(
+			`(() => { const button = document.querySelector('[data-tour-tag="chat-input-attach-file-button"]'); return button ? button.disabled : null; })()`,
+		);
+	const turnRunning = () =>
+		cdp.evaluate(
+			`Boolean(document.querySelector('[aria-label="Stop"], [aria-label="Stop agent"]'))`,
+		);
+
+	// (a) while a turn is RUNNING
+	const runningSent = await sendText(
+		"hold this turn while the box is busy [bash:15]",
+	);
+	const running = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('[aria-label="Stop"], [aria-label="Stop agent"]'))`,
+		20_000,
+	);
+	const runningAttachDisabled = await attachDisabledNow();
+	const runningFrame = await captureSettled(
+		cdp,
+		`composer-drop-5-running-${size}`,
+	);
+	note("frame", JSON.stringify(runningFrame));
+	const runningBefore = await readAttachments();
+	await armDragInterception(true);
+	const runningPoint = await dragTo([fixtures.image], "dragEnter");
+	await dragTo([fixtures.image], "dragOver", runningPoint);
+	await dragTo([fixtures.image], "drop", runningPoint);
+	await wait(900);
+	const runningAfterDrop = await readAttachments();
+	await pasteBytes(fixtureImageBytes, basename(fixtureImagePath), "image/png");
+	await wait(900);
+	const runningAfterPaste = await readAttachments();
+	await clearAttachments();
+	check(
+		"a turn really was running when both gestures landed",
+		running.ok && runningSent.ok,
+		`turn visible=${running.ok} after ${running.waitedMs}ms; sent=${runningSent.ok}; attach disabled=${runningAttachDisabled} (the canonical composer does not take the busy gate: chat-content.tsx passes currentJobId=null for a canonical conversation)`,
+	);
+	check(
+		accepted
+			? "a drop during a turn attaches exactly what a paste does in the same state"
+			: "BASE TREE: during a turn the paste still attaches a file and the drop attaches nothing (the defect)",
+		accepted
+			? runningAfterDrop !== null &&
+					runningAfterPaste !== null &&
+					/*
+					 * `> runningBefore.chips` is not decoration: without it the equality below
+					 * also holds when NEITHER gesture attached anything, so "a drop during a turn
+					 * attaches exactly what a paste does" would pass on a pane where both routes
+					 * were dead (agent review round 1, CR1-8).
+					 */
+					runningAfterDrop.chips > runningBefore.chips &&
+					runningAfterDrop.chips - runningBefore.chips ===
+						runningAfterPaste.chips - runningAfterDrop.chips
+			: runningAfterDrop !== null &&
+					runningAfterPaste !== null &&
+					runningAfterDrop.chips === runningBefore.chips &&
+					runningAfterPaste.chips > runningBefore.chips,
+		`chips before=${runningBefore.chips} afterDrop=${runningAfterDrop?.chips} afterPaste=${runningAfterPaste?.chips} (each gesture's own delta is the comparison) stored=${JSON.stringify(runningAfterDrop?.stored)}`,
+	);
+	await waitForCondition(
+		cdp,
+		`!Boolean(document.querySelector('[aria-label="Stop"], [aria-label="Stop agent"]'))`,
+		30_000,
+	);
+	sessionId = await currentSessionId();
+	check(
+		"the send landed on a conversation the daemon knows, named by the route",
+		Boolean(sessionId),
+		`route session id=${sessionId} (created=${created.id})`,
+	);
+
+	/*
+	 * THE REFUSING ARM IS NOT PHOTOGRAPHABLE HERE, and this records why rather than
+	 * pretending it ran. In chat, `isInputDisabled` can only be true through
+	 * `unavailable` or `secretAnswer` — `isBusy` is false on this path by
+	 * construction (`chat-content.tsx` passes `currentJobId=null` for a canonical
+	 * conversation) and chat supplies no `hostNotice`. `unavailable` needs a
+	 * conversation the window has deleted (`forgotten`) or whose own stream 404'd,
+	 * and the daemon exposes no session-delete route for a rig to make one; a chat
+	 * route for an id the daemon never had mounts a composer that is NOT refusing,
+	 * measured here. So the refusing arm is covered by the composer's own JSDOM
+	 * harness instead (`scripts/composer-file-drop.test.mjs`, which mounts the real
+	 * component with `unavailable` set and drops on it), and this case says so in
+	 * the run's own output.
+	 */
+	const goneRoute = `/chat/${randomUUID()}`;
+	await verb(cdp, "navigate", goneRoute);
+	const goneMounted = await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
+		15_000,
+	);
+	const goneAttachDisabled = await attachDisabledNow();
+	note(
+		"a chat route for a conversation this daemon never had",
+		JSON.stringify({
+			route: goneRoute,
+			composerMounted: goneMounted.ok,
+			attachDisabled: goneAttachDisabled,
+			note: "not refusing, so the refusing arm lives in the JSDOM harness; see this case's comment",
+		}),
+	);
+	// Back to the conversation the rest of the scene reads and writes.
+	await verb(cdp, "navigate", `/chat/${sessionId ?? created.id}`);
+	await waitForCondition(
+		cdp,
+		`Boolean(document.querySelector('textarea[aria-label="Message"]'))`,
+		15_000,
+	);
+	await clearAttachments();
+
+	/*
+	 * ---- case 4: a drop over a NON-target part of the window --------------
+	 *
+	 * LAST, because the delivery's premise was that the window would leave: this app
+	 * has no `will-navigate` handler (`link-actions.ts` says so where it explains why
+	 * every file anchor is cancelled by hand), so the default action for a dropped
+	 * file would replace the page. The reading is where the window ended up, and
+	 * whether the app is still the thing on screen - a frame taken after it left
+	 * would photograph a file, not a composer.
+	 *
+	 * A CONTROL RUNS FIRST, and it is not decoration: this app's route settles on
+	 * its own (the staged conversation it created lands on `#/chat/<id>`), so an
+	 * href read before and after a gesture can differ for a reason that has nothing
+	 * to do with the gesture. Measured on the base tree without the control
+	 * (2026-10-04), the route moved across this case and the reading was ambiguous;
+	 * the control is what tells a drop's effect from the router settling.
+	 */
+	const hrefOf = () =>
+		cdp
+			.evaluate(
+				`({ href: window.location.href, composer: Boolean(document.querySelector(${JSON.stringify(composerField)})) })`,
+			)
+			.catch((error) => ({
+				href: null,
+				composer: false,
+				error: String(error),
+			}));
+	const before4 = await hrefOf();
+	await wait(2500);
+	const control4 = await hrefOf();
+	const transcriptPoint = { x: Math.round(WINDOW_WIDTH / 2), y: 160 };
+	const dragToNonTarget = async (type) =>
+		cdp.send("Input.dispatchDragEvent", {
+			type,
+			x: transcriptPoint.x,
+			y: transcriptPoint.y,
+			data: {
+				items: [],
+				files: [fixtures.image],
+				dragOperationsMask: 1,
+			},
+			modifiers: 0,
+		});
+	const armedAgain = await armDragInterception(true);
+	await dragToNonTarget("dragEnter");
+	await dragToNonTarget("dragOver");
+	const preDropFrame = await captureSettled(
+		cdp,
+		`composer-drop-4-non-target-${size}`,
+	);
+	note("frame", JSON.stringify(preDropFrame));
+	await dragToNonTarget("drop");
+	await wait(2500);
+	const armed4 = await hrefOf();
+	/*
+	 * THE SECOND PASS IS THE ONE ABOUT THE APP. Armed interception suppresses the
+	 * default action itself, so a reading taken only in that state answers a
+	 * question about the rig. Disarmed, the default action is Chromium's own and
+	 * the reading says what the app does when a file is dropped where nothing
+	 * accepts it.
+	 */
+	const disarmed = await armDragInterception(false);
+	await dragToNonTarget("dragEnter");
+	await dragToNonTarget("dragOver");
+	await dragToNonTarget("drop");
+	await wait(2500);
+	const after4 = await hrefOf();
+	const settled = control4.href === after4.href;
+	note(
+		"after a non-target drop",
+		JSON.stringify({
+			before: before4,
+			control: control4,
+			armed: armed4,
+			disarmed,
+			after: after4,
+			settled,
+			rearmedForTheFirstPass: armedAgain,
+		}),
+	);
+	check(
+		accepted
+			? "a file dropped off the composer leaves the window exactly where the control left it"
+			: "BASE TREE: a file dropped off the composer leaves the window exactly where the control left it (the default action is inert here - see the README)",
+		after4.composer === true && settled && after4.href === before4.href,
+		`href ${before4.href} -> control ${control4.href} -> armed ${armed4.href} -> ${disarmed} -> ${after4.href}; settled=${settled}; composer=${after4.composer}`,
+	);
+	note(
+		"frames",
+		JSON.stringify({
+			size,
+			dropExpect: DROP_EXPECT,
+			theme: THEME ?? "localOperatorDark",
+			fixtures: fixtures,
+		}),
+	);
+}
+
+/**
+ * Fields on the daemon's transcript that identify an image the app sent.
+ *
+ * A WALK RATHER THAN A FIXED PATH, because what the parity case needs is the
+ * MESSAGE's own image and the transcript's envelope has changed shape before
+ * (`data_b64` beside `mime_type`, a store digest beside a base64 in the
+ * transcript reducer's own comment). The message text travels with each image so
+ * the two sends can be told apart without assuming their order.
+ */
+function collectWireImages(body) {
+	const found = [];
+	/*
+	 * TWO SPELLINGS, because the daemon's transcript carries an image as one of
+	 * them and the split is by SIZE: a row over 1 KiB of base64 is externalised into
+	 * its store and the block keeps a content-addressed `attachment` id, while a
+	 * smaller one is inlined as `data` with no mime at all (`transcript-reducer`'s
+	 * "durable rows only under 1 KiB"). Measured against this scene's own daemon
+	 * (2026-10-04): the 1600x1200 fixture arrived as
+	 * `{"attachment": "16811551d75cc7c152bdae893957cbe3", "mime_type": "image/png"}`
+	 * and the 64x64 one as `{"data": "iVBORw0KGgo..."}`. An externalised id IS the
+	 * daemon's own byte identity, so it is used as the digest rather than hashed
+	 * again - two sends that name the same id stored ONE blob between them.
+	 */
+	const imageOf = (node, text) => {
+		const attachment = node.attachment ?? node.digest ?? null;
+		const data = node.data_b64 ?? node.data ?? node.base64 ?? null;
+		const mime = node.mime_type ?? node.mimeType ?? node.media_type ?? null;
+		if (typeof attachment === "string" && attachment.length > 0)
+			return {
+				text,
+				mime,
+				bytes: null,
+				digest: `store:${attachment}`,
+				via: "externalised",
+			};
+		if (typeof data === "string" && data.length > 0)
+			return {
+				text,
+				mime,
+				bytes: Buffer.from(data, "base64").length,
+				digest: `inline:${createHash("sha256").update(data).digest("hex").slice(0, 16)}`,
+				via: "inline",
+			};
+		return null;
+	};
+	/*
+	 * THE TEXT IS THE MESSAGE'S OWN, and it is a SIBLING of the image rather than an
+	 * ancestor: a user row's `content` is `[{text}, {attachment, mime_type}]`, so the
+	 * association is the row's joined text and not a walk up the tree.
+	 */
+	const walk = (node, text) => {
+		if (Array.isArray(node)) {
+			for (const entry of node) walk(entry, text);
+			return;
+		}
+		if (!node || typeof node !== "object") return;
+		let own = typeof node.text === "string" ? node.text : text;
+		if (Array.isArray(node.content)) {
+			const joined = node.content
+				.map((block) =>
+					block && typeof block.text === "string" ? block.text : "",
+				)
+				.join(" ")
+				.trim();
+			if (joined) own = joined;
+		}
+		const image = imageOf(node, own);
+		if (image) found.push(image);
+		for (const value of Object.values(node)) walk(value, own);
+	};
+	walk(body, "");
+	return found;
+}
+
+/**
+ * The three files every `composer-drop` run drags, written into the run's own
+ * scratch tree.
+ *
+ * SYNTHESISED RATHER THAN COMMITTED, so the bytes are the same on any machine and
+ * a later round can re-run the pair without hunting for an asset. The FIRST image
+ * is deliberately larger than the 1024px long edge the send bounds images to
+ * (`bound-image.ts`), so the parity case exercises the bounding both routes share
+ * instead of comparing two images the bound never touched.
+ */
+async function ensureComposerDropFixtures() {
+	const dir = join(SCRATCH, "composer-drop-fixtures");
+	mkdirSync(dir, { recursive: true });
+	const image = join(dir, "rig-drop-large.png");
+	const second = join(dir, "rig-drop-second.png");
+	const text = join(dir, "rig-drop-notes.txt");
+	/*
+	 * The file case 6c rewrites in place. Its contents are colour A here and colour
+	 * B later, at the SAME path - which is the whole point of it: a path-form
+	 * attachment stores the name and nothing else, so the bytes the send carries
+	 * have to be read at send time.
+	 */
+	const mutate = join(dir, "rig-drop-mutate.png");
+	await sharp({
+		create: {
+			width: 1600,
+			height: 1200,
+			channels: 4,
+			background: { r: 214, g: 58, b: 44, alpha: 1 },
+		},
+	})
+		.png()
+		.toFile(image);
+	await sharp({
+		create: {
+			width: 48,
+			height: 32,
+			channels: 4,
+			background: { r: 40, g: 96, b: 214, alpha: 1 },
+		},
+	})
+		.png()
+		.toFile(second);
+	writeFileSync(
+		text,
+		"composer-drop rig fixture: a file that is not one of the four image mimes\n",
+	);
+	await sharp({
+		create: {
+			width: 64,
+			height: 64,
+			channels: 4,
+			background: { r: 46, g: 176, b: 92, alpha: 1 },
+		},
+	})
+		.png()
+		.toFile(mutate);
+	return { image, second, text, mutate };
+}
+
+/**
+ * Rewrite the mutating fixture at a given colour, so two drops in one run can
+ * name the SAME path with different bytes behind it (case 6c).
+ */
+async function writeMutatingFixture(path, background) {
+	await sharp({ create: { width: 64, height: 64, channels: 4, background } })
+		.png()
+		.toFile(path);
+}
+
 async function sceneComposer(cdp) {
 	const hello = await verb(cdp, "hello");
 	note("hello", JSON.stringify(hello, null, 2));
@@ -37919,6 +39105,18 @@ async function main() {
 			"--scene project-detail needs --backend: the seeded row, quick-send's message and the picker's create are all real requests to the daemon this run owns, so a run with none would photograph three refusals",
 		);
 	}
+	if (SCENE === "composer-drop") {
+		if (BACKEND === null || BACKEND_RECORDS === null) {
+			throw new Error(
+				"--scene composer-drop needs --backend and --backend-records: the composer mounts only against a conversation on the daemon this run owns, and the app admits a daemon only while a serve record describes one - which is also how case 5's running turn is made (the mock provider's own `[bash:N]` marker, not a signalled process)",
+			);
+		}
+		if (DROP_EXPECT !== "accepted" && DROP_EXPECT !== "discarded") {
+			throw new Error(
+				`--scene composer-drop needs --drop-expect accepted|discarded (got ${JSON.stringify(DROP_EXPECT)}): the pair's two halves are the same scene against two trees, and a default would answer one of them without saying so`,
+			);
+		}
+	}
 	if (SCENE === "project-inline-edit") {
 		if (BACKEND === null || BACKEND_RECORDS === null) {
 			throw new Error(
@@ -38117,6 +39315,7 @@ async function main() {
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "composer-drop") await sceneComposerDrop(cdp);
 			else if (SCENE === "project-inline-edit")
 				await sceneProjectInlineEdit(cdp);
 			else if (SCENE === "palette") await scenePalette(cdp);

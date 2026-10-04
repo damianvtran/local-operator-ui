@@ -363,6 +363,17 @@ declare global {
 				encoding?: BufferEncoding,
 			) => Promise<ReadFileResponse>;
 			/**
+			 * The filesystem path behind a `File` the OS handed the renderer, or `""`
+			 * when it has none.
+			 *
+			 * The preload's only non-IPC member: it wraps Electron's
+			 * `webUtils.getPathForFile`, which the renderer cannot call under context
+			 * isolation. Always answers a string - a `File` that was constructed in JS
+			 * rather than backed by a file on disk has no path, and that is an answer
+			 * rather than a failure.
+			 */
+			getPathForFile: (file: File) => string;
+			/**
 			 * Bytes for the in-app viewers (PDF, image, audio). The failure case is a
 			 * discriminant rather than an `Error`, because structured clone strips a
 			 * custom Error's prototype and `instanceof` would never be true here.
