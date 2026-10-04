@@ -209,7 +209,7 @@ import {
 	alignWalkRunKeyConfirmed,
 	alignWalkStateFor,
 	collapsePlan,
-	collapsePlanOptionsKey,
+	collapsePlanInputKey,
 	collapseRowsKey,
 	initialAlignWalkState,
 	paintedRows,
@@ -3721,10 +3721,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * one computed above and shared with the feet; this adds the options half.
 	 * Keying the plan on the pair is what makes it ONE PLAN PER STRUCTURAL
 	 * PASS: a token that only lengthens an answer's text moves neither half, so
-	 * it buys no plan at all.
+	 * it buys no plan at all. The join itself lives in the model
+	 * (`collapsePlanInputKey`) rather than being re-spelled here, so the two
+	 * halves cannot drift apart.
 	 */
 	const collapseKey = useMemo(
-		() => `${rowsKey}\u0001${collapsePlanOptionsKey(collapseInputs)}`,
+		() => collapsePlanInputKey(rowsKey, collapseInputs),
 		[collapseInputs, rowsKey],
 	);
 	/*

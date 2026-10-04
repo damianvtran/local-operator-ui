@@ -19,6 +19,13 @@
  *    the opposite (a signature that moves when the plan would not) only buys a
  *    redundant plan.
  *
+ *    Two things about that signature are pinned here as well, both added in
+ *    agent review round 1: it is computed ONCE PER RECORD OBJECT (so a token,
+ *    which replaces one record, pays for one record - M1), and it carries
+ *    NEITHER the record's payload NOR the bytes of an inline image (M1b: an
+ *    inline screenshot is base64 on the live path, and hashing it made the key
+ *    scale with the picture).
+ *
  * 2. THE WIDEN SEARCH (`widenTarget`). The snap can mount far more than the raw
  *    size it is asked for, so several candidates of one gesture - and the
  *    mounted baseline itself - resolve to the SAME window. Before the fix each
@@ -39,7 +46,7 @@ const ROOT = process.cwd();
 const bundle = await build({
 	stdin: {
 		contents: [
-			'export { collapsePlan, collapsePlanInputKey, collapsePlanOptionsKey, collapseRowsKey, dbgCollapsePlanCalls, widenTarget, WIDEN_MAX_STEPS, WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
+			'export { collapsePlan, collapsePlanInputKey, collapsePlanOptionsKey, collapseRowsKey, dbgCollapsePlanCalls, widenTarget, paintedRows, WIDEN_MAX_STEPS, WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA } from "./src/renderer/src/features/chat/canonical/turn-collapse-model";',
 		].join("\n"),
 		resolveDir: ROOT,
 	},
@@ -64,6 +71,7 @@ const {
 	collapsePlanOptionsKey,
 	collapseRowsKey,
 	dbgCollapsePlanCalls,
+	paintedRows,
 	widenTarget,
 } = await import(moduleUrl);
 
@@ -98,6 +106,14 @@ const tool = (id, extra = {}, gap = "turn") =>
 			toolName: "bash",
 			args: { command: "pnpm test:desktop" },
 			output: "tests 40\npass 40\n",
+			/*
+			 * THE TWO PAYLOAD FIELDS A TOOL ROW CARRIES IN PRACTICE, present in the
+			 * fixtures so the completeness sweep actually reaches their exclusions
+			 * (agent review round 1, M2: without them the sweep asserted "every own
+			 * field", over records that never carried four of the six paths).
+			 */
+			intent: "list the invoices",
+			diff: ["--- a/t.ts", "+++ b/t.ts", "-one", "+two"],
 			isError: false,
 			delivery: null,
 			stopped: false,
@@ -119,6 +135,14 @@ const answer = (id, extra = {}) =>
 			streaming: false,
 			stopReason: null,
 			error: false,
+			/*
+			 * The assistant row's own two payload paths (agent review round 1, M2),
+			 * for the same reason `intent`/`diff` are on the tool fixture: `frame` is
+			 * the transport cursor and `truncated` names what the row's text is NOT,
+			 * and the plan reads neither.
+			 */
+			frame: { epoch: "e1", seq: 7 },
+			truncated: "prefix",
 			...extra,
 		},
 		"item",
@@ -254,13 +278,26 @@ test("the plan's signature moves whenever the plan would", () => {
 		const before = planProjection(collapsePlan(rows, options));
 		const beforeKey = collapseRowsKey(rows);
 		for (let at = 0; at < rows.length; at += 1) {
-			const record = rows[at].record;
+			const entry = rows[at];
+			const record = entry.record;
 			for (const field of Object.keys(record)) {
-				const original = record[field];
-				record[field] = mutate(original);
+				/*
+				 * REPLACED, NEVER MUTATED - the reducer's own rule
+				 * (`transcript-reducer.ts`: "a delta that changes nothing returns the
+				 * SAME record object", and a changed row is replaced by `upsert`),
+				 * and the rule the signature's memo rests on: a record object's fields
+				 * are immutable for its lifetime, so a signature computed once stays
+				 * true. Mutating a fixture in place would sweep a shape the app cannot
+				 * produce - and, since the memo caches on identity, would test the
+				 * cache rather than the signature.
+				 */
+				rows[at] = {
+					...entry,
+					record: { ...record, [field]: mutate(record[field]) },
+				};
 				const keyMoved = collapseRowsKey(rows) !== beforeKey;
 				const projection = planProjection(collapsePlan(rows, options));
-				record[field] = original;
+				rows[at] = entry;
 				mutations += 1;
 				assert.ok(
 					keyMoved || projection === before,
@@ -273,11 +310,10 @@ test("the plan's signature moves whenever the plan would", () => {
 			 * than assumed covered.
 			 */
 			for (const field of ["gap", "closesTurn"]) {
-				const original = rows[at][field];
-				rows[at][field] = mutate(original);
+				rows[at] = { ...entry, [field]: mutate(entry[field]) };
 				const keyMoved = collapseRowsKey(rows) !== beforeKey;
 				const projection = planProjection(collapsePlan(rows, options));
-				rows[at][field] = original;
+				rows[at] = entry;
 				mutations += 1;
 				assert.ok(
 					keyMoved || projection === before,
@@ -287,6 +323,22 @@ test("the plan's signature moves whenever the plan would", () => {
 		}
 	}
 	assert.ok(mutations > 100, `the sweep really ran (${mutations} mutations)`);
+	/*
+	 * AND IT REACHES EVERY PAYLOAD PATH. The sweep's assertion is vacuous for a
+	 * field no fixture carries, which is how four of the six exclusions went
+	 * unexercised until agent review round 1 (M2). This is the coverage claim
+	 * stated as a fact about the fixtures rather than left to the reader.
+	 */
+	const carried = new Set(
+		Object.values(fixtures).flatMap((rows) =>
+			rows.flatMap((entry) => Object.keys(entry.record)),
+		),
+	);
+	for (const path of ["output", "args", "intent", "diff", "frame", "truncated"])
+		assert.ok(
+			carried.has(path),
+			`the fixtures carry ${path}, so its exclusion is swept`,
+		);
 });
 
 test("a text delta and fresh row identities leave the signature where it was", () => {
@@ -343,41 +395,100 @@ test("the options half covers liveness, mode, focus and the opened bars", () => 
 		}),
 		"the same bars in another order are the same key",
 	);
-	assert.equal(
-		collapsePlanInputKey(fixtures.settled, options),
-		`${collapseRowsKey(fixtures.settled)}\u0001${collapsePlanOptionsKey(options)}`,
-		"the whole key is its two halves",
+	/*
+	 * The whole key is its two halves, and it moves with either of them. Asserted
+	 * as a property rather than by re-spelling the join: the component now calls
+	 * this helper (`canonical-transcript.tsx`), so a second spelling here would
+	 * be a test of a join nobody runs (agent review round 1, M3).
+	 */
+	const rowsKey = collapseRowsKey(fixtures.settled);
+	const whole = collapsePlanInputKey(rowsKey, options);
+	assert.ok(whole.startsWith(rowsKey), "the whole key carries the rows half");
+	assert.ok(
+		whole.endsWith(collapsePlanOptionsKey(options)),
+		"the whole key carries the options half",
+	);
+	assert.notEqual(
+		collapsePlanInputKey("another rows half", options),
+		whole,
+		"the rows half is an input",
+	);
+	assert.notEqual(
+		collapsePlanInputKey(rowsKey, { ...options, live: true }),
+		whole,
+		"the options half is an input",
 	);
 });
 
 /* ----------------------- P3: the widen search's plans --------------------- */
 
-test("a widen pays one plan per DISTINCT window it considers", () => {
-	/*
-	 * THE SHAPE THE SEARCH IS FOR. One 600-call turn, already condensed, whose
-	 * bar hides everything the window can add: every candidate snaps back to
-	 * the same window (the snap's completed-run allowance mounts the whole run),
-	 * so the search walks its bound and the reader sees a bar that already says
-	 * its totals. Before the fix, each of those candidates built its own plan
-	 * over the same 602 rows.
-	 */
-	const rows = [
-		user("u1"),
-		...Array.from({ length: 600 }, (_, i) => tool(`t${i}`, {}, "trace")),
-		answer("a1"),
-	];
-	const widen = () =>
-		widenTarget(rows, 60, {
-			step: 60,
-			live: false,
-			openRuns: new Set(),
-			mode: "by-turn",
-			snapMaxExtra: SNAP_MAX_EXTRA,
-			completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
-		});
+/**
+ * THE SHAPE THE SEARCH IS FOR. One 600-call turn, already condensed, whose bar
+ * hides everything the window can add: every candidate snaps back to the same
+ * window (the snap's completed-run allowance mounts the whole run), so the
+ * search walks its bound and the reader sees a bar that already says its
+ * totals. Both tests below measure THE SAME ROWS with THE SAME OPTIONS - the
+ * after arm through the shipped `widenTarget`, the before arm through the loop
+ * the pre-fix tree ran.
+ */
+const condensedTurn = () => [
+	user("u1"),
+	...Array.from({ length: 600 }, (_, i) => tool(`t${i}`, {}, "trace")),
+	answer("a1"),
+];
+const WIDEN_OPTIONS = {
+	step: 60,
+	live: false,
+	openRuns: new Set(),
+	mode: "by-turn",
+	snapMaxExtra: SNAP_MAX_EXTRA,
+	completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+};
+const WIDEN_MOUNTED_SIZE = 60;
 
+/**
+ * WHAT THE PRE-FIX TREE PAID, reconstructed over the SHIPPED `paintedRows`.
+ *
+ * The plan count is what moved; the search itself is unchanged, so the old loop
+ * can be run against the new primitives. This is the before-column of the body's
+ * count table, and the reason it is a test rather than a sentence is QA round 1's
+ * Q1: QA's reconstruction read 11 and the body said 10, and a number nothing
+ * measures is a number that drifts.
+ *
+ * IT IS 10, and the arithmetic is: the baseline call, plus one call per `while`
+ * CONDITION - nine of them, at sizes 120..600. The tenth step is not a call:
+ * `size < maxRows` short-circuits it, because the ninth body sets
+ * `size = min(maxRows, 600 + 60) = 602`. A reconstruction that counts the loop's
+ * exit test measures a loop the pre-fix tree never ran.
+ */
+const preFixWidenPlans = () => {
+	const rows = condensedTurn();
 	dbgCollapsePlanCalls.count = 0;
-	const size = widen();
+	const before = paintedRows(rows, WIDEN_MOUNTED_SIZE, WIDEN_OPTIONS);
+	let size = Math.min(rows.length, WIDEN_MOUNTED_SIZE + WIDEN_OPTIONS.step);
+	while (
+		size < rows.length &&
+		paintedRows(rows, size, WIDEN_OPTIONS) - before < 8
+	) {
+		size = Math.min(rows.length, size + WIDEN_OPTIONS.step);
+	}
+	return { plans: dbgCollapsePlanCalls.count, size };
+};
+
+test("a widen paid one plan per candidate size before this change", () => {
+	const before = preFixWidenPlans();
+	assert.equal(
+		before.plans,
+		10,
+		`the pre-fix loop paid 10 plans on this shape (got ${before.plans})`,
+	);
+	assert.equal(before.size, 602, "and it landed on the whole list");
+});
+
+test("a widen pays one plan per DISTINCT window it considers", () => {
+	const rows = condensedTurn();
+	dbgCollapsePlanCalls.count = 0;
+	const size = widenTarget(rows, WIDEN_MOUNTED_SIZE, WIDEN_OPTIONS);
 	const plans = dbgCollapsePlanCalls.count;
 
 	/*
@@ -390,9 +501,137 @@ test("a widen pays one plan per DISTINCT window it considers", () => {
 		`a gesture is bounded by the search (${plans} plans)`,
 	);
 	/*
-	 * And the point of the fix: the candidates all resolved to ONE window, so
-	 * the gesture pays the two windows it visited (the mounted baseline and the
+	 * And the point of the fix: the candidates all resolved to ONE window, so the
+	 * gesture pays the two windows it visited (the mounted baseline and the
 	 * size it lands on), not one plan per step.
+	 *
+	 * EXACTLY ONE, not "at most two" (agent review round 1, N1): the count table
+	 * says 1, and `<= 2` would pass a regression back to one plan per candidate
+	 * size. The looseness was the assertion disagreeing with the claim it guards.
 	 */
-	assert.ok(plans <= 2, `one plan per distinct window (${plans} plans)`);
+	assert.equal(plans, 1, `one plan per distinct window (${plans} plans)`);
+});
+
+/* ------------- M1b: an inline payload must not reach the key ------------- */
+
+/** One inline base64 picture, the shape the LIVE path hands a tool row
+ * (`transcript-reducer.ts`: "Base64 payload when the event carried it inline"). */
+const inlineImage = (bytes) => ({
+	id: "n1:0",
+	data: "A".repeat(bytes),
+	attachment: null,
+	mimeType: "image/png",
+});
+
+/** A window whose one tool row carries an inline picture of `bytes` base64. */
+const windowWithImage = (bytes) => [
+	user("u1"),
+	tool("n1", { images: [inlineImage(bytes)] }),
+	answer("a1"),
+];
+
+/** Min-of-rounds `process.cpuUsage` for one iteration of `fn`, in
+ * microseconds. CPU and never wall time, so the ~25 sibling sessions on this
+ * host shift nothing (AGENTS.md, "If you must measure, measure CPU, not wall
+ * time"); min-of-rounds per the reviewer's own shape. */
+const cpuPerCall = (fn, iterations, rounds) => {
+	let best = Number.POSITIVE_INFINITY;
+	for (let round = 0; round < rounds; round += 1) {
+		const start = process.cpuUsage();
+		for (let i = 0; i < iterations; i += 1) fn(i);
+		const used = process.cpuUsage(start);
+		best = Math.min(best, (used.user + used.system) / iterations);
+	}
+	return best;
+};
+
+test("the key's cost does not scale with an inline image's bytes", () => {
+	/*
+	 * THE HAZARD THIS PINS (agent review round 1, M1b): `images[].data` is
+	 * inline base64 on the live path and a browser capture is a first-class row
+	 * here, so hashing the picture made every call that re-signed the window pay
+	 * for it - measured at 60 rows + one 512 KB screenshot, 453 us against the
+	 * plan's 11 us (40x), and at 602 rows + 2 MB, 2199 us against 141 us. The key
+	 * carries the picture's IDENTITY instead (`imageStamp`), so its work is the
+	 * same whether the row holds a thumbnail or a full-resolution capture.
+	 *
+	 * TWO ASSERTIONS, because they fail for different reasons and either alone
+	 * leaves a door open:
+	 *  - the KEY'S LENGTH is bounded, which fails the day the bytes are carried;
+	 *  - the KEY'S COST does not grow with the payload, which fails the day the
+	 *    bytes are hashed instead of carried (a hash is constant-length, so the
+	 *    length bound cannot see that one).
+	 * The failure mode is a live path that gets slower as pictures get bigger,
+	 * which is exactly what this must never quietly become again.
+	 */
+	const small = windowWithImage(1024);
+	const big = windowWithImage(2 * 1024 * 1024);
+
+	assert.ok(
+		collapseRowsKey(big).length < 1024,
+		`the key does not carry the bytes (${collapseRowsKey(big).length} chars for a 2 MB picture)`,
+	);
+
+	/*
+	 * COLD EVERY CALL: the records are cloned on each iteration, which is the
+	 * shape a flush that hands back fresh objects produces - and the only shape
+	 * where a hash of the payload would show up at all, since a memoised
+	 * signature is not recomputed. Both arms pay the same clone.
+	 */
+	const cloneAndKey = (rows) => {
+		const cloned = rows.map((entry) => ({
+			...entry,
+			record: { ...entry.record },
+		}));
+		return collapseRowsKey(cloned);
+	};
+	const smallUs = cpuPerCall(() => cloneAndKey(small), 25, 5);
+	const bigUs = cpuPerCall(() => cloneAndKey(big), 25, 5);
+	assert.ok(
+		bigUs < smallUs * 4,
+		`a 2 MB inline picture must not make the key scale with it (1 KB ${smallUs.toFixed(1)} us, 2 MB ${bigUs.toFixed(1)} us per call)`,
+	);
+});
+
+test("a changed payload still moves the key, and an unchanged one does not", () => {
+	/*
+	 * THE OTHER HALF OF THE BOUND. Dropping the bytes is only safe because
+	 * something else moves when they change; if a future change dropped
+	 * `images` outright, the plan would keep pointing at the old record objects
+	 * and the condensed strip would paint a picture the reader already replaced.
+	 * The reducer's records are immutable values, so the ARRAY is that
+	 * something: a new array means an array whose content changed.
+	 */
+	const rows = windowWithImage(1024);
+	const before = collapseRowsKey(rows);
+	/* A re-signed window with the SAME array: nothing a plan reads has moved. */
+	const reSigned = rows.map((entry) => ({
+		...entry,
+		record: { ...entry.record },
+	}));
+	assert.equal(
+		collapseRowsKey(reSigned),
+		before,
+		"an unchanged array keeps the signature where it was",
+	);
+	/* Two different payloads are two different arrays, and two different keys. */
+	assert.notEqual(
+		collapseRowsKey(windowWithImage(2048)),
+		before,
+		"other bytes are another window",
+	);
+	/* And so is the same bytes in a rebuilt array (a live re-extraction). */
+	const rebuilt = rows.map((entry) =>
+		entry.record.kind === "tool"
+			? {
+					...entry,
+					record: { ...entry.record, images: [...entry.record.images] },
+				}
+			: entry,
+	);
+	assert.notEqual(
+		collapseRowsKey(rebuilt),
+		before,
+		"a rebuilt array is a rebuilt window",
+	);
 });
