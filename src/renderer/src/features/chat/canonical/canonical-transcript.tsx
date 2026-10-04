@@ -210,6 +210,7 @@ import {
 	alignWalkStateFor,
 	collapsePlan,
 	initialAlignWalkState,
+	paintedRows,
 	snapWindowToRunBoundary,
 	widenTarget,
 	windowTopRun,
@@ -3231,6 +3232,37 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		);
 	}, [total]);
 
+	/*
+	 * THE PAINT COUNT THE PAGING HOOK SETTLES IN (design §5.2).
+	 *
+	 * The hook judges whether a reveal showed the reader anything, and the only
+	 * honest currency for that is the rows the collapse actually PAINTS — the same
+	 * count `widenTarget` above searches with, read through the same function so
+	 * there is one measurement and not a second counting path. It is read through
+	 * `widenInputs` for the reason that ref exists: the reveal is dispatched from
+	 * an input event long after the render that computed these, and a settle
+	 * arrives after the commit that changed them, so the accessor has to read
+	 * whatever is CURRENT at the moment it is called rather than close over a
+	 * render's values. `rowsRef.current` is the whole list (the window is a slice
+	 * of it) and `mounted` is `alignSize`, the size the reader is looking at — the
+	 * pair `widen` measures against above.
+	 *
+	 * No dependency list entries: every input is read through a ref at call time,
+	 * and a fresh identity per render would only re-create the hook's `live` ref.
+	 */
+	const readPaintedRows = useCallback(
+		() =>
+			paintedRows(rowsRef.current, widenInputs.current.mounted, {
+				step: WINDOW_STEP,
+				live: widenInputs.current.live,
+				openRuns: widenInputs.current.openRuns,
+				mode: widenInputs.current.mode,
+				snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
+				completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+			}),
+		[],
+	);
+
 	// The session identity the paging state belongs to. `hasMore` is folded in
 	// because `/clear` replaces the transcript without changing the session, and
 	// a latch held against rows that are gone would refuse the first gesture in
@@ -3247,6 +3279,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		hiddenRows: hidden,
 		hasMore: Boolean(transcript.hasMore),
 		onWiden: widen,
+		paintedRows: readPaintedRows,
 		onLoadOlder,
 		onLoadOlderOutcome,
 		olderFailed,
