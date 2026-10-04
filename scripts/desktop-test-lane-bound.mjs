@@ -56,6 +56,11 @@
  *  - A lane whose process cannot be seen (the process table is unreadable, or `ps`
  *    is starved) is not bounded for that tick; that is announced once, like the
  *    memory watchdog's own blind warning.
+ *  - It REDUCES unreadable cancellations but does not REMOVE them: a lane first sighted
+ *    late is named only after the job's 35-minute cap has cancelled the run, and a cancelled
+ *    run still carries no test line - the outcome this module exists to reduce. Removing
+ *    even that would need a bound small enough to red legitimate lanes, which is the defect
+ *    the ceiling was recalibrated away from (see `_DEFAULT_BOUND_MS`).
  *  - It does not change the suite's exit status arithmetic: node already reports the
  *    killed file as a failure, and the runner forwards the child's status unchanged.
  */
@@ -80,15 +85,25 @@ export const LANE_BOUND_OVERRIDE_ENV = "LOCAL_OPERATOR_UI_LANE_BOUND_MS";
  * that lane's own output inside it. A bound that turns a green run red is worse than no
  * bound, so the number is chosen from CI now, not from this laptop.
  *
- * WHY 25 MINUTES, from CI's own two numbers. No lane can outlive the suite that runs it,
- * so the healthy CI run's 18.7 minutes (369 files at concurrency 3, 07:21:44 -> 07:40:24,
- * job 111386486657) is an UPPER BOUND on every lane that ran in it: 25 minutes clears that
- * by six minutes, and it is the CI measurement doing the clearing rather than a host-local
- * ratio. The other number is the job's own 35-minute cap: a lane's clock starts at its
- * FIRST SIGHTING, so a stall is named at most 25 minutes into that lane's life, the rest
- * of the suite still lands (observed: the run completed as soon as the bound fired), and
- * the whole job stays inside the cap. Both properties are what the bound exists for - name
- * the lane, keep everyone else's verdict - and neither needs the ceiling to be tight.
+ * WHY 25 MINUTES, from CI's own two numbers. No lane can outlive the suite that runs it, so
+ * a healthy CI run's wall time is an UPPER BOUND on every lane that ran inside it: `main`'s
+ * 18.7 minutes (369 files at concurrency 3, 07:21:44 -> 07:40:24, job 111386486657) bounds
+ * that run's lanes, and THIS branch's list is one file longer - the lane this change
+ * registers is one of the 370 - so 25 minutes clears 18.7 by six, and it is the CI
+ * measurement doing the clearing rather than a host-local ratio. The other anchor is the
+ * job's own 35-minute cap: a lane's clock starts at its FIRST SIGHTING, so a stall is named
+ * at most 25 minutes into that lane's life and the rest of the suite still lands (observed:
+ * the run completed as soon as the bound fired).
+ *
+ * WHAT IT DOES NOT GUARANTEE, which an earlier draft of this comment claimed and review
+ * round 4 caught. The bound REDUCES unreadable cancellations; it does not eliminate them.
+ * First sightings are spread across the whole suite - the lane that cost four heads
+ * (`scripts/mark-all-read-control.test.mjs`) is index 203 of 370 and is first seen about 3.6
+ * minutes into the run - so a stall in a lane first sighted after roughly eight minutes is
+ * named only AFTER the 35-minute cap has cancelled the job, and a cancelled job carries no
+ * test line at all. That is precisely the outcome this module exists to reduce; the honest
+ * claim is that early lanes are named with the rest of the verdict intact, and late ones are
+ * caught only when the cap permits.
  *
  * WHAT THIS REPLACED, so the next recalibration does not repeat it: the 10-minute figure
  * was justified as "~2.7x the slowest lane measured ON THIS HOST" (225.7 s). That is a
@@ -181,7 +196,7 @@ export function formatLaneBoundLine(decision) {
 	const why =
 		decision.arm === "override"
 			? `explicit ${LANE_BOUND_OVERRIDE_ENV}`
-			: "default, above the 18.7-minute healthy CI suite that bounds every lane it runs, and inside the 35-minute job cap";
+			: "default, above the 18.7-minute healthy CI suite that bounds every lane it runs — a stall in a lane first seen late can still outrun the job cap";
 	return `desktop tests: per-lane bound ${human(decision.boundMs)} (${why}); sampled every ${_TICK_INTERVAL_MS / 1000}s over the suite's process group`;
 }
 

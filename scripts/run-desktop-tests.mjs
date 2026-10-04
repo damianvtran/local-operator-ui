@@ -45,8 +45,10 @@
  * `scripts/mark-all-read-control.test.mjs` at the bound on two consecutive heads -
  * a lane whose bytes are identical on `main` (`0271b70f45db`) and which passes in
  * 447 s when run alone - so the ceiling now sits above the 18.7-minute healthy CI
- * suite, which bounds every lane that runs inside it, and inside the job's own
- * 35-minute cap. See `_DEFAULT_BOUND_MS` for the readings.
+ * suite, which bounds every lane that runs inside it. That REDUCES unreadable
+ * cancellations rather than removing them: first sightings are spread across the
+ * suite, so a stall in a lane first sighted late is named only after the job's own
+ * 35-minute cap has cancelled the run. See `_DEFAULT_BOUND_MS` for the readings.
  *
  * The child's exit code is forwarded unchanged and its death by signal is
  * re-raised on this process, because a wrapper that reports success for a suite
