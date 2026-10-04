@@ -223,15 +223,18 @@ export const askChipCountClause = (view: AskQueueView): string => {
  *
  * The two contexts the design note's §4.4 names, and they are a property of the
  * ENTRY POINT rather than a setting: the composer's status-row item opens the
- * conversation's own queue, a top-level affordance would open the fleet's. The
- * scope is carried by the drawer's chrome bar so a reader can always say which one
+ * conversation's own queue, and the sidebar's top-level `Asks` row opens the
+ * fleet's. The scope is carried by the drawer's chrome bar so a reader can always say which one
  * is on screen ("a count of 3 inside a session and 11 at the top level are both
  * correct and say different things").
  *
  * IT IS A PROP OF THE SURFACE, not a second component: one drawer renders both, so
- * the fleet view is a data seam rather than a second idiom. Nothing on the desktop
- * opens `fleet` today - the aggregate route exists but has no entry point - and
- * the type is the seam that keeps the next one from inventing a second container.
+ * the fleet view is a data seam rather than a second idiom. The two entry points
+ * that exist today are the composer's status-row item (a conversation's own queue)
+ * and the sidebar's top-level `Asks` row (every conversation's) - and they are the
+ * reason the scope is written WITH the open flag in the store rather than chosen by
+ * the surface: the surface has to paint the queue its door promised, and only the
+ * door knows which one that is.
  */
 export type AskScope = "session" | "fleet";
 
@@ -501,6 +504,28 @@ export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
  * so an Escape with focus on the trigger still collapses the lane.
  */
 export const ASK_ITEM_SELECTOR = "[data-lo-ask-item-toggle]";
+
+/**
+ * The FLEET door: the sidebar's top-level `Asks` row.
+ *
+ * The second thing that OPENS an ask surface, and the reason it needs its own
+ * selector rather than a second clause on `ASK_ITEM_SELECTOR`. The drawer's
+ * entry move runs only when the mount finds focus ALREADY on the control the
+ * user pressed, which is what keeps the lane's no-focus-steal promise (an ask
+ * ARRIVING moves nothing). The session door is the composer chip, which carries
+ * `ASK_ITEM_SELECTOR`; the fleet door is a sidebar row, which does not - so
+ * before this existed a fleet open left focus on the rail row, Escape had no
+ * listener inside the pane to bubble to, and the press fell through to the
+ * interrupt ladder and stopped the running turn (UX round 1, U1 / agent review
+ * round 1, F1). The drawer accepts either door at entry and returns focus to
+ * the one it was opened by.
+ *
+ * The anchor is the row's stable `data-tour-tag`, the same handle the product
+ * tour and the driver rigs address it by; the row carries no ask-lane marker of
+ * its own, and minting one would be a second name for a row that already has
+ * one.
+ */
+export const ASK_FLEET_ITEM_SELECTOR = '[data-tour-tag="nav-item-asks"]';
 
 /*
  * Re-exported so the claim's own contract is nameable from a rig: the composer box
