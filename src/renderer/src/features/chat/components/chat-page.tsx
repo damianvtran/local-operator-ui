@@ -61,6 +61,7 @@ import {
 } from "@shared/store/canonical-sessions-store";
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	useCallback,
@@ -142,7 +143,10 @@ import { PickerOutlet } from "../pickers/picker-registry";
 import { effortQueryModel } from "../session-status/session-model";
 import type { Message } from "../types/message";
 import { encodeImageAttachments } from "../utils/attachment-encode";
-import { unreadableAttachmentRefusal } from "../utils/attachment-read";
+import {
+	imageOverflowRefusal,
+	unreadableAttachmentRefusal,
+} from "../utils/attachment-read";
 import { canvasDocumentForPath } from "../utils/canvas-document";
 import { messageBudgetRefusal } from "../utils/message-budget";
 import { ChatContent } from "./chat-content";
@@ -436,11 +440,36 @@ function SessionPanel({
 	 *
 	 * `askExpanded` is the ONE flag the routing rule reads. While it is true the
 	 * composer answers the ask; while it is false the composer is an ordinary
-	 * conversation box. It is owned here, rather than inside `AskSurfaces`, for
-	 * the reason the design gives: the bar and the composer must not be able to
-	 * disagree about which mode the user is in.
+	 * conversation box. It is owned by the STORE (as `isAskDrawerOpen`, the right
+	 * slot's fifth pane), rather than inside the drawer or here, for two reasons
+	 * the design gives: the chip and the composer must not be able to disagree about
+	 * which mode the user is in, and the drawer has to close the canvas when it opens
+	 * (one right pane at a time, `claimRightSlot`) - a rule that cannot be kept by a
+	 * `useState` in this component.
 	 */
-	const [askExpanded, setAskExpanded] = useState(false);
+	const askDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+	/*
+	 * AND WHICH QUEUE IT IS SHOWING IS PART OF THAT ANSWER (fleet scope, design note
+	 * §4.4). The drawer is ONE container in two scopes, and this component owns the
+	 * session one: the composer answers ITS conversation's ask, so a fleet panel
+	 * being open must not put this composer into answer mode — the fleet's rows
+	 * belong to other conversations and its own cards are where they are answered.
+	 * Reading the scope here is what makes that a construction rather than a promise:
+	 * a fleet ask can never be answered by typing into an unrelated conversation's
+	 * box, which is the misroute this split exists to prevent.
+	 *
+	 * THAT THE BOX STAYS ORDINARY UNDER THE FLEET PANE IS THE DECISION, NOT AN
+	 * OVERSIGHT (UX round 1, U4). The alternative - flipping it into answer mode - is
+	 * the misroute above; the legible half is that the two scopes never look alike:
+	 * the rail says `All asks`, the panel's bar says `All conversations · N`, and this
+	 * chip keeps saying `this conversation's asks` (`askChipLabel`) and opens this
+	 * conversation's own queue. A reader who types here is in the conversation they
+	 * can see, not in the pane; the pane answers through its own cards' `Send
+	 * answer`.
+	 */
+	const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
+	const askExpanded = askDrawerOpen && askDrawerScope === "session";
+	const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
 	/*
 	 * ANSWERING IS NOT THE SAME AS EXPANDED (UX round 2, U7).
 	 *
@@ -1750,7 +1779,7 @@ function SessionPanel({
 					});
 				return true;
 			}
-			const { images, unreadable } = await encodeImageAttachments(
+			const { images, unreadable, overflow } = await encodeImageAttachments(
 				attachments,
 				content,
 			);
@@ -1772,6 +1801,21 @@ function SessionPanel({
 			if (unreadableRefusal) {
 				setSendError(unreadableRefusal);
 				setSendErrorCode(UNREADABLE_ATTACHMENT_CODE);
+				setSendErrorRetry(false);
+				setSendErrorMuted(false);
+				return false;
+			}
+			const overflowRefusal = imageOverflowRefusal(overflow);
+			if (overflowRefusal) {
+				/*
+				 * The BUDGET arm's shape rather than the unreadable arm's: both are
+				 * payload-shape refusals whose remedy is to change the draft, and
+				 * neither is a store-raised failure for `withholdsRetryHint` to
+				 * classify - a press just re-refuses the same chips, which is why the
+				 * register is set here rather than told to a code.
+				 */
+				setSendError(overflowRefusal);
+				setSendErrorCode(undefined);
 				setSendErrorRetry(false);
 				setSendErrorMuted(false);
 				return false;
@@ -2623,9 +2667,9 @@ function SessionPanel({
 	const toggleAskExpanded = useCallback(
 		(next: boolean) => {
 			if (next === askExpanded) return;
-			setAskExpanded(next);
+			setAskDrawerOpen(next, "session");
 		},
-		[askExpanded],
+		[askExpanded, setAskDrawerOpen],
 	);
 	/*
 	 * THE COMPOSER'S ASK ROUTING (design §5.0).

@@ -1,0 +1,28 @@
+{
+  "settled": true,
+  "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages",
+  "restRect": [
+    234,
+    16,
+    69,
+    28
+  ],
+  "restCtrl": [
+    269,
+    30
+  ],
+  "hoverState": {
+    "matchesHover": true,
+    "color": "rgb(241, 238, 230)",
+    "bg": "rgb(22, 40, 29)",
+    "outline": "3px none rgb(241, 238, 230)"
+  },
+  "focusHit": {
+    "steps": 2,
+    "tag": "BUTTON",
+    "text": "Try again",
+    "focusVisible": true,
+    "outline": "2px solid rgb(56, 201, 106)",
+    "color": "rgb(194, 188, 175)"
+  }
+}

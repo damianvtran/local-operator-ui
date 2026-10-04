@@ -47,6 +47,7 @@ import { fileURLToPath } from "node:url";
 import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import { EVIDENCE_TZ, pinnedEvidenceEnv } from "./evidence-tz.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -893,6 +894,15 @@ export const STORIES = [
 	 * hover ground painting above an unaltered hairline — the D4 state a still of
 	 * the resting bar cannot show.
 	 */
+	/*
+	 * THE FLEET ASK SCOPE (the ask drawer's second context, design §4.4). Note
+	 * what is NOT here: the story that draws both drawers at once is a FIGURE, not
+	 * a screen - one slot holds one pane (`claimRightSlot`) - so no frame is taken
+	 * from it. A frame of a state the product cannot reach is what agent review
+	 * round 1's F3 objected to, and the set refuses it rather than captioning it.
+	 */
+	["chat-asks-fleet-scope--fleet-scope-open", 1280, 720],
+	["chat-asks-fleet-scope--untitled-pair-in-one-repo", 1280, 720],
 	[
 		"chat-turn-collapse--collapsed",
 		1280,
@@ -3367,6 +3377,53 @@ export const STORIES = [
 	["settings-model-combobox--scoped-notice", 560, 300],
 	["settings-model-combobox--unresolved-scope", 560, 300],
 	["settings-model-combobox--disabled", 560, 240],
+	/*
+	 * Settings -> Speech voicing, the group `speech-section.stories.tsx` exists to
+	 * photograph: WHICH rung of the text-to-speech cascade would serve this
+	 * machine, WHY the rungs above it did not, and WHAT to do when none can. Five
+	 * states, because each is a claim a single frame cannot carry - and two of
+	 * them (`stored-provider-key`, `nothing-available`) are the pair a sign-in
+	 * notice gets wrong: a cascade that serves through a STORED provider key with
+	 * no Radient session at all, against one that can speak through nothing.
+	 *
+	 * The five live on ONE story, so each names its own `dir` under the set: the
+	 * state is the label a reader follows, and `--dirs=` can re-shoot one of them
+	 * without re-taking the rest.
+	 *
+	 * THE PAGE THESE STATES SIT ON HAS NO ROW, deliberately, and it is a finding
+	 * rather than an omission. `shell-app-shell--settings` does not render on this
+	 * tree: its story frame draws `SidebarNavigation` outside `ChatLayout`, which
+	 * throws `useSidebarFrame: the sidebar must be rendered inside ChatLayout`.
+	 * Composing the page the way `app.tsx` does instead (a temporary story, never
+	 * committed) gets past that and then holds: `SettingsPage` never passes its
+	 * own early return under the story's fixture, so the rig's shutter times out at
+	 * its 60s bound and the only frame that surface can produce is a skeleton.
+	 * The committed `shell-app-shell/settings/` frame is exactly that - a rail and
+	 * an empty ground, captured before 2026-09-24's `feat(chat): one sidebar` - so
+	 * there is no before/after page pair to be had until the story is repaired.
+	 * `docs/evidence/settings-speech/README.md` carries both measurements.
+	 *
+	 * The section is captured at 1024 wide because it is a `max-w-4xl` (896px)
+	 * settings section in its own ground - the page's own content column - and at
+	 * 640 tall because the rig grows the viewport to the rendered height: 640 is a
+	 * floor, not a crop. (The story mounted at `max-w-3xl` until design review
+	 * round 1, D3, which is a width the settings page never renders.)
+	 */
+	["settings-speech--radient-pass", 1024, 640, { dir: "radient-pass" }],
+	[
+		"settings-speech--stored-provider-key",
+		1024,
+		640,
+		{ dir: "stored-provider-key" },
+	],
+	[
+		"settings-speech--nothing-available",
+		1024,
+		640,
+		{ dir: "nothing-available" },
+	],
+	["settings-speech--backend-older", 1024, 640, { dir: "backend-older" }],
+	["settings-speech--unreadable", 1024, 640, { dir: "unreadable" }],
 	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
@@ -7394,6 +7451,17 @@ export const STORIES = [
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
 	["chat-older-history-slot--transport-down", 900, 800],
+	/* The state this branch's ONE user-visible change produces, rendered in the
+	   real transcript: `failed` outranking `windowed`/`idle` (use-scroll-paging's
+	   `slotState`), so a reader whose asks are all failing reads "Could not load
+	   earlier messages - Try again" instead of a gesture that cannot work. The
+	   precedence lives in the HOOK, so no board built from `OlderHistorySlot`
+	   alone can show it; this row is the capture target the design round asked
+	   for, registered with the story (`older-history-slot.stories.tsx`,
+	   `InTranscriptFailed`) and deliberately NOT shot in this pass - the capture
+	   window is contended by four other lanes. Sized to the story's own
+	   `h-[520px]` frame, whose content it fills. */
+	["chat-older-history-slot--in-transcript-failed", 900, 520],
 
 	/* The other half of the transcript's completeness: a reader who returns from
 	   another conversation, in the two states the fix is about. The claim is a
@@ -10172,6 +10240,21 @@ export function partialCaptureRecord({
 }
 
 const main = async () => {
+	/*
+	 * The frame timezone, pinned before this run spawns anything and never at
+	 * module scope: `evidence-tz.mjs` carries why a pin rather than a default,
+	 * and why it must beat an ambient `TZ=` instead of deferring to it. Tests
+	 * import this file, so the pin lives here - an import that re-zoned its
+	 * importer would be a side effect nobody asked for. The reading taken first
+	 * is what this process would otherwise have used, and the line below names
+	 * both so the log says what was overridden.
+	 */
+	const ambientTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	process.env.TZ = EVIDENCE_TZ;
+	console.log(
+		`capture-evidence: frame timezone pinned to ${EVIDENCE_TZ} (ambient TZ=${ambientTz})`,
+	);
+
 	sweepStaleProfiles();
 	if (!ALLOW_BACKEND) await assertBackendDown();
 
@@ -10189,6 +10272,14 @@ const main = async () => {
 			"--remote-debugging-port=0",
 			"about:blank",
 		]),
+		/*
+		 * The pinned env passed EXPLICITLY rather than left to inheritance. Same
+		 * result either way (the pin at the head of main() re-zoned this process
+		 * first), but the env Chrome gets is decided where a reader is looking,
+		 * and `pinnedEvidenceEnv` is what makes it beat an ambient `TZ=` (see
+		 * `evidence-tz.mjs`).
+		 */
+		{ env: pinnedEvidenceEnv(process.env) },
 	);
 
 	// Chrome prints the DevTools websocket on stderr.

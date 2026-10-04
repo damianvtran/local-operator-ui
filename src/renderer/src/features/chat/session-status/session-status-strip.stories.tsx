@@ -531,9 +531,10 @@ export const LongModelName: Story = {
 };
 
 /**
- * The 220px chat column — the floor the column collapses to with the canvas
- * panel open, and the width at which the composer's button row was already
- * over budget before this strip existed.
+ * The 220px chat column — the floor this board PINS, being the column's floor
+ * when it was drawn (it is 480 since §I applied `CHAT_PANE_MIN_PX`), and the
+ * width at which the composer's button row was already over budget before this
+ * strip existed.
  */
 export const CollapsedColumn: Story = {
 	render: () => (

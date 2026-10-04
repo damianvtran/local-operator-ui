@@ -4,6 +4,7 @@ import { Tooltip } from "@shared/components/ui/tooltip";
 import { useMediaQuery } from "@shared/hooks/use-media-query";
 import { cn } from "@shared/lib/utils";
 import {
+	AudioLines,
 	Download,
 	Paintbrush,
 	Plug,
@@ -79,7 +80,13 @@ const TOUR_TAGS: Record<string, string> = {
  * integrations while the page rendered them the other way round.
  */
 const SECTION_GROUPS: { label: string; ids: string[] }[] = [
-	{ label: "General", ids: ["general", "appearance"] },
+	/*
+	 * Speech voicing rides with General and Appearance because it is the same kind
+	 * of destination: how the app behaves for the reader, as opposed to what it
+	 * talks to (Account) or what its backend stores (Backend). Its document
+	 * position follows this list, per the rule below.
+	 */
+	{ label: "General", ids: ["general", "appearance", "speech"] },
 	/*
 	 * Model providers first (design audit section 2 / D13): it is the section a
 	 * new install cannot work without, and "Radient account" ahead of it read as
@@ -381,6 +388,11 @@ export const DEFAULT_SETTINGS_SECTIONS: SettingsSection[] = [
 		id: "appearance",
 		label: "Appearance",
 		icon: Paintbrush,
+	},
+	{
+		id: "speech",
+		label: "Speech voicing",
+		icon: AudioLines,
 	},
 	{
 		id: "providers",

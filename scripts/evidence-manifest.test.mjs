@@ -8,17 +8,20 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { after, test } from "node:test";
 import { partialAddedFields, partialFrameCount } from "./capture-evidence.mjs";
 import { checkPaletteBudgets } from "./check-evidence-palettes.mjs";
 import {
 	citationAncestryFailures,
+	citationFailures,
 	countsMeanFailures,
 	frames as frameFiles,
 	partialCaptureFailures,
 	provenanceFailures,
 	stampFailures,
+	storyDriftReadings,
+	unjudgedFrameFailures,
 } from "./check-evidence.mjs";
 
 /*
@@ -445,6 +448,316 @@ test("a pass that added no frames does not claim to have added them", () => {
 		addedAt: "2026-09-13T00:00:00.000Z",
 		addedAtHead: GOOD.head,
 	});
+});
+
+/*
+ * ---- the F3 advisory: capturedAtHead against the named story --------------
+ */
+
+/**
+ * A fake `git` for the advisory, answering the three questions it asks - is a
+ * stamp resolvable, what last touched a path, is one commit an ancestor of
+ * another - and recording each ask so a test can pin WHICH file was resolved to
+ * and how far a comparison got.
+ *
+ * Same reason as `fakeGit` above: the property under test is what the function
+ * CONCLUDES from git's answers, and pinning that against real history would
+ * make these pass or fail on which commits happen to exist in the clone. The
+ * `""`/`null` distinction (`evidence-fold.test.mjs` documents it) is kept: `""`
+ * is a command that succeeded with nothing to say, `null` one that could not
+ * answer - the advisory is silent for both, and the case that matters is the
+ * one where an ancestor question comes back REFUSED.
+ */
+const fakeDriftGit = ({
+	lastTouch = {},
+	resolvable = [],
+	ancestors = [],
+	calls = [],
+} = {}) => {
+	return (args) => {
+		calls.push(args);
+		if (args[0] === "rev-parse" && args[1] === "--quiet") {
+			const sha = args[3].replace("^{commit}", "");
+			return resolvable.includes(sha) ? sha : null;
+		}
+		if (args[0] === "log" && args[1] === "-1")
+			return lastTouch[args.at(-1)] ?? null;
+		if (args[0] === "merge-base" && args[1] === "--is-ancestor")
+			return ancestors.some(([a, b]) => a === args[2] && b === args[3])
+				? ""
+				: null;
+		return null;
+	};
+};
+
+/**
+ * A throwaway tree carrying `*.stories.tsx` files at real paths, so the walk
+ * and the resolution steps have a tree to answer against.
+ *
+ * Only the paths matter - the bytes are never read - and the name is
+ * `lop-`-prefixed for the reason `tree()` above is: `lo-evidence-` is
+ * `capture-evidence.mjs`'s Chrome-profile reap-by-name namespace, so a fixture
+ * under it is a deletion target for every capture on the box.
+ */
+function storyTree(files) {
+	const root = mkdtempSync(join(tmpdir(), "lop-evidence-stories-"));
+	scratch.push(root);
+	for (const file of files) {
+		const full = join(root, file);
+		mkdirSync(dirname(full), { recursive: true });
+		writeFileSync(full, "// the bytes never matter, only the path\n");
+	}
+	return root;
+}
+
+test("a set whose story file moved outside its capturedAtHead reads as an advisory", () => {
+	/*
+	 * The class §4.2 records, in its cheap form: the frames were captured at
+	 * `head`, and the story file the set names was touched by a commit that is
+	 * not an ancestor of it - the pixels may picture an older cut than the story
+	 * draws today. What comes back is a READING: the line never enters
+	 * `failures`, so `main()` prints it and the exit code never sees it
+	 * (`evidence-run-guard.test.mjs` pins that end to end).
+	 */
+	const head = "1".repeat(40);
+	const moved = "2".repeat(40);
+	const file = "src/renderer/src/features/chat/trace-row.stories.tsx";
+	const root = storyTree([file]);
+	const calls = [];
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "chat-trace-before",
+					source: "the sweep against `trace-row.stories.tsx`",
+					capturedAtHead: head,
+				},
+			],
+		},
+		fakeDriftGit({ lastTouch: { [file]: moved }, resolvable: [head], calls }),
+		root,
+	);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /chat-trace-before/);
+	assert.match(out[0], /may not picture the story's current cut/);
+	// It checked the stamp is answerable, compared the file the mention resolves
+	// to, and compared it against the set's own stamp.
+	assert.deepEqual(calls, [
+		["rev-parse", "--quiet", "--verify", `${head}^{commit}`],
+		["log", "-1", "--format=%H", "--", file],
+		["merge-base", "--is-ancestor", moved, head],
+	]);
+});
+
+test("an agreeing stamp is silent, and a harness name resolves beside its frames", () => {
+	/*
+	 * Agreement: the last commit to touch the file IS an ancestor of the stamp,
+	 * so the pixels postdate the file's last move and there is nothing to read.
+	 * The mention is the `harness/...` shape, and its basename exists elsewhere
+	 * in the tree as well - an ambiguous basename must not pin the comparison to
+	 * a neighbour's file, so the set's own directory gets it.
+	 */
+	const head = "1".repeat(40);
+	const touch = "3".repeat(40);
+	const harness =
+		"docs/evidence/goal-arming-pick/harness/ev209-goal-arming.stories.tsx";
+	const root = storyTree([harness, "src/other/ev209-goal-arming.stories.tsx"]);
+	const calls = [];
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "goal-arming-pick",
+					source:
+						"the rig beside these frames: `harness/ev209-goal-arming.stories.tsx`",
+					capturedAtHead: head,
+				},
+			],
+		},
+		fakeDriftGit({
+			lastTouch: { [harness]: touch },
+			resolvable: [head],
+			ancestors: [[touch, head]],
+			calls,
+		}),
+		root,
+	);
+	assert.deepEqual(out, []);
+	assert.deepEqual(calls, [
+		["rev-parse", "--quiet", "--verify", `${head}^{commit}`],
+		["log", "-1", "--format=%H", "--", harness],
+		["merge-base", "--is-ancestor", touch, head],
+	]);
+});
+
+test("a set that names no story file stays silent, and a glob is not a name", () => {
+	/*
+	 * Best-effort by design: 148 of the shipped 169 sets name no story file, and
+	 * inventing a resolution for them would be the advisory guessing. A bare
+	 * `*.stories.tsx` inside a note is a CLASS ("two `*.stories.tsx` files were
+	 * edited after that capture" - `update-report-accuracy`), not a name this
+	 * can walk, so a set whose only mention is the glob stays silent. The third
+	 * set names a real file and last-touched it, but carries no stamp - there is
+	 * no `capturedAtHead` to compare, so the comparison is skipped.
+	 */
+	const file =
+		"src/renderer/src/features/chat/canonical/turn-collapse.stories.tsx";
+	const root = storyTree([file]);
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "chat-trace",
+					source: "captured by the sweep",
+					capturedAtHead: "1".repeat(40),
+				},
+				{
+					path: "update-report-accuracy",
+					capturedAtHead: "9".repeat(40),
+					capturedAtNote:
+						"two `*.stories.tsx` files were edited after that capture",
+				},
+				{
+					path: "chat-turn-collapse-before",
+					source: "the story `turn-collapse.stories.tsx`, same fixtures",
+				},
+			],
+		},
+		fakeDriftGit({ lastTouch: { [file]: "3".repeat(40) } }),
+		root,
+	);
+	assert.deepEqual(out, []);
+});
+
+test("a set naming a story file this tree cannot resolve reads as an advisory", () => {
+	/*
+	 * The shipped manifest's one unresolvable name: `common-connectivity-banner-baseline`
+	 * names a connectivity-banner story that is not in this tree, and the set has
+	 * NO `capturedAtHead`. The comparison is skipped - but the name reading is
+	 * not, because "the record names a story this tree does not carry" is a
+	 * disagreement with the tree that needs no stamp, and this is the only miss
+	 * the shipped manifest has. If review prefers skipping stamp-less sets
+	 * outright, this case and the doc block are where that decision lives.
+	 */
+	const root = storyTree([
+		"src/renderer/src/features/chat/canonical/reconnect-gap.stories.tsx",
+	]);
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "common-connectivity-banner-baseline",
+					source:
+						"the story `src/renderer/src/shared/components/common/connectivity-banner-baseline.stories.tsx`",
+				},
+			],
+		},
+		fakeDriftGit({}),
+		root,
+	);
+	assert.equal(out.length, 1);
+	assert.match(out[0], /common-connectivity-banner-baseline/);
+	assert.match(out[0], /does not resolve to one file in this tree/);
+	// The same reading, on a set that DOES carry a stamp: the miss is about the
+	// name, not about the comparison that could not run.
+	const stamped = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "stamped-miss",
+					source: "the story `missing-from-tree.stories.tsx`",
+					capturedAtHead: "1".repeat(40),
+				},
+			],
+		},
+		fakeDriftGit({}),
+		root,
+	);
+	assert.equal(stamped.length, 1);
+	assert.match(stamped[0], /does not resolve to one file in this tree/);
+});
+
+test("a stamp this history cannot answer does not read as drift", () => {
+	/*
+	 * The distinction the git reader folds together: `merge-base --is-ancestor`
+	 * exits 1 for "not an ancestor" and 128 for "cannot answer", and BOTH
+	 * arrive as null. A stamp the history has never heard of must stay silent -
+	 * the shipped instance a reviewer meets is `provider-setup-ux-before`, whose
+	 * stamp is contained by no remote ref or tag (a fetch-only clone answers 128
+	 * for it), while `citationFailures` is the half that reports the citation
+	 * itself; the advisory must not manufacture drift out of a question this
+	 * history cannot answer. The stop is pinned at the resolvability question:
+	 * the ancestry ask never happens, and the file's own last touch (which DOES
+	 * exist here) is never turned into a verdict.
+	 */
+	const file =
+		"src/renderer/src/features/onboarding/components/provider-setup.stories.tsx";
+	const stamp = "f".repeat(40);
+	const root = storyTree([file]);
+	const calls = [];
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "provider-setup-ux-before",
+					source: `the story \`${file}\``,
+					capturedAtHead: stamp,
+				},
+			],
+		},
+		fakeDriftGit({
+			lastTouch: { [file]: "3".repeat(40) },
+			resolvable: [],
+			calls,
+		}),
+		root,
+	);
+	assert.deepEqual(out, []);
+	assert.deepEqual(calls, [
+		["rev-parse", "--quiet", "--verify", `${stamp}^{commit}`],
+	]);
+});
+
+test("an exact repository-relative mention resolves as written", () => {
+	/*
+	 * The first resolution step, pinned: a mention that spells its whole path
+	 * (how the settings and onboarding sets write it) resolves to THAT file. The
+	 * fixture also carries a same-basename story elsewhere, so a resolver that
+	 * lost the exact step would fall through to the basename net, find two
+	 * candidates, miss under the set's own directory, and report the name
+	 * unresolved - which is what makes this case fail if the step is gutted or
+	 * reordered.
+	 */
+	const head = "1".repeat(40);
+	const touch = "3".repeat(40);
+	const file =
+		"src/renderer/src/features/onboarding/components/provider-setup.stories.tsx";
+	const root = storyTree([file, "src/other/provider-setup.stories.tsx"]);
+	const calls = [];
+	const out = storyDriftReadings(
+		{
+			supplementary: [
+				{
+					path: "provider-setup-ux-before",
+					source: `the story \`${file}\`, same fixtures`,
+					capturedAtHead: head,
+				},
+			],
+		},
+		fakeDriftGit({
+			lastTouch: { [file]: touch },
+			resolvable: [head],
+			ancestors: [[touch, head]],
+			calls,
+		}),
+		root,
+	);
+	assert.deepEqual(out, []);
+	assert.deepEqual(calls, [
+		["rev-parse", "--quiet", "--verify", `${head}^{commit}`],
+		["log", "-1", "--format=%H", "--", file],
+		["merge-base", "--is-ancestor", touch, head],
+	]);
 });
 
 /*
@@ -1204,6 +1517,121 @@ test(
 	},
 );
 
+/*
+ * The citation half, and why a missing object is a question about the CLONE
+ * rather than about the manifest.
+ *
+ * This is the defect the wiring found. `pnpm check-evidence` was added to CI as
+ * `ci.yml`'s `evidence` job and came back with 111 findings on a tree that is
+ * clean locally - every citation the manifest makes, reported as "resolves to no
+ * commit in this repository" - because `actions/checkout`'s default clone is ONE
+ * COMMIT DEEP. A missing object in a TRUNCATED clone is not evidence that the
+ * commit is gone, and judging it as a failure reds the gate on a manifest that
+ * is fine, for a reason no reader can act on: a repository that cannot answer
+ * has not found a defect, the same sentence the `SHALLOW` guard above is built
+ * on, and the same stand-down `evidence-fold.mjs`'s `runGuards` already makes for
+ * the ancestry half.
+ *
+ * SO THE HALF IS LOCAL-ONLY, and this test pins what that means in code: a
+ * truncated clone has NO verdict on a citation it cannot resolve - those are not
+ * failures, and there is nothing to print for them either, because a stand-down
+ * notice appearing on 100% of runs is a standing excuse that reads as a covered
+ * check (the same green-by-absence the sweep's wiring was added to remove, one
+ * level up), and the scope is declared once in `ci.yml`'s own step name and
+ * comment instead. Everything the clone CAN judge it still judges and fails
+ * closed on - including in a truncated clone, where an object that is present
+ * but reached by no ref is the dangling case and the presence IS the clone
+ * answering.
+ *
+ * Bound here rather than by a sweep test, because a test of the sweep cannot see
+ * it: reproducing the shipped behaviour needs a real truncated clone, and a fake
+ * reader is what the other synthetic-manifest cases use for exactly that reason.
+ *
+ * Mutations: put the truncation branch back on the failure pile (the shipped
+ * defect - 111 findings on every CI run); read "is this clone truncated" as
+ * FALSE when git cannot answer, which excuses a repository that cannot be read
+ * rather than failing closed on it; or stand the REACHABILITY arms down with the
+ * truncation, which would make a dangling citation invisible in every clone.
+ */
+test("a truncated clone has no verdict on the citations it cannot resolve", () => {
+	const manifest = {
+		head: "c70e8b36dc2ad86bfff81f85f05d08b248f82ccc",
+		supplementary: [
+			{
+				path: "a-set",
+				capturedAtHead: "e3ac03549d9bcb43f1abd2fff1f1ca803e83fbc9",
+			},
+		],
+		partialCapture: {
+			addedAtHead: "779b3f4341f",
+			refreshedAtHead: "b19c8fded4b",
+		},
+	};
+	/*
+	 * A reader that answers only the four questions `shaReaders` asks, from three
+	 * switches: is the clone truncated, do the cited objects RESOLVE, and does
+	 * some ref REACH them. An unreadable repository is the fourth case below, and
+	 * it is the one that has to fail closed.
+	 */
+	const answers =
+		({ shallow, resolve, reach }) =>
+		(args) => {
+			if (args.includes("--is-shallow-repository")) return shallow;
+			// `rev-parse --quiet --verify <sha>^{commit}`, the shape `shaReaders` uses.
+			if (args.some((argument) => String(argument).endsWith("^{commit}")))
+				return resolve ? "a commit" : null;
+			if (args[0] === "merge-base") return reach ? "" : null;
+			if (args[0] === "for-each-ref")
+				return reach ? "refs/remotes/origin/main" : "";
+			if (args[0] === "log") return "a subject";
+			return null;
+		};
+
+	const truncated = answers({ shallow: "true", resolve: false, reach: false });
+	assert.deepEqual(
+		citationFailures(manifest, truncated),
+		[],
+		"a truncated clone resolved nothing, so it has found nothing: judging these as failures is how 111 findings appeared on a clean tree in CI",
+	);
+	/*
+	 * AND THERE IS NOTHING TO PRINT FOR THEM. There is deliberately no
+	 * "unanswered" view to assert any more: the stand-down is scope, declared in
+	 * `ci.yml`'s step name and in `citationWalk`'s paragraph, and a per-run notice
+	 * on 100% of runs was the shape the wiring's own round rejected.
+	 */
+
+	const full = answers({ shallow: "false", resolve: false, reach: false });
+	assert.equal(
+		citationFailures(manifest, full).length,
+		4,
+		"a clone that is NOT truncated has found a defect when the object is gone - gone is gone, and it must not be excused",
+	);
+
+	/*
+	 * A citation that RESOLVES is judged by reachability even in a truncated
+	 * clone: the object being present is the clone answering after all, so the
+	 * dangling case (`resolves` but no ref contains it) still fails there.
+	 */
+	assert.equal(
+		citationFailures(
+			manifest,
+			answers({ shallow: "true", resolve: true, reach: false }),
+		).length,
+		4,
+		"a citation whose object IS present and which no ref reaches is the dangling case that dies at the next gc, in any clone",
+	);
+
+	/*
+	 * Fail closed on the truncation question itself: an unreadable repository
+	 * answers `null`, and only the explicit `true` may stand a citation down.
+	 */
+	assert.equal(
+		citationFailures(manifest, () => null).length,
+		4,
+		"a repository git cannot answer for must be judged, not excused",
+	);
+});
+
 /* ---- the prose beside the counts ---------------------------------------- */
 
 /*
@@ -1270,7 +1698,7 @@ const countsManifest = ({ framesProse = "", surfacesProse = "" } = {}) => ({
 });
 
 const FRAMES_LEADING =
-	"RE-DERIVED FOR THIS FOLD: 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
+	"RE-DERIVED FOR THIS FOLD: 3 committed frames outside the 1 declared supplementary sets below, of 5 on disk (2 of them inside the sets).";
 
 test("a countsMean paragraph leading with the walk's numbers passes", (t) => {
 	const countsTree = caseTree(t, COUNTS_LAYOUT);
@@ -1322,7 +1750,7 @@ test("the older paragraphs under the leading one are not this tree's to answer f
 	 * (4) protects - so only the leading paragraph is checked.
 	 */
 	const manifest = countsManifest({
-		framesProse: `${FRAMES_LEADING}\n\nRE-DERIVED FOR THE SECOND FOLD: 2 committed WebP files outside the 1 declared supplementary sets below, of 4 on disk (2 of them inside the sets).`,
+		framesProse: `${FRAMES_LEADING}\n\nRE-DERIVED FOR THE SECOND FOLD: 2 committed frames outside the 1 declared supplementary sets below, of 4 on disk (2 of them inside the sets).`,
 		surfacesProse:
 			"RE-DERIVED FOR THIS FOLD: 2 rows in `HEAD:scripts/capture-evidence.mjs`'s STORIES literal, counted the way `check-evidence.mjs` counts them.",
 	});
@@ -3510,6 +3938,18 @@ const BRANCH_RECORDS = [
 	 * list too.
 	 */
 	"transcriptDisplayModesFoldReshootNote",
+	/*
+	 * And by the scroll-paging machine's remediation pass (PR #811,
+	 * `fix/scroll-paging-machine`), this branch's newest top-level record: the
+	 * note that states the ONE thing the pass moved (a STORIES row and the
+	 * `surfaces` count that follows it, and no frame at all), the lane whose
+	 * module digests it re-stamped rather than re-shot, and why the retired
+	 * `src`/`scripts` tree pair is correctly ABSENT here. It is listed for the
+	 * reason the list exists: a fold that started from main's manifest would take
+	 * the `surfaces` field back to 1443 and drop the only statement of why it
+	 * moved, with this very test staying green.
+	 */
+	"scrollPagingMachineRestampNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
@@ -3550,6 +3990,105 @@ test("every declared evidence set holds exactly the palettes its record document
 });
 
 /*
+ * Q1 (round 1 of the wiring's review, found by QA): a frame the walk does not
+ * judge has to be COUNTED, and a container must not be a hiding place.
+ *
+ * The defect: the walk was `.webp`-only, so a frame whose pixels would fail the
+ * gate escaped it by being committed as a PNG - and this change created five of
+ * them. Two halves close it, and this test pins both: `frames()` judges by NAME
+ * (a theme-named `.png` is judged - 174 such frames sat unjudged across six
+ * surfaces before this), and a frame the walk does not judge at all (no theme in
+ * its name, whatever container it is packed in) is recorded by `unjudgedFrames`,
+ * whose guard fails when the tree disagrees with the file.
+ *
+ * Mutations: judge by container again (`frames()` back to `.webp`), which is how
+ * those 174 PNGs stayed invisible; or drop the counts guard, so a non-theme
+ * frame can be added anywhere without the manifest noticing.
+ */
+test("a frame the walk does not judge is accounted for, and moving one fails", (t) => {
+	const dir = mkdtempSync(join(tmpdir(), "evidence-unjudged-"));
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
+	mkdirSync(join(dir, "a-set", "row"), { recursive: true });
+	/*
+	 * Six frames, covering both halves of the rule for a THIRD container: judged in
+	 * the canonical container, judged BECAUSE ITS NAME CLAIMS A THEME in the two
+	 * others (a container outside `FRAME_CONTAINERS` would be invisible to the walk
+	 * AND the accounting at once - the hole QA found for `.png`, one extension
+	 * over), and one naming no theme inside the declared set, plus two outside it.
+	 */
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.webp"), "");
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.png"), "");
+	writeFileSync(join(dir, "a-set", "row", "localOperatorDark.jpg"), "");
+	writeFileSync(join(dir, "a-set", "row-00-t96ms-blank.png"), "");
+	writeFileSync(join(dir, "outside-00-t00ms-blank.png"), "");
+	writeFileSync(join(dir, "outside-00-t00ms-blank.jpg"), "");
+	const manifest = { countsMean: {}, supplementary: [{ path: "a-set" }] };
+	const why = "x".repeat(60);
+
+	assert.deepEqual(
+		frameFiles(dir)
+			.map((file) => file.split("/").pop())
+			.sort(),
+		[
+			"localOperatorDark.jpg",
+			"localOperatorDark.png",
+			"localOperatorDark.webp",
+		],
+		"a theme-named frame is JUDGED in whatever container it is packed: the name is the claim, and the container is only how the pixels are packed",
+	);
+	assert.match(
+		unjudgedFrameFailures(manifest, dir).join("\n"),
+		RE_EVIDENCE_27,
+		"the field is REQUIRED: a manifest that carries counts and no accounting for the unjudged class is exactly the silence this guard closes",
+	);
+	assert.deepEqual(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 1,
+					outsideDeclaredSets: 2,
+					why,
+				},
+			},
+			dir,
+		),
+		[],
+		"and with the walk's own counts and a stated reason it passes, so the guard is a scope statement rather than a wall",
+	);
+	assert.match(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 2,
+					outsideDeclaredSets: 0,
+					why,
+				},
+			},
+			dir,
+		).join("\n"),
+		RE_EVIDENCE_28,
+		"a frame that moved between the set and the pool - or was re-containered - has to fail: that is the move this accounting exists to make visible",
+	);
+	assert.match(
+		unjudgedFrameFailures(
+			{
+				...manifest,
+				unjudgedFrames: {
+					insideDeclaredSets: 1,
+					outsideDeclaredSets: 1,
+					why: "too short",
+				},
+			},
+			dir,
+		).join("\n"),
+		RE_EVIDENCE_29,
+		"a count a reader cannot read the MEANING of is the skip the field replaces",
+	);
+});
+
+/*
  * Hoisted out of the test bodies above for `lint/performance/useTopLevelRegex` - the only
  * warnings this file carries, and the reason a change that touches it owes the whole-file
  * cleanup `scripts/check-scripts-lint.mjs` charges (`scripts/` sits outside `pnpm lint`'s
@@ -3579,8 +4118,11 @@ const RE_EVIDENCE_19 = /^supplementary\/\d+\//;
 const RE_EVIDENCE_20 = /countsMean\.frames/;
 const RE_EVIDENCE_21 = /the walk finds 3/;
 const RE_EVIDENCE_22 =
-	/Lead the field with: "RE-DERIVED FOR THIS FOLD: 3 committed WebP files outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
+	/Lead the field with: "RE-DERIVED FOR THIS FOLD: 3 committed frames outside the 1 declared supplementary sets below, of 5 on disk \(2 of them inside the sets\)\."/;
 const RE_EVIDENCE_23 = /nothing this check can read/;
 const RE_EVIDENCE_24 = /countsMean\.surfaces/;
 const RE_EVIDENCE_25 = /the walk finds 2/;
 const RE_EVIDENCE_26 = /first seen at 0/;
+const RE_EVIDENCE_27 = /`unjudgedFrames` is missing/;
+const RE_EVIDENCE_28 = /a frame was added, moved or re-containered/;
+const RE_EVIDENCE_29 = /does not say what the unjudged class is/;

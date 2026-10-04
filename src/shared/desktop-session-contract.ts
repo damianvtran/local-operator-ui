@@ -538,17 +538,19 @@ export type PendingDesktopGate = {
  * One option of one queued ask's question, as `PendingAsk.question.options`
  * carries it.
  *
- * `recommended` travels INSIDE the option rather than as an index beside the
- * list (the shape the blocking gate uses for `PendingDesktopGate.recommended`),
- * because a queued ask's option objects survive a restart through the ask log
- * while an index into a re-ordered list does not. Reading it is still
- * "a flag or nothing": a backend that predates the field omits it, and
- * defaulting would badge an option the model never recommended.
+ * THE OPTION CARRIES NO RECOMMENDATION. The core's `AskOption`
+ * (`local_operator/harness/types.py`) declares `label` and `description` with
+ * `extra="forbid"`, and `asks/queue.py`'s `_question_shape` copies each option
+ * verbatim, so an option object on this wire has exactly those two keys. The
+ * recommendation is a POSITION and travels on the QUESTION, as an index into
+ * this list (`PendingAskQuestion.recommended`) — the same shape the blocking
+ * gate uses. This type used to declare a per-option `recommended?: boolean`
+ * that nothing emitted, and a reader keyed on it drew no mark at all on every
+ * install (agent review round 1, R1-1).
  */
 export type PendingAskOption = {
 	label: string;
 	description?: string;
-	recommended?: boolean;
 	[key: string]: unknown;
 };
 /**
@@ -568,6 +570,25 @@ export type PendingAskQuestion = {
 	question: string;
 	options?: PendingAskOption[];
 	multi?: boolean;
+	/**
+	 * Index of the option the model recommends, into `options` AS CARRIED.
+	 *
+	 * The shape `PendingDesktopGate.recommended` already uses, and the only one
+	 * the wire has: the core's `AskQuestion._shape` validates the index against
+	 * the options (an out-of-range value is an error the model corrects, never a
+	 * clamp), ROTATES the recommended option to index 0 and rewrites the field to
+	 * `0` to match, and `asks/queue.py`'s `_question_shape` then writes it beside
+	 * `options`. A consumer that re-sorts the list must therefore drop or
+	 * recompute it; this app renders the wire order, so it can use it directly.
+	 *
+	 * ADDITIVE and OPTIONAL: a backend older than the field omits the key, so it
+	 * must be read as "a number or nothing" and never defaulted to 0 — defaulting
+	 * would badge the first option on every ask a legacy backend sends, which is a
+	 * recommendation the model never made. Read it through the one validated
+	 * helper (`ask-recommended.tsx`'s `recommendedIndex`), which badges nothing
+	 * for an absent, null, non-integer or out-of-range value.
+	 */
+	recommended?: number | null;
 	secret?: boolean;
 	persist?: boolean;
 	[key: string]: unknown;
