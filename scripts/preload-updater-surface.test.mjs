@@ -150,7 +150,17 @@ const bundle = await build({
 							setZoomFactor: () => {},
 							setVisualZoomLevelLimits: async () => {},
 						};
-						export default { ipcRenderer, contextBridge, webFrame };
+						/*
+						 * Electron's own webUtils, answering through the rig so both of the
+						 * documented outcomes - the path, the throw for a non-File, and the empty
+						 * string for a File the OS did not back - are each reachable from one
+						 * bundle. (No backticks in this comment: it lives inside a template
+						 * literal.)
+						 */
+						export const webUtils = {
+							getPathForFile: (file) => globalThis.__loWebUtilsPath(file),
+						};
+						export default { ipcRenderer, contextBridge, webFrame, webUtils };
 					`,
 				}));
 			},
@@ -193,6 +203,41 @@ test("the preload exposes the whole updater surface, method by method", () => {
 	assert.ok(
 		UPDATER_SURFACE.includes("onBackendUpdateError"),
 		`the preload must expose onBackendUpdateError; it exposes ${UPDATER_SURFACE.join(", ")}`,
+	);
+});
+
+/*
+ * `getPathForFile`: the bridge a dropped file needs, and the one member of this
+ * API that is NOT an IPC call.
+ *
+ * Electron 44 removed the `File.path` augmentation, so the renderer cannot name
+ * a dropped file at all without this - and the drop handler depends on the
+ * wrapper's contract rather than on Electron's: the underlying call THROWS for
+ * an argument that is not a `File` (the documented behaviour), and a caller that
+ * had to catch that would have to distinguish it from every other failure. The
+ * wrapper answers "" instead, so "this file has no path" is one answer on every
+ * branch, which is what lets the drop handler fall back to reading the bytes.
+ */
+test("a dropped file's path comes back from the preload, and never throws", () => {
+	globalThis.__loWebUtilsPath = () => "/tmp/rig/dropped.png";
+	assert.equal(
+		api.getPathForFile({ name: "dropped.png" }),
+		"/tmp/rig/dropped.png",
+		"the path Electron resolves is what the renderer is handed",
+	);
+
+	// A File the OS did not back: Electron answers "" rather than throwing.
+	globalThis.__loWebUtilsPath = () => "";
+	assert.equal(api.getPathForFile({ name: "synthetic.png" }), "");
+
+	// A non-File: Electron THROWS, and the wrapper turns that into the same "".
+	globalThis.__loWebUtilsPath = () => {
+		throw new TypeError("Only File objects are supported");
+	};
+	assert.equal(
+		api.getPathForFile(null),
+		"",
+		"a caller must not have to tell Electron's throw apart from a file that has no path",
 	);
 });
 
