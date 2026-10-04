@@ -68,6 +68,7 @@ import {
 	askSettledAnswers,
 	askStatusText,
 	askStatusWord,
+	askStatusWords,
 	draftFor,
 } from "../../ask-queue";
 
@@ -164,6 +165,34 @@ const AskQuestionField = ({
 }) => {
 	const options = question.options ?? [];
 	const multi = question.multi === true;
+	/*
+	 * A SOURCE OF THE DRAFT THAT IS NOT IN THE LIST IS DRAWN, AND DRAWN AS WHAT IT IS
+	 * (design round 1, D2's addendum incident). Two doors write this one draft: the
+	 * option rows below (always a label) and the COMPOSER, whose Enter is routed to the
+	 * ask (design §5.0) and which writes the RAW TYPED TEXT into the first unanswered
+	 * question.
+	 *
+	 * Before this row existed the second door was invisible: typing `prod` at the
+	 * staging/production question answered with the string `prod` while every radio
+	 * stayed EMPTY, so the card said nothing had been chosen about a question that was
+	 * already answered - and an answer that did not come from the list was
+	 * indistinguishable from one that did. The row below is the other half of that fix:
+	 * the value is shown, labelled `Other` so it reads as a value the list did not
+	 * offer rather than as a missing selection, and it is a real choice in the group
+	 * (`aria-checked`, the same mark, the same ground) so the two doors agree about
+	 * what is selected.
+	 *
+	 * Only for the LIST shape: a free-text question (no options) already renders the
+	 * draft in its own field, and a secret is never drawn anywhere.
+	 */
+	const freeForm =
+		options.length > 0
+			? selected.filter(
+					(value) =>
+						value.trim().length > 0 &&
+						!options.some((option) => option.label === value),
+				)
+			: [];
 	return (
 		<div className="flex flex-col gap-1.5" data-lo-ask-question={question.id}>
 			<p className="text-ink text-sm">{question.question}</p>
@@ -263,6 +292,38 @@ const AskQuestionField = ({
 							</button>
 						);
 					})}
+					{freeForm.map((value) => (
+						<button
+							key={`other:${value}`}
+							type="button"
+							data-ask-option-other={value}
+							disabled={disabled}
+							aria-pressed={multi ? true : undefined}
+							aria-checked={multi ? undefined : true}
+							role={multi ? "checkbox" : "radio"}
+							onClick={() => (multi ? onToggle(value) : onSelect(value))}
+							className={cn(
+								"flex w-full items-baseline gap-2 rounded-sm bg-sunken px-2 py-1 text-left",
+								disabled ? "text-ink-dim" : "text-ink",
+							)}
+						>
+							{/* The same chosen mark the option rows use, so a reader cannot tell the
+							 * two kinds of row apart by their selection state - only by the word. */}
+							<span
+								aria-hidden="true"
+								className={cn(
+									"mt-1 h-3 w-3 shrink-0 border border-accent bg-accent",
+									multi ? "rounded-[2px]" : "rounded-full",
+								)}
+							/>
+							<span className="min-w-0 flex-1">
+								{value}
+								{/* `Other` is the ROW's KIND, not part of the answer: it is what tells a
+								 * reader this text came from the composer rather than from the list. */}
+								<span className="ml-1.5 text-ink-muted text-xs">Other</span>
+							</span>
+						</button>
+					))}
 				</div>
 			) : (
 				<input
@@ -564,8 +625,18 @@ export const AskPanel = ({
 						summary={
 							<span className="flex min-w-0 items-center gap-1.5">
 								<span className="shrink-0 text-ink-dim text-meta">{`Settled · ${settled.length}`}</span>
+								{/*
+								 * THE DESCRIPTOR IS DERIVED FROM THE ROWS BELOW IT, not a fixed legend
+								 * (agent review round 1, M1 = UX U1 = design D1). It used to print
+								 * `answered, timed out, declined, dismissed` in every state - naming a word
+								 * (`timed out`) the section can never hold and omitting two (`Answered
+								 * late`, `Expired`) it routinely holds. A legend is a claim about its own
+								 * section, so it is read FROM the section (`askStatusWords`), and it moves
+								 * with the rows rather than with a second list somebody has to remember to
+								 * update.
+								 */}
 								<span className="truncate text-ink-dim text-meta">
-									answered, timed out, declined, dismissed
+									{askStatusWords(settled)}
 								</span>
 							</span>
 						}

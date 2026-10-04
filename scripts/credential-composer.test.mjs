@@ -5330,7 +5330,7 @@ test("a fresh hold after the notice's own remedy raises its own sentence", async
 /* The secret gate: the credential does not come through this box      */
 /* ------------------------------------------------------------------ */
 
-test("a secret gate refuses the composer the way an unavailable one is refused, and points at the dock's field", async () => {
+test("a secret gate refuses the composer the way an unavailable one is refused, and points at the ask panel's masked field", async () => {
 	/*
 	 * THE SECRET ASK'S COMPOSER CLOSURE. While a `secret` ask waits, the answer
 	 * is the dock's masked field (`trace/question-dock.tsx`) and this box must
@@ -5366,7 +5366,7 @@ test("a secret gate refuses the composer the way an unavailable one is refused, 
 	assert.equal(field.getAttribute("aria-disabled"), "true");
 	assert.equal(
 		field.placeholder,
-		"Answer the secret request above",
+		"Answer the secret request in the asks panel",
 		"the empty refusal says where the answer goes",
 	);
 	assert.equal(
@@ -5492,7 +5492,7 @@ test("the closed box with a draft carries a visible reason (UX round 1, U2)", as
 	assert.ok(notice, "the closed box with a draft renders its explanation");
 	assert.equal(
 		notice.textContent,
-		"Answer the secret request above — this box is paused until it is answered, and your draft is kept.",
+		"Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.",
 	);
 	assert.match(
 		frame.textarea().getAttribute("aria-describedby") ?? "",

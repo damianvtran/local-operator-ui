@@ -279,21 +279,89 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 		{ ask: true, canvas: false, run: false, browser: false, console: false },
 		"opening the drawer takes the slot",
 	);
-	for (const open of [
-		"setCanvasOpen",
-		"setRunPanelOpen",
-		"setBrowserPaneOpen",
-		"setConsolePaneOpen",
+	for (const [open, flag] of [
+		["setCanvasOpen", "canvas"],
+		["setRunPanelOpen", "run"],
+		["setBrowserPaneOpen", "browser"],
+		["setConsolePaneOpen", "console"],
 	]) {
 		useUiPreferencesStore.getState().setAskDrawerOpen(true);
 		useUiPreferencesStore.getState()[open](true);
-		assert.equal(
-			useUiPreferencesStore.getState().isAskDrawerOpen,
-			false,
-			`${open} closes the drawer`,
+		/*
+		 * THE WHOLE SLOT, not just the drawer's flag (agent review round 1, N2): the
+		 * sibling has to have actually CLAIMED it. An assertion on
+		 * `isAskDrawerOpen === false` alone passes for a setter that cleared the drawer
+		 * without taking the slot, which would leave the window with nothing drawn in
+		 * the place the user asked for a pane.
+		 */
+		assert.deepEqual(
+			slotState(),
+			{
+				ask: false,
+				canvas: flag === "canvas",
+				run: flag === "run",
+				browser: flag === "browser",
+				console: flag === "console",
+			},
+			`${open} takes the slot from the drawer`,
 		);
 	}
 	useUiPreferencesStore.getState().setAskDrawerOpen(false);
+
+	/*
+	 * AND THE DRAWER BORROWS THE SLOT RATHER THAN EVICTING IT (UX round 1, U6).
+	 *
+	 * The exclusivity above means opening the drawer writes `isCanvasOpen: false` -
+	 * and that flag is persisted, so a peek at a queue used to survive as a preference
+	 * the user never expressed: a relaunch came back with the canvas gone. The pane the
+	 * drawer displaced is recorded and given back on close, and what the snapshot
+	 * writes while the drawer is open is the durable pane rather than the borrow.
+	 */
+	useUiPreferencesStore.getState().setCanvasOpen(true);
+	useUiPreferencesStore.getState().setAskDrawerOpen(true);
+	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
+	assert.equal(
+		useUiPreferencesStore.getState().askDrawerEvictedPane,
+		"isCanvasOpen",
+		"the pane the drawer took the slot from is recorded",
+	);
+	const whilePeeking = persistedUiPreferences(useUiPreferencesStore.getState());
+	assert.equal(
+		whilePeeking.isCanvasOpen,
+		true,
+		"a relaunch while the drawer is open still restores the document it covered",
+	);
+	assert.equal("isAskDrawerOpen" in whilePeeking, false);
+	assert.equal("askDrawerEvictedPane" in whilePeeking, false);
+
+	// Closing gives the slot back rather than leaving the user with nothing.
+	useUiPreferencesStore.getState().setAskDrawerOpen(false);
+	assert.deepEqual(
+		slotState(),
+		{ ask: false, canvas: true, run: false, browser: false, console: false },
+		"closing the drawer returns the slot to the pane it borrowed",
+	);
+	assert.equal(useUiPreferencesStore.getState().askDrawerEvictedPane, null);
+
+	// A DELIBERATE CHOICE DURING THE PEEK WINS: opening another pane while the drawer
+	// is up forfeits the record, so closing the drawer cannot resurrect a surface the
+	// user replaced on purpose.
+	useUiPreferencesStore.getState().setCanvasOpen(true);
+	useUiPreferencesStore.getState().setAskDrawerOpen(true);
+	useUiPreferencesStore.getState().setConsolePaneOpen(true);
+	assert.equal(
+		useUiPreferencesStore.getState().askDrawerEvictedPane,
+		null,
+		"an explicit claim forfeits the borrow",
+	);
+	assert.deepEqual(slotState(), {
+		ask: false,
+		canvas: false,
+		run: false,
+		browser: false,
+		console: true,
+	});
+	useUiPreferencesStore.getState().setConsolePaneOpen(false);
 
 	// AND IT IS THE ONE SLOT FLAG NOT PERSISTED: the canvas is a document a user
 	// keeps open across launches; the drawer is a reading of the queue that is

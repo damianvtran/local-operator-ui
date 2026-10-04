@@ -1284,9 +1284,17 @@ test("the ask item is the row's one toggle, and names itself off the model", () 
 	 */
 	assert.match(minimized, /data-lo-ask-item="minimized"/);
 	assert.match(minimized, /aria-expanded="false"/);
+	/*
+	 * THE APOSTROPHE IS AN ENTITY IN THIS MARKUP, and only here: React escapes `'` in
+	 * an attribute value, so the server render these cells read spells the label
+	 * `conversation&#x27;s` while the DOM the browser parses out of it carries the real
+	 * character. The chip's own model returns the plain string (`ask-queue.test.mjs`
+	 * asserts it), so this is the render half of the same copy, not a second spelling
+	 * of it.
+	 */
 	assert.match(
 		minimized,
-		/aria-label="Expand the ask history — 1 question waiting · expires in 1h"/,
+		/aria-label="Expand this conversation&#x27;s asks — 1 question waiting · expires in 1h"/,
 	);
 	/*
 	 * The two handles the interaction needs: `data-lo-ask-item-toggle` is what the
@@ -1307,7 +1315,7 @@ test("the ask item is the row's one toggle, and names itself off the model", () 
 	assert.match(expanded, /aria-expanded="true"/);
 	assert.match(
 		expanded,
-		/aria-label="Collapse the ask history — 1 question waiting · expires in 1h"/,
+		/aria-label="Collapse this conversation&#x27;s asks — 1 question waiting · expires in 1h"/,
 	);
 	// The visible text is the leading half of the announced name, so the two
 	// readers cannot describe different states.
@@ -1354,7 +1362,7 @@ test("the ask item renders only where the host wires the door", () => {
 	 * canonical frontend that carries `asks` and no lane at all - the mini quick-send
 	 * window and the agent-config composer. There the item used to render as a
 	 * focusable, labelled control whose only effect was local: it flipped its own
-	 * state, announced "Collapse the ask history", opened nothing, and left the
+	 * state, announced "Collapse this conversation's asks", opened nothing, and left the
 	 * composer in chat mode. `onAskToggle` supplied is what says the panel exists in
 	 * this document, so it is the gate.
 	 */

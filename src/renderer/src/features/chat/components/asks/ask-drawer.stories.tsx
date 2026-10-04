@@ -29,9 +29,11 @@
  * - **QUEUED and TIMED-OUT do not look alike.** The copy contract's sentences
  *   are the difference, and the timeout keeps its answer controls live: a
  *   timed-out ask is still answerable (that is the `late` path), so it must not
- *   be drawn as a closed state. In the settled section the same distinction rides
- *   on the status WORD, which is the only half of the sentence a one-line row can
- *   hold.
+ *   be drawn as a closed state. THAT IS WHY IT IS NOT IN THE SETTLED SECTION: the
+ *   section is history, and a row whose answer still reaches the agent is not
+ *   history - not even a one-line one. The section's own rows keep their
+ *   distinction on the status WORD instead (`Answered` beside `Answered late`),
+ *   which is the only half of the sentence a one-line row can hold.
  * - **Pending first, always complete; settled collapsed** (the note's §4.5/D3):
  *   history must not drive the drawer's length.
  * - **Disabled changes colour, never opacity.** An incomplete draft's Submit is
@@ -39,8 +41,10 @@
  * - **The secret question is a masked field**, and it is the only place a
  *   credential is ever typed. Its value never reaches a draft that drives a
  *   render.
- * - **Many overflows the LIST, never the page** (the note's D1): with twelve open
+ * - **Many overflows the LIST, never the page** (the note's D1): with twelve queued
  *   asks the chrome bar holds its place and the transcript beside it does not move.
+ *   The two rows after them timed out and are STILL ANSWERABLE, so they are pending
+ *   cards too: fourteen outstanding, and no settled section in that frame.
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
@@ -335,12 +339,17 @@ export const AnswerReady: Story = {
  * MANY: the queue long enough that the drawer's own scroller is the thing on
  * trial (the design note's D1).
  *
- * Twelve open asks in a 640px-tall drawer cannot all fit, so this frame is the
+ * Twelve queued asks in a 640px-tall drawer cannot all fit, so this frame is the
  * evidence that the overflow is the LIST's (`min-h-0 flex-1 overflow-y-auto`) and
  * not the page's: the chrome bar stays pinned at the top, the drawer does not
- * grow, and no page-level scroller appears. The settled pair at the end also shows
- * the one-line collapsed section sitting under the pending cards rather than
- * holding a card's height (D3).
+ * grow, and no page-level scroller appears.
+ *
+ * FOURTEEN OUTSTANDING, NO SETTLED SECTION (agent review round 1, M1; the row's own
+ * README says the same). The two `timedOutAsk` rows are the backend's outstanding
+ * set again - a timed-out ask stays answerable - so they are the last two pending
+ * CARDS, not two settled one-liners, and the queue in this frame holds nothing for
+ * the disclosure to collapse. The earlier note here claimed the opposite and the
+ * README's row followed it; both now state the state the frame actually holds.
  */
 export const ManyOverflow: Story = {
 	args: {
@@ -363,8 +372,8 @@ export const ManyOverflow: Story = {
 					],
 				}),
 			),
-			optionallySettled("a-settled-1"),
-			optionallySettled("a-settled-2"),
+			timedOutAsk("a-settled-1"),
+			timedOutAsk("a-settled-2"),
 		]),
 		scope: "session",
 		onClose: noop,
@@ -376,18 +385,23 @@ export const ManyOverflow: Story = {
 
 /**
  * THE SETTLED SECTION, OPENED: the pending cards first and complete, then one
- * section header ("Settled · 2") whose body is one line per settled ask.
+ * section header whose body is one line per settled ask.
  *
- * The two settled rows are the pair the note's D9 is about: `Timed out` is still
- * answerable and `Answered` is not, so the collapsed line has to tell them apart
- * by WORD rather than by the full sentence it cannot hold.
+ * THE PAIR THAT HAD TO BE TOLD APART IS THE PAIR THE SECTION HOLDS (agent review
+ * round 1, M1 = UX U1 = design D1). A `timed_out` ask cannot be in here at all - the
+ * backend's outstanding set folds it in, so it stays a pending card with its answer
+ * controls (see `timedOutAsk`) - and this note used to claim this frame photographed
+ * that pair, which the frame itself contradicts. What the section DOES hold is the
+ * shipped look-alike pair: `Answered` and `Answered late`, which differ only in the
+ * word a one-line row can carry, and that is the pair this frame now photographs.
  */
 export const SettledSection: Story = {
 	args: {
 		frontend: frontend([
 			ONE,
-			optionallySettled("a-settled-1"),
+			timedOutAsk("a-settled-1"),
 			answeredAsk(),
+			answeredLateAsk(),
 			declinedAsk(),
 		]),
 		scope: "session",
@@ -398,8 +412,15 @@ export const SettledSection: Story = {
 	},
 };
 
-/** A `timed_out` ask: settled, but still answerable through the `late` path. */
-function optionallySettled(id: string): PendingAsk {
+/**
+ * A `timed_out` ask: STILL ANSWERABLE through the `late` path, so it is a PENDING
+ * card rather than a settled row.
+ *
+ * The name is the claim (agent review round 1, M1): this fixture used to be called
+ * `optionallySettled`, which described a state the backend does not produce - the
+ * outstanding set folds `timed_out` in, so `presentAsk` marks the row `open`.
+ */
+function timedOutAsk(id: string): PendingAsk {
 	return ask({
 		ask_id: id,
 		expires_at: TS - MINUTE,
@@ -432,6 +453,52 @@ function answeredAsk(): PendingAsk {
 		],
 	});
 }
+
+/** THE SECTION'S OTHER HALF OF THE PAIR: the same answer, delivered after the ask gave up. */
+function answeredLateAsk(): PendingAsk {
+	return ask({
+		ask_id: "a-answered-late",
+		status: "late",
+		expires_at: TS - 30 * MINUTE,
+		answered_at: TS + 20 * MINUTE,
+		delivered: true,
+		answers: { target: ["production"] },
+		answered_by: { surface: "mobile" },
+		questions: [
+			{
+				id: "target",
+				question: "Which environment should I deploy this to?",
+				options: [{ label: "staging" }, { label: "production" }],
+			},
+		],
+	});
+}
+
+/**
+ * THE OTHER DOOR'S FREE-FORM ANSWER, DRAWN (design round 1, D2's addendum).
+ *
+ * The composer's Enter is routed to the ask (design §5.0), and `sendToAsk` writes the
+ * RAW TYPED TEXT into the first unanswered question's draft - so a value the option
+ * list never offered reaches this card as a plain string. Before this round the card
+ * drew NOTHING for it: every radio empty beside a question that was already answered,
+ * which made an answer that did not come from the list indistinguishable from no
+ * answer at all. The marked row under the two options is the fix, and this frame is
+ * what it looks like.
+ */
+export const OtherAnswer: Story = {
+	args: {
+		frontend: frontend([ONE]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		/* The state the composer's door produces: `prod` is not a label of `ONE`'s
+		 * staging/production question, so it arrives as the free-form value. */
+		drafts: { "a-7f3c": { target: ["prod"] } },
+		onDraftChange: noop,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
 
 /** Refused, and the agent was told: settled, and the one-liner says which word. */
 function declinedAsk(): PendingAsk {
