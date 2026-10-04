@@ -1,9 +1,9 @@
 # The composer's drop target: a real file drag, before and after (issue #789)
 
-Fourteen frames from `scripts/renderer-driver.mjs`'s `composer-drop` scene — eight
-here (the head tree) and six in `composer-file-drop-baseline/` (the base tree this
-branch is cut from). The app is the BUILT tree, launched in the documented
-`headless` window mode at 1380x900 and photographed through its own
+Twenty-eight frames from `scripts/renderer-driver.mjs`'s `composer-drop` scene — ten
+here (the head tree, one per cell) and eight in `composer-file-drop-baseline/` (the
+base tree this branch is folded onto). The app is the BUILT tree, launched in the
+documented `headless` window mode at 1380x900 and photographed through its own
 `capturePage()`; the `.webp` files are `cwebp -q 90` conversions of each run's
 PNGs, un-resized, and each run's own log sits beside its frames.
 
@@ -20,6 +20,12 @@ the same gesture against the same rig — the difference is the app.
   attaches a file — the drift the issue reports);
 - the head tree's half is driven with `--drop-expect accepted`, which asserts the
   gesture lands and says what it landed as.
+
+The base half is a DETACHED WORKTREE at this branch's fold point
+(`origin/main` = `4b5c81df9e`) with this branch's `scripts/renderer-driver.mjs`
+copied in, so both halves are driven by the same rig bytes; only `src/` differs
+(`diff -q` between the two `renderer-driver.mjs` files is empty in the run that
+produced this pair).
 
 ## The run, exactly
 
@@ -46,10 +52,11 @@ node scripts/renderer-driver.mjs --scene composer-drop \
   --out "$LOCAL_OPERATOR_SCRATCHPAD/frames" \
   --seed-onboarding-complete --window-size 1380x900
 # the base tree's half: the same command with --drop-expect discarded, run in a
-# worktree at the base commit (here 77444ffb36f, this branch's cut point)
+# detached worktree at origin/main (`4b5c81df9e`) carrying this branch's
+# scripts/renderer-driver.mjs
 ```
 
-The head run is 25 PASS / 0 FAIL and the base run 18 PASS / 0 FAIL; both logs are
+The head run is 27 PASS / 0 FAIL and the base run 20 PASS / 0 FAIL; both logs are
 committed beside their frames (`head-run.log`, `baseline-run.log`), and the
 scene's exit status is non-zero on any FAIL.
 
@@ -71,10 +78,12 @@ refusing arm of the same gate by `scripts/composer-file-drop.test.mjs` (see
 
 | Committed frame | What it shows |
 | --- | --- |
-| `dragover/localOperatorDark.webp` | the band mid-drag, before the drop: the composer box carries the accent ring and wash the drop-target state paints |
-| `single-image/localOperatorDark.webp` | one image dropped: one tile, named `rig-drop-large.png` |
-| `multiple-files/localOperatorDark.webp` | two files in one `dataTransfer.files`: both tiles, in the drag's own order (`rig-drop-large.png`, then `rig-drop-second.png`) |
+| `dragover/localOperatorDark.webp` | the band mid-drag, before the drop: the composer box carries the DASHED accent ring the drop-target state paints |
+| `single-image/localOperatorDark.webp` | one image dropped: one tile, its real thumbnail and its caption |
+| `multiple-files/localOperatorDark.webp` | two files in one `dataTransfer.files`: both tiles, in the drag's own order |
 | `non-image/localOperatorDark.webp` | a `.txt` dropped: a tile like any other path-backed attachment |
+| `armed-focused/localOperatorDark.webp` | armed while the composer is FOCUSED: the same box, and the ring is dashed where the focus ring alone is solid |
+| `armed-non-image-tile/localOperatorDark.webp` | armed WITH a non-media tile on the band: the tile keeps its own ground and its own box while the ring is up |
 | `running-turn/localOperatorDark.webp` | a drop and a paste while a turn is genuinely running (the mock provider's own `[bash:15]` marker → `sleep 15`) |
 | `wire-parity/localOperatorDark.webp` | the wire half: the dropped image and the pasted one, both sent |
 | `read-at-send/localOperatorDark.webp` | the same path dropped twice with different bytes written behind it between the sends |
@@ -84,13 +93,10 @@ WHY THE FILES ARE NAMED `localOperatorDark.webp` AND NOT BY THEIR CASE: the
 frames gate derives a frame's expected ground FROM ITS FILENAME
 (`check-evidence.mjs`: `<set>/<cell>/<theme>.webp`, looked up in `PALETTES`), so
 a frame called `composer-drop-1-single-1380x900.webp` is a frame no palette
-names and the sweep refuses it. The cell directory carries the case instead; the
-run's own labels (`composer-drop-1-single-1380x900.png`, listed in
-`head-run.log`) map one-to-one onto the cells above, in the order the scene runs
-them.
-
-The base tree's six frames are the same first five gestures (minus the two wire
-cases, which only the head half asserts) plus its own `composer-drop-4-non-target`.
+names and the sweep refuses it (measured: all fourteen of the first cut's frames
+were refused). The cell directory carries the case instead; the run's own labels
+(`composer-drop-1-single-1380x900.png`, listed in `head-run.log`) map one-to-one
+onto the cells above, in the order the scene runs them.
 
 ## The readings behind the frames
 
@@ -108,21 +114,29 @@ cases, which only the head half asserts) plus its own `composer-drop-4-non-targe
   on both rows.
 - **The path is read at SEND time.** Case 6c drops the same path twice with
   different bytes written behind it between the two sends; the two messages carry
-  different images (the run reports the two digests). A route that read the file
-  when it was dropped — or that held a copy in the draft — would send the first
-  file's bytes twice.
+  different images, and the PASS line carries both digests
+  (`digestA=inline:8119bd239779bfa4 digestB=inline:08bfc188bd4abb83` in
+  `head-run.log`) rather than asserting an inequality the log cannot show.
 - **The gate is the paste's gate.** While a turn runs, the canonical composer does
   not refuse input (`chat-content.tsx` passes `currentJobId=null` for a canonical
   conversation, so `isBusy` is false), and the scene measures the invariant that
   matters there: the drop and the paste attach the SAME number of files in the
-  same state. On the base tree the same state reads 1 from the paste and 0 from
-  the drop.
+  same state, and that number is not zero. On the base tree the same state reads 1
+  from the paste and 0 from the drop.
+- **Armed is a SHAPE, not a wash** (design round 1, D1/D2; UX round 1, U3). The
+  box's ring is solid while the field is focused and DASHED while a file is over
+  it — read off the same element in one run (`resting.outlineStyle=solid`,
+  `armed.outlineStyle=dashed`). The band's ground is not repainted, so a
+  non-media tile (whose fill is `accent-wash`, the token the first cut also put on
+  the band) keeps its boundary: `tileGround=rgb(29, 27, 25) boxGround=rgb(50, 45,
+  34)` unchanged, box height 238px in both states.
 - **A non-target drop does not take the window.** Measured on the base tree, with
   the rig's drag interception ARMED and then DISARMED, and controlled against the
-  router's own settling: `window.location.href` is where it was, the composer is
-  still mounted (`settled: true`, `composer: true` in the run's own reading). So no window-level navigation guard was added — see the
-  PR body for why the guard the issue suggests would be a regression rather than a
-  fix — and the base tree's half records the same fact.
+  router's own settling: `window.location.href` is where it was and the composer is
+  still mounted (`settled: true`, `composer: true` in the run's own reading). So no
+  window-level navigation guard was added — see the PR body for why the guard the
+  issue suggests would be a regression rather than a fix — and the base tree's half
+  records the same fact.
 
 ## What these frames do not show
 
@@ -130,16 +144,6 @@ cases, which only the head half asserts) plus its own `composer-drop-4-non-targe
   pipeline, not a hand on a trackpad, so it cannot say what macOS paints during
   the gesture (the green copy badge the issue reports), nor anything about a drag
   between applications.
-- **The tile's thumbnail.** In these frames each path-backed tile draws its name
-  with an empty image: the headless app's renderer never issued the tile's
-  `GET /v1/static/images` request at all (nothing in the run's own daemon log,
-  and no Content Security Policy violation logged), so the `<img>` fails before
-  any request leaves the process. It is a property of the rig's `file://`
-  renderer, not of the attachment — what the tile's NAME proves is that the
-  dropped file kept its real name, and the send's bytes are read over IPC and
-  checked on the wire in `composer-drop-6-parity` regardless. Frames for the
-  DESIGN round should re-capture this state in a host where the tile's request
-  completes.
 - **The refusing arm of the drop gate.** A chat composer refuses input only
   through `unavailable` / `secretAnswer`, and a conversation this machine has
   deleted is not something a rig can create (the daemon exposes no session-delete
@@ -149,3 +153,23 @@ cases, which only the head half asserts) plus its own `composer-drop-4-non-targe
   shipped component and drops on it with `unavailable` set.
 - **The packaged artifact.** Everything here is the built tree
   (`out/`), headless, against an isolated daemon on 8080.
+
+## The tile thumbnail, which the first cut of this set got wrong
+
+The first cut's frames showed empty tiles and its README explained them as "a
+property of the rig's `file://` renderer: the request never leaves the process".
+That was wrong, and the run's own app log said so. The renderer DOES issue
+`GET /v1/static/images`; the rig's own Content Security Policy blocked it —
+fourteen violations in one run's log — because the driver's widening never
+reached `img-src`. The widening appends to three directives (`frame-src`,
+`media-src`, `img-src`), and each list ends at `;` except the last, which ends at
+the attribute's quote; bounded on the quote, `img-src` and `media-src` matched
+nothing and every append landed at the policy tail (agent review round 1, CR1-1
+= QA round 1, Q-1).
+
+The fix bounds each list at its own terminator and skips a directive that already
+lists the origin (the appends were unconditional, so every run grew the policy).
+The frames in this set were re-captured with it: the tiles draw their real
+thumbnails, and a run's app log carries zero CSP violations for the dropped
+fixtures. The scenario the wrong explanation described — an image whose load
+fails — is real but this rig no longer produces it.

@@ -1545,22 +1545,37 @@ export type MessageInputHandle = {
 const COMPOSER_BOX = cn(
 	"mx-auto flex w-full flex-col bg-elevated",
 	"box-border transition-colors duration-fast ease-out-quart",
-	// Scoped to `textarea`, not a bare `has-[:focus-visible]`.
-	//
-	// This box also contains the attach, model and send controls. Unscoped, it
-	// ringed itself whenever any of those took focus, while the button drew its
-	// own ring at the same time - a ring inside a ring, pointing at the box
-	// when the user is on a button. The wrapper draws the ring for the FIELD it
-	// frames; every other control in here is responsible for its own.
-	//
-	// `outline-solid` is required, not decorative: the textarea carries
-	// `outline-none`, which pins `--tw-outline-style: none`, and that token
-	// survives into this state - so the width from `outline-2` applied and no
-	// outline ever painted, leaving the app's primary input with no keyboard
-	// focus indicator.
-	//
-	// `outline-offset-2` matches the other three field wrappers; this one sat
-	// at 0 and was the odd one out.
+);
+
+/*
+ * THE BOX'S FOCUS RING, kept apart from the box because the DROP state REPLACES it
+ * (design round 1, D1; UX round 1, U3).
+ *
+ * Scoped to `textarea`, not a bare `has-[:focus-visible]`.
+ *
+ * This box also contains the attach, model and send controls. Unscoped, it
+ * ringed itself whenever any of those took focus, while the button drew its
+ * own ring at the same time - a ring inside a ring, pointing at the box
+ * when the user is on a button. The wrapper draws the ring for the FIELD it
+ * frames; every other control in here is responsible for its own.
+ *
+ * `outline-solid` is required, not decorative: the textarea carries
+ * `outline-none`, which pins `--tw-outline-style: none`, and that token
+ * survives into this state - so the width from `outline-2` applied and no
+ * outline ever painted, leaving the app's primary input with no keyboard
+ * focus indicator.
+ *
+ * `outline-offset-2` matches the other three field wrappers; this one sat
+ * at 0 and was the odd one out.
+ *
+ * WHY IT IS A SEPARATE CONST rather than a line inside `COMPOSER_BOX`: these are
+ * `has-[…]` utilities, and Tailwind emits variant utilities AFTER plain ones, so a
+ * plain `outline-dashed` added beside them never wins - measured on the built app
+ * (2026-10-04), the box still read `outline-style: solid` with a file over it. The
+ * armed state therefore applies INSTEAD of this rule, and the shape says which
+ * state the box is in: solid while focused, dashed while a file is over it.
+ */
+const COMPOSER_FOCUS_RING = cn(
 	"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
 	"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
 );
@@ -6616,11 +6631,14 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		 * A DROPPED FILE IS AN ATTACHMENT (issue #789).
 		 *
 		 * WHAT WAS WRONG. The composer presented a drop affordance and implemented
-		 * none of it: nothing in the band cancelled `dragover`, so - measured on the
-		 * built app - macOS painted its copy badge over the window and the file fell
-		 * through to the page, where it was silently discarded. `drop` does not even
-		 * fire without that cancel, so this was not a handler missing its body; it was a
-		 * target that had never been declared.
+		 * none of it: nothing in the band cancelled `dragover`, so the file fell through
+		 * to the page and was silently DISCARDED - measured on the built app, in this
+		 * scene's own before half, which attaches nothing while a paste in the same pane
+		 * still does. The green copy badge the user sees during the drag is the issue's
+		 * report and not this rig's measurement: a dispatched drag cannot show what
+		 * macOS paints (the set's README says so where it bounds the frames). `drop`
+		 * does not even fire without that cancel, so this was not a handler missing its
+		 * body; it was a target that had never been declared.
 		 *
 		 * THE GATE IS `handlePaste`'s, deliberately, and not the attach BUTTON's. The
 		 * button also refuses while dictation runs (`isRecording || isTranscribing`),
@@ -7732,18 +7750,40 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					<div
 						className={cn(
 							COMPOSER_BOX,
+							/*
+							 * The focus ring yields to the drop state rather than sitting beside it -
+							 * see `COMPOSER_FOCUS_RING` for the ordering reason, which is measured.
+							 */
+							fileDragActive ? undefined : COMPOSER_FOCUS_RING,
 							isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
 							CHAT_MEASURE,
 							/*
-							 * THE DROP AFFORDANCE REUSES THE FOCUS VOCABULARY, deliberately: the app
-							 * spends `accent` on READY and on FOCUS (§G1, quoted on `COMPOSER_BOX`
-							 * above), and "this control will take what you are holding" is that same
-							 * statement. The wash beside it is what tells the two apart, and it is the
-							 * token the attachment tiles already use for their own ground. No shadow,
-							 * no lift, no scale - the band must not move under a drag.
+							 * THE ARMED STATE IS THE DROP IDIOM, AND IT IS DISTINGUISHED BY SHAPE
+							 * (design round 1, D1/D2; UX round 1, U3).
+							 *
+							 * DASHED, because that is how this codebase already says "a drop lands
+							 * here": `import-agent-dialog` targets with `border-2 border-dashed`,
+							 * `insert-image-dialog` with `border border-dashed` and a label, and
+							 * `credential-chip` already draws `outline-dashed`. It also makes armed
+							 * separable from FOCUSED, which is the same accent ring in the same place:
+							 * the box's focus ring is solid, so a user holding a file sees a dashed
+							 * boundary and a keyboard user sees a solid one. The first cut relied on a
+							 * ground wash to carry that difference and the wash measures 1.01-1.17:1
+							 * against the band in every palette - it carried nothing.
+							 *
+							 * THE BAND'S GROUND IS LEFT ALONE, and that is the other half of D2 rather
+							 * than a taste call: `accent-wash` is the fill `AttachmentsPreview` gives a
+							 * NON-MEDIA attachment (`bg-accent-wash text-accent`), measured as the same
+							 * rendered value #1b281f. A wash on the band would put an attached `.txt`'s
+							 * 99px tile on a ground of exactly its own colour - the tile's ground step
+							 * IS its boundary - so the attachment would read as having vanished for the
+							 * whole time a drag was over the composer.
+							 *
+							 * Ring only: no shadow, no lift, no scale - the band must not move under a
+							 * drag, and the frames measure its height identical in both states.
 							 */
 							fileDragActive &&
-								"bg-accent-wash outline-solid outline-2 outline-accent outline-offset-2",
+								"outline-dashed outline-2 outline-accent outline-offset-2",
 						)}
 						/*
 						 * The geometry rigs' handle on the composer's own MEASURE, on the
