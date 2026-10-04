@@ -215,7 +215,7 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  *
  * The closure's explanation used to be the PLACEHOLDER alone ("Answer the
  * secret request above"), and a placeholder paints only while the box is
- * EMPTY — so the reader most likely to need the reason, the one whose box
+ * EMPTY - so the reader most likely to need the reason, the one whose box
  * holds their own words, got a dimmed box and no words at all (UX round 1,
  * U2). This is that explanation, in the `<output>` register above the box the
  * capture's own sentence uses, rendered only while the box holds a draft (the
@@ -223,10 +223,15 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  * noise). `aria-describedby` names it while it renders, for the reason
  * `MISSING_SESSION_NOTICE_ID` exists: a control that refuses input is the one
  * whose own reason a reader cannot otherwise reach.
+ *
+ * IT SAYS `asks panel`, NOT `above`, for the same reason the placeholder does
+ * (UX round 1, U2): the masked field is on the ask surface, and with the queued
+ * ask lane that surface is the right slot's drawer rather than something sat over
+ * this box.
  */
 const SECRET_CLOSURE_NOTICE_ID = "composer-secret-closure-notice";
 const SECRET_CLOSURE_NOTICE =
-	"Answer the secret request above — this box is paused until it is answered, and your draft is kept.";
+	"Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.";
 
 /**
  * The id the mention layer's description carries, so the field can name it.

@@ -1,5 +1,6 @@
 import "../../../styles/index.css";
 import { AgentsPage } from "@features/agents/components/agents-page";
+import { AskDrawer } from "@features/chat/components/asks/ask-drawer";
 import { Canvas } from "@features/chat/components/canvas";
 import { ChatHeader } from "@features/chat/components/chat-header";
 import {
@@ -36,6 +37,7 @@ import {
 	UP_TO_DATE_AFFIRMATION,
 	type UpdateCheckVerdict,
 } from "../../../../../main/update-check-verdict";
+import type { PendingAsk } from "../../../../../shared/desktop-session-contract";
 
 /**
  * The app shell: the rail, the settings surface and the agents surface, in one
@@ -841,6 +843,127 @@ export const ChatDockRunPanel: Story = {
 							previewPage={null}
 							onReaderChildChange={() => undefined}
 							onClose={() => undefined}
+						/>
+					</PaneSlot>
+				)}
+			/>
+		);
+	},
+};
+
+/*
+ * THE ASKS DRAWER IN THE SHELL (design round 1, D4): the `chat-dock-files` sibling.
+ *
+ * WHY IT EXISTS. The drawer's own evidence set photographs it at 560x640 in a bare
+ * column, and the band frames photograph a bespoke composition of composer + drawer
+ * - so the two facts its placement turns on were never shown where they happen: the
+ * chrome bar as the row that reaches the WINDOW's top-right (the pane's own corner
+ * reservation), and the drawer's card beside the conversation it is answering for.
+ * The canvas family already has this frame (`ChatDockFiles`), and this is the same
+ * mount for the same reason: the REAL `ChatLayout` and the REAL slot resolver, with
+ * only the pane's own open state seeded, so the lane above the dock is painted from
+ * `resolveRightSlotWidth` rather than from a literal.
+ *
+ * The fixtures are the drawer's own shape - a queued ask, one that timed out and is
+ * still answerable, and a settled one - so the frame shows a card, a moved-on card
+ * and the collapsed settled section in one picture.
+ */
+const ASK_TS = 1_760_000_000_000;
+const ASK_MINUTE = 60_000;
+/** The drawer's stories' own pinned clock, so the countdowns read the same. */
+const ASK_NOW = ASK_TS + 12 * ASK_MINUTE;
+
+const dockAsk = (
+	over: Partial<PendingAsk> & { ask_id: string },
+): PendingAsk => ({
+	created_at: ASK_TS,
+	expires_at: ASK_TS + 60 * ASK_MINUTE,
+	timeout_s: 3600,
+	urgent: false,
+	status: "open",
+	delivered: false,
+	questions: [],
+	...over,
+});
+
+const DOCK_ASKS: PendingAsk[] = [
+	dockAsk({
+		ask_id: "a-dock-1",
+		questions: [
+			{
+				id: "target",
+				question: "Which environment should I deploy this to?",
+				options: [
+					{
+						label: "staging",
+						description: "The shared pre-prod cluster",
+						recommended: true,
+					},
+					{ label: "production", description: "Live traffic" },
+				],
+				multi: false,
+			},
+		],
+	}),
+	dockAsk({
+		ask_id: "a-dock-2",
+		status: "timed_out",
+		expires_at: ASK_TS - ASK_MINUTE,
+		questions: [
+			{
+				id: "files",
+				question: "Which files should the cleanup script touch?",
+				options: [{ label: "logs only" }, { label: "logs and caches" }],
+			},
+		],
+	}),
+	dockAsk({
+		ask_id: "a-dock-3",
+		status: "declined",
+		questions: [
+			{
+				id: "target",
+				question: "Should I also rotate the deploy token while I am here?",
+				options: [{ label: "yes" }, { label: "no" }],
+			},
+		],
+	}),
+];
+
+/** The shell with the asks drawer in the right slot, at the width the app resolves. */
+export const ChatDockAsks: Story = {
+	args: { rightSlotWidth: 0 },
+	render: (args) => {
+		const { rightSlotWidth = 0 } = args as { rightSlotWidth?: number };
+		useLayoutEffect(() => {
+			/*
+			 * The DRAWER's own open state, claimed through the store rather than a prop:
+			 * the lane above the dock reads the same flag (`resolveRightSlotWidth`), so a
+			 * story that mounted the pane without claiming the slot would photograph a
+			 * lane painted for no pane.
+			 */
+			useUiPreferencesStore.setState({ isAskDrawerOpen: true, rightSlotWidth });
+			return () => {
+				useUiPreferencesStore.setState({ isAskDrawerOpen: false });
+			};
+		}, [rightSlotWidth]);
+
+		return (
+			<ChatShellFrame
+				details={deriveRunDetails(runFixtures.settled())}
+				pane={(slotWidth) => (
+					<PaneSlot width={slotWidth} tourTag="ask-drawer-slot">
+						<AskDrawer
+							frontend={{
+								asks: DOCK_ASKS,
+								asks_open: 2,
+								asks_truncated: false,
+							}}
+							scope="session"
+							onClose={() => undefined}
+							nowMs={ASK_NOW}
+							onAnswer={() => undefined}
+							onDecline={() => undefined}
 						/>
 					</PaneSlot>
 				)}

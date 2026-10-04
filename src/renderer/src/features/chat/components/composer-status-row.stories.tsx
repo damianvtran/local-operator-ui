@@ -38,6 +38,7 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
+import { MessageInput } from "@shared/components/composer/message-input";
 import { cn } from "@shared/lib/utils";
 import type { DesktopLoopState } from "../../../../../../src/shared/desktop-control-contract";
 import type {
@@ -45,7 +46,8 @@ import type {
 	PendingAsk,
 } from "../../../../../../src/shared/desktop-session-contract";
 import { EMPTY_DRAFTS } from "../ask-queue";
-import { AskSurfaces } from "./asks/ask-surfaces";
+import { ASK_COMPOSER_PLACEHOLDER } from "../ask-queue";
+import { AskDrawer } from "./asks/ask-drawer";
 import { ComposerStatusRow } from "./composer-status-row";
 import { type RunDetails, deriveRunDetails } from "./run-details";
 
@@ -2327,33 +2329,44 @@ const AskBand = ({
 	const published =
 		tally === undefined ? {} : { asks_open: tally, asks_truncated: true };
 	return (
-		<Composer width={width} label={label}>
-			<AskSurfaces
-				frontend={asksFrontend(asks, published)}
-				nowMs={ASK_NOW}
-				expanded={open}
-				onToggle={setOpen}
-				drafts={EMPTY_DRAFTS}
-				onDraftChange={() => undefined}
-				onAnswer={() => undefined}
-				onDecline={() => undefined}
-				className="pb-2"
-			/>
-			<ComposerStatusRow
-				frontend={asksFrontend(asks, { ...published, goal })}
-				runDetails={runDetails}
-				isSmallView={width <= SMALL_VIEW_PX}
-				askExpanded={open}
-				onAskToggle={setOpen}
-				/*
-				 * THE SAME PINNED CLOCK THE PANEL GETS. The item prints the soonest waiting
-				 * deadline now, and a countdown rendered against the wall clock cannot be
-				 * photographed twice into the same frame - nor can a frame's reading be
-				 * compared with the panel row's beside it.
-				 */
-				nowMs={ASK_NOW}
-			/>
-		</Composer>
+		/*
+		 * THE BAND AND THE DRAWER SIDE BY SIDE, because the drawer is now the right
+		 * slot's fifth occupant rather than a column on this band (design note §2): the
+		 * panel the chip opens is NOT a child of the composer any more, and a story that
+		 * kept rendering it there would photograph a layout the app cannot produce.
+		 */
+		<div className="flex items-stretch gap-0 bg-canvas">
+			<Composer width={width} label={label}>
+				<ComposerStatusRow
+					frontend={asksFrontend(asks, { ...published, goal })}
+					runDetails={runDetails}
+					isSmallView={width <= SMALL_VIEW_PX}
+					askExpanded={open}
+					onAskToggle={setOpen}
+					/*
+					 * THE SAME PINNED CLOCK THE DRAWER GETS. The item prints the soonest waiting
+					 * deadline now, and a countdown rendered against the wall clock cannot be
+					 * photographed twice into the same frame - nor can a frame's reading be
+					 * compared with the drawer row's beside it.
+					 */
+					nowMs={ASK_NOW}
+				/>
+			</Composer>
+			{open && (
+				<div className="flex h-[600px] w-[400px] shrink-0 flex-col">
+					<AskDrawer
+						frontend={asksFrontend(asks, published)}
+						scope="session"
+						onClose={() => setOpen(false)}
+						nowMs={ASK_NOW}
+						drafts={EMPTY_DRAFTS}
+						onDraftChange={() => undefined}
+						onAnswer={() => undefined}
+						onDecline={() => undefined}
+					/>
+				</div>
+			)}
+		</div>
 	);
 };
 
@@ -2820,6 +2833,147 @@ export const AskExpandedMovedOnUrgent: Story = {
 			label="A MOVED-ON ask that was urgent, with the panel open"
 			asks={[ASK_MOVED_ON_URGENT]}
 			defaultOpen
+		/>
+	),
+};
+
+/*
+ * THE COMPOSER'S OWN ASK MODE, WITH THE DRAWER BESIDE IT (design round 1, D2).
+ *
+ * WHY THIS FRAME HAD TO EXIST BEFORE ANYBODY COULD RULE ON IT. The shipped flag is
+ * `askExpanded = isAskDrawerOpen` (`chat-page.tsx`), so while the drawer is open the
+ * composer still routes Enter to the same ask - TWO LIVE DOORS TO ONE QUESTION - and
+ * every band frame above shows the hand-built box reading "A message would be typed
+ * here." (see `Composer`). The composition the design round was asked to judge
+ * therefore had no committed story at all, and a ruling on it was a ruling on
+ * something nobody had rendered. These stories are that state, rendered with the
+ * production composer: the real `MessageInput` wiring the ask-mode sentence and
+ * `askMode` exactly as `chat-content.tsx` does (`placeholderOverride` + `askMode`),
+ * beside the real `AskDrawer` reading the same queue.
+ *
+ * WHAT THEY SHOW, AND WHAT THEY DO NOT. That the two doors are legible as SURFACES -
+ * the composer prints `Answering the agent's question - Esc to collapse` in its own
+ * ring while the drawer's bar prints the scope line over a card with the question -
+ * and that they are NOT equivalent as doors: the composer's Enter writes the raw
+ * typed text into the first unanswered question, so a value the option list never
+ * offered arrives as a free-form answer. The card now DRAWS that value, marked
+ * `Other` (`ask-panel.tsx`'s free-form row), so what the composer's door produced is
+ * visible in the drawer instead of looking like a question with nothing selected. The
+ * ruling is the design note's §5.0 invariant kept: the composer answers, and the
+ * note's §2C sentence about one surface is the outlier.
+ *
+ * THE BRIDGE IS AT MODULE SCOPE, because `MessageInput` reaches `window.electron`
+ * from a passive mount effect: a mock installed by a decorator arrives a commit too
+ * late, which is the same reason `composer-band.stories.tsx` installs it here.
+ */
+window.electron = {
+	...(window.electron ?? {}),
+	ipcRenderer: {
+		...(window.electron?.ipcRenderer ?? {}),
+		on: () => () => {},
+		removeListener: () => window.electron.ipcRenderer,
+		send: () => {},
+		invoke: async (channel: string) =>
+			channel === "get-platform-info"
+				? { platform: "darwin" }
+				: { canceled: true, filePaths: [] },
+	},
+} as typeof window.electron;
+
+/** One band: the status row, the real composer, and the drawer that shares its queue. */
+const AskModeBand = ({
+	label,
+	asks,
+	askMode = true,
+	drawerOpen = true,
+}: {
+	label: string;
+	asks: PendingAsk[];
+	/** The control half: the same box with the app's own invitation. */
+	askMode?: boolean;
+	/** The control half's other half: the pair's frame has the drawer up. */
+	drawerOpen?: boolean;
+}) => (
+	<div className="flex items-stretch gap-0 bg-canvas">
+		<div className="flex flex-col bg-canvas p-6" style={{ width: 569 + 48 }}>
+			<p className="pb-2 text-ink-dim text-meta">{label}</p>
+			<div
+				className="@container/chatcol flex flex-col gap-3"
+				style={{ width: 569 }}
+			>
+				<ComposerStatusRow
+					frontend={asksFrontend(asks)}
+					runDetails={null}
+					askExpanded={true}
+					onAskToggle={() => undefined}
+					nowMs={ASK_NOW}
+				/>
+				<MessageInput
+					isLoading={false}
+					messages={[]}
+					conversationId={`ask-mode-${askMode ? "answer" : "idle"}`}
+					initialSuggestions={[]}
+					isSmallView={false}
+					onSendMessage={async () => true}
+					placeholderOverride={askMode ? ASK_COMPOSER_PLACEHOLDER : undefined}
+					askMode={askMode}
+				/>
+			</div>
+		</div>
+		{drawerOpen ? (
+			<div className="flex h-[600px] w-[400px] shrink-0 flex-col">
+				<AskDrawer
+					frontend={asksFrontend(asks)}
+					scope="session"
+					onClose={() => undefined}
+					nowMs={ASK_NOW}
+					drafts={EMPTY_DRAFTS}
+					onDraftChange={() => undefined}
+					onAnswer={() => undefined}
+					onDecline={() => undefined}
+				/>
+			</div>
+		) : null}
+	</div>
+);
+
+/**
+ * THE D2 FRAME: the drawer up, and the composer beside it still answering that ask.
+ *
+ * The two live answer surfaces are a deliberate invariant (design §5.0), and this is
+ * the frame the ruling is read off: one question, two doors, each legible as what it
+ * is.
+ */
+export const AskDrivenDrawerOpen: Story = {
+	render: () => (
+		<AskModeBand
+			label="drawer open: the composer still answers the same ask (the §5.0 invariant)"
+			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/**
+ * THE D2 PAIR'S CONTROL: the same band with the drawer SHUT and the composer back
+ * on its ordinary invitation.
+ *
+ * The open frame above is the state the ruling is about - two live doors to one
+ * question. This is the other half of the pair, and it is what makes the open frame
+ * readable as a change rather than as the only state there is: same band, same
+ * queue, same composer box, one mode up. It exists as a committed story rather than
+ * only as a design-round PNG because the evidence set's frames are supposed to come
+ * from the tree (design round 2, D6): the round-1 pair came from a rig whose host
+ * lacked the `@container/chatcol` ancestor, so the chip's two yield spans both
+ * painted and both committed frames showed a duration string the product does not
+ * render.
+ */
+export const AskDrivenDrawerClosed: Story = {
+	render: () => (
+		<AskModeBand
+			label="drawer shut: the same box on its ordinary invitation"
+			asks={[ASK_OPEN]}
+			askMode={false}
+			drawerOpen={false}
 		/>
 	),
 };

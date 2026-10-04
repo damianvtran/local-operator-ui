@@ -41,6 +41,7 @@
  * answer the model never received.
  */
 
+import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import {
 	AlertTriangle,
@@ -66,6 +67,8 @@ import {
 	askAnswerMap,
 	askSettledAnswers,
 	askStatusText,
+	askStatusWord,
+	askStatusWords,
 	draftFor,
 } from "../../ask-queue";
 
@@ -162,6 +165,34 @@ const AskQuestionField = ({
 }) => {
 	const options = question.options ?? [];
 	const multi = question.multi === true;
+	/*
+	 * A SOURCE OF THE DRAFT THAT IS NOT IN THE LIST IS DRAWN, AND DRAWN AS WHAT IT IS
+	 * (design round 1, D2's addendum incident). Two doors write this one draft: the
+	 * option rows below (always a label) and the COMPOSER, whose Enter is routed to the
+	 * ask (design §5.0) and which writes the RAW TYPED TEXT into the first unanswered
+	 * question.
+	 *
+	 * Before this row existed the second door was invisible: typing `prod` at the
+	 * staging/production question answered with the string `prod` while every radio
+	 * stayed EMPTY, so the card said nothing had been chosen about a question that was
+	 * already answered - and an answer that did not come from the list was
+	 * indistinguishable from one that did. The row below is the other half of that fix:
+	 * the value is shown, labelled `Other` so it reads as a value the list did not
+	 * offer rather than as a missing selection, and it is a real choice in the group
+	 * (`aria-checked`, the same mark, the same ground) so the two doors agree about
+	 * what is selected.
+	 *
+	 * Only for the LIST shape: a free-text question (no options) already renders the
+	 * draft in its own field, and a secret is never drawn anywhere.
+	 */
+	const freeForm =
+		options.length > 0
+			? selected.filter(
+					(value) =>
+						value.trim().length > 0 &&
+						!options.some((option) => option.label === value),
+				)
+			: [];
 	return (
 		<div className="flex flex-col gap-1.5" data-lo-ask-question={question.id}>
 			<p className="text-ink text-sm">{question.question}</p>
@@ -261,6 +292,38 @@ const AskQuestionField = ({
 							</button>
 						);
 					})}
+					{freeForm.map((value) => (
+						<button
+							key={`other:${value}`}
+							type="button"
+							data-ask-option-other={value}
+							disabled={disabled}
+							aria-pressed={multi ? true : undefined}
+							aria-checked={multi ? undefined : true}
+							role={multi ? "checkbox" : "radio"}
+							onClick={() => (multi ? onToggle(value) : onSelect(value))}
+							className={cn(
+								"flex w-full items-baseline gap-2 rounded-sm bg-sunken px-2 py-1 text-left",
+								disabled ? "text-ink-dim" : "text-ink",
+							)}
+						>
+							{/* The same chosen mark the option rows use, so a reader cannot tell the
+							 * two kinds of row apart by their selection state - only by the word. */}
+							<span
+								aria-hidden="true"
+								className={cn(
+									"mt-1 h-3 w-3 shrink-0 border border-accent bg-accent",
+									multi ? "rounded-[2px]" : "rounded-full",
+								)}
+							/>
+							<span className="min-w-0 flex-1">
+								{value}
+								{/* `Other` is the ROW's KIND, not part of the answer: it is what tells a
+								 * reader this text came from the composer rather than from the list. */}
+								<span className="ml-1.5 text-ink-muted text-xs">Other</span>
+							</span>
+						</button>
+					))}
 				</div>
 			) : (
 				<input
@@ -490,30 +553,140 @@ export const AskPanel = ({
 	className,
 }: AskPanelProps) => {
 	if (view.asks === null) return null;
+	/*
+	 * PENDING FIRST, ALWAYS COMPLETE; SETTLED IN ONE SECTION THAT OPENS IN PLACE
+	 * (design note §4.5, item 5 / D3).
+	 *
+	 * The predicate is `open`, the backend's outstanding set - which deliberately
+	 * folds `timed_out` in, because a late answer still reaches the agent - so
+	 * "pending" here means "a control on this row can still do something", which is
+	 * the same fact the chip's counts state at the other end of the lane.
+	 *
+	 * WHAT THE SPLIT IS FOR. The frame the note measured had `Answered late` holding
+	 * ~150px of a ~700px column at the same weight as the open question above it
+	 * (D3): the panel's length was driven by history rather than by work. Here the
+	 * pending cards keep today's body and one settled ask is a single line until the
+	 * reader asks for more.
+	 */
+	const pending = view.rows.filter((row) => row.open);
+	/*
+	 * NEWEST FIRST inside the section, which is the note's own order and the reverse
+	 * of `view.rows`: the queue sorts oldest-first so its head is stable, and a
+	 * HISTORY is read the other way round.
+	 */
+	const settled = view.rows.filter((row) => !row.open).reverse();
+
+	/*
+	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the split: a settled ask's
+	 * expanded body is THE SAME CARD a pending ask wears, so the two cannot drift
+	 * into two ways of showing one ask. The key rides on the row because every caller
+	 * is a list.
+	 */
+	const askRow = (presentation: (typeof view.rows)[number]) => (
+		<AskRow
+			key={presentation.ask.ask_id}
+			presentation={presentation}
+			nowMs={nowMs}
+			answering={answering}
+			outcome={outcomes?.[presentation.ask.ask_id]}
+			draft={drafts[presentation.ask.ask_id] ?? EMPTY_DRAFT}
+			onDraftChange={onDraftChange}
+			onAnswer={onAnswer}
+			onDecline={onDecline}
+		/>
+	);
+
 	return (
 		<div
 			data-lo-ask-panel="open"
 			className={cn("flex w-full flex-col gap-2", className)}
 		>
 			{view.rows.length === 0 ? (
-				<p className="px-3 py-2 text-ink text-sm">
+				<p className="px-3 py-2 text-ink text-body">
 					No asks outstanding. The agent is not waiting on anything.
 				</p>
-			) : (
-				view.rows.map((presentation) => (
-					<AskRow
-						key={presentation.ask.ask_id}
-						presentation={presentation}
-						nowMs={nowMs}
-						answering={answering}
-						outcome={outcomes?.[presentation.ask.ask_id]}
-						draft={drafts[presentation.ask.ask_id] ?? EMPTY_DRAFT}
-						onDraftChange={onDraftChange}
-						onAnswer={onAnswer}
-						onDecline={onDecline}
-					/>
-				))
-			)}
+			) : null}
+			{pending.map(askRow)}
+			{settled.length > 0 ? (
+				/*
+				 * THE SECTION HEADER IS THE APP'S ONE DISCLOSURE (`docs/branding.md` § 7:
+				 * two competing expand/collapse patterns is a bug, not a style choice), which
+				 * is also what the note asks for when it says to reuse rather than reinvent.
+				 * `chevronClassName` steps the chevron off the primitive's `ink-disabled` for
+				 * the measured reason `settings-group-header.tsx` records: a section header's
+				 * chevron is the surface's only affordance and `ink-disabled` is the one role
+				 * exempt from the 3:1 non-text floor (2.70:1 dark measured).
+				 */
+				<div data-lo-ask-settled="">
+					<Disclosure
+						triggerClassName="text-ink-muted hover:bg-row-hover hover:text-ink"
+						chevronClassName="text-ink-dim"
+						rowClassName="min-h-8 py-0"
+						summary={
+							<span className="flex min-w-0 items-center gap-1.5">
+								<span className="shrink-0 text-ink-dim text-meta">{`Settled · ${settled.length}`}</span>
+								{/*
+								 * THE DESCRIPTOR IS DERIVED FROM THE ROWS BELOW IT, not a fixed legend
+								 * (agent review round 1, M1 = UX U1 = design D1). It used to print
+								 * `answered, timed out, declined, dismissed` in every state - naming a word
+								 * (`timed out`) the section can never hold and omitting two (`Answered
+								 * late`, `Expired`) it routinely holds. A legend is a claim about its own
+								 * section, so it is read FROM the section (`askStatusWords`), and it moves
+								 * with the rows rather than with a second list somebody has to remember to
+								 * update.
+								 */}
+								<span className="truncate text-ink-dim text-meta">
+									{askStatusWords(settled)}
+								</span>
+							</span>
+						}
+					>
+						<div className="flex flex-col gap-1 pb-1">
+							{settled.map((presentation) => {
+								/*
+								 * The one line, and the two things it has to keep apart (D9): the
+								 * status WORD (`askStatusWord`, the copy contract's own leading clause)
+								 * and the question. `Timed out` and `Answered` are what tells the reader
+								 * which of two look-alike rows is still answerable, so the word travels
+								 * in the visible text as well as in the accessible name.
+								 */
+								const word = askStatusWord(presentation.status);
+								const question =
+									presentation.ask.questions[0]?.question ?? "No question text";
+								return (
+									<Disclosure
+										key={presentation.ask.ask_id}
+										triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
+										chevronClassName="text-ink-dim"
+										rowClassName="min-h-7 py-0"
+										triggerLabel={`${word} — ${question}`}
+										/*
+										 * The summary clamps to one line, so the value behind the cut is
+										 * reachable without operating the control: the app's own tooltip
+										 * idiom for a truncated disclosure summary, with the caller's
+										 * measure because the question is unbounded.
+										 */
+										triggerTooltip={question}
+										tooltipClassName="max-w-96"
+										summary={
+											<span className="flex min-w-0 items-baseline gap-1.5">
+												<span className="shrink-0 text-ink-dim text-meta">
+													{word}
+												</span>
+												<span className="truncate text-ink text-meta">
+													{question}
+												</span>
+											</span>
+										}
+									>
+										<div className="pt-1.5">{askRow(presentation)}</div>
+									</Disclosure>
+								);
+							})}
+						</div>
+					</Disclosure>
+				</div>
+			) : null}
 		</div>
 	);
 };
