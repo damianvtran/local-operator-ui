@@ -13,7 +13,13 @@ shipped renderings no earlier frame carried (`single-device-panel`'s `never`,
 `scopes-declared`'s declared tier). **The round-2 remediation adds the four the stack
 needed** - `scopes-shared-top` and `scopes-nested` with their narrow passes, two and
 three enclosures hanging off one opener - which brings the set to the **twenty-nine**
-below.
+below. **The operator report's pass (2026-10-04) adds the four its crowding report's
+states needed** - `many-conversations`, `many-conversations-menu` and
+`many-conversations-peer`, the device panel open at the scale of the operator's own
+catalogue with one row's `⋯` menu open over the list, plus `many-conversations-bottom`,
+the same panel parked at its maximum scroll (design round 1, D3: where the device-level
+sections actually live) - which brings the set to the **thirty-three** below; their
+before halves are the declared pair `../mesh-tab-before/`.
 
 **The remedy's own row proves the move, because round 4 fixed the reason it could not**
 (design review rounds 3 D13 and 4 D18). `move-busy-waited` photographs the receipt *and* the world
@@ -24,6 +30,21 @@ Round 3's explanation for the pre-move frame was wrong (it blamed the capture's 
 is on the same mount as the play), and the real cause was one line: the fixture hook that answers
 the post-move world had been wired into `MoveCopyWithUndo` instead of into this story. Both the
 code and this page now say that.
+
+**The operator report's pair is `../mesh-tab-before/` (operator report, 2026-10-04).** The
+three top-of-list `many-conversations*` states are the AFTER half of a declared pair: the set beside
+this one holds the same three states rendered by `origin/main`'s two component files
+(`mesh-card.tsx`, `mesh-node.tsx`) from the harness committed there - the same Storybook,
+the same story ids, the same fixtures, the same viewport and encoding - so the fix is
+judged on a frame against its twin. (`many-conversations-bottom` has no before twin on
+purpose: at `origin/main`'s bytes the sections painted THROUGH the list rather than
+sitting below it, and the pair's three states already photograph that defect from the
+top; a bottom run would photograph the same overlap lower down.) That set's README carries the rendered-DOM audit's
+numbers for both halves (`readings.json` beside it); the short version: the conversations
+section measured 6,755 px of content in a 166 px box before and 6,755 px in 6,755 px
+after, in-flow text overlaps 24 / 24 / 18 -> 0, container-region overlaps 3 -> 0 per
+state, in both palettes, and the overlap is the SAME with the `⋯` menu closed as open -
+which is what rules the menu out as the layer at fault.
 
 **Re-captured, not carried forward (design review round 2, D9).** Slice 2's frames were
 re-shot at this branch's own head through the command below: the previous set still
@@ -56,11 +77,20 @@ node scripts/capture-evidence.mjs --only=mesh-tab \
   --themes=localOperatorLight,localOperatorDark --allow-backend
 ```
 
-58 frames, 29 states x 2 palettes, written through the repo's own sweep (a private
-headless Chrome, `Page.captureScreenshot` at deviceScaleFactor 2, `assertFramePaints`
-on every frame) - the round-2 pass re-shot the set whole, then narrowed once
+66 frames, 33 states x 2 palettes, written through the repo's own sweep (a private
+headless Chrome, `Page.captureScreenshot` as webp at `deviceScaleFactor: 1` and
+quality 88 - the rig's own settings - with `assertFramePaints` on every frame) - the
+round-2 pass re-shot the set whole, then narrowed once
 (`--dirs=scopes-nested,scopes-nested-narrow`) to re-take the four frames whose fixture
-changed. `manifest.json` records this as a **partial** capture
+changed; the operator-report pass narrowed again (`--only=mesh-tab--many-conversations
+--themes=localOperatorLight,localOperatorDark`) to write its six; and the
+design-round-1 remediation re-took the eleven states whose TRUNCATING chips the fix
+moved - every state in the set carrying a truncated chip (their frames were stale
+against their own captions, design round 1, D1) plus `many-conversations-bottom` -
+in one narrowed pass (`--dirs=cap-at-four,device-panel,device-panel-narrow,
+drag-refused-over-network,drag-to-device,invite-receipt,move-busy-waited,move-confirm,
+move-copy-with-undo,move-refused-busy,many-conversations-bottom`). `manifest.json` records
+this as a **partial** capture
 (`partialCapture`), which is what it is: the set is the tab's own states, not a
 sweep of the tree.
 
@@ -72,7 +102,12 @@ case, and its own docstring states the condition: a PARTIAL run whose stories
 render from fixtures and never call out. That condition holds here for a reason
 that is structural rather than asserted: the page's only network path is the
 desktop bridge, the bridge is replaced in-page before the app can issue anything,
-and it throws on an op it does not answer.
+and it throws on an op it does not answer. The design-round-1 re-shoot (2026-10-04
+17:03) ran under the same flag for the same reason - the operator's app was up again
+(pid 21804, `Local Operator [serve] port=1111`, up 7m at capture time) - and its
+readings reproduce the offline-captured frames' totals exactly (24 / 24 / 18 in-flow,
+3 / 3 / 3 container), which is the empirical half of the no-dependency claim rather
+than the structural half alone.
 
 **These frames therefore do NOT prove:** that a live relay answers these payloads,
 that a real mesh looks like this (the shapes are the wire's, read from
@@ -208,7 +243,7 @@ missing row proves nothing a reader could check.
 | `single-device-panel/…` | the panel's `never` | a null `Last status frame` reads `never` rather than a date computed from zero - the D4 fix's own null case, which no earlier frame carried |
 | `device-panel/…` | a device's panel, open | the node's detail and its actions: memberships, the session list, and the two affordances the canvas cannot offer |
 | `device-panel-narrow/…` | the same panel at 1024x768 | the clicked node stays whole while the panel takes a third of the width - the clamp that keeps it visible solves against the canvas's *clip* box, so nothing sits under the border (round 3, Q-1) |
-| `cap-at-four/…` | four conversations on one peer | the cap's own case: two chips and the `+N` control, with the chip's label truncated from the LEFT so the end that distinguishes series-named conversations survives |
+| `cap-at-four/…` | four conversations on one peer | the cap's own case: two chips and the `+N` control. Since the operator report the chip keeps the HEAD (`mesh-node.tsx` carries the trade) - and this frame now SHOWS the trade rather than asserting it: the two peer chips both read `Sweep …` here, the shared-prefix collision itself (design round 1, D1; re-shot at the fix head), with the full names one hover away on the chip and on the panel's row |
 | `move-confirm/…` | the confirm a destructive move raises | the dialog names what is lost, because the source copy is deleted once the peer has it |
 | `move-refused-busy/…` | a turn in flight refuses the move | the code, the route's own sentence, and the one remedy that changes anything: wait for the turn to finish |
 | `move-busy-waited/…` | the remedy executed | the receipt the re-issued move produces (`cloud-node-1 holds it now; the copy here is gone.`) **and the world it claims**: this device holds one conversation, and the peer draws the moved `Sweep 001` beside its own - see the note above |
@@ -216,6 +251,10 @@ missing row proves nothing a reader could check.
 | `invite-receipt/…` | an invite, minted | admission is two-sided, so the affordance is a dialog rather than a drag: the token's path, and why this app never reads it |
 | `drag-to-device/…` | a session lifted over a valid target | the transient: the ghost under the pointer, the target's own edge, and the indicator naming the operation the drop would perform |
 | `drag-refused-over-network/…` | the same drag over a network lane | the one gesture the protocol refuses, refused prospectively - a conversation lives on a device, and the indicator says so before the drop |
+| `many-conversations/…` | the panel open on this device, a catalogue page of conversations behind it | the operator report's containment state: **201 rows** that used to paint through the Network addresses/Status/Show-in-list sections below them (24 overlapping text pairs, 3 container regions, measured - see `../mesh-tab-before/`) now scroll as one column; this frame's `+199` and the peer's `+9` are the caps the report saw, and the chips read `Onbo…`/`Relea…` where they read `…chine`/`3 line` before |
+| `many-conversations-menu/…` | one row's `⋯` menu open over the same list | the report's own composition, and its discriminator: the overlap is IDENTICAL with the menu closed, so the menu was never the layer at fault - and the menu's own surface (opaque `elevated` in both palettes) was never missing |
+| `many-conversations-peer/…` | the same panel on the peer, eleven conversations | the report's first screenshot: rows, addresses and Status interleaved at ELEVEN rows too (18 overlapping pairs), and the chips reading tail fragments (`…obe OK`/`…2E pull`) where the report's own read `…BE-OK`/`…2E pull` - the fixtures invent the names, not the shapes |
+| `many-conversations-bottom/…` | the same panel parked at its maximum scroll | the state the stacking claim lives in (design round 1, D3): below the whole catalogue come Network addresses, Status, Reach, Last status frame and Show in list as one clean column - every frame before it showed the list's top only, so "the sections stack below the list" had no frame of its own |
 
 ## The numbers behind the frames
 
@@ -240,6 +279,14 @@ looked at; each is quoted in the source beside the decision it decides.
   `elevated` fill measures ΔE00 7.00 on the light brand palette but only 2.19 on the
   dark one - at the field floor, not above it - so a selected node takes the ink edge
   as well (11.8:1 against that fill).
+- **The containment pair, measured (operator report, 2026-10-04).** The rendered-DOM audit
+  over the three new states counted **24 / 24 / 18** in-flow text overlaps and **3 / 3 / 3**
+  container-region overlaps on `origin/main`'s two component files, and **0** of both after -
+  in both palettes, with the `⋯` menu closed and again with it open. The figure behind the
+  overlaps: the conversations section measured **6,755 px of content in a 166 px box** before
+  (the panel's flex column held it shrank; its `<ul>` kept its natural height and painted)
+  and **6,755 px in 6,755 px** after, which is what makes the aside's `overflow-y-auto` the
+  scroll owner. `../mesh-tab-before/readings.json` is the runs' own output.
 - **One quantity, one number.** The first capture of this set showed a network node
   reading "3 devices" beside a summary line reading "4 devices": the node counted
   active memberships and the summary counts device nodes. Both now count members,
