@@ -478,8 +478,7 @@ export const FLAG_REASONS = {
 	lint: "a changed path that is neither prose nor committed evidence",
 	types: "a changed path that is neither prose nor committed evidence",
 	unit: "a changed path that is neither prose nor committed evidence, or a `docs/evidence/**` change (the desktop suite reads committed evidence at runtime)",
-	evidence:
-		"a `docs/evidence/**` change, one of the modules that produce the sweep's verdict (`scripts/check-evidence.mjs`, `scripts/palette-source.mjs`, `scripts/color.mjs`), a palette change (the palettes ARE the grounds a frame is judged against), or a change to the install (`package.json` or a lockfile): `sharp`, the decoder the verdict is produced with, is a devDependency",
+	evidence: `a \`docs/evidence/**\` change, one of the modules that produce the sweep's verdict (${[...EVIDENCE_SOURCES].join(", ")}), a palette change (the palettes ARE the grounds a frame is judged against), or a change to the install (\`package.json\` or a lockfile): \`sharp\`, the decoder the verdict is produced with, is a devDependency`,
 	runtime_deps:
 		"`package.json` or one of the scripts the runtime-dependency step executes (`scripts/check-runtime-deps.mjs`, `scripts/require-report.sh`)",
 	audit: "`package.json` or a lockfile change",
