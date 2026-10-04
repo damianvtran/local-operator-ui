@@ -380,12 +380,14 @@ now:
 1. **The fixture fix in `59ead694c6d` is the third (agent review round 1, F1).**
    `ASK_QUESTION` now carries the wire's real key set — a QUESTION-level
    `recommended` index — where it carried a per-option `recommended: true`, a key no
-   producer writes. The panel marks the recommended row off `question.recommended`
-   (`ask-panel.tsx`'s `marked` → `font-semibold` + badge), so every story that opens
-   the panel with that fixture now draws that mark, and the six panel-bearing frames
-   here — `after/expanded-settled`, `after/expanded-moved-on`, `after/expanded-waiting`,
-   `after/expanded-multiple`, `after/driven-open`, `after/focused-panel`, both palettes
-   — show it with no mark.
+   producer writes. The panel marks the recommended OPTION ROW off
+   `question.recommended` (`ask-panel.tsx`'s `marked` → `font-semibold` + badge), and
+   it draws those rows only while the ask can still be answered: a DELIVERED ask
+   draws the answer frame instead (`askSettledAnswers`). So the fixture reaches the
+   answerable panel frames here — `after/expanded-moved-on`, `after/expanded-waiting`,
+   `after/expanded-multiple` and `after/driven-open`, both palettes — which show that
+   list with no mark. `after/expanded-settled` and `after/focused-panel` are delivered
+   panels: the fixture does not change them, and what makes them stale is (2) and (3).
 2. **The deadline/urgency lane** (`5ecccd36626`, `3ddda944ba6`) rewrote this story
    file's captions and put the soonest-deadline countdown on the item — exactly what
    the "What this pair does NOT claim" section above said the fold would land. It did:
