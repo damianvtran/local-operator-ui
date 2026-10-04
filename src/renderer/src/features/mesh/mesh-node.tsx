@@ -750,31 +750,37 @@ const SessionChip: FC<SessionChipProps> = ({
 				)}
 			>
 				{/*
-				 * THE TAIL IS THE READABLE END, so the truncation happens at the OTHER one.
+				 * THE HEAD IS THE READABLE END, so the truncation happens at the OTHER
+				 * one (operator report, 2026-10-04).
 				 *
-				 * `direction: rtl` with `text-align: left` is what asks the browser for left-truncation: the
-				 * box's direction decides which side the overflow - and the ellipsis - falls on, while an
-				 * LTR title inside it still renders its words in order (the run is LTR; only the line's
-				 * overflow side follows the box). That is where the overflow has to be, because a device's
-				 * conversations are named in series (`bench-device-1 chat 0`, `bench-device-1 chat 1`) and
-				 * the part that tells two of them apart is the END. End-truncation is what round 2 measured
-				 * at the cap: two conversations rendered as `Swe…` and `Res…`.
+				 * The report's catalogue is what settled it: its chips read `…BE-OK`
+				 * and `…2E pull` - the tails of `ONBOARD-PROBE-OK` and `Hub E2E pull` -
+				 * and the finding is that they "identify nothing". A conversation's
+				 * name is a human title whose identity is front-loaded, and every other
+				 * surface that truncates one - this node's own label, the panel's rows,
+				 * the list's rows - shows the head. The chip was the one place that did
+				 * not.
 				 *
-				 * NOT `unicode-bidi: plaintext`, which the button's own comment above rules out: it makes the
-				 * PARAGRAPH direction follow the text's first strong character, which sends the ellipsis back
-				 * to the end. This comment claimed `plaintext` for a round after the class was removed
-				 * (design review round 3, D15) - the code and the frames were right, the prose was stale.
+				 * WHAT THIS TRADES AWAY, stated rather than implied: a series whose
+				 * members differ only past the visible head (`Sweep 011` / `Sweep 012`
+				 * at the cap) now renders as one shared prefix on both chips. The full
+				 * name stays one hover away (`title`), is in the accessible name, and
+				 * the PANEL is where a series is told apart. The left-truncation this
+				 * replaces chose the tail for exactly that series case (design review
+				 * round 2, D8/U10); measured against the operator's own titles, the
+				 * tail is the end that identifies nothing.
 				 *
-				 * WHY NOT A CHARACTER BUDGET, which is what this started as: the chip's text area at
-				 * the cap is **53 px** (a 67.9 px chip less its 12 px of padding and its borders),
-				 * which is about eight average characters - but the width of eight characters ranges
-				 * from 49 px to 62 px over the titles these stories use, so any character count is a
-				 * guess that clips the tail on exactly the widest titles. The browser measures; the
-				 * classes only say WHICH END loses characters.
+				 * WHY NOT A CHARACTER BUDGET, which is what this started as: the chip's
+				 * text area at the cap is **53 px** (a 67.9 px chip less its 12 px of
+				 * padding and its borders), which is about eight average characters -
+				 * but the width of eight characters ranges from 49 px to 62 px over the
+				 * titles these stories use, so any character count is a guess that clips
+				 * the wrong characters on the widest titles. The browser measures; the
+				 * classes only say WHICH END loses characters. (Superseding round 3's
+				 * D15 note: the `unicode-bidi: plaintext` hazard it records was about the
+				 * left-truncation spelling, which is gone.)
 				 */}
-				<span className="min-w-0 flex-1 truncate [direction:rtl]">
-					{chipLabel(session)}
-				</span>
+				<span className="min-w-0 flex-1 truncate">{chipLabel(session)}</span>
 			</button>
 		</li>
 	);

@@ -458,6 +458,12 @@ const CHROME_LAUNCH_SITES = [
 		"photographs the row states from a BUILT Storybook of two trees - the branch and `origin/main` - so the before/after pair is two real builds rather than a proposal render",
 	),
 	guarded(
+		"docs/evidence/mesh-tab-before/harness/rendered-dom-audit.mjs",
+		"spawn",
+		1,
+		"measures the mesh panel's rendered DOM for the operator-report pair - overlapping boxes, clipped spans and the chips' visible sides - one private headless Chrome per run through the same helper (QA round 1 added this row: the harness launched Chrome while unregistered, which failed Desktop Tests in CI)",
+	),
+	guarded(
 		"scripts/child-reader-scroll-evidence.mjs",
 		"spawnOwned",
 		1,
