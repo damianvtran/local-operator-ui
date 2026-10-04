@@ -18,12 +18,15 @@ import React, { act } from "react";
  *
  * WHAT THIS PINS
  *
- *  1. The door: a mount into an empty queue, and a door that says "collapsed" to
- *     a page that is already collapsed, must NOT call the toggle. Both were
- *     reachable on ordinary paths (agent review F1: the queue empties while the
- *     user is collapsed; every pane mount of an ask-free conversation) and both
- *     destroyed a draft, because the caller's swap moved the chat text into the
- *     ask buffer and wrote the empty ask buffer into the box.
+ *  1. The door: a mount into a queue that is published but EMPTY must NOT fire the
+ *     drawer's close door (a settle from the terminal or the phone, or a timeout)
+ *     - reachable on every conversation switch, and firing there destroyed a
+ *     draft, because the caller's swap moved the chat text into the ask buffer and
+ *     wrote the empty ask buffer into the box. The old shape of this test also
+ *     pinned a door that said "collapsed" to an already-collapsed page; there is
+ *     no collapsed mount any more (the drawer is mounted only while open, and the
+ *     flag that decides it is the store's), so that half is gone with the state it
+ *     described rather than weakened.
  *  2. The authority: the swap has to reach the BOX, and the store's revision is
  *     what the composer mirrors on. `setCurrentInput` (the keystroke writer) must
  *     not bump it; `setComposerText` (the app's writer) must.
@@ -47,7 +50,7 @@ const { createRoot } = await import("react-dom/client");
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { AskSurfaces } from "./src/renderer/src/features/chat/components/asks/ask-surfaces";
+			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		loader: "tsx",
@@ -69,9 +72,7 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { AskSurfaces, useConversationInputStore } = await import(
-	bundlePath.href
-);
+const { AskDrawer, useConversationInputStore } = await import(bundlePath.href);
 await unlink(bundlePath).catch(() => {});
 
 const h = React.createElement;
@@ -126,58 +127,35 @@ const mount = async (element) => {
 
 /* --------------------------------------------------------------- the door ---- */
 
-test("a MOUNT into an empty-but-published queue does not fire the collapse door", async () => {
+test("a MOUNT into an empty-but-published queue does not fire the close door", async () => {
 	// Reachable on every pane mount: `SessionPanel` is keyed by conversation, so
 	// this is every conversation switch, and the caller's swap would empty the box
 	// of a draft retained for the conversation being opened.
 	const calls = [];
 	const view = await mount(
-		h(AskSurfaces, {
+		h(AskDrawer, {
 			frontend: frontend([]),
-			expanded: true,
-			onToggle: (next) => calls.push(next),
+			scope: "session",
+			onClose: () => calls.push(true),
 		}),
 	);
 	assert.deepEqual(calls, [], "a mount is not an emptying");
 	await view.unmount();
 });
 
-test("a door saying `collapsed` to an already-collapsed page does not fire", async () => {
-	// The queue empties while the user is collapsed (the default state) - an ask
-	// answered from the terminal or phone, or a timeout. Firing here moves the chat
-	// draft into the ask buffer and writes the empty one into the box.
+test("the close door fires ONCE per emptying", async () => {
 	const calls = [];
+	const props = { scope: "session", onClose: () => calls.push(true) };
 	const view = await mount(
-		h(AskSurfaces, {
-			frontend: frontend([openAsk]),
-			expanded: false,
-			onToggle: (next) => calls.push(next),
-		}),
-	);
-	await view.rerender(
-		h(AskSurfaces, {
-			frontend: frontend([]),
-			expanded: false,
-			onToggle: (next) => calls.push(next),
-		}),
-	);
-	assert.deepEqual(calls, [], "already collapsed: nothing to collapse");
-	await view.unmount();
-});
-
-test("the door fires ONCE per emptying while expanded", async () => {
-	const calls = [];
-	const props = { expanded: true, onToggle: (next) => calls.push(next) };
-	const view = await mount(
-		h(AskSurfaces, { frontend: frontend([openAsk]), ...props }),
+		h(AskDrawer, { frontend: frontend([openAsk]), ...props }),
 	);
 	assert.deepEqual(calls, [], "mount with rows is not an emptying");
-	await view.rerender(h(AskSurfaces, { frontend: frontend([]), ...props }));
-	assert.deepEqual(calls, [false], "one collapse, delivered once");
+	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
+	assert.deepEqual(calls, [true], "one close, delivered once");
 	// And not again on the renders that follow it.
-	await view.rerender(h(AskSurfaces, { frontend: frontend([]), ...props }));
-	await view.rerender(h(AskSurfaces, { frontend: frontend([]), ...props }));
-	assert.deepEqual(calls, [false], "the transition fires once, not per render");
+	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
+	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
+	assert.deepEqual(calls, [true], "the transition fires once, not per render");
 	await view.unmount();
 });
 
