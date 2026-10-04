@@ -1,0 +1,872 @@
+{
+ "origin": "http://127.0.0.1:6071",
+ "story": "/iframe.html?id=chat-sidebar-agents--long-roster&viewMode=story",
+ "states": {
+  "resting": {
+   "rows": 8,
+   "rowNames": [
+    "builder",
+    "release-captain",
+    "bug-intake",
+    "docs-writer",
+    "scout",
+    "ledger-auditor",
+    "incident-scribe",
+    "metrics-analyst"
+   ],
+   "lastRowBox": {
+    "top": 344,
+    "bottom": 376,
+    "height": 32
+   },
+   "section": {
+    "top": 48,
+    "bottom": 436,
+    "height": 388
+   },
+   "foot": {
+    "label": "Show 4 more",
+    "bottom": 404
+   },
+   "teamsTop": 452,
+   "chatsTop": 536,
+   "firstChatTop": 560,
+   "scroller": {
+    "scrollHeight": 712,
+    "clientHeight": 361
+   },
+   "headingExpanded": "true",
+   "headingTitle": null,
+   "headingDescribedBy": null,
+   "hintText": null,
+   "rosterFilterPresent": true,
+   "footName": "Show 4 more agents",
+   "footTitle": "Show 4 more agents",
+   "documentHeight": 413,
+   "active": {
+    "tag": "BODY",
+    "name": null,
+    "sectionKey": null,
+    "moreKey": null,
+    "entityName": false
+   }
+  },
+  "grown": {
+   "rows": 12,
+   "rowNames": [
+    "builder",
+    "release-captain",
+    "bug-intake",
+    "docs-writer",
+    "scout",
+    "ledger-auditor",
+    "incident-scribe",
+    "metrics-analyst",
+    "translator",
+    "patch-reviewer",
+    "night-shift",
+    "archivist"
+   ],
+   "lastRowBox": {
+    "top": 469,
+    "bottom": 501,
+    "height": 32
+   },
+   "section": {
+    "top": 45,
+    "bottom": 533,
+    "height": 488
+   },
+   "foot": null,
+   "teamsTop": 549,
+   "chatsTop": 633,
+   "firstChatTop": 657,
+   "scroller": {
+    "scrollHeight": 812,
+    "clientHeight": 361
+   },
+   "headingExpanded": "true",
+   "headingTitle": "Collapse, then reopen, to restore the compact list",
+   "headingDescribedBy": "section-grown-hint-agents",
+   "hintText": "Collapse, then reopen, to restore the compact list",
+   "rosterFilterPresent": true,
+   "footName": null,
+   "footTitle": null,
+   "documentHeight": 413,
+   "active": {
+    "tag": "BUTTON",
+    "name": "New chat with translator",
+    "sectionKey": null,
+    "moreKey": null,
+    "entityName": true
+   }
+  },
+  "collapsed": {
+   "rows": 0,
+   "rowNames": [],
+   "lastRowBox": null,
+   "section": {
+    "top": 48,
+    "bottom": 76,
+    "height": 28
+   },
+   "foot": null,
+   "teamsTop": 84,
+   "chatsTop": 168,
+   "firstChatTop": 192,
+   "scroller": {
+    "scrollHeight": 361,
+    "clientHeight": 361
+   },
+   "headingExpanded": "false",
+   "headingTitle": null,
+   "headingDescribedBy": null,
+   "hintText": null,
+   "rosterFilterPresent": false,
+   "footName": null,
+   "footTitle": null,
+   "documentHeight": 413,
+   "active": {
+    "tag": "BUTTON",
+    "name": null,
+    "sectionKey": "agents",
+    "moreKey": null,
+    "entityName": false
+   }
+  },
+  "reopened": {
+   "rows": 8,
+   "rowNames": [
+    "builder",
+    "release-captain",
+    "bug-intake",
+    "docs-writer",
+    "scout",
+    "ledger-auditor",
+    "incident-scribe",
+    "metrics-analyst"
+   ],
+   "lastRowBox": {
+    "top": 344,
+    "bottom": 376,
+    "height": 32
+   },
+   "section": {
+    "top": 48,
+    "bottom": 436,
+    "height": 388
+   },
+   "foot": {
+    "label": "Show 4 more",
+    "bottom": 404
+   },
+   "teamsTop": 452,
+   "chatsTop": 536,
+   "firstChatTop": 560,
+   "scroller": {
+    "scrollHeight": 712,
+    "clientHeight": 361
+   },
+   "headingExpanded": "true",
+   "headingTitle": null,
+   "headingDescribedBy": null,
+   "hintText": null,
+   "rosterFilterPresent": true,
+   "footName": "Show 4 more agents",
+   "footTitle": "Show 4 more agents",
+   "documentHeight": 413,
+   "active": {
+    "tag": "BUTTON",
+    "name": null,
+    "sectionKey": "agents",
+    "moreKey": null,
+    "entityName": false
+   }
+  },
+  "grownAgain": {
+   "rows": 12,
+   "rowNames": [
+    "builder",
+    "release-captain",
+    "bug-intake",
+    "docs-writer",
+    "scout",
+    "ledger-auditor",
+    "incident-scribe",
+    "metrics-analyst",
+    "translator",
+    "patch-reviewer",
+    "night-shift",
+    "archivist"
+   ],
+   "lastRowBox": {
+    "top": 469,
+    "bottom": 501,
+    "height": 32
+   },
+   "section": {
+    "top": 45,
+    "bottom": 533,
+    "height": 488
+   },
+   "foot": null,
+   "teamsTop": 549,
+   "chatsTop": 633,
+   "firstChatTop": 657,
+   "scroller": {
+    "scrollHeight": 812,
+    "clientHeight": 361
+   },
+   "headingExpanded": "true",
+   "headingTitle": "Collapse, then reopen, to restore the compact list",
+   "headingDescribedBy": "section-grown-hint-agents",
+   "hintText": "Collapse, then reopen, to restore the compact list",
+   "rosterFilterPresent": true,
+   "footName": null,
+   "footTitle": null,
+   "documentHeight": 413,
+   "active": {
+    "tag": "BUTTON",
+    "name": "New chat with translator",
+    "sectionKey": null,
+    "moreKey": null,
+    "entityName": true
+   }
+  }
+ },
+ "navigationAttempts": 1,
+ "pressFoot": {
+  "pressed": true,
+  "focused": true
+ },
+ "pressClose": {
+  "pressed": true,
+  "focused": true
+ },
+ "pressOpen": {
+  "pressed": true,
+  "focused": true
+ },
+ "pressFootAgain": {
+  "pressed": true,
+  "focused": true
+ },
+ "query": {
+  "sidebarQueryOnly": {
+   "resting": {
+    "rows": 8,
+    "rowNames": [
+     "builder",
+     "release-captain",
+     "bug-intake",
+     "docs-writer",
+     "scout",
+     "ledger-auditor",
+     "incident-scribe",
+     "metrics-analyst"
+    ],
+    "lastRowBox": {
+     "top": 344,
+     "bottom": 376,
+     "height": 32
+    },
+    "section": {
+     "top": 48,
+     "bottom": 436,
+     "height": 388
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 404
+    },
+    "teamsTop": 452,
+    "chatsTop": 536,
+    "firstChatTop": 560,
+    "scroller": {
+     "scrollHeight": 712,
+     "clientHeight": 361
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "BODY",
+     "name": null,
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "queryInForce": {
+    "rows": 4,
+    "rowNames": [
+     "builder",
+     "bug-intake",
+     "docs-writer",
+     "incident-scribe"
+    ],
+    "lastRowBox": {
+     "top": 427,
+     "bottom": 459,
+     "height": 32
+    },
+    "section": {
+     "top": 131,
+     "bottom": 544,
+     "height": 413
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 512
+    },
+    "teamsTop": 560,
+    "chatsTop": 644,
+    "firstChatTop": 668,
+    "scroller": {
+     "scrollHeight": 673,
+     "clientHeight": 278
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "INPUT",
+     "name": "Search chats and agents",
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "pressHeading": {
+    "pressed": true,
+    "focused": true
+   },
+   "afterHeadingPress": {
+    "rows": 4,
+    "rowNames": [
+     "builder",
+     "bug-intake",
+     "docs-writer",
+     "incident-scribe"
+    ],
+    "lastRowBox": {
+     "top": 427,
+     "bottom": 459,
+     "height": 32
+    },
+    "section": {
+     "top": 131,
+     "bottom": 544,
+     "height": 413
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 512
+    },
+    "teamsTop": 560,
+    "chatsTop": 644,
+    "firstChatTop": 668,
+    "scroller": {
+     "scrollHeight": 673,
+     "clientHeight": 278
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "BUTTON",
+     "name": null,
+     "sectionKey": "agents",
+     "moreKey": null,
+     "entityName": false
+    }
+   }
+  },
+  "sidebarQueryAndRosterFilter": {
+   "resting": {
+    "rows": 8,
+    "rowNames": [
+     "builder",
+     "release-captain",
+     "bug-intake",
+     "docs-writer",
+     "scout",
+     "ledger-auditor",
+     "incident-scribe",
+     "metrics-analyst"
+    ],
+    "lastRowBox": {
+     "top": 344,
+     "bottom": 376,
+     "height": 32
+    },
+    "section": {
+     "top": 48,
+     "bottom": 436,
+     "height": 388
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 404
+    },
+    "teamsTop": 452,
+    "chatsTop": 536,
+    "firstChatTop": 560,
+    "scroller": {
+     "scrollHeight": 712,
+     "clientHeight": 361
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "BODY",
+     "name": null,
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "queryInForce": {
+    "rows": 4,
+    "rowNames": [
+     "builder",
+     "bug-intake",
+     "docs-writer",
+     "incident-scribe"
+    ],
+    "lastRowBox": {
+     "top": 427,
+     "bottom": 459,
+     "height": 32
+    },
+    "section": {
+     "top": 131,
+     "bottom": 544,
+     "height": 413
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 512
+    },
+    "teamsTop": 560,
+    "chatsTop": 644,
+    "firstChatTop": 668,
+    "scroller": {
+     "scrollHeight": 673,
+     "clientHeight": 278
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "INPUT",
+     "name": "Search chats and agents",
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "filterInForce": {
+    "rows": 2,
+    "rowNames": [
+     "builder",
+     "docs-writer"
+    ],
+    "lastRowBox": {
+     "top": 299,
+     "bottom": 331,
+     "height": 32
+    },
+    "section": {
+     "top": 131,
+     "bottom": 395,
+     "height": 264
+    },
+    "foot": null,
+    "teamsTop": 411,
+    "chatsTop": 495,
+    "firstChatTop": 519,
+    "scroller": {
+     "scrollHeight": 524,
+     "clientHeight": 278
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": null,
+    "footTitle": null,
+    "documentHeight": 413,
+    "active": {
+     "tag": "INPUT",
+     "name": "Filter agents",
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "pressHeading": {
+    "pressed": true,
+    "focused": true
+   },
+   "afterHeadingPress": {
+    "rows": 2,
+    "rowNames": [
+     "builder",
+     "docs-writer"
+    ],
+    "lastRowBox": {
+     "top": 299,
+     "bottom": 331,
+     "height": 32
+    },
+    "section": {
+     "top": 131,
+     "bottom": 395,
+     "height": 264
+    },
+    "foot": null,
+    "teamsTop": 411,
+    "chatsTop": 495,
+    "firstChatTop": 519,
+    "scroller": {
+     "scrollHeight": 524,
+     "clientHeight": 278
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": null,
+    "footTitle": null,
+    "documentHeight": 413,
+    "active": {
+     "tag": "BUTTON",
+     "name": null,
+     "sectionKey": "agents",
+     "moreKey": null,
+     "entityName": false
+    }
+   }
+  },
+  "rosterFilterOnly": {
+   "resting": {
+    "rows": 8,
+    "rowNames": [
+     "builder",
+     "release-captain",
+     "bug-intake",
+     "docs-writer",
+     "scout",
+     "ledger-auditor",
+     "incident-scribe",
+     "metrics-analyst"
+    ],
+    "lastRowBox": {
+     "top": 344,
+     "bottom": 376,
+     "height": 32
+    },
+    "section": {
+     "top": 48,
+     "bottom": 436,
+     "height": 388
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 404
+    },
+    "teamsTop": 452,
+    "chatsTop": 536,
+    "firstChatTop": 560,
+    "scroller": {
+     "scrollHeight": 712,
+     "clientHeight": 361
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "BODY",
+     "name": null,
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "filterInForce": {
+    "rows": 4,
+    "rowNames": [
+     "builder",
+     "docs-writer",
+     "ledger-auditor",
+     "patch-reviewer"
+    ],
+    "lastRowBox": {
+     "top": 216,
+     "bottom": 248,
+     "height": 32
+    },
+    "section": {
+     "top": 48,
+     "bottom": 280,
+     "height": 232
+    },
+    "foot": null,
+    "teamsTop": 296,
+    "chatsTop": 380,
+    "firstChatTop": 404,
+    "scroller": {
+     "scrollHeight": 556,
+     "clientHeight": 361
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": null,
+    "footTitle": null,
+    "documentHeight": 413,
+    "active": {
+     "tag": "INPUT",
+     "name": "Filter agents",
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "pressHeading": {
+    "pressed": true,
+    "focused": true
+   },
+   "afterHeadingPress": {
+    "rows": 0,
+    "rowNames": [],
+    "lastRowBox": null,
+    "section": {
+     "top": 48,
+     "bottom": 76,
+     "height": 28
+    },
+    "foot": null,
+    "teamsTop": 84,
+    "chatsTop": 168,
+    "firstChatTop": 192,
+    "scroller": {
+     "scrollHeight": 361,
+     "clientHeight": 361
+    },
+    "headingExpanded": "false",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": false,
+    "footName": null,
+    "footTitle": null,
+    "documentHeight": 413,
+    "active": {
+     "tag": "BUTTON",
+     "name": null,
+     "sectionKey": "agents",
+     "moreKey": null,
+     "entityName": false
+    }
+   }
+  },
+  "sidebarQueryOnlyRealPointer": {
+   "resting": {
+    "rows": 8,
+    "rowNames": [
+     "builder",
+     "release-captain",
+     "bug-intake",
+     "docs-writer",
+     "scout",
+     "ledger-auditor",
+     "incident-scribe",
+     "metrics-analyst"
+    ],
+    "lastRowBox": {
+     "top": 344,
+     "bottom": 376,
+     "height": 32
+    },
+    "section": {
+     "top": 48,
+     "bottom": 436,
+     "height": 388
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 404
+    },
+    "teamsTop": 452,
+    "chatsTop": 536,
+    "firstChatTop": 560,
+    "scroller": {
+     "scrollHeight": 712,
+     "clientHeight": 361
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "BODY",
+     "name": null,
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "queryInForce": {
+    "rows": 4,
+    "rowNames": [
+     "builder",
+     "bug-intake",
+     "docs-writer",
+     "incident-scribe"
+    ],
+    "lastRowBox": {
+     "top": 427,
+     "bottom": 459,
+     "height": 32
+    },
+    "section": {
+     "top": 131,
+     "bottom": 544,
+     "height": 413
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 512
+    },
+    "teamsTop": 560,
+    "chatsTop": 644,
+    "firstChatTop": 668,
+    "scroller": {
+     "scrollHeight": 673,
+     "clientHeight": 278
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "INPUT",
+     "name": "Search chats and agents",
+     "sectionKey": null,
+     "moreKey": null,
+     "entityName": false
+    }
+   },
+   "pressHeading": {
+    "pressed": true,
+    "x": 180,
+    "y": 145
+   },
+   "afterHeadingPress": {
+    "rows": 4,
+    "rowNames": [
+     "builder",
+     "bug-intake",
+     "docs-writer",
+     "incident-scribe"
+    ],
+    "lastRowBox": {
+     "top": 427,
+     "bottom": 459,
+     "height": 32
+    },
+    "section": {
+     "top": 131,
+     "bottom": 544,
+     "height": 413
+    },
+    "foot": {
+     "label": "Show 4 more",
+     "bottom": 512
+    },
+    "teamsTop": 560,
+    "chatsTop": 644,
+    "firstChatTop": 668,
+    "scroller": {
+     "scrollHeight": 673,
+     "clientHeight": 278
+    },
+    "headingExpanded": "true",
+    "headingTitle": null,
+    "headingDescribedBy": null,
+    "hintText": null,
+    "rosterFilterPresent": true,
+    "footName": "Show 4 more agents",
+    "footTitle": "Show 4 more agents",
+    "documentHeight": 413,
+    "active": {
+     "tag": "BUTTON",
+     "name": null,
+     "sectionKey": "agents",
+     "moreKey": null,
+     "entityName": false
+    }
+   }
+  }
+ },
+ "deltas": {
+  "rows(grown) - rows(resting)": 4,
+  "rows(reopened) - rows(resting)": 0,
+  "teamsTop(grown) - teamsTop(resting)": 97,
+  "teamsTop(reopened) - teamsTop(resting)": 0,
+  "sectionHeight(grown) - sectionHeight(resting)": 100,
+  "sectionHeight(reopened) - sectionHeight(resting)": 0,
+  "collapsed section height": 28,
+  "collapsed rows": 0,
+  "collapsed heading aria-expanded": "false",
+  "rows(grownAgain) - rows(grown)": 0,
+  "hint(grown)": "Collapse, then reopen, to restore the compact list",
+  "hint(reopened)": null,
+  "hint(grownAgain)": "Collapse, then reopen, to restore the compact list"
+ }
+}

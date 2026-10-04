@@ -38,9 +38,16 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useRef, useState } from "react";
 import "../../../styles/index.css";
+import { MessageInput } from "@shared/components/composer/message-input";
 import { cn } from "@shared/lib/utils";
 import type { DesktopLoopState } from "../../../../../../src/shared/desktop-control-contract";
-import type { CanonicalFrontendState } from "../../../../../../src/shared/desktop-session-contract";
+import type {
+	CanonicalFrontendState,
+	PendingAsk,
+} from "../../../../../../src/shared/desktop-session-contract";
+import { EMPTY_DRAFTS } from "../ask-queue";
+import { ASK_COMPOSER_PLACEHOLDER } from "../ask-queue";
+import { AskDrawer } from "./asks/ask-drawer";
 import { ComposerStatusRow } from "./composer-status-row";
 import { type RunDetails, deriveRunDetails } from "./run-details";
 
@@ -2036,4 +2043,937 @@ export const GoalCapabilityOff: Story = {
 			</div>
 		);
 	},
+};
+
+/* ------------------------------------------------------------------ */
+/* The ask item: the queued-ask lane as one chip in this row           */
+/* ------------------------------------------------------------------ */
+
+/*
+ * The queued-ask affordance used to be its own strip above the composer. It is a
+ * row item now, in this row's register, and these bands are what that means in
+ * every state the copy contract distinguishes:
+ *
+ *   waiting    one open ask            -> `1 question waiting`  (ATTENTION)
+ *   settled    one answered ask        -> `All asks settled`    (quiet)
+ *   moved-on   one timed-out ask       -> `1 question moved on` (quiet)
+ *   multiple   two waiting asks        -> `2 questions waiting` (ATTENTION)
+ *   mixed      one waiting + one moved -> `1 question waiting` visible, the split
+ *                                         in the announced name alone
+ *   truncated  the wire's cap          -> `N outstanding`
+ *   zero-ask   a published empty queue -> the item is absent
+ *
+ * WHAT TO LOOK FOR, since these frames are the design review:
+ *
+ * - **It reads as a PEER of `All to-dos resolved` and `2 wakes armed`** - same
+ *   control box, same gaps, same type step, left-aligned at the row's content
+ *   edge. No fill, no edge, no banner.
+ * - **Attention is a COLOUR STEP, not a size.** Waiting paints the label `ink`
+ *   and the mark `accent`; settled and moved-on keep the muted rest state. The
+ *   row's height is IDENTICAL in every band (measured, in the set's README).
+ * - **One glyph, one meaning.** `HelpCircle` is the panel's own mark for an open
+ *   ask; it never stands for anything else in this row.
+ * - **Expanded, the panel carries the question as asked and the answer as
+ *   given** - the pair that makes `expanded-settled` worth a frame beside
+ *   `expanded-moved-on`, whose row says "Timed out - the agent moved on; you can
+ *   still answer" without pretending nothing happened.
+ *
+ * THE STORIES DRIVE THE FLAG FOR REAL (UX round 1, U2). Every band owns the ask
+ * lane's ONE flag and hands the same state to both halves - the row item's
+ * `askExpanded`/`onAskToggle` and the panel's `expanded`/`onToggle` - exactly as
+ * `chat-page.tsx` does in the app. So in Storybook a reader can press the chip,
+ * watch the panel appear, press Escape inside it and watch focus come back: the
+ * interaction this change is about is walkable rather than pinned. `ask-driven`
+ * makes that explicit by pressing the chip ITSELF on mount and holding the
+ * shutter until the panel is up.
+ */
+
+/** The clock every ask frame is pinned to, so a countdown reads the same twice. */
+const ASK_TS = 1_760_000_000_000;
+const ASK_MINUTE = 60_000;
+const ASK_NOW = ASK_TS + 12 * ASK_MINUTE;
+
+const askOf = (over: Partial<PendingAsk> & { ask_id: string }): PendingAsk => {
+	/*
+	 * THE WIRE'S OWN WINDOW ARITHMETIC, DERIVED RATHER THAN RESTATED (design round 3's
+	 * D1, QA round 3's Q2). A fixture no consumer could produce renders a frame that
+	 * claims a state the product cannot be in - the round-3 headline frame paired a
+	 * 900-second window with `expires in 18m`, three minutes longer than the ask's
+	 * whole life - and the class is worth closing at the factory rather than at the
+	 * one site that was caught. The backend keeps two invariants: the deadline IS the
+	 * window (`expires_at = created_at + timeout_s * 1000`), and `urgent` is DERIVED
+	 * from it (`timeout_s <= 900`), which is why no fixture may set the flag by taste.
+	 * A site that passes either one explicitly and disagrees gets a throw - at the
+	 * story, where it is visible, rather than in a frame nobody can falsify.
+	 *
+	 * The pinned clock is `ASK_NOW` (twelve minutes after `ASK_TS`), so a fixture's
+	 * window is also what the countdown in its frame reads: `ASK_OPEN`'s hour reads
+	 * `expires in 48m`.
+	 */
+	const created_at = over.created_at ?? ASK_TS;
+	const timeout_s = over.timeout_s ?? 3600;
+	const expires_at = created_at + timeout_s * 1000;
+	const urgent = timeout_s <= 900;
+	if (over.expires_at !== undefined && over.expires_at !== expires_at)
+		throw new Error(
+			`askOf(${over.ask_id}): expires_at contradicts created_at + timeout_s`,
+		);
+	if (over.urgent !== undefined && over.urgent !== urgent)
+		throw new Error(
+			`askOf(${over.ask_id}): urgent contradicts the wire's timeout_s <= 900`,
+		);
+	/*
+	 * THE THIRD INVARIANT, STATUS AGAINST WINDOW (design round 4's nit): the two above
+	 * constrain the deadline and the flag against each other but not against the STATUS
+	 * the fold derives from them, so a `timed_out` ask carrying a deadline in the future
+	 * - the agent having moved on from an ask that still has time to run - passed the
+	 * guard while being a state no consumer can produce. The fold is explicit that it
+	 * never re-derives `status` from `expires_at` (ask-queue.ts:38), so the pair is the
+	 * caller's to keep consistent and this factory is where the caller is checked.
+	 */
+	const status = over.status ?? "open";
+	if (status === "open" && expires_at <= ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): an open ask's window has already closed`,
+		);
+	if (status === "timed_out" && expires_at > ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): a timed-out ask carries a live deadline - the agent cannot have moved on from an ask with time left`,
+		);
+	if (over.answered_at != null && over.answered_at > ASK_NOW)
+		throw new Error(
+			`askOf(${over.ask_id}): answered_at is in the future of the pinned clock`,
+		);
+	return {
+		created_at,
+		expires_at,
+		timeout_s,
+		urgent,
+		status: "open",
+		delivered: false,
+		questions: [],
+		...over,
+	};
+};
+
+const ASK_QUESTION = {
+	id: "target",
+	question: "Which environment should I deploy this to?",
+	options: [
+		{
+			label: "staging",
+			description: "The shared pre-prod cluster",
+			recommended: true,
+		},
+		{ label: "production", description: "Live traffic" },
+	],
+};
+
+/** One question the agent is still waiting on: the item's attention state. */
+const ASK_OPEN = askOf({ ask_id: "a-7f3c", questions: [ASK_QUESTION] });
+
+/** Answered and delivered: the question as asked and the answer as given. */
+const ASK_ANSWERED = askOf({
+	ask_id: "a-answered",
+	status: "answered",
+	answered_at: ASK_TS + 8 * ASK_MINUTE,
+	delivered: true,
+	answers: { target: ["staging"] },
+	answered_by: { surface: "desktop" },
+	questions: [ASK_QUESTION],
+});
+
+/**
+ * The deadline passed and the agent moved on; a late answer still reaches it.
+ *
+ * Its window is the factory's hour measured from an hour BEFORE the pinned clock, so
+ * the ask is twelve minutes past its deadline and internally consistent (see
+ * `askOf`); the first cut created it AT the pinned clock and expired it a minute
+ * earlier, which is a life that ends before it starts.
+ */
+const ASK_MOVED_ON = askOf({
+	ask_id: "a-moved-on",
+	status: "timed_out",
+	created_at: ASK_TS - 60 * ASK_MINUTE,
+	questions: [ASK_QUESTION],
+});
+
+/** A second open ask, so the `N` form has something to count. */
+const ASK_SECOND = askOf({
+	ask_id: "a-second",
+	created_at: ASK_TS + 2 * ASK_MINUTE,
+	questions: [
+		{
+			id: "files",
+			question: "Which files should the cleanup script touch?",
+			options: [{ label: "logs only" }, { label: "logs and caches" }],
+		},
+	],
+});
+
+/**
+ * THE SHORT-WINDOW ASK (the audit's second item): the wire's own `urgent`, which
+ * the backend derives from the window itself (`timeout_s <= 900`).
+ *
+ * Stated as the wire states it rather than as a fixture flag a frame could invent:
+ * the row's mark is what the picture is about, and the rule that makes an ask urgent
+ * lives in the backend. Its quarter-hour window leaves three minutes at the pinned
+ * clock, which is what an urgent ask's countdown reads - the state the round-3 frame
+ * got wrong by pairing the same flag with eighteen minutes.
+ */
+const ASK_URGENT = askOf({
+	ask_id: "a-urgent",
+	timeout_s: 900,
+	questions: [ASK_QUESTION],
+});
+
+/**
+ * A SECOND WAITING ASK WITH A SOONER WINDOW, for the subject form: two asks are
+ * inside their windows and they do not expire together, which is the case a bare
+ * `expires in 12m` would mis-attribute (design round 1's D2).
+ *
+ * Half an hour is above the 900-second threshold, so it is NOT urgent - a fixture
+ * with a short window and `urgent: false` would be the same impossible-state class
+ * the factory above now refuses.
+ */
+const ASK_SECOND_WINDOW = askOf({
+	ask_id: "a-keys",
+	created_at: ASK_TS + 2 * ASK_MINUTE,
+	timeout_s: 1800,
+	questions: [
+		{
+			id: "rotate",
+			question: "Rotate the API keys now?",
+			options: [{ label: "yes" }, { label: "no" }],
+		},
+	],
+});
+
+/**
+ * A MOVED-ON ask that WAS urgent: the case both urgency arms must leave alone, since
+ * the agent has walked past it and its window is closed. Its short window is why the
+ * wire's flag is true, and it expired fifteen minutes before the pinned clock.
+ */
+const ASK_MOVED_ON_URGENT = askOf({
+	ask_id: "a-moved-urgent",
+	status: "timed_out",
+	created_at: ASK_TS - 30 * ASK_MINUTE,
+	timeout_s: 900,
+	questions: [ASK_QUESTION],
+});
+
+/**
+ * The frontend snapshot the item reads, with the wire's own counts.
+ *
+ * `asks_open` is the backend's OUTSTANDING tally (`open` OR `timed_out`), which
+ * is the one count that is not the split: the split is derived from the rows, and
+ * that is the whole point of `waiting`/`movedOn`. `over` exists so a band can
+ * publish a tally its rows do not add up to (the `truncated` case).
+ */
+const asksFrontend = (
+	asks: PendingAsk[],
+	over: Partial<CanonicalFrontendState> = {},
+): CanonicalFrontendState =>
+	({
+		goal: "",
+		loop: null,
+		asks,
+		asks_open: asks.filter(
+			(row) => row.status === "open" || row.status === "timed_out",
+		).length,
+		asks_truncated: false,
+		...over,
+	}) as CanonicalFrontendState;
+
+/**
+ * One band: the composer, the panel the item opens, and the row the item is in.
+ *
+ * The floor is the ONE flag, owned here the way `chat-page.tsx` owns it: `open`
+ * feeds the panel's `expanded` AND the item's `askExpanded`, and both doors are
+ * the same setter. A band that pinned either half would photograph a state the
+ * press could not reach (U2).
+ */
+const AskBand = ({
+	width = 900,
+	label,
+	asks,
+	runDetails = null,
+	goal = "",
+	tally,
+	defaultOpen = false,
+	drive = false,
+	focusPanel = false,
+}: {
+	width?: number;
+	label: string;
+	asks: PendingAsk[];
+	runDetails?: RunDetails | null;
+	goal?: string;
+	/** A published count the rows do not add up to; the truncated case. */
+	tally?: number;
+	/** Pinned open for a still: the panel and the item read the same state. */
+	defaultOpen?: boolean;
+	/** Press the chip on mount and hold the shutter until the panel is up. */
+	drive?: boolean;
+	/** Focus the chip, press it, and hold the shutter until focus lands. */
+	focusPanel?: boolean;
+}) => {
+	const [open, setOpen] = useState(defaultOpen);
+	usePressTheChipOnce(drive);
+	useFocusThePanelOnce(focusPanel);
+	/*
+	 * The published override for the truncated case: the WIRE's cap is what makes
+	 * the split unknowable, so the fixture states both halves of that fact - the
+	 * backend's own tally AND the flag that says the list it published is a prefix.
+	 */
+	const published =
+		tally === undefined ? {} : { asks_open: tally, asks_truncated: true };
+	return (
+		/*
+		 * THE BAND AND THE DRAWER SIDE BY SIDE, because the drawer is now the right
+		 * slot's fifth occupant rather than a column on this band (design note §2): the
+		 * panel the chip opens is NOT a child of the composer any more, and a story that
+		 * kept rendering it there would photograph a layout the app cannot produce.
+		 */
+		<div className="flex items-stretch gap-0 bg-canvas">
+			<Composer width={width} label={label}>
+				<ComposerStatusRow
+					frontend={asksFrontend(asks, { ...published, goal })}
+					runDetails={runDetails}
+					isSmallView={width <= SMALL_VIEW_PX}
+					askExpanded={open}
+					onAskToggle={setOpen}
+					/*
+					 * THE SAME PINNED CLOCK THE DRAWER GETS. The item prints the soonest waiting
+					 * deadline now, and a countdown rendered against the wall clock cannot be
+					 * photographed twice into the same frame - nor can a frame's reading be
+					 * compared with the drawer row's beside it.
+					 */
+					nowMs={ASK_NOW}
+				/>
+			</Composer>
+			{open && (
+				<div className="flex h-[600px] w-[400px] shrink-0 flex-col">
+					<AskDrawer
+						frontend={asksFrontend(asks, published)}
+						scope="session"
+						onClose={() => setOpen(false)}
+						nowMs={ASK_NOW}
+						drafts={EMPTY_DRAFTS}
+						onDraftChange={() => undefined}
+						onAnswer={() => undefined}
+						onDecline={() => undefined}
+					/>
+				</div>
+			)}
+		</div>
+	);
+};
+
+/**
+ * Press the chip itself, once, and hold the shutter until the panel is up.
+ *
+ * The same handshake `useOpenLastGoal` uses, and for the same reason: the state a
+ * press produces arrives a paint later, so the rig polls the DOM (the panel's own
+ * root) instead of sleeping. On exhaustion nothing is released, which makes the
+ * rig THROW on this story rather than photograph the collapsed band under a
+ * driven name.
+ *
+ * The LAST chip in the document is the one pressed, so a story that renders other
+ * bands needs no further addressing.
+ */
+const usePressTheChipOnce = (enabled: boolean) => {
+	useEffect(() => {
+		if (!enabled) return;
+		const chips = document.querySelectorAll<HTMLButtonElement>(
+			"[data-lo-ask-item-toggle]",
+		);
+		const chip = chips[chips.length - 1];
+		if (!chip) return;
+		document.documentElement.dataset.capturePending = "1";
+		chip.click();
+		const poll = window.setInterval(() => {
+			if (!document.querySelector("[data-lo-ask-surfaces]")) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, [enabled]);
+};
+
+/**
+ * Focus the chip, PRESS it, and hold the shutter until focus lands in the panel.
+ *
+ * This is the SETTLED case's keyboard path, and it cannot be a pinned state: the
+ * landing stop is produced by the panel's own focus move, which only fires on a
+ * transition that found focus on the item - so the story has to do what the user
+ * does (`focus()` then `click()`, in that order: a scripted click alone moves no
+ * focus). What the frame is for is the FOCUS RING on that stop (agent review round
+ * 2, F9; UX round 2, U4): a still has no focus, so the one panel visual no other
+ * frame in the set can carry has to be produced by a story that puts focus there.
+ *
+ * The poll waits for the ring's own condition rather than for the panel: the panel
+ * mounts a paint before focus moves into it, and a frame taken in between would
+ * show a panel with the keyboard nowhere.
+ */
+const useFocusThePanelOnce = (enabled: boolean) => {
+	useEffect(() => {
+		if (!enabled) return;
+		const chips = document.querySelectorAll<HTMLButtonElement>(
+			"[data-lo-ask-item-toggle]",
+		);
+		const chip = chips[chips.length - 1];
+		if (!chip) return;
+		document.documentElement.dataset.capturePending = "1";
+		chip.focus();
+		chip.click();
+		const poll = window.setInterval(() => {
+			const panel = document.querySelector("[data-lo-ask-surfaces]");
+			if (!panel || !panel.contains(document.activeElement)) return;
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		}, 40);
+		return () => {
+			window.clearInterval(poll);
+			document.documentElement.removeAttribute("data-capture-pending");
+		};
+	}, [enabled]);
+};
+
+/** One ask waiting: the item's ATTENTION state, beside the box it will answer into. */
+export const AskWaiting: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="One open ask, forty-eight minutes left on it"
+			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/** Everything answered: the quiet register, kept on screen like a resolved plan. */
+export const AskSettled: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A settled queue: `All asks settled`, in the muted rest state every other settled chip uses"
+			asks={[ASK_ANSWERED]}
+		/>
+	),
+};
+
+/** The deadline passed: quiet, and distinguishable from answered in the panel. */
+export const AskMovedOn: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A moved-on ask: `1 question moved on` — quiet, because the agent is no longer waiting on it"
+			asks={[ASK_MOVED_ON]}
+		/>
+	),
+};
+
+/** Two waits: the `N` form, matching `2 wakes armed` in the chips beside it. */
+export const AskMultiple: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Two open asks: forty-eight minutes left on one, fifty on the other"
+			asks={[ASK_OPEN, ASK_SECOND]}
+		/>
+	),
+};
+
+/**
+ * A MIXED queue: one still waiting, one the agent moved on from.
+ *
+ * The visible clause says only the waiting half (a chip is a register, not a
+ * paragraph) and the announced name carries the split - open the tooltip or read
+ * `aria-label` to see `1 question waiting · 1 moved on`. This is the state where
+ * the old strip could say nothing at all but `2 questions waiting`.
+ */
+export const AskMixed: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="One ask waiting, one the agent moved on from"
+			asks={[ASK_OPEN, ASK_MOVED_ON]}
+		/>
+	),
+};
+
+/**
+ * A TRUNCATED frame: the wire caps the list, so the split is unknowable.
+ *
+ * The clause states the backend's own outstanding tally instead of splitting a
+ * prefix as if it were the whole queue - and the same rule covers a frame whose
+ * rows lag the tally without being marked truncated (agent review round 1, F2).
+ */
+export const AskTruncated: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A capped list with a published tally: the frame carries one row and the backend counts twelve"
+			asks={[ASK_OPEN]}
+			tally={12}
+		/>
+	),
+};
+
+/** Zero asks: the affordance is absent, and the row's other chips are not. */
+export const AskZero: Story = {
+	render: () => (
+		<AskBand
+			width={585}
+			label="Zero asks: no item at all, while the row's own chips stand exactly as they do beside it"
+			asks={[]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/** The neighbours the item has to sit among, at the row's own order. */
+const ASK_NEIGHBOURS_DETAILS: RunDetails = deriveRunDetails({
+	jobs: [],
+	todos: planOf(["pending", "done"]),
+	wakes: [
+		wakeOf("w1", "Stand-up reminder", 12),
+		wakeOf("w2", "Sweep the ingest queue", 90, 90),
+	],
+	monitors: [monitorOf("m1", "loom-pr-1710", 1)],
+	nowMs: WAKE_NOW_MS,
+});
+
+/**
+ * The item between its neighbours: goal, plan, ask, wakes, monitors — the row's
+ * own order, with the ask chip after the plan and before the wakes.
+ *
+ * 585px is the measure the BEFORE half was captured at (the old pane width minus
+ * this harness's own padding), so the pair is a fair comparison of one arrangement
+ * against the other at one width.
+ */
+export const AskNeighbours: Story = {
+	render: () => (
+		<AskBand
+			width={585}
+			label="Goal, plan, ask, wakes, monitors: the ask item in the register it now belongs to"
+			asks={[ASK_OPEN]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/** The same row at the narrow band: the item must not wrap or truncate wrongly. */
+export const AskNeighboursNarrow: Story = {
+	render: () => (
+		<AskBand
+			width={393}
+			label="The same five chips at 393px: the item wraps with its neighbours rather than claiming a row"
+			asks={[ASK_OPEN]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/**
+ * The LONGEST clause at the narrow band (`1 question moved on`, 148.39px against
+ * the waiting clause's 133.47px): the one place a width defect could show.
+ */
+export const AskNarrowLongest: Story = {
+	render: () => (
+		<AskBand
+			width={393}
+			label="The longest clause at 393px: `1 question moved on` wraps as a unit rather than truncating"
+			asks={[ASK_MOVED_ON]}
+			goal="Reconcile the March invoices"
+			runDetails={ASK_NEIGHBOURS_DETAILS}
+		/>
+	),
+};
+
+/** Expanded over a settled queue: the question as asked and the answer as given. */
+export const AskExpandedSettled: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Settled and expanded: the item reads `Collapse …` and the panel carries the question and its answer"
+			asks={[ASK_ANSWERED]}
+			defaultOpen
+		/>
+	),
+};
+
+/** Expanded over a moved-on ask: still answerable, and it says so. */
+export const AskExpandedMovedOn: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Moved on and expanded: `Timed out - the agent moved on`, and the answer controls stay live"
+			asks={[ASK_MOVED_ON]}
+			defaultOpen
+		/>
+	),
+};
+
+/**
+ * Expanded over a WAITING ask: the one combination the first pair could not show -
+ * the item in its ATTENTION register with its panel open, and the composer in ask
+ * mode (design round 1, D2).
+ */
+export const AskExpandedWaiting: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Waiting and expanded: the attention item open, with the form that answers it"
+			asks={[ASK_OPEN]}
+			defaultOpen
+		/>
+	),
+};
+
+/** Expanded over two waits: the `N` form with its panel. */
+export const AskExpandedMultiple: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Two waits and expanded: `2 questions waiting`, and the queue's two forms behind it"
+			asks={[ASK_OPEN, ASK_SECOND]}
+			defaultOpen
+		/>
+	),
+};
+
+/**
+ * DRIVEN, not pinned: this band starts collapsed and the chip is PRESSED after the
+ * first paint, so the frame is the state a reader's own press produces - the
+ * evidence the first round's stills could not carry (UX round 1, U2; QA Q-1).
+ *
+ * `data-capture-pending` holds the rig's shutter until the panel's own root is up,
+ * so a frame filed under this name cannot be a collapsed band.
+ */
+export const AskDriven: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Pressed, not pinned: the chip clicks itself after paint and the panel opens from it"
+			asks={[ASK_OPEN]}
+			drive
+		/>
+	),
+};
+
+/**
+ * The SETTLED panel's landing stop, FOCUSED: the ring the app's base layer paints.
+ *
+ * The one panel visual a still otherwise cannot carry, so it needs a story that
+ * puts focus there rather than a pinned flag (agent review round 2, F9; UX round 2,
+ * U4). A settled queue has no controls to land on, so the panel ROOT is the stop -
+ * `tabIndex={-1}` plus the app's `html :focus-visible` rule, which is what the root
+ * no longer suppresses with `outline-none`. The chip is focused and then pressed,
+ * exactly as a keyboard user reaches it, because the app's focus move is guarded on
+ * the transition finding focus on the item.
+ *
+ * AFTER-ONLY, like `driven-open`: the old surface's panel had no scripted landing
+ * stop at all, so there is no before half to pair with this (the set's README says
+ * so).
+ */
+export const AskFocusedPanel: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Settled and focused: the panel root carries the keyboard, and the ring shows it"
+			asks={[ASK_ANSWERED]}
+			focusPanel
+		/>
+	),
+};
+
+/**
+ * THE COUNTDOWN ON THE COLLAPSED FACE, and urgency with an ink of its own.
+ *
+ * The audit's two remaining items, in one frame: the item states the soonest
+ * waiting deadline, and its mark steps to `warning` for it. The fixture's window is
+ * the wire's own short one (900 seconds, three minutes left at the pinned clock),
+ * which is also what makes the ink truthful - before this pass the item said
+ * `1 question waiting` with an `accent` mark and neither fact was on screen anywhere
+ * without opening the panel.
+ */
+export const AskUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="One urgent ask: the wire's own 900-second window, three minutes left on it"
+			asks={[ASK_URGENT]}
+		/>
+	),
+};
+
+/**
+ * TWO WINDOWS, ONE NUMBER: the item names no ask, so the countdown carries a subject.
+ *
+ * `AskOpen` has forty-eight minutes left and `AskSecondWindow` twenty; the number
+ * printed is the SOONER one's, and the `soonest ask` subject is what keeps it from
+ * reading as whichever ask the reader had in mind (design round 1's D2, with the head
+ * noun design round 3's D4 asked for).
+ * whichever ask the reader had in mind (design round 1's D2).
+ */
+export const AskTwoWindows: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="Two waiting asks with DIFFERENT windows: forty-eight minutes left on one, twenty on the other"
+			asks={[ASK_OPEN, ASK_SECOND_WINDOW]}
+		/>
+	),
+};
+
+/**
+ * THE APP'S APPLIED FLOOR, in this set's own unit: a 480px column, whose composer box
+ * is 432px.
+ *
+ * THE COLUMN'S FLOOR IS 480, NOT 220 AND NOT 172 (`chat-sidebar-layout.ts`'s
+ * `CHAT_PANE_MIN_PX`, applied by §I and asserted EXACTLY by
+ * `scripts/chat-pane-floors.test.mjs`; that test's own note records that the
+ * assertion it replaced allowed `(0, 480]` "while the tree was still at 220"). The
+ * composer band insets the box 24px each side, so the widest tier this row has
+ * (341px, the subject's yield) cannot bind until the column falls to about 389px -
+ * which is why this frame is the honest floor and the earlier one was not: it pins
+ * the box at 432, and the countdown IS painted here, in full, subject and sentence.
+ *
+ * WHAT THIS FRAME IS FOR, therefore: it is the frame that says the yield is a
+ * container-query SAFETY NET rather than a rule the product applies - at every width
+ * the app can currently produce, the item paints the whole clause, and the tier
+ * frames below (`241`, `260`) photograph a narrowing it does not reach.
+ *
+ * Agent review round 2's F1 is why this exists at all: the set used to pin 220 (a
+ * retracted floor) and then 172 (the composer box inside that 220 column, i.e. a
+ * layout the app no longer renders), both of which claimed more about the product than
+ * the numbers support.
+ */
+export const AskColumnFloorApplied: Story = {
+	render: () => (
+		<AskBand
+			width={432}
+			label="The applied floor: a 480px column, whose composer box is 432px - the window the app's own floor produces"
+			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/**
+ * THE BAND WHERE THE COUNTDOWN USED TO BE CUT (design round 4's MAJOR).
+ *
+ * The sentence does not fit a 241px column, and an earlier cut let it ellipsise
+ * there - painting `expires in 4...`, a prefix of BOTH `4m` and `48m`, beside an
+ * urgency ink claiming fifteen minutes or less. These three states exist to
+ * photograph the band and to assert the countdown is never partial in it: the
+ * subject yields first, the sentence gives way to the VALUE whole, and the row keeps
+ * its column.
+ */
+export const AskMultipleBand260: Story = {
+	render: () => (
+		<AskBand
+			width={260}
+			label="Two open asks at 260px: the sentence yields WHOLE to the value - the countdown is never cut mid-number"
+			asks={[ASK_OPEN, ASK_SECOND]}
+		/>
+	),
+};
+
+export const AskTwoWindowsBand260: Story = {
+	render: () => (
+		<AskBand
+			width={260}
+			label="Two windows at 260px: the same yield, on the state whose number belongs to the sooner ask"
+			asks={[ASK_OPEN, ASK_SECOND_WINDOW]}
+		/>
+	),
+};
+
+export const AskMultipleBand241: Story = {
+	render: () => (
+		<AskBand
+			width={241}
+			label="Two open asks at the 241px band edge: the value is whole here, which is what this state exists to show"
+			asks={[ASK_OPEN, ASK_SECOND]}
+		/>
+	),
+};
+
+/** An urgent ask with its panel open: the row's mark is `warning`, glyph unchanged. */
+export const AskExpandedUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="An urgent ask with the panel open"
+			asks={[ASK_URGENT]}
+			defaultOpen
+		/>
+	),
+};
+
+/**
+ * MOVED ON **AND** URGENT: the case the ink arm must not repaint.
+ *
+ * The urgency arm sets ink, never glyph. A timed-out ask's status glyph is the
+ * Clock, and an early cut of that arm returned `HelpCircle` before the status
+ * switch - so one glyph meant both "open, maybe urgent" and "timed out, urgent"
+ * (design round 1's D5). This frame is the one that would move if it regressed.
+ */
+export const AskExpandedMovedOnUrgent: Story = {
+	render: () => (
+		<AskBand
+			width={569}
+			label="A MOVED-ON ask that was urgent, with the panel open"
+			asks={[ASK_MOVED_ON_URGENT]}
+			defaultOpen
+		/>
+	),
+};
+
+/*
+ * THE COMPOSER'S OWN ASK MODE, WITH THE DRAWER BESIDE IT (design round 1, D2).
+ *
+ * WHY THIS FRAME HAD TO EXIST BEFORE ANYBODY COULD RULE ON IT. The shipped flag is
+ * `askExpanded = isAskDrawerOpen` (`chat-page.tsx`), so while the drawer is open the
+ * composer still routes Enter to the same ask - TWO LIVE DOORS TO ONE QUESTION - and
+ * every band frame above shows the hand-built box reading "A message would be typed
+ * here." (see `Composer`). The composition the design round was asked to judge
+ * therefore had no committed story at all, and a ruling on it was a ruling on
+ * something nobody had rendered. These stories are that state, rendered with the
+ * production composer: the real `MessageInput` wiring the ask-mode sentence and
+ * `askMode` exactly as `chat-content.tsx` does (`placeholderOverride` + `askMode`),
+ * beside the real `AskDrawer` reading the same queue.
+ *
+ * WHAT THEY SHOW, AND WHAT THEY DO NOT. That the two doors are legible as SURFACES -
+ * the composer prints `Answering the agent's question - Esc to collapse` in its own
+ * ring while the drawer's bar prints the scope line over a card with the question -
+ * and that they are NOT equivalent as doors: the composer's Enter writes the raw
+ * typed text into the first unanswered question, so a value the option list never
+ * offered arrives as a free-form answer. The card now DRAWS that value, marked
+ * `Other` (`ask-panel.tsx`'s free-form row), so what the composer's door produced is
+ * visible in the drawer instead of looking like a question with nothing selected. The
+ * ruling is the design note's §5.0 invariant kept: the composer answers, and the
+ * note's §2C sentence about one surface is the outlier.
+ *
+ * THE BRIDGE IS AT MODULE SCOPE, because `MessageInput` reaches `window.electron`
+ * from a passive mount effect: a mock installed by a decorator arrives a commit too
+ * late, which is the same reason `composer-band.stories.tsx` installs it here.
+ */
+window.electron = {
+	...(window.electron ?? {}),
+	ipcRenderer: {
+		...(window.electron?.ipcRenderer ?? {}),
+		on: () => () => {},
+		removeListener: () => window.electron.ipcRenderer,
+		send: () => {},
+		invoke: async (channel: string) =>
+			channel === "get-platform-info"
+				? { platform: "darwin" }
+				: { canceled: true, filePaths: [] },
+	},
+} as typeof window.electron;
+
+/** One band: the status row, the real composer, and the drawer that shares its queue. */
+const AskModeBand = ({
+	label,
+	asks,
+	askMode = true,
+	drawerOpen = true,
+}: {
+	label: string;
+	asks: PendingAsk[];
+	/** The control half: the same box with the app's own invitation. */
+	askMode?: boolean;
+	/** The control half's other half: the pair's frame has the drawer up. */
+	drawerOpen?: boolean;
+}) => (
+	<div className="flex items-stretch gap-0 bg-canvas">
+		<div className="flex flex-col bg-canvas p-6" style={{ width: 569 + 48 }}>
+			<p className="pb-2 text-ink-dim text-meta">{label}</p>
+			<div
+				className="@container/chatcol flex flex-col gap-3"
+				style={{ width: 569 }}
+			>
+				<ComposerStatusRow
+					frontend={asksFrontend(asks)}
+					runDetails={null}
+					askExpanded={true}
+					onAskToggle={() => undefined}
+					nowMs={ASK_NOW}
+				/>
+				<MessageInput
+					isLoading={false}
+					messages={[]}
+					conversationId={`ask-mode-${askMode ? "answer" : "idle"}`}
+					initialSuggestions={[]}
+					isSmallView={false}
+					onSendMessage={async () => true}
+					placeholderOverride={askMode ? ASK_COMPOSER_PLACEHOLDER : undefined}
+					askMode={askMode}
+				/>
+			</div>
+		</div>
+		{drawerOpen ? (
+			<div className="flex h-[600px] w-[400px] shrink-0 flex-col">
+				<AskDrawer
+					frontend={asksFrontend(asks)}
+					scope="session"
+					onClose={() => undefined}
+					nowMs={ASK_NOW}
+					drafts={EMPTY_DRAFTS}
+					onDraftChange={() => undefined}
+					onAnswer={() => undefined}
+					onDecline={() => undefined}
+				/>
+			</div>
+		) : null}
+	</div>
+);
+
+/**
+ * THE D2 FRAME: the drawer up, and the composer beside it still answering that ask.
+ *
+ * The two live answer surfaces are a deliberate invariant (design §5.0), and this is
+ * the frame the ruling is read off: one question, two doors, each legible as what it
+ * is.
+ */
+export const AskDrivenDrawerOpen: Story = {
+	render: () => (
+		<AskModeBand
+			label="drawer open: the composer still answers the same ask (the §5.0 invariant)"
+			asks={[ASK_OPEN]}
+		/>
+	),
+};
+
+/**
+ * THE D2 PAIR'S CONTROL: the same band with the drawer SHUT and the composer back
+ * on its ordinary invitation.
+ *
+ * The open frame above is the state the ruling is about - two live doors to one
+ * question. This is the other half of the pair, and it is what makes the open frame
+ * readable as a change rather than as the only state there is: same band, same
+ * queue, same composer box, one mode up. It exists as a committed story rather than
+ * only as a design-round PNG because the evidence set's frames are supposed to come
+ * from the tree (design round 2, D6): the round-1 pair came from a rig whose host
+ * lacked the `@container/chatcol` ancestor, so the chip's two yield spans both
+ * painted and both committed frames showed a duration string the product does not
+ * render.
+ */
+export const AskDrivenDrawerClosed: Story = {
+	render: () => (
+		<AskModeBand
+			label="drawer shut: the same box on its ordinary invitation"
+			asks={[ASK_OPEN]}
+			askMode={false}
+			drawerOpen={false}
+		/>
+	),
 };

@@ -9,11 +9,14 @@ Provenance: the six freshness frames were captured from a built app on
 `78e46042b` - the commit that gives the note its floor and lets the stamp
 ellipsise - and were added to the branch by `1c5fae31d`. The entry's
 `capturedAtHead` is not that sha: it names the commit the ONE run that produced all
-fifteen frames stood on - `5a34f77d3` on this lineage, the rebased spelling of the
-pre-rebase `ce8bfb5ac` (range-diff pair 7 is `=`) - because that run re-took the
-nine close frames whole and reproduced the six byte for byte. The manifest's
-`srcTree`/`scriptsTree` are a different pair by design: the manifest test binds them to the trees of the commit the manifest ships in, and the fold that
-followed re-serialised this entry without touching a pixel.
+fifteen frames stood on. For the generation this README first described that was
+`5a34f77d3` on this lineage, the rebased spelling of the pre-rebase `ce8bfb5ac`
+(range-diff pair 7 is `=`) - that run re-took the nine close frames whole and
+reproduced the six byte for byte. After the 2026-10-03 whole-set re-shoot (below)
+the field names `bd4c95f77`, the tree that pass's one run stood on. (The manifest
+used to bind a pair of tree stamps beside that citation; those are retired — the
+file stamps its counts and its citations, not the trees — and the fold that
+followed re-serialised this entry without touching a pixel.)
 
 The nine **close** frames were re-taken, whole set, on the head this branch then
 stood on: the five that were already here (`close-clean`, `close-settled`, `close-held`,
@@ -22,8 +25,9 @@ for - `close-kept` (what a close whose write fails now says), `close-neighbour`
 and `close-preceding` (where a close leaves the reader, both arms of the rule),
 and `close-overflow` (the selected tab's ✕ in a strip that scrolls). Every one of
 them came out of ONE run of the scene, which is also the run that produced the six
-frames above; the six are left as they were captured (`1c5fae31d`), and the entry's
-`capturedAtHead` names the commit that one run stood on.
+frames above; the six were left as they were captured (`1c5fae31d`) until the
+2026-10-03 re-shoot below re-took the whole set, and the entry's `capturedAtHead`
+now names that run's tree.
 
 The re-take is not tidiness. Three of this round's changes move pixels the old set
 showed: the tab a close selects (D1) and the focus that moves with it (D3/U2), the
@@ -32,21 +36,36 @@ The close-pass story from the earlier fold - the write-time materialisation cach
 that made the five byte-different, `shasum -a 256` on the re-run - is kept below in
 the manifest entry, which is where a reader checks provenance.
 
-**Two of the fifteen carry chrome HEAD no longer paints, and it is the pane behind
-them rather than the close.** `close-kept` and `close-held-after` both end on the
-canvas's EMPTY state, which PR #364 rewrote in the merge this branch is folded onto:
-they show the pre-#364 pane - two actions, `New file` and `Open file`, with the
-description breaking into three lines and an orphaned `too.` - where HEAD paints
-three (`Browse files (N)`, `Open file from disk`, `New file`) inside `max-w-80`, on
-two lines. The chrome is not what either frame is a picture OF: one is the sentence
-a refused write raises, the other the strip empty with the store listing no tab, and
-the close handler sits in a region #364 does not touch. They were not re-shot
-because this scene has no phase isolation - one run of `--scene canvas-freshness`
-produces all fifteen frames through its 109 checks - so re-taking those two means
-re-taking the set. The empty state as HEAD paints it is photographed by #364's own
-frames in [`../canvas-workspace/`](../canvas-workspace/): `nothing-open`,
-`nothing-open-empty` and `nothing-open-narrow`. Read the two together: these for
-what the close did, those for what the pane paints.
+**RE-SHOT WHOLE, 2026-10-03, at `bd4c95f7761` (the #775 fold).** The
+fifteen frames this README describes were captured on the July-era shell; the
+app has moved since on facts the frames carry (the sidebar and header chrome,
+and the empty pane the close frames end on — see the next paragraph). One run
+of the scene re-took all fifteen with **ALL CHECKS PASSED**, 109 checks
+including the CSP note the run itself raises (`already widened for
+http://127.0.0.1:8080`) and the probe/write instruments it proves before
+trusting; `TZ=America/New_York` is pinned for the mtime line's rendering (the
+scene fixes the epoch itself regardless). The new generation is lossless WebP
+at the run's default window at DPR 2 (2760x1800), the same
+`<frame>/localOperatorDark.webp` layout as before.
+
+The pass also CLEARS the two sweep paint rejections: `html-before`/`html-after`
+now carry the dark shell's own ground as the frame's mode colour (measured:
+`#22201C` at 34.46% coverage; the previous generation was `#FFFFFF` at
+39.25%), so `assertFramePaints` returns clean on both and the two frames are no
+longer exceptions a sweep has to scope.
+
+**Two of the fifteen USED TO carry chrome HEAD no longer paints — the
+re-shoot above is the repair.** `close-kept` and `close-held-after` ended on
+the canvas's pre-#364 EMPTY state (two actions, `New file` and `Open file`,
+with the description breaking into three lines and an orphaned `too.`) where
+HEAD paints three (`Browse files (N)`, `Open file from disk`, `New file`)
+inside `max-w-80`, on two lines. They could not be re-shot on their own — this
+scene has no phase isolation; one run produces all fifteen through its 109
+checks — so re-taking those two meant re-taking the set, which the 2026-10-03
+pass above did: both frames now paint HEAD's empty state. The historical
+reading stays here because it explains why the debt sat until a whole-set pass.
+#364's own frames remain in [`../canvas-workspace/`](../canvas-workspace/):
+`nothing-open`, `nothing-open-empty` and `nothing-open-narrow`.
 
 They exist because the claims under review are claims about a running
 application, and a unit test with a fake bridge cannot reach any end of them:
@@ -72,12 +91,12 @@ application, and a unit test with a fake bridge cannot reach any end of them:
 | [`html-before/localOperatorDark.webp`](html-before/localOperatorDark.webp) | An HTML document in the viewer whose bytes the BACKEND fetches, showing `html-first-version` and the file's mtime. The viewer's own bar carries one control now - the Edit toggle - because its separate reload button was dropped (design round 2, D8): the row's press re-keys the iframe below, so the two were the same action 32px apart. |
 | [`close-clean/localOperatorDark.webp`](close-clean/localOperatorDark.webp) | **The reported bug, at the moment before the press.** Two tabs, the selected one (`close-clean.md`) carrying the ✕ this frame's phase is about to press - revealed on the selected tab, which is where a reader's pointer goes. The strip is deliberately this small: the earlier phases leave six documents open, and with those the strip scrolls, which puts a tab's ✕ under the strip's pinned overflow control. The driver's own `press` reported exactly that (`hitTest: false`, naming the overflow button as the element at the point) before this phase closed those six first, so every press it asserts on now carries `hitTest: true` - a claim about where a reader's click lands, not only about a dispatched event reaching the handler. |
 | [`close-settled/localOperatorDark.webp`](close-settled/localOperatorDark.webp) | **A closed tab stays closed.** The same window **4.2 seconds after** the press on that ✕ - past the markdown editor's three-second debounce and two of the pane's two-second polls, which is the window the bug lived in: the close itself was always correct (the tab left `files` at the press), and the viewer's UNMOUNT commit is what put the document back, so a frame taken at the press would have proved nothing. `close-clean.md` is still absent from the strip, its ✕ is gone from the DOM, and the app's own persisted `canvas-store` snapshot holds no document **and no tab** for it - the run asserts all three, `openTabs` included (agent review round 1, M1, which is what the third read is for). What is left is the second subject, `close-held.md`, selected and showing `held-version`. |
-| [`close-kept/localOperatorDark.webp`](close-kept/localOperatorDark.webp) | **What a close that could not write the reader's words says about it** (UX round 1, U1). The held document has just been closed, the pane is on its empty state (that pane's chrome here is the pre-#364 one - see the note above), and the app's own toast carries the sentence: `Closed close-held.md. Your edits could not be saved, and are kept until the app quits — opening it again brings them back.` The words are in the sentence because a boundary the reader cannot read is one they will get wrong: the registries that hold them are module state, so "kept" means until the app quits. The run asserts the toast's text against `close-copy.ts` - parsed out of the module rather than spelled out a second time in the scene - and asserts that a CLEAN close raises no toast at all, so the message is a report and not a reflex. This is the one frame in the set that is meant to have a toast on it: every other one is captured with `captureSettled`, which waits for the app's toasts to clear. |
+| [`close-kept/localOperatorDark.webp`](close-kept/localOperatorDark.webp) | **What a close that could not write the reader's words says about it** (UX round 1, U1). the held document has just been closed, the pane is on HEAD's empty state (the 2026-10-03 whole-set pass re-shot this frame - the note above records the pre-#364 chrome it used to paint), and the app's own toast carries the sentence: `Closed close-held.md. Your edits could not be saved, and are kept until the app quits — opening it again brings them back.` The words are in the sentence because a boundary the reader cannot read is one they will get wrong: the registries that hold them are module state, so "kept" means until the app quits. The run asserts the toast's text against `close-copy.ts` - parsed out of the module rather than spelled out a second time in the scene - and asserts that a CLEAN close raises no toast at all, so the message is a report and not a reflex. This is the one frame in the set that is meant to have a toast on it: every other one is captured with `captureSettled`, which waits for the app's toasts to clear. |
 | [`close-neighbour/localOperatorDark.webp`](close-neighbour/localOperatorDark.webp) | **Where a close leaves the reader** (design review round 1, D1; UX round 1, U2). Four documents of this phase's own, because with two tabs "first" and "neighbour" are the same tab and this defect is invisible: the middle tab (`neighbour-b.md`) was selected, its ✕ pressed, and the reader is on `neighbour-c.md` - the tab that took its place - with the focus ring on it, rather than on `close-held.md`, the oldest document open. The run reads the strip's own `aria-selected`, the store's `selectedTabId` and `document.activeElement`, so the landing and the focus are asserted where the reader would see them. On the `origin/main` this branches from, the same press lands on the FIRST tab (`typing.py`, the oldest open) and focus falls to the document body - measured, same scene, same command, same daemon. |
 | [`close-preceding/localOperatorDark.webp`](close-preceding/localOperatorDark.webp) | **The rule's other arm.** The last tab (`neighbour-d.md`) closed, and the reader is on the one before it - the preceding tab, not the oldest one. Both arms are asserted in the driven run, and the module suite asserts the rule itself on the shipped `tabFollowingClose` (`scripts/canvas-tab-close.test.mjs`, case (a3)). |
 | [`close-overflow/localOperatorDark.webp`](close-overflow/localOperatorDark.webp) | **The selected tab's ✕ in a strip that scrolls** (UX round 1, U3). Eleven documents open, the strip `scrollWidth > clientWidth`, and the selected tab - `many-8.md`, rightmost - showing its ✕ inside the strip's own box. Measured in the run: `{"visiblePx":20,"widthPx":20,"hitIsControl":true,"atCentre":"Close many-8.md"}` - the pixel at the ✕'s centre is the ✕, so a press there closes the document the reader is on. Before this round the strip scrolled the tab's LABEL into view while the ✕ is its sibling, and the same measurement on the base answered `visiblePx 0` with `atCentre: "All open files"`: the reader aiming at the close opened the overflow menu, which cannot close anything. |
 | [`close-held/localOperatorDark.webp`](close-held/localOperatorDark.webp) | The second subject in the state that makes the asked-for promise interesting: a dirty buffer - the reader's own `CLOSEREADER` (already written through the gate) and `CLOSEDIRTY` (not) - over a file rewritten from outside, so the row says `Changed on disk — load it, or save to replace it.` This is the tab the next press closes, and the state its words have to survive. |
-| [`close-held-after/localOperatorDark.webp`](close-held-after/localOperatorDark.webp) | The HELD tab closed too: the strip is empty and the pane is back to its own empty state (pre-#364 chrome again - see the note above). This frame is the SETTLED one - captured after `close-kept`'s toast has retired, which is why the report is a separate frame rather than a line in this one. The run asserts the file's sha256 either side of that press - it is still the EXTERNAL version, nothing was written over the version the app refused to overwrite - and that the store lists neither the document nor a tab for it, and that the close's own writes never re-list it. This is the half the old upsert was reaching for and getting wrong: the words had to be kept, and the tab had to stay closed. |
+| [`close-held-after/localOperatorDark.webp`](close-held-after/localOperatorDark.webp) | The HELD tab closed too: the strip is empty and the pane is back to its own empty state (HEAD's - the 2026-10-03 re-shoot repaired the pre-#364 chrome the older copy of this frame painted; the note above records it). This frame is the SETTLED one - captured after `close-kept`'s toast has retired, which is why the report is a separate frame rather than a line in this one. The run asserts the file's sha256 either side of that press - it is still the EXTERNAL version, nothing was written over the version the app refused to overwrite - and that the store lists neither the document nor a tab for it, and that the close's own writes never re-list it. This is the half the old upsert was reaching for and getting wrong: the words had to be kept, and the tab had to stay closed. |
 | [`close-reopen/localOperatorDark.webp`](close-reopen/localOperatorDark.webp) | **What the promise actually is.** The same PATH opened again in the same session, the way the files grid opens a document: the file is re-read (the store's copy is the external version), and the canvas is handed the buffer owner's words instead - `held-versionCLOSEREADERCLOSEDIRTY` is back on screen, under a row that still says the file moved on, with the re-read control beside it. The run asserts the row's sentence, that the external body is NOT what the editor shows, and that the store's own copy is still the FILE's version - the projection is a read, not a second `files`. The promise is a session one (the words do not survive a restart, and the same boundary applies to an OPEN held document, which the module suite measures); that is stated on `documentsForCanvas` and in the pull request. |
 | [`html-after/localOperatorDark.webp`](html-after/localOperatorDark.webp) | The same viewer after the file was rewritten from outside: `html-second-version` is on screen, the line moved with it, and the row says `Re-read` (its ANSWER register, which now retires after 8s rather than standing for ever). This is code review round 1's M1, which the store write alone could not reach: before the fix the line moved, the store held the new bytes, and the preview kept showing the old document. The run asserts the re-fetch directly as well - a new request for `panel.html` appears on the renderer's own request log - because the iframe is cross-origin from the app and its DOM cannot be read back. |
 
@@ -108,28 +127,40 @@ a connection to this run's backend and to nothing else, which is the isolation c
 # 1. build the renderer against the port the scratch backend will listen on
 #    (the four VITE_* client ids the build refuses to start without are stubbed for
 #    this run rather than read out of the operator's own .env - see the
-#    accommodations below)
-env VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:54881 \
+#    accommodations below), then widen the built frame-src for that port
+env VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:8080 \
   VITE_DISABLE_BACKEND_MANAGER=true \
-  VITE_GOOGLE_CLIENT_ID=canvas-close-evidence \
-  VITE_GOOGLE_CLIENT_SECRET=canvas-close-evidence \
-  VITE_MICROSOFT_CLIENT_ID=canvas-close-evidence \
-  VITE_MICROSOFT_TENANT_ID=canvas-close-evidence \
+  VITE_GOOGLE_CLIENT_ID=stub \
+  VITE_GOOGLE_CLIENT_SECRET=stub \
+  VITE_MICROSOFT_CLIENT_ID=stub \
+  VITE_MICROSOFT_TENANT_ID=stub \
   pnpm build
+# add http://127.0.0.1:8080 to frame-src in out/renderer/index.html (src/ stays
+# untouched; out/ is gitignored; the run's first note reports whether it is
+# widened: `already widened for http://127.0.0.1:8080`)
 
 # 2. a scratch backend, with a token only this run holds
 #    (keep it in a 0600 file: the driver requires the SAME token in its own
 #    environment, and it must never be printed)
 export LOCAL_OPERATOR_CONFIG_DIR=$(mktemp -d)/config
 export LOCAL_OPERATOR_DESKTOP_TOKEN=$(openssl rand -hex 32)
-lop serve --port 54881 &            # its record lands in $LOCAL_OPERATOR_CONFIG_DIR/run/serve
+HOME=<scratch>/home LOCAL_OPERATOR_CONFIG_DIR=$LOCAL_OPERATOR_CONFIG_DIR \
+  LOCAL_OPERATOR_DESKTOP_TOKEN=$LOCAL_OPERATOR_DESKTOP_TOKEN \
+  lop serve --port 8080 --hosting test --model mock-model &
+# the app sessions' model comes from the app-level config, which the serve flags
+# do not seed (measured); PATCH is the one spelling that sticks:
+curl -X PATCH http://127.0.0.1:8080/v1/config \
+  -H "Authorization: Bearer $LOCAL_OPERATOR_DESKTOP_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"hosting":"test","model_name":"mock-model"}'
 
-# 3. the scene, which writes the subject files itself
-node scripts/renderer-driver.mjs --scene canvas-freshness \
-  --backend http://127.0.0.1:54881 \
+# 3. the scene, which writes the subject files itself. TZ pinned for the mtime
+#    line's rendering (the scene fixes the epoch regardless).
+TZ=America/New_York node scripts/renderer-driver.mjs --scene canvas-freshness \
+  --backend http://127.0.0.1:8080 \
   --backend-records "$LOCAL_OPERATOR_CONFIG_DIR/run/serve" \
   --seed-onboarding-complete \
-  --out /tmp/canvas-freshness-frames --clean
+  --out <scratch>/canvas-freshness-frames --clean
 ```
 
 Four harness accommodations are worth knowing, because none is a property of
@@ -140,6 +171,9 @@ the app and all are visible from outside:
   it, so the HTML viewer's iframe is refused before a request is made (`src/` is
   untouched and `out/` is gitignored; the run says what it widened). The
   `mentioned-files-app` rig records the same accommodation for its media frames.
+  The 2026-10-03 re-shoot widened `frame-src` for `http://127.0.0.1:8080` in the
+  built `out/renderer/index.html`, and the run's own note reports it verbatim
+  (`already widened for http://127.0.0.1:8080`).
 - **The probe counter is installed in MAIN.** The page cannot be counted from
   itself (`window.api` is a `contextBridge` object, so a wrapper assigned over one
   of its properties is silently ignored - measured, and it is why this scene's

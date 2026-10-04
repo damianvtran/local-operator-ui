@@ -130,6 +130,11 @@ import { TurnSummary } from "../components/trace/turn-summary";
 import { WorkingLine } from "../components/trace/working-line";
 import { focusComposer } from "../composer-field";
 import { MISSING_SESSION_NOTICE_ID } from "../missing-session-notice";
+import {
+	DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+	type TranscriptDisplayMode,
+	parseTranscriptDisplayMode,
+} from "../transcript-display-mode";
 import { CanvasPaneProvider } from "../utils/canvas-pane";
 import { parseReplies } from "../utils/reply-utils";
 import { CanonicalImage } from "./canonical-image";
@@ -204,7 +209,10 @@ import {
 	alignWalkRunKeyConfirmed,
 	alignWalkStateFor,
 	collapsePlan,
+	collapsePlanInputKey,
+	collapseRowsKey,
 	initialAlignWalkState,
+	paintedRows,
 	snapWindowToRunBoundary,
 	widenTarget,
 	windowTopRun,
@@ -234,6 +242,19 @@ import {
 
 const WINDOW = 60;
 const WINDOW_STEP = 60;
+
+/**
+ * DEV INSTRUMENTATION (UI perf audit P1/P4; PR-6): how many times the foot map
+ * and the chat-entry list are rebuilt.
+ *
+ * Both are memos over the window's `visible` rows and both used to rebuild on
+ * every streamed token. These counters are what the benches read to show the
+ * per-token work an input signature removes - the same shape
+ * `dbgCollapsePlanCalls` (`turn-collapse-model.ts`) and `dbgActiveCueScans`
+ * (`use-active-checkpoint.ts`) use. Nothing at runtime reads them.
+ */
+export const dbgFeetRebuilds = { count: 0 };
+export const dbgChatEntriesRebuilds = { count: 0 };
 
 /**
  * How far the render window may be extended to land its top edge on a run
@@ -2657,10 +2678,20 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * the paging hook and a new identity per render would re-create it (and the
 	 * hook's refs) for a value that only an event reads - the same reason
 	 * `rowsRef` exists.
+	 *
+	 * `mode` rides in the SAME ref for the same reason, and it is the reader's
+	 * display mode (M1/Q1): the count below and the plan the list paints from must
+	 * read ONE mode, or the step measures a paint the reader is not looking at.
+	 * The value is the PARSED one (`parseTranscriptDisplayMode`, the read-side
+	 * judge this component already uses at the plan below) rather than the raw
+	 * store value, and it is kept out of `widen`'s dependency list for the reason
+	 * above: a mode change is a re-render, not a new callback identity.
 	 */
 	const widenInputs = useRef<{
 		live: boolean;
 		openRuns: ReadonlySet<string> | undefined;
+		/** The reader's mode, for the widen's paint count (see this ref's note). */
+		mode: TranscriptDisplayMode;
 		/**
 		 * The size the reader is LOOKING at (`alignSize`, the snap's output), which is
 		 * the widen's measuring baseline (agent review round 1, R1-1): the raw
@@ -2671,7 +2702,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * would re-create the hook's refs on every mount change.
 		 */
 		mounted: number;
-	}>({ live: false, openRuns: undefined, mounted: 0 });
+	}>({
+		live: false,
+		openRuns: undefined,
+		mode: DEFAULT_TRANSCRIPT_DISPLAY_MODE,
+		mounted: 0,
+	});
 	const [openRuns, setOpenRuns] = useState<ReadonlySet<string>>(() =>
 		expandedRunsOf(sessionId),
 	);
@@ -2878,6 +2914,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	);
 	const hidden = total - visible.length;
 	/*
+	 * THE WINDOW'S STRUCTURAL SIGNATURE (UI perf audit P1/P4; PR-6). `rows` is
+	 * rebuilt on every streaming flush and `visible` is a fresh slice of it, so a
+	 * memo keyed on either re-ran per streamed token - including the tokens that
+	 * only append to an answer's text. This is ONE serialization of what the
+	 * plan and the feet READ (`collapseRowsKey`, `turn-collapse-model.ts`), and
+	 * every memo below that is arithmetic over the window keys on it instead of
+	 * on the array.
+	 */
+	const rowsKey = useMemo(() => collapseRowsKey(visible), [visible]);
+	/*
 	 * The rail's reader-side cue (design round 1, D2 + U1; the settle re-read
 	 * is UX round 1, N1): one derivation of both halves the rail consumes,
 	 * owned and unit-pinned in `use-active-checkpoint.ts` beside this file.
@@ -2983,7 +3029,17 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 				: group,
 		);
 	}, [visible]);
+	/*
+	 * KEYED ON THE WINDOW'S SIGNATURE, NOT ON `visible` (UI perf audit P4; PR-6).
+	 * The foot is arithmetic over the same partition the plan builds - counts,
+	 * failed ids and worked seconds, all of them structural - so a token that
+	 * only lengthens an answer's text cannot change one entry. The foot map's
+	 * values are read by ID (`feet.get(row.record.id)`), so the
+	 * stale-by-identity map this holds between tokens is the same map.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: rebuilt from `visible` only when the content signature above moves; a `visible` dependency would rebuild it on every streamed token, which is the per-token cost this memo exists to remove.
 	const feet = useMemo(() => {
+		dbgFeetRebuilds.count += 1;
 		/*
 		 * The foot counts the SAME unit the caption rule and the collapse model use:
 		 * the rows are partitioned by `runsOf`, and the tally resets at a run's
@@ -3015,7 +3071,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			isAction: (row) => row.record.kind === "tool",
 			opensRun: (row) => openerIds.has(row.record.id),
 		});
-	}, [visible]);
+	}, [rowsKey]);
 
 	/*
 	 * An empty transcript must not claim the column's free space - UNLESS the
@@ -3191,6 +3247,12 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 					step: WINDOW_STEP,
 					live: widenInputs.current.live,
 					openRuns: widenInputs.current.openRuns,
+					/*
+					 * The reader's OWN mode (M1/Q1): a `by-response` transcript keeps rows the
+					 * `by-turn` plan calls hidden, so a step measured without it stops late and
+					 * commits a larger window than one gesture promises. See `widenInputs`.
+					 */
+					mode: widenInputs.current.mode,
 					snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
 					// The render's OWN second bound (the completed-run allowance), so the
 					// step's painted delta is measured against the window the component
@@ -3204,6 +3266,37 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 			),
 		);
 	}, [total]);
+
+	/*
+	 * THE PAINT COUNT THE PAGING HOOK SETTLES IN (design §5.2).
+	 *
+	 * The hook judges whether a reveal showed the reader anything, and the only
+	 * honest currency for that is the rows the collapse actually PAINTS — the same
+	 * count `widenTarget` above searches with, read through the same function so
+	 * there is one measurement and not a second counting path. It is read through
+	 * `widenInputs` for the reason that ref exists: the reveal is dispatched from
+	 * an input event long after the render that computed these, and a settle
+	 * arrives after the commit that changed them, so the accessor has to read
+	 * whatever is CURRENT at the moment it is called rather than close over a
+	 * render's values. `rowsRef.current` is the whole list (the window is a slice
+	 * of it) and `mounted` is `alignSize`, the size the reader is looking at — the
+	 * pair `widen` measures against above.
+	 *
+	 * No dependency list entries: every input is read through a ref at call time,
+	 * and a fresh identity per render would only re-create the hook's `live` ref.
+	 */
+	const readPaintedRows = useCallback(
+		() =>
+			paintedRows(rowsRef.current, widenInputs.current.mounted, {
+				step: WINDOW_STEP,
+				live: widenInputs.current.live,
+				openRuns: widenInputs.current.openRuns,
+				mode: widenInputs.current.mode,
+				snapMaxExtra: WINDOW_ALIGN_MAX_EXTRA,
+				completedRunMaxExtra: WINDOW_ALIGN_COMPLETED_RUN_MAX_EXTRA,
+			}),
+		[],
+	);
 
 	// The session identity the paging state belongs to. `hasMore` is folded in
 	// because `/clear` replaces the transcript without changing the session, and
@@ -3221,6 +3314,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		hiddenRows: hidden,
 		hasMore: Boolean(transcript.hasMore),
 		onWiden: widen,
+		paintedRows: readPaintedRows,
 		onLoadOlder,
 		onLoadOlderOutcome,
 		olderFailed,
@@ -3382,6 +3476,15 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	const restoreDefaultChatMeasureWidth = useUiPreferencesStore(
 		(state) => state.restoreDefaultChatMeasureWidth,
 	);
+	/*
+	 * The reader's transcript display mode (issue #756): read as the RAW stored
+	 * value and parsed at the one call site that consumes it (`collapsePlan`
+	 * below), so a tampered or future token is judged where it is used rather
+	 * than trusted on the way in.
+	 */
+	const transcriptDisplayMode = useUiPreferencesStore(
+		(state) => state.transcriptDisplayMode,
+	);
 	const shippedMeasurePx = useMemo(() => readShippedChatMeasurePx(), []);
 	const measurePx = chatMeasureWidth ?? shippedMeasurePx;
 	useLayoutEffect(() => {
@@ -3420,11 +3523,14 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 */
 	const working = workingLine === undefined ? paneWorking : workingLine;
 	/* The widen's paint count reads these (see `widenInputs`): the collapse's own
-	 * liveness rule, stated once here and reused by the plan below, and the mounted
-	 * size the widen measures from. */
+	 * liveness rule, stated once here and reused by the plan below, the mounted
+	 * size the widen measures from, and the reader's display mode — the same value
+	 * the plan below is handed, so the step cannot measure a paint the reader is not
+	 * looking at (M1/Q1). */
 	widenInputs.current = {
 		live: paneIsLive,
 		openRuns,
+		mode: parseTranscriptDisplayMode(transcriptDisplayMode),
 		mounted: alignSize,
 	};
 
@@ -3594,26 +3700,52 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * condense stays condensed when a wake / peer message / job result starts the
 	 * next cycle in the same run (operator report, 2026-10-01).
 	 */
+	const collapseInputs = useMemo(
+		() => ({
+			live: working !== null || gate !== null,
+			focusHold: focusedRecordId,
+			openRuns,
+			/*
+			 * THE READER'S DISPLAY MODE (issue #756), read HERE and parsed on the way
+			 * in: the store rehydrates past its setters, so a token this build does
+			 * not know must land on the default rather than reach the partition.
+			 * `parseTranscriptDisplayMode` is the one judge of that (the read-side
+			 * pattern `parseSidebarView` sets one surface over).
+			 */
+			mode: parseTranscriptDisplayMode(transcriptDisplayMode),
+		}),
+		[focusedRecordId, gate, openRuns, transcriptDisplayMode, working],
+	);
+	/*
+	 * THE PLAN'S INPUT SIGNATURE (UI perf audit P1; PR-6). The rows half is the
+	 * one computed above and shared with the feet; this adds the options half.
+	 * Keying the plan on the pair is what makes it ONE PLAN PER STRUCTURAL
+	 * PASS: a token that only lengthens an answer's text moves neither half, so
+	 * it buys no plan at all. The join itself lives in the model
+	 * (`collapsePlanInputKey`) rather than being re-spelled here, so the two
+	 * halves cannot drift apart.
+	 */
+	const collapseKey = useMemo(
+		() => collapsePlanInputKey(rowsKey, collapseInputs),
+		[collapseInputs, rowsKey],
+	);
+	/*
+	 * `live` is the newest run's UNSETTLEDNESS, and it has two halves here,
+	 * not one (design review round 1, D3): the working line covers a turn
+	 * being written, and the READER GATE covers a turn parked on a question -
+	 * the working line deliberately stands down while the question dock holds
+	 * the stage, so a rule that read only `working` condensed a parked turn
+	 * and un-condensed it when the call resumed, with no reader action.
+	 *
+	 * `focusHold`/`openRuns` are the focus guard's inputs (see
+	 * `focusedRecordId` above): a run that would unmount the row the reader's
+	 * keyboard focus is in stands open until the focus moves on. Both travel
+	 * through `collapseInputs` and are in `collapseKey`.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: rebuilt from `visible`/`collapseInputs` only when the input signature above moves; a `visible` dependency would re-plan the whole window on every streamed token, which is the per-token cost this memo exists to remove.
 	const collapse = useMemo(
-		/*
-		 * `live` is the newest run's UNSETTLEDNESS, and it has two halves here,
-		 * not one (design review round 1, D3): the working line covers a turn
-		 * being written, and the READER GATE covers a turn parked on a question —
-		 * the working line deliberately stands down while the question dock holds
-		 * the stage, so a rule that read only `working` condensed a parked turn
-		 * and un-condensed it when the call resumed, with no reader action.
-		 *
-		 * `focusHold`/`openRuns` are the focus guard's inputs (see
-		 * `focusedRecordId` above): a run that would unmount the row the reader's
-		 * keyboard focus is in stands open until the focus moves on.
-		 */
-		() =>
-			collapsePlan(visible, {
-				live: working !== null || gate !== null,
-				focusHold: focusedRecordId,
-				openRuns,
-			}),
-		[visible, working, gate, focusedRecordId, openRuns],
+		() => collapsePlan(visible, collapseInputs),
+		[collapseKey],
 	);
 	/*
 	 * THE WALK'S CUT-RUN KEY (UI perf audit A3, corrected by review round 1 R1).
@@ -3867,7 +3999,16 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	 * is pushed where the walk finds it. Sorting afterwards could not express that
 	 * (the two orders differ per expansion state); the partition is what fixes it.
 	 */
+	/*
+	 * KEYED ON `visible`, DELIBERATELY, unlike the feet (UI perf audit P4; PR-6).
+	 * An entry holds the GROUPS it renders, and a group holds the rows - so the
+	 * answer's new text has to travel through this memo to reach the DOM. The
+	 * plan it consumes is stable across a text token; the entries are not, and
+	 * a signature key here would freeze the transcript's text. Its count is
+	 * reported, not moved.
+	 */
 	const chatEntries = useMemo(() => {
+		dbgChatEntriesRebuilds.count += 1;
 		const indexOf = new Map<string, number>();
 		visible.forEach((row, index) => indexOf.set(row.record.id, index));
 

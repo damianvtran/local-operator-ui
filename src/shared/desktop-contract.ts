@@ -92,6 +92,19 @@ const requestId = z
  * the daemon's generic 422.
  */
 const meshId = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/);
+/**
+ * An onboarding approval's id (`ap_` + Crockford base32), on its way into a URL path.
+ *
+ * MIRRORS the mint in `local_operator/network/approvals.py` (`new_approval_id`:
+ * `ap_` + `crockford(8 bytes)`, thirteen characters today) and follows `meshId`'s
+ * discipline for the same reason: the id reaches a ROUTE PATH (and the store's own
+ * record filename), so what must be impossible is `/`, `.` and `%` — which is why
+ * the endpoint builder still `encodeURIComponent`s it. The pattern is deliberately
+ * wider than today's mint (length, not alphabet) so the store may mint longer ids
+ * without a renderer release, while an empty string, a sentence or a path fragment
+ * is refused HERE, by name, rather than by the daemon's generic 422.
+ */
+const approvalId = z.string().regex(/^ap_[0-9a-hjkmnp-tv-z]{1,64}$/);
 const sessionImage = z
 	.object({
 		data_b64: z.string().min(1).max(1_000_000),
@@ -112,6 +125,20 @@ const sessionImage = z
  * so the two ceilings bind on different inputs and neither implies the other.
  */
 export const DESKTOP_MESSAGE_MAX_CHARS = 200_000;
+
+/**
+ * Most images one message-carrying op carries, in IMAGES.
+ *
+ * Named and exported rather than repeated as a literal because the renderer
+ * has to agree with it: `encodeImageAttachments` applies the cap to every
+ * send it encodes, and a draft that staged more images than this used to be
+ * sliced to the ceiling SILENTLY - a send left with fewer images than the
+ * composer showed and nothing named the difference (design round 1 on issue
+ * #790, D1). The encoder now reports the excess (`overflow`) and the sends
+ * refuse before admission with `imageOverflowRefusal`'s sentence; both
+ * schemas below are the wire end of the same number.
+ */
+export const DESKTOP_MESSAGE_MAX_IMAGES = 8;
 
 /**
  * Longest chat-search query the desktop search op accepts, in CHARACTERS.
@@ -1468,7 +1495,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			sessionId,
 			requestId,
 			text: z.string().max(DESKTOP_MESSAGE_MAX_CHARS),
-			images: z.array(sessionImage).max(8).optional(),
+			images: z.array(sessionImage).max(DESKTOP_MESSAGE_MAX_IMAGES).optional(),
 			mode: z.enum(["prompt", "steer"]).optional(),
 			/*
 			 * HOW THE MESSAGE WAS PRODUCED (arch §4.2), and the harness gate is what
@@ -1494,7 +1521,7 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 				.regex(/^\/?[A-Za-z]+$/)
 				.max(64),
 			args: z.string().max(DESKTOP_MESSAGE_MAX_CHARS).optional(),
-			images: z.array(sessionImage).max(8).optional(),
+			images: z.array(sessionImage).max(DESKTOP_MESSAGE_MAX_IMAGES).optional(),
 		})
 		.strict(),
 	/*
@@ -2569,6 +2596,22 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 		})
 		.strict(),
 	z.object({ op: z.literal("settings.reset"), key: settingKey }).strict(),
+	/*
+	 * THE VOICING SURFACE's read (`features.tts`), and the twin of the STT
+	 * cascade report: every rung in order with its availability and the reason a
+	 * reader would be shown, plus the surface's own `servable` bit. It is a GET
+	 * with no parameters - the daemon resolves the cascade against THIS
+	 * machine's stored credentials - so a client cannot scope it to anything and
+	 * has nothing to send.
+	 *
+	 * Gated on its own capability key rather than on `settings`: the two are
+	 * different contracts on different release trains (a backend can serve the
+	 * registry and predate voicing), and a surface that fired this read at such a
+	 * backend would render a 404 as a failure of the user's own account.
+	 */
+	z
+		.object({ op: z.literal("tts.paths") })
+		.strict(),
 	z.object({ op: z.literal("config.get") }).strict(),
 	z.object({ op: z.literal("config.update"), value: configUpdate }).strict(),
 	z.object({ op: z.literal("instructions.get") }).strict(),
@@ -2676,6 +2719,57 @@ const desktopRequestUnion = z.discriminatedUnion("op", [
 			waitS: z.number().min(0).max(300).optional(),
 			requestId: requestId.optional(),
 		})
+		.strict(),
+	/*
+	 * THE ONBOARDING APPROVALS (`features.approvals`), the third mesh-adjacent
+	 * family: one durable, signed record per remote-onboarding request, kept
+	 * DEVICE-LOCALLY under `<config>/network/approvals/` (remote-onboarding
+	 * design §2.3 — the badge must answer on a machine whose relay is down, which
+	 * is why the record is a flat file rather than something behind the relay).
+	 *
+	 * THE LIST IS THE BADGE READ and it dials nothing: every row comes off this
+	 * machine's own directory, so a rail-mounted interval costs one local scan
+	 * rather than a peer fan-out — the reason it is the ONE mesh-family read a
+	 * sidebar badge may poll (see `mesh-approvals.ts` for the cadence argument).
+	 * Each row is the frozen §3.5 shape — `what` (the scope block), the
+	 * where-block (`device` for `device_onboard`, `machine` for `local_authority`;
+	 * the KIND is which key is present), `requested_by` and the expiry — and the
+	 * surfaces do their own wording, so the wire stays the record's own
+	 * vocabulary and a new scope does not need a wire change.
+	 *
+	 * THE DECISIONS TAKE NO BODY, deliberately (`routes/desktop_approvals.py`:
+	 * "the two decision routes take NO body at all — approving is the gesture").
+	 * `approve` runs the SAME presence-gated signing call the CLI's `approve`
+	 * verb runs, so its latency includes a human's — see
+	 * `APPROVAL_APPROVE_DEADLINE_MS` for why this op alone carries its own
+	 * budget. `deny` never signs: it is write-once and settles in the safe
+	 * direction.
+	 */
+	z
+		.object({ op: z.literal("approvals.list") })
+		.strict(),
+	z.object({ op: z.literal("approvals.approve"), approvalId }).strict(),
+	z.object({ op: z.literal("approvals.deny"), approvalId }).strict(),
+	/*
+	 * THE FLEET ASKS READ (`GET /v1/desktop/asks`), the cross-session companion of
+	 * the per-session queue the canonical frame carries. A GET with no parameters
+	 * at all: the route answers from the DERIVED ask index under the config dir,
+	 * so it needs no session id and no `cwd` — the rows name their own conversation
+	 * (`session_id`, `cwd` are the frozen `PendingAsk` shape plus those two keys).
+	 *
+	 * IT IS A SEPARATE OP FROM THE SESSION QUEUE, deliberately. The session's asks
+	 * arrive on its own canonical stream (the frontend state's `asks`), which is
+	 * scoped to the conversation being watched and is therefore silent about every
+	 * other conversation by construction; "what is waiting across the whole app" is
+	 * a question no per-session frame can answer, which is why the drawer's other
+	 * scope needs its own read rather than a widened filter on that one.
+	 *
+	 * THE ANSWER IS A LIST OF RAW ROWS rather than a modelled shape, matching the
+	 * route's own reasoning: the rows ARE the frozen `PendingAsk` wire shape, and
+	 * re-declaring their fields here would be a third copy of §4 to keep in step.
+	 */
+	z
+		.object({ op: z.literal("asks.list") })
 		.strict(),
 	/*
 	 * The Projects surface (`/v1/desktop/projects*`), APPENDED to the union
@@ -3812,6 +3906,28 @@ export function moveClientBoundMs(shape: MoveShape): number {
 }
 
 /*
+ * THE APPROVAL'S BOUND IS THE ONE OP THAT WAITS ON A HUMAN GESTURE.
+ *
+ * MIRRORED FROM THE BACKEND, NEVER CHOSEN HERE. `approvals.approve` signs through
+ * `network/approvals.py::sign_decision`, which signs with `timeout=None` and so
+ * takes the signer's own default: `keyagent.SIGN_TIMEOUT_SECONDS = 180.0` — past
+ * it the key agent is killed and NOTHING is signed, so the backend's own answer
+ * always arrives before 180 s plus a store round trip. A control-budget deadline
+ * would abandon a prompt the operator was still reading more than two minutes
+ * before the backend itself stops waiting, and would report this app's own
+ * timeout for a decision the backend was still holding — the exact defect
+ * `sessions.transfer`'s envelope fixed on the move side.
+ *
+ * The margin over the backend's number covers the store's file lock, the response,
+ * and the signer's own teardown (`keyagent` gives a terminated helper 2 s to
+ * exit). `approvals.deny` and `approvals.list` are deliberately NOT here: a deny
+ * never signs ("ordinary, write-once, safe direction") and a list is a cold scan
+ * of the device-local directory, so both keep the control budget.
+ */
+const PRESENCE_GESTURE_DEADLINE_MS = 180_000;
+const APPROVAL_APPROVE_DEADLINE_MS = PRESENCE_GESTURE_DEADLINE_MS + 15_000;
+
+/*
  * THE HUB'S WRITES ARE MODEL MERGES, so they sit on their own budgets, ABOVE the
  * backend's (agent review round 1, R2; UX U9).
  *
@@ -3876,6 +3992,10 @@ export function desktopRequestDeadlineMs(
 		return moveClientBoundMs(request) + MOVE_APP_MARGIN_MS;
 	}
 	const op = typeof request === "string" ? request : request.op;
+	// Op-keyed rather than request-keyed, because the gesture's bound is a property
+	// of the op alone: a caller holding only the op string (a story, a test) gets
+	// the same number the transport uses.
+	if (op === "approvals.approve") return APPROVAL_APPROVE_DEADLINE_MS;
 	const hub = hubWriteDeadlineMs(op);
 	if (hub !== null) return hub;
 	return LONG_READ_OPS.has(op)
@@ -3983,6 +4103,7 @@ const READ_ONLY_OPS: ReadonlySet<string> = new Set([
 	"accounts.list",
 	"analytics.get",
 	"analytics.models",
+	"approvals.list",
 	"commands.entities",
 	"commands.list",
 	"config.get",
@@ -4106,6 +4227,20 @@ export function desktopRequestDeadlineDetail(
 		return {
 			code,
 			message: `The app waits up to ${seconds} seconds for a move, and it was still running when the app stopped waiting. The move was asked for, so its outcome is unknown from here: read the session again before moving it anywhere else.`,
+		};
+	}
+	/*
+	 * AN APPROVAL THAT RAN OUT OF TIME WAS STILL WAITING ON A HUMAN, and unlike a
+	 * read there is no "nothing happened" to promise: the OS prompt is what decides,
+	 * so a decision the app stopped waiting for may still land. The instruction is
+	 * therefore the move's shape — read the record again — with its own second
+	 * half: answering again is SAFE, because the store keeps the first decision and
+	 * refuses a second rather than repeating one (write-once, F3).
+	 */
+	if (op === "approvals.approve") {
+		return {
+			code,
+			message: `The app waits up to ${seconds} seconds for an approval, and the signing prompt was still open when it stopped waiting. The request was sent, so the decision may or may not have landed: read the approvals again — if the record still waits, answering it again is safe, because the store keeps the first decision and refuses a second.`,
 		};
 	}
 	/*
@@ -4679,6 +4814,50 @@ export type BackendSettings = {
 };
 
 /**
+ * The text-to-speech paths the daemon would take, as `GET /v1/tts/paths` reports
+ * them (`local_operator/tts/cascade.py::resolve_voice_path`).
+ *
+ * The wire spellings are the daemon's own `VoicePath` values, so they are
+ * compared as strings rather than mapped to app names: the same value travels in
+ * the `X-Radient-Speech-Path` header of a served call, and a second spelling
+ * here would be a second vocabulary for one fact.
+ */
+export type VoicePath =
+	| "provider_tts_radient"
+	| "provider_tts_elevenlabs"
+	| "provider_tts_openai"
+	// No usable path. Appears in availability and refusal payloads only.
+	| "none";
+
+/**
+ * One rung's availability, with the sentence the daemon wrote for it.
+ *
+ * `available` answers "a PERSISTED credential exists for this rung", not "the
+ * call will succeed" - a refused key or an empty balance surfaces at synthesis
+ * time. The surface must not upgrade it into a promise; that caveat is the
+ * daemon's, stated in its own module docstring.
+ */
+export type VoicePathRung = {
+	path: VoicePath;
+	available: boolean;
+	reason: string;
+};
+
+/** The resolver's report: the chosen path, why, and every rung's state. */
+export type VoicePathResolution = {
+	path: VoicePath;
+	reason: string;
+	/** Fixed cascade order, `none` excluded. */
+	rungs: VoicePathRung[];
+	/**
+	 * Whether this surface can synthesize AT ALL - true when any rung is
+	 * available. Derived by the daemon, never stored, so it cannot disagree with
+	 * `rungs`; a reader that walked the rungs itself would be re-deriving it.
+	 */
+	servable: boolean;
+};
+
+/**
  * The session half of a `wakes.create` body.
  *
  * Two mutually exclusive shapes on the wire, decided by which one the caller
@@ -4785,6 +4964,14 @@ export function desktopEndpoint(request: DesktopRequest): {
 		case "networks.list":
 			return { path: "/v1/desktop/networks", method: "GET" };
 		/*
+		 * The fleet read, and the path is the DESKTOP plane's rather than the relay's
+		 * (`/api/asks`): the two answer the same rows today, but this client reaches
+		 * the daemon it is paired with, not the phone relay, and the desktop route is
+		 * the one behind this app's own bearer.
+		 */
+		case "asks.list":
+			return { path: "/v1/desktop/asks", method: "GET" };
+		/*
 		 * THE THREE MESH WRITES. Each path segment is `encodeURIComponent`ed even
 		 * though `meshId` already refuses `/`, `.` and `%`: the schema is this
 		 * client's check, and a redirect or a hand-built request must not be able to
@@ -4823,6 +5010,24 @@ export function desktopEndpoint(request: DesktopRequest): {
 					// is a different (unjournalled) request on purpose.
 					...(request.requestId ? { request_id: request.requestId } : {}),
 				},
+			};
+		case "approvals.list":
+			return { path: "/v1/desktop/approvals", method: "GET" };
+		/*
+		 * The decision paths carry the record's OWN id, `encodeURIComponent`ed even
+		 * though the schema already refuses `/`, `.` and `%`: the pattern is this
+		 * client's check, and a hand-built request must not be able to turn an id
+		 * into a path fragment (the same rule the mesh writes state).
+		 */
+		case "approvals.approve":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/approve`,
+				method: "POST",
+			};
+		case "approvals.deny":
+			return {
+				path: `/v1/desktop/approvals/${encodeURIComponent(request.approvalId)}/deny`,
+				method: "POST",
 			};
 		case "profiles.list":
 			return { path: "/v1/desktop/profiles", method: "GET" };
@@ -5820,6 +6025,15 @@ export function desktopEndpoint(request: DesktopRequest): {
 			};
 		case "settings.reset":
 			return { path: `/v1/settings/${request.key}/reset`, method: "POST" };
+		/*
+		 * The synthesis availability report. A plain GET with no query at all: the
+		 * resolver reads this machine's credential store, so there is no parameter a
+		 * caller could scope it by - and it is deliberately NOT cached by this
+		 * layer (the daemon withdrew the TTL: availability is a statement about a
+		 * credential the user may have just removed).
+		 */
+		case "tts.paths":
+			return { path: "/v1/tts/paths", method: "GET" };
 		case "config.get":
 			return { path: "/v1/config", method: "GET" };
 		case "config.update":

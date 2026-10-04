@@ -633,6 +633,22 @@ export type DesktopFeature =
 	 * the BACKEND's age, not about the mesh's existence.
 	 */
 	| "session_transfer"
+	/**
+	 * The onboarding approval surface (`features.approvals`): the badge read
+	 * (`GET /v1/desktop/approvals`) plus the two decision posts, and nothing else.
+	 *
+	 * WHY A KEY AT ALL, given the routes are additive and an old renderer never
+	 * calls one (the backend's own comment): it is how THIS renderer learns the
+	 * surface EXISTS before it builds a Mesh-tab affordance whose POST would 404
+	 * on a backend without it. Absent ⇒ the tab mounts no approval tray and the
+	 * rail no badge — not a disabled one — and every other mesh surface serves
+	 * exactly as it did before, which is the pre-onboarding state.
+	 *
+	 * ONE KEY FOR THE FAMILY, because it is one contract revision and one flow: a
+	 * renderer that can draw the record can answer it (the decision posts take no
+	 * body, so there is nothing else to negotiate).
+	 */
+	| "approvals"
 	/*
 	 * AIDA'S CONTROL PLANE (`features.aida`): the read and the control op the
 	 * sidebar's row and the composer's `/aida` share. ITS OWN KEY rather than a
@@ -641,7 +657,22 @@ export type DesktopFeature =
 	 * forbids her route (`design.md` § 3.4/§ 4), while every other surface serves
 	 * exactly as it did before.
 	 */
-	| "aida";
+	| "aida"
+	/**
+	 * THE VOICING SURFACE (`features.tts`): `GET /v1/tts/paths`, the synthesis
+	 * availability report a speak control asks before it offers itself.
+	 *
+	 * ITS OWN KEY, and a separate one from `stt` on the daemon's own reasoning
+	 * (the two directions ship independently, and a client that can read one
+	 * report is not necessarily the client that can send the other's payload),
+	 * which is the rule this union states for every member: a backend that serves
+	 * the registry and predates voicing must not be asked for a route it does not
+	 * have, because the 404 it answers is indistinguishable from this app making a
+	 * malformed call. Absent ⇒ the Speech settings group renders the honest
+	 * "this backend does not serve the voicing surface" state and fires no read at
+	 * all, which is the pre-voicing behaviour rather than a degraded one.
+	 */
+	| "tts";
 
 /**
  * WHY a negotiated feature surface may not be offered.

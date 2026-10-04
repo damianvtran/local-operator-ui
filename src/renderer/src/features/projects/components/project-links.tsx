@@ -60,12 +60,15 @@ type ProjectLinksProps = {
 	/**
 	 * Sends one message through the chat's own admission path; resolves `true`
 	 * when it is on its way. The detail screen owns the toasts, so the strip
-	 * and its doors stay about the act.
+	 * and its doors stay about the act. `attachments` is the strip's own list
+	 * (pasted images as data URLs), carried through the seam into the body's
+	 * image half and kept as the payload identity the draft row compares.
 	 */
 	onQuickSend: (
 		sessionId: string,
 		text: string,
 		mode: "prompt" | "steer",
+		attachments: string[],
 	) => Promise<boolean>;
 	/** Opens the start-session dialog (owned by the detail screen). */
 	onStartSession: () => void;
