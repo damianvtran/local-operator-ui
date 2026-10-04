@@ -50,6 +50,25 @@ import { fileURLToPath } from "node:url";
  * not pay a module load per image, and the loader is synchronous anyway.
  */
 import sharp from "sharp";
+
+/*
+ * The decoder's memory, BOUNDED ON PURPOSE.
+ *
+ * A whole-tree sweep decodes every frame in one process. Measured 2026-10-04 at
+ * 200 / 800 / 1600 frames: resident set 500 / 586 / 735 MB with libvips' operation
+ * cache on, and 424 / 431 / 599 MB with it off - so the cache is most of what
+ * holds across a run, and turning it off is the bound that costs no throughput.
+ * (The day's harness memory-guard figure of 177.3 GB for one such sweep is TOTAL
+ * allocation, ~11 MB per decoded frame, not residency: it cannot be resident on a
+ * 36 GB host, and the numbers above are the high-water marks that can.)
+ * `sharp.concurrency(1)` was measured too and is deliberately NOT set: it flattens
+ * the curve a little further and trades throughput the CI job needs (7 GB runner,
+ * 11m27s measured) for memory it does not.
+ *
+ * The local path does not pay this at all - `evidence` is in `LOCAL_EXCLUSIONS`
+ * (`ci-scope.mjs`), so `pnpm check-changed` never starts a whole-tree decode.
+ */
+sharp.cache(false);
 /*
  * The capturer's own `dir` table, for `claimedStory` below - not to run it.
  *
