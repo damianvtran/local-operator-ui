@@ -326,3 +326,146 @@ test("an answer that is not one of the labels is DRAWN as Other (design D2)", as
 	assert.equal(production?.getAttribute("aria-checked"), "false");
 	await view.unmount();
 });
+
+test("the recommendation survives the selection moving (operator ask, 2026-10-04)", async () => {
+	// The recommendation is a mark of its OWN, and the selection is the draft's
+	// ground plus its drawn radio. The two must be readable at once, and the
+	// reason is the wire's own shape: the harness hoists the recommended option to
+	// index 0, so the two coincide until the user clicks something else - and a
+	// mark that were the selection's twin would be ERASED by the first click on
+	// the alternative the user is choosing against.
+	//
+	// THE FIXTURE CARRIES THE WIRE'S OWN SHAPE (agent review round 1, R1-1): the
+	// recommendation is the QUESTION's integer index, the option object is exactly
+	// `{label, description}`. The earlier version of this case put a
+	// `recommended: true` flag on the option - a key no producer emits (the core'
+	// `AskOption` forbids extras) - so it proved a story, not the surface, while
+	// the drawer read a field that was never there.
+	const recommended = {
+		...radioAsk,
+		questions: [
+			{
+				id: "target",
+				question: "Which environment?",
+				recommended: 0,
+				options: [{ label: "staging" }, { label: "production" }],
+			},
+		],
+	};
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([recommended]),
+			scope: "session",
+			// The draft sits on the option the model did NOT recommend.
+			drafts: { "a-7f3c": { target: ["production"] } },
+			onDraftChange: () => undefined,
+		}),
+	);
+	const staging = view.container.querySelector('[data-ask-option="staging"]');
+	const production = view.container.querySelector(
+		'[data-ask-option="production"]',
+	);
+	assert.equal(staging?.getAttribute("aria-checked"), "false");
+	assert.equal(production?.getAttribute("aria-checked"), "true");
+	const stagingText = staging?.textContent ?? "";
+	assert.ok(
+		stagingText.includes("Recommended"),
+		"the advice is still on the row after the selection moved",
+	);
+	// Not colour alone: the glyph is what survives a colour-blind reader, a
+	// greyscale screenshot and the terminal's own badge.
+	assert.ok(stagingText.includes("▸"), "the mark carries its glyph");
+	// The label is bolded where it is recommended - the half of the signal that
+	// survives a reader who skims past the badge.
+	assert.ok(
+		(staging?.querySelector(".font-semibold")?.textContent ?? "").includes(
+			"staging",
+		),
+		"the recommended option's label is emphasised",
+	);
+	assert.equal(
+		production?.querySelector(".font-semibold"),
+		null,
+		"the selected row is not the recommended one, and must not borrow its weight",
+	);
+	assert.ok(!(production?.textContent ?? "").includes("Recommended"));
+	await view.unmount();
+});
+
+/*
+ * THE INDEX IS VALIDATED, NOT CLAMPED (agent review round 1, R1-1).
+ *
+ * The dock card has proven this range since the ask-picker contract landed
+ * (`ask-options.test.mjs`: "recommended is optional, and marks only a real
+ * index"). The drawer card had no such case, which is half of why its dead
+ * `option.recommended` read survived every rig in the repo - so the same range
+ * is pinned here, on the shape the queued-ask wire actually sends.
+ *
+ * `bad` is every value that must badge NOTHING rather than the wrong row: absent,
+ * null, out of range, negative, a float, and the two malformed values a
+ * truthiness read would have accepted (the STRING "0", and `NaN`). A real index
+ * still marks exactly its own row and no other.
+ */
+test("the drawer badges nothing for an index that is not a real row", async () => {
+	const marked = async (recommended) => {
+		const view = await mount(
+			h(AskDrawer, {
+				frontend: frontend([
+					{
+						...radioAsk,
+						questions: [
+							{
+								id: "target",
+								question: "Which environment?",
+								options: [
+									{ label: "staging" },
+									{ label: "production" },
+									{ label: "sandbox" },
+								],
+								...(recommended === undefined ? {} : { recommended }),
+							},
+						],
+					},
+				]),
+				scope: "session",
+				onDraftChange: () => undefined,
+			}),
+		);
+		const labels = ["staging", "production", "sandbox"];
+		const badged = labels.filter((label) =>
+			(
+				view.container.querySelector(`[data-ask-option="${label}"]`)
+					?.textContent ?? ""
+			).includes("Recommended"),
+		);
+		const bolded = labels.filter((label) =>
+			Boolean(
+				view.container
+					.querySelector(`[data-ask-option="${label}"]`)
+					?.querySelector(".font-semibold"),
+			),
+		);
+		await view.unmount();
+		return { badged, bolded };
+	};
+
+	for (const bad of [undefined, null, 99, -1, 1.5, "0", Number.NaN]) {
+		const { badged, bolded } = await marked(bad);
+		assert.deepEqual(
+			badged,
+			[],
+			`recommended ${String(bad)} must not badge a row`,
+		);
+		assert.deepEqual(
+			bolded,
+			[],
+			`recommended ${String(bad)} must not bold a row`,
+		);
+	}
+
+	// And a REAL index that is not 0 still marks exactly the row it names - which
+	// is what rules out a "truthiness" read resolving it to index 0.
+	const real = await marked(2);
+	assert.deepEqual(real.badged, ["sandbox"]);
+	assert.deepEqual(real.bolded, ["sandbox"]);
+});
