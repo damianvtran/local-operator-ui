@@ -416,10 +416,24 @@ test("the status-row item's clause reads one state at a time", () => {
 	assert.equal(queue.askChipCountClause(moved), "1 question moved on");
 
 	// SETTLED: the queue is finished, and it stays on screen like a resolved plan.
+	// `delivered: true` is what makes it finished: the response row exists, so the
+	// agent has been handed the answer and the row is pinned (#1936, §10).
 	const settled = queue.askQueueView({
-		asks: [single({ ask_id: "a-1", status: "answered" })],
+		asks: [single({ ask_id: "a-1", status: "answered", delivered: true })],
 	});
 	assert.equal(queue.askChipCountClause(settled), "All asks settled");
+
+	// ANSWERED BUT NOT DELIVERED: the user answered and the agent has NOT been
+	// handed it, so the row still carries the change affordance — which makes
+	// `All asks settled` the one sentence this queue must not take, because it
+	// would contradict the panel the chip opens (§10, #1936).
+	const delivering = queue.askQueueView({
+		asks: [single({ ask_id: "a-1", status: "answered" })],
+	});
+	assert.equal(
+		queue.askChipCountClause(delivering),
+		"1 answer not yet delivered",
+	);
 
 	// TRUNCATED: the backend's own outstanding tally, never a prefix's split.
 	const truncated = queue.askQueueView({
@@ -1037,8 +1051,16 @@ test("the drawer's scope line counts every answerable card, and still falls thro
 		"1 question waiting",
 	);
 	assert.equal(
-		queue.askDrawerCountClause(view([single({ status: "answered" })])),
+		queue.askDrawerCountClause(
+			view([single({ status: "answered", delivered: true })]),
+		),
 		"All asks settled",
+	);
+	// The undelivered half takes its own clause here too, so the drawer and the
+	// chip it was opened from cannot describe one queue differently (§10, #1936).
+	assert.equal(
+		queue.askDrawerCountClause(view([single({ status: "answered" })])),
+		"1 answer not yet delivered",
 	);
 	assert.equal(
 		queue.askDrawerCountClause(view([single({ status: "timed_out" })])),

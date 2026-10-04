@@ -413,6 +413,17 @@ type ChatContentProps = {
 		/** "No answer — decide yourself" for a queued ask. */
 		onDeclineAsk?: (taskId: string) => void;
 		/**
+		 * CHANGE a recorded-but-undelivered answer (design §10, #1936).
+		 *
+		 * Raised to `SessionPanel` beside its two siblings, and for their reason: the
+		 * shared lock and the refusal surface live there, so a revision has to reach
+		 * it rather than be posted from the card that was clicked. Its body is the
+		 * whole ask map like `onAnswerAsk` — the wire takes the same payload for both
+		 * doors, plus the intent — so a per-question shape here would be the amend post
+		 * §10 rules out.
+		 */
+		onReviseAsk?: (askId: string, answers: Record<string, string[]>) => void;
+		/**
 		 * What `SessionPanel` knows about each queued ask it just answered, keyed by
 		 * ask id: the sentence the owner refused with, or `null` while it is live.
 		 *
@@ -2283,6 +2294,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onClose={handleCloseAskDrawer}
 								onAnswer={canonical?.onAnswerAsk}
 								onDecline={canonical?.onDeclineAsk}
+								onRevise={canonical?.onReviseAsk}
 								answering={Boolean(canonical?.admitting)}
 								outcomes={canonical?.askOutcomes}
 								drafts={canonical?.askDrafts}

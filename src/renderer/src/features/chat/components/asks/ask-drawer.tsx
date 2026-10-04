@@ -132,6 +132,12 @@ export type AskDrawerProps = {
 	 */
 	onAnswer?: (askId: string, answers: Record<string, string[]>) => void;
 	onDecline?: (askId: string) => void;
+	/**
+	 * CHANGE a recorded-but-undelivered answer (design §10, #1936). Addressed by ASK
+	 * ID for the same reason the two doors above are: the caller posts by id, and
+	 * the whole-map body is built inside the card where the edit buffer lives.
+	 */
+	onRevise?: (askId: string, answers: Record<string, string[]>) => void;
 	answering?: boolean;
 	outcomes?: Record<
 		string,
@@ -171,6 +177,7 @@ export const AskDrawer = ({
 	onClose,
 	onAnswer,
 	onDecline,
+	onRevise,
 	answering = false,
 	outcomes,
 	drafts,
@@ -408,6 +415,11 @@ export const AskDrawer = ({
 					onDraftChange={onDraftChange ?? noopDraftChange}
 					onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
 					onDecline={(task) => onDecline?.(task.ask_id)}
+					onRevise={
+						onRevise === undefined
+							? undefined
+							: (task, answers) => onRevise(task.ask_id, answers)
+					}
 					/*
 					 * THE CONVERSATION LINE IS THE FLEET'S OWN, and the CALLER supplies it (see
 					 * `AskDrawerProps.conversationOf`): a session drawer's rows are all about the

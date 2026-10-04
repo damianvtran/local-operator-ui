@@ -92,6 +92,7 @@ import {
 	createSendLock,
 	declineQueuedAsk,
 	gateIsSecret,
+	reviseQueuedAsk,
 } from "../ask-answer";
 import {
 	ASK_COMPOSER_PLACEHOLDER,
@@ -2598,6 +2599,41 @@ function SessionPanel({
 		}
 		settleAskOutcome(taskId, outcome);
 	};
+	/*
+	 * THE REVISION DOOR (design §10, #1936). A third sibling of the two above, sharing
+	 * their lock and their outcome surface, because it is the SAME act on the SAME ask:
+	 * the user is amending an answer that has not been delivered yet, so it must not
+	 * race a first answer, a decline or another revision from any surface of this
+	 * session.
+	 *
+	 * NO LOCAL WINDOW CHECK, deliberately. `delivered` is the wire's own hint and the
+	 * response row is the real bound, so a client-side test would be a second opinion
+	 * about a race this process cannot see - and §10 names the outcome that produces:
+	 * accepted-and-then-dropped. The request goes, the owner answers, and its sentence
+	 * (the delivered refusal is `already delivered — send a new message`) is what the
+	 * card renders through `settleAskOutcome`, exactly like every other refusal here.
+	 */
+	const reviseAsk = async (
+		taskId: string,
+		answers: Record<string, string[]>,
+	) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await reviseQueuedAsk(
+				{ taskId, answers, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleAskOutcome(taskId, outcome);
+	};
 	const declineAsk = async (taskId: string) => {
 		if (!sessionId || sendLock.held) return;
 		setAdmitting(true);
@@ -4158,6 +4194,8 @@ function SessionPanel({
 						onAnswerAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void answerAsk(taskId, answers),
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
+						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
+							void reviseAsk(taskId, answers),
 						askOutcomes,
 						/* The ask-mode lane: the flag, its door, the shared draft, and
 						 * the composer's own sentence for the expanded state. */

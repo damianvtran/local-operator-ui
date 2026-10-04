@@ -65,6 +65,7 @@ import type {
 import {
 	EMPTY_DRAFT,
 	askAnswerMap,
+	askRevisionDraft,
 	askSettledAnswers,
 	askStatusText,
 	askStatusWord,
@@ -79,6 +80,17 @@ export type AskPanelProps = {
 	onAnswer: (ask: PendingAsk, answers: Record<string, string[]>) => void;
 	/** "No answer — decide yourself" for one ask. */
 	onDecline: (ask: PendingAsk) => void;
+	/**
+	 * CHANGE a recorded-but-undelivered answer (design §10, #1936). Absent where the
+	 * surface cannot revise (a story, a read-only mount), exactly as `onAnswer` is.
+	 *
+	 * It carries the WHOLE ask map, because that is what the wire takes for both
+	 * doors: a revision is the same atomic body as a first answer plus the intent,
+	 * never a per-question amend. The caller does not get told which question moved
+	 * — it could not act on that, and a per-question shape here is how the amend post
+	 * §10 rules out would creep back in.
+	 */
+	onRevise?: (ask: PendingAsk, answers: Record<string, string[]>) => void;
 	/*
 	 * There is deliberately NO dismiss door. Design §5.0/§5.2 puts one in scope
 	 * ("view-only removal of a timed-out ask"), but the desktop plane has no route
@@ -426,6 +438,7 @@ const AskRow = ({
 	onDraftChange,
 	onAnswer,
 	onDecline,
+	onRevise,
 	conversationOf,
 }: {
 	presentation: AskPresentation;
@@ -436,9 +449,11 @@ const AskRow = ({
 	onDraftChange: AskPanelProps["onDraftChange"];
 	onAnswer: AskPanelProps["onAnswer"];
 	onDecline: AskPanelProps["onDecline"];
+	onRevise?: AskPanelProps["onRevise"];
 	conversationOf?: AskPanelProps["conversationOf"];
 }) => {
-	const { ask, status, waiting, canAnswer, canDecline } = presentation;
+	const { ask, status, waiting, canAnswer, canDecline, delivering } =
+		presentation;
 	const conversation =
 		conversationOf === undefined ? null : conversationOf(presentation);
 	const setDraft = useMemo(
@@ -484,6 +499,50 @@ const AskRow = ({
 	 * `waiting` excludes those for free.
 	 */
 	const urgent = ask.urgent === true && waiting;
+	/*
+	 * THE CHANGE FORM (design §10, #1936). Local to the card ON PURPOSE: `onDraftChange`
+	 * owns the FIRST-answer buffer, which the composer's Enter routes into while the ask
+	 * is expanded — that buffer is the user's in-progress reply to a question nobody has
+	 * answered yet, and a revision is a different act on a body that already exists.
+	 * Folding the two together would let an abandoned change ride into the next ask the
+	 * composer answers, and would make "which draft is this?" a question the caller has to
+	 * ask of every render.
+	 *
+	 * The SECRET values are the shared record, deliberately: they are already kept out of
+	 * renderable draft state (see `secrets` above), and a masked field is the same channel
+	 * on both doors — the backend substitutes the key name either way.
+	 */
+	const [changing, setChanging] = useState(false);
+	const [changeDraft, setChangeDraft] = useState<AskDraft>(EMPTY_DRAFT);
+	/*
+	 * The FORM'S OWN completeness, read through the SAME `askAnswerMap` the first-answer
+	 * door uses — no revision-specific rule exists, because the wire's body is the same
+	 * body. A secret question therefore needs a retyped value here too (see
+	 * `askRevisionDraft`), which is the honest consequence of the value never being
+	 * recoverable rather than a second gate.
+	 */
+	const changeReady = useMemo(
+		() => askAnswerMap(ask, changeDraft, secrets) !== null,
+		[ask, changeDraft, secrets],
+	);
+	/*
+	 * ONE EDIT PATH, TWO BUFFERS: the change form and the first-answer form render the
+	 * same question fields, so only the buffer and the disabled term differ. A second
+	 * copy of the field loop is how the two would drift into two ways of drawing one
+	 * question.
+	 *
+	 * THE FORM CLOSES ITSELF WHEN THE WINDOW DOES. `changingNow` is `changing` AND the
+	 * wire's live flag, so the instant the answer is delivered the editable fields go
+	 * with the button that submitted them: a revision is refused from that point on, and
+	 * an editable card with no submit is a worse failure than the button disappearing.
+	 * The card falls back to the answer frame it already knows how to draw.
+	 */
+	const changingNow = changing && delivering;
+	const editDraft = changingNow ? changeDraft : draft;
+	const writeDraft = changingNow
+		? (updater: (current: AskDraft) => AskDraft) => setChangeDraft(updater)
+		: setDraft;
+	const fieldDisabled = changingNow ? busy : disabled;
 
 	return (
 		<div
@@ -555,19 +614,22 @@ const AskRow = ({
 					))}
 				</div>
 			) : null}
-			{canAnswer
+			{canAnswer || changingNow
 				? ask.questions.map((question) => (
 						<AskQuestionField
 							key={question.id}
 							question={question}
-							selected={draftFor(draft, question.id)}
+							selected={draftFor(editDraft, question.id)}
 							secret={secrets[question.id] ?? ""}
-							disabled={disabled}
+							disabled={fieldDisabled}
 							onSelect={(label) =>
-								setDraft((current) => ({ ...current, [question.id]: [label] }))
+								writeDraft((current) => ({
+									...current,
+									[question.id]: [label],
+								}))
 							}
 							onToggle={(label) =>
-								setDraft((current) => {
+								writeDraft((current) => {
 									const chosen = draftFor(current, question.id);
 									const next = chosen.includes(label)
 										? chosen.filter((value) => value !== label)
@@ -634,6 +696,73 @@ const AskRow = ({
 					) : null}
 				</div>
 			) : null}
+			{/*
+			 * THE CHANGE AFFORDANCE (design §10, #1936).
+			 *
+			 * IT IS GATED ON THE WIRE'S `delivered` FLAG AND NOTHING ELSE. `delivering`
+			 * is `status === "answered" && ask.delivered !== true`, so the control exists
+			 * exactly while the agent has not been handed the answer — the window the
+			 * amendment admits. It is deliberately NOT inferred from the status alone
+			 * (an ANSWERED ask that has been delivered is finished history and must offer
+			 * nothing), and NOT from any comparison between the draft and the recorded
+			 * values: §10 forbids that in as many words, because equal values are not a
+			 * retry marker and different values are not a revision. The client states the
+			 * intent by SENDING the op; it never guesses it.
+			 *
+			 * NO SURFACE GATE: the button is offered to this surface like any other,
+			 * because §10's rule is that a revision is accepted from ANY surface of the
+			 * session while the ask is undelivered. The backend decides, and its refusal
+			 * (the delivered sentence) is rendered in place by the outcome line above.
+			 */}
+			{delivering && onRevise !== undefined ? (
+				<div className="flex items-center gap-2">
+					{changing ? (
+						<>
+							<button
+								type="button"
+								disabled={busy || !changeReady}
+								onClick={() => {
+									const answers = askAnswerMap(ask, changeDraft, secrets);
+									if (answers !== null) onRevise(ask, answers);
+								}}
+								className={cn(
+									"rounded-md px-3 py-1.5 text-sm",
+									busy || !changeReady
+										? "border border-hairline bg-surface text-ink-dim"
+										: "border border-transparent bg-accent text-on-accent hover:bg-accent-hover",
+								)}
+							>
+								Send change
+							</button>
+							<button
+								type="button"
+								disabled={busy}
+								onClick={() => setChanging(false)}
+								className="rounded-md px-3 py-1.5 text-ink-muted text-sm hover:bg-sunken"
+							>
+								Cancel
+							</button>
+						</>
+					) : (
+						<button
+							type="button"
+							disabled={busy}
+							onClick={() => {
+								/*
+								 * Seeded from the LOG's own answers, so changing one question is an
+								 * edit rather than a re-entry of the whole ask (see `askRevisionDraft`
+								 * for what a secret question does here and why).
+								 */
+								setChangeDraft(askRevisionDraft(ask));
+								setChanging(true);
+							}}
+							className="rounded-md border border-hairline px-3 py-1.5 text-ink text-sm hover:bg-sunken"
+						>
+							Change answer
+						</button>
+					)}
+				</div>
+			) : null}
 		</div>
 	);
 };
@@ -642,6 +771,7 @@ export const AskPanel = ({
 	view,
 	onAnswer,
 	onDecline,
+	onRevise,
 	answering = false,
 	outcomes,
 	nowMs,
@@ -666,13 +796,24 @@ export const AskPanel = ({
 	 * pending cards keep today's body and one settled ask is a single line until the
 	 * reader asks for more.
 	 */
-	const pending = view.rows.filter((row) => row.open);
+	/*
+	 * AN ANSWER THE AGENT HAS NOT BEEN HANDED IS STILL THE USER'S (design §10, #1936),
+	 * so it belongs with the pending cards rather than in the history section. §10's
+	 * own word for it is "answered-but-UNSETTLED": the log holds the answer, the
+	 * response row does not exist yet, and the change affordance is live on the row —
+	 * which a collapsed one-line history row could not offer. A DELIVERED `answered`
+	 * ask takes the opposite branch and is history, because the model has been told
+	 * and the row pins what it was told.
+	 */
+	const pending = view.rows.filter((row) => row.open || row.delivering);
 	/*
 	 * NEWEST FIRST inside the section, which is the note's own order and the reverse
 	 * of `view.rows`: the queue sorts oldest-first so its head is stable, and a
 	 * HISTORY is read the other way round.
 	 */
-	const settled = view.rows.filter((row) => !row.open).reverse();
+	const settled = view.rows
+		.filter((row) => !row.open && !row.delivering)
+		.reverse();
 
 	/*
 	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the split: a settled ask's
@@ -691,6 +832,7 @@ export const AskPanel = ({
 			onDraftChange={onDraftChange}
 			onAnswer={onAnswer}
 			onDecline={onDecline}
+			onRevise={onRevise}
 			conversationOf={conversationOf}
 		/>
 	);

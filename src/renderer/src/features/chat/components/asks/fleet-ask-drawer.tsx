@@ -76,6 +76,7 @@ import {
 	answerQueuedAsk,
 	createSendLock,
 	declineQueuedAsk,
+	reviseQueuedAsk,
 } from "../../ask-answer";
 import type { AskDraft, AskPresentation } from "../../ask-queue";
 import { askRefusalSentence } from "../../ask-queue";
@@ -241,6 +242,42 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 		[lock, rows, settle],
 	);
 
+	/*
+	 * THE CHANGE DOOR (design §10, #1936), and the FLEET is exactly the case §10 has in
+	 * mind: the ask may belong to another conversation, and a revision is accepted from
+	 * ANY surface while the answer is undelivered. The body is the same whole-ask map the
+	 * answer door sends, plus the intent — addressed by ask id, to the session the ask
+	 * names (`fleetAskSessionFor`), never to the conversation the user happens to be in.
+	 *
+	 * A refusal is NOT a failed receipt: the delivered sentence is the expected outcome of
+	 * a change that lost its window, so it lands in the row's own outcome line rather than
+	 * as a toast (the `settle` shape every other refusal here takes).
+	 */
+	const onRevise = useCallback(
+		(askId: string, answers: Record<string, string[]>) => {
+			const sessionId = fleetAskSessionFor(rows ?? [], askId);
+			if (!sessionId || lock.held) return;
+			setAnswering(true);
+			setOutcomes((current) => ({
+				...current,
+				[askId]: { sending: true, refused: null },
+			}));
+			void (async () => {
+				let outcome: AnswerOutcome;
+				try {
+					outcome = await reviseQueuedAsk(
+						{ taskId: askId, answers, sessionId, lock },
+						(request) => desktopResult(request),
+					);
+				} finally {
+					setAnswering(false);
+				}
+				settle(askId, outcome, "Answer changed for");
+			})();
+		},
+		[lock, rows, settle],
+	);
+
 	const onDecline = useCallback(
 		(askId: string) => {
 			const sessionId = fleetAskSessionFor(rows ?? [], askId);
@@ -277,6 +314,7 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 			onClose={onClose}
 			onAnswer={onAnswer}
 			onDecline={onDecline}
+			onRevise={onRevise}
 			answering={answering}
 			outcomes={outcomes}
 			drafts={drafts}
