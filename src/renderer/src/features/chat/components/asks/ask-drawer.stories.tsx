@@ -78,12 +78,19 @@ const ONE: PendingAsk = ask({
 		{
 			id: "target",
 			question: "Which environment should I deploy this to?",
+			/*
+			 * THE RECOMMENDATION IS THE QUESTION'S INDEX, not a flag on the option, and
+			 * that is the wire's shape rather than a preference (agent review round 1,
+			 * R1-1): the core's `AskOption` is `{label, description}` with
+			 * `extra="forbid"`, `asks/queue.py`'s `_question_shape` writes
+			 * `recommended` beside `options`, and the harness has already rotated the
+			 * recommended option to index 0 (`AskQuestion._shape`). A fixture that put
+			 * a flag on the option modelled a payload no producer sends, which is how
+			 * the drawer's dead mark passed a green suite.
+			 */
+			recommended: 0,
 			options: [
-				{
-					label: "staging",
-					description: "The shared pre-prod cluster",
-					recommended: true,
-				},
+				{ label: "staging", description: "The shared pre-prod cluster" },
 				{ label: "production", description: "Live traffic" },
 			],
 			multi: false,
@@ -596,8 +603,11 @@ export const RecommendedPassedOver: Story = {
  * strings were one line - so the claim rested on prose rather than on a frame.
  *
  * These are the strings the claim needs, at the lengths the wire used to cut:
- * a 389-character question, a 65-character label and a 338-character
+ * a 452-character question, a 65-character label and a 320-character
  * description, which is the operator's own ask `a-1647` before it was clipped.
+ * (QA round 1, Q-1's nit: the note here used to say 389 and 338, which were not
+ * the strings' lengths - the fixture is measured, not estimated, and the correct
+ * figures are these.)
  * The question must WRAP (never elide), the labels must stay scannable with the
  * recommendation beside them, and the descriptions must be fully visible - the
  * drawer owns a scroller (`ask-drawer.tsx`: `min-h-0 flex-1 overflow-y-auto`), so
@@ -631,12 +641,9 @@ const LONG_TEXT_ASK: PendingAsk = ask({
 		{
 			id: "rollout",
 			question: LONG_QUESTION,
+			recommended: 0,
 			options: [
-				{
-					label: LONG_LABEL_A,
-					description: LONG_DESCRIPTION_A,
-					recommended: true,
-				},
+				{ label: LONG_LABEL_A, description: LONG_DESCRIPTION_A },
 				{ label: LONG_LABEL_B, description: LONG_DESCRIPTION_B },
 				{ label: LONG_LABEL_C, description: LONG_DESCRIPTION_C },
 			],

@@ -50,20 +50,31 @@ const KNOWN_RESTING = new Set(["idle", "recent"]);
  * the digits, so a screen reader hears "2 asks, the agent is not waiting on
  * you" instead of "two".
  *
- * ## The ink, and why it is the accent
+ * ## The ink: the accent glyph, the row's own count ink
  *
- * It was `ink-muted`, which is the role for a hint, and it read as one: a
- * queued question is the one thing on the row that is ACTIONABLE by the reader,
- * and in the quiet ink it stated nothing he could act on at a glance. `accent`
- * is the ink this app already spends on the same fact everywhere else - the
- * composer's ask item (`composer-status-row.tsx`: "`1 question waiting` with an
- * accent mark") and the phone's ask chip - so the row, the chip and the phone
- * now name one state with one colour, and the mark stays DISTINCT from the
- * approval arm beside it (`warning`), which is the distinction §5.0's header
- * rule exists for: an approval is blocking, a queued ask is not.
+ * It was `ink-muted` throughout, which is the role for a hint, and the whole mark
+ * read as one: a queued question is the one thing on the row that is ACTIONABLE
+ * by the reader, and in the quiet ink it stated nothing he could act on at a
+ * glance. `accent` is the ink this app already spends on the same fact everywhere
+ * else - the composer's ask item (`composer-status-row.tsx`: "`1 question
+ * waiting` with an accent mark") and the phone's ask chip - so the row, the chip
+ * and the phone name one state with one colour, and the mark stays DISTINCT from
+ * the approval arm beside it (`warning`): an approval is BLOCKING, a queued ask
+ * is not, which is the distinction §5.0's header rule exists for.
+ *
+ * THE ACCENT CARRIES THE GLYPH AND ONLY THE GLYPH (design round 1, D1). This row
+ * can be `row-selected` or `row-hover`, and against those two grounds `accent`
+ * measures 4.24:1 (tokyoNight) and 4.49:1 (tokyoNightStorm) at worst over the
+ * fifty-nine palettes - under SC 1.4.3's 4.5:1 for the 12px COUNT DIGITS. The
+ * 14px glyph is a GRAPHIC and clears its 3:1 floor there, so the colour the mark
+ * is for stays where it is legal; the numeral - which is READ text, not a
+ * graphic - takes `ink-muted`, whose worst pair over every ground this row can
+ * sit on is 5.53:1 (kanagawaLotus on `sunken`; 5.63:1 on `row-selected`). Both
+ * halves are asserted in `scripts/contrast-contract.mjs` ("session row ask
+ * mark").
  *
  * WHAT THIS COSTS, since the accent is a budget rather than a free role: a row
- * can now draw two accent spends at once - the busy spinner and this mark - on
+ * can now draw two accent spends at once - the busy spinner and this glyph - on
  * a session that is working with questions outstanding. That is the state the
  * mark exists for (the two facts are separate, §5.0), the two are different
  * glyphs, and § 2's budget is about spends PER SCREEN rather than per row, so
@@ -105,10 +116,27 @@ export function ChatAsksOutstanding({
 		<span
 			role="img"
 			aria-label={`${asksOutstandingLabel(count)} outstanding. The agent is not blocked on you.`}
-			className={cn("inline-flex shrink-0 items-center gap-0.5 text-accent")}
+			className={cn("inline-flex shrink-0 items-center gap-0.5")}
 		>
-			<MessageCircleQuestion aria-hidden="true" size={14} />
-			<span className={cn("tabular-nums text-xs")}>{count}</span>
+			{/*
+			 * THE ACCENT IS ON THE GLYPH, NOT ON THE MARK (design round 1, D1): a
+			 * 14px glyph is a graphic and clears its 3:1 floor on every ground this
+			 * row can sit on, while the count digits beside it are 12px READ text
+			 * that `accent` cannot carry at 4.5:1 there (4.24:1 on `row-selected` in
+			 * tokyoNight, the tightest of the fifty-nine).
+			 */}
+			<MessageCircleQuestion
+				aria-hidden="true"
+				size={14}
+				className={cn("text-accent")}
+			/>
+			{/*
+			 * The numeral takes the count ink the app's other quiet count lines wear,
+			 * which clears 4.5:1 on every one of those grounds (5.53:1 worst). The
+			 * accessible name above is what states the fact; these digits are its
+			 * visible half.
+			 */}
+			<span className={cn("tabular-nums text-ink-muted text-xs")}>{count}</span>
 		</span>
 	);
 }
