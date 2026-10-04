@@ -619,6 +619,17 @@ export const namedByPass = (file, stories, root = ROOT) => {
  * rewritten, one-sided by design: a re-capture that reproduces identical bytes
  * leaves no trace in the diff, so the claim may legitimately EXCEED it.
  *
+ * The OVER-claim direction is deliberately NOT a failure, and that is a decision
+ * rather than an omission. The capturer ACCUMULATES this field across a pass
+ * (`capture-evidence.mjs` adds the run's own count to the previous total, and a
+ * fold carries both sides' passes forward), so a total that has drifted ABOVE
+ * what stands on the tree describes a run that rewrote frames a later commit
+ * removed. That is a claim about the RUN, not about the tree - the distinction
+ * this block's term 1 exists to make - and failing it would turn every branch
+ * that sheds a frame into a red gate. What corrects such a total is the fold,
+ * which re-derives `refreshedFrames` against the merged tree
+ * (`evidence-fold.mjs`), not CI.
+ *
  * It lives here, beside `frames`, because it was in the wrong half for a whole
  * round (round 5, R5-2; round 4 said the same of the number itself): its only
  * comparison was `main()`'s, behind that function's ImageMagick loop, and no

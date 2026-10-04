@@ -2159,14 +2159,19 @@ const askOf = (over: Partial<PendingAsk> & { ask_id: string }): PendingAsk => {
 const ASK_QUESTION = {
 	id: "target",
 	question: "Which environment should I deploy this to?",
+	/*
+	 * THE WIRE'S REAL KEY SET: an option is exactly `{label, description}` (the
+	 * core's `AskOption` forbids extras) and the recommendation is a QUESTION-level
+	 * index into `options` as carried. The per-option `recommended: true` this
+	 * fixture used to carry is residue of the defect `ask-recommended.tsx` records -
+	 * a key no producer writes, which made the drawer's dead recommendation look
+	 * correct for two rounds.
+	 */
 	options: [
-		{
-			label: "staging",
-			description: "The shared pre-prod cluster",
-			recommended: true,
-		},
+		{ label: "staging", description: "The shared pre-prod cluster" },
 		{ label: "production", description: "Live traffic" },
 	],
+	recommended: 0,
 };
 
 /** One question the agent is still waiting on: the item's attention state. */

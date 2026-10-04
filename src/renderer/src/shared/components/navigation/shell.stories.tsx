@@ -893,14 +893,18 @@ const DOCK_ASKS: PendingAsk[] = [
 			{
 				id: "target",
 				question: "Which environment should I deploy this to?",
+				/*
+				 * THE WIRE'S REAL KEY SET: an option is exactly `{label, description}`
+				 * (the core's `AskOption` forbids extras) and the recommendation is a
+				 * QUESTION-level index into `options` as carried. The per-option
+				 * `recommended: true` this fixture used to carry is residue of the defect
+				 * `ask-recommended.tsx` records - a key no producer writes.
+				 */
 				options: [
-					{
-						label: "staging",
-						description: "The shared pre-prod cluster",
-						recommended: true,
-					},
+					{ label: "staging", description: "The shared pre-prod cluster" },
 					{ label: "production", description: "Live traffic" },
 				],
+				recommended: 0,
 				multi: false,
 			},
 		],
