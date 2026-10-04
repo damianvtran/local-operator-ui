@@ -681,3 +681,187 @@ export const FullTextAtFloor: Story = {
 		onDecline: noop,
 	},
 };
+
+/**
+ * THE CHANGE-BACK WINDOW (design §10, #1936)
+ * ------------------------------------------
+ *
+ * Between the answer landing in the log and the response row existing, the agent
+ * has been told NOTHING — so the answer is still the user's to change, and the
+ * card says so with a control of its own. The window closes on delivery, which is
+ * why the control is gated on the WIRE's `delivered` flag and on nothing else:
+ * §10 forbids inferring a revision from the values (equal values are not a retry
+ * marker, different values are not a revision), so the client states the intent by
+ * sending the op and this surface never guesses it.
+ *
+ * `Changeable`, `ChangeableLate` and `ChangeRefused` are the three states §10's
+ * evidence asks for: the affordance while the window is open for an `answered`
+ * answer, the same affordance for a `late` one (the half the first fixture set
+ * missed — see `lateUndeliveredAsk`), and the owner's own refusal
+ * (`already delivered — send a new message`) rendered IN PLACE on the same row,
+ * because a silent no-op would be the worse failure. `RevisedAfterChange` is what
+ * the wire publishes once a revision is accepted: the same answer frame, carrying
+ * the LATEST `revised` event's map (the fold reads the effective answers from it,
+ * and the status, stamp and attribution stay the FIRST answer's) — plus this
+ * surface's own receipt, because the wire has no marker for an accepted change.
+ *
+ * The form itself is not a story: it is one press away (`Change answer`), and the
+ * PR's frames show it clicked rather than a fixture that skips the press.
+ */
+function changeableAsk(): PendingAsk {
+	return ask({
+		ask_id: "a-change",
+		status: "answered",
+		/*
+		 * THE FLAG THE CONTROL READS, and the whole reason this fixture is not
+		 * `answeredAsk()`: delivered `true` is history and offers nothing, which is
+		 * asserted as its own negative in `scripts/ask-revise.test.mjs`.
+		 */
+		delivered: false,
+		answered_at: TS + 4 * MINUTE,
+		answered_by: { surface: "desktop" },
+		answers: { target: ["staging"], confirm: ["yes"] },
+		questions: [
+			{
+				id: "target",
+				question: "Which environment should I deploy this to?",
+				recommended: 0,
+				options: [
+					{ label: "staging", description: "The shared pre-prod cluster" },
+					{ label: "production", description: "Live traffic" },
+				],
+				multi: false,
+			},
+			{
+				id: "confirm",
+				question: "Should I run the migration first?",
+				options: [{ label: "yes" }, { label: "no" }],
+				multi: false,
+			},
+		],
+	});
+}
+
+/** The same ask after an accepted revision: the latest map, still undelivered. */
+function revisedAsk(): PendingAsk {
+	return ask({
+		...changeableAsk(),
+		answers: { target: ["production"], confirm: ["yes"] },
+	});
+}
+
+/**
+ * §10's LATE half, which the first cut of this pair did not cover (design round 1,
+ * D2 = agent review round 1's MAJOR).
+ *
+ * A `late` answer IS a recorded answer: the deadline went by, the answer arrived
+ * afterwards, and the engine admits a revision for it exactly as it does for
+ * `answered` — `asks/queue.py`'s `_revision_decision` reads "an ask that already
+ * carries an answer (`answered`/`late`) with no `ask-response-<ask_id>` row yet",
+ * and its `revise` docstring calls the late case "the one revision that is still
+ * free to make". The fixture matters because the two `late` states are
+ * indistinguishable without it: `late` + `delivered: false` is inside the window,
+ * `late` + `delivered: true` is behind it, and only a rendered card shows which one
+ * draws a door.
+ *
+ * The `late` residual is RESOLVED UPSTREAM (engine PR #1983, merged 2026-10-04: the
+ * revision window closes on the response row's DURABLE APPEND, not on handoff). A
+ * `late` ask whose TIMEOUT notice has gone out now reads `delivered: false` until its
+ * answer row lands, so `delivered: false` is exactly the window and this fixture is a
+ * state a running core can produce. What the client still cannot do is read the row
+ * bound DIRECTLY — it reads the wire's `delivered` and nothing else, per §10's
+ * no-inference rule — which is `AskPresentation.delivering`'s own note, not a gap this
+ * fixture has to fake.
+ */
+function lateUndeliveredAsk(): PendingAsk {
+	return ask({
+		...changeableAsk(),
+		ask_id: "a-late-undelivered",
+		status: "late",
+		/*
+		 * The two halves of the state, made explicit because they are what the card
+		 * reads: the deadline is behind us (`answered_at` after `expires_at`), and the
+		 * wire says nothing has been delivered yet.
+		 */
+		expires_at: TS + 2 * MINUTE,
+		answered_at: TS + 6 * MINUTE,
+		delivered: false,
+	});
+}
+
+export const Changeable: Story = {
+	args: {
+		frontend: frontend([changeableAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+	},
+};
+
+export const ChangeRefused: Story = {
+	args: {
+		frontend: frontend([changeableAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+		/*
+		 * THE OWNER'S OWN SENTENCE, byte for byte what the runtime emits once the
+		 * response row exists (`asks/render.REVISED_ALREADY_DELIVERED`). The row is
+		 * still drawn from a frame that predates the delivery, which is exactly the
+		 * reachable path §10 says must be rendered rather than swallowed.
+		 *
+		 * `refusedByOwner` is what makes it a VERDICT and not just a sentence about the
+		 * press (agent review round 2's minor): it is the flag that withdraws the door and
+		 * drops the row from the chrome's count, and a refusal that never reached the
+		 * backend deliberately leaves it false.
+		 */
+		outcomes: {
+			"a-change": {
+				sending: false,
+				refused: "already delivered — send a new message",
+				refusedByOwner: true,
+			},
+		},
+	},
+};
+
+export const ChangeableLate: Story = {
+	args: {
+		frontend: frontend([lateUndeliveredAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+	},
+};
+
+export const RevisedAfterChange: Story = {
+	args: {
+		frontend: frontend([revisedAsk()]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+		onRevise: noop,
+		/*
+		 * THE RECEIPT (design round 1, D3; UX round 1, U3). The wire cannot mark an
+		 * accepted change — the fold keeps the FIRST `answered`'s status, stamp and
+		 * attribution and requires no marker — so the frame that carries a changed map
+		 * is a first-answer frame, indistinguishable from the answer it replaced. The
+		 * accepted revision is this surface's own record, and it is what the card's
+		 * receipt line draws from.
+		 */
+		outcomes: {
+			"a-change": { sending: false, refused: null, changed: true },
+		},
+	},
+};

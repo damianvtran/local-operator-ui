@@ -223,7 +223,7 @@ test("an unknown status is its own case, never coerced into `open`", () => {
 	assert.equal(unknown.canAnswer, false);
 });
 
-test("`delivering` is only the answered-but-not-yet-delivered reading", () => {
+test("`delivering` is the recorded-and-undelivered reading, `answered` OR `late`", () => {
 	assert.equal(
 		queue.presentAsk(ask({ status: "answered", delivered: false })).delivering,
 		true,
@@ -232,8 +232,28 @@ test("`delivering` is only the answered-but-not-yet-delivered reading", () => {
 		queue.presentAsk(ask({ status: "answered", delivered: true })).delivering,
 		false,
 	);
+	/*
+	 * THE `late` HALF IS §10's WINDOW TOO (agent review round 1 MAJOR = design round 1
+	 * D2): the engine admits a revision for `answered` OR `late` with no response row
+	 * (`asks/queue.py::_revision_decision`), so a flag that read `answered` alone filed a
+	 * late-undelivered answer as settled history and hid the door on a revision §10
+	 * accepts. DELIVERED is still history for both statuses.
+	 */
+	assert.equal(
+		queue.presentAsk(ask({ status: "late", delivered: false })).delivering,
+		true,
+	);
 	assert.equal(
 		queue.presentAsk(ask({ status: "late", delivered: true })).delivering,
+		false,
+	);
+	// A status with no recorded answer at all is neither, however the hint reads.
+	assert.equal(
+		queue.presentAsk(ask({ status: "open", delivered: false })).delivering,
+		false,
+	);
+	assert.equal(
+		queue.presentAsk(ask({ status: "timed_out", delivered: false })).delivering,
 		false,
 	);
 });
@@ -416,10 +436,24 @@ test("the status-row item's clause reads one state at a time", () => {
 	assert.equal(queue.askChipCountClause(moved), "1 question moved on");
 
 	// SETTLED: the queue is finished, and it stays on screen like a resolved plan.
+	// `delivered: true` is what makes it finished: the response row exists, so the
+	// agent has been handed the answer and the row is pinned (#1936, §10).
 	const settled = queue.askQueueView({
-		asks: [single({ ask_id: "a-1", status: "answered" })],
+		asks: [single({ ask_id: "a-1", status: "answered", delivered: true })],
 	});
 	assert.equal(queue.askChipCountClause(settled), "All asks settled");
+
+	// ANSWERED BUT NOT DELIVERED: the user answered and the agent has NOT been
+	// handed it, so the row still carries the change affordance — which makes
+	// `All asks settled` the one sentence this queue must not take, because it
+	// would contradict the panel the chip opens (§10, #1936).
+	const delivering = queue.askQueueView({
+		asks: [single({ ask_id: "a-1", status: "answered" })],
+	});
+	assert.equal(
+		queue.askChipCountClause(delivering),
+		"1 answer not yet delivered — you can still change it",
+	);
 
 	// TRUNCATED: the backend's own outstanding tally, never a prefix's split.
 	const truncated = queue.askQueueView({
@@ -697,9 +731,19 @@ test("the mode STOPS answering when the last open ask settles (the F1 delta)", (
 	// Both now read THIS predicate, so the transition is one event.
 	const open = queue.askQueueView({ asks: [single({ status: "open" })] });
 	assert.equal(queue.askComposerAnswers(open), true);
-	// Settled from the phone while the panel is open: `late` is terminal.
+	// Settled from the phone while the panel is open: `late` is terminal. `delivered`
+	// is stated rather than left to the default (false) because the two are now
+	// independent: since §10, a `late` answer that has NOT been handed to the model is
+	// still the user's to change (`presentAsk`'s `delivering`), so only a delivered one
+	// is the settled state this fixture means.
 	const settled = queue.askQueueView({
-		asks: [single({ status: "late", answers: { target: ["staging"] } })],
+		asks: [
+			single({
+				status: "late",
+				delivered: true,
+				answers: { target: ["staging"] },
+			}),
+		],
 	});
 	assert.equal(
 		queue.askComposerAnswers(settled),
@@ -1037,8 +1081,16 @@ test("the drawer's scope line counts every answerable card, and still falls thro
 		"1 question waiting",
 	);
 	assert.equal(
-		queue.askDrawerCountClause(view([single({ status: "answered" })])),
+		queue.askDrawerCountClause(
+			view([single({ status: "answered", delivered: true })]),
+		),
 		"All asks settled",
+	);
+	// The undelivered half takes its own clause here too, so the drawer and the
+	// chip it was opened from cannot describe one queue differently (§10, #1936).
+	assert.equal(
+		queue.askDrawerCountClause(view([single({ status: "answered" })])),
+		"1 answer not yet delivered — you can still change it",
 	);
 	assert.equal(
 		queue.askDrawerCountClause(view([single({ status: "timed_out" })])),

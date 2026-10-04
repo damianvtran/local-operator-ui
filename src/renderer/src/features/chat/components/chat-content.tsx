@@ -59,7 +59,7 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { gateIsSecret } from "../ask-answer";
-import type { AskDraft } from "../ask-queue";
+import type { AskDraft, AskOutcome } from "../ask-queue";
 import {
 	askComposerHoldsSecret,
 	askQueueView,
@@ -413,17 +413,30 @@ type ChatContentProps = {
 		/** "No answer — decide yourself" for a queued ask. */
 		onDeclineAsk?: (taskId: string) => void;
 		/**
+		 * CHANGE a recorded-but-undelivered answer (design §10, #1936).
+		 *
+		 * Raised to `SessionPanel` beside its two siblings, and for their reason: the
+		 * shared lock and the refusal surface live there, so a revision has to reach
+		 * it rather than be posted from the card that was clicked. Its body is the
+		 * whole ask map like `onAnswerAsk` — the wire takes the same payload for both
+		 * doors, plus the intent — so a per-question shape here would be the amend post
+		 * §10 rules out.
+		 */
+		onReviseAsk?: (askId: string, answers: Record<string, string[]>) => void;
+		/**
 		 * What `SessionPanel` knows about each queued ask it just answered, keyed by
-		 * ask id: the sentence the owner refused with, or `null` while it is live.
+		 * ask id: the sentence the owner refused with, or `null` while it is live - and,
+		 * on a revision, whether one LANDED (`AskOutcome`'s own note: the wire cannot
+		 * mark an accepted change, so the receipt is this surface's own record). The
+		 * record also carries whether a refusal is the OWNER's verdict, which is what may
+		 * shut §10's change door; a transport failure leaves that false and the door open
+		 * (`AskOutcome.refusedByOwner`).
 		 *
 		 * Keyed rather than a single slot because a refusal belongs to ONE ask - a
 		 * single slot would put the previous ask's sentence on the next one, which is
 		 * the same defect the gate's per-question hold exists to avoid.
 		 */
-		askOutcomes?: Record<
-			string,
-			{ sending: boolean; refused: string | null } | undefined
-		>;
+		askOutcomes?: Record<string, AskOutcome | undefined>;
 		/*
 		 * THE ASK-MODE LANE (design §5.0). `askExpanded` is the one flag the
 		 * composer's routing rule reads, and the page owns it rather than the ask
@@ -1902,6 +1915,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 */
 								askExpanded={canonical?.askExpanded}
 								onAskToggle={canonical?.onAskToggle}
+								askOutcomes={canonical?.askOutcomes}
 								isLoading={
 									canonical
 										? Boolean(canonical.admitting || canonical.starting)
@@ -2283,6 +2297,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								onClose={handleCloseAskDrawer}
 								onAnswer={canonical?.onAnswerAsk}
 								onDecline={canonical?.onDeclineAsk}
+								onRevise={canonical?.onReviseAsk}
 								answering={Boolean(canonical?.admitting)}
 								outcomes={canonical?.askOutcomes}
 								drafts={canonical?.askDrafts}

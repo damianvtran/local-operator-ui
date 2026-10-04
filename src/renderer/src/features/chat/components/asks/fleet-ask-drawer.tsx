@@ -76,9 +76,10 @@ import {
 	answerQueuedAsk,
 	createSendLock,
 	declineQueuedAsk,
+	reviseQueuedAsk,
 } from "../../ask-answer";
-import type { AskDraft, AskPresentation } from "../../ask-queue";
-import { askRefusalSentence } from "../../ask-queue";
+import type { AskDraft, AskOutcome, AskPresentation } from "../../ask-queue";
+import { askRefusalIsOwner, askRefusalSentence } from "../../ask-queue";
 import {
 	FLEET_ASKS_QUERY_KEY,
 	fleetAskConversationLabels,
@@ -91,11 +92,8 @@ import { AskDrawer } from "./ask-drawer";
 /** No drafts, as one stable object: a fresh `{}` per render would re-key every card. */
 const EMPTY_ASK_DRAFTS: Record<string, AskDraft> = {};
 
-/** One ask's in-flight/refused record, as the drawer and the panel read it. */
-type AskOutcomes = Record<
-	string,
-	{ sending: boolean; refused: string | null } | undefined
->;
+/** One ask's in-flight/refused/last-change record, as the drawer and the panel read it. */
+type AskOutcomes = Record<string, AskOutcome | undefined>;
 
 export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 	const { rows, frontend } = useFleetAsks();
@@ -198,15 +196,34 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 	);
 
 	const settle = useCallback(
-		(askId: string, outcome: AnswerOutcome, verb: string) => {
+		(askId: string, outcome: AnswerOutcome, verb: string, changed = false) => {
+			/*
+			 * ONLY THE OWNER'S OWN REFUSAL CLOSES §10's CHANGE DOOR (agent review round 2,
+			 * minor). A transport failure's sentence still lands in the row (the reader is
+			 * told what happened to the press), but `refusedByOwner` stays false so the
+			 * card keeps its door and a second press is possible once the wire answers -
+			 * the outcome record is never cleared, so latching the door shut on a failure
+			 * would withdraw the affordance for the life of the pane.
+			 */
+			const refusal =
+				outcome.status === "failed"
+					? {
+							refused: askRefusalSentence(outcome.error),
+							refusedByOwner: askRefusalIsOwner(outcome.error),
+						}
+					: { refused: null };
 			setOutcomes((current) => ({
 				...current,
 				[askId]: {
 					sending: false,
-					refused:
-						outcome.status === "failed"
-							? askRefusalSentence(outcome.error)
-							: null,
+					...refusal,
+					/*
+					 * The revision's own receipt (`AskOutcome`'s note): the wire cannot mark an
+					 * accepted change, so this surface records it — and the row leaves this pane
+					 * on the `refresh()` below, which is why the receipt has to exist before the
+					 * card it belonged to is gone.
+					 */
+					...(changed ? { changed: true } : {}),
 				},
 			}));
 			if (outcome.status !== "sent") return;
@@ -236,6 +253,42 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 					setAnswering(false);
 				}
 				settle(askId, outcome, "Answer sent to");
+			})();
+		},
+		[lock, rows, settle],
+	);
+
+	/*
+	 * THE CHANGE DOOR (design §10, #1936), and the FLEET is exactly the case §10 has in
+	 * mind: the ask may belong to another conversation, and a revision is accepted from
+	 * ANY surface while the answer is undelivered. The body is the same whole-ask map the
+	 * answer door sends, plus the intent — addressed by ask id, to the session the ask
+	 * names (`fleetAskSessionFor`), never to the conversation the user happens to be in.
+	 *
+	 * A refusal is NOT a failed receipt: the delivered sentence is the expected outcome of
+	 * a change that lost its window, so it lands in the row's own outcome line rather than
+	 * as a toast (the `settle` shape every other refusal here takes).
+	 */
+	const onRevise = useCallback(
+		(askId: string, answers: Record<string, string[]>) => {
+			const sessionId = fleetAskSessionFor(rows ?? [], askId);
+			if (!sessionId || lock.held) return;
+			setAnswering(true);
+			setOutcomes((current) => ({
+				...current,
+				[askId]: { sending: true, refused: null },
+			}));
+			void (async () => {
+				let outcome: AnswerOutcome;
+				try {
+					outcome = await reviseQueuedAsk(
+						{ taskId: askId, answers, sessionId, lock },
+						(request) => desktopResult(request),
+					);
+				} finally {
+					setAnswering(false);
+				}
+				settle(askId, outcome, "Answer changed for", true);
 			})();
 		},
 		[lock, rows, settle],
@@ -277,6 +330,7 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 			onClose={onClose}
 			onAnswer={onAnswer}
 			onDecline={onDecline}
+			onRevise={onRevise}
 			answering={answering}
 			outcomes={outcomes}
 			drafts={drafts}

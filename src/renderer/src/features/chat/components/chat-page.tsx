@@ -62,6 +62,7 @@ import {
 import { useCanvasStore } from "@shared/store/canvas-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
+import { showSuccessToast } from "@shared/utils/toast-manager";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	useCallback,
@@ -92,15 +93,18 @@ import {
 	createSendLock,
 	declineQueuedAsk,
 	gateIsSecret,
+	reviseQueuedAsk,
 } from "../ask-answer";
 import {
 	ASK_COMPOSER_PLACEHOLDER,
 	type AskDraft,
+	type AskOutcome,
 	EMPTY_DRAFT,
 	askAnswerMap,
 	askClaimsEscape,
 	askComposerAnswers,
 	askQueueView,
+	askRefusalIsOwner,
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
@@ -426,9 +430,9 @@ function SessionPanel({
 	 * Folding them would leave a gate's stale key able to match an ask id and
 	 * vice versa.
 	 */
-	const [askOutcomes, setAskOutcomes] = useState<
-		Record<string, { sending: boolean; refused: string | null }>
-	>({});
+	const [askOutcomes, setAskOutcomes] = useState<Record<string, AskOutcome>>(
+		{},
+	);
 	/*
 	 * THE ASK COMPOSER'S OWN STATE (design §5.0, the operator's R7 amendment).
 	 *
@@ -2554,7 +2558,21 @@ function SessionPanel({
 	 * its words and falls back to the app's own sentence for the case where a
 	 * refusal crossed the wire without one.
 	 */
-	const settleAskOutcome = (taskId: string, outcome: AnswerOutcome) => {
+	/**
+	 * Record what the owner said about an ask this panel just posted for.
+	 *
+	 * `changed` is the REVISION's own receipt (design round 1, D3; UX round 1, U3),
+	 * and it is passed in rather than inferred here because only the caller knows
+	 * which door the outcome came back through: a first answer, a decline and a
+	 * revision share this function, the record and the refusal sentence, and the
+	 * receipt is the one fact that belongs to the revision alone (a landed change
+	 * leaves the row drawn from a frame the wire cannot mark — see `AskOutcome`).
+	 */
+	const settleAskOutcome = (
+		taskId: string,
+		outcome: AnswerOutcome,
+		changed = false,
+	) => {
 		if (outcome.status === "failed") {
 			setAskOutcomes((current) => ({
 				...current,
@@ -2568,13 +2586,25 @@ function SessionPanel({
 					 * `DesktopControlError` - which is what made the first version dead.
 					 */
 					refused: askRefusalSentence(outcome.error),
+					/*
+					 * AND WHETHER THAT SENTENCE IS THE OWNER'S VERDICT, which is what may shut
+					 * §10's change door (agent review round 2, minor): a transport failure
+					 * reaches nothing, so it must not withdraw the affordance for the mount's
+					 * life. Classified HERE, where the error is still in hand - the card and
+					 * the chip only ever read the sentence.
+					 */
+					refusedByOwner: askRefusalIsOwner(outcome.error),
 				},
 			}));
 			return;
 		}
 		setAskOutcomes((current) => ({
 			...current,
-			[taskId]: { sending: false, refused: null },
+			[taskId]: {
+				sending: false,
+				refused: null,
+				...(changed ? { changed: true } : {}),
+			},
 		}));
 	};
 	const answerAsk = async (
@@ -2597,6 +2627,51 @@ function SessionPanel({
 			setAdmitting(false);
 		}
 		settleAskOutcome(taskId, outcome);
+	};
+	/*
+	 * THE REVISION DOOR (design §10, #1936). A third sibling of the two above, sharing
+	 * their lock and their outcome surface, because it is the SAME act on the SAME ask:
+	 * the user is amending an answer that has not been delivered yet, so it must not
+	 * race a first answer, a decline or another revision from any surface of this
+	 * session.
+	 *
+	 * NO LOCAL WINDOW CHECK, deliberately. `delivered` is the wire's own hint and the
+	 * response row is the real bound, so a client-side test would be a second opinion
+	 * about a race this process cannot see - and §10 names the outcome that produces:
+	 * accepted-and-then-dropped. The request goes, the owner answers, and its sentence
+	 * (the delivered refusal is `already delivered — send a new message`) is what the
+	 * card renders through `settleAskOutcome`, exactly like every other refusal here.
+	 */
+	const reviseAsk = async (
+		taskId: string,
+		answers: Record<string, string[]>,
+	) => {
+		if (!sessionId || sendLock.held) return;
+		setAdmitting(true);
+		setAskOutcomes((current) => ({
+			...current,
+			[taskId]: { sending: true, refused: null },
+		}));
+		let outcome: AnswerOutcome;
+		try {
+			outcome = await reviseQueuedAsk(
+				{ taskId, answers, sessionId, lock: sendLock },
+				(request) => desktopResult(request),
+			);
+		} finally {
+			setAdmitting(false);
+		}
+		settleAskOutcome(taskId, outcome, outcome.status === "sent");
+		/*
+		 * THE RECEIPT (UX round 1, U3). The fleet pane already toasts this act
+		 * (`Answer changed for <conversation>` — the conversation is the fact that
+		 * surface alone knows); here the conversation is the one on screen, so the
+		 * toast names the act and nothing else. Without it the two surfaces disagreed
+		 * about confirming the SAME submit: the pane said so and the drawer said
+		 * nothing, leaving the card's own receipt (below, in `AskPanel`) as the only
+		 * trace on one side and a stale frame on the other.
+		 */
+		if (outcome.status === "sent") showSuccessToast("Answer changed");
 	};
 	const declineAsk = async (taskId: string) => {
 		if (!sessionId || sendLock.held) return;
@@ -4158,6 +4233,8 @@ function SessionPanel({
 						onAnswerAsk: (taskId: string, answers: Record<string, string[]>) =>
 							void answerAsk(taskId, answers),
 						onDeclineAsk: (taskId: string) => void declineAsk(taskId),
+						onReviseAsk: (taskId: string, answers: Record<string, string[]>) =>
+							void reviseAsk(taskId, answers),
 						askOutcomes,
 						/* The ask-mode lane: the flag, its door, the shared draft, and
 						 * the composer's own sentence for the expanded state. */
