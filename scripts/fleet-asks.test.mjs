@@ -551,3 +551,67 @@ test("the fleet drawer names its cards from the sessions catalogue", () => {
 		"the container must take the conversation line from its caller rather than reading the fleet model itself.",
 	);
 });
+
+/*
+ * THE ENTRY MOVE'S BOUND, pinned as behaviour-in-source (F3). The rig proves it
+ * (`fleet-ask-escape-evidence.mjs`), but a rig is an `*-evidence.mjs` and sits
+ * outside `test:desktop`: the only other claim this lane makes on `ask-drawer.tsx`
+ * is that the selector STRING appears in it, so a re-added `[]` dependency array -
+ * or a one-shot spent only by a commit that found both a door and a surface - would
+ * restore the old steal with every gate green.
+ *
+ * The invariant, in the order the block reads: the effect is offered every commit
+ * (no dependency array); the ONLY early return that keeps the one-shot alive is "a
+ * door is under focus and its surface is not drawn yet" - the awaiting read; and
+ * the flag is consumed BEFORE the door is required, so a mount with nothing focused
+ * resolves instead of watching the rail row for the rest of the pane's life.
+ */
+test("the drawer's entry move is a bounded one-shot", () => {
+	const src = read(
+		"src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
+	);
+	const start = src.indexOf("const wasBootstrapped = useRef(false);");
+	assert.notEqual(start, -1, "the entry move is gone from the drawer");
+	const focused = src.indexOf("landing.focus();", start);
+	assert.notEqual(
+		focused,
+		-1,
+		"the entry move no longer focuses the landed control",
+	);
+	const close = src.indexOf("\n\t});", focused);
+	assert.notEqual(close, -1, "the entry move's effect has no closing line");
+	const block = src.slice(start, close);
+
+	/* 1. No dependency array: the effect must be offered every commit until the
+	 * surface it may focus has been drawn, or it runs once on the empty mount commit
+	 * and the re-render carrying the rows never gets its chance (U1). */
+	assert.ok(
+		!block.includes("\n\t}, ["),
+		"the entry move grew a dependency array; it must be offered every commit until it is consumed.",
+	);
+
+	/* 2. The bounded window: this pair is the ONLY state that retries, and a
+	 * `door === null` early return that does not consume is the old unbounded shape. */
+	assert.ok(
+		block.includes("if (door !== null && root === null) return;"),
+		"the entry move no longer bounds its retry to the awaiting-read window (a door under focus with no surface drawn yet).",
+	);
+	assert.ok(
+		!block.includes("if (door === null) return;"),
+		"the entry move returns on a missing door WITHOUT consuming the one-shot, so a mounted pane keeps watching for a door it must not serve.",
+	);
+
+	/* 3. The flag is spent before the door is required, and focus can move only
+	 * after both checks - so a mount with nothing focused resolves, and the bounded
+	 * wait cannot move anything either. */
+	const consume = block.indexOf("wasBootstrapped.current = true;");
+	const resolved = block.indexOf("if (door === null || root === null) return;");
+	assert.ok(
+		consume !== -1 && resolved !== -1 && consume < resolved,
+		"the one-shot is spent only after the door check; a mounted pane with no door under focus never resolves and a later Tab onto the rail row can steal focus.",
+	);
+	assert.ok(
+		block.indexOf("landing.focus();") > resolved,
+		"focus can move before the door/root check has resolved.",
+	);
+});
