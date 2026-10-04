@@ -78,12 +78,19 @@ const ONE: PendingAsk = ask({
 		{
 			id: "target",
 			question: "Which environment should I deploy this to?",
+			/*
+			 * THE RECOMMENDATION IS THE QUESTION'S INDEX, not a flag on the option, and
+			 * that is the wire's shape rather than a preference (agent review round 1,
+			 * R1-1): the core's `AskOption` is `{label, description}` with
+			 * `extra="forbid"`, `asks/queue.py`'s `_question_shape` writes
+			 * `recommended` beside `options`, and the harness has already rotated the
+			 * recommended option to index 0 (`AskQuestion._shape`). A fixture that put
+			 * a flag on the option modelled a payload no producer sends, which is how
+			 * the drawer's dead mark passed a green suite.
+			 */
+			recommended: 0,
 			options: [
-				{
-					label: "staging",
-					description: "The shared pre-prod cluster",
-					recommended: true,
-				},
+				{ label: "staging", description: "The shared pre-prod cluster" },
 				{ label: "production", description: "Live traffic" },
 			],
 			multi: false,
@@ -170,14 +177,27 @@ const meta = {
 	 * scroll owner, so a frame that gave it unlimited height could not show the fix.
 	 */
 	decorators: [
-		(Story) => (
+		(Story, context) => (
 			/*
 			 * A COLUMN, so the drawer stretches to the box's width: the app mounts it in
 			 * `PaneSlot`, which sets the width inline, and a row-flex decorator left it at
 			 * its content width (measured 390px of a 560px box) - a frame that would have
 			 * shown a narrower drawer than the family ever draws.
+			 *
+			 * THE WIDTH IS A PARAMETER since the 2026-10-04 fold (`drawerWidth`,
+			 * defaulting to the family's 560px cap). The full-text case has to be judged at
+			 * BOTH ends of the family's arithmetic, and the 400px floor is the end where a
+			 * wrapped question competes hardest with its own option rows: the `min(560,
+			 * row - 480)` rule bottoms out there (`CANVAS_PANE_MIN_PX`), so a frame at 560
+			 * alone cannot answer "does the card hold with real text". The inline style
+			 * rather than a `w-[560px]` class is what makes one decorator serve both.
 			 */
-			<div className="flex h-[640px] w-[560px] flex-col bg-canvas">
+			<div
+				className="flex h-[640px] flex-col bg-canvas"
+				style={{
+					width: (context.parameters.drawerWidth as number | undefined) ?? 560,
+				}}
+			>
 				<Story />
 			</div>
 		),
@@ -514,3 +534,150 @@ function declinedAsk(): PendingAsk {
 		],
 	});
 }
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE RECOMMENDATION AND THE SELECTION, AS TWO STATES (operator ask, 2026-10-04)
+ * ---------------------------------------------------------------------------
+ *
+ * The operator's report: the recommended option was marked only by the word
+ * `Recommended` in the same weight as everything around it, and nothing told a
+ * recommendation apart from a SELECTION. The second half is the requirement that
+ * decides the design - the tool hoists the recommended option to index 0, so the
+ * two coincide until the user clicks something else, and if the only signal is
+ * "this one is selected" then clicking anything else ERASES the advice he is
+ * choosing against.
+ *
+ * So the pair below is not decoration: `RecommendedSelected` is the state the
+ * card opens in, and `RecommendedPassedOver` is the state the ACT creates - the
+ * recommended row keeps its badge while the radio sits on the other option. The
+ * drawer card is the surface that carries a persistent selection (the dock's is
+ * a roving cursor), which is why the pair lives here.
+ */
+export const RecommendedSelected: Story = {
+	args: {
+		frontend: frontend([ONE]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		/* The recommended option (`staging`) is the one ticked. */
+		drafts: { "a-7f3c": { target: ["staging"] } },
+		onDraftChange: noop,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * THE SAME CARD ONE CLICK LATER: `production` is selected and `staging` is still
+ * marked as the recommendation.
+ *
+ * This is the frame the operator's requirement is judged on. If the badge were
+ * the selection mark's twin, the advice would be gone from this state - and the
+ * user would be choosing against a recommendation he can no longer see.
+ */
+export const RecommendedPassedOver: Story = {
+	args: {
+		frontend: frontend([ONE]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		/* The recommendation is `staging`; the answer drafted is the other one. */
+		drafts: { "a-7f3c": { target: ["production"] } },
+		onDraftChange: noop,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/*
+ * ---------------------------------------------------------------------------
+ * THE CARD AT FULL TEXT (the wire stopped clipping, so the layout has to hold)
+ * ---------------------------------------------------------------------------
+ *
+ * The truncation the operator reported was a CORE wire bound (`ASK_QUESTION_WIRE
+ * _CHARS = 200`, `ASK_OPTION_DESC_WIRE_CHARS = 80`) and it is gone: the core now
+ * sends the question, the labels and the descriptions whole. The design round
+ * measured this card's content box at 512px/352px and found nothing truncating,
+ * but it had no fixture with text long enough to reach the wrap - every story's
+ * strings were one line - so the claim rested on prose rather than on a frame.
+ *
+ * These are the strings the claim needs, at the lengths the wire used to cut:
+ * a 452-character question, a 65-character label and a 320-character
+ * description, which is the operator's own ask `a-1647` before it was clipped.
+ * (QA round 1, Q-1's nit: the note here used to say 389 and 338, which were not
+ * the strings' lengths - the fixture is measured, not estimated, and the correct
+ * figures are these.)
+ * The question must WRAP (never elide), the labels must stay scannable with the
+ * recommendation beside them, and the descriptions must be fully visible - the
+ * drawer owns a scroller (`ask-drawer.tsx`: `min-h-0 flex-1 overflow-y-auto`), so
+ * a tall card is a card the user scrolls, not a card that cuts a sentence.
+ *
+ * TWO WIDTHS, and both are the family's own: 560 is `CANVAS_PANE_MAX_PX` and 400
+ * is `CANVAS_PANE_MIN_PX`. The floor is where the wrapped question competes
+ * hardest with its option rows, and it is the one the design round asked to
+ * check rather than assume.
+ */
+const LONG_QUESTION =
+	"The rollout window for the billing migration collides with the audit freeze, and the question is which of the two should move: if I move the migration the finance close slips a week and the reconciliation report has to be rebuilt on top of partially migrated rows, and if I move the freeze the auditors see a schema change mid-window — either way one of them needs a decision from you before Thursday, and I would rather not guess which one is cheaper.";
+
+const LONG_LABEL_A =
+	"Amend the clause: grade on client latency, record depth beside it";
+const LONG_LABEL_B =
+	"Keep the clause as written and add a waiver footnote for this release";
+const LONG_LABEL_C =
+	"Escalate the conflict to the platform team and hold the migration";
+
+const LONG_DESCRIPTION_A =
+	"The clause is the one the client's own counsel drafted, and amending it now means the change rides the same revision the auditors are already reading, so the record stays in one place; the cost is that the waiver footnote has to be re-issued and the client sees a second version of a document they already signed off on.";
+const LONG_DESCRIPTION_B =
+	"The client is served better this way: nothing they have already approved changes, and the footnote is the smallest artefact that states the exception without reopening the clause. The risk is that a footnote is easier for a future reader to miss than a clause, and the exception then reads as the rule.";
+const LONG_DESCRIPTION_C =
+	"Escalating is the honest answer when the two constraints are genuinely in conflict, and the platform team owns both sides of it; the cost is that the decision moves off your desk and into a queue you do not control, which is the outcome the deadline makes expensive.";
+
+const LONG_TEXT_ASK: PendingAsk = ask({
+	ask_id: "a-1647",
+	questions: [
+		{
+			id: "rollout",
+			question: LONG_QUESTION,
+			recommended: 0,
+			options: [
+				{ label: LONG_LABEL_A, description: LONG_DESCRIPTION_A },
+				{ label: LONG_LABEL_B, description: LONG_DESCRIPTION_B },
+				{ label: LONG_LABEL_C, description: LONG_DESCRIPTION_C },
+			],
+			multi: false,
+		},
+	],
+});
+
+/** Full text at the family's 560px cap: the question wraps, nothing elides. */
+export const FullTextAtWidth: Story = {
+	args: {
+		frontend: frontend([LONG_TEXT_ASK]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * THE SAME CARD AT THE FAMILY'S 400px FLOOR, which is the width the design round
+ * asked to be checked rather than assumed: every line here wraps harder, the
+ * recommended option's badge has to sit beside a 65-character label, and the
+ * question's own wrapped lines compete with the rows beneath it.
+ */
+export const FullTextAtFloor: Story = {
+	parameters: { drawerWidth: 400 },
+	args: {
+		frontend: frontend([LONG_TEXT_ASK]),
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
