@@ -1429,8 +1429,8 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 *
 			 * AGAINST THOSE NUMBERS. Idle, at the band's own upper edge (container 860,
 			 * column 908), the fullest four-reading cluster plus this reading comes to
-			 * rest 2px clear of the controls' left edge — the model name down to its
-			 * floor, the chip at its 261px cap — so 860 is still the right upper edge
+			 * rest 2px clear of the controls' left edge — the model name squeezed to
+			 * 82.8px and the chip at its 261px cap — so 860 is still the right upper edge
 			 * for the two-box row and the band itself is unchanged. Running, at the same
 			 * width, this reading's own box lands 7.2-8.2px PAST the controls' left edge
 			 * with the model name already AT its 56px floor: the 36px the third box
@@ -1439,23 +1439,65 @@ export const SessionStatusStrip: FC<SessionStatusStripProps> = ({
 			 * the third box is drawn, at EVERY width — including below the band's lower
 			 * edge, where the two-box row draws it today.
 			 *
-			 * WHAT THAT COSTS, stated rather than hidden: a long turn loses the live
-			 * active-time reading. The alternative is the reading overrunning a control,
-			 * which is the defect; the value is still one press away, the transcript
-			 * carries its own status line, and the reading returns the moment the turn
-			 * ends and the third box goes with it. A reader who raises
-			 * `--lo-chat-measure` far enough would have room for it, and this does not
-			 * consult that: the shed is on the STATE, which is what issue #788's own
-			 * second option asks for and the only one a container query cannot do.
+			 * IT SHEDS ON THE STATE ALONE, and that is a cost rather than a nicety: the
+			 * predicate is unconditional on the cluster's own width, so a running row
+			 * that HAD room loses the reading too — measured after, the rightmost
+			 * reading ends 68.2px clear of the controls on `running-plain-908` and 28.2px
+			 * clear on `running-issue-908` (against 16.0 and 2.0 before), so 28-68px of
+			 * the row sits unused while a live, ticking reading is hidden. The
+			 * alternative is a measurement of the cluster's own width, which CSS cannot
+			 * make here, and the band's own shed has the same shape (it drops the
+			 * reading at container 860 with 2.4px to spare), so the state rule follows
+			 * this row's existing precedent rather than inventing a finer one.
+			 *
+			 * WHAT THAT COSTS, stated as what is TRUE rather than as what would be
+			 * reassuring: while a turn runs, the session's ACTIVE TIME IS NOT SHOWN
+			 * ANYWHERE IN THIS APP. This strip is its only renderer — no other module
+			 * reads `active_duration_s`, `useActiveSeconds` or `session-duration` (the
+			 * transcript's own clocks measure the turn or the phase, which is a
+			 * different number) — so there is no press that brings it back and no
+			 * neighbouring surface that carries it. It returns by itself the moment the
+			 * turn ends and the third box goes with it, and that is the whole of the
+			 * mitigation. The alternative is this reading painting over a control, and
+			 * the row's ladder already ranks active time the first thing shed. A reader
+			 * who raises `--lo-chat-measure` far enough would have room for it, and this
+			 * does not consult that: the shed is on the STATE, which is what issue #788's
+			 * own second option asks for and the only one a container query cannot do.
+			 *
+			 * AND IT REFLOWS THE CLUSTER AT THE TURN BOUNDARY, which no frame in this
+			 * change's set can settle: because the shed frees ~36px at the same instant
+			 * the third box appears, the model chip expands with it — measured 56 ->
+			 * 84.5px at a 908px column — and the readings downstream shift ~28px; both
+			 * move back at turn end, and again when the 500ms grace window releases the
+			 * reserved box. It is derived from the numbers rather than photographed (this
+			 * rig mounts one state and cannot hold a transition), and the band's own shed
+			 * has no transition either, so this row's precedent argues for leaving it.
+			 * Recorded because it is motion a reader sees at every send and every stop.
 			 *
 			 * THE NARROW ROW IS STILL NOT FIXED, and deliberately not here: below the
 			 * band's lower edge the cluster overflows its own line in BOTH states
 			 * (measured: +49px of reading-over-control at a 620px column in the IDLE
-			 * state, with this reading drawn), because the chip group plus three
-			 * `shrink-0` readings exceed the width and the yield order has run out. That
-			 * is a defect of this row in its idle state as much as its running one, it
-			 * is not #788's subject, and shedding this reading takes roughly 35px off it
-			 * without being its cause. Recorded rather than fixed.
+			 * state, with this reading drawn; at a 700px column the running row is still
+			 * +127.5 after this change against +165.2 before, and its idle twin is +129.2
+			 * either way), because the chip group plus three `shrink-0` readings exceed
+			 * the width and the yield order has run out. That is a defect of this row in
+			 * its idle state as much as its running one, it is not #788's subject, and
+			 * shedding this reading takes roughly 35px off it without being its cause.
+			 * Recorded rather than fixed.
+			 *
+			 * AND A FOURTH ROW-BUDGET STATE THIS SHED DOES NOT COVER, recorded here
+			 * because it is the same class of note and is PRE-EXISTING: while the
+			 * composer is acquiring the recorder (`isPreparing`) the controls group grows
+			 * a caption beside the controls — `Starting recording`, `message-input.tsx`,
+			 * `shrink-0`, measured 112.6x19.5px in `docs/evidence/stt-instant-ack`. The
+			 * group's growth there is TEXT rather than a box, so no third 32px box is
+			 * drawn and `controlsThirdBox` is false; against this row's own slack that
+			 * bill is larger than any third box's and would put the readings' last ~86px
+			 * into the caption's box. It is not this change's to pay: the caption is on
+			 * the base tree, the base carries the same overlap, and the caption's own
+			 * evidence set photographed a composer with no readings cluster at all. A
+			 * bounded follow-up rig could settle the residual; this change does not claim
+			 * it.
 			 */}
 			{duration && (
 				<Reading
