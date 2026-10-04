@@ -188,7 +188,16 @@ export const AskDrawer = ({
 	conversationOf,
 	nowMs,
 }: AskDrawerProps) => {
-	const view = askQueueView(frontend);
+	/*
+	 * THE VIEW IS READ THROUGH THIS DRAWER'S OWN OUTCOMES, so its `delivering` count
+	 * excludes a row the owner has already refused to change (design round 2, D7 =
+	 * UX round 2, U6). The chrome line is drawn directly above the cards, so counting
+	 * a refused ask as still changeable put `you can still change it` on the same
+	 * screen as that card's own `already delivered — send a new message`. A refusal
+	 * that never reached the owner leaves the row counted - the door is still open
+	 * (`AskOutcome.refusedByOwner`).
+	 */
+	const view = askQueueView(frontend, outcomes);
 	const now = useAskClock(view.open > 0, nowMs);
 	const rootRef = useRef<HTMLElement | null>(null);
 

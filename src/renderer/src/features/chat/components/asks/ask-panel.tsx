@@ -522,12 +522,19 @@ const AskRow = ({
 	 * comparison ("a revision is not a race; the winner rule governs races"); this
 	 * derives nothing and predicts nothing — it accepts a fact the OWNER has already
 	 * stated about THIS ask, and it is scoped to the surface that holds the sentence.
-	 * A transport failure refused the same way closes the door for the frame too; the
-	 * refusal line says why, and the next wire read (or the ask settling) is the way
-	 * back, which is cheaper than a door whose every press re-refuses.
+	 *
+	 * ONLY THE OWNER'S VERDICT CLOSES IT, AND A TRANSPORT FAILURE DOES NOT (agent review
+	 * round 2, minor). The first cut closed the door on ANY refusal, including one where
+	 * the request never reached the backend - and because the outcome record is never
+	 * cleared and the "next wire read" it promised does not exist, one failed press left
+	 * an answered-undelivered ask with NO affordance at all until the mount changed. A
+	 * refusal that reached nothing is not a statement about the window: the door stays
+	 * open, the refusal line still says what happened to the press, and the reader may try
+	 * again. `outcome.refusedByOwner` is that classification, made where the error was
+	 * still in hand (`askRefusalIsOwner`); only `true` shuts this door.
 	 */
-	const refused = Boolean(outcome?.refused);
-	const changeOpen = delivering && !refused;
+	const doorShut = outcome?.refusedByOwner === true;
+	const changeOpen = delivering && !doorShut;
 	/*
 	 * A CHANGE THAT LANDED CLOSES THE FORM (UX round 1, U3; design round 1, D3). The
 	 * owner accepted the map, so the editable copy of the answers on screen is stale
@@ -812,10 +819,11 @@ const AskRow = ({
 			 * IT IS GATED ON THE WIRE'S WINDOW AND ON THE OWNER'S OWN REFUSAL, and nothing
 			 * else. `changeOpen` is `delivering` — the wire's RECORDED-and-undelivered
 			 * reading, `answered` OR `late` (see `AskPresentation.delivering`) — less a
-			 * refusal this card already holds: the refusal is the owner's own sentence about
-			 * this ask's window, so a control whose only possible outcome is the sentence
-			 * directly above it is withdrawn while the sentence stands (design round 1,
-			 * D1 = UX round 1, U1). It is deliberately NOT inferred from the status alone
+			 * refusal the OWNER made about this ask's window: a control whose only possible
+			 * outcome is the sentence directly above it is withdrawn while the sentence stands
+			 * (design round 1, D1 = UX round 1, U1). A TRANSPORT FAILURE IS NOT SUCH A REFUSAL
+			 * and leaves the door open (`AskOutcome.refusedByOwner`, agent review round 2's
+			 * minor). It is deliberately NOT inferred from the status alone
 			 * (an ANSWERED ask that has been delivered is finished history and must offer
 			 * nothing), and NOT from any comparison between the draft and the recorded
 			 * values: §10 forbids that in as many words, because equal values are not a

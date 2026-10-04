@@ -764,10 +764,14 @@ function revisedAsk(): PendingAsk {
  * `late` + `delivered: true` is behind it, and only a rendered card shows which one
  * draws a door.
  *
- * The residual the wire cannot express — a `late` ask whose TIMEOUT notice has
- * already gone out reads `delivered: true` while the response row is still absent —
- * is `AskPresentation.delivering`'s own note and is recorded on the PR as a wire
- * deferral rather than faked here.
+ * The `late` residual is RESOLVED UPSTREAM (engine PR #1983, merged 2026-10-04: the
+ * revision window closes on the response row's DURABLE APPEND, not on handoff). A
+ * `late` ask whose TIMEOUT notice has gone out now reads `delivered: false` until its
+ * answer row lands, so `delivered: false` is exactly the window and this fixture is a
+ * state a running core can produce. What the client still cannot do is read the row
+ * bound DIRECTLY — it reads the wire's `delivered` and nothing else, per §10's
+ * no-inference rule — which is `AskPresentation.delivering`'s own note, not a gap this
+ * fixture has to fake.
  */
 function lateUndeliveredAsk(): PendingAsk {
 	return ask({
@@ -811,11 +815,17 @@ export const ChangeRefused: Story = {
 		 * response row exists (`asks/render.REVISED_ALREADY_DELIVERED`). The row is
 		 * still drawn from a frame that predates the delivery, which is exactly the
 		 * reachable path §10 says must be rendered rather than swallowed.
+		 *
+		 * `refusedByOwner` is what makes it a VERDICT and not just a sentence about the
+		 * press (agent review round 2's minor): it is the flag that withdraws the door and
+		 * drops the row from the chrome's count, and a refusal that never reached the
+		 * backend deliberately leaves it false.
 		 */
 		outcomes: {
 			"a-change": {
 				sending: false,
 				refused: "already delivered — send a new message",
+				refusedByOwner: true,
 			},
 		},
 	},

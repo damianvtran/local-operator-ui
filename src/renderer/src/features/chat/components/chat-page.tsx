@@ -104,6 +104,7 @@ import {
 	askClaimsEscape,
 	askComposerAnswers,
 	askQueueView,
+	askRefusalIsOwner,
 	askRefusalSentence,
 	effectiveGate,
 } from "../ask-queue";
@@ -2585,6 +2586,14 @@ function SessionPanel({
 					 * `DesktopControlError` - which is what made the first version dead.
 					 */
 					refused: askRefusalSentence(outcome.error),
+					/*
+					 * AND WHETHER THAT SENTENCE IS THE OWNER'S VERDICT, which is what may shut
+					 * §10's change door (agent review round 2, minor): a transport failure
+					 * reaches nothing, so it must not withdraw the affordance for the mount's
+					 * life. Classified HERE, where the error is still in hand - the card and
+					 * the chip only ever read the sentence.
+					 */
+					refusedByOwner: askRefusalIsOwner(outcome.error),
 				},
 			}));
 			return;

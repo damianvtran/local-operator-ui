@@ -225,6 +225,13 @@ export const askChipCountClause = (view: AskQueueView): string => {
 	 * one they cannot. A DELIVERED `answered` ask is excluded by the row's own
 	 * wire-derived flag, so the ordinary finished queue keeps today's sentence.
 	 *
+	 * AND A ROW THE OWNER HAS ALREADY REFUSED IS EXCLUDED TOO, through the view's own
+	 * count: `AskQueueView.delivering` is read against the caller's outcome record, so
+	 * an ask whose change door the owner shut drops out of this clause rather than
+	 * being advertised while the card below it refuses (design round 2, D7 = UX round
+	 * 2, U6). Only the OWNER's verdict removes a row - a transport failure leaves it
+	 * counted, because the door is still open (`AskOutcome.refusedByOwner`).
+	 *
 	 * AND THE CLAUSE NAMES THE DOOR (UX round 1, U4; design round 1, D6). `not yet
 	 * delivered` on its own is a statement of the wire's condition in
 	 * implementation words: it does not say that the answer is still the user's,
@@ -671,23 +678,26 @@ export type AskPresentation = {
 	 * as settled history with no door to a revision §10 accepts (agent review round 1
 	 * MAJOR = design round 1 D2).
 	 *
-	 * THE DELIVERY HALF IS THE WIRE'S `delivered` HINT, and that half is a WIRE LIMIT
-	 * rather than a design one. The hint is the fold's STICKY reading
-	 * (`asks/store.py::delivered_hint`): it counts the `ask-timeout-` row as a delivery
-	 * because a deadline notice reaches the model exactly as an answer does. The window
-	 * the owner actually keys on is the `ask-response-<ask_id>` row, and for `late` the
-	 * two disagree - the timeout notice has gone out, the answer has not. A `late` ask
-	 * in that state reads `delivered: true` here and therefore takes no door, even
-	 * though the engine would accept the revision.
+	 * THE DELIVERY HALF IS THE WIRE'S `delivered` HINT, and the hint is now the ROW
+	 * ITSELF. Engine PR #1983 (merged 2026-10-04, "close the revision window on
+	 * consumption, not on handoff") re-pinned the flag to the
+	 * `ask-response-<ask_id>` row's DURABLE APPEND for `answered`/`declined`/`late`
+	 * (`asks/store.py::delivered_hint`), so a `late` ask whose `ask-timeout-` notice
+	 * has already gone out reads `delivered: false` until its answer row lands - the
+	 * deadline notice delivers nothing. The hint and §10's window are therefore the
+	 * same fact in a running session, and the earlier disagreement (a sticky hint
+	 * that counted the notice as a delivery, hiding the door on a `late` ask) is gone
+	 * with that engine release. A core older than it still carries the sticky reading
+	 * and can over-report `delivered: true` here; this client's reading is the same
+	 * either way, because it only ever reads the hint.
 	 *
-	 * That residual gap is NOT fixable on this side, and is not papered over with a
-	 * second opinion: the wire publishes no row-presence field (`asks/store.py`'s
-	 * `pending_row`, the only shape that reaches a client), so a client that wanted the
-	 * row bound would have to guess it from transcript rows or from a value comparison,
-	 * and §10 forbids exactly that class of inference. It is recorded on the PR as an
-	 * engine/wire deferral (the row bound needs its own field); what is implemented here
-	 * is §10's own text, which states the window as "`answered` or `late` with
-	 * `delivered: false`".
+	 * THE CLIENT STILL CANNOT SEE THE ROW BOUND DIRECTLY, and that limit is kept
+	 * rather than papered over: the wire publishes no row-presence field
+	 * (`asks/store.py`'s `pending_row`, the only shape that reaches a client), so a
+	 * client that wanted the row itself would have to guess it from transcript rows or
+	 * from a value comparison, and §10 forbids exactly that class of inference. What is
+	 * implemented here is §10's own text, which states the window as "`answered` or
+	 * `late` with `delivered: false`", read from the hint the wire publishes.
 	 */
 	delivering: boolean;
 };
@@ -830,6 +840,22 @@ export type AskOutcome = {
 	refused: string | null;
 	/** A CHANGE that landed, per the owner's own acceptance (design §10, #1936). */
 	changed?: boolean;
+	/**
+	 * Whether the refusal above is the OWNER's own verdict on this ask - a sentence
+	 * that crossed the wire, or a status/code the app reads as one of the ask's own
+	 * states - rather than a transport failure that reached nothing.
+	 *
+	 * ONLY A REAL VERDICT SHUTS §10's CHANGE DOOR (agent review round 2, minor). The
+	 * card withdraws the door while a refusal stands, because a control whose only
+	 * possible outcome is the sentence above it is the second press design round 1's
+	 * D1 measured. A transport failure is not a verdict: the request never arrived, so
+	 * the card has learned NOTHING about the window, and latching the door shut on it
+	 * left an answered-undelivered ask with no affordance at all until a remount -
+	 * this record is never cleared. The classification is made where the error is still
+	 * in hand (`askRefusalIsOwner`); a reader of this record only ever gets the
+	 * sentence.
+	 */
+	refusedByOwner?: boolean;
 };
 
 const OPEN_STATUSES: ReadonlySet<string> = new Set(["open", "timed_out"]);
@@ -894,6 +920,17 @@ export type AskQueueView = {
 	 * the wire limit that half carries are `AskPresentation.delivering`'s own note;
 	 * the caveat is stated once there rather than twice here.
 	 *
+	 * THE COUNT IS READ THROUGH THE CALLER'S OWN OUTCOMES, because a refusal can shut
+	 * a row's door while the frame still calls it undelivered (agent review round 2,
+	 * minor). A row whose refusal is the owner's own verdict is NOT counted here: the
+	 * count exists to tell the reader how many answers are still THEIRS to change, and
+	 * the owner has just said this one is not - so advertising it would be the chrome
+	 * offering a door the card refuses, which is the contradiction design round 2's
+	 * D7 = UX round 2's U6 measured. A refusal that never reached the owner leaves the
+	 * row counted and the door open (`AskOutcome.refusedByOwner`), because nothing was
+	 * learned about the window. `askQueueView` takes the record as its second argument
+	 * and a host with none (a story, the fleet's own model) simply passes it nothing.
+	 *
 	 * A truncated frame's count is a count of the visible prefix, exactly as
 	 * `waiting`/`movedOn` are — the same caveat, stated once here rather than three
 	 * times above.
@@ -934,6 +971,14 @@ export const askQueueView = (
 		| Pick<CanonicalFrontendState, "asks" | "asks_open" | "asks_truncated">
 		| null
 		| undefined,
+	/*
+	 * The caller's own record of the asks it posted for, when it has one. Read for
+	 * ONE term — `delivering`, where an owner refusal takes the row out of the count
+	 * (see that field's note) — and deliberately not for anything else: the view is a
+	 * reading of the wire, and the record only ever corrects it where the wire is
+	 * known to be stale.
+	 */
+	outcomes?: Readonly<Record<string, AskOutcome | undefined>>,
 ): AskQueueView => {
 	const asks = sessionAsks(frontend);
 	if (asks === null)
@@ -962,7 +1007,10 @@ export const askQueueView = (
 	 */
 	const waiting = rows.filter((row) => row.waiting).length;
 	const movedOn = rows.filter((row) => row.movedOn).length;
-	const delivering = rows.filter((row) => row.delivering).length;
+	const delivering = rows.filter(
+		(row) =>
+			row.delivering && outcomes?.[row.ask.ask_id]?.refusedByOwner !== true,
+	).length;
 	/*
 	 * The waiting rows' own deadlines, for the chip's countdown. Rendered from
 	 * `expires_at` on the CLIENT clock, exactly as a panel row's is (see
@@ -1032,6 +1080,23 @@ export const ASK_STATUS_COPY: Record<AskStatus | "unknown", string> = {
 };
 
 /**
+ * The `late` arm's DELIVERY-AWARE sentence: the SAME recorded-and-undelivered window
+ * as `answered`'s "Answered — delivering", for the half that timed out first.
+ *
+ * The contract's own `late` sentence ends "the agent was told", and that clause is the
+ * fact which makes a late answer TERMINAL — so it is false for exactly the §10 window
+ * this surface has a change door for, where the row read "Answered late — the agent
+ * was told" directly beside its own "not yet delivered — you can still change it"
+ * (design round 2, D7 = UX round 2, U6). The corrected sentence states the delivery
+ * condition the way the `answered` arm does, so a reader cannot take away a claim the
+ * wire has not made yet. It is a SEPARATE constant rather than a change to
+ * `ASK_STATUS_COPY.late`, because that contract is the word a DELIVERED late row keeps
+ * in the settled section (`askStatusWord`), where "the agent was told" is true — the
+ * sentence is condition-dependent, the word is not.
+ */
+export const ASK_LATE_UNDELIVERED_TEXT = "Answered late — not yet delivered";
+
+/**
  * The status WORD for a settled row's one line, DERIVED from the sentence above.
  *
  * A settled ask is one line in its section (design note §4.5), and one line cannot
@@ -1093,9 +1158,18 @@ export const askStatusWords = (rows: readonly AskPresentation[]): string => {
  * nothing about whether an answer would be accepted (the backend's fold owns
  * that, which is why a row may read "expires in 2 m" and still be answerable a
  * moment later if its own frame has not caught up).
+ *
+ * A RECORDED-BUT-UNDELIVERED `late` ROW GETS THE DELIVERY-AWARE SENTENCE, not the
+ * contract's terminal one (see `ASK_LATE_UNDELIVERED_TEXT`): the contract's sentence
+ * is a claim the row's own delivery condition has not earned yet, so the card and the
+ * chip beside it would state opposite facts about the same ask. Every other status is
+ * read from the contract: an undelivered `answered` row says "Answered — delivering"
+ * already, which claims no delivery.
  */
 export const askStatusText = (ask: PendingAsk, nowMs: number): string => {
 	const presentation = presentAsk(ask);
+	if (presentation.status === "late" && presentation.delivering)
+		return ASK_LATE_UNDELIVERED_TEXT;
 	const base = ASK_STATUS_COPY[presentation.status];
 	if (presentation.status !== "open") return base;
 	const expiry = askExpiryText(ask, nowMs);
@@ -1359,6 +1433,33 @@ export const askRefusalFallback = (error: unknown): string | null => {
 };
 
 /**
+ * "DID A SENTENCE CROSS THE WIRE?", in the two shapes it has, extracted so the
+ * sentence and the verdict (`askRefusalIsOwner`) read the SAME answer.
+ *
+ * `desktopResult` stores `detail` only when the body's detail is an OBJECT; a
+ * `{detail: "..."}` payload puts that same sentence in `message` and leaves the field
+ * undefined - so a string-detail refusal was read as "nothing crossed" and the owner's
+ * words were replaced by the app's constant (QA round 3, Q-4). The one thing that
+ * reliably means NOTHING crossed is the transport's own placeholder, which is exactly
+ * what it substitutes when it has no sentence to carry; the `DesktopControlError` scope
+ * keeps a plain `Error` (always a transport failure) out, so this app's own diagnosis
+ * is never attributed to the server.
+ */
+const askRefusalAuthored = (error: unknown): boolean => {
+	const detail =
+		typeof error === "object" && error !== null
+			? (error as { detail?: unknown }).detail
+			: undefined;
+	const message = error instanceof Error ? error.message : "";
+	return (
+		detail !== undefined ||
+		(error instanceof DesktopControlError &&
+			message !== "" &&
+			message !== DESKTOP_REFUSAL_PLACEHOLDER)
+	);
+};
+
+/**
  * What to paint on a row whose answer the backend refused.
  *
  * TWO FACTS, IN ORDER (agent review F5, QA round 1 Q-2, QA round 2 Q-2):
@@ -1381,35 +1482,8 @@ export const askRefusalFallback = (error: unknown): string | null => {
  * now names both.
  */
 export const askRefusalSentence = (error: unknown): string => {
-	const detail =
-		typeof error === "object" && error !== null
-			? (error as { detail?: unknown }).detail
-			: undefined;
-	/*
-	 * "DID A SENTENCE CROSS THE WIRE?" HAS TWO SHAPES, and the field alone cannot
-	 * answer it (QA round 3, Q-4). `desktopResult` stores `detail` only when the
-	 * body's detail is an OBJECT; a `{detail: "..."}` payload puts that same
-	 * sentence in `message` and leaves the field undefined - so a string-detail
-	 * refusal was read as "nothing crossed" and the owner's words were replaced by
-	 * the app's constant. The one thing that reliably means NOTHING crossed is the
-	 * transport's own placeholder, which is exactly what it substitutes when it has
-	 * no sentence to carry.
-	 */
-	const message = error instanceof Error ? error.message : "";
-	const authored =
-		detail !== undefined ||
-		/*
-		 * A control error whose message is NOT the placeholder carries prose, and the
-		 * only source of prose on this path is the refusal body - so this is the
-		 * string-detail shape. Scoped to `DesktopControlError` deliberately: a plain
-		 * `Error` is a transport failure, and reading its message as the backend's
-		 * own words would attribute this app's diagnosis to the server (QA round 3's
-		 * case 3 keeps that distinction).
-		 */
-		(error instanceof DesktopControlError &&
-			message !== "" &&
-			message !== DESKTOP_REFUSAL_PLACEHOLDER);
-	if (authored) return userFacingMessage(error, ASK_ALREADY_SETTLED_MESSAGE);
+	if (askRefusalAuthored(error))
+		return userFacingMessage(error, ASK_ALREADY_SETTLED_MESSAGE);
 	const classified = askRefusalFallback(error);
 	if (classified !== null) return classified;
 	/*
@@ -1426,6 +1500,29 @@ export const askRefusalSentence = (error: unknown): string => {
 			: ASK_ALREADY_SETTLED_MESSAGE,
 	);
 };
+
+/**
+ * Whether a refusal is the OWNER's own verdict on this ask, rather than a transport
+ * failure that reached nothing.
+ *
+ * IT DECIDES WHETHER §10's CHANGE DOOR MAY SHUT (agent review round 2, minor). The card
+ * withdraws the door while a refusal stands, because a control whose only possible
+ * outcome is the sentence above it is a second press (design round 1, D1 = UX round 1,
+ * U1). A TRANSPORT FAILURE IS NOT A VERDICT: the request never arrived, so nothing was
+ * learned about the window - and because the outcome record is never cleared, latching
+ * the door shut on one left an answered-undelivered ask with no affordance at all until
+ * a remount.
+ *
+ * A VERDICT IS EITHER SHAPE THE APP CAN SUBSTANTIATE: the owner's own sentence crossed
+ * the wire (`askRefusalAuthored`), or a status/code the app classifies as one of the
+ * ask's own states (`askRefusalFallback` - 409/410). A transport failure carries no
+ * status, and a 404 is "no ask with that id"; neither is a statement about delivery, so
+ * both leave the door open and the reader free to press again once the wire can answer.
+ * The returned refusal stays on screen either way - it is a fact about the press, not a
+ * gate on the control.
+ */
+export const askRefusalIsOwner = (error: unknown): boolean =>
+	askRefusalAuthored(error) || askRefusalFallback(error) !== null;
 
 /**
  * The `sessions.answer` body for a whole-ask answer, or `null` when the draft is

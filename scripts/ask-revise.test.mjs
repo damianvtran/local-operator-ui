@@ -82,7 +82,8 @@ const bundle = await build({
 	stdin: {
 		contents: [
 			'export { AskPanel } from "./src/renderer/src/features/chat/components/asks/ask-panel";',
-			'export { askQueueView, askChipCountClause, askRevisionDraft, askAnswerMap, presentAsk, askStatusText } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { askQueueView, askChipCountClause, askRevisionDraft, askAnswerMap, presentAsk, askStatusText, askStatusWord } from "./src/renderer/src/features/chat/ask-queue";',
+			'export { ASK_LATE_UNDELIVERED_TEXT, askRefusalIsOwner, askScopeLine } from "./src/renderer/src/features/chat/ask-queue";',
 			'export { reviseQueuedAsk, answerQueuedAsk, createSendLock } from "./src/renderer/src/features/chat/ask-answer";',
 			'export { desktopRequestSchema, desktopEndpoint } from "./src/shared/desktop-contract";',
 		].join("\n"),
@@ -138,6 +139,10 @@ const {
 	askAnswerMap,
 	presentAsk,
 	askStatusText,
+	askStatusWord,
+	ASK_LATE_UNDELIVERED_TEXT,
+	askRefusalIsOwner,
+	askScopeLine,
 	reviseQueuedAsk,
 	answerQueuedAsk,
 	createSendLock,
@@ -450,6 +455,12 @@ test("an owner refusal closes the door and travels with the row", () => {
 	const refused = {
 		sending: false,
 		refused: "already delivered — send a new message",
+		/*
+		 * THE CLASSIFICATION THAT SHUTS THE DOOR (agent review round 2, minor): a refusal
+		 * that reached nothing keeps its sentence but NOT this flag, and the card keeps
+		 * its affordance.
+		 */
+		refusedByOwner: true,
 	};
 	/*
 	 * PENDING (the wire has not caught up): the card is still drawn from a frame that
@@ -487,6 +498,161 @@ test("an owner refusal closes the door and travels with the row", () => {
 	 * reads the row's own summary. What this file can assert is the split: the ask is no
 	 * longer a pending card and offers no door.
 	 */
+});
+
+test("a transport failure leaves the door open; only the owner's verdict shuts it", () => {
+	/*
+	 * Agent review round 2's minor. The first cut closed the door on ANY refusal, and
+	 * the outcome record is never cleared - so one press that never reached the backend
+	 * left an answered-undelivered ask with NO affordance at all until the mount
+	 * changed. The card withdraws the door only on a refusal that is the OWNER's own
+	 * statement about the window (design round 1, D1 = UX round 1, U1); a request that
+	 * reached nothing is not such a statement, and the sentence is still painted.
+	 */
+	const transport =
+		"This server did not answer the request for its desktop controls.";
+	const failed = panelMarkup(answeredNotDelivered(), {
+		outcomes: { "a-revise": { sending: false, refused: transport } },
+	});
+	assert.ok(
+		failed.includes("Change answer"),
+		"a refusal that reached nothing does not withdraw the affordance",
+	);
+	assert.ok(failed.includes(transport), "and its sentence is still on the row");
+
+	// THE OWNER'S VERDICT DOES SHUT IT, and it is the flag the caller records - the
+	// card never re-derives the window from the sentence's text.
+	const owned = panelMarkup(answeredNotDelivered(), {
+		outcomes: {
+			"a-revise": {
+				sending: false,
+				refused: "already delivered — send a new message",
+				refusedByOwner: true,
+			},
+		},
+	});
+	assert.equal(owned.includes("Change answer"), false);
+});
+
+test("the refusal verdict is the classification, not the sentence's spelling", () => {
+	// A plain Error is a transport failure: nothing crossed the wire.
+	assert.equal(askRefusalIsOwner(new Error("socket closed")), false);
+	// A 404 is "no ask with that id" - not a statement about delivery.
+	assert.equal(
+		askRefusalIsOwner(Object.assign(new Error("missing"), { status: 404 })),
+		false,
+	);
+	// A status the app classifies (409/410) IS the ask's own state, stated by the owner.
+	assert.equal(
+		askRefusalIsOwner(Object.assign(new Error("settled"), { status: 409 })),
+		true,
+	);
+	// An authored sentence (the body's own detail) is the owner's words.
+	assert.equal(
+		askRefusalIsOwner(
+			Object.assign(new Error("That ask was already delivered."), {
+				detail: { reason: "delivered" },
+			}),
+		),
+		true,
+	);
+});
+
+test("the view's delivering count drops a row the owner refused, and the chip stops advertising it", () => {
+	const rows = { asks: [answeredNotDelivered()], asks_open: 0 };
+	// No outcomes: the wire's own reading, unchanged.
+	assert.equal(askQueueView(rows).delivering, 1);
+	// A transport failure leaves the answer the user's: still counted, door open.
+	assert.equal(
+		askQueueView(rows, {
+			"a-revise": { sending: false, refused: "transport" },
+		}).delivering,
+		1,
+	);
+	// The owner's verdict: the door is shut, so the count must not advertise it. With a
+	// second, still-changeable answer beside it the count is about the OPEN door alone.
+	const refused = {
+		sending: false,
+		refused: "already delivered — send a new message",
+		refusedByOwner: true,
+	};
+	assert.equal(askQueueView(rows, { "a-revise": refused }).delivering, 0);
+	assert.equal(
+		askQueueView(
+			{ asks: [answeredNotDelivered(), lateNotDelivered()], asks_open: 0 },
+			{ "a-revise": refused },
+		).delivering,
+		1,
+	);
+	assert.equal(
+		askChipCountClause(
+			askQueueView(
+				{ asks: [answeredNotDelivered(), lateNotDelivered()], asks_open: 0 },
+				{ "a-revise": refused },
+			),
+		),
+		"1 answer not yet delivered — you can still change it",
+	);
+	/*
+	 * A queue whose ONLY undelivered answer was refused therefore reports settled - and
+	 * that is the owner's own statement, not a second contradiction: the card still
+	 * drawn from the stale frame carries the owner's sentence, which says the same
+	 * thing ("already delivered"). What the clause must never do is the thing this
+	 * finding measured: say the door is open where the card refuses it.
+	 */
+	assert.equal(
+		askChipCountClause(askQueueView(rows, { "a-revise": refused })),
+		"All asks settled",
+	);
+	/*
+	 * AND THE DRAWER CHROME'S OWN LINE, which is the string that sits directly above the
+	 * card: it is the scope subject plus the drawer's count clause, so the same exclusion
+	 * reaches the surface the finding measured.
+	 */
+	assert.equal(
+		askScopeLine(
+			"session",
+			askQueueView(
+				{ asks: [answeredNotDelivered(), lateNotDelivered()], asks_open: 0 },
+				{ "a-revise": refused },
+			),
+		),
+		"This conversation · 1 answer not yet delivered — you can still change it",
+	);
+	assert.equal(
+		askScopeLine("session", askQueueView(rows, { "a-revise": refused })),
+		"This conversation · All asks settled",
+	);
+});
+
+test("a late-undelivered row does not claim the agent was told", () => {
+	/*
+	 * Design round 2, D7 = UX round 2, U6, second half: the contract's `late` sentence
+	 * ends "the agent was told", which is the fact that makes a late answer TERMINAL -
+	 * and it was false for exactly the window the card carries a change door for, so the
+	 * row read "Answered late — the agent was told" beside its own "not yet delivered —
+	 * you can still change it".
+	 */
+	assert.equal(
+		askStatusText(lateNotDelivered(), NOW),
+		ASK_LATE_UNDELIVERED_TEXT,
+	);
+	assert.equal(ASK_LATE_UNDELIVERED_TEXT, "Answered late — not yet delivered");
+	const markup = panelMarkup(lateNotDelivered());
+	assert.ok(markup.includes("Answered late — not yet delivered"));
+	assert.equal(
+		markup.includes("the agent was told"),
+		false,
+		"the card must not claim a delivery the wire has not made",
+	);
+	// A DELIVERED late row keeps the contract's own words: the settled section's one-line
+	// WORD (`Answered late`) is what tells it from a plain `Answered`, and that word is
+	// still read from the contract.
+	assert.equal(
+		askStatusText(lateNotDelivered({ delivered: true }), NOW),
+		"Answered late — the agent was told",
+	);
+	assert.equal(askStatusWord("late"), "Answered late");
 });
 
 test("a change that landed leaves a receipt the first-answer frame does not", () => {
