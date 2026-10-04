@@ -3961,7 +3961,12 @@ const BRANCH_RECORDS = [
 	 * manifest's own convention both are re-pointed here at the commit that
 	 * carried that content onto main, so this branch's merge carries the
 	 * corrected spelling in where a stale resolution would keep the pruned
-	 * one. It also records the two values the fields held - the branch's own
+	 * one. Extended by the same sweep's third field (the reviewer's find on
+	 * #827): the `mesh-tab-before` set's `capturedAtHead` is re-pointed at the
+	 * same carrier, and the note also names three further sets of the class in
+	 * other lanes - recorded rather than re-pointed, since each belongs to a
+	 * lane whose carrier this sweep has not derived. It also records the two
+	 * values the fields held - the branch's own
 	 * true capture heads - so the re-point loses no fact. It is listed for the
 	 * reason the list exists: a fold that started from main's manifest would
 	 * drop it, and with it the only statement of why those fields read the way
