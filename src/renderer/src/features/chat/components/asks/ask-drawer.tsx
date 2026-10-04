@@ -235,18 +235,29 @@ export const AskDrawer = ({
 			active.matches(ASK_FLEET_ITEM_SELECTOR)
 				? active
 				: null;
-		if (door === null) return;
-		/*
-		 * THE FLAG IS SET ONLY ONCE THE SURFACE IS ACTUALLY THERE, and that is not a
-		 * tidy-up: the fleet pane mounts before its read answers, so the container's
-		 * FIRST render has `frontend === null` and draws nothing (`rootRef.current` is
-		 * null). Consuming the one-shot there left the keyboard on the rail row for
-		 * good - the exact state UX round 1, U1 recorded - because the re-render that
-		 * carries the rows arrives after the flag is already spent.
-		 */
 		const root = rootRef.current;
-		if (root === null) return;
+		/*
+		 * THE ONE-SHOT IS CONSUMED ON THE FIRST COMMIT THAT IS NOT THE AWAITING READ,
+		 * and that bound is the whole of this lane's no-focus-steal promise. The only
+		 * thing there is to wait for is the fleet pane's read: its first commits carry
+		 * `frontend === null`, so the container draws nothing and `rootRef.current` is
+		 * null while the door that opened it is still under the keyboard. `door !==
+		 * null && root === null` is exactly that state, and it is the ONLY state that
+		 * retries.
+		 *
+		 * EVERY OTHER COMMIT RESOLVES THE MOVE, and it resolves it whether or not a
+		 * door is under focus. Spending the flag only on a commit that found BOTH a door
+		 * and a surface (the shape this used to have) left it false for as long as a
+		 * drawer mounted with nothing focused stayed up: the rail row is still on screen
+		 * and still matches `ASK_FLEET_ITEM_SELECTOR`, and the ask clock re-renders once
+		 * a second, so the next Tab onto that row plus any commit moved focus into the
+		 * pane - the steal that old docblock said could not happen. Focus moves ONLY on
+		 * a commit that has both a door and a surface, so the bounded wait cannot move
+		 * anything either.
+		 */
+		if (door !== null && root === null) return;
 		wasBootstrapped.current = true;
+		if (door === null || root === null) return;
 		doorRef.current = door;
 		/*
 		 * THE CARD'S FIRST CONTROL, not the bar's (UX round 1, U4). The bar leads the
@@ -263,11 +274,10 @@ export const AskDrawer = ({
 		landing.focus();
 		/*
 		 * NO DEPENDENCY ARRAY, and that is the whole point rather than an oversight.
-		 * The one-shot is spent only by a commit that BOTH found a door and found the
-		 * surface (`wasBootstrapped`), so the effect has to be offered every commit
-		 * until then: the fleet pane's first renders carry no rows (the read has not
-		 * answered), which is why the container's mount commit draws nothing at all and
-		 * `rootRef.current` is null on it. A `[]` here ran exactly once, on that empty
+		 * The one-shot has to be offered every commit until it is consumed, because the
+		 * surface it may focus is not drawn on the fleet pane's first commits (the read
+		 * has not answered, so the mount commit renders nothing at all and
+		 * `rootRef.current` is null on it). A `[]` here ran exactly once, on that empty
 		 * commit, and the re-render carrying the rows never got a second chance — the
 		 * key stayed on the rail row, which is the state UX round 1, U1 recorded. The
 		 * work per commit until the flag is set is two `matches` calls, and after it is
