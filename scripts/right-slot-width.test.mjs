@@ -273,7 +273,7 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 		browser: useUiPreferencesStore.getState().isBrowserPaneOpen,
 		console: useUiPreferencesStore.getState().isConsolePaneOpen,
 	});
-	useUiPreferencesStore.getState().setAskDrawerOpen(true);
+	useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
 	assert.deepEqual(
 		slotState(),
 		{ ask: true, canvas: false, run: false, browser: false, console: false },
@@ -285,7 +285,7 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 		["setBrowserPaneOpen", "browser"],
 		["setConsolePaneOpen", "console"],
 	]) {
-		useUiPreferencesStore.getState().setAskDrawerOpen(true);
+		useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
 		useUiPreferencesStore.getState()[open](true);
 		/*
 		 * THE WHOLE SLOT, not just the drawer's flag (agent review round 1, N2): the
@@ -306,7 +306,7 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 			`${open} takes the slot from the drawer`,
 		);
 	}
-	useUiPreferencesStore.getState().setAskDrawerOpen(false);
+	useUiPreferencesStore.getState().setAskDrawerOpen(false, "session");
 
 	/*
 	 * AND THE DRAWER BORROWS THE SLOT RATHER THAN EVICTING IT (UX round 1, U6).
@@ -318,7 +318,7 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 	 * writes while the drawer is open is the durable pane rather than the borrow.
 	 */
 	useUiPreferencesStore.getState().setCanvasOpen(true);
-	useUiPreferencesStore.getState().setAskDrawerOpen(true);
+	useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
 	assert.equal(useUiPreferencesStore.getState().isAskDrawerOpen, true);
 	assert.equal(
 		useUiPreferencesStore.getState().askDrawerEvictedPane,
@@ -335,7 +335,7 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 	assert.equal("askDrawerEvictedPane" in whilePeeking, false);
 
 	// Closing gives the slot back rather than leaving the user with nothing.
-	useUiPreferencesStore.getState().setAskDrawerOpen(false);
+	useUiPreferencesStore.getState().setAskDrawerOpen(false, "session");
 	assert.deepEqual(
 		slotState(),
 		{ ask: false, canvas: true, run: false, browser: false, console: false },
@@ -347,7 +347,7 @@ test("the asks drawer wears the canvas family's width, and takes the slot alone"
 	// is up forfeits the record, so closing the drawer cannot resurrect a surface the
 	// user replaced on purpose.
 	useUiPreferencesStore.getState().setCanvasOpen(true);
-	useUiPreferencesStore.getState().setAskDrawerOpen(true);
+	useUiPreferencesStore.getState().setAskDrawerOpen(true, "session");
 	useUiPreferencesStore.getState().setConsolePaneOpen(true);
 	assert.equal(
 		useUiPreferencesStore.getState().askDrawerEvictedPane,

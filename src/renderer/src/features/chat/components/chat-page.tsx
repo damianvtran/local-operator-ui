@@ -447,7 +447,19 @@ function SessionPanel({
 	 * (one right pane at a time, `claimRightSlot`) - a rule that cannot be kept by a
 	 * `useState` in this component.
 	 */
-	const askExpanded = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+	const askDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+	/*
+	 * AND WHICH QUEUE IT IS SHOWING IS PART OF THAT ANSWER (fleet scope, design note
+	 * §4.4). The drawer is ONE container in two scopes, and this component owns the
+	 * session one: the composer answers ITS conversation's ask, so a fleet panel
+	 * being open must not put this composer into answer mode — the fleet's rows
+	 * belong to other conversations and its own cards are where they are answered.
+	 * Reading the scope here is what makes that a construction rather than a promise:
+	 * a fleet ask can never be answered by typing into an unrelated conversation's
+	 * box, which is the misroute this split exists to prevent.
+	 */
+	const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
+	const askExpanded = askDrawerOpen && askDrawerScope === "session";
 	const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
 	/*
 	 * ANSWERING IS NOT THE SAME AS EXPANDED (UX round 2, U7).
@@ -2646,7 +2658,7 @@ function SessionPanel({
 	const toggleAskExpanded = useCallback(
 		(next: boolean) => {
 			if (next === askExpanded) return;
-			setAskDrawerOpen(next);
+			setAskDrawerOpen(next, "session");
 		},
 		[askExpanded, setAskDrawerOpen],
 	);

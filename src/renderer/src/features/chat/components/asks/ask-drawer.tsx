@@ -73,6 +73,7 @@ import {
 	noopDraftChange,
 	sessionAsks,
 } from "../../ask-queue";
+import { fleetAskRowConversation } from "../../fleet-asks";
 import { useAskClock } from "../../use-ask-clock";
 import { AskPanel } from "./ask-panel";
 
@@ -109,9 +110,11 @@ export type AskDrawerProps = {
 	> | null;
 	/**
 	 * Which queue this drawer is showing, carried by the ENTRY POINT rather than
-	 * chosen here (design note §4.4): a session's chip opens `session`, a top-level
-	 * affordance would open `fleet`. It is read only for the chrome bar's scope line
-	 * and the surface's accessible name, so the two contexts share one container.
+	 * chosen here (design note §4.4): a session's chip opens `session` and the
+	 * sidebar's top-level `Asks` row opens `fleet`. It is read for the chrome bar's
+	 * scope line, the surface's accessible name, and the per-row conversation line
+	 * (`conversationOf` below) - the three places the two contexts differ - so the
+	 * two queues share one container rather than growing a second drawer.
 	 */
 	scope: AskScope;
 	/**
@@ -333,6 +336,16 @@ export const AskDrawer = ({
 					onDraftChange={onDraftChange ?? noopDraftChange}
 					onAnswer={(task, answers) => onAnswer?.(task.ask_id, answers)}
 					onDecline={(task) => onDecline?.(task.ask_id)}
+					/*
+					 * THE CONVERSATION LINE IS THE FLEET'S OWN (see `AskPanelProps`): a
+					 * session drawer's rows are all about the conversation the user is in, so
+					 * naming it on every card would be the same word N times. The scope is
+					 * read here because this component owns it - the panel stays
+					 * scope-agnostic, which is what lets one list serve both contexts.
+					 */
+					conversationOf={
+						scope === "fleet" ? fleetAskRowConversation : undefined
+					}
 				/>
 			</div>
 		</section>

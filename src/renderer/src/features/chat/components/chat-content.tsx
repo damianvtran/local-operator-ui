@@ -1098,6 +1098,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * drawer when the canvas opens.
 		 */
 		const isAskDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+		/*
+		 * WHICH QUEUE THIS ROUTE'S DRAWER SHOWS. The route renders the SESSION scope
+		 * only: the fleet scope is the SHELL's (see `chat-layout.tsx`), because it spans
+		 * conversations and its entry point is drawn on every route. One flag, two
+		 * homes, and the scope is what decides which home paints — so exactly one
+		 * drawer can ever be on screen, by construction rather than by a guard.
+		 */
+		const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
+		const sessionAsksOpen = isAskDrawerOpen && askDrawerScope === "session";
 		const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
 		/*
 		 * Whether a right-slot pane occupies the window's right edge, which is what
@@ -1350,7 +1359,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 		 * closing by Escape - `chat-page.tsx`'s window listener runs the same write.
 		 */
 		const handleCloseAskDrawer = useCallback(() => {
-			setAskDrawerOpen(false);
+			setAskDrawerOpen(false, "session");
 		}, [setAskDrawerOpen]);
 
 		const handleCloseDocument = useCallback(
@@ -2215,7 +2224,7 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 				 * of these blocks can ever be mounted and neither needs a guard against the
 				 * other.
 				 */}
-				{isAskDrawerOpen && (
+				{sessionAsksOpen && (
 					<>
 						{/*
 						 * The divider exists only while the drawer DOCKS, for the reason the canvas's
@@ -2261,11 +2270,14 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							<AskDrawer
 								frontend={canonical?.view.frontend ?? null}
 								/*
-								 * SESSION-SCOPED, because the only entry point on the desktop is the
-								 * composer's own status-row item - a session's count and a session's
-								 * queue. The `fleet` scope is the drawer's other half and has no entry
-								 * point here yet (the aggregate route exists, nothing renders it), so
-								 * naming the scope is the seam rather than a second container.
+								 * SESSION-SCOPED, because this mount is the conversation's own: its rows
+								 * arrive on this session's frame and its answers go to this session.
+								 * The fleet scope is the other half and lives in the SHELL
+								 * (`chat-layout.tsx`) - it spans conversations, and its entry point
+								 * (the sidebar's `Asks` row) is drawn on every route, so a mount here
+								 * would leave that door opening nothing wherever the user happened to
+								 * be. One container, two homes, one flag: the scope is what picks,
+								 * which is why this block is gated on it above.
 								 */
 								scope="session"
 								onClose={handleCloseAskDrawer}
