@@ -5,15 +5,19 @@ import {
 	nextChatRegion,
 } from "@features/chat/chat-regions";
 import {
+	CANVAS_PANE_MIN_PX,
 	SIDEBAR_COLLAPSED_WIDTH,
 	SIDEBAR_DOCK_MIN_PX,
 	SIDEBAR_MAX_WIDTH,
 	SIDEBAR_MIN_WIDTH,
 	type SidebarLayout,
+	canvasDockWidth,
+	canvasPaneMode,
 	isSidebarTogglePress,
 	resolveSidebarLayout,
 	sidebarToggleCap,
 } from "@features/chat/chat-sidebar-layout";
+import { FleetAskDrawer } from "@features/chat/components/asks/fleet-ask-drawer";
 import { pressLandsOnOverlay } from "@features/chat/keyboard-scopes";
 import { UpdateQuietIndicator } from "@shared/components/common/update-quiet-indicator";
 import { Sheet, SheetContent, SheetTitle } from "@shared/components/ui/sheet";
@@ -34,6 +38,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { PaneSlot } from "./pane-slot";
 import { ResizableDivider } from "./resizable-divider";
 
 /**
@@ -349,13 +354,51 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	 * sidebar are one decision and not two that can disagree.
 	 */
 	const canvasOpen = useUiPreferencesStore((s) => s.isCanvasOpen);
+	/*
+	 * THE FLEET ASKS PANE, which the SHELL owns where the ask drawer's other scope
+	 * is owned by the chat route.
+	 *
+	 * WHY THE TWO SCOPES SIT IN DIFFERENT HOMES. The session-scoped drawer belongs
+	 * to a conversation: its rows arrive on that session's frame and its answers go
+	 * to that session, so it is mounted beside the composer by the route that has
+	 * one. The FLEET scope has no such route - it spans conversations by definition,
+	 * and the affordance that opens it (the top-level row beside the sessions list)
+	 * is drawn on EVERY route - so it is mounted HERE, in the shell's own right slot,
+	 * and is therefore reachable wherever the user is when they press it. That is
+	 * what makes the top-level entry point real rather than a control that silently
+	 * does nothing until the user happens to navigate to `/chat`.
+	 *
+	 * IT IS STILL ONE SLOT AND ONE PANE. The exclusivity is the store's
+	 * (`claimRightSlot`), so this block and every route-mounted occupant can never be
+	 * drawn together; and it is the SAME container - the family's chrome bar, its X,
+	 * its own scroller and the family's width arithmetic - because the occupant below
+	 * is the same `AskDrawer` component the session scope uses (see `FleetAskDrawer`
+	 * for the half that differs: which conversations it shows and where its answers
+	 * land).
+	 */
+	const askDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
+	const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
+	const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
+	const setRightSlotWidth = useUiPreferencesStore((s) => s.setRightSlotWidth);
+	const restoreDefaultRightSlotWidth = useUiPreferencesStore(
+		(s) => s.restoreDefaultRightSlotWidth,
+	);
+	const fleetAsksOpen = askDrawerOpen && askDrawerScope === "fleet";
 
 	const layout: SidebarLayout = resolveSidebarLayout(
 		viewportWidth,
 		collapsedPref,
 		sheetRequested,
 		savedWidth,
-		canvasOpen,
+		/*
+		 * THE SIDEBAR YIELDS TO THE ASK DRAWER AS IT DOES TO THE CANVAS, in EITHER
+		 * scope. §I's order gives up the sidebar before the pane, and the drawer is one
+		 * container whichever queue it shows - so a rule that held for the canvas and
+		 * for the fleet pane but not for the session one would make the two scopes of
+		 * one surface lay the window out differently, which is precisely the "which one
+		 * am I looking at" confusion this feature removes.
+		 */
+		canvasOpen || askDrawerOpen,
 	);
 
 	/*
@@ -487,6 +530,14 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 	const slotWidth = useUiPreferencesStore((state) =>
 		resolveRightSlotWidth(contentBox.width, state),
 	);
+	/*
+	 * The slot's DOCKED/OVERLAY mode, from the same measured box the width comes
+	 * from: the width resolver above answers where the pane STOPS, and this answers
+	 * whether it is beside the conversation or over it - §I's one pair of rules, read
+	 * through the same `canvasPaneMode` the route-mounted occupants call.
+	 */
+	const fleetDocked =
+		canvasPaneMode(contentBox.width || Number.MAX_SAFE_INTEGER) === "docked";
 	/*
 	 * THE STOP IS THE PANE'S LEADING EDGE. The pane hugs the slot's trailing edge,
 	 * so its leading edge sits `slotWidth` px LEFT of the content column's right
@@ -624,7 +675,53 @@ export const ChatLayout: FC<ChatLayoutProps> = ({ sidebar, content }) => {
 					className="flex h-full min-w-0 grow flex-col overflow-hidden"
 				>
 					<LaneLeadingContext.Provider value={setLeadingColumn}>
-						{content}
+						{/*
+						 * THE CONTENT COLUMN IS A ROW INSIDE, so the shell can dock its own
+						 * pane BESIDE the route rather than over it. The measured box stays the
+						 * COLUMN (`contentColumnRef`, above): a flex item's width here is
+						 * resolved by the row it sits in, not by its own content, so adding a
+						 * pane inside cannot feed back into the number `resolveRightSlotWidth`
+						 * is called with — the column is the same width with the pane open as
+						 * with it closed, which is exactly what keeps the lane's stop and the
+						 * pane's leading edge one number.
+						 */}
+						<div className="flex h-full min-h-0 w-full overflow-hidden">
+							{content}
+							{/*
+							 * THE FLEET ASKS PANE: the same three pieces the route's occupants
+							 * use (the divider, the slot, the pane), so the column is one idiom in
+							 * both homes. The divider exists only while it DOCKS, for the reason
+							 * the canvas's own states: in the overlay mode there is no flow
+							 * boundary to drag.
+							 */}
+							{fleetAsksOpen && (
+								<>
+									{fleetDocked && (
+										<ResizableDivider
+											sidebarWidth={slotWidth}
+											onSidebarWidthChange={setRightSlotWidth}
+											minWidth={CANVAS_PANE_MIN_PX}
+											maxWidth={Math.max(
+												CANVAS_PANE_MIN_PX,
+												canvasDockWidth(contentBox.width),
+											)}
+											side="left"
+											onDoubleClick={restoreDefaultRightSlotWidth}
+											label="Resize asks. Double-click resets the shared pane width."
+										/>
+									)}
+									<PaneSlot
+										width={slotWidth}
+										tourTag="ask-fleet-slot"
+										data-ask-mode={fleetDocked ? "docked" : "overlay"}
+									>
+										<FleetAskDrawer
+											onClose={() => setAskDrawerOpen(false, "fleet")}
+										/>
+									</PaneSlot>
+								</>
+							)}
+						</div>
 					</LaneLeadingContext.Provider>
 				</div>
 			</div>

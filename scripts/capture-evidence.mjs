@@ -47,6 +47,7 @@ import { fileURLToPath } from "node:url";
 import { assertFramePaints, frames as frameFiles } from "./check-evidence.mjs";
 import { withMockKeychain } from "./chrome-keychain.mjs";
 import { isEntryPoint } from "./entry-point.mjs";
+import { EVIDENCE_TZ, pinnedEvidenceEnv } from "./evidence-tz.mjs";
 import { loadPalettes } from "./palette-source.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -893,6 +894,15 @@ export const STORIES = [
 	 * hover ground painting above an unaltered hairline — the D4 state a still of
 	 * the resting bar cannot show.
 	 */
+	/*
+	 * THE FLEET ASK SCOPE (the ask drawer's second context, design §4.4). Note
+	 * what is NOT here: the story that draws both drawers at once is a FIGURE, not
+	 * a screen - one slot holds one pane (`claimRightSlot`) - so no frame is taken
+	 * from it. A frame of a state the product cannot reach is what agent review
+	 * round 1's F3 objected to, and the set refuses it rather than captioning it.
+	 */
+	["chat-asks-fleet-scope--fleet-scope-open", 1280, 720],
+	["chat-asks-fleet-scope--untitled-pair-in-one-repo", 1280, 720],
 	[
 		"chat-turn-collapse--collapsed",
 		1280,
@@ -3367,6 +3377,53 @@ export const STORIES = [
 	["settings-model-combobox--scoped-notice", 560, 300],
 	["settings-model-combobox--unresolved-scope", 560, 300],
 	["settings-model-combobox--disabled", 560, 240],
+	/*
+	 * Settings -> Speech voicing, the group `speech-section.stories.tsx` exists to
+	 * photograph: WHICH rung of the text-to-speech cascade would serve this
+	 * machine, WHY the rungs above it did not, and WHAT to do when none can. Five
+	 * states, because each is a claim a single frame cannot carry - and two of
+	 * them (`stored-provider-key`, `nothing-available`) are the pair a sign-in
+	 * notice gets wrong: a cascade that serves through a STORED provider key with
+	 * no Radient session at all, against one that can speak through nothing.
+	 *
+	 * The five live on ONE story, so each names its own `dir` under the set: the
+	 * state is the label a reader follows, and `--dirs=` can re-shoot one of them
+	 * without re-taking the rest.
+	 *
+	 * THE PAGE THESE STATES SIT ON HAS NO ROW, deliberately, and it is a finding
+	 * rather than an omission. `shell-app-shell--settings` does not render on this
+	 * tree: its story frame draws `SidebarNavigation` outside `ChatLayout`, which
+	 * throws `useSidebarFrame: the sidebar must be rendered inside ChatLayout`.
+	 * Composing the page the way `app.tsx` does instead (a temporary story, never
+	 * committed) gets past that and then holds: `SettingsPage` never passes its
+	 * own early return under the story's fixture, so the rig's shutter times out at
+	 * its 60s bound and the only frame that surface can produce is a skeleton.
+	 * The committed `shell-app-shell/settings/` frame is exactly that - a rail and
+	 * an empty ground, captured before 2026-09-24's `feat(chat): one sidebar` - so
+	 * there is no before/after page pair to be had until the story is repaired.
+	 * `docs/evidence/settings-speech/README.md` carries both measurements.
+	 *
+	 * The section is captured at 1024 wide because it is a `max-w-4xl` (896px)
+	 * settings section in its own ground - the page's own content column - and at
+	 * 640 tall because the rig grows the viewport to the rendered height: 640 is a
+	 * floor, not a crop. (The story mounted at `max-w-3xl` until design review
+	 * round 1, D3, which is a width the settings page never renders.)
+	 */
+	["settings-speech--radient-pass", 1024, 640, { dir: "radient-pass" }],
+	[
+		"settings-speech--stored-provider-key",
+		1024,
+		640,
+		{ dir: "stored-provider-key" },
+	],
+	[
+		"settings-speech--nothing-available",
+		1024,
+		640,
+		{ dir: "nothing-available" },
+	],
+	["settings-speech--backend-older", 1024, 640, { dir: "backend-older" }],
+	["settings-speech--unreadable", 1024, 640, { dir: "unreadable" }],
 	/*
 	 * And the state this list deliberately does NOT carry, so the omission is a
 	 * decision rather than an oversight: `no-sessions-at-all` renders ONE line (the
@@ -7394,6 +7451,17 @@ export const STORIES = [
 	   painted as one. Paired rows at both widths, so the comparison is in the
 	   frame rather than across two of them. */
 	["chat-older-history-slot--transport-down", 900, 800],
+	/* The state this branch's ONE user-visible change produces, rendered in the
+	   real transcript: `failed` outranking `windowed`/`idle` (use-scroll-paging's
+	   `slotState`), so a reader whose asks are all failing reads "Could not load
+	   earlier messages - Try again" instead of a gesture that cannot work. The
+	   precedence lives in the HOOK, so no board built from `OlderHistorySlot`
+	   alone can show it; this row is the capture target the design round asked
+	   for, registered with the story (`older-history-slot.stories.tsx`,
+	   `InTranscriptFailed`) and deliberately NOT shot in this pass - the capture
+	   window is contended by four other lanes. Sized to the story's own
+	   `h-[520px]` frame, whose content it fills. */
+	["chat-older-history-slot--in-transcript-failed", 900, 520],
 
 	/* The other half of the transcript's completeness: a reader who returns from
 	   another conversation, in the two states the fix is about. The claim is a
@@ -8746,6 +8814,40 @@ export const STORIES = [
 	["mesh-tab--list-view", 1380, 900],
 	["mesh-tab--two-devices", 1024, 768, { dir: "two-devices-narrow" }],
 	/*
+	 * THE LONG LIST, AT THE OPERATOR'S SCALE (operator report, 2026-10-04).
+	 *
+	 * The report's state: the device panel open on a device holding a catalogue
+	 * page of conversations, the rows painting through the panel's own Network
+	 * addresses and Status sections, the node chips reading as tail fragments
+	 * (`…BE-OK`, `…2E pull`), and one row's `⋯` menu open over the list. The three
+	 * states below are the fix's AFTER half - the same states on `origin/main`'s
+	 * two component files are the declared supplementary set `mesh-tab-before/`,
+	 * so a reviewer holds the pair, not a single still. `many-conversations-menu`
+	 * is the composition the report was read from; the overlap it shows is the
+	 * same with the menu closed, which is why the menu is not the layer at fault.
+	 */
+	["mesh-tab--many-conversations", 1380, 900],
+	["mesh-tab--many-conversations-menu", 1380, 900],
+	["mesh-tab--many-conversations-peer", 1380, 900],
+	/*
+	 * THE STATE THE STACKING CLAIM LIVES IN (design round 1, D3). At the operator's
+	 * scale the device-level sections sit ~6,755 px down the panel, so every
+	 * top-of-list frame shows rows and nothing else - "Network addresses, Status and
+	 * Show in list stack below the catalogue" was the one claim in this pass that
+	 * rested on prose. `scrollToEnd` parks the aside at its maximum scroll, where
+	 * those sections ARE the viewport; same story and fixtures as
+	 * `many-conversations`, the difference being a scroll position, which is browser
+	 * state a story cannot set - the reason the option exists. The rig fails the
+	 * capture when the selector matches nothing or nothing scrolls, so this row
+	 * cannot silently photograph the top twice.
+	 */
+	[
+		"mesh-tab--many-conversations",
+		1380,
+		900,
+		{ dir: "many-conversations-bottom", scrollToEnd: "[data-mesh-panel]" },
+	],
+	/*
 	 * THE NOTICE-BAND FAMILY'S OWN SURFACES (fix/banner-warn-error-consistency-7e4c).
 	 *
 	 * The twelve-theme sweep is what makes a frame comparable with the rest of the
@@ -8886,6 +8988,91 @@ export const STORIES = [
 	 * committed set. The play presses the node's own button and waits for the words.
 	 */
 	["mesh-tab--single-device-panel", 1380, 900],
+	/*
+	 * THE APPROVALS PANEL'S OWN STATES (operator round, 2026-10-03; design/UX
+	 * round 1's remediation, 2026-10-04). One row per state the set photographs:
+	 * one waiting prompt; none waiting (the records toggle alone, collapsed); the
+	 * section expanded; the everyday composition of prompt AND records in one
+	 * card (`approvals-mixed`, also at the narrow width); the `Details`
+	 * disclosure open (the consequence list, without which requirement 3 had no
+	 * rendered evidence - design round 1, D1); a stopped runner, whose section
+	 * opens itself; the stopped record whose refusal outlives the section it was
+	 * about (`approvals-stopped-refused` - the closed-section arm of
+	 * `refusalAttached`, D1's second half); the decision write, whose `play`
+	 * approves and opens the section the record landed in; the refusal; the
+	 * approvals READ failure and its `Ask again` (UX round 1, U4); and the
+	 * `local_authority` kind, whose machine-block head no earlier frame carried
+	 * (U4). The `play` stories end on the state their name claims rather than
+	 * one frame short of it - the approve leaves the live panel and the record
+	 * opens in Records - which is what keeps a still honest about the split.
+	 *
+	 * THE PLAYED ROWS HOLD THE SHUTTER ON THE STORY'S OWN LATCH PLUS A CLAIM.
+	 * The first capture of this set is the measurement that says why (agent
+	 * review round 1's remediation): with the rows plain, the run filed
+	 * `approval-refused` mid-flight - controls disabled, "Waiting for the
+	 * signing prompt…" on the screen, the refusal sentence absent - the
+	 * one-click-short class the dialog rows above already carry claims for.
+	 * Each played story now holds `data-capture-pending` until its end state is
+	 * in the DOM (`holdShutter` - design round 1, D9, adopted here), and the
+	 * claims below name the same sentence, so a frame the shutter accepts is
+	 * one the story's assertions accepted; the resting rows stay claim-less
+	 * because no play stands between them and what they photograph. The
+	 * stopped-refused row additionally pins the frame's compound predicate with
+	 * `expectPresent`/`expectGone`: the refusal on screen AND the closed
+	 * section's list gone - exactly what the `refusalAttached` fallback exists
+	 * to render.
+	 */
+	["mesh-tab--approvals-waiting", 1380, 900],
+	["mesh-tab--approvals-records", 1380, 900],
+	[
+		"mesh-tab--approvals-records-open",
+		1380,
+		900,
+		{ expectSentence: "Onboard studio-mini" },
+	],
+	["mesh-tab--approvals-mixed", 1380, 900],
+	["mesh-tab--approvals-mixed", 1024, 768, { dir: "approvals-mixed-narrow" }],
+	[
+		"mesh-tab--approvals-details-open",
+		1380,
+		900,
+		{ expectSentence: "this machine may connect to it over ssh" },
+	],
+	["mesh-tab--approvals-stopped", 1380, 900],
+	[
+		"mesh-tab--approvals-stopped-refused",
+		1380,
+		900,
+		{
+			expectSentence: "already connected",
+			expectPresent: '[data-tour-tag="mesh-approval-refusal"]',
+			expectGone: '[data-tour-tag="mesh-approvals-records"]',
+		},
+	],
+	[
+		"mesh-tab--approvals-decision-writes",
+		1380,
+		900,
+		{ expectSentence: "Approved" },
+	],
+	[
+		"mesh-tab--approval-refused",
+		1380,
+		900,
+		{ expectSentence: "no operator key to sign with" },
+	],
+	[
+		"mesh-tab--approvals-read-failure",
+		1380,
+		900,
+		{ expectSentence: "could not be read" },
+	],
+	[
+		"mesh-tab--approvals-machine-authority",
+		1380,
+		900,
+		{ expectSentence: "Set up operator authority on this machine" },
+	],
 	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped
@@ -10150,6 +10337,21 @@ export function partialCaptureRecord({
 }
 
 const main = async () => {
+	/*
+	 * The frame timezone, pinned before this run spawns anything and never at
+	 * module scope: `evidence-tz.mjs` carries why a pin rather than a default,
+	 * and why it must beat an ambient `TZ=` instead of deferring to it. Tests
+	 * import this file, so the pin lives here - an import that re-zoned its
+	 * importer would be a side effect nobody asked for. The reading taken first
+	 * is what this process would otherwise have used, and the line below names
+	 * both so the log says what was overridden.
+	 */
+	const ambientTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+	process.env.TZ = EVIDENCE_TZ;
+	console.log(
+		`capture-evidence: frame timezone pinned to ${EVIDENCE_TZ} (ambient TZ=${ambientTz})`,
+	);
+
 	sweepStaleProfiles();
 	if (!ALLOW_BACKEND) await assertBackendDown();
 
@@ -10167,6 +10369,14 @@ const main = async () => {
 			"--remote-debugging-port=0",
 			"about:blank",
 		]),
+		/*
+		 * The pinned env passed EXPLICITLY rather than left to inheritance. Same
+		 * result either way (the pin at the head of main() re-zoned this process
+		 * first), but the env Chrome gets is decided where a reader is looking,
+		 * and `pinnedEvidenceEnv` is what makes it beat an ambient `TZ=` (see
+		 * `evidence-tz.mjs`).
+		 */
+		{ env: pinnedEvidenceEnv(process.env) },
 	);
 
 	// Chrome prints the DevTools websocket on stderr.

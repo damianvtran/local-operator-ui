@@ -374,8 +374,26 @@ const ROW_PARTS = (() => {
 		sendBlock: controlBlock(send, 200),
 		// The mount's own condition, from the `{` that opens it to the span's
 		// attributes, and the span itself.
-		gate: ROW.slice(
-			ROW.lastIndexOf("{canonicalStopAvailable", reserved),
+		/*
+		 * THE MOUNT'S OWN CONDITION. It was inline in this JSX until issue #788, which
+		 * needed the SAME predicate at the readings strip's mount (the strip has to
+		 * shed the active-time reading while the third box is drawn, and a container
+		 * query cannot see a sibling appear), so it is now the named constant
+		 * `interruptSlotDrawn` — read by this slot below and folded into
+		 * `controlsThirdBox` for the strip, so the two questions cannot drift.
+		 *
+		 * THE CLAIM THIS SLICE EXISTS TO CHECK IS UNCHANGED — the reservation is
+		 * mounted on the grace predicate and not on the capability alone — so the
+		 * four terms are asserted on the CONSTANT, which is where they now live, and
+		 * `slotGate` below asserts the JSX mounts on that constant rather than on a
+		 * second copy of the condition.
+		 */
+		gate: ROW_SOURCE.slice(
+			ROW_SOURCE.indexOf("const interruptSlotDrawn ="),
+			ROW_SOURCE.indexOf("const controlsThirdBox ="),
+		),
+		slotGate: ROW.slice(
+			ROW.lastIndexOf("{interruptSlotDrawn", reserved),
 			reserved,
 		),
 		span: ROW.slice(
@@ -581,6 +599,13 @@ test("the held box is mounted on the grace predicate, not on the capability alon
 	// The same legacy condition the dictation control is gated on: that path hides
 	// it and renders its own `Stop agent` in this cluster.
 	assert.match(ROW_PARTS.gate, /!\(isLoading && currentJobId\)/);
+	/*
+	 * AND THE ROW READS THE PREDICATE RATHER THAN RESTATING IT (issue #788). A
+	 * second copy of the condition is exactly how the strip's shed would fall
+	 * behind the box: the readings strip is told `controlsThirdBox`, which is this
+	 * constant, and this assertion is what keeps the slot on that one authority.
+	 */
+	assert.match(ROW_PARTS.slotGate, /interruptSlotDrawn &&/);
 	/*
 	 * THE DICTATION-IN-FLIGHT TERM (design round 1, D2), and why it is separate
 	 * from the window: while a recording runs Send is not rendered at all, so the

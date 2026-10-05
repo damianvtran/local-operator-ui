@@ -3,6 +3,7 @@ import { spawn, spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	copyFileSync,
+	existsSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -10,7 +11,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { test } from "node:test";
 import {
 	BREACH_EXIT_CODE,
@@ -658,22 +659,96 @@ test("holds", async () => {
  * the keeper exited 1 under such a checkout and the runner never noticed. The
  * runner and what it imports are copied into a directory with a space and the
  * runner-SIGKILL case is repeated from there.
+ *
+ * THE COPY SET IS DERIVED, NOT HAND-LISTED, and here that is the fix rather than a
+ * preference. It used to be eight literals, so the day the runner grew an import
+ * (`desktop-test-lane-bound.mjs`, #797) the spaced checkout could not resolve it,
+ * the runner died before the keeper ran, and this test reported "the keeper stopped
+ * reaping" - a symptom two steps away from the cause. The set is now every relative
+ * module the entry reaches transitively, with completeness asserted below.
  */
+/** A DOUBLE-quoted relative module literal: how the runner names a module it
+ * imports, spawns (`new URL(..., import.meta.url)`) or hands to node as a preload. */
+const RELATIVE_MODULE_LITERAL = /"((?:\.\/|\.\.\/)[^"]+\.mjs)"/g;
+/** Any relative `.mjs` path in the text, whichever quotes it sits in - the copy scan
+ * reads double-quoted literals only, so this is the independent second reader. */
+const RELATIVE_MODULE_MENTION =
+	/(?:^|[\s"'(=])((?:\.\/|\.\.\/)[\w./-]+\.mjs)/gm;
+
+/** Every relative module a file NAMES. Three shapes exist in this runner and all
+ * three must be followed: a static import, a `new URL("./x.mjs", import.meta.url)`
+ * (the keeper), and a bare string handed to node (the hardlink-write preload) - which
+ * is why this scans literals rather than parsing imports. */
+function namedModules(file) {
+	const found = new Set();
+	for (const match of readFileSync(file, "utf8").matchAll(
+		RELATIVE_MODULE_LITERAL,
+	)) {
+		found.add(resolve(dirname(file), match[1]));
+	}
+	return found;
+}
+
+/** The entry's transitive relative-module closure: the set that must be copied. */
+function moduleGraph(entry) {
+	const seen = new Set([entry]);
+	const pending = [entry];
+	while (pending.length > 0) {
+		for (const next of namedModules(pending.shift())) {
+			if (seen.has(next)) continue;
+			seen.add(next);
+			pending.push(next);
+		}
+	}
+	return seen;
+}
+
 test("the keeper still reaps the group when the checkout path contains a space", async () => {
 	const dir = join(scratch, "dir with space", "scripts");
 	mkdirSync(dir, { recursive: true });
-	for (const name of [
-		"run-desktop-tests.mjs",
-		"desktop-test-keeper.mjs",
-		"desktop-test-memory-guard.mjs",
-		"desktop-test-concurrency.mjs",
-		"notifications-off.mjs",
-		"telemetry-off.mjs",
-		"no-hardlink-write-preload.mjs",
-		"no-hardlink-write.mjs",
-	]) {
-		copyFileSync(join(process.cwd(), "scripts", name), join(dir, name));
+	const graph = moduleGraph(
+		join(process.cwd(), "scripts", "run-desktop-tests.mjs"),
+	);
+	/*
+	 * COMPLETENESS, ASSERTED RATHER THAN TRUSTED. Two checks, and the second reads the
+	 * text differently on purpose, so the copy scan cannot be the only reader of it:
+	 * (1) every module the set names exists on disk, so a stale reference fails HERE
+	 * rather than as a keeper that mysteriously stopped reaping; (2) every relative
+	 * `.mjs` path mentioned in a copied file, in ANY quoting shape, names a module the
+	 * set carries.
+	 *
+	 * Compared by BASENAME, because the copied files are flat and two of these
+	 * references are written from the REPO ROOT (`./scripts/x.mjs`) rather than from the
+	 * file's own directory - the same module, spelled from a different working
+	 * directory. A same-named module in a DIFFERENT directory would therefore pass this
+	 * check; that is a false negative this scan accepts, and the copy set's reach is
+	 * already pinned by the run below, which fails if a module the runner needs is not
+	 * there.
+	 */
+	for (const file of graph) {
+		assert.ok(
+			existsSync(file),
+			`the copy set names ${file}, which does not exist`,
+		);
 	}
+	const carried = new Set([...graph].map((file) => basename(file)));
+	for (const file of graph) {
+		for (const [, mention] of readFileSync(file, "utf8").matchAll(
+			RELATIVE_MODULE_MENTION,
+		)) {
+			assert.ok(
+				carried.has(basename(mention)),
+				`${basename(file)} references ${mention}, which the copy set does not carry`,
+			);
+		}
+	}
+	for (const file of graph) {
+		copyFileSync(file, join(dir, basename(file)));
+	}
+	assert.ok(
+		graph.size > 1,
+		"the derivation must reach the runner's modules, not just its entry",
+	);
 	const pidFile = join(scratch, "grandchild-space.pid");
 	const holder = join(scratch, "space-holder.test.mjs");
 	writeFileSync(

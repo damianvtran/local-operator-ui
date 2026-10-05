@@ -214,6 +214,16 @@ export const Neighbours: Story = {
  * a BUSY row that carries asks, so a reader can see that "the agent is working"
  * and "questions are waiting" are stated as two separate facts rather than one
  * "waiting for you".
+ *
+ * THE SECOND BLOCK IS THE SHIPPED WIRING, added with the operator's 2026-10-04
+ * report: he queued a question, the composer chip beside it read "1 question
+ * waiting", and the sidebar row showed nothing. The reason was the READ - the
+ * desktop catalogue route never fills `asks_open`, so a mark sourced from the
+ * row drew nothing on every install - and the sidebar now passes the count it
+ * resolved from the fleet aggregate. The first block exercises the row's own
+ * field (the fallback, and what a second surface with a canonical row has); the
+ * second is what the app actually draws, so a frame of the mark has to come from
+ * it or the evidence would prove a path nothing runs.
  */
 export const AsksOutstanding: Story = {
 	args: { row: { session_id: "specimen" } },
@@ -254,6 +264,40 @@ export const AsksOutstanding: Story = {
 								asks_open: specimen.asks_open,
 							} as CanonicalSessionRow
 						}
+					/>
+					<span className="text-sm">{specimen.label}</span>
+				</div>
+			))}
+			<span className="text-ink-muted text-xs">
+				the shipped wiring: the count the CALLER resolved (the fleet aggregate),
+				on a row the catalogue never fills
+			</span>
+			{[
+				{ label: "nothing outstanding", open: undefined },
+				{ label: "one ask", open: 1 },
+				{ label: "three asks", open: 3 },
+			].map((specimen) => (
+				<div className="flex items-center gap-2" key={specimen.label}>
+					{/* A BUSY row, which is the state the mark has to be readable in:
+					 * "the agent is working" and "questions are waiting" are two facts,
+					 * and the spinner and the mark must not read as one "waiting for
+					 * you" (design §5.0's header rule). */}
+					<ChatSessionStatus
+						row={
+							{
+								session_id: "specimen",
+								status: { code: "busy" },
+							} as CanonicalSessionRow
+						}
+					/>
+					<ChatAsksOutstanding
+						row={
+							{
+								session_id: "specimen",
+								status: { code: "busy" },
+							} as CanonicalSessionRow
+						}
+						open={specimen.open}
 					/>
 					<span className="text-sm">{specimen.label}</span>
 				</div>
