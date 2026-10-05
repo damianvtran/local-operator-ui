@@ -917,8 +917,18 @@ export function ConfigComposer({
 					{EXAMPLES.map((example) => (
 						<Button
 							key={example}
-							variant="outline"
+							/*
+							 * THE CHIPS ARE THE NEW CHAT'S SUGGESTION STYLE, NOT THE APP'S HEAVIEST
+							 * BUTTON (design round 1, D2). They were `variant="outline"` - a
+							 * `border-control` pill, the loudest chip in the system - in the one column
+							 * this change re-aligned to the new-chat composer, whose own suggestions are
+							 * borderless muted lines (`measured-suggestion-stack.tsx`, which states the
+							 * missing border as deliberate). Same classes as that row, so the two surfaces
+							 * cannot drift apart again.
+							 */
+							variant="ghost"
 							size="sm"
+							className="h-auto max-w-full whitespace-normal break-words rounded-sm px-2 py-1 text-body-sm text-ink-muted hover:bg-elevated hover:text-ink disabled:text-ink-disabled disabled:hover:bg-transparent"
 							disabled={disabled}
 							onClick={() => {
 								setBoxText(example);

@@ -19,11 +19,13 @@
  * (a summon, a target change, the settle after a send), which is a measured
  * cadence rather than a per-frame one. A refresh that fails leaves the last
  * readings in place — the composer's absent strip is an honest state, and a
- * send never depends on this read.
+ * send never depends on this read. A refresh for a DIFFERENT session retires the
+ * previous one's readings first, and a reply whose session is no longer the
+ * latest asked about is dropped (`latestRequested`).
  */
 
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type {
 	CanonicalFrontendState,
 	CanonicalFrontendSync,
@@ -52,18 +54,52 @@ export type SessionSnapshotRead = {
 };
 
 export function useSessionSnapshot(): SessionSnapshotRead {
-	const [frontend, setFrontend] = useState<CanonicalFrontendState | null>(null);
-	const [effortEntities, setEffortEntities] = useState<
-		readonly unknown[] | undefined
-	>(undefined);
+	/*
+	 * THE READINGS CARRY THE ID THEY CAME FROM, and that is not bookkeeping: a
+	 * strip's target CHANGES, and `sessions.get` is a round trip. Storing the pair
+	 * lets the answer for session A be dropped when B is already the selection,
+	 * and lets the previous session's readings be retired the moment a new target
+	 * is asked about - otherwise the model chip, the cwd and the context ring of
+	 * the session the user just left sit under the name of the one they chose
+	 * (review round 1, R3). The mini has one seat and never switches, so it sees
+	 * the same value it always did.
+	 */
+	const [read, setRead] = useState<{
+		id: string;
+		frontend: CanonicalFrontendState;
+	} | null>(null);
+	const [effortRead, setEffortRead] = useState<{
+		id: string;
+		entities: readonly unknown[];
+	} | null>(null);
+	/**
+	 * The session the LATEST call asked about, so a slow reply for a superseded
+	 * target cannot paint. A ref rather than state because it is read inside the
+	 * awaits: state would be a render behind the answer it has to reject.
+	 */
+	const latestRequested = useRef<string | null>(null);
 
 	const refresh = useCallback(async (sessionId: string) => {
+		latestRequested.current = sessionId;
+		/*
+		 * The new target's readings are not the old target's, so the old ones go
+		 * NOW rather than standing until the read answers. Same id (a summon, a
+		 * settle) keeps what is already painted, which is what makes the strip's
+		 * periodic refresh flicker-free.
+		 */
+		setRead((previous) =>
+			previous && previous.id !== sessionId ? null : previous,
+		);
+		setEffortRead((previous) =>
+			previous && previous.id !== sessionId ? null : previous,
+		);
 		try {
 			const reply = await desktopResult<SessionGetReply>({
 				op: "sessions.get",
 				sessionId,
 			});
-			setFrontend(reply.payload.frontend.snapshot);
+			if (latestRequested.current !== sessionId) return;
+			setRead({ id: sessionId, frontend: reply.payload.frontend.snapshot });
 		} catch {
 			/* A read that failed leaves the last readings (or none); the strip's
 			   absent state is honest and nothing sends from this value. */
@@ -74,11 +110,16 @@ export function useSessionSnapshot(): SessionSnapshotRead {
 				sessionId,
 				command: "effort",
 			});
-			setEffortEntities(payload.entities);
+			if (latestRequested.current !== sessionId) return;
+			setEffortRead({ id: sessionId, entities: payload.entities });
 		} catch {
 			/* Same rule: the strip's effort chip without rungs is a label. */
 		}
 	}, []);
 
-	return { frontend, effortEntities, refresh };
+	return {
+		frontend: read?.frontend ?? null,
+		effortEntities: effortRead?.entities,
+		refresh,
+	};
 }

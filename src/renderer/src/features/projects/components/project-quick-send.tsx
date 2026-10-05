@@ -51,7 +51,7 @@ import {
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { useSessionSnapshot } from "@shared/hooks/use-session-snapshot";
 import type { FC } from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { DesktopLinkedSession } from "../../../../../shared/desktop-control-contract";
 import { sessionLabel } from "../project-model";
 
@@ -87,12 +87,15 @@ export type ProjectQuickSendProps = {
 
 /**
  * The composer needs a `conversationId` before a target is chosen, and the key
- * must be STABLE across the moment one is: `MessageInput` keeps its draft in the
- * app's persisted input store keyed by this value, so a key that moved would put
- * the operator's text down a key the box is no longer reading. The unseated
- * constant is deliberate — a strip with no target still deserves a box that
- * keeps what was typed into it — and it cannot collide with a session id (ids
- * are minted hex, never this string).
+ * is the TARGET'S OWN ID at every moment: `MessageInput` keeps its draft in the
+ * app's persisted input store keyed by this value and re-seeds the box from that
+ * key whenever the value changes, so one key is one draft. The unseated constant
+ * is therefore a draft of its own rather than a staging area for the first
+ * session's - text typed before a target is chosen does NOT follow the user into
+ * the session they then pick, exactly as it does not follow them from one
+ * session to the next (a strip with no target still deserves a box that keeps
+ * what was typed into it), and it cannot collide with a session id (ids are
+ * minted hex, never this string).
  */
 const UNSETTLED_TARGET_KEY = "project-quick-send:no-target";
 
@@ -114,6 +117,16 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 	 * its code: `useSessionSnapshot` is that read, shared.
 	 */
 	const { frontend, refresh } = useSessionSnapshot();
+	/*
+	 * THE ADMISSION WINDOW, WHICH IS SILENT ON THIS MOUNT WITHOUT THIS (UX round 1,
+	 * U1). The composer retires its text when the transcript receives the message,
+	 * and this page has no transcript - so between the press and `onSend`
+	 * resolving, the box still holds the text, the composer's pending-send sentence
+	 * is a placeholder that value hides, and nothing on the surface says anything
+	 * happened. The chat pane is covered by its echo and the mini by its Sent
+	 * flash; the strip's own line is this one.
+	 */
+	const [sending, setSending] = useState(false);
 
 	/*
 	 * THE DRAFT KEY IS THE TARGET'S OWN SESSION ID once one is chosen, so the
@@ -133,12 +146,33 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 
 	const sendable = links.filter((link) => link.exists);
 	const selected = sendable.find((link) => link.session_id === target) ?? null;
+	/*
+	 * THE CAPTION'S BUSY IS THE LINK'S OWN RUNTIME, NOT THE SNAPSHOT'S (review round
+	 * 1, R6). Two busy sources meet on this card: the project detail's `links`
+	 * (`runtime.busy`, what chooses `steer` versus `prompt` at the send) and the
+	 * snapshot's `streaming` (what the readings strip paints). They are different
+	 * reads of the same session at different cadences and nothing in the wire makes
+	 * them agree, so the SEND MODE and the caption both follow the link's value -
+	 * the one the admission seam is handed - and the readings row is left to speak
+	 * for its own snapshot. A disagreement would show as the row's streaming mark
+	 * and this caption differing for one poll interval; it can never change what the
+	 * press carries.
+	 */
 	const busy = selected?.runtime?.busy === true;
 
 	return (
 		<div
 			data-tour-tag="project-quick-send"
-			className="flex flex-col gap-2 rounded-md bg-elevated p-3"
+			/*
+			 * THE CARD IS `surface`, NOT `elevated` (design round 1, D1). The shared box
+			 * is `bg-elevated`, and its documented separation from its column is the
+			 * lightness STEP rather than an edge at rest - so a card painted in the same
+			 * `elevated` token left the field with no boundary at all until focus
+			 * (measured ΔE00 0.00 between the two fills). `surface` is the rung the ground
+			 * ladder already defines between `canvas` and `elevated`, so the box steps off
+			 * its card exactly as it steps off a chat column.
+			 */
+			className="flex flex-col gap-2 rounded-md bg-surface p-3"
 		>
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="text-meta text-ink-muted">Send to</span>
@@ -160,11 +194,24 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 						))}
 					</SelectContent>
 				</Select>
-				{busy && (
+				{/*
+				 * ONE LINE, THE MOST IMMEDIATE FACT FIRST (UX round 1, U1): the admission
+				 * window outranks the steer caption because it is the user's own press being
+				 * answered, and the caption returns the moment the send settles. The row is
+				 * the strip's own and already carries this sentence for a busy target, so the
+				 * in-flight state costs no new row and moves nothing (the row measured 244px
+				 * of slack at 1380x900).
+				 */}
+				{sending ? (
+					/* biome-ignore lint/a11y/useSemanticElements: `role="status"` is the polite announcement this sentence wants, and `<output>` - the element the rule suggests - is a form-result element with its own implied semantics; this is a statement about a send, not a form result. The same suppression, for the same reason, is on the readings strip's dropped-readings line. */
+					<span role="status" className="text-meta text-ink-muted">
+						Sending…
+					</span>
+				) : busy ? (
 					<span className="text-meta text-ink-muted">
 						The session is working — this message steers the running turn.
 					</span>
-				)}
+				) : null}
 			</div>
 			{/*
 			 * THE SHARED BOX (see the header): speech, attachments (file dialog,
@@ -184,13 +231,46 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 				isLoading={false}
 				ownGutter
 				transcriptless
-				placeholderOverride="Message the session…"
+				/*
+				 * THE CLIPBOARD ROUTE STAYS TAUGHT (design round 1, D4). The hint is the
+				 * strip's own pre-existing copy, and the operator called that copy in scope:
+				 * the attach control is visible now, but "an image alone is a message"
+				 * (#790) lands on this surface through the clipboard, and the hint is the
+				 * only thing that says so. It is truthful for the file dialog and the drop
+				 * zone too - paste is simply the route that has no visible affordance.
+				 */
+				placeholderOverride="Message the session — paste an image to attach it"
 				cwd={frontend?.cwd}
 				cwdReadOnlyReason="Quick send follows the conversation's directory."
 				sessionStatus={frontend ? { frontend } : undefined}
 				recordingProbe={recordingProbe}
+				/*
+				 * A STRIP WITH NOTHING TO SEND TO REFUSES ITS BOX AND SAYS WHY (review round
+				 * 1, R5). The hand-rolled field this mounts replaced disabled its Send when no
+				 * target was usable; the composer's Send predicate cannot see that fact, so a
+				 * typed message with no target was a silent no-op. `hostNotice` is the
+				 * composer's own channel for exactly this shape - a host state that refuses
+				 * input, with the host's own sentence and placeholder - and `blocksInput`
+				 * joins `isInputDisabled`, so typing, paste, dictation and the form's submit
+				 * are refused together rather than one door at a time.
+				 */
+				hostNotice={
+					target
+						? undefined
+						: {
+								id: "project-quick-send-no-target",
+								node: (
+									<p className="text-meta text-ink-muted">
+										Choose a session to send to.
+									</p>
+								),
+								blocksInput: true,
+								placeholder: "Choose a session to send to.",
+							}
+				}
 				onSendMessage={async (content, attachments) => {
 					if (!target) return false;
+					setSending(true);
 					try {
 						/*
 						 * `false` is the composer's own "put the text back" answer, and it
@@ -205,15 +285,15 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 							attachments,
 						);
 					} finally {
+						setSending(false);
 						/*
-						 * THE PRESS HANDS THE KEYBOARD BACK TO THE BOX (UX round 1, U2, kept
-						 * through this change). A pointer press focuses the Send control,
-						 * and that control then disables while the send is in flight, so the
-						 * browser drops focus to `<body>` - measured: the next message needed
-						 * a fresh click, while the Enter path kept the box focused (the
-						 * renderer driver's `project-detail` scene asserts
-						 * `document.activeElement` for exactly this). On a refusal the text
-						 * is already back in the box, so the caret belongs there too.
+						 * THE PRESS HANDS THE KEYBOARD BACK TO THE BOX. A pointer press focuses
+						 * the Send control, and the browser drops focus to `<body>` when the send
+						 * settles - measured: the next message needed a fresh click, while the
+						 * Enter path kept the box focused (the renderer driver's
+						 * `project-detail` scene asserts `document.activeElement` for exactly
+						 * this). On a refusal the text is already back in the box, so the caret
+						 * belongs there too.
 						 */
 						inputRef.current?.focusInput();
 					}
