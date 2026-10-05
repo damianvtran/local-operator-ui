@@ -193,9 +193,10 @@ test("only the app's writer bumps the revision the composer mirrors on", () => {
  * The drawer's own affordances, on the same mount.
  *
  * WHY HERE. This file is the drawer's jsdom mount rig - the one place the shipped
- * `AskDrawer` renders against the shipped stores - so the four claims the round-1
- * reviews made about the SURFACE rather than about the swap are pinned on the same
- * instrument: where the keyboard lands (UX U4), what the settled header says (agent
+ * `AskDrawer` renders against the shipped stores - so the claims the round-1 reviews
+ * made about the SURFACE rather than about the swap are pinned on the same
+ * instrument: where the keyboard lands when a card is there to land on (UX U4) and
+ * when only settled rows are (agent review m1), what the settled header says (agent
  * review M1 = UX U1 = design D1), what the bar counts (UX U5), and what the card
  * draws for an answer the option list never offered (design D2's addendum). Each of
  * those was found by looking at a frame or driving the app; none of them had a
@@ -254,7 +255,120 @@ test("the keyboard lands on the card's first option, not on the dismiss (UX U4)"
 	chip.remove();
 });
 
-test("the settled header names the words the section actually holds (M1 = U1 = D1)", async () => {
+test("a settled-only queue lands on the first settled row, never on the filter (agent review m1)", async () => {
+	/*
+	 * THE OTHER HALF OF U4, which the first fix left broken: scoping the entry walk to
+	 * `[data-lo-ask-row]` holds while a pending card is drawn, but a settled row lives
+	 * inside its own `Disclosure` and a COLLAPSED `Disclosure` paints no children - so a
+	 * settled-only queue had no `[data-lo-ask-row]` at all and the walk fell through to
+	 * the new filter's first button. This is the reproduction, kept as the pin: the
+	 * filter is asserted PRESENT in the same render, because a render without it could
+	 * not tell the two landings apart.
+	 */
+	const chip = document.createElement("button");
+	chip.setAttribute("data-lo-ask-item-toggle", "");
+	document.body.appendChild(chip);
+	chip.focus();
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([
+				/*
+				 * BOTH TERMINAL, and deliberately not `answered`: an answered ask whose answer has
+				 * not been delivered is a DELIVERING row, which the panel draws as a pending card
+				 * - so a fixture built from one is not a settled-only queue at all, and the first
+				 * draft of this test measured that instead (the chip and two landing targets).
+				 * `declined` and `dismissed` are settled on both halves of the predicate.
+				 */
+				settled("declined", "a-declined"),
+				settled("dismissed", "a-dismissed"),
+			]),
+			scope: "session",
+		}),
+	);
+	assert.ok(
+		view.container.querySelector("[data-lo-ask-filter]"),
+		"the filter control is rendered here, which is what makes this test discriminate",
+	);
+	const group = view.container.querySelector("[data-lo-ask-settled]");
+	assert.ok(group, "the settled group renders");
+	const active = document.activeElement;
+	assert.ok(
+		active,
+		"the entry move still lands somewhere in a settled-only queue",
+	);
+	assert.ok(
+		group.contains(active),
+		"the landing is inside the settled group rather than on the filter above the list",
+	);
+	assert.equal(
+		active?.getAttribute("aria-expanded"),
+		"false",
+		"and it is the first settled row's own trigger, so the reader can open it",
+	);
+	await view.unmount();
+	chip.remove();
+});
+
+test("a filter whose half is empty says so, and the boundary label goes with the boundary (design D1 = UX U2)", async () => {
+	/*
+	 * THE REPORTED REPRO, on the shipped panel: one open ask, press the chip whose count
+	 * is zero. Before the fix the pane went blank under the chips - no empty copy at all
+	 * - which reads as "there are no asks" over a queue that has one, and the drawer's
+	 * own bar was still saying "1 question waiting" above it.
+	 */
+	const view = await mount(
+		h(AskDrawer, { frontend: frontend([radioAsk]), scope: "session" }),
+	);
+	const chip = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("Settled"));
+	if (!chip) throw new Error("the zero-count chip is not rendered");
+	assert.equal(
+		chip.textContent,
+		"Settled · 0",
+		"the chip counts the empty half",
+	);
+	await act(async () => {
+		chip.click();
+	});
+	const panel = view.container.querySelector("[data-lo-ask-panel]");
+	const text = panel?.textContent ?? "";
+	assert.ok(
+		text.includes("No asks have settled yet"),
+		"the empty half states its own emptiness rather than leaving the pane blank",
+	);
+	assert.ok(
+		text.includes("Waiting or moved on"),
+		"and names the half that does hold the asks, so it cannot read as an empty queue",
+	);
+	assert.equal(
+		view.container.querySelectorAll("[data-lo-ask-row]").length,
+		0,
+		"and the pending card it points at is genuinely not drawn under this filter",
+	);
+	/*
+	 * THE OTHER HALF OF THE SAME PRESS (design round 1, D2 = UX round 1, U4): the settled
+	 * boundary label is drawn only while there is a pending half above it, so under
+	 * `Settled` it is absent - which is what stopped the pane reading `Settled · 3` twice.
+	 * Asserted on the same mount by switching back to `All`.
+	 */
+	const allChip = [
+		...view.container.querySelectorAll("[data-lo-ask-filter] button"),
+	].find((b) => (b.textContent ?? "").startsWith("All"));
+	if (!allChip) throw new Error("the All chip is not rendered");
+	await act(async () => {
+		allChip.click();
+	});
+	const group = view.container.querySelector("[data-lo-ask-settled]");
+	assert.equal(
+		group,
+		null,
+		"with one pending ask and none settled, there is no group to head",
+	);
+	await view.unmount();
+});
+
+test("the settled group labels only what it holds, and each row carries its own word (M1 = U1 = D1)", async () => {
 	const view = await mount(
 		h(AskDrawer, {
 			frontend: frontend([radioAsk, settled("declined", "a-declined")]),
@@ -264,10 +378,31 @@ test("the settled header names the words the section actually holds (M1 = U1 = D
 	const header = view.container.querySelector("[data-lo-ask-settled]");
 	assert.ok(header, "the section renders for one settled ask");
 	const text = header.textContent ?? "";
-	assert.ok(text.includes("Settled · 1"), "the count is the section's own");
+	assert.ok(
+		text.includes("Settled"),
+		"the section is still headed by the boundary label",
+	);
+	/*
+	 * AND THE COUNT IS NOT RESTATED HERE (design round 1, D2 = UX round 1, U4): the
+	 * `Settled · N` filter chip ~190px above owns the number, and under the `Settled`
+	 * filter the group's heading is not drawn at all, because there is no pending half
+	 * for it to separate from. Both halves of that are asserted where they are facts
+	 * about the render (`ask-panel.tsx`); what this file can pin is that the heading no
+	 * longer carries a count of its own.
+	 */
+	assert.ok(
+		!text.includes("Settled ·"),
+		"the boundary label does not restate the filter chip's count",
+	);
+	/*
+	 * THE WORD MOVED FROM THE HEADER TO THE ROW (operator ask, 2026-10-05). The
+	 * section used to name its statuses in a subtitle above the list; it now prints
+	 * one status CHIP per row, so the word is still asserted here - and still only
+	 * the word this section can hold - but it is read off the row that carries it.
+	 */
 	assert.ok(
 		text.includes("Declined"),
-		"the one word the section holds is named",
+		"the one word the section holds is named, on its own row",
 	);
 	// The two claims the fixed legend made and could not keep: `timed out` can never
 	// be in the section (the outstanding set folds it in), and a word the section

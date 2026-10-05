@@ -1020,42 +1020,35 @@ test("the wire's `urgent` flag reaches the view, and only for the asks the item 
 	);
 });
 
-/* ------------------------------------------------- the settled descriptor ---- */
+/* ------------------------------------------------------------- the row's word ---- */
 
-test("the settled descriptor is derived from the rows, never a fixed legend", () => {
-	const view = (asks) => queue.askQueueView({ asks });
-	/** The section's own predicate, spelled once here: the rows the panel collapses. */
-	const settledRows = (v) => v.rows.filter((row) => !row.open);
-	// One declined ask: the header used to print all four words over it.
-	assert.equal(
-		queue.askStatusWords(settledRows(view([single({ status: "declined" })]))),
-		"Declined",
-	);
-	// The shipped look-alike pair, in the copy contract's own order rather than the
-	// rows': `Answered` and `Answered late` are the two a one-line row must tell
-	// apart, and both are named.
-	assert.equal(
-		queue.askStatusWords(
-			settledRows(
-				view([
-					single({ ask_id: "a-late", status: "late" }),
-					single({ ask_id: "a-answered", status: "answered" }),
-				]),
-			),
-		),
-		"Answered, Answered late",
-	);
-	// A `timed_out` row can never reach the section - it is in the outstanding set -
-	// so its word must never appear in a descriptor built from settled rows, however
-	// many of them there are.
-	const settledOnly = settledRows(
-		view([
+/*
+ * The plural descriptor helper this block used to pin (`askStatusWords`) is DELETED,
+ * with its test, because this PR removed its last production consumer (agent review
+ * round 1, N2): the panel now prints one word per ROW on that row's own chip, so a
+ * legend composed above the list names twice what the rows already say. What is
+ * still worth pinning is the row's word, and the half of the old claim that was
+ * load-bearing - that a `timed_out` ask can never reach the settled half at all,
+ * which is a fact about the VIEW rather than about the copy.
+ */
+test("a row's word is the copy contract's, and the settled half holds no moved-on row", () => {
+	const view = queue.askQueueView({
+		asks: [
 			single({ status: "declined" }),
 			single({ ask_id: "a-moved", status: "timed_out" }),
 			single({ ask_id: "a-answered", status: "answered" }),
-		]),
+		],
+	});
+	/** The section's own predicate, spelled once here: the rows the panel collapses. */
+	const settled = view.rows.filter((row) => !row.open);
+	assert.deepEqual(
+		[...new Set(settled.map((row) => queue.askStatusWord(row.status)))].sort(),
+		["Answered", "Declined"],
 	);
-	assert.equal(queue.askStatusWords(settledOnly), "Answered, Declined");
+	assert.ok(
+		!settled.some((row) => row.status === "timed_out"),
+		"a `timed_out` row is in the outstanding set, so it can never be in the settled half",
+	);
 });
 
 /* ------------------------------------------------------- the drawer's bar ---- */

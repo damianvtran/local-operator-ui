@@ -46,10 +46,10 @@
  *
  * ## Escape, and the door that opens this pane
  *
- * The pane is opened from the sidebar's `Asks` row, which is not inside the
- * drawer, so the drawer's own `onKeyDown` never sees a press made on the rail and
- * the lane's other Escape claim (`chat-page.tsx`) is session-scoped and stands
- * down here. This component therefore claims Escape at the WINDOW while it is
+ * The pane is opened from the conversation header's asks trigger, which is not
+ * inside the drawer, so the drawer's own `onKeyDown` never sees a press made on the
+ * trigger and the lane's other Escape claim (`chat-page.tsx`) is session-scoped and
+ * stands down here. This component therefore claims Escape at the WINDOW while it is
  * mounted, the shape `canvas/index.tsx` and the run panel already take; the drawer
  * in turn accepts either door at entry, so focus lands inside the pane and Escape
  * is consumed even before the pointer moves. Both halves were missing on the first
@@ -150,13 +150,13 @@ export const FleetAskDrawer = ({ onClose }: { onClose: () => void }) => {
 	 * scope is protected by `chat-page.tsx`'s listener, which is gated on the
 	 * session scope (`askExpanded`) and therefore stands down for this pane; the
 	 * fleet pane had only a React handler on its own `section`, and a React event
-	 * only bubbles from a node INSIDE that section. The door is a sidebar row, so
-	 * before this an Escape pressed after opening the pane from the rail reached
+	 * only bubbles from a node INSIDE that section. The door is the header trigger, so
+	 * before this an Escape pressed after opening the pane from the header reached
 	 * nothing in the lane - and fell to the app's interrupt rung, stopping the
 	 * agent's running turn (UX round 1, U1 / agent review round 1, F1). Focus now
 	 * enters the pane (the drawer's entry move accepts either door), which covers
 	 * the common walk; this covers the press from ANYWHERE, including a click back
-	 * onto the transcript or the rail while the pane stays open.
+	 * onto the transcript or the header while the pane stays open.
 	 *
 	 * THE GUARDS ARE THE CANVAS'S, deliberately: `defaultPrevented` (a surface that
 	 * already claimed the press keeps it - a React handler runs ahead of this

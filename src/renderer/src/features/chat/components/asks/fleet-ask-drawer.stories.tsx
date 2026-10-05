@@ -7,9 +7,10 @@
  * the router below is the same seam the app itself uses: every op except
  * `asks.list` is refused, which is the honest state of a story whose subject is
  * one read. Everything above that seam is real - the real `ChatLayout` (whose
- * right slot the fleet pane is docked in), the real `SidebarNavigation` with its
- * real `Asks` row and badge, the real `FleetAskDrawer`, the real `AskDrawer` in
- * both scopes, and the real scope line both chrome bars compose from
+ * right slot the fleet pane is docked in), the real `SidebarNavigation` (which no
+ * longer draws an asks row - the entry point is the conversation header's, drawn by
+ * `chat-header-cluster.stories.tsx`), the real `FleetAskDrawer`, the real `AskDrawer`
+ * in both scopes, and the real scope line both chrome bars compose from
  * `ask-queue.ts`. The payload is a fixture shaped like `GET /v1/desktop/asks` -
  * the row shape is the wire's (`PendingAsk` plus `session_id`/`cwd`, read from
  * `local_operator/asks/store.py`); the values in it are invented.
@@ -31,7 +32,7 @@
  * OBVIOUS: 3 inside a conversation and 11 at the top level describe different
  * things and both are right. Two frames taken minutes apart do not show that -
  * the pair does - so `ScopeComparison` draws the two real drawers beside the real
- * sidebar that carries the top-level badge, at the same instant, on one payload.
+ * sidebar, at the same instant, on one payload.
  * It is a FIGURE: one slot holds one pane in the product, so the story's name says
  * so and no evidence frame is taken from it (agent review round 1, F3).
  *
@@ -374,8 +375,8 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * THE TOP-LEVEL CONTEXT: the sidebar's `Asks` row carries the FLEET total (11)
- * and the pane it opens is docked in the shell's own right slot, so the press
+ * THE TOP-LEVEL CONTEXT: the conversation header's asks trigger carries the FLEET
+ * total (11) and the pane it opens is docked in the shell's own right slot, so the press
  * works on every route. Every card carries the name the sessions list gives its
  * conversation - the title from the catalogue, not the directory basename
  * (design review round 1, D1).
@@ -432,9 +433,9 @@ export const UntitledPairInOneRepo: Story = {
 
 /**
  * THE TWO SCOPES AT ONE INSTANT, which is the operator's actual requirement: the
- * same sidebar badge (11, the fleet) beside the two real drawers - the
- * conversation's own (`This conversation · 3`) and the fleet's
- * (`All conversations · 11`). The counts differ because they describe different
+ * two real drawers side by side on one payload - the conversation's own
+ * (`This conversation · 3`) and the fleet's (`All conversations · 11`) - with the
+ * real sidebar beside them. The counts differ because they describe different
  * sets, and the chrome bar is what says so.
  *
  * THIS IS A FIGURE, NOT A SCREEN, AND IT SAYS SO IN ITS OWN NAME (agent review

@@ -47,7 +47,8 @@
  *
  * Entering is the user's own press and nothing else: the mount finds focus on one of
  * the lane's two DOORS - the status-row item (`ASK_ITEM_SELECTOR`, the session scope)
- * or the sidebar's `Asks` row (`ASK_FLEET_ITEM_SELECTOR`, the fleet scope) - or it
+ * or the conversation header's asks trigger (`ASK_HEADER_ITEM_SELECTOR`, whichever
+ * scope it opened) - or it
  * moves nothing, which is what keeps the lane's no-focus-steal promise (whose subject
  * is an ask ARRIVING) intact. WHERE it lands is the CARD's first control and not the
  * bar's (UX round 1, U4): the bar's leading control in DOM order is the dismiss, so
@@ -73,7 +74,7 @@ import type {
 	AskScope,
 } from "../../ask-queue";
 import {
-	ASK_FLEET_ITEM_SELECTOR,
+	ASK_HEADER_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askQueueView,
@@ -104,11 +105,28 @@ const ASK_DRAWER_FOCUSABLE =
  *
  * The drawer is a bar plus a list, and the LIST is what the user opened the surface
  * for. `ASK_PANEL_SELECTOR` is the panel's existing root marker (`ask-panel.tsx`),
- * so this is a read of a contract that already exists rather than a second one: a
- * settled-only queue has no live control, and the fallbacks below then take the
- * root instead.
+ * so this is a read of a contract that already exists rather than a second one.
  */
 const ASK_PANEL_SELECTOR = "[data-lo-ask-panel]";
+
+/**
+ * WHERE IN THE LIST the entry move lands, in document order: the head PENDING card,
+ * or - when there is none - the settled group, whose own first focusable is its first
+ * row's trigger.
+ *
+ * WHY THE WALK IS SCOPED AND NOT "the first focusable in the panel" (agent review
+ * round 1, m1). The panel grew a FILTER above the list, whose buttons are
+ * legitimately focusable, so a bare walk landed on the filter rather than on the ask
+ * the reader pressed the door to answer - UX round 1's U4 fault with a new control
+ * wearing it. Scoping to `[data-lo-ask-row]` fixed the pending case and left the
+ * settled-only case broken, because a settled row lives inside its own `Disclosure`
+ * and a collapsed `Disclosure` paints no children at all: no `[data-lo-ask-row]`
+ * exists, so the walk fell back to the filter again. Naming the settled group as the
+ * second target is what makes the docblock's claim true - a settled-only queue walks
+ * to the first settled ROW, exactly as it did before the filter existed - and the
+ * `[data-lo-ask-settled]` marker is `ask-panel.tsx`'s own, not a new one.
+ */
+const ASK_LANDING_TARGET = "[data-lo-ask-row], [data-lo-ask-settled]";
 
 export type AskDrawerProps = {
 	frontend: Pick<
@@ -117,11 +135,12 @@ export type AskDrawerProps = {
 	> | null;
 	/**
 	 * Which queue this drawer is showing, carried by the ENTRY POINT rather than
-	 * chosen here (design note §4.4): a session's chip opens `session` and the
-	 * sidebar's top-level `Asks` row opens `fleet`. It is read for the chrome bar's
-	 * scope line, the surface's accessible name, and the per-row conversation line
-	 * (`conversationOf` below) - the three places the two contexts differ - so the
-	 * two queues share one container rather than growing a second drawer.
+	 * chosen here (design note §4.4): a session's chip opens `session` and the header's
+	 * asks trigger opens `fleet` at the top level (or `session` inside one). It is read
+	 * for the chrome bar's scope line, the surface's accessible name, and the per-row
+	 * conversation line (`conversationOf` below) - the three places the two contexts
+	 * differ - so the two queues share one container rather than growing a second
+	 * drawer.
 	 */
 	scope: AskScope;
 	/**
@@ -228,16 +247,16 @@ export const AskDrawer = ({
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
 	 * ALREADY on one of the lane's two doors - the composer chip (the session
-	 * scope) or the sidebar's `Asks` row (the fleet scope) - so a programmatic open,
-	 * a story pinning the flag, or a second mount moves nothing.
+	 * scope) or the conversation header's asks trigger (either scope) - so a
+	 * programmatic open, a story pinning the flag, or a second mount moves nothing.
 	 *
-	 * BOTH DOORS, because the fleet door is a rail row: with only the chip accepted,
-	 * an open from the rail left the keyboard on the row, nothing inside the pane
-	 * could consume Escape, and the press reached the app's interrupt rung and
-	 * stopped the agent's turn (UX round 1, U1 / agent review round 1, F1). The
-	 * returned `Element` is remembered so the door that was pressed is the one focus
-	 * goes back to - two doors, one of which is on the rail and one in a composer
-	 * that may not even be mounted on the route under the fleet pane.
+	 * BOTH DOORS, because the header door is outside the pane: with only the chip
+	 * accepted, an open from the header left the keyboard on the trigger, nothing
+	 * inside the pane could consume Escape, and the press reached the app's interrupt
+	 * rung and stopped the agent's turn (UX round 1, U1 / agent review round 1, F1).
+	 * The returned `Element` is remembered so the door that was pressed is the one
+	 * focus goes back to - the chip and the header trigger, either of which may be
+	 * unmounted on the route under the open surface.
 	 */
 	const wasBootstrapped = useRef(false);
 	const doorRef = useRef<Element | null>(null);
@@ -246,12 +265,12 @@ export const AskDrawer = ({
 		const active = document.activeElement;
 		if (active === null || typeof active.matches !== "function") return;
 		/*
-		 * EITHER DOOR: the composer chip (session) or the sidebar's `Asks` row
-		 * (fleet). Both are the user's own press; nothing else moves focus.
+		 * EITHER DOOR: the composer chip (session) or the header's asks trigger
+		 * (either scope). Both are the user's own press; nothing else moves focus.
 		 */
 		const door =
 			active.matches(ASK_ITEM_SELECTOR) ||
-			active.matches(ASK_FLEET_ITEM_SELECTOR)
+			active.matches(ASK_HEADER_ITEM_SELECTOR)
 				? active
 				: null;
 		const root = rootRef.current;
@@ -267,8 +286,8 @@ export const AskDrawer = ({
 		 * EVERY OTHER COMMIT RESOLVES THE MOVE, and it resolves it whether or not a
 		 * door is under focus. Spending the flag only on a commit that found BOTH a door
 		 * and a surface (the shape this used to have) left it false for as long as a
-		 * drawer mounted with nothing focused stayed up: the rail row is still on screen
-		 * and still matches `ASK_FLEET_ITEM_SELECTOR`, and the ask clock re-renders once
+		 * drawer mounted with nothing focused stayed up: the header trigger is still on
+		 * screen and still matches `ASK_HEADER_ITEM_SELECTOR`, and the ask clock re-renders once
 		 * a second, so the next Tab onto that row plus any commit moved focus into the
 		 * pane - the steal that old docblock said could not happen. Focus moves ONLY on
 		 * a commit that has both a door and a surface, so the bounded wait cannot move
@@ -279,17 +298,32 @@ export const AskDrawer = ({
 		if (door === null || root === null) return;
 		doorRef.current = door;
 		/*
-		 * THE CARD'S FIRST CONTROL, not the bar's (UX round 1, U4). The bar leads the
-		 * DOM, and its first focusable is the DISMISS - so the surface used to open with
-		 * its exit under the keyboard: press the chip, press Enter again, and the drawer
-		 * you just opened closes. The focused node is the head card's first live option
-		 * (`input`, an option row, or the free-text field), falling back to the panel
-		 * root (a settled-only queue has no control, and `tabIndex={-1}` there is the
-		 * deliberate landing) and then to the drawer itself.
+		 * THE LIST'S FIRST CONTROL, not the bar's and not the filter's (UX round 1, U4;
+		 * agent review round 1, m1). The bar leads the DOM and its first focusable is
+		 * the DISMISS - so the surface used to open with its exit under the keyboard:
+		 * press the chip, press Enter again, and the drawer you just opened closes. The
+		 * landing is therefore the first thing in the LIST: the head card's first live
+		 * option (`input`, an option row, or the free-text field) when a pending card is
+		 * drawn, and otherwise the first settled row's own trigger. The fallbacks below
+		 * stay for a panel with neither (`tabIndex={-1}` on the panel root is the
+		 * deliberate landing) and then for the drawer itself.
 		 */
 		const panel = root.querySelector<HTMLElement>(ASK_PANEL_SELECTOR);
+		/*
+		 * THE LIST SCOPES THE WALK. The panel leads with the FILTER control, whose
+		 * buttons are legitimately focusable - so a bare "first focusable in the panel"
+		 * lands on the filter rather than on the ask the reader pressed the door to
+		 * answer, which is U4's fault with a new control wearing it. `ASK_LANDING_TARGET`
+		 * names the list's own two shapes and says why the settled group has to be one of
+		 * them.
+		 */
+		const landingRoot = panel?.querySelector<HTMLElement>(ASK_LANDING_TARGET);
 		const landing =
-			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ?? panel ?? root;
+			landingRoot?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			landingRoot ??
+			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			panel ??
+			root;
 		landing.focus();
 		/*
 		 * NO DEPENDENCY ARRAY, and that is the whole point rather than an oversight.
@@ -298,9 +332,9 @@ export const AskDrawer = ({
 		 * has not answered, so the mount commit renders nothing at all and
 		 * `rootRef.current` is null on it). A `[]` here ran exactly once, on that empty
 		 * commit, and the re-render carrying the rows never got a second chance — the
-		 * key stayed on the rail row, which is the state UX round 1, U1 recorded. The
-		 * work per commit until the flag is set is two `matches` calls, and after it is
-		 * set the first line returns.
+		 * key stayed on the door the user pressed, which is the state UX round 1, U1
+		 * recorded. The work per commit until the flag is set is two `matches` calls, and
+		 * after it is set the first line returns.
 		 */
 	});
 
@@ -310,9 +344,9 @@ export const AskDrawer = ({
 	 * typing, and moving it to a row there would be the theft this whole lane avoids.
 	 *
 	 * The remembered door, not a fresh `querySelector(ASK_ITEM_SELECTOR)`: the fleet
-	 * pane is opened from the rail and the session chip may not even be mounted on the
-	 * route beneath it, so looking the chip up would either find nothing or focus the
-	 * wrong control - the same defect UX round 1, U1 recorded from the other end.
+	 * pane's door is the header trigger and the session chip may not even be mounted on
+	 * the route beneath it, so looking the chip up would either find nothing or focus
+	 * the wrong control - the same defect UX round 1, U1 recorded from the other end.
 	 *
 	 * A MICROTASK, not a read at cleanup time: React runs an unmounting component's
 	 * cleanup as part of the commit that deletes it, and at that instant the node

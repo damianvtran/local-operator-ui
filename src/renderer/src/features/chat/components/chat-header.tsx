@@ -28,6 +28,8 @@ import {
 	FileText,
 	Globe,
 	Info,
+	MessageCircleQuestion,
+	MessagesSquare,
 	MoreHorizontal,
 	Pencil,
 	Rows3,
@@ -36,6 +38,8 @@ import {
 	X,
 } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
+import type { AskScope } from "../ask-queue";
+import { askScopeSubject } from "../ask-queue";
 import { canvasToggleCap, isCanvasTogglePress } from "../canvas-shortcut";
 import { archiveControlLabel } from "../chat-archived";
 import { useSessionCommand } from "../pickers/use-picker-backend";
@@ -239,6 +243,55 @@ type ChatHeaderProps = {
 	 */
 	browserAttentionCount?: number;
 	/**
+	 * THE ASKS ENTRY POINT (operator ask, 2026-10-05): open (or close) the asks
+	 * surface, and how much it is carrying right now.
+	 *
+	 * IT OPENS A SURFACE RATHER THAN NAVIGATING, which is why it lives in this
+	 * cluster at all. The row it replaces in the sidebar was a destination-shaped
+	 * row whose press already opened a pane (`paneDoor`), and the small panel glyph
+	 * it carried beside the label was the tell the operator read: it was always
+	 * meant to OPEN a surface rather than BE one. A header control that toggles the
+	 * drawer says that directly, and the pane it opens is the family's second scope
+	 * (`AskScope`), so one control serves both queues rather than a route for one.
+	 *
+	 * `asksScope` is what the CONTROL reports, not a second door: it rides the same
+	 * `setAskDrawerOpen(open, scope)` the store already keeps, so the surface paints
+	 * the queue the door promised. `asksAttentionCount` is the outstanding count for
+	 * THAT scope - the only difference between the two readings is which queue is
+	 * counted, which is exactly the operator's own split ("in a session... the asks
+	 * for that session; if you go back up, the total").
+	 *
+	 * WHAT THE BADGE COUNTS IS THE OUTSTANDING SET, decided rather than inherited
+	 * (design round 1, D3). The operator's words were "how many asks there are", and
+	 * the number here is `open` plus `timed_out` - the backend's outstanding fold -
+	 * rather than the session's total ask count. The reason is that the badge is an
+	 * ATTENTION mark and every row in that fold is still the user's to act on: a
+	 * timed-out ask takes a late answer and a decline exactly as an open one does
+	 * (`AskPresentation.canAnswer`), so a badge that dropped those rows would hide
+	 * work the surface behind it still offers. A settled ask offers nothing, and the
+	 * settled count is on the filter inside the surface - which is where a history
+	 * number belongs, not on a door. The tooltip and the announced name therefore say
+	 * "waiting or moved on" (the outstanding population, in the phrase the removed
+	 * rail row used) rather than "waiting", which this module reserves for the
+	 * agent-still-waiting subset that excludes a moved-on ask.
+	 *
+	 * ABSENT means the host has no asks to offer (a backend that publishes none, or
+	 * a draft on a backend that answers no aggregate route), and the control is then
+	 * not rendered at all - the same fail-closed rule the row it replaces kept, and
+	 * the same one the composer chip follows: no affordance that can never be
+	 * satisfied.
+	 */
+	onToggleAsks?: () => void;
+	asksAttentionCount?: number;
+	/** Which queue that count belongs to, so the tooltip and the announced name say
+	 * which set the number describes - the sidebar row's `All asks` label and
+	 * `across all conversations` sentence, now spoken by the control. */
+	asksScope?: AskScope;
+	/** Whether the asks surface is up, so the trigger reports `aria-expanded` and the
+	 * tooltip can say `Close asks` rather than `Open asks` - the toggle idiom the
+	 * browser trigger beside it already keeps (its count stays visible while open). */
+	asksOpen?: boolean;
+	/**
 	 * Whether THIS conversation is archived, as the pane knows it, and whether the
 	 * backend can hold archived conversations at all.
 	 *
@@ -305,6 +358,10 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	onOpenConsole,
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
+	onToggleAsks,
+	asksAttentionCount = 0,
+	asksScope = "session",
+	asksOpen = false,
 }) => {
 	/*
 	 * What the badge SHOWS, which is not always what it counts (design round 1, D5):
@@ -443,6 +500,51 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	const browserBadgeDrawn = browserAttentionCount > 0;
 	const canvasButtonShown = Boolean(onOpenOptions) && !isCanvasOpen;
 	const consoleButtonShown = Boolean(onOpenConsole) && !isConsolePaneOpen;
+	/*
+	 * THE ASKS TRIGGER'S OWN THREE FACTS, computed here beside the browser
+	 * trigger's for the reason that block gives: the count a badge SHOWS is capped
+	 * while the sentence that reads it is not, and the control is present whenever
+	 * a host offered a door (see `onToggleAsks`).
+	 */
+	const asksButtonShown = Boolean(onToggleAsks);
+	const asksBadgeDrawn = asksAttentionCount > 0;
+	const asksBadgeText = countLabel(asksAttentionCount, 9);
+	/*
+	 * WHICH SET THE NUMBER DESCRIBES, in the surface's own words (`askScopeSubject`)
+	 * rather than a second spelling: the drawer's chrome bar prints the same noun
+	 * over the rows, so the tooltip that promised "this conversation" and the bar
+	 * that says "This conversation" cannot drift into two names for one queue.
+	 */
+	const asksSubject = askScopeSubject(asksScope);
+	/*
+	 * THE SCOPE IS LEGIBLE ON THE CONTROL, not only under the pointer (UX round 1,
+	 * U3). Two controls that open two different queues used to render identical
+	 * chrome - one glyph, one number - so which queue the badge described could only
+	 * be learned by hovering. The GLYPH now carries it, because a control in this
+	 * cluster has one mark to spend and a second line of chrome would be a new idiom
+	 * in a row of icon buttons: a conversation's asks keep the single question bubble
+	 * and the top level's take a stack of them, which is the same "one conversation"
+	 * against "all conversations" distinction the tooltip and the drawer's bar make in
+	 * words. Nothing else moves - the count, the offset and the ring are the browser
+	 * trigger's, so the two scopes still read as one control in two contexts.
+	 */
+	const AsksScopeIcon =
+		asksScope === "fleet" ? MessagesSquare : MessageCircleQuestion;
+	/* ONE DERIVATION, TWO READERS: the tooltip and the announced name print the same
+	 * sentence, so the hover text and what a screen reader hears cannot disagree
+	 * about the verb, the scope or the number. `asksSubject` is folded in only while
+	 * a badge is drawn - a quiet control must not spend the scope word on an empty
+	 * set, which is the same rule the row it replaces kept.
+	 *
+	 * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX
+	 * round 1, U1). The number this sentence qualifies is the OUTSTANDING set, which
+	 * folds a moved-on ask in; "waiting" is reserved here for the subset that
+	 * excludes it. See `asksAttentionCount` for the decision to count outstanding.
+	 */
+	const asksLabel =
+		asksAttentionCount > 0
+			? `${asksOpen ? "Close" : "Open"} asks \u2014 ${asksSubject}, ${asksAttentionCount} waiting or moved on`
+			: `${asksOpen ? "Close" : "Open"} asks`;
 
 	/*
 	 * Closing the canvas put focus back on `<body>`, which is the top of the
@@ -1461,7 +1563,87 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					listOnScreen={listOnScreen}
 					readerChildId={readerChildId}
 				/>
-				{/* The conversation's browser, third in the cluster. `ghost`/`icon` like its
+				{/*
+				 * THE ASKS TRIGGER (operator ask, 2026-10-05), moved here from the sidebar's
+				 * top-level `All asks` row.
+				 *
+				 * WHY IT MOVED, in the operator's own terms: the nav column already carried
+				 * ten rows competing for it, so this is a SPACE GAIN on an over-subscribed
+				 * column, not a tidy-up. And the row was already a disclosure wearing a
+				 * destination's clothes - it carried a panel glyph beside its label and its
+				 * press opened a pane (`paneDoor`), which the operator read as "it was always
+				 * meant to OPEN a surface rather than be one". This cluster is where the
+				 * controls that open the window's right panes already live, so the control
+				 * joins that family rather than minting a third idiom for one action.
+				 *
+				 * IT CARRIES THE COUNT FOR WHICHEVER QUEUE ITS SCOPE NAMES (`asksScope`), which
+				 * is the operator's own split: inside a conversation the count and the pane are
+				 * THAT conversation's; back up at the top level (a draft, with no conversation
+				 * open) they are the whole fleet's. One control, one store flag, two scopes -
+				 * the same `AskScope` seam the drawer already reads, reused rather than a
+				 * second scope written for the header.
+				 *
+				 * NO CONTAINER-QUERY YIELD, deliberately: the badge is an ATTENTION mark, and a
+				 * control that vanished at the width where a reader is likeliest to be working
+				 * in a narrow window would hide the number the mark exists to show. It sits at
+				 * the always-visible end of the cluster, left of the console and canvas buttons
+				 * that do shed at narrow widths.
+				 */}
+				{asksButtonShown && (
+					<Tooltip content={asksLabel} side="top">
+						<Button
+							variant="ghost"
+							size="icon"
+							onClick={onToggleAsks}
+							/* The name carries the verb, the scope and the number, for the same
+							   reason the browser trigger's does: the badge is the glance, the label is
+							   what a screen reader is told. */
+							aria-label={asksLabel}
+							aria-expanded={asksOpen}
+							/*
+							 * THE DOOR'S OWN ANCHOR (`ASK_HEADER_ITEM_SELECTOR`). The drawer's
+							 * entry move runs only when the mount finds focus ALREADY on the control
+							 * the user pressed, so this tag is what lets Escape be consumed inside the
+							 * pane when the surface was opened from the header rather than from the
+							 * composer chip - without it the press reaches the interrupt ladder and
+							 * stops the running turn (UX round 1, U1 / agent review round 1, F1).
+							 */
+							data-tour-tag="ask-pane-trigger"
+							/*
+							 * WHICH QUEUE THIS DOOR OPENS, on the element, so the scope-legibility claim
+							 * (UX round 1, U3) is assertable rather than read off pixels: a rig compares
+							 * this attribute AND the glyph between the two stories, which is what "the
+							 * scope is on the control" means.
+							 */
+							data-ask-scope={asksScope}
+							className={cn("relative")}
+						>
+							{/* The scope's own mark: see `AsksScopeIcon` for why the glyph carries it,
+							    and the tooltip/announced name for the same distinction in words. */}
+							<AsksScopeIcon aria-hidden={true} />
+							{/* The browser badge's own offset and ring, so two counted controls in one
+							    cluster wear one mark (see the browser trigger for the pixel reasons). */}
+							{asksBadgeDrawn && (
+								<span
+									className={cn(
+										"pointer-events-none absolute -top-2.5 -right-2.5",
+									)}
+								>
+									<Badge
+										variant="attention"
+										shape="pill"
+										size="count"
+										className="ring-2 ring-canvas"
+										data-tour-tag="ask-pane-badge"
+									>
+										{asksBadgeText}
+									</Badge>
+								</span>
+							)}
+						</Button>
+					</Tooltip>
+				)}
+				{/* The conversation's browser, fourth in the cluster. `ghost`/`icon` like its
 				    neighbours, and it carries the count when this conversation has a request
 				    outstanding — see `browserAttentionCount` for why a count here and a dot on
 				    the canvas button. It TOGGLES and stays mounted while its pane is open:
@@ -1557,7 +1739,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					</Tooltip>
 				)}
 				{/*
-				 * The conversation's console, the fourth pane in the cluster (design
+				 * The conversation's console, the fifth pane in the cluster (design
 				 * 6.1). `ghost`/`icon` like its neighbours, and it hides while the pane
 				 * is up for the same reason the browser button does — the pane carries its
 				 * own close, and a trigger for a pane already on screen is a no-op with a
