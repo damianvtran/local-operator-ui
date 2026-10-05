@@ -1,5 +1,19 @@
 /** Canonical sessions are the only conversation identities. Profile names stage
- * drafts; the legacy agent mapping is retained only to resolve old deep links. */
+ * drafts; the legacy agent mapping is retained only to resolve old deep links.
+ *
+ * SHARED CONVENTION, NAMED HERE AND NAMED THE SAME WAY BY THE TUI'S SIBLING
+ * CHANGE (kept verbatim across surfaces): remote rows are first-class - a
+ * session another device holds merges into the same bins as a local one
+ * (Running, Today, Pinned, This week, Older), carries a small locality mark on
+ * the row, and its hover and accessible name read the owning device and its
+ * network; no surface draws a separate remote section.
+ *
+ * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
+ * peers-inclusive answer's remote rows into this catalogue, and the sidebar
+ * renders them through the one row component - the mark in
+ * `features/chat/components/chat-remote-mark.tsx`, the sentence in
+ * `features/chat/chat-remote.ts`.
+ */
 import {
 	DesktopControlError,
 	UserFacingError,
@@ -169,6 +183,26 @@ export type CanonicalSessionRow = {
 	 * `opened_by` leaves it `undefined` and the marker undrawn.
 	 */
 	opened_by?: SessionOpenedBy | null;
+	/**
+	 * THE MESH'S FLAT LOCALITY FIELDS, on rows that arrived from a listing which
+	 * asked for peers (`include_peers`). Declared rather than left to the index
+	 * signature below for the reason `opened_by` is: every read of an undeclared
+	 * key on this type is `unknown`, and the sidebar's row and its clause read
+	 * all five.
+	 *
+	 * `locality` IS THE ONLY FIELD THAT ANSWERS "WHERE". A plain page omits it
+	 * entirely (the wire sends it only on a listing that asked; see
+	 * `SessionCatalogueRow`), which is why every reader treats ABSENCE as "no
+	 * claim" and never as "local". `owner_device` is `""` on a local row and
+	 * the holder's id on a remote one, `owner_device_name` is the display half,
+	 * and `reachable`/`unreachable_reason` are the owner's answer to the poll
+	 * that produced the row.
+	 */
+	locality?: "local" | "remote";
+	owner_device?: string;
+	owner_device_name?: string;
+	reachable?: boolean;
+	unreachable_reason?: string;
 	[key: string]: unknown;
 };
 type BackendSessionRow = Omit<CanonicalSessionRow, "session_id"> & {
@@ -4309,6 +4343,55 @@ type CanonicalSessionsState = {
 		sessionId: string,
 		placement: { locality: "local" | "remote"; owner_device: string },
 	) => void;
+	/**
+	 * MERGE A PEERS-INCLUSIVE CATALOGUE ANSWER INTO THIS STORE: settle the
+	 * placement facts it speaks about, list its REMOTE rows, and drop the remote
+	 * rows whose owner answered and did not carry them.
+	 *
+	 * WHY THIS EXISTS BESIDE `fetchSessions`. The sidebar's own poll must never
+	 * carry `include_peers` (it would dial every peer's relay on the sidebar's
+	 * timer), so the federated answer arrives from its own ambient read
+	 * (`features/mesh/peers-catalogue.tsx`) - and that read lands HERE rather
+	 * than beside the list, so the sidebar, the bins and the row component all
+	 * read ONE catalogue whose membership rules stay this module's.
+	 *
+	 * THE RULES, in the order they are asked:
+	 *
+	 *   1. SETTLEMENT. A fact this answer speaks about - the id is present, with
+	 *      the wire's own pair - is rewritten with a fresh sequence, exactly as
+	 *      `fetchSessions`' own settle loop does and for the same reason: a fact
+	 *      written after this answer's REQUEST started (`requestedAt`, the
+	 *      `beginAnswer` stamp) is left alone, so a create or a move landing
+	 *      across the read cannot be undone by it. A REMOTE row and no fact is
+	 *      the other half of the same rule - the answer is how this store first
+	 *      learns the row, so the answer is what WRITES ITS HOLD; without one the
+	 *      next plain page would drop the row it just learned (the mechanism
+	 *      #837's `PlacementFact` exists for).
+	 *   2. THE REMOTE ROWS ARE UPSERTED through `mergeRow`, exactly as a page's
+	 *      rows are - incoming wins, an absent key is not a claim. New rows are
+	 *      APPENDED in the answer's own order; the order the sidebar DRAWS is
+	 *      not this array's (`mergeRemoteRowsByActivity` states that rule where
+	 *      the list is built).
+	 *   3. PRUNING, and only against a read that can speak: the relay
+	 *      contributes NO rows for a peer that did not answer, so an absent id
+	 *      proves nothing on its own. A held remote row is dropped only when
+	 *      another row in this same answer proves its owner was reachable
+	 *      (`reachable !== false`) while the answer still did not carry the id -
+	 *      the device answered, and no longer holds that conversation. A fact
+	 *      newer than the answer's request is never pruned.
+	 *
+	 * `pinned` ON A REMOTE ROW IS THE WIRE'S OWN ANSWER and stays as it arrives.
+	 * Today that answer is `false` for every remote row, and it can be no other:
+	 * the pin index is device-local and prunes ids with no local session
+	 * directory (`local_operator/tui/sidebar_pins.py`), so forwarding an owner's
+	 * pins is deferred - the Pinned bin draws no remote row yet, and this comment
+	 * is the honest record of that rather than a defect to discover later.
+	 */
+	settlePeerCatalogue: (
+		rows: CanonicalSessionRow[],
+		/** The sequence the answer's own REQUEST took (`beginAnswer`). */
+		requestedAt: number,
+	) => void;
 };
 
 function mergeRow(
@@ -7531,6 +7614,147 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						},
 					},
 				}));
+			},
+			/**
+			 * The peers-inclusive read's own landing (see the type's docstring for the
+			 * rules and why it is not folded into `fetchSessions`).
+			 */
+			settlePeerCatalogue: (rows, requestedAt) => {
+				set((state) => {
+					/*
+					 * 1. SETTLEMENT, mirroring `fetchSessions`' own loop: a fact older
+					 * than the answer's request gives way to the wire's pair, and a fact
+					 * written after it started is left alone. All settlements of one
+					 * answer share ONE fresh sequence, exactly as that loop's do.
+					 */
+					const facts = { ...state.placementFacts };
+					/* The ids THIS call settled, so the two write halves below can read
+					 * exactly what the answer spoke about rather than re-deriving it. */
+					const settledIds = new Set<string>();
+					let settled = false;
+					let settledAt = 0;
+					for (const row of rows) {
+						const locality =
+							row.locality === "remote"
+								? "remote"
+								: row.locality === "local"
+									? "local"
+									: null;
+						if (locality === null) continue;
+						const fact = state.placementFacts[row.session_id];
+						if (fact !== undefined) {
+							/* A fact newer than the answer's question gives way to it; an
+							 * older pair is re-settled below. */
+							if (fact.at >= requestedAt) continue;
+						} else if (locality !== "remote") {
+							/* A local row this store never held: no fact to write - local
+							 * membership is the plain page's to establish. */
+							continue;
+						}
+						settledAt = settledAt === 0 ? state.answerSeq + 1 : settledAt;
+						settledIds.add(row.session_id);
+						facts[row.session_id] = {
+							locality,
+							owner_device:
+								locality === "remote" && typeof row.owner_device === "string"
+									? row.owner_device
+									: "",
+							at: settledAt,
+						};
+						settled = true;
+					}
+					/*
+					 * 2. THE REMOTE ROWS, through the same merge a page's rows go
+					 * through. Local rows in the answer are the PLAIN read's business -
+					 * its page owns them and this one only ever settles facts for them -
+					 * so nothing about a local row is written from here.
+					 */
+					const remote = rows.filter((row) => row.locality === "remote");
+					let sessions = state.sessions;
+					let replaced = false;
+					const additions: CanonicalSessionRow[] = [];
+					const at = new Map<string, number>();
+					for (let index = 0; index < sessions.length; index += 1)
+						at.set(sessions[index].session_id, index);
+					for (const row of remote) {
+						const index = at.get(row.session_id);
+						if (index === undefined) {
+							additions.push(row);
+							continue;
+						}
+						if (sessions[index] !== row) {
+							if (!replaced) {
+								sessions = sessions.slice();
+								replaced = true;
+							}
+							sessions[index] = mergeRow(sessions[index], row);
+						}
+					}
+					if (additions.length > 0) sessions = [...sessions, ...additions];
+					/*
+					 * AND A ROW THAT MOVED HOME STOPS WEARING THE MARK in the same answer
+					 * that said so: its fact settled to `local` above, and the row this
+					 * store already holds is merged with the wire's own local pair
+					 * (`locality: "local"`, no owner), so the sidebar's mark clears with
+					 * the fact. A local id this store does NOT hold is the plain page's to
+					 * add - this action never grows the catalogue with a row the federated
+					 * read did not say was remote.
+					 */
+					for (const row of rows) {
+						if (row.locality === "remote" || !settledIds.has(row.session_id))
+							continue;
+						const index = at.get(row.session_id);
+						if (index === undefined || sessions[index] === row) continue;
+						if (!replaced) {
+							sessions = sessions.slice();
+							replaced = true;
+						}
+						sessions[index] = mergeRow(sessions[index], row);
+					}
+					/*
+					 * 3. PRUNE, ONLY AGAINST A READ THAT CAN SPEAK: the relay contributes
+					 * no rows for a peer that did not answer, so a held row is dropped
+					 * only when another row in this answer proves its owner reachable
+					 * while the id is absent - the owner answered, and no longer holds
+					 * that conversation. (An id the answer DID carry is settled above,
+					 * and a fact newer than the request is never touched.)
+					 */
+					const answered = new Set(rows.map((row) => row.session_id));
+					const spoke = new Set<string>();
+					for (const row of rows) {
+						if (
+							row.locality === "remote" &&
+							typeof row.owner_device === "string" &&
+							row.owner_device !== "" &&
+							row.reachable !== false
+						)
+							spoke.add(row.owner_device);
+					}
+					const pruned = new Set<string>();
+					for (const [id, fact] of Object.entries(state.placementFacts)) {
+						if (fact.locality !== "remote") continue;
+						if (answered.has(id)) continue;
+						if (fact.at >= requestedAt) continue;
+						if (fact.owner_device === "" || !spoke.has(fact.owner_device))
+							continue;
+						pruned.add(id);
+						delete facts[id];
+					}
+					if (pruned.size > 0)
+						sessions = sessions.filter((row) => !pruned.has(row.session_id));
+					if (
+						!settled &&
+						additions.length === 0 &&
+						!replaced &&
+						pruned.size === 0
+					)
+						return {};
+					return {
+						sessions,
+						placementFacts: facts,
+						...(settled ? { answerSeq: state.answerSeq + 1 } : {}),
+					};
+				});
 			},
 		}),
 		{

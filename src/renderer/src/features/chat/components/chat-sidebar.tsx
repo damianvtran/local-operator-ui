@@ -3,6 +3,14 @@ import {
 	builtinOfferSignature,
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
+/*
+ * THE NETWORKS READ, for the remote rows' hover sentence: ONE observer, `poll:
+ * false`, riding whatever the rail or the Mesh tab already fetched (one read per
+ * window, shared by query key) - the same cheap read the device control takes,
+ * gated by the same capability. It names the NETWORK half of the sentence; the
+ * device half rides the row itself (`chat-remote.ts`).
+ */
+import { useMeshNetworks } from "@features/mesh/mesh-store";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	isRemoteReceiptDeferral,
@@ -162,6 +170,17 @@ import {
 	chatRowActCapJoined,
 	chatRowActControl,
 } from "../chat-regions";
+/*
+ * THE REMOTE ROW'S OWN FACTS (the shared convention; the header of
+ * `canonical-sessions-store.ts` names the sentence all surfaces keep): the
+ * device label, the network lookup, the one sentence both channels read, and
+ * the order remote rows are drawn in.
+ */
+import {
+	deviceNetworkNames,
+	mergeRemoteRowsByActivity,
+	remoteClause,
+} from "../chat-remote";
 import {
 	type ArchiveView,
 	chatCountAnnouncement,
@@ -230,6 +249,7 @@ import {
 	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
+import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
@@ -984,6 +1004,20 @@ export function ChatSidebar({
 		2,
 	);
 	const ready = catalogueState === "enabled";
+	/*
+	 * THE REMOTE ROW'S TWO READING AIDS, gated and fetched exactly as the rail's
+	 * are: `meshPaired` is the capability (`features.peers`), and the networks
+	 * read is the cheap one (`poll: false`, one read per window, shared with the
+	 * rail and the device control by query key). The map is built once per answer
+	 * rather than per row - the list is a hot path and the lookup is not.
+	 */
+	const meshPaired =
+		desktopFeatureState(capabilities.data, "peers") === "enabled";
+	const meshNetworks = useMeshNetworks(meshPaired, { poll: false });
+	const remoteNetworkNames = useMemo(
+		() => deviceNetworkNames(meshNetworks.data),
+		[meshNetworks.data],
+	);
 	/*
 	 * Main's pairing cause, read for the same reason the pane reads it: the sentence
 	 * for an unavailable plane comes from the one shared table, selected by the cause
@@ -2303,7 +2337,10 @@ export function ChatSidebar({
 		[sessions, archiveFacts],
 	);
 	const listed = useMemo(
-		() => visibleRows(answeredForMembership, archiveEnabled && !widened),
+		() =>
+			mergeRemoteRowsByActivity(
+				visibleRows(answeredForMembership, archiveEnabled && !widened),
+			),
 		[answeredForMembership, archiveEnabled, widened],
 	);
 	/*
@@ -3939,6 +3976,22 @@ export function ChatSidebar({
 		});
 		const pinned = row.pinned === true;
 		/*
+		 * THE REMOTE HALF OF THE ROW (the shared convention): one predicate and the
+		 * ONE sentence, built here and read by both channels - the mark's `sr-only`
+		 * beside the title and the flyout's own line below - so neither can drift.
+		 * The network name is looked up by the owner's id; a device the networks
+		 * read cannot name degrades to the device clause alone.
+		 */
+		const remote = row.locality === "remote";
+		const remoteHost = remote
+			? remoteClause(
+					row,
+					remoteNetworkNames.get(
+						typeof row.owner_device === "string" ? row.owner_device : "",
+					),
+				)
+			: "";
+		/*
 		 * THE SUBAGENT INDICATOR (the operator's report, 2026-09-29).
 		 *
 		 * One derivation, two independent glyphs, and it is here rather than in
@@ -4246,6 +4299,10 @@ export function ChatSidebar({
 					 */}
 					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
+				{/* THE REMOTE ROW'S OTHER CHANNEL (the shared convention): the SAME
+				    fragment the `sr-only` sentence beside the title reads, drawn as its
+				    own line under the status - the pointer's half of one sentence. */}
+				{remote && <span className="block">{remoteHost}</span>}
 			</>
 		);
 		const rowButton = (
@@ -4359,6 +4416,7 @@ export function ChatSidebar({
 					);
 				}}
 			>
+				{row.locality === "remote" && <ChatRemoteMark />}
 				<ChatSessionStatus row={row} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
@@ -4550,6 +4608,12 @@ export function ChatSidebar({
 						<span className="sr-only">, matched in conversation</span>
 					</>
 				)}
+				{/* THE REMOTE ROW'S OWN SENTENCE, joined to the name here rather than
+				    beside the mark so the row reads state, title, why-it-is-on-screen,
+				    then WHERE IT RUNS - with the attribution rather than beside the
+				    counts, because "which device" is an identity fact like "opened by".
+				    The fragment is the same one the flyout draws (`remoteHost`). */}
+				{remote && <span className="sr-only">, {remoteHost}</span>}
 				{/* THE ATTRIBUTION'S `sr-only` SENTENCE, on the rows whose visible slot is the
 				    agent-opened claim's: the team slot above, and the silent team-less
 				    one. It is what keeps ", opened by coder" reachable from the row itself

@@ -768,7 +768,15 @@ export const MeshPage: FC = () => {
 		desktopFeatureState(capabilities.data, "session_transfer") === "enabled";
 	const peers = useMeshPeers(enabled);
 	const networks = useMeshNetworks(enabled);
-	const sessionRead = useMeshSessions(enabled);
+	/*
+	 * THE TAB RIDES THE AMBIENT OBSERVER (`peers-catalogue.tsx`, mounted in the
+	 * app's shell): it asks for NO interval, so the one federated read per 30 s
+	 * window is issued by the ambient mount rather than once per surface - and a
+	 * member has that mount running whether or not this tab is open. Before the
+	 * sidebar's merge this observer WAS the poller; the interval moved with the
+	 * read's audience.
+	 */
+	const sessionRead = useMeshSessions(enabled, { poll: false });
 	const reads: MeshReads = useMemo(
 		() => ({ peers, networks }),
 		[peers, networks],
@@ -1008,7 +1016,7 @@ export const MeshPage: FC = () => {
 				onRetry: () => void approvals.refetch(),
 				nowSeconds: approvalsNowSeconds,
 			}}
-			sessions={sessionRead.data ?? []}
+			sessions={sessionRead.data?.rows ?? []}
 			movingSessionId={
 				transfer.isPending ? (transfer.variables?.sessionId ?? null) : null
 			}
