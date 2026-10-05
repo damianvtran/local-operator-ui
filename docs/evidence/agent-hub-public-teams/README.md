@@ -11,10 +11,10 @@ are the same surface with `https://api.radienthq.com` answering.
 
 | frame | what it is |
 | --- | --- |
-| `01-public-scope-teams-tab-visible.png` | the public scope, first paint: `Agents 30 / Teams` on screen before anything is scrolled, which is the operator's standing complaint ("you don't even know there's teams until you scroll to the bottom") |
+| `01-public-scope-teams-tab-visible.png` | the public scope, first paint: the `Agents | Teams` strip is on screen before anything is scrolled. **The strip predates this change** (the base's own `agent-hub-page/teams-public-scope` frames carry it) — what this PR changes is the view's CONTENT, the notice giving way to the catalogue. This instance is signed out, so the Agents tab shows no count and the grid is empty; the count is in the story set's frames |
 | `02-public-catalogue-nine-teams.png` | the catalogue, populated from `GET /v1/teams`: the **nine teams the public hub serves**, their authors, managers, rosters and the client-side search over them |
 | `03-team-brief-open.png` | one team's brief, opened: the `GET /v1/teams/<id>` read (`support-desk`'s live collaboration brief, whose first paragraph is the crew's own) |
-| `04-pull-pressed.png` | the Pull control pressed in this instance: **"The team could not be pulled."** — see "What this set does NOT show" |
+| `04-pull-pressed.png` | the Pull control pressed with the brief OPEN: the refusal renders in the card's header, beside the button — **"The team could not be pulled: the hub refused this machine's sign-in. Sign in on the settings page, then pull again."** (this is the frame design round 1, D2 and agent review round 1, M1 asked for: the round-1 version of it showed no failure at all) |
 
 ## How they were taken
 
@@ -40,7 +40,10 @@ it started was reaped by exact pid.
   which needs a paired daemon, and this scratch-profile instance could not attach
   to the operator's (the daemon refuses a bearer it did not issue: `HTTP 401` on
   its desktop plane, in this run's own app log). Frame 04 is therefore the
-  refusal treatment painting correctly, not an outage.
+  refusal treatment painting correctly — WITH its remedy sentence, which is the
+  copy QA round 1, Q2 found missing — rather than an outage, and rather than the
+  empty card the round-1 frame showed (the failure used to render below the open
+  brief; it now renders beside the control that produced it).
 - **The pull's success is the CLI's**, which talks to the paired daemon over the
   same local-server route the button's `team.pull` operation calls:
 
