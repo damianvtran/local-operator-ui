@@ -1,0 +1,34 @@
+drawer-empty--localOperatorDark
+  before []
+  after  []
+  same content: true
+drawer-empty--localOperatorLight
+  before []
+  after  []
+  same content: true
+drawer-expanded-several--localOperatorDark
+  before [["open",2],["timed_out",3]]
+  after  [["open",2],["timed_out",3]]
+  same content: true
+drawer-expanded-several--localOperatorLight
+  before [["open",2],["timed_out",3]]
+  after  [["open",2],["timed_out",3]]
+  same content: true
+drawer-settled-section--localOperatorDark
+  before [["open",2],["timed_out",2]]
+  after  [["open",2],["timed_out",2]]
+  same content: true
+drawer-settled-section--localOperatorLight
+  before [["open",2],["timed_out",2]]
+  after  [["open",2],["timed_out",2]]
+  same content: true
+header-no-approval--localOperatorDark
+  before []
+  after  []
+  same content: true
+header-no-approval--localOperatorLight
+  before []
+  after  []
+  same content: true
+
+STRICT PAIR: PASS - every shared story renders the same cards and option rows on both sides

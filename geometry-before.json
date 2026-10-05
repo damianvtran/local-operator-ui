@@ -1,0 +1,474 @@
+{
+  "origin": "http://localhost:6077",
+  "ref": "before",
+  "frames": [
+    {
+      "theme": "localOperatorLight",
+      "storyRoot": {
+        "x": 16,
+        "y": 16,
+        "w": 560,
+        "h": 640
+      },
+      "panelOpen": true,
+      "filterGroup": null,
+      "settledGroup": null,
+      "settledLabel": null,
+      "cards": [],
+      "headerButtons": [
+        {
+          "label": "Close asks",
+          "scope": null,
+          "box": {
+            "x": 540,
+            "y": 22,
+            "w": 28,
+            "h": 28
+          },
+          "glyph": "lucide lucide-panel-right-close"
+        }
+      ],
+      "emptyLine": "No asks outstanding. The agent is not waiting on anything.",
+      "story": "chat-asks-queued-asks--empty",
+      "name": "drawer-empty--localOperatorLight",
+      "viewport": "900x800"
+    },
+    {
+      "theme": "localOperatorDark",
+      "storyRoot": {
+        "x": 16,
+        "y": 16,
+        "w": 560,
+        "h": 640
+      },
+      "panelOpen": true,
+      "filterGroup": null,
+      "settledGroup": null,
+      "settledLabel": null,
+      "cards": [],
+      "headerButtons": [
+        {
+          "label": "Close asks",
+          "scope": null,
+          "box": {
+            "x": 540,
+            "y": 22,
+            "w": 28,
+            "h": 28
+          },
+          "glyph": "lucide lucide-panel-right-close"
+        }
+      ],
+      "emptyLine": "No asks outstanding. The agent is not waiting on anything.",
+      "story": "chat-asks-queued-asks--empty",
+      "name": "drawer-empty--localOperatorDark",
+      "viewport": "900x800"
+    },
+    {
+      "theme": "localOperatorLight",
+      "storyRoot": {
+        "x": 16,
+        "y": 16,
+        "w": 560,
+        "h": 640
+      },
+      "panelOpen": true,
+      "filterGroup": null,
+      "settledGroup": {
+        "x": 28,
+        "y": 496.44,
+        "w": 536,
+        "h": 32
+      },
+      "settledLabel": null,
+      "cards": [
+        {
+          "id": "a-7f3c",
+          "status": "open",
+          "box": {
+            "x": 28,
+            "y": 64,
+            "w": 536,
+            "h": 209.38
+          },
+          "optionRows": 2,
+          "firstFocusable": "staging▸RecommendedThe shared pre-prod c"
+        },
+        {
+          "id": "a-91be",
+          "status": "timed_out",
+          "box": {
+            "x": 28,
+            "y": 281.38,
+            "w": 536,
+            "h": 207.06
+          },
+          "optionRows": 3,
+          "firstFocusable": "logs only"
+        }
+      ],
+      "headerButtons": [
+        {
+          "label": "Close asks",
+          "scope": null,
+          "box": {
+            "x": 540,
+            "y": 22,
+            "w": 28,
+            "h": 28
+          },
+          "glyph": "lucide lucide-panel-right-close"
+        }
+      ],
+      "emptyLine": "Which environment should I deploy this to?",
+      "story": "chat-asks-queued-asks--expanded-several",
+      "name": "drawer-expanded-several--localOperatorLight",
+      "viewport": "900x800"
+    },
+    {
+      "theme": "localOperatorDark",
+      "storyRoot": {
+        "x": 16,
+        "y": 16,
+        "w": 560,
+        "h": 640
+      },
+      "panelOpen": true,
+      "filterGroup": null,
+      "settledGroup": {
+        "x": 28,
+        "y": 496.44,
+        "w": 536,
+        "h": 32
+      },
+      "settledLabel": null,
+      "cards": [
+        {
+          "id": "a-7f3c",
+          "status": "open",
+          "box": {
+            "x": 28,
+            "y": 64,
+            "w": 536,
+            "h": 209.38
+          },
+          "optionRows": 2,
+          "firstFocusable": "staging▸RecommendedThe shared pre-prod c"
+        },
+        {
+          "id": "a-91be",
+          "status": "timed_out",
+          "box": {
+            "x": 28,
+            "y": 281.38,
+            "w": 536,
+            "h": 207.06
+          },
+          "optionRows": 3,
+          "firstFocusable": "logs only"
+        }
+      ],
+      "headerButtons": [
+        {
+          "label": "Close asks",
+          "scope": null,
+          "box": {
+            "x": 540,
+            "y": 22,
+            "w": 28,
+            "h": 28
+          },
+          "glyph": "lucide lucide-panel-right-close"
+        }
+      ],
+      "emptyLine": "Which environment should I deploy this to?",
+      "story": "chat-asks-queued-asks--expanded-several",
+      "name": "drawer-expanded-several--localOperatorDark",
+      "viewport": "900x800"
+    },
+    {
+      "theme": "localOperatorLight",
+      "storyRoot": {
+        "x": 16,
+        "y": 16,
+        "w": 560,
+        "h": 640
+      },
+      "panelOpen": true,
+      "filterGroup": null,
+      "settledGroup": {
+        "x": 28,
+        "y": 466.75,
+        "w": 536,
+        "h": 32
+      },
+      "settledLabel": null,
+      "cards": [
+        {
+          "id": "a-7f3c",
+          "status": "open",
+          "box": {
+            "x": 28,
+            "y": 64,
+            "w": 536,
+            "h": 209.38
+          },
+          "optionRows": 2,
+          "firstFocusable": "staging▸RecommendedThe shared pre-prod c"
+        },
+        {
+          "id": "a-settled-1",
+          "status": "timed_out",
+          "box": {
+            "x": 28,
+            "y": 281.38,
+            "w": 536,
+            "h": 177.38
+          },
+          "optionRows": 2,
+          "firstFocusable": "logs only"
+        }
+      ],
+      "headerButtons": [
+        {
+          "label": "Close asks",
+          "scope": null,
+          "box": {
+            "x": 540,
+            "y": 22,
+            "w": 28,
+            "h": 28
+          },
+          "glyph": "lucide lucide-panel-right-close"
+        }
+      ],
+      "emptyLine": "Which environment should I deploy this to?",
+      "story": "chat-asks-queued-asks--settled-section",
+      "name": "drawer-settled-section--localOperatorLight",
+      "viewport": "900x800"
+    },
+    {
+      "theme": "localOperatorDark",
+      "storyRoot": {
+        "x": 16,
+        "y": 16,
+        "w": 560,
+        "h": 640
+      },
+      "panelOpen": true,
+      "filterGroup": null,
+      "settledGroup": {
+        "x": 28,
+        "y": 466.75,
+        "w": 536,
+        "h": 32
+      },
+      "settledLabel": null,
+      "cards": [
+        {
+          "id": "a-7f3c",
+          "status": "open",
+          "box": {
+            "x": 28,
+            "y": 64,
+            "w": 536,
+            "h": 209.38
+          },
+          "optionRows": 2,
+          "firstFocusable": "staging▸RecommendedThe shared pre-prod c"
+        },
+        {
+          "id": "a-settled-1",
+          "status": "timed_out",
+          "box": {
+            "x": 28,
+            "y": 281.38,
+            "w": 536,
+            "h": 177.38
+          },
+          "optionRows": 2,
+          "firstFocusable": "logs only"
+        }
+      ],
+      "headerButtons": [
+        {
+          "label": "Close asks",
+          "scope": null,
+          "box": {
+            "x": 540,
+            "y": 22,
+            "w": 28,
+            "h": 28
+          },
+          "glyph": "lucide lucide-panel-right-close"
+        }
+      ],
+      "emptyLine": "Which environment should I deploy this to?",
+      "story": "chat-asks-queued-asks--settled-section",
+      "name": "drawer-settled-section--localOperatorDark",
+      "viewport": "900x800"
+    },
+    {
+      "theme": "localOperatorLight",
+      "storyRoot": {
+        "x": 0,
+        "y": 0,
+        "w": 560,
+        "h": 84
+      },
+      "panelOpen": false,
+      "filterGroup": null,
+      "settledGroup": null,
+      "settledLabel": null,
+      "cards": [],
+      "headerButtons": [
+        {
+          "label": "Conversation actions",
+          "scope": null,
+          "box": {
+            "x": 352,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-ellipsis"
+        },
+        {
+          "label": "Open run details",
+          "scope": null,
+          "box": {
+            "x": 392,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-info"
+        },
+        {
+          "label": "Open browser",
+          "scope": null,
+          "box": {
+            "x": 432,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-globe"
+        },
+        {
+          "label": "Open console",
+          "scope": null,
+          "box": {
+            "x": 472,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-square-terminal"
+        },
+        {
+          "label": "Open canvas (⌘⇧C)",
+          "scope": null,
+          "box": {
+            "x": 512,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-file-text"
+        }
+      ],
+      "emptyLine": null,
+      "story": "chat-header-cluster--no-approval",
+      "name": "header-no-approval--localOperatorLight",
+      "viewport": "900x300"
+    },
+    {
+      "theme": "localOperatorDark",
+      "storyRoot": {
+        "x": 0,
+        "y": 0,
+        "w": 560,
+        "h": 84
+      },
+      "panelOpen": false,
+      "filterGroup": null,
+      "settledGroup": null,
+      "settledLabel": null,
+      "cards": [],
+      "headerButtons": [
+        {
+          "label": "Conversation actions",
+          "scope": null,
+          "box": {
+            "x": 352,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-ellipsis"
+        },
+        {
+          "label": "Open run details",
+          "scope": null,
+          "box": {
+            "x": 392,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-info"
+        },
+        {
+          "label": "Open browser",
+          "scope": null,
+          "box": {
+            "x": 432,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-globe"
+        },
+        {
+          "label": "Open console",
+          "scope": null,
+          "box": {
+            "x": 472,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-square-terminal"
+        },
+        {
+          "label": "Open canvas (⌘⇧C)",
+          "scope": null,
+          "box": {
+            "x": 512,
+            "y": 4,
+            "w": 32,
+            "h": 32
+          },
+          "glyph": "lucide lucide-file-text"
+        }
+      ],
+      "emptyLine": null,
+      "story": "chat-header-cluster--no-approval",
+      "name": "header-no-approval--localOperatorDark",
+      "viewport": "900x300"
+    },
+    {
+      "story": "chat-header-cluster--asks-quiet",
+      "skipped": "not in this tree's story index"
+    },
+    {
+      "story": "chat-header-cluster--asks-waiting",
+      "skipped": "not in this tree's story index"
+    },
+    {
+      "story": "chat-header-cluster--asks-fleet",
+      "skipped": "not in this tree's story index"
+    }
+  ]
+}
