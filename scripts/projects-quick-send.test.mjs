@@ -521,3 +521,60 @@ test("the readings are read from the SELECTED session, not invented", async () =
 		"and the snapshot it answered with is what the strip paints",
 	);
 });
+
+test("the strip says it is sending while the admission is in flight", async () => {
+	/*
+	 * UX round 1, U1. The composer retires its text when a TRANSCRIPT receives it,
+	 * and this strip has no transcript: without a line of its own the window
+	 * between Enter and delivery says nothing at all, and a user who sees nothing
+	 * happen presses again - where the only answer is the store's refusal to the
+	 * SECOND press. The line lives in the strip's own caption row, so nothing here
+	 * asserts a new row: it asserts that the row says so while the send is out and
+	 * stops saying it once the send settles.
+	 */
+	let release;
+	const pending = new Promise((resolve) => {
+		release = resolve;
+	});
+	const { host } = await mountStrip({ onSend: () => pending });
+	await type(host, "the blocker, please");
+	await pressEnter(host);
+	assert.match(
+		host.textContent ?? "",
+		/Sending…/,
+		"the admission window carries its own sentence",
+	);
+	await act(async () => {
+		release(true);
+		await settle();
+	});
+	assert.doesNotMatch(
+		host.textContent ?? "",
+		/Sending…/,
+		"and the sentence leaves with the send",
+	);
+});
+
+test("a strip with nothing to send to refuses the box and says why", async () => {
+	/*
+	 * Review round 1, R5. The hand-rolled field this mounts replaced disabled its
+	 * Send when no target was usable; the composer's own Send predicate cannot see
+	 * that fact, so a typed message with no target was a silent no-op. The strip
+	 * now refuses the input through the composer's own host-state channel, with the
+	 * host's sentence in the placeholder and in the band.
+	 */
+	const { host } = await mountStrip({ links: [], target: null });
+	const field = box(host);
+	assert.ok(field, "the composer's box is mounted");
+	assert.equal(field.readOnly, true, "the box refuses input");
+	assert.equal(
+		field.placeholder,
+		"Choose a session to send to.",
+		"and its placeholder is the host's own reason",
+	);
+	assert.match(
+		host.textContent ?? "",
+		/Choose a session to send to\./,
+		"the reason is on the surface too",
+	);
+});

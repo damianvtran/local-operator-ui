@@ -36503,9 +36503,9 @@ async function sceneAgentsAsk(cdp) {
 	 * THE GEOMETRY, in one read of the DOM. `round` to a tenth of a pixel: sub-pixel
 	 * layout noise is not a finding, and a tolerance that swallowed a real
 	 * misalignment would be worse than no measurement at all (the two checks below
-	 * use 1px and 28px specifically — the left-edge one is the alignment the chat
-	 * column guarantees, and the centre one allows the pane's own scrollbar gutter,
-	 * which is up to 15px of asymmetric content box on this engine).
+	 * use 1px and 15px — the left-edge one is the alignment the chat column
+	 * guarantees, and the centre one allows the pane's own scrollbar gutter, which
+	 * is up to 15px of asymmetric content box on this engine).
 	 */
 	const geometry = async () =>
 		cdp.evaluate(`(() => {
@@ -36566,6 +36566,30 @@ async function sceneAgentsAsk(cdp) {
 			emptyGeometry.describedBy.includes(emptyGeometry.noteId),
 		`note=${JSON.stringify(emptyGeometry.noteText)} id=${JSON.stringify(emptyGeometry.noteId)} describedby=${JSON.stringify(emptyGeometry.describedBy)}`,
 	);
+	/*
+	 * THE IDLE BOX'S READINGS, ASSERTED RATHER THAN ONLY FRAMED (review round 1,
+	 * R4). `config-composer` reads them from `sessions.preview` while the run has no
+	 * snapshot - the same resolution a new chat's draft pane uses - and the frames
+	 * show the model chip the before half lacks, but a frame is not a guard. The
+	 * read is a round trip, so the wait is bounded rather than immediate.
+	 */
+	const idleReadings = await waitForCondition(
+		cdp,
+		`(() => {
+			const strip = document.querySelector('[data-testid="config-composer"] [data-lo-session-strip]');
+			if (!strip) return null;
+			const model = strip.querySelector('[aria-label^="Model:"]');
+			return model ? model.getAttribute("aria-label") : null;
+		})()`,
+		20_000,
+	);
+	check(
+		"an idle box carries the readings a new chat carries",
+		idleReadings.ok,
+		idleReadings.ok
+			? `${idleReadings.waitedMs}ms: ${idleReadings.last}`
+			: `no readings row after ${idleReadings.waitedMs}ms (last ${JSON.stringify(idleReadings.last)})`,
+	);
 	await captureSettled(cdp, `agents-ask-${size}-${theme}-empty`);
 
 	/*
@@ -36596,6 +36620,57 @@ async function sceneAgentsAsk(cdp) {
 		`box=${JSON.stringify(typed)}`,
 	);
 	await captureSettled(cdp, `agents-ask-${size}-${theme}-typed`);
+
+	/*
+	 * THE SEND PATH, AND THE STATE QA FOUND WHILE READING THE FIRST SET (round 1,
+	 * Q1). The first set's README claimed the ask surface's running and settled
+	 * frames were unobtainable "because nothing here sends a prompt from that box" -
+	 * and QA measured that the mock model DOES run and settle, so the claim was
+	 * about the rig rather than the product. This is the leg that makes the settled
+	 * half a frame rather than a sentence.
+	 *
+	 * THE RUNNING HALF IS NOT CAPTURED, deliberately and now for the measured
+	 * reason: on this rig the mock answers in milliseconds, so the working state is
+	 * a sub-second window that a capture pass would race - an intermittently
+	 * present frame in a committed set is worse than a stated absence. What the
+	 * absent frame would have claimed (the box admits, the strip says so, Stop is
+	 * offered) is asserted by the wait below plus the settled frame.
+	 *
+	 * GATED ON `--backend` the way the other legs of this scene family are: without
+	 * a daemon the box cannot start a run at all, and a leg that fails for want of a
+	 * backend would read as a product defect.
+	 */
+	if (BACKEND) {
+		const finishedLabels = [...composerSource.matchAll(/"Finished[^"]*"/g)].map(
+			(match) => match[0].slice(1, -1),
+		);
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const settled = await waitForCondition(
+			cdp,
+			`(() => {
+				const strip = document.querySelector('[data-testid="config-run-strip"]');
+				if (!strip) return null;
+				const text = strip.textContent ?? "";
+				return ${JSON.stringify(finishedLabels)}.some((label) => text.includes(label))
+					? text.trim()
+					: null;
+			})()`,
+			60_000,
+		);
+		check(
+			"a prompt from the ask box runs and settles",
+			settled.ok,
+			settled.ok
+				? `${settled.waitedMs}ms: ${settled.last}`
+				: `the run strip never reported a settled state (last ${JSON.stringify(settled.last)})`,
+		);
+		await captureSettled(cdp, `agents-ask-${size}-${theme}-settled`);
+	} else {
+		note(
+			"no --backend",
+			"the ask box starts a real configuration run, so without --backend this leg is unreachable and this run writes three frames rather than four (the settled frame is the one a live daemon adds)",
+		);
+	}
 }
 
 /**
