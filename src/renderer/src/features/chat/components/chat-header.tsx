@@ -1621,19 +1621,36 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							{/* The scope's own mark: see `AsksScopeIcon` for why the glyph carries it,
 							    and the tooltip/announced name for the same distinction in words. */}
 							<AsksScopeIcon aria-hidden={true} />
-							{/* The browser badge's own offset and ring, so two counted controls in one
-							    cluster wear one mark (see the browser trigger for the pixel reasons). */}
+							{/* THE QUIET COUNT REGISTER, MEASURED TO FIT THE BAND (operator defect,
+							    2026-10-05: the "3" clipped at the top by its container). The
+							    mark wore the bordered `attention` pill, whose box topped out
+							    2.3px above the band's edge and whose ring reached 4.3px above
+							    it - the sliver the operator's screenshot shows cut - and it read
+							    as a heavier variant beside the sidebar's own counts. It is now
+							    the same `attentionQuiet` register the rail's notification count
+							    and the team mark wear (borderless, `elevated` fill, `ink-dim`,
+							    `text-meta-sm`), with its offset lowered so the whole box sits
+							    INSIDE the band (box top -2.3 -> +2 at `-top-1.5`;
+							    `-right-2.5` unchanged, so the mark still hangs on the corner)
+							    and the row's height untouched. The ring is gone, so the box
+							    IS the painted edge; the contrast pairs are the quiet row's
+							    own in `scripts/contrast-contract.mjs` (`inkDim` on `elevated`,
+							    and the header's ground is that row's `canvas`).
+							    The browser trigger KEEPS the bordered mark: its ring is what
+							    separates it from neighbouring icons and the wash is the
+							    feature's "an agent is blocked on you" meaning (the rail's own
+							    note carries that split), so the cluster now wears the two
+							    registers on purpose rather than by drift. */}
 							{asksBadgeDrawn && (
 								<span
 									className={cn(
-										"pointer-events-none absolute -top-2.5 -right-2.5",
+										"pointer-events-none absolute -top-1.5 -right-2.5",
 									)}
 								>
 									<Badge
-										variant="attention"
+										variant="attentionQuiet"
 										shape="pill"
 										size="count"
-										className="ring-2 ring-canvas"
 										data-tour-tag="ask-pane-badge"
 									>
 										{asksBadgeText}
