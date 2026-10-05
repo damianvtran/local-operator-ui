@@ -110,10 +110,15 @@ patched to make it photograph the hub rather than its load error.
 
 ## The public teams library (2026-10-05)
 
-**RE-TAKEN IN REVIEW ROUND 2** (`--dirs=teams-public-pull-failed-narrow,teams-public-brief-narrow,teams-public-unreachable`,
-head `4c0a809f4`): the reflowed header at 920 (design round 2, D8) and the hub's
-TRANSPORT arm (QA round 2, Q3 — a rejected `fetch`, whose copy no longer carries
-the browser's own `Failed to fetch`). Twelve themes each.
+**RE-TAKEN IN REVIEW ROUND 3** (the same three states, head `ca870bc08`, and this
+is the run the manifest's `head` names): the round-2 frames were captured on a
+DIRTY tree, which makes the head they claim a claim about nothing (reviewer round
+3, R3-3). These are the same states from a clean one.
+
+**RE-TAKEN IN REVIEW ROUND 2** (head `ca870bc08` at the round-3 re-capture):
+the reflowed header at 920 (design round 2, D8) and the hub's TRANSPORT arm (QA
+round 2, Q3 — a rejected `fetch`, whose copy no longer carries the browser's own
+`Failed to fetch`). Twelve themes each.
 
 **RE-TAKEN IN REVIEW ROUND 1** (`--only=agent-hub-page --allow-backend --dirs=<the
 nine>`, head `bb2b90c70`, `dirtyWorkingTree: false`) for three of the round's
