@@ -428,7 +428,10 @@ export class PublicHubError extends Error {
 	 *
 	 * A separate field rather than an interpolated message because the two have
 	 * different audiences (QA round 2, Q2): `The public hub could not be reached.`
-	 * is what a reader needs, and `Failed to fetch` is what an operator needs.
+	 * is what a reader needs, and `Failed to fetch` is what an operator needs. The
+	 * log this field exists for is emitted where the failure is caught, below
+	 * (reviewer round 3, R3-4: the field had no reader at all, and a field nobody
+	 * reads is a docstring claiming a behaviour the module does not have).
 	 */
 	readonly reason: unknown;
 
@@ -474,8 +477,12 @@ const readPublicHub = async <T>(
 		 * A PLAIN SENTENCE, with the browser's own text kept on the error as its
 		 * CAUSE (QA round 2, Q2). Interpolating it put the browser's terser
 		 * `Failed to fetch` — or a TLS/socket string — in front of a reader who can
-		 * act on none of it. The cause is there for a log, never for the panel.
+		 * act on none of it. The cause is there for a log, never for the panel —
+		 * and this is that log (reviewer round 3, R3-4), so the raw text has a
+		 * reader instead of only a claim. `console.error` is the idiom the sibling
+		 * mutating calls in this tree already use.
 		 */
+		console.error("The public hub could not be reached:", error);
 		throw new PublicHubError(
 			"The public hub could not be reached.",
 			null,

@@ -340,6 +340,14 @@ test("a refusal and a transport failure raise typed errors, and are told apart",
 	const unreachable = stubFetch(async () => {
 		throw new TypeError("fetch failed");
 	});
+	/*
+	 * THE LOG IS PART OF THE CONTRACT (reviewer round 3, R3-4): `reason` is
+	 * documented as being for logs, and a field no line reads is a claim rather
+	 * than a behaviour. Captured here so the wiring cannot be deleted silently.
+	 */
+	const logged = [];
+	const realConsoleError = console.error;
+	console.error = (...args) => logged.push(args);
 	try {
 		await assert.rejects(
 			() => listPublicTeams("https://api.radienthq.com"),
@@ -369,7 +377,16 @@ test("a refusal and a transport failure raise typed errors, and are told apart",
 		);
 	} finally {
 		unreachable.restore();
+		console.error = realConsoleError;
 	}
+	assert.ok(
+		logged.some(
+			([message, reason]) =>
+				String(message).startsWith("The public hub could not be reached:") &&
+				reason instanceof TypeError,
+		),
+		"the transport's own text reaches the log the field claims it is for",
+	);
 	const unreadable = stubFetch(async () => ({
 		ok: true,
 		status: 200,
@@ -402,11 +419,6 @@ test("a refusal and a transport failure raise typed errors, and are told apart",
  * it builds the app's environment at module scope and throws in a bare node
  * import. The hook reads `apiConfig.radientBaseUrl` and nothing else from it.
  */
-after(async () => {
-	await unlink(configStubPath).catch(() => {});
-	await unlink(apiConfigStubPath).catch(() => {});
-});
-
 const mountBundle = await build({
 	stdin: {
 		contents: `
@@ -430,6 +442,17 @@ const mountBundle = await build({
 	},
 	write: false,
 });
+/*
+ * THE STUBS GO NOW, not in a hook (reviewer round 3, R3-1's neighbourhood): both
+ * bundles have inlined them by this point, and an `after()` hook registered
+ * before the second build was a race — node:test can run a hook as soon as it
+ * considers the file's tests settled, and one measured run had the stub
+ * unlinked while the mount build was still resolving its aliases, which fails
+ * as "Could not resolve …_public-teams-api-config-<pid>.mjs" and takes the whole
+ * lane down. Deleting them here removes the window instead of narrowing it.
+ */
+await unlink(configStubPath).catch(() => {});
+await unlink(apiConfigStubPath).catch(() => {});
 const mountPath = new URL(
 	`./_public-teams-mount-${process.pid}.mjs`,
 	import.meta.url,
@@ -597,6 +620,23 @@ const mountLibrary = async ({
 		bridgeRequests,
 		teardown: async () => {
 			await act(async () => root.unmount());
+			/*
+			 * DESTROY THE MUTATIONS. This is the handle that hung this lane
+			 * (reviewer round 3, R3-1), and it is not the queries' gc timer the
+			 * comment below is about: React Query's `MutationCache.remove()` — the
+			 * path `queryClient.clear()` takes — deletes a mutation from the set
+			 * WITHOUT calling `destroy()`, so the mutation's own `gcTime` timer
+			 * (five minutes, the library default for mutations) stays armed in the
+			 * loop. The refused-pull case runs one, and after that the file's tests
+			 * all pass and the process sits idle for the full five minutes, which
+			 * the suite runner's bound reads as a failure. Measured rather than
+			 * guessed: `process.report` on the hung process shows exactly one
+			 * referenced timer with 294 s left, and an `async_hooks` `Timeout`
+			 * tracker names its creation site as `Mutation.scheduleGc`.
+			 */
+			for (const mutation of queryClient.getMutationCache().getAll()) {
+				mutation.destroy();
+			}
 			// React Query keeps a gc timer per cached query; without `clear()` the
 			// process lives ten more minutes and `node --test` waits it out.
 			queryClient.clear();
@@ -639,6 +679,28 @@ test("the library paints the display names and the rows' own facts", async () =>
 		);
 		assert.match(text(mounted.dom), /Damian Tran/, "the author line");
 		assert.match(text(mounted.dom), /2 teams in the public hub/);
+		/*
+		 * THE LANDMARK'S NAME, mounted rather than pinned in source (reviewer
+		 * round 3, R3-2). This is the assertion whose absence let round 1's D4 fix
+		 * drop `aria-label="Public teams"` without a red test: per HTML-AAM a
+		 * `<section>` is exposed as `region` only when it has an accessible name,
+		 * and the `<h2>` beside it does not supply one, so the whole library lost
+		 * its landmark silently. The heading is asserted here too, because the two
+		 * are the pair the fix has to keep.
+		 */
+		const region = mounted.dom.window.document.querySelector(
+			'[data-testid="agent-hub-public-teams"]',
+		);
+		assert.equal(
+			region?.getAttribute("aria-label"),
+			"Public teams",
+			"the section keeps the name that makes it a landmark",
+		);
+		assert.equal(
+			region?.querySelector("h2")?.textContent,
+			"Public teams",
+			"and the heading the outline needs sits inside it",
+		);
 		assert.equal(
 			mounted.hubRequests.filter((kind) => kind === "list").length,
 			1,
