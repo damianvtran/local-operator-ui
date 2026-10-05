@@ -110,19 +110,29 @@ patched to make it photograph the hub rather than its load error.
 
 ## The public teams library (2026-10-05)
 
-**Nine states of this set were re-taken, and two are new.** The public Teams view
+**RE-TAKEN IN REVIEW ROUND 1** (`--only=agent-hub-page --allow-backend --dirs=<the
+nine>`, head `bb2b90c70`, `dirtyWorkingTree: false`) for three of the round's
+findings: the hub-failure copy now names the HUB rather than the local server
+(D1/Q1 — `teams-public-unavailable` is the frame), the search-miss states it once
+(D3), and `teams-public-pull-failed` is NEW: the pull's failure renders beside
+the control that produced it, with the brief open, which is exactly the state the
+round-1 frame could not show (D2/M1). The rows and their provenance are otherwise
+unchanged from the pass below.
+
+**Nine states of this set were re-taken, and three are new.** The public Teams view
 used to be a notice ("The public hub lists agents only"), so its six frames
 photographed a sentence; it is now the catalogue itself, read anonymously from
 `GET /v1/teams`, with a client-side search, a brief behind each row's disclosure
-and the pull the surface owns. `teams-public-search-miss` and
-`teams-public-brief` are the two states no frame had rendered before (a search
-that matches nothing, and one team's brief opened — a `getPublicTeam`, because
-the LIST form omits it), and `teams-public-unreadable` was DELETED: its premise
-was the memberships read, and the public view no longer makes one.
+and the pull the surface owns. `teams-public-search-miss`,
+`teams-public-brief` and `teams-public-pull-failed` are the three states no frame
+had rendered before (a search that matches nothing; one team's brief opened — a
+`getPublicTeam`, because the LIST form omits it; and a refused pull, added by
+review round 1's D2), and `teams-public-unreadable` was DELETED: its premise was
+the memberships read, and the public view no longer makes one.
 
-The pass is narrowed rather than swept — `--only=agent-hub-page --allow-backend
---dirs=<the eight>` in two runs — because the other twenty-four states of this
-set are untouched by the change. The rows the frames carry are the NINE TEAMS THE
+The passes are narrowed rather than swept — `--only=agent-hub-page --allow-backend
+--dirs=<the states>` — because the other twenty-four states of this set are
+untouched by the change. The rows the frames carry are the NINE TEAMS THE
 LIVE HUB SERVES, copied from the public endpoint on the day of the pass, so the
 names, descriptions, managers, rosters and authors in these frames are the
 catalogue's own rather than invented ones; the brief shown by
