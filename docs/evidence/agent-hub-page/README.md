@@ -128,8 +128,9 @@ names, descriptions, managers, rosters and authors in these frames are the
 catalogue's own rather than invented ones; the brief shown by
 `teams-public-brief` is the live `support-desk` document's. Display names are
 rendered through the runtime's own rule (`data-quality` reads "Data Quality",
-`support-desk` reads "Support Desk", `mathematician` stays lowercase), which is
-what the kebab keys in those rows are the picture of.
+`support-desk` reads "Support Desk", `content` reads "Content"), which is what
+the kebab keys in those rows are the picture of. There is no raw-key arm on this
+surface: the hub carries no label field, so the derived form IS the display.
 
 **What these frames do NOT prove**, beyond the list below: that the hub is
 reachable from a signed-out machine's app (it is read anonymously, and the
