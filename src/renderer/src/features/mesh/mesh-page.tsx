@@ -774,9 +774,16 @@ export const MeshPage: FC = () => {
 	 * window is issued by the ambient mount rather than once per surface - and a
 	 * member has that mount running whether or not this tab is open. Before the
 	 * sidebar's merge this observer WAS the poller; the interval moved with the
-	 * read's audience.
+	 * read's audience. Its `Recheck` still refetches the entry through this
+	 * observer, so this call site stamps like the ambient one does
+	 * (`useMeshSessions`' `stamp` docstring): whichever observer triggers a
+	 * fetch, the answer carries a request-start sequence in the canonical
+	 * store's own scale.
 	 */
-	const sessionRead = useMeshSessions(enabled, { poll: false });
+	const sessionRead = useMeshSessions(enabled, {
+		poll: false,
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
+	});
 	const reads: MeshReads = useMemo(
 		() => ({ peers, networks }),
 		[peers, networks],

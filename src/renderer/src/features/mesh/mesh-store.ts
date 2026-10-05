@@ -59,7 +59,6 @@ import {
 	type DesktopControlError,
 	desktopResult,
 } from "@shared/api/local-operator/desktop-api";
-import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef } from "react";
 import { type MeshGraph, meshGraph } from "./mesh-graph";
@@ -196,17 +195,24 @@ export type PeersCatalogueAnswer = {
  * THE ONE PLACE IN THIS APP THAT ASKS FOR THE FEDERATED LIST. It is asked by ONE
  * ambient observer (`features/mesh/peers-catalogue.tsx`, mounted in the app's
  * shell) on the 30 s cadence above, while this device is in a network; the Mesh
- * tab and the device control read the same cache entry with `poll: false`, so the
- * one federated read serves every surface rather than each adding its own poll.
- * The SIDEBAR'S OWN POLL MUST NEVER CARRY `include_peers` (it would dial every
- * peer's relay on the sidebar's timer) - the remote rows reach the sidebar only
- * through this read's ambient consumer, which lands them in the canonical store
- * (`settlePeerCatalogue`).
+ * tab reads the same cache entry with `poll: false`, riding that observer -
+ * the one federated read serves every surface rather than each adding its own
+ * poll. The SIDEBAR'S OWN POLL MUST NEVER CARRY `include_peers` (it would dial
+ * every peer's relay on the sidebar's timer) - the remote rows reach the
+ * sidebar only through this read's ambient consumer, which lands them in the
+ * canonical store (`settlePeerCatalogue`).
  *
  * THE ANSWER CARRIES THE REQUEST'S OWN SEQUENCE BESIDE ITS ROWS: the store's
  * settlement currency orders an answer against writes made while it was in
  * flight, and only the query function knows when the request started
- * (`beginAnswer`'s own docstring carries the rule).
+ * (`beginAnswer`'s own docstring carries the rule). The sequence is the
+ * CALLER's to supply (`stamp`) rather than read here, and that seam is
+ * deliberate: this module is bundled by `scripts/mesh-tab.test.mjs` (through
+ * `mesh-approvals`), whose esbuild carries only the `@shared` alias, so a
+ * module-level import of the canonical store would drag `@features/*`
+ * specifiers into a bundle that cannot resolve them. Both fetching call sites -
+ * the ambient observer below and the Mesh tab's own recheck - pass the
+ * canonical store's `beginAnswer`, captured inside the query function.
  *
  * `retry: false` and a 30 s cadence, matching the other two reads here: a failed
  * listing leaves the last good rows painted, and a refused one is the backend's own
@@ -214,13 +220,21 @@ export type PeersCatalogueAnswer = {
  */
 export function useMeshSessions(
 	enabled: boolean,
-	{ poll = true }: { poll?: boolean } = {},
+	{
+		stamp,
+		poll = true,
+	}: {
+		/** The canonical store's answer sequence, called at request start. */
+		stamp: () => number;
+		/** Ask for NO interval and ride whatever observer owns the fetch. */
+		poll?: boolean;
+	},
 ) {
 	return useQuery({
 		queryKey: meshKeys.sessions,
 		enabled,
 		queryFn: async (): Promise<PeersCatalogueAnswer> => {
-			const requestedAt = useCanonicalSessionsStore.getState().beginAnswer();
+			const requestedAt = stamp();
 			const rows = sessionRows(
 				await desktopResult<unknown>({
 					op: "sessions.list",
@@ -231,8 +245,9 @@ export function useMeshSessions(
 			return { rows, requestedAt };
 		},
 		retry: false,
-		staleTime: 10_000,
+		staleTime: poll ? 10_000 : Number.POSITIVE_INFINITY,
 		refetchInterval: enabled && poll ? MESH_POLL_MS : false,
+		refetchOnWindowFocus: poll,
 	});
 }
 

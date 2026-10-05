@@ -10,10 +10,10 @@
  * their own, and a read of their own needs ONE home that runs whether or not
  * any particular surface is mounted. This component is that home: it renders
  * null, it is mounted once in the app's shell (`app.tsx`), and it is the only
- * observer of `useMeshSessions` that asks for an interval - the Mesh tab and the
- * device control read the same cache entry with `poll: false` and ride this one,
- * so the app issues ONE federated read per 30 s window rather than one per
- * surface.
+ * observer of `useMeshSessions` that asks for an interval - the Mesh tab reads
+ * the same cache entry with `poll: false` and rides this one (its own `Recheck`
+ * refetches the entry through the shared key), so the app issues ONE federated
+ * read per 30 s window rather than one per surface.
  *
  * THE GATES, both of them, because either alone is wrong. `enabled` is the
  * caller's capability answer (`features.peers`): a daemon that cannot serve the
@@ -28,10 +28,15 @@
  *
  * WHAT IT WRITES, precisely: `settlePeerCatalogue`, the store action whose own
  * docstring carries the merge, settlement and pruning rules. This component
- * owns only the seam - when an answer lands, it is handed to the store - and the
- * effect runs once per answer because React Query's structural sharing keeps a
- * deep-equal refetch's payload reference, so a poll that changed nothing costs
- * one abortive comparison rather than a second write.
+ * owns only the seam - when an answer lands, it is handed to the store with the
+ * ANSWER'S OWN REQUEST SEQUENCE, stamped at request start inside the query
+ * function (`useMeshSessions`' `stamp` parameter; this mount supplies the
+ * canonical store's `beginAnswer`, and the Mesh tab's own recheck supplies the
+ * same one). The effect therefore runs once per ANSWER rather than once per
+ * row-set: the payload carries the sequence, so even a deep-equal refetch is a
+ * new answer - and an answer whose rows changed nothing settles to the state
+ * it found, because the rows keep their references (React Query's structural
+ * sharing) and the store writes no session row for them.
  */
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type FC, useEffect } from "react";
@@ -42,6 +47,7 @@ export const PeersCatalogueSync: FC<{ enabled: boolean }> = ({ enabled }) => {
 	const membership = useMeshMembership(enabled);
 	const read = useMeshSessions(enabled && membership === "member", {
 		poll: true,
+		stamp: () => useCanonicalSessionsStore.getState().beginAnswer(),
 	});
 	const settle = useCanonicalSessionsStore(
 		(state) => state.settlePeerCatalogue,
