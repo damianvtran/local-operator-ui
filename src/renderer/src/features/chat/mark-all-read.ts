@@ -132,7 +132,32 @@ export type MarkAllReadReceipt = {
 	cleared: number;
 	superseded: number;
 	unknown: number;
+	/**
+	 * The subset of `unknown` this client knows lives on another device
+	 * (`canonical-sessions-store`'s `remoteOwnedIds`): a remote conversation's
+	 * item can only answer `unknown` here - its receipt is on its owner - and
+	 * the sentence for it must say it clears when that device updates rather
+	 * than reporting a failure (operator report, 2026-10-05).
+	 */
+	deferred: number;
 };
+
+/**
+ * The deferral sentence: marks that live on another device.
+ *
+ * ITS OWN SENTENCE, never the unknown remainder's (the "must not read as a
+ * failure" rule, operator report 2026-10-05): a remote conversation's item can
+ * only answer `unknown` - this root has no completion of its own to compare -
+ * and "could not be cleared" is the wrong tense for a mark that clears on its
+ * own when the owning device updates. Singular and plural spell their own verb
+ * off the same count, like every other clause in the receipt, and the failure
+ * arm one control up reuses this sentence for the whole-call class so the two
+ * paths cannot say two different things about one fact.
+ */
+export const markAllReadDeferredSentence = (count: number): string =>
+	count === 1
+		? "1 lives on another device and clears when that device updates."
+		: `${count} live on other devices and clear when those devices update.`;
 
 /**
  * The receipt sentence for a bulk acknowledgement.
@@ -161,6 +186,12 @@ export const markAllReadReceipt = (
 	 */
 	if (receipt.attempted === 0)
 		return { tone: "success", message: "Nothing to clear." };
+	/*
+	 * `unknown` MINUS `deferred`: the two sentences below would otherwise report
+	 * one item twice and, worse, report a deferral as a failure (see the type's
+	 * and the sentence's own notes above).
+	 */
+	const unknown = receipt.unknown - receipt.deferred;
 	const remainder = [
 		receipt.superseded > 0
 			? `${receipt.superseded} ${
@@ -169,11 +200,12 @@ export const markAllReadReceipt = (
 						: "have newer results and stay"
 				} unread.`
 			: null,
-		receipt.unknown > 0
-			? `${receipt.unknown} could not be cleared and ${
-					receipt.unknown === 1 ? "stays" : "stay"
+		unknown > 0
+			? `${unknown} could not be cleared and ${
+					unknown === 1 ? "stays" : "stay"
 				} unread.`
 			: null,
+		receipt.deferred > 0 ? markAllReadDeferredSentence(receipt.deferred) : null,
 	].filter((sentence): sentence is string => sentence !== null);
 	if (receipt.cleared === 0)
 		return {

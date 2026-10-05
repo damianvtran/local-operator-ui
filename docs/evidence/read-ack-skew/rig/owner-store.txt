@@ -1,0 +1,10 @@
+# Owner (cloud-node-1) attention store, before and after the update
+
+## completions (all unseen BEFORE the settle: receipts empty)
+session/d7c2d1e7b496|08d91cab-b5ef-46d2-bfef-9bb099b98c3d|complete
+session/aa4d9d53fd34|dc913c71-4b97-4da8-b338-95654fd67da2|complete
+session/4e11f6d9ff41|87a54040-2777-4014-ac9c-b9a1c18c135c|complete
+session/33da82180e51|d7e0a8ee-0c37-40ff-a1d7-99bcf81416d8|complete
+
+## receipts AFTER the settle (the owner's own store records the acknowledgement)
+session/d7c2d1e7b496|1

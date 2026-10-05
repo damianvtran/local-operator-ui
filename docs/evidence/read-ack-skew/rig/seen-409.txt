@@ -1,0 +1,8 @@
+HTTP/1.1 409 Conflict
+date: Mon, 05 Oct 2026 19:08:37 GMT
+server: uvicorn
+content-length: 261
+content-type: application/json
+cache-control: no-store
+
+{"detail":{"code":"session_is_remote","cause":"owner_build_behind","message":"The unread mark for d7c2d1e7b496 lives on cloud-node-1, and it could not be cleared there right now: cloud-node-1 runs an older build, and the mark clears when that device updates."}}
