@@ -6964,3 +6964,88 @@ test("the §2.4 effective-show table: disposition picks presentation only under 
 		);
 	}
 });
+
+// ---- type: a non-editable target must fail, never echo its own write --------
+
+/**
+ * A fake CDP whose `Runtime.callFunctionOn` RUNS the shipped function source
+ * against `node`, so the test exercises the real SET/READ functions rather than
+ * a canned answer. `insertText` is a no-op, as it is when focus lands on a frame
+ * element: nothing the top document can read back changes.
+ */
+function executingCdp(cdp, node) {
+	cdp.send = async (_contents, method, params) => {
+		if (method === "DOM.getDocument") return { root: { nodeId: 1 } };
+		if (method === "DOM.querySelector") return { nodeId: 42 };
+		if (method === "DOM.resolveNode") return { object: { objectId: "obj-1" } };
+		if (method === "Runtime.callFunctionOn") {
+			const fn = new Function(`return (${params.functionDeclaration})`)();
+			const args = (params.arguments ?? []).map((arg) => arg.value);
+			return { result: { value: fn.apply(node, args) } };
+		}
+		return {};
+	};
+}
+
+/** An `<iframe>`-shaped element: focusable, dispatches events, has NO `value`. */
+class FakeFrameElement extends EventTarget {
+	tagName = "IFRAME";
+	isContentEditable = false;
+	textContent = "";
+	focus() {}
+}
+
+/** An `<input>`-shaped element whose `value` lives on the prototype, like the real one. */
+class FakeInputElement extends EventTarget {
+	tagName = "INPUT";
+	isContentEditable = false;
+	#value = "";
+	get value() {
+		return this.#value;
+	}
+	set value(next) {
+		this.#value = String(next);
+	}
+	focus() {}
+	select() {}
+}
+
+test("type aimed at an iframe fails instead of reporting its own expando as typed", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const frame = new FakeFrameElement();
+	executingCdp(cdp, frame);
+
+	await assert.rejects(
+		() =>
+			host.dispatch(
+				"type",
+				{ ...owner, tab, selector: "iframe", text: "4242424242424242" },
+				"type",
+			),
+		(error) =>
+			error.code === "element_not_found" &&
+			/not an editable field/.test(error.message),
+	);
+	assert.equal(
+		Object.hasOwn(frame, "value"),
+		false,
+		"type must not plant a `value` expando on a non-editable element",
+	);
+});
+
+test("type still lands through the value setter on a real form field", async () => {
+	const { host, cdp } = makeHost();
+	const { owner, tab } = await openApprovedTab(host);
+	const input = new FakeInputElement();
+	executingCdp(cdp, input);
+
+	const result = await host.dispatch(
+		"type",
+		{ ...owner, tab, selector: "input", text: "hello" },
+		"type",
+	);
+	assert.equal(result.value, "hello");
+	assert.equal(result.via, "value_setter");
+	assert.equal(input.value, "hello");
+});
