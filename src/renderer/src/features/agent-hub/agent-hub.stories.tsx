@@ -253,6 +253,12 @@ type BridgeBehaviour = {
 	failPublicTeamBrief?: boolean;
 	/** Never settle the brief read, so an open row stays loading. */
 	holdPublicTeamBrief?: boolean;
+	/**
+	 * Refuse the pull the way the LOCAL SERVER does without a Radient credential:
+	 * a prose 401 rather than a coded `PublicationError`, which is the arm the
+	 * surface used to render with no remedy at all (QA round 1, Q2).
+	 */
+	refusePull?: boolean;
 };
 
 const installBridge = (behaviour: BridgeBehaviour = {}) => {
@@ -283,6 +289,7 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		holdPublicTeams = false,
 		failPublicTeamBrief = false,
 		holdPublicTeamBrief = false,
+		refusePull = false,
 	} = behaviour;
 	ledger.length = 0;
 
@@ -329,7 +336,18 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 			 * document, and this fixture reports the rename the way the local registry
 			 * does — a story that pulls the same team twice is the state the warning is
 			 * for.
+			 *
+			 * `refusePull` answers the arm the route takes when the backend holds no
+			 * Radient credential: a 401 the surface can only render from its own copy
+			 * (there is no coded treatment for it), which is what the story beside this
+			 * one exists to photograph.
 			 */
+			if (refusePull) {
+				return {
+					status: 401,
+					body: { detail: "Unauthorized" },
+				} as unknown as DesktopResponse;
+			}
 			return ok({
 				status: 200,
 				message: "Team pulled from Radient successfully",
@@ -2012,6 +2030,53 @@ export const TeamsPublicBrief: Story = {
 			}),
 		);
 		await screen.findByTestId("agent-hub-public-team-brief");
+		releaseFocus();
+	},
+};
+
+/**
+ * A pull REFUSED with the brief OPEN — the state design round 1 could not
+ * photograph, and the state the frame that claimed to show it did not contain
+ * (design round 1, D2; agent review round 1, M1).
+ *
+ * The failure renders in the card's HEADER, beside the Pull control that produced
+ * it, so it is in frame whether or not the brief is expanded; and because a
+ * credential refusal has no coded treatment on this route, the sentence is the
+ * surface's own — naming the sign-in the page's line above offers (QA round 1,
+ * Q2).
+ */
+export const TeamsPublicPullFailed: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			publicTeams: PUBLIC_HUB_TEAMS,
+			refusePull: true,
+		});
+		holdShutter(
+			'[data-testid="agent-hub-public-team-pull-error"]',
+			"could not be pulled",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		/*
+		 * The brief FIRST: an expanded brief is what used to push the refusal out of
+		 * the frame, so a story that pressed Pull on a collapsed row would prove
+		 * nothing about the defect.
+		 */
+		await userEvent.click(
+			await screen.findByRole("button", {
+				name: "View the brief for Support Desk",
+			}),
+		);
+		await screen.findByTestId("agent-hub-public-team-brief");
+		await userEvent.click(
+			await screen.findByRole("button", { name: "Pull team Support Desk" }),
+		);
+		await screen.findByTestId("agent-hub-public-team-pull-error");
 		releaseFocus();
 	},
 };

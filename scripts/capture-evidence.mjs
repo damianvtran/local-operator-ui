@@ -5383,6 +5383,12 @@ export const STORIES = [
 	["agent-hub-page--teams-public-unavailable", 1280, 900],
 	["agent-hub-page--teams-public-search-miss", 1280, 900],
 	["agent-hub-page--teams-public-brief", 1280, 900],
+	/*
+	 * The pull-FAILURE state, added by design round 1's D2 (agent review round
+	 * 1, M1): the failure used to render below an open brief, so pressing Pull
+	 * showed nothing — and no frame carried the state.
+	 */
+	["agent-hub-page--teams-public-pull-failed", 1280, 900],
 	["agent-hub-page--pager-last-page", 1280, 900],
 	["agent-hub-page--teams-public-retry-recovers", 1280, 900],
 	["agent-hub-page--pager-footer", 1280, 900],

@@ -100,6 +100,15 @@ export const AgentDetailsPage: React.FC = () => {
 	const isOrgRow = agent?.visibility === "org";
 
 	/*
+	 * THE DERIVED NAME, ONCE, for every sentence this page writes about the agent:
+	 * the heading, the action-failure alert and the delist confirmation. A reader
+	 * who reads "Content Writer" at the top and "content-writer" in the dialog
+	 * under it is looking at one row spelled two ways (agent review round 1, m4 —
+	 * the same rule the card's title already follows).
+	 */
+	const displayName = agent ? hubDisplayName(agent.name) : "";
+
+	/*
 	 * The org origin badge's name (§8.4). From the memberships this app already
 	 * reads for the hub's scope selector, so this is a cache hit on every path that
 	 * came through the hub, and `null` — a badge that says less — when the viewer
@@ -311,9 +320,7 @@ export const AgentDetailsPage: React.FC = () => {
 					</Avatar>
 					{/* Matches the PageHeader title step used on other routes */}
 					<div className="flex min-w-0 items-center gap-2">
-						<h1 className="truncate text-display text-ink">
-							{hubDisplayName(agent.name)}
-						</h1>
+						<h1 className="truncate text-display text-ink">{displayName}</h1>
 						{/*
 						 * The org origin badge (§8.4). This page is reachable by URL, so the
 						 * scope the reader arrived from is not knowable here: the badge is what
@@ -482,7 +489,7 @@ export const AgentDetailsPage: React.FC = () => {
 						{agentActionFailureMessage(
 							failure.action,
 							failure.error,
-							agent.name,
+							displayName,
 						)}
 					</AlertDescription>
 					{/* A sibling, never a child: `AlertDescription` is a `<p>`. */}
@@ -595,7 +602,7 @@ export const AgentDetailsPage: React.FC = () => {
 					{/* Not "cannot be undone" followed by "you can re-upload it
 					    later" - a reader cannot tell from that how bad this is,
 					    and telling them exactly that is the dialog's whole job. */}
-					This takes "{agent.name}" off the hub straight away, and nobody will
+					This takes "{displayName}" off the hub straight away, and nobody will
 					be able to download it. You can upload it again later.
 				</div>
 			</BaseDialog>

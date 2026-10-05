@@ -424,7 +424,12 @@ export const OrgTeamsList: React.FC<{
 											size="sm"
 											onClick={() => handlePull(team)}
 											disabled={pull.isPending}
-											aria-label={`Pull team ${team.name}`}
+											/*
+											 * The accessible name is a sentence this surface writes about the team, so
+											 * it paints the derived form like every other one (agent review round 1,
+											 * m4); the node's IDENTITY stays the hub's id.
+											 */
+											aria-label={`Pull team ${hubDisplayName(team.name)}`}
 										>
 											{pullingTeamId === team.id ? "Pulling…" : "Pull"}
 										</Button>
@@ -447,7 +452,7 @@ export const OrgTeamsList: React.FC<{
 									<output className="text-meta text-danger">
 										{pullTreatment?.body ??
 											pull.error?.message ??
-											`"${team.name}" could not be pulled.`}
+											`"${hubDisplayName(team.name)}" could not be pulled.`}
 									</output>
 									{pullTreatment?.actions
 										.filter((action) => ROSTER_ACTIONS.includes(action))

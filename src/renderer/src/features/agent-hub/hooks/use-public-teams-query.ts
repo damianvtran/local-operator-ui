@@ -58,14 +58,20 @@ export const publicTeamKeys = {
  * One more attempt for an answer, none for a read that never got one.
  *
  * The hub's failure is worth a second ask; a transport failure is not (that is
- * the desktop policy's own reading, applied to this transport), and neither is a
- * 4xx, which the same request will be refused with again.
+ * the desktop policy's own reading — `retryDesktopQuery` returns false for a
+ * null status — applied to this transport), and neither is a 4xx, which the
+ * same request will be refused with again. The null-status arm is EXPLICIT here
+ * rather than left to the fall-through, because the fall-through is the one the
+ * desktop policy deliberately does not take: a transport failure that never
+ * reached the hub cannot have been transient, and the user waits out the
+ * connect timeout twice to be told the same thing (agent review round 1, m2).
  */
 export const retryPublicHubQuery = (
 	failureCount: number,
 	error: Error,
 ): boolean => {
-	if (error instanceof PublicHubError && error.status !== null) {
+	if (error instanceof PublicHubError) {
+		if (error.status === null) return false;
 		return error.status >= 500 && failureCount < 1;
 	}
 	return failureCount < 1;
