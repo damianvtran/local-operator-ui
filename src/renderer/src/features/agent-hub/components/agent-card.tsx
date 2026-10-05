@@ -173,8 +173,10 @@ export const AgentCard: React.FC<AgentCardProps> = ({
 	const isOrgRow = agent.visibility === "org";
 	/*
 	 * The name the card PAINTS (see the helper's docstring): a hub key is a
-	 * lowercase slug and carries no label, so `content-writer` reads `Content
-	 * Writer` while `mathematician` stays as the hub spelled it.
+	 * lowercase slug and carries no label field at all, so the derived form IS
+	 * the display — `content-writer` reads `Content Writer`, `mathematician`
+	 * reads `Mathematician`, and no row sits lowercase between Title-Case
+	 * siblings.
 	 */
 	const displayName = hubDisplayName(agent.name);
 

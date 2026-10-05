@@ -6,15 +6,16 @@
  *
  * Five claims, each with the instrument that can falsify it.
  *
- * 1. THE DISPLAY NAME IS THE RUNTIME'S RULE, NOT A SECOND ONE. The hub carries
- *    no label field, so every listing derives the human spelling from the key.
- *    The cases asserted here are copied from `local_operator/display_labels.py`
- *    (`default_label`) and `local_operator/teams.py` (`display_form`), including
- *    the two a reader is most likely to get wrong: an initialism token keeps its
- *    upper case (`qa-tester` -> `QA Tester`), and a derived form that differs
- *    from the key only in CASE falls back to the raw key (`mathematician`
- *    stays lowercase) while one that differs by more does not (`data-quality`
- *    reads `Data Quality`).
+ * 1. THE DISPLAY NAME IS THE RUNTIME'S DERIVATION, NOT A SECOND ONE. The hub
+ *    carries no label field, so every listing derives the human spelling from
+ *    the key. The derivation asserted here is copied from
+ *    `local_operator/display_labels.py` (`default_label`), including the case a
+ *    reader is most likely to get wrong: an initialism token keeps its upper
+ *    case (`qa-tester` -> `QA Tester`). The one deliberate DIVERGENCE from the
+ *    core's composition is that the hub does NOT fall back to the raw key when
+ *    the derived form differs only in case: `mathematician` reads
+ *    `Mathematician` here, because the core's raw-key arm protects a LOCAL row
+ *    that has a stored-label field, and a hub row has none.
  *
  * 2. THE PUBLIC READ IS ANONYMOUS AND CARRIES NO BEARER. `listPublicTeams` and
  *    `getPublicTeam` are the one hub path that does not ride the desktop proxy,
@@ -115,11 +116,24 @@ const DISPLAY_NAME_CASES = [
 	// ... except the initialisms, which stay upper-cased.
 	["qa-tester", "QA Tester", "an initialism token is not Title Cased"],
 	["ux-reviewer", "UX Reviewer", "one of the six"],
-	// ... and the teams composition drops a derived form that differs only by case.
-	["mathematician", "mathematician", "title case no human chose is noise"],
-	["ui", "ui", "an initialism alone casefolds to the key, so the key stays"],
+	/*
+	 * THE DIVERGENCE FROM THE CORE'S COMPOSITION, case by case: the core's
+	 * teams arm drops a derived form that differs from the key only in case,
+	 * because a LOCAL row's key is all anybody chose and it has a label field
+	 * for the case a human does choose. The hub has no label field, so the
+	 * derived form IS the display and the raw-key arm would leave `content`
+	 * lowercase between two Title-Case siblings.
+	 */
+	["mathematician", "Mathematician", "the hub paints the derivation, always"],
+	["ui", "UI", "an initialism alone is upper-cased, not left raw"],
+	["content", "Content", "the live catalogue's one-token keys"],
+	[
+		"investigations",
+		"Investigations",
+		"the same, and the frame a manager read",
+	],
+	["aida", "Aida", "a single token is still Title Cased"],
 	["support-desk", "Support Desk", "the live catalogue's own spelling"],
-	["aida", "aida", "a single token's title case is dropped"],
 ];
 
 test("the display-name rule is the runtime's, case by case", async () => {
@@ -205,9 +219,7 @@ test("getPublicTeam reads one document by id, and encodes it into the path", asy
 	const stub = stubFetch(async () =>
 		jsonResponse(200, {
 			msg: "Team retrieved successfully",
-			result: {
-				team: { id: "a/b", name: "content", instructions: "Do the thing." },
-			},
+			result: { id: "a/b", name: "content", instructions: "Do the thing." },
 		}),
 	);
 	try {
@@ -217,7 +229,11 @@ test("getPublicTeam reads one document by id, and encodes it into the path", asy
 			"https://api.radienthq.com/v1/teams/a%2Fb",
 			"a trailing slash is not doubled and the id is encoded",
 		);
-		assert.equal(envelope.result.team.instructions, "Do the thing.");
+		assert.equal(
+			envelope.result.instructions,
+			"Do the thing.",
+			"the document arrives under `result`, not wrapped",
+		);
 	} finally {
 		stub.restore();
 	}
@@ -406,7 +422,10 @@ const mountLibrary = async ({ rows = TEAM_ROWS, holdList = false } = {}) => {
 			const row = rows.find((team) => team.id === id);
 			return jsonResponse(200, {
 				msg: "Team retrieved successfully",
-				result: { team: { ...row, instructions: "Screen, then report." } },
+				// `result` IS the document (see `HubTeamResult`): the live route does not
+				// wrap it, and a stub that did hid the empty-brief defect this file's own
+				// live pass found.
+				result: { ...row, instructions: "Screen, then report." },
 			});
 		}
 		hubRequests.push("list");

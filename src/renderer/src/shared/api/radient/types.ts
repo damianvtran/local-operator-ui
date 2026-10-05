@@ -853,10 +853,19 @@ export type HubTeamsResult = {
 	teams: HubTeam[];
 };
 
-/** `GET /v1/teams/:teamid` — the org-agnostic pull path (§4.5). */
-export type HubTeamResult = {
-	team: HubTeam;
-};
+/**
+ * `GET /v1/teams/:teamid` — the org-agnostic pull path (§4.5).
+ *
+ * THE DOCUMENT ITSELF, not a `{team: ...}` wrapper. Measured against the live
+ * hub on 2026-10-05: the route answers
+ * `{"msg": "Team retrieved successfully", "result": {id, tenant_id, name,
+ * instructions, ...}}`. The wrapper this type used to declare was never
+ * exercised — no caller read an `org_team.get` result — which is how it
+ * survived, and the public detail read is the caller that found it: against the
+ * live hub the brief opened EMPTY, because `result.team` is `undefined` and the
+ * query resolves as a success with no data.
+ */
+export type HubTeamResult = HubTeam;
 
 /**
  * One row of the PUBLIC team listing (`GET /v1/teams`).
