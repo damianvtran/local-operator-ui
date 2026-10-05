@@ -5,9 +5,9 @@
  * ## Why this is a module and not a few expressions in a component
  *
  * Three surfaces read the same queue - the item in the composer's status row, the
- * panel it expands into, and the outstanding-asks chip on the sidebar row - and
- * two of them have to agree on a count while the third draws the individual rows.
- * The
+ * panel it expands into, and the outstanding-asks mark a sidebar conversation row
+ * carries - and two of them have to agree on a count while the third draws the
+ * individual rows. The
  * backend's own design note (`docs/design/ask-nonblocking.md` §5) puts one
  * binding constraint on all of them: **no surface may say "notified" that it
  * cannot substantiate, and agent-is-working is never "waiting for you"**. A
@@ -255,15 +255,18 @@ export const askChipCountClause = (view: AskQueueView): string => {
  *
  * The two contexts the design note's §4.4 names, and they are a property of the
  * ENTRY POINT rather than a setting: the composer's status-row item opens the
- * conversation's own queue, and the sidebar's top-level `Asks` row opens the
- * fleet's. The scope is carried by the drawer's chrome bar so a reader can always say which one
+ * conversation's own queue, and the conversation header's asks trigger opens the
+ * fleet's at the top level (and this conversation's inside one - one control, two
+ * scopes, because it rides the route rather than a second door). The scope is
+ * carried by the drawer's chrome bar so a reader can always say which one
  * is on screen ("a count of 3 inside a session and 11 at the top level are both
  * correct and say different things").
  *
  * IT IS A PROP OF THE SURFACE, not a second component: one drawer renders both, so
  * the fleet view is a data seam rather than a second idiom. The two entry points
  * that exist today are the composer's status-row item (a conversation's own queue)
- * and the sidebar's top-level `Asks` row (every conversation's) - and they are the
+ * and the header's asks trigger (this conversation's inside a session, every
+ * conversation's at the top level) - and they are the
  * reason the scope is written WITH the open flag in the store rather than chosen by
  * the surface: the surface has to paint the queue its door promised, and only the
  * door knows which one that is.
@@ -538,26 +541,29 @@ export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
 export const ASK_ITEM_SELECTOR = "[data-lo-ask-item-toggle]";
 
 /**
- * The FLEET door: the sidebar's top-level `Asks` row.
+ * The HEADER door: the conversation header's asks trigger.
  *
  * The second thing that OPENS an ask surface, and the reason it needs its own
  * selector rather than a second clause on `ASK_ITEM_SELECTOR`. The drawer's
  * entry move runs only when the mount finds focus ALREADY on the control the
  * user pressed, which is what keeps the lane's no-focus-steal promise (an ask
  * ARRIVING moves nothing). The session door is the composer chip, which carries
- * `ASK_ITEM_SELECTOR`; the fleet door is a sidebar row, which does not - so
- * before this existed a fleet open left focus on the rail row, Escape had no
- * listener inside the pane to bubble to, and the press fell through to the
- * interrupt ladder and stopped the running turn (UX round 1, U1 / agent review
- * round 1, F1). The drawer accepts either door at entry and returns focus to
- * the one it was opened by.
+ * `ASK_ITEM_SELECTOR`; the header trigger is not the chip, so before this
+ * existed an open from the rail left focus outside the pane, Escape had no
+ * listener inside it to bubble to, and the press fell through to the interrupt
+ * ladder and stopped the running turn (UX round 1, U1 / agent review round 1,
+ * F1). The drawer accepts either door at entry and returns focus to the one it
+ * was opened by.
  *
- * The anchor is the row's stable `data-tour-tag`, the same handle the product
- * tour and the driver rigs address it by; the row carries no ask-lane marker of
- * its own, and minting one would be a second name for a row that already has
- * one.
+ * ONE DOOR, TWO SCOPES (operator ask, 2026-10-05). The control it names is the
+ * header trigger, which opens the SESSION scope inside a conversation and the
+ * FLEET scope at the top level - so the constant is named for the control rather
+ * than for one of the two queues it can open. It replaced the sidebar's
+ * top-level `All asks` row, which was itself a disclosure wearing a
+ * destination's clothes; the anchor is still a stable `data-tour-tag`, the same
+ * handle the product tour and the driver rigs address controls by.
  */
-export const ASK_FLEET_ITEM_SELECTOR = '[data-tour-tag="nav-item-asks"]';
+export const ASK_HEADER_ITEM_SELECTOR = '[data-tour-tag="ask-pane-trigger"]';
 
 /*
  * Re-exported so the claim's own contract is nameable from a rig: the composer box
@@ -1122,34 +1128,6 @@ export const askStatusWord = (status: AskStatus | "unknown"): string => {
 };
 
 /**
- * The settled section's descriptor: WHICH WORDS the rows under it actually carry.
- *
- * DERIVED FROM THE ROWS, never a fixed legend. The header used to print one sentence
- * ("answered, timed out, declined, dismissed") for every state the section could
- * hold, and it was false in both directions: `timed out` can never be in the section
- * (see `askStatusWord`), while `Answered late` and `Expired`, which can, were never
- * named - so the legend described a set of states no section can hold and omitted
- * states every section can.
- *
- * The order is the COPY CONTRACT's own, read from `ASK_STATUS_COPY`'s declaration
- * order, so the list is stable across frames and moves with the sentences rather than
- * beside them. Deduped, because two `answered` rows are still one word.
- */
-export const askStatusWords = (rows: readonly AskPresentation[]): string => {
-	const present = new Set(rows.map((row) => row.status));
-	const words: string[] = [];
-	for (const status of Object.keys(ASK_STATUS_COPY) as (
-		| AskStatus
-		| "unknown"
-	)[]) {
-		if (!present.has(status)) continue;
-		const word = askStatusWord(status);
-		if (!words.includes(word)) words.push(word);
-	}
-	return words.join(", ");
-};
-
-/**
  * The status sentence for a row, with the expiry reading appended while it is
  * still a live possibility.
  *
@@ -1594,7 +1572,8 @@ export const askDeclineRequest = (
 });
 
 /**
- * The outstanding-asks chip's copy, for a sidebar row.
+ * The outstanding-asks chip's copy, for the mark a sidebar conversation row
+ * carries (`ChatAsksOutstanding` in `chat-session-status.tsx`).
  *
  * It is deliberately NOT the approval chip's words. An approval is blocking; an
  * ask is not, and the session may be working perfectly well while it waits - so

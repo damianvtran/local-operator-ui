@@ -59,7 +59,7 @@ import {
 	goalPresent,
 } from "../../../../../shared/desktop-session-contract";
 import { gateIsSecret } from "../ask-answer";
-import type { AskDraft, AskOutcome } from "../ask-queue";
+import type { AskDraft, AskOutcome, AskScope } from "../ask-queue";
 import {
 	askComposerHoldsSecret,
 	askQueueView,
@@ -88,6 +88,7 @@ import type {
 	DraftPickerDestination,
 	DraftResolution,
 } from "../draft-selection";
+import { useFleetAsks } from "../fleet-asks";
 import type { Message } from "../types/message";
 import { AskDrawer } from "./asks/ask-drawer";
 import { Canvas } from "./canvas";
@@ -1140,6 +1141,48 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 			isBrowserPaneOpen ||
 			isConsolePaneOpen ||
 			isAskDrawerOpen;
+		/*
+		 * THE HEADER'S ASKS DOOR (operator ask, 2026-10-05): the entry point the
+		 * sidebar's `All asks` row used to be, moved into this conversation's header
+		 * because the nav column was over-subscribed and a control that OPENS a surface
+		 * belongs with the cluster that opens the window's other right panes.
+		 *
+		 * THE SCOPE IS THE OPERATOR'S OWN SPLIT: inside a conversation the door and its
+		 * count are THAT conversation's; at the top level - a draft, with no
+		 * `sessionId` - they are the whole fleet's. The two readings are one expression
+		 * so the count and the queue the press opens can never disagree about which set
+		 * they describe, and the scope rides the SAME store seam the drawer already
+		 * reads (`setAskDrawerOpen(open, scope)`) rather than a second scope written for
+		 * the header.
+		 *
+		 * THE SESSION COUNT IS THE DRAWER'S OWN VIEW (`askQueueView`), not a second
+		 * tally: a badge counting one set over a pane drawing another is the
+		 * two-numbers-for-one-payload class the chip and the drawer already had to fix.
+		 * `asks === null` is "this backend publishes no asks" - the same fail-closed gate
+		 * the composer chip keeps. The fleet half gates on `fleetAsks.answered`, the
+		 * capability-by-answer rule the removed row used, so a backend that does not
+		 * answer the aggregate route grows no control rather than one whose every read
+		 * 404s.
+		 */
+		const sessionAsksView = useMemo(
+			() => askQueueView(canonical?.view.frontend ?? null),
+			[canonical?.view.frontend],
+		);
+		/*
+		 * The same `FLEET_ASKS_QUERY_KEY` read the sidebar and the sessions list already
+		 * make (react-query dedupes it), so the top-level count adds no second poll.
+		 */
+		const fleetAsks = useFleetAsks();
+		const headerAsksSession = Boolean(sessionId);
+		const headerAsksScope: AskScope = headerAsksSession ? "session" : "fleet";
+		const headerAsksOffered = headerAsksSession
+			? sessionAsksView.asks !== null
+			: fleetAsks.answered;
+		const headerAsksCount = headerAsksSession
+			? sessionAsksView.open
+			: fleetAsks.outstanding;
+		const headerAsksOpen =
+			isAskDrawerOpen && askDrawerScope === headerAsksScope;
 		const setConsolePaneOpen = useUiPreferencesStore(
 			(s) => s.setConsolePaneOpen,
 		);
@@ -1561,6 +1604,21 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 							   is the window's, and this is the one field both answer from. */
 							onToggleBrowser={() => setBrowserPaneOpen(!isBrowserPaneOpen)}
 							browserAttentionCount={browserAttentionCount}
+							/*
+							 * THE ASKS DOOR: absent where the scope's backend offers no asks, and
+							 * otherwise a toggle onto the drawer in the scope this conversation
+							 * resolves to (see the block above). The press TOGGLES rather than only
+							 * opening, so the control is the same door in both directions - the
+							 * browser trigger's own idiom beside it.
+							 */
+							onToggleAsks={
+								headerAsksOffered
+									? () => setAskDrawerOpen(!headerAsksOpen, headerAsksScope)
+									: undefined
+							}
+							asksAttentionCount={headerAsksCount}
+							asksScope={headerAsksScope}
+							asksOpen={headerAsksOpen}
 							archiveEnabled={archiveEnabled}
 							archived={archived}
 							onSetArchived={
@@ -2288,7 +2346,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * arrive on this session's frame and its answers go to this session.
 								 * The fleet scope is the other half and lives in the SHELL
 								 * (`chat-layout.tsx`) - it spans conversations, and its entry point
-								 * (the sidebar's `Asks` row) is drawn on every route, so a mount here
+								 * (the header's asks trigger at the top level) is drawn on every route, so a
+								 * mount here
 								 * would leave that door opening nothing wherever the user happened to
 								 * be. One container, two homes, one flag: the scope is what picks,
 								 * which is why this block is gated on it above.

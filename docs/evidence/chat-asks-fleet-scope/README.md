@@ -1,5 +1,15 @@
 # The fleet ask scope: the rail's count and the panel over another conversation
 
+> **SUPERSEDED ENTRY POINT (2026-10-05, PR #835).** The rail's `All asks` row these
+> frames photograph is gone: the entry point moved into the conversation header's own
+> action cluster, opening this same fleet pane at the top level (and a session's own
+> queue inside one), and the door is now marked with
+> `ASK_HEADER_ITEM_SELECTOR` (`[data-tour-tag="ask-pane-trigger"]`) rather than the
+> deleted `ASK_FLEET_ITEM_SELECTOR`. The frames below still show the row they were
+> taken from - a caption they do not carry would be worse than a stale one - so read
+> them as the record of that state, and the current pair on the pull request as the
+> record of this one.
+
 Two frames of the shipped renderer, from the story that draws the real
 `ChatLayout`, the real `SidebarNavigation` (its real `Asks` row and badge) and the
 real `FleetAskDrawer`, at the app's own 1280x720. They exist because the round-1
