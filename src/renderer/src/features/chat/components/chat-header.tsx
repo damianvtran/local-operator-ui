@@ -29,6 +29,7 @@ import {
 	Globe,
 	Info,
 	MessageCircleQuestion,
+	MessagesSquare,
 	MoreHorizontal,
 	Pencil,
 	Rows3,
@@ -259,6 +260,20 @@ type ChatHeaderProps = {
 	 * THAT scope - the only difference between the two readings is which queue is
 	 * counted, which is exactly the operator's own split ("in a session... the asks
 	 * for that session; if you go back up, the total").
+	 *
+	 * WHAT THE BADGE COUNTS IS THE OUTSTANDING SET, decided rather than inherited
+	 * (design round 1, D3). The operator's words were "how many asks there are", and
+	 * the number here is `open` plus `timed_out` - the backend's outstanding fold -
+	 * rather than the session's total ask count. The reason is that the badge is an
+	 * ATTENTION mark and every row in that fold is still the user's to act on: a
+	 * timed-out ask takes a late answer and a decline exactly as an open one does
+	 * (`AskPresentation.canAnswer`), so a badge that dropped those rows would hide
+	 * work the surface behind it still offers. A settled ask offers nothing, and the
+	 * settled count is on the filter inside the surface - which is where a history
+	 * number belongs, not on a door. The tooltip and the announced name therefore say
+	 * "waiting or moved on" (the outstanding population, in the phrase the removed
+	 * rail row used) rather than "waiting", which this module reserves for the
+	 * agent-still-waiting subset that excludes a moved-on ask.
 	 *
 	 * ABSENT means the host has no asks to offer (a backend that publishes none, or
 	 * a draft on a backend that answers no aggregate route), and the control is then
@@ -501,14 +516,34 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 	 * that says "This conversation" cannot drift into two names for one queue.
 	 */
 	const asksSubject = askScopeSubject(asksScope);
+	/*
+	 * THE SCOPE IS LEGIBLE ON THE CONTROL, not only under the pointer (UX round 1,
+	 * U3). Two controls that open two different queues used to render identical
+	 * chrome - one glyph, one number - so which queue the badge described could only
+	 * be learned by hovering. The GLYPH now carries it, because a control in this
+	 * cluster has one mark to spend and a second line of chrome would be a new idiom
+	 * in a row of icon buttons: a conversation's asks keep the single question bubble
+	 * and the top level's take a stack of them, which is the same "one conversation"
+	 * against "all conversations" distinction the tooltip and the drawer's bar make in
+	 * words. Nothing else moves - the count, the offset and the ring are the browser
+	 * trigger's, so the two scopes still read as one control in two contexts.
+	 */
+	const AsksScopeIcon =
+		asksScope === "fleet" ? MessagesSquare : MessageCircleQuestion;
 	/* ONE DERIVATION, TWO READERS: the tooltip and the announced name print the same
 	 * sentence, so the hover text and what a screen reader hears cannot disagree
 	 * about the verb, the scope or the number. `asksSubject` is folded in only while
 	 * a badge is drawn - a quiet control must not spend the scope word on an empty
-	 * set, which is the same rule the row it replaces kept. */
+	 * set, which is the same rule the row it replaces kept.
+	 *
+	 * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX
+	 * round 1, U1). The number this sentence qualifies is the OUTSTANDING set, which
+	 * folds a moved-on ask in; "waiting" is reserved here for the subset that
+	 * excludes it. See `asksAttentionCount` for the decision to count outstanding.
+	 */
 	const asksLabel =
 		asksAttentionCount > 0
-			? `${asksOpen ? "Close" : "Open"} asks \u2014 ${asksSubject}, ${asksAttentionCount} waiting`
+			? `${asksOpen ? "Close" : "Open"} asks \u2014 ${asksSubject}, ${asksAttentionCount} waiting or moved on`
 			: `${asksOpen ? "Close" : "Open"} asks`;
 
 	/*
@@ -1566,7 +1601,7 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							aria-label={asksLabel}
 							aria-expanded={asksOpen}
 							/*
-							 * THE FLEET DOOR'S OWN ANCHOR (`ASK_FLEET_ITEM_SELECTOR`). The drawer's
+							 * THE DOOR'S OWN ANCHOR (`ASK_HEADER_ITEM_SELECTOR`). The drawer's
 							 * entry move runs only when the mount finds focus ALREADY on the control
 							 * the user pressed, so this tag is what lets Escape be consumed inside the
 							 * pane when the surface was opened from the header rather than from the
@@ -1574,9 +1609,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							 * stops the running turn (UX round 1, U1 / agent review round 1, F1).
 							 */
 							data-tour-tag="ask-pane-trigger"
+							/*
+							 * WHICH QUEUE THIS DOOR OPENS, on the element, so the scope-legibility claim
+							 * (UX round 1, U3) is assertable rather than read off pixels: a rig compares
+							 * this attribute AND the glyph between the two stories, which is what "the
+							 * scope is on the control" means.
+							 */
+							data-ask-scope={asksScope}
 							className={cn("relative")}
 						>
-							<MessageCircleQuestion aria-hidden={true} />
+							{/* The scope's own mark: see `AsksScopeIcon` for why the glyph carries it,
+							    and the tooltip/announced name for the same distinction in words. */}
+							<AsksScopeIcon aria-hidden={true} />
 							{/* The browser badge's own offset and ring, so two counted controls in one
 							    cluster wear one mark (see the browser trigger for the pixel reasons). */}
 							{asksBadgeDrawn && (

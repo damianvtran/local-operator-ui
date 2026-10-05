@@ -465,7 +465,8 @@ function SessionPanel({
 	 * THAT THE BOX STAYS ORDINARY UNDER THE FLEET PANE IS THE DECISION, NOT AN
 	 * OVERSIGHT (UX round 1, U4). The alternative - flipping it into answer mode - is
 	 * the misroute above; the legible half is that the two scopes never look alike:
-	 * the rail says `All asks`, the panel's bar says `All conversations · N`, and this
+	 * the fleet door's trigger takes the stacked-conversations glyph and names `All conversations`,
+	 * the panel's bar says `All conversations · N`, and this
 	 * chip keeps saying `this conversation's asks` (`askChipLabel`) and opens this
 	 * conversation's own queue. A reader who types here is in the conversation they
 	 * can see, not in the pane; the pane answers through its own cards' `Send

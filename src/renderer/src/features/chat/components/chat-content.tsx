@@ -2346,7 +2346,8 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 								 * arrive on this session's frame and its answers go to this session.
 								 * The fleet scope is the other half and lives in the SHELL
 								 * (`chat-layout.tsx`) - it spans conversations, and its entry point
-								 * (the sidebar's `Asks` row) is drawn on every route, so a mount here
+								 * (the header's asks trigger at the top level) is drawn on every route, so a
+								 * mount here
 								 * would leave that door opening nothing wherever the user happened to
 								 * be. One container, two homes, one flag: the scope is what picks,
 								 * which is why this block is gated on it above.

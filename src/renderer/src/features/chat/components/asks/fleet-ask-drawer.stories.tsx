@@ -374,8 +374,8 @@ export default meta;
 type Story = StoryObj;
 
 /**
- * THE TOP-LEVEL CONTEXT: the sidebar's `Asks` row carries the FLEET total (11)
- * and the pane it opens is docked in the shell's own right slot, so the press
+ * THE TOP-LEVEL CONTEXT: the conversation header's asks trigger carries the FLEET
+ * total (11) and the pane it opens is docked in the shell's own right slot, so the press
  * works on every route. Every card carries the name the sessions list gives its
  * conversation - the title from the catalogue, not the directory basename
  * (design review round 1, D1).
