@@ -621,11 +621,14 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 			}
 			const id = decodeURIComponent(detail[1]);
 			const row = publicTeams.find((team) => team.id === id);
+			/*
+			 * `result` IS the document, not a `{team: ...}` wrapper: the live route
+			 * answers the row itself (see `HubTeamResult`), and a stub that wrapped it
+			 * would photograph the empty brief the live hub produced.
+			 */
 			return json(200, {
 				msg: "Team retrieved successfully",
-				result: {
-					team: { ...row, instructions: PUBLIC_HUB_BRIEFS[id] ?? "" },
-				},
+				result: { ...row, instructions: PUBLIC_HUB_BRIEFS[id] ?? "" },
 			});
 		}
 

@@ -5,33 +5,33 @@
  *
  * The hub's public documents carry NO label field: a published team or agent is
  * addressed by a lowercase key (`data-quality`, `content-writer`,
- * `mathematician`) and `name` is the only spelling the wire has. The core
- * runtime has a richer story for its LOCAL rows — a stored `label` beside the
- * key — and a listing that painted the raw key would be the app disagreeing
- * with the CLI about what the same document is called.
+ * `mathematician`) and `name` is the only spelling the wire has. Every listing
+ * therefore DERIVES the human form, and one place owns that derivation so a team
+ * cannot read two ways a tab apart.
  *
- * ## The rule, and where it is copied from
+ * ## The derivation, copied from the core runtime
  *
- * `local_operator/display_labels.py` (`default_label`) derives the human form
- * from the key: split on the separators the key grammar allows, up-case each
- * token's first character, and keep six common INITIALISMS upper-cased
- * (`qa-tester` reading `Qa Tester` is the defect that allowlist closes).
- * `local_operator/teams.py` (`display_form`) then composes that derived form
- * with the key, and its arms are the ones mirrored here:
+ * `local_operator/display_labels.py` (`default_label`) splits the key on the
+ * separators its grammar allows, up-cases each token's first character, and
+ * keeps six common INITIALISMS upper-cased (`qa-tester` reading `Qa Tester` is
+ * the defect that allowlist closes).
  *
- * - the derived form casefolds to the key -> the RAW KEY. Title case no human
- *   chose is noise (`mathematician` stays `mathematician`);
- * - otherwise -> the derived form, because the separator is information the
- *   key cannot carry (`data-quality` reads `Data Quality`).
+ * ## The divergence from the core's composition, and why
  *
- * The runtime's AGENT arm deliberately differs (it prefers a canonical
- * single-token label so `aida` paints `Aida`); that arm needs a STORED label,
- * which the hub does not send, so the TEAMS composition is the one that
- * applies to every hub row. Mirroring it keeps one spelling across the
- * product rather than inventing a second one in the desktop.
+ * The core composes that derivation with a STORED label, and one of its arms
+ * falls back to the raw key when the derived form differs from it only in case
+ * (`mathematician` stays lowercase there). That arm exists to protect a LOCAL
+ * row, whose key is the only spelling anybody ever chose and which has a label
+ * field for the case a human does choose — inventing typography for it would be
+ * noise.
  *
- * `toLowerCase` rather than Python's `casefold`: the keys are ASCII slugs by
- * construction (the runtime's own name grammar), where the two agree.
+ * THE HUB HAS NO LABEL FIELD AT ALL, so the derived form IS the canonical
+ * display: a lowercase `content` sitting between `Data Quality` and `Support
+ * Desk` reads as a defect rather than as restraint, and there is no stored label
+ * for a reader to have chosen instead. This surface therefore paints the derived
+ * form for EVERY published key — teams and agents alike, which is why one helper
+ * serves both — and keeps the KEY where the surface addresses it by name (the
+ * pull's own reporting and the brief's header name the document the hub holds).
  */
 
 /**
@@ -64,13 +64,10 @@ export const deriveHubDisplayName = (key: string): string =>
 		.join(" ");
 
 /**
- * What a hub listing paints for one key.
+ * What every hub listing paints for one published key.
  *
- * The teams composition (`display_form`'s arms with the derived label): a
- * derived form that differs from the key only in case is dropped in favour of
- * the key, and a derived form that differs by more is the name.
+ * The derived form, always — see the divergence note above; a key the hub has
+ * never been given a label for has no other spelling to fall back to.
  */
-export const hubDisplayName = (key: string): string => {
-	const derived = deriveHubDisplayName(key);
-	return derived.toLowerCase() === key.toLowerCase() ? key : derived;
-};
+export const hubDisplayName = (key: string): string =>
+	deriveHubDisplayName(key);

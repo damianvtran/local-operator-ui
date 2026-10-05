@@ -138,7 +138,8 @@ export const usePublicTeamQuery = ({
 	const query = useQuery<RadientApiResponse<HubTeamResult>, Error, HubTeam>({
 		queryKey: publicTeamKeys.detail(teamId ?? ""),
 		queryFn: () => getPublicTeam(apiConfig.radientBaseUrl, teamId as string),
-		select: (data) => data.result.team,
+		// `result` IS the document (see `HubTeamResult`), not a wrapper around it.
+		select: (data) => data.result,
 		enabled: enabled && !!teamId,
 		retry: retryPublicHubQuery,
 		staleTime: 5 * 60 * 1000,
