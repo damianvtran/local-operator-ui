@@ -319,10 +319,27 @@ const pageBundle = await build({
 			},
 		},
 	],
-	loader: { ".css": "empty" },
+	/*
+	 * THE PAGE'S GRAPH NOW REACHES THE COMPOSER (2026-10-05): the detail sheet's
+	 * quick-send strip mounts the shared `MessageInput`, whose empty-chat chrome
+	 * imports `BrandMark` and therefore a PNG. These aliases and loaders are
+	 * `agents-composer-mount.test.mjs`'s recipe, so the bundle resolves the same
+	 * assets every other composer-mounting rig does.
+	 */
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
 	alias: {
 		"@shared": `${process.cwd()}/src/renderer/src/shared`,
 		"@features": `${process.cwd()}/src/renderer/src/features`,
+		"@assets": `${process.cwd()}/src/renderer/src/assets`,
 	},
 	write: false,
 });
