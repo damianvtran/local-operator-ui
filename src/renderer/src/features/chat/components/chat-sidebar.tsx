@@ -4416,7 +4416,9 @@ export function ChatSidebar({
 					);
 				}}
 			>
-				{row.locality === "remote" && <ChatRemoteMark />}
+				{row.locality === "remote" && (
+					<ChatRemoteMark unreachable={row.reachable === false} />
+				)}
 				<ChatSessionStatus row={row} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
@@ -4529,26 +4531,6 @@ export function ChatSidebar({
 						data-subagent-mark="queued"
 						className="ml-1 size-3.5 shrink-0 text-ink-muted"
 					/>
-				)}
-				{/*
-				 * THE UNREACHABLE REMOTE ROW'S AT-REST CUE (design round, the
-				 * cross-surface convention): the flyout and the `sr-only` sentence are
-				 * hover-and-announcement channels, and whether a row's owner can be
-				 * reached is a state a reader needs WITHOUT either - the TUI sibling
-				 * draws the same word inline in its row register for the same reason,
-				 * and the two surfaces converge on it deliberately. It sits after the
-				 * title with the other `shrink-0` facts, so the title's clip is the
-				 * only thing that pays and the row's leading edge never moves when a
-				 * link drops. Plain text like the `· Not sent yet` statement rather
-				 * than an `sr-only` pair: the word is product copy, not scaffolding,
-				 * so the accessible name and the pixels read it once, identically.
-				 * The word matches the sentence `remoteClause` already builds
-				 * (`unreachable - <reason>`); the reason itself stays flyout-only.
-				 */}
-				{remote && row.reachable === false && (
-					<span className="ml-1 shrink-0 text-meta text-ink-dim">
-						· unreachable
-					</span>
 				)}
 				{/* In a flat list nothing else names the profile answering, so two
 			    untitled chats on different agents were indistinguishable. Nested

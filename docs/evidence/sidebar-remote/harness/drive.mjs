@@ -329,12 +329,14 @@ const SIDEBAR = `(() => {
 		rows: [...section.querySelectorAll("[data-chat-row]")].map((row) => ({
 			title: (row.querySelector("[data-session-title]")?.textContent || "").trim(),
 			y: Math.round(row.getBoundingClientRect().y),
+			stroke: !!row.querySelector("[data-remote-mark-stroke]"),
 		})),
 	}));
 	return {
 		sections,
 		rows: [...document.querySelectorAll("[data-chat-row]")].map((row) => ({
 			text: (row.textContent || "").trim().slice(0, 120),
+			stroke: !!row.querySelector("[data-remote-mark-stroke]"),
 		})),
 		markCount: document.querySelectorAll("[data-remote-mark]").length,
 		region: (() => {
@@ -415,7 +417,10 @@ const REMOTE_TITLES = [
 	"Remote: deployment notes",
 	"Remote: camera rig sync",
 	"Remote: weekly digest",
+	"Remote: incident log",
 ];
+/** The one fixture row whose owner did NOT answer (`reachable: false`). */
+const UNREACHABLE_TITLE = "Remote: incident log";
 
 /** Two equal consecutive readings of the list's titles, so a frame is not taken
  * mid-settle. */
@@ -702,9 +707,18 @@ async function main() {
 			for (const title of [...LOCAL_TITLES, ...REMOTE_TITLES])
 				check(`after:"${title}" listed`, flatTitles.includes(title));
 			check(
-				"after:three locality marks",
-				sidebar.markCount === 3,
+				"after:four locality marks",
+				sidebar.markCount === 4,
 				`[data-remote-mark] count ${sidebar.markCount}`,
+			);
+			const strokeTitles = sidebar.sections
+				.flatMap((s) => s.rows)
+				.filter((r) => r.stroke)
+				.map((r) => r.title);
+			check(
+				"after:one at-rest stroke, on the unreachable row",
+				strokeTitles.length === 1 && strokeTitles[0] === UNREACHABLE_TITLE,
+				`stroke rows ${JSON.stringify(strokeTitles)}`,
 			);
 			const binOf = (title) =>
 				sidebar.sections.find((s) => s.rows.some((r) => r.title === title))
@@ -889,6 +903,28 @@ async function main() {
 				`tooltips ${JSON.stringify(tips)} wanted "${wanted}"`,
 			);
 			await shutter(cdp, "hover");
+
+			/*
+			 * THE UNREACHABLE ROW'S TOOLTIP EXPANDS WHAT THE STROKE STATES: the
+			 * at-rest cue is the mark itself (design round: same ink, same cell, no
+			 * reflow) and the flyout is the channel that adds the wire's own reason.
+			 */
+			await hoverAt(cdp, "[data-chat-row]", UNREACHABLE_TITLE);
+			let unreachableTips = [];
+			const unreachableDeadline = Date.now() + 8_000;
+			while (Date.now() < unreachableDeadline) {
+				unreachableTips = await cdp.eval(TOOLTIP);
+				if (unreachableTips.some((t) => t.includes("unreachable"))) break;
+				await sleep(300);
+			}
+			check(
+				"after:unreachable tooltip expands the stroke",
+				unreachableTips.some((t) =>
+					t.includes("unreachable: link down 4m ago"),
+				),
+				`tooltips ${JSON.stringify(unreachableTips)}`,
+			);
+			await parkPointer(cdp);
 
 			/*
 			 * THE OPERATOR'S CASE, END TO END: opening the remote conversation from

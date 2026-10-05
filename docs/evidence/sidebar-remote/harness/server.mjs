@@ -125,9 +125,13 @@ const NETWORKS = {
  *
  *   - two LOCAL rows: one an hour old (Today), one three days old (This week) -
  *     the control half, present in both arms;
- *   - three REMOTE rows on the peer: one an hour old (Today), one ten minutes
+ *   - FOUR REMOTE rows on the peer: one an hour old (Today), one ten minutes
  *     old and `approval` (RUNNING on the status rung, where a remote row is the
- *     strongest reading of "listed seamlessly"), one five days old (This week).
+ *     strongest reading of "listed seamlessly"), one five days old (This week),
+ *     and one two hours old whose owner did NOT answer (`reachable: false` with
+ *     the wire's own reason) - the at-rest stroke the design round made the
+ *     unreachable state's cue, drawn in Today beside reachable rows so a frame
+ *     carries both reads of the same mark.
  */
 const NOW = Math.floor(Date.now() / 1000);
 const DAY = 24 * 60 * 60;
@@ -159,7 +163,7 @@ const LOCAL = [
 	localRow("aaaaaaaaaa02", "Local: release checklist", NOW - 3 * DAY),
 ];
 
-const remoteRow = (id, name, mtime, status) => ({
+const remoteRow = (id, name, mtime, status, over = {}) => ({
 	id,
 	name,
 	mtime,
@@ -180,6 +184,7 @@ const remoteRow = (id, name, mtime, status) => ({
 	active: false,
 	status,
 	binding: { agent: null, team: null },
+	...over,
 });
 
 const REMOTE = [
@@ -195,6 +200,13 @@ const REMOTE = [
 		code: "idle",
 		label: "Idle",
 	}),
+	remoteRow(
+		"bbbbbbbbbb04",
+		"Remote: incident log",
+		NOW - 2 * 3600,
+		{ code: "idle", label: "Idle" },
+		{ reachable: false, unreachable_reason: "link down 4m ago" },
+	),
 ];
 
 /**

@@ -166,7 +166,10 @@ const SIDEBAR = readFileSync(
 );
 
 test("the sidebar draws the mark, the one sentence, and no separate section", () => {
-	assert.match(SIDEBAR, /row\.locality === "remote" && <ChatRemoteMark \/>/);
+	assert.match(
+		SIDEBAR,
+		/row\.locality === "remote" && \(\s*<ChatRemoteMark unreachable=\{row\.reachable === false\} \/>/,
+	);
 	const clause = SIDEBAR.slice(
 		SIDEBAR.indexOf("const remoteHost = remote"),
 		SIDEBAR.indexOf("const marks = subagentMarks(row)"),
@@ -182,21 +185,30 @@ test("the sidebar draws the mark, the one sentence, and no separate section", ()
 	);
 });
 
-test("an unreachable remote row carries the at-rest suffix, not only the sentence", () => {
+test("an unreachable remote row draws the stroked mark, not a hover-only fact", () => {
 	/*
-	 * The design round's cross-surface decision: hover and `sr-only` are not
-	 * enough for reachability, so the row draws the word at rest - and only on
-	 * rows whose owner did not answer, so a reachable row's read is unchanged.
+	 * The design round's cross-surface decision (2026-10-05): unreachable is
+	 * visible AT REST as ONE quiet stroke across the locality mark - the same
+	 * arrow, same ink, same cell, no reflow - and the tooltip only expands it
+	 * (the TUI sibling's D2 sentence, mirrored). The row passes the state, the
+	 * mark draws it, and `data-remote-mark-stroke` is the address tests and
+	 * the evidence rig use for that state.
 	 */
-	assert.match(SIDEBAR, /\{remote && row\.reachable === false && \(/);
-	assert.match(SIDEBAR, /· unreachable/);
-	const cue = SIDEBAR.slice(
-		SIDEBAR.indexOf("{remote && row.reachable === false && ("),
-		SIDEBAR.indexOf("· unreachable"),
+	const mark = readFileSync(
+		"src/renderer/src/features/chat/components/chat-remote-mark.tsx",
+		"utf8",
+	);
+	assert.match(mark, /unreachable: boolean/);
+	assert.match(mark, /\{unreachable && <path data-remote-mark-stroke/);
+	assert.match(mark, /d="M9 9 15 15"/, "the stroke crosses the shaft");
+	assert.match(
+		mark,
+		/d="M7 17 17 7"/,
+		"and the arrow itself is the elsewhere/external family the TUI draws",
 	);
 	assert.match(
-		cue,
+		mark,
 		/text-ink-dim/,
-		"the cue rides the dim role the mark and the time use",
+		"same ink as every ambient fact in the row; no new colour role",
 	);
 });
