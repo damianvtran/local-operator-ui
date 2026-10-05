@@ -5,11 +5,19 @@
  * WHY IT EXISTS: the operator's own words — "steer from the project view". A
  * project's linked sessions are the conversations doing the work, and reaching
  * one meant leaving the project, finding the chat, typing, and coming back.
- * The strip is the composer distilled to its one act; the message travels
- * through the app's real chat-send path (`admitChatDraft`, the same function
- * the composer calls), so it is delivered as a normal user message with the
- * same request-id receipts, and a busy target gets the same `steer` mode the
- * composer would send.
+ *
+ * WHAT IT IS NOW (operator, 2026-10-05 — one composer for every send): the box
+ * is the app's own `MessageInput`, the same control the chat pane, the mini
+ * quick-send popup and the agents ask page mount. It replaced a hand-rolled
+ * `Input` + `Send` pair whose whole surface was a text field and one button, so
+ * speech, file-dialog and drop attachments and the session's readings row only
+ * existed in some of the app's entry points. The composer is mounted here the
+ * way the mini mounts it (`mini-composer.tsx`): `transcriptless` (there is no
+ * transcript on this page to hand it), `ownGutter` (the 24px chat inset exists
+ * to align a box with a transcript's scrollbar gutter, and this card's own
+ * padding is the edge), and a one-shot `sessions.get` reading of the SELECTED
+ * session handed to the composer's status strip through the shared read
+ * (`useSessionSnapshot`, the shape the mini's own read was carved into).
  *
  * WHAT IT DELIBERATELY IS NOT: a second send mechanism. Nothing here talks to
  * `sessions.message` itself; the store's admission decides modes, dedup and
@@ -22,32 +30,29 @@
  * difference between queueing behind a turn and interrupting it, and the
  * composer marks the same fact beside its own send control.
  *
- * AN IMAGE ALONE IS A MESSAGE (issue #790), and this strip used to disagree:
- * its admission test was text-only, so a pasted screenshot armed nothing and
- * Send stayed dead until words appeared. The wire's own rule is text OR
- * images OR audio (`Prompt.nonempty` in `local_operator/server/routes/
- * desktop_sessions.py` refuses only when all three are empty), so the paste
- * route here is the composer's own — a clipboard image read into a data URL
- * and held as an attachment (`message-input.tsx`'s paste path) — and the
- * predicate values it. Audio is absent rather than ignored: nothing on this
- * strip records, and no desktop send box carries a recording as a message.
+ * AN IMAGE ALONE IS A MESSAGE (issue #790), and the composer's own admission
+ * test carries it: the wire refuses only when text, images AND audio are all
+ * absent (`Prompt.nonempty`), so a pasted screenshot alone is a message. The
+ * hand-rolled strip's text-only predicate is gone with the hand-rolled field.
  */
 
-import { Spinner } from "@shared/components/common/spinner";
 import {
-	Button,
-	Input,
+	MessageInput,
+	type MessageInputHandle,
+	type MessageInputProps,
+} from "@shared/components/composer";
+import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
 } from "@shared/components/ui";
-import { SendHorizontal } from "lucide-react";
-import type { ClipboardEvent, FC } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
+import { useSessionSnapshot } from "@shared/hooks/use-session-snapshot";
+import type { FC } from "react";
+import { useEffect, useRef } from "react";
 import type { DesktopLinkedSession } from "../../../../../shared/desktop-control-contract";
-import { AttachmentsPreview } from "../../chat/components/attachments-preview";
 import { sessionLabel } from "../project-model";
 
 export type ProjectQuickSendProps = {
@@ -60,10 +65,11 @@ export type ProjectQuickSendProps = {
 	 * when the message is on its way (including a provable replay), `false`
 	 * when nothing was admitted — the detail screen owns the words either way.
 	 *
-	 * `attachments` is the strip's own list — pasted images as data URLs, the
-	 * composer's attachment form. The admission seam encodes it into the
-	 * wire's images, admits the pair, and keeps the list as the payload
-	 * identity the one-row-per-conversation dedup compares.
+	 * `attachments` is the composer's own list — pasted images as data URLs,
+	 * file-dialog picks as paths, exactly the form the chat's send carries. The
+	 * admission seam encodes it into the wire's images, admits the pair, and
+	 * keeps the list as the payload identity the one-row-per-conversation dedup
+	 * compares.
 	 */
 	onSend: (
 		sessionId: string,
@@ -73,11 +79,25 @@ export type ProjectQuickSendProps = {
 	) => Promise<boolean>;
 	/**
 	 * Bumped by a row's "message" action. Focusing is an EFFECT rather than a
-	 * command because the input may have just mounted with the strip; the tick
+	 * command because the box may have just mounted with the strip; the tick
 	 * is what tells a strip that is already up to take the keyboard.
 	 */
 	focusTick: number;
 };
+
+/**
+ * The composer needs a `conversationId` before a target is chosen, and the key
+ * must be STABLE across the moment one is: `MessageInput` keeps its draft in the
+ * app's persisted input store keyed by this value, so a key that moved would put
+ * the operator's text down a key the box is no longer reading. The unseated
+ * constant is deliberate — a strip with no target still deserves a box that
+ * keeps what was typed into it — and it cannot collide with a session id (ids
+ * are minted hex, never this string).
+ */
+const UNSETTLED_TARGET_KEY = "project-quick-send:no-target";
+
+/** Nothing above this box is a transcript; see `transcriptless` below. */
+const EMPTY_MESSAGES: MessageInputProps["messages"] = [];
 
 export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 	links,
@@ -86,94 +106,40 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 	onSend,
 	focusTick,
 }) => {
-	const [text, setText] = useState("");
+	const inputRef = useRef<MessageInputHandle | null>(null);
+	const recordingProbe = useRadientCredentialProbe();
 	/*
-	 * THE STRIP'S ATTACHMENTS, in the composer's own form: a pasted image is
-	 * read off the clipboard into a data URL (`message-input.tsx`'s paste
-	 * route) and held here. The paste is the only attachment route this strip
-	 * has — no file dialog and no drop target — which is why the list is plain
-	 * local state rather than a store-backed draft.
+	 * THE SELECTED SESSION'S OWN READINGS, read one-shot when the target changes
+	 * and handed to the composer's status strip. The mini's shape, not a copy of
+	 * its code: `useSessionSnapshot` is that read, shared.
 	 */
-	const [attachments, setAttachments] = useState<string[]>([]);
-	const [sending, setSending] = useState(false);
-	const inputRef = useRef<HTMLInputElement>(null);
+	const { frontend, refresh } = useSessionSnapshot();
+
+	/*
+	 * THE DRAFT KEY IS THE TARGET'S OWN SESSION ID once one is chosen, so the
+	 * strip's text is the same draft the chat pane for that conversation holds -
+	 * one draft per conversation, the rule the mini's seat key already follows -
+	 * and the unseated constant until then.
+	 */
+	const draftKey = target ?? UNSETTLED_TARGET_KEY;
 
 	useEffect(() => {
-		if (focusTick > 0) inputRef.current?.focus();
+		if (target) void refresh(target);
+	}, [target, refresh]);
+
+	useEffect(() => {
+		if (focusTick > 0) inputRef.current?.focusInput();
 	}, [focusTick]);
 
 	const sendable = links.filter((link) => link.exists);
 	const selected = sendable.find((link) => link.session_id === target) ?? null;
 	const busy = selected?.runtime?.busy === true;
-	/*
-	 * THE WIRE'S OWN ADMISSION TEST (issue #790): a send may not be empty of
-	 * text AND images — `Prompt.nonempty` refuses only when all three of text,
-	 * images and audio are absent, so a pasted screenshot alone is a message.
-	 * The predicate used to be text-only, which is what left the screenshot's
-	 * send dead; audio has no term here because nothing on this strip records.
-	 */
-	const canSend =
-		Boolean(target) &&
-		(text.trim().length > 0 || attachments.length > 0) &&
-		!sending;
-
-	/*
-	 * THE COMPOSER'S CLIPBOARD ROUTE, mirrored: each pasted image item is read
-	 * into a data URL and appended as an attachment. Images only, where the
-	 * composer's clause also takes `kind === "file"`: this strip has no file
-	 * dialog and no Files-panel record beside it, and the encoder leaves
-	 * non-image paths out of the body by design — staging one here would arm
-	 * Send for a message that cannot carry it.
-	 */
-	const handlePaste = (event: ClipboardEvent<HTMLInputElement>) => {
-		const items = event.clipboardData?.items;
-		if (!items) return;
-		for (let index = 0; index < items.length; index += 1) {
-			const item = items[index];
-			if (item.type.indexOf("image") === -1) continue;
-			const file = item.getAsFile();
-			if (!file) continue;
-			const reader = new FileReader();
-			reader.onload = (loadEvent) => {
-				const result = loadEvent.target?.result;
-				if (typeof result !== "string") return;
-				setAttachments((current) => [...current, result]);
-			};
-			reader.readAsDataURL(file);
-		}
-	};
-
-	const send = async () => {
-		if (!canSend || !target) return;
-		setSending(true);
-		try {
-			const delivered = await onSend(
-				target,
-				text.trim(),
-				busy ? "steer" : "prompt",
-				attachments,
-			);
-			if (delivered) {
-				setText("");
-				setAttachments([]);
-			}
-		} finally {
-			setSending(false);
-			/*
-			 * THE PRESS HANDS THE KEYBOARD BACK TO THE BOX (UX round 1, U2). A
-			 * pointer press focuses the Send button, and the button then disables
-			 * while the send is in flight (`sending` true, the text gone), so the
-			 * browser drops focus to `<body>` - measured: a second message needed a
-			 * fresh click, while the Enter path kept the box focused. Refocusing
-			 * here makes both paths behave the same, and on a refusal the text is
-			 * already back in the box, so the caret belongs there too.
-			 */
-			inputRef.current?.focus();
-		}
-	};
 
 	return (
-		<div className="flex flex-col gap-2 rounded-md bg-elevated p-3">
+		<div
+			data-tour-tag="project-quick-send"
+			className="flex flex-col gap-2 rounded-md bg-elevated p-3"
+		>
 			<div className="flex flex-wrap items-center gap-2">
 				<span className="text-meta text-ink-muted">Send to</span>
 				<Select
@@ -200,59 +166,59 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 					</span>
 				)}
 			</div>
-			{attachments.length > 0 && (
-				/*
-				 * Bounded the way the composer bounds the same previews (`max-h` plus
-				 * its own scroller): an unbounded tile row would push the input and
-				 * Send out of the strip, which is the band that has to stay reachable.
-				 * Removal is disabled while a send is in flight, with the payload it
-				 * wrote.
-				 */
-				<div className="max-h-[240px] shrink-0 overflow-y-auto">
-					<AttachmentsPreview
-						attachments={attachments}
-						onRemoveAttachment={(index) =>
-							setAttachments((current) =>
-								current.filter((_, position) => position !== index),
-							)
-						}
-						disabled={sending}
-					/>
-				</div>
-			)}
-			<div className="flex items-center gap-2">
-				{/*
-				 * THE PLACEHOLDER IS THE STRIP'S ONLY AFFORDANCE FOR ITS IMAGE ROUTE.
-				 * The route is the clipboard (see `handlePaste` below): there is no
-				 * attach control and no drop target to teach, so the capability has to
-				 * be named where an empty box is looking at it - discoverable only by
-				 * someone who happens to try pasting is exactly the silence the surface
-				 * was fixed for (design round 1 on issue #790, D3).
-				 */}
-				<Input
-					ref={inputRef}
-					aria-label="Message the selected session"
-					placeholder="Message the session — paste an image to attach it"
-					value={text}
-					onChange={(event) => setText(event.target.value)}
-					onPaste={handlePaste}
-					onKeyDown={(event) => {
-						if (event.key === "Enter" && !event.shiftKey) {
-							event.preventDefault();
-							void send();
-						}
-					}}
-				/>
-				<Button
-					variant="secondary"
-					disabled={!canSend}
-					onClick={() => void send()}
-					data-tour-tag="project-quick-send"
-				>
-					{sending ? <Spinner size="xs" /> : <SendHorizontal />}
-					Send
-				</Button>
-			</div>
+			{/*
+			 * THE SHARED BOX (see the header): speech, attachments (file dialog,
+			 * drop and paste) and the readings row, the same control every other
+			 * send surface in the app mounts. Its `onSendMessage` seam is the
+			 * STRIP's `onSend`, so the send still travels through `admitChatDraft`
+			 * on the detail screen — this component adds no second path.
+			 *
+			 * `ownGutter` because the strip is not a chat column: the composer's
+			 * 24px inset aligns a box with a transcript's scrollbar gutter, and
+			 * this card's own `p-3` is the edge (the reason the mini passes it too).
+			 */}
+			<MessageInput
+				ref={inputRef}
+				conversationId={draftKey}
+				messages={EMPTY_MESSAGES}
+				isLoading={false}
+				ownGutter
+				transcriptless
+				placeholderOverride="Message the session…"
+				cwd={frontend?.cwd}
+				cwdReadOnlyReason="Quick send follows the conversation's directory."
+				sessionStatus={frontend ? { frontend } : undefined}
+				recordingProbe={recordingProbe}
+				onSendMessage={async (content, attachments) => {
+					if (!target) return false;
+					try {
+						/*
+						 * `false` is the composer's own "put the text back" answer, and it
+						 * is the honest one here: the admission seam reports whether the
+						 * message left, and a refusal keeps the draft rather than spending
+						 * it.
+						 */
+						return await onSend(
+							target,
+							content,
+							busy ? "steer" : "prompt",
+							attachments,
+						);
+					} finally {
+						/*
+						 * THE PRESS HANDS THE KEYBOARD BACK TO THE BOX (UX round 1, U2, kept
+						 * through this change). A pointer press focuses the Send control,
+						 * and that control then disables while the send is in flight, so the
+						 * browser drops focus to `<body>` - measured: the next message needed
+						 * a fresh click, while the Enter path kept the box focused (the
+						 * renderer driver's `project-detail` scene asserts
+						 * `document.activeElement` for exactly this). On a refusal the text
+						 * is already back in the box, so the caret belongs there too.
+						 */
+						inputRef.current?.focusInput();
+					}
+				}}
+			/>
 		</div>
 	);
 };
