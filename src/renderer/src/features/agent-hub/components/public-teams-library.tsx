@@ -3,7 +3,7 @@ import {
 	type PublicationAction,
 	publicationTreatment,
 } from "@features/agents/utils/publication-failure";
-import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
+import { backendErrorKind } from "@shared/api/local-operator/backend-error";
 import { isPublicationError } from "@shared/api/local-operator/publication-errors";
 import type { HubTeamRow } from "@shared/api/radient/types";
 import { RadientAuthButtons } from "@shared/components/auth/radient-auth-buttons";
@@ -21,13 +21,14 @@ import { TEXT_SURFACE_PROPS } from "@shared/components/ui/text-surface";
 import { cn } from "@shared/lib/utils";
 import { Search } from "lucide-react";
 import { type FC, useEffect, useMemo, useRef, useState } from "react";
-import { hubDisplayName } from "../display-name";
+import { hubDisplayName, normalizeHubKey } from "../display-name";
 import {
 	PUBLIC_TEAMS_PER_PAGE,
 	usePublicTeamQuery,
 	usePublicTeamsQuery,
 } from "../hooks/use-public-teams-query";
 import { useTeamPullMutation } from "../hooks/use-team-pull-mutation";
+import { publicHubFailureMessage } from "../public-hub-failure";
 import { HubPager } from "./hub-pager";
 import {
 	memberCount,
@@ -108,14 +109,20 @@ export const PublicTeamsLibrary: FC<{
 		refocusTeamId.current = null;
 	}, [pull.isPending]);
 
-	const query = searchText.trim().toLowerCase();
+	const query = normalizeHubKey(searchText.trim());
 	const visibleTeams = useMemo(
 		() =>
 			query
 				? teams.filter(
 						(team) =>
+							/*
+							 * ONE term for the name. The display form and the key differ only in
+							 * case AND separators, so matching the display form alone would miss a
+							 * reader who pastes the hub's own `data-quality` — which is why the QUERY
+							 * is normalised to that same shape above rather than the filter carrying a
+							 * second term per spelling (agent review round 1, n2).
+							 */
 							hubDisplayName(team.name).toLowerCase().includes(query) ||
-							team.name.toLowerCase().includes(query) ||
 							(team.description ?? "").toLowerCase().includes(query),
 					)
 				: teams,
@@ -158,6 +165,26 @@ export const PublicTeamsLibrary: FC<{
 		);
 	}, [pull.error, failedTeamId, teams]);
 
+	/*
+	 * WHAT A FAILED PULL SAYS.
+	 *
+	 * The coded treatment comes first: it names the step and carries the control
+	 * that repairs it. A CREDENTIAL REFUSAL has no coded treatment on this route —
+	 * the local server answers a prose 401 when it holds no Radient credential, so
+	 * `isPublicationError` is false and the surface used to render a dead-end
+	 * sentence with no remedy at all, while this component's own docstring claimed
+	 * it named the sign-in (QA round 1, Q2). The act belongs to the surface, which
+	 * is why the shared remedy table leaves `unauthorized` empty; the sentence here
+	 * supplies it, and the page's own "Sign in to Radient" line above is the
+	 * affordance it points at. The bare sentence is the last resort, for a failure
+	 * this surface cannot classify.
+	 */
+	const pullFailureBody =
+		pullTreatment?.body ??
+		(backendErrorKind(pull.error) === "unauthorized"
+			? "The team could not be pulled: the hub refused this machine's sign-in. Sign in on the settings page, then pull again."
+			: "The team could not be pulled.");
+
 	const [reauthenticating, setReauthenticating] = useState(false);
 	const runTreatmentAction = (action: PublicationAction, team: HubTeamRow) => {
 		switch (action) {
@@ -178,18 +205,32 @@ export const PublicTeamsLibrary: FC<{
 	const coldLoading = isLoading && teams.length === 0;
 	const totalRecords = pagination?.totalRecords ?? teams.length;
 
-	/* The search box, so a cleared search can put focus back where it was typed. */
+	/*
+	 * The search box, and the one focus hand-off this surface owes it: clearing the
+	 * box returns the caret to it. The platform's own clear control takes focus with
+	 * it when it is pressed, so a reader who clears a query and keeps typing would
+	 * otherwise be typing at nothing. The agents grid's search does the same, for
+	 * the same reason (agent review round 1, m3).
+	 */
 	const searchRef = useRef<HTMLInputElement>(null);
 	const handleSearchChange = (value: string) => {
+		const wasSearching = searchText !== "";
 		setSearchText(value);
+		if (wasSearching && value === "") searchRef.current?.focus();
 	};
 
 	return (
-		<section
-			className="flex flex-col"
-			aria-label="Public teams"
-			data-testid="agent-hub-public-teams"
-		>
+		<section className="flex flex-col" data-testid="agent-hub-public-teams">
+			{/*
+			 * A HEADING, so the card titles inside have a level above them: every team
+			 * name is an `<h3>` and the section carried only an `aria-label`, which is a
+			 * landmark name rather than an outline (design round 1, D4 — `h1 -> h3 skips a
+			 * level` on every state). Visually hidden because the section is already
+			 * introduced by the paragraph below it and the page's own heading is two
+			 * levels up; the label moved into this element so the region is not named
+			 * twice.
+			 */}
+			<h2 className="sr-only">Public teams</h2>
 			{/*
 			 * WHAT THE PUBLIC LIBRARY IS, in the app's own voice: published teams
 			 * anyone can read, and the one act this surface owns. It replaces the
@@ -259,7 +300,7 @@ export const PublicTeamsLibrary: FC<{
 				>
 					<AlertTitle>Public teams could not be loaded</AlertTitle>
 					<AlertDescription>
-						{backendLoadErrorMessage(
+						{publicHubFailureMessage(
 							"The public team catalogue could not be read.",
 							error,
 						)}
@@ -289,20 +330,30 @@ export const PublicTeamsLibrary: FC<{
 
 			{!coldLoading && !isError && teams.length > 0 && (
 				<>
-					<p
-						className="mb-3 text-meta text-ink-dim"
-						data-testid="agent-hub-public-teams-status"
-					>
-						{query
-							? `${visibleTeams.length} of ${teams.length} teams on this page match "${searchText.trim()}"`
-							: `${totalRecords} ${totalRecords === 1 ? "team" : "teams"} in the public hub`}
-						{query ? (
-							<span className="text-ink-dim">
-								{" "}
-								· search covers the teams loaded here
-							</span>
-						) : null}
-					</p>
+					{/*
+					 * THE COUNT LINE STANDS DOWN IN THE MISS STATE (design round 1, D3).
+					 * `0 of 9 teams on this page match "x"` immediately followed by `No team
+					 * on this page matches "x".` says one fact twice, which reads as a glitch
+					 * rather than emphasis; the miss paragraph is the empty state, so it keeps
+					 * the sentence and the count goes. It still carries the filtered figure
+					 * whenever there IS one, which is what it exists for.
+					 */}
+					{!query || visibleTeams.length > 0 ? (
+						<p
+							className="mb-3 text-meta text-ink-dim"
+							data-testid="agent-hub-public-teams-status"
+						>
+							{query
+								? `${visibleTeams.length} of ${teams.length} teams on this page match "${searchText.trim()}"`
+								: `${totalRecords} ${totalRecords === 1 ? "team" : "teams"} in the public hub`}
+							{query ? (
+								<span className="text-ink-dim">
+									{" "}
+									· search covers the teams loaded here
+								</span>
+							) : null}
+						</p>
+					) : null}
 					{visibleTeams.length === 0 ? (
 						<p
 							className="max-w-2xl text-body-sm text-ink-muted"
@@ -324,6 +375,7 @@ export const PublicTeamsLibrary: FC<{
 										else pullButtons.current.delete(team.id);
 									}}
 									failed={failedTeamId === team.id}
+									failureBody={pullFailureBody}
 									treatment={pullTreatment}
 									onTreatmentAction={runTreatmentAction}
 									reauthenticating={reauthenticating}
@@ -371,6 +423,8 @@ const PublicTeamCard: FC<{
 	onTreatmentAction: (action: PublicationAction, team: HubTeamRow) => void;
 	reauthenticating: boolean;
 	onReauthenticated: () => void;
+	/** The sentence to render when this row's pull failed (the caller's fallback chain). */
+	failureBody: string;
 	/** Registers this row's Pull control, so the caller can hand focus back to it. */
 	pullButtonRef: (element: HTMLButtonElement | null) => void;
 }> = ({
@@ -379,6 +433,7 @@ const PublicTeamCard: FC<{
 	pullPending,
 	onPull,
 	failed,
+	failureBody,
 	treatment,
 	onTreatmentAction,
 	reauthenticating,
@@ -415,7 +470,12 @@ const PublicTeamCard: FC<{
 					{description ? (
 						<p
 							{...TEXT_SURFACE_PROPS}
-							className="mt-1 line-clamp-3 select-text text-body-sm text-ink-muted"
+							/*
+							 * THE MEASURE IS CAPPED (design round 1, D6). Uncapped, the description ran
+							 * 812px at 13px — about 110-125 characters a line, against the brief body's
+							 * `max-w-3xl` — which is a wall to read rather than a paragraph.
+							 */
+							className="mt-1 line-clamp-3 max-w-3xl select-text text-body-sm text-ink-muted"
 						>
 							{description}
 						</p>
@@ -451,17 +511,66 @@ const PublicTeamCard: FC<{
 						</p>
 					) : null}
 				</div>
-				<Button
-					ref={pullButtonRef}
-					variant="secondary"
-					size="sm"
-					className="shrink-0"
-					onClick={() => onPull(team)}
-					disabled={pullPending}
-					aria-label={`Pull team ${team.name}`}
-				>
-					{pulling ? "Pulling…" : "Pull"}
-				</Button>
+				<div className="flex shrink-0 flex-col items-end gap-2">
+					{/*
+					 * THE CONTROL AND ITS OUTCOME, ADJACENT.
+					 *
+					 * The failure used to be the card's LAST child, below the brief, so
+					 * pressing Pull with a brief open pushed the message — and any control that
+					 * repairs it — under the fold: the reader pressed and saw nothing (design
+					 * round 1, D2; agent review round 1, M1, whose pixel scan found no danger
+					 * pixels at all in the frame that claimed to show the refusal). It renders
+					 * in the header column, under the button that produced it, as the org
+					 * roster's own row does.
+					 *
+					 * BOTH CONTROLS are under the 44px touch advisory (Pull 28px, the brief
+					 * trigger 26px) and comfortably over the 24px hard floor. This is a desktop
+					 * pointer surface, so the sizes stand and the advisory is recorded here
+					 * rather than paid for with a row rhythm the design round judged (design
+					 * round 1, D7).
+					 */}
+					<Button
+						ref={pullButtonRef}
+						variant="secondary"
+						size="sm"
+						onClick={() => onPull(team)}
+						disabled={pullPending}
+						aria-label={`Pull team ${displayName}`}
+					>
+						{pulling ? "Pulling…" : "Pull"}
+					</Button>
+					{failed && (
+						<div
+							className="flex max-w-56 flex-col items-end gap-1"
+							data-testid="agent-hub-public-team-pull-error"
+						>
+							<output className="text-right text-meta text-danger">
+								{failureBody}
+							</output>
+							{treatment?.actions
+								.filter((action) => PULL_ACTIONS.includes(action))
+								.map((action) => (
+									<Button
+										key={action}
+										variant="primary"
+										size="sm"
+										onClick={() => onTreatmentAction(action, team)}
+									>
+										{PUBLICATION_ACTION_LABEL[action]}
+									</Button>
+								))}
+							{reauthenticating && (
+								<div data-testid="agent-hub-public-team-pull-reauth">
+									<RadientAuthButtons
+										titleText="Sign in again"
+										descriptionText=""
+										onSignInSuccess={onReauthenticated}
+									/>
+								</div>
+							)}
+						</div>
+					)}
+				</div>
 			</div>
 
 			<div className="mt-2">
@@ -481,41 +590,6 @@ const PublicTeamCard: FC<{
 					<TeamBrief detail={detail} />
 				</Disclosure>
 			</div>
-
-			{failed && (
-				<div
-					className="mt-2 flex flex-col items-start gap-1"
-					data-testid="agent-hub-public-team-pull-error"
-				>
-					<output className="text-meta text-danger">
-						{treatment?.body ?? "The team could not be pulled."}
-					</output>
-					{treatment?.actions
-						.filter((action) => PULL_ACTIONS.includes(action))
-						.map((action) => (
-							<Button
-								key={action}
-								variant="primary"
-								size="sm"
-								onClick={() => onTreatmentAction(action, team)}
-							>
-								{PUBLICATION_ACTION_LABEL[action]}
-							</Button>
-						))}
-					{reauthenticating && (
-						<div
-							className="mt-1"
-							data-testid="agent-hub-public-team-pull-reauth"
-						>
-							<RadientAuthButtons
-								titleText="Sign in again"
-								descriptionText=""
-								onSignInSuccess={onReauthenticated}
-							/>
-						</div>
-					)}
-				</div>
-			)}
 		</li>
 	);
 };
@@ -543,7 +617,7 @@ const TeamBrief: FC<{
 		return (
 			<div className="flex flex-col items-start gap-1">
 				<output className="text-meta text-danger">
-					{backendLoadErrorMessage(
+					{publicHubFailureMessage(
 						"This team's brief could not be read.",
 						detail.error,
 					)}

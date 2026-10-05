@@ -67,11 +67,34 @@ const FEATURE = "src/renderer/src/features/agent-hub";
  * away because it builds the app's environment at module scope and throws in a
  * bare node import (measured: "Failed to load configuration").
  */
+const configStubPath = new URL(
+	`./_public-teams-config-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(
+	configStubPath,
+	`export const apiConfig = { baseUrl: "http://127.0.0.1:1", radientBaseUrl: "https://hub.test" };
+	export const config = {};`,
+);
+/* `@shared/config/api-config` is a SUBPATH of the alias above, and esbuild's
+ * alias rewrites by prefix — so the subpath needs its own stub or the rewrite
+ * points at `<stub-file>/api-config`. Only the two names the app reads. */
+const apiConfigStubPath = new URL(
+	`./_public-teams-api-config-${process.pid}.mjs`,
+	import.meta.url,
+);
+await writeFile(
+	apiConfigStubPath,
+	`export const apiConfig = { baseUrl: "http://127.0.0.1:1", radientBaseUrl: "https://hub.test" };
+	export const setDiscoveredBackendUrl = () => {};`,
+);
 const apiBundle = await build({
 	stdin: {
 		contents: `
-			export { hubDisplayName, deriveHubDisplayName } from "./${FEATURE}/display-name";
+			export { hubDisplayName, deriveHubDisplayName, normalizeHubKey } from "./${FEATURE}/display-name";
 			export { listPublicTeams, getPublicTeam, PublicHubError } from "@shared/api/radient/agents-api";
+			export { publicHubFailureMessage } from "./${FEATURE}/public-hub-failure";
+			export { retryPublicHubQuery } from "./${FEATURE}/hooks/use-public-teams-query";
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -83,6 +106,8 @@ const apiBundle = await build({
 	alias: {
 		"@shared": "./src/renderer/src/shared",
 		"@features": "./src/renderer/src/features",
+		"@shared/config": configStubPath.pathname,
+		"@shared/config/api-config": apiConfigStubPath.pathname,
 	},
 	loader: { ".css": "empty" },
 	jsx: "automatic",
@@ -239,6 +264,63 @@ test("getPublicTeam reads one document by id, and encodes it into the path", asy
 	}
 });
 
+test("a hub failure is reported as a hub failure, never as the local server", async () => {
+	const { publicHubFailureMessage, PublicHubError, retryPublicHubQuery } =
+		await loadApi();
+	/*
+	 * Design round 1, D1 = QA round 1, Q1: `backendErrorKind` reads a status off a
+	 * `DesktopControlError` only, so every `PublicHubError` fell through to
+	 * `unreachable` and the alert told the reader "The Local Operator server is not
+	 * answering." — naming a machine that was answering — while discarding the
+	 * transport's own sentence.
+	 */
+	assert.equal(
+		publicHubFailureMessage(
+			"The public team catalogue could not be read.",
+			new PublicHubError("The public hub answered 503.", 503),
+		),
+		"The public hub answered 503.",
+		"the transport's own sentence is what the reader gets",
+	);
+	assert.equal(
+		publicHubFailureMessage(
+			"The public team catalogue could not be read.",
+			new PublicHubError("The public hub could not be reached: refused", null),
+		),
+		"The public hub could not be reached: refused",
+	);
+	assert.match(
+		publicHubFailureMessage(
+			"The public team catalogue could not be read.",
+			new Error("x"),
+		),
+		/not answering/,
+		"an error that is not the hub's still gets the local server's diagnosis",
+	);
+
+	/*
+	 * Agent review round 1, m2: the docstring claimed transport failures get no
+	 * second ask while the code retried once. The code now does what the desktop
+	 * policy does — a null status is not worth another wait.
+	 */
+	assert.equal(
+		retryPublicHubQuery(0, new PublicHubError("never reached", null)),
+		false,
+	);
+	assert.equal(
+		retryPublicHubQuery(0, new PublicHubError("answered 503", 503)),
+		true,
+	);
+	assert.equal(
+		retryPublicHubQuery(1, new PublicHubError("answered 503", 503)),
+		false,
+	);
+	assert.equal(
+		retryPublicHubQuery(0, new PublicHubError("answered 404", 404)),
+		false,
+	);
+});
+
 test("a refusal and a transport failure raise typed errors, and are told apart", async () => {
 	const { listPublicTeams, PublicHubError } = await loadApi();
 	const refused = stubFetch(async () => jsonResponse(503, { detail: "nope" }));
@@ -305,27 +387,6 @@ test("a refusal and a transport failure raise typed errors, and are told apart",
  * it builds the app's environment at module scope and throws in a bare node
  * import. The hook reads `apiConfig.radientBaseUrl` and nothing else from it.
  */
-const configStubPath = new URL(
-	`./_public-teams-config-${process.pid}.mjs`,
-	import.meta.url,
-);
-await writeFile(
-	configStubPath,
-	`export const apiConfig = { baseUrl: "http://127.0.0.1:1", radientBaseUrl: "https://hub.test" };
-	export const config = {};`,
-);
-/* `@shared/config/api-config` is a SUBPATH of the alias above, and esbuild's
- * alias rewrites by prefix — so the subpath needs its own stub or the rewrite
- * points at `<stub-file>/api-config`. Only the two names the app reads. */
-const apiConfigStubPath = new URL(
-	`./_public-teams-api-config-${process.pid}.mjs`,
-	import.meta.url,
-);
-await writeFile(
-	apiConfigStubPath,
-	`export const apiConfig = { baseUrl: "http://127.0.0.1:1", radientBaseUrl: "https://hub.test" };
-	export const setDiscoveredBackendUrl = () => {};`,
-);
 after(async () => {
 	await unlink(configStubPath).catch(() => {});
 	await unlink(apiConfigStubPath).catch(() => {});
@@ -605,6 +666,29 @@ test("the search narrows the rendered rows without a second request", async () =
 			mounted.hubRequests.filter((kind) => kind === "list").length,
 			1,
 			"the filter is client-side: no second read",
+		);
+
+		/*
+		 * AND THE KEY'S OWN SPELLING MATCHES. `data-quality` is what the hub and the
+		 * CLI print; normalising the QUERY to the display form's shape is what lets
+		 * one term cover both spellings (agent review round 1, n2).
+		 */
+		await act(async () => {
+			const setter = Object.getOwnPropertyDescriptor(
+				mounted.dom.window.HTMLInputElement.prototype,
+				"value",
+			)?.set;
+			setter?.call(box, "data-quality");
+			box.dispatchEvent(
+				new mounted.dom.window.Event("input", { bubbles: true }),
+			);
+		});
+		await settle(
+			() =>
+				mounted.dom.window.document.querySelectorAll(
+					'[data-testid="agent-hub-public-team"]',
+				).length === 1,
+			"the key's own spelling finds the same row",
 		);
 	} finally {
 		await mounted.teardown();

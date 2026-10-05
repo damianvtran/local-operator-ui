@@ -32,6 +32,18 @@
  * form for EVERY published key — teams and agents alike, which is why one helper
  * serves both — and keeps the KEY where the surface addresses it by name (the
  * pull's own reporting and the brief's header name the document the hub holds).
+ *
+ * ## What "by name" means, because it is narrower than it looks
+ *
+ * The raw key survives in exactly two places: text a reader is meant to match
+ * against the HUB's own spelling, and the ROSTER SLOTS a team's document stores
+ * (`qa-tester`, `manager`) — a slot is a role the team composition names, and
+ * the hub's own team pages spell those raw, so deriving them here would invent a
+ * convention the catalogue does not have. It does NOT survive in the prose about
+ * a NAME: an alert, a confirmation, a button's accessible name or a toast that
+ * names a team or an agent paints the derived form, or one row reads two ways on
+ * one screen (design round 1 asked for this explicitly; agent review round 1,
+ * m4).
  */
 
 /**
@@ -43,8 +55,27 @@
  */
 const INITIALISMS = new Set(["qa", "ai", "api", "tui", "ux", "ui"]);
 
-/** The separators the runtime's name grammar allows between tokens. */
+/**
+ * The separators the runtime's name grammar allows between tokens.
+ *
+ * The core matches these with `str.casefold()` where this uses
+ * `toLowerCase()`; the two agree on every ASCII key the hub can publish and
+ * diverge only outside it (`straße` casefolds to `strasse`), which is recorded
+ * rather than papered over because this module's whole value is being the SAME
+ * rule as the runtime's (agent review round 1, n1).
+ */
 const TOKEN_SEPARATORS = /[._-]+/;
+
+/**
+ * A key or a query folded to the shape {@link hubDisplayName} produces.
+ *
+ * One spelling for searching: the display form separates tokens with spaces, so
+ * a reader pasting the hub's own `data-quality` has to find it — normalising the
+ * QUERY (rather than matching twice, once per spelling) is what lets the filter
+ * read as one rule (agent review round 1, n2).
+ */
+export const normalizeHubKey = (text: string): string =>
+	text.toLowerCase().replace(TOKEN_SEPARATORS, " ");
 
 /**
  * The derived default for a key: `data-quality` -> `Data Quality`.
