@@ -1347,11 +1347,12 @@ test("an approval read is normalised, never cast: unusable rows drop, every fiel
 	assert.deepEqual(approvalRows(null), []);
 });
 
-test("the badge counts the flight and stops at the store's terminals; unknown states render verbatim", () => {
+test("the wait count names `requested` alone; the store's open set is unchanged", () => {
 	const {
 		approvalRows,
 		isOpenApproval,
-		pendingApprovalCount,
+		isWaitingApproval,
+		waitingApprovalCount,
 		approvalStateLabel,
 	} = mesh;
 	const rows = approvalRows({
@@ -1365,16 +1366,43 @@ test("the badge counts the flight and stops at the store's terminals; unknown st
 			approvalCapture({ approval_id: "ap_6", state: "expired" }),
 		],
 	});
+	/*
+	 * THE SPLIT THE OPERATOR ASKED FOR (round, 2026-10-03): "a spent approval is
+	 * a record, not a prompt". The count — and the live panel that wears the same
+	 * number — names `requested` and nothing else; `approved`/`connecting`/
+	 * `failed` stay OPEN in the store's sense (below) but do not weight the
+	 * badge, because nothing about them waits on a person. This is the cell that
+	 * used to assert 4: the whole flight under "N waiting".
+	 */
 	assert.equal(
-		pendingApprovalCount(rows),
-		4,
-		"requested + approved + connecting + failed; the terminals stop the badge",
+		waitingApprovalCount(rows),
+		1,
+		"only `requested` waits; an `Approved` chip under a `1 waiting` count was the reported contradiction",
+	);
+	assert.deepEqual(
+		rows.map((row) => isWaitingApproval(row.state)),
+		[true, false, false, false, false, false, false],
+	);
+	assert.equal(
+		isWaitingApproval("migrating"),
+		false,
+		"a state this build has not heard of waits on no one",
 	);
 	assert.equal(
 		isOpenApproval("migrating"),
 		false,
 		"a state this build has not heard of counts as nothing",
 	);
+	assert.deepEqual(
+		["requested", "approved", "connecting", "failed"].map(isOpenApproval),
+		[true, true, true, true],
+		"non-terminal is the store's own set (TERMINAL_STATES' complement) and did not move",
+	);
+	assert.deepEqual(["connected", "denied", "expired"].map(isOpenApproval), [
+		false,
+		false,
+		false,
+	]);
 	assert.equal(
 		approvalStateLabel("migrating"),
 		"migrating",
@@ -1408,16 +1436,15 @@ test("the decision buttons follow the store's own transition matrix", () => {
 	}
 });
 
-test("the card reads what/where/who in the CLI's order, and its window rounds up", () => {
+test("the summary states the ask, and the consequences stay in the CLI's order", () => {
 	const {
 		approvalRows,
 		approvalWhereLabel,
 		approvalRequesterLabel,
-		approvalScopeLabels,
-		approvalScopeGlosses,
-		approvalScopeTone,
+		approvalScopeEntries,
+		approvalHead,
 		approvalRemainingLabel,
-		approvalTitle,
+		approvalSummary,
 		approvalSubject,
 	} = mesh;
 	const [row] = approvalRows({ approvals: [approvalCapture()] });
@@ -1426,22 +1453,16 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 		"damian@devon-laptop.local via ssh (devon-laptop)",
 	);
 	assert.equal(approvalRequesterLabel(row), "asked by cli · session 6789ef");
-	assert.deepEqual(approvalScopeLabels(row), [
-		"connect",
-		"install",
-		"install operator anchor",
-		"join n_1 as drive",
-		"trust unattended sessions",
-		"grant approve",
-	]);
 	/*
-	 * The two scopes that hand over TRUST wear their own register, and the plain
-	 * ones do not (design round 1, D1: all six chips measured identically, so
-	 * `install operator anchor` was indistinguishable from `connect` on the card
-	 * whose purpose is consent to a key-signing gesture). Pinned as a pair so a
-	 * future scope cannot quietly inherit `attention` - or lose it.
+	 * THE SCOPES, as ONE list in the CLI's order, each with the clause the
+	 * summary joins and the consequence the details show (operator round,
+	 * 2026-10-03: "the capability list reads as a list of consequences, not a
+	 * wall of chips"). The trust scopes' consequence wording is U2's frozen text,
+	 * direction included (R4-1/R4-2/R6-1/R7-1); `connect`/`install`/`join` now
+	 * carry consequences too - they are consequences of approving.
 	 */
 	assert.deepEqual(
+		approvalScopeEntries(row).map((entry) => entry.term),
 		[
 			"connect",
 			"install",
@@ -1449,17 +1470,48 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 			"join n_1 as drive",
 			"trust unattended sessions",
 			"grant approve",
-		].map(approvalScopeTone),
-		["neutral", "neutral", "attention", "neutral", "attention", "neutral"],
+		],
+	);
+	assert.deepEqual(
+		approvalScopeEntries(row).map((entry) => entry.consequence),
+		[
+			"this machine may connect to it over ssh",
+			"Local Operator is installed on it",
+			"that device can check approvals signed on your machines; nothing there can sign",
+			"it joins n_1 as drive",
+			"sessions you start on that device run without an approval prompt there",
+			"you may approve on that device",
+		],
 	);
 	/*
-	 * The join chip names the network the page already shows, and falls back to
+	 * THE ONE-SENTENCE SUMMARY (operator round, 2026-10-03): every scope the record
+	 * carries, as plain clauses, in the same order - trust-bearing scopes
+	 * included, the half the chips used to leave to a legend. One sentence, not
+	 * always one rendered line: the longest shape wraps at app width (design
+	 * round 1, D6), and the last clause follows a SEMICOLON so no clause's verb
+	 * can be read as shared with its neighbour ("without an approval prompt and
+	 * answer ..." was the garden path D6 measured).
+	 */
+	assert.equal(
+		approvalSummary(row),
+		"Onboard devon-laptop: connect over ssh, install Local Operator there, check approvals signed on your machines, join n_1 as drive, run sessions there without an approval prompt; answer approval prompts there.",
+	);
+	/*
+	 * AND THE RECORD ROWS LEAD WITH THE TITLE ALONE (UX round 1, U2): the same
+	 * head `approvalSummary` opens with, so a settled row cannot drift from the
+	 * sentence that introduced its ask.
+	 */
+	assert.equal(approvalHead(row), "Onboard devon-laptop");
+	/*
+	 * The join clause names the network the page already shows, and falls back to
 	 * the id only when the mesh read has not landed (UX round 1, U1: the canvas
 	 * said `damian-mesh` while the consent chip said `net_1`, two names for one
 	 * object on one screen).
 	 */
 	assert.deepEqual(
-		approvalScopeLabels(row, new Map([["n_1", "damian-mesh"]])),
+		approvalScopeEntries(row, new Map([["n_1", "damian-mesh"]])).map(
+			(entry) => entry.term,
+		),
 		[
 			"connect",
 			"install",
@@ -1469,30 +1521,16 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 			"grant approve",
 		],
 	);
+	assert.match(
+		approvalSummary(row, new Map([["n_1", "damian-mesh"]])),
+		/join damian-mesh as drive/,
+	);
 	/*
-	 * Only the scopes a reader cannot be expected to know are glossed (UX round
-	 * 1, U2): `connect`/`install`/`join` are ordinary words, and glossing them
-	 * would bury the two that are not.
-	 */
-	assert.deepEqual(approvalScopeGlosses(row), [
-		{
-			term: "install operator anchor",
-			gloss:
-				"that device can check approvals signed on your machines; nothing there can sign",
-		},
-		{
-			term: "trust unattended sessions",
-			gloss:
-				"sessions you start on that device run without an approval prompt there",
-		},
-		{ term: "grant approve", gloss: "you may approve on that device" },
-	]);
-	/*
-	 * A REPEATED OR REDUNDANT GRANT NEVER DOUBLES A CHIP OR WRITES AN
-	 * UNGRAMMATICAL GLOSS (agent review round 5, R5-1). `--grant` is repeatable
-	 * and unfiltered, and `step_grants` folds `unattended` in from the flag as
-	 * well - so this input is reachable from the CLI, and both lists are keyed by
-	 * the label they render.
+	 * A REPEATED OR REDUNDANT GRANT NEVER DOUBLES A TERM OR WRITES AN
+	 * UNGRAMMATICAL CONSEQUENCE (agent review round 5, R5-1). `--grant` is
+	 * repeatable and unfiltered, and `step_grants` folds `unattended` in from the
+	 * flag as well - so this input is reachable from the CLI, and the list is
+	 * keyed by the term it renders.
 	 */
 	const redundant = {
 		what: {
@@ -1500,65 +1538,62 @@ test("the card reads what/where/who in the CLI's order, and its window rounds up
 			unattended: true,
 			grants: ["approve", "approve", "unattended", ""],
 		},
+		where: {},
 	};
-	assert.deepEqual(approvalScopeLabels(redundant), [
-		"connect",
-		"trust unattended sessions",
-		"grant approve",
-	]);
-	assert.deepEqual(approvalScopeGlosses(redundant), [
-		{
-			term: "trust unattended sessions",
-			gloss:
-				"sessions you start on that device run without an approval prompt there",
-		},
-		{ term: "grant approve", gloss: "you may approve on that device" },
-	]);
+	assert.deepEqual(
+		approvalScopeEntries(redundant).map((entry) => entry.term),
+		["connect", "trust unattended sessions", "grant approve"],
+	);
+	assert.deepEqual(
+		approvalScopeEntries(redundant).map((entry) => entry.consequence),
+		[
+			"this machine may connect to it",
+			"sessions you start on that device run without an approval prompt there",
+			"you may approve on that device",
+		],
+	);
 	/*
 	 * AND THE OTHER REACHABLE SHAPE: `--grant unattended` with the flag FALSE.
-	 * The flag's own chip is not drawn then, so the grant is the only place the
+	 * The flag's own entry is not drawn then, so the grant is the only place the
 	 * capability is stated - and it must not read `you may unattended`.
 	 */
-	const grantOnly = { what: { grants: ["unattended"] } };
-	assert.deepEqual(approvalScopeLabels(grantOnly), [
-		"trust unattended sessions",
-	]);
-	assert.deepEqual(approvalScopeGlosses(grantOnly), [
-		{
-			term: "trust unattended sessions",
-			gloss:
-				"sessions you start on that device run without an approval prompt there",
-		},
-	]);
+	const grantOnly = { what: { grants: ["unattended"] }, where: {} };
+	assert.deepEqual(
+		approvalScopeEntries(grantOnly).map((entry) => entry.term),
+		["trust unattended sessions"],
+	);
 	/*
 	 * THE OTHER NON-VERB IN THE CORE'S GRANTABLE SET (agent review round 6, R6-1):
 	 * `CAPABILITY_WORDS["broker_credential"]` is "borrow this device's logins", so
 	 * the generic template would have written "you may broker_credential on that
 	 * device" - a raw token inside a sentence, on the card that authorises it.
 	 */
-	const broker = { what: { grants: ["broker_credential"] } };
-	assert.deepEqual(approvalScopeLabels(broker), ["borrow logins there"]);
-	assert.deepEqual(approvalScopeGlosses(broker), [
+	const broker = { what: { grants: ["broker_credential"] }, where: {} };
+	assert.deepEqual(approvalScopeEntries(broker), [
 		{
 			term: "borrow logins there",
-			gloss: "your sessions may use the logins stored on that device",
+			clause: "borrow the logins stored there",
+			consequence: "your sessions may use the logins stored on that device",
 		},
 	]);
 	/* A VERB token keeps the template, because it is grammatical for a verb. */
-	const verb = { what: { grants: ["steer"] } };
-	assert.deepEqual(approvalScopeLabels(verb), ["grant steer"]);
-	assert.deepEqual(approvalScopeGlosses(verb), [
-		{ term: "grant steer", gloss: "you may steer on that device" },
+	const verb = { what: { grants: ["steer"] }, where: {} };
+	assert.deepEqual(approvalScopeEntries(verb), [
+		{
+			term: "grant steer",
+			clause: "steer a running turn there",
+			consequence: "you may steer on that device",
+		},
 	]);
-	assert.equal(approvalTitle(row), "Onboard devon-laptop");
 	assert.equal(approvalSubject(row), "devon-laptop");
 	// A machine row is about the reader's own machine, by the kind's own definition.
 	const [machine] = approvalRows({
 		approvals: [{ approval_id: "ap_m", state: "requested", machine: {} }],
 	});
 	assert.equal(
-		approvalTitle(machine),
-		"Set up operator authority on this machine",
+		approvalSummary(machine),
+		"Set up operator authority on this machine.",
+		"an authority bootstrap with no scopes is its head, and the head alone",
 	);
 	assert.equal(
 		approvalWhereLabel(machine),
@@ -2083,6 +2118,11 @@ test("the Mesh rail badge rides an approvals read that dials nothing, and only w
 		/useMeshApprovals\(\s*meshMembership === "member" && meshApprovalsEnabled,\s*\{ poll: true \},?\s*\)/,
 		"the rail POLLS this one read (it dials no peer) and only when a Mesh row exists to carry the badge",
 	);
+	assert.match(
+		nav,
+		/const meshWaiting = waitingApprovalCount\(meshApprovals\.data \?\? \[\]\);/,
+		"the badge wears the WAITING count (operator round, 2026-10-03) - the same function the tray's header calls, so the two surfaces cannot disagree",
+	);
 	assert.match(nav, /attention: meshWaiting,/);
 	assert.match(nav, /attentionTag: "nav-mesh-badge",/);
 	assert.match(
@@ -2119,7 +2159,7 @@ test("the Mesh page renders the tray above every state block, off its own read",
 	}
 });
 
-test("a refused decision renders its sentence, and the busy gate is the surface's", () => {
+test("a refused decision renders its sentence, and the tray splits waiting from records", () => {
 	/*
 	 * Agent review round 1, findings 1 and 3. The page must read the mutation's
 	 * own error (a refusal rendered nowhere is a dead click), and the tray must
@@ -2163,38 +2203,135 @@ test("a refused decision renders its sentence, and the busy gate is the surface'
 	);
 	assert.match(
 		tray,
-		/<Badge variant=\{approvalScopeTone\(scope\)\}>/,
-		"the consequence-bearing scopes wear their own register (design round 1, D1)",
-	);
-	assert.match(
-		tray,
 		/data-tour-tag="mesh-approval-consequence"/,
-		"the consequence is its own labelled gloss, not a clause of the provenance line (design round 1, D2)",
+		"a state's gloss is its own labelled row inside the details, not a clause of the provenance line (design round 1, D2)",
 	);
 	assert.doesNotMatch(
 		tray,
 		/\{requester && hint && <span> · <\/span>\}/,
 		"provenance and consequence no longer share one line and one register",
 	);
+	/*
+	 * THE WAITING/RECORDS SPLIT IS THE SURFACE'S (operator round, 2026-10-03).
+	 * These pins hold the expressions that carry it: the live panel filters to
+	 * the waiting set, the records list is its complement, and the header count
+	 * is that same waiting set - the number the rail badge wears.
+	 */
 	assert.match(
 		tray,
-		/data-tour-tag="mesh-approval-scope-glosses"/,
-		"the trust-bearing scopes are glossed on the card (UX round 1, U2)",
+		/const waiting = useMemo\(\s*\(\) => rows\.filter\(\(row\) => isWaitingApproval\(row\.state\)\),\s*\[rows\],?\s*\);/,
+		"the live panel draws the waiting set, and only it",
 	);
 	assert.match(
 		tray,
-		/approvalScopeLabels\(row, networkNames\)/,
-		"the join chip names the network the page already shows (UX round 1, U1)",
+		/const records = useMemo\(\s*\(\) => rows\.filter\(\(row\) => !isWaitingApproval\(row\.state\)\),\s*\[rows\],?\s*\);/,
+		"everything else is a record - decided, running, stopped and terminal alike",
+	);
+	assert.match(
+		tray,
+		/\{waiting\.length === 1 \? "1 waiting" : `\$\{waiting\.length\} waiting`\}/,
+		"the header counts the waiting set - the same number the rail badge wears",
 	);
 	/*
+	 * THE RECORDS SECTION STARTS OPEN ON A FAILURE, and only on a failure: the
+	 * store's `failed` is "the state a person should not miss", and a collapsed
+	 * section is exactly how it goes missed. The reader's toggle wins from then
+	 * on (`recordsChoice`), which is why the default is an override, not state.
+	 */
+	assert.match(
+		tray,
+		/const \[recordsChoice, setRecordsChoice\] = useState<boolean \| null>\(null\);/,
+	);
+	assert.match(
+		tray,
+		/recordsChoice \?\? records\.some\(\(row\) => row\.state === "failed"\);/,
+	);
+	assert.match(
+		tray,
+		/onOpenChange=\{setRecordsChoice\}/,
+		"the disclosure is controlled, so the default and the reader's choice cannot disagree",
+	);
+	assert.match(
+		tray,
+		/<span className="text-meta">Records \(\{records\.length\}\)<\/span>/,
+		"the toggle names the section and its count",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approvals-records"/,
+		"the records list is one labelled region, inside the disclosure",
+	);
+	/*
+	 * WHAT A CARD SAYS, IN ORDER: the plain-language summary, then the controls,
+	 * then the details. Pinned as index order because the order IS the
+	 * requirement (operator: "a one-line plain-language summary ... before any
+	 * detail"; "detail behind a disclosure").
+	 */
+	const summaryAt = tray.indexOf('data-tour-tag="mesh-approval-summary"');
+	const approveAt = tray.indexOf('data-tour-tag="mesh-approval-approve"');
+	const detailsAt = tray.indexOf('data-tour-tag="mesh-approval-consequences"');
+	assert.ok(summaryAt > 0 && approveAt > 0 && detailsAt > 0);
+	assert.ok(
+		summaryAt < approveAt && approveAt < detailsAt,
+		"summary before controls before details",
+	);
+	assert.match(
+		tray,
+		/const head = approvalHead\(row\);/,
+		"the record's own title comes from the one builder approvalSummary heads with",
+	);
+	assert.match(
+		tray,
+		/\{waiting \? summary : head\}/,
+		"the card's first line: the full sentence while it waits, the title alone once settled (UX round 1, U2)",
+	);
+	assert.match(
+		tray,
+		/\{waiting && remaining && \(/,
+		"the countdown prints only while the decision is still the reader's (design round 1, D3 / UX round 1, U3)",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approval-stopped-note"/,
+		"a stopped runner states on the card what happened and what can be done (UX round 1, U1)",
+	);
+	assert.match(
+		tray,
+		/data-tour-tag="mesh-approval-refusal"/,
+		"the refusal carries its own tag, which is what the StoppedRefused story's latch and the refused frame's claims key on",
+	);
+	assert.match(
+		tray,
+		/approvalScopeEntries\(row, networkNames\)/,
+		"the consequences come from the one list, in the CLI's order",
+	);
+	assert.doesNotMatch(
+		tray,
+		/approvalScopeTone|approvalScopeLabels|approvalScopeGlosses/,
+		"no chips, no tone registers, no gloss list - the summary and consequences replaced them",
+	);
+	assert.doesNotMatch(
+		tray,
+		/data-tour-tag="mesh-approvals-resolved"/,
+		"the resolved-memory lines are gone: the record itself is in the section now",
+	);
+	/*
+	 * A RECORD'S ONE REMAINING WRITE WEARS ITS CONSEQUENCE: "Deny" only while the
+	 * record still waits; "Stop"/"Abandon" once the decision is made - the
+	 * contradiction the operator reported was exactly `Approved` beside `Deny`.
+	 */
+	assert.match(tray, /const waiting = isWaitingApproval\(row\.state\);/);
+	assert.match(tray, /\{waiting \? "Deny" : recordActionLabel\(row\.state\)\}/);
+	assert.match(tray, /return state === "failed" \? "Abandon" : "Stop";/);
+	/*
 	 * AND THE PAGE ACTUALLY PASSES IT (agent review round 4, R4-4): the tray pin
-	 * above proves the chip CAN name the network, while dropping the prop at the
+	 * above proves the clause CAN name the network, while dropping the prop at the
 	 * call site silently reverted it to the id with every test still green.
 	 */
 	assert.match(
 		page,
 		/networkNames=\{/,
-		"the page hands the tray the names it already holds, or the chip silently falls back to the id",
+		"the page hands the tray the names it already holds, or the clause silently falls back to the id",
 	);
 });
 
@@ -2756,6 +2893,56 @@ test("the asking story photographs the asking state", () => {
 		/play: async/,
 		"and the write path keeps its own story, where the play is what it is named for",
 	);
+});
+
+test("every approvals frame that follows an interaction carries the shutter latch (design round 1, D9)", () => {
+	/*
+	 * A PLAY'S OWN `await` PROVES THE STATE IN THE BROWSER, BUT NOT TO THE RIG: without
+	 * the latch, the generic settle terms can pass mid-play and the shutter opens on a
+	 * half-played screen. The repo's documented latch is
+	 * `documentElement.dataset.capturePending` (`agent-hub.stories.tsx::holdShutter`),
+	 * and the rig holds the shutter while it is set and refuses `data-capture-failed`.
+	 * This pins the latch onto every approvals story whose frame follows an interaction,
+	 * so the next state of this class cannot silently lose it.
+	 */
+	const stories = source(
+		"src/renderer/src/features/mesh/mesh-page.stories.tsx",
+	);
+	const story = (name) => {
+		const at = stories.indexOf(`export const ${name}: Story = {`);
+		assert.notEqual(at, -1, `${name} must exist`);
+		const next = stories.indexOf("export const ", at + 10);
+		return next === -1 ? stories.slice(at) : stories.slice(at, next);
+	};
+	for (const name of [
+		"ApprovalsRecordsOpen",
+		"ApprovalsDecisionWrites",
+		"ApprovalRefused",
+		"ApprovalsDetailsOpen",
+		"ApprovalsStoppedRefused",
+	]) {
+		assert.match(
+			story(name),
+			/holdShutter\(/,
+			`${name} drives an interaction, so its frame waits on the latch`,
+		);
+	}
+	assert.match(
+		stories,
+		/const holdShutter = \(until: string, text\?: string\) => \{/,
+		"and the helper itself is present, not just its call sites",
+	);
+	for (const name of [
+		"ApprovalsMixed",
+		"ApprovalsReadFailure",
+		"ApprovalsMachineAuthority",
+	]) {
+		assert.notEqual(
+			stories.indexOf(`export const ${name}: Story = {`),
+			-1,
+			`${name} must exist - it is the state UX round 1 (U4) found unframed`,
+		);
+	}
 });
 
 test("the wait ceiling is carried from the click to the wire, and the pin fails where it matters (round 3)", () => {

@@ -21,6 +21,34 @@ the same panel parked at its maximum scroll (design round 1, D3: where the devic
 sections actually live) - which brings the set to the **thirty-three** below; their
 before halves are the declared pair `../mesh-tab-before/`.
 
+**The approvals panel's pass (operator round, 2026-10-03; remediated through design/UX/QA
+round 1, 2026-10-04) adds the twelve states its split needed** - `approvals-waiting` (the
+prompt, the ASKING state, no play by design), `approvals-details-open` (the `Details`
+disclosure open, where the consequence list lives), `approvals-records` and
+`approvals-records-open` (the collapsed and the expanded section), `approvals-mixed` with
+its narrow pass (the everyday prompt-plus-records card, at both widths), `approvals-stopped`
+(the runner that stopped, and its own note), `approvals-stopped-refused` (its refusal kept
+after the section closes), `approvals-decision-writes` (the approve, driven to its settled
+record), `approval-refused` (the store's own sentence), `approvals-read-failure` (the read
+that did not answer, and `Ask again`) and `approvals-machine-authority` (the
+`local_authority` kind's machine-block head) - which brings the set to the **forty-five**
+below; their BEFORE halves are `approvals-before/` inside this set (see its own paragraph).
+
+**The approvals pair is `approvals-before/` inside this set** (design round 1, D5). Its
+three states - `approvals-waiting`, `approvals-decision-writes` and `approval-refused` -
+are the same three this set carries as their after halves, rendered by `origin/main`'s
+three approvals files (`mesh-approvals-tray.tsx`, `mesh-approvals.ts`,
+`mesh-page.stories.tsx`, plus the sidebar rail beside them only so the story's compile
+cannot reach a renamed export) checked out over the folded head for the run and restored
+afterwards - the `../mesh-tab-before/` recipe, one level down. The twins differ only in the
+PR's own change: the chip wall where the summary sentence is now, `2 waiting` over the
+whole flight, `Deny` beside an `Approved` record, and the refusal's code stacked under its
+sentence (the layout design round 1's D7 re-measured). Two invisible `data-*` attributes
+were added to the run copy as the harness's settle gates (`data-approval-state` on the card
+and the refusal's own tag); attributes do not paint. The encoder is the harness beside
+`../mesh-tab-before/`, run as its README documents with `--wait-for` on those gates, and
+`assertFramePaints` ran over all six before they were committed.
+
 **The remedy's own row proves the move, because round 4 fixed the reason it could not**
 (design review rounds 3 D13 and 4 D18). `move-busy-waited` photographs the receipt *and* the world
 it claims: the play presses the remedy, asserts the re-issue carried the route's wait ceiling,
@@ -94,6 +122,27 @@ this as a **partial** capture
 (`partialCapture`), which is what it is: the set is the tab's own states, not a
 sweep of the tree.
 
+**The approvals states ride their own narrowed passes.** Round 1's six were shot with
+`--only=mesh-tab--approval`, and the round-1 remediation re-took all of them (the split's
+own edits changed every frame's copy) and added the six this pass introduced, in one run:
+
+```sh
+node scripts/capture-evidence.mjs --only=mesh-tab--approval \
+  --themes=localOperatorLight,localOperatorDark --allow-backend
+```
+
+`approvals-before/` was shot by the sibling set's harness with `origin/main`'s files
+swapped in for the run, as its pair paragraph records.
+
+**Two conventions for reading the played frames.** The 2px accent ring around a pressed
+control (the `Records` toggle in the two open frames, and the same ring the dialog rows in
+this set carry) is the story `play`'s programmatic focus, not an open-state style a pointer
+user sees (design round 1, D8). And every approvals story whose frame follows an interaction
+holds the rig's own shutter latch - `holdShutter`, mirrored from `agent-hub.stories.tsx`,
+which sets `documentElement.dataset.capturePending` until the story's end state is in the
+DOM; the sweep holds the shutter while it is set and REFUSES a frame after an expired latch
+instead of releasing it mid-play (design round 1, D9).
+
 **`--allow-backend` is disclosed here because it is the one flag that relaxes a
 guard.** The operator's live backend (pid 14691, `Local Operator [serve] port=1111`,
 up 9h47m at capture time) is running, and the sweep refuses by default - correctly,
@@ -118,6 +167,15 @@ a still cannot carry - that a poll that changed nothing moves no node, and that 
 wheel-zoom keeps the world point under the pointer invariant. Both are asserted
 numerically in `scripts/mesh-tab.test.mjs`, which is the cheap half of this evidence
 rather than a substitute for it.
+
+**And the approvals frames specifically:** the decisions are driven through the page's
+stubbed bridge, and the store is never asked - `approval_already_connected` and
+`approval_signing_unavailable` are the shapes the store answers with, carried by fixtures,
+not sentences this machine produced. The read failure renders the fixture's own transport
+sentence. The `local_authority` record is the shape the store's own tests build
+(`tests/unit/network/test_approvals_store.py`), not a live bootstrap. And the paired
+`approvals-before/` frames are `origin/main`'s rendering with the fix absent - they prove
+what the old registers looked like in this harness, not that production rendered them.
 
 Two smaller gaps, named rather than implied. **The node's on-screen type size is the app's
 own, not a scaled one** (design round 1, D2; N2): `MAX_FIT_SCALE = 1` means the world is
@@ -255,6 +313,17 @@ missing row proves nothing a reader could check.
 | `many-conversations-menu/…` | one row's `⋯` menu open over the same list | the report's own composition, and its discriminator: the overlap is IDENTICAL with the menu closed, so the menu was never the layer at fault - and the menu's own surface (opaque `elevated` in both palettes) was never missing |
 | `many-conversations-peer/…` | the same panel on the peer, eleven conversations | the report's first screenshot: rows, addresses and Status interleaved at ELEVEN rows too (18 overlapping pairs), and the chips reading tail fragments (`…obe OK`/`…2E pull`) where the report's own read `…BE-OK`/`…2E pull` - the fixtures invent the names, not the shapes |
 | `many-conversations-bottom/…` | the same panel parked at its maximum scroll | the state the stacking claim lives in (design round 1, D3): below the whole catalogue come Network addresses, Status, Reach, Last status frame and Show in list as one clean column - every frame before it showed the list's top only, so "the sections stack below the list" had no frame of its own |
+| `approvals-waiting/…` | one record WAITING on the operator | the prompt the live panel exists for, and nothing else on it: the summary sentence (one sentence - it wraps to two lines at app width, design round 1, D6), the countdown, Approve/Deny/`Details`. NO `play`, on purpose: the still is the ASKING state |
+| `approvals-details-open/…` | the `Details` disclosure OPEN | requirement 3's rendered evidence (design round 1, D1): the per-scope consequence list, the `where · hostKey` provenance and the `Signing` gloss, one click from the sentence |
+| `approvals-records/…` | records only, section collapsed | a settled request leaves the live panel: no count over the flight (`Records (3)` and nothing else), and nothing settled wears `Deny` |
+| `approvals-records-open/…` | the same, expanded | the row leads with the ask's title alone (UX round 1, U2) - not the six-clause decision sentence per row - with its one remaining write (`Stop`; never `Deny` beside `Approved`) |
+| `approvals-mixed/…`, `approvals-mixed-narrow/…` | two waiting + two settled in ONE card, at 1380x900 and 1024x768 | the everyday shape the split creates (design round 1, D2; UX round 1, U4): `2 waiting` above a closed `Records (2)`, the `gap-3` between the lists, and the summary's own wrap at the narrow width |
+| `approvals-stopped/…` | a runner that stopped | the one state whose section opens itself: `Failed`, the card's own note (it stays retryable until its window closes; `Abandon` denies the request - UX round 1, U1), and an intentional absence: no countdown on a stopped runner (D3/U3) |
+| `approvals-stopped-refused/…` | a refusal that outlives its section | D1's second arm: `Abandon` refused (`approval_already_connected`), the section closed, and the sentence + code still on screen under the list - the case a naive attach would swallow |
+| `approvals-decision-writes/…` | the approve, executed | the button writes, the read moves, and the record lands in the opened section as `Approved` wearing `Stop` - with the count that read `1 waiting` over it gone |
+| `approval-refused/…` | a decision the store refused | the sentence travels verbatim and the code rides BESIDE it on one wrapped row (the fix design round 1, D7 re-measured against the before twin); the card stays waiting |
+| `approvals-read-failure/…` | the approvals read failed | the transport's sentence verbatim, and `Ask again` (UX round 1, U4): a read that did not answer promises no count and no records over itself |
+| `approvals-machine-authority/…` | the `local_authority` kind | the machine block replaces the device block, so the head is `Set up operator authority on this machine` - a head no earlier frame carried (UX round 1, U4c) |
 
 ## The numbers behind the frames
 
@@ -303,5 +372,5 @@ node scripts/capture-evidence.mjs --only=mesh-tab \
 
 The frames are `.webp` at 1380x900 (and 1024x768 for the narrow rows -
 `two-devices-narrow`, `device-panel-narrow`, `scopes-narrow`, `scopes-shared-top-narrow`,
-`scopes-nested-narrow`), written by the sweep's
+`scopes-nested-narrow`, `approvals-mixed-narrow`), written by the sweep's
 own Chrome profile, which it removes on exit.
