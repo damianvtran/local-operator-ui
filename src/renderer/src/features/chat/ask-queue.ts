@@ -5,9 +5,9 @@
  * ## Why this is a module and not a few expressions in a component
  *
  * Three surfaces read the same queue - the item in the composer's status row, the
- * panel it expands into, and the outstanding-asks chip on the sidebar row - and
- * two of them have to agree on a count while the third draws the individual rows.
- * The
+ * panel it expands into, and the outstanding-asks mark a sidebar conversation row
+ * carries - and two of them have to agree on a count while the third draws the
+ * individual rows. The
  * backend's own design note (`docs/design/ask-nonblocking.md` §5) puts one
  * binding constraint on all of them: **no surface may say "notified" that it
  * cannot substantiate, and agent-is-working is never "waiting for you"**. A
@@ -1572,7 +1572,8 @@ export const askDeclineRequest = (
 });
 
 /**
- * The outstanding-asks chip's copy, for a sidebar row.
+ * The outstanding-asks chip's copy, for the mark a sidebar conversation row
+ * carries (`ChatAsksOutstanding` in `chat-session-status.tsx`).
  *
  * It is deliberately NOT the approval chip's words. An approval is blocking; an
  * ask is not, and the session may be working perfectly well while it waits - so

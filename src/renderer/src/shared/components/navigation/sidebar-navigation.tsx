@@ -60,7 +60,6 @@ import {
 	LoaderCircle,
 	MessageSquarePlus,
 	Network,
-	PanelRight,
 	Search,
 	Settings,
 	Store,
@@ -188,19 +187,6 @@ type NavItem = {
 	 * row's own key in the list.
 	 */
 	onSelect?: () => void;
-	/**
-	 * Whether this row's press opens a PANE over the current page rather than
-	 * navigating to `path`.
-	 *
-	 * The distinction is real and the row must not lie about it (design review
-	 * round 1, D3): a row that navigates somewhere is a DESTINATION and says so with
-	 * `aria-current="page"`; a row that toggles a right-slot pane is a DISCLOSURE - it
-	 * leaves the page where it is and the pane docks over it - so it reports
-	 * `aria-expanded` and carries the pane family's glyph. Without the flag the Asks
-	 * row was drawn exactly like `Agents` and `Schedules` while its press navigated
-	 * nowhere, which reads as "where did my page go".
-	 */
-	paneDoor?: boolean;
 };
 
 /**
@@ -619,13 +605,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		return (
 			<li
 				/*
-				 * KEYED BY THE TAG, not by `path` (design review round 1, F2). `path` is the
-				 * ROUTE a destination row goes to, and two rows deliberately share one: Aida's
-				 * resolves her conversation and lands on `/chat`, and All asks toggles a pane
-				 * over whatever route is up. Both can be on screen at once and both resolve
-				 * asynchronously, so React saw two siblings keyed `/chat` inserted at
-				 * different times - a duplicate-key warning and ambiguous reconciliation. The
-				 * tag is the row's own name and is already unique per row.
+				 * KEYED BY THE TAG, not by `path` (design review round 1, F2). `path` names
+				 * the ROUTE a destination row lands on - a shape every row carries, and not
+				 * an identity: Aida's row carries `/chat` while the conversation it opens is
+				 * RESOLVED asynchronously, so a route is not a safe React key. The tag is the
+				 * row's own name and is already unique per row.
 				 */
 				key={item.tourTag}
 				className={cn(
@@ -641,15 +625,11 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 					}
 					data-tour-tag={item.tourTag}
 					/*
-					 * A PANE DOOR IS A DISCLOSURE, NOT A PAGE (design review round 1, D3).
-					 * `aria-current="page"` says "you are here", which is false for a row
-					 * whose press leaves the route alone and docks a pane over it; the honest
-					 * state for an open pane is `aria-expanded`.
+					 * A ROW THAT NAVIGATES IS A DESTINATION (design review round 1, D3):
+					 * `aria-current="page"` says "you are here", which is what a press that
+					 * lands on `path` means.
 					 */
-					aria-current={
-						item.paneDoor ? undefined : item.isActive ? "page" : undefined
-					}
-					aria-expanded={item.paneDoor ? item.isActive : undefined}
+					aria-current={item.isActive ? "page" : undefined}
 					/* Collapsed there is no text in the row, and the tooltip cannot
 					   supply the name: Radix's `Trigger` adds `aria-describedby`, and
 					   only while open. */
@@ -667,20 +647,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						className={cn("shrink-0", item.isActive && "text-accent")}
 					/>
 					{expanded && <span className="truncate">{item.label}</span>}
-					{/*
-					 * THE PANE CUE (design review round 1, D3): the family's own `PanelRight`,
-					 * at the disclosure's size, so the one row that opens a pane says so before
-					 * it is pressed rather than after. `aria-hidden` because `aria-expanded`
-					 * already carries the state and the name carries the count - this is the
-					 * sighted reader's copy of the same fact.
-					 */}
-					{expanded && item.paneDoor && (
-						<PanelRight
-							size={13}
-							aria-hidden="true"
-							className="shrink-0 text-ink-dim"
-						/>
-					)}
 					{attention > 0 && (
 						/*
 						 * THE SAME BADGE THE HEADER'S GLOBE CARRIES (design 5.1). In flow at
@@ -747,10 +713,10 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 			/*
 			 * THE TOOLTIP CARRIES THE SENTENCE, NOT THE BARE LABEL (UX round 1, U3;
 			 * design round 1, D2). Collapsed, this is the only text the row ever shows,
-			 * so a tooltip reading "Asks" left the badge's number scope-less in the one
-			 * width where the row has no other words. It prints `rowName`, the same
-			 * string the expanded row's accessible name uses, so the hover text and the
-			 * name cannot disagree about one count.
+			 * so a tooltip carrying the bare label would leave a badge's number
+			 * scope-less in the one width where the row has no other words. It prints
+			 * `rowName`, the same string the expanded row's accessible name uses, so the
+			 * hover text and the name cannot disagree about one count.
 			 */
 			<li key={item.tourTag}>
 				<Tooltip content={rowName(item)} side="right">
