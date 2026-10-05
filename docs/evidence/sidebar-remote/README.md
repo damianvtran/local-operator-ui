@@ -12,8 +12,11 @@ This set photographs both halves. `before` is the base tree: the remote
 sessions exist only in the federated answer (`sessions.list?include_peers=true`)
 and the sidebar draws its local rows alone. `after` is the fixed tree: the same
 fixture rows render in the sidebar's own bins — Running / Today / This week —
-beside the local ones, each with the locality mark, and the hover reads
-`on cloud-node-1 (damian-mesh)`. Every frame is the app photographing itself
+beside the local ones, each with the locality mark (`↗`, the elsewhere/external
+arrow), and the hover reads `on cloud-node-1 (damian-mesh)`. One fixture row's
+owner did NOT answer, and it draws the same arrow with ONE quiet stroke across
+it (`↛`) — the design round's at-rest cue, same ink, same cell, no reflow, with
+the reason left to the tooltip. Every frame is the app photographing itself
 (`Page.captureScreenshot`).
 
 ## The instrument
@@ -23,17 +26,20 @@ never shown or focused) with scratch HOME, config, log and profile roots, the
 `CMUX_*`/`LOP_*` families stripped and the mock-keychain switch taken from its
 one home. `harness/server.mjs` is the endpoint it talks to: the catalogue BOTH
 ways — plain (local rows only) and with `include_peers=true` (the local rows
-plus three fixture rows on `cloud-node-1`: one `approval` for RUNNING, one an
-hour old, one five days old) — plus the two cheap mesh reads and a minimal
-session stream, fixtures in the wire's own shape. The app's transport, store,
+plus four fixture rows on `cloud-node-1`: one `approval` for RUNNING, one an
+hour old, one five days old, and one two hours old whose owner did NOT answer,
+`reachable: false` with the wire's own reason) — plus the two cheap mesh reads
+and a minimal session stream, fixtures in the wire's own shape. The app's transport, store,
 merge, mark, hover and bins are the shipped ones.
 
 Each arm asserts its own readings, so the pair cannot pass by both being loose:
-`before` checks the three remote titles are ABSENT, zero `[data-remote-mark]`
+`before` checks the four remote titles are ABSENT, zero `[data-remote-mark]`
 elements are drawn, and the wire shows NO federated read; `after` checks all
-five titles are present, three marks are drawn, each remote row's own
-`[data-chat-section]` bin is `running`/`today`/`week` as its clock says, the
-sections list contains no remote-specific section, the flyout sentence matches,
+six titles are present, four marks are drawn with exactly ONE stroke and it on
+the unreachable row, each remote row's own `[data-chat-section]` bin is
+`running`/`today`/`week` as its clock says, the sections list contains no
+remote-specific section, the flyout sentence matches (`on cloud-node-1
+(damian-mesh)`, and `… - unreachable: link down 4m ago` on the stroked row),
 the opened conversation's chip reads `On cloud-node-1`, and the wire shows the
 federated read only at `limit=200` while every plain poll stays peer-free.
 
@@ -69,12 +75,12 @@ titles):
   tab's own read is the first one, `limit=200`); a frame of the tab beside that
   sidebar shows `cloud-node-1` reachable with **14 conversations** the sidebar
   does not list;
-- `present` (this branch), 15 rows drawn, `[data-remote-mark]` 3 — his two most
+- `present` (this branch), 15 rows drawn, `[data-remote-mark]` 4 — his most
   recent `cloud-node-1` sessions (`Current OS inquiry`, `Current Operating
   System Inquiry`, both `Answer needed`) merged into RUNNING beside his local
   ones; the hover reads `on cloud-node-1 (damian-mesh)`; opening one leaves the
   header chip reading `On cloud-node-1`; the wire: 1 federated read (`limit=200`)
-  and 5 plain polls, none of them carrying `include_peers`.
+  and 12 plain polls, none of them carrying `include_peers`.
 
 ## How to run
 
@@ -106,17 +112,22 @@ sidebar-remote/after/open/localOperatorDark.webp             opened: header chip
 
 | reading | before (base) | after (this branch) |
 | --- | --- | --- |
-| sections drawn | today: 1 local; week: 1 local | running: 1 remote; today: 1 remote + 1 local; week: 1 local + 1 remote |
-| `[data-remote-mark]` | 0 | 3 |
+| sections drawn | today: 1 local; week: 1 local | running: 1 remote; today: 2 remote + 1 local; week: 1 local + 1 remote |
+| `[data-remote-mark]` | 0 | 4 (`↗`) |
+| stroke (`[data-remote-mark-stroke]`) | 0 | 1, on `Remote: incident log` only |
 | separate remote section | none (nothing) | none — the sections are the one list's own |
 | flyout sentence | — | `on cloud-node-1 (damian-mesh)` |
+| flyout on the stroked row | — | `on cloud-node-1 (damian-mesh) - unreachable: link down 4m ago` |
 | opened conversation's chip | — | `On cloud-node-1`, row still in its bin |
-| federated reads | 0 | 2 (`limit=200`, 30009 ms apart) |
+| federated reads | 0 | 2 (`limit=200`, 30008 ms apart) |
 | plain catalogue polls | 2, none carrying `include_peers` | 10, none carrying `include_peers` |
-| remote rows after plain polls | — | all five titles still listed |
+| remote rows after plain polls | — | all six titles still listed |
 
 ## Not addressed here
 
+- **The stroke's colour is the mark's own role** (`text-ink-dim`): the design
+  round asked for "same ink, same cell" - a new colour role would have been a
+  contract change, so none was added.
 - **Pinned draws no remote row yet**, and that is the wire's honest state rather
   than a rendering choice: the pin index is device-local and prunes ids with no
   local session directory, so a remote row reads `pinned: false` until an
