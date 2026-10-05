@@ -2545,8 +2545,8 @@ export const DetailQuickSend: Story = {
 	),
 	play: playOnce("detail-quick-send", async () => {
 		await waitForDetail();
-		const input = document.querySelector<HTMLInputElement>(
-			'[aria-label="Message the selected session"]',
+		const input = document.querySelector<HTMLTextAreaElement>(
+			'[data-tour-tag="project-quick-send"] textarea',
 		);
 		if (!input) throw new Error("the quick-send input never appeared");
 		await userEvent.type(
@@ -2555,8 +2555,8 @@ export const DetailQuickSend: Story = {
 		);
 		await poll(
 			() =>
-				(document.querySelector<HTMLInputElement>(
-					'[aria-label="Message the selected session"]',
+				(document.querySelector<HTMLTextAreaElement>(
+					'[data-tour-tag="project-quick-send"] textarea',
 				)?.value.length ?? 0) > 0,
 			"the typed message",
 		);
@@ -2575,16 +2575,18 @@ export const DetailQuickSendSent: Story = {
 	),
 	play: playOnce("detail-quick-send-sent", async () => {
 		await waitForDetail();
-		const input = document.querySelector<HTMLInputElement>(
-			'[aria-label="Message the selected session"]',
+		const input = document.querySelector<HTMLTextAreaElement>(
+			'[data-tour-tag="project-quick-send"] textarea',
 		);
 		if (!input) throw new Error("the quick-send input never appeared");
 		await userEvent.type(input, "Please post the next progress update.");
-		await clickWhen('[data-tour-tag="project-quick-send"]');
+		await clickWhen(
+			'[data-tour-tag="project-quick-send"] button[aria-label="Send message"]',
+		);
 		await poll(
 			() =>
-				(document.querySelector<HTMLInputElement>(
-					'[aria-label="Message the selected session"]',
+				(document.querySelector<HTMLTextAreaElement>(
+					'[data-tour-tag="project-quick-send"] textarea',
 				)?.value.length ?? 0) === 0,
 			"the admitted message to clear the composer",
 		);
