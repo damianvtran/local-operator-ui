@@ -1,111 +1,112 @@
 import assert from "node:assert/strict";
-import { unlinkSync } from "node:fs";
-import { writeFile } from "node:fs/promises";
-import { test } from "node:test";
+import { unlink, writeFile } from "node:fs/promises";
+import { after, test } from "node:test";
 import { build } from "esbuild";
 import { JSDOM } from "jsdom";
 import React, { act } from "react";
 
 /*
- * THE QUICK-SEND STRIP'S ADMISSION, mounted — the image-only send (issue #790).
+ * THE QUICK-SEND STRIP'S BOX IS THE APP'S COMPOSER — mounted, and carrying the
+ * selected session's own readings.
  *
- * WHY THIS FILE IS BEHAVIOURAL RATHER THAN A FRAME. The strip refused an
- * image-only message in its own predicate: `canSend` was text-only, so a
- * pasted screenshot armed nothing and Send stayed dead — and the refusal was
- * silent, because there was no route for the paste to arrive on at all. A
- * still of the dead control is the symptom; only a driven mount shows what
- * arms it and what the send seam then carries.
+ * WHY THIS FILE IS BEHAVIOURAL RATHER THAN A FRAME. The strip's control changed
+ * shape (a hand-rolled `Input` + `Send` replaced by the shared `MessageInput`),
+ * and the claims worth proving are statements about the seam a still cannot
+ * show: what the composer's `onSendMessage` hands the strip's own `onSend`, that
+ * a busy target still travels as a STEER, that a refusal leaves the draft in the
+ * box, and that the readings row is built from a `sessions.get` read of the
+ * SELECTED session rather than from anything the strip invented. The pixels —
+ * the box's alignment and framing on the card — are the renderer driver's job.
  *
- * THE THREE CASES:
+ * WHAT IS REAL: the shipped `ProjectQuickSend`, the shipped `MessageInput` and
+ * its input store, and the shipped `useSessionSnapshot`. What is faked, and only
+ * that: `onSend` (a recorder — the component's contract is with that prop, and
+ * `admitChatDraft` behind it is the detail screen's own territory) and the
+ * desktop transport, which answers with one canned `sessions.get` so the
+ * readings half can be observed without a daemon.
  *
- *  1. A pasted screenshot alone arms Send, draws as a preview tile, and rides
- *     the seam as an attachment (the #790 reproduction — red against the
- *     text-only predicate, green once the paste route and the predicate
- *     agree with the wire's own rule: text OR images is a message).
- *  2. Text alone still sends with an empty attachment list — the behaviour
- *     the fix must not disturb.
- *  3. A non-image paste stages nothing. This strip's route carries images
- *     only: where the composer's paste path also takes `kind === "file"`,
- *     the strip has no file dialog and no Files-panel record beside it, and
- *     the encoder leaves non-image paths out of the body by design — staging
- *     one would arm Send for a message that cannot carry it.
- *
- * WHAT IS REAL: the shipped `ProjectQuickSend`. What is faked, and only that:
- * `onSend`, a recorder — the component's contract is with that prop, and the
- * admission store behind it is `admitChatDraft`'s own territory. The
- * end-to-end play (a real clipboard paste into the running app) is the
- * renderer driver's scenario, not this file's.
- *
- * WHAT IT IS NOT: pixel evidence. jsdom has no layout engine, so the preview
- * tile is asserted as a node and its source, never as a measurement — that
- * half belongs to the design round's frames.
+ * THE HARNESS SHIMS ARE `agents-composer-mount.test.mjs`'s recipe, verbatim in
+ * shape: jsdom plus the composer's graph needs (storage at import time, a canvas
+ * that answers, frames, an inert desktop bridge). A second recipe would be a
+ * second set of lies about the same component.
  */
 
-// React DOM feature-detects input events at import time, so the document has
-// to exist before it is loaded. A real origin, not jsdom's opaque default.
-const dom = new JSDOM("<!doctype html><html><body></body></html>", {
+const DOM = new JSDOM("<!doctype html><html><body></body></html>", {
 	url: "http://localhost/projects",
 });
-globalThis.window = dom.window;
-globalThis.document = dom.window.document;
-for (const key of Object.getOwnPropertyNames(dom.window)) {
-	if (key in globalThis) continue;
-	try {
-		globalThis[key] = dom.window[key];
-	} catch {
-		// Accessors jsdom defines on the window take no new value; the DOM
-		// globals this file needs are the ones already copied above.
-	}
-}
-/*
- * THE EVENT AND FILE CONSTRUCTORS MUST COME FROM JSDOM'S REALM, not Node's
- * (the `projects-card-click.test.mjs` note): React's synthetic event system
- * reads `instanceof` against the globals the component's realm sees, and
- * jsdom refuses `dispatchEvent` with a foreign realm's event. `File` /
- * `FileReader` / `Blob` are forced too because Node has its own `File` and
- * `Blob` globals now, and a mixed pair makes `readAsDataURL` throw inside
- * the component's own paste route.
- */
-for (const name of [
+const FORCE_FROM_JSDOM = [
 	"Event",
 	"CustomEvent",
+	"UIEvent",
 	"MouseEvent",
+	"PointerEvent",
 	"KeyboardEvent",
 	"FocusEvent",
 	"InputEvent",
+	"CompositionEvent",
 	"ClipboardEvent",
 	"File",
 	"FileReader",
 	"Blob",
-]) {
-	globalThis[name] = dom.window[name];
+	"HTMLElement",
+	"Element",
+	"Node",
+	"DocumentFragment",
+	"Range",
+	"Selection",
+	"DOMRect",
+	"DOMRectReadOnly",
+	"getComputedStyle",
+	"requestAnimationFrame",
+	"cancelAnimationFrame",
+];
+for (const key of Object.getOwnPropertyNames(DOM.window)) {
+	if (key === "window" || key === "self" || key === "globalThis") continue;
+	if (key in globalThis && !FORCE_FROM_JSDOM.includes(key)) continue;
+	try {
+		globalThis[key] = DOM.window[key];
+	} catch {
+		// jsdom's own accessors refuse to be read out of scope.
+	}
 }
-dom.window.Element.prototype.scrollIntoView = () => {};
-globalThis.ResizeObserver = class {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-};
-globalThis.IntersectionObserver = class {
-	observe() {}
-	unobserve() {}
-	disconnect() {}
-};
+globalThis.window = DOM.window;
+globalThis.document = DOM.window.document;
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
-/* No backend may be reached from a test run. */
-globalThis.fetch = () =>
-	Promise.reject(new Error("no backend in this harness"));
-/* Radix's layers schedule frames; jsdom has none without `pretendToBeVisual`. */
-globalThis.requestAnimationFrame = (callback) =>
-	setTimeout(() => callback(Date.now()), 0);
-globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
+
 /*
- * A STORAGE THAT ANSWERS, because ui-kit modules rehydrate persisted snapshots
- * at import time and a jsdom window without storage throws inside them before
- * any test runs.
+ * EVERY TIMER THIS FILE'S RIG CREATES, TRACKED SO TEARDOWN CAN RELEASE IT (see
+ * the `after` hook). Both realms are wrapped because the composer schedules
+ * through `globalThis.setTimeout` in some paths (`withTimeout`) and through
+ * `window.setTimeout` in others (the hint countdown), and jsdom schedules its own
+ * on its window.
+ */
+const liveTimers = new Set();
+for (const realm of [globalThis, DOM.window]) {
+	const setT = realm.setTimeout?.bind(realm);
+	const setI = realm.setInterval?.bind(realm);
+	if (setT) {
+		realm.setTimeout = (...args) => {
+			const handle = setT(...args);
+			liveTimers.add(handle);
+			return handle;
+		};
+	}
+	if (setI) {
+		realm.setInterval = (...args) => {
+			const handle = setI(...args);
+			liveTimers.add(handle);
+			return handle;
+		};
+	}
+}
+
+/*
+ * A STORAGE THAT ANSWERS: the conversation-input store and the onboarding store
+ * rehydrate at import time, and a jsdom window without storage throws inside
+ * them before any test runs.
  */
 const storage = new Map();
-Object.defineProperty(dom.window, "localStorage", {
+Object.defineProperty(DOM.window, "localStorage", {
 	configurable: true,
 	value: {
 		getItem: (key) => storage.get(key) ?? null,
@@ -118,88 +119,193 @@ Object.defineProperty(dom.window, "localStorage", {
 		},
 	},
 });
-globalThis.localStorage = dom.window.localStorage;
-dom.window.matchMedia = (query) => ({
+globalThis.localStorage = DOM.window.localStorage;
+DOM.window.matchMedia = (query) => ({
 	media: query,
 	matches: false,
 	addEventListener: () => {},
 	removeEventListener: () => {},
 	dispatchEvent: () => false,
 });
-globalThis.matchMedia = dom.window.matchMedia;
-process.on("exit", () => {
-	try {
-		dom.window.close();
-	} catch {
-		// The window may already be torn down by a completed run.
-	}
-});
-
-const ROOT = process.cwd();
-
-/* -------------------------------------------------- bundle: the shipped strip */
+globalThis.matchMedia = DOM.window.matchMedia;
+globalThis.requestAnimationFrame = (callback) =>
+	setTimeout(() => callback(Date.now()), 0);
+globalThis.cancelAnimationFrame = (handle) => clearTimeout(handle);
+globalThis.ResizeObserver = class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
+globalThis.IntersectionObserver = class {
+	observe() {}
+	unobserve() {}
+	disconnect() {}
+};
+DOM.window.Element.prototype.scrollIntoView = () => {};
 
 /*
- * BUNDLED RATHER THAN IMPORTED (`projects-request-update.test.mjs`'s recipe):
- * the strip is TypeScript in the renderer tree, and the app's tsconfig does
- * not run here. `packages: "external"` keeps node_modules out of the bundle
- * so the runtime resolves the SAME React instance the test drives.
+ * A CANVAS THAT ANSWERS, because the composer's graph measures text at MODULE
+ * scope and jsdom's canvas throws "not implemented". Only `measureText` is read.
  */
+DOM.window.HTMLCanvasElement.prototype.getContext = () => ({
+	measureText: (text) => ({ width: String(text).length * 8 }),
+	font: "",
+	fillText: () => {},
+	clearRect: () => {},
+	save: () => {},
+	restore: () => {},
+});
+
+/* The desktop bridge, inert — the composer's mount path reaches it. */
+DOM.window.electron = {
+	ipcRenderer: {
+		on: () => () => {},
+		removeListener: () => {},
+		send: () => {},
+		invoke: async (channel) =>
+			channel === "get-platform-info"
+				? { platform: "darwin" }
+				: { canceled: true, filePaths: [] },
+	},
+};
+DOM.window.api = {
+	ipcRenderer: {
+		invoke: async () => ({}),
+		send: () => {},
+		on: () => {},
+		once: () => {},
+		removeListener: () => {},
+		removeAllListeners: () => {},
+	},
+	readFile: undefined,
+	platform: "darwin",
+};
+globalThis.api = DOM.window.api;
+
+/*
+ * THE DESKTOP TRANSPORT, ANSWERING ONE OP. `desktopResult` posts to `/__desktop`
+ * and unwraps `body.result`; the stub records every request so a case can assert
+ * WHICH session the readings were asked about, and answers `sessions.get` with a
+ * snapshot carrying a resolved model and a `cwd` — the two readings the strip
+ * paints (`composer-readings.test.mjs`'s fixture shape, so this is a payload a
+ * real backend sends rather than one invented here).
+ */
+const SNAPSHOT_CWD = "/Users/rig/selected-session";
+const desktopRequests = [];
+const jsonResponse = (payload) => ({
+	ok: true,
+	status: 200,
+	json: async () => payload,
+});
+globalThis.fetch = async (_url, init) => {
+	let request = {};
+	try {
+		request = JSON.parse(init?.body ?? "{}");
+	} catch {
+		request = {};
+	}
+	desktopRequests.push(request);
+	if (request.op === "sessions.get") {
+		return jsonResponse({
+			/*
+			 * THE DEV/PROD ENVELOPE: `desktopRequest`'s HTTP arm answers the JSON
+			 * the dev proxy returns, which is `{status, body}` - the same shape
+			 * main's IPC arm returns - and `desktopResult` unwraps `body.result`.
+			 * A bare `{result}` here reads as a refusal, which is how this stub
+			 * first answered and why the readings stayed empty.
+			 */
+			status: 200,
+			body: {
+				result: {
+					payload: {
+						frontend: {
+							snapshot: {
+								session_id: request.sessionId,
+								cwd: SNAPSHOT_CWD,
+								effective_model: {
+									provider: "openrouter",
+									model_id: "openai/gpt-5",
+									display_name: "OpenAI: GPT-5",
+									reasoning: true,
+									reasoning_effort: "high",
+									reasoning_efforts: ["minimal", "low", "medium", "high"],
+									reasoning_default_effort: null,
+									context_window: 400_000,
+									max_context_window: null,
+								},
+								selected_model: null,
+								context_tokens: null,
+								context_is_estimate: null,
+								cumulative_parent_cost: null,
+								cost_knowledge: "unknown",
+								streaming: false,
+							},
+						},
+						cold: false,
+					},
+				},
+			},
+		});
+	}
+	/*
+	 * EVERY OTHER OP ANSWERS THE CONFIG SHAPE, because the strip's model reading
+	 * consults the configured hosting (`modelOptions`' `hosting` term) and an
+	 * undefined `values` throws inside a render rather than failing closed.
+	 */
+	return jsonResponse({
+		status: 200,
+		body: { result: { values: { hosting: "test", model_name: "mock-model" } } },
+	});
+};
+
 const bundle = await build({
 	stdin: {
-		contents: `
-			import { createElement } from "react";
-			import { createRoot } from "react-dom/client";
-			import { ProjectQuickSend } from "./src/renderer/src/features/projects/components/project-quick-send";
-
-			export function mount(container, props) {
-				const root = createRoot(container);
-				root.render(createElement(ProjectQuickSend, props));
-				return root;
-			}
-		`,
-		resolveDir: ROOT,
-		sourcefile: "projects-quick-send.mjs",
+		contents: [
+			'export { ProjectQuickSend } from "../src/renderer/src/features/projects/components/project-quick-send";',
+			'export { createRoot } from "react-dom/client";',
+			'export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
+		].join("\n"),
+		resolveDir: `${process.cwd()}/scripts`,
 	},
 	bundle: true,
 	format: "esm",
 	platform: "node",
-	packages: "external",
-	jsx: "automatic",
-	loader: { ".css": "empty" },
-	/*
-	 * `import.meta.env` IS VITE'S, and the config singleton validates it at
-	 * import time (`load-config.ts`); Node ESM has no such key, so an
-	 * undefended import throws before any case runs. An empty object is the
-	 * honest stand-in — every schema field is optional-with-default, and no
-	 * test here dials a service (the `agents-composer-mount.test.mjs`
-	 * recipe, verbatim).
-	 */
-	define: { "import.meta.env": "{}" },
-	alias: {
-		"@shared": `${ROOT}/src/renderer/src/shared`,
-		"@features": `${ROOT}/src/renderer/src/features`,
-	},
 	write: false,
+	mainFields: ["module", "main"],
+	conditions: ["import"],
+	jsx: "automatic",
+	external: ["react", "react-dom", "react-dom/client", "react/jsx-runtime"],
+	alias: {
+		"@shared": `${process.cwd()}/src/renderer/src/shared`,
+		"@features": `${process.cwd()}/src/renderer/src/features`,
+		"@assets": `${process.cwd()}/src/renderer/src/assets`,
+	},
+	loader: {
+		".css": "empty",
+		".svg": "text",
+		".png": "dataurl",
+		".webp": "dataurl",
+		".ttf": "empty",
+		".woff": "empty",
+		".woff2": "empty",
+		".eot": "empty",
+	},
+	define: { "import.meta.env": "{}" },
+	banner: {
+		js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
+	},
 });
-const bundlePath = new URL(
-	`./_projects-quick-send-${process.pid}.mjs`,
-	import.meta.url,
-);
+const bundlePath = new URL("._projects-quick-send.bundle.mjs", import.meta.url);
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-process.on("exit", () => {
-	try {
-		unlinkSync(bundlePath.pathname);
-	} catch {
-		// already gone
-	}
-});
-const { mount } = await import(bundlePath.href);
+after(() => unlink(bundlePath).catch(() => {}));
 
-/* ------------------------------------------------------------- the fixture */
+const { ProjectQuickSend, QueryClient, QueryClientProvider, createRoot } =
+	await import(bundlePath.href);
+
+/* ---------------------------------------------------------------- fixtures */
 
 /** One linked session, the fields the strip reads. */
-const LINK = {
+const link = (overrides = {}) => ({
 	session_id: "s1",
 	exists: true,
 	title: "Payments cutover",
@@ -208,7 +314,8 @@ const LINK = {
 	runtime: { state: "live", busy: false, heartbeat_age_s: 1, pid: 1 },
 	subagents: null,
 	todos: null,
-};
+	...overrides,
+});
 
 /** Bytes with a PNG signature; the reader only has to round-trip them. */
 const PNG_BYTES = [
@@ -216,176 +323,201 @@ const PNG_BYTES = [
 ];
 const PNG_DATA_URL = `data:image/png;base64,${Buffer.from(PNG_BYTES).toString("base64")}`;
 
-const settle = async () => {
-	await new Promise((resolve) => setTimeout(resolve, 0));
-	await new Promise((resolve) => setTimeout(resolve, 10));
+const mounts = [];
+const mountStrip = async (props = {}) => {
+	const host = document.createElement("div");
+	document.body.append(host);
+	const root = createRoot(host);
+	const queryClient = new QueryClient({
+		defaultOptions: { queries: { retry: false } },
+	});
+	const sent = [];
+	await act(async () => {
+		root.render(
+			React.createElement(
+				QueryClientProvider,
+				{ client: queryClient },
+				React.createElement(ProjectQuickSend, {
+					links: [link()],
+					target: "s1",
+					onTargetChange: () => {},
+					onSend: async (...args) => {
+						sent.push(args);
+						return true;
+					},
+					focusTick: 0,
+					...props,
+				}),
+			),
+		);
+	});
+	mounts.push({ root, queryClient });
+	return { host, root, sent, queryClient };
 };
 
-const input = (host) =>
-	host.querySelector('[aria-label="Message the selected session"]');
-const sendControl = (host) =>
-	host.querySelector('[data-tour-tag="project-quick-send"]');
+after(async () => {
+	for (const { root, queryClient } of mounts) {
+		await act(async () => root.unmount());
+		queryClient.clear();
+	}
+	/*
+	 * AND RELEASE THE TIMERS THE HARNESS LET RUN. Mounting the composer schedules
+	 * deferred work (jsdom's own selection-change timeout on every `focus()`, the
+	 * component's five-second hint countdown, react-query's query GC), and a
+	 * pending handle keeps the test process alive after the last case
+	 * (`projects-quick-send.test.mjs`'s first head left this suite's lane bound to
+	 * kill the file and name it as a stall, which reads as a product defect).
+	 * Tracking every handle this file creates and clearing it here is a property
+	 * of the rig, not a claim about the product: nothing asserted above depends on
+	 * a timer surviving the run.
+	 */
+	for (const handle of liveTimers) {
+		clearTimeout(handle);
+		clearInterval(handle);
+	}
+	liveTimers.clear();
+});
 
-/** The composer's own typing shape: the value, then the event a key sends. */
+const box = (host) => host.querySelector("textarea");
+const sendControl = (host) =>
+	host.querySelector('button[aria-label="Send message"]');
+
+/** Type into the composer's box the way a keyboard does. */
 const type = async (host, text) => {
-	const box = input(host);
-	assert.ok(box, "the strip's box is mounted");
+	const field = box(host);
+	assert.ok(field, "the composer's box is mounted");
 	const setter = Object.getOwnPropertyDescriptor(
-		dom.window.HTMLInputElement.prototype,
+		DOM.window.HTMLTextAreaElement.prototype,
 		"value",
 	)?.set;
 	await act(async () => {
-		setter?.call(box, text);
-		box.dispatchEvent(new dom.window.Event("input", { bubbles: true }));
+		setter?.call(field, text);
+		field.dispatchEvent(new DOM.window.Event("input", { bubbles: true }));
 	});
-	return box;
+	return field;
 };
 
-const pasteItems = async (host, items) => {
-	const box = input(host);
-	assert.ok(box, "the strip's box is mounted");
+const pressEnter = async (host) => {
 	await act(async () => {
-		const event = new dom.window.Event("paste", {
-			bubbles: true,
-			cancelable: true,
-		});
-		Object.defineProperty(event, "clipboardData", { value: { items } });
-		box.dispatchEvent(event);
+		box(host).dispatchEvent(
+			new DOM.window.KeyboardEvent("keydown", {
+				key: "Enter",
+				bubbles: true,
+				cancelable: true,
+			}),
+		);
 		await settle();
 	});
 };
 
-/** One image item, as a clipboard hands it over. */
-const imageItem = (bytes = PNG_BYTES) => {
-	const file = new dom.window.File([new Uint8Array(bytes)], "screenshot.png", {
+const pasteImage = async (host) => {
+	const file = new DOM.window.File([new Uint8Array(PNG_BYTES)], "shot.png", {
 		type: "image/png",
 	});
-	return { type: "image/png", kind: "file", getAsFile: () => file };
-};
-
-const mountStrip = async (props = {}) => {
-	const host = document.createElement("div");
-	document.body.append(host);
-	const sent = [];
-	let root;
 	await act(async () => {
-		root = mount(host, {
-			links: [LINK],
-			target: "s1",
-			onTargetChange: () => {},
-			onSend: async (...args) => {
-				sent.push(args);
-				return true;
+		const event = new DOM.window.Event("paste", {
+			bubbles: true,
+			cancelable: true,
+		});
+		Object.defineProperty(event, "clipboardData", {
+			value: {
+				items: [{ type: "image/png", kind: "file", getAsFile: () => file }],
+				getData: () => "",
 			},
-			focusTick: 0,
-			...props,
 		});
+		box(host).dispatchEvent(event);
+		await settle();
 	});
-	return { host, root, sent };
 };
 
-const unmount = async (root) => {
-	await act(async () => root.unmount());
+const settle = async () => {
+	await new Promise((resolve) => setTimeout(resolve, 0));
+	await new Promise((resolve) => setTimeout(resolve, 20));
 };
 
-/* ------------------------------------------------------------------ cases */
+/* -------------------------------------------------------------------- cases */
 
-test("a pasted screenshot alone arms Send and rides the seam as an attachment", async () => {
-	const { host, root, sent } = await mountStrip();
-	try {
-		assert.equal(
-			sendControl(host).disabled,
-			true,
-			"an empty strip cannot send",
-		);
-		await pasteItems(host, [imageItem()]);
-		assert.equal(
-			sendControl(host).disabled,
-			false,
-			"the image alone arms Send — issue #790: this used to stay dead until text appeared",
-		);
-		const tile = host.querySelector("img");
-		assert.ok(tile, "the pasted image is drawn as a preview tile");
-		assert.equal(tile.getAttribute("src"), PNG_DATA_URL);
-		await act(async () => {
-			sendControl(host).dispatchEvent(
-				new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
-			);
-			await settle();
-		});
-		assert.equal(sent.length, 1, "exactly one send left the strip");
-		assert.deepEqual(
-			sent[0],
-			["s1", "", "prompt", [PNG_DATA_URL]],
-			"the seam receives the pasted image as the strip's attachment list",
-		);
-		assert.equal(input(host).value, "", "the delivered text is spent");
-		assert.equal(
-			host.querySelector("img"),
-			null,
-			"and the delivered attachment is spent with it",
-		);
-	} finally {
-		await unmount(root);
-	}
+test("the strip mounts the shared composer and its send carries the typed text", async () => {
+	const { host, sent } = await mountStrip();
+	assert.ok(
+		box(host),
+		"the shared composer's textarea is what the strip mounts",
+	);
+	assert.ok(
+		sendControl(host),
+		"and the shared composer's own send control, not a second one",
+	);
+	await type(host, "  steer it back  ");
+	await pressEnter(host);
+	assert.equal(sent.length, 1, "exactly one send left the strip");
+	assert.deepEqual(sent[0], ["s1", "steer it back", "prompt", []]);
 });
 
-test("text alone still sends, and an empty strip still cannot", async () => {
-	const { host, root, sent } = await mountStrip();
-	try {
-		assert.equal(sendControl(host).disabled, true, "empty stays disabled");
-		await type(host, "  steer it back  ");
-		assert.equal(sendControl(host).disabled, false);
-		await act(async () => {
-			sendControl(host).dispatchEvent(
-				new dom.window.MouseEvent("click", { bubbles: true, cancelable: true }),
-			);
-			await settle();
-		});
-		assert.equal(sent.length, 1);
-		assert.deepEqual(sent[0], ["s1", "steer it back", "prompt", []]);
-	} finally {
-		await unmount(root);
-	}
+test("a pasted screenshot alone rides the seam as an attachment (issue #790)", async () => {
+	const { host, sent } = await mountStrip();
+	await pasteImage(host);
+	assert.ok(
+		host.querySelector("img"),
+		"the pasted image is drawn by the composer's own preview",
+	);
+	await pressEnter(host);
+	assert.equal(sent.length, 1, "an image alone is a message");
+	assert.deepEqual(sent[0], ["s1", "", "prompt", [PNG_DATA_URL]]);
 });
 
-test("a non-image paste stages nothing — the strip's route carries images only", async () => {
-	const { host, root, sent } = await mountStrip();
-	try {
-		const file = new dom.window.File([new Uint8Array([1, 2, 3])], "notes.pdf", {
-			type: "application/pdf",
-		});
-		await pasteItems(host, [
-			{ type: "application/pdf", kind: "file", getAsFile: () => file },
-		]);
-		assert.equal(
-			sendControl(host).disabled,
-			true,
-			"a non-image paste does not arm Send",
-		);
-		assert.equal(host.querySelector("img"), null, "nothing is drawn for it");
-		assert.equal(sent.length, 0);
-	} finally {
-		await unmount(root);
-	}
+test("a busy target still travels as a steer", async () => {
+	const { host, sent } = await mountStrip({
+		links: [
+			link({
+				runtime: { state: "live", busy: true, heartbeat_age_s: 1, pid: 1 },
+			}),
+		],
+	});
+	assert.match(
+		host.textContent ?? "",
+		/The session is working — this message steers the running turn\./,
+		"the caption the operator reads is on screen",
+	);
+	await type(host, "how is it going?");
+	await pressEnter(host);
+	assert.equal(sent.length, 1);
+	assert.equal(
+		sent[0][2],
+		"steer",
+		"the admission path is told this is a steer",
+	);
 });
 
-/*
- * D3 of design round 1 on issue #790: the clipboard is the strip's only image
- * route, so the placeholder is the surface's one affordance for it - without
- * it the capability is discoverable only by someone who happens to try
- * pasting, which is the silence the strip was fixed for. Pinned as copy:
- * the line is the contract.
- */
-test("the strip's empty box names its clipboard route", async () => {
-	const { host, root } = await mountStrip();
-	try {
-		assert.match(
-			input(host).getAttribute("placeholder") ?? "",
-			/paste an image/,
-			"the placeholder must name pasting an image (design round 1, D3)",
-		);
-	} finally {
-		await unmount(root);
-	}
+test("a refused send keeps the draft in the box", async () => {
+	const { host, sent } = await mountStrip({
+		onSend: async (...args) => {
+			sent.push(args);
+			return false;
+		},
+	});
+	await type(host, "keep me");
+	await pressEnter(host);
+	assert.equal(sent.length, 1);
+	assert.equal(
+		box(host).value,
+		"keep me",
+		"the composer's `false` answer puts the text back",
+	);
+});
+
+test("the readings are read from the SELECTED session, not invented", async () => {
+	desktopRequests.length = 0;
+	const { host } = await mountStrip();
+	await settle();
+	const asked = desktopRequests.filter((r) => r.op === "sessions.get");
+	assert.ok(
+		asked.length >= 1,
+		`the strip asked sessions.get (saw ${JSON.stringify(desktopRequests)})`,
+	);
+	assert.equal(asked[0].sessionId, "s1", "for the selected target");
+	assert.match(
+		host.textContent ?? "",
+		/selected-session/,
+		"and the snapshot it answered with is what the strip paints",
+	);
 });
