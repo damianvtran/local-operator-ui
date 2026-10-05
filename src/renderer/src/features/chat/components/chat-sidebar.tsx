@@ -180,6 +180,7 @@ import {
 	deviceNetworkNames,
 	mergeRemoteRowsByActivity,
 	remoteClause,
+	remoteUnreachableClause,
 } from "../chat-remote";
 import {
 	type ArchiveView,
@@ -3977,10 +3978,14 @@ export function ChatSidebar({
 		const pinned = row.pinned === true;
 		/*
 		 * THE REMOTE HALF OF THE ROW (the shared convention): one predicate and the
-		 * ONE sentence, built here and read by both channels - the mark's `sr-only`
-		 * beside the title and the flyout's own line below - so neither can drift.
-		 * The network name is looked up by the owner's id; a device the networks
-		 * read cannot name degrades to the device clause alone.
+		 * ONE FRAGMENT PER LINE, built here and read by both channels - the
+		 * `sr-only` spans beside the title and the flyout's own lines below - so
+		 * neither can drift: the location clause (`on <device> · <network>`) and,
+		 * on a row whose owner did not answer, the unreachable line
+		 * (`unreachable · <reason>`) as its OWN line rather than fused onto the
+		 * device clause (design review round 1, D2). The network name is looked up
+		 * by the owner's id; a device the networks read cannot name degrades to the
+		 * device clause alone.
 		 */
 		const remote = row.locality === "remote";
 		const remoteHost = remote
@@ -3991,6 +3996,7 @@ export function ChatSidebar({
 					),
 				)
 			: "";
+		const remoteUnreachable = remote ? remoteUnreachableClause(row) : "";
 		/*
 		 * THE SUBAGENT INDICATOR (the operator's report, 2026-09-29).
 		 *
@@ -4300,9 +4306,14 @@ export function ChatSidebar({
 					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
 				{/* THE REMOTE ROW'S OTHER CHANNEL (the shared convention): the SAME
-				    fragment the `sr-only` sentence beside the title reads, drawn as its
-				    own line under the status - the pointer's half of one sentence. */}
+				    fragments the `sr-only` spans beside the title read, drawn as their
+				    own lines under the status - the pointer's half of the same
+				    sentence. The unreachable line is the split form (design review
+				    round 1, D2), never fused onto the device clause. */}
 				{remote && <span className="block">{remoteHost}</span>}
+				{remoteUnreachable && (
+					<span className="block">{remoteUnreachable}</span>
+				)}
 			</>
 		);
 		const rowButton = (
@@ -4416,9 +4427,25 @@ export function ChatSidebar({
 					);
 				}}
 			>
-				{row.locality === "remote" && (
-					<ChatRemoteMark unreachable={row.reachable === false} />
-				)}
+				{/*
+				 * THE LOCALITY CELL, DRAWN BY EVERY ROW (design review round 1, D5;
+				 * the TUI's decision 2, "the locality cell is ALWAYS the mark"):
+				 * remote rows fill it with the locality mark and local rows leave it
+				 * empty, so every status glyph and every title starts on the same x
+				 * and the merged list reads as one column instead of carrying a
+				 * ragged ~18 px leading edge on the rows this change exists to make
+				 * seamless. The cell is a fixed `size-3.5` box (the mark's own size),
+				 * so a dropped link cannot reflow the row: the mark swaps WITHIN the
+				 * cell, the cell never moves.
+				 */}
+				<span
+					aria-hidden="true"
+					className="flex size-3.5 shrink-0 items-center justify-center"
+				>
+					{row.locality === "remote" && (
+						<ChatRemoteMark unreachable={row.reachable === false} />
+					)}
+				</span>
 				<ChatSessionStatus row={row} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
@@ -4614,8 +4641,13 @@ export function ChatSidebar({
 				    beside the mark so the row reads state, title, why-it-is-on-screen,
 				    then WHERE IT RUNS - with the attribution rather than beside the
 				    counts, because "which device" is an identity fact like "opened by".
-				    The fragment is the same one the flyout draws (`remoteHost`). */}
+				    The fragments are the same ones the flyout draws (`remoteHost`,
+				    then the split `remoteUnreachable` line when the owner did not
+				    answer). */}
 				{remote && <span className="sr-only">, {remoteHost}</span>}
+				{remoteUnreachable && (
+					<span className="sr-only">, {remoteUnreachable}</span>
+				)}
 				{/* THE ATTRIBUTION'S `sr-only` SENTENCE, on the rows whose visible slot is the
 				    agent-opened claim's: the team slot above, and the silent team-less
 				    one. It is what keeps ", opened by coder" reachable from the row itself

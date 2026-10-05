@@ -6,7 +6,11 @@
  * heading to say where a row runs - the row itself must, and the mark is that
  * statement. It sits FIRST in the row, before the status glyph, for the reason
  * the archived marker states one slot over: the trailing slot admits exactly one
- * statement, and a leading fact cannot be truncated away or compete for it.
+ * statement, and a leading fact cannot be truncated away or compete for it. THE
+ * CELL IS NOT THE MARK'S OWN: the row draws a reserved `size-3.5` locality cell
+ * on every row (`chat-sidebar.tsx`) and this mark fills it on remote rows only,
+ * so every title starts on the same x whichever device a row runs on and a
+ * dropped link can never reflow the list (design review round 1, D5).
  *
  * THE GLYPH IS A CROSS-SURFACE DECISION (design round, 2026-10-05): the mark is
  * the "elsewhere / external" arrow - `↗` in the TUI's own register - rather than

@@ -30,6 +30,7 @@ const {
 	mergeRemoteRowsByActivity,
 	remoteClause,
 	remoteDeviceLabel,
+	remoteUnreachableClause,
 } = await import(
 	`data:text/javascript;base64,${Buffer.from(bundle.outputFiles[0].text).toString("base64")}`
 );
@@ -87,31 +88,42 @@ test("the network lookup is first-wins and skips malformed entries", () => {
 test("the clause reads the device and the network", () => {
 	assert.equal(
 		remoteClause(remote(), "damian-mesh"),
-		"on cloud-node-1 (damian-mesh)",
+		"on cloud-node-1 · damian-mesh",
+		"the cross-surface separator (design round 1, D1): the TUI's own ` · `",
 	);
 	assert.equal(
 		remoteClause(remote(), null),
 		"on cloud-node-1",
-		"an unnamed network drops the clause rather than printing empty parens",
+		"an unnamed network drops the clause rather than printing an empty half",
 	);
 });
 
-test("the clause says when the owner did not answer, from the wire's own words", () => {
+test("the unreachable line is split, from the wire's own words, or the shared gloss", () => {
+	/*
+	 * Design review round 1, D2: the reason is its OWN line (`unreachable ·
+	 * <reason>`), mirroring the TUI's split, never fused onto the device
+	 * clause; a row with no reason says the same fallback the sibling's
+	 * `peer_reason_words` ends at, and a reachable row says nothing at all.
+	 */
 	assert.equal(
-		remoteClause(
+		remoteUnreachableClause(
 			remote({ reachable: false, unreachable_reason: "link down 4m ago" }),
-			"damian-mesh",
 		),
-		"on cloud-node-1 (damian-mesh) - unreachable: link down 4m ago",
+		"unreachable · link down 4m ago",
 	);
 	assert.equal(
-		remoteClause(remote({ reachable: false }), null),
-		"on cloud-node-1 - unreachable",
-		"a row with no reason says so and invents nothing",
+		remoteUnreachableClause(remote({ reachable: false })),
+		"unreachable · it did not answer",
+		"no reason on the wire says the shared gloss, and invents no cause",
 	);
 	assert.equal(
-		remoteClause(remote({ reachable: undefined }), null),
-		"on cloud-node-1",
+		remoteUnreachableClause(remote()),
+		"",
+		"a reachable row has no unreachable line",
+	);
+	assert.equal(
+		remoteUnreachableClause(remote({ reachable: undefined })),
+		"",
 		"absence of reachability is no claim, not an unreachable claim",
 	);
 });
@@ -165,7 +177,18 @@ const SIDEBAR = readFileSync(
 	"utf8",
 );
 
-test("the sidebar draws the mark, the one sentence, and no separate section", () => {
+test("the sidebar draws the reserved cell, the split lines, and no separate section", () => {
+	/*
+	 * THE RESERVED CELL (design review round 1, D5): the row draws a `size-3.5`
+	 * locality cell on EVERY row - the mark fills it on remote rows only - so
+	 * every status glyph and title starts on the same x, and a dropped link
+	 * cannot reflow the row.
+	 */
+	assert.match(
+		SIDEBAR,
+		/size-3\.5 shrink-0 items-center justify-center/,
+		"the cell is a fixed box the mark swaps within",
+	);
 	assert.match(
 		SIDEBAR,
 		/row\.locality === "remote" && \(\s*<ChatRemoteMark unreachable=\{row\.reachable === false\} \/>/,
@@ -175,13 +198,24 @@ test("the sidebar draws the mark, the one sentence, and no separate section", ()
 		SIDEBAR.indexOf("const marks = subagentMarks(row)"),
 	);
 	assert.match(clause, /remoteClause\(/);
+	assert.match(clause, /remoteUnreachableClause\(/);
 	assert.match(
 		SIDEBAR,
 		/\{remote && <span className="block">\{remoteHost\}<\/span>\}/,
 	);
 	assert.match(
 		SIDEBAR,
+		/\{remoteUnreachable && \(\s*<span className="block">\{remoteUnreachable\}<\/span>\s*\)\}/,
+		"the unreachable line is its own block line (design round 1, D2)",
+	);
+	assert.match(
+		SIDEBAR,
 		/\{remote && <span className="sr-only">, \{remoteHost\}<\/span>\}/,
+	);
+	assert.match(
+		SIDEBAR,
+		/\{remoteUnreachable && \(\s*<span className="sr-only">, \{remoteUnreachable\}<\/span>/,
+		"the accessible name joins the same split fragment",
 	);
 });
 

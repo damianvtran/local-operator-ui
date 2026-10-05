@@ -50,6 +50,7 @@ const bundle = await build({
 const {
 	arrivalCopy,
 	devicePickerModel,
+	localConversationCount,
 	MESH_READ_FAILURE,
 	movePair,
 	NOT_HERE_WHY,
@@ -1070,4 +1071,25 @@ test("a draft aimed at a peer marks THAT device, not this one, and warns nobody"
 	assert.equal(model.self.state, "candidate");
 	assert.equal(rowFor(model, BUILD).state, "current");
 	assert.equal(model.footer, null);
+});
+
+test("the self count is this device's own conversations, never another device's", () => {
+	/*
+	 * Agent review round 1, N1: the self row's count excludes the federated rows
+	 * the ambient read lands in the same store (the shared convention). A plain
+	 * catalogue page's rows carry no `locality` at all, so the reading is "not
+	 * remote" - rows it cannot classify are counted, never silently dropped.
+	 */
+	assert.equal(localConversationCount([]), 0);
+	assert.equal(
+		localConversationCount([
+			{ locality: "remote" },
+			{},
+			{ locality: "remote" },
+			{ locality: undefined },
+			{ locality: "local" },
+		]),
+		3,
+		"remote rows are the exclusion; everything else belongs to this device",
+	);
 });

@@ -49,6 +49,7 @@ import {
 	type DeviceRow,
 	deviceName,
 	devicePickerModel,
+	localConversationCount,
 	movePair,
 	panePlacement,
 } from "./chat-device-model";
@@ -129,16 +130,11 @@ export const ChatDeviceSlot: FC<{ sessionId?: string; draftKey?: string }> = ({
 	 * row says how many conversations THIS device holds, and since the ambient
 	 * federated read lands remote rows in this same store (the shared convention),
 	 * counting `sessions.length` would credit this device with another one's
-	 * conversations. A remote row is the one shape that carries `locality:
-	 * "remote"`; a plain page's rows carry no locality at all, which is why the
-	 * test is "not remote" rather than "local".
+	 * conversations. The rule itself is a value now (`localConversationCount`,
+	 * tested with the rest of the model - agent review round 1, N1).
 	 */
 	const localCount = useCanonicalSessionsStore((state) =>
-		state.sessions.reduce(
-			(count, candidate) =>
-				candidate.locality === "remote" ? count : count + 1,
-			0,
-		),
+		localConversationCount(state.sessions),
 	);
 	const move = useChatDeviceStore((state) =>
 		sessionId ? state.moves[sessionId] : undefined,

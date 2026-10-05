@@ -313,6 +313,40 @@ async function parkPointer(cdp) {
 	});
 }
 
+/** One real key press: focus the target by JS (the app's own element), then
+ * dispatch keyDown/keyUp through CDP's input pipeline, so the app's React
+ * handler sees a genuine event. Used for the sidebar divider's keyboard
+ * register (Home/End/Enter), which is how the narrow frame is reached at the
+ * 220 px floor without synthesising a drag. */
+async function pressKey(cdp, selector, key) {
+	const focused = await cdp.eval(`(() => {
+		const el = document.querySelector(${JSON.stringify(selector)});
+		if (!el) return false;
+		el.focus();
+		return document.activeElement === el;
+	})()`);
+	if (!focused) throw new Error(`no focusable element for ${selector}`);
+	const codes = {
+		Home: { code: "Home", windowsVirtualKeyCode: 36 },
+		End: { code: "End", windowsVirtualKeyCode: 35 },
+		Enter: { code: "Enter", windowsVirtualKeyCode: 13 },
+	};
+	const info = codes[key];
+	if (!info) throw new Error(`unhandled key ${key}`);
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "rawKeyDown",
+		key,
+		code: info.code,
+		windowsVirtualKeyCode: info.windowsVirtualKeyCode,
+	});
+	await cdp.send("Input.dispatchKeyEvent", {
+		type: "keyUp",
+		key,
+		code: info.code,
+		windowsVirtualKeyCode: info.windowsVirtualKeyCode,
+	});
+}
+
 /* -------------------------------------------------------------- readings --- */
 
 /**
@@ -896,7 +930,7 @@ async function main() {
 				if (tips.some((t) => t.includes("cloud-node-1"))) break;
 				await sleep(300);
 			}
-			const wanted = `on ${PEER_NAME} (${NETWORK_NAME})`;
+			const wanted = `on ${PEER_NAME} · ${NETWORK_NAME}`;
 			check(
 				"after:hover sentence",
 				tips.some((t) => t.includes(wanted)),
@@ -907,7 +941,10 @@ async function main() {
 			/*
 			 * THE UNREACHABLE ROW'S TOOLTIP EXPANDS WHAT THE STROKE STATES: the
 			 * at-rest cue is the mark itself (design round: same ink, same cell, no
-			 * reflow) and the flyout is the channel that adds the wire's own reason.
+			 * reflow) and the flyout is the channel that adds the wire's own reason
+			 * - as its OWN line, `unreachable · <reason>`, split from the location
+			 * clause (design review round 1, D2), and photographed here as pixels
+			 * (the same round's D2 asked for the frame the state exists for).
 			 */
 			await hoverAt(cdp, "[data-chat-row]", UNREACHABLE_TITLE);
 			let unreachableTips = [];
@@ -920,11 +957,100 @@ async function main() {
 			check(
 				"after:unreachable tooltip expands the stroke",
 				unreachableTips.some((t) =>
-					t.includes("unreachable: link down 4m ago"),
+					t.includes(`unreachable · link down 4m ago`),
 				),
 				`tooltips ${JSON.stringify(unreachableTips)}`,
 			);
+			/*
+			 * A BEAT BEFORE THE FRAME, and the state re-read after it: the text can
+			 * be in the DOM while the fade is still running, and the frame is the
+			 * one artifact that cannot be re-taken from the run's own record.
+			 */
+			await sleep(500);
+			const tipsBeforeFrame = await cdp.eval(TOOLTIP);
+			check(
+				"after:the unreachable tooltip is up for its frame",
+				tipsBeforeFrame.some((t) =>
+					t.includes(`unreachable · link down 4m ago`),
+				),
+				`tooltips ${JSON.stringify(tipsBeforeFrame)}`,
+			);
+			await shutter(cdp, "hover-unreachable");
 			await parkPointer(cdp);
+
+			/*
+			 * THE NARROW FRAME AND THE ONE LEADING EDGE (design review round 1,
+			 * D5 + N2). The alignment check first: the title's own box x is read on
+			 * a remote row and a local one and must be EQUAL - the reserved
+			 * locality cell is what makes the merged list one column. Then the
+			 * sidebar is taken to its 220 px floor through the divider's own
+			 * keyboard register (Home/End move the handle to its travel's ends; the
+			 * width is asserted from `aria-valuenow`), photographed there, and
+			 * restored (Enter) before the open step, whose frame reads at the
+			 * default width.
+			 */
+			const leading = await cdp.eval(`(() => {
+				const rows = [...document.querySelectorAll("[data-chat-row]")];
+				const pick = (t) => rows.find((r) => (r.textContent || "").includes(t));
+				const xOf = (t) => {
+					const el = pick(t)?.querySelector("[data-session-title]");
+					return el ? Math.round(el.getBoundingClientRect().x) : null;
+				};
+				return { remote: xOf(${JSON.stringify(UNREACHABLE_TITLE)}), local: xOf(${JSON.stringify(LOCAL_TITLES[0])}) };
+			})()`);
+			check(
+				"after:remote and local titles share one leading edge (D5)",
+				leading.remote !== null && leading.remote === leading.local,
+				`remote ${leading.remote} vs local ${leading.local}`,
+			);
+			const divider = '[role="separator"][aria-label*="Resize the sidebar"]';
+			const widthNow = () =>
+				cdp.eval(`(() => {
+					const el = document.querySelector(${JSON.stringify(divider)});
+					return el ? Number(el.getAttribute("aria-valuenow")) : null;
+				})()`);
+			await pressKey(cdp, divider, "Home");
+			await sleep(250);
+			let narrowWidth = await widthNow();
+			if (narrowWidth !== 220) {
+				/* Home lands on one end of the handle's travel; the floor may be
+				 * the other. (Enter, below, restores the default either way.) */
+				await pressKey(cdp, divider, "End");
+				await sleep(250);
+				narrowWidth = await widthNow();
+			}
+			check(
+				"after:the narrow frame is at the 220 px floor",
+				narrowWidth === 220,
+				`aria-valuenow ${narrowWidth}`,
+			);
+			check(
+				"after:the marks survive the narrow width",
+				(await cdp.eval(
+					'document.querySelectorAll("[data-remote-mark]").length',
+				)) === 4,
+				"4 marks at 220 px",
+			);
+			await parkPointer(cdp);
+			await sleep(200);
+			const narrowRegion = await cdp.eval(SIDEBAR);
+			if (narrowRegion.region) {
+				await shutter(cdp, "sidebar-narrow", {
+					clip: {
+						x: narrowRegion.region.x,
+						y: Math.max(0, narrowRegion.region.y),
+						width: narrowRegion.region.width,
+						height: Math.min(WIN_H - Math.max(0, narrowRegion.region.y), 620),
+					},
+				});
+			}
+			await pressKey(cdp, divider, "Enter");
+			await sleep(250);
+			check(
+				"after:the width restores before the open step",
+				(await widthNow()) !== 220,
+				`aria-valuenow ${await widthNow()}`,
+			);
 
 			/*
 			 * THE OPERATOR'S CASE, END TO END: opening the remote conversation from

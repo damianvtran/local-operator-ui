@@ -1,18 +1,22 @@
 /** Canonical sessions are the only conversation identities. Profile names stage
  * drafts; the legacy agent mapping is retained only to resolve old deep links.
  *
- * SHARED CONVENTION, NAMED HERE AND NAMED THE SAME WAY BY THE TUI'S SIBLING
- * CHANGE (kept verbatim across surfaces): remote rows are first-class - a
- * session another device holds merges into the same bins as a local one
- * (Running, Today, Pinned, This week, Older), carries a small locality mark on
- * the row, and its hover and accessible name read the owning device and its
- * network; no surface draws a separate remote section.
+ * SHARED CONVENTION, NAMED THE SAME WAY AT THE TUI'S ROW-NORMALISATION POINT
+ * (`SessionSidebar._unpinned_rank`) AND IN ITS `docs/design/mesh-ui.md` §1.3.1,
+ * AND BY THIS SIBLING CHANGE - the sentence kept verbatim across surfaces
+ * (design review round 1, D4; agent review round 1, R1):
+ *
+ * > Remote rows are first-class: they file into the same bins as local rows under
+ * > the same ordering rule, carry a per-row indicator, and their hover reads the
+ * > owning device and its network; there is no separate remote section.
  *
  * This module is the UI's half of that sentence: `settlePeerCatalogue` merges a
- * peers-inclusive answer's remote rows into this catalogue, and the sidebar
- * renders them through the one row component - the mark in
- * `features/chat/components/chat-remote-mark.tsx`, the sentence in
- * `features/chat/chat-remote.ts`.
+ * peers-inclusive answer's remote rows into this catalogue, the sidebar renders
+ * them through the one row component (the reserved locality cell and its mark in
+ * `features/chat/components/chat-remote-mark.tsx`, the flyout's and the
+ * accessible name's one fragment in `features/chat/chat-remote.ts`), and the
+ * bins that sentence names are this list's own - Running, Today, This week,
+ * Older, Pinned.
  */
 import {
 	DesktopControlError,

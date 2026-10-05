@@ -63,17 +63,18 @@ export function deviceNetworkNames(value: unknown): Map<string, string> {
 }
 
 /**
- * The one sentence: `on <device> (<network>)`, the network clause omitted when
- * the networks read cannot name one, the unreachable clause appended when the
- * row's own `reachable` says the owner did not answer the poll.
+ * The location clause: `on <device> · <network>`, the network half omitted when
+ * the networks read cannot name one (no name is no claim).
+ *
+ * THE SEPARATOR IS CROSS-SURFACE (design review round 1, D1): the TUI's
+ * location line reads `on <device> · <network>` (`mesh-ui.md` §1.3.1,
+ * `session_sidebar.py`'s tooltip), and this clause is the same fragment in the
+ * desktop's register - one feature, one separator.
  *
  * LOWERCASE, because both readers use it inside a sentence the row already
  * starts: the flyout draws it as its own line under the status, and the
- * accessible name joins it as `, on <device> (<network>)` - the same fragment in
+ * accessible name joins it as `, on <device> · <network>` - the same fragment in
  * both, so neither can drift from the other.
- *
- * The unreachable half never invents a cause: the wire's own sentence rides
- * through when it is there, and a row that has none says `unreachable` alone.
  */
 export function remoteClause(
 	row: CanonicalSessionRow,
@@ -81,13 +82,33 @@ export function remoteClause(
 ): string {
 	const label = remoteDeviceLabel(row);
 	const network = (networkName ?? "").trim();
-	const host = network ? `on ${label} (${network})` : `on ${label}`;
-	if (row.reachable !== false) return host;
+	return network ? `on ${label} · ${network}` : `on ${label}`;
+}
+
+/**
+ * The unreachable row's own line: `unreachable · <reason>`, split from the
+ * location clause onto its own line (design review round 1, D2, aligning with
+ * the TUI's `unreachable · <gloss>` line): the device clause stays a terse noun
+ * phrase like the rest of the family while the reason says what happened.
+ *
+ * THE REASON NEVER INVENTS A CAUSE: the wire's own sentence rides through when
+ * it is there, and a row that has none says the TUI's shared gloss, `it did not
+ * answer` (`peer_reason_words`'s own fallback at the sibling's source), never a
+ * bare `unreachable`.
+ *
+ * WHAT IS DELIBERATELY NOT PORTED: the TUI's token gloss table
+ * (`peer_reason_words`) - a wire reason that is a machine token
+ * (`connect_failed:<class>`) is printed as the wire wrote it here. The table is
+ * the runtime's vocabulary to keep; this surface names what arrived without
+ * forking it (recorded for the sibling's vocabulary work).
+ */
+export function remoteUnreachableClause(row: CanonicalSessionRow): string {
+	if (row.reachable !== false) return "";
 	const reason =
 		typeof row.unreachable_reason === "string"
 			? row.unreachable_reason.trim()
 			: "";
-	return reason ? `${host} - unreachable: ${reason}` : `${host} - unreachable`;
+	return `unreachable · ${reason || "it did not answer"}`;
 }
 
 /**
