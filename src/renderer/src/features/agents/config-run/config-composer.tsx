@@ -37,6 +37,11 @@
  */
 
 import { CHAT_COLUMN_INSET } from "@features/chat/chat-measure";
+import { draftPreviewQuery } from "@features/chat/draft-selection";
+import {
+	desktopFeatureEnabled,
+	useDesktopCapabilities,
+} from "@shared/api/local-operator/desktop-hooks";
 import {
 	MessageInput,
 	type MessageInputHandle,
@@ -46,7 +51,9 @@ import { Badge } from "@shared/components/ui/badge";
 import { Button } from "@shared/components/ui/button";
 import { useRadientCredentialProbe } from "@shared/hooks/use-credentials";
 import { cn } from "@shared/lib/utils";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { useConversationInputStore } from "@shared/store/conversation-input-store";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, Square } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ConfigRunHandle } from "./use-config-run";
@@ -570,6 +577,32 @@ export function ConfigComposer({
 	const stripObserver = useRef<ResizeObserver | null>(null);
 	const recordingProbe = useRadientCredentialProbe();
 	/*
+	 * THE IDLE BOX'S READINGS COME FROM THE DRAFT PREVIEW, the same resolution a
+	 * new chat's box uses (chat-page.tsx's `preview`), because this box opens on
+	 * the SAME question — a request about to start a conversation — and a box that
+	 * showed no readings where a new chat shows six read as a different composer
+	 * (the operator's report on this page). It asks about the app's staged working
+	 * directory, which is the value the new chat's draft preview is built from; the
+	 * run's own create deliberately names no `cwd` (`use-config-run.ts`: the backend
+	 * resolves it), so the preview is a reading of the resolution the box is about
+	 * to ask for rather than a second, invented request shape.
+	 *
+	 * READ ONLY WHILE THE RUN HAS NO SNAPSHOT: the moment a run is live `run.frontend`
+	 * is the authoritative projection and the preview stops being asked for, exactly
+	 * as the chat pane's does once its session exists.
+	 */
+	const cwd = useCanonicalSessionsStore((state) => state.cwd);
+	const capabilities = useDesktopCapabilities();
+	const draftPreviewOn =
+		run.frontend === null &&
+		run.status === "idle" &&
+		cwd.length > 0 &&
+		desktopFeatureEnabled(capabilities.data, "draft_preview");
+	const preview = useQuery({
+		...draftPreviewQuery({ cwd, model: null }),
+		enabled: draftPreviewOn,
+	});
+	/*
 	 * THE BOX'S CONVERSATION KEY, present from the FIRST PAINT and never re-minted.
 	 *
 	 * WHY IT IS NOT A SESSION ID: the composer refuses to submit without a key and
@@ -705,8 +738,17 @@ export function ConfigComposer({
 	return (
 		<div
 			className={cn(
-				"relative rounded-md border border-hairline bg-surface p-3",
-				hero && "shadow-none",
+				"relative",
+				/*
+				 * THE HERO IS NOT A CARD (operator report on the ask page: the composer
+				 * "sits in a bordered inset card"). The docked box is a control inside a
+				 * pane and keeps its own frame; the hero IS the page's content column,
+				 * and a second border around the composer's own bordered box is the
+				 * boxed-card reading the new-chat composer does not have. The strip still
+				 * positions against this element in both cases (`bottom-full`), so the
+				 * positioning context stays.
+				 */
+				!hero && "rounded-md border border-hairline bg-surface p-3",
 			)}
 			data-testid="config-composer"
 		>
@@ -780,7 +822,13 @@ export function ConfigComposer({
 				 * `onCommand` means none of them opens a picker — because this run's
 				 * model and effort are resolved by the backend, not chosen here.
 				 */
-				sessionStatus={run.frontend ? { frontend: run.frontend } : undefined}
+				sessionStatus={
+					run.frontend
+						? { frontend: run.frontend }
+						: preview.data
+							? { frontend: preview.data.snapshot, draft: true }
+							: undefined
+				}
 				recordingProbe={recordingProbe}
 				hostNotice={{
 					id: ASIDE_NOTICE_ID,
