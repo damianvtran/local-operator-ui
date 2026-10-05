@@ -1985,16 +1985,55 @@ test("a move's deadline is derived from the route's own bound, not from the cont
 test("the reads poll at the catalogue's cadence and stop when the tab is not mounted", () => {
 	const store = source("src/renderer/src/features/mesh/mesh-store.ts");
 	assert.match(store, /export const MESH_POLL_MS = 30_000;/);
+	/*
+	 * The federated sessions read joined the networks read's observer split when
+	 * the sidebar's merge made the ambient mount its poller: the interval, the
+	 * stale time and the focus leg are all reachable only through a POLLING
+	 * observer, and the two non-polling readers (the Mesh tab) cannot be woken
+	 * by a mount, a focus or an alt-tab - the R2-1/R3-3 reasoning, now on both
+	 * reads. `stamp` is required because the answer must carry a request-start
+	 * sequence in the canonical store's scale while this module stays free of
+	 * that store's import graph (see the hook's own note).
+	 */
 	assert.match(
 		store,
-		/refetchInterval: enabled \? MESH_POLL_MS : false,/,
-		"a machine in no mesh issues no call at all, and an unmounted tab polls nothing",
+		/refetchInterval: enabled && poll \? MESH_POLL_MS : false,/,
+		"the cadence is reachable only through a polling observer",
 	);
+	assert.match(
+		store,
+		/staleTime: poll \? 10_000 : Number\.POSITIVE_INFINITY/,
+		"a non-polling reader cannot be woken by a mount or a focus either",
+	);
+	assert.match(store, /refetchOnWindowFocus: poll,/);
 	assert.match(store, /retry: false,/);
+	assert.match(
+		store,
+		/stamp: \(\) => number;[\s\S]{0,140}poll\?: boolean;/,
+		"the query function stamps through the caller - the store is not imported here",
+	);
 	assert.match(
 		store,
 		/queryKey: meshKeys\.peers,/,
 		"the catalogue read is its own query key, deliberately not folded into the session store",
+	);
+	const catalogue = source(
+		"src/renderer/src/features/mesh/peers-catalogue.tsx",
+	);
+	assert.match(
+		catalogue,
+		/poll: true,/,
+		"the ONE ambient observer owns the interval",
+	);
+	assert.match(
+		catalogue,
+		/useMeshSessions\(enabled && membership === "member"/,
+		"and it is gated on known membership, not just the capability",
+	);
+	assert.match(
+		source("src/renderer/src/features/mesh/mesh-page.tsx"),
+		/poll: false,/,
+		"the tab rides it rather than adding a second federated poll",
 	);
 	/*
 	 * The assign-once rule, pinned where it is decided: the memo is keyed on the
