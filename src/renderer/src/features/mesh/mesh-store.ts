@@ -11,12 +11,17 @@
  * DELIBERATELY NOT FOLDED INTO `canonical-sessions-store` (the plan §3): sessions
  * and mesh facts have different fetch cadences, different failure modes and
  * different lifetimes, and folding them would make one backend error blank both
- * surfaces. A failed read here leaves the last known mesh painted and says so; it
- * never touches a session row.
+ * surfaces. A failed read here leaves the last known mesh painted and says so.
  *
- * POLL, NOT STREAM, at 30 s WHILE THE TAB IS MOUNTED AND VISIBLE - and the cadence
- * is now stated per OBSERVER, because review round 2 (R2-1) caught this file
- * claiming something the code no longer did:
+ * WHAT THIS READ DOES DO WITH SESSION ROWS, since the sidebar's merge arrived: its
+ * REMOTE rows land in that store through `settlePeerCatalogue`, applied by this
+ * read's ambient consumer (`features/mesh/peers-catalogue.tsx`) - that is the one
+ * write, it is the sidebar's half of this read, and it lives in the store's own
+ * rules rather than here. Everything else about the read stays here.
+ *
+ * POLL, NOT STREAM, at 30 s WHILE THE APP IS UP AND IN A NETWORK - and the
+ * cadence is now stated per OBSERVER, a rule that has survived three reviews in
+ * this file:
  *
  *   - a mesh listing DIALS every peer on the backend (`relay.peer_status` under
  *     `LISTING_PROBE_BUDGET_S = 12.0`), so it is not free, and the peer-session
@@ -28,19 +33,25 @@
  *   - `refetchIntervalInBackground` is left at its default `false`, so a window in
  *     the background costs nothing - unlike the capabilities poll, which runs in
  *     background for a reason of its own;
- *   - and THE PAGE IS THE ONLY POLLER. The rail (`sidebar-navigation.tsx`) is mounted
- *     on every route and reads this same cache entry for its row, so its observer
- *     asks for NO interval: it makes ONE read when the window starts and then rides
- *     whatever the page's observer fetches while the tab is open. Before round 2 the
- *     rail inherited this 30 s interval, which turned an always-mounted component
- *     into a fan-out to every peer, every 30 seconds, on every screen - the cost the
- *     membership gate exists to avoid paying.
+ *   - and THE AMBIENT MOUNT IS THE ONLY POLLER (`features/mesh/peers-catalogue.tsx`,
+ *     the one observer that carries this 30 s interval). The sidebar's poll must
+ *     never carry `include_peers` (its timer is seconds long; this read dials every
+ *     peer), so the REMOTE ROWS reach the sidebar through this read's own ambient
+ *     consumer, which lands them in the canonical store
+ *     (`settlePeerCatalogue`). The Mesh tab's observer and the device control ask
+ *     for NO interval and ride the ambient entry - the inverse of what this file
+ *     said while the page was the only poller, and the same fix for the same cost:
+ *     before round 2 the rail inherited the interval and every screen fanned out to
+ *     every peer every 30 seconds.
  *
  * ONE READ, NOT ZERO, and that is the honest floor rather than a choice: membership
  * cannot be known without asking (lop advertises `peers` on every install and the
  * catalogue's emptiness is the fact), so a mesh-capable daemon serves exactly one
  * `networks.list` per window for the rail. A daemon that does not advertise `peers`
- * issues nothing at all, because `enabled` is the capability.
+ * issues nothing at all, because `enabled` is the capability. The ambient mount
+ * holds THIS read to the devices that ARE in a network: a member costs one
+ * federated read per 30 s window, and a device in no network short-circuits to no
+ * call at all, so an unpaired install renders exactly the sidebar it always had.
  */
 
 import { backendLoadErrorMessage } from "@shared/api/local-operator/backend-error";
@@ -170,34 +181,73 @@ export function useMeshMembership(enabled: boolean): MeshMembership {
 export const MESH_SESSION_PAGE = 200;
 
 /**
+ * The ambient read's payload: the federated rows, and the sequence the request
+ * took when it started (the store's own currency - `beginAnswer`).
+ */
+export type PeersCatalogueAnswer = {
+	rows: MeshSessionRow[];
+	requestedAt: number;
+};
+
+/**
  * `GET /v1/desktop/sessions?include_peers=true`, normalised.
  *
- * THE ONE PLACE IN THIS APP THAT ASKS FOR THE FEDERATED LIST, and it asks only
- * while the Mesh tab is mounted: `include_peers` makes the backend fan out to every
- * peer's relay (TTL-cached at 20 s) and decorates every row with the flat locality
- * fields, which is exactly what the canvas needs and exactly what the sidebar's
- * two-second poll must never carry. A machine in no network short-circuits to no
- * call at all, so the flag costs an unpaired install nothing.
+ * THE ONE PLACE IN THIS APP THAT ASKS FOR THE FEDERATED LIST. It is asked by ONE
+ * ambient observer (`features/mesh/peers-catalogue.tsx`, mounted in the app's
+ * shell) on the 30 s cadence above, while this device is in a network; the Mesh
+ * tab reads the same cache entry with `poll: false`, riding that observer -
+ * the one federated read serves every surface rather than each adding its own
+ * poll. The SIDEBAR'S OWN POLL MUST NEVER CARRY `include_peers` (it would dial
+ * every peer's relay on the sidebar's timer) - the remote rows reach the
+ * sidebar only through this read's ambient consumer, which lands them in the
+ * canonical store (`settlePeerCatalogue`).
+ *
+ * THE ANSWER CARRIES THE REQUEST'S OWN SEQUENCE BESIDE ITS ROWS: the store's
+ * settlement currency orders an answer against writes made while it was in
+ * flight, and only the query function knows when the request started
+ * (`beginAnswer`'s own docstring carries the rule). The sequence is the
+ * CALLER's to supply (`stamp`) rather than read here, and that seam is
+ * deliberate: this module is bundled by `scripts/mesh-tab.test.mjs` (through
+ * `mesh-approvals`), whose esbuild carries only the `@shared` alias, so a
+ * module-level import of the canonical store would drag `@features/*`
+ * specifiers into a bundle that cannot resolve them. Both fetching call sites -
+ * the ambient observer below and the Mesh tab's own recheck - pass the
+ * canonical store's `beginAnswer`, captured inside the query function.
  *
  * `retry: false` and a 30 s cadence, matching the other two reads here: a failed
  * listing leaves the last good rows painted, and a refused one is the backend's own
  * sentence rather than a second attempt nobody asked for.
  */
-export function useMeshSessions(enabled: boolean) {
+export function useMeshSessions(
+	enabled: boolean,
+	{
+		stamp,
+		poll = true,
+	}: {
+		/** The canonical store's answer sequence, called at request start. */
+		stamp: () => number;
+		/** Ask for NO interval and ride whatever observer owns the fetch. */
+		poll?: boolean;
+	},
+) {
 	return useQuery({
 		queryKey: meshKeys.sessions,
 		enabled,
-		queryFn: async () =>
-			sessionRows(
+		queryFn: async (): Promise<PeersCatalogueAnswer> => {
+			const requestedAt = stamp();
+			const rows = sessionRows(
 				await desktopResult<unknown>({
 					op: "sessions.list",
 					limit: MESH_SESSION_PAGE,
 					include_peers: true,
 				}),
-			),
+			);
+			return { rows, requestedAt };
+		},
 		retry: false,
-		staleTime: 10_000,
-		refetchInterval: enabled ? MESH_POLL_MS : false,
+		staleTime: poll ? 10_000 : Number.POSITIVE_INFINITY,
+		refetchInterval: enabled && poll ? MESH_POLL_MS : false,
+		refetchOnWindowFocus: poll,
 	});
 }
 
