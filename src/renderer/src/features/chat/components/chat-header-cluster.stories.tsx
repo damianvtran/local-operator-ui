@@ -85,7 +85,21 @@ const Cluster = ({
 	consoleUnseenCount = 0,
 	consoleUnseenPulsing = false,
 	browserPaneOpen = false,
+	/*
+	 * THE ASKS TRIGGER'S OWN KNOBS (operator ask, 2026-10-05). `onToggleAsks` is
+	 * handed in for every story - the control is present whenever a host offers a
+	 * door, which is what makes the badge's absence a fact about the COUNT rather
+	 * than about a missing control - and the count/scope pair are the two readings
+	 * the operator's split names: a conversation's own asks in a session, the whole
+	 * fleet's at the top level.
+	 */
+	asksCount = 0,
+	asksScope = "session",
+	asksOpen = false,
 }: {
+	asksCount?: number;
+	asksScope?: "session" | "fleet";
+	asksOpen?: boolean;
 	count: number;
 	details: ReturnType<typeof deriveRunDetails>;
 	canvasOpen?: boolean;
@@ -118,6 +132,10 @@ const Cluster = ({
 				consoleUnseenCount={consoleUnseenCount}
 				consoleUnseenPulsing={consoleUnseenPulsing}
 				runDetails={details}
+				onToggleAsks={() => undefined}
+				asksAttentionCount={asksCount}
+				asksScope={asksScope}
+				asksOpen={asksOpen}
 			/>
 		</div>
 	);
@@ -202,6 +220,71 @@ export const ConsoleBlip: Story = {
 			details={deriveRunDetails(fixtures.idle())}
 			consoleUnseenCount={1}
 			consoleUnseenPulsing={true}
+		/>
+	),
+};
+
+/**
+ * THE ASKS TRIGGER, QUIET: the control with nothing to report, which is the state
+ * the operator asked to keep visible - the entry point is a door to the surface,
+ * not a badge, so a conversation with no asks still offers it and the hub draws no
+ * number.
+ */
+export const AsksQuiet: Story = {
+	render: () => (
+		<Cluster
+			count={0}
+			details={deriveRunDetails(fixtures.idle())}
+			asksCount={0}
+		/>
+	),
+};
+
+/**
+ * THE ASKS TRIGGER WITH A COUNT (operator ask, 2026-10-05): the attention state
+ * the operator asked to see at a glance, in a CONVERSATION context - the number is
+ * this conversation's own queue, which is the `session` half of his split.
+ */
+export const AsksWaiting: Story = {
+	render: () => (
+		<Cluster
+			count={0}
+			details={deriveRunDetails(fixtures.idle())}
+			asksCount={3}
+			asksScope="session"
+		/>
+	),
+};
+
+/**
+ * AND AT THE TOP LEVEL: the same control carrying the WHOLE fleet's count, which is
+ * what the header resolves to on a draft (no conversation open). The count is
+ * deliberately larger than `AsksWaiting`'s so the two stories cannot be confused
+ * for one frame, and the tooltip/announced name state the scope in the surface's own
+ * words (`All conversations`).
+ */
+export const AsksFleet: Story = {
+	render: () => (
+		<Cluster
+			count={0}
+			details={deriveRunDetails(fixtures.idle())}
+			asksCount={11}
+			asksScope="fleet"
+		/>
+	),
+};
+
+/** The trigger while its surface is up: mounted as a TOGGLE like the browser
+ * trigger, so the count stays on screen (the shape the operator asked for - the
+ * number must not disappear with the pane it opened). */
+export const AsksOpen: Story = {
+	render: () => (
+		<Cluster
+			count={0}
+			details={deriveRunDetails(fixtures.idle())}
+			asksCount={3}
+			asksScope="session"
+			asksOpen={true}
 		/>
 	),
 };
