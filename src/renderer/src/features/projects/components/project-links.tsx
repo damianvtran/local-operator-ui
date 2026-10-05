@@ -248,7 +248,18 @@ export const ProjectLinks: FC<ProjectLinksProps> = ({
 				</ul>
 			)}
 
-			{links.length > 0 && (
+			{/*
+			 * THE STRIP NEEDS SOMETHING SENDABLE TO EXIST (review round 2, n3). It was
+			 * gated on `links.length > 0`, and a project can hold links whose sessions are
+			 * gone: the card then mounted with an EMPTY picker and a composer that refused
+			 * every press, and the sentence explaining the refusal could only point at a
+			 * select with nothing in it. The strip serves `sendable` - the population its
+			 * own picker and its own default target are drawn from - so that is what gates
+			 * it. Nothing is lost by hiding it: the list above still shows those links with
+			 * their own state, and the section header still offers New session and Link
+			 * session, which is what a reader in that state needs.
+			 */}
+			{links.some((link) => link.exists) && (
 				<ProjectQuickSend
 					links={links}
 					target={resolvedTarget}
