@@ -242,7 +242,17 @@ export const ProjectQuickSend: FC<ProjectQuickSendProps> = ({
 				placeholderOverride="Message the session — paste an image to attach it"
 				cwd={frontend?.cwd}
 				cwdReadOnlyReason="Quick send follows the conversation's directory."
-				sessionStatus={frontend ? { frontend } : undefined}
+				/*
+				 * THE READINGS BELONG TO A TARGET, SO THEY LEAVE WITH IT (review round 2,
+				 * n1). The hook retires the previous session's snapshot when the target
+				 * CHANGES, but nothing retires it when the target goes away - and a strip
+				 * that has lost its target shows the refusal sentence beside the last
+				 * session's model, cwd and context, which reads as readings of a conversation
+				 * this card is no longer aimed at. `target` is the term, not `selected`:
+				 * the snapshot is keyed by the session the strip ASKED about, and a target
+				 * that stopped being sendable is exactly the case that has to drop it.
+				 */
+				sessionStatus={frontend && target ? { frontend } : undefined}
 				recordingProbe={recordingProbe}
 				/*
 				 * A STRIP WITH NOTHING TO SEND TO REFUSES ITS BOX AND SAYS WHY (review round

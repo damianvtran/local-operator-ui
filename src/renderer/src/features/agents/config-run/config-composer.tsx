@@ -216,7 +216,16 @@ function RunStrip({
 
 	return (
 		<div
-			className="border-hairline border-b pb-2"
+			/*
+			 * THE STRIP SITS ON THE COMPOSER'S OWN INSET (design round 2, D6). Every
+			 * other element of this column - the heading, the note, the box's own text -
+			 * starts at `CHAT_COLUMN_INSET`; the strip started at the container's edge,
+			 * so its state sentence, its Stop control and its settled summary hung ~24px
+			 * left of the field they describe (measured 572/575.5 against 596 in both
+			 * palettes, on the settled ask frame). The constant rather than a copied
+			 * number, so the two cannot drift if the inset ever moves.
+			 */
+			className={cn("border-hairline border-b pb-2", CHAT_COLUMN_INSET)}
 			data-testid="config-run-strip"
 		>
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
