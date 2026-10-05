@@ -255,15 +255,18 @@ export const askChipCountClause = (view: AskQueueView): string => {
  *
  * The two contexts the design note's §4.4 names, and they are a property of the
  * ENTRY POINT rather than a setting: the composer's status-row item opens the
- * conversation's own queue, and the sidebar's top-level `Asks` row opens the
- * fleet's. The scope is carried by the drawer's chrome bar so a reader can always say which one
+ * conversation's own queue, and the conversation header's asks trigger opens the
+ * fleet's at the top level (and this conversation's inside one - one control, two
+ * scopes, because it rides the route rather than a second door). The scope is
+ * carried by the drawer's chrome bar so a reader can always say which one
  * is on screen ("a count of 3 inside a session and 11 at the top level are both
  * correct and say different things").
  *
  * IT IS A PROP OF THE SURFACE, not a second component: one drawer renders both, so
  * the fleet view is a data seam rather than a second idiom. The two entry points
  * that exist today are the composer's status-row item (a conversation's own queue)
- * and the sidebar's top-level `Asks` row (every conversation's) - and they are the
+ * and the header's asks trigger (this conversation's inside a session, every
+ * conversation's at the top level) - and they are the
  * reason the scope is written WITH the open flag in the store rather than chosen by
  * the surface: the surface has to paint the queue its door promised, and only the
  * door knows which one that is.
@@ -1122,34 +1125,6 @@ export const askStatusWord = (status: AskStatus | "unknown"): string => {
 	const copy = ASK_STATUS_COPY[status];
 	const cut = copy.indexOf(" — ");
 	return cut === -1 ? copy : copy.slice(0, cut);
-};
-
-/**
- * The settled section's descriptor: WHICH WORDS the rows under it actually carry.
- *
- * DERIVED FROM THE ROWS, never a fixed legend. The header used to print one sentence
- * ("answered, timed out, declined, dismissed") for every state the section could
- * hold, and it was false in both directions: `timed out` can never be in the section
- * (see `askStatusWord`), while `Answered late` and `Expired`, which can, were never
- * named - so the legend described a set of states no section can hold and omitted
- * states every section can.
- *
- * The order is the COPY CONTRACT's own, read from `ASK_STATUS_COPY`'s declaration
- * order, so the list is stable across frames and moves with the sentences rather than
- * beside them. Deduped, because two `answered` rows are still one word.
- */
-export const askStatusWords = (rows: readonly AskPresentation[]): string => {
-	const present = new Set(rows.map((row) => row.status));
-	const words: string[] = [];
-	for (const status of Object.keys(ASK_STATUS_COPY) as (
-		| AskStatus
-		| "unknown"
-	)[]) {
-		if (!present.has(status)) continue;
-		const word = askStatusWord(status);
-		if (!words.includes(word)) words.push(word);
-	}
-	return words.join(", ");
 };
 
 /**

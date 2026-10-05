@@ -18,9 +18,9 @@ import React, { act } from "react";
  *
  * WHAT IT PROVES, in order:
  *
- *  1. focus ENTERS the pane when the door is the sidebar's `Asks` row — the
- *     drawer's entry move accepts either door, including the one whose press
- *     leaves the row's own DOM out of the pane entirely;
+ *  1. focus ENTERS the pane when the door is the conversation header's asks trigger —
+ *     the drawer's entry move accepts either door, including the one whose press
+ *     leaves the trigger's own DOM out of the pane entirely;
  *  2. an Escape pressed anywhere while the pane is open CLOSES it and calls
  *     `preventDefault`, and that `defaultPrevented` answer is exactly what makes
  *     the app's interrupt ladder stand down — so the agent's running turn

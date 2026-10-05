@@ -77,8 +77,16 @@ import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
  * used to have to escape with a chevron, and the work a reader who has finished
  * answering may want out of the way. See `AskPanel`'s filter block for why this is
  * local state rather than a stored preference.
+ *
+ * THE MIDDLE KEY IS `outstanding`, NOT `waiting` (agent review round 1, M1 = UX
+ * round 1, U1). This module RESERVES "waiting" for the agent-still-waiting subset
+ * that EXCLUDES a moved-on row, and the half this button selects is the panel's
+ * whole pending half - the outstanding population AND a §10 answer not yet
+ * delivered - so an internal name taken from the reserved word is the visible
+ * label's own defect one layer down. The label the reader sees is the phrase the
+ * removed rail row used for the same population (see the filter control).
  */
-type AskFilter = "all" | "waiting" | "settled";
+type AskFilter = "all" | "outstanding" | "settled";
 
 /**
  * The status chip's variant, one mapping for the whole surface.
@@ -1006,9 +1014,21 @@ export const AskPanel = ({
 	 *
 	 * It replaces the `Settled . 17` group node's two jobs with one answerable
 	 * question: which half am I reading? `All` is the default and keeps the whole
-	 * queue in one list, `Waiting` drops the history and `Settled` drops the work -
-	 * so the history that used to cost a chevron to escape now costs a press, and the
-	 * counts are stated ON the controls rather than in a line of prose about them.
+	 * queue in one list, `Waiting or moved on` drops the history and `Settled` drops
+	 * the work - so the history that used to cost a chevron to escape now costs a
+	 * press, and the counts are stated ON the controls rather than in a line of
+	 * prose about them.
+	 *
+	 * THE MIDDLE HALF IS `open || delivering`, i.e. every row that has NOT settled -
+	 * and its label says so in the module's own words rather than in the one word it
+	 * does not own (agent review round 1, M1 = UX round 1, U1). "Waiting" here means
+	 * the agent is still waiting, which EXCLUDES a moved-on ask, so the middle button
+	 * can no longer claim it: a drawer bar reading `1 waiting, 1 moved on` directly
+	 * above a filter reading `Waiting · 2` was two names for one population, and the
+	 * row it counted spelled its own status `moved on`. The phrase is the removed rail
+	 * row's own for the outstanding population, kept rather than replaced with a new
+	 * coinage. A §10 answer that is recorded but not yet delivered belongs to this half
+	 * too - the panel draws it as a pending card - and it is named on its own row.
 	 *
 	 * LOCAL STATE, not the store: which slice of ONE surface's list the reader is
 	 * looking at is not a preference that has to survive a remount, and putting it in
@@ -1017,7 +1037,7 @@ export const AskPanel = ({
 	 */
 	const [filter, setFilter] = useState<AskFilter>("all");
 	const showPending = filter !== "settled";
-	const showSettledRows = filter !== "waiting";
+	const showSettledRows = filter !== "outstanding";
 
 	/*
 	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the list: a settled ask's
@@ -1063,7 +1083,14 @@ export const AskPanel = ({
 			{(
 				[
 					["all", "All", view.rows.length],
-					["waiting", "Waiting", pending.length],
+					/*
+					 * THE MIDDLE BUTTON NAMES THE SET IT COUNTS, and the set is the whole
+					 * pending half (`open || delivering`) - not "waiting", which this module
+					 * reserves for the agent-still-waiting subset that excludes a moved-on ask
+					 * (agent review round 1, M1 = UX round 1, U1). The phrase is the removed
+					 * rail row's own for the same population; see the filter block's note.
+					 */
+					["outstanding", "Waiting or moved on", pending.length],
 					["settled", "Settled", settled.length],
 				] as const
 			).map(([value, label, count]) => (
@@ -1085,38 +1112,64 @@ export const AskPanel = ({
 		</fieldset>
 	);
 
+	/*
+	 * AN EMPTY SLICE OWES A LINE (design round 1, D1 = UX round 1, U2). The zero line
+	 * used to be gated on the WHOLE queue (`view.rows.length === 0`), so selecting a
+	 * filter whose half was empty left the pane blank under the chips while the chip
+	 * stayed a live destination - which reads as "there are no asks" over a queue
+	 * that has some. Each half now states its own emptiness, and because the two
+	 * halves PARTITION the rows an empty half means every row is in the other one:
+	 * so each line is true by construction and names the filter holding them, rather
+	 * than claiming a state the other half may not be in.
+	 */
+	const emptySlice =
+		view.rows.length === 0
+			? "No asks outstanding. The agent is not waiting on anything."
+			: filter === "outstanding" && pending.length === 0
+				? "No asks are waiting or moved on. They have all settled — see Settled."
+				: filter === "settled" && settled.length === 0
+					? "No asks have settled yet. They are all still under Waiting or moved on."
+					: null;
+
 	return (
 		<div
 			data-lo-ask-panel="open"
 			className={cn("flex w-full flex-col gap-2", className)}
 		>
-			{view.rows.length === 0 ? (
-				<p className="px-3 py-2 text-ink text-body">
-					No asks outstanding. The agent is not waiting on anything.
-				</p>
-			) : null}
 			{view.rows.length > 0 ? filterControl : null}
+			{/*
+			 * THE EMPTY LINE SITS UNDER THE CONTROL IT ANSWERS (design round 1, D1 = UX
+			 * round 1, U2): the sentence is about the SLICE the chips selected, so it reads
+			 * after them rather than above them. With no rows at all there is no chip row, and
+			 * the queue's own line is then simply the first thing in the panel.
+			 */}
+			{emptySlice === null ? null : (
+				<p className="px-3 py-2 text-ink text-body">{emptySlice}</p>
+			)}
 			{showPending ? pending.map(askRow) : null}
 			{showSettledRows && settled.length > 0 ? (
 				/*
-				 * THE SETTLED GROUP: a plain list in the same column, with a quiet
-				 * heading that marks the boundary only while the pending cards are still
-				 * above it. It carries no chevron of its own - opening one ask is the
-				 * reader's own press, and the group is not a door in front of them.
+				 * THE SETTLED GROUP: a plain list in the same column, with a quiet boundary
+				 * label drawn only while there IS a pending half above it to be separated
+				 * from. It carries no chevron of its own - opening one ask is the reader's
+				 * own press, and the group is not a door in front of them.
 				 */
 				<div data-lo-ask-settled="" className="flex flex-col gap-1 pb-1">
 					{/*
-					 * THE GROUP'S ONE LABEL, always drawn: it is what separates the two
-					 * halves of the list now that no chevron does, and its count is the
-					 * section's own (the `Settled · 17` the group node used to spell, kept
-					 * because the number was never the complaint - the door in front of the
-					 * rows was). The per-status descriptor that used to sit beside it is
-					 * gone: with a chip on every row, a legend above them names twice what
-					 * the rows already say.
+					 * THE BOUNDARY LABEL (design round 1, D2 = UX round 1, U4, both nits).
+					 * Two corrections to one heading: it printed the settled COUNT that the
+					 * `Settled · N` button on the filter above already states - ~190px apart in
+					 * `All`, and doubled into `Settled · 3 Settled · 3` under the `Settled`
+					 * filter, where there is no pending half for it to separate at all. The
+					 * count belongs to the control that counts; this is the mark BETWEEN the two
+					 * halves, so it is drawn only when the half above it is on screen, and it
+					 * names that half without restating a number. The per-status descriptor the
+					 * group node used to carry is gone for the same reason: with a chip on every
+					 * row, a legend above them names twice what the rows already say.
 					 */}
-					<p className="px-3 pt-1 text-ink-dim text-meta">
-						{`Settled · ${settled.length}`}
-					</p>
+					{showPending && pending.length > 0 ? (
+						<p className="px-3 pt-1 text-ink-dim text-meta">Settled</p>
+					) : null}
 					{settled.map((presentation) => {
 						/*
 						 * The one line, and the two things it has to keep apart (D9): the
