@@ -5389,6 +5389,20 @@ export const STORIES = [
 	 * showed nothing — and no frame carried the state.
 	 */
 	["agent-hub-page--teams-public-pull-failed", 1280, 900],
+	/*
+	 * The header reflow at 920 (design round 2, D8): the pull failure and the open
+	 * brief are the two states whose layout this change moved, and this family's
+	 * captured siblings carry the narrow width, so the floor is shown rather than
+	 * inferred from a 1280 frame.
+	 */
+	["agent-hub-page--teams-public-pull-failed-narrow", 920, 900],
+	["agent-hub-page--teams-public-brief-narrow", 920, 900],
+	/*
+	 * The hub failing to ANSWER (a rejected `fetch`, status null) rather than
+	 * answering 503: QA round 2, Q3 found only the 503 arm pictured, and the two
+	 * carry different copy.
+	 */
+	["agent-hub-page--teams-public-unreachable", 1280, 900],
 	["agent-hub-page--pager-last-page", 1280, 900],
 	["agent-hub-page--teams-public-retry-recovers", 1280, 900],
 	["agent-hub-page--pager-footer", 1280, 900],

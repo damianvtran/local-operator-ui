@@ -249,6 +249,12 @@ type BridgeBehaviour = {
 	failPublicTeamsTimes?: number;
 	/** Never settle the public listing, so the library stays in its loading state. */
 	holdPublicTeams?: boolean;
+	/**
+	 * Fail the public listing the way a NETWORK does — a rejected `fetch`, status
+	 * null — rather than the way a server does (a 503). The two arms carry
+	 * different copy, and QA round 2, Q3 found only the second photographed.
+	 */
+	unreachablePublicTeams?: boolean;
 	/** Fail every team BRIEF read with a 503. */
 	failPublicTeamBrief?: boolean;
 	/** Never settle the brief read, so an open row stays loading. */
@@ -287,6 +293,7 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 		failPublicTeams = false,
 		failPublicTeamsTimes = 0,
 		holdPublicTeams = false,
+		unreachablePublicTeams = false,
 		failPublicTeamBrief = false,
 		holdPublicTeamBrief = false,
 		refusePull = false,
@@ -652,6 +659,11 @@ const installBridge = (behaviour: BridgeBehaviour = {}) => {
 
 		ledger.push("public_teams.list");
 		if (holdPublicTeams) return await new Promise(() => {});
+		if (unreachablePublicTeams) {
+			// A rejected fetch: what an offline machine does, and the arm whose copy
+			// QA round 2, Q2 corrected.
+			throw new TypeError("Failed to fetch");
+		}
 		if (failPublicTeams) {
 			return json(503, { detail: "The public hub is unavailable." });
 		}
@@ -2034,6 +2046,11 @@ export const TeamsPublicBrief: Story = {
 	},
 };
 
+/** The open brief at 920 (design round 2, D8), for the same reason as the pair above. */
+export const TeamsPublicBriefNarrow: Story = {
+	...TeamsPublicBrief,
+};
+
 /**
  * A pull REFUSED with the brief OPEN — the state design round 1 could not
  * photograph, and the state the frame that claimed to show it did not contain
@@ -2078,6 +2095,41 @@ export const TeamsPublicPullFailed: Story = {
 		);
 		await screen.findByTestId("agent-hub-public-team-pull-error");
 		releaseFocus();
+	},
+};
+
+/**
+ * The same refusal at 920, the width at which this family's captured siblings
+ * narrow (design round 2, D8): the header reflow is the thing that changed, so
+ * the floor has to be SHOWN rather than inferred from the 1280 frame.
+ */
+export const TeamsPublicPullFailedNarrow: Story = {
+	...TeamsPublicPullFailed,
+};
+
+/**
+ * The hub FAILING TO ANSWER — a rejected `fetch`, not an answered 503 — which is
+ * the arm QA round 2, Q3 found unpictured: the two arms carry different copy, and
+ * the transport arm's is the one an offline reader meets.
+ */
+export const TeamsPublicUnreachable: Story = {
+	render: () => {
+		installBridge({
+			records: 12,
+			signedIn: true,
+			publicTeams: PUBLIC_HUB_TEAMS,
+			unreachablePublicTeams: true,
+		});
+		holdShutter(
+			'[data-testid="agent-hub-public-teams-error"]',
+			"could not be reached",
+		);
+		return <AgentHubPage />;
+	},
+	play: async () => {
+		await screen.findByTestId("agent-hub-status");
+		await openTeamsTab();
+		await screen.findByTestId("agent-hub-public-teams-error");
 	},
 };
 

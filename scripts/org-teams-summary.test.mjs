@@ -452,6 +452,35 @@ const longTeam = () =>
 			60,
 		)}END-OF-DESCRIPTION`,
 	});
+/*
+ * The roster's Pull control names the team the way every other sentence about a
+ * name does (agent review round 1, m4; round 2, m1 asked for this pin). The
+ * fixture is a KEBAB key, because the default name's first letter is already
+ * upper case and would pass under either spelling.
+ */
+test("the roster's pull control paints the derived name", async () => {
+	const mounted = await mountRoster([team({ id: "k", name: "data-quality" })]);
+	try {
+		const pull = mounted.document.querySelector(
+			'button[aria-label^="Pull team"]',
+		);
+		assert.ok(pull, "the roster's pull control is rendered");
+		assert.equal(
+			pull.getAttribute("aria-label"),
+			"Pull team Data Quality",
+			"the derived form, not the hub's key",
+		);
+		/*
+		 * The FAILURE sentence is a source pin instead, in
+		 * `agent-hub-public-teams.test.mjs`: this harness's transport always carries
+		 * a message, so the roster renders that and the fallback sentence it guards
+		 * is unreachable here.
+		 */
+	} finally {
+		await mounted.teardown();
+	}
+});
+
 const ROSTER = [
 	team({ id: "a", name: "Alpha", description: "Alpha does the first thing." }),
 	team({

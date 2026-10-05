@@ -182,7 +182,20 @@ export const PublicTeamsLibrary: FC<{
 	const pullFailureBody =
 		pullTreatment?.body ??
 		(backendErrorKind(pull.error) === "unauthorized"
-			? "The team could not be pulled: the hub refused this machine's sign-in. Sign in on the settings page, then pull again."
+			? /*
+				 * THE ACTOR IS THIS MACHINE, not the hub (QA round 2, Q1). The 401 comes
+				 * from the LOCAL server: `_org_radient_credentials` refuses before any hub
+				 * call is made (its own docstring: "a refusal that never touches the hub
+				 * never constructs one"), so a sentence blaming the hub would attribute a
+				 * decision to a machine that was never asked.
+				 *
+				 * The remedy points at the page's own sign-in affordance rather than at the
+				 * backend's canonical `lop login radient` line, which the sibling roster
+				 * renders verbatim from `pull.error.message` — a deliberate divergence,
+				 * because a reader of this window can act on the settings page and not on a
+				 * CLI.
+				 */
+				"The team could not be pulled: this machine has no Radient sign-in for the hub. Sign in on the settings page, then pull again."
 			: "The team could not be pulled.");
 
 	const [reauthenticating, setReauthenticating] = useState(false);
@@ -220,16 +233,19 @@ export const PublicTeamsLibrary: FC<{
 	};
 
 	return (
-		<section className="flex flex-col" data-testid="agent-hub-public-teams">
-			{/*
-			 * A HEADING, so the card titles inside have a level above them: every team
-			 * name is an `<h3>` and the section carried only an `aria-label`, which is a
-			 * landmark name rather than an outline (design round 1, D4 — `h1 -> h3 skips a
-			 * level` on every state). Visually hidden because the section is already
-			 * introduced by the paragraph below it and the page's own heading is two
-			 * levels up; the label moved into this element so the region is not named
-			 * twice.
-			 */}
+		<section
+			/*
+			 * `aria-label` AND a heading, both (agent review round 2, M1). D4's fix
+			 * replaced the label with a hidden `<h2>` and silently cost the region its
+			 * NAME: per HTML-AAM a `<section>` is exposed as `region` only when it has an
+			 * accessible name, and a descendant heading does not supply one. The heading
+			 * fixes the outline (`h1 -> h2 -> h3`); the label keeps the landmark, which
+			 * the sibling `org-teams-list.tsx` also keeps.
+			 */
+			aria-label="Public teams"
+			className="flex flex-col"
+			data-testid="agent-hub-public-teams"
+		>
 			<h2 className="sr-only">Public teams</h2>
 			{/*
 			 * WHAT THE PUBLIC LIBRARY IS, in the app's own voice: published teams
