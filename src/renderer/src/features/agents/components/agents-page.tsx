@@ -36,6 +36,11 @@ import {
 	displayNameFor,
 	useAidaDisplayName,
 } from "@features/aida/use-aida-target";
+import {
+	CHAT_COLUMN_CONTAINER,
+	CHAT_COLUMN_INSET,
+	CHAT_MEASURE,
+} from "@features/chat/chat-measure";
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
 import { desktopResult } from "@shared/api/local-operator/desktop-api";
 import {
@@ -1010,25 +1015,50 @@ function EmptyPane({
 	run: ReturnType<typeof useConfigRun>;
 	onAddManually: () => void;
 }) {
+	/*
+	 * THE ASK PANE IS THE CHAT COMPOSER'S COLUMN (operator report, 2026-10-05).
+	 *
+	 * IT WAS `max-w-xl space-y-4` — 576px, pinned to the pane's LEFT edge, with the
+	 * composer inside a second bordered card — and beside a new chat (whose box is
+	 * centred on the 810px measure, §"Why 810" in `chat-measure.ts`) it read as a
+	 * different, unfinished composer. The numbers here are the chat column's own,
+	 * taken from the chat mount rather than chosen: `CHAT_COLUMN_CONTAINER` makes
+	 * this wrapper the query container, `CHAT_MEASURE` caps and centres the column
+	 * at the shared measure, and `CHAT_COLUMN_INSET` gives the heading and the
+	 * hand-add button the same 24px inset the composer's own band applies to the
+	 * box — so the three share one left edge at every width, exactly as the
+	 * transcript and the composer do in a conversation.
+	 *
+	 * NOT CENTRED TEXT: a new chat's splash centres a greeting over the box, but
+	 * this pane's prose is a description of what an agent is, and centring a
+	 * paragraph to match a one-line greeting would trade the chat's alignment for
+	 * its mood. The column is centred; the prose keeps the column's left edge.
+	 */
 	return (
-		<div className="max-w-xl space-y-4">
-			<h2 className="text-title">
-				{teamMode ? "Ask for a team" : "Ask for an agent"}
-			</h2>
-			<p className="text-body text-ink-muted">
-				{teamMode
-					? "A team has one agent that leads the chat and members it can hand work to. Describe what you want and a configuration run sets it up."
-					: "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up."}
-			</p>
-			<ConfigComposer
-				run={run}
-				hero
-				about={run.about}
-				onClearAbout={() => run.setAbout(null)}
-			/>
-			<Button variant="ghost" onClick={onAddManually}>
-				{teamMode ? "Or add a team by hand" : "Or add an agent by hand"}
-			</Button>
+		<div className={CHAT_COLUMN_CONTAINER}>
+			<div className={cn(CHAT_MEASURE, "space-y-4")}>
+				<div className={cn(CHAT_COLUMN_INSET, "space-y-2")}>
+					<h2 className="text-title">
+						{teamMode ? "Ask for a team" : "Ask for an agent"}
+					</h2>
+					<p className="text-body text-ink-muted">
+						{teamMode
+							? "A team has one agent that leads the chat and members it can hand work to. Describe what you want and a configuration run sets it up."
+							: "An agent is a reusable set of instructions you can start a chat with, or let other agents call on. Describe what you want and a configuration run sets it up."}
+					</p>
+				</div>
+				<ConfigComposer
+					run={run}
+					hero
+					about={run.about}
+					onClearAbout={() => run.setAbout(null)}
+				/>
+				<div className={CHAT_COLUMN_INSET}>
+					<Button variant="ghost" onClick={onAddManually}>
+						{teamMode ? "Or add a team by hand" : "Or add an agent by hand"}
+					</Button>
+				</div>
+			</div>
 		</div>
 	);
 }

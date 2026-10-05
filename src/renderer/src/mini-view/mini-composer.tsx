@@ -65,6 +65,7 @@ import {
 	type RadientAccountRead,
 	classifyRadientAccountFailure,
 } from "@shared/hooks/use-radient-user-query";
+import { useSessionSnapshot } from "@shared/hooks/use-session-snapshot";
 import {
 	type RadientSpeechBlock,
 	radientSpeechBlock,
@@ -96,10 +97,6 @@ import type {
 	DesktopAidaControlResult,
 	DesktopAidaState,
 } from "../../../shared/desktop-control-contract";
-import type {
-	CanonicalFrontendState,
-	CanonicalFrontendSync,
-} from "../../../shared/desktop-session-contract";
 import {
 	DEFAULT_QUICK_SEND_VALUE,
 	type MiniViewDismissReason,
@@ -120,18 +117,6 @@ const AIDA_DISABLED_CODE = "aida_disabled";
 
 /** The composer's `messages` slot for a host that has no transcript. */
 const EMPTY_MESSAGES: MessageInputProps["messages"] = [];
-
-/**
- * The seat's snapshot as `sessions.get` answers it: the receipt-shaped frame
- * (`SessionSnapshot`) whose `payload.frontend` is the same canonical sync the
- * chat's stream paints. Typed to the fields this frame reads.
- */
-type SessionGetReply = {
-	payload: {
-		frontend: CanonicalFrontendSync;
-		cold: boolean;
-	};
-};
 
 export function MiniComposer() {
 	const [frame, setFrame] = useState(MINI_FRAME_INITIAL);
@@ -169,14 +154,21 @@ export function MiniComposer() {
 		seatNameRef.current = seatName;
 	}, [seatName]);
 
-	const [frontend, setFrontend] = useState<CanonicalFrontendState | null>(null);
+	/*
+	 * THE SEAT'S READINGS, one-shot at this frame's own cadence (summon, after a
+	 * send, after a pick) rather than per frame — the shared shape the project
+	 * strip's quick-send box reads with the same call (`useSessionSnapshot`, which
+	 * this code was carved into so the two cannot drift apart).
+	 */
+	const {
+		frontend,
+		effortEntities,
+		refresh: refreshSeatReads,
+	} = useSessionSnapshot();
 	const frontendRef = useRef(frontend);
 	useEffect(() => {
 		frontendRef.current = frontend;
 	}, [frontend]);
-	const [effortEntities, setEffortEntities] = useState<
-		readonly unknown[] | undefined
-	>(undefined);
 	const [recordingProbe, setRecordingProbe] = useState<{
 		canUseRadientSpeech: boolean;
 		speechBlock: RadientSpeechBlock;
@@ -222,38 +214,14 @@ export function MiniComposer() {
 	/* -- the seat's reads --------------------------------------------------- */
 
 	/**
-	 * Refresh the seat's readings: snapshot, effort rungs, recording probe.
-	 *
-	 * ONE-SHOT READS, deliberately. The chat's pane subscribes its session to
-	 * the canonical stream; that machinery drags the transcript stack this
-	 * document exists to avoid. `sessions.get` answers the SAME snapshot the
-	 * stream's bootstrap frame carries (`SessionSnapshot.payload.frontend`), so
-	 * the strip, the chips and the steer decision read the canonical state from
-	 * the backend's own projection - just at a measured cadence (summon, after
-	 * a send, after a pick) rather than per frame.
+	 * The seat's readings — snapshot and effort rungs — come from the shared
+	 * one-shot read (`useSessionSnapshot`), called where this frame knows they
+	 * change: the summon, the settle after a send, and a pick. The chat's pane
+	 * subscribes its session to the canonical stream; that machinery drags the
+	 * transcript stack this document exists to avoid, and `sessions.get` answers
+	 * the SAME snapshot the stream's bootstrap frame carries. The recorder's own
+	 * probe is read below.
 	 */
-	const refreshSeatReads = useCallback(async (sessionId: string) => {
-		try {
-			const reply = await desktopResult<SessionGetReply>({
-				op: "sessions.get",
-				sessionId,
-			});
-			setFrontend(reply.payload.frontend.snapshot);
-		} catch {
-			/* A read that failed leaves the last readings (or none); sends do
-			   not depend on it and the strip's absent state is honest. */
-		}
-		try {
-			const payload = await desktopResult<{ entities: unknown[] }>({
-				op: "commands.entities",
-				sessionId,
-				command: "effort",
-			});
-			setEffortEntities(payload.entities);
-		} catch {
-			/* Same rule: the strip's effort chip without rungs is a label. */
-		}
-	}, []);
 
 	/**
 	 * The recording probe, read the way `useRadientCredentialProbe` reads it

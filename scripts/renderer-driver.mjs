@@ -89,7 +89,7 @@
  * must not be used to claim a page works.
  *
  * Flags:
- *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
+ *   --scene <states|new-chat|first-send|turn-collapse|connection-drop|question-dock|authoring-refresh|radient-issue|settings-model|settings-fields|settings-transcript-display|settings-gate|palette|hit-zones|route-tops|project-detail|agents-ask|project-inline-edit|browser-pane|approval-badges|mentions|canvas-freshness|pins|pinned-reorder|pins-scroll|pins-search|conversation-start|conversation-start-create-failure|conversation-start-away-failure|sidebar-bottom|mini-view|drafts|scrollbar-fade|composer-drop|none>
  *                          which built-in scene to run (default: states)
  *   --drop-expect <accepted|discarded>  (with --scene composer-drop) which half of
  *                          the issue #789 pair this run records: the head tree,
@@ -36003,8 +36003,17 @@ async function sceneProjectDetail(cdp) {
 	 * 2. QUICK-SEND. The composer's own path: type, press Enter, and the strip
 	 * must clear - which is the admission receipt, because `admitChatDraft`
 	 * only clears on the way out.
+	 *
+	 * THE BOX IS THE SHARED COMPOSER (2026-10-05): the strip mounts `MessageInput`
+	 * now, so the handle is the composer's own textarea rather than the
+	 * hand-rolled input's aria-label, and the pointer leg presses the composer's
+	 * Send control. The tour tag names the STRIP, which is what it now is - a
+	 * strip containing a composer - and every selector below is scoped by it so
+	 * the scene can never type into the chat pane's own box.
 	 */
-	const inputSelector = '[aria-label="Message the selected session"]';
+	const inputSelector = '[data-tour-tag="project-quick-send"] textarea';
+	const sendSelector =
+		'[data-tour-tag="project-quick-send"] button[aria-label="Send message"]';
 	await waitForCondition(
 		cdp,
 		`Boolean(document.querySelector('${inputSelector}'))`,
@@ -36170,7 +36179,7 @@ async function sceneProjectDetail(cdp) {
 	await wait(150);
 	await cdp.send("Input.insertText", { text: pointerText });
 	await wait(200);
-	await clickAt(cdp, '[data-tour-tag="project-quick-send"]');
+	await clickAt(cdp, sendSelector);
 	const pointerCleared = await waitForCondition(
 		cdp,
 		`document.querySelector('${inputSelector}').value === ""`,
@@ -36402,6 +36411,286 @@ async function replaceAllText(cdp, selector, text) {
 		commands: ["selectAll"],
 	});
 	await cdp.send("Input.insertText", { text });
+}
+
+/**
+ * `agents-ask`: the Agents tab's ask page, driven and photographed against an
+ * isolated daemon.
+ *
+ * WHY THIS SCENE EXISTS. PR #740 mounted the shared composer on this page and
+ * shipped without a single rendered frame — its own body named "the composer's
+ * geometry on this page" as the first thing a reviewer should look at, and the
+ * operator then looked first and reported the box "sits in a bordered inset
+ * card, left-aligned". A still is the only instrument that can answer that, so
+ * this scene both PHOTOGRAPHS the ask pane and MEASURES the two facts the
+ * report is about: the box's centre against the pane's, and its left edge
+ * against the heading's. The colocated numbers are what makes a pair of frames
+ * readable as a change rather than as two opinions.
+ *
+ * WHAT IT NEEDS: `--backend` (an isolated daemon this run owns), because the
+ * page renders its composer only where the catalogue capability is advertised
+ * (`catalogueEnabled`), and no daemon means the page draws its gate instead.
+ *
+ * WHAT IT CANNOT SHOW, said here so no report implies otherwise: a live
+ * configuration RUN (that is the strip's own surface and needs a working model
+ * behind the daemon), and the page's dirty-edit refusal, which needs a seeded
+ * definition to open and edit. Both are named in the set's README rather than
+ * faked with a state the app cannot reach.
+ */
+async function sceneAgentsAsk(cdp) {
+	const facts = await factsOf(cdp);
+	check(
+		"window mode is headless and the window is never shown or focused",
+		facts.windowMode === "headless" &&
+			facts.visible === false &&
+			facts.focused === false,
+		`mode=${facts.windowMode} visible=${facts.visible} focused=${facts.focused}`,
+	);
+	await verb(cdp, "setTheme", THEME ?? "localOperatorDark");
+	const size = `${WINDOW_WIDTH}x${WINDOW_HEIGHT}`;
+	const theme = (THEME ?? "localOperatorDark")
+		.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`)
+		.replace(/^-/, "");
+
+	/*
+	 * THE STANDING SENTENCE, read from the source that owns it for the reason
+	 * every other sentence in this file is: a hardcoded copy would go on passing
+	 * after the page renamed its own contract. It is the U4 node — permanent, and
+	 * the box's own `aria-describedby` target — so the scene asserts BOTH halves
+	 * against the live DOM rather than trusting the mount.
+	 */
+	const composerSource = readFileSync(
+		"src/renderer/src/features/agents/config-run/config-composer.tsx",
+		"utf8",
+	);
+	const sentenceMatches = [
+		...composerSource.matchAll(/"Runs in the background\.[^"]*"/g),
+	].map((match) => match[0].slice(1, -1));
+	/*
+	 * THE ONE ON A LINE OF ITS OWN, not the first: this file's own header quotes the
+	 * sentence inside a comment, wrapped across three lines, and a reader that took
+	 * the first match would compare the DOM against a string carrying the comment's
+	 * line breaks and indentation — a FAIL about the instrument, not the page.
+	 */
+	const standingSentence = sentenceMatches.find((s) => !s.includes("\n"));
+	if (!standingSentence) {
+		throw new Error(
+			"config-composer.tsx no longer declares the standing sentence on one line; the agents-ask scene reads it, so update this reader with the declaration",
+		);
+	}
+
+	await verb(cdp, "navigate", "/agents");
+	const ready = await waitForCondition(
+		cdp,
+		`(() => {
+			const composer = document.querySelector('[data-testid="config-composer"]');
+			if (!composer) return null;
+			if (!composer.querySelector("textarea")) return null;
+			const heading = [...document.querySelectorAll("h1, h2")].find((el) =>
+				/^Ask for an (agent|team)$/.test(el.textContent.trim()),
+			);
+			return heading ? true : null;
+		})()`,
+		30_000,
+	);
+	check(
+		"the ask pane leads with the shared composer",
+		ready.ok,
+		`after ${ready.waitedMs ?? "?"}ms: ${JSON.stringify(ready.last)}`,
+	);
+
+	/*
+	 * THE GEOMETRY, in one read of the DOM. `round` to a tenth of a pixel: sub-pixel
+	 * layout noise is not a finding, and a tolerance that swallowed a real
+	 * misalignment would be worse than no measurement at all (the two checks below
+	 * use 1px and 15px — the left-edge one is the alignment the chat column
+	 * guarantees, and the centre one allows the pane's own scrollbar gutter, which
+	 * is up to 15px of asymmetric content box on this engine).
+	 */
+	const geometry = async () =>
+		cdp.evaluate(`(() => {
+			const round = (n) => Math.round(n * 10) / 10;
+			const rect = (el) => {
+				if (!el) return null;
+				const r = el.getBoundingClientRect();
+				return { left: round(r.left), right: round(r.right), top: round(r.top), bottom: round(r.bottom), width: round(r.width), height: round(r.height) };
+			};
+			const composer = document.querySelector('[data-testid="config-composer"]');
+			const box = composer.querySelector('[data-lo-composer-measure]');
+			const field = composer.querySelector("textarea");
+			const note = composer.querySelector('[data-testid="config-composer-note"]');
+			const heading = [...document.querySelectorAll("h1, h2")].find((el) =>
+				/^Ask for an (agent|team)$/.test(el.textContent.trim()),
+			);
+			const pane = composer.closest("main") ?? composer.parentElement;
+			return {
+				pane: rect(pane),
+				composer: rect(composer),
+				box: rect(box),
+				heading: rect(heading),
+				noteId: note ? note.id : null,
+				noteText: note ? note.textContent.trim() : null,
+				describedBy: field ? (field.getAttribute("aria-describedby") ?? "") : null,
+				placeholder: field ? field.placeholder : null,
+			};
+		})()`);
+
+	const emptyGeometry = await geometry();
+	note("geometry at rest", JSON.stringify(emptyGeometry));
+	check(
+		"the composer box is centred on the chat column, not pinned to the pane's left edge",
+		emptyGeometry.box !== null &&
+			emptyGeometry.pane !== null &&
+			Math.abs(
+				(emptyGeometry.box.left + emptyGeometry.box.right) / 2 -
+					(emptyGeometry.pane.left + emptyGeometry.pane.right) / 2,
+			) <= 15,
+		`box=${JSON.stringify(emptyGeometry.box)} pane=${JSON.stringify(emptyGeometry.pane)}`,
+	);
+	check(
+		"the box and the heading share one left edge (the composer's own column)",
+		emptyGeometry.box !== null &&
+			emptyGeometry.heading !== null &&
+			Math.abs(emptyGeometry.box.left - emptyGeometry.heading.left) <= 1,
+		`box.left=${emptyGeometry.box?.left} heading.left=${emptyGeometry.heading?.left}`,
+	);
+	/*
+	 * U4, asserted against the live DOM rather than the mount: the sentence is
+	 * permanent, verbatim, and the id the box names in `aria-describedby`.
+	 */
+	check(
+		"the standing sentence is the box's own description, verbatim",
+		emptyGeometry.noteText === standingSentence &&
+			typeof emptyGeometry.noteId === "string" &&
+			emptyGeometry.noteId.length > 0 &&
+			emptyGeometry.describedBy.includes(emptyGeometry.noteId),
+		`note=${JSON.stringify(emptyGeometry.noteText)} id=${JSON.stringify(emptyGeometry.noteId)} describedby=${JSON.stringify(emptyGeometry.describedBy)}`,
+	);
+	/*
+	 * THE IDLE BOX'S READINGS, ASSERTED RATHER THAN ONLY FRAMED (review round 1,
+	 * R4). `config-composer` reads them from `sessions.preview` while the run has no
+	 * snapshot - the same resolution a new chat's draft pane uses - and the frames
+	 * show the model chip the before half lacks, but a frame is not a guard. The
+	 * read is a round trip, so the wait is bounded rather than immediate.
+	 */
+	const idleReadings = await waitForCondition(
+		cdp,
+		`(() => {
+			const strip = document.querySelector('[data-testid="config-composer"] [data-lo-session-strip]');
+			if (!strip) return null;
+			const model = strip.querySelector('[aria-label^="Model:"]');
+			return model ? model.getAttribute("aria-label") : null;
+		})()`,
+		20_000,
+	);
+	check(
+		"an idle box carries the readings a new chat carries",
+		idleReadings.ok,
+		idleReadings.ok
+			? `${idleReadings.waitedMs}ms: ${idleReadings.last}`
+			: `no readings row after ${idleReadings.waitedMs}ms (last ${JSON.stringify(idleReadings.last)})`,
+	);
+	await captureSettled(cdp, `agents-ask-${size}-${theme}-empty`);
+
+	/*
+	 * FOCUSED: the box's own ring, which is the state the operator's report was
+	 * about (a card's border beside a control's ring is the "inset card" read).
+	 */
+	await clickAt(cdp, '[data-testid="config-composer"] textarea');
+	await wait(200);
+	const focused = await cdp.evaluate(
+		`document.activeElement === document.querySelector('[data-testid="config-composer"] textarea')`,
+	);
+	check("the box took the caret", focused === true, String(focused));
+	await captureSettled(cdp, `agents-ask-${size}-${theme}-focused`);
+
+	/*
+	 * TYPED: the operator's own sentence in the box, so the frame shows the send
+	 * control armed and the invitation gone.
+	 */
+	const typedText = "A reviewer that checks the PR against the design note.";
+	await cdp.send("Input.insertText", { text: typedText });
+	await wait(250);
+	const typed = await cdp.evaluate(
+		`document.querySelector('[data-testid="config-composer"] textarea')?.value ?? null`,
+	);
+	check(
+		"the sentence reached the box",
+		typed === typedText,
+		`box=${JSON.stringify(typed)}`,
+	);
+	await captureSettled(cdp, `agents-ask-${size}-${theme}-typed`);
+
+	/*
+	 * THE SEND PATH, AND THE STATE QA FOUND WHILE READING THE FIRST SET (round 1,
+	 * Q1). The first set's README claimed the ask surface's running and settled
+	 * frames were unobtainable "because nothing here sends a prompt from that box" -
+	 * and QA measured that the mock model DOES run and settle, so the claim was
+	 * about the rig rather than the product. This is the leg that makes the settled
+	 * half a frame rather than a sentence.
+	 *
+	 * THE RUNNING HALF IS NOT CAPTURED, deliberately and now for the measured
+	 * reason: on this rig the mock answers in milliseconds, so the working state is
+	 * a sub-second window that a capture pass would race - an intermittently
+	 * present frame in a committed set is worse than a stated absence. What the
+	 * absent frame would have claimed (the box admits, the strip says so, Stop is
+	 * offered) is asserted by the wait below plus the settled frame.
+	 *
+	 * GATED ON `--backend` the way the other legs of this scene family are: without
+	 * a daemon the box cannot start a run at all, and a leg that fails for want of a
+	 * backend would read as a product defect.
+	 */
+	if (BACKEND) {
+		/*
+		 * THE LABELS ARE SPLIT, NOT MATCHED AS ONE LIST (review round 2, n2). Every
+		 * finished-state heading is read from the source, and "Finished" is a SUBSTRING
+		 * of "Finished with an error" - so a `some(includes)` over the whole list
+		 * accepted a FAILED run under a check named "runs and settles". The success
+		 * labels are separated from the failure one by the failure's own word, and the
+		 * wait requires a success label AND the absence of the failure label.
+		 */
+		const finishedLabels = [...composerSource.matchAll(/"Finished[^"]*"/g)].map(
+			(match) => match[0].slice(1, -1),
+		);
+		const failureLabel =
+			finishedLabels.find((label) => /error/i.test(label)) ?? null;
+		const settledLabels = finishedLabels.filter(
+			(label) => label !== failureLabel,
+		);
+		if (settledLabels.length === 0) {
+			throw new Error(
+				"config-composer.tsx no longer declares a finished-state heading without the word error; the agents-ask scene reads them, so update this reader with the declaration",
+			);
+		}
+		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
+		const settled = await waitForCondition(
+			cdp,
+			`(() => {
+				const strip = document.querySelector('[data-testid="config-run-strip"]');
+				if (!strip) return null;
+				const text = strip.textContent ?? "";
+				const failed = ${JSON.stringify(failureLabel)};
+				if (failed && text.includes(failed)) return null;
+				return ${JSON.stringify(settledLabels)}.some((label) => text.includes(label))
+					? text.trim()
+					: null;
+			})()`,
+			60_000,
+		);
+		check(
+			"a prompt from the ask box runs and settles",
+			settled.ok,
+			settled.ok
+				? `${settled.waitedMs}ms: ${settled.last}`
+				: `the run strip never reported a settled state (last ${JSON.stringify(settled.last)})`,
+		);
+		await captureSettled(cdp, `agents-ask-${size}-${theme}-settled`);
+	} else {
+		note(
+			"no --backend",
+			"the ask box starts a real configuration run, so without --backend this leg is unreachable and this run writes three frames rather than four (the settled frame is the one a live daemon adds)",
+		);
+	}
 }
 
 /**
@@ -39315,6 +39604,7 @@ async function main() {
 				await sceneSettingsIntegrations(cdp);
 			else if (SCENE === "route-tops") await sceneRouteTops(cdp);
 			else if (SCENE === "project-detail") await sceneProjectDetail(cdp);
+			else if (SCENE === "agents-ask") await sceneAgentsAsk(cdp);
 			else if (SCENE === "composer-drop") await sceneComposerDrop(cdp);
 			else if (SCENE === "project-inline-edit")
 				await sceneProjectInlineEdit(cdp);
