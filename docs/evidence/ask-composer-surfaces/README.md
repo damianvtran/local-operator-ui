@@ -93,6 +93,18 @@ hand-rolled field the base tree still mounts). Everything else — both
 captured with this branch's driver, because those scenes' selectors and legs are
 what this change adds.
 
+**Re-captures, and what a comparison here may claim.** The `after/`
+`agents-ask` frames were re-cut twice after the first pass — once with the D6
+inset fix and once, at the round-3 head, with D8 — so what is on disk is the
+current head's geometry. Re-shooting a frame re-shoots the sidebar beside it, and
+the sidebar's relative-time labels move between runs; a whole-frame difference
+between two passes is therefore not a difference in this set's surface. Claims of
+sameness in this set are scoped to the pane (`x >= 560 CSS`), where the three
+non-settled states are identical across the re-shoots (0 differing pixels by
+`magick compare -metric AE` in that crop; QA's reading was 4 px in the content
+column). The whole-frame difference is ~292 px of sidebar chrome, ~1.5k by a
+stricter crop and threshold.
+
 ## What this set does not claim
 
 - **Not a live *running* ask-hero frame.** The settled state is framed

@@ -216,16 +216,7 @@ function RunStrip({
 
 	return (
 		<div
-			/*
-			 * THE STRIP SITS ON THE COMPOSER'S OWN INSET (design round 2, D6). Every
-			 * other element of this column - the heading, the note, the box's own text -
-			 * starts at `CHAT_COLUMN_INSET`; the strip started at the container's edge,
-			 * so its state sentence, its Stop control and its settled summary hung ~24px
-			 * left of the field they describe (measured 572/575.5 against 596 in both
-			 * palettes, on the settled ask frame). The constant rather than a copied
-			 * number, so the two cannot drift if the inset ever moves.
-			 */
-			className={cn("border-hairline border-b pb-2", CHAT_COLUMN_INSET)}
+			className="border-hairline border-b pb-2"
 			data-testid="config-run-strip"
 		>
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -774,9 +765,28 @@ export function ConfigComposer({
 			 * stops depending on the run's state. The hero (nothing selected, no pane
 			 * to protect) keeps it in the flow, where a growing card is the point.
 			 */}
+			{/*
+			 * THE STRIP SITS ON THE COMPOSER'S OWN INSET (design round 2, D6; the inset
+			 * moved out here in round 3, D8). Every other element of this column - the
+			 * heading, the note, the box - starts at `CHAT_COLUMN_INSET`, and the strip
+			 * started at the container's edge, so its state sentence, Stop control and
+			 * settled summary hung left of the field they describe.
+			 *
+			 * WHY A WRAPPER RATHER THAN PADDING ON THE STRIP. Padding insets the CONTENT
+			 * and leaves the element's own box - and therefore its `border-b` - on the
+			 * container's measure, which put the strip's bottom rule 24px outside its own
+			 * internal divider: two rules of one block that did not agree (measured
+			 * 572.0..1355.5 against 596.0..1331.5). Insetting the ELEMENT puts both rules
+			 * on the column's inset, which is the grammar the note and the heading already
+			 * follow. The docked arm below deliberately does NOT take this wrapper: there
+			 * the strip lives inside its own floating card, whose border and padding are
+			 * that arm's frame.
+			 */}
 			{run.enabled && run.status !== "idle" ? (
 				hero ? (
-					<RunStrip run={run} onDismiss={dismissAndFocus} />
+					<div className={CHAT_COLUMN_INSET}>
+						<RunStrip run={run} onDismiss={dismissAndFocus} />
+					</div>
 				) : (
 					<div
 						ref={measureStrip}
