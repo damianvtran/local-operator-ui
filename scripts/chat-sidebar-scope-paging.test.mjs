@@ -1583,9 +1583,13 @@ test("the truncation sentence is the withdrawn path's alone, gated on the capabi
 test("the open conversation is kept in membership, and a collapse drops a group's own rows (R3, U5)", () => {
 	assert.ok(
 		STORE_SRC.includes(
-			"keepIds:\n\t\t\t\t\t\t\t\tstate.activeSessionId === null",
+			"keepIds: [\n\t\t\t\t\t\t\t\t...(state.activeSessionId === null",
 		),
 		"the head answer is told which row it may not drop",
+	);
+	assert.ok(
+		STORE_SRC.includes("...placementHeldIds(state.placementFacts),"),
+		"and which rows a placement fact holds: the peer-created row no plain page can carry",
 	);
 	assert.match(
 		STORE_SRC,
