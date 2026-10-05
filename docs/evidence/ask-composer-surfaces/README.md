@@ -34,8 +34,8 @@ this change). Four states per palette, all 1380x900:
 
 **`mini-view/`** — the mini quick-send popup (`--scene mini-view`, pre-existing),
 one directory per palette (the scene names its frames without a palette suffix):
-`empty`, `typing`, `long`, `sheet`, `error`, `error-card`, `dictating`,
-`starting`, `sent`.
+`empty`, `typing`, `long`, `sheet`, `error-card`, `dictating`, `starting`,
+`sent`.
 
 ## The two facts the agents-ask claim rests on, as numbers
 

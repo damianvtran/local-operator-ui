@@ -36641,9 +36641,27 @@ async function sceneAgentsAsk(cdp) {
 	 * backend would read as a product defect.
 	 */
 	if (BACKEND) {
+		/*
+		 * THE LABELS ARE SPLIT, NOT MATCHED AS ONE LIST (review round 2, n2). Every
+		 * finished-state heading is read from the source, and "Finished" is a SUBSTRING
+		 * of "Finished with an error" - so a `some(includes)` over the whole list
+		 * accepted a FAILED run under a check named "runs and settles". The success
+		 * labels are separated from the failure one by the failure's own word, and the
+		 * wait requires a success label AND the absence of the failure label.
+		 */
 		const finishedLabels = [...composerSource.matchAll(/"Finished[^"]*"/g)].map(
 			(match) => match[0].slice(1, -1),
 		);
+		const failureLabel =
+			finishedLabels.find((label) => /error/i.test(label)) ?? null;
+		const settledLabels = finishedLabels.filter(
+			(label) => label !== failureLabel,
+		);
+		if (settledLabels.length === 0) {
+			throw new Error(
+				"config-composer.tsx no longer declares a finished-state heading without the word error; the agents-ask scene reads them, so update this reader with the declaration",
+			);
+		}
 		await pressChord(cdp, { key: "Enter", code: "Enter", virtualKeyCode: 13 });
 		const settled = await waitForCondition(
 			cdp,
@@ -36651,7 +36669,9 @@ async function sceneAgentsAsk(cdp) {
 				const strip = document.querySelector('[data-testid="config-run-strip"]');
 				if (!strip) return null;
 				const text = strip.textContent ?? "";
-				return ${JSON.stringify(finishedLabels)}.some((label) => text.includes(label))
+				const failed = ${JSON.stringify(failureLabel)};
+				if (failed && text.includes(failed)) return null;
+				return ${JSON.stringify(settledLabels)}.some((label) => text.includes(label))
 					? text.trim()
 					: null;
 			})()`,
