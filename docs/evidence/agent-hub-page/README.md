@@ -108,6 +108,34 @@ off a picture of the unfiltered grid.
 **unmodified `origin/main`** — see that directory's own README for what was
 patched to make it photograph the hub rather than its load error.
 
+## The public teams library (2026-10-05)
+
+**Nine states of this set were re-taken, and two are new.** The public Teams view
+used to be a notice ("The public hub lists agents only"), so its six frames
+photographed a sentence; it is now the catalogue itself, read anonymously from
+`GET /v1/teams`, with a client-side search, a brief behind each row's disclosure
+and the pull the surface owns. `teams-public-search-miss` and
+`teams-public-brief` are the two states no frame had rendered before (a search
+that matches nothing, and one team's brief opened — a `getPublicTeam`, because
+the LIST form omits it), and `teams-public-unreadable` was DELETED: its premise
+was the memberships read, and the public view no longer makes one.
+
+The pass is narrowed rather than swept — `--only=agent-hub-page --allow-backend
+--dirs=<the eight>` in two runs — because the other twenty-four states of this
+set are untouched by the change. The rows the frames carry are the NINE TEAMS THE
+LIVE HUB SERVES, copied from the public endpoint on the day of the pass, so the
+names, descriptions, managers, rosters and authors in these frames are the
+catalogue's own rather than invented ones; the brief shown by
+`teams-public-brief` is the live `support-desk` document's. Display names are
+rendered through the runtime's own rule (`data-quality` reads "Data Quality",
+`support-desk` reads "Support Desk", `mathematician` stays lowercase), which is
+what the kebab keys in those rows are the picture of.
+
+**What these frames do NOT prove**, beyond the list below: that the hub is
+reachable from a signed-out machine's app (it is read anonymously, and the
+`fetch` stub is what the story answers with), or that a pull succeeds — the pull
+against the live hub is `docs/evidence/agent-hub-public-teams/`'s own record.
+
 ## The reading, and why it is the point
 
 `scripts/hub-round-trips.mjs` reads a ledger the story's own bridge fills with
@@ -135,10 +163,13 @@ moment has arrived.
 ## What these frames do NOT prove
 
 - **Not that Radient answers any of it.** The transport below the hooks is
-  stubbed at `window.api.desktop.request` — the preload bridge every Radient
-  call goes through — and the payloads are fixtures shaped like
-  `GET /v1/agents` and `agents.statuses`. Their FIELD NAMES are the wire's,
-  checked against the live public endpoint; their values are invented.
+  stubbed at `window.api.desktop.request` — the preload bridge every
+  AUTHENTICATED Radient call goes through — and the payloads are fixtures shaped
+  like `GET /v1/agents` and `agents.statuses`. Their FIELD NAMES are the wire's,
+  checked against the live public endpoint; their values are invented. The
+  PUBLIC TEAM reads are the one exception to that transport: they are anonymous,
+  so they ride `fetch` and the story stubs that too (the rows in those frames are
+  the live catalogue's own, as the section above says).
 - **Not that the real backend serves the batched op.** `agents.statuses` is
   additive, and the status an older backend answers is **422, not 404**: an op
   the server does not know fails `RadientRequest`'s `Literal` at validation, and

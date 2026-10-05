@@ -5372,15 +5372,17 @@ export const STORIES = [
 	["agent-hub-page--teams-public-scope", 1280, 900],
 	["agent-hub-page--teams-signed-out", 1280, 900],
 	/*
-	 * Round 1's remediation states: the public Teams view's other four reasons
-	 * (the pending read that used to be misreported as "none", the settled empty
-	 * read, the unavailable backend and the failed memberships read) and the pager
-	 * on its last page, where focus has moved to Previous.
+	 * The public catalogue's own states (2026-10-05): the read in flight, a hub
+	 * with nothing published, a hub that refused the read (and the same fixture
+	 * pressed, which recovers), a search that matches nothing, and one team's
+	 * brief opened - the LIST form omits it, so that frame is a `getPublicTeam`.
+	 * The pager on its last page rides along, where focus has moved to Previous.
 	 */
 	["agent-hub-page--teams-public-loading", 1280, 900],
 	["agent-hub-page--teams-public-none", 1280, 900],
 	["agent-hub-page--teams-public-unavailable", 1280, 900],
-	["agent-hub-page--teams-public-unreadable", 1280, 900],
+	["agent-hub-page--teams-public-search-miss", 1280, 900],
+	["agent-hub-page--teams-public-brief", 1280, 900],
 	["agent-hub-page--pager-last-page", 1280, 900],
 	["agent-hub-page--teams-public-retry-recovers", 1280, 900],
 	["agent-hub-page--pager-footer", 1280, 900],
