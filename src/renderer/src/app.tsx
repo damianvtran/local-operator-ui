@@ -19,6 +19,14 @@ import { PanelOutlet } from "@features/chat/pickers/panel-outlet";
 import { CommandPalette } from "@features/command-palette/components/command-palette";
 import { useCommandPaletteShortcut } from "@features/command-palette/use-command-palette-shortcut";
 import { useConsoleAttention } from "@features/console/hooks/use-console-attention";
+/*
+ * THE AMBIENT FEDERATED CATALOGUE (mesh §2.1's sidebar merge): mounted HERE, in
+ * the shell rather than in the sidebar, because it must run per WINDOW and not
+ * per route or per layout - the sidebar swaps for a strip under 1024px and
+ * unmounts behind the sheet, and a read whose rows the sidebar depends on must
+ * not pause because a layout mode changed. It renders null.
+ */
+import { PeersCatalogueSync } from "@features/mesh/peers-catalogue";
 import { OnboardingModal } from "@features/onboarding";
 import { OnboardingProvider } from "@features/onboarding/components/onboarding-provider";
 import { ConnectProviderDialog } from "@features/providers/connect-provider-dialog";
@@ -653,6 +661,13 @@ const App: FC = () => {
 					<PanelOutlet />
 
 					<ModelsInitializer />
+
+					{/* The one ambient observer of the peers-inclusive catalogue: it keeps
+					    the canonical store's remote rows current while this device is in a
+					    network, and every mesh surface reads the same cache entry with
+					    `poll: false`. Gated on the capability; the mount itself no-ops in
+					    every other state. */}
+					<PeersCatalogueSync enabled={meshState === "enabled"} />
 
 					<OnboardingModal open={isOnboardingActive} />
 

@@ -43,6 +43,8 @@
  * second dialect of the same rules.
  */
 
+import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store";
+
 /* ------------------------------------------------------------- coercions */
 
 /** A trimmed string, or `""`. NEVER throws on `undefined`/`null`/a number. */
@@ -311,6 +313,35 @@ export type MeshSessionRow = {
 	live_state: string;
 	/** Off the default listing; carried so the tab can say so rather than hide it. */
 	archived: boolean;
+	/*
+	 * THE FIELDS THE SIDEBAR'S ROW READS BESIDE THE TAB'S, carried on this row
+	 * because ONE read feeds both surfaces now: the ambient peers-inclusive
+	 * catalogue (`mesh-store.ts`'s `useMeshSessions`) is where a remote row's
+	 * whole life comes from, and `toCatalogueRow` hands these to the canonical
+	 * store so a remote row draws exactly as a local one does - the same status
+	 * glyph, the same marks, the same flyout. The tab ignores them.
+	 *
+	 * `status` is how a remote row reaches the RUNNING bin (`busy`, `approval`
+	 * and the rest of `chat-list-sections.ts`'s set) and `created_at` is the
+	 * Created basis's own clock; `mtime` cannot stand in for either. `pinned` is
+	 * carried WITHOUT being forced false, so the day an owner forwards pin state
+	 * it arrives; today the wire reads false for every remote row (the pin index
+	 * prunes ids with no local directory; see `settlePeerCatalogue`'s note in
+	 * `canonical-sessions-store.ts`). `attention` is deliberately NOT carried:
+	 * the wire's remote rows do not send it, and a synthesized one would draw an
+	 * unread mark nobody wrote.
+	 */
+	status?: { code: string; label: string };
+	created_at?: number | null;
+	pinned?: boolean;
+	binding?: { agent: string | null; team: string | null };
+	opened_by?: {
+		agent: string | null;
+		label: string | null;
+		session: string | null;
+	};
+	subagents_running?: number | null;
+	subagents_queued?: number | null;
 };
 
 /**
@@ -343,6 +374,11 @@ export function sessionIsBusy(row: MeshSessionRow): boolean {
  *
  * THE ORDER IS THE BACKEND'S and is not re-sorted here: the catalogue's ranking is
  * recency, and a chip row that re-sorted it would disagree with the list beside it.
+ *
+ * THE WIDENING: this normaliser used to carry the TAB's narrow row alone; it now
+ * also carries the fields the sidebar's row reads, because the ambient read that
+ * feeds the sidebar IS this read (`mesh-store.ts`), and a second normaliser
+ * beside this one would be the defect rather than the saving.
  */
 export function sessionRows(value: unknown): MeshSessionRow[] {
 	const rows: MeshSessionRow[] = [];
@@ -368,6 +404,28 @@ export function sessionRows(value: unknown): MeshSessionRow[] {
 					: null;
 		if (!locality) continue;
 		seen.add(id);
+		/*
+		 * THE EXTRAS DEGRADE THE SAME WAY THE NARROW FIELDS DO: an object that did
+		 * not arrive is NOT a claim (the key is omitted, and the store's merge
+		 * leaves whatever it held), while a present object is normalised member by
+		 * member so a null inside it stays null rather than becoming "".
+		 */
+		const status = isRecord(raw.status)
+			? { code: text(raw.status.code), label: text(raw.status.label) }
+			: null;
+		const binding = isRecord(raw.binding)
+			? {
+					agent: textOrNull(raw.binding.agent),
+					team: textOrNull(raw.binding.team),
+				}
+			: null;
+		const openedBy = isRecord(raw.opened_by)
+			? {
+					agent: textOrNull(raw.opened_by.agent),
+					label: textOrNull(raw.opened_by.label),
+					session: textOrNull(raw.opened_by.session),
+				}
+			: null;
 		rows.push({
 			id,
 			name: text(raw.name),
@@ -379,9 +437,30 @@ export function sessionRows(value: unknown): MeshSessionRow[] {
 			unreachable_reason: text(raw.unreachable_reason),
 			live_state: text(raw.live_state),
 			archived: flag(raw.archived, false),
+			created_at: time(raw.created_at),
+			pinned: flag(raw.pinned, false),
+			subagents_running: time(raw.subagents_running),
+			subagents_queued: time(raw.subagents_queued),
+			...(status ? { status } : {}),
+			...(binding ? { binding } : {}),
+			...(openedBy ? { opened_by: openedBy } : {}),
 		});
 	}
 	return rows;
+}
+
+/**
+ * One federated row in the CANONICAL store's own vocabulary.
+ *
+ * THE SAME RENAME `projectRows` APPLIES to a plain page's row - id to
+ * `session_id`, name to `title`, mtime to `updated_at` - spelled where this
+ * read's normaliser lives, because the two reads share one row vocabulary and
+ * this is the boundary between them. Everything else rides through: the
+ * store's row is this one, one field-rename away.
+ */
+export function toCatalogueRow(row: MeshSessionRow): CanonicalSessionRow {
+	const { id, name, mtime, ...rest } = row;
+	return { ...rest, session_id: id, title: name, updated_at: mtime };
 }
 
 /* ------------------------------------------------------------ the transfer */

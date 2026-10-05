@@ -3,6 +3,14 @@ import {
 	builtinOfferSignature,
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
+/*
+ * THE NETWORKS READ, for the remote rows' hover sentence: ONE observer, `poll:
+ * false`, riding whatever the rail or the Mesh tab already fetched (one read per
+ * window, shared by query key) - the same cheap read the device control takes,
+ * gated by the same capability. It names the NETWORK half of the sentence; the
+ * device half rides the row itself (`chat-remote.ts`).
+ */
+import { useMeshNetworks } from "@features/mesh/mesh-store";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
 import {
 	isRemoteReceiptDeferral,
@@ -162,6 +170,18 @@ import {
 	chatRowActCapJoined,
 	chatRowActControl,
 } from "../chat-regions";
+/*
+ * THE REMOTE ROW'S OWN FACTS (the shared convention; the header of
+ * `canonical-sessions-store.ts` names the sentence all surfaces keep): the
+ * device label, the network lookup, the one sentence both channels read, and
+ * the order remote rows are drawn in.
+ */
+import {
+	deviceNetworkNames,
+	mergeRemoteRowsByActivity,
+	remoteClause,
+	remoteUnreachableClause,
+} from "../chat-remote";
 import {
 	type ArchiveView,
 	chatCountAnnouncement,
@@ -230,6 +250,7 @@ import {
 	tailArrivalAnnouncement,
 	tailExtendDue,
 } from "../sidebar-scope-paging";
+import { ChatRemoteMark } from "./chat-remote-mark";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
@@ -984,6 +1005,20 @@ export function ChatSidebar({
 		2,
 	);
 	const ready = catalogueState === "enabled";
+	/*
+	 * THE REMOTE ROW'S TWO READING AIDS, gated and fetched exactly as the rail's
+	 * are: `meshPaired` is the capability (`features.peers`), and the networks
+	 * read is the cheap one (`poll: false`, one read per window, shared with the
+	 * rail and the device control by query key). The map is built once per answer
+	 * rather than per row - the list is a hot path and the lookup is not.
+	 */
+	const meshPaired =
+		desktopFeatureState(capabilities.data, "peers") === "enabled";
+	const meshNetworks = useMeshNetworks(meshPaired, { poll: false });
+	const remoteNetworkNames = useMemo(
+		() => deviceNetworkNames(meshNetworks.data),
+		[meshNetworks.data],
+	);
 	/*
 	 * Main's pairing cause, read for the same reason the pane reads it: the sentence
 	 * for an unavailable plane comes from the one shared table, selected by the cause
@@ -2303,7 +2338,10 @@ export function ChatSidebar({
 		[sessions, archiveFacts],
 	);
 	const listed = useMemo(
-		() => visibleRows(answeredForMembership, archiveEnabled && !widened),
+		() =>
+			mergeRemoteRowsByActivity(
+				visibleRows(answeredForMembership, archiveEnabled && !widened),
+			),
 		[answeredForMembership, archiveEnabled, widened],
 	);
 	/*
@@ -3939,6 +3977,27 @@ export function ChatSidebar({
 		});
 		const pinned = row.pinned === true;
 		/*
+		 * THE REMOTE HALF OF THE ROW (the shared convention): one predicate and the
+		 * ONE FRAGMENT PER LINE, built here and read by both channels - the
+		 * `sr-only` spans beside the title and the flyout's own lines below - so
+		 * neither can drift: the location clause (`on <device> · <network>`) and,
+		 * on a row whose owner did not answer, the unreachable line
+		 * (`unreachable · <reason>`) as its OWN line rather than fused onto the
+		 * device clause (design review round 1, D2). The network name is looked up
+		 * by the owner's id; a device the networks read cannot name degrades to the
+		 * device clause alone.
+		 */
+		const remote = row.locality === "remote";
+		const remoteHost = remote
+			? remoteClause(
+					row,
+					remoteNetworkNames.get(
+						typeof row.owner_device === "string" ? row.owner_device : "",
+					),
+				)
+			: "";
+		const remoteUnreachable = remote ? remoteUnreachableClause(row) : "";
+		/*
 		 * THE SUBAGENT INDICATOR (the operator's report, 2026-09-29).
 		 *
 		 * One derivation, two independent glyphs, and it is here rather than in
@@ -4246,6 +4305,15 @@ export function ChatSidebar({
 					 */}
 					{readAck ? ` · ${readAck.clause}` : ""}
 				</span>
+				{/* THE REMOTE ROW'S OTHER CHANNEL (the shared convention): the SAME
+				    fragments the `sr-only` spans beside the title read, drawn as their
+				    own lines under the status - the pointer's half of the same
+				    sentence. The unreachable line is the split form (design review
+				    round 1, D2), never fused onto the device clause. */}
+				{remote && <span className="block">{remoteHost}</span>}
+				{remoteUnreachable && (
+					<span className="block">{remoteUnreachable}</span>
+				)}
 			</>
 		);
 		const rowButton = (
@@ -4359,6 +4427,25 @@ export function ChatSidebar({
 					);
 				}}
 			>
+				{/*
+				 * THE LOCALITY CELL, DRAWN BY EVERY ROW (design review round 1, D5;
+				 * the TUI's decision 2, "the locality cell is ALWAYS the mark"):
+				 * remote rows fill it with the locality mark and local rows leave it
+				 * empty, so every status glyph and every title starts on the same x
+				 * and the merged list reads as one column instead of carrying a
+				 * ragged ~18 px leading edge on the rows this change exists to make
+				 * seamless. The cell is a fixed `size-3.5` box (the mark's own size),
+				 * so a dropped link cannot reflow the row: the mark swaps WITHIN the
+				 * cell, the cell never moves.
+				 */}
+				<span
+					aria-hidden="true"
+					className="flex size-3.5 shrink-0 items-center justify-center"
+				>
+					{row.locality === "remote" && (
+						<ChatRemoteMark unreachable={row.reachable === false} />
+					)}
+				</span>
 				<ChatSessionStatus row={row} />
 				{/*
 				 * THE OUTSTANDING-ASKS MARK, beside the status mark and BEFORE the title.
@@ -4549,6 +4636,17 @@ export function ChatSidebar({
 						</span>
 						<span className="sr-only">, matched in conversation</span>
 					</>
+				)}
+				{/* THE REMOTE ROW'S OWN SENTENCE, joined to the name here rather than
+				    beside the mark so the row reads state, title, why-it-is-on-screen,
+				    then WHERE IT RUNS - with the attribution rather than beside the
+				    counts, because "which device" is an identity fact like "opened by".
+				    The fragments are the same ones the flyout draws (`remoteHost`,
+				    then the split `remoteUnreachable` line when the owner did not
+				    answer). */}
+				{remote && <span className="sr-only">, {remoteHost}</span>}
+				{remoteUnreachable && (
+					<span className="sr-only">, {remoteUnreachable}</span>
 				)}
 				{/* THE ATTRIBUTION'S `sr-only` SENTENCE, on the rows whose visible slot is the
 				    agent-opened claim's: the team slot above, and the silent team-less
