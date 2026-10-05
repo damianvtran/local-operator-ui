@@ -336,6 +336,13 @@ const bundle = await build({
 			 * whole chain rather than the half of it this harness stubs.
 			 */
 			' export { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";' +
+			/*
+			 * THE ALWAYS-MOUNTED RAISING SURFACE (agent review round 2, B2 = QA round 2,
+			 * Q3): the bulk deferral's raise lives here now, so this harness mounts it
+			 * beside the container exactly as `main.tsx` does - otherwise the case would
+			 * assert against a watcher the app mounts and this harness did not.
+			 */
+			' export { UndoToasts } from "./src/renderer/src/features/chat/components/undo-toasts";' +
 			' export { realDesktopResult, DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE } from "@shared/api/local-operator/desktop-api";' +
 			/*
 			 * THE WORDS THEMSELVES, from the module that owns them, the REFUSAL CLASS the
@@ -410,6 +417,7 @@ const {
 	ChatSidebar,
 	useCanonicalSessionsStore: store,
 	ThemedToastContainer,
+	UndoToasts,
 	realDesktopResult,
 	readAckNoticeSentence,
 	READ_ACK_NOTICE_DESCRIPTION,
@@ -1767,7 +1775,20 @@ test("a whole-call skew refusal reads as a deferral, not as a failure", async ()
 	document.body.append(toastHost);
 	const toastRoot = createRoot(toastHost);
 	await act(async () => {
-		toastRoot.render(React.createElement(ThemedToastContainer));
+		/*
+		 * BOTH HALVES OF THE APP'S TOAST PATH, exactly as `main.tsx` mounts them: the
+		 * container that paints, and the always-mounted surface that raises (the
+		 * deferral's raise moved there in this round - a harness that mounted only the
+		 * container would assert against nothing).
+		 */
+		toastRoot.render(
+			React.createElement(
+				React.Fragment,
+				null,
+				React.createElement(ThemedToastContainer),
+				React.createElement(UndoToasts),
+			),
+		);
 	});
 	toastCalls.warnings.length = 0;
 	toastCalls.infos.length = 0;
@@ -1797,6 +1818,12 @@ test("a whole-call skew refusal reads as a deferral, not as a failure", async ()
 			},
 		};
 		await harness.click(harness.control());
+		/*
+		 * ONE FLUSH FOR THE SURFACE HOP: the press writes the store slot, the surface's
+		 * subscription re-renders, and its effect raises the info - so the assertion
+		 * waits for that chain rather than for the handler alone.
+		 */
+		await act(async () => {});
 		assert.equal(infos.length, 1, "the refusal announced nothing at all");
 		assert.equal(
 			warnings.length,

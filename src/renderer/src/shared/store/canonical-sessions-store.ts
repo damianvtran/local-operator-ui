@@ -3739,6 +3739,22 @@ type CanonicalSessionsState = {
 	 */
 	draftsUndo: DraftsUndoOffer | null;
 	/**
+	 * The bulk acknowledgement's deferral: how many of a "Mark all as read" press's
+	 * marks live on a device whose build cannot answer the receipt yet, and the write
+	 * stamp the raise carries (`at` - the identity check the toast surface reads, the
+	 * offers' own rule).
+	 *
+	 * WHY IT LIVES IN THE STORE RATHER THAN THE PANEL (agent review round 2, B2 = QA
+	 * round 2, Q3): the archive guard's toast discipline bans a raiser in
+	 * `chat-sidebar.tsx` (`showInfoToast(` wholesale), because a message raised from
+	 * the panel is a second, unmountable copy of a class the app draws from its
+	 * always-mounted surface. The panel writes this slot; `components/undo-toasts.tsx`
+	 * raises `markAllReadDeferredSentence` from it - once, on the non-error register
+	 * (operator report, 2026-10-05: a deferral is not an error) - and clears the slot
+	 * when the message ends.
+	 */
+	bulkReadDeferral: { count: number; at: number } | null;
+	/**
 	 * The freshly staged draft key a discard left the pane on, or null (UX round 2's U7).
 	 *
 	 * THE PANEL WRITES IT; THE TOAST READS IT (2026-09-27). It was a ref inside
@@ -3763,6 +3779,17 @@ type CanonicalSessionsState = {
 	 * when the toast ends, whichever way it ends).
 	 */
 	setDraftsUndo: (offer: DraftsUndoOffer | null) => void;
+	/**
+	 * Raise the bulk acknowledgement's deferral for `count` marks, stamped off
+	 * `answerSeq` (the currency every toast surface reads).
+	 *
+	 * The write only, matching `setDraftsUndo` above: WHEN the slot clears is the
+	 * message's own end's business (`components/undo-toasts.tsx` clears it when the
+	 * toast ends, whichever way it ends).
+	 */
+	raiseBulkReadDeferral: (count: number) => void;
+	/** Clear the bulk deferral's slot - the message's own end, or its replacement. */
+	clearBulkReadDeferral: () => void;
 	/**
 	 * Put a standing offer's snapshot back: the draft entries and the composer rows
 	 * the discard removed, in one update.
@@ -5004,6 +5031,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			archiveFailure: null,
 			archiveUndo: null,
 			draftsUndo: null,
+			bulkReadDeferral: null,
 			stagedByDiscard: null,
 			deleteCandidate: null,
 			archiveCandidate: null,
@@ -5746,6 +5774,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			},
 			setDraftsUndo: (offer) => {
 				set({ draftsUndo: offer });
+			},
+			raiseBulkReadDeferral: (count) => {
+				set((state) => ({
+					bulkReadDeferral: { count, at: state.answerSeq + 1 },
+				}));
+			},
+			clearBulkReadDeferral: () => {
+				set({ bulkReadDeferral: null });
 			},
 			setStagedByDiscard: (key) => {
 				set({ stagedByDiscard: key });

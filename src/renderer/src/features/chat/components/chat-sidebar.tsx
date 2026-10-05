@@ -64,7 +64,6 @@ import { usePanelPresentationStore } from "@shared/store/panel-presentation-stor
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
-	showInfoToast,
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
@@ -216,7 +215,6 @@ import {
 import { fleetAsksBySession, useFleetAsks } from "../fleet-asks";
 import {
 	markAllReadCopy,
-	markAllReadDeferredSentence,
 	markAllReadReceipt,
 	unreadMarkKind,
 } from "../mark-all-read";
@@ -1824,6 +1822,9 @@ export function ChatSidebar({
 	 * derives the number from the same predicate `markAllRead` enumerates with.
 	 */
 	const unreadCopy = markAllReadCopy(sessions);
+	const raiseBulkReadDeferral = useCanonicalSessionsStore(
+		(s) => s.raiseBulkReadDeferral,
+	);
 	const [clearingUnread, setClearingUnread] = useState(false);
 	const markAllReadShown =
 		unreadCopy.count > 0 &&
@@ -1855,11 +1856,16 @@ export function ChatSidebar({
 			 */
 			if (isRemoteReceiptDeferral(failure)) {
 				/*
-				 * The non-error register: the whole call is a deferral, and a
-				 * deferral on the amber glyph beside the real failures below
-				 * reads as one of them (design round 1, D2).
+				 * THE RAISE MOVED OFF THIS PANEL (agent review round 2, B2 = QA
+				 * round 2, Q3): a raiser here is a second, unmountable copy of a
+				 * message class the app draws from its always-mounted surface -
+				 * the archive guard's toast discipline bans the info raise in
+				 * this file wholesale. The panel writes the store slot and
+				 * `UndoToasts` raises the deferral's info from it - once, on the
+				 * non-error register, exactly as the direct raise did (design
+				 * round 1, D2).
 				 */
-				showInfoToast(markAllReadDeferredSentence(unreadCopy.count));
+				raiseBulkReadDeferral(unreadCopy.count);
 			} else {
 				showWarningToast(
 					`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,
