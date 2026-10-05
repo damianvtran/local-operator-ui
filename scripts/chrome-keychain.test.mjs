@@ -464,6 +464,12 @@ const CHROME_LAUNCH_SITES = [
 		"measures the mesh panel's rendered DOM for the operator-report pair - overlapping boxes, clipped spans and the chips' visible sides - one private headless Chrome per run through the same helper (QA round 1 added this row: the harness launched Chrome while unregistered, which failed Desktop Tests in CI)",
 	),
 	guarded(
+		"docs/evidence/read-ack-skew/harness/readack-skew.mjs",
+		"spawn",
+		2,
+		"photographs the read-receipt skew's two states on the shipped components - the operator's toast verbatim before the fix, and the quiet deferral after - one private headless Chrome per run through the same helper (spawn 1 of this file is its vite server, spawned plainly; the Chrome launch is spawn 2)",
+	),
+	guarded(
 		"scripts/child-reader-scroll-evidence.mjs",
 		"spawnOwned",
 		1,

@@ -1,0 +1,16 @@
+/*
+ * The stylesheet entry for the read-receipt skew harness.
+ *
+ * `@import "@renderer/styles/index.css"` is the app's own stylesheet, so the
+ * toast's ground, ink, border and type step - and the readout panel's own
+ * legibility - cannot differ between this surface and the shipped one.
+ *
+ * `@source` is the part that is easy to omit and fails SILENTLY: this page's
+ * vite root is the harness directory, outside the renderer tree, so without it
+ * Tailwind's scan misses the renderer's own classes and the shipped component
+ * compiles against an empty utility set (the `composer-alert-geometry.css` note
+ * records the same trap).
+ */
+@import "@renderer/styles/index.css";
+
+@source "../../../../src/renderer/src";

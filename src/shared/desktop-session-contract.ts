@@ -353,6 +353,40 @@ export const SUPERSEDED_COMPLETION_TOKEN_CODE = "superseded_completion_token";
 export const STORE_BUSY_CODE = "store_busy";
 
 /**
+ * The backend's machine code for "the unread mark lives on another device":
+ * the 409 both read-receipt routes answer when a conversation is owned by a
+ * peer and the write could not be made there (`_remote_receipt` and
+ * `_refuse_remote_write` in
+ * `local_operator/server/routes/desktop_sessions.py`; the routing landed in
+ * #1994, `a72c1f492`).
+ *
+ * Copied here for the same reason the codes above are: the renderer cannot
+ * import Python, and the literal is pinned where the client forks on it
+ * (`scripts/completion-view-ack.test.mjs`).
+ *
+ * THE CAUSE BESIDE IT, AND WHY THE CODE REMAINS THE FALLBACK. Every arm of that
+ * route shares this code, and (the `fix/receipt-skew-wording` change beside
+ * #1994) the route also names its arm in a `cause` field: `owner_build_behind`
+ * for an owner whose build predates the receipt op - the version-skew arm an
+ * operator meets during a rollout - `unreachable` for an owner that could not
+ * be dialled, and `refused` for an owner that answered a refusal of its own.
+ * A daemon that predates the field answers `code` alone, so a client reads the
+ * cause when one is present and falls back to the code - never to the message,
+ * which is prose this app composes its own sentences around.
+ */
+export const SESSION_IS_REMOTE_CODE = "session_is_remote";
+
+/**
+ * The `cause` token for the SKEW arm: the owner's build predates the receipt op
+ * (`net_session_receipt`), and an update on that device is what settles the
+ * mark. The one arm the quiet deferral is keyed on, because it is the one whose
+ * truth is a rollout's own normal state; the other two name a state a reader
+ * can act on and keep their own notices (see `isRemoteReceiptDeferral`,
+ * `desktop-api.ts`).
+ */
+export const SESSION_IS_REMOTE_CAUSE_BUILD_BEHIND = "owner_build_behind";
+
+/**
  * Whether an acknowledgement may be taken as marking this conversation READ.
  *
  * `sessions.seen` answers with the resulting attention state, and `unseen` is the
