@@ -488,8 +488,8 @@ test("a conversation born on a peer keeps that device once the draft is gone, an
 	);
 	assert.match(
 		store,
-		/locality: "remote", owner_device: peer/,
-		"a create that named a peer stamps the peer on the row",
+		/settlePlacement\(result\.session_id, \{\s*locality: "remote",\s*owner_device: peer,/,
+		"a create that named a peer stamps the peer on the row, through the one placement writer",
 	);
 });
 

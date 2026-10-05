@@ -215,6 +215,39 @@ export type PinFact = {
 	updated_at?: number;
 };
 
+/**
+ * Where this window last knew one conversation to live, and WHEN it learned it.
+ *
+ * WHY A FACT AND NOT ONLY THE ROW. The rows a page rebuilds are the pages' to
+ * describe, but a conversation can live somewhere no PLAIN page can carry: a
+ * session minted on a peer is absent from every plain listing (this store's own
+ * `fetchSessions` never asks for peers - agent review F1), so the catalogue's
+ * next answer replaces membership WITHOUT it and drops the freshly-stamped row
+ * while the conversation is still starting. By then the create's stamp is off
+ * the pane (the draft retired), so the header's device control - which reads the
+ * row - falls to `On this device` over a session the peer just minted (operator
+ * report, 2026-09-30; reproduced on the two-daemon rig, 2026-10-05, 231 ms after
+ * the send). The fact is what holds the row against an answer that cannot speak
+ * about the id.
+ *
+ * THE CURRENCY IS `PinFact`'S, on the same counter: the write takes the next
+ * sequence when it LANDS (`settlePlacement`, and the settlement below), the
+ * answers that can settle it take theirs when the REQUEST starts, and a fact
+ * written after a request started is left alone - so a page already in flight
+ * across a create or a move cannot undo it, and a peers-inclusive answer asked
+ * for afterwards settles the fact with the wire's own pair, recency-checked.
+ *
+ * LOCAL PAIRS PROTECT NOTHING, on purpose: a local row's absence from a plain
+ * page means what it always meant, so the drop rule stays byte-for-byte today's
+ * for every conversation no fact calls remote.
+ */
+export type PlacementFact = {
+	locality: "local" | "remote";
+	owner_device: string;
+	/** The sequence this write took, which orders it against every request. */
+	at: number;
+};
+
 export type PinFailure = {
 	sessionId: string;
 	/** The desired state that was refused, not the state on screen. */
@@ -3218,6 +3251,21 @@ export function scopeHeldIds(
 }
 
 /**
+ * The ids whose rows a placement fact holds against an answer that cannot carry
+ * them (`PlacementFact`): the conversations this window knows live on a peer,
+ * which no plain listing can speak for.
+ */
+export function placementHeldIds(
+	facts: Record<string, PlacementFact>,
+): string[] {
+	const held: string[] = [];
+	for (const [id, fact] of Object.entries(facts)) {
+		if (fact.locality === "remote") held.push(id);
+	}
+	return held;
+}
+
+/**
  * The rows an unscoped answer OWNS: the ones no loaded scope holds.
  *
  * THIS IS THE MOST DANGEROUS DECISION IN THE PAGED CATALOGUE, which is why it is
@@ -3460,6 +3508,16 @@ type CanonicalSessionsState = {
 	 * (`mergeRow`: the incoming row wins).
 	 */
 	pinFacts: Record<string, PinFact>;
+	/**
+	 * Where this window last knew each conversation to live, keyed by session id
+	 * (`PlacementFact` carries why the fact exists and its currency rule).
+	 * Written by `settlePlacement` - the create's peer pick and a move's receipt
+	 * are its two callers - and settled by a peers-inclusive answer in
+	 * `fetchSessions`. Not persisted, like `pinFacts`: it is an ordering against
+	 * requests in THIS process, and a restored one would be a claim about a store
+	 * the fresh process has not read.
+	 */
+	placementFacts: Record<string, PlacementFact>;
 	/**
 	 * The answer counter every fact and every request is stamped against.
 	 *
@@ -4170,9 +4228,11 @@ type CanonicalSessionsState = {
 	bindSession: (legacyAgentId: string, sessionId: string) => void;
 	upsertSession: (row: CanonicalSessionRow) => void;
 	/**
-	 * SETTLE A ROW'S PLACEMENT FROM A MOVE'S RECEIPT (see the implementation
-	 * for why the receipt and not the ask). `locality`/`owner_device` only:
-	 * the placement pair is the whole of what a receipt says about the row.
+	 * SETTLE A ROW'S PLACEMENT FROM A MOVE'S RECEIPT **OR A CREATE'S PEER PICK**
+	 * (see the implementation for why the receipt and not the ask). `locality`/
+	 * `owner_device` only: the placement pair is the whole of what a receipt says
+	 * about the row - and the write lands the pair AND the placement fact
+	 * together (`PlacementFact`), so the row and the fact cannot disagree.
 	 */
 	settlePlacement: (
 		sessionId: string,
@@ -4483,6 +4543,13 @@ function forgetSession<T extends SessionForgetState>(
 	const facts = { ...state.archiveFacts };
 	delete facts[sessionId];
 	/*
+	 * The placement fact goes with it: a conversation this window removed has
+	 * nothing left to place, and a fact that outlived the row would be the
+	 * resurrection the tombstones exist to prevent, one field over.
+	 */
+	const placements = { ...state.placementFacts };
+	delete placements[sessionId];
+	/*
 	 * Stamped like a press, AND ADVANCING THE COUNTER, which is one decision rather
 	 * than two: a write takes the sequence the next request will take, so a page
 	 * asked for afterwards carries a greater value and OUTRANKS the tombstone, while
@@ -4504,6 +4571,7 @@ function forgetSession<T extends SessionForgetState>(
 	return {
 		sessions: state.sessions.filter((row) => row.session_id !== sessionId),
 		archiveFacts: facts,
+		placementFacts: placements,
 		answerSeq: at,
 		forgotten: {
 			...state.forgotten,
@@ -4522,6 +4590,7 @@ function forgetSession<T extends SessionForgetState>(
 type SessionForgetState = {
 	sessions: CanonicalSessionRow[];
 	archiveFacts: Record<string, ArchiveFact>;
+	placementFacts: Record<string, PlacementFact>;
 	forgotten: Record<string, ForgottenFact>;
 	/** The stamp counter the tombstone's `at` is taken from (see `answerSeq`). */
 	answerSeq: number;
@@ -4885,6 +4954,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			counts: null,
 			statusUnavailable: [],
 			archiveFacts: {},
+			placementFacts: {},
 			forgotten: {},
 			stoppedTurns: {},
 			archiveFailure: null,
@@ -5102,6 +5172,37 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							(row) => tombstones[row.session_id] === undefined,
 						);
 						/*
+						 * AND THE PLACEMENT FACTS ARE SETTLED BY THE ONE KIND OF PAGE THAT CAN
+						 * SPEAK ABOUT THEM. A plain listing asks for no peers, so it can never
+						 * place a conversation (`PlacementFact`); a peers-inclusive answer
+						 * carries `locality`/`owner_device` for the ids it lists, and is therefore
+						 * the read that settles a fact - here or on another surface. Recency is
+						 * `PinFact`'s rule: a fact written after this request started is left
+						 * alone. The settle takes a FRESH sequence (the write half of the
+						 * currency), so an answer requested BEFORE this one cannot clobber what
+						 * it settled - and the sequence is only advanced when something really
+						 * settled, at the return below.
+						 */
+						let placementFacts: Record<string, PlacementFact> | null = null;
+						for (const row of page) {
+							const fact = state.placementFacts[row.session_id];
+							if (fact === undefined || fact.at >= answerAt) continue;
+							const locality =
+								row.locality === "remote"
+									? "remote"
+									: row.locality === "local"
+										? "local"
+										: null;
+							if (locality === null) continue;
+							placementFacts ??= { ...state.placementFacts };
+							placementFacts[row.session_id] = {
+								locality,
+								owner_device:
+									typeof row.owner_device === "string" ? row.owner_device : "",
+								at: state.answerSeq + 1,
+							};
+						}
+						/*
 						 * THE ANSWER'S OWN POSITION AND ITS SIZE CLAIM, read once here because
 						 * two decisions below need them and they must be the SAME reading: the
 						 * state records what the answer said, and the membership rule discards
@@ -5152,8 +5253,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							 * is drawing, and a 50-row head page can stop above a conversation at rank
 							 * 51 - under the unscoped read this change replaces, it could not.
 							 */
-							keepIds:
-								state.activeSessionId === null ? [] : [state.activeSessionId],
+							/*
+							 * AND THE ROWS A PLACEMENT FACT HOLDS. A conversation minted on a
+							 * peer is absent from every PLAIN page (this request asks for no
+							 * peers), so without these ids the answer rebuilds membership without
+							 * it and drops the row the create just stamped - and the header's
+							 * device control, which reads the row (`chat-device-slot`'s `host`),
+							 * then falls to `On this device` over a session the peer just minted
+							 * (operator report, 2026-09-30). Only REMOTE facts hold rows: for
+							 * every other conversation the answer's silence means what it always
+							 * meant (`PlacementFact`).
+							 */
+							keepIds: [
+								...(state.activeSessionId === null
+									? []
+									: [state.activeSessionId]),
+								...placementHeldIds(state.placementFacts),
+							],
 							/*
 							 * AN ANSWER THAT SAYS IT IS THE WHOLE CATALOGUE DISCARDS THE TAIL.
 							 * `complete` means `next_cursor === null` with nothing truncated,
@@ -5196,6 +5312,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 							sessions: next,
 							pinFacts: facts,
 							archiveFacts: archiveFactSet,
+							/*
+							 * The placement facts and the sequence their settle took, only when
+							 * something really settled: a page that speaks about no held id
+							 * leaves the state untouched (and the counter unadvanced).
+							 */
+							...(placementFacts === null
+								? {}
+								: { placementFacts, answerSeq: state.answerSeq + 1 }),
 							forgotten: tombstones,
 							loading: false,
 							truncated: result.truncated === true,
@@ -5986,33 +6110,36 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						session_id: result.session_id,
 						cwd,
 						binding: result.binding,
-						/*
-						 * A CONVERSATION BORN ON A PEER SAYS SO ON ITS ROW, and this is
-						 * the write the chat header's device control reads back
-						 * (`chat-device-slot.tsx` takes `locality`/`owner_device` into
-						 * `panePlacement`'s `host`). The fields are the wire's own - the
-						 * same pair a peer-aware listing publishes (`mesh-types.ts`)
-						 * - so nothing downstream learns a second vocabulary. A mark this
-						 * stamp made is SETTLED BY THE MOVE THAT OUTDATES IT:
-						 * `settlePlacement` (below) takes the receipt's own `locality`/
-						 * `owner_device`, because the receipt is the wire's "where it lives
-						 * NOW" and a plain listing never speaks about placement at all
-						 * (`fetchSessions` does not ask for peers - agent review F1).
-						 *
-						 * THE DEFECT THIS FEEDS: on create success the send patches
-						 * `sessionId` and `finishDraft` retires the draft, so the
-						 * pane's only placement facts used to be "not a move issued
-						 * here" - and the chip fell through to `On this device` over a
-						 * conversation the peer had just minted (operator report,
-						 * 2026-09-30). The create RESOLVED with `peer` set, so the peer
-						 * owns it; the row is where that fact survives the draft.
-						 *
-						 * OMITTED ENTIRELY FOR A LOCAL CREATE: its row is byte-for-byte
-						 * what it was before this field existed, and no arm of the
-						 * control consults it.
-						 */
-						...(peer ? { locality: "remote", owner_device: peer } : {}),
 					});
+					/*
+					 * A CONVERSATION BORN ON A PEER SAYS SO ON ITS ROW, and the write that says
+					 * it is the SAME one a move's receipt uses (`settlePlacement` below), so
+					 * the row's pair and the placement FACT behind it (`PlacementFact`) are one
+					 * write rather than two that can drift: this call is the create's writer,
+					 * the receipt is the move's. The fields are the wire's own - the same pair
+					 * a peer-aware listing publishes (`mesh-types.ts`) - so nothing downstream
+					 * learns a second vocabulary, and the fact's currency is what lets the
+					 * peers reads that DO carry the id settle it.
+					 *
+					 * THE DEFECT THIS FEEDS: on create success the send patches `sessionId`
+					 * and retires the draft, so the pane's only placement fact used to be "not
+					 * a move issued here" - and the plain page fired by the create's own answer
+					 * rebuilds membership without the id (a plain listing never asks for
+					 * peers), dropping the row the header's device control reads and falling
+					 * through to `On this device` over a conversation the peer had just minted
+					 * (operator report, 2026-09-30; reproduced on the two-daemon rig,
+					 * 2026-10-05, 231 ms after the send).
+					 *
+					 * FOR A LOCAL CREATE NOTHING IS WRITTEN AT ALL: its row is byte-for-byte
+					 * what it was before this call existed, and no arm of the control consults
+					 * it.
+					 */
+					if (peer) {
+						get().settlePlacement(result.session_id, {
+							locality: "remote",
+							owner_device: peer,
+						});
+					}
 					return result.session_id;
 				} catch (error) {
 					// Same rule as `fetchSessions` above: the app states the refusal's own
@@ -7258,14 +7385,31 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			 * A ROW THE LIST DOES NOT CARRY IS NOT INVENTED: a receipt settles the row
 			 * the pane's conversation already had, and there is nothing on this surface
 			 * to correct when there is no row (a wiped list re-owns the truth from the
-			 * next listing, which is where every other row fact comes from).
+			 * next listing, which is where every other row fact comes from). The
+			 * PLACEMENT FACT is still written in that case, because it is this window's
+			 * own statement about the id rather than a row - and a fact without a row
+			 * protects nothing until a listing re-owns one.
+			 *
+			 * AND THE ROW IS SETTLED BESIDE THE FACT (`PlacementFact`): the pair on the
+			 * row is what the chip reads, but a conversation that lives on a peer is
+			 * absent from every plain page, so the row alone can be dropped the moment
+			 * the catalogue answers - the fact is what holds it until a read that
+			 * SPEAKS about the id settles both. The create writes through this same
+			 * action, so the create's stamp and a move's receipt are one writer for the
+			 * one fact.
 			 *
 			 * AND THE NAME IS NOT WRITTEN HERE: a settle can arrive from a window that
 			 * never read the peers list, so the reader keeps resolving the name it does
 			 * not have (`chat-device-slot.tsx`'s `deviceNameFor`, which already prefers
 			 * `owner_device_name` when a create's row carries one).
 			 */
-			settlePlacement: (sessionId, placement) =>
+			settlePlacement: (sessionId, placement) => {
+				/*
+				 * THE STAMP THIS WRITE OWNS: a FRESH sequence, taken rather than read,
+				 * for the reason `setSessionPin` takes one - two writes in flight on one
+				 * row settle in the order they were MADE (`PlacementFact`).
+				 */
+				const stamp = get().beginAnswer();
 				set((state) => ({
 					sessions: state.sessions.map((item) =>
 						item.session_id === sessionId
@@ -7276,7 +7420,23 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 								})
 							: item,
 					),
-				})),
+					/*
+					 * AND THE FACT BESIDE THE ROW. The row can be dropped by the next plain
+					 * page - a conversation on a peer is absent from every one of them - and
+					 * the fact is what holds it (`PlacementFact` carries the whole
+					 * mechanism). For a LOCAL pair the fact protects nothing by design; its
+					 * only reader there is the settle that keeps the currency moving.
+					 */
+					placementFacts: {
+						...state.placementFacts,
+						[sessionId]: {
+							locality: placement.locality,
+							owner_device: placement.owner_device,
+							at: stamp,
+						},
+					},
+				}));
+			},
 		}),
 		{
 			name: "canonical-sessions-storage",
