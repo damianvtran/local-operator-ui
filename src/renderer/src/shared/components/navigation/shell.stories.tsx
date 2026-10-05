@@ -1,4 +1,6 @@
 import "../../../styles/index.css";
+// The shim installs window.api for every story here.
+import "@features/chat/components/story-electron-shim";
 import { AgentsPage } from "@features/agents/components/agents-page";
 import { Canvas } from "@features/chat/components/canvas";
 import { ChatHeader } from "@features/chat/components/chat-header";
@@ -12,7 +14,9 @@ import { RunPanel } from "@features/chat/components/run-details/run-panel";
 import type { McpRemedyControls } from "@features/chat/components/run-details/use-mcp-remedy";
 import type { MonitorControls } from "@features/chat/components/run-details/use-monitor-controls";
 import type { CanvasDocument } from "@features/chat/types/canvas";
+import { PROVIDER_ROWS } from "@features/settings/components/setting-combobox.fixtures";
 import { SettingsPage } from "@features/settings/components/settings-page";
+import type { ReusableProfile } from "@shared/api/local-operator/profile-hooks";
 import { ChatLayout } from "@shared/components/common/chat-layout";
 import { PaneSlot } from "@shared/components/common/pane-slot";
 import { SidebarNavigation } from "@shared/components/navigation/sidebar-navigation";
@@ -35,6 +39,7 @@ import {
 	UP_TO_DATE_AFFIRMATION,
 	type UpdateCheckVerdict,
 } from "../../../../../main/update-check-verdict";
+import type { DesktopResponse } from "../../../../../shared/desktop-contract";
 
 /**
  * The app shell: the rail, the settings surface and the agents surface, in one
@@ -162,6 +167,13 @@ const AGENT_SYSTEM_PROMPT = /^\/v1\/agents\/([^/]+)\/system-prompt$/;
  */
 const BACKEND_ORIGIN = new URL(apiConfig.baseUrl).origin;
 
+/*
+ * The system prompt both channels answer with - one spelling, so the REST
+ * route and the desktop read cannot come to describe different machines.
+ */
+const SYSTEM_PROMPT_CONTENT =
+	"You are working on Damian's machine. Prefer plain language, name the files you touch, and ask before anything destructive.";
+
 const route = (path: string): Response | null => {
 	if (path === "/health") {
 		return new Response(JSON.stringify({ status: 200, message: "ok" }), {
@@ -172,8 +184,7 @@ const route = (path: string): Response | null => {
 	if (path === "/v1/config") return ok(CONFIG);
 	if (path === "/v1/config/system-prompt") {
 		return ok({
-			content:
-				"You are working on Damian's machine. Prefer plain language, name the files you touch, and ask before anything destructive.",
+			content: SYSTEM_PROMPT_CONTENT,
 			last_modified: NOW,
 		});
 	}
@@ -207,6 +218,147 @@ const route = (path: string): Response | null => {
 		return found ? ok(found) : null;
 	}
 	return null;
+};
+
+/*
+ * The desktop control plane, answered from the same world the REST routes
+ * above describe.
+ *
+ * WHY THIS EXISTS. Both surfaces read through the desktop transport - the
+ * settings page's config and account reads, the agents page's capabilities and
+ * profile catalogue - not through the REST paths alone, so until this fixture
+ * owned that channel every one of those reads failed against the Storybook
+ * server's 404: the settings story photographed the product's "Your settings
+ * could not be loaded. The Local Operator server is older than this app
+ * expects." card, and the agents stories sat under "The backend could not be
+ * reached - Desktop controls need a compatible backend connection." A story is
+ * a picture of the tree, so its fixtures own every channel its subject calls -
+ * the same arrangement `docs-library.stories.tsx` states as "WHAT IS
+ * STUBBED", on the same pages.
+ *
+ * WHAT IS ANSWERED, and why the account read is an ANSWER despite being a
+ * refusal: the pages read the Radient account over the same transport, and the
+ * no-credential answer (409 + `radient_no_credential`) is the class they
+ * classify as the ordinary signed-out state - the reading a fresh machine
+ * gives, never a fault card. An operation this world has no answer for is
+ * refused BY NAME, so a story that starts issuing a new read fails loudly
+ * rather than hanging on a promise nothing resolves.
+ */
+const DESKTOP_CAPABILITIES = {
+	desktop_contract: 1,
+	desktop_available: true,
+	desktop_auth: "bearer",
+	features: {
+		profile_catalogue: 1,
+		team_catalogue: 1,
+		aida: 1,
+		settings: 1,
+		agents_config: 1,
+		session_interrupt: 1,
+	},
+};
+
+/**
+ * The transport's own envelope: `{status, body}`, where `body` is the
+ * backend's CRUD payload - NOT the payload directly. Both wire paths are built
+ * from it (`desktopResult` reads `.body.result` off the IPC answer;
+ * `desktopControlResponse` rebuilds a `Response` from `.status`/`.body`), so a
+ * stub that returned the bare payload would render an empty result rather than
+ * an error, which is the quiet failure this shape avoids.
+ */
+const desktopOk = (result: unknown): DesktopResponse => ({
+	status: 200,
+	body: { status: 200, message: "ok", result },
+});
+
+/** One call over the desktop bridge, as the wire carries it. */
+type DesktopBridgeRequest = {
+	op: string;
+	control?: { operation?: string };
+	[key: string]: unknown;
+};
+
+/**
+ * The roster the agents page lists, shaped from this fixture's own `AGENTS` so
+ * the surface shows real rows rather than an invented second world; the
+ * "specialist" kind is how the roster's vocabulary names a durable task
+ * agent. The list is derived rather than retyped, so a rename of a fixture
+ * agent cannot leave two spellings of it behind.
+ */
+const DESKTOP_PROFILES: ReusableProfile[] = AGENTS.map((agent) => ({
+	name: agent.name,
+	kind: "specialist",
+	source: "installed",
+	agent_id: null,
+	description: agent.description,
+	tools: null,
+	effort: null,
+	delegate: false,
+}));
+
+const desktopRoute = async (
+	request: DesktopBridgeRequest,
+): Promise<DesktopResponse> => {
+	switch (request.op) {
+		case "capabilities":
+			return desktopOk(DESKTOP_CAPABILITIES);
+		case "config.get":
+			return desktopOk(CONFIG);
+		case "instructions.get":
+			return desktopOk({
+				content: SYSTEM_PROMPT_CONTENT,
+				last_modified: NOW,
+			});
+		case "radient.request":
+			if (request.control?.operation === "account") {
+				return {
+					status: 409,
+					body: {
+						detail: {
+							code: "radient_no_credential",
+							message: "Sign in to Radient to access your account",
+						},
+					},
+				};
+			}
+			throw new Error(
+				`unexpected Radient operation in this story: ${request.control?.operation}`,
+			);
+		case "profiles.list":
+			return desktopOk({ profiles: DESKTOP_PROFILES });
+		/*
+		 * The shipped provider registry, read from the committed real projection
+		 * (`setting-combobox.fixtures.ts` carries the same rows the backend's own
+		 * census returns) rather than a hand-written one - the Model providers
+		 * section hard-enables this read, and a bare `[]` would photograph an
+		 * empty registry the product cannot have.
+		 */
+		case "providers.list":
+			return desktopOk({ providers: PROVIDER_ROWS });
+		/*
+		 * No reusable teams in this world; the shell rows' subject is the rail and
+		 * the pane split, and an empty Teams tab is a state the page has rather
+		 * than an error it shows.
+		 */
+		case "teams.list":
+			return desktopOk({ teams: [] });
+		/*
+		 * The backend settings registry. This world configures no `subagents.models`
+		 * tiers, so the composer's effort picker has nothing to offer - the reading
+		 * an unconfigured backend gives, not an error.
+		 */
+		case "settings.list":
+			return desktopOk({ settings: [] });
+		case "aida.status":
+			return desktopOk({
+				enabled: true,
+				session_id: null,
+				paused: false,
+				greeted: true,
+			});
+		default:
+			throw new Error(`unexpected desktop op in this story: ${request.op}`);
+	}
 };
 
 /**
@@ -300,6 +452,18 @@ const useFixtureFetch = () => {
 				}),
 			};
 		}
+		/*
+		 * The desktop bridge, on the property `desktopRequest` prefers. It is
+		 * installed in this effect rather than at module scope for the same reason
+		 * the fetch stub below is: the reads a page fires on mount have to find it,
+		 * and a layout effect lands before react-query's first request.
+		 *
+		 * It OVERWRITES rather than filling only when absent, deliberately: the
+		 * window is shared by every story in a Storybook session, so a docs-library
+		 * or backend-settings scene that ran earlier leaves ITS bridge behind, and
+		 * a frame must stay a function of this tree.
+		 */
+		api.desktop = { request: desktopRoute };
 
 		const original = window.fetch;
 		window.fetch = async (input, init) => {
@@ -309,6 +473,21 @@ const useFixtureFetch = () => {
 					: input instanceof URL
 						? input.toString()
 						: input.url;
+			/*
+			 * The same bridge over the fetch fallback `desktopRequest` takes when
+			 * `window.api.desktop` is absent - what the dev server implements as
+			 * `POST /__desktop`. Answering it here keeps the two channels one world;
+			 * the body is the transport's own envelope INSIDE a 200, never the bare
+			 * payload (see `desktopOk`).
+			 */
+			const controlPath = url.split("?")[0];
+			if (controlPath.endsWith("/__desktop")) {
+				const request = JSON.parse(String(init?.body ?? "{}"));
+				return new Response(JSON.stringify(await desktopRoute(request)), {
+					status: 200,
+					headers: { "Content-Type": "application/json" },
+				});
+			}
 			if (url.startsWith(BACKEND_ORIGIN)) {
 				const response = route(new URL(url).pathname);
 				/*
