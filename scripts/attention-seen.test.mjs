@@ -609,6 +609,7 @@ test("nothing unread sends no request and writes nothing", async () => {
 		cleared: 0,
 		superseded: 0,
 		unknown: 0,
+		deferred: 0,
 	});
 	// No request, not an empty one: the wire has a 1-item floor, and a batch of
 	// zero would cost a round trip to clear nothing.
@@ -644,6 +645,7 @@ test("only the answer's `read` bucket clears a mark", async () => {
 		cleared: 1,
 		superseded: 1,
 		unknown: 1,
+		deferred: 0,
 	});
 	// The acknowledged row rests; the two the backend refused keep their marks,
 	// because a refusal is not a clear and the user's screen must not say

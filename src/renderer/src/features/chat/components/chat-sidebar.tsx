@@ -4,7 +4,10 @@ import {
 } from "@features/agents/builtin-offer";
 import { InstallBuiltinAgents } from "@features/agents/components/install-builtin-agents";
 import { compatibilityBannerShown } from "@shared/api/local-operator/backend-error";
-import { userFacingMessage } from "@shared/api/local-operator/desktop-api";
+import {
+	isRemoteReceiptDeferral,
+	userFacingMessage,
+} from "@shared/api/local-operator/desktop-api";
 import {
 	desktopFeatureEnabled,
 	desktopFeatureState,
@@ -1341,13 +1344,16 @@ export function ChatSidebar({
 		const changed = announcedReadAck.current !== key;
 		announcedReadAck.current = key;
 		/*
-		 * ONE ARM ANNOUNCES ITSELF AND THE OTHER TWO DO NOT. `unsettled` is the state
+		 * ONE ARM ANNOUNCES ITSELF AND THE OTHERS DO NOT. `unsettled` is the state
 		 * the reader is owed a sentence about - the app has stopped retrying promptly
 		 * and the mark is still there - and it is the arm the bulk path already says
-		 * in this register. `pending` is an in-flight cue, and `offscreen` is a remedy
-		 * whose move is to look at the row's own clause: a toast for either would be
-		 * noise where the reader has the fact already, and the register holds the bulk
-		 * receipt and the archive offers too.
+		 * in this register. `pending` is an in-flight cue, `offscreen` is a remedy
+		 * whose move is to look at the row's own clause, and `remote` is the pairing's
+		 * own deferral - quiet BY CONSTRUCTION, because nothing is in trouble and
+		 * there is no move: it clears when the owning device updates (operator report,
+		 * 2026-10-05). A toast for any of the three would be noise where the reader
+		 * has the fact already, and the register holds the bulk receipt and the
+		 * archive offers too.
 		 */
 		if (readAckNotice?.kind !== "unsettled") {
 			// The fact the sentence stated has gone (the receipt landed, the loop was
@@ -1816,6 +1822,9 @@ export function ChatSidebar({
 	 * derives the number from the same predicate `markAllRead` enumerates with.
 	 */
 	const unreadCopy = markAllReadCopy(sessions);
+	const raiseBulkReadDeferral = useCanonicalSessionsStore(
+		(s) => s.raiseBulkReadDeferral,
+	);
 	const [clearingUnread, setClearingUnread] = useState(false);
 	const markAllReadShown =
 		unreadCopy.count > 0 &&
@@ -1837,10 +1846,31 @@ export function ChatSidebar({
 			 * background window refused by main's foreground gate, a busy store
 			 * answering 503) leaves every mark exactly where it was — and the sentence
 			 * says so rather than only reporting the transport failure.
+			 *
+			 * EXCEPT THE DEFERRAL, WHICH IS NOT A FAILURE (operator report, 2026-10-05):
+			 * a whole call refused because the marks live on other devices gets the
+			 * deferral sentence - the same words the receipt's own bucket split composes
+			 * one level down (`markAllReadDeferredSentence`) - so the class never reads
+			 * as the failure it is not. The count is the control's own set, which is the
+			 * extent the label named and the batch would have carried.
 			 */
-			showWarningToast(
-				`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,
-			);
+			if (isRemoteReceiptDeferral(failure)) {
+				/*
+				 * THE RAISE MOVED OFF THIS PANEL (agent review round 2, B2 = QA
+				 * round 2, Q3): a raiser here is a second, unmountable copy of a
+				 * message class the app draws from its always-mounted surface -
+				 * the archive guard's toast discipline bans the info raise in
+				 * this file wholesale. The panel writes the store slot and
+				 * `UndoToasts` raises the deferral's info from it - once, on the
+				 * non-error register, exactly as the direct raise did (design
+				 * round 1, D2).
+				 */
+				raiseBulkReadDeferral(unreadCopy.count);
+			} else {
+				showWarningToast(
+					`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,
+				);
+			}
 		} finally {
 			setClearingUnread(false);
 		}
@@ -4101,9 +4131,16 @@ export function ChatSidebar({
 		 * `aria-describedby` below and the sentence that id names, and three copies of
 		 * the question would be three chances for the row to point at a sentence it is
 		 * not rendering. Both strings come back together (`readAckCopy`), in the two
-		 * registers the two channels need.
+		 * registers the two channels need. THE ROW'S OWN DEVICE NAME goes with them
+		 * (the remote class alone speaks it, `readAckCopy`'s own note): it is the one
+		 * place a device's name is data rather than prose, and a row that does not
+		 * know one gets the unnamed clause.
 		 */
-		const readAck = readAckCopy(readAckNotice, row.session_id);
+		const readAck = readAckCopy(
+			readAckNotice,
+			row.session_id,
+			typeof row.owner_device_name === "string" ? row.owner_device_name : null,
+		);
 		/*
 		 * THE ROW IS A WRAPPER PLUS A BUTTON, and it keeps that shape now that the per-row
 		 * browser mark is gone (operator ask, 2026-09-18; the reasoning is at

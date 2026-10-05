@@ -1,5 +1,6 @@
 import {
 	DesktopControlError,
+	isRemoteReceiptDeferral,
 	userFacingMessage,
 } from "@shared/api/local-operator/desktop-api";
 import {
@@ -84,11 +85,20 @@ const RETRY_REMEDY_SENTENCE = "Click the chat to try again.";
  *   the state is already on the line four words earlier - the mark glyph and the
  *   `, unread` tail, both drawn from `unreadMarkKind` - and `SILENT_REMEDY`, the
  *   clause this one is shaped after, carries the remedy and nothing else.
+ * - `remote` — the pairing's own deferred class (operator report, 2026-10-05):
+ *   the conversation lives on another device and that device could not take the
+ *   write because its build predates the receipt op. THE ONE ARM WITH NO MOVE
+ *   FOR THE READER: an update on the owning device is what settles it, so the
+ *   clause states where the mark lives and what clears it rather than offering
+ *   an action - and the press stops being advertised as a remedy it cannot be
+ *   ("no action that cannot succeed"). The entry below is the UNNAMED form;
+ *   `readAckCopy` substitutes the device's name when the row knows one.
  */
 export const READ_ACK_NOTICE_CLAUSE: Record<ReadAckNoticeKind, string> = {
 	pending: "marking read",
 	offscreen: "scroll to the result to mark this chat read",
 	unsettled: RETRY_REMEDY,
+	remote: "lives on another device, and it clears when that device updates",
 };
 
 /**
@@ -107,6 +117,34 @@ export const READ_ACK_NOTICE_DESCRIPTION: Record<ReadAckNoticeKind, string> = {
 	pending: "Marking this chat read.",
 	offscreen: "Scroll to the result to mark this chat read.",
 	unsettled: `Not marked read. ${RETRY_REMEDY_SENTENCE}`,
+	remote:
+		"The unread mark lives on another device. It clears when that device updates.",
+};
+
+/**
+ * The remote class's two strings for a NAMED device, or the unnamed table
+ * entries when the row does not know the name.
+ *
+ * The name is the row's own (`owner_device_name`), because it is the only
+ * place a device's NAME is data rather than prose: the refusal names its arm,
+ * and the sentence the backend composes names the device inside a message this
+ * app must not copy words out of. The labeled forms are the table entries with
+ * the noun swapped, word for word - which is what lets a test pin one and read
+ * the other back (`scripts/mark-all-read-control.test.mjs`).
+ */
+const remoteAckCopy = (
+	deviceLabel: string | null | undefined,
+): { clause: string; description: string } => {
+	const name = deviceLabel?.trim();
+	return name
+		? {
+				clause: `lives on ${name}, and it clears when that device updates`,
+				description: `The unread mark lives on ${name}. It clears when that device updates.`,
+			}
+		: {
+				clause: READ_ACK_NOTICE_CLAUSE.remote,
+				description: READ_ACK_NOTICE_DESCRIPTION.remote,
+			};
 };
 
 /**
@@ -119,17 +157,25 @@ export const READ_ACK_NOTICE_DESCRIPTION: Record<ReadAckNoticeKind, string> = {
  * two channels cannot be rendered for different states - the panel's row reads
  * this once and uses it for the flyout, the description and the `id` that
  * description needs.
+ *
+ * THE DEVICE NAME IS THE ROW'S, passed beside the id and used by the remote
+ * class alone: the notice knows which CONVERSATION it is about - never which
+ * device as a name, which only the row carries (`owner_device_name`) - and a
+ * row that does not know one gets the unnamed clause. The id remains the
+ * identity either way.
  */
 export const readAckCopy = (
 	notice: ReadAckNotice | null,
 	sessionId: string,
-): { clause: string; description: string } | null =>
-	notice && notice.sessionId === sessionId
-		? {
-				clause: READ_ACK_NOTICE_CLAUSE[notice.kind],
-				description: READ_ACK_NOTICE_DESCRIPTION[notice.kind],
-			}
-		: null;
+	deviceLabel?: string | null,
+): { clause: string; description: string } | null => {
+	if (!notice || notice.sessionId !== sessionId) return null;
+	if (notice.kind === "remote") return remoteAckCopy(deviceLabel);
+	return {
+		clause: READ_ACK_NOTICE_CLAUSE[notice.kind],
+		description: READ_ACK_NOTICE_DESCRIPTION[notice.kind],
+	};
+};
 
 /**
  * WHICH KIND OF REFUSAL a give-up arm is reporting, from the failure's CLASS
@@ -153,13 +199,28 @@ export const readAckCopy = (
  *   reason for a 200 whose body did not settle the completion, or a failure that is
  *   not a desktop refusal. Naming any cause here would be a claim the app cannot
  *   support (UX round 2, U3's first arm: the daemon answered).
+ * - `remote` — the pairing's own SKEW deferral (operator report, 2026-10-05):
+ *   the mark lives on another device whose build predates the receipt op
+ *   (`isRemoteReceiptDeferral` reads the route's `cause`, and falls back to the
+ *   shared code alone on a fleet whose daemon predates that field - a rollout is
+ *   exactly when both exist). NOT a failure of this attempt: mixed-version meshes
+ *   are normal while a fleet updates, the mark stays, the loop keeps its gentle
+ *   cadence, and the state is quiet by construction - the loop publishes the
+ *   `remote` KIND (never `unsettled`), so the announcement arm never fires, and
+ *   an update on the owning device settles the mark on the next ask.
  */
-type ReadAckRefusal = "busy" | "refused" | "unreachable" | "unreported";
+type ReadAckRefusal =
+	| "busy"
+	| "refused"
+	| "remote"
+	| "unreachable"
+	| "unreported";
 
 const refusalOf = (reason: unknown): ReadAckRefusal => {
 	if (!(reason instanceof DesktopControlError)) return "unreported";
 	if (reason.code === STORE_BUSY_CODE) return "busy";
 	if (isStoreWriteRefusal(reason.code)) return "refused";
+	if (isRemoteReceiptDeferral(reason)) return "remote";
 	return "unreachable";
 };
 
@@ -177,7 +238,7 @@ const UNREACHABLE_FALLBACK = "The app could not reach the backend.";
  * The sentence per CLASS of refusal.
  *
  * A `Record` keyed on the class rather than a `switch` with a `default` (agent
- * review round 3, NIT 1): a fifth class is a compile error here instead of an arm
+ * review round 3, NIT 1): a sixth class is a compile error here instead of an arm
  * that silently inherits whichever sentence the default happened to hold, which is
  * the shape MAJOR 1 was an instance of. Two facts per arm, in the shape the bulk
  * receipt's own failure uses in this same register - what happened to the write, and
@@ -191,6 +252,15 @@ const READ_ACK_SENTENCE: Record<ReadAckRefusal, (reason: unknown) => string> = {
 		`The read state is busy, so the unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
 	refused: () =>
 		`The read state could not be written, so the unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
+	/*
+	 * THE CLASS THAT DOES NOT ANNOUNCE. The loop publishes this class as the
+	 * quiet kind (`remote`), never `unsettled`, so the sidebar's announcement
+	 * arm never asks for this sentence - it exists because the table is total
+	 * by design (a new class is a compile error, not a silent default) and so
+	 * that any future caller that DOES ask gets the class's own words rather
+	 * than the unreachable arm's failure composition.
+	 */
+	remote: () => READ_ACK_NOTICE_DESCRIPTION.remote,
 	unreachable: (reason) =>
 		`${userFacingMessage(reason, UNREACHABLE_FALLBACK)} The unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,
 	unreported: () => `The unread mark was not cleared. ${RETRY_REMEDY_SENTENCE}`,

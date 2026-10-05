@@ -1,0 +1,8 @@
+HTTP/1.1 200 OK
+date: Mon, 05 Oct 2026 19:42:06 GMT
+server: uvicorn
+content-length: 274
+content-type: application/json
+cache-control: no-store
+
+{"status":200,"message":"Desktop session result.","result":{"conversation_id":"session/d7c2d1e7b496","completion_token":"08d91cab-b5ef-46d2-bfef-9bb099b98c3d","anchor_id":"734e3e189a894474812490e04a0c42bf","kind":"complete","unseen":false,"revision":[1,1],"supported":null}}

@@ -1,0 +1,53 @@
+<!doctype html>
+<!--
+  Rendered-states harness for the read-receipt skew (a measurement surface, not
+  part of the app).
+
+  Why this page rather than the live app. The defect's toast needs a mixed-version
+  mesh: a conversation placed on another device whose build predates the receipt
+  op, a completion the owner published, and this window's receipt refused with the
+  skew 409. The two-daemon rig (the set's README, "The live pairing") produces
+  every byte of that state and the refusal was captured from it verbatim
+  (`rig/seen-409.txt`), but the BUILT app cannot be driven to publish the notice:
+  main's read-receipt foreground gate refuses `sessions.seen` from a window that
+  is not visible, unminimised and focused, and a headless rig may not focus a
+  window (it would steal the operator's focus). So this page renders the SHIPPED
+  components and nothing else: the shipped `ThemedToastContainer` with the props
+  `main.tsx` gives it, the shipped `readAckNoticeSentence` / `readAckCopy` for
+  the notice the loop publishes, and the very refusal body the rig captured,
+  carried into a `DesktopControlError` byte-for-byte.
+
+  `readack-skew.mjs` drives one state per run and captures it. The two states:
+  `before` fires the announcement arm exactly as the unmodified panel does
+  (`kind: "unsettled"` -> `showWarningToast`), and `after` runs the SAME page
+  code against the fixed build, where the arm's own condition (`kind !==
+  "unsettled"` returns early) fires nothing and the readout carries the quiet
+  class's copy.
+
+  `<html>` carries no `dir` attribute, deliberately, because the app's own
+  `src/renderer/index.html` carries none either.
+-->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<title>Read-receipt skew — the toast and the quiet state</title>
+	</head>
+	<body>
+		<div id="root"></div>
+		<pre
+			id="readout"
+			data-ok="false"
+			style="
+				position: fixed;
+				inset: 16px 16px auto 16px;
+				margin: 0;
+				padding: 14px 16px;
+				font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+				white-space: pre-wrap;
+				border: 1px solid rgba(127, 127, 127, 0.35);
+				border-radius: 8px;
+			"
+		></pre>
+		<script type="module" src="./readack-skew.tsx"></script>
+	</body>
+</html>

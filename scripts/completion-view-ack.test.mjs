@@ -143,7 +143,7 @@ const fixtures = {
 		);
 	`,
 	"desktop-api": `
-		export { DesktopControlError, UserFacingError, isForegroundRequired } from ${JSON.stringify(
+		export { DesktopControlError, UserFacingError, isForegroundRequired, isRemoteReceiptDeferral } from ${JSON.stringify(
 			`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 		)};
 		export function desktopResult(request) {
@@ -282,6 +282,35 @@ const superseded = () =>
 		"This completion is no longer the conversation's current one.",
 		undefined,
 		"superseded_completion_token",
+	);
+
+/**
+ * A `409 session_is_remote` refusal from the SKEW arm, as the transport raises
+ * it (the operator's report, 2026-10-05): the class rides `code`, and the finer
+ * arm token rides the refusal BODY (`detail.cause` - the field whose reader
+ * owns the narrowing). The message is the backend's own composed sentence,
+ * carried exactly as it crosses.
+ */
+const skewReceipt = () =>
+	new DesktopControlError(
+		409,
+		"The unread mark for abcdef123456 lives on cloud-node-1, and it could not be cleared there right now: cloud-node-1 runs an older build, and the mark clears when that device updates.",
+		undefined,
+		"session_is_remote",
+		undefined,
+		{ code: "session_is_remote", cause: "owner_build_behind" },
+	);
+
+/**
+ * The same 409 from a daemon that predates the `cause` field: `code` alone,
+ * which is the shape a mixed fleet's older local backend still answers.
+ */
+const remoteReceiptLegacy = () =>
+	new DesktopControlError(
+		409,
+		"The unread mark for abcdef123456 lives on cloud-node-1, and it could not be cleared there right now.",
+		undefined,
+		"session_is_remote",
 	);
 
 /**
@@ -1174,6 +1203,158 @@ test("deferrals do not spend the budget a later attempt settles with", async () 
 		);
 	} finally {
 		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("a version-skew receipt defers quietly, and the wait is what re-asks", async () => {
+	// THE OPERATOR'S REPORT (2026-10-05). A receipt for a conversation on another
+	// device whose build predates the receipt op answers `409 session_is_remote`
+	// with cause `owner_build_behind`; mixed-version meshes are NORMAL during a
+	// rollout, so this class must read as a DEFERRAL: no ladder turns, no warning,
+	// and the row's quiet kind published so its clause can say where the mark
+	// lives. The loop keeps asking gently on its own wait, so an update on that
+	// device settles the mark with no action from the reader.
+	const calls = [];
+	const warnings = [];
+	let now = 2_000_000;
+	const originalNow = Date.now;
+	const originalWarn = console.warn;
+	Date.now = () => now;
+	console.warn = (...args) => warnings.push(args.map(String).join(" "));
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			if (calls.length <= 2) throw skewReceipt();
+			return attention({ unseen: false, revision: [1, 1] });
+		});
+		harness.seed([row(attention())]);
+		harness.start();
+		await harness.tick();
+		assert.equal(calls.length, 1, "the first attempt was not made");
+		const notice = store.getState().readAckNotice;
+		assert.equal(
+			notice?.kind,
+			"remote",
+			"the skew was not published as the quiet kind",
+		);
+		assert.equal(notice?.sessionId, SESSION);
+		assert.equal(
+			rowAttention()?.unseen,
+			true,
+			"the mark left the row without an answer",
+		);
+		await harness.tick();
+		assert.equal(
+			calls.length,
+			1,
+			"the deferral re-asked before its wait was out",
+		);
+		now += 59_999;
+		await harness.tick();
+		assert.equal(calls.length, 1, "the deferral ignored its own wait");
+		now += 1;
+		await harness.tick();
+		assert.equal(calls.length, 2, "the wait did not release the next ask");
+		now += 60_000;
+		await harness.tick();
+		assert.equal(calls.length, 3, "the settling ask was not made");
+		assert.equal(rowAttention()?.unseen, false, "the update settled nothing");
+		assert.equal(
+			store.getState().readAckNotice,
+			null,
+			"the quiet statement outlived the receipt",
+		);
+		assert.equal(
+			harness.live().length,
+			0,
+			"the settled loop kept its interval",
+		);
+		assert.deepEqual(warnings, [], "a rollout's normal state was warned about");
+	} finally {
+		Date.now = originalNow;
+		console.warn = originalWarn;
+	}
+});
+
+test("a daemon too old to name its arm defers on the code alone, and the press re-asks", async () => {
+	// THE MIXED FLEET'S OTHER HALF: the daemon that ANSWERS may predate the
+	// `cause` field, so the same 409 arrives with `code` alone. It must classify
+	// identically - the quiet treatment would otherwise hold only on the daemons
+	// that need it least - and the reader's own press releases the wait, which is
+	// what "the normal rearm retries" means for a clause that names no remedy.
+	const calls = [];
+	const harness = mount(async (request) => {
+		calls.push(request);
+		if (calls.length === 1) throw remoteReceiptLegacy();
+		return attention({ unseen: false, revision: [1, 1] });
+	});
+	harness.seed([row(attention())]);
+	harness.start();
+	await harness.tick();
+	assert.equal(calls.length, 1, "the first attempt was not made");
+	assert.equal(
+		store.getState().readAckNotice?.kind,
+		"remote",
+		"the code-only refusal was not deferred",
+	);
+	assert.equal(
+		rowAttention()?.unseen,
+		true,
+		"the mark left the row without an answer",
+	);
+	harness.press();
+	await harness.tick();
+	assert.equal(calls.length, 2, "the press did not release the deferral");
+	assert.equal(
+		rowAttention()?.unseen,
+		false,
+		"the settling ask did not clear the row",
+	);
+	assert.equal(
+		store.getState().readAckNotice,
+		null,
+		"a clause outlived the receipt",
+	);
+});
+
+test("a refusal arm that names something else keeps its own notice", async () => {
+	// THE BOUNDARY THE QUIET CLASS IS DRAWN AT (the alignment on #2004,
+	// `fix/receipt-skew-wording`): the route's other two causes - an unreachable
+	// owner, an owner that answered its own refusal - name a state a reader can
+	// act on, so they keep the shared ladder and its one warning rather than being
+	// folded into the rollout's quiet state.
+	const calls = [];
+	const warnings = [];
+	const originalWarn = console.warn;
+	console.warn = (...args) => warnings.push(args.map(String).join(" "));
+	try {
+		const harness = mount(async (request) => {
+			calls.push(request);
+			throw new DesktopControlError(
+				409,
+				"The unread mark for abcdef123456 lives on cloud-node-1, and it could not be cleared there right now. /network doctor cloud-node-1 diagnoses the link.",
+				undefined,
+				"session_is_remote",
+				undefined,
+				{ code: "session_is_remote", cause: "unreachable" },
+			);
+		});
+		harness.seed([row(attention())]);
+		harness.start();
+		for (let i = 0; i < 3; i += 1) await harness.tick();
+		assert.equal(calls.length, 3, "the unquiet arm stopped asking too soon");
+		assert.equal(
+			store.getState().readAckNotice?.kind,
+			"unsettled",
+			"an actionable refusal was folded into the quiet class",
+		);
+		assert.equal(
+			warnings.length,
+			1,
+			"the unquiet arm lost the warning its class owes",
+		);
+	} finally {
 		console.warn = originalWarn;
 	}
 });

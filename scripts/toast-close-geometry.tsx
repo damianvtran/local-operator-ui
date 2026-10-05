@@ -55,8 +55,20 @@ applyThemeToDocument(THEME);
  * in part — which is the receipt contract's own multi-sentence arm.
  */
 const RECEIPTS: Record<string, MarkAllReadReceipt> = {
-	"one-line": { attempted: 7, cleared: 7, superseded: 0, unknown: 0 },
-	"multi-line": { attempted: 10, cleared: 7, superseded: 2, unknown: 1 },
+	"one-line": {
+		attempted: 7,
+		cleared: 7,
+		superseded: 0,
+		unknown: 0,
+		deferred: 0,
+	},
+	"multi-line": {
+		attempted: 10,
+		cleared: 7,
+		superseded: 2,
+		unknown: 1,
+		deferred: 0,
+	},
 };
 
 const receipt = RECEIPTS[SHAPE];
