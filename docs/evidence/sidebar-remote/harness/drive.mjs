@@ -36,9 +36,16 @@
  * the merge, the mark, the hover - is the shipped code.
  */
 import { spawn } from "node:child_process";
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import {
+	existsSync,
+	mkdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { createServer } from "node:net";
+import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 /*
@@ -65,13 +72,43 @@ const flag = (name, fallback) => {
 	return at === -1 ? fallback : argv[at + 1];
 };
 const ARM = flag("arm", "after");
-if (ARM !== "before" && ARM !== "after") {
-	console.error("--arm must be before|after");
+if (ARM !== "before" && ARM !== "after" && ARM !== "live") {
+	console.error("--arm must be before|after|live");
 	process.exit(2);
 }
 const PEER_NAME = flag("peer-name", "cloud-node-1");
 const NETWORK_NAME = flag("network-name", "damian-mesh");
 const [WIN_W, WIN_H] = flag("window-size", "1380x900").split("x").map(Number);
+/*
+ * THE LIVE ARM runs against a REAL daemon through the set's own pass-through
+ * proxy (`proxy.mjs`), so the wire stays readable and the app is the app: the
+ * daemon URL, the daemon's own token file, and the arm's expectation
+ * (`present` on the fixed tree, `missing` on the base one). Reads only - the
+ * scene opens and hovers, it never sends, moves, pins or deletes.
+ */
+const LIVE = ARM === "live";
+const EXPECT_REMOTE = flag("expect-remote", "");
+if (LIVE && EXPECT_REMOTE !== "present" && EXPECT_REMOTE !== "missing") {
+	console.error("--arm live needs --expect-remote present|missing");
+	process.exit(2);
+}
+const DAEMON = flag("daemon", "http://127.0.0.1:1111");
+const TOKEN_FILE = flag(
+	"token-file",
+	join(
+		homedir(),
+		"Library",
+		"Application Support",
+		"Local Operator",
+		"desktop-token",
+	),
+);
+if (LIVE && !existsSync(TOKEN_FILE)) {
+	console.error(
+		`live arm: no token file at ${TOKEN_FILE} (pass --token-file); a live daemon refuses unauthenticated reads`,
+	);
+	process.exit(2);
+}
 
 const RUN = join(OUT, ARM, "run");
 const WIRE = join(OUT, ARM, "wire.jsonl");
@@ -184,13 +221,18 @@ class Cdp {
 /* ---------------------------------------------------------------- input ---- */
 
 /** One real pointer press into the centre of a selector's first match (or the
- * first whose text contains `text`), the sibling rigs' own shape. */
+ * first whose text contains `text`), the sibling rigs' own shape. The match is
+ * brought into view first (`scrollIntoView`, block: center): a live sidebar can
+ * hold a target below the fold - the first run of the live arm measured exactly
+ * that, a marked row inside a scrolled-out RUNNING section - and a press at the
+ * coordinates of an off-viewport row lands on nothing. */
 async function clickAt(cdp, selector, text = null) {
 	const box = await cdp.eval(`(() => {
 		const want = ${JSON.stringify(text)};
 		const all = [...document.querySelectorAll(${JSON.stringify(selector)})];
 		const el = want === null ? all[0] : all.find((n) => (n.textContent || "").includes(want));
 		if (!el) return null;
+		el.scrollIntoView({ block: "center", inline: "nearest" });
 		const r = el.getBoundingClientRect();
 		return { x: r.x + r.width / 2, y: r.y + r.height / 2, text: (el.textContent || "").trim().slice(0, 80) };
 	})()`);
@@ -198,6 +240,18 @@ async function clickAt(cdp, selector, text = null) {
 		throw new Error(
 			`no element for ${selector}${text ? ` containing ${text}` : ""}`,
 		);
+	await sleep(200);
+	/* Re-measured AFTER the scroll settles, so the press uses the final position. */
+	const settled = await cdp.eval(`(() => {
+		const want = ${JSON.stringify(text)};
+		const all = [...document.querySelectorAll(${JSON.stringify(selector)})];
+		const el = want === null ? all[0] : all.find((n) => (n.textContent || "").includes(want));
+		if (!el) return null;
+		const r = el.getBoundingClientRect();
+		return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+	})()`);
+	if (!settled)
+		throw new Error(`element vanished after scroll for ${selector}`);
 	for (const [type, buttons] of [
 		["mouseMoved", 0],
 		["mousePressed", 1],
@@ -205,18 +259,29 @@ async function clickAt(cdp, selector, text = null) {
 	]) {
 		await cdp.send("Input.dispatchMouseEvent", {
 			type,
-			x: box.x,
-			y: box.y,
+			x: settled.x,
+			y: settled.y,
 			button: type === "mouseMoved" ? "none" : "left",
 			buttons,
 			clickCount: type === "mouseMoved" ? 0 : 1,
 		});
 	}
-	return box;
+	return settled;
 }
 
-/** A pointer move onto a selector's first match, held there (no press). */
+/** A pointer move onto a selector's first match, held there (no press). Scrolls
+ * the match into view first, for the reason `clickAt` states. */
 async function hoverAt(cdp, selector, text = null) {
+	const found = await cdp.eval(`(() => {
+		const want = ${JSON.stringify(text)};
+		const all = [...document.querySelectorAll(${JSON.stringify(selector)})];
+		const el = want === null ? all[0] : all.find((n) => (n.textContent || "").includes(want));
+		if (!el) return null;
+		el.scrollIntoView({ block: "center", inline: "nearest" });
+		return true;
+	})()`);
+	if (!found) throw new Error(`no element to hover for ${selector}`);
+	await sleep(200);
 	const box = await cdp.eval(`(() => {
 		const want = ${JSON.stringify(text)};
 		const all = [...document.querySelectorAll(${JSON.stringify(selector)})];
@@ -225,7 +290,7 @@ async function hoverAt(cdp, selector, text = null) {
 		const r = el.getBoundingClientRect();
 		return { x: r.x + r.width * 0.4, y: r.y + r.height / 2 };
 	})()`);
-	if (!box) throw new Error(`no element to hover for ${selector}`);
+	if (!box) throw new Error(`element vanished after scroll for ${selector}`);
 	await cdp.send("Input.dispatchMouseEvent", {
 		type: "mouseMoved",
 		x: box.x,
@@ -304,6 +369,22 @@ const wire = () => {
 	}
 };
 
+/** The ambient read's own requests (the only calls allowed to carry the flag). */
+const federatedReads = () =>
+	wire().filter(
+		(call) =>
+			String(call.path ?? "").includes("include_peers=true") &&
+			call.method === "GET",
+	);
+/** The catalogue polls: every sessions-list read that is NOT federated. */
+const plainReads = () =>
+	wire().filter(
+		(call) =>
+			String(call.path ?? "").startsWith("/v1/desktop/sessions?") &&
+			!String(call.path).includes("include_peers") &&
+			call.method === "GET",
+	);
+
 /** The theme the document is wearing, for the frame's own name. */
 const themeOf = (cdp) =>
 	cdp.eval(`document.documentElement.dataset.theme || "localOperatorDark"`);
@@ -376,16 +457,30 @@ async function main() {
 	])
 		rmSync(stale, { recursive: true, force: true });
 	mkdirSync(join(OUT, ARM), { recursive: true });
-	const endpoint = spawn(process.execPath, [join(RIG, "server.mjs")], {
-		env: {
-			...process.env,
-			RIG_WIRE: WIRE,
-			RIG_PORT: String(BACKEND_PORT),
-			RIG_PEER_NAME: PEER_NAME,
-			RIG_NETWORK_NAME: NETWORK_NAME,
-		},
-		stdio: ["ignore", "pipe", "pipe"],
-	});
+	const endpoint = LIVE
+		? spawn(
+				process.execPath,
+				[
+					join(RIG, "proxy.mjs"),
+					"--target",
+					DAEMON,
+					"--port",
+					String(BACKEND_PORT),
+					"--wire",
+					WIRE,
+				],
+				{ stdio: ["ignore", "pipe", "pipe"] },
+			)
+		: spawn(process.execPath, [join(RIG, "server.mjs")], {
+				env: {
+					...process.env,
+					RIG_WIRE: WIRE,
+					RIG_PORT: String(BACKEND_PORT),
+					RIG_PEER_NAME: PEER_NAME,
+					RIG_NETWORK_NAME: NETWORK_NAME,
+				},
+				stdio: ["ignore", "pipe", "pipe"],
+			});
 	endpoint.stdout.on("data", (b) =>
 		console.log(`[endpoint] ${b.toString().trim()}`),
 	);
@@ -419,7 +514,12 @@ async function main() {
 		HOME: join(RUN, "home"),
 		LOCAL_OPERATOR_CONFIG_DIR: join(OUT, ARM, "config"),
 		LOCAL_OPERATOR_LOG_DIR: join(RUN, "logs"),
-		LOCAL_OPERATOR_DESKTOP_TOKEN: "[redacted]",
+		LOCAL_OPERATOR_DESKTOP_TOKEN: LIVE
+			? /* The daemon's own token, read here and passed the way the app itself
+				 * documents (`LOCAL_OPERATOR_DESKTOP_TOKEN` wins over any cache). Never
+				 * printed: it reaches the child's environment and no log. */
+				readFileSync(TOKEN_FILE, "utf8").trim()
+			: "rig-token",
 		LOCAL_OPERATOR_UI_WINDOW_MODE: "headless",
 		LOCAL_OPERATOR_UI_TELEMETRY: "off",
 		LOCAL_OPERATOR_NO_NOTIFICATIONS: "1",
@@ -512,12 +612,13 @@ async function main() {
 
 		/*
 		 * THE LIST SETTLES BEFORE ANY READING. `predicate` is the arm's own
-		 * expectation of the list - presence for `after`, absence-of-remote for
-		 * `before` - held until two consecutive equal title readings agree.
+		 * expectation of the list - presence for `after` and for the live arm's
+		 * `present`, absence for `before` and the live arm's `missing` - held until
+		 * two consecutive equal title readings agree.
 		 */
-		const wantsRemote = ARM === "after";
+		const wantsRemote = LIVE ? EXPECT_REMOTE === "present" : ARM === "after";
 		await cdp.waitFor(
-			`document.querySelectorAll("[data-chat-row]").length >= 2`,
+			`document.querySelectorAll("[data-chat-row]").length >= ${LIVE ? 1 : 2}`,
 			{ label: "the sidebar's first rows" },
 		);
 		const sidebar = await settleList(
@@ -526,6 +627,10 @@ async function main() {
 				const titles = read.sections
 					.flatMap((s) => s.rows.map((r) => r.title))
 					.join("|");
+				if (LIVE)
+					return wantsRemote
+						? read.markCount > 0
+						: read.markCount === 0 && titles.length > 0;
 				const hasRemote = REMOTE_TITLES.every((t) => titles.includes(t));
 				return wantsRemote ? hasRemote : !titles.includes("Remote:");
 			},
@@ -548,8 +653,38 @@ async function main() {
 		 * `before`: the local rows are there and every remote title is absent -
 		 * the operator's exact case, "the sidebar lists only local rows" - and no
 		 * locality mark is drawn anywhere.
+		 *
+		 * The LIVE arm reads the same shape against a real daemon: `present`
+		 * means at least one locality mark is drawn by the shipped code over real
+		 * federated rows; `missing` means the base tree drew none while the wire
+		 * shows the app never asked for peers (checked before the mesh tab, whose
+		 * own read is allowed to carry the flag).
 		 */
-		if (ARM === "before") {
+		if (LIVE) {
+			step("live:sidebar", {
+				sections: sidebar.sections.map((s) => ({
+					key: s.key,
+					rows: s.rows.map((r) => r.title),
+				})),
+				markCount: sidebar.markCount,
+			});
+			check(
+				`live:remote rows ${EXPECT_REMOTE}`,
+				wantsRemote ? sidebar.markCount > 0 : sidebar.markCount === 0,
+				`[data-remote-mark] count ${sidebar.markCount} over ${flatTitles.split("|").length} rows`,
+			);
+			if (!wantsRemote) {
+				step("live:wire-before-tab", {
+					federated: federatedReads().length,
+					plain: plainReads().length,
+				});
+				check(
+					"live:no federated read before the tab",
+					federatedReads().length === 0,
+					"the base tree never asks for peers on its own",
+				);
+			}
+		} else if (ARM === "before") {
 			for (const title of LOCAL_TITLES)
 				check(`before:local "${title}" listed`, flatTitles.includes(title));
 			for (const title of REMOTE_TITLES)
@@ -617,19 +752,6 @@ async function main() {
 			 * ~30 s clock rather than once a window (the cadence this change's
 			 * design rests on).
 			 */
-			const federatedReads = () =>
-				wire().filter(
-					(call) =>
-						String(call.path ?? "").includes("include_peers=true") &&
-						call.method === "GET",
-				);
-			const plainReads = () =>
-				wire().filter(
-					(call) =>
-						String(call.path ?? "").startsWith("/v1/desktop/sessions?") &&
-						!String(call.path).includes("include_peers") &&
-						call.method === "GET",
-				);
 			const firstFederated = federatedReads().length;
 			const plainsBefore = plainReads().length;
 			const holdDeadline = Date.now() + 45_000;
@@ -679,6 +801,72 @@ async function main() {
 					height: Math.min(WIN_H - Math.max(0, sidebar.region.y), 620),
 				},
 			});
+
+		if (LIVE) {
+			/*
+			 * THE LIVE SCENE. `present`: the first drawn marked row is hovered for
+			 * its sentence and then OPENED, so the header chip and the row on one
+			 * screen answer the operator's own report. `missing`: the same build
+			 * that cannot draw the rows can show them elsewhere - the Mesh tab
+			 * names the peer and lists its sessions over its own federated read -
+			 * which is what makes the absence in the sidebar beside it a defect
+			 * rather than an empty network.
+			 */
+			if (!wantsRemote) {
+				await cdp.eval(`location.hash = "#/mesh"`);
+				await cdp.waitFor(
+					`document.body.innerText.includes(${JSON.stringify(PEER_NAME)})`,
+					{ label: "the mesh tab names the peer", timeout: 60_000 },
+				);
+				await parkPointer(cdp);
+				await sleep(400);
+				await shutter(cdp, "mesh-tab");
+				step("live:wire-after-tab", {
+					federated: federatedReads().length,
+					plain: plainReads().length,
+				});
+			} else {
+				const marked = await cdp.eval(`(() => {
+					const row = [...document.querySelectorAll("[data-chat-row]")].find((candidate) =>
+						candidate.querySelector("[data-remote-mark]"),
+					);
+					return row ? (row.querySelector("[data-session-title]")?.textContent || "").trim() : "";
+				})()`);
+				check(
+					"live:a marked row is on screen",
+					Boolean(marked),
+					`title ${JSON.stringify(marked)}`,
+				);
+				await hoverAt(cdp, "[data-chat-row]", marked);
+				let tips = [];
+				const hoverDeadline = Date.now() + 8_000;
+				while (Date.now() < hoverDeadline) {
+					tips = await cdp.eval(TOOLTIP);
+					if (tips.some((t) => t.includes(PEER_NAME))) break;
+					await sleep(300);
+				}
+				check(
+					"live:hover reads the device",
+					tips.some((t) => t.includes(`on ${PEER_NAME}`)),
+					`tooltips ${JSON.stringify(tips)}`,
+				);
+				await shutter(cdp, "hover");
+				await clickAt(cdp, "[data-chat-row]", marked);
+				await cdp.waitFor(
+					`(() => { const c = document.querySelector("[data-device-chip]"); return c && (c.textContent || "").includes("On "); })()`,
+					{ label: "the device chip names a device", timeout: 20_000 },
+				);
+				const chip = await cdp.eval(CHIP);
+				check(
+					"live:open chip",
+					Boolean(chip?.label.includes(PEER_NAME)),
+					`chip ${JSON.stringify(chip)}`,
+				);
+				await parkPointer(cdp);
+				await sleep(300);
+				await shutter(cdp, "open");
+			}
+		}
 
 		if (ARM === "after") {
 			/*
@@ -768,8 +956,16 @@ async function main() {
 			plainLastAt: plain.at(-1)?.at ?? null,
 		});
 		check(
-			ARM === "after" ? "wire:federated read ran" : "wire:no federated read",
-			ARM === "after" ? federated.length >= 1 : federated.length === 0,
+			LIVE
+				? "wire:the live wire answers the arm"
+				: ARM === "after"
+					? "wire:federated read ran"
+					: "wire:no federated read",
+			LIVE
+				? true
+				: ARM === "after"
+					? federated.length >= 1
+					: federated.length === 0,
 			`federated requests ${federated.length}`,
 		);
 		check(
@@ -779,7 +975,7 @@ async function main() {
 		);
 		check(
 			"wire:the plain poll never carries include_peers",
-			plain.length >= 2,
+			plain.length >= (LIVE ? 1 : 2),
 			`plain catalogue polls ${plain.length}; none carry include_peers by construction of this filter`,
 		);
 	} catch (error) {
