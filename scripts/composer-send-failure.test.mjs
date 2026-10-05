@@ -65,8 +65,19 @@ globalThis.__canonicalEcho = (event) => {
 	// fact the send path reads back from it. A fixture that always said "local"
 	// would make the delivered-after-all case unreachable here, so the answer is
 	// scripted per id - see `__ownerHasIt`.
+	//
+	// AND "unseen" IS THE THIRD ANSWER, not a synonym for "local" (issue #847):
+	// the real `peekLocalEcho` says it when no transcript is mounted to hold the
+	// id, and the repaint guard's read depends on the difference - a reload has an
+	// empty registry and an empty transcript, not a row of ours. Derived from the
+	// registry below rather than scripted, so the one fixture can stand for both
+	// states: an entry means a pane is holding our echo, no entry means nothing is.
 	if (event.kind === "peekLocal")
-		return globalThis.__ownerHasIt ? "owner" : "local";
+		return globalThis.__ownerHasIt
+			? "owner"
+			: globalThis.__pendingSendRegistry.has(event.sessionId)
+				? "local"
+				: "unseen";
 	return undefined;
 };
 

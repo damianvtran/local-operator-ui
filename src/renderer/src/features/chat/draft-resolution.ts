@@ -32,6 +32,23 @@
  *    from its own walk. The manual clear (the sidebar's own rows) is the other
  *    door for a claim the reader simply wants gone.
  *
+ * THE READ'S REACH IS NOW THE STORE'S OWN TEST rather than this module's private
+ * rule (issue #847): `resolveHeldFromServer` draws "undelivered" only when the
+ * page's oldest row is at or before the claim's own attempt time, so a shallow
+ * page holds the claim for every caller. The `complete: false` this sweep passes
+ * still says something the reach test does not - that a walked-back page is not
+ * evidence of absence even when its window happens to be deep enough - and both
+ * stay.
+ *
+ * AND IT WALKS FOR THE VERDICTS ALREADY WRITTEN (issue #847). The over-claiming
+ * callers recorded `undelivered` for messages that had landed, and nothing
+ * retracts one except a read that NAMES the id - which the tail page never will
+ * for a message older than its window. So a draft carrying a stale verdict gets
+ * a second, bounded question: walk BACK from the tail `HEAL_WALK_MAX_PAGES`
+ * pages looking for the record the verdict names, and hand each page to the same
+ * delivery rule. A page that names it is proof of delivery whatever its age;
+ * a page that does not concludes nothing.
+ *
  * A delivered claim also gets the payload OUT of its composer rows, under both
  * identities the send touched (`draft:…`/`send:…` and the session it became):
  * that is the class the operator watched resurface, and the reconciliation is
@@ -58,6 +75,19 @@ import type { DesktopHistoryPage } from "../../../../shared/desktop-session-cont
 
 /** How many entries the sweep's own tail read asks for. */
 const SWEEP_HISTORY_LIMIT = 100;
+/**
+ * How many OLDER pages the heal's walk may read, per session, looking for the
+ * record a stale verdict names.
+ *
+ * WHY A BOUND AT ALL, and why this one: the walk is a launch-path read per stale
+ * verdict, and the verdicts it exists for name a message the tail could not see -
+ * typically a few pages back, not a hundred. Four pages is 400 rows behind the
+ * tail, and a verdict whose record sits deeper than that keeps standing rather
+ * than costing every launch an unbounded walk. The reader's own row is still
+ * their statement of what happened, and the sidebar's manual clear is unaffected,
+ * so the residual is a limit rather than a wrong answer.
+ */
+const HEAL_WALK_MAX_PAGES = 4;
 /** How many sessions one sweep may visit, however many claims exist. */
 const SWEEP_MAX_SESSIONS = 16;
 /** How many of those reads may be in flight at once. */
@@ -83,7 +113,30 @@ export type HeldSendClaim = {
 };
 
 /** What one sweep did, for the tests and for anyone reading the log. */
-export type HeldSendSweepOutcome = { visited: number; resolved: number };
+export type HeldSendSweepOutcome = {
+	visited: number;
+	/** Claims the read answered (delivered, or provably not). */
+	resolved: number;
+	/** Stale `undelivered` verdicts a walk retracted (issue #847). */
+	healed: number;
+};
+
+/**
+ * The session a draft's claim can be answered FOR, or undefined when there is
+ * none to ask.
+ *
+ * ONE COPY OF THE RULE, for the two queues below: a staged draft learns its
+ * session id only when the create answers, while a send on an EXISTING
+ * conversation is keyed `send:<sessionId>` and (before review round 2's R1)
+ * carried no `sessionId` at all. Two copies of this expression would be two
+ * opinions about WHICH server a claim is settled against.
+ */
+function claimedSessionFor(key: string, draft: ChatDraft): string | undefined {
+	return (
+		draft.sessionId ??
+		(key.startsWith("send:") ? key.slice("send:".length) : undefined)
+	);
+}
 
 /**
  * The claims a server read can settle: admission attempted, outcome unknown, and
@@ -101,13 +154,37 @@ export function heldSendClaims(
 		// pane's own settle owns it.
 		if (draft.pending === true) continue;
 		if (draft.submittedText === undefined) continue;
-		const sessionId =
-			draft.sessionId ??
-			(key.startsWith("send:") ? key.slice("send:".length) : undefined);
+		const sessionId = claimedSessionFor(key, draft);
 		if (!sessionId) continue;
 		claims.push({ key, sessionId, submittedAt: draft.submittedAt ?? 0 });
 	}
 	return claims;
+}
+
+/**
+ * The STALE VERDICTS these reads can retract, keyed the same way the claims are
+ * (issue #847).
+ *
+ * WHY THIS IS A SEPARATE SET. A draft already resolved `undelivered` has no
+ * `submittedText` left - the resolution destructures it away - so the claim
+ * queue above can never contain it, which is exactly why nothing has ever
+ * retracted one on a machine that got a wrong verdict. Its session is the only
+ * thing the walk needs, and the record id is what the walk looks for.
+ */
+function undeliveredRecordsBySession(
+	drafts: Record<string, ChatDraft>,
+): Map<string, string[]> {
+	const bySession = new Map<string, string[]>();
+	for (const [key, draft] of Object.entries(drafts)) {
+		const recordId = draft.undelivered?.recordId;
+		if (recordId === undefined) continue;
+		const sessionId = claimedSessionFor(key, draft);
+		if (!sessionId) continue;
+		const records = bySession.get(sessionId);
+		if (records) records.push(recordId);
+		else bySession.set(sessionId, [recordId]);
+	}
+	return bySession;
 }
 
 /** The claims, keyed by the session whose read answers them. */
@@ -160,7 +237,7 @@ export function resolveHeldSendsFromServer(): Promise<HeldSendSweepOutcome> {
 			 * sweep runs off the launch path and must never be the reason a boot
 			 * reports a failure.
 			 */
-			() => ({ visited: 0, resolved: 0 }),
+			() => ({ visited: 0, resolved: 0, healed: 0 }),
 		)
 		.finally(() => {
 			sweepInFlight = null;
@@ -169,33 +246,49 @@ export function resolveHeldSendsFromServer(): Promise<HeldSendSweepOutcome> {
 }
 
 async function sweep(): Promise<HeldSendSweepOutcome> {
-	const bySession = heldSendClaimsBySession(
-		useCanonicalSessionsStore.getState().drafts,
+	const drafts = useCanonicalSessionsStore.getState().drafts;
+	const bySession = heldSendClaimsBySession(drafts);
+	const stale = undeliveredRecordsBySession(drafts);
+	/*
+	 * ONE VISIT PER SESSION, for either reason. A session can be interesting for
+	 * both - a claim still held, and an older verdict already written on another
+	 * row - and a second read would be the same read twice. The claims' age order
+	 * is preserved because it is the map these keys come from first; sessions
+	 * interesting ONLY for a stale verdict follow it, which is the right order for
+	 * them (a verdict already written is older than any claim still held).
+	 */
+	const queue = [...new Set([...bySession.keys(), ...stale.keys()])].slice(
+		0,
+		SWEEP_MAX_SESSIONS,
 	);
-	const queue = [...bySession.keys()].slice(0, SWEEP_MAX_SESSIONS);
 	let visited = 0;
 	let resolved = 0;
+	let healed = 0;
 	const worker = async () => {
 		for (;;) {
 			const sessionId = queue.shift();
 			if (sessionId === undefined) return;
 			visited += 1;
-			resolved += await resolveSession(
+			const outcome = await resolveSession(
 				sessionId,
 				bySession.get(sessionId) ?? [],
+				stale.get(sessionId) ?? [],
 			);
+			resolved += outcome.resolved;
+			healed += outcome.healed;
 		}
 	};
 	await Promise.all(
 		Array.from({ length: Math.min(SWEEP_CONCURRENCY, queue.length) }, worker),
 	);
-	return { visited, resolved };
+	return { visited, resolved, healed };
 }
 
 async function resolveSession(
 	sessionId: string,
 	keys: readonly string[],
-): Promise<number> {
+	staleRecords: readonly string[],
+): Promise<{ resolved: number; healed: number }> {
 	let page: DesktopHistoryPage;
 	try {
 		page = await desktopResult<DesktopHistoryPage>({
@@ -209,18 +302,20 @@ async function resolveSession(
 		 * held, which is the retry-material-preserving direction, and the next
 		 * launch tries again.
 		 */
-		return 0;
+		return { resolved: 0, healed: 0 };
 	}
 	/*
 	 * `complete: false`: only a DELIVERY conclusion is allowed off this read -
 	 * see the module note for why silence from one tail page is not a
 	 * "did not land" this reader can stand behind.
 	 */
-	useCanonicalSessionsStore.getState().resolveHeldFromServer(
-		sessionId,
-		page.entries.map((entry) => entry.id),
-		false,
-	);
+	useCanonicalSessionsStore
+		.getState()
+		.resolveHeldFromServer(sessionId, page.entries, false);
+	const healed =
+		staleRecords.length > 0
+			? await healUndeliveredRecords(sessionId, page, staleRecords)
+			: 0;
 	let resolved = 0;
 	for (const key of keys) {
 		const draft = useCanonicalSessionsStore.getState().drafts[key];
@@ -241,5 +336,67 @@ async function resolveSession(
 		for (const identity of [key, composerIdentityFor(key, sessionId)])
 			useConversationInputStore.getState().reconcileDelivered(identity);
 	}
-	return resolved;
+	return { resolved, healed };
+}
+
+/**
+ * Walk BACK for the records a stale `undelivered` verdict names (issue #847).
+ *
+ * WHY A WALK AND NOT THE TAIL READ ABOVE. The verdicts that need retracting were
+ * written by the over-claiming callers this change fixes, and they name a message
+ * that is typically OLDER than any tail page - which is exactly why the shallow
+ * page answered "did not land". So a tail read can never retract one, and nothing
+ * else does either: the delivery rule retracts on a read that NAMES the id, and
+ * the durable row the verdict is wrong about sits behind the window.
+ *
+ * SOUND, AND NO MORE THAN SOUND. `before_id` is the daemon's own backward cursor
+ * (`sessions.history`; the renderer's request shape carries no `through_id` or
+ * `around_id`, so a walk is the only way to name a buried row), and a page that
+ * names the record is proof of delivery however old it is. Nothing is concluded
+ * from a page that does not, because every page here travels with
+ * `complete: false`. `has_more === false` is the journal's start - nothing
+ * further back can hold the row - and the walk stops rather than spending its
+ * budget on reads that cannot contain it.
+ *
+ * WHAT IT DOES NOT DO, said rather than implied: the walk is BOUNDED
+ * (`HEAL_WALK_MAX_PAGES`), so a verdict whose record sits deeper than the budget
+ * keeps standing. That is the honest direction - the row the reader sees is still
+ * their statement of what happened, and the sidebar's manual clear is unaffected -
+ * and these are reads the launch path pays for once, per stale verdict.
+ */
+async function healUndeliveredRecords(
+	sessionId: string,
+	tail: DesktopHistoryPage,
+	recordIds: readonly string[],
+): Promise<number> {
+	const outstanding = new Set(recordIds);
+	let cursor = tail.entries[0]?.id;
+	for (let step = 0; step < HEAL_WALK_MAX_PAGES; step++) {
+		if (outstanding.size === 0 || !cursor)
+			return recordIds.length - outstanding.size;
+		let older: DesktopHistoryPage;
+		try {
+			older = await desktopResult<DesktopHistoryPage>({
+				op: "sessions.history",
+				sessionId,
+				limit: SWEEP_HISTORY_LIMIT,
+				beforeId: cursor,
+			});
+		} catch {
+			// A read that failed disproves nothing: the verdict stays.
+			return recordIds.length - outstanding.size;
+		}
+		for (const entry of older.entries) outstanding.delete(entry.id);
+		/*
+		 * The same delivery rule the panes use, off the same kind of page: it
+		 * retracts a verdict the page names and concludes nothing from a silence.
+		 */
+		useCanonicalSessionsStore
+			.getState()
+			.resolveHeldFromServer(sessionId, older.entries, false);
+		if (!older.has_more || older.entries.length === 0)
+			return recordIds.length - outstanding.size;
+		cursor = older.entries[0]?.id;
+	}
+	return recordIds.length - outstanding.size;
 }
