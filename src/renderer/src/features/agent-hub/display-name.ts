@@ -40,10 +40,13 @@
  * (`qa-tester`, `manager`) — a slot is a role the team composition names, and
  * the hub's own team pages spell those raw, so deriving them here would invent a
  * convention the catalogue does not have. It does NOT survive in the prose about
- * a NAME: an alert, a confirmation, a button's accessible name or a toast that
- * names a team or an agent paints the derived form, or one row reads two ways on
- * one screen (design round 1 asked for this explicitly; agent review round 1,
- * m4).
+ * a NAME — an alert, a confirmation or a button's accessible name paints the
+ * derived form, or one row reads two ways on one screen (design round 1 asked
+ * for this explicitly; agent review round 1, m4). What is NOT such a site is the
+ * PULL's own reporting: `team-pull-report.ts` and the download mutation quote the
+ * name the local registry STORED, which is the hub's own spelling and the thing a
+ * reader may need to match against `lop teams list` (agent review round 2, m2
+ * added the boundary, after this paragraph claimed the toasts too).
  */
 
 /**

@@ -423,10 +423,20 @@ export class PublicHubError extends Error {
 	/** The HTTP status, or null when the request never got an answer. */
 	readonly status: number | null;
 
-	constructor(message: string, status: number | null) {
+	/**
+	 * The transport's own failure, when there was one: for LOGS, never for copy.
+	 *
+	 * A separate field rather than an interpolated message because the two have
+	 * different audiences (QA round 2, Q2): `The public hub could not be reached.`
+	 * is what a reader needs, and `Failed to fetch` is what an operator needs.
+	 */
+	readonly reason: unknown;
+
+	constructor(message: string, status: number | null, reason?: unknown) {
 		super(message);
 		this.name = "PublicHubError";
 		this.status = status;
+		this.reason = reason;
 	}
 }
 
@@ -461,12 +471,15 @@ const readPublicHub = async <T>(
 		});
 	} catch (error) {
 		/*
-		 * A transport failure (DNS, TLS, a refused redirect) has no status. The
-		 * message is the browser's own; there is nothing more truthful to add.
+		 * A PLAIN SENTENCE, with the browser's own text kept on the error as its
+		 * CAUSE (QA round 2, Q2). Interpolating it put the browser's terser
+		 * `Failed to fetch` — or a TLS/socket string — in front of a reader who can
+		 * act on none of it. The cause is there for a log, never for the panel.
 		 */
 		throw new PublicHubError(
-			`The public hub could not be reached: ${(error as Error).message}`,
+			"The public hub could not be reached.",
 			null,
+			error,
 		);
 	}
 	if (!response.ok) {

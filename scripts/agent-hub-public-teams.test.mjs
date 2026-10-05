@@ -285,9 +285,10 @@ test("a hub failure is reported as a hub failure, never as the local server", as
 	assert.equal(
 		publicHubFailureMessage(
 			"The public team catalogue could not be read.",
-			new PublicHubError("The public hub could not be reached: refused", null),
+			new PublicHubError("The public hub could not be reached.", null),
 		),
-		"The public hub could not be reached: refused",
+		"The public hub could not be reached.",
+		"and the transport arm is a complete sentence, with no browser text in it",
 	);
 	assert.match(
 		publicHubFailureMessage(
@@ -348,6 +349,20 @@ test("a refusal and a transport failure raise typed errors, and are told apart",
 					error.status,
 					null,
 					"no answer is not the same fact as a refusal",
+				);
+				/*
+				 * QA round 2, Q2: the browser's own text belongs on the error, for a
+				 * log, and NOT in the sentence a reader meets.
+				 */
+				assert.equal(
+					error.message,
+					"The public hub could not be reached.",
+					"a complete sentence, with no `Failed to fetch` in it",
+				);
+				assert.match(
+					String(error.reason),
+					/fetch failed/,
+					"the transport's own text is kept, on the cause",
 				);
 				return true;
 			},
@@ -460,7 +475,11 @@ const TEAM_ROWS = [
  * mounts). Requests are recorded per transport so a claim can say which one it
  * counted.
  */
-const mountLibrary = async ({ rows = TEAM_ROWS, holdList = false } = {}) => {
+const mountLibrary = async ({
+	rows = TEAM_ROWS,
+	holdList = false,
+	refusePull = false,
+} = {}) => {
 	const dom = new JSDOM("<!doctype html><div id='root'></div>", {
 		pretendToBeVisual: true,
 		url: "http://localhost/",
@@ -516,6 +535,11 @@ const mountLibrary = async ({ rows = TEAM_ROWS, holdList = false } = {}) => {
 		desktop: {
 			request: async (request) => {
 				bridgeRequests.push(request.op ?? request.control?.operation);
+				// The arm the local server takes with no Radient credential: a prose
+				// 401, not a coded `PublicationError` (QA round 1, Q2).
+				if (refusePull) {
+					return { status: 401, body: { detail: "Unauthorized" } };
+				}
 				return {
 					status: 200,
 					body: {
@@ -733,6 +757,177 @@ test("opening a row is the ONE brief read the list form omits", async () => {
 	} finally {
 		await mounted.teardown();
 	}
+});
+
+const setSearchValue = async (mounted, box, value) => {
+	/*
+	 * REACT'S OWN VALUE SETTER, not a plain assignment: React skips its `onChange`
+	 * when the DOM value still equals the last one it rendered.
+	 */
+	await act(async () => {
+		const setter = Object.getOwnPropertyDescriptor(
+			mounted.dom.window.HTMLInputElement.prototype,
+			"value",
+		)?.set;
+		setter?.call(box, value);
+		box.dispatchEvent(new mounted.dom.window.Event("input", { bubbles: true }));
+	});
+};
+
+test("clearing the search returns the caret to the box", async () => {
+	const mounted = await mountLibrary();
+	try {
+		const box = mounted.dom.window.document.querySelector(
+			'[data-testid="agent-hub-public-teams-search"]',
+		);
+		assert.ok(box, "the search box is rendered");
+		await setSearchValue(mounted, box, "data");
+		await settle(
+			() =>
+				mounted.dom.window.document.querySelectorAll(
+					'[data-testid="agent-hub-public-team"]',
+				).length === 1,
+			"the filter applied",
+		);
+		box.focus();
+		await setSearchValue(mounted, box, "");
+		await settle(
+			() =>
+				mounted.dom.window.document.querySelectorAll(
+					'[data-testid="agent-hub-public-team"]',
+				).length === 2,
+			"the filter cleared",
+		);
+		/*
+		 * The platform's own clear control takes focus with it when it is pressed,
+		 * so the caret has to be handed back or the reader types at nothing (agent
+		 * review round 1, m3; round 2, m3 asked for the pin).
+		 */
+		assert.equal(
+			mounted.dom.window.document.activeElement,
+			box,
+			"the caret is back in the box that was cleared",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("a refused pull renders its sentence beside the control, not under the brief", async () => {
+	const mounted = await mountLibrary({ refusePull: true });
+	try {
+		const briefTrigger = Array.from(
+			mounted.dom.window.document.querySelectorAll("button"),
+		).find((button) =>
+			(button.getAttribute("aria-label") ?? "").startsWith(
+				"View the brief for",
+			),
+		);
+		await act(async () => {
+			briefTrigger.dispatchEvent(
+				new mounted.dom.window.MouseEvent("click", {
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await settle(
+			() => text(mounted.dom).includes("Collaboration brief"),
+			"the brief opened",
+		);
+		const pull = mounted.dom.window.document.querySelector(
+			'[data-testid="agent-hub-public-team"] button[aria-label^="Pull team"]',
+		);
+		await act(async () => {
+			pull.dispatchEvent(
+				new mounted.dom.window.MouseEvent("click", {
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		await settle(
+			() => text(mounted.dom).includes("could not be pulled"),
+			"the refusal rendered",
+		);
+		const failure = mounted.dom.window.document.querySelector(
+			'[data-testid="agent-hub-public-team-pull-error"]',
+		);
+		assert.ok(failure, "the failure block is rendered");
+		/*
+		 * THE ACTOR IS THIS MACHINE (QA round 2, Q1): the 401 is the local server's
+		 * own credential check, taken before any hub call.
+		 */
+		assert.match(
+			failure.textContent,
+			/this machine has no Radient sign-in for the hub/,
+		);
+		assert.match(failure.textContent, /Sign in on the settings page/);
+		/*
+		 * AND IT LANDS IN THE HEADER (design round 1, D2 = agent round 1, M1): the
+		 * failure shares a column with the button that produced it and precedes the
+		 * open brief, which is the arrangement that used to hide it.
+		 */
+		assert.equal(
+			failure.parentElement?.contains(pull),
+			true,
+			"the refusal is in the same column as its control",
+		);
+		const brief = mounted.dom.window.document.querySelector(
+			'[data-testid="agent-hub-public-team-brief"]',
+		);
+		assert.ok(brief, "the brief is still open");
+		assert.ok(
+			failure.compareDocumentPosition(brief) &
+				mounted.dom.window.Node.DOCUMENT_POSITION_FOLLOWING,
+			"the refusal precedes the brief in document order",
+		);
+	} finally {
+		await mounted.teardown();
+	}
+});
+
+test("the prose about a name paints the derived form too", async () => {
+	/*
+	 * A SOURCE pin for the three surfaces this suite has no mount for: the delist
+	 * confirmation and the action-failure alert on the details page, the card
+	 * container's alert, and the roster's own failure sentence (whose fallback is
+	 * unreachable in the roster harness, whose transport always carries a message).
+	 * The idiom is `agent-hub-org-sharing.test.mjs`'s own for that page.
+	 */
+	const details = read(
+		"src/renderer/src/features/agent-hub/agent-details-page.tsx",
+	);
+	assert.match(
+		details,
+		/const displayName = agent \? hubDisplayName\(agent\.name\) : ""/,
+		"the page derives the name once",
+	);
+	assert.match(details, /This takes "\{displayName\}" off the hub/);
+	assert.match(
+		details,
+		/agentActionFailureMessage\(\s*failure\.action,\s*failure\.error,\s*displayName,/,
+	);
+	assert.doesNotMatch(details, /This takes "\{agent\.name\}"/);
+
+	const container = read(
+		"src/renderer/src/features/agent-hub/components/agent-card-container.tsx",
+	);
+	assert.match(container, /agentActionFailureMessage\(/);
+	assert.match(
+		container,
+		/hubDisplayName\(agent\.name\),/,
+		"the alert is composed from the derived name",
+	);
+
+	const roster = read(
+		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
+	);
+	assert.match(roster, /`Pull team \$\{hubDisplayName\(team\.name\)\}`/);
+	assert.match(
+		roster,
+		/`"\$\{hubDisplayName\(team\.name\)\}" could not be pulled\.`/,
+	);
 });
 
 test("the hook registers the key its own builder produces", async () => {
