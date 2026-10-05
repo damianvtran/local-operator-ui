@@ -3950,6 +3950,30 @@ const BRANCH_RECORDS = [
 	 * moved, with this very test staying green.
 	 */
 	"scrollPagingMachineRestampNote",
+	/*
+	 * And by the mesh approvals lane (PR #809, `feat/mesh-approvals-panel-ux`),
+	 * folded into the U9 copy fix's commit: the note that records the citation
+	 * re-point the lane was asked to carry because main's copy of this ledger
+	 * holds the class it closes. `partialCapture.addedAtHead` and
+	 * `partialCapture.refreshedAtHead` on `origin/main` cite the #827 lane's
+	 * pre-landing fold commit, which no commit on main contains (two of the
+	 * three `citationAncestryFailures` main's copy answers today); per the
+	 * manifest's own convention both are re-pointed here at the commit that
+	 * carried that content onto main, so this branch's merge carries the
+	 * corrected spelling in where a stale resolution would keep the pruned
+	 * one. Extended by the same sweep's third field (the reviewer's find on
+	 * #827): the `mesh-tab-before` set's `capturedAtHead` is re-pointed at the
+	 * same carrier, and the note also names three further sets of the class in
+	 * other lanes - recorded rather than re-pointed, since each belongs to a
+	 * lane whose carrier this sweep has not derived. It also records the two
+	 * values the fields held - the branch's own
+	 * true capture heads - so the re-point loses no fact. It is listed for the
+	 * reason the list exists: a fold that started from main's manifest would
+	 * drop it, and with it the only statement of why those fields read the way
+	 * they do. It quotes bare commit SHAs and never the retired tree pair, so
+	 * it joins this list and not `STAMP_BINDING_NOTES`.
+	 */
+	"meshApprovalsCitationRepointNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(

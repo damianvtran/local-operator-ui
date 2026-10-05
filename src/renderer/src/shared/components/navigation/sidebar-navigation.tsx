@@ -23,8 +23,8 @@ import {
 	switcherShortcutLabel,
 } from "@features/command-palette/palette-shortcut";
 import {
-	pendingApprovalCount,
 	useMeshApprovals,
+	waitingApprovalCount,
 } from "@features/mesh/mesh-approvals";
 import { useMeshMembership } from "@features/mesh/mesh-store";
 import {
@@ -382,7 +382,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		meshMembership === "member" && meshApprovalsEnabled,
 		{ poll: true },
 	);
-	const meshWaiting = pendingApprovalCount(meshApprovals.data ?? []);
+	const meshWaiting = waitingApprovalCount(meshApprovals.data ?? []);
 	/*
 	 * Whether this backend serves the Projects surface at all.
 	 *
@@ -631,10 +631,13 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 		 * view of THIS machine's infrastructure, which is nearer to Settings than to any
 		 * chat surface.
 		 *
-		 * ITS BADGE IS THE ONBOARDING COUNT (`features.approvals`), the same
-		 * shape the Browser row uses for its own approvals: one number, only while
-		 * something waits, and a name that states it in both widths. Zero draws
-		 * nothing, so a mesh at rest renders the row exactly as it shipped.
+		 * ITS BADGE IS THE WAITING COUNT (`features.approvals`), the same shape the
+		 * Browser row uses for its own approvals: one number, only while something
+		 * WAITS ON THE OPERATOR, and a name that states it in both widths. The count
+		 * is exactly the records the tray's live panel draws (`waitingApprovalCount`),
+		 * so the badge and the panel it opens can never disagree (operator round,
+		 * 2026-10-03: a spent approval is a record, not a prompt). Zero draws nothing,
+		 * so a mesh at rest renders the row exactly as it shipped.
 		 */
 		...(meshMembership === "member"
 			? [

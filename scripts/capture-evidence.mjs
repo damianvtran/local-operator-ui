@@ -8989,6 +8989,91 @@ export const STORIES = [
 	 */
 	["mesh-tab--single-device-panel", 1380, 900],
 	/*
+	 * THE APPROVALS PANEL'S OWN STATES (operator round, 2026-10-03; design/UX
+	 * round 1's remediation, 2026-10-04). One row per state the set photographs:
+	 * one waiting prompt; none waiting (the records toggle alone, collapsed); the
+	 * section expanded; the everyday composition of prompt AND records in one
+	 * card (`approvals-mixed`, also at the narrow width); the `Details`
+	 * disclosure open (the consequence list, without which requirement 3 had no
+	 * rendered evidence - design round 1, D1); a stopped runner, whose section
+	 * opens itself; the stopped record whose refusal outlives the section it was
+	 * about (`approvals-stopped-refused` - the closed-section arm of
+	 * `refusalAttached`, D1's second half); the decision write, whose `play`
+	 * approves and opens the section the record landed in; the refusal; the
+	 * approvals READ failure and its `Ask again` (UX round 1, U4); and the
+	 * `local_authority` kind, whose machine-block head no earlier frame carried
+	 * (U4). The `play` stories end on the state their name claims rather than
+	 * one frame short of it - the approve leaves the live panel and the record
+	 * opens in Records - which is what keeps a still honest about the split.
+	 *
+	 * THE PLAYED ROWS HOLD THE SHUTTER ON THE STORY'S OWN LATCH PLUS A CLAIM.
+	 * The first capture of this set is the measurement that says why (agent
+	 * review round 1's remediation): with the rows plain, the run filed
+	 * `approval-refused` mid-flight - controls disabled, "Waiting for the
+	 * signing prompt…" on the screen, the refusal sentence absent - the
+	 * one-click-short class the dialog rows above already carry claims for.
+	 * Each played story now holds `data-capture-pending` until its end state is
+	 * in the DOM (`holdShutter` - design round 1, D9, adopted here), and the
+	 * claims below name the same sentence, so a frame the shutter accepts is
+	 * one the story's assertions accepted; the resting rows stay claim-less
+	 * because no play stands between them and what they photograph. The
+	 * stopped-refused row additionally pins the frame's compound predicate with
+	 * `expectPresent`/`expectGone`: the refusal on screen AND the closed
+	 * section's list gone - exactly what the `refusalAttached` fallback exists
+	 * to render.
+	 */
+	["mesh-tab--approvals-waiting", 1380, 900],
+	["mesh-tab--approvals-records", 1380, 900],
+	[
+		"mesh-tab--approvals-records-open",
+		1380,
+		900,
+		{ expectSentence: "Onboard studio-mini" },
+	],
+	["mesh-tab--approvals-mixed", 1380, 900],
+	["mesh-tab--approvals-mixed", 1024, 768, { dir: "approvals-mixed-narrow" }],
+	[
+		"mesh-tab--approvals-details-open",
+		1380,
+		900,
+		{ expectSentence: "this machine may connect to it over ssh" },
+	],
+	["mesh-tab--approvals-stopped", 1380, 900],
+	[
+		"mesh-tab--approvals-stopped-refused",
+		1380,
+		900,
+		{
+			expectSentence: "already connected",
+			expectPresent: '[data-tour-tag="mesh-approval-refusal"]',
+			expectGone: '[data-tour-tag="mesh-approvals-records"]',
+		},
+	],
+	[
+		"mesh-tab--approvals-decision-writes",
+		1380,
+		900,
+		{ expectSentence: "Approved" },
+	],
+	[
+		"mesh-tab--approval-refused",
+		1380,
+		900,
+		{ expectSentence: "no operator key to sign with" },
+	],
+	[
+		"mesh-tab--approvals-read-failure",
+		1380,
+		900,
+		{ expectSentence: "could not be read" },
+	],
+	[
+		"mesh-tab--approvals-machine-authority",
+		1380,
+		900,
+		{ expectSentence: "Set up operator authority on this machine" },
+	],
+	/*
 	 * THE IN-THREAD SEARCH SET, one row per state. The panel is a fixed 26rem
 	 * wide and the frame is the transcript's own ground at the pane's shipped
 	 * width, so 900x560 holds every state without a crop: the rank list is
