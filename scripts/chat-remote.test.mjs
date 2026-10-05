@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { build } from "esbuild";
 
@@ -148,5 +149,54 @@ test("a row with no usable clock sorts last, not first", () => {
 	assert.deepEqual(
 		mergeRemoteRowsByActivity(rows).map((r) => r.session_id),
 		["l1", "r1"],
+	);
+});
+
+/*
+ * THE SURFACES THAT READ THOSE FACTS, CHECKED THE WAY THIS REPOSITORY CHECKED
+ * THE ARCHIVE MARK BEFORE IT: the sidebar cannot be rendered in this suite (it
+ * reads the router, the session store and the capability hooks), so the call
+ * sites are read out of the shipped JSX - the pattern
+ * `chat-sidebar-archive.test.mjs` established. Without this half the helpers can
+ * be perfect while no row draws them.
+ */
+const SIDEBAR = readFileSync(
+	"src/renderer/src/features/chat/components/chat-sidebar.tsx",
+	"utf8",
+);
+
+test("the sidebar draws the mark, the one sentence, and no separate section", () => {
+	assert.match(SIDEBAR, /row\.locality === "remote" && <ChatRemoteMark \/>/);
+	const clause = SIDEBAR.slice(
+		SIDEBAR.indexOf("const remoteHost = remote"),
+		SIDEBAR.indexOf("const marks = subagentMarks(row)"),
+	);
+	assert.match(clause, /remoteClause\(/);
+	assert.match(
+		SIDEBAR,
+		/\{remote && <span className="block">\{remoteHost\}<\/span>\}/,
+	);
+	assert.match(
+		SIDEBAR,
+		/\{remote && <span className="sr-only">, \{remoteHost\}<\/span>\}/,
+	);
+});
+
+test("an unreachable remote row carries the at-rest suffix, not only the sentence", () => {
+	/*
+	 * The design round's cross-surface decision: hover and `sr-only` are not
+	 * enough for reachability, so the row draws the word at rest - and only on
+	 * rows whose owner did not answer, so a reachable row's read is unchanged.
+	 */
+	assert.match(SIDEBAR, /\{remote && row\.reachable === false && \(/);
+	assert.match(SIDEBAR, /· unreachable/);
+	const cue = SIDEBAR.slice(
+		SIDEBAR.indexOf("{remote && row.reachable === false && ("),
+		SIDEBAR.indexOf("· unreachable"),
+	);
+	assert.match(
+		cue,
+		/text-ink-dim/,
+		"the cue rides the dim role the mark and the time use",
 	);
 });
