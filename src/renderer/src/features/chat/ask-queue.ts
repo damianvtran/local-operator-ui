@@ -538,26 +538,29 @@ export const ASK_SURFACE_SELECTOR = "[data-lo-ask-surfaces]";
 export const ASK_ITEM_SELECTOR = "[data-lo-ask-item-toggle]";
 
 /**
- * The FLEET door: the sidebar's top-level `Asks` row.
+ * The HEADER door: the conversation header's asks trigger.
  *
  * The second thing that OPENS an ask surface, and the reason it needs its own
  * selector rather than a second clause on `ASK_ITEM_SELECTOR`. The drawer's
  * entry move runs only when the mount finds focus ALREADY on the control the
  * user pressed, which is what keeps the lane's no-focus-steal promise (an ask
  * ARRIVING moves nothing). The session door is the composer chip, which carries
- * `ASK_ITEM_SELECTOR`; the fleet door is a sidebar row, which does not - so
- * before this existed a fleet open left focus on the rail row, Escape had no
- * listener inside the pane to bubble to, and the press fell through to the
- * interrupt ladder and stopped the running turn (UX round 1, U1 / agent review
- * round 1, F1). The drawer accepts either door at entry and returns focus to
- * the one it was opened by.
+ * `ASK_ITEM_SELECTOR`; the header trigger is not the chip, so before this
+ * existed an open from the rail left focus outside the pane, Escape had no
+ * listener inside it to bubble to, and the press fell through to the interrupt
+ * ladder and stopped the running turn (UX round 1, U1 / agent review round 1,
+ * F1). The drawer accepts either door at entry and returns focus to the one it
+ * was opened by.
  *
- * The anchor is the row's stable `data-tour-tag`, the same handle the product
- * tour and the driver rigs address it by; the row carries no ask-lane marker of
- * its own, and minting one would be a second name for a row that already has
- * one.
+ * ONE DOOR, TWO SCOPES (operator ask, 2026-10-05). The control it names is the
+ * header trigger, which opens the SESSION scope inside a conversation and the
+ * FLEET scope at the top level - so the constant is named for the control rather
+ * than for one of the two queues it can open. It replaced the sidebar's
+ * top-level `All asks` row, which was itself a disclosure wearing a
+ * destination's clothes; the anchor is still a stable `data-tour-tag`, the same
+ * handle the product tour and the driver rigs address controls by.
  */
-export const ASK_FLEET_ITEM_SELECTOR = '[data-tour-tag="nav-item-asks"]';
+export const ASK_HEADER_ITEM_SELECTOR = '[data-tour-tag="ask-pane-trigger"]';
 
 /*
  * Re-exported so the claim's own contract is nameable from a rig: the composer box

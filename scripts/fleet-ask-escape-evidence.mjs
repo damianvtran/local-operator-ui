@@ -174,7 +174,7 @@ const bundle = await build({
 		contents: [
 			'export { FleetAskDrawer } from "../src/renderer/src/features/chat/components/asks/fleet-ask-drawer";',
 			'export { interruptEscapeApplies } from "../src/renderer/src/features/chat/hooks/use-interrupt-on-escape";',
-			'export { ASK_FLEET_ITEM_SELECTOR, ASK_ITEM_SELECTOR } from "../src/renderer/src/features/chat/ask-queue";',
+			'export { ASK_HEADER_ITEM_SELECTOR, ASK_ITEM_SELECTOR } from "../src/renderer/src/features/chat/ask-queue";',
 			'export { createRoot } from "react-dom/client";',
 			'export { QueryClient, QueryClientProvider } from "@tanstack/react-query";',
 		].join("\n"),
@@ -211,7 +211,7 @@ await writeFile(bundlePath, bundle.outputFiles[0].text);
 const {
 	FleetAskDrawer,
 	interruptEscapeApplies,
-	ASK_FLEET_ITEM_SELECTOR,
+	ASK_HEADER_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
 	QueryClient,
 	QueryClientProvider,
@@ -250,16 +250,16 @@ const client = new QueryClient({
 const container = document.createElement("div");
 document.body.append(container);
 const door = document.createElement("button");
-door.setAttribute("data-tour-tag", "nav-item-asks");
-door.textContent = "All asks";
+door.setAttribute("data-tour-tag", "ask-pane-trigger");
+door.textContent = "Open asks";
 document.body.append(door);
 door.focus();
 
 say(
-	`door selector: ${ASK_FLEET_ITEM_SELECTOR}   chip selector: ${ASK_ITEM_SELECTOR}`,
+	`door selector: ${ASK_HEADER_ITEM_SELECTOR}   chip selector: ${ASK_ITEM_SELECTOR}`,
 );
 say(
-	`door matches the fleet selector: ${door.matches(ASK_FLEET_ITEM_SELECTOR)}`,
+	`door matches the header selector: ${door.matches(ASK_HEADER_ITEM_SELECTOR)}`,
 );
 say(
 	`door holds focus before the pane opens: ${document.activeElement === door}`,

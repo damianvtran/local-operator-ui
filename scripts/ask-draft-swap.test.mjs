@@ -254,7 +254,7 @@ test("the keyboard lands on the card's first option, not on the dismiss (UX U4)"
 	chip.remove();
 });
 
-test("the settled header names the words the section actually holds (M1 = U1 = D1)", async () => {
+test("the settled group labels only what it holds, and each row carries its own word (M1 = U1 = D1)", async () => {
 	const view = await mount(
 		h(AskDrawer, {
 			frontend: frontend([radioAsk, settled("declined", "a-declined")]),
@@ -265,9 +265,15 @@ test("the settled header names the words the section actually holds (M1 = U1 = D
 	assert.ok(header, "the section renders for one settled ask");
 	const text = header.textContent ?? "";
 	assert.ok(text.includes("Settled · 1"), "the count is the section's own");
+	/*
+	 * THE WORD MOVED FROM THE HEADER TO THE ROW (operator ask, 2026-10-05). The
+	 * section used to name its statuses in a subtitle above the list; it now prints
+	 * one status CHIP per row, so the word is still asserted here - and still only
+	 * the word this section can hold - but it is read off the row that carries it.
+	 */
 	assert.ok(
 		text.includes("Declined"),
-		"the one word the section holds is named",
+		"the one word the section holds is named, on its own row",
 	);
 	// The two claims the fixed legend made and could not keep: `timed out` can never
 	// be in the section (the outstanding set folds it in), and a word the section

@@ -14,7 +14,6 @@ import { ChatSidebar } from "@features/chat/components/chat-sidebar";
  * which is the shape `chat-sidebar-selection.test.mjs` reads for.
  */
 import { rowCurrent } from "@features/chat/components/chat-sidebar";
-import { useFleetAsks } from "@features/chat/fleet-asks";
 import { newChatShortcutCap } from "@features/chat/new-chat-shortcut";
 import { openConversation } from "@features/chat/open-conversation";
 import {
@@ -59,7 +58,6 @@ import {
 	FolderKanban,
 	Globe,
 	LoaderCircle,
-	MessageCircleQuestion,
 	MessageSquarePlus,
 	Network,
 	PanelRight,
@@ -316,33 +314,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 */
 	const browserApprovals = useAppWideApprovals();
 	/*
-	 * THE FLEET ASKS COUNT, the second app-wide badge in this column (operator ask,
-	 * 2026-10-04). It is the answer to a question no per-session surface can ask:
-	 * `chat-session-status.tsx` marks each ROW with its own conversation's
-	 * outstanding asks, and the composer's chip counts the one conversation on
-	 * screen — but a queued ask in a conversation the user is not looking at had no
-	 * chrome at all, which is the same gap `useAppWideApprovals` was restored for on
-	 * the Browser row.
-	 *
-	 * IT IS A SEPARATE READ FROM THE ROWS' OWN MARKS (the aggregate route, see
-	 * `useFleetAsks`), because the rows' `asks_open` is a per-row projection and the
-	 * TOTAL is what the top-level badge states — summing fifty row marks would be a
-	 * second derivation of a number the backend already answers in one call.
-	 */
-	const fleetAsks = useFleetAsks();
-	/*
-	 * AND THE COLUMN OWNS THE FLEET DRAWER'S OWN STATE, because it owns the door: the
-	 * press below both navigates nowhere (the pane is the SHELL's, see
-	 * `chat-layout.tsx`, so it docks over whatever route is up) and opens the drawer
-	 * `fleet`-scoped. The scope is written with the flag so the surface can never
-	 * paint one queue's rows under the other's title.
-	 */
-	const askDrawerOpen = useUiPreferencesStore((s) => s.isAskDrawerOpen);
-	const askDrawerScope = useUiPreferencesStore((s) => s.askDrawerScope);
-	const setAskDrawerOpen = useUiPreferencesStore((s) => s.setAskDrawerOpen);
-	const fleetAsksOpen = askDrawerOpen && askDrawerScope === "fleet";
-	const openFleetAsks = () => setAskDrawerOpen(true, "fleet");
-	/*
 	 * Whether this device is in a mesh AT ALL, and it takes TWO facts rather than one
 	 * (review round 1, R1-1). `features.peers` is a CAPABILITY: lop advertises it on
 	 * every install, "including on a machine in no network", because it answers "what can
@@ -497,76 +468,6 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 						 */
 						working: aidaWorking,
 						workingName: `${aidaName}, working`,
-					},
-				]
-			: []),
-		/*
-		 * THE FLEET ASKS ROW — the top-level entry point, beside the sessions list and
-		 * the destinations (operator ask, 2026-10-04; design note §4.4's second
-		 * context).
-		 *
-		 * WHY IT OPENS A PANE AND NOT A ROUTE. The surface it opens is the right
-		 * slot's pane (`chat-layout.tsx`), which is the canvas family's container — a
-		 * route would be a second idiom for one surface, and it would take the user off
-		 * the conversation or the page they were reading to show them a list that is
-		 * about OTHER conversations. So the press opens the pane over whatever route is
-		 * up, `path` stays the route its neighbouring rows are shaped by (the shell
-		 * resolves it as Aida's row does - a row whose press does not navigate still
-		 * needs a shape), and the row is KEYED by its own `tourTag` rather than by that
-		 * shared `path` (see `renderNavItem`). `paneDoor` is what tells the renderer
-		 * this row is a disclosure rather than a destination, which is what stops it
-		 * reporting `aria-current="page"` and gives it the pane family's glyph (design
-		 * review round 1, D3).
-		 *
-		 * IT MARKS WHICH SCOPE THE COUNT IS. The row's own label carries the scope
-		 * ("All asks"), its sentence says "across all conversations" whenever a badge is
-		 * drawn, and the panel's chrome bar repeats it ("All conversations · N") — a
-		 * count of 3 beside a session's chip and 11 here describe different things and
-		 * both are correct, so the surface has to say which one it is before the reader
-		 * has to work it out (design review round 1, D2; UX round 1, U3).
-		 *
-		 * GATED ON THE READ HAVING ANSWERED, not on a capability bit: a backend that
-		 * predates the aggregate route answers 404, `useFleetAsks` answers
-		 * `answered: false`, and the row is absent — the fail-closed rule
-		 * `ask-queue.ts` states for the session item ("a backend that does not do queued
-		 * asks must not grow an affordance that can never be satisfied"), applied to the
-		 * one control that would otherwise open a panel whose every read 404s. The price
-		 * is the same one Aida's row already pays: it can pop in a moment late on a
-		 * normal install.
-		 */
-		...(fleetAsks.answered
-			? [
-					{
-						icon: MessageCircleQuestion,
-						/*
-						 * THE LABEL CARRIES THE SCOPE (design review round 1, D2; UX round 1, U3).
-						 * "Asks" alone left the badge's `11` unqualified on screen - the word "all
-						 * conversations" lived only in the accessible name, and a reader comparing
-						 * the rail's 11 with the composer chip's "2 questions waiting" had nothing
-						 * telling them the two numbers describe different sets. "All asks" is the
-						 * two-word form of the pane's own subject (`askScopeSubject`'s "All
-						 * conversations"), and it is already the surface's accessible name
-						 * (`ask-drawer.tsx`'s `aria-label="All asks"`), so the row reads in the
-						 * register the pane it opens uses.
-						 */
-						label: "All asks",
-						path: "/chat",
-						isActive: fleetAsksOpen,
-						tourTag: "nav-item-asks",
-						onSelect: openFleetAsks,
-						paneDoor: true,
-						attention: fleetAsks.outstanding,
-						attentionTag: "nav-asks-badge",
-						/*
-						 * THE NUMBER IS THE TOTAL, AND THE NAME SAYS SO (design review round 1,
-						 * D4). The badge counts the backend's whole outstanding set - `open` AND
-						 * `timed_out`, `fleetAsksOutstanding`'s fold - while the pane's chrome bar
-						 * spells the same population as "10 waiting, 1 moved on". Two numbers for
-						 * one payload with the sum unstated read as a contradiction, so the row
-						 * states its own total in the pane's own vocabulary.
-						 */
-						attentionName: (count: number) =>
-							`All asks, ${count} across all conversations, waiting or moved on`,
 					},
 				]
 			: []),

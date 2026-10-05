@@ -47,7 +47,8 @@
  *
  * Entering is the user's own press and nothing else: the mount finds focus on one of
  * the lane's two DOORS - the status-row item (`ASK_ITEM_SELECTOR`, the session scope)
- * or the sidebar's `Asks` row (`ASK_FLEET_ITEM_SELECTOR`, the fleet scope) - or it
+ * or the conversation header's asks trigger (`ASK_HEADER_ITEM_SELECTOR`, whichever
+ * scope it opened) - or it
  * moves nothing, which is what keeps the lane's no-focus-steal promise (whose subject
  * is an ask ARRIVING) intact. WHERE it lands is the CARD's first control and not the
  * bar's (UX round 1, U4): the bar's leading control in DOM order is the dismiss, so
@@ -73,7 +74,7 @@ import type {
 	AskScope,
 } from "../../ask-queue";
 import {
-	ASK_FLEET_ITEM_SELECTOR,
+	ASK_HEADER_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
 	EMPTY_DRAFTS,
 	askQueueView,
@@ -246,12 +247,12 @@ export const AskDrawer = ({
 		const active = document.activeElement;
 		if (active === null || typeof active.matches !== "function") return;
 		/*
-		 * EITHER DOOR: the composer chip (session) or the sidebar's `Asks` row
-		 * (fleet). Both are the user's own press; nothing else moves focus.
+		 * EITHER DOOR: the composer chip (session) or the header's asks trigger
+		 * (either scope). Both are the user's own press; nothing else moves focus.
 		 */
 		const door =
 			active.matches(ASK_ITEM_SELECTOR) ||
-			active.matches(ASK_FLEET_ITEM_SELECTOR)
+			active.matches(ASK_HEADER_ITEM_SELECTOR)
 				? active
 				: null;
 		const root = rootRef.current;
@@ -267,8 +268,8 @@ export const AskDrawer = ({
 		 * EVERY OTHER COMMIT RESOLVES THE MOVE, and it resolves it whether or not a
 		 * door is under focus. Spending the flag only on a commit that found BOTH a door
 		 * and a surface (the shape this used to have) left it false for as long as a
-		 * drawer mounted with nothing focused stayed up: the rail row is still on screen
-		 * and still matches `ASK_FLEET_ITEM_SELECTOR`, and the ask clock re-renders once
+		 * drawer mounted with nothing focused stayed up: the header trigger is still on
+		 * screen and still matches `ASK_HEADER_ITEM_SELECTOR`, and the ask clock re-renders once
 		 * a second, so the next Tab onto that row plus any commit moved focus into the
 		 * pane - the steal that old docblock said could not happen. Focus moves ONLY on
 		 * a commit that has both a door and a surface, so the bounded wait cannot move
@@ -288,8 +289,24 @@ export const AskDrawer = ({
 		 * deliberate landing) and then to the drawer itself.
 		 */
 		const panel = root.querySelector<HTMLElement>(ASK_PANEL_SELECTOR);
+		/*
+		 * THE HEAD CARD SCOPES THE WALK (operator ask, 2026-10-05). The panel now leads
+		 * with the FILTER control, whose buttons are legitimately focusable - so a bare
+		 * "first focusable in the panel" would land on the filter rather than on the ask
+		 * the reader pressed the door to answer, which is UX round 1's U4 fault with a
+		 * new control wearing it. Scoping to the first `[data-lo-ask-row]` puts the
+		 * landing back on the head CARD's first live option (`input`, an option row, or
+		 * the free-text field) whatever chrome the panel grows ABOVE the list, and the
+		 * fallbacks below are unchanged: a settled-only queue draws no card, so it walks
+		 * the panel exactly as it always did.
+		 */
+		const headCard = panel?.querySelector<HTMLElement>("[data-lo-ask-row]");
 		const landing =
-			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ?? panel ?? root;
+			headCard?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			headCard ??
+			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
+			panel ??
+			root;
 		landing.focus();
 		/*
 		 * NO DEPENDENCY ARRAY, and that is the whole point rather than an oversight.

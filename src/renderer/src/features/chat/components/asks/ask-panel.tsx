@@ -41,6 +41,7 @@
  * answer the model never received.
  */
 
+import { Badge } from "@shared/components/ui/badge";
 import { Disclosure } from "@shared/components/ui/disclosure";
 import { cn } from "@shared/lib/utils";
 import { Check, Clock, HelpCircle, type LucideIcon, X } from "lucide-react";
@@ -64,10 +65,36 @@ import {
 	askSettledAnswers,
 	askStatusText,
 	askStatusWord,
-	askStatusWords,
 	draftFor,
 } from "../../ask-queue";
 import { AskRecommendedBadge, recommendedIndex } from "../ask-recommended";
+
+/**
+ * WHICH HALF OF THE LIST THE READER IS LOOKING AT (operator ask, 2026-10-05).
+ *
+ * `all` is the default and the shipped shape: one scannable list, pending first
+ * and settled below it. The other two drop one half - the history the operator
+ * used to have to escape with a chevron, and the work a reader who has finished
+ * answering may want out of the way. See `AskPanel`'s filter block for why this is
+ * local state rather than a stored preference.
+ */
+type AskFilter = "all" | "waiting" | "settled";
+
+/**
+ * The status chip's variant, one mapping for the whole surface.
+ *
+ * `success` for a delivered answer (the agent was told), `warning` for a late one
+ * (recorded, the model has not seen it), `neutral` for a decline and for anything
+ * the wire did not name - so the chip's ink is a reading of the status rather than
+ * decoration, and the word inside it stays the contract's own (`askStatusWord`).
+ * Every state is drawn from `Badge`'s `wash` family, whose semantic inks the
+ * contrast gate already covers; no state inherits its meaning from the hue alone,
+ * because the word travels with it.
+ */
+const settledStatusVariant = (
+	status: AskPresentation["status"],
+): "success" | "warning" | "neutral" =>
+	status === "answered" ? "success" : status === "late" ? "warning" : "neutral";
 
 export type AskPanelProps = {
 	view: AskQueueView;
@@ -930,41 +957,70 @@ export const AskPanel = ({
 }: AskPanelProps) => {
 	if (view.asks === null) return null;
 	/*
-	 * PENDING FIRST, ALWAYS COMPLETE; SETTLED IN ONE SECTION THAT OPENS IN PLACE
-	 * (design note §4.5, item 5 / D3).
+	 * PENDING FIRST, THEN SETTLED, IN ONE LIST - NO LONGER ONE COLLAPSED SECTION
+	 * (operator ask, 2026-10-05).
+	 *
+	 * What this was, and why the operator sent it back. Every settled ask sat behind
+	 * ONE group node (`Settled . 17`) that had to be opened before any of them could
+	 * be read, and each settled ask was then itself a disclosure - "you have to drill
+	 * down and drill down again, it's hard to read", in his words. The group node is
+	 * gone: the settled rows now sit in the SAME list as the pending cards, one line
+	 * each, and the two states a reader has to tell apart are carried on the row
+	 * (a status CHIP) rather than by a chevron standing between them and the text.
+	 *
+	 * WHAT REPLACES THE GROUP'S OWN JOB. The node did three things: it collapsed the
+	 * history out of the way, it labelled the section, and its subtitle named the
+	 * statuses the section held. The collapse is now the FILTER CONTROL below - which
+	 * is a real control rather than a subtitle the reader has to notice is inert -
+	 * and the label survives as the quiet `Settled . N` heading that marks the
+	 * boundary only while both groups are on screen. The per-status descriptor is
+	 * dropped rather than moved: with a status CHIP on every row, a legend above them
+	 * is a second spelling of what the rows already say.
 	 *
 	 * The predicate is `open`, the backend's outstanding set - which deliberately
 	 * folds `timed_out` in, because a late answer still reaches the agent - so
 	 * "pending" here means "a control on this row can still do something", which is
 	 * the same fact the chip's counts state at the other end of the lane.
-	 *
-	 * WHAT THE SPLIT IS FOR. The frame the note measured had `Answered late` holding
-	 * ~150px of a ~700px column at the same weight as the open question above it
-	 * (D3): the panel's length was driven by history rather than by work. Here the
-	 * pending cards keep today's body and one settled ask is a single line until the
-	 * reader asks for more.
 	 */
 	/*
 	 * AN ANSWER THE AGENT HAS NOT BEEN HANDED IS STILL THE USER'S (design §10, #1936),
 	 * so it belongs with the pending cards rather than in the history section. §10's
 	 * own word for it is "answered-but-UNSETTLED": the log holds the answer, the
-	 * response row does not exist yet, and the change affordance is live on the row —
+	 * response row does not exist yet, and the change affordance is live on the row -
 	 * which a collapsed one-line history row could not offer. A DELIVERED `answered`
 	 * ask takes the opposite branch and is history, because the model has been told
 	 * and the row pins what it was told.
 	 */
 	const pending = view.rows.filter((row) => row.open || row.delivering);
 	/*
-	 * NEWEST FIRST inside the section, which is the note's own order and the reverse
-	 * of `view.rows`: the queue sorts oldest-first so its head is stable, and a
-	 * HISTORY is read the other way round.
+	 * NEWEST FIRST within the settled half, which is the note's own order and the
+	 * reverse of `view.rows`: the queue sorts oldest-first so its head is stable, and
+	 * a HISTORY is read the other way round.
 	 */
 	const settled = view.rows
 		.filter((row) => !row.open && !row.delivering)
 		.reverse();
 
 	/*
-	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the split: a settled ask's
+	 * THE FILTER IS A CONTROL, NOT A SUBTITLE (operator ask, 2026-10-05).
+	 *
+	 * It replaces the `Settled . 17` group node's two jobs with one answerable
+	 * question: which half am I reading? `All` is the default and keeps the whole
+	 * queue in one list, `Waiting` drops the history and `Settled` drops the work -
+	 * so the history that used to cost a chevron to escape now costs a press, and the
+	 * counts are stated ON the controls rather than in a line of prose about them.
+	 *
+	 * LOCAL STATE, not the store: which slice of ONE surface's list the reader is
+	 * looking at is not a preference that has to survive a remount, and putting it in
+	 * the store would add a persisted field the app would then have to keep in step
+	 * with a queue whose rows change under it.
+	 */
+	const [filter, setFilter] = useState<AskFilter>("all");
+	const showPending = filter !== "settled";
+	const showSettledRows = filter !== "waiting";
+
+	/*
+	 * ONE ROW, ONE CONSTRUCTION, used by both halves of the list: a settled ask's
 	 * expanded body is THE SAME CARD a pending ask wears, so the two cannot drift
 	 * into two ways of showing one ask. The key rides on the row because every caller
 	 * is a list.
@@ -985,6 +1041,50 @@ export const AskPanel = ({
 		/>
 	);
 
+	/*
+	 * THE FILTER, drawn only when there is something to filter. Three pressed-state
+	 * buttons rather than a select: the counts are the point of the control (the
+	 * reader picks the half by its size as often as by its name), and a select would
+	 * hide two of the three numbers.
+	 */
+	const filterControl = (
+		/*
+		 * A `<fieldset>` rather than a `role="group"` div: this repo's a11y lint
+		 * (`useSemanticElements`) refuses the ARIA role where the native element
+		 * exists, and the element is also the one a screen reader announces as a named
+		 * group. The UA's border, margin and padding are zeroed so it paints as the
+		 * row of buttons it is.
+		 */
+		<fieldset
+			data-lo-ask-filter={filter}
+			aria-label="Filter asks"
+			className="m-0 flex items-center gap-1 border-0 p-0 px-1"
+		>
+			{(
+				[
+					["all", "All", view.rows.length],
+					["waiting", "Waiting", pending.length],
+					["settled", "Settled", settled.length],
+				] as const
+			).map(([value, label, count]) => (
+				<button
+					key={value}
+					type="button"
+					aria-pressed={filter === value}
+					onClick={() => setFilter(value)}
+					className={cn(
+						"rounded-md px-2 py-0.5 text-meta transition-colors duration-fast ease-out-quart",
+						filter === value
+							? "bg-sunken text-ink"
+							: "text-ink-muted hover:bg-row-hover hover:text-ink",
+					)}
+				>
+					{`${label} · ${count}`}
+				</button>
+			))}
+		</fieldset>
+	);
+
 	return (
 		<div
 			data-lo-ask-panel="open"
@@ -995,116 +1095,107 @@ export const AskPanel = ({
 					No asks outstanding. The agent is not waiting on anything.
 				</p>
 			) : null}
-			{pending.map(askRow)}
-			{settled.length > 0 ? (
+			{view.rows.length > 0 ? filterControl : null}
+			{showPending ? pending.map(askRow) : null}
+			{showSettledRows && settled.length > 0 ? (
 				/*
-				 * THE SECTION HEADER IS THE APP'S ONE DISCLOSURE (`docs/branding.md` § 7:
-				 * two competing expand/collapse patterns is a bug, not a style choice), which
-				 * is also what the note asks for when it says to reuse rather than reinvent.
-				 * `chevronClassName` steps the chevron off the primitive's `ink-disabled` for
-				 * the measured reason `settings-group-header.tsx` records: a section header's
-				 * chevron is the surface's only affordance and `ink-disabled` is the one role
-				 * exempt from the 3:1 non-text floor (2.70:1 dark measured).
+				 * THE SETTLED GROUP: a plain list in the same column, with a quiet
+				 * heading that marks the boundary only while the pending cards are still
+				 * above it. It carries no chevron of its own - opening one ask is the
+				 * reader's own press, and the group is not a door in front of them.
 				 */
-				<div data-lo-ask-settled="">
-					<Disclosure
-						triggerClassName="text-ink-muted hover:bg-row-hover hover:text-ink"
-						chevronClassName="text-ink-dim"
-						rowClassName="min-h-8 py-0"
-						summary={
-							<span className="flex min-w-0 items-center gap-1.5">
-								<span className="shrink-0 text-ink-dim text-meta">{`Settled · ${settled.length}`}</span>
-								{/*
-								 * THE DESCRIPTOR IS DERIVED FROM THE ROWS BELOW IT, not a fixed legend
-								 * (agent review round 1, M1 = UX U1 = design D1). It used to print
-								 * `answered, timed out, declined, dismissed` in every state - naming a word
-								 * (`timed out`) the section can never hold and omitting two (`Answered
-								 * late`, `Expired`) it routinely holds. A legend is a claim about its own
-								 * section, so it is read FROM the section (`askStatusWords`), and it moves
-								 * with the rows rather than with a second list somebody has to remember to
-								 * update.
-								 */}
-								<span className="truncate text-ink-dim text-meta">
-									{askStatusWords(settled)}
-								</span>
-							</span>
-						}
-					>
-						<div className="flex flex-col gap-1 pb-1">
-							{settled.map((presentation) => {
-								/*
-								 * The one line, and the two things it has to keep apart (D9): the
-								 * status WORD (`askStatusWord`, the copy contract's own leading clause)
-								 * and the question. `Timed out` and `Answered` are what tells the reader
-								 * which of two look-alike rows is still answerable, so the word travels
-								 * in the visible text as well as in the accessible name.
-								 */
-								const word = askStatusWord(presentation.status);
-								const question =
-									presentation.ask.questions[0]?.question ?? "No question text";
-								/*
-								 * THE REFUSAL TRAVELS WITH THE ROW (UX round 1, U1 = design round 1, D1).
-								 *
-								 * The reachable path this exists for: the user presses `Change answer`
-								 * while the wire still says undelivered, and by the time the press lands
-								 * the response row exists — the row is what refuses it — so the ask has
-								 * already left `pending` for this section, whose COLLAPSED line painted
-								 * nothing but the word and the question. The owner's sentence was then
-								 * measured on screen and gone, which §10 calls the worse failure than the
-								 * refusal itself ("a silent no-op would be the worse failure").
-								 *
-								 * Drawn INSIDE the disclosure's own summary rather than in the body: the
-								 * body is what the reader has to ask for, and a refusal nobody opens for
-								 * is the silence this finding is about. It WRAPS rather than truncating
-								 * for the same reason — a half-sentence is not an answer — and the row
-								 * grows the one line it needs only while a refusal stands, which is the
-								 * exception state rather than the normal one.
-								 */
-								const refusal =
-									outcomes?.[presentation.ask.ask_id]?.refused ?? null;
-								return (
-									<Disclosure
-										key={presentation.ask.ask_id}
-										triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
-										chevronClassName="text-ink-dim"
-										rowClassName="min-h-7 py-0"
-										triggerLabel={`${word} — ${question}`}
-										/*
-										 * The summary clamps to one line, so the value behind the cut is
-										 * reachable without operating the control: the app's own tooltip
-										 * idiom for a truncated disclosure summary, with the caller's
-										 * measure because the question is unbounded.
-										 */
-										triggerTooltip={question}
-										tooltipClassName="max-w-96"
-										summary={
-											<span className="flex min-w-0 flex-col gap-0.5">
-												<span className="flex min-w-0 items-baseline gap-1.5">
-													<span className="shrink-0 text-ink-dim text-meta">
-														{word}
-													</span>
-													<span className="truncate text-ink text-meta">
-														{question}
-													</span>
-												</span>
-												{refusal === null ? null : (
-													/*
-													 * The danger band and no mark, for the reason the card's own line
-													 * gives above: one refusal, one treatment, on both surfaces.
-													 */
-													<span className="min-w-0 text-danger text-meta">
-														{refusal}
-													</span>
-												)}
+				<div data-lo-ask-settled="" className="flex flex-col gap-1 pb-1">
+					{/*
+					 * THE GROUP'S ONE LABEL, always drawn: it is what separates the two
+					 * halves of the list now that no chevron does, and its count is the
+					 * section's own (the `Settled · 17` the group node used to spell, kept
+					 * because the number was never the complaint - the door in front of the
+					 * rows was). The per-status descriptor that used to sit beside it is
+					 * gone: with a chip on every row, a legend above them names twice what
+					 * the rows already say.
+					 */}
+					<p className="px-3 pt-1 text-ink-dim text-meta">
+						{`Settled · ${settled.length}`}
+					</p>
+					{settled.map((presentation) => {
+						/*
+						 * The one line, and the two things it has to keep apart (D9): the
+						 * status WORD (`askStatusWord`, the copy contract's own leading clause)
+						 * and the question. `Timed out` and `Answered` are what tells the reader
+						 * which of two look-alike rows is still answerable, so the word is
+						 * DRAWN - now as a chip rather than as a leading word in the same ink as
+						 * the question (operator ask, 2026-10-05) - and it travels in the
+						 * accessible name as well.
+						 */
+						const word = askStatusWord(presentation.status);
+						const question =
+							presentation.ask.questions[0]?.question ?? "No question text";
+						/*
+						 * THE REFUSAL TRAVELS WITH THE ROW (UX round 1, U1 = design round 1, D1).
+						 *
+						 * The reachable path this exists for: the user presses `Change answer`
+						 * while the wire still says undelivered, and by the time the press lands
+						 * the response row exists - the row is what refuses it - so the ask has
+						 * already left `pending` for this half of the list, whose collapsed line
+						 * painted nothing but the word and the question. The owner's sentence was
+						 * then measured on screen and gone, which §10 calls the worse failure than
+						 * the refusal itself ("a silent no-op would be the worse failure").
+						 */
+						const refusal =
+							outcomes?.[presentation.ask.ask_id]?.refused ?? null;
+						return (
+							<Disclosure
+								key={presentation.ask.ask_id}
+								triggerClassName="text-ink hover:bg-row-hover hover:text-ink"
+								chevronClassName="text-ink-dim"
+								rowClassName="min-h-7 py-1"
+								triggerLabel={`${word} - ${question}`}
+								summary={
+									<span className="flex min-w-0 flex-col gap-0.5">
+										<span className="flex min-w-0 items-start gap-1.5">
+											{/*
+											 * THE STATUS IS A CHIP (operator ask, 2026-10-05): at the
+											 * question's own 12px in `ink-dim`, `Answered` and
+											 * `Answered late` read as the first two words of the
+											 * sentence rather than as a mark on it - the same
+											 * "reads as prose" fault the recommendation badge had
+											 * (see `ask-recommended.tsx`), answered the same way.
+											 */}
+											<Badge
+												variant={settledStatusVariant(presentation.status)}
+												shape="pill"
+												className="mt-px shrink-0"
+											>
+												{word}
+											</Badge>
+											{/*
+											 * THE QUESTION WRAPS (operator ask, 2026-10-05): "full
+											 * questions not truncated" is what he asked for, and a
+											 * `truncate` here is what put the whole question behind a
+											 * tooltip instead of on the row. `break-words` so a long
+											 * unbroken token cannot push the row wider than the pane.
+											 */}
+											<span className="min-w-0 whitespace-normal break-words text-ink text-meta">
+												{question}
 											</span>
-										}
-									>
-										<div className="pt-1.5">{askRow(presentation)}</div>
-									</Disclosure>
-								);
-							})}
-						</div>
-					</Disclosure>
+										</span>
+										{refusal === null ? null : (
+											/*
+											 * The danger band and no mark, for the reason the card's own
+											 * line gives above: one refusal, one treatment, on both
+											 * surfaces.
+											 */
+											<span className="min-w-0 text-danger text-meta">
+												{refusal}
+											</span>
+										)}
+									</span>
+								}
+							>
+								<div className="pt-1.5">{askRow(presentation)}</div>
+							</Disclosure>
+						);
+					})}
 				</div>
 			) : null}
 		</div>
