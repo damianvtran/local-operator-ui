@@ -26,6 +26,7 @@ import {
 	useRef,
 	useState,
 } from "react";
+import { hubDisplayName } from "../display-name";
 import { useOrgTeamsQuery } from "../hooks/use-org-teams-query";
 import { useTeamPullMutation } from "../hooks/use-team-pull-mutation";
 import { orgRefusalFromError } from "../org-access";
@@ -628,7 +629,13 @@ const TeamSummary = ({
 		<span className="flex min-w-0 flex-col">
 			<span className="flex min-w-0 items-baseline">
 				<span className="truncate font-medium text-body text-ink">
-					{team.name}
+					{/*
+					 * The display name rule, shared with the public catalogue and the agent
+					 * cards: a published team's `name` is a lowercase KEY, and painting the
+					 * raw key here while the public view paints its display form would let
+					 * one team read two ways a tab apart.
+					 */}
+					{hubDisplayName(team.name)}
 				</span>
 				{version ? (
 					<span className="ml-2 shrink-0 text-ink-dim text-meta">

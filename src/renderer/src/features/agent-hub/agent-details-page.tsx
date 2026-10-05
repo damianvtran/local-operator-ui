@@ -28,6 +28,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { AgentTagsAndCategories } from "./components/agent-tags-and-categories";
 import { CommentsSection } from "./components/comments-section";
 import { OrgOriginBadge } from "./components/org-origin-badge";
+import { hubDisplayName } from "./display-name";
 import { useAgentDetailsQuery } from "./hooks/use-agent-details-query";
 import { useAgentFavouriteMutation } from "./hooks/use-agent-favourite-mutation";
 import { useAgentLikeMutation } from "./hooks/use-agent-like-mutation";
@@ -310,7 +311,9 @@ export const AgentDetailsPage: React.FC = () => {
 					</Avatar>
 					{/* Matches the PageHeader title step used on other routes */}
 					<div className="flex min-w-0 items-center gap-2">
-						<h1 className="truncate text-display text-ink">{agent.name}</h1>
+						<h1 className="truncate text-display text-ink">
+							{hubDisplayName(agent.name)}
+						</h1>
 						{/*
 						 * The org origin badge (§8.4). This page is reachable by URL, so the
 						 * scope the reader arrived from is not knowable here: the badge is what

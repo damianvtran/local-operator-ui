@@ -150,9 +150,19 @@ export type AccountInfo = {
 	updated_at: string;
 };
 
+/**
+ * The author a hub row carries.
+ *
+ * `email` is OPTIONAL because the hub does not always send one: the PUBLIC team
+ * listing's rows carry a name and nothing else (measured against the live hub,
+ * 2026-10-05), and a type that demanded an address would have every reader of
+ * these rows either invent one or cast around the type. `Agent`'s own rows are
+ * read through `account_metadata?.email` on the details page for the same
+ * reason — present is not the same as promised.
+ */
 export type AccountMetadata = {
 	name: string;
-	email: string;
+	email?: string;
 };
 
 export type IdentityInfo = {
@@ -847,3 +857,21 @@ export type HubTeamsResult = {
 export type HubTeamResult = {
 	team: HubTeam;
 };
+
+/**
+ * One row of the PUBLIC team listing (`GET /v1/teams`).
+ *
+ * The public route is the same document family as the org one, with the brief
+ * omitted from the LIST form, which is what `HubTeam.instructions`' optionality
+ * already said — this names the omission so a list row cannot be handed to a
+ * surface that expects the brief to be there (the detail read is what carries
+ * it). The wire row also carries `moderation`, which this app never renders and
+ * therefore does not type.
+ */
+export type HubTeamRow = Omit<HubTeam, "instructions">;
+
+/**
+ * The public listing's envelope: the hub's paginated shape rather than the org
+ * list's bare `{teams: []}` (that route serves a whole unpaginated roster).
+ */
+export type PaginatedTeamList = PaginatedResponse<HubTeamRow>;
