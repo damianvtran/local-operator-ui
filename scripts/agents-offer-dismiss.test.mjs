@@ -221,7 +221,7 @@ const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
 const ANY_PATH = /.*/;
 
 const STUB_CONTENTS = {
-	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage, isRemoteReceiptDeferral} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
 export {DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE} from ${JSON.stringify(

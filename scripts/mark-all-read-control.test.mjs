@@ -250,7 +250,7 @@ const STUB_FILTERS = STUB_PATHS.map((path) => new RegExp(`^${path}$`));
  * store's error copy and the failure receipt both read them.
  */
 const STUB_CONTENTS = {
-	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage} from ${JSON.stringify(
+	"@shared/api/local-operator/desktop-api": `export {DESKTOP_REFUSAL_PLACEHOLDER, DesktopControlError, UserFacingError, userFacingMessage, isRemoteReceiptDeferral} from ${JSON.stringify(
 		`${process.cwd()}/src/renderer/src/shared/api/local-operator/desktop-api.ts`,
 	)}
 /*
@@ -336,6 +336,13 @@ const bundle = await build({
 			 * whole chain rather than the half of it this harness stubs.
 			 */
 			' export { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";' +
+			/*
+			 * THE ALWAYS-MOUNTED RAISING SURFACE (agent review round 2, B2 = QA round 2,
+			 * Q3): the bulk deferral's raise lives here now, so this harness mounts it
+			 * beside the container exactly as `main.tsx` does - otherwise the case would
+			 * assert against a watcher the app mounts and this harness did not.
+			 */
+			' export { UndoToasts } from "./src/renderer/src/features/chat/components/undo-toasts";' +
 			' export { realDesktopResult, DESKTOP_FOREGROUND_REQUIRED_CODE, DESKTOP_FOREGROUND_REQUIRED_MESSAGE } from "@shared/api/local-operator/desktop-api";' +
 			/*
 			 * THE WORDS THEMSELVES, from the module that owns them, the REFUSAL CLASS the
@@ -410,6 +417,7 @@ const {
 	ChatSidebar,
 	useCanonicalSessionsStore: store,
 	ThemedToastContainer,
+	UndoToasts,
 	realDesktopResult,
 	readAckNoticeSentence,
 	READ_ACK_NOTICE_DESCRIPTION,
@@ -434,12 +442,18 @@ const { createRoot } = await import("react-dom/client");
  * call, synchronously, and the paint, by waiting for the sentence to arrive or
  * leave. QA round 2, Q2-2 named exactly this shape.
  */
-const toastCalls = { warnings: [], dismissals: [] };
+const toastCalls = { warnings: [], infos: [], dismissals: [] };
 const originalWarning = sonnerToast.warning;
+const originalInfo = sonnerToast.info;
 const originalDismiss = sonnerToast.dismiss;
 sonnerToast.warning = (message, options) => {
 	const id = originalWarning.call(sonnerToast, message, options);
 	toastCalls.warnings.push({ id, message, options });
+	return id;
+};
+sonnerToast.info = (message, options) => {
+	const id = originalInfo.call(sonnerToast, message, options);
+	toastCalls.infos.push({ id, message, options });
 	return id;
 };
 sonnerToast.dismiss = (id) => {
@@ -648,6 +662,12 @@ const PILE = [
 		active: true,
 		status: COMPLETE,
 		attention: unread(SESSION),
+		/*
+		 * WHERE THE MARK LIVES, when the wire carried it: the remote class's clause
+		 * substitutes this name, and every other channel ignores it - so it is a
+		 * fixture fact for the quiet-clause case, not a state any other case reads.
+		 */
+		owner_device_name: "cloud-node-1",
 	},
 	{
 		session_id: OTHER,
@@ -1241,6 +1261,24 @@ test("the give-up sentence is this app's own, keyed on the class of refusal", ()
 	const unreported = sentence(
 		new Error("answer did not settle the rendered completion"),
 	);
+	/*
+	 * THE QUIET CLASS (operator report, 2026-10-05). Its sentence is never what a
+	 * toast says on a live path - the loop publishes the class as the `remote`
+	 * KIND, and the sidebar's announcement arm speaks for `unsettled` alone - but
+	 * the table is total by design, so the words exist and this pins them: the
+	 * rollout's own two facts (where the mark lives, what clears it), never the
+	 * unreachable arm's failure composition, and never the refusal's prose.
+	 */
+	const remoteSkew = sentence(
+		new DesktopControlError(
+			409,
+			"The unread mark for abcdef123456 lives on cloud-node-1, and it could not be cleared there right now: cloud-node-1 runs an older build, and the mark clears when that device updates.",
+			undefined,
+			"session_is_remote",
+			undefined,
+			{ code: "session_is_remote", cause: "owner_build_behind" },
+		),
+	);
 	assert.equal(
 		busy,
 		"The read state is busy, so the unread mark was not cleared. Click the chat to try again.",
@@ -1261,6 +1299,20 @@ test("the give-up sentence is this app's own, keyed on the class of refusal", ()
 	assert.equal(
 		unreported,
 		"The unread mark was not cleared. Click the chat to try again.",
+	);
+	assert.equal(
+		remoteSkew,
+		"The unread mark lives on another device. It clears when that device updates.",
+	);
+	assert.doesNotMatch(
+		remoteSkew,
+		/try again/i,
+		"the quiet class offered a remedy that is not the reader's",
+	);
+	assert.doesNotMatch(
+		remoteSkew,
+		/not cleared|older build|not an operation/i,
+		"the quiet class echoed the refusal's prose",
 	);
 	/*
 	 * THE RULE MAJOR 1 FILED: a refusal the store never saw may not be drawn as the
@@ -1563,8 +1615,239 @@ test("the receipt's own state is drawn on its own row, and the give-up arm is an
 			null,
 			"the row still describes a receipt that has landed",
 		);
+
+		/*
+		 * THE QUIET CLASS, on the same row (operator report, 2026-10-05): the
+		 * pairing's skew deferral. Its clause says where the mark lives and what
+		 * clears it, its description is a sentence of its own, and NOTHING IS
+		 * ANNOUNCED - a mixed-version mesh is normal during a rollout, so a toast
+		 * here would be exactly the error the change removes. The row's own device
+		 * name substitutes into the clause (this row carries one); the row without a
+		 * name falls back to the unnamed form.
+		 */
+		const skew = new DesktopControlError(
+			409,
+			"The unread mark for abcdef123456 lives on cloud-node-1, and it could not be cleared there right now: cloud-node-1 runs an older build, and the mark clears when that device updates.",
+			undefined,
+			"session_is_remote",
+			undefined,
+			{ code: "session_is_remote", cause: "owner_build_behind" },
+		);
+		await publish("remote", 4, skew);
+		assert.match(
+			(await receiptFlyout(row, "Reconcile the supplier ledger"))?.at(-1) ?? "",
+			/· lives on cloud-node-1, and it clears when that device updates$/,
+			"the quiet clause does not name the device the mark lives on",
+		);
+		const quietId = row.getAttribute("aria-describedby");
+		assert.ok(quietId, "the quiet row points at no receipt clause");
+		assert.equal(
+			document.getElementById(quietId)?.textContent,
+			"The unread mark lives on cloud-node-1. It clears when that device updates.",
+			"the quiet description is not the sentence this app composes for the class",
+		);
+		assert.equal(
+			warnings.length,
+			1,
+			"the quiet class was announced as trouble",
+		);
+		await act(async () => {
+			store.setState({
+				readAckNotice: {
+					sessionId: OTHER,
+					kind: "remote",
+					revision: 5,
+					reason: skew,
+				},
+			});
+		});
+		assert.match(
+			(await receiptFlyout(other, "Quarterly revenue model"))?.at(-1) ?? "",
+			/· lives on another device, and it clears when that device updates$/,
+			"a row that knows no device name did not use the unnamed clause",
+		);
+		assert.equal(
+			warnings.length,
+			1,
+			"the unnamed quiet row was announced as trouble",
+		);
 	} finally {
 		globalThis.__ack = undefined;
+		await act(async () => toastRoot.unmount());
+		toastHost.remove();
+		await harness.unmount();
+	}
+});
+
+test("the bulk receipt splits a remote deferral out of its failure sentence", async () => {
+	/*
+	 * THE OPERATOR'S THIRD REQUIREMENT, at the bulk path (2026-10-05). A
+	 * conversation on another device has no completion in THIS root's attention
+	 * store, so its item can only answer `unknown` - and the remainder sentence
+	 * that bucket used to carry ("could not be cleared") would report a deferral
+	 * as a failure. The store carves the known-remote subset out
+	 * (`remoteOwnedIds`) and the surface says those clear when that device updates.
+	 */
+	const REMOTE_ROW = "aaaa11112222";
+	const pile = [
+		{
+			session_id: SESSION,
+			title: "Reconcile the supplier ledger",
+			active: true,
+			status: COMPLETE,
+			attention: unread(SESSION),
+		},
+		{
+			session_id: REMOTE_ROW,
+			title: "Ledger on the node",
+			active: true,
+			status: COMPLETE,
+			// The row's own wire fields, exactly as a peers-inclusive listing carries
+			// them (#735): these are the facts `remoteOwnedIds` reads.
+			locality: "remote",
+			owner_device: "d_peer0000000000",
+			owner_device_name: "cloud-node-1",
+			attention: unread(REMOTE_ROW),
+		},
+	];
+	globalThis.__ack = (request) =>
+		request.op === "sessions.list"
+			? Promise.resolve({
+					status: 200,
+					body: { result: { sessions: pile, truncated: false } },
+				})
+			: Promise.resolve({ read: [], superseded: [], unknown: [REMOTE_ROW] });
+	const harness = await mount(pile);
+	const toastHost = document.createElement("div");
+	document.body.append(toastHost);
+	const toastRoot = createRoot(toastHost);
+	await act(async () => {
+		toastRoot.render(React.createElement(ThemedToastContainer));
+	});
+	toastCalls.warnings.length = 0;
+	const warnings = toastCalls.warnings;
+	try {
+		await harness.click(harness.control());
+		assert.equal(
+			warnings.length,
+			1,
+			"the bulk receipt announced nothing about a deferred batch",
+		);
+		assert.match(
+			warnings[0].message,
+			/1 lives on another device and clears when that device updates\.$/,
+			"the deferral was not counted out of the failure sentence",
+		);
+		assert.doesNotMatch(
+			warnings[0].message,
+			/could not be cleared/,
+			"a deferral was reported as a failure",
+		);
+		const deferred = store
+			.getState()
+			.sessions.find((row) => row.session_id === REMOTE_ROW);
+		assert.equal(
+			deferred?.attention?.unseen,
+			true,
+			"a deferred mark was cleared by an answer that never read it",
+		);
+	} finally {
+		globalThis.__ack = undefined;
+		await act(async () => toastRoot.unmount());
+		toastHost.remove();
+		await harness.unmount();
+	}
+});
+
+test("a whole-call skew refusal reads as a deferral, not as a failure", async () => {
+	/*
+	 * THE CLASS AT THE CATCH (operator report, 2026-10-05), driven through the
+	 * REAL transport (`realDesktopResult`): the answer is the backend's own 409
+	 * body with `cause` beside `code`, so this case also pins the threading the
+	 * sidebar's classification reads (`DesktopControlError.detail`). The sentence
+	 * that goes out is the deferral's, never the transport's failure composition -
+	 * nothing was cleared, and the marks clear when that device updates. Its
+	 * REGISTER is the info one: the whole call is a deferral, not a failure, so
+	 * the amber warning glyph must stay untouched (design round 1, D2).
+	 */
+	const harness = await mount(PILE);
+	const toastHost = document.createElement("div");
+	document.body.append(toastHost);
+	const toastRoot = createRoot(toastHost);
+	await act(async () => {
+		/*
+		 * BOTH HALVES OF THE APP'S TOAST PATH, exactly as `main.tsx` mounts them: the
+		 * container that paints, and the always-mounted surface that raises (the
+		 * deferral's raise moved there in this round - a harness that mounted only the
+		 * container would assert against nothing).
+		 */
+		toastRoot.render(
+			React.createElement(
+				React.Fragment,
+				null,
+				React.createElement(ThemedToastContainer),
+				React.createElement(UndoToasts),
+			),
+		);
+	});
+	toastCalls.warnings.length = 0;
+	toastCalls.infos.length = 0;
+	const infos = toastCalls.infos;
+	const warnings = toastCalls.warnings;
+	try {
+		globalThis.__ack = (request) => realDesktopResult(request);
+		window.api = {
+			desktop: {
+				request: (request) =>
+					request.op === "attention.seen"
+						? Promise.resolve({
+								status: 409,
+								body: {
+									detail: {
+										code: "session_is_remote",
+										cause: "owner_build_behind",
+										message:
+											"The unread mark for abcdef123456 lives on cloud-node-1, and it could not be cleared there right now: cloud-node-1 runs an older build, and the mark clears when that device updates.",
+									},
+								},
+							})
+						: Promise.resolve({
+								status: 200,
+								body: { result: { sessions: PILE, truncated: false } },
+							}),
+			},
+		};
+		await harness.click(harness.control());
+		/*
+		 * ONE FLUSH FOR THE SURFACE HOP: the press writes the store slot, the surface's
+		 * subscription re-renders, and its effect raises the info - so the assertion
+		 * waits for that chain rather than for the handler alone.
+		 */
+		await act(async () => {});
+		assert.equal(infos.length, 1, "the refusal announced nothing at all");
+		assert.equal(
+			warnings.length,
+			0,
+			"the deferral wore the amber failure register (design round 1, D2)",
+		);
+		assert.match(
+			infos[0].message,
+			/2 live on other devices and clear when those devices update\.$/,
+			"the whole-call skew refusal did not read as a deferral",
+		);
+		assert.doesNotMatch(
+			infos[0].message,
+			/could not be cleared|not an operation|older build/,
+			"the deferral imported the refusal's own prose",
+		);
+		assert.equal(
+			store.getState().sessions.filter((row) => row.attention?.unseen).length,
+			PILE.length,
+			"a refused batch cleared marks",
+		);
+	} finally {
+		globalThis.__ack = undefined;
+		window.api = undefined;
 		await act(async () => toastRoot.unmount());
 		toastHost.remove();
 		await harness.unmount();

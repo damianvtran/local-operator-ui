@@ -2959,18 +2959,27 @@ export type ReadAckRearm = { sessionId: string; revision: number };
 /**
  * What the read receipt is doing, as the ROW can draw it.
  *
- * Three states rather than two because the reader has to be able to tell two of
- * them apart, and the reason the receipt exists is that they were the same
- * screen: `pending` is the app retrying now (a contention budget, the ladder's
- * flat window), `offscreen` is the one state a press cannot repair (the
- * completion's result is not on screen, and the anchor hit test - the
- * definition of shown - refuses until it is), and `unsettled` is the ladder's
- * own ceiling, where the app is no longer retrying promptly. `unsettled` and
- * `pending` are the pair an operator could not distinguish before: both kept the
- * mark and said nothing, one of them while retrying twice a second and the other
- * once a minute (UX round 1, U1).
+ * Four states rather than three because the reader has to be able to tell them
+ * apart, and the reason the receipt exists is that they were the same screen:
+ * `pending` is the app retrying now (a contention budget, the ladder's flat
+ * window), `offscreen` is the one state a press cannot repair (the completion's
+ * result is not on screen, and the anchor hit test - the definition of shown -
+ * refuses until it is), `unsettled` is the ladder's own ceiling, where the app
+ * is no longer retrying promptly, and `remote` is the pairing's own deferral -
+ * the mark lives on another device whose build predates the receipt op, so the
+ * state is quiet BY CONSTRUCTION: no ladder budget, no warning, no
+ * announcement, and the clause says where the mark lives and what clears it
+ * (operator report, 2026-10-05; `isRemoteReceiptDeferral` reads the class, and
+ * `read-ack-notice.ts` owns the words). `unsettled` and `pending` are the pair
+ * an operator could not distinguish before: both kept the mark and said
+ * nothing, one of them while retrying twice a second and the other once a
+ * minute (UX round 1, U1).
  */
-export type ReadAckNoticeKind = "pending" | "offscreen" | "unsettled";
+export type ReadAckNoticeKind =
+	| "pending"
+	| "offscreen"
+	| "unsettled"
+	| "remote";
 
 /**
  * The read receipt's own observable state for one conversation.
@@ -3009,13 +3018,14 @@ export type ReadAckNotice = {
 	 */
 	revision: number;
 	/**
-	 * The refusal, for `unsettled` only, exactly as the transport raised it - a
-	 * FACT rather than a sentence: the panel CLASSIFIES it and composes this app's
-	 * own sentence for the class at the one call site that says sentences
+	 * The refusal, for the states that carry one (`unsettled`, and the quiet
+	 * `remote` deferral), exactly as the transport raised it - a FACT rather
+	 * than a sentence: the panel CLASSIFIES it and composes this app's own
+	 * sentence for the class at the one call site that says sentences
 	 * (`features/chat/read-ack-notice.ts`) - the only place here that turns a
 	 * desktop failure into words, and the only one that knows a store refusal from a
-	 * refusal the store never saw. Absent for the two states that are not about a
-	 * refusal.
+	 * refusal the store never saw. Absent for the states that are not about a
+	 * refusal (`pending`, `offscreen`).
 	 */
 	reason?: unknown;
 };
@@ -3263,6 +3273,31 @@ export function placementHeldIds(
 		if (fact.locality === "remote") held.push(id);
 	}
 	return held;
+}
+
+/**
+ * The ids THIS CLIENT's own state says live on another device.
+ *
+ * TWO SOURCES, one rule, and they are the same pair `placementHeldIds` reads
+ * plus the row's own wire fields: the placement fact a peers-inclusive page
+ * settled (`PlacementFact`), and `locality` on a row that a listing carried it
+ * for. Both are consulted HERE, where `placementHeldIds` needs only the first,
+ * because the bulk receipt's `unknown` bucket names ids that may no longer be
+ * rows at all - a fact outlives the row it was written for - and a row can
+ * carry a `locality` without a fact that the settle never wrote for it.
+ */
+export function remoteOwnedIds(
+	sessions: CanonicalSessionRow[],
+	facts: Record<string, PlacementFact>,
+): Set<string> {
+	const ids = new Set<string>();
+	for (const [id, fact] of Object.entries(facts)) {
+		if (fact.locality === "remote") ids.add(id);
+	}
+	for (const row of sessions) {
+		if (row.locality === "remote") ids.add(row.session_id);
+	}
+	return ids;
 }
 
 /**
@@ -3704,6 +3739,22 @@ type CanonicalSessionsState = {
 	 */
 	draftsUndo: DraftsUndoOffer | null;
 	/**
+	 * The bulk acknowledgement's deferral: how many of a "Mark all as read" press's
+	 * marks live on a device whose build cannot answer the receipt yet, and the write
+	 * stamp the raise carries (`at` - the identity check the toast surface reads, the
+	 * offers' own rule).
+	 *
+	 * WHY IT LIVES IN THE STORE RATHER THAN THE PANEL (agent review round 2, B2 = QA
+	 * round 2, Q3): the archive guard's toast discipline bans a raiser in
+	 * `chat-sidebar.tsx` (`showInfoToast(` wholesale), because a message raised from
+	 * the panel is a second, unmountable copy of a class the app draws from its
+	 * always-mounted surface. The panel writes this slot; `components/undo-toasts.tsx`
+	 * raises `markAllReadDeferredSentence` from it - once, on the non-error register
+	 * (operator report, 2026-10-05: a deferral is not an error) - and clears the slot
+	 * when the message ends.
+	 */
+	bulkReadDeferral: { count: number; at: number } | null;
+	/**
 	 * The freshly staged draft key a discard left the pane on, or null (UX round 2's U7).
 	 *
 	 * THE PANEL WRITES IT; THE TOAST READS IT (2026-09-27). It was a ref inside
@@ -3728,6 +3779,17 @@ type CanonicalSessionsState = {
 	 * when the toast ends, whichever way it ends).
 	 */
 	setDraftsUndo: (offer: DraftsUndoOffer | null) => void;
+	/**
+	 * Raise the bulk acknowledgement's deferral for `count` marks, stamped off
+	 * `answerSeq` (the currency every toast surface reads).
+	 *
+	 * The write only, matching `setDraftsUndo` above: WHEN the slot clears is the
+	 * message's own end's business (`components/undo-toasts.tsx` clears it when the
+	 * toast ends, whichever way it ends).
+	 */
+	raiseBulkReadDeferral: (count: number) => void;
+	/** Clear the bulk deferral's slot - the message's own end, or its replacement. */
+	clearBulkReadDeferral: () => void;
 	/**
 	 * Put a standing offer's snapshot back: the draft entries and the composer rows
 	 * the discard removed, in one update.
@@ -4072,12 +4134,21 @@ type CanonicalSessionsState = {
 	 * and the user's marks must not disagree with the store that owns them. The
 	 * counters are returned rather than toasted here so the SURFACE decides the
 	 * copy, and it can name the remainder instead of claiming everything cleared.
+	 *
+	 * `deferred` IS CARVED OUT OF `unknown`, not added beside it: a conversation on
+	 * another device has no completion in THIS root's attention store, so its item
+	 * can only answer `unknown` - the truthful bucket, and the wrong sentence, since
+	 * the surface's remainder copy would report a deferral as a failure ("could not
+	 * be cleared"). `deferred` therefore names the subset of `unknown` this client
+	 * knows lives on another device (`remoteOwnedIds`), so the copy can say those
+	 * clear when that device updates (operator report, 2026-10-05).
 	 */
 	markAllRead: () => Promise<{
 		attempted: number;
 		cleared: number;
 		superseded: number;
 		unknown: number;
+		deferred: number;
 	}>;
 	/**
 	 * Apply one `session_status` frame to its row, and retire a dead epoch's stamps.
@@ -4960,6 +5031,7 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			archiveFailure: null,
 			archiveUndo: null,
 			draftsUndo: null,
+			bulkReadDeferral: null,
 			stagedByDiscard: null,
 			deleteCandidate: null,
 			archiveCandidate: null,
@@ -5703,6 +5775,14 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			setDraftsUndo: (offer) => {
 				set({ draftsUndo: offer });
 			},
+			raiseBulkReadDeferral: (count) => {
+				set((state) => ({
+					bulkReadDeferral: { count, at: state.answerSeq + 1 },
+				}));
+			},
+			clearBulkReadDeferral: () => {
+				set({ bulkReadDeferral: null });
+			},
 			setStagedByDiscard: (key) => {
 				set({ stagedByDiscard: key });
 			},
@@ -6318,17 +6398,32 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 				 * what keeps the caller's receipt honest — zero attempted, zero cleared.
 				 */
 				if (items.length === 0)
-					return { attempted: 0, cleared: 0, superseded: 0, unknown: 0 };
+					return {
+						attempted: 0,
+						cleared: 0,
+						superseded: 0,
+						unknown: 0,
+						deferred: 0,
+					};
 				const receipt = await desktopResult<CompletionAttentionAckReceipt>({
 					op: "attention.seen",
 					items,
 				});
 				get().applyAttentionMany(receipt.read);
+				/*
+				 * WHY THE UNKNOWN BUCKET IS SPLIT: see the action's own docblock above
+				 * (`deferred`) - the subset of `unknown` whose ids this client's state
+				 * calls remote, which the surface's copy names separately so a deferral
+				 * does not read as a failure.
+				 */
+				const remote = remoteOwnedIds(get().sessions, get().placementFacts);
+				const deferred = receipt.unknown.filter((id) => remote.has(id)).length;
 				return {
 					attempted: items.length,
 					cleared: receipt.read.length,
 					superseded: receipt.superseded.length,
 					unknown: receipt.unknown.length,
+					deferred,
 				};
 			},
 			applySessionStatus: (sessionId, status, revision, epoch) => {

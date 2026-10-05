@@ -2,6 +2,7 @@ import {
 	DesktopControlError,
 	desktopResult,
 	isForegroundRequired,
+	isRemoteReceiptDeferral,
 } from "@shared/api/local-operator/desktop-api";
 import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import { type RefObject, useEffect, useRef } from "react";
@@ -128,6 +129,24 @@ const backoffMs = (attempts: number) =>
  * moment they are not, the attempt must not wait for this number.
  */
 const FOREGROUND_RETRY_MS = 2_000;
+
+/**
+ * The wait between two attempts deferred because the receipt's conversation
+ * lives on another device whose build predates the receipt op.
+ *
+ * THE WAIT, NOT THE LADDER, and the reason is the class's shape (operator
+ * report, 2026-10-05): nothing about this state is a failure - both devices are
+ * answering; one is simply older than the op - and the condition resolves on
+ * the OWNER's side, where an update settles the mark on the next ask. So the
+ * app re-asks GENTLY: the poll's own cadence would ask twice a second, and the
+ * shared ladder would spend its budget and one warning on a rollout's normal
+ * state. The number is the ladder's parked ceiling (`MAX_BACKOFF_MS`), reached
+ * immediately rather than after three failures, because the first answer
+ * already said what every further attempt would say until the owner moves. A
+ * press or a refocus zeroes `nextAttempt` like every other wait, so the
+ * reader's own move still measures now.
+ */
+const REMOTE_RECEIPT_RETRY_MS = 60_000;
 
 /**
  * Whether this failure is the STORE refusing for contention.
@@ -636,6 +655,26 @@ export function useCompletionView(
 						 * below answer the gesture that does.
 						 */
 						nextAttempt = Date.now() + FOREGROUND_RETRY_MS;
+						return;
+					}
+					/*
+					 * A DEFERRAL TOO, AND THE CLASS THE OPERATOR HIT. A receipt for a
+					 * conversation that lives on another device routes to its owner (#1994,
+					 * `a72c1f492`); where that owner's build predates the receipt op, the 409
+					 * comes back as the skew class (`isRemoteReceiptDeferral`), and
+					 * mixed-version meshes are NORMAL while a fleet updates - so this may not
+					 * take the ladder's failures, earn its warning, or be announced as trouble.
+					 * It takes a wait instead: the mark stays, the row's clause says where it
+					 * lives and what clears it (`read-ack-notice` owns the words, and this
+					 * publishes the class's own KIND so the announcement arm stays quiet), and
+					 * a later ask settles it once that device updates. The press and the
+					 * window's return release the wait above (`readAckRearm`), so the reader's
+					 * own move re-asks at once while being told nothing about a remedy that
+					 * is not theirs.
+					 */
+					if (isRemoteReceiptDeferral(error)) {
+						nextAttempt = Date.now() + REMOTE_RECEIPT_RETRY_MS;
+						publishNotice(sessionId, "remote", error);
 						return;
 					}
 					unresolved(error);

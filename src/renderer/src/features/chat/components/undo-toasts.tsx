@@ -1,5 +1,6 @@
 /**
- * The undo offers and the archive refusal, as ordinary sonner toasts.
+ * The undo offers, the archive refusal and the bulk read deferral, as ordinary
+ * sonner toasts.
  *
  * WHY THE RAISE LIVES HERE, MOUNTED BY `main.tsx` BESIDE THE GLOBAL CONTAINER
  * (operator request, 2026-09-27; design D11's supersession in
@@ -77,6 +78,7 @@ import {
 	useArchiveUndoRetirement,
 } from "../archive-undo";
 import { DRAFTS_OFFERED_VERB, draftsOfferedName } from "../drafts-undo";
+import { markAllReadDeferredSentence } from "../mark-all-read";
 
 /**
  * One id for the archive's OFFER and its REFUSAL, so the newer one REPLACES the
@@ -99,6 +101,20 @@ export const ARCHIVE_TOAST_ID = "archive";
 export const DRAFTS_UNDO_TOAST_ID = "drafts-undo";
 
 /**
+ * The bulk read deferral's own id: a second press REPLACES the message rather
+ * than stacking under it, because it is the same fact restated (the archive's
+ * one-slot rule, on a message with no action to press).
+ */
+export const BULK_READ_DEFERRAL_TOAST_ID = "bulk-read-deferral";
+
+/**
+ * Its life: eight seconds, the offers' own span (`ARCHIVE_UNDO_TOAST_MS`): long
+ * enough to read the sentence once, and sonner ends it on its own - with
+ * hover-pause for a reader holding it.
+ */
+const BULK_READ_DEFERRAL_TOAST_MS = 8000;
+
+/**
  * Raise the three messages, and take each one down when its value is gone.
  *
  * Renders nothing itself; `main.tsx` mounts it beside `ThemedToastContainer`, so
@@ -111,6 +127,9 @@ export function UndoToasts() {
 	);
 	const archiveUndo = useCanonicalSessionsStore((state) => state.archiveUndo);
 	const draftsUndo = useCanonicalSessionsStore((state) => state.draftsUndo);
+	const bulkReadDeferral = useCanonicalSessionsStore(
+		(state) => state.bulkReadDeferral,
+	);
 	const clearArchiveFailure = useCanonicalSessionsStore(
 		(state) => state.clearArchiveFailure,
 	);
@@ -423,6 +442,38 @@ export function UndoToasts() {
 			},
 		);
 	}, [draftsUndo, restoreDraftsUndo]);
+
+	/*
+	 * THE BULK READ DEFERRAL (operator report, 2026-10-05; raised here since agent
+	 * review round 2, B2 = QA round 2, Q3): the panel's own press cannot raise it -
+	 * the archive guard's toast discipline bans a raiser in `chat-sidebar.tsx` - so
+	 * the slot the panel writes is drawn here, on the app's always-mounted surface,
+	 * exactly once. No action: the state is self-resolving (each mark clears when
+	 * the owning device updates), so the message only has to be read once. The
+	 * non-error register is the point - a deferral is not a failure.
+	 */
+	const bulkDeferralDrawnRef = useRef(false);
+	useEffect(() => {
+		if (bulkReadDeferral === null) {
+			if (!bulkDeferralDrawnRef.current) return;
+			bulkDeferralDrawnRef.current = false;
+			dismissToast(BULK_READ_DEFERRAL_TOAST_ID);
+			return;
+		}
+		bulkDeferralDrawnRef.current = true;
+		const settle = () => {
+			const state = useCanonicalSessionsStore.getState();
+			if (state.bulkReadDeferral?.at !== bulkReadDeferral.at) return;
+			state.clearBulkReadDeferral();
+			bulkDeferralDrawnRef.current = false;
+		};
+		showInfoToast(markAllReadDeferredSentence(bulkReadDeferral.count), {
+			id: BULK_READ_DEFERRAL_TOAST_ID,
+			duration: BULK_READ_DEFERRAL_TOAST_MS,
+			onAutoClose: settle,
+			onDismiss: settle,
+		});
+	}, [bulkReadDeferral]);
 
 	/*
 	 * RENDERS NOTHING. Every message above is raised into the shared container
