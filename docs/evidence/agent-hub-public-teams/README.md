@@ -11,6 +11,11 @@ are the same surface with `https://api.radienthq.com` answering.
 
 | frame | what it is |
 | --- | --- |
+**Re-taken in review round 3, on a clean tree at head `ca870bc08`** — the same
+head the manifest names. The four frames below are from that run: the refusal
+sentence now names THIS MACHINE as the actor (QA round 2, Q1), so the round-2
+frames, taken on a dirty tree, are superseded rather than kept.
+
 | `01-public-scope-teams-tab-visible.png` | the public scope, first paint: the `Agents | Teams` strip is on screen before anything is scrolled. **The strip predates this change** (the base's own `agent-hub-page/teams-public-scope` frames carry it) — what this PR changes is the view's CONTENT, the notice giving way to the catalogue. This instance is signed out, so the Agents tab shows no count and the grid is empty; the count is in the story set's frames |
 | `02-public-catalogue-nine-teams.png` | the catalogue, populated from `GET /v1/teams`: the **nine teams the public hub serves**, their authors, managers, rosters and the client-side search over them |
 | `03-team-brief-open.png` | one team's brief, opened: the `GET /v1/teams/<id>` read (`support-desk`'s live collaboration brief, whose first paragraph is the crew's own) |
