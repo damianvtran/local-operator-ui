@@ -3974,6 +3974,15 @@ const BRANCH_RECORDS = [
 	 * it joins this list and not `STAMP_BINDING_NOTES`.
 	 */
 	"meshApprovalsCitationRepointNote",
+	/*
+	 * Grown by the fold onto `25561e029f3` (#842's merge): the fold's own
+	 * guard surfaced two more members of the mesh-approvals class (`.head`
+	 * and the `mesh-tab/approvals-before` set's `capturedAtHead`), and this
+	 * record is their carrier re-point. Registered for the list's own reason
+	 * - a fold that started from main's manifest would drop it, and with it
+	 * the only statement of why those fields read the way they do.
+	 */
+	"foldCitationRepointNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
