@@ -969,6 +969,31 @@ const CONTROLS = [
 	},
 	{
 		/*
+		 * THE CHANGE-BACK CONTROL (design §10, #1936, `asks/ask-panel.tsx`).
+		 *
+		 * Listed by this table's own first rule: green output about a component
+		 * nobody named is not evidence about that component, and the drawer card's
+		 * action row is a surface this file had not asserted. The pairing is
+		 * deliberate — `Change answer` is the RESTING control, and `Update answer` is
+		 * the same accent triple `Send answer` already wears one button over, so the
+		 * resting one is the shape this table has not covered.
+		 *
+		 * Its edge is a real `border-control`, and the gate is what settled that: the
+		 * first version wore the card's own `hairline` and `check-themes` reported 59
+		 * violations — "no perceivable edge", fill 1:1 and border ~1.3:1 — in every
+		 * theme. That is the contract saying the honest thing rather than splitting a
+		 * hair, and it is right about the surface: a button whose only edge is a
+		 * decorative rule does not read as pressable, which is the one thing this
+		 * control has to be.
+		 */
+		name: "ask change answer button",
+		on: ["surface"],
+		fill: "surface",
+		border: "borderControl",
+		ink: "ink",
+	},
+	{
+		/*
 		 * The mini composer's field (quick-send design §D; design round 1, D5):
 		 * an `elevated` box with a 1px `border-control` edge on the summoned
 		 * window's `canvas`, whose ink is the base role. A new component with its
@@ -1208,6 +1233,47 @@ const CONTROLS = [
 		fill: "elevated",
 		border: null,
 		ink: "inkDim",
+		edge: false,
+	},
+	{
+		/*
+		 * THE SESSION ROW'S OUTSTANDING-ASKS MARK (operator ask, 2026-10-04) — the
+		 * sidebar row's "a queued question is waiting" glyph and count
+		 * (`chat-session-status.tsx`'s `ChatAsksOutstanding`).
+		 *
+		 * THE NUMERAL IS READ TEXT, SO THE NUMERAL'S INK IS THE CLAIM, and the split
+		 * between the two halves of the mark is the finding (design round 1, D1). The
+		 * 14px `MessageCircleQuestion` glyph is a GRAPHIC and keeps the accent the
+		 * composer's ask item and the phone's ask chip spend on the same fact,
+		 * clearing its 3:1 non-text floor on every ground below (4.24:1 at worst — the
+		 * same tokyoNight-on-`rowSelected` figure the browser badge's row above
+		 * measures). The 12px count digits beside it cannot: `accent` measures 4.24:1
+		 * on `rowSelected` and 4.49:1 on `rowHover` at worst over the fifty-nine, under
+		 * SC 1.4.3's 4.5:1, which is the pair the mark was originally drawn in. The
+		 * numeral therefore takes `ink-muted` — the role the app's other count lines
+		 * wear — which clears the floor with room: 5.63 `rowSelected`, 5.91
+		 * `rowHover`, 6.56 `surface` at worst (measured from `scripts/palette-source.mjs`
+		 * with this file's own ratio, the way the rows above were). `inkDim` would
+		 * clear too (5.02 / 5.20 / 5.48), but this mark is an ATTENTION mark rather
+		 * than a quiet one, so it takes the stronger of the two quiet roles.
+		 *
+		 * THREE GROUNDS, and only the grounds the mark can be drawn on: its row is the
+		 * sidebar panel's `surface`, and it paints `rowSelected` on the current
+		 * conversation and `rowHover` under the pointer (`chat-sidebar.tsx`'s
+		 * `rowStyle`/`rowCurrent`) — the same pair the rail's badge rows list, for the
+		 * same reason. Nothing draws this mark on `canvas` or `elevated`.
+		 *
+		 * THE EDGE IS DECLARED AWAY: the mark draws no fill and no boundary — the glyph
+		 * and the digits ARE the mark — so there is nothing for the edge assertion to
+		 * measure. The rail's quiet count above takes the same opt-out for the same
+		 * reason, and it removes no coverage here either: the glyph's own 3:1 floor is
+		 * stated above against these same grounds.
+		 */
+		name: "session row ask mark",
+		on: ["surface", "rowSelected", "rowHover"],
+		fill: null,
+		border: null,
+		ink: "inkMuted",
 		edge: false,
 	},
 	{

@@ -32,7 +32,7 @@
  */
 
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, userEvent, waitFor } from "@storybook/test";
+import { expect, screen, userEvent, waitFor } from "@storybook/test";
 import type { DesktopResponse } from "../../../../shared/desktop-contract";
 import { MeshPage } from "./mesh-page";
 
@@ -153,6 +153,39 @@ const approvalRecord = (
 		user: fields.user ?? "damian",
 		transport: "ssh",
 		host_key_fp: "SHA256:9f3cQm2p…",
+	},
+});
+
+/**
+ * One `local_authority` record, in the same frozen §3.5 read shape: the
+ * sibling kind REPLACES the device block with a `machine` block (that is what
+ * tells a reader which machine the record is about), and `what` carries the
+ * bootstrap's own scopes — the store's own example shape is `{install: true}`
+ * (`tests/unit/network/test_approvals_store.py`). The machine is the READER's
+ * own, by the kind's definition, which is why the block carries the host's
+ * own vocabulary (hostname/platform/uid) rather than a peer's.
+ */
+const authorityRecord = (
+	fields: Partial<{
+		approval_id: string;
+		state: string;
+	}> = {},
+) => ({
+	approval_id: fields.approval_id ?? "ap_6h1m4t7r0w3k",
+	state: fields.state ?? "requested",
+	what: { install: true },
+	requested_by: {
+		surface: "desktop",
+		session_id: "0123456789ab",
+		device_id: DEVICE_SELF,
+	},
+	expires_at: Math.floor(Date.now() / 1000) + 42 * 60,
+	machine: {
+		hostname: "studio-mac",
+		platform: "darwin",
+		uid: "501",
+		backend: "file-only",
+		level: "operator-file-only",
 	},
 });
 
@@ -352,6 +385,40 @@ function installBridge(fixture: Fixture) {
 	page.api = api;
 	api.desktop = { request: bridge };
 }
+
+/**
+ * The shutter latch the capture rig honours (`documentElement.dataset.capturePending`;
+ * `scripts/capture-evidence.mjs` holds the shutter while it is set and REFUSES a
+ * frame carrying `data-capture-failed`). Mirrored from
+ * `agent-hub.stories.tsx::holdShutter` (design round 1, D9): a play's own `await`
+ * proves the state in the browser, but only the latch tells the RIG which moment
+ * is the frame — a story without one ships whatever painted when the generic
+ * settle terms passed, which can be mid-play.
+ *
+ * The expiry is a FAILURE, not a silent release, for the helper's own reason: a
+ * released latch would file the half-played screen under the story's name. The
+ * rig reads `data-capture-failed` after the settle and refuses the frame.
+ */
+const holdShutter = (until: string, text?: string) => {
+	document.documentElement.dataset.capturePending = "1";
+	const started = Date.now();
+	const timer = window.setInterval(() => {
+		const found = document.querySelector(until);
+		const matched =
+			Boolean(found) &&
+			(text === undefined || (found?.textContent ?? "").includes(text));
+		if (matched) {
+			window.clearInterval(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+			return;
+		}
+		if (Date.now() - started > 20_000) {
+			window.clearInterval(timer);
+			document.documentElement.removeAttribute("data-capture-pending");
+			document.documentElement.dataset.captureFailed = `mesh-shutter-not-reached: ${until}`;
+		}
+	}, 50);
+};
 
 const meta: Meta = {
 	title: "Mesh/Tab",
@@ -1238,9 +1305,11 @@ export const MoveConfirm: Story = {
  * case - which is how round 1 shipped with two chips reading `Swe…` and `Res…`.
  *
  * THE TITLES ARE DELIBERATE: four conversations named in series, differing only in their
- * last characters, which is the shape this app's own fixtures use and the shape an
- * end-truncation renders as four identical chips. The chip truncates from the LEFT
- * (`mesh-node.tsx`), so what survives is the part that tells them apart.
+ * last characters. Since the operator report (2026-10-04) the chip keeps the HEAD -
+ * the report's own chips read `…BE-OK` and `…2E pull` and identified nothing - so this
+ * series lands on a shared prefix here, and the panel and the tooltip are where its
+ * members are told apart. The cap itself - the two chips and the `+2` control - is what
+ * this story is for.
  */
 export const CapAtFour: Story = {
 	render: () => {
@@ -1272,6 +1341,144 @@ export const CapAtFour: Story = {
 			],
 		});
 		return <MeshPage />;
+	},
+};
+
+/**
+ * THE LONG LIST, AT THE SCALE THE OPERATOR REPORTED (operator report, 2026-10-04).
+ *
+ * The report: the device panel open on a device holding a catalogue page of
+ * conversations - the tab asks for `MESH_SESSION_PAGE` (200) and the panel counted
+ * 201 - with the rows painting through the panel's own Network addresses and
+ * Status sections, and one row's `⋯` menu open over the list. The defect is about
+ * CONTAINMENT rather than about the names (`mesh-card.tsx` carries the measured
+ * numbers and the fix).
+ *
+ * THE NAMES ARE INVENTED; THE SHAPES ARE THE REPORT'S. Its two chip examples were
+ * `ONBOARD-PROBE-OK` and `Hub E2E pull`, truncated to `…BE-OK` and `…2E pull` - long
+ * human titles that identify at the head - and its overflow control read `+199`. The
+ * generated tail is deliberately long so the list really is a page.
+ */
+function crowdedFixture() {
+	const selfRows = [
+		sessionRow("01234567890a", "Onboarding: connect a second machine"),
+		sessionRow("01234567890b", "Release notes: assembling the 0.33 line", {
+			live_state: "busy",
+		}),
+		sessionRow("01234567890c", "Tunnel addresses: verifier sweep"),
+		sessionRow("01234567890d", "cursor affordance audit", {
+			live_state: "busy",
+		}),
+		sessionRow("01234567890e", "Deploy pipeline: staging cutover"),
+		sessionRow("01234567890f", "Deploy pipeline: canary backout"),
+		...Array.from({ length: 195 }, (_, i) =>
+			sessionRow(
+				`f0${i.toString(16).padStart(6, "0")}00ac`,
+				`Scratch session ${String(i + 1).padStart(3, "0")}: long-running exploration of the redesign notes`,
+			),
+		),
+	];
+	const peerRows = [
+		"Provision probe OK",
+		"Release E2E pull",
+		"carry-test-42",
+		"offload audit 1",
+		"pilot wire 375be",
+		"remote broker test",
+		"host inventory: OS and toolchain",
+		"pilot goal 375be",
+		"remote smoke test",
+		"E2E prerequisite check",
+		"Atlas",
+	].map((name, i) =>
+		sessionRow(`ab${i.toString(16).padStart(6, "0")}cd`, name, {
+			locality: "remote",
+			owner_device: DEVICE_PEER,
+			owner_device_name: "cloud-node-1",
+			...(i % 4 === 2 ? { live_state: "busy" } : {}),
+		}),
+	);
+	return {
+		networks: {
+			self_device_id: DEVICE_SELF,
+			networks: [
+				network(NET_HOME, "damian-mesh", [
+					member(DEVICE_SELF, {
+						name: "damians-MacBook-Pro",
+						role: "admin",
+						last_seen_at: seenMinutesAgo(1),
+						endpoints: ["10.0.0.4:4097", "127.0.0.1:4098", "192.168.1.20:4098"],
+					}),
+					member(DEVICE_PEER, {
+						name: "cloud-node-1",
+						role: "drive",
+						last_seen_at: seenMinutesAgo(9),
+						endpoints: ["203.0.113.10:4097", "10.10.4.7:4097"],
+					}),
+				]),
+			],
+		},
+		peers: {
+			self_device_id: DEVICE_SELF,
+			peers: [
+				peer(DEVICE_PEER, {
+					name: "cloud-node-1",
+					last_seen_at: seenMinutesAgo(9),
+					session_count: 11,
+				}),
+			],
+			degraded: [],
+		},
+		sessions: [...selfRows, ...peerRows],
+	};
+}
+
+/** The panel open on THIS device, a catalogue page of conversations behind it. */
+export const ManyConversations: Story = {
+	render: () => {
+		installBridge(crowdedFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SELF);
+		await screen.findByText(/Conversations/);
+	},
+};
+
+/**
+ * The same state with one row's `⋯` menu OPEN over the list - the report's
+ * "the rows read through it" composition, so the pair proves the menu was never
+ * the layer at fault (the overlap is the same with it closed).
+ */
+export const ManyConversationsMenu: Story = {
+	render: () => {
+		installBridge(crowdedFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_SELF);
+		const user = userEvent.setup();
+		const trigger = await waitFor(() => {
+			const found = document.querySelector(
+				`[data-mesh-session-menu="01234567890a"]`,
+			);
+			if (!found) throw new Error("the row's menu is not mounted yet");
+			return found;
+		});
+		await user.click(trigger as Element);
+		await screen.findByRole("menu");
+	},
+};
+
+/** The panel on the peer: eleven conversations, the report's first screenshot. */
+export const ManyConversationsPeer: Story = {
+	render: () => {
+		installBridge(crowdedFixture());
+		return <MeshPage />;
+	},
+	play: async () => {
+		await openPanel(DEVICE_PEER);
+		await screen.findByText(/Conversations/);
 	},
 };
 
@@ -1609,29 +1816,170 @@ export const InviteReceipt: Story = {
 };
 
 /**
- * The approvals tray: one record WAITING on the operator and one already running.
- *
- * The two registers the tray has to tell apart in one frame: the card that asks
- * (scopes, requester, window, Approve/Deny) and the card that reports (a
- * `connecting` record, where the store's own matrix offers only the mid-run
- * deny).
+ * The approvals tray with one record WAITING on the operator: the prompt the
+ * live panel exists for, and nothing else on it. The settled registers live in
+ * `ApprovalsRecords`/`ApprovalsRecordsOpen` below, because a spent approval is
+ * a record, not a prompt (operator round, 2026-10-03).
  *
  * NO `play`, ON PURPOSE (design round 1). It used to press Approve on render, so
  * the frame this story is named for - the ASKING card - was never the one it
- * photographed: a reader comparing `approvals-waiting` against the surface
- * saw the post-decision registers and had no still of the state the whole
- * surface exists for. The write path is proven by `ApprovalsDecisionWrites`
- * beside this one, where the story's own name says that is what it drives.
+ * photographed: a reader comparing `approvals-waiting` against the surface saw
+ * the post-decision registers and had no still of the state the whole surface
+ * exists for. The write path is proven by `ApprovalsDecisionWrites` beside this
+ * one, where the story's own name says that is what it drives.
  */
 export const ApprovalsWaiting: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [approvalRecord({})],
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * The `Details` disclosure OPEN (design round 1, D1): the per-scope
+ * consequences as one list, the `where · hostKey` provenance lines and the
+ * state's own gloss ("Signing") are the reference material the summary
+ * sentence promises, and this is the state where a reader can see it without
+ * pressing anything. The play presses the disclosure so the frame and
+ * `aria-expanded` cannot disagree, and the shutter latch holds the rig until
+ * the opened list is in the DOM (design round 1, D9).
+ */
+export const ApprovalsDetailsOpen: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [approvalRecord({})],
+		});
+		holdShutter(
+			'[data-tour-tag="mesh-approval-consequences"]',
+			"this machine may connect to it over ssh",
+		);
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(await screen.findByRole("button", { name: "Details" }));
+		await screen.findByText("this machine may connect to it over ssh");
+	},
+};
+
+/**
+ * None waiting, several decided: the records section at rest - the header with
+ * no count, and the one-line toggle holding everything the read still carries
+ * (a decision made, a run in flight, a completed connect).
+ */
+export const ApprovalsRecords: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({
+					approval_id: "ap_7q0w5n2x9k4m",
+					state: "approved",
+					name: "studio-mini",
+					host: "studio-mini.local",
+					user: "builder",
+				}),
+				approvalRecord({
+					approval_id: "ap_3m8c1v6b0n2x",
+					state: "connecting",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
+				}),
+				approvalRecord({
+					approval_id: "ap_9z5t4r7k1m3w",
+					state: "connected",
+					name: "field-kit",
+					host: "field-kit.local",
+					user: "damian",
+				}),
+			],
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * The same several records with the section OPEN - the expanded state, driven by
+ * a real press on the toggle so the frame and the control's own state agree.
+ * Carries the shutter latch (design round 1, D9): the rig waits for the opened
+ * list to be in the DOM rather than trusting the generic settle.
+ */
+export const ApprovalsRecordsOpen: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({
+					approval_id: "ap_7q0w5n2x9k4m",
+					state: "approved",
+					name: "studio-mini",
+					host: "studio-mini.local",
+					user: "builder",
+				}),
+				approvalRecord({
+					approval_id: "ap_3m8c1v6b0n2x",
+					state: "connecting",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
+				}),
+				approvalRecord({
+					approval_id: "ap_9z5t4r7k1m3w",
+					state: "connected",
+					name: "field-kit",
+					host: "field-kit.local",
+					user: "damian",
+				}),
+			],
+		});
+		holdShutter('[data-tour-tag="mesh-approvals-records"]');
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		await user.click(
+			await screen.findByRole("button", { name: /^Records \(/ }),
+		);
+	},
+};
+
+/**
+ * The everyday shape the split creates (design round 1, D2; UX round 1, U4):
+ * a waiting prompt AND the records section in ONE card — here two waiting
+ * requests above `Records (2)` at rest, closed. The `gap-3` between the
+ * waiting list and the toggle, and the divider behaviour around both lists,
+ * are only visible in this composition; every earlier frame carried either a
+ * prompt or record rows, never both. Two waiting rows also answer U4(b) -
+ * the "several waiting + several settled" panel the operator actually meets -
+ * and the count reads `2 waiting` rather than the single-record habit.
+ */
+export const ApprovalsMixed: Story = {
 	render: () => {
 		installBridge({
 			...singleDeviceFixture(),
 			approvals: [
 				approvalRecord({}),
 				approvalRecord({
-					approval_id: "ap_7q0w5n2x9k4m",
-					state: "connecting",
+					approval_id: "ap_8n2s6w1k9m4x",
+					name: "attic-nas",
+					host: "attic-nas.local",
+					user: "damian",
+				}),
+				approvalRecord({
+					approval_id: "ap_5c3h7t2m8v1q",
+					state: "connected",
+					name: "field-kit",
+					host: "field-kit.local",
+					user: "damian",
+				}),
+				approvalRecord({
+					approval_id: "ap_9d4g1p6z3w7r",
+					state: "approved",
 					name: "studio-mini",
 					host: "studio-mini.local",
 					user: "builder",
@@ -1643,33 +1991,109 @@ export const ApprovalsWaiting: Story = {
 };
 
 /**
- * The decision path the badge exists for, driven: approve, then watch the record
- * settle to `approved` through the invalidation refetch - because a still
- * cannot show that the button writes and the read moves.
- *
- * Split out of `ApprovalsWaiting` (design round 1): a story whose `play` runs on
- * every view is a story whose still is not the state it is named for.
+ * A stopped runner: `failed` is the one record state the store says "a person
+ * should not miss", so the section opens itself while one is inside, and the
+ * record's remaining write wears its consequence - "Abandon", never "Deny".
  */
-export const ApprovalsDecisionWrites: Story = {
+export const ApprovalsStopped: Story = {
 	render: () => {
 		installBridge({
 			...singleDeviceFixture(),
 			approvals: [
-				approvalRecord({}),
 				approvalRecord({
-					approval_id: "ap_7q0w5n2x9k4m",
-					state: "connecting",
-					name: "studio-mini",
-					host: "studio-mini.local",
-					user: "builder",
+					approval_id: "ap_f4i1l2e3d4x",
+					state: "failed",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
 				}),
 			],
 		});
 		return <MeshPage />;
 	},
+};
+
+/**
+ * A refusal that outlives the section it was about (design round 1, D1's
+ * second arm): `Abandon` on the `failed` record is refused by the store, the
+ * reader closes the section, and the refusal STAYS on screen under the list —
+ * attached to a record inside the CLOSED section it would be swallowed, which
+ * is the exact case `refusalAttached` exists for. The play drives all three
+ * moments; the latch waits on a marker the play sets at the end, because the
+ * frame's own predicate ("refusal in view AND the list gone") is not one
+ * selector — the marker is the story declaring its end state (design round 1,
+ * D9's mechanism, adapted for a compound condition).
+ */
+export const ApprovalsStoppedRefused: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [
+				approvalRecord({
+					approval_id: "ap_f4i1l2e3d4x",
+					state: "failed",
+					name: "lab-node",
+					host: "lab-node.local",
+					user: "ops",
+				}),
+			],
+			decisionRefusal: {
+				code: "approval_already_connected",
+				message:
+					"this approval is already connected; denying it now would not undo anything — remove the device instead if that is the intent",
+			},
+		});
+		holdShutter('html[data-mesh-refusal-kept="1"]');
+		return <MeshPage />;
+	},
+	play: async () => {
+		const user = userEvent.setup();
+		/* The section opened itself on the failed record; abandon it, and the
+		   store answers with the sentence below. Five seconds, for the same
+		   retry-backoff reason as `ApprovalRefused`'s own wait. */
+		await user.click(await screen.findByRole("button", { name: "Abandon" }));
+		await screen.findByText(/already connected/, undefined, {
+			timeout: 5_000,
+		});
+		/* Close the section: the refusal must re-home under the list. */
+		await user.click(
+			await screen.findByRole("button", { name: /^Records \(/ }),
+		);
+		await waitFor(() =>
+			expect(
+				document.querySelector('[data-tour-tag="mesh-approvals-records"]'),
+			).toBeNull(),
+		);
+		await screen.findByText(/already connected/);
+		document.documentElement.dataset.meshRefusalKept = "1";
+	},
+};
+
+/**
+ * The decision path the badge exists for, driven: approve, then watch the record
+ * settle to `approved` through the invalidation refetch - and open the records
+ * section it collapsed into. A still cannot show that the button writes, the
+ * read moves, and the settled state leaves the live panel; this story's `play`
+ * walks all three. The shutter latch holds the rig until the settled record is
+ * inside the opened list, rather than trusting the generic settle (design round
+ * 1, D9).
+ */
+export const ApprovalsDecisionWrites: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [approvalRecord({})],
+		});
+		holdShutter('[data-tour-tag="mesh-approvals-records"]', "Approved");
+		return <MeshPage />;
+	},
 	play: async () => {
 		const user = userEvent.setup();
 		await user.click(await screen.findByRole("button", { name: "Approve" }));
+		/* The record LEFT the panel: no waiting count, one record in the section. */
+		await user.click(
+			await screen.findByRole("button", { name: /^Records \(/ }),
+		);
 		await screen.findByText("Approved");
 	},
 };
@@ -1679,7 +2103,9 @@ export const ApprovalsDecisionWrites: Story = {
  * round 1, finding 1): without this render path the operator sees the button
  * re-enable and cannot tell a refusal from a dead click. The sentence here is
  * the shape core answers a host with no signing surface with; the code rides
- * beside it, the way the move refusals carry theirs.
+ * BESIDE it on one wrapped row - the parity with the move refusals that design
+ * round 1 (D7) had to be re-measured into the layout - and the shutter latch
+ * holds the rig until the refusal is in the DOM (design round 1, D9).
  */
 export const ApprovalRefused: Story = {
 	render: () => {
@@ -1692,11 +2118,54 @@ export const ApprovalRefused: Story = {
 					"This machine has no operator key to sign with; ask Local Operator to set up operator authority here first.",
 			},
 		});
+		holdShutter('[data-tour-tag="mesh-approval-refusal"]', "no operator key");
 		return <MeshPage />;
 	},
 	play: async () => {
 		const user = userEvent.setup();
 		await user.click(await screen.findByRole("button", { name: "Approve" }));
-		await screen.findByText(/no operator key to sign with/);
+		/*
+		 * THE BUDGET IS FIVE SECONDS BECAUSE THE DECISION RETRIES ONCE: the app's
+		 * query defaults carry `mutations.retry: 1`, so the refusal lands after
+		 * the retry backoff (~1 s) - a 1 s `findByText` sits exactly on that
+		 * boundary and lost on this host (measured: the refusal mounts ~1.2 s
+		 * after the click). The retry is the REAL app's behaviour, so the wait
+		 * moves, not the app.
+		 */
+		await screen.findByText(/no operator key to sign with/, undefined, {
+			timeout: 5_000,
+		});
+	},
+};
+
+/**
+ * The approvals READ failure (UX round 1, U4; the fixture's `failApprovals`
+ * existed but no story set it): the transport's sentence travels VERBATIM and
+ * `Ask again` - the one action the state offers - sits beside it. A read that
+ * did not answer promises no count and no records over itself.
+ */
+export const ApprovalsReadFailure: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			failApprovals: true,
+		});
+		return <MeshPage />;
+	},
+};
+
+/**
+ * The `local_authority` kind (UX round 1, U4): the machine block replaces the
+ * device block, so the summary head is "Set up operator authority on this
+ * machine" - a head no story rendered before - over the bootstrap's own scope
+ * list (`{install: true}`).
+ */
+export const ApprovalsMachineAuthority: Story = {
+	render: () => {
+		installBridge({
+			...singleDeviceFixture(),
+			approvals: [authorityRecord({})],
+		});
+		return <MeshPage />;
 	},
 };

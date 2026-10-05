@@ -91,7 +91,8 @@ const bundle = await build({
 			import { RunDetailMonitors } from "./src/renderer/src/features/chat/components/run-details/run-detail-monitors";
 			import { GoalPicker } from "./src/renderer/src/features/chat/pickers/destination-pickers";
 			import { ThemedToastContainer } from "./src/renderer/src/shared/components/common/themed-toast-container";
-			import { AskSurfaces } from "./src/renderer/src/features/chat/components/asks/ask-surfaces";
+			import { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
+			import { askChipClause, askDeadlineShortText, askQueueView } from "./src/renderer/src/features/chat/ask-queue";
 			import * as toasts from "./src/renderer/src/shared/utils/toast-manager";
 			import { scrollRegionToTop } from "./src/renderer/src/shared/lib/scroll";
 			import { useUiPreferencesStore } from "./src/renderer/src/shared/store/ui-preferences-store";
@@ -116,7 +117,7 @@ const bundle = await build({
 				);
 			export { GoalPicker };
 			export { toasts };
-			export { AskSurfaces, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
+			export { askChipClause, askDeadlineShortText, askQueueView, AskDrawer, ComposerStatusRow, ThemedToastContainer, shouldRestoreComposerFocus, busiestClause, goalDisclosureLabel, goalClearLabel, goalDoneLabel, goalDismissLabel, goalDoneToastText, goalStalledNote, goalClearedText, goalStateWord, goalCapability, GOAL_DONE_ARGS, GOAL_DISMISS_ARGS, loopActionLabel, loopAffordance, loopProgress, loopStatusWord, loopClause, loopIsRunning, planChipLabel, subagentChipLabel, jobChipLabel, wakeChipLabel, monitorsChipLabel, deriveRunDetails, activityTally, todoClause, childClause, jobClause, wakeClause, monitorClause, scrollRegionToTop, useUiPreferencesStore };
 		`,
 		resolveDir: process.cwd(),
 	},
@@ -182,8 +183,11 @@ globalThis.localStorage = {
 };
 const {
 	renderRow,
-	AskSurfaces,
+	AskDrawer,
 	ComposerStatusRow,
+	askChipClause,
+	askDeadlineShortText,
+	askQueueView,
 	shouldRestoreComposerFocus,
 	renderWakes,
 	renderMonitors,
@@ -1153,7 +1157,14 @@ test("the wake chip states the model's clause, off the model's own list", () => 
  * directly, and that difference is the F1 gate's whole subject.
  */
 const renderWiredRow = (props) =>
-	renderRow({ ...props, onAskToggle: () => undefined });
+	/*
+	 * A PINNED CLOCK, so the item's countdown is a fact of the fixture rather than of
+	 * the moment the suite ran: the row's own clock is wall time, and every assertion
+	 * about the visible text or the announced name would otherwise drift with it.
+	 * `WAKE_NOW_MS` is the same instant the wire fixtures expire from, which is what
+	 * makes the reading `expires in 1h` for a one-hour ask.
+	 */
+	renderRow({ ...props, onAskToggle: () => undefined, nowMs: WAKE_NOW_MS });
 
 test("the ask item is gated on the WIRE and on a non-empty queue", () => {
 	/*
@@ -1176,9 +1187,14 @@ test("the ask item is gated on the WIRE and on a non-empty queue", () => {
 	 * SETTLED ASKS DO RENDER. Like `All to-dos resolved`, a finished queue is worth
 	 * keeping on screen - the panel is where its history lives - so the gate is
 	 * "has rows", not "has open rows".
+	 *
+	 * AND SETTLED IS `delivered`, stated rather than left to `wireAsk`'s default
+	 * (false): since §10 a RECORDED answer the agent has not been handed is still the
+	 * user's to change, and it is drawn as a live item with its own clause (asserted
+	 * below) rather than as finished history.
 	 */
 	const settled = renderWiredRow({
-		frontend: askFrontend([wireAsk("a-1", "answered")]),
+		frontend: askFrontend([wireAsk("a-1", "answered", { delivered: true })]),
 		runDetails: NO_DETAILS,
 	});
 	assert.match(settled, /data-status-asks/);
@@ -1190,7 +1206,17 @@ test("the ask item states the queue's own reading, in two registers", () => {
 		[[wireAsk("a-1")], "1 question waiting"],
 		[[wireAsk("a-1"), wireAsk("a-2")], "2 questions waiting"],
 		[[wireAsk("a-1", "timed_out")], "1 question moved on"],
-		[[wireAsk("a-1", "answered")], "All asks settled"],
+		/*
+		 * A DELIVERED answered ask is the finished queue; an UNDELIVERED one is §10's
+		 * window - the answer is still the user's to change - so it takes the clause that
+		 * names the door instead of `All asks settled` (design #1936; the sibling clause
+		 * and its own count are pinned in `scripts/ask-queue.test.mjs`).
+		 */
+		[[wireAsk("a-1", "answered", { delivered: true })], "All asks settled"],
+		[
+			[wireAsk("a-1", "answered")],
+			"1 answer not yet delivered — you can still change it",
+		],
 	];
 	for (const [asks, clause] of cases) {
 		assert.ok(
@@ -1206,7 +1232,7 @@ test("the ask item states the queue's own reading, in two registers", () => {
 	 * other settled chips' register: the shared box, in the muted ink.
 	 */
 	const quietMarkup = renderWiredRow({
-		frontend: askFrontend([wireAsk("a-1", "answered")]),
+		frontend: askFrontend([wireAsk("a-1", "answered", { delivered: true })]),
 		runDetails: NO_DETAILS,
 	});
 	assert.ok(askButtonClasses(quietMarkup).includes("text-ink-muted"));
@@ -1273,9 +1299,17 @@ test("the ask item is the row's one toggle, and names itself off the model", () 
 	 */
 	assert.match(minimized, /data-lo-ask-item="minimized"/);
 	assert.match(minimized, /aria-expanded="false"/);
+	/*
+	 * THE APOSTROPHE IS AN ENTITY IN THIS MARKUP, and only here: React escapes `'` in
+	 * an attribute value, so the server render these cells read spells the label
+	 * `conversation&#x27;s` while the DOM the browser parses out of it carries the real
+	 * character. The chip's own model returns the plain string (`ask-queue.test.mjs`
+	 * asserts it), so this is the render half of the same copy, not a second spelling
+	 * of it.
+	 */
 	assert.match(
 		minimized,
-		/aria-label="Expand the ask history — 1 question waiting"/,
+		/aria-label="Expand this conversation&#x27;s asks — 1 question waiting · expires in 1h"/,
 	);
 	/*
 	 * The two handles the interaction needs: `data-lo-ask-item-toggle` is what the
@@ -1296,7 +1330,7 @@ test("the ask item is the row's one toggle, and names itself off the model", () 
 	assert.match(expanded, /aria-expanded="true"/);
 	assert.match(
 		expanded,
-		/aria-label="Collapse the ask history — 1 question waiting"/,
+		/aria-label="Collapse this conversation&#x27;s asks — 1 question waiting · expires in 1h"/,
 	);
 	// The visible text is the leading half of the announced name, so the two
 	// readers cannot describe different states.
@@ -1343,7 +1377,7 @@ test("the ask item renders only where the host wires the door", () => {
 	 * canonical frontend that carries `asks` and no lane at all - the mini quick-send
 	 * window and the agent-config composer. There the item used to render as a
 	 * focusable, labelled control whose only effect was local: it flipped its own
-	 * state, announced "Collapse the ask history", opened nothing, and left the
+	 * state, announced "Collapse this conversation's asks", opened nothing, and left the
 	 * composer in chat mode. `onAskToggle` supplied is what says the panel exists in
 	 * this document, so it is the gate.
 	 */
@@ -1412,17 +1446,21 @@ test("the item's press drives the door the host supplied, driven", async () => {
 	}
 });
 
-test("a press on the item puts focus IN the panel, and Escape hands it back, driven", async () => {
+test("a press on the item puts focus IN the drawer, and closing hands it back, driven", async () => {
 	/*
-	 * UX ROUND 1, U1. The panel sits ABOVE the row in the DOM, so a press used to
-	 * leave the reader behind the thing their press opened: forward Tab walked out of
-	 * the lane and the options were reachable only backwards. Focus now enters the
-	 * panel when - and only when - the transition found focus on the item, which is
-	 * only reachable by the user's own press.
+	 * UX ROUND 1, U1, re-expressed for the container (design note §2). The drawer now
+	 * lives in the right slot rather than on the composer's band, but the contract is
+	 * unchanged: a press on the item moves focus INTO the surface it opened, so
+	 * forward Tab reaches what the press opened rather than walking out of the lane;
+	 * closing returns it to the item, and only when focus was actually stranded.
 	 *
 	 * THE TRIGGER IS A REAL CHIP IN THE SAME DOCUMENT, not a prop: the two halves live
 	 * in different React trees and the handle between them is the contract this test
-	 * is about.
+	 * is about. The mount is conditional here exactly as `chat-content.tsx` mounts it
+	 * (`isAskDrawerOpen && ...`), which is what replaces the old `expanded: false`
+	 * render whose assertion was "a collapsed mount draws nothing": there is no
+	 * collapsed mount any more, and the marker's remaining meaning - that a closed
+	 * surface cannot answer a probe for an open one - is asserted on the ROW above.
 	 */
 	const { window: dom, root, cleanup } = await domHarness();
 	try {
@@ -1431,22 +1469,25 @@ test("a press on the item puts focus IN the panel, and Escape hands it back, dri
 		dom.document.body.appendChild(chip);
 
 		let open = false;
-		const toggles = [];
+		const closes = [];
 		const lane = () => ({
 			frontend: askFrontend([wireAsk("a-1")]),
 			nowMs: WAKE_NOW_MS,
-			expanded: open,
-			onToggle: (next) => toggles.push(next),
+			scope: "session",
+			onClose: () => closes.push(true),
 			onAnswer: () => undefined,
 			onDecline: () => undefined,
 			drafts: {},
 			onDraftChange: () => undefined,
 		});
-		await act(async () => void root.render(createElement(AskSurfaces, lane())));
+		const renderSurface = () =>
+			root.render(open ? createElement(AskDrawer, lane()) : null);
+
+		await act(async () => void renderSurface());
 		assert.equal(
 			dom.document.querySelector("[data-lo-ask-surfaces]"),
 			null,
-			"collapsed draws no panel at all, so the marker answers for the panel",
+			"a closed drawer is not mounted, so the marker answers for it",
 		);
 
 		await act(async () => chip.focus());
@@ -1457,13 +1498,18 @@ test("a press on the item puts focus IN the panel, and Escape hands it back, dri
 		);
 
 		open = true;
-		await act(async () => void root.render(createElement(AskSurfaces, lane())));
+		await act(async () => void renderSurface());
 		const panel = dom.document.querySelector("[data-lo-ask-surfaces]");
-		assert.ok(panel, "the panel is mounted");
+		assert.ok(panel, "the drawer is mounted");
 		assert.equal(panel.getAttribute("tabindex"), "-1");
+		assert.equal(
+			panel.getAttribute("data-ask-drawer"),
+			"session",
+			"the scope is a fact on the root, not only a line in the bar",
+		);
 		assert.ok(
 			panel.contains(dom.document.activeElement),
-			"focus entered the panel, so forward Tab reaches what the press opened",
+			"focus entered the drawer, so forward Tab reaches what the press opened",
 		);
 
 		await act(async () => {
@@ -1474,14 +1520,18 @@ test("a press on the item puts focus IN the panel, and Escape hands it back, dri
 				}),
 			);
 		});
-		assert.deepEqual(toggles, [false], "Escape in the panel collapses it");
+		assert.deepEqual(closes, [true], "Escape in the drawer closes it");
+
 		open = false;
-		await act(async () => void root.render(createElement(AskSurfaces, lane())));
+		await act(async () => void renderSurface());
+		/* The focus return is a microtask (see the component's note), so the flush is
+		   part of the assertion rather than a sleep. */
+		await act(async () => void (await Promise.resolve()));
 		assert.equal(dom.document.querySelector("[data-lo-ask-surfaces]"), null);
 		assert.equal(
 			dom.document.activeElement,
 			chip,
-			"and the collapse hands focus back to the item",
+			"and closing hands focus back to the item",
 		);
 	} finally {
 		await cleanup();
@@ -5486,4 +5536,55 @@ test("nothing about the monitors ticks: no clock and no relative time", () => {
 	assert.doesNotMatch(source, /\bminutes? ago\b|in \d+m\b/);
 	/* ...and the panel hands it the untimed model, beside the wakes. */
 	assert.match(code(SECTION_LIST), /<RunDetailMonitors/);
+});
+
+test("the chip PAINTS the model's clause, so the JSX cannot compose a second one", async () => {
+	/*
+	 * F3 of agent review round 2, and F3-a of the manager's correction pass: the
+	 * assertion is on the PAINTED SPANS - not on the item's `aria-label`, and not on
+	 * the markup as a whole. The label carries the same clause by design
+	 * (`askChipLabel` composes from the model), so a whole-markup or attribute
+	 * assertion would pass even if the paint regressed to a second composition, which
+	 * is exactly the seam this test exists to close. Reading the spans excludes the
+	 * attribute and any portalled tooltip text.
+	 */
+	const { window: dom, root, cleanup } = await domHarness();
+	try {
+		const soon = wireAsk("a-soon", "open", {
+			expires_at: WAKE_NOW_MS + 20 * 60_000,
+			timeout_s: 1200,
+		});
+		const later = wireAsk("a-later", "open", {
+			expires_at: WAKE_NOW_MS + 48 * 60_000,
+			timeout_s: 2880,
+		});
+		const view = askQueueView({ asks: [soon, later] });
+		const clause = askChipClause(view, WAKE_NOW_MS);
+		assert.equal(clause, "2 questions waiting · soonest ask expires in 20m");
+		await act(async () => {
+			root.render(
+				createElement(ComposerStatusRow, {
+					frontend: askFrontend([soon, later]),
+					runDetails: NO_DETAILS,
+					nowMs: WAKE_NOW_MS,
+					onAskToggle: () => undefined,
+				}),
+			);
+		});
+		const item = dom.document.querySelector("[data-lo-ask-item-toggle]");
+		assert.ok(item, "the item is not rendered");
+		const painted = [...item.querySelectorAll("span")]
+			.map((span) => span.textContent)
+			.join("");
+		assert.ok(
+			painted.includes(clause),
+			`the chip does not PAINT the model's clause: ${clause}`,
+		);
+		assert.ok(
+			painted.includes(askDeadlineShortText(view.soonestExpiryMs, WAKE_NOW_MS)),
+			"the chip does not paint the narrow band's form of the same deadline",
+		);
+	} finally {
+		cleanup();
+	}
 });

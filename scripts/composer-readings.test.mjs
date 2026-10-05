@@ -1128,21 +1128,40 @@ test("a draft renders four fewer claims than a running session: no cost, no dura
 	assert.doesNotMatch(ran, /aria-label="Active time[^"]*"[^>]*aria-disabled/);
 });
 
-test("duration is the only reading that may be shed, and only between the two thresholds", () => {
+test("duration is the only reading that may be shed, and it sheds on the band and on the third control box", () => {
 	const strip = readFileSync(
 		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
 		"utf8",
 	);
 
-	// The shed is a container-range query: a single `@max` would hide it at the
-	// wrapped widths too, where the cluster owns its own line and has room for
-	// it (D20 rung 3). `hidden`, not `sr-only` - a shed reading does not exist,
-	// unlike the chip's icon-only text, which is still readable by a screen
-	// reader.
+	/*
+	 * TWO WAYS TO BE SHED, and the tests are two assertions rather than one.
+	 *
+	 * THE WIDTH'S SHED IS STILL THE BAND, and it is still a container-range query:
+	 * a single `@max` would hide it at the wrapped widths too, where the cluster
+	 * owns its own line and has room for it (D20 rung 3). `hidden`, not `sr-only` -
+	 * a shed reading does not exist, unlike the chip's icon-only text, which is
+	 * still readable by a screen reader.
+	 */
 	assert.match(
 		strip,
-		/className="@min-\[750px\]\/chatcol:@max-\[860px\]\/chatcol:hidden"/,
-		"duration must drop only in the band between the wrap threshold and the width where five readings fit",
+		/: "@min-\[750px\]\/chatcol:@max-\[860px\]\/chatcol:hidden"/,
+		"duration must drop between the wrap threshold and the width where five readings fit WHEN the controls are the mic+Send pair",
+	);
+	/*
+	 * AND THE STATE'S SHED IS UNCONDITIONAL (issue #788). While the composer draws a
+	 * THIRD box in the controls group - the Stop square, the post-stop grace
+	 * window's reserved slot, or a live recording's - the group is 104px where the
+	 * band was derived against 68, the row does not grow with the column (the
+	 * composer box is capped at `--lo-chat-measure`), and the fullest cluster
+	 * therefore overruns the controls at EVERY width above the band. A container
+	 * query cannot see a sibling appear, so the reading sheds on the state: bare
+	 * `hidden`, with no range-query prefix, on the row's own predicate.
+	 */
+	assert.match(
+		strip,
+		/controlsThirdBox\s*\n?\s*\?\s*"hidden"\s*\n?\s*:\s*"@min-\[750px\]\/chatcol:@max-\[860px\]\/chatcol:hidden"/,
+		"while a third control box is drawn the duration must shed at every width, not only inside the band",
 	);
 	assert.doesNotMatch(strip, /@max-\[860px\]\/chatcol:sr-only/);
 
@@ -1151,13 +1170,16 @@ test("duration is the only reading that may be shed, and only between the two th
 	 * R8/R14, so a `hidden` on a reading is a reading being dropped that the
 	 * design says must never drop.
 	 *
-	 * ONE other `hidden` is allowed in this file and it is NOT a reading: the held
-	 * cluster's visible mark is hidden below the wrap threshold, where the design
-	 * round measured ~23px free and the word would push the mic and send onto a
-	 * third line - the defect design round 1.5's D9 fixed. It is named by its own
-	 * class rather than counted, so a THIRD `hidden` still fails here, and the
-	 * statement is not lost at that width: the group name reaches assistive
-	 * technology and the tooltips reach a pointer.
+	 * ONE other range-hidden class is allowed in this file and it is NOT a reading:
+	 * the held cluster's visible mark is hidden below the wrap threshold, where the
+	 * design round measured ~23px free and the word would push the mic and send
+	 * onto a third line - the defect design round 1.5's D9 fixed. It is named by
+	 * its own class rather than counted, so a THIRD `chatcol:hidden` still fails
+	 * here, and the statement is not lost at that width: the group name reaches
+	 * assistive technology and the tooltips reach a pointer. The bare `hidden`
+	 * above carries no `chatcol:` and so is not part of this set - which is why
+	 * the state's shed is asserted by its own expression above rather than
+	 * counted here.
 	 */
 	assert.deepEqual(
 		(strip.match(/[^\s"]*chatcol:hidden/g) ?? []).sort(),
@@ -1165,8 +1187,50 @@ test("duration is the only reading that may be shed, and only between the two th
 			"@max-[750px]/chatcol:hidden",
 			"@min-[750px]/chatcol:@max-[860px]/chatcol:hidden",
 		].sort(),
-		"only the duration reading and the held mark may be hidden, and the mark is not a reading",
+		"only the duration reading and the held mark may be range-hidden, and the mark is not a reading",
 	);
+});
+
+test("the shed's state comes from the row's own third-box predicate, computed once", () => {
+	const row = readFileSync(
+		"src/renderer/src/shared/components/composer/message-input.tsx",
+		"utf8",
+	);
+
+	/*
+	 * ONE PREDICATE, TWO READERS (issue #788). The strip sheds on whether a third
+	 * control box is drawn, and that is the same question the slot's own JSX asks -
+	 * so it is computed once, from the row's own terms, and both read it. A fix
+	 * that restated the condition at the strip's mount would drift the moment the
+	 * slot's gate changed, which is what these four terms and the two joins pin.
+	 */
+	assert.match(
+		row,
+		/const interruptSlotDrawn =\s*\n\s*canonicalStopAvailable &&\s*\n\s*!canonicalStop\?\.active &&\s*\n\s*\(slotHold\.held \|\| isRecording\) &&\s*\n\s*!\(isLoading && currentJobId\);/,
+		"the slot must be drawn on the capability, the grace window, a live recording, and not on the legacy job path",
+	);
+	// The THIRD BOX is the visible Stop or the reserved slot: the two states whose
+	// composition is `[mic][third][Send]` rather than `[mic][Send]`.
+	assert.match(
+		row,
+		/const controlsThirdBox =\s*\n\s*Boolean\(canonicalStop\?\.active\) \|\| interruptSlotDrawn;/,
+		"the third box is the visible Stop control or the slot reserved for it",
+	);
+	assert.match(
+		row,
+		/controlsThirdBox=\{controlsThirdBox\}/,
+		"the strip must be handed the predicate rather than re-deriving it",
+	);
+	/*
+	 * AND THE STRIP MUST ACCEPT IT. A prop the composer passes and the strip ignores
+	 * is the whole shed silently switched off, so the receiving half is pinned too.
+	 */
+	const strip = readFileSync(
+		"src/renderer/src/features/chat/session-status/session-status-strip.tsx",
+		"utf8",
+	);
+	assert.match(strip, /controlsThirdBox\?: boolean;/);
+	assert.match(strip, /controlsThirdBox = false,/);
 });
 
 test("the value readings hold their width; only the model name yields", () => {

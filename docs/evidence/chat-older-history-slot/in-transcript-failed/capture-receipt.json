@@ -1,0 +1,130 @@
+{
+  "cell": "in-transcript-failed",
+  "story": "chat-older-history-slot--in-transcript-failed",
+  "viewport": [
+    900,
+    520
+  ],
+  "frames": [
+    {
+      "theme": "localOperatorDark",
+      "settled": true,
+      "waitedMs": 5791,
+      "bytes": 30462,
+      "dataTheme": "localOperatorDark",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "localOperatorLight",
+      "settled": true,
+      "waitedMs": 2289,
+      "bytes": 30602,
+      "dataTheme": "localOperatorLight",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "dracula",
+      "settled": true,
+      "waitedMs": 2286,
+      "bytes": 32594,
+      "dataTheme": "dracula",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "dune",
+      "settled": true,
+      "waitedMs": 2290,
+      "bytes": 31316,
+      "dataTheme": "dune",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "sage",
+      "settled": true,
+      "waitedMs": 2444,
+      "bytes": 31740,
+      "dataTheme": "sage",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "monokai",
+      "settled": true,
+      "waitedMs": 2295,
+      "bytes": 29784,
+      "dataTheme": "monokai",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "tokyoNight",
+      "settled": true,
+      "waitedMs": 2437,
+      "bytes": 32892,
+      "dataTheme": "tokyoNight",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "iceberg",
+      "settled": true,
+      "waitedMs": 2289,
+      "bytes": 31458,
+      "dataTheme": "iceberg",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "radient",
+      "settled": true,
+      "waitedMs": 2134,
+      "bytes": 31038,
+      "dataTheme": "radient",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "neon",
+      "settled": true,
+      "waitedMs": 2287,
+      "bytes": 30434,
+      "dataTheme": "neon",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "obsidian",
+      "settled": true,
+      "waitedMs": 2287,
+      "bytes": 30578,
+      "dataTheme": "obsidian",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    },
+    {
+      "theme": "synth",
+      "settled": true,
+      "waitedMs": 2287,
+      "bytes": 31944,
+      "dataTheme": "synth",
+      "rowCount": 4,
+      "slotH": 28,
+      "copy": "Try again | Could not load earlier messages | Could not load earlier messages | Could not load earlier messages"
+    }
+  ]
+}

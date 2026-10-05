@@ -209,6 +209,7 @@ import {
 	discardSuccessorIndex,
 	untargetedDraftRows,
 } from "../draft-rows";
+import { fleetAsksBySession, useFleetAsks } from "../fleet-asks";
 import {
 	markAllReadCopy,
 	markAllReadReceipt,
@@ -933,6 +934,32 @@ export function ChatSidebar({
 	const requestPanel = usePanelPresentationStore((state) => state.requestPanel);
 	const capabilities = useDesktopCapabilities();
 	const feed = useDesktopFeed();
+	/*
+	 * THE PER-CONVERSATION ASK COUNTS (operator ask, 2026-10-04).
+	 *
+	 * THE READ IS THE FLEET AGGREGATE, not each row's own `asks_open`, and that is
+	 * a correction rather than a preference: `SessionCatalogueRow.asks_open` is
+	 * declared in the contract but the desktop catalogue route never fills it (the
+	 * backend's own row model has no such field) - so a row mark sourced from the
+	 * row draws NOTHING on every desktop install. That is exactly the operator's
+	 * report: the session's sidebar row showed nothing while the composer chip
+	 * beside it read "1 question waiting", and he only knew because a notification
+	 * fired. The aggregate is uncapped and covers every conversation, so it is the
+	 * one source that can mark a row the user is not looking at.
+	 *
+	 * ONE READ, TWO LENSES: this is the same `FLEET_ASKS_QUERY_KEY` entry the rail's
+	 * `All asks` badge already reads, so a row and the top-level count cannot
+	 * disagree about how many asks are outstanding, and this adds no second poll.
+	 * `rows === null` is "the route has not answered" rather than "no asks", which
+	 * is why the map is null rather than empty there - a row keeps whatever its own
+	 * field says in that state, and on a backend that predates the aggregate route
+	 * that is nothing at all, which is the honest answer.
+	 */
+	const fleetAsks = useFleetAsks();
+	const asksBySession = useMemo(
+		() => (fleetAsks.rows === null ? null : fleetAsksBySession(fleetAsks.rows)),
+		[fleetAsks.rows],
+	);
 	/*
 	 * The two store fields the gate reads are subscribed BEFORE it, which is the only
 	 * reason this sits above hooks it is unrelated to: `lastKnownRows` is a statement
@@ -4304,7 +4331,10 @@ export function ChatSidebar({
 				 * `ChatAsksOutstanding`), which is what keeps a backend that does not
 				 * publish queued asks on exactly today's row.
 				 */}
-				<ChatAsksOutstanding row={row} />
+				<ChatAsksOutstanding
+					row={row}
+					open={asksBySession?.get(row.session_id)}
+				/>
 				{/*
 				 * THE ARCHIVED MARKER, and where it sits is the decision this file owes an
 				 * answer for: IN FRONT of the title rather than in the trailing slot.

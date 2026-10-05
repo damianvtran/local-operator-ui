@@ -5330,7 +5330,7 @@ test("a fresh hold after the notice's own remedy raises its own sentence", async
 /* The secret gate: the credential does not come through this box      */
 /* ------------------------------------------------------------------ */
 
-test("a secret gate refuses the composer the way an unavailable one is refused, and points at the dock's field", async () => {
+test("a secret gate refuses the composer the way an unavailable one is refused, and points at the ask panel's masked field", async () => {
 	/*
 	 * THE SECRET ASK'S COMPOSER CLOSURE. While a `secret` ask waits, the answer
 	 * is the dock's masked field (`trace/question-dock.tsx`) and this box must
@@ -5366,7 +5366,7 @@ test("a secret gate refuses the composer the way an unavailable one is refused, 
 	assert.equal(field.getAttribute("aria-disabled"), "true");
 	assert.equal(
 		field.placeholder,
-		"Answer the secret request above",
+		"Answer the secret request in the asks panel",
 		"the empty refusal says where the answer goes",
 	);
 	assert.equal(
@@ -5492,12 +5492,78 @@ test("the closed box with a draft carries a visible reason (UX round 1, U2)", as
 	assert.ok(notice, "the closed box with a draft renders its explanation");
 	assert.equal(
 		notice.textContent,
-		"Answer the secret request above — this box is paused until it is answered, and your draft is kept.",
+		"Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.",
 	);
 	assert.match(
 		frame.textarea().getAttribute("aria-describedby") ?? "",
 		/composer-secret-closure-notice/,
 		"and the field is described by it",
+	);
+});
+
+/* ------------------------------------------------------------------ */
+/* QA round 1, Q1 — an image-only draft is a message                    */
+/* ------------------------------------------------------------------ */
+
+/*
+ * THE THIRD DOOR, DRIVEN THROUGH THE SHIPPED COMPOSER.
+ *
+ * `use-message-input.ts`'s own submit guard required TEXT while the two visible
+ * gates — the Send predicate and the form's guard — arm and admit on `text OR
+ * attachments`. QA round 1 (Q1) measured the consequence: an image-only press
+ * was armed, passed both visible gates, and was then swallowed there with no
+ * request, no copy and no toast; the zero-width-space discriminator (a
+ * `"\u200B"` box passes `.trim()`) proved the swallow sat in that guard. These
+ * two cases pin the fix the way the finding read them: an empty-text draft with
+ * an attachment now REACHES `onSendMessage`, and nine images with no text reach
+ * it whole — which is what makes the ceiling refusal past it reachable again
+ * (its own arm is pinned in `desktop-renderer-transport.test.mjs`).
+ */
+test("an image-only draft fires the send both visible gates armed (QA round 1, Q1)", async () => {
+	const frame = await mount();
+	useConversationInputStore
+		.getState()
+		.addAttachment(frame.conversationId, { id: "q1-a", path: "/tmp/shot.png" });
+	await settle();
+	await clickSend(frame);
+	assert.equal(
+		frame.sent.length,
+		1,
+		"the empty-text press must fire - pre-fix the hook swallowed it in silence",
+	);
+	const [content, attachments] = frame.sent[0];
+	assert.equal(content, "", "the payload carries no text");
+	assert.deepEqual(
+		attachments,
+		["/tmp/shot.png"],
+		"and carries the staged image",
+	);
+});
+
+test("nine images with no text reach the send whole (QA round 1, Q1's blast radius)", async () => {
+	const frame = await mount();
+	const paths = Array.from(
+		{ length: 9 },
+		(_, index) => `/tmp/shot-${index}.png`,
+	);
+	for (const [index, path] of paths.entries()) {
+		useConversationInputStore
+			.getState()
+			.addAttachment(frame.conversationId, { id: `q1-${index}`, path });
+	}
+	await settle();
+	await clickSend(frame);
+	assert.equal(
+		frame.sent.length,
+		1,
+		"pre-fix the hook swallowed this press before any payload was built",
+	);
+	const [content, attachments] = frame.sent[0];
+	assert.equal(content, "");
+	assert.deepEqual(
+		attachments,
+		paths,
+		"all nine reach the page; the host's imageOverflowRefusal is what refuses them now",
 	);
 });
 

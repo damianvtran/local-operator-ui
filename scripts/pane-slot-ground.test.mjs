@@ -89,6 +89,18 @@ const PANES = [
 		name: "console pane",
 		file: "src/renderer/src/features/console/components/console-pane.tsx",
 	},
+	/*
+	 * The asks drawer joined the family in the side-canvas change (design note §2):
+	 * it is the slot's FIFTH occupant, so it is held to the same two facts as the
+	 * other four - its root at the lane's last stop, and a 40px chrome bar with no
+	 * ground of its own. A pane that were given a chrome bar of a different height
+	 * would break the "the icons stay on the app's top line" invariant for every pane
+	 * that opens beside it.
+	 */
+	{
+		name: "asks drawer",
+		file: "src/renderer/src/features/chat/components/asks/ask-drawer.tsx",
+	},
 ];
 
 /** The source with its comments removed.
@@ -117,6 +129,11 @@ const SLOT_BOX =
 
 /** A drag attribute anywhere in the slot the dock is mounted in. */
 const DRAG_IN_SLOT = /<PaneSlot[\s\S]{0,400}?data-titlebar-drag/;
+/* The drawer slot's own two reads (agent review round 1, N3), at module scope for
+ * the reason the note above the other shapes gives: a literal rebuilt per call is
+ * work `useTopLevelRegex` is right to refuse. */
+const ASK_SLOT_MODE = /data-ask-mode=\{canvasDocked \? "docked" : "overlay"\}/;
+const RIGHT_SLOT_OCCUPIED = /const rightSlotOccupied =([\s\S]{0,400}?);/;
 const SLOT_COMPONENT =
 	"src/renderer/src/shared/components/common/pane-slot.tsx";
 
@@ -265,8 +282,8 @@ test("the slot's box is spelled once, and every mount site uses that one", () =>
 	const app = withoutComments(read(CHAT_CONTENT));
 	assert.equal(
 		[...app.matchAll(/<PaneSlot\b/g)].length,
-		4,
-		`expected the app's four mount sites in ${CHAT_CONTENT} to use \`<PaneSlot>\`. A fifth pane, or one that went back to a bare div, changes where the slot's ground and seam are decided.`,
+		5,
+		`expected the app's five mount sites in ${CHAT_CONTENT} to use \`<PaneSlot>\` (canvas, run panel, browser, console, asks drawer). A sixth pane, or one that went back to a bare div, changes where the slot's ground and seam are decided.`,
 	);
 });
 
@@ -327,6 +344,42 @@ test("nothing in the slot puts a control into the chrome lane", () => {
 		assert.ok(
 			!source.includes("data-titlebar-drag"),
 			`${pane.name} (${pane.file}) marks a drag region. The window's only drag surface in this area is the empty 32px lane \`chat-layout.tsx\` draws above the columns; a control inside a drag region is dead to clicks, which is the defect #539 fixed for overlays.`,
+		);
+	}
+});
+
+test("the drawer's slot is readable, and the header's OS corner is reserved for it too", () => {
+	const source = withoutComments(read(CHAT_CONTENT));
+	/*
+	 * AGENT REVIEW ROUND 1, N3. Two facts about this call site had no re-reader: the
+	 * drawer's slot wrote `data-ask-mode` and nothing read it (the canvas's own
+	 * `data-canvas-mode` is read by `scripts/renderer-driver.mjs`), and
+	 * `rightSlotOccupied` had gained the drawer's term for the header's OS-control
+	 * corner with no test and no frame. Both are properties of this file rather than
+	 * of a rendered surface, so they are pinned here - and the docked frame the
+	 * evidence set carries (`docs/evidence/ask-drawer/after/dock-asks/`) is the
+	 * visual half of the reservation.
+	 */
+	const mode = source.match(ASK_SLOT_MODE);
+	assert.ok(
+		mode,
+		`${CHAT_CONTENT} no longer writes the drawer slot's \`data-ask-mode\` from \`canvasDocked\`. The canvas dock's \`data-canvas-mode\` is what a rig reads to tell a docked pane from an overlaying one; the drawer's slot is read the same way or a rig cannot tell them apart either.`,
+	);
+	const reservation = source.match(RIGHT_SLOT_OCCUPIED);
+	assert.ok(
+		reservation,
+		`${CHAT_CONTENT} no longer derives \`rightSlotOccupied\` as one disjunction. It decides whether the chat header has to reserve the window's OS-control corner, and it is read from the panes' own flags rather than measured (§J4).`,
+	);
+	for (const term of [
+		"isCanvasOpen",
+		"isRunPanelOpen",
+		"isBrowserPaneOpen",
+		"isConsolePaneOpen",
+		"isAskDrawerOpen",
+	]) {
+		assert.ok(
+			reservation[1].includes(term),
+			`${CHAT_CONTENT}'s \`rightSlotOccupied\` no longer accounts for \`${term}\`. A pane the header does not know about leaves the OS controls sitting over that pane's own toolbar - the drawer included, now that it is the slot's fifth occupant.`,
 		);
 	}
 });

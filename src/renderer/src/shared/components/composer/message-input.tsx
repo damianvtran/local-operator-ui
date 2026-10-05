@@ -12,6 +12,7 @@ import {
 	composerFocusIsOurs,
 	shouldTabIntoAnswerOptions,
 } from "@features/chat/ask-answer";
+import type { AskOutcome } from "@features/chat/ask-queue";
 import { sendUnsettledForSession } from "@features/chat/canonical/working-line-model";
 import {
 	CHAT_COLUMN_CONTAINER,
@@ -168,6 +169,7 @@ import {
 } from "react";
 import type {
 	ClipboardEvent,
+	DragEvent,
 	FormEvent,
 	KeyboardEvent,
 	PointerEvent,
@@ -215,7 +217,7 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  *
  * The closure's explanation used to be the PLACEHOLDER alone ("Answer the
  * secret request above"), and a placeholder paints only while the box is
- * EMPTY — so the reader most likely to need the reason, the one whose box
+ * EMPTY - so the reader most likely to need the reason, the one whose box
  * holds their own words, got a dimmed box and no words at all (UX round 1,
  * U2). This is that explanation, in the `<output>` register above the box the
  * capture's own sentence uses, rendered only while the box holds a draft (the
@@ -223,10 +225,15 @@ const CREDENTIAL_NOTICE_ID = "composer-credential-notice";
  * noise). `aria-describedby` names it while it renders, for the reason
  * `MISSING_SESSION_NOTICE_ID` exists: a control that refuses input is the one
  * whose own reason a reader cannot otherwise reach.
+ *
+ * IT SAYS `asks panel`, NOT `above`, for the same reason the placeholder does
+ * (UX round 1, U2): the masked field is on the ask surface, and with the queued
+ * ask lane that surface is the right slot's drawer rather than something sat over
+ * this box.
  */
 const SECRET_CLOSURE_NOTICE_ID = "composer-secret-closure-notice";
 const SECRET_CLOSURE_NOTICE =
-	"Answer the secret request above — this box is paused until it is answered, and your draft is kept.";
+	"Answer the secret request in the asks panel — this box is paused until it is answered, and your draft is kept.";
 
 /**
  * The id the mention layer's description carries, so the field can name it.
@@ -830,6 +837,13 @@ export type MessageInputProps = {
 	 */
 	askExpanded?: boolean;
 	onAskToggle?: (next: boolean) => void;
+	/**
+	 * The page's record of the asks it posted for, forwarded to the status row's ask
+	 * item beside the flag above and for the same reason: the count clause reads it so
+	 * the chip cannot advertise a change door the owner has already refused. See
+	 * `ComposerStatusRowProps.askOutcomes`; absent on every host with no ask lane.
+	 */
+	askOutcomes?: Readonly<Record<string, AskOutcome | undefined>>;
 
 	/**
 	 * THE HOST PROVIDES ITS OWN HORIZONTAL GUTTER (mini restyle, design D1/D2).
@@ -1384,6 +1398,25 @@ const EMPTY_REPLIES: Reply[] = [];
 const EMPTY_ATTACHMENTS: Attachment[] = [];
 
 /**
+ * A `File`'s bytes as a data URL, or `null` when the read cannot produce one.
+ *
+ * The paste path spells this read out on `FileReader` inline because it fires and
+ * forgets. A drop needs to know when the bytes are ready - several files land in
+ * one gesture and the attachments are added in the drag's own order - so this is
+ * the same read with a promise around it, in one place rather than twice.
+ */
+const readFileAsDataUrl = (file: File): Promise<string | null> =>
+	new Promise((resolve) => {
+		const reader = new FileReader();
+		reader.onload = (event) =>
+			resolve(
+				typeof event.target?.result === "string" ? event.target.result : null,
+			);
+		reader.onerror = () => resolve(null);
+		reader.readAsDataURL(file);
+	});
+
+/**
  * The pending gate's first option that a user could actually reach, or null.
  *
  * A held card (an answer in flight, or one already answered) renders every option
@@ -1520,22 +1553,37 @@ export type MessageInputHandle = {
 const COMPOSER_BOX = cn(
 	"mx-auto flex w-full flex-col bg-elevated",
 	"box-border transition-colors duration-fast ease-out-quart",
-	// Scoped to `textarea`, not a bare `has-[:focus-visible]`.
-	//
-	// This box also contains the attach, model and send controls. Unscoped, it
-	// ringed itself whenever any of those took focus, while the button drew its
-	// own ring at the same time - a ring inside a ring, pointing at the box
-	// when the user is on a button. The wrapper draws the ring for the FIELD it
-	// frames; every other control in here is responsible for its own.
-	//
-	// `outline-solid` is required, not decorative: the textarea carries
-	// `outline-none`, which pins `--tw-outline-style: none`, and that token
-	// survives into this state - so the width from `outline-2` applied and no
-	// outline ever painted, leaving the app's primary input with no keyboard
-	// focus indicator.
-	//
-	// `outline-offset-2` matches the other three field wrappers; this one sat
-	// at 0 and was the odd one out.
+);
+
+/*
+ * THE BOX'S FOCUS RING, kept apart from the box because the DROP state REPLACES it
+ * (design round 1, D1; UX round 1, U3).
+ *
+ * Scoped to `textarea`, not a bare `has-[:focus-visible]`.
+ *
+ * This box also contains the attach, model and send controls. Unscoped, it
+ * ringed itself whenever any of those took focus, while the button drew its
+ * own ring at the same time - a ring inside a ring, pointing at the box
+ * when the user is on a button. The wrapper draws the ring for the FIELD it
+ * frames; every other control in here is responsible for its own.
+ *
+ * `outline-solid` is required, not decorative: the textarea carries
+ * `outline-none`, which pins `--tw-outline-style: none`, and that token
+ * survives into this state - so the width from `outline-2` applied and no
+ * outline ever painted, leaving the app's primary input with no keyboard
+ * focus indicator.
+ *
+ * `outline-offset-2` matches the other three field wrappers; this one sat
+ * at 0 and was the odd one out.
+ *
+ * WHY IT IS A SEPARATE CONST rather than a line inside `COMPOSER_BOX`: these are
+ * `has-[…]` utilities, and Tailwind emits variant utilities AFTER plain ones, so a
+ * plain `outline-dashed` added beside them never wins - measured on the built app
+ * (2026-10-04), the box still read `outline-style: solid` with a file over it. The
+ * armed state therefore applies INSTEAD of this rule, and the shape says which
+ * state the box is in: solid while focused, dashed while a file is over it.
+ */
+const COMPOSER_FOCUS_RING = cn(
 	"has-[textarea:focus-visible]:outline-solid has-[textarea:focus-visible]:outline-2",
 	"has-[textarea:focus-visible]:outline-accent has-[textarea:focus-visible]:outline-offset-2",
 );
@@ -1597,6 +1645,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 			isSmallView = false,
 			askExpanded,
 			onAskToggle,
+			askOutcomes,
 			ownGutter = false,
 			isHydrating = false,
 			transcriptless = false,
@@ -5765,6 +5814,40 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		const slotHold = useInterruptSlotHold(Boolean(canonicalStop?.active));
 
 		/*
+		 * THE THIRD BOX IN THE CONTROLS GROUP, named ONCE, because two surfaces ask
+		 * about it and a second copy of the condition is how they drift.
+		 *
+		 * The row's right group is `[mic][send]` in the ordinary state and gains a
+		 * THIRD 32px box in two: while a turn runs (`canonicalStop.active` draws the
+		 * danger Square), and for the grace window after it ends, where the invisible
+		 * `data-interrupt-slot` below holds the same box open - `slotHold.held` for
+		 * the 500ms window, `isRecording` for as long as a live recording needs a press
+		 * in the box the Stop just left kept off the dictation control.
+		 *
+		 * WHY THE STRIP IS TOLD ABOUT IT (issue #788). The readings cluster's shed
+		 * rule is a container query, and a container query can see a width but not a
+		 * SIBLING: the active-time reading returned at the band's upper edge into a row
+		 * that by then carried 36px more controls, and overran them by ~8px with the
+		 * model name already at its `min-w-14` floor. It did that at EVERY column above
+		 * the band, not just at its edge, because the composer box is capped at
+		 * `--lo-chat-measure` (810 shipped, `styles/index.css`), so the row is 778px at
+		 * every column from 858 up - no width exists at which the running row fits the
+		 * fullest cluster, which is why the fix is the state and not a wider band.
+		 * Measured on both trees by `scripts/composer-readings-geometry.mjs`.
+		 *
+		 * AND THE SLOT'S OWN JSX READS `interruptSlotDrawn` rather than repeating the
+		 * condition, so a change to when the box is drawn cannot leave the shed
+		 * behind - the two questions have one answer by construction.
+		 */
+		const interruptSlotDrawn =
+			canonicalStopAvailable &&
+			!canonicalStop?.active &&
+			(slotHold.held || isRecording) &&
+			!(isLoading && currentJobId);
+		const controlsThirdBox =
+			Boolean(canonicalStop?.active) || interruptSlotDrawn;
+
+		/*
 		 * Whether the suggestion chips are inert.
 		 *
 		 * The draft case is not the composer being disabled - the box is very much
@@ -6554,6 +6637,119 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 		};
 
 		/*
+		 * A DROPPED FILE IS AN ATTACHMENT (issue #789).
+		 *
+		 * WHAT WAS WRONG. The composer presented a drop affordance and implemented
+		 * none of it: nothing in the band cancelled `dragover`, so the file fell through
+		 * to the page and was silently DISCARDED - measured on the built app, in this
+		 * scene's own before half, which attaches nothing while a paste in the same pane
+		 * still does. The green copy badge the user sees during the drag is the issue's
+		 * report and not this rig's measurement: a dispatched drag cannot show what
+		 * macOS paints (the set's README says so where it bounds the frames). `drop`
+		 * does not even fire without that cancel, so this was not a handler missing its
+		 * body; it was a target that had never been declared.
+		 *
+		 * THE GATE IS `handlePaste`'s, deliberately, and not the attach BUTTON's. The
+		 * button also refuses while dictation runs (`isRecording || isTranscribing`),
+		 * which is about the button's own job; a drop is direct manipulation like paste
+		 * - the files are already in the user's hand - so it reads the one term every
+		 * writer on this composer reads (`isInputDisabled`), and the send path's own
+		 * gates still apply afterwards. When the box refuses, NEITHER `dragover` nor
+		 * `drop` is cancelled, so the OS shows its own "no drop" cursor and nothing
+		 * happens: the same silence a refused paste gives, said in the pointer's own
+		 * language.
+		 */
+		const handleComposerDragOver = (event: DragEvent<HTMLDivElement>) => {
+			/*
+			 * WITHOUT THIS `preventDefault` THE `drop` EVENT NEVER FIRES - it is the whole
+			 * of the reported defect rather than a detail of it.
+			 *
+			 * AND IT IS LIMITED TO FILE DRAGS, which is not tidiness: cancelling every
+			 * `dragover` would also cancel the browser's own "drag selected text into a
+			 * textarea and it inserts" path, so dropping prose on the composer would
+			 * attach nothing AND insert nothing.
+			 */
+			if (isInputDisabled) return;
+			if (!event.dataTransfer?.types.includes("Files")) return;
+			event.preventDefault();
+			event.stopPropagation();
+			event.dataTransfer.dropEffect = "copy";
+			setFileDragActive(true);
+		};
+
+		/*
+		 * `relatedTarget` is what makes the leave honest: `dragleave` also fires while
+		 * the pointer crosses between the band's own children (the box, the previews,
+		 * the toolbar), so clearing unconditionally would make the affordance flicker
+		 * at every internal boundary.
+		 */
+		const handleComposerDragLeave = (event: DragEvent<HTMLDivElement>) => {
+			if (event.currentTarget.contains(event.relatedTarget as Node | null))
+				return;
+			setFileDragActive(false);
+		};
+
+		const handleComposerDrop = (event: DragEvent<HTMLDivElement>) => {
+			setFileDragActive(false);
+			if (isInputDisabled) return;
+			const files = event.dataTransfer?.files;
+			if (!files || files.length === 0) return;
+			/*
+			 * Cancelled whatever else happens below: the page's own answer to a dropped
+			 * file is to navigate to it, and a drop this composer has decided not to take
+			 * must not be answered by the window leaving.
+			 */
+			event.preventDefault();
+			event.stopPropagation();
+			if (!conversationId) return;
+			void addDroppedFiles(conversationId, Array.from(files));
+		};
+
+		/*
+		 * EVERY FILE IN THE GESTURE ATTACHES, in the drag's own order - `dataTransfer
+		 * .files` is a list and a drag can carry several, so the rule is "all of them,
+		 * in the order the OS listed them" rather than a first-file-only shortcut that
+		 * would drop the rest in silence. Each one goes through the SAME store call the
+		 * attach button and the paste path use (`addAttachment`), and they are awaited
+		 * one at a time so the order the user sees is the order they dragged.
+		 *
+		 * THE REPRESENTATION IS THE PATH WHEN THERE IS ONE, and that choice comes from
+		 * what the consumer requires rather than from what is easiest:
+		 * `encodeImageAttachments` (features/chat/utils/attachment-encode.ts) takes both
+		 * forms - a data URL is used as the base64 directly, a filesystem path has its
+		 * bytes read in main over `api.readFile` - and both are then bounded by the same
+		 * `boundImagesForBudget` before the send. What decides between them is the
+		 * DRAFT: `conversation-input-store` is `persist`ed to localStorage, so a file
+		 * stored as `data:` puts a base64 copy of itself on disk the moment it is
+		 * dropped (a 5 MB image is about 6.7 MB of a budget that is usually 5-10 MB),
+		 * while a path is a short string whose bytes are read only if the message is
+		 * sent. The path form is also what the attach button already stores, real
+		 * filename included - which is the name the chip prints.
+		 *
+		 * A FILE WITH NO PATH STILL LANDS, by the paste route: a `File` constructed in
+		 * JS rather than backed by a file on disk (dragged out of another page) answers
+		 * `""` from the preload call, and there the bytes are all the renderer will ever
+		 * have.
+		 */
+		const addDroppedFiles = async (
+			target: string,
+			files: readonly File[],
+		): Promise<void> => {
+			for (const file of files) {
+				const path = window.api?.getPathForFile
+					? window.api.getPathForFile(file)
+					: "";
+				if (path) {
+					addAttachment(target, { id: uuidv4(), path: normalizePath(path) });
+					continue;
+				}
+				const dataUrl = await readFileAsDataUrl(file);
+				if (dataUrl) addAttachment(target, { id: uuidv4(), path: dataUrl });
+			}
+		};
+		const [fileDragActive, setFileDragActive] = useState(false);
+
+		/*
 		 * A suggestion FILLS the composer; it does not send.
 		 *
 		 * WHAT CHANGED UNDER THIS HANDLER. It is byte-identical on `main`, where the
@@ -7040,6 +7236,7 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 						isSmallView={isSmallView}
 						askExpanded={askExpanded}
 						onAskToggle={onAskToggle}
+						askOutcomes={askOutcomes}
 						/*
 						 * The judge stalling is a state the user cannot read off 0px of ink, so the
 						 * row writes one sentence about it to the transcript (design D2) — through
@@ -7563,8 +7760,40 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 					<div
 						className={cn(
 							COMPOSER_BOX,
+							/*
+							 * The focus ring yields to the drop state rather than sitting beside it -
+							 * see `COMPOSER_FOCUS_RING` for the ordering reason, which is measured.
+							 */
+							fileDragActive ? undefined : COMPOSER_FOCUS_RING,
 							isSmallView ? "gap-2 rounded-md p-2" : "gap-3 rounded-frame p-4",
 							CHAT_MEASURE,
+							/*
+							 * THE ARMED STATE IS THE DROP IDIOM, AND IT IS DISTINGUISHED BY SHAPE
+							 * (design round 1, D1/D2; UX round 1, U3).
+							 *
+							 * DASHED, because that is how this codebase already says "a drop lands
+							 * here": `import-agent-dialog` targets with `border-2 border-dashed`,
+							 * `insert-image-dialog` with `border border-dashed` and a label, and
+							 * `credential-chip` already draws `outline-dashed`. It also makes armed
+							 * separable from FOCUSED, which is the same accent ring in the same place:
+							 * the box's focus ring is solid, so a user holding a file sees a dashed
+							 * boundary and a keyboard user sees a solid one. The first cut relied on a
+							 * ground wash to carry that difference and the wash measures 1.01-1.17:1
+							 * against the band in every palette - it carried nothing.
+							 *
+							 * THE BAND'S GROUND IS LEFT ALONE, and that is the other half of D2 rather
+							 * than a taste call: `accent-wash` is the fill `AttachmentsPreview` gives a
+							 * NON-MEDIA attachment (`bg-accent-wash text-accent`), measured as the same
+							 * rendered value #1b281f. A wash on the band would put an attached `.txt`'s
+							 * 99px tile on a ground of exactly its own colour - the tile's ground step
+							 * IS its boundary - so the attachment would read as having vanished for the
+							 * whole time a drag was over the composer.
+							 *
+							 * Ring only: no shadow, no lift, no scale - the band must not move under a
+							 * drag, and the frames measure its height identical in both states.
+							 */
+							fileDragActive &&
+								"outline-dashed outline-2 outline-accent outline-offset-2",
 						)}
 						/*
 						 * The geometry rigs' handle on the composer's own MEASURE, on the
@@ -8277,6 +8506,15 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 										held={sessionStatus.held}
 										readingsDropped={sessionStatus.readingsDropped}
 										pendingModel={sessionStatus.pendingModel}
+										/*
+										 * The row's own third-box predicate, handed down rather than
+										 * re-derived: the strip's shed is the one thing on this row that a
+										 * container query cannot decide, because the box it has to clear
+										 * is a SIBLING appearing rather than the column narrowing
+										 * (issue #788). See the constant's own comment for the
+										 * measurement behind it.
+										 */
+										controlsThirdBox={controlsThirdBox}
 									/>
 								</ErrorBoundary>
 							)}
@@ -8309,9 +8547,10 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 								 * automatic minimum size is its CONTENT, so an intermediate
 								 * wrapper that does not opt out of it refuses to shrink and the
 								 * `min-w-0` further down never gets the chance to apply. With the
-								 * canvas panel open the chat column collapses to its 220px floor
-								 * and the chip's 260px cap alone drove the row 97px past the
-								 * column's right edge (design round 2, D11); the chip carries the
+								 * canvas panel open the chat column falls to its floor - 480px since
+								 * §I, 220 when the 97px below was measured - and the chip's 260px
+								 * cap alone drove the row 97px past the column's right edge
+								 * (design round 2, D11); the chip carries the
 								 * shrink, but only these two ancestors can let it happen.
 								 *
 								 * ABOVE the threshold this group does not shrink at all, and that is
@@ -8726,41 +8965,38 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 									 * its own `Stop agent` in this cluster; reserving a slot nothing
 									 * will fill would move a control for no reason.
 									 */}
-									{canonicalStopAvailable &&
-										!canonicalStop?.active &&
-										(slotHold.held || isRecording) &&
-										!(isLoading && currentJobId) && (
-											<span
-												aria-hidden="true"
-												data-interrupt-slot=""
-												className={cn(
-													"pointer-events-none invisible flex items-center",
-												)}
+									{interruptSlotDrawn && (
+										<span
+											aria-hidden="true"
+											data-interrupt-slot=""
+											className={cn(
+												"pointer-events-none invisible flex items-center",
+											)}
+										>
+											{/*
+											 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
+											 * what makes "holding the place moves nothing" true rather than
+											 * nearly true (chat redesign §G3, U3).
+											 *
+											 * The control is the icon-only red square again (operator report,
+											 * 2026-09-26 - see the live branch below), so this renders that
+											 * SAME markup invisible: `visibility: hidden` keeps layout,
+											 * unlike `display: none`, so the two boxes agree by construction
+											 * rather than by a measured width that could drift. It carries
+											 * NO accessible name and no labelling attribute, because it must
+											 * stay out of the live probes that select the control by its own
+											 * name and must not be announced.
+											 */}
+											<Button
+												variant="danger"
+												size={isSmallView ? "icon-sm" : "icon"}
+												type="button"
+												tabIndex={-1}
 											>
-												{/*
-												 * THE RESERVATION IS THE STOP'S OWN BOX, INVISIBLE, and that is
-												 * what makes "holding the place moves nothing" true rather than
-												 * nearly true (chat redesign §G3, U3).
-												 *
-												 * The control is the icon-only red square again (operator report,
-												 * 2026-09-26 - see the live branch below), so this renders that
-												 * SAME markup invisible: `visibility: hidden` keeps layout,
-												 * unlike `display: none`, so the two boxes agree by construction
-												 * rather than by a measured width that could drift. It carries
-												 * NO accessible name and no labelling attribute, because it must
-												 * stay out of the live probes that select the control by its own
-												 * name and must not be announced.
-												 */}
-												<Button
-													variant="danger"
-													size={isSmallView ? "icon-sm" : "icon"}
-													type="button"
-													tabIndex={-1}
-												>
-													<Square aria-hidden="true" />
-												</Button>
-											</span>
-										)}
+												<Square aria-hidden="true" />
+											</Button>
+										</span>
+									)}
 									{canonicalStop?.active && (
 										/*
 										 * THE STOP IS THE ICON-ONLY RED SQUARE IT WAS BEFORE THE
@@ -9023,6 +9259,19 @@ const MessageInputForwarded = forwardRef<MessageInputHandle, MessageInputProps>(
 				)}
 				data-lo-composer-band={true}
 				ref={setBand}
+				/*
+				 * THE DROP TARGET, on the band rather than on the box (issue #789).
+				 *
+				 * The band is the region a person aims at - the box, its previews, its
+				 * toolbar, the tip - so a drop anywhere over the composer is taken, and a
+				 * drop that lands on the box's own border or padding is not the one
+				 * placement that works. The handlers are declared beside each other in
+				 * the component body; `handleComposerDragOver`'s comment carries why the
+				 * `preventDefault` there is the core of the fix.
+				 */
+				onDragOver={handleComposerDragOver}
+				onDragLeave={handleComposerDragLeave}
+				onDrop={handleComposerDrop}
 			>
 				{/*
 				 * THE SPLASH: the greeting, the chips and the tip, centred in the height

@@ -18,12 +18,15 @@ import React, { act } from "react";
  *
  * WHAT THIS PINS
  *
- *  1. The door: a mount into an empty queue, and a door that says "collapsed" to
- *     a page that is already collapsed, must NOT call the toggle. Both were
- *     reachable on ordinary paths (agent review F1: the queue empties while the
- *     user is collapsed; every pane mount of an ask-free conversation) and both
- *     destroyed a draft, because the caller's swap moved the chat text into the
- *     ask buffer and wrote the empty ask buffer into the box.
+ *  1. The door: a mount into a queue that is published but EMPTY must NOT fire the
+ *     drawer's close door (a settle from the terminal or the phone, or a timeout)
+ *     - reachable on every conversation switch, and firing there destroyed a
+ *     draft, because the caller's swap moved the chat text into the ask buffer and
+ *     wrote the empty ask buffer into the box. The old shape of this test also
+ *     pinned a door that said "collapsed" to an already-collapsed page; there is
+ *     no collapsed mount any more (the drawer is mounted only while open, and the
+ *     flag that decides it is the store's), so that half is gone with the state it
+ *     described rather than weakened.
  *  2. The authority: the swap has to reach the BOX, and the store's revision is
  *     what the composer mirrors on. `setCurrentInput` (the keystroke writer) must
  *     not bump it; `setComposerText` (the app's writer) must.
@@ -47,7 +50,7 @@ const { createRoot } = await import("react-dom/client");
 const bundle = await build({
 	stdin: {
 		contents: `
-			export { AskSurfaces } from "./src/renderer/src/features/chat/components/asks/ask-surfaces";
+			export { AskDrawer } from "./src/renderer/src/features/chat/components/asks/ask-drawer";
 			export { useConversationInputStore } from "./src/renderer/src/shared/store/conversation-input-store";
 		`,
 		loader: "tsx",
@@ -69,9 +72,7 @@ const bundlePath = new URL(
 	import.meta.url,
 );
 await writeFile(bundlePath, bundle.outputFiles[0].text);
-const { AskSurfaces, useConversationInputStore } = await import(
-	bundlePath.href
-);
+const { AskDrawer, useConversationInputStore } = await import(bundlePath.href);
 await unlink(bundlePath).catch(() => {});
 
 const h = React.createElement;
@@ -126,58 +127,35 @@ const mount = async (element) => {
 
 /* --------------------------------------------------------------- the door ---- */
 
-test("a MOUNT into an empty-but-published queue does not fire the collapse door", async () => {
+test("a MOUNT into an empty-but-published queue does not fire the close door", async () => {
 	// Reachable on every pane mount: `SessionPanel` is keyed by conversation, so
 	// this is every conversation switch, and the caller's swap would empty the box
 	// of a draft retained for the conversation being opened.
 	const calls = [];
 	const view = await mount(
-		h(AskSurfaces, {
+		h(AskDrawer, {
 			frontend: frontend([]),
-			expanded: true,
-			onToggle: (next) => calls.push(next),
+			scope: "session",
+			onClose: () => calls.push(true),
 		}),
 	);
 	assert.deepEqual(calls, [], "a mount is not an emptying");
 	await view.unmount();
 });
 
-test("a door saying `collapsed` to an already-collapsed page does not fire", async () => {
-	// The queue empties while the user is collapsed (the default state) - an ask
-	// answered from the terminal or phone, or a timeout. Firing here moves the chat
-	// draft into the ask buffer and writes the empty one into the box.
+test("the close door fires ONCE per emptying", async () => {
 	const calls = [];
+	const props = { scope: "session", onClose: () => calls.push(true) };
 	const view = await mount(
-		h(AskSurfaces, {
-			frontend: frontend([openAsk]),
-			expanded: false,
-			onToggle: (next) => calls.push(next),
-		}),
-	);
-	await view.rerender(
-		h(AskSurfaces, {
-			frontend: frontend([]),
-			expanded: false,
-			onToggle: (next) => calls.push(next),
-		}),
-	);
-	assert.deepEqual(calls, [], "already collapsed: nothing to collapse");
-	await view.unmount();
-});
-
-test("the door fires ONCE per emptying while expanded", async () => {
-	const calls = [];
-	const props = { expanded: true, onToggle: (next) => calls.push(next) };
-	const view = await mount(
-		h(AskSurfaces, { frontend: frontend([openAsk]), ...props }),
+		h(AskDrawer, { frontend: frontend([openAsk]), ...props }),
 	);
 	assert.deepEqual(calls, [], "mount with rows is not an emptying");
-	await view.rerender(h(AskSurfaces, { frontend: frontend([]), ...props }));
-	assert.deepEqual(calls, [false], "one collapse, delivered once");
+	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
+	assert.deepEqual(calls, [true], "one close, delivered once");
 	// And not again on the renders that follow it.
-	await view.rerender(h(AskSurfaces, { frontend: frontend([]), ...props }));
-	await view.rerender(h(AskSurfaces, { frontend: frontend([]), ...props }));
-	assert.deepEqual(calls, [false], "the transition fires once, not per render");
+	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
+	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
+	assert.deepEqual(calls, [true], "the transition fires once, not per render");
 	await view.unmount();
 });
 
@@ -208,4 +186,286 @@ test("only the app's writer bumps the revision the composer mirrors on", () => {
 	store().setComposerText(id, "");
 	assert.equal(store().inputByConversation[id].currentInput, "");
 	assert.equal(store().inputByConversation[id].unredactedChars, 0);
+});
+
+/*
+ * ---------------------------------------------------------------------------
+ * The drawer's own affordances, on the same mount.
+ *
+ * WHY HERE. This file is the drawer's jsdom mount rig - the one place the shipped
+ * `AskDrawer` renders against the shipped stores - so the four claims the round-1
+ * reviews made about the SURFACE rather than about the swap are pinned on the same
+ * instrument: where the keyboard lands (UX U4), what the settled header says (agent
+ * review M1 = UX U1 = design D1), what the bar counts (UX U5), and what the card
+ * draws for an answer the option list never offered (design D2's addendum). Each of
+ * those was found by looking at a frame or driving the app; none of them had a
+ * signal in CI, which is the defect this section closes.
+ * ---------------------------------------------------------------------------
+ */
+
+/** An ask whose first question carries a radio pair, plus the settled fixtures. */
+const radioAsk = {
+	...openAsk,
+	questions: [
+		{
+			id: "target",
+			question: "Which environment?",
+			options: [{ label: "staging" }, { label: "production" }],
+		},
+	],
+};
+
+const settled = (status, id) => ({
+	...openAsk,
+	ask_id: id,
+	status,
+	questions: [
+		{
+			id: "target",
+			question: "Which environment?",
+			options: [{ label: "staging" }, { label: "production" }],
+		},
+	],
+});
+
+test("the keyboard lands on the card's first option, not on the dismiss (UX U4)", async () => {
+	// The trigger the app's own press leaves focus on: the chip is the only state
+	// the mount's focus move accepts, which is what keeps it the user's gesture.
+	const chip = document.createElement("button");
+	chip.setAttribute("data-lo-ask-item-toggle", "");
+	document.body.appendChild(chip);
+	chip.focus();
+	assert.equal(document.activeElement, chip);
+	const view = await mount(
+		h(AskDrawer, { frontend: frontend([radioAsk]), scope: "session" }),
+	);
+	const active = document.activeElement;
+	assert.equal(
+		active?.getAttribute("data-ask-option"),
+		"staging",
+		"the surface must not open with its own exit under the keyboard",
+	);
+	assert.notEqual(active?.getAttribute("aria-label"), "Close asks");
+	// And the bar is still reachable: one Shift+Tab up, which jsdom cannot walk -
+	// the assertion that it is focusable at all is the point here.
+	const dismiss = view.container.querySelector('[aria-label="Close asks"]');
+	assert.ok(dismiss, "the dismiss is still the bar's trailing control");
+	await view.unmount();
+	chip.remove();
+});
+
+test("the settled header names the words the section actually holds (M1 = U1 = D1)", async () => {
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk, settled("declined", "a-declined")]),
+			scope: "session",
+		}),
+	);
+	const header = view.container.querySelector("[data-lo-ask-settled]");
+	assert.ok(header, "the section renders for one settled ask");
+	const text = header.textContent ?? "";
+	assert.ok(text.includes("Settled · 1"), "the count is the section's own");
+	assert.ok(
+		text.includes("Declined"),
+		"the one word the section holds is named",
+	);
+	// The two claims the fixed legend made and could not keep: `timed out` can never
+	// be in the section (the outstanding set folds it in), and a word the section
+	// does not hold must not be printed.
+	assert.ok(!text.includes("timed out"), "a word the section cannot hold");
+	assert.ok(
+		!text.toLowerCase().includes("answered"),
+		"a word not in this section",
+	);
+	assert.ok(!text.includes("dismissed"), "a word not in this section");
+	await view.unmount();
+});
+
+test("the bar counts what the surface shows, not only what the agent waits on (UX U5)", async () => {
+	const movedOn = { ...radioAsk, ask_id: "a-moved", status: "timed_out" };
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk, movedOn]),
+			scope: "session",
+		}),
+	);
+	const scope = view.container.querySelector("[data-ask-scope]");
+	assert.equal(
+		scope?.textContent,
+		"This conversation · 1 waiting, 1 moved on",
+		"both answerable cards the drawer draws are counted",
+	);
+	await view.unmount();
+});
+
+test("an answer that is not one of the labels is DRAWN as Other (design D2)", async () => {
+	// What the composer's door produces: `sendToAsk` writes the raw typed text into
+	// the first unanswered question's draft, so the value is a string no option row
+	// could have written.
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([radioAsk]),
+			scope: "session",
+			drafts: { "a-7f3c": { target: ["prod"] } },
+			onDraftChange: () => undefined,
+		}),
+	);
+	const row = view.container.querySelector('[data-ask-option-other="prod"]');
+	assert.ok(row, "the free-form answer is on the card");
+	assert.equal(row.getAttribute("role"), "radio");
+	assert.equal(row.getAttribute("aria-checked"), "true");
+	assert.ok(
+		(row.textContent ?? "").includes("Other"),
+		"and it is marked as the other kind",
+	);
+	// The option rows are NOT selected: the value came from elsewhere, and the card
+	// says so rather than showing an empty group beside a question already answered.
+	const production = view.container.querySelector(
+		'[data-ask-option="production"]',
+	);
+	assert.equal(production?.getAttribute("aria-checked"), "false");
+	await view.unmount();
+});
+
+test("the recommendation survives the selection moving (operator ask, 2026-10-04)", async () => {
+	// The recommendation is a mark of its OWN, and the selection is the draft's
+	// ground plus its drawn radio. The two must be readable at once, and the
+	// reason is the wire's own shape: the harness hoists the recommended option to
+	// index 0, so the two coincide until the user clicks something else - and a
+	// mark that were the selection's twin would be ERASED by the first click on
+	// the alternative the user is choosing against.
+	//
+	// THE FIXTURE CARRIES THE WIRE'S OWN SHAPE (agent review round 1, R1-1): the
+	// recommendation is the QUESTION's integer index, the option object is exactly
+	// `{label, description}`. The earlier version of this case put a
+	// `recommended: true` flag on the option - a key no producer emits (the core'
+	// `AskOption` forbids extras) - so it proved a story, not the surface, while
+	// the drawer read a field that was never there.
+	const recommended = {
+		...radioAsk,
+		questions: [
+			{
+				id: "target",
+				question: "Which environment?",
+				recommended: 0,
+				options: [{ label: "staging" }, { label: "production" }],
+			},
+		],
+	};
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: frontend([recommended]),
+			scope: "session",
+			// The draft sits on the option the model did NOT recommend.
+			drafts: { "a-7f3c": { target: ["production"] } },
+			onDraftChange: () => undefined,
+		}),
+	);
+	const staging = view.container.querySelector('[data-ask-option="staging"]');
+	const production = view.container.querySelector(
+		'[data-ask-option="production"]',
+	);
+	assert.equal(staging?.getAttribute("aria-checked"), "false");
+	assert.equal(production?.getAttribute("aria-checked"), "true");
+	const stagingText = staging?.textContent ?? "";
+	assert.ok(
+		stagingText.includes("Recommended"),
+		"the advice is still on the row after the selection moved",
+	);
+	// Not colour alone: the glyph is what survives a colour-blind reader, a
+	// greyscale screenshot and the terminal's own badge.
+	assert.ok(stagingText.includes("▸"), "the mark carries its glyph");
+	// The label is bolded where it is recommended - the half of the signal that
+	// survives a reader who skims past the badge.
+	assert.ok(
+		(staging?.querySelector(".font-semibold")?.textContent ?? "").includes(
+			"staging",
+		),
+		"the recommended option's label is emphasised",
+	);
+	assert.equal(
+		production?.querySelector(".font-semibold"),
+		null,
+		"the selected row is not the recommended one, and must not borrow its weight",
+	);
+	assert.ok(!(production?.textContent ?? "").includes("Recommended"));
+	await view.unmount();
+});
+
+/*
+ * THE INDEX IS VALIDATED, NOT CLAMPED (agent review round 1, R1-1).
+ *
+ * The dock card has proven this range since the ask-picker contract landed
+ * (`ask-options.test.mjs`: "recommended is optional, and marks only a real
+ * index"). The drawer card had no such case, which is half of why its dead
+ * `option.recommended` read survived every rig in the repo - so the same range
+ * is pinned here, on the shape the queued-ask wire actually sends.
+ *
+ * `bad` is every value that must badge NOTHING rather than the wrong row: absent,
+ * null, out of range, negative, a float, and the two malformed values a
+ * truthiness read would have accepted (the STRING "0", and `NaN`). A real index
+ * still marks exactly its own row and no other.
+ */
+test("the drawer badges nothing for an index that is not a real row", async () => {
+	const marked = async (recommended) => {
+		const view = await mount(
+			h(AskDrawer, {
+				frontend: frontend([
+					{
+						...radioAsk,
+						questions: [
+							{
+								id: "target",
+								question: "Which environment?",
+								options: [
+									{ label: "staging" },
+									{ label: "production" },
+									{ label: "sandbox" },
+								],
+								...(recommended === undefined ? {} : { recommended }),
+							},
+						],
+					},
+				]),
+				scope: "session",
+				onDraftChange: () => undefined,
+			}),
+		);
+		const labels = ["staging", "production", "sandbox"];
+		const badged = labels.filter((label) =>
+			(
+				view.container.querySelector(`[data-ask-option="${label}"]`)
+					?.textContent ?? ""
+			).includes("Recommended"),
+		);
+		const bolded = labels.filter((label) =>
+			Boolean(
+				view.container
+					.querySelector(`[data-ask-option="${label}"]`)
+					?.querySelector(".font-semibold"),
+			),
+		);
+		await view.unmount();
+		return { badged, bolded };
+	};
+
+	for (const bad of [undefined, null, 99, -1, 1.5, "0", Number.NaN]) {
+		const { badged, bolded } = await marked(bad);
+		assert.deepEqual(
+			badged,
+			[],
+			`recommended ${String(bad)} must not badge a row`,
+		);
+		assert.deepEqual(
+			bolded,
+			[],
+			`recommended ${String(bad)} must not bold a row`,
+		);
+	}
+
+	// And a REAL index that is not 0 still marks exactly the row it names - which
+	// is what rules out a "truthiness" read resolving it to index 0.
+	const real = await marked(2);
+	assert.deepEqual(real.badged, ["sandbox"]);
+	assert.deepEqual(real.bolded, ["sandbox"]);
 });

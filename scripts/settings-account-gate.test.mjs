@@ -210,6 +210,17 @@ const bundle = await build({
 	 * ones a build needs, not a configuration under test.
 	 */
 	define: { "import.meta.env": "globalThis.__RIG_ENV__" },
+	/*
+	 * THE BUNDLE KEEPS A CJS DEPENDENCY, and it appeared with the Speech group:
+	 * `settings-page` reaches `@shared/components/common/error-boundary`, which
+	 * wraps `react-error-boundary` — a CJS package whose `require("react")` cannot
+	 * resolve inside an ESM bundle without a `require` of its own. The recipe is
+	 * the one `shared-composer.test.mjs` states and `agents-composer-mount.test.mjs`
+	 * carries for the same dependency reached through the composer's boundary.
+	 */
+	banner: {
+		js: 'import { createRequire } from "node:module"; const require = createRequire(import.meta.url);',
+	},
 	jsx: "automatic",
 	write: false,
 });
