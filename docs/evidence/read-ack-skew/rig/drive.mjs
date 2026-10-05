@@ -450,7 +450,18 @@ async function main() {
 				RECORDS,
 				"--seed-onboarding-complete",
 			],
-			{ cwd: join(RUN, "cwd"), env, stdio: ["ignore", "pipe", "pipe"] },
+			{
+				cwd: join(RUN, "cwd"),
+				env,
+				stdio: ["ignore", "pipe", "pipe"],
+				/*
+				 * Detached so the app leads its own process group and the
+				 * finally block's `process.kill(-pid)` reaches its whole tree;
+				 * without it that group kill was an ESRCH no-op against a group
+				 * that never existed (agent review round 1, n1).
+				 */
+				detached: true,
+			},
 		);
 		const logs = [];
 		app.stdout.on("data", (b) => logs.push(b.toString()));
@@ -575,6 +586,13 @@ async function main() {
 		try {
 			if (ws) ws.close();
 		} catch {}
+		/*
+		 * The group kill FIRST, and it lands because the spawn is detached (the
+		 * app is its own group leader). The direct-pid kill below is the
+		 * fallback for a child that somehow left the group, not the primary
+		 * reaper - the pre-fix order mistook an ESRCH no-op for a group reap
+		 * (agent review round 1, n1).
+		 */
 		try {
 			if (app && app.pid) {
 				process.kill(-app.pid, "SIGTERM");

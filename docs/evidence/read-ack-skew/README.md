@@ -9,7 +9,7 @@
   counts `.webp` only, so a hand-driven set cannot be mistaken for frames a
   sweep produced (the `read-ack-notice` set's precedent). Each frame's companion
   `.readout.json` is the page's own readout, verbatim.
-- `frames/live-app-*.webp` are **live** frames from the two-daemon rig's built
+- `frames/live-app-*.png` are **live** frames from the two-daemon rig's built
   app: the draft placed on `cloud-node-1` through the shipped device chip, the
   sidebar row with a real completion's unseen mark, and the peer conversation
   open in the pane.
@@ -89,7 +89,7 @@ the rig's re-sent admission (200), the `POST …/seen → 409`, and later the
 - **The row flyout is not painted in this set.** The quiet clause's strings are
   the after-frame readout (and the flyout case in the test file asserts the
   `· lives on cloud-node-1…` suffix on the row); the sidebar row itself is
-  live-photographed with a mark in `frames/live-app-marked-row.webp`, but with
+  live-photographed with a mark in `frames/live-app-marked-row.png`, but with
   no notice on it (no live path can hold one — the wall above). A design round
   that wants the flyout's pixels should ask, and it is a storybook-scale build.
 - **The app-side apply of the settle is pinned by tests, not a frame.** The
@@ -100,7 +100,7 @@ the rig's re-sent admission (200), the `POST …/seen → 409`, and later the
   fix's slice): the app's create-on-peer path races the peer catalogue's TTL
   (the 404s in `rig/desk-excerpts.txt`), and a peer conversation opened cold
   shows the header chip reading "On this device" over a remote session
-  (`frames/live-app-peer-open.webp`).
+  (`frames/live-app-peer-open.png`).
 
 **How the two drawn frames were made**, so a reviewer can re-run them:
 

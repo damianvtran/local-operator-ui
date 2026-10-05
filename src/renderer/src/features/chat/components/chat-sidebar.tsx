@@ -64,6 +64,7 @@ import { usePanelPresentationStore } from "@shared/store/panel-presentation-stor
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import {
 	dismissToast,
+	showInfoToast,
 	showSuccessToast,
 	showWarningToast,
 } from "@shared/utils/toast-manager";
@@ -1853,7 +1854,12 @@ export function ChatSidebar({
 			 * extent the label named and the batch would have carried.
 			 */
 			if (isRemoteReceiptDeferral(failure)) {
-				showWarningToast(markAllReadDeferredSentence(unreadCopy.count));
+				/*
+				 * The non-error register: the whole call is a deferral, and a
+				 * deferral on the amber glyph beside the real failures below
+				 * reads as one of them (design round 1, D2).
+				 */
+				showInfoToast(markAllReadDeferredSentence(unreadCopy.count));
 			} else {
 				showWarningToast(
 					`${userFacingMessage(failure, "The backend did not answer.")} The unread marks were not cleared.`,

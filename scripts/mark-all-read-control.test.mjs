@@ -434,12 +434,18 @@ const { createRoot } = await import("react-dom/client");
  * call, synchronously, and the paint, by waiting for the sentence to arrive or
  * leave. QA round 2, Q2-2 named exactly this shape.
  */
-const toastCalls = { warnings: [], dismissals: [] };
+const toastCalls = { warnings: [], infos: [], dismissals: [] };
 const originalWarning = sonnerToast.warning;
+const originalInfo = sonnerToast.info;
 const originalDismiss = sonnerToast.dismiss;
 sonnerToast.warning = (message, options) => {
 	const id = originalWarning.call(sonnerToast, message, options);
 	toastCalls.warnings.push({ id, message, options });
+	return id;
+};
+sonnerToast.info = (message, options) => {
+	const id = originalInfo.call(sonnerToast, message, options);
+	toastCalls.infos.push({ id, message, options });
 	return id;
 };
 sonnerToast.dismiss = (id) => {
@@ -1752,7 +1758,9 @@ test("a whole-call skew refusal reads as a deferral, not as a failure", async ()
 	 * body with `cause` beside `code`, so this case also pins the threading the
 	 * sidebar's classification reads (`DesktopControlError.detail`). The sentence
 	 * that goes out is the deferral's, never the transport's failure composition -
-	 * nothing was cleared, and the marks clear when that device updates.
+	 * nothing was cleared, and the marks clear when that device updates. Its
+	 * REGISTER is the info one: the whole call is a deferral, not a failure, so
+	 * the amber warning glyph must stay untouched (design round 1, D2).
 	 */
 	const harness = await mount(PILE);
 	const toastHost = document.createElement("div");
@@ -1762,6 +1770,8 @@ test("a whole-call skew refusal reads as a deferral, not as a failure", async ()
 		toastRoot.render(React.createElement(ThemedToastContainer));
 	});
 	toastCalls.warnings.length = 0;
+	toastCalls.infos.length = 0;
+	const infos = toastCalls.infos;
 	const warnings = toastCalls.warnings;
 	try {
 		globalThis.__ack = (request) => realDesktopResult(request);
@@ -1787,14 +1797,19 @@ test("a whole-call skew refusal reads as a deferral, not as a failure", async ()
 			},
 		};
 		await harness.click(harness.control());
-		assert.equal(warnings.length, 1, "the refusal announced nothing at all");
+		assert.equal(infos.length, 1, "the refusal announced nothing at all");
+		assert.equal(
+			warnings.length,
+			0,
+			"the deferral wore the amber failure register (design round 1, D2)",
+		);
 		assert.match(
-			warnings[0].message,
+			infos[0].message,
 			/2 live on other devices and clear when those devices update\.$/,
 			"the whole-call skew refusal did not read as a deferral",
 		);
 		assert.doesNotMatch(
-			warnings[0].message,
+			infos[0].message,
 			/could not be cleared|not an operation|older build/,
 			"the deferral imported the refusal's own prose",
 		);

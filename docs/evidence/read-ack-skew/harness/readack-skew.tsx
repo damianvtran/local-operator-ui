@@ -20,11 +20,12 @@
  * make the `before` run impossible; a namespace property reads `undefined` and
  * the readout says so.
  *
- * The refusal bytes are the rig's own: `message` is the raw echo the operator's
- * popup showed verbatim (their A-side daemon ran the pre-#2004 core), and
- * `detail` carries the `{code, cause}` pair the post-#2004 route ships - the
- * page passes whichever the state names, since a fleet in rollout has both
- * shapes live at once.
+ * The refusal bytes are the rig's own, and each state stages exactly what ITS
+ * wire carried: the pre-#2004 daemon's `{code}` alone (`rig/seen-409-raw.txt`)
+ * and the post-#2004 route's `{code, cause}` pair (`rig/seen-409.txt`). A fleet
+ * in rollout has both shapes live at once, and staging the cause into the
+ * before readout would fabricate the field the fix's code fallback exists for
+ * (agent review round 1, m1).
  */
 import * as noticeApi from "@renderer/features/chat/read-ack-notice";
 import * as desktopApi from "@shared/api/local-operator/desktop-api";
@@ -63,13 +64,18 @@ const COMPOSED =
 	"be cleared there right now: cloud-node-1 runs an older build, and the mark " +
 	"clears when that device updates.";
 
+const refusalDetail =
+	STATE === "before"
+		? { code: "session_is_remote" }
+		: { code: "session_is_remote", cause: "owner_build_behind" };
+
 const refusal = new desktopApi.DesktopControlError(
 	409,
 	STATE === "before" ? RAW_ECHO : COMPOSED,
 	undefined,
 	"session_is_remote",
 	undefined,
-	{ code: "session_is_remote", cause: "owner_build_behind" },
+	refusalDetail,
 );
 
 /**

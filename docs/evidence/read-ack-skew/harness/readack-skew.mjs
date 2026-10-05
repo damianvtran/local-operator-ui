@@ -85,11 +85,28 @@ let vite = null;
 let chrome = null;
 let dataDir = null;
 
-const stopAll = () => {
+const stopAll = async () => {
 	for (const child of [vite, chrome]) {
 		try {
 			if (child && child.pid) process.kill(child.pid, "SIGTERM");
 		} catch {}
+	}
+	/*
+	 * WAIT for Chrome's exit before removing its profile: the rm racing the
+	 * shutdown is how a ~50 KB stub survived per run (the QA round's hygiene
+	 * note). SIGKILL after 2 s in case the browser is wedged, one beat for the
+	 * kill to land, then the sweep.
+	 */
+	if (chrome && chrome.exitCode === null && chrome.signalCode === null) {
+		await Promise.race([
+			new Promise((resolve) => chrome.once("exit", resolve)),
+			sleep(2000).then(() => {
+				try {
+					process.kill(chrome.pid, "SIGKILL");
+				} catch {}
+			}),
+		]);
+		await sleep(200);
 	}
 	try {
 		if (dataDir) rmSync(dataDir, { recursive: true, force: true });
@@ -210,5 +227,5 @@ try {
 	console.log(`captured ${join(OUT, `${label}.png`)}`);
 	console.log(`toasts: ${JSON.stringify(toasts)}`);
 } finally {
-	stopAll();
+	await stopAll();
 }
