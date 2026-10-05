@@ -13,11 +13,13 @@ sessions exist only in the federated answer (`sessions.list?include_peers=true`)
 and the sidebar draws its local rows alone. `after` is the fixed tree: the same
 fixture rows render in the sidebar's own bins — Running / Today / This week —
 beside the local ones, each with the locality mark (`↗`, the elsewhere/external
-arrow), and the hover reads `on cloud-node-1 (damian-mesh)`. One fixture row's
-owner did NOT answer, and it draws the same arrow with ONE quiet stroke across
-it (`↛`) — the design round's at-rest cue, same ink, same cell, no reflow, with
-the reason left to the tooltip. Every frame is the app photographing itself
-(`Page.captureScreenshot`).
+arrow), and the hover reads `on cloud-node-1 · damian-mesh` — the cross-surface
+` · ` separator (design review round 1, D1). One fixture row's owner did NOT
+answer, and it draws the same arrow with ONE quiet stroke across it (`↛`) — the
+design round's at-rest cue, same ink, same **reserved cell** (every row carries
+it, so every title starts on the same x — D5), with the reason on the flyout's
+own line, `unreachable · link down 4m ago` (D2). Every frame is the app
+photographing itself (`Page.captureScreenshot`).
 
 ## The instrument
 
@@ -38,9 +40,12 @@ elements are drawn, and the wire shows NO federated read; `after` checks all
 six titles are present, four marks are drawn with exactly ONE stroke and it on
 the unreachable row, each remote row's own `[data-chat-section]` bin is
 `running`/`today`/`week` as its clock says, the sections list contains no
-remote-specific section, the flyout sentence matches (`on cloud-node-1
-(damian-mesh)`, and `… - unreachable: link down 4m ago` on the stroked row),
-the opened conversation's chip reads `On cloud-node-1`, and the wire shows the
+remote-specific section, the flyout sentences match (`on cloud-node-1 ·
+damian-mesh`, and the split `unreachable · link down 4m ago` on the stroked
+row, re-verified up for its frame), a remote and a local title's own box start
+at the SAME x (the reserved cell, measured 54 vs 54), the divider's keyboard
+register takes the sidebar to its 220 px floor and back (the narrow frame), the
+opened conversation's chip reads `On cloud-node-1`, and the wire shows the
 federated read only at `limit=200` while every plain poll stays peer-free.
 
 The `after` arm also holds for one full ambient cycle: it waits for the SECOND
@@ -76,11 +81,11 @@ titles):
   sidebar shows `cloud-node-1` reachable with **14 conversations** the sidebar
   does not list;
 - `present` (this branch), 15 rows drawn, `[data-remote-mark]` 4 — his most
-  recent `cloud-node-1` sessions (`Current OS inquiry`, `Current Operating
-  System Inquiry`, both `Answer needed`) merged into RUNNING beside his local
-  ones; the hover reads `on cloud-node-1 (damian-mesh)`; opening one leaves the
-  header chip reading `On cloud-node-1`; the wire: 1 federated read (`limit=200`)
-  and 12 plain polls, none of them carrying `include_peers`.
+  recent `cloud-node-1` sessions, both `Answer needed`, merged into RUNNING
+  beside his local ones; the hover reads `on cloud-node-1 · damian-mesh`;
+  opening one leaves the header chip reading `On cloud-node-1`; the wire: 1
+  federated read (`limit=200`) and a dozen plain polls, none of them carrying
+  `include_peers`.
 
 ## How to run
 
@@ -104,7 +109,9 @@ sidebar-remote/before/sidebar/localOperatorDark.webp         the sidebar, local 
 sidebar-remote/before/sidebar-detail/localOperatorDark.webp  the same, clipped to the panel
 sidebar-remote/after/sidebar/localOperatorDark.webp          remote rows merged into the bins
 sidebar-remote/after/sidebar-detail/localOperatorDark.webp   the same, clipped to the panel
-sidebar-remote/after/hover/localOperatorDark.webp            the flyout: on cloud-node-1 (damian-mesh)
+sidebar-remote/after/hover/localOperatorDark.webp            the flyout: on cloud-node-1 · damian-mesh
+sidebar-remote/after/hover-unreachable/…webp                 the stroked row's flyout: unreachable · link down 4m ago
+sidebar-remote/after/sidebar-narrow/localOperatorDark.webp   the 220 px floor: marks survive the clip
 sidebar-remote/after/open/localOperatorDark.webp             opened: header chip + the row in its bin
 ```
 
@@ -113,11 +120,13 @@ sidebar-remote/after/open/localOperatorDark.webp             opened: header chip
 | reading | before (base) | after (this branch) |
 | --- | --- | --- |
 | sections drawn | today: 1 local; week: 1 local | running: 1 remote; today: 2 remote + 1 local; week: 1 local + 1 remote |
-| `[data-remote-mark]` | 0 | 4 (`↗`) |
+| `[data-remote-mark]` | 0 | 4 (`↗`), 4 at the 220 px floor too |
 | stroke (`[data-remote-mark-stroke]`) | 0 | 1, on `Remote: incident log` only |
+| title leading edge, remote vs local | — | 54 vs 54 — one column (D5) |
 | separate remote section | none (nothing) | none — the sections are the one list's own |
-| flyout sentence | — | `on cloud-node-1 (damian-mesh)` |
-| flyout on the stroked row | — | `on cloud-node-1 (damian-mesh) - unreachable: link down 4m ago` |
+| flyout sentence | — | `on cloud-node-1 · damian-mesh` |
+| flyout on the stroked row | — | its own line: `unreachable · link down 4m ago` (D2) |
+| sidebar at its 220 px floor | — | marks survive, titles clip clean (N2) |
 | opened conversation's chip | — | `On cloud-node-1`, row still in its bin |
 | federated reads | 0 | 2 (`limit=200`, 30008 ms apart) |
 | plain catalogue polls | 2, none carrying `include_peers` | 10, none carrying `include_peers` |
@@ -125,6 +134,10 @@ sidebar-remote/after/open/localOperatorDark.webp             opened: header chip
 
 ## Not addressed here
 
+- **The TUI's reason token-gloss table is not ported** (`peer_reason_words`):
+  a wire reason that is a machine token (`connect_failed:<class>`) prints as
+  written; the vocabulary is the runtime's to keep (recorded in
+  `chat-remote.ts` for the sibling's vocabulary work).
 - **The stroke's colour is the mark's own role** (`text-ink-dim`): the design
   round asked for "same ink, same cell" - a new colour role would have been a
   contract change, so none was added.
