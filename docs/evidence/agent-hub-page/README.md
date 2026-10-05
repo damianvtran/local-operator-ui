@@ -110,6 +110,11 @@ patched to make it photograph the hub rather than its load error.
 
 ## The public teams library (2026-10-05)
 
+**RE-TAKEN IN REVIEW ROUND 2** (`--dirs=teams-public-pull-failed-narrow,teams-public-brief-narrow,teams-public-unreachable`,
+head `4c0a809f4`): the reflowed header at 920 (design round 2, D8) and the hub's
+TRANSPORT arm (QA round 2, Q3 — a rejected `fetch`, whose copy no longer carries
+the browser's own `Failed to fetch`). Twelve themes each.
+
 **RE-TAKEN IN REVIEW ROUND 1** (`--only=agent-hub-page --allow-backend --dirs=<the
 nine>`, head `bb2b90c70`, `dirtyWorkingTree: false`) for three of the round's
 findings: the hub-failure copy now names the HUB rather than the local server
@@ -119,7 +124,9 @@ the control that produced it, with the brief open, which is exactly the state th
 round-1 frame could not show (D2/M1). The rows and their provenance are otherwise
 unchanged from the pass below.
 
-**Nine states of this set were re-taken, and three are new.** The public Teams view
+**Twelve states of this set have been re-taken across the two review rounds, and
+six are new** (`teams-public-search-miss`, `teams-public-brief` and its 920
+narrow, `teams-public-pull-failed` and its 920 narrow, `teams-public-unreachable`). The public Teams view
 used to be a notice ("The public hub lists agents only"), so its six frames
 photographed a sentence; it is now the catalogue itself, read anonymously from
 `GET /v1/teams`, with a client-side search, a brief behind each row's disclosure
