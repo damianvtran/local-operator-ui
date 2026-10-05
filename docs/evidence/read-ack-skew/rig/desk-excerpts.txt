@@ -1,0 +1,17 @@
+# Desk-A excerpts (uvicorn access lines, trimmed) - the rig's own daemon
+
+## The app's create on cloud-node-1 lands; its immediate readbacks and message hit the peer-cache window (404), the rig's retry admits the turn
+127.0.0.1:55734 - "GET /v1/desktop/sessions/4e11f6d9ff41/command-entities?command=effort HTTP/1.1" 404 Not Found
+127.0.0.1:55733 - "GET /v1/desktop/sessions/4e11f6d9ff41/events?frontend_replace=1 HTTP/1.1" 404 Not Found
+127.0.0.1:55735 - "POST /v1/desktop/sessions/4e11f6d9ff41/messages HTTP/1.1" 404 Not Found
+127.0.0.1:55730 - "GET /v1/desktop/sessions/4e11f6d9ff41/command-entities?command=effort HTTP/1.1" 404 Not Found
+127.0.0.1:56027 - "POST /v1/desktop/sessions/4e11f6d9ff41/messages HTTP/1.1" 200 OK
+127.0.0.1:58251 - "GET /v1/desktop/sessions/33da82180e51/events?frontend_replace=1 HTTP/1.1" 404 Not Found
+127.0.0.1:58252 - "GET /v1/desktop/sessions/33da82180e51/command-entities?command=effort HTTP/1.1" 404 Not Found
+127.0.0.1:58253 - "POST /v1/desktop/sessions/33da82180e51/messages HTTP/1.1" 404 Not Found
+127.0.0.1:58247 - "GET /v1/desktop/sessions/33da82180e51/command-entities?command=effort HTTP/1.1" 404 Not Found
+127.0.0.1:58482 - "POST /v1/desktop/sessions/33da82180e51/messages HTTP/1.1" 200 OK
+
+## The receipt requests: the 409 first (B old), then the settle 200 (B updated)
+127.0.0.1:52416 - "POST /v1/desktop/sessions/d7c2d1e7b496/seen HTTP/1.1" 409 Conflict
+127.0.0.1:60569 - "POST /v1/desktop/sessions/d7c2d1e7b496/seen HTTP/1.1" 200 OK

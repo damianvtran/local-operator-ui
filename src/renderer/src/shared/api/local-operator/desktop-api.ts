@@ -17,6 +17,10 @@ import {
 	desktopRequestTimeoutMs,
 	isDesktopRefusalCode,
 } from "../../../../../shared/desktop-contract";
+import {
+	SESSION_IS_REMOTE_CAUSE_BUILD_BEHIND,
+	SESSION_IS_REMOTE_CODE,
+} from "../../../../../shared/desktop-session-contract";
 import { DESKTOP_STREAM_DETAIL } from "../../../../../shared/desktop-stream-notice";
 
 export type {
@@ -439,6 +443,36 @@ export function isAgentNotFound(error: unknown): boolean {
 export function isServerUnreachable(error: unknown): boolean {
 	if (!(error instanceof DesktopControlError)) return false;
 	return error.status === null || error.status === 503;
+}
+
+/**
+ * Whether the failure is the read-receipt SKEW deferral: the receipt's
+ * conversation lives on another device and that device could not take the
+ * write because its build predates the receipt op — or, on a fleet whose
+ * daemon predates the `cause` field, because the answer cannot say which arm
+ * it was.
+ *
+ * KEYED ON THE CAUSE WHEN THE ANSWER CARRIES ONE, THE CODE WHEN IT DOES NOT.
+ * The cause rides the refusal body itself (`DesktopControlError.detail`, the
+ * field whose own doc says the reader owns the narrowing — the
+ * `activeRunIdFromRefusal` pattern), and `owner_build_behind` is deliberately
+ * the ONLY token the quiet treatment matches: the route's other two arms
+ * (`unreachable`, `refused`) name a state a reader can act on and keep the
+ * notices they had, while a mixed fleet's older daemon answers `code` alone
+ * and must not turn the skew back into the unknown failure the raw echo made
+ * of it (a rollout is exactly when that fleet exists).
+ *
+ * THIS IS THE CLASS the receipt loop defers on (`use-completion-view.ts`) and
+ * the one `refusalOf` in `features/chat/read-ack-notice.ts` buckets as
+ * `remote`; both read it HERE so the loop cannot defer on a class the words do
+ * not know, or the reverse.
+ */
+export function isRemoteReceiptDeferral(error: unknown): boolean {
+	if (!(error instanceof DesktopControlError)) return false;
+	const cause = (error.detail as { cause?: unknown } | undefined)?.cause;
+	if (typeof cause === "string" && cause.length > 0)
+		return cause === SESSION_IS_REMOTE_CAUSE_BUILD_BEHIND;
+	return error.code === SESSION_IS_REMOTE_CODE;
 }
 
 /**

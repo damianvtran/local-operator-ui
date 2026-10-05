@@ -1,0 +1,31 @@
+{
+  "state": "after",
+  "theme": "localOperatorDark",
+  "toasts": [],
+  "readout": {
+    "state": "after",
+    "theme": "localOperatorDark",
+    "build": "fix/read-ack-skew-tolerance",
+    "refusal": {
+      "status": 409,
+      "code": "session_is_remote",
+      "cause": "owner_build_behind",
+      "message": "The unread mark for d7c2d1e7b496 lives on cloud-node-1, and it could not be cleared there right now: cloud-node-1 runs an older build, and the mark clears when that device updates."
+    },
+    "classifiesAsSkewDeferral": true,
+    "noticeKind": "remote",
+    "announcement": {
+      "wouldAnnounce": false,
+      "toastSentence": "(none - the quiet kind returns before the toast)"
+    },
+    "rowCopyNamed": {
+      "clause": "lives on cloud-node-1, and it clears when that device updates",
+      "description": "The unread mark lives on cloud-node-1. It clears when that device updates."
+    },
+    "rowCopyUnnamed": {
+      "clause": "lives on another device, and it clears when that device updates",
+      "description": "The unread mark lives on another device. It clears when that device updates."
+    },
+    "mark": "the unread mark stays until that device updates (a later ask settles it)"
+  }
+}

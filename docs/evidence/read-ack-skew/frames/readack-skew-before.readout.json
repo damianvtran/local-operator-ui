@@ -1,0 +1,33 @@
+{
+  "state": "before",
+  "theme": "localOperatorDark",
+  "toasts": [
+    "The unread mark for d7c2d1e7b496 lives on cloud-node-1, and it could not be cleared there right now: 'net_session_receipt' is not an operation this build dispatches. The unread mark was not cleared. Click the chat to try again."
+  ],
+  "readout": {
+    "state": "before",
+    "theme": "localOperatorDark",
+    "build": "unmodified checkout (origin/main)",
+    "refusal": {
+      "status": 409,
+      "code": "session_is_remote",
+      "cause": "owner_build_behind",
+      "message": "The unread mark for d7c2d1e7b496 lives on cloud-node-1, and it could not be cleared there right now: 'net_session_receipt' is not an operation this build dispatches."
+    },
+    "classifiesAsSkewDeferral": "(predicate absent - pre-fix build)",
+    "noticeKind": "unsettled",
+    "announcement": {
+      "wouldAnnounce": true,
+      "toastSentence": "The unread mark for d7c2d1e7b496 lives on cloud-node-1, and it could not be cleared there right now: 'net_session_receipt' is not an operation this build dispatches. The unread mark was not cleared. Click the chat to try again."
+    },
+    "rowCopyNamed": {
+      "clause": "click the chat to try again",
+      "description": "Not marked read. Click the chat to try again."
+    },
+    "rowCopyUnnamed": {
+      "clause": "click the chat to try again",
+      "description": "Not marked read. Click the chat to try again."
+    },
+    "mark": "the unread mark stays until that device updates (a later ask settles it)"
+  }
+}
