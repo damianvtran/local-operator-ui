@@ -581,7 +581,16 @@ export function usePaletteItems({
 					 * "Team chat" is the one word that tells the pair apart.
 					 */
 					hint: "Agent chat",
-					icon: "chat",
+					/*
+					 * The glyph is the ENTITY, matching the team row beside it and the sidebar
+					 * these rows stage a draft from (design round 1, D4). The pair under `@` is
+					 * two entities, so both wear the entity's own mark - `agents` is the
+					 * palette's `Bot`, the same glyph the sidebar's agent row carries - and the
+					 * KIND rides in the hint above. Before this the agent row wore the ACTION's
+					 * mark (`chat`, a speech bubble) while its sibling wore an entity's, so one
+					 * list carried two grammars.
+					 */
+					icon: "agents",
 					keywords: agent.tags,
 					target: { type: "draft", kind: "agent", name: agent.name },
 					/*

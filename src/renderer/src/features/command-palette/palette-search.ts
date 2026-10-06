@@ -330,7 +330,14 @@ export function paletteEmptyStateCopy(input: {
 	}
 	return {
 		line: "Nothing to show yet",
-		hint: "Search for a chat, an agent by name, a setting, or a page such as Schedules.",
+		/*
+		 * "an agent or team by name": the `@` scope draws a roster of BOTH since
+		 * issue #849, so naming only the agent would under-describe the list this
+		 * line is the empty state of. The line stays scope-blind (it is the same
+		 * sentence under `>`, `#` and `,`) - this is the roster's own addition, not
+		 * the gate-aware copy UX U2 records as owed.
+		 */
+		hint: "Search for a chat, an agent or team by name, a setting, or a page such as Schedules.",
 	};
 }
 
@@ -891,7 +898,7 @@ export function searchPalette({
 		 *
 		 * SWITCHER-ONLY, deliberately: the gate is the `#` seed's scope, the door
 		 * that exists for finding a conversation. Widening the pin to the
-		 * un-scoped Cmd/Ctrl+K browse is loosening this condition and leaving the
+		 * un-scoped Cmd/Ctrl+P browse is loosening this condition and leaving the
 		 * accounting below untouched — the open design question #760 records.
 		 *
 		 * The pin draws from the SAME `rendered` budget as every section below it

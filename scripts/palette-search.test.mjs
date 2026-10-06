@@ -659,7 +659,7 @@ test("the sidebar's agent jump seed opens on the agents scope", () => {
 				group: "agents",
 				name: "ledger-auditor",
 				hint: "Agent chat",
-				icon: "chat",
+				icon: "agents",
 				// Featured for the reason the switcher's own rows are, one test up:
 				// with no terms the palette draws the BROWSE layout, which is built
 				// from featured rows, and the app's source marks its agent chat rows
@@ -737,7 +737,7 @@ test("teams live under the agent scope, and nowhere else (issue #849)", () => {
 				group: "agents",
 				name: "ledger-auditor",
 				hint: "Agent chat",
-				icon: "chat",
+				icon: "agents",
 				featured: true,
 				target: { type: "draft", kind: "agent", name: "ledger-auditor" },
 			},
@@ -1198,7 +1198,7 @@ test("a scoped no-match teaches backspacing the glyph, never the prefix advice",
 	);
 });
 
-test("the unscoped copy is unchanged, and a search in flight says what it is doing", () => {
+test("the unscoped empty state names the roster, and a search in flight says what it is doing", () => {
 	assert.deepEqual(
 		paletteEmptyStateCopy({
 			scope: null,
@@ -1222,7 +1222,7 @@ test("the unscoped copy is unchanged, and a search in flight says what it is doi
 		}),
 		{
 			line: "Nothing to show yet",
-			hint: "Search for a chat, an agent by name, a setting, or a page such as Schedules.",
+			hint: "Search for a chat, an agent or team by name, a setting, or a page such as Schedules.",
 		},
 	);
 	/* No hint while the request is out: advice to "try another word" is advice
