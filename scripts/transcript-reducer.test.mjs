@@ -40,6 +40,7 @@ const {
 	appendPendingUser,
 	appendLocalNote,
 	removeRecord,
+	queuedAskEngineLive,
 } = reducer;
 
 /** A fresh empty transcript, so each echo test starts from a known state. */
@@ -6749,4 +6750,353 @@ test("a development build freezes an emitted record, so an in-place write throws
 		!Object.isFrozen(loose),
 		"no freeze outside a development build - the guard is development-only",
 	);
+});
+
+/*
+ * ============================================================================
+ * THE ASK GATE, DESKTOP HALF: SETTLE-ONLY ASK ROWS AND THE DIVERT DROP
+ * ============================================================================
+ *
+ * Design `docs/design/ask-gate.md` §3 rows 2/6/7. The gate diverts some queued
+ * `ask` calls before they are ever raised, and a diverted ask must leave NO
+ * trace on any human surface -- live, on a reconnect seed, or in a subagent's
+ * trajectory (whose pages are served VERBATIM and folded through this same
+ * reducer). The client's half is two rules:
+ *
+ *   1. SETTLE-ONLY rows. While the session's queued engine is live (the `asks`
+ *      field present on the frontend state -- `queuedAskEngineLive`), an `ask`
+ *      call mounts nothing while composing/queued/running; its one row is
+ *      created at settle.
+ *   2. THE MARKER DROP. At settle, a result whose `details` carry
+ *      `ask_gate.hidden: true` paints nothing -- and removes any row an earlier
+ *      mode-less frame painted. The durable twin drops the same marker off
+ *      `payload.provider_payload.details`.
+ *
+ * Every arm is DEFENSIVE by contract: with no mode read and no marker the
+ * behaviour must be exactly today's, because the core runtime paired with this
+ * build may predate the gate entirely.
+ */
+
+const ASK_ARGS = {
+	questions: [{ question: "Ship it?", options: [{ label: "Yes" }] }],
+};
+/** The mode read for a session whose owner runs the queued engine. */
+const ENGINE_LIVE = { queuedAskEngine: true };
+const askCompose = (over = {}) => ({
+	type: "tool_call_compose",
+	tool_call_id: "c-ask",
+	tool_name: "ask",
+	argument_bytes: 0,
+	...over,
+});
+const askStart = (over = {}) => ({
+	type: "tool_execution_start",
+	tool_call_id: "c-ask",
+	tool_name: "ask",
+	args: ASK_ARGS,
+	...over,
+});
+const askEnd = ({ marked = false, ...over } = {}) => ({
+	type: "tool_execution_end",
+	tool_call_id: "c-ask",
+	tool_name: "ask",
+	result: {
+		content: [{ type: "text", text: "receipt" }],
+		details: marked
+			? { ask_gate: { hidden: true, verdict: "clear", reason: "plainly best" } }
+			: {},
+	},
+	is_error: false,
+	duration_s: 0.4,
+	...over,
+});
+const toolRows = (state) => state.records.filter((r) => r.kind === "tool");
+
+test("queuedAskEngineLive: presence of `asks` is the mode, and only `asks`", () => {
+	assert.equal(queuedAskEngineLive({ asks: [] }), true);
+	assert.equal(queuedAskEngineLive({ asks: [{ ask_id: "a-1" }] }), true);
+	assert.equal(queuedAskEngineLive({ asks: null }), false);
+	assert.equal(queuedAskEngineLive({}), false);
+	assert.equal(queuedAskEngineLive(null), false);
+	assert.equal(queuedAskEngineLive(undefined), false);
+	/*
+	 * `asks_open` rides WITH `asks` on the wire; it is not the field the rule
+	 * reads (the core's `queued_ask_engine_live` reads `asks`), and a frame that
+	 * somehow carried only the count is an un-negotiated shape the conservative
+	 * answer serves: unknown mode, today's mount.
+	 */
+	assert.equal(queuedAskEngineLive({ asks_open: 2 }), false);
+});
+
+test("settle-only ask: nothing in flight, the receipt at settle", () => {
+	const state = EMPTY_TRANSCRIPT;
+	// The compose frame mounts NOTHING -- and the state is untouched, not
+	// re-created, so the view's equality gate sees no change.
+	const composed = applyEvent(state, askCompose(), 1, ENGINE_LIVE);
+	assert.equal(composed, state, "a suppressed compose returns the same state");
+	// The start learns the args but paints no row: the object column the
+	// settled row will carry is the suppressed start's whole visible effect.
+	const started = applyEvent(composed, askStart(), 2, ENGINE_LIVE);
+	assert.equal(
+		toolRows(started).length,
+		0,
+		"no running row under the live engine",
+	);
+	assert.ok(started.argsByCall.has("c-ask"), "the args are still learned");
+	// At settle the row APPEARS -- this is the raise arm (no marker) -- with
+	// the preserved args and the result's text behind it.
+	const settled = applyEvent(started, askEnd(), 3, ENGINE_LIVE);
+	const rows = toolRows(settled);
+	assert.equal(rows.length, 1, "one row, created at settle");
+	assert.equal(rows[0].phase, "done");
+	assert.equal(rows[0].output, "receipt");
+	assert.deepEqual(
+		rows[0].args,
+		ASK_ARGS,
+		"the suppressed start's args survive",
+	);
+});
+
+test("settle-only ask: a marked settle leaves no row at all", () => {
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(state, askCompose(), 1, ENGINE_LIVE);
+	state = applyEvent(state, askStart(), 2, ENGINE_LIVE);
+	const dropped = applyEvent(state, askEnd({ marked: true }), 3, ENGINE_LIVE);
+	assert.equal(toolRows(dropped).length, 0);
+	assert.equal(
+		dropped,
+		state,
+		"dropping a row that never existed leaves the state identical",
+	);
+});
+
+test("unknown mode keeps today's mount; the settle marker still drops the flash", () => {
+	// No `queuedAskEngine` option: the mode is unreadable, so the rule falls
+	// back to today's mounting -- the flash residual the design accepts (§5).
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(state, askCompose(), 1);
+	state = applyEvent(state, askStart(), 2);
+	const running = toolRows(state);
+	assert.equal(running.length, 1, "an unreadable mode mounts as today");
+	assert.equal(running[0].phase, "running");
+	// The divert's own marker still cleans it up at settle, and the drop is
+	// idempotent: re-delivering the settling frame changes nothing.
+	const dropped = applyEvent(state, askEnd({ marked: true }), 3);
+	assert.equal(toolRows(dropped).length, 0, "the flash is dropped at settle");
+	assert.equal(applyEvent(dropped, askEnd({ marked: true }), 4), dropped);
+});
+
+test("no marker, no mode: an ask behaves exactly as today (the old-core arm)", () => {
+	let state = EMPTY_TRANSCRIPT;
+	state = applyEvent(state, askCompose(), 1);
+	state = applyEvent(state, askStart(), 2);
+	state = applyEvent(state, askEnd(), 3);
+	const rows = toolRows(state);
+	assert.equal(rows.length, 1);
+	assert.equal(rows[0].phase, "done");
+	assert.equal(rows[0].output, "receipt");
+	// An explicit `false` mode is the same statement as an absent one.
+	const explicit = applyEvent(EMPTY_TRANSCRIPT, askCompose(), 1, {
+		queuedAskEngine: false,
+	});
+	assert.equal(toolRows(explicit).length, 1);
+});
+
+test("a never-run verdict paints under the live engine; an in-flight dictation does not", () => {
+	// The verdict is a TERMINAL settle of a call that never ran -- no gate ran,
+	// a divert is impossible -- and it renders as today (the contract confirmed
+	// with the core's TUI arm, so the two surfaces cannot diverge).
+	const state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		askCompose({
+			not_run_reason: "aborted",
+			not_run_kind: "aborted",
+			argument_bytes: 12,
+			dictation_complete: true,
+		}),
+		1,
+		ENGINE_LIVE,
+	);
+	const rows = toolRows(state);
+	assert.equal(rows.length, 1, "the verdict row paints");
+	assert.equal(rows[0].neverSent, true);
+	assert.equal(rows[0].notRunReason, "aborted");
+	// The suppression covers exactly the in-flight shapes: composing, and the
+	// finished-dictation `queued` phase.
+	const composed = applyEvent(EMPTY_TRANSCRIPT, askCompose(), 1, ENGINE_LIVE);
+	assert.equal(composed.records.length, 0);
+	const queued = applyEvent(
+		composed,
+		askCompose({ dictation_complete: true, argument_bytes: 40 }),
+		2,
+		ENGINE_LIVE,
+	);
+	assert.equal(queued.records.length, 0, "queued is still in flight");
+});
+
+test("the suppression is name-gated: other tools mount as today", () => {
+	let state = applyEvent(
+		EMPTY_TRANSCRIPT,
+		{
+			type: "tool_call_compose",
+			tool_call_id: "c-bash",
+			tool_name: "bash",
+			argument_bytes: 0,
+		},
+		1,
+		ENGINE_LIVE,
+	);
+	state = applyEvent(
+		state,
+		{
+			type: "tool_execution_start",
+			tool_call_id: "c-bash",
+			tool_name: "bash",
+			args: { command: "ls" },
+		},
+		2,
+		ENGINE_LIVE,
+	);
+	assert.equal(toolRows(state).length, 1, "bash mounts as today");
+});
+
+test("a pre-mode row keeps today's handling (the suppression is mount-only)", () => {
+	// The row was painted before the mode became readable (a mid-flight
+	// frontend update): suppressing the MOUNT must not retract history, so the
+	// start transitions it to running as today and the settle resolves it.
+	let state = applyEvent(EMPTY_TRANSCRIPT, askCompose(), 1);
+	assert.equal(toolRows(state).length, 1);
+	state = applyEvent(state, askStart(), 2, ENGINE_LIVE);
+	assert.equal(toolRows(state)[0].phase, "running");
+	const settled = applyEvent(state, askEnd(), 3, ENGINE_LIVE);
+	assert.equal(toolRows(settled)[0].phase, "done");
+});
+
+/*
+ * The durable half. THE CHILD TRAJECTORY IS WHY THIS HALF IS THE CLIENT'S: a
+ * subagent's pages are served verbatim by design, so `applyHistoryPage` -- the
+ * child reader's own fold (`use-child-transcript.ts`) -- is the only filter a
+ * divert there will ever meet. The entries are the stored shapes:
+ * `Message.tool_result` writes the marker into `provider_payload.details`.
+ */
+const askAssistantEntry = {
+	id: "a-ask",
+	ts: 10,
+	type: "message",
+	payload: {
+		kind: "message",
+		role: "assistant",
+		content: [],
+		tool_calls: [{ id: "c-ask", name: "ask", arguments: ASK_ARGS }],
+		id: "a-ask",
+	},
+};
+const askResultEntry = (details) => ({
+	id: "r-ask",
+	ts: 11,
+	type: "message",
+	payload: {
+		kind: "message",
+		role: "tool",
+		tool_call_id: "c-ask",
+		tool_name: "ask",
+		content: [{ text: "receipt" }],
+		provider_payload: { details, duration_s: 0.4 },
+		id: "r-ask",
+	},
+});
+const askPage = (details) => ({
+	entries: [askAssistantEntry, askResultEntry(details)],
+	has_more: false,
+	cursor_missing: false,
+});
+
+test("the durable fold drops a diverted ask's result row (child trajectories ride this)", () => {
+	const dropped = applyHistoryPage(
+		EMPTY_TRANSCRIPT,
+		askPage({ ask_gate: { hidden: true, verdict: "clear", reason: "x" } }),
+	);
+	assert.equal(toolRows(dropped).length, 0, "no tool row for a divert");
+	// The control: the same page without the marker paints the row, so the drop
+	// above is the marker's doing rather than some other refusal.
+	const painted = applyHistoryPage(EMPTY_TRANSCRIPT, askPage({}));
+	assert.equal(toolRows(painted).length, 1, "an unmarked ask paints");
+	// The marker is the ONLY trigger: a false or malformed `ask_gate` is not
+	// one, on the same argument the core's predicates make.
+	for (const details of [
+		{ ask_gate: { hidden: false } },
+		{ ask_gate: "hidden" },
+		{},
+	]) {
+		const state = applyHistoryPage(EMPTY_TRANSCRIPT, askPage(details));
+		assert.equal(
+			toolRows(state).length,
+			1,
+			`paints for ${JSON.stringify(details)}`,
+		);
+	}
+});
+
+/*
+ * The reconnect seed (`applyLiveSeed`): a viewer that attaches mid-turn folds
+ * the retained live events through the same `applyEvent`, and the mode comes
+ * from the very frontend snapshot the seed carries. The assistant page is
+ * folded FIRST because it is the anchor the settling frame is placed by
+ * (`seededClock`'s durable-statement rule), exactly as the snapshot flow does.
+ */
+const seedFrontend = (live_events, asks) => ({
+	streaming: true,
+	generation: 1,
+	live_events,
+	...(asks === undefined ? {} : { asks }),
+});
+const anchored = () =>
+	applyHistoryPage(EMPTY_TRANSCRIPT, {
+		entries: [askAssistantEntry],
+		has_more: false,
+		cursor_missing: false,
+	});
+
+test("a reconnect seed drops a diverted ask's retained end and suppresses its compose", () => {
+	// The marked end folds (the anchor dates it) and is dropped, so nothing
+	// paints -- non-vacuously: the unmarked control below paints the same fold.
+	const marked = applyLiveSeed(
+		anchored(),
+		seedFrontend([askEnd({ marked: true })], [{ ask_id: "a-1" }]),
+		100,
+		null,
+	);
+	assert.equal(toolRows(marked).length, 0, "the retained end is dropped");
+	const control = applyLiveSeed(
+		anchored(),
+		seedFrontend([askEnd()], [{ ask_id: "a-1" }]),
+		100,
+		null,
+	);
+	assert.equal(toolRows(control).length, 1, "the unmarked end paints");
+	// A compose still in the window is suppressed by the seed's own mode read
+	// (`asks` present on the frontend), and the marked end after it stays
+	// dropped: the pair nets to nothing.
+	const window = applyLiveSeed(
+		anchored(),
+		seedFrontend([askCompose(), askEnd({ marked: true })], [{ ask_id: "a-1" }]),
+		100,
+		null,
+	);
+	assert.equal(toolRows(window).length, 0, "compose suppressed, end dropped");
+	// Without `asks` the mode is unreadable, and the same compose mounts as
+	// today -- which is what makes the arm above the mode's doing.
+	const unreadable = applyLiveSeed(
+		anchored(),
+		seedFrontend([askCompose()]),
+		100,
+		null,
+	);
+	const rows = toolRows(unreadable);
+	assert.equal(
+		rows.length,
+		1,
+		"an unreadable mode mounts the compose as today",
+	);
+	assert.equal(rows[0].phase, "composing");
 });
