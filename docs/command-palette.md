@@ -102,7 +102,12 @@ Four strings carry a decision, and each is easy to "tidy" into being wrong:
   backend is a remedy that cannot work (design round 1, D2).
 - **Rows do not repeat their group heading.** A settings SECTION row carries no
   hint; a registry KEY row names the section it lives in, which is the one thing
-  its own name cannot say (design round 1, D3).
+  its own name cannot say (design round 1, D3). The `@` scope's roster rows are
+  the ONE carve-out, and it is that same reasoning extended rather than a second
+  rule: the Agents and Teams headings scroll off the moment the list does, so the
+  hint carries the KIND — "Agent chat" / "Team chat" — which is the one thing a
+  roster row's own name cannot say, since a team may share an agent's name (issue
+  #849; design round 1, D5).
 - **The clipped count is a sentence with a noun** — "showing the best 7 of 9
   matches" — and it sits beside the movement keys it qualifies, with the escape
   affordance taking the right edge. Two unrelated statements in one right-aligned
@@ -145,16 +150,21 @@ names no terms, its list empty or full — and for a typed search that found
 nothing: the states where a hint is worth its pixels.
 
 The footer draws ONE legend at a time, and the split is deliberate (design round
-1, D2, with its widths re-derived over this copy in design round 2's D7):
-measured from the committed frames (grayscale ink runs at luma >= 110, css =
-device px / 2, inclusive runs), the scope legend inks 365.5px and leaves
-158.5px free before `esc to close` in a footer with ~585px of usable width,
-while the movement legend's ink — `↑ ↓ Ctrl N to move` — measures 152.5px. Both
-do not fit: the 152.5px of ink against the 158.5px of free space is a
-single-digit margin before any separation gap, and the legend's own interior
+1, D2; its widths are re-measured here over the committed PAIR, which is only
+comparable since the before half was re-shot at this branch's true base — design
+round 1, D1 and D3). Measured from those frames (grayscale ink runs at luma >=
+110, inclusive runs; the frames are **1:1 px** — an `h-9` (36px) active row
+measures 34px of ground band and the retired cap box 15 × 20px — so the older
+"css = device px / 2" reading does NOT hold for them): the scope legend inks
+**428px** and leaves **93px** free before `esc to close` in a footer with ~585px
+of usable width, while on the before half the same legend inks 378px and leaves
+149px — the `@ Agents` → `@ Agents and teams` label this change grew is what
+consumed that slack. The movement legend's ink — `↑ ↓ Ctrl N to move` — measures
+152.5px. Both do not fit: 152.5px of ink into the 93px the scope legend leaves
+is over budget before any separation gap is drawn, and the legend's own interior
 spacing (14px measured between `Ctrl N` and `to move`, 22.5px between `to move`
-and `↵`) pushes it over — so a scope entry would have to go. The empty state
-therefore omits the walk and the typed state omits the scope prefixes;
+and `↵`) pushes it further over — so a scope entry would have to go. The empty
+state therefore omits the walk and the typed state omits the scope prefixes;
 re-arranging that budget is a footer-layout decision, not a copy edit.
 
 **The movement legend is PLATFORM-dependent since #850, and that is why it can
