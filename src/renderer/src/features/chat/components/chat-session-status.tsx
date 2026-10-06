@@ -153,17 +153,36 @@ export function ChatAsksOutstanding({
  * control for it to be mistaken for.
  *
  * IT IS A DOT, IN THE APP'S OWN DOT IDIOM: a `rounded-full` span at `size-2` in
- * the ink it inherits (`bg-current`), inside a `size-3.5` box - the icon ramp's
- * `sm` step the mark already occupied, so the row's footprint and the mark's
- * NOTICEABILITY (the 2026-09-29 fix that made running subagents visible at all)
- * are both unchanged. The idiom is the one `chat-status-strip.tsx`,
+ * the ink it inherits (`bg-current`). The 8px DOT is the constant - it is drawn
+ * at the same absolute size on both surfaces - while the BOX around it is the
+ * caller's: the sidebar row passes `size-3.5` (the icon ramp's `sm` step the mark
+ * already occupied, so the row's footprint and the mark's NOTICEABILITY - the
+ * 2026-09-29 fix that made running subagents visible at all - are both
+ * unchanged), and the `delegating` rung passes `size-4` because it fills the
+ * status slot every other code's glyph occupies (agent review round 1, N2: this
+ * note used to claim the `size-3.5` box unconditionally, which is true of one
+ * call site and not the other). The idiom is the one `chat-status-strip.tsx`,
  * `chat-header-device.tsx` (its `StateDot`), `settings-group-header.tsx` and
  * `audio-recording-indicator.tsx` already spend on "a small round fact"; this
  * one differs only in taking its colour from the caller's text ink rather than
  * naming a `bg-*` role, so the liveness ink stays the caller's to state.
  *
- * THE COLLISION CHECK, against the status family this slot draws (SC 1.4.11 -
- * the mark is a 14px graphic against `surface`/`row-hover`/`row-selected`):
+ * THE TWO SLOTS, AND WHY THEY DIFFER (design round 1's D7). The same dot is the
+ * `delegating` rung's PRIMARY mark, drawn in the LEADING status slot where every
+ * status code's glyph goes, and the sidebar row's running mark, drawn in the
+ * TRAILING slot after the title. That is deliberate and the frames show it
+ * working: in the rung the dot says what the PARENT's own turn is doing
+ * (delegated work, none of it the row's), and in the row it says what the row's
+ * CHILDREN are doing beside the row's own act buttons. One vocabulary, two
+ * meanings that a reader never has to tell apart, because a row is in one state
+ * or the other. The position is the only thing separating them, so the local
+ * text is the caller's `sr-only` name (`delegating`, or the count sentence) -
+ * recorded here so the next reader does not re-litigate the slot.
+ *
+ * THE COLLISION CHECK, against the status family this slot draws (SC 1.4.11 - the
+ * mark is an 8px disc inside the sidebar row's 14px box, the reading the
+ * contract's GRAPHICS row is derived from, against
+ * `surface`/`row-hover`/`row-selected`):
  *
  *  - `Circle` (the resting ring) and `LoaderCircle` (`busy`) are RINGS - outlined,
  *    1.5px of `ink-dim`/`accent` with an interior the ground shows through. A

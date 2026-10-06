@@ -14,11 +14,11 @@ import { useCallback, useEffect, useRef } from "react";
  * click on its way to SELECTING a row meets a control that has just arrived), so
  * the tradeoff is reopened and the dwell is adopted here.
  *
- * THE DWELL IS THE APP'S OWN HOVER-INTENT CONSTANT, not a new number: the
- * sidebar's collapse cluster and the panel dividers already reveal on
- * `HOVER_INTENT_MS` (`shared/components/common/resizable-divider.tsx`), and one
- * number for "the pointer has decided to stay" is the rule the title's own dwell
- * (`TOOLTIP_DELAY_MS`, 400ms) is written under too. The two are deliberately
+ * THE DWELL IS THE APP'S OWN HOVER-INTENT CONSTANT, not a new number: the panel
+ * divider and the chat's measure handle already reveal on `HOVER_INTENT_MS`
+ * (`shared/components/common/resizable-divider.tsx`, whose own note names its
+ * consumers), and one number for "the pointer has decided to stay" is the rule the
+ * title's own dwell (`TOOLTIP_DELAY_MS`, 400ms) is written under too. The two are deliberately
  * different numbers and the ORDER between them is load-bearing: the acts reveal
  * at ~200ms and the pan measures the HOVERED box at ~400ms, so the title the pan
  * gives back is the narrowed one (`chat-row-title.tsx`'s `startPan`).

@@ -416,6 +416,26 @@ mark and NO indicator, which is the pair this cell exists for. Every cell's befo
 differs by the indicator and by nothing else; on the baseline, a busy row with two
 running children draws one spinner and the sidebar says nothing about them.
 
+**THE TWO `subagent-rows-*running*` CELLS WERE RE-TAKEN AT THIS BRANCH'S HEAD
+(agent review round 1's M3, design's D1), AND THE PAIR'S "NOTHING ELSE" NO LONGER
+HOLDS FOR THEM.** Issue #840 replaced the running mark itself - `Share2` in the
+accent, which read as an action beside the row's own buttons, is now the filled
+`SubagentRunningMark` dot - so the after half was photographing a glyph the head
+no longer draws, and a reader tracing the component landed on evidence that
+contradicted it. The 24 frames (two viewports x twelve palettes) were re-taken
+through this set's own capture path at the head, and the narrowing is recorded in
+`manifest.json`'s `partialCapture` rather than left to look like a sweep.
+
+**The other four cells, and the whole baseline half, are untouched, and that is a
+provenance decision rather than an omission.** The baseline is defined as
+unmodified `origin/main`'s rendering; main still draws `Share2`, so re-taking it at
+this head would make the set describe a tree other than the one it names. The
+resting, selected and archived cells carry no running mark - they were checked
+against the re-taken pair and left. What that leaves for the pair is stated rather
+than implied: the re-taken halves differ by the indicator (their purpose), by the
+mark's SHAPE (#840), and by the palette door main's #855 adds to the window's
+header, which no cell in either half was taken with.
+
 **The two widths are the point, not a courtesy.** One mark costs the title
 **22px**, measured box-to-box in the frames (14px glyph + the row's own 4px
 `gap-1` + `ml-1`'s 4px), 8px between two marks, and a truncated row carrying both

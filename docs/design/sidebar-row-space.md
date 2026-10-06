@@ -203,11 +203,11 @@ are shown - the cluster the deleted arrow buttons used to make 108/136.
 `display` switch replaces the opacity pairing on these two controls:
 
 - the pair wrapper (`data-session-control-pair`) keeps `flex items-center gap-1`
-  and gains `hidden group-data-[session-hover-intent]:flex group-focus-within:flex`
+  and gains `hidden group-data-[session-hover-intent]:flex group-has-[:focus-visible]:flex`
   **while the row is unpinned**; on a pinned row the wrapper is always `flex`,
   because the mark inside it is the state;
 - the archive control gains
-  `hidden group-data-[session-hover-intent]:flex group-focus-within:flex`
+  `hidden group-data-[session-hover-intent]:flex group-has-[:focus-visible]:flex`
   unconditionally, and the pin control gains it while the row is unpinned; the
   grip, which has no focus term by design, gains the pointer half alone;
 - **the pointer's half is a DWELL, and the keyboard's is not (2026-10-06, issue
@@ -216,13 +216,24 @@ are shown - the cluster the deleted arrow buttons used to make 108/136.
   mounted gate (`chat-row-hover-intent.tsx`) only after the app's
   `HOVER_INTENT_MS` (200ms) has elapsed, and cleared on `pointerleave` so a
   re-entering pointer waits a fresh interval. The constant is imported from the
-  panel divider rather than restated - it is the one the sidebar's collapse
-  cluster and the panel's dividers already reveal on - and it is deliberately
+  panel divider rather than restated - it is the one the panel's divider and the
+  chat's measure handle already reveal on (the sidebar's collapse cluster used to
+  be named here as a third; it is no longer drawn, agent review round 1's M1) -
+  and it is deliberately
   NOT the pan's `TOOLTIP_DELAY_MS` (400ms): the order between the two is
   load-bearing, because the pan measures the HOVERED box and so must run after
-  the acts have taken their 56px. `group-focus-within` is untouched and stays
-  immediate, because a keyboard reader arrives deliberately and cannot sweep
-  through a row. The trailing time gives way on the same clock as the acts - it
+  the acts have taken their 56px. The keyboard's door is
+  `group-has-[:focus-visible]` and stays immediate - keyboard-only by the
+  browser's own definition of it, which is a CORRECTION rather than a
+  refinement: the bare `group-focus-within` it replaced is raised for a
+  mouse-driven focus too, so a press inside the trailing band focused the row's
+  button, the acts arrived inside the gesture and the click that followed was
+  retargeted to the row's wrapper and lost - the press neither pressed a control
+  nor selected the row (QA round 1's Q-1, UX's U1; measured on the head before
+  the fix, both palettes: `location.hash` unchanged, `btn 12..260` -> `208..260`
+  mid-gesture, control 40px further left selects). A Tab into the row's button
+  still reveals the acts with no pointer on the row. The trailing time gives way
+  on the same clock as the acts - it
   is the other half of one swap - so it is gated on the same attribute;
 - nothing about either gets a `transition`: `display` is not one of the four
   properties `docs/branding.md` § 5 lets animate, and the app's motion vocabulary
@@ -248,8 +259,9 @@ note). Both mechanisms keep the control reachable; they differ in what they
 charge for it. The rail is a fixed-width strip whose label is already shed, so a
 24px box kept in the layout costs its title nothing - the reveal is free and
 `opacity` is the right tool. Here the kept box IS the defect, and the same
-property survives without it: `group-focus-within` fires when focus is anywhere
-inside the row, and the row's button is the first thing Tab reaches there, so the
+property survives without it: `group-has-[:focus-visible]` fires when a KEYBOARD
+focus is anywhere inside the row, and the row's button is the first thing Tab
+reaches there, so the
 cluster is displayed before the next Tab can arrive. If a later change makes the
 row button a group that is not the row (a nested group, a portal), this is the
 assumption that breaks first, and it is stated here so it can be checked rather
@@ -847,7 +859,7 @@ none is being quietly abandoned:
 
 | The rule today | What replaces it |
 | --- | --- |
-| The controls are `size-6 shrink-0` "so the reserved slot cannot reflow the row"; the reveal is "`opacity` and `pointer-events` only, so the reveal cannot reflow the row" | **Replaced (D3).** There is no reserved slot. The row's box, its height and the title's leading edge still never move; what moves is the title's clip, by 52px (28 on a pinned row), at the only moment the controls exist. The invariant the old rule protected - nothing shifts under the pointer that the pointer is aiming at - survives where it matters, and is now STRONGER than this row could claim when it was written: the controls do not move when they appear, and they appear only after the pointer has DWELLED on the row for the app's hover-intent constant (200ms, `HOVER_INTENT_MS`; issue #840, 2026-10-06), so a press on its way to selecting a row never meets a control that has just arrived. The keyboard path is unchanged and immediate (`group-focus-within`). |
+| The controls are `size-6 shrink-0` "so the reserved slot cannot reflow the row"; the reveal is "`opacity` and `pointer-events` only, so the reveal cannot reflow the row" | **Replaced (D3).** There is no reserved slot. The row's box, its height and the title's leading edge still never move; what moves is the title's clip, by 52px (28 on a pinned row), at the only moment the controls exist. The invariant the old rule protected - nothing shifts under the pointer that the pointer is aiming at - survives where it matters, and is now STRONGER than this row could claim when it was written: the controls do not move when they appear, and they appear only after the pointer has DWELLED on the row for the app's hover-intent constant (200ms, `HOVER_INTENT_MS`; issue #840, 2026-10-06), so a press on its way to selecting a row never meets a control that has just arrived. The keyboard path stays immediate (`group-has-[:focus-visible]`, its door on how the focus ARRIVED rather than on focus alone - agent review round 1's Q-1). |
 | "A hidden control is inert" (`opacity: 0` + `pointer-events-none`) | **Strengthened (D3).** `display: none` cannot receive a press at all, so this stops being a rule to remember. The opacity/pointer-events pairing comes off these controls. |
 | "The pin's state must read WITHOUT hovering" (a pinned row's glyph is filled `text-ink`) | **Kept, and now true at every width (D4).** Measured broken at 240 today (D1). |
 | "Nothing lifts, scales or translates on hover" (`branding.md` § 5) | **Extended by the operator's own instruction, and bounded.** The pan translates the title's *text* by up to the overflow, one way, after a dwell, stopping at the end; the row, its controls, its box and its ground do not translate, lift or scale. The one property that moves is `transform`, which § 5 admits "for entrances" - this is a marquee rather than an entrance, and it is stated here as the deliberate exception, with reduced motion as its off switch. |
@@ -999,7 +1011,10 @@ than from a green test.
   dwell is no longer a proposal - the row's pointer half reveals on the app's existing
   `HOVER_INTENT_MS` (200ms, the panel divider's constant, not a new number), written as
   an attribute by the row's mounted gate and cleared on leave, with the keyboard's
-  `group-focus-within` untouched. What the deferral got WRONG was its parting claim: "a
+  door moved to `group-has-[:focus-visible]` - keyboard-only by the browser's own
+  definition, because the bare `group-focus-within` let a mouse-driven focus raise the
+  acts inside a press and swallow the click (agent review round 1's Q-1). What the
+  deferral got WRONG was its parting claim: "a
   CSS-only version cannot express 'after the pointer has dwelt here', and the JavaScript
   version is per-row pointer state" reads as two dead ends, and the second is only a
   dead end inside `sessionRow` - a plain render function, where a hook would run a

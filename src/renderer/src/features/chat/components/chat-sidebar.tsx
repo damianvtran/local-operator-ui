@@ -3051,7 +3051,8 @@ export function ChatSidebar({
 		 * `unpin`'s mechanism and not a new one: the rows reorder in place, so the element
 		 * this handler holds is still mounted but no longer where it was - the correction
 		 * finds the row BY ID after the commit and puts the caret back inside it, so
-		 * `group-focus-within` stays true and the row's reveal stays up for the next press.
+		 * `group-has-[:focus-visible]` stays true and the row's reveal stays up for the
+		 * next press.
 		 *
 		 * THE CARET GOES TO THE ROW'S OWN BUTTON here rather than to the mark, and the scroll
 		 * correction is asked to stand down - a move is not a section change (Q1, R3).
@@ -4699,7 +4700,9 @@ export function ChatSidebar({
 				 * Pin/Archive costs the title nothing. IT GIVES WAY ON THE ACTS' OWN
 				 * CLOCK, not on the bare hover: the two are one swap (the time leaves as
 				 * the acts arrive), so gating one and not the other would blank the time
-				 * for the dwell and leave a hole where it was.
+				 * for the dwell and leave a hole where it was. The keyboard's half of that
+				 * clock answers to `:focus-visible` rather than to any focus at all, for the
+				 * reason the gate's own note records (agent review round 1, Q-1).
 				 *
 				 * The visible `2h` is `aria-hidden` and the sentence (`2 hours ago`) is
 				 * read after the title, so the row's name stays `state — title` with the
@@ -4710,7 +4713,7 @@ export function ChatSidebar({
 						<span
 							aria-hidden="true"
 							data-session-time
-							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-focus-within:hidden group-data-[session-hover-intent]:hidden"
+							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-has-[:focus-visible]:hidden group-data-[session-hover-intent]:hidden"
 						>
 							{relativeTime(row, listNow, view.basis)}
 						</span>
@@ -5167,7 +5170,7 @@ export function ChatSidebar({
 						data-session-pin
 						/*
 						 * OUT OF THE TAB RING, AND STILL OPERABLE (§C4, U2). The reveal above is
-						 * `group-focus-within`, which is what made this control a Tab stop AND the
+						 * `group-has-[:focus-visible]`, which is what made this control a Tab stop AND the
 						 * only way a keyboard reader could reach it; capping the row at one stop
 						 * would therefore trade a stop-count for an accessibility regression. The
 						 * chord is the replacement (`⌘⇧P` / `Ctrl+Shift+P`, `chat-regions.ts`), and
@@ -5274,11 +5277,12 @@ export function ChatSidebar({
 										 * `pointer-events-none` pairing that used to carry this comes off (QA round
 										 * 1, U3 - the property it was written for is now stronger). The row behind
 										 * it is the hover target: `group-data-[session-hover-intent]`/
-										 * `group-focus-within` reveal the control, and the same two states are what
-										 * make it operable. The pointer term now waits for the row's dwell
-										 * (issue #840); the focus term is unchanged and immediate.
+										 * `group-has-[:focus-visible]` reveal the control, and the same two states are
+										 * what make it operable. The pointer term now waits for the row's dwell
+										 * (issue #840); the focus term is immediate and KEYBOARD-ONLY (see the gate's
+										 * note below).
 										 */
-										"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted group-focus-within:flex group-focus-within:text-ink-muted",
+										"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted group-has-[:focus-visible]:flex group-has-[:focus-visible]:text-ink-muted",
 										/*
 										 * THE HOLD (spec §4), and it is not optional: while THIS row's
 										 * menu is open the reveal is state, not pointer state - the
@@ -5336,8 +5340,10 @@ export function ChatSidebar({
 				 * NOT move is the row's own box, and the title is what pays (the pan exists to
 				 * give it back - see `chat-row-title.tsx`). `display` is not one of the
 				 * properties `docs/branding.md` § 5 lets animate, and nothing lifts, scales or
-				 * translates here. `group-focus-within` is what makes it reachable by keyboard:
-				 * pressing Tab into the row's button reveals it, and the next Tab lands on it.
+				 * translates here. `group-has-[:focus-visible]` is what makes it reachable by
+				 * keyboard: pressing Tab into the row's button reveals it, and the chords above
+				 * are the keyboard's own press (the acts themselves stay out of the Tab ring,
+				 * §C4).
 				 *
 				 * HIDDEN IS ALSO INERT, and here that is a property rather than a rule: an
 				 * element that is not displayed cannot receive a press at all, which is why the
@@ -5450,7 +5456,9 @@ export function ChatSidebar({
 							/*
 							 * THE ARCHIVE CONTROL IS ABSENT FROM THE LAYOUT AT REST, not transparent in
 							 * it (design D3): base `hidden`, revealed by `flex` under the pointer or under
-							 * focus inside the row. `display: none` replaces the old `opacity-0` +
+							 * a KEYBOARD focus inside the row (`group-has-[:focus-visible]`, the browser's
+							 * own definition of it - see the gate's note below). `display: none` replaces
+							 * the old `opacity-0` +
 							 * `pointer-events-none` pairing, and on the property that pairing was written
 							 * for it is strictly stronger - an element that is not displayed cannot
 							 * receive a press at all, so "a hidden control is inert" stops being a rule
@@ -5488,7 +5496,7 @@ export function ChatSidebar({
 								"order-first",
 								"text-ink-dim",
 								"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted",
-								"group-focus-within:flex group-focus-within:text-ink-muted",
+								"group-has-[:focus-visible]:flex group-has-[:focus-visible]:text-ink-muted",
 								/* The hold, as the pin glyph's comment records: the reveal is authored in every revealing control, so the clause rides each. */
 								menuOpen && "flex text-ink-muted",
 							),
@@ -5502,7 +5510,7 @@ export function ChatSidebar({
 							 * the ink step is the vocabulary this file already has (a pinned
 							 * row's glyph takes `text-ink`), so the control under the pointer
 							 * darkens to full ink while its sibling stays at the revealed
-							 * `ink-muted`. The `!` is load-bearing: `group-hover:text-ink-muted`
+							 * `ink-muted`. The `!` is load-bearing: `group-data-[session-hover-intent]:text-ink-muted`
 							 * and `hover:text-ink` are two equally specific rules that both
 							 * match, so the winner would be the stylesheet's own order.
 							 */
@@ -5574,7 +5582,7 @@ export function ChatSidebar({
 				className={cn(
 					// Carried while EITHER per-row control is mounted, because both reveal
 					// themselves through the row's own `group-data-[session-hover-intent]` /
-					// `group-focus-within` on it, and absent when neither is - which is what
+					// `group-has-[:focus-visible]` on it, and absent when neither is - which is what
 					// keeps the fully withdrawn panel's class list the one it had before
 					// either feature existed. The `data-session-hover-intent` attribute the
 					// pointer half reads is written by `ChatRowHoverIntent` below - it is the
@@ -5651,10 +5659,35 @@ export function ChatSidebar({
 				 * `data-session-hover-intent`, and this is the only writer of it: a pointer
 				 * that DWELLS on the row for the app's hover-intent constant earns the reveal,
 				 * and a pointer sweeping through on its way to a row that is merely being
-				 * SELECTED never meets a control that just arrived under it. The keyboard's
-				 * `group-focus-within` term is untouched and stays immediate. It renders a
-				 * `hidden` anchor and resolves this box from it; see `chat-row-hover-intent.tsx`
-				 * for why it is a component rather than a hook here.
+				 * SELECTED never meets a control that just arrived under it.
+				 *
+				 * THE KEYBOARD'S DOOR IS `:focus-visible`, AND THAT IS A CORRECTION RATHER
+				 * THAN A REFINEMENT (agent review round 1's Q-1, which is UX's U1). This term
+				 * used to be the bare `group-focus-within`, which the browser raises for a
+				 * MOUSE-driven focus as well - so a press landing in the row's trailing band
+				 * focused the row's own button, the acts arrived INSIDE the gesture, the button
+				 * narrowed 248 -> 196 under the press, the mouseup landed outside it and
+				 * Chromium retargeted the `click` to the row's wrapper, which has no handler.
+				 * The press therefore neither pressed a control NOR selected the row, which is
+				 * the premise issue #840 is written on. `:focus-visible` is the platform's own
+				 * answer to "did this focus arrive from the keyboard" - the same constant and
+				 * the same reasoning `shared/lib/scrollbar-activity.ts` carries - so a Tab into
+				 * the row still reveals the acts immediately while a press never re-lays the
+				 * row out mid-gesture. The repo's precedent for the variant itself is
+				 * `thread-search-overlay.tsx` and the agent surfaces' focus ring.
+				 *
+				 * WHY NOT A PRESS GUARD INSTEAD. Holding the reveal off only while a press is
+				 * in flight would keep the row still for that gesture too, but it leaves the
+				 * door keyed to the mouse's focus, so the row's layout still moves the instant
+				 * the press lands - the same reflow, one gesture later, and a fresh class of
+				 * timing state to keep. Keying the door to HOW the focus arrived removes the
+				 * reflow rather than hiding it, and it costs nothing the keyboard ever had:
+				 * the acts are out of the Tab ring by design (§C4), so the row's button is the
+				 * keyboard's only stop and `:focus-visible` is exactly the event that stop
+				 * fires.
+				 *
+				 * It renders a `hidden` anchor and resolves this box from it; see
+				 * `chat-row-hover-intent.tsx` for why it is a component rather than a hook here.
 				 */}
 				{(pinsEnabled || archiveEnabled) && <ChatRowHoverIntent />}
 				{rowButton}
@@ -5668,7 +5701,9 @@ export function ChatSidebar({
 				 * whole row, and the two acts take 56px of it under the pointer, which is what
 				 * the title's pan exists to answer (`docs/design/sidebar-row-space.md`, D2 and
 				 * D3). The pointer's term is the row's own `data-session-hover-intent` (the
-				 * gate mounted above); the keyboard's `group-focus-within` term is immediate.
+				 * gate mounted above); the keyboard's term is `group-has-[:focus-visible]` and
+				 * is immediate - keyboard-only by the browser's own definition of it, which is
+				 * what the gate's note above explains.
 				 *
 				 * THE WRAPPER IS ALWAYS A FLEX BOX, AND WHAT SHUTS IT IS THE ROW'S OWN STATE:
 				 * `hidden` while the row is unpinned, because then NEITHER control is drawn at
@@ -5696,7 +5731,7 @@ export function ChatSidebar({
 							 */
 							pinned || menuOpen
 								? "flex"
-								: "hidden group-data-[session-hover-intent]:flex group-focus-within:flex",
+								: "hidden group-data-[session-hover-intent]:flex group-has-[:focus-visible]:flex",
 						)}
 					>
 						{controls}
@@ -7054,7 +7089,7 @@ export function ChatSidebar({
 	 * THE LIST'S ONE TAB STOP (§C4 and UX-BASELINE U6; the U2 walk's 70 presses).
 	 *
 	 * WHAT WAS WRONG. Every row's button was an ordinary tab stop AND both of the
-	 * row's acts beside it were too — they are revealed by `group-focus-within`, and
+	 * row's acts beside it were too — they are revealed by `group-has-[:focus-visible]`, and
 	 * a reveal that only a pointer could reach would not have been keyboard
 	 * access at all. Twenty conversations therefore charged the reader sixty
 	 * presses to walk from the list's top to the header, and the arrow traversal
