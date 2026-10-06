@@ -161,7 +161,7 @@ export const BrowserUrlBar: FC<BrowserUrlBarProps> = ({
 	/*
 	 * The chord captions (issue #675's round-1 review, U5): the product caps
 	 * every other chord on the control that owns it (`sidebarToggleCap`,
-	 * `paletteShortcutLabel`), and these two buttons are the nearest affordances
+	 * `paletteDoorLabel`), and these two buttons are the nearest affordances
 	 * the gesture has. `aria-keyshortcuts` is the machine-readable half; the
 	 * tooltip is the visible one. The `aria-label`s stay the action alone —
 	 * `scripts/run-panel-navigation.test.mjs` selects them by exact string.

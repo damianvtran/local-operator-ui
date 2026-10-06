@@ -191,7 +191,6 @@ function reset() {
 		activeSessionId: null,
 		activeDraftKey: null,
 		drafts: {},
-		sessionByAgent: {},
 		validatingSessionId: null,
 		error: null,
 	});
