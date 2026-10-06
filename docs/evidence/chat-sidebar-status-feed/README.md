@@ -507,8 +507,8 @@ which rather than leaving a reader to difference them.** `subagent-rows-running/
 and `subagent-rows-running-minimum/` were re-taken at issue #840 and wore the DOT
 the operator rejected: those two differ by the mark — six
 ~16x16px boxes per palette, three in the leading slot and three in the trailing
-one — plus sub-threshold rasterisation variation in the right-hand prose panel
-(~650 px, per-channel |Δ| of 8–13 of 255), which no file this change touches
+one — plus sub-threshold text antialiasing in the untouched right-hand prose
+panel (design review round 1), which no file this change touches
 renders. The other seven cells carried older captures (`delegating-row-default/`,
 `delegating-row-minimum/` and `chat-session-status--neighbours/` from 2026-09-22;
 the resting, selected and archived cells from 2026-09-29), and all of them still
