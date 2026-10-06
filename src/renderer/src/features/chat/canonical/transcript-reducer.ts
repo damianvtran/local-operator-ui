@@ -2915,11 +2915,15 @@ export function applyHistoryPage(
 		// The assistant row's own instant. The call it names was composed in THAT
 		// message, so this is the durable anchor a replayed settling frame for the
 		// call is placed at (`seededClock`) — read here because this loop is the
-		// only place the row and its calls are both in hand. Its ID is recorded
-		// beside the instant, because `seededLiftable` has to ask not only WHEN
-		// the compose happened but WHERE its row sits before a seeded settle may
-		// rank itself against a held send — and that question can only be
-		// answered by a row this loop can point at.
+		// only place the row and its calls are both in hand, and on the FIRST
+		// learn only: a call whose args a live frame already taught keeps that
+		// entry (the guard below), so it carries no `anchorId` and a seeded
+		// settle for it joins the block rather than lifting — conservative, it
+		// never mis-orders (review round 1, R2). Its ID is recorded beside the
+		// instant, because `seededLiftable` has to ask not only WHEN the compose
+		// happened but WHERE its row sits before a seeded settle may rank itself
+		// against a held send — and that question can only be answered by a row
+		// this loop can point at.
 		const anchoredAt = Math.round((entry.ts ?? 0) * 1000);
 		for (const call of calls as Record<string, unknown>[]) {
 			if (!call || typeof call.id !== "string") continue;
