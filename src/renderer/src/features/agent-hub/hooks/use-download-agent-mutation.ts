@@ -7,6 +7,7 @@ import type {
 } from "@shared/api/local-operator/types";
 import { apiConfig } from "@shared/config"; // Import apiConfig for the base URL
 import { agentsQueryKey } from "@shared/hooks/use-agents";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	showSuccessToast,
 	showWarningToast,
@@ -138,9 +139,17 @@ export const useDownloadAgentMutation = () => {
 			const agentResult = data.result; // Capture result
 
 			if (agentResult?.id) {
-				// The created row's own id, so the chat that opens is the agent that
-				// was created — under whatever name it actually has.
-				navigate(`/chat/${agentResult.id}`);
+				/*
+				 * THE DRAFT DOOR (issue #844): the chat is keyed by the name the agent
+				 * ACTUALLY landed under - `installedName`, which is the backend's own name
+				 * when it renamed the agent on the way in - rather than by
+				 * `/chat/<agent id>`, a route whose only non-session fallback was never
+				 * written and so always read as a legacy link.
+				 */
+				useCanonicalSessionsStore
+					.getState()
+					.stageDraft({ kind: "agent", name: installedName });
+				navigate("/chat");
 			} else {
 				console.warn(
 					"Downloaded agent ID not found in response, cannot navigate to chat.",

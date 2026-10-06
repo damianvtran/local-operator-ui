@@ -3651,7 +3651,20 @@ type CanonicalSessionsState = {
 	activeSessionId: string | null;
 	activeDraftKey: string | null;
 	drafts: Record<string, ChatDraft>;
-	sessionByAgent: Record<string, string>;
+	/*
+	 * THERE IS NO `sessionByAgent` HERE, and its absence is the fix (issue #844).
+	 * It was declared, initialised to `{}` and carried through persistence, and a
+	 * whole-repo search found exactly one reader (`chat-page.tsx`'s route effect)
+	 * and no writer anywhere - so `/chat/<agent id>` could only ever land on the
+	 * "legacy link" notice, and the palette's agent row built exactly that URL.
+	 *
+	 * It is REMOVED rather than populated because there is no canonical-chat
+	 * binding in this model to fill it from: an agent may have many conversations,
+	 * so "the" session for an agent is a question the store has no answer to. The
+	 * agent entrance is a DRAFT (`stageDraft({ kind: "agent", name })`, the door
+	 * the sidebar and the agent page already use), and the route effect keeps the
+	 * honest sentence for genuinely old links.
+	 */
 	/**
 	 * The session the view has moved onto that its own stream has not yet
 	 * confirmed exists.
@@ -5240,7 +5253,6 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			activeSessionId: launchSession(),
 			activeDraftKey: null,
 			drafts: {},
-			sessionByAgent: {},
 			validatingSessionId: null,
 			pinFailure: null,
 			pinFacts: {},
@@ -7988,7 +8000,6 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 			name: "canonical-sessions-storage",
 			merge: mergePersistedSession,
 			partialize: (state) => ({
-				sessionByAgent: state.sessionByAgent,
 				activeSessionId: state.activeSessionId,
 				activeDraftKey: state.activeDraftKey,
 				cwd: state.cwd,

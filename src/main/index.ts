@@ -93,6 +93,7 @@ import {
 	watchQuickSend,
 } from "./local-config";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
+import { paletteDoorChannel } from "./palette-door";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -3471,33 +3472,29 @@ app
 			// Register local shortcuts for focused window
 			mainWindow.webContents.on("before-input-event", (event, input) => {
 				const isCmdOrCtrl = input.control || input.meta;
-
 				/*
-				 * The conversation switcher: Cmd/Ctrl + P — the palette's ORIGINAL
-				 * gesture, kept for everyone who learned it from the app's own tour, and
-				 * since issue #659 a job of its own rather than a second door to the
-				 * same list: the renderer opens the palette seeded to its conversations
-				 * source, which is a chat quick switcher.
+				 * THE PALETTE'S DOOR (issues #659, #850): Cmd/Ctrl+P opens the palette on
+				 * EVERYTHING, Cmd/Ctrl+Shift+P opens it on COMMANDS. WHICH press means which
+				 * door — the per-platform modifier and the auto-repeat refusal included —
+				 * is `paletteDoorChannel` in `./palette-door`, kept PURE so that
+				 * `scripts/palette-main-door.test.mjs` can drive the whole matrix without
+				 * the focused, visible window this hook is gated on (QA round 1, Q-B1/Q-B2:
+				 * a `headless` lane cannot show a window, so the old branch could not be
+				 * exercised there at all).
 				 *
-				 * Cmd/Ctrl + K, the gesture the app now teaches, is deliberately NOT here:
-				 * a `before-input-event` hook fires before the renderer sees the key at all,
-				 * and two surfaces in the canvas already own Cmd+K (the code editor's AI
-				 * edit and the Markdown editor's link insert, which is what Cmd+K means in
-				 * every editor these users have met). The renderer answers that one, so the
-				 * editor that got there first keeps it — see
-				 * `src/renderer/src/features/command-palette/palette-shortcut.ts`. One
-				 * keystroke, one owner: binding both here would toggle twice per press and
-				 * the palette would never open.
+				 * What is left HERE is what is genuinely about the window. The hook lives in
+				 * main rather than the renderer because it fires wherever the WINDOW has
+				 * focus; what each press then DOES (open / close / switch) is the renderer's
+				 * decision (`paletteDoorOutcome`), and main only says which door was pressed.
 				 */
+				const paletteChannel = paletteDoorChannel(process.platform, input);
 				if (
-					isCmdOrCtrl &&
-					input.key.toLowerCase() === "p" &&
-					input.type === "keyDown"
+					paletteChannel !== null &&
+					mainWindow?.isFocused() &&
+					mainWindow?.isVisible()
 				) {
-					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
-						event.preventDefault();
-						mainWindow.webContents.send("toggle-command-palette");
-					}
+					event.preventDefault();
+					mainWindow.webContents.send(paletteChannel);
 				}
 
 				// Start speech to text: Cmd/Ctrl + Shift + S

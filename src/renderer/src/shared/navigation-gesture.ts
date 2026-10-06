@@ -107,7 +107,7 @@ export function navigationMouseDirection(
  * U5).
  *
  * The product caps every other chord on the control that owns it
- * (`sidebarToggleCap`'s "⌘B", `paletteShortcutLabel`'s "⌘K"), and this pair
+ * (`sidebarToggleCap`'s "⌘B", `paletteDoorLabel`'s "⌘P"), and this pair
  * had no caption anywhere — no tooltip, no keycap, no `aria-keyshortcuts`. The
  * browser's back/forward buttons are the nearest affordances the gesture has,
  * so they carry it: one string for the tooltip and `aria-keyshortcuts`, the
