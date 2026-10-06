@@ -245,8 +245,22 @@ const App: FC = () => {
 	 */
 	const meshState = desktopFeatureState(capabilities.data, "peers");
 
-	const handleAgentCreated = (agentId: string) => {
-		navigate(`/chat/${agentId}`);
+	const handleAgentCreated = (agent: { id: string; name: string }) => {
+		/*
+		 * THE CREATED AGENT'S CHAT IS A DRAFT, NOT AN ADDRESS (issue #844). This
+		 * landing used to write `/chat/<agent id>`, a route whose only non-session
+		 * fallback (`sessionByAgent`) was never written by anything - so creating an
+		 * agent and landing on its chat read as a broken legacy link every time.
+		 *
+		 * `stageDraft({ kind: "agent", name })` then `/chat` is the door the sidebar's
+		 * "New chat with <name>" rows and the agent page's own New chat use, so the
+		 * created agent's chat is the same row all three would produce (and pressing
+		 * again resumes it rather than clearing it).
+		 */
+		useCanonicalSessionsStore
+			.getState()
+			.stageDraft({ kind: "agent", name: agent.name });
+		navigate("/chat");
 		closeCreateAgentDialog();
 	};
 

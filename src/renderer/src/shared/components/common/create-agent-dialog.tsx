@@ -18,9 +18,17 @@ type CreateAgentDialogProps = {
 	 */
 	onClose: () => void;
 	/**
-	 * Optional callback when an agent is successfully created
+	 * Called when an agent is created, with the identity needed to START A CHAT with
+	 * it: the id, and the name the draft door keys a chat by.
+	 *
+	 * The name is here because the agent a caller wants to open is a DRAFT, not an
+	 * address (issue #844): `stageDraft({ kind: "agent", name })` keys the row
+	 * `draft:agent:<name>`, and `/chat/<agent id>` - the landing this callback used
+	 * to feed - had no non-session fallback and always read as a legacy link. The
+	 * backend's own name is preferred over the one typed (`result.name`), so an
+	 * agent the server renamed is opened under the name it actually has.
 	 */
-	onAgentCreated?: (agentId: string) => void;
+	onAgentCreated?: (agent: { id: string; name: string }) => void;
 };
 
 /**
@@ -61,13 +69,16 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
 
 		try {
 			const result = await createAgentMutation.mutateAsync(newAgent);
+			// The created agent's identity, captured before the form resets: the chat a
+			// caller opens is keyed by this name.
+			const createdName = result?.name?.trim() || newAgent.name;
 			// Reset form and close dialog on success
 			setName("");
 			setDescription("");
 
 			// Call the onAgentCreated callback if provided
 			if (onAgentCreated && result?.id) {
-				onAgentCreated(result.id);
+				onAgentCreated({ id: result.id, name: createdName });
 			}
 
 			onClose();
