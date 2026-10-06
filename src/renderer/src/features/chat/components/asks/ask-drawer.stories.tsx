@@ -289,11 +289,77 @@ export const Empty: Story = {
 };
 
 /**
+ * THE WIRE FIX'S OWN EMPTY FRAME, and the one the stuck-slot defect was reported on: a
+ * live queued engine with nothing outstanding publishes `asks` ABSENT with
+ * `asks_open: 0` present - so the capability is there and the rows are not.
+ *
+ * WHY IT IS A STORY OF ITS OWN BESIDE `Empty`. The two frames differ in exactly the
+ * field the lane used to read as capability, and they rendered DIFFERENTLY: `asks: []`
+ * drew the panel and its empty sentence, while this one drew NOTHING at all - no bar,
+ * no dismiss - because the old gate read the absent array as "this backend does not
+ * publish queued asks". Switching conversations with the drawer open landed on this
+ * frame, and the surface kept its 560px of the window with no way out of it. A reader
+ * comparing this story with `Empty` is checking the two are now the same surface.
+ *
+ * (Its `onClose` is a no-op like every story's, so the frame below is what a mount
+ * draws; in the app this mount also CLOSES itself - see the next story - unless the
+ * user's own door is under focus.)
+ */
+export const EmptyWireFrame: Story = {
+	args: {
+		frontend: { asks: null, asks_open: 0, asks_truncated: false },
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
+ * THE UNREAD FRAME (`frontend === null`): the fleet pane's first commits before its
+ * route answers, or a session frame that has not landed.
+ *
+ * WHAT THIS FRAME PROVES, since it is the shape the fix is most tempted to get wrong:
+ * an unresolved frame closes NOTHING (the read has not answered, so there is no fact to
+ * act on) and TRAPS NOTHING (the bar above carries the dismiss and Escape closes the
+ * surface). It states what the surface is doing rather than a count - `All asks settled`
+ * over a queue nobody has read would be the verdict the lane's copy contract forbids -
+ * and it is deliberately not the panel's own empty sentence, which makes a claim about
+ * the agent's state that an unanswered frame cannot substantiate.
+ *
+ * THE CLOSE IS THE OTHER HALF AND THE APP DELIVERS IT: this frame's `onClose` is a
+ * no-op here, but a mount over it is NOT closed by the auto-close - and the moment the
+ * frame lands with nothing in it, that effect closes the surface (or, if the user's own
+ * door is under focus, shows `EmptyWireFrame` above instead).
+ */
+export const UnreadFrame: Story = {
+	args: {
+		frontend: null,
+		scope: "session",
+		onClose: noop,
+		nowMs: NOW,
+		onAnswer: noop,
+		onDecline: noop,
+	},
+};
+
+/**
  * A backend that predates queued asks. This frame is IDENTICAL to `Empty`'s by
  * design — the capability is field presence, and absence means "not supported"
  * rather than "none right now" — which is exactly why it is worth a frame of its
  * own: a reader comparing them is checking that the app does not invent an
  * affordance it cannot satisfy.
+ *
+ * WHAT THE SURFACE DOES WITH IT (the stuck-slot fix). It draws its chrome and the
+ * unread line rather than nothing, and it CLOSES ITSELF on mount: the app never opens
+ * this drawer on such a runtime (both doors are capability-gated, so nothing offers
+ * it), and a mount that found itself here - an open flag inherited from a runtime that
+ * does publish asks - would be a claimed slot with no close control if it drew nothing
+ * at all. Storybook cannot run that close (`onClose` is a no-op), so the frame below is
+ * the transient state a reader would see for the instant before it lands. Note the count
+ * clause reads `Not read yet` rather than `All asks settled`: a frame that publishes no
+ * tally substantiates no count, and the settled verdict is not this frame's to wear.
  */
 export const UnsupportedBackend: Story = {
 	args: {

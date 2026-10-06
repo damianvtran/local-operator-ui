@@ -293,6 +293,81 @@ test("a view over an absent field is empty AND unsupported", () => {
 	assert.equal(view.rows.length, 0);
 	assert.equal(view.head, null);
 	assert.equal(view.open, 0);
+	// An absent FRAME is not a capable one: the surface must be able to tell "nobody
+	// has answered yet" from "this runtime has no queued engine" (see the predicate's
+	// own test below).
+	assert.equal(view.published, false);
+});
+
+/*
+ * THE WIRE FIX'S CAPABILITY READ, pinned where the whole lane reads it.
+ *
+ * Why this test exists: the drawer, the panel and the drawer's own auto-close all key
+ * on this predicate now, and the rule it replaces (`sessionAsks(...) !== null`) is the
+ * one that looked obviously correct - it WAS correct until the runtime started
+ * publishing a live-but-empty queue as `asks` ABSENT with `asks_open: 0` present. A
+ * regression to that reading is invisible in every populated test and turns a live,
+ * empty engine into a dead one, which is the stuck-slot defect itself.
+ */
+test("the capability read is the presence of `asks` OR `asks_open`", () => {
+	// A row list, however short.
+	assert.equal(
+		queue.askQueuePublished({ asks: [ask({ ask_id: "a-1" })] }),
+		true,
+	);
+	// THE case the fix exists for: rows absent, tally present - and zero is a VALUE.
+	assert.equal(queue.askQueuePublished({ asks: null, asks_open: 0 }), true);
+	assert.equal(queue.askQueuePublished({ asks: null, asks_open: 3 }), true);
+	// A frame that says neither: this runtime cannot answer at all.
+	assert.equal(queue.askQueuePublished({ asks: null, asks_open: null }), false);
+	// An unread frame cannot be a capable one either.
+	assert.equal(queue.askQueuePublished(null), false);
+	assert.equal(queue.askQueuePublished(undefined), false);
+	/*
+	 * A MALFORMED `asks` IS NOT A CAPABILITY, and the array check is what keeps the
+	 * old read's conservatism: a frame that carried a string where rows belong must
+	 * not be able to turn an unreadable frame into an affordance.
+	 */
+	assert.equal(queue.askQueuePublished({ asks: "nope" }), false);
+});
+
+/*
+ * AND THE VIEW CARRIES IT, because the drawer's chrome reads the VIEW rather than the
+ * frame: the count clause must not compose `All asks settled` over a queue nobody has
+ * read, and the empty-but-live queue must fall through to it because for it the
+ * verdict is true.
+ */
+test("a live-but-empty queue is a published zero, not an unread frame", () => {
+	const live = queue.askQueueView({
+		asks: null,
+		asks_open: 0,
+		asks_truncated: false,
+	});
+	assert.equal(
+		live.published,
+		true,
+		"asks absent + asks_open present is a live engine",
+	);
+	assert.equal(
+		live.asks,
+		null,
+		"the rows stay absent: there is nothing in the queue",
+	);
+	assert.equal(live.rows.length, 0);
+	assert.equal(live.head, null);
+	assert.equal(live.open, 0);
+	assert.equal(queue.askDrawerCountClause(live), "All asks settled");
+
+	// A published tally with no rows still states the backend's own count - the
+	// lagging-frame case the chip's clause was fixed for, readable now that the
+	// absent-asks branch no longer hard-codes zero.
+	const lagging = queue.askQueueView({ asks: null, asks_open: 4 });
+	assert.equal(lagging.published, true);
+	assert.equal(lagging.open, 4);
+
+	// And an unread frame is neither: no count, no verdict.
+	const unread = queue.askQueueView(null);
+	assert.equal(queue.askDrawerCountClause(unread), "Not read yet");
 });
 
 /* --------------------------------------------------------- the answer ---- */
