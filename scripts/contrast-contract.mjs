@@ -1160,7 +1160,10 @@ const CONTROLS = [
 		 * not trying to be read as a message should be the quiet one that passes).
 		 * `badge.tsx`'s `attention` variant carries the same role, so the header and the
 		 * URL bar move with it - one spelling of this mark, which is the rule that
-		 * variant's own docstring states.
+		 * variant's own docstring states. ("The header" here means the header's
+		 * BROWSER trigger, the one control this row's name covers; the header's ask
+		 * count moved to the quiet register below on 2026-10-05, so the cluster
+		 * carries one spelling of each rather than two of either.)
 		 *
 		 * MEASURED AT THIS REVISION, all fifty-nine palettes: `ink` on `warningWash`
 		 * 5.73:1 at worst (oneDark - ink against a fill does not depend on the ground,
@@ -1182,7 +1185,9 @@ const CONTROLS = [
 		/*
 		 * THE RAIL'S QUIET COUNT (operator ask, 2026-09-30) — the borderless
 		 * register of the approval mark, worn by the sidebar's Browser row and by
-		 * Aida's, i.e. on the same four grounds the row above lists. It is a
+		 * Aida's, i.e. on the same four grounds the row above lists, and since
+		 * 2026-10-05 also by the conversation header's ask-count badge (whose ground
+		 * the row above already names: the header is `canvas`). It is a
 		 * separate row rather than a `fill`/`border` change to the row above,
 		 * because the two marks differ in what carries them: the bordered mark's
 		 * edge WAS its boundary (its wash measured 1.00-1.19:1 on the grounds), so
