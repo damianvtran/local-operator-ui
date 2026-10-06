@@ -135,8 +135,31 @@ const PROBE = `(() => {
 	const barLeft = pick('[data-lo-chat-measure-cue="left"]');
 	const line = pick('[data-lo-chat-measure-line="right"]');
 	const lineLeft = pick('[data-lo-chat-measure-line="left"]');
+	const scroller = pick("[data-lo-canonical-transcript]");
+	const panel = pick('[role="tooltip"]');
+	/*
+	 * What a press ON THE DRAWN MARK would hit (UX round 1's U1, as a reading): one
+	 * elementFromPoint at the mark's own centre, reported as the band, or the tag
+	 * that got there instead. The base tree's bar is inside its strip; the head's
+	 * line must be inside its band - that equality is the fix.
+	 */
+	const mark = line || bar;
 	return {
 		content: rect(pick("[data-lo-transcript-content]")),
+		pane: rect(scroller),
+		scrollTop: scroller ? Math.round(scroller.scrollTop) : null,
+		panel: rect(panel),
+		panelText: panel ? panel.textContent : null,
+		markInBand: (() => {
+			if (!mark || !handle) return null;
+			const r = mark.getBoundingClientRect();
+			const el = document.elementFromPoint(
+				r.left + r.width / 2,
+				r.top + r.height / 2,
+			);
+			if (!el) return null;
+			return el.closest("[data-lo-chat-measure-handle]") ? "band" : el.tagName;
+		})(),
 		handle: rect(handle),
 		handleLeft: rect(handleLeft),
 		bar: rect(bar),
@@ -316,6 +339,59 @@ const captureHalf = async (half, origin, record) => {
 				},
 			);
 			/*
+			 * THE SCROLLED CASE (agent review round 1's M1).
+			 *
+			 * The story's transcript fits its pane, which is the ONE shape where a
+			 * content-height anchor still puts the panel somewhere visible; the
+			 * reviewer's arithmetic said a scrolling transcript is where it goes off
+			 * screen, and it could not be measured without a pane shorter than the
+			 * column. So: clone the rendered prose block inside the content column
+			 * (real rendered markup, not a fixture) and clip the scroller, which makes
+			 * the column taller than the pane - the exact shape. The panel's rect is
+			 * then read against the pane's at the top, the middle and the bottom, with
+			 * the pointer parked at the pane's own middle.
+			 */
+			await cdp.evaluate(`(() => {
+				const content = document.querySelector("[data-lo-transcript-content]");
+				const block = content && content.querySelector(".lo-markdown");
+				if (!block) return 0;
+				const parent = block.parentElement;
+				for (let i = 0; i < 12; i++) {
+					const clone = block.cloneNode(true);
+					clone.setAttribute("data-probe-clone", String(i));
+					parent.appendChild(clone);
+				}
+				const s = document.querySelector("[data-lo-canonical-transcript]");
+				s.style.height = "240px";
+				s.style.maxHeight = "240px";
+				s.style.flex = "none";
+				return document.querySelectorAll("[data-probe-clone]").length;
+			})()`);
+			await sleep(700);
+			for (const [at, fraction] of [
+				["top", 0],
+				["mid", 0.5],
+				["bottom", 1],
+			]) {
+				await cdp.evaluate(`(() => {
+					const s = document.querySelector("[data-lo-canonical-transcript]");
+					s.scrollTop = -Math.round((s.scrollHeight - s.clientHeight) * ${fraction});
+					return s.scrollTop;
+				})()`);
+				await sleep(250);
+				const atScroll = await cdp.evaluate(PROBE);
+				await cdp.mouse(
+					"mouseMoved",
+					atScroll.handle.x,
+					(atScroll.pane.top + atScroll.pane.bottom) / 2,
+				);
+				await sleep(700);
+				record(half, `scrolled-${at}`, theme, await cdp.evaluate(PROBE));
+				if (at === "mid") await shoot(cdp, half, "hover-scrolled", theme);
+				await cdp.mouse("mouseMoved", 5, 5);
+				await sleep(250);
+			}
+			/*
 			 * The release committed a width - this profile is discarded with the
 			 * browser (see the per-run scratch profile above), so nothing downstream
 			 * inherits it.
@@ -388,21 +464,33 @@ const main = async () => {
 
 			const content = rest.content;
 			/*
-			 * The strip's offset is a claim about BOTH trees (design round 1's D2:
-			 * the pointer target never sits over the text), so it is read before the
-			 * halves are told apart: 24px out from the column's edge, its inner edge
-			 * the near one.
+			 * THE MARK IS THE TARGET, on both trees (UX round 1's U1). One
+			 * `elementFromPoint` at the drawn mark's own centre: the base tree's bar
+			 * sits inside its strip and the head's line must sit inside its band, so
+			 * "point at the rule, grab it" holds on both - which is what the previous
+			 * head's 24px offset broke (measured there: the element at the mark's x was
+			 * the transcript DIV, cursor `auto`, and a press moved no width).
 			 */
-			if (!near(rest.handle.left - content.right, 24, 1))
+			if (rest.markInBand !== "band")
 				failures.push(
-					`${half}/${theme}: the strip's inner edge is ${Math.round((rest.handle.left - content.right) * 10) / 10}px out, not 24`,
+					`${half}/${theme}: a press on the mark's own x would hit ${rest.markInBand ?? "nothing"}, not the band`,
 				);
-
+			/*
+			 * THE REST IS THE HEAD'S. The base tree's band is still the old 24px-out
+			 * strip and its mark is a floating bar, so these are statements about THIS
+			 * branch's geometry; the base half is described by the `bar` branch below.
+			 *
+			 * The band's inner edge is on the column's own edge - never inward of it,
+			 * which is design round 1's D2 kept - and the line is inside it, which is
+			 * UX round 1's U1 fixed.
+			 */
 			if (bar) {
 				/*
 				 * The base tree's bar: 2px wide, 72px tall, floating 28px OUT in the
 				 * margin past the column's edge - the geometry the issue reports as
-				 * reading like a stray mark rather than a boundary.
+				 * reading like a stray mark rather than a boundary. Its strip is 24px
+				 * out, so the base's own band geometry is asserted here and not with
+				 * the head's.
 				 */
 				if (!rest.bar) {
 					failures.push(`${half}/${theme}: the base tree has no bar`);
@@ -418,12 +506,51 @@ const main = async () => {
 					failures.push(
 						`${half}/${theme}: the bar's near edge is ${Math.round((rest.bar.left - content.right) * 10) / 10}px past the column's right edge, not 28`,
 					);
-				/* 72 against a column that is many times that: a mark, not a rule. */
+				if (!near(rest.handle.left - content.right, 24, 1))
+					failures.push(
+						`${half}/${theme}: the base strip's inner edge is ${Math.round((rest.handle.left - content.right) * 10) / 10}px out, not 24`,
+					);
 				if (!(rest.bar.h < content.h / 2))
 					failures.push(
 						`${half}/${theme}: the bar is ${rest.bar.h}px of the column's ${content.h}px`,
 					);
 				continue;
+			}
+
+			if (!near(rest.handle.left - content.right, 0, 1))
+				failures.push(
+					`${half}/${theme}: the band's inner edge is ${Math.round((rest.handle.left - content.right) * 10) / 10}px out from the column's edge, not on it`,
+				);
+			if (
+				rest.line &&
+				rest.handle &&
+				(rest.line.left < rest.handle.left - 1 ||
+					rest.line.right > rest.handle.right + 1)
+			)
+				failures.push(
+					`${half}/${theme}: the line ${rest.line.left}..${rest.line.right} is not inside the band ${rest.handle.left}..${rest.handle.right}`,
+				);
+			/*
+			 * M1's reading: the panel is inside the pane at every scroll position. The
+			 * pane is 240px here (the step above clips it) and the pointer sits at its
+			 * middle, so a panel that lands against the content column's own edge
+			 * instead of the hand's is what this catches.
+			 */
+			for (const at of ["top", "mid", "bottom"]) {
+				const scr = by(half, `scrolled-${at}`, theme);
+				if (!scr.panel) {
+					failures.push(
+						`${half}/${theme}: no panel at the ${at} scroll position (scrolled)`,
+					);
+					continue;
+				}
+				if (
+					scr.panel.top < scr.pane.top - 1 ||
+					scr.panel.bottom > scr.pane.bottom + 1
+				)
+					failures.push(
+						`${half}/${theme}: at the ${at} scroll position the panel ${scr.panel.top}..${scr.panel.bottom} is outside the pane ${scr.pane.top}..${scr.pane.bottom}`,
+					);
 			}
 
 			/*

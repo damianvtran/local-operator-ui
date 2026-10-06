@@ -306,6 +306,63 @@ test("the state line is a sibling of a childless separator, and aria-hidden", as
 	);
 });
 
+/*
+ * THE POINTER-EVENTS PAIRING, which is the only thing between a full-column
+ * absolutely-positioned box and every click in the transcript (the property the
+ * 24px offset used to carry alone). jsdom cannot see Tailwind's cascade, so the
+ * pin has to be the class pairing itself - the source-text shape
+ * `chrome-keychain.test.mjs` and `notification-spawn-sites.test.mjs` use.
+ */
+test("the wrapper is transparent to the pointer and the separator opts back in", async () => {
+	const { separator } = await renderHandle({});
+	const wrapper = separator.parentElement;
+	assert.ok(wrapper, "the separator sits inside the wrapper");
+	assert.match(wrapper.className, /pointer-events-none/);
+	assert.match(separator.className, /pointer-events-auto/);
+});
+
+/*
+ * THE BAND HUGS THE LINE (UX round 1's U1). Both offsets are placed from the
+ * same edge, the band on the gutter side of the line, so a press on the drawn
+ * rule starts the drag the way every family divider's does. The old 34px offset
+ * and its clamp are gone with the dead zone between the two.
+ */
+test("the band and the line are placed from the same edge, the band outboard", async () => {
+	for (const edge of ["left", "right"]) {
+		const { separator } = await renderHandle({ edge });
+		const line = separator.parentElement?.querySelector(
+			`[data-lo-chat-measure-line="${edge}"]`,
+		);
+		assert.ok(line, `the ${edge} line renders`);
+		assert.match(separator.className, new RegExp(`-${edge}-2\\.5`));
+		assert.match(line.className, new RegExp(`-${edge}-0\\.5`));
+		assert.doesNotMatch(separator.className, /34px/);
+		assert.equal(separator.getAttribute("style"), null);
+	}
+});
+
+/*
+ * THE TOOLTIP'S ANCHOR (agent review round 1's M1): a bounded 16px box at the
+ * hand's Y, a sibling of the widget rather than the widget itself - anchored to
+ * the separator, the panel is placed against the content column's own height and
+ * goes off-screen on any transcript that scrolls.
+ */
+test("the tooltip anchor is a bounded sibling box, not the separator", async () => {
+	const { separator } = await renderHandle({});
+	const anchor = separator.parentElement?.querySelector(
+		"[data-lo-chat-measure-anchor]",
+	);
+	assert.ok(anchor, "the handle renders its tooltip anchor");
+	assert.notEqual(anchor, separator);
+	assert.equal(
+		separator.querySelector("[data-lo-chat-measure-anchor]"),
+		null,
+		"the anchor must not be a descendant of the widget",
+	);
+	assert.match(anchor.className, /pointer-events-none/);
+	assert.equal(anchor.style.height, "16px");
+});
+
 test("the keyboard steps move the width, and Enter resets", async () => {
 	const { separator, changes, resets } = await renderHandle({});
 	await press(separator, "ArrowRight");
