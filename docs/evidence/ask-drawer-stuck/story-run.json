@@ -6,8 +6,8 @@
       "drawer": 1,
       "closeAsks": 1,
       "scopeLine": "This conversation \u00b7 4 outstanding",
-      "emptySentence": "4 outstanding. This frame carries the count, not the rows.",
-      "bodyText": "This conversation \u00b7 4 outstanding 4 outstanding. This frame carries the count, not the rows.",
+      "emptySentence": "The details for these asks could not be loaded.",
+      "bodyText": "This conversation \u00b7 4 outstanding The details for these asks could not be loaded.",
       "rows": 0
     },
     "clipped-rows/localOperatorLight": {
@@ -16,8 +16,8 @@
       "drawer": 1,
       "closeAsks": 1,
       "scopeLine": "This conversation \u00b7 4 outstanding",
-      "emptySentence": "4 outstanding. This frame carries the count, not the rows.",
-      "bodyText": "This conversation \u00b7 4 outstanding 4 outstanding. This frame carries the count, not the rows.",
+      "emptySentence": "The details for these asks could not be loaded.",
+      "bodyText": "This conversation \u00b7 4 outstanding The details for these asks could not be loaded.",
       "rows": 0
     },
     "empty-wire/localOperatorDark": {
@@ -67,7 +67,7 @@
       "closeAsks": 1,
       "scopeLine": "This conversation \u00b7 Asks unavailable",
       "emptySentence": null,
-      "bodyText": "This conversation \u00b7 Asks unavailable This runtime doesn't publish queued asks.",
+      "bodyText": "This conversation \u00b7 Asks unavailable This runtime doesn't support queued asks.",
       "rows": 0
     },
     "unsupported/localOperatorLight": {
@@ -77,7 +77,7 @@
       "closeAsks": 1,
       "scopeLine": "This conversation \u00b7 Asks unavailable",
       "emptySentence": null,
-      "bodyText": "This conversation \u00b7 Asks unavailable This runtime doesn't publish queued asks.",
+      "bodyText": "This conversation \u00b7 Asks unavailable This runtime doesn't support queued asks.",
       "rows": 0
     }
   },

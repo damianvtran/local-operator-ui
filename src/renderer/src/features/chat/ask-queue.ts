@@ -346,11 +346,20 @@ export const ASK_DRAWER_UNREAD_LINE = "Reading the asks…";
  * `{asks: null, asks_open: null}` is a RESOLVED frame (`unread` false): the runtime
  * answered, and its answer is that it publishes no queued asks at all. It can never
  * resolve into a queue - nothing will publish for it - so giving it the in-flight
- * copy parked a permanent `Reading the asks…` on a surface whose only exits were the
- * dismiss and Escape (reachable: the header door is offered at zero asks, and a
- * door-opened mount is deliberately never auto-closed). The lane's copy rule is that
- * every claim is checkable or cut (§8): a progress claim that can never complete is
- * not one.
+ * copy parked a permanent `Reading the asks…` on a surface that never resolves.
+ *
+ * HOW IT IS REACHED, CORRECTED IN ROUND 2 (agent review R7). This docblock used to
+ * justify the state as "reachable: the header door is offered at zero asks, and a
+ * door-opened mount is deliberately never auto-closed" - which is the wrong door.
+ * The header door's gate is `published` (`chat-content.tsx`), and `published` is
+ * FALSE for this frame, so no door in the app offers it; that sentence described the
+ * live-but-EMPTY frame (`asks_open: 0`), a different state. The true path is the one
+ * the `UnsupportedBackend` story's own block states: an OPEN FLAG INHERITED from a
+ * runtime that does publish asks (or a store flag left open across a restart onto an
+ * older runtime), which mounts this surface over a frame it cannot serve. That mount
+ * is exactly why the state needs honest copy at all - a claimed slot must never wear
+ * a claim the frame cannot back. The lane's copy rule is that every claim is
+ * checkable or cut (§8): a progress claim that can never complete is not one.
  *
  * SO IT GETS ITS OWN STATE. The bar states the capability it lacks and the body says
  * what that means, in the drawer's own voice; the pair is the drawer's, and the chip
@@ -360,7 +369,7 @@ export const ASK_DRAWER_UNAVAILABLE_CLAUSE = "Asks unavailable";
 
 /** The body under that clause: what is true, rather than what the surface hopes. */
 export const ASK_DRAWER_UNAVAILABLE_LINE =
-	"This runtime doesn't publish queued asks.";
+	"This runtime doesn't support queued asks.";
 
 /**
  * The DRAWER's count clause: what the surface shows, not only what the agent waits on.
@@ -415,6 +424,42 @@ export const askScopeLine = (scope: AskScope, view: AskQueueView): string => {
 	return clause === ""
 		? askScopeSubject(scope)
 		: `${askScopeSubject(scope)} · ${clause}`;
+};
+
+/**
+ * THE HEADER DOOR'S OWN NAME: its verb, its scope, and - while a badge is drawn - the
+ * count it stands for. The tooltip and the control's `aria-label` print this one string,
+ * so the hover text and what a screen reader hears cannot disagree about any of the
+ * three.
+ *
+ * WHY IT LIVES HERE (QA round 2, Q2-1). It was composed inline in `chat-header.tsx`, so
+ * the one string this lane makes a promise about - "the two controls can never be one
+ * string" (UX round 1, U3) - had no CI instrument: the only `Open asks` under `scripts/`
+ * was a stand-in's `textContent`, and a regression would have needed a rig run. Every
+ * other sentence of the lane's copy is in this module where a DOM-free rig can read it,
+ * so this one is too.
+ *
+ * THE SCOPE WORD STAYS AT ZERO (UX round 1's U3, as remediated). Folded in only while a
+ * badge is drawn, the quiet state read the bare `Close asks` - the SAME announced name as
+ * the drawer's own dismiss, two controls for two different acts (one toggles this scope,
+ * one closes the pane). The subject is what keeps the two controls from ever being one
+ * string, and the scope glyph carries the same distinction visually.
+ *
+ * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX round 1,
+ * U1). The number this sentence qualifies is the OUTSTANDING set, which folds a moved-on
+ * ask in, so `waiting` - reserved for the subset that excludes it - would be the wrong
+ * word for it. See `asksAttentionCount` for the decision to count outstanding.
+ */
+export const askHeaderToggleLabel = (args: {
+	open: boolean;
+	scope: AskScope;
+	count: number;
+}): string => {
+	const verb = args.open ? "Close" : "Open";
+	const subject = askScopeSubject(args.scope);
+	return args.count > 0
+		? `${verb} asks \u2014 ${subject}, ${args.count} waiting or moved on`
+		: `${verb} asks \u2014 ${subject}`;
 };
 
 /**
@@ -1151,10 +1196,23 @@ export const askQueueView = (
 			movedOn: 0,
 			total: 0,
 			/*
-			 * THE FRAME'S OWN FACT, NOT A LITERAL (R1). Hard-coding `false` here discarded
-			 * the one field that says the LIST is incomplete, which is exactly the frame
-			 * above whose rows were dropped: the surfaces that read `truncated` (the
-			 * chip's clause, `askSplitIsKnowable`) then had no way to say so.
+			 * THE FRAME'S OWN FACT, NOT A LITERAL (R1). Hard-coding `false` here discarded the
+			 * one field that says the LIST is incomplete, which is exactly the frame above
+			 * whose rows were dropped.
+			 *
+			 * WHAT IT ACTUALLY MOVES, CORRECTED IN ROUND 2 (agent review R6). The claim used
+			 * to be that the flag-less version left the surfaces that read `truncated` with
+			 * "no way to say so" - but for `{asks: null, asks_open: N > 0}` they had nothing to
+			 * say either way: `askSplitIsKnowable` is `!truncated && open <= waiting + movedOn`,
+			 * and a rowless frame has `waiting = movedOn = 0` against `open = N`, so the clause
+			 * is `N outstanding` whichever way this flag reads. THE ONE SHAPE THE FLAG MOVES
+			 * IS A ROWLESS FRAME WITH A ZERO TALLY: there `0 outstanding` and `All asks settled`
+			 * are both arithmetically available, and the frame's own truncation is what says the
+			 * list - not the queue - is what is missing, so the tally is the honest clause.
+			 * (The untruncated zero-tally frame keeps `All asks settled`, which is the state the
+			 * wire "made": a live queue with nothing outstanding.) Fidelity is the other half
+			 * of the reason, and it is why this is a fix at all: a frame's own field should not
+			 * be hard-coded to a fact, and the published branch below reads the same field.
 			 */
 			truncated: frontend?.asks_truncated === true,
 			urgent: false,

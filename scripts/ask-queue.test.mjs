@@ -453,6 +453,29 @@ test("a rowless frame with a surviving tally is neither empty nor truncated-free
 	// verdict IS this frame's to wear.
 	const empty = queue.askQueueView({ asks: null, asks_open: 0 });
 	assert.equal(queue.askDrawerCountClause(empty), "All asks settled");
+
+	/*
+	 * AND THE FLAG'S ONE LIVE EFFECT IS HERE (agent review round 2, R6). For a rowless
+	 * frame with a NONZERO tally, `askSplitIsKnowable` is false whichever way this flag
+	 * reads (`open` exceeds `waiting + movedOn` by the whole count), so the clause is `N
+	 * outstanding` either way - the flag cannot change it. What it does change is a
+	 * rowless frame with a ZERO tally: `0 outstanding` says the count is what this frame
+	 * carries and its list is not, where `All asks settled` would claim the queue was
+	 * read. Both are consistent with the untruncated frame above; this is the pair the
+	 * comment in `askQueueView` now names.
+	 */
+	const clippedEmpty = queue.askQueueView({
+		asks: null,
+		asks_open: 0,
+		asks_truncated: true,
+	});
+	assert.equal(clippedEmpty.truncated, true);
+	assert.equal(
+		queue.askDrawerCountClause(clippedEmpty),
+		"0 outstanding",
+		"a truncated zero-tally frame states its count rather than the settled verdict",
+	);
+	assert.equal(queue.askDrawerCountClause(empty), "All asks settled");
 });
 
 /*
@@ -460,9 +483,12 @@ test("a rowless frame with a surviving tally is neither empty nor truncated-free
  *
  * They share "no rows", and before this round two of them shared their COPY: a runtime
  * that publishes no queued engine rendered byte-for-byte as the in-flight read, so it
- * wore a progress claim that could never complete - and the header door is offered there
- * by an unrelated gate, so a user could park it. The copy is pinned here rather than in a
- * frame because this is the only instrument in CI that can hold the three side by side.
+ * wore a progress claim that could never complete. (The path to that state is an OPEN
+ * FLAG INHERITED from a runtime that does publish asks - agent review round 2, R7: the
+ * header door's gate is `published`, which is false here, so no door in the app offers
+ * it; an earlier version of this comment said the door was offered, which described the
+ * live-but-EMPTY frame instead.) The copy is pinned here rather than in a frame because
+ * this is the only instrument in CI that can hold the three side by side.
  */
 test("unread, unavailable and empty are named apart, and none borrows another's clause", () => {
 	const unread = queue.askQueueView(null);
@@ -702,6 +728,43 @@ test("the item's clause never claims a split the frame cannot know", () => {
 	assert.equal(
 		queue.askChipLabel(exact, false, TS),
 		"Expand this conversation's asks — 1 question waiting · expires in 1h · 1 moved on",
+	);
+});
+
+/*
+ * THE HEADER DOOR'S OWN NAME (QA round 2, Q2-1). It was composed inline in
+ * `chat-header.tsx`, so the promise this lane makes about it - no two asks controls can
+ * be one string (UX round 1, U3) - had no CI instrument; the only `Open asks` under
+ * `scripts/` was a stand-in's `textContent`. The four shapes below are the contract now,
+ * including the one the promise is about: the quiet state still carries its scope, which
+ * is what keeps it distinct from the drawer's own dismiss.
+ */
+test("the header door's name carries its verb, its scope and the count it stands for", () => {
+	assert.equal(
+		queue.askHeaderToggleLabel({ open: false, scope: "session", count: 1 }),
+		"Open asks \u2014 This conversation, 1 waiting or moved on",
+	);
+	assert.equal(
+		queue.askHeaderToggleLabel({ open: true, scope: "fleet", count: 2 }),
+		"Close asks \u2014 All conversations, 2 waiting or moved on",
+	);
+	/*
+	 * AT ZERO IT STILL NAMES ITS SCOPE, which is the U3 remediation stated as a string:
+	 * the bare `Close asks` it used to fall back to is the drawer's own dismiss' name,
+	 * two controls for two different acts.
+	 */
+	assert.equal(
+		queue.askHeaderToggleLabel({ open: false, scope: "session", count: 0 }),
+		"Open asks \u2014 This conversation",
+	);
+	assert.equal(
+		queue.askHeaderToggleLabel({ open: true, scope: "fleet", count: 0 }),
+		"Close asks \u2014 All conversations",
+	);
+	assert.notEqual(
+		queue.askHeaderToggleLabel({ open: true, scope: "session", count: 0 }),
+		"Close asks",
+		"the header door must never be the same string as the pane's own dismiss",
 	);
 });
 

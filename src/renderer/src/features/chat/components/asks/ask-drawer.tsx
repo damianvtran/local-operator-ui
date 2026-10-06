@@ -438,8 +438,9 @@ export const AskDrawer = ({
 		 * landing is therefore the first thing in the LIST: the head card's first live
 		 * option (`input`, an option row, or the free-text field) when a pending card is
 		 * drawn, and otherwise the first settled row's own trigger. The fallbacks below
-		 * stay for a panel with neither (`tabIndex={-1}` on the panel root is the
-		 * deliberate landing) and then for the drawer itself.
+		 * stay for a panel with neither, and the LAST of them is the drawer itself
+		 * (`tabIndex={-1}` on its own section, which is the stop the keyboard is meant to
+		 * land on when the pane has no controls at all).
 		 */
 		const panel = root.querySelector<HTMLElement>(ASK_PANEL_SELECTOR);
 		/*
@@ -451,11 +452,29 @@ export const AskDrawer = ({
 		 * them.
 		 */
 		const landingRoot = panel?.querySelector<HTMLElement>(ASK_LANDING_TARGET);
+		/*
+		 * A NODE THAT CANNOT TAKE FOCUS IS NEVER THE LANDING (UX round 2, U2-1). The
+		 * chain used to fall through to the bare `panel`, and `AskPanel`'s root is a plain
+		 * `<div>` with no `tabIndex` - so `panel.focus()` was inert and the `?? root` term
+		 * below it was dead code. On a pane with no rows (the state R3/Q1's widened door
+		 * made reachable: a live-but-EMPTY queue) the entry move therefore moved nothing,
+		 * and the cost was not cosmetic: the lane's Escape claim is the pane, the chip and
+		 * the composer box, while focus stayed on the HEADER DOOR - which is not in that
+		 * set - so Escape did nothing on a fully mounted pane (`panel.focus()` left
+		 * `document.activeElement` unchanged; `root.focus()` lands; both measured).
+		 *
+		 * SO THE CHAIN SKIPS THE PANEL ROOT AND KEEPS THE SURFACE as its last resort, which
+		 * is the stop this component already documents for itself. Giving the panel root a
+		 * `tabIndex` was the alternative, and it was rejected: it would add a content `<div>`
+		 * to the reading order for the sake of a fallback, and the surface's own section is
+		 * inside `ASK_SURFACE_SELECTOR` with an `aria-label` naming the queue - a better
+		 * landing than an unlabelled panel would be. `ASK_DRAWER_FOCUSABLE` excludes
+		 * `[tabindex="-1"]`, so the root can never be picked as the "first control" above.
+		 */
 		const landing =
 			landingRoot?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
 			landingRoot ??
 			panel?.querySelector<HTMLElement>(ASK_DRAWER_FOCUSABLE) ??
-			panel ??
 			root;
 		landing.focus();
 		/*

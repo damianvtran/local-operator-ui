@@ -125,6 +125,22 @@ const mount = async (element) => {
 	};
 };
 
+/**
+ * MOUNT FOR A TEST, WITH THE TEARDOWN HANDED TO THE RUNNER (agent review round 2, N2).
+ *
+ * The tests below unmount at their own end, which is fine on the pass path and useless
+ * on the fail path: a failing assertion throws before that line, the mounted drawer's
+ * clock keeps the event loop alive, and the file-level run then waits out its bound
+ * instead of reporting a clean red - measured on the round-0 tree (259 s, `cancelled 1`,
+ * "Promise resolution is still pending"). `t.after` unmounts exactly once whether the
+ * body passed, failed or threw, so a non-vacuity re-run is a red, not a hang.
+ */
+const mountFor = async (t, element) => {
+	const view = await mount(element);
+	t.after(() => view.unmount());
+	return view;
+};
+
 /* --------------------------------------------------------------- the door ---- */
 
 test("a mount over a queue with nothing to show closes itself, unless a door opened it", async () => {
@@ -187,9 +203,10 @@ test("a mount over a queue with nothing to show closes itself, unless a door ope
  * queue is about to arrive. It must also not TRAP: the chrome renders over it, and
  * the frame's absence is what the body states.
  */
-test("an unresolved frame neither closes the drawer nor draws nothing", async () => {
+test("an unresolved frame neither closes the drawer nor draws nothing", async (t) => {
 	const calls = [];
-	const view = await mount(
+	const view = await mountFor(
+		t,
 		h(AskDrawer, {
 			frontend: null,
 			scope: "session",
@@ -218,7 +235,6 @@ test("an unresolved frame neither closes the drawer nor draws nothing", async ()
 		"This conversation",
 		"the scope line drops its clause while unresolved, rather than dangling a separator",
 	);
-	await view.unmount();
 });
 
 /*
@@ -229,8 +245,9 @@ test("an unresolved frame neither closes the drawer nor draws nothing", async ()
  * visible: the bar states the capability it lacks, the body says what that means, and the
  * word `Reading` is not on the surface at all.
  */
-test("a runtime that publishes no engine gets its own state, not the in-flight copy", async () => {
-	const view = await mount(
+test("a runtime that publishes no engine gets its own state, not the in-flight copy", async (t) => {
+	const view = await mountFor(
+		t,
 		h(AskDrawer, {
 			frontend: { asks: null, asks_open: null },
 			scope: "session",
@@ -246,14 +263,13 @@ test("a runtime that publishes no engine gets its own state, not the in-flight c
 		"the bar must state the capability this runtime lacks",
 	);
 	assert.ok(
-		view.container.textContent.includes("doesn't publish queued asks"),
+		view.container.textContent.includes("doesn't support queued asks"),
 		"and the body must say what that means, rather than promising a read",
 	);
 	assert.ok(
 		!view.container.textContent.includes("Reading the asks"),
 		"a progress claim that can never complete is not this frame's to wear",
 	);
-	await view.unmount();
 });
 
 /*
@@ -264,9 +280,10 @@ test("a runtime that publishes no engine gets its own state, not the in-flight c
  * auto-close must not fire - closing over it releases the slot and leaves every one of
  * those asks unreachable, which is the reported defect with the sign flipped.
  */
-test("a mount over dropped rows with a live tally keeps the drawer and states the count", async () => {
+test("a mount over dropped rows with a live tally keeps the drawer and states the count", async (t) => {
 	const calls = [];
-	const view = await mount(
+	const view = await mountFor(
+		t,
 		h(AskDrawer, {
 			frontend: { asks: null, asks_open: 4, asks_truncated: true },
 			scope: "session",
@@ -287,10 +304,67 @@ test("a mount over dropped rows with a live tally keeps the drawer and states th
 		"the panel denied a count its own bar states",
 	);
 	assert.ok(
-		view.container.textContent.includes("carries the count, not the rows"),
-		"the panel must say which half of the frame it has, not that the queue is empty",
+		!view.container.textContent.includes("carries the count, not the rows"),
+		"the panel must not repeat the bar's count in wire vocabulary (D2-1, U2-2)",
 	);
-	await view.unmount();
+	assert.ok(
+		view.container.textContent.includes(
+			"details for these asks could not be loaded",
+		),
+		"the panel must say which half of the frame is missing, in the user's words",
+	);
+});
+
+/*
+ * THE ZERO-ROW PANE'S LANDING (UX round 2, U2-1). R3/Q1 gave a live-but-EMPTY queue a
+ * door, and the pane that door opens has NO rows and no focusable control except the
+ * bar's dismiss - so the entry move's landing chain used to stop at the bare `panel`
+ * term, whose root is a plain `<div>` with no `tabIndex`. `focus()` on it is inert, the
+ * `?? root` term below it was dead code, and focus stayed on the HEADER DOOR - which the
+ * lane's Escape claim does NOT include - so Escape did nothing on a fully mounted pane.
+ *
+ * THE ASSERTIONS ARE THE CLAIM: with the door under focus, the mount must put the
+ * keyboard INSIDE the surface (that is what makes Escape the lane's own), and an Escape
+ * from there must close. The mount is door-opened, so the auto-close stands down and the
+ * pane is genuinely on screen to be escaped from - which is the state the round-1 tests
+ * could not reach, since the door was not offered on a zero-row queue then.
+ */
+test("a door-opened pane with no rows lands focus inside the surface, where Escape closes (U2-1)", async (t) => {
+	const calls = [];
+	const door = document.createElement("button");
+	door.setAttribute("data-tour-tag", "ask-pane-trigger");
+	document.body.appendChild(door);
+	door.focus();
+	const view = await mountFor(
+		t,
+		h(AskDrawer, {
+			frontend: frontend([]),
+			scope: "session",
+			onClose: () => calls.push(true),
+		}),
+	);
+	const surface = view.container.querySelector("[data-lo-ask-surfaces]");
+	assert.ok(surface !== null, "the pane is mounted over the empty queue");
+	assert.ok(
+		surface.contains(document.activeElement),
+		"the entry move left the keyboard outside the pane, where the lane's Escape claim does not reach",
+	);
+	assert.equal(
+		document.activeElement,
+		surface,
+		"and it landed on the surface itself, the stop the chain's last resort names",
+	);
+	await act(async () => {
+		document.activeElement.dispatchEvent(
+			new window.KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+		);
+	});
+	assert.deepEqual(
+		calls,
+		[true],
+		"Escape from the landing must close the pane",
+	);
+	door.remove();
 });
 
 /*
@@ -300,12 +374,13 @@ test("a mount over dropped rows with a live tally keeps the drawer and states th
  * the frame is unread moves NOTHING, and the one-shot resolves on the commit that carries
  * the rows, once.
  */
-test("the entry move waits for the frame and moves focus once it lands (R4)", async () => {
+test("the entry move waits for the frame and moves focus once it lands (R4)", async (t) => {
 	const door = document.createElement("button");
 	door.setAttribute("data-tour-tag", "ask-pane-trigger");
 	document.body.appendChild(door);
 	door.focus();
-	const view = await mount(
+	const view = await mountFor(
+		t,
 		h(AskDrawer, { frontend: null, scope: "session", onClose: () => {} }),
 	);
 	const surface = view.container.querySelector("[data-lo-ask-surfaces]");
@@ -349,7 +424,6 @@ test("the close door fires ONCE per emptying", async () => {
 	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
 	await view.rerender(h(AskDrawer, { frontend: frontend([]), ...props }));
 	assert.deepEqual(calls, [true], "the transition fires once, not per render");
-	await view.unmount();
 });
 
 /* ---------------------------------------------------------- the authority ---- */
