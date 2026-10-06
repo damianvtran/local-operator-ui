@@ -8344,7 +8344,11 @@ async function sceneRowSpace(cdp) {
 		};
 	})()`);
 	if (band === null) {
-		check("the row the straddling press is aimed at is on screen", false, "no row box");
+		check(
+			"the row the straddling press is aimed at is on screen",
+			false,
+			"no row box",
+		);
 	} else {
 		await movePointer(cdp, band.x, band.y);
 		await cdp.send("Input.dispatchMouseEvent", {

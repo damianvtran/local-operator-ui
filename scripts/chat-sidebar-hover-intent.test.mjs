@@ -145,7 +145,9 @@ test("all four per-row acts reveal on the dwell, and none on a bare hover", () =
 		[
 			"pair wrapper",
 			"data-session-control-pair",
-			['"hidden group-data-[session-hover-intent]:flex group-has-[:focus-visible]:flex"'],
+			[
+				'"hidden group-data-[session-hover-intent]:flex group-has-[:focus-visible]:flex"',
+			],
 			1500,
 		],
 		["archive", "data-session-archive", [DWELL, FOCUS]],
