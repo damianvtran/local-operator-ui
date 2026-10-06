@@ -59,15 +59,26 @@ LOCAL_OPERATOR_CONFIG_DIR=<scratch>/config2 LOCAL_OPERATOR_DESKTOP_TOKEN=<token>
   LOCAL_OPERATOR_NO_NOTIFICATIONS=1 LOCAL_OPERATOR_NO_TERMINAL_TITLE=1 \
   lop serve --host 127.0.0.1 --port 46200 &
 
-# 2. the app built for that daemon, then booted headless and driven over CDP.
-#    The draft is seeded into the app's OWN persisted store key
-#    (`canonical-sessions-storage`) with the stale verdict, then the page reloads
-#    so the store hydrates it the way a returning user's would.
+# 2. the app built for that daemon, then booted headless (`--user-data-dir` +
+#    `--remote-debugging-port`; the window is created at size and never shown)
+#    and driven over CDP. The draft is seeded into the app's OWN persisted store
+#    key (`canonical-sessions-storage`) with the stale verdict, then the page
+#    reloads so the store hydrates it the way a returning user's would. The frame
+#    is the app's own compositor output, `Page.captureScreenshot` over CDP.
 VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:46200 VITE_GOOGLE_CLIENT_ID=<inert> \
   VITE_GOOGLE_CLIENT_SECRET=<inert> VITE_MICROSOFT_CLIENT_ID=<inert> \
   VITE_MICROSOFT_TENANT_ID=<inert> pnpm build:npm
-node rig.mjs --label before|after --mode phantom|genuine|claimheld|plain ...
 ```
+
+The CDP driver that seeded the store, reloaded the page and fired the shutter —
+the invocation this block's step 2 describes — lived in the session that took the
+frames and is **not committed**: this set directory holds `README.md` and
+`frames/` only, so step 2 is what was run, not a command that re-runs from the
+tree as it stands. Step 1 is real: `scripts/seed-paging-session.mjs` is committed
+and is what built the 260-row conversation the frames show. Recorded follow-up:
+archive the driver under `docs/evidence/held-claim-reach/rig/`, or fold it into
+the committed driver family beside `scripts/paging-evidence-arms.mjs`, and say
+here which one it is.
 
 The verdict is seeded rather than produced by a live send because the app has no
 way to make a delivered message look older than a tail page on demand; what the
@@ -75,8 +86,14 @@ frames photograph is the app's own rendering of a store state the app itself
 writes. The staging is the issue's own shape: the verdict names a message older
 than the loaded tail window, so the pre-fix code paints it at the tail.
 
-`frames/*.png` are WebP-free on purpose: `check-evidence.mjs`'s frame walker
-counts `.webp` only, so a hand-driven set cannot be mistaken for a sweep.
+These frames are `.png` whose stems name no theme, and THAT is what keeps them
+out of theme judging: a frame is judged by its NAME
+(`check-evidence.mjs`'s `name.endsWith(".webp") || palettes.has(frameStem(name))`),
+not by its container. They are not invisible to the sweep — `.png` is in
+`FRAME_CONTAINERS`, so the walker both walks and counts them — and that is exactly
+why this set is declared in the manifest (`supplementary`) and why
+`unjudgedFrames.insideDeclaredSets` moved 422 → 428 for its six frames. Judged by
+name, accounted for by the walk.
 
 ## Bundles the frames come from
 
