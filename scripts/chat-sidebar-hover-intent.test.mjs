@@ -124,16 +124,24 @@ const ownRegion = (marker, span = Number.POSITIVE_INFINITY) => {
 };
 
 /*
- * THE WINDOWS ARE READ AS CODE (`codeOf`), not as raw source: the pair wrapper is
- * the file's LAST act, so its window runs on into the rest of the panel, and the
- * prose in these blocks names the very selectors the negative checks below forbid
- * - the gate's own note explains what `group-focus-within` cost, in words. Reading
- * the code is what makes "this control has no such term" a statement about the
- * control rather than about the comments beside it. The pair's window is capped
- * because it has no successor marker to stop at, and the drafts row further down
- * the file legitimately reveals its own control on `group-hover`.
+ * ONE ACT'S OWN SOURCE, BOUNDED BY THE NEXT ACT'S MARKER - AND THE CAP IS FOR THE
+ * LAST ACT ALONE (agent review round 2's MAJOR). A fixed 1500-character cap looks
+ * harmless and is not: the archive's class list sits 7,402 characters past its own
+ * marker and the pin's 6,099, both behind long comment blocks, so a cap that
+ * comfortably reached the grip (525) and the pair wrapper (439) stopped thousands
+ * of characters SHORT of the two acts whose shared substring the previous round
+ * was itself raised about - a bare-hover term reintroduced on either of them was
+ * invisible to the negative checks below. The pair wrapper is the file's last act,
+ * so it has no successor marker to stop at and keeps a cap: wide enough to cover
+ * its class expression, short enough to stop before the drafts row's unrelated
+ * reveal further down. Windows are read as CODE (`codeOf`), because the prose in
+ * these blocks names the very selectors the negative checks forbid.
  */
-const ownCode = (marker, span) => codeOf(ownRegion(marker, span));
+const PAIR_SPAN = 1500;
+const spanFor = (marker) =>
+	marker === "data-session-control-pair" ? PAIR_SPAN : undefined;
+
+const ownCode = (marker) => codeOf(ownRegion(marker, spanFor(marker)));
 
 const DWELL =
 	'"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted"';
@@ -148,7 +156,6 @@ test("all four per-row acts reveal on the dwell, and none on a bare hover", () =
 			[
 				'"hidden group-data-[session-hover-intent]:flex group-has-[:focus-visible]:flex"',
 			],
-			1500,
 		],
 		["archive", "data-session-archive", [DWELL, FOCUS]],
 		[
@@ -160,8 +167,8 @@ test("all four per-row acts reveal on the dwell, and none on a bare hover", () =
 		],
 		["grip", "data-session-pin-grip", [DWELL]],
 	];
-	for (const [name, marker, classes, span] of expects) {
-		const own = ownCode(marker, span);
+	for (const [name, marker, classes] of expects) {
+		const own = ownCode(marker);
 		for (const cls of classes) {
 			assert.ok(
 				own.includes(cls),
@@ -177,7 +184,7 @@ test("all four per-row acts reveal on the dwell, and none on a bare hover", () =
 	 */
 	for (const { name, marker } of CONTROLS) {
 		assert.equal(
-			/group-hover:/.test(ownCode(marker, 1500)),
+			/group-hover:/.test(ownCode(marker)),
 			false,
 			`the ${name} does not also carry the immediate hover reveal`,
 		);
@@ -234,13 +241,13 @@ test("the keyboard's door is focus-visible: immediate for a Tab, closed to a pre
 		"data-session-pin",
 	]) {
 		assert.equal(
-			/group-focus-within/.test(ownCode(marker, 1500)),
+			/group-focus-within/.test(ownCode(marker)),
 			false,
 			`${marker} does not reveal on focus at all - only on a keyboard focus`,
 		);
 	}
 	assert.ok(
-		ownCode("data-session-control-pair", 1500).includes(
+		ownCode("data-session-control-pair").includes(
 			"group-has-[:focus-visible]:flex",
 		),
 		"the pair wrapper keeps an immediate door for the keyboard",

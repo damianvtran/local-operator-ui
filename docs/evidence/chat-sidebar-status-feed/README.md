@@ -431,10 +431,21 @@ provenance decision rather than an omission.** The baseline is defined as
 unmodified `origin/main`'s rendering; main still draws `Share2`, so re-taking it at
 this head would make the set describe a tree other than the one it names. The
 resting, selected and archived cells carry no running mark - they were checked
-against the re-taken pair and left. What that leaves for the pair is stated rather
-than implied: the re-taken halves differ by the indicator (their purpose), by the
-mark's SHAPE (#840), and by the palette door main's #855 adds to the window's
-header, which no cell in either half was taken with.
+against the re-taken pair and left.
+
+**WHAT THE RE-TAKEN PAIR IS, AND IS NOT (design round 2's D-r2-1).** It is an
+INDICATIVE picture of the mark as the head draws it, not a controlled before/after
+- the two halves are two different trees, so a reader should not read every
+differing pixel as this change. The after half additionally carries main's own
+sidebar-header door (a fourth icon, `data-sidebar-open-agent`, from the
+agent-roster commit `fe2de1f2098`) and the 18px leading-cell shift #843 made to
+every row, both of which the baseline (taken at `07316450`) predates. The mark is
+what the re-capture was for; the rest is the tree moving under it, and this note is
+here so the next reader does not have to difference the frames to find out.
+
+What that leaves for the pair is stated rather than implied: the re-taken halves
+differ by the indicator (their purpose), by the mark's SHAPE (#840), and by the
+header and leading-cell differences named above.
 
 **The two widths are the point, not a courtesy.** One mark costs the title
 **22px**, measured box-to-box in the frames (14px glyph + the row's own 4px
