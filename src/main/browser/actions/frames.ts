@@ -145,6 +145,15 @@ export function assertFrameNotDenied(
 	);
 }
 
+/** The refusal `assertFrameNotDenied` raises, told apart by its data. */
+export function isDeniedRefusal(error: unknown): boolean {
+	return (
+		error instanceof BrowserHostError &&
+		error.code === "origin_not_allowed" &&
+		(error.data as { reason?: unknown } | undefined)?.reason === "denied"
+	);
+}
+
 export function isDeniedFrame(
 	ctx: BrowserActionContext,
 	scope: Pick<FrameScope, "origin">,
@@ -277,8 +286,17 @@ export async function enterFrame(
 	];
 	const path = [...parent.path, frameSelectorFor(node.attributes)];
 
+	// THE DENY CHECK LIVES HERE, at the one place every route into a frame passes
+	// (hops, auto-search, snapshot, element descent), and runs the moment the
+	// frame's origin is first known - before ANY command on its document (QA
+	// round 2, Q-3). Checked by each caller instead, a `>>>` path queried the
+	// denied document first, so "matched nothing" vs "denied" revealed whether a
+	// selector existed there, and a path could step THROUGH a denied middle frame.
 	const inProcess = node.contentDocument?.backendNodeId;
 	if (inProcess !== undefined) {
+		assertFrameNotDenied(ctx, {
+			origin: originOf(node.contentDocument?.documentURL),
+		});
 		// Same process: the frame's document is a node of THIS session (measured:
 		// `contentDocument` present for a same-site, different-port frame, and an
 		// `insertText` from the page session lands in it).
@@ -314,7 +332,13 @@ export async function enterFrame(
 			"that frame has no document yet; retry once it has loaded",
 		);
 	}
+	// An out-of-process frame's origin is knowable only from its own session:
+	// the page session cannot describe the target (measured, Electron 44:
+	// `Target.getTargetInfo` -> "No target with given id found"), and the
+	// iframe's `src` is not where the document landed after redirects. So the
+	// attach and the document read come first, and nothing else does.
 	const rooted = await childRoot(ctx, contents, frameId);
+	assertFrameNotDenied(ctx, { origin: rooted.origin });
 	return {
 		sessionId: rooted.sessionId,
 		frameTargetId: frameId,
@@ -494,15 +518,15 @@ export async function listFrames(
 					scope = await enterFrame(ctx, contents, parent, iframe);
 				} catch (error) {
 					if (isFatalWalkError(error)) throw error;
+					if (isDeniedRefusal(error)) {
+						walk.denied += 1;
+						continue;
+					}
 					if (error instanceof BrowserHostError) {
 						walk.skipped += 1;
 						continue;
 					}
 					throw error;
-				}
-				if (isDeniedFrame(ctx, scope)) {
-					walk.denied += 1;
-					continue;
 				}
 				walk.frames.push(scope);
 				next.push(scope);

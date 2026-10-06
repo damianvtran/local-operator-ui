@@ -22,7 +22,6 @@ import {
 	MAX_FRAMES_SEARCHED,
 	MAX_FRAME_DEPTH,
 	enterFrame,
-	isDeniedFrame,
 	sendIn,
 	topScope,
 } from "./frames";
@@ -220,11 +219,10 @@ async function frameSnapshots(
 					);
 					const iframeNodeId = pushed?.nodeIds?.[0];
 					if (!iframeNodeId) continue;
+					// `enterFrame` refuses a frame from an origin the user DENIED before
+					// reading anything in it, so it contributes no line, ref or text and
+					// its subtree is not walked (review round 1 M1, QA round 2 Q-3).
 					const scope = await enterFrame(ctx, contents, parent, iframeNodeId);
-					// A frame from an origin the user DENIED contributes nothing: no
-					// line, no ref, no text (review round 1, M1). Its subtree is not
-					// walked either.
-					if (isDeniedFrame(ctx, scope)) continue;
 					const frameNodes = await frameTree(ctx, contents, scope);
 					const { snapshot: inner, refs: innerRefs } = compactAX(
 						frameNodes,

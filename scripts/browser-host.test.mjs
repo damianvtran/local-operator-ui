@@ -7923,6 +7923,248 @@ test("frames M1: a frame from an origin the user DENIED is refused on every path
 		);
 		assert.equal(inputs[0].value, "");
 	}
+	{
+		// m6: a ref the snapshot already tied to a denied origin is refused BEFORE
+		// anything is attached or scrolled.
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		const record = {
+			view: { webContents: contents },
+			refs: {
+				e9: {
+					backendNodeId: 21,
+					epoch: 1,
+					frameId: "F1",
+					frameOrigin: "https://pay.example",
+				},
+			},
+			epoch: 1,
+		};
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.type(
+					{
+						...frameCtx(pool, contents, denied),
+						registry: { requireSurface: () => record, touch: () => {} },
+					},
+					{ tab: "t", ref: "e9", text: "x" },
+				),
+			isDenied,
+		);
+		assert.deepEqual(
+			page.calls.map((c) => c.method),
+			[],
+			"no attach, no frame-owner lookup, no scroll before the refusal",
+		);
+	}
+	{
+		// The ref's frame navigated to a denied origin after the snapshot: the LIVE
+		// document's origin is what is checked, before any command in it.
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		const record = {
+			view: { webContents: contents },
+			refs: {
+				e9: {
+					backendNodeId: 21,
+					epoch: 1,
+					frameId: "F1",
+					frameOrigin: "https://was-fine.example",
+				},
+			},
+			epoch: 1,
+		};
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.type(
+					{
+						...frameCtx(pool, contents, denied),
+						registry: { requireSurface: () => record, touch: () => {} },
+					},
+					{ tab: "t", ref: "e9", text: "x" },
+				),
+			isDenied,
+		);
+		assert.deepEqual(
+			page.calls.filter((c) => c.sessionId).map((c) => c.method),
+			["Emulation.setFocusEmulationEnabled", "DOM.getDocument"],
+			"only the attach's own setup and the document read that names the origin",
+		);
+	}
+	{
+		// m5: a ref into a SAME-PROCESS frame (frameOrigin, no frameId) whose origin
+		// is denied is refused before the page session scrolls or resolves it.
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		const record = {
+			view: { webContents: contents },
+			refs: {
+				e9: { backendNodeId: 11, epoch: 1, frameOrigin: "https://pay.example" },
+			},
+			epoch: 1,
+		};
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.type(
+					{
+						...frameCtx(pool, contents, denied),
+						registry: { requireSurface: () => record, touch: () => {} },
+					},
+					{ tab: "t", ref: "e9", text: "x" },
+				),
+			isDenied,
+		);
+		assert.equal(
+			page.calls.some((c) =>
+				[
+					"DOM.scrollIntoViewIfNeeded",
+					"DOM.resolveNode",
+					"Runtime.callFunctionOn",
+				].includes(c.method),
+			),
+			false,
+		);
+	}
+});
+
+test("frames Q-3: nothing is queried or scrolled inside a denied frame, and a hit and a miss refuse identically", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const denied = ["https://pay.example"];
+	const frameDomCalls = (page) =>
+		page.calls
+			.filter(
+				(c) =>
+					c.sessionId &&
+					c.method.startsWith("DOM.") &&
+					c.method !== "DOM.getDocument",
+			)
+			.map((c) => c.method);
+
+	// Final-hop match vs final-hop miss in a denied out-of-process frame.
+	const outcomes = [];
+	for (const selector of [
+		"iframe#card >>> #number",
+		"iframe#card >>> #nothing-here",
+	]) {
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		const error = await FRAMES_ACTIONS.type(frameCtx(pool, contents, denied), {
+			tab: "t",
+			selector,
+			text: "x",
+		}).then(
+			() => null,
+			(caught) => caught,
+		);
+		assert.ok(error, `${selector} must be refused`);
+		outcomes.push({
+			code: error.code,
+			message: error.message,
+			data: error.data,
+		});
+		assert.deepEqual(
+			frameDomCalls(page),
+			[],
+			`no DOM command in the denied frame for ${selector}`,
+		);
+		assert.equal(
+			page.calls.some(
+				(c) => c.method === "Runtime.callFunctionOn" && c.sessionId,
+			),
+			false,
+		);
+	}
+	assert.deepEqual(
+		outcomes[0],
+		outcomes[1],
+		"a hit and a miss are indistinguishable",
+	);
+	assert.equal(outcomes[0].code, "origin_not_allowed");
+	assert.equal(outcomes[0].data.reason, "denied");
+
+	// A denied MIDDLE frame: the path may not step through it to an allowed child.
+	const page = new FramePage();
+	page.addDoc("", 1, [
+		[
+			12,
+			{
+				selectors: ["iframe#mid"],
+				attributes: ["id", "mid"],
+				frame: { oopif: "M" },
+				element: new FakeFrameElement(),
+			},
+		],
+	]);
+	page.addDoc("M", 40, [
+		[
+			41,
+			{
+				selectors: ["iframe#inner"],
+				attributes: ["id", "inner"],
+				frame: { oopif: "I" },
+				element: new FakeFrameElement(),
+			},
+		],
+	]);
+	page.docs.get("M").url = "https://pay.example/mid";
+	const inner = frameInput(page, "S2", 51, "number");
+	page.addDoc("I", 50, [
+		[51, { selectors: ["#number"], element: inner }],
+		[50, { documentElement: frameDocument([inner]) }],
+	]);
+	page.docs.get("I").url = "https://open.example/inner";
+	const { pool, contents } = await framePool(page);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(pool, contents, denied), {
+				tab: "t",
+				selector: "iframe#mid >>> iframe#inner >>> #number",
+				text: "x",
+			}),
+		(error) =>
+			error.code === "origin_not_allowed" && error.data.reason === "denied",
+	);
+	assert.deepEqual(
+		frameDomCalls(page),
+		[],
+		"the denied middle frame was not queried or scrolled",
+	);
+	assert.equal(page.attachCount, 1, "the grandchild was never attached");
+	assert.equal(inner.value, "");
+
+	// Same-process denied frame: refused from the iframe's own description, before
+	// its document is even pushed to the page session.
+	const same = new FramePage();
+	same.addDoc("", 1, [
+		[
+			12,
+			{
+				selectors: ["iframe#ss"],
+				attributes: ["id", "ss"],
+				frame: { inProcess: 60, frameId: "SS", url: "https://pay.example/ss" },
+				element: new FakeFrameElement(),
+			},
+		],
+	]);
+	same.addDoc("/ss", 60, [
+		[61, { selectors: ["#postcode"], element: new FakeInputElement() }],
+	]);
+	const sp = await framePool(same);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(sp.pool, sp.contents, denied), {
+				tab: "t",
+				selector: "iframe#ss >>> #postcode",
+				text: "x",
+			}),
+		(error) =>
+			error.code === "origin_not_allowed" && error.data.reason === "denied",
+	);
+	assert.deepEqual(
+		same.calls.map((c) => c.method).filter((m) => m !== "DOM.getDocument"),
+		["DOM.querySelector", "DOM.describeNode"],
+		"only the page-side lookup of the iframe element itself",
+	);
 });
 
 test("frames m1: `>>>` inside quotes or brackets is part of the selector, not a hop", async () => {
