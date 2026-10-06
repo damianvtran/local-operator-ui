@@ -668,15 +668,21 @@ test("the hub page scopes its read and renders the org states", () => {
 		/const orgRefusal = activeOrg \? orgRefusalFromError\(error\) : null/,
 	);
 	assert.match(page, /!isColdLoading && error && !orgRefusal/);
-	// The roster is the org scope's Teams view, mounted ONCE and only there; the
-	// public scope renders the explanation instead of a list.
+	// The Teams view is mounted ONCE and serves BOTH scopes: the organization's
+	// roster inside an org, the public catalogue outside one. The explanatory
+	// notice the public scope used to render is gone with the premise it stated.
 	assert.equal(
 		page.split("<OrgTeamsList").length - 1,
 		1,
 		"one mount of the roster",
 	);
+	assert.equal(
+		page.split("<PublicTeamsLibrary").length - 1,
+		1,
+		"one mount of the public catalogue",
+	);
 	assert.match(page, /view === "teams" &&\s*\(activeOrg \?/);
-	assert.match(page, /<PublicTeamsNotice/);
+	assert.doesNotMatch(page, /PublicTeamsNotice/);
 });
 
 test("the publish dialog offers the org target and disables a plan-blocked one", () => {
@@ -1549,13 +1555,15 @@ test("the org capability notice is a warning, like its four siblings", () => {
 });
 
 /*
- * The Teams read is composed, not multiplied: ONE `org_teams.list` per org-scope
+ * The TWO teams reads are separate questions with separate keys, and each is
+ * issued by exactly the scope that can answer it: `org_teams.list` per org-scope
  * entry (the page's count observer and the roster's observer share a key), and
- * NONE in the public scope, where there is no team read to make (§11 O-7).
- * Source-anchored for the wiring; the request counts are measured off a rendered
- * page by `scripts/hub-round-trips.mjs`.
+ * the hub's anonymous public listing for the public catalogue (§11 O-7's premise
+ * recorded the opposite, which is what this change fixes). Source-anchored for
+ * the wiring; the request counts are measured off a rendered page by
+ * `scripts/hub-round-trips.mjs`.
  */
-test("the teams read is keyed on the org scope and absent in the public scope", () => {
+test("each scope reads its own team list, and neither reads the other's", () => {
 	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
 	assert.match(page, /useOrgTeamsQuery\(\{ tenantId: orgScopeId \}\)/);
 	assert.equal(page.split("useOrgTeamsQuery(").length - 1, 1);
@@ -1563,13 +1571,19 @@ test("the teams read is keyed on the org scope and absent in the public scope", 
 		"src/renderer/src/features/agent-hub/hooks/use-org-teams-query.ts",
 	);
 	assert.match(hook, /enabled: enabled && !!tenantId/);
-	// Teams are never presented as public: the public explanation is the only
-	// thing the public Teams view renders.
-	const notice = read(
-		"src/renderer/src/features/agent-hub/components/public-teams-notice.tsx",
+	// The public catalogue is a DIFFERENT read: the org route names a tenant and
+	// there is none outside an organization, so the library mounts the public
+	// hook, which asks the hub directly and anonymously.
+	const library = read(
+		"src/renderer/src/features/agent-hub/components/public-teams-library.tsx",
 	);
-	assert.match(notice, /Teams are shared inside organizations/);
-	assert.doesNotMatch(notice, /useOrgTeamsQuery|listOrgTeams/);
+	assert.match(library, /usePublicTeamsQuery\(/);
+	assert.doesNotMatch(library, /useOrgTeamsQuery|listOrgTeams/);
+	const publicHook = read(
+		"src/renderer/src/features/agent-hub/hooks/use-public-teams-query.ts",
+	);
+	assert.match(publicHook, /listPublicTeams\(/);
+	assert.match(publicHook, /getPublicTeam\(/);
 });
 
 test("the status sentence names the scope, and the pager keeps its labels", () => {
@@ -1596,62 +1610,55 @@ test("the author line drops the email fallback", () => {
 });
 
 /*
- * The public Teams view's reasons, and the honesty rule between them (agent
- * review round 1, M1 and m3). `loading` exists because "we do not know yet" fell
- * through to `none` and told a signed-in viewer, as a fact about their account,
- * that they belong to no Team-plan organization while the memberships read had
- * not even started (it is disabled until the capability answer arrives).
+ * THE PREMISE THIS CHANGE REMOVES, pinned so it cannot come back (2026-10-05).
+ *
+ * The public Teams view used to be a notice reading "The public hub lists agents
+ * only" in six states, mounted wherever the scope was public. The hub does serve
+ * a public team listing, the view now reads it, and no surface may say otherwise.
  */
-test("every public-Teams reason has a sentence, and a pending read is not 'none'", () => {
-	const notice = read(
-		"src/renderer/src/features/agent-hub/components/public-teams-notice.tsx",
+test("no surface still says the public hub lists agents only", async () => {
+	const { readdirSync } = await import("node:fs");
+	const feature = "src/renderer/src/features/agent-hub";
+	const walk = (dir) =>
+		readdirSync(dir, { withFileTypes: true }).flatMap((entry) =>
+			entry.isDirectory()
+				? walk(`${dir}/${entry.name}`)
+				: [`${dir}/${entry.name}`],
+		);
+	const files = walk(feature).filter((path) => /\.(ts|tsx)$/.test(path));
+	assert.equal(
+		files.length > 20,
+		true,
+		`the walk reached the feature (${files.length} files)`,
 	);
-	for (const reason of [
-		"loading",
-		"orgs",
-		"signed-out",
-		"unavailable",
-		"unreadable",
-		"none",
-	]) {
-		assert.match(
-			notice,
-			new RegExp(`(^|\\n)\\t(\\"${reason}\\"|${reason}):`),
-			`${reason} has a sentence`,
+	/*
+	 * The EXACT sentence the notice rendered, capital T: prose may quote the
+	 * removed copy in lower case (this file does, and so do the library's and the
+	 * stories' own comments), but no surface may RENDER it again.
+	 */
+	for (const path of files) {
+		assert.doesNotMatch(
+			read(path),
+			/The public hub lists agents only/,
+			`${path} still carries the org-only framing`,
 		);
 	}
-	const page = read("src/renderer/src/features/agent-hub/agent-hub-page.tsx");
-	assert.match(
-		page,
-		/orgState === "unknown" \|\| membershipsPending\s*\?\s*"loading"\s*:\s*"none"/,
-		"none is reached only after a settled read",
-	);
-	// The reasons are exercised by stories, one frame each.
-	const stories = read(
-		"src/renderer/src/features/agent-hub/agent-hub.stories.tsx",
-	);
-	for (const story of [
-		"TeamsPublicScope",
-		"TeamsSignedOut",
-		"TeamsPublicLoading",
-		"TeamsPublicNone",
-		"TeamsPublicUnavailable",
-		"TeamsPublicUnreadable",
-	]) {
-		assert.match(stories, new RegExp(`export const ${story}\\b`));
-	}
+	const page = read(`${feature}/agent-hub-page.tsx`);
+	assert.match(page, /<PublicTeamsLibrary/);
+	assert.doesNotMatch(page, /PublicTeamsNotice/);
+	// The library STATES what the catalogue is and that pulling is the act this
+	// surface owns, which is the copy the notice's premise had replaced.
+	const library = read(`${feature}/components/public-teams-library.tsx`);
+	assert.match(library, /Public teams are published to the hub/);
+	assert.match(library, /agent-hub-public-teams-search/);
 });
 
-test("the pager and the notice hand focus to a surviving control", () => {
+test("the pager and the roster hand focus to a surviving control", () => {
 	const pager = read(
 		"src/renderer/src/features/agent-hub/components/hub-pager.tsx",
 	);
 	assert.match(pager, /handOffRef\.current = "previous"/);
 	assert.match(pager, /handOffRef\.current = "next"/);
-	const notice = read(
-		"src/renderer/src/features/agent-hub/components/public-teams-notice.tsx",
-	);
-	assert.match(notice, /retryPressedRef/);
 	const roster = read(
 		"src/renderer/src/features/agent-hub/components/org-teams-list.tsx",
 	);
