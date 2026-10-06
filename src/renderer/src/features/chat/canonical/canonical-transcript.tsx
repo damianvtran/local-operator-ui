@@ -484,6 +484,21 @@ export type CanonicalTranscriptProps = {
 	 */
 	hydrationProven?: boolean;
 	/**
+	 * Whether a history read is OUT for this session — the session view's
+	 * `historyReadPending` (`use-canonical-session`), true while a
+	 * `reconcileTail` walk is in flight.
+	 *
+	 * What it does: the `unproven` end's "Try again" is a control whose press
+	 * must be answerable, so while the read it fired is out the slot paints the
+	 * pending row instead of repainting the identical "not loaded" row
+	 * (UX round 1, U1; the session hook also refuses to stack a second walk
+	 * while one is out). Optional, defaulting false — the conservative
+	 * direction: a caller that omits it paints no pending state, which is a
+	 * missed acknowledgement rather than a claim nobody made. The chat pane,
+	 * the one caller with a walk to track, passes the view's own fact.
+	 */
+	historyReadPending?: boolean;
+	/**
 	 * True while the rows below came from the local paint cache rather than from
 	 * the owner (M2).
 	 *
@@ -2495,6 +2510,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 	failure,
 	awaitingHydration,
 	hydrationProven = true,
+	historyReadPending = false,
 	stale = false,
 	missing = false,
 	attachmentScope,
@@ -3350,6 +3366,7 @@ export const CanonicalTranscript: FC<CanonicalTranscriptProps> = ({
 		 * call site passes the value itself.
 		 */
 		hydrationProven,
+		historyReadPending,
 		onWiden: widen,
 		paintedRows: readPaintedRows,
 		onLoadOlder,

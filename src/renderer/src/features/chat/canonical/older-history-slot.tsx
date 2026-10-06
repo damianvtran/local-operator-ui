@@ -364,7 +364,14 @@ export const OlderHistorySlot: FC<OlderHistorySlotProps> = ({
 						className="min-w-0 truncate text-ink-dim text-meta"
 						title="Earlier history not loaded"
 					>
-						<span className={SHORT_COPY}>Not loaded yet</span>
+						{/* The short spelling keeps its SUBJECT (design review round 1, D3):
+						    four characters away the transport-down fault line renders "Not
+						    loaded", and the two rows' remedies differ — wait for the connection
+						    versus press the retry — so the dim pair must not read as one
+						    sentence. "Earlier not loaded" is 18 characters and fits the
+						    252px box with room to spare (measured in the narrow renders beside
+						    the arm's own spelling). */}
+						<span className={SHORT_COPY}>Earlier not loaded</span>
 						<span className={FULL_COPY}>Earlier history not loaded</span>
 					</span>
 					{!transportDown && onRetryHydration && (

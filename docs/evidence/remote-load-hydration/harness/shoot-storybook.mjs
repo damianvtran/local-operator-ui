@@ -44,20 +44,50 @@ mkdirSync(OUT, { recursive: true });
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 
 /**
- * The two surfaces, at the rows' own viewports. `in-transcript-unproven` is
+ * The four surfaces, at the rows' own viewports. `in-transcript-unproven` is
  * the honest-copy change (the retry-able "not loaded" arm over real rows,
- * never "Start of conversation"); `every-state` is the board where the fixed
- * height is falsifiable — six arms between two rules after the `unproven` arm
- * joined it.
+ * never "Start of conversation"), shot in BOTH palettes - the light frame is
+ * the one the round-1 design/UX reviews asked for (U4); `every-state` is the
+ * board where the fixed height is falsifiable - six arms between two rules
+ * after the `unproven` arm joined it; and `app-minimum-width` is the 252px
+ * board the narrow-width finding asked to carry with the PR (D2) - the
+ * measure the diff extends, where the short spellings render.
  *
  * The theme is named the way the repo's other rigs name it (`args=theme:...`),
- * against the dark palette every frame in this set is taken in.
+ * per surface, because a round asked for the light palette on the arm.
  */
+const THEME_DARK = "localOperatorDark";
+const THEME_LIGHT = "localOperatorLight";
 const SURFACES = [
-	["chat-older-history-slot--in-transcript-unproven", 900, 520, "storybook-unproven-end"],
-	["chat-older-history-slot--every-state", 900, 520, "storybook-every-state"],
+	[
+		"chat-older-history-slot--in-transcript-unproven",
+		900,
+		520,
+		"storybook-unproven-end",
+		THEME_DARK,
+	],
+	[
+		"chat-older-history-slot--in-transcript-unproven",
+		900,
+		520,
+		"storybook-unproven-end-light",
+		THEME_LIGHT,
+	],
+	[
+		"chat-older-history-slot--every-state",
+		900,
+		520,
+		"storybook-every-state",
+		THEME_DARK,
+	],
+	[
+		"chat-older-history-slot--app-minimum-width",
+		900,
+		780,
+		"storybook-app-minimum-width",
+		THEME_DARK,
+	],
 ];
-const THEME = "localOperatorDark";
 
 /** Chrome's own line naming the debugging endpoint, hoisted (lint rule). */
 const DEBUG_PORT = /DevTools listening on (ws:\/\/[^\s]+)/;
@@ -98,13 +128,18 @@ const teardown = () => {
 		chrome = null;
 	}
 	try {
-		rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 10,
+			retryDelay: 100,
+		});
 	} catch {
 		/* a leavened profile under the session scratch is harmless */
 	}
 };
 
-const report = { origin: ORIGIN, theme: THEME, surfaces: [] };
+const report = { origin: ORIGIN, surfaces: [] };
 try {
 	chrome = spawn(
 		CHROME,
@@ -148,7 +183,7 @@ try {
 	await cdp.send("Page.enable");
 	await cdp.send("Runtime.enable");
 
-	for (const [story, width, height, name] of SURFACES) {
+	for (const [story, width, height, name, theme] of SURFACES) {
 		await cdp.send("Emulation.setDeviceMetricsOverride", {
 			width,
 			height,
@@ -158,7 +193,7 @@ try {
 		await cdp.send("Page.navigate", { url: "about:blank" });
 		await sleep(150);
 		await cdp.send("Page.navigate", {
-			url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${THEME}`,
+			url: `${ORIGIN}/iframe.html?id=${story}&viewMode=story&args=theme:${theme}`,
 		});
 		/*
 		 * READY IS THREE THINGS. Storybook's "preparing" wrapper can sit inside
@@ -205,6 +240,7 @@ try {
 			story,
 			width,
 			height,
+			theme,
 			file,
 			ready,
 			text: probe.result?.value?.text ?? "",

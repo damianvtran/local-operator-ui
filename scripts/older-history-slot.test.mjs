@@ -136,7 +136,14 @@ const FAILED_QUIET = /Earlier messages did not load/;
 const START_OF_CONVERSATION = /Start of conversation/;
 /** The unproven end: the fact, in both spellings, and the action beside it. */
 const UNPROVEN_FULL = /Earlier history not loaded/;
-const UNPROVEN_SHORT = /Not loaded yet/;
+/*
+ * The short spelling KEEPS ITS SUBJECT (design review round 1, D3): the
+ * transport-down fault line renders "Not loaded" one row up, and the two rows'
+ * remedies differ - wait for the connection versus press the retry - so the
+ * dim pair must not read as one sentence at the narrow widths where this
+ * spelling is the visible one.
+ */
+const UNPROVEN_SHORT = /Earlier not loaded/;
 
 /** The slot on its own, in one state, with the transport the caller claims. */
 const slot = ({ state, transportDown = false, onRetryHydration }) =>

@@ -1797,6 +1797,15 @@ export const ChatContent: FC<ChatContentProps> = React.memo(
 										 */
 										hydrationProven={canonical.view.hydrated}
 										/*
+										 * And whether a read is OUT right now (remote-load-hydration, UX
+										 * round 1 U1): the retry arm's press must be acknowledged, so
+										 * while the walk it fired is in flight the slot paints the
+										 * pending row instead of repainting the identical "not loaded"
+										 * row — and the session hook refuses a second walk while one
+										 * is out, so a held press cannot stack reads either.
+										 */
+										historyReadPending={canonical.view.historyReadPending}
+										/*
 										 * And the retry that arm offers: the same history read the cold
 										 * open fires, re-asked on the session handle — deliberately
 										 * NOT the stream's `retry`, a heavier repair than this

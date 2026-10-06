@@ -45,7 +45,7 @@
     },
     {
       "op": "eval",
-      "js": "(() => { const t = document.body.innerText || \"\"; const q = (re) => re.test(t) ? \"yes\" : \"no\"; return { hash: location.hash, rows: document.querySelectorAll(\"[data-record-id]\").length, placeholder: q(/Loading conversation/), greeting: q(/What can I help you with today/), startCopy: q(/Start of conversation/), notLoaded: q(/Earlier history not loaded|Not loaded yet/), chip: (document.querySelector(\"[data-device-chip]\")?.innerText || \"\").replace(/\\s+/g, \" \").trim().slice(0, 60) }; })()"
+      "js": "(() => { const t = document.body.innerText || \"\"; const q = (re) => re.test(t) ? \"yes\" : \"no\"; return { hash: location.hash, rows: document.querySelectorAll(\"[data-record-id]\").length, placeholder: q(/Loading conversation/), greeting: q(/What can I help you with today/), startCopy: q(/Start of conversation/), notLoaded: q(/Earlier history not loaded|Earlier not loaded/), chip: (document.querySelector(\"[data-device-chip]\")?.innerText || \"\").replace(/\\s+/g, \" \").trim().slice(0, 60) }; })()"
     },
     {
       "op": "shot",
