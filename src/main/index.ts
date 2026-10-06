@@ -93,6 +93,7 @@ import {
 	watchQuickSend,
 } from "./local-config";
 import { type MiniView, createMiniView, miniViewUrlFor } from "./mini-view";
+import { paletteDoorChannel } from "./palette-door";
 import {
 	rememberPickedDirectory,
 	withRememberedDirectory,
@@ -3472,66 +3473,28 @@ app
 			mainWindow.webContents.on("before-input-event", (event, input) => {
 				const isCmdOrCtrl = input.control || input.meta;
 				/*
-				 * THE PALETTE BRANCH'S MODIFIER, READ PER PLATFORM (issue #850).
+				 * THE PALETTE'S DOOR (issues #659, #850): Cmd/Ctrl+P opens the palette on
+				 * EVERYTHING, Cmd/Ctrl+Shift+P opens it on COMMANDS. WHICH press means which
+				 * door — the per-platform modifier and the auto-repeat refusal included —
+				 * is `paletteDoorChannel` in `./palette-door`, kept PURE so that
+				 * `scripts/palette-main-door.test.mjs` can drive the whole matrix without
+				 * the focused, visible window this hook is gated on (QA round 1, Q-B1/Q-B2:
+				 * a `headless` lane cannot show a window, so the old branch could not be
+				 * exercised there at all).
 				 *
-				 * `input.control || input.meta` is this app's usual "Cmd or Ctrl" reading,
-				 * and it is wrong ON macOS for exactly one branch, because the palette's
-				 * own WALK binds Ctrl+P as its "previous row" step (`paletteStepIntent`,
-				 * issue #761): folding Control into Cmd meant a focused macOS window
-				 * swallowed that step before the renderer saw it, so the cap was bound,
-				 * reachable in a rig, and dead in the shipped app (design round 1, D1).
-				 *
-				 * So darwin answers Cmd alone here and lets Control pass through to the
-				 * renderer's step. Windows and Linux keep Ctrl as the modifier (Cmd is
-				 * meaningless there, and neither platform has a renderer gesture on Ctrl+P),
-				 * which is why this is a platform split rather than a straight deletion.
-				 *
-				 * SCOPE: the PALETTE branch only. The zoom and speech-to-text branches below
-				 * keep `isCmdOrCtrl`, because neither collides with a renderer gesture and
-				 * changing them would be a second, unrequested behaviour change.
+				 * What is left HERE is what is genuinely about the window. The hook lives in
+				 * main rather than the renderer because it fires wherever the WINDOW has
+				 * focus; what each press then DOES (open / close / switch) is the renderer's
+				 * decision (`paletteDoorOutcome`), and main only says which door was pressed.
 				 */
-				const paletteModifier =
-					process.platform === "darwin"
-						? input.meta
-						: input.control || input.meta;
-
-				/*
-				 * The conversation switcher and the command door (issues #659, #850):
-				 * Cmd/Ctrl + P opens the palette on EVERYTHING, Cmd/Ctrl + Shift + P opens
-				 * it on COMMANDS. Both are kept here rather than in the renderer because a
-				 * `before-input-event` hook works wherever the WINDOW has focus, and Cmd+P
-				 * is the palette's original chord — the one the app's own tour taught. What
-				 * each press DOES (open / close / switch) is the renderer's decision
-				 * (`paletteDoorOutcome`); main only says which door was pressed.
-				 *
-				 * SHIFT IS READ NOW (issue #850): before this the branch did not look at it,
-				 * so Cmd+Shift+P took Cmd+P's path and the commands door was unreachable —
-				 * the two chords arrived as one message and nothing downstream could tell
-				 * them apart.
-				 *
-				 * Cmd/Ctrl + K, the gesture the app now teaches, is deliberately NOT here:
-				 * a `before-input-event` hook fires before the renderer sees the key at all,
-				 * and two surfaces in the canvas already own Cmd+K (the code editor's AI
-				 * edit and the Markdown editor's link insert, which is what Cmd+K means in
-				 * every editor these users have met). The renderer answers that one, so the
-				 * editor that got there first keeps it — see
-				 * `src/renderer/src/features/command-palette/palette-shortcut.ts`. One
-				 * keystroke, one owner: binding both here would answer one press twice and
-				 * the palette would never open.
-				 */
+				const paletteChannel = paletteDoorChannel(process.platform, input);
 				if (
-					paletteModifier &&
-					input.key.toLowerCase() === "p" &&
-					input.type === "keyDown"
+					paletteChannel !== null &&
+					mainWindow?.isFocused() &&
+					mainWindow?.isVisible()
 				) {
-					if (mainWindow?.isFocused() && mainWindow?.isVisible()) {
-						event.preventDefault();
-						mainWindow.webContents.send(
-							input.shift
-								? "toggle-command-palette-commands"
-								: "toggle-command-palette",
-						);
-					}
+					event.preventDefault();
+					mainWindow.webContents.send(paletteChannel);
 				}
 
 				// Start speech to text: Cmd/Ctrl + Shift + S
