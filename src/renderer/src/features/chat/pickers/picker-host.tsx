@@ -681,10 +681,19 @@ export const PickerRow: FC<PickerRowProps> = memo(
 			className={cn(
 				"flex items-start gap-3 rounded-sm px-2 py-1.5",
 				isActive && "bg-sunken",
-				isHovered && !isActive && "bg-accent-wash",
+				/*
+				 * A REFUSED ROW IS NOT INVITED (review round 1, U2): the hover wash is
+				 * this picker's "you may click this" signal everywhere else, and a row
+				 * that keeps `cursor: not-allowed` while painting the same wash gives
+				 * the pointer two contradictory answers. The wash and its structural
+				 * half (the outline below) are gated on `!option.disabled` together -
+				 * half a hover mark is a defect of its own - while the cursor and the
+				 * reason stay.
+				 */
+				isHovered && !isActive && !option.disabled && "bg-accent-wash",
 				// The structural half of both marks; see the block comment above for
 				// why the wash alone is not enough in every theme.
-				(isPicked || (isHovered && !isActive)) &&
+				(isPicked || (isHovered && !isActive && !option.disabled)) &&
 					"outline-solid outline-1 -outline-offset-1 outline-control",
 				option.disabled && "text-ink-disabled",
 			)}
@@ -700,8 +709,18 @@ export const PickerRow: FC<PickerRowProps> = memo(
 						{option.label}
 					</span>
 					{option.current && (
+						/*
+						 * WARNING INK ON A REFUSED ROW (review round 1, D2): the accent check is
+						 * the mark that says "Enter picks this", and on a row the rule refuses
+						 * that reading is false - the mark stays (the row IS the current
+						 * identity) but wears the warning ink the header's own cue uses, so
+						 * accent green never sits on a row that cannot be picked.
+						 */
 						<Check
-							className="size-3.5 shrink-0 text-accent"
+							className={cn(
+								"size-3.5 shrink-0",
+								option.disabled ? "text-warning" : "text-accent",
+							)}
 							aria-label="Current"
 						/>
 					)}
@@ -722,7 +741,18 @@ export const PickerRow: FC<PickerRowProps> = memo(
 					 * `chat-session-status.tsx` had to have removed from the sidebar's rows.
 					 */
 					<span
-						className="truncate text-ink-muted text-meta"
+						className={cn(
+							"truncate text-meta",
+							/*
+							 * THE REASON STEPS DOWN ON A REFUSED ROW (review round 1, D5):
+							 * measured, the first draft made the explanation the loudest text on
+							 * the row (7.24:1) while the name it explains sat at 1.99:1 - the eye
+							 * landed on the reason instead of the profile. `ink-dim` quiets it
+							 * under the caption, which stays the panel's loudest rule text, and
+							 * the row reads as one quiet unit.
+							 */
+							option.disabled ? "text-ink-dim" : "text-ink-muted",
+						)}
 						title={option.description}
 					>
 						{option.description}

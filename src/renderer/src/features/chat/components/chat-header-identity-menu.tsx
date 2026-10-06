@@ -32,10 +32,15 @@
  *   ArrowUp/ArrowDown move the active row (wrapping, exactly as the modal pickers
  *   do) and never move focus, so filtering and steering happen in one breath:
  *   type `rev`, ArrowDown, Enter.
- * - Enter commits the ACTIVE row - with a fresh filter, the first row that
- *   matched. With a filter that matches nothing, Enter does NOTHING: a profile
- *   must exist to be switched to, there is no free-text path here, and the panel
- *   says so in words rather than accepting a name the owner would reject.
+ * - Enter commits the ACTIVE row - with a fresh filter, the first SETTABLE row
+ *   that matched, because the highlight is seeded onto the current or first
+ *   settable row (issue #861's constraint makes refused rows a permanent class
+ *   rather than a transient one; review round 1, D2/U1). With a filter that
+ *   matches nothing, Enter does NOTHING: a profile must exist to be switched
+ *   to, there is no free-text path here, and the panel says so in words rather
+ *   than accepting a name the owner would reject. On a refused row, Enter
+ *   ANSWERS instead of staying silent - the footer's live region says which row
+ *   cannot take the seat, so the key is never a no-op a user cannot read.
  * - Escape closes and Radix returns focus to the chip. Tab leaves the panel and
  *   dismisses it too (the field claims the key before Radix's focus scope can
  *   loop it back - see `onClose`). Neither leaves focus inside a closed
@@ -74,6 +79,7 @@ import {
 	type KeyboardEvent,
 	useCallback,
 	useEffect,
+	useId,
 	useMemo,
 	useRef,
 	useState,
@@ -88,6 +94,8 @@ import {
 	IDENTITY_MENU_MAX_HEIGHT_CLASS,
 	identityMenuBands,
 	identityMenuFooter,
+	identityMenuRefusalAnnouncement,
+	identityMenuSeedActive,
 	identityMenuShowsList,
 } from "./chat-header-identity-menu-model";
 
@@ -165,8 +173,28 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	const [active, setActive] = useState(0);
 	const [hovered, setHovered] = useState<number | null>(null);
 	const [overflowing, setOverflowing] = useState(false);
+	/*
+	 * WHAT ENTER ON A REFUSED ROW SAID, if anything (review round 1, D2/U1):
+	 * the confirm key must not be silent on the one row it cannot act on, so the
+	 * footer - already a polite live region - carries this sentence instead of
+	 * its count until the next keystroke or open. `null` is the normal state.
+	 */
+	const [announcement, setAnnouncement] = useState<string | null>(null);
 	const inputRef = useRef<HTMLInputElement>(null);
-	const scrollerRef = useRef<HTMLDivElement>(null);
+	/*
+	 * THE SCROLLER IS STATE, NOT A REF (review round 1, Q-1). The measure
+	 * effect below is its only reader, and what that effect needs is the NODE:
+	 * Radix mounts the portal content a commit after `open` flips, so a
+	 * `useRef` read inside a `[view]`-keyed effect can see null on the one run
+	 * that matters - measured on the 150-name roster, the effect ran with
+	 * `box: null` on the open commit and never again, because `view` stops
+	 * changing once the rows are in, and the footer silently never rendered
+	 * (scrollHeight 7334 against clientHeight 261). Mirroring the node into
+	 * state makes the effect run when the NODE appears, which is the event this
+	 * effect actually needs; the setter itself is the callback, so it is stable
+	 * and no detach/attach cycle is introduced.
+	 */
+	const [scroller, setScroller] = useState<HTMLDivElement | null>(null);
 
 	const showsList = identityMenuShowsList({
 		loading,
@@ -204,11 +232,25 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	 * the arrows had already walked to; the modal pickers place their highlight
 	 * from a rule for the same class of reason.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `query` is the trigger, the reset is the effect
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `query` is the trigger, the re-place is the effect - seeded off the CURRENT rows (review round 1, D2/U1), so a filter lands on a settable row when one survives it
 	useEffect(() => {
-		setActive(0);
+		setActive(identityMenuSeedActive(flat));
 		setHovered(null);
+		setAnnouncement(null);
 	}, [query]);
+
+	/*
+	 * ROWS ARRIVING RE-PLACE THE HIGHLIGHT (review round 1, D2/U1): a cold open
+	 * seeds over an EMPTY list - the entity query starts on the open itself - so
+	 * without this the highlight would sit on row zero, the row the rule
+	 * routinely refuses, exactly as it did before the fix. Keyed to the row
+	 * COUNT rather than to the list, because the list's identity changes on
+	 * every render and re-seeding then would fight the arrow walk.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the count is the trigger; the seed reads the current rows on purpose
+	useEffect(() => {
+		setActive(identityMenuSeedActive(flat));
+	}, [flat.length]);
 
 	/*
 	 * Keep the active row inside the bound as the arrows walk past the fold.
@@ -236,9 +278,9 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	 * inside it, so a box-only observer would leave the footer saying the wrong
 	 * thing about a list that just got shorter.
 	 */
-	// biome-ignore lint/correctness/useExhaustiveDependencies: `view` is the trigger, not an input - the effect measures the DOM rather than reading the value, and a different set of rows (a filter, a wider roster) is a different height.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `view` is the trigger, not an input - the effect measures the DOM rather than reading the value, and a different set of rows (a filter, a wider roster) is a different height; `scroller` is the NODE arriving (or leaving), the other half of there being something to measure (review round 1, Q-1)
 	useEffect(() => {
-		const box = scrollerRef.current;
+		const box = scroller;
 		if (!box) {
 			setOverflowing(false);
 			return;
@@ -253,7 +295,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 			for (const child of box.children) observer.observe(child);
 		}
 		return () => observer?.disconnect();
-	}, [view]);
+	}, [view, scroller]);
 
 	/*
 	 * THE FIELD TAKES FOCUS, and it is this panel that gives it - not Radix alone,
@@ -293,11 +335,13 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	 * previous one would still be filtering the next - a narrowed list nobody asked
 	 * for, the shape the modal pickers reset per open for the same reason.
 	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `open` is the trigger; the seed reads the current rows on purpose
 	useEffect(() => {
 		if (!open) return;
 		setQuery("");
-		setActive(0);
+		setActive(identityMenuSeedActive(flat));
 		setHovered(null);
+		setAnnouncement(null);
 	}, [open]);
 
 	const move = useCallback(
@@ -353,12 +397,15 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				event.preventDefault();
 				const row = flat[active];
 				/* A ROW and not the text in the field: see the docblock. Enter on a
-				 * filter that matched nothing is deliberately inert, and so is Enter on
-				 * a row the list marks `disabled` (a team's rule, or a switch already
-				 * in flight) - the pick would be a command the runtime refuses.
-				 * Reaching such a row with the arrows is `picker-host`'s contract:
-				 * the highlight walks the whole list, the PICK is what is blocked. */
+				 * filter that matched nothing is deliberately inert; Enter on a row
+				 * the list marks `disabled` refuses the pick - the command would be
+				 * one the runtime rejects - and ANSWERS (review round 1, D2/U1): a
+				 * key that does nothing at all reads as a broken panel, so the
+				 * footer's live region says which row was refused. A switch already
+				 * in flight cannot be reached here, because a pick closes the panel. */
 				if (row && !row.disabled) onPick(row.value);
+				else if (row)
+					setAnnouncement(identityMenuRefusalAnnouncement(row.label));
 				return;
 			}
 			/* Escape is Radix's: it closes the panel and returns focus to the chip. */
@@ -368,7 +415,24 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 
 	const noun = kind === "team" ? "teams" : "agents";
 	const activeId = flat.length > 0 ? `${listId}-${active}` : undefined;
-	const footer = identityMenuFooter({ view, kind, query, overflowing });
+	/*
+	 * Whether any VISIBLE row can take the seat, and the footer sentence that
+	 * follows (review round 1, D1): a filtered view whose every match is refused
+	 * swaps the count for a resolution naming the exits that exist, and an Enter
+	 * on a refused row temporarily outranks both (the announcement says which
+	 * row, the footer says what to do about it). Computed over `flat` - the rows
+	 * actually rendered - and NOT over `options`: the roster always carries
+	 * settable profiles, so a roster-level check kept printing the count over a
+	 * filtered view nothing could be picked from, which the `search-results`
+	 * frame's own claim caught. `view.matches > 0` keeps the no-match state on
+	 * its own sentence (`data-header-identity-no-matches`).
+	 */
+	const hasSettable = flat.some((row) => !row.disabled);
+	const resolution = view.matches > 0 && !hasSettable;
+	const footer =
+		announcement ??
+		identityMenuFooter({ view, kind, query, overflowing, hasSettable });
+	const captionId = useId();
 	/* The running index the row ids and `aria-activedescendant` share. A counter
 	 * across the bands, so the remembered rows' copies are distinct rows to the
 	 * DOM even though they are the same profile. */
@@ -457,7 +521,15 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 					 */}
 					{caption !== null && (
 						<p
+							id={captionId}
 							data-header-identity-constraint=""
+							/* The full sentence on hover at any width: the panel can be as
+							 * narrow as the popover's own minimum while an 80-character
+							 * team label can wrap the caption past three lines (review
+							 * round 1, D3 - accepted at the shipped 600px window floor,
+							 * where the caption costs no row; the title covers the stress
+							 * widths). */
+							title={caption}
 							className="px-2 pt-0.5 pb-1 text-ink-dim text-meta"
 						>
 							{caption}
@@ -486,12 +558,20 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 							/>
 						)}
 						<div
-							ref={scrollerRef}
+							ref={setScroller}
 							id={listId}
 							// biome-ignore lint/a11y/useSemanticElements: a type-to-filter combobox cannot be a native <select>.
 							// biome-ignore lint/a11y/noNoninteractiveElementToInteractiveRole: the listbox role is the WAI-ARIA combobox pattern for a popup driven from a text input.
 							role="listbox"
 							aria-label={kind === "team" ? "Teams" : "Agents"}
+							/*
+							 * The rule the list enforces, programmatically associated (review
+							 * round 1, U4): a screen reader entering the listbox now hears the
+							 * caption's sentence as part of the control rather than only as a
+							 * paragraph to be found by leaving the form. Only while the caption
+							 * is rendered - there is no rule to describe otherwise.
+							 */
+							aria-describedby={caption !== null ? captionId : undefined}
 							/*
 							 * Out of the tab order explicitly: Chrome makes a scrollable
 							 * region focusable, and reaching this by Tab would draw a focus
@@ -537,6 +617,11 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 											 */
 											<div
 												role="presentation"
+												/* The sweep's band hook (review round 1, U6): a frame can
+												 * assert WHICH bands are up - the recents band drops
+												 * refused rows and collapses when nothing settable remains,
+												 * and that is a claim `expectGone` can hold the run to. */
+												data-header-identity-band={band.heading ?? undefined}
 												className="flex items-center gap-3 px-2 pt-2 pb-1"
 											>
 												<span className="shrink-0 text-ink-dim text-meta">
@@ -587,8 +672,14 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 							/* The count line is the only place a filter's effect is stated, and it
 							 * was sighted-only: a polite live region announces the sentence as it
 							 * changes on each keystroke (UX round 1, U5; the register
-							 * `settings-filter-bar`'s count line carries). */
+							 * `settings-filter-bar`'s count line carries) - and now also the
+							 * refused-row answer and the no-exit resolution (review round 1,
+							 * D1/D2). The `data-` hooks are the capture rig's claim anchors. */
 							aria-live="polite"
+							data-header-identity-footer=""
+							data-header-identity-resolution={
+								resolution && announcement === null ? "" : undefined
+							}
 							className="border-hairline border-t px-2 py-1.5 text-ink-dim text-meta"
 						>
 							{footer}
