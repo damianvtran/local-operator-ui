@@ -1046,12 +1046,50 @@ function advancedFrame(
  * - At every merge a tail block is cut from the list being sorted: every
  *   provisional row, plus every row ADMITTED while one was pending (its
  *   position in the list is past the earliest provisional row's) that THIS
- *   merge does not state on the owner's side (`ownerIds` — a page's durable
- *   rows, a seed's stated-clock rows). Non-block rows keep the time order
- *   they always had; block rows keep arrival order; every non-block row sorts
- *   above every block row — so the queued page's pre-send rows land above the
- *   echo, and a row admitted after it (a live answer) never lands above it,
- *   whatever the two clocks say.
+ *   merge may not place on the owner's side of the send. Non-block rows keep
+ *   the time order they always had; block rows keep arrival order; every
+ *   non-block row sorts above every block row — so the queued page's pre-send
+ *   rows land above the echo, and a row admitted after it (a live answer)
+ *   never lands above it, whatever the two clocks say.
+ *
+ * WHICH MERGES MAY PLACE A ROW, and why it is a CLOSURE test rather than a
+ * statement about the row (operator report, 2026-10-06: a remote turn's answer
+ * rendered ABOVE the question that prompted it, live-only, healed by a
+ * remount). The order must be total for a held send until its durable row
+ * arrives, and only two kinds of merge can be trusted to rank a row against
+ * the echo:
+ *
+ *   - CARRIAGE. The merge replaces the echo's own record with an owner
+ *     projection of the same id — a durable page row, or a delta row naming
+ *     that id. The hold ENDS in that merge, the block dissolves with it, and
+ *     everything sorts by owner instants: the total order is the owner's from
+ *     there on, and `provisional` is gone with the record it belonged to.
+ *   - A CONTIGUOUS OWNER WINDOW. A page READ — the snapshot's history, the
+ *     reconcile and tail reads — is a contiguous range of the owner's
+ *     journal: if it crosses the send it carries the echo's own durable row
+ *     and ends the hold in the same merge, and until that arrives the rows it
+ *     carries are the journal IN FRONT of the send (agent review round 1, F1).
+ *     That contiguity is the premise, not a convenience: the caller asserts it
+ *     at `applyHistoryPage` (`statedByOwner`), and every caller but one leaves
+ *     it on.
+ *
+ * NOTHING ELSE CLOSES. A `history_delta` is a FILTERED id set — "rows that
+ * were never streamed here" — and a filter is not a range: it can carry the
+ * answer of a turn while the send's own row is absent (the send WAS streamed,
+ * so the filter excludes it), which is the inversion the report photographed.
+ * A non-`reset` delta therefore forfeits above-standing and merges into the
+ * block. A seed row states a position only with an ON-SCREEN PRE-ECHO ANCHOR —
+ * an anchored settle whose composing row sits at or before the frontier
+ * (`seededLiftable`) — because a row anchored to something the echo already
+ * follows is inside the turn the echo started, not in front of it; a raw start
+ * and a settle with no anchor row in hand are admitted at their stated time
+ * but join the block while a hold stands.
+ *
+ * The hold ENDS by exactly one event: the echo's id observed as a DURABLE row
+ * (a page row, or a delta row naming it). Not a live restating `message_start`
+ * (F2 above), and not a settled send in the store: delivery is `local`'s axis
+ * and position is this one, so a store that merely KNOWS the owner took the
+ * message must not be asked to decide where it sits.
  *
  * WHY A BLOCK AND NOT A COMPARATOR CASE: the relations are not a total order.
  * [pre-send row dated +40s, echo, live answer dated +5s] asks for
@@ -1067,6 +1105,11 @@ function advancedFrame(
  * - A replay frame for a row that will turn out to be PRE-send sits after the
  *   echo until the page states it — durable wins, and it then sorts by its
  *   own stamp; the correction arrives with the merge that owns it.
+ * - The same compromise now covers a merging `history_delta` row and a seed
+ *   row without a pre-echo anchor: a pre-send row inside a filtered delta, or
+ *   a call the seed dates that really did run before the send, sits under the
+ *   echo until a page states it — and then returns to its own time, which is
+ *   the visible correction rather than a wrong order left standing.
  * - A row whose durable form never arrives (a settled streaming row) keeps
  *   the arrival position it was admitted at; once no provisional row remains
  *   the block dissolves and everything sorts by stamps again.
@@ -1078,14 +1121,39 @@ function advancedFrame(
  */
 const NO_OWNER_IDS: ReadonlySet<string> = new Set();
 
+/**
+ * The position of the earliest pending echo in `records`, or `Infinity` when
+ * none is held.
+ *
+ * SHARED WITH THE SEED'S LIFT RULE rather than restated there: `seededLiftable`
+ * asks whether an anchor row sits at or before "the frontier", and an answer
+ * computed from a second definition of the frontier would be a second opinion
+ * about where the block begins — the class of drift this module's shared-rule
+ * comments all exist to prevent.
+ */
+function pendingEchoFrontier(records: TranscriptRecord[]): number {
+	let frontier = Number.POSITIVE_INFINITY;
+	records.forEach((record, position) => {
+		if (
+			record.kind === "user" &&
+			record.provisional === true &&
+			position < frontier
+		)
+			frontier = position;
+	});
+	return frontier;
+}
+
 function withTimeOrder(
 	records: TranscriptRecord[],
 	/**
-	 * The ids THIS merge states on the owner's side: a page's durable rows, and
-	 * the rows a seed dates from a real clock. They sort above the tail block
-	 * whatever the stamps say — a page whose rows postdate the send carries the
-	 * echo's own row too, and until that arrives the rows it does carry are the
-	 * journal in front of the send (agent review round 1, F1).
+	 * The ids THIS merge may place on the owner's side of a held send: a
+	 * contiguous page's durable rows (`applyHistoryPage`), and the seed rows
+	 * anchored to an on-screen pre-echo row (`applyLiveSeed`'s
+	 * `seededLiftable`). It is a CLOSURE claim — the caller's, never the row's
+	 * — and the doctrine above says who may make one; the contrast that matters
+	 * at this parameter is that a merge with NO ids to pass merges INTO the
+	 * block instead.
 	 */
 	ownerIds: ReadonlySet<string> = NO_OWNER_IDS,
 ): TranscriptRecord[] {
@@ -1102,11 +1170,7 @@ function withTimeOrder(
 	// The earliest admitted pending row bounds the block. `position` is the
 	// index the record already held in the list being merged — admission order,
 	// which no earlier merge may have re-spelled for rows past the block.
-	const frontier = positioned.reduce(
-		(min, entry) =>
-			pendingEcho(entry.record) && entry.position < min ? entry.position : min,
-		Number.POSITIVE_INFINITY,
-	);
+	const frontier = pendingEchoFrontier(records);
 	/*
 	 * Rows past the frontier were ADMITTED after the send, so they hold the
 	 * tail with it unless this merge itself places them on the owner's side.
@@ -2773,6 +2837,24 @@ export function applyHistoryPage(
 		 * rules below). Absent means "a tail-type read".
 		 */
 		pagedBefore?: string;
+		/**
+		 * The caller's ASSERTION that this merge's rows are a CONTIGUOUS owner
+		 * window — a range of the owner's journal — and NOT a filtered set.
+		 * Default true, which every real page read is by construction; exactly
+		 * one caller passes false: the merging `history_delta` fold, whose id
+		 * set is "rows that were never streamed here".
+		 *
+		 * WHY IT IS A PARAMETER RATHER THAN AN INFERENCE: contiguity is what
+		 * lets a window be trusted across a held send (see `withTimeOrder`'s
+		 * closure rule) — a range that crosses the send carries the send's
+		 * durable row and ends the hold in the same merge, while a filtered set
+		 * can carry a row that POSTDATES the send with the send's own row
+		 * excluded, and ranking that row against the echo is the inversion the
+		 * rule exists to prevent. The page carries no mark of which it is, so
+		 * the caller — the only party that knows how it built the set — says so
+		 * here.
+		 */
+		statedByOwner?: boolean;
 	} = {},
 ): TranscriptState {
 	/*
@@ -2825,7 +2907,11 @@ export function applyHistoryPage(
 		// The assistant row's own instant. The call it names was composed in THAT
 		// message, so this is the durable anchor a replayed settling frame for the
 		// call is placed at (`seededClock`) — read here because this loop is the
-		// only place the row and its calls are both in hand.
+		// only place the row and its calls are both in hand. Its ID is recorded
+		// beside the instant, because `seededLiftable` has to ask not only WHEN
+		// the compose happened but WHERE its row sits before a seeded settle may
+		// rank itself against a held send — and that question can only be
+		// answered by a row this loop can point at.
 		const anchoredAt = Math.round((entry.ts ?? 0) * 1000);
 		for (const call of calls as Record<string, unknown>[]) {
 			if (!call || typeof call.id !== "string") continue;
@@ -2837,7 +2923,7 @@ export function applyHistoryPage(
 				argsByCall = new Map(argsByCall);
 				argsChanged = true;
 			}
-			argsByCall.set(call.id, { ...call, anchoredAt });
+			argsByCall.set(call.id, { ...call, anchoredAt, anchorId: entry.id });
 		}
 	}
 	for (let i = 0; i < incoming.length; i++) {
@@ -3013,10 +3099,14 @@ export function applyHistoryPage(
 	const records = collapseSettledCompactions(
 		withTimeOrder(
 			[...byId.values()],
-			// The rows this page states on the owner's side; the sort holds them
-			// above the pending echo's tail block whatever the stamps say
-			// (agent review round 1, F1).
-			new Set(incoming.map((record) => record.id)),
+			// The rows this merge may place on the owner's side: a contiguous
+			// window's licence to stand above a held send (the assertion
+			// `statedByOwner` documents; agent review round 1, F1). A caller that
+			// cannot claim contiguity passes no ids, and its rows merge into the
+			// block instead.
+			options.statedByOwner === false
+				? NO_OWNER_IDS
+				: new Set(incoming.map((record) => record.id)),
 		),
 	);
 	if (options.keepPaging) {
@@ -3759,8 +3849,21 @@ export function applyEvent(
 			// producer (the genuine reconnect gap) leaves `reset` false and keeps
 			// merging, where the arrival stamp is the gap's own time rather than
 			// hours of history mistaken for it.
+			//
+			// AND THE MERGING CASE MAY NOT LIFT ITS ROWS ABOVE A HELD SEND
+			// (operator report, 2026-10-06). `reset` guarded the wrong half: the
+			// non-reset delta is exactly "settled rows that were never streamed
+			// here", a set FILTERED by what this viewer already saw, so it can
+			// carry the answer of the send's own turn while the send's durable
+			// row is absent (the send WAS streamed, as a live `message_start`,
+			// so the filter excludes it) — and lifting that answer above the
+			// held echo is the inversion the report photographed, live-only and
+			// healed by a remount. `statedByOwner: false` merges the rows by id
+			// but joins the tail block with them; the page that states the send
+			// still ends the hold and returns everything to owner instants.
 			return applyHistoryPage(state, page, {
 				replace: event.reset === true,
+				statedByOwner: event.reset === true,
 			});
 		}
 		case "tool_call_compose": {
@@ -3959,7 +4062,10 @@ export function applyEvent(
 							arguments: args,
 							// The frame's own start when it states one, so a later replay of
 							// this call's settling frame lands where the call really ran rather
-							// than where that viewer happened to be looking.
+							// than where that viewer happened to be looking. No `anchorId`:
+							// this instant came off a frame, not a row, so `seededLiftable`
+							// reads the entry as unanchored and the settle joins the block
+							// while a hold stands.
 							anchoredAt: epochMs(event) ?? now,
 						})
 					: state.argsByCall;
@@ -4117,7 +4223,9 @@ export function applyEvent(
 							// A settling frame is the LAST moment this call is dated: it carries
 							// no start, so the arrival instant is all the session will ever know
 							// — and it is already in hand here, which is the case this anchor
-							// exists for.
+							// exists for. No `anchorId` for the reason the start arm gives: an
+							// instant off a frame is not a row, so the entry reads as
+							// unanchored to `seededLiftable`.
 							anchoredAt: epochMs(event) ?? now,
 						})
 					: state.argsByCall;
@@ -4508,6 +4616,48 @@ function seededClock(event: LiveEvent, state: TranscriptState): number | null {
 }
 
 /**
+ * Whether a seeded frame's stated clock may place its row on the owner's side
+ * of a held send — the seed's half of the tail block's closure rule.
+ *
+ * A SEED CAN DATE A ROW AND STILL NOT KNOW WHICH SIDE OF THE SEND IT IS ON.
+ * The clock `seededClock` returns is honest about WHEN; it says nothing about
+ * the wait, and the two are different questions (operator report, 2026-10-06:
+ * a remote mid-turn join rendered the answer above the question). The one seed
+ * row that may cross a held send is one anchored to a composing row ALREADY ON
+ * SCREEN AT OR BEFORE THE FRONTIER — the journal in front of the send, the
+ * seed's share of F1's justification:
+ *
+ *   - a frame that states its own start (`started_at_epoch`) is a RAW start:
+ *     the call it names may be the one the held echo just launched, and its
+ *     own instant cannot say which side of the send that is. It is admitted at
+ *     that instant and joins the block while the hold stands;
+ *   - a settle with no anchor ROW in hand is the same: the `anchoredAt` a
+ *     live frame taught is an instant, not a row (`knownArgs` recovers from
+ *     frames, and the frames carry no row id), and an instant is exactly what
+ *     the block exists to distrust;
+ *   - an anchor row the echo itself follows (its position past the frontier)
+ *     sits INSIDE the block — it is the composing row of the echo's own turn —
+ *     and a settle may not stand on a claim its anchor cannot make.
+ *
+ * `argsByCall.anchorId` is what makes the third check answerable; it is
+ * recorded where the composing row and its calls are both in hand
+ * (`applyHistoryPage`'s entry loop). WITH NO HOLD the frontier is `Infinity`
+ * and `inTailBlock` is false for every row whatever this returns, so the
+ * narrowing is invisible to every seed that lands over a settled transcript —
+ * which is what keeps every existing seed path order-identical.
+ */
+function seededLiftable(event: LiveEvent, state: TranscriptState): boolean {
+	// A frame that states its own time is a raw start: no row, no anchor.
+	if (epochMs(event) !== null) return false;
+	const callId = seededCallId(event);
+	if (!callId) return false;
+	const anchorId = state.argsByCall.get(callId)?.anchorId;
+	if (typeof anchorId !== "string") return false;
+	const anchor = state.index.get(anchorId);
+	return anchor !== undefined && anchor <= pendingEchoFrontier(state.records);
+}
+
+/**
  * Whether a seeded frame states that its call's DICTATION is over.
  *
  * Both terminal compose endings are this: a verdict (`not_run_reason`, the call
@@ -4696,7 +4846,10 @@ export function applyLiveSeed(
 			if (stated !== null) {
 				clock = stated;
 				placed = true;
-				statedIds.add(id);
+				// A stated clock is not a licence: only a row anchored to an
+				// on-screen pre-echo row may cross a held send (see
+				// `seededLiftable`).
+				if (seededLiftable(event, next)) statedIds.add(id);
 			} else if (
 				settlesACall(event) ||
 				finishedDictationFrame(event) ||
@@ -4722,9 +4875,10 @@ export function applyLiveSeed(
 		});
 	}
 	if (!placed) return next;
-	// The rows this seed DATES from a real clock are on the owner's side of the
-	// pending echo's tail block (the seed door of review round 1, F1); a
-	// provisional row's own durable row is what ends its hold.
+	// The rows this seed may place on the owner's side of a held send: only
+	// those with an on-screen pre-echo anchor (`seededLiftable`); the rest keep
+	// the block's arrival order until a page states them. A provisional row's
+	// own durable row is still what ends its hold.
 	const records = withTimeOrder(next.records, statedIds);
 	return { ...next, records, index: withIndex(records) };
 }
