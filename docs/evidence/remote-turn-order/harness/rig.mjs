@@ -37,6 +37,15 @@ import {
 } from "node:fs";
 import net from "node:net";
 import { dirname, join } from "node:path";
+/*
+ * THE SWITCH IS TAKEN FROM ITS ONE HOME, never typed: `chrome-keychain.test.mjs`
+ * scans `scripts/`, `bin/` and every evidence harness for the literal, because a
+ * rig that spells it by hand drifts the day the switch it needs is something
+ * else. This rig launches Electron rather than Chrome, so it is not a launch
+ * site the helper wraps — but it still passes the switch, and it passes the
+ * constant (the `chat-device-live` rig's shape).
+ */
+import { MOCK_KEYCHAIN_SWITCH } from "../../../../scripts/chrome-keychain.mjs";
 
 const WORKTREE = process.env.LOCAL_OPERATOR_UI_WORKTREE;
 if (!WORKTREE) {
@@ -198,7 +207,7 @@ async function launch() {
 			`--remote-debugging-port=${port}`,
 			"--window-mode=headless",
 			"--window-size=1380x900",
-			"--use-mock-keychain",
+			MOCK_KEYCHAIN_SWITCH,
 		],
 		{ env, cwd: WORKTREE, stdio: ["ignore", "pipe", "pipe"] },
 	);
