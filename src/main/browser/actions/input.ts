@@ -360,7 +360,9 @@ async function resolveFrameRef(
 		}
 		throw error;
 	}
-	assertFrameNotDenied(ctx, { origin: ref.frameOrigin ?? rooted.origin });
+	// The LIVE document's origin, not only the snapshot's: the frame may have
+	// navigated to a denied origin since the ref was taken.
+	assertFrameNotDenied(ctx, { origin: rooted.origin });
 	// Bring the frame's <iframe> element into view in the page first, as the
 	// selector paths do through their hops (review round 1, n1; ARCH-1 §7). Best
 	// effort: the owner of a frame nested in another out-of-process frame lives in
