@@ -29,6 +29,7 @@ import type {
 	MembershipsResult,
 	PaginatedAgentList,
 	PaginatedResponse,
+	PaginatedTeamList,
 	RadientApiResponse,
 	UpdateAgentCommentRequest,
 	UpdateAgentRequest,
@@ -380,4 +381,170 @@ export async function getOrgTeam(
 		operation: "org_team.get",
 		teamId,
 	});
+}
+
+/* ------------------------------------------------------- the public hub */
+
+/**
+ * The PUBLIC team catalogue (`GET /v1/teams`), read DIRECTLY from the hub.
+ *
+ * ## Why this pair does not ride the proxy
+ *
+ * Every read above goes through `POST /v1/desktop/radient` because that route is
+ * what keeps a Radient bearer out of the renderer: the backend resolves the
+ * stored credential per call. THIS read carries no credential at all — the
+ * public catalogue is anonymous by design, and the hub answers it exactly the
+ * same whether or not the caller holds one (the backend's own
+ * `RadientClient.list_public_teams` documents the same route as "No credential
+ * is required"; the CLI's `teams search` is what it was written for). The proxy
+ * exists to protect a secret, and there is no secret on this path.
+ *
+ * The closed proxy vocabulary has no public-team read, so the alternative was a
+ * cross-repository contract change (the `RadientOperation` union, the
+ * `radient.request` schema in `shared/desktop-contract.ts`, and
+ * `desktop_radient.py`'s Literal and `endpoint()` map, which is a three-way
+ * contract) plus the release that carries it — against which this surface would
+ * be dark until every backend in the field had updated. A read that needs no
+ * credential is the one hub call that can be issued without that.
+ *
+ * ## What it owes the caller
+ *
+ * The same `{msg, result}` envelope the proxy returns, so a caller reads
+ * `.result` identically; the `origin` is a PARAMETER rather than an import of
+ * `apiConfig` because this module is bundled by node tests, and `@shared/config`
+ * builds the app's environment at module scope and throws in a bare node import
+ * (measured: "Failed to load configuration").
+ *
+ * A NON-2xx is thrown as {@link PublicHubError} carrying the status, so the
+ * retry policy and the surface's prose can tell "the hub refused" from "the hub
+ * was unreachable".
+ */
+export class PublicHubError extends Error {
+	/** The HTTP status, or null when the request never got an answer. */
+	readonly status: number | null;
+
+	/**
+	 * The transport's own failure, when there was one: for LOGS, never for copy.
+	 *
+	 * A separate field rather than an interpolated message because the two have
+	 * different audiences (QA round 2, Q2): `The public hub could not be reached.`
+	 * is what a reader needs, and `Failed to fetch` is what an operator needs. The
+	 * log this field exists for is emitted where the failure is caught, below
+	 * (reviewer round 3, R3-4: the field had no reader at all, and a field nobody
+	 * reads is a docstring claiming a behaviour the module does not have).
+	 */
+	readonly reason: unknown;
+
+	constructor(message: string, status: number | null, reason?: unknown) {
+		super(message);
+		this.name = "PublicHubError";
+		this.status = status;
+		this.reason = reason;
+	}
+}
+
+/** Trailing slashes on a configured origin: the route path supplies its own. */
+const TRAILING_SLASHES = /\/+$/;
+
+/** Join the hub origin with the route this module reads. */
+const publicTeamsUrl = (origin: string, teamId?: string): string => {
+	const base = origin.replace(TRAILING_SLASHES, "");
+	return teamId
+		? `${base}/v1/teams/${encodeURIComponent(teamId)}`
+		: `${base}/v1/teams`;
+};
+
+/**
+ * One anonymous GET of the public hub, as its `{msg, result}` envelope.
+ *
+ * `redirect: "error"` is provenance rather than secrecy: following a 3xx would
+ * render another origin's rows as "the public hub". The peer client in
+ * `local_operator/clients/radient.py` pins the same two things for the same
+ * reason (review round 1, S-1 there).
+ */
+const readPublicHub = async <T>(
+	url: string,
+): Promise<RadientApiResponse<T>> => {
+	let response: Response;
+	try {
+		response = await fetch(url, {
+			method: "GET",
+			headers: { Accept: "application/json" },
+			redirect: "error",
+		});
+	} catch (error) {
+		/*
+		 * A PLAIN SENTENCE, with the browser's own text kept on the error as its
+		 * CAUSE (QA round 2, Q2). Interpolating it put the browser's terser
+		 * `Failed to fetch` — or a TLS/socket string — in front of a reader who can
+		 * act on none of it. The cause is there for a log, never for the panel —
+		 * and this is that log (reviewer round 3, R3-4), so the raw text has a
+		 * reader instead of only a claim. `console.error` is the idiom the sibling
+		 * mutating calls in this tree already use.
+		 */
+		console.error("The public hub could not be reached:", error);
+		throw new PublicHubError(
+			"The public hub could not be reached.",
+			null,
+			error,
+		);
+	}
+	if (!response.ok) {
+		throw new PublicHubError(
+			`The public hub answered ${response.status}.`,
+			response.status,
+		);
+	}
+	let body: unknown;
+	try {
+		body = await response.json();
+	} catch {
+		throw new PublicHubError(
+			"The public hub answered with a body that is not JSON.",
+			response.status,
+		);
+	}
+	if (
+		!body ||
+		typeof body !== "object" ||
+		!("result" in (body as Record<string, unknown>))
+	) {
+		throw new PublicHubError(
+			"The public hub answered with a body this app cannot read.",
+			response.status,
+		);
+	}
+	return body as RadientApiResponse<T>;
+};
+
+/**
+ * List the public hub's teams (anonymous, paginated).
+ *
+ * The listing ignores every filter the agent list honours — `name`,
+ * `description`, `search` and `sort` all return the same page; only `page` and
+ * `per_page` change the answer (measured against the live hub, 2026-10-05).
+ * Search is therefore done over the rows this app has already fetched, in
+ * `usePublicTeamsQuery`'s caller; there is no server-side search to send.
+ */
+export async function listPublicTeams(
+	origin: string,
+	page = 1,
+	perPage = 12,
+): Promise<RadientApiResponse<PaginatedTeamList>> {
+	const url = `${publicTeamsUrl(origin)}?page=${page}&per_page=${perPage}`;
+	return readPublicHub<PaginatedTeamList>(url);
+}
+
+/**
+ * One public team document by id (anonymous), including its brief.
+ *
+ * The same route the org pair's `org_team.get` names — the id addresses the
+ * document and the brief is detail-only, so this is what the library's detail
+ * view reads after a LIST row (which omits `instructions`) has been chosen.
+ */
+export async function getPublicTeam(
+	origin: string,
+	teamId: string,
+): Promise<RadientApiResponse<HubTeamResult>> {
+	return readPublicHub<HubTeamResult>(publicTeamsUrl(origin, teamId));
 }
