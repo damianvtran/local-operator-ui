@@ -49,6 +49,13 @@ globalThis.localStorage = {
  */
 globalThis.__journalRows = [];
 globalThis.__historyReads = [];
+/**
+ * Ids the JOURNAL can no longer locate - the `/compact` shape, where a cursor a
+ * reader still holds is gone from the file. A read for one is answered with the
+ * CURRENT TAIL plus `cursor_missing`, which is what the wire documents and what
+ * the walk must stop on (agent review round 1's R6).
+ */
+globalThis.__missingCursors = new Set();
 globalThis.__claimRequest = async (request) => {
 	if (request.op !== "sessions.history") return {};
 	const rows = globalThis.__journalRows;
@@ -61,15 +68,23 @@ globalThis.__claimRequest = async (request) => {
 	const beforeAt = request.beforeId
 		? rows.findIndex((row) => row.id === request.beforeId)
 		: rows.length;
-	// A cursor the journal does not hold reads as an empty page rather than a
-	// full one - the reader's own contract, and the direction that cannot
-	// invent a row.
-	const end = beforeAt <= 0 ? (request.beforeId ? 0 : rows.length) : beforeAt;
+	/*
+	 * A CURSOR THE JOURNAL CANNOT LOCATE IS THE `cursor_missing` ANSWER, and it is
+	 * the ONLY thing that sets the flag (agent review round 1's R6). Flagging every
+	 * walked page - as this fixture used to - left the walk's own
+	 * stop-on-cursor_missing arm unreachable, so no test could pin it. A cursor the
+	 * journal DOES hold is an ordinary backward page; the miss is answered with the
+	 * CURRENT TAIL and the flag, the reconcile the shipped loader re-anchors on.
+	 */
+	const cursorMissing =
+		request.beforeId !== undefined &&
+		(beforeAt < 0 || globalThis.__missingCursors.has(request.beforeId));
+	const end = cursorMissing ? rows.length : beforeAt;
 	const start = Math.max(0, end - limit);
 	return {
 		entries: rows.slice(start, end),
 		has_more: start > 0,
-		cursor_missing: Boolean(request.beforeId),
+		cursor_missing: cursorMissing,
 	};
 };
 
@@ -251,6 +266,7 @@ function reset() {
 	__resetPendingSends();
 	globalThis.__journalRows = [];
 	globalThis.__historyReads = [];
+	globalThis.__missingCursors = new Set();
 	store.setState({
 		sessions: [],
 		placementFacts: {},
@@ -580,6 +596,7 @@ test("the launch sweep walks back for a stale verdict's record and retracts it",
 		outcome.visited >= 1,
 		"and the sweep counts the session it visited",
 	);
+	assert.equal(outcome.healed, 1, "and the walk's retraction is counted");
 });
 
 /*
@@ -611,6 +628,7 @@ test("a session holding nothing but a stale verdict is still visited and healed"
 		outcome.visited >= 1,
 		"which means the sweep queued a session it had no claim for",
 	);
+	assert.equal(outcome.healed, 1, "and the retraction is counted");
 });
 
 /*
@@ -633,4 +651,156 @@ test("a record deeper than the walk's budget leaves the verdict standing", async
 		CLAIM_ID,
 		"an unread record disproves nothing, so the verdict stays",
 	);
+});
+
+/* --------------------------------------------- the row's own remote locality */
+
+/*
+ * R1 (agent review round 1). The reach test reads BOTH sources of "this
+ * conversation lives on another device" - the placement fact a peers-inclusive
+ * page settles, and the session row's own wire `locality` - which is the pair
+ * `remoteOwnedIds` reads for the same reason. A plain listing never settles a
+ * fact, and a claim on an EXISTING remote conversation carries no `draft.peer`,
+ * so the fact is absent in exactly the window this arm must hold: without the
+ * row, the comparison is the peer's row clock against this machine's press,
+ * which is the skew the arm exists to avoid.
+ */
+test("a session row carrying a remote locality holds the claim with no placement fact", () => {
+	reset();
+	store.setState({
+		drafts: { [KEY]: heldDraft() },
+		// No `placementFacts` entry at all: the row's own locality is the only
+		// signal, exactly as a plain listing leaves it.
+		sessions: [{ session_id: SESSION, locality: "remote" }],
+	});
+
+	// A page that genuinely reaches back past the press - the case that would
+	// otherwise conclude "did not land" off the peer's clock.
+	store.getState().resolveHeldFromServer(SESSION, reachingTail(), true);
+
+	assert.equal(
+		draftAt(KEY)?.undelivered,
+		undefined,
+		"the owner's row clock is not this machine's, so the page cannot speak",
+	);
+	assert.equal(draftAt(KEY)?.submittedText, TEXT, "and the claim stays held");
+});
+
+/* ------------------------------------------------ the tail's own retraction */
+
+/*
+ * R3 + Q2 (agent review round 1 / QA). The tail page is handed to
+ * `resolveHeldFromServer` BEFORE the walk, and its late-landing correction
+ * retracts any verdict whose record the page NAMES. That id must not then be
+ * handed to the walk (it would buy up to `HEAL_WALK_MAX_PAGES` launch reads for
+ * a verdict already gone), and the retraction must still be counted.
+ */
+test("a verdict the tail page itself retracts buys no walk read and is still counted", async () => {
+	reset();
+	// CLAIM_ID sits IN the tail page, so the tail read's own correction retracts
+	// it - there is nothing left for a walk to find.
+	globalThis.__journalRows = journal(450, 449);
+	store.setState({ drafts: { [KEY]: staleUndeliveredDraft() } });
+
+	const outcome = await resolveHeldSendsFromServer();
+
+	assert.equal(
+		draftAt(KEY)?.undelivered,
+		undefined,
+		"the tail page named it, so the verdict is retracted",
+	);
+	assert.equal(
+		globalThis.__historyReads.filter((read) => read.beforeId !== undefined)
+			.length,
+		0,
+		"and no backward page was read for a verdict that was already gone",
+	);
+	assert.equal(
+		outcome.healed,
+		1,
+		"the retraction is counted, whichever read made it",
+	);
+});
+
+/* ---------------------------------------------------------- the cursor miss */
+
+/*
+ * R6 (agent review round 1). The walk must not continue on a `cursor_missing`
+ * answer: the backend answers a `before_id` it cannot locate with THE CURRENT
+ * TAIL plus the flag (the reconcile `load-older.ts` re-anchors on), so
+ * `entries[0]` names the tail again and continuing would re-read the same page
+ * up to the whole budget. The load path re-anchors to a cursor the reader still
+ * holds; this sweep holds no transcript, so it stops.
+ */
+test("a cursor_missing answer stops the walk instead of re-reading the same page", async () => {
+	reset();
+	// The record sits two pages back, but the walk's own first cursor is one the
+	// journal can no longer locate - a `/compact` under a loaded conversation.
+	globalThis.__journalRows = journal(450, 250);
+	globalThis.__missingCursors = new Set(["row-350"]);
+	store.setState({ drafts: { [KEY]: staleUndeliveredDraft() } });
+
+	const outcome = await resolveHeldSendsFromServer();
+
+	assert.equal(
+		draftAt(KEY)?.undelivered?.recordId,
+		CLAIM_ID,
+		"a page the backend could not serve disproves nothing, so the verdict stands",
+	);
+	assert.equal(
+		globalThis.__historyReads.filter((read) => read.beforeId !== undefined)
+			.length,
+		1,
+		"and the walk stopped at the miss rather than re-reading the same page",
+	);
+	assert.equal(outcome.healed, 0, "no read retracted anything");
+});
+
+/* ----------------------------------------------- the retraction takes the row */
+
+/*
+ * D1 (design review round 1). The pane's resynthesis is synchronous on mount and
+ * the heal is an async read, so on the first mount after an upgrade the paint
+ * wins the race: the verdict is painted as a row at the tail. When the walk then
+ * retracts the verdict, the row must come down with it - otherwise the reader is
+ * left with a bubble whose sentence has just been withdrawn, and the durable row
+ * that would replace it is behind the loaded window.
+ */
+test("the heal's retraction takes down the row the pane already painted", async () => {
+	reset();
+	// Two pages behind the tail: the durable row is NOT in the loaded transcript,
+	// so the pane's own resynthesis paints the verdict as the message's row.
+	globalThis.__journalRows = journal(450, 250);
+	store.setState({ drafts: { [KEY]: staleUndeliveredDraft() } });
+	const pane = await mountTranscript(IDENTITY);
+
+	assert.equal(
+		resynthesisePendingSend(KEY, draftAt(KEY)),
+		true,
+		"the verdict is painted as the message's row",
+	);
+	assert.equal(
+		pane.rows().includes(CLAIM_ID),
+		true,
+		"and the bubble is on screen with its sentence",
+	);
+
+	await resolveHeldSendsFromServer();
+
+	assert.equal(
+		draftAt(KEY)?.undelivered,
+		undefined,
+		"the walk retracted the verdict",
+	);
+	assert.equal(
+		pane.rows().includes(CLAIM_ID),
+		false,
+		"and the painted bubble came down with it - no statement-less row at the tail",
+	);
+	assert.equal(
+		resynthesisePendingSend(KEY, draftAt(KEY)),
+		false,
+		"and a later mount cannot paint the row back",
+	);
+	pane.unregister();
 });

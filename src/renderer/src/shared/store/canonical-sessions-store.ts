@@ -35,6 +35,7 @@ import {
 	paintPendingSend,
 	peekLocalEcho,
 	replacePendingSendText,
+	retractLocalEcho,
 	settlePendingSend,
 } from "@shared/hooks/use-canonical-session";
 /*
@@ -1637,13 +1638,28 @@ function draftBelongsToSession(draft: ChatDraft, sessionId: string): boolean {
  * and the rows are the owner's, so a skew between the two could make a shallow
  * page look deep. An absent placement fact is not "remote" — absent means this
  * device, the reading every backend that has served one has.
+ *
+ * TWO SOURCES FOR "THIS CONVERSATION LIVES ELSEWHERE", and they are the pair
+ * `remoteOwnedIds` reads for the same reason (agent review round 1's R1): the
+ * `PlacementFact` a peers-inclusive page settled, AND the session row's own wire
+ * `locality`. Reading only the fact is partial hardening: a claim on an EXISTING
+ * remote conversation carries no `draft.peer`, and a plain listing never settles
+ * a fact (the sidebar's poll deliberately asks for no peers), so the fact is
+ * absent in exactly the window where the arm must hold. Absence of `locality` is
+ * still "no claim", never "local" (`CanonicalSessionRow`) — but a row that
+ * CARRIES `remote` holds the claim without waiting for the catalogue.
  */
 function pageReachesClaim(
 	entries: readonly HeldClaimPageEntry[],
 	claim: ChatDraft,
 	placement: PlacementFact | undefined,
+	row: CanonicalSessionRow | undefined,
 ): boolean {
-	if (claim.peer !== undefined || placement?.locality === "remote")
+	if (
+		claim.peer !== undefined ||
+		placement?.locality === "remote" ||
+		row?.locality === "remote"
+	)
 		return false;
 	const submittedAt = claim.submittedAt;
 	if (submittedAt === undefined || submittedAt <= 0) return false;
@@ -2209,7 +2225,12 @@ export function resynthesisePendingSend(
 			if (held === "owner")
 				useCanonicalSessionsStore
 					.getState()
-					.retractUndelivered(draft.key, resolved.recordId);
+					/*
+					 * `key`, not `draft.key` (agent review round 1's R5): every neighbouring line
+					 * here targets the parameter, and the parameter is the map key the write
+					 * actually lands on - `draft.key` only equals it by construction today.
+					 */
+					.retractUndelivered(key, resolved.recordId);
 			return false;
 		}
 		paintPendingSend(identity, {
@@ -2248,6 +2269,35 @@ export function resynthesisePendingSend(
 		})),
 	});
 	return true;
+}
+
+/**
+ * Take down the row a retracted `undelivered` verdict painted, so the tail holds
+ * no statement-less bubble (design review round 1's D1).
+ *
+ * WHY THE VERDICT IS NOT THE WHOLE FACT. `resynthesisePendingSend`'s resolved arm
+ * paints the verdict as a row at the tail, as the message's home - correct while
+ * the verdict stands. Retracting the verdict alone (the repaint guard's `owner`
+ * arm, and the launch sweep's walk) takes the SENTENCE off that row and leaves
+ * the bubble behind: on the first mount after an upgrade the pane's resynthesis
+ * is synchronous and the heal is an async read, so the paint always wins the
+ * race and the durable row that would replace it is behind the loaded window. The
+ * reader then sees a user bubble reading as the newest message while the verdict
+ * that explained it has been withdrawn.
+ *
+ * `retractLocalEcho` is the established act for this, and it is safe from both
+ * callers: it removes the record only while it is still this app's own echo (an
+ * `owner` record, the durable row, is left where it is), and it resolves the
+ * registry entry either way - so a later mount's `resynthesisePendingSend` cannot
+ * paint the row back. Nothing mounted means the call is just the entry's removal,
+ * which is exactly right after a reload.
+ */
+function clearPaintedVerdictEcho(
+	draftKey: string,
+	sessionId: string | null | undefined,
+	recordId: string,
+): void {
+	retractLocalEcho(composerIdentityFor(draftKey, sessionId), recordId);
 }
 
 /**
@@ -7247,8 +7297,21 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					if (corrected.length > 0) {
 						drafts = { ...drafts };
 						for (const [key, draft] of corrected) {
+							const recordId = draft.undelivered?.recordId;
 							const { undelivered: _gone, ...kept } = draft;
 							drafts[key] = kept;
+							/*
+							 * AND THE ROW THAT VERDICT PAINTED COMES DOWN WITH IT (design review
+							 * round 1's D1). This is the launch sweep's retraction - the walk finds the
+							 * buried row and hands the page back here - and it lands AFTER the pane has
+							 * synchronously re-painted the verdict as a tail row, so without this the
+							 * reader is left with a bubble whose sentence has just been withdrawn. In
+							 * the update beside the `settlePendingSend` below, for the same reason
+							 * that call is: the echo entry and the row are the resolution's own
+							 * write, not a second pass over it.
+							 */
+							if (recordId !== undefined)
+								clearPaintedVerdictEcho(key, draft.sessionId, recordId);
 						}
 					}
 					/*
@@ -7300,7 +7363,12 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 					 */
 					if (
 						!delivered &&
-						!pageReachesClaim(entries, draft, state.placementFacts[sessionId])
+						!pageReachesClaim(
+							entries,
+							draft,
+							state.placementFacts[sessionId],
+							state.sessions.find((row) => row.session_id === sessionId),
+						)
 					)
 						return corrected.length > 0 ? { drafts } : {};
 					/*
@@ -7372,19 +7440,27 @@ export const useCanonicalSessionsStore = create<CanonicalSessionsState>()(
 						},
 					};
 				}),
-			retractUndelivered: (draftKey, recordId) =>
+			retractUndelivered: (draftKey, recordId) => {
+				const draft = get().drafts[draftKey];
+				/*
+				 * The id must match: the guard that calls this hands over the resolution's
+				 * own `recordId`, and a row whose claim has since been answered afresh (a
+				 * retry that landed, a new press) carries a record that is no longer the
+				 * one this call is about.
+				 */
+				if (!draft || draft.undelivered?.recordId !== recordId) return;
 				set((state) => {
-					const draft = state.drafts[draftKey];
-					/*
-					 * The id must match: the guard that calls this hands over the resolution's
-					 * own `recordId`, and a row whose claim has since been answered afresh (a
-					 * retry that landed, a new press) carries a record that is no longer the
-					 * one this call is about.
-					 */
-					if (!draft || draft.undelivered?.recordId !== recordId) return {};
-					const { undelivered: _gone, ...kept } = draft;
+					const { undelivered: _gone, ...kept } = state.drafts[draftKey];
 					return { drafts: { ...state.drafts, [draftKey]: kept } };
-				}),
+				});
+				/*
+				 * AND THE ROW THE VERDICT ALREADY PAINTED GOES WITH IT (design review
+				 * round 1's D1): the verdict and the row are one fact, so a retraction that
+				 * left the row behind leaves a bubble at the tail with no statement - see
+				 * `clearPaintedVerdictEcho`.
+				 */
+				clearPaintedVerdictEcho(draftKey, draft.sessionId, recordId);
+			},
 			bindSession: (_legacyAgentId, sessionId) =>
 				get().setActiveSession(sessionId),
 			/*

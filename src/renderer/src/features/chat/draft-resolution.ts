@@ -117,7 +117,10 @@ export type HeldSendSweepOutcome = {
 	visited: number;
 	/** Claims the read answered (delivered, or provably not). */
 	resolved: number;
-	/** Stale `undelivered` verdicts a walk retracted (issue #847). */
+	/**
+	 * Stale `undelivered` verdicts this sweep retracted (issue #847), from EITHER
+	 * read: the tail page's own late-landing correction, or a walked page's.
+	 */
 	healed: number;
 };
 
@@ -312,9 +315,28 @@ async function resolveSession(
 	useCanonicalSessionsStore
 		.getState()
 		.resolveHeldFromServer(sessionId, page.entries, false);
-	const healed =
-		staleRecords.length > 0
-			? await healUndeliveredRecords(sessionId, page, staleRecords)
+	/*
+	 * THE TAIL READ MAY HAVE ALREADY RETRACTED SOME OF THESE (agent review round
+	 * 1's R3, QA's Q2). `resolveHeldFromServer`'s late-landing correction clears
+	 * any draft whose recorded id the page NAMES, and a page that names the record
+	 * is delivery proven. Handing the walk the pre-read list would buy it up to
+	 * `HEAL_WALK_MAX_PAGES` launch reads for a verdict that is already gone, and
+	 * would leave `healed` reading 0 for work that was in fact done. So the drafts
+	 * are re-read after the call - the drafts are the fact, whichever arm
+	 * retracted - and only the ids STILL carrying a verdict are walked for.
+	 */
+	const stillOpen = new Set(
+		undeliveredRecordsBySession(
+			useCanonicalSessionsStore.getState().drafts,
+		).get(sessionId) ?? [],
+	);
+	const outstanding = staleRecords.filter((recordId) =>
+		stillOpen.has(recordId),
+	);
+	const healedByTailRead = staleRecords.length - outstanding.length;
+	const healedByWalk =
+		outstanding.length > 0
+			? await healUndeliveredRecords(sessionId, page, outstanding)
 			: 0;
 	let resolved = 0;
 	for (const key of keys) {
@@ -336,7 +358,7 @@ async function resolveSession(
 		for (const identity of [key, composerIdentityFor(key, sessionId)])
 			useConversationInputStore.getState().reconcileDelivered(identity);
 	}
-	return { resolved, healed };
+	return { resolved, healed: healedByTailRead + healedByWalk };
 }
 
 /**
@@ -356,7 +378,9 @@ async function resolveSession(
  * from a page that does not, because every page here travels with
  * `complete: false`. `has_more === false` is the journal's start - nothing
  * further back can hold the row - and the walk stops rather than spending its
- * budget on reads that cannot contain it.
+ * budget on reads that cannot contain it. A `cursor_missing` answer stops it too:
+ * that reply is the current tail, not the page below the cursor, so continuing
+ * would re-read it (agent review round 1's R6).
  *
  * WHAT IT DOES NOT DO, said rather than implied: the walk is BOUNDED
  * (`HEAL_WALK_MAX_PAGES`), so a verdict whose record sits deeper than the budget
@@ -394,6 +418,18 @@ async function healUndeliveredRecords(
 		useCanonicalSessionsStore
 			.getState()
 			.resolveHeldFromServer(sessionId, older.entries, false);
+		/*
+		 * A CURSOR THE BACKEND COULD NOT LOCATE ENDS THE WALK (agent review round 1's
+		 * R6). The answer to a missing `before_id` is THE CURRENT TAIL plus this flag
+		 * (the reconcile `load-older.ts` re-anchors on), not the page below the
+		 * cursor - so its entries are no evidence about what sits behind the claim,
+		 * and `entries[0]` names the tail again: continuing would re-read the same
+		 * page up to the whole budget. The load path's own move is to re-anchor to a
+		 * cursor the READER still holds; this sweep holds no transcript to draw one
+		 * from, so the honest move is to stop. Nothing was concluded from the pages
+		 * already read (`complete: false`), so stopping costs no verdict.
+		 */
+		if (older.cursor_missing) return recordIds.length - outstanding.size;
 		if (!older.has_more || older.entries.length === 0)
 			return recordIds.length - outstanding.size;
 		cursor = older.entries[0]?.id;
