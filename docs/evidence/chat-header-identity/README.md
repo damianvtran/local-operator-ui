@@ -50,7 +50,7 @@ every story here answers `desktop.request` from its own bridge (`teams.list`,
 | --- | --- |
 | `team-bound` | The operator's own case: team bound, no `/agent`, so the agent control reads the team's manager. The band at 560. |
 | `team-menu-open` | The team menu after a real press: the search field, rows `lopdev` / `minerva` as the app's own two-line picker rows, the current row carrying the `Check` (the authored dot is gone). The entry asserts the menu's own hook at shutter time - a closed menu fails the run. |
-| `agent-menu-open` | The agent menu, same terms, from the agent trigger. |
+| `agent-menu-open` | The agent panel on a team-bound chat: the team's rule as a caption, a leaf row disabled with its reason, and the accepted seats settable beside it (issue #861's CONSTRAINT). The 560x640 sibling `constrained-agent-open` shows the whole rule at once. |
 | `team-menu-keyboard-highlight` | One `ArrowDown` after a pointer-open: the arrows keep focus in the field and move `aria-activedescendant`, so the active row is the one carrying `aria-selected` - `[role="option"][aria-selected="true"]` is asserted present (Radix's roving focus, `data-highlighted`, is what a menu would set and this listbox does not). |
 | `team-trigger-hover` | The team trigger under the rig's real pointer (asserted `:hover`), the pre-click state. |
 | `team-trigger-focus` | The same trigger reached by real Tab presses, `:focus-visible` (a programmatic `.focus()` would not match - which is why the entry walks). |
@@ -66,7 +66,7 @@ every story here answers `desktop.request` from its own bridge (`teams.list`,
 | `rename-cancel-esc` | Escape cancels the same way. |
 | `no-team-no-agent` | The assign affordance both controls fall to: subdued `No team` / `No agent` with chevrons. |
 | `assign-team-menu` | The assign affordance's menu, press-opened. |
-| `agent-and-team` | Both bound, agent first - the order the joined string had. |
+| `agent-and-team` | Both bound, agent first - the order the joined string had, and a LEGAL pair now (a delegating profile under the team): no cue. |
 | `before` | Today's plain string, rendered by the same story on this tree (the pair's third check: it must be byte-comparable to main's). |
 | `wide` | The same arrangement at 1380, the width the operator's screenshot was taken at. |
 | `narrow-fold` | The operator's own 49-character title at the 560 band: the chips sit ON the painted line with the title truncated around them (UX round 1's U2 - the block no longer wraps while the controls are its second half; the frame used to record the fold as a decision). |
@@ -193,6 +193,11 @@ window, and - when this app has switched profiles before - a `Recent agents` /
 `Recent teams` band above the `All agents` / `All teams` one. Both controls
 render the same component, so the two panels cannot drift apart.
 
+The agent-panel frames in this section also carry issue #861's constraint now
+(see the section at the end): the caption above the list and the disabled
+near-miss rows. The bound, the filter and the band mechanics each row
+describes are unchanged - only the settability of a near-miss row is.
+
 | frame | what it is |
 | --- | --- |
 | `long-roster-agent-open` | The operator's own failure at scale: a 150-name roster, 560x640. The panel stops 352px down and the list scrolls inside it, with the footer stating the roster's full size - the bound, photographed, and the difference between a bound and a truncation stated on screen. |
@@ -269,3 +274,48 @@ state. The two new stories (`LongRoster`, `LongRosterAtTheBottom`) and the
 `Recents` one answer a 150-name roster built in the story file; every story
 declares its recents ring through `Band`'s `rings` prop, so no frame depends on
 what a previous run left in `localStorage`.
+
+## The team's constraint on the agent slot (operator's issue #861)
+
+The third report (2026-10-06): the agent picker stayed fully selectable while a
+team was set, so one press could assemble `scout ▾ lopdev ▾` with nothing
+saying who answers - the runtime keeps BOTH briefs (its own half is
+damianvtran/local-operator#2014). The rule this round lands: a team-bound chat
+is run by the team's MANAGER, and the agent slot is CONSTRAINED - settable to
+the team's manager and to profiles that can delegate (`delegate === true`),
+mirroring the runtime's acceptance predicate through one function
+(`identityAgentSettable`). Every other roster row is still LISTED, disabled,
+with the reason in its description; the rule is stated once as a caption above
+the list. An explicit agent the rule refuses - the legacy pair, which core-i
+normalises at attach - stays visible on its chip, because it is in the
+prompt, with a warning mark and one normal pick as the resolution; the cue
+waits for the roster's own `delegate` datum before it can fire, so no warning
+is computed from names alone while `commands.entities` is still answering. The
+copy shown in these frames is the design round's candidate to weigh.
+
+| frame | what it is |
+| --- | --- |
+| `constrained-agent-open` | The small roster at 560x640, where the whole rule fits: the caption, `manager` (current) and the delegating `ops-lead` settable, `coder` and `reviewer` disabled with the reason. |
+| `agent-menu-loading` | The roster has not answered (`IncompatiblePairLoading`, a bridge that never settles): `Loading agents…`, no caption, and the chip carries no cue - the false-cue guard as a frame. |
+| `agent-menu-refused` | The registry's refusal, through the agent trigger. |
+| `agent-menu-empty` | `No agents are registered.`, through the agent trigger. |
+| `conflict-chip` | The incompatible pair at rest (`coder · Local Operator Dev`): the persona stays visible, the warning mark says the pair needs resolving. |
+| `conflict-agent-open` | The panel where one pick resolves it: the caption, the current refused row disabled with its reason, the manager and delegating profiles settable beside it. |
+| `conflict-chip-loading` | The same pair before the roster answers: no cue, asserted at shutter time. |
+
+`before-constraint/` is this round's before half, shot the way `before-main/`
+and `before-bound/` were: this branch's stories - whose bridge answers the
+same rosters and `delegate` flags - rendered by `origin/main`'s identity
+modules (all four restored at once, then reverted; all five edited files - the
+four modules and the rig - verified byte-identical to `HEAD` afterwards, and
+the rig's three arms re-pointed to claims that tree can satisfy). What it
+buys: `conflict-agent-open` is the reporter's own screenshot - `coder` listed
+and freely selectable under a team, no caption, no rule - and `agent-menu-open`
+is the unconstrained panel the constrained one replaced.
+
+The frames came from three narrowed runs against this worktree's Storybook
+(the section recipes above, port 6413): the fifteen recaptured and new states
+(`--dirs=agent-menu-open,agent-menu-empty,agent-menu-refused,agent-menu-loading,conflict-chip,conflict-agent-open,conflict-chip-loading,long-roster-agent-open,long-roster-short-window,menu-near-window-bottom,search-results,search-no-results,recents-agent-open,narrow-fold-agent-menu-open,agent-and-team`),
+a second pass for `constrained-agent-open`, and the before run's three states.
+Every claim was asserted at shutter time; the manifest's `partialCapture`
+records the runs.
