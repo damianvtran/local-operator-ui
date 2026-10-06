@@ -481,6 +481,12 @@ const CHROME_LAUNCH_SITES = [
 		1,
 		"measures the run pane's child reader over time - where the viewport sits after an arrival, whether the newest row is on screen, and what its follow-the-tail control is doing - and photographs those states while the scripted child streams; its second spawnOwned is the vite server that serves the page",
 	),
+	guarded(
+		"docs/evidence/ask-badge-quiet/harness/capture.mjs",
+		"spawn",
+		1,
+		"the ask-count badge's clip pair - the quiet register after, the clipped band before, one private headless Chrome per run through the same helper (registered by its PR's remediation: the harness launched Chrome while unregistered, which failed Desktop Tests in CI)",
+	),
 ];
 
 const key = (row) => `${row.file}#${row.name}#${row.index}`;
