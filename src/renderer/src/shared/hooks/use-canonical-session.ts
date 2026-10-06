@@ -238,6 +238,18 @@ export type CanonicalSessionView = {
 	 * - including a stream that failed, because a failure is not an answer.
 	 */
 	hydrated: boolean;
+	/**
+	 * Whether a history read FOR THIS SESSION is in flight (remote-load-hydration).
+	 *
+	 * The retry-able "not loaded" arm's own press must be answerable: the walk a
+	 * press (or the warm re-arm) fires reads `/history`, and while it is out the
+	 * slot paints the pending arm rather than repainting the identical row the
+	 * reader just pressed (UX round 1, U1). It is also the press's own guard:
+	 * `rehydrate` is a no-op while a read is already out, so N presses can never
+	 * stack N walks - the read in flight is already the question being asked.
+	 * True for exactly the span some `reconcileTail` walk of this view is out.
+	 */
+	historyReadPending: boolean;
 	/** Owner frontend epoch — answers to pending gates are addressed by it. */
 	ownerEpoch: string | null;
 	/** HTTP receipt cursor for reconnects (epoch + after_seq). */
@@ -2125,6 +2137,9 @@ export function useCanonicalSessionStream(
 			 * frame, which is what suppresses the greeting and paints the message.)
 			 */
 			hydrated: false,
+			// No walk of this mount has been dispatched yet; the first read raises
+			// this, and its exit lowers it again.
+			historyReadPending: false,
 		};
 	});
 
@@ -2274,6 +2289,13 @@ export function useCanonicalSessionStream(
 	 * changed (or after unmount) cannot re-read the old session.
 	 */
 	const hydrateRef = useRef<(() => void) | null>(null);
+	/*
+	 * How many `reconcileTail` walks are out for this view, so the pending paint
+	 * and the no-stack guard read one number. A count rather than a flag because
+	 * the walks OVERLAP - a label walk and the warm re-arm's walk can be in
+	 * flight for one conversation - and only the last exit may clear the paint.
+	 */
+	const historyReadsRef = useRef(0);
 	const generationRef = useRef(0);
 
 	useEffect(() => {
@@ -2527,6 +2549,22 @@ export function useCanonicalSessionStream(
 			onSpend?: (rows: number) => void,
 		) => {
 			/*
+			 * THIS WALK IS A READ THE PANE CAN PAINT (remote-load-hydration, U1): the
+			 * count is raised here and lowered in the finally below, so the slot's
+			 * `historyReadPending` is true for exactly the span a `/history` read is
+			 * out - including between this walk's own pages. The view write is
+			 * skipped for a superseded generation; the COUNT is kept balanced either
+			 * way, because a leaked count would block every later press.
+			 */
+			historyReadsRef.current += 1;
+			if (generationRef.current === generation) {
+				commitView((current) =>
+					current.historyReadPending
+						? current
+						: { ...current, historyReadPending: true },
+				);
+			}
+			/*
 			 * `labelPending` is released on EVERY exit of this walk except the one that
 			 * hands the same walk to a timer (the nothing-painted backoff below), which
 			 * carries the ids with it. A walk that ends by label, by bound, by failure
@@ -2579,6 +2617,22 @@ export function useCanonicalSessionStream(
 				 * conversation, and a wholesale clear let whichever finished first wipe the
 				 * other's pending ids - a release on a read that was still running.
 				 */
+				/*
+				 * The read is over - or a timer owns it, and the backoff gap until it
+				 * re-enters is not painted (the row's own words are true across that
+				 * gap, and the alternative is a count nobody can lower if the timer is
+				 * torn down before it fires). Only the LAST walk out clears the paint;
+				 * the write is unconditional because false on a view that is already
+				 * false is free, and a live walk's count keeps it true.
+				 */
+				historyReadsRef.current = Math.max(0, historyReadsRef.current - 1);
+				if (historyReadsRef.current === 0) {
+					commitView((current) =>
+						current.historyReadPending
+							? { ...current, historyReadPending: false }
+							: current,
+					);
+				}
 				if (!handedOff) {
 					for (const id of labels.targets)
 						labelGapRef.current.inFlight.delete(id);
@@ -3146,11 +3200,15 @@ export function useCanonicalSessionStream(
 			 * answers while cold is blind (see the proof rule in `walkTail`). When the
 			 * owner engages - the pane's watch lease, the first keystroke's `/warm`,
 			 * or a peer-side start - the facade binds and the flip arrives as a frame
-			 * that carries `cold: false` (`frontend.replace`, per the bridge's own
-			 * attach-settled publish, and a fresh `snapshot`). Without this the batch
-			 * fires no read at all: it carries no snapshot whose page could owe a
-			 * reconcile and no labels to retry, so the pane would sit un-hydrated
-			 * until some user action.
+			 * that carries `cold: false`. The daemon publishes that flip in THREE
+			 * shapes, and all three are matched here: a fresh `snapshot`; the
+			 * attach-settled `frontend.replace`; and the retained-dial late sync,
+			 * which - measured live on the `/warm` route (QA round 1, Q1) - publishes
+			 * the flip as a `frontend.update` carrying `cold: false` on the frame's
+			 * own envelope, with NO snapshot and NO replace anywhere in the batch.
+			 * Without the update arm this batch fires no read at all: it carries no
+			 * snapshot whose page could owe a reconcile and no labels to retry, so
+			 * the pane would sit un-hydrated until some user action.
 			 *
 			 * EDGE-TRIGGERED, deliberately - the condition is the FLIP (the view was
 			 * cold, and this batch says warm), not "the view is warm": that is what
@@ -3166,7 +3224,9 @@ export function useCanonicalSessionStream(
 						? frame.payload.cold === false
 						: frame.type === "frontend.replace"
 							? frame.payload.cold === false
-							: false,
+							: frame.type === "frontend.update"
+								? frame.payload.cold === false
+								: false,
 				);
 			// The second reason to read back: a snapshot's live seed names calls that
 			// settled before this viewer arrived, and the seed carries no arguments for
@@ -3701,6 +3761,20 @@ export function useCanonicalSessionStream(
 									),
 									sequence: update.sequence,
 								},
+								/*
+								 * AND THE COLD PAIR RIDES THIS FRAME TOO (remote-load-hydration, QA round 1
+								 * Q1). The daemon merges the same fields the snapshot carries onto every
+								 * update it publishes, because the frame that tells a retained-dial cold
+								 * viewer its owner came back is exactly this one (a rollover update: new
+								 * epoch, full changes, `cold: false` - see `_frontend` in the daemon). The
+								 * fold spread `changes` only, so the flip used to be dropped on the floor
+								 * here: the view stayed `cold: true` and the warm re-arm could never see
+								 * it. Written only when the envelope states it - the field is ADDITIVE,
+								 * and an absent one must not un-state what a snapshot established.
+								 */
+								...(typeof update.cold === "boolean"
+									? { cold: update.cold }
+									: {}),
 							};
 						}
 						continue;
@@ -4300,7 +4374,13 @@ export function useCanonicalSessionStream(
 		 * nothing to re-ask.
 		 */
 		hydrateRef.current = () => {
-			if (!viewRef.current.hydrated) {
+			/*
+			 * AND A PRESS WHILE A READ IS ALREADY OUT IS ANSWERED BY THAT READ (UX
+			 * round 1, U1): N presses must not stack N walks for one question - the
+			 * read in flight is already asking it, and the pending paint is the
+			 * view's half of the same acknowledgement.
+			 */
+			if (!viewRef.current.hydrated && historyReadsRef.current === 0) {
 				void reconcileTail(
 					generation,
 					new Set(viewRef.current.transcript.index.keys()),
@@ -4428,6 +4508,9 @@ export function useCanonicalSessionStream(
 			// Belt to the early return's braces: whatever a superseded page in
 			// flight does, a freshly opened session is not loading older rows.
 			loadingOlder: false,
+			// And no read of ITS history is out: a superseded walk's paint must not
+			// follow the reader to the next conversation.
+			historyReadPending: false,
 			// A failure belongs to the journal it happened on; a new session has not
 			// failed to load anything yet.
 			olderFailed: false,

@@ -1,12 +1,21 @@
 {
   "origin": "http://localhost:6006",
-  "theme": "localOperatorDark",
   "surfaces": [
     {
       "story": "chat-older-history-slot--in-transcript-unproven",
       "width": 900,
       "height": 520,
-      "file": "/Users/damian/.local-operator/sessions/23c758095921/scratchpad/rigout-story/storybook-unproven-end.png",
+      "theme": "localOperatorDark",
+      "file": "/Users/damian/.local-operator/sessions/23c758095921/scratchpad/rc1-rigout-story/storybook-unproven-end.png",
+      "ready": true,
+      "text": "Earlier history not loaded Earlier history not loaded Try again The oldest rendered row sits directly below. A slot that changed height would move this row, and every row after it, at the exact moment the reader is looking at the top of the conversation. The newest row. Your Radient sign-in could not be checked, so speaking aloud is unavailable for now Oct 9, 2025, 9:53 AM"
+    },
+    {
+      "story": "chat-older-history-slot--in-transcript-unproven",
+      "width": 900,
+      "height": 520,
+      "theme": "localOperatorLight",
+      "file": "/Users/damian/.local-operator/sessions/23c758095921/scratchpad/rc1-rigout-story/storybook-unproven-end-light.png",
       "ready": true,
       "text": "Earlier history not loaded Earlier history not loaded Try again The oldest rendered row sits directly below. A slot that changed height would move this row, and every row after it, at the exact moment the reader is looking at the top of the conversation. The newest row. Your Radient sign-in could not be checked, so speaking aloud is unavailable for now Oct 9, 2025, 9:53 AM"
     },
@@ -14,9 +23,19 @@
       "story": "chat-older-history-slot--every-state",
       "width": 900,
       "height": 520,
-      "file": "/Users/damian/.local-operator/sessions/23c758095921/scratchpad/rigout-story/storybook-every-state.png",
+      "theme": "localOperatorDark",
+      "file": "/Users/damian/.local-operator/sessions/23c758095921/scratchpad/rc1-rigout-story/storybook-every-state.png",
       "ready": true,
       "text": "idle, more history on the backend Load earlier messages a durable page is in flight Loading earlier messages Loading earlier messages the page failed; the action still works Could not load earlier messages Could not load earlier messages Try again rows held back by the render window only Earlier history above — scroll up to load `has_more` says the end; no read has proven it Earlier history not lo"
+    },
+    {
+      "story": "chat-older-history-slot--app-minimum-width",
+      "width": 900,
+      "height": 780,
+      "theme": "localOperatorDark",
+      "file": "/Users/damian/.local-operator/sessions/23c758095921/scratchpad/rc1-rigout-story/storybook-app-minimum-width.png",
+      "ready": true,
+      "text": "Rendered at 252px, the transcript's content box at the app's 800px minimum window. Every state must keep its lower rule on the same baseline as the others. idle, more history on the backend Load earlier messages a durable page is in flight Loading earlier messages Loading earlier messages the page failed; the action still works Could not load earlier messages Did not load Try again rows held back "
     }
   ]
 }

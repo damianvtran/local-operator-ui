@@ -1367,6 +1367,20 @@ export type DesktopSessionFrame =
 				epoch: string;
 				sequence: number;
 				changes: Partial<CanonicalFrontendState>;
+				/**
+				 * THE COLD PAIR RIDES THIS FRAME TOO, and this renderer reads the boolean:
+				 * the daemon merges the same three fields the snapshot carries onto every
+				 * update it publishes, because the frame that tells a retained-dial cold
+				 * viewer its owner came back is exactly this one - a rollover update with
+				 * full changes and `cold: false` (see `_frontend` in `desktop_sessions.py`,
+				 * and the daemon test `test_a_rollover_reaches_the_stream_after_a_late_sync`,
+				 * which asserts `payload["cold"] is False` on it). The renderer reads it to
+				 * re-arm the `/history` read on the warm transition (QA round 1, Q1).
+				 * Optional because the field is ADDITIVE: a daemon that predates the cold
+				 * contract publishes updates without it, and a reader that never sees the
+				 * flip re-reads through `/history` as it always did.
+				 */
+				cold?: boolean;
 				job_trajectory_appends: Record<string, never>;
 				job_trajectory_replacements: never[];
 			}
