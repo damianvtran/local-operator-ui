@@ -1122,6 +1122,20 @@ function advancedFrame(
 const NO_OWNER_IDS: ReadonlySet<string> = new Set();
 
 /**
+ * Is this record a held send? ONE spelling, shared by the frontier, the sort
+ * and `seededLiftable`'s anchor walk.
+ *
+ * `provisional` is the hold; `appendPendingUser` sets it on every echo and the
+ * owner's stamped row is what clears it. `local` deliberately does NOT
+ * participate: the live restating `message_start` clears `local` (delivery —
+ * `peekLocalEcho`'s "owner" is the store's test) while the position hold must
+ * survive it (review round 1, F2).
+ */
+function isPendingEcho(record: TranscriptRecord): boolean {
+	return record.kind === "user" && record.provisional === true;
+}
+
+/**
  * The position of the earliest pending echo in `records`, or `Infinity` when
  * none is held.
  *
@@ -1134,12 +1148,7 @@ const NO_OWNER_IDS: ReadonlySet<string> = new Set();
 function pendingEchoFrontier(records: TranscriptRecord[]): number {
 	let frontier = Number.POSITIVE_INFINITY;
 	records.forEach((record, position) => {
-		if (
-			record.kind === "user" &&
-			record.provisional === true &&
-			position < frontier
-		)
-			frontier = position;
+		if (isPendingEcho(record) && position < frontier) frontier = position;
 	});
 	return frontier;
 }
@@ -1159,13 +1168,12 @@ function withTimeOrder(
 ): TranscriptRecord[] {
 	/*
 	 * `provisional` is the hold; `appendPendingUser` sets it on every echo and
-	 * the owner's stamped row is what clears it. `local` deliberately does NOT
-	 * participate: the live restating `message_start` clears `local` (delivery —
+	 * the owner's stamped row is what clears it — `isPendingEcho` is the one
+	 * spelling of that predicate. `local` deliberately does NOT participate:
+	 * the live restating `message_start` clears `local` (delivery —
 	 * `peekLocalEcho`'s "owner" is the store's test) while the position hold
 	 * must survive it (review round 1, F2).
 	 */
-	const pendingEcho = (record: TranscriptRecord) =>
-		record.kind === "user" && record.provisional === true;
 	const positioned = records.map((record, position) => ({ record, position }));
 	// The earliest admitted pending row bounds the block. `position` is the
 	// index the record already held in the list being merged — admission order,
@@ -1176,7 +1184,7 @@ function withTimeOrder(
 	 * tail with it unless this merge itself places them on the owner's side.
 	 */
 	const inTailBlock = (entry: { record: TranscriptRecord; position: number }) =>
-		pendingEcho(entry.record) ||
+		isPendingEcho(entry.record) ||
 		(entry.position > frontier && !ownerIds.has(entry.record.id));
 	return positioned
 		.sort((a, b) => {
