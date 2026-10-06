@@ -253,6 +253,23 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	}, [flat.length]);
 
 	/*
+	 * THE ANNOUNCEMENT FOLLOWS THE HIGHLIGHT (review round 2, D7/U7): it names a
+	 * specific row, so it may live only while that row is active. Arrowing away
+	 * used to leave the footer - and the polite live region - asserting a name
+	 * that was no longer highlighted, which stops being merely stale and turns
+	 * wrong on the incompatible pair: "coder cannot take the seat." while the
+	 * SETTABLE manager is the row under the cursor. Keyed to `active` rather
+	 * than cleared inside `move()`, because the pointer path moves the highlight
+	 * too (`PickerRow`'s click calls `setActive`) and must clear it the same
+	 * way; Enter itself never changes `active`, so the answer it sets survives
+	 * until the user actually moves.
+	 */
+	// biome-ignore lint/correctness/useExhaustiveDependencies: `active` is the trigger - the effect's subject is the move, not the value it lands on
+	useEffect(() => {
+		setAnnouncement(null);
+	}, [active]);
+
+	/*
 	 * Keep the active row inside the bound as the arrows walk past the fold.
 	 *
 	 * `block: "nearest"` and not `"start"`, so a row that is already visible does
@@ -398,13 +415,15 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				const row = flat[active];
 				/* A ROW and not the text in the field: see the docblock. Enter on a
 				 * filter that matched nothing is deliberately inert; Enter on a row
-				 * the list marks `disabled` refuses the pick - the command would be
-				 * one the runtime rejects - and ANSWERS (review round 1, D2/U1): a
-				 * key that does nothing at all reads as a broken panel, so the
-				 * footer's live region says which row was refused. A switch already
-				 * in flight cannot be reached here, because a pick closes the panel. */
+				 * the TEAM'S RULE refuses is answered (review round 1, D2/U1) - a key
+				 * that does nothing at all reads as a broken panel - and the answer
+				 * is sourced from `blocked`, never from `disabled`: a row that is
+				 * merely busy (a switch in flight, reachable by re-opening the chip
+				 * before it settles) cannot take the seat a moment later, so the
+				 * refusal register must not describe it (review round 2, MINOR-2).
+				 * Busy is silent: the switch it is already running is its answer. */
 				if (row && !row.disabled) onPick(row.value);
-				else if (row)
+				else if (row?.blocked)
 					setAnnouncement(identityMenuRefusalAnnouncement(row.label));
 				return;
 			}
@@ -418,20 +437,26 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	/*
 	 * Whether any VISIBLE row can take the seat, and the footer sentence that
 	 * follows (review round 1, D1): a filtered view whose every match is refused
-	 * swaps the count for a resolution naming the exits that exist, and an Enter
-	 * on a refused row temporarily outranks both (the announcement says which
-	 * row, the footer says what to do about it). Computed over `flat` - the rows
-	 * actually rendered - and NOT over `options`: the roster always carries
-	 * settable profiles, so a roster-level check kept printing the count over a
-	 * filtered view nothing could be picked from, which the `search-results`
-	 * frame's own claim caught. `view.matches > 0` keeps the no-match state on
-	 * its own sentence (`data-header-identity-no-matches`).
+	 * swaps the count for a resolution naming the exits that exist. Computed
+	 * over `flat` - the rows actually rendered - and NOT over `options`: the
+	 * roster always carries settable profiles, so a roster-level check kept
+	 * printing the count over a filtered view nothing could be picked from,
+	 * which the `search-results` frame's own claim caught. And computed over
+	 * `blocked`, not `disabled` (review round 2, MINOR-2): a roster that is
+	 * merely BUSY - a re-opened panel during an in-flight switch - is not a
+	 * roster whose seats cannot be taken, so the resolution's claim must not
+	 * describe it while it settles. `view.matches > 0` keeps the no-match state
+	 * on its own sentence (`data-header-identity-no-matches`).
 	 */
-	const hasSettable = flat.some((row) => !row.disabled);
+	const hasSettable = flat.some((row) => !row.blocked);
 	const resolution = view.matches > 0 && !hasSettable;
-	const footer =
-		announcement ??
-		identityMenuFooter({ view, kind, query, overflowing, hasSettable });
+	const footer = identityMenuFooter({
+		view,
+		kind,
+		query,
+		overflowing,
+		hasSettable,
+	});
 	const captionId = useId();
 	/* The running index the row ids and `aria-activedescendant` share. A counter
 	 * across the bands, so the remembered rows' copies are distinct rows to the
@@ -661,7 +686,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 							)}
 						</div>
 					</div>
-					{footer && (
+					{(footer !== null || announcement !== null) && (
 						/*
 						 * The bound's own sentence. Rendered when the list does not fit, and
 						 * when a filter is on (where the count IS the answer to what was
@@ -674,15 +699,29 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 							 * changes on each keystroke (UX round 1, U5; the register
 							 * `settings-filter-bar`'s count line carries) - and now also the
 							 * refused-row answer and the no-exit resolution (review round 1,
-							 * D1/D2). The `data-` hooks are the capture rig's claim anchors. */
+							 * D1/D2). The `data-` hooks are the capture rig's claim anchors:
+							 * `resolution` marks the exits line's own presence, so a run can
+							 * hold the shutter to it STAYING up under an announcement (review
+							 * round 2, D7(a)). */
 							aria-live="polite"
 							data-header-identity-footer=""
-							data-header-identity-resolution={
-								resolution && announcement === null ? "" : undefined
-							}
+							data-header-identity-resolution={resolution ? "" : undefined}
 							className="border-hairline border-t px-2 py-1.5 text-ink-dim text-meta"
 						>
-							{footer}
+							{/*
+							 * THE ANSWER IS AN ADDITION, NOT A REPLACEMENT (review round 2,
+							 * D7): Enter's refusal sentence used to swap out whatever the
+							 * footer was saying - and in the all-refused state that is exactly
+							 * the exits line D1 exists for, so the one key a user presses
+							 * hoping to pick deleted the way out. The announcement renders
+							 * ABOVE the base line (the count or the resolution), which keeps
+							 * the way out on screen; both are spans so the region's text
+							 * reads as two sentences rather than one run-on.
+							 */}
+							{announcement !== null && (
+								<span className="block">{announcement}</span>
+							)}
+							{footer !== null && <span className="block">{footer}</span>}
 						</div>
 					)}
 				</>

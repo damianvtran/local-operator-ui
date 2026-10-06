@@ -2783,6 +2783,14 @@ export const STORIES = [
 			expectPresent: [
 				'[data-header-identity-menu="agent"]',
 				"[data-header-identity-constraint]",
+				/*
+				 * THE EXITS LINE SURVIVES THE ANSWER (review round 2, D7(a)):
+				 * this state is all-refused, so the resolution is what the footer
+				 * was saying before Enter; the claim holds the shutter to it STILL
+				 * being rendered under the announcement - the first cut swapped
+				 * it out, deleting the way out with the key pressed hoping to pick.
+				 */
+				"[data-header-identity-resolution]",
 			],
 			expectSentence: {
 				selector: "[data-header-identity-footer]",
@@ -2822,6 +2830,57 @@ export const STORIES = [
 			expectGone:
 				'[data-header-identity-menu="agent"] [data-header-identity-band="Recent agents"]',
 			dir: "recents-agent-open",
+		},
+	],
+	[
+		"chat-header-identity--recents-mixed",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				/*
+				 * THE BAND IS UP AND FILTERED (review round 2, D8): `manager`
+				 * (settable, remembered) survives inside it, `coder` (refused,
+				 * remembered) is absent from it and still listed below with its
+				 * reason - both halves asserted here, membership pinned in
+				 * `header-identity-menu.test.mjs`. This is the frame the
+				 * all-refused ring's collapse cannot show: a FILTER, not a fault.
+				 */
+				'[data-header-identity-menu="agent"] [data-header-identity-band="Recent agents"]',
+				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
+			],
+			dir: "recents-agent-mixed-open",
+		},
+	],
+	[
+		"chat-header-identity--no-settable-agent",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+				/*
+				 * THE UNTYPED RESOLUTION, RENDERED (review round 2, D9): no row
+				 * is settable (the roster carries no manager row and every flag
+				 * is false) and the list overflows, so the footer states the one
+				 * exit that remains. The sentence is asserted as well as the
+				 * hook, because the sentence IS the state; the typed variant is
+				 * measured on `search-results`.
+				 */
+				"[data-header-identity-resolution]",
+			],
+			expectSentence: {
+				selector: "[data-header-identity-footer]",
+				includes: "No profile can take the seat",
+			},
+			dir: "no-settable-agent",
 		},
 	],
 	[

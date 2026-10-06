@@ -379,6 +379,13 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * team's rule refuses is inert for the same reason - picking it would be
 					 * a command the runtime refuses. */
 					disabled: busy || blocked,
+					/* BUSY IS NOT REFUSED (review round 2, MINOR-2): `disabled` folds the
+					 * in-flight switch and the team's rule together, and the panel's
+					 * refusal messages must only describe the LATTER - a chip re-opened
+					 * while a switch settles must not be told a row "cannot take the
+					 * seat". `blocked` carries the rule's half alone; the busy half is
+					 * the switch already running. */
+					blocked,
 				};
 			}),
 		[items, current, busy, constraint],
