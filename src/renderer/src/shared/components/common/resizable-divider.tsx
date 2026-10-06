@@ -59,12 +59,19 @@
  * Long enough to ignore a pass-through, short enough to feel immediate when
  * you are actually reaching for it.
  *
- * EXPORTED because the chat sidebar's collapse cluster is revealed on the same
- * intent, one level up: the cluster is a sibling of this separator rather than
- * a child, so it cannot inherit the state, and a second delay written beside
- * the first is two numbers a later change can put out of step (review round 1,
- * M-1: the shipped build revealed the plate after 120ms of CSS while this line
- * waited 200ms, and the PR body claimed the delay was already there).
+ * EXPORTED because the surfaces around it are revealed on the same intent: the
+ * chat's measure handle (`chat-measure-handle.tsx`, a sibling rather than a child
+ * of this separator, so it cannot inherit the state) and the chat sidebar's
+ * per-row acts (`chat-row-hover-intent.tsx`). A second delay written beside the
+ * first is two numbers a later change can put out of step (review round 1, M-1:
+ * the shipped build revealed the plate after 120ms of CSS while this line waited
+ * 200ms, and the PR body claimed the delay was already there).
+ *
+ * ITS FIRST CONSUMER IS GONE AND IS NOT NAMED HERE ANY MORE (agent review round
+ * 1's M1): this line used to cite "the chat sidebar's collapse cluster", which the
+ * panel no longer draws (`chat-sidebar.tsx` records that the cluster, the
+ * draggable boundary and the region swap are not drawn at all). The constant kept
+ * its consumers, so the export stays; only the census was stale.
  */
 export const HOVER_INTENT_MS = 200;
 

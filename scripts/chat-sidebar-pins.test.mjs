@@ -535,9 +535,9 @@ test("a hidden reveal is absent from the layout, and the reveal is what makes it
 	 */
 	assert.ok(
 		block.includes("hidden") &&
-			block.includes("group-hover:flex") &&
-			block.includes("group-focus-within:flex"),
-		"the reveal must be a display switch: hidden at rest, flex under the pointer or focus",
+			block.includes("group-data-[session-hover-intent]:flex") &&
+			block.includes("group-has-[:focus-visible]:flex"),
+		"the reveal must be a display switch: hidden at rest, flex once the pointer has dwelt or a keyboard focus is inside",
 	);
 	assert.ok(
 		!block.includes("pointer-events-none"),
@@ -620,9 +620,9 @@ test("the unpinned reveal is a display switch and cannot reflow the row it is no
 		`the reveal scales, translates or rotates: ${classes}`,
 	);
 	assert.ok(
-		tokens.includes("group-hover:flex") &&
-			tokens.includes("group-focus-within:flex"),
-		`the reveal is a group-hover/group-focus-within display step: ${classes}`,
+		tokens.includes("group-data-[session-hover-intent]:flex") &&
+			tokens.includes("group-has-[:focus-visible]:flex"),
+		`the reveal is a pointer-dwell / keyboard-focus display step: ${classes}`,
 	);
 	/*
 	 * AND THE REST HALF STATES `hidden` AND NOT A BARE `flex`, which is the cascade rule
@@ -725,7 +725,7 @@ test("the pinned mark is drawn at rest at every width, and is not inside a displ
 	);
 	assert.match(
 		pairWrapper.slice(0, 400),
-		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
+		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-data-\[session-hover-intent\]:flex group-has-\[\:focus-visible\]:flex"/,
 		"the pair wrapper must be displayed on a pinned row or while its menu hold is on, and revealed on an unpinned one",
 	);
 });

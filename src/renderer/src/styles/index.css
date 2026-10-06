@@ -454,6 +454,115 @@
 }
 
 /*
+ * THE SIDEBAR LIST'S EDGE CUES (issue #845), and they are the transcript's own
+ * technique above rather than a second one: a registered `<length>` per edge, a
+ * `mask-image` the element always carries, and a `scroll(self)` timeline that
+ * moves each length only while content is actually clipped at that edge. The
+ * reason is the one the transcript's note gives - a permanent fade is wrong - and
+ * the failure the operator's report names is the top of it: with no cue, a row cut
+ * off under the search/filter row reads as the list's FIRST row.
+ *
+ * HOW THE TWO CUSTOM PROPERTIES COMBINE. The mask is `transparent 0 -> black
+ * var(--lo-sidebar-top-fade) -> black calc(100% - var(--lo-sidebar-bottom-fade))
+ * -> transparent 100%`, so a length of 0px is a HARD edge and therefore no fade
+ * at all: at rest the element declares both at 0px, which is the state a
+ * conversation list shorter than its pane keeps forever (an inactive timeline
+ * samples no keyframe, so the declared values stand). Each edge then ramps over
+ * its own 24px, which is the transcript's measured ramp and the whole of the
+ * arithmetic:
+ *
+ *  - the TOP cue ramps 0 -> 24px over the first 24px of scroll, so it is absent
+ *    with the newest row at rest and fully present once 24px has gone under the
+ *    bar;
+ *  - the BOTTOM cue ramps 24px -> 0 over the LAST 24px, so it is present from the
+ *    first pixel of overflow down to 24px from the end and clears exactly at the
+ *    end, which is the one place the transcript's own basis could not be reused
+ *    (that element scrolls on a reversed axis and owns only a top dissolve).
+ *
+ * TWO ANIMATIONS, LONGHAND ONLY. Both edges animate at once, so the element
+ * carries `animation-name: a, b` with a matching `animation-timeline` and
+ * `animation-range` list. THE SHORTHAND IS DELIBERATELY NOT USED ANYWHERE HERE:
+ * `animation:` resets `animation-timeline`, which is the regression
+ * `global-scrollbar-styles.tsx` records for a focus-visible scroller - the
+ * transcript's top dissolve read `animation-timeline: auto` and a 0px fade
+ * whenever the log was focused and idle. The scrollbar sheet itself stays
+ * animation-free for the same reason.
+ *
+ * THE MASK PAINTS THE BAR TOO, as it does on the transcript (that file says so
+ * outright, and `docs/design/scrollbars-fade.md` s5.4 records it): the thumb's
+ * own top and bottom bands soften with the content inside these 24px. It is the
+ * behaviour the shipped transcript already has, the fade is at its WEAKEST at
+ * each end of the track (where the thumb sits at the extremes), and nothing here
+ * fades the track separately - two soft edges on one 8px bar is the smudge that
+ * note rules out.
+ *
+ * THE FALLBACK IS SILENCE, NOT A PERMANENT FADE. The transcript's unsupported
+ * branch keeps its top fade always on because that element's top edge is
+ * scrolled-away content almost by definition. Here a permanent cue would dim the
+ * first row of EVERY short list and the last row of every list that fits - the
+ * cue's whole claim is "only while clipped" - so an engine with no scroll
+ * timeline (no Electron this app ships on) simply keeps the declared 0px lengths,
+ * which paint no fade at all, rather than a wrong one. Chromium is what Electron
+ * ships, so the guarded half is the real one and this branch is the one that needs
+ * naming.
+ *
+ * REDUCED MOTION: unchanged, for the transcript's reason - this is a scroll-linked
+ * paint whose value IS the scroll position, not a timed animation, so the
+ * duration cap has nothing to cap.
+ */
+@property --lo-sidebar-top-fade {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+@property --lo-sidebar-bottom-fade {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+
+[data-lo-sidebar-edge-cues] {
+	--lo-sidebar-top-fade: 0px;
+	--lo-sidebar-bottom-fade: 0px;
+	mask-image: linear-gradient(
+		to bottom,
+		transparent 0,
+		black var(--lo-sidebar-top-fade),
+		black calc(100% - var(--lo-sidebar-bottom-fade)),
+		transparent 100%
+	);
+}
+
+@supports (animation-timeline: scroll()) {
+	[data-lo-sidebar-edge-cues] {
+		animation-name: sidebar-top-cue, sidebar-bottom-cue;
+		animation-timing-function: linear;
+		animation-fill-mode: both;
+		animation-timeline: scroll(self), scroll(self);
+		animation-range: 0 24px, calc(100% - 24px) 100%;
+	}
+
+	@keyframes sidebar-top-cue {
+		from {
+			--lo-sidebar-top-fade: 0px;
+		}
+		to {
+			--lo-sidebar-top-fade: 24px;
+		}
+	}
+
+	@keyframes sidebar-bottom-cue {
+		from {
+			--lo-sidebar-bottom-fade: 24px;
+		}
+		to {
+			--lo-sidebar-bottom-fade: 0px;
+		}
+	}
+}
+
+/*
  * The chat column's shared content measure.
  *
  * THIS IS THE ONLY PLACE THE SHIPPED NUMBER IS WRITTEN. `CHAT_MEASURE` in

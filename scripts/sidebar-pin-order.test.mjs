@@ -680,7 +680,10 @@ test("the grip is a drag handle: pointer-only, hover-revealed, and one write per
 	 * row menu's two Move items (with the chords beside them), asserted above on the
 	 * menu's own item lists.
 	 */
-	assert.match(grip, /"group-hover:flex group-hover:text-ink-muted",/);
+	assert.match(
+		grip,
+		/"group-data-\[session-hover-intent\]:flex group-data-\[session-hover-intent\]:text-ink-muted",/,
+	);
 	assert.equal(
 		/"group-focus-within:flex/.test(grip),
 		false,
