@@ -104,6 +104,12 @@ class Cdp {
  * width on screen: those two differ exactly when a window is too narrow to draw
  * the reader's choice, and telling them apart is the whole point of the store
  * assertions.
+ *
+ * `line`/`lineLeft` are the state line's two edges, read as RECTS rather than as
+ * colours: the set's claim is geometric (the line sits ON the measure's edge, and
+ * inside the band that grabs), so the rig compares each line's rect against
+ * `content`'s and against the band's on the same reading instead of trusting a
+ * screenshot to look right.
  */
 const PROBE = `(() => {
 	const round = (n) => Math.round(n * 10) / 10;
@@ -135,7 +141,14 @@ const PROBE = `(() => {
 		return undefined;
 	})();
 	const handle = document.querySelector('[data-lo-chat-measure-handle="right"]');
-	const cue = document.querySelector('[data-lo-chat-measure-cue="right"]');
+	const line = document.querySelector('[data-lo-chat-measure-line="right"]');
+	const lineLeft = document.querySelector('[data-lo-chat-measure-line="left"]');
+	const handleLeft = document.querySelector('[data-lo-chat-measure-handle="left"]');
+	const rect = (el) => {
+		if (!el) return null;
+		const r = el.getBoundingClientRect();
+		return { left: round(r.left), right: round(r.right), x: round(r.left + r.width / 2), y: round(r.top + r.height / 2), w: round(r.width), h: round(r.height) };
+	};
 	return {
 		persisted,
 		maxWidth: content ? getComputedStyle(content).maxWidth : null,
@@ -145,13 +158,13 @@ const PROBE = `(() => {
 		overrideVar: getComputedStyle(document.documentElement)
 			.getPropertyValue("--lo-chat-measure-override")
 			.trim(),
-		handle: handle
-			? (() => {
-					const r = handle.getBoundingClientRect();
-					return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: round(r.width), h: round(r.height) };
-				})()
-			: null,
-		cueOpacity: cue ? getComputedStyle(cue).opacity : null,
+		content: rect(content),
+		handle: rect(handle),
+		handleLeft: rect(handleLeft),
+		line: rect(line),
+		lineLeft: rect(lineLeft),
+		lineOpacity: line ? getComputedStyle(line).opacity : null,
+		lineLeftOpacity: lineLeft ? getComputedStyle(lineLeft).opacity : null,
 	};
 })()`;
 
@@ -242,7 +255,7 @@ const shoot = async (cdp, frame, theme) => {
  *
  * The pointer is moved onto the handle FIRST, without a button, so the hover
  * intent timer has run and the state under the press is the state a reader is
- * in - a press that arrived before the cue appeared would be measuring a
+ * in - a press that arrived before the line appeared would be measuring a
  * different gesture.
  */
 const drag = async (cdp, { deltaX, shootAt, frame, theme }) => {
@@ -378,6 +391,17 @@ const main = async () => {
 			record("hover", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, "hover", theme);
 
+			/*
+			 * The LEFT edge gets the same hover, in the same run and at the same 450ms,
+			 * so the pair is a like-for-like reading of one symmetric measure rather
+			 * than a right-edge state and a guess about its mirror.
+			 */
+			const atLeft = await cdp.evaluate(PROBE);
+			await cdp.mouse("mouseMoved", atLeft.handleLeft.x, atLeft.handleLeft.y);
+			await sleep(450);
+			record("hover-left", theme, await cdp.evaluate(PROBE));
+			await shoot(cdp, "hover-left", theme);
+
 			/* Outward to the ceiling, photographed with the button still held. */
 			const ceiling = await drag(cdp, {
 				deltaX: 2000,
@@ -446,6 +470,8 @@ const main = async () => {
 	for (const theme of THEMES) {
 		const rest = by("rest", theme);
 		const hover = by("hover", theme);
+		const hoverLeft = by("hover-left", theme);
+		const dragging = by("dragging", theme);
 		const ceiling = by("at-ceiling", theme);
 		const floor = by("at-floor", theme);
 		const pressed = by("press-only", theme);
@@ -458,13 +484,67 @@ const main = async () => {
 			failures.push(
 				`${theme}: a fresh profile already carries ${rest.persisted}`,
 			);
-		if (Number(rest.cueOpacity) !== 0)
+		if (Number(rest.lineOpacity) !== 0)
 			failures.push(
-				`${theme}: the cue is visible at rest (opacity ${rest.cueOpacity})`,
+				`${theme}: the line is visible at rest (opacity ${rest.lineOpacity})`,
 			);
-		if (!(Number(hover.cueOpacity) > 0))
+		if (Number(rest.lineLeftOpacity) !== 0)
 			failures.push(
-				`${theme}: the cue did not appear on hover (${hover.cueOpacity})`,
+				`${theme}: the LEFT line is visible at rest (opacity ${rest.lineLeftOpacity})`,
+			);
+		if (!(Number(hover.lineOpacity) > 0))
+			failures.push(
+				`${theme}: the line did not appear on hover (${hover.lineOpacity})`,
+			);
+		if (!(Number(hoverLeft.lineLeftOpacity) > 0))
+			failures.push(
+				`${theme}: the LEFT line did not appear on its own hover (${hoverLeft.lineLeftOpacity})`,
+			);
+		/*
+		 * The geometric claim, asked of the reading rather than of the eye: the line
+		 * sits just OUTSIDE the measure's edge with its INNER edge ON it, so the
+		 * right line's left edge and the left line's right edge agree with the
+		 * content column's own edges to within a sub-pixel rounding step. The strip
+		 * is still 24..34px out, which is why the line is read from its own box and
+		 * not from the handle's.
+		 */
+		if (rest.line && Math.abs(rest.line.left - rest.content.right) > 1)
+			failures.push(
+				`${theme}: the right line starts at ${rest.line.left}, the column ends at ${rest.content.right}`,
+			);
+		if (rest.lineLeft && Math.abs(rest.lineLeft.right - rest.content.left) > 1)
+			failures.push(
+				`${theme}: the left line ends at ${rest.lineLeft.right}, the column starts at ${rest.content.left}`,
+			);
+		if (rest.line && rest.line.w !== 2)
+			failures.push(`${theme}: the line is ${rest.line.w}px wide, not 2`);
+		if (rest.line && Math.abs(rest.line.h - rest.content.h) > 1)
+			failures.push(
+				`${theme}: the line is ${rest.line.h}px tall, the column ${rest.content.h}`,
+			);
+		/*
+		 * THE BAND HUGS THE MARK (UX round 1's U1). Its inner edge is the column's own
+		 * edge - 0px out, not the 24px the offset used to put between the drawn rule
+		 * and the only place that responded - and the line sits INSIDE the band, so a
+		 * press on the thing that promises adjustability starts the drag the way every
+		 * family divider's does.
+		 */
+		if (rest.handle && Math.abs(rest.handle.left - rest.content.right) > 1)
+			failures.push(
+				`${theme}: the band's inner edge is ${Math.round((rest.handle.left - rest.content.right) * 10) / 10}px out from the column's edge, not on it`,
+			);
+		if (
+			rest.line &&
+			rest.handle &&
+			(rest.line.left < rest.handle.left - 1 ||
+				rest.line.right > rest.handle.right + 1)
+		)
+			failures.push(
+				`${theme}: the line ${rest.line.left}..${rest.line.right} is not inside the band ${rest.handle.left}..${rest.handle.right}`,
+			);
+		if (!(Number(dragging.lineOpacity) > 0))
+			failures.push(
+				`${theme}: the line did not stay lit while dragging (${dragging.lineOpacity})`,
 			);
 		if (!(ceiling.persisted === 1100))
 			failures.push(
@@ -514,7 +594,7 @@ const main = async () => {
 	} else {
 		for (const r of results) {
 			console.log(
-				`${r.step.padEnd(15)} ${r.theme.padEnd(18)} stored=${String(r.persisted)} maxWidth=${r.maxWidth} width=${r.width} lines=${r.lines} chars/line=${r.charsPerLine} cue=${r.cueOpacity}`,
+				`${r.step.padEnd(15)} ${r.theme.padEnd(18)} stored=${String(r.persisted)} maxWidth=${r.maxWidth} width=${r.width} lines=${r.lines} chars/line=${r.charsPerLine} line=${r.lineOpacity} lineLeft=${r.lineLeftOpacity}`,
 			);
 		}
 		for (const f of failures) console.log(`FAIL ${f}`);

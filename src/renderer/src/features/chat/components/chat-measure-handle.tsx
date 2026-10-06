@@ -8,16 +8,33 @@
  * taken here and two are deliberately not, and the differences are the
  * interesting part:
  *
- *  - **The cue is a short bar centred on the pointer's Y, not a full-height
- *    line.** A full-height rule at the column edge reads as chrome and is visible
- *    in a way "subtle" is supposed to mean it is not. `deepseek-harness` draws a
- *    2px bar with a 16px solid core fading over 28px each side, and this is that
- *    bar at this app's own tokens.
- *  - **Hover alone never moves the bar.** `:hover` shows it at the Y the pointer
- *    was at when it entered; only a DRAG publishes a new Y. That is the answer to
- *    "must not flicker": a bar that chased the pointer along the edge would
- *    twitch on every pass, and the cue would be reporting the hand rather than
- *    the edge. The pointer's Y is written once on entry rather than per move.
+ *  - **The cue is the app's ONE resize language, and that is a REVISION.** It
+ *    was a short bar centred on the pointer's Y, borrowed from
+ *    `deepseek-harness`; the operator's report (issue #848, 2026-10-06) was
+ *    that a 72px mark floating in the transcript's empty margin reads as "a
+ *    mistake" rather than as the column's boundary. It is now the same
+ *    full-height 2px state line the five panel dividers draw
+ *    (`shared/components/common/resizable-divider.tsx`): invisible at rest,
+ *    `control` on hover after the same `HOVER_INTENT_MS` intent delay (imported,
+ *    not restated), `accent` while dragging, using the divider's own class idiom
+ *    (`transition-[opacity,background-color] duration-fast ease-out-quart`). One
+ *    language for every resize edge in the app is worth more than the bar's
+ *    borrowed proportions, and the contract already carries the two roles'
+ *    floors (`border-control`/`accent`, 3:1 on every ground).
+ *  - **The line does not chase the pointer at all.** A mark that follows the
+ *    hand reports the hand; a full-height rule reports the edge at every Y, and
+ *    that is what lets it read as a boundary rather than as a cue. So the
+ *    pointer-Y publication is gone (`--lo-chat-measure-cue-y` with it) - and
+ *    with it the "must not flicker" problem the bar's fixed-on-entry Y existed
+ *    to solve: there is nothing left that could twitch.
+ *  - **Drawn immediately OUTSIDE the measure's edge, not inside it.** The
+ *    divider draws its line on the sized panel's leading/trailing edge, and it
+ *    can, because every panel it sizes carries its own inset. The chat column
+ *    carries none - its inset is the scroller's `p-4` plus the 8px gutter - so
+ *    its edge is exactly where the first glyph starts, and a rule drawn inside
+ *    would cross the text. The 2px line therefore sits with its inner edge ON
+ *    the boundary and its whole width in the gutter beside it, which is what
+ *    makes the column's edge legible as an edge.
  *  - **The handle is OUTSIDE the column, floating 24px clear of it.** The strip
  *    sits in the gutter the measure already reserves (`p-4` + the 8px scrollbar
  *    gutter = 24px per side in `chat-measure.ts`), 24px out from the content
@@ -41,10 +58,21 @@
  *    default - so the feature is reachable without a pointer. It follows the
  *    divider in `shared/components/common/resizable-divider.tsx`, including its
  *    full-viewport cursor overlay, which is imported rather than re-written.
- *    The map and the reset are ANNOUNCED - the separator's `aria-keyshortcuts`
- *    and the mounts' labels - rather than drawn (UX round 1's U2): the
- *    subtlety is the operator's ask, and the double-click reset matches the
- *    app's other five dividers, so parity is kept consciously.
+ *    The reset matches the app's other five dividers, so parity is kept
+ *    consciously.
+ *
+ *    DISCOVERABILITY has two channels, and the pointer half was the gap the
+ *    issue named: the keys and the reset are ANNOUNCED - the separator's
+ *    `aria-keyshortcuts` and the mounts' labels - rather than drawn (UX round
+ *    1's U2), while the strip carries a tooltip naming the drag and the reset
+ *    (`TOOLTIP` below). It names the reset for BOTH readers, because focus opens
+ *    it too and a double-click is the one thing a keyboard reader cannot do
+ *    (design round 1's D1). The parts are the app's own (`ui/tooltip.tsx` exports
+ *    them for the unusual case, which this is: the first tooltip in the tree
+ *    whose anchor would be taller than the pane clipping it), and the OPEN state
+ *    is this component's own, driven by the strip's hover and focus - see the
+ *    anchor's comment in the render block for why the trigger cannot be the
+ *    strip itself.
  *
  * THE KEY MAP IS THE DIVIDER'S OWN, via `keyboardTarget`, with two register
  * choices rather than a second implementation (agent review round 1's R1-2):
@@ -72,9 +100,17 @@ import {
 	removeResizeCursorOverlay,
 } from "@shared/components/common/resizable-divider";
 import { keyboardTarget } from "@shared/components/common/resizable-divider-geometry";
+import {
+	TOOLTIP_DELAY_MS,
+	TooltipContent,
+	TooltipPortal,
+	TooltipProvider,
+	TooltipRoot,
+	TooltipTrigger,
+} from "@shared/components/ui/tooltip";
 import { cn } from "@shared/lib/utils";
 import type { FC } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CHAT_MEASURE_OVERRIDE_VAR } from "../chat-measure";
 import {
 	CHAT_MEASURE_MAX_PX,
@@ -85,14 +121,37 @@ import {
 } from "../chat-measure-drag";
 
 /**
- * The cue's mask geometry: the full bar, the solid core inside it, and the fade
- * each side. 72 = 28 + 16 + 28 exactly - the reference's own proportions, which
- * the file comment claims, so the three move together or the claim is wrong.
- * See the stops in the render block: they sit at the FADE, not the core.
+ * What the strip says when the pointer comes to rest on it - and when the
+ * separator takes focus, which is the same panel.
+ *
+ * Sentence case, the app's own voice (`"Click to set the working directory"`,
+ * `"Fork from this message"`), and TWO sentences rather than a middot-separated
+ * clause: the app has 84 tooltip strings and not one of them uses `·` (the
+ * transcript footer's separator), while two-clause tooltips are already a shape
+ * here (`"Runs on this computer. Nothing is uploaded."`). The family's own
+ * separators read the same way (`"Resize canvas. Double-click resets the shared
+ * pane width."`), so this now says it in the register a reader has already met
+ * (design round 1's D4, UX round 1's U4).
+ *
+ * It names BOTH ways to reset because BOTH readers get it: focus opens this
+ * panel, and a keyboard reader - who has no double-click - is the one person for
+ * whom the reset is otherwise unnamed (design round 1's D1, UX round 1's U2).
+ * `Enter` is the key the separator's own key map binds, so the panel and the
+ * widget cannot disagree about it. The rest of the keys stay on
+ * `aria-keyshortcuts` and the mounts' labels, which is the channel that carries
+ * them.
  */
-const CUE_HEIGHT_PX = 72;
-const CUE_CORE_PX = 16;
-const CUE_FADE_PX = (CUE_HEIGHT_PX - CUE_CORE_PX) / 2;
+const TOOLTIP = "Drag to resize. Double-click or Enter to reset.";
+
+/**
+ * The panel's anchor: a 16px-tall box at the hand's own Y.
+ *
+ * A POINT, not the separator, and that is the fix for M1/D3/U3 rather than a
+ * preference - see `publishAnchorY` for what the separator's own rect did on a
+ * scrolling transcript. 16px is the band's own width, so the box is square-ish
+ * and reads as "here", not as a second control.
+ */
+const ANCHOR_HEIGHT_PX = 16;
 
 export type ChatMeasureHandleProps = {
 	/** Which edge of the column this handle sits on. */
@@ -123,7 +182,33 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	const [dragging, setDragging] = useState(false);
 	const draggingRef = useRef(false);
 	const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-	/** The strip the cue is positioned inside. See `publishCueY`. */
+	/**
+	 * The Y the tooltip panel is anchored to, in px from the wrapper's top: the
+	 * hand's own Y published once on entry, or the middle of the column's VISIBLE
+	 * slice for the keyboard path, where there is no hand. `null` before either has
+	 * happened, which the render reads as the wrapper's own middle.
+	 */
+	const [anchorY, setAnchorY] = useState<number | null>(null);
+	/** Whether the panel is open. See `openPanelSoon` and the render block. */
+	const [panelOpen, setPanelOpen] = useState(false);
+	const panelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	// A pending panel timer that fires after unmount would set state on a dead
+	// component; clearing it is the whole lifecycle this needs (the divider's own
+	// cleanup, one timer further over).
+	useEffect(
+		() => () => {
+			if (panelTimer.current) clearTimeout(panelTimer.current);
+		},
+		[],
+	);
+	/**
+	 * The wrapper the line and the strip are positioned inside.
+	 *
+	 * It reads the pane's geometry (`paneWidthPx`) and is the box both children
+	 * anchor to: `inset-0` of it is the column itself, which is what lets the
+	 * line land on the measure's real edge without a second measurement.
+	 */
 	const rootRef = useRef<HTMLDivElement>(null);
 
 	/*
@@ -131,6 +216,69 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 * whole gesture; the hover timer only governs the resting case.
 	 */
 	const lit = hovering || dragging;
+
+	/**
+	 * Publish the hand's Y, ONCE, as the tooltip panel's anchor.
+	 *
+	 * THE ANCHOR IS A POINT, NOT THE SEPARATOR, and that is a fix rather than a
+	 * preference (agent review round 1's M1, UX round 1's U3, design round 1's D3).
+	 * Radix places the panel against its anchor's rect, and the separator's rect is
+	 * the CONTENT column's height - which for any conversation that scrolls has its
+	 * top and bottom outside the pane. Measured on a scrolling transcript (1060x620
+	 * window, 240px pane, 12 prose blocks): the panel landed at y 1473..1500
+	 * mid-scroll and at y -49..-22 scrolled to the bottom, i.e. nowhere a reader can
+	 * see it, and at y 230..257 pinned to the TOP position past the pane's own
+	 * bottom edge. A 16px box at the hand keeps every placement inside the pane.
+	 *
+	 * ONCE, and not per pointer move: a panel that chased the hand would be the same
+	 * twitch this file's cue-Y publication was written to avoid, and it is what keeps
+	 * the box cheap - written on entry, read by the popper, never re-measured.
+	 */
+	const publishAnchorY = (clientY: number): void => {
+		const el = rootRef.current;
+		if (!el) return;
+		setAnchorY(Math.round(clientY - el.getBoundingClientRect().top));
+	};
+
+	/**
+	 * The Y of the column's VISIBLE middle, for the keyboard path.
+	 *
+	 * Focus opens the panel and there is no hand to anchor it to, while the
+	 * wrapper's own middle is the CONTENT's middle - the same off-pane seat M1
+	 * measured. This intersects the column's box with the scroller's and takes the
+	 * middle of what is actually on screen, so a keyboard reader gets the panel
+	 * beside the separator they just focused. `null` (the CSS fallback, the
+	 * wrapper's own middle) only if the two do not overlap at all, which a
+	 * rendered handle cannot be.
+	 */
+	const visibleAnchorY = (): number | null => {
+		const el = rootRef.current;
+		const scroller = el?.closest("[data-lo-canonical-transcript]");
+		if (!el || !scroller) return null;
+		const own = el.getBoundingClientRect();
+		const pane = scroller.getBoundingClientRect();
+		const top = Math.max(own.top, pane.top);
+		const bottom = Math.min(own.bottom, pane.bottom);
+		if (!(bottom > top)) return null;
+		return Math.round((top + bottom) / 2 - own.top);
+	};
+
+	/*
+	 * The panel's dwell, on the app's TOOLTIP constant rather than the divider's:
+	 * it is the same panel as every other tooltip in the app and should arrive on
+	 * the same beat (measured at 409ms before this change, and 400 is the number
+	 * that produced it). Leaving closes it at once, for the reason the divider's
+	 * own comment gives - a panel that lingers after the pointer has gone reads as
+	 * stuck.
+	 */
+	const openPanelSoon = (): void => {
+		if (panelTimer.current) clearTimeout(panelTimer.current);
+		panelTimer.current = setTimeout(() => setPanelOpen(true), TOOLTIP_DELAY_MS);
+	};
+	const closePanel = (): void => {
+		if (panelTimer.current) clearTimeout(panelTimer.current);
+		setPanelOpen(false);
+	};
 
 	/** Publish a width to the document without committing it to the store. */
 	const preview = (next: number | null): void => {
@@ -168,23 +316,6 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
 		const pane = scroller.clientWidth - left - right;
 		return pane > 0 ? pane : null;
-	};
-
-	/**
-	 * Put the pointer's own Y on the handle, so the cue lands under the hand.
-	 *
-	 * The property is written on the strip's WRAPPER rather than on the separator
-	 * itself, because the cue is a sibling of the separator and inherits from the
-	 * wrapper: see the render block for why the two are siblings.
-	 */
-	const publishCueY = (clientY: number): void => {
-		const el = rootRef.current;
-		if (!el) return;
-		const rect = el.getBoundingClientRect();
-		el.style.setProperty(
-			"--lo-chat-measure-cue-y",
-			`${Math.round(clientY - rect.top)}px`,
-		);
 	};
 
 	/*
@@ -297,7 +428,6 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		setDragging(true);
 		document.body.style.userSelect = "none";
 		addResizeCursorOverlay("col-resize");
-		publishCueY(event.clientY);
 
 		/*
 		 * The release handler takes no event: it is registered on `window`, whose
@@ -312,7 +442,6 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		const onMouseMove = (moveEvent: MouseEvent) => {
 			if (!draggingRef.current) return;
 			lastClientX = moveEvent.clientX;
-			publishCueY(moveEvent.clientY);
 			preview(
 				draggedChatMeasureWidth({
 					startWidth,
@@ -375,16 +504,36 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 
 	return (
 		/*
-		 * A WRAPPER, with the widget and its cue as SIBLINGS rather than the cue
-		 * inside the widget - and the reason is not cosmetic. `role="separator"`
-		 * on an element with children is refused by the repo's own lint
-		 * (`useSemanticElements` reads it as "this should be an `<hr>`", which is
-		 * true only because an `<hr>` cannot hold a child, and an `<hr>` cannot be
-		 * a focusable adjustable separator at all). Keeping the cue outside the
-		 * widget makes both true instead of suppressing the check: the separator
-		 * is a real, childless `separator`, and the cue is paint the widget owns.
-		 * The wrapper is also what carries the pointer's Y, since the cue inherits
-		 * it from there.
+		 * A FULL-COLUMN WRAPPER, transparent to the pointer, holding the state
+		 * line and the widget as children.
+		 *
+		 * The wrapper used to BE the strip - a 10px box the separator filled, with
+		 * the cue nested inside it. It spans the column now, and the two reasons for
+		 * that are one decision:
+		 *
+		 *  - **The state line belongs on the measure's real edge and the grab target
+		 *    hugs it from the gutter side** (see the band's own comment: it was 24px
+		 *    out, which measured as a dead zone between the mark and the only place
+		 *    that responded). One box cannot be both, so the box is the column and
+		 *    each child is placed against it.
+		 *  - **This box's own edge IS the measure's edge.** It is mounted inside
+		 *    `data-lo-transcript-content`, the centred
+		 *    `max-w-[var(--lo-chat-measure)]` column `chat-measure.ts` owns, so
+		 *    `left-0`/`right-0` here is the boundary the issue asks the line to read
+		 *    as, and the no-offset anchor the band and the line are both placed from.
+		 *
+		 * IT MUST NOT TAKE THE POINTER: a full-column box that did would swallow
+		 * every click and every selection in the transcript. `pointer-events-none`
+		 * here and `pointer-events-auto` on the separator is the pairing that keeps
+		 * the target while the box stays transparent.
+		 *
+		 * The line and the widget are SIBLINGS rather than one nested in the other,
+		 * and that is not cosmetic: `role="separator"` on an element with children
+		 * is refused by the repo's own lint (`useSemanticElements` reads it as "this
+		 * should be an `<hr>`", which is true only because an `<hr>` cannot hold a
+		 * child, and an `<hr>` cannot be a focusable adjustable separator at all).
+		 * Keeping the line outside the widget makes both true instead of suppressing
+		 * the check.
 		 */
 		<div
 			ref={rootRef}
@@ -392,80 +541,70 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				/*
 				 * `hidden` below the same `@min-[750px]/chatcol` gate the measure's
 				 * application wears: below it the column takes the pane and there is
-				 * nothing to resize (agent review round 1's R1-1). The cue and the
-				 * separator are the wrapper's children, so one class removes the
-				 * paint AND the tab stop out of the band together.
+				 * nothing to resize (agent review round 1's R1-1). The line and the
+				 * separator are the wrapper's children, so one class removes the paint
+				 * AND the tab stop out of the band together.
 				 */
-				"hidden @min-[750px]/chatcol:block absolute top-0 z-10 h-full w-2.5",
-				/*
-				 * The strip floats 24px OUT from the content edge - the reference's
-				 * own offset - so the cue sits 28px from the longest glyph. The
-				 * flush variant this first shipped with sat on the fold-row
-				 * button's hit box by 8x20px (design round 1's D2); the offset is
-				 * part of the design, not decoration.
-				 *
-				 * THE CLASS IS THE FALLBACK AND THE STYLE IS THE CLAMP. `deepseek-harness`
-				 * can hold a fixed 24px offset because its cap is dynamic (content <= column
-				 * minus its edge budget), so side room always exists; this app's cap is
-				 * fixed, and at the widest the room is smaller than 34px - the strip would
-				 * slide off the pane and the handle would become unreachable (measured:
-				 * box -18..-8, `elementFromPoint` null). So the inset is `max(-34px, (100%
-				 * - 100cqw) / 2)`: 34px out while the pane's own side space allows it, and
-				 * sliding flush at the widths where it does not. If `cqw` ever fails to
-				 * resolve the declaration is invalid and the class above still holds the
-				 * 34px offset.
-				 *
-				 * AT THE CLAMP the strip shares the pane's outermost 10px with the 8px
-				 * scrollbar gutter the app reserves at that edge (UX round 1's U3):
-				 * with no side room there is no other 10px on that edge that is not
-				 * over text, so the share is a bounded consequence of the flush case
-				 * rather than a separate choice. WHAT A READER MEETS IN THAT 10px,
-				 * stated so this record stands on its own (UX round 2's U5): a press
-				 * there starts a measure drag rather than reaching the scrollbar
-				 * underneath, while SCROLLING IS UNTOUCHED - the wheel and the
-				 * keyboard are not pointer presses, so the strip cannot intercept
-				 * either.
-				 */
-				edge === "left" ? "-left-[34px]" : "-right-[34px]",
+				"hidden @min-[750px]/chatcol:block absolute inset-0 z-10",
+				"pointer-events-none",
 			)}
-			style={{
-				[edge === "left" ? "left" : "right"]:
-					"max(-34px, calc((100% - 100cqw) / 2))",
-			}}
 		>
 			{/*
-			 * The cue. `pointer-events-none` because the separator is the target
-			 * and this is paint; masked at the ends rather than given a gradient,
-			 * so the fade is a property of the shape and not of the colour theme.
-			 * The stops sit 28px in from each end - the fade, leaving the 16px
-			 * core - not at the core's own edges, which would paint a 40px
-			 * plateau (design round 1's D1 measured the earlier stops at 16/56
-			 * against the 28/44 the reference draws).
+			 * The state line: the divider family's drawing, at the measure's real edge.
+			 * Full height, 2px, `opacity-0` at rest, `control` on hover, `accent` while
+			 * dragging. Opacity and colour are the only animated properties - animating
+			 * width would animate layout (the same note is on
+			 * `resizable-divider.tsx`'s line).
+			 *
+			 * IT SITS JUST OUTSIDE THE COLUMN: `-left-0.5` / `-right-0.5` puts the
+			 * line's INNER edge on this wrapper's own edge - the measure's edge - so
+			 * the whole 2px lands in the gutter beside the text. The divider can draw
+			 * its line inside the panel's edge because every panel it sizes carries its
+			 * own inset; the chat column carries none (its inset is the scroller's
+			 * `p-4` and the 8px gutter), so an inside rule would cross the first glyph.
+			 * See the file comment for why this reads as the boundary.
 			 */}
-			<span
+			<div
 				aria-hidden="true"
-				data-lo-chat-measure-cue={edge}
+				data-lo-chat-measure-line={edge}
 				className={cn(
-					"pointer-events-none absolute w-0.5",
-					/* 4px in from the strip's inner edge: 24 + 4 = the reference's 28px. */
-					edge === "left" ? "right-1" : "left-1",
+					"pointer-events-none absolute top-0 z-12 h-full w-0.5",
+					"transition-[opacity,background-color] duration-fast ease-out-quart",
+					edge === "left" ? "-left-0.5" : "-right-0.5",
 					dragging ? "bg-accent" : "bg-control",
-					"transition-opacity duration-fast ease-out-quart",
 					lit ? "opacity-100" : "opacity-0",
 				)}
-				style={{
-					top: "var(--lo-chat-measure-cue-y, 50%)",
-					height: CUE_HEIGHT_PX,
-					transform: "translateY(-50%)",
-					maskImage: `linear-gradient(to bottom, transparent 0, black ${CUE_FADE_PX}px, black ${CUE_HEIGHT_PX - CUE_FADE_PX}px, transparent ${CUE_HEIGHT_PX}px)`,
-					WebkitMaskImage: `linear-gradient(to bottom, transparent 0, black ${CUE_FADE_PX}px, black ${CUE_HEIGHT_PX - CUE_FADE_PX}px, transparent ${CUE_HEIGHT_PX}px)`,
-				}}
 			/>
 			{/*
-			 * The widget. `inset-0` of the wrapper, so the target is the whole 10px
-			 * strip and the cursor is stable across it; `touch-none` stops a
-			 * trackpad drag scrolling the transcript underneath instead of sizing
-			 * the column.
+			 * The widget: a 10px band that HUGS the drawn line from the gutter side.
+			 *
+			 * IT HUGS THE LINE, and that is the fix for UX round 1's U1, which the
+			 * design round's D2 flagged and the reviewer's own reading agreed with: the
+			 * band used to sit 24px out in the gutter, which left a 22px dead zone
+			 * between the only thing on screen that promises adjustability and the only
+			 * place that responded - a press ON the mark did nothing, where the shipped
+			 * bar was grabbable. Every one of the app's five family dividers puts its
+			 * band OVER its line; this does too now, on the side the line is drawn on:
+			 * `-left-2.5` / `-right-2.5` spans the 10px immediately outboard of the
+			 * column's edge, so a press anywhere on the 2px rule starts the drag.
+			 *
+			 * AND IT STILL NEVER REACHES INWARD past the column's edge, which is what
+			 * the old offset existed for: the band cannot sit over text, and the
+			 * fold-row corner the flush variant once overlapped by 8x20px (design round
+			 * 1's D2) is untouched. The gutter it occupies is the 24px the measure
+			 * itself reserves - the scroller's `p-4` plus the 8px scrollbar gutter - so
+			 * the 10px is always there, which is why the `max(-34px, calc((100% -
+			 * 100cqw) / 2))` clamp went with the offset it was compensating for.
+			 *
+			 * `touch-none` so a trackpad drag sizes the column instead of scrolling the
+			 * transcript underneath, and `pointer-events-auto` because the wrapper above
+			 * is transparent to the pointer by design. The `z-11` under the line's
+			 * `z-12` is the family's own paint order (`resizable-divider.tsx`).
+			 *
+			 * WHAT A READER MEETS IN THE BAND, stated so the record stands on its own:
+			 * a press starts a measure drag rather than reaching the scrollbar
+			 * underneath, while SCROLLING IS UNTOUCHED - the wheel and the keyboard are
+			 * not pointer presses, so the band cannot intercept either.
 			 */}
 			<div
 				role="separator"
@@ -483,15 +622,14 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				aria-valuemin={CHAT_MEASURE_MIN_PX}
 				aria-valuemax={CHAT_MEASURE_MAX_PX}
 				tabIndex={0}
-				className="absolute inset-0 cursor-col-resize touch-none"
+				className={cn(
+					"pointer-events-auto absolute top-0 z-11 h-full w-2.5 cursor-col-resize touch-none",
+					edge === "left" ? "-left-2.5" : "-right-2.5",
+				)}
 				onMouseEnter={(event) => {
+					publishAnchorY(event.clientY);
+					openPanelSoon();
 					if (hoverTimer.current) clearTimeout(hoverTimer.current);
-					/*
-					 * The Y is published ONCE, on entry, and not on every move: see
-					 * the file comment - a bar that followed the pointer would
-					 * twitch.
-					 */
-					publishCueY(event.clientY);
 					hoverTimer.current = setTimeout(
 						() => setHovering(true),
 						HOVER_INTENT_MS,
@@ -499,15 +637,74 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 				}}
 				onMouseLeave={() => {
 					if (hoverTimer.current) clearTimeout(hoverTimer.current);
+					closePanel();
 					if (!draggingRef.current) setHovering(false);
 				}}
-				onFocus={() => setHovering(true)}
+				onFocus={() => {
+					setHovering(true);
+					/* No hand on this path: anchor to what is visible. */
+					setAnchorY(visibleAnchorY());
+					/*
+					 * Focus opens it at once, the way Radix opens on focus for every
+					 * other tooltip in the app (measured `instant-open`); the dwell
+					 * below is the pointer's.
+					 */
+					setPanelOpen(true);
+				}}
 				onBlur={() => {
+					closePanel();
 					if (!draggingRef.current) setHovering(false);
 				}}
 				onKeyDownCapture={onKeyDown}
-				onMouseDown={onMouseDown}
+				onMouseDown={(event) => {
+					/* A drag owns the pointer: no panel rides over the column. */
+					closePanel();
+					onMouseDown(event);
+				}}
 			/>
+			{/*
+			 * The tooltip's ANCHOR and its panel.
+			 *
+			 * The parts are the app's own - `ui/tooltip.tsx` exports them for
+			 * "anything unusual", and this is: 201 tooltips in the tree, and this is
+			 * the first whose anchor box would be taller than the pane clipping it.
+			 * The anchor is a bounded 16px box at the hand's Y rather than the
+			 * separator, which is what keeps the panel on screen at every scroll
+			 * position (see `publishAnchorY`).
+			 *
+			 * THE OPEN STATE IS OURS, and the anchor is `pointer-events-none` paint:
+			 * the strip's own hover and focus decide when the panel exists, at the
+			 * app's own dwell. A Radix trigger that the pointer never reaches cannot
+			 * open anything by itself, which is exactly what we want here - the
+			 * alternative (a hoverable anchor box) would take the pointer off the
+			 * strip it is meant to be marking.
+			 *
+			 * The provider is local because a Radix root requires one and this subtree
+			 * holds no other tooltip, so shadowing an app-level provider costs no
+			 * shared grace period. `side="top"` is the app's default: the panel sits
+			 * just above the hand, on the edge it is marking.
+			 */}
+			<TooltipProvider>
+				<TooltipRoot open={panelOpen} onOpenChange={setPanelOpen}>
+					<TooltipTrigger asChild>
+						<div
+							data-lo-chat-measure-anchor={edge}
+							className={cn(
+								"pointer-events-none absolute w-2.5",
+								edge === "left" ? "-left-2.5" : "-right-2.5",
+							)}
+							style={{
+								top: anchorY === null ? "50%" : `${anchorY}px`,
+								height: ANCHOR_HEIGHT_PX,
+								transform: "translateY(-50%)",
+							}}
+						/>
+					</TooltipTrigger>
+					<TooltipPortal>
+						<TooltipContent side="top">{TOOLTIP}</TooltipContent>
+					</TooltipPortal>
+				</TooltipRoot>
+			</TooltipProvider>
 		</div>
 	);
 };
