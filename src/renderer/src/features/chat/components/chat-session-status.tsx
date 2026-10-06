@@ -252,7 +252,14 @@ export function SubagentRunningMark({
 	className,
 	mark,
 }: {
-	className?: string;
+	/**
+	 * REQUIRED, because the box is load-bearing rather than decorative (agent review round 1, NIT 1). The
+	 * mark is an `size-full` svg now, so `width/height: 100%` needs a definite box to resolve against -
+	 * the disc it replaced was `size-2` and sized itself. Both call sites pass one (the sidebar row's
+	 * `size-3.5`, the `delegating` rung's `size-4`), and `cn` keeps the caller's class authoritative; the
+	 * type says so rather than leaving the next call site to discover an invisible mark at runtime.
+	 */
+	className: string;
 	/** The rig/test hook (`data-subagent-mark`). Passed only where the mark stands for the ROW's own running subagents - the `delegating` rung shares the component but not the hook. */
 	mark?: string;
 }) {
