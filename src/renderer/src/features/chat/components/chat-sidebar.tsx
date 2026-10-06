@@ -97,7 +97,6 @@ import {
 	PinOff,
 	Plus,
 	Search,
-	Share2,
 	SlidersHorizontal,
 	Trash2,
 	UserPlus,
@@ -251,6 +250,7 @@ import {
 	tailExtendDue,
 } from "../sidebar-scope-paging";
 import { ChatRemoteMark } from "./chat-remote-mark";
+import { ChatRowHoverIntent } from "./chat-row-hover-intent";
 import { ChatRowTitle } from "./chat-row-title";
 import { ChatSidebarViewMenu } from "./chat-sidebar-view-menu";
 import {
@@ -685,7 +685,11 @@ import {
 	refreshFocusedInside,
 } from "../sidebar-focus-hold";
 
-import { ChatAsksOutstanding, ChatSessionStatus } from "./chat-session-status";
+import {
+	ChatAsksOutstanding,
+	ChatSessionStatus,
+	SubagentRunningMark,
+} from "./chat-session-status";
 
 /**
  * How often the catalogue polls when the machine-wide feed is NOT available.
@@ -4213,10 +4217,10 @@ export function ChatSidebar({
 		 * THE WRAPPER AND THE `group` HOOK. The wrapper carries `data-session-row`, the
 		 * hook the pins harness and this file's CURRENT table address the row by, and it
 		 * carries `group` for exactly the reason it exists: something inside READS it now
-		 * (`group-hover`/`group-focus-within` on the two acts), and a hook an element
-		 * reads is the only kind worth carrying. The `w-full` -> `min-w-0 grow` note on
-		 * the button below is main's and still holds: a full-width button sharing a flex
-		 * row with a sibling is a row that overflows.
+		 * (`group-data-[session-hover-intent]`/`group-focus-within` on the two acts), and
+		 * a hook an element reads is the only kind worth carrying. The `w-full` ->
+		 * `min-w-0 grow` note on the button below is main's and still holds: a
+		 * full-width button sharing a flex row with a sibling is a row that overflows.
 		 *
 		 * THE TWO ACTS: the pair costs the title 56px UNDER THE POINTER and NOTHING at
 		 * rest, which is the change `docs/design/sidebar-row-space.md` specifies and the
@@ -4520,14 +4524,19 @@ export function ChatSidebar({
 				 * every element here is `shrink-0`, so none of them can be truncated
 				 * away, and the title's clip is the only thing that pays.
 				 *
-				 * TWO GLYPHS, INDEPENDENTLY DRAWN, because they are two facts: a child at
-				 * work (`Share2`, the app's own "delegated work" mark, accent - the same
-				 * glyph and ink the `delegating` rung's primary mark wears) and a child
-				 * waiting for capacity (`Hourglass`, muted). The delegating row is the one
-				 * place they interact: its primary mark already IS the running mark, so
-				 * `subagentMarks` suppresses the running half there and the queued glyph
-				 * still draws - `Share2` carries "subagents are at work", not "none of
-				 * them has started".
+				 * TWO MARKS, INDEPENDENTLY DRAWN, because they are two facts: a child at
+				 * work (the shared `SubagentRunningMark` - a filled dot in the accent, the
+				 * app's own "a thing is at work" shape, and the same mark the `delegating`
+				 * rung's primary slot wears) and a child waiting for capacity (`Hourglass`,
+				 * muted). The delegating row is the one place they interact: its primary
+				 * mark already IS the running mark, so `subagentMarks` suppresses the
+				 * running half there and the queued glyph still draws - the dot carries
+				 * "subagents are at work", not "none of them has started".
+				 *
+				 * THE DOT REPLACED `Share2` (issue #840): a share glyph beside the row's own
+				 * act buttons read as an action, so the running mark moved out of the icon
+				 * vocabulary into the app's round-mark one. `SubagentRunningMark` carries
+				 * the collision check and the sizing.
 				 *
 				 * 14px (`size-3.5`, the icon ramp's `sm` step beside `body-sm` text),
 				 * STATIC, and `aria-hidden`: they are ink. The words arrive through the
@@ -4546,10 +4555,9 @@ export function ChatSidebar({
 				 * the one-word fix that restores the spec's own arithmetic.
 				 */}
 				{marks.running && (
-					<Share2
-						aria-hidden="true"
-						data-subagent-mark="running"
-						className="ml-1 size-3.5 shrink-0 text-accent"
+					<SubagentRunningMark
+						mark="running"
+						className="ml-1 size-3.5 text-accent"
 					/>
 				)}
 				{marks.queued && (
@@ -4687,8 +4695,11 @@ export function ChatSidebar({
 				 * fact every resting row carries - so it sits after it and never
 				 * competes for it. A RUNNING row prints none (its time is "now", which
 				 * the spinner already says), and it gives way to the per-row acts under
-				 * the pointer (`group-hover:hidden`) so revealing Pin/Archive costs the
-				 * title nothing.
+				 * the pointer (`group-data-[session-hover-intent]:hidden`) so revealing
+				 * Pin/Archive costs the title nothing. IT GIVES WAY ON THE ACTS' OWN
+				 * CLOCK, not on the bare hover: the two are one swap (the time leaves as
+				 * the acts arrive), so gating one and not the other would blank the time
+				 * for the dwell and leave a hole where it was.
 				 *
 				 * The visible `2h` is `aria-hidden` and the sentence (`2 hours ago`) is
 				 * read after the title, so the row's name stays `state — title` with the
@@ -4699,7 +4710,7 @@ export function ChatSidebar({
 						<span
 							aria-hidden="true"
 							data-session-time
-							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-focus-within:hidden group-hover:hidden"
+							className="ml-auto shrink-0 pl-2 font-mono text-ink-dim text-mono-sm tabular-nums group-focus-within:hidden group-data-[session-hover-intent]:hidden"
 						>
 							{relativeTime(row, listNow, view.basis)}
 						</span>
@@ -5029,7 +5040,8 @@ export function ChatSidebar({
 						 * so it is hidden from the accessibility tree and its `title` serves the
 						 * sighted pointer alone.
 						 *
-						 * WHICH IS WHY IT REVEALS ON HOVER ONLY (agent review round 2, N1). The grip used to
+						 * WHICH IS WHY IT REVEALS ON HOVER ONLY (agent review round 2, N1), AND WHY THE
+						 * HOVER IT REVEALS ON IS THE DWELL (issue #840). The grip used to
 						 * come out under `group-focus-within` too, so a sighted keyboard reader walking the
 						 * row watched a handle appear that they can neither focus nor operate - the two
 						 * decisions pointed opposite ways, and the reveal yields rather than the AT-hiding,
@@ -5077,7 +5089,7 @@ export function ChatSidebar({
 								className={cn(
 									"hidden size-6 shrink-0 cursor-grab items-center justify-center rounded-md active:cursor-grabbing",
 									"text-ink-dim",
-									"group-hover:flex group-hover:text-ink-muted",
+									"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted",
 									/*
 									 * The hold (see the pin's note): while this row is the one
 									 * whose menu is open the reveal is state rather than
@@ -5261,10 +5273,12 @@ export function ChatSidebar({
 										 * element that is not displayed cannot receive a press at all, so the
 										 * `pointer-events-none` pairing that used to carry this comes off (QA round
 										 * 1, U3 - the property it was written for is now stronger). The row behind
-										 * it is the hover target: `group-hover`/`group-focus-within` reveal the
-										 * control, and the same two states are what make it operable.
+										 * it is the hover target: `group-data-[session-hover-intent]`/
+										 * `group-focus-within` reveal the control, and the same two states are what
+										 * make it operable. The pointer term now waits for the row's dwell
+										 * (issue #840); the focus term is unchanged and immediate.
 										 */
-										"group-hover:flex group-hover:text-ink-muted group-focus-within:flex group-focus-within:text-ink-muted",
+										"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted group-focus-within:flex group-focus-within:text-ink-muted",
 										/*
 										 * THE HOLD (spec §4), and it is not optional: while THIS row's
 										 * menu is open the reveal is state, not pointer state - the
@@ -5473,7 +5487,7 @@ export function ChatSidebar({
 								/* ORDER FIRST: the mark owns the row's right edge (see the comment below). */
 								"order-first",
 								"text-ink-dim",
-								"group-hover:flex group-hover:text-ink-muted",
+								"group-data-[session-hover-intent]:flex group-data-[session-hover-intent]:text-ink-muted",
 								"group-focus-within:flex group-focus-within:text-ink-muted",
 								/* The hold, as the pin glyph's comment records: the reveal is authored in every revealing control, so the clause rides each. */
 								menuOpen && "flex text-ink-muted",
@@ -5559,9 +5573,12 @@ export function ChatSidebar({
 				onBlur={keepFlyoutWhileFocusStaysInRow}
 				className={cn(
 					// Carried while EITHER per-row control is mounted, because both reveal
-					// themselves through `group-hover`/`group-focus-within` on it, and absent
-					// when neither is - which is what keeps the fully withdrawn panel's class
-					// list the one it had before either feature existed.
+					// themselves through the row's own `group-data-[session-hover-intent]` /
+					// `group-focus-within` on it, and absent when neither is - which is what
+					// keeps the fully withdrawn panel's class list the one it had before
+					// either feature existed. The `data-session-hover-intent` attribute the
+					// pointer half reads is written by `ChatRowHoverIntent` below - it is the
+					// dwell gate (issue #840), and the row box is the element it marks.
 					(pinsEnabled || archiveEnabled) && "group",
 					/*
 					 * AND THE HOVER GROUND BELONGS TO THE ROW, NOT TO ITS BUTTON (design
@@ -5629,16 +5646,29 @@ export function ChatSidebar({
 					dragging && rowDraggingMark,
 				)}
 			>
+				{/*
+				 * THE POINTER-INTENT GATE (issue #840). The acts below reveal on the row's own
+				 * `data-session-hover-intent`, and this is the only writer of it: a pointer
+				 * that DWELLS on the row for the app's hover-intent constant earns the reveal,
+				 * and a pointer sweeping through on its way to a row that is merely being
+				 * SELECTED never meets a control that just arrived under it. The keyboard's
+				 * `group-focus-within` term is untouched and stays immediate. It renders a
+				 * `hidden` anchor and resolves this box from it; see `chat-row-hover-intent.tsx`
+				 * for why it is a component rather than a hook here.
+				 */}
+				{(pinsEnabled || archiveEnabled) && <ChatRowHoverIntent />}
 				{rowButton}
 				{silentRemedy}
 				{readAckRemedy}
 				{menuRemedy}
 				{/*
 				 * THE PAIR. Both acts are siblings of the row's button, never children, and both
-				 * are absent from the layout until the pointer or the keyboard is inside the row
-				 * (`display`, not `opacity`): at rest a row's title has the whole row, and the two
-				 * acts take 56px of it under the pointer, which is what the title's pan exists to
-				 * answer (`docs/design/sidebar-row-space.md`, D2 and D3).
+				 * are absent from the layout until the pointer has DWELT on the row or the
+				 * keyboard is inside it (`display`, not `opacity`): at rest a row's title has the
+				 * whole row, and the two acts take 56px of it under the pointer, which is what
+				 * the title's pan exists to answer (`docs/design/sidebar-row-space.md`, D2 and
+				 * D3). The pointer's term is the row's own `data-session-hover-intent` (the
+				 * gate mounted above); the keyboard's `group-focus-within` term is immediate.
 				 *
 				 * THE WRAPPER IS ALWAYS A FLEX BOX, AND WHAT SHUTS IT IS THE ROW'S OWN STATE:
 				 * `hidden` while the row is unpinned, because then NEITHER control is drawn at
@@ -5666,7 +5696,7 @@ export function ChatSidebar({
 							 */
 							pinned || menuOpen
 								? "flex"
-								: "hidden group-hover:flex group-focus-within:flex",
+								: "hidden group-data-[session-hover-intent]:flex group-focus-within:flex",
 						)}
 					>
 						{controls}
@@ -9502,6 +9532,8 @@ export function ChatSidebar({
 					id={CHAT_REGION_ID}
 					tabIndex={-1}
 					data-sidebar-region="scroller"
+					/* The edge cues (issue #845): `index.css` masks on this hook. */
+					data-lo-sidebar-edge-cues
 					onScroll={() => {
 						refreshFocusedInside(entityPanelRef.current, entitySlotRef);
 						refreshFocusedInside(listPanelRef.current, listSlotRef);
