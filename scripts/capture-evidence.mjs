@@ -9699,7 +9699,7 @@ export const STORIES = [
 	 * WHY THE FIXTURES ARE WIRE-SHAPED: the gate is a core-repo feature in flight, so no
 	 * released runtime can divert an ask yet and there is no live run to photograph — the
 	 * frames fold the core's own frame shapes and marker through the production reducer,
-	 * the same contract `chat-interrupted-rows` states for its marker one block above.
+	 * the same contract the `chat-interrupted-rows` block states for its marker.
 	 */
 	["chat-ask-gate-rows--diverted-live", 1280, 800],
 	["chat-ask-gate-rows--diverted-settled", 1280, 800],

@@ -356,7 +356,7 @@ export const UnreadableLive: Story = {
 	render: () => (
 		<Frame
 			waiting={true}
-			caption="An unreadable mode (an old core, or a mixed build): today's mounting stands — the running row is the flash residual the design records. The next frame shows the settle still cleans it up."
+			caption="An unreadable mode (an old core, or a mixed build): today's mounting stands — the running row is the flash residual the design records; the settle frame still drops it."
 			transcript={askInFlight(false)}
 		/>
 	),

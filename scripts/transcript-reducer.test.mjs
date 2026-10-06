@@ -6812,20 +6812,28 @@ const askEnd = ({ marked = false, ...over } = {}) => ({
 });
 const toolRows = (state) => state.records.filter((r) => r.kind === "tool");
 
-test("queuedAskEngineLive: presence of `asks` is the mode, and only `asks`", () => {
-	assert.equal(queuedAskEngineLive({ asks: [] }), true);
+test("queuedAskEngineLive: presence of `asks` or `asks_open` is the mode", () => {
+	/*
+	 * The R1 fix's own case: an empty queue under a live engine publishes
+	 * `asks_open: 0` (the field is present whenever the engine is live), and a
+	 * gate running on that empty queue — the first-ask case — must read capable.
+	 */
+	assert.equal(queuedAskEngineLive({ asks_open: 0 }), true);
+	assert.equal(queuedAskEngineLive({ asks_open: 2 }), true);
+	/*
+	 * An older core's only signal: `asks` present iff at least one ask is
+	 * outstanding (`ask_wire` publishes an empty list as absence). Presence is
+	 * still the rule, so a present-but-empty list reads capable — a shape today's
+	 * core never emits, pinned deliberately rather than by accident (review
+	 * round 1, R3).
+	 */
 	assert.equal(queuedAskEngineLive({ asks: [{ ask_id: "a-1" }] }), true);
+	assert.equal(queuedAskEngineLive({ asks: [] }), true);
 	assert.equal(queuedAskEngineLive({ asks: null }), false);
+	assert.equal(queuedAskEngineLive({ asks: null, asks_open: null }), false);
 	assert.equal(queuedAskEngineLive({}), false);
 	assert.equal(queuedAskEngineLive(null), false);
 	assert.equal(queuedAskEngineLive(undefined), false);
-	/*
-	 * `asks_open` rides WITH `asks` on the wire; it is not the field the rule
-	 * reads (the core's `queued_ask_engine_live` reads `asks`), and a frame that
-	 * somehow carried only the count is an un-negotiated shape the conservative
-	 * answer serves: unknown mode, today's mount.
-	 */
-	assert.equal(queuedAskEngineLive({ asks_open: 2 }), false);
 });
 
 test("settle-only ask: nothing in flight, the receipt at settle", () => {
