@@ -115,10 +115,10 @@ panel-contaminated on the other).
 | a press 6px INSIDE the text edge | the transcript `DIV` | the transcript `DIV` |
 | the band's inner edge against the column's edge | on it (within 1px) | on it (within 1px) |
 | `--lo-chat-measure-cue-y` during a drag / after a release | absent (no publication) | `244px` at a hand `243.5px` below the column's top, and **removed** on the release - asserted, not just recorded |
-| the cue's mark moving between two frames it is LIT for, traced at one sample per animation frame across the release | nothing to trace (a solid rule has no core to follow) | **it does not move**: `244` on every frame from the last lit one, through the fade, at `opacity 1.000` and below |
+| the cue's mark moving between two frames it is LIT for, traced at one sample per animation frame - across the release (UX U6) and across the leave (UX U7) | nothing to trace (a solid rule has no core to follow) | **it does not move**, on either event: `244` on every frame of the release from the last lit one through the fade, `154` on every frame of the leave. Both readings are proved to discriminate - with the fix reverted the same run fails `the mark moves 244 -> 154 ... on the release` and `154 -> 0 ... on the leave` |
 | `top-entry`: the mark's ink against the pane | `221`/`222` rows - the rule fills the pane | `140`/`144` rows, all INSIDE the pane - within 16 rows of the same mark read at the pane's middle (`148`/`152`), the difference being the pane's own top edge |
 | `drag-out`: the mark's ink with the hand 120px outside the pane | `222`/`223` rows - the rule again | `90`/`94` rows, all INSIDE the pane: the core is held at the pane's edge rather than behind its clip |
-| a panel-free state changing anything but the cue's column (`rest` vs the frame, in pixels) | `114..474` scattered encoder noise; a panel would be ~`11,000` | same - the margin is `3000` |
+| a panel-free state changing anything but the cue's column (`rest`/`tall-rest` vs the frame, in pixels) - run over `hover-right`, `hover-left`, `after-reset`, `tall-hover` and `top-entry` | `114..474` scattered encoder noise, worst cell `216` among the tall/edge ones; a panel would be ~`11,000` | same - the margin is `3000` |
 
 Three of these are the change stated as geometry. The ink reading is the one the
 operator's note is about: the cue's element is the same full-height box it was
@@ -159,6 +159,8 @@ gesture ended on and the pointer's leave is what retires it, so the mark cannot 
 between two frames it is lit for. That last reading is the animation-frame trace,
 and it is proved to discriminate: with the adoption disabled the same run fails with
 `244 -> 154 at opacity 1.000`, which is UX round 2's finding exactly.
+
+**The same instrument covers the LEAVE (UX round 3's U7).** Retiring the seat on a leave dropped the render to `50%` of the column for the first frame of the fade, so the exit played at the column's middle - off-screen entirely on a tall conversation, where the mark therefore vanished rather than faded. The render's fallback is now the seat the mark last rested on, so a leave (or a blur) fades the mark where it stands: `154` on every frame of the trace, against the `0`-and-nowhere reading the reverted fix produces. Both traces fail the run if they never sample the mark lit, so neither can pass by watching the wrong stretch of a fade.
 
 **The two edge readings are round 2's findings as geometry, one cell each.** The
 first is design D2-1: the seat was inside the pane and the mark's ENDS were not, so

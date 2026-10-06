@@ -680,6 +680,20 @@ const captureHalf = async (half, origin, record) => {
 			record(half, "after-reset", theme, await cdp.evaluate(PROBE));
 
 			/*
+			 * THE LEAVE TRACE (UX round 3's U7), the release trace's other half. The hand
+			 * leaves the band and the mark should fade WHERE IT STANDS; it used to paint the
+			 * render's `50%` fallback for the first frame of the fade instead - on a tall
+			 * conversation that is a hundred pixels above the pane, so the exit played
+			 * off-screen and the mark vanished rather than fading. Started before the pointer
+			 * moves, so the trace holds the frames either side of the leave.
+			 */
+			const pendingLeave = cdp.evaluate(TRACE);
+			await sleep(60);
+			await cdp.mouse("mouseMoved", 4, 4);
+			record(half, "leave-trace", theme, { samples: await pendingLeave });
+			await sleep(120);
+
+			/*
 			 * Keyboard focus, which this change deliberately leaves alone: it opens
 			 * the panel at once on both trees, because a keyboard reader has no
 			 * double-click with which to find the reset.
@@ -899,6 +913,7 @@ const main = async () => {
 			const focus = by(half, "keyboard-focus", theme);
 			const released = by(half, "released", theme);
 			const releaseTrace = by(half, "release-trace", theme)?.samples ?? [];
+			const leaveTrace = by(half, "leave-trace", theme)?.samples ?? [];
 			const tallHover = by(half, "tall-hover", theme);
 			const ink = painted[`${half}/${theme}`];
 			const tallInk = painted[`tall/${half}/${theme}`];
@@ -946,15 +961,17 @@ const main = async () => {
 			 * differ from their reference. A panel would put ~11,000 changed pixels where
 			 * the margin below allows 60.
 			 */
-			for (const [step, x] of [
-				["hover-right", hoverRight.cueRect?.x],
-				["hover-left", hoverLeft.cueLeftRect?.x],
-				["after-reset", reset.cueRect?.x],
+			for (const [step, reference, rect] of [
+				["hover-right", "rest", "cueRect"],
+				["hover-left", "rest", "cueLeftRect"],
+				["after-reset", "rest", "cueRect"],
+				["tall-hover", "tall-rest", "cueRect"],
+				["top-entry", "tall-rest", "cueRect"],
 			]) {
 				const outside = await changedOutside(
-					framePath(half, "rest", theme),
+					framePath(half, reference, theme),
 					framePath(half, step, theme),
-					Math.round(x ?? 0),
+					Math.round(by(half, step, theme)[rect]?.x ?? 0),
 				);
 				if (outside !== null && outside > 3000)
 					fail(
@@ -1027,44 +1044,51 @@ const main = async () => {
 					`${half}/${theme}: the cue is still ${released.cueOpacity} lit a fade after the release`,
 				);
 			/*
-			 * AND IT DOES NOT MOVE WHILE IT IS LIT (UX round 2's U6). The release used to hand
-			 * the seat back to the ENTRY Y, and on a drag that travelled that is a different
-			 * Y: one frame fully lit at a seat the hand had left, the next frame back at the
-			 * hand's (measured by the UX round at 60fps as core 282 -> 112 -> 282). A seat
-			 * change under a fade is fine; a seat change between two frames above 0.9 is not.
-			 * This half only: the base tree's cue is a solid rule with no gradient to read a
-			 * centre from.
+			 * AND IT DOES NOT MOVE WHILE IT IS LIT - the release (UX round 2's U6) and the
+			 * leave (UX round 3's U7), which are the two events that retire or move a seat.
+			 * The release used to hand the seat back to the ENTRY Y, and on a drag that
+			 * travelled that is a different Y: one frame fully lit at a seat the hand had
+			 * left, the next frame back at the hand's (measured by the UX round at 60fps as
+			 * core 282 -> 112 -> 282). The leave used to drop the seat to the render's `50%`
+			 * fallback for the first frame of the fade. A seat change under a fade is fine;
+			 * a seat change between two frames above 0.9 is not. `after` only: the base
+			 * tree's cue is a solid rule with no gradient to read a centre from.
 			 */
 			if (half === "after") {
-				let previous = null;
-				let witnessed = 0;
-				for (const sample of releaseTrace) {
-					if (sample.centre === null) continue;
-					witnessed += 1;
-					if (
-						previous &&
-						previous.op >= 0.9 &&
-						sample.op >= 0.9 &&
-						Math.abs(sample.centre - previous.centre) > 2
-					)
+				for (const [step, trace] of [
+					["release", releaseTrace],
+					["leave", leaveTrace],
+				]) {
+					let previous = null;
+					let witnessed = 0;
+					for (const sample of trace) {
+						if (sample.centre === null) continue;
+						witnessed += 1;
+						if (
+							previous &&
+							previous.op >= 0.9 &&
+							sample.op >= 0.9 &&
+							Math.abs(sample.centre - previous.centre) > 2
+						)
+							fail(
+								`${half}/${theme}: the mark moves ${Math.round(Math.abs(sample.centre - previous.centre))}px between two frames it is lit for, on the ${step} (${Math.round(previous.centre)} -> ${Math.round(sample.centre)} at opacity ${sample.op.toFixed(3)})`,
+							);
+						previous = sample;
+					}
+					if (witnessed < 10)
 						fail(
-							`${half}/${theme}: the mark moves ${Math.round(Math.abs(sample.centre - previous.centre))}px between two frames it is lit for (${Math.round(previous.centre)} -> ${Math.round(sample.centre)} at opacity ${sample.op.toFixed(3)})`,
+							`${half}/${theme}: the ${step} trace read only ${witnessed} frames - it did not cover the ${step}`,
 						);
-					previous = sample;
+					/*
+					 * And it has to have seen the mark LIT, or the invariant above was never tested:
+					 * a trace that opens on the fade cannot tell a hand-off from a seat that was
+					 * already there.
+					 */
+					if (!trace.some((sample) => sample.op >= 0.99))
+						fail(
+							`${half}/${theme}: the ${step} trace never sampled the mark lit - it cannot speak for the ${step}`,
+						);
 				}
-				if (witnessed < 10)
-					fail(
-						`${half}/${theme}: the release trace read only ${witnessed} frames - it did not cover the release`,
-					);
-				/*
-				 * And it has to have seen the mark LIT, or the invariant above was never tested:
-				 * a trace that opens on the fade cannot tell a hand-off from a seat that was
-				 * already there.
-				 */
-				if (!releaseTrace.some((sample) => sample.op >= 0.99))
-					fail(
-						`${half}/${theme}: the release trace never sampled the mark lit - it cannot speak for the hand-off`,
-					);
 			}
 
 			/*

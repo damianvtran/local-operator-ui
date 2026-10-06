@@ -27,22 +27,25 @@
  *    `HOVER_INTENT_MS` intent delay (imported, not restated) - which are the
  *    divider family's own steps, so no new colour enters the system, and the
  *    contract already carries their floors (3:1 on every ground).
- *  - **The core follows the hand during a drag, and rests where the hand
- *    arrived.** The reference publishes the pointer's Y for the length of the
- *    gesture, so the bar's core travels with the reader's own hand and the mark
- *    reads as "you are moving this". `--lo-chat-measure-cue-y` is that
+ *  - **The core follows the hand during a drag, and the mark rests where the
+ *    hand last was.** The reference publishes the pointer's Y for the length of
+ *    the gesture, so the bar's core travels with the reader's own hand and the
+ *    mark reads as "you are moving this". `--lo-chat-measure-cue-y` is that
  *    publication, restored from the bar's first cut and written as PAINT rather
  *    than as React state - the discipline the width preview already uses
  *    (`preview()`), because a `mousemove`-rate render is a cost this component
- *    has already decided not to pay. The reference's hold-last-drag-Y is
- *    deliberately NOT taken: the property is REMOVED on release, and the bar
- *    returns to the seat the gesture began on - the same Y the panel anchors to
- *    - because a mark left where a previous gesture ended would report a hand
- *    that is no longer there. That seat is also what keeps the resting bar
- *    inside the pane: resting it on the COLUMN's own middle put it hundreds of
- *    pixels off-screen on any transcript taller than the pane (round 1's
- *    blocker), where the panel's seat - the hand's, or the visible band's -
- *    cannot.
+ *    has already decided not to pay. The property is REMOVED on release, but the
+ *    seat is NOT handed back: the release ADOPTS the Y the gesture ended on, and
+ *    the hand's leave is what retires it, so the mark never moves between two
+ *    frames it is lit for (UX round 2's U6 - `onMouseUp` carries the measurement).
+ *    The reference's hold-last-drag-Y is still not taken: a seat left behind by a
+ *    hand that has gone is what the leave retires, and the mark is dark by then.
+ *    That seat is also what keeps the resting bar inside the pane - resting it on
+ *    the COLUMN's own middle put it hundreds of pixels off-screen on any
+ *    transcript taller than the pane (round 1's blocker), where the panel's seat,
+ *    the hand's or the visible band's, cannot - and it is held `CUE_BAR_PX / 2`
+ *    clear of the visible band's edges, so an entry beside the pane's top seats
+ *    the whole mark rather than a sliced one (design round 2's D2-1).
  *  - **Drawn immediately OUTSIDE the measure's edge, not inside it.** The
  *    divider draws its line on the sized panel's leading/trailing edge, and it
  *    can, because every panel it sizes carries its own inset. The chat column
@@ -463,6 +466,12 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 * with the one the mark was painting when the hand let go.
 	 */
 	const lastSeat = useRef<number | null>(null);
+	/**
+	 * The seat the mark last RESIDED on - the render's fallback once `anchorY` is
+	 * retired (see `cueSeat`), so a leave or a blur fades the mark where it stands
+	 * rather than moving it to `50%` for the first frame of the fade (UX round 3's U7).
+	 */
+	const lastRestedSeat = useRef<number | null>(null);
 	/** Whether the panel is open. See `openPanelSoon` and the render block. */
 	const [panelOpen, setPanelOpen] = useState(false);
 	const panelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -506,16 +515,41 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 	 * guarantee: the seat stayed on screen and the mark's ENDS did not (design round
 	 * 2's D2-1).
 	 *
-	 * THE SEAT IS NAMED BY WHICHEVER HAND LAST CHOSE IT, and a release chooses it too:
-	 * the Y the gesture ended on, adopted rather than handed back to the entry Y, so
-	 * the seat does not move while the mark is lit (UX round 2's U6 - see
-	 * `onMouseUp`). Leaving, and losing focus, are what clear it.
+	 * AND THE SEAT IS NAMED BY WHICHEVER HAND LAST CHOSE IT - an entry, the keyboard's
+	 * focus, or a release, which ADOPTS the Y the gesture ended on rather than handing
+	 * the seat back to the entry Y (UX round 2's U6 - see `onMouseUp`). Leaving, and
+	 * losing focus, are what retire it.
 	 *
-	 * `CUE_Y_REST` survives only as the degenerate fallback: a null `anchorY`
-	 * means neither channel has seated the cue, which in this tree happens only on
-	 * a handle that is not inside a transcript at all.
+	 * SO THE RENDER HAS THREE RUNGS, not two, and the middle one is UX round 3's U7.
+	 * Clearing the seat at the leave with `50%` underneath it painted that fallback
+	 * for the first frame of the fade - on a tall conversation, a frame of the whole
+	 * mark a hundred pixels above the pane and then nothing, i.e. the exit animation
+	 * playing off-screen. The fallback is therefore the seat the mark last RESIDED on
+	 * (`lastRestedSeat`), so retiring the seat on a leave or a blur does not move the
+	 * mark: it fades where the hand left it, and the seat is only ever chosen again -
+	 * by an entry, by a focus, or by a gesture - never inherited silently. `50%`
+	 * survives only as the degenerate third rung: a handle that has never been seated
+	 * and is not inside a transcript at all.
 	 */
-	const cueSeat = anchorY === null ? CUE_Y_REST : `${anchorY}px`;
+	const cueSeat =
+		anchorY !== null
+			? `${anchorY}px`
+			: lastRestedSeat.current !== null
+				? `${lastRestedSeat.current}px`
+				: CUE_Y_REST;
+
+	/**
+	 * Seat the mark, remembering where - or `null` to retire the seat.
+	 *
+	 * ONE DOOR, because the render needs the last seat as well as the current one
+	 * (see `cueSeat`) and two writers of one number drift. The ref is written before
+	 * the state so the render that clears `anchorY` already sees the seat it is
+	 * falling back to - which is what makes U7's fix invisible rather than a frame late.
+	 */
+	const seatAt = (y: number | null): void => {
+		if (y !== null) lastRestedSeat.current = y;
+		setAnchorY(y);
+	};
 
 	/**
 	 * Publish the hand's Y, ONCE, as the tooltip panel's anchor.
@@ -538,7 +572,7 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 		const el = rootRef.current;
 		if (!el) return;
 		const own = el.getBoundingClientRect();
-		setAnchorY(
+		seatAt(
 			clampToBand(
 				Math.round(clientY - own.top),
 				visibleBand(el),
@@ -805,8 +839,19 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 			 * two). The release ADOPTS the seat the gesture ended on instead, so the mark
 			 * never moves while it is lit; `onMouseLeave` and `onBlur` remain what retires
 			 * a seat, so a stationary mark is never left on a hand that has gone.
+			 *
+			 * "WHILE IT IS LIT" IS THE WHOLE CLAIM, and the two clamps are deliberately not
+			 * the same size (agent R3-4's neighbour, QA round 3's Q3-1). The drag holds the
+			 * mark's CORE inside the band, because the reader is steering it and hand-truth
+			 * is what a drag buys; the entry path holds the WHOLE MARK inside it, because
+			 * there the reader did not steer (D2-1). So a gesture that ends within
+			 * `CUE_FADE_PX` of the band's edge hands over to a seat up to 56px away - and
+			 * that settle lands mid-fade, at `opacity 0.54`, so no frame a reader sees as
+			 * lit moves. Aligning the two would mean either a drag whose core can vanish or
+			 * an entry that paints a sliced mark, which are the two things each clamp
+			 * exists to prevent.
 			 */
-			if (lastSeat.current !== null) setAnchorY(lastSeat.current);
+			if (lastSeat.current !== null) seatAt(lastSeat.current);
 			publishCueY(rootRef.current, null, null);
 			document.body.style.userSelect = "";
 			removeResizeCursorOverlay();
@@ -1006,14 +1051,17 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 						setHovering(false);
 						/*
 						 * The rest seat belongs to the hand that chose it, so it is cleared with
-						 * the hand and the next entry publishes its own. This is also the event
-						 * that retires a released drag's seat (see `onMouseUp`): the release
-						 * adopts the seat the gesture ended on, and this is what stops a
-						 * stationary mark sitting on a hand that has gone. A drag is the
-						 * exception WHILE IT RUNS - the pointer leaves the band constantly
-						 * mid-gesture, and the publication is the hand's for the length of it.
+						 * the hand. This is also the event that retires a released drag's seat
+						 * (see `onMouseUp`): the release adopts the seat the gesture ended on, and
+						 * this is what stops a stationary mark sitting on a hand that has gone. It
+						 * retires the SEAT, not the position the mark is painted at - `cueSeat`
+						 * falls back to the seat it last rested on - so the mark fades where the
+						 * hand left it instead of hopping to `50%` for a frame (UX round 3's U7).
+						 * A drag is the exception WHILE IT RUNS - the pointer leaves the band
+						 * constantly mid-gesture, and the publication is the hand's for the length
+						 * of it.
 						 */
-						setAnchorY(null);
+						seatAt(null);
 					}
 				}}
 				onFocus={() => {
@@ -1025,8 +1073,25 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 					 * under a POINTER reader on any entry that was not the band's middle: the
 					 * same "the seat moves while the mark is lit" failure as the release flash
 					 * in `onMouseUp`.
+					 *
+					 * THE ONE SEQUENCE THAT KEEPS A HAND'S SEAT is a gesture whose hand already
+					 * left the band: `onMouseLeave` was ignored while the drag ran and never
+					 * fires again, so the Y the release adopted is still here - and a Tab to
+					 * this element then lights the mark and opens the panel there rather than
+					 * at the visible band's middle (agent round 3's R3-3). RECORDED, NOT FIXED:
+					 * clearing it at the release would re-break U6's invariant, which the
+					 * animation-frame trace now asserts, and clearing it once the fade has
+					 * finished needs a transition end that a leave which never lit the mark does
+					 * not produce. It is a mixed-input sequence (drag out, release, then Tab)
+					 * rather than a common one, the next pointer entry and the next blur both
+					 * clear it, and the seat it keeps is the hand's own Y - a truthful place for
+					 * the mark to be.
 					 */
-					setAnchorY((current) => current ?? visibleAnchorY());
+					if (anchorY === null) {
+						const seat = visibleAnchorY();
+						if (seat !== null) lastRestedSeat.current = seat;
+						setAnchorY(seat);
+					}
 					/*
 					 * Focus opens it at once, the way Radix opens on focus for every
 					 * other tooltip in the app (measured `instant-open`); the dwell
@@ -1039,7 +1104,7 @@ export const ChatMeasureHandle: FC<ChatMeasureHandleProps> = ({
 					if (!draggingRef.current) {
 						setHovering(false);
 						/* The keyboard's seat is the focus's, and it leaves with it. */
-						setAnchorY(null);
+						seatAt(null);
 					}
 				}}
 				onKeyDownCapture={onKeyDown}
