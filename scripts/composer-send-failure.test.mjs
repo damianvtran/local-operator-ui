@@ -65,8 +65,19 @@ globalThis.__canonicalEcho = (event) => {
 	// fact the send path reads back from it. A fixture that always said "local"
 	// would make the delivered-after-all case unreachable here, so the answer is
 	// scripted per id - see `__ownerHasIt`.
+	//
+	// AND "unseen" IS THE THIRD ANSWER, not a synonym for "local" (issue #847):
+	// the real `peekLocalEcho` says it when no transcript is mounted to hold the
+	// id, and the repaint guard's read depends on the difference - a reload has an
+	// empty registry and an empty transcript, not a row of ours. Derived from the
+	// registry below rather than scripted, so the one fixture can stand for both
+	// states: an entry means a pane is holding our echo, no entry means nothing is.
 	if (event.kind === "peekLocal")
-		return globalThis.__ownerHasIt ? "owner" : "local";
+		return globalThis.__ownerHasIt
+			? "owner"
+			: globalThis.__pendingSendRegistry.has(event.sessionId)
+				? "local"
+				: "unseen";
 	return undefined;
 };
 
@@ -173,6 +184,17 @@ export const resolvePendingSend = (identity, id) => {
 	if (!entries) return;
 	entries.delete(id);
 	if (entries.size === 0) registry.delete(identity);
+};
+/*
+ * THE REPAINT GUARD'S OTHER HALF (design review round 1's D1): the real
+ * retractLocalEcho resolves the entry AND takes down a LOCAL record. No
+ * transcript is mounted in this fixture, so the record half is a no-op and the
+ * answer is "queued" - the module's own answer for exactly that state.
+ */
+export const retractLocalEcho = (sessionId, id) => {
+	globalThis.__canonicalEcho({ kind: "retractLocal", sessionId, id });
+	resolvePendingSend(sessionId, id);
+	return "queued";
 };
 export const discardPendingSends = (sessionId) => {
 	globalThis.__canonicalEcho({ kind: "discard", sessionId });
