@@ -29,7 +29,9 @@ the pane's own text as the rig read it, and each `sse-*.jsonl` is the raw
 for the round-1 remediation on a FRESHLY BUILT tree: `after-branch/` on the
 remediation head's `out/` (the documented build recipe, `VITE_*`=inert), and
 the `frames/before-base/local-warm-cold-open.png` control on a base build
-(`46fd032ed59`). The Storybook frames are source-compiled (`storybook dev`),
+(`46fd032ed59`). The `frames/remote-live/` cells are that same head
+(`4e6dd2db0`)'s `out/`, rebuilt fresh immediately before the runs, with the
+relay up. The Storybook frames are source-compiled (`storybook dev`),
 so they were taken from the working tree directly. The `frames/relay-down/`
 pair is now this branch's build against the BASE build (the earlier
 `remote-turn-order` sibling frames were replaced: that worktree's Electron
@@ -77,7 +79,8 @@ a peer's alike. So:
 | `frames/before-base/` | base build, `origin/main` at `46fd032ed59` | the defect on the operator's own stored remote session `5340680381e7` (route `/chat/5340680381e7`, chip "On cloud-node-1"): `base-op-session-empty.png` is the open — the empty-chat greeting over a conversation that has rows on the peer, ~6 s in; `base-idle-60s-empty.png` is the same pane 60 s later (rows still 0; `rows-95042.jsonl`); `base-hold-05s.png` / `base-hold-55s-greeting.png` are an earlier window of the same route (`rows-17713.jsonl`) showing the transition itself: the placeholder holds at 5 s, and by 55 s the cold empty read has PROVEN hydration on the base tree — placeholder gone, greeting shown, zero rows. **And the warm control, re-taken this round on a fresh base build**: `local-warm-cold-open.png` (+ `local-warm-cold-probe.json`, `local-warm-sse.jsonl`) is a FRESH empty local session (`08349efde8f3`, `cold:true, no-runtime`) opening straight to the empty-chat greeting — the false-empty claim at the cold open, on the base build, with the flips that follow changing nothing visible. |
 | `frames/after-branch/` | this branch's remediation build | the copy change, rendered: `storybook-unproven-end.png` is the slot's `unproven` arm over real rows — "Earlier history not loaded" with "Try again", NOT "Start of conversation"; **`storybook-unproven-end-light.png`** is the same cell in `localOperatorLight` (round 1's U4); `storybook-every-state.png` is the six-arm board between its rules; **`storybook-app-minimum-width.png`** is the 252px board (round 1's D2 — the narrow measure the diff extends, where the short spellings render, incl. the D3 fix below). `local-true-end.png` is the local regression cell (re-taken on this round's fresh build): a new local conversation's true end still says "Start of conversation". |
 | `frames/after-branch/local-warm/` | this branch's remediation build | THE ROUND-1 Q1 DISCRIMINATOR, live: `cold-open.png` is a fresh empty local session (`9571ebcba57a`, `cold:true, no-runtime`) holding "Loading conversation…"; `warm-loaded.png` is the SAME pane after ONLY the daemon's warm op — no user action, no click — now painting the empty-chat greeting because the update-shaped flip re-armed the read and a warm empty page is the conversation's own statement (`cold-probe.json` → `warm-probe.json`: `placeholder:"yes"`/`greeting:"no"` → `placeholder:"no"`/`greeting:"yes"`; `rows-52165.jsonl` has the samples; `sse-flip.jsonl` is the wire). The pre-fix shape of this same cell held the placeholder for 30 s with the daemon warm (round 1's Q1 FAIL on `3f4c435450f`), and the base build above greets over nothing at the cold open. |
-| `frames/relay-down/` | this branch's remediation build vs the base build | THE LIVE REMOTE CELLS COULD NOT BE TAKEN TODAY, and this is the evidence of why rather than an assertion of it. With `cloud-node-1` unreachable (`lop network peers` re-checked before every run this round: "no address of it answered"), the daemon answers the session's stream with 404 once its owner cannot be resolved, so BOTH trees — this branch's (`branch-*.png/.json`) and the base's (`base-*.png/.json`) — show the placeholder at 4 s and the terminal "This conversation is no longer on this machine … belongs to a machine this app is not connected to" by 60 s. Identical probes on both trees (`placeholder:"yes"` at 4 s, then `placeholder:"no"` with no greeting and no slot) are what mark the cells `pending — relay flaky` instead of shipping a frame that would not discriminate. |
+| `frames/relay-down/` | this branch's remediation build vs the base build | THE UNREACHABLE-PEER SHAPE that kept the live cells `pending — relay flaky` in round 1, kept as its own before/after pair. With `cloud-node-1` unreachable (`lop network peers` re-checked before every run that round: "no address of it answered"), the daemon answers the session's stream with 404 once its owner cannot be resolved, so BOTH trees — this branch's (`branch-*.png/.json`) and the base's (`base-*.png/.json`) — show the placeholder at 4 s and the terminal "This conversation is no longer on this machine … belongs to a machine this app is not connected to" by 60 s. Identical probes on both trees (`placeholder:"yes"` at 4 s, then `placeholder:"no"` with no greeting and no slot). The relay returned the same evening and the live cells were taken: `frames/remote-live/`. |
+| `frames/remote-live/` | this branch's remediation build, relay UP (late evening) | THE LIVE REMOTE CELLS, on the lane's OWN scratch sessions on cloud-node-1 (never the operator's; created via `lop network sessions --peer cloud-node-1 --create`, one completed turn each, then stopped so the owner's runtime was down). The cold hold: `hold-00.png` / `hold-60s.png` — a stored remote session opened from this device and held a full minute: "Loading conversation…" and nothing else, rows 0 at both ends, no greeting, no end copy, no not-loaded arm (`hold-probe-00.json` / `hold-probe-60s.json`, `hold-rows.jsonl`; `sse-hold.jsonl` = open + cold snapshot + heartbeats, no flip). The warm cell: `cold-open.png` → `warm-loaded.png` — the same cold open, then ONLY the daemon's warm op (no user action) and the pane fills from the peer: rows 0 → 3, `placeholder:"yes"`/`startCopy:"no"` → `placeholder:"no"`/`startCopy:"yes"` (`cold-probe.json` → `warm-probe.json`, `warm-rows.jsonl`; `sse-warm.jsonl` = the wire, the flip arriving as `frontend.update` carrying `cold:false` with no replace in the batch — the exact shape round 1's F1/Q1 fixed). After the warm the end copy is TRUE: all three records are loaded, so "Start of conversation" is the conversation's own statement, not a claim over an unread page. |
 
 ## The mechanical pins
 
@@ -131,13 +134,21 @@ access fails in this suite on the BASE tree too (13 red, reproduced on the
 LOCAL_OPERATOR_UI_WORKTREE=<worktree> LOCAL_OPERATOR_SCRATCHPAD=<scratch> \
   node harness/rig.mjs --plan harness/plan-cold-open.json --out <out>
 
+# The scratch-session cold hold (the lane's own stored remote session; never a
+# send, never a warm; takes EVIDENCE_SESSION_ID):
+EVIDENCE_SESSION_ID=<scratch session id> \
+LOCAL_OPERATOR_UI_WORKTREE=<worktree> LOCAL_OPERATOR_SCRATCHPAD=<scratch> \
+  node harness/rig.mjs --plan harness/plan-cold-hold.json --out <out>
+
 # The local regression cell (creates a scratch local conversation):
 LOCAL_OPERATOR_UI_WORKTREE=<worktree> LOCAL_OPERATOR_SCRATCHPAD=<scratch> \
   node harness/rig.mjs --plan harness/plan-local.json --out <out>
 
-# The warm cell, local or (when the relay returns) remote — one command:
-# create a fresh session first (the daemon's own POST /v1/desktop/sessions,
-# request_id a UUID, cwd existing), then:
+# The warm cell, local or remote (a session on this device or, via the relay,
+# one on a peer — the same steps and the same warm op) — one command:
+# create a fresh session first (the daemon's own POST /v1/desktop/sessions for a
+# local one; `lop network sessions --peer <peer> --create` for a remote one,
+# then let its first turn finish and stop it so the owner's runtime is down):
 EVIDENCE_SESSION_ID=<fresh session id> \
 LOCAL_OPERATOR_UI_WORKTREE=<worktree> LOCAL_OPERATOR_SCRATCHPAD=<scratch> \
   node harness/rig.mjs --plan harness/plan-remote-warm.json --out <out>
@@ -170,9 +181,11 @@ the run started, and Chrome's scratch profile is removed.
 - **APPLIED (round 1's D3):** the unproven arm's short spelling is now
   "Earlier not loaded" — it keeps its subject, so it no longer reads as the
   transport-down arm's "Not loaded" four characters away at narrow widths.
-- **CLOSED LOCALLY, REMOTE PENDING (round 1's D1):** the cold → warm transition
-  is now shown by the local warm pair (after) against the base control
-  (before). The remote mesh cell itself remains pending the relay.
+- **CLOSED (round 1's D1):** the cold → warm transition is shown by the local
+  warm pair (after) against the base control (before), and — when the relay
+  returned the same evening — by the live remote pair on a scratch cloud-node-1
+  session (`frames/remote-live/`: `cold-open.png` → `warm-loaded.png`, the pane
+  filling on the daemon's warm op alone).
 
 ## What to look for in the row logs and probes
 
