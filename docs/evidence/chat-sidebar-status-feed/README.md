@@ -466,3 +466,71 @@ has none; the committed `completion-reordered/` frames show the same empty
 section). The bound row in `subagent-rows-resting/` renders FLAT for that reason,
 and the nested under-an-agent frame is owed to whoever can drive an installed
 agent in this set.
+
+## The running mark is the trio (2026-10-06)
+
+The operator's report on the mark #840 shipped — a single filled accent disc —
+is that one 8px dot states "something is here" and not "CHILDREN are here", in a
+family the app already spends on unrelated facts. It is the operator-ACKed
+**trio** now: three equal filled circles on the 24-unit grid, in the caller's
+ink, inside an `svg` that fills the caller's box.
+
+**What was re-taken, and how.** Nine cells, 108 frames at twelve palettes each,
+through this set's own path:
+
+```
+node scripts/capture-evidence.mjs http://localhost:6006 \
+  --only=chat-sidebar-status-feed \
+  --dirs=delegating-row-default,delegating-row-minimum,subagent-archived-row,\
+subagent-rows-resting,subagent-rows-resting-minimum,subagent-rows-running,\
+subagent-rows-running-minimum,subagent-selected-row --allow-backend
+node scripts/capture-evidence.mjs http://localhost:6006 \
+  --only=chat-session-status --dirs=neighbours --allow-backend
+```
+
+The pass was run twice and the two runs are byte-identical (108/108 sha256); the
+second is the one the manifest names, taken on the committed code tree so the
+record's `head` and `dirtyWorkingTree` describe a clean tree rather than an
+in-flight edit. That is also the guard against the stale-module defect design
+round 2 found in its own rig — a re-run that is not byte-identical is telling you
+the module graph did not invalidate, not that the app moved.
+
+**The two before/after pairs are not equally clean, and this note says which is
+which rather than leaving a reader to difference them.** `subagent-rows-running/`
+and `subagent-rows-running-minimum/` were re-taken at issue #840 and wore the DOT
+the operator rejected: those two differ by the mark and nothing else — six
+~16x16px boxes per palette, three in the leading slot and three in the trailing
+one. The other seven cells carried older captures (`delegating-row-default/`,
+`delegating-row-minimum/` and `chat-session-status--neighbours/` from 2026-09-22;
+the resting, selected and archived cells from 2026-09-29), and all of them still
+drew `Share2` in the accent — neither the dot nor the trio — over a sidebar that
+has moved since (the RUNNING/OLDER grouping, the header's agent door, the 18px
+leading-cell shift). Their deltas are the mark **and** that accumulated movement.
+They are re-taken because the alternative is a set whose frames contradict the
+component they photograph, and because those cells ARE the arm's own surface: the
+`delegating` rung is what `delegating-row-*` exists to photograph, and the
+neighbours matrix is the one place a delegating row is read against `busy`. The
+baseline half (`chat-sidebar-subagent-baseline/`) was **not** re-taken, for the
+reason its own entry gives: it is defined as unmodified `origin/main`'s rendering.
+
+**The readings, taken on these frames** with the design round's own instrument
+(coverage by projection onto the ground→accent axis) rather than quoted from its
+corpus. Trailing slot, the sidebar row's 14px box (`subagent-rows-running*`,
+240px floor included): n=3, ink **10x10**, children gap **2**, coverage mass
+47.2–51.3, parts `4x4@x,279 + 4x4@x-3,285 + 4x4@x+3,285`. Leading slot, the
+`delegating` rung's 16px box (`delegating-row-*`, and the matrix): n=3, ink
+**12x12**, gap **2**, mass 65.7–67.5, parts `6x5@39,278 + 5x5@36,285 +
+5x5@43,285` — the same components the design round's independent pass measured
+on its own corpus. The mark is static, count-free, `aria-hidden`, and takes
+`currentColor`; `data-subagent-mark` and the `sr-only` sentence are unchanged.
+
+**Why equal beads.** The row is the parent, so a centred larger apex over a pair
+draws the head-and-shoulders figure — `Users` — that the design round refused.
+Equal radii and no hierarchy is what makes the mark say *children*.
+
+**The spacing is a constraint, not a taste.** The round-1 candidate was the same
+beads with a larger apex and lower centres 4.43px apart against radii summing to
+4.32px: the children overlapped by 0.12px at 14px, fused, and its component count
+flipped between 1 and 2 with the box's sub-pixel phase. These three clear each
+other at every phase and at every x the app places the box, which is why the
+count holds in all twelve palettes here and at the 240px floor.
