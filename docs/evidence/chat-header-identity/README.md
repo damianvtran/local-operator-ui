@@ -303,7 +303,7 @@ copy shown in these frames is the design round's candidate to weigh.
 | `conflict-chip` | The incompatible pair at rest (`coder · Local Operator Dev`): the persona stays visible, the warning mark says the pair needs resolving. |
 | `conflict-agent-open` | The panel where one pick resolves it: the caption, the current refused row disabled with its reason, the manager and delegating profiles settable beside it. |
 | `conflict-chip-loading` | The same pair before the roster answers: no cue, asserted at shutter time. |
-| `refused-enter` | `rev` typed, then Enter on the refused row the filter left active: the footer's live region answers (`copy-reviewer cannot take the seat.`) instead of the silent no-op review round 1 measured (D2/U1). Since review round 2's D7 the answer is an ADDITION - the exits line stays rendered under it - and both clear the moment the highlight moves, so the line never names a row that is no longer active. |
+| `refused-enter` | `rev` typed, then Enter on the refused row the filter left active: the footer's live region answers (`copy-reviewer cannot take the seat.`) instead of the silent no-op review round 1 measured (D2/U1). Since review round 2's D7 the answer is an ADDITION - the exits line stays rendered under it - and the answer clears the moment the highlight moves, so the footer never names a row that is no longer active. |
 | `no-settable-agent` | The manager-less roster (review round 2, D9): every row refused because no row carries the manager's name or a delegate flag, so the footer renders the UNTYPED resolution - `No profile can take the seat — switch the team.` - the branch the typed sentence cannot reach. |
 
 ### Review round 1's remediation (the frames re-shot at this head)
