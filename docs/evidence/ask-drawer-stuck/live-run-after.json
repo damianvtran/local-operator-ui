@@ -59,6 +59,28 @@
       "chip": 0,
       "headerTrigger": 1,
       "drawerScopeLine": null
+    },
+    "onEmptyPane": {
+      "rows": 0,
+      "surfacePresent": true,
+      "activeTag": "SECTION",
+      "activeLabel": "This conversation's asks",
+      "activeInsideSurface": true,
+      "activeIsSurface": true,
+      "activeIsTheDoor": false
+    },
+    "afterEmptyPaneEscape": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 1,
+      "drawerScopeLine": null
     }
   },
   "chip": {
@@ -79,8 +101,8 @@
   },
   "notesRow": {
     "x": 126,
-    "y": 792,
-    "text": "Ready Notes 6m , last active 6 minutes ago",
+    "y": 824,
+    "text": "Ready Notes now , last active just now",
     "hitInsideRow": true,
     "hitText": "Notes"
   },
@@ -177,11 +199,11 @@
   },
   "backRow": {
     "x": 126,
-    "y": 791,
+    "y": 758,
     "hitInsideRow": true
   },
   "chipAgain": {
-    "x": 539,
+    "x": 540,
     "y": 754,
     "w": 229,
     "h": 24,
@@ -195,6 +217,19 @@
     "text": "New chat \u2318 N",
     "hitInsideRow": true
   },
+  "bRow": {
+    "x": 126,
+    "y": 790,
+    "hitInsideRow": true
+  },
+  "emptyPaneDoor": {
+    "x": 1216,
+    "y": 20,
+    "w": 32,
+    "h": 32,
+    "top": 4,
+    "left": 1200
+  },
   "ok": true,
-  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly: the frames a run writes land in the directory its invocation names, and no machine's absolute path is committed. THIS IS THE AFTER HALF re-driven in remediation round 1, so the deltas it carries against `live-run-before.json` are the round's own: the slot is still released (`slotPresent: false`); conversation B - a live-but-EMPTY queue - is now OFFERED its door (`headerTrigger: 1`, was 0); and step 7's `onDraft` probe is the round's new check, a `New chat` draft reached with the session drawer open on A (drawers 0, slotPresent false - the pane does not follow onto a route with no conversation)."
+  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly: the frames a run writes land in the directory its invocation names, and no machine's absolute path is committed. FOUR DELTAS AGAINST `live-run-before.json`, all of them the remediation rounds': the slot is still released (`slotPresent: false`); conversation B - a live-but-EMPTY queue - is offered its door (`headerTrigger: 1`, was 0), the capability read aligned to the wire contract (R3/Q1); `onDraft` (step 7) shows that a session-scoped drawer does not follow onto a route with no conversation (UX U1); and `onEmptyPane`/`afterEmptyPaneEscape` (step 8) are the zero-row pane's own readings - the keyboard lands ON the surface (`activeTag: SECTION`, `activeLabel: \"This conversation's asks\"`, `activeIsTheDoor: false`) and an Escape from there closes it (`drawers: 0`). Before round 2's landing fix every one of those four readings was the opposite. The live frames are re-taken at this head; their visible content differs from the round-1 pass only in the live clock text they carry (relative times, a countdown)."
 }

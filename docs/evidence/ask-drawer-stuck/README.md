@@ -64,10 +64,10 @@ states no switch reaches on demand.
 | `live-after-new-chat-draft/` | the round-1 draft route (remediation round 1, UX U1): the session drawer opened on a conversation, then the sidebar's `New chat` row pressed — the draft paints no asks pane at all (`drawers: 0`, `slotPresent: false`), because the session mount is the conversation's own and a draft has no conversation |
 | `story-empty-wire/` | the frame the wire fix made: a live queued engine with nothing outstanding (`asks` absent, `asks_open: 0`) now draws the bar, the dismiss and the panel's empty sentence |
 | `story-unread/` | an unresolved frame (`frontend === null`): the bar, the dismiss, and `Reading the asks…` — the state that must not close (the read has not answered) and must not trap. The bar carries NO clause here: the body names that fact once (design round 1, D5) |
-| `story-unsupported/` | a runtime that publishes no queued asks at all: its own state (`This conversation · Asks unavailable` / `This runtime doesn't publish queued asks.`) rather than the in-flight copy, which for this frame is a claim that can never complete (design round 1, D1) |
-| `story-clipped-rows/` | the wire bound's own frame (remediation round 1, R1): a live tally with the row list dropped (`{asks: null, asks_open: 4, asks_truncated: true}`) draws `4 outstanding` in the bar and states in the body which half of the frame it has — and does NOT auto-close over four answerable asks |
+| `story-unsupported/` | a runtime that publishes no queued asks at all: its own state (`This conversation · Asks unavailable` / `This runtime doesn't support queued asks.`) rather than the in-flight copy, which for this frame is a claim that can never complete (design round 1, D1; the body's wording is plain language rather than the wire's `publish`, UX round 2, U2-3) |
+| `story-clipped-rows/` | the wire bound's own frame (remediation round 1, R1): a live tally with the row list dropped (`{asks: null, asks_open: 4, asks_truncated: true}`) draws `4 outstanding` in the bar and says in the body which half of the frame is missing — and does NOT auto-close over four answerable asks. The body carries no count of its own and no wire vocabulary (`The details for these asks could not be loaded.`; design round 2, D2-1 = UX round 2, U2-2) |
 
-The four `live-*` frames are 1380x900 (the window the rig drives). The eight
+The five `live-*` frames are 1380x900 (the window the rig drives). The eight
 `story-*` frames are 1280x800 in both brand palettes, the set's own convention.
 The four story states exist as the shipped stories `Chat/Asks/Queued asks ->
 Empty wire frame / Unread frame / Unsupported backend / Clipped rows frame`, so each
@@ -86,7 +86,12 @@ ASKS_RIG_PORT=5314 RIG_SCRATCH="$(mktemp -d)" \
   bash docs/evidence/ask-drawer-stuck/harness/rig-up.sh      # prints the scratch root and the port
 # 2. drive the reported path and photograph it (steps 1-6 are the reported path and
 #    its two Escape arms; step 7 presses the sidebar's New chat row with the drawer
-#    open on A, which is the draft route `live-after-new-chat-draft/` photographs)
+#    open on A, which is the draft route `live-after-new-chat-draft/` photographs;
+#    step 8 opens the header door on the live-but-empty conversation B and reads the
+#    zero-row pane's landing and its Escape, which are `live-run-after.json`'s
+#    `onEmptyPane` / `afterEmptyPaneEscape` probes rather than frames - where the
+#    keyboard landed is not a picture, and the press is a mouse press, so no ring is
+#    drawn for a frame to capture)
 node docs/evidence/ask-drawer-stuck/harness/drive-asks.mjs http://localhost:5314 <out-dir>
 # 3. stop it BY EXACT PID (never by name)
 RIG_SCRATCH=<the printed scratch root> \

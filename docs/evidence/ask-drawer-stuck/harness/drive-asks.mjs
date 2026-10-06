@@ -419,6 +419,65 @@ try {
 	report.probes.onDraft = await evaluate(PROBE);
 	report.frames.afterNewChatDraft = await shot("after-new-chat-draft");
 
+	/*
+	 * 8. THE ZERO-ROW PANE'S LANDING (UX round 2, U2-1). R3/Q1's widened door made this
+	 * state reachable - conversation B is live-but-EMPTY - and the pane it opens has no
+	 * rows, so it is the one mount whose entry move has nothing in the list to land on.
+	 * The claim is two-part and both halves are read here: the keyboard must end up
+	 * INSIDE the surface (the lane's Escape claim covers the pane, the chip and the
+	 * composer box, and NOT the header door), and an Escape from there must close.
+	 * Before the fix the landing stopped on a node that cannot take focus and every one
+	 * of these readings was the opposite: focus stayed on the door and the pane survived
+	 * the press.
+	 */
+	const bRow = await evaluate(`(() => {
+		const buttons = [...document.querySelectorAll('nav button')];
+		const match = buttons.find((b) => /Notes/.test(b.innerText));
+		if (!match) return null;
+		match.scrollIntoView({ block: 'center' });
+		const r = match.getBoundingClientRect();
+		const x = Math.round(r.left + r.width / 2);
+		const y = Math.round(r.top + r.height / 2);
+		const hit = document.elementFromPoint(x, y);
+		return { x, y, hitInsideRow: Boolean(hit && (match.contains(hit) || match === hit)) };
+	})()`);
+	report.bRow = bRow;
+	if (!bRow) throw new Error("no Notes row to return to");
+	if (!bRow.hitInsideRow) throw new Error("the Notes row was not hit-testable");
+	await clickAt(bRow.x, bRow.y);
+	await waitFor(`location.hash.includes('bbbb11112222')`, "back on B");
+	await waitFor(
+		`document.querySelector('[data-tour-tag="ask-pane-trigger"]') !== null`,
+		"the header door on B",
+	);
+	await wait(400);
+	const emptyDoor = await evaluate(
+		rectOf('[data-tour-tag="ask-pane-trigger"]'),
+	);
+	report.emptyPaneDoor = emptyDoor;
+	await clickAt(emptyDoor.x, emptyDoor.y);
+	await waitFor(
+		`document.querySelector('[data-ask-drawer="session"]') !== null`,
+		"the pane on the live-but-empty queue",
+	);
+	await wait(600);
+	report.probes.onEmptyPane = await evaluate(`(() => {
+		const surface = document.querySelector('[data-lo-ask-surfaces]');
+		const active = document.activeElement;
+		return {
+			rows: document.querySelectorAll('[data-lo-ask-row]').length,
+			surfacePresent: surface !== null,
+			activeTag: active ? active.tagName : null,
+			activeLabel: active ? active.getAttribute('aria-label') : null,
+			activeInsideSurface: Boolean(surface && active && surface.contains(active)),
+			activeIsSurface: active === surface,
+			activeIsTheDoor: Boolean(active && active.getAttribute('data-tour-tag') === 'ask-pane-trigger'),
+		};
+	})()`);
+	await pressEscape();
+	await wait(800);
+	report.probes.afterEmptyPaneEscape = await evaluate(PROBE);
+
 	report.ok = true;
 } catch (error) {
 	report.ok = false;

@@ -61,7 +61,6 @@ import {
 	ASK_CHANGE_WINDOW_HINT,
 	EMPTY_DRAFT,
 	askAnswerMap,
-	askChipCountClause,
 	askRevisionDraft,
 	askSettledAnswers,
 	askStatusText,
@@ -1139,14 +1138,23 @@ export const AskPanel = ({
 	 * (`_bound_asks_in_place`), so a frame can arrive carrying `asks_open: 4` and no
 	 * rows at all. Gating this sentence on the rows alone printed `No asks
 	 * outstanding. The agent is not waiting on anything.` over four answerable asks -
-	 * the panel denying the count in the bar above it. The tally is the statement of
-	 * record for that frame, so the line states the count and says what the frame does
-	 * not carry, in the chip's own words rather than a second count of its own.
+	 * the panel denying the count in the bar above it. So a nonzero tally states what
+	 * is missing instead.
+	 *
+	 * IN THE USER'S WORDS, AND WITHOUT REPEATING THE BAR (design round 2, D2-1 = UX
+	 * round 2, U2-2). The first spelling was `${askChipCountClause(view)}. This frame
+	 * carries the count, not the rows.` - "frame" is the wire's word for the payload
+	 * and the reader has none to act on, and the count it opened with was the count the
+	 * bar had already given 30px above it, in the same ink rung (the shape D5 corrected
+	 * in the unread pair). The body now says only what the bar cannot: the rows behind
+	 * that count are the half that is missing. `asks_open` is still NOT translated into
+	 * the lane's `waiting` (see `askChipClause`), because that word means "inside its own
+	 * window", which a rowless frame cannot know.
 	 */
 	const emptySlice =
 		view.rows.length === 0
 			? view.open > 0
-				? `${askChipCountClause(view)}. This frame carries the count, not the rows.`
+				? "The details for these asks could not be loaded."
 				: "No asks outstanding. The agent is not waiting on anything."
 			: filter === "outstanding" && pending.length === 0
 				? "No asks are waiting or moved on. They have all settled — see Settled."
