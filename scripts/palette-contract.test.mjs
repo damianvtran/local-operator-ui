@@ -18,12 +18,15 @@ import { test } from "node:test";
  * (round 1, R-1). This file is that assertion, read off the sources rather than
  * rendered, because the question is whether both halves exist at all.
  *
- * SINCE ISSUE #659 THE TWO CHORDS HAVE DISTINCT JOBS, and this file pins what
- * each door ASKS FOR as well as that it exists: `Cmd/Ctrl+P` opens the
- * conversation switcher - the palette seeded to its chats scope - and
- * `Cmd/Ctrl+K` keeps the unseeded toggle. A door that still opened the same
- * list as the other is the defect the split removes, and it would satisfy a
- * subscription-only check exactly as the pre-split code did.
+ * SINCE ISSUES #659 AND #850 THERE ARE THREE DOORS AND THEY HAVE DISTINCT JOBS,
+ * and this file pins what each door ASKS FOR as well as that it exists:
+ * `Cmd/Ctrl+K` is the chats door (the quick switcher), `Cmd/Ctrl+P` the
+ * everything door, and `Cmd/Ctrl+Shift+P` the commands door. The two
+ * main-process chords send on DISTINCT channels — before #850 main did not look
+ * at Shift, so both arrived as one message and a third door was indistinguishable
+ * from the second. A door that still opened the same view as another is the
+ * defect the split removes, and it would satisfy a subscription-only check
+ * exactly as the pre-split code did.
  */
 
 const read = (path) => readFileSync(path, "utf8");
@@ -60,16 +63,53 @@ const SHORTCUT = code(
 	"src/renderer/src/features/command-palette/palette-shortcut.ts",
 );
 
-test("main sends the palette's own channel for Cmd/Ctrl+P", () => {
+test("main sends a DISTINCT channel for each main-process door", () => {
+	/*
+	 * Both chords are answered in main (the renderer cannot see them: the hook
+	 * fires first and preventDefaults), and they must arrive on DIFFERENT channels
+	 * (issue #850). Before this, Shift was unchecked, so `Cmd+Shift+P` took
+	 * `Cmd+P`'s path and the commands door did not exist.
+	 */
 	assert.match(
 		MAIN,
-		/webContents\.send\(\s*"toggle-command-palette"\s*\)/,
-		"main must keep sending `toggle-command-palette`; if the chord moved, both docs and the renderer's subscription move with it",
+		/webContents\.send\(\s*input\.shift\s*\?\s*"toggle-command-palette-commands"\s*:\s*"toggle-command-palette"\s*,?\s*\)/,
+		"main must send one channel for Cmd+P and another for Cmd+Shift+P; a shared channel is the missing third door",
 	);
 	assert.match(
 		MAIN,
 		/input\.key\.toLowerCase\(\) === "p"/,
-		"the Cmd/Ctrl+P branch is what sends it",
+		"the Cmd/Ctrl+P branch is what sends them",
+	);
+});
+
+test("main's palette branch reads its modifier per platform (issue #850)", () => {
+	/*
+	 * The macOS half of #850. `input.control || input.meta` is this app's usual
+	 * "Cmd or Ctrl" reading, and on darwin it swallowed the palette's own Ctrl+P
+	 * walk step before the renderer could see it. The palette branch now answers
+	 * Cmd alone on darwin and leaves Control to the renderer; Windows and Linux
+	 * keep the usual reading. Pinned on the wiring because the collision only
+	 * exists in a focused, visible macOS window.
+	 */
+	assert.match(
+		MAIN,
+		/process\.platform === "darwin"[\s\S]{0,200}?input\.meta/,
+		"the palette branch must stop folding Control into Cmd on macOS",
+	);
+	assert.match(
+		MAIN,
+		/paletteModifier\s*&&[\s\S]{0,120}?input\.key\.toLowerCase\(\) === "p"/,
+		"the platform-aware modifier must be what the P branch actually reads",
+	);
+	/*
+	 * And the scope of that change is the palette branch alone: the app's usual
+	 * reading stays for the zoom and speech branches, which do not collide with a
+	 * renderer gesture.
+	 */
+	assert.match(
+		MAIN,
+		/const isCmdOrCtrl = input\.control \|\| input\.meta/,
+		"the other branches keep the app's usual Cmd-or-Ctrl reading",
 	);
 });
 
@@ -91,64 +131,72 @@ test("main does NOT bind Cmd/Ctrl+K, which the renderer owns", () => {
 	);
 });
 
-test("something in the renderer subscribes to the channel main sends on", () => {
-	const subscribed =
-		/window\.electron\.ipcRenderer\.on\(\s*"toggle-command-palette"\s*,\s*([A-Za-z_$][\w$]*)\s*,?\s*\)/.exec(
+test("something in the renderer subscribes to BOTH channels main sends on", () => {
+	/*
+	 * One subscription per door (issue #850). A single subscription cannot answer
+	 * two chords, and a channel without a listener is a door that does nothing and
+	 * says nothing (round 1, R-1) - so the pair is asserted rather than either half.
+	 */
+	for (const channel of [
+		"toggle-command-palette",
+		"toggle-command-palette-commands",
+	]) {
+		/*
+		 * Each channel is NAMED once, as a constant, rather than typed at the call
+		 * site: the strings are the contract with main's `before-input-event` hook,
+		 * and a typo at a call site is a door that silently does nothing.
+		 */
+		assert.match(
 			HOOK,
+			new RegExp(`const \\w*CHANNEL\\w* = "${channel}"`),
+			`the hook must name the \`${channel}\` channel main sends on`,
 		);
-	assert.ok(
-		subscribed,
-		"the hook must subscribe on the bridge that can carry this channel, naming the channel main sends on AND a handler the file defines",
+	}
+	/*
+	 * Two subscriptions, each with a handler OF ITS OWN (`() =>` rather than a
+	 * bare reference — `ipcRenderer.on` hands its listener the IPC event first).
+	 */
+	const subscriptions =
+		HOOK.match(/electron\.ipcRenderer\.on\(\s*\w+\s*,\s*\(\s*\)\s*=>/g) ?? [];
+	assert.equal(
+		subscriptions.length,
+		2,
+		"there are two main-process doors, so two subscriptions, each with its own handler",
 	);
 	/*
-	 * The handler must reach the store WITH the seed, not with a bare call and
-	 * not as a direct reference (issue #659) — and, since review round 2 (U5),
-	 * not as a bare toggle either: a press while the palette is OPEN moves it
-	 * to the conversations view (`setCommandPaletteQuery` behind the live
-	 * `isCommandPaletteOpen` read), and only a CLOSED palette toggles open. A
-	 * bare call would answer `Cmd+P` with the same unseeded palette as `Cmd+K`
-	 * — the split undone — and a direct reference would seed the query with the
-	 * IPC EVENT object, because `ipcRenderer.on` hands its listener the event
-	 * first.
+	 * The handler must APPLY A DOOR, not call the store directly: the rule that
+	 * decides open/close/switch is `paletteDoorOutcome` (in `palette-shortcut.ts`),
+	 * and a handler that wrote the store itself would be a second decision — the
+	 * shape that let the two chords drift apart in the first place.
 	 */
 	assert.match(
 		HOOK,
-		new RegExp(`const ${subscribed[1]}\\s*=\\s*\\(\\s*\\)\\s*=>\\s*\\{`),
-		"the subscription's handler must be a block that reads the live flag, not a one-liner",
+		/applyPaletteDoor\(\s*"everything"\s*\)/,
+		"the Cmd/Ctrl+P subscription must apply the everything door",
 	);
 	assert.match(
 		HOOK,
-		/isCommandPaletteOpen[\s\S]{0,240}?setCommandPaletteQuery\(\s*CONVERSATION_SWITCHER_SEED\s*\)/,
-		"an already-open palette must MOVE to the chats view (U5) rather than close",
+		/applyPaletteDoor\(\s*"commands"\s*\)/,
+		"the Cmd/Ctrl+Shift+P subscription must apply the commands door",
 	);
 	assert.match(
 		HOOK,
-		/else\s+[\w$.]*toggleCommandPalette\(\s*CONVERSATION_SWITCHER_SEED\s*\)/,
-		"a closed palette must open through the store's seeded door",
-	);
-	assert.doesNotMatch(
-		HOOK,
-		/ipcRenderer\.on\(\s*"toggle-command-palette"\s*,\s*toggleCommandPalette\s*,?\s*\)/,
-		"a direct reference would seed the query with the IPC event object",
-	);
-	assert.match(
-		HOOK,
-		/import\s*\{[^}]*CONVERSATION_SWITCHER_SEED[^}]*\}\s*from\s*"\.\/palette-search"/,
-		"the seed must be the one `palette-search.ts` defines, not a second spelling of the chats scope",
+		/paletteDoorOutcome\(/,
+		"the handler must go through the shared door rule rather than writing the store itself",
 	);
 	/*
-	 * The callback matters, not just the channel: `.on("toggle-command-palette",
-	 * () => {})` satisfies a channel-only match with the chord dead, which is the
-	 * same defect wearing a subscription's clothes (round 3's review).
+	 * The wrapper matters: `ipcRenderer.on` hands its listener the IPC EVENT as the
+	 * first argument, and passing `applyPaletteDoor` by reference would try to read
+	 * a door off that event (round 3's review named the same class).
 	 */
 	assert.doesNotMatch(
 		HOOK,
-		/toggle-command-palette"\s*,\s*\(\s*\)\s*=>/,
-		"an empty handler answers the chord with nothing",
+		/ipcRenderer\.on\(\s*[^,]+,\s*applyPaletteDoor\s*,?\s*\)/,
+		"a direct reference would be handed the IPC event, not a door",
 	);
 	/*
 	 * Not `window.api`: that bridge's `validChannels` whitelist does not include
-	 * this channel, so its `on` registers nothing and returns undefined — the
+	 * these channels, so its `on` registers nothing and returns undefined — the
 	 * subscription would be a line that does nothing and says nothing.
 	 */
 	assert.doesNotMatch(
@@ -168,32 +216,65 @@ test("something in the renderer subscribes to the channel main sends on", () => 
 	);
 });
 
-test("the subscription is torn down, so a remount cannot double-toggle", () => {
-	assert.match(
-		HOOK,
-		/unsubscribe\?\.\(\)|unsubscribe\(\)/,
-		"the unsubscribe `ipcRenderer.on` returns must be called on cleanup",
+test("every subscription is torn down, so a remount cannot answer a press twice", () => {
+	/*
+	 * BOTH halves, counted rather than spot-checked: with two doors there are two
+	 * `on` calls, and a teardown for only one of them would leave the other
+	 * answering twice after a StrictMode remount or a second window.
+	 */
+	const unsubscribes = (
+		HOOK.match(/unsubscribe\w*\?\.\(\)|unsubscribe\w*\(\)/g) ?? []
+	).length;
+	const subscriptions = (HOOK.match(/electron\.ipcRenderer\.on\(/g) ?? [])
+		.length;
+	assert.equal(
+		subscriptions,
+		2,
+		"there are two main-process doors to subscribe to",
+	);
+	assert.equal(
+		unsubscribes,
+		subscriptions,
+		"each `ipcRenderer.on` returns an unsubscribe, and every one must be called on cleanup",
 	);
 });
 
-test("the two chord doors ask for different jobs (issue #659)", () => {
+test("the three doors ask for different jobs, through one rule", () => {
 	/*
-	 * The split's whole point, pinned on both halves: `Cmd/Ctrl+P` seeds the
-	 * palette to the conversations scope (the quick switcher), and `Cmd/Ctrl+K`
-	 * keeps the unseeded toggle - an empty box, every source. Read off the
-	 * wiring because the P half cannot be pressed in any headless run: the hook
+	 * The split's whole point, pinned on both halves. Read off the wiring because
+	 * the two main-process doors cannot be pressed in any headless run: main
 	 * checks `isFocused() && isVisible()`, and a headless launch is neither
-	 * (`docs/agent-driver.md` states the same limit for this chord).
+	 * (`docs/agent-driver.md` states the same limit for these chords).
+	 *
+	 * The SEEDS moved with the rule: they now live in `palette-shortcut.ts`'s own
+	 * table, which derives each door's scope through `parsePaletteQuery` rather
+	 * than mapping it a second time — so what this pins is that the table reads
+	 * the seeds `palette-search.ts` defines rather than spelling them again.
 	 */
 	assert.match(
-		HOOK,
-		/toggleCommandPalette\(\s*CONVERSATION_SWITCHER_SEED\s*\)/,
-		"the Cmd/Ctrl+P door must seed the palette to the conversations scope",
+		SHORTCUT,
+		/chats:\s*CONVERSATION_SWITCHER_SEED/,
+		"the chats door must open on the seed `palette-search.ts` defines",
+	);
+	assert.match(
+		SHORTCUT,
+		/commands:\s*COMMAND_SCOPE_SEED/,
+		"the commands door must open on the seed `palette-search.ts` defines",
+	);
+	assert.match(
+		SHORTCUT,
+		/everything:\s*""/,
+		"the everything door's seed is the empty query, spelled rather than left to a fallback",
+	);
+	assert.match(
+		SHORTCUT,
+		/import\s*\{[^}]*COMMAND_SCOPE_SEED[^}]*\}\s*from\s*"\.\/palette-search"/,
+		"the seeds must be the ones `palette-search.ts` defines, not a second spelling of each scope",
 	);
 	assert.match(
 		HOOK,
-		/paletteShortcutIntent\(event\)[\s\S]{0,240}?toggleCommandPalette\(\s*\)/,
-		"the Cmd/Ctrl+K door must keep the unseeded toggle: an empty box, every source",
+		/paletteShortcutIntent\(event\)[\s\S]{0,240}?applyPaletteDoor\(\s*door\s*\)/,
+		"the Cmd/Ctrl+K door must go through the same rule as the other two",
 	);
 });
 
@@ -545,4 +626,173 @@ test("the pane identity is captured at open, by the pane's own rule", () => {
 	 */
 	assert.match(palette, /panelIdentityOfView\(/);
 	assert.match(palette, /state\.drafts\[draftKey\]\?\.sessionId/);
+});
+
+/* ------------------------------------------------------------------ *
+ * The draft door (issues #844, #849)
+ * ------------------------------------------------------------------ */
+
+const PALETTE_SOURCES_SOURCE =
+	"src/renderer/src/features/command-palette/use-palette-sources.ts";
+const SESSIONS_STORE_SOURCE =
+	"src/renderer/src/shared/store/canonical-sessions-store.ts";
+const CHAT_PAGE_SOURCE =
+	"src/renderer/src/features/chat/components/chat-page.tsx";
+
+/**
+ * Every entity row STAGES A DRAFT, and none of them builds a chat URL.
+ *
+ * The bug this closes (#844) was one row's TARGET, so the pin is on the target
+ * rather than on a rendered press: `use-palette-sources.ts` composes the rows,
+ * the view dispatches them, and both halves have to agree or the row lands
+ * somewhere neither file intended. `/chat/<agent id>` had no non-session
+ * fallback in the store — the `sessionByAgent` map had a reader and NO WRITER —
+ * so any row that built it landed on the "legacy link" notice, which is why the
+ * absence of a chat URL in the sources file is asserted rather than merely the
+ * presence of the new target.
+ */
+test("the palette's entity rows stage a draft and build no chat URL", () => {
+	const sources = code(PALETTE_SOURCES_SOURCE);
+	/*
+	 * The agent row: the draft door, keyed by the agent's own name (the slug
+	 * every other surface addresses it by).
+	 */
+	assert.match(
+		sources,
+		/target: \{ type: "draft", kind: "agent", name: agent\.name \}/,
+		"the agent row must stage an agent draft rather than open a chat URL",
+	);
+	/*
+	 * And it must be GATED on the capability that can deliver it — a row whose
+	 * only action is to stage a draft is not offered by a backend that cannot
+	 * create sessions.
+	 */
+	assert.match(
+		sources,
+		/if \(canStageDraft\)[\s\S]{0,600}?kind: "agent"/,
+		"the agent chat row must carry the sidebar's own canStageDraft gate",
+	);
+	/*
+	 * The team row (#849): the row READS the display label while the draft is
+	 * keyed by the slug. A row that staged the label would open a second, empty
+	 * chat for a team that already has one, because the sidebar's rows are keyed
+	 * by the slug.
+	 */
+	assert.match(
+		sources,
+		/name: teamDisplayName\(team\)/,
+		"a team row reads the team's display label",
+	);
+	assert.match(
+		sources,
+		/*
+		 * Read across the formatter's chosen line breaks rather than the one this
+		 * pin was written against: biome reflows this object literal onto its own
+		 * lines, and a pin that only matched the single-line spelling would go red
+		 * on a formatting pass that changed nothing about the value.
+		 */
+		/type: "draft" as const,\s*kind: "team" as const,\s*name: team\.name,/,
+		"a team row stages a team draft keyed by the SLUG, not by the label it reads",
+	);
+	assert.match(
+		sources,
+		/kind: "team" as const,[\s\S]{0,200}?group: "teams" as const/,
+		"a team row carries the team kind and the team group",
+	);
+	/*
+	 * The kinds are said on the row, so a same-named agent and team cannot be
+	 * confused even with the section heading scrolled away.
+	 */
+	assert.match(sources, /hint: "Agent chat"/);
+	assert.match(sources, /hint: "Team chat"/);
+	/*
+	 * And NOTHING in this file builds a chat URL any more. Asserted as an
+	 * absence because that is the defect: the row that built one is the row that
+	 * landed on the notice.
+	 */
+	assert.doesNotMatch(
+		sources,
+		/`\/chat\//,
+		"no palette row may build a `/chat/...` URL: the entity rows stage drafts",
+	);
+	assert.doesNotMatch(
+		sources,
+		/"\/chat\//,
+		"no palette row may build a `/chat/...` URL either",
+	);
+	assert.doesNotMatch(
+		sources,
+		/sessionByAgent/,
+		"the palette must not read the removed `sessionByAgent` map",
+	);
+});
+
+test("the view's runner has the draft case, in the sidebar's own order", () => {
+	const view = code(PALETTE_SOURCE);
+	const draftCase = view.slice(
+		view.indexOf('case "draft"'),
+		view.indexOf('case "panel"'),
+	);
+	assert.ok(draftCase.length > 0, "the runner must dispatch the draft target");
+	/*
+	 * The three statements, in the order the sidebar's rows use: stage (NOT
+	 * fresh — the keyed `draft:<kind>:<name>` row is RE-USED, so a name pressed
+	 * twice returns to its chat rather than emptying it), close the palette, then
+	 * go to the chat route.
+	 */
+	assert.match(
+		draftCase,
+		/stageDraft\(\{ kind, name \}\)/,
+		"the draft case must stage with the target's own kind and name",
+	);
+	assert.doesNotMatch(
+		draftCase,
+		/stageDraft\([^)]*,\s*true\s*\)/,
+		"the draft case must NOT stage fresh: that would clear the keyed row the sidebar shares",
+	);
+	assert.ok(
+		draftCase.indexOf("stageDraft") < draftCase.indexOf("closeCommandPalette"),
+		"the stage happens before the close, as `handleNewChat` orders it",
+	);
+	assert.ok(
+		draftCase.indexOf("closeCommandPalette") <
+			draftCase.indexOf('navigate("/chat")'),
+		"the close happens before the navigation, as `handleNewChat` orders it",
+	);
+});
+
+test("the store no longer carries a reader-less `sessionByAgent` map", () => {
+	/*
+	 * REMOVED rather than populated (the maintainer's call on #844): there is no
+	 * canonical-chat binding for an agent in this model — an agent may have many
+	 * conversations — so the map was a lookup with no writer and the honest fix
+	 * is to delete it rather than invent data for it.
+	 */
+	const store = code(SESSIONS_STORE_SOURCE);
+	assert.doesNotMatch(
+		store,
+		/\bsessionByAgent\b/,
+		"`sessionByAgent` must be gone from the store, not merely unused",
+	);
+	/*
+	 * And the chat route keeps its honest sentence for a genuinely old link: any
+	 * route identity that is not a session id gets the notice, which is what the
+	 * map's empty branch used to do by accident.
+	 */
+	const page = code(CHAT_PAGE_SOURCE);
+	assert.match(
+		page,
+		/if \(!SESSION_ID\.test\(routeIdentity\)\)[\s\S]{0,200}?setRouteError/,
+		"a non-session route identity still gets the legacy-link sentence",
+	);
+	assert.match(
+		page,
+		/This legacy link has no canonical chat\. Its saved history is unchanged\./,
+		"the sentence itself is unchanged: old links are still told the truth",
+	);
+	assert.doesNotMatch(
+		page,
+		/sessionByAgent/,
+		"the chat page must not read the removed map",
+	);
 });
