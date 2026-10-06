@@ -2,8 +2,8 @@
 
 Frames for issue #848: the column's resize cue joining the app's one resize
 language. Five states, two palettes, each photographed on **two trees** — `before/`
-is unmodified `origin/main` (`d70f2645599`, this branch's fold point) and `after/`
-is this branch's head.
+is unmodified `origin/main` (`64bd6cc00fe`, this branch's fold point after round 1's
+remediation) and `after/` is this branch's head.
 
 The complaint, verbatim from the issue: the 72px bar floating in the transcript's
 empty margin *"reads as a mistake"* rather than as the column's boundary.
@@ -57,6 +57,14 @@ inside the content column and clips the scroller to 240px, which is what makes
 the column taller than the pane. The markup is real rendered output, not a
 fixture — the pane height and the transcript length are the rig's, and the
 subject (where the panel lands) is the component's.
+
+**Both halves were re-shot when the base moved, and nothing moved.** The fold
+that followed round 1 took the base from `d70f2645599` to `64bd6cc00fe`; the pair
+was re-taken against the new base and every frame came back byte-identical (the
+rig rewrote the files and `git status` stayed clean), which is the byte-level
+proof that the fold did not touch this surface. Upstream's own diff agrees: it
+touched the header cluster, the ask badge and their scripts, and nothing in the
+transcript or the measure.
 
 ## The readings the run asserts, in both palettes
 

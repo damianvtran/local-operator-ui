@@ -7109,10 +7109,10 @@
       "frames": 10,
       "surfaces": 5,
       "themes": 2,
-      "source": "`scripts/chat-measure-line-evidence.mjs` - added by this pass - driving `chat-measure-drag.stories.tsx` (`Chat/Measure drag`) on a Storybook served from a DETACHED WORKTREE at unmodified `origin/main` = `d70f2645599`, this branch's fold point.",
+      "source": "`scripts/chat-measure-line-evidence.mjs` - added by this pass - driving `chat-measure-drag.stories.tsx` (`Chat/Measure drag`) on a Storybook served from a DETACHED WORKTREE at unmodified `origin/main` = `64bd6cc00fe`, this branch's fold point after round 1's remediation. RE-SHOT AT THAT FOLD: the pair was re-taken against the new base and every frame came back byte-identical (`git status` stayed clean), which is the byte-level proof that the fold did not touch this surface.",
       "why": "Issue #848's before half: the cue as it shipped - a 2px bar 72px tall, centred on the Y the pointer entered at, floating 28px past the column's edge in the transcript's empty margin, which is the geometry the report calls \"a mistake\" rather than a boundary. A before/after pair cannot be one tree photographed twice, so both halves are frames of a real tree and the two Storybooks are driven by ONE run of the same rig. The fifth state, `hover-scrolled`, is the scrolled pane: the rig clones the rendered prose block and clips the scroller, because the story's own transcript fits its pane and agent review round 1's M1 is about what a scrolling one does to the panel's placement.",
       "capturedAt": "2026-10-06, one rig run on this machine: the base tree's Storybook on one port and this branch's on another, one private headless Chrome per (half, palette) with a scratch profile each.",
-      "capturedAtHead": "d70f264559948b549e62caa9d8c7bcfb79706f64"
+      "capturedAtHead": "64bd6cc00fe9b7dc3edd6c316b8be99b88a1fe95"
     },
     {
       "path": "chat-measure-line/after",
