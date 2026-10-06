@@ -3,6 +3,7 @@ import {
 	SCROLLBAR_EASING,
 	SCROLLBAR_FADE_IN_MS,
 	SCROLLBAR_FADE_OUT_MS,
+	SCROLLBAR_RESTING_FLOOR,
 } from "@shared/lib/scrollbar-activity";
 import type { FC } from "react";
 
@@ -24,13 +25,19 @@ import type { FC } from "react";
  * MUI `GlobalStyles` + `useTheme()` pair it replaced.
  *
  * WHAT CHANGED ON 2026-09-30 (design: `docs/design/scrollbars-fade.md`): the
- * thumb keeps that look and gains one behaviour — it is invisible at rest and
- * fades in when the reader scrolls or moves toward the bar. The fade is CSS;
- * the module that decides WHEN a scroller is awake is
- * `shared/lib/scrollbar-activity.ts`, and it is the only writer of the
- * attribute these rules key on. The durations of a reveal and of its departure
- * live here; the HOLD between them lives in the module, because it is a timer
- * and not a style.
+ * thumb keeps that look and gains one behaviour — it fades in when the reader
+ * scrolls or moves toward the bar. The fade is CSS; the module that decides WHEN
+ * a scroller is awake is `shared/lib/scrollbar-activity.ts`, and it is the only
+ * writer of the attribute these rules key on. The durations of a reveal and of
+ * its departure live here; the HOLD between them lives in the module, because it
+ * is a timer and not a style.
+ *
+ * WHAT CHANGED ON 2026-10-06 (issue #845): idle is no longer INVISIBLE. The
+ * resting value is 0.45 (`SCROLLBAR_RESTING_FLOOR`) of the control role rather than 0, so the bar can be
+ * found without first being known; it still fades between that floor and 1, and
+ * the hover and forced-colors rules below are unchanged. See the reset rule for
+ * the measurement that chose the number, and `docs/design/scrollbars-fade.md`
+ * for the amendment to the original contract.
  */
 const SCROLLBAR_CSS = `
 /*
@@ -45,17 +52,34 @@ const SCROLLBAR_CSS = `
 @property --lo-sb {
 	syntax: "<number>";
 	inherits: true;
-	initial-value: 0;
+	initial-value: ${SCROLLBAR_RESTING_FLOOR};
 }
 /*
  * THE RESET, and it is what keeps the value from leaking: with an inherited
  * property and no reset, marking an outer scroller also reveals an unmarked
  * inner one (the memo measured 79 against 255). Every element restates the
- * property at 0, so a scroller's own value is the only one its thumb can see.
+ * property, so a scroller's own value is the only one its thumb can see.
  * It also bounds the cost: 49 style recalcs per fade against 98 without it.
+ *
+ * IT RESETS TO THE RESTING FLOOR, NOT TO 0 (issue #845; the amendment it makes
+ * to \`docs/design/scrollbars-fade.md\`'s "must never be permanently stamped on
+ * screen" is recorded there). Idle used to mean INVISIBLE - a bar a reader had
+ * to already know was there - and the operator's ask is a resting state that
+ * reads without ever reading as chrome. The floor is the fraction of
+ * \`--color-control\` the thumb paints when nothing is touching it, and ${SCROLLBAR_RESTING_FLOOR}
+ * is MEASURED, not picked: this file's own ratio, the thumb's composite against
+ * every ground a scroller can sit on (surface/sunken/elevated/canvas), over the
+ * fifty-nine palettes gives **1.55:1 at worst** (\`rosePineDawn\`, the light
+ * extreme, on \`sunken\`) and **2.24:1 at best** (\`catppuccinMacchiato\`, the dark
+ * extreme, on \`sunken\`), with the two brand palettes between them
+ * (\`localOperatorDark\` 1.73-1.86, \`localOperatorLight\` 1.59-1.71). The band is
+ * the criterion: at or above 1.5:1 the thumb READS on a real panel, and below
+ * 2.5:1 - and so below the 3:1 non-text floor on every palette - it can never
+ * be mistaken for a full-strength control. 0.40 misses the first (1.47) and
+ * 0.55 the second (2.72).
  */
 * {
-	--lo-sb: 0;
+	--lo-sb: ${SCROLLBAR_RESTING_FLOOR};
 }
 *::-webkit-scrollbar {
 	width: 8px;

@@ -128,6 +128,13 @@
  *                          the dispatcher's own sentence for each and no
  *                          picker - the base tree's half of the pair (issue
  *                          #625)
+ *   --row-space-expect <after|before>  (with --scene row-space) which half of
+ *                          the pair this run records: `after` (the default)
+ *                          asserts the head tree's two claims - the row's acts
+ *                          reveal only after the pointer's dwell, and the list's
+ *                          edge cues track the clipped end; `before` records the
+ *                          base tree's readings of the same moments instead
+ *                          (issues #840 and #845)
  *   --backend <url>        a live, ISOLATED backend this run owns: the app's own
  *                          transport is pointed at it, so a surface gated on a
  *                          capability can be driven at all. The renderer must have
@@ -498,6 +505,28 @@ const BIN_EXPECT = argValue("--bin-expect", "prompt");
  * same reason `--authoring-expect` and `--bin-expect` are.
  */
 const SLASH_EXPECT = argValue("--slash-expect", "open");
+/**
+ * WHICH CLAIM A `--scene row-space` RUN IS IN ABOUT THE POINTER'S DWELL (issue
+ * #840) AND THE LIST'S EDGE CUES (issue #845).
+ *
+ * `after` (the default) is the head tree: the row's per-row acts are ABSENT from
+ * the layout until the pointer has been on the row for the app's hover-intent
+ * constant (200ms), so a press on its way to selecting a row never meets a
+ * control that has just arrived; and the sidebar scroller's two scroll-linked
+ * edge lengths are declared and driven. `before` is the base tree: the same
+ * gestures and the same scroll positions, where the acts are in the layout on the
+ * first frame the pointer is on the row and the edge lengths do not exist - which
+ * is the pair of defects the change removes, recorded rather than described.
+ *
+ * ONE SCENE, BOTH HALVES, THE SAME BYTES - the same reading `--slash-expect`
+ * exists for. Every frame is taken either way (they are the pair a reader
+ * compares); what the flag flips is which claim the two checks assert, because the
+ * base tree's pass-through moment legitimately shows the acts and its edges
+ * legitimately have no lengths, so checks demanding the head's readings would fail
+ * the before half for being the before half. A value the scene does not know is
+ * refused rather than defaulted, for the same reason the flags above are.
+ */
+const ROW_SPACE_EXPECT = argValue("--row-space-expect", "after");
 /**
  * WHICH HALF OF A BEFORE/AFTER PAIR THIS RUN IS (with --scene conversation-start).
  *
@@ -6331,6 +6360,14 @@ function rowSpaceGeometry(cdp, ids) {
 				pin: control(node.querySelector("[data-session-pin]")),
 				archive: control(node.querySelector("[data-session-archive]")),
 				pair: box(node.querySelector("[data-session-control-pair]")),
+				/*
+				 * THE POINTER-INTENT GATE (issue #840). Read off the ROW BOX, which is the
+				 * element the gate writes and the element the controls' class variants read
+				 * (:is(:where(.group)[data-session-hover-intent] *)), so this field and the
+				 * pair/archive/pin boxes above are the two halves of one claim: the attribute
+				 * is on the box, and the acts are in the layout only when it is.
+				 */
+				intent: node.hasAttribute("data-session-hover-intent"),
 			};
 		});
 		const panel = document.querySelector('nav[aria-label="Chats"]');
@@ -6472,6 +6509,12 @@ const rowSpaceBudget = (reading) =>
 				? Math.round((row.row.right - row.title.right) * 100) / 100
 				: null,
 		pairWidth: row.pair ? row.pair.width : null,
+		/*
+		 * THE POINTER-INTENT GATE (issue #840), carried through the flattening with the
+		 * acts' own boxes because the two are one claim: the row box holds the attribute
+		 * and the acts are in the layout only while it does.
+		 */
+		intent: row.intent,
 		pinWidth: row.pin ? row.pin.width : null,
 		pinPainted: row.pin ? row.pin.painted : null,
 		archiveWidth: row.archive ? row.archive.width : null,
@@ -6525,6 +6568,27 @@ const rowSpaceBudget = (reading) =>
  * than the dwell (`pan-swept-280`). Nothing moves in any of them, and each is one
  * reading rather than a frame.
  *
+ * ## The pointer's dwell (issue #840)
+ *
+ * `pointer-pass-through-280` and `pointer-dwelled-280` are the same row under the
+ * same pointer at the two sides of the app's hover-intent interval: the acts are
+ * absent from the layout on the first (so a press on its way to selecting a row
+ * cannot land on one that has just arrived) and in it on the second. The frames are
+ * taken with a plain `capture` rather than `captureSettled` - waiting for the
+ * pass-through state to hold still is waiting past the interval that defines it -
+ * and the geometry read that dates it comes first.
+ *
+ * ## The list's edge cues (issue #845)
+ *
+ * `edges-none-280`, `edges-top-280`, `edges-both-280` and `edges-bottom-280` are the
+ * sidebar list at the four states of the question, with the two scroll-linked cue
+ * lengths read from the same state: `0px` at an edge that is not clipped there and
+ * `24px` at one that is. `none` is taken at the launch size, where this fixture's
+ * list is shorter than its pane; the three clipped states need a list taller than
+ * its pane, so the VIEWPORT is shortened through `Emulation.setDeviceMetricsOverride`
+ * (cleared again immediately) - this is the last thing the scene does before its
+ * checks, so nothing else is photographed at that size.
+ *
  * ## The offer
  *
  * `offer-toast-280` is of the archive offer, in the state the operator reported: it is
@@ -6554,6 +6618,12 @@ async function sceneRowSpace(cdp) {
 	 */
 	const offerFrames = [];
 	const geometry = {};
+	/*
+	 * The list's edge readings live BESIDE `geometry`, not in it: every entry of
+	 * `geometry` is a ROW LIST, and the budget below maps over each entry - a flat
+	 * reading in there is a crash rather than a check.
+	 */
+	const edges = {};
 	const UNPINNED = "b3f1a09c7d52";
 	const SHORT = "7c1b0f2a4d31";
 	const PINNED = "c4e17b90a2f6";
@@ -6781,6 +6851,16 @@ async function sceneRowSpace(cdp) {
 	 */
 	const DWELL_MS = 400;
 	const PAN_CEILING_MS = 8_000;
+	/*
+	 * AND THE ACTS' OWN DWELL, WHICH IS THE SHORTER ONE (issue #840). The row's
+	 * per-row controls reveal on `HOVER_INTENT_MS` (200ms, the panel divider's
+	 * constant) - NOT on the pan's 400ms above - and the order between the two is the
+	 * design: the pan measures the HOVERED box, so the acts must already have taken
+	 * their 56px by the time the pan's own dwell elapses. Restated rather than
+	 * imported because this is a Node script and the constant lives in the renderer's
+	 * module graph; `chat-sidebar-hover-intent.test.mjs` pins the import itself.
+	 */
+	const HOVER_INTENT_MS = 200;
 
 	const hello = await verb(cdp, "hello");
 	check(
@@ -7045,6 +7125,28 @@ async function sceneRowSpace(cdp) {
 	await wait(200);
 	geometry["pan-swept-280"] = await rowSpaceGeometry(cdp, IDS);
 	/*
+	 * THE POINTER'S DWELL, PHOTOGRAPHED AT BOTH SIDES OF IT (issue #840). The same
+	 * row and the same pointer, two moments: the state BEFORE the interval has
+	 * elapsed (the acts are not in the layout, which is what makes a press on its way
+	 * to selecting a row safe) and the state after it (the acts are). The geometry is
+	 * read FIRST at the pass-through moment, because that read is what dates the
+	 * frame - a `captureSettled` pair here would settle for 300ms+ and photograph the
+	 * dwelled state twice. `HOVER_INTENT_MS` is restated rather than imported: this
+	 * script is a Node process and the constant lives in the renderer's module graph,
+	 * so the number is pinned here beside the app's own constant's name.
+	 *
+	 * The row is `SHORT` (the one whose title FITS), so nothing the pan does can move
+	 * between the two reads and the only difference between them is the acts.
+	 */
+	await parkPointer(cdp);
+	await wait(200);
+	await hoverOver(cdp, `[data-session-row="${SHORT}"] [data-chat-row]`);
+	geometry["pointer-pass-through-280"] = await rowSpaceGeometry(cdp, IDS);
+	frames.push(await capture(cdp, "pointer-pass-through-280"));
+	await wait(HOVER_INTENT_MS + 120);
+	geometry["pointer-dwelled-280"] = await rowSpaceGeometry(cdp, IDS);
+	frames.push(await captureSettled(cdp, "pointer-dwelled-280"));
+	/*
 	 * AND THE FLYOUT IS GONE ONCE THE POINTER HAS GONE, read after the pointer has been
 	 * parked well off the panel and with room for the primitive to unmount: the D2 defect
 	 * was a flyout still painted 2.5s later, describing a row the pointer had left.
@@ -7064,6 +7166,96 @@ async function sceneRowSpace(cdp) {
 	 * nothing, and the row's own control is `hidden` again the moment the pointer
 	 * leaves it.
 	 */
+	/*
+	 * THE LIST'S EDGE CUES, READ WHERE THE READER WOULD MOVE (issue #845). The scroller's
+	 * two fades are scroll-linked lengths, so the honest instrument is the computed value
+	 * at a scroll position rather than a claim about the stylesheet: the rig parks the
+	 * list at the clamp, the middle and the end (what a READER does - the app itself
+	 * still never writes `scrollTop`), reads both lengths and the scroll geometry, and
+	 * photographs each. `24px` is the ramp the stylesheet declares; `0px` is a HARD edge,
+	 * i.e. no cue at all at that end.
+	 *
+	 * THE FOURTH STATE (neither edge clipped, which is what a list shorter than its pane
+	 * holds) is NOT photographed here and the reason is in the set's README: this
+	 * fixture's list overflows at all three panel widths, so its top-edge reading below
+	 * is the observable half of that state, and the whole of it is the two declared
+	 * `0px` lengths an inactive timeline keeps.
+	 */
+	const scrollerEdges = () =>
+		cdp.evaluate(`(() => {
+			const el = document.querySelector('[data-sidebar-region="scroller"]');
+			if (!el) return null;
+			const cs = getComputedStyle(el);
+			return {
+				scrollTop: Math.round(el.scrollTop),
+				scrollHeight: el.scrollHeight,
+				clientHeight: el.clientHeight,
+				topFade: cs.getPropertyValue('--lo-sidebar-top-fade').trim(),
+				bottomFade: cs.getPropertyValue('--lo-sidebar-bottom-fade').trim(),
+			};
+		})()`);
+	const scrollListTo = (position) =>
+		cdp.evaluate(`(() => {
+			const el = document.querySelector('[data-sidebar-region="scroller"]');
+			if (!el) return null;
+			const max = el.scrollHeight - el.clientHeight;
+			el.scrollTop = "${position}" === "bottom" ? max : "${position}" === "middle" ? Math.round(max / 2) : 0;
+			return Math.round(el.scrollTop);
+		})()`);
+	/* The cue animates on the scroll timeline, so a frame of it must be taken after it has
+	   been given one - one animation frame is the whole latency, and 150ms is the same
+	   gap the rest of this scene's settle waits use. */
+	await parkPointer(cdp);
+	await scrollListTo("top");
+	await wait(150);
+	/*
+	 * THE NEITHER-EDGE STATE FIRST, and at the launch size it is the state this fixture
+	 * actually has: at 1380x900 the list is shorter than its pane (`scrollHeight` equals
+	 * `clientHeight`), the timeline is INACTIVE, and the two lengths keep their declared
+	 * `0px` - which is the whole point of declaring them at 0 rather than at the ramp.
+	 */
+	edges.none = await scrollerEdges();
+	frames.push(await captureSettled(cdp, "edges-none-280"));
+	/*
+	 * AND THE THREE CLIPPED STATES, which need a list that is TALLER than its pane. The
+	 * fixture's list is fixed, so the VIEWPORT is shortened instead - a reader's own
+	 * gesture (a smaller window), delivered through the app's own resize observers - and
+	 * this is the last thing the scene does before its checks, so nothing below is
+	 * photographed at the reduced size. The override is cleared afterwards either way.
+	 */
+	await cdp
+		.send("Emulation.setDeviceMetricsOverride", {
+			width: 1380,
+			height: 620,
+			/*
+			 * THE SCALE FACTOR IS NOT COSMETIC: the run's frames are captured at the
+			 * window's device pixel ratio, and the scene's own frame-size check reads each
+			 * capture's width against `viewport.width * devicePixelRatio`. Emulating at 1
+			 * would halve these three frames' width and fail that check for a reason that is
+			 * the rig's, not the app's - so the SHORTENING is what the override asks for.
+			 */
+			deviceScaleFactor: 2,
+			mobile: false,
+		})
+		.catch(() => null);
+	await wait(400);
+	await scrollListTo("top");
+	await wait(150);
+	edges.top = await scrollerEdges();
+	frames.push(await captureSettled(cdp, "edges-top-280"));
+	await scrollListTo("middle");
+	await wait(150);
+	edges.middle = await scrollerEdges();
+	frames.push(await captureSettled(cdp, "edges-both-280"));
+	await scrollListTo("bottom");
+	await wait(150);
+	edges.bottom = await scrollerEdges();
+	frames.push(await captureSettled(cdp, "edges-bottom-280"));
+	await cdp.send("Emulation.clearDeviceMetricsOverride").catch(() => null);
+	await wait(400);
+	await scrollListTo("top");
+	await wait(150);
+
 	const archiveRow = async (rowId) => {
 		await clickAt(cdp, `[data-session-row="${rowId}"] [data-session-archive]`);
 		await confirmArchiveDialog(cdp);
@@ -7693,6 +7885,67 @@ async function sceneRowSpace(cdp) {
 		noPanPaint(rowIn("pan-swept-280", UNPINNED)),
 		JSON.stringify(rowIn("pan-swept-280", UNPINNED)),
 	);
+	/*
+	 * THE ROW'S OWN DWELL, AS TWO MOMENTS OF ONE ROW (issue #840). The same row under
+	 * the same pointer, read before and after the acts' 200ms interval: absent (so the
+	 * row's box is the whole row, and a press aimed at a row on its way to being
+	 * SELECTED cannot land on a control that has just arrived), then present. The
+	 * attribute and the acts' boxes are read together because they are one claim - the
+	 * box carries the attribute and the Tailwind variant is what raises the acts.
+	 */
+	const beforeDwell = rowIn("pointer-pass-through-280", SHORT);
+	const afterDwell = rowIn("pointer-dwelled-280", SHORT);
+	check(
+		ROW_SPACE_EXPECT === "after"
+			? "the acts are absent for a pointer passing through and present once it has dwelt"
+			: "--row-space-expect before: the base tree's acts are already in the layout at the pass-through moment, which is the defect the dwell removes",
+		ROW_SPACE_EXPECT === "after"
+			? beforeDwell?.intent === false &&
+					beforeDwell?.pairWidth === 0 &&
+					afterDwell?.intent === true &&
+					(afterDwell?.pairWidth ?? 0) > 0
+			: beforeDwell?.intent === false &&
+					(beforeDwell?.pairWidth ?? 0) > 0 &&
+					(afterDwell?.pairWidth ?? 0) > 0,
+		JSON.stringify({ before: beforeDwell, after: afterDwell }),
+	);
+	/*
+	 * THE EDGE CUES ANIMATE ON THE SCROLL TIMELINE, NOT ON A CLOCK (issue #845), so the
+	 * claim is about a PAIR of lengths at a position: absent at the list's top, both
+	 * present mid-list, and absent again at its end. `24px` is the declared ramp and
+	 * `0px` is a hard edge - the stylesheet's own way of saying "no cue at this end".
+	 */
+	const topEdges = edges.top;
+	const midEdges = edges.middle;
+	const bottomEdges = edges.bottom;
+	const noneEdges = edges.none;
+	check(
+		ROW_SPACE_EXPECT === "after"
+			? "the list's edge cues appear only where content is clipped: none while nothing is clipped, none at the top, both mid-list, none at the end"
+			: "--row-space-expect before: the base tree carries no edge length at any scroll position, so the clipped end has no cue",
+		ROW_SPACE_EXPECT === "after"
+			? noneEdges?.scrollHeight === noneEdges?.clientHeight &&
+					noneEdges?.topFade === "0px" &&
+					noneEdges?.bottomFade === "0px" &&
+					topEdges?.topFade === "0px" &&
+					topEdges?.bottomFade === "24px" &&
+					midEdges?.topFade === "24px" &&
+					midEdges?.bottomFade === "24px" &&
+					bottomEdges?.topFade === "24px" &&
+					bottomEdges?.bottomFade === "0px"
+			: [noneEdges, topEdges, midEdges, bottomEdges].every(
+					(reading) =>
+						reading !== null &&
+						reading.topFade === "" &&
+						reading.bottomFade === "",
+				),
+		JSON.stringify({
+			none: noneEdges,
+			top: topEdges,
+			middle: midEdges,
+			bottom: bottomEdges,
+		}),
+	);
 	check(
 		"a title that FITS does not move: no overflow, no transform, no mask",
 		rowIn("hover-short-280", SHORT)?.titleOverflows === false &&
@@ -7732,9 +7985,21 @@ async function sceneRowSpace(cdp) {
 					: disjointBoxes(offer.offer.toast, offer.composer.form) === false,
 		}),
 	);
+	/*
+	 * THE PASS-THROUGH FRAME IS EXEMPT BY DESIGN (issue #840). `pointer-pass-through-280`
+	 * is the state BEFORE the row's dwell has elapsed, and its whole claim is that it is a
+	 * MOMENT rather than a rest: waiting for it to hold still is waiting past the interval
+	 * that defines it, which would photograph the dwelled state and answer a different
+	 * question. Every other frame here is still required to be a still picture.
+	 */
+	const unsettledByDesign = new Set(["pointer-pass-through-280"]);
 	check(
 		"every settled capture is a frame the app held still for, with no toast on it",
-		frames.every((frame) => frame.stable === true && frame.toastFree === true),
+		frames.every(
+			(frame) =>
+				unsettledByDesign.has(frame.label) ||
+				(frame.stable === true && frame.toastFree === true),
+		),
 		frames.map((frame) => `${frame.label}: stable=${frame.stable}`).join(" | "),
 	);
 	check(
@@ -7902,6 +8167,54 @@ async function sceneRowSpace(cdp) {
 		JSON.stringify(onThePin),
 	);
 	/*
+	 * AND THE KEYBOARD'S OWN DOOR IS MEASURED RATHER THAN DESCRIBED (agent review round 2's
+	 * MINOR). The door this PR re-keyed is `:focus-visible`, and `button.focus()` is NOT the
+	 * instrument for it: a scripted focus reads `:focus-visible: false` in this repo (this
+	 * file's own note records it), so a check built on it would answer a question about
+	 * `:focus` while the door asks how the focus ARRIVED. The gesture is the panel's OWN
+	 * arrow walk - a real `ArrowDown` key event from a row's button, which is the app moving
+	 * the caret from one row to the next, i.e. exactly the keyboard reader's route. (`Tab`
+	 * was the first draft of this check and is the wrong key: this row is the list's FIRST,
+	 * so one Tab leaves the list entirely, which is what the clause above documents.) The
+	 * loop is bounded and the clause FAILS when it reaches no row button, because a door
+	 * that is never exercised must not read as a door that works - and it skips the pinned
+	 * row, whose pair is `flex` at rest by design and would therefore pass this clause
+	 * without the keyboard at all.
+	 */
+	let keyboardDoor = null;
+	await cdp.evaluate(
+		`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); const button = row && row.querySelector('[data-chat-row]'); if (button) button.focus(); return true; })()`,
+	);
+	for (let step = 0; step < 4; step += 1) {
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		await wait(160);
+		keyboardDoor = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			const row = el && el.closest ? el.closest('[data-session-row]') : null;
+			const pair = row ? row.querySelector('[data-session-control-pair]') : null;
+			return {
+				isRowButton: !!(el && el.matches && el.matches('[data-chat-row]')),
+				focusVisible: !!(el && el.matches && el.matches(':focus-visible')),
+				rowId: row ? row.getAttribute('data-session-row') : null,
+				pairDisplay: pair ? getComputedStyle(pair).display : null,
+			};
+		})()`);
+		if (keyboardDoor?.isRowButton && keyboardDoor.rowId !== PINNED) break;
+	}
+	check(
+		"a keyboard walk onto an unpinned row draws its acts, on a `:focus-visible` the browser agrees is the keyboard's",
+		keyboardDoor?.isRowButton === true &&
+			keyboardDoor?.focusVisible === true &&
+			keyboardDoor?.rowId !== PINNED &&
+			keyboardDoor?.pairDisplay === "flex",
+		JSON.stringify(keyboardDoor),
+	);
+	note("the keyboard's own door", JSON.stringify(keyboardDoor));
+	/*
 	 * AND THE CARET GOES BACK INTO THE ROW FOR THE CHORD HALF. The chord resolves its target
 	 * from the focused element's own row (`chatRowActControl`), so a walk that left the caret
 	 * outside the row after reading the Tab stop would be pressing the chord on a row it is not
@@ -8036,6 +8349,121 @@ async function sceneRowSpace(cdp) {
 		JSON.stringify({ ...closingWrites, stubLog: STUB_LOG }),
 	);
 
+	/*
+	 * A PRESS THAT STRADDLES THE ROW'S REVEAL SELECTS THE ROW (agent review round 1's
+	 * Q-1, which is UX's U1, and the reason `chat-sidebar.tsx`'s keyboard door is
+	 * `:focus-visible` rather than the bare `group-focus-within`). The gesture is the
+	 * reader's fastest one - down and up inside the dwell, aimed at the trailing band
+	 * the acts will occupy once they arrive - and the reading is taken BETWEEN the two
+	 * halves, which is the only moment the defect is visible:
+	 *
+	 *   - the row's button has its FULL width, and the acts are not in the layout, so
+	 *     the press is not aimed at a control that has just arrived;
+	 *   - the mouseup therefore lands on the button the press started on, and the row
+	 *     becomes the current conversation - which is the half that used to be lost:
+	 *     the mousedown FOCUSED the button, `group-focus-within` raised the acts inside
+	 *     the gesture, the button narrowed 248 -> 192 (the pair's 52px plus the row's own
+	 *     4px gap - the driver's own control reading is the instrument here; the round-2
+	 *     NIT caught this line quoting 196), the mouseup fell outside it and
+	 *     Chromium retargeted the `click` to the row's wrapper, which has no handler.
+	 *     Nothing was pressed AND nothing was selected.
+	 *
+	 * The control is the same row and the same point after the dwell, further down this
+	 * scene's own walk: the row is pressable there, so the band is the discriminator
+	 * rather than the geometry. `--row-space-expect before` states the SAME gesture's
+	 * other answer - on the base tree the acts are in the layout from the first frame,
+	 * so the press lands on the archive and the route does not move. Both halves are
+	 * asserted, on both palettes, because a change that made the row unpressable would
+	 * satisfy the head's clause on its own.
+	 */
+	await parkPointer(cdp);
+	await wait(200);
+	const band = await cdp.evaluate(`(() => {
+		const row = document.querySelector('[data-session-row="${UNPINNED}"]');
+		const button = row?.querySelector('[data-chat-row]');
+		const pair = row?.querySelector('[data-session-control-pair]');
+		if (!row || !button) return null;
+		const box = button.getBoundingClientRect();
+		return {
+			route: location.hash,
+			x: Math.round(box.right - 40),
+			y: Math.round(box.top + box.height / 2),
+			buttonWidth: Math.round(box.width),
+			buttonRight: Math.round(box.right),
+			pairDrawn: pair ? getComputedStyle(pair).display !== "none" : false,
+		};
+	})()`);
+	if (band === null) {
+		check(
+			"the row the straddling press is aimed at is on screen",
+			false,
+			"no row box",
+		);
+	} else {
+		await movePointer(cdp, band.x, band.y);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mousePressed",
+			x: band.x,
+			y: band.y,
+			button: "left",
+			buttons: 1,
+			clickCount: 1,
+		});
+		/*
+		 * THE PRESS MOMENT, read while the button is still held: this is the frame the
+		 * defect relaid out in.
+		 */
+		const held = await cdp.evaluate(`(() => {
+			const row = document.querySelector('[data-session-row="${UNPINNED}"]');
+			const button = row?.querySelector('[data-chat-row]');
+			const pair = row?.querySelector('[data-session-control-pair]');
+			const box = button?.getBoundingClientRect() ?? null;
+			return {
+				intent: row?.getAttribute('data-session-hover-intent') !== null,
+				buttonWidth: box ? Math.round(box.width) : null,
+				pairDrawn: pair ? getComputedStyle(pair).display !== "none" : false,
+				active: document.activeElement?.matches('[data-chat-row]') ?? false,
+			};
+		})()`);
+		await cdp.send("Input.dispatchMouseEvent", {
+			type: "mouseReleased",
+			x: band.x,
+			y: band.y,
+			button: "left",
+			buttons: 0,
+			clickCount: 1,
+		});
+		await wait(400);
+		const landed = await cdp.evaluate(`(() => ({
+			route: location.hash,
+			current: document.querySelector('[data-chat-row][aria-current="page"]')
+				?.closest('[data-session-row]')
+				?.getAttribute('data-session-row') ?? null,
+		}))()`);
+		check(
+			ROW_SPACE_EXPECT === "after"
+				? "a press inside the dwell, aimed at the band the acts will occupy, leaves the row's width alone and SELECTS the row"
+				: "--row-space-expect before: the same straddling press meets the already-drawn acts, so the row is never selected - the defect the keyboard-only door removes",
+			ROW_SPACE_EXPECT === "after"
+				? band.pairDrawn === false &&
+						held.pairDrawn === false &&
+						held.buttonWidth === band.buttonWidth &&
+						landed.route !== band.route &&
+						landed.route.includes(UNPINNED) &&
+						landed.current === UNPINNED
+				: /*
+					 * THE PRESS MOMENT, NOT THE PARKED ONE (agent review round 2's MINOR 1).
+					 * `band.pairDrawn` is read with the pointer parked at (2,2), where the
+					 * wrapper is `hidden` on EVERY tree - so the old clause was asking the
+					 * frame before the gesture to carry the defect. What the base tree's
+					 * defect IS is the acts arriving inside the press, which is `held`.
+					 */
+					held.pairDrawn === true,
+			JSON.stringify({ band, held, landed }),
+		);
+		note("the straddling press", JSON.stringify({ band, held, landed }));
+	}
+
 	const geometryPath = join(
 		FRAMES,
 		`row-space-geometry-${THEME ?? "default"}${RUN_LABEL}.json`,
@@ -8046,6 +8474,7 @@ async function sceneRowSpace(cdp) {
 			{
 				scene: "row-space",
 				theme: THEME ?? null,
+				edges,
 				runtime: electronRuntime(),
 				viewport: geometry["rest-280"]?.viewport ?? null,
 				panelPadding: geometry["rest-280"]?.panelPadding ?? null,
@@ -39382,6 +39811,15 @@ async function main() {
 	) {
 		throw new Error(
 			`--slash-expect takes open or refused (got ${JSON.stringify(SLASH_EXPECT)}): the two are different claims about the same gestures, and a defaulted typo would silently answer the other one`,
+		);
+	}
+	if (
+		SCENE === "row-space" &&
+		ROW_SPACE_EXPECT !== "after" &&
+		ROW_SPACE_EXPECT !== "before"
+	) {
+		throw new Error(
+			`--row-space-expect takes after or before (got ${JSON.stringify(ROW_SPACE_EXPECT)}): the two are different claims about the same moments, and a defaulted typo would silently answer the other one`,
 		);
 	}
 	if (SCENE === "route-tops" && BACKEND === null) {
