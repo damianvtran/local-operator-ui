@@ -2170,6 +2170,14 @@ export const STORIES = [
 				"[data-header-identity-constraint]",
 				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
 				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+				/*
+				 * THE HIGHLIGHT OPENS ON A SETTABLE ROW (review round 1, D2/U1): with
+				 * the seed rule the ACTIVE row is the current settable row or the
+				 * first settable one, never the refused row zero the first draft
+				 * landed on - so the frame's first Enter is not inert. `aria-selected`
+				 * is the active-row mark; the `:not` half is the claim.
+				 */
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
 			],
 			expectGone: "[data-header-identity-cue]",
 			dir: "agent-menu-open",
@@ -2193,6 +2201,8 @@ export const STORIES = [
 				"[data-header-identity-constraint]",
 				'[data-header-identity-menu="agent"] [role="option"][data-current]:not([aria-disabled])',
 				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
+				// The seeded highlight sits on the current settable row (D2/U1).
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
 			],
 			dir: "constrained-agent-open",
 		},
@@ -2265,6 +2275,12 @@ export const STORIES = [
 				'[data-header-identity-menu="agent"] [role="option"][data-current][aria-disabled="true"]',
 				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
 				'[data-header-identity="agent"] [data-header-identity-cue]',
+				/*
+				 * The refused pair's highlight lands on the first SETTABLE row (the
+				 * manager) rather than on the refused current row (review round 1,
+				 * D2/U1) - one Enter resolves the pair rather than two.
+				 */
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
 			],
 			dir: "conflict-agent-open",
 		},
@@ -2686,6 +2702,16 @@ export const STORIES = [
 				"[data-header-identity-constraint]",
 				'[data-header-identity-menu="agent"] [role="option"][aria-disabled="true"]',
 				'[data-header-identity-menu="agent"] [role="option"]:not([aria-disabled])',
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
+				/*
+				 * THE FOOTER IS BACK (review round 1, Q-1): the measure effect used to
+				 * read a ref that was still null on its only open-time run, so an
+				 * overflowing list silently lost its count line - this frame's own
+				 * subject. The effect now runs on the NODE appearing (the scroller is
+				 * mirrored into state), and the hook makes the footer a claim rather
+				 * than something this frame hopes shows.
+				 */
+				"[data-header-identity-footer]",
 			],
 			dir: "long-roster-agent-open",
 		},
@@ -2726,8 +2752,43 @@ export const STORIES = [
 			expectPresent: [
 				'[data-header-identity-menu="agent"]',
 				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]',
+				/*
+				 * EVERY MATCH IS REFUSED HERE, SO THE FOOTER CARRIES THE WAY OUT
+				 * (review round 1, D1): four `rev` matches, none settable - the
+				 * frame's claim is the resolution sentence, not the count the first
+				 * draft printed over a list nothing could be picked from.
+				 */
+				"[data-header-identity-resolution]",
 			],
 			dir: "search-results",
+		},
+	],
+	/*
+	 * THE CONFIRM KEY ON A REFUSED ROW ANSWERS (review round 1, D2/U1): the
+	 * sharpest form of the reported defect was "type rev, one refused hit,
+	 * Enter, nothing" - no dismissal, no state change, an empty live region.
+	 * The seeded highlight cannot save THIS list (no settable row matches `rev`
+	 * at all), so this frame is the other half of the fix: the footer's live
+	 * region says which row cannot take the seat. The sentence is asserted
+	 * rather than photographed - its presence IS the state.
+	 */
+	[
+		"chat-header-identity--long-roster",
+		560,
+		640,
+		{
+			press: '[data-header-identity="agent"]',
+			type: "rev",
+			thenKeys: [{ key: "Enter" }],
+			expectPresent: [
+				'[data-header-identity-menu="agent"]',
+				"[data-header-identity-constraint]",
+			],
+			expectSentence: {
+				selector: "[data-header-identity-footer]",
+				includes: "cannot take the seat.",
+			},
+			dir: "refused-enter",
 		},
 	],
 	[
@@ -2753,7 +2814,13 @@ export const STORIES = [
 			expectPresent: [
 				'[data-header-identity-menu="agent"]',
 				'[data-header-identity-menu="agent"] [role="option"]',
+				"[data-header-identity-constraint]",
+				// The highlight landed on a settable row (D2/U1) and the band
+				// filtered to nothing is GONE rather than empty (U6).
+				'[data-header-identity-menu="agent"] [role="option"][aria-selected="true"]:not([aria-disabled])',
 			],
+			expectGone:
+				'[data-header-identity-menu="agent"] [data-header-identity-band="Recent agents"]',
 			dir: "recents-agent-open",
 		},
 	],
@@ -12944,8 +13011,8 @@ const main = async () => {
 			 * KEYS through the input pipeline, for the claims that are a KEYBOARD
 			 * interaction rather than a visual state - `keys: [{ key: "Escape" }]`.
 			 */
-			if (options?.keys) {
-				for (const spec of options.keys) {
+			const sendKeys = async (specs) => {
+				for (const spec of specs) {
 					const codes = KEY_CODES[spec.key];
 					if (!codes) {
 						throw new Error(`${story} @ ${theme}: no keyCode for ${spec.key}`);
@@ -12976,6 +13043,9 @@ const main = async () => {
 					}
 					await sleep(spec.settleMs ?? 120);
 				}
+			};
+			if (options?.keys) {
+				await sendKeys(options.keys);
 			}
 			/*
 			 * TYPED TEXT, for a claim that is about a FILTER rather than about a state:
@@ -12993,6 +13063,16 @@ const main = async () => {
 			if (options?.type) {
 				await cdp.send("Input.insertText", { text: options.type });
 				await sleep(options.typeSettleMs ?? 250);
+			}
+			/*
+			 * KEYS AFTER THE TYPED TEXT: the one order `keys` cannot express, because
+			 * `keys` runs before `type` by its own callers' needs. The refused-row
+			 * answer (review round 1, D2/U1) IS type-then-Enter - a filter that
+			 * leaves only refused rows, then the confirm key on the highlighted one -
+			 * so this second position dispatches through the same loop.
+			 */
+			if (options?.thenKeys) {
+				await sendKeys(options.thenKeys);
 			}
 			/*
 			 * WHAT THE GESTURES ABOVE MUST HAVE PRODUCED, asserted rather than

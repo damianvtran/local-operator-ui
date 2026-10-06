@@ -433,6 +433,9 @@ const IdentityControl: FC<IdentityControlProps> = ({
 					 * CONTAINS the visible label (the team's name or label, `No team`),
 					 * so voice control keeps working and the ellipsised glyph never
 					 * stands alone. The visible strings stay sentence-case and quiet.
+					 * The cue's sentence is a SEPARATE CLAUSE after a period (review
+					 * round 1, D6/NIT-1): read aloud, "Switch agent Local Operator Dev
+					 * is led by..." ran the action into the rule as one noun phrase.
 					 */
 					aria-label={`${triggerLabel}: ${label}. ${
 						assigned
@@ -440,16 +443,17 @@ const IdentityControl: FC<IdentityControlProps> = ({
 							: kind === "team"
 								? "Assign a team"
 								: "Assign an agent"
-					}${flagged && cueSentence ? ` ${cueSentence}` : ""}`}
+					}${flagged && cueSentence ? `. ${cueSentence}` : ""}`}
 					title={
 						flagged && cueSentence
 							? /*
 								 * The flagged chip's tooltip states the rule the pair breaks
 								 * (issue #861) - the label leads so the hover still says which
 								 * profile it is about, and the sentence is the panel's own
-								 * (`constraint.caption`), not a second paraphrase.
+								 * (`constraint.caption`), not a second paraphrase. The em dash
+								 * makes the two clauses read as two (review round 1, D6).
 								 */
-								`${label}: ${cueSentence}`
+								`${label} — ${cueSentence}`
 							: assigned
 								? /*
 									 * The identity in the tooltip, `Label (slug)` when the two differ
@@ -703,10 +707,21 @@ export const ChatHeaderIdentity: FC<HeaderIdentityData> = ({
 		manager: view.teamManager,
 		delegate: watchedDelegate,
 	});
-	const constraint = identityAgentConstraint({
-		teamLabel: view.teamLabel,
-		manager: view.teamManager,
-	});
+	/*
+	 * The constraint is MEMOIZED (review round 1, MINOR-1): built inline it was a
+	 * fresh object every render, and it is a dep of the panel's options memo -
+	 * so every header render (a busy flip, a store tick, the cue's own query
+	 * landing) rebuilt all 150 options and re-rendered every mounted row, the
+	 * stability the panel was built around lost to one object identity.
+	 */
+	const constraint = useMemo(
+		() =>
+			identityAgentConstraint({
+				teamLabel: view.teamLabel,
+				manager: view.teamManager,
+			}),
+		[view.teamLabel, view.teamManager],
+	);
 	/*
 	 * One open menu at a time, by hand: two independent Radix roots cannot see
 	 * each other, and two menus up from one row is a state with no meaning.
