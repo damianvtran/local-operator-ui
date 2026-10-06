@@ -245,3 +245,116 @@ export function identityMenuFooter(input: {
 	if (!overflowing) return null;
 	return `${view.total} ${noun} in all — scroll, or type to filter`;
 }
+
+/*
+ * ---------------------------------------------------------- the team's
+ * constraint on the agent slot (issue #861)
+ *
+ * A team-bound chat is run by the team's MANAGER, so the agent slot is not
+ * free: it may hold the team's manager, or a profile that can delegate
+ * (`delegate === true`). Anything else is a persona the manager brief
+ * contradicts. The rule is the runtime's own acceptance predicate, which the
+ * core half (damianvtran/local-operator#2014) enforces on its side: it refuses
+ * an incompatible pick, and normalises an incompatible pairing at attach time.
+ * The UI mirrors the predicate - it does not get a second opinion about it,
+ * and both the panel's per-row marks and the header's cue come through the
+ * functions below so the two surfaces cannot drift.
+ *
+ * WHY THE PREDICATE IS ONE FUNCTION. `settable(name) = name === teamRow.manager
+ * || row.delegate === true`, in one place, because two copies of it would
+ * eventually disagree in exactly the case the rule exists for (the delegating
+ * profile - legal to hold the seat, and the case a name-inequality test gets
+ * wrong).
+ *
+ * WHAT THE COPY IS A CANDIDATE FOR. The caption and the per-row reason are
+ * written to be self-explaining and are marked as copy for the design round to
+ * weigh against the core half's refusal wording - the predicate is frozen here,
+ * not the prose.
+ */
+
+/**
+ * The acceptance predicate: whether `name` may hold the agent seat of a chat
+ * whose team is run by `manager`.
+ *
+ * The team's manager is ALWAYS settable, whatever its own flag reads - the
+ * manager runs the team, so the manager can always take its own seat. A
+ * `delegate === true` profile is settable beside it. Everything else - an
+ * explicit `false`, or a row whose catalogue did not carry the field at all -
+ * is not, which is the `delegate !== true` half of the rule stated as one
+ * comparison.
+ *
+ * `manager` is a plain string comparison and is deliberately NOT defaulted
+ * here: a caller that does not know the team's manager must not constrain at
+ * all (see `identityAgentConstraint`), rather than compare against an invented
+ * default. A null/undefined manager therefore yields "delegate-only", which no
+ * caller in this tree applies without knowing the manager first.
+ */
+export function identityAgentSettable(input: {
+	name: string;
+	manager: string | null | undefined;
+	delegate: boolean | null | undefined;
+}): boolean {
+	return input.name === input.manager || input.delegate === true;
+}
+
+/**
+ * The bound team's acceptance rule, as the panel states and applies it.
+ *
+ * `manager` is the row's own manager (or the runtime's documented default,
+ * `DEFAULT_TEAM_MANAGER`, when the row carries none) and `caption` is the
+ * sentence the agent panel shows above its list. `null` when the manager is
+ * not KNOWN - no team bound, or a catalogue that has not answered yet - which
+ * is what keeps a constraint from being applied (or explained) against data
+ * this app does not have; a wrong "only these profiles" mark is worse than a
+ * missing one, because it is a claim about a team rather than about a load.
+ */
+export type IdentityAgentConstraint = {
+	/** The profile the team's manager owns: always settable. */
+	manager: string;
+	/** The rule, in the register the panel's own sentences use. */
+	caption: string;
+};
+
+/**
+ * The rule sentence, with the team's own NAME (its label when it has one,
+ * the slug otherwise - the same string the chip shows).
+ *
+ * Copy is a candidate for the design round (see the section note); the shape
+ * to keep is that the sentence NAMES the team and states both halves of the
+ * rule - led by the manager, coordinating profiles may also take the seat.
+ */
+export function identityAgentConstraintCaption(teamLabel: string): string {
+	return `${teamLabel} is led by its manager; only coordinating profiles can take this seat.`;
+}
+
+/**
+ * The per-row reason a constrained row is not settable, shown in the row's
+ * description slot so the disable is never silent (`PickerOption.disabled`'s
+ * own contract: "still listed so the reason is visible").
+ *
+ * A candidate for the design round, like the caption; it states the same rule
+ * compactly because the row may be read (or its tooltip hovered) without the
+ * caption in view.
+ */
+export const IDENTITY_AGENT_NOT_SETTABLE_REASON =
+	"Only the team's manager and coordinating profiles can take this seat.";
+
+/**
+ * The constraint a bound team puts on the agent panel, or `null` when there is
+ * nothing to apply: no team, or a manager that is not known yet.
+ *
+ * `manager` arrives as the team row's own value; a row that carries none is
+ * normalised by the caller (the view resolves it to the runtime's default
+ * before this). `teamLabel` is the name the sentence uses - `No team` never
+ * reaches the caption because a null manager short-circuits first.
+ */
+export function identityAgentConstraint(input: {
+	teamLabel: string;
+	manager: string | null;
+}): IdentityAgentConstraint | null {
+	if (input.manager === null) return null;
+	return {
+		manager: input.manager,
+		caption: identityAgentConstraintCaption(input.teamLabel),
+	};
+}

@@ -117,8 +117,15 @@ export type IdentityMenuProps = {
 	loadError: string | null;
 	/** What the roster says when it answered with nothing at all. */
 	emptyText: string;
-	/** A switch is in flight: the rows are inert, and the trigger says so. */
-	busy: boolean;
+	/**
+	 * The bound team's acceptance rule for the agent slot (issue #861), in the
+	 * register this panel's sentences use, or `null` when there is none. It is
+	 * the SAME rule the rows were marked by (`disabled` + the reason in the
+	 * row's description): stated once here rather than on every row, so the
+	 * caption explains the list and the row explains itself. The three non-list
+	 * states render no caption - there is no list for a rule to be about.
+	 */
+	caption: string | null;
 	onPick: (value: string) => void;
 	/**
 	 * The TAB path (UX round 1, U1): the field claims Tab and asks the control
@@ -149,7 +156,7 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 	loading,
 	loadError,
 	emptyText,
-	busy,
+	caption,
 	onPick,
 	onClose,
 	onCloseAutoFocus,
@@ -346,13 +353,17 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 				event.preventDefault();
 				const row = flat[active];
 				/* A ROW and not the text in the field: see the docblock. Enter on a
-				 * filter that matched nothing is deliberately inert. */
-				if (row && !busy) onPick(row.value);
+				 * filter that matched nothing is deliberately inert, and so is Enter on
+				 * a row the list marks `disabled` (a team's rule, or a switch already
+				 * in flight) - the pick would be a command the runtime refuses.
+				 * Reaching such a row with the arrows is `picker-host`'s contract:
+				 * the highlight walks the whole list, the PICK is what is blocked. */
+				if (row && !row.disabled) onPick(row.value);
 				return;
 			}
 			/* Escape is Radix's: it closes the panel and returns focus to the chip. */
 		},
-		[active, busy, flat, move, onClose, onPick],
+		[active, flat, move, onClose, onPick],
 	);
 
 	const noun = kind === "team" ? "teams" : "agents";
@@ -435,6 +446,23 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 			{showsList ? (
 				<>
 					{field}
+					{/*
+					 * The bound team's rule, before the reading starts (issue #861).
+					 * The rows below carry the consequence (a `disabled` row states its
+					 * own reason), and this line states the rule they share - so the
+					 * constraint is self-explaining rather than a list that happens to
+					 * be grey. `null` unless a team leads and its manager is known; the
+					 * `data-` hook is the capture rig's claim anchor, so a frame filed
+					 * as constrained fails the run if the caption is missing.
+					 */}
+					{caption !== null && (
+						<p
+							data-header-identity-constraint=""
+							className="px-2 pt-0.5 pb-1 text-ink-dim text-meta"
+						>
+							{caption}
+						</p>
+					)}
 					{/*
 					 * The scroll viewport, with the fold's own cue when the roster does not
 					 * fit it (operator, 2026-09-26: "the height is unbounded ... make sure
@@ -533,9 +561,12 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 													onPick={(option, picked) => {
 														/* The click moves the keyboard's row to what it
 														 * picked as well as running the switch, which is
-														 * `picker-host`'s own click contract. */
+														 * `picker-host`'s own click contract - and it
+														 * moves it even when the row is `disabled`, so
+														 * the highlight and the refusal agree (the pick
+														 * itself is what the mark blocks). */
 														setActive(picked);
-														if (!busy) onPick(option.value);
+														if (!option.disabled) onPick(option.value);
 													}}
 												/>
 											);
@@ -570,13 +601,16 @@ export const IdentityMenu: FC<IdentityMenuProps> = ({
 					{/*
 					 * The three non-list states, as the panel's own single line - the
 					 * register the menu already used for them, kept so a reviewer comparing
-					 * frames sees the same copy in a new chassis. The refusal keeps its
-					 * `data-header-identity-error` hook, which is what the sweep's shutter
-					 * asserts rather than measuring the state by eye (design D1).
+					 * frames sees the same copy in a new chassis. Two of them carry claim
+					 * hooks that the sweep's shutters assert rather than measuring a state
+					 * by eye: the refusal keeps `data-header-identity-error` (design D1),
+					 * and the loading line keeps `data-header-identity-loading` - the
+					 * agent side's frames need it (issue #861: the loading state is where
+					 * the constraint must stay unstated and the cue unlit).
 					 */}
 					<div className={cn(MENU_STATE_ROW, "text-ink-dim")}>
 						{loading ? (
-							<span>Loading {noun}…</span>
+							<span data-header-identity-loading="">Loading {noun}…</span>
 						) : loadError ? (
 							<span className="text-danger" data-header-identity-error="">
 								{loadError}
