@@ -4,9 +4,18 @@ The follow-up to [#848](https://github.com/damianvtran/local-operator-ui/issues/
 line: the cue goes back to the reference's SHORT bar texture - the one #848's
 first cut used, re-homed onto the measure's real edge rather than floating in the
 margin - and the tooltip panel stops arriving under a hand that is only sweeping
-past the gutter. Nine states, two palettes, each photographed on **two trees**:
+past the gutter. Eleven states, two palettes, each photographed on **two trees**:
 `before/` is unmodified `origin/main` (`46fd032ed59`, this branch's base) and
 `after/` is this branch's head.
+
+**EXTENDED FOR ROUND 2 (2026-10-06).** Two cells were added because the round's
+findings were about the seat's EDGES rather than its middle, and the pair only ever
+entered at the pane's middle: `top-entry` (entering 6px below the pane's top, which
+painted 80 of the mark's 160 rows before the seat was held clear of the band) and
+`drag-out` (a drag whose hand leaves the pane, which painted nothing at all before
+the publication was held inside it). The rig also grew a frame-level check that a
+panel-free state changes nothing but the cue's own column, and an animation-frame
+trace across the release, both described under the readings below.
 
 **RE-SHOT FOR ROUND 1's BLOCKER (2026-10-06).** The first cut rested the bar at
 `50%` of the transcript COLUMN, so on any conversation taller than the pane it
@@ -65,6 +74,8 @@ defect in the product.
 | `keyboard-focus/` | The rule lit and the panel open - focus opens it at once. | The same: focus opens the panel at once on both trees. This change did not touch that channel. |
 | `tall-rest/` | The scroller clipped to 240px with the column grown past it, pointer elsewhere, no cue. The diff reference for the frame after it. | The same layout, the same nothing - this is the state round 1's blocker was invisible in. |
 | `tall-hover/` | The rule, filling the pane as it always did (it IS the column). | The bar, **inside** the pane on the hand's seat. The first cut of this change painted at the column's middle here - hundreds of pixels above the pane - while `opacity` read 1. |
+| `top-entry/` | The rule again - it is the column, so it fills the pane at any entry height. | The bar, WHOLE, entered 6px below the pane's top: the seat is held `CUE_BAR_PX / 2` clear of the band, so the mark's own ends stay on screen instead of being sliced off at the pane's boundary. Same layout as `tall-*`, which is its diff reference. |
+| `drag-out/` | The rule again, with the button held. | The bar, held INSIDE the pane with the hand 120px above it: the core stops at the pane's edge rather than travelling behind the scroller's clip with `dragging` reading 1. Same layout as `tall-*`. |
 
 The right edge is the state #848's report is about; the left edge is photographed
 because the two handles move **one symmetric measure**, so a right-edge-only frame
@@ -103,7 +114,11 @@ panel-contaminated on the other).
 | the drawn mark against the grab band (`elementFromPoint` at the mark's centre) | **inside the band** | **inside the band** |
 | a press 6px INSIDE the text edge | the transcript `DIV` | the transcript `DIV` |
 | the band's inner edge against the column's edge | on it (within 1px) | on it (within 1px) |
-| `--lo-chat-measure-cue-y` during a drag / after release | absent (no publication) | `244px` at a hand `243.5px` below the column's top, and **removed** on release |
+| `--lo-chat-measure-cue-y` during a drag / after a release | absent (no publication) | `244px` at a hand `243.5px` below the column's top, and **removed** on the release - asserted, not just recorded |
+| the cue's mark moving between two frames it is LIT for, traced at one sample per animation frame across the release | nothing to trace (a solid rule has no core to follow) | **it does not move**: `244` on every frame from the last lit one, through the fade, at `opacity 1.000` and below |
+| `top-entry`: the mark's ink against the pane | `221`/`222` rows - the rule fills the pane | `140`/`144` rows, all INSIDE the pane - within 16 rows of the same mark read at the pane's middle (`148`/`152`), the difference being the pane's own top edge |
+| `drag-out`: the mark's ink with the hand 120px outside the pane | `222`/`223` rows - the rule again | `90`/`94` rows, all INSIDE the pane: the core is held at the pane's edge rather than behind its clip |
+| a panel-free state changing anything but the cue's column (`rest` vs the frame, in pixels) | `114..474` scattered encoder noise; a panel would be ~`11,000` | same - the margin is `3000` |
 
 Three of these are the change stated as geometry. The ink reading is the one the
 operator's note is about: the cue's element is the same full-height box it was
@@ -137,9 +152,36 @@ body: a keyboard reader has no double-click with which to discover the reset).
 
 The cue-Y rows are the reference's own rule - the core follows the hand *during*
 the gesture, and only then. The property is absent at rest and during hover, set
-to the hand's own Y while the button is down, and REMOVED on release, so the bar
-returns to the seat the gesture began on (the hand's entry Y, which is also where
-the panel is anchored) rather than holding a hand that has gone.
+to the hand's own Y while the button is down, and REMOVED on release - read rather
+than assumed, which is what agent round 2's R2-2 found this set claiming without
+doing. The release does not hand the seat back to an older Y: it ADOPTS the seat the
+gesture ended on and the pointer's leave is what retires it, so the mark cannot move
+between two frames it is lit for. That last reading is the animation-frame trace,
+and it is proved to discriminate: with the adoption disabled the same run fails with
+`244 -> 154 at opacity 1.000`, which is UX round 2's finding exactly.
+
+**The two edge readings are round 2's findings as geometry, one cell each.** The
+first is design D2-1: the seat was inside the pane and the mark's ENDS were not, so
+entering the gutter near the pane's top read as a bar sliced off at the boundary
+(measured before the fix: `80` of `160` rows). The seat is now held `CUE_BAR_PX / 2`
+clear of the visible band, and `top-entry` is the entry that made the old numbers.
+The second is agent R2-5, which asked for the drag's behaviour to be decided and
+covered rather than inferred: the publication is held inside the pane as well as
+inside the column, on the same reading that closed R1-4 - the mark may clip its
+fades at a boundary, but it must not disappear behind one while it says you are
+moving something. `drag-out` is a hand 120px above the pane, and the mark paints
+`90`/`94` rows inside it where an unheld publication paints nothing at all.
+
+**A frame that must be panel-free is checked as a FRAME.** The states above are
+photographed ~320ms into a hover (the cue's arrival) and the base tree's tooltip
+opens 400ms in, so the claim "no panel in this picture" was being made by a probe
+taken at a different moment from the capture - agent round 2's R2-3, which noted
+that a slow capture could commit a panel-bearing frame under an assertion taken
+before it. The rig now reads the PICTURE: a panel-free state may change the cue's
+own 2px column and nothing else, so `rest` against the frame must be within
+`3000` changed pixels outside that column. Measured, a panel would put ~`11,000`
+there, and this host's encoder noise contributes `114..474`. That is three orders
+of magnitude rather than 80ms.
 
 ## What this set is evidence for
 
@@ -158,6 +200,10 @@ the panel is anchored) rather than holding a hand that has gone.
   halves, the drag still promotes to `accent`, the keyboard channel still opens
   the panel at once, and double-click/Enter still returns the column to the
   shipped measure.
+- **The seat is a seat at every entry height, and the drag at every hand height.**
+  The mark is whole on arriving 6px below the pane's top, and it still paints with
+  the hand 120px outside the pane - the two edges the pair could not reach in round
+  1, both measured off the frames rather than off the arithmetic behind them.
 - **The mark is still the target.** Pressing the drawn cue reaches the band, and a
   press 6px inside the text still reaches the transcript - on both halves, so the
   guarantee is a reading rather than a claim about the diff.
@@ -183,6 +229,16 @@ the panel is anchored) rather than holding a hand that has gone.
   is the span of rows a reader could SEE, not the gradient's nominal 160px - the
   two differ by the fully transparent outer stops, and the rig says so rather than
   asserting the nominal number.
+- **The two edge cells are the tall cell's clip, entered at the pane's top and
+  dragged out of it.** They reproduce the geometry D2-1 and R2-5 are about (a mark
+  whose ends meet the pane's boundary; a hand outside it) rather than a particular
+  window size or gesture speed.
+- **The release trace samples at one frame per animation frame.** A seat change
+  shorter than a frame would be invisible to it, and it reads the gradient's stops
+  - so it is blind to a change that moved the element without moving the core.
+  Neither has a way to happen in this component (the seat is the only input to the
+  paint), which is why the instrument's granularity is stated instead of argued
+  around.
 - **The dwell is asserted at one beat (520ms) and at rest (1400ms).** The
   transition between them is a timer, not a geometry; a frame between the two
   would be a picture of a `setTimeout`.
