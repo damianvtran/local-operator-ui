@@ -76,13 +76,22 @@ const VIEWPORT = { width: 1060, height: 620 };
 const THEMES = ["localOperatorDark", "localOperatorLight"];
 
 /*
- * The three beats the pointer is rested for. `EARLY_MS` is the panel-free hover
- * both trees share - under even the base tree's `TOOLTIP_DELAY_MS` (400), so a
- * cue frame from either half is a picture of the cue and not of a panel.
- * `CONTESTED_MS` is the app's own tooltip beat plus a margin, which is where the
- * two trees disagree. `RESTED_MS` is past this branch's own dwell
- * (`MEASURE_PANEL_DWELL_MS`, 1200), so both trees have opened by then and the
- * frame is about where the panel lands rather than whether it arrives.
+ * The beats the pointer is rested for, and what each one is FOR.
+ *
+ * `CONTESTED_MS` is the app's own tooltip beat (`TOOLTIP_DELAY_MS`, 400) plus a
+ * margin, and it is the beat where the two trees disagree: the base tree's panel
+ * is parked over the prose and this branch's has not arrived. `RESTED_MS` is past
+ * this branch's own dwell (`MEASURE_PANEL_DWELL_MS`, 1200), so both trees have
+ * opened by then and the frame is about where the panel lands rather than whether
+ * it arrives. Both are measured from the pointer's arrival at the band.
+ *
+ * `EARLY_MS` is the one that is NOT a reading: it is only used to let the page
+ * settle after a pointer is parked off the band. The states that must be
+ * panel-free - the hover frames - do not spend it, because the cue is fully lit at
+ * ~320ms (a 200ms intent delay under a 120ms ease) and a fixed 300ms shot lands
+ * mid-ease: those frames sat at `opacity 0.956..0.988` and did not reproduce
+ * byte-for-byte between runs. They wait for the cue instead, which is also what
+ * puts them safely under the base tree's 400ms dwell.
  */
 const EARLY_MS = 300;
 const CONTESTED_MS = 520;
@@ -432,9 +441,9 @@ const captureHalf = async (half, origin, record) => {
 		 * IS the subject; everywhere else waits for the thing it is about to photograph.
 		 */
 		const waitFor = async (expression, label) => {
-			for (let i = 0; i < 80; i++) {
+			for (let i = 0; i < 200; i++) {
 				if ((await cdp.evaluate(expression)) === true) return;
-				await sleep(50);
+				await sleep(10);
 			}
 			throw new Error(`${half}/${origin}: ${label} never settled`);
 		};
@@ -445,18 +454,26 @@ const captureHalf = async (half, origin, record) => {
 			await shoot(cdp, half, "rest", theme);
 
 			/*
-			 * The panel-free hover BOTH trees share: this beat is under even the
-			 * base tree's 400ms tooltip delay, so each half's cue frame is a
-			 * picture of the cue rather than of a panel that happens to be open.
+			 * The panel-free hover BOTH trees share, and why it waits for the cue
+			 * rather than for a beat. The cue is fully lit at ~320ms (a 200ms intent
+			 * delay under a 120ms ease) and the base tree's panel opens at 400ms, so a
+			 * fixed beat in between is a picture of a HALF-LIT cue - the frames this
+			 * step first committed sat at `opacity 0.956..0.988` and did not reproduce
+			 * byte-for-byte between runs, because the shot landed somewhere on the
+			 * ease. Waiting for the cue to arrive puts the frame on the state it is a
+			 * picture of, with ~80ms of margin under the base tree's dwell.
 			 */
 			const atRest = await cdp.evaluate(PROBE);
+			const litRight = `Number(getComputedStyle(document.querySelector('[data-lo-chat-measure-line="right"]')).opacity) >= 0.999`;
+			const litLeft = `Number(getComputedStyle(document.querySelector('[data-lo-chat-measure-line="left"]')).opacity) >= 0.999`;
 			await cdp.mouse("mouseMoved", atRest.handleLeft.x, atRest.handleLeft.y);
-			await sleep(EARLY_MS);
+			await waitFor(litLeft, "the left cue to light");
 			record(half, "hover-left", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "hover-left", theme);
 
+			const arrivedAt = Date.now();
 			await cdp.mouse("mouseMoved", atRest.handle.x, atRest.handle.y);
-			await sleep(EARLY_MS);
+			await waitFor(litRight, "the right cue to light");
 			record(half, "hover-right", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "hover-right", theme);
 
@@ -465,9 +482,12 @@ const captureHalf = async (half, origin, record) => {
 			 * own tooltip delay the base tree's panel is already parked over the
 			 * prose and this branch's has not arrived. No frame - "no panel" and "a
 			 * panel two thirds of the way down the column" cannot both be a picture
-			 * of one cue column, and the READING is the claim.
+			 * of one cue column, and the READING is the claim. The beat is measured
+			 * from the pointer's arrival at the band, not from the frame above, so a
+			 * slower host does not silently move it.
 			 */
-			await sleep(CONTESTED_MS - EARLY_MS);
+			const toContested = CONTESTED_MS - (Date.now() - arrivedAt);
+			if (toContested > 0) await sleep(toContested);
 			record(half, "hover-contested", theme, await cdp.evaluate(PROBE));
 
 			/* Rested past THIS branch's dwell: both trees have opened by now. */
@@ -541,7 +561,7 @@ const captureHalf = async (half, origin, record) => {
 			await sleep(150);
 			const resetAt = await cdp.evaluate(PROBE);
 			await cdp.mouse("mouseMoved", resetAt.handle.x, resetAt.handle.y);
-			await sleep(EARLY_MS);
+			await waitFor(litRight, "the cue to light again after the reset");
 			record(half, "after-reset", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "after-reset", theme);
 
@@ -557,7 +577,7 @@ const captureHalf = async (half, origin, record) => {
 				if (handle) handle.focus();
 				return document.activeElement === handle;
 			})()`);
-			await sleep(120);
+			await waitFor(litRight, "the cue to light under focus");
 			record(half, "keyboard-focus", theme, await cdp.evaluate(PROBE));
 			await shoot(cdp, half, "keyboard-focus", theme);
 
@@ -719,17 +739,29 @@ const main = async () => {
 				fail(
 					`${half}/${theme}: the right cue did not appear on hover (${hoverRight.cueOpacity})`,
 				);
+			/*
+			 * FULLY lit, not merely present: the step waits for the cue before it
+			 * photographs, so a half-lit frame (the first version of this rig's frames sat
+			 * at `opacity 0.956..0.988` and did not reproduce byte-for-byte) is a failure
+			 * here rather than a silent one.
+			 */
+			for (const [step, lit, edge] of [
+				["hover-right", hoverRight.cueOpacity, "right"],
+				["hover-left", hoverLeft.cueLeftOpacity, "left"],
+				["after-reset", reset.cueOpacity, "right"],
+				["keyboard-focus", focus.cueOpacity, "right"],
+			])
+				if (Number(lit) < 0.999)
+					fail(
+						`${half}/${theme}: at ${step} the ${edge} cue is only ${lit} lit - the frame is a picture of the ease, not of the state`,
+					);
 			if (Number(hoverRight.cueLeftOpacity) !== 0)
 				fail(`${half}/${theme}: hovering the right edge lit the LEFT cue too`);
-			if (!(Number(hoverLeft.cueLeftOpacity) > 0))
-				fail(
-					`${half}/${theme}: the left cue did not appear on its own hover (${hoverLeft.cueLeftOpacity})`,
-				);
 			if (Number(hoverLeft.cueOpacity) !== 0)
 				fail(`${half}/${theme}: hovering the left edge lit the RIGHT cue too`);
 			if (hoverRight.panel || hoverLeft.panel)
 				fail(
-					`${half}/${theme}: a panel opened within ${EARLY_MS}ms, before either tree's dwell`,
+					`${half}/${theme}: a panel opened on a hover frame - it must be the cue's own picture, under both trees' dwell`,
 				);
 
 			/*
