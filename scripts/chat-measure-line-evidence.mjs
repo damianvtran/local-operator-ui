@@ -160,6 +160,20 @@ const PROBE = `(() => {
 			if (!el) return null;
 			return el.closest("[data-lo-chat-measure-handle]") ? "band" : el.tagName;
 		})(),
+		/*
+		 * The positive control for the reading above (design round 1's D2, UX round
+		 * 1's U1): a point SIX pixels inside the column's right edge - over the text,
+		 * where the band must never reach - reported the same way. The band starts on
+		 * the edge, not inward of it, so this must never be the band.
+		 */
+		insideEdgeHit: (() => {
+			const c = pick("[data-lo-transcript-content]");
+			if (!c || !handle) return null;
+			const r = c.getBoundingClientRect();
+			const el = document.elementFromPoint(r.right - 6, r.top + 40);
+			if (!el) return null;
+			return el.closest("[data-lo-chat-measure-handle]") ? "band" : el.tagName;
+		})(),
 		handle: rect(handle),
 		handleLeft: rect(handleLeft),
 		bar: rect(bar),
@@ -474,6 +488,10 @@ const main = async () => {
 			if (rest.markInBand !== "band")
 				failures.push(
 					`${half}/${theme}: a press on the mark's own x would hit ${rest.markInBand ?? "nothing"}, not the band`,
+				);
+			if (rest.insideEdgeHit === "band")
+				failures.push(
+					`${half}/${theme}: a press 6px INSIDE the text edge reaches the band - the target has crossed into the column`,
 				);
 			/*
 			 * THE REST IS THE HEAD'S. The base tree's band is still the old 24px-out
