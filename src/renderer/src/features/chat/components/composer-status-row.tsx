@@ -1522,10 +1522,19 @@ export const ComposerStatusRow = ({
 	 * The lane's one capability read is `askQueuePublished` (`AskQueueView.published`);
 	 * this control deliberately does not use it, because its zero-state offer is
 	 * "item absent at zero" by design.
+	 *
+	 * AND A ROWLESS FRAME WITH A LIVE TALLY IS NOT ZERO (agent review round 2, N1). The
+	 * wire bound may drop the whole row list while keeping `asks_open` (see R1), and this
+	 * was the last sibling reader that took the missing rows for an empty queue: the drawer's
+	 * bar, its panel and the header badge all said `4 outstanding` while the composer chip
+	 * said nothing at all. The gate is therefore "something to show OR a count to stand
+	 * for", and the zero rule is untouched - at zero rows and a zero tally the item is still
+	 * absent, which is the designed state and the one `composer-tabs.test.mjs` pins.
 	 */
 	const askView = askQueueView(frontend, askOutcomes);
 	const askNow = useAskClock(askView.waiting > 0, nowMs);
-	const showAsks = onAskToggle !== undefined && askView.rows.length > 0;
+	const showAsks =
+		onAskToggle !== undefined && (askView.rows.length > 0 || askView.open > 0);
 	/*
 	 * The one state that carries urgency emphasis. NOT `open` - the backend's
 	 * outstanding set folds `timed_out` in - because a moved-on ask's window has
