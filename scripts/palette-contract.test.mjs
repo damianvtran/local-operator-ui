@@ -55,6 +55,16 @@ const code = (path) =>
 		.join("\n");
 
 const MAIN = code("src/main/index.ts");
+/*
+ * WHICH DOOR A PRESS MEANS now lives in its own main-side module rather than in
+ * the `before-input-event` listener, so the rule can be driven directly (QA
+ * round 1's Q-B1/Q-B2: a `headless` lane cannot satisfy the hook's focus gate,
+ * so the branch was unreachable there). The two pins below therefore read the
+ * RULE in `palette-door.ts` and the WIRING in `index.ts` separately - the way
+ * the renderer half of this file already reads `palette-shortcut.ts` and the
+ * hook apart.
+ */
+const DOOR = code("src/main/palette-door.ts");
 const HOOK = code(
 	"src/renderer/src/features/command-palette/use-command-palette-shortcut.ts",
 );
@@ -71,14 +81,35 @@ test("main sends a DISTINCT channel for each main-process door", () => {
 	 * `Cmd+P`'s path and the commands door did not exist.
 	 */
 	assert.match(
+		DOOR,
+		/everything:\s*"toggle-command-palette",[\s\S]{0,80}?commands:\s*"toggle-command-palette-commands",/,
+		"the rule must name one channel per door; a shared channel is the missing third door",
+	);
+	assert.match(
+		DOOR,
+		/input\.shift[\s\S]{0,40}?PALETTE_DOOR_CHANNELS\.commands[\s\S]{0,40}?:[\s\S]{0,40}?PALETTE_DOOR_CHANNELS\.everything/,
+		"and Shift must be what selects between them",
+	);
+	/*
+	 * The WIRING, read separately: the listener must SEND the channel the rule
+	 * returned, and must not decide a door of its own. A registration that
+	 * re-derived the condition would leave the pure rule untested in the app and
+	 * the app untested by the rule.
+	 */
+	assert.match(
 		MAIN,
-		/webContents\.send\(\s*input\.shift\s*\?\s*"toggle-command-palette-commands"\s*:\s*"toggle-command-palette"\s*,?\s*\)/,
-		"main must send one channel for Cmd+P and another for Cmd+Shift+P; a shared channel is the missing third door",
+		/webContents\.send\(\s*paletteChannel\s*,?\s*\)/,
+		"main must send the channel the rule chose",
 	);
 	assert.match(
 		MAIN,
+		/paletteDoorChannel\(\s*process\.platform\s*,\s*input\s*\)/,
+		"and it must come from the pure rule, handed the platform it has to read",
+	);
+	assert.doesNotMatch(
+		MAIN,
 		/input\.key\.toLowerCase\(\) === "p"/,
-		"the Cmd/Ctrl+P branch is what sends them",
+		"the P decision belongs to `paletteDoorChannel`, not to a second copy in the listener",
 	);
 });
 
@@ -92,14 +123,19 @@ test("main's palette branch reads its modifier per platform (issue #850)", () =>
 	 * exists in a focused, visible macOS window.
 	 */
 	assert.match(
-		MAIN,
-		/process\.platform === "darwin"[\s\S]{0,200}?input\.meta/,
-		"the palette branch must stop folding Control into Cmd on macOS",
+		DOOR,
+		/platform === "darwin"\s*\?\s*input\.meta\s*:\s*input\.control \|\| input\.meta/,
+		"the rule must stop folding Control into Cmd on macOS",
+	);
+	assert.match(
+		DOOR,
+		/const modifier =[\s\S]{0,120}?platform === "darwin"/,
+		"and the platform-aware modifier must be what the rule actually reads",
 	);
 	assert.match(
 		MAIN,
-		/paletteModifier\s*&&[\s\S]{0,120}?input\.key\.toLowerCase\(\) === "p"/,
-		"the platform-aware modifier must be what the P branch actually reads",
+		/paletteDoorChannel\(\s*process\.platform\s*,\s*input\s*\)/,
+		"the listener reads the running platform rather than keeping a second copy of the split",
 	);
 	/*
 	 * And the scope of that change is the palette branch alone: the app's usual
