@@ -125,15 +125,23 @@ import {
  * separator takes focus, which is the same panel.
  *
  * Sentence case, the app's own voice (`"Click to set the working directory"`,
- * `"Fork from this message"`), and it names both ways to reset because BOTH
- * readers get it: focus opens this panel, and a keyboard reader - who has no
- * double-click - is the one person for whom the reset is otherwise unnamed
- * (design round 1's D1, UX round 1's U2). `Enter` is the key the separator's own
- * key map binds, so the panel and the widget cannot disagree about it. The rest
- * of the keys stay on `aria-keyshortcuts` and the mounts' labels, which is the
- * channel that carries them.
+ * `"Fork from this message"`), and TWO sentences rather than a middot-separated
+ * clause: the app has 84 tooltip strings and not one of them uses `·` (the
+ * transcript footer's separator), while two-clause tooltips are already a shape
+ * here (`"Runs on this computer. Nothing is uploaded."`). The family's own
+ * separators read the same way (`"Resize canvas. Double-click resets the shared
+ * pane width."`), so this now says it in the register a reader has already met
+ * (design round 1's D4, UX round 1's U4).
+ *
+ * It names BOTH ways to reset because BOTH readers get it: focus opens this
+ * panel, and a keyboard reader - who has no double-click - is the one person for
+ * whom the reset is otherwise unnamed (design round 1's D1, UX round 1's U2).
+ * `Enter` is the key the separator's own key map binds, so the panel and the
+ * widget cannot disagree about it. The rest of the keys stay on
+ * `aria-keyshortcuts` and the mounts' labels, which is the channel that carries
+ * them.
  */
-const TOOLTIP = "Drag to resize · double-click or Enter to reset";
+const TOOLTIP = "Drag to resize. Double-click or Enter to reset.";
 
 /**
  * The panel's anchor: a 16px-tall box at the hand's own Y.
