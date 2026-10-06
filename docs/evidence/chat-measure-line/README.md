@@ -39,7 +39,7 @@ now records.
 | Frame | `before/` (origin/main) | `after/` (this branch) |
 | --- | --- | --- |
 | `rest/` | No cue at all. The strip is hit-testable; nothing is drawn. | No cue at all — the line is `opacity-0`, not absent. |
-| `hover-right/` | The 72px bar, 2px wide, centred on the Y the pointer entered at, floating **28px past** the column's right edge in the empty margin. | The divider family's full-height 2px line, its inner edge **on** the column's right edge, in the resting `control` tint — and the tooltip, `Drag to resize · double-click or Enter to reset`, just above the hand. |
+| `hover-right/` | The 72px bar, 2px wide, centred on the Y the pointer entered at, floating **28px past** the column's right edge in the empty margin. | The divider family's full-height 2px line, its inner edge **on** the column's right edge, in the resting `control` tint — and the tooltip, `Drag to resize. Double-click or Enter to reset.`, just above the hand. |
 | `hover-left/` | The same bar past the column's left edge. | The same full-height line on the column's left edge, tooltip just above the hand. |
 | `dragging/` | The bar promoted to `accent`, button still held, the column already at the new width. | The line promoted to `accent`, full height, on the moved column's edge, tooltip closed. |
 | `hover-scrolled/` | The bar on the scrolled pane (its own Y is the pointer's, so it stays visible). | The line on the scrolled pane, with the tooltip **inside the pane** — the state agent review round 1's M1 was about. |
