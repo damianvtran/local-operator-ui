@@ -193,7 +193,7 @@ const PROBE = `(() => {
 		slotText: slot ? slot.innerText.replace(/\\s+/g, ' ').trim().slice(0, 120) : null,
 		chip: states('[data-lo-ask-item-toggle]'),
 		headerTrigger: states('[data-tour-tag="ask-pane-trigger"]'),
-		drawerScopeLine: (q('[data-ask-scope]') || {}).textContent ?? null,
+		drawerScopeLine: (q('[data-ask-drawer] [data-ask-scope]') || {}).textContent ?? null,
 	};
 })()`;
 
@@ -324,6 +324,100 @@ try {
 	await wait(800);
 	report.probes.afterComposerEscape = await evaluate(PROBE);
 	report.frames.afterComposerEscape = await shot("after-composer-escape");
+
+	/*
+	 * 7. THE DRAFT ROUTE (remediation round 1, UX U1). The session pane is the
+	 * CONVERSATION's own mount, so a route with no conversation must not paint it.
+	 * Before the fix the drawer followed onto `New chat` and parked there for good -
+	 * there is no frame on a draft to resolve, so `Reading the asks…` never cleared,
+	 * while the page's own control said `Open asks`. The drawer is opened on A first,
+	 * so the store flag is genuinely left open across the route change, which is the
+	 * state the fix has to refuse.
+	 */
+	/*
+	 * BACK TO A THE WAY A USER GOES BACK: press its row in the list, the same
+	 * hit-tested press the switch step uses. (A `Page.navigate` to a hash-only
+	 * difference is a same-document navigation, so it would neither reload the app
+	 * nor reset the store - the recorded path stays the one a reader can follow.)
+	 */
+	const backRow = await evaluate(`(() => {
+		const buttons = [...document.querySelectorAll('nav button')];
+		const match = buttons.find((b) => /Deploy checklist/.test(b.innerText));
+		if (!match) return null;
+		match.scrollIntoView({ block: 'center' });
+		const r = match.getBoundingClientRect();
+		const x = Math.round(r.left + r.width / 2);
+		const y = Math.round(r.top + r.height / 2);
+		const hit = document.elementFromPoint(x, y);
+		return { x, y, hitInsideRow: Boolean(hit && (match.contains(hit) || match === hit)) };
+	})()`);
+	report.backRow = backRow;
+	if (!backRow) throw new Error("no Deploy checklist row to return to");
+	if (!backRow.hitInsideRow)
+		throw new Error("the return row was not hit-testable at its centre");
+	await clickAt(backRow.x, backRow.y);
+	await waitFor(`location.hash.includes('aaaa11112222')`, "back on A");
+	await waitFor(
+		`document.querySelector('[data-lo-ask-item-toggle]') !== null`,
+		"the chip again",
+	);
+	await wait(600);
+	const chipAgain = await evaluate(rectOf("[data-lo-ask-item-toggle]"));
+	report.chipAgain = chipAgain;
+	await clickAt(chipAgain.x, chipAgain.y);
+	/*
+	 * A PRESS THAT MISSES IS A RIG FLAKE, NOT A FINDING: the press is retried once
+	 * and what it read is recorded either way (the chip's own expanded flag, and the
+	 * drawer's presence), so a future round can tell a miss from a refusal.
+	 */
+	for (let attempt = 0; attempt < 2; attempt++) {
+		if (attempt > 0) {
+			const retry = await evaluate(rectOf("[data-lo-ask-item-toggle]"));
+			await clickAt(retry.x, retry.y);
+		}
+		try {
+			await waitFor(
+				`document.querySelector('[data-ask-drawer="session"]') !== null`,
+				"the drawer again",
+				5_000,
+			);
+			break;
+		} catch (error) {
+			if (attempt === 1) throw error;
+		}
+	}
+	report.chipExpandedAfterPress = await evaluate(
+		`(document.querySelector('[data-lo-ask-item-toggle]') || {}).getAttribute?.('aria-expanded') ?? null`,
+	);
+	await wait(500);
+	const newChat = await evaluate(`(() => {
+		/*
+		 * THE ROW'S OWN HOOK - the data-new-chat-row attribute the sidebar navigation
+		 * sets beside the tour tag - not a text match: the row's visible label lives in
+		 * a truncated span and its chord is aria-hidden, so a reader of the DOM has no
+		 * reason to depend on either spelling.
+		 */
+		const b = document.querySelector('[data-new-chat-row]');
+		if (!b) return null;
+		b.scrollIntoView({ block: 'center' });
+		const r = b.getBoundingClientRect();
+		const x = Math.round(r.left + r.width / 2);
+		const y = Math.round(r.top + r.height / 2);
+		const hit = document.elementFromPoint(x, y);
+		return { x, y, text: b.innerText.replace(/\\s+/g, ' ').slice(0, 60), hitInsideRow: Boolean(hit && (b.contains(hit) || b === hit)) };
+	})()`);
+	report.newChatRow = newChat;
+	if (!newChat) throw new Error("no New chat row found in the sidebar nav");
+	if (!newChat.hitInsideRow)
+		throw new Error("New chat row not hit-testable at its centre");
+	await clickAt(newChat.x, newChat.y);
+	await waitFor(
+		`location.hash === '#/chat' || location.hash === '#/chat/'`,
+		"the draft route",
+	);
+	await wait(1200);
+	report.probes.onDraft = await evaluate(PROBE);
+	report.frames.afterNewChatDraft = await shot("after-new-chat-draft");
 
 	report.ok = true;
 } catch (error) {

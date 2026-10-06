@@ -89,6 +89,7 @@ import type {
 	AskScope,
 } from "../../ask-queue";
 import {
+	ASK_DRAWER_UNAVAILABLE_LINE,
 	ASK_DRAWER_UNREAD_LINE,
 	ASK_HEADER_ITEM_SELECTOR,
 	ASK_ITEM_SELECTOR,
@@ -235,18 +236,13 @@ export const AskDrawer = ({
 	const now = useAskClock(view.open > 0, nowMs);
 	const rootRef = useRef<HTMLElement | null>(null);
 	/*
-	 * THE FRAME HAS NOT BEEN READ YET (`frontend === null`: the fleet pane's first
-	 * commits before its route answers, or a session frame that has not landed).
-	 *
-	 * IT IS READ HERE RATHER THAN FROM THE VIEW because `view.published` merges two
-	 * different facts on purpose (see `AskQueueView.published`): a live-but-EMPTY
-	 * queue and an UNREAD frame both carry no rows, and the two must not be treated
-	 * alike - an unread frame may close NOTHING and must show that it is unread,
-	 * while an empty-but-published one is a fact the surface can state. The one
-	 * place that has to tell them apart is the auto-close below, and the frame
-	 * itself is the only thing that can.
+	 * THE UNREAD FRAME IS THE VIEW'S OWN FACT, not a second read of `frontend` here
+	 * (remediation round 1, D1 keeps it separate from `published`, and R1 needs it in
+	 * the close gate). `AskQueueView.unread` is `frontend == null` derived once, so the
+	 * bar's copy, the body's copy, the entry move and the auto-close cannot drift about
+	 * which of the three unresolved-looking states this is.
 	 */
-	const frameUnread = frontend === null;
+	const frameUnread = view.unread;
 
 	/*
 	 * THE DOOR THAT OPENED THIS MOUNT, remembered so the auto-close below can tell
@@ -303,39 +299,40 @@ export const AskDrawer = ({
 	 */
 	const closedOnce = useRef(false);
 	/*
-	 * A LAYOUT EFFECT, NOT A PASSIVE ONE, AND THE FLASH IS WHY (measured, not
-	 * assumed). A passive effect runs AFTER the browser has painted the commit, so
-	 * the drawer's chrome was painted over the conversation it was leaving before the
-	 * close landed: sampling on every animation frame from the switch shows SIX
-	 * painted frames carrying the ask surface and the slot (first at ~16 ms), which a
-	 * reader sees as the drawer flickering in and out as they change conversation -
-	 * the very motion the frame pair is supposed to rule out. `useLayoutEffect` runs
-	 * synchronously as part of the commit and before paint, so the close lands in the
-	 * same frame the mount does and no frame of the surface is ever shown over the
-	 * conversation that has nothing to show. This is the idiom the lane already uses
-	 * for "a state that must not be seen" (`use-scroll-paging.ts`, `mini-composer.tsx`).
+	 * WHY A LAYOUT EFFECT LOOKS RIGHT HERE, AND WHY IT WAS REJECTED. A passive effect
+	 * runs AFTER the browser has painted the commit, which invites the guess that the
+	 * chrome is painted over the conversation being left; the counter-measure would be
+	 * `useLayoutEffect`, which lands the close before paint. It was tried and measured,
+	 * and it buys nothing: what this effect can act on is bounded by the FRAME it has to
+	 * wait for, not by the paint phase. A switch to a conversation whose frame has not
+	 * landed yet reads as UNREAD, and that state must close NOTHING - a switch to a
+	 * conversation that DOES have asks is indistinguishable from it for exactly that
+	 * interval, and there the surface must stay up and show them. The chrome is
+	 * therefore on screen for as long as the read takes (the rig reads four painted
+	 * frames, gone within ~110 ms on this host; `docs/evidence/ask-drawer-stuck/README.md`
+	 * states the reading rather than a constant), and no paint-phase change moves it.
 	 *
-	 * IT IS DELIBERATELY A PASSIVE EFFECT RATHER THAN A LAYOUT ONE, and the measurement is
-	 * why. A layout effect would land the close before paint; what this effect can
-	 * actually act on is bounded somewhere else - by the frame it has to wait for. A
-	 * switch to a conversation whose frame has not landed yet reads as UNREAD
-	 * (`frameUnread`), and that state must close NOTHING: the same shape is a switch to
-	 * a conversation that DOES have asks, where the surface must stay up and show them.
-	 * So the chrome is on screen for as long as the read takes (measured on the rig:
-	 * FOUR painted frames, gone within ~110 ms, `docs/evidence/ask-drawer-stuck/README.md`),
-	 * and no paint-phase
-	 * change moves that. A layout effect would only have traded that for a declaration
-	 * ORDER dependency against the entry effect's door latch - the entry effect sets
-	 * `openedByDoor` and React runs a component's effects in declaration order, so a
-	 * layout close declared above it reads the latch as false and shuts the surface the
-	 * user had just pressed a door to open (measured while this was a layout effect).
+	 * A LAYOUT EFFECT WOULD ALSO HAVE COST SOMETHING REAL: a declaration-order
+	 * dependency against the entry effect's door latch. React runs a component's
+	 * effects in declaration order, so a layout close declared above the entry effect
+	 * reads `openedByDoor` before that effect sets it and shuts the surface the user had
+	 * just pressed a door to open (measured while this was a layout effect, and pinned
+	 * by the door arm of `scripts/ask-draft-swap.test.mjs`).
+	 *
 	 * IT DOES NOT WEAKEN EITHER OF THE OTHER GUARDS: the door latch and the unread
 	 * frame are read the same way, and the effect is still offered every commit until
 	 * the latch is spent.
 	 */
 	useEffect(() => {
 		if (closedOnce.current) return;
-		if (view.rows.length > 0) {
+		/*
+		 * NOTHING TO SHOW IS `open === 0` AND NO ROWS, NOT ROWS ALONE (remediation round
+		 * 1, R1). A frame whose LIST the wire bound dropped but whose TALLY survived
+		 * (`{asks: null, asks_open: 4}`, `_bound_asks_in_place`) has no rows and four
+		 * outstanding asks: closing over it would release the slot and leave every one of
+		 * them unreachable, which is the reported defect with the sign flipped.
+		 */
+		if (view.rows.length > 0 || view.open > 0) {
 			hadRows.current = true;
 			return;
 		}
@@ -347,7 +344,7 @@ export const AskDrawer = ({
 			return;
 		}
 		/*
-		 * A MOUNT over a zero-row queue: the switch case. Never a judgement about the
+		 * A MOUNT over a queue with nothing to show: the switch case. Never a judgement about the
 		 * read - an unread frame is not an empty one, and the map it would close on is
 		 * exactly the read's own pending state.
 		 */
@@ -355,7 +352,14 @@ export const AskDrawer = ({
 		if (openedByDoor.current) return;
 		closedOnce.current = true;
 		onClose();
-	}, [view.rows.length, frameUnread, onClose]);
+		/*
+		 * `view.open` IS A DEPENDENCY BECAUSE THE GATE READS IT (R1). The gate is
+		 * `rows > 0 || open > 0`, and a frame whose ROWS were dropped while its TALLY
+		 * survived changes `open` without changing `rows.length` - so without this the
+		 * effect could sit on a stale close verdict for exactly the frame the guard was
+		 * added for.
+		 */
+	}, [view.rows.length, view.open, frameUnread, onClose]);
 
 	/*
 	 * INTO THE DRAWER, and only for the user's own press: the mount must find focus
@@ -603,13 +607,16 @@ export const AskDrawer = ({
 			 */}
 			<div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2">
 				{/*
-				 * THE BODY, AND WHY THE UNREAD BRANCH IS NOT THE PANEL'S OWN GATE. `AskPanel`
-				 * draws the queue and its designed empty sentence for a PUBLISHED frame
-				 * (`view.published`: `asks` OR `asks_open` present) - including the live-but-empty
-				 * one, which is the state the drawer used to render as nothing. A frame that has
-				 * not been read gets the quiet line instead: it is not an empty queue, and the
-				 * panel's empty sentence (`No asks outstanding.`) would be a verdict the surface
-				 * cannot substantiate while the read is in flight.
+				 * THE BODY, AND WHY THERE ARE THREE READINGS RATHER THAN TWO (remediation round
+				 * 1, D1). `AskPanel` draws the queue, its designed empty sentence and - R1 - the
+				 * clipped-list statement for a PUBLISHED frame (`asks` OR `asks_open` present),
+				 * including the live-but-empty one the drawer used to render as nothing. The
+				 * two unpublishable frames are NOT one state: an UNREAD frame is a progress
+				 * state that will resolve, and a RESOLVED frame that publishes no engine is a
+				 * terminal answer about the runtime - the same words over both parked a
+				 * permanent `Reading the asks…` on a runtime that will never read anything.
+				 * So each gets its own honest line, and the second is not a claim that can
+				 * never complete.
 				 */}
 				{view.published ? (
 					<AskPanel
@@ -636,7 +643,13 @@ export const AskDrawer = ({
 						conversationOf={conversationOf}
 					/>
 				) : (
-					<p className="text-ink-muted text-body">{ASK_DRAWER_UNREAD_LINE}</p>
+					/*
+					 * `frameUnread` is `view.unread`, so this is the unresolved frame; the other
+					 * falsy-`published` case is the resolved-but-unsupported one below it.
+					 */
+					<p className="text-ink-muted text-body">
+						{frameUnread ? ASK_DRAWER_UNREAD_LINE : ASK_DRAWER_UNAVAILABLE_LINE}
+					</p>
 				)}
 			</div>
 		</section>

@@ -532,19 +532,26 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 		asksScope === "fleet" ? MessagesSquare : MessageCircleQuestion;
 	/* ONE DERIVATION, TWO READERS: the tooltip and the announced name print the same
 	 * sentence, so the hover text and what a screen reader hears cannot disagree
-	 * about the verb, the scope or the number. `asksSubject` is folded in only while
-	 * a badge is drawn - a quiet control must not spend the scope word on an empty
-	 * set, which is the same rule the row it replaces kept.
+	 * about the verb, the scope or the number.
 	 *
 	 * "WAITING OR MOVED ON" RATHER THAN "WAITING" (agent review round 1, M1 = UX
 	 * round 1, U1). The number this sentence qualifies is the OUTSTANDING set, which
 	 * folds a moved-on ask in; "waiting" is reserved here for the subset that
 	 * excludes it. See `asksAttentionCount` for the decision to count outstanding.
+	 *
+	 * AND THE SCOPE WORD STAYS AT ZERO (remediation round 1, UX U3). It used to be
+	 * folded in only while a badge was drawn, which left the quiet state reading the
+	 * bare `Close asks` - the SAME announced name as the drawer's own dismiss, two
+	 * controls for two different acts (one toggles this scope, one closes the pane),
+	 * with the header additionally able to say `Open asks` while a pane was on screen.
+	 * The subject is what keeps the two controls from ever being one string, and the
+	 * glyph already carries the same distinction visually, so nothing is spent here
+	 * that the control does not already say.
 	 */
 	const asksLabel =
 		asksAttentionCount > 0
 			? `${asksOpen ? "Close" : "Open"} asks \u2014 ${asksSubject}, ${asksAttentionCount} waiting or moved on`
-			: `${asksOpen ? "Close" : "Open"} asks`;
+			: `${asksOpen ? "Close" : "Open"} asks \u2014 ${asksSubject}`;
 
 	/*
 	 * Closing the canvas put focus back on `<body>`, which is the top of the

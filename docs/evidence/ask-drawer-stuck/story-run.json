@@ -1,66 +1,86 @@
 {
   "states": {
+    "clipped-rows/localOperatorDark": {
+      "file": "<out-dir>/story-clipped-rows/localOperatorDark.webp",
+      "theme": "localOperatorDark",
+      "drawer": 1,
+      "closeAsks": 1,
+      "scopeLine": "This conversation \u00b7 4 outstanding",
+      "emptySentence": "4 outstanding. This frame carries the count, not the rows.",
+      "bodyText": "This conversation \u00b7 4 outstanding 4 outstanding. This frame carries the count, not the rows.",
+      "rows": 0
+    },
+    "clipped-rows/localOperatorLight": {
+      "file": "<out-dir>/story-clipped-rows/localOperatorLight.webp",
+      "theme": "localOperatorLight",
+      "drawer": 1,
+      "closeAsks": 1,
+      "scopeLine": "This conversation \u00b7 4 outstanding",
+      "emptySentence": "4 outstanding. This frame carries the count, not the rows.",
+      "bodyText": "This conversation \u00b7 4 outstanding 4 outstanding. This frame carries the count, not the rows.",
+      "rows": 0
+    },
     "empty-wire/localOperatorDark": {
-      "file": "<out-dir>/empty-wire/localOperatorDark.webp",
+      "file": "<out-dir>/story-empty-wire/localOperatorDark.webp",
       "theme": "localOperatorDark",
       "drawer": 1,
       "closeAsks": 1,
       "scopeLine": "This conversation \u00b7 All asks settled",
-      "emptySentence": null,
+      "emptySentence": "No asks outstanding. The agent is not waiting on anything.",
       "bodyText": "This conversation \u00b7 All asks settled No asks outstanding. The agent is not waiting on anything.",
       "rows": 0
     },
     "empty-wire/localOperatorLight": {
-      "file": "<out-dir>/empty-wire/localOperatorLight.webp",
+      "file": "<out-dir>/story-empty-wire/localOperatorLight.webp",
       "theme": "localOperatorLight",
       "drawer": 1,
       "closeAsks": 1,
       "scopeLine": "This conversation \u00b7 All asks settled",
-      "emptySentence": null,
+      "emptySentence": "No asks outstanding. The agent is not waiting on anything.",
       "bodyText": "This conversation \u00b7 All asks settled No asks outstanding. The agent is not waiting on anything.",
       "rows": 0
     },
     "unread/localOperatorDark": {
-      "file": "<out-dir>/unread/localOperatorDark.webp",
+      "file": "<out-dir>/story-unread/localOperatorDark.webp",
       "theme": "localOperatorDark",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation \u00b7 Not read yet",
+      "scopeLine": "This conversation",
       "emptySentence": null,
-      "bodyText": "This conversation \u00b7 Not read yet Reading the asks\u2026",
+      "bodyText": "This conversation Reading the asks\u2026",
       "rows": 0
     },
     "unread/localOperatorLight": {
-      "file": "<out-dir>/unread/localOperatorLight.webp",
+      "file": "<out-dir>/story-unread/localOperatorLight.webp",
       "theme": "localOperatorLight",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation \u00b7 Not read yet",
+      "scopeLine": "This conversation",
       "emptySentence": null,
-      "bodyText": "This conversation \u00b7 Not read yet Reading the asks\u2026",
+      "bodyText": "This conversation Reading the asks\u2026",
       "rows": 0
     },
     "unsupported/localOperatorDark": {
-      "file": "<out-dir>/unsupported/localOperatorDark.webp",
+      "file": "<out-dir>/story-unsupported/localOperatorDark.webp",
       "theme": "localOperatorDark",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation \u00b7 Not read yet",
+      "scopeLine": "This conversation \u00b7 Asks unavailable",
       "emptySentence": null,
-      "bodyText": "This conversation \u00b7 Not read yet Reading the asks\u2026",
+      "bodyText": "This conversation \u00b7 Asks unavailable This runtime doesn't publish queued asks.",
       "rows": 0
     },
     "unsupported/localOperatorLight": {
-      "file": "<out-dir>/unsupported/localOperatorLight.webp",
+      "file": "<out-dir>/story-unsupported/localOperatorLight.webp",
       "theme": "localOperatorLight",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation \u00b7 Not read yet",
+      "scopeLine": "This conversation \u00b7 Asks unavailable",
       "emptySentence": null,
-      "bodyText": "This conversation \u00b7 Not read yet Reading the asks\u2026",
+      "bodyText": "This conversation \u00b7 Asks unavailable This runtime doesn't publish queued asks.",
       "rows": 0
     }
   },
   "failures": [],
-  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly (see the drivers' `<out-root>` argument). Each state is the STORY it was shot from, so a reader reproduces it from the storybook id in the README's own table rather than from a path on the machine that ran it."
+  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly (see the drivers' `<out-root>` argument): the harness writes `story-<state>/<theme>.webp` under whatever root it is given, so each file field names the state's own directory beside the `live-*` ones. Each state is the STORY it was shot from, so a reader reproduces it from the storybook id in the README's own table rather than from a path on the machine that ran it."
 }

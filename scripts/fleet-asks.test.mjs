@@ -221,10 +221,13 @@ test("the drawer's frontend states the same count the badge does", () => {
 		"All conversations · 2 waiting, 3 moved on",
 	);
 	/*
-	 * AND AN UNREAD FRAME IS NOT A ZERO ONE. The same view with no capability reads
-	 * as a surface that has not been read - never as `All asks settled`, which is the
-	 * verdict its zero count would otherwise compose (the `a failure must not wear a
-	 * verdict's clothes` rule the lane's copy contract keeps).
+	 * AND AN UNREAD FRAME IS NOT A ZERO ONE, NOR AN UNSUPPORTED ONE (remediation round
+	 * 1: D1, D5). `unread` is what separates the two unpublishable frames: a read in
+	 * flight names itself in the BODY, so the bar carries no clause at all (the
+	 * separator goes with it), while a resolved frame that publishes no engine states the
+	 * capability it lacks. Neither may read as `All asks settled`, which is the verdict
+	 * their zero count would otherwise compose (the `a failure must not wear a verdict's
+	 * clothes` rule the lane's copy contract keeps).
 	 */
 	assert.equal(
 		askScopeLine("session", {
@@ -234,8 +237,23 @@ test("the drawer's frontend states the same count the badge does", () => {
 			open: 0,
 			truncated: false,
 			published: false,
+			unread: true,
 		}),
-		"This conversation · Not read yet",
+		"This conversation",
+		"an unread frame drops the clause: the body names that fact once",
+	);
+	assert.equal(
+		askScopeLine("session", {
+			rows: [],
+			waiting: 0,
+			movedOn: 0,
+			open: 0,
+			truncated: false,
+			published: false,
+			unread: false,
+		}),
+		"This conversation · Asks unavailable",
+		"a runtime that answered with `no engine` says so rather than promising a read",
 	);
 });
 
@@ -683,7 +701,18 @@ test("the drawer's entry move is a bounded one-shot", () => {
 	 * THE WINDOW IS SPELLED ON THE FRAME, NOT ON THE ROOT (the stuck-slot fix): the
 	 * container draws its chrome on every frame now, so a root exists from the first
 	 * commit and `root === null` no longer names "the read has not answered". The
-	 * state the wait is for is the frame's absence, so the frame is what it reads. */
+	 * state the wait is for is the frame's absence, so the frame is what it reads.
+	 *
+	 * THIS IS THE STRUCTURAL HALF AND IT HAS A BEHAVIOURAL COMPANION, which is the
+	 * answer to "does this assert a string or a fact" (agent review round 1, R4):
+	 * `scripts/ask-draft-swap.test.mjs`'s `the entry move waits for the frame and moves
+	 * focus once it lands` mounts the drawer with focus on the header door over an
+	 * unread frame, asserts the keyboard stayed on the door, then rerenders with the
+	 * rows and asserts the one-shot resolved onto the card's first option. What THIS
+	 * assertion adds, which that one cannot: the no-dependency-array and
+	 * spend-before-require properties are shape facts about an effect that runs every
+	 * commit, and driving every commit's timing through jsdom would be a weaker reading
+	 * than the two-line property it already states. */
 	assert.ok(
 		block.includes("if (door !== null && frameUnread) return;"),
 		"the entry move no longer bounds its retry to the awaiting-read window (a door under focus while the frame that carries its surface is unread).",

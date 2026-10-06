@@ -4,7 +4,8 @@
     "drawerOpen": "<out-dir>/02-drawer-open.png",
     "switchStuck": "<out-dir>/03-switch-stuck.png",
     "afterVoidClickEscape": "<out-dir>/04-after-void-click-escape.png",
-    "afterComposerEscape": "<out-dir>/05-after-composer-escape.png"
+    "afterComposerEscape": "<out-dir>/05-after-composer-escape.png",
+    "afterNewChatDraft": "<out-dir>/06-after-new-chat-draft.png"
   },
   "probes": {
     "afterSwitch": {
@@ -17,7 +18,7 @@
       "slotBox": null,
       "slotText": null,
       "chip": 0,
-      "headerTrigger": 0,
+      "headerTrigger": 1,
       "drawerScopeLine": null
     },
     "afterVoidClickEscape": {
@@ -30,7 +31,7 @@
       "slotBox": null,
       "slotText": null,
       "chip": 0,
-      "headerTrigger": 0,
+      "headerTrigger": 1,
       "drawerScopeLine": null
     },
     "afterComposerEscape": {
@@ -43,7 +44,20 @@
       "slotBox": null,
       "slotText": null,
       "chip": 0,
-      "headerTrigger": 0,
+      "headerTrigger": 1,
+      "drawerScopeLine": null
+    },
+    "onDraft": {
+      "url": "#/chat",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 1,
       "drawerScopeLine": null
     }
   },
@@ -66,7 +80,7 @@
   "notesRow": {
     "x": 126,
     "y": 792,
-    "text": "Ready Notes now , last active just now",
+    "text": "Ready Notes 6m , last active 6 minutes ago",
     "hitInsideRow": true,
     "hitText": "Notes"
   },
@@ -161,6 +175,26 @@
     "top": 774,
     "left": 415
   },
+  "backRow": {
+    "x": 126,
+    "y": 791,
+    "hitInsideRow": true
+  },
+  "chipAgain": {
+    "x": 539,
+    "y": 754,
+    "w": 229,
+    "h": 24,
+    "top": 742,
+    "left": 425
+  },
+  "chipExpandedAfterPress": "true",
+  "newChatRow": {
+    "x": 130,
+    "y": 55,
+    "text": "New chat \u2318 N",
+    "hitInsideRow": true
+  },
   "ok": true,
-  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly: the frames a run writes land in the directory its invocation names, and no machine's absolute path is committed."
+  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly: the frames a run writes land in the directory its invocation names, and no machine's absolute path is committed. THIS IS THE AFTER HALF re-driven in remediation round 1, so the deltas it carries against `live-run-before.json` are the round's own: the slot is still released (`slotPresent: false`); conversation B - a live-but-EMPTY queue - is now OFFERED its door (`headerTrigger: 1`, was 0); and step 7's `onDraft` probe is the round's new check, a `New chat` draft reached with the session drawer open on A (drawers 0, slotPresent false - the pane does not follow onto a route with no conversation)."
 }

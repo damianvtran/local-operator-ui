@@ -1,6 +1,7 @@
 /**
  * The states no live run reaches on demand: the empty-but-published queue, the
- * unread frame, and a runtime with no queued engine at all.
+ * unread frame, a runtime with no queued engine at all, and the wire bound's own
+ * frame - a live tally with the row list dropped.
  *
  * One Storybook and ONE private headless Chrome (the repository's own
  * `chrome-keychain.mjs` switch applied, so it never reaches Keychain Services
@@ -31,11 +32,24 @@ const WAIT_MS = 30_000;
  * THE STATES, and the story each one is. The ids are the shipped stories'
  * (`Chat/Asks/Queued asks` -> `chat-asks-queued-asks`), so a reviewer can open
  * the same frame by hand at the same URL.
+ *
+ * EACH STATE'S DIRECTORY IS `story-<state>` (remediation round 1): the set ships
+ * `story-empty-wire/`, `story-unread/`, `story-unsupported/` and `story-clipped-rows/`
+ * beside its `live-*` siblings, so a raw `<out-root>/<state>` would have written the
+ * frames somewhere the set does not carry and left the committed ones stale - which
+ * is exactly what happened on the first attempt at this round.
  */
 const STATES = [
 	["empty-wire", "chat-asks-queued-asks--empty-wire-frame"],
 	["unread", "chat-asks-queued-asks--unread-frame"],
 	["unsupported", "chat-asks-queued-asks--unsupported-backend"],
+	/*
+	 * `{asks: null, asks_open: 4, asks_truncated: true}` - the wire bound's frame
+	 * (remediation round 1, R1). Added with that fix: it is the state the drawer must
+	 * keep and must count, and no live rig reaches it on demand (the seed's owners
+	 * always publish rows).
+	 */
+	["clipped-rows", "chat-asks-queued-asks--clipped-rows-frame"],
 ];
 const THEMES = ["localOperatorDark", "localOperatorLight"];
 
@@ -173,7 +187,8 @@ try {
 	await send("Runtime.enable");
 
 	for (const [state, id] of STATES) {
-		mkdirSync(join(OUT, state), { recursive: true });
+		const dir = `story-${state}`;
+		mkdirSync(join(OUT, dir), { recursive: true });
 		for (const theme of THEMES) {
 			await send("Emulation.setDeviceMetricsOverride", {
 				width: 1280,
@@ -194,7 +209,7 @@ try {
 			const { data } = await send("Page.captureScreenshot", {
 				format: "png",
 			});
-			const file = join(OUT, state, `${theme}.webp`);
+			const file = join(OUT, dir, `${theme}.webp`);
 			await sharp(Buffer.from(data, "base64"))
 				.webp({ quality: 92 })
 				.toFile(file);
