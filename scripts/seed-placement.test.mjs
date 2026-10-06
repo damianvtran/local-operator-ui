@@ -390,6 +390,15 @@ const openFrame = (seq, gap) => ({
 	payload: { subscription_id: `sub-${seq}`, gap, watch_ttl_seconds: 45 },
 });
 
+/** One canonical event, on the receipt cursor. */
+const eventFrame = (seq, payload) => ({
+	session_id: SESSION,
+	epoch: "bridge-epoch",
+	seq,
+	type: "event",
+	payload,
+});
+
 /**
  * A snapshot of a conversation whose turn has ENDED.
  *
@@ -398,8 +407,15 @@ const openFrame = (seq, gap) => ({
  * fixture comes from carried `false` (`refresh_from_session` republishes it
  * from the live session whenever a viewer attaches), while the mid-turn join
  * the seed is defined for carries `true`.
+ *
+ * `asks`/`asksOpen` are the ask gate's capability fields, carried only when a
+ * case sets them (`transcript-reducer.test.mjs` pins the predicate; the case at
+ * the foot of this file drives the WIRING through this same envelope).
  */
-const snapshotFrame = (seq, { entries, liveEvents, streaming }) => ({
+const snapshotFrame = (
+	seq,
+	{ entries, liveEvents, streaming, asks, asksOpen },
+) => ({
 	session_id: SESSION,
 	epoch: "bridge-epoch",
 	seq,
@@ -425,6 +441,8 @@ const snapshotFrame = (seq, { entries, liveEvents, streaming }) => ({
 				streaming,
 				generation: fixture.seed.generation,
 				pending_gate: null,
+				...(asksOpen === undefined ? {} : { asks_open: asksOpen }),
+				...(asks === undefined ? {} : { asks }),
 				history_cursor: entries.at(-1)?.id ?? "",
 				live_events: liveEvents,
 				live_tool_started_at: {},
@@ -485,7 +503,14 @@ const ids = (transcript) => transcript.records.map((record) => record.id);
  * page unless a case says otherwise), and `streaming` is the snapshot's own
  * statement about the turn.
  */
-async function open({ entries, liveEvents, streaming, durable = entries }) {
+async function open({
+	entries,
+	liveEvents,
+	streaming,
+	asks,
+	asksOpen,
+	durable = entries,
+}) {
 	__resetPaintCache();
 	/*
 	 * The label gap's bookkeeping is per CONVERSATION and outlives a mount, the
@@ -513,7 +538,7 @@ async function open({ entries, liveEvents, streaming, durable = entries }) {
 	runtime.rerender();
 	assert.equal(subscriptions.length, 1, "the panel subscribes on mount");
 	deliver(openFrame(1, false));
-	deliver(snapshotFrame(2, { entries, liveEvents, streaming }));
+	deliver(snapshotFrame(2, { entries, liveEvents, streaming, asks, asksOpen }));
 	await pump();
 	return { handle, runtime };
 }
@@ -776,5 +801,100 @@ test("a settling frame for a call the page already names lands at the call's own
 		ids(handle.transcript),
 		ids(complete.handle.transcript),
 		"the replayed results land back in the order the conversation happened in",
+	);
+});
+
+/*
+ * THE ASK-GATE MODE READ, THROUGH THE REAL PATH (agent review round 1, R2).
+ *
+ * The reducer-level pins live in `transcript-reducer.test.mjs`; what they cannot
+ * see is the WIRING — the hook folding `queuedAskEngineLive(next.frontend)`
+ * into its own live `applyEvent` call. This case drives the shipped hook over
+ * the shipped envelope, and it lives in THIS file because the mode's own home is
+ * the snapshot's frontend, which is what this harness exists to drive:
+ *
+ *   - the capability arm publishes `asks_open: 0` — the zero is the point, and
+ *     the R1 fix's own case: a gate running on an EMPTY queue;
+ *   - the unknown arm publishes neither field, so today's mount stands and the
+ *     settle marker still drops the flashed row.
+ */
+test("the snapshot's frontend arms the settle-only ask rule on the live fold", async () => {
+	const askStart = {
+		type: "tool_execution_start",
+		tool_call_id: "call-ask-gate",
+		tool_name: "ask",
+		args: {
+			questions: [
+				{ id: "q1", question: "Tag now?", options: [{ label: "Yes" }] },
+			],
+		},
+	};
+	const askEnd = {
+		type: "tool_execution_end",
+		tool_call_id: "call-ask-gate",
+		tool_name: "ask",
+		result: {
+			content: [
+				{
+					type: "text",
+					text: "[Ask clearance] No question was put to the user.",
+				},
+			],
+			details: {
+				ask_gate: { hidden: true, verdict: "clear", reason: "plainly best" },
+			},
+		},
+		duration_s: 0.4,
+		is_error: false,
+	};
+	/*
+	 * A FRESH hook read per assertion, through `runtime.rerender()`: the `handle`
+	 * captured at `open()` is a snapshot of that render, and a delivery after it
+	 * updates the runtime's internal binding rather than that returned object
+	 * (measured here: the stale handle made a row the fold had painted look
+	 * absent). `rerender()` is also the only correct way to re-enter the hook -
+	 * it resets the stand-in's cell cursor, so a bare `render()` call reads
+	 * whatever cells the cursor happened to be parked on.
+	 */
+	const askRow = (runtime) =>
+		runtime
+			.rerender()
+			.transcript.records.find(
+				(record) =>
+					record.kind === "tool" && record.toolCallId === "call-ask-gate",
+			);
+
+	// The capability arm: the snapshot carries the engine-live fact, so the
+	// ask call's live frames mount nothing.
+	const live = await open({
+		entries: fixture.page.entries,
+		liveEvents: [],
+		streaming: true,
+		asksOpen: 0,
+	});
+	deliver(eventFrame(3, askStart));
+	await pump();
+	assert.equal(
+		askRow(live.runtime),
+		undefined,
+		"no running row while the engine is live",
+	);
+
+	// The unknown arm: neither field on the snapshot — today's mount stands,
+	// and the settle marker still drops it.
+	const dark = await open({
+		entries: fixture.page.entries,
+		liveEvents: [],
+		streaming: true,
+	});
+	deliver(eventFrame(3, askStart));
+	await pump();
+	assert.ok(askRow(dark.runtime), "an unreadable mode keeps today's mount");
+	deliver(eventFrame(4, askEnd));
+	await pump();
+	assert.equal(
+		askRow(dark.runtime),
+		undefined,
+		"the marker drops the flashed row at settle",
 	);
 });

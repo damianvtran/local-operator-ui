@@ -9684,6 +9684,29 @@ export const STORIES = [
 			dir: "picker-ineligible-hover",
 		},
 	],
+	/*
+	 * THE ASK GATE'S DIVERT STATES on the desktop live trace (`ask-gate-rows.stories.tsx`,
+	 * design `docs/design/ask-gate.md` §3 rows 2/6). A diverted ask must leave no trace,
+	 * so two of these frames are the ABSENCE of a row: `diverted-live` is the gate
+	 * mid-flight under a queued engine (the row is held until settle) and
+	 * `diverted-settled` its settle (the `ask_gate.hidden` marker drops it).
+	 * `raise-settled` is the receipt half — no marker, so the row is created AT settle
+	 * with the queue's receipt and the arguments the suppressed start still learned.
+	 * `unreadable-live` / `unreadable-settled` are the mixed-build fallback §5 names: an
+	 * unreadable mode mounts as today (the flash residual) and the settle marker still
+	 * drops it.
+	 *
+	 * WHY THE FIXTURES ARE WIRE-SHAPED: the gate is a core-repo feature in flight, so no
+	 * released runtime can divert an ask yet and there is no live run to photograph — the
+	 * frames fold the core's own frame shapes and marker through the production reducer,
+	 * the same contract the `chat-interrupted-rows` block states for its marker.
+	 */
+	["chat-ask-gate-rows--diverted-live", 1280, 800],
+	["chat-ask-gate-rows--diverted-settled", 1280, 800],
+	["chat-ask-gate-rows--raise-settled", 1280, 800],
+	["chat-ask-gate-rows--raise-settled-expanded", 1280, 800],
+	["chat-ask-gate-rows--unreadable-live", 1280, 800],
+	["chat-ask-gate-rows--unreadable-settled", 1280, 800],
 ];
 
 /**

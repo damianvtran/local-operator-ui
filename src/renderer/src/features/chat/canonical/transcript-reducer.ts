@@ -2119,6 +2119,101 @@ const isHarnessInjected = (payload: unknown): boolean => {
 	return (payload as Record<string, unknown>)[HARNESS_INJECTION_KEY] === true;
 };
 
+/**
+ * Whether this session's owner runs the queued-ask engine — the mode every
+ * ask-gate settle-only seam keys on (design `docs/design/ask-gate.md` §3).
+ *
+ * THE DESKTOP'S READ OF THE CAPABILITY PROXY: a well-formed `asks` list, OR
+ * the presence of `asks_open` (a number — zero included), on the frontend
+ * state.
+ *
+ * - a core that predates the R1 fix publishes BOTH fields only while at least
+ *   one ask is outstanding (`ask_wire` returns them as a pair; an empty queue
+ *   is published as ABSENCE), so on an empty queue the read is false and a
+ *   divert's running row shows for the gate — the residual the design's §5
+ *   records, on OLD CORES only;
+ * - a core at the fix publishes `asks_open` (value ≥ 0, 0 included) whenever
+ *   the queued engine is live, `asks` staying absent-on-empty so clients that
+ *   read that field alone are untouched; the first-ask case — a gate running
+ *   on an empty queue — then reads true.
+ *
+ * The core's `queued_ask_engine_live` switches its viewer arm to the same pair
+ * with the same fix (one function, one answer on both arms; the R1 exchange is
+ * in this PR's thread) — until that head lands it reads `asks` alone, which
+ * this read still understands. Absence of both fields is "cannot say" — a core
+ * that predates the queued engine's wire fields, or a frame whose byte bound
+ * dropped the last field — and every caller keeps today's mount for it, with
+ * the settle marker still dropping a divert. Never read absence as "the engine
+ * is off".
+ *
+ * WHY THE SHAPES ARE CHECKED, NOT JUST PRESENCE (review round 2, M2): `asks`
+ * keeps the array check the old read had, so a malformed value cannot turn a
+ * frame the old code called unreadable into a suppression — conservative in
+ * the direction that matters. `asks_open` is read for presence because zero is
+ * a value (the empty-but-live queue), and its only real shapes are numbers; a
+ * corrupt value can only come from a frame no publisher emits, and a
+ * false-capable read self-corrects at settle (a raise creates its row there, a
+ * divert drops).
+ *
+ * Spelled against the fields directly rather than through `sessionAsks`
+ * (`ask-queue.ts`): that module carries the desktop API surface, and this one
+ * bundles standalone in `scripts/transcript-reducer.test.mjs`.
+ */
+export function queuedAskEngineLive(
+	frontend: CanonicalFrontendState | null | undefined,
+): boolean {
+	return (
+		frontend != null &&
+		(Array.isArray(frontend.asks) || frontend.asks_open != null)
+	);
+}
+
+/**
+ * Whether a tool result's `details` mapping carries the ask gate's divert
+ * marker (design §3; the core's `is_ask_gate_divert_details`).
+ *
+ * A diverted ask's result carries
+ * `{"ask_gate": {"hidden": true, "verdict": …, "reason": …}}`, riding the
+ * live `tool_execution_end` result's `details` and the durable row's
+ * `payload.provider_payload.details` with one meaning: this call/result pair
+ * never happened for the user. The read is deliberately TOTAL and narrow — a
+ * missing, renamed or malformed marker is `false`, and a core that predates
+ * the gate (which never writes one) paints exactly as it does today.
+ */
+function isAskGateDivertDetails(details: unknown): boolean {
+	if (!details || typeof details !== "object") return false;
+	const gate = (details as Record<string, unknown>).ask_gate;
+	if (!gate || typeof gate !== "object") return false;
+	return Boolean((gate as Record<string, unknown>).hidden);
+}
+
+/**
+ * The `ask` tool's name, spelled once — a copy of the core's `_ASK_TOOL_NAME`
+ * for the same reason that module copies it: only ever compared, so a rename
+ * upstream shows up as a predicate that stops matching rather than as a pass.
+ */
+const ASK_TOOL_NAME = "ask";
+
+/**
+ * Whether a call's rows are SETTLE-ONLY on this surface (design §3 rows 2/6).
+ *
+ * While the queued engine is live an `ask` call gets NO live row while it is
+ * being dictated or running: the forked clearance check may divert it, and the
+ * design rejects a row that flashed for the gate's whole duration on every
+ * surface. Its one row is created at SETTLE — the receipt for a raise, nothing
+ * for a divert (the marker is read there). `queuedEngine` is the caller's mode
+ * read; `false`/absent keeps today's mount, and the settle-marker drop still
+ * covers that path. A never-run verdict (`not_run_reason`) is exempt at the
+ * call sites: it is a TERMINAL settle of a call that never ran — no gate ran,
+ * a divert is impossible — and it renders exactly as today.
+ */
+function isSettleOnlyAsk(
+	toolName: unknown,
+	queuedEngine: boolean | undefined,
+): boolean {
+	return queuedEngine === true && String(toolName ?? "") === ASK_TOOL_NAME;
+}
+
 function durableRecord(
 	entry: DesktopHistoryPage["entries"][number],
 	/**
@@ -2423,6 +2518,18 @@ function durableRecord(
 			unknown
 		>;
 		const details = (providerPayload.details ?? {}) as Record<string, unknown>;
+		/*
+		 * THE DIVERT DROP, DURABLE HALF (design §3 rows 6/7). A diverted ask's
+		 * result row carries the hidden marker in `provider_payload.details`; the
+		 * row never paints on any surface this fold feeds. THE CHILD TRAJECTORY IS
+		 * WHY THIS HALF IS THE CLIENT'S: a subagent's pages are served VERBATIM by
+		 * design ("fold them through the same reducer"), so the child reader's
+		 * `applyHistoryPage` is the only filter a divert there will ever meet.
+		 * Marker-only, per the core's own predicates: no marker, no change — and a
+		 * core that predates the gate never writes one, so its rows paint exactly
+		 * as they do today.
+		 */
+		if (isAskGateDivertDetails(details)) return null;
 		/*
 		 * WHETHER THE RUNTIME SAYS THE CALL WAS ABORTED RATHER THAN FAILED.
 		 *
@@ -3088,6 +3195,15 @@ export function applyEvent(
 		seed?: boolean;
 		userStoppedAt?: number | null;
 		/**
+		 * Whether the session's owner runs the queued engine, read at apply time
+		 * (`queuedAskEngineLive`). It governs the SETTLE-ONLY rule for `ask` rows
+		 * (design §3 rows 2/6): `true` mounts no row while the call is in flight;
+		 * absent keeps today's mount and relies on the settle marker to drop a
+		 * divert. The replay fold that runs before a snapshot has no frontend to
+		 * read and omits this, which is the design's own fallback.
+		 */
+		queuedAskEngine?: boolean;
+		/**
 		 * The frame this event arrived on, when the caller has one. `seed` folds
 		 * bare events with no frame; the live and receipt-replay paths have the
 		 * frame and pass its cursor, which is what makes a re-delivered
@@ -3098,6 +3214,12 @@ export function applyEvent(
 ): TranscriptState {
 	const message = event.message as Record<string, unknown> | undefined;
 	const incoming = options.frame;
+	/*
+	 * The settle-only ask mode (see the option's own doc), bound once per fold
+	 * so the compose and start seams below cannot disagree about which fold
+	 * they serve — and so a fold that does not carry it reads exactly as today.
+	 */
+	const queuedAskEngine = options.queuedAskEngine;
 	switch (event.type) {
 		case "agent_start": {
 			const generation = Number(event.generation ?? state.generation + 1);
@@ -3717,6 +3839,29 @@ export function applyEvent(
 			 * read as `null` and keep today's `not-run` reading on the row.
 			 */
 			const kind = String(event.not_run_kind ?? "").trim() || null;
+			/*
+			 * THE SETTLE-ONLY ASK (design §3 rows 2/6): while the session's queued
+			 * engine is live, an `ask` call gets NO live row while it is being
+			 * dictated or waiting to run — the forked clearance check may divert
+			 * it, and the design rejects a row that flashed for the gate's whole
+			 * duration. Its one row is created at settle (the `tool_execution_end`
+			 * arm: the receipt for a raise, nothing for a divert).
+			 *
+			 * `notRun` IS EXEMPT ON PURPOSE: a compose frame carrying a verdict is
+			 * the TERMINAL settle of a call that never ran — no gate ran, a divert
+			 * is impossible — and it renders exactly as today. A row that already
+			 * exists in either id space (the mode became readable mid-flight)
+			 * keeps today's handling — this arm suppresses the MOUNT, and the
+			 * settle resolves that row either way; a superseded announcement with
+			 * no row behind it is retired rather than kept.
+			 */
+			if (
+				isSettleOnlyAsk(event.tool_name, queuedAskEngine) &&
+				!notRun &&
+				!announced
+			) {
+				return superseded ? supersedesRetire(state, superseded) : state;
+			}
 			// The frame's own final count, except that a zero is left alone: an
 			// earlier frame that measured nothing and a frame that carries nothing
 			// agree, and a terminal frame with an empty payload must not erase a size
@@ -3822,6 +3967,16 @@ export function applyEvent(
 				learned === state.argsByCall
 					? state
 					: { ...state, argsByCall: learned };
+			/*
+			 * THE SETTLE-ONLY ASK, START HALF (design §3 row 6): while the queued
+			 * engine is live an ask mounts nothing here — but the args just learned
+			 * above STAY learned, so the row the settle creates (a raise's receipt)
+			 * still carries its object column. A row that already exists (the mode
+			 * became readable mid-flight) keeps today's transition to running: this
+			 * arm suppresses the MOUNT; the settle marker still drops the divert.
+			 */
+			if (isSettleOnlyAsk(event.tool_name, queuedAskEngine) && !current)
+				return seeded;
 			return upsert(seeded, {
 				kind: "tool",
 				id,
@@ -3904,6 +4059,17 @@ export function applyEvent(
 			const id = `tool:${callId}`;
 			const current = state.records[state.index.get(id) ?? -1];
 			const result = (event.result ?? {}) as Record<string, unknown>;
+			/*
+			 * THE DIVERT DROP, LIVE HALF (design §3 row 6). A result carrying the ask
+			 * gate's hidden marker never paints: any row some earlier path already
+			 * mounted for this call is REMOVED (the mixed-build flash the design
+			 * accepts), and nothing is created when none exists. The read is
+			 * marker-only and mode-independent — the same one the core's predicates
+			 * and the TUI's ended seam use — which is also what keeps a core that
+			 * predates the gate bit-for-bit today's behaviour: it never sends one.
+			 */
+			if (isAskGateDivertDetails(result.details))
+				return removeRecord(state, id);
 			// See `knownArgs`: the settling frame carries no arguments, and for a
 			// viewer that joined a turn in flight it is the ONLY frame it has for
 			// every call that finished before it arrived — so the arguments are
@@ -4510,6 +4676,14 @@ export function applyLiveSeed(
 	if (next.compacting)
 		next = { ...next, compacting: false, compactingSince: 0 };
 	const inFlight = frontend.streaming === true;
+	/*
+	 * The settle-only mode, read from the SAME frontend this seed folds — the
+	 * snapshot is where a viewer learns whether the owner runs the queued
+	 * engine (`queuedAskEngineLive`), and the seed's frames then obey exactly
+	 * the rules the live stream does: a composing ask mounts nothing, a marked
+	 * end is dropped, a verdict frame paints.
+	 */
+	const queuedEngine = queuedAskEngineLive(frontend);
 	/* A row was placed at a time the seed itself stated, so order by time. */
 	let placed = false;
 	const statedIds = new Set<string>();
@@ -4543,6 +4717,7 @@ export function applyLiveSeed(
 		// position its text belongs to.
 		next = applyEvent(next, event, clock, {
 			seed: true,
+			queuedAskEngine: queuedEngine,
 			...(origin ? { frame: origin } : {}),
 		});
 	}

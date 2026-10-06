@@ -52,6 +52,7 @@ import {
 	pageOrphanResultInstants,
 	pageOrphanResults,
 	pagePassedOldestStart,
+	queuedAskEngineLive,
 	reconcileLimit,
 	reconcileWalkDone,
 	removeRecord,
@@ -3689,6 +3690,14 @@ export function useCanonicalSessionStream(
 										sessionId
 									] ?? null)
 								: null,
+							/*
+							 * The queued-engine mode for the settle-only `ask` rule (design
+							 * §3 rows 2/6), read at apply time from the very frontend state
+							 * this pane is painting (`queuedAskEngineLive`). An absent read —
+							 * no snapshot yet, a core that predates the `asks` field — keeps
+							 * today's mount, and the settle marker still drops a divert.
+							 */
+							queuedAskEngine: queuedAskEngineLive(next.frontend),
 						});
 						if (transcript !== next.transcript) {
 							next = { ...next, transcript };
