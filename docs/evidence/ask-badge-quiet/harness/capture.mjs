@@ -11,8 +11,12 @@
  * CDP: the same approach as `scripts/header-cluster-geometry.mjs`, whose driver
  * this is cribbed from because that file is measure-only and this set needs the
  * frame AND the numbers. PNGs on purpose: `check-evidence.mjs`'s frame walker
- * counts `.webp` only, so a hand-driven set cannot be mistaken for sweep output
- * (the `read-ack-skew` set's precedent).
+ * judges a frame whenever its NAME claims a theme - every `.webp`, plus any file
+ * whose stem IS a palette id, in whatever container it is packed - and these
+ * frames' stems are the state names (`asks-waiting-localOperatorDark`), not
+ * palette ids, so the walker judges none of them; the set is DECLARED, so they
+ * are accounted as unjudged-inside-a-declared-set rather than mistaken for sweep
+ * output (the `read-ack-skew` set's precedent).
  *
  * RUN THE PAIR:
  *   git -C <worktree> stash-free before-tree storybook  (or a clean checkout)
@@ -23,7 +27,12 @@
  * Stories: `chat-header-cluster--asks-waiting` (asksCount=3, session scope) and
  * `chat-header-cluster--asks-fleet` (asksCount=11), each at localOperatorDark and
  * localOperatorLight, viewport 560x84 — the header cluster's own band, the same
- * size `scripts/capture-evidence.mjs` uses for this story's siblings.
+ * size `scripts/capture-evidence.mjs` uses for this story's siblings. The
+ * `chat-header-cluster--both-marks` state (ask mark and browser mark together,
+ * added for design round 1's D2) is an AFTER-only story: the state has no pre-fix
+ * tree to photograph, so its `before` half does not exist and the pair argument
+ * does not apply to it — a `before` run needs a harness revision cut before this
+ * state was added.
  *
  * What the readout records, and why those fields: the badge's box (top before
  * and after the fix is the defect), the ring's painted spread (`ringPx`), the
@@ -59,6 +68,8 @@ const STORIES = [
 	["chat-header-cluster--asks-waiting", "localOperatorLight"],
 	["chat-header-cluster--asks-fleet", "localOperatorDark"],
 	["chat-header-cluster--asks-fleet", "localOperatorLight"],
+	["chat-header-cluster--both-marks", "localOperatorDark"],
+	["chat-header-cluster--both-marks", "localOperatorLight"],
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -94,7 +105,12 @@ const teardown = () => {
 		chrome = null;
 	}
 	if (dataDir) {
-		rmSync(dataDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+		rmSync(dataDir, {
+			recursive: true,
+			force: true,
+			maxRetries: 10,
+			retryDelay: 100,
+		});
 		dataDir = null;
 	}
 };
@@ -157,13 +173,21 @@ const main = async () => {
 
 	const wsUrl = await new Promise((resolve, reject) => {
 		let buf = "";
-		const t = setTimeout(() => reject(new Error("Chrome did not report a debug port")), 30_000);
+		const t = setTimeout(
+			() => reject(new Error("Chrome did not report a debug port")),
+			30_000,
+		);
 		chrome.stderr.on("data", (d) => {
 			buf += d.toString();
 			const m = buf.match(DEBUG_PORT);
-			if (m) { clearTimeout(t); resolve(m[1]); }
+			if (m) {
+				clearTimeout(t);
+				resolve(m[1]);
+			}
 		});
-		chrome.on("exit", (code) => reject(new Error(`Chrome exited early (${code})`)));
+		chrome.on("exit", (code) =>
+			reject(new Error(`Chrome exited early (${code})`)),
+		);
 	});
 
 	const { host } = new URL(wsUrl);
@@ -179,7 +203,10 @@ const main = async () => {
 
 	for (const [story, theme] of STORIES) {
 		await cdp.send("Emulation.setDeviceMetricsOverride", {
-			width: 560, height: 84, deviceScaleFactor: 1, mobile: false,
+			width: 560,
+			height: 84,
+			deviceScaleFactor: 1,
+			mobile: false,
 		});
 		await cdp.send("Page.navigate", { url: "about:blank" });
 		await sleep(120);
@@ -207,18 +234,23 @@ const main = async () => {
 		/* One settled frame after layout, so the rects are post-reflow. */
 		await cdp.send("Runtime.evaluate", {
 			awaitPromise: true,
-			expression: "new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
+			expression:
+				"new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))",
 		});
 
 		const { result } = await cdp.send("Runtime.evaluate", {
-			returnByValue: true, expression: PROBE,
+			returnByValue: true,
+			expression: PROBE,
 		});
 		const shot = await cdp.send("Page.captureScreenshot", {
 			format: "png",
 			clip: { x: 0, y: 0, width: 560, height: 84, scale: 1 },
 		});
 		const leaf = `${story.split("--")[1]}-${theme}`;
-		writeFileSync(join(OUTDIR, `${leaf}.png`), Buffer.from(shot.data, "base64"));
+		writeFileSync(
+			join(OUTDIR, `${leaf}.png`),
+			Buffer.from(shot.data, "base64"),
+		);
 		writeFileSync(
 			join(OUTDIR, `${leaf}.readout.json`),
 			JSON.stringify(result.value, null, 2),

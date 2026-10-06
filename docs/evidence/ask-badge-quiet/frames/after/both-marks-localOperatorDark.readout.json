@@ -1,0 +1,41 @@
+{
+  "viewport": {
+    "w": 560,
+    "h": 84
+  },
+  "headerBox": {
+    "left": 0,
+    "top": 0,
+    "right": 560,
+    "bottom": 40,
+    "width": 560,
+    "height": 40
+  },
+  "triggerBox": {
+    "left": 380,
+    "top": 4,
+    "right": 412,
+    "bottom": 36,
+    "width": 32,
+    "height": 32
+  },
+  "badgeBox": {
+    "left": 406,
+    "top": 2,
+    "right": 422,
+    "bottom": 18,
+    "width": 16,
+    "height": 16
+  },
+  "badgeText": "3",
+  "badgeClass": "inline-flex w-fit shrink-0 items-center gap-1 py-0.5 whitespace-nowrap [&_svg]:pointer-events-none [&_svg]:size-3 [&_svg]:shrink-0 border-0 bg-elevated font-normal text-ink-dim text-meta-sm rounded-full h-4 min-w-4 justify-center px-1 tabular-nums",
+  "badgeFontSize": "11px",
+  "badgeLineHeight": "15.95px",
+  "badgeCssHeight": "16px",
+  "badgeOverflow": "visible",
+  "ringPx": 0,
+  "badgeTopVsHeader": 2,
+  "badgeTopVsViewport": 2,
+  "badgeOverhangAboveTrigger": 2,
+  "triggerTopVsHeader": 4
+}
