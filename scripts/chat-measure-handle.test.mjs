@@ -17,15 +17,17 @@
  * WHAT THIS FILE PINS. The shipped component (`ChatMeasureHandle`) is rendered
  * and asserted against its contract: `role="separator"` with
  * `aria-orientation="vertical"` and `aria-valuenow/min/max` (the width handed
- * in, and the bounds exported by `chat-measure-drag.ts`), the keyboard
- * arithmetic (arrow steps, the coarse shift step, Home/End, Enter-to-reset),
- * and the render-gated commit path - round 2's U4 for releases, round 3's
- * U6/U8 for keyboard steps (the step starts from the RENDERED width when the
- * column is clamped, and a step that cannot move a pixel writes nothing): a
- * synthetic press/move/release driven through the same event path a pointer
- * produces, and a synthetic keydown through the handler, both with the
- * scroller's geometry stubbed, asserting which widths reach `onWidthChange`
- * and which are refused before the store is touched.
+ * in, and the bounds exported by `chat-measure-drag.ts`), the announced key map
+ * (`aria-keyshortcuts`), the state line's own structure (it is a SIBLING of the
+ * widget and `aria-hidden`, which is the shape the repo's `useSemanticElements`
+ * rule requires), the keyboard arithmetic (arrow steps, the coarse shift step,
+ * Home/End, Enter-to-reset), and the render-gated commit path - round 2's U4 for
+ * releases, round 3's U6/U8 for keyboard steps (the step starts from the
+ * RENDERED width when the column is clamped, and a step that cannot move a pixel
+ * writes nothing): a synthetic press/move/release driven through the same event
+ * path a pointer produces, and a synthetic keydown through the handler, both
+ * with the scroller's geometry stubbed, asserting which widths reach
+ * `onWidthChange` and which are refused before the store is touched.
  *
  * WHAT IT DELIBERATELY DOES NOT PIN. REAL layout (jsdom has none: the pane
  * reading is stubbed to the numbers the story host measures, so what is
@@ -263,6 +265,102 @@ test("the separator carries its roles and value bounds", async () => {
 		separator.getAttribute("aria-label"),
 		"Widen or narrow the conversation column (right edge)",
 	);
+});
+
+/*
+ * The announced key map, kept across the tooltip. The tooltip is the POINTER
+ * channel and it must not replace this one: `aria-keyshortcuts` plus the mounts'
+ * labels are where a screen reader reads the keys, and the state line's arrival
+ * moved the strip's copy around without touching either.
+ */
+test("the separator still announces its keys", async () => {
+	const { separator } = await renderHandle({});
+	assert.equal(
+		separator.getAttribute("aria-keyshortcuts"),
+		"ArrowLeft ArrowRight Shift+ArrowLeft Shift+ArrowRight Home End Enter",
+	);
+});
+
+/*
+ * The state line's STRUCTURE, which is a lint requirement rather than a taste:
+ * `role="separator"` on an element with children is refused by the repo's own
+ * `useSemanticElements`, so the line is a sibling of the widget and the widget
+ * stays childless. A later refactor that nests the line would silently restore
+ * the shape the rule exists to refuse, so it is pinned here - the line is paint
+ * the wrapper owns, tagged with the edge it marks, hidden from the
+ * accessibility tree, and never inside the separator.
+ */
+test("the state line is a sibling of a childless separator, and aria-hidden", async () => {
+	const { separator } = await renderHandle({});
+	const line = separator.parentElement?.querySelector(
+		'[data-lo-chat-measure-line="right"]',
+	);
+	assert.ok(line, "the handle renders its state line");
+	assert.equal(line.getAttribute("aria-hidden"), "true");
+	assert.equal(line.children.length, 0, "the line is paint, not a container");
+	assert.equal(separator.children.length, 0, "the separator stays childless");
+	assert.equal(
+		separator.querySelector("[data-lo-chat-measure-line]"),
+		null,
+		"the line must not be a descendant of the widget",
+	);
+});
+
+/*
+ * THE POINTER-EVENTS PAIRING, which is the only thing between a full-column
+ * absolutely-positioned box and every click in the transcript (the property the
+ * 24px offset used to carry alone). jsdom cannot see Tailwind's cascade, so the
+ * pin has to be the class pairing itself - the source-text shape
+ * `chrome-keychain.test.mjs` and `notification-spawn-sites.test.mjs` use.
+ */
+test("the wrapper is transparent to the pointer and the separator opts back in", async () => {
+	const { separator } = await renderHandle({});
+	const wrapper = separator.parentElement;
+	assert.ok(wrapper, "the separator sits inside the wrapper");
+	assert.match(wrapper.className, /pointer-events-none/);
+	assert.match(separator.className, /pointer-events-auto/);
+});
+
+/*
+ * THE BAND HUGS THE LINE (UX round 1's U1). Both offsets are placed from the
+ * same edge, the band on the gutter side of the line, so a press on the drawn
+ * rule starts the drag the way every family divider's does. The old 34px offset
+ * and its clamp are gone with the dead zone between the two.
+ */
+test("the band and the line are placed from the same edge, the band outboard", async () => {
+	for (const edge of ["left", "right"]) {
+		const { separator } = await renderHandle({ edge });
+		const line = separator.parentElement?.querySelector(
+			`[data-lo-chat-measure-line="${edge}"]`,
+		);
+		assert.ok(line, `the ${edge} line renders`);
+		assert.match(separator.className, new RegExp(`-${edge}-2\\.5`));
+		assert.match(line.className, new RegExp(`-${edge}-0\\.5`));
+		assert.doesNotMatch(separator.className, /34px/);
+		assert.equal(separator.getAttribute("style"), null);
+	}
+});
+
+/*
+ * THE TOOLTIP'S ANCHOR (agent review round 1's M1): a bounded 16px box at the
+ * hand's Y, a sibling of the widget rather than the widget itself - anchored to
+ * the separator, the panel is placed against the content column's own height and
+ * goes off-screen on any transcript that scrolls.
+ */
+test("the tooltip anchor is a bounded sibling box, not the separator", async () => {
+	const { separator } = await renderHandle({});
+	const anchor = separator.parentElement?.querySelector(
+		"[data-lo-chat-measure-anchor]",
+	);
+	assert.ok(anchor, "the handle renders its tooltip anchor");
+	assert.notEqual(anchor, separator);
+	assert.equal(
+		separator.querySelector("[data-lo-chat-measure-anchor]"),
+		null,
+		"the anchor must not be a descendant of the widget",
+	);
+	assert.match(anchor.className, /pointer-events-none/);
+	assert.equal(anchor.style.height, "16px");
 });
 
 test("the keyboard steps move the width, and Enter resets", async () => {
