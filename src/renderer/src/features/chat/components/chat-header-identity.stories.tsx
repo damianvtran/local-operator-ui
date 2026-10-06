@@ -145,6 +145,17 @@ const SEEDED_RECENTS = {
 	agent: ["reviewer", "coder", "qa-tester"],
 	team: ["lopdev", "minerva"],
 };
+/*
+ * The MIXED ring (review round 2, D8): one remembered row the rule accepts
+ * (`manager` - the team's manager is always settable) beside one it refuses
+ * (`coder`). The all-refused ring above frames the band's COLLAPSE; this one
+ * frames the filtering itself - the band up, holding only the settable
+ * remembered row, with the refused one still listed under `All agents`.
+ */
+const MIXED_RECENTS = {
+	agent: ["manager", "coder"],
+	team: ["lopdev", "minerva"],
+};
 
 const SESSION = "2d5ad5da0025";
 
@@ -852,6 +863,72 @@ export const Recents: Story = {
 						activeTeam: "lopdev",
 						activeAgent: "architect",
 					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The mixed ring's frame (review round 2, D8): the band up with only the
+ * settable remembered row in it (`manager`), `coder` dropped from the band and
+ * still listed - greyed, with its reason - under `All agents` one heading
+ * below. This is the half of U6's shipped behaviour the all-refused ring
+ * cannot show: the band is a FILTER, not a fault, and the refused row loses
+ * its shortcut rather than its place in the roster.
+ */
+export const RecentsMixed: Story = {
+	render: () => {
+		installBridge({ agents: LONG_AGENTS });
+		return (
+			<Band rings={MIXED_RECENTS}>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({
+						activeTeam: "lopdev",
+						activeAgent: "architect",
+					})}
+					renameSessionId={SESSION}
+					onOpenOptions={() => undefined}
+				/>
+			</Band>
+		);
+	},
+};
+
+/**
+ * The manager-less roster (review round 2, D9): the chip reads `manager` (it
+ * leads `lopdev`) but no ROW in this catalogue carries that name or the flag -
+ * every `delegate` is forced false - so nothing is settable and the footer's
+ * UNTYPED resolution renders: `No profile can take the seat — switch the
+ * team.` The typed variant is measured on `search-results`; this is the other
+ * branch of the same sentence, shot rather than described, because "reachable
+ * only in theory" is not a state a reader can check.
+ */
+export const NoSettableAgent: Story = {
+	render: () => {
+		installBridge({
+			/*
+			 * `manager` is FILTERED OUT as well as un-flagged, and that is the
+			 * story's whole point: the acceptance predicate is `name === team's
+			 * manager || delegate === true`, so a row that still carries the
+			 * manager's NAME is settable no matter what its flag reads. Without
+			 * the filter this story would render the ordinary count line and
+			 * claim the resolution it never reached - which the shutter caught.
+			 */
+			agents: LONG_AGENTS.filter((row) => row.value !== "manager").map(
+				(row) => ({ ...row, delegate: false }),
+			),
+		});
+		return (
+			<Band>
+				<ChatHeader
+					agentName="Install the pinned uv on Windows"
+					description="manager · lopdev"
+					identity={identity({ activeTeam: "lopdev" })}
 					renameSessionId={SESSION}
 					onOpenOptions={() => undefined}
 				/>

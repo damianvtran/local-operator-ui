@@ -62,6 +62,15 @@ export type PickerOption = {
 	current?: boolean;
 	/** Row cannot be chosen; still listed so the reason is visible. */
 	disabled?: boolean;
+	/**
+	 * WHY the row is disabled, when the reason outlives the moment. `true` is a
+	 * standing refusal - issue #861's team rule is the first caller - and the
+	 * only kind of block the refusal register's messages ("cannot take the
+	 * seat", the no-exits resolution) are true claims about. A row disabled for
+	 * a transient reason (a switch already in flight) leaves this unset, so the
+	 * refusal sentence never describes it (review round 2, MINOR-2).
+	 */
+	blocked?: boolean;
 	/** Extra search terms (aliases). */
 	keywords?: string[];
 	/** Rows group under this heading when set. */
@@ -747,9 +756,11 @@ export const PickerRow: FC<PickerRowProps> = memo(
 							 * THE REASON STEPS DOWN ON A REFUSED ROW (review round 1, D5):
 							 * measured, the first draft made the explanation the loudest text on
 							 * the row (7.24:1) while the name it explains sat at 1.99:1 - the eye
-							 * landed on the reason instead of the profile. `ink-dim` quiets it
-							 * under the caption, which stays the panel's loudest rule text, and
-							 * the row reads as one quiet unit.
+							 * landed on the reason instead of the profile. `ink-dim` brings it to
+							 * the caption's own weight - the two tie at 5.25:1 on the dark
+							 * ground, corrected in review round 2 from an earlier "under the
+							 * caption" claim this file no longer makes - so the reason no longer
+							 * outranks the row's name and the row reads as one quiet unit.
 							 */
 							option.disabled ? "text-ink-dim" : "text-ink-muted",
 						)}
