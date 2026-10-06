@@ -1260,12 +1260,18 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					/*
 					 * THE RULE THIS APPLIES. The container pays only for ink that would
 					 * otherwise land in a NEIGHBOUR'S BOX - not for every child that paints
-					 * outside itself. The badge earns 12px because without it its ring is
-					 * painted inside the canvas button's hover target (design round 1, D5);
-					 * the run trigger's own attention dot overhangs its box by 2px and earns
-					 * nothing, because 6px of the ordinary 8px gap still separates it from the
-					 * next box. So 12px is owed only while BOTH the badge and the box it has to
-					 * clear are on screen; this is 8px in every other arrangement.
+					 * outside itself. The browser badge earns 12px because without it its ring
+					 * is painted inside the canvas button's hover target (design round 1, D5);
+					 * the ask mark earns the same 12px one control over, for the same reason -
+					 * its box ends 10px out from the asks trigger's corner, so at the ordinary
+					 * 8px it entered the browser trigger's hover target by 2px (design round 1,
+					 * D1, remediated here); the run trigger's own attention dot overhangs its
+					 * box by 2px and earns nothing, because 6px of the ordinary 8px gap still
+					 * separates it from the next box. So 12px is owed while either mark is
+					 * drawn - the browser mark only while the box it has to clear is on screen
+					 * (its clause below), and the ask mark whenever it is, because the control
+					 * it hangs toward (the browser trigger) sits immediately after it and
+					 * stays mounted in every arrangement the asks door is drawn for.
 					 *
 					 * 8px is the within-a-component step of branding.md's 4px ramp, and it is
 					 * the state the operator photographed: a `mr-1` on the browser button paid
@@ -1276,22 +1282,25 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 					 * WHAT A BADGE COSTS, in the two comparisons that are easy to conflate:
 					 *
 					 *  - THE BADGE APPEARING, this tree against itself. `gap` resolves from 8
-					 *    to 12, and both of the cluster's gaps ARE that one property, so each
-					 *    widens by 4px: cluster width 112 -> 120 (+8px), the run trigger's left
-					 *    edge 432 -> 424 (-8px), the browser button 472 -> 468 (-4px), and the
-					 *    canvas button pinned at 512 by the `ml-auto` right edge (0px). The
-					 *    browser's -4px is the MECHANISM that keeps D5 rather than a detail:
-					 *    its right edge moves 504 -> 500, so the badge's painted ring ends
-					 *    exactly on the canvas box's left edge, at 0px clearance. "The browser
-					 *    and canvas buttons do not move" is NOT what happens here.
-					 *  - THIS BRANCH AGAINST `main`, in a FIXED state. Badge drawn: the run
-					 *    trigger moves -4px and the browser and canvas buttons do not move at
-					 *    all. Badge-free: the run trigger and the browser button both move
-					 *    +4px, and the canvas does not move. The 4px figures this change is
-					 *    otherwise tempted to quote belong to THIS comparison, not the one
-					 *    above.
+					 *    to 12, and all five of the cluster's gaps ARE that one property (six
+					 *    controls), so each widens by 4px: cluster width 232 -> 252 (+20px),
+					 *    the run trigger's left edge 352 -> 336 (-16px), the browser button
+					 *    432 -> 424 (-8px), and the canvas button pinned at 512 by the
+					 *    `ml-auto` right edge (0px). The browser's -8px is the MECHANISM that
+					 *    keeps D5 rather than a detail: its right edge moves 464 -> 456, so the
+					 *    badge's painted ring ends exactly on the console box's left edge, at
+					 *    0px clearance. "The browser and canvas buttons do not move" is NOT
+					 *    what happens here.
+					 *  - THE FIX AGAINST `main`, the OTHER comparison: it moved the badge-free
+					 *    states too, because main paid the badge's room whether or not a badge
+					 *    was drawn. Its figures were measured on this comment's three-control
+					 *    cluster and cannot be re-derived from this tree (main carries the fix
+					 *    now); the 4px figures this change is otherwise tempted to quote belong
+					 *    to THAT comparison, not the one above.
 					 */
-					browserBadgeDrawn && canvasButtonShown ? "gap-3" : "gap-2",
+					(browserBadgeDrawn && canvasButtonShown) || asksBadgeDrawn
+						? "gap-3"
+						: "gap-2",
 				)}
 			>
 				{/*
@@ -1630,21 +1639,30 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
 							    the same `attentionQuiet` register the rail's notification count
 							    and the team mark wear (borderless, `elevated` fill, `ink-dim`,
 							    `text-meta-sm`), with its offset lowered so the whole box sits
-							    INSIDE the band (box top -2.3 -> +2 at `-top-1.5`;
-							    `-right-2.5` unchanged, so the mark still hangs on the corner)
-							    and the row's height untouched. The ring is gone, so the box
-							    IS the painted edge; the contrast pairs are the quiet row's
-							    own in `scripts/contrast-contract.mjs` (`inkDim` on `elevated`,
-							    and the header's ground is that row's `canvas`).
+							    INSIDE the band: box top -2.3 -> +2 at `-top-0.5`, the wrapper
+							    `flex` and shrink-wrapping the badge so the offset IS the
+							    placement - the old `-top-1.5` only landed at +2 by borrowing
+							    ~4px of the trigger's inherited line box, so a typography change
+							    there could have moved the mark (design round 1, D5, remediated
+							    here). `-right-2.5` is unchanged, so the mark still hangs on
+							    the corner, and the row's height is untouched. The ring is gone,
+							    so the box IS the painted edge; the contrast pairs are the quiet
+							    row's own in `scripts/contrast-contract.mjs` (`inkDim` on
+							    `elevated`, and the header's ground is that row's `canvas`).
 							    The browser trigger KEEPS the bordered mark: its ring is what
 							    separates it from neighbouring icons and the wash is the
 							    feature's "an agent is blocked on you" meaning (the rail's own
 							    note carries that split), so the cluster now wears the two
-							    registers on purpose rather than by drift. */}
+							    registers on purpose rather than by drift.
+							    THE ROOM THE MARK COSTS (design round 1, D1, remediated here):
+							    its corner overhang is 10px, which is 2px past an 8px gap, so
+							    while it is drawn the cluster widens its step rather than letting
+							    the box enter the browser trigger's hover target - see the
+							    cluster's own comment for the rule and the price. */}
 							{asksBadgeDrawn && (
 								<span
 									className={cn(
-										"pointer-events-none absolute -top-1.5 -right-2.5",
+										"pointer-events-none absolute -top-0.5 -right-2.5 flex",
 									)}
 								>
 									<Badge
