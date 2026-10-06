@@ -766,7 +766,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 
 	/*
 	 * THE PRIMARY ACTIONS, two 30px rows at the top of the column (§C1.2; design
-	 * round 1, D1): `New chat ⌘N`, then `Search ⌘K`.
+	 * round 1, D1): `New chat ⌘N`, then `Search ⌘P`.
 	 *
 	 * New chat moved HERE from the list's own header, where it sat under a second
 	 * search field, a disclosure and an `All chats` row - the placement the design
@@ -776,7 +776,7 @@ export const SidebarNavigation: FC<SidebarNavigationProps> = () => {
 	 * so there is no second search control at rest.
 	 *
 	 * THE CHORD IS WRITTEN ON THE ROW, as caps with no separator between them
-	 * (N1: `⌘K`, not `⌘ + K`) - the app's `KeyboardShortcut` spells a chord as
+	 * (N1: `⌘P`, not `⌘ + P`) - the app's `KeyboardShortcut` spells a chord as
 	 * `+`-joined caps and prints the `+`, so the rows pass the caps as one string
 	 * and split nothing. The accessible name carries the chord in words.
 	 *

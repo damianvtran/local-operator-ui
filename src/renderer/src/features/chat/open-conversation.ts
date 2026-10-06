@@ -9,9 +9,11 @@ import type { NavigateFunction } from "react-router-dom";
  * three entrances that MOVE THE VIEW ONTO A CONVERSATION: the sidebar's rows, the
  * command palette's conversation rows and the `/chat` slash rebind. It is not
  * every URL that names a chat - `chat-page.tsx`'s send path re-points the URL once
- * a draft's session has materialised, and the Schedules and Projects rows, plus
- * the palette's own chat-panel entry, write `/chat/<session id>` for somewhere the
- * user is being SENT TO. Those are URL-first: they write the route and let the
+ * a draft's session has materialised, and the Schedules and Projects rows write
+ * `/chat/<session id>` for somewhere the user is being SENT TO. The palette is on
+ * THIS side of the split rather than that one: its conversation rows are
+ * `{ type: "session" }` targets that call this rule, so the palette builds no
+ * `/chat/<id>` URL of its own. Those are URL-first: they write the route and let the
  * effect open it, so none of them can defer a write behind a read and none carries
  * the defect this file exists for. What is checked by `session-switch.test.mjs` is
  * not "no other file writes a chat URL" - it is that no `/chat/<id>` write in the
