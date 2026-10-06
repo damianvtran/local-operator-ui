@@ -1,65 +1,66 @@
 {
   "states": {
     "empty-wire/localOperatorDark": {
-      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/empty-wire/localOperatorDark.webp",
+      "file": "<out-dir>/empty-wire/localOperatorDark.webp",
       "theme": "localOperatorDark",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation · All asks settled",
+      "scopeLine": "This conversation \u00b7 All asks settled",
       "emptySentence": null,
-      "bodyText": "This conversation · All asks settled No asks outstanding. The agent is not waiting on anything.",
+      "bodyText": "This conversation \u00b7 All asks settled No asks outstanding. The agent is not waiting on anything.",
       "rows": 0
     },
     "empty-wire/localOperatorLight": {
-      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/empty-wire/localOperatorLight.webp",
+      "file": "<out-dir>/empty-wire/localOperatorLight.webp",
       "theme": "localOperatorLight",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation · All asks settled",
+      "scopeLine": "This conversation \u00b7 All asks settled",
       "emptySentence": null,
-      "bodyText": "This conversation · All asks settled No asks outstanding. The agent is not waiting on anything.",
+      "bodyText": "This conversation \u00b7 All asks settled No asks outstanding. The agent is not waiting on anything.",
       "rows": 0
     },
     "unread/localOperatorDark": {
-      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/unread/localOperatorDark.webp",
+      "file": "<out-dir>/unread/localOperatorDark.webp",
       "theme": "localOperatorDark",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation · Not read yet",
+      "scopeLine": "This conversation \u00b7 Not read yet",
       "emptySentence": null,
-      "bodyText": "This conversation · Not read yet Reading the asks…",
+      "bodyText": "This conversation \u00b7 Not read yet Reading the asks\u2026",
       "rows": 0
     },
     "unread/localOperatorLight": {
-      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/unread/localOperatorLight.webp",
+      "file": "<out-dir>/unread/localOperatorLight.webp",
       "theme": "localOperatorLight",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation · Not read yet",
+      "scopeLine": "This conversation \u00b7 Not read yet",
       "emptySentence": null,
-      "bodyText": "This conversation · Not read yet Reading the asks…",
+      "bodyText": "This conversation \u00b7 Not read yet Reading the asks\u2026",
       "rows": 0
     },
     "unsupported/localOperatorDark": {
-      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/unsupported/localOperatorDark.webp",
+      "file": "<out-dir>/unsupported/localOperatorDark.webp",
       "theme": "localOperatorDark",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation · Not read yet",
+      "scopeLine": "This conversation \u00b7 Not read yet",
       "emptySentence": null,
-      "bodyText": "This conversation · Not read yet Reading the asks…",
+      "bodyText": "This conversation \u00b7 Not read yet Reading the asks\u2026",
       "rows": 0
     },
     "unsupported/localOperatorLight": {
-      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/unsupported/localOperatorLight.webp",
+      "file": "<out-dir>/unsupported/localOperatorLight.webp",
       "theme": "localOperatorLight",
       "drawer": 1,
       "closeAsks": 1,
-      "scopeLine": "This conversation · Not read yet",
+      "scopeLine": "This conversation \u00b7 Not read yet",
       "emptySentence": null,
-      "bodyText": "This conversation · Not read yet Reading the asks…",
+      "bodyText": "This conversation \u00b7 Not read yet Reading the asks\u2026",
       "rows": 0
     }
   },
-  "failures": []
+  "failures": [],
+  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly (see the drivers' `<out-root>` argument). Each state is the STORY it was shot from, so a reader reproduces it from the storybook id in the README's own table rather than from a path on the machine that ran it."
 }

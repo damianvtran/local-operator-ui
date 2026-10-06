@@ -1,10 +1,10 @@
 {
   "frames": {
-    "aPopulated": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/01-a-populated.png",
-    "drawerOpen": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/02-drawer-open.png",
-    "switchStuck": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/03-switch-stuck.png",
-    "afterVoidClickEscape": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/04-after-void-click-escape.png",
-    "afterComposerEscape": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/05-after-composer-escape.png"
+    "aPopulated": "<out-dir>/01-a-populated.png",
+    "drawerOpen": "<out-dir>/02-drawer-open.png",
+    "switchStuck": "<out-dir>/03-switch-stuck.png",
+    "afterVoidClickEscape": "<out-dir>/04-after-void-click-escape.png",
+    "afterComposerEscape": "<out-dir>/05-after-composer-escape.png"
   },
   "probes": {
     "afterSwitch": {
@@ -161,5 +161,6 @@
     "top": 774,
     "left": 415
   },
-  "ok": true
+  "ok": true,
+  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly: the frames a run writes land in the directory its invocation names, and no machine's absolute path is committed."
 }

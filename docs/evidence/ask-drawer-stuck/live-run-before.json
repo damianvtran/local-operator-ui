@@ -1,10 +1,10 @@
 {
   "frames": {
-    "aPopulated": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/01-a-populated.png",
-    "drawerOpen": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/02-drawer-open.png",
-    "switchStuck": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/03-switch-stuck.png",
-    "afterVoidClickEscape": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/04-after-void-click-escape.png",
-    "afterComposerEscape": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/05-after-composer-escape.png"
+    "aPopulated": "<out-dir>/01-a-populated.png",
+    "drawerOpen": "<out-dir>/02-drawer-open.png",
+    "switchStuck": "<out-dir>/03-switch-stuck.png",
+    "afterVoidClickEscape": "<out-dir>/04-after-void-click-escape.png",
+    "afterComposerEscape": "<out-dir>/05-after-composer-escape.png"
   },
   "probes": {
     "afterSwitch": {
@@ -176,5 +176,6 @@
     "top": 774,
     "left": 284
   },
-  "ok": true
+  "ok": true,
+  "note": "PATHS ARE THE RUN'S OWN OUT-DIR, spelled abstractly: the frames a run writes land in the directory its invocation names, and no machine's absolute path is committed."
 }
