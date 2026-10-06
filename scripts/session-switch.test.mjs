@@ -201,7 +201,6 @@ function reset({ draft = null } = {}) {
 					},
 				}
 			: {},
-		sessionByAgent: {},
 		validatingSessionId: null,
 		forgotten: {},
 		error: null,
@@ -1028,27 +1027,23 @@ test("the loading indicator stays one small quiet mark", () => {
  * buy is that a new entrance cannot arrive silently: it has to build the URL, or
  * commit the switch, in a file whose entry has to be written down with a reason.
  *
- * The entrances themselves are asserted by name too, below: the rule is called by
- * both entrances in `chat-page.tsx` (the sidebar's row and the `/chat` rebind) and
- * by the palette.
+ * The entrances themselves are asserted by name too, below (ENTRANCE_FILES): the
+ * rule is called by both entrances in `chat-page.tsx` (the sidebar's row and the
+ * `/chat` rebind) and by the palette's conversation rows.
+ *
+ * FIVE ROWS LEFT THIS TABLE WITH ISSUES #844/#849, which is the change being
+ * recorded rather than a hole in the scan: `app.tsx`'s create-agent landing, the
+ * agent-hub download landing, the agents sidebar's "Chat with agent", the legacy
+ * agents page's Chat button and the palette's agent row all used to write
+ * `/chat/<agent id>` - a route whose only non-session fallback had no writer, so
+ * every one of them landed on the legacy notice. They stage a draft now
+ * (`stageDraft({ kind, name })` then `navigate("/chat")`), which builds no chat
+ * URL: the same landing the sidebar's "New chat with <name>" rows have always
+ * used. Removing a row here is the test working - the scan follows the code, and
+ * an interpolated chat URL RETURNING to one of those files fails as an
+ * appearance.
  */
 const CHAT_URL_BUILDERS = {
-	"src/renderer/src/app.tsx": {
-		count: 1,
-		why: "the create-agent flow's landing URL",
-	},
-	"src/renderer/src/features/agent-hub/hooks/use-download-agent-mutation.ts": {
-		count: 1,
-		why: "the downloaded agent's chat, once the download answered",
-	},
-	"src/renderer/src/features/agents/components/agents-sidebar.tsx": {
-		count: 1,
-		why: "the chat-with-this-agent button",
-	},
-	"src/renderer/src/features/agents/components/legacy-agents-page.tsx": {
-		count: 1,
-		why: "the legacy page's chat-with-this-agent button",
-	},
 	"src/renderer/src/features/chat/components/chat-page.tsx": {
 		count: 1,
 		why: "the send path re-pointing the URL once a staged draft's session has materialised - guarded by `activeSessionId === id` in the same expression",
@@ -1056,10 +1051,6 @@ const CHAT_URL_BUILDERS = {
 	"src/renderer/src/features/chat/open-conversation.ts": {
 		count: 2,
 		why: "the rule itself: the switch's own URL, and the refusal's restore",
-	},
-	"src/renderer/src/features/command-palette/use-palette-sources.ts": {
-		count: 1,
-		why: "the palette's chat-panel entry (a URL-first `path` target, navigated by the palette's own `path` case)",
 	},
 	/*
 	 * `onboarding/components/onboarding-modal.tsx` left this table with the

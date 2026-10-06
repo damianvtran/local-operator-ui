@@ -32,6 +32,7 @@ const {
 	buildSettingKeyItems,
 	buildSettingsSectionItems,
 	AGENT_ROSTER_SEED,
+	COMMAND_SCOPE_SEED,
 	CONVERSATION_SWITCHER_SEED,
 	matchQuality,
 	normalizeText,
@@ -589,19 +590,20 @@ test("a scope narrows which sources answer at all", () => {
 	const settings = searchPalette({ items, raw: ",settings" });
 	assert.deepEqual(groups(settings), ["settings"]);
 
-	// An agents scope admits the agent group and nothing else; this fixture has
-	// no agents, so it is empty rather than falling back to everything.
+	// An agents scope admits the agent and team groups and nothing else; this
+	// fixture has neither, so it is empty rather than falling back to everything.
 	assert.deepEqual(groups(searchPalette({ items, raw: "@ada" })), []);
 });
 
 test("the conversation switcher's seed opens on the chats scope", () => {
 	/*
-	 * `Cmd/Ctrl+P` opens the palette with `CONVERSATION_SWITCHER_SEED` (issue
-	 * #659), so this pins what that seed MEANS rather than how it is spelled
-	 * somewhere else: the chat scope with no terms, i.e. the conversations
-	 * source and nothing else. A drift in either direction is silent - the
-	 * door would become a second copy of Cmd/Ctrl+K, or a scope that admits
-	 * rows from groups the switcher has no answer for.
+	 * `Cmd/Ctrl+K` opens the palette with `CONVERSATION_SWITCHER_SEED` (issue
+	 * #850 moved it there from Cmd/Ctrl+P, which now opens EVERYTHING), so this
+	 * pins what the seed MEANS rather than which chord writes it: the chat scope
+	 * with no terms, i.e. the conversations source and nothing else. A drift in
+	 * either direction is silent - the door would become a second copy of the
+	 * palette's browse list, or a scope that admits rows from groups the switcher
+	 * has no answer for.
 	 */
 	assert.equal(CONVERSATION_SWITCHER_SEED, "#");
 	assert.deepEqual(parsePaletteQuery(CONVERSATION_SWITCHER_SEED), {
@@ -656,14 +658,19 @@ test("the sidebar's agent jump seed opens on the agents scope", () => {
 				kind: "agent",
 				group: "agents",
 				name: "ledger-auditor",
-				hint: "Open chat",
+				hint: "Agent chat",
 				icon: "chat",
 				// Featured for the reason the switcher's own rows are, one test up:
 				// with no terms the palette draws the BROWSE layout, which is built
 				// from featured rows, and the app's source marks its agent chat rows
 				// exactly so when the query is empty (`use-palette-sources.ts`).
 				featured: true,
-				target: { type: "path", path: "/chat/ledger-auditor" },
+				/*
+				 * Shaped the way the app builds it since issue #844: the agent row's target
+				 * is the DRAFT door, not `/chat/<id>` - that path had no non-session
+				 * fallback in the store, so it always landed on the legacy-link notice.
+				 */
+				target: { type: "draft", kind: "agent", name: "ledger-auditor" },
 			},
 		],
 		raw: AGENT_ROSTER_SEED,
@@ -672,6 +679,94 @@ test("the sidebar's agent jump seed opens on the agents scope", () => {
 	assert.ok(
 		names(outcome).includes("ledger-auditor"),
 		"the scope shows the roster, not nothing",
+	);
+});
+
+test("the commands seed opens on the command scope", () => {
+	/*
+	 * `Cmd/Ctrl+Shift+P` opens the palette with `COMMAND_SCOPE_SEED` (issue #850),
+	 * the THIRD door. Pinned the same way its two siblings are: what the seed
+	 * MEANS, not where it is spelled. The commands door is "show me what the app
+	 * can do", so a drift to any other glyph would make it a third copy of a door
+	 * that already exists.
+	 */
+	assert.equal(COMMAND_SCOPE_SEED, ">");
+	assert.deepEqual(parsePaletteQuery(COMMAND_SCOPE_SEED), {
+		scope: "command",
+		terms: "",
+	});
+});
+
+test("teams live under the agent scope, and nowhere else (issue #849)", () => {
+	/*
+	 * Teams are the roster's second entity class, so `@` admits the `teams` group
+	 * beside `agents` — and the team WORDS scope to the agent scope rather than to
+	 * a fifth prefix. Both halves are pinned here because either one alone would
+	 * leave `@delivery` (or the word "team") quietly answering nothing.
+	 */
+	assert.deepEqual(parsePaletteQuery("@delivery"), {
+		scope: "agent",
+		terms: "delivery",
+	});
+	assert.deepEqual(parsePaletteQuery("team delivery"), {
+		scope: "agent",
+		terms: "delivery",
+	});
+	assert.deepEqual(parsePaletteQuery("teams"), {
+		scope: null,
+		terms: "teams",
+	});
+	/*
+	 * The legend teaches ONE glyph for both entity classes, and the label says so:
+	 * a reader who met `@` as "agents" must be told teams are under it too, or the
+	 * roster's second half is undiscoverable.
+	 */
+	const agentEntry = SCOPE_LEGEND.find((entry) => entry.scope === "agent");
+	assert.ok(agentEntry, "the agent scope is in the legend");
+	assert.equal(agentEntry.label, "Agents and teams");
+	/*
+	 * At the list level: a fixture carrying one agent row and one team row answers
+	 * `@` with BOTH groups, which is the whole change — the browse list a teammate
+	 * sees and the one an agent's owner sees are the same list.
+	 */
+	const outcome = searchPalette({
+		items: [
+			{
+				id: "agent-chat-ledger-auditor",
+				kind: "agent",
+				group: "agents",
+				name: "ledger-auditor",
+				hint: "Agent chat",
+				icon: "chat",
+				featured: true,
+				target: { type: "draft", kind: "agent", name: "ledger-auditor" },
+			},
+			{
+				id: "team-chat-delivery",
+				kind: "team",
+				group: "teams",
+				// The row READS the display label while the draft is keyed by the slug.
+				name: "Delivery crew",
+				hint: "Team chat",
+				icon: "team",
+				keywords: ["delivery"],
+				featured: true,
+				target: { type: "draft", kind: "team", name: "delivery" },
+			},
+		],
+		raw: AGENT_ROSTER_SEED,
+	});
+	assert.deepEqual(groups(outcome), ["agents", "teams"]);
+	assert.deepEqual(names(outcome), ["ledger-auditor", "Delivery crew"]);
+	/*
+	 * And the other scopes do NOT admit teams: `#` is conversations and `>` is
+	 * commands, so a team row there would be a row the scope has no answer for.
+	 */
+	assert.ok(
+		!groups(searchPalette({ items, raw: "#ledger" })).includes("teams"),
+	);
+	assert.ok(
+		!groups(searchPalette({ items, raw: ">ledger" })).includes("teams"),
 	);
 });
 
