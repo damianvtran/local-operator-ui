@@ -44,6 +44,7 @@ const {
 	SCROLLBAR_FADE_OUT_MS,
 	SCROLLBAR_HOLD_MS,
 	SCROLLBAR_IDLE,
+	SCROLLBAR_RESTING_FLOOR,
 	UNDO_SCOPE_ATTRIBUTE,
 	installScrollbarActivity,
 } = await import(
@@ -581,8 +582,49 @@ test("the stylesheet keeps the shipped look and adds the fade's rules", () => {
 	);
 	assert.ok(
 		stylesSource.includes("@property --lo-sb") &&
-			stylesSource.includes("initial-value: 0;"),
-		"the registered property is what makes it interpolatable at all",
+			stylesSource.includes("initial-value: ${SCROLLBAR_RESTING_FLOOR};"),
+		"the registered property is what makes it interpolatable at all, and it now starts at the resting floor rather than 0",
+	);
+	/*
+	 * THE RESTING FLOOR (issue #845). Idle used to mean INVISIBLE, and the amendment is
+	 * that rest is a FAINT state rather than the absence of one - so the two halves that
+	 * must both hold are that the number is the module's single exported constant (this
+	 * sheet interpolates it rather than restating it), and that it is the measured value
+	 * the derivation beside the rule names. The band it was chosen in is 1.5:1 (so the
+	 * thumb reads) to 2.5:1 (so it can never read as chrome, and stays under the 3:1
+	 * non-text floor on every palette); the derivation and the frames are under
+	 * `docs/evidence/sidebar-rest-intent/`.
+	 */
+	assert.equal(
+		SCROLLBAR_RESTING_FLOOR,
+		0.45,
+		"the resting floor is the measured 0.45; re-derive the band before moving it",
+	);
+	assert.ok(
+		stylesSource.includes("--lo-sb: ${SCROLLBAR_RESTING_FLOOR};"),
+		"the base rule resets to the floor, not to 0",
+	);
+	assert.ok(
+		!/initial-value: 0;/.test(stylesSource),
+		"and nothing re-registers the property at 0, which would put the thumb back to invisible at rest",
+	);
+	/*
+	 * THE TWO STATES THE AMENDMENT DID NOT TOUCH. `[data-lo-scrollbar="active"]` still
+	 * pins the value at 1, and the thumb under the pointer is still solid at once, so the
+	 * fade still runs floor -> 1 and the reader who has already found the bar is not made
+	 * to wait out a floor.
+	 */
+	assert.ok(
+		/\[\$\{SCROLLBAR_ATTRIBUTE\}="active"\]\s*\{[^}]*-lo-sb:\s*1;/.test(
+			stylesSource,
+		),
+		"the active state still reaches the solid role",
+	);
+	assert.ok(
+		/\*::-webkit-scrollbar-thumb:hover\s*\{\s*background-color:\s*var\(--color-control\);/.test(
+			stylesSource,
+		),
+		"and the thumb under the pointer is still the solid role",
 	);
 	/*
 	 * THE NON-COLLISION RULE (review round 1: U2 / U3). The cue used to be an

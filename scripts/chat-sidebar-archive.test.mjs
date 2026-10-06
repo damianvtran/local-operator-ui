@@ -138,7 +138,13 @@ test("the archive control is absent from the layout at rest, and named by its ac
 	 * AT REST THE CONTROL IS NOT IN THE LAYOUT AT ALL (design D3). The reveal used to
 	 * be `opacity: 0` plus `pointer-events-none` on a box that was always there, which
 	 * cost the title 28px on every row whether or not the pointer was anywhere near it;
-	 * the base is now `hidden` and the two group states ADD `flex`.
+	 * the base is now `hidden` and the two reveal states ADD `flex`.
+	 *
+	 * THE POINTER HALF IS THE ROW'S DWELL, NOT A BARE HOVER (issue #840): the attribute
+	 * `chat-row-hover-intent.tsx` writes after the app's hover-intent constant replaces
+	 * `group-hover` on all four per-row controls, so a press on its way to selecting a
+	 * row never meets a control that has just arrived. `group-focus-within` is
+	 * untouched and stays immediate, because the keyboard path has no such hazard.
 	 *
 	 * THE BASE MUST BE `hidden` AND NOT `flex`, and that is the cascade bug this file
 	 * already caught once (agent review round 2, N1): `hidden` and `flex` are two
@@ -150,7 +156,7 @@ test("the archive control is absent from the layout at rest, and named by its ac
 		control,
 		/"hidden size-6 shrink-0 items-center justify-center rounded-md"/,
 	);
-	assert.match(control, /group-hover:flex/);
+	assert.match(control, /group-data-\[session-hover-intent\]:flex/);
 	assert.match(control, /group-focus-within:flex/);
 	/*
 	 * AND THE OLD REVEAL IS GONE, both halves of it: `opacity` and `pointer-events` come
@@ -164,7 +170,7 @@ test("the archive control is absent from the layout at rest, and named by its ac
 	assert.equal(control.includes("transition-opacity"), false);
 	// Only colour moves on the reveal: nothing lifts, scales or translates on hover.
 	assert.equal(/group-hover:[a-z-]*(scale|translate)/.test(control), false);
-	assert.match(control, /group-hover:text-ink-muted/);
+	assert.match(control, /group-data-\[session-hover-intent\]:text-ink-muted/);
 	/*
 	 * REACHABLE BY KEYBOARD, which is why `group-focus-within` is here: Tab reaches the
 	 * row's button (the row's only tab stop at rest), which puts focus inside the row,
@@ -1218,7 +1224,7 @@ test("the shed is gone, and what replaced it is a display switch with no reserve
 	assert.match(pairWrapper, /"items-center gap-1"/);
 	assert.match(
 		pairWrapper,
-		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-hover:flex group-focus-within:flex"/,
+		/(?:pinned \|\| menuOpen)\s*\?\s*"flex"\s*:\s*"hidden group-data-\[session-hover-intent\]:flex group-focus-within:flex"/,
 	);
 });
 

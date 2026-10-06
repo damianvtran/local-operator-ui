@@ -43,6 +43,18 @@ has today — `--color-control`, 8 px, radius 4, transparent track — and gains
 exactly one new behaviour: it is invisible at rest and fades in when the reader
 scrolls, or moves toward the bar, then fades back out.*
 
+> **AMENDED, 2026-10-06 (issue #845): the thumb is no longer INVISIBLE at rest.**
+> The operator's newer ask is a *faded resting state* — "idle stops meaning
+> invisible; the thumb dims to a low-alpha resting state and still goes solid on
+> hover and during scrolling" — which amends clause 1 of the quoted ask ("they
+> must never be permanently stamped on screen") rather than contradicting it: the
+> bar is never a full-strength control at rest, and it is never absent either. The
+> change is one number in the one shared implementation
+> (`global-scrollbar-styles.tsx`'s base `--lo-sb`), so every thumb in the app moves
+> together and no surface needs its own copy. Derivation, band, and the rest of
+> this issue's work are in § 10 below; every clause of the original ask other than
+> "invisible at rest" stands as written.
+
 ---
 
 ## 1. What is there now, measured
@@ -558,6 +570,105 @@ inventory). This document does not restate those numbers as its own.
   already ignored `data-highlight` — the guard prevents the write, this makes the
   write harmless if a future shape defeats the guard. The editor root carries
   `data-undo-scope`, which is what the guard walks up to find.
+
+## 10. Amendment, 2026-10-06 (issue #845): a resting floor, and the sidebar's edges
+
+This is not a second design direction; it is the implementation of the amendment
+recorded at the top, plus the second half of the same issue. Both halves go
+through the shared mechanism rather than through a surface-local patch.
+
+### 10.1 The resting floor, and how the number was chosen
+
+Idle used to mean `--lo-sb: 0` — the thumb painted at full transparency, so the
+bar was there and invisible until the reader already knew where it was. The base
+rule now resets to **`SCROLLBAR_RESTING_FLOOR = 0.45`**
+(`shared/lib/scrollbar-activity.ts`), the fraction of `--color-control` an idle
+thumb keeps. `--lo-sb` stays the only thing the fade moves, so the reader who
+scrolls or reaches for the bar still gets the solid role (`[data-lo-scrollbar
+="active"]` pins 1; `::-webkit-scrollbar-thumb:hover` paints the solid colour),
+and forced-colors still pins 1 with `transition: none`.
+
+**The value is measured, not picked.** Compositing the control over every ground
+a scroller can sit on (`surface`, `sunken`, `elevated`, `canvas`) for all 59
+palettes, and taking the ratio the file's own contrast work uses:
+
+| α over `--color-control` | worst palette/ground | best palette/ground |
+| --- | --- | --- |
+| 0.40 | 1.47:1 (`catppuccinLatte`/`sunken`) | 2.04:1 |
+| **0.45** | **1.55:1** (`rosePineDawn`/`sunken`, the light extreme) | **2.24:1** (`catppuccinMacchiato`/`sunken`, the dark extreme) |
+| 0.50 | 1.64:1 | 2.49:1 |
+| 0.55 | 1.73:1 | 2.72:1 |
+
+The two brand palettes sit inside that band at 0.45: `localOperatorDark`
+1.73–1.86, `localOperatorLight` 1.59–1.71 across the four grounds. **The band is
+the criterion, and it is why 0.45 rather than its neighbours:** at or above
+1.55:1 the thumb READS on a real panel, and below 2.5:1 — and therefore below the
+3:1 non-text floor on every palette — it can never be mistaken for a
+full-strength control. 0.40 misses the first half (1.47) and 0.55 the second
+(2.72). Nothing here is a claim about a WCAG floor: the resting thumb is
+deliberately sub-3:1, which is the *point* of an amendment whose whole ask is that
+rest is quiet.
+
+**No `CONTROLS` row, and the reason is structural rather than an omission.**
+`scripts/contrast-contract.mjs`'s `CONTROLS` table asserts a control's edge as
+"fill OR border clears 3:1 against the ground". The resting thumb clears neither
+— it is the composite of the two, at 1.55:1 at worst — so a row there would
+either fail by construction or have to be a different assertion wearing a control
+row's name, which is the "green output about a component nobody listed" failure
+the table's own note forbids. The claim instead is pinned where it can be
+honestly made: the value and its two untouched neighbours are asserted in
+`scripts/scrollbar-activity.test.mjs` (the floor, the `active` state reaching 1,
+and the hover rule staying solid), and the derivation above is the record the
+test's failure message points at.
+
+### 10.2 The sidebar list's edge cues
+
+The list scroller (`chat-sidebar.tsx`, `data-sidebar-region="scroller"`) gains a
+top and a bottom cue that appear only while content is clipped at that edge. It
+is the transcript's technique, not a second one (`styles/index.css`): a registered
+`<length>` per edge, one `mask-image` the element always carries, and
+`animation-timeline: scroll(self)` driving each length over its own 24 px. A
+length of `0px` is a hard edge, so the declared rest state is *no cue at all*,
+which is what a list shorter than its pane keeps. The two animations are declared
+in longhand (`animation-name` / `-timeline` / `-range` lists) — the shorthand
+resets `animation-timeline`, which is the regression § 5.4's sibling note in
+`global-scrollbar-styles.tsx` records — and the scrollbar sheet stays
+animation-free.
+
+**The mask paints the bar too**, exactly as § 5.4 says it does for the
+transcript: the thumb's own top and bottom bands soften inside those 24 px. It is
+accepted here for the transcript's reason and one more — the cue is at its
+*weakest* exactly where the thumb sits at the track's extremes, so the bar a
+reader is reaching for is never the thing being faded. Nothing fades the track
+separately.
+
+**The unsupported branch is silence, not a permanent fade.** The transcript keeps
+its top fade always on where scroll timelines are missing, because that
+element's top edge is scrolled-away content almost by definition. A sidebar list
+is not: a permanent cue would dim the first row of every *short* list and the
+last row of every list that fits. So there the declared `0px` lengths stand and
+the element simply carries no cue — Chromium is what Electron ships, so the
+guarded half is the real one.
+
+### 10.3 The sweep, and what it did not change
+
+The report's own ask is that an "all/anywhere" claim be swept rather than
+asserted, so here is the audit, bounded to the bar the report set — right-side
+panels, palette lists, and any scroller under a fixed header.
+
+| Surface | Disposition |
+| --- | --- |
+| Sidebar conversation list | **Cued.** The report's case: a fixed search/filter row sits directly above the scroller, so a row cut at the top edge reads as the list's first row. |
+| Canonical transcript | Already carries it (§ 1); untouched. |
+| Command palette / picker bodies (`picker-host.tsx`) | **Deferred, with the reason.** The body already spends `mask-image` on a JS-conditional bottom fade (`bodyHasMoreBelow`) that has its own evidence; the scroll-linked cue is a different mechanism writing the *same* property, so applying it here means replacing that one, not adding to it. One mismatch away from being the same defect — recorded rather than half-done. |
+| Right-side panels (`aside-panel.tsx`, `run-details/run-panel.tsx`) | **Deferred, with the reason.** Same defect class (a scroller directly under the pane's header) and the same one-attribute fix, but this PR's rendered evidence covers the sidebar; a change to two panes nobody photographed is not evidence-backed, and the mechanism is shared, so it is one attribute each when a surface brings frames. |
+| Scrollers under a sticky band (`project-list.tsx`, `project-board.tsx`, `project-timeline.tsx`, `team-section-header.tsx`) | **Exempt — already solved, differently.** These pin an OPAQUE band over the rows, so a row scrolls fully under it and is hidden rather than cut; a fade would be a second answer to a question they have already answered. |
+| Bounded blocks (tool-detail sections, output/log/error/code blocks, md tables) | **Exempt.** They are not lists of interchangeable rows under a header; a block that clips its own last line states its own overflow, and the transcript's log already carries the cue one level up. |
+
+Nothing in this section changes a threshold, a duration or a state: the cue is a
+paint, and the floor is one number in the shared rule.
+
+---
 
 ## Appendix: the surface list, in one line for the PR body
 

@@ -203,11 +203,27 @@ are shown - the cluster the deleted arrow buttons used to make 108/136.
 `display` switch replaces the opacity pairing on these two controls:
 
 - the pair wrapper (`data-session-control-pair`) keeps `flex items-center gap-1`
-  and gains `hidden group-hover:flex group-focus-within:flex` **while the row is
-  unpinned**; on a pinned row the wrapper is always `flex`, because the mark
-  inside it is the state;
-- the archive control gains `hidden group-hover:flex group-focus-within:flex`
-  unconditionally, and the pin control gains it while the row is unpinned;
+  and gains `hidden group-data-[session-hover-intent]:flex group-focus-within:flex`
+  **while the row is unpinned**; on a pinned row the wrapper is always `flex`,
+  because the mark inside it is the state;
+- the archive control gains
+  `hidden group-data-[session-hover-intent]:flex group-focus-within:flex`
+  unconditionally, and the pin control gains it while the row is unpinned; the
+  grip, which has no focus term by design, gains the pointer half alone;
+- **the pointer's half is a DWELL, and the keyboard's is not (2026-10-06, issue
+  #840).** `group-hover` was the first frame the pointer was on the row; it is
+  now `group-data-[session-hover-intent]`, an attribute written by the row's own
+  mounted gate (`chat-row-hover-intent.tsx`) only after the app's
+  `HOVER_INTENT_MS` (200ms) has elapsed, and cleared on `pointerleave` so a
+  re-entering pointer waits a fresh interval. The constant is imported from the
+  panel divider rather than restated - it is the one the sidebar's collapse
+  cluster and the panel's dividers already reveal on - and it is deliberately
+  NOT the pan's `TOOLTIP_DELAY_MS` (400ms): the order between the two is
+  load-bearing, because the pan measures the HOVERED box and so must run after
+  the acts have taken their 56px. `group-focus-within` is untouched and stays
+  immediate, because a keyboard reader arrives deliberately and cannot sweep
+  through a row. The trailing time gives way on the same clock as the acts - it
+  is the other half of one swap - so it is gated on the same attribute;
 - nothing about either gets a `transition`: `display` is not one of the four
   properties `docs/branding.md` § 5 lets animate, and the app's motion vocabulary
   has no entrance here to spend.
@@ -831,7 +847,7 @@ none is being quietly abandoned:
 
 | The rule today | What replaces it |
 | --- | --- |
-| The controls are `size-6 shrink-0` "so the reserved slot cannot reflow the row"; the reveal is "`opacity` and `pointer-events` only, so the reveal cannot reflow the row" | **Replaced (D3).** There is no reserved slot. The row's box, its height and the title's leading edge still never move; what moves is the title's clip, by 52px (28 on a pinned row), at the only moment the controls exist. The invariant the old rule protected - nothing shifts under the pointer that the pointer is aiming at - survives where it matters: the controls do not move when they appear, and they appear on pointer-enter, before any press can be aimed. |
+| The controls are `size-6 shrink-0` "so the reserved slot cannot reflow the row"; the reveal is "`opacity` and `pointer-events` only, so the reveal cannot reflow the row" | **Replaced (D3).** There is no reserved slot. The row's box, its height and the title's leading edge still never move; what moves is the title's clip, by 52px (28 on a pinned row), at the only moment the controls exist. The invariant the old rule protected - nothing shifts under the pointer that the pointer is aiming at - survives where it matters, and is now STRONGER than this row could claim when it was written: the controls do not move when they appear, and they appear only after the pointer has DWELLED on the row for the app's hover-intent constant (200ms, `HOVER_INTENT_MS`; issue #840, 2026-10-06), so a press on its way to selecting a row never meets a control that has just arrived. The keyboard path is unchanged and immediate (`group-focus-within`). |
 | "A hidden control is inert" (`opacity: 0` + `pointer-events-none`) | **Strengthened (D3).** `display: none` cannot receive a press at all, so this stops being a rule to remember. The opacity/pointer-events pairing comes off these controls. |
 | "The pin's state must read WITHOUT hovering" (a pinned row's glyph is filled `text-ink`) | **Kept, and now true at every width (D4).** Measured broken at 240 today (D1). |
 | "Nothing lifts, scales or translates on hover" (`branding.md` § 5) | **Extended by the operator's own instruction, and bounded.** The pan translates the title's *text* by up to the overflow, one way, after a dwell, stopping at the end; the row, its controls, its box and its ground do not translate, lift or scale. The one property that moves is `transform`, which § 5 admits "for entrances" - this is a marquee rather than an entrance, and it is stated here as the deliberate exception, with reduced motion as its off switch. |
@@ -975,9 +991,25 @@ than from a green test.
 
 ## 15. Not addressed
 
-- **T1 - deferring the grip to the trailing band, or to a 250ms dwell: DEFERRED, with the
-  tradeoff stated in the number the reader sees (2026-09-30; reworded after design round 1,
-  D5).** The stretch item from the consult spec. The crowded state it was written about is
+- **T1 - deferring the grip to the trailing band, or to a dwell: the DWELL IS ADOPTED
+  (2026-10-06, issue #840); the trailing band stays DEFERRED.** The stretch item from
+  the consult spec, and the entry this document reserved a revisit for. Its revisit
+  trigger fired: a report that the acts get hit while a reader is selecting a row, which
+  is exactly the hazard the deferral's own reasoning named and could not price. So the
+  dwell is no longer a proposal - the row's pointer half reveals on the app's existing
+  `HOVER_INTENT_MS` (200ms, the panel divider's constant, not a new number), written as
+  an attribute by the row's mounted gate and cleared on leave, with the keyboard's
+  `group-focus-within` untouched. What the deferral got WRONG was its parting claim: "a
+  CSS-only version cannot express 'after the pointer has dwelt here', and the JavaScript
+  version is per-row pointer state" reads as two dead ends, and the second is only a
+  dead end inside `sessionRow` - a plain render function, where a hook would run a
+  different number of times per render. It is a MOUNTED COMPONENT instead, the shape
+  `chat-row-title.tsx` already uses for the pan's own per-row listeners, so the state
+  lives where per-row state can live and the reveal stays CSS (the component writes one
+  attribute; Tailwind's `group-data-[session-hover-intent]` variant reads it).
+
+  The BAND half stays deferred, unchanged and for the reasons below. The crowded state it
+  was written about is
   gone, but the honest baseline is what a reader with two or more pinned rows gets, not the
   40px the five-control cluster once left. The grip is drawn at every width when two or more
   pinned rows are shown, so the title under the pointer reads **116px at the 260 default and
@@ -986,11 +1018,9 @@ than from a green test.
   for the grip would give back **28px - about 29% of a 96px title, and 24% of a 116px one**,
   which is not a marginal amount, and the case for it is real. What it costs is a second place
   for the same handle to live (a trailing-band variant the drag and the flyout both have to
-  know about), and every clean mechanism is gone: a CSS-only version cannot express "after the
-  pointer has dwelt here", and the JavaScript version is per-row pointer state in a file whose
-  hover path another lane is auditing. The reveal is still a single step, the cluster's arrival
+  know about). The reveal is still a single step, the cluster's arrival
   cost fell 108 -> 80 at 260 and 136 -> 80 at 280 and above, and the operator's complaint (the
-  pop-out) is improved at every width.
+  pop-out) is answered by the dwell above at every width.
 
   **REVISIT WHEN**: a title reading under about **100px at the default width** (260) with two
   or more pins, or under about **80px at the 220 floor** (`grip-hover-220` is the reading), or
