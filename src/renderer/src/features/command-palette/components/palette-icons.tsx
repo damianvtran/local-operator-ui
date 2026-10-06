@@ -39,6 +39,7 @@ import {
 	SquarePen,
 	Store,
 	Trash2,
+	Users,
 } from "lucide-react";
 import type { FC } from "react";
 import type { PaletteIconName } from "../palette-search";
@@ -48,6 +49,10 @@ const LUCIDE: Record<Exclude<PaletteIconName, "account">, LucideIcon> = {
 	chat: MessageSquare,
 	conversation: MessagesSquare,
 	agents: Bot,
+	// The sidebar's own team glyph (`chat-sidebar.tsx`: `Users` for a team, `Bot`
+	// for an agent), so a team row reads the same in the palette as in the list it
+	// stages a draft from.
+	team: Users,
 	projects: FolderKanban,
 	hub: Store,
 	network: Network,
