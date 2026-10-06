@@ -71,6 +71,9 @@ const KIND_VERBS: Record<PaletteItem["kind"], string> = {
 	panel: "Open",
 	chat: "Open",
 	agent: "Open",
+	// A team row opens a chat too (issue #849), so the same verb: what the row does
+	// is unchanged by the entity class, and the HINT is where the class is said.
+	team: "Open",
 	"settings-section": "Open",
 	setting: "Open",
 };
@@ -411,6 +414,26 @@ export const CommandPalette: FC = () => {
 				case "command":
 					runCommand(item.target.command);
 					return;
+				case "draft": {
+					/*
+					 * THE DRAFT DOOR (issues #844, #849). An agent or team row stages a chat
+					 * the way the sidebar's "New chat with <name>" rows and `handleNewChat`
+					 * do, then goes to the chat route - one door for both entities, because
+					 * `stageDraft` already keys them (`draft:agent:<name>`, `draft:team:<name>`).
+					 *
+					 * NOT fresh, deliberately: `stageDraft({ kind, name })` re-uses the keyed row,
+					 * so pressing a name returns to the chat that name already started rather
+					 * than clearing it - which is exactly what the sidebar's rows do, and what
+					 * makes the palette a second door to that room rather than a second rule.
+					 * `handleNewChat` above is the other half of the pair: it IS fresh, because
+					 * its row is the untargeted "New chat".
+					 */
+					const { kind, name } = item.target;
+					useCanonicalSessionsStore.getState().stageDraft({ kind, name });
+					closeCommandPalette();
+					navigate("/chat");
+					return;
+				}
 				case "panel": {
 					/*
 					 * A panel is presented by a HOST, and which one depends on the
@@ -689,15 +712,18 @@ export const CommandPalette: FC = () => {
 	const activeItem = activeMatch?.item;
 	const showScopeLegend = !hasTerms || !hasResults;
 	/*
-	 * The walk's caps as the footer draws them (issue #761): the REACHABLE set
-	 * only. `Ctrl+P` is bound and steps wherever it arrives, but in the
-	 * packaged app main's `before-input-event` owns the press
-	 * (`src/main/index.ts:3492-3500`, focused + visible windows) and answers it
-	 * with the switcher seed — so this legend teaches `Ctrl+N` alone, and
-	 * `paletteReachableStepCaps` is the one place that set lives (design round
-	 * 1, D1).
+	 * The walk's caps as the footer draws them (issues #761, #850): the REACHABLE
+	 * set, which is a PLATFORM question since #850. `Ctrl+P` steps wherever it
+	 * arrives, and on macOS it now does: main's palette branch answers Cmd alone
+	 * there (`src/main/index.ts`) and lets Control through to the renderer. On
+	 * Windows and Linux main still preventDefaults Ctrl+P and answers it with the
+	 * palette's everything door, so the legend there teaches `Ctrl+N` alone.
+	 * `paletteReachableStepCaps` is the one place that set lives (design round 1,
+	 * D1); the platform is read here because the footer is the only caller.
 	 */
-	const stepCaps = paletteReachableStepCaps();
+	const stepCaps = paletteReachableStepCaps(
+		navigator.platform.toUpperCase().indexOf("MAC") >= 0,
+	);
 
 	return (
 		<>

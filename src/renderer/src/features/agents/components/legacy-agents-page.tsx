@@ -22,6 +22,7 @@ import { useAgent } from "@shared/hooks/use-agents";
 import { useRadientAuth } from "@shared/hooks/use-radient-auth";
 import { useAgentRouteParam } from "@shared/hooks/use-route-params";
 import { useAgentSelectionStore } from "@shared/store/agent-selection-store";
+import { useCanonicalSessionsStore } from "@shared/store/canonical-sessions-store";
 import {
 	Bot,
 	CloudUpload,
@@ -246,7 +247,19 @@ export const LegacyAgentsPage: FC<AgentsPageProps> = () => {
 									>
 										<Button
 											variant="primary"
-											onClick={() => navigate(`/chat/${selectedAgent.id}`)}
+											onClick={() => {
+												/*
+												 * THE DRAFT DOOR (issue #844): `/chat/<agent id>` had no non-session
+												 * fallback in the store, so this button always landed on the legacy-link
+												 * notice. `stageDraft({ kind: "agent", name })` then `/chat` is the door
+												 * the sidebar's "New chat with <name>" rows and the agent page use.
+												 */
+												useCanonicalSessionsStore.getState().stageDraft({
+													kind: "agent",
+													name: selectedAgent.name,
+												});
+												navigate("/chat");
+											}}
 										>
 											<MessageSquare aria-hidden="true" />
 											Chat

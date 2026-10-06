@@ -1418,7 +1418,7 @@ export function ChatSidebar({
 	const [query, setQuery] = useState("");
 	/*
 	 * THE LIST FILTER IS NOT A SECOND SEARCH AT REST (design round 1, D1). The
-	 * sidebar's one visible search is the `Search ⌘K` row above (the palette), and
+	 * sidebar's one visible search is the `Search ⌘P` row above (the palette), and
 	 * a bordered `Search chats and agents` field under it was the second search the
 	 * round photographed. The filter is KEPT - it is the only surface that can
 	 * widen to archived conversations (`Include archived`), so removing it would
@@ -9309,7 +9309,7 @@ export function ChatSidebar({
 		    search uses on the left for its leading glyph. */}
 				{/*
 				 * DRAWN ONLY WHILE FILTERING (see `filterOpen`): the column's one search at
-				 * rest is the palette's `Search ⌘K` row, and this field is the list's own
+				 * rest is the palette's `Search ⌘P` row, and this field is the list's own
 				 * narrowing, opened by typing into the list. On the column's ground, not in
 				 * an outlined box (§B3: the sidebar is separated by ground alone) - the
 				 * field reads as a field by its caret and its placeholder, and its focus
