@@ -3983,6 +3983,25 @@ const BRANCH_RECORDS = [
 	 * the only statement of why those fields read the way they do.
 	 */
 	"foldCitationRepointNote",
+	/*
+	 * And by the badge-quiet lane's squash repair (2026-10-06): the two
+	 * citations a squash-merge had left dangling on `origin/main` - two
+	 * #809-era members of the class the list's `meshApprovalsCitationRepointNote`
+	 * names, found still unrepaired by this lane's run of the gate - which red
+	 * the evidence gate for every docs/evidence-touching PR (`head` cites the
+	 * approvals round's refreshed capture head; `mesh-tab/approvals-before`'s
+	 * `capturedAtHead` the branch's fold commit). Both are re-pointed at
+	 * `38068e36b1a`, the #809 squash whose diff carried that round's content,
+	 * frames included, onto main. Main's `foldCitationRepointNote` landed the
+	 * same repair first (same carrier, independently derived); this record is
+	 * kept as the branch's own pass spelling - no key may be lost across a
+	 * fold. Registered for the list's own reason: a fold that started from
+	 * main's manifest would drop it, and with it the only statement of why
+	 * those fields read the way they do. It quotes bare commit SHAs and never
+	 * the retired tree pair, so it joins this list and not
+	 * `STAMP_BINDING_NOTES`.
+	 */
+	"meshSquashDanglingRepairNote",
 ];
 test("the manifest carries every top-level record this branch wrote", () => {
 	const manifest = JSON.parse(
