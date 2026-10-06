@@ -121,7 +121,13 @@ for (const [code, icon, ink] of [
 	["approval", "circle-alert", "warning"],
 	["scheduled", "clock", "ink-dim"],
 	["attached", "message-square", "ink-dim"],
-	["delegating", "share-2", "accent"],
+	/*
+	 * `delegating` IS THE ONE CODE WHOSE MARK IS NOT A LUCID GLYPH (issue #840): it is
+	 * `SubagentRunningMark`, the shared filled dot, so its icon slot is `null` and the
+	 * assertion below reads the dot's own classes instead. The ink column is unchanged -
+	 * `accent` is the liveness ink, which the dot inherits through `bg-current`.
+	 */
+	["delegating", null, "accent"],
 	["idle", "circle", "ink-dim"],
 	["dormant", "pause", "ink-dim"],
 	["unknown", "circle-help", "ink-dim"],
@@ -130,8 +136,13 @@ for (const [code, icon, ink] of [
 		const before = render(code, true);
 		const after = render(code, false);
 		assert.equal(after, before);
-		assert.match(after, new RegExp(`lucide-${icon}`));
 		assert.match(after, new RegExp(`text-${ink}`));
+		if (icon === null) {
+			assert.match(after, /rounded-full bg-current/);
+			assert.doesNotMatch(after, /lucide-/);
+		} else {
+			assert.match(after, new RegExp(`lucide-${icon}`));
+		}
 	});
 }
 
@@ -148,9 +159,11 @@ for (const [code, icon, ink] of [
 test("delegating draws the delegated-work mark and names its counts", () => {
 	const label = "2 subagents running \u00b7 1 queued";
 	const markup = render("delegating", false, label);
-	// Its own glyph, in the accent role, and NOT the unknown-code fallback: a
+	// Its own mark, in the accent role, and NOT the unknown-code fallback: a
 	// build that had the backend's code but not this arm would draw HelpCircle.
-	assert.match(markup, /lucide-share-2/);
+	// The mark is the shared filled dot, not a glyph, since issue #840.
+	assert.match(markup, /rounded-full bg-current/);
+	assert.doesNotMatch(markup, /lucide-/);
 	assert.match(markup, /text-accent/);
 	assert.doesNotMatch(markup, /lucide-circle-help|lucide-circle /);
 	// STATIC: `busy` owns the spinner in this slot, and two animated marks would

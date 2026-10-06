@@ -1702,6 +1702,35 @@ const GRAPHICS = [
 	},
 	{
 		/*
+		 * THE RUNNING-SUBAGENT MARK (`chat-session-status.tsx`'s
+		 * `SubagentRunningMark`, issue #840): the row's filled dot in the accent, drawn
+		 * on the `delegating` rung's primary slot and on every sidebar row whose own
+		 * children are at work. It replaced a `Share2` glyph, and it is HERE rather than
+		 * in `CONTROLS` for this table's own reason: a dot is a graphic object - read at
+		 * a glance, never operated - so what it owes is the 3:1 non-text floor against
+		 * what is behind it, not a control's edge.
+		 *
+		 * THE GROUNDS ARE THE ONES THE MARK CAN BE PAINTED ON, and they are the same
+		 * three the session row's ask mark lists: the sidebar panel's `surface`, and the
+		 * two STATE grounds its rows paint - `rowSelected` on the current conversation
+		 * and `rowHover` under the pointer (`chat-sidebar.tsx`'s `rowStyle`/`rowCurrent`).
+		 * The `delegating` rung draws it inside the row's status slot, on the same three.
+		 * Nothing paints this mark on `canvas` or `elevated`.
+		 *
+		 * THE INK IS `accent`, which is the liveness role the `busy` spinner already
+		 * spends and the role the mark wore as a glyph, so this row changes nothing about
+		 * the colour - what it pins is that the DOT (a small solid shape, no stroke to
+		 * help it) still clears the floor where the glyph did: 4.24:1 at worst
+		 * (`tokyoNight` on `rowSelected`), the figure the ask mark's row above quotes.
+		 * A mark with no stroke has less to read by than a glyph, which is why the pair
+		 * is stated rather than inherited.
+		 */
+		name: "session row running-subagent mark",
+		on: ["surface", "rowSelected", "rowHover"],
+		fg: "accent",
+	},
+	{
+		/*
 		 * THE SHARED SPINNER'S TRACK (`spinner.tsx`'s ring - the app's one
 		 * indeterminate-progress affordance, dropped onto every ground). Design round 1 on
 		 * the composer's acknowledgment measured this pair while the track was the

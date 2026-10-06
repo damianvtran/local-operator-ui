@@ -57,6 +57,20 @@ export const SCROLLBAR_HOLD_MS = 2200;
 export const SCROLLBAR_FADE_IN_MS = 120;
 /** The fade out. Leaving is slower than arriving, so it reads as a fade. */
 export const SCROLLBAR_FADE_OUT_MS = 180;
+/**
+ * What the thumb paints when the bar is at rest (issue #845).
+ *
+ * The fade runs between this and 1, so it is the fraction of `--color-control`
+ * an idle thumb keeps. Idle used to be 0 - an invisible bar - and the amendment
+ * is that rest is a FAINT state rather than the absence of one. The value is
+ * measured rather than picked: over the fifty-nine palettes and every ground a
+ * scroller can sit on, 0.45 gives 1.55:1 at worst (so the thumb reads) and
+ * 2.24:1 at best (so it can never read as a full-strength control, and stays
+ * under the 3:1 non-text floor everywhere). The full derivation, including the
+ * two rejected neighbours, is beside the rule that spends it
+ * (`shared/components/common/global-scrollbar-styles.tsx`).
+ */
+export const SCROLLBAR_RESTING_FLOOR = 0.45;
 /** The app's own ease for a value that grows and settles (`styles/index.css`). */
 export const SCROLLBAR_EASING = "cubic-bezier(0.4, 0, 0.6, 1)";
 /** The attribute vocabulary: the element the reader is in, and the one at rest. */
