@@ -19,14 +19,13 @@ a diverted ask must leave NO trace in the one surface the server does not
 filter for the client:
 
 - no in-flight `ask` row while the session's queued engine is live (the row is
-  created at settle). The mode read is the presence of `asks` OR `asks_open` on
-  the session's frontend state — the same two fields the core's own
-  `queued_ask_engine_live` viewer arm reads (review round 1's R1: the fields'
-  old shapes published neither on an empty-but-live queue, so the first gated
-  ask read as an unknown mode; the core fixes its side by publishing `asks_open`
-  — 0 included — whenever the engine is live, and this client already reads
-  either field, so it is correct against old and fixed cores alike). Absence of
-  both is "cannot say" — the fallback below — and
+  created at settle). The mode read is a well-formed `asks` list OR the
+  presence of `asks_open` on the session's frontend state (review round 1's R1:
+  the pre-gate shapes publish the pair only beside rows, so the first gated ask
+  — an empty-but-live queue — read as an unknown mode; the core fixes its side
+  by publishing `asks_open` — 0 included — whenever the engine is live, and
+  this client reads either form, so it is correct against old and fixed cores
+  alike). Absence of both is "cannot say" — the fallback below — and
 - at settle, a result carrying `details.ask_gate.hidden: true` paints nothing —
   any row an earlier mode-less frame painted is removed.
 

@@ -6812,7 +6812,7 @@ const askEnd = ({ marked = false, ...over } = {}) => ({
 });
 const toolRows = (state) => state.records.filter((r) => r.kind === "tool");
 
-test("queuedAskEngineLive: presence of `asks` or `asks_open` is the mode", () => {
+test("queuedAskEngineLive: a well-formed `asks` or a present `asks_open` is the mode", () => {
 	/*
 	 * The R1 fix's own case: an empty queue under a live engine publishes
 	 * `asks_open: 0` (the field is present whenever the engine is live), and a
@@ -6823,12 +6823,18 @@ test("queuedAskEngineLive: presence of `asks` or `asks_open` is the mode", () =>
 	/*
 	 * An older core's only signal: `asks` present iff at least one ask is
 	 * outstanding (`ask_wire` publishes an empty list as absence). Presence is
-	 * still the rule, so a present-but-empty list reads capable — a shape today's
-	 * core never emits, pinned deliberately rather than by accident (review
-	 * round 1, R3).
+	 * still the rule for a well-formed list, so a present-but-empty list reads
+	 * capable — a shape today's core never emits, pinned deliberately rather than
+	 * by accident (review round 1, R3).
 	 */
 	assert.equal(queuedAskEngineLive({ asks: [{ ask_id: "a-1" }] }), true);
 	assert.equal(queuedAskEngineLive({ asks: [] }), true);
+	/*
+	 * The M2 tighten: `asks` keeps the array check the old read had, so a
+	 * malformed value reads as "cannot say" (today's mount), never as capable —
+	 * the direction that matters when the value cannot come from a publisher.
+	 */
+	assert.equal(queuedAskEngineLive({ asks: "not-a-list" }), false);
 	assert.equal(queuedAskEngineLive({ asks: null }), false);
 	assert.equal(queuedAskEngineLive({ asks: null, asks_open: null }), false);
 	assert.equal(queuedAskEngineLive({}), false);

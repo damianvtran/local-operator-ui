@@ -2123,38 +2123,48 @@ const isHarnessInjected = (payload: unknown): boolean => {
  * Whether this session's owner runs the queued-ask engine — the mode every
  * ask-gate settle-only seam keys on (design `docs/design/ask-gate.md` §3).
  *
- * THE DESKTOP'S READ OF THE CAPABILITY PROXY, reading the presence of `asks`
- * OR `asks_open` on the frontend state:
+ * THE DESKTOP'S READ OF THE CAPABILITY PROXY: a well-formed `asks` list, OR
+ * the presence of `asks_open` (a number — zero included), on the frontend
+ * state.
  *
- * - a core that predates the R1 fix publishes `asks` only while the queue holds
- *   at least one row and never publishes `asks_open`; presence means "engine
- *   live, at least one outstanding ask", so an empty queue reads false and a
+ * - a core that predates the R1 fix publishes BOTH fields only while at least
+ *   one ask is outstanding (`ask_wire` returns them as a pair; an empty queue
+ *   is published as ABSENCE), so on an empty queue the read is false and a
  *   divert's running row shows for the gate — the residual the design's §5
  *   records, on OLD CORES only;
  * - a core at the fix publishes `asks_open` (value ≥ 0, 0 included) whenever
  *   the queued engine is live, `asks` staying absent-on-empty so clients that
- *   read that field alone are untouched; presence of either field then IS the
- *   capability, and the first-ask case — a gate running on an empty queue —
- *   reads true.
+ *   read that field alone are untouched; the first-ask case — a gate running
+ *   on an empty queue — then reads true.
  *
- * The core's own `queued_ask_engine_live` viewer arm reads the same two fields
- * for the same reason (one function, one answer on both arms; the R1 exchange
- * is in this PR's thread). Absence of BOTH is "cannot say" — a core that
- * predates the fields, or a frame whose byte bound dropped the last field —
- * and every caller keeps today's mount for it, with the settle marker still
- * dropping a divert. Never read absence as "the engine is off".
+ * The core's `queued_ask_engine_live` switches its viewer arm to the same pair
+ * with the same fix (one function, one answer on both arms; the R1 exchange is
+ * in this PR's thread) — until that head lands it reads `asks` alone, which
+ * this read still understands. Absence of both fields is "cannot say" — a core
+ * that predates the queued engine's wire fields, or a frame whose byte bound
+ * dropped the last field — and every caller keeps today's mount for it, with
+ * the settle marker still dropping a divert. Never read absence as "the engine
+ * is off".
+ *
+ * WHY THE SHAPES ARE CHECKED, NOT JUST PRESENCE (review round 2, M2): `asks`
+ * keeps the array check the old read had, so a malformed value cannot turn a
+ * frame the old code called unreadable into a suppression — conservative in
+ * the direction that matters. `asks_open` is read for presence because zero is
+ * a value (the empty-but-live queue), and its only real shapes are numbers; a
+ * corrupt value can only come from a frame no publisher emits, and a
+ * false-capable read self-corrects at settle (a raise creates its row there, a
+ * divert drops).
  *
  * Spelled against the fields directly rather than through `sessionAsks`
  * (`ask-queue.ts`): that module carries the desktop API surface, and this one
- * bundles standalone in `scripts/transcript-reducer.test.mjs`. `asks_open` is
- * deliberately NOT read for its count — presence is the whole fact here, and a
- * zero is as capable as a three.
+ * bundles standalone in `scripts/transcript-reducer.test.mjs`.
  */
 export function queuedAskEngineLive(
 	frontend: CanonicalFrontendState | null | undefined,
 ): boolean {
 	return (
-		frontend != null && (frontend.asks != null || frontend.asks_open != null)
+		frontend != null &&
+		(Array.isArray(frontend.asks) || frontend.asks_open != null)
 	);
 }
 
