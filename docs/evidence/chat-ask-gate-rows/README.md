@@ -62,12 +62,24 @@ queue's receipt text — through the SHIPPED reducer and paint the SHIPPED
 `chat-interrupted-rows` states for its marker). When the core lands, these
 states are re-shootable from a live run; the fold they pin does not change.
 
-The run, on the tree at `dab518303a0` (this branch, clean — `dirtyWorkingTree:
-false`):
+Two runs built this set, both on clean trees:
+
+- **the sweep**, on the tree at `dab518303a0` (this branch, clean —
+  `dirtyWorkingTree: false`), which shot all six states:
 
 ```
 node scripts/capture-evidence.mjs http://localhost:6017 \
   --only=chat-ask-gate-rows --allow-backend
+```
+
+- **the round-1 remediation narrow pass**, on the tree at `4f72aae4897` (clean
+  — `dirtyWorkingTree: false`), which re-took `unreadable-live` only, after its
+  caption was reworded to fit the box (the pass's own record is the manifest's
+  `partialCapture`, `refreshedAtHead: 4f72aae4897`):
+
+```
+node scripts/capture-evidence.mjs http://localhost:6017 \
+  --only=chat-ask-gate-rows --dirs=unreadable-live --allow-backend
 ```
 
 `--allow-backend` is the flag's own stated case: the operator's backend was
