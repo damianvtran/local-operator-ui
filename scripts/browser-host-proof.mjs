@@ -552,11 +552,69 @@ const HIDDEN_VIEWPORT_PAGE = `<!doctype html>
 </script>
 </body></html>`;
 
+/**
+ * A payment-style field inside a CROSS-SITE iframe — the shape a validation run
+ * hit (a card-number field in a payment provider's frame), where `type` aimed at
+ * the frame element answered `Value is now '<text>'` with `via: "value_setter"`
+ * while nothing was typed: the old setter fallback planted a `value` expando on
+ * the iframe and read its own write back.
+ *
+ * The frame is served by a SECOND loopback server and addressed as `localhost`
+ * while the page is `127.0.0.1`: a different host is a different site, so
+ * Chromium puts the frame in its own process exactly as it does a real payment
+ * frame, and the top document cannot reach into it. A different port alone would
+ * be cross-origin but same-site, which is not the case being proved.
+ *
+ * A top-level field sits beside the frame as the control: the same page, the same
+ * call, a target that can hold text.
+ *
+ * No backticks in this comment or its markup: it lives inside a template
+ * literal.
+ */
+function iframeTypePage(frameOrigin) {
+	return `<!doctype html>
+<html><head><meta charset="utf-8"><title>Iframe type proof page</title>
+<style>body{font:14px system-ui;margin:0;padding:24px}iframe{width:360px;height:80px;border:1px solid #888}</style>
+</head><body>
+<h1>Iframe type proof page</h1>
+<label for="holder">Cardholder</label>
+<input id="holder" type="text" />
+<p>Card number (inside a cross-site frame):</p>
+<iframe id="card" title="Card number" src="${frameOrigin}/card-frame"></iframe>
+</body></html>`;
+}
+
+const CARD_FRAME_PAGE = `<!doctype html>
+<html><head><meta charset="utf-8"><title>Card frame</title></head>
+<body style="margin:8px;font:14px system-ui">
+<input id="number" type="text" autocomplete="cc-number" placeholder="1234 1234 1234 1234" />
+</body></html>`;
+
+/** The second loopback server the iframe's document comes from. It serves only
+ * the card frame; anything else is a 404 so a wrong URL is visible. */
+function startFrameSite() {
+	const server = createServer((req, res) => {
+		const url = new URL(req.url, "http://localhost");
+		if (url.pathname === "/card-frame") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(CARD_FRAME_PAGE);
+			return;
+		}
+		res.writeHead(404, { "Content-Type": "text/plain" });
+		res.end("not found");
+	});
+	return new Promise((resolve) => {
+		server.listen(0, "127.0.0.1", () =>
+			resolve({ server, port: server.address().port }),
+		);
+	});
+}
+
 /** Responses still held open by the `/slow` route, destroyed at the end of the
  * run so a deliberately hung request cannot keep this process alive. */
 const held = [];
 
-function startSite() {
+function startSite(frameOrigin) {
 	const server = createServer((req, res) => {
 		const url = new URL(req.url ?? "/", "http://127.0.0.1");
 		if (url.pathname === "/slow") {
@@ -603,6 +661,11 @@ function startSite() {
 		if (url.pathname === "/hidden-viewport") {
 			res.writeHead(200, { "Content-Type": "text/html" });
 			res.end(HIDDEN_VIEWPORT_PAGE);
+			return;
+		}
+		if (url.pathname === "/iframe-type") {
+			res.writeHead(200, { "Content-Type": "text/html" });
+			res.end(iframeTypePage(frameOrigin));
 			return;
 		}
 		if (url.pathname === "/popup-target") {
@@ -1334,10 +1397,13 @@ async function main() {
 	mkdirSync(OUT_DIR, { recursive: true });
 	mkdirSync(LOG_DIR, { recursive: true });
 
-	const site = await startSite();
+	const frameSite = await startFrameSite();
+	const frameOrigin = `http://localhost:${frameSite.port}`;
+	const site = await startSite(frameOrigin);
 	const siteOrigin = `http://127.0.0.1:${site.port}`;
 	say(`scratch: ${SCRATCH}`);
 	say(`local site: ${siteOrigin}`);
+	say(`cross-site frame origin: ${frameOrigin}`);
 
 	await assertDevtoolsPortFree();
 	app = await launchApp();
@@ -1993,6 +2059,88 @@ async function main() {
 	);
 	await rpcOk(state, "close", { tab: geometryTab.tab });
 
+	// --- 5c. type aimed at a cross-site iframe --------------------------------
+	/*
+	 * The refusal, on a real Chromium page: `type` at the iframe ELEMENT must fail
+	 * with `element_not_found` naming the cause, and must leave nothing behind —
+	 * no `value` expando on the frame element, no text in the frame's own field.
+	 * The frame's field is read from the frame's OWN target over CDP, because the
+	 * top document cannot see into a cross-site frame (which is the point).
+	 */
+	const iframeTab = await rpcOk(state, "open", {
+		url: `${siteOrigin}/iframe-type`,
+		requester: "session:proof",
+	});
+	const frameTargets = async () =>
+		(await targets()).filter(
+			(target) =>
+				target.type === "iframe" && target.url.startsWith(frameOrigin),
+		);
+	let frameTarget = null;
+	for (let attempt = 0; attempt < 40 && !frameTarget; attempt += 1) {
+		frameTarget = (await frameTargets())[0] ?? null;
+		if (!frameTarget) await sleep(250);
+	}
+	check(
+		"the card field's frame loaded cross-site, in its own frame target",
+		frameTarget !== null,
+		frameTarget
+			? `iframe target ${frameTarget.url} (page ${siteOrigin}/iframe-type)`
+			: `no iframe target for ${frameOrigin}; targets: ${JSON.stringify((await targets()).map((target) => `${target.type} ${target.url}`))}`,
+	);
+	const cardText = "4242424242424242";
+	const iframeTyped = await rpc(state, "type", {
+		tab: iframeTab.tab,
+		selector: "#card",
+		text: cardText,
+	});
+	check(
+		"type aimed at the iframe is the typed element_not_found refusal naming the cause, not a false 'Value is now'",
+		iframeTyped.json?.ok === false &&
+			iframeTyped.json.error?.code === "element_not_found" &&
+			/not an editable field/.test(iframeTyped.json.error?.message ?? "") &&
+			/iframe/.test(iframeTyped.json.error?.message ?? ""),
+		`type {selector: "#card", text: "${cardText}"} -> ${iframeTyped.text}`,
+	);
+	const pageTarget = await waitForTarget(
+		(target) => target.url === `${siteOrigin}/iframe-type`,
+		"the iframe proof page's target",
+	);
+	const expando = await targetEvaluate(
+		pageTarget,
+		"JSON.stringify({ hasOwnValue: Object.prototype.hasOwnProperty.call(document.getElementById('card'), 'value'), value: String(document.getElementById('card').value) })",
+	);
+	const frameField = frameTarget
+		? await targetEvaluate(
+				frameTarget,
+				"JSON.stringify({ origin: location.origin, number: document.getElementById('number').value })",
+			)
+		: { error: "no frame target" };
+	check(
+		"nothing was written: no value expando on the iframe element, and the frame's own field is empty",
+		expando.value ===
+			JSON.stringify({ hasOwnValue: false, value: "undefined" }) &&
+			typeof frameField.value === "string" &&
+			JSON.parse(frameField.value).number === "",
+		`top document #card -> ${expando.value ?? expando.error}\nframe document #number -> ${frameField.value ?? frameField.error}`,
+	);
+	const holderTyped = await rpc(state, "type", {
+		tab: iframeTab.tab,
+		selector: "#holder",
+		text: "Ada Lovelace",
+	});
+	check(
+		"the control: type on the same page's top-level field still lands",
+		holderTyped.json?.ok === true &&
+			holderTyped.json.result?.value === "Ada Lovelace",
+		`type {selector: "#holder"} -> ${holderTyped.text}`,
+	);
+	const iframeShotPath = join(OUT_DIR, "iframe-type.png");
+	const iframeShot = await rpcOk(state, "screenshot", { tab: iframeTab.tab });
+	writeFileSync(iframeShotPath, Buffer.from(iframeShot.data, "base64"));
+	say(`iframe page frame: ${iframeShotPath}`);
+	await rpcOk(state, "close", { tab: iframeTab.tab });
+
 	// --- 5d. the hidden view's page viewport, and what a capture does to it ----
 	/*
 	 * A tab an agent OPENED is never presented (design 11.4: an agent's `open`
@@ -2464,6 +2612,7 @@ async function main() {
 	if (failures > 0) process.exitCode = 1;
 	for (const response of held) response.destroy();
 	await site.server.close();
+	await frameSite.server.close();
 }
 
 function run(command, args) {

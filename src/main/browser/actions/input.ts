@@ -69,18 +69,32 @@ const FOCUS_AND_SELECT_FUNCTION = `function () {
 }`;
 
 /** Set the value through the prototype's own setter, then announce it. This is
- * the mechanism a framework-controlled field actually listens for. */
+ * the mechanism a framework-controlled field actually listens for.
+ *
+ * Returns `null` — and writes NOTHING — when the node has no `value` setter
+ * anywhere on its prototype chain and is not contenteditable: an `<iframe>`, a
+ * `<div>`, a button. The old `else this.value = text` planted an expando on such
+ * a node and then read that same expando back as "the value", so `type` aimed at
+ * a cross-origin payment frame reported success while nothing was typed. The
+ * chain is walked rather than only the immediate prototype so a custom element
+ * extending `HTMLInputElement` still finds the inherited setter. */
 const SET_VALUE_FUNCTION = `function (text) {
-  const focusFn = this.focus;
-  if (typeof focusFn === 'function') focusFn.call(this);
   if (this.isContentEditable) {
+    const focusFn = this.focus;
+    if (typeof focusFn === 'function') focusFn.call(this);
     this.textContent = text;
     this.dispatchEvent(new Event('input', { bubbles: true }));
     return this.textContent;
   }
-  const descriptor = Object.getOwnPropertyDescriptor(Object.getPrototypeOf(this), 'value');
-  if (descriptor && descriptor.set) descriptor.set.call(this, text);
-  else this.value = text;
+  let setter = null;
+  for (let proto = Object.getPrototypeOf(this); proto && !setter; proto = Object.getPrototypeOf(proto)) {
+    const descriptor = Object.getOwnPropertyDescriptor(proto, 'value');
+    if (descriptor && typeof descriptor.set === 'function') setter = descriptor.set;
+  }
+  if (!setter) return null;
+  const focusFn = this.focus;
+  if (typeof focusFn === 'function') focusFn.call(this);
+  setter.call(this, text);
   this.dispatchEvent(new Event('input', { bubbles: true }));
   this.dispatchEvent(new Event('change', { bubbles: true }));
   return this.value;
@@ -252,9 +266,22 @@ export async function type(
 			returnByValue: true,
 		},
 	);
+	const setValue = set?.result?.value;
+	if (setValue === null) {
+		// Nothing on this node can hold typed text, so there is no honest value to
+		// report. `element_not_found` because the protocol has no closer code and an
+		// invented one is silently dropped by the session (see `ERROR_CODES`); the
+		// message names the real cause. A field inside a cross-origin iframe is not
+		// reachable from the top document at all yet — say so rather than leave the
+		// agent retrying the frame element.
+		throw new BrowserHostError(
+			"element_not_found",
+			`${targetOf(params)} is not an editable field (no value setter, not contenteditable), so nothing was typed; if the field lives inside an iframe, it cannot be targeted from the top document`,
+		);
+	}
 	ctx.registry.touch(record);
 	return {
-		value: String(set?.result?.value ?? readBack),
+		value: String(setValue ?? readBack),
 		via: "value_setter",
 		insert_text_readback: readBack,
 		...pageOf(record.view),
