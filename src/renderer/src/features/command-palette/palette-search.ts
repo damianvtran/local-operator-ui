@@ -52,6 +52,14 @@ export type PaletteGroup =
 	| "navigation"
 	| "chats"
 	| "agents"
+	/**
+	 * Teams are the agent roster's second entity class (issue #849) and a group of
+	 * their own rather than rows inside `agents`, because a section heading is the
+	 * cheapest way to keep a same-named agent and team apart without spending the
+	 * row's one `hint` slot on it — and because the two are fetched from different
+	 * catalogues, so a group each is also what the caps can be tuned against.
+	 */
+	| "teams"
 	| "actions"
 	| "panels"
 	| "settings";
@@ -66,6 +74,7 @@ export type PaletteGroup =
 export type PaletteIconName =
 	| "chat"
 	| "agents"
+	| "team"
 	| "projects"
 	| "hub"
 	| "network"
@@ -97,6 +106,9 @@ export type PaletteItemKind =
 	| "panel"
 	| "chat"
 	| "agent"
+	/** A team row (issue #849). Distinct from `agent` so the unscoped list can tell
+	 * a same-named pair apart by more than the section heading they sit under. */
+	| "team"
 	| "settings-section"
 	| "setting";
 
@@ -132,7 +144,23 @@ export type PaletteTarget =
 	 * the pane does not own, which is why the palette no longer routes to chat for
 	 * them.
 	 */
-	| { type: "panel"; destination: string };
+	| { type: "panel"; destination: string }
+	/**
+	 * Stage a chat with an agent or a team, as data (issues #844, #849).
+	 *
+	 * This is the DRAFT DOOR, and it is a target type rather than a `path` on
+	 * purpose: an agent or team row does not open an address, it stages the same
+	 * `draft:<kind>:<name>` row the sidebar's "New chat with <name>" produces and
+	 * then goes to `/chat`. The view owns the handler (`stageDraft({ kind, name })`
+	 * then `navigate("/chat")`) because this module stays import-free.
+	 *
+	 * `name` is the SLUG the wire and the sidebar address a binding by
+	 * (`ChatTarget`, `profile-hooks.ts`), never the display label — a row may read
+	 * "Delivery crew" while the draft it stages is keyed `draft:team:delivery-crew`,
+	 * and the two must agree with the sidebar's rows or the same team would get two
+	 * drafts.
+	 */
+	| { type: "draft"; kind: "agent" | "team"; name: string };
 
 export type PaletteItem = {
 	/** Stable across renders and unique in the list; also the row's DOM id. */
@@ -302,7 +330,14 @@ export function paletteEmptyStateCopy(input: {
 	}
 	return {
 		line: "Nothing to show yet",
-		hint: "Search for a chat, an agent by name, a setting, or a page such as Schedules.",
+		/*
+		 * "an agent or team by name": the `@` scope draws a roster of BOTH since
+		 * issue #849, so naming only the agent would under-describe the list this
+		 * line is the empty state of. The line stays scope-blind (it is the same
+		 * sentence under `>`, `#` and `,`) - this is the roster's own addition, not
+		 * the gate-aware copy UX U2 records as owed.
+		 */
+		hint: "Search for a chat, an agent or team by name, a setting, or a page such as Schedules.",
 	};
 }
 
@@ -360,6 +395,14 @@ const SCOPE_WORDS: Record<string, PaletteScope> = {
 	agents: "agent",
 	bot: "agent",
 	bots: "agent",
+	/*
+	 * The team words scope to the AGENT scope rather than to a scope of their own
+	 * (issue #849): teams are the roster's second entity class, the legend teaches
+	 * one glyph for both, and a `team`-only scope would be a fifth prefix for an
+	 * entity class that already lives beside its sibling.
+	 */
+	team: "agent",
+	teams: "agent",
 	setting: "setting",
 	settings: "setting",
 	preference: "setting",
@@ -373,7 +416,9 @@ const SCOPE_GROUPS: Record<PaletteScope, PaletteGroup[]> = {
 	// scope: `>usage` is how a user asks for one by its own word.
 	command: ["navigation", "actions", "panels"],
 	chat: ["chats"],
-	agent: ["agents"],
+	// The agent scope admits the team group beside the roster (issue #849): `@` is
+	// "the things I can start a chat with by name", and teams are half of that.
+	agent: ["agents", "teams"],
 	setting: ["settings"],
 };
 
@@ -385,15 +430,23 @@ export const SCOPE_LEGEND: {
 }[] = [
 	{ glyph: ">", scope: "command", label: "Commands and pages" },
 	{ glyph: "#", scope: "chat", label: "Chats" },
-	{ glyph: "@", scope: "agent", label: "Agents" },
+	{ glyph: "@", scope: "agent", label: "Agents and teams" },
 	{ glyph: ",", scope: "setting", label: "Settings" },
 ];
 
 /**
- * The query the Cmd/Ctrl+P door opens the palette with (issue #659): the
- * conversations scope, seeded, so that chord is a conversation quick switcher
- * rather than a second copy of Cmd/Ctrl+K. The browse list under it is
+ * The query the Cmd/Ctrl+K door opens the palette with (issue #850; the seed
+ * itself dates to #659, when it belonged to Cmd/Ctrl+P): the conversations
+ * scope, seeded, so that chord is a conversation quick switcher rather than a
+ * second copy of the palette's browse list. The browse list under it is
  * conversation rows and a term searches chats the way the sidebar does.
+ *
+ * THE DOOR MOVED, THE SEED DID NOT (issue #850): `#` used to be what Cmd/Ctrl+P
+ * wrote and is now what Cmd/Ctrl+K writes, because the two chords swapped views
+ * — K opens chats, P opens everything. Nothing about the seed changed with it:
+ * it is still the glyph the chat scope IS, and the door that writes it is
+ * `paletteDoorOutcome`'s (`palette-shortcut.ts`), which reads each door's view
+ * off its seed through `parsePaletteQuery` rather than repeating the mapping.
  *
  * Spelled as the glyph the scope IS rather than as a mode flag: the field then
  * shows the reader why the list is conversations, and backspacing it widens
@@ -420,6 +473,20 @@ export const CONVERSATION_SWITCHER_SEED = "#";
  * toggling shut.
  */
 export const AGENT_ROSTER_SEED = "@";
+
+/**
+ * The query the Cmd/Ctrl+Shift+P door opens the palette with (issue #850): the
+ * command scope, so the third chord is "show me what the app can do" rather
+ * than a third copy of the palette's browse list.
+ *
+ * The same spelling rule as the two seeds above — the glyph the scope IS — and
+ * the same reason to live here: it is a claim about `parsePaletteQuery`'s own
+ * table, and `scripts/palette-search.test.mjs` pins it so the constant can never
+ * drift from the scope it names. `paletteDoorOutcome` (in `palette-shortcut.ts`)
+ * reads each door's scope off its seed through that same parser rather than
+ * repeating the mapping here, so there is one place a door's view is decided.
+ */
+export const COMMAND_SCOPE_SEED = ">";
 
 /**
  * Read a raw query into its scope and its terms.
@@ -716,6 +783,7 @@ export const PALETTE_GROUP_TITLES: Record<PaletteGroup, string> = {
 	navigation: "Go to",
 	chats: "Chats",
 	agents: "Agents",
+	teams: "Teams",
 	actions: "Actions",
 	panels: "Panels",
 	settings: "Settings",
@@ -739,6 +807,10 @@ export const PALETTE_GROUP_LABELS: Record<PaletteGroup, string[]> = {
 	navigation: ["Go to", "Pages", "Navigation", "Tab"],
 	chats: ["Chats", "Conversations", "Chat"],
 	agents: ["Agents", "Bots"],
+	// The team words are also the scope's own words (`SCOPE_WORDS`), so typing
+	// "team" scopes to the roster and then matches this group's haystack - the
+	// same one-fact-one-derivation the other groups carry.
+	teams: ["Teams", "Team"],
 	actions: ["Actions", "Commands"],
 	panels: ["Panels", "Panels and reports", "Views"],
 	settings: ["Settings", "Preferences"],
@@ -749,6 +821,7 @@ export const PALETTE_GROUP_ORDER: PaletteGroup[] = [
 	"navigation",
 	"chats",
 	"agents",
+	"teams",
 	"actions",
 	"panels",
 	"settings",
@@ -770,6 +843,7 @@ const BROWSE_CAP: Record<PaletteGroup, number> = {
 	navigation: 6,
 	chats: 5,
 	agents: 5,
+	teams: 5,
 	actions: 5,
 	panels: 5,
 	settings: 8,
@@ -824,7 +898,7 @@ export function searchPalette({
 		 *
 		 * SWITCHER-ONLY, deliberately: the gate is the `#` seed's scope, the door
 		 * that exists for finding a conversation. Widening the pin to the
-		 * un-scoped Cmd/Ctrl+K browse is loosening this condition and leaving the
+		 * un-scoped Cmd/Ctrl+P browse is loosening this condition and leaving the
 		 * accounting below untouched — the open design question #760 records.
 		 *
 		 * The pin draws from the SAME `rendered` budget as every section below it

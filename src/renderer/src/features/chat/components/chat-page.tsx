@@ -4360,15 +4360,23 @@ export function ChatPage() {
 	useEffect(() => {
 		if (!enabled || !routeIdentity) return;
 		const store = useCanonicalSessionsStore.getState();
-		const id = SESSION_ID.test(routeIdentity)
-			? routeIdentity
-			: store.sessionByAgent[routeIdentity];
-		if (!id) {
+		/*
+		 * A ROUTE IDENTITY IS EITHER A SESSION, OR A LINK THIS APP NO LONGER
+		 * UNDERSTANDS (issue #844). The map this used to consult between those two
+		 * cases (`sessionByAgent`) had a reader and NO WRITER anywhere in the tree,
+		 * so the middle case was a lookup that always missed - and the palette's agent
+		 * row built exactly this route. The agent door is a draft now
+		 * (`stageDraft({ kind: "agent", name })`), so nothing current navigates here
+		 * with an agent id; a genuinely old `/chat/<agent id>` link - or any other
+		 * non-session identity - gets the honest sentence.
+		 */
+		if (!SESSION_ID.test(routeIdentity)) {
 			setRouteError(
 				"This legacy link has no canonical chat. Its saved history is unchanged.",
 			);
 			return;
 		}
+		const id = routeIdentity;
 		setRouteError(null);
 		if (store.activeSessionId !== id || store.activeDraftKey)
 			void store.openSession(id);
