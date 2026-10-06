@@ -171,6 +171,10 @@ export class CdpPool {
 	 */
 	private readonly frames = new Map<number, Map<string, string>>();
 
+	/** Attaches in flight, by `<webContentsId>:<frameId>`, shared by concurrent
+	 * callers (see `attachFrame`). */
+	private readonly frameAttaches = new Map<string, Promise<string>>();
+
 	constructor(private readonly options: CdpPoolOptions = {}) {}
 
 	/**
@@ -408,6 +412,23 @@ export class CdpPool {
 	async attachFrame(contents: CdpContents, frameId: string): Promise<string> {
 		const cached = this.frames.get(contents.id)?.get(frameId);
 		if (cached) return cached;
+		// Concurrent callers for the same frame share ONE attach: two independent
+		// attaches would both open a session and only the last would be cached,
+		// leaking the other for the life of the page (review round 1, m3).
+		const key = `${contents.id}:${frameId}`;
+		const pending = this.frameAttaches.get(key);
+		if (pending) return pending;
+		const attaching = this.openFrameSession(contents, frameId).finally(() => {
+			this.frameAttaches.delete(key);
+		});
+		this.frameAttaches.set(key, attaching);
+		return attaching;
+	}
+
+	private async openFrameSession(
+		contents: CdpContents,
+		frameId: string,
+	): Promise<string> {
 		let attached: { sessionId?: string } | undefined;
 		try {
 			attached = await this.send<{ sessionId?: string }>(
@@ -434,12 +455,29 @@ export class CdpPool {
 				{ reason: FRAME_DETACHED },
 			);
 		}
-		await this.send(
-			contents,
-			"Emulation.setFocusEmulationEnabled",
-			{ enabled: true },
-			{ sessionId },
-		);
+		try {
+			await this.send(
+				contents,
+				"Emulation.setFocusEmulationEnabled",
+				{ enabled: true },
+				{ sessionId },
+			);
+		} catch (error) {
+			// The session exists but is not usable for input: release it rather than
+			// leave an uncached session open on a frame that may still be alive. A
+			// stale session needs no release (Chromium already dropped it).
+			if (
+				!(
+					error instanceof BrowserHostError &&
+					error.data?.reason === FRAME_DETACHED
+				)
+			) {
+				await this.send(contents, "Target.detachFromTarget", {
+					sessionId,
+				}).catch(() => undefined);
+			}
+			throw error;
+		}
 		let sessions = this.frames.get(contents.id);
 		if (!sessions) {
 			sessions = new Map();

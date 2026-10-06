@@ -7307,9 +7307,14 @@ function cardPage({ frameInputs = 1 } = {}) {
 	return { page, holder, inputs };
 }
 
-function frameCtx(pool, contents) {
+function frameCtx(pool, contents, denied = []) {
 	return {
 		cdp: pool,
+		// The one approvals question frames ask: was this frame's origin DENIED?
+		approvals: {
+			refusalReason: (url) =>
+				denied.includes(url.origin) ? "denied" : "unapproved",
+		},
 		registry: {
 			requireSurface: () => ({
 				view: { webContents: contents },
@@ -7592,10 +7597,11 @@ test("frames 5: detachedFromTarget drops the cached session; a stale one re-atta
 			FRAMES_ACTIONS.type(ctx, { tab: "t", selector: "#number", text: "5" }),
 		(error) => error.code === "element_not_found",
 	);
-	assert.ok(
-		page.attachCount <= 5,
-		`attaches stay bounded (${page.attachCount})`,
-	);
+	// Exactly one re-attach on the double-stale path: the cached S3 answers stale
+	// on its document read, the single retry is attach #4, which is stale too
+	// (now on its own focus-emulation send, inside the same retry), and nothing
+	// follows it.
+	assert.equal(page.attachCount, 4, "exactly one re-attach, then a refusal");
 });
 
 test("frames 6: a child session's events never reach gate or log subscribers", async () => {
@@ -7781,4 +7787,374 @@ test("frames 8: upload refuses a node that resolved inside a frame", async () =>
 		"nothing was attached",
 	);
 	rmSync(dir, { recursive: true, force: true });
+});
+
+test("frames M1: a frame from an origin the user DENIED is refused on every path, and hidden from snapshot", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const denied = ["https://pay.example"];
+	const typedNothing = (page) =>
+		assert.equal(
+			page.calls.some((c) => c.method === "Input.insertText" && c.sessionId),
+			false,
+			"nothing reached the denied frame's input",
+		);
+	const isDenied = (error) =>
+		error.code === "origin_not_allowed" &&
+		error.data.reason === "denied" &&
+		error.data.origin === "https://pay.example";
+
+	for (const selector of ["iframe#card >>> #number", "#card"]) {
+		const { page, inputs } = cardPage();
+		const { pool, contents } = await framePool(page);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.type(frameCtx(pool, contents, denied), {
+					tab: "t",
+					selector,
+					text: "4242",
+				}),
+			isDenied,
+			`type ${selector}`,
+		);
+		assert.equal(inputs[0].value, "");
+		typedNothing(page);
+	}
+	{
+		const { page } = cardPage();
+		const { pool, contents } = await framePool(page);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.click(
+					Object.assign(frameCtx(pool, contents, denied), {}),
+					{ tab: "t", selector: "iframe#card >>> #number" },
+				),
+			isDenied,
+		);
+		assert.equal(
+			page.calls.some(
+				(c) => c.method === "Runtime.callFunctionOn" && c.sessionId,
+			),
+			false,
+		);
+	}
+	{
+		// Auto-search does not enter the denied frame, and says it skipped one.
+		const { page, inputs } = cardPage();
+		const { pool, contents } = await framePool(page);
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.type(frameCtx(pool, contents, denied), {
+					tab: "t",
+					selector: "#number",
+					text: "4242",
+				}),
+			(error) =>
+				error.code === "element_not_found" &&
+				/1 frame\(s\) from an origin the user denied were not searched/.test(
+					error.message,
+				),
+		);
+		assert.equal(inputs[0].value, "");
+		typedNothing(page);
+	}
+	{
+		// Snapshot: no block, no ref, no text from the denied frame; and a ref taken
+		// before the deny is refused.
+		const { page, inputs } = cardPage();
+		page.docs.get("").ax = [
+			{
+				nodeId: "1",
+				role: { value: "RootWebArea" },
+				name: { value: "Top" },
+				childIds: ["2"],
+			},
+			{
+				nodeId: "2",
+				role: { value: "Iframe" },
+				name: { value: "Card" },
+				backendDOMNodeId: 12,
+			},
+		];
+		page.docs.get("F1").ax = [
+			{
+				nodeId: "a",
+				role: { value: "textbox" },
+				name: { value: "SECRET LABEL" },
+				backendDOMNodeId: 21,
+			},
+		];
+		const { pool, contents } = await framePool(page);
+		const record = { view: { webContents: contents }, refs: {}, epoch: 1 };
+		const ctx = (deniedList) => ({
+			...frameCtx(pool, contents, deniedList),
+			registry: { requireSurface: () => record, touch: () => {} },
+		});
+		const open = await FRAMES_ACTIONS.snapshot(ctx([]), { tab: "t" });
+		assert.match(
+			open.snapshot,
+			/SECRET LABEL/,
+			"control: visible when not denied",
+		);
+		const frameRef = Object.keys(record.refs).find(
+			(k) => record.refs[k].frameId,
+		);
+		const shut = await FRAMES_ACTIONS.snapshot(ctx(denied), { tab: "t" });
+		assert.doesNotMatch(shut.snapshot, /SECRET LABEL|- frame/);
+		assert.equal(
+			Object.values(record.refs).some((ref) => ref.frameId),
+			false,
+			"no ref into the denied frame",
+		);
+		// The stale ref from the earlier snapshot, replayed by hand.
+		record.refs[frameRef] = {
+			backendNodeId: 21,
+			epoch: 1,
+			frameId: "F1",
+			frameOrigin: "https://pay.example",
+		};
+		await assert.rejects(
+			() =>
+				FRAMES_ACTIONS.type(ctx(denied), {
+					tab: "t",
+					ref: frameRef,
+					text: "x",
+				}),
+			isDenied,
+		);
+		assert.equal(inputs[0].value, "");
+	}
+});
+
+test("frames m1: `>>>` inside quotes or brackets is part of the selector, not a hop", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	assert.equal(FRAMES_ACTIONS.parseFrameHops('input[placeholder=">>>"]'), null);
+	assert.equal(FRAMES_ACTIONS.parseFrameHops('a[title="x >>> y"]'), null);
+	assert.equal(FRAMES_ACTIONS.parseFrameHops("a[title='x >>> y']"), null);
+	assert.equal(FRAMES_ACTIONS.parseFrameHops(':is(a, b) [data-x=">>>"]'), null);
+	assert.deepEqual(
+		FRAMES_ACTIONS.parseFrameHops(
+			'iframe[title="a >>> b"] >>> input[placeholder=">>>"]',
+		),
+		['iframe[title="a >>> b"]', 'input[placeholder=">>>"]'],
+	);
+	assert.deepEqual(FRAMES_ACTIONS.parseFrameHops("iframe#a>>>#x"), [
+		"iframe#a",
+		"#x",
+	]);
+});
+
+test("frames m2: a single hit under the frame cap is not acted on, and a conflict mid-walk is not skipped", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { page, inputs } = cardPage();
+	// 20 empty out-of-process frames ahead of the card frame: the cap is reached
+	// before every frame was visited.
+	const top = page.docs.get("");
+	const reordered = new Map();
+	for (let i = 0; i < FRAMES_ACTIONS.MAX_FRAMES_SEARCHED; i += 1) {
+		const target = `E${i}`;
+		reordered.set(100 + i, {
+			selectors: [],
+			attributes: ["id", `ad${i}`],
+			frame: { oopif: target },
+			element: new FakeFrameElement(),
+		});
+		page.addDoc(target, 200 + i, [
+			[200 + i, { documentElement: frameDocument([]) }],
+		]);
+	}
+	for (const [id, node] of top.nodes) reordered.set(id, node);
+	top.nodes = reordered;
+	// The card frame's #number is the only match, but it sits beyond the cap.
+	const { pool, contents } = await framePool(page);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(pool, contents), {
+				tab: "t",
+				selector: "#number",
+				text: "4242",
+			}),
+		(error) =>
+			error.code === "element_not_found" &&
+			/stopped at 20 frames/.test(error.message),
+	);
+	assert.equal(inputs[0].value, "");
+
+	// One match found while the walk was truncated: refuse, offering it.
+	const { page: capped, inputs: cappedInputs } = cardPage();
+	const cappedTop = capped.docs.get("");
+	for (let i = 0; i < FRAMES_ACTIONS.MAX_FRAMES_SEARCHED; i += 1) {
+		cappedTop.nodes.set(100 + i, {
+			selectors: [],
+			attributes: ["id", `ad${i}`],
+			frame: { oopif: `E${i}` },
+			element: new FakeFrameElement(),
+		});
+		capped.addDoc(`E${i}`, 200 + i, [
+			[200 + i, { documentElement: frameDocument([]) }],
+		]);
+	}
+	const second = await framePool(capped);
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(second.pool, second.contents), {
+				tab: "t",
+				selector: "#number",
+				text: "4242",
+			}),
+		(error) =>
+			error.code === "element_not_found" &&
+			/not every frame was searched/.test(error.message) &&
+			error.data.candidates[0] === "iframe#card >>> #number",
+	);
+	assert.equal(cappedInputs[0].value, "");
+
+	// DevTools takes the tab mid-walk: the walk ends with debugger_conflict rather
+	// than skipping the frame and answering "matched nothing".
+	const { page: conflicted } = cardPage();
+	const third = await framePool(conflicted);
+	const original = conflicted.answer.bind(conflicted);
+	conflicted.answer = (method, params, sessionId) => {
+		if (method === "DOM.describeNode") {
+			third.contents.debugger.emit("detach", {}, "target closed");
+		}
+		return original(method, params, sessionId);
+	};
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(frameCtx(third.pool, third.contents), {
+				tab: "t",
+				selector: "#number",
+				text: "4242",
+			}),
+		(error) => error.code === "debugger_conflict",
+	);
+});
+
+test("frames m3: concurrent attaches share one session, and a failed emulation releases it", async () => {
+	const { page } = cardPage();
+	const { pool, contents } = await framePool(page);
+	const [a, b] = await Promise.all([
+		pool.attachFrame(contents, "F1"),
+		pool.attachFrame(contents, "F1"),
+	]);
+	assert.equal(a, b);
+	assert.equal(page.attachCount, 1, "one attach for two concurrent callers");
+
+	const { page: failing } = cardPage();
+	const second = await framePool(failing);
+	const original = failing.answer.bind(failing);
+	failing.answer = (method, params, sessionId) => {
+		if (method === "Emulation.setFocusEmulationEnabled" && sessionId)
+			throw new Error("Internal error");
+		return original(method, params, sessionId);
+	};
+	await assert.rejects(() => second.pool.attachFrame(second.contents, "F1"));
+	const detached = failing.calls.filter(
+		(c) => c.method === "Target.detachFromTarget",
+	);
+	assert.deepEqual(
+		detached.map((c) => c.params.sessionId),
+		["S1"],
+		"the session that could not be set up was released",
+	);
+	failing.answer = original;
+	await second.pool.attachFrame(second.contents, "F1");
+	assert.equal(failing.attachCount, 2, "nothing half-made was cached");
+});
+
+test("frames m4: DevTools taking the tab makes a frame-targeted type a debugger_conflict", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { page, inputs } = cardPage();
+	const { pool, contents } = await framePool(page);
+	const ctx = frameCtx(pool, contents);
+	await FRAMES_ACTIONS.type(ctx, {
+		tab: "t",
+		selector: "iframe#card >>> #number",
+		text: "1",
+	});
+	contents.debugger.emit("detach", {}, "target closed");
+	await assert.rejects(
+		() =>
+			FRAMES_ACTIONS.type(ctx, {
+				tab: "t",
+				selector: "iframe#card >>> #number",
+				text: "2",
+			}),
+		(error) => error.code === "debugger_conflict",
+	);
+	assert.equal(inputs[0].value, "1");
+	assert.equal(
+		page.attachCount,
+		1,
+		"no re-attach was attempted on a conflicted tab",
+	);
+});
+
+test("frames n1+n2: a frame ref scrolls its iframe into view; candidates are real selectors", async () => {
+	const { FRAMES_ACTIONS } = await frameActions();
+	const { page } = cardPage();
+	const { pool, contents } = await framePool(page);
+	const original = page.answer.bind(page);
+	page.answer = (method, params, sessionId) => {
+		if (method === "DOM.getFrameOwner") return { backendNodeId: 12 };
+		return original(method, params, sessionId);
+	};
+	const record = {
+		view: { webContents: contents },
+		refs: {
+			e9: {
+				backendNodeId: 21,
+				epoch: 1,
+				frameId: "F1",
+				frameOrigin: "https://pay.example",
+			},
+		},
+		epoch: 1,
+	};
+	await FRAMES_ACTIONS.type(
+		{
+			...frameCtx(pool, contents),
+			registry: { requireSurface: () => record, touch: () => {} },
+		},
+		{ tab: "t", ref: "e9", text: "4242" },
+	);
+	const scroll = page.calls.find(
+		(c) => c.method === "DOM.scrollIntoViewIfNeeded" && !c.sessionId,
+	);
+	assert.deepEqual(
+		scroll?.params,
+		{ backendNodeId: 12 },
+		"the iframe element, in the page",
+	);
+
+	// n2: the candidate for a field with neither id nor name is a selector a
+	// browser can parse and that addresses that field.
+	const fn = new Function(
+		`return (${FRAMES_ACTIONS.FRAME_EDITABLE_FUNCTION_SOURCE})`,
+	)();
+	const parent = {
+		tagName: "FORM",
+		nodeType: 1,
+		parentElement: null,
+		previousElementSibling: null,
+	};
+	const first = {
+		tagName: "INPUT",
+		nodeType: 1,
+		parentElement: parent,
+		previousElementSibling: null,
+		getAttribute: () => null,
+	};
+	const second2 = {
+		tagName: "INPUT",
+		nodeType: 1,
+		parentElement: parent,
+		previousElementSibling: first,
+		getAttribute: () => null,
+	};
+	const doc = { querySelectorAll: () => [first, second2], activeElement: null };
+	assert.deepEqual(fn.call(doc, "input", "list"), [
+		"form:nth-of-type(1) > input:nth-of-type(1)",
+		"form:nth-of-type(1) > input:nth-of-type(2)",
+	]);
 });

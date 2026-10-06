@@ -7,6 +7,8 @@ import { type BrowserActionContext, stringParam } from "./context";
 import {
 	FRAME_HOP,
 	type FrameScope,
+	MAX_FRAMES_SEARCHED,
+	assertFrameNotDenied,
 	candidatePath,
 	childRoot,
 	editableInFrame,
@@ -207,8 +209,25 @@ export async function resolveNode(
 		if (!(error instanceof BrowserHostError) || !TOP_MISS.test(error.message)) {
 			throw error;
 		}
-		const matches = await searchFrames(ctx, contents, target);
-		if (matches.length === 0) throw error;
+		const { matches, walk } = await searchFrames(ctx, contents, target);
+		if (matches.length === 0) {
+			if (!walk.truncated && walk.skipped === 0 && walk.denied === 0)
+				throw error;
+			throw new BrowserHostError(
+				"element_not_found",
+				`selector ${target} matched nothing in the page itself or the frames searched (${walkNote(walk)}); address the frame explicitly as <iframe-selector> ${FRAME_HOP} <selector>`,
+			);
+		}
+		// One hit is only UNIQUE if every frame was looked at: under the cap, or with
+		// a frame that could not be entered, it is a guess (review round 1, m2).
+		if (matches.length === 1 && (walk.truncated || walk.skipped > 0)) {
+			const candidate = candidatePath(matches[0].scope, target);
+			throw new BrowserHostError(
+				"element_not_found",
+				`selector ${target} matched nothing in the page itself and one element in the frames searched, but not every frame was searched (${walkNote(walk)}), so nothing was done; if this is the one, name it: ${candidate}`,
+				{ candidates: [candidate] },
+			);
+		}
 		if (matches.length > 1) {
 			const candidates = matches.map((match) =>
 				candidatePath(match.scope, target),
@@ -230,6 +249,23 @@ export async function resolveNode(
 	return finishTop(ctx, contents, target, nodeId);
 }
 
+/** Why a frame search was not exhaustive, in the refusal's words. */
+function walkNote(walk: {
+	truncated: boolean;
+	skipped: number;
+	denied: number;
+}): string {
+	const notes: string[] = [];
+	if (walk.truncated) notes.push(`stopped at ${MAX_FRAMES_SEARCHED} frames`);
+	if (walk.skipped > 0)
+		notes.push(`${walk.skipped} frame(s) could not be entered`);
+	if (walk.denied > 0)
+		notes.push(
+			`${walk.denied} frame(s) from an origin the user denied were not searched`,
+		);
+	return notes.join("; ") || "every frame searched";
+}
+
 /** `nodeIdForSelector`'s miss, which is the one refusal a frame search may turn
  * into a hit. Module scope: the linter's top-level-regex rule. */
 const TOP_MISS = /^selector .* matched nothing$/s;
@@ -243,6 +279,8 @@ async function finishTop(
 	nodeId: number,
 	frameOrigin?: string,
 ): Promise<ResolvedNode> {
+	if (frameOrigin !== undefined)
+		assertFrameNotDenied(ctx, { origin: frameOrigin });
 	await ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", { nodeId });
 	const resolved = await ctx.cdp.send<{ object?: { objectId?: string } }>(
 		contents,
@@ -273,6 +311,9 @@ async function finishInFrame(
 	scope: FrameScope,
 	nodeId: number,
 ): Promise<ResolvedNode> {
+	// Before ANY command in the frame: a denied origin is neither scrolled, resolved
+	// nor touched (review round 1, M1).
+	assertFrameNotDenied(ctx, scope);
 	for (const hop of scope.hops) {
 		await sendIn(ctx, contents, hop.sessionId, "DOM.scrollIntoViewIfNeeded", {
 			nodeId: hop.nodeId,
@@ -307,6 +348,9 @@ async function resolveFrameRef(
 	target: string,
 	ref: TabRecord["refs"][string],
 ): Promise<ResolvedNode> {
+	// Refused before attaching when the snapshot already named a denied origin;
+	// checked again below against the document actually there now.
+	assertFrameNotDenied(ctx, { origin: ref.frameOrigin });
 	let rooted: Awaited<ReturnType<typeof childRoot>>;
 	try {
 		rooted = await childRoot(ctx, contents, String(ref.frameId));
@@ -316,6 +360,23 @@ async function resolveFrameRef(
 		}
 		throw error;
 	}
+	assertFrameNotDenied(ctx, { origin: ref.frameOrigin ?? rooted.origin });
+	// Bring the frame's <iframe> element into view in the page first, as the
+	// selector paths do through their hops (review round 1, n1; ARCH-1 §7). Best
+	// effort: the owner of a frame nested in another out-of-process frame lives in
+	// THAT frame's session, where the page session's lookup fails harmlessly.
+	await ctx.cdp
+		.send<{ backendNodeId?: number }>(contents, "DOM.getFrameOwner", {
+			frameId: ref.frameId,
+		})
+		.then((owner) =>
+			owner?.backendNodeId
+				? ctx.cdp.send(contents, "DOM.scrollIntoViewIfNeeded", {
+						backendNodeId: owner.backendNodeId,
+					})
+				: undefined,
+		)
+		.catch(() => undefined);
 	const pushed = await ctx.cdp.send<{ nodeIds?: number[] }>(
 		contents,
 		"DOM.pushNodesByBackendIdsToFrontend",
@@ -424,6 +485,7 @@ export async function type(
 	// lands on a top-document field sends exactly the commands it always sent.
 	const frame = await iframeScopeOf(ctx, contents, node);
 	if (frame) {
+		assertFrameNotDenied(ctx, frame);
 		const field = await editableInFrame(ctx, contents, frame, target);
 		const inner: ResolvedNode = {
 			nodeId: field.nodeId,
@@ -446,7 +508,7 @@ export async function type(
 	// `ERROR_CODES`); the message names the real cause.
 	throw new BrowserHostError(
 		"element_not_found",
-		`${target} is not an editable field (no value setter, not contenteditable), so nothing was typed${frame ? "; it is an iframe and its document holds no field that took the text either" : `; if the field lives inside an iframe, address it as <iframe-selector> ${FRAME_HOP} <selector>`}`,
+		`${target} is not an editable field (no value setter, not contenteditable), so nothing was typed${frame ? "; it is an iframe and its document holds no field that took the text either" : `; if the field lives inside an iframe, it cannot be targeted from the top document; address it as <iframe-selector> ${FRAME_HOP} <selector>`}`,
 	);
 }
 

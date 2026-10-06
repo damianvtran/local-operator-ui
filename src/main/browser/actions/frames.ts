@@ -71,7 +71,8 @@ export function sendIn<T>(
 /** Split `A >>> B >>> C` into hops, or `null` when the target has no hop. */
 export function parseFrameHops(target: string): string[] | null {
 	if (!target.includes(FRAME_HOP)) return null;
-	const hops = target.split(FRAME_HOP).map((hop) => hop.trim());
+	const hops = splitTopLevel(target);
+	if (hops.length === 1) return null;
 	if (hops.some((hop) => hop === "")) {
 		throw new BrowserHostError(
 			"element_not_found",
@@ -85,6 +86,87 @@ export function parseFrameHops(target: string): string[] | null {
 		);
 	}
 	return hops;
+}
+
+/**
+ * Split at `>>>` only at the TOP LEVEL of a selector: never inside a quoted
+ * string (`[placeholder=">>>"]`), an attribute bracket or a pseudo-class's
+ * parentheses. A plain split broke selectors that are valid CSS today
+ * (review round 1, m1), and ARCH-1 D2's promise is that none changes meaning.
+ * A backslash escapes the next character, as in CSS.
+ */
+export function splitTopLevel(target: string): string[] {
+	const parts: string[] = [];
+	let quote: string | null = null;
+	let depth = 0;
+	let start = 0;
+	for (let i = 0; i < target.length; i += 1) {
+		const ch = target[i];
+		if (ch === "\\") {
+			i += 1;
+			continue;
+		}
+		if (quote) {
+			if (ch === quote) quote = null;
+			continue;
+		}
+		if (ch === '"' || ch === "'") quote = ch;
+		else if (ch === "[" || ch === "(") depth += 1;
+		else if ((ch === "]" || ch === ")") && depth > 0) depth -= 1;
+		else if (depth === 0 && target.startsWith(FRAME_HOP, i)) {
+			parts.push(target.slice(start, i).trim());
+			i += FRAME_HOP.length - 1;
+			start = i + 1;
+		}
+	}
+	parts.push(target.slice(start).trim());
+	return parts;
+}
+
+/**
+ * Refuse a frame whose origin the user explicitly DENIED (review round 1, M1).
+ *
+ * Approval stays per TOP-LEVEL origin (ARCH-1, consent): a merely unapproved
+ * frame on an approved page is the operator's stated intent to drive that page.
+ * But `deny` is a verdict the store treats as overriding everywhere else
+ * (`ApprovalStore.originAllowed`), and the navigation gate continues every
+ * sub-frame document regardless of origin, so without this a denied origin was
+ * drivable and readable simply by being embedded.
+ */
+export function assertFrameNotDenied(
+	ctx: BrowserActionContext,
+	scope: Pick<FrameScope, "origin">,
+): void {
+	if (!isDeniedFrame(ctx, scope)) return;
+	throw new BrowserHostError(
+		"origin_not_allowed",
+		`the user denied ${scope.origin} for agent access, and that element is inside a frame from it`,
+		{ origin: scope.origin, reason: "denied" },
+	);
+}
+
+export function isDeniedFrame(
+	ctx: BrowserActionContext,
+	scope: Pick<FrameScope, "origin">,
+): boolean {
+	if (!scope.origin) return false;
+	let url: URL;
+	try {
+		url = new URL(scope.origin);
+	} catch {
+		return false;
+	}
+	// `refusalReason` answers "denied" only for an explicit deny verdict.
+	return ctx.approvals?.refusalReason(url) === "denied";
+}
+
+/** A frame-walk refusal that must stop the walk rather than skip one frame: the
+ * whole tab is unusable (DevTools took it, or it closed). */
+function isFatalWalkError(error: unknown): boolean {
+	return (
+		error instanceof BrowserHostError &&
+		(error.code === "debugger_conflict" || error.code === "tab_closed")
+	);
 }
 
 /** The page's own document as a scope. */
@@ -253,8 +335,10 @@ export async function childRoot(
 	frameId: string,
 ): Promise<{ sessionId: string; rootNodeId: number; origin?: string }> {
 	for (let attempt = 0; ; attempt += 1) {
-		const sessionId = await ctx.cdp.attachFrame(contents, frameId);
 		try {
+			// Inside the try: a stale error from the attach's own focus-emulation send
+			// gets the same single retry as one from the document read (round 1, m4).
+			const sessionId = await ctx.cdp.attachFrame(contents, frameId);
 			const document = await ctx.cdp.send<{
 				root?: { nodeId?: number; documentURL?: string };
 			}>(contents, "DOM.getDocument", { depth: 0 }, { sessionId });
@@ -332,37 +416,63 @@ export async function resolveHops(
 	return { scope, nodeId };
 }
 
+/** What a frame walk saw, so a caller can tell "unique" from "unique among the
+ * frames we looked at" (review round 1, m2). */
+export interface FrameWalk {
+	frames: FrameScope[];
+	/** The walk stopped at `MAX_FRAMES_SEARCHED` with frames still unvisited. */
+	truncated: boolean;
+	/** Frames that could not be entered (still loading, gone mid-walk). */
+	skipped: number;
+	/** Frames refused because the user denied their origin; never entered. */
+	denied: number;
+}
+
 /**
  * The top document missed: look for the selector inside frames, breadth first,
  * at most `MAX_FRAME_DEPTH` deep and `MAX_FRAMES_SEARCHED` frames in all.
  *
- * Returns EVERY match it found; the caller acts only on a unique one. Picking the
- * first of several would be the guess #851 exists to refuse — Stripe-style pages
- * hold a frame per field, and auto-search must not choose between them.
- * A frame that cannot be entered (still loading, gone mid-walk) is skipped rather
- * than failing a search that may still find its target elsewhere.
+ * Every frame is queried even after a first hit, because the caller acts only on
+ * a UNIQUE match (ARCH-1 D2). A frame that cannot be entered is skipped rather
+ * than failing a search that may still find its target elsewhere; the walk says
+ * so, and so does the caller's answer.
  */
 export async function searchFrames(
 	ctx: BrowserActionContext,
 	contents: CdpContents,
 	selector: string,
-): Promise<Array<{ scope: FrameScope; nodeId: number }>> {
+): Promise<{
+	matches: Array<{ scope: FrameScope; nodeId: number }>;
+	walk: FrameWalk;
+}> {
 	const matches: Array<{ scope: FrameScope; nodeId: number }> = [];
-	for (const scope of await listFrames(ctx, contents)) {
-		const nodeId = await queryIn(ctx, contents, scope, selector).catch(() => 0);
+	const walk = await listFrames(ctx, contents);
+	for (const scope of walk.frames) {
+		const nodeId = await queryIn(ctx, contents, scope, selector).catch(
+			(error) => {
+				if (isFatalWalkError(error)) throw error;
+				return 0;
+			},
+		);
 		if (nodeId) matches.push({ scope, nodeId });
 	}
-	return matches;
+	return { matches, walk };
 }
 
 /** Every frame reachable from the top document, breadth first, within
  * `MAX_FRAME_DEPTH` and `MAX_FRAMES_SEARCHED`. Shared by the selector search and
- * `snapshot`, so both see the same frames under the same bounds. */
+ * `snapshot`, so both see the same frames under the same bounds. A frame whose
+ * origin the user DENIED is not entered at all, and its subtree is not walked. */
 export async function listFrames(
 	ctx: BrowserActionContext,
 	contents: CdpContents,
-): Promise<FrameScope[]> {
-	const found: FrameScope[] = [];
+): Promise<FrameWalk> {
+	const walk: FrameWalk = {
+		frames: [],
+		truncated: false,
+		skipped: 0,
+		denied: 0,
+	};
 	let level: FrameScope[] = [await topScope(ctx, contents)];
 	for (let depth = 0; depth < MAX_FRAME_DEPTH && level.length; depth += 1) {
 		const next: FrameScope[] = [];
@@ -375,23 +485,32 @@ export async function listFrames(
 				{ nodeId: parent.rootNodeId, selector: "iframe, frame" },
 			);
 			for (const iframe of listed?.nodeIds ?? []) {
-				if (found.length >= MAX_FRAMES_SEARCHED) return found;
+				if (walk.frames.length + walk.skipped >= MAX_FRAMES_SEARCHED) {
+					walk.truncated = true;
+					return walk;
+				}
 				let scope: FrameScope;
 				try {
 					scope = await enterFrame(ctx, contents, parent, iframe);
 				} catch (error) {
-					// Still loading, or gone mid-walk: skip it rather than fail a search
-					// that may find its target elsewhere.
-					if (error instanceof BrowserHostError) continue;
+					if (isFatalWalkError(error)) throw error;
+					if (error instanceof BrowserHostError) {
+						walk.skipped += 1;
+						continue;
+					}
 					throw error;
 				}
-				found.push(scope);
+				if (isDeniedFrame(ctx, scope)) {
+					walk.denied += 1;
+					continue;
+				}
+				walk.frames.push(scope);
 				next.push(scope);
 			}
 		}
 		level = next;
 	}
-	return found;
+	return walk;
 }
 
 /** A `>>>` path for a match, as the agent would write it back. */
@@ -408,19 +527,31 @@ export const EDITABLE_SELECTOR =
  * null. "list": a selector per editable field, for the candidate refusal. "only":
  * the editable field itself. A fixed function with arguments, never interpolated
  * code — the rule `read` states. */
-const FRAME_EDITABLE_FUNCTION = `function (selector, mode) {
+export const FRAME_EDITABLE_FUNCTION_SOURCE = `function (selector, mode) {
   const all = Array.from(this.querySelectorAll(selector));
   if (mode === 'active') {
     const active = this.activeElement;
     return active && all.indexOf(active) !== -1 ? active : null;
   }
   if (mode === 'only') return all.length === 1 ? all[0] : null;
-  return all.map(function (el, index) {
+  return all.map(function (el) {
     const tag = String(el.tagName || '').toLowerCase();
     if (el.id && /^[A-Za-z_][\\w-]*$/.test(el.id)) return '#' + el.id;
     const name = el.getAttribute && el.getAttribute('name');
     if (name) return tag + '[name=' + JSON.stringify(name) + ']';
-    return '(' + selector.split(',')[0].trim().split(':')[0] + ' #' + (index + 1) + ')';
+    // A real selector, not a label: the n-th element of its tag under its parent,
+    // walked up to the document so the path is unique and addressable.
+    const steps = [];
+    for (let node = el; node && node.nodeType === 1 && node.tagName; node = node.parentElement) {
+      const name2 = String(node.tagName).toLowerCase();
+      let nth = 1;
+      for (let sib = node.previousElementSibling; sib; sib = sib.previousElementSibling) {
+        if (sib.tagName === node.tagName) nth += 1;
+      }
+      steps.unshift(name2 + ':nth-of-type(' + nth + ')');
+      if (name2 === 'html') break;
+    }
+    return steps.length ? steps.join(' > ') : tag;
   });
 }`;
 
@@ -460,7 +591,7 @@ export async function editableInFrame(
 			"Runtime.callFunctionOn",
 			{
 				objectId: documentId,
-				functionDeclaration: FRAME_EDITABLE_FUNCTION,
+				functionDeclaration: FRAME_EDITABLE_FUNCTION_SOURCE,
 				arguments: [{ value: EDITABLE_SELECTOR }, { value: mode }],
 				returnByValue,
 			},
