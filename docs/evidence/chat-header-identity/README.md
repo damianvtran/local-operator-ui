@@ -50,7 +50,7 @@ every story here answers `desktop.request` from its own bridge (`teams.list`,
 | --- | --- |
 | `team-bound` | The operator's own case: team bound, no `/agent`, so the agent control reads the team's manager. The band at 560. |
 | `team-menu-open` | The team menu after a real press: the search field, rows `lopdev` / `minerva` as the app's own two-line picker rows, the current row carrying the `Check` (the authored dot is gone). The entry asserts the menu's own hook at shutter time - a closed menu fails the run. |
-| `agent-menu-open` | The agent panel on a team-bound chat: the team's rule as a caption, a leaf row disabled with its reason, and the accepted seats settable beside it (issue #861's CONSTRAINT). The 560x640 sibling `constrained-agent-open` shows the whole rule at once. |
+| `agent-menu-open` | The agent panel on a team-bound chat: the team's rule as a caption, a leaf row disabled with its reason, the accepted seats settable beside it, and the highlight seeded onto the current settable row (issue #861's CONSTRAINT; the seed is review round 1's D2/U1, re-shot here). The 560x640 sibling `constrained-agent-open` shows the whole rule at once. |
 | `team-menu-keyboard-highlight` | One `ArrowDown` after a pointer-open: the arrows keep focus in the field and move `aria-activedescendant`, so the active row is the one carrying `aria-selected` - `[role="option"][aria-selected="true"]` is asserted present (Radix's roving focus, `data-highlighted`, is what a menu would set and this listbox does not). |
 | `team-trigger-hover` | The team trigger under the rig's real pointer (asserted `:hover`), the pre-click state. |
 | `team-trigger-focus` | The same trigger reached by real Tab presses, `:focus-visible` (a programmatic `.focus()` would not match - which is why the entry walks). |
@@ -203,9 +203,9 @@ describes are unchanged - only the settability of a near-miss row is.
 | `long-roster-agent-open` | The operator's own failure at scale: a 150-name roster, 560x640. The panel stops 352px down and the list scrolls inside it, with the footer stating the roster's full size - the bound, photographed, and the difference between a bound and a truncation stated on screen. |
 | `long-roster-short-window` | The same panel at 560x220, where the 352px ceiling is no longer the binding term and Radix's available height is. The panel measures 173px and its bottom sits 8px inside the window. A fixed `max-height` renders a panel taller than the window here. |
 | `menu-near-window-bottom` | The band pinned to the BOTTOM of the viewport (`LongRosterAtTheBottom`, 560x520), so the panel has to flip: it opens upward, 352px, wholly on screen. The story moves the band because the app's header cannot be at the bottom of the window - the frame is about the placement, and it says so. |
-| `search-results` | `rev` typed into the field of the same 150-name roster: four rows, panel 276px, nothing scrolls, footer `4 of 150 agents match`. This is the composition the operator asked about - the search is what keeps the bound from biting. |
+| `search-results` | `rev` typed into the field of the same 150-name roster: four rows, every one refused by the team's rule - so since review round 1's D1 the footer carries the resolution rather than the count (`No profile here can take the seat — clear the search, or switch the team.`), and each row keeps the short per-row reason. |
 | `search-no-results` | `zzzz`: the panel shrinks to its field plus one sentence, `Nothing matches "zzzz".`, and the footer stays away rather than claiming a count over an empty result. The state most likely to be ugly, photographed. |
-| `recents-agent-open` | The recents band with history (agent menu): `Recent agents` (reviewer, coder, qa-tester) above `All agents`, each headed by a label on a hairline. All 150 roster rows are still in the DOM underneath - the band REPEATS rows, it never removes them. |
+| `recents-agent-open` | The recents band with history (agent menu): on this ring every remembered row is refused by the team's rule, so since review round 1's U6 the band and its heading are GONE - a band of refusals is not the shortcut it exists to be - while `All agents` still lists every row with its reason and the highlight lands on the settable `architect`. The mixed case (refused dropped, settable kept) is pinned in `header-identity-menu.test.mjs`. |
 | `recents-team-open` | The same band in the team menu, so the two pickers are shown agreeing rather than one frame plus an assurance about the other. |
 | `no-recents-team-open` | The fresh install: an empty ring, and therefore NO band and NO heading at all - not an empty `Recent teams` strip. The entry asserts `expectGone` on the heading so a regression fails the run. |
 
@@ -302,6 +302,28 @@ copy shown in these frames is the design round's candidate to weigh.
 | `conflict-chip` | The incompatible pair at rest (`coder · Local Operator Dev`): the persona stays visible, the warning mark says the pair needs resolving. |
 | `conflict-agent-open` | The panel where one pick resolves it: the caption, the current refused row disabled with its reason, the manager and delegating profiles settable beside it. |
 | `conflict-chip-loading` | The same pair before the roster answers: no cue, asserted at shutter time. |
+| `refused-enter` | `rev` typed, then Enter on the refused row the filter left active: the footer's live region answers (`copy-reviewer cannot take the seat.`) instead of the silent no-op review round 1 measured (D2/U1). |
+
+### Review round 1's remediation (the frames re-shot at this head)
+
+Round 1's consolidated findings changed this panel's behaviour, so its frames
+are re-shot rather than re-used: the highlight is SEEDED onto the current or
+first settable row - and re-seeded when a cold open's rows arrive - so the
+first Enter acts; Enter on a refused row ANSWERS through the footer's live
+region (`refused-enter`); a filtered view whose every match is refused swaps
+its count for the exits that exist; the recents band drops refused rows and
+collapses when none remain; the per-row reason is short (`Needs a delegating
+profile here.`) and the caption's vocabulary is `profiles that can delegate`;
+the refused row's reason steps down to `ink-dim`, its current check wears
+warning ink, and it no longer paints the hover wash; the caption is
+associated with the list via `aria-describedby`; and the overflow measure was
+fixed - the footer had silently stopped rendering on the wide roster because
+the measure effect could read a null scroller ref on its only run with the
+panel open (Radix mounts the portal a commit after `open` folds; proved live,
+then fixed with a callback ref; QA's Q-1). The command was the same narrowed
+shape as above,
+`--dirs=agent-menu-open,constrained-agent-open,conflict-agent-open,long-roster-agent-open,long-roster-short-window,menu-near-window-bottom,search-results,recents-agent-open,narrow-fold-agent-menu-open,refused-enter`,
+ten states x two palettes on port 6457, every claim asserted at shutter time.
 
 `before-constraint/` is this round's before half, shot the way `before-main/`
 and `before-bound/` were: this branch's stories - whose bridge answers the
@@ -309,9 +331,10 @@ same rosters and `delegate` flags - rendered by `origin/main`'s identity
 modules (all four restored at once, then reverted; all five edited files - the
 four modules and the rig - verified byte-identical to `HEAD` afterwards, and
 the rig's three arms re-pointed to claims that tree can satisfy). What it
-buys: `conflict-agent-open` is the reporter's own screenshot - `coder` listed
-and freely selectable under a team, no caption, no rule - and `agent-menu-open`
-is the unconstrained panel the constrained one replaced.
+buys: `conflict-agent-open` reproduces the reporter's own state - `coder`
+listed and freely selectable under a team, no caption, no rule (the issue's
+attachment is the no-team menu; the team case is stated in its prose) - and
+`agent-menu-open` is the unconstrained panel the constrained one replaced.
 
 The frames came from three narrowed runs against this worktree's Storybook
 (the section recipes above, port 6413): the fifteen recaptured and new states
