@@ -205,7 +205,8 @@ describes are unchanged - only the settability of a near-miss row is.
 | `menu-near-window-bottom` | The band pinned to the BOTTOM of the viewport (`LongRosterAtTheBottom`, 560x520), so the panel has to flip: it opens upward, 352px, wholly on screen. The story moves the band because the app's header cannot be at the bottom of the window - the frame is about the placement, and it says so. |
 | `search-results` | `rev` typed into the field of the same 150-name roster: four rows, every one refused by the team's rule - so since review round 1's D1 the footer carries the resolution rather than the count (`No profile here can take the seat — clear the search, or switch the team.`), and each row keeps the short per-row reason. |
 | `search-no-results` | `zzzz`: the panel shrinks to its field plus one sentence, `Nothing matches "zzzz".`, and the footer stays away rather than claiming a count over an empty result. The state most likely to be ugly, photographed. |
-| `recents-agent-open` | The recents band with history (agent menu): on this ring every remembered row is refused by the team's rule, so since review round 1's U6 the band and its heading are GONE - a band of refusals is not the shortcut it exists to be - while `All agents` still lists every row with its reason and the highlight lands on the settable `architect`. The mixed case (refused dropped, settable kept) is pinned in `header-identity-menu.test.mjs`. |
+| `recents-agent-open` | The recents band with history (agent menu): on this ring every remembered row is refused by the team's rule, so since review round 1's U6 the band and its heading are GONE - a band of refusals is not the shortcut it exists to be - while `All agents` still lists every row with its reason and the highlight lands on the settable `architect`. The frame is byte-identical to `long-roster-agent-open` BY CONSTRUCTION (this ring has nothing settable to show), which is why review round 2's D8 asked for the mixed ring beside it: `recents-agent-mixed-open` is that frame, and the membership rule is pinned in `header-identity-menu.test.mjs`. |
+| `recents-agent-mixed-open` | The MIXED ring (review round 2, D8): `manager` (settable, remembered) is up in `Recent agents` while `coder` (refused, remembered) is absent from the band and still listed, greyed with its reason, under `All agents` - the band as a FILTER rather than a fault. |
 | `recents-team-open` | The same band in the team menu, so the two pickers are shown agreeing rather than one frame plus an assurance about the other. |
 | `no-recents-team-open` | The fresh install: an empty ring, and therefore NO band and NO heading at all - not an empty `Recent teams` strip. The entry asserts `expectGone` on the heading so a regression fails the run. |
 
@@ -302,7 +303,8 @@ copy shown in these frames is the design round's candidate to weigh.
 | `conflict-chip` | The incompatible pair at rest (`coder · Local Operator Dev`): the persona stays visible, the warning mark says the pair needs resolving. |
 | `conflict-agent-open` | The panel where one pick resolves it: the caption, the current refused row disabled with its reason, the manager and delegating profiles settable beside it. |
 | `conflict-chip-loading` | The same pair before the roster answers: no cue, asserted at shutter time. |
-| `refused-enter` | `rev` typed, then Enter on the refused row the filter left active: the footer's live region answers (`copy-reviewer cannot take the seat.`) instead of the silent no-op review round 1 measured (D2/U1). |
+| `refused-enter` | `rev` typed, then Enter on the refused row the filter left active: the footer's live region answers (`copy-reviewer cannot take the seat.`) instead of the silent no-op review round 1 measured (D2/U1). Since review round 2's D7 the answer is an ADDITION - the exits line stays rendered under it - and both clear the moment the highlight moves, so the line never names a row that is no longer active. |
+| `no-settable-agent` | The manager-less roster (review round 2, D9): every row refused because no row carries the manager's name or a delegate flag, so the footer renders the UNTYPED resolution - `No profile can take the seat — switch the team.` - the branch the typed sentence cannot reach. |
 
 ### Review round 1's remediation (the frames re-shot at this head)
 
@@ -324,6 +326,21 @@ then fixed with a callback ref; QA's Q-1). The command was the same narrowed
 shape as above,
 `--dirs=agent-menu-open,constrained-agent-open,conflict-agent-open,long-roster-agent-open,long-roster-short-window,menu-near-window-bottom,search-results,recents-agent-open,narrow-fold-agent-menu-open,refused-enter`,
 ten states x two palettes on port 6457, every claim asserted at shutter time.
+
+### Review round 2's polish (three states added, one re-shot)
+
+The convergence round's minors changed three surfaces, so three frames join the
+set and one is re-shot: `refused-enter` now shows the announcement and the
+resolution together (D7 - the exits line survives the key, and the answer
+clears the moment the highlight moves), `recents-agent-mixed-open` frames the
+band as a filter rather than a fault (D8 - `manager` kept in the band, `coder`
+dropped from it and still listed below with its reason), and `no-settable-agent`
+renders the untyped resolution (D9). The command was the same narrowed shape,
+`--dirs=refused-enter,search-results,recents-agent-mixed-open,no-settable-agent`,
+on port 6459 with the settle budget raised for the loaded host
+(`LOCAL_OPERATOR_UI_THEME_SETTLE_MS=30000` - a cold preview took longer than
+the shipped 10 s to apply the theme, and the raised budget is the knob the rig
+documents for exactly that), every claim asserted at shutter time.
 
 `before-constraint/` is this round's before half, shot the way `before-main/`
 and `before-bound/` were: this branch's stories - whose bridge answers the
