@@ -1,0 +1,337 @@
+{
+  "label": "after",
+  "mode": "phantom",
+  "session": "b03b4a57c380",
+  "record": "ac4b015eca0e89c02d0191265c183bd6",
+  "seeded_draft": {
+    "key": "send:b03b4a57c380",
+    "createRequestId": "rig-create-1",
+    "admissionRequestId": "rig-admit-1",
+    "sessionId": "b03b4a57c380",
+    "submittedAt": 1791248308397,
+    "submittedText": "the message that landed",
+    "undelivered": {
+      "recordId": "ac4b015eca0e89c02d0191265c183bd6",
+      "text": "the message that landed",
+      "attachments": []
+    }
+  },
+  "read": {
+    "viewport": "1380x900",
+    "route": "#/chat",
+    "transcript_present": true,
+    "row_count": 60,
+    "rows": [
+      {
+        "id": "d536ab2389905ba6ea366bd406f82254",
+        "kind": "user",
+        "text": "[row 0200] the the the has the page row row page"
+      },
+      {
+        "id": "47f63d2693bee397f64121b96296340d",
+        "kind": "assistant",
+        "text": "[row 0201] exactly the durable one every the has reader ever the they they time back durab"
+      },
+      {
+        "id": "5be0d89fde9331c56b08935f9f6bbe72",
+        "kind": "user",
+        "text": "[row 0202] left the while it holds one"
+      },
+      {
+        "id": "d345bd576818bdb2bcba16cb18dec6ba",
+        "kind": "assistant",
+        "text": "[row 0203] where at ever durable durable back and stays page row stays where at left time "
+      },
+      {
+        "id": "1ea6bd1bc62869ad8832d7fc74a44538",
+        "kind": "user",
+        "text": "[row 0204] a every time the through every where at transcript ever while scrolls every the"
+      },
+      {
+        "id": "1dd731c7ffe0103e2d9c6e0bc2e03ffa",
+        "kind": "assistant",
+        "text": "[row 0205] the they time scrolls every row where one it written back a durable anchor anch"
+      },
+      {
+        "id": "ad648901d6b843ee7c072f74ae4b9e33",
+        "kind": "user",
+        "text": "[row 0206] this time this time stays time at page and through left"
+      },
+      {
+        "id": "90b32f1a7b2e15fa07f6f6821ac51b78",
+        "kind": "assistant",
+        "text": "[row 0207] time the transcript the at ever back stays row one through anchor durable trans"
+      },
+      {
+        "id": "49c3c9b515a03e10dcf26b373d77815a",
+        "kind": "user",
+        "text": "[row 0208] where stays time exactly ever conversation and stays durable one through reader"
+      },
+      {
+        "id": "658d8b2b58c82938168cee1efb5aa757",
+        "kind": "assistant",
+        "text": "[row 0209] it while transcript time left it scrolls at conversation this back the every ro"
+      },
+      {
+        "id": "8032778b57b96b2d89134f3961de82ac",
+        "kind": "user",
+        "text": "[row 0210] where while every holds durable and holds every left reader ever back exactly"
+      },
+      {
+        "id": "507a9a0f635ce9be9b78e5313a714936",
+        "kind": "assistant",
+        "text": "[row 0211] exactly the conversation at through scrolls it one exactly the transcript where"
+      },
+      {
+        "id": "eb43426f962c118b8f36f36bd92fd4fc",
+        "kind": "user",
+        "text": "[row 0212] this scrolls row transcript scrolls left back a a"
+      },
+      {
+        "id": "e1cf73510c31a173934838dd1435d250",
+        "kind": "assistant",
+        "text": "[row 0213] the every conversation through at anchor durable and time page exactly durable "
+      },
+      {
+        "id": "79e29395ecd8143a4f9032bf0e36ace7",
+        "kind": "user",
+        "text": "[row 0214] written has reader time row stays reader has"
+      },
+      {
+        "id": "3a7d906983c5d646d3c35d31e05d4aa9",
+        "kind": "assistant",
+        "text": "[row 0215] through it at has the scrolls a left left has page exactly they reader back eve"
+      },
+      {
+        "id": "1e6d92b772912dd1e7e98d58d460e2b9",
+        "kind": "user",
+        "text": "[row 0216] exactly they durable has exactly row where has scrolls holds every it they"
+      },
+      {
+        "id": "87f8a8236da62e14d7cb1d7e15c6746e",
+        "kind": "assistant",
+        "text": "[row 0217] it ever transcript at the it stays it this transcript every through reader this"
+      },
+      {
+        "id": "c7fef4014b8cd1b56c891016ca9596f1",
+        "kind": "user",
+        "text": "[row 0218] this the time holds and exactly exactly where through the holds where stays"
+      },
+      {
+        "id": "2e0d6cf242f0b835713c5ceaef7407e1",
+        "kind": "assistant",
+        "text": "[row 0219] it back they anchor back the transcript reader ever the every left row row writ"
+      },
+      {
+        "id": "c95e71fdc21ffec6d5643ad8a4ce7a89",
+        "kind": "user",
+        "text": "[row 0220] back the it this scrolls this"
+      },
+      {
+        "id": "607227466212d10ee4f5e496947f731b",
+        "kind": "assistant",
+        "text": "[row 0221] anchor durable it and they conversation the while they the row and page and it "
+      },
+      {
+        "id": "56eca48b9fcf617845317bc24b532ab7",
+        "kind": "user",
+        "text": "[row 0222] stays page it page the exactly a the"
+      },
+      {
+        "id": "5159ceaa6aba69d0d05409738ffd6396",
+        "kind": "assistant",
+        "text": "[row 0223] ever every back this scrolls written a the while holds the the at exactly conve"
+      },
+      {
+        "id": "1c5853141c72cecc7f6297be6b8cd66f",
+        "kind": "user",
+        "text": "[row 0224] ever they transcript at time reader holds it exactly a they"
+      },
+      {
+        "id": "9c7a950aea40fb755ed7c064ea2420fe",
+        "kind": "assistant",
+        "text": "[row 0225] while anchor anchor scrolls scrolls conversation it durable it row scrolls has "
+      },
+      {
+        "id": "d0d14ed182043b41cbdb2504b25a8200",
+        "kind": "user",
+        "text": "[row 0226] ever page this has time anchor every written where"
+      },
+      {
+        "id": "3eb63121f9333d72025dc689aa0c544f",
+        "kind": "assistant",
+        "text": "[row 0227] it they while this has anchor transcript left and left reader left durable hold"
+      },
+      {
+        "id": "d97b76e588856c186f4e2501587837d2",
+        "kind": "user",
+        "text": "[row 0228] every left every time conversation left while while the every stays one they"
+      },
+      {
+        "id": "a75eeeba6a4b9c8e4735c62e3d4f84de",
+        "kind": "assistant",
+        "text": "[row 0229] they at stays transcript scrolls this time time scrolls time transcript it dura"
+      },
+      {
+        "id": "085c1d02bd0a9acafd75303ebdbba25f",
+        "kind": "user",
+        "text": "[row 0230] reader this holds it exactly durable while at at transcript scrolls ever the"
+      },
+      {
+        "id": "106c19546b8dca9755dc1e432940cae0",
+        "kind": "assistant",
+        "text": "[row 0231] the the one while one row left it conversation conversation they durable they t"
+      },
+      {
+        "id": "77cbcf048ecf7e4bd3432d6c97c7aa16",
+        "kind": "user",
+        "text": "[row 0232] the where page page this the"
+      },
+      {
+        "id": "6c04fbe21efc0c9f0dfbc67cb3001d31",
+        "kind": "assistant",
+        "text": "[row 0233] left exactly the transcript exactly has they they at it ever exactly scrolls on"
+      },
+      {
+        "id": "a44520b5b8a817bc2ea1112546e639a2",
+        "kind": "user",
+        "text": "[row 0234] a transcript time where this durable scrolls scrolls the ever reader left ancho"
+      },
+      {
+        "id": "9868cea55bda9b2282e61691dfd23b9c",
+        "kind": "assistant",
+        "text": "[row 0235] one the reader durable stays a has conversation scrolls one scrolls anchor time"
+      },
+      {
+        "id": "107a06b6f7307be15eecc47f412bd758",
+        "kind": "user",
+        "text": "[row 0236] one time transcript row page the this"
+      },
+      {
+        "id": "575377abfc954ad7db120a904fe654b7",
+        "kind": "assistant",
+        "text": "[row 0237] where through page at every the exactly ever exactly while back ever conversati"
+      },
+      {
+        "id": "bc49c1de003cd8ac4c1ec80e6ad8feec",
+        "kind": "user",
+        "text": "[row 0238] it through the the anchor one anchor stays back exactly written where durable t"
+      },
+      {
+        "id": "46999090f98862c939b49fbea79e7153",
+        "kind": "assistant",
+        "text": "[row 0239] a this and page stays the conversation through while a scrolls a at a the the t"
+      },
+      {
+        "id": "0bbaf60b060fc6507176334cb4ebdd1f",
+        "kind": "user",
+        "text": "[row 0240] time it this while scrolls anchor the durable one"
+      },
+      {
+        "id": "0e5eb5398a1d8e570bd1b840d033e01f",
+        "kind": "assistant",
+        "text": "[row 0241] the stays a written the transcript the page every the exactly anchor stays exac"
+      },
+      {
+        "id": "60046fcc6b9b93efe78dfe6911d70e54",
+        "kind": "user",
+        "text": "[row 0242] through stays written the every left while conversation"
+      },
+      {
+        "id": "072b974cd0b761c2bbf0aa05a4b8e3f1",
+        "kind": "assistant",
+        "text": "[row 0243] the page the while exactly scrolls durable reader transcript where the the one "
+      },
+      {
+        "id": "20dcc149c7bebb1b2c80deb4c69ccd25",
+        "kind": "user",
+        "text": "[row 0244] the while scrolls page time the exactly at scrolls back it stays and time holds"
+      },
+      {
+        "id": "d1a2f4859f365a5b583efb856f0c3345",
+        "kind": "assistant",
+        "text": "[row 0245] at a exactly stays it scrolls one back has has scrolls the scrolls has holds it"
+      },
+      {
+        "id": "7cc73774f568ba80004c194a5aaa6a56",
+        "kind": "user",
+        "text": "[row 0246] holds it anchor exactly back and it they transcript this written page has trans"
+      },
+      {
+        "id": "73152706e55693a224a8771a88697588",
+        "kind": "assistant",
+        "text": "[row 0247] ever durable they conversation and page every conversation a scrolls one ever d"
+      },
+      {
+        "id": "ef373c7faa10c810eadb185759fa5503",
+        "kind": "user",
+        "text": "[row 0248] where conversation one it the at through written it transcript through"
+      },
+      {
+        "id": "82d88c1f1d0413ec1fc62ffa129af272",
+        "kind": "assistant",
+        "text": "[row 0249] stays time reader a transcript at scrolls ever the stays every they left time s"
+      },
+      {
+        "id": "ea63f3e9fbcc3e65e398bc657464e567",
+        "kind": "user",
+        "text": "[row 0250] they written holds durable a at and at the it the one one it a written exactly"
+      },
+      {
+        "id": "711c25b50107926acc1bcf038cdaf81d",
+        "kind": "assistant",
+        "text": "[row 0251] stays exactly exactly durable one the reader transcript has at reader it the ba"
+      },
+      {
+        "id": "d23139421b4a0c642d04ebd92cf85149",
+        "kind": "user",
+        "text": "[row 0252] left every this time every time it through anchor one at stays anchor at while "
+      },
+      {
+        "id": "160cce1bce0e1d75bb88850bea800d55",
+        "kind": "assistant",
+        "text": "[row 0253] holds anchor holds ever row back stays one it written and while the conversatio"
+      },
+      {
+        "id": "8190310f54b7783e535ee550f195cebc",
+        "kind": "user",
+        "text": "[row 0254] the scrolls ever durable written every at has and"
+      },
+      {
+        "id": "87d20a571224507b1f00f18b795e1e29",
+        "kind": "assistant",
+        "text": "[row 0255] the the the has left one stays they the time stays row durable the transcript s"
+      },
+      {
+        "id": "a84bef017037e8e59395d91136d33987",
+        "kind": "user",
+        "text": "[row 0256] anchor conversation where reader left anchor scrolls has"
+      },
+      {
+        "id": "1f4a02a34b31bb74281d7d0a4f222b52",
+        "kind": "assistant",
+        "text": "[row 0257] conversation the the they left at left ever written reader it durable left hold"
+      },
+      {
+        "id": "b78055b4f39987391897941b8ea86f68",
+        "kind": "user",
+        "text": "[row 0258] it back through row a this where anchor the this this left scrolls they time du"
+      },
+      {
+        "id": "e93672f26d7daff34e7d802caa1b6da4",
+        "kind": "assistant",
+        "text": "[row 0259] conversation while conversation holds reader every every reader reader while re"
+      }
+    ],
+    "undelivered": null,
+    "body_text_tail": "while and scrolls they the written back through written anchor holds while it conversation through\n\nSign in to Radient in Settings to enable speaking aloud\n1:31 AM\n\n[row 0258] it back through row a this where anchor the this this left scrolls they time durable\n\n[row 0259] conversation while conversation holds reader every every reader reader while reader this durable it at where every this at the where this anchor stays at row the has anchor and it where the while it has\n\nSign in to Radient in Settings to enable speaking aloud\n1:33 AM\nWorking directory:\n~\n\nNo model provider connected ·\nConnect",
+    "provider_modal": false,
+    "stored_draft": {
+      "key": "send:b03b4a57c380",
+      "has_undelivered": false,
+      "undelivered_record": null,
+      "has_error": false,
+      "submittedText": "the message that landed"
+    }
+  }
+}

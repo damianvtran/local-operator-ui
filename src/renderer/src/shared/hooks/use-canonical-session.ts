@@ -2857,13 +2857,21 @@ export function useCanonicalSessionStream(
 				 * walk) and only a page that is not `cursor_missing` counts as complete: a
 				 * walked-back window is not the tail, so its silence about a recent
 				 * message proves nothing.
+				 *
+				 * AND THE PAGE TRAVELS WHOLE, not as a bare id list: `complete` is the
+				 * page's CONTINUITY, and the store draws the `undelivered` verdict only
+				 * when the page also REACHES back past the claim (issue #847). Handing over
+				 * the ids alone was what let a shallow-but-complete tail page answer "did
+				 * not land" for a message older than its window.
 				 */
 				if (sessionId && beforeId === undefined) {
-					useCanonicalSessionsStore.getState().resolveHeldFromServer(
-						sessionId,
-						page.entries.map((entry) => entry.id),
-						!page.cursor_missing,
-					);
+					useCanonicalSessionsStore
+						.getState()
+						.resolveHeldFromServer(
+							sessionId,
+							page.entries,
+							!page.cursor_missing,
+						);
 				}
 				/*
 				 * How many target calls were still behind what had been read when this
@@ -3460,16 +3468,21 @@ export function useCanonicalSessionStream(
 							 * its page is the server's own statement of what this conversation
 							 * holds — the acknowledgement §F2 says a held state clears from, never
 							 * from the local send. The store decides: an answer that NAMES the held
-							 * request landed; one that does not, on a COMPLETE page (no
-							 * `cursor_missing`), proves it did not. Passed unconditionally because
-							 * both arms are cheap and the claim's existence is the store's test.
+							 * request landed; one that does not proves it did not only on a page
+							 * that is both COMPLETE (no `cursor_missing`) and DEEP ENOUGH to see
+							 * back to the claim (the store's own reach test, issue #847 — the page
+							 * travels whole rather than as an id list because of it). Passed
+							 * unconditionally because both arms are cheap and the claim's existence
+							 * is the store's test.
 							 */
 							if (sessionId) {
-								useCanonicalSessionsStore.getState().resolveHeldFromServer(
-									sessionId,
-									snapshot.history.entries.map((entry) => entry.id),
-									!snapshot.history.cursor_missing,
-								);
+								useCanonicalSessionsStore
+									.getState()
+									.resolveHeldFromServer(
+										sessionId,
+										snapshot.history.entries,
+										!snapshot.history.cursor_missing,
+									);
 							}
 							// A cold session (no live owner) snapshots with no history
 							// cursor and therefore an empty page, and a replaced cursor
