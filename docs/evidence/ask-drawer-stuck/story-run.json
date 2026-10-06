@@ -1,0 +1,65 @@
+{
+  "states": {
+    "empty-wire/localOperatorDark": {
+      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/empty-wire/localOperatorDark.webp",
+      "theme": "localOperatorDark",
+      "drawer": 1,
+      "closeAsks": 1,
+      "scopeLine": "This conversation · All asks settled",
+      "emptySentence": null,
+      "bodyText": "This conversation · All asks settled No asks outstanding. The agent is not waiting on anything.",
+      "rows": 0
+    },
+    "empty-wire/localOperatorLight": {
+      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/empty-wire/localOperatorLight.webp",
+      "theme": "localOperatorLight",
+      "drawer": 1,
+      "closeAsks": 1,
+      "scopeLine": "This conversation · All asks settled",
+      "emptySentence": null,
+      "bodyText": "This conversation · All asks settled No asks outstanding. The agent is not waiting on anything.",
+      "rows": 0
+    },
+    "unread/localOperatorDark": {
+      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/unread/localOperatorDark.webp",
+      "theme": "localOperatorDark",
+      "drawer": 1,
+      "closeAsks": 1,
+      "scopeLine": "This conversation · Not read yet",
+      "emptySentence": null,
+      "bodyText": "This conversation · Not read yet Reading the asks…",
+      "rows": 0
+    },
+    "unread/localOperatorLight": {
+      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/unread/localOperatorLight.webp",
+      "theme": "localOperatorLight",
+      "drawer": 1,
+      "closeAsks": 1,
+      "scopeLine": "This conversation · Not read yet",
+      "emptySentence": null,
+      "bodyText": "This conversation · Not read yet Reading the asks…",
+      "rows": 0
+    },
+    "unsupported/localOperatorDark": {
+      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/unsupported/localOperatorDark.webp",
+      "theme": "localOperatorDark",
+      "drawer": 1,
+      "closeAsks": 1,
+      "scopeLine": "This conversation · Not read yet",
+      "emptySentence": null,
+      "bodyText": "This conversation · Not read yet Reading the asks…",
+      "rows": 0
+    },
+    "unsupported/localOperatorLight": {
+      "file": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/states-final/unsupported/localOperatorLight.webp",
+      "theme": "localOperatorLight",
+      "drawer": 1,
+      "closeAsks": 1,
+      "scopeLine": "This conversation · Not read yet",
+      "emptySentence": null,
+      "bodyText": "This conversation · Not read yet Reading the asks…",
+      "rows": 0
+    }
+  },
+  "failures": []
+}

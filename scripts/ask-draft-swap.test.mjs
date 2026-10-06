@@ -127,19 +127,84 @@ const mount = async (element) => {
 
 /* --------------------------------------------------------------- the door ---- */
 
-test("a MOUNT into an empty-but-published queue does not fire the close door", async () => {
-	// Reachable on every pane mount: `SessionPanel` is keyed by conversation, so
-	// this is every conversation switch, and the caller's swap would empty the box
-	// of a draft retained for the conversation being opened.
-	const calls = [];
+test("a mount over a queue with nothing to show closes itself, unless a door opened it", async () => {
+	/*
+	 * THE SWITCH (the stuck-slot defect). `SessionPanel` is keyed by conversation and
+	 * the open flag is the STORE's, so a drawer left open in one conversation MOUNTS
+	 * over the next conversation's frame with no door behind it. When that frame has
+	 * nothing to show, the mount used to keep the right slot with nothing drawn at all
+	 * - no bar, no dismiss, no exit - so it now closes itself.
+	 */
+	const switched = [];
 	const view = await mount(
 		h(AskDrawer, {
 			frontend: frontend([]),
 			scope: "session",
+			onClose: () => switched.push(true),
+		}),
+	);
+	assert.deepEqual(
+		switched,
+		[true],
+		"a mount over a queue with nothing to show closes itself",
+	);
+	await view.unmount();
+
+	/*
+	 * THE DOOR: the fleet trigger is offered at ZERO outstanding asks, so a press on
+	 * it opens this surface over an empty queue ON PURPOSE - closing that mount would
+	 * be a control refusing its own door. The signal is the lane's own: the entry move
+	 * accepts the composer chip (`ASK_ITEM_SELECTOR`) or the header trigger
+	 * (`ASK_HEADER_ITEM_SELECTOR`), so the rig puts focus on the header door before
+	 * mounting, which is the state a press leaves behind.
+	 */
+	const pressed = [];
+	const door = document.createElement("button");
+	door.setAttribute("data-tour-tag", "ask-pane-trigger");
+	document.body.appendChild(door);
+	door.focus();
+	const held = await mount(
+		h(AskDrawer, {
+			frontend: frontend([]),
+			scope: "fleet",
+			onClose: () => pressed.push(true),
+		}),
+	);
+	assert.deepEqual(
+		pressed,
+		[],
+		"the user's own press on a door keeps the surface that door opened",
+	);
+	await held.unmount();
+	door.remove();
+});
+
+/*
+ * THE UNREAD FRAME IS NOT AN EMPTY ONE (the WIRE FIX). `frontend: null` is "the read
+ * has not answered" - the fleet pane's first commits, or a session frame that has not
+ * landed - and it must close NOTHING: the drawer's own slot is claimed by the mount,
+ * so a close fired on a pending read would take the surface away from a user whose
+ * queue is about to arrive. It must also not TRAP: the chrome renders over it, and
+ * the frame's absence is what the body states.
+ */
+test("an unresolved frame neither closes the drawer nor draws nothing", async () => {
+	const calls = [];
+	const view = await mount(
+		h(AskDrawer, {
+			frontend: null,
+			scope: "session",
 			onClose: () => calls.push(true),
 		}),
 	);
-	assert.deepEqual(calls, [], "a mount is not an emptying");
+	assert.deepEqual(calls, [], "an unread frame is not an emptied queue");
+	assert.ok(
+		document.querySelector("[data-lo-ask-surfaces]") !== null,
+		"the drawer drew nothing over an unread frame, which is the claimed slot with no close control the whole fix exists to remove",
+	);
+	assert.ok(
+		document.body.textContent.includes("Reading the asks"),
+		"the unread frame must say what the surface is doing rather than a count it cannot substantiate",
+	);
 	await view.unmount();
 });
 

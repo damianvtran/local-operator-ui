@@ -1,0 +1,180 @@
+{
+  "frames": {
+    "aPopulated": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/01-a-populated.png",
+    "drawerOpen": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/02-drawer-open.png",
+    "switchStuck": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/03-switch-stuck.png",
+    "afterVoidClickEscape": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/04-after-void-click-escape.png",
+    "afterComposerEscape": "/Users/damian/.local-operator/sessions/99ab0a74f8f7/scratchpad/asks-stuck-rig/shots/00-before-fix/05-after-composer-escape.png"
+  },
+  "probes": {
+    "afterSwitch": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": true,
+      "slotBox": {
+        "x": 820,
+        "y": 0,
+        "w": 560,
+        "h": 900
+      },
+      "slotText": "",
+      "chip": 0,
+      "headerTrigger": 0,
+      "drawerScopeLine": null
+    },
+    "afterVoidClickEscape": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": true,
+      "slotBox": {
+        "x": 820,
+        "y": 0,
+        "w": 560,
+        "h": 900
+      },
+      "slotText": "",
+      "chip": 0,
+      "headerTrigger": 0,
+      "drawerScopeLine": null
+    },
+    "afterComposerEscape": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": true,
+      "slotBox": {
+        "x": 820,
+        "y": 0,
+        "w": 560,
+        "h": 900
+      },
+      "slotText": "",
+      "chip": 0,
+      "headerTrigger": 0,
+      "drawerScopeLine": null
+    }
+  },
+  "chip": {
+    "x": 539,
+    "y": 754,
+    "w": 229,
+    "h": 24,
+    "top": 742,
+    "left": 425
+  },
+  "closeButton": {
+    "x": 1358,
+    "y": 20,
+    "w": 28,
+    "h": 28,
+    "top": 6,
+    "left": 1344
+  },
+  "notesRow": {
+    "x": 126,
+    "y": 824,
+    "text": "Ready Notes 7m , last active 7 minutes ago",
+    "hitInsideRow": true,
+    "hitText": "Notes"
+  },
+  "activeElementAfterSwitch": {
+    "tag": "TEXTAREA",
+    "label": "Message",
+    "text": ""
+  },
+  "timeline": [
+    {
+      "t": "0.5s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "1s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "1.5s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "2s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "2.5s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "3s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "3.5s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "4s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "4.5s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "5s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "5.5s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "6s",
+      "slot": true,
+      "drawer": false,
+      "close": false
+    }
+  ],
+  "activeAfterVoidClick": {
+    "tag": "BODY",
+    "label": null
+  },
+  "composerRect": {
+    "x": 540,
+    "y": 829,
+    "w": 512,
+    "h": 110,
+    "top": 774,
+    "left": 284
+  },
+  "ok": true
+}

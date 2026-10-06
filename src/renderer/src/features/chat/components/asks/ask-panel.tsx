@@ -963,7 +963,18 @@ export const AskPanel = ({
 	conversationOf,
 	className,
 }: AskPanelProps) => {
-	if (view.asks === null) return null;
+	/*
+	 * AN UNREAD FRAME DRAWS NOTHING; AN EMPTY ONE STATES ITS EMPTINESS.
+	 *
+	 * The gate was `view.asks === null`, which was the same fact as "this backend does
+	 * not publish queued asks" until the runtime's wire fix - a live-but-empty queue is
+	 * now published as `asks` ABSENT with `asks_open: 0` present, so the old read drew
+	 * nothing over a live engine, which is the state the drawer now renders as its
+	 * designed empty sentence instead. `view.published` is the capability read (asks OR
+	 * asks_open present, `ask-queue.ts`'s `askQueuePublished`); the rows and the counts
+	 * below are unaffected by it, because an absent list is still zero rows.
+	 */
+	if (!view.published) return null;
 	/*
 	 * PENDING FIRST, THEN SETTLED, IN ONE LIST - NO LONGER ONE COLLAPSED SECTION
 	 * (operator ask, 2026-10-05).

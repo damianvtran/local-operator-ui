@@ -179,7 +179,12 @@ test("the drawer's frontend states the same count the badge does", () => {
 	assert.equal(frontend.asks.length, 2);
 	assert.equal(frontend.asks_open, 1);
 	assert.equal(frontend.asks_truncated, false);
-	/* The scope line states the scope: the whole point of the second context. */
+	/* The scope line states the scope: the whole point of the second context.
+	 *
+	 * `published: true` is the WIRE FIX's capability read (`asks` OR `asks_open`
+	 * present) and these literals must carry it: a view that has not been read gets
+	 * the drawer's unread clause instead of a count, which is the whole point of the
+	 * field - so a fixture that omits it is asserting the unread frame by accident. */
 	assert.equal(
 		askScopeLine("fleet", {
 			rows: [],
@@ -187,6 +192,7 @@ test("the drawer's frontend states the same count the badge does", () => {
 			movedOn: 0,
 			open: 1,
 			truncated: false,
+			published: true,
 		}),
 		"All conversations · 1 question waiting",
 	);
@@ -197,6 +203,7 @@ test("the drawer's frontend states the same count the badge does", () => {
 			movedOn: 0,
 			open: 1,
 			truncated: false,
+			published: true,
 		}),
 		"This conversation · 1 question waiting",
 	);
@@ -209,8 +216,26 @@ test("the drawer's frontend states the same count the badge does", () => {
 			movedOn: 3,
 			open: 5,
 			truncated: false,
+			published: true,
 		}),
 		"All conversations · 2 waiting, 3 moved on",
+	);
+	/*
+	 * AND AN UNREAD FRAME IS NOT A ZERO ONE. The same view with no capability reads
+	 * as a surface that has not been read - never as `All asks settled`, which is the
+	 * verdict its zero count would otherwise compose (the `a failure must not wear a
+	 * verdict's clothes` rule the lane's copy contract keeps).
+	 */
+	assert.equal(
+		askScopeLine("session", {
+			rows: [],
+			waiting: 0,
+			movedOn: 0,
+			open: 0,
+			truncated: false,
+			published: false,
+		}),
+		"This conversation · Not read yet",
 	);
 });
 
@@ -653,27 +678,27 @@ test("the drawer's entry move is a bounded one-shot", () => {
 	);
 
 	/* 2. The bounded window: this pair is the ONLY state that retries, and a
-	 * `door === null` early return that does not consume is the old unbounded shape. */
+	 * `door === null` early return that does not consume is the old unbounded shape.
+	 *
+	 * THE WINDOW IS SPELLED ON THE FRAME, NOT ON THE ROOT (the stuck-slot fix): the
+	 * container draws its chrome on every frame now, so a root exists from the first
+	 * commit and `root === null` no longer names "the read has not answered". The
+	 * state the wait is for is the frame's absence, so the frame is what it reads. */
 	assert.ok(
-		block.includes("if (door !== null && root === null) return;"),
-		"the entry move no longer bounds its retry to the awaiting-read window (a door under focus with no surface drawn yet).",
+		block.includes("if (door !== null && frameUnread) return;"),
+		"the entry move no longer bounds its retry to the awaiting-read window (a door under focus while the frame that carries its surface is unread).",
 	);
-	assert.ok(
-		!block.includes("if (door === null) return;"),
-		"the entry move returns on a missing door WITHOUT consuming the one-shot, so a mounted pane keeps watching for a door it must not serve.",
-	);
-
+	const consume = block.indexOf("wasBootstrapped.current = true;");
 	/* 3. The flag is spent before the door is required, and focus can move only
 	 * after both checks - so a mount with nothing focused resolves, and the bounded
 	 * wait cannot move anything either. */
-	const consume = block.indexOf("wasBootstrapped.current = true;");
-	const resolved = block.indexOf("if (door === null || root === null) return;");
+	const resolved = block.indexOf("if (door === null) return;");
 	assert.ok(
 		consume !== -1 && resolved !== -1 && consume < resolved,
 		"the one-shot is spent only after the door check; a mounted pane with no door under focus never resolves and a later Tab onto the rail row can steal focus.",
 	);
 	assert.ok(
 		block.indexOf("landing.focus();") > resolved,
-		"focus can move before the door/root check has resolved.",
+		"focus can move before the door check has resolved.",
 	);
 });

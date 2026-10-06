@@ -1,0 +1,165 @@
+{
+  "frames": {
+    "aPopulated": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/01-a-populated.png",
+    "drawerOpen": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/02-drawer-open.png",
+    "switchStuck": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/03-switch-stuck.png",
+    "afterVoidClickEscape": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/04-after-void-click-escape.png",
+    "afterComposerEscape": "/Users/damian/.local-operator/sessions/c0d325f93d1e/scratchpad/shots/03-final/05-after-composer-escape.png"
+  },
+  "probes": {
+    "afterSwitch": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 0,
+      "drawerScopeLine": null
+    },
+    "afterVoidClickEscape": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 0,
+      "drawerScopeLine": null
+    },
+    "afterComposerEscape": {
+      "url": "#/chat/bbbb11112222",
+      "headerTitle": null,
+      "drawers": 0,
+      "closeAsks": 0,
+      "askSurfaces": 0,
+      "slotPresent": false,
+      "slotBox": null,
+      "slotText": null,
+      "chip": 0,
+      "headerTrigger": 0,
+      "drawerScopeLine": null
+    }
+  },
+  "chip": {
+    "x": 540,
+    "y": 754,
+    "w": 229,
+    "h": 24,
+    "top": 742,
+    "left": 425
+  },
+  "closeButton": {
+    "x": 1358,
+    "y": 20,
+    "w": 28,
+    "h": 28,
+    "top": 6,
+    "left": 1344
+  },
+  "notesRow": {
+    "x": 126,
+    "y": 792,
+    "text": "Ready Notes now , last active just now",
+    "hitInsideRow": true,
+    "hitText": "Notes"
+  },
+  "activeElementAfterSwitch": {
+    "tag": "TEXTAREA",
+    "label": "Message",
+    "text": ""
+  },
+  "timeline": [
+    {
+      "t": "0.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "1s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "1.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "2s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "2.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "3s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "3.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "4s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "4.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "5.5s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    },
+    {
+      "t": "6s",
+      "slot": false,
+      "drawer": false,
+      "close": false
+    }
+  ],
+  "activeAfterVoidClick": {
+    "tag": "TEXTAREA",
+    "label": "Message"
+  },
+  "composerRect": {
+    "x": 820,
+    "y": 829,
+    "w": 810,
+    "h": 110,
+    "top": 774,
+    "left": 415
+  },
+  "ok": true
+}
