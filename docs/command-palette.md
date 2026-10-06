@@ -1,8 +1,9 @@
 # The command palette
 
-One surface with two chords: `Cmd+K` (`Ctrl+K` off macOS) opens it as it always
-has — every source, the browse list that teaches the prefixes — `Cmd+P`
-(`Ctrl+P`) opens it seeded to your chats as the conversation quick switcher, and
+One surface with three chords: `Cmd+K` (`Ctrl+K` off macOS) opens it seeded to
+your chats as the conversation quick switcher, `Cmd+P` (`Ctrl+P`) opens it on
+everything — every source, the browse list that teaches the prefixes —
+`Cmd+Shift+P` (`Ctrl+Shift+P`) opens it on the app's own commands and pages, and
 **Search** at the foot of the app rail is the pointer's door. One field searches
 and runs everything the app can do.
 
@@ -10,22 +11,38 @@ This document is the contract, not the tutorial: what the palette reads, what it
 opens, and which decisions are deliberate so a later change does not undo them
 without noticing.
 
-## The two gestures, and why one of them is not in the main process
+## The three gestures, and why one of them is not in the main process
 
 | Gesture | Owner | Why |
 | --- | --- | --- |
-| `Cmd/Ctrl+K` | the **renderer** (`palette-shortcut.ts`) | Two surfaces in the canvas already own this chord — the code editor's AI edit and the Markdown editor's link insert, which is what `Cmd+K` means in every editor a user has met. The decision reads `defaultPrevented`, so the editor that got there first keeps it. A `before-input-event` hook in main fires before the renderer sees the key at all and cannot ask. |
-| `Cmd/Ctrl+P` | the **main process** (`src/main/index.ts`) | The palette's original chord, kept for everyone who learned it from the app's own onboarding tour — and since #659 with a job of its own: it opens the surface seeded to its conversations source, which makes it the conversation quick switcher rather than a second copy of `Cmd/Ctrl+K`. Pressing it while the palette is already OPEN moves it to the chats view rather than closing it (review round 2, U5): a switcher's muscle memory expects the scope to change, and closing stays a press away (Escape, `Cmd/Ctrl+K`, a click out). It still works wherever the window has focus. |
+| `Cmd/Ctrl+K` | the **renderer** (`palette-shortcut.ts`) | Two surfaces in the canvas already own this chord — the code editor's AI edit and the Markdown editor's link insert, which is what `Cmd+K` means in every editor a user has met. The decision reads `defaultPrevented`, so the editor that got there first keeps it. A `before-input-event` hook in main fires before the renderer sees the key at all and cannot ask. It opens on the CHATS seed (`#`, issue #850). |
+| `Cmd/Ctrl+P` | the **main process** (`src/main/index.ts`) | The palette's original chord, kept for everyone who learned it from the app's own onboarding tour. Since #659 it has a job of its own rather than being a second door to the same list; since #850 that job is the EVERYTHING view — no seed, every source, the browse list that teaches the prefixes. It still works wherever the window has focus, which is why it stayed in main. |
+| `Cmd/Ctrl+Shift+P` | the **main process** (`src/main/index.ts`) | The commands door (issue #850): the surface opened on `>` (the command scope), i.e. "show me what the app can do". It shares main with `Cmd/Ctrl+P` for the same reason, and it arrives on its OWN channel — before #850 the hook did not look at Shift, so the two chords were one message and this door did not exist. |
 
-One keystroke, one owner, both decided in one place each. A press that both
-answered would toggle twice and open nothing.
+One keystroke, one owner, one decision. A press that two halves answered would
+open nothing, and a press that two doors answered would have no rule.
 
-**`Cmd/Ctrl+P` opens on the chats scope** — the seed is
-`CONVERSATION_SWITCHER_SEED` in `palette-search.ts`, the `#` glyph itself. The
-field shows the glyph, the browse list under it is conversation rows, and terms
-search conversations the way the sidebar does, so the switcher is a starting
-point rather than a mode: backspacing the glyph widens the surface back to
-everything, and a word typed inside it searches chats alone. While the palette
+**What a press DOES is one rule for all three doors** (`paletteDoorOutcome`,
+`palette-shortcut.ts`), reading the palette's open state and the CURRENT QUERY's
+scope — no separate "which view am I in" state exists or is needed:
+
+- the palette is CLOSED -> open it on that door's seed;
+- it is OPEN and already showing that door's view -> close it;
+- it is OPEN in a DIFFERENT view -> switch to that door's seed, without closing.
+
+The middle arm is the one #850 added: before it, `Cmd/Ctrl+P` could only MOVE an
+open palette, never dismiss it, so no door could be closed by pressing it again
+(review round 2, U5 had chosen move-not-close when the switcher was P's job).
+The last arm is why `Cmd+K` from the commands view goes to chats rather than
+closing the surface.
+
+**`Cmd/Ctrl+K` opens on the chats scope** — the seed is
+`CONVERSATION_SWITCHER_SEED` in `palette-search.ts`, the `#` glyph itself (it
+belonged to `Cmd/Ctrl+P` before #850; the chords swapped views, the seed did
+not). The field shows the glyph, the browse list under it is conversation rows,
+and terms search conversations the way the sidebar does, so the switcher is a
+starting point rather than a mode: backspacing the glyph widens the surface back
+to everything, and a word typed inside it searches chats alone. While the palette
 is open the scope names itself beside the field — a `# Chats` chip built from the
 same legend table the footer draws, shown whenever a scope is applied — because
 a bare glyph stops explaining itself once the reader is inside a scope.
@@ -107,7 +124,7 @@ A query is a **scope** and some **terms**.
 | --- | --- | --- |
 | `>` | commands, pages and panels | `command`, `commands`, `action`, `page`, `go` |
 | `#` | conversations | `chat`, `chats`, `conversation`, `session` |
-| `@` | agents | `agent`, `agents`, `bot` |
+| `@` | agents and teams | `agent`, `agents`, `bot`, `team`, `teams` |
 | `,` | settings | `setting`, `settings`, `preference`, `config` |
 
 Two rules, both about words being things a user might be looking FOR:
@@ -132,14 +149,24 @@ The footer draws ONE legend at a time, and the split is deliberate (design round
 measured from the committed frames (grayscale ink runs at luma >= 110, css =
 device px / 2, inclusive runs), the scope legend inks 365.5px and leaves
 158.5px free before `esc to close` in a footer with ~585px of usable width,
-while the movement legend's ink — `↑ ↓ Ctrl N to move` — measures 152.5px (it
-was 215px while the dead `Ctrl P` half was still drawn). Both do not fit: the
-152.5px of ink against the 158.5px of free space is a single-digit margin
-before any separation gap, and the legend's own interior spacing (14px measured
-between `Ctrl N` and `to move`, 22.5px between `to move` and `↵`) pushes it
-over — so a scope entry would have to go. The empty state therefore omits the
-walk and the typed state omits the scope prefixes; re-arranging that budget is
-a footer-layout decision, not a copy edit.
+while the movement legend's ink — `↑ ↓ Ctrl N to move` — measures 152.5px. Both
+do not fit: the 152.5px of ink against the 158.5px of free space is a
+single-digit margin before any separation gap, and the legend's own interior
+spacing (14px measured between `Ctrl N` and `to move`, 22.5px between `to move`
+and `↵`) pushes it over — so a scope entry would have to go. The empty state
+therefore omits the walk and the typed state omits the scope prefixes;
+re-arranging that budget is a footer-layout decision, not a copy edit.
+
+**The movement legend is PLATFORM-dependent since #850, and that is why it can
+carry `Ctrl P` again on macOS.** Both halves of the pair are bound everywhere,
+but they only REACH the renderer where main does not answer the press first: the
+palette branch in `src/main/index.ts` answers Cmd alone on darwin, so `Ctrl+P`
+reaches the field and steps; on Windows and Linux main still folds Control into
+Cmd, preventDefaults the press and answers it with the everything door, so the
+legend there teaches `Ctrl+N` alone. `paletteReachableStepCaps(isMac)` is the one
+place that set lives. On macOS the movement legend is therefore the 215px it
+measured while the pair was drawn whole — larger, and still inside the typed
+state's budget, because the typed state draws no scope legend.
 
 ## What it searches
 
@@ -147,7 +174,7 @@ a footer-layout decision, not a copy edit.
 | --- | --- | --- |
 | Go to | the app's routes | static, with a keyword table for the words people use ("cron" → Schedules, "dark mode" → Appearance) |
 | Chats | the conversation store | **the backend's search** (`sessions.search`, negotiated as `session_search`) joined by the sidebar's own `searchChats`, so the two surfaces cannot answer the same query differently; degrades to title matching when the backend cannot search |
-| Agents | the agent roster | fetched once and matched locally; past one page the backend is also asked for a name-filtered page, so a large roster stays searchable |
+| Agents and teams | the agent and team rosters | fetched once and matched locally; past one page the backend is also asked for a name-filtered page, so a large roster stays searchable. A team row reads its display label while the draft it stages is keyed by the team's slug, and the row's hint names its kind (`Agent chat` / `Team chat`) so a same-named pair cannot be confused |
 | Actions | the app's own commands | new chat, create agent, canvas toggle, clear conversation — each offered only where it can work |
 | Panels | the slash-command destinations | `info`, `usage`, `analytics`, `session.diagnostics` — see below |
 | Settings | the settings rail's sections **and** the backend's settings registry | a registry row deep-links to `/settings?setting=<key>`, the settings page's own reveal-and-focus target |
@@ -240,21 +267,22 @@ a network round trip:
   `Home`/`End` are **not** intercepted — they move the caret, because a user who
   cannot fix a typo without leaving the list has lost the surface's whole premise.
 - Since issue #761 `Ctrl+N` / `Ctrl+P` walk the list too — the Emacs pair the
-  arrows' guard leaves free. Of the pair, only `Ctrl+N` is REACHED in the
-  packaged app, and only `Ctrl+N` is advertised: `paletteReachableStepCaps` is
-  what the footer draws, while `paletteStepCaps` stays the bound set. `Ctrl+P`
-  is bound here too and steps wherever it arrives, but while the window is
-  focused and visible the press never arrives — main's `before-input-event`
-  owns `Cmd/Ctrl+P` outright (the table above, row `Cmd/Ctrl+P`) and answers it
-  with the switcher seed, so from a typed search it would drop the query rather
-  than move the selection. The asymmetry is pinned in
-  `scripts/palette-shortcut.test.mjs` and `scripts/palette-contract.test.mjs`;
-  design round 1's D1 is exactly the dead half being un-taught.
+  arrows' guard leaves free. Both halves are BOUND everywhere (`paletteStepCaps`),
+  but which of them is REACHED — and therefore advertised — is a platform fact
+  since #850: on macOS the palette branch in `src/main/index.ts` answers Cmd
+  alone, so `Ctrl+P` reaches the field and steps, and
+  `paletteReachableStepCaps(true)` teaches the whole pair; on Windows and Linux
+  main still folds Control into Cmd and answers `Ctrl+P` with the everything door,
+  so `paletteReachableStepCaps(false)` teaches `Ctrl+N` alone. From a typed search
+  that press would drop the query rather than move the selection, which is design
+  round 1's D1: the dead half must not be taught. The two-platform asymmetry is
+  pinned in `scripts/palette-shortcut.test.mjs` (advertised ⊆ bound, per
+  platform) and the wiring in `scripts/palette-contract.test.mjs`.
   `Shift`/`Alt` are refused as they are for the
   arrows, and `Cmd` is refused deliberately: `Cmd+N` is the app's New chat chord
-  and `Cmd+P` the switcher's, so accepting either here would silently re-bind a
-  press the app already means something by. The app's own New chat press already
-  stands down for a press inside the open dialog (`pressLandsOnOverlay` in
+  and `Cmd+P` the everything door's, so accepting either here would silently
+  re-bind a press the app already means something by. The app's own New chat press
+  already stands down for a press inside the open dialog (`pressLandsOnOverlay` in
   `new-chat-shortcut.ts`), so the two bindings cannot both answer one press.
 - Closing restores focus to whatever had it before the palette opened, falling
   back to the rail's Search row. This is explicit rather than inherited: a Radix
@@ -309,3 +337,30 @@ a network round trip:
 5. If it is a visual state worth looking at, add a story to
    `command-palette.stories.tsx` and an entry to `STORIES` in
    `scripts/capture-evidence.mjs` — the evidence set is the review surface.
+
+### Rows that carry an ENTITY (agents, teams)
+
+An agent or team row does not open an address; it STAGES A DRAFT, which is why
+its target is `{ type: "draft", kind, name }` rather than a `/chat/<id>` path
+(issues #844, #849). `/chat/<agent id>` had no non-session fallback in the store
+— the `sessionByAgent` map had a reader and no writer — so every such row landed
+on the "legacy link" notice. The draft door is the same one the sidebar's "New
+chat with <name>" rows and the agent page's own New chat use, so a name pressed
+twice returns to the chat that name already started.
+
+Three things such a row must get right, and each is a defect if it does not:
+
+- **the name is the SLUG, not the label.** `name` keys the draft
+  (`draft:agent:<name>`, `draft:team:<name>`), and the sidebar and the wire
+  address a binding by the same string — a row that read "Delivery crew" and
+  staged `draft:team:Delivery crew` would open a second, empty chat for a team
+  that already has one. `name` is what the row is keyed by; the label is what it
+  READS (`teamDisplayName`), and the two differ for a team with a label.
+- **the row is gated on what can deliver it.** Agent and team rows are gated on
+  `canStageDraft` (`session_catalogue` v2, the sidebar's own New-chat gate), so a
+  backend that cannot create sessions is not offered a row whose only action is to
+  stage one.
+- **the row says which kind it is.** The `@` scope draws agents and teams
+  together and a team may share an agent's name, so the hint carries the kind
+  (`Agent chat` / `Team chat`) — the one word that tells a same-named pair apart
+  once the section heading has scrolled away.

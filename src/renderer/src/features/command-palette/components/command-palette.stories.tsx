@@ -3,7 +3,10 @@ import type { CanonicalSessionRow } from "@shared/store/canonical-sessions-store
 import { useUiPreferencesStore } from "@shared/store/ui-preferences-store";
 import type { Meta, StoryObj } from "@storybook/react";
 import { useEffect, useState } from "react";
-import { CONVERSATION_SWITCHER_SEED } from "../palette-search";
+import {
+	AGENT_ROSTER_SEED,
+	CONVERSATION_SWITCHER_SEED,
+} from "../palette-search";
 /* Also imported by the Storybook preview; kept here so the file is honest
    about what it needs to render, and so it renders if run in isolation. */
 import "../../../styles/index.css";
@@ -81,6 +84,152 @@ const meta: Meta<StoryArgs> = {
 	},
 	args: { query: "" },
 	render: ({ query }) => <PaletteFrame query={query} />,
+};
+
+/* ------------------------------------------------------- the roster world -- */
+
+/**
+ * ONE AGENT AND ONE TEAM, for the `@` scope's two row kinds (issue #849).
+ *
+ * The palette's roster is the only part of it that needs a BACKEND: the
+ * conversations catalogue is local store state a story can prime, but agents and
+ * teams arrive from `profiles.list` / `teams.list` over the desktop bridge. So
+ * this story stubs that bridge (`window.api.desktop.request`, the same bridge
+ * `agent-class.stories.tsx` installs) and answers from an in-memory world — the
+ * transport and the hooks are real, the server is the stand-in. An op nobody
+ * stubbed THROWS, so a palette that grows a read photographs an error rather
+ * than an empty shell that looks like a working empty state.
+ */
+const envelope = (result: unknown) => ({ status: 200, body: { result } });
+
+/**
+ * The capability answer the roster needs. `session_catalogue: 2` is not
+ * decoration: it is `canStageDraft`, the gate the agent and team rows carry, and
+ * a fixture without it renders no rows at all (which is the honest state of a
+ * backend that cannot stage a draft, and its own story's subject rather than
+ * this one's).
+ */
+const ROSTER_CAPABILITIES = {
+	desktop_contract: 1,
+	desktop_available: true,
+	desktop_auth: "bearer",
+	features: {
+		profile_catalogue: 1,
+		team_catalogue: 1,
+		session_catalogue: 2,
+		settings: 1,
+	},
+};
+
+const ROSTER_AGENT = {
+	id: "agent-ledger-auditor",
+	name: "ledger-auditor",
+	description: "Audits ledger entries against their source documents.",
+	tags: ["finance", "audit"],
+	working_directory: "/tmp/ledger-auditor",
+	created_at: "2026-01-01T00:00:00Z",
+	updated_at: "2026-01-01T00:00:00Z",
+};
+
+/**
+ * A team with a LABEL, and the label is the point: the row READS "Delivery crew"
+ * while the draft it stages is keyed by the slug `delivery`. A fixture whose
+ * label equalled its slug would let the two names be confused with nothing on
+ * screen to say so.
+ */
+const ROSTER_TEAM = {
+	id: "team-delivery",
+	name: "delivery",
+	label: "Delivery crew",
+	aliases: ["shipping"],
+	description: "Ships the product.",
+	manager: "aida",
+	members: [],
+};
+
+const installRosterBridge = ({
+	withAgent = true,
+	withTeam = true,
+}: { withAgent?: boolean; withTeam?: boolean } = {}) => {
+	/*
+	 * THE AGENT ROSTER IS NOT A DESKTOP-BRIDGE READ. `useAgents` goes through
+	 * `desktopControlResponse({ op: "legacy.agents.list" })`, so the ROWS arrive on
+	 * the bridge — but the hook is gated by `useConnectivityGate`, which asks
+	 * `/health` over plain `fetch` against the configured API origin. Without a
+	 * second stub the gate reports the server offline and the roster query never
+	 * runs, so the frame would show an empty `@` scope and look like a palette bug.
+	 * Only `/health` is answered; every other URL falls through to the real fetch,
+	 * so a story that grows a network read fails loudly rather than silently
+	 * photographing this file's idea of the answer.
+	 */
+	const realFetch = window.fetch.bind(window);
+	window.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+		const url = typeof input === "string" ? input : String(input);
+		if (url.includes("/health"))
+			return new Response(
+				JSON.stringify({ result: { status: "ok", version: "0.0.0-story" } }),
+				{ status: 200, headers: { "Content-Type": "application/json" } },
+			);
+		return realFetch(input as RequestInfo, init);
+	}) as typeof window.fetch;
+
+	const handler = async (request: { op: string }) => {
+		switch (request.op) {
+			case "capabilities":
+				return envelope(ROSTER_CAPABILITIES);
+			case "legacy.agents.list":
+				return envelope({
+					agents: withAgent ? [ROSTER_AGENT] : [],
+					total: withAgent ? 1 : 0,
+					page: 1,
+					per_page: 50,
+				});
+			case "profiles.list":
+				return envelope({ profiles: [] });
+			case "teams.list":
+				return envelope({ teams: withTeam ? [ROSTER_TEAM] : [] });
+			case "settings.list":
+				return envelope({ settings: [] });
+			case "sessions.list":
+				return envelope({ sessions: [], total: 0 });
+			default:
+				throw new Error(
+					`unexpected desktop op in the palette's roster story: ${request.op}`,
+				);
+		}
+	};
+	const page = window as unknown as {
+		api?: { desktop?: { request: typeof handler } };
+	};
+	const api = page.api ?? {};
+	page.api = api;
+	api.desktop = { request: handler } as never;
+};
+
+/**
+ * The roster frame: install the bridge, prime nothing (agents and teams come
+ * from the bridge), open on the `@` seed, and mount the palette.
+ *
+ * The close-then-open dance and the one-commit deferral are the switcher
+ * frame's, for the same two measured reasons (a persisted `isCommandPaletteOpen`
+ * and child effects running before the parent's) — see `SwitcherFrame`.
+ */
+const RosterFrame = ({
+	withAgent,
+	withTeam,
+}: { withAgent?: boolean; withTeam?: boolean }) => {
+	const [ready, setReady] = useState(false);
+	useEffect(() => {
+		installRosterBridge({ withAgent, withTeam });
+		useUiPreferencesStore.getState().closeCommandPalette();
+		useUiPreferencesStore.getState().toggleCommandPalette(AGENT_ROSTER_SEED);
+		setReady(true);
+		return () => {
+			useUiPreferencesStore.getState().closeCommandPalette();
+		};
+	}, [withAgent, withTeam]);
+	if (!ready) return null;
+	return <CommandPalette />;
 };
 
 /*
@@ -235,3 +384,36 @@ export const ChatsScopeLoading: Story = {
  * must not claim it while the conversation search is still out.
  */
 export const NoResults: Story = { args: { query: "zzzz" } };
+
+/**
+ * The `@` scope with the AGENT row (issues #844, #849): the row's hint is
+ * `Agent chat`, and its target is the draft door rather than the `/chat/<agent
+ * id>` path that always landed on the legacy-link notice.
+ *
+ * The frame is judged for the row's own reading — name, the kind word in the
+ * hint, the group heading — and the flow (the press landing on a chat targeted
+ * at that agent) is the running app's, in `docs/agent-driver.md`'s own lane.
+ */
+export const AgentRosterRow: Story = {
+	render: () => <RosterFrame withAgent withTeam={false} />,
+};
+
+/**
+ * The same scope with a TEAM row, under its own `Teams` heading: one row per
+ * team, reading the display label while the draft it stages is keyed by the
+ * slug.
+ *
+ * This and the frame above are the pair that says a same-named agent and team
+ * cannot be confused, which is what the kind-carrying hint exists for.
+ */
+export const TeamRosterRow: Story = {
+	render: () => <RosterFrame withAgent={false} withTeam />,
+};
+
+/**
+ * Both kinds at once, which is the `@` scope's ordinary state in the app: this
+ * is the frame that shows the two groups' order and the two hints side by side.
+ */
+export const RosterScope: Story = {
+	render: () => <RosterFrame withAgent withTeam />,
+};

@@ -7221,6 +7221,15 @@ export const STORIES = [
 	["command-palette-commandpalette--settings-scope", 1280, 800],
 	["command-palette-commandpalette--commands-scope", 1280, 800],
 	["command-palette-commandpalette--no-results", 1280, 800],
+	/*
+	 * The roster rows (issues #844, #849): the `@` scope's agent and team rows, one
+	 * frame per row kind plus the two together. These are the frames that show the
+	 * kind-carrying hint and the `Teams` heading, which are what keep a same-named
+	 * agent and team apart.
+	 */
+	["command-palette-commandpalette--agent-roster-row", 1280, 800],
+	["command-palette-commandpalette--team-roster-row", 1280, 800],
+	["command-palette-commandpalette--roster-scope", 1280, 800],
 
 	["onboarding-onboardingmodal--default", 1280, 900],
 	/*
