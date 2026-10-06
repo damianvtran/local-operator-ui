@@ -27,9 +27,14 @@ set -a; . ~/local-operator-ui/.env; set +a
 LOCAL_OPERATOR_UI_NO_BYTECODE=true \
   VITE_LOCAL_OPERATOR_API_URL=http://127.0.0.1:18234 pnpm build
 
-# 2. a FRESH stub per launch, then ONE launch per palette, per half.
+# 2. a FRESH stub per launch, then ONE launch per palette, per half. THE STUB'S
+#    REQUEST LOG IS ITS STDOUT - it knows no `--stub-log` flag - so the redirect IS
+#    the file the driver below is told to read. Sending it to /dev/null starves
+#    that file, and the scene's write-carrying checks then report "no pin written"
+#    for presses that did write (agent review round 2's Q-2, UX's U2: the sibling
+#    `sidebar-row-space` README has always had this wiring).
 node docs/evidence/sidebar-rest-intent/harness/stub-daemon.mjs \
-  --port 18234 --records <tmp>/records --stub-log <tmp>/stub.log > /dev/null 2>&1 &
+  --port 18234 --records <tmp>/records > <tmp>/stub.log 2>&1 &
 node scripts/renderer-driver.mjs --scene row-space \
   --backend http://127.0.0.1:18234 --backend-records <tmp>/records \
   --seed-onboarding-complete --stub-log <tmp>/stub.log \
@@ -43,8 +48,8 @@ node scripts/renderer-driver.mjs --scene row-space \
 ```
 
 **The scene asserts what it photographs**, so a run that lands these frames is a
-run that read the same state: 59 passing checks per run (of 61), including the two
-this change adds —
+run that read the same state: **60 passing checks per run (of 62) on the HEAD
+half**, including the four the remediation rounds add —
 
 - `the acts are absent for a pointer passing through and present once it has
   dwelt` (or, with `--row-space-expect before`, the base tree's claim that they
@@ -69,9 +74,31 @@ this change adds —
   The control column is the same scene, the same build tree, the fix reverted - and
   it reproduces the defect exactly: the mousedown focuses the button (`active
   true`), the bare `group-focus-within` raises the acts INSIDE the gesture
-  (`pairDrawn true`), the button narrows by the pair's own 56px (248 -> 192), the
-  mouseup lands outside it, and the click is retargeted to the row's wrapper, so
-  the press neither pressed a control nor selected the row.
+  (`pairDrawn true`), the button narrows by 56px — the pair's own 52px plus the
+  row's 4px gap, so `248 -> 192` — the mouseup lands outside it, and the click is
+  retargeted to the row's wrapper, so the press neither pressed a control nor
+  selected the row.
+
+And the half of that fix the press cannot show - that the door it was re-keyed to
+still OPENS for a keyboard reader (agent review round 2's MINOR):
+
+- `a keyboard walk onto an unpinned row draws its acts, on a `:focus-visible` the
+browser agrees is the keyboard's`. The gesture is the panel's own arrow walk - a
+real `ArrowDown` key event from the pinned row's button, which is how the app
+moves the caret between rows - and the reading is
+`{isRowButton true, focusVisible true, rowId 2d5ad5da0025, pairDisplay flex}` on
+both palettes. A `Tab` would not do: this row is the list's first, so one Tab
+leaves the list entirely, which is the property the walk above it documents. And
+`button.focus()` would not do either: a scripted focus reads `:focus-visible:
+false` in this repo, so it would answer a question about `:focus` while this door
+asks how the focus ARRIVED.
+
+**The before half runs the same 62 checks** with the clauses that describe this
+change flipped to the base tree's own statements (`--row-space-expect before`),
+including the press clause, which reads the press MOMENT rather than the parked
+frame (agent review round 2's MINOR 1: the parked frame carries `pairDrawn false`
+on every tree). Its frames and readings in this set are the committed ones; the
+count quoted above is the head half's, which is the half this document ships.
 
 ### Two checks are red on BOTH halves, and they are not this change's
 
@@ -204,17 +231,21 @@ over the same pair, the sidebar's regions of the two frames:
 
 - **layout bands** — rows carrying 24 or more differing pixels at a threshold of
   8/255. This is the change the frame is evidence FOR: a cue, a thumb, a mask.
-- **residue** — every other differing pixel: glyph-edge antialiasing the two
-  trees' separate renders leave behind (the after and before halves are two
-different builds, so text on the same ground lands on sub-pixel-different
-  rasterisation). Counted, never claimed as zero.
+- **carried by bands** / **residue** — the complement split of the state's TOTAL
+  differing pixels: what stands in rows inside a band, and every other differing
+  pixel (glyph-edge antialiasing the two trees' separate renders leave behind,
+  since the after and before halves are two different builds and text on the same
+  ground lands on sub-pixel-different rasterisation). Counted, never claimed as
+  zero. **The split is the table's own arithmetic, not a second measurement**
+  (design round 2's D-r2-2: the round-1 table printed each state's TOTAL in a
+  column headed "residue", which `edges-none`'s exact match hid).
 
-| frame | layout bands (device px) | residue |
-| --- | --- | --- |
-| `edges-none-280` | **none** — the control case | 22041 px of glyph-edge scatter, peak 44 |
-| `edges-top-280` | `640-897` at `x528-543` and `x2744-2759` (the two scrollbars' **resting thumb**, the one difference that is this change's floor and not a cue); `1105-1109` at `x486-505` (peak 196) | 17587 px |
-| `edges-both-280` | `1065-1079` at `x69-367` + `x470-509` (the list's bottom cue fading its content, peak 69); `1094-1100` (peak 9) | 18589 px |
-| `edges-bottom-280` | `670-684` at `x42-131` (the list's top cue fading its content, peak 43) | 13659 px |
+| frame | layout bands (device px) | differing | carried by bands | residue |
+| --- | --- | --- | --- | --- |
+| `edges-none-280` | **none** — the control case | 22041 | 0 | 22041 |
+| `edges-top-280` | `640-897` at `x528-543` and `x2744-2759` (the two scrollbars' **resting thumb**, § 3 — the one band here that is NOT a cue); `1065-1071` at `x42-127` (the **bottom cue** fading the list's last rows, the declared `bottomFade 24px`); `1105-1109` at `x486-505` (the pinned row's own pin glyph — `boxes.rest-280.rows[2].pin`, ink `rgb(241,238,230)` on the base — differing at the top of its own box) | 17587 | 8605 | 8982 |
+| `edges-both-280` | `1065-1079` at `x69-367` + `x470-509` (the **bottom cue** fading content, peak 69); `1094-1100` (peak 9) | 18589 | 5435 | 13154 |
+| `edges-bottom-280` | `670-684` at `x42-131` (the **top cue** fading content, peak 43) | 13659 | 811 | 12848 |
 
 The bands are narrow and their magnitude is content-dependent (the mask can only
 fade what is not already uniform ground), which is why the LENGTHS above are the

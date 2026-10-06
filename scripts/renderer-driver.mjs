@@ -8167,6 +8167,54 @@ async function sceneRowSpace(cdp) {
 		JSON.stringify(onThePin),
 	);
 	/*
+	 * AND THE KEYBOARD'S OWN DOOR IS MEASURED RATHER THAN DESCRIBED (agent review round 2's
+	 * MINOR). The door this PR re-keyed is `:focus-visible`, and `button.focus()` is NOT the
+	 * instrument for it: a scripted focus reads `:focus-visible: false` in this repo (this
+	 * file's own note records it), so a check built on it would answer a question about
+	 * `:focus` while the door asks how the focus ARRIVED. The gesture is the panel's OWN
+	 * arrow walk - a real `ArrowDown` key event from a row's button, which is the app moving
+	 * the caret from one row to the next, i.e. exactly the keyboard reader's route. (`Tab`
+	 * was the first draft of this check and is the wrong key: this row is the list's FIRST,
+	 * so one Tab leaves the list entirely, which is what the clause above documents.) The
+	 * loop is bounded and the clause FAILS when it reaches no row button, because a door
+	 * that is never exercised must not read as a door that works - and it skips the pinned
+	 * row, whose pair is `flex` at rest by design and would therefore pass this clause
+	 * without the keyboard at all.
+	 */
+	let keyboardDoor = null;
+	await cdp.evaluate(
+		`(() => { const row = document.querySelector('[data-session-row="${PINNED}"]'); const button = row && row.querySelector('[data-chat-row]'); if (button) button.focus(); return true; })()`,
+	);
+	for (let step = 0; step < 4; step += 1) {
+		await pressChord(cdp, {
+			key: "ArrowDown",
+			code: "ArrowDown",
+			virtualKeyCode: 40,
+		});
+		await wait(160);
+		keyboardDoor = await cdp.evaluate(`(() => {
+			const el = document.activeElement;
+			const row = el && el.closest ? el.closest('[data-session-row]') : null;
+			const pair = row ? row.querySelector('[data-session-control-pair]') : null;
+			return {
+				isRowButton: !!(el && el.matches && el.matches('[data-chat-row]')),
+				focusVisible: !!(el && el.matches && el.matches(':focus-visible')),
+				rowId: row ? row.getAttribute('data-session-row') : null,
+				pairDisplay: pair ? getComputedStyle(pair).display : null,
+			};
+		})()`);
+		if (keyboardDoor?.isRowButton && keyboardDoor.rowId !== PINNED) break;
+	}
+	check(
+		"a keyboard walk onto an unpinned row draws its acts, on a `:focus-visible` the browser agrees is the keyboard's",
+		keyboardDoor?.isRowButton === true &&
+			keyboardDoor?.focusVisible === true &&
+			keyboardDoor?.rowId !== PINNED &&
+			keyboardDoor?.pairDisplay === "flex",
+		JSON.stringify(keyboardDoor),
+	);
+	note("the keyboard's own door", JSON.stringify(keyboardDoor));
+	/*
 	 * AND THE CARET GOES BACK INTO THE ROW FOR THE CHORD HALF. The chord resolves its target
 	 * from the focused element's own row (`chatRowActControl`), so a walk that left the caret
 	 * outside the row after reading the Tab stop would be pressing the chord on a row it is not
@@ -8314,7 +8362,9 @@ async function sceneRowSpace(cdp) {
 	 *   - the mouseup therefore lands on the button the press started on, and the row
 	 *     becomes the current conversation - which is the half that used to be lost:
 	 *     the mousedown FOCUSED the button, `group-focus-within` raised the acts inside
-	 *     the gesture, the button narrowed 248 -> 196, the mouseup fell outside it and
+	 *     the gesture, the button narrowed 248 -> 192 (the pair's 52px plus the row's own
+	 *     4px gap - the driver's own control reading is the instrument here; the round-2
+	 *     NIT caught this line quoting 196), the mouseup fell outside it and
 	 *     Chromium retargeted the `click` to the row's wrapper, which has no handler.
 	 *     Nothing was pressed AND nothing was selected.
 	 *
@@ -8401,7 +8451,14 @@ async function sceneRowSpace(cdp) {
 						landed.route !== band.route &&
 						landed.route.includes(UNPINNED) &&
 						landed.current === UNPINNED
-				: band.pairDrawn === true,
+				: /*
+					 * THE PRESS MOMENT, NOT THE PARKED ONE (agent review round 2's MINOR 1).
+					 * `band.pairDrawn` is read with the pointer parked at (2,2), where the
+					 * wrapper is `hidden` on EVERY tree - so the old clause was asking the
+					 * frame before the gesture to carry the defect. What the base tree's
+					 * defect IS is the acts arriving inside the press, which is `held`.
+					 */
+					held.pairDrawn === true,
 			JSON.stringify({ band, held, landed }),
 		);
 		note("the straddling press", JSON.stringify({ band, held, landed }));
